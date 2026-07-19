@@ -148,8 +148,11 @@ The detect-and-prefetch fallback is **discarded**.
 
 1. ✅ Shell guard migration + niche backfill (PR #335)
 2. ✅ Tool-loop spike (`scripts/spike-tool-loop.ts`) — PASS ×3, §6 decided
-3. RPC migration (new returned columns + filter params) + `SharedMatchRow` widening
-4. `search_examples` + `references` block, E2E on one intent ("show me examples of…")
+3. ✅ RPC facet migration (PR #338) — visual_hook/editing_style returned;
+   filter_format/filter_visual/filter_editing accepted; exact-payload guard
+   (`corpus-rpc-params.test.ts`); prod-applied + live-verified
+4. `search_examples` + `references` block, E2E on one intent ("show me
+   examples of…") — **START HERE · see docs/HANDOFF-2026-07-19-grounding-tools.md**
 5. `corpus_stats` + insight card
 6. `get_teardown` + teardown card
 7. Converge: hooks/ideas/script retrieval becomes `search_examples` calls —
