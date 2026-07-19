@@ -100,6 +100,20 @@ describe("the four walls get four different sentences", () => {
     expect(msg).toContain("all 500 credits");
   });
 
+  it("admission block → the action's price against what's left, never 'used all'", () => {
+    // 497 of 500 used, a 10-credit Reading refused: the balance line next to the dialog
+    // says "3 of 500 credits left", so this sentence must agree with it.
+    const msg = quotaRefusalMessage({ ...base, used: 497 }, 10);
+    expect(msg).toContain("10 credits");
+    expect(msg).toContain("3 credits left");
+    expect(msg).not.toContain("used all");
+  });
+
+  it("a genuinely spent allowance still reads 'used all', even with a cost", () => {
+    const msg = quotaRefusalMessage(base, 10);
+    expect(msg).toContain("all 500 credits");
+  });
+
   it("the body carries reason + cost so the wall can adapt", () => {
     const body = quotaRefusalBody({ ...base, reason: "fair_use", limit: null }, 10);
     expect(body.reason).toBe("fair_use");

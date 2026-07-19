@@ -145,6 +145,15 @@ rows), let the handful of others start a $1 trial. Decide which emails get compe
   the first time. (Whop keys pending step 1; `BILLING_ENFORCE_QUOTA` pending step 3.)
 - Password reset flow exists (`/forgot-password` → `/auth/callback` → `/reset-password`).
 - One-trial-per-account guard live in checkout.
+- **Crons verified revived in prod** (2026-07-20 log evidence): `calculate-trends` 500
+  "supabaseKey is required" at 15:00 UTC on the old deployment → 200 every hour since the
+  env redeploy; `scrape-trending` scraping again after 154h stale.
+- **E2E quota flow verified locally with `BILLING_ENFORCE_QUOTA=true`** (2026-07-20, fixture
+  starter sub + synthetic ledger rows, removed after): admission block at 3-of-500 left
+  refuses a 10-credit Reading with "That needs 10 credits — you have 3 credits left this
+  month."; spent allowance at 0 left refuses a 1-credit hooks pack with "You've used all
+  500 credits…". Both 402 BEFORE any engine spend. (The Whop-checkout sandbox pass below
+  still stands — it needs step 1.)
 
 ## What is still owner-gated elsewhere on the site
 

@@ -32,7 +32,7 @@ interface Log {
  * The refusal copy — four dead-ends, four different honest next steps. Written server-side,
  * where the tier and the window are known; the dialog SHOWS this, it never invents its own.
  */
-export function quotaRefusalMessage(verdict: QuotaVerdict): string {
+export function quotaRefusalMessage(verdict: QuotaVerdict, cost?: number): string {
   if (verdict.inTrial) {
     return `Your $1 trial includes ${verdict.limit} credits. Your full plan allowance starts when the trial converts.`;
   }
@@ -42,6 +42,12 @@ export function quotaRefusalMessage(verdict: QuotaVerdict): string {
   if (verdict.limit === 0) {
     return `Start a plan — the $1 trial includes ${TRIAL.credits} credits.`;
   }
+  // Admission block vs spent allowance are DIFFERENT facts, and the balance line is on
+  // screen next to this sentence: "used all 500" while it reads "3 of 500 left" is a lie.
+  const left = verdict.limit === null ? 0 : Math.max(0, verdict.limit - verdict.used);
+  if (cost !== undefined && left > 0) {
+    return `That needs ${cost} credits — you have ${left} ${left === 1 ? "credit" : "credits"} left this month.`;
+  }
   return `You've used all ${verdict.limit} credits on your plan this month.`;
 }
 
@@ -49,7 +55,7 @@ export function quotaRefusalMessage(verdict: QuotaVerdict): string {
 export function quotaRefusalBody(verdict: QuotaVerdict, cost: number) {
   return {
     error: CREDIT_QUOTA_EXCEEDED,
-    message: quotaRefusalMessage(verdict),
+    message: quotaRefusalMessage(verdict, cost),
     tier: verdict.tier,
     used: verdict.used,
     limit: verdict.limit,
