@@ -39,9 +39,18 @@ export interface UseChatStreamReturn {
   streamingBlocks: unknown[];
   /**
    * Pipeline stages from the dispatched skill's real phase boundaries (event: stage). Empty on a
-   * plain chat turn. Feeds the progress spine, mirroring the skill-route stream hooks.
+   * plain chat turn. Feeds the progress spine, mirroring the skill-route stream hooks. Cleared on
+   * each `dispatch` event so a second skill run in one turn starts a fresh spine.
    */
   stages: StageState[];
+  /**
+   * The skill the agent committed to running this turn (event: dispatch — the display key:
+   * 'ideas' | 'hooks' | 'script' | …), or null on a plain chat turn / before any dispatch.
+   * Arrives BEFORE the first stage event, so the run capsule can label itself and seed the
+   * skill's stage plan while the pipeline is still spinning up. Holds the LATEST dispatch when
+   * a turn runs two skills.
+   */
+  dispatchedSkill: string | null;
   /** True while the SSE stream is active. */
   isStreaming: boolean;
   /** Error string if the stream or route failed. Null when no error. */
@@ -88,6 +97,7 @@ export function useChatStream(): UseChatStreamReturn {
   // plain chat turn — these paths only fire when the route ran a skill (event: block / stage).
   const [streamingBlocks, setStreamingBlocks] = useState<unknown[]>([]);
   const [stages, setStages] = useState<StageState[]>([]);
+  const [dispatchedSkill, setDispatchedSkill] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDone, setIsDone] = useState(false);
@@ -119,6 +129,7 @@ export function useChatStream(): UseChatStreamReturn {
     setStreamingText('');
     setStreamingBlocks([]);
     setStages([]);
+    setDispatchedSkill(null);
     setIsStreaming(false);
     setError(null);
     setIsDone(false);
@@ -145,6 +156,7 @@ export function useChatStream(): UseChatStreamReturn {
     setStreamingText('');
     setStreamingBlocks([]);
     setStages([]);
+    setDispatchedSkill(null);
     setError(null);
     setIsDone(false);
     setColdStart(false);
@@ -225,6 +237,17 @@ export function useChatStream(): UseChatStreamReturn {
               if (isMountedRef.current) setStreamingBlocks([...blocksRef.current]);
             }
 
+          } else if (eventType === 'dispatch') {
+            // The agent committed to a skill run (the run-capsule seam). Arrives BEFORE the first
+            // stage event. A SECOND dispatch in one turn starts a fresh spine: clear the live
+            // stages so run 2's plan isn't overlaid on run 1's finished steps.
+            const skill = typeof data.skill === 'string' ? data.skill : '';
+            if (skill && isMountedRef.current) {
+              stagesRef.current = [];
+              setStages([]);
+              setDispatchedSkill(skill);
+            }
+
           } else if (eventType === 'stage') {
             // Dispatched skill's real pipeline phase — upsert by name, preserve first-seen order
             // (mirrors use-ideas-stream). Feeds the progress spine during a chat-run skill.
@@ -282,6 +305,7 @@ export function useChatStream(): UseChatStreamReturn {
     streamingText,
     streamingBlocks,
     stages,
+    dispatchedSkill,
     isStreaming,
     error,
     isDone,

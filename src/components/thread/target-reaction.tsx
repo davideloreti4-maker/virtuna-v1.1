@@ -34,7 +34,7 @@ export function TargetReaction({ target }: { target: CardTarget }) {
   const displayName = label ?? archetypeDisplayName(archetype);
 
   return (
-    <div className="flex flex-col gap-1 rounded-[8px] border border-white/[0.06] px-3 py-2">
+    <div className="flex flex-col gap-1 rounded-md border border-white/[0.06] px-3 py-2">
       <p className="text-[12px] leading-snug text-foreground-secondary">
         <span className="text-foreground-muted">Written for </span>
         <span className="font-medium text-foreground">{displayName}</span>

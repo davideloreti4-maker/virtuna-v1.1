@@ -119,6 +119,14 @@ export interface ChatAgentStreamInput {
   onToken: (delta: string) => void;
   /** A skill's card-block, as it is produced (streamed to the client + collected for persistence). */
   onBlock: (block: unknown) => void;
+  /**
+   * Fired the moment the agent COMMITS to running a skill — with the skill's DISPLAY key
+   * (`SkillTool.skillKey`: 'ideas' | 'hooks' | 'script' | …), BEFORE `run` and before any stage
+   * event. The route streams it as the `dispatch` SSE event so the client can label its progress
+   * capsule and seed the right stage plan while the skill is still spinning up. NOT fired for the
+   * free tools (request_input / search_corpus) — nothing runs on those.
+   */
+  onDispatch?: (skill: string) => void;
 }
 
 export interface ChatAgentStreamResult {
@@ -404,6 +412,9 @@ export async function runChatAgentStream(
         continue;
       }
       try {
+        // Announce the dispatch BEFORE the run: the client's capsule labels itself + seeds the
+        // skill's stage plan off this, ahead of the first onStage event (~seconds later).
+        input.onDispatch?.(skill.skillKey);
         const { blocks } = await skill.run(args, input.context);
         if (skill.paid) paidRuns++;
         for (const block of blocks) input.onBlock(block);

@@ -20,6 +20,7 @@ import ReactMarkdown from 'react-markdown';
 import rehypeSanitize from 'rehype-sanitize';
 import { cn } from '@/lib/utils';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
+import { CardPrimaryAction } from './card-primitives';
 
 export type ThreadSkill = 'hooks' | 'ideas' | 'script' | 'remix';
 
@@ -160,22 +161,27 @@ export function ThreadOutro({
       )}
       {hasChips && (
         <div className="flex flex-wrap gap-2">
-          {chips!.map((chip, i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={chip.onClick}
-              disabled={!chip.onClick}
-              className={cn(
-                'rounded-[8px] px-3.5 py-2 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20 disabled:cursor-default disabled:opacity-40',
-                chip.primary
-                  ? 'bg-[var(--color-action)] font-semibold text-[var(--color-action-foreground)] hover:opacity-90'
-                  : 'border border-white/[0.06] bg-white/[0.02] text-foreground-secondary hover:border-white/[0.10] hover:text-foreground',
-              )}
-            >
-              {chip.label}
-            </button>
-          ))}
+          {chips!.map((chip, i) =>
+            chip.primary ? (
+              // The forward-chain chip IS the card primary — one cream definition app-wide.
+              <CardPrimaryAction key={i} onClick={chip.onClick} disabled={!chip.onClick}>
+                {chip.label}
+              </CardPrimaryAction>
+            ) : (
+              <button
+                key={i}
+                type="button"
+                onClick={chip.onClick}
+                disabled={!chip.onClick}
+                className={cn(
+                  'rounded-md px-3.5 py-2 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20 disabled:cursor-default disabled:opacity-40',
+                  'border border-white/[0.06] bg-white/[0.02] text-foreground-secondary hover:border-white/[0.10] hover:text-foreground',
+                )}
+              >
+                {chip.label}
+              </button>
+            ),
+          )}
         </div>
       )}
     </div>

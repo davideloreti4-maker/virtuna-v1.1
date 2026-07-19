@@ -18,6 +18,7 @@
  */
 
 import type { ReactNode } from 'react';
+import Link from 'next/link';
 
 /**
  * THE canonical section-label className (§0.5 "Type + geometry"):
@@ -76,6 +77,7 @@ export function CardPrimaryAction({
   onClick,
   disabled,
   type = 'button',
+  href,
   className,
   'aria-label': ariaLabel,
   'data-testid': dataTestid,
@@ -85,11 +87,26 @@ export function CardPrimaryAction({
   onClick?: () => void;
   disabled?: boolean;
   type?: 'button' | 'submit';
+  /** Render as a <Link> instead of a <button> — a primary that navigates (e.g. the Test
+   *  card's "See the full breakdown →" door). Mutually exclusive with onClick/disabled. */
+  href?: string;
   className?: string;
   'aria-label'?: string;
   'data-testid'?: string;
   title?: string;
 }) {
+  const cls =
+    'rounded-md bg-[var(--color-action)] px-3.5 py-2 text-[13px] font-semibold text-[var(--color-action-foreground)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20 disabled:cursor-default disabled:opacity-40' +
+    (className ? ` ${className}` : '');
+
+  if (href) {
+    return (
+      <Link href={href} aria-label={ariaLabel} data-testid={dataTestid} title={title} className={cls}>
+        {children}
+      </Link>
+    );
+  }
+
   return (
     <button
       type={type}
@@ -98,10 +115,7 @@ export function CardPrimaryAction({
       aria-label={ariaLabel}
       data-testid={dataTestid}
       title={title}
-      className={
-        'rounded-md bg-[var(--color-action)] px-3.5 py-2 text-[13px] font-semibold text-[var(--color-action-foreground)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20 disabled:cursor-default disabled:opacity-40' +
-        (className ? ` ${className}` : '')
-      }
+      className={cls}
     >
       {children}
     </button>

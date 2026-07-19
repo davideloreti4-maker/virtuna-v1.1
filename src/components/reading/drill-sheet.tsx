@@ -51,7 +51,7 @@ export function DrillSheet({ open, onOpenChange, title, children, className }: D
           // flat-warm: charcoal surface, hairline border, matte (drop-shadow off, no inner shine)
           'border-[--color-border] bg-surface shadow-none',
           'sm:max-w-[560px]',
-          'data-[side=bottom]:max-h-[85vh] data-[side=bottom]:rounded-t-[16px]',
+          'data-[side=bottom]:max-h-[85vh] data-[side=bottom]:rounded-t-xl',
           'sm:rounded-none',
         )}
       >

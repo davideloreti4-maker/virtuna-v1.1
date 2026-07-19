@@ -22,13 +22,12 @@
  */
 
 import { useState } from 'react';
-import Link from 'next/link';
 import type { VideoTestCardBlock } from '@/lib/tools/blocks';
 import { TrustBadge } from '@/components/audience/trust-badge';
 import { SaveAffordance } from '@/components/thread/save-affordance';
 import { CaretToggle } from './caret-toggle';
 import { ProofUnit } from './proof-unit';
-import { CardEyebrow, CardActionBar, SECTION_LABEL } from './card-primitives';
+import { CardEyebrow, CardPrimaryAction, CardActionBar, SECTION_LABEL } from './card-primitives';
 import { BAND_COLOR } from './band-block';
 
 export interface VideoTestCardRendererProps {
@@ -130,12 +129,9 @@ export function VideoTestCardRenderer({ block }: VideoTestCardRendererProps) {
           Test's natural next step for the depth a card can't hold; the card itself stays the
           thread representation, so this is a drill, not a forced navigate. */}
       <CardActionBar>
-        <Link
-          href={`/analyze/${analysisId}`}
-          className="rounded-md bg-[var(--color-action)] px-3.5 py-2 text-[13px] font-semibold text-[var(--color-action-foreground)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20"
-        >
+        <CardPrimaryAction href={`/analyze/${analysisId}`}>
           See the full breakdown →
-        </Link>
+        </CardPrimaryAction>
         <SaveAffordance
           className="ml-auto"
           item_type="read"

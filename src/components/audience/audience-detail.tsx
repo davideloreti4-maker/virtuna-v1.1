@@ -94,6 +94,9 @@ const ZONE = "rounded-2xl bg-white/[0.02]";
 const ZONE_LABEL =
   "font-mono text-[10px] uppercase tracking-[0.12em] text-foreground-muted";
 
+/** Rosters longer than this fold behind one quiet "N more…" row. */
+const PERSONA_FOLD = 6;
+
 function LivenessDot() {
   return (
     <span
@@ -114,10 +117,11 @@ function MonoMeta({ parts }: { parts: (string | null)[] }) {
   );
 }
 
-function RailCard({ label, children }: { label: string; children: React.ReactNode }) {
+/** A rail group is not a box — mono label + facts, hairline-separated from the next. */
+function RailGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-xl bg-white/[0.02] px-4 py-3.5">
-      <h3 className={cn(ZONE_LABEL, "mb-2.5")}>{label}</h3>
+    <div className="border-t border-white/[0.06] pt-4 first:border-t-0 first:pt-0">
+      <h3 className={cn(ZONE_LABEL, "mb-2")}>{label}</h3>
       {children}
     </div>
   );
@@ -205,6 +209,7 @@ export function AudienceDetail({
   const [audience, setAudience] = useState<Audience | null>(audienceProp);
   const [defaultAudienceId, setDefaultAudienceId] = useState(defaultProp);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [showAllPersonas, setShowAllPersonas] = useState(false);
   const [dangerOpen, setDangerOpen] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [recalibrateOpen, setRecalibrateOpen] = useState(false);
@@ -323,7 +328,7 @@ export function AudienceDetail({
         )}
       </header>
 
-      <div className="mt-7 grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_264px] lg:items-start">
+      <div className="mt-7 grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_212px] lg:gap-12 lg:items-start">
         {/* ── Main column ──────────────────────────────────────────────────── */}
         <div className="min-w-0">
           {/* Population hero — who is in the room at rest. */}
@@ -376,13 +381,14 @@ export function AudienceDetail({
             </section>
           )}
 
-          {/* Personas — name · description · share, receipts iff the scrape produced one. */}
+          {/* Personas — name · description · share, receipts iff the scrape produced one.
+              Long rosters fold after six; the rest is one quiet fact-row away. */}
           {roster.length > 0 && (
             <div className="mt-2.5 px-1">
-              {roster.map((row) => (
+              {(showAllPersonas ? roster : roster.slice(0, PERSONA_FOLD)).map((row) => (
                 <div
                   key={row.key}
-                  className="group flex items-baseline gap-4 border-t border-white/[0.05] py-[15px] first:border-t-0"
+                  className="group flex items-baseline gap-4 border-t border-white/[0.05] py-4 first:border-t-0"
                 >
                   <div className="min-w-0 flex-1">
                     <p className="text-[14px] font-semibold tracking-[-0.005em] text-foreground">
@@ -394,16 +400,18 @@ export function AudienceDetail({
                       </p>
                     )}
                     {row.receipt && (
-                      <p className="mt-1.5 border-l-2 border-white/[0.10] pl-2.5 text-[11.5px] leading-relaxed text-foreground-muted">
+                      <p className="mt-1.5 border-l border-white/[0.12] pl-2.5 text-[11.5px] leading-relaxed text-foreground-muted">
                         <span className="text-foreground-secondary">Evidence · </span>
                         {row.receipt}
                       </p>
                     )}
                   </div>
-                  <div className="w-[88px] shrink-0 text-right text-[13px] tabular-nums text-foreground-secondary">
-                    {row.sharePct}%
+                  <div className="w-[88px] shrink-0 text-right">
+                    <span className="text-[13px] tabular-nums text-foreground-secondary">
+                      {row.sharePct}%
+                    </span>
                     {row.disposition && (
-                      <span className="mt-px block text-[12px] normal-case text-foreground-muted">
+                      <span className="mt-0.5 block font-mono text-[9.5px] uppercase tracking-[0.08em] text-foreground-muted">
                         {row.disposition}
                       </span>
                     )}
@@ -413,13 +421,22 @@ export function AudienceDetail({
                       type="button"
                       onClick={() => setEditingIndex(row.editIndex)}
                       aria-label={`Edit ${row.name}`}
-                      className="shrink-0 self-center rounded-md px-2 py-1 text-[12px] text-foreground-muted opacity-0 transition-opacity hover:bg-white/[0.06] hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10 group-hover:opacity-100"
+                      className="pointer-coarse:opacity-100 shrink-0 self-center rounded-md px-2 py-1 text-[12px] text-foreground-muted opacity-0 transition-opacity hover:bg-white/[0.06] hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10 group-hover:opacity-100"
                     >
                       Edit
                     </button>
                   )}
                 </div>
               ))}
+              {!showAllPersonas && roster.length > PERSONA_FOLD && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllPersonas(true)}
+                  className="w-full border-t border-white/[0.05] py-3 text-left text-[12.5px] text-foreground-muted transition-colors hover:text-foreground-secondary"
+                >
+                  {roster.length - PERSONA_FOLD} more…
+                </button>
+              )}
             </div>
           )}
 
@@ -429,16 +446,24 @@ export function AudienceDetail({
               <p className={cn(ZONE_LABEL, "mb-4")}>Source</p>
 
               {source.posts.length > 0 && (
-                <div className="flex gap-2 overflow-x-auto pb-1">
+                <div
+                  className="flex gap-2 overflow-x-auto pb-1"
+                  style={{
+                    maskImage:
+                      "linear-gradient(90deg, #000 0%, #000 94%, transparent 100%)",
+                    WebkitMaskImage:
+                      "linear-gradient(90deg, #000 0%, #000 94%, transparent 100%)",
+                  }}
+                >
                   {source.posts.map((post) => (
                     <div
                       key={post.id}
-                      className="flex h-[104px] w-[64px] shrink-0 flex-col justify-between overflow-hidden rounded-md border border-white/[0.06] bg-[linear-gradient(165deg,#33322f_0%,#2a2927_60%,#262523_100%)] p-1.5"
+                      className="flex h-[118px] w-[72px] shrink-0 flex-col justify-between overflow-hidden rounded-lg border border-white/[0.06] bg-[linear-gradient(165deg,#33322f_0%,#2a2927_60%,#262523_100%)] p-2"
                     >
-                      <p className="line-clamp-4 text-[8.5px] leading-[1.35] text-foreground-muted">
+                      <p className="line-clamp-4 text-[9px] leading-[1.4] text-foreground-muted">
                         {post.caption}
                       </p>
-                      <span className="font-mono text-[9px] tabular-nums text-foreground-secondary">
+                      <span className="font-mono text-[9.5px] tabular-nums text-foreground-secondary">
                         {formatCount(post.views)}
                       </span>
                     </div>
@@ -447,20 +472,20 @@ export function AudienceDetail({
               )}
 
               {source.figures.length > 0 && (
-                <div className="mt-5 flex flex-wrap items-baseline gap-x-9 gap-y-4">
+                <div className="mt-6 flex flex-wrap items-baseline gap-x-10 gap-y-4">
                   {source.figures.map((f) => (
                     <div key={f.label}>
-                      <div className="text-[21px] font-semibold tracking-[-0.02em] text-foreground tabular-nums">
+                      <div className="text-[23px] font-semibold tracking-[-0.02em] text-foreground tabular-nums">
                         {f.value}
                       </div>
-                      <div className={cn(ZONE_LABEL, "mt-[3px] tracking-[0.12em]")}>{f.label}</div>
+                      <div className={cn(ZONE_LABEL, "mt-1 tracking-[0.12em]")}>{f.label}</div>
                     </div>
                   ))}
                 </div>
               )}
 
               {source.pillars.length > 0 && (
-                <div className="mt-5">
+                <div className="mt-6">
                   {source.pillars.map((p) => (
                     <div key={p.name} className="mt-3 first:mt-0">
                       <div className="mb-[5px] flex justify-between text-[12.5px]">
@@ -512,10 +537,10 @@ export function AudienceDetail({
           {error && <p className="mt-4 text-[12.5px] text-error">{error}</p>}
         </div>
 
-        {/* ── Rail ─────────────────────────────────────────────────────────── */}
-        <aside className="flex flex-col gap-3">
+        {/* ── Rail — one quiet fact column, no boxes ───────────────────────── */}
+        <aside className="flex flex-col gap-4 lg:pt-1">
           {audience && (
-            <RailCard label="Usage">
+            <RailGroup label="Usage">
               <Kv k="New threads">{isDefault ? "Default" : "—"}</Kv>
               <Kv k="Pinned">
                 {pinnedThreads} thread{pinnedThreads === 1 ? "" : "s"}
@@ -531,11 +556,11 @@ export function AudienceDetail({
                   </button>
                 </Kv>
               )}
-            </RailCard>
+            </RailGroup>
           )}
 
           {account && (
-            <RailCard label="Sync">
+            <RailGroup label="Sync">
               <Kv k="Refresh">Daily</Kv>
               <Kv k="Last">{synced ?? "—"}</Kv>
               {audience && editable && account.platform === "tiktok" && (
@@ -549,19 +574,20 @@ export function AudienceDetail({
                   </button>
                 </Kv>
               )}
-            </RailCard>
+            </RailGroup>
           )}
 
+          {/* Destructive stays visible but unboxed and unlabeled — one quiet line. */}
           {(editable || (!audience && account)) && (
-            <RailCard label="Danger">
+            <div className="border-t border-white/[0.06] pt-4">
               <button
                 type="button"
                 onClick={() => setDangerOpen(true)}
-                className="text-[13px] text-error transition-opacity hover:opacity-80"
+                className="text-[12.5px] text-error/80 transition-colors hover:text-error"
               >
                 {dangerLabel}
               </button>
-            </RailCard>
+            </div>
           )}
         </aside>
       </div>

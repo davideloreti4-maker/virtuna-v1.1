@@ -52,6 +52,7 @@ import { OutlierGridBlockRenderer } from '@/components/thread/outlier-grid-block
 import { ThreadShell, ThreadAssistantTurn } from '@/components/thread/thread-shell';
 import { SkillResultCard } from '@/components/thread/skill-result-card';
 import { SkillProgress, STAGE_PLANS } from '@/components/thread/progress-checklist';
+import { SkillRunError } from '@/components/thread/run-notices';
 import type { StageState } from '@/components/thread/progress-checklist';
 import { handoffsFor } from '@/lib/tools/chain-handoff';
 import type { OutlierGridBlock } from '@/lib/tools/blocks';
@@ -206,7 +207,7 @@ export function ExploreThreadView({
         summaryLabel="Scored for your audience"
       />
 
-      {error && !isStreaming && <SkillRunError onRetry={onRetry} />}
+      {error && !isStreaming && <SkillRunError onRetry={onRetry} retryLabel="Retry the Explore pull" headline="Couldn’t reach that source." body="Check the handle or niche and try again — nothing was charged." />}
 
       {(hasStreamingContent || hasPersistedContent) && (
         <ThreadAssistantTurn>
@@ -256,41 +257,3 @@ export function ExploreThreadView({
   );
 }
 
-// ── SkillRunError ─────────────────────────────────────────────────────────────
-
-/**
- * Skill-run error block with tap-to-retry (reuses the HooksThreadView shape —
- * UI-SPEC §Copywriting "nothing was charged"). Renders ONLY when error is truthy and
- * the stream has ended. The retry button calls onRetry ONLY on explicit tap.
- */
-interface SkillRunErrorProps {
-  onRetry?: () => void;
-}
-
-function SkillRunError({ onRetry }: SkillRunErrorProps) {
-  return (
-    <div
-      className="rounded-xl border border-white/[0.06] px-4 py-3 flex flex-col gap-1"
-      role="alert"
-      aria-live="assertive"
-    >
-      <p className="text-sm font-semibold" style={{ color: 'var(--color-cream-secondary)' }}>
-        Couldn&rsquo;t reach that source.
-      </p>
-      <p className="text-sm" style={{ color: 'var(--color-cream-muted)' }}>
-        Check the handle or niche and try again — nothing was charged.
-      </p>
-      {onRetry && (
-        <button
-          type="button"
-          onClick={onRetry}
-          className="mt-1 text-sm font-medium self-start transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10"
-          style={{ color: 'var(--color-cream-secondary)' }}
-          aria-label="Retry the Explore pull"
-        >
-          Retry →
-        </button>
-      )}
-    </div>
-  );
-}

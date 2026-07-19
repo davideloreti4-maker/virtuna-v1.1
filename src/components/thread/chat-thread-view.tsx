@@ -32,7 +32,8 @@ import { Fragment } from 'react';
 import { MessageBlocks } from '@/components/thread/message-blocks';
 import { ThreadShell, ThreadAssistantTurn, ThreadUserTurn } from '@/components/thread/thread-shell';
 import { ChatTypingIndicator } from '@/components/thread/thread-loading';
-import { ProgressChecklist, type StageState } from '@/components/thread/progress-checklist';
+import { type StageState } from '@/components/thread/progress-checklist';
+import { SkillRunCapsule } from '@/components/thread/run-capsule';
 import type { MarkdownBlock } from '@/lib/tools/blocks';
 import type { RehydrateTurn } from '@/components/app/home/rehydrate-thread';
 import { followupsForTurn, blockTypesOf } from '@/lib/tools/chat-followups';
@@ -66,11 +67,19 @@ export interface ChatThreadViewProps {
    * boundaries (event: stage), in emit order. Empty on a plain chat turn. While a skill is running
    * (streaming + stages present, before its cards land) these render as the progress SPINE in place
    * of the typing dots, so the ~20–65s generator wait reads like the per-skill views instead of a
-   * silent typing cursor. Legacy (no `plan` seed): chat cannot know which of ideas/hooks/script the
-   * model will pick, so the spine grows from live events rather than pre-seeding a pipeline that
+   * silent typing cursor. With a `dispatchedSkill` the capsule seeds that skill's real plan; without
+   * one (legacy stream) the spine grows from live events rather than pre-seeding a pipeline that
    * might diverge (e.g. script never emits Ranking → a seeded step would hang `pending`).
    */
   stages?: StageState[];
+  /**
+   * The skill the agent committed to this turn (the `dispatch` SSE event — display key
+   * 'ideas' | 'hooks' | 'script' | …), or null before any dispatch / on a plain chat turn.
+   * Labels the run capsule ("Writing hooks — for {audience}") + seeds its stage plan, and keeps
+   * the collapsed ✓ receipt above the cards after the run — the same run grammar as the
+   * per-skill thread views.
+   */
+  dispatchedSkill?: string | null;
   /** True while the SSE stream is active. */
   isStreaming: boolean;
   /**
@@ -112,6 +121,7 @@ export function ChatThreadView({
   streamingBlocks,
   streamingCardBlocks = [],
   stages = [],
+  dispatchedSkill = null,
   isStreaming,
   nudgeShown,
   error,
@@ -119,6 +129,7 @@ export function ChatThreadView({
   platform,
   onFollowup,
   userTurn,
+  audienceLabel,
 }: ChatThreadViewProps) {
   // Unified chat-agent reload: the ordered TURNS (each question + its cards/co-pilot line) REPLACE the
   // markdown-only persisted body when present. A normal chat thread has no turns → markdown-only path,
@@ -178,16 +189,19 @@ export function ChatThreadView({
   // question bubble. On a pure reload (no streaming) the persisted turns already include the last
   // turn's question, so no live turn renders → no duplicate bubble. The markdown-only reload also
   // renders through this block (its question comes from `userTurn`).
-  // A dispatched skill (CHAT_AGENT_DISPATCH) is mid-run when the stream has emitted real pipeline
-  // stages but its cards (produced at the END of the run) have not arrived yet. Its live spine
-  // replaces the typing dots for the long generator wait; once cards land the run is effectively
-  // done and the cards + co-pilot line carry the turn. The pivot is CARDS, not text: the model may
-  // stream a short preamble BEFORE it calls the tool, so gating on !hasStreamingContent would
-  // suppress the spine for the whole run and silently re-open the very gap this closes.
-  const runningSkill = isStreaming && stages.length > 0 && !hasStreamingCards;
-  // Pure-chat "thinking" dots: streaming with nothing yet AND no skill running (stages empty). A
-  // grounded/plain chat turn emits no stages → this is byte-identical to the shipped behavior.
-  const thinking = isStreaming && !hasStreamingContent && !hasStreamingCards && stages.length === 0;
+  // The RUN CAPSULE (run-capsule.tsx) — a skill was involved this turn when the agent announced a
+  // dispatch OR stage events arrived (legacy streams have no dispatch frame). The capsule is LIVE
+  // (label + spine) until this run's stages all land `done` — the beat where the pipeline hands
+  // over to cards — then collapses to the ✓ receipt that stays above the cards for the turn.
+  // stages.length === 0 counts as live because a fresh dispatch CLEARS the stage list (a second
+  // run in one turn starts its own spine) and the first stage event is still in flight.
+  const skillInvolved = dispatchedSkill != null || stages.length > 0;
+  const runLive =
+    isStreaming && (stages.length === 0 || stages.some((s) => s.status !== 'done'));
+  const showCapsule = skillInvolved && (runLive || stages.length > 0);
+  // Pure-chat "thinking" dots: streaming with nothing yet AND no skill involved. A grounded/plain
+  // chat turn emits no stages and no dispatch → this is byte-identical to the shipped behavior.
+  const thinking = isStreaming && !hasStreamingContent && !hasStreamingCards && !skillInvolved;
   const showLiveTurn = isStreaming || hasStreamingContent || hasStreamingCards || showMarkdownBody;
   const liveQuestion = userTurn?.trim();
 
@@ -233,13 +247,16 @@ export function ChatThreadView({
           {liveQuestion && <ThreadUserTurn text={liveQuestion} />}
           <ThreadAssistantTurn>
             {thinking && <ChatTypingIndicator />}
-            {runningSkill && (
-              // Chat-as-agent (CHAT_AGENT_DISPATCH): the dispatched skill's live progress spine, so
-              // the long generator wait reads like the per-skill views instead of silent dots. Legacy
-              // mode (no plan seed) — the skill is the model's choice, unknowable at mount.
-              <div aria-live="polite" aria-atomic="false">
-                <ProgressChecklist stages={stages} />
-              </div>
+            {showCapsule && (
+              // Chat-as-agent (CHAT_AGENT_DISPATCH): the dispatched skill's run capsule — labeled,
+              // plan-seeded spine while live; the collapsed ✓ receipt above the cards after. The
+              // same run grammar as the per-skill thread views (run-capsule.tsx).
+              <SkillRunCapsule
+                skill={dispatchedSkill}
+                stages={stages}
+                isRunning={runLive}
+                audienceLabel={audienceLabel}
+              />
             )}
             {hasStreamingCards && (
               // Chat-as-agent (CHAT_AGENT_DISPATCH): the dispatched skill's real cards, inline in this

@@ -25,6 +25,7 @@ import { BAND_COLOR } from './band-block';
 import { ProofUnit } from './proof-unit';
 import { ProofReceipt, NoSourceNote } from './proof-receipt';
 import { SaveAffordance } from '@/components/thread/save-affordance';
+import { CardEyebrow, CardPrimaryAction, CardActionBar } from './card-primitives';
 import { CaretToggle } from './caret-toggle';
 
 export interface ScriptCardRendererProps {
@@ -69,17 +70,17 @@ export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRend
     >
       {/* FACE — opener signal (Pitfall 5: opener-only honesty spine). */}
       <div className="flex flex-col gap-3 px-4 pb-3 pt-4">
-        {/* Eyebrow — "Opener stops the scroll" kicker + beat-count meta. */}
-        <div className="flex items-center justify-between gap-3">
-          <span className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.05em] text-foreground-muted">
-            <span className="h-[6px] w-[6px] rounded-full" style={{ backgroundColor: bandColor }} aria-hidden="true" />
-            Opener stops the scroll
-          </span>
-          <span className="shrink-0 text-[12px] tabular-nums text-foreground-muted">
-            {beats.length} {beats.length === 1 ? 'beat' : 'beats'}
-            <span className="text-foreground-muted/70"> · SIM-1 Flash</span>
-          </span>
-        </div>
+        {/* Eyebrow — "Opener stops the scroll" kicker + beat-count meta (§0.5.1). */}
+        <CardEyebrow
+          kicker="Opener stops the scroll"
+          dotColor={bandColor}
+          meta={
+            <span className="text-[12px] tabular-nums text-foreground-muted">
+              {beats.length} {beats.length === 1 ? 'beat' : 'beats'}
+              <span className="text-foreground-muted/70"> · SIM-1 Flash</span>
+            </span>
+          }
+        />
 
         {/* Proof receipt (§11f fan-out) — the real outlier this script's structure was drawn
             from. Only present on grounded runs where a real source was attributed. A script has
@@ -153,18 +154,16 @@ export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRend
         })}
       </div>
 
-      {/* Actions — one cream primary (forward chain "Test full →") + Save icon. */}
-      <div className="flex items-center gap-3.5 border-t border-white/[0.06] px-4 py-3">
-        <button
-          type="button"
+      {/* Actions — one cream primary (forward chain "Test full →") + Save icon (§0.5.7). */}
+      <CardActionBar>
+        <CardPrimaryAction
           onClick={onTest}
           disabled={!onTest}
-          className="rounded-[8px] bg-[var(--color-action)] px-3.5 py-2 text-[13px] font-semibold text-[var(--color-action-foreground)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20 disabled:cursor-default disabled:opacity-40"
           aria-label="Test the full script on the deeper SIM-1 Max pipeline"
           title={onTest ? 'Test the full script (beyond the opener) on SIM-1 Max' : 'Test full script wiring lands in Plan 06-05'}
         >
           Test full script →
-        </button>
+        </CardPrimaryAction>
 
         <SaveAffordance
           className="ml-auto"
@@ -172,7 +171,7 @@ export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRend
           title={openingBeatSeed ?? beats[0]?.content}
           snapshot={block.props}
         />
-      </div>
+      </CardActionBar>
     </div>
   );
 }

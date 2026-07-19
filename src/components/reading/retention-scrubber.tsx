@@ -278,7 +278,7 @@ export function RetentionScrubber({ data }: { data: PredictionResult }) {
       <div data-testid="retention-scrubber-cluster" className="flex flex-col gap-4">
         {/* ── Video frame (9:16, centred) ─────────────────────────────────────── */}
         <div
-          className="relative mx-auto w-[108px] overflow-hidden rounded-[12px] border border-[var(--color-border)]"
+          className="relative mx-auto w-[108px] overflow-hidden rounded-lg border border-[var(--color-border)]"
           style={{
             aspectRatio: '9 / 16',
             backgroundColor: 'var(--color-surface)',
@@ -366,7 +366,7 @@ export function RetentionScrubber({ data }: { data: PredictionResult }) {
                 }}
               />
               <div
-                className="absolute -translate-x-1/2 whitespace-nowrap rounded-[8px] border px-2 py-1 text-center tabular-nums"
+                className="absolute -translate-x-1/2 whitespace-nowrap rounded-md border px-2 py-1 text-center tabular-nums"
                 style={{
                   left: leftPct,
                   top: -2,
@@ -483,7 +483,7 @@ export function RetentionScrubber({ data }: { data: PredictionResult }) {
               {cells.map((cell, i) => (
                 <div
                   key={cell.idx}
-                  className="flex-1 rounded-[6px] border bg-cover bg-center"
+                  className="flex-1 rounded-sm border bg-cover bg-center"
                   style={{
                     aspectRatio: '16 / 9',
                     backgroundImage: cell.url ? `url('${cell.url}')` : undefined,
@@ -511,7 +511,7 @@ export function RetentionScrubber({ data }: { data: PredictionResult }) {
                 return (
                   <div
                     key={c.key}
-                    className="flex items-center gap-3 rounded-[8px] border px-2.5 py-2 transition-colors"
+                    className="flex items-center gap-3 rounded-md border px-2.5 py-2 transition-colors"
                     style={{
                       borderColor: active ? 'oklch(0.68 0.13 33 / 0.4)' : 'transparent',
                       backgroundColor: active ? 'oklch(0.68 0.13 33 / 0.12)' : 'transparent',

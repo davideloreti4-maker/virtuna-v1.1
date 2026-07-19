@@ -80,7 +80,7 @@ function HeroPoster({ heatmap }: { heatmap: HeatmapPayload | null }) {
 
   return (
     <div
-      className="relative aspect-[9/16] w-[86px] shrink-0 overflow-hidden rounded-[12px] border border-[var(--color-border)]"
+      className="relative aspect-[9/16] w-[86px] shrink-0 overflow-hidden rounded-lg border border-[var(--color-border)]"
       style={showImg ? undefined : { background: POSTER_PLACEHOLDER }}
     >
       {showImg ? (
@@ -132,7 +132,7 @@ export function ReadingHero({
       label="Test"
       labelSuffix={
         <span
-          className="ml-1.5 rounded-[4px] border px-1.5 py-px text-[9px] font-medium uppercase tracking-[0.05em]"
+          className="ml-1.5 rounded-xs border px-1.5 py-px text-[9px] font-medium uppercase tracking-[0.05em]"
           style={{
             borderColor: 'var(--color-cream-secondary)',
             color: 'var(--color-cream-secondary)',

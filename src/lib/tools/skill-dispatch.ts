@@ -53,6 +53,13 @@ export interface SkillToolArgs {
 /** One skill, exposed to the chat model as a tool. Adding a skill = adding one of these. */
 export interface SkillTool {
   name: string;
+  /**
+   * The skill's DISPLAY key — the id the client's run capsule uses to label the run and seed
+   * its stage plan (SKILL_RUN_META / STAGE_PLANS keys: 'ideas' | 'hooks' | 'script' | …).
+   * Streamed to the client via the `dispatch` SSE event the moment the agent picks this tool,
+   * so the spine can say WHAT is running before the first stage event lands.
+   */
+  skillKey: string;
   /** Hits the paid engine (generate + SIM) → counts against the leash. */
   paid: boolean;
   /** Which arg the model MUST supply for this skill to run (defaults to "topic" — the generator shape). */
@@ -87,6 +94,7 @@ function skillSchema(name: string, description: string, withAnchor: boolean): Re
 export const SKILL_TOOLS: SkillTool[] = [
   {
     name: "generate_ideas",
+    skillKey: "ideas",
     paid: true,
     schema: skillSchema(
       "generate_ideas",
@@ -107,6 +115,7 @@ export const SKILL_TOOLS: SkillTool[] = [
   },
   {
     name: "generate_hooks",
+    skillKey: "hooks",
     paid: true,
     schema: skillSchema(
       "generate_hooks",
@@ -128,6 +137,7 @@ export const SKILL_TOOLS: SkillTool[] = [
   },
   {
     name: "write_script",
+    skillKey: "script",
     paid: true,
     schema: skillSchema(
       "write_script",
