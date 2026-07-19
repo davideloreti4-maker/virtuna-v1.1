@@ -2192,6 +2192,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
           streamingBlocks={ideasBlocks}
           statusMessage={ideas.statusMessage}
           stages={ideas.stages}
+          warnings={ideas.warnings}
           followupText={ideas.followupText}
           outliersAvailable={ideas.outliersAvailable}
           onFindOutliers={() => void ideas.findOutliers()}
@@ -2235,6 +2236,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
           persistedBlocks={persistedScriptBlocks}
           streamingBlocks={scriptBlocks}
           stages={script.stages}
+          warnings={script.warnings}
           followupText={script.followupText}
           outliersAvailable={script.outliersAvailable}
           onFindOutliers={() => void script.findOutliers()}

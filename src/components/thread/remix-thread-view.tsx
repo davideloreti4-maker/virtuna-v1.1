@@ -35,7 +35,7 @@ import type { OnDevelopRemixFn } from '@/lib/remix-develop-context';
 import { MessageBlocks } from '@/components/thread/message-blocks';
 import { ThreadShell, ThreadAssistantTurn } from '@/components/thread/thread-shell';
 import { ThreadIntro, ThreadOutro } from '@/components/thread/conversational-frame';
-import { SkillRunError, RunWarnings } from '@/components/thread/run-notices';
+import { SkillRunError } from '@/components/thread/run-notices';
 import { SkillProgress, STAGE_PLANS } from '@/components/thread/progress-checklist';
 import type { StageState } from '@/components/thread/progress-checklist';
 import type { RemixCardBlock } from '@/lib/tools/blocks';

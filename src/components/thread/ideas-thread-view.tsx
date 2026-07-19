@@ -53,6 +53,12 @@ export interface IdeasThreadViewProps {
   stages: StageState[];
   /** Model-authored follow-up text from the followup SSE event (D-03 / Plan 05-04). */
   followupText: string | null;
+  /**
+   * Run-level degrade notices from the `warning` SSE event — [] on a clean run. The route
+   * has emitted these since grounding shipped; rendering them is what makes a degrade
+   * distinguishable from a clean run at the glass (mirrors HooksThreadView).
+   */
+  warnings?: string[];
   /** True while the SSE stream is active. */
   isStreaming: boolean;
   /** Error string from the stream (truthy = skill run failed — render W2 error block). */
@@ -86,6 +92,7 @@ export function IdeasThreadView({
   followupText,
   outliersAvailable = false,
   onFindOutliers,
+  warnings = [],
   isStreaming,
   error,
   platform,
@@ -156,6 +163,13 @@ export function IdeasThreadView({
             {!isStreaming && outliersAvailable && onFindOutliers && (
               <OutliersOffer onFindOutliers={onFindOutliers} />
             )}
+
+            {/* Degrade notices — a degrade is not a failure (the cards are real), so this is an
+
+                informational note below the result, hidden entirely on a clean run. */}
+
+            {!isStreaming && warnings.length > 0 && <RunWarnings warnings={warnings} />}
+
 
             {/* Outro — the engine's real follow-up, restyled (no chips: the idea card
                 carries its own "Develop into hooks →" handoff). */}
