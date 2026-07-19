@@ -215,6 +215,8 @@ export interface ToolCallRecord {
   rows: number;
   /** Computed at the tool boundary — did this call actually warrant a claim about the subject? */
   grounded?: boolean;
+  /** What the returned rows entitle a claim to be ABOUT — labels the reference card honestly. */
+  warrant?: Warrant;
   /** Facets the model constrained on (telemetry: are the filters being used, and for what?). */
   facets?: RetrieveFacets;
   error?: string;
@@ -357,6 +359,7 @@ export async function executeCorpusSearch(
     const { warrant, grounded, onSubject } = assessWarrant(axis, examples);
     record.rows = examples.length;
     record.grounded = grounded;
+    record.warrant = warrant;
     const results = examples.map((e) => ({
       creator: e.handle ?? null,
       views: e.views ?? null,

@@ -573,6 +573,96 @@ const PERSONA_CHAT_BLOCKS: PersonaChatTurnBlock[] = [
   },
 ];
 
+/**
+ * The chat agent's CITED SOURCES. Both warrant states are fixtured because they make DIFFERENT
+ * claims and the difference is the whole point of the card: `topical` = real videos about the
+ * subject, `structural` = proven shapes lifted from other subjects. Shipping only the flattering
+ * one is how a card drifts into over-claiming without anyone being able to see it.
+ */
+const CORPUS_REFERENCES_TOPICAL_BLOCK = {
+  type: "corpus-references",
+  props: {
+    query: "explaining a concept to camera",
+    warrant: "topical",
+    filters: { visualSetting: "greenscreen", platform: "instagram" },
+    sources: [
+      {
+        handle: "explore_create_capture",
+        videoUrl: "https://www.instagram.com/reel/CxAAA1/",
+        coverUrl: null,
+        hookTemplate: "The [tool] everyone sleeps on for [outcome].",
+        spokenHook: "The editing trick everyone sleeps on for retention.",
+        archetype: "secret-reveal-breakdown",
+        format: "breakdowns-explainers",
+        visualSetting: "greenscreen",
+        editingStyle: "visual-greenscreen",
+        multiplier: 14.2,
+        views: 2_400_000,
+        baselineLabel: "vs their usual views",
+        fitLabel: "adjacent" as const,
+      },
+      {
+        handle: "successwithumar",
+        videoUrl: "https://www.instagram.com/reel/CxBBB2/",
+        coverUrl: null,
+        hookTemplate: "Why your [thing] stops working after [milestone].",
+        spokenHook: "Why your hooks stop working after 10k followers.",
+        archetype: "problem",
+        format: "tutorial",
+        visualSetting: "greenscreen",
+        editingStyle: "notes-article-greenscreen",
+        multiplier: 6.8,
+        views: 820_000,
+        baselineLabel: "vs their usual views",
+        fitLabel: "adjacent" as const,
+      },
+      {
+        // A CURATED exemplar: no measured multiplier, so ProofReceipt states no number and the
+        // row reads "curated" rather than "proven". The mixed batch is deliberate — it is what
+        // the corpus actually returns, and the card must not dress the unmeasured row up.
+        handle: "kevkevkiwi",
+        videoUrl: "https://www.instagram.com/reel/CxCCC3/",
+        coverUrl: null,
+        hookTemplate: "I tried [method] for [duration] — here is what broke.",
+        spokenHook: "I tried batching a month of content in one day.",
+        archetype: "personal-experience",
+        format: "case-study",
+        visualSetting: "greenscreen",
+        editingStyle: "visual-greenscreen",
+        multiplier: null,
+        views: 310_000,
+        baselineLabel: null,
+        fitLabel: "structural" as const,
+      },
+    ],
+  },
+};
+
+const CORPUS_REFERENCES_STRUCTURAL_BLOCK = {
+  type: "corpus-references",
+  props: {
+    query: "quantum tax havens for hamsters",
+    warrant: "structural",
+    sources: [
+      {
+        handle: "thesocialcreativesclub",
+        videoUrl: "https://www.instagram.com/reel/CxDDD4/",
+        coverUrl: null,
+        hookTemplate: "Nobody talks about the [hidden cost] of [popular thing].",
+        spokenHook: "Nobody talks about the hidden cost of going viral.",
+        archetype: "contrarian",
+        format: "breakdowns-explainers",
+        visualSetting: "studio_set",
+        editingStyle: "office-room-yap",
+        multiplier: 22.6,
+        views: 4_100_000,
+        baselineLabel: "vs their usual views",
+        fitLabel: "structural" as const,
+      },
+    ],
+  },
+};
+
 export interface BlockSection {
   type: string;
   label: string;
@@ -613,6 +703,18 @@ export const BLOCK_SECTIONS: BlockSection[] = [
     label: "Text Read (single + orphaned pin)",
     note: "The DEFAULT Read since P3 — one audience, read alone. This one also shows the orphaned-pin line: the pinned audience was deleted, so it scored General and says so.",
     body: [SINGLE_AUDIENCE_READ_BLOCK],
+  },
+  {
+    type: "corpus-references",
+    label: "Chat sources (topical — filtered)",
+    note: "The chat agent's citation, rendered from the tool's own rows so the handles and numbers are DATA, not model prose. Only rows that cleared the warrant floor appear; an ungrounded search emits no block at all. Chips state the filters the search applied, so a narrowed answer admits it was narrowed. Note the third row: curated, no measured multiplier → no number, no 'proven'.",
+    body: [CORPUS_REFERENCES_TOPICAL_BLOCK],
+  },
+  {
+    type: "corpus-references--structural",
+    label: "Chat sources (structural — other subjects)",
+    note: "Same block, DIFFERENT claim. These rows are not about the creator's topic at all; they are proven SHAPES retrieved across subjects, and the header + subhead say so — the failure mode here is a cross-niche pattern reading as topical proof. The row eyebrow carries FACETS, not the claim: the group states what its rows share, a row states only what its siblings don't.",
+    body: [CORPUS_REFERENCES_STRUCTURAL_BLOCK],
   },
   {
     type: "personas",

@@ -819,6 +819,49 @@ export const InputRequestBlockSchema = z.object({
 
 export type InputRequestBlock = z.infer<typeof InputRequestBlockSchema>;
 
+// ─── Corpus references (the chat agent's cited sources) ──────────────────────
+//
+// Why this block exists: until now, when the chat agent searched the corpus mid-answer, the
+// retrieved rows went to the model as JSON and the MODEL typed out the creator handles and the
+// view counts in its prose. That makes a citation model output — a thing that can be plausibly
+// wrong. This block renders the SAME rows the tool returned, straight from the tool's structured
+// result, so the numbers on screen are the numbers the database returned and the model never
+// touches them. Same reason the skill cards carry a ProofReceipt instead of a written-out claim.
+//
+// Only CITABLE rows reach here (corpus-tool.ts computes the warrant): an ungrounded search emits
+// no block at all, because a source card is itself an assertion that these rows are relevant.
+
+export const CorpusReferenceSchema = HookProofSchema.extend({
+  /** What the creator actually said in the opening line (the template is its generalized form). */
+  spokenHook: z.string().nullable(),
+  format: z.string().nullable(),
+  /** The visual SETTING (greenscreen / studio_set / …) — a setting taxonomy, not a first-frame device. */
+  visualSetting: z.string().nullable(),
+  editingStyle: z.string().nullable(),
+});
+
+export const CorpusReferencesBlockSchema = z.object({
+  type: z.literal("corpus-references"),
+  props: z.object({
+    /** What was searched — shown so the creator can see WHY these rows are the answer. */
+    query: z.string(),
+    /**
+     * What these rows entitle the answer to claim. Mirrors the tool's warrant, minus "none":
+     * an ungrounded batch never becomes a card.
+     *  • topical    — these are examples ABOUT the subject; the header says so.
+     *  • structural — these are proven SHAPES from other subjects; the header says THAT instead,
+     *    so a cross-niche pattern is never read as evidence about the creator's topic.
+     */
+    warrant: z.enum(["topical", "structural"]),
+    /** The facet constraints the search actually applied (rendered as chips; absent ⇒ none). */
+    filters: z.record(z.string(), z.string()).optional(),
+    sources: z.array(CorpusReferenceSchema).min(1),
+  }),
+});
+
+export type CorpusReference = z.infer<typeof CorpusReferenceSchema>;
+export type CorpusReferencesBlock = z.infer<typeof CorpusReferencesBlockSchema>;
+
 // ─── Union ────────────────────────────────────────────────────────────────────
 
 export const BlockUnionSchema = z.discriminatedUnion("type", [
@@ -834,6 +877,7 @@ export const BlockUnionSchema = z.discriminatedUnion("type", [
   PersonaChatTurnBlockSchema,
   AccountReadBlockSchema,
   InputRequestBlockSchema,
+  CorpusReferencesBlockSchema,
   ProfileReadBlockSchema,
   ReactionDistributionBlockSchema,
   PredictionGaugeBlockSchema,
