@@ -163,6 +163,56 @@ are **all invisible** — no route renders them, so every degraded state of the 
 > The other eight drifted; `markdown` never rendered. The honesty spine, notably, is in **better**
 > shape than the visual spine — no doubled quotes, no fabricated claims, no off-scale radii found.
 
+## 0.8 THE RUN CAPSULE (canon — 2026-07-19, `design/skill-card-system`)
+
+> §0.5 is the contract for a skill's RESULT. This is the contract for a skill's **RUN** — the
+> wait between send and cards, which in agent mode (the default home surface) had none: the chat
+> spine was unlabeled and unseeded, vanished without a trace when cards landed, and the in-thread
+> fields showed a bare spinner (the /test field held ONE static sentence for ~2 minutes).
+
+**The grammar.** Every skill execution — composer skill mode, a chat-agent dispatch, an in-thread
+field submit — presents as the same capsule, in order:
+
+1. **What's running, for whom** — the per-skill views say it in voice (`<ThreadIntro>`); chat +
+   fields say it in the quiet label (`SKILL_RUN_META[skill].running` + `— for {audience}`).
+2. **The spine** (`<ProgressChecklist>`) — the skill's FULL plan visible from the first frame
+   (seeded from `SKILL_RUN_META[skill].plan`), live stage events overlaying their real status,
+   the active row rotating honest sub-copy. Plans MUST match the runner's real emissions — no
+   fictional steps (the "Self-judge" rule).
+3. **The receipt** (`<SkillProgress>` collapsed) — `✓ {done} · N steps ⌄`, expandable step
+   history. It STAYS above the cards for the rest of the turn; a run's provenance never vanishes.
+4. **The cards** — §0.5.
+5. **Notices** — `<RunWarnings>` (degrades) / `<SkillRunError>` (failures), shared from
+   `run-notices.tsx`. The warning SSE channel is wired for hooks AND ideas AND script.
+
+**The registry.** `SKILL_RUN_META` (`run-capsule.tsx`): skill display key → `{ running, done,
+plan }`. **Adding a skill = adding one entry** (+ a `skillKey` on its `SKILL_TOOLS` tool) — the
+whole run presentation is inherited. Keys today: ideas · hooks · script · remix · explore · read ·
+account · test.
+
+**The dispatch seam.** The agent loop fires `onDispatch(skillKey)` the moment it commits to a
+tool run (before the first stage event); the chat route streams it as `event: dispatch
+{ skill }`; `use-chat-stream` captures it (`dispatchedSkill`) and CLEARS the stage list per
+dispatch, so a two-skill turn renders two spines, not one overlay. No dispatch frame (legacy
+stream) → the unlabeled grow-as-you-go spine, unchanged.
+
+**Stageless routes** (read = one JSON POST, account = one scrape): the field renders the ONE-ROW
+capsule (`SingleStageWait`) — same breathing node/shimmer/rotation as every other run. The test
+field derives its 3-step spine from real phase boundaries + elapsed floors, using the SAME plan
+names as the flagship `/analyze` skeleton (`READ_PLAN`), so both Test waits speak one language.
+
+**Where to look:** `/dev/cards` Group "In-flight" mounts every mid-run state (skill spine, chat
+dispatch, receipt, test-field wait, scoring shimmer) — the same cheap gate that kept the result
+cards honest, now covering the waits.
+
+### 0.9 Primitive adoption + tokens-only radii (2026-07-19)
+
+`CardEyebrow` / `CardPrimaryAction` (now also `href`) / `CardActionBar` / `SECTION_LABEL` are no
+longer aspirational — hook, idea, script, remix, video-test, profile, simulate, the outliers
+offer, the outro chain chip, and all five field CTAs render through them. **One cream primary
+definition app-wide.** `radius-scale.test.ts` is now **tokens-only**: any `rounded-[Npx]` in
+`thread/**`/`reading/**` fails the build, on-scale or not.
+
 ⚠️ **§2 below is now partly STALE** — it still describes The Read as painting a legacy coral panel
 (stripped) and Remix's real source video as a TODO (shipped). Trust §0.5 + the code.
 
