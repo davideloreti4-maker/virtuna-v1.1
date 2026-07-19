@@ -26,6 +26,7 @@ import {
   PersonaChatTurnBlockSchema,
   AccountReadBlockSchema,
   InputRequestBlockSchema,
+  CorpusReferencesBlockSchema,
 } from "./blocks";
 import {
   ProfileReadBlockSchema,
@@ -49,6 +50,7 @@ export const BLOCK_REGISTRY = {
   "persona-chat-turn": { schema: PersonaChatTurnBlockSchema as z.ZodType },
   "account-read": { schema: AccountReadBlockSchema as z.ZodType },
   "input-request": { schema: InputRequestBlockSchema as z.ZodType },
+  "corpus-references": { schema: CorpusReferencesBlockSchema as z.ZodType },
   "profile-read": { schema: ProfileReadBlockSchema as z.ZodType },
   "reaction-distribution": { schema: ReactionDistributionBlockSchema as z.ZodType },
   "prediction-gauge": { schema: PredictionGaugeBlockSchema as z.ZodType },

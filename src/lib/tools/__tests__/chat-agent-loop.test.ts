@@ -197,6 +197,118 @@ describe("runChatAgentStream [tools]", () => {
     expect(executeCorpus.mock.calls.map((c) => (c[0] as { query: string }).query)).toEqual(["a", "b", "c"]);
   });
 
+  // ── The citation as DATA (corpus-references) ──────────────────────────────
+  // The rule: a source card is itself an assertion that these rows are relevant, so it renders only
+  // when the tool granted a warrant. Prose degrades; cards do not get to.
+
+  const corpusRow = {
+    teardownId: "t1",
+    handle: "creator1",
+    videoUrl: "https://tiktok.com/@creator1/video/1",
+    coverUrl: null,
+    platform: "tiktok",
+    multiplier: 12,
+    views: 900_000,
+    baselineLabel: "vs their usual views",
+    fitLabel: "adjacent" as const,
+    hookArchetype: "contrarian",
+    format: "breakdowns-explainers",
+    visualSetting: "greenscreen",
+    editingStyle: "visual-greenscreen",
+    niche: "content-creation",
+    spokenHook: "You've been lied to about X.",
+    hookTemplate: "You've been lied to about [X].",
+    template: null,
+    idea: null,
+    whyItWorks: null,
+    sourcePool: "curated" as const,
+    trustWeight: 1,
+    fromPersonal: false,
+    similarity: 0.7,
+  };
+
+  const corpusResult = (over: Record<string, unknown> = {}) => ({
+    content: JSON.stringify({ count: 1, grounded: true }),
+    examples: [corpusRow],
+    citable: [corpusRow],
+    record: { round: 1, query: "hooks about X", axis: "topical" as const, rows: 1, grounded: true, warrant: "topical" as const },
+    ...over,
+  });
+
+  it("emits a corpus-references block built from the TOOL's rows, and persists it", async () => {
+    const executeCorpus = vi.fn(async () => corpusResult());
+    const stream = mockStream([
+      [toolName(0, "s1", "search_corpus"), toolArgs(0, '{"query": "hooks about X"}')],
+      [textChunk("Here's what actually worked.")],
+    ]);
+    const onBlock = vi.fn();
+
+    const res = await runChatAgentStream(
+      baseInput({ grounding: true, onBlock }),
+      DEPS(stream, { skills: [mkSkill("generate_ideas")], executeCorpus: executeCorpus as never }),
+    );
+
+    const emitted = onBlock.mock.calls.map((c) => c[0]).find((b) => b?.type === "corpus-references");
+    expect(emitted).toBeTruthy();
+    expect(emitted.props.warrant).toBe("topical");
+    // The numbers on the card come from the ROW, not from anything the model wrote.
+    expect(emitted.props.sources[0]).toMatchObject({
+      handle: "creator1",
+      multiplier: 12,
+      views: 900_000,
+      baselineLabel: "vs their usual views",
+      visualSetting: "greenscreen",
+    });
+    // Persisted too — otherwise the citation vanishes on reload while the prose citing it stays.
+    expect(res.uiBlocks).toContainEqual(expect.objectContaining({ type: "corpus-references" }));
+  });
+
+  it("emits NO card when the search was not grounded (warrant 'none')", async () => {
+    const executeCorpus = vi.fn(async () =>
+      corpusResult({
+        citable: [], // nothing cleared the warrant floor
+        record: { round: 1, query: "absurd", axis: "topical" as const, rows: 5, grounded: false, warrant: "none" as const },
+      }),
+    );
+    const stream = mockStream([
+      [toolName(0, "s1", "search_corpus"), toolArgs(0, '{"query": "absurd"}')],
+      [textChunk("I don't have proven examples for that.")],
+    ]);
+    const onBlock = vi.fn();
+
+    const res = await runChatAgentStream(
+      baseInput({ grounding: true, onBlock }),
+      DEPS(stream, { skills: [mkSkill("generate_ideas")], executeCorpus: executeCorpus as never }),
+    );
+
+    expect(onBlock.mock.calls.map((c) => c[0]).some((b) => b?.type === "corpus-references")).toBe(false);
+    expect(res.uiBlocks).toHaveLength(0);
+  });
+
+  it("carries the applied FILTERS onto the card so a narrowed answer says it was narrowed", async () => {
+    const executeCorpus = vi.fn(async () =>
+      corpusResult({
+        record: {
+          round: 1, query: "greenscreen explainers", axis: "topical" as const, rows: 1, grounded: true,
+          warrant: "topical" as const, facets: { visualSetting: "greenscreen" },
+        },
+      }),
+    );
+    const stream = mockStream([
+      [toolName(0, "s1", "search_corpus"), toolArgs(0, '{"query": "greenscreen explainers", "visual_setting": "greenscreen"}')],
+      [textChunk("ok")],
+    ]);
+    const onBlock = vi.fn();
+
+    await runChatAgentStream(
+      baseInput({ grounding: true, onBlock }),
+      DEPS(stream, { skills: [mkSkill("generate_ideas")], executeCorpus: executeCorpus as never }),
+    );
+
+    const emitted = onBlock.mock.calls.map((c) => c[0]).find((b) => b?.type === "corpus-references");
+    expect(emitted.props.filters).toEqual({ visualSetting: "greenscreen" });
+  });
+
   it("does NOT bind search_corpus when grounding is off", async () => {
     const executeCorpus = vi.fn();
     // The model 'tries' to call search_corpus, but with grounding off it is an unknown tool → refused.

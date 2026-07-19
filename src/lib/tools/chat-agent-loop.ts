@@ -159,6 +159,8 @@ export interface ChatAgentStreamDeps {
 
 const DEFAULT_MAX_ROUNDS = 4;
 const DEFAULT_MAX_SKILL_RUNS = 2;
+/** Source cards rendered per search — a citation, not a search-results page. */
+const MAX_REFERENCE_CARDS = 4;
 
 /**
  * The tool-use directive the loop appends to the caller's system prompt. The loop OWNS this because it
@@ -340,13 +342,51 @@ export async function runChatAgentStream(
           parsed = {};
         }
         const res = await executeCorpus(parsed, input.context.platform, round, retrieve);
-        return { id: call.id, content: res.content };
+        return { id: call.id, content: res.content, citable: res.citable ?? [], record: res.record };
       }),
     );
     // Appended in the model's own call order (Promise.all preserves it) so results line up with ids.
     for (const r of corpusResults) {
       toolCalls.push({ name: "search_corpus", ran: true });
       messages.push({ role: "tool", tool_call_id: r.id, content: r.content });
+
+      // The CITATION, rendered from the tool's own rows rather than written by the model. Without
+      // this the creator only ever sees the model's prose retelling of these numbers, which is a
+      // claim it can get wrong; the card is the same data the RPC returned. Emitted only when the
+      // search earned a warrant — a source card is itself an assertion that the rows are relevant,
+      // so an ungrounded batch (warrant "none") shows nothing and the model degrades in prose.
+      const warrant = r.record?.warrant;
+      if ((warrant === "topical" || warrant === "structural") && r.citable.length > 0) {
+        const block = {
+          type: "corpus-references",
+          props: {
+            query: r.record?.query ?? "",
+            warrant,
+            ...(r.record?.facets && Object.keys(r.record.facets).length > 0
+              ? { filters: r.record.facets as Record<string, string> }
+              : {}),
+            sources: r.citable.slice(0, MAX_REFERENCE_CARDS).map((e) => ({
+              handle: e.handle ?? "",
+              videoUrl: e.videoUrl,
+              coverUrl: e.coverUrl,
+              hookTemplate: e.hookTemplate,
+              spokenHook: e.spokenHook,
+              archetype: e.hookArchetype,
+              format: e.format,
+              visualSetting: e.visualSetting,
+              editingStyle: e.editingStyle,
+              multiplier: e.multiplier,
+              views: e.views,
+              baselineLabel: e.baselineLabel,
+              // Retrieval's own §11c label. Not recomputed here — the card must not invent a
+              // match claim the pipeline never made.
+              fitLabel: e.fitLabel,
+            })),
+          },
+        };
+        input.onBlock(block); // live render this turn…
+        uiBlocks.push(block); // …and persist, or the citation vanishes on reload while the prose stays
+      }
     }
 
     // Execute the remaining calls in order, pushing a role:"tool" result the next round reads.
