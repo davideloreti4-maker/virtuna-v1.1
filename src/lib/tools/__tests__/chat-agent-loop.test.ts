@@ -158,6 +158,45 @@ describe("runChatAgentStream [tools]", () => {
     expect(res.text).toBe("Real creators do this: …");
   });
 
+  it("runs MULTIPLE search_corpus calls in one round CONCURRENTLY, results in call order", async () => {
+    // The streaming spike observed four corpus calls emitted in a single round. Each is an embed + an
+    // RPC (~10s), so serialising them cost the sum before a token could resume streaming. They are
+    // read-only and independent — there is no reason for the second to wait on the first.
+    let inFlight = 0;
+    let maxInFlight = 0;
+    const executeCorpus = vi.fn(async (args: Record<string, unknown>) => {
+      inFlight++;
+      maxInFlight = Math.max(maxInFlight, inFlight);
+      await new Promise((r) => setTimeout(r, 10));
+      inFlight--;
+      return {
+        content: JSON.stringify({ query: args.query, count: 0, grounded: false }),
+        examples: [],
+        citable: [],
+        record: { round: 1, query: String(args.query), axis: "topical" as const, rows: 0 },
+      };
+    });
+    const stream = mockStream([
+      [
+        toolName(0, "s1", "search_corpus"), toolArgs(0, '{"query": "a"}'),
+        toolName(1, "s2", "search_corpus"), toolArgs(1, '{"query": "b"}'),
+        toolName(2, "s3", "search_corpus"), toolArgs(2, '{"query": "c"}'),
+      ],
+      [textChunk("done")],
+    ]);
+
+    const res = await runChatAgentStream(
+      baseInput({ grounding: true }),
+      DEPS(stream, { skills: [mkSkill("generate_ideas")], executeCorpus: executeCorpus as never }),
+    );
+
+    expect(executeCorpus).toHaveBeenCalledTimes(3);
+    expect(maxInFlight).toBe(3); // genuinely concurrent, not sequential
+    expect(res.toolCalls.filter((t) => t.name === "search_corpus")).toHaveLength(3);
+    // Order still matches the model's own call order so every tool_call_id lines up with its result.
+    expect(executeCorpus.mock.calls.map((c) => (c[0] as { query: string }).query)).toEqual(["a", "b", "c"]);
+  });
+
   it("does NOT bind search_corpus when grounding is off", async () => {
     const executeCorpus = vi.fn();
     // The model 'tries' to call search_corpus, but with grounding off it is an unknown tool → refused.

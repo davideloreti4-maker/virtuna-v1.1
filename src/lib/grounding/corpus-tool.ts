@@ -15,11 +15,99 @@
  * "proven". Same discipline as the push renderer.
  */
 
-import { retrieveCachedExamples, resolveRetrieveConfig, type RetrieveConfig } from "./retrieve";
+import {
+  retrieveCachedExamples,
+  resolveRetrieveConfig,
+  type RetrieveConfig,
+  type RetrieveFacets,
+} from "./retrieve";
 import { receipt, clip } from "./prompt";
 import type { RetrievedExample } from "./types";
 
+// ─── Config ──────────────────────────────────────────────────────────────────
+// Declared before the tool schema below, which reads them at module-init time.
+
+/** Rounds of the agentic loop before we stop (self-correction needs >1; runaway guard). */
+const DEFAULT_MAX_ROUNDS = 4;
+/** Rows fed back to the model per tool call (bounds the model's context per turn). */
+const ROWS_PER_CALL = 5;
+/** Ceiling on a model-supplied `limit` — it does not get to blow up its own context. */
+const MAX_ROWS_PER_CALL = 12;
+/** Total distinct references carried forward into the streamed answer (bounds the injected block). */
+const MAX_REFERENCES = 6;
+/** Output cap for the scout turns — it gathers, it does not write the answer, so keep it cheap. */
+const SCOUT_MAX_TOKENS = 300;
+
+/**
+ * The WARRANT floor — the cosine above which a row is allowed to count as evidence ABOUT THE SUBJECT.
+ *
+ * Deliberately NOT the same number as the retrieval floor in `referenceConfig` (0.4), and the gap is
+ * the whole point. Two different questions were being answered by one threshold:
+ *
+ *   • "should the model SEE this row?"   → recall. Cheap to be wrong; the model reads and discards.
+ *   • "may the model CITE this row as being about what was asked?" → warrant. Expensive to be wrong;
+ *     this is where a tangential row becomes a fabricated citation.
+ *
+ * Collapsing the two is what produced the spike's arm-B near-miss: an absurd query returned 5 rows at
+ * ~0.5 similarity, `grounded = examples.length > 0` said true, and only the model's own judgment kept
+ * the answer honest. A contract that depends on the model choosing to be honest is not a contract.
+ *
+ * 0.5 is the owner-calibrated topical floor (retrieve.ts, measured 2026-07-17 across 12 realistic asks:
+ * 0.50 → 9/12 hit). The corpus median similarity is ~0.45, so anything at or below that is indis-
+ * tinguishable from "a random row" — which is the definition of ungrounded.
+ */
+const WARRANT_FLOOR_DEFAULT = 0.5;
+
+/** Rows above the warrant floor needed before an answer may be called grounded on the subject. */
+const WARRANT_MIN_ROWS = 1;
+
+function warrantFloor(): number {
+  const raw = Number(process.env.GROUNDING_WARRANT_MIN_SIMILARITY);
+  return Number.isFinite(raw) && raw > 0 && raw < 1 ? raw : WARRANT_FLOOR_DEFAULT;
+}
+
 // ─── The tool contract ───────────────────────────────────────────────────────
+
+// ─── Facet vocabularies ──────────────────────────────────────────────────────
+// The EXACT stored values (prod census, 524 extracted rows). These are enums in the schema on purpose:
+// a facet is a filter, and a filter the model can misspell is a filter that silently returns zero rows
+// and reads as "the corpus doesn't have that". The spike hit exactly this — it asked for greenscreen,
+// the corpus holds 81 greenscreen settings + 77 greenscreen edits, and the answer came back
+// "no greenscreen tag" because the interface could not express the question.
+
+/** The visual SETTING (`visual_hook` column — a setting taxonomy, NOT a first-frame device). */
+export const VISUAL_SETTINGS = [
+  "in_world_vlog", "studio_set", "greenscreen", "in_world_skit", "faceless", "other",
+] as const;
+
+export const HOOK_ARCHETYPES = [
+  "personal-experience", "tutorial", "question", "secret-reveal-breakdown", "authority",
+  "scenario-hypothetical", "list", "case-study", "problem", "ranking-rating", "contrarian",
+  "comparison", "trap-mistake",
+] as const;
+
+export const FORMATS = [
+  "skit", "tutorial", "breakdowns-explainers", "listicle", "challenge", "day-in-the-life",
+  "case-study", "personal-learning-epiphany", "episodic-series-social-show", "tier-list",
+  "a-vs-b-comparison", "reaction", "personal-update", "heros-journey", "problem-solution",
+  "about-me", "levels", "q-and-a", "scenarios", "common-trap-mistake",
+] as const;
+
+export const EDITING_STYLES = [
+  "vlog-hybrid", "visual-greenscreen", "office-room-yap", "full-screen-hybrid",
+  "faceless-visual-explainer", "vlog-interactive", "vlog-pov", "skit-solo", "reaction",
+  "skit-transformation-reveal", "split-screen", "skit-group", "notes-article-greenscreen",
+  "vlog-reflective", "podcast-clips", "car-yap", "man-on-street-single-interview",
+  "comparison-clone", "whiteboard", "vlog-music", "man-on-street-multiple-interviews",
+  "vlog-timelapse", "static-image-slideshow", "faceless-clipping", "faceless-animation",
+  "faceless-physical-explainer", "faceless-text-conversation", "stop-motion", "skit-lip-sync", "other",
+] as const;
+
+export const NICHES = [
+  "content-creation", "comedy-entertainment", "self-improvement", "business", "tech", "lifestyle",
+  "health-fitness", "beauty-fashion", "education-science", "relationships-family", "food",
+  "art-design", "travel", "career", "sports", "finance", "other",
+] as const;
 
 /** OpenAI/DashScope tool schema. Handed to `chat.completions.create({ tools: [SEARCH_CORPUS_TOOL] })`. */
 export const SEARCH_CORPUS_TOOL = {
@@ -32,7 +120,13 @@ export const SEARCH_CORPUS_TOOL = {
       "hook template, the narrative structure, the belief→reality tension behind them, the view " +
       "multiplier, and the creator. Call it whenever a proven real-world reference would make your " +
       "answer stronger or more grounded. You decide if and when; you may call it more than once with " +
-      "different queries or axes.",
+      "different queries, axes, or filters. " +
+      "Use the FILTERS when the creator names a constraint — a platform, a format, a visual setting " +
+      "(e.g. greenscreen), an editing style, a niche. Filtering is how you answer 'show me greenscreen " +
+      "examples' honestly instead of guessing from a topical search. " +
+      "READ THE `grounded` FIELD IN THE RESULT: it is computed, not a row count. `grounded: false` " +
+      "means the returned rows are NOT close enough to the subject to be evidence about it — say so, " +
+      "and use them only as craft references if at all. Never present ungrounded rows as proof.",
     parameters: {
       type: "object",
       properties: {
@@ -47,6 +141,19 @@ export const SEARCH_CORPUS_TOOL = {
             "topical = match the SUBJECT of the video. structural = match the FORMAT/shape of the " +
             "hook regardless of subject (cross-niche transfer). Default topical.",
         },
+        platform: { type: "string", enum: ["tiktok", "instagram", "youtube"], description: "Filter to one platform." },
+        format: { type: "string", enum: [...FORMATS], description: "Filter to one content format." },
+        hook_archetype: { type: "string", enum: [...HOOK_ARCHETYPES], description: "Filter to one hook archetype." },
+        visual_setting: {
+          type: "string",
+          enum: [...VISUAL_SETTINGS],
+          description:
+            "Filter to one visual SETTING — where/how the video is staged (greenscreen, studio set, " +
+            "in-world vlog, in-world skit, faceless). This is the setting, not the first-frame device.",
+        },
+        editing_style: { type: "string", enum: [...EDITING_STYLES], description: "Filter to one editing style." },
+        niche: { type: "string", enum: [...NICHES], description: "Filter to one niche." },
+        limit: { type: "integer", description: `How many examples to return (1–${MAX_ROWS_PER_CALL}). Default ${ROWS_PER_CALL}.` },
       },
       required: ["query"],
     },
@@ -80,17 +187,6 @@ function referenceConfig(axis: "topical" | "structural"): RetrieveConfig {
   return { ...resolveRetrieveConfig("ideas"), filterPlatform: false, minSimilarity: floor };
 }
 
-// ─── Config ──────────────────────────────────────────────────────────────────
-
-/** Rounds of the agentic loop before we stop (self-correction needs >1; runaway guard). */
-const DEFAULT_MAX_ROUNDS = 4;
-/** Rows fed back to the model per tool call (bounds the model's context per turn). */
-const ROWS_PER_CALL = 5;
-/** Total distinct references carried forward into the streamed answer (bounds the injected block). */
-const MAX_REFERENCES = 6;
-/** Output cap for the scout turns — it gathers, it does not write the answer, so keep it cheap. */
-const SCOUT_MAX_TOKENS = 300;
-
 const SCOUT_SYSTEM_PROMPT =
   "You are gathering proven reference material to help a short-form content strategist answer a " +
   "creator's question. You have search_corpus: a library of 500+ REAL videos that measurably " +
@@ -117,8 +213,15 @@ export interface ToolCallRecord {
   query: string;
   axis: string;
   rows: number;
+  /** Computed at the tool boundary — did this call actually warrant a claim about the subject? */
+  grounded?: boolean;
+  /** Facets the model constrained on (telemetry: are the filters being used, and for what?). */
+  facets?: RetrieveFacets;
   error?: string;
 }
+
+/** What the returned rows entitle the model to say. */
+export type Warrant = "topical" | "structural" | "none";
 
 export interface GatherReferencesInput {
   /** The creator's question — what the model is gathering references to answer. */
@@ -153,27 +256,107 @@ export interface GatherReferencesResult {
  * are the decoded rows we harvest. Never throws — a retrieval failure becomes an error payload the model
  * can react to (mirrors the spike: a whiff is recoverable, not fatal).
  */
+/** Read one enum-constrained facet off the model's args (anything unrecognised is dropped, not guessed). */
+function pickFacet(raw: unknown, allowed: readonly string[]): string | undefined {
+  return typeof raw === "string" && allowed.includes(raw) ? raw : undefined;
+}
+
+/** The facet filters the model asked for, validated against the stored vocabularies. */
+export function parseFacets(args: Record<string, unknown>): RetrieveFacets {
+  const facets: RetrieveFacets = {};
+  const platform = pickFacet(args.platform, ["tiktok", "instagram", "youtube"]);
+  if (platform) facets.platform = platform;
+  const format = pickFacet(args.format, FORMATS);
+  if (format) facets.format = format;
+  const archetype = pickFacet(args.hook_archetype, HOOK_ARCHETYPES);
+  if (archetype) facets.hookArchetype = archetype;
+  const visual = pickFacet(args.visual_setting, VISUAL_SETTINGS);
+  if (visual) facets.visualSetting = visual;
+  const editing = pickFacet(args.editing_style, EDITING_STYLES);
+  if (editing) facets.editingStyle = editing;
+  const niche = pickFacet(args.niche, NICHES);
+  if (niche) facets.niche = niche;
+  return facets;
+}
+
+/**
+ * Does this batch WARRANT a claim, and a claim about what?
+ *
+ * The two axes earn their warrant differently, and conflating them is how a craft reference becomes a
+ * fabricated citation:
+ *
+ *  • topical — the claim is about the SUBJECT ("videos about X do Y"), so the rows must actually be
+ *    about X. Cosine decides, at the warrant floor. Below it: "none" — the corpus returned rows
+ *    (it always does) but none of them are evidence about this subject.
+ *
+ *  • structural — the claim is about SHAPE ("this hook pattern works"), which is subject-independent
+ *    by design (retrieve.ts: a madlib is a hook with the topic lifted out; every curated row is a
+ *    human-picked teaching example). A structural batch is warranted whenever it returned rows — but
+ *    it warrants a claim about STRUCTURE ONLY, never about the topic, and the note says so.
+ */
+function assessWarrant(axis: "topical" | "structural", examples: RetrievedExample[]): {
+  warrant: Warrant;
+  grounded: boolean;
+  onSubject: number;
+} {
+  if (examples.length === 0) return { warrant: "none", grounded: false, onSubject: 0 };
+  const floor = warrantFloor();
+  // A null similarity cannot clear a floor it was never measured against — absent is not "passing".
+  const onSubject = examples.filter((e) => typeof e.similarity === "number" && e.similarity >= floor).length;
+  if (axis === "structural") return { warrant: "structural", grounded: true, onSubject };
+  const grounded = onSubject >= WARRANT_MIN_ROWS;
+  return { warrant: grounded ? "topical" : "none", grounded, onSubject };
+}
+
+/** The instruction the model reads alongside the rows — the contract stated, not assumed. */
+function warrantNote(warrant: Warrant, onSubject: number, count: number): string {
+  if (warrant === "topical") {
+    return `${onSubject} of ${count} returned rows are close enough to the subject to cite as evidence about it. The rest are craft references only.`;
+  }
+  if (warrant === "structural") {
+    return "These rows were selected for their STRUCTURE, not their subject. They are proven examples of the shape — cite them as patterns to borrow, never as evidence about this specific topic.";
+  }
+  return "NOT GROUNDED: the corpus returned rows, but none are close enough to this subject to be evidence about it (cosine search always returns its nearest rows, even when nothing relevant exists). Do NOT present these as proof about the topic, and do not imply the corpus contains examples of it. Say plainly that you have no proven examples for this, then answer from craft knowledge if you can — labelled as such.";
+}
+
 export async function executeCorpusSearch(
-  args: { query?: unknown; axis?: unknown },
+  args: { query?: unknown; axis?: unknown; limit?: unknown } & Record<string, unknown>,
   platform: string,
   round: number,
   retrieve: typeof retrieveCachedExamples,
-): Promise<{ content: string; examples: RetrievedExample[]; record: ToolCallRecord }> {
+): Promise<{
+  content: string;
+  examples: RetrievedExample[];
+  /**
+   * The subset the caller may carry into a CITED reference block. Same rows minus the ones that only
+   * cleared recall: a tangential row is legitimate for the model to read and discard, and illegitimate
+   * to render under a "proven reference" header. The model sees `examples`; the block gets `citable`.
+   */
+  citable: RetrievedExample[];
+  record: ToolCallRecord;
+}> {
   const query = typeof args.query === "string" ? args.query.trim() : "";
   const axis = args.axis === "structural" ? "structural" : "topical";
-  const record: ToolCallRecord = { round, query, axis, rows: 0 };
+  const facets = parseFacets(args);
+  const rawLimit = Number(args.limit);
+  const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(Math.floor(rawLimit), MAX_ROWS_PER_CALL) : ROWS_PER_CALL;
+  const record: ToolCallRecord = { round, query, axis, rows: 0, facets };
   if (!query) {
     record.error = "empty query";
-    return { content: JSON.stringify({ error: "query is required" }), examples: [], record };
+    return { content: JSON.stringify({ error: "query is required" }), examples: [], citable: [], record };
   }
   try {
     // Reference-mode config (recall-favoring, model-filtered) — NOT the generate-path per-skill config.
+    // The RECALL floor stays low so the model can see and discard; the WARRANT floor below decides what
+    // it may cite. Facets push down to the RPC so a narrow filter shrinks the candidate pool itself.
     const res = await retrieve(
-      { query, platform, skill: axisToSkill(axis) },
+      { query, platform, skill: axisToSkill(axis), facets },
       { config: referenceConfig(axis) },
     );
-    const examples = (res.examples ?? []).slice(0, ROWS_PER_CALL);
+    const examples = (res.examples ?? []).slice(0, limit);
+    const { warrant, grounded, onSubject } = assessWarrant(axis, examples);
     record.rows = examples.length;
+    record.grounded = grounded;
     const results = examples.map((e) => ({
       creator: e.handle ?? null,
       views: e.views ?? null,
@@ -182,6 +365,12 @@ export async function executeCorpusSearch(
         : null,
       hook_archetype: e.hookArchetype ?? null,
       format: e.format ?? null,
+      visual_setting: e.visualSetting ?? null,
+      editing_style: e.editingStyle ?? null,
+      niche: e.niche ?? null,
+      // Per-row, so the model can tell an on-subject citation from a tangential one INSIDE a batch —
+      // `grounded: true` means "at least one row qualifies", not "every row does".
+      on_subject: typeof e.similarity === "number" ? e.similarity >= warrantFloor() : null,
       spoken_hook: clip(e.spokenHook ?? "", 200),
       hook_template: clip(e.hookTemplate ?? "", 200),
       belief: clip(e.idea?.belief ?? "", 160),
@@ -190,13 +379,28 @@ export async function executeCorpusSearch(
       when_to_use: clip(e.template?.guidance ?? "", 200),
     }));
     return {
-      content: JSON.stringify({ query, axis, count: results.length, results }),
+      content: JSON.stringify({
+        query,
+        axis,
+        ...(Object.keys(facets).length > 0 ? { filters: facets } : {}),
+        count: results.length,
+        grounded,
+        warrant,
+        note: warrantNote(warrant, onSubject, results.length),
+        results,
+      }),
       examples,
+      // Structural rows are citable as SHAPES (their warrant is curation, not cosine); topical rows are
+      // citable only if they cleared the floor. An ungrounded topical batch yields nothing citable.
+      citable:
+        warrant === "structural"
+          ? examples
+          : examples.filter((e) => typeof e.similarity === "number" && e.similarity >= warrantFloor()),
       record,
     };
   } catch (err) {
     record.error = err instanceof Error ? err.message : String(err);
-    return { content: JSON.stringify({ error: record.error }), examples: [], record };
+    return { content: JSON.stringify({ error: record.error }), examples: [], citable: [], record };
   }
 }
 
@@ -275,19 +479,22 @@ export async function gatherReferencesViaTool(
 
     const executed = await Promise.all(
       calls.map(async (call) => {
-        let args: { query?: unknown; axis?: unknown } = {};
+        let args: Record<string, unknown> = {};
         try {
           args = JSON.parse(call.function?.arguments ?? "{}");
         } catch {
           args = {};
         }
-        const { content, examples, record } = await executeCorpusSearch(
+        const { content, citable, record } = await executeCorpusSearch(
           args,
           input.platform,
           round,
           retrieve,
         );
-        references.push(...examples);
+        // Only CITABLE rows are carried into the reference block — the model still sees every returned
+        // row in `content` and may reason over them, but a row that did not clear its warrant never
+        // reaches a block that presents itself as proven material.
+        references.push(...citable);
         toolCalls.push(record);
         return { role: "tool", tool_call_id: call.id, content };
       }),

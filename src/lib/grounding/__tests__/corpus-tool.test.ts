@@ -30,6 +30,11 @@ function mkExample(o: Partial<RetrievedExample> = {}): RetrievedExample {
     fitLabel: "structural",
     hookArchetype: "contrarian",
     format: "breakdowns-explainers",
+    visualSetting: "greenscreen",
+    editingStyle: "visual-greenscreen",
+    niche: "content-creation",
+    // Comfortably above the warrant floor by default, so a fixture is citable unless a test says otherwise.
+    similarity: 0.71,
     spokenHook: "You've been lied to about X.",
     hookTemplate: "You've been lied to about [X].",
     template: null,
@@ -205,5 +210,148 @@ describe("SEARCH_CORPUS_TOOL [grounding]", () => {
     expect(SEARCH_CORPUS_TOOL.type).toBe("function");
     expect(SEARCH_CORPUS_TOOL.function.name).toBe("search_corpus");
     expect(SEARCH_CORPUS_TOOL.function.parameters.required).toContain("query");
+  });
+
+  it("exposes the facet filters as ENUMS of the real stored vocabulary", () => {
+    const props = SEARCH_CORPUS_TOOL.function.parameters.properties as Record<
+      string,
+      { enum?: readonly string[] }
+    >;
+    // The spike could not ask for greenscreen and concluded the corpus had none. Both columns that
+    // answer that question must be expressible, with the values the rows are actually stored under.
+    expect(props.visual_setting?.enum).toContain("greenscreen");
+    expect(props.editing_style?.enum).toContain("visual-greenscreen");
+    expect(props.editing_style?.enum).toContain("notes-article-greenscreen");
+    expect(props.platform?.enum).toEqual(["tiktok", "instagram", "youtube"]);
+    expect(props.format?.enum).toContain("breakdowns-explainers");
+    expect(props.hook_archetype?.enum).toContain("personal-experience");
+    expect(props.niche?.enum).toContain("content-creation");
+  });
+});
+
+// ─── The warrant contract (the honesty spine at the tool boundary) ───────────
+//
+// The rule these lock: `grounded` is COMPUTED from measured similarity, never inferred from the fact
+// that rows came back. Cosine ALWAYS returns its nearest neighbours — on an absurd query the spike got
+// five tangential rows at ~0.5 and a naive `length > 0` called that grounded. Only the model's own
+// judgment saved the answer, and a contract that relies on the model choosing honesty is not a contract.
+
+describe("executeCorpusSearch — computed grounding [grounding]", () => {
+  const retrieveWith = (examples: RetrievedExample[]) =>
+    vi.fn(async () => ({ examples, enough: false, stats: {} })) as never;
+
+  it("topical: rows BELOW the warrant floor are not grounding, however many come back", async () => {
+    // Five rows, all tangential — exactly the arm-B shape that slipped through before.
+    const tangential = Array.from({ length: 5 }, (_, i) =>
+      mkExample({ teardownId: `t${i}`, similarity: 0.42 }),
+    );
+    const res = await executeCorpusSearch({ query: "quantum tax havens" }, "tiktok", 1, retrieveWith(tangential));
+    const payload = JSON.parse(res.content);
+
+    expect(payload.count).toBe(5); // the model still SEES them…
+    expect(payload.grounded).toBe(false); // …and is told they prove nothing
+    expect(payload.warrant).toBe("none");
+    expect(payload.note).toContain("NOT GROUNDED");
+    expect(res.record.grounded).toBe(false);
+    // Nothing citable: an ungrounded row must never reach a "proven reference" block.
+    expect(res.citable).toHaveLength(0);
+  });
+
+  it("topical: one row above the floor is enough to warrant a subject claim", async () => {
+    const mixed = [mkExample({ teardownId: "a", similarity: 0.62 }), mkExample({ teardownId: "b", similarity: 0.33 })];
+    const res = await executeCorpusSearch({ query: "protein" }, "tiktok", 1, retrieveWith(mixed));
+    const payload = JSON.parse(res.content);
+
+    expect(payload.grounded).toBe(true);
+    expect(payload.warrant).toBe("topical");
+    // Per-row honesty INSIDE the batch — grounded means "at least one qualifies", not "all do".
+    expect(payload.results.map((r: { on_subject: boolean }) => r.on_subject)).toEqual([true, false]);
+    expect(res.citable.map((e) => e.teardownId)).toEqual(["a"]);
+  });
+
+  it("structural: warranted on SHAPE regardless of cosine — but never as topic evidence", async () => {
+    const offTopic = [mkExample({ teardownId: "s1", similarity: 0.11 })];
+    const res = await executeCorpusSearch({ query: "anything", axis: "structural" }, "tiktok", 1, retrieveWith(offTopic));
+    const payload = JSON.parse(res.content);
+
+    expect(payload.grounded).toBe(true);
+    expect(payload.warrant).toBe("structural");
+    expect(payload.note).toContain("never as evidence about this specific topic");
+    expect(res.citable).toHaveLength(1); // citable as a pattern
+  });
+
+  it("an UNMEASURED similarity never clears the floor (absent is not passing)", async () => {
+    const res = await executeCorpusSearch({ query: "x" }, "tiktok", 1, retrieveWith([mkExample({ similarity: null })]));
+    const payload = JSON.parse(res.content);
+
+    expect(payload.grounded).toBe(false);
+    expect(payload.results[0].on_subject).toBeNull();
+    expect(res.citable).toHaveLength(0);
+  });
+
+  it("no rows at all → not grounded", async () => {
+    const res = await executeCorpusSearch({ query: "x" }, "tiktok", 1, retrieveWith([]));
+    expect(JSON.parse(res.content).grounded).toBe(false);
+    expect(JSON.parse(res.content).warrant).toBe("none");
+  });
+});
+
+describe("executeCorpusSearch — facet filters [grounding]", () => {
+  it("passes VALID facets down to retrieval and drops values outside the vocabulary", async () => {
+    const retrieve = vi.fn(async () => ({ examples: [mkExample()], enough: false, stats: {} })) as never;
+
+    await executeCorpusSearch(
+      {
+        query: "greenscreen breakdowns",
+        visual_setting: "greenscreen",
+        editing_style: "visual-greenscreen",
+        platform: "instagram",
+        format: "breakdowns-explainers",
+        niche: "content-creation",
+        hook_archetype: "not-a-real-archetype", // invalid → dropped, never guessed
+      },
+      "tiktok",
+      1,
+      retrieve,
+    );
+
+    expect(retrieve).toHaveBeenCalledWith(
+      expect.objectContaining({
+        facets: {
+          visualSetting: "greenscreen",
+          editingStyle: "visual-greenscreen",
+          platform: "instagram",
+          format: "breakdowns-explainers",
+          niche: "content-creation",
+        },
+      }),
+      expect.anything(),
+    );
+  });
+
+  it("caps a model-supplied limit and reports the facets it used", async () => {
+    const many = Array.from({ length: 30 }, (_, i) => mkExample({ teardownId: `r${i}` }));
+    const retrieve = vi.fn(async () => ({ examples: many, enough: true, stats: {} })) as never;
+
+    const res = await executeCorpusSearch({ query: "x", limit: 999, platform: "tiktok" }, "tiktok", 1, retrieve);
+
+    expect(JSON.parse(res.content).count).toBe(12); // MAX_ROWS_PER_CALL
+    expect(JSON.parse(res.content).filters).toEqual({ platform: "tiktok" });
+    expect(res.record.facets).toEqual({ platform: "tiktok" });
+  });
+});
+
+describe("gatherReferencesViaTool — the harvest gate [grounding]", () => {
+  it("carries NO references out of an ungrounded topical pull", async () => {
+    const complete = scriptedComplete([toolCallResp("absurd subject", "topical"), stopResp()]);
+    const retrieve = mkRetrieve([[mkExample({ teardownId: "a", similarity: 0.4 }), mkExample({ teardownId: "b", similarity: 0.38 })]]);
+
+    const res = await gatherReferencesViaTool({ ask: "x", platform: "tiktok" }, DEPS(complete, retrieve));
+
+    // The model saw two rows and may reason about them; the reference block gets nothing, because a
+    // block headed "PROVEN REFERENCE MATERIAL" containing tangential rows is the fabricated citation.
+    expect(res.toolCalls[0]!.rows).toBe(2);
+    expect(res.toolCalls[0]!.grounded).toBe(false);
+    expect(res.references).toHaveLength(0);
   });
 });

@@ -432,6 +432,14 @@ export interface RetrievedExample {
   fitLabel: FitLabel;
   hookArchetype: string | null;
   format: string | null;
+  /**
+   * The visual SETTING (in_world_vlog / studio_set / greenscreen / in_world_skit / faceless / other)
+   * — the `visual_hook` column, renamed at this boundary because it is a setting taxonomy, NOT a
+   * first-frame device. The stored column name is a legacy misnomer; every consumer sees the honest one.
+   */
+  visualSetting: string | null;
+  editingStyle: string | null;
+  niche: string | null;
   spokenHook: string | null;
   /** The source hook as a reusable [bracketed] template — the proof block's fill-in-the-blank line. */
   hookTemplate: string | null;
@@ -441,4 +449,15 @@ export interface RetrievedExample {
   sourcePool: SourcePool | "personal";
   trustWeight: number;
   fromPersonal: boolean;
+  /**
+   * Cosine similarity to the query that retrieved this row — the CACHE path's measurement, `null` on
+   * the scrape path (a freshly scraped video was never matched against anything).
+   *
+   * Carried this far because it is the only evidence that can answer "is this row actually about what
+   * was asked?", and the honesty contract needs that at the TOOL boundary: cosine always returns
+   * something, so a row's presence proves nothing on its own. Dropping it here is what forced
+   * `grounded` to be inferred from `length > 0` — a check that measured retrieval's willingness to
+   * answer rather than its warrant to. Null is not "unrelated", it is "not measured this way".
+   */
+  similarity: number | null;
 }
