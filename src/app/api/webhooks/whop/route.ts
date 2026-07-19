@@ -14,6 +14,9 @@ function trialWindowFrom(now: Date) {
     trial_started_at: now.toISOString(),
     trial_ends_at: ends.toISOString(),
     is_trial: true, // denormalised flag; the window is the truth the quota check reads
+    // HISTORY, not state: never cleared (the full-price branch nulls the window fields but
+    // not this). The one-trial-per-account guard in api/whop/checkout reads it.
+    trial_used_at: now.toISOString(),
   };
 }
 

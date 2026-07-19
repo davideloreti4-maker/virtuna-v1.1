@@ -36,6 +36,10 @@ export function CheckoutModal({
   const [checkoutConfigId, setCheckoutConfigId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // What the server actually RESOLVED — false when the $1 trial was denied (one per
+  // account) or its SKU isn't configured. The heading must match the price in the embed,
+  // not the price the button hoped for.
+  const [trialApplied, setTrialApplied] = useState(trial);
 
   // Fetch checkout config when modal opens
   useEffect(() => {
@@ -45,6 +49,7 @@ export function CheckoutModal({
       setLoading(true);
       setError(null);
       setCheckoutConfigId(null);
+      setTrialApplied(trial);
 
       try {
         const res = await fetch("/api/whop/checkout", {
@@ -59,6 +64,7 @@ export function CheckoutModal({
 
         const data = await res.json();
         setCheckoutConfigId(data.checkoutConfigId);
+        setTrialApplied(Boolean(data.trialApplied));
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load checkout");
       } finally {
@@ -75,8 +81,9 @@ export function CheckoutModal({
       setCheckoutConfigId(null);
       setLoading(false);
       setError(null);
+      setTrialApplied(trial);
     }
-  }, [open]);
+  }, [open, trial]);
 
   const handleOpenChange = (isOpen: boolean) => {
     if (!isOpen) {
@@ -94,12 +101,18 @@ export function CheckoutModal({
       <DialogContent size="lg" className="p-0 overflow-hidden">
         <DialogHeader className="p-6 pb-4">
           <DialogTitle>
-            {trial ? `Start ${plan.name} for ${TRIAL.price}` : `Upgrade to ${plan.name}`}
+            {trialApplied
+              ? `Start ${plan.name} for ${TRIAL.price}`
+              : trial
+                ? `Get ${plan.name}`
+                : `Upgrade to ${plan.name}`}
           </DialogTitle>
           <DialogDescription>
-            {trial
+            {trialApplied
               ? `${TRIAL.price} for ${TRIAL.days} days, then ${plan.price}${plan.priceSuffix}. Cancel anytime.`
-              : `Complete your payment to unlock ${plan.name}.`}
+              : trial
+                ? `Your account has already used its $1 trial — ${plan.name} is ${plan.price}${plan.priceSuffix}.`
+                : `Complete your payment to unlock ${plan.name}.`}
           </DialogDescription>
         </DialogHeader>
         <div className="px-6 pb-6">

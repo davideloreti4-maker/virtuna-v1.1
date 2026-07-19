@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { resolveWhopPlanId } from "@/lib/whop/config";
+import { resolveWhopPlanId, WHOP_TRIAL_PLAN_IDS } from "@/lib/whop/config";
 import { isPaidPlanId } from "@/lib/pricing";
 
 export async function POST(request: Request) {
@@ -27,10 +27,38 @@ export async function POST(request: Request) {
       );
     }
 
-    // 3. Resolve the Whop plan. `trial: true` buys the $1 / 3-day SKU, which renews into
-    //    the plan at its monthly price. An unconfigured plan is a 503, NOT a silent grant:
+    // 3. ONE TRIAL PER ACCOUNT. `trial_used_at` is write-once history (stamped by the
+    //    webhook the first time a trial window opens, never cleared) — an account that has
+    //    already spent its $1 trial gets the FULL-PRICE SKU, quietly. The Whop embed shows
+    //    the real price before any charge, and the response says which price was resolved
+    //    (`trialApplied`) so the modal's copy can tell the truth too.
+    //    `trial_started_at` is checked as a belt on pre-`trial_used_at` rows.
+    //    Fail-open on a read error: never block a purchase to protect a $1 guard.
+    let effectiveTrial = trial === true;
+    let trialDenied = false;
+    if (effectiveTrial) {
+      try {
+        // `*` not a column list — `trial_used_at` may predate its migration on some
+        // environment, and naming a missing column rejects the whole SELECT.
+        const { data } = await supabase
+          .from("user_subscriptions")
+          .select("*")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        const row = data as Record<string, unknown> | null;
+        if (row?.trial_used_at || row?.trial_started_at) {
+          effectiveTrial = false;
+          trialDenied = true;
+        }
+      } catch (err) {
+        console.error("[checkout] trial-history read failed — allowing the trial", err);
+      }
+    }
+
+    // 4. Resolve the Whop plan. A trial buys the $1 / 3-day SKU, which renews into the
+    //    plan at its monthly price. An unconfigured plan is a 503, NOT a silent grant:
     //    better to tell the buyer checkout is down than to let them through unbilled.
-    const whopProductId = resolveWhopPlanId(planId, { trial: trial === true });
+    const whopProductId = resolveWhopPlanId(planId, { trial: effectiveTrial });
 
     if (!whopProductId) {
       console.error(
@@ -42,7 +70,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // 4. Create Whop checkout session
+    // 5. Create Whop checkout session
     const whopResponse = await fetch(
       "https://api.whop.com/api/v5/checkout_sessions",
       {
@@ -64,7 +92,7 @@ export async function POST(request: Request) {
       }
     );
 
-    // 5. Handle Whop API errors
+    // 6. Handle Whop API errors
     if (!whopResponse.ok) {
       const errorData = await whopResponse.json().catch(() => ({}));
       console.error("Whop API error:", errorData);
@@ -74,12 +102,17 @@ export async function POST(request: Request) {
       );
     }
 
-    // 6. Return checkout configuration
+    // 7. Return checkout configuration. `trialApplied` is what was actually RESOLVED —
+    //    false when the trial was denied (already used) or its SKU isn't configured —
+    //    so the modal's heading can match the price the embed will show.
+    const trialApplied = effectiveTrial && whopProductId === WHOP_TRIAL_PLAN_IDS[planId];
     const whopData = await whopResponse.json();
     return NextResponse.json(
       {
         checkoutConfigId: whopData.id,
         planId,
+        trialApplied,
+        trialDenied,
       },
       { status: 200 }
     );
