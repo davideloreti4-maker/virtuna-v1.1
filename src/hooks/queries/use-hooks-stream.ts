@@ -27,6 +27,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { reportCredit402 } from '@/lib/billing/credit-wall';
 import type { HookCardBlock, CardTarget, HookProof, PopulationAggregateBlock, ReactionPersona } from '@/lib/tools/blocks';
 import { parseProofProp, parseGroundedProp, parseTargetProp, parsePopulationProp } from '@/lib/tools/blocks';
 import type { StageState } from '@/components/thread/progress-checklist';
@@ -241,6 +242,10 @@ export function useHooksStream(): UseHooksStreamReturn {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Hooks request failed' }));
+        if (reportCredit402(res.status, err)) {
+          // The wall dialog is up (CreditWallListener); surface the human sentence, not the slug.
+          throw new Error(err.message);
+        }
         throw new Error((err as { error?: string }).error ?? 'Hooks request failed');
       }
       if (!res.body) throw new Error('No response body');
@@ -459,6 +464,10 @@ export function useHooksStream(): UseHooksStreamReturn {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Refine request failed' }));
+        if (reportCredit402(res.status, err)) {
+          // The wall dialog is up (CreditWallListener); surface the human sentence, not the slug.
+          throw new Error(err.message);
+        }
         throw new Error((err as { error?: string }).error ?? 'Refine request failed');
       }
       if (!res.body) throw new Error('No response body');

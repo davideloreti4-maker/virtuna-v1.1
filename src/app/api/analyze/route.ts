@@ -6,9 +6,9 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { createScrapingProvider } from "@/lib/scraping";
 import { createLogger } from "@/lib/logger";
 import { getCreditQuotaVerdict } from "@/lib/billing/quota";
-import { CREDIT_QUOTA_EXCEEDED } from "@/lib/billing/quota-error";
+import { quotaRefusalBody } from "@/lib/billing/credit-gate";
 import { recordUsage } from "@/lib/billing/record-usage";
-import { CREDITS_PER_READING, UNLIMITED_DAILY_CREDIT_CEILING } from "@/lib/pricing";
+import { CREDITS_PER_READING } from "@/lib/pricing";
 import { TIKTOK_URL_PATTERN } from "@/lib/tiktok-url";
 import { resolvePack } from "@/lib/engine/packs";
 // R1′b — load the user's active calibrated audience (same per-thread pin the generative
@@ -417,31 +417,11 @@ export async function POST(request: Request) {
         reason: quota.reason,
       });
 
-      // Four different dead-ends, four different things to say. A trialling customer has
-      // NOT hit their plan's limit — they've spent the trial pool, and the honest next step
-      // is "your plan starts on day 4", not "upgrade". A Studio team at the fair-use
-      // ceiling gets a DATE (midnight UTC), never an upsell — there is nothing above them.
-      const message = quota.inTrial
-        ? `Your $1 trial includes ${quota.limit} credits. Your full plan allowance starts when the trial converts.`
-        : quota.reason === "fair_use"
-          ? `You've hit today's fair-use ceiling of ${UNLIMITED_DAILY_CREDIT_CEILING} credits. It resets at midnight UTC.`
-          : quota.limit === 0
-            ? "Start a plan to run a Reading."
-            : `You've used all ${quota.limit} credits on your plan this month.`;
-
-      return Response.json(
-        {
-          error: CREDIT_QUOTA_EXCEEDED,
-          message,
-          tier: quota.tier,
-          used: quota.used,
-          limit: quota.limit,
-          inTrial: quota.inTrial,
-          reason: quota.reason ?? "allowance",
-          cost: CREDITS_PER_READING,
-        },
-        { status: 402 } // Payment Required — the client turns this into the upgrade prompt.
-      );
+      // Four dead-ends, four different things to say — the copy lives in ONE place
+      // (lib/billing/credit-gate.ts) so this wall and every skill route's wall agree.
+      return Response.json(quotaRefusalBody(quota, CREDITS_PER_READING), {
+        status: 402, // Payment Required — the client turns this into the upgrade prompt.
+      });
     }
 
     // D-19 (Phase 13 Plan 03): Fail fast before buffer load for oversized requests.

@@ -48,6 +48,7 @@ import { resolveThreadAudience } from "@/lib/audience/resolve-thread-audience";
 import { requireSocialsAudience } from "@/lib/audience/require-socials-audience";
 import { goalIntentToLens, parseIntentLens } from "@/lib/audience/intent-lens";
 import { csrfGuard } from "@/lib/http/csrf-guard";
+import { billUsage, creditGate } from "@/lib/billing/credit-gate";
 import { rateLimitGuard } from "@/lib/http/rate-limit";
 import type { ScriptCardBlock } from "@/lib/tools/blocks";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
@@ -90,6 +91,10 @@ export async function POST(request: Request): Promise<Response> {
   // ── Rate limit (HARDEN-01) — per user, per route; fail-open if unconfigured ──
   const limited = await rateLimitGuard(user.id, "script");
   if (limited) return limited;
+
+  // ── Credit gate (BILLING) — priced admission BEFORE any engine spend ─────────
+  const { refusal, verdict: creditVerdict } = await creditGate(supabase, user.id, "script");
+  if (refusal) return refusal;
 
   // ── (2) Parse + validate body ─────────────────────────────────────────────
   let body: {
@@ -251,6 +256,12 @@ export async function POST(request: Request): Promise<Response> {
         // follow-up chat turn below used to block `done`, holding the SSE open and the
         // UI in "streaming" for the seconds the follow-up takes. Emit `done` now; the
         // follow-up streams in afterward (client read loop runs until the server closes).
+                // BILL — on delivery only: the cards are persisted above; a run that died
+        // never reaches this line, so it never charges.
+        if (blocks.length > 0) {
+          await billUsage({ userId: user.id, action: "script", tier: creditVerdict.tier });
+        }
+
         send("done", { count: blocks.length });
 
         // ── FOLLOW-UP TURN (mirrors hooks/route.ts posture) — off critical path (S2) ──

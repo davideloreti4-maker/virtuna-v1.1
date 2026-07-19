@@ -18,6 +18,7 @@
  */
 
 import { useCallback, useState } from 'react';
+import { reportCredit402 } from '@/lib/billing/credit-wall';
 import type { IdeaCardBlock } from '@/lib/tools/blocks';
 import { usePlatform } from '@/lib/platform-context';
 import { cardScrollQuoteReactions } from '@/components/audience-lens/flat-card-reactions';
@@ -79,6 +80,10 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Develop request failed' }));
+        if (reportCredit402(res.status, err)) {
+          // The wall dialog is up (CreditWallListener); surface the human sentence, not the slug.
+          throw new Error(err.message);
+        }
         throw new Error((err as { error?: string }).error ?? 'Develop request failed');
       }
       setDeveloped(true);

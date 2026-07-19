@@ -49,6 +49,7 @@ import { kcStamp } from "@/lib/kc/kc-stamp";
 import { resolveThreadAudience } from "@/lib/audience/resolve-thread-audience";
 import { requireSocialsAudience } from "@/lib/audience/require-socials-audience";
 import { csrfGuard } from "@/lib/http/csrf-guard";
+import { billUsage, creditGate } from "@/lib/billing/credit-gate";
 import { rateLimitGuard } from "@/lib/http/rate-limit";
 import { maybeMockSkillRun } from "@/lib/tools/mock/mock-sse";
 import { classifyDiscoverInput, UNSUPPORTED_INPUT_REASON } from "@/lib/discover/classify-input";
@@ -177,6 +178,10 @@ export async function POST(request: Request): Promise<Response> {
   // ── Rate limit (HARDEN-01) — per user, per route; fail-open if unconfigured ──
   const limited = await rateLimitGuard(user.id, "explore");
   if (limited) return limited;
+
+  // ── Credit gate (BILLING) — priced admission BEFORE any engine spend ─────────
+  const { refusal, verdict: creditVerdict } = await creditGate(supabase, user.id, "explore");
+  if (refusal) return refusal;
 
   // ── (2) Parse + validate body (EXPLORE-01 customizable params + serendipity) ──
   let body: {
@@ -337,6 +342,8 @@ export async function POST(request: Request): Promise<Response> {
         const cachedRanked = getCachedDiscover<RankedOutlier>(cacheKey, mode);
 
         let block: OutlierGridBlock;
+        // Whether THIS pull paid for a live scrape (cache miss) — prices the bill below.
+        let liveScrape = false;
 
         if (cachedRanked) {
           // Cache HIT: skip the scrape, but re-run the audience-fit re-rank (fit depends
@@ -378,6 +385,7 @@ export async function POST(request: Request): Promise<Response> {
           // the active audience (Pitfall 5 — in-memory soft optimization).
           recordUserPull(user.id);
           setCachedDiscover<RankedOutlier>(cacheKey, mode, result.ranked);
+          liveScrape = true;
         }
 
         // Content event: the outlier-grid block (content-first — no fake %).
@@ -385,6 +393,15 @@ export async function POST(request: Request): Promise<Response> {
 
         // Persist: blocks array (canonical body) + KC_GEN_VERSION stamp (D-10).
         await insertMessage(openThread.id, "assistant", [block], kcStamp().kcGenVersion);
+
+        // BILL — on delivery only, priced by what actually ran: a cache hit is a cheap
+        // explore (1), a live pull is a scrape (5). Gated at the cheap price above — an
+        // escalation can overdraw once, bounded, and the next gate sees it.
+        await billUsage({
+          userId: user.id,
+          action: liveScrape ? "explore_scrape" : "explore",
+          tier: creditVerdict.tier,
+        });
 
         send("done", { count: block.props.tiles.length });
       } catch (err) {

@@ -34,6 +34,7 @@ import { createOpenThreadLazy } from "@/lib/threads/threads";
 import { insertMessage } from "@/lib/threads/messages";
 import { kcStamp } from "@/lib/kc/kc-stamp";
 import { csrfGuard } from "@/lib/http/csrf-guard";
+import { billUsage, creditGate } from "@/lib/billing/credit-gate";
 import { rateLimitGuard } from "@/lib/http/rate-limit";
 import { normalizeStimulus } from "@/lib/engine/stimulus/normalize";
 import { getAudience } from "@/lib/audience/audience-repo";
@@ -65,6 +66,10 @@ export async function POST(request: Request): Promise<Response> {
   // ── Rate limit (HARDEN-01) — per user, per route; fail-open if unconfigured ──
   const limited = await rateLimitGuard(user.id, "predict");
   if (limited) return limited;
+
+  // ── Credit gate (BILLING) — priced admission BEFORE any engine spend ─────────
+  const { refusal, verdict: creditVerdict } = await creditGate(supabase, user.id, "predict");
+  if (refusal) return refusal;
 
   // ── (2) Parse + cap the body (accept `scenario` and/or `message`) ────────────
   let body: { audienceId?: unknown; scenario?: unknown; message?: unknown } = {};
@@ -132,6 +137,9 @@ export async function POST(request: Request): Promise<Response> {
     const block = await runPredict({ audience, stimulus });
     // insertMessage re-validates the block at the write boundary (T-06-19) + KC stamp.
     await insertMessage(openThread.id, "assistant", [block], kcStamp().kcGenVersion);
+    
+    // BILL — on delivery only: the block is persisted; nothing after can un-deliver it.
+    await billUsage({ userId: user.id, action: "predict", tier: creditVerdict.tier });
     return Response.json({ block });
   } catch (err) {
     // Do not echo the raw thrown detail to the client — it can carry Zod/DB internals

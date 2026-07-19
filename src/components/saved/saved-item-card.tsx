@@ -19,6 +19,7 @@
  */
 
 import { useState } from "react";
+import { reportCredit402 } from "@/lib/billing/credit-wall";
 import { useRouter } from "next/navigation";
 import {
   DotsThree,
@@ -305,7 +306,14 @@ export function SavedItemCard({ item, variant = "card" }: SavedItemCardProps) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ anchor, platform: "tiktok" }),
         });
-        if (!res.ok) throw new Error("Launch failed");
+        if (!res.ok) {
+          const err: unknown = await res.json().catch(() => null);
+          if (reportCredit402(res.status, err)) {
+            setLaunching(false);
+            return; // wall dialog is up — do not navigate
+          }
+          throw new Error("Launch failed");
+        }
       } catch {
         toast({ variant: "error", title: "Couldn't launch this into a thread." });
         setLaunching(false);

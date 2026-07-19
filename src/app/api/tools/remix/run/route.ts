@@ -44,6 +44,7 @@ import { getAudience, GENERAL_AUDIENCE } from "@/lib/audience/audience-repo";
 import { requireSocialsAudience } from "@/lib/audience/require-socials-audience";
 import { goalIntentToLens } from "@/lib/audience/intent-lens";
 import { csrfGuard } from "@/lib/http/csrf-guard";
+import { billUsage, creditGate } from "@/lib/billing/credit-gate";
 import { z } from "zod";
 import type { Audience } from "@/lib/audience/audience-types";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
@@ -102,6 +103,10 @@ export async function POST(request: Request): Promise<Response> {
   // all mutating POST routes. Was inlined here; factored out per WR-01.
   const guard = csrfGuard(request);
   if (guard) return guard;
+
+  // ── Credit gate (BILLING) — priced admission BEFORE any engine spend ─────────
+  const { refusal, verdict: creditVerdict } = await creditGate(supabase, user.id, "remix");
+  if (refusal) return refusal;
 
   // ── (4) Zod body validation — 400 on invalid (T-04-06) ─────────────────────
   let body: unknown;
@@ -255,6 +260,12 @@ export async function POST(request: Request): Promise<Response> {
               error: persistErr instanceof Error ? persistErr.message : String(persistErr),
             });
           }
+        }
+
+                // BILL — on delivery only: the cards are persisted above; a run that died
+        // never reaches this line, so it never charges.
+        if (result.blocks.length > 0) {
+          await billUsage({ userId: user.id, action: "remix", tier: creditVerdict.tier });
         }
 
         send("done", { count: result.blocks.length });

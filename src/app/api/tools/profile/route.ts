@@ -27,6 +27,7 @@ import { createOpenThreadLazy } from "@/lib/threads/threads";
 import { insertMessage } from "@/lib/threads/messages";
 import { kcStamp } from "@/lib/kc/kc-stamp";
 import { csrfGuard } from "@/lib/http/csrf-guard";
+import { billUsage, creditGate } from "@/lib/billing/credit-gate";
 import { rateLimitGuard } from "@/lib/http/rate-limit";
 import { normalizeStimulus } from "@/lib/engine/stimulus/normalize";
 import { sanitizeStoragePath } from "@/lib/audience/profile-bake";
@@ -81,6 +82,10 @@ export async function POST(request: Request): Promise<Response> {
   // ── Rate limit (HARDEN-01) — per user, per route; fail-open if unconfigured ──
   const limited = await rateLimitGuard(user.id, "profile");
   if (limited) return limited;
+
+  // ── Credit gate (BILLING) — priced admission BEFORE any engine spend ─────────
+  const { refusal, verdict: creditVerdict } = await creditGate(supabase, user.id, "profile");
+  if (refusal) return refusal;
 
   // ── (2) Parse the body ───────────────────────────────────────────────────────
   let body: Record<string, unknown> = {};
@@ -164,6 +169,9 @@ export async function POST(request: Request): Promise<Response> {
     const block = await runProfile({ supabase, stimulus });
     // insertMessage re-validates the block at the write boundary (T-03-11) + KC stamp.
     await insertMessage(openThread.id, "assistant", [block], kcStamp().kcGenVersion);
+    
+    // BILL — on delivery only: the block is persisted; nothing after can un-deliver it.
+    await billUsage({ userId: user.id, action: "profile", tier: creditVerdict.tier });
     return Response.json({ block });
   } catch (err) {
     // Do not echo raw err.message to the client — it can carry Zod/DB/user-id
