@@ -10,8 +10,8 @@ import {
   TRIAL,
   getPlan,
   isPaidPlanId,
-  readingsLabel,
-  readingsRemainingLabel,
+  creditsLabel,
+  creditsRemainingLabel,
   type PaidPlanId,
 } from "@/lib/pricing";
 import type { NumenTier } from "@/lib/whop/config";
@@ -19,7 +19,7 @@ import type { NumenTier } from "@/lib/whop/config";
 /**
  * BILLING — the plan, and the balance.
  *
- * The balance is the point. A customer buys "50 Readings a month" and until now had no way to
+ * The balance is the point. A customer buys "500 credits a month" and until now had no way to
  * see how many were left: the number existed only inside the quota check, on the server.
  *
  * It renders whenever they have something to spend (a plan, or a trial pool) — NOT gated on
@@ -99,7 +99,7 @@ export function BillingSection() {
       <div>
         <h2 className="text-lg font-medium text-foreground">Billing</h2>
         <p className="mt-1 text-sm text-foreground-secondary">
-          Your plan, and the Readings it buys.
+          Your plan, and the credits it buys.
         </p>
       </div>
 
@@ -141,7 +141,7 @@ export function BillingSection() {
             )}
             {tier === "free" && (
               <p className="mt-2 text-sm text-foreground-secondary">
-                Start any plan for {TRIAL.price} — {TRIAL.readings} Readings over {TRIAL.days} days.
+                Start any plan for {TRIAL.price} — {TRIAL.credits} credits over {TRIAL.days} days.
               </p>
             )}
           </div>
@@ -188,7 +188,7 @@ export function BillingSection() {
                   {p.price}
                   <span className="text-foreground-muted">{p.priceSuffix}</span>
                 </p>
-                <p className="mt-1 text-xs text-foreground-muted">{readingsLabel(p)}</p>
+                <p className="mt-1 text-xs text-foreground-muted">{creditsLabel(p)}</p>
                 {!isCurrent && (
                   <Button
                     type="button"
@@ -235,7 +235,7 @@ export function BillingSection() {
 }
 
 /**
- * The balance, counted DOWN. "38 of 50 Readings left" answers the question a customer actually
+ * The balance, counted DOWN. "380 of 500 credits left" answers the question a customer actually
  * has; "12 used" makes them do the subtraction themselves.
  */
 function UsageCard({ usage, planName }: { usage: UsageData; planName: string | null }) {
@@ -259,7 +259,7 @@ function UsageCard({ usage, planName }: { usage: UsageData; planName: string | n
     <div className={CARD} style={CARD_STYLE}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <span className="text-sm text-foreground-secondary">
-          {usage.inTrial ? "Trial Readings" : "Readings this period"}
+          {usage.inTrial ? "Trial credits" : "Credits this period"}
         </span>
         {usage.renewsAt && (
           <span className="text-xs text-foreground-muted">
@@ -268,7 +268,7 @@ function UsageCard({ usage, planName }: { usage: UsageData; planName: string | n
         )}
       </div>
 
-      <p className={`mt-2 text-2xl font-semibold ${zone.text}`}>{readingsRemainingLabel(usage)}</p>
+      <p className={`mt-2 text-2xl font-semibold ${zone.text}`}>{creditsRemainingLabel(usage)}</p>
 
       {!unlimited && (
         <div
@@ -277,7 +277,7 @@ function UsageCard({ usage, planName }: { usage: UsageData; planName: string | n
           aria-valuenow={usage.used}
           aria-valuemin={0}
           aria-valuemax={usage.limit ?? 0}
-          aria-label="Readings used"
+          aria-label="Credits used"
         >
           <div className={`h-full rounded-full ${zone.bar}`} style={{ width: `${pctUsed}%` }} />
         </div>

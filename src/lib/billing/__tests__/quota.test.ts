@@ -2,35 +2,87 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
-  checkReadingQuota,
+  checkCreditQuota,
   currentPeriodStart,
+  currentUtcDayStart,
   isQuotaEnforced,
   isTrialActive,
   type TrialWindow,
 } from "../quota";
+import { CREDIT_COSTS, UNLIMITED_DAILY_CREDIT_CEILING } from "@/lib/pricing";
 
 /**
- * The Reading meter. The properties that matter:
+ * The credit meter. The properties that matter:
  *   1. INERT until BILLING_ENFORCE_QUOTA=true (no Whop plans exist yet, so enforcing would
  *      lock out every existing user — all of whom are tier `free`),
- *   2. it FAILS OPEN — a flaky count must never cost a paying customer a Reading, and
- *   3. the $1 TRIAL POOL (5 Readings, every plan) wins over the plan's allowance — the leech
- *      guard. Without it $1 buys 150 Pro Readings, or unlimited on Studio.
+ *   2. it FAILS OPEN — a flaky count must never cost a paying customer their action,
+ *   3. the $1 TRIAL POOL (50 credits, every plan) wins over the plan's allowance — the leech
+ *      guard. Without it $1 buys 1,500 Pro credits, or unlimited on Studio,
+ *   4. admission is COST-AWARE: 3 credits left affords a 1-credit hooks pack, not a
+ *      10-credit Reading, and
+ *   5. "unlimited" (Studio) sits on a fair-use daily ceiling, not on nothing.
  */
 
-/** A Supabase stub whose HEAD count resolves to `count` (or throws). */
-function stubClient(result: { count?: number; throws?: boolean }) {
-  const builder = {
+const READING = CREDIT_COSTS.score; // 10
+const HOOKS = CREDIT_COSTS.hooks; // 1
+
+/**
+ * A Supabase stub for the three meter paths:
+ *   rpc            — `credits_used_since` (the real meter),
+ *   readingEvents  — the ledger HEAD-count fallback (credits migration missing),
+ *   analysisResults— the legacy count (ledger missing entirely).
+ * "missing" = the relevant migration has not been applied; "boom" = a real error.
+ */
+function stubClient(opts: {
+  rpc?: number | "missing" | "boom";
+  readingEvents?: number | "missing" | "boom";
+  analysisResults?: number;
+}) {
+  const rpc = vi.fn((_fn: string, _args: Record<string, unknown>) => {
+    if (opts.rpc === "missing") {
+      return Promise.resolve({
+        data: null,
+        error: { code: "PGRST202", message: "function credits_used_since not found" },
+      });
+    }
+    if (opts.rpc === "boom") {
+      return Promise.resolve({ data: null, error: { code: "08006", message: "conn lost" } });
+    }
+    return Promise.resolve({ data: opts.rpc ?? 0, error: null });
+  });
+
+  const calls: string[] = [];
+  const builderFor = (table: string) => ({
     select: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
     gte: vi.fn(() => {
-      if (result.throws) return Promise.reject(new Error("db down"));
-      return Promise.resolve({ count: result.count ?? 0, error: null });
+      if (table === "reading_events") {
+        if (opts.readingEvents === "missing") {
+          return Promise.resolve({
+            count: null,
+            error: { code: "42P01", message: 'relation "reading_events" does not exist' },
+          });
+        }
+        if (opts.readingEvents === "boom") {
+          return Promise.resolve({ count: null, error: { code: "08006", message: "conn lost" } });
+        }
+        return Promise.resolve({ count: opts.readingEvents ?? 0, error: null });
+      }
+      return Promise.resolve({ count: opts.analysisResults ?? 0, error: null });
     }),
-  };
-  return { from: vi.fn(() => builder), _builder: builder } as unknown as SupabaseClient & {
-    _builder: typeof builder;
-  };
+  });
+
+  const builders: Record<string, ReturnType<typeof builderFor>> = {};
+  const client = {
+    rpc,
+    from: vi.fn((table: string) => {
+      calls.push(table);
+      builders[table] ??= builderFor(table);
+      return builders[table]!;
+    }),
+  } as unknown as SupabaseClient;
+
+  return { client, rpc, calls, builders };
 }
 
 const NOW = new Date("2026-07-13T12:00:00Z");
@@ -56,51 +108,57 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("the $1 trial pool — 5 Readings, every plan (leech guard)", () => {
-  it("caps a Creator trial at 5, not the plan's 50", async () => {
-    const at4 = await checkReadingQuota(stubClient({ count: 4 }), "u1", "starter", ACTIVE_TRIAL, NOW);
-    expect(at4.limit).toBe(5);
-    expect(at4.inTrial).toBe(true);
-    expect(at4.allowed).toBe(true);
+describe("the $1 trial pool — 50 credits, every plan (leech guard)", () => {
+  it("caps a Creator trial at 50 credits, not the plan's 500", async () => {
+    const { client: c1 } = stubClient({ rpc: 40 });
+    const at40 = await checkCreditQuota(c1, "u1", "starter", READING, ACTIVE_TRIAL, NOW);
+    expect(at40.limit).toBe(50);
+    expect(at40.inTrial).toBe(true);
+    expect(at40.allowed).toBe(true); // 40 + 10 fits exactly
 
-    const at5 = await checkReadingQuota(stubClient({ count: 5 }), "u1", "starter", ACTIVE_TRIAL, NOW);
-    expect(at5.allowed).toBe(false); // the 6th Reading of a $1 trial is refused
+    const { client: c2 } = stubClient({ rpc: 41 });
+    const at41 = await checkCreditQuota(c2, "u1", "starter", READING, ACTIVE_TRIAL, NOW);
+    expect(at41.allowed).toBe(false); // the 6th Reading of a $1 trial is refused
+    expect(at41.reason).toBe("allowance");
   });
 
-  it("caps a Pro trial at 5, not 150 — $1 must not buy ~$22 of engine spend", async () => {
-    const verdict = await checkReadingQuota(stubClient({ count: 5 }), "u1", "pro", ACTIVE_TRIAL, NOW);
-    expect(verdict.limit).toBe(5);
+  it("caps a Pro trial at 50, not 1,500 — $1 must not buy ~$22 of engine spend", async () => {
+    const { client } = stubClient({ rpc: 50 });
+    const verdict = await checkCreditQuota(client, "u1", "pro", READING, ACTIVE_TRIAL, NOW);
+    expect(verdict.limit).toBe(50);
     expect(verdict.allowed).toBe(false);
   });
 
-  it("caps a STUDIO trial at 5 — 'unlimited' must never leak into a trial", async () => {
-    // The nastiest hole: Studio's allowance is null (unlimited), and null short-circuits the
-    // count. If the trial cap did not win, $1 would buy unbounded Readings.
-    const verdict = await checkReadingQuota(stubClient({ count: 5 }), "u1", "studio", ACTIVE_TRIAL, NOW);
-    expect(verdict.limit).toBe(5);
+  it("caps a STUDIO trial at 50 — 'unlimited' must never leak into a trial", async () => {
+    // The nastiest hole: Studio's allowance is null (unlimited), and null routes to the
+    // fair-use path. If the trial cap did not win, $1 would buy 300 credits every day.
+    const { client } = stubClient({ rpc: 50 });
+    const verdict = await checkCreditQuota(client, "u1", "studio", READING, ACTIVE_TRIAL, NOW);
+    expect(verdict.limit).toBe(50);
     expect(verdict.inTrial).toBe(true);
     expect(verdict.allowed).toBe(false);
   });
 
   it("counts the trial pool from the TRIAL's start, not the 1st of the month", async () => {
-    const client = stubClient({ count: 0 });
-    await checkReadingQuota(client, "u1", "pro", ACTIVE_TRIAL, NOW);
-    // The window handed to the count query is the trial start, not 2026-07-01.
-    expect(client._builder.gte).toHaveBeenCalledWith(
-      "created_at",
-      ACTIVE_TRIAL.trialStartedAt!.toISOString()
-    );
+    const { client, rpc } = stubClient({ rpc: 0 });
+    await checkCreditQuota(client, "u1", "pro", READING, ACTIVE_TRIAL, NOW);
+    expect(rpc).toHaveBeenCalledWith("credits_used_since", {
+      p_user_id: "u1",
+      p_since: ACTIVE_TRIAL.trialStartedAt!.toISOString(),
+    });
   });
 
   it("hands back the FULL plan allowance once the trial has converted", async () => {
-    const verdict = await checkReadingQuota(stubClient({ count: 60 }), "u1", "pro", EXPIRED_TRIAL, NOW);
+    const { client } = stubClient({ rpc: 600 });
+    const verdict = await checkCreditQuota(client, "u1", "pro", READING, EXPIRED_TRIAL, NOW);
     expect(verdict.inTrial).toBe(false);
-    expect(verdict.limit).toBe(150); // not 5 — a paying Pro is not still on the trial pool
+    expect(verdict.limit).toBe(1500); // not 50 — a paying Pro is not still on the trial pool
     expect(verdict.allowed).toBe(true);
   });
 
-  it("restores Studio's unlimited after the trial converts", async () => {
-    const verdict = await checkReadingQuota(stubClient({ count: 9_999 }), "u1", "studio", EXPIRED_TRIAL, NOW);
+  it("restores Studio's unlimited (fair-use) after the trial converts", async () => {
+    const { client } = stubClient({ rpc: 0 });
+    const verdict = await checkCreditQuota(client, "u1", "studio", READING, EXPIRED_TRIAL, NOW);
     expect(verdict.limit).toBeNull();
     expect(verdict.allowed).toBe(true);
   });
@@ -117,48 +175,87 @@ describe("trial window", () => {
 });
 
 describe("monthly allowances (outside a trial)", () => {
-  it("allows a Creator their 50th Reading and blocks the 51st", async () => {
-    const at49 = await checkReadingQuota(stubClient({ count: 49 }), "u1", "starter", NO_TRIAL, NOW);
-    expect(at49.allowed).toBe(true);
-    expect(at49.limit).toBe(50);
+  it("allows a Creator their 500th credit and blocks the 501st", async () => {
+    const { client: c1 } = stubClient({ rpc: 490 });
+    const at490 = await checkCreditQuota(c1, "u1", "starter", READING, NO_TRIAL, NOW);
+    expect(at490.allowed).toBe(true);
+    expect(at490.limit).toBe(500);
 
-    const at50 = await checkReadingQuota(stubClient({ count: 50 }), "u1", "starter", NO_TRIAL, NOW);
-    expect(at50.allowed).toBe(false);
+    const { client: c2 } = stubClient({ rpc: 491 });
+    const at491 = await checkCreditQuota(c2, "u1", "starter", READING, NO_TRIAL, NOW);
+    expect(at491.allowed).toBe(false);
+    expect(at491.reason).toBe("allowance");
   });
 
-  it("gives Pro 150", async () => {
-    expect((await checkReadingQuota(stubClient({ count: 149 }), "u1", "pro", NO_TRIAL, NOW)).allowed).toBe(true);
-    expect((await checkReadingQuota(stubClient({ count: 150 }), "u1", "pro", NO_TRIAL, NOW)).allowed).toBe(false);
+  it("is COST-AWARE: 3 credits left affords a hooks pack, not a Reading", async () => {
+    const { client: c1 } = stubClient({ rpc: 497 });
+    const hooks = await checkCreditQuota(c1, "u1", "starter", HOOKS, NO_TRIAL, NOW);
+    expect(hooks.allowed).toBe(true); // 497 + 1 ≤ 500
+
+    const { client: c2 } = stubClient({ rpc: 497 });
+    const reading = await checkCreditQuota(c2, "u1", "starter", READING, NO_TRIAL, NOW);
+    expect(reading.allowed).toBe(false); // 497 + 10 > 500
   });
 
-  it("never blocks Studio — unlimited, and it does not even run the count", async () => {
-    const client = stubClient({ count: 10_000 });
-    const verdict = await checkReadingQuota(client, "u1", "studio", NO_TRIAL, NOW);
-    expect(verdict.allowed).toBe(true);
-    expect(verdict.limit).toBeNull();
-    expect(client.from).not.toHaveBeenCalled(); // no wasted query on the hot path
+  it("gives Pro 1,500", async () => {
+    const { client: c1 } = stubClient({ rpc: 1490 });
+    expect((await checkCreditQuota(c1, "u1", "pro", READING, NO_TRIAL, NOW)).allowed).toBe(true);
+    const { client: c2 } = stubClient({ rpc: 1491 });
+    expect((await checkCreditQuota(c2, "u1", "pro", READING, NO_TRIAL, NOW)).allowed).toBe(false);
   });
 
   it("blocks `free` at zero — there is no free plan to farm", async () => {
-    const verdict = await checkReadingQuota(stubClient({ count: 0 }), "u1", "free", NO_TRIAL, NOW);
+    const { client } = stubClient({ rpc: 0 });
+    const verdict = await checkCreditQuota(client, "u1", "free", HOOKS, NO_TRIAL, NOW);
     expect(verdict.limit).toBe(0);
     expect(verdict.allowed).toBe(false);
   });
 });
 
+describe("Studio 'unlimited' — the fair-use daily ceiling", () => {
+  it("allows up to the ceiling and refuses past it, with reason=fair_use", async () => {
+    const { client: c1 } = stubClient({ rpc: UNLIMITED_DAILY_CREDIT_CEILING - READING });
+    const atCeiling = await checkCreditQuota(c1, "u1", "studio", READING, NO_TRIAL, NOW);
+    expect(atCeiling.allowed).toBe(true); // 290 + 10 = 300 fits exactly
+    expect(atCeiling.limit).toBeNull(); // still sold as unlimited
+
+    const { client: c2 } = stubClient({ rpc: UNLIMITED_DAILY_CREDIT_CEILING - READING + 1 });
+    const past = await checkCreditQuota(c2, "u1", "studio", READING, NO_TRIAL, NOW);
+    expect(past.allowed).toBe(false);
+    expect(past.reason).toBe("fair_use"); // the paywall says "resets at midnight UTC", not "upgrade"
+  });
+
+  it("measures TODAY (midnight UTC), not the billing period", async () => {
+    const { client, rpc } = stubClient({ rpc: 0 });
+    await checkCreditQuota(client, "u1", "studio", READING, NO_TRIAL, NOW);
+    expect(rpc).toHaveBeenCalledWith("credits_used_since", {
+      p_user_id: "u1",
+      p_since: "2026-07-13T00:00:00.000Z",
+    });
+  });
+
+  it("fails OPEN when the fair-use count blows up", async () => {
+    const { client } = stubClient({ rpc: "boom" });
+    const verdict = await checkCreditQuota(client, "u1", "studio", READING, NO_TRIAL, NOW);
+    expect(verdict.allowed).toBe(true);
+  });
+});
+
 describe("safety", () => {
-  it("FAILS OPEN when the count blows up — a DB blip must not cost a paid Reading", async () => {
-    const verdict = await checkReadingQuota(stubClient({ throws: true }), "u1", "starter", NO_TRIAL, NOW);
+  it("FAILS OPEN when the count blows up — a DB blip must not cost a paid action", async () => {
+    const { client } = stubClient({ rpc: "boom" });
+    const verdict = await checkCreditQuota(client, "u1", "starter", READING, NO_TRIAL, NOW);
     expect(verdict.allowed).toBe(true);
   });
 
   it("is INERT while the flag is off: it still measures, but reports enforced=false", async () => {
     process.env.BILLING_ENFORCE_QUOTA = "false";
-    const verdict = await checkReadingQuota(stubClient({ count: 999 }), "u1", "starter", NO_TRIAL, NOW);
+    const { client } = stubClient({ rpc: 9999 });
+    const verdict = await checkCreditQuota(client, "u1", "starter", READING, NO_TRIAL, NOW);
     expect(isQuotaEnforced()).toBe(false);
     expect(verdict.enforced).toBe(false); // → the route lets it through
     expect(verdict.allowed).toBe(false); // → but the truth is still recorded
-    expect(verdict.used).toBe(999);
+    expect(verdict.used).toBe(9999);
   });
 });
 
@@ -219,81 +316,67 @@ describe("billing period", () => {
   });
 
   it("counts the plan's allowance from the billing anchor", async () => {
-    const client = stubClient({ count: 0 });
-    await checkReadingQuota(client, "u1", "starter", NO_TRIAL, NOW, new Date("2026-07-28T14:00:00Z"));
-    expect(client._builder.gte).toHaveBeenCalledWith("created_at", "2026-06-28T14:00:00.000Z");
+    const { client, rpc } = stubClient({ rpc: 0 });
+    await checkCreditQuota(
+      client,
+      "u1",
+      "starter",
+      READING,
+      NO_TRIAL,
+      NOW,
+      new Date("2026-07-28T14:00:00Z")
+    );
+    expect(rpc).toHaveBeenCalledWith("credits_used_since", {
+      p_user_id: "u1",
+      p_since: "2026-06-28T14:00:00.000Z",
+    });
+  });
+
+  it("computes midnight UTC for the fair-use window", () => {
+    expect(currentUtcDayStart(new Date("2026-07-13T23:59:59Z")).toISOString()).toBe(
+      "2026-07-13T00:00:00.000Z"
+    );
+    expect(currentUtcDayStart(new Date("2026-07-13T00:00:00Z")).toISOString()).toBe(
+      "2026-07-13T00:00:00.000Z"
+    );
   });
 });
 
-describe("the ledger — a Reading is an event, not a row", () => {
-  /**
-   * A client that can answer differently per table, so the ledger and the legacy fallback can
-   * be told apart. `readingEvents: "missing"` = the migration hasn't been applied yet.
-   */
-  function stubTables(opts: {
-    readingEvents?: number | "missing" | "boom";
-    analysisResults?: number;
-  }) {
-    const calls: string[] = [];
-    const builderFor = (table: string) => {
-      const b = {
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockReturnThis(),
-        gte: vi.fn(() => {
-          if (table === "reading_events") {
-            if (opts.readingEvents === "missing") {
-              return Promise.resolve({
-                count: null,
-                error: { code: "42P01", message: 'relation "reading_events" does not exist' },
-              });
-            }
-            if (opts.readingEvents === "boom") {
-              return Promise.resolve({ count: null, error: { code: "08006", message: "conn lost" } });
-            }
-            return Promise.resolve({ count: opts.readingEvents ?? 0, error: null });
-          }
-          return Promise.resolve({ count: opts.analysisResults ?? 0, error: null });
-        }),
-      };
-      return b;
-    };
-    const builders: Record<string, ReturnType<typeof builderFor>> = {};
-    const client = {
-      from: vi.fn((table: string) => {
-        calls.push(table);
-        builders[table] ??= builderFor(table);
-        return builders[table]!;
-      }),
-    } as unknown as SupabaseClient;
-    return { client, calls, builders };
-  }
+describe("the meter's fallback chain — RPC → ledger count × 10 → legacy count × 10", () => {
+  it("sums credits via the RPC and never touches a table when it answers", async () => {
+    const { client, calls } = stubClient({ rpc: 37 });
+    const verdict = await checkCreditQuota(client, "u1", "starter", READING, NO_TRIAL, NOW);
+    expect(verdict.used).toBe(37);
+    expect(calls).toEqual([]); // no table reads on the happy path
+  });
 
-  it("counts BILLED ledger events, ignoring unbilled ones", async () => {
-    const { client, calls, builders } = stubTables({ readingEvents: 3 });
-    const verdict = await checkReadingQuota(client, "u1", "starter", NO_TRIAL, NOW);
-
+  it("falls back to ledger COUNT × 10 when the credits migration is missing", async () => {
+    // Every pre-credits ledger row was a full Reading, so count × 10 is exact, not a guess.
+    const { client, calls, builders } = stubClient({ rpc: "missing", readingEvents: 3 });
+    const verdict = await checkCreditQuota(client, "u1", "starter", READING, NO_TRIAL, NOW);
     expect(calls).toContain("reading_events");
-    expect(calls).not.toContain("analysis_results"); // the ledger answered; no fallback
+    expect(calls).not.toContain("analysis_results");
     expect(builders.reading_events!.eq).toHaveBeenCalledWith("billed", true);
-    expect(verdict.used).toBe(3);
+    expect(verdict.used).toBe(30);
   });
 
-  it("falls back to the legacy analysis_results count when the ledger table does not exist yet", async () => {
-    // The owner has not run 20260713160000 — behaviour must be exactly what it was before it.
-    const { client, calls } = stubTables({ readingEvents: "missing", analysisResults: 12 });
-    const verdict = await checkReadingQuota(client, "u1", "starter", NO_TRIAL, NOW);
-
+  it("falls back to the legacy analysis_results count × 10 when the ledger doesn't exist", async () => {
+    const { client, calls } = stubClient({
+      rpc: "missing",
+      readingEvents: "missing",
+      analysisResults: 12,
+    });
+    const verdict = await checkCreditQuota(client, "u1", "starter", READING, NO_TRIAL, NOW);
     expect(calls).toEqual(["reading_events", "analysis_results"]);
-    expect(verdict.used).toBe(12);
-    expect(verdict.allowed).toBe(true);
+    expect(verdict.used).toBe(120);
+    expect(verdict.allowed).toBe(true); // 120 + 10 ≤ 500
   });
 
-  it("does NOT substitute the legacy count for a real ledger error — it fails open instead", async () => {
+  it("does NOT substitute a fallback for a real ledger error — it fails open instead", async () => {
     // Silently swapping in a different (higher) number could block a customer who is within
-    // their plan. A transient error must cost us a Reading, never them.
-    const { client, calls } = stubTables({ readingEvents: "boom", analysisResults: 999 });
-    const verdict = await checkReadingQuota(client, "u1", "starter", NO_TRIAL, NOW);
-
+    // their plan. A transient error must cost us an action, never them.
+    const { client, calls } = stubClient({ rpc: "missing", readingEvents: "boom" });
+    const verdict = await checkCreditQuota(client, "u1", "starter", READING, NO_TRIAL, NOW);
     expect(calls).not.toContain("analysis_results");
     expect(verdict.allowed).toBe(true);
     expect(verdict.used).toBe(0);

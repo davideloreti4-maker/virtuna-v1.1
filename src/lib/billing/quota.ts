@@ -1,45 +1,55 @@
 /**
- * READING QUOTA — the meter the plans are sold on.
+ * CREDIT QUOTA — the meter the plans are sold on.
  *
- * Pricing (src/lib/pricing.ts) promises "50 Readings a month" (Creator), "150" (Pro),
- * "Unlimited" (Studio). This module is what makes that promise true: it counts the
- * Readings a user has been delivered in their current billing period and answers whether
- * the next one is within their plan.
+ * Pricing (src/lib/pricing.ts) promises "500 credits a month" (Creator), "1,500" (Pro),
+ * "Unlimited (fair use)" (Studio). This module is what makes that promise true: it sums the
+ * credits a user has spent in their current billing period and answers whether the NEXT
+ * action — at its CREDIT_COSTS price — is within their plan.
  *
  * ⚠️ INERT BY DEFAULT. Enforcement is behind `BILLING_ENFORCE_QUOTA=true` because the Whop
  * plans do not exist yet — with no way to BUY a plan, enforcing limits would lock out
  * every existing user (all of whom are tier `free`, allowance 0). Flip the flag the day the
- * three Whop products go live. `checkReadingQuota` still computes the honest answer when the
+ * three Whop products go live. `checkCreditQuota` still computes the honest answer when the
  * flag is off; it just reports `enforced: false`, so callers let the request through and the
  * numbers can be watched — and SHOWN — before the gate ever closes.
  *
  * Enforcement is not the same thing as visibility: the UI shows a customer their balance
  * whenever they have a plan, flag or no flag. The flag only decides whether we BLOCK.
  *
- * WHAT COUNTS AS A READING — the ledger, not the row count.
- * A Reading is one row in `reading_events` (billed=true): one Reading actually DELIVERED.
- * It used to be one row in `analysis_results`, which is not the same thing: a failed engine run
- * left its placeholder row behind and charged the customer for it (the SSE branch writes that
- * row BEFORE the engine runs). Usage also lived in a table the product is free to rewrite —
- * today's soft delete happens not to refund the allowance, but a hard delete, a prune, or
- * adding `deleted_at` to the count's filter would each hand it back silently.
- * See supabase/migrations/20260713160000_reading_events.sql.
+ * WHAT COUNTS — the ledger, in credits.
+ * Usage is Σ `reading_events.credits` over billed rows: every delivered paid action writes
+ * one row stamped with its price (a Reading 10, a script 2, a hooks pack 1 — see
+ * CREDIT_COSTS). Rows written before the credits migration carry the column DEFAULT of 10,
+ * which is exact: every pre-credits row WAS a full Reading.
  *
- * The ledger table may not exist yet (the owner has not run the migration), so the count
- * FALLS BACK to the legacy `analysis_results` count when the relation is missing. Behaviour
- * is therefore identical before the migration and correct after it, with no flag day.
+ * The sum runs server-side via the `credits_used_since` RPC (an aggregate on the hot path
+ * must not fetch rows — a row-fetch would also silently truncate at PostgREST's page size
+ * and under-count). Two fallbacks keep behaviour correct either side of each migration:
+ *   - RPC missing (credits migration not applied) → COUNT reading_events × 10, since every
+ *     pre-migration row is a Reading;
+ *   - reading_events missing (ledger migration not applied) → legacy analysis_results
+ *     count × 10, the original meter.
  *
  * TWO WINDOWS, and the trial wins:
- *   - inside the $1 / 3-day trial → the pool is `TRIAL.readings` (5) on EVERY plan, counted
- *     from the instant the trial started. This is the leech guard: without it $1 buys 150 Pro
- *     Readings (~$22 of engine spend), or unlimited on Studio.
+ *   - inside the $1 / 3-day trial → the pool is `TRIAL.credits` (50) on EVERY plan, counted
+ *     from the instant the trial started. This is the leech guard: without it $1 buys 1,500
+ *     Pro credits (~$22 of engine spend), or unlimited on Studio.
  *   - after it converts → the plan's allowance for the current BILLING period, counted from
  *     the subscription's renewal anchor (not the 1st of the calendar month).
+ *
+ * UNLIMITED HAS A FLOOR UNDER IT: Studio's `null` allowance is subject to a fair-use
+ * ceiling of UNLIMITED_DAILY_CREDIT_CEILING credits per UTC day — "unlimited" prices an
+ * honest team month, not a scripted farm. The verdict says which wall was hit (`reason`)
+ * so the paywall can tell a Studio team "resets at midnight UTC", not "upgrade".
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { readingAllowanceFor } from "@/lib/pricing";
+import {
+  creditAllowanceFor,
+  CREDITS_PER_READING,
+  UNLIMITED_DAILY_CREDIT_CEILING,
+} from "@/lib/pricing";
 import type { NumenTier } from "@/lib/whop/config";
 
 /** Enforcement is opt-in — see the module note. */
@@ -49,6 +59,9 @@ export function isQuotaEnforced(): boolean {
 
 /** Postgres `undefined_table` — the ledger migration has not been applied yet. */
 const UNDEFINED_TABLE = "42P01";
+/** Postgres `undefined_function` / PostgREST schema-cache miss — credits migration absent. */
+const UNDEFINED_FUNCTION = "42883";
+const POSTGREST_FUNCTION_NOT_FOUND = "PGRST202";
 
 /**
  * The same day-of-month as `anchor`, in the given month, clamped to that month's length.
@@ -83,7 +96,7 @@ function anchoredIn(year: number, monthIndex: number, anchor: Date): Date {
  * Driven by the subscription's renewal date (`user_subscriptions.current_period_end`, which
  * Whop sends as `renewal_period_end`). Subscribe on the 28th and your allowance runs the 28th
  * → the 28th; it does NOT reset three days later because a calendar month happened to tick
- * over. That was the old behaviour and it handed out a second month of Readings for free to
+ * over. That was the old behaviour and it handed out a second month of credits for free to
  * anyone who subscribed near the end of a month.
  *
  * Derived from the renewal day-of-month rather than "period end minus one month" so that a
@@ -105,6 +118,11 @@ export function currentPeriodStart(now: Date = new Date(), periodEnd: Date | nul
   return anchoredIn(now.getUTCFullYear(), now.getUTCMonth() - 1, periodEnd);
 }
 
+/** Midnight UTC today — the fair-use window for "unlimited" tiers. */
+export function currentUtcDayStart(now: Date = new Date()): Date {
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+}
+
 /** The trial window recorded on the subscription row (both null when it isn't a trial). */
 export interface TrialWindow {
   trialStartedAt: Date | null;
@@ -120,9 +138,9 @@ export function isTrialActive(window: TrialWindow, now: Date = new Date()): bool
 export interface QuotaVerdict {
   /** Whether the caller should actually block. False while the flag is off. */
   enforced: boolean;
-  /** Whether this user is within their allowance right now. */
+  /** Whether this user can afford the action being checked right now. */
   allowed: boolean;
-  /** Readings used in the window that applies (the trial, or the billing period). */
+  /** Credits spent in the window that applies (the trial, or the billing period). */
   used: number;
   /** The allowance that applies; `null` = unlimited (never true inside a trial). */
   limit: number | null;
@@ -130,6 +148,11 @@ export interface QuotaVerdict {
   tier: NumenTier;
   /** Whether the $1 trial pool is what's being enforced. */
   inTrial: boolean;
+  /**
+   * Which wall a refusal hit: the period allowance, or the fair-use daily ceiling that
+   * backs "unlimited". Only meaningful when `allowed` is false.
+   */
+  reason: "allowance" | "fair_use" | null;
   /** When the window being counted began — the trial's start, or the billing anchor. */
   periodStart: Date;
   /** When this allowance next resets. Null when unknown (no subscription row). */
@@ -137,18 +160,35 @@ export interface QuotaVerdict {
 }
 
 /**
- * How many Readings this user has been delivered since `since` — the start of their billing
- * period, or the moment their $1 trial began.
+ * Credits spent since `since` — the start of the billing period, the trial's start, or
+ * midnight UTC for the fair-use check.
  *
- * Counts the LEDGER (`reading_events`, billed only). A HEAD count — no rows transferred: this
- * runs on the hot path of /api/analyze, before any engine spend.
- *
- * Falls back to the legacy `analysis_results` count ONLY when the ledger table does not exist
- * (the migration has not been run). Any other error is thrown, so the caller can fail open —
- * quietly substituting a different, higher number would risk blocking a customer who is within
- * their plan.
+ * Falls back when a migration is missing (see module note). Any OTHER error is thrown, so
+ * the caller can fail open — quietly substituting a wrong number would risk blocking a
+ * customer who is within their plan.
  */
-export async function countReadingsSince(
+export async function countCreditsSince(
+  supabase: SupabaseClient,
+  userId: string,
+  since: Date
+): Promise<number> {
+  const { data, error } = await supabase.rpc("credits_used_since", {
+    p_user_id: userId,
+    p_since: since.toISOString(),
+  });
+
+  if (!error) return typeof data === "number" ? data : Number(data ?? 0);
+
+  const missingRpc =
+    error.code === UNDEFINED_FUNCTION || error.code === POSTGREST_FUNCTION_NOT_FOUND;
+  if (!missingRpc) throw error;
+
+  // Pre-credits-migration: every ledger row is a full Reading. Count × 10 is exact.
+  return (await countLedgerRows(supabase, userId, since)) * CREDITS_PER_READING;
+}
+
+/** Row count of the ledger (pre-credits fallback); falls through to the legacy meter. */
+async function countLedgerRows(
   supabase: SupabaseClient,
   userId: string,
   since: Date
@@ -161,11 +201,9 @@ export async function countReadingsSince(
     .gte("created_at", since.toISOString());
 
   if (!error) return count ?? 0;
-
   if (error.code !== UNDEFINED_TABLE) throw error;
 
-  // Pre-migration: the ledger does not exist yet. Count rows the old way so behaviour is
-  // unchanged until the owner applies 20260713160000_reading_events.sql.
+  // Pre-ledger: the original meter — one Reading = one `analysis_results` row.
   return countLegacyAnalysisRows(supabase, userId, since);
 }
 
@@ -186,27 +224,35 @@ async function countLegacyAnalysisRows(
 }
 
 /**
- * Is this user's NEXT Reading within their allowance?
+ * Can this user afford the NEXT action, priced at `cost` credits?
  *
- * Two windows, and the trial wins: while the $1 trial runs, the pool is TRIAL.readings (5)
+ * Two windows, and the trial wins: while the $1 trial runs, the pool is TRIAL.credits (50)
  * counted from the moment the trial started — NOT the plan's monthly allowance, and NOT
  * unlimited on Studio. Once it converts, it is the plan's allowance for the current billing
  * period.
  *
+ * `allowed` is "used + cost fits": a customer with 3 credits left can run a 1-credit hooks
+ * pack but not a 10-credit Reading. The alternative (block only once the pool is already
+ * spent) would let every action overdraw by its own price minus one.
+ *
+ * Unlimited (Studio) is checked against the fair-use daily ceiling instead — a second,
+ * cheaper sum over today's spend, run only for unlimited tiers.
+ *
  * Fails OPEN on a counting error: a flaky count must never cost a paying customer their
- * Reading. The alternative (fail closed) turns a transient DB blip into "you've hit your
+ * action. The alternative (fail closed) turns a transient DB blip into "you've hit your
  * limit" for someone who hasn't — the worse of the two failures by far.
  */
-export async function checkReadingQuota(
+export async function checkCreditQuota(
   supabase: SupabaseClient,
   userId: string,
   tier: NumenTier,
+  cost: number,
   trial: TrialWindow = { trialStartedAt: null, trialEndsAt: null },
   now: Date = new Date(),
   periodEnd: Date | null = null
 ): Promise<QuotaVerdict> {
   const inTrial = isTrialActive(trial, now);
-  const limit = readingAllowanceFor(tier, { inTrial });
+  const limit = creditAllowanceFor(tier, { inTrial });
   const enforced = isQuotaEnforced();
 
   // The trial pool is counted from the trial's start; a plan's allowance from its billing
@@ -217,25 +263,43 @@ export async function checkReadingQuota(
 
   const base = { enforced, tier, inTrial, periodStart, renewsAt };
 
-  // Unlimited (Studio, outside a trial) never needs the count.
+  // Unlimited (Studio, outside a trial): no monthly wall, but the fair-use daily ceiling.
   if (limit === null) {
-    return { ...base, allowed: true, used: 0, limit: null };
+    const dayStart = currentUtcDayStart(now);
+    let usedToday: number;
+    try {
+      usedToday = await countCreditsSince(supabase, userId, dayStart);
+    } catch (error) {
+      console.error("[quota] fair-use count failed — failing open", error);
+      return { ...base, allowed: true, used: 0, limit: null, reason: null };
+    }
+
+    const withinCeiling = usedToday + cost <= UNLIMITED_DAILY_CREDIT_CEILING;
+    return {
+      ...base,
+      allowed: withinCeiling,
+      used: usedToday,
+      limit: null,
+      reason: withinCeiling ? null : "fair_use",
+    };
   }
 
   let used: number;
   try {
-    used = await countReadingsSince(supabase, userId, periodStart);
+    used = await countCreditsSince(supabase, userId, periodStart);
   } catch (error) {
     console.error("[quota] count failed — failing open", error);
-    return { ...base, allowed: true, used: 0, limit };
+    return { ...base, allowed: true, used: 0, limit, reason: null };
   }
 
-  return { ...base, allowed: used < limit, used, limit };
+  const fits = used + cost <= limit;
+  return { ...base, allowed: fits, used, limit, reason: fits ? null : "allowance" };
 }
 
 /**
  * The whole check in one call, for a request handler that already has an authed client:
- * read the user's tier and billing window, then measure it against their Readings.
+ * read the user's tier and billing window, then measure the action's `cost` against their
+ * credits.
  *
  * A missing subscription row is `free` — allowance 0 — which is correct: with no free plan
  * on the pricing page, "no subscription" means "hasn't started a trial yet". It only bites
@@ -244,12 +308,13 @@ export async function checkReadingQuota(
  * Selects `*` rather than naming the trial columns: `trial_started_at` does not exist until
  * migration 20260713140000 is applied, and naming a missing column makes PostgREST reject the
  * whole SELECT — which would send even the TIER lookup down the fail-open path (and log an
- * error on every single /api/analyze). Reading the fields defensively off the row costs
+ * error on every single paid request). Reading the fields defensively off the row costs
  * nothing and works either side of the migration.
  */
-export async function getReadingQuotaVerdict(
+export async function getCreditQuotaVerdict(
   supabase: SupabaseClient,
   userId: string,
+  cost: number,
   now: Date = new Date()
 ): Promise<QuotaVerdict> {
   let tier: NumenTier = "free";
@@ -281,12 +346,13 @@ export async function getReadingQuotaVerdict(
       limit: null,
       tier: "free",
       inTrial: false,
+      reason: null,
       periodStart: currentPeriodStart(now),
       renewsAt: null,
     };
   }
 
-  return checkReadingQuota(supabase, userId, tier, trial, now, periodEnd);
+  return checkCreditQuota(supabase, userId, tier, cost, trial, now, periodEnd);
 }
 
 /** A timestamptz off a raw row — null for a missing column, a null value, or an unparseable one. */

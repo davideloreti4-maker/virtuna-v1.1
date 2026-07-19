@@ -12,18 +12,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { ReadingQuotaExceeded } from "@/lib/billing/quota-error";
-import { PLANS, TRIAL, getPlan, isPaidPlanId, readingsLabel, type PaidPlanId } from "@/lib/pricing";
+import type { CreditQuotaExceeded } from "@/lib/billing/quota-error";
+import { PLANS, TRIAL, getPlan, isPaidPlanId, creditsLabel, type PaidPlanId } from "@/lib/pricing";
 
 /**
- * THE WALL — what a customer sees when their Readings are spent.
+ * THE WALL — what a customer sees when their credits are spent.
  *
  * This is the only moment in the product where we take something away, so it is the moment to
  * be precise and generous instead of cryptic. Before this existed, the 402 came back through
  * the stream hook as `new Error(err.error)` and the user read the string
- * `reading_quota_exceeded` in a failure line — indistinguishable from the engine crashing.
+ * `credit_quota_exceeded` in a failure line — indistinguishable from the engine crashing.
  *
- * Three walls, three honest next steps — and they are NOT the same:
+ * Four walls, four honest next steps — and they are NOT the same:
  *
  *   · TRIAL SPENT — they have paid us $1 and their plan is about to start. Pushing a second
  *     purchase here would be a way to double-charge a customer who already bought. So the
@@ -31,10 +31,12 @@ import { PLANS, TRIAL, getPlan, isPaidPlanId, readingsLabel, type PaidPlanId } f
  *   · NO PLAN — the $1 trial is the only door in. Offer it.
  *   · PLAN SPENT — offer the next plan up, and say when the current one resets, because
  *     "wait until the 16th" is a perfectly good answer that costs them nothing.
+ *   · FAIR-USE (Studio) — there is nothing above them to sell. The answer is a time
+ *     (midnight UTC), full stop.
  */
 
 interface ReadingLimitDialogProps {
-  quota: ReadingQuotaExceeded;
+  quota: CreditQuotaExceeded;
   open: boolean;
   onClose: () => void;
   /** When the allowance resets — the renewal date, or the day a trial converts. */
@@ -57,17 +59,22 @@ export function ReadingLimitDialog({ quota, open, onClose, renewsAt }: ReadingLi
   const [checkoutPlan, setCheckoutPlan] = useState<PaidPlanId | null>(null);
 
   const plan = isPaidPlanId(quota.tier) ? getPlan(quota.tier) : null;
-  const upgrade = quota.inTrial ? null : nextPlanUp(quota.tier);
+  const fairUse = quota.reason === "fair_use";
+  // No upsell inside a trial (they already paid) and none at the fair-use ceiling (there is
+  // nothing above Studio) — those two walls end in a date, never a checkout.
+  const upgrade = quota.inTrial || fairUse ? null : nextPlanUp(quota.tier);
   const noPlan = !plan;
 
   // The title states the SITUATION; the server's message states the ACTION. Keep them distinct —
   // the no-plan title used to be the server's sentence verbatim, so the dialog said
   // "Start a plan to run a Reading" twice, as its own heading and its own body.
   const title = quota.inTrial
-    ? "That's your trial's last Reading"
-    : noPlan
-      ? "You don't have a plan yet"
-      : "You're out of Readings";
+    ? "Your trial credits are spent"
+    : fairUse
+      ? "That's today's fair-use ceiling"
+      : noPlan
+        ? "You don't have a plan yet"
+        : "You're out of credits";
 
   return (
     <>
@@ -81,24 +88,25 @@ export function ReadingLimitDialog({ quota, open, onClose, renewsAt }: ReadingLi
 
           {/* px-6 to sit on DialogHeader's own p-6 gutter — without it these lines run to the
               dialog's edge while the description above them stays inset. */}
-          {(renewsAt || upgrade) && (
+          {((renewsAt && !fairUse) || upgrade) && (
             <div className="space-y-1 px-6 text-sm text-foreground-secondary">
-              {renewsAt && (
+              {/* The fair-use wall resets at midnight UTC (the server's message says so) —
+                  the billing renewal date would be the WRONG date to show next to it. */}
+              {renewsAt && !fairUse && (
                 <p>
                   {quota.inTrial ? (
                     <>
                       Your {plan ? plan.name : "plan"} allowance starts {formatDate(renewsAt)}.
                     </>
                   ) : (
-                    <>Your Readings reset {formatDate(renewsAt)}.</>
+                    <>Your credits reset {formatDate(renewsAt)}.</>
                   )}
                 </p>
               )}
 
               {upgrade && (
                 <p>
-                  {/* "Readings" is the product's noun — never lowercased to fit a sentence. */}
-                  {getPlan(upgrade).name} gives you {readingsLabel(getPlan(upgrade))} for{" "}
+                  {getPlan(upgrade).name} gives you {creditsLabel(getPlan(upgrade))} for{" "}
                   {getPlan(upgrade).price}
                   {getPlan(upgrade).priceSuffix}.
                 </p>

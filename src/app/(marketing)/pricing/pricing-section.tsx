@@ -9,7 +9,7 @@ import { CheckoutModal } from "@/components/app/checkout-modal";
 import { createClient } from "@/lib/supabase/client";
 import { useSubscription } from "@/hooks/use-subscription";
 import { hasAccessToTier } from "@/lib/whop/config";
-import { PLANS, TRIAL, getPlan, readingsLabel, type PaidPlanId } from "@/lib/pricing";
+import { PLANS, TRIAL, getPlan, creditsLabel, type PaidPlanId } from "@/lib/pricing";
 
 /**
  * The /pricing page. Owner-locked 2026-07-13: three paid plans — Creator $49 · Pro $99
@@ -32,7 +32,7 @@ interface PricingFeature {
 const features: PricingFeature[] = [
   {
     // The meter, first — it is what the plans are actually sold on.
-    name: "Readings a month",
+    name: "Credits a month",
     values: { starter: "50", pro: "150", studio: "Unlimited" },
   },
   {
@@ -135,8 +135,8 @@ export function PricingSection() {
               Simple, transparent pricing
             </h1>
             <p className="mt-4 text-lg text-foreground-secondary max-w-xl mx-auto">
-              Every plan starts at {TRIAL.price} for {TRIAL.days} days — {TRIAL.readings}{" "}
-              Readings to judge it on your own videos. Cancel before it renews and
+              Every plan starts at {TRIAL.price} for {TRIAL.days} days — {TRIAL.credits}{" "}
+              credits to judge it on your own videos. Cancel before it renews and
               you&apos;ve spent a dollar.
             </p>
           </div>
@@ -191,7 +191,7 @@ export function PricingSection() {
                   </div>
                   {/* The meter, stated on the card — not buried in the table. */}
                   <p className="mt-2 text-sm text-foreground-secondary">
-                    {readingsLabel(plan)}
+                    {creditsLabel(plan)}
                   </p>
                 </div>
                 {renderCTA(plan.id)}

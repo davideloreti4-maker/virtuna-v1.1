@@ -57,7 +57,7 @@ import { VideoUpload } from "@/components/app/video-upload";
 import { MessageBlocks } from "@/components/thread/message-blocks";
 import { useAnalysisStream } from "@/hooks/queries/use-analysis-stream";
 import { useSubscription } from "@/hooks/use-subscription";
-import { isPaidPlanId, readingsRemainingLabel } from "@/lib/pricing";
+import { isPaidPlanId, creditsRemainingLabel } from "@/lib/pricing";
 import { useBoardStore } from "@/stores/board-store";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
@@ -130,7 +130,7 @@ const LAUNCH_VERB_TOOL: Record<Verb, ToolId> = {
  *
  * Statically imported, this pulls `CheckoutModal` → `@whop/checkout/react` (a 328KB package)
  * into the bundle of /home — the app's hottest route — to render a dialog that appears when a
- * customer runs out of Readings, i.e. almost never, and today literally never (enforcement is
+ * customer runs out of credits, i.e. almost never, and today literally never (enforcement is
  * off). Every visitor was paying to download a checkout embed they will not see.
  */
 const ReadingLimitDialog = dynamic(
@@ -299,12 +299,12 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   }, [stream.phase, refetchBalance]);
 
   // Shown only when there is a countable balance to show: a paid plan or a trial pool. `free`
-  // has an allowance of 0 by design (no free plan), and "0 of 0 Readings left" under the
+  // has an allowance of 0 by design (no free plan), and "0 of 0 credits left" under the
   // composer would read as a bug rather than a price. Studio's unlimited has no number worth
   // printing on every screen either.
   const readingsBalanceLabel =
     usage && usage.limit !== null && (isPaidPlanId(billingTier) || isTrial)
-      ? readingsRemainingLabel(usage)
+      ? creditsRemainingLabel(usage)
       : null;
 
   // A footnote until it starts to bite — then it earns a semantic tone (the dosage rule: a

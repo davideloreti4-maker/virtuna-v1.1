@@ -3,10 +3,10 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 
 import { ReadingLimitDialog } from "@/components/app/reading-limit-dialog";
-import type { ReadingQuotaExceeded } from "@/lib/billing/quota-error";
+import type { CreditQuotaExceeded } from "@/lib/billing/quota-error";
 
 /**
- * THE WALL. Three walls, and they must NOT offer the same way out — the trial one especially.
+ * THE WALL. Four walls, and they must NOT offer the same way out — the trial one especially.
  *
  * The checkout embed is the one thing worth stubbing: it talks to Whop over the network, and
  * what this test cares about is which door we open, not what is behind it.
@@ -17,12 +17,14 @@ vi.mock("@/components/app/checkout-modal", () => ({
   ),
 }));
 
-const wall = (over: Partial<ReadingQuotaExceeded> = {}): ReadingQuotaExceeded => ({
-  message: "You've used all 50 Readings on your plan this month.",
+const wall = (over: Partial<CreditQuotaExceeded> = {}): CreditQuotaExceeded => ({
+  message: "You've used all 500 credits on your plan this month.",
   tier: "starter",
-  used: 50,
-  limit: 50,
+  used: 500,
+  limit: 500,
   inTrial: false,
+  reason: "allowance",
+  cost: 10,
   ...over,
 });
 
@@ -30,8 +32,9 @@ describe("the quota wall", () => {
   it("shows the server's human message, never the slug", () => {
     render(<ReadingLimitDialog open quota={wall()} onClose={vi.fn()} />);
 
-    expect(screen.getByText(/used all 50 Readings/i)).toBeTruthy();
-    // The regression this whole thing exists to prevent: `reading_quota_exceeded` on screen.
+    expect(screen.getByText(/used all 500 credits/i)).toBeTruthy();
+    // The regression this whole thing exists to prevent: the machine slug on screen.
+    expect(screen.queryByText(/credit_quota_exceeded/)).toBeNull();
     expect(screen.queryByText(/reading_quota_exceeded/)).toBeNull();
   });
 
@@ -43,9 +46,9 @@ describe("the quota wall", () => {
         open
         quota={wall({
           inTrial: true,
-          limit: 5,
-          used: 5,
-          message: "Your $1 trial includes 5 Readings.",
+          limit: 50,
+          used: 50,
+          message: "Your $1 trial includes 50 credits.",
         })}
         renewsAt="2026-07-16T11:00:00.000Z"
         onClose={vi.fn()}
@@ -89,15 +92,40 @@ describe("the quota wall", () => {
     expect(screen.getByRole("button", { name: /upgrade to pro/i })).toBeTruthy();
     // "Wait until the 1st" is a real answer, and it costs them nothing — so say it.
     expect(screen.getByText(/reset August 1/i)).toBeTruthy();
+    // ...and the offer is priced in the unit being sold.
+    expect(screen.getByText(/1,500 credits a month/i)).toBeTruthy();
   });
 
-  it("does not push a plan at a spent Pro's ceiling without one above it", () => {
-    // Studio can only hit a wall inside a trial (unlimited cannot be exceeded), and a trial
-    // never upsells — so there is no plan to offer.
+  it("gives a Studio team at the fair-use ceiling a TIME — no upsell, no misleading reset date", () => {
+    // There is nothing above Studio to sell, and the wall resets at midnight UTC — showing
+    // the monthly renewal date next to it would be the wrong date.
     render(
       <ReadingLimitDialog
         open
-        quota={wall({ tier: "studio", inTrial: true, limit: 5, used: 5 })}
+        quota={wall({
+          tier: "studio",
+          limit: null,
+          used: 300,
+          reason: "fair_use",
+          message: "You've hit today's fair-use ceiling of 300 credits. It resets at midnight UTC.",
+        })}
+        renewsAt="2026-08-01T00:00:00.000Z"
+        onClose={vi.fn()}
+      />
+    );
+
+    // Title AND body both name the wall — assert each in its own role.
+    expect(screen.getByRole("heading", { name: /fair-use ceiling/i })).toBeTruthy();
+    expect(screen.getByText(/midnight UTC/i)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /upgrade/i })).toBeNull();
+    expect(screen.queryByText(/reset August 1/i)).toBeNull();
+  });
+
+  it("does not push a plan at a trialling Studio's ceiling — a trial never upsells", () => {
+    render(
+      <ReadingLimitDialog
+        open
+        quota={wall({ tier: "studio", inTrial: true, limit: 50, used: 50 })}
         onClose={vi.fn()}
       />
     );

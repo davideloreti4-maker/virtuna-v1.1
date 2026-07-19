@@ -17,7 +17,7 @@
 
 import { NextResponse } from "next/server";
 
-import { checkReadingQuota } from "@/lib/billing/quota";
+import { checkCreditQuota } from "@/lib/billing/quota";
 import { createClient } from "@/lib/supabase/server";
 import type { NumenTier } from "@/lib/whop/config";
 
@@ -53,10 +53,14 @@ export async function GET() {
     };
 
     const tier: NumenTier = (row?.virtuna_tier as NumenTier) ?? "free";
-    const quota = await checkReadingQuota(
+    // Cost 0: this is a BALANCE readout, not an admission check — "where do they stand",
+    // not "can they afford action X". (For Studio this also means `used` reports TODAY's
+    // fair-use spend, since unlimited has no monthly window to report.)
+    const quota = await checkCreditQuota(
       supabase,
       user.id,
       tier,
+      0,
       {
         trialStartedAt: toDate(row?.trial_started_at),
         trialEndsAt: toDate(row?.trial_ends_at),
@@ -66,6 +70,7 @@ export async function GET() {
     );
 
     const usage = {
+      /** Credits spent in the window that applies. */
       used: quota.used,
       /** null = unlimited (Studio, outside a trial). */
       limit: quota.limit,
@@ -73,7 +78,7 @@ export async function GET() {
       remaining: quota.limit === null ? null : Math.max(0, quota.limit - quota.used),
       /** Whether that limit is actually enforced right now (BILLING_ENFORCE_QUOTA). */
       enforced: quota.enforced,
-      /** Whether the 5-Reading $1-trial pool is what's being measured. */
+      /** Whether the 50-credit $1-trial pool is what's being measured. */
       inTrial: quota.inTrial,
       /** When this allowance resets — the renewal date, or the day the trial converts. */
       renewsAt: quota.renewsAt?.toISOString() ?? null,
