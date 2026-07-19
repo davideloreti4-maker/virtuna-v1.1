@@ -109,6 +109,56 @@ describe("useChatStream", () => {
     expect(result.current.error).toBeNull();
   });
 
+  it("dispatch event names the skill BEFORE its stages; a second dispatch starts a fresh spine", async () => {
+    global.fetch = vi.fn().mockResolvedValue(
+      mockSSEResponse([
+        encodeSSE("meta", { coldStart: false }),
+        // Run 1: the agent picks ideas.
+        encodeSSE("dispatch", { skill: "ideas" }),
+        encodeSSE("stage", { name: "Generating", status: "active" }),
+        encodeSSE("stage", { name: "Generating", status: "done" }),
+        encodeSSE("block", { block: IDEA_CARD("Idea A") }),
+        // Run 2 (same turn): the agent follows up with hooks — its dispatch CLEARS run 1's
+        // stages so the second spine isn't overlaid on the first run's finished steps.
+        encodeSSE("dispatch", { skill: "hooks" }),
+        encodeSSE("stage", { name: "Simulating your audience", status: "active" }),
+        encodeSSE("done", {}),
+      ]),
+    );
+
+    const { result } = renderHook(() => useChatStream());
+    await act(async () => {
+      await result.current.start("ideas then hooks", "tiktok");
+    });
+    await waitFor(() => expect(result.current.isDone).toBe(true));
+
+    expect(result.current.dispatchedSkill).toBe("hooks");
+    // Run 1's "Generating" is GONE — only run 2's live stage remains.
+    expect(result.current.stages).toEqual([{ name: "Simulating your audience", status: "active" }]);
+    expect(result.current.streamingBlocks).toHaveLength(1);
+  });
+
+  it("dispatchedSkill is null on a plain chat turn and cleared by reset()", async () => {
+    global.fetch = vi.fn().mockResolvedValue(
+      mockSSEResponse([
+        encodeSSE("dispatch", { skill: "ideas" }),
+        encodeSSE("done", {}),
+      ]),
+    );
+
+    const { result } = renderHook(() => useChatStream());
+    expect(result.current.dispatchedSkill).toBeNull();
+    await act(async () => {
+      await result.current.start("ideas please", "tiktok");
+    });
+    await waitFor(() => expect(result.current.dispatchedSkill).toBe("ideas"));
+
+    act(() => {
+      result.current.reset();
+    });
+    expect(result.current.dispatchedSkill).toBeNull();
+  });
+
   it("reset() clears dispatched blocks + stages between turns", async () => {
     global.fetch = vi.fn().mockResolvedValue(
       mockSSEResponse([
