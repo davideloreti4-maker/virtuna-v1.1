@@ -42,11 +42,18 @@ export const SKILL_RUN_META: Record<string, SkillRunMeta> = {
   script: { running: 'Writing your script', done: 'Ran your audience', plan: STAGE_PLANS.script },
   remix: { running: 'Reworking the video', done: 'Reworked for your audience', plan: STAGE_PLANS.remix },
   explore: { running: 'Scanning for outliers', done: 'Scored for your audience', plan: STAGE_PLANS.explore },
-  // The in-thread field runs (their routes emit no stages; the fields derive honest
-  // client-side stages — see input-request-block.tsx).
+  // The in-thread field runs. read/account routes emit no stages (a JSON POST / a scrape), so
+  // their fields render ONE active row named `running` (rotating honest sub-copy). The test
+  // field derives its 3-step spine client-side from real phase boundaries + elapsed floors —
+  // the SAME plan names as the flagship /analyze skeleton (reading-skeleton.tsx READ_PLAN), so
+  // the in-thread Test wait speaks the identical language as the full-page one.
   read: { running: 'Reading it past your audience', done: 'Read by your audience', plan: [] },
   account: { running: 'Reading your account', done: 'Read your account', plan: [] },
-  test: { running: 'Testing your video', done: 'Tested against your audience', plan: [] },
+  test: {
+    running: 'Testing your video',
+    done: 'Tested against your audience',
+    plan: ['Fetching your video', 'Watching it frame by frame', 'Simulating your audience'],
+  },
 };
 
 export interface SkillRunCapsuleProps {

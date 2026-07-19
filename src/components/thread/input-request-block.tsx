@@ -33,9 +33,9 @@ import { useAnalysisStream } from '@/hooks/queries/use-analysis-stream';
 import { VideoUpload } from '@/components/app/video-upload';
 import { createClient } from '@/lib/supabase/client';
 import { TIKTOK_URL_PATTERN } from '@/lib/tiktok-url';
-import { ProgressChecklist } from './progress-checklist';
+import { ProgressChecklist, type StageState } from './progress-checklist';
+import { SKILL_RUN_META } from './run-capsule';
 import { CardPrimaryAction } from './card-primitives';
-import { Spinner } from '@/components/ui/spinner';
 
 export interface InputRequestBlockRendererProps {
   block: InputRequestBlock;
@@ -67,6 +67,20 @@ function ErrorLine({ text }: { text: string }) {
     <p className="text-[12px]" style={{ color: 'var(--color-error)' }} role="alert">
       {text}
     </p>
+  );
+}
+
+/**
+ * A one-row live capsule for a run whose route reports no stages (read = a single JSON POST,
+ * account = one scrape call): the SAME spine row every other run shows — breathing node,
+ * shimmering label, rotating honest sub-copy (STAGE_COPY_ROTATION) — with a plan of one.
+ * Replaces the old bare <Spinner/> + static line, so every wait in the thread is one idiom.
+ */
+function SingleStageWait({ name }: { name: string }) {
+  return (
+    <div aria-live="polite" aria-atomic="false">
+      <ProgressChecklist stages={[{ name, status: 'active' }]} />
+    </div>
   );
 }
 
@@ -121,11 +135,13 @@ function RemixField({ block }: InputRequestBlockRendererProps) {
   return (
     <div className={SHELL_CLASS} data-testid="input-request">
       <label htmlFor="in-thread-link" className="text-[13px] font-medium text-foreground-secondary">
-        {label}
+        {isStreaming ? SKILL_RUN_META.remix!.running : label}
       </label>
       {isStreaming ? (
         <div aria-live="polite" aria-atomic="false">
-          <ProgressChecklist stages={stages} />
+          {/* Plan-seeded spine (the run-capsule grammar): the whole remix pipeline is visible
+              from the first frame, live events overlay their real status. */}
+          <ProgressChecklist stages={stages} plan={SKILL_RUN_META.remix!.plan} />
         </div>
       ) : (
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -198,11 +214,12 @@ function ExploreField({ block }: InputRequestBlockRendererProps) {
   return (
     <div className={SHELL_CLASS} data-testid="input-request">
       <label htmlFor="in-thread-explore" className="text-[13px] font-medium text-foreground-secondary">
-        {label}
+        {isStreaming ? SKILL_RUN_META.explore!.running : label}
       </label>
       {isStreaming ? (
         <div aria-live="polite" aria-atomic="false">
-          <ProgressChecklist stages={stages} />
+          {/* Plan-seeded spine (the run-capsule grammar). */}
+          <ProgressChecklist stages={stages} plan={SKILL_RUN_META.explore!.plan} />
         </div>
       ) : (
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -272,14 +289,16 @@ function ReadField({ block }: InputRequestBlockRendererProps) {
 
   return (
     <div className={SHELL_CLASS} data-testid="input-request">
-      <label htmlFor="in-thread-read" className="text-[13px] font-medium text-foreground-secondary">
-        {label}
-      </label>
+      {/* While running the one-row capsule carries the job name — no stale question above it. */}
+      {!submitting && (
+        <label htmlFor="in-thread-read" className="text-[13px] font-medium text-foreground-secondary">
+          {label}
+        </label>
+      )}
       {submitting ? (
-        <div className="flex items-center gap-2 text-[13px] text-foreground-muted" aria-live="polite">
-          <Spinner size="sm" />
-          <span>Reading it past your audience…</span>
-        </div>
+        // The read route is a single JSON POST (no stages) — the one-row capsule keeps the
+        // wait in the same spine idiom as every other run.
+        <SingleStageWait name={SKILL_RUN_META.read!.running} />
       ) : (
         <div className="flex flex-col gap-2">
           <textarea
@@ -338,12 +357,10 @@ function AccountField({ block }: InputRequestBlockRendererProps) {
 
   return (
     <div className={SHELL_CLASS} data-testid="input-request">
-      <p className="text-[13px] font-medium text-foreground-secondary">{label}</p>
+      {!isStreaming && <p className="text-[13px] font-medium text-foreground-secondary">{label}</p>}
       {isStreaming ? (
-        <div className="flex items-center gap-2 text-[13px] text-foreground-muted" aria-live="polite">
-          <Spinner size="sm" />
-          <span>Reading your account…</span>
-        </div>
+        // The account read is one scrape call (no stages) — the one-row capsule idiom.
+        <SingleStageWait name={SKILL_RUN_META.account!.running} />
       ) : (
         <CardPrimaryAction onClick={handleRun} className="self-start">
           Read my account →
@@ -390,6 +407,8 @@ function UploadField({ block }: InputRequestBlockRendererProps) {
   const urlError = trimmedUrl.length > 0 && !isValidTikTok;
   const analyzing = phase === 'analyzing' || phase === 'reconnecting' || phase === 'polling';
   const busy = staging || analyzing || carding;
+  // The run-capsule spine for the busy stretch (unconditional hook call — React rules).
+  const testStages = useTestRunStages({ analyzing, carding });
   const canSubmit = (!!file || isValidTikTok) && !busy;
 
   // When the analysis completes, turn the persisted row into an in-thread card. Fires once
@@ -510,19 +529,17 @@ function UploadField({ block }: InputRequestBlockRendererProps) {
     );
   }
 
-  const busyMessage = staging
-    ? 'Uploading your video…'
-    : carding
-      ? 'Building your result…'
-      : 'Testing your video against your audience… this takes a minute or two.';
-
   return (
     <div className={SHELL_CLASS} data-testid="input-request">
-      <p className="text-[13px] font-medium text-foreground-secondary">{label}</p>
+      <p className="text-[13px] font-medium text-foreground-secondary">
+        {busy ? SKILL_RUN_META.test!.running : label}
+      </p>
       {busy ? (
-        <div className="flex items-center gap-2 text-[13px] text-foreground-muted" aria-live="polite">
-          <Spinner size="sm" />
-          <span>{busyMessage}</span>
+        // The full Max pipeline's wait (~2 min) as the SAME 3-step spine the /analyze page shows
+        // (identical plan names), derived from real phase boundaries + elapsed floors — replaces
+        // the single static spinner line this wait used to be.
+        <div aria-live="polite" aria-atomic="false">
+          <ProgressChecklist stages={testStages} plan={SKILL_RUN_META.test!.plan} />
         </div>
       ) : (
         <div className="flex flex-col gap-3">
@@ -568,4 +585,51 @@ function UploadField({ block }: InputRequestBlockRendererProps) {
 /** Map an analysis stream error to a plain sentence (the raw message is usually already human). */
 function testErrorCopy(error: string): string {
   return error || 'Something went wrong testing that video — try again.';
+}
+
+/**
+ * The Test field's elapsed-floor stage floors, per step (mirrors reading-skeleton.tsx
+ * STEP_FALLBACK_MS): with no reveal signals available to this field, elapsed time carries the
+ * spine — the pipeline's order is fixed and known, so advancing on time is an estimate, not an
+ * invention (no number, picture or reaction is fabricated by it).
+ */
+const TEST_STEP_FALLBACK_MS = [12_000, 75_000] as const;
+
+/**
+ * Derive the in-thread Test run's 3-step spine (SKILL_RUN_META.test.plan — the SAME names as
+ * the flagship /analyze skeleton) from what the field really knows:
+ *  - staging (before analyzing: the clip is uploading) → the clock hasn't started: step 1 active.
+ *  - analyzing → elapsed floors advance steps 1→2→3 (the ~2-minute stretch that used to be a
+ *    single static spinner line).
+ *  - carding  → the pipeline finished, the card adapter is running: every step done. Building
+ *    the card is a sub-second tail — a step that flashes is worse than no step (the reason
+ *    "Self-judge"/scoring were dropped from the other spines).
+ */
+function useTestRunStages(opts: { analyzing: boolean; carding: boolean }): StageState[] {
+  const { analyzing, carding } = opts;
+  const plan = SKILL_RUN_META.test!.plan;
+  const [startedAt, setStartedAt] = useState<number | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (!analyzing) {
+      // Idle (a fresh submit resets the clock). `carding` keeps the finished timestamp — the
+      // spine is all-done there and the elapsed value no longer matters.
+      if (!carding) setStartedAt(null);
+      return;
+    }
+    setStartedAt((t) => t ?? Date.now());
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [analyzing, carding]);
+
+  const elapsed = startedAt == null ? 0 : now - startedAt;
+  const gotVideo = carding || (analyzing && elapsed > TEST_STEP_FALLBACK_MS[0]);
+  const footageRead = carding || (analyzing && elapsed > TEST_STEP_FALLBACK_MS[1]);
+
+  return [
+    { name: plan[0]!, status: gotVideo ? 'done' : 'active' },
+    { name: plan[1]!, status: footageRead ? 'done' : gotVideo ? 'active' : 'pending' },
+    { name: plan[2]!, status: carding ? 'done' : footageRead ? 'active' : 'pending' },
+  ];
 }

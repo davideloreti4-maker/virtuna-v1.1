@@ -177,6 +177,18 @@ const STAGE_COPY_ROTATION: Record<string, string[]> = {
     'Reacting with your 10 reactors',
     'Fitting each to your audience',
   ],
+  // The in-thread field runs whose routes emit no stages (read = a single JSON POST, account = a
+  // scrape): the field renders ONE active capsule row named for the job, and these honest
+  // sub-phases keep the wait alive (copy-floor §2 — the JOB, never a fabricated count).
+  'Reading it past your audience': [
+    'Reacting with each of your reactors',
+    'Weighing stop-scroll against skip',
+    'Collecting their verbatim reactions',
+  ],
+  'Reading your account': [
+    'Pulling your latest posts',
+    'Finding what recurs across them',
+  ],
 };
 
 export function ProgressChecklist({ stages, plan }: ProgressChecklistProps) {
