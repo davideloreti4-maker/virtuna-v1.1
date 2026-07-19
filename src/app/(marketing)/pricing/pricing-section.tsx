@@ -29,11 +29,21 @@ interface PricingFeature {
   values: Record<PaidPlanId, boolean | string>;
 }
 
+/** The meter cell: "500" / "1,500" / "Unlimited" — the row label carries the unit. */
+function creditsCell(planId: PaidPlanId): string {
+  const credits = getPlan(planId).creditsPerMonth;
+  return credits === null ? "Unlimited" : credits.toLocaleString("en-US");
+}
+
 const features: PricingFeature[] = [
   {
     // The meter, first — it is what the plans are actually sold on.
     name: "Credits a month",
-    values: { starter: "50", pro: "150", studio: "Unlimited" },
+    values: {
+      starter: creditsCell("starter"),
+      pro: creditsCell("pro"),
+      studio: creditsCell("studio"),
+    },
   },
   {
     name: "Virality score + the why",

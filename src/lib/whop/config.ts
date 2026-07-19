@@ -64,7 +64,7 @@ export function resolveWhopPlanId(
 
 /**
  * Is this Whop plan one of the $1 / 3-day trial SKUs? The webhook uses this to stamp the
- * trial window on the subscription, which is what caps the trial at 5 Readings.
+ * trial window on the subscription, which is what caps the trial at 50 credits (TRIAL.credits).
  *
  * Returns false when no trial plans are configured — a plan we cannot recognise as a trial
  * is treated as a full-price plan, which is the SAFE direction to be wrong in for tier
