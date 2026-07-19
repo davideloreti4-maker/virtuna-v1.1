@@ -22,7 +22,7 @@ export function LoginForm({ error, expired, next, message }: LoginFormProps) {
 
   const handleGoogleOAuth = async () => {
     const supabase = createClient();
-    const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next || "/dashboard")}`;
+    const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next || "/home")}`;
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
@@ -67,7 +67,7 @@ export function LoginForm({ error, expired, next, message }: LoginFormProps) {
       )}
 
       <form action={formAction} className="space-y-4">
-        <input type="hidden" name="next" value={next || "/dashboard"} />
+        <input type="hidden" name="next" value={next || "/home"} />
         <InputField
           label="Email"
           name="email"
@@ -82,6 +82,14 @@ export function LoginForm({ error, expired, next, message }: LoginFormProps) {
           placeholder="Enter your password"
           required
         />
+        <div className="-mt-2 text-right">
+          <Link
+            href="/forgot-password"
+            className="text-sm text-foreground-secondary hover:underline"
+          >
+            Forgot password?
+          </Link>
+        </div>
 
         {error && (
           <p className="text-sm text-error" role="alert">

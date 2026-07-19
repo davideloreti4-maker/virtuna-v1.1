@@ -23,7 +23,7 @@ function mapLoginError(supabaseError: string): string {
 export async function login(_prevState: unknown, formData: FormData) {
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
-  const next = (formData.get("next") as string) || "/dashboard";
+  const next = (formData.get("next") as string) || "/home";
 
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({

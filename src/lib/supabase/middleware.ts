@@ -16,6 +16,20 @@ const PROTECTED_PREFIXES = [
   "/welcome",
   "/referrals",
   "/competitors",
+  // The rest of the (app) group. Its layout getUser gate already refuses these; listing
+  // them HERE is what preserves the deep link (?next=) through the login bounce — the
+  // layout redirect can't carry it.
+  "/audience",
+  "/threads",
+  "/saved",
+  "/library",
+  "/feed",
+  "/start",
+  "/analytics",
+  "/calendar",
+  "/discover",
+  "/grow",
+  "/reset-password", // recovery session required; page redirects to /login itself if absent
 ];
 
 /**
