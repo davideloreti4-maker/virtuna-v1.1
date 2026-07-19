@@ -260,6 +260,9 @@ export interface SharedMatchRow {
   niche: string | null;
   hook_archetype: string | null;
   format: string | null;
+  /** Visual SETTING (in_world_vlog / studio_set / greenscreen / …) — NOT a first-frame device. Expose as visualSetting. */
+  visual_hook: string | null;
+  editing_style: string | null;
   spoken_hook: string | null;
   hook_template: string | null;
   hook_source: HookSource | null;
@@ -290,6 +293,10 @@ export interface SharedMatchOptions {
   filterPlatform?: string | null;
   filterArchetype?: string | null;
   filterSourcePool?: SourcePool | null;
+  filterFormat?: string | null;
+  /** Filters the visual_hook column (the visual SETTING taxonomy). */
+  filterVisual?: string | null;
+  filterEditing?: string | null;
 }
 
 export async function matchSharedTeardowns(
@@ -304,6 +311,9 @@ export async function matchSharedTeardowns(
     filter_platform: opts.filterPlatform ?? null,
     filter_archetype: opts.filterArchetype ?? null,
     filter_source_pool: opts.filterSourcePool ?? null,
+    filter_format: opts.filterFormat ?? null,
+    filter_visual: opts.filterVisual ?? null,
+    filter_editing: opts.filterEditing ?? null,
   });
   if (error) throw new Error(`match_shared_teardowns RPC failed: ${error.message}`);
   return (data ?? []) as SharedMatchRow[];
@@ -316,6 +326,10 @@ export interface PersonalMatchOptions {
   filterNiche?: string | null;
   filterPlatform?: string | null;
   filterArchetype?: string | null;
+  filterFormat?: string | null;
+  /** Filters the visual_hook column (the visual SETTING taxonomy). */
+  filterVisual?: string | null;
+  filterEditing?: string | null;
 }
 
 export async function matchPersonalTeardowns(
@@ -329,6 +343,9 @@ export async function matchPersonalTeardowns(
     filter_niche: opts.filterNiche ?? null,
     filter_platform: opts.filterPlatform ?? null,
     filter_archetype: opts.filterArchetype ?? null,
+    filter_format: opts.filterFormat ?? null,
+    filter_visual: opts.filterVisual ?? null,
+    filter_editing: opts.filterEditing ?? null,
   });
   if (error) throw new Error(`match_personal_teardowns RPC failed: ${error.message}`);
   return (data ?? []) as PersonalMatchRow[];
