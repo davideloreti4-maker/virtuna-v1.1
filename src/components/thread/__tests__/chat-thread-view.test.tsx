@@ -222,6 +222,72 @@ describe('ChatThreadView — chat-as-agent cards', () => {
     expect(screen.queryByLabelText('Skill run progress')).toBeNull();
   });
 
+  // ── The run capsule (run-capsule.tsx) — the dispatch event labels + seeds the spine ──────────
+
+  it('a dispatch labels the capsule and seeds the FULL skill plan before any stage event', () => {
+    // The `dispatch` SSE frame arrives BEFORE the first stage event. From that moment the wait
+    // must be legible: the capsule names the skill + audience and shows the whole pipeline
+    // up front (first step active), instead of an unlabeled spine growing one row at a time.
+    renderWithClient(
+      <ChatThreadView
+        {...baseProps}
+        isStreaming={true}
+        userTurn="write me hooks about morning routines"
+        dispatchedSkill="hooks"
+        audienceLabel="Bootstrapped Founders"
+        stages={[]}
+      />,
+    );
+    // The label line names the skill and the audience…
+    expect(screen.getByText('Writing hooks')).toBeTruthy();
+    expect(screen.getByText(/for Bootstrapped Founders/)).toBeTruthy();
+    // …and the full hooks plan is visible from frame one (STAGE_PLANS.hooks).
+    expect(screen.getByText('Generating')).toBeTruthy();
+    expect(screen.getByText('Simulating your audience')).toBeTruthy();
+    expect(screen.getByText('Ranking')).toBeTruthy();
+    // No typing dots — the capsule owns the wait.
+    expect(screen.queryByText('Thinking…')).toBeNull();
+  });
+
+  it('after the run completes, the capsule collapses to the ✓ receipt ABOVE the cards', () => {
+    // Pre-capsule behavior: the spine unmounted the moment cards arrived and the run left no
+    // trace — the wait's provenance vanished. Now the same completed run renders the collapsed
+    // receipt (the per-skill views' idiom) above the cards for the rest of the turn.
+    renderWithClient(
+      <ChatThreadView
+        {...baseProps}
+        isStreaming={true}
+        dispatchedSkill="ideas"
+        streamingCardBlocks={[IDEA_CARD]}
+        stages={[
+          { name: 'Generating', status: 'done' },
+          { name: 'Simulating your audience', status: 'done' },
+          { name: 'Ranking', status: 'done' },
+        ]}
+      />,
+    );
+    // The receipt line (SkillProgress collapsed) with the ideas done-label + step count…
+    expect(screen.getByText('Ran your audience')).toBeTruthy();
+    expect(screen.getByText('3 steps')).toBeTruthy();
+    // …the live spine is gone, and the cards render below.
+    expect(screen.queryByLabelText('Skill run progress')).toBeNull();
+    expect(screen.getByText('The 5am myth')).toBeTruthy();
+  });
+
+  it('legacy stream (stages but NO dispatch frame) keeps the unlabeled spine', () => {
+    renderWithClient(
+      <ChatThreadView
+        {...baseProps}
+        isStreaming={true}
+        stages={[{ name: 'Generating', status: 'active' }]}
+      />,
+    );
+    expect(screen.getByLabelText('Skill run progress')).toBeTruthy();
+    // No skill label — the client doesn't know which skill; it must not guess one.
+    expect(screen.queryByText('Writing hooks')).toBeNull();
+    expect(screen.queryByText('Finding ideas')).toBeNull();
+  });
+
   // ── Follow-up chips (chat-followups) — the redesign of the retired chain-handoff CTA ──────────
   // The old code ALWAYS rendered handoffsFor('idea') ("Develop this →" / "Rewrite for this audience →")
   // regardless of what ran, and tapping switched the active tool. These guards fail against that code.

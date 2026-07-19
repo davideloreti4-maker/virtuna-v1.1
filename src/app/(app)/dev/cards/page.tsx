@@ -26,6 +26,8 @@ import { MessageBlocks } from "@/components/thread/message-blocks";
 import { AmbientRoom } from "@/components/audience-lens/AmbientRoom";
 import { AudiencePresence } from "@/components/audience-lens/audience-presence";
 import { useState } from "react";
+import { ProgressChecklist } from "@/components/thread/progress-checklist";
+import { SKILL_RUN_META } from "@/components/thread/run-capsule";
 import { Reading } from "@/components/reading/reading";
 import { ReadingSkeleton } from "@/components/reading/reading-skeleton";
 import {
@@ -544,6 +546,119 @@ const THREAD_VIEWS: { id: string; label: string; note: string; node: React.React
   },
 ];
 
+// ── Group A2: the IN-FLIGHT states — the run capsule, previewable at last (2026-07-19) ────────
+// The 07-14 audit's lesson: a surface with no cheap way to LOOK at it will drift. The thread
+// views' completed states preview above, and Reading's skeleton previews below — but the thread's
+// LIVE loading states (the spine mid-run, the chat capsule, the field waits) were reachable only
+// by spending a real paid run. These mount the REAL components in their mid-run shapes.
+const INFLIGHT_VIEWS: { id: string; label: string; note: string; node: React.ReactNode }[] = [
+  {
+    id: "loading-hooks",
+    label: "In-flight · Hooks (skill view)",
+    note: "A hooks run mid-generation: intro voice line + the plan-seeded spine (Generating done, Simulating active with rotating honest sub-copy). What every composer-mode skill wait looks like.",
+    node: (
+      <HooksThreadView
+        persistedBlocks={[]}
+        streamingBlocks={[]}
+        statusMessage={null}
+        stages={[
+          { name: "Generating", status: "done" },
+          { name: "Simulating your audience", status: "active" },
+        ]}
+        followupText={null}
+        warnings={[]}
+        isStreaming={true}
+        error={null}
+        platform="tiktok"
+        userTurn={USER_TURNS.hooks}
+        audienceLabel={AUDIENCE}
+      />
+    ),
+  },
+  {
+    id: "loading-chat-dispatch",
+    label: "In-flight · Chat agent dispatch",
+    note: "The agent routed 'write me hooks…' to the hooks skill: the `dispatch` SSE event labels the capsule ('Writing hooks — for …') and seeds the FULL hooks plan before the first stage event. Pre-capsule this was an unlabeled spine growing one row at a time.",
+    node: (
+      <ChatThreadView
+        persistedBlocks={[]}
+        streamingBlocks={[]}
+        streamingCardBlocks={[]}
+        stages={[{ name: "Generating", status: "active" }]}
+        dispatchedSkill="hooks"
+        audienceLabel={AUDIENCE}
+        isStreaming={true}
+        coldStart={false}
+        nudgeShown={false}
+        error={null}
+        platform="tiktok"
+        userTurn="write me hooks about why over-editing hurts your reach"
+      />
+    ),
+  },
+  {
+    id: "chat-receipt",
+    label: "Chat agent · run receipt",
+    note: "The same dispatched run one beat later: stages all landed, the capsule collapsed to the ✓ receipt (expandable step history) ABOVE the cards — the run's provenance no longer vanishes when the cards arrive. Identical grammar to the per-skill views.",
+    node: (
+      <ChatThreadView
+        persistedBlocks={[]}
+        streamingBlocks={[{ type: "markdown", props: { text: "Two angles that hold — want a script for #1?" } }]}
+        streamingCardBlocks={[IDEA_BLOCKS[0]]}
+        stages={[
+          { name: "Generating", status: "done" },
+          { name: "Simulating your audience", status: "done" },
+          { name: "Ranking", status: "done" },
+        ]}
+        dispatchedSkill="ideas"
+        audienceLabel={AUDIENCE}
+        isStreaming={false}
+        coldStart={false}
+        nudgeShown={false}
+        error={null}
+        platform="tiktok"
+        onFollowup={noop}
+        userTurn="give me ideas about morning routines"
+      />
+    ),
+  },
+  {
+    id: "loading-field-test",
+    label: "In-flight · Test field (the 2-minute wait)",
+    note: "The in-thread /test run mid-analysis — the SAME 3-step plan as the /analyze skeleton, derived from real phase boundaries + elapsed floors. Composition matches UploadField's busy branch 1:1 (the field itself can't be forced mid-run without a live pipeline).",
+    node: (
+      <div className="mx-auto flex w-full max-w-[760px] flex-col gap-3 rounded-xl border border-white/[0.06] bg-surface-sunken px-4 py-4">
+        <p className="text-[13px] font-medium text-foreground-secondary">{SKILL_RUN_META.test!.running}</p>
+        <ProgressChecklist
+          stages={[
+            { name: "Fetching your video", status: "done" },
+            { name: "Watching it frame by frame", status: "active" },
+            { name: "Simulating your audience", status: "pending" },
+          ]}
+          plan={SKILL_RUN_META.test!.plan}
+        />
+      </div>
+    ),
+  },
+  {
+    id: "loading-scoring-card",
+    label: "In-flight · card scoring shimmer",
+    note: "A hook card streamed-in before its `score` event lands (scored:false): the ProofUnit renders the matte 'Scoring with your reactors…' shimmer strip, then resolves in place. The last visible beat of every generator run.",
+    node: (
+      <div className="mx-auto w-full max-w-[760px]">
+        <MessageBlocks
+          body={[
+            {
+              type: "hook-card",
+              props: { ...(HOOK_BLOCKS[0]!.props as Record<string, unknown>), scored: false },
+            },
+          ]}
+        />
+      </div>
+    ),
+  },
+];
+
 /**
  * The Reading's STATES — every one of them, not just the happy path (2026-07-14).
  *
@@ -780,6 +895,7 @@ export default function DevCardsPage() {
 
   const sections = [
     ...THREAD_VIEWS.map((v) => ({ id: v.id, label: v.label })),
+    ...INFLIGHT_VIEWS.map((v) => ({ id: v.id, label: v.label })),
     { id: "reading", label: "Test / Reading" },
     { id: "room", label: "The Room" },
     ...BLOCK_SECTIONS.map((s) => ({ id: s.type, label: s.label })),
@@ -819,6 +935,19 @@ export default function DevCardsPage() {
             <section key={v.id} id={v.id} className="scroll-mt-6">
               <SectionHead label={v.label} code={`${v.id}-thread-view`} note={v.note} />
               {/* Neutral thread backdrop so proportions read like /home. The view owns its 760px column. */}
+              <div className="rounded-[var(--radius-lg)] border border-white/[0.06] bg-background py-2">
+                {v.node}
+              </div>
+            </section>
+          ))}
+        </div>
+
+        {/* Group A2 — the in-flight states (the run capsule) */}
+        <div className="flex flex-col gap-4 pt-14">
+          <SectionKicker>In-flight · the run capsule (loading states, mid-run)</SectionKicker>
+          {INFLIGHT_VIEWS.map((v) => (
+            <section key={v.id} id={v.id} className="scroll-mt-6">
+              <SectionHead label={v.label} code={`${v.id}`} note={v.note} />
               <div className="rounded-[var(--radius-lg)] border border-white/[0.06] bg-background py-2">
                 {v.node}
               </div>

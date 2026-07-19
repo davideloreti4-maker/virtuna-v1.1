@@ -13,6 +13,7 @@ const CTX = { platform: "tiktok" as const, profileRow: null, audience: null };
 function mkSkill(name: string, opts: { paid?: boolean; run?: SkillTool["run"] } = {}): SkillTool {
   return {
     name,
+    skillKey: name,
     paid: opts.paid ?? true,
     schema: { type: "function", function: { name, parameters: { type: "object", properties: {} } } },
     run:
@@ -25,6 +26,7 @@ function mkSkill(name: string, opts: { paid?: boolean; run?: SkillTool["run"] } 
 function mkAnalysisSkill(name: string, opts: { run?: SkillTool["run"] } = {}): SkillTool {
   return {
     name,
+    skillKey: name,
     paid: true,
     primaryArg: "draft",
     schema: { type: "function", function: { name, parameters: { type: "object", properties: {} } } },

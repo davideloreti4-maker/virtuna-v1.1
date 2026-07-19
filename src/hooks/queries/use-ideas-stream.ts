@@ -78,6 +78,8 @@ export interface UseIdeasStreamReturn {
   streamingCards: PartialIdeaCard[];
   /** Human-readable status message from the status event. */
   statusMessage: string | null;
+  /** Run-level degrade notices from the `warning` SSE event ([] on a clean run). */
+  warnings: string[];
   /** True while the SSE stream is active. */
   isStreaming: boolean;
   /** Error string if the stream or route failed. */
@@ -133,6 +135,7 @@ export interface UseIdeasStreamReturn {
 export function useIdeasStream(): UseIdeasStreamReturn {
   const [streamingCards, setStreamingCards] = useState<PartialIdeaCard[]>([]);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [warnings, setWarnings] = useState<string[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDone, setIsDone] = useState(false);
@@ -167,6 +170,7 @@ export function useIdeasStream(): UseIdeasStreamReturn {
   const reset = useCallback(() => {
     setStreamingCards([]);
     setStatusMessage(null);
+    setWarnings([]);
     setIsStreaming(false);
     setError(null);
     setIsDone(false);
@@ -202,6 +206,7 @@ export function useIdeasStream(): UseIdeasStreamReturn {
     // Reset state for a new run
     setStreamingCards([]);
     setStatusMessage(null);
+    setWarnings([]);
     setError(null);
     setIsDone(false);
     setIsStreaming(true);
@@ -288,6 +293,13 @@ export function useIdeasStream(): UseIdeasStreamReturn {
             // Model-authored follow-up turn (D-03)
             const text = typeof data.text === 'string' ? data.text : null;
             if (text && isMountedRef.current) setFollowupText(text);
+          } else if (eventType === 'warning') {
+            // Run-level degrade notices (mirrors use-hooks-stream). The route has emitted these
+            // since grounding shipped; this branch is what reads them at the glass.
+            const list = Array.isArray(data.warnings)
+              ? data.warnings.filter((w: unknown): w is string => typeof w === 'string')
+              : [];
+            if (list.length > 0 && isMountedRef.current) setWarnings(list);
 
           } else if (eventType === 'status') {
             const msg = typeof data.message === 'string' ? data.message : null;
@@ -372,6 +384,7 @@ export function useIdeasStream(): UseIdeasStreamReturn {
             if (isMountedRef.current) {
               setIsDone(true);
               setStatusMessage(null);
+    setWarnings([]);
               setIsStreaming(false);
             }
 
@@ -414,6 +427,7 @@ export function useIdeasStream(): UseIdeasStreamReturn {
 
     setStreamingCards([]);
     setStatusMessage(null);
+    setWarnings([]);
     setError(null);
     setIsDone(false);
     setIsStreaming(true);
@@ -549,6 +563,7 @@ export function useIdeasStream(): UseIdeasStreamReturn {
             if (isMountedRef.current) {
               setIsDone(true);
               setStatusMessage(null);
+    setWarnings([]);
               setIsStreaming(false);
             }
           } else if (eventType === 'error') {
@@ -608,6 +623,7 @@ export function useIdeasStream(): UseIdeasStreamReturn {
   return {
     streamingCards,
     statusMessage,
+    warnings,
     isStreaming,
     error,
     isDone,

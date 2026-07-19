@@ -38,9 +38,11 @@ function mockStream(rounds: StreamChunk[][]): StreamingChatComplete {
   }) as unknown as StreamingChatComplete;
 }
 
-function mkSkill(name: string, opts: { paid?: boolean; primaryArg?: "topic" | "draft"; run?: SkillTool["run"] } = {}): SkillTool {
+function mkSkill(name: string, opts: { paid?: boolean; primaryArg?: "topic" | "draft"; run?: SkillTool["run"]; skillKey?: string } = {}): SkillTool {
   return {
     name,
+    // Display key (the run-capsule seam) — mirrors the real registry's mapping shape.
+    skillKey: opts.skillKey ?? name.replace(/^generate_|^write_/, ""),
     paid: opts.paid ?? true,
     primaryArg: opts.primaryArg,
     schema: { type: "function", function: { name, parameters: { type: "object", properties: {} } } },
@@ -96,6 +98,43 @@ describe("runChatAgentStream [tools]", () => {
     expect(onBlock).toHaveBeenCalledWith({ type: "idea-card", props: { topic: "morning routines" } });
     expect(res.text).toBe("Made you 1 angle — want hooks?");
     expect(ideas.run).toHaveBeenCalledWith({ topic: "morning routines", anchor: undefined, draft: undefined }, CTX);
+  });
+
+  it("announces the dispatch (onDispatch with the skill KEY) BEFORE the skill runs — the run-capsule seam", async () => {
+    // The client's labeled progress capsule hangs off this: the dispatch event names WHICH skill
+    // the agent chose the moment it chooses it, so the spine can seed the right plan + label
+    // before the first stage event arrives. Key = the tool's display key ('ideas'), not the tool
+    // name ('generate_ideas').
+    const order: string[] = [];
+    const ideas = mkSkill("generate_ideas", {
+      run: vi.fn(async () => {
+        order.push("run");
+        return { blocks: [], warnings: [] };
+      }),
+    });
+    const onDispatch = vi.fn((skill: string) => order.push(`dispatch:${skill}`));
+    const stream = mockStream([
+      [toolName(0, "c1", "generate_ideas"), toolArgs(0, '{"topic": "x"}')],
+      [textChunk("done")],
+    ]);
+
+    await runChatAgentStream(baseInput({ onDispatch }), DEPS(stream, { skills: [ideas] }));
+
+    expect(onDispatch).toHaveBeenCalledTimes(1);
+    expect(onDispatch).toHaveBeenCalledWith("ideas");
+    expect(order).toEqual(["dispatch:ideas", "run"]);
+  });
+
+  it("does NOT announce a dispatch for request_input or search_corpus (free tools, no run)", async () => {
+    const onDispatch = vi.fn();
+    const stream = mockStream([
+      [toolName(0, "c1", "request_input"), toolArgs(0, '{"action": "explore"}')],
+      [textChunk("fill the field")],
+    ]);
+
+    await runChatAgentStream(baseInput({ onDispatch }), DEPS(stream, { skills: [] }));
+
+    expect(onDispatch).not.toHaveBeenCalled();
   });
 
   it("feeds a search_corpus result back to the model (grounding-as-a-tool)", async () => {

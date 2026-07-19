@@ -63,7 +63,7 @@ function TemplatedHook({ text }: { text: string }) {
         /^\[[^\]]+\]$/.test(p) ? (
           <span
             key={i}
-            className="mx-px rounded-[4px] bg-white/[0.06] px-1 py-px text-foreground"
+            className="mx-px rounded-xs bg-white/[0.06] px-1 py-px text-foreground"
           >
             {p}
           </span>
@@ -146,7 +146,7 @@ export function ProofReceipt({
         {/* Stat pills — colored multiplier (a real outlier is a positive signal) + views. */}
         <span className="flex flex-wrap items-center gap-1.5">
           {mult && (
-            <span className="inline-flex items-center gap-1 rounded-[6px] bg-[var(--color-positive)]/[0.14] px-1.5 py-0.5 text-[12px] font-semibold tabular-nums text-[var(--color-positive)]">
+            <span className="inline-flex items-center gap-1 rounded-sm bg-[var(--color-positive)]/[0.14] px-1.5 py-0.5 text-[12px] font-semibold tabular-nums text-[var(--color-positive)]">
               <TrendUp size={12} weight="bold" aria-hidden="true" />
               {mult}
             </span>
@@ -155,7 +155,7 @@ export function ProofReceipt({
             <span className="text-[11px] text-foreground-muted">{proof.baselineLabel}</span>
           )}
           {views && (
-            <span className="inline-flex items-center gap-1 rounded-[6px] bg-white/[0.05] px-1.5 py-0.5 text-[12px] tabular-nums text-foreground-secondary">
+            <span className="inline-flex items-center gap-1 rounded-sm bg-white/[0.05] px-1.5 py-0.5 text-[12px] tabular-nums text-foreground-secondary">
               <Eye size={12} weight="regular" aria-hidden="true" />
               {views}
             </span>

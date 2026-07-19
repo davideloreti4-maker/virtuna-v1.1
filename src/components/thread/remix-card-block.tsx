@@ -25,6 +25,7 @@ import { ProofUnit } from './proof-unit';
 import { ProofReceipt } from './proof-receipt';
 import { CoverFill } from '@/components/primitives/CoverFill';
 import { SaveAffordance } from '@/components/thread/save-affordance';
+import { CardPrimaryAction, CardActionBar, SECTION_LABEL } from './card-primitives';
 import { CaretToggle } from './caret-toggle';
 
 export interface RemixCardRendererProps {
@@ -92,7 +93,7 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
             <span className="relative block aspect-[9/16] w-10 shrink-0 overflow-hidden rounded-sm border border-white/[0.06]">
               <CoverFill coverUrl={coverUrl} playSize={12} />
             </span>
-            <span className="text-[11px] uppercase tracking-[0.05em] text-foreground-muted">Remixing this post</span>
+            <span className={SECTION_LABEL}>Remixing this post</span>
           </div>
         ) : null}
 
@@ -122,11 +123,11 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
         {/* Angle / For — two quiet columns. */}
         <div className="flex gap-6">
           <div className="min-w-0">
-            <p className="mb-0.5 text-[11px] uppercase tracking-[0.05em] text-foreground-muted">Angle</p>
+            <p className={`mb-0.5 ${SECTION_LABEL}`}>Angle</p>
             <p className="text-[13px] leading-snug text-foreground-secondary">{angle}</p>
           </div>
           <div className="min-w-0">
-            <p className="mb-0.5 text-[11px] uppercase tracking-[0.05em] text-foreground-muted">For</p>
+            <p className={`mb-0.5 ${SECTION_LABEL}`}>For</p>
             <p className="text-[13px] leading-snug text-foreground-secondary">{whoItsFor}</p>
           </div>
         </div>
@@ -172,40 +173,38 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
       {expanded && (
         <div className="flex flex-col gap-4 border-t border-white/[0.06] px-4 py-3">
           <div>
-            <p className="mb-1 text-[11px] uppercase tracking-[0.05em] text-foreground-muted">Hook pattern</p>
+            <p className={`mb-1 ${SECTION_LABEL}`}>Hook pattern</p>
             <p className="text-[13.5px] leading-relaxed text-foreground-secondary">{sourceDecode.hookPattern}</p>
           </div>
           <div>
-            <p className="mb-1 text-[11px] uppercase tracking-[0.05em] text-foreground-muted">Structure</p>
+            <p className={`mb-1 ${SECTION_LABEL}`}>Structure</p>
             <p className="text-[13.5px] leading-relaxed text-foreground-secondary">{sourceDecode.structure}</p>
           </div>
           <div>
-            <p className="mb-1 text-[11px] uppercase tracking-[0.05em] text-foreground-muted">The turn</p>
+            <p className={`mb-1 ${SECTION_LABEL}`}>The turn</p>
             <p className="text-[13.5px] leading-relaxed text-foreground-secondary">{sourceDecode.theTurn}</p>
           </div>
           <div>
-            <p className="mb-1 text-[11px] uppercase tracking-[0.05em] text-foreground-muted">Emotional beat</p>
+            <p className={`mb-1 ${SECTION_LABEL}`}>Emotional beat</p>
             <p className="text-[13.5px] leading-relaxed text-foreground-secondary">{sourceDecode.emotionalBeat}</p>
           </div>
         </div>
       )}
 
-      {/* Actions — one cream primary (forward chain "Develop into hooks →") + Save icon. */}
-      <div className="flex items-center gap-3.5 border-t border-white/[0.06] px-4 py-3">
-        <button
-          type="button"
+      {/* Actions — one cream primary (forward chain "Develop into hooks →") + Save icon (§0.5.7). */}
+      <CardActionBar>
+        <CardPrimaryAction
           onClick={onDevelop}
           disabled={!onDevelop}
-          className="rounded-[8px] bg-[var(--color-action)] px-3.5 py-2 text-[13px] font-semibold text-[var(--color-action-foreground)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20 disabled:cursor-default disabled:opacity-40"
           aria-label="Develop this remix concept into hooks"
           title={onDevelop ? 'Develop this remix into hooks' : 'Wired in Plan 06-05'}
         >
           Develop into hooks →
-        </button>
+        </CardPrimaryAction>
 
         {/* A remix output is an adapted hook; save it as item_type "hook". */}
         <SaveAffordance className="ml-auto" item_type="hook" title={adaptedHook} snapshot={block.props} />
-      </div>
+      </CardActionBar>
     </div>
   );
 }

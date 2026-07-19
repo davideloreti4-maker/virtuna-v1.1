@@ -26,6 +26,7 @@ import { BAND_COLOR } from './band-block';
 import { ProofUnit } from './proof-unit';
 import { ProofReceipt, NoSourceNote } from './proof-receipt';
 import { SaveAffordance } from '@/components/thread/save-affordance';
+import { CardEyebrow, CardPrimaryAction, CardActionBar, SECTION_LABEL } from './card-primitives';
 import { CaretToggle } from './caret-toggle';
 import { TargetReaction } from './target-reaction';
 import { archetypeDisplayName } from '@/lib/audience/archetype-names';
@@ -100,23 +101,25 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
             On a targeted (calibrated) run the kicker NAMES the person this idea was written for.
             "Made for your audience" is what we can honestly say when we wrote it for nobody in
             particular — the moment we can name the reader, saying the vaguer thing is a downgrade. */}
-        <div className="flex items-center justify-between gap-3">
-          <span className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.05em] text-foreground-muted">
-            <span className="h-[6px] w-[6px] rounded-full" style={{ backgroundColor: bandColor }} aria-hidden="true" />
-            {target
+        <CardEyebrow
+          kicker={
+            target
               ? `For your ${target.label ?? archetypeDisplayName(target.archetype)}`
-              : 'Made for your audience'}
-          </span>
-          {needsTake && (
-            <span
-              className="shrink-0 rounded-full border px-2 py-0.5 text-[11px] uppercase tracking-[0.05em]"
-              style={{ color: 'var(--color-warning)', borderColor: 'rgba(224,189,114,0.25)' }}
-              title="This idea leans on a perspective only you can supply"
-            >
-              your take
-            </span>
-          )}
-        </div>
+              : 'Made for your audience'
+          }
+          dotColor={bandColor}
+          meta={
+            needsTake ? (
+              <span
+                className="rounded-full border px-2 py-0.5 text-[11px] uppercase tracking-[0.05em]"
+                style={{ color: 'var(--color-warning)', borderColor: 'rgba(224,189,114,0.25)' }}
+                title="This idea leans on a perspective only you can supply"
+              >
+                your take
+              </span>
+            ) : undefined
+          }
+        />
 
         {/* Title — the hero */}
         <h3 className="text-[17px] font-semibold leading-snug tracking-[-0.01em] text-foreground">{title}</h3>
@@ -182,26 +185,26 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
       {expanded && (
         <div className="flex flex-col gap-3 border-t border-white/[0.06] px-4 py-3">
           <div>
-            <p className="mb-1 text-[11px] uppercase tracking-[0.05em] text-foreground-muted">Mechanism</p>
+            <p className={`mb-1 ${SECTION_LABEL}`}>Mechanism</p>
             <p className="text-[13.5px] leading-relaxed text-foreground-secondary">{mechanism}</p>
           </div>
           <div>
-            <p className="mb-1 text-[11px] uppercase tracking-[0.05em] text-foreground-muted">Seed hook</p>
+            <p className={`mb-1 ${SECTION_LABEL}`}>Seed hook</p>
             <p className="text-[13.5px] leading-relaxed text-foreground-secondary">{seedHook}</p>
           </div>
           <div className="overflow-hidden rounded-lg border border-white/[0.06] bg-white/[0.02]">
             <div className="divide-y divide-white/[0.04]">
               <div className="px-3 py-2">
-                <span className="text-[11px] uppercase tracking-[0.05em] text-foreground-muted">Topic</span>
+                <span className={SECTION_LABEL}>Topic</span>
                 <p className="mt-0.5 text-[13.5px] leading-snug text-foreground-secondary">{topic}</p>
               </div>
               <div className="px-3 py-2">
-                <span className="text-[11px] uppercase tracking-[0.05em] text-foreground-muted">Take</span>
+                <span className={SECTION_LABEL}>Take</span>
                 <p className="mt-0.5 text-[13.5px] leading-snug text-foreground-secondary">{take}</p>
               </div>
               {format && (
                 <div className="px-3 py-2">
-                  <span className="text-[11px] uppercase tracking-[0.05em] text-foreground-muted">Format</span>
+                  <span className={SECTION_LABEL}>Format</span>
                   <p className="mt-0.5 text-[13.5px] leading-snug text-foreground-secondary">{format}</p>
                 </div>
               )}
@@ -210,19 +213,17 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
         </div>
       )}
 
-      {/* Actions — one cream primary (forward chain "Develop into hooks →") + Save icon. */}
-      <div className="flex items-center gap-3.5 border-t border-white/[0.06] px-4 py-3">
+      {/* Actions — one cream primary (forward chain "Develop into hooks →") + Save icon (§0.5.7). */}
+      <CardActionBar>
         {!developed ? (
           <>
-            <button
-              type="button"
+            <CardPrimaryAction
               onClick={() => void handleDevelop()}
               disabled={developing}
-              className="rounded-[8px] bg-[var(--color-action)] px-3.5 py-2 text-[13px] font-semibold text-[var(--color-action-foreground)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20 disabled:cursor-wait disabled:opacity-60"
               aria-label="Develop this idea into hooks"
             >
               {developing ? 'Developing…' : 'Develop into hooks →'}
-            </button>
+            </CardPrimaryAction>
             {developError && (
               <p className="text-[12px]" style={{ color: 'var(--color-error)' }} role="alert">
                 {developError}
@@ -234,7 +235,7 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
         )}
 
         <SaveAffordance className="ml-auto" item_type="idea" title={title} snapshot={block.props} />
-      </div>
+      </CardActionBar>
     </div>
   );
 }

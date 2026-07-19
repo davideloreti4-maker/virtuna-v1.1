@@ -75,6 +75,8 @@ export interface UseScriptStreamReturn {
    * start of every run; false on a clean grounded run or a platform that can't be scraped.
    */
   outliersAvailable: boolean;
+  /** Run-level degrade notices from the `warning` SSE event ([] on a clean run). */
+  warnings: string[];
   /**
    * Start the Script stream.
    * ask: topic/topic-seed or empty; anchor: hookLine from hooks→script handoff (optional).
@@ -110,6 +112,7 @@ export function useScriptStream(): UseScriptStreamReturn {
   const [stages, setStages] = useState<StageState[]>([]);
   const [followupText, setFollowupText] = useState<string | null>(null);
   const [outliersAvailable, setOutliersAvailable] = useState(false);
+  const [warnings, setWarnings] = useState<string[]>([]);
 
   const abortRef = useRef<AbortController | null>(null);
   const isMountedRef = useRef(true);
@@ -135,6 +138,7 @@ export function useScriptStream(): UseScriptStreamReturn {
     setError(null);
     setIsDone(false);
     setStages([]);
+    setWarnings([]);
     setFollowupText(null);
     setOutliersAvailable(false);
     cardsRef.current = [];
@@ -168,6 +172,7 @@ export function useScriptStream(): UseScriptStreamReturn {
     setIsDone(false);
     setIsStreaming(true);
     setStages([]);
+    setWarnings([]);
     setFollowupText(null);
     setOutliersAvailable(false);
     cardsRef.current = [];
@@ -241,6 +246,14 @@ export function useScriptStream(): UseScriptStreamReturn {
               stagesRef.current = updated;
               if (isMountedRef.current) setStages([...updated]);
             }
+
+          } else if (eventType === 'warning') {
+            // Run-level degrade notices (mirrors use-hooks-stream). The route has emitted these
+            // since grounding shipped; this branch is what reads them at the glass.
+            const list = Array.isArray(data.warnings)
+              ? data.warnings.filter((w: unknown): w is string => typeof w === 'string')
+              : [];
+            if (list.length > 0 && isMountedRef.current) setWarnings(list);
 
           } else if (eventType === 'followup') {
             const text = typeof data.text === 'string' ? data.text : null;
@@ -362,6 +375,7 @@ export function useScriptStream(): UseScriptStreamReturn {
     stages,
     followupText,
     outliersAvailable,
+    warnings,
     start,
     findOutliers,
     stop,

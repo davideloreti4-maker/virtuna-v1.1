@@ -281,3 +281,61 @@ describe("Test field (kind: upload — a video file OR a TikTok URL)", () => {
     expect((screen.getByText("See the full breakdown →") as HTMLAnchorElement).getAttribute("href")).toBe("/analyze/an-2");
   });
 });
+
+// ── The run-capsule waits (2026-07-19) — every field's in-flight state speaks the spine idiom ──
+// Before this, remix/explore showed an unlabeled, unseeded spine; read/account a bare spinner
+// line; and the Test field's ~2-minute Max run was ONE static sentence. These lock the upgrade:
+// plan-seeded spines with the running label as the field header, and the one-row capsule for the
+// stageless routes.
+
+describe("Field run capsules", () => {
+  it("remix mid-run: the FULL remix plan renders with the running label as header", () => {
+    remixState.isStreaming = true;
+    remixState.stages = [{ name: "Resolving", status: "active" }];
+    renderField(REMIX);
+    // Header swaps from the field question to the running label.
+    expect(screen.getByText("Reworking the video")).toBeTruthy();
+    // The whole pipeline is visible from the first live event (plan-seeded).
+    for (const step of ["Resolving", "Decoding", "Adapting", "Simulating your audience"]) {
+      expect(screen.getByText(step)).toBeTruthy();
+    }
+  });
+
+  it("explore mid-run: plan-seeded spine + running label", () => {
+    exploreState.isStreaming = true;
+    exploreState.stages = [{ name: "Pulling outliers", status: "active" }];
+    renderField(EXPLORE);
+    expect(screen.getByText("Scanning for outliers")).toBeTruthy();
+    expect(screen.getByText("Scoring for your audience")).toBeTruthy();
+  });
+
+  it("read mid-run: the one-row capsule (no spinner, no stale question)", async () => {
+    // The read route is a plain POST — hold it open to observe the in-flight state.
+    vi.stubGlobal("fetch", vi.fn(() => new Promise(() => {})));
+    renderField(READ);
+    fireEvent.click(screen.getByText("Read it →"));
+    expect(await screen.findByText("Reading it past your audience")).toBeTruthy();
+    // The field question is gone while running (the capsule row carries the job).
+    expect(screen.queryByText("What should I read?")).toBeNull();
+    expect(screen.getByLabelText("Skill run progress")).toBeTruthy();
+  });
+
+  it("account mid-run: the one-row capsule", () => {
+    accountState.isStreaming = true;
+    renderField(ACCOUNT);
+    expect(screen.getByText("Reading your account")).toBeTruthy();
+    expect(screen.getByLabelText("Skill run progress")).toBeTruthy();
+  });
+
+  it("test mid-run (analyzing): the 3-step /analyze plan renders, step 1 active", () => {
+    analysisState.phase = "analyzing";
+    renderField(TEST);
+    expect(screen.getByText("Testing your video")).toBeTruthy();
+    for (const step of ["Fetching your video", "Watching it frame by frame", "Simulating your audience"]) {
+      expect(screen.getByText(step)).toBeTruthy();
+    }
+    // Step 1 is the active one at t=0 (elapsed floors haven't advanced the spine yet).
+    expect(screen.getByLabelText("Fetching your video: active")).toBeTruthy();
+    expect(screen.getByLabelText("Watching it frame by frame: pending")).toBeTruthy();
+  });
+});

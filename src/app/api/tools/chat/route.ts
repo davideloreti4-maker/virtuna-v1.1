@@ -21,6 +21,7 @@
  *   - Rate-limit deferred to v2 (auth + ask-cap are v1 boundary)
  *
  * SSE STREAM:
+ *   event: dispatch { skill: string }   — the agent committed to a skill run (display key)
  *   event: meta  { coldStart: boolean }  — structured cold-start signal (D-08); emitted FIRST
  *   event: token { delta: string }       — per-token text chunk
  *   event: done  { }                     — stream complete
@@ -400,6 +401,10 @@ export async function POST(request: Request): Promise<Response> {
             },
             onToken: (delta) => send("token", { delta }),
             onBlock: (block) => send("block", { block }),
+            // The run-capsule seam: the moment the agent commits to a skill, tell the client WHICH
+            // (display key), so the spine labels itself + seeds that skill's stage plan before the
+            // first stage event. One frame, additive — old clients simply ignore the event.
+            onDispatch: (skill) => send("dispatch", { skill }),
           });
 
           // Persist: each skill's card-blocks first (in run order), then the assistant text. A turn that

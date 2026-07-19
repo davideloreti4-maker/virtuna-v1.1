@@ -18,7 +18,7 @@ export function PersonaChatTurnBlockRenderer({ block }: { block: PersonaChatTurn
     <div className={isUser ? 'flex justify-end' : 'flex justify-start'}>
       <div
         className={
-          'max-w-[85%] rounded-[12px] px-3 py-2 text-[14px] leading-snug ' +
+          'max-w-[85%] rounded-lg px-3 py-2 text-[14px] leading-snug ' +
           (isUser
             ? 'bg-[var(--color-surface)] text-foreground'
             : 'border border-[var(--color-border)] text-foreground')

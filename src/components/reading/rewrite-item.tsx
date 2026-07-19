@@ -49,7 +49,7 @@ export function RewriteItem({ rewrite, showOriginal = true }: RewriteItemProps) 
   return (
     <div
       data-testid="reading-rewrite"
-      className="flex flex-col gap-1 rounded-[8px] border border-[var(--color-border)] p-3"
+      className="flex flex-col gap-1 rounded-md border border-[var(--color-border)] p-3"
     >
       {/* Struck-through original — the verbatim hook line being replaced.
           Omitted when the list hoists a shared original above the cards. */}
@@ -70,7 +70,7 @@ export function RewriteItem({ rewrite, showOriginal = true }: RewriteItemProps) 
           onClick={handleCopy}
           // Sanctioned coral surface: coral bg + dark-brown accent-foreground text.
           // Matte (no glow). Focus ring is the accent (also a reserved coral use).
-          className="shrink-0 rounded-[6px] bg-action px-2 py-1 text-[11px] font-medium text-action-foreground transition-colors hover:bg-action/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/10"
+          className="shrink-0 rounded-sm bg-action px-2 py-1 text-[11px] font-medium text-action-foreground transition-colors hover:bg-action/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/10"
         >
           {copied ? 'Copied' : 'Copy'}
         </button>
