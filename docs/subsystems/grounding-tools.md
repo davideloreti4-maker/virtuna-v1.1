@@ -196,11 +196,19 @@ The detect-and-prefetch fallback is **discarded**.
      rendered a real row (@bentellect · 3.0M views · working source link) showing **no
      multiplier** because that row is unmeasured, and the prose stayed honest about the thin
      result: "the corpus only returned one that matched all filters tightly".
-6. **NEXT — `corpus_stats`** + insight card (minN refusal ≥ 8; several cells are already thinner
-   than that, and the refusal copy needs a design pass in the no-source-note voice)
+6. `corpus_stats` + insight card (minN refusal ≥ 8; several cells are already thinner than
+   that, and the refusal copy needs a design pass in the no-source-note voice)
 7. `get_teardown` + teardown card
-8. Converge: hooks/ideas/script retrieval becomes `search_corpus` calls —
-   one pipeline, one contract
+8. Converge: hooks/ideas/script share the tool's honesty CONTRACT (not its call) —
+   one definition of "may this be cited / called proven", plus facets for ideas/script
+
+> **▶ NEXT SESSION — start at `docs/HANDOFF-2026-07-20-grounding-converge.md`.**
+> It recommends **step 8 (converge) ahead of step 6**, because hooks/ideas/script are the
+> paid day-one skills and the honesty contract currently lives only at the tool boundary,
+> while `corpus_stats` is a new surface nobody has asked for yet. That recommendation is
+> gated on an owner decision: the gen-skill grounding flags are still OFF in prod, so
+> converge improves a path users do not hit yet. The handoff argues both sides and carries
+> the verified consumer map + the instrument gotchas.
 
 ## 8. Open questions
 
