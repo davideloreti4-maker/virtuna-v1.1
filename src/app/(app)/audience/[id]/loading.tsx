@@ -1,29 +1,27 @@
-import { ConstellationMark } from "@/components/brand/constellation-mark";
-import { READING_CARD } from "@/components/reading/reading-section";
-import { cn } from "@/lib/utils";
-
 /**
- * /audience/[id] route loading skeleton (Theme B).
+ * /audience/[id] route loading skeleton.
  *
- * The page is a client component that renders its own DetailSkeleton while it fetches the
- * audience. This route-level skeleton covers the earlier window (segment JS load / hydration)
- * and mirrors that DetailSkeleton verbatim — back affordance + title lines above a framed
- * ConstellationMark card, inside the page's `max-w-4xl` wrapper — so there is no shift as the
- * client mounts and shows the identical shape.
+ * The page is a server component; this covers the segment-load window and
+ * mirrors its shell — breadcrumb, header facts line, then the population-hero
+ * zone — inside the same `max-w-[880px]` wrapper, so nothing shifts on mount.
  */
 export default function AudienceDetailLoading() {
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6 sm:p-6">
-      <div className="flex flex-col gap-6">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-white/[0.04] animate-pulse" />
-          <div className="flex-1 space-y-2">
-            <div className="h-6 w-48 rounded bg-white/[0.06] animate-pulse" />
-            <div className="h-4 w-32 rounded bg-white/[0.04] animate-pulse" />
-          </div>
-        </div>
-        <div className={cn(READING_CARD, "flex items-center justify-center py-16 animate-pulse")}>
-          <ConstellationMark width={64} litNodeIndex={-1} className="opacity-40" />
+    <div className="mx-auto w-full max-w-[880px] px-4 pb-24 pt-6 sm:px-6">
+      <div className="mb-6 flex items-center gap-3">
+        <div className="h-8 w-8 animate-pulse rounded-lg bg-white/[0.04]" />
+        <div className="h-3.5 w-20 animate-pulse rounded bg-white/[0.04]" />
+      </div>
+      <div className="flex items-center gap-3.5">
+        <div className="h-6 w-44 animate-pulse rounded bg-white/[0.06]" />
+        <div className="h-3 w-40 animate-pulse rounded bg-white/[0.04]" />
+      </div>
+      <div className="mt-7 grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_212px] lg:gap-12">
+        <div className="h-[240px] animate-pulse rounded-2xl bg-white/[0.02]" />
+        <div className="space-y-3">
+          <div className="h-2.5 w-12 animate-pulse rounded bg-white/[0.05]" />
+          <div className="h-3 w-full animate-pulse rounded bg-white/[0.04]" />
+          <div className="h-3 w-3/4 animate-pulse rounded bg-white/[0.04]" />
         </div>
       </div>
     </div>

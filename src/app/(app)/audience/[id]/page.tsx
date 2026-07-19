@@ -55,7 +55,7 @@ function toView(a: ConnectedAccount): AccountView {
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="relative min-h-full text-foreground">
-      <div className="mx-auto w-full max-w-[1120px] px-4 pb-24 pt-6 sm:px-6">
+      <div className="mx-auto w-full max-w-[880px] px-4 pb-24 pt-6 sm:px-6">
         <div className="rv-in mb-6 flex items-center gap-3">
           <Link
             href="/audience"
