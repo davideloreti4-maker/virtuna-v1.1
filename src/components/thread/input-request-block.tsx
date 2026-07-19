@@ -21,6 +21,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { reportCredit402 } from '@/lib/billing/credit-wall';
 import Link from 'next/link';
 import { nanoid } from 'nanoid';
 import type { InputRequestBlock } from '@/lib/tools/blocks';
@@ -273,6 +274,7 @@ function ReadField({ block }: InputRequestBlockRendererProps) {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Read failed' }));
+        reportCredit402(res.status, err); // wall dialog if it's the credit 402
         setError((err as { message?: string; error?: string }).message ?? (err as { error?: string }).error ?? 'Read failed');
         return;
       }

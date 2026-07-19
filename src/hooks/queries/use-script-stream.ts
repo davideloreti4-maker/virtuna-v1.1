@@ -26,6 +26,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { reportCredit402 } from '@/lib/billing/credit-wall';
 import type { HookProof, ScriptCardBlock, PopulationAggregateBlock, ReactionPersona } from '@/lib/tools/blocks';
 import { parseProofProp, parseGroundedProp, parsePopulationProp } from '@/lib/tools/blocks';
 import type { StageState } from '@/components/thread/progress-checklist';
@@ -195,6 +196,10 @@ export function useScriptStream(): UseScriptStreamReturn {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Script request failed' }));
+        if (reportCredit402(res.status, err)) {
+          // The wall dialog is up (CreditWallListener); surface the human sentence, not the slug.
+          throw new Error(err.message);
+        }
         throw new Error((err as { error?: string }).error ?? 'Script request failed');
       }
       if (!res.body) throw new Error('No response body');

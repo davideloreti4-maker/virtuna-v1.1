@@ -62,11 +62,14 @@ describe("<PricingTeaser /> — CONVERT-01", () => {
     expect(bullets.length).toBeGreaterThanOrEqual(PLANS.length * 3);
     expect(bullets.length).toBeLessThanOrEqual(PLANS.length * 4);
 
-    // What they're buying is Readings — so that's the first line of every card.
-    // Exact strings, not regexes: /50 Readings/ also matches "150 Readings".
-    expect(screen.getByText("50 Readings a month")).toBeInTheDocument();
-    expect(screen.getByText("150 Readings a month")).toBeInTheDocument();
-    expect(screen.getByText("Unlimited Readings")).toBeInTheDocument();
+    // What they're buying is credits — so the meter is the first line of every card.
+    // Exact SSOT strings, not regexes: a substring match would let the meter drift off
+    // the first bullet unnoticed. The numbers themselves are locked in pricing.test.ts.
+    for (const plan of PLANS) {
+      const meter = plan.bullets[0] ?? "";
+      expect(screen.getByText(meter)).toBeInTheDocument();
+      expect(meter).toMatch(/credits/i);
+    }
   });
 
   it("contains no off-site links (D-10 static guard)", () => {

@@ -68,7 +68,7 @@ const FAQ_ITEMS: readonly FaqItem[] = [
     // charges a dollar is how you earn chargebacks.
     id: "faq-free-trial",
     q: "Is there a free trial?",
-    a: "Not a free one — a $1 one. Any plan starts at $1 for 3 days and includes 5 Readings: enough to judge the predictions against your own videos. Every feature of the plan you picked is unlocked. On day 4 it renews at the plan price unless you cancel, and you can cancel any time from settings. We'd rather charge you a dollar and show you the real product than hand you a crippled free tier.",
+    a: "Not a free one — a $1 one. Any plan starts at $1 for 3 days and includes 50 credits — enough for 5 full Readings, to judge the predictions against your own videos. Every feature of the plan you picked is unlocked. On day 4 it renews at the plan price unless you cancel, and you can cancel any time from settings. We'd rather charge you a dollar and show you the real product than hand you a crippled free tier.",
   },
   {
     id: "faq-duration",

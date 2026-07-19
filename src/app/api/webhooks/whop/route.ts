@@ -14,6 +14,9 @@ function trialWindowFrom(now: Date) {
     trial_started_at: now.toISOString(),
     trial_ends_at: ends.toISOString(),
     is_trial: true, // denormalised flag; the window is the truth the quota check reads
+    // HISTORY, not state: never cleared (the full-price branch nulls the window fields but
+    // not this). The one-trial-per-account guard in api/whop/checkout reads it.
+    trial_used_at: now.toISOString(),
   };
 }
 
@@ -66,13 +69,13 @@ export async function POST(request: Request) {
 
         const tier = mapWhopProductToTier(data.product_id);
 
-        // TRIAL POOL. A $1 SKU grants the plan's TIER but only 5 Readings (TRIAL.readings),
+        // TRIAL POOL. A $1 SKU grants the plan's TIER but only 50 credits (TRIAL.credits),
         // so the subscription has to remember when the trial runs.
         //
         // The window is stamped ONCE, on the first grant of a given membership. A trial SKU
         // renews into its plan price under the SAME plan id, and Whop re-sends went_valid on
-        // renewal — re-stamping there would hand the customer a fresh 5-Reading trial (and
-        // re-cap a now-paying Pro at 5) every billing cycle. So: only stamp when this
+        // renewal — re-stamping there would hand the customer a fresh 50-credit trial (and
+        // re-cap a now-paying Pro at 50) every billing cycle. So: only stamp when this
         // membership has no window yet; leave it alone forever after.
         const isTrial = isTrialPlanId(data.product_id);
         const now = new Date();

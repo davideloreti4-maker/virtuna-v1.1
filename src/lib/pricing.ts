@@ -1,13 +1,21 @@
 /**
  * PRICING — the single source of truth for what Maven costs and what each plan buys.
  *
- * Owner-locked 2026-07-13: three paid plans, no free plan on the page, and a
- * $1 / 3-day trial available on ALL THREE (adopted from makeugc.ai's "Start for $1",
- * which sells a short paid trial that converts into the plan).
+ * Owner-locked 2026-07-19: three paid plans, no free plan on the page, a $1 / 3-day trial
+ * on ALL THREE — and the meter is CREDITS. One pool per plan; every paid action draws from
+ * it at a public per-action price (CREDIT_COSTS). "Reading" survives as the NAME of the
+ * flagship action — a full simulation — which costs 10 credits, so the plan allowances are
+ * the same capacity the 2026-07-13 Readings model sold (50 → 500, 150 → 1,500).
  *
- *   Creator  $49/mo   50 Readings
- *   Pro      $99/mo  150 Readings   ← best value
- *   Studio  $499/mo  unlimited + seats + API
+ *   Creator  $49/mo    500 credits
+ *   Pro      $99/mo  1,500 credits   ← best value
+ *   Studio  $499/mo  unlimited (fair-use ceiling) + seats + API
+ *
+ * WHY CREDITS, not Readings-only and not an opaque usage meter: half the product is now
+ * skills that are not Readings (hooks, ideas, scripts, explore, reads) and all of them cost
+ * real engine spend; a per-action price list is the one model a creator can predict, compare
+ * (the tools they shop against all sell credits), and top up. An invisible percentage meter
+ * is for developers; a balance you can count is for customers.
  *
  * ⚠️ PUBLIC NAME vs INTERNAL ID. The tier ids stay `starter | pro | studio` because they are
  * persisted (`user_subscriptions.virtuna_tier`, a CHECK constraint) and read by every gate.
@@ -22,6 +30,74 @@
 /** The paid tiers. `free` is NOT a plan — it is the lapsed/never-subscribed state. */
 export type PaidPlanId = "starter" | "pro" | "studio";
 
+/**
+ * THE PRICE LIST — what each paid action draws from the credit pool.
+ *
+ * Keys are the ledger's `mode` values (reading_events.mode): one key per billable action,
+ * written by the route that delivers it. Costs are anchored to real engine spend:
+ *
+ *   10 — a full Reading: score a video/concept, decode a remix source, /test in chat.
+ *        The heaviest thing we run (video pipeline + population simulation).
+ *    5 — a LIVE outlier scrape (explore with "find new outliers") — real Apify spend.
+ *    2 — deep single-output generation/simulation: one script, a Predict, a Simulate,
+ *        a Profile read.
+ *    1 — light generation and reads: a hooks pack, an ideas pack, develop-this-idea,
+ *        a concept Read, a card refine, a cached explore.
+ *
+ * NOT here = free: open chat, type-to-room reactions, card adapters, viewing anything.
+ * Free is a product decision (chat is the glue), enforced by rate limits, not the meter.
+ *
+ * ⚠️ Draft costs (2026-07-19): the RATIOS are owner-locked; exact per-action numbers get a
+ * final owner sign-off after verification against measured engine spend, before enforcement
+ * flips on. Change a number here and every gate, balance and page follows.
+ */
+export const CREDIT_COSTS = {
+  /** A full Reading — score mode on /api/analyze. */
+  score: 10,
+  /** A remix decode — /api/analyze mode=remix and /api/tools/remix/run. */
+  remix: 10,
+  /** One generated script. */
+  script: 2,
+  /** A Predict verb run. */
+  predict: 2,
+  /** A Simulate verb run. */
+  simulate: 2,
+  /** A Profile read (evidence → profile). */
+  profile: 2,
+  /** A hooks pack. */
+  hooks: 1,
+  /** An ideas pack. */
+  ideas: 1,
+  /** Develop-this-idea (anchored hooks run). */
+  develop: 1,
+  /** A concept Read against the selected audience. */
+  read: 1,
+  /** A scoped card refine (fresh SIM-scored re-run). */
+  refine: 1,
+  /** Explore from the cached corpus. */
+  explore: 1,
+  /** Explore that triggers a LIVE outlier scrape (allowScrape) — Apify spend. */
+  explore_scrape: 5,
+} as const;
+
+export type BillableAction = keyof typeof CREDIT_COSTS;
+
+/** The cost of one action, in credits. */
+export function creditCost(action: BillableAction): number {
+  return CREDIT_COSTS[action];
+}
+
+/** How many credits one full Reading costs — the unit the old model sold directly. */
+export const CREDITS_PER_READING = CREDIT_COSTS.score;
+
+/**
+ * Fair-use ceiling for "unlimited" (Studio, outside a trial): credits per UTC day.
+ * "Unlimited" prices a team's honest month, not a scripted farm — 300/day is 30 full
+ * Readings every single day, far beyond human use, and it caps our worst-case engine
+ * spend at ~$135/mo against Studio's $499. Stated in the FAQ; enforced by the meter.
+ */
+export const UNLIMITED_DAILY_CREDIT_CEILING = 300;
+
 /** The $1 trial, offered on every plan. */
 export const TRIAL = {
   /** What the card is charged today. */
@@ -29,23 +105,23 @@ export const TRIAL = {
   /** How long the trial runs before it converts to the plan's monthly price. */
   days: 3,
   /**
-   * THE TRIAL POOL — owner-locked 2026-07-13. A $1 trial buys at most **5 Readings**, on
-   * EVERY plan, regardless of the plan's monthly allowance.
+   * THE TRIAL POOL — owner-locked 2026-07-19. A $1 trial buys at most **50 credits**
+   * (5 full Readings' worth), on EVERY plan, regardless of the plan's monthly allowance.
    *
    * This is leech protection, and it is the whole reason the trial is safe to offer on all
-   * three plans: without it, $1 would buy 150 Pro Readings (~$22 of engine spend) or an
+   * three plans: without it, $1 would buy 1,500 Pro credits (~$22 of engine spend) or an
    * unbounded number on Studio. The trial's job is to prove the product on a few real
    * videos, not to hand over a month of capacity for a dollar.
    */
-  readings: 5,
+  credits: 50,
   /** The badge on every pricing card. */
   badge: "$1 for 3 days",
   /**
    * The risk-reducer under every CTA. It has to carry BOTH surprises a buyer could
-   * otherwise hit: the pool is capped at 5 Readings, and it renews at the plan price.
+   * otherwise hit: the pool is capped at 50 credits, and it renews at the plan price.
    * Burying either one is how you earn chargebacks.
    */
-  microcopy: "$1 for 3 days · 5 Readings, then the plan price — cancel anytime",
+  microcopy: "$1 for 3 days · 50 credits, then the plan price — cancel anytime",
 } as const;
 
 export interface Plan {
@@ -60,11 +136,10 @@ export interface Plan {
   /** The billed amount in USD — the number, for anything that must compute. */
   monthlyPriceUsd: number;
   /**
-   * THE METER. Readings per calendar month; `null` = unlimited.
-   * A "Reading" is one full simulation of one video/concept — the thing the
-   * whole product is priced on.
+   * THE METER. Credits per billing month; `null` = unlimited (fair-use ceiling applies —
+   * see UNLIMITED_DAILY_CREDIT_CEILING). A full Reading costs CREDITS_PER_READING.
    */
-  readingsPerMonth: number | null;
+  creditsPerMonth: number | null;
   /** Seats included on the plan. */
   seats: number;
   /** Optional card badge (the "best value" flag). */
@@ -84,12 +159,12 @@ export const PLANS: readonly Plan[] = [
     price: "$49",
     priceSuffix: "/mo",
     monthlyPriceUsd: 49,
-    readingsPerMonth: 50,
+    creditsPerMonth: 500,
     seats: 1,
     tagline: "For the creator posting every week.",
     bullets: [
-      "50 Readings a month",
-      "Virality score — and the why behind it",
+      "500 credits a month — about 50 full Readings",
+      "Every skill: Readings, hooks, ideas, scripts, explore",
       "Retention curve: the exact moment viewers drop",
       "Your room of 10 personas reacts",
     ],
@@ -100,13 +175,13 @@ export const PLANS: readonly Plan[] = [
     price: "$99",
     priceSuffix: "/mo",
     monthlyPriceUsd: 99,
-    readingsPerMonth: 150,
+    creditsPerMonth: 1500,
     seats: 1,
     badge: "Best value",
     highlighted: true,
     tagline: "For the creator who posts daily and can't afford a miss.",
     bullets: [
-      "150 Readings a month",
+      "1,500 credits a month — about 150 full Readings",
       "Everything in Creator",
       "Population depth — a 1,000-viewer simulation",
       "Priority support",
@@ -118,11 +193,11 @@ export const PLANS: readonly Plan[] = [
     price: "$499",
     priceSuffix: "/mo",
     monthlyPriceUsd: 499,
-    readingsPerMonth: null,
+    creditsPerMonth: null,
     seats: 5,
     tagline: "For agencies and teams running many accounts.",
     bullets: [
-      "Unlimited Readings",
+      "Unlimited credits (fair use)",
       "Everything in Pro",
       "5 seats for your team",
       "API access + dedicated support",
@@ -143,46 +218,46 @@ export function isPaidPlanId(value: unknown): value is PaidPlanId {
   return value === "starter" || value === "pro" || value === "studio";
 }
 
-/** "50 Readings a month" / "Unlimited Readings" — one phrasing, used everywhere. */
-export function readingsLabel(plan: Plan): string {
-  return plan.readingsPerMonth === null
-    ? "Unlimited Readings"
-    : `${plan.readingsPerMonth} Readings a month`;
+/** "500 credits a month" / "Unlimited credits" — one phrasing, used everywhere. */
+export function creditsLabel(plan: Plan): string {
+  return plan.creditsPerMonth === null
+    ? "Unlimited credits"
+    : `${plan.creditsPerMonth.toLocaleString("en-US")} credits a month`;
 }
 
-/** A customer's Reading balance right now — what the meter (lib/billing/quota.ts) measured. */
-export interface ReadingBalance {
+/** A customer's credit balance right now — what the meter (lib/billing/quota.ts) measured. */
+export interface CreditBalance {
   used: number;
   /** null = unlimited. */
   limit: number | null;
-  /** Inside the $1 trial the pool is TRIAL.readings, whatever plan they picked. */
+  /** Inside the $1 trial the pool is TRIAL.credits, whatever plan they picked. */
   inTrial: boolean;
 }
 
 /**
- * "38 of 50 Readings left" / "3 of 5 trial Readings left" / "Unlimited Readings" — one
+ * "380 of 500 credits left" / "30 of 50 trial credits left" / "Unlimited credits" — one
  * phrasing, used by every surface that shows a balance (settings, the composer, the paywall).
  *
  * Counts DOWN, not up: what a customer wants to know is what they have left, not what they
  * have spent. Clamped at 0 — an over-limit balance reads as "0 left", never a negative.
  */
-export function readingsRemainingLabel(balance: ReadingBalance): string {
-  if (balance.limit === null) return "Unlimited Readings";
+export function creditsRemainingLabel(balance: CreditBalance): string {
+  if (balance.limit === null) return "Unlimited credits";
   const left = Math.max(0, balance.limit - balance.used);
-  const noun = balance.inTrial ? "trial Readings" : "Readings";
-  return `${left} of ${balance.limit} ${noun} left`;
+  const noun = balance.inTrial ? "trial credits" : "credits";
+  return `${left.toLocaleString("en-US")} of ${balance.limit.toLocaleString("en-US")} ${noun} left`;
 }
 
 /**
- * The monthly Reading allowance for a persisted tier — the number the quota check
+ * The monthly credit allowance for a persisted tier — the number the quota check
  * enforces. `free` (never subscribed / lapsed / cancelled) gets nothing: the $1 trial
  * is the way in, so there is no free tier to farm.
  *
  * NOTE: this is the allowance for a BILLED month. Someone inside their $1 trial is capped
- * at `TRIAL.readings` instead, whatever plan they picked — see `readingAllowanceFor`.
+ * at `TRIAL.credits` instead, whatever plan they picked — see `creditAllowanceFor`.
  */
-export function readingAllowance(tier: string): number | null {
-  if (isPaidPlanId(tier)) return getPlan(tier).readingsPerMonth;
+export function creditAllowance(tier: string): number | null {
+  if (isPaidPlanId(tier)) return getPlan(tier).creditsPerMonth;
   return 0;
 }
 
@@ -193,10 +268,10 @@ export function readingAllowance(tier: string): number | null {
  * The trial cap wins even on Studio ("unlimited"), which is the point — `null` (unlimited)
  * must never leak into a trial.
  */
-export function readingAllowanceFor(
+export function creditAllowanceFor(
   tier: string,
   opts: { inTrial: boolean }
 ): number | null {
-  if (opts.inTrial) return TRIAL.readings;
-  return readingAllowance(tier);
+  if (opts.inTrial) return TRIAL.credits;
+  return creditAllowance(tier);
 }

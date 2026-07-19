@@ -25,7 +25,7 @@ import { useBoardStore } from "@/stores/board-store";
 import { queryKeys } from "@/lib/queries/query-keys";
 import type { PredictionResult } from "@/lib/engine/types";
 import type { StageEvent } from "@/lib/engine/events";
-import { isReadingQuotaExceeded, type ReadingQuotaExceeded } from "@/lib/billing/quota-error";
+import { isCreditQuotaExceeded, type CreditQuotaExceeded } from "@/lib/billing/quota-error";
 import {
   PANEL_IDS,
   type PanelId,
@@ -108,7 +108,7 @@ export interface AnalysisStreamReturn {
    * is not an error the user can retry their way out of — it's a paywall, and it carries the
    * numbers needed to say something honest. Null on every other outcome.
    */
-  quotaError: ReadingQuotaExceeded | null;
+  quotaError: CreditQuotaExceeded | null;
   /** Dismiss the paywall. */
   clearQuotaError: () => void;
   reconnect: () => void;
@@ -146,7 +146,7 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
   const [partial, setPartial] = useState<PartialStreamState>({ personas: [] });
   const [result, setResult] = useState<PredictionResult | null>(completedFromInitial);
   const [error, setError] = useState<string | null>(null);
-  const [quotaError, setQuotaError] = useState<ReadingQuotaExceeded | null>(null);
+  const [quotaError, setQuotaError] = useState<CreditQuotaExceeded | null>(null);
   const [filmstrips, setFilmstrips] = useState<Record<number, string>>({});
   const [analysisId, setAnalysisId] = useState<string | null>(
     (opts?.initialData && (opts.initialData as { id?: string }).id) ?? null,
@@ -344,8 +344,8 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
 
         // 402 = the allowance is spent. Not a failure — a paywall. Keep the payload (tier,
         // used, limit, inTrial) so the UI can say which wall was hit and what to do about it;
-        // throwing the bare slug is how `reading_quota_exceeded` ended up on screen.
-        if (res.status === 402 && isReadingQuotaExceeded(err)) {
+        // throwing the bare slug is how `credit_quota_exceeded` ended up on screen.
+        if (res.status === 402 && isCreditQuotaExceeded(err)) {
           setQuotaError(err);
           throw new Error(err.message);
         }

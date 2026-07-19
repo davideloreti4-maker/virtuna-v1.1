@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
+import { reportCredit402 } from "@/lib/billing/credit-wall";
 import { useRouter } from "next/navigation";
 import type { Audience } from "@/lib/audience/audience-types";
 import type { MultiAudienceReadBlock } from "@/lib/tools/blocks";
@@ -110,6 +111,8 @@ export function AudienceManager({ className, accounts = [] }: AudienceManagerPro
         body: JSON.stringify({ concept, audienceIds: selectedIds }),
       });
       if (!res.ok) {
+        const err: unknown = await res.json().catch(() => null);
+        if (reportCredit402(res.status, err)) return; // wall dialog is up
         setCompareNote("This audience isn't calibrated enough to compare yet.");
         return;
       }

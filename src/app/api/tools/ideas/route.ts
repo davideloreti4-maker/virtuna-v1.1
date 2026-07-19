@@ -47,6 +47,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { maybeMockSkillRun } from "@/lib/tools/mock/mock-sse";
 import { csrfGuard } from "@/lib/http/csrf-guard";
+import { billUsage, creditGate } from "@/lib/billing/credit-gate";
 import { rateLimitGuard } from "@/lib/http/rate-limit";
 import { createOpenThreadLazy } from "@/lib/threads/threads";
 import { insertMessage } from "@/lib/threads/messages";
@@ -97,6 +98,10 @@ export async function POST(request: Request): Promise<Response> {
   // ── Rate limit (HARDEN-01) — per user, per route; fail-open if unconfigured ──
   const limited = await rateLimitGuard(user.id, "ideas");
   if (limited) return limited;
+
+  // ── Credit gate (BILLING) — priced admission BEFORE any engine spend ─────────
+  const { refusal, verdict: creditVerdict } = await creditGate(supabase, user.id, "ideas");
+  if (refusal) return refusal;
 
   // ── (2) Parse + validate body ─────────────────────────────────────────────
   let body: { ask?: unknown; platform?: unknown; intent?: unknown; allowScrape?: unknown } = {};
@@ -266,6 +271,12 @@ export async function POST(request: Request): Promise<Response> {
         // several seconds the follow-up takes. Emitting `done` now lets the client
         // unblock immediately; the follow-up streams in afterward on the still-open
         // SSE (the client read loop keeps consuming until the server closes it).
+                // BILL — on delivery only: the cards are persisted above; a run that died
+        // never reaches this line, so it never charges.
+        if (blocks.length > 0) {
+          await billUsage({ userId: user.id, action: "ideas", tier: creditVerdict.tier });
+        }
+
         send("done", { count: blocks.length });
 
         // ── FOLLOW-UP TURN (D-03 / STUDIO-02) — off the critical path (S2) ───

@@ -29,6 +29,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { reportCredit402 } from '@/lib/billing/credit-wall';
 import type { HookProof, IdeaCardBlock, PopulationAggregateBlock, ReactionPersona, CardTarget } from '@/lib/tools/blocks';
 import { parseProofProp, parseGroundedProp, parseTargetProp, parsePopulationProp } from '@/lib/tools/blocks';
 import type { StageState } from '@/components/thread/progress-checklist';
@@ -234,6 +235,10 @@ export function useIdeasStream(): UseIdeasStreamReturn {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Ideas request failed' }));
+        if (reportCredit402(res.status, err)) {
+          // The wall dialog is up (CreditWallListener); surface the human sentence, not the slug.
+          throw new Error(err.message);
+        }
         throw new Error((err as { error?: string }).error ?? 'Ideas request failed');
       }
       if (!res.body) throw new Error('No response body');
@@ -447,6 +452,10 @@ export function useIdeasStream(): UseIdeasStreamReturn {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Refine request failed' }));
+        if (reportCredit402(res.status, err)) {
+          // The wall dialog is up (CreditWallListener); surface the human sentence, not the slug.
+          throw new Error(err.message);
+        }
         throw new Error((err as { error?: string }).error ?? 'Refine request failed');
       }
       if (!res.body) throw new Error('No response body');

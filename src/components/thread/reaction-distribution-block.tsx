@@ -18,6 +18,7 @@
  */
 
 import { useCallback, useState } from 'react';
+import { reportCredit402 } from '@/lib/billing/credit-wall';
 import type { ReactionDistributionBlock } from '@/lib/tools/blocks';
 import { handoffsFor } from '@/lib/tools/chain-handoff';
 import { TrustBadge } from '@/components/audience/trust-badge';
@@ -92,6 +93,10 @@ export function ReactionDistributionBlockRenderer({
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Predict request failed' }));
+        if (reportCredit402(res.status, err)) {
+          // The wall dialog is up (CreditWallListener); surface the human sentence, not the slug.
+          throw new Error(err.message);
+        }
         throw new Error((err as { error?: string }).error ?? 'Predict request failed');
       }
       setPredicted(true);

@@ -35,6 +35,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { reportCredit402 } from "@/lib/billing/credit-wall";
 import { createPortal } from "react-dom";
 import { OpenRoomContext } from "@/lib/hook-test-context";
 import { InThreadInputContext } from "@/lib/in-thread-input-context";
@@ -57,7 +58,7 @@ import { VideoUpload } from "@/components/app/video-upload";
 import { MessageBlocks } from "@/components/thread/message-blocks";
 import { useAnalysisStream } from "@/hooks/queries/use-analysis-stream";
 import { useSubscription } from "@/hooks/use-subscription";
-import { isPaidPlanId, readingsRemainingLabel } from "@/lib/pricing";
+import { isPaidPlanId, creditsRemainingLabel } from "@/lib/pricing";
 import { useBoardStore } from "@/stores/board-store";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
@@ -130,7 +131,7 @@ const LAUNCH_VERB_TOOL: Record<Verb, ToolId> = {
  *
  * Statically imported, this pulls `CheckoutModal` → `@whop/checkout/react` (a 328KB package)
  * into the bundle of /home — the app's hottest route — to render a dialog that appears when a
- * customer runs out of Readings, i.e. almost never, and today literally never (enforcement is
+ * customer runs out of credits, i.e. almost never, and today literally never (enforcement is
  * off). Every visitor was paying to download a checkout embed they will not see.
  */
 const ReadingLimitDialog = dynamic(
@@ -299,12 +300,12 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   }, [stream.phase, refetchBalance]);
 
   // Shown only when there is a countable balance to show: a paid plan or a trial pool. `free`
-  // has an allowance of 0 by design (no free plan), and "0 of 0 Readings left" under the
+  // has an allowance of 0 by design (no free plan), and "0 of 0 credits left" under the
   // composer would read as a bug rather than a price. Studio's unlimited has no number worth
   // printing on every screen either.
   const readingsBalanceLabel =
     usage && usage.limit !== null && (isPaidPlanId(billingTier) || isTrial)
-      ? readingsRemainingLabel(usage)
+      ? creditsRemainingLabel(usage)
       : null;
 
   // A footnote until it starts to bite — then it earns a semantic tone (the dosage rule: a
@@ -1022,7 +1023,11 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ anchor: adaptedHook, platform: remixPlatform }),
       });
-      if (!res.ok) return; // silent — SkillRunError would need a separate state gate here
+      if (!res.ok) {
+        const err: unknown = await res.json().catch(() => null);
+        reportCredit402(res.status, err); // wall dialog if it's the credit 402
+        return;
+      }
       // After develop persists the hook cards, reload the open thread so they appear.
       const threadRes = await fetch('/api/threads/open');
       if (!threadRes.ok) return;
@@ -1251,6 +1256,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
       }
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: EVIDENCE_RUN_FAILED }));
+        reportCredit402(res.status, err); // wall dialog if it's the credit 402
         setEvidenceError((err as { error?: string }).error ?? EVIDENCE_RUN_FAILED);
         // WR-04: the server rejected the read — drop the staged clip so it doesn't orphan.
         if (stagedPath) void supabase.storage.from('videos').remove([stagedPath]).catch(() => {});
@@ -1584,7 +1590,11 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
         });
-        if (!res.ok) return; // silent — the route returns a generic error (WR-02)
+        if (!res.ok) {
+          const err: unknown = await res.json().catch(() => null);
+          reportCredit402(res.status, err); // wall dialog if it's the credit 402
+          return;
+        }
         // The reaction-distribution (Simulate) / prediction-gauge (Predict) persisted
         // to the SAME open thread — surface it via the one-thread reload (05-06 path).
         await reloadProfileThread();

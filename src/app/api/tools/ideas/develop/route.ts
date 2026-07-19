@@ -34,6 +34,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { maybeMockSkillRun } from "@/lib/tools/mock/mock-sse";
 import { csrfGuard } from "@/lib/http/csrf-guard";
+import { billUsage, creditGate } from "@/lib/billing/credit-gate";
 import { assembleBundle } from "@/lib/kc/assembler";
 import { createOpenThreadLazy } from "@/lib/threads/threads";
 import { insertMessage } from "@/lib/threads/messages";
@@ -65,6 +66,10 @@ export async function POST(request: Request): Promise<Response> {
   // ── (1b) CSRF guard — Content-Type 415 + cross-origin 403 (WR-01 / E1) ────
   const guard = csrfGuard(request);
   if (guard) return guard;
+
+  // ── Credit gate (BILLING) — priced admission BEFORE any engine spend ─────────
+  const { refusal, verdict: creditVerdict } = await creditGate(supabase, user.id, "develop");
+  if (refusal) return refusal;
 
   // ── (2) Parse + validate body ─────────────────────────────────────────────
   let body: { anchor?: unknown; platform?: unknown; ideaId?: unknown } = {};
@@ -130,6 +135,9 @@ export async function POST(request: Request): Promise<Response> {
   // KC_GEN_VERSION stamp: blocks provenance stamped on this message.
   // insertMessage re-validates blocks at the write boundary (T-04-07/D-14).
   const msgRow = await insertMessage(openThread.id, "assistant", blocks, kcStamp().kcGenVersion);
+
+  // BILL — on delivery only: the cards are persisted; nothing after can un-deliver them.
+  await billUsage({ userId: user.id, action: "develop", tier: creditVerdict.tier });
 
   // ── (8) Return PINNED response shape ──────────────────────────────────────
   // Shape preserved from P3 contract (WARNING-1 — Plan 03's CTA depends on this).

@@ -26,6 +26,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { reportCredit402 } from '@/lib/billing/credit-wall';
 import type { OutlierGridBlock } from '@/lib/tools/blocks';
 import type { StageState } from '@/components/thread/progress-checklist';
 
@@ -149,6 +150,7 @@ export function useExploreStream(): UseExploreStreamReturn {
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Explore request failed' }));
         const errObj = err as { error?: string; message?: string };
+        reportCredit402(res.status, err); // wall dialog if it's the credit 402
         throw new Error(errObj.message ?? errObj.error ?? 'Explore request failed');
       }
       if (!res.body) throw new Error('No response body');

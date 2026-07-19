@@ -1,141 +1,159 @@
 # Pricing — what we charge, and what still needs a human
 
-Owner-locked **2026-07-13**. Code SSOT: **`src/lib/pricing.ts`**. Change a price there and the
-landing teaser, the `/pricing` page, the checkout dialog, the in-app billing panel and the
-quota check all move together. Nothing else may hardcode a price.
+Owner-locked **2026-07-19** (supersedes the 2026-07-13 Readings-only model). Code SSOT:
+**`src/lib/pricing.ts`**. Change a number there and the landing teaser, the `/pricing` page,
+the checkout dialog, the in-app billing panel, every skill gate and the quota check all move
+together. Nothing else may hardcode a price.
 
 ## The plans
 
-| Public name | Price | Tier id (persisted) | Readings / month | Seats | Notes |
+| Public name | Price | Tier id (persisted) | Credits / month | Seats | Notes |
 |---|---|---|---|---|---|
-| **Creator** | $49/mo | `starter` | 50 | 1 | |
-| **Pro** | $99/mo | `pro` | 150 | 1 | **Best value** — the one highlighted CTA. Adds 1,000-viewer population depth + priority support |
-| **Studio** | $499/mo | `studio` | Unlimited | 5 | API access + dedicated support |
+| **Creator** | $49/mo | `starter` | 500 | 1 | ≈ 50 full Readings |
+| **Pro** | $99/mo | `pro` | 1,500 | 1 | **Best value** — the one highlighted CTA. Adds 1,000-viewer population depth + priority support |
+| **Studio** | $499/mo | `studio` | Unlimited* | 5 | *Fair-use ceiling: 300 credits/UTC-day. API access + dedicated support |
 
-**Every plan starts at $1 for 3 days**, then renews at the plan price. Adopted from
-makeugc.ai's "Start for $1" (a short *paid* trial that converts, not a free trial).
+**Every plan starts at $1 for 3 days**, then renews at the plan price. **One $1 trial per
+account, ever** — enforced server-side (`trial_used_at`, write-once history; a repeat "trial"
+checkout quietly resolves the full-price SKU and the modal says so).
 
-### The trial pool — 5 Readings, every plan
-
-A $1 trial buys **at most 5 Readings**, whatever plan was picked. This is the leech guard, and
-it is what makes the trial safe to offer on all three plans: without it, $1 would buy 150 Pro
-Readings (~$22 of engine spend at ~$0.15/Reading) or an *unbounded* number on Studio.
-
-- The pool is counted from the **moment the trial starts**, not from the 1st of the month.
-- The cap **overrides Studio's "unlimited"** — `null` (uncounted) must never leak into a trial.
-- The plan's real allowance takes over the moment the trial converts.
-- Both the cap and the renewal are stated on every card, in the FAQ and under every CTA. A
-  trial that hides either one is what chargebacks are made of.
-
-Mechanically: the Whop webhook stamps `trial_started_at` / `trial_ends_at` when the purchased
-plan is one of the `WHOP_TRIAL_PLAN_ID_*` SKUs, and the quota check reads that window. The
-window is stamped **once per membership** — a trial SKU renews into its plan price under the
-same plan id, so re-stamping on renewal would hand out a fresh 5-Reading trial (and re-cap a
-now-paying Pro at 5) every billing cycle.
-
-There is **no free plan**. `free` is a tier id, but it is not something you can buy: it is the
-state of someone who has never started a trial, or whose subscription lapsed. Its Reading
-allowance is **0** — the $1 trial is the way in.
+There is **no free plan**. `free` is a tier id, but not something you can buy: it is the state
+of someone who never started a trial, or whose subscription lapsed. Its allowance is **0**.
 
 > ⚠️ **`starter` is sold as "Creator".** The id is persisted in
-> `user_subscriptions.virtuna_tier` and read by every gate; renaming it would mean rewriting
-> every row for zero user-visible gain. The mapping lives in `pricing.ts` and nowhere else.
-> **Never print a tier id in the UI — print `plan.name`.**
+> `user_subscriptions.virtuna_tier` and read by every gate. The mapping lives in `pricing.ts`
+> and nowhere else. **Never print a tier id in the UI — print `plan.name`.**
 
-## The meter
+## The meter — credits
 
-A **Reading** = one row in `reading_events` (billed) = one full simulation actually **delivered**.
-That is the unit the customer is charged for, so it is the unit we count
-(`src/lib/billing/quota.ts`; billed at exactly one place, `src/lib/billing/record-reading.ts`).
+One pool per plan; every paid action draws from it at a public price (`CREDIT_COSTS`):
 
-It used to be a row in `analysis_results`, which is not the same thing:
+| Credits | Actions |
+|---|---|
+| **10** | A full **Reading** — score a video/concept, decode a remix source, `/test` in chat |
+| **5** | Explore with a **live outlier scrape** (real Apify spend) |
+| **2** | A script · a Predict · a Simulate · a Profile read |
+| **1** | A hooks pack · an ideas pack · develop-this-idea · a concept Read · a card refine · a cached Explore |
+| **0 (free)** | Open chat · type-to-room reactions · viewing anything — free on purpose (the glue), guarded by rate limits, not the meter |
 
-- the SSE branch writes its row *before* the engine runs, so **a failed run charged the
-  customer** — real, and live today;
-- usage lived in a table the product rewrites. Today's delete is a *soft* delete and the count
-  ignores `deleted_at`, so it does not currently refund — **by accident**. A hard delete, a
-  prune, or anyone adding `deleted_at` to that WHERE clause would hand the allowance back;
-- and none of it was auditable.
+> ⚠️ **The per-action numbers are DRAFT until a final owner sign-off** (the plan allowances
+> and ratios are locked). Before flipping enforcement on, verify the costs against measured
+> engine spend per skill and sign the list. The margins hold at 70–85% across all-one-skill
+> worst cases at the current numbers.
 
-The ledger is append-only and only ever written on success. (If the ledger migration has not been
-applied, the count silently falls back to the old `analysis_results` behaviour, so the app runs
-identically either side of it.)
+### Mechanics
 
-Two windows, and **the trial wins**:
-
-| Situation | Allowance | Counted from |
-|---|---|---|
-| Inside the $1 trial | **5** (every plan) | the instant the trial started |
-| After it converts | the plan's monthly allowance | the **billing anchor** — the day-of-month of `current_period_end`, clamped for short months |
-
-The check runs in `POST /api/analyze` *before* any engine spend, and returns **402** with a
-`reading_quota_exceeded` payload when the allowance is spent (with a different message for a
-trialling customer — they have not hit their plan's limit, their plan simply hasn't started).
-The client turns that into the paywall (`src/components/app/reading-limit-dialog.tsx`), which
-offers a trialling customer **a date, not a second checkout** — they have already paid.
-It **fails open**: if the count query errors, the Reading is allowed — a flaky database must
-never cost a paying customer.
-
-### Where a customer sees their balance
-
-- `/settings` → Billing: "38 of 50 Readings left", the reset date, and the plans.
-- Under the composer: the same line, quiet, going amber at 20% and red at zero.
-
-Visibility is **not** the same as enforcement: the balance shows as soon as someone has a plan
-or a trial pool, whether or not `BILLING_ENFORCE_QUOTA` is on. A `free` user sees no meter at
-all (allowance 0 by design) — they see the plans instead of a "0 of 0 Readings left" that would
-read as a bug.
+- **The ledger**: one `reading_events` row per delivered action, stamped with its credit
+  price at delivery (append-only, service-role writes only, billed on SUCCESS only — a failed
+  run never charges). The quota check SUMS `credits` via the `credits_used_since` RPC.
+  Rows that predate the credits column carry its default of 10 — exact, since every
+  pre-credits row was a full Reading.
+- **The gate**: every paid route calls `creditGate` BEFORE any engine spend and answers a
+  spent allowance with **402** + `credit_quota_exceeded` (message written server-side). The
+  client raises ONE paywall dialog everywhere (`CreditWallListener`); four walls, four
+  different sentences: trial-spent gets a date, no-plan gets the $1 door, plan-spent gets the
+  upgrade, Studio's fair-use gets **midnight UTC — never an upsell**.
+- **Admission is cost-aware**: 3 credits left affords a 1-credit hooks pack, not a 10-credit
+  Reading.
+- **Windows**: inside the $1 trial → **50 credits** counted from the trial's start (every
+  plan — the cap overrides Studio's unlimited). After conversion → the plan's allowance per
+  **billing-anchor month** (day-of-month of `current_period_end`, short-month clamped), not
+  the calendar month.
+- **Fail-open, everywhere**: a flaky count must never cost a paying customer an action.
+- **Fallback chain**: RPC missing → ledger row-count × 10; ledger missing → legacy
+  `analysis_results` count × 10. The app behaves identically either side of each migration.
+- **Balance**: `/settings` → Billing and under the composer — "380 of 500 credits left",
+  amber at 20%, red at zero. Visibility is NOT enforcement: the balance shows whenever
+  there's a plan or trial pool, flag or no flag.
 
 ## ⛔ What is NOT live yet — the owner's remaining steps
-<!-- Step 2 (all three migrations) is DONE as of 2026-07-13 and verified against prod. What is
-     left is genuinely owner-only: the Whop plans, the flag, and the grandfather rule. -->
 
+Enforcement is deliberately inert (`BILLING_ENFORCE_QUOTA` unset) until these are done, in
+this order:
 
-The code is complete and shipped, but **nobody can actually buy a plan until these are done.**
-Enforcement is deliberately inert until then: with no purchasable plan, switching the meter on
-would lock out every existing user (all of whom are tier `free`, allowance 0).
+### 1. Whop: create 6 plans + 3 secrets (the only blocking step)
 
-1. **Create 6 Whop plans** — one full-price plan per tier, plus one **$1 / 3-day trial plan per
-   tier** that renews into the full price:
+One full-price plan per tier, plus one **$1 / 3-day trial SKU per tier** that renews into the
+full price:
 
-   | Env var | What it points at |
-   |---|---|
-   | `WHOP_PRODUCT_ID_STARTER` | Creator — $49/mo |
-   | `WHOP_PRODUCT_ID_PRO` | Pro — $99/mo |
-   | `WHOP_PRODUCT_ID_STUDIO` | Studio — $499/mo |
-   | `WHOP_TRIAL_PLAN_ID_STARTER` | Creator — $1 for 3 days, then $49/mo |
-   | `WHOP_TRIAL_PLAN_ID_PRO` | Pro — $1 for 3 days, then $99/mo |
-   | `WHOP_TRIAL_PLAN_ID_STUDIO` | Studio — $1 for 3 days, then $499/mo |
+| Env var | What it points at |
+|---|---|
+| `WHOP_PRODUCT_ID_STARTER` | Creator — $49/mo |
+| `WHOP_PRODUCT_ID_PRO` | Pro — $99/mo |
+| `WHOP_PRODUCT_ID_STUDIO` | Studio — $499/mo |
+| `WHOP_TRIAL_PLAN_ID_STARTER` | Creator — $1 for 3 days, then $49/mo |
+| `WHOP_TRIAL_PLAN_ID_PRO` | Pro — $1 for 3 days, then $99/mo |
+| `WHOP_TRIAL_PLAN_ID_STUDIO` | Studio — $1 for 3 days, then $499/mo |
+| `WHOP_API_KEY` | Dashboard → Developer → API key (server-side checkout sessions) |
+| `WHOP_WEBHOOK_SECRET` | Webhook endpoint secret for `https://<domain>/api/webhooks/whop` |
 
-   Set them in Vercel (prod + preview). A missing **trial** id degrades to full price (the
-   buyer is charged the plan price, never less than the button promised); a missing **plan** id
-   makes checkout return 503 rather than silently granting access.
+Set them in Vercel (Production). Configure the webhook in Whop to send
+`membership.went_valid`, `membership.went_invalid`, `membership.payment_failed`.
+A missing **trial** id degrades to full price (never undercharge — and the modal now says
+which price was resolved); a missing **plan** id makes checkout 503 rather than silently
+granting access.
 
-2. ~~**Run all three migrations**~~ — ✅ **DONE 2026-07-13. All three are applied to prod**
-   (`pricing_studio_tier`, `trial_window`, `reading_events`) and verified against the live
-   database:
-   - the tier CHECK now accepts `studio`, so a Studio purchase's webhook can persist;
-   - `trial_started_at` exists, so the 5-Reading trial cap can be enforced;
-   - `reading_events` exists with RLS (users read their own; only the service role writes).
+### 2. Supabase Auth dashboard (15 minutes, one-time)
 
-   **The ledger was then verified end-to-end against production**, which is the one thing that
-   could not be proven before it existed:
-   - a real, scored Reading wrote **exactly one** billed ledger row (`mode=score`);
-   - a run that **failed mid-pipeline** left its placeholder `analysis_results` row behind — the
-     very row the old meter counted — and wrote **zero** ledger rows. A failed engine run no
-     longer costs a customer a Reading.
-   - the live meter now reports `used: 1` for that account where the legacy row count says `3`.
+| Setting | Where | Value |
+|---|---|---|
+| Leaked-password protection | Auth → Providers → Email | **ON** (advisor currently flags it off) |
+| Minimum password length | Auth → Providers → Email | **8** (forms already enforce 8 client-side) |
+| Site URL | Auth → URL Configuration | the production domain (currently `https://virtuna-v11.vercel.app`) |
+| Redirect URLs | Auth → URL Configuration | `https://<domain>/auth/callback`, `http://localhost:3000/auth/callback` |
+| Custom SMTP | Auth → SMTP | **Required before launch** — default Supabase SMTP is ~2 emails/hour, which breaks signup confirmations and password resets at any real volume. Resend/Postmark, 10 min setup |
+| Google OAuth | Auth → Providers → Google | confirm prod client id/secret + the prod redirect URL in Google Console |
 
-   Nothing about this is user-visible yet: enforcement is still off (step 3). The ledger simply
-   starts recording honest usage now, so the day the gate closes is not a leap in the dark.
+### 3. Flip the meter: `BILLING_ENFORCE_QUOTA=true`
 
-3. **Flip the meter on**: `BILLING_ENFORCE_QUOTA=true`. Until then the quota is computed and
-   logged but never blocks — so you can watch real usage against the limits before the gate
-   closes on anyone.
+Until then the quota is computed, shown and logged but never blocks. Flip AFTER the sandbox
+pass (below).
 
-4. **Decide the grandfather rule** for anyone already using the app: they are all tier `free`
-   (allowance 0), so the day you flip step 3 they stop at zero Readings. Either grant them a
-   plan in Whop, or accept that they must start a $1 trial.
+### 4. Grandfather rule (7 users in prod, 3 active/30d, 0 subscriptions)
+
+Everyone is tier `free` (allowance 0) — on flip day they stop at zero. Recommendation: comp
+the owner's own account(s) (insert a `user_subscriptions` row at `studio`, or unbilled ledger
+rows), let the handful of others start a $1 trial. Decide which emails get comped.
+
+### 5. The sandbox pass (with Whop test mode, before real customers)
+
+- [ ] Trial purchase → webhook grants tier + stamps `trial_started_at`/`trial_used_at`
+- [ ] 50-credit pool enforced: 5 Readings pass, the 6th 402s with trial copy (a DATE, no checkout)
+- [ ] Conversion (day 4) does NOT re-stamp the window; full allowance takes over
+- [ ] A second trial attempt on the same account resolves FULL PRICE + the modal says why
+- [ ] Cancel → `went_invalid` → tier `free`; payment failure → `past_due`
+- [ ] `sync-whop` cron reconciles a manually-desynced row
+- [ ] A generation skill (hooks) bills 1 credit; a failed run bills nothing
+
+### Optional hardening (post-launch acceptable)
+
+- `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` — activates per-user rate limits on
+  AI routes (`lib/http/rate-limit.ts` is fail-open without them; free tier of Upstash is fine).
+- Whop: ask about payment-method-level trial dedup (our guard is per-account; a new signup
+  with a new email + same card still gets a $1 trial).
+- MFA options (Supabase advisor flags none enabled) — post-launch.
+- pg_graphql schema exposure (advisor WARN ×102): RLS protects the rows; revoking anon
+  SELECT grants / disabling GraphQL would silence the advisor — cleanliness, not a breach.
+
+## Done 2026-07-19 (this session)
+
+- Credits model shipped end-to-end (SSOT → RPC meter → 11 gated routes → one wall).
+- Migrations **applied to prod**: `credits_ledger` (column + RPC), `trial_used_once`.
+- Vercel prod env: pushed `SUPABASE_SERVICE_ROLE_KEY`, `GEMINI_API_KEY`,
+  `DASHSCOPE_API_KEY`, `DEEPSEEK_API_KEY`, `APIFY_TOKEN`, `FILMSTRIP_EXTRACT_SECRET`,
+  `GROUNDING_*_ENABLED`, `NEXT_PUBLIC_APP_URL` — prod can run the engine and its crons for
+  the first time. (Whop keys pending step 1; `BILLING_ENFORCE_QUOTA` pending step 3.)
+- Password reset flow exists (`/forgot-password` → `/auth/callback` → `/reset-password`).
+- One-trial-per-account guard live in checkout.
+- **Crons verified revived in prod** (2026-07-20 log evidence): `calculate-trends` 500
+  "supabaseKey is required" at 15:00 UTC on the old deployment → 200 every hour since the
+  env redeploy; `scrape-trending` scraping again after 154h stale.
+- **E2E quota flow verified locally with `BILLING_ENFORCE_QUOTA=true`** (2026-07-20, fixture
+  starter sub + synthetic ledger rows, removed after): admission block at 3-of-500 left
+  refuses a 10-credit Reading with "That needs 10 credits — you have 3 credits left this
+  month."; spent allowance at 0 left refuses a 1-credit hooks pack with "You've used all
+  500 credits…". Both 402 BEFORE any engine spend. (The Whop-checkout sandbox pass below
+  still stands — it needs step 1.)
 
 ## What is still owner-gated elsewhere on the site
 

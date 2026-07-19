@@ -1,6 +1,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
+
 import { createClient } from "@/lib/supabase/server";
 
 function mapSignupError(supabaseError: string): string {
@@ -27,10 +29,20 @@ export async function signup(_prevState: unknown, formData: FormData) {
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
 
+  // The confirmation link must come back through OUR guarded callback, not whatever the
+  // Supabase project's Site URL happens to be — that's how a staging Site URL strands a
+  // production signup. next=/welcome: a just-confirmed account goes to onboarding.
+  const h = await headers();
+  const origin =
+    h.get("origin") ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+
   const supabase = await createClient();
   const { error } = await supabase.auth.signUp({
     email,
     password,
+    options: {
+      emailRedirectTo: `${origin}/auth/callback?next=/welcome`,
+    },
   });
 
   if (error) {

@@ -40,6 +40,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { maybeMockSkillRun } from "@/lib/tools/mock/mock-sse";
 import { csrfGuard } from "@/lib/http/csrf-guard";
+import { billUsage, creditGate } from "@/lib/billing/credit-gate";
 import { rateLimitGuard } from "@/lib/http/rate-limit";
 import { createOpenThreadLazy } from "@/lib/threads/threads";
 import { insertMessage } from "@/lib/threads/messages";
@@ -90,6 +91,10 @@ export async function POST(request: Request): Promise<Response> {
   // ── Rate limit (HARDEN-01) — per user, per route; fail-open if unconfigured ──
   const limited = await rateLimitGuard(user.id, "refine");
   if (limited) return limited;
+
+  // ── Credit gate (BILLING) — priced admission BEFORE any engine spend ─────────
+  const { refusal, verdict: creditVerdict } = await creditGate(supabase, user.id, "refine");
+  if (refusal) return refusal;
 
   // ── (2) Parse + validate body ─────────────────────────────────────────────
   let body: {
@@ -331,7 +336,11 @@ export async function POST(request: Request): Promise<Response> {
           // holding the SSE open and the UI in "streaming" for the seconds it takes.
           // Emit `done` now; the note streams in afterward (client read loop runs until
           // the server closes the stream).
-          send("done", { count: 1 });
+                  // BILL — on delivery only: the result is persisted above; a run that died
+        // never reaches this line, so it never charges.
+        await billUsage({ userId: user.id, action: "refine", tier: creditVerdict.tier });
+
+        send("done", { count: 1 });
 
           // ── ONE-LINE CHAT NOTE (D-04 / D-08 co-pilot voice) — off critical path (S2) ──
           // A short model-authored note confirms the refine completed and references

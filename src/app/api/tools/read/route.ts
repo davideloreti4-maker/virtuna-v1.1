@@ -44,6 +44,7 @@ import { runTwoAudienceRead } from "@/lib/engine/flash/two-audience-read";
 import { kcStamp } from "@/lib/kc/kc-stamp";
 import { getAudience, GENERAL_AUDIENCE } from "@/lib/audience/audience-repo";
 import { csrfGuard } from "@/lib/http/csrf-guard";
+import { billUsage, creditGate } from "@/lib/billing/credit-gate";
 import { rateLimitGuard } from "@/lib/http/rate-limit";
 import type { Audience } from "@/lib/audience/audience-types";
 
@@ -71,6 +72,10 @@ export async function POST(request: Request): Promise<Response> {
   // ── Rate limit (HARDEN-01) — per user, per route; fail-open if unconfigured ──
   const limited = await rateLimitGuard(user.id, "read");
   if (limited) return limited;
+
+  // ── Credit gate (BILLING) — priced admission BEFORE any engine spend ─────────
+  const { refusal, verdict: creditVerdict } = await creditGate(supabase, user.id, "read");
+  if (refusal) return refusal;
 
   // ── (2) Parse + validate body ────────────────────────────────────────────────
   // Body carries the concept text + an OPTIONAL explicit audience pair. The default
@@ -200,6 +205,9 @@ export async function POST(request: Request): Promise<Response> {
     // KC_GEN_VERSION provenance (T-03-12).
     await insertMessage(openThread.id, "assistant", [block], kcStamp().kcGenVersion);
 
+    
+    // BILL — on delivery only: the block is persisted; nothing after can un-deliver it.
+    await billUsage({ userId: user.id, action: "read", tier: creditVerdict.tier });
     return Response.json({ block });
   } catch (err) {
     return Response.json(
