@@ -178,12 +178,26 @@ The detect-and-prefetch fallback is **discarded**.
      · niche). Live-verified: `scripts/smoke-corpus-warrant.ts`, 6/6.
    - Corpus calls in a round execute concurrently; warrant-vs-claim stated in the agent
      directive.
-5. **NEXT — the `references` block as structured CARDS** (§4). Today the streaming path
-   feeds tool JSON to the model and the model writes prose, so a citation is still model
-   output; `buildReferenceBlock` (prose) is only on the legacy `runChatPipeline`
-   fallback. Cards from structured tool output are what makes hallucinated citations
-   *impossible* rather than *discouraged*. Then the authed E2E gate on one intent.
-6. `corpus_stats` + insight card
+5. ✅ **`references` as structured CARDS + authed E2E (2026-07-20).** The `corpus-references`
+   block renders the tool's own rows through `ProofReceipt`, so handles, multipliers and view
+   counts are DATA — the model writes the argument, the card carries the evidence. Enforced at
+   the boundary: an ungrounded search emits **no block** (a source card is itself a relevance
+   assertion, so prose degrades and cards don't get to); topical vs structural headers make
+   different claims; a curated row with no measured multiplier states no number; blocks persist,
+   or the citation would vanish on reload while the prose citing it stayed.
+   - **Layout rule, found by LOOKING at it twice:** the GROUP states what its rows share, a ROW
+     states only what its siblings don't. The group's claim per-row printed "REAL EXAMPLE" ×3
+     under a header that had just said "3 real videos"; the row's own facets then printed
+     "GREENSCREEN" ×3 under a greenscreen FILTER. A facet that is already a filter is redundant
+     by construction — skip it, keep the axis that varies.
+   - **E2E PASSED, live + authed:** "show me real examples of greenscreen videos that actually
+     worked" → the model called `search_corpus` with `platform=tiktok · visual_setting=greenscreen
+     · niche=comedy-entertainment` (it reaches for the new facet params unprompted), the card
+     rendered a real row (@bentellect · 3.0M views · working source link) showing **no
+     multiplier** because that row is unmeasured, and the prose stayed honest about the thin
+     result: "the corpus only returned one that matched all filters tightly".
+6. **NEXT — `corpus_stats`** + insight card (minN refusal ≥ 8; several cells are already thinner
+   than that, and the refusal copy needs a design pass in the no-source-note voice)
 7. `get_teardown` + teardown card
 8. Converge: hooks/ideas/script retrieval becomes `search_corpus` calls —
    one pipeline, one contract
