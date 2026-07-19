@@ -36,6 +36,8 @@ function row(overrides: Partial<SharedMatchRow> = {}): SharedMatchRow {
     niche: "food",
     hook_archetype: "contrarian",
     format: "listicle",
+    visual_hook: "studio_set",
+    editing_style: "office-room-yap",
     spoken_hook: "Stop buying protein bars.",
     hook_template: "Stop buying [product category].",
     hook_source: "caption_fallback",
