@@ -1,10 +1,10 @@
 /**
  * /audience/new — the three-door create flow (P4).
  * Connect account / From a handle / From a description. Renders inside
- * (app)/layout.tsx → AppShell, on the shared full-bleed radial surface shell.
+ * (app)/layout.tsx → AppShell on the plain matte surface (the radial top-glow
+ * was retired: discrete tone-zones, not diffuse light).
  */
 
-import { SURFACE_RADIAL_BG } from "@/components/surfaces/surface-canvas";
 import { AudienceCreate, type CreateDoor } from "@/components/audience/audience-create";
 
 export const metadata = {
@@ -38,7 +38,7 @@ export default async function NewAudiencePage({
         : undefined;
 
   return (
-    <div className="relative min-h-full text-foreground" style={{ background: SURFACE_RADIAL_BG }}>
+    <div className="relative min-h-full text-foreground">
       <div className="mx-auto w-full max-w-2xl px-4 pb-24 pt-6 sm:px-6">
         <div className="rv-in space-y-6">
           <h1 className="text-[19px] font-semibold tracking-[-0.01em] text-foreground lg:text-[22px]">

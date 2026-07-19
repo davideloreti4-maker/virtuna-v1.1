@@ -339,14 +339,24 @@ export function AudienceCreate({ initialDoor, prefillHandle, className }: Audien
                 "rounded-xl border p-4 text-left transition-colors",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10",
                 on
-                  ? "border-border-hover bg-white/[0.04]"
+                  ? "border-white/[0.14] bg-white/[0.04]"
                   : "border-white/[0.06] hover:border-white/[0.1] hover:bg-white/[0.02]",
               )}
             >
-              <span className="block text-sm font-semibold tracking-[-0.005em] text-foreground">
+              <span
+                className={cn(
+                  "block text-sm font-semibold tracking-[-0.005em] transition-colors",
+                  on ? "text-foreground" : "text-foreground-secondary",
+                )}
+              >
                 {d.title}
               </span>
-              <span className="mt-1 block text-[13px] leading-normal text-foreground-secondary">
+              <span
+                className={cn(
+                  "mt-1 block text-[13px] leading-normal transition-colors",
+                  on ? "text-foreground-secondary" : "text-foreground-muted",
+                )}
+              >
                 {d.line}
               </span>
             </button>
@@ -354,7 +364,7 @@ export function AudienceCreate({ initialDoor, prefillHandle, className }: Audien
         })}
       </div>
 
-      <div className="rounded-2xl bg-white/[0.02] p-3.5">
+      <div className="rounded-2xl bg-white/[0.02] p-4">
         {door === "describe" ? (
           <>
             <textarea
@@ -439,16 +449,18 @@ export function AudienceCreate({ initialDoor, prefillHandle, className }: Audien
           </div>
         )}
 
+        {door === "connect" && platform !== "tiktok" && (
+          <p className="mt-3 border-t border-white/[0.06] pt-3 text-[13px] text-foreground-muted">
+            Analytics only.
+          </p>
+        )}
+
         {errorMsg && (
           <p className="mt-3 border-t border-white/[0.06] pt-3 text-[13px] text-error" data-testid="create-error">
             {errorMsg}
           </p>
         )}
       </div>
-
-      {door === "connect" && platform !== "tiktok" && (
-        <p className="px-1 text-[13px] text-foreground-muted">Analytics only.</p>
-      )}
     </div>
   );
 }
