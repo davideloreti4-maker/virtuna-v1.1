@@ -97,7 +97,9 @@ export function HomeGreeting({ className }: HomeGreetingProps) {
           height={57}
           vbW={FIELD_VB_W}
           vbH={FIELD_VB_H}
+          animation="cascade"
           connect
+          connectMode="mesh"
           ariaLabel="Your audience"
         />
       </div>

@@ -848,6 +848,7 @@ export function AudiencePresence({
                   vbH={96}
                   reacting={reacting}
                   connect
+                  connectMode="mesh"
                 />
                 <div className="flex flex-col items-center gap-1.5">
                   <p className="text-[15px] font-semibold tracking-[-0.01em] text-[var(--color-foreground)]">
