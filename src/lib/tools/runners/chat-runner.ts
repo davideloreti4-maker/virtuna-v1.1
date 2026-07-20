@@ -51,14 +51,26 @@ import {
 const GENERATE_TIMEOUT_MS = 300_000;
 
 /**
- * Reference-mode PULL flag (default OFF). When on, OPEN chat runs a pre-flight tool loop that lets the
- * model search the corpus on demand (corpus-tool.ts) and grounds the streamed answer on what it pulls.
- * Gate-free (reference mode: real evidence, no baseline claim). INDEPENDENT of the GENERATE-path
- * grounding flags. Persona/meet-mode chat is intentionally excluded — a viewer reacts in-voice, it does
- * not consult a strategy corpus.
+ * Reference-mode PRE-FLIGHT pull — SUPERSEDED, and off unless explicitly revived.
+ *
+ * This is the ORIGINAL corpus pull: a blocking tool loop that runs BEFORE the stream starts, costing
+ * an extra model call per message. The streaming agent loop (`chat-agent-loop.ts`, bound in
+ * `api/tools/chat/route.ts`) replaced it — the model now searches mid-answer, no pre-flight.
+ *
+ * 🔴 It reads the SAME env var as its replacement, with the OPPOSITE default, and that is a trap:
+ * `route.ts` treats `GROUNDING_CHAT_TOOL` as default-ON (`!== "false"`, shipped 2026-07-17), so
+ * setting it to `"true"` — the intuitive way to "turn chat grounding on" — does not enable anything
+ * new. It REVIVES this superseded pre-flight ON TOP of the live agent loop: two corpus pulls, an
+ * extra blocking model call, one answer. The var is a kill-switch for the agent loop, not an
+ * on-switch for grounding.
+ *
+ * Hence the dedicated `GROUNDING_CHAT_PREFLIGHT` var. Nothing sets it; this path stays dead by
+ * default and can be revived deliberately if the pre-flight shape is ever wanted back.
+ * Persona/meet-mode chat stays excluded either way — a viewer reacts in-voice, it does not consult
+ * a strategy corpus.
  */
 function isCorpusChatToolEnabled(): boolean {
-  return process.env.GROUNDING_CHAT_TOOL === "true";
+  return process.env.GROUNDING_CHAT_PREFLIGHT === "true";
 }
 
 /** Platforms whose teardowns live in the corpus and can be retrieved. */

@@ -127,6 +127,25 @@ NOT views÷followers) + creator handle + link. Multiplier badge display-capped
 6. `allowScrape` stays false; fresh data flows only through the explicit
    "Find new outliers" offer pattern (server decides availability, user
    authorizes — PR #322/#323).
+7. One definition of the contract: `src/lib/grounding/warrant.ts`, imported by both the chat
+   tool and the generation runners (step 8 below). Three axes — topical (cosine ≥ warrant
+   floor), structural (curation), provenance (extracted, no cosine to state) — and the axis is
+   **declared by the caller**, because an absent `similarity` means "retrieval misbehaved" out
+   of the cache and "never matched, by design" out of the scraper.
+
+### ⚠️ Flag names (they do not mean what they look like)
+
+| Var | Read by | Default | What it does |
+|---|---|---|---|
+| `GROUNDING_CHAT_TOOL` | `api/tools/chat/route.ts` | **ON** (`!== "false"`) | Kill-switch for the live streaming agent loop. |
+| `GROUNDING_CHAT_PREFLIGHT` | `chat-runner.ts` | OFF | Revives the **superseded** blocking pre-flight pull. |
+| `GROUNDING_{HOOKS,IDEAS,SCRIPT}_ENABLED` | the three runners | OFF | The paid generation path. Unset in Vercel. |
+
+`GROUNDING_CHAT_TOOL` is an **off**-switch, not an on-switch — chat grounding has been live
+since 2026-07-17. Until 2026-07-20 `chat-runner.ts` read that same var with the opposite default
+(`=== "true"`), so setting it to `"true"` — the intuitive "turn grounding on" — revived the dead
+pre-flight *on top of* the live loop: two corpus pulls and an extra blocking model call per
+message. Renamed to `GROUNDING_CHAT_PREFLIGHT`; nothing sets it.
 
 ## 6. Integration fork — ✅ DECIDED: native tool loop (spike passed 2026-07-19)
 
@@ -199,16 +218,54 @@ The detect-and-prefetch fallback is **discarded**.
 6. `corpus_stats` + insight card (minN refusal ≥ 8; several cells are already thinner than
    that, and the refusal copy needs a design pass in the no-source-note voice)
 7. `get_teardown` + teardown card
-8. Converge: hooks/ideas/script share the tool's honesty CONTRACT (not its call) —
-   one definition of "may this be cited / called proven", plus facets for ideas/script
+8. ✅ **Converge — the shared warrant contract (2026-07-20).** `src/lib/grounding/warrant.ts`
+   is now the ONE definition of "may this be cited / called proven"; `corpus-tool.ts` (chat)
+   and `gather-for-run.ts` (hooks/ideas/script) both import it. The runners' inlined
+   `groundingExamples.length > 0` is gone — they take `grounded` off the gather result.
+   - 🔴 **A two-axis lift would have shipped a regression, and no existing test would have
+     caught it.** Scraped rows carry `similarity: null` by design (`orchestrator.ts` — never
+     matched against a query, so no cosine exists). Judged topically that reads as onSubject 0
+     → ungrounded, so a paid **"Find new outliers"** run would have rendered its real,
+     proof-gated outliers as *not grounded*. Every scrape-path fixture in
+     `gather-for-run.test.ts` carried `similarity: 0.71`, so the suite would have stayed green.
+     Hence a **third axis, `provenance`**: warranted by search-by-subject + the outlier proof
+     gate, stating the closeness is unquantified rather than implying it was measured.
+   - **The axis is DECLARED by the caller, never inferred from the rows.** The first cut
+     sniffed provenance from `measured === 0` and #342's "absent is not passing" guard caught
+     it within one run: out of the corpus cache a null similarity is a *malfunction*, not a
+     provenance signal, and the inference would have handed a broken chat batch the same
+     warrant as a paid scrape. Same null, opposite meanings — only the caller knows which.
+   - **Behaviour is otherwise unchanged by construction:** ideas/script retrieve at a 0.5 floor
+     that already equals the warrant floor, and hooks' structural axis grounds on rows alone —
+     so all three keep their current verdicts, now for a stated reason instead of a coincidence.
+   - Guards: `warrant.test.ts` (16) + 5 in `gather-for-run.test.ts`, verified RED against both
+     a two-axis lift and a no-provenance-branch build before landing.
 
-> **▶ NEXT SESSION — start at `docs/HANDOFF-2026-07-20-grounding-converge.md`.**
-> It recommends **step 8 (converge) ahead of step 6**, because hooks/ideas/script are the
-> paid day-one skills and the honesty contract currently lives only at the tool boundary,
-> while `corpus_stats` is a new surface nobody has asked for yet. That recommendation is
-> gated on an owner decision: the gen-skill grounding flags are still OFF in prod, so
-> converge improves a path users do not hit yet. The handoff argues both sides and carries
-> the verified consumer map + the instrument gotchas.
+**Deferred out of step 8, with the evidence:**
+
+- **Facets for ideas/script — BLOCKED on a vocabulary bridge, do not just wire it.** The plan
+  said "a creator's niche/platform/format are known at run time, so filter on them." Measured
+  against prod: `creator_profiles.niche_primary` uses the `NICHE_TREE` taxonomy (`beauty`,
+  `fitness`, `education`, and the only real value in prod today, `comedy`) while
+  `outlier_teardowns.niche` uses the corpus enum (`beauty-fashion`, `health-fitness`,
+  `education-science`, `comedy-entertainment` ×69). Passing one as the other filters to **zero
+  rows** and silently ungrounds the paid path — the exact greenscreen failure `corpus-tool.ts`
+  warns about, reintroduced. Needs an explicit `NICHE_TREE → NICHES` map first.
+  ⚠️ Also note `filterPlatform: false` was a deliberate owner call (2026-07-17); passing
+  `facets.platform` from the runner would silently reverse it.
+- **Hooks' `grounded` semantics — examined, deliberately UNCHANGED.** Hooks retrieves at
+  `minSimilarity: 0`, so `grounded` is near-always true and means something weaker than it does
+  in chat. That asymmetry never becomes a false claim: an attributed card renders `ProofReceipt`
+  whose eyebrow is already **"Proven structure"** — the structural claim, correct for hooks —
+  and an unattributed one renders `NoSourceNote`, which claims nothing. Raising the floor would
+  delete the cross-subject transfer it was lowered to permit and buy no honesty the renderer
+  wasn't already providing.
+
+> **▶ NEXT — step 6 (`corpus_stats`) or the niche bridge.** Step 8's contract has landed, so the
+> remaining converge value is the bridge above. Both are gated on the same open decision: the
+> gen-skill grounding flags (`GROUNDING_{HOOKS,IDEAS,SCRIPT}_ENABLED`) are **not set in Vercel**
+> (owner, 2026-07-20 — work locally with them on), so the paid grounded path is still not one
+> users hit in prod.
 
 ## 8. Open questions
 

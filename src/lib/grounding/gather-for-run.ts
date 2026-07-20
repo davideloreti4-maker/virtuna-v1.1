@@ -42,7 +42,8 @@
 import { gatherAndExtract } from "@/lib/grounding/orchestrator";
 import { buildCorpusBlock, type GroundingSkill } from "@/lib/grounding/prompt";
 import { adaptCorpusBlock, type AdaptProfile } from "@/lib/grounding/adapt";
-import { retrieveCachedExamples } from "@/lib/grounding/retrieve";
+import { retrieveCachedExamples, resolveRetrieveConfig } from "@/lib/grounding/retrieve";
+import { assessWarrant, type Warrant, type WarrantAxis } from "@/lib/grounding/warrant";
 import type { RetrievedExample } from "@/lib/grounding/types";
 
 /** The stage name shown on the thread loading spine while gathering (shared by all skills). */
@@ -116,6 +117,18 @@ export interface GatherCorpusResult {
    * grounding-off, or while a scrape is already running (allowScrape true → nothing to offer).
    */
   scrapeAvailable: boolean;
+  /**
+   * May this run be presented as grounded, and on what basis? The SHARED contract (warrant.ts), not
+   * a local `examples.length > 0` inference.
+   *
+   * The old inference was sound but only by coincidence: the per-skill retrieval floor happens to sit
+   * AT the warrant floor, so every row that reached the runner had already cleared it. Asking the
+   * question explicitly means the runners stay honest if either floor ever moves — and it is the
+   * only place that can distinguish a topical batch from a structural or a freshly-scraped one.
+   */
+  warrant: Warrant;
+  /** Convenience mirror of `warrant !== "none"` — what the card's `grounded` flag is set from. */
+  grounded: boolean;
 }
 
 /** Injectable pipeline fns (tests swap these; prod uses the real modules). */
@@ -135,7 +148,13 @@ export async function gatherCorpusForRun(
   input: GatherCorpusInput,
   deps: GatherCorpusDeps = {},
 ): Promise<GatherCorpusResult> {
-  const none: GatherCorpusResult = { corpus: undefined, examples: [], scrapeAvailable: false };
+  const none: GatherCorpusResult = {
+    corpus: undefined,
+    examples: [],
+    scrapeAvailable: false,
+    warrant: "none",
+    grounded: false,
+  };
   if (!input.enabled || !READABLE_PLATFORMS.has(input.platform)) return none;
 
   const query = input.queryCandidates.find((q) => q && q.trim().length > 0)?.trim() ?? "";
@@ -152,10 +171,30 @@ export async function gatherCorpusForRun(
    * a profile), otherwise the raw per-skill slice. `used` (not the input list) is returned as
    * `examples` so the runner's sourceIndex→receipt mapping stays positional and exact on BOTH paths.
    */
+  /**
+   * The warrant AXIS is the retrieval's own ranking strategy, read from the same config the
+   * retrieval used — not hardcoded per skill. `GROUNDING_HOOKS_RANK=topical` flips hooks back to
+   * topical ranking without a deploy, and a warrant that ignored that would describe a retrieval
+   * that didn't happen.
+   */
+  const cacheAxis: WarrantAxis =
+    resolveRetrieveConfig(input.skill).rank === "structural" ? "structural" : "topical";
+
   const finalize = async (
     examples: RetrievedExample[],
     scrapeAvailable = false,
+    /**
+     * How THESE rows were obtained. Defaults to the cache axis; the scrape branch overrides it,
+     * because a freshly extracted row carries no cosine and must not be judged by one.
+     */
+    axis: WarrantAxis = cacheAxis,
   ): Promise<GatherCorpusResult> => {
+    // Assessed on the rows the model is actually SHOWN (`used`), never on the wider input list —
+    // a row we retrieved and then dropped cannot warrant anything the model could not read.
+    const settle = (corpus: string | undefined, used: RetrievedExample[]): GatherCorpusResult => {
+      const { warrant, grounded } = assessWarrant(axis, used);
+      return { corpus, examples: used, scrapeAvailable, warrant, grounded };
+    };
     if (input.adapt && ADAPT_SKILLS.has(input.skill) && input.adaptProfile && examples.length > 0) {
       const { corpus, used } = await adapt({
         skill: input.skill,
@@ -165,10 +204,10 @@ export async function gatherCorpusForRun(
         profile: input.adaptProfile,
         examples,
       });
-      return { corpus, examples: used, scrapeAvailable };
+      return settle(corpus, used);
     }
     const { corpus, used } = buildCorpusBlock(examples, input.skill);
-    return { corpus, examples: used, scrapeAvailable };
+    return settle(corpus, used);
   };
 
   input.onStage?.(GROUNDING_STAGE_NAME, "active");
@@ -242,7 +281,10 @@ export async function gatherCorpusForRun(
       platform: input.platform,
       niche: input.niche,
     });
-    return finalize(examples);
+    // PROVENANCE, not the cache axis: these rows were just extracted, so they carry no similarity
+    // (orchestrator.ts sets it null by design). Judging them topically would mark the run the user
+    // paid Apify for as ungrounded — their warrant is the search-by-subject + outlier proof gate.
+    return finalize(examples, false, "provenance");
   } catch (err) {
     input.warnings.push(
       `grounding failed (degraded to ungrounded): ${err instanceof Error ? err.message : String(err)}`,

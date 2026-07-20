@@ -33,6 +33,19 @@ function example(id: string): RetrievedExample {
   };
 }
 
+/**
+ * A row as the SCRAPE actually produces it. `orchestrator.ts` sets `similarity: null` — the row was
+ * never matched against a query, so there is no cosine to state.
+ *
+ * The fixtures above all carry `similarity: 0.71`, including the ones exercising the scrape path.
+ * That is the blindness this exists to remove: a warrant assessment that treats an unmeasured row as
+ * failing marks every paid "Find new outliers" run ungrounded, and NOT ONE cached-fixture test would
+ * have gone red.
+ */
+function scrapedExample(id: string): RetrievedExample {
+  return { ...example(id), similarity: null };
+}
+
 type Retrieve = typeof retrieveCachedExamples;
 type Gather = typeof gatherAndExtract;
 
@@ -215,7 +228,14 @@ describe("gatherCorpusForRun — read-back first", () => {
   it("keeps the gates: disabled / unsupported platform / empty query short-circuit before any I/O", async () => {
     const retrieve = vi.fn<Retrieve>();
     const gather = vi.fn<Gather>();
-    const none = { corpus: undefined, examples: [], scrapeAvailable: false };
+    // A short-circuit warrants nothing — it never retrieved a row to warrant anything WITH.
+    const none = {
+      corpus: undefined,
+      examples: [],
+      scrapeAvailable: false,
+      warrant: "none",
+      grounded: false,
+    };
 
     expect(
       await gatherCorpusForRun({ ...baseInput(), enabled: false }, { retrieve, gather }),
@@ -375,5 +395,66 @@ describe("gatherCorpusForRun — adapt routing", () => {
 
     expect(adapt).not.toHaveBeenCalled();
     expect(result.corpus).toContain("Stop buying");
+  });
+});
+
+describe("gatherCorpusForRun — the shared warrant contract", () => {
+  /**
+   * THE regression guard. The user tapped "Find new outliers", paid for an Apify scrape, and got
+   * back real above-baseline outliers — which carry no cosine. If the warrant assessment reads that
+   * absence as "below the floor", the run they paid for renders UNGROUNDED.
+   */
+  it("keeps an AUTHORIZED scrape grounded even though scraped rows carry no similarity", async () => {
+    const gather = vi.fn<Gather>(async () => ({
+      examples: [scrapedExample("live-a"), scrapedExample("live-b")],
+      stats: { scraped: 30, selected: 6, withFollowers: 6, gated: 6, usable: 2 },
+    }));
+
+    const result = await gatherCorpusForRun(
+      { ...baseInput(), skill: "ideas", allowScrape: true },
+      { retrieve: miss, gather },
+    );
+
+    expect(result.examples).toHaveLength(2);
+    expect(result.grounded).toBe(true);
+    // Named honestly: warranted by EXTRACTION, not by a closeness we never measured.
+    expect(result.warrant).toBe("provenance");
+  });
+
+  it("grounds a topical cache hit on the subject axis", async () => {
+    const result = await gatherCorpusForRun(
+      { ...baseInput(), skill: "ideas" },
+      { retrieve: hit, gather: vi.fn<Gather>() },
+    );
+    expect(result).toMatchObject({ grounded: true, warrant: "topical" });
+  });
+
+  it("grounds hooks structurally — its floor is 0 because structure transfers across subjects", async () => {
+    const result = await gatherCorpusForRun(
+      { ...baseInput(), skill: "hooks" },
+      { retrieve: hit, gather: vi.fn<Gather>() },
+    );
+    expect(result).toMatchObject({ grounded: true, warrant: "structural" });
+  });
+
+  it("reports NOT grounded when nothing was retrieved at all", async () => {
+    const empty: Retrieve = async () => ({
+      examples: [],
+      enough: false,
+      stats: { matched: 0, good: 0, minRows: 2, minSimilarity: 0.6, rank: "topical", archetypes: 0 },
+    });
+    const result = await gatherCorpusForRun(
+      { ...baseInput(), skill: "ideas" },
+      { retrieve: empty, gather: vi.fn<Gather>() },
+    );
+    expect(result).toMatchObject({ grounded: false, warrant: "none", corpus: undefined });
+  });
+
+  it("reports NOT grounded when the skill is gated off", async () => {
+    const result = await gatherCorpusForRun(
+      { ...baseInput(), enabled: false },
+      { retrieve: hit, gather: vi.fn<Gather>() },
+    );
+    expect(result).toMatchObject({ grounded: false, warrant: "none" });
   });
 });

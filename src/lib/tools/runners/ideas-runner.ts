@@ -480,6 +480,7 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
     corpus,
     examples: groundingExamples,
     scrapeAvailable,
+    grounded: corpusGrounded,
   } = await gatherCorpusForRun({
     enabled: isGroundingEnabled(),
     skill: "ideas", // → the belief↔reality slice: the tension that made the video travel
@@ -700,11 +701,11 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
         predictedFailureMode: null, // S5: rubric critic removed (was OFF / ~100% fail)
         personas: candidate.personas, // S3′: per-card reaction for the ambient modal (PR-2)
         ...(proof ? { proof } : {}),  // §11f — only when a real source was attributed
-        // Did the RUN retrieve anything, regardless of what THIS card cited? Set from the
-        // examples, NOT from `proof` — a grounded run where the model attributed nothing is
-        // still grounded, and that is exactly the case the card's note explains. Omitted on
-        // ungrounded runs so the pre-grounding block shape stays byte-identical.
-        ...(groundingExamples.length > 0 ? { grounded: true } : {}),
+        // Did the RUN earn a grounding claim, regardless of what THIS card cited? Set from the
+        // shared WARRANT (warrant.ts), NOT from `proof` — a grounded run where the model attributed
+        // nothing is still grounded, and that is exactly the case the card's note explains. Omitted
+        // on ungrounded runs so the pre-grounding block shape stays byte-identical.
+        ...(corpusGrounded ? { grounded: true } : {}),
         // Per-persona generation — omitted entirely when there is no named reader, so General
         // and every pre-target persisted card keep their exact shape (regression gate).
         ...(target ? { target } : {}),
