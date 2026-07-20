@@ -216,6 +216,7 @@ describe("runChatPipeline corpus PULL [runner]", () => {
     format: "breakdowns-explainers",
     visualSetting: "studio_set",
     editingStyle: "office-room-yap",
+    hookTechniques: [],
     niche: "health-fitness",
     similarity: 0.71,
     spokenHook: "You've been lied to about protein.",

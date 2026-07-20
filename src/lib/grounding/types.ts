@@ -439,6 +439,20 @@ export interface RetrievedExample {
    */
   visualSetting: string | null;
   editingStyle: string | null;
+  /**
+   * The Sandcastles first-frame TECHNIQUE(s) this row is catalogued under — 'Camera Whip',
+   * '3P Crash Zoom', 'Match Cut'. Display names; the slug is the filter key.
+   *
+   * 🔴 A DIFFERENT AXIS from `visualSetting`, though both descend from something Sandcastles called
+   * a "visual hook". `visualSetting` is WHERE the video is staged (greenscreen / studio / faceless);
+   * this is WHAT THE FIRST FRAME DOES. Only the setting was ever promoted to a column, so until
+   * 2026-07-20 "show me videos with a good visual hook" had no axis to land on and quietly resolved
+   * against the staging taxonomy instead.
+   *
+   * `[]` means NOT CATALOGUED, not "has no visual hook" — only 154 of 524 rows carry a technique
+   * tag, and a card must not imply the other 370 lack one.
+   */
+  hookTechniques: string[];
   niche: string | null;
   spokenHook: string | null;
   /** The source hook as a reusable [bracketed] template — the proof block's fill-in-the-blank line. */

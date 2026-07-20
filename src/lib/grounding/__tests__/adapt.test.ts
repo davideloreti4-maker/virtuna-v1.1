@@ -25,6 +25,7 @@ function proven(id: string, madlib: string): RetrievedExample {
     format: "listicle",
     visualSetting: "studio_set",
     editingStyle: "office-room-yap",
+    hookTechniques: [],
     niche: "health-fitness",
     similarity: 0.71,
     spokenHook: `spoken ${id}`,

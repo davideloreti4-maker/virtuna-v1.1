@@ -115,6 +115,42 @@ receipt (`views`, `{n}×`, `baseline_label` — which is `vs their usual views`,
 NOT views÷followers) + creator handle + link. Multiplier badge display-capped
 (corpus max is 20,154× — render `>100×`).
 
+## 4b. 🔴 Two axes called "visual hook" — do not conflate them
+
+Sandcastles shipped **two** taxonomies the library UI both labels "visual hooks", and until
+2026-07-20 we had only ever promoted one. This is the single most load-bearing naming fact in
+the corpus.
+
+| | Stored as | Values | Answers |
+|---|---|---|---|
+| **Setting** — where it's staged | `outlier_teardowns.visual_hook` column | 6: `greenscreen`, `studio_set`, `in_world_vlog`, `in_world_skit`, `faceless`, `other` | "greenscreen examples" |
+| **Technique** — what the first frame *does* | `teardown_collections` (category `visual_hooks`) | **47** in 5 families: `camera-whip`, `3p-crash-zoom`, `match-cut`, `framebreaker`, `write-on-screen`… | "a good visual hook", "a strong opening shot" |
+
+Extraction promoted the setting, kept the name, and left the technique taxonomy inside
+`teardown.__collections` where nothing read it. So *"give me three videos with a good visual
+hook"* silently resolved against the **staging** taxonomy and came back plausible and wrong.
+The 20260719150000 migration header already flagged the naming collision and still surfaced
+only the setting, because the collections array was never opened.
+
+**Proof they are independent** (live, `scripts/smoke-corpus-technique.ts` case C): the single
+family `subject-motion` spans **four** different settings — studio_set · greenscreen ·
+in_world_vlog · in_world_skit. Neither axis constrains the other.
+
+**Coverage is partial and thin, and the interface says so.** 154 of 524 rows carry a technique
+tag, 2–7 videos per technique. The tool description states "154 of 524" to the model, and an
+uncatalogued row **omits** `hook_technique` rather than sending null — absent means *not
+catalogued*, never *has no visual hook*.
+
+The other three collection categories were effectively already promoted (`formats` ≈ the
+`format` column, `editing_styles` = `editing_style` exactly) — except the `signature_series`
+COLUMN is a **different field** from the `signature_series` collection category (148 free-text
+per-video series names vs a 6-value taxonomy). All four are stored in `teardown_collections`
+regardless, so adding a facet later needs no re-backfill.
+
+> `teardown_collections` deliberately does **not** filter on `status`, so it holds 592 rows /
+> 532 videos including the 8 known shells. Consumers join to `outlier_teardowns` and filter
+> there — an aggregation that skips this will overcount by 8.
+
 ## 5. The honesty contract (at the tool boundary)
 
 1. Only admissible rows return (status gate + shells failed + TS admissibility).
@@ -260,6 +296,16 @@ The detect-and-prefetch fallback is **discarded**.
   and an unattributed one renders `NoSourceNote`, which claims nothing. Raising the floor would
   delete the cross-subject transfer it was lowered to permit and buy no honesty the renderer
   wasn't already providing.
+
+9. ✅ **First-frame TECHNIQUE axis (2026-07-20).** `teardown_collections` + two RPC gates +
+   `hook_technique` / `hook_family` tool facets. See §4b — this is the axis
+   *"show me videos with a good visual hook"* needed and never had. Live-verified 10/10 vs prod
+   (`scripts/smoke-corpus-technique.ts`); 6 unit guards, red-checked against a build with the
+   axis stripped.
+   - 🔑 **The lesson: read the DATA, not the schema.** Three sessions treated "the corpus can't
+     answer that" as fact. The taxonomy had been sitting in `teardown.__collections` on all 524
+     rows the whole time — 105 named collections across 4 categories. A column list tells you
+     what was *promoted*, never what was *received*. The owner knew; the schema didn't say.
 
 > **▶ NEXT — step 6 (`corpus_stats`) or the niche bridge.** Step 8's contract has landed, so the
 > remaining converge value is the bridge above. Both are gated on the same open decision: the

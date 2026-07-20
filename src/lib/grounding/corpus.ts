@@ -275,6 +275,15 @@ export interface SharedMatchRow {
   idea: unknown;
   template: unknown;
   why_it_works: string | null;
+  /**
+   * The Sandcastles first-frame TECHNIQUE names this row is filed under ('Camera Whip',
+   * '3P Crash Zoom'), aggregated because a row may carry two. `null` when the row belongs to no
+   * visual_hooks collection — which is most of them (154 of 524 are tagged), so treat absence as
+   * "not catalogued", never as "has no visual hook".
+   *
+   * Display names, not slugs: this is what a card would print. The slug is the filter key.
+   */
+  hook_techniques: string[] | null;
 }
 
 export interface PersonalMatchRow
@@ -297,6 +306,18 @@ export interface SharedMatchOptions {
   /** Filters the visual_hook column (the visual SETTING taxonomy). */
   filterVisual?: string | null;
   filterEditing?: string | null;
+  /**
+   * Filters the Sandcastles first-frame TECHNIQUE (`teardown_collections`,
+   * category=visual_hooks) — 'camera-whip', '3p-crash-zoom', 'match-cut', …
+   *
+   * 🔴 A DIFFERENT AXIS from `filterVisual`, despite the shared word. `filterVisual` is the
+   * SETTING the video is staged in (greenscreen / studio_set / faceless); this is the DEVICE the
+   * first frame uses. Sandcastles ships both and we only ever promoted the setting, so
+   * "show me a good visual hook" had nothing to land on until 2026-07-20.
+   */
+  filterHookTechnique?: string | null;
+  /** Filters the technique FAMILY — 'subject-motion', 'pattern-interrupt-visual-switching', … */
+  filterHookFamily?: string | null;
 }
 
 export async function matchSharedTeardowns(
@@ -314,6 +335,8 @@ export async function matchSharedTeardowns(
     filter_format: opts.filterFormat ?? null,
     filter_visual: opts.filterVisual ?? null,
     filter_editing: opts.filterEditing ?? null,
+    filter_hook_technique: opts.filterHookTechnique ?? null,
+    filter_hook_family: opts.filterHookFamily ?? null,
   });
   if (error) throw new Error(`match_shared_teardowns RPC failed: ${error.message}`);
   return (data ?? []) as SharedMatchRow[];
