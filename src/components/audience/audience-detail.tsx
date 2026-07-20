@@ -567,9 +567,13 @@ export function AudienceDetail({
                     )}
                   </div>
 
-                  {/* The empty track has to be visible or the fill has nothing to be
-                      measured against — at 7–15% the bars are short, and a bar with no
-                      baseline reads as an underline rather than a quantity. */}
+                  {/* FULL-WIDTH ON PURPOSE — measured, not guessed. A 120px inline track
+                      was tried and reverted: it rendered 18.0px for a 15% persona and
+                      8.4px for a 7% one, 9.6px of spread across the whole roster, which
+                      encodes nothing next to a number already reading "15%". Full width
+                      gives ~93px vs ~43px — 50px of spread, five times the discrimination.
+                      The empty remainder is not waste; it is the rest of the room, and the
+                      slice is only legible against it. */}
                   <div className="mt-2 h-[4px] rounded-sm bg-white/[0.06]" aria-hidden="true">
                     <div
                       className="h-full rounded-sm bg-[color:var(--color-foreground-secondary)] opacity-[0.7]"
