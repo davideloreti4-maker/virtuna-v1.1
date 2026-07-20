@@ -292,6 +292,14 @@ export function Sidebar() {
   const activeThreadId = useBoardStore((s) => s.activeThreadId);
   const archiveThread = useArchiveThread();
 
+  // Mobile drawer hygiene: ANY navigation tap must land the creator ON the
+  // destination, not back under the still-open sheet (live-caught 2026-07-20:
+  // New Thread left the drawer + scrim covering the fresh home). Desktop no-ops —
+  // the persistent panel never closes on navigation.
+  const closeIfMobile = () => {
+    if (isMobile) close();
+  };
+
   // Open a fresh BLANK thread. No DB row is created here — a blank thread must not
   // pollute history. The pointer is set to the new-thread sentinel so the composer
   // renders empty; the row is created lazily on the first message send
@@ -300,6 +308,7 @@ export function Sidebar() {
     setActiveThreadCookie(NEW_THREAD_SENTINEL);
     setActiveThreadId(null);
     switchThread();
+    closeIfMobile();
     router.push("/home");
   };
 
@@ -310,6 +319,7 @@ export function Sidebar() {
     setActiveThreadCookie(id);
     setActiveThreadId(id);
     switchThread();
+    closeIfMobile();
     router.push("/home");
   };
 
@@ -471,7 +481,7 @@ export function Sidebar() {
               label="Audience"
               isActive={isOnAudience}
               isCollapsed={effectiveCollapsed}
-              onClick={() => router.push("/audience")}
+              onClick={() => { closeIfMobile(); router.push("/audience"); }}
             />
           </div>
 
@@ -568,7 +578,7 @@ export function Sidebar() {
                   <button
                     type="button"
                     role="menuitem"
-                    onClick={() => { router.push("/settings"); setAccountOpen(false); }}
+                    onClick={() => { closeIfMobile(); router.push("/settings"); setAccountOpen(false); }}
                     className="w-full flex items-center gap-2 px-3 min-h-[40px] text-sm text-foreground-secondary hover:bg-white/[0.05] hover:text-foreground transition-colors"
                   >
                     <SlidersHorizontal className="h-4 w-4" />
