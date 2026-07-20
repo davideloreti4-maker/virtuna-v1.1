@@ -371,3 +371,35 @@ REASON does, the persona is its exemplar voice.
   `audience-breakout`, `persona-cloud`.
 - Verify: Qwen reaction-call cost at scale (L2 assumes unmetered-cheap) + what
   `read-to-card-reaction.ts` and the skill pipelines actually emit.
+
+---
+
+# NEXT SESSION protocol (handoff @ session-2 end, 2026-07-20 — design iteration MID-FLIGHT)
+
+**Where we are:** all product architecture is LOCKED (L1–L6 + resolved opens above). The premium
+sketch iteration for the three core surfaces is in progress — 4 rounds done, owner marked up
+rounds 1 (red = wrong) and 2 (blue = improve); **round 4 is delivered but NOT yet reviewed by
+the owner.** Zero product code touched; all sketches gitignored in `.scratch/`.
+
+1. Serve sketches: `cd .scratch && python3 -m http.server 8777`.
+2. Open **`http://localhost:8777/panel-v6-round4.html`** — CURRENT BEST (overview + brain +
+   audience). Rounds 1–3 files exist for diffing the journey.
+3. **First move: owner marks up round 4.** Iterate in the same loop (owner screenshots with
+   red/blue marks → translate every mark → next round → self-review against the doctrine +
+   feedback laws BEFORE presenting).
+4. After ①–③ converge: sketch ④ start screen (chips row + ACTIONS grid, L6) and ⑤ simulate
+   sheet (question × segment picker + SIM-1 Flash/Max selector) in the same visual grammar.
+5. Then: build planning (dedup reckoning for `audience-lens/`, data-contract verification).
+
+**Read before sketching:** the "Design doctrine", "Per-surface bets", "Sketch order & state"
+(round-4 grammar + feedback laws) sections above. Competitor refs:
+`.planning/references/sapient/` (03/07/10 = deepest patterns: de-boxed tiles, human-question
+sections, moment chips, staged run log, trust accordion) and
+`.planning/references/artificial-societies/` (as-01…07: one-organism network, variants loop,
+tri-state attention, insights/conversation).
+
+**The loop's hard-won rules (violate = rejected, learned across 4 rounds):**
+match the app's existing grammar, never invent chrome · data not prose · disclaimers are inline
+tags said once, never banners · one person never "speaks for" N — a coded reason does · ask-chips
+belong in the chat composer, not report panels · bordered boxes are slop, hairlines are premium ·
+the terrain is ONE connected society · every section = kicker + human question + owning number.
