@@ -188,13 +188,18 @@ describe("runChatPipeline personaGrounding [runner]", () => {
   });
 });
 
-// ─── Reference-mode corpus PULL (GROUNDING_CHAT_TOOL) ──────────────────────────
+// ─── Reference-mode corpus PRE-FLIGHT pull (GROUNDING_CHAT_PREFLIGHT) ─────────
 
 /**
  * The flag-gated pre-flight pull: OPEN chat lets the model search the corpus and grounds the streamed
  * answer on what it pulls. Locks the no-op guarantee (flag off OR persona chat → byte-identical), the
  * block injection (flag on), and degrade-safety (a failing pull streams ungrounded, never throws).
  * `gatherReferences` is INJECTED so these stay network-free; buildReferenceBlock runs for real.
+ *
+ * SUPERSEDED by the streaming agent loop (`chat-agent-loop.ts`) and now gated on its OWN var. It used
+ * to read `GROUNDING_CHAT_TOOL` — the same var the live loop treats as default-ON — so setting that
+ * to "true" revived this blocking pre-flight ON TOP of the loop: two pulls, one answer. The tests
+ * below still pass either way, which is precisely why the collision needed finding by reading.
  */
 describe("runChatPipeline corpus PULL [runner]", () => {
   const pulled: RetrievedExample = {
@@ -226,7 +231,7 @@ describe("runChatPipeline corpus PULL [runner]", () => {
 
   beforeEach(() => gatherSpy.mockClear());
   afterEach(() => {
-    delete process.env.GROUNDING_CHAT_TOOL;
+    delete process.env.GROUNDING_CHAT_PREFLIGHT;
   });
 
   const systemOf = () => {
@@ -241,7 +246,7 @@ describe("runChatPipeline corpus PULL [runner]", () => {
   });
 
   it("flag ON + open chat: the model's pulled reference is injected AFTER the chat prompt", async () => {
-    process.env.GROUNDING_CHAT_TOOL = "true";
+    process.env.GROUNDING_CHAT_PREFLIGHT = "true";
     await runChatPipeline(BASE_INPUT, () => {}, { gatherReferences: gatherSpy as never });
 
     expect(gatherSpy).toHaveBeenCalledTimes(1);
@@ -254,7 +259,7 @@ describe("runChatPipeline corpus PULL [runner]", () => {
   });
 
   it("flag ON + PERSONA chat: the pull is excluded (a viewer reacts in-voice, not from a strategy corpus)", async () => {
-    process.env.GROUNDING_CHAT_TOOL = "true";
+    process.env.GROUNDING_CHAT_PREFLIGHT = "true";
     await runChatPipeline(
       { ...BASE_INPUT, personaGrounding: { archetype: "tough_crowd", personaName: "Maya" } },
       () => {},
@@ -265,7 +270,7 @@ describe("runChatPipeline corpus PULL [runner]", () => {
   });
 
   it("flag ON but the pull THROWS: degrades to ungrounded — no block, stream still completes", async () => {
-    process.env.GROUNDING_CHAT_TOOL = "true";
+    process.env.GROUNDING_CHAT_PREFLIGHT = "true";
     const throwing = vi.fn(async () => {
       throw new Error("corpus down");
     });

@@ -119,11 +119,16 @@ describe('NoSourceNote — a grounded run that attributed nothing to THIS card s
 });
 
 describe('the runners set `grounded` from the SOURCES, never from the proof', () => {
-  it('derives it from groundingExamples.length — a run that attributed nothing is still grounded', async () => {
+  it('derives it from the run WARRANT — a run that attributed nothing is still grounded', async () => {
     // The tempting shortcut is `grounded: Boolean(proof)`. That is self-defeating: it makes the
     // flag mean "this card has a receipt", so the note can never fire on the card that lacks one
     // — the only card it exists for. Worse, a grounded run where the model attributed NO card
     // would report itself ungrounded and go silent entirely. Pin the real source of truth.
+    //
+    // That source used to be `groundingExamples.length > 0`, inlined in all three runners. It is
+    // now the shared warrant contract (`warrant.ts`), destructured off the gather result as
+    // `corpusGrounded` — same intent, one definition, and it can finally tell a topical run from a
+    // structural or a freshly-scraped one. What must NEVER come back is deriving it from `proof`.
     const { readFileSync } = await import('node:fs');
     const runners = [
       'src/lib/tools/runners/ideas-runner.ts',
@@ -132,8 +137,11 @@ describe('the runners set `grounded` from the SOURCES, never from the proof', ()
     ];
     for (const path of runners) {
       const src = readFileSync(path, 'utf8');
-      expect(src, `${path} must set grounded from the retrieved examples`).toMatch(
-        /groundingExamples\.length > 0 \? \{ grounded: true \}/,
+      expect(src, `${path} must take grounded from the shared warrant`).toMatch(
+        /grounded:\s*corpusGrounded,/,
+      );
+      expect(src, `${path} must set the card flag from that warrant`).toMatch(
+        /\.\.\.\(corpusGrounded \? \{ grounded: true \} : \{\}\)/,
       );
       expect(src, `${path} must NOT derive grounded from proof`).not.toMatch(
         /grounded:\s*Boolean\(proof\)|grounded:\s*!!proof|grounded:\s*proof\s*!==?\s*null/,

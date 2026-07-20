@@ -22,6 +22,7 @@ import {
   type RetrieveFacets,
 } from "./retrieve";
 import { receipt, clip } from "./prompt";
+import { assessWarrant, citableSubset, warrantFloor, warrantNote, type Warrant } from "./warrant";
 import type { RetrievedExample } from "./types";
 
 // ─── Config ──────────────────────────────────────────────────────────────────
@@ -38,33 +39,10 @@ const MAX_REFERENCES = 6;
 /** Output cap for the scout turns — it gathers, it does not write the answer, so keep it cheap. */
 const SCOUT_MAX_TOKENS = 300;
 
-/**
- * The WARRANT floor — the cosine above which a row is allowed to count as evidence ABOUT THE SUBJECT.
- *
- * Deliberately NOT the same number as the retrieval floor in `referenceConfig` (0.4), and the gap is
- * the whole point. Two different questions were being answered by one threshold:
- *
- *   • "should the model SEE this row?"   → recall. Cheap to be wrong; the model reads and discards.
- *   • "may the model CITE this row as being about what was asked?" → warrant. Expensive to be wrong;
- *     this is where a tangential row becomes a fabricated citation.
- *
- * Collapsing the two is what produced the spike's arm-B near-miss: an absurd query returned 5 rows at
- * ~0.5 similarity, `grounded = examples.length > 0` said true, and only the model's own judgment kept
- * the answer honest. A contract that depends on the model choosing to be honest is not a contract.
- *
- * 0.5 is the owner-calibrated topical floor (retrieve.ts, measured 2026-07-17 across 12 realistic asks:
- * 0.50 → 9/12 hit). The corpus median similarity is ~0.45, so anything at or below that is indis-
- * tinguishable from "a random row" — which is the definition of ungrounded.
- */
-const WARRANT_FLOOR_DEFAULT = 0.5;
-
-/** Rows above the warrant floor needed before an answer may be called grounded on the subject. */
-const WARRANT_MIN_ROWS = 1;
-
-function warrantFloor(): number {
-  const raw = Number(process.env.GROUNDING_WARRANT_MIN_SIMILARITY);
-  return Number.isFinite(raw) && raw > 0 && raw < 1 ? raw : WARRANT_FLOOR_DEFAULT;
-}
+// The warrant contract (floor · axes · citable subset · the note) lives in `warrant.ts` — SHARED
+// with the generation path, so "may this be cited" is defined exactly once. The recall floor in
+// `referenceConfig` (0.4) is deliberately BELOW the warrant floor (0.5): recall decides what the
+// model may SEE, warrant decides what it may CITE. See that module's header for the full argument.
 
 // ─── The tool contract ───────────────────────────────────────────────────────
 
@@ -222,8 +200,8 @@ export interface ToolCallRecord {
   error?: string;
 }
 
-/** What the returned rows entitle the model to say. */
-export type Warrant = "topical" | "structural" | "none";
+/** What the returned rows entitle the model to say. Defined by the shared warrant contract. */
+export type { Warrant };
 
 export interface GatherReferencesInput {
   /** The creator's question — what the model is gathering references to answer. */
@@ -279,46 +257,6 @@ export function parseFacets(args: Record<string, unknown>): RetrieveFacets {
   const niche = pickFacet(args.niche, NICHES);
   if (niche) facets.niche = niche;
   return facets;
-}
-
-/**
- * Does this batch WARRANT a claim, and a claim about what?
- *
- * The two axes earn their warrant differently, and conflating them is how a craft reference becomes a
- * fabricated citation:
- *
- *  • topical — the claim is about the SUBJECT ("videos about X do Y"), so the rows must actually be
- *    about X. Cosine decides, at the warrant floor. Below it: "none" — the corpus returned rows
- *    (it always does) but none of them are evidence about this subject.
- *
- *  • structural — the claim is about SHAPE ("this hook pattern works"), which is subject-independent
- *    by design (retrieve.ts: a madlib is a hook with the topic lifted out; every curated row is a
- *    human-picked teaching example). A structural batch is warranted whenever it returned rows — but
- *    it warrants a claim about STRUCTURE ONLY, never about the topic, and the note says so.
- */
-function assessWarrant(axis: "topical" | "structural", examples: RetrievedExample[]): {
-  warrant: Warrant;
-  grounded: boolean;
-  onSubject: number;
-} {
-  if (examples.length === 0) return { warrant: "none", grounded: false, onSubject: 0 };
-  const floor = warrantFloor();
-  // A null similarity cannot clear a floor it was never measured against — absent is not "passing".
-  const onSubject = examples.filter((e) => typeof e.similarity === "number" && e.similarity >= floor).length;
-  if (axis === "structural") return { warrant: "structural", grounded: true, onSubject };
-  const grounded = onSubject >= WARRANT_MIN_ROWS;
-  return { warrant: grounded ? "topical" : "none", grounded, onSubject };
-}
-
-/** The instruction the model reads alongside the rows — the contract stated, not assumed. */
-function warrantNote(warrant: Warrant, onSubject: number, count: number): string {
-  if (warrant === "topical") {
-    return `${onSubject} of ${count} returned rows are close enough to the subject to cite as evidence about it. The rest are craft references only.`;
-  }
-  if (warrant === "structural") {
-    return "These rows were selected for their STRUCTURE, not their subject. They are proven examples of the shape — cite them as patterns to borrow, never as evidence about this specific topic.";
-  }
-  return "NOT GROUNDED: the corpus returned rows, but none are close enough to this subject to be evidence about it (cosine search always returns its nearest rows, even when nothing relevant exists). Do NOT present these as proof about the topic, and do not imply the corpus contains examples of it. Say plainly that you have no proven examples for this, then answer from craft knowledge if you can — labelled as such.";
 }
 
 export async function executeCorpusSearch(
@@ -393,12 +331,10 @@ export async function executeCorpusSearch(
         results,
       }),
       examples,
-      // Structural rows are citable as SHAPES (their warrant is curation, not cosine); topical rows are
-      // citable only if they cleared the floor. An ungrounded topical batch yields nothing citable.
-      citable:
-        warrant === "structural"
-          ? examples
-          : examples.filter((e) => typeof e.similarity === "number" && e.similarity >= warrantFloor()),
+      // Which rows may go under a "proven reference" header — the shared rule, not a local one:
+      // structural/provenance batches whole (their warrant isn't cosine), topical filtered to the
+      // rows that cleared the floor, ungrounded nothing.
+      citable: citableSubset(warrant, examples),
       record,
     };
   } catch (err) {
