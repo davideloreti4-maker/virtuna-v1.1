@@ -37,12 +37,12 @@ describe("the canonical fixture", () => {
     if (result.ok) expect(result.block.type).toBe("composed");
   });
 
-  it("covers every one of the 16 primitive kinds (extension guarantee: no primitive without a fixture)", () => {
+  it("covers every one of the 17 primitive kinds (extension guarantee: no primitive without a fixture)", () => {
     const present = new Set(STREAM_COMPOSITION.props.items.map((i) => i.kind));
     for (const kind of STREAM_PRIMITIVE_KINDS) {
       expect(present, `fixture is missing a "${kind}" item`).toContain(kind);
     }
-    expect(STREAM_PRIMITIVE_KINDS).toHaveLength(16);
+    expect(STREAM_PRIMITIVE_KINDS).toHaveLength(17);
   });
 });
 

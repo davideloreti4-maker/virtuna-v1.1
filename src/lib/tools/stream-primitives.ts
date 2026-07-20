@@ -25,6 +25,8 @@
  */
 
 import { z } from "zod";
+import { HookProofSchema } from "./blocks";
+import { VideoTestCardBlockSchema } from "./profile-blocks";
 
 // ─── Shared sub-shapes ────────────────────────────────────────────────────────
 
@@ -125,25 +127,10 @@ const EvidenceItemSchema = z.object({
     .max(8),
 });
 
-/** The structured source receipt a ranked result may carry (the ProofReceipt lineage —
- *  §11f receipts-on-cards): the real outlier whose proven structure was borrowed. */
-export const StreamSourceProofSchema = z.object({
-  handle: z.string().min(1),
-  url: z.string().nullable().optional(),
-  coverUrl: z.string().nullable().optional(),
-  /** The source hook as a reusable [bracketed] template — brackets render as chips. */
-  template: z.string().optional(),
-  /** Source archetype — "trap-mistake" renders "Trap Mistake". */
-  archetype: z.string().optional(),
-  /** e.g. "90.7×". */
-  multiplier: z.string().optional(),
-  /** The multiplier's basis — "vs followers". Never a bare multiplier. */
-  baseline: z.string().optional(),
-  /** e.g. "621K". */
-  views: z.string().optional(),
-  /** §11c degradation ladder — the honest per-request match claim. */
-  fit: z.enum(["in-audience", "adjacent", "structural"]).optional(),
-});
+/** The structured source receipt a ranked result may carry — THE HookProofSchema
+ *  (§11f receipts-on-cards), reused verbatim so the stream renders the SAME shipped
+ *  <ProofReceipt> as every make-family card. One schema, one component, zero drift. */
+export const StreamSourceProofSchema = HookProofSchema;
 
 export type StreamSourceProof = z.infer<typeof StreamSourceProofSchema>;
 
@@ -199,6 +186,9 @@ const RankedItemSchema = z.object({
         verbatim: StreamVerbatimSchema.optional(),
         /** The full structured source receipt (cover · [template] · stats · fit). */
         sourceProof: StreamSourceProofSchema.optional(),
+        /** Forward-chain label ("Write script →"). Renders the card action bar; the
+         *  handler wires at migration — never model-executed (THREAD-04). */
+        primaryAction: z.string().optional(),
         /** Plain attribution fallback — "↳ structure from @handle · 90.7× vs followers". */
         source: z.string().optional(),
         sourceUrl: z.string().nullable().optional(),
@@ -379,6 +369,14 @@ const TableItemSchema = z
     message: "a table marks at most ONE cell with accent (accent marks one thing)",
   });
 
+/** 17 · test verdict (rev 8) — THE FLAGSHIP. The /test result card, 1:1 the shipped
+ *  video-test-card props (delegated to VideoTestCardRenderer — zero drift): verdict
+ *  WORD + band + fraction + the one fix + reactions + the /analyze door. Bands only
+ *  in-thread; the 0-100 lives on /analyze (honesty spine). */
+const TestVerdictItemSchema = z
+  .object({ kind: z.literal("test-verdict") })
+  .extend(VideoTestCardBlockSchema.shape.props.shape);
+
 // ─── The union + the composed block ──────────────────────────────────────────
 
 export const StreamItemSchema = z.discriminatedUnion("kind", [
@@ -398,6 +396,7 @@ export const StreamItemSchema = z.discriminatedUnion("kind", [
   AssetItemSchema,
   StatsItemSchema,
   TableItemSchema,
+  TestVerdictItemSchema,
 ]);
 
 export type StreamItem = z.infer<typeof StreamItemSchema>;
@@ -421,6 +420,7 @@ export const STREAM_PRIMITIVE_KINDS = [
   "asset",
   "stats",
   "table",
+  "test-verdict",
 ] as const satisfies readonly StreamItemKind[];
 
 export const ComposedBlockSchema = z.object({
