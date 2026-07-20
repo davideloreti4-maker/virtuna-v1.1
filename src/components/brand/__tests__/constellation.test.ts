@@ -26,14 +26,17 @@ describe('buildFieldDots — swarm layout', () => {
     expect(dots.length).toBe(12);
   });
 
-  it('keeps dots in one cluster (no disconnected row bands)', () => {
+  it('keeps dots in one tight cluster (no left/right split)', () => {
     const dots = buildFieldDots(12, 300, 84);
     const cx = dots.reduce((s, d) => s + d.cx, 0) / dots.length;
     const cy = dots.reduce((s, d) => s + d.cy, 0) / dots.length;
     const maxR = Math.max(
       ...dots.map((d) => Math.hypot(d.cx - cx, d.cy - cy)),
     );
-    expect(maxR).toBeLessThan(120);
+    const xs = dots.map((d) => d.cx);
+    const xSpread = Math.max(...xs) - Math.min(...xs);
+    expect(maxR).toBeLessThan(55);
+    expect(xSpread).toBeLessThan(110);
   });
 });
 

@@ -130,22 +130,20 @@ export function buildFieldDots(count: number, vbW: number, vbH: number): ConDot[
   const aspect = vbW / vbH;
 
   if (aspect > 2) {
-    // Golden-angle elliptical swarm — one interconnected cluster, not a row band.
+    // Tight centered disk — one obvious swarm on wide hero bands (not a left/right split).
     const cx0 = vbW / 2;
     const cy0 = vbH / 2;
-    const rx = (vbW - padX * 2) * 0.47;
-    const ry = (vbH - padY * 2) * 0.47;
+    const spread = Math.min(vbW - padX * 2, vbH - padY * 2) * 0.36;
     const golden = Math.PI * (3 - Math.sqrt(5));
     const out: ConDot[] = [];
 
     for (let i = 0; i < n; i++) {
-      const t = i + rnd() * 0.4;
-      const angle = t * golden + (rnd() - 0.5) * 0.55;
-      const radial = Math.sqrt((t + 0.5) / (n + 0.5)) * (0.68 + rnd() * 0.32);
+      const angle = (i / n) * Math.PI * 2 + i * golden * 0.7 + (rnd() - 0.5) * 0.9;
+      const radial = spread * Math.sqrt(0.18 + rnd() * 0.82);
       const depth = rnd();
       const r0 = vbH * (0.045 + depth * 0.06);
-      const rawX = cx0 + Math.cos(angle) * rx * radial + (rnd() - 0.5) * rx * 0.16;
-      const rawY = cy0 + Math.sin(angle) * ry * radial + (rnd() - 0.5) * ry * 0.26;
+      const rawX = cx0 + Math.cos(angle) * radial + (rnd() - 0.5) * spread * 0.12;
+      const rawY = cy0 + Math.sin(angle) * radial * 0.88 + (rnd() - 0.5) * spread * 0.14;
       const cx = Math.max(r0, Math.min(vbW - r0, rawX));
       const cy = Math.max(r0, Math.min(vbH - r0, rawY));
       const alpha = 0.34 + depth * 0.36;
@@ -311,7 +309,7 @@ function threadEdges(dots: ConDot[]) {
  * k-nearest-neighbour mesh plus proximity links — overlapping triangles/cycles so
  * the field reads as an interconnected swarm rather than a single chain.
  */
-export function meshEdges(dots: ConDot[], k = 3) {
+export function meshEdges(dots: ConDot[], k = 4) {
   const n = dots.length;
   if (n < 2) return [] as { key: string; x1: number; y1: number; x2: number; y2: number; a: number; b: number }[];
   const seen = new Set<string>();
