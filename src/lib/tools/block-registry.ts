@@ -34,6 +34,7 @@ import {
   PredictionGaugeBlockSchema,
   VideoTestCardBlockSchema,
 } from "./profile-blocks";
+import { ComposedBlockSchema } from "./stream-primitives";
 
 // ─── Registry ─────────────────────────────────────────────────────────────────
 
@@ -55,6 +56,9 @@ export const BLOCK_REGISTRY = {
   "reaction-distribution": { schema: ReactionDistributionBlockSchema as z.ZodType },
   "prediction-gauge": { schema: PredictionGaugeBlockSchema as z.ZodType },
   "video-test-card": { schema: VideoTestCardBlockSchema as z.ZodType },
+  // THE STREAM (phase 1): a composition of the 16 stream primitives, rendered by ONE
+  // generic renderer. Validates like any block — THREAD-04 intact by construction.
+  composed: { schema: ComposedBlockSchema as z.ZodType },
 } as const;
 
 export type BlockType = keyof typeof BLOCK_REGISTRY;

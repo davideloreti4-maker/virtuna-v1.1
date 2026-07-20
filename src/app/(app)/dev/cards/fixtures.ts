@@ -31,6 +31,7 @@ import type {
   PredictionGaugeBlock,
 } from "@/lib/tools/profile-blocks";
 import type { StageState } from "@/components/thread/progress-checklist";
+import { STREAM_COMPOSITION } from "@/lib/tools/__tests__/fixtures/stream-composition";
 
 const IMG = (seed: string, w: number, h: number) =>
   `https://picsum.photos/seed/${seed}/${w}/${h}`;
@@ -672,6 +673,12 @@ export interface BlockSection {
 
 /** Group B — rendered through MessageBlocks, exactly as the thread mounts them. */
 export const BLOCK_SECTIONS: BlockSection[] = [
+  {
+    type: "composed",
+    label: "Stream (composed — all 16 primitives)",
+    note: "THE STREAM (phase 1) — one `composed` block carrying the whole 16-primitive vocabulary through the ONE generic renderer. Design contract: docs/prototypes/stream-concept-rev7.html (frozen 2026-07-20). The laws are schema-enforced (one frame · receipt leads · one control row · accent marks one thing); this section is the living render of the canonical fixture the tests lock.",
+    body: [STREAM_COMPOSITION],
+  },
   {
     type: "profile-read",
     label: "Profile Read (forensic) · HIDDEN",
