@@ -115,6 +115,58 @@ export function buildDots(
   return out;
 }
 
+/** Normalized skeleton — a wide, airy cloud (not a ball, not a row). Seeded jitter applied on scale. */
+const HERO_CLOUD_SKELETON: { x: number; y: number }[] = [
+  { x: 0.1, y: 0.52 },
+  { x: 0.2, y: 0.26 },
+  { x: 0.28, y: 0.7 },
+  { x: 0.36, y: 0.38 },
+  { x: 0.44, y: 0.58 },
+  { x: 0.52, y: 0.2 },
+  { x: 0.58, y: 0.76 },
+  { x: 0.66, y: 0.44 },
+  { x: 0.74, y: 0.16 },
+  { x: 0.8, y: 0.64 },
+  { x: 0.88, y: 0.34 },
+  { x: 0.93, y: 0.54 },
+];
+
+/**
+ * Hero cloud — wide organic constellation for the home greeting. Uses a designed
+ * skeleton + light jitter so dots breathe across the band with visible threads.
+ */
+export function buildHeroCloudDots(count: number, vbW: number, vbH: number): ConDot[] {
+  const n = count > 0 ? count : DEFAULT_ROSTER_DOTS;
+  const rnd = mulberry32(3141592653 ^ (n * 1618033989));
+  const padX = vbW * 0.04;
+  const padY = vbH * 0.1;
+  const fieldW = vbW - padX * 2;
+  const fieldH = vbH - padY * 2;
+  const out: ConDot[] = [];
+
+  for (let i = 0; i < n; i++) {
+    const sk = HERO_CLOUD_SKELETON[i % HERO_CLOUD_SKELETON.length]!;
+    const depth = rnd();
+    const r0 = vbH * (0.038 + depth * 0.045);
+    const jx = (rnd() - 0.5) * fieldW * 0.04;
+    const jy = (rnd() - 0.5) * fieldH * 0.08;
+    const cx = Math.max(r0, Math.min(vbW - r0, padX + sk.x * fieldW + jx));
+    const cy = Math.max(r0, Math.min(vbH - r0, padY + sk.y * fieldH + jy));
+    const alpha = 0.36 + depth * 0.34;
+    out.push({
+      id: `hero_${i}`,
+      cx,
+      cy,
+      r: r0,
+      fill: `rgba(${CREAM}, ${alpha.toFixed(2)})`,
+      accent: false,
+      phase: rnd(),
+      srLabel: `Persona ${i + 1}`,
+    });
+  }
+  return out;
+}
+
 /**
  * Field layout — a balanced, intentional constellation for the ambient empty-state
  * hero. Wide viewBoxes use a golden-angle elliptical swarm (one dense cluster);
@@ -400,7 +452,7 @@ export function edgeCascadeKeyframes(a: number, b: number, count: number) {
       const oa = va[Math.max(0, ia)] ?? 0;
       const ob = vb[Math.max(0, ib)] ?? 0;
       const lit = Math.max(oa, ob);
-      return (0.14 + lit * 0.52).toFixed(3);
+      return (0.22 + lit * 0.62).toFixed(3);
     })
     .join(';');
   return {
@@ -447,8 +499,9 @@ export function Constellation({
           y1={e.y1.toFixed(2)}
           x2={e.x2.toFixed(2)}
           y2={e.y2.toFixed(2)}
-          stroke={`rgba(${CREAM}, ${isCascade ? 0.12 : 0.14})`}
-          strokeWidth={0.7}
+          stroke={`rgba(${CREAM}, ${isCascade ? 0.22 : 0.14})`}
+          strokeWidth={isCascade ? 0.85 : 0.7}
+          strokeLinecap="round"
         >
           {!reducedMotion && !isCascade && (
             <animate

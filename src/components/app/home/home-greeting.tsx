@@ -20,14 +20,14 @@
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { MavenMark } from "@/components/brand/maven-logo";
-import { Constellation, buildFieldDots } from "@/components/brand/constellation";
+import { Constellation, buildHeroCloudDots } from "@/components/brand/constellation";
 import { useProfile } from "@/hooks/queries/use-profile";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 
-/** Deterministic hero field — built once at module scope (buildFieldDots is seeded). */
-const FIELD_VB_W = 300;
-const FIELD_VB_H = 84;
-const FIELD_DOTS = buildFieldDots(12, FIELD_VB_W, FIELD_VB_H);
+/** Deterministic hero cloud — built once at module scope (buildHeroCloudDots is seeded). */
+const FIELD_VB_W = 320;
+const FIELD_VB_H = 100;
+const FIELD_DOTS = buildHeroCloudDots(12, FIELD_VB_W, FIELD_VB_H);
 
 /** 5–11 morning · 12–17 afternoon · else evening (the small hours read as evening). */
 function dayPartOf(hour: number): "morning" | "afternoon" | "evening" {
@@ -93,8 +93,8 @@ export function HomeGreeting({ className }: HomeGreetingProps) {
         <Constellation
           dots={FIELD_DOTS}
           reducedMotion={reducedMotion}
-          width={236}
-          height={66}
+          width={300}
+          height={94}
           vbW={FIELD_VB_W}
           vbH={FIELD_VB_H}
           animation="cascade"

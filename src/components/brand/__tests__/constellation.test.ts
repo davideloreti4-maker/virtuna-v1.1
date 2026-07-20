@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { describe, it, expect } from 'vitest';
 import {
   buildFieldDots,
+  buildHeroCloudDots,
   meshEdges,
   cascadeKeyframes,
   CASCADE_CYCLE_SEC,
@@ -13,6 +14,25 @@ const CONSTELLATION_PATH = resolve(
   '..',
   'constellation.tsx',
 );
+
+describe('buildHeroCloudDots — home hero cloud', () => {
+  it('spreads across the band with visible separation (not a clump)', () => {
+    const dots = buildHeroCloudDots(12, 320, 100);
+    const xs = dots.map((d) => d.cx);
+    const ys = dots.map((d) => d.cy);
+    const xSpread = Math.max(...xs) - Math.min(...xs);
+    const ySpread = Math.max(...ys) - Math.min(...ys);
+    expect(xSpread).toBeGreaterThan(180);
+    expect(ySpread).toBeGreaterThan(35);
+    expect(ySpread).toBeLessThan(85);
+  });
+
+  it('forms a mesh with multiple connections per node', () => {
+    const dots = buildHeroCloudDots(12, 320, 100);
+    const edges = meshEdges(dots);
+    expect(edges.length).toBeGreaterThan(15);
+  });
+});
 
 describe('buildFieldDots — swarm layout', () => {
   it('clusters 12 dots in a single elliptical swarm (not a flat row)', () => {
