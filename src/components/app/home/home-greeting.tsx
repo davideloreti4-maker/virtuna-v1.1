@@ -26,7 +26,7 @@ import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 
 /** Deterministic hero field — built once at module scope (buildFieldDots is seeded). */
 const FIELD_VB_W = 300;
-const FIELD_VB_H = 72;
+const FIELD_VB_H = 84;
 const FIELD_DOTS = buildFieldDots(12, FIELD_VB_W, FIELD_VB_H);
 
 /** 5–11 morning · 12–17 afternoon · else evening (the small hours read as evening). */
@@ -94,7 +94,7 @@ export function HomeGreeting({ className }: HomeGreetingProps) {
           dots={FIELD_DOTS}
           reducedMotion={reducedMotion}
           width={236}
-          height={57}
+          height={66}
           vbW={FIELD_VB_W}
           vbH={FIELD_VB_H}
           animation="cascade"

@@ -15,39 +15,42 @@ const CONSTELLATION_PATH = resolve(
 );
 
 describe('buildFieldDots — swarm layout', () => {
-  it('clusters 12 dots in a 2D band (not a flat single row)', () => {
+  it('clusters 12 dots in a single elliptical swarm (not a flat row)', () => {
     const dots = buildFieldDots(12, 300, 72);
     const ys = dots.map((d) => d.cy);
+    const xs = dots.map((d) => d.cx);
     const ySpread = Math.max(...ys) - Math.min(...ys);
-    // Wide hero viewBox should use vertical spread, not a near-horizontal line.
-    expect(ySpread).toBeGreaterThan(12);
+    const xSpread = Math.max(...xs) - Math.min(...xs);
+    expect(ySpread).toBeGreaterThan(14);
+    expect(xSpread).toBeLessThan(260);
     expect(dots.length).toBe(12);
   });
 
-  it('uses at most 4 rows for 12 dots in a wide viewBox', () => {
-    const dots = buildFieldDots(12, 300, 72);
-    const cys = dots.map((d) => d.cy);
-    const rowCenters: number[] = [];
-    for (const cy of cys) {
-      if (!rowCenters.some((c) => Math.abs(c - cy) < 9)) rowCenters.push(cy);
-    }
-    expect(rowCenters.length).toBeLessThanOrEqual(4);
+  it('keeps dots in one cluster (no disconnected row bands)', () => {
+    const dots = buildFieldDots(12, 300, 84);
+    const cx = dots.reduce((s, d) => s + d.cx, 0) / dots.length;
+    const cy = dots.reduce((s, d) => s + d.cy, 0) / dots.length;
+    const maxR = Math.max(
+      ...dots.map((d) => Math.hypot(d.cx - cx, d.cy - cy)),
+    );
+    expect(maxR).toBeLessThan(120);
   });
 });
 
 describe('meshEdges', () => {
-  it('returns more edges than a tree and includes a node with degree >= 2', () => {
-    const dots = buildFieldDots(12, 300, 72);
+  it('returns a dense mesh with high average degree', () => {
+    const dots = buildFieldDots(12, 300, 84);
     const edges = meshEdges(dots);
-    expect(edges.length).toBeGreaterThan(dots.length - 1);
+    expect(edges.length).toBeGreaterThan(dots.length);
 
     const degree = new Map<string, number>();
     for (const e of edges) {
-      const [a, b] = e.key.split('-');
-      degree.set(a!, (degree.get(a!) ?? 0) + 1);
-      degree.set(b!, (degree.get(b!) ?? 0) + 1);
+      degree.set(String(e.a), (degree.get(String(e.a)) ?? 0) + 1);
+      degree.set(String(e.b), (degree.get(String(e.b)) ?? 0) + 1);
     }
-    expect([...degree.values()].some((d) => d >= 2)).toBe(true);
+    const avg =
+      [...degree.values()].reduce((s, d) => s + d, 0) / degree.size;
+    expect(avg).toBeGreaterThanOrEqual(2.5);
   });
 });
 
@@ -70,12 +73,12 @@ describe('cascadeKeyframes', () => {
       const vals = values.split(';').map(Number);
       const peakIdx = vals.indexOf(1);
       const expectedStart = i / n;
-      expect(times[peakIdx]!).toBeCloseTo(expectedStart + (1 / n) * 0.12, 2);
+      expect(times[peakIdx]!).toBeCloseTo(expectedStart + (1 / n) * 0.08, 2);
     }
   });
 
   it('uses a shared cycle duration constant', () => {
-    expect(CASCADE_CYCLE_SEC).toBe(6);
+    expect(CASCADE_CYCLE_SEC).toBe(18);
   });
 });
 
