@@ -26,7 +26,8 @@ import { CoverFill } from '@/components/primitives/CoverFill';
 import { cardScrollQuoteReactions } from '@/components/audience-lens/flat-card-reactions';
 import type { VideoTestCardBlock } from '@/lib/tools/blocks';
 import type { StreamItem } from '@/lib/tools/stream-primitives';
-import { EngagementRow, formatFacet, T_META, T_SUPPORT, T_BODY, HAIRLINE } from './composed-shared';
+import { stripWrappingQuotes } from '@/lib/utils';
+import { EngagementRow, formatFacet, ProofLine, VerbatimLine, T_META, T_SUPPORT, T_BODY, HAIRLINE } from './composed-shared';
 
 type RankedItem = Extract<StreamItem, { kind: 'ranked' }>['items'][number];
 
@@ -158,6 +159,187 @@ export function AssetCard({ item }: { item: Extract<StreamItem, { kind: 'asset' 
 export function TestVerdictView({ item }: { item: Extract<StreamItem, { kind: 'test-verdict' }> }) {
   const { kind: _kind, ...props } = item;
   return <VideoTestCardRenderer block={{ type: 'video-test-card', props } as VideoTestCardBlock} />;
+}
+
+type CompareAudience = Extract<StreamItem, { kind: 'compare' }>['audiences'][number];
+
+const VERDICT_PILL: Record<'stop' | 'scroll', string> = {
+  stop: 'text-[10px] font-semibold px-2 py-0.5 rounded-full bg-success/10 text-success border border-success/20',
+  scroll: 'text-[10px] font-semibold px-2 py-0.5 rounded-full bg-error/10 text-error border border-error/20',
+};
+
+/** One audience's read inside the compare card — the old Read card's full anatomy:
+ *  dot+name+fraction · "{band} Read." interpretation · Lever · scrolls-past · verbatim ·
+ *  collapsible persona drill. */
+function CompareAudienceRead({ aud }: { aud: CompareAudience }) {
+  const [expanded, setExpanded] = useState(false);
+  const bandColor = BAND_COLOR[aud.proof.band];
+  const personas = aud.personas ?? [];
+  const stopCount = personas.filter((p) => p.verdict === 'stop').length;
+  return (
+    <div className="flex flex-col gap-2.5">
+      <div className="flex items-baseline gap-2 text-[13.5px] font-semibold text-foreground">
+        <span className="h-[7px] w-[7px] shrink-0 self-center rounded-full" style={{ backgroundColor: bandColor }} aria-hidden="true" />
+        {aud.name}
+        {aud.proof.fraction && <span className="text-[12px] font-normal text-foreground-muted">{aud.proof.fraction}</span>}
+      </div>
+
+      {aud.interpretation && (
+        <p className="text-[13.5px] leading-relaxed text-foreground-secondary">
+          <b className="font-semibold" style={{ color: bandColor }}>
+            {aud.proof.band} Read.
+          </b>{' '}
+          <span className="text-foreground">{aud.interpretation}</span>
+        </p>
+      )}
+
+      {aud.lever && (
+        <p
+          className="border-l-2 py-0.5 pl-3 text-[13.5px] leading-relaxed text-foreground-secondary"
+          style={{ borderColor: 'var(--color-foreground-secondary)' }}
+        >
+          <b className="font-semibold text-foreground">Lever →</b> {aud.lever}
+        </p>
+      )}
+
+      {aud.whoNotFor && (
+        <p className="text-[12px] text-foreground-muted">
+          <span className="font-medium">Scrolls past:</span> {aud.whoNotFor}
+        </p>
+      )}
+
+      {aud.verbatim && <VerbatimLine verbatim={aud.verbatim} />}
+
+      {personas.length > 0 && (
+        <div className="overflow-hidden rounded-lg border border-white/[0.06]">
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="flex w-full items-center justify-between px-3.5 py-2.5 text-left transition-colors hover:bg-white/[0.02]"
+            aria-expanded={expanded}
+          >
+            <span className="text-[13px] font-medium text-foreground">
+              Audience reactions
+              <span className="ml-2 font-normal text-foreground-muted">
+                {stopCount}/{personas.length} stop
+              </span>
+            </span>
+            <span className="inline-flex items-center gap-1 text-[12px] text-foreground-muted" aria-hidden="true">
+              <CaretToggle open={expanded} size={12} />
+              {expanded ? 'Hide' : 'Show'}
+            </span>
+          </button>
+          {expanded && (
+            <ul className="divide-y divide-white/[0.04] border-t border-white/[0.06]" role="list">
+              {personas.map((persona, i) => (
+                <li key={`${persona.archetype}-${i}`} className="flex flex-col gap-1 px-3.5 py-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[12.5px] font-medium capitalize text-foreground">
+                      {persona.archetype.replace(/_/g, ' ')}
+                    </span>
+                    <span className={VERDICT_PILL[persona.verdict]} aria-label={persona.verdict === 'stop' ? 'stops' : 'scrolls'}>
+                      {persona.verdict === 'stop' ? 'stops' : 'scrolls'}
+                    </span>
+                  </div>
+                  <p className="text-[12.5px] italic leading-snug text-foreground-muted">
+                    &ldquo;{stripWrappingQuotes(persona.quote)}&rdquo;
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** The compare group as the old Read card: framed, eyebrow, side-by-side verdict row,
+ *  then each audience's full read divided by hairlines. */
+export function CompareCard({ item }: { item: Extract<StreamItem, { kind: 'compare' }> }) {
+  return (
+    <div className="overflow-hidden rounded-xl border border-white/[0.06] bg-surface-sunken">
+      <div className="flex flex-col gap-4 px-4 pb-4 pt-4">
+        <CardEyebrow
+          kicker={item.label ?? 'The Read'}
+          dotColor="var(--color-foreground-muted)"
+          meta={<span className={`${T_META} tabular-nums text-foreground-muted`}>{item.audiences.length} audiences</span>}
+        />
+
+        {/* Side-by-side verdict header — the at-a-glance "wins for X, bombs for Y" row. */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3.5 py-3">
+          {item.audiences.map((a, i) => (
+            <span key={`${a.name}-${i}`} className="inline-flex basis-full flex-wrap items-center gap-2 text-[13.5px] sm:basis-auto">
+              {i > 0 && (
+                <span className="mr-1 hidden text-foreground-muted/40 sm:inline" aria-hidden="true">
+                  ·
+                </span>
+              )}
+              <span className="h-[7px] w-[7px] rounded-full" style={{ backgroundColor: BAND_COLOR[a.proof.band] }} aria-hidden="true" />
+              <span className="font-semibold text-foreground">{a.name}</span>
+              <span className="font-semibold" style={{ color: BAND_COLOR[a.proof.band] }}>
+                {a.proof.band}
+              </span>
+              {a.proof.fraction && <span className="text-[12px] text-foreground-muted">{a.proof.fraction}</span>}
+            </span>
+          ))}
+        </div>
+
+        <div className="flex flex-col gap-5">
+          {item.audiences.map((aud, i) => (
+            <div key={`${aud.name}-${i}`} className={i > 0 ? 'border-t border-white/[0.06] pt-5' : undefined}>
+              <CompareAudienceRead aud={aud} />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Fact rows as a framed findings card — eyebrow, quiet section labels, mark-dot rows. */
+export function FactsCard({ item }: { item: Extract<StreamItem, { kind: 'facts' }> }) {
+  return (
+    <div className="overflow-hidden rounded-xl border border-white/[0.06] bg-surface-sunken">
+      <div className="px-4 pb-1 pt-4">
+        <CardEyebrow kicker={item.label ?? 'Findings'} />
+      </div>
+      <div className="flex flex-col px-4 pb-4">
+        {item.sections.map((section, si) => (
+          <div key={si} className="flex flex-col">
+            {section.label && <div className={`${SECTION_LABEL} pb-1 pt-3`}>{section.label}</div>}
+            {section.rows.map((row, ri) => (
+              <div key={ri} className={`flex items-baseline gap-2.5 border-t ${HAIRLINE} py-2.5 ${T_SUPPORT} first:border-t-0`}>
+                {row.mark !== 'none' && (
+                  <span
+                    className="relative top-[-2px] h-[5px] w-[5px] shrink-0 rounded-full"
+                    style={{ backgroundColor: row.mark === 'good' ? 'var(--color-success)' : 'var(--color-error)' }}
+                    aria-hidden="true"
+                  />
+                )}
+                <span className="text-foreground">{row.claim}</span>
+                {row.basis && <span className={`ml-auto shrink-0 text-right ${T_META} text-foreground-muted`}>{row.basis}</span>}
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** The revision as a small make-family card: eyebrow · struck before · hero after · re-scored proof. */
+export function RevisionCard({ item }: { item: Extract<StreamItem, { kind: 'revision' }> }) {
+  return (
+    <div className="overflow-hidden rounded-xl border border-white/[0.06] bg-surface-sunken">
+      <div className="flex flex-col gap-2.5 px-4 pb-4 pt-4">
+        <CardEyebrow kicker={item.label ?? 'Revision'} />
+        <p className={`${T_SUPPORT} text-foreground-muted line-through`}>{item.before}</p>
+        <p className="text-[17px] font-semibold leading-snug tracking-[-0.01em] text-foreground">{item.after}</p>
+        {item.proof && <ProofLine proof={item.proof} />}
+      </div>
+    </div>
+  );
 }
 
 /** Evidence rows — the video reference as a first-class object, in the make-family card

@@ -19,8 +19,8 @@
 
 import { SECTION_LABEL } from '@/components/thread/card-primitives';
 import type { ComposedBlock, StreamItem } from '@/lib/tools/stream-primitives';
-import { AssetCard, EvidenceView, MediaStripView, RankedView, TestVerdictView } from './composed-cards';
-import { HAIRLINE, Prose, ProofLine, T_BODY, T_HERO, T_META, T_SUPPORT, VerbatimLine } from './composed-shared';
+import { AssetCard, CompareCard, EvidenceView, FactsCard, MediaStripView, RankedView, RevisionCard, TestVerdictView } from './composed-cards';
+import { HAIRLINE, Prose, ProofLine, T_META, T_SUPPORT, VerbatimLine } from './composed-shared';
 
 export interface ComposedBlockProps {
   block: ComposedBlock;
@@ -42,62 +42,6 @@ function ReceiptView({ item }: { item: Extract<StreamItem, { kind: 'receipt' }> 
         {item.summary}
         {model ? ` · ${model}` : ''}
       </span>
-    </div>
-  );
-}
-
-function CompareView({ item }: { item: Extract<StreamItem, { kind: 'compare' }> }) {
-  return (
-    <div className="flex flex-col">
-      {item.audiences.map((aud, i) => (
-        <div key={i} className={`flex flex-col gap-2.5 border-t ${HAIRLINE} py-4 last:border-b`}>
-          <div className={`flex flex-wrap items-center gap-2.5 ${T_BODY} font-semibold`}>
-            {aud.name}
-            <ProofLine proof={aud.proof} />
-          </div>
-          {aud.lever && (
-            <div className={`border-l-2 border-white/[0.10] pl-2.5 ${T_SUPPORT}`}>
-              <span className="font-semibold">Lever</span> <span className="text-foreground-muted">→</span> {aud.lever}
-            </div>
-          )}
-          {aud.verbatim && <VerbatimLine verbatim={aud.verbatim} />}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function FactsView({ item }: { item: Extract<StreamItem, { kind: 'facts' }> }) {
-  return (
-    <div className="flex flex-col">
-      {item.sections.map((section, si) => (
-        <div key={si} className="flex flex-col">
-          {section.label && <div className={`${SECTION_LABEL} pb-1 pt-3`}>{section.label}</div>}
-          {section.rows.map((row, ri) => (
-            <div key={ri} className={`flex items-baseline gap-2.5 border-t ${HAIRLINE} py-2 ${T_SUPPORT} first:border-t-0`}>
-              {row.mark !== 'none' && (
-                <span
-                  className="relative top-[-2px] h-[5px] w-[5px] shrink-0 rounded-full"
-                  style={{ backgroundColor: row.mark === 'good' ? 'var(--color-success)' : 'var(--color-error)' }}
-                  aria-hidden="true"
-                />
-              )}
-              <span className="text-foreground">{row.claim}</span>
-              {row.basis && <span className={`ml-auto shrink-0 text-right ${T_META} text-foreground-muted`}>{row.basis}</span>}
-            </div>
-          ))}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function RevisionView({ item }: { item: Extract<StreamItem, { kind: 'revision' }> }) {
-  return (
-    <div className="flex flex-col gap-1.5 border-l-2 border-white/[0.10] pl-3.5">
-      <div className={`${T_SUPPORT} text-foreground-muted line-through`}>{item.before}</div>
-      <div className={`${T_HERO} font-semibold`}>{item.after}</div>
-      {item.proof && <ProofLine proof={item.proof} />}
     </div>
   );
 }
@@ -229,11 +173,11 @@ function StreamItemView({ item }: { item: StreamItem }) {
     case 'verbatim':
       return <VerbatimLine verbatim={item} />;
     case 'compare':
-      return <CompareView item={item} />;
+      return <CompareCard item={item} />;
     case 'facts':
-      return <FactsView item={item} />;
+      return <FactsCard item={item} />;
     case 'revision':
-      return <RevisionView item={item} />;
+      return <RevisionCard item={item} />;
     case 'plan':
       return <PlanView item={item} />;
     case 'input-ask':

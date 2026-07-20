@@ -160,18 +160,27 @@ export const STREAM_COMPOSITION: ComposedBlock = {
           {
             name: "Bootstrapped Founders",
             proof: { band: "Strong", fraction: "8/10 stop" },
+            interpretation: "The cost angle is doing the work — founders hear a number and stay.",
             lever: "Lead with the dollar amount you saved in the first two seconds.",
+            whoNotFor: "The Delegator — outsourced editing years ago, nothing here for them.",
             verbatim: { quote: "That's my exact problem, honestly.", speaker: "The Scout" },
+            personas: [
+              { archetype: "the_scout", verdict: "stop", quote: "That's my exact problem, honestly." },
+              { archetype: "the_operator", verdict: "stop", quote: "Numbers first — okay, I'm listening." },
+              { archetype: "the_delegator", verdict: "scroll", quote: "I don't edit my own stuff anymore." },
+            ],
           },
           {
             name: "General",
             proof: { band: "Mixed", fraction: "5/10 stop" },
+            interpretation: "Without the founder context the claim reads generic — half scroll before the receipt lands.",
             lever: "Add a concrete receipt early — that converts the skeptics.",
           },
         ],
       },
       {
         kind: "facts",
+        label: "A read on your account",
         sections: [
           {
             label: "Keep doing",

@@ -208,17 +208,35 @@ const ProofItemSchema = z.object({ kind: z.literal("proof") }).extend(StreamProo
 /** 7 · verbatim, standalone. */
 const VerbatimItemSchema = z.object({ kind: z.literal("verbatim") }).extend(StreamVerbatimSchema.shape);
 
-/** 8 · compare group — per-audience: head + verdict · lever · verbatim. */
+/** 8 · compare group — per-audience: head + verdict · interpretation · lever ·
+ *  who-not-for · verbatim · persona drill (the old Read card's full anatomy). */
 const CompareItemSchema = z.object({
   kind: z.literal("compare"),
+  /** The card eyebrow — what this compare IS. Absent → "The Read". */
+  label: z.string().optional(),
   audiences: z
     .array(
       z.object({
         name: z.string().min(1),
         proof: StreamProofSchema,
+        /** The one-line read of WHY the band landed — "{band} Read. {interpretation}". */
+        interpretation: z.string().optional(),
         /** The actionable difference — leads the body. */
         lever: z.string().optional(),
+        /** Who scrolls past — derived from low-disposition personas, never invented. */
+        whoNotFor: z.string().optional(),
         verbatim: StreamVerbatimSchema.optional(),
+        /** Per-persona reaction drill (collapsed by default) — context reactions ONLY. */
+        personas: z
+          .array(
+            z.object({
+              archetype: z.string().min(1),
+              verdict: z.enum(["stop", "scroll"]),
+              quote: z.string().min(1),
+            }),
+          )
+          .max(12)
+          .optional(),
       }),
     )
     .min(2)
@@ -228,6 +246,8 @@ const CompareItemSchema = z.object({
 /** 9 · fact rows — mark · claim · basis-count, optionally grouped under quiet labels. */
 const FactsItemSchema = z.object({
   kind: z.literal("facts"),
+  /** The card eyebrow — what these findings ARE. Absent → "Findings". */
+  label: z.string().optional(),
   sections: z
     .array(
       z.object({
@@ -251,6 +271,8 @@ const FactsItemSchema = z.object({
 /** 10 · revision — old → new · re-scored proof with the delta stated. */
 const RevisionItemSchema = z.object({
   kind: z.literal("revision"),
+  /** The card eyebrow — what changed. Absent → "Revision". */
+  label: z.string().optional(),
   before: z.string().min(1),
   after: z.string().min(1),
   proof: StreamProofSchema.optional(),
