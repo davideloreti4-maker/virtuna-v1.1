@@ -65,13 +65,14 @@ import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { createClient } from "@/lib/supabase/client";
 import {
   ComposerControls,
-  ModelTag,
+  SimModelSelector,
   SkillRows,
   SKILLS,
   getSkill,
   isSkillVisible,
   type ToolId,
   type Intent,
+  type SkillModel,
 } from "./composer-controls";
 import type { Platform } from "./platform-chip";
 import type { Audience, AudiencePlatform } from "@/lib/audience/audience-types";
@@ -96,8 +97,6 @@ import { ThreadLoadingSkeleton } from "@/components/thread/thread-loading";
 import { ThreadShell, ThreadAssistantTurn } from "@/components/thread/thread-shell";
 import { Spinner } from "@/components/ui/spinner";
 import { AudiencePresence, type AudienceAsk, type AudiencePresenceProps } from "@/components/audience-lens/audience-presence";
-import { ConstellationMark } from "@/components/brand/constellation-mark";
-import { DEFAULT_ROSTER_DOTS } from "@/components/brand/constellation";
 import { BuildChooser } from "./build-chooser";
 import { HomeStarter, HomeFirstRunDemo } from "./home-starter";
 import { useAmbientFocus, type AmbientCardDescriptor } from "./use-ambient-focus";
@@ -325,6 +324,9 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // Default: "test" — the only live tool in P1 (D-08). Idea live in P3 (D-12).
   // NOTE: chip selection is NOT a submit; it MUST NEVER arm pendingNavRef (Pitfall #5).
   const [activeTool, setActiveTool] = useState<ToolId>(DEFAULT_TOOL);
+  // SIM-1 tier picker — defaults from the armed skill; creator override persists until
+  // the skill changes. UI-only for now (routing still skill-driven).
+  const [selectedModel, setSelectedModel] = useState<SkillModel>("Flash");
   // Tracks whether the creator has manually picked a tool this mount. Guards the
   // open-thread rehydration's activeTool RESTORE (below) so it never overrides a
   // deliberate pick made while the GET /api/threads/open fetch was in flight.
@@ -366,6 +368,11 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
       evidenceInputRef.current?.click();
     }
   }, []);
+
+  // Reset model tier when the armed skill changes (skill is SSOT for default).
+  useEffect(() => {
+    setSelectedModel(getSkill(activeTool).model);
+  }, [activeTool]);
 
   // ── Audience + intent state (UX-01) ────────────────────────────────────────
   // Audience is the shared substrate across skills (the moat). Platform is no
@@ -2575,41 +2582,11 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
               </div>
 
               <div className="flex min-w-0 items-center gap-1.5 sm:gap-2.5">
-                {/* Audience — the room, folded INTO the composer (2026-07-20, owner call:
-                    the old peek band ABOVE the box made the dock read as two stacked bars).
-                    The chip IS the presence at rest (D-01 — never hidden): identity glyph +
-                    name + roster count; tap → the same room panel blooms above the box
-                    (roomExpanded, unchanged). Renders only where the DOCK owns the presence —
-                    thread mode keeps its rail (≥xl) / header (<xl) hosting untouched. */}
-                {!homeThreadMode && (
-                  <button
-                    type="button"
-                    data-testid="audience-room-chip"
-                    aria-haspopup="dialog"
-                    aria-expanded={roomExpanded}
-                    aria-label={`Your audience: ${selectedAudience?.name ?? "General"} — ${selectedAudience?.personas?.length || DEFAULT_ROSTER_DOTS} people ready. ${roomExpanded ? "Close" : "Open"} the room`}
-                    onClick={() => handleRoomExpandedChange(!roomExpanded)}
-                    className={cn(
-                      "flex h-[34px] min-w-0 items-center gap-1.5 rounded-full px-2 text-[12.5px] font-medium transition-colors",
-                      "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10 pointer-coarse:h-11",
-                      roomExpanded
-                        ? "bg-white/[0.06] text-foreground"
-                        : "text-foreground-secondary hover:bg-white/[0.06] hover:text-foreground",
-                    )}
-                  >
-                    <ConstellationMark width={26} reacting={audienceReacting} className="shrink-0" />
-                    <span className="max-w-[96px] truncate">
-                      {selectedAudience?.name ?? "General"}
-                    </span>
-                    <span className="hidden whitespace-pre text-foreground-muted min-[480px]:inline">
-                      {` · ${selectedAudience?.personas?.length || DEFAULT_ROSTER_DOTS} ready`}
-                    </span>
-                  </button>
-                )}
-
-                {/* Read-only SIM-1 tier — the skill picks it, so it's metadata, not a control.
-                    Shown for every verb including Ask (the room reaction is a Flash call). */}
-                <ModelTag activeTool={activeTool} className="hidden sm:inline-flex" />
+                <SimModelSelector
+                  value={selectedModel}
+                  onChange={setSelectedModel}
+                  className="hidden sm:inline-flex"
+                />
 
                 {/* Submit — the cream disc. boxShadow is forced off inline so the primary
                     variant's dark 2px ring (--shadow-button) can never re-add a border. */}
@@ -2671,18 +2648,15 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
       </form>
   );
 
-  // Bottom dock — the composer is ONE clean surface. The audience presence no longer
-  // parks a collapsed band above the box (retired 2026-07-20, owner call — the stacked
-  // peek read as a second header bolted onto the composer): at rest the audience lives
-  // in the control row's room chip (see composerForm), and opening it blooms the SAME
-  // panel above the box, flush (the box flattens its top edge via roomExpanded below).
+  // Bottom dock — the composer is ONE clean surface. On empty / permalink home the audience
+  // room stays closed (no composer-row chip); thread mode hosts presence in the rail (≥xl) or
+  // header (<xl). `roomExpanded` still blooms the dock panel when triggered programmatically.
   const composerDock = (
     <div data-testid="composer-dock" className="pointer-events-auto relative flex w-full flex-col">
       {/* The audience room, ONE mount routed by breakpoint/mode:
           ≥xl thread → PORTALED to HomePageLayout's right rail (A2a);
           <xl thread → the HEADER above the thread (A2b, rendered in the thread branch — not here);
-          empty / permalink → the bloom panel, mounted ONLY while open (the room chip is
-          the at-rest presence — D-01 holds: identity + liveness never leave the surface). */}
+          empty / permalink → bloom panel only while roomExpanded (no chip affordance on home). */}
       {useRail && railHost
         ? createPortal(audienceRail, railHost)
         : useHeader || !roomExpanded
