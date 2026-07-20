@@ -96,6 +96,7 @@ export const STREAM_COMPOSITION: ComposedBlock = {
       },
       {
         kind: "evidence",
+        label: "Your last posts, measured",
         rows: [
           {
             title: "Gym transformation",
@@ -126,6 +127,7 @@ export const STREAM_COMPOSITION: ComposedBlock = {
       },
       {
         kind: "media-strip",
+        label: "Proven in adjacent rooms",
         basis: "× = views vs that creator's usual reach · fit = predicted for your audience",
         items: [
           {

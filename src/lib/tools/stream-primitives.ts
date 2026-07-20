@@ -96,6 +96,8 @@ const ReceiptItemSchema = z.object({
  *  and optional: absent data renders as absence, never as a placeholder value. */
 const EvidenceItemSchema = z.object({
   kind: z.literal("evidence"),
+  /** The card eyebrow — what these rows ARE ("Your last posts, measured"). Absent → "Sources". */
+  label: z.string().optional(),
   rows: z
     .array(
       z.object({
@@ -137,6 +139,8 @@ export type StreamSourceProof = z.infer<typeof StreamSourceProofSchema>;
 /** 4 · media strip — covers + one metric + fit; the basis stated ONCE per strip. */
 const MediaStripItemSchema = z.object({
   kind: z.literal("media-strip"),
+  /** The card eyebrow — what this strip IS ("Proven in adjacent rooms"). Absent → "Videos". */
+  label: z.string().optional(),
   /** The group states the shared fact — e.g. "× = views vs that creator's usual reach". */
   basis: z.string().optional(),
   items: z

@@ -15,7 +15,7 @@
  */
 
 import { useState } from 'react';
-import { Eye } from '@phosphor-icons/react';
+import { Eye, TrendDown, TrendUp } from '@phosphor-icons/react';
 import { BAND_COLOR } from '@/components/thread/band-block';
 import { CardEyebrow, CardPrimaryAction, CardActionBar, SECTION_LABEL } from '@/components/thread/card-primitives';
 import { ProofReceipt } from '@/components/thread/proof-receipt';
@@ -160,16 +160,24 @@ export function TestVerdictView({ item }: { item: Extract<StreamItem, { kind: 't
   return <VideoTestCardRenderer block={{ type: 'video-test-card', props } as VideoTestCardBlock} />;
 }
 
-/** Evidence rows — the video reference as a first-class object. */
+/** Evidence rows — the video reference as a first-class object, in the make-family card
+ *  language: framed card, eyebrow, receipt-grade rows (ProofReceipt's pill grammar). */
 export function EvidenceView({ item }: { item: Extract<StreamItem, { kind: 'evidence' }> }) {
+  const count = item.rows.length;
   return (
-    <div className="flex flex-col">
+    <div className="overflow-hidden rounded-xl border border-white/[0.06] bg-surface-sunken">
+      <div className="px-4 pb-3 pt-4">
+        <CardEyebrow
+          kicker={item.label ?? 'Sources'}
+          meta={<span className={`${T_META} tabular-nums text-foreground-muted`}>{count} {count === 1 ? 'video' : 'videos'}</span>}
+        />
+      </div>
       {item.rows.map((row, i) => {
         const when = [row.byline, row.posted].filter(Boolean).join(' · ');
         const body = (
           <>
-            <span className="relative block w-[72px] shrink-0 self-start overflow-hidden rounded-lg border border-white/[0.06] aspect-[9/16] transition-colors group-hover/ev:border-white/[0.14]">
-              <CoverFill coverUrl={row.coverUrl} playSize={18} />
+            <span className="relative block w-[88px] shrink-0 self-start overflow-hidden rounded-lg border border-white/[0.06] aspect-[9/16] transition-colors group-hover/ev:border-white/[0.14]">
+              <CoverFill coverUrl={row.coverUrl} playSize={20} />
               {row.duration && (
                 <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1 py-px text-[11px] tabular-nums text-foreground-secondary">
                   {row.duration}
@@ -177,39 +185,55 @@ export function EvidenceView({ item }: { item: Extract<StreamItem, { kind: 'evid
               )}
             </span>
             <span className="flex min-w-0 flex-1 flex-col gap-1.5 py-0.5">
-              <span className={`${T_BODY} font-medium leading-snug text-foreground transition-colors group-hover/ev:text-white`}>
-                {row.title}
+              <span className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                <span className={`min-w-0 ${T_BODY} font-medium leading-snug text-foreground transition-colors group-hover/ev:text-white`}>
+                  {row.title}
+                </span>
+                {row.facet && (
+                  <span className="min-w-0 max-w-full truncate rounded-full border border-white/[0.06] bg-white/[0.02] px-2 py-0.5 text-[11px] text-foreground-secondary">
+                    {formatFacet(row.facet)}
+                  </span>
+                )}
               </span>
               {when && <span className={`${T_META} text-foreground-muted`}>{when}</span>}
-              {row.facet && <span className={`${T_META} text-foreground-muted`}>{formatFacet(row.facet)}</span>}
+              {(row.multiplier || row.views) && (
+                <span className="flex flex-wrap items-center gap-1.5">
+                  {row.multiplier && (
+                    <span
+                      className={`inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-[12px] font-semibold tabular-nums ${
+                        row.multiplier.direction === 'down'
+                          ? 'bg-[var(--color-error)]/[0.14] text-[var(--color-error)]'
+                          : 'bg-[var(--color-positive)]/[0.14] text-[var(--color-positive)]'
+                      }`}
+                    >
+                      {row.multiplier.direction === 'down' ? (
+                        <TrendDown size={12} weight="bold" aria-hidden="true" />
+                      ) : (
+                        <TrendUp size={12} weight="bold" aria-hidden="true" />
+                      )}
+                      {row.multiplier.value}
+                    </span>
+                  )}
+                  {row.baseline && <span className="text-[11px] text-foreground-muted">{row.baseline}</span>}
+                  {row.views && (
+                    <span className="inline-flex items-center gap-1 rounded-sm bg-white/[0.05] px-1.5 py-0.5 text-[12px] tabular-nums text-foreground-secondary">
+                      <Eye size={12} weight="regular" aria-hidden="true" />
+                      {row.views}
+                    </span>
+                  )}
+                </span>
+              )}
               {row.engagement && <EngagementRow engagement={row.engagement} />}
               {row.meta && !row.views && !row.multiplier && <span className={`${T_META} text-foreground-muted`}>{row.meta}</span>}
             </span>
-            <span className="flex shrink-0 flex-col items-end gap-1 self-center text-right">
-              {row.multiplier && (
-                <span
-                  className={`${T_BODY} font-semibold tabular-nums leading-none`}
-                  style={row.multiplier.direction === 'down' ? { color: 'var(--color-error)' } : undefined}
-                >
-                  {row.multiplier.value}
-                </span>
-              )}
-              {row.baseline && <span className={`hidden ${T_META} text-foreground-muted sm:block`}>{row.baseline}</span>}
-              {row.views && (
-                <span className={`inline-flex items-center gap-1 ${T_META} tabular-nums text-foreground-secondary`}>
-                  <Eye size={12} weight="regular" aria-hidden="true" />
-                  {row.views}
-                </span>
-              )}
-              {row.url && (
-                <span className={`${T_META} text-foreground-muted opacity-0 transition-opacity group-hover/ev:opacity-100`}>
-                  watch ↗
-                </span>
-              )}
-            </span>
+            {row.url && (
+              <span className={`shrink-0 self-center ${T_META} text-foreground-muted opacity-0 transition-opacity group-hover/ev:opacity-100`}>
+                watch ↗
+              </span>
+            )}
           </>
         );
-        const cls = `group/ev flex items-stretch gap-4 border-t ${HAIRLINE} py-3.5 last:border-b`;
+        const cls = `group/ev flex items-stretch gap-4 border-t ${HAIRLINE} px-4 py-3.5 transition-colors hover:bg-white/[0.02]`;
         return row.url ? (
           <a key={i} href={row.url} target="_blank" rel="noopener noreferrer" className={cls} aria-label={`${row.title} — opens the video`}>
             {body}
@@ -224,11 +248,19 @@ export function EvidenceView({ item }: { item: Extract<StreamItem, { kind: 'evid
   );
 }
 
-/** Media strip — browsable video tiles, the metric ON the cover. */
+/** Media strip — browsable video tiles in the make-family card language: framed card,
+ *  eyebrow, the metric ON the cover, the shared basis stated once as the card's footer. */
 export function MediaStripView({ item }: { item: Extract<StreamItem, { kind: 'media-strip' }> }) {
+  const count = item.items.length;
   return (
-    <div className="flex flex-col gap-1.5">
-      <div className="flex gap-3.5 overflow-x-auto py-1">
+    <div className="overflow-hidden rounded-xl border border-white/[0.06] bg-surface-sunken">
+      <div className="px-4 pb-3 pt-4">
+        <CardEyebrow
+          kicker={item.label ?? 'Videos'}
+          meta={<span className={`${T_META} tabular-nums text-foreground-muted`}>{count} {count === 1 ? 'video' : 'videos'}</span>}
+        />
+      </div>
+      <div className="flex gap-3.5 overflow-x-auto px-4 pb-4">
         {item.items.map((m, i) => {
           const tile = (
             <>
@@ -240,7 +272,8 @@ export function MediaStripView({ item }: { item: Extract<StreamItem, { kind: 'me
                   </span>
                 )}
                 {m.metric && (
-                  <span className="absolute left-1.5 top-1.5 rounded-sm bg-black/60 px-1.5 py-0.5 text-xs font-semibold tabular-nums text-foreground">
+                  <span className="absolute left-1.5 top-1.5 inline-flex items-center gap-1 rounded-sm bg-black/70 px-1.5 py-0.5 text-xs font-semibold tabular-nums text-foreground">
+                    <TrendUp size={12} weight="bold" aria-hidden="true" />
                     {m.metric}
                   </span>
                 )}
@@ -273,7 +306,9 @@ export function MediaStripView({ item }: { item: Extract<StreamItem, { kind: 'me
           );
         })}
       </div>
-      {item.basis && <div className={`${T_META} text-foreground-muted`}>{item.basis}</div>}
+      {item.basis && (
+        <div className={`border-t ${HAIRLINE} px-4 py-2.5 ${T_META} text-foreground-muted`}>{item.basis}</div>
+      )}
     </div>
   );
 }

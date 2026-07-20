@@ -84,7 +84,7 @@ export function EngagementRow({
   ].filter((p) => p.value);
   if (pairs.length === 0) return null;
   return (
-    <span className={`flex items-center gap-3 ${T_META} tabular-nums text-foreground-muted${className ? ` ${className}` : ''}`}>
+    <span className={`flex flex-wrap items-center gap-x-3 gap-y-1 ${T_META} tabular-nums text-foreground-muted${className ? ` ${className}` : ''}`}>
       {pairs.map(({ icon: Icon, value, label }) => (
         <span key={label} className="inline-flex items-center gap-1" aria-label={`${value} ${label}`}>
           <Icon size={12} weight="regular" aria-hidden="true" />
