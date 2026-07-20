@@ -3,12 +3,12 @@
 /**
  * ComposerControls — the locked composer control row (UX-01, sketch 006 Variant 1).
  *
- *   [+]  [Skill pill ▾]  [audience]  [intent]  ······  [model]  [↑ send]
- *                                                       └─ model + send live in composer.tsx
+ *   [+]  [Skill pill ▾]  ······  [model ▾]  [↑ send]
+ *                              └─ model + send live in composer.tsx
  *
- * This module owns the LEFT cluster (`+` attach · skill pill · audience · intent) plus
- * every popover, and exports the skill SSOT (ToolId / SKILLS / MODEL_LABEL) + the shared
- * SkillRows list (reused by the composer's `/` slash menu) + the read-only ModelTag.
+ * This module owns the LEFT cluster (`+` attach · skill pill) plus every popover, and
+ * exports the skill SSOT (ToolId / SKILLS / MODEL_LABEL) + the shared SkillRows list
+ * (reused by the composer's `/` slash menu) + SimModelSelector for the RIGHT cluster.
  *
  * Design (flat-warm THEME-06): warm charcoal surfaces, cream text, matte. Premium
  * line-icon SVGs — NO emoji. Popover everywhere (desktop AND mobile — no bottom sheet);
@@ -16,8 +16,9 @@
  *
  * The composer surface carries NO accent: the cream send disc is its only bright element,
  * so the verb pill is a quiet filled capsule (no border, no terracotta) and every other
- * control is a bare glyph. The model is a read-only indicator — the SKILL decides it
- * (Test + Ad Creative → SIM-1 Max; everything else → SIM-1 Flash), so it is never a control.
+ * control is a bare glyph. The model selector defaults from the armed skill (Test → Max;
+ * else Flash) but the creator can override until they switch skills — UI-only for now;
+ * routing still skill-driven.
  *
  * Replaces tool-chips.tsx (the old chip row + active-model field).
  */
@@ -69,7 +70,7 @@ export interface SkillMeta {
    *  `["socials"]`; the General verbs are `["general"]`. The SkillRows filter gates
    *  on the active mode before the Creator/Marketing group partition. */
   modes: SkillMode[];
-  /** SIM-1 tier the skill fires — drives the read-only ModelTag. */
+  /** SIM-1 tier the skill fires — drives the model selector default. */
   model: SkillModel;
   /** false → "coming soon", rendered disabled (ships as its phase lands). */
   enabled: boolean;
@@ -458,24 +459,96 @@ export function SkillRows({
   );
 }
 
-// ─── ModelTag — read-only SIM-1 indicator (the skill decides it) ─────────────
-export function ModelTag({ activeTool, className }: { activeTool: ToolId; className?: string }) {
+// ─── SimModelSelector — Claude-style SIM-1 tier picker (UI-only) ─────────────
+export const SIM_MODELS: { id: SkillModel; label: string; desc: string }[] = [
+  { id: "Flash", label: "SIM-1 Flash", desc: "Text-only runs — hooks, ideas, chat" },
+  { id: "Max", label: "SIM-1 Max", desc: "With-video runs — real video Test" },
+];
+
+export interface SimModelSelectorProps {
+  value: SkillModel;
+  onChange: (m: SkillModel) => void;
+  className?: string;
+}
+
+export function SimModelSelector({ value, onChange, className }: SimModelSelectorProps) {
+  const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (triggerRef.current?.contains(target) || menuRef.current?.contains(target)) return;
+      setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
   return (
-    <span
-      data-testid="active-model-label"
-      title="The skill decides the model — Max for video, Flash for text"
-      className={cn(
-        "inline-flex select-none items-center px-1 text-[12.5px]",
-        className,
-      )}
-    >
-      {/* "SIM-1" is the constant; the tier is what changes — so the tier reads cream
-          and the family name recedes (mirrors "Haiku 4.5 Extended": bright model, muted mode).
-          The space rides INSIDE the first span (a flex gap is invisible to textContent), and
-          whitespace-pre keeps flex layout from collapsing that trailing space away. */}
-      <span className="whitespace-pre text-foreground-muted">{"SIM-1 "}</span>
-      <span className="font-medium text-foreground-secondary">{getSkill(activeTool).model}</span>
-    </span>
+    <div className={cn("relative", className)}>
+      <button
+        ref={triggerRef}
+        type="button"
+        data-testid="sim-model-selector"
+        aria-label={`Model: SIM-1 ${value}`}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className={cn(
+          "inline-flex h-[34px] items-center gap-1 rounded-lg px-2 text-[12.5px] transition-colors",
+          "hover:bg-white/[0.05] focus:outline-none focus-visible:ring-1 focus-visible:ring-white/20 pointer-coarse:h-11",
+        )}
+      >
+        <span className="whitespace-pre text-foreground-muted">{"SIM-1 "}</span>
+        <span className="font-medium text-foreground-secondary">{value}</span>
+        <Ico name="chev" size={13} className="text-foreground-muted" />
+      </button>
+      <Popover open={open} anchorRef={triggerRef} menuRef={menuRef} className="min-w-[260px]">
+        {SIM_MODELS.map((tier) => {
+          const isActive = tier.id === value;
+          return (
+            <button
+              key={tier.id}
+              type="button"
+              role="menuitemradio"
+              aria-checked={isActive}
+              onClick={() => {
+                onChange(tier.id);
+                setOpen(false);
+              }}
+              className={cn(
+                "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors duration-100",
+                isActive
+                  ? "cursor-pointer bg-white/[0.10] ring-1 ring-inset ring-white/[0.10]"
+                  : "cursor-pointer hover:bg-white/[0.035]",
+              )}
+            >
+              <span className="min-w-0 flex-1">
+                <span className="block text-[13.5px] font-medium leading-tight text-foreground">
+                  {tier.label}
+                </span>
+                <span className="mt-0.5 block text-[12px] leading-snug text-foreground-muted">
+                  {tier.desc}
+                </span>
+              </span>
+              {isActive && (
+                <Ico name="check" size={14} className="shrink-0 text-foreground-secondary" />
+              )}
+            </button>
+          );
+        })}
+      </Popover>
+    </div>
   );
 }
 
@@ -598,7 +671,7 @@ export function ComposerControls({
           aria-expanded={pop === "skill"}
           onClick={() => toggle("skill")}
           className={cn(
-            "inline-flex h-[34px] items-center gap-1.5 rounded-full bg-white/[0.05] px-3",
+            "inline-flex h-[34px] items-center gap-1.5 rounded-lg bg-white/[0.05] px-3",
             "text-[13.5px] font-medium text-foreground transition-colors hover:bg-white/[0.08]",
             "focus:outline-none focus-visible:ring-1 focus-visible:ring-white/20 pointer-coarse:h-11",
           )}

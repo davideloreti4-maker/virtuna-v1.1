@@ -131,9 +131,12 @@ export function buildFieldDots(count: number, vbW: number, vbH: number): ConDot[
   const fieldW = vbW - padX * 2;
   const fieldH = vbH - padY * 2;
 
-  // Rows scale with the field's aspect so 10 dots read as a wide band, not a stack.
+  // Wide viewBoxes cap columns so dots cluster in ~4×3 (swarm) instead of a flat 7×2 band.
   const aspect = vbW / vbH;
-  const cols = Math.max(1, Math.round(Math.sqrt(n * aspect)));
+  const cols =
+    aspect > 2
+      ? Math.max(1, Math.ceil(Math.sqrt(n * 0.75)))
+      : Math.max(1, Math.round(Math.sqrt(n * aspect)));
   const rows = Math.max(1, Math.ceil(n / cols));
 
   // Even split across rows so the last row is never a lonely left-aligned stub.
@@ -159,7 +162,7 @@ export function buildFieldDots(count: number, vbW: number, vbH: number): ConDot[
       const depth = rnd(); // 0 = far/dim/small … 1 = near/bright/large
       const r0 = vbH * (0.045 + depth * 0.06);
       const rawX = padX + (k + 0.5) * step + rowShift + (rnd() - 0.5) * step * 0.6;
-      const rawY = cy0 + (rnd() - 0.5) * rowH * 0.72;
+      const rawY = cy0 + (rnd() - 0.5) * rowH * 0.85;
       const cx = Math.max(r0, Math.min(vbW - r0, rawX));
       const cy = Math.max(r0, Math.min(vbH - r0, rawY));
       const alpha = 0.34 + depth * 0.36;
@@ -220,7 +223,14 @@ export interface ConstellationProps {
   /** Draw faint nearest-neighbour threads between dots — turns a scatter into an
    *  actual constellation. Cream only, very low opacity. Used by the hero field. */
   connect?: boolean;
+  /** `tree` = minimum spanning tree (default). `mesh` = k-nearest-neighbour mesh (swarm). */
+  connectMode?: 'tree' | 'mesh';
+  /** `breathe` = parallel cream pulse (default). `cascade` = one accent node sweeps in sequence. */
+  animation?: 'breathe' | 'cascade';
 }
+
+/** Full cascade loop duration (seconds) — one lit node at a time. */
+export const CASCADE_CYCLE_SEC = 6;
 
 /**
  * Minimum spanning tree over the dots (Prim's) — connects the whole field into ONE
@@ -264,6 +274,58 @@ function threadEdges(dots: ConDot[]) {
   return edges;
 }
 
+/**
+ * k-nearest-neighbour mesh — overlapping triangles/cycles so the field reads as an
+ * interconnected swarm rather than a single MST chain.
+ */
+export function meshEdges(dots: ConDot[], k = 2) {
+  const n = dots.length;
+  if (n < 2) return [] as { key: string; x1: number; y1: number; x2: number; y2: number }[];
+  const seen = new Set<string>();
+  const edges: { key: string; x1: number; y1: number; x2: number; y2: number }[] = [];
+
+  for (let i = 0; i < n; i++) {
+    const dists: { j: number; d: number }[] = [];
+    for (let j = 0; j < n; j++) {
+      if (i === j) continue;
+      const dx = dots[i]!.cx - dots[j]!.cx;
+      const dy = dots[i]!.cy - dots[j]!.cy;
+      dists.push({ j, d: dx * dx + dy * dy });
+    }
+    dists.sort((a, b) => a.d - b.d);
+    for (let ki = 0; ki < Math.min(k, dists.length); ki++) {
+      const j = dists[ki]!.j;
+      const key = i < j ? `${i}-${j}` : `${j}-${i}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      edges.push({
+        key,
+        x1: dots[i]!.cx,
+        y1: dots[i]!.cy,
+        x2: dots[j]!.cx,
+        y2: dots[j]!.cy,
+      });
+    }
+  }
+  return edges;
+}
+
+/** SMIL keyframes for node `index` of `count` in a looping accent cascade. */
+export function cascadeKeyframes(index: number, count: number) {
+  const n = Math.max(1, count);
+  const slot = 1 / n;
+  const litStart = index * slot;
+  const litPeak = litStart + slot * 0.12;
+  const litEnd = litStart + slot * 0.88;
+  const keyTimes = [0, litStart, litPeak, litEnd, 1].map((t) => t.toFixed(4)).join(';');
+  return { keyTimes, values: '0;0;1;0;0' };
+}
+
+function resolveEdges(dots: ConDot[], connect: boolean, connectMode: 'tree' | 'mesh') {
+  if (!connect) return [];
+  return connectMode === 'mesh' ? meshEdges(dots) : threadEdges(dots);
+}
+
 /** The breathing persona constellation (SVG). Liveness via motion + cream opacity only. */
 export function Constellation({
   dots,
@@ -275,8 +337,11 @@ export function Constellation({
   ariaLabel,
   reacting = false,
   connect = false,
+  connectMode = 'tree',
+  animation = 'breathe',
 }: ConstellationProps) {
-  const edges = connect ? threadEdges(dots) : [];
+  const edges = resolveEdges(dots, connect, connectMode);
+  const isCascade = animation === 'cascade';
   return (
     <svg
       viewBox={`0 0 ${vbW} ${vbH}`}
@@ -295,7 +360,7 @@ export function Constellation({
           stroke={`rgba(${CREAM}, 0.14)`}
           strokeWidth={0.7}
         >
-          {!reducedMotion && (
+          {!reducedMotion && !isCascade && (
             <animate
               attributeName="opacity"
               values="0.5;1;0.5"
@@ -305,32 +370,54 @@ export function Constellation({
           )}
         </line>
       ))}
-      {dots.map((d, i) => (
-        <g key={d.id} transform={`translate(${d.cx.toFixed(2)} ${d.cy.toFixed(2)})`}>
-          {!reducedMotion && (
-            <animateTransform
-              attributeName="transform"
-              type="translate"
-              values="0 0; 0 -1.1; 0 0.9; 0 0"
-              dur={`${(6 + d.phase * 4).toFixed(2)}s`}
-              begin={`${(d.phase * -3).toFixed(2)}s`}
-              repeatCount="indefinite"
-              additive="sum"
-            />
-          )}
-          <circle cx={0} cy={0} r={d.r} fill={d.fill}>
-            {!reducedMotion && !d.accent && (
-              <animate
-                attributeName="opacity"
-                values={reacting ? '0.4;1;0.4' : '0.78;1;0.78'}
-                dur={reacting ? '1s' : `${(3 + (i % 4)).toFixed(0)}s`}
-                begin={`${(d.phase * -2).toFixed(2)}s`}
+      {dots.map((d, i) => {
+        const cascade = isCascade ? cascadeKeyframes(i, dots.length) : null;
+        return (
+          <g key={d.id} transform={`translate(${d.cx.toFixed(2)} ${d.cy.toFixed(2)})`}>
+            {!reducedMotion && !isCascade && (
+              <animateTransform
+                attributeName="transform"
+                type="translate"
+                values="0 0; 0 -1.1; 0 0.9; 0 0"
+                dur={`${(6 + d.phase * 4).toFixed(2)}s`}
+                begin={`${(d.phase * -3).toFixed(2)}s`}
                 repeatCount="indefinite"
+                additive="sum"
               />
             )}
-          </circle>
-        </g>
-      ))}
+            <circle cx={0} cy={0} r={d.r} fill={d.fill}>
+              {!reducedMotion && !isCascade && !d.accent && (
+                <animate
+                  attributeName="opacity"
+                  values={reacting ? '0.4;1;0.4' : '0.78;1;0.78'}
+                  dur={reacting ? '1s' : `${(3 + (i % 4)).toFixed(0)}s`}
+                  begin={`${(d.phase * -2).toFixed(2)}s`}
+                  repeatCount="indefinite"
+                />
+              )}
+            </circle>
+            {isCascade && !reducedMotion && cascade && (
+              <g opacity={0}>
+                <circle
+                  cx={0}
+                  cy={0}
+                  r={d.r * 2.2}
+                  fill="var(--color-accent)"
+                  opacity={0.18}
+                />
+                <circle cx={0} cy={0} r={d.r} fill="var(--color-accent)" />
+                <animate
+                  attributeName="opacity"
+                  values={cascade.values}
+                  keyTimes={cascade.keyTimes}
+                  dur={`${CASCADE_CYCLE_SEC}s`}
+                  repeatCount="indefinite"
+                />
+              </g>
+            )}
+          </g>
+        );
+      })}
     </svg>
   );
 }
