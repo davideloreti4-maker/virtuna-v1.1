@@ -7,7 +7,7 @@
  *  - Popover rows carry their `/command` label + a MAX badge where the video model fires.
  *  - The active skill is checked; selecting an enabled skill fires onSelectTool.
  *  - Explore is live (P11 / EXPLORE-01); not-yet-shipped skills (Offer/Ad) are HIDDEN until enabled.
- *  - ModelTag is a read-only indicator (retired from the composer, still unit-tested): Max for Test/Ad, Flash otherwise.
+ *  - SimModelSelector is a Claude-style Flash/Max picker (UI-only; skill-synced default).
  *  - SkillRows filters by query (the `/` slash menu reuses it).
  *
  * The intent (Grow/Sell) popover + the `+` attach retired with the v6 clean composer
@@ -18,7 +18,7 @@ import { render, screen, fireEvent, cleanup, within } from "@testing-library/rea
 import { HORIZONTAL_ENABLED } from "@/lib/flags/horizontal";
 import {
   ComposerControls,
-  ModelTag,
+  SimModelSelector,
   SkillRows,
   MODEL_LABEL,
 } from "../composer-controls";
@@ -197,18 +197,45 @@ describe("ComposerControls — mode-scoped skill menu (UX-02 / D-01)", () => {
   });
 });
 
-describe("ModelTag — read-only model indicator (D-09)", () => {
-  it("reads SIM-1 Max for the Test skill", () => {
-    render(<ModelTag activeTool="test" />);
-    expect(screen.getByTestId("active-model-label").textContent).toContain("SIM-1 Max");
+describe("SimModelSelector — Claude-style tier picker", () => {
+  function renderSelector(over: Partial<React.ComponentProps<typeof SimModelSelector>> = {}) {
+    const onChange = vi.fn();
+    const props: React.ComponentProps<typeof SimModelSelector> = {
+      value: "Flash",
+      onChange,
+      ...over,
+    };
+    return { props, onChange, ...render(<SimModelSelector {...props} />) };
+  }
+
+  it("renders the current tier in the trigger", () => {
+    renderSelector({ value: "Max" });
+    expect(screen.getByTestId("sim-model-selector").textContent).toContain("SIM-1 Max");
   });
 
-  it("reads SIM-1 Flash for Idea / Hooks / Chat", () => {
-    for (const t of ["idea", "hooks", "chat"] as const) {
-      cleanup();
-      render(<ModelTag activeTool={t} />);
-      expect(screen.getByTestId("active-model-label").textContent).toContain("SIM-1 Flash");
-    }
+  it("opens a popover with both tiers and descriptions", () => {
+    renderSelector();
+    fireEvent.click(screen.getByTestId("sim-model-selector"));
+    const menu = screen.getByRole("menu");
+    expect(within(menu).getByText("SIM-1 Flash")).toBeInTheDocument();
+    expect(within(menu).getByText("SIM-1 Max")).toBeInTheDocument();
+    expect(within(menu).getByText(/text-only runs/i)).toBeInTheDocument();
+    expect(within(menu).getByText(/with-video runs/i)).toBeInTheDocument();
+  });
+
+  it("calls onChange and closes when a tier is selected", () => {
+    const { onChange } = renderSelector({ value: "Flash" });
+    fireEvent.click(screen.getByTestId("sim-model-selector"));
+    fireEvent.click(screen.getByRole("menuitemradio", { name: /sim-1 max/i }));
+    expect(onChange).toHaveBeenCalledWith("Max");
+    expect(screen.queryByRole("menu")).toBeNull();
+  });
+
+  it("marks the active tier with a check", () => {
+    renderSelector({ value: "Flash" });
+    fireEvent.click(screen.getByTestId("sim-model-selector"));
+    const active = screen.getByRole("menuitemradio", { name: /sim-1 flash/i });
+    expect(active).toHaveAttribute("aria-checked", "true");
   });
 
   it("MODEL_LABEL maps Ad Creative to Max and the rest of marketing/creator correctly", () => {
@@ -248,6 +275,12 @@ describe("ComposerControls — the chip names the SKILL, not the verb group", ()
     const pill = screen.getByRole("button", { name: /skill:/i });
     expect(pill).toHaveTextContent("Chat");
     expect(pill).not.toHaveTextContent("Ask");
+  });
+  it("uses rounded-lg on the skill pill (Claude-style, not full pill)", () => {
+    renderControls({ activeTool: "chat" });
+    const pill = document.getElementById("composer-skill-pill");
+    expect(pill?.className).toContain("rounded-lg");
+    expect(pill?.className).not.toContain("rounded-full");
   });
   it("distinguishes two skills that share a verb group (the old chip could not)", () => {
     const { unmount } = renderControls({ activeTool: "script" });
