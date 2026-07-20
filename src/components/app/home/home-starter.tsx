@@ -37,9 +37,13 @@
  * That split is why PLACEHOLDER_BY_TOOL in composer.tsx is load-bearing copy, not flavour.
  *
  * RULES:
- *   1. One card anatomy: `StarterCard`. Icon left, filled sunken surface, r12, title
- *      14px/medium — and NOTHING ELSE. Never a second card component.
- *   2. NO PROSE. No lede above the grid, no sub-line under a title. The titles are verbs.
+ *   1. One card anatomy: `StarterCard`. Kicker row (icon + mono-caps skill name) over a
+ *      14px/medium title, hairline border, NO fill at rest, r12 — and NOTHING ELSE.
+ *      Never a second card component. (Anatomy revised 2026-07-20, owner call — the old
+ *      icon-left filled brick read as six identical gray slabs; the kicker/title pair is
+ *      the reference quick-action grammar and matches the thread cards' own kickers.)
+ *   2. NO PROSE. No lede above the grid, no sub-line under a title. The titles are verbs;
+ *      the kicker is the skill's NAME (the /command noun), never a sentence.
  *      (The earlier `disabledReason` escape hatch went with Explore's competitors card —
  *      there are no dead cards left, so there is nothing left to explain. If a future card
  *      CAN be dead, it must say why: a card that cannot fire and does not say so reads as
@@ -68,6 +72,8 @@ interface StarterCardModel {
   id: string;
   /** Line-icon key from the composer's SSOT icon set (composer-controls `Ico`). */
   icon: string;
+  /** Mono-caps kicker — the skill's NAME (the /command noun), one word. */
+  kicker: string;
   /** Action-phrased — what the creator GETS, never the internal skill name. */
   title: string;
   onSelect: () => void;
@@ -76,11 +82,11 @@ interface StarterCardModel {
 }
 
 const CARD_CLASS =
-  "group flex items-start gap-3 rounded-[12px] border border-white/[0.06] bg-surface-sunken px-4 py-4 " +
-  "text-left transition-[colors,transform] duration-150 " +
+  "group flex flex-col items-start gap-1.5 rounded-[12px] border border-white/[0.06] px-4 py-3.5 " +
+  "text-left transition-colors duration-150 " +
   "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20";
 
-const CARD_ENABLED = "hover:border-white/[0.10] hover:bg-surface-elevated";
+const CARD_ENABLED = "hover:border-white/[0.10] hover:bg-white/[0.02]";
 
 function StarterCard({ card }: { card: StarterCardModel }) {
   return (
@@ -90,8 +96,11 @@ function StarterCard({ card }: { card: StarterCardModel }) {
       aria-label={card.title}
       className={cn(CARD_CLASS, CARD_ENABLED, card.wide && "sm:col-span-2")}
     >
-      <span className="mt-px shrink-0 text-foreground-secondary transition-colors group-hover:text-foreground">
-        <Ico name={card.icon} size={18} />
+      <span className="flex items-center gap-1.5 text-foreground-muted transition-colors group-hover:text-foreground-secondary">
+        <Ico name={card.icon} size={13} />
+        <span className="text-[10.5px] font-medium uppercase leading-none tracking-[0.08em]">
+          {card.kicker}
+        </span>
       </span>
       <span className="text-[14px] font-medium leading-snug text-foreground">
         {card.title}
@@ -111,13 +120,13 @@ function StarterCard({ card }: { card: StarterCardModel }) {
  * because only Account takes no input — arming it would leave the creator staring at a
  * field with nothing to type. Every other card arms and hands off to the placeholder.
  */
-const THE_SIX: { tool: ToolId; icon: string; title: string; run?: boolean }[] = [
-  { tool: "idea",    icon: "bulb",      title: "Get content ideas" },
-  { tool: "hooks",   icon: "anchor",    title: "Write scroll-stopping hooks" },
-  { tool: "script",  icon: "doc",       title: "Script a video" },
-  { tool: "remix",   icon: "shuffle",   title: "Remix a viral video" },
-  { tool: "test",    icon: "crosshair", title: "Test a video" },
-  { tool: "account", icon: "search",    title: "Read my recent posts", run: true },
+const THE_SIX: { tool: ToolId; icon: string; kicker: string; title: string; run?: boolean }[] = [
+  { tool: "idea",    icon: "bulb",      kicker: "Ideas",  title: "Get content ideas" },
+  { tool: "hooks",   icon: "anchor",    kicker: "Hooks",  title: "Write scroll-stopping hooks" },
+  { tool: "script",  icon: "doc",       kicker: "Script", title: "Script a video" },
+  { tool: "remix",   icon: "shuffle",   kicker: "Remix",  title: "Remix a viral video" },
+  { tool: "test",    icon: "crosshair", kicker: "Test",   title: "Test a video" },
+  { tool: "account", icon: "search",    kicker: "Read",   title: "Read my recent posts", run: true },
 ];
 
 // ── Props ─────────────────────────────────────────────────────────────────────
@@ -141,6 +150,7 @@ export function HomeStarter({ onSelectTool, onAccountRun, className }: HomeStart
   const cards: StarterCardModel[] = THE_SIX.map((c) => ({
     id: c.tool,
     icon: c.icon,
+    kicker: c.kicker,
     title: c.title,
     onSelect: c.run ? onAccountRun : () => onSelectTool(c.tool),
   }));

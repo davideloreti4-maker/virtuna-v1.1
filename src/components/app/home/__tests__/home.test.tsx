@@ -114,9 +114,11 @@ describe('Home — serif greeting + glyph + composer (SHELL-01, THEME-04)', () =
 
   it('greets with the simulate-your-audience voice (D-09/D-19, never "Reading")', () => {
     renderWithClient(<Home />);
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toMatch(
-      /simulate your audience/i,
-    );
+    // The voice moved from the headline to the hero's promise line (2026-07-20 —
+    // the headline is now a short time-of-day greeting; the PROMISE carries the
+    // product voice). The contract is unchanged: the empty home says "simulate
+    // your audience" and never says "Reading".
+    expect(screen.getByText(/simulate your audience/i)).toBeInTheDocument();
     expect(screen.queryByText(/reading/i)).toBeNull();
   });
 });

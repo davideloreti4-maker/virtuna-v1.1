@@ -85,9 +85,12 @@ describe('HomePageLayout — welcome hero visibility', () => {
   it('shows the serif greeting on an empty home', () => {
     renderWithClient(<HomePageLayout />);
     expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument();
+    // The headline is the short time-of-day greeting (2026-07-20); the product
+    // voice lives in the hero's promise line beneath it.
     expect(screen.getByRole('heading', { level: 1 }).textContent).toMatch(
-      /simulate your audience/i,
+      /good (morning|afternoon|evening)|welcome back/i,
     );
+    expect(screen.getByText(/simulate your audience/i)).toBeInTheDocument();
   });
 
   it('removes the greeting entirely when conversation content exists', () => {
