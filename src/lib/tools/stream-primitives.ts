@@ -48,6 +48,17 @@ export const StreamProofSchema = z.object({
 
 export type StreamProof = z.infer<typeof StreamProofSchema>;
 
+/** Measured engagement (scrape data, formatted) — the VideoCard 4-col grid's fields.
+ *  Every field optional: we show only what was measured, never a fabricated stat. */
+export const StreamEngagementSchema = z.object({
+  likes: z.string().optional(),
+  comments: z.string().optional(),
+  shares: z.string().optional(),
+  saves: z.string().optional(),
+});
+
+export type StreamEngagement = z.infer<typeof StreamEngagementSchema>;
+
 /** Verbatim — ONE quote, ONE speaker (italic, left-ruled). */
 export const StreamVerbatimSchema = z.object({
   quote: z.string().min(1).max(240),
@@ -103,6 +114,8 @@ const EvidenceItemSchema = z.object({
         multiplier: z.object({ value: z.string().min(1), direction: z.enum(["up", "down"]) }).optional(),
         /** The multiplier's basis — "vs your usual". Renderer shows it with the number. */
         baseline: z.string().optional(),
+        /** Measured engagement breakdown (likes/comments/shares/saves). */
+        engagement: StreamEngagementSchema.optional(),
         /** Free-text fallback note (legacy rows / anything the fields above don't carry). */
         meta: z.string().optional(),
         url: z.string().nullable().optional(),
@@ -153,6 +166,8 @@ const MediaStripItemSchema = z.object({
         views: z.string().optional(),
         /** The structural read — "confession · zero-cut". */
         facet: z.string().optional(),
+        /** Measured engagement breakdown (likes/comments/shares/saves). */
+        engagement: StreamEngagementSchema.optional(),
         coverUrl: z.string().nullable().optional(),
         url: z.string().nullable().optional(),
       }),
@@ -169,9 +184,17 @@ const RankedItemSchema = z.object({
       z.object({
         /** Rank marker — "1", "2", or "→" for a single adapted result. */
         marker: z.string().min(1).max(3).optional(),
+        /** The quiet eyebrow above the hero — who this is for ("For your Skeptics"). */
+        kicker: z.string().optional(),
         hero: z.string().min(1),
         /** The why-it-works / why-it-fits line — the insight under the hero, muted. */
         insight: z.string().optional(),
+        /** Labeled insight lines (the old cards' anatomy: Why it works · Format · Seed).
+         *  Max 4 — density has a ceiling; the deep dive lives one door away. */
+        details: z
+          .array(z.object({ label: z.string().min(1), text: z.string().min(1) }))
+          .max(4)
+          .optional(),
         proof: StreamProofSchema.optional(),
         verbatim: StreamVerbatimSchema.optional(),
         /** The full structured source receipt (cover · [template] · stats · fit). */

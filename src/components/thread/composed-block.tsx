@@ -21,7 +21,7 @@
 
 import ReactMarkdown from 'react-markdown';
 import rehypeSanitize from 'rehype-sanitize';
-import { Eye, TrendUp } from '@phosphor-icons/react';
+import { BookmarkSimple, ChatCircle, Eye, Heart, ShareNetwork, TrendUp } from '@phosphor-icons/react';
 import { BAND_COLOR } from '@/components/thread/band-block';
 import { SECTION_LABEL } from '@/components/thread/card-primitives';
 import { CoverFill } from '@/components/primitives/CoverFill';
@@ -143,6 +143,34 @@ const formatFacet = (slug: string) =>
     ? slug.split('-').map((w) => (w ? w[0]!.toUpperCase() + w.slice(1) : w)).join(' ')
     : slug;
 
+/** The measured engagement row (the VideoCard 4-col idiom, inline): icon + numeral pairs,
+ *  muted — only what was measured renders. */
+function EngagementRow({
+  engagement,
+  className,
+}: {
+  engagement: { likes?: string; comments?: string; shares?: string; saves?: string };
+  className?: string;
+}) {
+  const pairs = [
+    { icon: Heart, value: engagement.likes, label: 'likes' },
+    { icon: ChatCircle, value: engagement.comments, label: 'comments' },
+    { icon: ShareNetwork, value: engagement.shares, label: 'shares' },
+    { icon: BookmarkSimple, value: engagement.saves, label: 'saves' },
+  ].filter((p) => p.value);
+  if (pairs.length === 0) return null;
+  return (
+    <span className={`flex items-center gap-3 ${T_META} tabular-nums text-foreground-muted${className ? ` ${className}` : ''}`}>
+      {pairs.map(({ icon: Icon, value, label }) => (
+        <span key={label} className="inline-flex items-center gap-1" aria-label={`${value} ${label}`}>
+          <Icon size={12} weight="regular" aria-hidden="true" />
+          {value}
+        </span>
+      ))}
+    </span>
+  );
+}
+
 /** The structured source receipt under a ranked result — the ProofReceipt lineage, restated
  *  in stream language: NO box (one-frame law) — the cover tower IS the anchor, a left rule
  *  carries the attribution column. Clickable → the real source video. */
@@ -150,7 +178,7 @@ function SourceReceipt({ sp }: { sp: StreamSourceProof }) {
   const fit = sp.fit ? FIT_META[sp.fit] : null;
   const body = (
     <>
-      <span className="relative block w-14 shrink-0 self-start overflow-hidden rounded-md border border-white/[0.06] aspect-[9/16]">
+      <span className="relative block w-16 shrink-0 self-start overflow-hidden rounded-lg border border-white/[0.06] aspect-[9/16]">
         <CoverFill coverUrl={sp.coverUrl} playSize={16} />
       </span>
       <span className="flex min-w-0 flex-1 flex-col gap-1.5">
@@ -212,19 +240,26 @@ function ReceiptView({ item }: { item: Extract<StreamItem, { kind: 'receipt' }> 
 
 function EvidenceRow({ row }: { row: Extract<StreamItem, { kind: 'evidence' }>['rows'][number] }) {
   // when-line: byline · posted · duration, whichever exist (the meta fallback carries legacy rows)
-  const when = [row.byline, row.posted, row.duration].filter(Boolean).join(' · ');
+  const when = [row.byline, row.posted].filter(Boolean).join(' · ');
   const body = (
     <>
-      {/* The video anchors the row — a real 9:16 cover, never an empty box (CoverFill). */}
-      <span className="relative block w-12 shrink-0 self-start overflow-hidden rounded-md border border-white/[0.06] aspect-[9/16]">
-        <CoverFill coverUrl={row.coverUrl} playSize={14} />
+      {/* The video anchors the row — a real 9:16 cover, never an empty box (CoverFill).
+          Sized to be SEEN (w-[72px] ≈ 72×128) — the reference is the app's core object. */}
+      <span className="relative block w-[72px] shrink-0 self-start overflow-hidden rounded-lg border border-white/[0.06] aspect-[9/16] transition-colors group-hover/ev:border-white/[0.14]">
+        <CoverFill coverUrl={row.coverUrl} playSize={18} />
+        {row.duration && (
+          <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1 py-px text-[11px] tabular-nums text-foreground-secondary">
+            {row.duration}
+          </span>
+        )}
       </span>
-      <span className="flex min-w-0 flex-1 flex-col gap-1 py-0.5">
-        <span className={`${T_SUPPORT} font-medium leading-snug text-foreground transition-colors group-hover/ev:text-white`}>
+      <span className="flex min-w-0 flex-1 flex-col gap-1.5 py-0.5">
+        <span className={`${T_BODY} font-medium leading-snug text-foreground transition-colors group-hover/ev:text-white`}>
           {row.title}
         </span>
         {when && <span className={`${T_META} text-foreground-muted`}>{when}</span>}
         {row.facet && <span className={`${T_META} text-foreground-muted`}>{formatFacet(row.facet)}</span>}
+        {row.engagement && <EngagementRow engagement={row.engagement} />}
         {row.meta && !row.views && !row.multiplier && <span className={`${T_META} text-foreground-muted`}>{row.meta}</span>}
       </span>
       {/* The measured column — right-aligned numerals, honest absence when unmeasured. */}
@@ -252,7 +287,7 @@ function EvidenceRow({ row }: { row: Extract<StreamItem, { kind: 'evidence' }>['
       </span>
     </>
   );
-  const cls = `group/ev flex items-stretch gap-3.5 border-t ${HAIRLINE} py-3 last:border-b`;
+  const cls = `group/ev flex items-stretch gap-4 border-t ${HAIRLINE} py-3.5 last:border-b`;
   return row.url ? (
     <a href={row.url} target="_blank" rel="noopener noreferrer" className={cls} aria-label={`${row.title} — opens the video`}>
       {body}
@@ -279,7 +314,7 @@ function MediaStripView({ item }: { item: Extract<StreamItem, { kind: 'media-str
         {item.items.map((m, i) => {
           const tile = (
             <>
-              <span className="relative block h-[238px] w-full overflow-hidden rounded-lg border border-white/[0.06] transition-colors group-hover/tile:border-white/[0.14]">
+              <span className="relative block h-[312px] w-full overflow-hidden rounded-lg border border-white/[0.06] transition-colors group-hover/tile:border-white/[0.14]">
                 <CoverFill coverUrl={m.coverUrl} playSize={18} className="transition-opacity group-hover/tile:opacity-90" />
                 {m.duration && (
                   <span className="absolute bottom-1.5 right-1.5 rounded bg-black/60 px-1 py-px text-[11px] tabular-nums text-foreground-secondary">
@@ -303,12 +338,13 @@ function MediaStripView({ item }: { item: Extract<StreamItem, { kind: 'media-str
               )}
               {(m.byline || m.views) && (
                 <span className={`min-w-0 truncate ${T_META} tabular-nums text-foreground-muted`}>
-                  {[m.byline, m.views].filter(Boolean).join(' · ')}
+                  {[m.byline, m.views && `${m.views} views`].filter(Boolean).join(' · ')}
                 </span>
               )}
+              {m.engagement && <EngagementRow engagement={m.engagement} />}
             </>
           );
-          const cls = 'group/tile flex w-[148px] shrink-0 flex-col gap-1.5';
+          const cls = 'group/tile flex w-[176px] shrink-0 flex-col gap-1.5';
           return m.url ? (
             <a key={i} href={m.url} target="_blank" rel="noopener noreferrer" className={cls} aria-label={`${m.title} — opens the video`}>
               {tile}
@@ -329,12 +365,23 @@ function RankedView({ item }: { item: Extract<StreamItem, { kind: 'ranked' }> })
   return (
     <div className="flex flex-col">
       {item.items.map((r, i) => (
-        <div key={i} className={`grid grid-cols-[26px_1fr] gap-x-3 border-t ${HAIRLINE} py-4 last:border-b`}>
-          <span className={`${T_META} font-medium leading-[2.1] text-foreground-muted tabular-nums`}>{r.marker ?? i + 1}</span>
-          <div className="flex flex-col gap-2">
+        <div key={i} className={`grid grid-cols-[26px_1fr] gap-x-3.5 border-t ${HAIRLINE} py-5 last:border-b`}>
+          <span className={`${T_META} font-medium leading-[2.2] text-foreground-muted tabular-nums`}>{r.marker ?? i + 1}</span>
+          <div className="flex flex-col gap-2.5">
+            {r.kicker && <div className={`${SECTION_LABEL} -mb-1`}>{r.kicker}</div>}
             <div className={`${T_HERO} font-semibold leading-snug tracking-[-0.005em]`}>{r.hero}</div>
-            {r.insight && <div className={`${T_SUPPORT} leading-snug text-foreground-muted`}>{r.insight}</div>}
+            {r.insight && <div className={`${T_SUPPORT} leading-relaxed text-foreground-muted`}>{r.insight}</div>}
             {r.proof && <ProofLine proof={r.proof} />}
+            {r.details && r.details.length > 0 && (
+              <div className="grid grid-cols-[max-content_1fr] gap-x-3.5 gap-y-1.5 pt-0.5">
+                {r.details.map((d, di) => (
+                  <div key={di} className="contents">
+                    <span className={`${SECTION_LABEL} leading-relaxed`}>{d.label}</span>
+                    <span className={`${T_SUPPORT} leading-relaxed text-foreground-secondary`}>{d.text}</span>
+                  </div>
+                ))}
+              </div>
+            )}
             {r.verbatim && <VerbatimLine verbatim={r.verbatim} />}
             {r.sourceProof ? (
               <SourceReceipt sp={r.sourceProof} />
@@ -360,7 +407,7 @@ function CompareView({ item }: { item: Extract<StreamItem, { kind: 'compare' }> 
   return (
     <div className="flex flex-col">
       {item.audiences.map((aud, i) => (
-        <div key={i} className={`flex flex-col gap-2 border-t ${HAIRLINE} py-3.5 last:border-b`}>
+        <div key={i} className={`flex flex-col gap-2.5 border-t ${HAIRLINE} py-4 last:border-b`}>
           <div className={`flex flex-wrap items-center gap-2.5 ${T_BODY} font-semibold`}>
             {aud.name}
             <ProofLine proof={aud.proof} />
@@ -384,7 +431,7 @@ function FactsView({ item }: { item: Extract<StreamItem, { kind: 'facts' }> }) {
         <div key={si} className="flex flex-col">
           {section.label && <div className={`${SECTION_LABEL} pb-1 pt-3`}>{section.label}</div>}
           {section.rows.map((row, ri) => (
-            <div key={ri} className={`flex items-baseline gap-2.5 border-t ${HAIRLINE} py-1.5 ${T_SUPPORT} first:border-t-0`}>
+            <div key={ri} className={`flex items-baseline gap-2.5 border-t ${HAIRLINE} py-2 ${T_SUPPORT} first:border-t-0`}>
               {row.mark !== 'none' && (
                 <span
                   className="relative top-[-2px] h-[5px] w-[5px] shrink-0 rounded-full"
@@ -416,7 +463,7 @@ function PlanView({ item }: { item: Extract<StreamItem, { kind: 'plan' }> }) {
   return (
     <div className="flex flex-col">
       {item.slots.map((slot, i) => (
-        <div key={i} className={`flex flex-wrap items-baseline gap-x-3.5 gap-y-0.5 border-t ${HAIRLINE} py-3 ${T_SUPPORT} last:border-b`}>
+        <div key={i} className={`flex flex-wrap items-baseline gap-x-3.5 gap-y-0.5 border-t ${HAIRLINE} py-3.5 ${T_SUPPORT} last:border-b`}>
           <span className={`w-9 shrink-0 ${SECTION_LABEL}`}>{slot.when}</span>
           <span className="font-medium text-foreground">{slot.what}</span>
           {/* Wraps to its own right-aligned line at narrow widths instead of crushing the what. */}
@@ -473,7 +520,7 @@ function AssetView({ item }: { item: Extract<StreamItem, { kind: 'asset' }> }) {
         {item.meta && <span className={`ml-auto ${T_META} text-foreground-muted`}>{item.meta}</span>}
       </div>
       {item.rows.map((row, i) => (
-        <div key={i} className={`grid grid-cols-[78px_1fr] gap-3 border-t ${HAIRLINE} px-4 py-2.5 ${T_SUPPORT} first:border-t-0`}>
+        <div key={i} className={`grid grid-cols-[78px_1fr] gap-3.5 border-t ${HAIRLINE} px-4 py-3 ${T_SUPPORT} first:border-t-0`}>
           <span className={`${SECTION_LABEL} leading-relaxed`}>
             {row.label}
             {row.sub && <span className="block normal-case tracking-normal">{row.sub}</span>}
@@ -527,7 +574,7 @@ function TableView({ item }: { item: Extract<StreamItem, { kind: 'table' }> }) {
               {row.map((cell, ci) => (
                 <td
                   key={ci}
-                  className={`py-2 ${align(ci)} ${
+                  className={`py-2.5 ${align(ci)} ${
                     cell.tone === 'dim'
                       ? `${T_META} text-foreground-muted`
                       : `${T_SUPPORT} ${cell.tone === 'strong' ? 'font-semibold text-foreground' : 'text-foreground'}`
@@ -596,7 +643,7 @@ function StreamItemView({ item }: { item: StreamItem }) {
 
 export function ComposedBlockRenderer({ block }: ComposedBlockProps) {
   return (
-    <div data-stream="" className="flex flex-col gap-3.5">
+    <div data-stream="" className="flex flex-col gap-4">
       {block.props.items.map((item, index) => (
         <StreamItemView key={index} item={item} />
       ))}

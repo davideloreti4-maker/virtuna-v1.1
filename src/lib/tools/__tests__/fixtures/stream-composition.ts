@@ -10,6 +10,19 @@
 
 import type { ComposedBlock } from "../../stream-primitives";
 
+/** Self-contained 9:16 gradient cover (data URI) — the fixture must render identically
+ *  offline/in tests; real rows carry ephemeral CDN covers and degrade via CoverFill. */
+const cover = (a: string, b: string) =>
+  `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='320'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%23${a}'/><stop offset='1' stop-color='%23${b}'/></linearGradient></defs><rect width='180' height='320' fill='url(%23g)'/></svg>`;
+
+
+
+const COVER_BRAEDAN = cover("4a4038", "262624");
+const COVER_GYM = cover("3d4438", "1f1f1e");
+const COVER_OFFICE = cover("383f4a", "262624");
+const COVER_MORNING = cover("4a4438", "2a2622");
+const COVER_CANDID = cover("344038", "1f1f1e");
+
 export const STREAM_COMPOSITION: ComposedBlock = {
   type: "composed",
   props: {
@@ -21,14 +34,20 @@ export const STREAM_COMPOSITION: ComposedBlock = {
         items: [
           {
             marker: "1",
+            kicker: "For your Aspirants",
             hero: "I trained wrong for six years. Here's what I'd keep.",
             insight: "Outcome-first confession — opens an immediate “how?” gap your scanners stop for.",
+            details: [
+              { label: "Why it works", text: "Identity threat + earned authority: six years of receipts makes the confession credible." },
+              { label: "Format", text: "Talking-head confession · on-screen receipts overlay" },
+              { label: "Seed", text: "I trained wrong for six years." },
+            ],
             proof: { band: "Strong", fraction: "8/10 stopped", door: true },
             verbatim: { quote: "Okay that opening got me — I need to know the rest.", speaker: "The Aspirant" },
             sourceProof: {
               handle: "braedan.health",
               url: "https://example.com/braedan",
-              coverUrl: "https://picsum.photos/seed/braedan/180/320",
+              coverUrl: COVER_BRAEDAN,
               template: "I [did the wrong thing] for [timeframe]. Here's what I'd keep.",
               archetype: "trap-mistake",
               multiplier: "90.7×",
@@ -81,11 +100,12 @@ export const STREAM_COMPOSITION: ComposedBlock = {
             byline: "@maven.creator",
             posted: "May 18",
             duration: "0:31",
-            coverUrl: "https://picsum.photos/seed/gymtx/180/320",
+            coverUrl: COVER_GYM,
             facet: "receipts-on-camera · talking-head",
             views: "2.1M",
             multiplier: { value: "9.2×", direction: "up" },
             baseline: "vs your usual",
+            engagement: { likes: "312K", comments: "4.8K", shares: "21K", saves: "38K" },
             url: "https://example.com/gym",
           },
           {
@@ -93,11 +113,12 @@ export const STREAM_COMPOSITION: ComposedBlock = {
             byline: "@maven.creator",
             posted: "Jun 2",
             duration: "0:47",
-            coverUrl: "https://picsum.photos/seed/officedl/180/320",
+            coverUrl: COVER_OFFICE,
             facet: "context-first vlog",
             views: "38K",
             multiplier: { value: "0.4×", direction: "down" },
             baseline: "vs your usual",
+            engagement: { likes: "2.1K", comments: "88", shares: "41" },
           },
         ],
       },
@@ -113,7 +134,8 @@ export const STREAM_COMPOSITION: ComposedBlock = {
             views: "2.4M",
             facet: "confession · zero-cut",
             duration: "0:34",
-            coverUrl: "https://picsum.photos/seed/morningmo/296/476",
+            engagement: { likes: "401K", shares: "18K" },
+            coverUrl: COVER_MORNING,
             url: "https://example.com/morningmo",
           },
           {
@@ -124,7 +146,7 @@ export const STREAM_COMPOSITION: ComposedBlock = {
             views: "890K",
             facet: "harsh-truth breakdown",
             duration: "0:51",
-            coverUrl: "https://picsum.photos/seed/candidkay/296/476",
+            coverUrl: COVER_CANDID,
           },
         ],
       },
