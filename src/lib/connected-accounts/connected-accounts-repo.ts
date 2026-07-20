@@ -25,13 +25,16 @@ export interface ConnectedAccount {
   is_primary: boolean;
   connection_method: "scrape" | "oauth";
   last_synced_at: string | null;
+  /** Re-hosted public avatar URL (never the platform CDN URL — those expire).
+   *  NULL = we hold no image; callers fall back to the handle's initial. */
+  avatar_url: string | null;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type UntypedClient = { from: (t: string) => any };
 
 const SELECT =
-  "id, user_id, platform, handle, display_name, is_primary, connection_method, last_synced_at";
+  "id, user_id, platform, handle, display_name, is_primary, connection_method, last_synced_at, avatar_url";
 
 function normalize(r: Record<string, unknown>): ConnectedAccount {
   return {
@@ -43,6 +46,7 @@ function normalize(r: Record<string, unknown>): ConnectedAccount {
     is_primary: Boolean(r.is_primary),
     connection_method: (r.connection_method as "scrape" | "oauth") ?? "scrape",
     last_synced_at: (r.last_synced_at as string) ?? null,
+    avatar_url: (r.avatar_url as string) ?? null,
   };
 }
 
@@ -170,6 +174,31 @@ export async function touchAccountSynced(
   await (serviceClient as unknown as UntypedClient)
     .from("connected_accounts")
     .update({ last_synced_at: new Date().toISOString() })
+    .eq("id", accountId);
+}
+
+/**
+ * Stamp the identity the SCRAPE returned — the re-hosted avatar and the creator's real
+ * display name. Both were previously thrown away: the connect step writes
+ * `display_name: input.displayName ?? handle`, so an account connected without one reads
+ * back as its own handle ("zachking" rather than "Zach King"), and no avatar was stored
+ * at all. Only ever called with values a real scrape produced; a null/empty field is
+ * skipped rather than written, so a failed re-host can't blank an image we already hold.
+ */
+export async function updateAccountIdentity(
+  supabase: SupabaseClient,
+  accountId: string,
+  input: { avatarUrl?: string | null; displayName?: string | null },
+): Promise<void> {
+  const patch: Record<string, string> = {};
+  const avatar = input.avatarUrl?.trim();
+  const name = input.displayName?.trim();
+  if (avatar) patch.avatar_url = avatar;
+  if (name) patch.display_name = name;
+  if (Object.keys(patch).length === 0) return;
+  await (supabase as unknown as UntypedClient)
+    .from("connected_accounts")
+    .update(patch)
     .eq("id", accountId);
 }
 

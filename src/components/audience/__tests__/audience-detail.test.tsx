@@ -271,7 +271,7 @@ describe("the scrape leads the page", () => {
     expect(sourceAt).toBeLessThan(roomAt);
   });
 
-  it("states the videos the scrape read, not the posts we happen to hold", () => {
+  it("states the videos the scrape analyzed, not the posts we happen to hold", () => {
     // listAllPosts caps the tiles; videos_analyzed is the stored provenance fact.
     const withProvenance = baseAudience({
       signature: {
@@ -309,9 +309,13 @@ describe("the scrape leads the page", () => {
         source={source()}
       />,
     );
-    // Two post tiles are held; the scrape read 84. The page must say 84.
-    expect(screen.getByText(/84 videos read/)).toBeInTheDocument();
-    expect(screen.queryByText(/2 videos read/)).toBeNull();
+    // Two post tiles are held; the scrape analyzed 84. The page must say 84.
+    expect(screen.getByText(/84 videos analyzed/)).toBeInTheDocument();
+    expect(screen.queryByText(/2 videos analyzed/)).toBeNull();
+    // "read" overstated it: videos_analyzed counts metadata passes, and only a
+    // subset (videos_watched) is actually watched through. The verb must not promise
+    // the deeper operation.
+    expect(screen.queryByText(/videos read/)).toBeNull();
   });
 });
 

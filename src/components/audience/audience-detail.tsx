@@ -47,6 +47,7 @@ import { PersonaEditForm } from "./persona-edit-form";
 import { CalibrationFlow } from "./calibration-flow";
 import { archetypeDerivedName, isPersonaGrounded } from "./audience-display";
 import { timeAgo } from "./audience-index";
+import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import {
@@ -68,6 +69,11 @@ export interface AccountView {
   platform: "tiktok" | "instagram" | "youtube";
   is_primary: boolean;
   last_synced_at: string | null;
+  /** Re-hosted avatar; null when we hold no image → the header shows the initial. */
+  avatar_url?: string | null;
+  /** The creator's real name. Connect falls back to the handle, so it is only
+   *  rendered when it actually differs — never as an echo of the @handle. */
+  display_name?: string | null;
 }
 
 export interface SourceData {
@@ -262,6 +268,14 @@ export function AudienceDetail({
 
   // ── Header facts ────────────────────────────────────────────────────────────
   const title = account ? `@${account.handle}` : audience?.name ?? "";
+  /** Shown only when the scraper actually returned a name — the connect step writes
+   *  `display_name: displayName ?? handle`, so an un-scraped account reads back as its
+   *  own handle, and echoing "@zachking / zachking" states one fact twice. */
+  const rawName = account?.display_name?.trim() ?? "";
+  const realName =
+    account && rawName && rawName.toLowerCase() !== account.handle.toLowerCase()
+      ? rawName
+      : null;
   const metaParts: (string | null)[] = [];
   if (account) {
     metaParts.push(PLATFORM_LABEL[account.platform]);
@@ -363,11 +377,33 @@ export function AudienceDetail({
     <div className={cn("flex flex-col", className)}>
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <header className="flex flex-wrap items-center gap-3.5">
-        {account?.is_primary && audience && <LivenessDot />}
-        <h1 className="text-[22px] font-semibold tracking-[-0.01em] text-foreground">
-          {title}
-        </h1>
-        <MonoMeta parts={metaParts} />
+        {/* The account's own face. The scrape always had it; the page never showed it.
+            The liveness dot rides the avatar's corner instead of sitting in the text
+            line — same single accent element, now attached to the thing it describes. */}
+        {account && (
+          <span className="relative shrink-0">
+            <Avatar
+              src={account.avatar_url ?? undefined}
+              alt={`@${account.handle}`}
+              fallback={account.handle.slice(0, 2).toUpperCase()}
+              size="lg"
+            />
+            {account.is_primary && audience && (
+              <span className="absolute -bottom-px -right-px rounded-full bg-[color:var(--charcoal-app)] p-[3px]">
+                <LivenessDot />
+              </span>
+            )}
+          </span>
+        )}
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3.5 gap-y-1">
+          <h1 className="text-[22px] font-semibold tracking-[-0.01em] text-foreground">
+            {title}
+          </h1>
+          <MonoMeta parts={metaParts} />
+          {realName && (
+            <p className="w-full text-[13px] text-foreground-muted">{realName}</p>
+          )}
+        </div>
         {editable && (
           <button
             type="button"
@@ -408,7 +444,7 @@ export function AudienceDetail({
                         count is a provenance fact and is stated as one, below. */}
                     <p className={cn(ZONE_LABEL, "mb-2.5 mt-6")}>
                       Recent posts
-                      {videosRead ? ` · ${videosRead} videos read` : ""}
+                      {videosRead ? ` · ${videosRead} videos analyzed` : ""}
                     </p>
                     <div
                       className="flex gap-2 overflow-x-auto pb-1"
@@ -437,21 +473,25 @@ export function AudienceDetail({
                 )}
 
                 {source.pillars.length > 0 && (
+                  /* NO BARS HERE — deliberately. A pillar is a share of what you POST;
+                     a persona's share is a share of who WATCHES. Rendered as identical
+                     tracks ~200px apart in one column, the two read as the same
+                     quantity measured twice. The room owns the bar (it is the page's
+                     subject); pillars are supporting evidence and state themselves as
+                     a ranked figure list. */
                   <div className="mt-6">
+                    <p className={cn(ZONE_LABEL, "mb-2.5")}>What you post</p>
                     {source.pillars.map((p) => (
-                      <div key={p.name} className="mt-3 first:mt-0">
-                        <div className="mb-[5px] flex justify-between text-[12.5px]">
-                          <span className="text-foreground-secondary">{p.name}</span>
-                          <span className="tabular-nums text-foreground-muted">
-                            {Math.round(p.share * 100)}%
-                          </span>
-                        </div>
-                        <div className="h-[3px] rounded-sm bg-white/[0.07]">
-                          <div
-                            className="h-full rounded-sm bg-[color:var(--color-foreground-secondary)] opacity-[0.65]"
-                            style={{ width: `${Math.round(p.share * 100)}%` }}
-                          />
-                        </div>
+                      <div
+                        key={p.name}
+                        className="flex items-baseline justify-between gap-4 border-t border-white/[0.05] py-2 first:border-t-0"
+                      >
+                        <span className="min-w-0 truncate text-[13px] text-foreground-secondary">
+                          {p.name}
+                        </span>
+                        <span className="shrink-0 text-[13px] tabular-nums text-foreground-muted">
+                          {Math.round(p.share * 100)}%
+                        </span>
                       </div>
                     ))}
                   </div>
