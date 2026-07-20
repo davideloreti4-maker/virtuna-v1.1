@@ -325,6 +325,34 @@ the existing pages. Process obligations: proper design thought per surface, self
 the design laws before anything ships, sketch-first iteration (the session-1 loop) for every new
 surface, measured audits at build time.
 
+### Design doctrine (holds for every surface)
+1. One hero per screen — competing elements: one is wrong.
+2. The biggest type is the answer the user paid for.
+3. Motion is simulation physics, never transition candy — if it doesn't report real state it
+   doesn't exist (covers the loading/progress requirement).
+4. Space is the luxury — flat-warm matte, 6% borders, generous air.
+5. Honesty as design — sealed verdicts, `modeled · not measured`, one mono disclaimer.
+6. Words are the enemy — <60 words chrome, captions only on load-bearing figures.
+
+### Per-surface bets
+- **Brain tab** = out-Sapient Sapient: their report discipline + replay scrubber + a chattable
+  why-loop they can't do.
+- **Audience tab** = out-AS AS: terrain full-bleed as the canvas (their spatial drama), our
+  stable geography + interviewable cast.
+- **Overview** = the surface neither has (ranked notebook + room breathing at top) — the screen
+  users live in.
+- **Start screen** = the instrument at rest: cockpit, not dashboard.
+- **Simulate sheet** = arming an instrument, not filling a form.
+
+### Sketch order & state
+① overview+watching ② Brain ③ Audience → ④ start screen → ⑤ simulate sheet.
+**Round 1 of ①–③ delivered: `.scratch/panel-v6-round1.html`** (animated watching row with
+sealed verdict, cortex replay w/ scrubber, full-bleed lit terrain, tri-state
+stopped/skimmed/scrolled-past, cast with stance dots). Self-review already applied (terrain
+inset→full-bleed, kicker trims). Known open nit: the coral peak marker on the brain scrubber —
+coral is lawfully loss-only; here the peak IS the loss moment (emotion spikes while attention
+leaves), owner to confirm or it goes cream.
+
 ## Still open / build-time
 - Scene-mismatch treatment (design thought owed — resolved open #8).
 - Best preset-question set (design pass with custom-compile in mind).
