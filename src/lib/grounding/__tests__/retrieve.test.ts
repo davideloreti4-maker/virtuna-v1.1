@@ -38,6 +38,7 @@ function row(overrides: Partial<SharedMatchRow> = {}): SharedMatchRow {
     format: "listicle",
     visual_hook: "studio_set",
     editing_style: "office-room-yap",
+    hook_techniques: null,
     spoken_hook: "Stop buying protein bars.",
     hook_template: "Stop buying [product category].",
     hook_source: "caption_fallback",

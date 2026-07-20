@@ -32,6 +32,7 @@ function mkExample(o: Partial<RetrievedExample> = {}): RetrievedExample {
     format: "breakdowns-explainers",
     visualSetting: "greenscreen",
     editingStyle: "visual-greenscreen",
+    hookTechniques: [],
     niche: "content-creation",
     // Comfortably above the warrant floor by default, so a fixture is citable unless a test says otherwise.
     similarity: 0.71,
@@ -353,5 +354,115 @@ describe("gatherReferencesViaTool — the harvest gate [grounding]", () => {
     expect(res.toolCalls[0]!.rows).toBe(2);
     expect(res.toolCalls[0]!.grounded).toBe(false);
     expect(res.references).toHaveLength(0);
+  });
+});
+
+/**
+ * The first-frame TECHNIQUE axis (Sandcastles `visual_hooks` collections, 2026-07-20).
+ *
+ * These exist because the corpus shipped TWO axes both descended from the phrase "visual hook" and
+ * we only ever promoted one. `visual_setting` is WHERE the video is staged; `hook_technique` is what
+ * the opening shot DOES. Conflating them is why "show me videos with a good visual hook" quietly
+ * answered from the staging taxonomy for months — so the lock below is that the two travel as
+ * SEPARATE facets and neither collapses into the other.
+ */
+describe("executeCorpusSearch — first-frame technique facets [grounding]", () => {
+  it("passes hook_technique and hook_family down as their own facets", async () => {
+    const retrieve = vi.fn(async () => ({ examples: [mkExample()], enough: false, stats: {} })) as never;
+
+    await executeCorpusSearch(
+      { query: "strong openings", hook_technique: "camera-whip", hook_family: "subject-motion" },
+      "tiktok",
+      1,
+      retrieve,
+    );
+
+    expect(retrieve).toHaveBeenCalledWith(
+      expect.objectContaining({
+        facets: { hookTechnique: "camera-whip", hookFamily: "subject-motion" },
+      }),
+      expect.anything(),
+    );
+  });
+
+  it("🔴 keeps the TECHNIQUE and the SETTING as separate axes — neither overwrites the other", async () => {
+    const retrieve = vi.fn(async () => ({ examples: [mkExample()], enough: false, stats: {} })) as never;
+
+    await executeCorpusSearch(
+      { query: "greenscreen with a strong opening", visual_setting: "greenscreen", hook_technique: "match-cut" },
+      "tiktok",
+      1,
+      retrieve,
+    );
+
+    const { facets } = (retrieve as unknown as { mock: { calls: Array<[{ facets: Record<string, unknown> }]> } })
+      .mock.calls[0]![0];
+    expect(facets.visualSetting).toBe("greenscreen"); // staging
+    expect(facets.hookTechnique).toBe("match-cut"); // device
+  });
+
+  it("drops a technique outside the stored vocabulary rather than guessing", async () => {
+    const retrieve = vi.fn(async () => ({ examples: [mkExample()], enough: false, stats: {} })) as never;
+
+    await executeCorpusSearch(
+      { query: "x", hook_technique: "sick-transition", hook_family: "not-a-family" },
+      "tiktok",
+      1,
+      retrieve,
+    );
+
+    expect(retrieve).toHaveBeenCalledWith(
+      expect.objectContaining({ facets: {} }),
+      expect.anything(),
+    );
+  });
+
+  it("names the technique on a catalogued row and OMITS it on an uncatalogued one", async () => {
+    // Absent ≠ "this video has no visual hook". Only 154 of 524 rows are catalogued, so emitting
+    // null would assert something about the other 370 that nobody ever measured.
+    const retrieve = vi.fn(async () => ({
+      examples: [
+        mkExample({ teardownId: "tagged", similarity: 0.8, hookTechniques: ["Camera Whip"] }),
+        mkExample({ teardownId: "untagged", similarity: 0.8, hookTechniques: [] }),
+      ],
+      enough: true,
+      stats: {},
+    })) as never;
+
+    const res = await executeCorpusSearch({ query: "openings" }, "tiktok", 1, retrieve);
+    const payload = JSON.parse(res.content);
+
+    expect(payload.results[0].hook_technique).toBe("Camera Whip");
+    expect(payload.results[1]).not.toHaveProperty("hook_technique");
+  });
+
+  it("joins multiple techniques — 4 corpus rows genuinely carry two", async () => {
+    const retrieve = vi.fn(async () => ({
+      examples: [mkExample({ similarity: 0.8, hookTechniques: ["Camera Whip", "Match Cut"] })],
+      enough: true,
+      stats: {},
+    })) as never;
+
+    const res = await executeCorpusSearch({ query: "openings" }, "tiktok", 1, retrieve);
+    expect(JSON.parse(res.content).results[0].hook_technique).toBe("Camera Whip, Match Cut");
+  });
+
+  it("the tool schema advertises both axes distinctly, so the model can tell them apart", () => {
+    type Prop = { enum?: string[]; description?: string };
+    const props = SEARCH_CORPUS_TOOL.function.parameters.properties as Record<string, Prop | undefined>;
+    const prop = (name: string): Prop => {
+      const p = props[name];
+      if (!p) throw new Error(`search_corpus schema is missing the "${name}" parameter`);
+      return p;
+    };
+
+    expect(prop("hook_technique").enum).toHaveLength(47);
+    expect(prop("hook_family").enum).toHaveLength(5);
+    expect(prop("hook_technique").enum).toContain("camera-whip");
+    expect(prop("hook_family").enum).toContain("pattern-interrupt-visual-switching");
+    // The setting's description must point at the technique, or the model keeps conflating them.
+    expect(prop("visual_setting").description).toMatch(/hook_technique/);
+    // Thin coverage stated in the schema itself — the model reads this, not our docs.
+    expect(prop("hook_technique").description).toMatch(/154 of 524/);
   });
 });

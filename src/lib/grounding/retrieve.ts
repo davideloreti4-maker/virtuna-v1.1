@@ -303,6 +303,9 @@ export function matchRowToExample(row: SharedMatchRow): RetrievedExample {
     // visual_hook is a SETTING taxonomy, not a first-frame device — renamed honestly at this boundary.
     visualSetting: row.visual_hook,
     editingStyle: row.editing_style,
+    // The first-frame TECHNIQUE — a separate axis from the setting above (see types.ts). `[]` on an
+    // uncatalogued row, and on the scrape path, which has no Sandcastles collections at all.
+    hookTechniques: Array.isArray(row.hook_techniques) ? row.hook_techniques.filter(Boolean) : [],
     niche: row.niche,
     spokenHook: row.spoken_hook,
     hookTemplate: row.hook_template,
@@ -333,6 +336,13 @@ export interface RetrieveFacets {
   visualSetting?: string | null;
   editingStyle?: string | null;
   niche?: string | null;
+  /**
+   * First-frame TECHNIQUE slug ('camera-whip', 'match-cut') — the Sandcastles visual_hooks
+   * taxonomy, filtered through `teardown_collections`. NOT `visualSetting`, which is the staging.
+   */
+  hookTechnique?: string | null;
+  /** Technique FAMILY slug ('subject-motion', 'pattern-interrupt-visual-switching'). */
+  hookFamily?: string | null;
 }
 
 export interface RetrieveInput {
@@ -405,6 +415,8 @@ export async function retrieveCachedExamples(
     filterVisual: facets.visualSetting ?? null,
     filterEditing: facets.editingStyle ?? null,
     filterNiche: facets.niche ?? null,
+    filterHookTechnique: facets.hookTechnique ?? null,
+    filterHookFamily: facets.hookFamily ?? null,
   });
 
   // Admissibility is NOT ranking: these three drop rows that must never reach the model at all

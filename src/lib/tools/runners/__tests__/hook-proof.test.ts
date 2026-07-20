@@ -25,6 +25,7 @@ function makeExample(over: Partial<RetrievedExample> = {}): RetrievedExample {
     format: "breakdowns-explainers",
     visualSetting: "studio_set",
     editingStyle: "office-room-yap",
+    hookTechniques: [],
     niche: "health-fitness",
     similarity: 0.71,
     spokenHook: "The one breakfast that fixed my energy",

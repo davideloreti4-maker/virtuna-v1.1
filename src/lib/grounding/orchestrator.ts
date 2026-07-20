@@ -116,6 +116,9 @@ export function toRetrievedExample(args: {
     fromPersonal: false,
     // Freshly scraped — this row was never matched against a query, so there is no similarity to state.
     similarity: null,
+    // No Sandcastles collections either: the technique taxonomy is a property of the CURATED library,
+    // and a video we just pulled off Apify was never catalogued by a human. Empty = not catalogued.
+    hookTechniques: [],
   };
 }
 

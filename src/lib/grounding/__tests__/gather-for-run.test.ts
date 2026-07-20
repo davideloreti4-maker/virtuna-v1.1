@@ -20,6 +20,7 @@ function example(id: string): RetrievedExample {
     format: "listicle",
     visualSetting: "studio_set",
     editingStyle: "office-room-yap",
+    hookTechniques: [],
     niche: "health-fitness",
     similarity: 0.71,
     spokenHook: "Stop buying protein bars.",

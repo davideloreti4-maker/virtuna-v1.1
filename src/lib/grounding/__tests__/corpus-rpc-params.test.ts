@@ -7,6 +7,10 @@
  * call (missing arg) or, worse under a future default, silently not filter.
  * Pinning the full payload makes a dropped or misnamed param fail loudly.
  * (This test fails against the pre-migration wrappers by construction.)
+ *
+ * 2026-07-20: filter_hook_technique / filter_hook_family joined the shared RPC. The personal RPC
+ * deliberately does NOT get them — the Sandcastles collection taxonomy is a property of the CURATED
+ * library, and a creator's own uploaded videos were never catalogued by it.
  */
 
 import { describe, it, expect, vi } from "vitest";
@@ -34,6 +38,8 @@ describe("matchSharedTeardowns → match_shared_teardowns params", () => {
       filterFormat: "breakdowns-explainers",
       filterVisual: "greenscreen",
       filterEditing: "visual-greenscreen",
+      filterHookTechnique: "camera-whip",
+      filterHookFamily: "subject-motion",
     });
     expect(rpc).toHaveBeenCalledWith("match_shared_teardowns", {
       query_embedding: EMB,
@@ -46,6 +52,10 @@ describe("matchSharedTeardowns → match_shared_teardowns params", () => {
       filter_format: "breakdowns-explainers",
       filter_visual: "greenscreen",
       filter_editing: "visual-greenscreen",
+      // The first-frame TECHNIQUE gates (teardown_collections). Distinct from filter_visual, which
+      // is the staging — the whole point of the 2026-07-20 axis split.
+      filter_hook_technique: "camera-whip",
+      filter_hook_family: "subject-motion",
     });
   });
 
@@ -63,6 +73,8 @@ describe("matchSharedTeardowns → match_shared_teardowns params", () => {
       filter_format: null,
       filter_visual: null,
       filter_editing: null,
+      filter_hook_technique: null,
+      filter_hook_family: null,
     });
   });
 });

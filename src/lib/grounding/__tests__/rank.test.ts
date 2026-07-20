@@ -34,6 +34,7 @@ function row(overrides: Partial<SharedMatchRow> = {}): SharedMatchRow {
     format: null,
     visual_hook: null,
     editing_style: null,
+    hook_techniques: null,
     spoken_hook: "I built and sold my company.",
     hook_template: "I [achieved result] for [value].",
     hook_source: null,

@@ -81,6 +81,39 @@ export const EDITING_STYLES = [
   "faceless-physical-explainer", "faceless-text-conversation", "stop-motion", "skit-lip-sync", "other",
 ] as const;
 
+/**
+ * First-frame TECHNIQUES — the Sandcastles `visual_hooks` collection taxonomy (47 named devices
+ * across 154 catalogued rows), stored in `teardown_collections`.
+ *
+ * 🔴 NOT the same axis as VISUAL_SETTINGS above, despite both descending from something the library
+ * called a "visual hook". VISUAL_SETTINGS is WHERE the video is staged (greenscreen / studio_set /
+ * faceless). This is WHAT THE FIRST FRAME DOES (a crash zoom, a match cut, a framebreaker). Only the
+ * setting was ever promoted to a column, so a creator asking for "a good visual hook" was silently
+ * answered from the staging taxonomy — the ask had no axis until 2026-07-20.
+ *
+ * Thin by design: 2–7 videos per technique. That is what the warrant contract is for — say "two
+ * examples", never dress two rows as a pattern.
+ */
+export const HOOK_TECHNIQUES = [
+  "3p-crash-zoom", "a-vs-b", "anticipated-disaster", "beat-match-visual-switch", "camera-whip",
+  "clone-body-double", "color-switch", "countdown", "crazy-transition", "experimental-interactive",
+  "fish-eye", "fly-on-wall", "frame-collapse", "framebreaker", "fridge-pov",
+  "high-motion-base-b-roll", "holding-prop", "image-overlay-motion", "interactive-titles", "jump-in",
+  "jump-switch", "look-up-at-camera-top-down", "many-of-same-prop", "match-cut", "mirror",
+  "move-in-frame", "object-catch", "point-to-visual", "screen-recording-w-motion",
+  "setting-down-phone", "silent-reaction-pip", "small-image-drop-overlay", "snap-pop-reveal",
+  "speed-ramp-effect", "sudden-danger-1p-pov", "text-arrow-pointer", "text-slide-in", "the-zoom-in",
+  "unusual-first-image-scene", "use-random-product", "viral-stitch-motion-match",
+  "viral-stitch-reaction", "viral-stitch-unlinked-switch", "visual-mistake", "visual-switch",
+  "write-on-screen", "yap-cold-open",
+] as const;
+
+/** The five families the 47 techniques group into — the coarser ask ("pattern interrupt openers"). */
+export const HOOK_FAMILIES = [
+  "subject-motion", "visual-effect-transitions", "graphic-text-overlay",
+  "pattern-interrupt-visual-switching", "visual-selection",
+] as const;
+
 export const NICHES = [
   "content-creation", "comedy-entertainment", "self-improvement", "business", "tech", "lifestyle",
   "health-fitness", "beauty-fashion", "education-science", "relationships-family", "food",
@@ -127,7 +160,28 @@ export const SEARCH_CORPUS_TOOL = {
           enum: [...VISUAL_SETTINGS],
           description:
             "Filter to one visual SETTING — where/how the video is staged (greenscreen, studio set, " +
-            "in-world vlog, in-world skit, faceless). This is the setting, not the first-frame device.",
+            "in-world vlog, in-world skit, faceless). This is the setting, not the first-frame device. " +
+            "For the first-frame DEVICE use hook_technique instead.",
+        },
+        hook_technique: {
+          type: "string",
+          enum: [...HOOK_TECHNIQUES],
+          description:
+            "Filter to one first-frame TECHNIQUE — what the opening shot actually DOES: a camera " +
+            "whip, a match cut, a crash zoom, a framebreaker, writing on screen. This is the axis " +
+            "for 'show me videos with a good visual hook' or 'examples of a strong opening shot'. " +
+            "Distinct from visual_setting (which is only the staging). Coverage is partial and thin " +
+            "— 154 of 524 videos are catalogued, 2–7 per technique — so a result of one or two rows " +
+            "is normal and must be reported as that, never generalised into a pattern.",
+        },
+        hook_family: {
+          type: "string",
+          enum: [...HOOK_FAMILIES],
+          description:
+            "Filter to a FAMILY of first-frame techniques when the ask is broader than one device: " +
+            "subject-motion (the subject moves), visual-effect-transitions, graphic-text-overlay, " +
+            "pattern-interrupt-visual-switching (a cut that breaks the scroll), visual-selection " +
+            "(an inherently arresting first image). Use this rather than guessing one technique.",
         },
         editing_style: { type: "string", enum: [...EDITING_STYLES], description: "Filter to one editing style." },
         niche: { type: "string", enum: [...NICHES], description: "Filter to one niche." },
@@ -256,6 +310,10 @@ export function parseFacets(args: Record<string, unknown>): RetrieveFacets {
   if (editing) facets.editingStyle = editing;
   const niche = pickFacet(args.niche, NICHES);
   if (niche) facets.niche = niche;
+  const technique = pickFacet(args.hook_technique, HOOK_TECHNIQUES);
+  if (technique) facets.hookTechnique = technique;
+  const family = pickFacet(args.hook_family, HOOK_FAMILIES);
+  if (family) facets.hookFamily = family;
   return facets;
 }
 
@@ -307,6 +365,10 @@ export async function executeCorpusSearch(
       hook_archetype: e.hookArchetype ?? null,
       format: e.format ?? null,
       visual_setting: e.visualSetting ?? null,
+      // The first-frame device(s), when this row is catalogued. Omitted rather than sent as null:
+      // absent means NOT CATALOGUED (370 of 524 rows), and a null here reads as "has no visual
+      // hook", which is a claim about the video we have no basis for.
+      ...(e.hookTechniques.length > 0 ? { hook_technique: e.hookTechniques.join(", ") } : {}),
       editing_style: e.editingStyle ?? null,
       niche: e.niche ?? null,
       // Per-row, so the model can tell an on-subject citation from a tangential one INSIDE a batch —
