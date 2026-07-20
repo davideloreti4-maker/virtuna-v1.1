@@ -1,0 +1,242 @@
+<title>Thread cards audit — 2026-07-20</title>
+<style>
+  :root {
+    --bg: #1f1f1e;
+    --surface: #262624;
+    --surface-2: #2c2c2a;
+    --cream: #ece7de;
+    --cream-2: #b8b2a7;
+    --muted: #8a857c;
+    --accent: #ff6363;
+    --good: #7fbf7f;
+    --warn: #d4a94e;
+    --line: rgba(255,255,255,0.06);
+    --line-2: rgba(255,255,255,0.10);
+  }
+  html { background: var(--bg); }
+  body {
+    background: var(--bg);
+    color: var(--cream);
+    font: 400 15px/1.6 -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1020px; margin: 0 auto; padding: 48px 24px 96px; }
+  .kicker {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;
+    color: var(--muted); display: flex; align-items: center; gap: 8px;
+  }
+  .kicker::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+  h1 { font-size: 26px; font-weight: 600; letter-spacing: -0.01em; margin: 10px 0 6px; text-wrap: balance; }
+  .sub { color: var(--muted); font-size: 14px; max-width: 62ch; }
+  .thesis {
+    font-family: Georgia, "Times New Roman", serif; font-style: italic;
+    font-size: 19px; line-height: 1.5; color: var(--cream);
+    border-left: 2px solid var(--accent); padding: 2px 0 2px 18px;
+    margin: 36px 0; max-width: 58ch;
+  }
+  .thesis b { font-style: normal; font-weight: 600; }
+
+  section { margin-top: 64px; }
+  h2 { font-size: 19px; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 4px; }
+  .h2row { display: flex; align-items: baseline; gap: 12px; border-bottom: 1px solid var(--line); padding-bottom: 14px; margin-bottom: 24px; }
+  .h2row .tag { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line-2); white-space: nowrap; }
+  .tag.good { color: var(--good); border-color: rgba(127,191,127,0.35); }
+  .tag.warn { color: var(--warn); border-color: rgba(212,169,78,0.35); }
+  .tag.bad  { color: var(--accent); border-color: rgba(255,99,99,0.35); }
+  .lede { color: var(--cream-2); font-size: 14.5px; max-width: 68ch; margin: 0 0 24px; }
+  .lede code, li code, td code { font: 12.5px/1.4 ui-monospace, "SF Mono", Menlo, monospace; background: var(--surface-2); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; color: var(--cream-2); }
+
+  .exhibit { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr); gap: 24px; margin-bottom: 40px; align-items: start; }
+  @media (max-width: 760px) { .exhibit { grid-template-columns: 1fr; } }
+  .shotwell {
+    background: #191918; border: 1px solid var(--line); border-radius: 12px;
+    padding: 10px; max-height: 660px; overflow-y: auto;
+  }
+  .shotwell.short { max-height: 460px; }
+  .shotwell img { width: 100%; display: block; border-radius: 6px; }
+  .shotwell + .cap, .cap { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-top: 8px; }
+  .notes h3 { font-size: 15px; font-weight: 600; margin: 0 0 10px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .notes ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 8px; color: var(--cream-2); font-size: 14px; }
+  .notes li::marker { color: var(--muted); }
+  .notes .verdict { margin-top: 14px; font-size: 13.5px; color: var(--cream); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; }
+  .notes .verdict b { font-weight: 600; }
+
+  .duo { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 560px) { .duo { grid-template-columns: 1fr; } }
+
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  .tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
+  th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); text-align: left; font-weight: 500; padding: 10px 14px; border-bottom: 1px solid var(--line); background: var(--surface); white-space: nowrap; }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; color: var(--cream-2); }
+  tr:last-child td { border-bottom: none; }
+  td:first-child { color: var(--cream); font-weight: 500; white-space: nowrap; }
+  .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 7px; vertical-align: 1px; }
+  .dot.good { background: var(--good); } .dot.warn { background: var(--warn); } .dot.bad { background: var(--accent); } .dot.mut { background: var(--muted); }
+
+  ol.debts { margin: 0; padding-left: 0; list-style: none; counter-reset: debt; display: flex; flex-direction: column; gap: 14px; max-width: 74ch; }
+  ol.debts > li { counter-increment: debt; display: grid; grid-template-columns: 34px 1fr; gap: 14px; }
+  ol.debts > li::before {
+    content: counter(debt, decimal-leading-zero);
+    font: 500 12px/1 ui-monospace, "SF Mono", Menlo, monospace; color: var(--accent);
+    border: 1px solid var(--line-2); border-radius: 6px; height: 26px; width: 34px;
+    display: flex; align-items: center; justify-content: center; margin-top: 2px;
+  }
+  ol.debts b { color: var(--cream); font-weight: 600; }
+  ol.debts li { color: var(--cream-2); font-size: 14.5px; }
+
+  .closing { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 24px 28px; margin-top: 20px; }
+  .closing p { margin: 0 0 12px; color: var(--cream-2); font-size: 14.5px; max-width: 72ch; }
+  .closing p:last-child { margin: 0; }
+  .closing b { color: var(--cream); font-weight: 600; }
+  .qmark { color: var(--accent); font-weight: 600; }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="kicker">Thread cards · concept audit · 2026-07-20</div>
+    <h1>One thread, three UI languages</h1>
+    <p class="sub">Every section of <code>/dev/cards</code> shot live at 1440 and 390 (41 captures), each card judged on its <em>concept</em> — not px-drift. Scope: thread skill outputs. The <code>/analyze</code> Reading page and the ambient Room are separate surfaces with their own open mandates, excluded here.</p>
+    <p class="thesis">The make-family speaks one considered editorial language. Explore speaks <b>dashboard</b>, the Text&nbsp;Read speaks <b>transcript</b> — and even the good cards repeat themselves card after card, because the grammar has no idea a <b>run</b> exists.</p>
+  </header>
+
+  <section id="scoreboard">
+    <div class="h2row"><h2>Scoreboard</h2></div>
+    <div class="tablewrap"><table>
+      <tr><th>Card</th><th>Language</th><th>Concept verdict</th></tr>
+      <tr><td><span class="dot good"></span>Hooks</td><td>A · editorial</td><td>The bar. Eyebrow → hero → receipt → proof → one disclosure → one action bar.</td></tr>
+      <tr><td><span class="dot good"></span>Ideas</td><td>A · editorial</td><td>Conforms. Same spine, honest "Original — not drawn from a retrieved video" fallback.</td></tr>
+      <tr><td><span class="dot good"></span>Script</td><td>A · editorial</td><td>Conforms. Beat rows are quiet hairlines; "opener only" honesty held.</td></tr>
+      <tr><td><span class="dot good"></span>Remix</td><td>A · editorial</td><td>Conforms. Borrowed-source receipt without fabricated proof.</td></tr>
+      <tr><td><span class="dot good"></span>Video Test</td><td>A · editorial</td><td>Conforms. Compact verdict card; the deep page stays one door away.</td></tr>
+      <tr><td><span class="dot good"></span>Chat citations</td><td>A · editorial</td><td>Conforms. Receipt language reused for evidence rows.</td></tr>
+      <tr><td><span class="dot good"></span>Run capsule</td><td>A · editorial</td><td>Conforms. One wait grammar everywhere; receipt persists above cards.</td></tr>
+      <tr><td><span class="dot bad"></span>Explore</td><td><b>B · dashboard</b></td><td>Different product. Stat rows, color-filled fit bars, 3 cream primaries, icon quads.</td></tr>
+      <tr><td><span class="dot warn"></span>Account Read</td><td>B-ish · report</td><td>Half-migrated. No hero, colored section labels, two-column list body.</td></tr>
+      <tr><td><span class="dot bad"></span>Text Read</td><td><b>C · transcript</b></td><td>Busiest card in the app. Band stated 3× per audience; caps attribution ladder ×8.</td></tr>
+      <tr><td><span class="dot mut"></span>Profile / Simulate / Predict</td><td>A-ish (hidden)</td><td>Visually near the bar already; flag OFF. Known honesty issues (numeric range on Predict).</td></tr>
+      <tr><td><span class="dot good"></span>Fields / persona chat / band</td><td>A · editorial</td><td>Fine. Small primitives on-language.</td></tr>
+    </table></div>
+  </section>
+
+  <section id="language-a">
+    <div class="h2row"><h2>Language A — the editorial verdict card</h2><span class="tag good">The bar</span></div>
+    <p class="lede">Hooks is the reference. The anatomy reads top-to-bottom as an argument: who it's for → the deliverable → the evidence it borrows → why it works → how the room reacted → one place for detail → one next step. This is a genuinely good card language, and five other surfaces already speak it.</p>
+    <div class="exhibit">
+      <div>
+        <div class="shotwell"><img src="@@IMG:hooks-desk@@" alt="Hooks card — the reference"></div>
+        <div class="cap">Hooks · desktop · the reference anatomy</div>
+      </div>
+      <div class="notes">
+        <h3>Why it works</h3>
+        <ul>
+          <li>The hero is the deliverable — the hook itself, first and biggest.</li>
+          <li>Proof is one unit: band dot+word, fraction, neutral bar, one verbatim, the room door.</li>
+          <li>Provenance demoted to the disclosure line (<code>· SIM-1 Flash</code>) — a footnote, not a headline.</li>
+          <li>One cream primary; Save is an icon, not a row.</li>
+        </ul>
+        <div class="verdict"><b>Keep as the vocabulary source.</b> Whatever we build next — grammar, generative layer — its primitives should be extracted from this card, not invented fresh.</div>
+      </div>
+    </div>
+    <div class="exhibit">
+      <div>
+        <div class="duo">
+          <div class="shotwell short"><img src="@@IMG:script-desk@@" alt="Script card"></div>
+          <div class="shotwell short"><img src="@@IMG:corpus-references-desk@@" alt="Chat citation cards"></div>
+        </div>
+        <div class="cap">Script (beat rows) · chat citations — same voice, different content shapes</div>
+      </div>
+      <div class="notes">
+        <h3>The language already stretches</h3>
+        <ul>
+          <li>Script proves the spine can host a 5-beat body without breaking voice.</li>
+          <li>Citations prove the receipt row works standalone, N-up, fed by tool rows.</li>
+          <li>The run capsule (label → plan spine → ✓ receipt) gives every wait the same grammar.</li>
+        </ul>
+        <div class="verdict">Evidence the grammar hypothesis is sound: these are <b>already compositions</b> of ~8 recurring pieces — they're just hand-soldered per card today.</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="language-b">
+    <div class="h2row"><h2>Language B — the dashboard tile</h2><span class="tag bad">Different product</span></div>
+    <p class="lede">Explore doesn't share a single element with the hooks card. It speaks an older stat-dashboard dialect: mono-caps stat pairs (<code>12× VS OWN</code>), fit bars filled edge-to-edge in band color, a 4-icon metric quad per tile, and the cream primary — supposedly the one-per-card focal point — three times, each labeled with two fused verbs ("Remix → Read").</p>
+    <div class="exhibit">
+      <div>
+        <div class="shotwell"><img src="@@IMG:explore-desk@@" alt="Explore outlier grid"></div>
+        <div class="cap">Explore · desktop — three tiles, three primaries, three filled bars</div>
+      </div>
+      <div class="notes">
+        <h3>Concept problems, not drift</h3>
+        <ul>
+          <li>A tile is a mini-dashboard; the thread is editorial. Two products on one screen.</li>
+          <li>Band color as a filled bar is the exact pattern the contract bans — color is a mark, not a fill.</li>
+          <li>4-icon stat quad per tile = 12 icons per card answering questions nobody asked yet.</li>
+          <li>"Remix → Read" fuses two actions into one button label.</li>
+          <li>Honesty is right (measured-only, no fabricated SIM proof) — keep that, lose the dialect.</li>
+        </ul>
+        <div class="verdict"><b>Not fixable by polish.</b> This card needs re-expression in language A: outlier = a receipt row (the citation card already renders scraped videos in-voice), fit = dot + word, one primary.</div>
+      </div>
+    </div>
+    <div class="exhibit">
+      <div>
+        <div class="duo">
+          <div class="shotwell short"><img src="@@IMG:account-desk@@" alt="Account read card"></div>
+          <div class="shotwell short"><img src="@@IMG:explore-mob@@" alt="Explore on mobile — five screens tall"></div>
+        </div>
+        <div class="cap">Account Read (half-migrated) · Explore at 390px — ~5 screens for 3 results</div>
+      </div>
+      <div class="notes">
+        <h3>Account Read: half-in, half-out</h3>
+        <ul>
+          <li>Opens on the creator's name — no hero sentence; the payoff (the read) never headlines.</li>
+          <li><code>WHAT'S WORKING</code> / <code>WHAT TO FIX</code> put data color on labels; the system's rule is color on marks, labels stay muted.</li>
+          <li>Mobile Explore is the density smoking gun: 1,849px tall for three results.</li>
+        </ul>
+        <div class="verdict">Account is <b>one hero + two label fixes from language A</b>. Explore is a rebuild.</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="language-c">
+    <div class="h2row"><h2>Language C — the transcript</h2><span class="tag bad">Says everything twice</span></div>
+    <p class="lede">The Text Read is the busiest surface in the thread. It states each audience's band <b>three times</b> (summary pill, section header, colored "Strong Read." lead-in), nests THE ROOM as a box-within-the-card, and captions all eight verbatims with a mono-caps attribution ladder (<code>BOOTSTRAPPED FOUNDERS + GENERAL · THE NEWCOMER</code>) louder than the quotes themselves.</p>
+    <div class="exhibit">
+      <div>
+        <div class="shotwell"><img src="@@IMG:multi-audience-read-desk@@" alt="Text read explicit compare"></div>
+        <div class="cap">Text Read · desktop — band ×3 per audience, room boxed, caps ladder ×8</div>
+      </div>
+      <div class="notes">
+        <h3>Concept problems</h3>
+        <ul>
+          <li>It's a transcript, not a verdict. The reader does the synthesis the card should have done.</li>
+          <li>The group/row law inverted: every quote row restates what the group header already said.</li>
+          <li>Band color applied twice per audience (dot+word, then the colored lead-in sentence).</li>
+          <li>Good bones exist: the Lever rows and who-not-for lines are the honest payoff — promote them.</li>
+          <li>At 390px it runs 1,651px of dense text — nobody reads this on a phone.</li>
+        </ul>
+        <div class="verdict"><b>Re-concept, not restyle:</b> verdict card up top (hero = the Lever), room demoted to the ONE disclosure, quotes attributed once by grouping — the People-view "verdict-as-structure" trick (#339) already solved this shape.</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="debts">
+    <div class="h2row"><h2>Cross-cutting concept debts</h2><span class="tag warn">Present even in language A</span></div>
+    <ol class="debts">
+      <li><b>The grammar has no "run" concept.</b> Three hook cards = three identical action bars, three "See the room →" doors, three Saves, the audience named three times. Every card is self-contained because a card is the only unit that exists. The group states nothing; every row states everything.</li>
+      <li><b>Band color multiplies.</b> One card can apply its band tone to a dot, a word, a lead-in sentence, and a filled bar. The rule (once: dot + word) is written down but not structural — nothing prevents the fourth application.</li>
+      <li><b>Receipt template tokens read as bugs.</b> <code>[common habit]</code> / <code>[timeframe]</code> brackets are deliberate (the structure, abstracted) but visually indistinguishable from unfilled variables. First-glance read: "the app broke."</li>
+      <li><b>Mono-caps ladders keep re-growing.</b> The failure mode the contract names ("stacked equal-weight ALL-CAPS labels") was fixed in five cards and grew back in Explore's stat rows and the Text Read's attribution wall. Policing doesn't scale; only a closed vocabulary does.</li>
+      <li><b>Mobile is an afterthought for data-heavy cards.</b> Language A holds at 390px; B and C balloon to 4–5 screens. Density has no grammar-level answer today (no collapse rules, no priority order).</li>
+      <li><b>17 bespoke renderers is the root cost.</b> Every new skill pays schema + renderer + fixtures + guard coverage. That price is why old cards rot: nobody re-pays it for surfaces that already "work."</li>
+    </ol>
+  </section>
+
+  <section id="next">
+    <div class="h2row"><h2>What this means for the rework</h2></div>
+    <div class="closing">
+      <p><b>The audit supports the grammar direction, with one big caveat to settle first.</b> The composition idea (closed vocabulary of primitives, runners compose deterministically, chat composes ad-hoc) is exactly the shape that turns debts 01–06 from policy into structure: a <b>run-group primitive</b> kills the repetition, a <b>band mark</b> that can only render once kills the color multiplication, a closed set kills the ladder regrowth, per-primitive collapse rules give mobile an answer, and "new skill = a composition" kills the bespoke-renderer tax.</p>
+      <p><b>The caveat:</b> a grammar codifies a language. Language A is what we'd codify — and you said you're not fully on board with the current concept. So the sequence matters: <span class="qmark">do we bless language A as the voice</span> (and extract the vocabulary from it), or do we run a concept pass on the card language itself first — hero treatment, receipt look, proof unit, density — and codify the <em>winner</em>? Codifying first and re-concepting later means migrating everything twice.</p>
+      <p>Everything else from the scope discussion stands: hybrid composer (locked), Explore / Account / Text Read as the first three compositions (they're the proof the grammar can express hard cases), Reading page and Room out of scope.</p>
+    </div>
+  </section>
+</div>

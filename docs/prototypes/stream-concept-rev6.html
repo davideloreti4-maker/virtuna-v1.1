@@ -1,0 +1,811 @@
+<title>The stream — thread concept sketch</title>
+<style>
+  :root {
+    --bg: #1f1f1e;
+    --surface: #262624;
+    --surface-2: #2c2c2a;
+    --cream: #ece7de;
+    --cream-2: #b8b2a7;
+    --muted: #8a857c;
+    --accent: #ff6363;
+    --good: #7fbf7f;
+    --warn: #d4a94e;
+    --action: #ece7de;
+    --line: rgba(255,255,255,0.06);
+    --line-2: rgba(255,255,255,0.10);
+    /* THE TYPE SCALE — five sizes, nothing else renders.
+       label 11 · meta 12.5 · support 14 · body 15 · hero 17 */
+    --t-label: 11px;
+    --t-meta: 12.5px;
+    --t-support: 14px;
+    --t-body: 15px;
+    --t-hero: 17px;
+  }
+  html { background: var(--bg); }
+  body {
+    background: var(--bg); color: var(--cream);
+    font: 400 var(--t-body)/1.65 -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .page { max-width: 1060px; margin: 0 auto; padding: 44px 24px 120px; }
+  .kicker { font-size: var(--t-label); text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+  .kicker::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+  h1 { font-size: 24px; font-weight: 600; letter-spacing: -0.01em; margin: 10px 0 6px; }
+  .sub { color: var(--muted); font-size: var(--t-support); max-width: 64ch; margin-bottom: 8px; }
+  .sub b { color: var(--cream-2); font-weight: 500; }
+
+  .frame { display: grid; grid-template-columns: minmax(0,1fr) 236px; gap: 40px; margin-top: 40px; align-items: start; }
+  @media (max-width: 900px) { .frame { grid-template-columns: 1fr; } .rail { display: none; } }
+
+  /* ── the thread ─────────────────────────────────────── */
+  .thread { max-width: 720px; display: flex; flex-direction: column; gap: 44px; }
+  .scene-note {
+    font-size: var(--t-label); text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted);
+    border-top: 1px solid var(--line); padding-top: 14px; margin-top: 8px; line-height: 1.7;
+  }
+  .scene-note em { color: var(--accent); font-style: normal; }
+
+  .you { display: flex; justify-content: flex-end; }
+  .you span {
+    background: var(--surface-2); border-radius: 18px; padding: 9px 16px;
+    font-size: var(--t-support); color: var(--cream); max-width: 46ch;
+  }
+
+  .maven { display: flex; flex-direction: column; gap: 14px; }
+  .speaker { font-size: var(--t-label); text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+  .maven p { margin: 0; max-width: 62ch; color: var(--cream); }
+  .maven p.quiet { color: var(--cream-2); }
+  .receipt-line { font-size: var(--t-meta); color: var(--muted); display: flex; align-items: center; gap: 7px; cursor: pointer; width: fit-content; }
+  .receipt-line:hover .rest { text-decoration: underline; text-underline-offset: 3px; }
+  .receipt-line .tick { color: var(--good); }
+  .receipt-line .skill { color: var(--cream-2); font-weight: 500; }
+
+  /* inline evidence rows — tappable: they open the video */
+  .evidence { display: flex; flex-direction: column; }
+  .evidence .row {
+    display: flex; align-items: center; gap: 14px; padding: 10px 0;
+    border-top: 1px solid var(--line); font-size: var(--t-support); cursor: pointer;
+  }
+  .evidence .row:last-child { border-bottom: 1px solid var(--line); }
+  .evidence .row:hover .what { color: #fff; }
+  .evidence .row:hover .go { opacity: 1; }
+  .thumb { width: 30px; height: 52px; border-radius: 6px; background: var(--surface-2); flex-shrink: 0; position: relative; }
+  .thumb::after { content: "▶"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 8px; color: var(--muted); }
+  .evidence .what { color: var(--cream); font-weight: 500; min-width: 0; transition: color 0.12s; }
+  .evidence .who { color: var(--muted); font-size: var(--t-meta); }
+  .evidence .mult { margin-left: auto; font-weight: 600; white-space: nowrap; }
+  .mult.up { color: var(--cream); } .mult.down { color: var(--accent); }
+  .evidence .meta { color: var(--muted); font-size: var(--t-meta); white-space: nowrap; }
+  .evidence .go { color: var(--muted); font-size: var(--t-meta); opacity: 0; transition: opacity 0.12s; }
+
+  /* media strip (explore) */
+  .media-strip { display: flex; gap: 14px; overflow-x: auto; padding: 4px 0 2px; }
+  .media { width: 128px; flex-shrink: 0; display: flex; flex-direction: column; gap: 6px; cursor: pointer; }
+  .media .cover { width: 128px; height: 226px; border-radius: 8px; background: var(--surface-2); position: relative; }
+  .media:hover .cover { outline: 1px solid var(--line-2); }
+  .media .cover::after { content: "▶"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 12px; }
+  .media .cover .dur { position: absolute; right: 6px; bottom: 6px; font-size: var(--t-label); color: var(--cream-2); background: rgba(0,0,0,0.55); border-radius: 4px; padding: 1px 5px; }
+  .media .m1 { font-size: var(--t-body); font-weight: 600; }
+  .media .m2 { font-size: var(--t-support); color: var(--cream-2); line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .media .m3 { font-size: var(--t-meta); color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .strip-basis { font-size: var(--t-meta); color: var(--muted); }
+
+  /* ranked result rows */
+  .results { display: flex; flex-direction: column; }
+  .result { border-top: 1px solid var(--line); padding: 16px 0 18px; display: grid; grid-template-columns: 26px 1fr; gap: 0 12px; position: relative; }
+  .result:last-child { border-bottom: 1px solid var(--line); }
+  .result .n { font: 500 var(--t-meta)/2.1 ui-monospace, "SF Mono", Menlo, monospace; color: var(--muted); }
+  .result .hero { font-size: var(--t-hero); font-weight: 600; letter-spacing: -0.005em; }
+  .proof { display: flex; align-items: center; gap: 8px; font-size: var(--t-meta); margin-top: 8px; flex-wrap: wrap; }
+  .band-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+  .band-dot.strong { background: var(--good); } .band-dot.mixed { background: var(--warn); } .band-dot.weak { background: var(--accent); }
+  .band-word { font-size: var(--t-support); }
+  .band-word.strong { color: var(--good); font-weight: 600; } .band-word.mixed { color: var(--warn); font-weight: 600; } .band-word.weak { color: var(--accent); font-weight: 600; }
+  .proof .frac { color: var(--cream-2); font-size: var(--t-support); }
+  .proof .door { color: var(--muted); display: inline-flex; align-items: center; gap: 6px; cursor: pointer; margin-left: 6px; }
+  .proof .door:hover { color: var(--cream-2); }
+  .proof .door .avs { display: inline-flex; }
+  .proof .door .avs i { width: 12px; height: 12px; border-radius: 50%; background: var(--surface-2); border: 1.5px solid var(--bg); margin-left: -4px; }
+  .verbatim { font-size: var(--t-support); font-style: italic; color: var(--cream-2); margin-top: 8px; border-left: 2px solid var(--line-2); padding-left: 10px; }
+  .verbatim b { font-style: normal; font-weight: 400; color: var(--muted); font-size: var(--t-meta); }
+  .result .src { font-size: var(--t-meta); color: var(--muted); margin-top: 8px; }
+  .result .src a { color: var(--cream-2); text-decoration: none; }
+  .result .src a:hover { text-decoration: underline; text-underline-offset: 3px; }
+  /* per-row quick actions — appear on hover, top-right of the row */
+  .rowact { position: absolute; top: 14px; right: 0; display: flex; gap: 4px; opacity: 0; transition: opacity 0.12s; }
+  .result:hover .rowact { opacity: 1; }
+  .rowact button {
+    background: var(--surface); border: 1px solid var(--line); color: var(--cream-2);
+    border-radius: 6px; padding: 4px 9px; font-family: inherit; font-size: var(--t-meta); font-weight: 500; cursor: pointer;
+  }
+  .rowact button:hover { border-color: var(--line-2); color: var(--cream); }
+  .rowact.demo { opacity: 1; } /* forced visible on #2 for the sketch */
+
+  /* compare group (text read) */
+  .compare { display: flex; flex-direction: column; }
+  .aud { border-top: 1px solid var(--line); padding: 15px 0 17px; }
+  .aud:last-child { border-bottom: 1px solid var(--line); }
+  .aud .head { display: flex; align-items: center; gap: 10px; font-size: var(--t-body); font-weight: 600; flex-wrap: wrap; }
+  .aud .lever { border-left: 2px solid var(--line-2); padding-left: 10px; margin-top: 9px; font-size: var(--t-support); }
+  .aud .lever b { font-weight: 600; }
+  .aud .lever b::after { content: " →"; color: var(--muted); }
+
+  /* fact rows (account) */
+  .facts { display: flex; flex-direction: column; }
+  .facts .lab { font-size: var(--t-label); text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); padding: 12px 0 4px; }
+  .facts .f { display: flex; gap: 10px; align-items: baseline; padding: 6px 0; font-size: var(--t-support); color: var(--cream); border-top: 1px solid var(--line); }
+  .facts .f:first-of-type { border-top: none; }
+  .facts .f .fdot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; position: relative; top: -2px; }
+  .fdot.good { background: var(--good); } .fdot.fix { background: var(--accent); }
+  .facts .f small { color: var(--muted); font-size: var(--t-meta); margin-left: auto; text-align: right; white-space: nowrap; }
+  .profile-line { display: flex; align-items: center; gap: 10px; font-size: var(--t-meta); color: var(--cream-2); }
+  .avatar { width: 26px; height: 26px; border-radius: 50%; background: var(--surface-2); }
+  .accuracy { font-size: var(--t-support); color: var(--muted); border-top: 1px solid var(--line); padding-top: 10px; }
+  .accuracy b { color: var(--cream-2); font-weight: 600; }
+
+  /* asset block — THE one framed element */
+  .asset { border: 1px solid var(--line-2); border-radius: 12px; background: var(--surface); overflow: hidden; }
+  .asset .ahead { display: flex; align-items: baseline; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+  .asset .ahead .alab { font-size: var(--t-label); text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+  .asset .ahead .atitle { font-size: var(--t-body); font-weight: 600; }
+  .asset .ahead .adur { margin-left: auto; font-size: var(--t-meta); color: var(--muted); }
+  .beat { display: grid; grid-template-columns: 78px 1fr; gap: 12px; padding: 11px 16px; border-top: 1px solid var(--line); font-size: var(--t-support); }
+  .beat:first-of-type { border-top: none; }
+  .beat .bl { font-size: var(--t-label); text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); line-height: 2; }
+  .beat .bl small { display: block; font-size: var(--t-label); text-transform: none; letter-spacing: 0; }
+  .beat .why { color: var(--muted); font-size: var(--t-meta); margin-top: 3px; }
+
+  /* revision */
+  .rev { border-left: 2px solid var(--line-2); padding-left: 14px; display: flex; flex-direction: column; gap: 6px; }
+  .rev .old { color: var(--muted); text-decoration: line-through; font-size: var(--t-support); }
+  .rev .new { font-size: var(--t-hero); font-weight: 600; }
+
+  /* plan rows */
+  .plan { display: flex; flex-direction: column; }
+  .plan .slot { border-top: 1px solid var(--line); padding: 13px 0; display: flex; align-items: baseline; gap: 14px; font-size: var(--t-support); }
+  .plan .slot:last-child { border-bottom: 1px solid var(--line); }
+  .plan .day { font-size: var(--t-label); text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); width: 34px; flex-shrink: 0; }
+  .plan .what { color: var(--cream); font-weight: 500; }
+  .plan .why { color: var(--muted); font-size: var(--t-meta); margin-left: auto; text-align: right; }
+
+  /* in-thread ask — the one control row */
+  .inputrow { display: flex; gap: 10px; align-items: center; max-width: 480px; }
+  .inputrow .field {
+    flex: 1; border: 1px solid var(--line-2); border-radius: 8px; background: var(--bg);
+    padding: 8px 12px; font-size: var(--t-support); color: var(--cream-2);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  /* the ONE action zone per turn */
+  .actions { display: flex; align-items: center; gap: 12px; margin-top: 4px; flex-wrap: wrap; }
+  .primary {
+    background: var(--action); color: #1f1f1e; border: none; border-radius: 8px;
+    padding: 8px 14px; font-family: inherit; font-size: var(--t-support); font-weight: 600; line-height: 1; cursor: pointer; transition: opacity 0.15s;
+  }
+  .primary:hover { opacity: 0.9; }
+  .ghost {
+    background: none; color: var(--cream-2); border: 1px solid var(--line-2); border-radius: 8px;
+    padding: 8px 14px; font-family: inherit; font-size: var(--t-support); font-weight: 500; line-height: 1; cursor: pointer;
+  }
+  .ghost:hover { border-color: rgba(255,255,255,0.18); color: var(--cream); }
+  .save { margin-left: auto; color: var(--muted); font-size: var(--t-support); background: none; border: none; font-family: inherit; cursor: pointer; }
+  .save:hover { color: var(--cream-2); }
+
+  /* running receipt — the in-flight state of the receipt line */
+  .run-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex-shrink: 0; animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+  @media (prefers-reduced-motion: reduce) { .run-dot { animation: none; } }
+
+  /* keyframe strip — the media strip carrying the user's own footage as it's read */
+  .kframes { display: flex; gap: 8px; align-items: center; }
+  .kf { width: 56px; height: 100px; border-radius: 6px; background: var(--surface-2); flex-shrink: 0; }
+  .kf.empty { background: none; border: 1px dashed var(--line-2); }
+  .kf-meta { font-size: var(--t-meta); color: var(--muted); margin-left: 6px; }
+
+  /* the cast stepping in */
+  .roster { display: flex; align-items: center; gap: 10px; font-size: var(--t-support); color: var(--cream-2); }
+  .roster .avs { display: inline-flex; }
+  .roster .avs i { width: 18px; height: 18px; border-radius: 50%; background: var(--surface-2); border: 2px solid var(--bg); margin-left: -6px; }
+  .roster .avs i:first-child { margin-left: 0; }
+
+  /* in-flight */
+  .spine { display: flex; flex-direction: column; gap: 8px; font-size: var(--t-support); color: var(--cream-2); }
+  .spine .step { display: flex; align-items: center; gap: 10px; }
+  .spine .idot { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid var(--line-2); display: flex; align-items: center; justify-content: center; font-size: 9px; flex-shrink: 0; }
+  .spine .done .idot { background: var(--surface-2); border-color: transparent; color: var(--good); }
+  .spine .active .idot { border-color: var(--accent); }
+  .spine .active .idot::after { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+  .spine .pending { color: var(--muted); }
+  .spine .subcopy { font-size: var(--t-meta); color: var(--muted); padding-left: 24px; }
+
+  /* ── Act 3 · the full Reading page in stream language ── */
+  .score-line { display: flex; align-items: baseline; gap: 14px; }
+  .score-num { font-size: 44px; font-weight: 600; letter-spacing: -0.02em; line-height: 1; }
+  .score-band { font-size: var(--t-hero); font-weight: 600; }
+  .score-rank { font-size: var(--t-meta); color: var(--muted); }
+  .statline { display: flex; gap: 18px; font-size: var(--t-support); color: var(--cream-2); flex-wrap: wrap; }
+  .statline b { color: var(--cream); font-weight: 600; }
+  .statline .drop b { color: var(--warn); }
+  .survival { display: flex; flex-direction: column; }
+  .survival .srow { display: grid; grid-template-columns: 92px 1fr 140px; gap: 14px; align-items: center; padding: 9px 0; border-top: 1px solid var(--line); font-size: var(--t-support); }
+  .survival .srow:last-child { border-bottom: 1px solid var(--line); }
+  .survival .slab { font-size: var(--t-meta); color: var(--muted); }
+  .sbar { height: 4px; border-radius: 2px; background: var(--surface-2); position: relative; }
+  .sbar i { position: absolute; inset: 0 auto 0 0; border-radius: 2px; background: var(--cream-2); opacity: 0.75; }
+  .sbar.stall i { background: var(--accent); opacity: 0.9; }
+  .survival .sval { text-align: right; color: var(--cream); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .survival .sval small { color: var(--muted); font-size: var(--t-meta); }
+  .kf.mark { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .group-label { font-size: var(--t-label); text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); padding-top: 10px; }
+  .group-label b { color: var(--cream-2); font-weight: 600; }
+
+  /* rail commentary */
+  .rail { position: sticky; top: 24px; display: flex; flex-direction: column; gap: 18px; }
+  .rail .note { font-size: var(--t-meta); line-height: 1.6; color: var(--muted); border-left: 2px solid var(--line-2); padding-left: 12px; }
+  .rail .note b { color: var(--cream-2); font-weight: 600; display: block; margin-bottom: 2px; }
+  .rail .headnote { font-size: var(--t-label); text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+
+  /* mobile demo */
+  .mobile-demo { margin-top: 72px; border-top: 1px solid var(--line); padding-top: 24px; }
+  .mobile-demo h2, .grammar h2 { font-size: 16px; font-weight: 600; margin: 0 0 6px; }
+  .mobile-demo .lede, .grammar .lede { color: var(--muted); font-size: var(--t-support); max-width: 68ch; margin-bottom: 18px; }
+  .phone { width: 390px; max-width: 100%; border: 1px solid var(--line-2); border-radius: 20px; padding: 18px 16px 22px; background: var(--bg); }
+  .phone .thread { gap: 30px; }
+  .phone .media { width: 104px; }
+  .phone .media .cover { width: 104px; height: 184px; }
+
+  /* grammar footer */
+  .grammar { margin-top: 72px; border-top: 1px solid var(--line); padding-top: 24px; }
+  .gram-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+  .gram { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; font-size: var(--t-meta); color: var(--cream-2); }
+  .gram b { display: block; color: var(--cream); font-size: 13px; font-weight: 600; margin-bottom: 3px; }
+  .gram.framed { border-color: var(--line-2); }
+</style>
+
+<div class="page">
+  <header>
+    <div class="kicker">Thread concept sketch · direction: the stream · rev 6 · 2026-07-20</div>
+    <h1>The stream — one conversation, every kind of ask</h1>
+    <p class="sub">Prose leads every answer; structure appears <b>inline, only where the content earns it</b>. Rev 6 adds <b>Act 3: the full Reading page</b> (/analyze) in the stream language — score numeral without the gauge ring, the funnel's interpretation promoted to page hero, survival and driver rows instead of bar-chart chrome, the drop marked on your own keyframes, the room grouped by verdict, Fix First as ranked rows, ending in the follow-up composer. Act 2 (the two-minute wait as four snapshots) precedes it.</p>
+  </header>
+
+  <div class="frame">
+    <div class="thread">
+
+      <!-- 1 · analytical ad-hoc -->
+      <div class="you"><span>why did my gym transformation video do so well but the office vlog flopped?</span></div>
+      <div class="maven">
+        <div class="speaker">Maven</div>
+        <div class="receipt-line"><span class="tick">✓</span><span class="skill">Compared</span><span class="rest">2 videos · 2 steps ⌄</span></div>
+        <p>The gym video makes its claim in the first frame — the office vlog spends four seconds on setup before anything happens. Six of your ten reactors are scanners: setup is exactly where you lose them.</p>
+        <div class="evidence">
+          <div class="row"><span class="thumb"></span><span class="what">Gym transformation</span><span class="who">May 18</span><span class="mult up">9.2×</span><span class="meta">vs your usual · 2.1M</span><span class="go">watch ↗</span></div>
+          <div class="row"><span class="thumb"></span><span class="what">Office day-in-the-life</span><span class="who">Jun 2</span><span class="mult down">0.4×</span><span class="meta">vs your usual · 38K</span><span class="go">watch ↗</span></div>
+        </div>
+        <p class="quiet">The difference isn't the topic — it's that one opens on the payoff and one opens on context. Want hooks that lead with the claim?</p>
+      </div>
+      <div class="scene-note"><em>Analytical ask</em> — today: plain markdown. The numbers are evidence rows fed by the tool; hover one — rows are doors to the real video.</div>
+
+      <!-- 2 · skill ask -->
+      <div class="you"><span>yes — 3 hooks in that style</span></div>
+      <div class="maven">
+        <div class="speaker">Maven</div>
+        <div class="receipt-line"><span class="tick">✓</span><span class="skill">Hooks</span><span class="rest">ran your audience · 3 steps · SIM-1 Flash ⌄</span></div>
+        <p>Ranked — your room stopped hardest on the first one:</p>
+        <div class="results">
+          <div class="result">
+            <span class="n">1</span>
+            <div>
+              <div class="hero">I trained wrong for six years. Here's what I'd keep.</div>
+              <div class="proof">
+                <span class="band-dot strong"></span><span class="band-word strong">Strong</span><span class="frac">8/10 stopped</span>
+                <span class="door"><span class="avs"><i></i><i></i><i></i></span> See the room →</span>
+              </div>
+              <div class="verbatim">“Okay that opening got me — I need to know the rest.” <b>— The Aspirant</b></div>
+              <div class="src">↳ structure from <a href="#">@braedan.health</a> · 90.7× vs followers · 621K views</div>
+            </div>
+          </div>
+          <div class="result">
+            <span class="n">2</span>
+            <div class="rowact demo"><button>Script →</button><button>Test</button><button>Save</button></div>
+            <div>
+              <div class="hero">Your form was never the problem.</div>
+              <div class="proof">
+                <span class="band-dot mixed"></span><span class="band-word mixed">Mixed</span><span class="frac">5/10 stopped</span>
+                <span class="door">room →</span>
+              </div>
+              <div class="src">↳ original — not drawn from a retrieved video</div>
+            </div>
+          </div>
+          <div class="result">
+            <span class="n">3</span>
+            <div>
+              <div class="hero">Six years of gym advice. One lie holding it together.</div>
+              <div class="proof">
+                <span class="band-dot mixed"></span><span class="band-word mixed">Mixed</span><span class="frac">5/10 stopped</span>
+                <span class="door">room →</span>
+              </div>
+              <div class="verbatim">“Heard this a hundred times — what's actually new?” <b>— The Skeptic</b></div>
+              <div class="src">↳ structure from <a href="#">@rico.incarnati</a> · 18.8× vs followers · 405K views</div>
+            </div>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="primary">Write a script from #1 →</button>
+          <button class="ghost">Test one on video</button>
+          <button class="save">Save all</button>
+        </div>
+      </div>
+      <div class="scene-note"><em>Skill ask</em> — proof lines now flow LEFT with the content (no right-floated door column); the avatar cluster marks only the top pick, the rest say <em>room →</em>. Row #2 shows the hover state: quick actions (Script · Test · Save) surface per row, so the action zone's "#1" default never traps you.</div>
+
+      <!-- 3 · follow-up revision -->
+      <div class="you"><span>make #2 less clickbaity</span></div>
+      <div class="maven">
+        <div class="speaker">Maven</div>
+        <div class="receipt-line"><span class="tick">✓</span><span class="skill">Hooks</span><span class="rest">re-ran your audience · 1 step ⌄</span></div>
+        <p>Softened the accusation into an observation — and it reads stronger, not weaker:</p>
+        <div class="rev">
+          <div class="old">Your form was never the problem.</div>
+          <div class="new">I filmed my form for 30 days. The problem was never form.</div>
+          <div class="proof" style="margin-top:2px">
+            <span class="band-dot strong"></span><span class="band-word strong">Strong</span><span class="frac">7/10 stopped · was 5/10</span>
+          </div>
+        </div>
+        <p class="quiet">The receipt framing (“I filmed… 30 days”) gives the skeptics the proof they were asking for.</p>
+        <div class="actions">
+          <button class="primary">Write a script from this →</button>
+          <button class="save">Save</button>
+        </div>
+      </div>
+      <div class="scene-note"><em>Follow-up</em> — a revision is a first-class shape: before → after → re-score, with the delta stated (“was 5/10”).</div>
+
+      <!-- 4 · audience compare -->
+      <div class="you"><span>how would founders vs a general audience take #1?</span></div>
+      <div class="maven">
+        <div class="speaker">Maven</div>
+        <div class="receipt-line"><span class="tick">✓</span><span class="skill">Read</span><span class="rest">2 audiences · SIM-1 Flash · directional ⌄</span></div>
+        <p>Founders lean in; a general room splits on trust:</p>
+        <div class="compare">
+          <div class="aud">
+            <div class="head">Bootstrapped Founders
+              <span class="proof" style="margin:0"><span class="band-dot strong"></span><span class="band-word strong">Strong</span><span class="frac">8/10 stop</span></span>
+            </div>
+            <div class="lever"><b>Lever</b> Lead with the dollar amount you saved in the first two seconds.</div>
+            <div class="verbatim">“That's my exact problem, honestly.” <b>— The Scout</b></div>
+          </div>
+          <div class="aud">
+            <div class="head">General
+              <span class="proof" style="margin:0"><span class="band-dot mixed"></span><span class="band-word mixed">Mixed</span><span class="frac">5/10 stop</span></span>
+            </div>
+            <div class="lever"><b>Lever</b> Add a concrete receipt early — that converts the skeptics.</div>
+            <div class="verbatim">“The hook overpromises, I can smell the letdown.” <b>— The Critic</b></div>
+          </div>
+        </div>
+        <p class="quiet">Who it's not for: enterprise marketers hear “fire your routine” as reckless and scroll.</p>
+        <div class="actions">
+          <button class="primary">Rewrite for both rooms →</button>
+          <button class="ghost">Hear the full room</button>
+          <button class="save">Save</button>
+        </div>
+      </div>
+      <div class="scene-note"><em>Was language C (transcript)</em> — band once per audience, verdict beside the name in reading order, ONE verbatim each, full room demoted behind “Hear the full room”. The Lever leads.</div>
+
+      <!-- 5 · explore -->
+      <div class="you"><span>show me what's working in my niche right now</span></div>
+      <div class="maven">
+        <div class="speaker">Maven</div>
+        <div class="receipt-line"><span class="tick">✓</span><span class="skill">Explore</span><span class="rest">scraped 214 videos · kept 3 outliers · 2 steps ⌄</span></div>
+        <p>Three outliers this week — and all three lead with a confession, none with a tip:</p>
+        <div class="media-strip">
+          <div class="media">
+            <div class="cover"><span class="dur">0:34</span></div>
+            <div class="m1">12×</div>
+            <div class="m2">The one habit that 10x'd my mornings (it's not what you think)</div>
+            <div class="m3"><span class="band-dot strong"></span> Fit strong</div>
+            <div class="m3">@morning.mo · 2.4M</div>
+          </div>
+          <div class="media">
+            <div class="cover"><span class="dur">0:51</span></div>
+            <div class="m1">4.1×</div>
+            <div class="m2">Why your content isn't landing (harsh but true)</div>
+            <div class="m3"><span class="band-dot mixed"></span> Fit fair</div>
+            <div class="m3">@candid.kay · 890K</div>
+          </div>
+          <div class="media">
+            <div class="cover"><span class="dur">0:42</span></div>
+            <div class="m1">1.8×</div>
+            <div class="m2">I read 40 books this year. These 3 changed everything.</div>
+            <div class="m3"><span class="band-dot weak"></span> Fit weak</div>
+            <div class="m3">@shelf.life · 156K</div>
+          </div>
+        </div>
+        <div class="strip-basis">× = views vs that creator's usual reach · fit = predicted for your audience</div>
+        <p class="quiet">The pattern worth stealing: a confession costs the viewer nothing to believe. The first one fits your audience best — same counter-intuitive shape as your gym video.</p>
+        <div class="actions">
+          <button class="primary">Remix the first one →</button>
+          <button class="ghost">Track @morning.mo</button>
+          <button class="save">Save</button>
+        </div>
+      </div>
+      <div class="scene-note"><em>Was language B (dashboard)</em> — the group/row law applied: “vs their usual” was stamped on every tile; now each tile carries only its number and the strip states the basis ONCE below. Fit = dot + word. One primary.</div>
+
+      <!-- 5b · the honest absence -->
+      <div class="you"><span>anything worth stealing on cold plunges?</span></div>
+      <div class="maven">
+        <div class="speaker">Maven</div>
+        <div class="receipt-line"><span class="tick">✓</span><span class="skill">Explore</span><span class="rest">scraped 61 videos · kept 0 ⌄</span></div>
+        <p>Nothing cleared the bar this week. The top cold-plunge video is at 1.3× its creator's usual — that's a normal week, not an outlier, and I'd rather show you nothing than dress that up.</p>
+        <div class="actions">
+          <button class="ghost">Widen to adjacent niches</button>
+          <button class="ghost">Try again next week</button>
+        </div>
+      </div>
+      <div class="scene-note"><em>The honest absence</em> — the scene rev 2 was missing. No results = prose that says so and names the basis (“1.3× is a normal week”). No fake structure, no padded grid, no cream primary pushing you forward. Ghosts only.</div>
+
+      <!-- 6 · account read -->
+      <div class="you"><span>read my account — what should I double down on?</span></div>
+      <div class="maven">
+        <div class="speaker">Maven</div>
+        <div class="receipt-line"><span class="tick">✓</span><span class="skill">Account read</span><span class="rest">your last 12 posts ⌄</span></div>
+        <p>Your counter-intuitive openers are carrying this account — and your endings are leaking what they earn.</p>
+        <div class="profile-line"><span class="avatar"></span> @maven.creator · 148K followers · read: your last 12 posts</div>
+        <div class="facts">
+          <div class="lab">Keep doing</div>
+          <div class="f"><span class="fdot good"></span> Counter-intuitive claims in the first two seconds <small>9 of 12 posts</small></div>
+          <div class="f"><span class="fdot good"></span> On-screen receipts backing the hook <small>your top 3 all do it</small></div>
+          <div class="lab">Costing you</div>
+          <div class="f"><span class="fdot fix"></span> Middles sag — 40% drop between 8s and 15s <small>7 of 12 posts</small></div>
+          <div class="f"><span class="fdot fix"></span> CTAs are vague (“follow for more”) <small>10 of 12 posts</small></div>
+        </div>
+        <div class="accuracy">Maven has been <b>within 9%</b> on your last 12 posts.</div>
+        <div class="actions">
+          <button class="primary">Write to my strengths →</button>
+          <button class="ghost">Fix my endings</button>
+          <button class="save">Save</button>
+        </div>
+      </div>
+      <div class="scene-note"><em>Was the report</em> — the read itself opens the turn (the hero the old card never had), labels quiet, color on marks, every claim carries its count.</div>
+
+      <!-- 7 · the deliverable -->
+      <div class="you"><span>write the full script for #1</span></div>
+      <div class="maven">
+        <div class="speaker">Maven</div>
+        <div class="receipt-line"><span class="tick">✓</span><span class="skill">Script</span><span class="rest">wrote + pressure-tested the open · 2 steps · SIM-1 Flash ⌄</span></div>
+        <p>The opener holds <span class="band-dot strong" style="position:relative;top:-2px"></span> <span style="color:var(--good);font-weight:600">Strong</span> · 7/10 — opener only, the full cut is untested. The script:</p>
+        <div class="asset">
+          <div class="ahead"><span class="alab">Script</span><span class="atitle">I trained wrong for six years</span><span class="adur">~40s · 5 beats</span></div>
+          <div class="beat"><span class="bl">Hook <small>0–3s</small></span><div>I trained wrong for six years — and kept every mistake on camera.<div class="why">Outcome-first claim opens an immediate “how?” gap.</div></div></div>
+          <div class="beat"><span class="bl">Setup <small>3–10s</small></span><div>Two hours a day, perfect form, textbook programs. The works.</div></div>
+          <div class="beat"><span class="bl">Turn <small>10–20s</small></span><div>Then I noticed my worst-form months were my best-progress months.</div></div>
+          <div class="beat"><span class="bl">Payoff <small>20–35s</small></span><div>Intensity beats choreography — effort you can't fake is the variable.</div></div>
+          <div class="beat"><span class="bl">CTA <small>35–40s</small></span><div>Try one ugly set this week and tell me what happens. I bet you know already.</div></div>
+        </div>
+        <div class="actions">
+          <button class="primary">Test the full script →</button>
+          <button class="ghost">Copy</button>
+          <button class="save">Save</button>
+        </div>
+      </div>
+      <div class="scene-note"><em>The deliverable</em> — a take-away asset earns the stream's ONLY frame (like a code block in Claude). Everything else is open rows; the thing you'll export is a bounded object.</div>
+
+      <!-- 8 · vague ask -->
+      <div class="you"><span>ok what should I actually post this week?</span></div>
+      <div class="maven">
+        <div class="speaker">Maven</div>
+        <div class="receipt-line"><span class="tick">✓</span><span class="skill">Planned</span><span class="rest">from your account + audience · 2 steps ⌄</span></div>
+        <p>Three posts, spaced how your audience actually shows up — explainers early week, story formats when your scanners are off work:</p>
+        <div class="plan">
+          <div class="slot"><span class="day">Tue</span><span class="what">The “trained wrong” script → film it</span><span class="why">your strongest opener</span></div>
+          <div class="slot"><span class="day">Thu</span><span class="what">Form-myth explainer</span><span class="why">explainers over-index 2.1× for you</span></div>
+          <div class="slot"><span class="day">Sat</span><span class="what">30-day receipts compilation</span><span class="why">weekend = your loyalists</span></div>
+        </div>
+        <div class="actions">
+          <button class="primary">Draft Thursday's explainer →</button>
+          <button class="ghost">Rework the plan</button>
+          <button class="save">Save plan</button>
+        </div>
+      </div>
+      <div class="scene-note"><em>Vague ask</em> — the shape today's system can't render at all. Prose + plan rows + the chain, no “planner card” needed.</div>
+
+      <!-- 9 · the in-thread ask (input request) -->
+      <div class="you"><span>can you remix a video I found for my audience?</span></div>
+      <div class="maven">
+        <div class="speaker">Maven</div>
+        <p>Sure — drop the link and I'll decode why it worked before I rewrite it for your founders.</p>
+        <div class="inputrow">
+          <span class="field">tiktok.com/@danielle.builds/video/72994…</span>
+          <button class="primary">Decode it →</button>
+        </div>
+      </div>
+      <div class="scene-note"><em>The in-thread ask</em> — when Maven needs something, the turn is prose + ONE control row. Controls (inputs, buttons) have their own idiom and don't count against “one frame” — that law is about content containers.</div>
+
+      <!-- 10 · remix result -->
+      <div class="maven">
+        <div class="speaker">Maven</div>
+        <div class="receipt-line"><span class="tick">✓</span><span class="skill">Remix</span><span class="rest">decoded + rewrote for your audience · 4 steps ⌄</span></div>
+        <p>Danielle's video runs on a confession with receipts on screen — shock first, proof one breath later. Here's the founder version:</p>
+        <div class="evidence">
+          <div class="row"><span class="thumb"></span><span class="what">The post you're remixing</span><span class="who">@danielle.builds</span><span class="meta" style="margin-left:auto">2.1M views · you pasted this — nothing measured</span><span class="go">watch ↗</span></div>
+        </div>
+        <div class="results">
+          <div class="result" style="border-bottom:1px solid var(--line)">
+            <span class="n">→</span>
+            <div>
+              <div class="hero">I fired my whole marketing team and replaced them with 3 prompts.</div>
+              <div class="proof">
+                <span class="band-dot mixed"></span><span class="band-word mixed">Mixed</span><span class="frac">5/10 stopped</span>
+                <span class="door"><span class="avs"><i></i><i></i><i></i></span> See the room →</span>
+              </div>
+              <div class="verbatim">“Feels like an ad, keep scrolling.” <b>— The Lurker</b></div>
+              <div class="src">↳ borrowed structure · talking-head confession + receipts overlay</div>
+            </div>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="primary">Develop into hooks →</button>
+          <button class="ghost">Why the original worked</button>
+          <button class="save">Save</button>
+        </div>
+      </div>
+      <div class="scene-note"><em>Remix honesty</em> — the pasted source carries views but NO multiplier and NO fit: nothing measured it (§0.5b survives verbatim). The adapted hook gets the full proof treatment; the borrowed structure is named, not implied.</div>
+
+      <!-- 11 · concept test -->
+      <div class="you"><span>test this: I film my whole morning routine in one take, zero cuts</span></div>
+      <div class="maven">
+        <div class="speaker">Maven</div>
+        <div class="receipt-line"><span class="tick">✓</span><span class="skill">Test</span><span class="rest">ran your room · SIM-1 Flash · directional ⌄</span></div>
+        <p>Split verdict — half your room stops for the rawness promise, the other half wants a reason it matters:</p>
+        <div class="proof" style="margin-top:-4px">
+          <span class="band-dot mixed"></span><span class="band-word mixed">Mixed</span><span class="frac">6/10 stopped</span>
+          <span class="door"><span class="avs"><i></i><i></i><i></i></span> See the room →</span>
+        </div>
+        <div class="verbatim">“Saving this — zero-cut is the realest thing on my feed all week.” <b>— The Saver</b></div>
+        <div class="verbatim">“Raw for raw's sake. What do I actually learn?” <b>— The Skeptic</b></div>
+        <div class="actions">
+          <button class="primary">Fix the weak spot →</button>
+          <button class="ghost">Test it as a full script</button>
+          <button class="save">Save</button>
+        </div>
+      </div>
+      <div class="scene-note"><em>Concept test</em> — the /test skill is just a proof line + the two voices that disagree. The deep frame-by-frame pipeline stays one door away, as today.</div>
+
+      <!-- 12 · persona sub-chat -->
+      <div class="you"><span>ask the skeptic what would make them stay</span></div>
+      <div class="maven">
+        <div class="speaker">The Skeptic · via Maven</div>
+        <p>The payoff, in the first breath. Not “watch my whole morning” — “I timed every step of my morning for 30 days and one habit was stealing 40 minutes.” Give me the number up front and I'll sit through every uncut second of it.</p>
+      </div>
+      <div class="scene-note"><em>Persona sub-chat</em> — a persona turn is the SAME stream: the speaker label swaps, the prose stays flush-left, no bubble (resolves the §0.6 bubble inconsistency — bubbles exist nowhere in the stream).</div>
+
+      <!-- ═══ ACT 2 · /test end to end — the two-minute wait becomes the evidence ═══ -->
+
+      <!-- T1 · the ask -->
+      <div class="you"><span>ok I filmed it — test the actual video before I post it tomorrow</span></div>
+      <div class="maven">
+        <div class="speaker">Maven</div>
+        <p>Drop the link or the file — I'll watch it frame by frame and put it in front of your room.</p>
+        <div class="inputrow">
+          <span class="field">Paste a TikTok link…</span>
+          <button class="primary">Test it →</button>
+          <button class="ghost">Upload the file</button>
+        </div>
+      </div>
+      <div class="scene-note"><em>/test · the ask</em> — same input-ask primitive, two entries (link or upload). No mode switch, no separate surface.</div>
+
+      <!-- T2 · t+6s — the source lands -->
+      <div class="maven">
+        <div class="speaker">Maven · t+6s</div>
+        <div class="receipt-line"><span class="run-dot"></span><span class="skill">Test</span><span class="rest">watching your video · step 2 of 3</span></div>
+        <div class="evidence">
+          <div class="row"><span class="thumb"></span><span class="what">Zero-cut morning routine</span><span class="who">@maven.creator · 0:34</span><span class="meta" style="margin-left:auto">your draft — posted nowhere yet</span></div>
+        </div>
+        <div class="spine">
+          <div class="step done"><span class="idot">✓</span> Fetching your video</div>
+          <div class="step active"><span class="idot"></span> Watching it frame by frame</div>
+          <div class="subcopy">Cutting keyframes from your footage…</div>
+          <div class="step pending"><span class="idot"></span> Simulating your audience</div>
+        </div>
+      </div>
+      <div class="scene-note"><em>/test · seconds in</em> — the receipt goes red-dot (running) and the FIRST thing the wait produces is proof it has your video: the source row lands before a single frame is cut. Nothing invented — the row exists because the fetch happened.</div>
+
+      <!-- T3 · t+40s — footage read, the cast steps in -->
+      <div class="maven">
+        <div class="speaker">Maven · t+40s</div>
+        <div class="receipt-line"><span class="run-dot"></span><span class="skill">Test</span><span class="rest">simulating your audience · step 3 of 3</span></div>
+        <div class="kframes">
+          <span class="kf"></span><span class="kf"></span><span class="kf"></span><span class="kf"></span><span class="kf"></span>
+          <span class="kf empty"></span><span class="kf empty"></span><span class="kf empty"></span>
+          <span class="kf-meta">8 keyframes · 5 read</span>
+        </div>
+        <div class="roster"><span class="avs"><i></i><i></i><i></i><i></i><i></i></span> Your 10 reactors take it from here — Maya, Sam, Priya, Leo, Dana…</div>
+        <div class="spine">
+          <div class="step done"><span class="idot">✓</span> Fetching your video</div>
+          <div class="step done"><span class="idot">✓</span> Watching it frame by frame</div>
+          <div class="step active"><span class="idot"></span> Simulating your audience</div>
+          <div class="subcopy">The room is watching your video…</div>
+        </div>
+      </div>
+      <div class="scene-note"><em>/test · the long stretch</em> — your own keyframes fill the strip as the engine reads them (the media-strip primitive, carrying frames instead of posts), then the cast is named before a single reaction exists. Reactions are never guessed — only the roster shows, because only the roster is known.</div>
+
+      <!-- T4 · t+2m — the verdict -->
+      <div class="maven">
+        <div class="speaker">Maven · t+2m</div>
+        <div class="receipt-line"><span class="tick">✓</span><span class="skill">Test</span><span class="rest">watched frame by frame + ran your room · 3 steps · SIM-1 Max ⌄</span></div>
+        <p style="font-size:var(--t-hero);font-weight:600;letter-spacing:-0.005em">Solid contender — the payoff is real, it's just three seconds late.</p>
+        <div class="proof" style="margin-top:-4px">
+          <span class="band-dot mixed"></span><span class="band-word mixed">Mixed</span><span class="frac">6/10 stopped</span>
+          <span class="door"><span class="avs"><i></i><i></i><i></i></span> See the room →</span>
+        </div>
+        <div class="verbatim">“Saved it — the routine is specific enough to actually try.” <b>— The Saver</b></div>
+        <div class="verbatim">“Three seconds of curtains before anything happens.” <b>— The Scanner</b></div>
+        <p class="quiet">The fix — open on the after-shot. Your strongest frame is at 0:19; the scanners never reach it.</p>
+        <div class="actions">
+          <button class="primary">See the full breakdown →</button>
+          <button class="ghost">Rewrite my opener</button>
+          <button class="save">Save</button>
+        </div>
+      </div>
+      <div class="scene-note"><em>/test · the verdict</em> — bands and words ONLY in the thread; the 0–100 score, the filmstrip scrubber and every voice live one door away on the full breakdown (the one place a number is honest). By the time the verdict lands you've already seen the source, the frames and the cast — the wait built the receipt.</div>
+
+      <!-- ═══ ACT 3 · the full breakdown (/analyze) in the stream language ═══ -->
+
+      <div class="maven" style="margin-top:8px">
+        <div class="speaker">The full breakdown · /analyze — the page “See the full breakdown →” opens</div>
+        <div class="receipt-line"><span class="tick">✓</span><span class="skill">Test</span><span class="rest">watched frame by frame · reacted with your 10 · SIM-1 Max ⌄</span></div>
+
+        <div class="score-line"><span class="score-num">71</span><span class="score-band" style="color:var(--good)">Strong</span><span class="score-rank">top 18% of your niche</span></div>
+        <p style="font-size:var(--t-hero);font-weight:600;letter-spacing:-0.005em;max-width:56ch">It keeps enough viewers to reach a thousand — then the 0:08 drop loses too many, and it stalls before viral.</p>
+
+        <div class="evidence">
+          <div class="row"><span class="thumb"></span><span class="what">Zero-cut morning routine</span><span class="who">your draft · 0:34</span><span class="meta" style="margin-left:auto">watch ↗</span></div>
+        </div>
+        <div class="statline"><span><b>62%</b> watch through</span><span class="drop">biggest drop <b>0:08</b></span><span><b>0%</b> finish</span></div>
+
+        <div class="group-label">How far it gets pushed · <b>breaks out to ~1,000</b> · % still watching at each gate</div>
+        <div class="survival">
+          <div class="srow"><span class="slab">First 200</span><span class="sbar"><i style="width:84%"></i></span><span class="sval">84%</span></div>
+          <div class="srow"><span class="slab">To 1,000</span><span class="sbar"><i style="width:69%"></i></span><span class="sval">69%</span></div>
+          <div class="srow"><span class="slab">To 10,000</span><span class="sbar stall"><i style="width:53%"></i></span><span class="sval">53% <small>the stall</small></span></div>
+          <div class="srow"><span class="slab">Breakout</span><span class="sbar"><i style="width:38%"></i></span><span class="sval">38%</span></div>
+        </div>
+
+        <div class="group-label">Score drivers</div>
+        <div class="survival">
+          <div class="srow"><span class="slab">Hook</span><span class="sbar"><i style="width:82%"></i></span><span class="sval">82</span></div>
+          <div class="srow"><span class="slab">Retention</span><span class="sbar stall"><i style="width:64%"></i></span><span class="sval">64 <small>the weak one</small></span></div>
+          <div class="srow"><span class="slab">Shareability</span><span class="sbar"><i style="width:71%"></i></span><span class="sval">71</span></div>
+        </div>
+
+        <div class="group-label">Where they leave</div>
+        <div class="kframes">
+          <span class="kf"></span><span class="kf mark"></span><span class="kf"></span><span class="kf"></span><span class="kf"></span><span class="kf"></span><span class="kf"></span><span class="kf"></span>
+          <span class="kf-meta">the drop: 0:08 — three seconds of curtains before the payoff</span>
+        </div>
+
+        <div class="group-label">The room · <b>Stopped · 6</b></div>
+        <div class="verbatim">“Saved it — the routine is specific enough to actually try.” <b>— The Saver</b></div>
+        <div class="verbatim">“Zero cuts means nothing to hide. I stayed.” <b>— The Loyalist · ask →</b></div>
+        <div class="group-label"><b>Scrolled past · 4</b></div>
+        <div class="verbatim">“Three seconds of curtains before anything happens.” <b>— The Scanner · ask →</b></div>
+
+        <div class="group-label">Fix first</div>
+        <div class="results">
+          <div class="result">
+            <span class="n">1</span>
+            <div>
+              <div style="font-size:var(--t-support);font-weight:600">Open on the after-shot — your strongest frame is at 0:19</div>
+              <div class="src">recovers the scanners · the biggest single win</div>
+            </div>
+          </div>
+          <div class="result" style="border-bottom:1px solid var(--line)">
+            <span class="n">2</span>
+            <div>
+              <div style="font-size:var(--t-support);font-weight:600">End on the receipt, not the wave goodbye</div>
+              <div class="src">0% finish is the sharers' exit — they share endings</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="primary">Rewrite my opener →</button>
+          <button class="ghost">Replay the room</button>
+          <button class="save">Save</button>
+        </div>
+        <div class="inputrow" style="margin-top:10px">
+          <span class="field">Ask about this read…</span>
+          <button class="ghost">Send</button>
+        </div>
+      </div>
+      <div class="scene-note"><em>Act 3 · the full breakdown</em> — the /analyze PAGE in the same language. The funnel's buried interpretation sentence is promoted to the page hero; the score keeps its numeral (the one honest number) but loses the gauge ring; “POWERED BY SIM-1 MAX” demotes into the receipt; accent marks exactly one thing per figure (the stall, the weak driver, the drop frame); the room is grouped by verdict with named personas askable; the page ends where the stream continues — the follow-up composer.</div>
+
+      <!-- 13 · in-flight -->
+      <div class="maven" style="margin-top:8px">
+        <div class="speaker">Maven · mid-run (what waiting looks like)</div>
+        <p class="quiet">Pulling hooks for Bootstrapped Founders — reacting each one with your 10 reactors.</p>
+        <div class="spine">
+          <div class="step done"><span class="idot">✓</span> Generating</div>
+          <div class="step active"><span class="idot"></span> Simulating your audience</div>
+          <div class="subcopy">Reacting with each of your 10 reactors…</div>
+          <div class="step pending"><span class="idot"></span> Ranking</div>
+        </div>
+      </div>
+      <div class="scene-note"><em>In-flight</em> — the run capsule survives unchanged; it collapses into the turn's ✓ receipt when cards land. Streaming order: receipt first → prose streams → rows land as they score (unscored rows show the shimmer where the proof line will be).</div>
+
+    </div>
+
+    <!-- margin commentary -->
+    <aside class="rail">
+      <div class="headnote">Design laws in play</div>
+      <div class="note"><b>Prose is the backbone.</b> Every answer opens in voice. Structure interrupts only to carry what prose can't: numbers, ranked sets, before/after.</div>
+      <div class="note"><b>Five type sizes, total.</b> 11 label · 12.5 meta · 14 support · 15 body · 17 hero. Rev 2 had thirteen; that's how ladders start.</div>
+      <div class="note"><b>Everything flows left.</b> Proof lines sit with their content in reading order. Right-alignment is reserved for basis-counts and Save.</div>
+      <div class="note"><b>One frame, total.</b> The only bordered box is the take-away asset. Everything else separates with hairlines and a left rule. Controls (inputs, buttons) are chrome, not frames — they keep their own idiom.</div>
+      <div class="note"><b>One action zone per turn</b> — plus per-row quick actions on hover, so the primary's default pick never traps you.</div>
+      <div class="note"><b>The group states the shared fact.</b> “× vs their usual” once per strip, not once per tile. A row states only what its siblings don't.</div>
+      <div class="note"><b>Band color once per item.</b> Dot + word. Never a fill, never a label, never twice.</div>
+      <div class="note"><b>Absence is prose.</b> Zero results = a sentence with the basis, ghost actions only. Never padded structure, never a cream primary on nothing.</div>
+      <div class="note"><b>Honesty unchanged.</b> Bands only · evidence from tool rows · “original — not drawn from a retrieved video” said plainly · provenance in the ✓ receipt.</div>
+    </aside>
+  </div>
+
+  <!-- mobile -->
+  <div class="mobile-demo">
+    <h2>The same markup at 390px</h2>
+    <p class="lede">No breakpoint redesign — the stream is a single column by construction. Rows wrap, the media strip scrolls sideways, the action zone wraps to two lines. (The old Explore grid was 1,849px tall here; this is one screen and a swipe.)</p>
+    <div class="phone">
+      <div class="thread">
+        <div class="maven">
+          <div class="speaker">Maven</div>
+          <p style="font-size:var(--t-support)">Three outliers this week — all three lead with a confession, none with a tip:</p>
+          <div class="media-strip">
+            <div class="media">
+              <div class="cover"><span class="dur">0:34</span></div>
+              <div class="m1">12×</div>
+              <div class="m2">The one habit that 10x'd my mornings</div>
+              <div class="m3"><span class="band-dot strong"></span> Fit strong</div>
+            </div>
+            <div class="media">
+              <div class="cover"><span class="dur">0:51</span></div>
+              <div class="m1">4.1×</div>
+              <div class="m2">Why your content isn't landing</div>
+              <div class="m3"><span class="band-dot mixed"></span> Fit fair</div>
+            </div>
+            <div class="media">
+              <div class="cover"><span class="dur">0:42</span></div>
+              <div class="m1">1.8×</div>
+              <div class="m2">I read 40 books this year</div>
+              <div class="m3"><span class="band-dot weak"></span> Fit weak</div>
+            </div>
+          </div>
+          <div class="strip-basis">× = vs that creator's usual reach</div>
+          <div class="actions">
+            <button class="primary">Remix the first one →</button>
+            <button class="save">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- the grammar behind it -->
+  <div class="grammar">
+    <h2>The vocabulary — 14 primitives, closed set, now complete</h2>
+    <p class="lede">Every structured moment above is one of these — including every shape the active /dev/cards skills need (Ideas renders as ranked results like Hooks; citations are evidence rows; band and markdown are already here). Skill runners compose them deterministically; the chat agent composes them ad-hoc. Nothing outside the set can render. Hover quick-actions and the empty state are <b>behaviors of the set</b>, not extra primitives.</p>
+    <div class="gram-grid">
+      <div class="gram"><b>prose</b>the default; markdown in voice — also the ONLY empty state</div>
+      <div class="gram"><b>receipt line</b>✓ skill · what ran · steps · model — the collapsed capsule, tappable</div>
+      <div class="gram"><b>evidence row</b>thumb · title · multiplier · views — tool rows only, opens the video</div>
+      <div class="gram"><b>media strip</b>covers + one metric + fit · basis stated once per strip</div>
+      <div class="gram"><b>ranked result</b>n · hero · proof line · verbatim · source · hover quick-actions</div>
+      <div class="gram"><b>proof line</b>band dot+word · fraction · room door — flows left</div>
+      <div class="gram"><b>verbatim</b>one quote · one speaker — italic, left-ruled</div>
+      <div class="gram"><b>compare group</b>per-audience: head + verdict · lever · verbatim</div>
+      <div class="gram"><b>fact row</b>mark · claim · basis-count</div>
+      <div class="gram"><b>revision</b>old → new · re-scored proof with delta</div>
+      <div class="gram"><b>plan slot</b>when · what · why-for-you</div>
+      <div class="gram"><b>input ask</b>prose + one control row — how Maven requests a link / handle / upload</div>
+      <div class="gram"><b>persona turn</b>speaker label swaps, prose stays — no bubbles anywhere</div>
+      <div class="gram framed"><b>asset block ◻</b>the take-away deliverable — the stream's ONLY frame</div>
+    </div>
+  </div>
+</div>
