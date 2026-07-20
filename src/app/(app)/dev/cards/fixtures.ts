@@ -32,6 +32,7 @@ import type {
 } from "@/lib/tools/profile-blocks";
 import type { StageState } from "@/components/thread/progress-checklist";
 import { STREAM_COMPOSITION } from "@/lib/tools/__tests__/fixtures/stream-composition";
+import spikeResults from "./spike-results.json";
 
 const IMG = (seed: string, w: number, h: number) =>
   `https://picsum.photos/seed/${seed}/${w}/${h}`;
@@ -678,6 +679,17 @@ export const BLOCK_SECTIONS: BlockSection[] = [
     label: "Stream (composed — all 16 primitives)",
     note: "THE STREAM (phase 1) — one `composed` block carrying the whole 16-primitive vocabulary through the ONE generic renderer. Design contract: docs/prototypes/stream-concept-rev7.html (frozen 2026-07-20). The laws are schema-enforced (one frame · receipt leads · one control row · accent marks one thing); this section is the living render of the canonical fixture the tests lock.",
     body: [STREAM_COMPOSITION],
+  },
+  {
+    type: "composed--spike",
+    label: "Stream (composer spike — 20 live ad-hoc asks)",
+    note: "PHASE 1.5 EVIDENCE — the production chat model (qwen3.7-plus, temp 0.3) composing ad-hoc from the 16-primitive vocabulary, one shot per ask, NO retries needed: 20/20 schema-valid first try, zero fabricated numbers (every stated figure traces to the ask's CONTEXT payload), correct absence handling, and pure prose on the explainer restraint probe. Re-run: node --experimental-strip-types scripts/composer-spike.mts. Each ask below is the user turn; the answer is the model's raw validated composition.",
+    body: (spikeResults.results as Array<{ ask: string; valid: boolean; composition: unknown }>).flatMap(
+      (r) =>
+        r.valid
+          ? [{ type: "markdown", props: { text: `🗣 **${r.ask}**` } }, r.composition]
+          : [{ type: "markdown", props: { text: `🗣 **${r.ask}** — ⚠️ invalid composition` } }],
+    ),
   },
   {
     type: "profile-read",

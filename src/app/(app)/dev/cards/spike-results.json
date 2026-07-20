@@ -1,0 +1,1157 @@
+{
+ "summary": {
+  "model": "qwen3.7-plus",
+  "ranAt": "2026-07-20T12:02:54.209Z",
+  "total": 20,
+  "validFirstTry": 20,
+  "validAfterRetry": 20,
+  "kindsUsedOverall": [
+   "asset",
+   "compare",
+   "evidence",
+   "facts",
+   "input-ask",
+   "media-strip",
+   "plan",
+   "proof",
+   "prose",
+   "ranked",
+   "receipt",
+   "revision",
+   "stats",
+   "verbatim"
+  ],
+  "restraintProseOnly": [
+   {
+    "id": "explain-algo",
+    "kinds": [
+     "prose"
+    ],
+    "proseOnly": true
+   },
+   {
+    "id": "discouraged",
+    "kinds": [
+     "prose",
+     "input-ask"
+    ],
+    "proseOnly": false
+   },
+   {
+    "id": "plan-100k",
+    "kinds": [
+     "prose",
+     "input-ask"
+    ],
+    "proseOnly": false
+   }
+  ]
+ },
+ "results": [
+  {
+   "id": "why-flop",
+   "tag": "sketch",
+   "ask": "why did my gym transformation video do so well but the office vlog flopped?",
+   "attempt1Valid": true,
+   "valid": true,
+   "error": "",
+   "kinds": [
+    "receipt",
+    "prose",
+    "compare",
+    "stats"
+   ],
+   "composition": {
+    "type": "composed",
+    "props": {
+     "items": [
+      {
+       "kind": "receipt",
+       "skill": "Compared 2 videos",
+       "summary": "Analyzed performance deltas between Gym Transformation and Office Vlog.",
+       "model": "sim1-flash",
+       "running": false
+      },
+      {
+       "kind": "prose",
+       "text": "Your gym video hit 2.1M views (9.2x up) because it delivered a clear, high-stakes visual payoff. The office vlog flopped at 38K views (0.4x down) because it lacked that immediate visual hook. Since 6 of your 10 reactors are scanners, they decide in the first second whether to stay or scroll. Scanners need visible transformation, not ambient routine."
+      },
+      {
+       "kind": "compare",
+       "audiences": [
+        {
+         "name": "Gym Transformation",
+         "proof": {
+          "band": "Strong",
+          "fraction": "9.2x up"
+         },
+         "lever": "Visual payoff",
+         "verbatim": {
+          "quote": "Scanners need visible transformation, not ambient routine.",
+          "speaker": "Maven"
+         }
+        },
+        {
+         "name": "Office Vlog",
+         "proof": {
+          "band": "Weak",
+          "fraction": "0.4x down"
+         },
+         "lever": "Low stakes",
+         "verbatim": {
+          "quote": "Scanners decide in the first second whether to stay or scroll.",
+          "speaker": "Maven"
+         }
+        }
+       ]
+      },
+      {
+       "kind": "stats",
+       "items": [
+        {
+         "value": "6/10",
+         "label": "Reactors are scanners",
+         "tone": "plain"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "hooks",
+   "tag": "sketch",
+   "ask": "give me 3 hooks in that style",
+   "attempt1Valid": true,
+   "valid": true,
+   "error": "",
+   "kinds": [
+    "receipt",
+    "prose",
+    "ranked"
+   ],
+   "composition": {
+    "type": "composed",
+    "props": {
+     "items": [
+      {
+       "kind": "receipt",
+       "skill": "Hooks · ran your audience · 3 steps · SIM-1 Flash",
+       "summary": "Generated 3 hooks based on audience simulation.",
+       "model": "sim1-flash",
+       "running": false
+      },
+      {
+       "kind": "prose",
+       "text": "Here are three hooks tailored to your audience's response patterns."
+      },
+      {
+       "kind": "ranked",
+       "items": [
+        {
+         "marker": "1",
+         "hero": "I trained wrong for six years. Here's what I'd keep.",
+         "proof": {
+          "band": "Strong",
+          "fraction": "8/10",
+          "door": true
+         },
+         "verbatim": {
+          "quote": "Okay that opening got me — I need to know the rest.",
+          "speaker": "The Aspirant"
+         },
+         "source": "structure from @braedan.health · 90.7x vs followers · 621K views"
+        },
+        {
+         "marker": "2",
+         "hero": "Your form was never the problem.",
+         "proof": {
+          "band": "Mixed",
+          "fraction": "5/10",
+          "door": false
+         }
+        },
+        {
+         "marker": "3",
+         "hero": "Six years of gym advice. One lie holding it together.",
+         "proof": {
+          "band": "Mixed",
+          "fraction": "5/10",
+          "door": false
+         },
+         "verbatim": {
+          "quote": "Heard this a hundred times — what's actually new?",
+          "speaker": "The Skeptic"
+         }
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "revision",
+   "tag": "sketch",
+   "ask": "make the second hook less clickbaity",
+   "attempt1Valid": true,
+   "valid": true,
+   "error": "",
+   "kinds": [
+    "receipt",
+    "prose",
+    "revision"
+   ],
+   "composition": {
+    "type": "composed",
+    "props": {
+     "items": [
+      {
+       "kind": "receipt",
+       "skill": "Hooks · re-ran your audience · 1 step",
+       "summary": "Revised second hook to reduce clickbait tone while maintaining retention.",
+       "model": "sim1-flash",
+       "running": false
+      },
+      {
+       "kind": "prose",
+       "text": "The original hook relied on a negative assertion that felt like a trap. The revision grounds the claim in a specific, observable action—filming for 30 days—which builds trust before delivering the insight. This shift from abstract denial to concrete evidence reduced the clickbait feel while improving stop rate."
+      },
+      {
+       "kind": "revision",
+       "before": "Your form was never the problem.",
+       "after": "I filmed my form for 30 days. The problem was never form.",
+       "proof": {
+        "band": "Strong",
+        "fraction": "7/10"
+       }
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "compare-aud",
+   "tag": "sketch",
+   "ask": "how would founders vs a general audience take the first hook?",
+   "attempt1Valid": true,
+   "valid": true,
+   "error": "",
+   "kinds": [
+    "receipt",
+    "prose",
+    "compare"
+   ],
+   "composition": {
+    "type": "composed",
+    "props": {
+     "items": [
+      {
+       "kind": "receipt",
+       "skill": "Read · 2 audiences · SIM-1 Flash",
+       "summary": "Audience split analysis for hook resonance",
+       "model": "sim1-flash"
+      },
+      {
+       "kind": "prose",
+       "text": "Founders lean in because you name their pain immediately, while a general audience pulls back because the promise feels too big to trust without proof."
+      },
+      {
+       "kind": "compare",
+       "audiences": [
+        {
+         "name": "Bootstrapped Founders",
+         "proof": {
+          "band": "Strong",
+          "fraction": "8/10"
+         },
+         "lever": "Lead with the dollar amount you saved in the first two seconds.",
+         "verbatim": {
+          "quote": "That's my exact problem, honestly.",
+          "speaker": "The Scout"
+         }
+        },
+        {
+         "name": "General",
+         "proof": {
+          "band": "Mixed",
+          "fraction": "5/10"
+         },
+         "lever": "Add a concrete receipt early — that converts the skeptics.",
+         "verbatim": {
+          "quote": "The hook overpromises, I can smell the letdown.",
+          "speaker": "The Critic"
+         }
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "explore",
+   "tag": "sketch",
+   "ask": "show me what's working in my niche right now",
+   "attempt1Valid": true,
+   "valid": true,
+   "error": "",
+   "kinds": [
+    "receipt",
+    "prose",
+    "media-strip"
+   ],
+   "composition": {
+    "type": "composed",
+    "props": {
+     "items": [
+      {
+       "kind": "receipt",
+       "skill": "Explore",
+       "summary": "Scraped 214 videos and kept 2 outliers",
+       "model": "sim1-flash",
+       "running": false
+      },
+      {
+       "kind": "prose",
+       "text": "Two formats are punching above their weight right now. The first is a tight, habit-based hook that promises a specific transformation. The second is a diagnostic take that names a common pain point directly."
+      },
+      {
+       "kind": "media-strip",
+       "basis": "x = views vs that creator usual reach",
+       "items": [
+        {
+         "title": "The one habit that 10x'd my mornings",
+         "metric": "12x",
+         "fit": "Strong",
+         "byline": "@morning.mo · 2.4M",
+         "duration": "0:34"
+        },
+        {
+         "title": "Why your content isn't landing",
+         "metric": "4.1x",
+         "fit": "Mixed",
+         "byline": "@candid.kay · 890K",
+         "duration": "0:51"
+        }
+       ]
+      },
+      {
+       "kind": "prose",
+       "text": "Notice the duration difference. The stronger performer is under 35 seconds, suggesting speed and clarity are driving the lift. Test a similar structure: name the habit, show the result, keep it under half a minute."
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "absence",
+   "tag": "sketch",
+   "ask": "anything worth stealing on cold plunges?",
+   "attempt1Valid": true,
+   "valid": true,
+   "error": "",
+   "kinds": [
+    "receipt",
+    "prose"
+   ],
+   "composition": {
+    "type": "composed",
+    "props": {
+     "items": [
+      {
+       "kind": "receipt",
+       "skill": "Explore",
+       "summary": "Scraped 61 videos · kept 0",
+       "model": "sim1-flash",
+       "running": false
+      },
+      {
+       "kind": "prose",
+       "text": "There is no viral template to steal here. I scanned 61 cold plunge videos and found zero outliers worth copying. The top performer only hit 1.3x its creator’s usual views, which signals a normal week rather than a breakout trend. Save your energy; this niche isn’t handing out easy wins right now."
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "account",
+   "tag": "sketch",
+   "ask": "read my account — what should I double down on?",
+   "attempt1Valid": true,
+   "valid": true,
+   "error": "",
+   "kinds": [
+    "receipt",
+    "prose",
+    "facts"
+   ],
+   "composition": {
+    "type": "composed",
+    "props": {
+     "items": [
+      {
+       "kind": "receipt",
+       "skill": "Account read · your last 12 posts",
+       "summary": "Analyzed your last 12 posts to identify retention patterns and conversion leaks.",
+       "model": "sim1-flash",
+       "running": false
+      },
+      {
+       "kind": "prose",
+       "text": "Your hook is already working. Nine of your last twelve posts lead with counter-intuitive claims, and your top three performers all back that hook with on-screen receipts. That is your engine. Do not change it."
+      },
+      {
+       "kind": "prose",
+       "text": "The leak is in the middle. Seven of those twelve posts lose 40% of viewers between the 8-second and 15-second marks. You are winning the click but losing the hold. Double down on pacing in that specific window."
+      },
+      {
+       "kind": "facts",
+       "sections": [
+        {
+         "rows": [
+          {
+           "mark": "good",
+           "claim": "Counter-intuitive claims in the first two seconds",
+           "basis": "9 of 12 posts"
+          },
+          {
+           "mark": "good",
+           "claim": "On-screen receipts backing the hook",
+           "basis": "your top 3 all do it"
+          },
+          {
+           "mark": "fix",
+           "claim": "Middles sag — 40% drop between 8s and 15s",
+           "basis": "7 of 12 posts"
+          },
+          {
+           "mark": "fix",
+           "claim": "CTAs are vague (\"follow for more\")",
+           "basis": "10 of 12 posts"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "kind": "prose",
+       "text": "Fix the CTA while you fix the middle. Ten of your twelve posts use vague sign-offs like \"follow for more.\" Replace them with a specific next step that ties directly to the value you just delivered."
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "perf-numbers",
+   "tag": "future",
+   "ask": "how did my last five posts actually do?",
+   "attempt1Valid": true,
+   "valid": true,
+   "error": "",
+   "kinds": [
+    "receipt",
+    "prose",
+    "stats",
+    "evidence"
+   ],
+   "composition": {
+    "type": "composed",
+    "props": {
+     "items": [
+      {
+       "kind": "receipt",
+       "skill": "Account read · your last 5 posts",
+       "summary": "Analyzed performance of your last five posts.",
+       "model": "sim1-flash",
+       "running": false
+      },
+      {
+       "kind": "prose",
+       "text": "Your last five posts generated 2.9M views, a 212% increase over the prior set. However, that surge was driven almost entirely by one outlier."
+      },
+      {
+       "kind": "stats",
+       "items": [
+        {
+         "value": "2.9M",
+         "label": "Total views"
+        },
+        {
+         "value": "+212%",
+         "label": "Vs prior 5"
+        },
+        {
+         "value": "210K",
+         "label": "Median (flat)"
+        }
+       ]
+      },
+      {
+       "kind": "prose",
+       "text": "\"Gym transformation\" carried the batch with 2.1M views (9.2x your usual). The other four posts clustered near or below your baseline, with \"Office day-in-the-life\" trailing at 38K views (0.4x)."
+      },
+      {
+       "kind": "evidence",
+       "rows": [
+        {
+         "title": "Gym transformation",
+         "byline": "May 18 · 2.1M views",
+         "multiplier": {
+          "value": "9.2x",
+          "direction": "up"
+         }
+        },
+        {
+         "title": "30 days of ugly sets",
+         "byline": "Jun 20 · 480K views",
+         "multiplier": {
+          "value": "2.4x",
+          "direction": "up"
+         }
+        },
+        {
+         "title": "Form myth, busted",
+         "byline": "Jun 9 · 210K views",
+         "multiplier": {
+          "value": "1.1x",
+          "direction": "up"
+         }
+        },
+        {
+         "title": "What I eat, training day",
+         "byline": "Jun 15 · 96K views",
+         "multiplier": {
+          "value": "0.5x",
+          "direction": "down"
+         }
+        },
+        {
+         "title": "Office day-in-the-life",
+         "byline": "Jun 2 · 38K views",
+         "multiplier": {
+          "value": "0.4x",
+          "direction": "down"
+         }
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "script",
+   "tag": "sketch",
+   "ask": "write the full script for the first hook",
+   "attempt1Valid": true,
+   "valid": true,
+   "error": "",
+   "kinds": [
+    "receipt",
+    "prose",
+    "asset",
+    "proof"
+   ],
+   "composition": {
+    "type": "composed",
+    "props": {
+     "items": [
+      {
+       "kind": "receipt",
+       "skill": "Script · wrote + pressure-tested the open · 2 steps · SIM-1 Flash",
+       "summary": "Hook tested with strong retention signal.",
+       "model": "sim1-flash",
+       "running": false
+      },
+      {
+       "kind": "prose",
+       "text": "Here is the full script for your first hook, structured to hit hard in the first three seconds and hold attention through a clear narrative turn."
+      },
+      {
+       "kind": "asset",
+       "label": "Saveable Script",
+       "title": "I trained wrong for six years",
+       "meta": "~40s duration",
+       "rows": [
+        {
+         "label": "Hook (0-3s)",
+         "text": "I trained wrong for six years — and kept every mistake on camera."
+        },
+        {
+         "label": "Setup (3-10s)",
+         "text": "Two hours a day, perfect form, textbook programs. The works."
+        },
+        {
+         "label": "Turn (10-20s)",
+         "text": "Then I noticed my worst-form months were my best-progress months."
+        },
+        {
+         "label": "Payoff (20-35s)",
+         "text": "Intensity beats choreography — effort you can't fake is the variable."
+        },
+        {
+         "label": "CTA (35-40s)",
+         "text": "Try one ugly set this week and tell me what happens."
+        }
+       ]
+      },
+      {
+       "kind": "proof",
+       "band": "Strong",
+       "fraction": "7/10",
+       "door": false
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "plan-week",
+   "tag": "sketch",
+   "ask": "ok what should I actually post this week?",
+   "attempt1Valid": true,
+   "valid": true,
+   "error": "",
+   "kinds": [
+    "receipt",
+    "prose",
+    "plan"
+   ],
+   "composition": {
+    "type": "composed",
+    "props": {
+     "items": [
+      {
+       "kind": "receipt",
+       "skill": "Planned · from your account + audience · 2 steps",
+       "summary": "3-slot weekly plan generated from your account data and audience behavior.",
+       "model": "sim1-flash",
+       "running": false
+      },
+      {
+       "kind": "prose",
+       "text": "Here is your posting schedule for the week, built around your strongest performing formats."
+      },
+      {
+       "kind": "plan",
+       "slots": [
+        {
+         "when": "Tue",
+         "what": "The \"trained wrong\" script — film it",
+         "why": "your strongest opener"
+        },
+        {
+         "when": "Thu",
+         "what": "Form-myth explainer",
+         "why": "explainers over-index 2.1x for you"
+        },
+        {
+         "when": "Sat",
+         "what": "30-day receipts compilation",
+         "why": "weekend = your loyalists"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "remix-ask",
+   "tag": "sketch",
+   "ask": "can you remix a video I found for my audience?",
+   "attempt1Valid": true,
+   "valid": true,
+   "error": "",
+   "kinds": [
+    "prose"
+   ],
+   "composition": {
+    "type": "composed",
+    "props": {
+     "items": [
+      {
+       "kind": "prose",
+       "text": "I can't remix a video without the source file or link. Share the URL or upload the clip, and tell me which parts you want to keep, cut, or change for your audience."
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "persona",
+   "tag": "sketch",
+   "ask": "ask the skeptic what would make them stay",
+   "attempt1Valid": true,
+   "valid": true,
+   "error": "",
+   "kinds": [
+    "receipt",
+    "prose",
+    "verbatim"
+   ],
+   "composition": {
+    "type": "composed",
+    "props": {
+     "items": [
+      {
+       "kind": "receipt",
+       "skill": "persona sub-chat",
+       "summary": "Consulted The Skeptic persona to identify retention triggers.",
+       "model": "sim1-flash"
+      },
+      {
+       "kind": "prose",
+       "text": "You asked what would make a skeptic stay. The answer is immediate value. Do not bury the lead or ask for patience. Give them the payoff in the first breath."
+      },
+      {
+       "kind": "verbatim",
+       "quote": "The payoff, in the first breath. Give me the number up front and I will sit through every uncut second of it.",
+       "speaker": "The Skeptic"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "competitor",
+   "tag": "future",
+   "ask": "how is @rival.fit doing this week?",
+   "attempt1Valid": true,
+   "valid": true,
+   "error": "",
+   "kinds": [
+    "receipt",
+    "prose",
+    "evidence"
+   ],
+   "composition": {
+    "type": "composed",
+    "props": {
+     "items": [
+      {
+       "kind": "receipt",
+       "skill": "Tracked @rival.fit · last 7 days",
+       "summary": "Follower growth and post performance for the last 7 days.",
+       "model": "sim1-flash",
+       "running": false
+      },
+      {
+       "kind": "prose",
+       "text": "@rival.fit added 3.1% to their follower count this week, bringing the total to 212K. The momentum is driven entirely by confession-style content, while direct product recommendations are dragging performance down."
+      },
+      {
+       "kind": "evidence",
+       "rows": [
+        {
+         "title": "I quit pre-workout for 30 days",
+         "byline": "Jul 15",
+         "multiplier": {
+          "value": "6.3x",
+          "direction": "up"
+         },
+         "meta": "1.4M views"
+        },
+        {
+         "title": "Gym anxiety is a setup problem",
+         "byline": "Jul 17",
+         "multiplier": {
+          "value": "1.7x",
+          "direction": "up"
+         },
+         "meta": "380K views"
+        },
+        {
+         "title": "My honest supplement stack",
+         "byline": "Jul 18",
+         "multiplier": {
+          "value": "0.4x",
+          "direction": "down"
+         },
+         "meta": "92K views"
+        }
+       ]
+      },
+      {
+       "kind": "prose",
+       "text": "The data confirms a clear pattern: personal narratives and vulnerability outperform standard advice or product stacks. The 'supplement stack' video underperformed at 0.4x the usual view rate, suggesting the audience is here for the person, not the products."
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "trends",
+   "tag": "future",
+   "ask": "what's trending in fitness right now?",
+   "attempt1Valid": true,
+   "valid": true,
+   "error": "",
+   "kinds": [
+    "receipt",
+    "prose",
+    "evidence"
+   ],
+   "composition": {
+    "type": "composed",
+    "props": {
+     "items": [
+      {
+       "kind": "receipt",
+       "skill": "Explore",
+       "summary": "scanned 480 videos · 3 rising patterns",
+       "model": "sim1-flash",
+       "running": false
+      },
+      {
+       "kind": "prose",
+       "text": "Two fitness formats are surging right now. First, zero-cut single-take routines are gaining momentum over the last four days. This style plays directly to your strength of showing receipts on camera without heavy editing. Second, anti-supplement confessions have been rising for two days, focusing on personal experiments like quitting pre-workout."
+      },
+      {
+       "kind": "evidence",
+       "rows": [
+        {
+         "title": "Zero-cut single-take routines",
+         "byline": "rising 4 days",
+         "multiplier": {
+          "value": "11x",
+          "direction": "up"
+         },
+         "meta": "Example: My whole morning, one take (3.1M views, posted Jul 16)"
+        },
+        {
+         "title": "Anti-supplement confessions",
+         "byline": "rising 2 days",
+         "multiplier": {
+          "value": "6.3x",
+          "direction": "up"
+         },
+         "meta": "Example: I quit pre-workout for 30 days (1.4M views, posted Jul 15)"
+        }
+       ]
+      },
+      {
+       "kind": "prose",
+       "text": "The zero-cut format is particularly relevant because it fits your existing content style. Consider testing a single-take morning routine to leverage this current upward trend."
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "period-compare",
+   "tag": "future",
+   "ask": "compare my January vs June performance",
+   "attempt1Valid": true,
+   "valid": true,
+   "error": "",
+   "kinds": [
+    "receipt",
+    "prose",
+    "compare"
+   ],
+   "composition": {
+    "type": "composed",
+    "props": {
+     "items": [
+      {
+       "kind": "receipt",
+       "skill": "Account read · 2 periods",
+       "summary": "Compared January and June performance metrics.",
+       "model": "sim1-flash",
+       "running": false
+      },
+      {
+       "kind": "prose",
+       "text": "Your output dropped from 9 posts to 7, but your total views jumped from 410K to 2.8M. The median view count more than doubled, moving from 38K to 96K. This isn't a volume game; it's a format shift."
+      },
+      {
+       "kind": "compare",
+       "audiences": [
+        {
+         "name": "January",
+         "proof": {
+          "band": "Mixed",
+          "fraction": "9 posts"
+         },
+         "lever": "Total Views: 410K",
+         "verbatim": {
+          "quote": "Form myth intro (110K)",
+          "speaker": "Best Performer"
+         }
+        },
+        {
+         "name": "June",
+         "proof": {
+          "band": "Strong",
+          "fraction": "7 posts"
+         },
+         "lever": "Total Views: 2.8M",
+         "verbatim": {
+          "quote": "Gym transformation (2.1M)",
+          "speaker": "Best Performer"
+         }
+        }
+       ]
+      },
+      {
+       "kind": "prose",
+       "text": "The driver is clear: receipts-on-camera posts are carrying the growth. Your talking-head posts remain flat across both periods. Stop optimizing the head; start optimizing the proof."
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "schedule-2w",
+   "tag": "future",
+   "ask": "schedule my next two weeks",
+   "attempt1Valid": true,
+   "valid": true,
+   "error": "",
+   "kinds": [
+    "receipt",
+    "prose",
+    "plan"
+   ],
+   "composition": {
+    "type": "composed",
+    "props": {
+     "items": [
+      {
+       "kind": "receipt",
+       "skill": "Planned · from your account + audience",
+       "summary": "Schedule generated from your account data and audience behavior.",
+       "model": "sim1-flash",
+       "running": false
+      },
+      {
+       "kind": "prose",
+       "text": "Here is your content schedule for the next two weeks, optimized for your strongest openers and peak comment velocity."
+      },
+      {
+       "kind": "plan",
+       "slots": [
+        {
+         "when": "Tue 22",
+         "what": "Trained-wrong script",
+         "why": "strongest opener"
+        },
+        {
+         "when": "Thu 24",
+         "what": "Form-myth explainer",
+         "why": "explainers over-index for you"
+        },
+        {
+         "when": "Sat 26",
+         "what": "30-day receipts compilation",
+         "why": "weekend loyalists"
+        },
+        {
+         "when": "Tue 29",
+         "what": "Zero-cut morning routine",
+         "why": "trending pattern, fits your strength"
+        },
+        {
+         "when": "Fri 1",
+         "what": "Q&A from comments",
+         "why": "comment velocity peaked Friday"
+        }
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "audit-setup",
+   "tag": "future",
+   "ask": "audit my profile setup",
+   "attempt1Valid": true,
+   "valid": true,
+   "error": "",
+   "kinds": [
+    "receipt",
+    "prose",
+    "facts",
+    "input-ask"
+   ],
+   "composition": {
+    "type": "composed",
+    "props": {
+     "items": [
+      {
+       "kind": "receipt",
+       "skill": "Profile audit · @maven.creator",
+       "summary": "Scanned bio, links, and pinned content.",
+       "model": "sim1-flash"
+      },
+      {
+       "kind": "prose",
+       "text": "Your profile foundation is solid because your bio states the niche immediately. However, you are leaking traffic by missing a link-in-bio destination, and your pinned videos are stale as of Nov 18."
+      },
+      {
+       "kind": "facts",
+       "sections": [
+        {
+         "rows": [
+          {
+           "mark": "good",
+           "claim": "Bio states the niche in the first line",
+           "basis": "checked"
+          },
+          {
+           "mark": "fix",
+           "claim": "No link-in-bio destination",
+           "basis": "checked"
+          },
+          {
+           "mark": "fix",
+           "claim": "Pinned videos are 8 months old",
+           "basis": "oldest: Nov 18"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "kind": "input-ask",
+       "slots": [
+        {
+         "type": "select",
+         "label": "Optimize pinned row for",
+         "options": [
+          "follows",
+          "product clicks"
+         ]
+        }
+       ],
+       "submitLabel": "Set Goal"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "explain-algo",
+   "tag": "restraint",
+   "ask": "explain how the algorithm decides what to push, like I'm five",
+   "attempt1Valid": true,
+   "valid": true,
+   "error": "",
+   "kinds": [
+    "prose"
+   ],
+   "composition": {
+    "type": "composed",
+    "props": {
+     "items": [
+      {
+       "kind": "prose",
+       "text": "Imagine the algorithm is a librarian who wants you to stay in the library as long as possible. When you upload a video, the librarian shows it to a tiny group of kids first. If those kids watch the whole thing and smile, the librarian thinks, \"This is good,\" and shows it to more kids. If they walk away or look bored, the librarian stops showing it. It is not random; it is just testing to see if people actually enjoy what you made."
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "discouraged",
+   "tag": "restraint",
+   "ask": "honestly I'm discouraged, nothing has worked for a month",
+   "attempt1Valid": true,
+   "valid": true,
+   "error": "",
+   "kinds": [
+    "prose",
+    "input-ask"
+   ],
+   "composition": {
+    "type": "composed",
+    "props": {
+     "items": [
+      {
+       "kind": "prose",
+       "text": "A month of silence feels like failure, but it is usually just data you haven't decoded yet. Without specific metrics to audit, we cannot fix a broken lever. We must first find the signal."
+      },
+      {
+       "kind": "input-ask",
+       "slots": [
+        {
+         "type": "link",
+         "label": "Share your best-performing video link from the last 30 days",
+         "placeholder": "Paste URL here"
+        },
+        {
+         "type": "select",
+         "label": "What was your primary goal?",
+         "options": [
+          "Views",
+          "Followers",
+          "Sales",
+          "Community"
+         ]
+        }
+       ],
+       "submitLabel": "Analyze"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "plan-100k",
+   "tag": "restraint",
+   "ask": "give me a 30-day plan to hit 100k followers",
+   "attempt1Valid": true,
+   "valid": true,
+   "error": "",
+   "kinds": [
+    "prose",
+    "input-ask"
+   ],
+   "composition": {
+    "type": "composed",
+    "props": {
+     "items": [
+      {
+       "kind": "prose",
+       "text": "I cannot give you a guaranteed 30-day plan to hit 100k followers because I have no access to your current analytics, niche performance data, or content history. Growth targets without baseline metrics are guesses, not strategies."
+      },
+      {
+       "kind": "prose",
+       "text": "To build a realistic roadmap, I need to know where you stand today. Share your current follower count, average views per post, and your primary content format. Then we can structure a plan based on actual leverage points rather than generic advice."
+      },
+      {
+       "kind": "input-ask",
+       "slots": [
+        {
+         "type": "text",
+         "label": "Current follower count",
+         "placeholder": "e.g., 1,200"
+        },
+        {
+         "type": "select",
+         "label": "Primary content format",
+         "options": [
+          "Short-form video",
+          "Long-form video",
+          "Text/Threads",
+          "Images/Carousels"
+         ]
+        },
+        {
+         "type": "text",
+         "label": "Niche or topic",
+         "placeholder": "e.g., Personal finance for students"
+        }
+       ],
+       "submitLabel": "Build my plan"
+      }
+     ]
+    }
+   }
+  }
+ ]
+}
