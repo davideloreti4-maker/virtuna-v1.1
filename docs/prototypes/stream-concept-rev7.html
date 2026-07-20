@@ -143,6 +143,18 @@
   .accuracy { font-size: var(--t-support); color: var(--muted); border-top: 1px solid var(--line); padding-top: 10px; }
   .accuracy b { color: var(--cream-2); font-weight: 600; }
 
+  /* table — comparable rows × named columns (rev 7) */
+  .dtable { display: flex; flex-direction: column; font-variant-numeric: tabular-nums; }
+  .dtable .trow { display: grid; grid-template-columns: minmax(0,1fr) 64px 74px 78px; gap: 14px; align-items: baseline; padding: 9px 0; border-top: 1px solid var(--line); font-size: var(--t-support); }
+  .dtable .trow:last-child { border-bottom: 1px solid var(--line); }
+  .dtable .trow.th { border-top: none; padding: 0 0 2px; }
+  .dtable .trow.th span { font-size: var(--t-label); text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+  .dtable .cell { color: var(--cream); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dtable .dim { color: var(--muted); font-size: var(--t-meta); }
+  .dtable .num { text-align: right; white-space: nowrap; font-size: var(--t-support); }
+  .dtable .hi { font-weight: 600; }
+  .dtable .lo { color: var(--accent); font-weight: 600; }
+
   /* asset block — THE one framed element */
   .asset { border: 1px solid var(--line-2); border-radius: 12px; background: var(--surface); overflow: hidden; }
   .asset .ahead { display: flex; align-items: baseline; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
@@ -264,9 +276,9 @@
 
 <div class="page">
   <header>
-    <div class="kicker">Thread concept sketch · direction: the stream · rev 6 · 2026-07-20</div>
+    <div class="kicker">Thread concept sketch · direction: the stream · rev 7 · 2026-07-20</div>
     <h1>The stream — one conversation, every kind of ask</h1>
-    <p class="sub">Prose leads every answer; structure appears <b>inline, only where the content earns it</b>. Rev 6 adds <b>Act 3: the full Reading page</b> (/analyze) in the stream language — score numeral without the gauge ring, the funnel's interpretation promoted to page hero, survival and driver rows instead of bar-chart chrome, the drop marked on your own keyframes, the room grouped by verdict, Fix First as ranked rows, ending in the follow-up composer. Act 2 (the two-minute wait as four snapshots) precedes it.</p>
+    <p class="sub">Prose leads every answer; structure appears <b>inline, only where the content earns it</b>. Rev 6 adds <b>Act 3: the full Reading page</b> (/analyze) in the stream language — score numeral without the gauge ring, the funnel's interpretation promoted to page hero, survival and driver rows instead of bar-chart chrome, the drop marked on your own keyframes, the room grouped by verdict, Fix First as ranked rows, ending in the follow-up composer. Act 2 (the two-minute wait as four snapshots) precedes it. <b>Rev 7 closes the vocabulary at 16:</b> it names the two structural primitives future skills need — the <b>stat line</b> and the <b>table</b> (scene 6b) — and widens the input ask to multi-slot. Per-skill data fidelity is deliberately NOT this sketch's contract; that gets nailed in the /dev/cards old-vs-new side-by-sides.</p>
   </header>
 
   <div class="frame">
@@ -465,6 +477,29 @@
         </div>
       </div>
       <div class="scene-note"><em>Was the report</em> — the read itself opens the turn (the hero the old card never had), labels quiet, color on marks, every claim carries its count.</div>
+
+      <!-- 6b · performance numbers — stat line + table (new in rev 7) -->
+      <div class="you"><span>and the raw numbers — how did the last five actually do?</span></div>
+      <div class="maven">
+        <div class="speaker">Maven</div>
+        <div class="receipt-line"><span class="tick">✓</span><span class="skill">Account read</span><span class="rest">your last 5 posts · 1 step ⌄</span></div>
+        <p>One outlier is carrying the fortnight — the gym video did the heavy lifting while your median post treads water:</p>
+        <div class="statline"><span><b>2.9M</b> views across 5 posts</span><span><b>+212%</b> vs your prior 5</span><span class="drop">median <b>210K</b> — flat</span></div>
+        <div class="dtable">
+          <div class="trow th"><span>Post</span><span>Posted</span><span class="num">Views</span><span class="num">vs usual</span></div>
+          <div class="trow"><span class="cell">Gym transformation</span><span class="dim">May 18</span><span class="cell num">2.1M</span><span class="cell num hi">9.2×</span></div>
+          <div class="trow"><span class="cell">30 days of ugly sets</span><span class="dim">Jun 20</span><span class="cell num">480K</span><span class="cell num">2.4×</span></div>
+          <div class="trow"><span class="cell">Form myth, busted</span><span class="dim">Jun 9</span><span class="cell num">210K</span><span class="cell num">1.1×</span></div>
+          <div class="trow"><span class="cell">What I eat, training day</span><span class="dim">Jun 15</span><span class="cell num">96K</span><span class="cell num">0.5×</span></div>
+          <div class="trow"><span class="cell">Office day-in-the-life</span><span class="dim">Jun 2</span><span class="cell num">38K</span><span class="num lo">0.4×</span></div>
+        </div>
+        <p class="quiet">Both winners are receipts-on-camera formats; both flops open on context. Same split your room keeps telling you about.</p>
+        <div class="actions">
+          <button class="primary">Double down on receipts →</button>
+          <button class="save">Save</button>
+        </div>
+      </div>
+      <div class="scene-note"><em>New in rev 7 — the two structural primitives.</em> The <em>stat line</em> (number · delta · label) renders at fact-row weight, inline — never a KPI tile; dashboard chrome stays retired. The <em>table</em> holds comparable rows × named columns: tabular numerals right-aligned, the basis named in the header, accent marks at most ONE cell (the 0.4×). Act 3's statline was already this shape — now it's named in the vocabulary.</div>
 
       <!-- 7 · the deliverable -->
       <div class="you"><span>write the full script for #1</span></div>
@@ -789,8 +824,8 @@
 
   <!-- the grammar behind it -->
   <div class="grammar">
-    <h2>The vocabulary — 14 primitives, closed set, now complete</h2>
-    <p class="lede">Every structured moment above is one of these — including every shape the active /dev/cards skills need (Ideas renders as ranked results like Hooks; citations are evidence rows; band and markdown are already here). Skill runners compose them deterministically; the chat agent composes them ad-hoc. Nothing outside the set can render. Hover quick-actions and the empty state are <b>behaviors of the set</b>, not extra primitives.</p>
+    <h2>The vocabulary — 16 primitives, closed at runtime, versioned over time</h2>
+    <p class="lede">Every structured moment above is one of these — including every shape the active /dev/cards skills need (Ideas renders as ranked results like Hooks; citations are evidence rows; band and markdown are already here). Skill runners compose them deterministically; the chat agent composes them ad-hoc. Nothing outside the set can render. Hover quick-actions and the empty state are <b>behaviors of the set</b>, not extra primitives. <b>The extension guarantee (rev 7):</b> adding a primitive = one schema + one renderer case + one fixture, versioned. When no shape fits, the composer falls back to prose <b>and logs the gap</b> — the vocabulary grows from evidence, not speculation. Deferred with tripwires: <b>chart</b> (first skill needing a trend picture) · <b>timeline</b> (first multi-day-status skill).</p>
     <div class="gram-grid">
       <div class="gram"><b>prose</b>the default; markdown in voice — also the ONLY empty state</div>
       <div class="gram"><b>receipt line</b>✓ skill · what ran · steps · model — the collapsed capsule, tappable</div>
@@ -803,8 +838,10 @@
       <div class="gram"><b>fact row</b>mark · claim · basis-count</div>
       <div class="gram"><b>revision</b>old → new · re-scored proof with delta</div>
       <div class="gram"><b>plan slot</b>when · what · why-for-you</div>
-      <div class="gram"><b>input ask</b>prose + one control row — how Maven requests a link / handle / upload</div>
+      <div class="gram"><b>input ask</b>prose + one control row, now 1–3 slots (text · link · select · confirm)</div>
       <div class="gram"><b>persona turn</b>speaker label swaps, prose stays — no bubbles anywhere</div>
+      <div class="gram"><b>stat line</b>number · delta · label — fact-row weight, inline; never a KPI tile</div>
+      <div class="gram"><b>table</b>comparable rows × named columns — basis in the header, accent marks one cell at most</div>
       <div class="gram framed"><b>asset block ◻</b>the take-away deliverable — the stream's ONLY frame</div>
     </div>
   </div>
