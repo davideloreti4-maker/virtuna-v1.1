@@ -115,28 +115,107 @@ export function buildDots(
   return out;
 }
 
+/** Normalized skeleton — a wide, airy cloud (not a ball, not a row). Seeded jitter applied on scale. */
+const HERO_CLOUD_SKELETON: { x: number; y: number }[] = [
+  { x: 0.1, y: 0.52 },
+  { x: 0.2, y: 0.26 },
+  { x: 0.28, y: 0.7 },
+  { x: 0.36, y: 0.38 },
+  { x: 0.44, y: 0.58 },
+  { x: 0.52, y: 0.2 },
+  { x: 0.58, y: 0.76 },
+  { x: 0.66, y: 0.44 },
+  { x: 0.74, y: 0.16 },
+  { x: 0.8, y: 0.64 },
+  { x: 0.88, y: 0.34 },
+  { x: 0.93, y: 0.54 },
+];
+
+/**
+ * Hero cloud — wide organic constellation for the home greeting. Uses a designed
+ * skeleton + light jitter so dots breathe across the band with visible threads.
+ */
+export function buildHeroCloudDots(count: number, vbW: number, vbH: number): ConDot[] {
+  const n = count > 0 ? count : DEFAULT_ROSTER_DOTS;
+  const rnd = mulberry32(3141592653 ^ (n * 1618033989));
+  const padX = vbW * 0.04;
+  const padY = vbH * 0.1;
+  const fieldW = vbW - padX * 2;
+  const fieldH = vbH - padY * 2;
+  const out: ConDot[] = [];
+
+  for (let i = 0; i < n; i++) {
+    const sk = HERO_CLOUD_SKELETON[i % HERO_CLOUD_SKELETON.length]!;
+    const depth = rnd();
+    const r0 = vbH * (0.038 + depth * 0.045);
+    const jx = (rnd() - 0.5) * fieldW * 0.04;
+    const jy = (rnd() - 0.5) * fieldH * 0.08;
+    const cx = Math.max(r0, Math.min(vbW - r0, padX + sk.x * fieldW + jx));
+    const cy = Math.max(r0, Math.min(vbH - r0, padY + sk.y * fieldH + jy));
+    const alpha = 0.36 + depth * 0.34;
+    out.push({
+      id: `hero_${i}`,
+      cx,
+      cy,
+      r: r0,
+      fill: `rgba(${CREAM}, ${alpha.toFixed(2)})`,
+      accent: false,
+      phase: rnd(),
+      srLabel: `Persona ${i + 1}`,
+    });
+  }
+  return out;
+}
+
 /**
  * Field layout — a balanced, intentional constellation for the ambient empty-state
- * hero. Dots are laid on a jittered, row-centred grid (even coverage, no clumping,
- * still organic) rather than pure-random scatter (which reads as noise). Per-dot
- * depth drives radius + opacity for air + parallax. Threads (see threadEdges) connect
- * the field into a SINGLE figure. Cream only — no accent (dosage LOCKED). Deterministic.
+ * hero. Wide viewBoxes use a golden-angle elliptical swarm (one dense cluster);
+ * squarer viewBoxes keep the jittered row grid. Per-dot depth drives radius +
+ * opacity for air + parallax. Cream only — no accent (dosage LOCKED). Deterministic.
  */
 export function buildFieldDots(count: number, vbW: number, vbH: number): ConDot[] {
   const n = count > 0 ? count : DEFAULT_ROSTER_DOTS;
   const rnd = mulberry32(2166136261 ^ (n * 16777619));
 
-  const padX = vbW * 0.08;
-  const padY = vbH * 0.1;
+  const padX = vbW * 0.06;
+  const padY = vbH * 0.08;
+  const aspect = vbW / vbH;
+
+  if (aspect > 2) {
+    // Tight centered disk — one obvious swarm on wide hero bands (not a left/right split).
+    const cx0 = vbW / 2;
+    const cy0 = vbH / 2;
+    const spread = Math.min(vbW - padX * 2, vbH - padY * 2) * 0.36;
+    const golden = Math.PI * (3 - Math.sqrt(5));
+    const out: ConDot[] = [];
+
+    for (let i = 0; i < n; i++) {
+      const angle = (i / n) * Math.PI * 2 + i * golden * 0.7 + (rnd() - 0.5) * 0.9;
+      const radial = spread * Math.sqrt(0.18 + rnd() * 0.82);
+      const depth = rnd();
+      const r0 = vbH * (0.045 + depth * 0.06);
+      const rawX = cx0 + Math.cos(angle) * radial + (rnd() - 0.5) * spread * 0.12;
+      const rawY = cy0 + Math.sin(angle) * radial * 0.88 + (rnd() - 0.5) * spread * 0.14;
+      const cx = Math.max(r0, Math.min(vbW - r0, rawX));
+      const cy = Math.max(r0, Math.min(vbH - r0, rawY));
+      const alpha = 0.34 + depth * 0.36;
+      out.push({
+        id: `field_${i}`,
+        cx,
+        cy,
+        r: r0,
+        fill: `rgba(${CREAM}, ${alpha.toFixed(2)})`,
+        accent: false,
+        phase: rnd(),
+        srLabel: `Persona ${i + 1}`,
+      });
+    }
+    return out;
+  }
+
   const fieldW = vbW - padX * 2;
   const fieldH = vbH - padY * 2;
-
-  // Wide viewBoxes cap columns so dots cluster in ~4×3 (swarm) instead of a flat 7×2 band.
-  const aspect = vbW / vbH;
-  const cols =
-    aspect > 2
-      ? Math.max(1, Math.ceil(Math.sqrt(n * 0.75)))
-      : Math.max(1, Math.round(Math.sqrt(n * aspect)));
+  const cols = Math.max(1, Math.round(Math.sqrt(n * aspect)));
   const rows = Math.max(1, Math.ceil(n / cols));
 
   // Even split across rows so the last row is never a lonely left-aligned stub.
@@ -230,7 +309,7 @@ export interface ConstellationProps {
 }
 
 /** Full cascade loop duration (seconds) — one lit node at a time. */
-export const CASCADE_CYCLE_SEC = 6;
+export const CASCADE_CYCLE_SEC = 18;
 
 /**
  * Minimum spanning tree over the dots (Prim's) — connects the whole field into ONE
@@ -239,10 +318,10 @@ export const CASCADE_CYCLE_SEC = 6;
  */
 function threadEdges(dots: ConDot[]) {
   const n = dots.length;
-  if (n < 2) return [] as { key: string; x1: number; y1: number; x2: number; y2: number }[];
+  if (n < 2) return [] as { key: string; x1: number; y1: number; x2: number; y2: number; a: number; b: number }[];
   const inTree = new Array(n).fill(false);
   inTree[0] = true;
-  const edges: { key: string; x1: number; y1: number; x2: number; y2: number }[] = [];
+  const edges: { key: string; x1: number; y1: number; x2: number; y2: number; a: number; b: number }[] = [];
   for (let e = 0; e < n - 1; e++) {
     let bi = -1;
     let bj = -1;
@@ -263,26 +342,63 @@ function threadEdges(dots: ConDot[]) {
     }
     if (bj < 0) break;
     inTree[bj] = true;
+    const a = Math.min(bi, bj);
+    const b = Math.max(bi, bj);
     edges.push({
-      key: `${bi}-${bj}`,
-      x1: dots[bi]!.cx,
-      y1: dots[bi]!.cy,
-      x2: dots[bj]!.cx,
-      y2: dots[bj]!.cy,
+      key: `${a}-${b}`,
+      x1: dots[a]!.cx,
+      y1: dots[a]!.cy,
+      x2: dots[b]!.cx,
+      y2: dots[b]!.cy,
+      a,
+      b,
     });
   }
   return edges;
 }
 
 /**
- * k-nearest-neighbour mesh — overlapping triangles/cycles so the field reads as an
- * interconnected swarm rather than a single MST chain.
+ * k-nearest-neighbour mesh plus proximity links — overlapping triangles/cycles so
+ * the field reads as an interconnected swarm rather than a single chain.
  */
-export function meshEdges(dots: ConDot[], k = 2) {
+export function meshEdges(dots: ConDot[], k = 4) {
   const n = dots.length;
-  if (n < 2) return [] as { key: string; x1: number; y1: number; x2: number; y2: number }[];
+  if (n < 2) return [] as { key: string; x1: number; y1: number; x2: number; y2: number; a: number; b: number }[];
   const seen = new Set<string>();
-  const edges: { key: string; x1: number; y1: number; x2: number; y2: number }[] = [];
+  const edges: { key: string; x1: number; y1: number; x2: number; y2: number; a: number; b: number }[] = [];
+
+  const pushEdge = (i: number, j: number) => {
+    const key = i < j ? `${i}-${j}` : `${j}-${i}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    const a = Math.min(i, j);
+    const b = Math.max(i, j);
+    edges.push({
+      key,
+      x1: dots[a]!.cx,
+      y1: dots[a]!.cy,
+      x2: dots[b]!.cx,
+      y2: dots[b]!.cy,
+      a,
+      b,
+    });
+  };
+
+  const nearest: number[] = [];
+  for (let i = 0; i < n; i++) {
+    let best = Infinity;
+    for (let j = 0; j < n; j++) {
+      if (i === j) continue;
+      const dx = dots[i]!.cx - dots[j]!.cx;
+      const dy = dots[i]!.cy - dots[j]!.cy;
+      const d = dx * dx + dy * dy;
+      if (d < best) best = d;
+    }
+    if (best < Infinity) nearest.push(Math.sqrt(best));
+  }
+  nearest.sort((x, y) => x - y);
+  const linkDist = nearest[Math.floor(nearest.length / 2)]! * 2.35;
+  const linkDistSq = linkDist * linkDist;
 
   for (let i = 0; i < n; i++) {
     const dists: { j: number; d: number }[] = [];
@@ -294,19 +410,18 @@ export function meshEdges(dots: ConDot[], k = 2) {
     }
     dists.sort((a, b) => a.d - b.d);
     for (let ki = 0; ki < Math.min(k, dists.length); ki++) {
-      const j = dists[ki]!.j;
-      const key = i < j ? `${i}-${j}` : `${j}-${i}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      edges.push({
-        key,
-        x1: dots[i]!.cx,
-        y1: dots[i]!.cy,
-        x2: dots[j]!.cx,
-        y2: dots[j]!.cy,
-      });
+      pushEdge(i, dists[ki]!.j);
     }
   }
+
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      const dx = dots[i]!.cx - dots[j]!.cx;
+      const dy = dots[i]!.cy - dots[j]!.cy;
+      if (dx * dx + dy * dy <= linkDistSq) pushEdge(i, j);
+    }
+  }
+
   return edges;
 }
 
@@ -315,10 +430,35 @@ export function cascadeKeyframes(index: number, count: number) {
   const n = Math.max(1, count);
   const slot = 1 / n;
   const litStart = index * slot;
-  const litPeak = litStart + slot * 0.12;
-  const litEnd = litStart + slot * 0.88;
+  const litPeak = litStart + slot * 0.08;
+  const litEnd = litStart + slot * 0.52;
   const keyTimes = [0, litStart, litPeak, litEnd, 1].map((t) => t.toFixed(4)).join(';');
   return { keyTimes, values: '0;0;1;0;0' };
+}
+
+/** Edge lights when either endpoint is active in the cascade. */
+export function edgeCascadeKeyframes(a: number, b: number, count: number) {
+  const ka = cascadeKeyframes(a, count);
+  const kb = cascadeKeyframes(b, count);
+  const ta = ka.keyTimes.split(';').map(Number);
+  const tb = kb.keyTimes.split(';').map(Number);
+  const va = ka.values.split(';').map(Number);
+  const vb = kb.values.split(';').map(Number);
+  const times = Array.from(new Set([...ta, ...tb])).sort((x, y) => x - y);
+  const values = times
+    .map((t) => {
+      const ia = ta.findIndex((x, i) => x <= t && (ta[i + 1] ?? 1) >= t);
+      const ib = tb.findIndex((x, i) => x <= t && (tb[i + 1] ?? 1) >= t);
+      const oa = va[Math.max(0, ia)] ?? 0;
+      const ob = vb[Math.max(0, ib)] ?? 0;
+      const lit = Math.max(oa, ob);
+      return (0.22 + lit * 0.62).toFixed(3);
+    })
+    .join(';');
+  return {
+    keyTimes: times.map((t) => t.toFixed(4)).join(';'),
+    values,
+  };
 }
 
 function resolveEdges(dots: ConDot[], connect: boolean, connectMode: 'tree' | 'mesh') {
@@ -350,15 +490,18 @@ export function Constellation({
       role="img"
       aria-label={ariaLabel ?? `Your audience — ${dots.length} people`}
     >
-      {edges.map((e) => (
+      {edges.map((e) => {
+        const edgeCascade = isCascade ? edgeCascadeKeyframes(e.a, e.b, dots.length) : null;
+        return (
         <line
           key={e.key}
           x1={e.x1.toFixed(2)}
           y1={e.y1.toFixed(2)}
           x2={e.x2.toFixed(2)}
           y2={e.y2.toFixed(2)}
-          stroke={`rgba(${CREAM}, 0.14)`}
-          strokeWidth={0.7}
+          stroke={`rgba(${CREAM}, ${isCascade ? 0.22 : 0.14})`}
+          strokeWidth={isCascade ? 0.85 : 0.7}
+          strokeLinecap="round"
         >
           {!reducedMotion && !isCascade && (
             <animate
@@ -368,8 +511,18 @@ export function Constellation({
               repeatCount="indefinite"
             />
           )}
+          {isCascade && !reducedMotion && edgeCascade && (
+            <animate
+              attributeName="opacity"
+              values={edgeCascade.values}
+              keyTimes={edgeCascade.keyTimes}
+              dur={`${CASCADE_CYCLE_SEC}s`}
+              repeatCount="indefinite"
+            />
+          )}
         </line>
-      ))}
+        );
+      })}
       {dots.map((d, i) => {
         const cascade = isCascade ? cascadeKeyframes(i, dots.length) : null;
         return (
