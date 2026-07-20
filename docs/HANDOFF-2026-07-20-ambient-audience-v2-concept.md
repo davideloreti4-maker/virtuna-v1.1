@@ -346,12 +346,22 @@ surface, measured audits at build time.
 
 ### Sketch order & state
 ① overview+watching ② Brain ③ Audience → ④ start screen → ⑤ simulate sheet.
-**Round 1 of ①–③ delivered: `.scratch/panel-v6-round1.html`** (animated watching row with
-sealed verdict, cortex replay w/ scrubber, full-bleed lit terrain, tri-state
-stopped/skimmed/scrolled-past, cast with stance dots). Self-review already applied (terrain
-inset→full-bleed, kicker trims). Known open nit: the coral peak marker on the brain scrubber —
-coral is lawfully loss-only; here the peak IS the loss moment (emotion spikes while attention
-leaves), owner to confirm or it goes cream.
+**Rounds 1–4 of ①–③ iterated same session — CURRENT BEST: `.scratch/panel-v6-round4.html`**
+(r1 `panel-v6-round1.html` → owner red-marks: invented chrome, prose, disclaimers-as-banners →
+r2 `panel-v6-round2.html` app-grammar rebuild → owner blue-marks: header/pager off, terrain
+split, voices thin, more depth wanted → r3 `panel-v6-round3.html` batch-strip header, one
+connected society (commuter nodes), curve-as-scrubber, coded reasons ×counts → r4 competitor
+re-audit deep-mine).
+Round-4 grammar (owner-validated direction, not yet signed off): Sapient DE-BOX (hairline
+dividers, no bordered tiles) · section = mono kicker + human question + owning number ("Where
+attention holds · hold 38") · figures self-label with corner chips · tappable moment chips
+(0:04 28) · staged watching (reading→brains→votes→verdict, sealed) · "＋ Test a new variant"
+ghost row (AS loop) · "How to read these numbers ›" trust footer · curve owns attention (no
+duplicate fact in signals) · ask-chips deleted from panels — they belong to the CHAT composer
+(Sapient's own placement).
+Key feedback laws learned: match the app's existing grammar, never invent chrome · data not
+prose · disclaimers are inline tags, said once · one person never "speaks for" N — a CODED
+REASON does, the persona is its exemplar voice.
 
 ## Still open / build-time
 - Scene-mismatch treatment (design thought owed — resolved open #8).
