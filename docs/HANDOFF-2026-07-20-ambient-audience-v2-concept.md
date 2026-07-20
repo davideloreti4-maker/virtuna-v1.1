@@ -180,3 +180,115 @@ Code that exists today (untouched, build-time context): `src/components/audience
 2. View `rail-v4-cascade.html` + `thread-loop-v5.html` (serve `.scratch` on :8777).
 3. **DISCUSSION FIRST** — the owner has items to address. Do not build, do not open product
    components until the discussion concludes with explicit direction.
+
+---
+
+# SESSION 2 (2026-07-20, same day) — ARCHITECTURE LOCKED
+
+The owner-led discussion happened. The items below are **decided** — treat them as laws on par
+with the Session-1 design laws. Reference material captured this session:
+`.planning/references/artificial-societies/` (as-01…as-07: audience selector, actions menu,
+survey form, TikTok sim results + variants + insights, survey results) and
+`.planning/references/sapient/sapient-11…14` (result+live cortex, nine signals, raw network
+activation, KPI heatmap + attention curve).
+
+## Locked decisions
+
+### L1 · Continuous threads, ONE audience per thread
+- Thread = lab notebook bound to one room. Many experiments per notebook.
+- Binding chosen at thread start (room chip default = calibrated audience), **hard-locked** for
+  the thread's life. New audience = new thread. Confirmed implicitly by the first run's lens
+  picker (which displays the bound audience) — no extra confirmation ceremony.
+- Explicitly REJECTED: Artificial Societies' one-test-per-thread. Both competitors are
+  single-shot instruments with no agent; Virtuna's moat is the continuous thread + chat compiler.
+  (Note: AS is shutting down 2026-02-15 per their banner.)
+
+### L2 · Reactions: two tiers, by cost truth
+Today's auto-reaction on skills = a separate cheap Qwen call after generation (owner-confirmed,
+NOT a generation byproduct). Decision:
+- **Skills KEEP the automatic reaction call** — it is the Look/wow layer; a user starting a
+  thread via a skill gets the room reacting with zero extra say-so. Qualitative quips, ambient.
+- **Full verdicts (Screen) are on-demand everywhere** — the number/receipt/reading only exists
+  when a screening deliberately runs. On skill cards: one-tap (skill preset the lens). On custom
+  chat objects / pasted drafts / general requests: `Screen ▾` affordance (this closes the gap
+  where custom requests had no path to the audience).
+- Law survives: no verdict without a run, no run without a say-so. Skill invocation = the say-so
+  for its bundled reaction only, not for a verdict.
+
+### L3 · Two-page instrument: Brain | Population
+- The **rail/receipt keeps the v4 cascade** (brain → population → voices) as the at-a-glance
+  summary. Unchanged.
+- Drilling in opens TWO pages (replaces the old 3-tab AmbientRoom):
+  - **Brain** — Sapient-depth: cortex replay, signal breakdown, per-second activation,
+    "why this second", ask-why chat. (= Sapient's entire product, see sapient-11…14.)
+  - **Population** — AS-depth: terrain map, segments, attention splits, the cast, voices,
+    interviews. Personas fold in here — they are the population at max zoom.
+- Rail routing: brain figure → Brain page; outcome number / terrain / voices → Population page.
+- Strategic frame: each page is a full answer to one competitor, one roof, one agent.
+
+### L4 · Three-shelf configuration rule
+**Configuration lives at the lifetime where it changes. Nothing is configurable in two places.**
+
+| Shelf | Lifetime | Contents | Surface |
+|---|---|---|---|
+| Audience | slow, reusable | WHO: niche, description, segments, taste clusters, cast roster, saved slices, **provenance badge** ("calibrated from TikTok · 3d") | Audience page — ZERO run knobs |
+| Thread | per conversation | room binding · **platform/scene** (TikTok / IG / none) · **fidelity** (Flash/Max) | Composer chips — sticky defaults, every run inherits |
+| Run | per screening | question · segment · stimulus (+ tap-to-override inherited chips) | Lens picker / skill preset |
+
+- **Audience-level `intent/goal` DISSOLVES into the lens question axis** (stop/want/believe/
+  share/buy IS the intent, chosen per run). The audience-level field dies once lenses exist.
+- **Platform splits into two concepts**: *provenance* (fact — what the audience was calibrated
+  from; badge on audience page) vs *scene* (choice — how they encounter this stimulus; composer
+  chip). Scene ≠ provenance ⇒ the rail's one mono disclaimer line notes the projection.
+- Skills may auto-set the scene chip (TikTok Script action → platform=TikTok).
+
+### L5 · Fidelity tiers: Flash n=1,000 / Max n=10,000
+- Composer chip, thread default, per-run override in picker footer. Honest lever: bigger n =
+  tighter CI, finer segment resolution, rarer voices — priced accordingly.
+- **Receipts must carry the full config sentence incl. n** (`38.2% would stop · n=1,000 · Flash`).
+- Terrain layout NEVER changes with n — same clusters, more agents per node (map thickens on
+  Max; that's the felt upsell).
+- Percentile-vs-history across mixed n needs a rule (open — see below).
+
+### L6 · Start screen = the guided setup surface
+- Principle: **configuration is loud exactly once — at the moment its container is born.**
+  Thread defaults are loud on the start screen; runs are loud in the picker; after birth,
+  config is quiet chips + the receipt sentence.
+- Start screen composition: time-of-day hero · thread-default chips row
+  (`in [room] · as [platform] · [Flash 1,000]`, pre-filled, tappable) · composer ·
+  **ACTIONS grid** (the AS "what would you like to simulate?" moment = our skill menu,
+  categorized, grows as verticals are added; each action carries a preset lens and may set chips).
+- In-thread: same chips collapsed into the composer row; changing them changes defaults for the
+  NEXT run; room chip is not changeable (L1).
+- Legibility test the layout must pass: from any receipt a user can reconstruct every choice
+  (room · scene · fidelity · question · segment) and each is changeable in exactly one place.
+
+## What the competitor screenshots were mined for (steal list)
+- AS Personal-vs-Target societies split → mirror as "Your audience" (calibrated) vs custom
+  societies in the room picker taxonomy (as-01).
+- AS actions menu → start-screen ACTIONS grid, at the skill layer, never the rail (as-02).
+- AS variants panel (Original 64 → V1 77…, "Generate New Variants") → the score→regenerate→
+  rescore loop; presentation reference for compare-receipts later (as-05/06).
+- AS attention Full/Partial/Ignore tri-state → honest population-level split (as-04/05).
+- Sapient nine-signals + per-second surfaces → Brain page depth reference (sapient-11…14).
+
+## Still open (decide before/at build)
+1. **Naming** — screen/screening/lens vs "simulate"; also tier names (Flash/Max vs
+   room-flavored).
+2. **`custom…` free-text question in v1** — most powerful, hardest to do honestly.
+3. **Cast** — stable named 8–12 vs rotating witnesses.
+4. **Mobile fold order** — outcome number below cortex (cascade-pure) vs outcome-first.
+5. **Rest-state v1 scope** — composition + cast only, vs hold for standing-findings/track-record.
+6. **Number on skill cards** — L2 keeps skill reactions qualitative; if persona votes exist
+   anyway, is the % shown or reserved for deliberate screenings? (Lean: show if it's mere
+   arithmetic on existing votes; today's Qwen quips carry no votes, so likely moot for v1.)
+7. **Percentile rule across fidelities** (P82 over mixed n=1k/10k histories).
+8. **Scene-mismatch treatment** — disclaimer line only, or soft block.
+9. **`audience-lens/` dedup reckoning** — build-time plan for the 3-tab AmbientRoom,
+   `audience-presence.tsx` (998 lines), `AudienceLensContent`, `audience-orbit`,
+   `audience-breakout`, `persona-cloud`.
+
+## Sequencing note
+Next: resolve opens 1–5 (product calls, owner), then plan the build. Verify at build time:
+what the skill-reaction Qwen call costs at scale (L2 assumes it stays cheap enough to be
+unmetered) and what `read-to-card-reaction.ts` + skill pipelines actually emit.
