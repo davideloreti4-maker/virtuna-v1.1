@@ -130,11 +130,16 @@ export async function rehostCovers(
  * problem as covers: the daily refresh cron re-stamps a signed TikTok avatar URL that 403s within
  * days, dropping the card to initials. Keyed by handle so a re-scrape overwrites the same object.
  * Returns a permanent public URL, or null on failure (caller keeps the ephemeral URL / initials).
+ *
+ * `namespace` separates the two kinds of account that can share a handle: a competitor you
+ * track and an account you own are different rows with different lifecycles, and must not
+ * overwrite each other's object. Defaults to `competitor` so existing callers are unchanged.
  */
 export async function rehostAvatar(
   service: SupabaseClient,
   sourceUrl: string | null | undefined,
   handle: string,
+  namespace: "competitor" | "connected" = "competitor",
 ): Promise<string | null> {
-  return rehostImage(service, sourceUrl, `competitor/${handle}`, AVATARS_BUCKET);
+  return rehostImage(service, sourceUrl, `${namespace}/${handle}`, AVATARS_BUCKET);
 }

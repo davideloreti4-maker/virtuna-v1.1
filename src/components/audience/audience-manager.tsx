@@ -1,26 +1,33 @@
 "use client";
 
 /**
- * AudienceManager — fetches + renders the audience list as rich persona cards.
- * Flat-warm semantic tokens only. General = baseline card; presets + user = cards with menu.
+ * AudienceManager — fetches + renders the audience list.
+ *
+ * CONCEPT-COMPARE REMOVED 2026-07-20 (owner-decided). The page carried a selection
+ * mode that took a CONCEPT and returned a Read. That is a content question — "would
+ * this land better with room A or room B?" — asked while writing, and answered where
+ * Reads live. It sat here only because this is where the audience objects are listed.
+ * Three things said so out loud:
+ *  - the result was already persisted to the user's open thread
+ *    (`api/tools/read/route.ts` → `createOpenThreadLazy` + `insertMessage`), while this
+ *    page rendered an ephemeral copy that vanished on navigation — a stray write the
+ *    user was never told about;
+ *  - it was the ONLY caller of the explicit-pair engine path, so the path existed to
+ *    serve this button rather than the button exposing a needed capability;
+ *  - with two or three audiences (one typically empty) "select two" had exactly one
+ *    valid answer — selection chrome heavier than the choice it collected.
+ * ⚠️ `audienceIds` (AUD-EDIT-02) is now CALLERLESS. It stays tested and documented;
+ * a thread-side affordance is the intended home. See the note in `read/route.ts`.
  */
 
 import { useState, useEffect, useCallback } from "react";
-import { reportCredit402 } from "@/lib/billing/credit-wall";
 import { useRouter } from "next/navigation";
 import type { Audience } from "@/lib/audience/audience-types";
-import type { MultiAudienceReadBlock } from "@/lib/tools/blocks";
-import { MultiAudienceReadBlockRenderer } from "@/components/thread/multi-audience-read-block";
 import { AudienceIndex } from "./audience-index";
 import { ConstellationMark } from "@/components/brand/constellation-mark";
-import { READING_CARD } from "@/components/reading/reading-section";
 import { Button } from "@/components/ui/button";
 import { SurfaceEmptyState } from "@/components/ui/surface-empty-state";
-import { Input } from "@/components/ui/input";
-import { Spinner } from "@/components/ui/spinner";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { Scales } from "@phosphor-icons/react";
 import { filterHorizontalAudiences } from "@/lib/flags/horizontal";
 
 /** Slim, client-serializable view of a connected account — the roster's ACCOUNTS
@@ -31,6 +38,8 @@ export interface AccountOption {
   platform: "tiktok" | "instagram" | "youtube";
   is_primary: boolean;
   last_synced_at: string | null;
+  /** Formatted followers from the latest snapshot ("86.2M"); null when we hold none. */
+  followers?: string | null;
 }
 
 interface AudienceManagerProps {
@@ -68,66 +77,6 @@ export function AudienceManager({ className, accounts = [] }: AudienceManagerPro
    *  GET /api/audiences has always returned it; the old roster never rendered it, so the
    *  page could not answer "which audience am I being tested against". Now it's the radio. */
   const [defaultAudienceId, setDefaultAudienceId] = useState<string | null>(null);
-
-  const [selectionMode, setSelectionMode] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [compareConcept, setCompareConcept] = useState("");
-  const [comparing, setComparing] = useState(false);
-  const [compareBlock, setCompareBlock] = useState<MultiAudienceReadBlock | null>(null);
-  const [compareNote, setCompareNote] = useState<string | null>(null);
-
-  function exitSelectionMode() {
-    setSelectionMode(false);
-    setSelectedIds([]);
-    setCompareConcept("");
-    setCompareBlock(null);
-    setCompareNote(null);
-  }
-
-  function toggleSelection(id: string) {
-    setCompareBlock(null);
-    setCompareNote(null);
-    setSelectedIds((prev) => {
-      if (prev.includes(id)) return prev.filter((x) => x !== id);
-      if (prev.length < 2) return [...prev, id];
-      return [prev[1]!, id];
-    });
-  }
-
-  async function handleCompare() {
-    if (selectedIds.length !== 2) return;
-    const concept = compareConcept.trim();
-    if (concept.length === 0) {
-      setCompareNote("Enter a concept to compare these two audiences.");
-      return;
-    }
-    setComparing(true);
-    setCompareNote(null);
-    setCompareBlock(null);
-    try {
-      const res = await fetch("/api/tools/read", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ concept, audienceIds: selectedIds }),
-      });
-      if (!res.ok) {
-        const err: unknown = await res.json().catch(() => null);
-        if (reportCredit402(res.status, err)) return; // wall dialog is up
-        setCompareNote("This audience isn't calibrated enough to compare yet.");
-        return;
-      }
-      const data = (await res.json()) as { block?: MultiAudienceReadBlock };
-      if (data.block) {
-        setCompareBlock(data.block);
-      } else {
-        setCompareNote("This audience isn't calibrated enough to compare yet.");
-      }
-    } catch {
-      setCompareNote("Couldn't run the compare. Try again.");
-    } finally {
-      setComparing(false);
-    }
-  }
 
   // The API route (not the repo helper) — it returns `lastAudienceId` alongside the list,
   // which is the fact the index's default radio renders.
@@ -193,20 +142,6 @@ export function AudienceManager({ className, accounts = [] }: AudienceManagerPro
   // the Baseline creator audience carries `is_general: true` and must stay visible).
   const visibleAudiences = filterHorizontalAudiences(audiences);
 
-  const renderIndex = () => (
-    <AudienceIndex
-      audiences={visibleAudiences}
-      accounts={accounts}
-      defaultAudienceId={defaultAudienceId}
-      onSetDefault={(a) => void handleSetDefault(a)}
-      onOpen={(a) => router.push(`/audience/${a.id}`)}
-      onOpenAccount={(a) => router.push(`/audience/${a.id}`)}
-      selectionMode={selectionMode}
-      selectedIds={selectedIds}
-      onToggleSelect={toggleSelection}
-    />
-  );
-
   return (
     <div className={cn("relative min-h-full text-foreground", className)}>
       <div className="mx-auto w-full max-w-[880px] px-4 pb-24 pt-6 lg:px-6">
@@ -215,33 +150,18 @@ export function AudienceManager({ className, accounts = [] }: AudienceManagerPro
             <h1 className="text-[19px] font-semibold tracking-[-0.01em] text-foreground lg:text-[22px]">
               Audiences
             </h1>
-            {selectionMode && (
-              <p className="mt-1 text-sm text-foreground-secondary">
-                Pick two audiences to compare.
-              </p>
-            )}
           </div>
-          {/* The two actions the index owns. The retired rail cards said the same thing in
+          {/* The ONE action the manager owns. The retired rail cards said the same thing in
               marketing voice ("the moat that makes a prediction yours") — deleted. */}
-          {!selectionMode && !loading && !error && audiences.length > 0 && (
-            <div className="flex shrink-0 items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSelectionMode(true)}
-                className="pointer-coarse:h-11 text-foreground-secondary hover:text-foreground"
-              >
-                Compare
-              </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => router.push("/audience/new")}
-                className="pointer-coarse:h-11"
-              >
-                New audience
-              </Button>
-            </div>
+          {!loading && !error && audiences.length > 0 && (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => router.push("/audience/new")}
+              className="pointer-coarse:h-11 shrink-0"
+            >
+              New audience
+            </Button>
           )}
         </header>
 
@@ -268,72 +188,16 @@ export function AudienceManager({ className, accounts = [] }: AudienceManagerPro
           </SurfaceEmptyState>
         )}
 
-        {/* Default — the index, full width. */}
-        {!loading && !error && audiences.length > 0 && !selectionMode && (
-          <div className="rv-in">{renderIndex()}</div>
-        )}
-
-        {/* Compare mode — single column, full width, roster becomes selectable. */}
-        {!loading && !error && audiences.length > 0 && selectionMode && (
-          <div className="flex flex-col gap-6">
-            <div className={cn(READING_CARD, "flex flex-col gap-3 p-4")}>
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <Scales weight="bold" className="h-4 w-4 text-foreground-secondary" />
-                  <p className="text-sm font-medium text-foreground">Compare two audiences</p>
-                </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  <span className="tabular-nums text-xs text-foreground-secondary" aria-live="polite">
-                    {selectedIds.length}/2 selected
-                  </span>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={exitSelectionMode}
-                    className="pointer-coarse:h-11"
-                  >
-                    Cancel
-                  </Button>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span>
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          disabled={selectedIds.length !== 2 || comparing}
-                          onClick={() => void handleCompare()}
-                          className="pointer-coarse:h-11"
-                        >
-                          {comparing ? <Spinner size="sm" /> : "Compare these two →"}
-                        </Button>
-                      </span>
-                    </TooltipTrigger>
-                    {selectedIds.length !== 2 && (
-                      <TooltipContent side="bottom" className="text-xs">
-                        Select two audiences
-                      </TooltipContent>
-                    )}
-                  </Tooltip>
-                </div>
-              </div>
-              <Input
-                value={compareConcept}
-                onChange={(e) => setCompareConcept(e.target.value)}
-                placeholder="A concept to compare — e.g. “a 30-second morning routine”"
-                maxLength={2000}
-                aria-label="Concept to compare"
-                className="pointer-coarse:h-11"
-              />
-              {compareNote && <p className="text-xs text-warning">{compareNote}</p>}
-            </div>
-
-            {compareBlock && (
-              <div className={cn(READING_CARD, "p-4")}>
-                <MultiAudienceReadBlockRenderer block={compareBlock} />
-              </div>
-            )}
-
-            {renderIndex()}
+        {!loading && !error && audiences.length > 0 && (
+          <div className="rv-in">
+            <AudienceIndex
+              audiences={visibleAudiences}
+              accounts={accounts}
+              defaultAudienceId={defaultAudienceId}
+              onSetDefault={(a) => void handleSetDefault(a)}
+              onOpen={(a) => router.push(`/audience/${a.id}`)}
+              onOpenAccount={(a) => router.push(`/audience/${a.id}`)}
+            />
           </div>
         )}
       </div>

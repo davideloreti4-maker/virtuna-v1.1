@@ -49,6 +49,8 @@ function toView(a: ConnectedAccount): AccountView {
     platform: a.platform,
     is_primary: a.is_primary,
     last_synced_at: a.last_synced_at,
+    avatar_url: a.avatar_url,
+    display_name: a.display_name,
   };
 }
 

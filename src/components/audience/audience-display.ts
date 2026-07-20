@@ -11,6 +11,11 @@ import type {
   Temperature,
 } from "@/lib/audience/audience-types";
 import { archetypeDisplayName } from "@/lib/audience/archetype-names";
+import {
+  ARCHETYPE_PERSONA_NAME,
+  GENERAL_ROSTER,
+  resolvePersonaName,
+} from "@/lib/audience/persona-names";
 
 export type CalibrationStatus =
   | "baseline"
@@ -54,6 +59,45 @@ export function getPersonaCount(audience: Audience): number {
   if (audience.is_general) return GENERAL_PERSONA_COUNT;
   const roster = getPersonaRoster(audience);
   return roster.length;
+}
+
+/**
+ * Last-resort display name for a persona carrying neither a creator `label` nor a named
+ * archetype ("tough_crowd" → "Tough Crowd"). Lived in persona-edit-form until the manager
+ * needed it too; a client dialog is the wrong home for a string every surface derives.
+ */
+export function archetypeDerivedName(archetype: string): string {
+  return archetype.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/**
+ * Persona display names + shares, highest share first.
+ *
+ * Mirrors the detail page's `buildRoster` priority ON PURPOSE: the editable `personas`
+ * column wins when present (edits must show), the frozen signature is the legacy fallback.
+ * `getPersonaRoster` resolves the other way (signature-first) — using it here would make
+ * the list say "Saver" where the detail page says "Illusion Archivists", and the manager
+ * must call people what the room calls them.
+ */
+export function getDisplayRoster(audience: Audience): { name: string; share: number }[] {
+  if (audience.is_general) {
+    return GENERAL_ROSTER.map((archetype) => ({
+      name: ARCHETYPE_PERSONA_NAME[archetype],
+      share: 1 / GENERAL_PERSONA_COUNT,
+    }));
+  }
+  const source: PersonaRosterEntry[] =
+    audience.personas.length > 0
+      ? audience.personas
+      : audience.signature?.audience.personas ?? [];
+  return [...source]
+    .sort((a, b) => b.share - a.share)
+    .map((p) => ({
+      name:
+        resolvePersonaName(p.archetype, "label" in p ? p.label : null) ??
+        archetypeDerivedName(p.archetype),
+      share: p.share,
+    }));
 }
 
 export function getTemperatureMix(
@@ -306,37 +350,11 @@ export function accountForAudience<A extends AccountLike>(
   return accounts.find((acc) => audienceForAccount(acc, audiences)?.id === audience.id);
 }
 
-/**
- * The composition mark: one segment per persona, width = share, tone = temperature.
- * Replaces the dot-scatter thumb, which encoded nothing on the rows that had no
- * personas (they all rendered the same static placeholder).
- *
- * General carries no persona rows but is a real 10-persona baseline, so it renders an
- * even 10-segment bar. An audience with nothing behind it returns [] — the caller
- * shows an explicitly empty bar rather than decorating a void.
- */
-export interface CompositionSegment {
-  share: number;
-  temperature: Temperature;
-}
-
-const GENERAL_SEGMENT_TEMPS: Temperature[] = [
-  "cold", "warm", "warm", "cold", "warm", "hot", "cold", "warm", "hot", "warm",
-];
-
-export function getCompositionSegments(audience: Audience): CompositionSegment[] {
-  const roster = getPersonaRoster(audience);
-  if (roster.length > 0) {
-    return roster.map((p) => ({ share: p.share, temperature: p.temperature }));
-  }
-  if (audience.is_general) {
-    return GENERAL_SEGMENT_TEMPS.map((temperature) => ({
-      share: 1 / GENERAL_PERSONA_COUNT,
-      temperature,
-    }));
-  }
-  return [];
-}
+/* `getCompositionSegments` / `CompositionSegment` were deleted with
+ * `audience-composition-bar.tsx` (2026-07-20). Share × temperature encoded as segment
+ * width and brightness was a cipher with no legend, and its empty state was
+ * indistinguishable from a loading skeleton. The list states the same thing in words
+ * now — see `getDisplayRoster`. */
 
 /** Card subline under the audience name. */
 export function getAudienceCardSubtitle(audience: Audience): string {

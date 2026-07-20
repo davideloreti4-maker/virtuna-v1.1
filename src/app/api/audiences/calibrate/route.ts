@@ -21,6 +21,8 @@
 
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
+import { rehostAvatar } from "@/lib/scraping/rehost-cover";
 import {
   calibrateFromScrape,
   type CalibrationStage,
@@ -33,6 +35,7 @@ import { clusterPillarsForAccount } from "@/lib/content-pillars/cluster";
 import {
   getOrCreateConnectedAccount,
   touchAccountSynced,
+  updateAccountIdentity,
   type ConnectedAccount,
 } from "@/lib/connected-accounts/connected-accounts-repo";
 import type { ProfileBundle } from "@/lib/scraping/types";
@@ -285,6 +288,26 @@ export async function POST(request: Request): Promise<Response> {
             await touchAccountSynced(supabase, connectedAccount.id);
           } catch (e) {
             log.warn("sync stamp failed", { err: e instanceof Error ? e.message : String(e) });
+          }
+          // The scrape has always carried the creator's face and real name, and both were
+          // dropped on the floor — /audience/[id] rendered an account with no identity on
+          // it (live-caught 2026-07-20). The avatar is RE-HOSTED, never stored as-is:
+          // platform avatar URLs are signed and 403 within days, the same reason
+          // rehostCover exists. Best-effort and post-`done`, like its neighbours: the
+          // audience is already delivered and a missing picture must never cost it.
+          try {
+            const avatarUrl = await rehostAvatar(
+              createServiceClient(),
+              reveal.profile.avatarUrl,
+              connectedAccount.handle,
+              "connected",
+            );
+            await updateAccountIdentity(supabase, connectedAccount.id, {
+              avatarUrl,
+              displayName: reveal.profile.displayName,
+            });
+          } catch (e) {
+            log.warn("identity stamp failed", { err: e instanceof Error ? e.message : String(e) });
           }
         }
 

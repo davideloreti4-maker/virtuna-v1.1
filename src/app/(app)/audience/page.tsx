@@ -16,6 +16,8 @@ import {
   listConnectedAccounts,
   type ConnectedAccount,
 } from "@/lib/connected-accounts/connected-accounts-repo";
+import { getAccountSnapshots } from "@/lib/account-metrics/account-metrics-repo";
+import { buildRangeMetrics } from "@/lib/account-metrics/account-metrics";
 import { AudienceManager, type AccountOption } from "@/components/audience/audience-manager";
 
 export const metadata = {
@@ -49,6 +51,22 @@ export default async function AudiencePage({
   if (user) {
     try {
       accounts = (await listConnectedAccounts(supabase, user.id)).map(toOption);
+      // The row states the SCALE of the scrape behind each account (rework 2026-07-20).
+      // Same source the detail page's SOURCE figures read — never an estimate, and null
+      // when no snapshot exists, so the row simply omits the fact rather than inventing it.
+      accounts = await Promise.all(
+        accounts.map(async (a) => {
+          try {
+            const snapshots = await getAccountSnapshots(supabase, a.id, 100);
+            const followers = (buildRangeMetrics(snapshots, 90, a.platform) ?? []).find(
+              (m) => m.label === "Followers" && m.value !== "—",
+            );
+            return { ...a, followers: followers?.value ?? null };
+          } catch {
+            return { ...a, followers: null };
+          }
+        }),
+      );
     } catch {
       accounts = [];
     }

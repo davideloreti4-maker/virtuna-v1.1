@@ -31,6 +31,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { READING_CARD } from "@/components/reading/reading-section";
+import { archetypeDerivedName } from "./audience-display";
 import { cn } from "@/lib/utils";
 
 // ─── Presentation option lists (UI-SPEC §Persona editing) ─────────────────────
@@ -50,10 +51,11 @@ const TEMPERATURE_OPTIONS: { value: Temperature; label: string }[] = [
   { value: "hot", label: "Hot" },
 ];
 
-/** Derive the default display name from the immutable archetype slug. */
-export function archetypeDerivedName(archetype: string): string {
-  return archetype.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-}
+/** Derive the default display name from the immutable archetype slug.
+ *  Moved to `audience-display` (2026-07-20) — the manager derives the same name, and a
+ *  client dialog is the wrong home for a string every surface needs. Re-exported so
+ *  existing importers keep working. */
+export { archetypeDerivedName };
 
 interface PersonaEditFormProps {
   /** The audience that owns the persona (its `personas` JSONB is the write target). */

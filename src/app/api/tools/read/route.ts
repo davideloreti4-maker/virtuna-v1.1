@@ -22,6 +22,16 @@
  *     — NO silent General fallback for an explicit pick. (The legacy `secondAudienceId`
  *     body field is GONE — it had zero callers and duplicated this path.)
  *
+ *     🔴 CALLERLESS since 2026-07-20. Its only caller was /audience's concept-Compare,
+ *     cut because a Read is a THREAD artifact and the manager page was the wrong place
+ *     to ask for one (see the `audience-manager` docblock). The path stays — tested and
+ *     intact — for a thread-side "compare with…" affordance. WHOEVER WIRES THAT: this
+ *     route ALWAYS persists into `createOpenThreadLazy(user.id)` (§6 below). The old
+ *     caller rendered its own ephemeral copy and never told the user the block had
+ *     landed in a thread, so a compare left a stray message behind. Either navigate to
+ *     the thread you wrote to, or say where the result went — do not render a floating
+ *     copy of a message that lives somewhere else.
+ *
  * Security spine (mirrors the ideas route — T-03-07 … T-03-12):
  *   - Auth enforced BEFORE any DB read or Flash run (T-03-07)
  *   - Default-path audience id read from the THREAD (active_audience_id), never the

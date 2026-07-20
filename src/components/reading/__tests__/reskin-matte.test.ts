@@ -222,8 +222,10 @@ const HYBRID_DEPTH_SURFACES = [
   // deleted, so the guard locks its replacement. Coverage moves with the code.
   'components/audience/audience-index.tsx',
   'components/audience/audience-detail.tsx',
-  'components/audience/population-field.tsx',
-  'components/audience/audience-composition-bar.tsx',
+  // population-field.tsx + audience-composition-bar.tsx were deleted in the
+  // 2026-07-20 rework (the dot cloud and the segment cipher). Coverage moves with
+  // the code: their replacements — the room's share bars and the roster line — live
+  // in audience-detail.tsx / audience-index.tsx, both already guarded above.
   'components/audience/audience-manager.tsx',
   'components/surfaces/start-page.tsx',
   'components/surfaces/surface-canvas.ts',
