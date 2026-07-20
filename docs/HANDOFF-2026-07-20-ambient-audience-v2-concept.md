@@ -272,23 +272,64 @@ NOT a generation byproduct). Decision:
 - AS attention Full/Partial/Ignore tri-state → honest population-level split (as-04/05).
 - Sapient nine-signals + per-second surfaces → Brain page depth reference (sapient-11…14).
 
-## Still open (decide before/at build)
-1. **Naming** — screen/screening/lens vs "simulate"; also tier names (Flash/Max vs
-   room-flavored).
-2. **`custom…` free-text question in v1** — most powerful, hardest to do honestly.
-3. **Cast** — stable named 8–12 vs rotating witnesses.
-4. **Mobile fold order** — outcome number below cortex (cascade-pure) vs outcome-first.
-5. **Rest-state v1 scope** — composition + cast only, vs hold for standing-findings/track-record.
-6. **Number on skill cards** — L2 keeps skill reactions qualitative; if persona votes exist
-   anyway, is the % shown or reserved for deliberate screenings? (Lean: show if it's mere
-   arithmetic on existing votes; today's Qwen quips carry no votes, so likely moot for v1.)
-7. **Percentile rule across fidelities** (P82 over mixed n=1k/10k histories).
-8. **Scene-mismatch treatment** — disclaimer line only, or soft block.
-9. **`audience-lens/` dedup reckoning** — build-time plan for the 3-tab AmbientRoom,
-   `audience-presence.tsx` (998 lines), `AudienceLensContent`, `audience-orbit`,
-   `audience-breakout`, `persona-cloud`.
+## Opens RESOLVED (owner calls, later same session)
 
-## Sequencing note
-Next: resolve opens 1–5 (product calls, owner), then plan the build. Verify at build time:
-what the skill-reaction Qwen call costs at scale (L2 assumes it stays cheap enough to be
-unmetered) and what `read-to-card-reaction.ts` + skill pipelines actually emit.
+1. **Naming: "simulate"** is the verb. Fidelity tiers are model-branded: **SIM-1 Flash
+   (n=1,000) / SIM-1 Max (n=10,000)** in the model selector.
+2. **Custom question: IN for v1** — important. Compiles visibly to the nearest preset (shows
+   what it compiled to). Preset set itself needs a design pass ("choose the best presets" —
+   stop/want/believe/share/buy is the draft, not the decision).
+3. **Cast: stable per audience.** 8–12 representative personas picked from that audience's OWN
+   calibration roster (they're already custom-generated at audience creation), spanning segments,
+   fixed thereafter across all threads using that audience. Per-run spotlight moves (strongest
+   reaction gets the verbatim); the roster never does. New audience → new cast automatically.
+4. **Brain-first everywhere.** Mobile fold keeps cascade order. Detail view = **tab 1 Brain,
+   tab 2 Audience** (3 tabs → 2; "people" folds into Audience). Population elements (%, terrain,
+   voice) deep-link into tab 2.
+5. **Rest state = the overview's header, not a separate screen.** See state machine below.
+6. **Number on skill cards: qualitative reactions only** — the % is reserved for deliberate
+   simulations (today's Qwen quips carry no votes, so nothing is withheld).
+7. **Percentile across fidelities: computed within same tier.**
+8. **Scene mismatch: OPEN — owner wants explicit design thought** (disclaimer vs soft-block
+   undecided). Park until the picker surface is designed.
+
+## The panel state machine (locked)
+
+**Overview is the room's home; the rest state is its header.** One screen, layered:
+
+```
+┌─ THE ROOM ─────────────────────────┐
+│ composition strip · cast on call    │  ← rest state, always present ("hand it anything")
+├────────────────────────────────────┤
+│ THIS THREAD · N GENERATIONS         │
+│ ▓▓▓ generating… cast deciding 6/10  │  ← running item = watching state IN PLACE (overview
+│ Hook A ─────────────── 10/10  ›     │     doubles as the loading screen; sealed verdicts;
+│ Hook B ─────────────── 8/10   ›     │     same watching grammar as the thread)
+└────────────────────────────────────┘
+```
+
+- Empty thread → room header + empty list. Buildable now; standing-findings enrich the header
+  when that pipeline lands (not a launch blocker).
+- **Detail is always ONE stimulus** (never bundle N hooks onto one brain/population page —
+  causality dies). Comparison lives at the overview level (the ranked list IS the comparison;
+  a future compare-mode also lives there). Detail keeps the `1 of N ‹ ›` pager. Detail pages
+  need NO empty states — unreachable without a generation.
+- **Loading/motion requirement (owner):** detail modal + overview inherit the thread's
+  watching-state grammar — visible progress, real state, motion as simulation physics.
+
+## Premium-UI mandate (owner directive, verbatim intent)
+
+The rebuilt surfaces are the HEART of the platform and must read as billion-dollar product
+design — better than Sapient AND Artificial Societies. No AI slop, no overload, no cargo-culting
+the existing pages. Process obligations: proper design thought per surface, self-review against
+the design laws before anything ships, sketch-first iteration (the session-1 loop) for every new
+surface, measured audits at build time.
+
+## Still open / build-time
+- Scene-mismatch treatment (design thought owed — resolved open #8).
+- Best preset-question set (design pass with custom-compile in mind).
+- `audience-lens/` dedup reckoning — build-time plan for the 3-tab AmbientRoom,
+  `audience-presence.tsx` (998 lines), `AudienceLensContent`, `audience-orbit`,
+  `audience-breakout`, `persona-cloud`.
+- Verify: Qwen reaction-call cost at scale (L2 assumes unmetered-cheap) + what
+  `read-to-card-reaction.ts` and the skill pipelines actually emit.
