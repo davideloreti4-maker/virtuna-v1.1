@@ -62,18 +62,23 @@ export function HomePageLayout() {
     // would reset its stream/rehydration state).
     <div
       className={cn(
-        "flex h-full w-full",
-        threadMode ? "flex-row justify-center" : "flex-col items-center",
+        "flex w-full",
+        // Thread mode owns internal scroll → hard h-full. The centered empty/permalink
+        // stack uses min-h-full instead: with a HARD height + justify-center, a hero
+        // taller than the viewport (mobile) overflowed out the TOP, unreachably — the
+        // greeting rendered under the fixed hamburger (live-caught 2026-07-20).
+        // min-h-full grows with content, so centering never clips and the page scrolls.
+        threadMode ? "h-full flex-row justify-center" : "min-h-full flex-col items-center",
         emptyHome && "justify-center",
       )}
     >
       {emptyHome && (
-        // Empty home: the serif greeting caps the centered group. shrink-0 (natural
-        // height) so it sits directly above the actions with a comfortable gap, and a
-        // small top offset guarantees breathing room from the top chrome.
+        // Empty home: the hero (greeting · promise · constellation) caps the centered
+        // group. shrink-0 (natural height) so it sits directly above the composer with a
+        // comfortable gap, and a small top offset guarantees breathing room from the chrome.
         <div
           className={cn(
-            "flex w-full max-w-[760px] shrink-0 flex-col items-center px-4 pt-6 pb-9",
+            "flex w-full max-w-[760px] shrink-0 flex-col items-center px-4 pt-6 pb-8",
             !reducedMotion && "transition-[padding] duration-300 ease-out",
           )}
         >

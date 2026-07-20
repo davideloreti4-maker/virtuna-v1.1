@@ -134,10 +134,25 @@ describe('HomeStarter — NO PROSE, ONE anatomy', () => {
     expect(container.querySelector('p')).toBeNull();
   });
 
-  it('a card is its title and nothing else', () => {
+  /**
+   * A card is its KICKER + TITLE and nothing else (anatomy revised 2026-07-20 — the
+   * kicker is the skill's one-word name, mono-caps, never a sentence; the title stays
+   * the accessible name so nothing downstream re-learns the cards).
+   */
+  it('a card is its kicker and its title — nothing else', () => {
     render(<HomeStarter {...props()} />);
+    const KICKER_BY_TITLE: Record<string, string> = {
+      'Get content ideas': 'Ideas',
+      'Write scroll-stopping hooks': 'Hooks',
+      'Script a video': 'Script',
+      'Remix a viral video': 'Remix',
+      'Test a video': 'Test',
+      'Read my recent posts': 'Read',
+    };
     for (const title of THE_SIX) {
-      expect(screen.getByRole('button', { name: title }).textContent).toBe(title);
+      expect(screen.getByRole('button', { name: title }).textContent).toBe(
+        `${KICKER_BY_TITLE[title]}${title}`,
+      );
     }
   });
 
@@ -145,16 +160,19 @@ describe('HomeStarter — NO PROSE, ONE anatomy', () => {
    * The whole point of the contract: a card is a card is a card. Explore's old bespoke card
    * put the icon ABOVE the text with no fill at 16/14px; the home grid put it LEFT on a
    * filled surface. If a future skill grows its own card again, this spine diverges.
+   * Spine (2026-07-20 anatomy): kicker-over-title column, hairline border, NO fill at rest.
    */
   it('every card shares the one anatomy', () => {
     render(<HomeStarter {...props()} />);
-    const SPINE = ['rounded-[12px]', 'bg-surface-sunken', 'items-start', 'px-4', 'py-4'];
+    const SPINE = ['rounded-[12px]', 'flex-col', 'border-white/[0.06]', 'px-4', 'py-3.5'];
 
     for (const title of THE_SIX) {
       const card = screen.getByRole('button', { name: title });
       for (const cls of SPINE) {
         expect(card.className).toContain(cls);
       }
+      // No fill at rest — the filled-brick look is the RETIRED anatomy.
+      expect(card.className).not.toContain('bg-surface-sunken');
     }
   });
 });

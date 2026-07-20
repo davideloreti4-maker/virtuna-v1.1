@@ -96,6 +96,8 @@ import { ThreadLoadingSkeleton } from "@/components/thread/thread-loading";
 import { ThreadShell, ThreadAssistantTurn } from "@/components/thread/thread-shell";
 import { Spinner } from "@/components/ui/spinner";
 import { AudiencePresence, type AudienceAsk, type AudiencePresenceProps } from "@/components/audience-lens/audience-presence";
+import { ConstellationMark } from "@/components/brand/constellation-mark";
+import { DEFAULT_ROSTER_DOTS } from "@/components/brand/constellation";
 import { BuildChooser } from "./build-chooser";
 import { HomeStarter, HomeFirstRunDemo } from "./home-starter";
 import { useAmbientFocus, type AmbientCardDescriptor } from "./use-ambient-focus";
@@ -486,8 +488,18 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // NEVER navigates to /analyze (D-05, no silent auto-fire).
   const chat = useChatStream();
   const chatBlocks = chat.toBlocks();
-  // Chat view always shows when the chat chip is active (it owns its own empty state)
-  const showChatView = activeTool === "chat";
+  // Chat view shows when the chat chip is active AND there is (or will be) something to
+  // paint — a live stream, streamed/persisted turns, or an error. It used to mount
+  // unconditionally "for its own empty state", but its empty state is 48px of ThreadShell
+  // padding rendering as a dead band between the hero and the composer (measured
+  // live 2026-07-20). The starter owns the empty home; this view owns turns.
+  const showChatView =
+    activeTool === "chat" &&
+    (chat.isStreaming ||
+      chatBlocks.length > 0 ||
+      chat.error !== null ||
+      persistedChatBlocks.length > 0 ||
+      persistedChatTurns.length > 0);
 
   // ── Script stream (Plan 06-05 — D-09) ─────────────────────────────────────
   // Provides SSE script-card blocks rendered above the composer in ScriptThreadView.
@@ -2562,7 +2574,39 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
                 />
               </div>
 
-              <div className="flex items-center gap-2.5">
+              <div className="flex min-w-0 items-center gap-1.5 sm:gap-2.5">
+                {/* Audience — the room, folded INTO the composer (2026-07-20, owner call:
+                    the old peek band ABOVE the box made the dock read as two stacked bars).
+                    The chip IS the presence at rest (D-01 — never hidden): identity glyph +
+                    name + roster count; tap → the same room panel blooms above the box
+                    (roomExpanded, unchanged). Renders only where the DOCK owns the presence —
+                    thread mode keeps its rail (≥xl) / header (<xl) hosting untouched. */}
+                {!homeThreadMode && (
+                  <button
+                    type="button"
+                    data-testid="audience-room-chip"
+                    aria-haspopup="dialog"
+                    aria-expanded={roomExpanded}
+                    aria-label={`Your audience: ${selectedAudience?.name ?? "General"} — ${selectedAudience?.personas?.length || DEFAULT_ROSTER_DOTS} people ready. ${roomExpanded ? "Close" : "Open"} the room`}
+                    onClick={() => handleRoomExpandedChange(!roomExpanded)}
+                    className={cn(
+                      "flex h-[34px] min-w-0 items-center gap-1.5 rounded-full px-2 text-[12.5px] font-medium transition-colors",
+                      "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10 pointer-coarse:h-11",
+                      roomExpanded
+                        ? "bg-white/[0.06] text-foreground"
+                        : "text-foreground-secondary hover:bg-white/[0.06] hover:text-foreground",
+                    )}
+                  >
+                    <ConstellationMark width={26} reacting={audienceReacting} className="shrink-0" />
+                    <span className="max-w-[96px] truncate">
+                      {selectedAudience?.name ?? "General"}
+                    </span>
+                    <span className="hidden whitespace-pre text-foreground-muted min-[480px]:inline">
+                      {` · ${selectedAudience?.personas?.length || DEFAULT_ROSTER_DOTS} ready`}
+                    </span>
+                  </button>
+                )}
+
                 {/* Read-only SIM-1 tier — the skill picks it, so it's metadata, not a control.
                     Shown for every verb including Ask (the room reaction is a Flash call). */}
                 <ModelTag activeTool={activeTool} className="hidden sm:inline-flex" />
@@ -2627,18 +2671,21 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
       </form>
   );
 
-  // Bottom dock — the audience presence sits ABOVE the composer box: collapsed it's a small card
-  // floating on top (a gap below it); open it blooms into a panel whose bottom is flush with the
-  // composer, and the box flattens its top so the two read as one connected surface.
+  // Bottom dock — the composer is ONE clean surface. The audience presence no longer
+  // parks a collapsed band above the box (retired 2026-07-20, owner call — the stacked
+  // peek read as a second header bolted onto the composer): at rest the audience lives
+  // in the control row's room chip (see composerForm), and opening it blooms the SAME
+  // panel above the box, flush (the box flattens its top edge via roomExpanded below).
   const composerDock = (
     <div data-testid="composer-dock" className="pointer-events-auto relative flex w-full flex-col">
       {/* The audience room, ONE mount routed by breakpoint/mode:
           ≥xl thread → PORTALED to HomePageLayout's right rail (A2a);
           <xl thread → the HEADER above the thread (A2b, rendered in the thread branch — not here);
-          empty / permalink → the dock peek/bloom, byte-identical to before. */}
+          empty / permalink → the bloom panel, mounted ONLY while open (the room chip is
+          the at-rest presence — D-01 holds: identity + liveness never leave the surface). */}
       {useRail && railHost
         ? createPortal(audienceRail, railHost)
-        : useHeader
+        : useHeader || !roomExpanded
           ? null
           : audiencePresence}
       <div className="relative w-full">
@@ -2699,7 +2746,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     <HomeStarter
       onSelectTool={handleUserSelectTool}
       onAccountRun={handleStarterAccountRun}
-      className="mb-5"
+      className="mt-6"
     />
   ) : null;
   // The first-run demo POSTs a canned chat fixture straight to /api/tools/profile — the ONE
@@ -2793,18 +2840,18 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     );
   }
 
-  // Branch B: centered / permalink layout. The presence NEVER hides (D-01) and docks
-  // ABOVE the composer (fork #1) — on empty home it rests at PEEK in its readiness state
-  // (identity + "N personas ready", NO stale reaction, NO second input — fork #4). `ambientFocus`
-  // is null here (no thread cards to focus), so the pulse reads readiness.
+  // Branch B: centered / permalink layout. The presence NEVER hides (D-01) — at rest it
+  // is the composer's room chip (identity + liveness, control row); opening it blooms the
+  // panel above the box. `ambientFocus` is null here (no thread cards to focus), so an
+  // opened room reads readiness, never a stale reaction.
   return (
     <div className={cn("w-full max-w-[760px] mx-auto flex flex-col pb-4", className)}>
       {threadContent}
-      {/* The starter rides ABOVE the composer, so the empty home reads greeting → starter
-          → composer: the cards are the on-ramp INTO the field, not a footer you scroll
-          past. The show-once demo stays a quiet footer below. */}
-      {homeStarter}
+      {/* The FIELD is the hero (2026-07-20, owner call — the reference pattern): the empty
+          home reads greeting → composer → starter. The cards are suggestions UNDER the
+          field, not a wall in front of it. The show-once demo stays a quiet footer below. */}
       {composerDock}
+      {homeStarter}
       {homeFirstRunDemo}
     </div>
   );
