@@ -77,7 +77,10 @@ const ReceiptItemSchema = z.object({
   running: z.boolean().optional(),
 });
 
-/** 3 · evidence rows — tool rows ONLY (honesty spine); each opens the real video. */
+/** 3 · evidence rows — tool rows ONLY (honesty spine); each opens the real video.
+ *  The video reference is THE app's core object — a row carries the full treatment
+ *  (cover · title · when/duration · facet · measured numbers), every field tool-fed
+ *  and optional: absent data renders as absence, never as a placeholder value. */
 const EvidenceItemSchema = z.object({
   kind: z.literal("evidence"),
   rows: z
@@ -86,9 +89,21 @@ const EvidenceItemSchema = z.object({
         title: z.string().min(1),
         /** Who/when — "@handle" or "May 18". */
         byline: z.string().optional(),
+        /** Real cover (ephemeral CDN) — renders as a 9:16 tower via CoverFill. */
+        coverUrl: z.string().nullable().optional(),
+        /** e.g. "0:34". */
+        duration: z.string().optional(),
+        /** Formatted views, e.g. "2.1M". */
+        views: z.string().optional(),
+        /** Posted date, e.g. "May 18". */
+        posted: z.string().optional(),
+        /** The structural read of the video — "talking-head confession · receipts overlay". */
+        facet: z.string().optional(),
         /** Measured multiplier, e.g. "9.2×". Absent = nothing measured (never fake it). */
         multiplier: z.object({ value: z.string().min(1), direction: z.enum(["up", "down"]) }).optional(),
-        /** Right-side basis note, e.g. "vs your usual · 2.1M". */
+        /** The multiplier's basis — "vs your usual". Renderer shows it with the number. */
+        baseline: z.string().optional(),
+        /** Free-text fallback note (legacy rows / anything the fields above don't carry). */
         meta: z.string().optional(),
         url: z.string().nullable().optional(),
       }),
@@ -96,6 +111,28 @@ const EvidenceItemSchema = z.object({
     .min(1)
     .max(8),
 });
+
+/** The structured source receipt a ranked result may carry (the ProofReceipt lineage —
+ *  §11f receipts-on-cards): the real outlier whose proven structure was borrowed. */
+export const StreamSourceProofSchema = z.object({
+  handle: z.string().min(1),
+  url: z.string().nullable().optional(),
+  coverUrl: z.string().nullable().optional(),
+  /** The source hook as a reusable [bracketed] template — brackets render as chips. */
+  template: z.string().optional(),
+  /** Source archetype — "trap-mistake" renders "Trap Mistake". */
+  archetype: z.string().optional(),
+  /** e.g. "90.7×". */
+  multiplier: z.string().optional(),
+  /** The multiplier's basis — "vs followers". Never a bare multiplier. */
+  baseline: z.string().optional(),
+  /** e.g. "621K". */
+  views: z.string().optional(),
+  /** §11c degradation ladder — the honest per-request match claim. */
+  fit: z.enum(["in-audience", "adjacent", "structural"]).optional(),
+});
+
+export type StreamSourceProof = z.infer<typeof StreamSourceProofSchema>;
 
 /** 4 · media strip — covers + one metric + fit; the basis stated ONCE per strip. */
 const MediaStripItemSchema = z.object({
@@ -112,6 +149,10 @@ const MediaStripItemSchema = z.object({
         fit: StreamBandSchema.optional(),
         byline: z.string().optional(),
         duration: z.string().optional(),
+        /** Formatted views, e.g. "2.4M" — the tile's second fact line. */
+        views: z.string().optional(),
+        /** The structural read — "confession · zero-cut". */
+        facet: z.string().optional(),
         coverUrl: z.string().nullable().optional(),
         url: z.string().nullable().optional(),
       }),
@@ -129,9 +170,13 @@ const RankedItemSchema = z.object({
         /** Rank marker — "1", "2", or "→" for a single adapted result. */
         marker: z.string().min(1).max(3).optional(),
         hero: z.string().min(1),
+        /** The why-it-works / why-it-fits line — the insight under the hero, muted. */
+        insight: z.string().optional(),
         proof: StreamProofSchema.optional(),
         verbatim: StreamVerbatimSchema.optional(),
-        /** Attribution once — "↳ structure from @handle · 90.7× vs followers". */
+        /** The full structured source receipt (cover · [template] · stats · fit). */
+        sourceProof: StreamSourceProofSchema.optional(),
+        /** Plain attribution fallback — "↳ structure from @handle · 90.7× vs followers". */
         source: z.string().optional(),
         sourceUrl: z.string().nullable().optional(),
       }),

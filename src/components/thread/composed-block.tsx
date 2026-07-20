@@ -21,9 +21,18 @@
 
 import ReactMarkdown from 'react-markdown';
 import rehypeSanitize from 'rehype-sanitize';
+import { Eye, TrendUp } from '@phosphor-icons/react';
 import { BAND_COLOR } from '@/components/thread/band-block';
 import { SECTION_LABEL } from '@/components/thread/card-primitives';
-import type { ComposedBlock, StreamItem, StreamBand, StreamProof, StreamVerbatim } from '@/lib/tools/stream-primitives';
+import { CoverFill } from '@/components/primitives/CoverFill';
+import type {
+  ComposedBlock,
+  StreamItem,
+  StreamBand,
+  StreamProof,
+  StreamSourceProof,
+  StreamVerbatim,
+} from '@/lib/tools/stream-primitives';
 
 export interface ComposedBlockProps {
   block: ComposedBlock;
@@ -79,6 +88,108 @@ function Prose({ text, quiet }: { text: string; quiet?: boolean }) {
   );
 }
 
+/** [bracketed variables] in a source template render as chips (the Sandcastles pattern —
+ *  brightness + chip, never hue). Plain text when the template carries no brackets. */
+function TemplateChips({ text }: { text: string }) {
+  const parts = text.split(/(\[[^\]]+\])/g).filter((p) => p.length > 0);
+  return (
+    <span className={`${T_SUPPORT} font-medium leading-snug text-foreground-secondary`}>
+      {parts.map((p, i) =>
+        /^\[[^\]]+\]$/.test(p) ? (
+          <span key={i} className="mx-px rounded-xs bg-white/[0.06] px-1 py-px text-foreground">
+            {p}
+          </span>
+        ) : (
+          <span key={i}>{p}</span>
+        ),
+      )}
+    </span>
+  );
+}
+
+/** §11c fit glyph + plain-language claim (the ProofReceipt ladder, verbatim). */
+const FIT_META: Record<'in-audience' | 'adjacent' | 'structural', { glyph: string; label: string }> = {
+  'in-audience': { glyph: '●', label: 'in your audience' },
+  adjacent: { glyph: '◐', label: 'adjacent audience' },
+  structural: { glyph: '○', label: 'cross-niche structure' },
+};
+
+/** The measured-outlier pill pair: ↗ multiplier (positive tint — a real winner is a positive
+ *  signal, distinct from band color) + 👁 views. Numbers are tool-fed; absent = omitted. */
+function StatPills({ multiplier, baseline, views }: { multiplier?: string; baseline?: string; views?: string }) {
+  if (!multiplier && !views) return null;
+  return (
+    <span className="flex flex-wrap items-center gap-1.5">
+      {multiplier && (
+        <span className="inline-flex items-center gap-1 rounded-sm bg-[var(--color-positive)]/[0.14] px-1.5 py-0.5 text-xs font-semibold tabular-nums text-[var(--color-positive)]">
+          <TrendUp size={12} weight="bold" aria-hidden="true" />
+          {multiplier}
+        </span>
+      )}
+      {baseline && <span className={`${SECTION_LABEL} normal-case tracking-normal`}>{baseline}</span>}
+      {views && (
+        <span className="inline-flex items-center gap-1 rounded-sm bg-white/[0.05] px-1.5 py-0.5 text-xs tabular-nums text-foreground-secondary">
+          <Eye size={12} weight="regular" aria-hidden="true" />
+          {views}
+        </span>
+      )}
+    </span>
+  );
+}
+
+/** "trap-mistake" → "Trap Mistake". */
+const formatFacet = (slug: string) =>
+  slug.includes('-') && !slug.includes(' ')
+    ? slug.split('-').map((w) => (w ? w[0]!.toUpperCase() + w.slice(1) : w)).join(' ')
+    : slug;
+
+/** The structured source receipt under a ranked result — the ProofReceipt lineage, restated
+ *  in stream language: NO box (one-frame law) — the cover tower IS the anchor, a left rule
+ *  carries the attribution column. Clickable → the real source video. */
+function SourceReceipt({ sp }: { sp: StreamSourceProof }) {
+  const fit = sp.fit ? FIT_META[sp.fit] : null;
+  const body = (
+    <>
+      <span className="relative block w-14 shrink-0 self-start overflow-hidden rounded-md border border-white/[0.06] aspect-[9/16]">
+        <CoverFill coverUrl={sp.coverUrl} playSize={16} />
+      </span>
+      <span className="flex min-w-0 flex-1 flex-col gap-1.5">
+        <span className="flex items-baseline justify-between gap-2">
+          <span className={SECTION_LABEL}>Proven structure</span>
+          {sp.archetype && (
+            <span className={`shrink-0 ${SECTION_LABEL} normal-case tracking-normal`}>{formatFacet(sp.archetype)}</span>
+          )}
+        </span>
+        {sp.template && <TemplateChips text={sp.template} />}
+        <span className={`flex items-center gap-1.5 ${T_META} text-foreground-muted`}>
+          {fit && (
+            <span className="shrink-0" aria-hidden="true" title={fit.label}>
+              {fit.glyph}
+            </span>
+          )}
+          <span className="truncate text-foreground-secondary">@{sp.handle}</span>
+          {fit && <span className="hidden truncate sm:inline">· {fit.label}</span>}
+        </span>
+        <StatPills multiplier={sp.multiplier} baseline={sp.baseline} views={sp.views} />
+      </span>
+    </>
+  );
+  const cls = 'group/src mt-1 flex items-stretch gap-3 border-l-2 border-white/[0.10] pl-3 transition-colors';
+  return sp.url ? (
+    <a
+      href={sp.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`${cls} hover:border-white/[0.18]`}
+      aria-label={`Proven structure from @${sp.handle} — opens the source video`}
+    >
+      {body}
+    </a>
+  ) : (
+    <span className={cls}>{body}</span>
+  );
+}
+
 // ─── per-kind views ──────────────────────────────────────────────────────────
 
 function ReceiptView({ item }: { item: Extract<StreamItem, { kind: 'receipt' }> }) {
@@ -99,35 +210,63 @@ function ReceiptView({ item }: { item: Extract<StreamItem, { kind: 'receipt' }> 
   );
 }
 
+function EvidenceRow({ row }: { row: Extract<StreamItem, { kind: 'evidence' }>['rows'][number] }) {
+  // when-line: byline · posted · duration, whichever exist (the meta fallback carries legacy rows)
+  const when = [row.byline, row.posted, row.duration].filter(Boolean).join(' · ');
+  const body = (
+    <>
+      {/* The video anchors the row — a real 9:16 cover, never an empty box (CoverFill). */}
+      <span className="relative block w-12 shrink-0 self-start overflow-hidden rounded-md border border-white/[0.06] aspect-[9/16]">
+        <CoverFill coverUrl={row.coverUrl} playSize={14} />
+      </span>
+      <span className="flex min-w-0 flex-1 flex-col gap-1 py-0.5">
+        <span className={`${T_SUPPORT} font-medium leading-snug text-foreground transition-colors group-hover/ev:text-white`}>
+          {row.title}
+        </span>
+        {when && <span className={`${T_META} text-foreground-muted`}>{when}</span>}
+        {row.facet && <span className={`${T_META} text-foreground-muted`}>{formatFacet(row.facet)}</span>}
+        {row.meta && !row.views && !row.multiplier && <span className={`${T_META} text-foreground-muted`}>{row.meta}</span>}
+      </span>
+      {/* The measured column — right-aligned numerals, honest absence when unmeasured. */}
+      <span className="flex shrink-0 flex-col items-end gap-1 self-center text-right">
+        {row.multiplier && (
+          <span
+            className={`${T_BODY} font-semibold tabular-nums leading-none`}
+            style={row.multiplier.direction === 'down' ? { color: 'var(--color-error)' } : undefined}
+          >
+            {row.multiplier.value}
+          </span>
+        )}
+        {row.baseline && <span className={`hidden ${T_META} text-foreground-muted sm:block`}>{row.baseline}</span>}
+        {row.views && (
+          <span className={`inline-flex items-center gap-1 ${T_META} tabular-nums text-foreground-secondary`}>
+            <Eye size={12} weight="regular" aria-hidden="true" />
+            {row.views}
+          </span>
+        )}
+        {row.url && (
+          <span className={`${T_META} text-foreground-muted opacity-0 transition-opacity group-hover/ev:opacity-100`}>
+            watch ↗
+          </span>
+        )}
+      </span>
+    </>
+  );
+  const cls = `group/ev flex items-stretch gap-3.5 border-t ${HAIRLINE} py-3 last:border-b`;
+  return row.url ? (
+    <a href={row.url} target="_blank" rel="noopener noreferrer" className={cls} aria-label={`${row.title} — opens the video`}>
+      {body}
+    </a>
+  ) : (
+    <div className={cls}>{body}</div>
+  );
+}
+
 function EvidenceView({ item }: { item: Extract<StreamItem, { kind: 'evidence' }> }) {
   return (
     <div className="flex flex-col">
       {item.rows.map((row, i) => (
-        <div key={i} className={`flex items-center gap-3.5 border-t ${HAIRLINE} py-2.5 ${T_SUPPORT} last:border-b`}>
-          <span className="h-[52px] w-[30px] shrink-0 rounded-md bg-white/[0.06]" aria-hidden="true" />
-          <span className="min-w-0 truncate font-medium text-foreground">{row.title}</span>
-          {row.byline && <span className={`shrink-0 ${T_META} text-foreground-muted`}>{row.byline}</span>}
-          {row.multiplier && (
-            <span
-              className="ml-auto shrink-0 font-semibold tabular-nums"
-              style={row.multiplier.direction === 'down' ? { color: 'var(--color-error)' } : undefined}
-            >
-              {row.multiplier.value}
-            </span>
-          )}
-          {/* Basis note yields below md — at 390px it was eating the row's title. The
-              measured multiplier (the honest number) always stays. */}
-          {row.meta && (
-            <span className={`hidden shrink-0 md:inline ${T_META} text-foreground-muted ${row.multiplier ? '' : 'md:ml-auto'}`}>
-              {row.meta}
-            </span>
-          )}
-          {row.url && (
-            <a href={row.url} target="_blank" rel="noreferrer" className={`shrink-0 ${T_META} text-foreground-muted hover:text-foreground-secondary`}>
-              watch ↗
-            </a>
-          )}
-        </div>
+        <EvidenceRow key={i} row={row} />
       ))}
     </div>
   );
@@ -137,28 +276,49 @@ function MediaStripView({ item }: { item: Extract<StreamItem, { kind: 'media-str
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex gap-3.5 overflow-x-auto py-1">
-        {item.items.map((m, i) => (
-          <div key={i} className="flex w-32 shrink-0 flex-col gap-1.5">
-            <div className="relative h-[226px] w-32 rounded-lg bg-white/[0.06]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              {m.coverUrl && <img src={m.coverUrl} alt="" className="h-full w-full rounded-lg object-cover" />}
-              {m.duration && (
-                <span className={`absolute bottom-1.5 right-1.5 rounded bg-black/55 px-1 ${SECTION_LABEL} normal-case tracking-normal text-foreground-secondary`}>
-                  {m.duration}
+        {item.items.map((m, i) => {
+          const tile = (
+            <>
+              <span className="relative block h-[238px] w-full overflow-hidden rounded-lg border border-white/[0.06] transition-colors group-hover/tile:border-white/[0.14]">
+                <CoverFill coverUrl={m.coverUrl} playSize={18} className="transition-opacity group-hover/tile:opacity-90" />
+                {m.duration && (
+                  <span className="absolute bottom-1.5 right-1.5 rounded bg-black/60 px-1 py-px text-[11px] tabular-nums text-foreground-secondary">
+                    {m.duration}
+                  </span>
+                )}
+                {/* The tile's ONE number sits ON the cover, where the eye lands. */}
+                {m.metric && (
+                  <span className="absolute left-1.5 top-1.5 rounded-sm bg-black/60 px-1.5 py-0.5 text-xs font-semibold tabular-nums text-foreground">
+                    {m.metric}
+                  </span>
+                )}
+              </span>
+              <span className={`${T_SUPPORT} font-medium leading-snug text-foreground line-clamp-2`}>{m.title}</span>
+              {m.facet && <span className={`${T_META} leading-tight text-foreground-muted`}>{formatFacet(m.facet)}</span>}
+              {m.fit && (
+                <span className={`flex items-center gap-1.5 whitespace-nowrap ${T_META} text-foreground-muted`}>
+                  <span className="h-[6px] w-[6px] shrink-0 rounded-full" style={{ backgroundColor: BAND_COLOR[m.fit] }} aria-hidden="true" />
+                  Fit {m.fit.toLowerCase()}
                 </span>
               )}
+              {(m.byline || m.views) && (
+                <span className={`min-w-0 truncate ${T_META} tabular-nums text-foreground-muted`}>
+                  {[m.byline, m.views].filter(Boolean).join(' · ')}
+                </span>
+              )}
+            </>
+          );
+          const cls = 'group/tile flex w-[148px] shrink-0 flex-col gap-1.5';
+          return m.url ? (
+            <a key={i} href={m.url} target="_blank" rel="noopener noreferrer" className={cls} aria-label={`${m.title} — opens the video`}>
+              {tile}
+            </a>
+          ) : (
+            <div key={i} className={cls}>
+              {tile}
             </div>
-            {m.metric && <div className={`${T_BODY} font-semibold tabular-nums`}>{m.metric}</div>}
-            <div className={`${T_SUPPORT} leading-snug text-foreground-secondary line-clamp-2`}>{m.title}</div>
-            {m.fit && (
-              <div className={`flex items-center gap-1.5 ${T_META} text-foreground-muted`}>
-                <span className="h-[6px] w-[6px] rounded-full" style={{ backgroundColor: BAND_COLOR[m.fit] }} aria-hidden="true" />
-                Fit {m.fit.toLowerCase()}
-              </div>
-            )}
-            {m.byline && <div className={`${T_META} text-foreground-muted`}>{m.byline}</div>}
-          </div>
-        ))}
+          );
+        })}
       </div>
       {item.basis && <div className={`${T_META} text-foreground-muted`}>{item.basis}</div>}
     </div>
@@ -172,10 +332,13 @@ function RankedView({ item }: { item: Extract<StreamItem, { kind: 'ranked' }> })
         <div key={i} className={`grid grid-cols-[26px_1fr] gap-x-3 border-t ${HAIRLINE} py-4 last:border-b`}>
           <span className={`${T_META} font-medium leading-[2.1] text-foreground-muted tabular-nums`}>{r.marker ?? i + 1}</span>
           <div className="flex flex-col gap-2">
-            <div className={`${T_HERO} font-semibold tracking-[-0.005em]`}>{r.hero}</div>
+            <div className={`${T_HERO} font-semibold leading-snug tracking-[-0.005em]`}>{r.hero}</div>
+            {r.insight && <div className={`${T_SUPPORT} leading-snug text-foreground-muted`}>{r.insight}</div>}
             {r.proof && <ProofLine proof={r.proof} />}
             {r.verbatim && <VerbatimLine verbatim={r.verbatim} />}
-            {r.source && (
+            {r.sourceProof ? (
+              <SourceReceipt sp={r.sourceProof} />
+            ) : r.source ? (
               <div className={`${T_META} text-foreground-muted`}>
                 {r.sourceUrl ? (
                   <a href={r.sourceUrl} target="_blank" rel="noreferrer" className="hover:underline hover:underline-offset-3">
@@ -185,7 +348,7 @@ function RankedView({ item }: { item: Extract<StreamItem, { kind: 'ranked' }> })
                   r.source
                 )}
               </div>
-            )}
+            ) : null}
           </div>
         </div>
       ))}
