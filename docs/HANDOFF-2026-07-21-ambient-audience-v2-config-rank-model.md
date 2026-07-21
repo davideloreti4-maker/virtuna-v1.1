@@ -262,3 +262,41 @@ platform. Design Brain/Population to deliver **max value per domain**, not creat
 3. **Step 1 (bounded warm-up): rebuild ④ Start → Option 1** — clean AS card, Make skill grid, the one distinct "Test something against your audience →" door, auto-rank removed. Verify live (Playwright DOM asserts; screenshots hang on this app).
 4. **Step 2 (the payoff): restructure ② Brain / ③ Population as role-frames** (slots + props) per `domain-scaffold.html`; ship the **creator template** as template #1 on the platform. Then **reframe ⑤** as the develop gateway + cold-start intake.
 5. Keep the r4 grammar laws + every invariant above (thin rank always-on · ⑤ = universal sim gateway · rank never contradicted by sim · domain core horizontal / bundle per domain · calibration-bounded honesty).
+
+---
+
+# BUILD UPDATE (2026-07-21, later same-day session) — Steps 1 & 2 BUILT + pushed
+
+Checkpoint committed first (`a68e6431`, preserves variant-B ④ + ⑤ Simulate + this doc), then:
+
+**Step 1 — ④ Start rebuilt variant-B → Option 1 (`227d3ac9`).** `AmbientStart.tsx`:
+- auto-rank toggle REMOVED (`StartConditions.autoRank` dropped — rank is always-on, never a start dial);
+- concept bug fixed — the maker grid no longer sits under a "what would you like to simulate?" hero;
+  quiet **"Make something"** kicker over a 2-col grid (Hook·Script·Caption·Idea·Thumbnail·Repurpose);
+- ONE distinct **Simulate DOOR** ("Test something against your audience →"); clean AS card shell;
+- fixture reshaped to `{ makeLabel, makeSkills, simDoor }`; `onTestDoor` added; glyphs `idea`·`frame`.
+- Live-verified (DOM asserts): toggle gone, Make grid + door present, composer "…or just ask".
+
+**Step 2 — ②/③ Detail → role-frames + creator template #1 (`32eb84cf`).**
+- **`domain-template.ts` (new) = the platform contract.** `DomainTemplate` bundles verdict +
+  `BrainFrameData` + `PopulationFrameData`; swap slots are discriminated unions (`BrainDriver`,
+  `PopulationMain`). A new domain = ONE template object (new figures into swap slots), never a fork.
+- `BrainTab.tsx` → exports **`BrainFrame`** (slots: ● cortex · ◇ driver `BrainDriverSlot` · ◇ signals ·
+  ◇ networks optional · ● ask-why `AskWhyStub` deferred/disabled · ● footer).
+- `AudienceTab.tsx` → exports **`PopulationFrame`** (slots: ● terrain · ◇ main `PopulationMainSlot` ·
+  ◇ segments · ● voices · ● footer). *(filenames unchanged; only exports renamed.)*
+- `AmbientDetail.tsx` consumes a `DomainTemplate` (verdict label swaps per domain).
+- `detail-fixture.ts` → **`CREATOR_TEMPLATE`** (template #1) — r4 values UNCHANGED, so the creator
+  view renders **identically** (regression anchor). Live-verified both tabs; 0 console errors.
+- Scope (owner-picked): **creator template only**; networks kept, ask-why deferred as a stub.
+
+**Still OPEN after this session:**
+- **Reframe ⑤ Simulate** (`AmbientSimulate.tsx`) as the develop/spend gateway + cold-start intake
+  (video/draft/ask/survey) + the ⑤ screen-vs-query fork. Still on its pre-model shape.
+- **Prove the swap with a 2nd DomainTemplate** (pricing: demand curve · resistance curve · WTP tiers)
+  + a dev toggle — deferred this session; the seam is ready for it (add a `kind` + a template object).
+- **P2/P3 depth refinements** (Brain σ→plain-words · terrain declutter) — model-independent, anytime.
+- **Naming** for the light layer (rank · pulse · first take) — still owner's call.
+- Wiring the v2 route into the product (later; parallel session owns the product-thread rank comp).
+
+**Git tip:** `32eb84cf` on `design/ambient-audience-v2` (pushed to origin). Gates all green.
