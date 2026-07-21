@@ -1,140 +1,278 @@
 /**
- * video-test-card.ts — the pure mapper PredictionResult → video-test-card block (TEST-01).
+ * video-test-card.ts — the pure mapper PredictionResult → the CRAFT-teardown card (TEST-01).
  *
- * The /test in-thread flow runs the full /api/analyze Max video pipeline UNTOUCHED and then
- * hands its result here to be shaped into the one honest thread card (see profile-blocks.ts
- * VideoTestCardBlockSchema for the honesty contract). This module owns the mapping ONLY — it
- * imports engine types + the block type + the flash band thresholds, and nothing route/thread.
+ * "The editor's cut." The /test flow runs the full /api/analyze Max video pipeline UNTOUCHED
+ * and hands its result here to be shaped into a static, technical read of how well-MADE the
+ * video is (see VideoTestCardBlockSchema for the reworked contract). This module owns the
+ * mapping ONLY — engine types in, block type out, nothing route/thread/network.
  *
- * Honesty spine (Pitfall 5 / D-11 / D-10):
- *   - NO 0-100 score leaves this function. `verdict` is HeroBlock.verdict_line (a WORD).
- *   - `band`/`fraction` are DERIVED from the REAL persona_simulation_results — a persona
- *     "stopped" iff they watched past the ~3s hook window (scroll_past_second >= HOOK_WINDOW_S)
- *     — using the SAME STRONG/MIXED thresholds the flash cards use. Never re-rolled, never faked.
- *   - When there are NO per-persona results (Wave 3 fell back / analysis unavailable) there is
- *     no honest audience reaction to show, so this returns null — the caller degrades to a
- *     link-out rather than fabricating a crowd (mirrors the account-read thin fallback).
- *   - `theOneFix`/`ceiling` are nullable: Apollo can be down, and we surface only what ran.
- *   - `model: "sim1-max"` — a real video ran the Max VIDEO tier.
+ * Reworked 2026-07-21 (the Test/Simulation split — docs/HANDOFF-2026-07-21-test-card-rework.md):
+ *   - Reception is GONE from this card. No band/fraction/reactions (who stopped), no goNoGo,
+ *     no verdict sentence, no retention curve — anything that draws a curve over time or splits
+ *     an audience belongs to the separate Simulation surface. This mapper reads only the CRAFT
+ *     slice of the result (Apollo dims, the filmstrip segments, the counterfactual fixes).
+ *   - The card CARRIES a number again — `craftScore`, the mean of the craft-subset dimensions
+ *     (hook / clarity / substance / credibility), retention EXCLUDED. It is a technical grade,
+ *     NOT the /analyze overall_score (which blends reception). Nullable: Apollo can be down.
+ *
+ * Grounding is a ROUTE concern (it is async/network): this mapper emits every fix with
+ * `proof: null`, and the route attaches a real corpus HookProof to the top 1–2 fixes via
+ * `deriveFixGroundingQueries` (below) + executeCorpusSearch. Honest absence otherwise.
  */
 
-import type { HeroBlock, OptimalPostWindow, PersonaSimulationResult, VerbatimPayload } from "@/lib/engine/types";
+import type {
+  ApolloDimension,
+  ApolloRewrite,
+  CounterfactualSuggestionItem,
+  HeatmapPayload,
+  VerbatimPayload,
+} from "@/lib/engine/types";
 import type { VideoTestCardBlock } from "@/lib/tools/blocks";
 import type { TrustTier } from "@/lib/audience/resolve-tier";
-import {
-  STRONG_THRESHOLD,
-  MIXED_THRESHOLD,
-} from "@/lib/engine/flash/flash-aggregate";
+import { resolveKeyframeUrl, type KeyframeSegmentLike } from "@/components/board/_kit/keyframe";
 
 /**
- * The narrow slice of a video PredictionResult this mapper reads. A full PredictionResult
- * (the SSE `complete` payload) is structurally assignable to it, and so is a freshly-assembled
- * object built from the persisted analysis_results row (the /test card route's path — hero and
- * apollo_reasoning live in variants.hero / variants.apollo there). Narrow on purpose: the route
- * never has to fabricate a whole PredictionResult, and the unit test constructs only these fields.
+ * The narrow CRAFT slice of a video PredictionResult this mapper reads. A full PredictionResult
+ * is structurally assignable, and so is the object the /test route assembles from the persisted
+ * analysis_results row (apollo lives in variants.apollo; heatmap/counterfactuals/verbatim are
+ * first-class columns). Reception fields (persona_simulation_results, weighted_curve, dropoff)
+ * are DELIBERATELY absent — they are Simulation's, not Test's.
  */
 export interface VideoTestSource {
-  overall_score: number;
-  anti_virality_gated: boolean;
-  persona_simulation_results: PersonaSimulationResult[];
-  hero?: HeroBlock | null;
-  apollo_reasoning?: { rewrites?: Array<{ variant?: string | null }> | null; ceiling_capper?: string | null } | null;
-  optimal_post_window?: OptimalPostWindow | null;
+  apollo_reasoning?: {
+    dimensions?: ApolloDimension[] | null;
+    rewrites?: ApolloRewrite[] | null;
+  } | null;
+  heatmap?: HeatmapPayload | null;
+  counterfactuals?: { suggestions?: CounterfactualSuggestionItem[] | null } | null;
   verbatim?: VerbatimPayload | null;
 }
 
-/** The ~3s hook window (seconds). A persona "stopped" iff they watched past it. */
-const HOOK_WINDOW_S = 3;
-
-/** Display cap for a persona reasoning quote (the schema allows the source's 500). */
-const QUOTE_DISPLAY_CAP = 280;
-
 export interface VideoTestCardOptions {
-  /** The row id — powers the "See the full breakdown →" door to /analyze/[id]. */
+  /** The row id — powers the "Simulate it →" door (→ /analyze/[id] until the Sim surface ships). */
   analysisId: string;
   /** The active audience's display name (resolved by the route; "General" default). */
   audienceName: string;
   /** The run-level trust tier (resolveTier of the active audience). */
   tier: TrustTier;
+  /**
+   * Signed keyframe URLs by segment idx (route-resolved; ephemeral). Absent in unit tests → every
+   * frame is null and the renderer shows a play-tile. Never fabricated: a missing frame stays null.
+   */
+  frames?: Record<number, string>;
 }
 
-/** Band from a stop-count, reusing the flash thresholds exactly (never re-rolled). */
-function bandFromStops(stops: number): "Strong" | "Mixed" | "Weak" {
-  if (stops >= STRONG_THRESHOLD) return "Strong";
-  if (stops >= MIXED_THRESHOLD) return "Mixed";
-  return "Weak";
+/** The craft-subset dimensions — retention EXCLUDED (retention is reception → Simulation). */
+const CRAFT_DIMS = ["hook", "clarity", "substance", "credibility"] as const;
+type CraftDimName = (typeof CRAFT_DIMS)[number];
+
+/** How many fixes the card shows (the card is tall; the top notes carry the leverage). */
+const MAX_FIXES = 3;
+/** How many working / not-working ledger items (the glance, not the full remediation). */
+const MAX_LEDGER = 3;
+
+/** "hook" → "Hook" (driver + fix labels). */
+function cap(s: string): string {
+  return s.length ? s[0]!.toUpperCase() + s.slice(1) : s;
 }
 
-/** Trim a persona's reasoning to a card-legible quote without a mid-word cut. */
-function clampQuote(text: string): string {
-  const t = text.trim();
-  if (t.length <= QUOTE_DISPLAY_CAP) return t;
-  const cut = t.slice(0, QUOTE_DISPLAY_CAP);
+/** seconds → "M:SS" clock label. */
+function fmtClock(seconds: number): string {
+  const s = Math.max(0, Math.round(seconds));
+  const m = Math.floor(s / 60);
+  return `${m}:${String(s % 60).padStart(2, "0")}`;
+}
+
+/** Trim a driver's evidence to a card-legible ledger line (no mid-word cut, no trailing period). */
+function clip(text: string, cap = 64): string {
+  const t = text.trim().replace(/\.$/, "");
+  if (t.length <= cap) return t;
+  const cut = t.slice(0, cap);
   const lastSpace = cut.lastIndexOf(" ");
-  return `${(lastSpace > 40 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
+  return `${(lastSpace > 24 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
 }
 
-/** The video's own opening line (spoken words, else on-screen text) — the honest room anchor. */
-function conceptFromVerbatim(verbatim: VerbatimPayload | null | undefined): string | undefined {
+/** The video's own opening line (spoken words, else on-screen text) — for the hook fix diagnosis. */
+function verbatimHook(verbatim: VerbatimPayload | null | undefined): string | null {
   const hook = verbatim?.hook;
   const text = (hook?.spoken_words ?? hook?.on_screen_text ?? "").trim();
-  return text.length > 0 ? text.slice(0, 500) : undefined;
+  return text.length > 0 ? text.slice(0, 200) : null;
 }
 
-/** Format the niche-aware optimal window into one soft line, or null when absent. */
-function formatPostWindow(w: OptimalPostWindow | null | undefined): string | null {
-  if (!w) return null;
-  const [lo, hi] = w.hour_range;
-  const pad = (n: number) => `${String(n).padStart(2, "0")}:00`;
-  return `${w.day_of_week} ${pad(lo)}–${pad(hi)} ${w.timezone}`;
+/** signal_anchor → the named craft lever shown on the fix (mockup: Momentum / Stakes / CTA). */
+const LEVER_BY_ANCHOR: Record<string, string> = {
+  retention: "Momentum",
+  hook: "Stakes",
+  cta: "CTA",
+};
+
+/**
+ * The NEUTRAL psychological "why" per fix — a general, well-established mechanism keyed to the
+ * fix's signal, NOT a fabricated claim about this specific video (so it is styled neutral, not as
+ * a coral warning). null when we have no principled mechanism for the anchor (the fix stands on
+ * its diagnosis + move alone). Curiosity-gap / Zeigarnik open-loops / peak-end — textbook, honest.
+ */
+const WHY_BY_ANCHOR: Record<string, string> = {
+  hook:
+    "A low-stakes open is a cheap skip — nothing is at risk, so there's little reason to stay. Naming a concrete stake widens the curiosity gap.",
+  retention:
+    "Attention holds on open loops. When a beat resolves nothing and opens nothing, the mind is free to leave — a pattern interrupt reopens the loop.",
+  cta:
+    "The end of a watch is the moment a viewer remembers most. An explicit ask, made while attention is still high, turns that peak into an action.",
+};
+
+/** The counterfactual fixes this card renders — filtered to `type:'fix'`, capped, order preserved. */
+function selectFixSuggestions(source: VideoTestSource): CounterfactualSuggestionItem[] {
+  const all = source.counterfactuals?.suggestions ?? [];
+  return all.filter((s) => s.type === "fix").slice(0, MAX_FIXES);
+}
+
+/** The craft-subset dimensions present in the result, in the fixed craft order (retention dropped). */
+function craftDimensions(source: VideoTestSource): ApolloDimension[] {
+  const dims = source.apollo_reasoning?.dimensions ?? [];
+  return CRAFT_DIMS.map((name) => dims.find((d) => d.name === name)).filter(
+    (d): d is ApolloDimension => Boolean(d),
+  );
+}
+
+/** Bridge heatmap segments to the resolveKeyframeUrl shape. */
+function asKeyframeSegments(segments: HeatmapPayload["segments"] | undefined): KeyframeSegmentLike[] {
+  return (segments ?? []).map((s, i) => ({
+    idx: s.idx ?? i,
+    t_start: s.t_start,
+    t_end: s.t_end,
+    keyframe_uri: s.keyframe_uri,
+  }));
 }
 
 /**
- * Map a completed video PredictionResult → the video-test-card block, or null when the run
- * carries no honest audience reaction (no per-persona results). The caller (the /test card
- * route) treats null as "couldn't read the audience on this video" and degrades to the
- * link-out rather than emitting a card with a fabricated band.
+ * The per-fix corpus queries the ROUTE runs (aligned by index to the fixes this mapper emits, so
+ * `queries[i]` grounds `fixes[i]`). Structural axis on purpose: a craft fix wants the SHAPE of a
+ * proven move (a stronger hook, a tighter cut) across niches, not a same-subject match. null when
+ * a fix has nothing searchable. The route grounds only the top 1–2 — this returns them all in order.
+ */
+export function deriveFixGroundingQueries(
+  source: VideoTestSource,
+): Array<{ query: string; axis: "topical" | "structural" } | null> {
+  const rewrites = source.apollo_reasoning?.rewrites ?? [];
+  return selectFixSuggestions(source).map((fix) => {
+    const anchor = fix.signal_anchor;
+    // A hook fix grounds best on a concrete hook line (the sharpened rewrite); others on the headline.
+    const query =
+      anchor === "hook" ? rewrites[0]?.variant ?? fix.headline : fix.headline;
+    const q = query.trim();
+    return q ? { query: q, axis: "structural" as const } : null;
+  });
+}
+
+/**
+ * Map a completed video PredictionResult → the craft-teardown card, or null when the run carries
+ * NO craft material at all (no Apollo dims, no filmstrip segments, no fixes) — the caller then
+ * degrades to the link-out rather than emitting an empty card. Fixes emit with `proof: null`; the
+ * route attaches real corpus proofs to the top fixes.
  */
 export function predictionResultToVideoTestCard(
-  result: VideoTestSource,
+  source: VideoTestSource,
   opts: VideoTestCardOptions,
 ): VideoTestCardBlock | null {
-  const personas = result.persona_simulation_results ?? [];
-  if (personas.length === 0) return null; // no honest reaction to show → caller degrades
+  const dims = craftDimensions(source);
+  const segments = source.heatmap?.segments ?? [];
+  const fixSuggestions = selectFixSuggestions(source);
 
-  const stops = personas.filter((p) => p.scroll_past_second >= HOOK_WINDOW_S).length;
-  const total = personas.length;
-  const band = bandFromStops(stops);
-  const fraction = `${stops}/${total} stopped`;
+  // Nothing to show — no craft grade, no filmstrip, no notes → let the caller degrade.
+  if (dims.length === 0 && segments.length === 0 && fixSuggestions.length === 0) return null;
 
-  const reactions = personas.map((p) => ({
-    archetype: p.archetype,
-    verdict: (p.scroll_past_second >= HOOK_WINDOW_S ? "stop" : "scroll") as "stop" | "scroll",
-    quote: clampQuote(p.reasoning),
+  const frames = opts.frames ?? {};
+  const keyframeSegments = asKeyframeSegments(segments);
+
+  // ── Header — craft score + drivers (retention excluded) ──
+  const craftScore =
+    dims.length > 0
+      ? Math.round(dims.reduce((sum, d) => sum + d.score, 0) / dims.length)
+      : null;
+  const drivers = [...dims]
+    .sort((a, b) => b.score - a.score)
+    .map((d) => ({ name: cap(d.name as CraftDimName), score: d.score, band: d.band }));
+
+  // ── Filmstrip — the weak beat is the 'stall' segment, else the first retention fix's segment ──
+  const retentionFix = fixSuggestions.find((f) => f.signal_anchor === "retention");
+  const stallSeg = segments.find((s) => (s.label ?? "").toLowerCase().includes("stall"));
+  const weakSeg =
+    stallSeg ??
+    (retentionFix
+      ? segments.find(
+          (s) =>
+            retentionFix.timestamp_ms / 1000 >= s.t_start &&
+            retentionFix.timestamp_ms / 1000 < s.t_end,
+        )
+      : undefined);
+  const filmstrip = segments.map((s) => ({
+    idx: s.idx,
+    label: cap(s.label ?? `Segment ${s.idx + 1}`),
+    atMs: Math.round(s.t_start * 1000),
+    mark: (s.is_hook_zone ? "asset" : weakSeg && s.idx === weakSeg.idx ? "weak" : null) as
+      | "asset"
+      | "weak"
+      | null,
+    keyframeUrl: frames[s.idx] ?? s.keyframe_uri ?? null,
+  }));
+  const dropSeconds = weakSeg?.t_start ?? (retentionFix ? retentionFix.timestamp_ms / 1000 : null);
+  const dropLabel = dropSeconds != null ? `${fmtClock(dropSeconds)} drop` : null;
+  const lastSeg = segments[segments.length - 1];
+  const durationLabel = lastSeg ? fmtClock(lastSeg.t_end) : null;
+
+  // ── Working / not-working ledger ──
+  const reinforcements = (source.counterfactuals?.suggestions ?? [])
+    .filter((s) => s.type === "reinforcement")
+    .map((s) => s.headline.trim())
+    .filter(Boolean);
+  const strongLines = dims
+    .filter((d) => d.band === "strong")
+    .sort((a, b) => b.score - a.score)
+    .map((d) => `${cap(d.name)} — ${clip(d.evidence)}`);
+  const working: string[] = [];
+  for (const line of [...reinforcements, ...strongLines]) {
+    if (working.length >= MAX_LEDGER) break;
+    if (!working.includes(line)) working.push(line);
+  }
+  const notWorking = fixSuggestions.map((f) => ({
+    text: f.headline.trim(),
+    atMs: f.timestamp_ms > 0 ? f.timestamp_ms : null,
   }));
 
-  // Verdict + go/no-go: prefer the assembled hero (word-only), else derive the same WORD from
-  // the gate + score (still never surfacing the number itself).
-  const gated = result.anti_virality_gated;
-  const score = result.overall_score;
-  const verdict =
-    result.hero?.verdict_line ??
-    (gated ? "Don't post yet" : score >= 70 ? "High potential" : score >= 40 ? "Solid contender" : "Needs work");
-  const goNoGo: "go" | "no-go" = result.hero?.go_no_go ?? (gated ? "no-go" : "go");
+  // ── The director's fixes ──
+  const rewrites = source.apollo_reasoning?.rewrites ?? [];
+  const hookLine = verbatimHook(source.verbatim);
+  const fixes = fixSuggestions.map((fix) => {
+    const anchor = fix.signal_anchor;
+    const isHook = anchor === "hook";
+    const diagnosis =
+      isHook && hookLine ? `Your open — “${hookLine}”. ${fix.detail.trim()}` : fix.detail.trim();
+    return {
+      title: fix.headline.trim(),
+      lever: LEVER_BY_ANCHOR[anchor] ?? null,
+      atMs: fix.timestamp_ms > 0 ? fix.timestamp_ms : null,
+      keyframeUrl:
+        fix.timestamp_ms > 0 ? resolveKeyframeUrl(frames, keyframeSegments, fix.timestamp_ms) : null,
+      diagnosis,
+      why: WHY_BY_ANCHOR[anchor] ?? null,
+      move: isHook ? rewrites[0]?.variant?.trim() ?? null : null,
+      proof: null, // the route grounds the top 1–2 fixes; honest absence otherwise
+    };
+  });
 
   return {
     type: "video-test-card",
     props: {
-      verdict,
-      goNoGo,
+      craftScore,
+      drivers,
+      filmstrip,
+      dropLabel,
+      durationLabel,
+      working,
+      notWorking,
+      fixes,
       audienceName: opts.audienceName,
-      band,
-      fraction,
-      theOneFix: result.hero?.the_one_fix ?? result.apollo_reasoning?.rewrites?.[0]?.variant ?? null,
-      ceiling: result.hero?.ceiling ?? result.apollo_reasoning?.ceiling_capper ?? null,
-      reactions,
-      postWindow: formatPostWindow(result.optimal_post_window),
-      ...(conceptFromVerbatim(result.verbatim) ? { conceptText: conceptFromVerbatim(result.verbatim)! } : {}),
       analysisId: opts.analysisId,
       model: "sim1-max",
       tier: opts.tier,

@@ -1,173 +1,160 @@
 import { describe, it, expect } from "vitest";
 import {
   predictionResultToVideoTestCard,
+  deriveFixGroundingQueries,
   type VideoTestSource,
 } from "@/lib/tools/video-test-card";
 import { VideoTestCardBlockSchema } from "@/lib/tools/profile-blocks";
-import type { PersonaSimulationResult } from "@/lib/engine/types";
+import type {
+  ApolloDimension,
+  ApolloRewrite,
+  CounterfactualSuggestionItem,
+  HeatmapPayload,
+} from "@/lib/engine/types";
 
-// One valid PersonaSimulationResult. `scrolledAt` drives the stop/scroll derivation
-// (stopped iff scroll_past_second >= 3, the ~3s hook window).
-function persona(archetype: PersonaSimulationResult["archetype"], scrolledAt: number, reasoning = "because"): PersonaSimulationResult {
-  return {
-    persona_id: `p-${archetype}`,
-    archetype,
-    slot_type: "fyp",
-    niche: "fitness",
-    scroll_past_second: scrolledAt,
-    watch_through_pct: 50,
-    comment_intent: 0,
-    share_intent: 0,
-    save_intent: 0,
-    rewatch_intent: 0,
-    reasoning,
-  };
-}
+// dimensions[] fixed order [hook, retention, clarity, share_pull, substance, credibility].
+// Craft subset = hook/clarity/substance/credibility → mean(87,72,70,80)=77.25→77. retention (55)
+// is RECEPTION and must never reach the craft score or the drivers.
+const DIMENSIONS: ApolloDimension[] = [
+  { name: "hook", band: "strong", score: 87, lever: "Contrast / curiosity gap (§2.1)", evidence: "Strong cold open — visual stop power high." },
+  { name: "retention", band: "mid", score: 55, lever: "Momentum / pattern interrupt (§2.3)", evidence: "Attention dips sharply around 0:08." },
+  { name: "clarity", band: "strong", score: 72, lever: "Single clear message (§2.4)", evidence: "One legible idea, minimal overlay clutter." },
+  { name: "share_pull", band: "mid", score: 64, lever: "Social currency (§2.5)", evidence: "Relatable but not identity-signalling." },
+  { name: "substance", band: "strong", score: 70, lever: "Payoff / value density (§2.6)", evidence: "Delivers a concrete takeaway." },
+  { name: "credibility", band: "strong", score: 80, lever: "Trust / authenticity (§2.7)", evidence: "Natural delivery, no over-production." },
+];
+
+const REWRITES: ApolloRewrite[] = [
+  {
+    original: "Here are three things nobody tells you about freelancing",
+    variant: "The freelancing advice that doubled my rate (most people get this backwards)",
+    lever_fixed: "Contrast / curiosity gap (§2.1)",
+  },
+];
+
+const SEGMENTS: HeatmapPayload["segments"] = [
+  { idx: 0, t_start: 0, t_end: 3, label: "cold open", is_hook_zone: true, keyframe_uri: null },
+  { idx: 1, t_start: 3, t_end: 6, label: "setup", is_hook_zone: false, keyframe_uri: null },
+  { idx: 2, t_start: 6, t_end: 9, label: "stall", is_hook_zone: false, keyframe_uri: null },
+  { idx: 3, t_start: 9, t_end: 12, label: "payoff", is_hook_zone: false, keyframe_uri: null },
+  { idx: 4, t_start: 12, t_end: 15, label: "close", is_hook_zone: false, keyframe_uri: null },
+];
+
+const FIXES: CounterfactualSuggestionItem[] = [
+  { type: "fix", headline: "Recut the open", detail: "You lose them at 0:08 — front-load the payoff.", timestamp_ms: 8000, signal_anchor: "retention" },
+  { type: "fix", headline: "Tighten the text overlay", detail: "Move the first card up to 0:01 so it lands with the hook.", timestamp_ms: 1000, signal_anchor: "hook" },
+  { type: "fix", headline: "Add an explicit CTA", detail: "The final 0:02 should ask for the follow.", timestamp_ms: 14000, signal_anchor: "cta" },
+  { type: "reinforcement", headline: "Keep the cold open", detail: "The visual stop power is your asset.", timestamp_ms: 0, signal_anchor: "hook" },
+];
 
 const OPTS = { analysisId: "an-1", audienceName: "Skincare buyers", tier: "Directional" as const };
 
-// 7 stops (>=3s) + 3 scrolls (<3s) → Strong (>=6), fraction "7/10 stopped".
-function healthySource(): VideoTestSource {
+function healthySource(over: Partial<VideoTestSource> = {}): VideoTestSource {
   return {
-    overall_score: 72,
-    anti_virality_gated: false,
-    persona_simulation_results: [
-      persona("high_engager", 8, "hook grabbed me"),
-      persona("saver", 6),
-      persona("lurker", 5),
-      persona("purposeful_viewer", 4),
-      persona("niche_deep_buyer", 3),
-      persona("loyalist", 10),
-      persona("cross_niche_curiosity", 7),
-      persona("tough_crowd", 1, "seen it before"),
-      persona("sharer", 2),
-      persona("niche_deep_scout", 0),
-    ],
-    hero: {
-      verdict_line: "High potential",
-      ceiling: "The middle sags after the demo.",
-      the_one_fix: "Open on the after-shot.",
-      go_no_go: "go",
-      post_window: null,
-    },
-    apollo_reasoning: null,
-    optimal_post_window: {
-      day_of_week: "Tue",
-      hour_range: [18, 21],
-      timezone: "UTC",
-      reasoning: "x",
-      source: "niche",
-    },
-    verbatim: { hook: { spoken_words: "here's the one thing nobody tells you", on_screen_text: null } },
+    apollo_reasoning: { dimensions: DIMENSIONS, rewrites: REWRITES },
+    heatmap: { segments: SEGMENTS, personas: [] } as unknown as HeatmapPayload,
+    counterfactuals: { suggestions: FIXES },
+    verbatim: { hook: { spoken_words: "Here are three things nobody tells you about freelancing", on_screen_text: null } },
+    ...over,
   };
 }
 
-describe("predictionResultToVideoTestCard", () => {
-  it("maps a healthy video result → an honest, schema-valid card (sim1-max, bands-only)", () => {
+describe("predictionResultToVideoTestCard (craft teardown)", () => {
+  it("maps a healthy result → a schema-valid craft card (sim1-max)", () => {
     const block = predictionResultToVideoTestCard(healthySource(), OPTS);
     expect(block).not.toBeNull();
-    // The block MUST validate against its own strict schema — proves NO smuggled 0-100 score.
-    const parsed = VideoTestCardBlockSchema.safeParse(block);
-    expect(parsed.success).toBe(true);
-
+    expect(VideoTestCardBlockSchema.safeParse(block).success).toBe(true);
     expect(block!.props.model).toBe("sim1-max");
-    expect(block!.props.verdict).toBe("High potential"); // the WORD, never the number
-    expect(block!.props.goNoGo).toBe("go");
-    expect(block!.props.band).toBe("Strong"); // 7 stops >= STRONG_THRESHOLD (6)
-    expect(block!.props.fraction).toBe("7/10 stopped");
-    expect(block!.props.analysisId).toBe("an-1");
     expect(block!.props.audienceName).toBe("Skincare buyers");
-    expect(block!.props.postWindow).toBe("Tue 18:00–21:00 UTC");
-    expect(block!.props.theOneFix).toBe("Open on the after-shot.");
-    // The room anchor is the video's own verbatim hook (honest — what the clip said).
-    expect(block!.props.conceptText).toBe("here's the one thing nobody tells you");
   });
 
-  it("omits conceptText when the clip has no verbatim hook (silent/no-speech video)", () => {
-    const src = healthySource();
-    src.verbatim = null;
-    const block = predictionResultToVideoTestCard(src, OPTS)!;
-    expect(block.props.conceptText).toBeUndefined();
-    // Still schema-valid (conceptText is optional).
+  it("craftScore = mean of the CRAFT subset only (retention excluded)", () => {
+    const block = predictionResultToVideoTestCard(healthySource(), OPTS)!;
+    // mean(hook 87, clarity 72, substance 70, credibility 80) = 77.25 → 77
+    expect(block.props.craftScore).toBe(77);
+    // retention (55) never appears as a driver.
+    expect(block.props.drivers.some((d) => d.name.toLowerCase() === "retention")).toBe(false);
+    expect(block.props.drivers).toHaveLength(4);
+    // drivers sorted by score descending.
+    expect(block.props.drivers.map((d) => d.name)).toEqual(["Hook", "Credibility", "Clarity", "Substance"]);
+  });
+
+  it("builds the filmstrip: cold open = asset, stall = weak, drop + duration labels", () => {
+    const block = predictionResultToVideoTestCard(healthySource(), OPTS)!;
+    expect(block.props.filmstrip).toHaveLength(5);
+    expect(block.props.filmstrip[0]!.mark).toBe("asset"); // is_hook_zone
+    expect(block.props.filmstrip[2]!.mark).toBe("weak"); // the stall
+    expect(block.props.filmstrip.filter((f) => f.mark === null)).toHaveLength(3);
+    expect(block.props.dropLabel).toBe("0:06 drop"); // stall t_start = 6s
+    expect(block.props.durationLabel).toBe("0:15"); // last t_end
+  });
+
+  it("resolves keyframe URLs from the frames option (their frames, ephemeral)", () => {
+    const frames = { 0: "https://signed/0.jpg" };
+    const block = predictionResultToVideoTestCard(healthySource(), { ...OPTS, frames })!;
+    expect(block.props.filmstrip[0]!.keyframeUrl).toBe("https://signed/0.jpg");
+    expect(block.props.filmstrip[1]!.keyframeUrl).toBeNull(); // no frame for idx 1
+    // The hook fix at 1000ms sits in segment 0 [0,3) → resolves to frame 0.
+    const hookFix = block.props.fixes.find((f) => f.lever === "Stakes")!;
+    expect(hookFix.keyframeUrl).toBe("https://signed/0.jpg");
+  });
+
+  it("emits the director's fixes with lever + neutral why; the hook fix gets a rewrite move", () => {
+    const block = predictionResultToVideoTestCard(healthySource(), OPTS)!;
+    expect(block.props.fixes).toHaveLength(3);
+    const [momentum, stakes, cta] = block.props.fixes;
+    expect(momentum!.lever).toBe("Momentum");
+    expect(momentum!.why).toContain("open loops");
+    expect(momentum!.move).toBeNull(); // only hook fixes carry a rewrite move
+    // The hook fix quotes their verbatim open + carries the Apollo rewrite as the move.
+    expect(stakes!.lever).toBe("Stakes");
+    expect(stakes!.diagnosis).toContain("Here are three things nobody tells you");
+    expect(stakes!.move).toBe(REWRITES[0]!.variant);
+    expect(cta!.lever).toBe("CTA");
+    // Grounding is the route's job — the mapper leaves every proof null.
+    expect(block.props.fixes.every((f) => f.proof === null)).toBe(true);
+  });
+
+  it("ledger: working blends reinforcements + strong drivers; not-working carries the fix timestamps", () => {
+    const block = predictionResultToVideoTestCard(healthySource(), OPTS)!;
+    expect(block.props.working[0]).toBe("Keep the cold open"); // the reinforcement leads
+    expect(block.props.working.length).toBeGreaterThan(0);
+    expect(block.props.working.length).toBeLessThanOrEqual(3);
+    expect(block.props.notWorking).toEqual([
+      { text: "Recut the open", atMs: 8000 },
+      { text: "Tighten the text overlay", atMs: 1000 },
+      { text: "Add an explicit CTA", atMs: 14000 },
+    ]);
+  });
+
+  it("derives per-fix grounding queries aligned to the fixes (structural; hook uses the rewrite)", () => {
+    const queries = deriveFixGroundingQueries(healthySource());
+    expect(queries).toHaveLength(3);
+    expect(queries[0]).toEqual({ query: "Recut the open", axis: "structural" });
+    expect(queries[1]).toEqual({ query: REWRITES[0]!.variant, axis: "structural" }); // hook → rewrite
+    expect(queries[2]).toEqual({ query: "Add an explicit CTA", axis: "structural" });
+  });
+
+  it("degrades gracefully when Apollo is down but the filmstrip + fixes survive (craftScore null)", () => {
+    const block = predictionResultToVideoTestCard(healthySource({ apollo_reasoning: null }), OPTS)!;
+    expect(block.props.craftScore).toBeNull();
+    expect(block.props.drivers).toHaveLength(0);
+    expect(block.props.filmstrip).toHaveLength(5); // still shows their video
+    expect(block.props.fixes).toHaveLength(3);
     expect(VideoTestCardBlockSchema.safeParse(block).success).toBe(true);
   });
 
-  it("carries NO 0-100 number anywhere in the serialized card (honesty spine)", () => {
-    const block = predictionResultToVideoTestCard(healthySource(), OPTS);
-    const json = JSON.stringify(block!.props);
-    // The source score is 72 — it must not leak into any field.
-    expect(json).not.toContain("72");
+  it("returns null when there is NO craft material at all (caller degrades to the link-out)", () => {
+    const empty: VideoTestSource = { apollo_reasoning: null, heatmap: null, counterfactuals: null, verbatim: null };
+    expect(predictionResultToVideoTestCard(empty, OPTS)).toBeNull();
   });
 
-  it("derives per-persona reactions from the sim (stop iff watched past the ~3s hook)", () => {
+  it("carries no reception field — no band/fraction/reactions leak into the strict schema", () => {
     const block = predictionResultToVideoTestCard(healthySource(), OPTS)!;
-    const tough = block.props.reactions.find((r) => r.archetype === "tough_crowd");
-    const engager = block.props.reactions.find((r) => r.archetype === "high_engager");
-    expect(tough!.verdict).toBe("scroll"); // scrolled at 1s
-    expect(engager!.verdict).toBe("stop"); // watched to 8s
-    expect(engager!.quote).toBe("hook grabbed me");
-  });
-
-  it("returns null when there are NO per-persona results (no honest reaction → caller degrades)", () => {
-    const src = healthySource();
-    src.persona_simulation_results = [];
-    expect(predictionResultToVideoTestCard(src, OPTS)).toBeNull();
-  });
-
-  it("bands on the flash thresholds: 3-5 stops = Mixed, <3 = Weak", () => {
-    const mixed = healthySource();
-    // 4 stops (>=3s), 6 scrolls.
-    mixed.persona_simulation_results = [
-      persona("high_engager", 5), persona("saver", 4), persona("lurker", 3), persona("loyalist", 9),
-      persona("tough_crowd", 1), persona("sharer", 0), persona("purposeful_viewer", 2),
-      persona("niche_deep_buyer", 1), persona("niche_deep_scout", 0), persona("cross_niche_curiosity", 2),
-    ];
-    expect(predictionResultToVideoTestCard(mixed, OPTS)!.props.band).toBe("Mixed");
-    expect(predictionResultToVideoTestCard(mixed, OPTS)!.props.fraction).toBe("4/10 stopped");
-
-    const weak = healthySource();
-    weak.persona_simulation_results = [
-      persona("high_engager", 5), persona("saver", 4), // 2 stops
-      persona("lurker", 1), persona("loyalist", 0), persona("tough_crowd", 1),
-      persona("sharer", 0), persona("purposeful_viewer", 2), persona("niche_deep_buyer", 1),
-      persona("niche_deep_scout", 0), persona("cross_niche_curiosity", 2),
-    ];
-    expect(predictionResultToVideoTestCard(weak, OPTS)!.props.band).toBe("Weak");
-  });
-
-  it("falls back to a WORD verdict + no-go from the gate when the hero is absent", () => {
-    const src = healthySource();
-    src.hero = null;
-    src.anti_virality_gated = true;
-    src.overall_score = 22;
-    const block = predictionResultToVideoTestCard(src, OPTS)!;
-    expect(block.props.verdict).toBe("Don't post yet");
-    expect(block.props.goNoGo).toBe("no-go");
-    expect(block.props.theOneFix).toBeNull();
-    expect(block.props.ceiling).toBeNull();
-    // Still no number leaked despite deriving from score 22.
-    expect(JSON.stringify(block.props)).not.toContain("22");
-  });
-
-  it("falls back to Apollo rewrites/ceiling for the fix + ceiling when the hero is absent", () => {
-    const src = healthySource();
-    src.hero = null;
-    src.apollo_reasoning = {
-      rewrites: [{ variant: "Lead with the number." }],
-      ceiling_capper: "No proof shown.",
-    };
-    const block = predictionResultToVideoTestCard(src, OPTS)!;
-    expect(block.props.theOneFix).toBe("Lead with the number.");
-    expect(block.props.ceiling).toBe("No proof shown.");
-  });
-
-  it("clamps a long persona reasoning to a display-legible quote", () => {
-    const src = healthySource();
-    const long = "word ".repeat(120).trim(); // ~600 chars
-    src.persona_simulation_results = [persona("high_engager", 8, long)];
-    const block = predictionResultToVideoTestCard(src, OPTS)!;
-    const q = block.props.reactions[0]!.quote;
-    expect(q.length).toBeLessThanOrEqual(281); // <= cap + ellipsis
-    expect(q.endsWith("…")).toBe(true);
+    const keys = Object.keys(block.props);
+    expect(keys).not.toContain("band");
+    expect(keys).not.toContain("fraction");
+    expect(keys).not.toContain("reactions");
+    expect(keys).not.toContain("goNoGo");
   });
 });

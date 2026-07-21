@@ -1,28 +1,31 @@
 /**
- * route.test.ts — POST /api/tools/test/card (TEST-01).
+ * route.test.ts — POST /api/tools/test/card (TEST-01, craft-teardown rework).
  *
- * The thin adapter that turns a persisted, scored analysis_results row into the honest
- * video-test-card and drops it in the open thread. Locks: auth-first, ownership-scoped row
- * load, the not-ready (409) and not-found (404) gates, the happy path (a schema-valid
- * sim1-max card is persisted with NO 0-100 number), and the honest degrade (no per-persona
- * results → { degraded } with no card written).
+ * The thin adapter that turns a persisted, scored analysis_results row into the in-thread CRAFT
+ * card and drops it in the open thread. Locks: auth-first, ownership-scoped row load, the
+ * not-ready (409) and not-found (404) gates, the happy path (a schema-valid sim1-max craft card
+ * — craftScore from the craft-subset dims — is persisted), and the honest degrade (no craft
+ * material → { degraded } with no card written).
  *
- * predictionResultToVideoTestCard runs REAL (it is pure) so the row → card mapping is
- * exercised end to end; only the IO seams (supabase, thread, insert) are mocked.
+ * predictionResultToVideoTestCard runs REAL (it is pure) so the row → card mapping is exercised
+ * end to end; the IO seams (supabase, thread, insert, keyframe signing, corpus grounding) are mocked.
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Audience } from "@/lib/audience/audience-types";
-import type { PersonaSimulationResult } from "@/lib/engine/types";
+import type { ApolloDimension, CounterfactualSuggestionItem, HeatmapPayload } from "@/lib/engine/types";
 
 // ─── Mocks (IO seams only) ──────────────────────────────────────────────────────
 
 vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn() }));
-vi.mock("@/lib/supabase/service", () => ({ createServiceClient: vi.fn(() => ({})) }));
 vi.mock("@/lib/threads/threads", () => ({ createOpenThreadLazy: vi.fn() }));
 vi.mock("@/lib/threads/messages", () => ({ insertMessage: vi.fn() }));
 vi.mock("@/lib/kc/kc-stamp", () => ({ kcStamp: vi.fn(() => ({ kcGenVersion: "gen.1.0.0" })) }));
-vi.mock("@/lib/engine/optimal-post", () => ({ computeOptimalPostWindow: vi.fn(async () => null) }));
+vi.mock("@/lib/engine/filmstrip/storage", () => ({ signAnalysisFrames: vi.fn(async () => ({})) }));
+vi.mock("@/lib/grounding/corpus-tool", () => ({
+  executeCorpusSearch: vi.fn(async () => ({ content: "", examples: [], citable: [], record: {} })),
+}));
+vi.mock("@/lib/grounding/retrieve", () => ({ retrieveCachedExamples: vi.fn() }));
 vi.mock("@/lib/audience/audience-repo", () => ({
   getAudience: vi.fn(),
   GENERAL_AUDIENCE: { id: "general", name: "General", mode: "general", is_general: true } as unknown as Audience,
@@ -31,39 +34,45 @@ vi.mock("@/lib/audience/audience-repo", () => ({
 import { createClient } from "@/lib/supabase/server";
 import { createOpenThreadLazy } from "@/lib/threads/threads";
 import { insertMessage } from "@/lib/threads/messages";
+import { executeCorpusSearch } from "@/lib/grounding/corpus-tool";
 
 const mockCreateClient = createClient as ReturnType<typeof vi.fn>;
 const mockOpenThread = createOpenThreadLazy as ReturnType<typeof vi.fn>;
 const mockInsertMessage = insertMessage as ReturnType<typeof vi.fn>;
+const mockCorpusSearch = executeCorpusSearch as ReturnType<typeof vi.fn>;
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Craft fixture (the persisted row's craft slice) ────────────────────────────
 
-function persona(archetype: PersonaSimulationResult["archetype"], scrolledAt: number): PersonaSimulationResult {
-  return {
-    persona_id: `p-${archetype}`, archetype, slot_type: "fyp", niche: "fitness",
-    scroll_past_second: scrolledAt, watch_through_pct: 50,
-    comment_intent: 0, share_intent: 0, save_intent: 0, rewatch_intent: 0, reasoning: "because",
-  };
-}
+const DIMENSIONS: ApolloDimension[] = [
+  { name: "hook", band: "strong", score: 87, lever: "Contrast (§2.1)", evidence: "Strong cold open." },
+  { name: "retention", band: "mid", score: 55, lever: "Momentum (§2.3)", evidence: "Dips at 0:08." },
+  { name: "clarity", band: "strong", score: 72, lever: "One message (§2.4)", evidence: "Legible." },
+  { name: "share_pull", band: "mid", score: 64, lever: "Currency (§2.5)", evidence: "Relatable." },
+  { name: "substance", band: "strong", score: 70, lever: "Payoff (§2.6)", evidence: "Concrete takeaway." },
+  { name: "credibility", band: "strong", score: 80, lever: "Trust (§2.7)", evidence: "Natural delivery." },
+];
+const SEGMENTS: HeatmapPayload["segments"] = [
+  { idx: 0, t_start: 0, t_end: 3, label: "cold open", is_hook_zone: true, keyframe_uri: null },
+  { idx: 1, t_start: 3, t_end: 6, label: "setup", is_hook_zone: false, keyframe_uri: null },
+  { idx: 2, t_start: 6, t_end: 9, label: "stall", is_hook_zone: false, keyframe_uri: null },
+  { idx: 3, t_start: 9, t_end: 12, label: "close", is_hook_zone: false, keyframe_uri: null },
+];
+const FIXES: CounterfactualSuggestionItem[] = [
+  { type: "fix", headline: "Recut the open", detail: "Front-load the payoff.", timestamp_ms: 8000, signal_anchor: "retention" },
+  { type: "fix", headline: "Add an explicit CTA", detail: "Ask for the follow.", timestamp_ms: 11000, signal_anchor: "cta" },
+];
 
-/** A scored analysis_results row with 6 stopping personas (→ Strong) + a hero. */
+/** A scored analysis_results row carrying the CRAFT slice (variants.apollo + heatmap + counterfactuals). */
 function scoredRow(overrides: Record<string, unknown> = {}) {
   return {
     id: "an-1",
     user_id: "user-1",
     overall_score: 72,
-    anti_virality_gated: false,
     deleted_at: null,
-    optimal_post_window: null,
-    personas: [
-      persona("high_engager", 8), persona("saver", 6), persona("lurker", 5),
-      persona("purposeful_viewer", 4), persona("niche_deep_buyer", 3), persona("loyalist", 10),
-      persona("tough_crowd", 1), persona("sharer", 2), persona("niche_deep_scout", 0),
-      persona("cross_niche_curiosity", 0),
-    ],
-    variants: {
-      hero: { verdict_line: "High potential", ceiling: "Sags mid-way.", the_one_fix: "Lead with the after-shot.", go_no_go: "go", post_window: null },
-    },
+    variants: { apollo: { dimensions: DIMENSIONS, rewrites: [] } },
+    heatmap: { segments: SEGMENTS, personas: [] },
+    counterfactuals: { suggestions: FIXES },
+    verbatim: null,
     ...overrides,
   };
 }
@@ -98,6 +107,7 @@ beforeEach(() => {
   mockCreateClient.mockResolvedValue(makeSupabase("user-1", scoredRow()));
   mockOpenThread.mockResolvedValue({ id: "thread-1", type: "open", user_id: "user-1", reading_id: null, active_audience_id: null });
   mockInsertMessage.mockResolvedValue(undefined);
+  mockCorpusSearch.mockResolvedValue({ content: "", examples: [], citable: [], record: {} });
 });
 
 describe("POST /api/tools/test/card", () => {
@@ -128,17 +138,15 @@ describe("POST /api/tools/test/card", () => {
     expect(mockInsertMessage).not.toHaveBeenCalled();
   });
 
-  it("200 → persists a schema-valid sim1-max card with NO 0-100 number", async () => {
+  it("200 → persists a schema-valid sim1-max craft card (craftScore from the craft dims)", async () => {
     const res = await callPOST({ analysisId: "an-1" });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.block.type).toBe("video-test-card");
     expect(body.block.props.model).toBe("sim1-max");
-    expect(body.block.props.verdict).toBe("High potential");
-    expect(body.block.props.band).toBe("Strong"); // 6 personas watched past 3s
+    expect(body.block.props.craftScore).toBe(77); // mean(87,72,70,80)
     expect(body.block.props.audienceName).toBe("General");
-    // The source score 72 must not leak anywhere in the persisted card.
-    expect(JSON.stringify(body.block.props)).not.toContain("72");
+    expect(body.block.props.filmstrip).toHaveLength(4);
 
     // The block was persisted to the open thread.
     expect(mockInsertMessage).toHaveBeenCalledTimes(1);
@@ -148,12 +156,21 @@ describe("POST /api/tools/test/card", () => {
     expect(blocks[0].type).toBe("video-test-card");
   });
 
-  it("degrades (no card written) when the row has no per-persona results", async () => {
-    mockCreateClient.mockResolvedValue(makeSupabase("user-1", scoredRow({ personas: [] })));
+  it("attempts to ground the top fixes (best-effort) without failing the card", async () => {
+    await callPOST({ analysisId: "an-1" });
+    // Two fixes → grounding runs (capped), and a corpus whiff never blocks persistence.
+    expect(mockCorpusSearch).toHaveBeenCalled();
+    expect(mockInsertMessage).toHaveBeenCalledTimes(1);
+  });
+
+  it("degrades (no card written) when the row has no craft material", async () => {
+    mockCreateClient.mockResolvedValue(
+      makeSupabase("user-1", scoredRow({ variants: null, heatmap: null, counterfactuals: null })),
+    );
     const res = await callPOST({ analysisId: "an-1" });
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.degraded).toBe("no_audience_reaction");
+    expect(body.degraded).toBe("no_craft");
     expect(body.analysisId).toBe("an-1");
     expect(mockInsertMessage).not.toHaveBeenCalled();
   });

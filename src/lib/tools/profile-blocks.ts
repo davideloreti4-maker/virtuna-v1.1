@@ -22,6 +22,7 @@
  */
 
 import { z } from "zod";
+import { HookProofSchema } from "./proof-schema";
 
 // ─── profile-read block (PROF-02) ────────────────────────────────────────────
 // The forensic behavioral READ — the hero result card. Bands-only; Directional by rule;
@@ -180,67 +181,99 @@ export const PredictionGaugeBlockSchema = z.object({
 
 export type PredictionGaugeBlock = z.infer<typeof PredictionGaugeBlockSchema>;
 
-// ─── video-test-card block (the /test in-thread result — TEST-01) ─────────────
-// The 1:1 in-thread representation of a real-video Test: the full frame-by-frame
-// /api/analyze Max pipeline runs underneath (untouched), and its result is mapped
-// onto THIS card so the Test lands in the thread like every other skill — no
-// navigate-out (mirrors how Remix, the other heavy video skill, lands a card).
+// ─── video-test-card block (the /test in-thread CRAFT teardown — TEST-01) ─────
+// "The editor's cut." The full frame-by-frame /api/analyze Max pipeline runs underneath
+// (untouched); its result is mapped onto THIS card as a static, technical read of how
+// well-MADE the video is — hook mechanics, pacing/edit, framing, delivery, the fixes.
+// It renders FULLY in-thread; the only door out is "Simulate it →" (the separate
+// Simulation surface owns reception — retention curve, the crowd, reach, who-stops).
 //
-// Honesty spine (Pitfall 5 / D-11 / D-10):
-//   - NO numeric 0-100 score anywhere — `.strict()` rejects a smuggled `overall_score`
-//     / `score`. `verdict` is the WORD label (HeroBlock.verdict_line: "High potential"
-//     / "Solid contender" / "Needs work" / "Don't post yet") — never the number the
-//     /analyze page shows. The precision lives one door away (`analysisId`), not on the card.
-//   - `model: z.literal("sim1-max")` is the honest provenance: a real video ran the Max
-//     video pipeline, NOT the Flash text tier. This is exactly why the multi-audience-read
-//     card (hardcoded sim1-flash) could NOT be reused for /test — it would misstate the tier.
-//   - `band`/`fraction` are the audience-reaction slice, DERIVED from the real
-//     persona_simulation_results (per-persona verdict from scroll_past_second; the SAME
-//     STRONG/MIXED thresholds as the flash cards) — never re-rolled, never fabricated.
-//   - `theOneFix`/`ceiling` are nullable: Apollo can be down, and we show only what ran.
+// Reworked 2026-07-21 (the Test/Simulation split). What CHANGED and WHY:
+//   - The card now CARRIES a number: `craftScore` (0–100), owner-locked. It is a CRAFT
+//     grade — the mean of the craft-subset Apollo dimensions (hook / clarity / substance /
+//     credibility), retention EXCLUDED (retention is reception → Simulation). This is NOT
+//     the /analyze overall_score (which blends reception); it is a distinct technical grade,
+//     so the old bands-only "no 0-100" spine does not apply — the number IS the point.
+//   - Reception fields are GONE: no band/fraction/reactions (who stopped), no goNoGo, no
+//     verdict sentence, no postWindow. Those draw a curve or split an audience ⇒ Simulation.
+//   - `filmstrip` is the video read frame-by-frame; `fixes` are the director's notes, each
+//     GROUNDED (selectively) in a real corpus outlier via the shared HookProof receipt.
 //
-// `analysisId` powers the ONE door out — "See the full breakdown →" to /analyze/[id] —
-// for the filmstrips / per-frame perception / verbatim wall / Apollo depth a card can't
-// hold. Optional drill, never the primary path (the card IS the thread representation).
+// Honesty spine held: `model: "sim1-max"` provenance (real video ran the Max tier); corpus
+// `proof` obeys the warrant contract (top fixes only, honest absence otherwise — a fix
+// without a match simply shows no receipt); keyframe URLs are ephemeral (renderer degrades
+// to a play-tile). `.strict()` still rejects any unknown key — including a smuggled
+// reception field (a retention %, a "would stop" fraction) that belongs to Simulation.
 export const VideoTestCardBlockSchema = z.object({
   type: z.literal("video-test-card"),
   props: z
     .object({
-      // The Test verdict — a WORD (HeroBlock.verdict_line), NEVER the 0-100 score.
-      verdict: z.string().min(1),
-      goNoGo: z.enum(["go", "no-go"]), // HeroBlock.go_no_go (anti_virality gate)
-      // Audience reaction — band + fraction DERIVED from the real per-persona video sim.
-      audienceName: z.string().min(1),
-      band: z.enum(["Strong", "Mixed", "Weak"]),
-      fraction: z.string().min(1), // e.g. "6/10 stopped" — from persona_simulation_results
-      // The single highest-leverage rewrite (HeroBlock.the_one_fix) — null when Apollo down.
-      theOneFix: z.string().nullable(),
-      // Apollo §4 ceiling rationale (shown on expand) — null when Apollo down.
-      ceiling: z.string().nullable(),
-      // Per-persona reactions from the video sim (mapped) — the drill. quote is the
-      // persona's own reasoning (source caps at 500), truncated for display by the mapper.
-      reactions: z
+      // ── Header: the craft grade + its drivers (owner-locked KEEP the number) ──
+      // The craft-subset mean (hook/clarity/substance/credibility), retention excluded.
+      // Nullable: Apollo (DeepSeek) can be down — then the ring/drivers hide and the card
+      // leads with the filmstrip. NEVER the /analyze overall_score (that blends reception).
+      craftScore: z.number().int().min(0).max(100).nullable(),
+      // The craft drivers beside the ring — the craft-subset dimensions, band + score.
+      drivers: z
         .array(
           z.object({
-            archetype: z.string(),
-            verdict: z.enum(["stop", "scroll"]),
-            quote: z.string().min(1).max(500),
+            name: z.string().min(1), // "Hook" / "Clarity" / "Substance" / "Credibility"
+            score: z.number().int().min(0).max(100),
+            band: z.enum(["strong", "mid", "weak"]),
           }),
         )
         .default([]),
-      // Optimal posting window label (e.g. "Tue 18:00–21:00 UTC") — optional/nullable.
-      postWindow: z.string().nullable().optional(),
-      // The video's own verbatim hook (spoken words / on-screen text) — the honest concept the
-      // room reacted to, so the shared ProofUnit's "See the room → · Ask them why" grounds on
-      // what the clip actually said, not a filename. Optional: a silent/no-speech clip omits it
-      // and the room still opens on the reactions, just without a text anchor for the chat.
-      conceptText: z.string().optional(),
-      // The analysis id — powers the "See the full breakdown →" door to /analyze/[id].
-      analysisId: z.string().min(1),
+
+      // ── Filmstrip: their video, frame by frame ──
+      // The heatmap segments as labeled frames over the video timeline. `keyframeUrl` is a
+      // signed, EPHEMERAL storage URL (may be null / expire → renderer shows a play-tile).
+      filmstrip: z
+        .array(
+          z.object({
+            idx: z.number().int(),
+            label: z.string().min(1), // "Cold open" / "Setup" / "Stall" / "Payoff" / "Close"
+            atMs: z.number().int().min(0), // segment start, ms → the "0:03" stamp
+            mark: z.enum(["asset", "weak"]).nullable(), // sage asset / amber weak beat
+            keyframeUrl: z.string().nullable(),
+          }),
+        )
+        .default([]),
+      // The weak-beat drop label on the timeline (e.g. "0:08 drop"), null when none marked.
+      dropLabel: z.string().nullable(),
+      // The video's runtime label (e.g. "0:15"), null when unknown.
+      durationLabel: z.string().nullable(),
+
+      // ── Working / not-working ledger ──
+      working: z.array(z.string().min(1)).default([]), // sage ✓ strengths
+      notWorking: z
+        .array(z.object({ text: z.string().min(1), atMs: z.number().int().min(0).nullable() }))
+        .default([]), // coral ✕ weaknesses (near-zero dosage)
+
+      // ── The director's fixes — the heart ──
+      // Each: their referenced FRAME → diagnosis → a NEUTRAL psychological "why" → the move
+      // → an optional PROVEN corpus example (top 1–2 fixes only; the rest stand honestly bare).
+      fixes: z
+        .array(
+          z.object({
+            title: z.string().min(1),
+            lever: z.string().nullable(), // "Momentum" / "Stakes" / "CTA" — the named craft lever
+            atMs: z.number().int().min(0).nullable(),
+            keyframeUrl: z.string().nullable(), // their frame at the referenced moment
+            diagnosis: z.string().min(1),
+            why: z.string().nullable(), // the psychological mechanism, styled NEUTRAL
+            move: z.string().nullable(), // the concrete change (e.g. a sharpened hook)
+            proof: HookProofSchema.nullable(), // the grounded corpus outlier, or null (honest absence)
+          }),
+        )
+        .default([]),
+
+      // ── Provenance + the door out ──
+      audienceName: z.string().min(1),
+      analysisId: z.string().min(1), // powers "Simulate it →" (→ /analyze/[id] until the Sim surface ships)
       model: z.literal("sim1-max"), // provenance — the Max VIDEO tier (D-10)
       tier: z.enum(["Validated", "Directional"]),
     })
-    .strict(), // forbids a smuggled `overall_score` / `score` / any 0-100 (bands-only spine)
+    .strict(), // rejects any unknown key — including a smuggled reception field (Simulation's)
 });
 
 export type VideoTestCardBlock = z.infer<typeof VideoTestCardBlockSchema>;

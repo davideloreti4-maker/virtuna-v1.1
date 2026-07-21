@@ -14,6 +14,7 @@
  */
 
 import { z } from "zod";
+import { HookProofSchema, type HookProof } from "./proof-schema";
 import {
   ProfileReadBlockSchema,
   ReactionDistributionBlockSchema,
@@ -106,33 +107,14 @@ export type PersonasBlock = z.infer<typeof PersonasBlockSchema>;
 // Badge (D-11): needsTake flag
 // Secondary chip (D-04): band + fraction + model "sim1-flash"
 
-// ─── Proof receipt (grounding — §11f receipts-on-cards, shared by hook/idea/script) ─────
-// The durable, honest receipt for the real outlier video whose proven STRUCTURE a grounded
-// output adapted. Mirrors grounding's RetrievedExample (lib/grounding/types.ts); the card
-// renders "@handle · N× <basis> · views ↗". Numbers are nullable — we show only what we
-// truly have (a caption-tier extraction may lack a durable multiplier), never a fabricated
-// stat. fitLabel is the honest §11c per-request match (● in-audience / ◐ adjacent /
-// ○ structural). handle is required — no receipt without a real, nameable source.
-// (Named HookProofSchema for back-compat: hooks shipped it first; ideas/script reuse it.)
-export const HookProofSchema = z.object({
-  handle: z.string(),                                          // @creator of the proof video
-  videoUrl: z.string().nullable(),                            // link to the proof (absent on some search-mode rows)
-  coverUrl: z.string().nullable(),                            // ephemeral TikTok-CDN thumbnail (display-only; may expire → renderer hides on error)
-  hookTemplate: z.string().nullable(),                       // the source hook as a [bracketed] fill-in-the-blank (Sandcastles-style proof line)
-  archetype: z.string().nullable(),                          // source hook archetype slug (e.g. "secret-reveal-breakdown") → pill
-  multiplier: z.number().nullable(),                          // durable outlier basis (views ÷ followers, finding #2)
-  views: z.number().nullable(),
-  baselineLabel: z.string().nullable(),                      // honest basis, e.g. "vs followers"
-  /**
-   * The §11c per-request audience match — NULLABLE (2026-07-13). A fit label is a claim that
-   * a source was retrieved and scored against your audience, which is true of grounded
-   * hook/idea/script sources and NOT of a Remix source: you pasted that video yourself, so
-   * nothing measured its fit. Grounded runners still always set it; remix passes null and the
-   * renderer then omits the glyph rather than asserting a match nobody computed.
-   */
-  fitLabel: z.enum(["in-audience", "adjacent", "structural"]).nullable(),
-});
-export type HookProof = z.infer<typeof HookProofSchema>;
+// ─── Proof receipt (grounding — §11f receipts-on-cards, shared by hook/idea/script/test) ─
+// The HookProof schema now lives in `./proof-schema` (a zod leaf) so the Test card — whose
+// schema is in the sibling profile-blocks.ts that blocks.ts imports — can reference the proof
+// shape without a module cycle. Imported above (used by IdeaCard/CorpusReference/parseProofProp
+// below) and re-exported here so every `@/lib/tools/blocks` import site is unchanged. See
+// proof-schema.ts for the honesty-spine docs.
+export { HookProofSchema };
+export type { HookProof };
 
 /**
  * Client-side coercion for a `proof` prop arriving over the SSE content event (§11f).

@@ -497,7 +497,7 @@ const THREAD_VIEWS: { id: string; label: string; note: string; node: React.React
   {
     id: "video-test-card",
     label: "Video Test card (test)",
-    note: "The /test in-thread result (video-test-card, model:sim1-max). The full frame-by-frame /api/analyze Max pipeline runs underneath; its result is mapped onto THIS card so the Test lands in the thread like every other skill — no navigate-out. Bands/WORDS only (never the 0-100 score); the number + filmstrips/verbatim/Apollo live one door away (See the full breakdown → /analyze/[id]). Rendered via MessageBlocks (proves the registry routes video-test-card → the renderer).",
+    note: "The /test in-thread CRAFT teardown (video-test-card, model:sim1-max) — 'the editor's cut'. Reworked 2026-07-21 for the Test/Simulation split: a frame-by-frame read of how well-MADE the video is. Header = craft score ring (owner-locked KEEP the number, craft-subset dims only) + driver bars; then the filmstrip of THEIR video, the working/not-working ledger, and the director's fixes (frame → diagnosis → neutral 'why' → move → optional PROVEN corpus receipt on the top fixes). Reception (retention curve, the crowd, reach, who-stops) is NOT here — it lives on the Simulation surface, reached via the ONE door out 'Simulate it →'. Frames show a play-tile in the gallery (no signed keyframes off-route). Rendered via MessageBlocks (proves the registry routes video-test-card → the renderer).",
     node: (
       <ChatThreadView
         persistedBlocks={[]}
@@ -508,23 +508,88 @@ const THREAD_VIEWS: { id: string; label: string; note: string; node: React.React
               {
                 type: "video-test-card",
                 props: {
-                  verdict: "Solid contender",
-                  goNoGo: "go",
-                  audienceName: "Skincare buyers",
-                  band: "Mixed",
-                  fraction: "6/10 stopped",
-                  theOneFix:
-                    "Open on the after-shot, not the intro — the payoff is buried behind three seconds of setup.",
-                  ceiling:
-                    "The hook lands but the middle sags — retention drops the moment the demo starts, so it caps below a breakout.",
-                  reactions: [
-                    { archetype: "skeptic", verdict: "scroll", quote: "Seen this exact format a hundred times — nothing new in the first second." },
-                    { archetype: "collector", verdict: "stop", quote: "Saved it — the routine is specific enough to actually try." },
-                    { archetype: "scanner", verdict: "stop", quote: "The on-screen text told me what I'd get. I stayed." },
-                    { archetype: "converter", verdict: "scroll", quote: "No reason given to buy — it's a vibe, not a pitch." },
+                  craftScore: 77,
+                  drivers: [
+                    { name: "Hook", score: 87, band: "strong" },
+                    { name: "Credibility", score: 80, band: "strong" },
+                    { name: "Clarity", score: 72, band: "strong" },
+                    { name: "Substance", score: 70, band: "strong" },
                   ],
-                  postWindow: "Tue 18:00–21:00 UTC",
-                  conceptText: "Three things I wish I knew before I started my skincare routine",
+                  filmstrip: [
+                    { idx: 0, label: "Cold open", atMs: 0, mark: "asset", keyframeUrl: null },
+                    { idx: 1, label: "Setup", atMs: 3000, mark: null, keyframeUrl: null },
+                    { idx: 2, label: "Stall", atMs: 6000, mark: "weak", keyframeUrl: null },
+                    { idx: 3, label: "Payoff", atMs: 9000, mark: null, keyframeUrl: null },
+                    { idx: 4, label: "Close", atMs: 12000, mark: null, keyframeUrl: null },
+                  ],
+                  dropLabel: "0:06 drop",
+                  durationLabel: "0:15",
+                  working: [
+                    "Keep the cold open",
+                    "Hook — strong cold open, visual stop power high",
+                    "Credibility — natural delivery, no over-production",
+                  ],
+                  notWorking: [
+                    { text: "Recut the open", atMs: 8000 },
+                    { text: "Tighten the text overlay", atMs: 1000 },
+                    { text: "Add an explicit CTA", atMs: 14000 },
+                  ],
+                  fixes: [
+                    {
+                      title: "Recut the open",
+                      lever: "Momentum",
+                      atMs: 8000,
+                      keyframeUrl: null,
+                      diagnosis:
+                        "You lose them at 0:08 — the setup runs long and the payoff doesn't land until 0:09, the longest flat stretch in the cut.",
+                      why: "Attention holds on open loops. When a beat resolves nothing and opens nothing, the mind is free to leave — a pattern interrupt reopens the loop.",
+                      move: null,
+                      proof: {
+                        handle: "explore_create_capture",
+                        videoUrl: "https://www.tiktok.com/@explore_create_capture",
+                        coverUrl: null,
+                        hookTemplate: "The [editing trick] everyone sleeps on for [retention].",
+                        archetype: "secret-reveal-breakdown",
+                        multiplier: 14.2,
+                        views: 2400000,
+                        baselineLabel: "vs their usual",
+                        fitLabel: "structural",
+                      },
+                    },
+                    {
+                      title: "Sharpen the open",
+                      lever: "Stakes",
+                      atMs: 0,
+                      keyframeUrl: null,
+                      diagnosis:
+                        "Your open — “Here are three things nobody tells you about freelancing”. It works as a list promise, but the stakes stay abstract.",
+                      why: "A low-stakes open is a cheap skip — nothing is at risk, so there's little reason to stay. Naming a concrete stake widens the curiosity gap.",
+                      move: "I lost $4k before I learned these three freelancing rules",
+                      proof: {
+                        handle: "successwithumar",
+                        videoUrl: "https://www.tiktok.com/@successwithumar",
+                        coverUrl: null,
+                        hookTemplate: "Why your [hooks] stop working after [10k followers].",
+                        archetype: "problem",
+                        multiplier: 6.8,
+                        views: 820000,
+                        baselineLabel: "vs their usual",
+                        fitLabel: "structural",
+                      },
+                    },
+                    {
+                      title: "Add an explicit CTA",
+                      lever: "CTA",
+                      atMs: 14000,
+                      keyframeUrl: null,
+                      diagnosis:
+                        "The last 2s trail off. Ask for the follow while attention is still on the payoff — one clear line, on screen and spoken.",
+                      why: "The end of a watch is the moment a viewer remembers most. An explicit ask, made while attention is still high, turns that peak into an action.",
+                      move: null,
+                      proof: null,
+                    },
+                  ],
+                  audienceName: "Skincare buyers",
                   analysisId: "dev-fixture-id",
                   model: "sim1-max",
                   tier: "Directional",
