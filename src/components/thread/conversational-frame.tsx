@@ -21,6 +21,8 @@ import rehypeSanitize from 'rehype-sanitize';
 import { cn } from '@/lib/utils';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { CardPrimaryAction } from './card-primitives';
+import { FollowupRow } from './followup-row';
+import type { ChatFollowup } from '@/lib/tools/chat-followups';
 
 export type ThreadSkill = 'hooks' | 'ideas' | 'script' | 'remix';
 
@@ -143,14 +145,22 @@ export interface ForwardChip {
 export function ThreadOutro({
   text,
   chips,
+  followups,
 }: {
   /** The engine followupText, or an outroFallback — already resolved by the caller. */
   text: string | null;
   /** Forward-chain chips derived from REAL card handoffs (no chip without a destination). */
   chips?: ForwardChip[];
+  /**
+   * The curated "what next" follow-up chips for this skill (chat-followups.ts). A DIFFERENT type
+   * from the forward chip above — ghost pills, the alternatives. The send handler comes from
+   * FollowupContext (composer-provided), so no onFollowup prop threads through the skill views.
+   */
+  followups?: ChatFollowup[];
 }) {
   const hasChips = !!chips && chips.length > 0;
-  if (!text && !hasChips) return null;
+  const hasFollowups = !!followups && followups.length > 0;
+  if (!text && !hasChips && !hasFollowups) return null;
 
   return (
     <div className="reading-reveal flex flex-col gap-3">
@@ -163,7 +173,7 @@ export function ThreadOutro({
         <div className="flex flex-wrap gap-2">
           {chips!.map((chip, i) =>
             chip.primary ? (
-              // The forward-chain chip IS the card primary — one cream definition app-wide.
+              // The forward-chain chip IS the card primary — one tonal definition app-wide.
               <CardPrimaryAction key={i} onClick={chip.onClick} disabled={!chip.onClick}>
                 {chip.label}
               </CardPrimaryAction>
@@ -184,6 +194,7 @@ export function ThreadOutro({
           )}
         </div>
       )}
+      {hasFollowups && <FollowupRow followups={followups!} />}
     </div>
   );
 }

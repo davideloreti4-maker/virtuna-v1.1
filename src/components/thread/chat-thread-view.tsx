@@ -37,6 +37,7 @@ import { SkillRunCapsule } from '@/components/thread/run-capsule';
 import type { MarkdownBlock } from '@/lib/tools/blocks';
 import type { RehydrateTurn } from '@/components/app/home/rehydrate-thread';
 import { followupsForTurn, blockTypesOf } from '@/lib/tools/chat-followups';
+import { FollowupRow } from '@/components/thread/followup-row';
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
@@ -279,24 +280,8 @@ export function ChatThreadView({
       )}
 
       {followups.length > 0 && (
-        <div className="flex flex-wrap gap-2 pt-1" data-testid="chat-followups">
-          {followups.map((followup) => (
-            <button
-              key={followup.label}
-              type="button"
-              onClick={() => onFollowup?.(followup.prompt)}
-              className={[
-                "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5",
-                "text-xs font-semibold leading-snug",
-                "border border-border-hover bg-hover text-foreground",
-                "transition-colors hover:bg-active hover:border-border-hover",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-              ].join(" ")}
-              aria-label={`Follow up: ${followup.label}`}
-            >
-              {followup.label}
-            </button>
-          ))}
+        <div className="pt-1" data-testid="chat-followups">
+          <FollowupRow followups={followups} onFollowup={onFollowup} />
         </div>
       )}
 

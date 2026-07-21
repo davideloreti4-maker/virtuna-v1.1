@@ -82,8 +82,8 @@ describe('CorpusReferencesBlockRenderer [thread]', () => {
         block={block({
           filters: { visualSetting: 'greenscreen' },
           sources: [
-            source({ handle: 'a', editingStyle: 'notes-article-greenscreen' }),
-            source({ handle: 'b', editingStyle: 'split-screen' }),
+            source({ handle: 'a', videoUrl: 'https://www.instagram.com/reel/AAA/', editingStyle: 'notes-article-greenscreen' }),
+            source({ handle: 'b', videoUrl: 'https://www.instagram.com/reel/BBB/', editingStyle: 'split-screen' }),
           ],
         })}
       />,

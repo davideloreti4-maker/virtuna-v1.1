@@ -158,7 +158,7 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
           aria-label="Write a full script from this hook"
           title={onWriteScript ? 'Write a full script anchored on this hook' : 'Write script handoff not wired'}
         >
-          Write script →
+          Write the script →
         </CardPrimaryAction>
 
         {/* Save (Act→State) — save this hook to the shelf (snapshot = block props). */}

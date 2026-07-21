@@ -34,6 +34,7 @@ import type { OnTestScriptFn } from '@/lib/script-test-context';
 import { MessageBlocks } from '@/components/thread/message-blocks';
 import { ThreadShell, ThreadAssistantTurn } from '@/components/thread/thread-shell';
 import { ThreadIntro, ThreadOutro } from '@/components/thread/conversational-frame';
+import { followupsForKind } from '@/lib/tools/chat-followups';
 import { SkillProgress, STAGE_PLANS } from '@/components/thread/progress-checklist';
 import { OutliersOffer } from '@/components/thread/outliers-offer';
 import { SkillRunError, RunWarnings } from '@/components/thread/run-notices';
@@ -181,7 +182,9 @@ export function ScriptThreadView({
 
               {/* Outro — the engine's real follow-up, restyled (no chips: the script card
                   carries its own "Test full →" terminal handoff). */}
-              {!isStreaming && <ThreadOutro text={followupText} />}
+              {!isStreaming && (
+                <ThreadOutro text={followupText} followups={followupsForKind('script')} />
+              )}
 
               {hasPersistedContent && !isStreaming && (
                 <div className="flex flex-col gap-3">

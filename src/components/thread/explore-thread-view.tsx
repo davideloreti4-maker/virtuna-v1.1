@@ -51,6 +51,8 @@ import { useCallback, useState } from 'react';
 import { OutlierGridBlockRenderer } from '@/components/thread/outlier-grid-block';
 import { ThreadShell, ThreadAssistantTurn } from '@/components/thread/thread-shell';
 import { SkillResultCard } from '@/components/thread/skill-result-card';
+import { FollowupRow } from '@/components/thread/followup-row';
+import { followupsForKind } from '@/lib/tools/chat-followups';
 import { SkillProgress, STAGE_PLANS } from '@/components/thread/progress-checklist';
 import { SkillRunError } from '@/components/thread/run-notices';
 import type { StageState } from '@/components/thread/progress-checklist';
@@ -252,6 +254,7 @@ export function ExploreThreadView({
               </div>
             )}
           </SkillResultCard>
+          {!isStreaming && <FollowupRow followups={followupsForKind('explore')} className="pt-1" />}
         </ThreadAssistantTurn>
       )}
     </ThreadShell>

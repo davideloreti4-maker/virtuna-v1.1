@@ -35,6 +35,7 @@ import { HookTestContext, HookWriteScriptContext } from '@/lib/hook-test-context
 import { MessageBlocks } from '@/components/thread/message-blocks';
 import { ThreadShell, ThreadAssistantTurn } from '@/components/thread/thread-shell';
 import { ThreadIntro, ThreadOutro, outroFallback, type ForwardChip } from '@/components/thread/conversational-frame';
+import { followupsForKind } from '@/lib/tools/chat-followups';
 import { SkillProgress, STAGE_PLANS } from '@/components/thread/progress-checklist';
 import { OutliersOffer } from '@/components/thread/outliers-offer';
 import { SkillRunError, RunWarnings } from '@/components/thread/run-notices';
@@ -200,6 +201,7 @@ export function HooksThreadView({
                 <ThreadOutro
                   text={followupText ?? outroFallback('hooks', topHook?.rank)}
                   chips={chips}
+                  followups={followupsForKind('hooks')}
                 />
               )}
 

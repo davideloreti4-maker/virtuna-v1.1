@@ -39,6 +39,7 @@ import { reportCredit402 } from "@/lib/billing/credit-wall";
 import { createPortal } from "react-dom";
 import { OpenRoomContext } from "@/lib/hook-test-context";
 import { InThreadInputContext } from "@/lib/in-thread-input-context";
+import { FollowupContext } from "@/lib/followup-context";
 import { useParams, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowUp, Plus } from "lucide-react";
@@ -2194,6 +2195,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   const threadContent = (
     <OpenRoomContext.Provider value={openRoomForCard}>
      <InThreadInputContext.Provider value={inThreadInputValue}>
+      <FollowupContext.Provider value={sendChatFollowup}>
       {testSubmitTurn}
       {/* Profile thread view (05-06 — D-07) — the profile-read + reaction-distribution
           blocks render here via the shared MessageBlocks renderer (registered in 05-01).
@@ -2355,6 +2357,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
           userTurn={lastUserTurn}
         />
       )}
+      </FollowupContext.Provider>
      </InThreadInputContext.Provider>
     </OpenRoomContext.Provider>
   );

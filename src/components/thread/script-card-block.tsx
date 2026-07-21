@@ -152,7 +152,7 @@ export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRend
           aria-label="Test the full script on the deeper SIM-1 Max pipeline"
           title={onTest ? 'Test the full script (beyond the opener) on SIM-1 Max' : 'Test full script wiring lands in Plan 06-05'}
         >
-          Test full script →
+          Test this script →
         </CardPrimaryAction>
 
         <SaveAffordance

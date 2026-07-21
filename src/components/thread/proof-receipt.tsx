@@ -138,7 +138,7 @@ export function ProofReceipt({
 
         <span className="flex items-center gap-1.5 text-[12px] leading-snug text-foreground-muted">
           {fit && (
-            <span className="shrink-0" aria-hidden="true" title={fit.label}>{fit.glyph}</span>
+            <span className="shrink-0" aria-hidden="true">{fit.glyph}</span>
           )}
           <span className="truncate text-foreground-secondary">@{proof.handle}</span>
         </span>
@@ -168,8 +168,10 @@ export function ProofReceipt({
   const base = compact
     ? 'inline-flex items-center gap-3 self-start rounded-lg border border-white/[0.06] bg-white/[0.02] p-2.5'
     : 'flex items-stretch gap-3 rounded-lg border border-white/[0.06] bg-white/[0.02] p-2.5';
+  // No native `title` tooltips — the match (fit) + stats are already in the aria-label, and a
+  // browser title showed a clunky OS tooltip ("adjacent audience — open the source video") that
+  // overlapped the card on hover (owner-flagged 2026-07-22). aria carries it for screen readers.
   const aria = `${eyebrow} from @${proof.handle}${statsAria ? `, ${statsAria}` : ''}${fit ? ` — match: ${fit.label}` : ''}`;
-  const hint = fit ? `${fit.label} — open the source video` : 'Open the source video';
 
   return proof.videoUrl ? (
     <a
@@ -177,13 +179,12 @@ export function ProofReceipt({
       target="_blank"
       rel="noopener noreferrer"
       className={`${base} transition-colors hover:border-white/[0.10] hover:bg-white/[0.035]`}
-      title={hint}
       aria-label={`${aria}. Opens in a new tab.`}
     >
       {body}
     </a>
   ) : (
-    <div className={base} title={fit?.label} aria-label={aria}>
+    <div className={base} aria-label={aria}>
       {body}
     </div>
   );

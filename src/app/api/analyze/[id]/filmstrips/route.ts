@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
-import { createServiceClient } from '@/lib/supabase/service';
+import { signAnalysisFrames } from '@/lib/engine/filmstrip/storage';
 
 /**
  * GET /api/analyze/[id]/filmstrips
@@ -52,28 +52,7 @@ export async function GET(
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
-  const service = createServiceClient();
-  const { data: files, error: listError } = await service.storage
-    .from('filmstrips')
-    .list(id, { limit: 100 });
-  if (listError || !files || files.length === 0) {
-    return NextResponse.json({ frames: {} });
-  }
-
-  const jpegs = files.filter((f) => f.name.endsWith('.jpg'));
-  const paths = jpegs.map((f) => `${id}/${f.name}`);
-  const { data: signed } = await service.storage
-    .from('filmstrips')
-    .createSignedUrls(paths, SIGNED_URL_TTL_S);
-
-  const frames: Record<number, string> = {};
-  (signed ?? []).forEach((s, i) => {
-    const name = jpegs[i]?.name;
-    const idx = name ? Number.parseInt(name.replace(/\.jpg$/, ''), 10) : NaN;
-    if (s.signedUrl && Number.isFinite(idx)) {
-      frames[idx] = s.signedUrl;
-    }
-  });
-
+  // Re-sign the persisted JPEGs (shared with the in-thread Test card). Ownership is enforced above.
+  const frames = await signAnalysisFrames(id, SIGNED_URL_TTL_S);
   return NextResponse.json({ frames });
 }

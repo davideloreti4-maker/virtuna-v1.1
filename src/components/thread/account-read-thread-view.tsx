@@ -15,6 +15,8 @@
 
 import { ThreadShell, ThreadAssistantTurn } from "@/components/thread/thread-shell";
 import { AccountReadBlockRenderer } from "@/components/thread/account-read-block";
+import { FollowupRow } from "@/components/thread/followup-row";
+import { followupsForKind } from "@/lib/tools/chat-followups";
 import { Button, Skeleton } from "@/components/ui";
 import type { AccountReadBlock } from "@/lib/tools/blocks";
 
@@ -70,10 +72,11 @@ export function AccountReadThreadView({
         </ThreadAssistantTurn>
       )}
 
-      {/* Result — the composed account-read card. */}
+      {/* Result — the composed account-read card + the curated "what next" pills. */}
       {!isStreaming && block && (
         <ThreadAssistantTurn>
           <AccountReadBlockRenderer block={block} />
+          <FollowupRow followups={followupsForKind('account')} className="pt-1" />
         </ThreadAssistantTurn>
       )}
 
