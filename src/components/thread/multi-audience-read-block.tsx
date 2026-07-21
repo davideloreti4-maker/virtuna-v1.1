@@ -190,14 +190,11 @@ export function MultiAudienceReadBlockRenderer({ block }: MultiAudienceReadBlock
       aria-label={saveTitle}
     >
       <div className="flex flex-col gap-4 px-4 pb-3 pt-4">
-        {/* Eyebrow — "The Read" kicker; the tier badge takes the right rail. The model tag is
-            NOT repeated here: it already rides the action bar below, and the card was stating
-            its own provenance twice. */}
-        <div className="flex items-center justify-between gap-3">
-          <span className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.05em] text-foreground-muted">
-            <span className="h-[6px] w-[6px] rounded-full bg-[var(--color-foreground-muted)]" aria-hidden="true" />
-            The Read
-          </span>
+        {/* The "The Read" kicker eyebrow was removed 2026-07-21 (generic restatement; the run
+            capsule above already names the skill). The tier badge is a grounding signal, not chrome,
+            so it survives — kept top-right on its own row. The model tag still rides the action bar
+            below (the card must not state its provenance twice). */}
+        <div className="flex items-center justify-end">
           <TrustBadge tier={block.props.tier ?? 'Directional'} />
         </div>
 

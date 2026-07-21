@@ -85,7 +85,10 @@ export interface ExploreThreadViewProps {
    */
   onThreadReload?: () => void;
   userTurn?: string | null;
+  /** @deprecated Accepted for back-compat but no longer rendered — the skill kicker + audience
+   *  eyebrow was removed 2026-07-21 (the run capsule above the card already names both). */
   skillLabel?: string;
+  /** @deprecated See skillLabel — no longer rendered. */
   audienceLabel?: string;
 }
 
@@ -101,8 +104,6 @@ export function ExploreThreadView({
   onRetry,
   onThreadReload,
   userTurn,
-  skillLabel = 'Explore',
-  audienceLabel = 'General',
 }: ExploreThreadViewProps) {
   // Per-tile transient state (mirrors DiscoverClient — local to this view).
   const [remixPendingId, setRemixPendingId] = useState<string | null>(null);
@@ -211,7 +212,7 @@ export function ExploreThreadView({
 
       {(hasStreamingContent || hasPersistedContent) && (
         <ThreadAssistantTurn>
-          <SkillResultCard skillLabel={skillLabel} audienceLabel={audienceLabel} hero={resultHero}>
+          <SkillResultCard hero={resultHero}>
             {hasStreamingContent && (
               <div className="flex flex-col gap-4">
                 {streamingBlocks.map((block, index) => (
