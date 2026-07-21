@@ -26,10 +26,10 @@
  * props only (OutlierGridBlock.props.tiles[*]).
  */
 
-import { Check } from "@phosphor-icons/react";
-import { VideoCard } from "@/components/competitors/detail/video-card";
+import { Check, Eye, Heart, ChatCircle, ShareNetwork } from "@phosphor-icons/react";
 import { SaveAffordance } from "@/components/thread/save-affordance";
 import { CoverFill } from "@/components/primitives/CoverFill";
+import { formatCount } from "@/lib/competitors-utils";
 import type { FitLevel } from "@/lib/discover/explore-rank";
 
 /** One Discover outlier tile — mirrors OutlierGridBlock.props.tiles[*] (blocks.ts). */
@@ -127,18 +127,16 @@ export function OutlierTile({
   const CoverTag = tile.videoUrl ? "a" : "div";
   return (
     <div className="space-y-2">
-      {/* Cover banner — ALWAYS rendered so every tile is the same height and a mixed grid (some
-          tiles with a cover, some without) never goes ragged. Real scrape thumbnail (clockworks
-          videoMeta.coverUrl) when we have one; an absent/expired/broken cover shows a neutral
-          play-tile via <CoverFill> — never an empty box, never a shorter tile. Capped height (the
-          grid is narrow — a full 9:16 would tower); object-cover crops to a clean banner. Links to
-          the video when a URL is known, otherwise a plain box. Duration badge (bottom-right) is
-          the one overlay — NON-redundant with the views in the metrics grid below. */}
+      {/* Cover — the native 9:16 vertical-video format (was a fixed 176px landscape banner that
+          object-cover cropped the portrait clip INTO — reading as a letterboxed strip, not a clip).
+          ALWAYS rendered so a mixed grid never goes ragged: a real scrape thumbnail (clockworks
+          videoMeta.coverUrl) when we have one, else a neutral play-tile via <CoverFill>. Duration
+          badge (bottom-right) is the one overlay — non-redundant with the counts row below. */}
       <CoverTag
         {...(tile.videoUrl
           ? { href: tile.videoUrl, target: "_blank", rel: "noopener noreferrer" }
           : {})}
-        className="group relative block h-[176px] w-full overflow-hidden rounded-[8px] border border-white/[0.06]"
+        className="group relative block aspect-[9/16] w-full overflow-hidden rounded-[8px] border border-white/[0.06]"
         title={tile.caption || undefined}
       >
         <CoverFill coverUrl={tile.coverUrl} playSize={24} className="transition-opacity group-hover:opacity-90" />
@@ -207,23 +205,39 @@ export function OutlierTile({
         </div>
       )}
 
-      {/* Caption + 4-col metrics grid — REUSE VideoCard verbatim (do NOT re-roll the grid).
-          video_url is null so VideoCard renders as a plain div (no whole-tile link) —
-          the "Remix → Read" CTA below owns the tile's single action. */}
-      <VideoCard
-        video={{
-          caption: tile.caption || null,
-          views: tile.views,
-          likes: tile.likes,
-          comments: tile.comments,
-          shares: tile.shares,
-          saves: tile.saves,
-          duration_seconds: tile.durationSeconds,
-          posted_at: tile.postedAt,
-          video_url: null,
-          engagementRate: null,
-        }}
-      />
+      {/* Caption + metrics — DE-BOXED (§0.5): was <VideoCard>, a bordered box-in-a-box that made
+          the tile read as a card inside a card. Now a caption line + one quiet inline counts row,
+          no border. Duration lives on the cover badge; the posted date trails the row. */}
+      <div className="space-y-2">
+        <p
+          className={`line-clamp-2 text-[13px] leading-snug ${
+            tile.caption ? "text-foreground" : "italic text-foreground-muted"
+          }`}
+        >
+          {tile.caption || "No caption"}
+        </p>
+        <div className="flex items-center gap-3.5 text-[11px] tabular-nums text-foreground-muted">
+          <span className="inline-flex items-center gap-1">
+            <Eye className="h-3 w-3" aria-hidden="true" />
+            {formatCount(tile.views)}
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <Heart className="h-3 w-3" aria-hidden="true" />
+            {formatCount(tile.likes)}
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <ChatCircle className="h-3 w-3" aria-hidden="true" />
+            {formatCount(tile.comments)}
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <ShareNetwork className="h-3 w-3" aria-hidden="true" />
+            {formatCount(tile.shares)}
+          </span>
+        </div>
+      </div>
+
+      {/* Hairline before the action row — separates the read (cover → metrics) from the do (Remix). */}
+      <div className="border-t border-white/[0.06]" />
 
       {/* Primary CTA — "Remix →": the forward chain step, the ONE cream primary per tile
           (§0.5.7; primary ≠ accent — the legacy coral fill was retired). Single forward verb;
