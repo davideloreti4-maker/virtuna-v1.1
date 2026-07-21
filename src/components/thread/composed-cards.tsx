@@ -22,9 +22,19 @@ import { ProofReceipt } from '@/components/thread/proof-receipt';
 import { ProofUnit } from '@/components/thread/proof-unit';
 import { CaretToggle } from '@/components/thread/caret-toggle';
 import { VideoTestCardRenderer } from '@/components/thread/video-test-card-block';
+import { HookCardRenderer } from '@/components/thread/hook-card-block';
+import { IdeaCardRenderer } from '@/components/thread/idea-card-block';
+import { MultiAudienceReadBlockRenderer } from '@/components/thread/multi-audience-read-block';
+import { AccountReadBlockRenderer } from '@/components/thread/account-read-block';
 import { CoverFill } from '@/components/primitives/CoverFill';
 import { cardScrollQuoteReactions } from '@/components/audience-lens/flat-card-reactions';
-import type { VideoTestCardBlock } from '@/lib/tools/blocks';
+import type {
+  VideoTestCardBlock,
+  HookCardBlock,
+  IdeaCardBlock,
+  MultiAudienceReadBlock,
+  AccountReadBlock,
+} from '@/lib/tools/blocks';
 import type { StreamItem } from '@/lib/tools/stream-primitives';
 import { stripWrappingQuotes } from '@/lib/utils';
 import { EngagementRow, formatFacet, ProofLine, VerbatimLine, T_META, T_SUPPORT, T_BODY, HAIRLINE } from './composed-shared';
@@ -159,6 +169,34 @@ export function AssetCard({ item }: { item: Extract<StreamItem, { kind: 'asset' 
 export function TestVerdictView({ item }: { item: Extract<StreamItem, { kind: 'test-verdict' }> }) {
   const { kind: _kind, ...props } = item;
   return <VideoTestCardRenderer block={{ type: 'video-test-card', props } as VideoTestCardBlock} />;
+}
+
+// ─── Delegated skill cards (rev 9 hybrid) ──────────────────────────────────────
+// The 1:1 skill cards render the REAL shipped component (props carried verbatim), so a
+// stream hook/idea/read/account card IS the make-family card — byte-for-byte, no drift.
+
+/** The Hooks card, in-stream — delegated to the shipped HookCardRenderer. */
+export function HookCardView({ item }: { item: Extract<StreamItem, { kind: 'hook-card' }> }) {
+  const { kind: _kind, ...props } = item;
+  return <HookCardRenderer block={{ type: 'hook-card', props } as HookCardBlock} />;
+}
+
+/** The Ideas card, in-stream — delegated to the shipped IdeaCardRenderer. */
+export function IdeaCardView({ item }: { item: Extract<StreamItem, { kind: 'idea-card' }> }) {
+  const { kind: _kind, ...props } = item;
+  return <IdeaCardRenderer block={{ type: 'idea-card', props } as IdeaCardBlock} />;
+}
+
+/** The Read card, in-stream — delegated to the shipped MultiAudienceReadBlockRenderer. */
+export function MultiAudienceReadView({ item }: { item: Extract<StreamItem, { kind: 'multi-audience-read' }> }) {
+  const { kind: _kind, ...props } = item;
+  return <MultiAudienceReadBlockRenderer block={{ type: 'multi-audience-read', props } as MultiAudienceReadBlock} />;
+}
+
+/** The Account Read card, in-stream — delegated to the shipped AccountReadBlockRenderer. */
+export function AccountReadView({ item }: { item: Extract<StreamItem, { kind: 'account-read' }> }) {
+  const { kind: _kind, ...props } = item;
+  return <AccountReadBlockRenderer block={{ type: 'account-read', props } as AccountReadBlock} />;
 }
 
 type CompareAudience = Extract<StreamItem, { kind: 'compare' }>['audiences'][number];

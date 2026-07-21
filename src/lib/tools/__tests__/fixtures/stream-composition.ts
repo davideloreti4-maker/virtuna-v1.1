@@ -1,7 +1,7 @@
 /**
  * THE canonical stream composition — one schema-valid `composed` block exercising all
- * 16 primitives (content from the frozen rev 7 sketch, docs/prototypes/
- * stream-concept-rev7.html). Consumers:
+ * 21 primitives (rev 9 hybrid: the last four are the 1:1 skill cards, carried verbatim
+ * and delegated to their shipped renderers). Consumers:
  *  - stream-primitives.test.ts — validates it + asserts every kind appears
  *    (the fixture half of the extension guarantee: no primitive without a fixture)
  *  - composed-block.test.tsx — renders it through the real MessageBlocks dispatch
@@ -242,6 +242,99 @@ export const STREAM_COMPOSITION: ComposedBlock = {
         analysisId: "dev-fixture-analysis",
         model: "sim1-max",
         tier: "Validated",
+      },
+      // ── Delegated skill cards (rev 9 hybrid) — the stream carries the SHIPPED card 1:1. ──
+      {
+        kind: "hook-card",
+        hookLine: "The cut you're proud of is the one they leave on.",
+        audienceArchetype: "The Over-editor",
+        mechanism: "Names a specific self-inflicted wound — the viewer checks their own footage against it.",
+        seedHook: "Your best cut is costing you.",
+        rank: 1,
+        band: "Mixed",
+        fraction: "5/10 stop",
+        scrollQuote: "Wait, is that why my retention tanks at the cut?",
+        model: "sim1-flash",
+        scored: true,
+        channel: "spoken",
+      },
+      {
+        kind: "idea-card",
+        title: "Post the outtake, not the highlight.",
+        angle: "The blooper reel outperforms the polished cut — show the mess.",
+        whyItFits: "your audience over-indexes on behind-the-scenes honesty.",
+        mechanism: "Vulnerability + a pattern-break from a feed of highlight reels.",
+        seedHook: "I posted my worst take on purpose.",
+        needsTake: true,
+        topic: "Creator authenticity",
+        take: "Polish is a trust tax; rawness compounds.",
+        format: "Talking-head + raw B-roll",
+        band: "Weak",
+        fraction: "3/10 stop",
+        scrollQuote: "Everyone says be authentic — prove it works.",
+        model: "sim1-flash",
+        scored: true,
+      },
+      {
+        kind: "multi-audience-read",
+        model: "sim1-flash",
+        tier: "Directional",
+        audiences: [
+          {
+            name: "Editors & Post-pros",
+            band: "Strong",
+            fraction: "8/10 stop",
+            interpretation: "They feel personally called out — the craft framing lands as insider truth.",
+            lever: "Name the specific edit (the J-cut, the whip pan) in the first line.",
+            whoNotFor: "Pure consumers with no editing habit scroll — nothing to defend.",
+            personas: [
+              { archetype: "the_craftsman", verdict: "stop", quote: "Okay, you clearly edit — I'm listening." },
+              { archetype: "the_hobbyist", verdict: "stop", quote: "Is my J-cut the problem? Need to know." },
+              { archetype: "the_consumer", verdict: "scroll", quote: "I don't edit, so who cares." },
+            ],
+          },
+          {
+            name: "General",
+            band: "Mixed",
+            fraction: "4/10 stop",
+            interpretation: "Without the craft context the claim reads abstract — most need the example fast.",
+            lever: "Cut to the before/after in the first two seconds.",
+            whoNotFor: "",
+            personas: [
+              { archetype: "the_scroller", verdict: "scroll", quote: "Too niche to bother." },
+              { archetype: "the_curious", verdict: "stop", quote: "Huh, what edit? Show me." },
+            ],
+          },
+        ],
+      },
+      {
+        kind: "account-read",
+        handle: "over.cut.creator",
+        profile: {
+          handle: "over.cut.creator",
+          displayName: "Over-Cut Creator",
+          avatarUrl: "",
+          verified: false,
+          followerCount: 84200,
+          videoCount: 167,
+        },
+        analyzedVideos: [
+          { coverUrl: COVER_GYM, views: 1200000, caption: "Raw take beat the polished one", videoUrl: "https://example.com/a1" },
+          { coverUrl: COVER_MORNING, views: 340000, caption: "My honest editing setup", videoUrl: "https://example.com/a2" },
+          { coverUrl: COVER_CANDID, views: 120000, caption: "Why I stopped color-grading", videoUrl: "https://example.com/a3" },
+        ],
+        patterns: {
+          working: ["Raw, unpolished openers", "Naming the exact edit in the hook"],
+          fix: ["Middles over-cut — the pacing whiplashes"],
+          recurringHooks: ['"Stop editing"', '"Your cuts are why…"'],
+          formatMix: [
+            { label: "Talking-head", count: 80, pct: 48 },
+            { label: "Raw B-roll", count: 52, pct: 31 },
+            { label: "Text-on-screen", count: 35, pct: 21 },
+          ],
+          dropPoints: ["Second 6 — the first hard cut loses the scanners"],
+        },
+        trackRecord: { withinPct: 11, lastN: 9 },
       },
       {
         kind: "input-ask",

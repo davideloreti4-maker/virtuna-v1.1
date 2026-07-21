@@ -19,7 +19,20 @@
 
 import { SECTION_LABEL } from '@/components/thread/card-primitives';
 import type { ComposedBlock, StreamItem } from '@/lib/tools/stream-primitives';
-import { AssetCard, CompareCard, EvidenceView, FactsCard, MediaStripView, RankedView, RevisionCard, TestVerdictView } from './composed-cards';
+import {
+  AccountReadView,
+  AssetCard,
+  CompareCard,
+  EvidenceView,
+  FactsCard,
+  HookCardView,
+  IdeaCardView,
+  MediaStripView,
+  MultiAudienceReadView,
+  RankedView,
+  RevisionCard,
+  TestVerdictView,
+} from './composed-cards';
 import { HAIRLINE, Prose, ProofLine, T_META, T_SUPPORT, VerbatimLine } from './composed-shared';
 
 export interface ComposedBlockProps {
@@ -197,6 +210,14 @@ function StreamItemView({ item }: { item: StreamItem }) {
       return <TableView item={item} />;
     case 'test-verdict':
       return <TestVerdictView item={item} />;
+    case 'hook-card':
+      return <HookCardView item={item} />;
+    case 'idea-card':
+      return <IdeaCardView item={item} />;
+    case 'multi-audience-read':
+      return <MultiAudienceReadView item={item} />;
+    case 'account-read':
+      return <AccountReadView item={item} />;
     default: {
       // Exhaustiveness — adding primitive #18 without a case here breaks the build.
       const _exhaustive: never = item;

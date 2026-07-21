@@ -1,6 +1,7 @@
 /**
- * STREAM primitives — the closed 16-primitive vocabulary behind the `composed` block
- * (THE STREAM rework, phase 1).
+ * STREAM primitives — the closed 21-primitive vocabulary behind the `composed` block
+ * (THE STREAM rework, phase 1; rev 9 hybrid — the 1:1 skill cards delegate to their
+ * shipped renderers).
  *
  * Design contract: docs/prototypes/stream-concept-rev7.html (frozen 2026-07-20) —
  * answer-first thread: prose is the backbone; structure appears inline only where the
@@ -17,7 +18,7 @@
  *  - accent marks ONE thing → table: at most one `accent` cell; stats: at most one `warn`
  *  - table rows are honest  → every row exactly matches the declared columns
  *
- * THE EXTENSION GUARANTEE: adding primitive #17 = (1) one schema below + its entry in
+ * THE EXTENSION GUARANTEE: adding primitive #22 = (1) one schema below + its entry in
  * STREAM_ITEM_SCHEMAS, (2) one renderer case in composed-block.tsx (the exhaustiveness
  * `never` breaks the build until it exists), (3) one item in the canonical fixture (the
  * kind-coverage test fails until it exists). Nothing else. Deferred with tripwires:
@@ -25,7 +26,13 @@
  */
 
 import { z } from "zod";
-import { HookProofSchema } from "./blocks";
+import {
+  HookProofSchema,
+  HookCardBlockSchema,
+  IdeaCardBlockSchema,
+  MultiAudienceReadBlockSchema,
+  AccountReadBlockSchema,
+} from "./blocks";
 import { VideoTestCardBlockSchema } from "./profile-blocks";
 
 // ─── Shared sub-shapes ────────────────────────────────────────────────────────
@@ -69,7 +76,7 @@ export const StreamVerbatimSchema = z.object({
 
 export type StreamVerbatim = z.infer<typeof StreamVerbatimSchema>;
 
-// ─── The 16 primitives ────────────────────────────────────────────────────────
+// ─── The 17 generic primitives ────────────────────────────────────────────────
 
 /** 1 · prose — the default; markdown in voice. Also the ONLY empty state. */
 const ProseItemSchema = z.object({
@@ -403,6 +410,29 @@ const TestVerdictItemSchema = z
   .object({ kind: z.literal("test-verdict") })
   .extend(VideoTestCardBlockSchema.shape.props.shape);
 
+// ─── Delegated skill cards (rev 9 — the hybrid) ───────────────────────────────
+// Owner call 2026-07-21: where a skill result already has a SHIPPED card, the stream
+// carries that card's props 1:1 and delegates to the REAL component (the test-verdict
+// pattern, generalized to the 1:1 make-family cards). Fidelity is guaranteed by
+// construction — a schema/renderer change to the old card updates the stream with it,
+// zero drift possible, nothing the old card showed can go missing. The GENERIC
+// ranked / compare / facts primitives stay as the ad-hoc fallback for a result that has
+// NO canonical card (the chat composer, phase 5).
+
+/** 18 · hook-card — THE shipped Hooks card, props 1:1 → HookCardRenderer. */
+const HookCardItemSchema = z.object({ kind: z.literal("hook-card") }).extend(HookCardBlockSchema.shape.props.shape);
+
+/** 19 · idea-card — THE shipped Ideas card, props 1:1 → IdeaCardRenderer. */
+const IdeaCardItemSchema = z.object({ kind: z.literal("idea-card") }).extend(IdeaCardBlockSchema.shape.props.shape);
+
+/** 20 · multi-audience-read — THE shipped Read card, props 1:1 → MultiAudienceReadBlockRenderer. */
+const MultiAudienceReadItemSchema = z
+  .object({ kind: z.literal("multi-audience-read") })
+  .extend(MultiAudienceReadBlockSchema.shape.props.shape);
+
+/** 21 · account-read — THE shipped Account Read card, props 1:1 → AccountReadBlockRenderer. */
+const AccountReadItemSchema = z.object({ kind: z.literal("account-read") }).extend(AccountReadBlockSchema.shape.props.shape);
+
 // ─── The union + the composed block ──────────────────────────────────────────
 
 export const StreamItemSchema = z.discriminatedUnion("kind", [
@@ -423,6 +453,10 @@ export const StreamItemSchema = z.discriminatedUnion("kind", [
   StatsItemSchema,
   TableItemSchema,
   TestVerdictItemSchema,
+  HookCardItemSchema,
+  IdeaCardItemSchema,
+  MultiAudienceReadItemSchema,
+  AccountReadItemSchema,
 ]);
 
 export type StreamItem = z.infer<typeof StreamItemSchema>;
@@ -447,6 +481,10 @@ export const STREAM_PRIMITIVE_KINDS = [
   "stats",
   "table",
   "test-verdict",
+  "hook-card",
+  "idea-card",
+  "multi-audience-read",
+  "account-read",
 ] as const satisfies readonly StreamItemKind[];
 
 export const ComposedBlockSchema = z.object({

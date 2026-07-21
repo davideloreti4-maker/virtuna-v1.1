@@ -456,7 +456,7 @@ const PREDICTION_GAUGE_BLOCK: PredictionGaugeBlock = {
   },
 };
 
-const MULTI_AUDIENCE_READ_BLOCK: MultiAudienceReadBlock = {
+export const MULTI_AUDIENCE_READ_BLOCK: MultiAudienceReadBlock = {
   type: "multi-audience-read",
   props: {
     model: "sim1-flash",

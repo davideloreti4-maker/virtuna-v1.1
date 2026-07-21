@@ -9,11 +9,18 @@
  *  - the honesty spine holds: the receipt carries provenance; an unmeasured row
  *    shows no invented number ("original — not drawn from a retrieved video")
  */
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MessageBlocks } from '../message-blocks';
 import { STREAM_COMPOSITION } from '@/lib/tools/__tests__/fixtures/stream-composition';
+
+// The delegated `account-read` card mounts AccountReadBlockRenderer, whose
+// "Write to my strengths →" action calls useRouter() at render — outside an app-router
+// scope that throws. A stub router is all the render lock needs (no navigation is fired).
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: () => {}, replace: () => {}, prefetch: () => {}, back: () => {} }),
+}));
 
 afterEach(cleanup);
 
@@ -58,6 +65,21 @@ describe('ComposedBlockRenderer via MessageBlocks', () => {
     expect(screen.getByText('For your Aspirants')).toBeTruthy();
     expect(screen.getByText('Proven structure')).toBeTruthy();
     expect(screen.getAllByText('Write script →').length).toBeGreaterThan(0);
+  });
+
+  it('rev 9 hybrid — the 1:1 skill cards delegate to their shipped renderers in-stream', () => {
+    renderWithClient(<MessageBlocks body={[STREAM_COMPOSITION]} />);
+    // hook-card → HookCardRenderer (hero hook + "Write script →" action bar)
+    expect(screen.getByText("The cut you're proud of is the one they leave on.")).toBeTruthy();
+    // idea-card → IdeaCardRenderer (concept title + the "your take" badge)
+    expect(screen.getByText('Post the outtake, not the highlight.')).toBeTruthy();
+    // multi-audience-read → MultiAudienceReadBlockRenderer. The name appears twice by
+    // design (the compare verdict header + the per-audience read); the Lever appears once.
+    expect(screen.getAllByText('Editors & Post-pros').length).toBeGreaterThan(0);
+    expect(screen.getByText(/Name the specific edit/)).toBeTruthy();
+    // account-read → AccountReadBlockRenderer (the real scrape profile identity)
+    expect(screen.getByText('Over-Cut Creator')).toBeTruthy();
+    expect(screen.getByText("A Read on your account")).toBeTruthy();
   });
 
   it('the flagship /test verdict renders via the shipped video-test card', () => {

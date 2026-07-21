@@ -49,6 +49,7 @@ import {
   CHAT_BLOCKS,
   EXPLORE_BLOCKS,
   ACCOUNT_BLOCK,
+  MULTI_AUDIENCE_READ_BLOCK,
   BLOCK_SECTIONS,
   USER_TURNS,
   FOLLOWUPS,
@@ -546,6 +547,81 @@ const THREAD_VIEWS: { id: string; label: string; note: string; node: React.React
   },
 ];
 
+// ── Card parity — the stream delegates to the SHIPPED card (rev 9 hybrid, 2026-07-21) ────────
+// The owner's finding: the stream's hand-rebuilt cards were LOSSY shadows of the real cards.
+// The fix: where a skill result has a shipped card, the stream carries its props 1:1 and renders
+// the REAL component (the test-verdict pattern, generalized to hooks/ideas/read/account). This
+// section proves it: LEFT is the card standalone; RIGHT is the SAME props inside a `composed`
+// stream block via the delegated primitive. They are identical BY CONSTRUCTION — that is the
+// point: on the stream, nothing the old card showed can go missing.
+const VIDEO_TEST_BLOCK = {
+  type: "video-test-card",
+  props: {
+    verdict: "Solid contender",
+    goNoGo: "go",
+    audienceName: "Skincare buyers",
+    band: "Mixed",
+    fraction: "6/10 stopped",
+    theOneFix: "Open on the after-shot, not the intro — the payoff is buried behind three seconds of setup.",
+    ceiling: "The hook lands but the middle sags — retention drops the moment the demo starts, so it caps below a breakout.",
+    reactions: [
+      { archetype: "skeptic", verdict: "scroll", quote: "Seen this exact format a hundred times — nothing new in the first second." },
+      { archetype: "collector", verdict: "stop", quote: "Saved it — the routine is specific enough to actually try." },
+      { archetype: "scanner", verdict: "stop", quote: "The on-screen text told me what I'd get. I stayed." },
+      { archetype: "converter", verdict: "scroll", quote: "No reason given to buy — it's a vibe, not a pitch." },
+    ],
+    postWindow: "Tue 18:00–21:00 UTC",
+    conceptText: "Three things I wish I knew before I started my skincare routine",
+    analysisId: "dev-fixture-id",
+    model: "sim1-max",
+    tier: "Directional",
+  },
+};
+
+/** A block's props, carried into a one-item `composed` stream block via a delegated primitive. */
+const inStream = (kind: string, props: Record<string, unknown>) => ({
+  type: "composed",
+  props: { items: [{ kind, ...props }] },
+});
+
+const PARITY_CARDS: { id: string; label: string; note: string; kind: string; block: { type: string; props: Record<string, unknown> } }[] = [
+  {
+    id: "parity-hooks",
+    label: "Hooks",
+    kind: "hook-card",
+    block: HOOK_BLOCKS[0]! as { type: string; props: Record<string, unknown> },
+    note: "hook-card → HookCardRenderer. The eyebrow archetype, the grounded ProofReceipt, the mechanism teaser, the ProofUnit + Lens door with its rewrite, Seed/Delivery on expand, and the Write-script + Save action bar — all carried, none re-drawn.",
+  },
+  {
+    id: "parity-ideas",
+    label: "Ideas",
+    kind: "idea-card",
+    block: IDEA_BLOCKS[0]! as { type: string; props: Record<string, unknown> },
+    note: "idea-card → IdeaCardRenderer. Concept anatomy (Topic × Take × Format on expand), the 'your take' badge, the ProofUnit, and the 'Develop into hooks →' forward chain.",
+  },
+  {
+    id: "parity-read",
+    label: "Read",
+    kind: "multi-audience-read",
+    block: MULTI_AUDIENCE_READ_BLOCK as { type: string; props: Record<string, unknown> },
+    note: "multi-audience-read → MultiAudienceReadBlockRenderer. The TrustBadge, the compare verdict header, per-audience interpretation + Lever + who-not-for + reaction drill, the VerbatimWall, and the provenance footer — all recovered vs the hand-built `compare`.",
+  },
+  {
+    id: "parity-account",
+    label: "Account Read",
+    kind: "account-read",
+    block: ACCOUNT_BLOCK as { type: string; props: Record<string, unknown> },
+    note: "account-read → AccountReadBlockRenderer. The real scrape profile header, the analyzed-post cover strip, What's-working / What-to-fix, the recurring-hooks/format-mix/drop-points disclosure, and the accuracy track record — none of which the hand-built `facts` card carried.",
+  },
+  {
+    id: "parity-test",
+    label: "Video Test",
+    kind: "test-verdict",
+    block: VIDEO_TEST_BLOCK as { type: string; props: Record<string, unknown> },
+    note: "test-verdict → VideoTestCardRenderer. The flagship, delegated since rev 8 — the pattern the other four now follow.",
+  },
+];
+
 // ── Group A2: the IN-FLIGHT states — the run capsule, previewable at last (2026-07-19) ────────
 // The 07-14 audit's lesson: a surface with no cheap way to LOOK at it will drift. The thread
 // views' completed states preview above, and Reading's skeleton previews below — but the thread's
@@ -895,6 +971,7 @@ export default function DevCardsPage() {
 
   const sections = [
     ...THREAD_VIEWS.map((v) => ({ id: v.id, label: v.label })),
+    ...PARITY_CARDS.map((p) => ({ id: p.id, label: `${p.label} · parity` })),
     ...INFLIGHT_VIEWS.map((v) => ({ id: v.id, label: v.label })),
     { id: "reading", label: "Test / Reading" },
     { id: "room", label: "The Room" },
@@ -937,6 +1014,44 @@ export default function DevCardsPage() {
               {/* Neutral thread backdrop so proportions read like /home. The view owns its 760px column. */}
               <div className="rounded-[var(--radius-lg)] border border-white/[0.06] bg-background py-2">
                 {v.node}
+              </div>
+            </section>
+          ))}
+        </div>
+
+        {/* Group A1.5 — card parity: the shipped card vs the SAME card delegated in the stream */}
+        <div className="flex flex-col gap-4 pt-14">
+          <SectionKicker>Card parity · the stream renders the REAL card (rev 9 hybrid)</SectionKicker>
+          <p className="max-w-2xl text-[12.5px] text-foreground-muted">
+            Left: the shipped card, standalone. Right: the SAME props carried inside a{" "}
+            <code className="rounded bg-white/[0.06] px-1 py-0.5 text-[11px]">composed</code> stream block via a
+            delegated primitive. They match because the stream now renders the real component — the proof that
+            nothing the old card showed goes missing on the stream.
+          </p>
+          {PARITY_CARDS.map((p) => (
+            <section key={p.id} id={p.id} className="scroll-mt-6">
+              <SectionHead label={`${p.label} — parity`} code={`${p.kind} → delegated`} note={p.note} />
+              <div className="grid gap-4 lg:grid-cols-2">
+                <div className="flex flex-col gap-2">
+                  <span className="text-[10px] uppercase tracking-[0.08em] text-foreground-muted/70">
+                    Shipped card · standalone
+                  </span>
+                  <div className="rounded-[var(--radius-lg)] border border-white/[0.06] bg-background p-4">
+                    <div className="mx-auto max-w-[760px]">
+                      <MessageBlocks body={[p.block]} />
+                    </div>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <span className="text-[10px] uppercase tracking-[0.08em] text-foreground-muted/70">
+                    In the stream · delegated
+                  </span>
+                  <div className="rounded-[var(--radius-lg)] border border-white/[0.06] bg-background p-4">
+                    <div className="mx-auto max-w-[760px]">
+                      <MessageBlocks body={[inStream(p.kind, p.block.props)]} />
+                    </div>
+                  </div>
+                </div>
               </div>
             </section>
           ))}
