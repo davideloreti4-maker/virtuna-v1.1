@@ -323,12 +323,25 @@ export const ACCOUNT_BLOCK: AccountReadBlock = {
       followerCount: 148_200,
       videoCount: 213,
     },
+    // The FULL scrape (not a top-N slice) — the strip is the visible proof of how much history
+    // the Read is grounded in. Ordered by views desc; the 4th omits a coverUrl to exercise the
+    // placeholder-tile degrade path.
     analyzedVideos: [
       { coverUrl: IMG("post1", 120, 210), views: 2_400_000, caption: "The one habit that 10x'd my mornings", videoUrl: "https://www.tiktok.com/@demo/video/1" },
       { coverUrl: IMG("post2", 120, 210), views: 640_000, caption: "Why your content isn't landing", videoUrl: "https://www.tiktok.com/@demo/video/2" },
       { coverUrl: IMG("post3", 120, 210), views: 320_000, caption: "I read 40 books this year", videoUrl: "https://www.tiktok.com/@demo/video/3" },
       { views: 91_000, caption: "Cover expired — degrades to placeholder tile", videoUrl: "https://www.tiktok.com/@demo/video/4" },
       { coverUrl: IMG("post5", 120, 210), views: 58_000, caption: "My honest editing setup", videoUrl: "https://www.tiktok.com/@demo/video/5" },
+      { coverUrl: IMG("post6", 120, 210), views: 47_000, caption: "3 hooks that never miss", videoUrl: "https://www.tiktok.com/@demo/video/6" },
+      { coverUrl: IMG("post7", 120, 210), views: 41_000, caption: "Stop overthinking your first line", videoUrl: "https://www.tiktok.com/@demo/video/7" },
+      { coverUrl: IMG("post8", 120, 210), views: 33_000, caption: "The retention trick nobody uses", videoUrl: "https://www.tiktok.com/@demo/video/8" },
+      { coverUrl: IMG("post9", 120, 210), views: 28_500, caption: "How I script in 5 minutes", videoUrl: "https://www.tiktok.com/@demo/video/9" },
+      { coverUrl: IMG("post10", 120, 210), views: 22_000, caption: "My worst-performing post (and why)", videoUrl: "https://www.tiktok.com/@demo/video/10" },
+      { coverUrl: IMG("post11", 120, 210), views: 19_400, caption: "Batch a week of content in an hour", videoUrl: "https://www.tiktok.com/@demo/video/11" },
+      { coverUrl: IMG("post12", 120, 210), views: 15_800, caption: "The CTA I stole from a 10M creator", videoUrl: "https://www.tiktok.com/@demo/video/12" },
+      { coverUrl: IMG("post13", 120, 210), views: 12_100, caption: "Why your middles lose people", videoUrl: "https://www.tiktok.com/@demo/video/13" },
+      { coverUrl: IMG("post14", 120, 210), views: 9_600, caption: "One light, one lens, zero excuses", videoUrl: "https://www.tiktok.com/@demo/video/14" },
+      { coverUrl: IMG("post15", 120, 210), views: 7_300, caption: "The B-roll shot list I reuse", videoUrl: "https://www.tiktok.com/@demo/video/15" },
     ],
     patterns: {
       working: [

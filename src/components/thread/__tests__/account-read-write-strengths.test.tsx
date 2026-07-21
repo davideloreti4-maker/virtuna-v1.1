@@ -94,24 +94,14 @@ describe('AccountReadBlockRenderer — "Write to my strengths →" forward actio
 });
 
 /**
- * Standard-conformance guards (2026-07-21) — the two moves that brought the Account Read card
- * onto the spine (docs/subsystems/ui-skill-cards.md §0.5.2 / §0.5). Each is written to FAIL
- * against the pre-2026-07-21 card (no hero; colored section LABELS) and PASS after.
+ * Standard-conformance guards (§0.5). The card carries NO hero headline (removed 2026-07-21 by
+ * owner decision — the templated one-liner "didn't match into the UI"; the card now opens on the
+ * real scrape identity + post strip). The data tone rides the bullet DOT, never the section label.
  */
 describe('AccountReadBlockRenderer — standard conformance', () => {
-  it('leads with a hero read (§0.5.2) templated from working + fix', () => {
+  it('renders NO hero headline (removed — the card opens on identity, not a one-liner)', () => {
     renderWithClient(<AccountReadBlockRenderer block={makeBlock()} />);
-    const hero = screen.getByTestId('account-read-hero');
-    // The one-line read carries BOTH the strength and the cost, in one cream sentence.
-    expect(hero.textContent).toContain('Fast cold-open cuts');
-    expect(hero.textContent).toContain('but openers run long');
-  });
-
-  it('degrades the hero honestly to the strength alone when there is no fix', () => {
-    const block = makeBlock();
-    block.props.patterns!.fix = [];
-    renderWithClient(<AccountReadBlockRenderer block={block} />);
-    expect(screen.getByTestId('account-read-hero').textContent).toBe('Fast cold-open cuts.');
+    expect(screen.queryByTestId('account-read-hero')).toBeNull();
   });
 
   it('keeps section labels muted — the data tone rides the bullet DOT, not the label', () => {
