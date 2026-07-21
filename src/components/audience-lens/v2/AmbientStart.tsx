@@ -1,25 +1,30 @@
 "use client";
 
 /**
- * AmbientStart — Ambient Audience v2, surface ④ "the instrument at rest" (L6, variant B).
+ * AmbientStart — Ambient Audience v2, surface ④ "the instrument at rest" (L6, Option 1).
  *
- * The screen you land on with nothing running: a cockpit, not a dashboard. Configuration is loud
- * exactly once, here at the thread's birth. Owner-locked composition (2026-07-21 config/rank model,
+ * The screen you land on with nothing running: a clean AS-style card, not a dashboard. Owner-locked
+ * composition (2026-07-21 config/rank model → Option 1,
  * `docs/HANDOFF-2026-07-21-ambient-audience-v2-config-rank-model.md`):
  *
  *   - a quiet time-of-day greeting (serif = the room's voice),
  *   - the STANDING CONDITIONS block — "Testing against" · ◇ audience (locked, L1) · scene ▾ ·
- *     fidelity ▾ · the AUTO-RANK toggle. This is the loud-at-birth form of the persistent strip
- *     that pins to the top of the thread once you're running (same control, two intensities — L4),
- *   - the SKILL GRID as the hero — "what would you like to simulate?" (Societies-explicit), each
- *     skill carrying a preset lens; grows as verticals are added,
- *   - the composer as the fallback ("…or just type").
+ *     fidelity ▾. This is the loud-at-birth form of the persistent strip that pins to the top of the
+ *     thread once you're running (same control, two intensities — L4). NO auto-rank dial: the thin
+ *     rank is always-on, intrinsic to every skill, never a start-screen toggle,
+ *   - the MAKE GRID — a quiet "Make something" kicker over the maker skills (Hook · Script · … ),
+ *     each carrying a preset lens; grows as verticals are added,
+ *   - ONE visually-distinct SIMULATE DOOR — "Test something against your audience →" — the separate,
+ *     deliberate screening act (a video / a draft / ask the room). Kept its own act so simulation
+ *     never reads as one more maker in the list,
+ *   - the composer as the fallback ("…or just ask").
  *
- * Firing model: a skill fires content + a THIN RANK automatically (unless auto-rank is off); the full
- * simulation is DEVELOPED from that rank through ⑤. Nothing here ever auto-sims.
+ * The two verbs read as two verbs: MAKE (skills → content + a thin rank rides every output) vs
+ * SIMULATE (the deliberate full read, armed through ⑤). A skill's rank DEVELOPS into a full
+ * simulation through ⑤; the door is only the cold-start (nothing to develop yet). Nothing auto-sims.
  *
- * Grammar: one hero (the grid) · serif reserved for the greeting voice · de-boxed hairlines · no
- * coral (nothing is lost yet).
+ * Grammar: clean card · serif reserved for the greeting voice · de-boxed hairlines · matte (no glow) ·
+ * no coral (nothing is lost yet).
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -27,17 +32,22 @@ import { TONE } from "./AmbientDetail";
 
 // ── view-model ───────────────────────────────────────────────────────────────
 
-export type ActionIcon = "sparkle" | "play" | "ask" | "repeat" | "pen" | "hash" | "doc" | "list";
+export type ActionIcon =
+  | "sparkle"
+  | "play"
+  | "ask"
+  | "repeat"
+  | "pen"
+  | "hash"
+  | "doc"
+  | "list"
+  | "idea"
+  | "frame";
 
 export interface StartSkill {
   label: string;
-  lens: string; // the preset question this skill arms ("would stop" …)
+  lens: string; // the preset question this skill's rank arms ("would stop" …)
   icon: ActionIcon;
-}
-
-export interface StartCategory {
-  label: string; // "Make" · "Test" · "Ask"
-  skills: StartSkill[];
 }
 
 export interface StartConditions {
@@ -46,14 +56,20 @@ export interface StartConditions {
   sceneOptions: string[];
   fidelity: string; // SIM-1 Flash / SIM-1 Max — tap to change
   fidelityOptions: string[];
-  autoRank: boolean; // the room ranks every skill output automatically
+}
+
+export interface StartSimDoor {
+  title: string; // "Test something against your audience"
+  subtitle: string; // "a video, a draft, or ask the room — the full read"
 }
 
 export interface StartData {
   name: string;
   conditions: StartConditions;
+  makeLabel: string; // the quiet kicker over the maker grid — "Make something"
+  makeSkills: StartSkill[]; // the maker grid; grows as verticals are added
+  simDoor: StartSimDoor; // the one distinct, separate simulation door
   composerPlaceholder: string;
-  categories: StartCategory[];
 }
 
 function timeGreeting(): string {
@@ -91,6 +107,10 @@ function Icon({ kind }: { kind: ActionIcon }) {
       return <svg {...s} aria-hidden><path d="M4 2 H12 V14 H4 Z M6.4 6 H9.6 M6.4 9 H9.6 M6.4 11.6 H9.6" /></svg>;
     case "list":
       return <svg {...s} aria-hidden><path d="M6 4 H13.4 M6 8 H13.4 M6 12 H13.4" /><circle cx="3" cy="4" r=".7" fill="currentColor" stroke="none" /><circle cx="3" cy="8" r=".7" fill="currentColor" stroke="none" /><circle cx="3" cy="12" r=".7" fill="currentColor" stroke="none" /></svg>;
+    case "idea":
+      return <svg {...s} aria-hidden><path d="M8 1.8 L14.2 8 L8 14.2 L1.8 8 Z" /></svg>;
+    case "frame":
+      return <svg {...s} aria-hidden><path d="M2.5 3.5 H13.5 V12.5 H2.5 Z M2.5 10.2 L6 7 L8.4 9.2 L10.6 7.4 L13.5 10" /><circle cx="5.4" cy="6" r=".9" /></svg>;
   }
 }
 
@@ -153,62 +173,21 @@ function Pick({ value, options, onSelect }: { value: string; options: string[]; 
   );
 }
 
-/** Auto-rank switch — the thread default for whether skills auto-produce a thin rank. */
-function AutoRankToggle({ on, onToggle }: { on: boolean; onToggle: (next: boolean) => void }) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={on}
-      onClick={() => onToggle(!on)}
-      className="group flex items-center gap-2.5"
-    >
-      <span
-        className="relative inline-flex h-[18px] w-[32px] flex-none items-center rounded-full transition-colors"
-        style={{ background: on ? "rgba(236,231,222,.28)" : "rgba(255,255,255,.06)", border: `1px solid ${TONE.hair}` }}
-      >
-        <span
-          className="inline-block h-[12px] w-[12px] rounded-full transition-transform"
-          style={{
-            background: on ? TONE.cream : TONE.faint,
-            transform: on ? "translateX(15px)" : "translateX(3px)",
-          }}
-        />
-      </span>
-      <span className="text-[13px]" style={{ color: on ? TONE.dim : TONE.faint }}>
-        Auto-rank
-      </span>
-    </button>
-  );
-}
-
 function ConditionsStrip({
   conditions,
   onScene,
   onFidelity,
-  onToggleAutoRank,
 }: {
   conditions: StartConditions;
   onScene?: (v: string) => void;
   onFidelity?: (v: string) => void;
-  onToggleAutoRank?: (next: boolean) => void;
 }) {
   const [scene, setScene] = useState(conditions.scene);
   const [fidelity, setFidelity] = useState(conditions.fidelity);
-  const [autoRank, setAutoRank] = useState(conditions.autoRank);
   return (
     <div className="mt-7">
-      <div className="flex items-center justify-between">
-        <div className="font-mono text-[11px] uppercase tracking-[0.09em]" style={{ color: TONE.faint }}>
-          Testing against
-        </div>
-        <AutoRankToggle
-          on={autoRank}
-          onToggle={(v) => {
-            setAutoRank(v);
-            onToggleAutoRank?.(v);
-          }}
-        />
+      <div className="font-mono text-[11px] uppercase tracking-[0.09em]" style={{ color: TONE.faint }}>
+        Testing against
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-2 text-[14px]">
         {/* audience — locked for the thread (L1); no ▾, dimmer, non-interactive */}
@@ -240,12 +219,45 @@ function ConditionsStrip({
           }}
         />
       </div>
-      <div className="mt-2.5 text-[12px]" style={{ color: TONE.faint }}>
-        {autoRank
-          ? "The room scores every output — develop a rank into a full simulation anytime."
-          : "The room stays quiet — nothing runs until you simulate."}
-      </div>
     </div>
+  );
+}
+
+// ── the one distinct simulation door (the separate act) ────────────────────────────────────────
+
+function SimDoor({ door, onOpen }: { door: StartSimDoor; onOpen?: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="flex w-full items-center gap-3 rounded-[12px] px-4 py-3.5 text-left transition-colors"
+      style={{
+        border: `1px solid ${TONE.hair}`,
+        background: "rgba(255,255,255,.015)",
+      }}
+      onMouseEnter={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,.14)")}
+      onMouseLeave={(e) => (e.currentTarget.style.borderColor = TONE.hair)}
+    >
+      {/* target/aperture ring — reads as "screen against the room", distinct from the maker glyphs */}
+      <span className="flex-none" style={{ color: TONE.dim }} aria-hidden>
+        <svg viewBox="0 0 20 20" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.3">
+          <circle cx="10" cy="10" r="7" />
+          <circle cx="10" cy="10" r="3" />
+          <circle cx="10" cy="10" r=".6" fill="currentColor" />
+        </svg>
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[14px] font-medium" style={{ color: TONE.cream }}>
+          {door.title}
+        </span>
+        <span className="mt-0.5 block text-[12px]" style={{ color: TONE.faint }}>
+          {door.subtitle}
+        </span>
+      </span>
+      <span className="flex-none text-[16px]" style={{ color: TONE.faint }} aria-hidden>
+        →
+      </span>
+    </button>
   );
 }
 
@@ -255,18 +267,18 @@ export function AmbientStart({
   data,
   onScene,
   onFidelity,
-  onToggleAutoRank,
   onSkill,
+  onTestDoor,
   onSubmit,
 }: {
   data: StartData;
   onScene?: (v: string) => void;
   onFidelity?: (v: string) => void;
-  onToggleAutoRank?: (next: boolean) => void;
-  onSkill?: (categoryIdx: number, skillIdx: number) => void;
+  onSkill?: (skillIdx: number) => void;
+  onTestDoor?: () => void;
   onSubmit?: (text: string) => void;
 }) {
-  const { name, conditions, composerPlaceholder, categories } = data;
+  const { name, conditions, makeLabel, makeSkills, simDoor, composerPlaceholder } = data;
   // client-only greeting: the wall clock differs server↔client, so resolve it after mount (lazy
   // init would run on the server and hydration-mismatch across an hour/timezone boundary).
   const [greeting, setGreeting] = useState("Welcome back");
@@ -280,7 +292,17 @@ export function AmbientStart({
       className="flex w-full flex-1 flex-col items-center justify-center"
       style={{ fontFamily: "var(--font-sans, Inter, system-ui, sans-serif)" }}
     >
-      <div data-testid="ambient-start" className="flex w-full max-w-[540px] flex-col" style={{ color: TONE.cream }}>
+      {/* the clean AS-style card — self-contained, floats on the darker room field */}
+      <div
+        data-testid="ambient-start"
+        className="flex w-full max-w-[540px] flex-col rounded-[20px] px-8 pb-7 pt-8"
+        style={{
+          color: TONE.cream,
+          background: "#1f1f1e",
+          border: `1px solid ${TONE.border}`,
+          boxShadow: "0 24px 64px rgba(0,0,0,.4)",
+        }}
+      >
         {/* brand glyph */}
         <svg viewBox="0 0 22 16" className="h-4 w-[22px]" aria-hidden>
           <circle cx="3" cy="12" r="1.6" fill="#ece7de" opacity=".9" />
@@ -292,57 +314,50 @@ export function AmbientStart({
           <line x1="15" y1="10" x2="19" y2="3" stroke="#ece7de" strokeOpacity=".25" />
         </svg>
 
-        {/* quiet time-of-day greeting (serif = the room's voice) — demoted so the grid is the hero */}
-        <h1 className="mt-5 font-serif text-[26px] font-normal leading-[1.15] tracking-[-0.01em]">
+        {/* quiet time-of-day greeting (serif = the room's voice) */}
+        <h1 className="mt-[18px] font-serif text-[26px] font-normal leading-[1.15] tracking-[-0.01em]">
           {greeting}, {name}
         </h1>
 
         {/* the standing conditions — loud once, at birth (the persistent strip in its loud form) */}
-        <ConditionsStrip
-          conditions={conditions}
-          onScene={onScene}
-          onFidelity={onFidelity}
-          onToggleAutoRank={onToggleAutoRank}
-        />
+        <ConditionsStrip conditions={conditions} onScene={onScene} onFidelity={onFidelity} />
 
-        <div className="mt-7 h-px w-full" style={{ background: TONE.border }} />
+        <div className="mt-6 h-px w-full" style={{ background: TONE.border }} />
 
-        {/* THE HERO — what would you like to simulate? (Societies-explicit skill menu) */}
-        <div className="mt-7 text-[17px] font-medium" style={{ color: TONE.cream }}>
-          What would you like to simulate?
+        {/* MAKE — the maker grid (a quiet kicker, not a loud "simulate" hero; skills MAKE, they don't sim) */}
+        <div className="mt-6 font-mono text-[11px] uppercase tracking-[0.07em]" style={{ color: TONE.faint }}>
+          {makeLabel}
         </div>
-        <div className="mt-5 grid grid-cols-1 gap-x-8 gap-y-7 sm:grid-cols-3">
-          {categories.map((cat, ci) => (
-            <div key={cat.label}>
-              <div className="font-mono text-[11px] uppercase tracking-[0.07em]" style={{ color: TONE.faint }}>
-                {cat.label}
-              </div>
-              <div className="mt-3 flex flex-col gap-1">
-                {cat.skills.map((sk, si) => (
-                  <button
-                    key={sk.label}
-                    type="button"
-                    onClick={() => onSkill?.(ci, si)}
-                    className="-mx-2 flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors"
-                    style={{ color: TONE.dim }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = TONE.well;
-                      e.currentTarget.style.color = TONE.cream;
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = "transparent";
-                      e.currentTarget.style.color = TONE.dim;
-                    }}
-                  >
-                    <span className="flex-none" style={{ color: TONE.faint }}>
-                      <Icon kind={sk.icon} />
-                    </span>
-                    <span className="text-[14px]">{sk.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
+        <div className="mt-3 grid grid-cols-2 gap-x-8 gap-y-0.5">
+          {makeSkills.map((sk, si) => (
+            <button
+              key={sk.label}
+              type="button"
+              onClick={() => onSkill?.(si)}
+              className="-mx-2 flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors"
+              style={{ color: TONE.dim }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = TONE.well;
+                e.currentTarget.style.color = TONE.cream;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "transparent";
+                e.currentTarget.style.color = TONE.dim;
+              }}
+            >
+              <span className="flex-none" style={{ color: TONE.faint }}>
+                <Icon kind={sk.icon} />
+              </span>
+              <span className="text-[14px]">{sk.label}</span>
+            </button>
           ))}
+        </div>
+
+        <div className="mt-6 h-px w-full" style={{ background: TONE.border }} />
+
+        {/* SIMULATE — the one separate, deliberate act (its own door, never a maker in the list) */}
+        <div className="mt-6">
+          <SimDoor door={simDoor} onOpen={onTestDoor} />
         </div>
 
         {/* composer — the fallback: type anything, develop it into a simulation */}
@@ -359,7 +374,7 @@ function ComposerRow({ placeholder, onSubmit }: { placeholder: string; onSubmit?
   };
   return (
     <div
-      className="mt-8 flex items-center gap-2 rounded-[12px] py-2 pl-4 pr-2"
+      className="mt-6 flex items-center gap-2 rounded-[12px] py-2 pl-4 pr-2"
       style={{ border: `1px solid ${TONE.border}`, background: "#1a1a19" }}
     >
       <input
@@ -375,7 +390,7 @@ function ComposerRow({ placeholder, onSubmit }: { placeholder: string; onSubmit?
       <button
         type="button"
         onClick={submit}
-        aria-label="Simulate"
+        aria-label="Send"
         className="flex h-8 w-8 flex-none items-center justify-center rounded-full text-[13px] transition-opacity"
         style={{ background: TONE.cream, color: "#1c1b19", opacity: text.trim() ? 1 : 0.4 }}
       >
