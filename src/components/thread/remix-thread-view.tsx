@@ -35,6 +35,7 @@ import type { OnDevelopRemixFn } from '@/lib/remix-develop-context';
 import { MessageBlocks } from '@/components/thread/message-blocks';
 import { ThreadShell, ThreadAssistantTurn } from '@/components/thread/thread-shell';
 import { ThreadIntro, ThreadOutro } from '@/components/thread/conversational-frame';
+import { followupsForKind } from '@/lib/tools/chat-followups';
 import { SkillRunError } from '@/components/thread/run-notices';
 import { SkillProgress, STAGE_PLANS } from '@/components/thread/progress-checklist';
 import type { StageState } from '@/components/thread/progress-checklist';
@@ -138,7 +139,9 @@ export function RemixThreadView({
 
               {/* Outro — the engine's real follow-up, restyled (no chips: the remix card
                   carries its own "Develop into hooks →" handoff). */}
-              {!isStreaming && <ThreadOutro text={followupText} />}
+              {!isStreaming && (
+                <ThreadOutro text={followupText} followups={followupsForKind('remix')} />
+              )}
 
               {hasPersistedContent && !isStreaming && (
                 <div className="flex flex-col gap-3">

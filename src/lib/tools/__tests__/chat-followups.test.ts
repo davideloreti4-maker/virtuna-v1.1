@@ -9,6 +9,7 @@ import { describe, it, expect } from "vitest";
 import {
   classifyTurn,
   followupsForTurn,
+  followupsForKind,
   blockTypesOf,
   type ChatTurnKind,
 } from "../chat-followups";
@@ -24,9 +25,51 @@ describe("classifyTurn — furthest-along card wins", () => {
     // A mixed turn resolves to the furthest-along card the creator is looking at.
     [["idea-card", "hook-card", "script-card"], "script"],
     [["markdown", "idea-card"], "ideas"],
+    // The analysis reads — each a distinct terminal output — and they WIN over a co-rendered card.
+    [["video-test-card"], "test"],
+    [["account-read"], "account"],
+    [["outlier-grid"], "explore"],
+    [["reaction-distribution"], "predict"],
+    [["prediction-gauge"], "predict"],
+    [["profile-read"], "profile"],
+    [["video-test-card", "script-card"], "test"],
   ];
   it.each(cases)("%j → %s", (types, expected) => {
     expect(classifyTurn(types)).toBe(expected);
+  });
+});
+
+describe("every skill kind has curated, non-empty, non-duplicating follow-ups", () => {
+  const kinds: ChatTurnKind[] = [
+    "chat", "ideas", "hooks", "script", "remix", "explore", "account", "test", "predict", "profile",
+  ];
+  // The single forward CTA each card already owns — a chip must never repeat it.
+  const cardCta: Partial<Record<ChatTurnKind, string>> = {
+    ideas: "write hooks for this",
+    hooks: "write the script",
+    script: "test this script",
+    remix: "write hooks for this",
+    account: "write to my strengths",
+    test: "simulate with your audience",
+    predict: "predict an outcome",
+    profile: "test this message",
+  };
+  it.each(kinds)("%s → 2–3 chips, each labelled + prompted, none repeating the card CTA", (kind) => {
+    const chips = followupsForKind(kind);
+    expect(chips.length).toBeGreaterThanOrEqual(2);
+    expect(chips.length).toBeLessThanOrEqual(3);
+    const cta = cardCta[kind];
+    for (const c of chips) {
+      expect(c.label.trim().length).toBeGreaterThan(0);
+      expect(c.prompt.trim().length).toBeGreaterThan(0);
+      if (cta) expect(c.label.toLowerCase()).not.toBe(cta);
+    }
+  });
+
+  it("a Test turn offers CRAFT next-moves, not the generic chat set", () => {
+    const labels = followupsForTurn(["video-test-card"]).map((c) => c.label.toLowerCase());
+    expect(labels).not.toContain("give me ideas"); // the generic-fallthrough bug we fixed
+    expect(labels.some((l) => l.includes("hook") || l.includes("pacing") || l.includes("cut"))).toBe(true);
   });
 });
 
