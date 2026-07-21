@@ -304,13 +304,25 @@ Checkpoint committed first (`a68e6431`, preserves variant-B ④ + ⑤ Simulate +
   imports leaf, never reverse → no import cycle; both files <500). `page.tsx` wires ④ door → cold,
   skill/composer → develop, + a develop/cold toggle on the ⑤ chip. Live-verified both modes.
 
+**Step 4 — PRICING template #2, the swap PROOF (`0f066394`).** Authored a second DomainTemplate
+(business · pricing) as pure data — the bet held. Same cascade top-to-bottom; only the FIGURES swap;
+shared slots (cortex · terrain · segments · voices · footer · ask-why) reused untouched. Two new
+figure `kind`s (resistance-curve · demand-curve), each a single new `case` in the frame's slot
+switch — **no frame edits**. `pricing-template.ts` (new) + a creator/pricing toggle on the ② chip.
+- **The one seam LEAK the proof surfaced + fixed:** the verdict hero was hardcoded to `%` →
+  generalized to a pre-formatted `verdict.value` string ("38.2%" vs "$24"). Creator renders identical.
+- **Optional slots proven both ways:** pricing OMITS networks; pricing ADDS `population.calibration`
+  (the generalization-bounded-by-calibration honesty line — an engagement-calibrated room answering a
+  WTP question). Colors held the room law: cream = the optimal (good default), coral = the loss only.
+- **So the "one template, never a fork" claim is now DE-RISKED** — a 3rd domain is the same recipe.
+
 **Still OPEN after this session:**
 - **Build the COMPARE (A/B) + QUERY (ask/survey) arms + their output surfaces** — currently `soon`
-  stubs in the ⑤ intake. Each needs its own read-template (comparative overlay · survey results).
-- **Prove the swap with a 2nd DomainTemplate** (pricing: demand curve · resistance curve · WTP tiers)
-  + a dev toggle — the seam is ready (add a `kind` to `BrainDriver`/`PopulationMain` + a template).
+  stubs in the ⑤ intake. Each needs its own read-template (comparative overlay · survey results) — and
+  now that the swap is proven, each is "the pricing recipe again": a template + 1-2 new figure `kind`s.
 - **P2/P3 depth refinements** (Brain σ→plain-words · terrain declutter) — model-independent, anytime.
+  Do these on the CREATOR template — it's template #1, the reference the others copy.
 - **Naming** for the light layer (rank · pulse · first take) — still owner's call.
 - Wiring the v2 route into the product (later; parallel session owns the product-thread rank comp).
 
-**Git tip:** `86346820` on `design/ambient-audience-v2` (pushed to origin). Gates all green.
+**Git tip:** `0f066394` on `design/ambient-audience-v2` (pushed to origin). Gates all green.
