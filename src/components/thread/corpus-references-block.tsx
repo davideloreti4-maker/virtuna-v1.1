@@ -126,7 +126,9 @@ export function CorpusReferencesBlockRenderer({ block }: { block: CorpusReferenc
 
       <ul className="flex flex-col gap-2">
         {sources.map((source, i) => (
-          <li key={source.videoUrl ?? `${source.handle}-${i}`}>
+          // The index is always in the key so two rows that share a videoUrl (the corpus RPC does
+          // not guarantee dedup) can never collide — a collision lets React drop/duplicate a row.
+          <li key={`${source.videoUrl ?? source.handle}-${i}`}>
             <ProofReceipt
               proof={source}
               // The row's own facets, NOT the group's claim — see facetLine. Falls back to the warrant
