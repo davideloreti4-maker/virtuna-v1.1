@@ -46,8 +46,13 @@ const VERDICT_LABEL: Record<'stop' | 'scroll', string> = {
 /** One audience's Read — verdict name + neutral interpret/lever + who-not-for + drill. */
 function AudienceRead({
   audience,
+  showBand,
 }: {
   audience: MultiAudienceReadBlock['props']['audiences'][number];
+  /** Show the band WORD (colored) on the verdict row. TRUE only when there is no
+   *  CompareVerdictRow above — so the band word appears exactly once (§0.5.6, band color
+   *  is a data mark used once). In compare mode the header row is the band word's home. */
+  showBand: boolean;
 }) {
   const { name, band, fraction, interpretation, lever, whoNotFor, personas } = audience;
   const [expanded, setExpanded] = useState(false);
@@ -58,20 +63,26 @@ function AudienceRead({
 
   return (
     <div className="flex flex-col gap-2.5">
-      {/* Audience name — band dot + name (band color used once: the dot) + emitted fraction. */}
+      {/* Verdict row — band dot + name + the band WORD (colored, once) + emitted fraction. The
+          band word lives HERE so the interpretation below stays cream; in compare mode it rides
+          the CompareVerdictRow instead (showBand=false) and never doubles. */}
       <div className="flex items-baseline gap-2 text-[13.5px] font-semibold text-foreground">
         <span className="h-[7px] w-[7px] shrink-0 self-center rounded-full" style={{ backgroundColor: bandColor }} aria-hidden="true" />
         {name}
-        <span className="text-[12px] font-normal text-foreground-muted">{fraction}</span>
+        {showBand && (
+          <>
+            <span className="text-foreground-muted/40" aria-hidden="true">·</span>
+            <span style={{ color: bandColor }}>{band}</span>
+          </>
+        )}
+        <span className="text-[12px] font-normal text-foreground-muted">
+          {showBand ? `· ${fraction}` : fraction}
+        </span>
       </div>
 
-      {/* Interpretation — "{band} Read." lead (band color) + neutral prose. NO coral panel. */}
-      <p className="text-[13.5px] leading-relaxed text-foreground-secondary">
-        <b className="font-semibold" style={{ color: bandColor }}>
-          {band} Read.
-        </b>{' '}
-        <span className="text-foreground">{interpretation}</span>
-      </p>
+      {/* Interpretation — plain cream prose. The band word is stated once above (row or compare
+          header); the sentence must not colorize it a second time (no "{band} Read." lead). */}
+      <p className="text-[13.5px] leading-relaxed text-foreground">{interpretation}</p>
 
       {/* Lever — the one thing to act on. Neutral cream left-rule (NOT a coral panel). */}
       <p
@@ -208,7 +219,7 @@ export function MultiAudienceReadBlockRenderer({ block }: MultiAudienceReadBlock
               key={`${audience.name}-${i}`}
               className={i > 0 ? 'border-t border-white/[0.06] pt-5' : undefined}
             >
-              <AudienceRead audience={audience} />
+              <AudienceRead audience={audience} showBand={!isCompare} />
             </div>
           ))}
         </div>
@@ -222,7 +233,7 @@ export function MultiAudienceReadBlockRenderer({ block }: MultiAudienceReadBlock
           it holds the primary slot's position rather than sitting in a row of its own.
           Tier falls back to "Directional" — the honest default, NEVER silently "Validated". */}
       <div className="flex items-center gap-3.5 border-t border-white/[0.06] px-4 py-3">
-        <span className="text-[12px] text-foreground-muted">SIM-1 Flash · static</span>
+        <span className="text-[11px] text-foreground-muted/70">· SIM-1 Flash</span>
         <SaveAffordance
           className="ml-auto"
           item_type="read"

@@ -100,22 +100,24 @@ function QuoteRow({ q, isLead }: { q: WallQuote; isLead: boolean }) {
   );
 }
 
-/** One verdict group — section label + its quotes (lead first). */
+/** One verdict group — section label + its quotes (lead first). Color is a DATA MARK: it
+ *  rides a leading dot (success = stopped, muted = scrolled), never the label text itself. */
 function VerdictGroup({
   label,
-  labelClass,
+  dotClass,
   quotes,
 }: {
   label: string;
-  labelClass: string;
+  dotClass: string;
   quotes: WallQuote[];
 }) {
   if (quotes.length === 0) return null;
   return (
     <div className="flex flex-col gap-3">
-      <p className={`text-xs font-semibold uppercase tracking-wide ${labelClass}`}>
+      <p className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.05em] text-foreground-muted">
+        <span className={`h-[6px] w-[6px] shrink-0 rounded-full ${dotClass}`} aria-hidden="true" />
         {label}
-        <span className="ml-2 font-normal text-muted/60">{quotes.length}</span>
+        <span className="ml-0.5 font-normal text-foreground-muted/60">{quotes.length}</span>
       </p>
       <div className="flex flex-col gap-3">
         {quotes.map((q, i) => (
@@ -144,12 +146,14 @@ export function VerbatimWall({ audiences }: VerbatimWallProps) {
   if (stopped.length === 0 && scrolled.length === 0) return null;
 
   return (
-    <div className="flex flex-col gap-5 rounded-lg border border-white/[0.06] bg-white/[0.02] p-4">
-      <p className="text-[11px] font-medium uppercase tracking-[0.05em] text-foreground-muted">
+    /* De-boxed (2026-07-21): the room is a hairline-separated SECTION of the Read card, not a
+       nested bordered box within it (the within-card nesting #327/#329 removed everywhere else). */
+    <div className="flex flex-col gap-5 border-t border-white/[0.06] pt-4">
+      <p className="text-[11px] uppercase tracking-[0.05em] text-foreground-muted">
         The room
       </p>
-      <VerdictGroup label="Stopped the scroll" labelClass="text-success" quotes={stopped} />
-      <VerdictGroup label="Scrolled past" labelClass="text-muted" quotes={scrolled} />
+      <VerdictGroup label="Stopped the scroll" dotClass="bg-success" quotes={stopped} />
+      <VerdictGroup label="Scrolled past" dotClass="bg-foreground-muted" quotes={scrolled} />
     </div>
   );
 }

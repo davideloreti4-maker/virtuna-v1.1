@@ -67,6 +67,31 @@ function formatCompact(n: number): string {
   return fmt(n / 1_000_000, 'M');
 }
 
+/** Lowercase the first letter of a clause for mid-sentence joining — but leave acronyms alone
+ *  ("CTAs" stays "CTAs", "Middles" → "middles"). Only flips when the word is Title-cased. */
+function lowerFirstClause(s: string): string {
+  if (s.length < 2) return s;
+  const isTitleCased = s[0] === s[0]!.toUpperCase() && s[1] === s[1]!.toLowerCase();
+  return isTitleCased ? s[0]!.toLowerCase() + s.slice(1) : s;
+}
+
+/**
+ * The hero read (§0.5.2) — a deterministic one-line read of the account, templated from the
+ * account's own strongest signals: what's landing AND what's costing. NO model call, NO
+ * fabrication — it composes the real `patterns` strings the deterministic engine already
+ * produced. Degrades honestly: working-only → the strength alone; fix-only → the one fix;
+ * neither → no hero (never an empty or invented sentence).
+ */
+function buildAccountHero(working: string[], fix: string[]): string | null {
+  const strip = (s?: string) => s?.trim().replace(/[.!?]+$/, '') ?? '';
+  const w = strip(working[0]);
+  const f = strip(fix[0]);
+  if (w && f) return `${w}, but ${lowerFirstClause(f)}.`;
+  if (w) return `${w}.`;
+  if (f) return `The one fix: ${lowerFirstClause(f)}.`;
+  return null;
+}
+
 /** Eyebrow kicker — the shared CardEyebrow (§0.5.1); optional right-side @handle (back-compat/thin). */
 function Eyebrow({ handle }: { handle?: string }) {
   return (
@@ -161,31 +186,31 @@ function CoverStrip({ videos }: { videos: AnalyzedVideos }) {
   );
 }
 
-/** A labeled bullet list — colored label (success/warning) or muted; honest empty state. */
+/** A labeled bullet list — the label stays muted cream; the data tone (success/warning) rides
+ *  the bullet DOT, never the label text (§0.5 — color is a data mark). Honest empty state. */
 function ListBlock({
   label,
   items,
   testid,
-  labelColor,
+  dotColor,
 }: {
   label: string;
   items: string[];
   testid: string;
-  labelColor?: string;
+  dotColor?: string;
 }) {
   return (
     <div data-testid={testid}>
-      <p
-        className="mb-1.5 text-[11px] uppercase tracking-[0.05em]"
-        style={labelColor ? { color: labelColor } : undefined}
-      >
-        <span className={labelColor ? undefined : 'text-foreground-muted'}>{label}</span>
-      </p>
+      <p className="mb-1.5 text-[11px] uppercase tracking-[0.05em] text-foreground-muted">{label}</p>
       {items.length > 0 ? (
         <ul className="flex flex-col gap-1" role="list">
           {items.map((item, i) => (
             <li key={`${testid}-${i}`} className="flex gap-2 text-[13px] leading-relaxed text-foreground-secondary">
-              <span className="mt-[7px] h-[4px] w-[4px] shrink-0 rounded-full bg-[var(--color-foreground-muted)]" aria-hidden="true" />
+              <span
+                className="mt-[7px] h-[4px] w-[4px] shrink-0 rounded-full"
+                style={{ backgroundColor: dotColor ?? 'var(--color-foreground-muted)' }}
+                aria-hidden="true"
+              />
               {item}
             </li>
           ))}
@@ -346,6 +371,21 @@ export function AccountReadBlockRenderer({ block, threadId }: AccountReadBlockPr
       <div className="flex flex-col gap-4 px-4 pb-3 pt-4">
         <Eyebrow />
 
+        {/* Hero (§0.5.2) — the one-line read: what's landing AND what's costing, in one cream
+            sentence. Deterministic (templated from the account's own patterns), so the card leads
+            with the payoff instead of opening cold on the profile row. */}
+        {(() => {
+          const hero = buildAccountHero(patterns.working, patterns.fix);
+          return hero ? (
+            <p
+              className="text-[16px] font-semibold leading-[1.35] text-foreground text-balance"
+              data-testid="account-read-hero"
+            >
+              {hero}
+            </p>
+          ) : null;
+        })()}
+
         {/* Real scrape identity — opens the card with the creator's own face + counts. */}
         {/* Back-compat: a pre-Tier-C snapshot (no profile) shows the handle in the eyebrow. */}
         {profile ? <ProfileHeader profile={profile} /> : <p className="text-[13px] text-foreground-muted">@{handle}</p>}
@@ -359,13 +399,13 @@ export function AccountReadBlockRenderer({ block, threadId }: AccountReadBlockPr
             label="What's working"
             items={patterns.working}
             testid="account-read-working"
-            labelColor="var(--color-success)"
+            dotColor="var(--color-success)"
           />
           <ListBlock
             label="What to fix"
             items={patterns.fix}
             testid="account-read-fix"
-            labelColor="var(--color-warning)"
+            dotColor="var(--color-warning)"
           />
         </div>
 

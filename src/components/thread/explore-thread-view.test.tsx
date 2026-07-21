@@ -160,7 +160,7 @@ describe('ExploreThreadView — remix pending state (WR-01)', () => {
 
     const remix = screen.getByRole('button', { name: 'Remix this outlier into a Read' });
     expect(remix).toBeEnabled();
-    expect(remix).toHaveTextContent('Remix → Read');
+    expect(remix).toHaveTextContent('Remix →');
 
     fireEvent.click(remix);
 
@@ -172,7 +172,7 @@ describe('ExploreThreadView — remix pending state (WR-01)', () => {
     // pending id is cleared (finally) — the tile re-enables instead of sticking forever.
     await waitFor(() => expect(onThreadReload).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(remix).toBeEnabled());
-    expect(remix).toHaveTextContent('Remix → Read');
+    expect(remix).toHaveTextContent('Remix →');
 
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/tools/remix/run',
@@ -197,7 +197,7 @@ describe('ExploreThreadView — remix pending state (WR-01)', () => {
     expect(remix).toBeDisabled();
 
     await waitFor(() => expect(remix).toBeEnabled());
-    expect(remix).toHaveTextContent('Remix → Read');
+    expect(remix).toHaveTextContent('Remix →');
     expect(onThreadReload).not.toHaveBeenCalled();
   });
 });
