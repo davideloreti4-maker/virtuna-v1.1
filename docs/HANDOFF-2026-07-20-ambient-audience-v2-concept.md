@@ -376,6 +376,13 @@ REASON does, the persona is its exemplar voice.
 
 # NEXT SESSION protocol (handoff @ session-2 end, 2026-07-20 — design iteration MID-FLIGHT)
 
+> ⛔ **SUPERSEDED 2026-07-21 — the sketch loop is CLOSED. Do NOT keep sketching.**
+> After round 5 + a focused single-page pass, the owner ended the sketch loop (sketch fidelity ≠
+> implementation fidelity) and chose to BUILD the three surfaces in code, anchored on **round 4**.
+> **→ Follow `docs/HANDOFF-2026-07-21-ambient-audience-v2-build.md`.** Round 5 and the p1 pass are
+> rejected. This section below is kept for history only. The ARCHITECTURE (L1–L6, laws, opens) above
+> remains the SSOT.
+
 **Where we are:** all product architecture is LOCKED (L1–L6 + resolved opens above). The premium
 sketch iteration for the three core surfaces is in progress — 4 rounds done, owner marked up
 rounds 1 (red = wrong) and 2 (blue = improve); **round 4 is delivered but NOT yet reviewed by
