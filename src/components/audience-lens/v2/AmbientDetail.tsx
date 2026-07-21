@@ -13,8 +13,9 @@
 
 import { useState } from "react";
 import { AMBIENT_PANEL_HEIGHT } from "./AmbientOverview";
-import { BrainTab } from "./BrainTab";
-import { AudienceTab } from "./AudienceTab";
+import { BrainFrame } from "./BrainTab";
+import { PopulationFrame } from "./AudienceTab";
+import type { DomainTemplate } from "./domain-template";
 
 // ── view-model ───────────────────────────────────────────────────────────────
 
@@ -37,13 +38,6 @@ export interface NetworkRow {
   label: string;
   z: number; // z-score σ; negative = below the system's resting level
   loss?: boolean;
-}
-
-export interface BrainData {
-  attention: AttentionData;
-  signals: SignalRow[];
-  networks: NetworkRow[];
-  seedKey: string; // drifts the cortex parcellation; stable per stimulus
 }
 
 /** One taste cluster on the terrain (nodes = people, 1 node ≈ 10 agents). */
@@ -77,22 +71,6 @@ export interface CodedReason {
   quote: string; // serif verbatim
   who: string; // "Maya · skeptic"
   loss?: boolean; // the dominant objection (coral count)
-}
-
-export interface AudienceData {
-  terrain: { clusters: TerrainCluster[]; lossClusterIndex: number };
-  percentileLine: string; // "P82 of your 41"
-  tri: TriState;
-  segments: SegmentStop[];
-  reasons: CodedReason[];
-}
-
-export interface DetailData {
-  backLabel: string; // "All 5"
-  pager: string; // "hook 2 of 5"
-  verdictPct: number;
-  brain: BrainData;
-  audience: AudienceData | null;
 }
 
 // shared r4 tone system
@@ -163,19 +141,20 @@ export function HowToRead() {
 type Tab = "brain" | "audience";
 
 export function AmbientDetail({
-  data,
+  template,
   initialTab = "brain",
   reducedMotion = false,
   onBack,
   className,
 }: {
-  data: DetailData;
+  template: DomainTemplate;
   initialTab?: Tab;
   reducedMotion?: boolean;
   onBack?: () => void;
   className?: string;
 }) {
   const [tab, setTab] = useState<Tab>(initialTab);
+  const { backLabel, pager, verdict, brain, population } = template;
 
   return (
     <div
@@ -200,18 +179,19 @@ export function AmbientDetail({
             onMouseEnter={(e) => (e.currentTarget.style.color = TONE.cream)}
             onMouseLeave={(e) => (e.currentTarget.style.color = TONE.faint)}
           >
-            ← {data.backLabel}
+            ← {backLabel}
           </button>
           <span className="font-mono text-[12px] tracking-[0.06em]" style={{ color: TONE.faint }}>
-            {data.pager}
+            {pager}
           </span>
         </div>
 
-        {/* verdict hero — stands alone (glyph removed per owner mark) */}
+        {/* verdict hero — stands alone (glyph removed per owner mark). Label swaps per domain
+            (creator "would stop" · pricing "would pay") — the verdict is the answer they paid for. */}
         <div className="mt-[18px] flex items-end">
-          <span className="text-[42px] font-light leading-none tracking-[-0.015em]">{data.verdictPct}%</span>
+          <span className="text-[42px] font-light leading-none tracking-[-0.015em]">{verdict.pct}%</span>
           <span className="ml-2 text-[16px]" style={{ color: TONE.faint }}>
-            would stop
+            {verdict.label}
           </span>
         </div>
 
@@ -240,9 +220,9 @@ export function AmbientDetail({
       {/* body */}
       <div className="min-h-0 flex-1 overflow-y-auto px-[26px] pb-[26px]">
         {tab === "brain" ? (
-          <BrainTab brain={data.brain} verdictPct={data.verdictPct} reducedMotion={reducedMotion} />
-        ) : data.audience ? (
-          <AudienceTab data={data.audience} reducedMotion={reducedMotion} />
+          <BrainFrame brain={brain} reducedMotion={reducedMotion} />
+        ) : population ? (
+          <PopulationFrame population={population} reducedMotion={reducedMotion} />
         ) : (
           <div
             className="flex h-full items-center justify-center py-16 text-center text-[13px]"

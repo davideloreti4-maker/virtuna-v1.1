@@ -9,7 +9,7 @@ import { useState } from "react";
 import { AmbientOverview, AMBIENT_PANEL_HEIGHT } from "@/components/audience-lens/v2/AmbientOverview";
 import { OVERVIEW_R4, OVERVIEW_R4_REST } from "@/components/audience-lens/v2/overview-fixture";
 import { AmbientDetail } from "@/components/audience-lens/v2/AmbientDetail";
-import { DETAIL_R4 } from "@/components/audience-lens/v2/detail-fixture";
+import { CREATOR_TEMPLATE } from "@/components/audience-lens/v2/detail-fixture";
 import { AmbientStart } from "@/components/audience-lens/v2/AmbientStart";
 import { START_R4 } from "@/components/audience-lens/v2/start-fixture";
 import { AmbientSimulate } from "@/components/audience-lens/v2/AmbientSimulate";
@@ -105,7 +105,7 @@ export default function AmbientV2DevPage() {
             {surface === "overview" ? (
               <AmbientOverview data={overviewData} onOpenStimulus={() => setSurface("brain")} onTestVariant={() => {}} />
             ) : (
-              <AmbientDetail data={DETAIL_R4} onBack={() => setSurface("overview")} />
+              <AmbientDetail template={CREATOR_TEMPLATE} onBack={() => setSurface("overview")} />
             )}
           </div>
         )}

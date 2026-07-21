@@ -19,7 +19,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { hashSeed, predictedBold, type DriveInput } from "@/lib/brain/cortex-sim";
-import { TONE, Kick, SecHead, HowToRead, type BrainData } from "./AmbientDetail";
+import { TONE, Kick, SecHead, HowToRead, type AttentionData, type NetworkRow, type SignalRow } from "./AmbientDetail";
+import type { AskWhySlot, BrainDriver, BrainFrameData } from "./domain-template";
 
 // CortexCanvas is WebGL (three.js) — client-only, never SSR (mirrors BrainView.tsx:115).
 const CortexCanvas = dynamic(() => import("../CortexCanvas"), {
@@ -111,7 +112,7 @@ function AttentionScrubber({
   data,
   reducedMotion,
 }: {
-  data: BrainData["attention"];
+  data: AttentionData;
   reducedMotion: boolean;
 }) {
   const { points, transcript, peakWordIndex, moments, hold } = data;
@@ -228,7 +229,7 @@ function AttentionScrubber({
 
 // ── signal breakdown (0..100) ────────────────────────────────────────────────
 
-function SignalRows({ signals }: { signals: BrainData["signals"] }) {
+function SignalRows({ signals }: { signals: SignalRow[] }) {
   return (
     <div className="mt-8">
       <Kick tag="modeled">Signal breakdown</Kick>
@@ -266,7 +267,7 @@ function SignalRows({ signals }: { signals: BrainData["signals"] }) {
 
 // ── networks at the playhead (z-scored σ, diverging from a centre baseline) ───
 
-function NetworkRows({ networks }: { networks: BrainData["networks"] }) {
+function NetworkRows({ networks }: { networks: NetworkRow[] }) {
   return (
     <div className="mt-8">
       <Kick tag="z-scored">Networks · at the playhead</Kick>
@@ -304,29 +305,69 @@ function NetworkRows({ networks }: { networks: BrainData["networks"] }) {
   );
 }
 
-// ── the tab ──────────────────────────────────────────────────────────────────
+// ── driver-axis slot (◇ swap — "why this ___") ────────────────────────────────
 
-export function BrainTab({
+/** The Brain's driver-axis figure. Creator = attention-over-the-clip; a new domain adds a `kind`
+ *  (e.g. a pricing resistance-curve) here without touching the frame's other slots. */
+function BrainDriverSlot({ driver, reducedMotion }: { driver: BrainDriver; reducedMotion: boolean }) {
+  switch (driver.kind) {
+    case "attention-scrubber":
+      return <AttentionScrubber data={driver.data} reducedMotion={reducedMotion} />;
+  }
+}
+
+// ── ask-why chat slot (● shared, deferred) ────────────────────────────────────
+
+/** The interrogate-the-room slot. Shared across every domain by design, but there's no chat infra
+ *  in v2 yet — so it renders as a disabled affordance that shows the slot without faking a live
+ *  answer (honesty: don't pretend it's wired). Enable when the ask-why loop lands. */
+function AskWhyStub({ slot }: { slot: AskWhySlot }) {
+  return (
+    <div className="mt-8">
+      <Kick tag="soon">Ask the room why</Kick>
+      <div
+        className="mt-3 flex items-center gap-2.5 rounded-[10px] px-3.5 py-3"
+        style={{ border: `1px solid ${TONE.border}`, background: "#1a1a19", opacity: slot.enabled ? 1 : 0.55 }}
+      >
+        <span className="min-w-0 flex-1 text-[14px]" style={{ color: TONE.faint }}>
+          {slot.placeholder}
+        </span>
+        <span
+          className="flex h-7 w-7 flex-none items-center justify-center rounded-full text-[12px]"
+          style={{ background: TONE.well, color: TONE.faint }}
+          aria-hidden
+        >
+          ↑
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ── the brain role-frame ──────────────────────────────────────────────────────
+
+/** BrainFrame — the invariant *why* role, rendered as ordered slots. Fixed slots (cortex · footer)
+ *  render always; the driver axis + signals are the swap slots the DomainTemplate fills; networks +
+ *  ask-why are optional/deferred. A new domain supplies figures — it never edits this frame. */
+export function BrainFrame({
   brain,
-  verdictPct,
   reducedMotion = false,
 }: {
-  brain: BrainData;
-  verdictPct: number;
+  brain: BrainFrameData;
   reducedMotion?: boolean;
 }) {
-  const stopRatio = Math.min(1, Math.max(0, verdictPct / 100));
   return (
     <div className="mt-3.5">
       <CortexFigure
-        seedKey={brain.seedKey}
-        stopRatio={stopRatio}
-        clipSeconds={brain.attention.clipSeconds}
+        seedKey={brain.cortexSeedKey}
+        stopRatio={Math.min(1, Math.max(0, brain.stopRatio))}
+        clipSeconds={brain.clipSeconds}
         reducedMotion={reducedMotion}
       />
-      <AttentionScrubber data={brain.attention} reducedMotion={reducedMotion} />
+      <BrainDriverSlot driver={brain.driver} reducedMotion={reducedMotion} />
       <SignalRows signals={brain.signals} />
-      <NetworkRows networks={brain.networks} />
+      {brain.networks ? <NetworkRows networks={brain.networks} /> : null}
+      {brain.askWhy ? <AskWhyStub slot={brain.askWhy} /> : null}
       <HowToRead />
     </div>
   );

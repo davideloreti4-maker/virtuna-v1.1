@@ -17,7 +17,11 @@
  */
 
 import { useMemo } from "react";
-import { TONE, Kick, HowToRead, type AudienceData } from "./AmbientDetail";
+import { TONE, Kick, HowToRead, type CodedReason, type SegmentStop, type TerrainCluster, type TriState } from "./AmbientDetail";
+import type { PopulationFrameData, PopulationMain } from "./domain-template";
+
+/** The shared society terrain spec — clusters knit into one connected graph. */
+type TerrainSpec = { clusters: TerrainCluster[]; lossClusterIndex: number };
 
 // ── terrain: one connected society ───────────────────────────────────────────
 
@@ -27,9 +31,9 @@ const GCX = 188; // gravity centre — commuter nodes drift toward it, knitting 
 const GCY = 118;
 const MAXD2 = 92 * 92; // edge distance² threshold
 
-function useTerrain(data: AudienceData) {
+function useTerrain(terrain: TerrainSpec) {
   return useMemo(() => {
-    const { clusters, lossClusterIndex } = data.terrain;
+    const { clusters, lossClusterIndex } = terrain;
     // Deterministic LCG (seed 42) — same seed ⇒ byte-identical layout on server & client (no
     // hydration drift) and stable across runs (design law: content lights the map, never moves it).
     let seed = 42;
@@ -63,11 +67,11 @@ function useTerrain(data: AudienceData) {
       });
     });
     return { nodes, edges, clusters, lossClusterIndex };
-  }, [data]);
+  }, [terrain]);
 }
 
-function TerrainMap({ data }: { data: AudienceData }) {
-  const { nodes, edges, clusters, lossClusterIndex } = useTerrain(data);
+function TerrainMap({ terrain }: { terrain: TerrainSpec }) {
+  const { nodes, edges, clusters, lossClusterIndex } = useTerrain(terrain);
   return (
     <div className="-mx-[26px] mt-3.5" style={{ borderTop: `1px solid ${TONE.border}`, borderBottom: `1px solid ${TONE.border}`, background: "#1b1b1a" }}>
       <svg viewBox={`0 0 ${TVW} ${TVH}`} className="block h-auto w-full">
@@ -107,17 +111,27 @@ function TerrainMap({ data }: { data: AudienceData }) {
   );
 }
 
-// ── outcome tri-state ────────────────────────────────────────────────────────
+// ── main figure slot (◇ swap — the distribution the headline summarizes) ──────
 
-function Outcome({ data }: { data: AudienceData }) {
+/** The Population's main figure. Creator = the stop/skim/scroll tri-state; a new domain adds a
+ *  `kind` (demand-curve · overlay · answer-distribution) here without touching terrain/segments/
+ *  voices. */
+function PopulationMainSlot({ main }: { main: PopulationMain }) {
+  switch (main.kind) {
+    case "tri-state":
+      return <TriStateOutcome tri={main.data} percentileLine={main.percentileLine} />;
+  }
+}
+
+function TriStateOutcome({ tri, percentileLine }: { tri: TriState; percentileLine: string }) {
   const cols = [
-    { n: data.tri.stopped, t: "stopped", s: "strong", loss: false },
-    { n: data.tri.skimmed, t: "skimmed", s: "okay", loss: false },
-    { n: data.tri.scrolled, t: "scrolled past", s: "low", loss: true },
+    { n: tri.stopped, t: "stopped", s: "strong", loss: false },
+    { n: tri.skimmed, t: "skimmed", s: "okay", loss: false },
+    { n: tri.scrolled, t: "scrolled past", s: "low", loss: true },
   ];
   return (
     <div className="mt-8">
-      <Kick tag="simulated">Outcome · {data.percentileLine}</Kick>
+      <Kick tag="simulated">Outcome · {percentileLine}</Kick>
       <div className="mt-[18px] flex">
         {cols.map((c, i) => (
           <div
@@ -150,16 +164,16 @@ function Outcome({ data }: { data: AudienceData }) {
 
 // ── who stopped · by segment ─────────────────────────────────────────────────
 
-function Segments({ segments }: { segments: AudienceData["segments"] }) {
+function Segments({ title, rows }: { title: string; rows: SegmentStop[] }) {
   return (
     <div className="mt-8">
-      <Kick>Who stopped · by segment</Kick>
+      <Kick>{title}</Kick>
       <div className="mt-1">
-        {segments.map((s, i) => (
+        {rows.map((s, i) => (
           <div
             key={s.label}
             className="flex items-center gap-3 py-[11px]"
-            style={{ borderBottom: i < segments.length - 1 ? `1px solid ${TONE.border}` : undefined }}
+            style={{ borderBottom: i < rows.length - 1 ? `1px solid ${TONE.border}` : undefined }}
           >
             <span className="w-[84px] flex-none text-[14px]" style={{ color: TONE.dim }}>
               {s.label}
@@ -180,12 +194,20 @@ function Segments({ segments }: { segments: AudienceData["segments"] }) {
   );
 }
 
-// ── why · coded from 1,000 ───────────────────────────────────────────────────
+// ── voices · coded reasons + interviewable cast (● shared) ────────────────────
 
-function Reasons({ reasons, onInterview }: { reasons: AudienceData["reasons"]; onInterview?: (who: string) => void }) {
+function Voices({
+  kicker,
+  reasons,
+  onInterview,
+}: {
+  kicker: string;
+  reasons: CodedReason[];
+  onInterview?: (who: string) => void;
+}) {
   return (
     <div className="mt-8">
-      <Kick tag="from this run">Why · coded from 1,000</Kick>
+      <Kick tag="from this run">{kicker}</Kick>
       <div className="mt-1">
         {reasons.map((r, i) => (
           <div key={r.label} className="py-3.5" style={{ borderBottom: i < reasons.length - 1 ? `1px solid ${TONE.border}` : undefined }}>
@@ -219,22 +241,25 @@ function Reasons({ reasons, onInterview }: { reasons: AudienceData["reasons"]; o
   );
 }
 
-// ── the tab ──────────────────────────────────────────────────────────────────
+// ── the population role-frame ──────────────────────────────────────────────────
 
-export function AudienceTab({
-  data,
+/** PopulationFrame — the invariant *who / how many* role, rendered as ordered slots. Fixed slots
+ *  (terrain · voices · footer) render always; the main figure + segments are the swap slots the
+ *  DomainTemplate fills. A new domain supplies figures — it never edits this frame. */
+export function PopulationFrame({
+  population,
   onInterview,
 }: {
-  data: AudienceData;
+  population: PopulationFrameData;
   reducedMotion?: boolean;
   onInterview?: (who: string) => void;
 }) {
   return (
     <div>
-      <TerrainMap data={data} />
-      <Outcome data={data} />
-      <Segments segments={data.segments} />
-      <Reasons reasons={data.reasons} onInterview={onInterview} />
+      <TerrainMap terrain={population.terrain} />
+      <PopulationMainSlot main={population.main} />
+      <Segments title={population.segments.title} rows={population.segments.rows} />
+      <Voices kicker={population.voices.kicker} reasons={population.voices.reasons} onInterview={onInterview} />
       <HowToRead />
     </div>
   );
