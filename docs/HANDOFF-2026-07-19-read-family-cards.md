@@ -1,3 +1,6 @@
+> ✅ **DONE (2026-07-21)** — all three cards landed on the spine. See
+> `docs/HANDOFF-2026-07-21-card-refinements.md`. This doc is kept as the original spec/findings.
+
 # HANDOFF — Rework the read-family cards: Explore · Account Read · Text Read
 
 > **Date:** 2026-07-19 · **From:** the unified-skill-card-system session (PR #334, squash
