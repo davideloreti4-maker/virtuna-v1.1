@@ -191,7 +191,7 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
           aria-label="Develop this remix concept into hooks"
           title={onDevelop ? 'Develop this remix into hooks' : 'Wired in Plan 06-05'}
         >
-          Develop into hooks →
+          Write hooks for this →
         </CardPrimaryAction>
 
         {/* A remix output is an adapted hook; save it as item_type "hook". */}

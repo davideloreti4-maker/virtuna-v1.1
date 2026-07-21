@@ -67,10 +67,18 @@ export function CardEyebrow({
 }
 
 /**
- * CardPrimaryAction — §0.5.7, the ONE cream forward-chain button (primary ≠ accent). One
- * definition for the whole thread so `Write script →`, `Develop into hooks →`, `Predict an
- * outcome →`, `Write to my strengths →` are identical. `disabled` dims to 40% (the cream
- * itself, never a grey swap). Extra `className` appends (e.g. `w-full` for a tile CTA).
+ * CardPrimaryAction — §0.5.7, the ONE forward-chain button. One definition for the whole thread
+ * so `Write the script →`, `Write hooks for this →`, `Predict an outcome →`, `Simulate with your
+ * audience →` are identical.
+ *
+ * Restyled 2026-07-22 (owner: "not a fan of all the white buttons"): the loud CREAM fill
+ * (`--color-action`, #ece7de) is retired here for a quiet MATTE tonal button — a soft raised
+ * surface (white 5% fill · hairline border · cream text + arrow) that reads clearly as "the next
+ * step" without a bright block on every stacked card. It sits one tonal step above the ghost
+ * secondary chip (white 2%) so the primary still wins the glance. NOTE: only the in-thread cards
+ * change — the global `--color-action` cream stays as-is for calendar/discover/feed CTAs, which
+ * the owner did not flag. `disabled` dims to 40%. Extra `className` appends (e.g. `w-full`,
+ * `shrink-0` for an inline submit beside an input).
  */
 export function CardPrimaryAction({
   children,
@@ -96,7 +104,7 @@ export function CardPrimaryAction({
   title?: string;
 }) {
   const cls =
-    'rounded-md bg-[var(--color-action)] px-3.5 py-2 text-[13px] font-semibold text-[var(--color-action-foreground)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20 disabled:cursor-default disabled:opacity-40' +
+    'inline-flex items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.05] px-3.5 py-2 text-[13px] font-semibold text-foreground transition-colors hover:border-white/[0.12] hover:bg-white/[0.09] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/15 disabled:cursor-default disabled:opacity-40 disabled:hover:border-white/[0.08] disabled:hover:bg-white/[0.05]' +
     (className ? ` ${className}` : '');
 
   if (href) {

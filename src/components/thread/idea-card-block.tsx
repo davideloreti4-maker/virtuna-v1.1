@@ -215,7 +215,7 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
               disabled={developing}
               aria-label="Develop this idea into hooks"
             >
-              {developing ? 'Developing…' : 'Develop into hooks →'}
+              {developing ? 'Writing hooks…' : 'Write hooks for this →'}
             </CardPrimaryAction>
             {developError && (
               <p className="text-[12px]" style={{ color: 'var(--color-error)' }} role="alert">
