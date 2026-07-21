@@ -1,0 +1,363 @@
+<title>Test card — grounded craft teardown</title>
+<style>
+  :root {
+    --ground: #1f1f1e;
+    --card: #1a1a19;
+    --sub: #201f1d;
+    --line: rgba(255, 255, 255, 0.06);
+    --line-2: rgba(255, 255, 255, 0.10);
+    --cream: #ece7de;
+    --cream-2: #c2bdb4;
+    --cream-3: #8a857c;
+    --coral: #ff6363;
+    --coral-text: #ff8080;
+    --sage: #8ea68a;
+    --sage-soft: rgba(142, 166, 138, 0.13);
+    --amber: #e0ab48;
+    --amber-soft: rgba(224, 171, 72, 0.14);
+    --sans: ui-sans-serif, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    --serif: ui-serif, "Newsreader", Georgia, "Times New Roman", serif;
+    --r-card: 14px;
+    --r-sub: 10px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: radial-gradient(130% 90% at 50% -10%, #242320 0%, var(--ground) 60%);
+    min-height: 100vh; color: var(--cream); font-family: var(--sans);
+    -webkit-font-smoothing: antialiased; display: flex; justify-content: center;
+    padding: 40px 20px 64px;
+  }
+  .stage { width: 100%; max-width: 540px; }
+  .caption { text-align: center; color: var(--cream-3); font-size: 12px; margin: 0 0 24px; }
+  .caption b { color: var(--cream-2); font-weight: 600; }
+  .receipt-line { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--cream-3); margin: 0 2px 10px; }
+  .receipt-line .tick { width: 15px; height: 15px; border-radius: 999px; display: grid; place-items: center; background: var(--sage-soft); color: var(--sage); font-size: 9px; flex: none; }
+  .receipt-line b { color: var(--cream-2); font-weight: 500; }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-card); overflow: hidden; }
+  .label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--cream-3); }
+  .section { padding: 18px 20px; border-bottom: 1px solid var(--line); }
+  .section > .label { margin-bottom: 14px; display: block; }
+
+  /* header */
+  .head { padding: 20px 20px 18px; }
+  .eyebrow { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+  .eyebrow .dot { width: 4px; height: 4px; border-radius: 999px; background: var(--cream-3); }
+  .grade-row { display: flex; align-items: center; gap: 18px; }
+  .ring { position: relative; width: 76px; height: 76px; flex: none; }
+  .ring svg { transform: rotate(-90deg); display: block; }
+  .ring .num { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; }
+  .ring .num b { font-size: 27px; font-weight: 650; line-height: 1; font-variant-numeric: tabular-nums; color: var(--cream); }
+  .ring .num span { font-size: 8.5px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--cream-3); }
+  .read { font-family: var(--serif); font-size: 18px; line-height: 1.34; color: var(--cream); text-wrap: balance; letter-spacing: 0.01em; }
+  .read .amberword { color: var(--amber); }
+  .head-drivers { flex: 1; display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+  .hdrow { display: flex; align-items: center; gap: 10px; }
+  .hdname { font-size: 12px; color: var(--cream-2); width: 74px; flex: none; text-transform: capitalize; }
+  .hdtrack { flex: 1; height: 4px; border-radius: 999px; background: rgba(255,255,255,.07); overflow: hidden; }
+  .hdtrack i { display: block; height: 100%; border-radius: 999px; background: var(--sage); }
+  .hdval { font-size: 12px; font-variant-numeric: tabular-nums; width: 20px; text-align: right; color: var(--cream); }
+  .head-note { margin: 13px 0 0; font-size: 11.5px; color: var(--cream-3); }
+  .head-note b { color: var(--cream-2); font-weight: 600; }
+
+  /* frame thumb (shared) */
+  .thumb { position: relative; flex: none; border-radius: 7px; overflow: hidden; border: 1px solid var(--line); }
+  .thumb.tall { aspect-ratio: 9 / 16; }
+  .thumb .play { position: absolute; inset: 0; display: grid; place-items: center; }
+  .thumb .play span { width: 20px; height: 20px; border-radius: 999px; border: 1px solid var(--line-2); background: rgba(0,0,0,.3); display: grid; place-items: center; }
+  .thumb .play svg { fill: var(--cream); margin-left: 1px; }
+  .thumb .ts { position: absolute; left: 4px; bottom: 4px; font-size: 9px; padding: 1px 4px; border-radius: 3px; background: rgba(0,0,0,.5); color: var(--cream-2); font-variant-numeric: tabular-nums; }
+
+  /* filmstrip */
+  .strip-wrap { overflow-x: auto; padding-bottom: 2px; }
+  .strip { display: flex; gap: 7px; min-width: min-content; }
+  .frame { width: 58px; flex: none; }
+  .frame .thumb { width: 58px; }
+  .frame.hook .thumb { border-color: rgba(142,166,138,.5); }
+  .frame.weak .thumb { border-color: rgba(224,171,72,.55); }
+  .frame .cap { margin-top: 6px; text-align: center; }
+  .frame .seg { font-size: 10.5px; color: var(--cream-2); text-transform: capitalize; }
+  .frame .mark { font-size: 9px; letter-spacing: 0.04em; text-transform: uppercase; margin-top: 2px; }
+  .frame.hook .mark { color: var(--sage); }
+  .frame.weak .mark { color: var(--amber); }
+  .timeline { display: flex; justify-content: space-between; margin-top: 12px; font-size: 10.5px; color: var(--cream-3); font-variant-numeric: tabular-nums; }
+  .timeline .drop { color: var(--amber); }
+
+  /* drivers */
+  .drow { display: flex; align-items: center; gap: 12px; padding: 7px 0; }
+  .drow + .drow { border-top: 1px solid var(--line); }
+  .drow .dname { font-size: 13px; color: var(--cream); width: 92px; flex: none; text-transform: capitalize; }
+  .drow .track { flex: 1; height: 4px; border-radius: 999px; background: rgba(255,255,255,.07); overflow: hidden; }
+  .drow .track i { display: block; height: 100%; border-radius: 999px; background: var(--sage); }
+  .drow .dval { font-size: 12.5px; font-variant-numeric: tabular-nums; width: 26px; text-align: right; color: var(--cream-2); }
+  .drow .dband { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; width: 46px; text-align: right; flex: none; color: var(--sage); }
+  .drow.moved { opacity: 0.5; }
+  .drow.moved .dname { color: var(--cream-3); }
+  .drow .moved-note { font-size: 11px; color: var(--cream-3); margin-left: auto; }
+
+  /* ledger */
+  .ledger { display: grid; grid-template-columns: 1fr 1fr; }
+  .ledger .col { padding: 2px 0; }
+  .ledger .col + .col { border-left: 1px solid var(--line); padding-left: 18px; }
+  .ledger .col:first-child { padding-right: 18px; }
+  .ledger .col-head { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 11px; }
+  .ledger .good .col-head { color: var(--sage); }
+  .ledger .bad .col-head { color: var(--coral-text); }
+  .ledger ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  .ledger li { font-size: 12.5px; line-height: 1.35; color: var(--cream-2); display: flex; gap: 7px; }
+  .ledger li i { font-style: normal; flex: none; margin-top: 1px; font-size: 11px; width: 10px; }
+  .good li i { color: var(--sage); }
+  .bad li i { color: var(--coral-text); }
+  .ledger li b { color: var(--cream); font-weight: 500; }
+  .ledger .ts2 { color: var(--cream-3); font-variant-numeric: tabular-nums; }
+
+  /* fixes */
+  .fixes { padding: 18px 20px; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 13px; }
+  .fixes > .flabel { margin-bottom: 1px; }
+  .fixes .sub { font-size: 12px; color: var(--cream-3); margin: 3px 0 4px; line-height: 1.4; }
+  .fix { border: 1px solid var(--line); border-radius: var(--r-sub); background: var(--sub); padding: 14px 15px 15px; }
+  .fix-head { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .fix-idx { font-size: 11px; font-weight: 700; color: var(--cream-3); font-variant-numeric: tabular-nums; }
+  .fix-title { font-size: 13.5px; font-weight: 600; color: var(--cream); }
+  .lever { margin-left: auto; font-size: 10.5px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--cream-2); }
+  .fix-main { display: flex; gap: 12px; margin-bottom: 12px; }
+  .fix-main .thumb { width: 46px; }
+  .diag { font-size: 13px; line-height: 1.5; color: var(--cream-2); margin: 0; }
+  .diag .quote { color: var(--cream); }
+  .diag .at { color: var(--cream-3); font-variant-numeric: tabular-nums; }
+
+  .why { display: flex; gap: 10px; padding: 10px 12px; margin: 0 0 12px; border-radius: 8px; background: rgba(255,255,255,.022); border: 1px solid var(--line); }
+  .why .wtag { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--cream-3); flex: none; margin-top: 1px; }
+  .why p { margin: 0; font-size: 12px; line-height: 1.5; color: var(--cream-2); }
+  .why p b { color: var(--cream); font-weight: 600; }
+
+  .move { display: flex; gap: 9px; align-items: baseline; margin: 0 0 13px; }
+  .move .arrow { color: var(--cream-3); flex: none; }
+  .move .txt { font-size: 13.5px; line-height: 1.45; color: var(--cream); font-weight: 500; }
+  .move .chip { background: rgba(255,255,255,.06); border-radius: 4px; padding: 0 4px; color: var(--cream); }
+
+  .proven { display: flex; gap: 12px; align-items: stretch; padding: 10px; border-radius: 9px; border: 1px solid var(--line); background: rgba(255,255,255,.018); text-decoration: none; transition: border-color .15s ease, background .15s ease; }
+  .proven:hover { border-color: var(--line-2); background: rgba(255,255,255,.03); }
+  .proven .thumb { width: 42px; }
+  .proven .pcol { display: flex; flex-direction: column; gap: 5px; min-width: 0; flex: 1; }
+  .proven .ptop { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .proven .peyebrow { font-size: 10px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--sage); }
+  .proven .parch { font-size: 10.5px; padding: 1.5px 7px; border-radius: 999px; border: 1px solid var(--line); color: var(--cream-2); flex: none; }
+  .proven .phook { font-size: 13px; line-height: 1.4; color: var(--cream); }
+  .proven .phook .v { background: rgba(255,255,255,.06); border-radius: 4px; padding: 0 3px; }
+  .proven .phandle { font-size: 12px; color: var(--cream-2); }
+  .proven .pstats { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 1px; align-items: center; }
+  .proven .pill { font-size: 11.5px; font-variant-numeric: tabular-nums; display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 5px; }
+  .proven .pill.mult { background: var(--sage-soft); color: var(--sage); font-weight: 650; }
+  .proven .pill.views { background: rgba(255,255,255,.05); color: var(--cream-2); }
+  .proven .base { font-size: 11px; color: var(--cream-3); }
+
+  .no-match { font-size: 11.5px; color: var(--cream-3); padding: 7px 11px; border: 1px dashed var(--line); border-radius: 8px; }
+
+  .fix.compact .fix-main { margin-bottom: 0; }
+  .fix.compact .diag { color: var(--cream); font-weight: 500; font-size: 13.5px; }
+
+  /* seam */
+  .seam { padding: 16px 20px 18px; display: flex; flex-direction: column; gap: 8px; }
+  .seam .hint { font-size: 12px; color: var(--cream-3); text-align: center; line-height: 1.45; }
+  .simulate { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 12px; border: none; border-radius: 9px; background: var(--cream); color: #241f1c; font-family: var(--sans); font-size: 13.5px; font-weight: 600; cursor: pointer; transition: background .15s ease; }
+  .simulate:hover { background: #f3efe6; }
+  .simulate:focus-visible { outline: 2px solid var(--coral); outline-offset: 2px; }
+
+  a { color: inherit; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  @media (max-width: 440px) {
+    .ledger { grid-template-columns: 1fr; }
+    .ledger .col + .col { border-left: none; border-top: 1px solid var(--line); padding-left: 0; padding-top: 14px; margin-top: 4px; }
+    .ledger .col:first-child { padding-right: 0; }
+  }
+</style>
+
+<div class="stage">
+  <p class="caption">New <b>Test</b> card — grounded craft teardown · mockup on real fixture + corpus data</p>
+
+  <div class="receipt-line">
+    <span class="tick">&#10003;</span>
+    <span>Tested your video — <b>frame by frame</b>, for Bootstrapped Founders</span>
+  </div>
+
+  <div class="card">
+    <!-- HEADER -->
+    <div class="head">
+      <div class="eyebrow">
+        <span class="label">Test</span>
+        <span class="dot"></span>
+        <span class="label" style="color:var(--cream-3)">frame-by-frame read</span>
+      </div>
+      <div class="grade-row">
+        <div class="ring" role="img" aria-label="Craft score 77 of 100">
+          <svg width="76" height="76" viewBox="0 0 76 76">
+            <circle cx="38" cy="38" r="33" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="5"></circle>
+            <circle cx="38" cy="38" r="33" fill="none" stroke="var(--sage)" stroke-width="5" stroke-linecap="round" stroke-dasharray="207.3" stroke-dashoffset="47.7"></circle>
+          </svg>
+          <span class="num"><b>77</b><span>Craft</span></span>
+        </div>
+        <div class="head-drivers">
+          <div class="hdrow"><span class="hdname">Hook</span><span class="hdtrack"><i style="width:87%"></i></span><span class="hdval">87</span></div>
+          <div class="hdrow"><span class="hdname">Credibility</span><span class="hdtrack"><i style="width:80%"></i></span><span class="hdval">80</span></div>
+          <div class="hdrow"><span class="hdname">Clarity</span><span class="hdtrack"><i style="width:72%"></i></span><span class="hdval">72</span></div>
+          <div class="hdrow"><span class="hdname">Substance</span><span class="hdtrack"><i style="width:70%"></i></span><span class="hdval">70</span></div>
+        </div>
+      </div>
+      <p class="head-note">Retention &amp; reach aren't craft — they're measured in <b>Simulate</b>.</p>
+    </div>
+
+    <!-- FILMSTRIP -->
+    <div class="section">
+      <span class="label">Your video, frame by frame</span>
+      <div class="strip-wrap">
+        <div class="strip">
+          <div class="frame hook">
+            <div class="thumb tall" style="background:linear-gradient(160% 130% at 40% 25%,#4a4640,#221f1d)">
+              <span class="play"><span><svg width="8" height="8" viewBox="0 0 14 14"><path d="M3 2l9 5-9 5z"/></svg></span></span>
+              <span class="ts">0:00</span>
+            </div>
+            <div class="cap"><div class="seg">Cold open</div><div class="mark">&#9679; asset</div></div>
+          </div>
+          <div class="frame">
+            <div class="thumb tall" style="background:linear-gradient(150% 120% at 55% 40%,#3d3a36,#201e1c)">
+              <span class="play"><span><svg width="8" height="8" viewBox="0 0 14 14"><path d="M3 2l9 5-9 5z"/></svg></span></span>
+              <span class="ts">0:03</span>
+            </div>
+            <div class="cap"><div class="seg">Setup</div></div>
+          </div>
+          <div class="frame weak">
+            <div class="thumb tall" style="background:linear-gradient(150% 120% at 30% 60%,#35322f,#1e1c1a)">
+              <span class="play"><span><svg width="8" height="8" viewBox="0 0 14 14"><path d="M3 2l9 5-9 5z"/></svg></span></span>
+              <span class="ts">0:06</span>
+            </div>
+            <div class="cap"><div class="seg">Stall</div><div class="mark">&#9650; weak beat</div></div>
+          </div>
+          <div class="frame">
+            <div class="thumb tall" style="background:linear-gradient(150% 120% at 60% 30%,#46423b,#211f1c)">
+              <span class="play"><span><svg width="8" height="8" viewBox="0 0 14 14"><path d="M3 2l9 5-9 5z"/></svg></span></span>
+              <span class="ts">0:09</span>
+            </div>
+            <div class="cap"><div class="seg">Payoff</div></div>
+          </div>
+          <div class="frame">
+            <div class="thumb tall" style="background:linear-gradient(150% 120% at 45% 70%,#322f2c,#1c1a19)">
+              <span class="play"><span><svg width="8" height="8" viewBox="0 0 14 14"><path d="M3 2l9 5-9 5z"/></svg></span></span>
+              <span class="ts">0:12</span>
+            </div>
+            <div class="cap"><div class="seg">Close</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="timeline"><span>0:00</span><span class="drop">&#9650; 0:08 drop</span><span>0:15</span></div>
+    </div>
+
+    <!-- WORKING / NOT WORKING -->
+    <div class="section">
+      <div class="ledger">
+        <div class="col good">
+          <div class="col-head"><span>&#10003;</span> Working</div>
+          <ul>
+            <li><i>&#10003;</i><span><b>Cold open</b> lands in 0.4s</span></li>
+            <li><i>&#10003;</i><span><b>One clear message</b>, low clutter</span></li>
+            <li><i>&#10003;</i><span><b>Credible delivery</b> — unforced</span></li>
+          </ul>
+        </div>
+        <div class="col bad">
+          <div class="col-head"><span>!</span> Not working</div>
+          <ul>
+            <li><i>&#10007;</i><span><b>Pacing stalls</b> <span class="ts2">@0:08</span></span></li>
+            <li><i>&#10007;</i><span><b>Hook buries the stakes</b></span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- FIXES -->
+    <div class="fixes">
+      <span class="label flabel">The director's fixes</span>
+      <p class="sub">A proven corpus example appears where one really fits — not forced onto every note.</p>
+
+      <!-- FIX 1 — pacing, grounded, with THEIR frame -->
+      <div class="fix">
+        <div class="fix-head">
+          <span class="fix-idx">01</span><span class="fix-title">Pacing · the 0:08 stall</span>
+          <span class="lever">Momentum</span>
+        </div>
+        <div class="fix-main">
+          <div class="thumb tall" style="background:linear-gradient(150% 120% at 30% 60%,#35322f,#1e1c1a);border-color:rgba(224,171,72,.55)">
+            <span class="ts">0:08</span>
+          </div>
+          <p class="diag">From <span class="at">0:03–0:09</span> it's setup with no payoff and no pattern break — the longest flat stretch in the cut. The payoff doesn't land until 0:09.</p>
+        </div>
+        <div class="why">
+          <span class="wtag">Why</span>
+          <p>Attention holds on <b>open loops</b>. At 0:08 the setup has resolved nothing and opened nothing new — so the mind is free to leave. A pattern interrupt re-opens the loop.</p>
+        </div>
+        <div class="move"><span class="arrow">&#8594;</span><span class="txt">Cut the setup to ~2s and front-load the payoff, or drop a <span class="chip">visual switch</span> at 0:06.</span></div>
+        <a class="proven" href="#" onclick="return false">
+          <div class="thumb tall" style="background:linear-gradient(150% 120% at 50% 35%,#443f38,#201e1b)">
+            <span class="play"><span><svg width="8" height="8" viewBox="0 0 14 14"><path d="M3 2l9 5-9 5z"/></svg></span></span>
+          </div>
+          <div class="pcol">
+            <div class="ptop"><span class="peyebrow">Proven · corpus</span><span class="parch">Secret-reveal</span></div>
+            <div class="phook">&#8220;The <span class="v">editing trick</span> everyone sleeps on for <span class="v">retention</span>.&#8221;</div>
+            <span class="phandle">@explore_create_capture</span>
+            <div class="pstats"><span class="pill mult">&#8599; 14.2&times;</span><span class="base">vs their usual</span><span class="pill views">&#128065; 2.4M</span></div>
+          </div>
+        </a>
+      </div>
+
+      <!-- FIX 2 — hook, grounded (the flagship grounding), THEIR frame -->
+      <div class="fix">
+        <div class="fix-head">
+          <span class="fix-idx">02</span><span class="fix-title">Hook · sharpen the open</span>
+          <span class="lever">Stakes</span>
+        </div>
+        <div class="fix-main">
+          <div class="thumb tall" style="background:linear-gradient(160% 130% at 40% 25%,#4a4640,#221f1d)">
+            <span class="ts">0:00</span>
+          </div>
+          <p class="diag">Your open — <span class="quote">&#8220;Here are three things nobody tells you about freelancing&#8221;</span> — is a list promise. It works, but the stakes stay abstract.</p>
+        </div>
+        <div class="why">
+          <span class="wtag">Why</span>
+          <p>A list promise is a <b>low-stakes loop</b> — nothing is at risk, so there's little cost to scrolling. Naming a concrete loss raises the stakes and widens the curiosity gap.</p>
+        </div>
+        <div class="move"><span class="arrow">&#8594;</span><span class="txt">&#8220;I lost <span class="chip">$4k</span> before I learned these three freelancing rules&#8221;</span></div>
+        <a class="proven" href="#" onclick="return false">
+          <div class="thumb tall" style="background:linear-gradient(150% 120% at 45% 40%,#403c36,#1f1d1a)">
+            <span class="play"><span><svg width="8" height="8" viewBox="0 0 14 14"><path d="M3 2l9 5-9 5z"/></svg></span></span>
+          </div>
+          <div class="pcol">
+            <div class="ptop"><span class="peyebrow">Proven · corpus</span><span class="parch">Problem</span></div>
+            <div class="phook">&#8220;Why your <span class="v">hooks</span> stop working after <span class="v">10k followers</span>.&#8221;</div>
+            <span class="phandle">@successwithumar</span>
+            <div class="pstats"><span class="pill mult">&#8599; 6.8&times;</span><span class="base">vs their usual</span><span class="pill views">&#128065; 820K</span></div>
+          </div>
+        </a>
+      </div>
+
+      <!-- FIX 3 — CTA, UNGROUNDED (shows the no-match state), compact, THEIR frame -->
+      <div class="fix compact">
+        <div class="fix-head">
+          <span class="fix-idx">03</span><span class="fix-title">Close · add an explicit ask</span>
+          <span class="lever">CTA</span>
+        </div>
+        <div class="fix-main">
+          <div class="thumb tall" style="background:linear-gradient(150% 120% at 45% 70%,#322f2c,#1c1a19)">
+            <span class="ts">0:13</span>
+          </div>
+          <p class="diag">The last 2s trail off. Ask for the follow while attention is still on the payoff — one clear line, on screen and spoken.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SIMULATE SEAM -->
+    <div class="seam">
+      <button class="simulate" type="button">Simulate it against your audience <span aria-hidden="true">&#8594;</span></button>
+      <span class="hint">The craft is here. How your audience actually reacts — the crowd, the drop-off, the reach — lives in the simulation.</span>
+    </div>
+  </div>
+</div>
