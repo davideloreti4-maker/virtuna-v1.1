@@ -25,7 +25,7 @@ import { AccountReadThreadView } from "@/components/thread/account-read-thread-v
 import { MessageBlocks } from "@/components/thread/message-blocks";
 import { AmbientRoom } from "@/components/audience-lens/AmbientRoom";
 import { AudiencePresence } from "@/components/audience-lens/audience-presence";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ProgressChecklist } from "@/components/thread/progress-checklist";
 import { SKILL_RUN_META } from "@/components/thread/run-capsule";
 import { Reading } from "@/components/reading/reading";
@@ -889,85 +889,270 @@ const RAIL_SIBLINGS = [
   { id: "h5", conceptText: "Editing is a trap.", fraction: "2/10 stop" },
 ];
 
+// ─────────────────────────────────────────────────────────────────────────────
+// The classification — production status + category for every renderable above.
+// DERIVED, never duplicated: the node JSX stays in the arrays; this only sorts it
+// into tabs and tags each with its real production status, so the page is an honest
+// inventory instead of a flat pile. See the audit that seeded this (2026-07-21):
+//   Live     — a live skill emits it today (SKILL_RUN_META + a real block producer).
+//   Flag off — behind HORIZONTAL_ENABLED (=false): hidden, kept only so old threads render.
+//   Legacy   — 0 live producers; the standalone block exists only as a prop inside cards,
+//              registry-kept for persisted history. (band, personas.)
+// ─────────────────────────────────────────────────────────────────────────────
+type Status = "live" | "flag-off" | "legacy";
+
+const STATUS_META: Record<Status, { label: string; dot: string; tone: string }> = {
+  live: { label: "Live", dot: "bg-[var(--color-accent)]", tone: "text-foreground-secondary" },
+  "flag-off": { label: "Flag off", dot: "ring-1 ring-inset ring-white/30", tone: "text-foreground-muted" },
+  legacy: { label: "Legacy", dot: "bg-white/25", tone: "text-foreground-muted/80" },
+};
+
+// Skills, in thread order. Their outlier / degraded run-states NEST under the base skill
+// (they are the same run + one SSE affordance) instead of competing as peer sections.
+const SKILL_ORDER = ["ideas", "hooks", "script", "remix", "chat", "explore", "account", "video-test-card"] as const;
+const VARIANT_OF: Record<string, string> = {
+  "ideas-outliers": "ideas",
+  "hooks-degraded": "hooks",
+  "hooks-outliers": "hooks",
+  "script-outliers": "script",
+};
+
+// The in-thread input affordances (request_input) + the context-aware chat follow-ups.
+const INPUT_ORDER = [
+  "chat-followups",
+  "in-thread-read",
+  "in-thread-link",
+  "in-thread-account",
+  "in-thread-explore",
+  "in-thread-upload",
+] as const;
+
+// BLOCK_SECTIONS (in-thread blocks) → status. Anything unlisted is a live in-thread block.
+const BLOCK_STATUS: Record<string, Status> = {
+  "profile-read": "flag-off",
+  "reaction-distribution": "flag-off",
+  "prediction-gauge": "flag-off",
+  band: "legacy",
+  personas: "legacy",
+};
+// Honest note for the legacy standalone blocks (band / personas). Prepended so the page never
+// presents a not-emitted primitive as if a live skill produced it.
+const LEGACY_NOTE =
+  "LEGACY — no live skill emits this standalone block; it survives only as a prop inside the cards. Kept in the registry so persisted history still renders. ";
+
+type Tab = { id: string; label: string; blurb: string };
+const TABS: Tab[] = [
+  { id: "overview", label: "Overview", blurb: "Every renderable the thread can mount, grouped by role and tagged with its real production status. Pick a tab to inspect one group at a time." },
+  { id: "skills", label: "Skills", blurb: "The live generative + analysis skills, each rendered through its real *-thread-view — 1:1 with the chat, just-completed state. Outlier / degraded run-states nest under their base skill." },
+  { id: "loading", label: "Loading", blurb: "The in-flight states — the run capsule mid-run. Reachable in production only by spending a real paid run; mounted here in their live mid-run shapes." },
+  { id: "inputs", label: "Inputs", blurb: "The agent-surfaced in-thread affordances (request_input fields) + the context-aware chat follow-up chips." },
+  { id: "reading", label: "Reading", blurb: "The Test skill's full /analyze surface — every state, not just the happy path. Each option mounts the REAL component." },
+  { id: "room", label: "The Room", blurb: "The ambient audience panel body — what the dock blooms open (brain ⇄ people ⇄ population) + the persistent rail." },
+  { id: "blocks", label: "Blocks", blurb: "The live in-thread blocks rendered through the SAME MessageBlocks dispatch the thread uses." },
+  { id: "hidden", label: "Hidden & legacy", blurb: "Renderers kept alive but NOT shippable today: the horizontal verbs behind HORIZONTAL_ENABLED (flag off) + the standalone primitives no live skill emits (legacy)." },
+];
+
 export default function DevCardsPage() {
-  const [readingState, setReadingState] = useState('complete');
+  const [tab, setTab] = useState("overview");
+  const [readingState, setReadingState] = useState("complete");
+  const [pendingAnchor, setPendingAnchor] = useState<string | null>(null);
+
   const active = READING_STATES.find((s) => s.id === readingState) ?? READING_STATES[1]!;
 
-  const sections = [
-    ...THREAD_VIEWS.map((v) => ({ id: v.id, label: v.label })),
-    ...INFLIGHT_VIEWS.map((v) => ({ id: v.id, label: v.label })),
-    { id: "reading", label: "Test / Reading" },
-    { id: "room", label: "The Room" },
-    ...BLOCK_SECTIONS.map((s) => ({ id: s.type, label: s.label })),
-  ];
+  // Grouped once from the arrays above (node JSX untouched — this only sorts + tags).
+  const viewById = new Map(THREAD_VIEWS.map((v) => [v.id, v]));
+  const skills = SKILL_ORDER.map((id) => ({
+    base: viewById.get(id)!,
+    variants: THREAD_VIEWS.filter((v) => VARIANT_OF[v.id] === id),
+  }));
+  const inputs = INPUT_ORDER.map((id) => viewById.get(id)!).filter(Boolean);
+  const liveBlocks = BLOCK_SECTIONS.filter((s) => !BLOCK_STATUS[s.type]);
+  const hiddenBlocks = BLOCK_SECTIONS.filter((s) => BLOCK_STATUS[s.type]);
+
+  // Overview → jump into a tab and scroll to the picked item (after the tab renders).
+  const goTo = (tabId: string, anchor?: string) => {
+    setTab(tabId);
+    setPendingAnchor(anchor ?? null);
+  };
+  useEffect(() => {
+    if (!pendingAnchor) return;
+    const el = document.getElementById(pendingAnchor);
+    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+    setPendingAnchor(null);
+  }, [tab, pendingAnchor]);
+
+  // The counts the overview leads with — a genuine at-a-glance census.
+  const counts = {
+    skills: skills.length,
+    loading: INFLIGHT_VIEWS.length,
+    inputs: inputs.length,
+    reading: READING_STATES.length,
+    room: 2,
+    blocks: liveBlocks.length,
+    hidden: hiddenBlocks.length,
+  };
 
   return (
     <div className="relative min-h-full text-foreground">
-      <div className="mx-auto w-full max-w-[860px] px-4 pb-24 pt-6">
-        {/* Header */}
-        <header className="flex flex-col gap-3 border-b border-white/[0.06] pb-5">
-          <span className="text-[11px] uppercase tracking-[0.06em] text-foreground-muted">
-            Dev · design reference
-          </span>
-          <h1 className="text-[22px] font-semibold tracking-[-0.01em]">Thread — every skill output</h1>
-          <p className="max-w-2xl text-sm text-foreground-muted">
-            Every skill rendered through its real thread view, 1:1 with the chat — just-completed
-            state (your turn → intro → progress receipt → cards → follow-up). Edit any thread
-            component and this page updates live.
-          </p>
-          <nav className="flex flex-wrap gap-1.5 pt-1">
-            {sections.map((s) => (
-              <a
-                key={s.id}
-                href={`#${s.id}`}
-                className="rounded-full border border-white/[0.06] bg-surface-elevated px-2.5 py-1 text-[11px] text-foreground-muted transition-colors hover:border-white/[0.10] hover:text-foreground-secondary"
-              >
-                {s.label}
-              </a>
-            ))}
+      <div className="mx-auto w-full max-w-[880px] px-4 pb-24">
+        {/* Slim sticky header + tab bar — solid (opaque) app-bg bar with a defining bottom edge.
+            Uses bg-background (= --color-charcoal-app, the same fill AppShell paints) so it's fully
+            opaque and content scrolls cleanly underneath — never see-through. */}
+        <div className="sticky top-0 z-20 -mx-4 border-b border-white/[0.06] bg-background px-4 pt-4 pb-2.5">
+          <div className="flex items-baseline gap-2.5 pb-2.5">
+            <h1 className="text-[15px] font-semibold tracking-[-0.01em]">What the thread renders</h1>
+            <span className="text-[10px] uppercase tracking-[0.08em] text-foreground-muted/60">
+              Dev reference
+            </span>
+          </div>
+          <nav className="flex flex-wrap gap-1.5">
+            {TABS.map((t) => {
+              const on = t.id === tab;
+              const count = counts[t.id as keyof typeof counts];
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => goTo(t.id)}
+                  aria-pressed={on}
+                  className={`rounded-full border px-3 py-1 text-[12px] transition-colors ${
+                    on
+                      ? "border-white/[0.10] bg-surface-elevated text-foreground"
+                      : "border-white/[0.06] text-foreground-muted hover:border-white/[0.10] hover:text-foreground-secondary"
+                  }`}
+                >
+                  {t.label}
+                  {count !== undefined && (
+                    <span className={`ml-1.5 tabular-nums ${on ? "text-foreground-muted" : "text-foreground-muted/60"}`}>
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </nav>
-        </header>
-
-        {/* Group A — real skill thread views */}
-        <div className="flex flex-col gap-4 pt-8">
-          <SectionKicker>Skill thread views · 1:1 with the chat</SectionKicker>
-          {THREAD_VIEWS.map((v) => (
-            <section key={v.id} id={v.id} className="scroll-mt-6">
-              <SectionHead label={v.label} code={`${v.id}-thread-view`} note={v.note} />
-              {/* Neutral thread backdrop so proportions read like /home. The view owns its 760px column. */}
-              <div className="rounded-[var(--radius-lg)] border border-white/[0.06] bg-background py-2">
-                {v.node}
-              </div>
-            </section>
-          ))}
         </div>
 
-        {/* Group A2 — the in-flight states (the run capsule) */}
-        <div className="flex flex-col gap-4 pt-14">
-          <SectionKicker>In-flight · the run capsule (loading states, mid-run)</SectionKicker>
-          {INFLIGHT_VIEWS.map((v) => (
-            <section key={v.id} id={v.id} className="scroll-mt-6">
-              <SectionHead label={v.label} code={`${v.id}`} note={v.note} />
-              <div className="rounded-[var(--radius-lg)] border border-white/[0.06] bg-background py-2">
-                {v.node}
-              </div>
-            </section>
-          ))}
-        </div>
+        {/* Active-tab blurb */}
+        <p className="max-w-2xl pt-5 text-[12.5px] leading-relaxed text-foreground-muted">
+          {TABS.find((t) => t.id === tab)?.blurb}
+        </p>
 
-        {/* Group C — the Test / real-video Reading surface (its own page, not a thread card) */}
-        <div className="flex flex-col gap-4 pt-14">
-          <SectionKicker>Test skill · the full Reading surface (/analyze/[id])</SectionKicker>
-          <section id="reading" className="scroll-mt-6">
-            <SectionHead
-              label="Test / Reading"
-              code="reading.tsx"
-              note={active.note}
+        {/* ── OVERVIEW ─────────────────────────────────────────────────────── */}
+        {tab === "overview" && (
+          <div className="flex flex-col gap-3 pt-6">
+            <StatusLegend />
+            <OverviewGroup
+              title="Skills"
+              status="live"
+              onOpen={() => goTo("skills")}
+              chips={skills.map((s) => ({ id: s.base.id, label: s.base.label, status: "live" as Status, onClick: () => goTo("skills", s.base.id) }))}
             />
+            <OverviewGroup
+              title="Loading states"
+              status="live"
+              onOpen={() => goTo("loading")}
+              chips={INFLIGHT_VIEWS.map((v) => ({ id: v.id, label: v.label, status: "live" as Status, onClick: () => goTo("loading", v.id) }))}
+            />
+            <OverviewGroup
+              title="Inputs & affordances"
+              status="live"
+              onOpen={() => goTo("inputs")}
+              chips={inputs.map((v) => ({ id: v.id, label: v.label, status: "live" as Status, onClick: () => goTo("inputs", v.id) }))}
+            />
+            <OverviewGroup
+              title="Reading surface"
+              status="live"
+              onOpen={() => goTo("reading")}
+              chips={READING_STATES.map((s) => ({ id: s.id, label: s.label, status: "live" as Status, onClick: () => { setReadingState(s.id); goTo("reading"); } }))}
+            />
+            <OverviewGroup
+              title="The Room"
+              status="live"
+              onOpen={() => goTo("room")}
+              chips={[
+                { id: "room-bloom", label: "Bloom (brain ⇄ people ⇄ population)", status: "live", onClick: () => goTo("room", "room-bloom") },
+                { id: "room-rail", label: "Persistent rail", status: "live", onClick: () => goTo("room", "room-rail") },
+              ]}
+            />
+            <OverviewGroup
+              title="In-thread blocks"
+              status="live"
+              onOpen={() => goTo("blocks")}
+              chips={liveBlocks.map((s) => ({ id: s.type, label: s.label, status: "live" as Status, onClick: () => goTo("blocks", s.type) }))}
+            />
+            <OverviewGroup
+              title="Hidden & legacy"
+              status="flag-off"
+              onOpen={() => goTo("hidden")}
+              chips={hiddenBlocks.map((s) => ({ id: s.type, label: s.label.replace(/ · HIDDEN$/, ""), status: BLOCK_STATUS[s.type]!, onClick: () => goTo("hidden", s.type) }))}
+            />
+          </div>
+        )}
 
-            {/* State switcher — the flagship has NINE states and only one of them was ever
-                visible. Every option below mounts the REAL component, so this cannot drift from
-                production the way a static mock would. */}
+        {/* ── SKILLS ───────────────────────────────────────────────────────── */}
+        {tab === "skills" && (
+          <div className="flex flex-col gap-8 pt-6">
+            {skills.map(({ base, variants }) => (
+              <section key={base.id} id={base.id} className="scroll-mt-32">
+                <SectionHead label={base.label} code={`${base.id}-thread-view`} note={base.note} status="live" />
+                <div className="rounded-[var(--radius-lg)] border border-white/[0.06] bg-background py-2">
+                  {base.node}
+                </div>
+                {variants.length > 0 && (
+                  <div className="mt-4 flex flex-col gap-4 border-l-2 border-white/[0.06] pl-4">
+                    <p className="text-[11px] uppercase tracking-[0.06em] text-foreground-muted/70">
+                      Run states — same run, one SSE affordance toggled
+                    </p>
+                    {variants.map((v) => (
+                      <section key={v.id} id={v.id} className="scroll-mt-32">
+                        <SectionHead label={v.label} code={v.id} note={v.note} status="live" compact />
+                        <div className="rounded-[var(--radius-lg)] border border-white/[0.06] bg-background py-2">
+                          {v.node}
+                        </div>
+                      </section>
+                    ))}
+                  </div>
+                )}
+              </section>
+            ))}
+          </div>
+        )}
+
+        {/* ── LOADING ──────────────────────────────────────────────────────── */}
+        {tab === "loading" && (
+          <div className="flex flex-col gap-6 pt-6">
+            {INFLIGHT_VIEWS.map((v) => (
+              <section key={v.id} id={v.id} className="scroll-mt-32">
+                <SectionHead label={v.label} code={v.id} note={v.note} status="live" />
+                <div className="rounded-[var(--radius-lg)] border border-white/[0.06] bg-background py-2">
+                  {v.node}
+                </div>
+              </section>
+            ))}
+          </div>
+        )}
+
+        {/* ── INPUTS ───────────────────────────────────────────────────────── */}
+        {tab === "inputs" && (
+          <div className="flex flex-col gap-6 pt-6">
+            {inputs.map((v) => (
+              <section key={v.id} id={v.id} className="scroll-mt-32">
+                <SectionHead label={v.label} code={v.id} note={v.note} status="live" />
+                <div className="rounded-[var(--radius-lg)] border border-white/[0.06] bg-background py-2">
+                  {v.node}
+                </div>
+              </section>
+            ))}
+          </div>
+        )}
+
+        {/* ── READING ──────────────────────────────────────────────────────── */}
+        {tab === "reading" && (
+          <div className="pt-6">
+            <SectionHead label="Test / Reading" code="reading.tsx" note={active.note} status="live" />
+            {/* State switcher — the flagship has many states and only one was ever visible.
+                Every option mounts the REAL component, so it cannot drift from production. */}
             <div className="mb-3 flex flex-wrap gap-1.5">
               {READING_STATES.map((s) => {
                 const on = s.id === readingState;
@@ -979,8 +1164,8 @@ export default function DevCardsPage() {
                     aria-pressed={on}
                     className={`rounded-full border px-2.5 py-1 text-[11px] transition-colors ${
                       on
-                        ? 'border-white/[0.10] bg-surface-elevated text-foreground'
-                        : 'border-white/[0.06] text-foreground-muted hover:border-white/[0.10] hover:text-foreground-secondary'
+                        ? "border-white/[0.10] bg-surface-elevated text-foreground"
+                        : "border-white/[0.06] text-foreground-muted hover:border-white/[0.10] hover:text-foreground-secondary"
                     }`}
                   >
                     {s.label}
@@ -988,13 +1173,8 @@ export default function DevCardsPage() {
                 );
               })}
             </div>
-
-            {/* `transform` makes this the containing block for Reading's position:fixed
-                ReadingChat composer, so it docks inside the section instead of floating
-                over the whole gallery. overflow-hidden clips it to the card.
-                `key` forces a real remount per state — Reading holds reveal/cascade refs
-                (sawSkeleton) that would otherwise carry across a state switch and show you a
-                transition that no real user ever gets. */}
+            {/* `transform` makes this the containing block for Reading's position:fixed composer.
+                `key` forces a real remount per state (Reading holds reveal/cascade refs). */}
             <div
               key={active.id}
               className="relative overflow-hidden rounded-[var(--radius-lg)] border border-white/[0.06] bg-background py-2"
@@ -1002,73 +1182,66 @@ export default function DevCardsPage() {
             >
               {active.node}
             </div>
-          </section>
-        </div>
+          </div>
+        )}
 
-        {/* Group D — the ambient Room panel body (the dock's bloom) */}
-        <div className="flex flex-col gap-4 pt-14">
-          <SectionKicker>The Room · the ambient audience panel body</SectionKicker>
-          <section id="room" className="scroll-mt-6">
-            <SectionHead
-              label="The Room"
-              code="AmbientRoom.tsx"
-              note="What the audience dock blooms open: The brain (simulated neural read — the landing view) ⇄ The people (named voices) ⇄ The population. Fed a fixture focus; the box stands in for the panel."
-            />
-            <div className="grid gap-4 lg:grid-cols-2">
-              <div className="h-[900px] overflow-hidden rounded-[var(--radius-lg)] border border-white/[0.06] bg-[var(--color-surface-elevated)]">
-                <AmbientRoom
-                  flatPersonas={ROOM_FOCUS.personas}
-                  conceptText={ROOM_FOCUS.conceptText}
-                  fraction={ROOM_FOCUS.fraction}
-                  kindLabel="Hook"
-                  // ON here so the gallery actually PREVIEWS the counterfactual — the brain card's
-                  // rewrite CTA is a real state, and a state you cannot cheaply look at is one that
-                  // drifts. The handler is a no-op: the dev page has no composer to re-run a skill.
-                  canRewrite
-                  onRewrite={async () => {}}
-                  // A real batch, so the readout's SCALE ("#3 of your 5") previews too. Same reason.
-                  // `initialCompareOpen={false}` because a batch otherwise lands the Room on its
-                  // ranked-compare overview — correct in the product, but it would hide the brain
-                  // in the gallery, which exists precisely to LOOK at the brain.
-                  focusId="h3"
-                  initialCompareOpen={false}
-                  siblings={[
-                    { id: "h1", conceptText: "The edit nobody tells you about.", fraction: "9/10 stop" },
-                    { id: "h2", conceptText: "I deleted 40 hours of B-roll.", fraction: "7/10 stop" },
-                    { id: "h3", conceptText: "Stop editing your videos. Do this instead.", fraction: "6/10 stop" },
-                    { id: "h4", conceptText: "Your cuts are why they leave.", fraction: "4/10 stop" },
-                    { id: "h5", conceptText: "Editing is a trap.", fraction: "2/10 stop" },
-                  ]}
-                />
+        {/* ── THE ROOM ─────────────────────────────────────────────────────── */}
+        {tab === "room" && (
+          <div className="flex flex-col gap-8 pt-6">
+            <section id="room-bloom" className="scroll-mt-32">
+              <SectionHead
+                label="The Room · bloom"
+                code="AmbientRoom.tsx"
+                note="What the audience dock blooms open: The brain (simulated neural read — the landing view) ⇄ The people (named voices) ⇄ The population. Fed a fixture focus; the box stands in for the panel."
+                status="live"
+              />
+              <div className="grid gap-4 lg:grid-cols-2">
+                <div className="h-[900px] overflow-hidden rounded-[var(--radius-lg)] border border-white/[0.06] bg-[var(--color-surface-elevated)]">
+                  <AmbientRoom
+                    flatPersonas={ROOM_FOCUS.personas}
+                    conceptText={ROOM_FOCUS.conceptText}
+                    fraction={ROOM_FOCUS.fraction}
+                    kindLabel="Hook"
+                    // ON here so the gallery PREVIEWS the counterfactual — the brain card's rewrite
+                    // CTA is a real state, and a state you can't cheaply look at drifts. No-op handler.
+                    canRewrite
+                    onRewrite={async () => {}}
+                    // A real batch, so the readout's SCALE ("#3 of your 5") previews too.
+                    focusId="h3"
+                    initialCompareOpen={false}
+                    siblings={[
+                      { id: "h1", conceptText: "The edit nobody tells you about.", fraction: "9/10 stop" },
+                      { id: "h2", conceptText: "I deleted 40 hours of B-roll.", fraction: "7/10 stop" },
+                      { id: "h3", conceptText: "Stop editing your videos. Do this instead.", fraction: "6/10 stop" },
+                      { id: "h4", conceptText: "Your cuts are why they leave.", fraction: "4/10 stop" },
+                      { id: "h5", conceptText: "Editing is a trap.", fraction: "2/10 stop" },
+                    ]}
+                  />
+                </div>
+                {/* The GROUNDED brain — a real video stimulus + a real retention curve as the drive. */}
+                <div className="h-[900px] overflow-hidden rounded-[var(--radius-lg)] border border-white/[0.06] bg-[var(--color-surface-elevated)]">
+                  <AmbientRoom
+                    flatPersonas={ROOM_FOCUS.personas}
+                    conceptText={ROOM_FOCUS.conceptText}
+                    fraction={ROOM_FOCUS.fraction}
+                    kindLabel="Hook"
+                    canRewrite={false}
+                    brainSource={DEV_BRAIN_SOURCE}
+                  />
+                </div>
               </div>
-              {/* The GROUNDED brain — a real video as the stimulus + a real retention curve as the
-                  drive. Here the curve is a fixture (holds, then breaks at 45%); in the Read it is
-                  the audience's measured curve. */}
-              <div className="h-[900px] overflow-hidden rounded-[var(--radius-lg)] border border-white/[0.06] bg-[var(--color-surface-elevated)]">
-                <AmbientRoom
-                  flatPersonas={ROOM_FOCUS.personas}
-                  conceptText={ROOM_FOCUS.conceptText}
-                  fraction={ROOM_FOCUS.fraction}
-                  kindLabel="Hook"
-                  canRewrite={false}
-                  brainSource={DEV_BRAIN_SOURCE}
-                />
-              </div>
-            </div>
+            </section>
 
-            {/* P2 — the PERSISTENT rail presentation (variant='rail'). The same body as above, but
-                hosted by AudiencePresence in-flow: no bloom, no z-[55] overlay, no collapse chevron.
-                Boxed at a real rail width (340) × height (720) so the geometry reads like the ≥xl
-                desktop rail. This is the A1 verify surface — prove it renders before A2 re-parents it
-                into HomePageLayout. */}
-            <div className="mt-6">
+            {/* The PERSISTENT rail presentation (variant='rail') — same body, in-flow, no bloom. */}
+            <section id="room-rail" className="scroll-mt-32">
               <SectionHead
                 label="The Room · persistent rail (P2)"
                 code="AudiencePresence variant='rail'"
-                note="variant='rail' — the panel body always shown in-flow inside a fixed-height column: never blooms, never collapses, no overlay. A2 re-parents THIS into the desktop rail (≥xl) / mobile header. The box below stands in for the rail column (340×720)."
+                note="variant='rail' — the panel body always shown in-flow inside a fixed-height column: never blooms, never collapses, no overlay. The box below stands in for the rail column (340×720)."
+                status="live"
               />
               <div className="flex flex-wrap gap-4">
-                {/* Ranked-compare view (a batch of siblings → the ranked overview). */}
+                {/* Ranked-compare view (a batch → the ranked overview). */}
                 <div id="rail-ranked" className="h-[720px] w-[340px] max-w-full">
                   <AudiencePresence
                     variant="rail"
@@ -1084,8 +1257,7 @@ export default function DevCardsPage() {
                     onOpenChange={() => {}}
                   />
                 </div>
-                {/* Drill view (drillIntoFocus → the brain/people readout, the taller state that
-                    exercises the rail's internal scroll). */}
+                {/* Drill view (drillIntoFocus → the taller readout that exercises internal scroll). */}
                 <div id="rail-drill" className="h-[720px] w-[340px] max-w-full">
                   <AudiencePresence
                     variant="rail"
@@ -1103,45 +1275,135 @@ export default function DevCardsPage() {
                   />
                 </div>
               </div>
-            </div>
-          </section>
-        </div>
-
-        {/* Group B — in-thread blocks via MessageBlocks */}
-        <div className="flex flex-col gap-4 pt-14">
-          <SectionKicker>In-thread blocks · rendered via MessageBlocks</SectionKicker>
-          {BLOCK_SECTIONS.map((s) => (
-            <section key={s.type} id={s.type} className="scroll-mt-6">
-              <SectionHead label={s.label} code={s.type} note={s.note} />
-              <div className="rounded-[var(--radius-lg)] border border-white/[0.06] bg-background p-4">
-                <div className="mx-auto max-w-[760px]">
-                  <MessageBlocks body={s.body} />
-                </div>
-              </div>
             </section>
-          ))}
-        </div>
+          </div>
+        )}
+
+        {/* ── BLOCKS (live in-thread) ──────────────────────────────────────── */}
+        {tab === "blocks" && (
+          <div className="flex flex-col gap-6 pt-6">
+            {liveBlocks.map((s) => (
+              <section key={s.type} id={s.type} className="scroll-mt-32">
+                <SectionHead label={s.label} code={s.type} note={s.note} status="live" />
+                <div className="rounded-[var(--radius-lg)] border border-white/[0.06] bg-background p-4">
+                  <div className="mx-auto max-w-[760px]">
+                    <MessageBlocks body={s.body} />
+                  </div>
+                </div>
+              </section>
+            ))}
+          </div>
+        )}
+
+        {/* ── HIDDEN & LEGACY ──────────────────────────────────────────────── */}
+        {tab === "hidden" && (
+          <div className="flex flex-col gap-6 pt-6">
+            {hiddenBlocks.map((s) => {
+              const status = BLOCK_STATUS[s.type]!;
+              const note = status === "legacy" ? LEGACY_NOTE + s.note : s.note;
+              return (
+                <section key={s.type} id={s.type} className="scroll-mt-32">
+                  <SectionHead label={s.label.replace(/ · HIDDEN$/, "")} code={s.type} note={note} status={status} />
+                  <div className="rounded-[var(--radius-lg)] border border-dashed border-white/[0.08] bg-background p-4">
+                    <div className="mx-auto max-w-[760px] opacity-90">
+                      <MessageBlocks body={s.body} />
+                    </div>
+                  </div>
+                </section>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-function SectionKicker({ children }: { children: React.ReactNode }) {
+// ── Status pill — the one honest signal per renderable ───────────────────────
+function StatusPill({ status }: { status: Status }) {
+  const m = STATUS_META[status];
   return (
-    <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-foreground-muted/70">
-      {children}
-    </p>
+    <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/[0.06] px-2 py-0.5 text-[10px] uppercase tracking-[0.05em] ${m.tone}`}>
+      <span className={`h-1.5 w-1.5 rounded-full ${m.dot}`} />
+      {m.label}
+    </span>
   );
 }
 
-function SectionHead({ label, code, note }: { label: string; code: string; note: string }) {
+function StatusLegend() {
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-[var(--radius-md)] border border-white/[0.06] bg-surface-sunken px-3 py-2.5 text-[11px] text-foreground-muted">
+      <span className="uppercase tracking-[0.06em] text-foreground-muted/60">Legend</span>
+      <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-[var(--color-accent)]" /> Live — a skill emits it today</span>
+      <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full ring-1 ring-inset ring-white/30" /> Flag off — behind HORIZONTAL_ENABLED</span>
+      <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-white/25" /> Legacy — no live producer</span>
+    </div>
+  );
+}
+
+// ── Overview group — a role, its status, and its members as jump-chips ───────
+function OverviewGroup({
+  title,
+  status,
+  chips,
+  onOpen,
+}: {
+  title: string;
+  status: Status;
+  chips: { id: string; label: string; status: Status; onClick: () => void }[];
+  onOpen: () => void;
+}) {
+  return (
+    <div className="rounded-[var(--radius-lg)] border border-white/[0.06] bg-surface-sunken p-3.5">
+      <div className="mb-2.5 flex items-center gap-2.5">
+        <button
+          type="button"
+          onClick={onOpen}
+          className="text-[13px] font-semibold text-foreground transition-colors hover:text-foreground-secondary"
+        >
+          {title}
+        </button>
+        <span className="text-[11px] tabular-nums text-foreground-muted/60">{chips.length}</span>
+        <StatusPill status={status} />
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {chips.map((c) => (
+          <button
+            key={c.id}
+            type="button"
+            onClick={c.onClick}
+            className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.06] bg-surface-elevated px-2.5 py-1 text-[11px] text-foreground-muted transition-colors hover:border-white/[0.10] hover:text-foreground-secondary"
+          >
+            {c.status !== "live" && <span className={`h-1.5 w-1.5 rounded-full ${STATUS_META[c.status].dot}`} />}
+            {c.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SectionHead({
+  label,
+  code,
+  note,
+  status,
+  compact,
+}: {
+  label: string;
+  code: string;
+  note: string;
+  status?: Status;
+  compact?: boolean;
+}) {
   return (
     <div className="mb-3 flex flex-col gap-0.5">
-      <div className="flex items-baseline gap-2">
-        <h2 className="text-[15px] font-semibold text-foreground">{label}</h2>
+      <div className="flex flex-wrap items-baseline gap-2">
+        <h2 className={`font-semibold text-foreground ${compact ? "text-[13px]" : "text-[15px]"}`}>{label}</h2>
         <code className="rounded bg-white/[0.06] px-1.5 py-0.5 text-[11px] text-foreground-muted">{code}</code>
+        {status && <StatusPill status={status} />}
       </div>
-      <p className="text-[12.5px] text-foreground-muted">{note}</p>
+      <p className="text-[12.5px] leading-relaxed text-foreground-muted">{note}</p>
     </div>
   );
 }
