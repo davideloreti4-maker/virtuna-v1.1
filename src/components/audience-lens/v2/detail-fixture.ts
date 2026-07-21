@@ -20,7 +20,7 @@ export const CREATOR_TEMPLATE: DomainTemplate = {
   label: "Creator · content",
   backLabel: "All 5",
   pager: "hook 2 of 5",
-  verdict: { pct: 38.2, label: "would stop" },
+  verdict: { value: "38.2%", label: "would stop" },
 
   brain: {
     cortexSeedKey: "hook-2-first-10k", // drifts the cortex parcellation; stable per stimulus

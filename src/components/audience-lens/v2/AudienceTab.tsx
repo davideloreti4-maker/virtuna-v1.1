@@ -18,7 +18,7 @@
 
 import { useMemo } from "react";
 import { TONE, Kick, HowToRead, type CodedReason, type SegmentStop, type TerrainCluster, type TriState } from "./AmbientDetail";
-import type { PopulationFrameData, PopulationMain } from "./domain-template";
+import type { DemandCurveData, PopulationFrameData, PopulationMain } from "./domain-template";
 
 /** The shared society terrain spec — clusters knit into one connected graph. */
 type TerrainSpec = { clusters: TerrainCluster[]; lossClusterIndex: number };
@@ -113,14 +113,51 @@ function TerrainMap({ terrain }: { terrain: TerrainSpec }) {
 
 // ── main figure slot (◇ swap — the distribution the headline summarizes) ──────
 
-/** The Population's main figure. Creator = the stop/skim/scroll tri-state; a new domain adds a
- *  `kind` (demand-curve · overlay · answer-distribution) here without touching terrain/segments/
- *  voices. */
+/** The Population's main figure. Creator = the stop/skim/scroll tri-state; pricing = the demand
+ *  curve. A new domain adds a `kind` (overlay · answer-distribution) here without touching terrain/
+ *  segments/voices. */
 function PopulationMainSlot({ main }: { main: PopulationMain }) {
   switch (main.kind) {
     case "tri-state":
       return <TriStateOutcome tri={main.data} percentileLine={main.percentileLine} />;
+    case "demand-curve":
+      return <DemandCurve data={main.data} />;
   }
+}
+
+/** Demand curve — would-pay share falls as price rises; a cream dashed marker flags the revenue-
+ *  optimal price (cream = the good default; coral stays reserved for the loss, per the room law). */
+function DemandCurve({ data }: { data: DemandCurveData }) {
+  const W = 380;
+  const H = 66;
+  const PAD = 5;
+  const { points, optimalAt, optimalLabel, loLabel, hiLabel, caption, kicker } = data;
+  const n = points.length;
+  const px = (i: number) => PAD + (i / (n - 1)) * (W - 2 * PAD);
+  const py = (v: number) => H - PAD - (v / 100) * (H - 2 * PAD);
+  const linePath = "M" + points.map((v, i) => `${px(i).toFixed(1)},${py(v).toFixed(1)}`).join(" L");
+  const ox = PAD + optimalAt * (W - 2 * PAD);
+  return (
+    <div className="mt-8">
+      <Kick tag="simulated">{kicker}</Kick>
+      <div className="mt-3.5">
+        <svg viewBox={`0 0 ${W} ${H}`} className="block h-auto w-full">
+          <path d={linePath} fill="none" stroke="rgba(236,231,222,.6)" strokeWidth={1.5} />
+          <line x1={ox} y1={0} x2={ox} y2={H} stroke="rgba(236,231,222,.55)" strokeWidth={1} strokeDasharray="3 3" />
+        </svg>
+      </div>
+      <div className="mt-1.5 flex items-baseline justify-between text-[12px]">
+        <span className="font-mono" style={{ color: TONE.dim }}>
+          {optimalLabel}
+        </span>
+        <span style={{ color: TONE.faint }}>{caption}</span>
+      </div>
+      <div className="mt-1 flex justify-between font-mono text-[10px]" style={{ color: TONE.faint }}>
+        <span>{loLabel}</span>
+        <span>{hiLabel}</span>
+      </div>
+    </div>
+  );
 }
 
 function TriStateOutcome({ tri, percentileLine }: { tri: TriState; percentileLine: string }) {
@@ -260,6 +297,12 @@ export function PopulationFrame({
       <PopulationMainSlot main={population.main} />
       <Segments title={population.segments.title} rows={population.segments.rows} />
       <Voices kicker={population.voices.kicker} reasons={population.voices.reasons} onInterview={onInterview} />
+      {/* calibration honesty — generalization is bounded by what the audience was calibrated for */}
+      {population.calibration ? (
+        <div className="mt-6 font-mono text-[11px] uppercase tracking-[0.06em]" style={{ color: TONE.faint }}>
+          {population.calibration.note}
+        </div>
+      ) : null}
       <HowToRead />
     </div>
   );

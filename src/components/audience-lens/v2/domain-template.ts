@@ -33,9 +33,20 @@ import type {
 
 // ── Brain swap figures ────────────────────────────────────────────────────────
 
-/** The "why this ___" driver-axis figure (◇ swap). Creator = attention over the clip. */
-export type BrainDriver = { kind: "attention-scrubber"; data: AttentionData };
-// future: | { kind: "resistance-curve"; data: ResistanceCurve }  // pricing — "why this price"
+/** A price → resistance curve (pricing "why this price"): resistance rises with price, spiking at the
+ *  point where the audience balks. Coral marks the spike (the loss). */
+export interface ResistanceCurveData {
+  question: string; // "Where resistance spikes"
+  points: number[]; // 0..100 resistance across the price axis (rising)
+  spikeAt: number; // 0..1 x-position of the resistance spike
+  spikeLabel: string; // "$29 · resistance spikes"
+}
+
+/** The "why this ___" driver-axis figure (◇ swap). Creator = attention over the clip; pricing =
+ *  resistance over price. A new domain adds a `kind` here + a figure in BrainTab's BrainDriverSlot. */
+export type BrainDriver =
+  | { kind: "attention-scrubber"; data: AttentionData }
+  | { kind: "resistance-curve"; data: ResistanceCurveData };
 
 /** The shared ask-why chat slot (●). Deferred in v2 — rendered as a disabled affordance until chat
  *  infra lands, so the slot exists in the scaffold without pretending to be live. */
@@ -56,16 +67,34 @@ export interface BrainFrameData {
 
 // ── Population swap figures ────────────────────────────────────────────────────
 
+/** A price → would-pay demand curve (pricing main figure): share who'd pay falls as price rises;
+ *  a cream marker flags the revenue-optimal price. */
+export interface DemandCurveData {
+  kicker: string; // "Demand · price → would-pay"
+  points: number[]; // 0..100 would-pay share across the price axis (falling)
+  optimalAt: number; // 0..1 x-position of the optimal price
+  optimalLabel: string; // "$24 optimal"
+  loLabel: string; // "$9"
+  hiLabel: string; // "$49"
+  caption: string; // "+18% revenue vs $29"
+}
+
 /** The main figure (◇ swap) — the distribution the headline summarizes. Creator = the stop/skim/
- *  scroll tri-state, headlined by the percentile line. */
-export type PopulationMain = { kind: "tri-state"; data: TriState; percentileLine: string };
-// future: | { kind: "demand-curve" } | { kind: "overlay" } | { kind: "answer-distribution" }
+ *  scroll tri-state; pricing = the demand curve. A new domain adds a `kind` here + a figure in
+ *  AudienceTab's PopulationMainSlot (future: overlay for A/B · answer-distribution for survey). */
+export type PopulationMain =
+  | { kind: "tri-state"; data: TriState; percentileLine: string }
+  | { kind: "demand-curve"; data: DemandCurveData };
 
 export interface PopulationFrameData {
   main: PopulationMain; // ◇ headline + main figure
   terrain: { clusters: TerrainCluster[]; lossClusterIndex: number }; // ● shared — the society
   segments: { title: string; rows: SegmentStop[] }; // ◇ swap — the tiers that matter here
   voices: { kicker: string; reasons: CodedReason[] }; // ● shared — coded reasons + exemplar cast
+  /** ◇ optional — the calibration honesty line ("modeled · pricing decision · engagement-calibrated").
+   *  The generalization-bounded-by-calibration law: shown when the decision leans on a calibration the
+   *  audience wasn't built for (a scroll-calibrated room predicting willingness-to-pay). */
+  calibration?: { note: string };
 }
 
 // ── the bundle ─────────────────────────────────────────────────────────────────
@@ -75,7 +104,8 @@ export interface DomainTemplate {
   label: string; // "Creator · content"
   backLabel: string; // "All 5"
   pager: string; // "hook 2 of 5"
-  verdict: { pct: number; label: string }; // 38.2 · "would stop"
+  verdict: { value: string; label: string }; // the answer they paid for, pre-formatted per domain:
+  //   creator "38.2%" · "would stop"   ·   pricing "$24" · "optimal price"  (not always a %)
   brain: BrainFrameData;
   population: PopulationFrameData | null; // null until a run exists
 }

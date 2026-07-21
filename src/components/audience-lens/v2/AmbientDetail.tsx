@@ -186,10 +186,10 @@ export function AmbientDetail({
           </span>
         </div>
 
-        {/* verdict hero — stands alone (glyph removed per owner mark). Label swaps per domain
-            (creator "would stop" · pricing "would pay") — the verdict is the answer they paid for. */}
+        {/* verdict hero — stands alone (glyph removed per owner mark). The value is pre-formatted per
+            domain (creator "38.2%" · pricing "$24") so the hero never hardcodes a unit; label swaps too. */}
         <div className="mt-[18px] flex items-end">
-          <span className="text-[42px] font-light leading-none tracking-[-0.015em]">{verdict.pct}%</span>
+          <span className="text-[42px] font-light leading-none tracking-[-0.015em]">{verdict.value}</span>
           <span className="ml-2 text-[16px]" style={{ color: TONE.faint }}>
             {verdict.label}
           </span>

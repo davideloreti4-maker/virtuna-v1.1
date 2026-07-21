@@ -20,7 +20,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { hashSeed, predictedBold, type DriveInput } from "@/lib/brain/cortex-sim";
 import { TONE, Kick, SecHead, HowToRead, type AttentionData, type NetworkRow, type SignalRow } from "./AmbientDetail";
-import type { AskWhySlot, BrainDriver, BrainFrameData } from "./domain-template";
+import type { AskWhySlot, BrainDriver, BrainFrameData, ResistanceCurveData } from "./domain-template";
 
 // CortexCanvas is WebGL (three.js) — client-only, never SSR (mirrors BrainView.tsx:115).
 const CortexCanvas = dynamic(() => import("../CortexCanvas"), {
@@ -305,14 +305,46 @@ function NetworkRows({ networks }: { networks: NetworkRow[] }) {
   );
 }
 
+// ── resistance curve (pricing driver — "why this price") ──────────────────────
+
+/** Resistance rises with price; a coral dashed marker flags the spike (the loss). Static — a price
+ *  axis has no playhead, so no scrubber. */
+function ResistanceCurve({ data }: { data: ResistanceCurveData }) {
+  const { points, spikeAt, spikeLabel, question } = data;
+  const n = points.length;
+  const px = (i: number) => CPAD + (i / (n - 1)) * (CW - 2 * CPAD);
+  const py = (v: number) => CH - CPAD - (v / 100) * (CH - 2 * CPAD);
+  const linePath = "M" + points.map((v, i) => `${px(i).toFixed(1)},${py(v).toFixed(1)}`).join(" L");
+  const areaPath = `${linePath} L${px(n - 1).toFixed(1)},${CH - CPAD} L${px(0).toFixed(1)},${CH - CPAD} Z`;
+  const sx = CPAD + spikeAt * (CW - 2 * CPAD);
+  return (
+    <div className="mt-8">
+      <Kick tag="modeled">Price sensitivity</Kick>
+      <SecHead q={question} ownLabel="spikes at" ownValue={spikeLabel.split(" ")[0] ?? ""} weak />
+      <div className="mt-3.5">
+        <svg viewBox={`0 0 ${CW} ${CH}`} className="block h-auto w-full">
+          <path d={areaPath} fill="rgba(236,231,222,.05)" stroke="none" />
+          <path d={linePath} fill="none" stroke="rgba(236,231,222,.6)" strokeWidth={1.5} />
+          <line x1={sx} y1={0} x2={sx} y2={CH} stroke={TONE.coral} strokeWidth={1} strokeDasharray="3 3" />
+        </svg>
+      </div>
+      <div className="mt-1.5 font-mono text-[11px] uppercase tracking-[0.06em]" style={{ color: "rgba(255,99,99,.7)" }}>
+        {spikeLabel}
+      </div>
+    </div>
+  );
+}
+
 // ── driver-axis slot (◇ swap — "why this ___") ────────────────────────────────
 
-/** The Brain's driver-axis figure. Creator = attention-over-the-clip; a new domain adds a `kind`
- *  (e.g. a pricing resistance-curve) here without touching the frame's other slots. */
+/** The Brain's driver-axis figure. Creator = attention-over-the-clip; pricing = resistance-over-price.
+ *  A new domain adds a `kind` here without touching the frame's other slots. */
 function BrainDriverSlot({ driver, reducedMotion }: { driver: BrainDriver; reducedMotion: boolean }) {
   switch (driver.kind) {
     case "attention-scrubber":
       return <AttentionScrubber data={driver.data} reducedMotion={reducedMotion} />;
+    case "resistance-curve":
+      return <ResistanceCurve data={driver.data} />;
   }
 }
 
