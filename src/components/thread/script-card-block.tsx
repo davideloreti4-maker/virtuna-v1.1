@@ -21,11 +21,10 @@ import type { ScriptCardBlock } from '@/lib/tools/blocks';
 import { useOnTestScript } from '@/lib/script-test-context';
 import { cardScrollQuoteReactions } from '@/components/audience-lens/flat-card-reactions';
 import { buildCardRewrite } from '@/components/audience-lens/card-rewrite';
-import { BAND_COLOR } from './band-block';
 import { ProofUnit } from './proof-unit';
 import { ProofReceipt, NoSourceNote } from './proof-receipt';
 import { SaveAffordance } from '@/components/thread/save-affordance';
-import { CardEyebrow, CardPrimaryAction, CardActionBar } from './card-primitives';
+import { CardPrimaryAction, CardActionBar } from './card-primitives';
 import { CaretToggle } from './caret-toggle';
 
 export interface ScriptCardRendererProps {
@@ -52,7 +51,6 @@ export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRend
     : undefined);
 
   const [expandedBeats, setExpandedBeats] = useState<Set<number>>(new Set([0]));
-  const bandColor = BAND_COLOR[band];
 
   function toggleBeat(index: number) {
     setExpandedBeats((prev) => {
@@ -70,17 +68,9 @@ export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRend
     >
       {/* FACE — opener signal (Pitfall 5: opener-only honesty spine). */}
       <div className="flex flex-col gap-3 px-4 pb-3 pt-4">
-        {/* Eyebrow — "Opener stops the scroll" kicker + beat-count meta (§0.5.1). */}
-        <CardEyebrow
-          kicker="Opener stops the scroll"
-          dotColor={bandColor}
-          meta={
-            <span className="text-[12px] tabular-nums text-foreground-muted">
-              {beats.length} {beats.length === 1 ? 'beat' : 'beats'}
-              <span className="text-foreground-muted/70"> · SIM-1 Flash</span>
-            </span>
-          }
-        />
+        {/* The "Opener stops the scroll" kicker eyebrow was removed 2026-07-21 (generic restatement;
+            the run capsule above already names the skill). The opener's stop-rate is carried by the
+            ProofUnit below, and the beat count reads from the Script section. */}
 
         {/* Proof receipt (§11f fan-out) — the real outlier this script's structure was drawn
             from. Only present on grounded runs where a real source was attributed. A script has

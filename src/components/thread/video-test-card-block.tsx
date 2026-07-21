@@ -27,8 +27,7 @@ import { TrustBadge } from '@/components/audience/trust-badge';
 import { SaveAffordance } from '@/components/thread/save-affordance';
 import { CaretToggle } from './caret-toggle';
 import { ProofUnit } from './proof-unit';
-import { CardEyebrow, CardPrimaryAction, CardActionBar, SECTION_LABEL } from './card-primitives';
-import { BAND_COLOR } from './band-block';
+import { CardPrimaryAction, CardActionBar, SECTION_LABEL } from './card-primitives';
 
 export interface VideoTestCardRendererProps {
   block: VideoTestCardBlock;
@@ -50,7 +49,6 @@ export function VideoTestCardRenderer({ block }: VideoTestCardRendererProps) {
   } = block.props;
 
   const [expanded, setExpanded] = useState(false);
-  const bandColor = BAND_COLOR[band];
   // The room's lead reaction — a persona who stopped, else the first reaction.
   const leadQuote = reactions.find((r) => r.verdict === 'stop')?.quote ?? reactions[0]?.quote;
   const hasExpand = !!ceiling || !!postWindow;
@@ -62,13 +60,18 @@ export function VideoTestCardRenderer({ block }: VideoTestCardRendererProps) {
     >
       {/* FACE — always visible */}
       <div className="flex flex-col gap-3 px-4 pb-3 pt-4">
-        {/* Eyebrow — audience kicker (band-colored dot) + trust tier (§0.5.1). */}
-        <CardEyebrow kicker={audienceName} dotColor={bandColor} meta={<TrustBadge tier={tier} />} />
-
-        {/* Hero — the Test verdict WORD (never a number; already carries the post/don't-post call). */}
-        <p className="text-[17px] font-semibold leading-snug tracking-[-0.01em] text-foreground">
-          {verdict}
-        </p>
+        {/* The verdict WORD IS the hero — the audience kicker eyebrow was removed 2026-07-21 (the
+            run capsule above already names the skill + audience). The trust tier is a grounding
+            signal, not chrome, so it survives: folded onto the verdict line, right-aligned. */}
+        <div className="flex items-start justify-between gap-3">
+          {/* Hero — the Test verdict WORD (never a number; already carries the post/don't-post call). */}
+          <p className="text-[17px] font-semibold leading-snug tracking-[-0.01em] text-foreground">
+            {verdict}
+          </p>
+          <span className="mt-0.5 shrink-0">
+            <TrustBadge tier={tier} />
+          </span>
+        </div>
 
         {/* Why-teaser — the highest-leverage fix, surfaced on the face (mirrors the hook card's
             mechanism teaser). Full reasoning is one line away, clamped. */}

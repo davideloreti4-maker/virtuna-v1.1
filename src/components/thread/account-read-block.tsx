@@ -55,7 +55,10 @@ export interface AccountReadBlockProps {
   threadId?: string | null;
 }
 
-const CARD = 'overflow-hidden rounded-xl border border-white/[0.06] bg-transparent';
+// The one in-thread card surface — matches every other thread card (hook/script/remix/idea/
+// video-test/text-read all use bg-surface-sunken). Was bg-transparent, which rendered the card as
+// the app bg (#1f1f1e) with no lift — an "invisible box" next to its lifted siblings.
+const CARD = 'overflow-hidden rounded-xl border border-white/[0.06] bg-surface-sunken';
 
 /** Compact count formatter — 142000 → "142K", 1500 → "1.5K", 2_400_000 → "2.4M". */
 function formatCompact(n: number): string {
@@ -65,31 +68,6 @@ function formatCompact(n: number): string {
   if (n < 1000) return String(Math.round(n));
   if (n < 1_000_000) return fmt(n / 1000, 'K');
   return fmt(n / 1_000_000, 'M');
-}
-
-/** Lowercase the first letter of a clause for mid-sentence joining — but leave acronyms alone
- *  ("CTAs" stays "CTAs", "Middles" → "middles"). Only flips when the word is Title-cased. */
-function lowerFirstClause(s: string): string {
-  if (s.length < 2) return s;
-  const isTitleCased = s[0] === s[0]!.toUpperCase() && s[1] === s[1]!.toLowerCase();
-  return isTitleCased ? s[0]!.toLowerCase() + s.slice(1) : s;
-}
-
-/**
- * The hero read (§0.5.2) — a deterministic one-line read of the account, templated from the
- * account's own strongest signals: what's landing AND what's costing. NO model call, NO
- * fabrication — it composes the real `patterns` strings the deterministic engine already
- * produced. Degrades honestly: working-only → the strength alone; fix-only → the one fix;
- * neither → no hero (never an empty or invented sentence).
- */
-function buildAccountHero(working: string[], fix: string[]): string | null {
-  const strip = (s?: string) => s?.trim().replace(/[.!?]+$/, '') ?? '';
-  const w = strip(working[0]);
-  const f = strip(fix[0]);
-  if (w && f) return `${w}, but ${lowerFirstClause(f)}.`;
-  if (w) return `${w}.`;
-  if (f) return `The one fix: ${lowerFirstClause(f)}.`;
-  return null;
 }
 
 /** Eyebrow kicker — the shared CardEyebrow (§0.5.1); optional right-side @handle (back-compat/thin). */
@@ -155,25 +133,27 @@ function ProfileHeader({ profile }: { profile: AccountReadProfile }) {
   );
 }
 
-/** Cover strip — the analyzed posts as 9:16 thumbnails with view counts (real scrape media). */
+/** Post feed — the analyzed posts as a 9:16 thumbnail GRID with view counts (real scrape media).
+ *  A feed, not a strip: the full scraped history reads as the account's own grid — the visible
+ *  proof of how much the Read is grounded in. Responsive 3-up (mobile) → 5-up (sm+). */
 function CoverStrip({ videos }: { videos: AnalyzedVideos }) {
   return (
     <div data-testid="account-read-covers">
       <p className="mb-2 text-[11px] uppercase tracking-[0.05em] text-foreground-muted">Posts we read</p>
-      <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-5">
         {videos.map((v, i) => {
           const Tag = v.videoUrl ? 'a' : 'div';
           return (
             <Tag
               key={`cover-${i}`}
               {...(v.videoUrl ? { href: v.videoUrl, target: '_blank', rel: 'noopener noreferrer' } : {})}
-              className="group relative aspect-[9/16] w-[58px] shrink-0 overflow-hidden rounded-sm border border-white/[0.06] bg-white/[0.04]"
+              className="group relative aspect-[9/16] w-full overflow-hidden rounded-md border border-white/[0.06] bg-white/[0.04]"
               title={v.caption || undefined}
             >
-              <CoverFill coverUrl={v.coverUrl} playSize={14} className="transition-opacity group-hover:opacity-90" />
+              <CoverFill coverUrl={v.coverUrl} playSize={20} className="transition-opacity group-hover:opacity-90" />
               {/* Views overlay — over imagery (white on a dark gradient), legible even if cover fails. */}
-              <span className="absolute inset-x-0 bottom-0 flex items-center gap-0.5 bg-gradient-to-t from-black/75 to-transparent px-1 pb-0.5 pt-3 text-[9px] font-medium tabular-nums text-white/90">
-                <svg viewBox="0 0 8 8" className="h-[6px] w-[6px]" fill="currentColor" aria-hidden="true">
+              <span className="absolute inset-x-0 bottom-0 flex items-center gap-0.5 bg-gradient-to-t from-black/75 to-transparent px-1.5 pb-1 pt-4 text-[10px] font-medium tabular-nums text-white/90">
+                <svg viewBox="0 0 8 8" className="h-[7px] w-[7px]" fill="currentColor" aria-hidden="true">
                   <path d="M1.5 1L7 4L1.5 7Z" />
                 </svg>
                 {formatCompact(v.views)}
@@ -369,25 +349,9 @@ export function AccountReadBlockRenderer({ block, threadId }: AccountReadBlockPr
   return (
     <div className={CARD} data-testid="account-read-block">
       <div className="flex flex-col gap-4 px-4 pb-3 pt-4">
-        <Eyebrow />
-
-        {/* Hero (§0.5.2) — the one-line read: what's landing AND what's costing, in one cream
-            sentence. Deterministic (templated from the account's own patterns), so the card leads
-            with the payoff instead of opening cold on the profile row. */}
-        {(() => {
-          const hero = buildAccountHero(patterns.working, patterns.fix);
-          return hero ? (
-            <p
-              className="text-[16px] font-semibold leading-[1.35] text-foreground text-balance"
-              data-testid="account-read-hero"
-            >
-              {hero}
-            </p>
-          ) : null;
-        })()}
-
-        {/* Real scrape identity — opens the card with the creator's own face + counts. */}
-        {/* Back-compat: a pre-Tier-C snapshot (no profile) shows the handle in the eyebrow. */}
+        {/* Real scrape identity opens the card — the "A Read on your account" eyebrow was removed
+            2026-07-21 (the run capsule above already labels the skill). Back-compat: a pre-Tier-C
+            snapshot (no profile) falls back to the bare handle. */}
         {profile ? <ProfileHeader profile={profile} /> : <p className="text-[13px] text-foreground-muted">@{handle}</p>}
 
         {/* The analyzed posts — real cover thumbnails (top performers), proof the Read is grounded. */}

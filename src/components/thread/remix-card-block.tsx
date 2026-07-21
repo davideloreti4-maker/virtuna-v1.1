@@ -45,7 +45,6 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
     band,
     fraction,
     scrollQuote,
-    audienceName,
     coverUrl,
     proof,
     population,
@@ -97,8 +96,10 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
           </div>
         ) : null}
 
-        {/* Eyebrow — "Borrowed · {format}" chip + audience-steer tag (no coral). */}
-        <div className="flex items-center justify-between gap-3">
+        {/* "Borrowed · {format}" — the technique the remix carries; kept as a content chip (it
+            names WHAT was borrowed, not chrome). The "as your {audience}" restatement eyebrow tag
+            was removed 2026-07-21 (the run capsule above already names the audience). */}
+        <div className="flex items-center">
           <span
             className="rounded-full border border-white/[0.06] bg-white/[0.02] px-2.5 py-1 text-[12px] text-foreground-secondary"
             title="The format pattern borrowed from the decoded video"
@@ -106,15 +107,6 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
           >
             Borrowed · {formatBorrowed}
           </span>
-          {audienceName ? (
-            <span
-              className="shrink-0 text-[12px] text-foreground-muted"
-              aria-label={`Adapted for your ${audienceName} audience`}
-              title={`Generated for your "${audienceName}" audience`}
-            >
-              as your {audienceName}
-            </span>
-          ) : null}
         </div>
 
         {/* Adapted hook headline — the hero. */}

@@ -55,8 +55,6 @@ export const TRACK_RECORD_MIN_ROWS = 3;
 const TOP_HOOKS = 3;
 /** A short-form video is ≤ this many seconds (the format-mix split point). */
 const SHORT_FORM_MAX_SECONDS = 30;
-/** How many cover thumbnails the card's analyzed-post strip shows (top performers). */
-const ANALYZED_VIDEO_COUNT = 8;
 
 // ─── Result types ────────────────────────────────────────────────────────────
 
@@ -269,9 +267,11 @@ function extractFix(reconciliations: Reconciliation[]): string[] {
  * returns [] when there are no videos; omits coverUrl when the scrape didn't surface one.
  */
 function extractAnalyzedVideos(videos: VideoData[]): AnalyzedVideo[] {
+  // Show EVERY scraped post, not a top-N slice — the card's strip is the visible proof of how
+  // much history the Read is grounded in (the whole scrape, capped upstream at scrapeVideos(…, 30)).
+  // Still ordered by views desc so the strongest performers lead the filmstrip.
   return [...videos]
     .sort((a, b) => b.views - a.views || a.platformVideoId.localeCompare(b.platformVideoId))
-    .slice(0, ANALYZED_VIDEO_COUNT)
     .map((v) => ({
       ...(v.coverUrl ? { coverUrl: v.coverUrl } : {}),
       views: v.views,

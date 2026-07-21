@@ -23,14 +23,12 @@ import type { IdeaCardBlock } from '@/lib/tools/blocks';
 import { usePlatform } from '@/lib/platform-context';
 import { cardScrollQuoteReactions } from '@/components/audience-lens/flat-card-reactions';
 import { buildCardRewrite } from '@/components/audience-lens/card-rewrite';
-import { BAND_COLOR } from './band-block';
 import { ProofUnit } from './proof-unit';
 import { ProofReceipt, NoSourceNote } from './proof-receipt';
 import { SaveAffordance } from '@/components/thread/save-affordance';
-import { CardEyebrow, CardPrimaryAction, CardActionBar, SECTION_LABEL } from './card-primitives';
+import { CardPrimaryAction, CardActionBar, SECTION_LABEL } from './card-primitives';
 import { CaretToggle } from './caret-toggle';
 import { TargetReaction } from './target-reaction';
-import { archetypeDisplayName } from '@/lib/audience/archetype-names';
 
 export interface IdeaCardRendererProps {
   block: IdeaCardBlock;
@@ -59,7 +57,6 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
 
   const platform = usePlatform();
   const [expanded, setExpanded] = useState(false);
-  const bandColor = BAND_COLOR[band];
 
   // ── "Develop into hooks →" CTA state ──────────────────────────────────────
   const [developing, setDeveloping] = useState(false);
@@ -102,32 +99,23 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
     >
       {/* FACE — always visible */}
       <div className="flex flex-col gap-3 px-4 pb-3 pt-4">
-        {/* Eyebrow — audience kicker (band-colored dot) + amber "your take" badge.
-            On a targeted (calibrated) run the kicker NAMES the person this idea was written for.
-            "Made for your audience" is what we can honestly say when we wrote it for nobody in
-            particular — the moment we can name the reader, saying the vaguer thing is a downgrade. */}
-        <CardEyebrow
-          kicker={
-            target
-              ? `For your ${target.label ?? archetypeDisplayName(target.archetype)}`
-              : 'Made for your audience'
-          }
-          dotColor={bandColor}
-          meta={
-            needsTake ? (
-              <span
-                className="rounded-full border px-2 py-0.5 text-[11px] uppercase tracking-[0.05em]"
-                style={{ color: 'var(--color-warning)', borderColor: 'rgba(224,189,114,0.25)' }}
-                title="This idea leans on a perspective only you can supply"
-              >
-                your take
-              </span>
-            ) : undefined
-          }
-        />
-
-        {/* Title — the hero */}
-        <h3 className="text-[17px] font-semibold leading-snug tracking-[-0.01em] text-foreground">{title}</h3>
+        {/* The title IS the idea — the audience kicker eyebrow was removed 2026-07-21 (the run
+            capsule above already names the skill + audience). The "your take" flag is a functional
+            signal (this idea needs a perspective only you can supply), so it survives — demoted to
+            a small chip beside the title rather than a header meta. */}
+        <div className="flex items-start justify-between gap-3">
+          {/* Title — the hero */}
+          <h3 className="text-[17px] font-semibold leading-snug tracking-[-0.01em] text-foreground">{title}</h3>
+          {needsTake && (
+            <span
+              className="mt-0.5 shrink-0 rounded-full border px-2 py-0.5 text-[11px] uppercase tracking-[0.05em]"
+              style={{ color: 'var(--color-warning)', borderColor: 'rgba(224,189,114,0.25)' }}
+              title="This idea leans on a perspective only you can supply"
+            >
+              your take
+            </span>
+          )}
+        </div>
 
         {/* Why-line — the angle premise + the muted "fits because" clause (whyItFits folded in). */}
         <p className="text-[13px] leading-relaxed text-foreground-secondary">

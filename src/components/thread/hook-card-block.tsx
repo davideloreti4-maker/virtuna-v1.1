@@ -24,14 +24,12 @@ import type { HookCardBlock } from '@/lib/tools/blocks';
 import { useOnWriteScriptHook } from '@/lib/hook-test-context';
 import { cardScrollQuoteReactions } from '@/components/audience-lens/flat-card-reactions';
 import { buildCardRewrite } from '@/components/audience-lens/card-rewrite';
-import { BAND_COLOR } from './band-block';
 import { ProofUnit } from './proof-unit';
 import { ProofReceipt, NoSourceNote } from './proof-receipt';
 import { SaveAffordance } from '@/components/thread/save-affordance';
-import { CardEyebrow, CardPrimaryAction, CardActionBar, SECTION_LABEL } from './card-primitives';
+import { CardPrimaryAction, CardActionBar, SECTION_LABEL } from './card-primitives';
 import { CaretToggle } from './caret-toggle';
 import { TargetReaction } from './target-reaction';
-import { archetypeDisplayName } from '@/lib/audience/archetype-names';
 
 export interface HookCardRendererProps {
   block: HookCardBlock;
@@ -66,7 +64,6 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
     : undefined);
 
   const [expanded, setExpanded] = useState(false);
-  const bandColor = BAND_COLOR[band];
 
   return (
     <div
@@ -75,22 +72,9 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
     >
       {/* FACE — always visible (D-11) */}
       <div className="flex flex-col gap-3 px-4 pb-3 pt-4">
-        {/* Eyebrow — archetype kicker (band-colored dot) + rank. The hook reads first.
-            On a targeted (calibrated) run the kicker names WHO THIS WAS WRITTEN FOR instead of
-            the derived `audienceArchetype`. Both are archetype tags, but they answer different
-            questions — the target is the INTENT ("who it's for"), audienceArchetype is a post-hoc
-            SIM derivation ("who reacted"). Showing both side by side reads as two competing
-            labels for one thing; the intent is the stronger, more honest signal, so it wins the
-            eyebrow and the derivation stays available in `audienceArchetype` for the handoff. */}
-        <CardEyebrow
-          kicker={target ? `For your ${target.label ?? archetypeDisplayName(target.archetype)}` : audienceArchetype}
-          dotColor={bandColor}
-          meta={
-            <span className="text-[12px] font-semibold tabular-nums text-foreground-muted" aria-label={`Rank ${rank}`}>
-              #{rank}
-            </span>
-          }
-        />
+        {/* The hook line IS the opener — the archetype kicker + rank eyebrow was removed 2026-07-21
+            (the run capsule above already names the skill; the streamed order conveys rank; who it
+            was written for now reads from the TargetReaction receipt below). */}
 
         {/* Hook line — the hero */}
         <p className="text-[17px] font-semibold leading-snug tracking-[-0.01em] text-foreground">

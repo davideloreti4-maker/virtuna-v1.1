@@ -67,9 +67,13 @@ describe('IdeaCardRenderer — KCQ-09 made-for-you rationale (Task 1)', () => {
     expect(screen.getByText(new RegExp(WHY_IT_FITS, 'i'))).toBeTruthy();
   });
 
-  it('frames the rationale as plain-language "Made for you" micro-copy (not a source citation/pill)', () => {
+  it('surfaces the rationale as plain inline copy — no "Made for your audience" eyebrow label (removed 2026-07-21)', () => {
     renderWithClient(<IdeaCardRenderer block={makeBlock()} />);
-    expect(screen.getByText(/made for you/i)).toBeTruthy();
+    // KCQ-09's substance survives: the whyItFits rationale still reads on the face (test above).
+    // The "Made for your audience" kicker that framed it was pure audience restatement (the run
+    // capsule names the audience) and went with the eyebrow sweep — assert it's gone, not a pill.
+    expect(screen.queryByText(/made for your audience/i)).toBeNull();
+    expect(screen.getByText(new RegExp(WHY_IT_FITS, 'i'))).toBeTruthy();
   });
 
   it('derives the rationale from the prop — a different whyItFits renders different text', () => {
