@@ -19,8 +19,9 @@ the gates. Nothing is wired into the product shell yet — they live on a standa
 | ② Detail shell | `AmbientDetail.tsx` (257) | ✅ shared header (pager · verdict hero · Brain\|Audience tabs). **Bar-glyph removed** per mark |
 | ② Brain tab | `BrainTab.tsx` (333) | ✅ built + approved — 🔒 cortex · attention scrubber · signals · networks · how-to |
 | ③ Audience tab | `AudienceTab.tsx` (241) | ✅ built — terrain (one connected society) · outcome tri-state · segments · coded reasons |
-| ④ Start | `AmbientStart.tsx` (~230) | ✅ built — serif time-of-day hero · thread-default chips · composer · ACTIONS grid |
-| Fixtures | `overview-fixture.ts` · `detail-fixture.ts` · `start-fixture.ts` | r4 content, typed to real contracts |
+| ④ Start | `AmbientStart.tsx` (~245) | ✅ built + **refined 2026-07-21** — centered composition (was floating top w/ a 532px void) · fidelity chip split off by a hairline as its own resolution dial |
+| ⑤ Simulate | `AmbientSimulate.tsx` (~355) | ✅ **built 2026-07-21** — the run picker ("arm an instrument"): stimulus echo · lens funnel · slice + n · inherited scene w/ projection tag · fidelity override · live receipt sentence |
+| Fixtures | `overview-` · `detail-` · `start-` · `simulate-fixture.ts` | r4 content, typed to real contracts |
 | Review route | `src/app/(app-less) ambient-v2/page.tsx` | public dev page, surface switcher chips |
 
 **Run it:** dev server on **`http://localhost:3007/ambient-v2`** (port 3007 because :3000 = the
@@ -30,7 +31,8 @@ route** (top-level, outside the `(app)` auth group) so it renders without login 
 needs Supabase + auth. Shared fixed height `AMBIENT_PANEL_HEIGHT = 800` for the three room panels
 (start is its own wider column).
 
-⑤ **Simulate sheet — NOT built** (see §4, it has two open owner decisions first).
+⑤ **Simulate sheet — BUILT 2026-07-21** (both owner decisions resolved — see §4). In the dev route
+a ④ ACTIONS preset opens ⑤; Simulate hands off to the Overview watching state.
 
 ---
 
@@ -82,10 +84,17 @@ legacy deletion/graft happens when these wire into the product (a later step).
 - **P3** — terrain → ONE *interactive* cloud, less hard-category (ref AS as-03) · **declutter** the
   outcome/who-stopped section (ref as-06).
 
-**⑤ Simulate sheet — needs two owner decisions before building** (arming an instrument, not a form:
-lens = question × segment + SIM-1 Flash/Max):
-1. **Scene-mismatch treatment** — encounter platform ≠ calibration provenance: disclaimer vs soft-block? (open #8)
-2. **Best preset-question set** — `stop/want/believe/share/buy` is a draft; needs a pass *with custom-compile in mind*.
+**⑤ Simulate sheet — BUILT (both decisions resolved by owner 2026-07-21):**
+1. **Scene-mismatch → inline projection tag** (open #8 resolved): never gate the run; when scene ≠
+   provenance, ONE mono tag `modeled · {scene} scene, {provenance}-calibrated` in the picker + the
+   receipt. Matches the locked "disclaimers = inline, said once, no banners" law.
+2. **Preset lenses → the BEHAVIORAL funnel** `STOP · FINISH · SHARE · FOLLOW · BUY` (open #2 pass):
+   five observable decisions; want/believe/feel stay in the Brain tab as signals, not population
+   lenses. Custom question compiles VISIBLY to the nearest (`↳ nearest lens · would finish`).
+   Verified live: custom-compile + projection-tag both fire; tsc 0 · eslint clean · matte 38/38.
+
+**Room-surface marks (P1/P2/P3) — deferred to the owner-together refine phase** (owner call
+2026-07-21: "work ④ then ⑤, then refinement together with my feedback"). Still open, unchanged:
 
 ---
 

@@ -12,11 +12,14 @@ import { AmbientDetail } from "@/components/audience-lens/v2/AmbientDetail";
 import { DETAIL_R4 } from "@/components/audience-lens/v2/detail-fixture";
 import { AmbientStart } from "@/components/audience-lens/v2/AmbientStart";
 import { START_R4 } from "@/components/audience-lens/v2/start-fixture";
+import { AmbientSimulate } from "@/components/audience-lens/v2/AmbientSimulate";
+import { SIMULATE_R4 } from "@/components/audience-lens/v2/simulate-fixture";
 
-type Surface = "start" | "overview" | "brain";
+type Surface = "start" | "simulate" | "overview" | "brain";
 
 const TITLES: Record<Surface, string> = {
   start: "④ Start — the instrument at rest",
+  simulate: "⑤ Simulate — arming an instrument",
   overview: "① Overview",
   brain: "② Detail — The brain",
 };
@@ -57,6 +60,9 @@ export default function AmbientV2DevPage() {
             <Chip on={surface === "start"} onClick={() => setSurface("start")}>
               ④ start
             </Chip>
+            <Chip on={surface === "simulate"} onClick={() => setSurface("simulate")}>
+              ⑤ simulate
+            </Chip>
             <Chip on={surface === "overview"} onClick={() => setSurface("overview")}>
               ① overview
             </Chip>
@@ -80,10 +86,15 @@ export default function AmbientV2DevPage() {
         </div>
       </div>
 
-      {/* the surface (room panels frame at the shared fixed height; start is its own column) */}
-      <div className="flex w-full flex-1 items-start justify-center px-6 py-12">
+      {/* the surface (room panels frame at the shared fixed height; start fills + centers) */}
+      <div className="flex w-full flex-1 items-stretch justify-center px-6 py-12">
         {surface === "start" ? (
-          <AmbientStart data={START_R4} onAction={() => setSurface("overview")} onSubmit={() => setSurface("overview")} />
+          <AmbientStart data={START_R4} onSkill={() => setSurface("simulate")} onSubmit={() => setSurface("simulate")} />
+        ) : surface === "simulate" ? (
+          // a sheet, not an 800px panel — self-center so items-stretch doesn't stretch its height
+          <div className="flex w-full items-center justify-center self-center">
+            <AmbientSimulate data={SIMULATE_R4} onClose={() => setSurface("start")} onSimulate={() => setSurface("overview")} />
+          </div>
         ) : (
           <div style={{ height: AMBIENT_PANEL_HEIGHT }}>
             {surface === "overview" ? (

@@ -1,29 +1,49 @@
 /**
- * Fixture for the Ambient Audience v2 **Start screen** (surface ④, L6).
+ * Fixture for the Ambient Audience v2 **Start screen** (surface ④, L6 variant B).
  *
- * No round-4 sketch exists — ④ was deferred before the sketch loop closed — so this is designed
- * fresh from the locked L6 spec ("configuration is loud exactly once, at its container's birth") +
- * the design doctrine, in the v2 grammar. The three thread-default chips are the L4 "Thread" shelf
- * (room binding · scene/platform · fidelity); the ACTIONS grid is the skill menu, each action
- * carrying a preset lens (question) and optionally setting chips. Swap for live producers later.
+ * Designed from the locked L6 spec + the 2026-07-21 config/rank model
+ * (`docs/HANDOFF-2026-07-21-ambient-audience-v2-config-rank-model.md`): the standing CONDITIONS block
+ * is the L4 "Thread" shelf (room binding · scene/platform · fidelity) plus the auto-rank toggle; the
+ * SKILL GRID is the Societies-explicit menu, each skill carrying a preset lens (question). Swap for
+ * live producers later.
  */
 
 import type { StartData } from "./AmbientStart";
 
 export const START_R4: StartData = {
   name: "Davide",
-  // the three loud-at-birth thread defaults (tappable; room binding hard-locks after — L1)
-  chips: [
-    { connective: "in", label: "Your audience" },
-    { connective: "as", label: "TikTok" },
-    { connective: "", label: "SIM-1 Flash" },
-  ],
-  composerPlaceholder: "Test a stimulus — a hook, an idea, a draft…",
-  // the ACTIONS grid — "what would you like to simulate?" (each carries a preset lens)
-  actions: [
-    { icon: "sparkle", label: "Make ideas", desc: "ranked + pre-tested", lens: "would want" },
-    { icon: "play", label: "Test a real video", desc: "the full read before you post", lens: "would stop" },
-    { icon: "ask", label: "Ask the room", desc: "a raw thought, react instantly", lens: "would stop" },
-    { icon: "repeat", label: "Repurpose a winner", desc: "remix a top performer", lens: "would share" },
+  conditions: {
+    audience: "Your audience",
+    scene: "TikTok",
+    sceneOptions: ["TikTok", "Instagram", "No feed"],
+    fidelity: "SIM-1 Flash",
+    fidelityOptions: ["SIM-1 Flash", "SIM-1 Max"],
+    autoRank: true,
+  },
+  composerPlaceholder: "…or just type a hook, an idea, a draft",
+  // the skill grid — "what would you like to simulate?" (each carries a preset lens)
+  categories: [
+    {
+      label: "Make",
+      skills: [
+        { label: "Hook", lens: "would stop", icon: "sparkle" },
+        { label: "Script", lens: "would finish", icon: "pen" },
+        { label: "Caption", lens: "would stop", icon: "hash" },
+      ],
+    },
+    {
+      label: "Test",
+      skills: [
+        { label: "A real video", lens: "would stop", icon: "play" },
+        { label: "A draft", lens: "would stop", icon: "doc" },
+      ],
+    },
+    {
+      label: "Ask",
+      skills: [
+        { label: "The room", lens: "would want", icon: "ask" },
+        { label: "A survey", lens: "would want", icon: "list" },
+      ],
+    },
   ],
 };
