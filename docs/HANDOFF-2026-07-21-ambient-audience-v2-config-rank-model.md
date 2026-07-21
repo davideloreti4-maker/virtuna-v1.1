@@ -290,13 +290,27 @@ Checkpoint committed first (`a68e6431`, preserves variant-B ④ + ⑤ Simulate +
   view renders **identically** (regression anchor). Live-verified both tabs; 0 console errors.
 - Scope (owner-picked): **creator template only**; networks kept, ask-why deferred as a stub.
 
+**Step 3 — ⑤ Simulate → the develop/spend gateway + cold-start intake (`86346820`).**
+- ⑤ is now the single universal place a full sim is ARMED (the spend moment — visible + deliberate,
+  never auto). **Two entry modes** via a `mode` prop: `develop` (warm, pre-filled from a rank + a
+  quiet tie-back "Developing this rank · Strong 8/10 stopped — never overturns it" = the refines-not-
+  contradicts law made visible; one tap to run) · `cold` (the ④ door → an **intake** step "What are
+  you testing?" collects a stimulus first, then arms).
+- **Intake names the SCREEN vs QUERY (+ COMPARE) fork:** SCREEN active (Test a video · Screen a
+  draft → the behavioral lens arm) · COMPARE **A/B** `soon` · QUERY (Ask the room · Survey) `soon`.
+  The soon doors are shown but disabled — their arms/outputs need their own read-templates (the
+  per-domain-bundle work). *(A/B added this session at owner's prompt — stubbed, same as query.)*
+- `SimulateIntake.tsx` (new, 145) = the intake step + shared sheet chrome as a LEAF module (main
+  imports leaf, never reverse → no import cycle; both files <500). `page.tsx` wires ④ door → cold,
+  skill/composer → develop, + a develop/cold toggle on the ⑤ chip. Live-verified both modes.
+
 **Still OPEN after this session:**
-- **Reframe ⑤ Simulate** (`AmbientSimulate.tsx`) as the develop/spend gateway + cold-start intake
-  (video/draft/ask/survey) + the ⑤ screen-vs-query fork. Still on its pre-model shape.
+- **Build the COMPARE (A/B) + QUERY (ask/survey) arms + their output surfaces** — currently `soon`
+  stubs in the ⑤ intake. Each needs its own read-template (comparative overlay · survey results).
 - **Prove the swap with a 2nd DomainTemplate** (pricing: demand curve · resistance curve · WTP tiers)
-  + a dev toggle — deferred this session; the seam is ready for it (add a `kind` + a template object).
+  + a dev toggle — the seam is ready (add a `kind` to `BrainDriver`/`PopulationMain` + a template).
 - **P2/P3 depth refinements** (Brain σ→plain-words · terrain declutter) — model-independent, anytime.
 - **Naming** for the light layer (rank · pulse · first take) — still owner's call.
 - Wiring the v2 route into the product (later; parallel session owns the product-thread rank comp).
 
-**Git tip:** `32eb84cf` on `design/ambient-audience-v2` (pushed to origin). Gates all green.
+**Git tip:** `86346820` on `design/ambient-audience-v2` (pushed to origin). Gates all green.
