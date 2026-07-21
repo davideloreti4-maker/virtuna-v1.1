@@ -1,30 +1,62 @@
 "use client";
 
 /**
- * AmbientSimulate — Ambient Audience v2, surface ⑤ "the simulate sheet" (the run picker).
+ * AmbientSimulate — Ambient Audience v2, surface ⑤ "the develop / spend gateway".
  *
- * Not a form — an instrument you ARM. The L4 Run shelf (lens · segment · stimulus) sits over the
- * inherited Thread context (room · scene · fidelity), and the choices assemble into a receipt
- * sentence you read back before the run fires. Reached from a ④ ACTIONS preset, a chat `Screen ▾`,
- * or a skill-card one-tap; on Simulate it hands off to the Overview watching-in-place state.
+ * The single universal place a full simulation is ARMED (2026-07-21 config/rank model). Every path to
+ * a full read passes through here — nothing ever auto-sims — because ⑤ is the SPEND MOMENT and must
+ * always be visible + deliberate. Two entry modes:
+ *
+ *   - `develop` (warm, the primary route) — opened PRE-FILLED from a skill's thin rank: the stimulus
+ *     and its preset lens are already set, one tap to run. A quiet tie-back names the rank being
+ *     deepened (honesty: the sim REFINES the rank, never contradicts it — same judgment, deeper
+ *     resolution).
+ *   - `cold` (the ④ "Test something against your audience →" door) — nothing to develop yet, so ⑤
+ *     opens on an INTAKE step ("What are you testing?") that collects the stimulus first, then arms.
+ *
+ * The intake also names the SCREEN vs QUERY fork (domain-scaffold): video / draft = a *screen* (the
+ * behavioral lens funnel → full brain/population read → Overview); ask / survey = a *query* (a
+ * question to the room → a lighter arm → a results surface); A/B = a *compare* (the core run on 2+
+ * stimuli → a comparative overlay). Scope 2026-07-21: the SCREEN path is fully wired; compare + query
+ * are present in the intake but deferred ("soon") — their arms/outputs need their own read-templates
+ * (the same per-domain-bundle work as pricing).
  *
  * Design laws honored (round-4 grammar):
- *  - The LENS is the one loud dial (the funnel of observable decisions); everything else is quiet.
- *  - Custom question compiles VISIBLY to the nearest preset (resolved open #2).
- *  - Scene ≠ provenance ⇒ ONE inline mono projection tag, never a gate (resolved open #8).
- *  - De-box: hairline dividers between sections, no nested bordered tiles.
- *  - Section = mono kicker + human question. Serif is reserved for voice — the stimulus is
- *    content-under-test, so it stays sans (quiet), never serif.
- *  - No coral: nothing is lost yet — this is the arming step, before any verdict.
+ *  - The LENS is the one loud dial; everything else is quiet. Custom compiles VISIBLY to the nearest
+ *    preset (#2). Scene ≠ provenance ⇒ ONE inline mono projection tag, never a gate (#8).
+ *  - De-box: hairline dividers, no nested bordered tiles. Section = mono kicker + human question.
+ *    Serif = voice only; the stimulus is content-under-test → stays sans. No coral (nothing lost yet).
  */
 
 import { useEffect, useRef, useState } from "react";
 import { TONE } from "./AmbientDetail";
 import type { SimTier } from "./AmbientOverview";
+import { CloseButton, IntakeStep, Kick, SHEET_STYLE } from "./SimulateIntake";
 
 // ── view-model ───────────────────────────────────────────────────────────────
 
 export type StimulusKind = "hook" | "video" | "idea" | "draft";
+
+/** How ⑤ was entered — pre-filled from a rank, or cold from the ④ door. */
+export type SimEntryMode = "develop" | "cold";
+
+/** The intake doors (cold-start). `family` names the screen/compare/query fork; `status` gates it. */
+export type IntakeKind = "video" | "draft" | "ab" | "ask" | "survey";
+export interface IntakeOption {
+  kind: IntakeKind;
+  label: string;
+  sub: string;
+  family: "screen" | "compare" | "query";
+  status: "active" | "soon";
+  stimulusKind?: StimulusKind; // what an active pick arms the run with
+}
+
+/** The rank a `develop` entry is deepening — the tie-back (sim refines this, never contradicts it). */
+export interface DevelopContext {
+  band: string; // "Strong"
+  value: string; // "8/10"
+  lensLabel: string; // "stopped" — what the rank measured
+}
 
 export interface SimLens {
   key: "stop" | "finish" | "share" | "follow" | "buy";
@@ -46,6 +78,8 @@ export interface SimulateData {
   lenses: SimLens[];
   defaultLens: number;
   segments: SimSegment[];
+  develop?: DevelopContext; // present when entered from a rank (mode "develop")
+  intake: IntakeOption[]; // the cold-start doors
 }
 
 export interface SimulateConfig {
@@ -82,14 +116,6 @@ function compileToLens(text: string, lenses: SimLens[]): number {
 }
 
 // ── small primitives ─────────────────────────────────────────────────────────
-
-function Kick({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="font-mono text-[12px] uppercase tracking-[0.08em]" style={{ color: TONE.faint }}>
-      {children}
-    </div>
-  );
-}
 
 /** Lightweight de-boxed dropdown (used for segment + fidelity). Closes on outside click / Esc. */
 function Dropdown({
@@ -166,18 +192,24 @@ function Dropdown({
   );
 }
 
-// ── the surface ──────────────────────────────────────────────────────────────
+// ── the arm card (the screen path — assembles the run + fires the spend) ───────
 
-export function AmbientSimulate({
+function ArmCard({
   data,
+  stimulus,
+  develop,
   onClose,
+  onBack,
   onSimulate,
 }: {
   data: SimulateData;
+  stimulus: { text: string; kind: StimulusKind };
+  develop?: DevelopContext;
   onClose?: () => void;
+  onBack?: () => void;
   onSimulate?: (config: SimulateConfig) => void;
 }) {
-  const { stimulus, room, provenance, lenses, segments } = data;
+  const { room, provenance, lenses, segments } = data;
   const [lensIdx, setLensIdx] = useState(data.defaultLens);
   const [custom, setCustom] = useState("");
   const [segIdx, setSegIdx] = useState(0);
@@ -195,33 +227,41 @@ export function AmbientSimulate({
   const receipt = `Screen to ${withCommas(n)} of ${room} · would they ${activeLens.label.toLowerCase()} · on ${scene} · SIM-1 ${TIER_LABEL[fidelity]}`;
 
   return (
-    <div
-      data-testid="ambient-simulate"
-      className="flex w-full max-w-[460px] flex-col rounded-[16px]"
-      style={{
-        background: "#1f1f1e",
-        border: `1px solid ${TONE.border}`,
-        color: TONE.cream,
-        fontFamily: "var(--font-sans, Inter, system-ui, sans-serif)",
-        boxShadow: "0 24px 64px rgba(0,0,0,.45)",
-      }}
-    >
+    <div data-testid="ambient-simulate" data-phase="arm" className="flex w-full max-w-[460px] flex-col rounded-[16px]" style={SHEET_STYLE}>
       {/* header + the stimulus under test */}
       <div className="px-[26px] pt-[24px]">
         <div className="flex items-start justify-between">
-          <Kick>Arm a simulation</Kick>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="-mr-1 -mt-1 flex h-7 w-7 items-center justify-center rounded-full text-[15px] transition-colors"
-            style={{ color: TONE.faint }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = TONE.cream)}
-            onMouseLeave={(e) => (e.currentTarget.style.color = TONE.faint)}
-          >
-            ✕
-          </button>
+          {onBack ? (
+            <button
+              type="button"
+              onClick={onBack}
+              className="-ml-1 flex items-center gap-1 text-[12px] font-mono uppercase tracking-[0.08em] transition-colors"
+              style={{ color: TONE.faint }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = TONE.cream)}
+              onMouseLeave={(e) => (e.currentTarget.style.color = TONE.faint)}
+            >
+              ‹ Arm a simulation
+            </button>
+          ) : (
+            <Kick>Arm a simulation</Kick>
+          )}
+          <CloseButton onClose={onClose} />
         </div>
+
+        {/* develop tie-back — the rank this sim is deepening (refines, never contradicts) */}
+        {develop ? (
+          <div className="mt-3 flex items-center gap-2 text-[12px]" style={{ color: TONE.faint }}>
+            <span className="h-1.5 w-1.5 flex-none rounded-full" style={{ background: TONE.dim }} aria-hidden />
+            <span>
+              Developing this rank ·{" "}
+              <span style={{ color: TONE.dim }}>
+                {develop.band} {develop.value} {develop.lensLabel}
+              </span>{" "}
+              — the sim opens it up, never overturns it
+            </span>
+          </div>
+        ) : null}
+
         <div className="mt-3 flex items-start gap-2.5 rounded-[12px] p-3.5" style={{ background: TONE.well }}>
           <span
             className="mt-px flex-none rounded-md px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.06em]"
@@ -330,7 +370,7 @@ export function AmbientSimulate({
         ) : null}
       </div>
 
-      {/* footer — the assembling receipt + arm + fidelity override */}
+      {/* footer — the spend moment: the assembling receipt + arm + fidelity override */}
       <div className="mt-6 border-t px-[26px] py-[18px]" style={{ borderColor: TONE.border }}>
         <div className="text-[12px] leading-[1.5]" style={{ color: TONE.faint }}>
           {receipt}
@@ -372,5 +412,41 @@ export function AmbientSimulate({
         </div>
       </div>
     </div>
+  );
+}
+
+// ── the gateway ────────────────────────────────────────────────────────────────
+
+export function AmbientSimulate({
+  data,
+  mode = "develop",
+  onClose,
+  onSimulate,
+}: {
+  data: SimulateData;
+  mode?: SimEntryMode;
+  onClose?: () => void;
+  onSimulate?: (config: SimulateConfig) => void;
+}) {
+  // cold entry lands on the intake step; develop entry is pre-filled → straight to the arm card.
+  const [picked, setPicked] = useState<IntakeOption | null>(null);
+  const onIntake = mode === "cold" && !picked;
+
+  if (onIntake) {
+    return <IntakeStep data={data} onClose={onClose} onPick={setPicked} />;
+  }
+
+  // the stimulus: from the picked intake door (cold) or the pre-filled data (develop).
+  const stimulus = picked?.stimulusKind ? { text: data.stimulus.text, kind: picked.stimulusKind } : data.stimulus;
+
+  return (
+    <ArmCard
+      data={data}
+      stimulus={stimulus}
+      develop={mode === "develop" ? data.develop : undefined}
+      onClose={onClose}
+      onBack={mode === "cold" ? () => setPicked(null) : undefined}
+      onSimulate={onSimulate}
+    />
   );
 }

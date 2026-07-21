@@ -43,6 +43,17 @@ export const SIMULATE_R4: SimulateData = {
     { label: "Drop-ins", share: 0.14 },
     { label: "Skeptics", share: 0.12 },
   ],
+  // the rank this run is deepening (only shown on a `develop` entry) — the sim refines it, never overturns it
+  develop: { band: "Strong", value: "8/10", lensLabel: "stopped" },
+  // cold-start intake doors — SCREEN active; COMPARE (A/B) + QUERY (ask/survey) deferred ("soon"),
+  // their arms/outputs need their own read-templates (the per-domain-bundle work, same as pricing)
+  intake: [
+    { kind: "video", label: "Test a real video", sub: "upload or paste a link — the full read", family: "screen", status: "active", stimulusKind: "video" },
+    { kind: "draft", label: "Screen a draft", sub: "a hook, script, or caption you're weighing", family: "screen", status: "active", stimulusKind: "draft" },
+    { kind: "ab", label: "Compare two (A/B)", sub: "run both variants, see who wins", family: "compare", status: "soon" },
+    { kind: "ask", label: "Ask the room", sub: "put a question to your audience", family: "query", status: "soon" },
+    { kind: "survey", label: "Run a survey", sub: "structured answers across the room", family: "query", status: "soon" },
+  ],
 };
 
 /** Same run, but the encounter scene ≠ calibration provenance — demonstrates the projection tag. */

@@ -45,7 +45,13 @@ function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; chi
 export default function AmbientV2DevPage() {
   const [surface, setSurface] = useState<Surface>("overview");
   const [mode, setMode] = useState<"simulating" | "rest">("simulating");
+  const [simMode, setSimMode] = useState<"develop" | "cold">("develop");
   const overviewData = mode === "simulating" ? OVERVIEW_R4 : OVERVIEW_R4_REST;
+  // ⑤ entry: develop = pre-filled from a rank (a skill / the composer); cold = the ④ door → intake
+  const openSim = (m: "develop" | "cold") => {
+    setSimMode(m);
+    setSurface("simulate");
+  };
 
   return (
     <div className="flex min-h-screen w-full flex-col items-center" style={{ background: "#141413", color: "#ece7de" }}>
@@ -82,6 +88,18 @@ export default function AmbientV2DevPage() {
                 </Chip>
               </div>
             </>
+          ) : surface === "simulate" ? (
+            <>
+              <span style={{ color: "rgba(236,231,222,.2)" }}>·</span>
+              <div className="flex gap-1.5">
+                <Chip on={simMode === "develop"} onClick={() => setSimMode("develop")}>
+                  develop a rank
+                </Chip>
+                <Chip on={simMode === "cold"} onClick={() => setSimMode("cold")}>
+                  cold · the ④ door
+                </Chip>
+              </div>
+            </>
           ) : null}
         </div>
       </div>
@@ -91,14 +109,19 @@ export default function AmbientV2DevPage() {
         {surface === "start" ? (
           <AmbientStart
             data={START_R4}
-            onSkill={() => setSurface("simulate")}
-            onTestDoor={() => setSurface("simulate")}
-            onSubmit={() => setSurface("simulate")}
+            onSkill={() => openSim("develop")}
+            onTestDoor={() => openSim("cold")}
+            onSubmit={() => openSim("develop")}
           />
         ) : surface === "simulate" ? (
           // a sheet, not an 800px panel — self-center so items-stretch doesn't stretch its height
           <div className="flex w-full items-center justify-center self-center">
-            <AmbientSimulate data={SIMULATE_R4} onClose={() => setSurface("start")} onSimulate={() => setSurface("overview")} />
+            <AmbientSimulate
+              data={SIMULATE_R4}
+              mode={simMode}
+              onClose={() => setSurface("start")}
+              onSimulate={() => setSurface("overview")}
+            />
           </div>
         ) : (
           <div style={{ height: AMBIENT_PANEL_HEIGHT }}>
