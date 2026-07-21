@@ -174,8 +174,9 @@ export function OutlierTile({
 
           HONESTY (D-02): render ONLY when tile.fit != null. On General / no-signal the fit
           is omitted ENTIRELY — no empty/zero bar, no "fit unavailable" placeholder, no
-          fabricated level. The bar is DATA, not the action: neutral track + a score-zone
-          tone (success/warning/muted), NEVER coral (one-accent law — coral is the CTA's). */}
+          fabricated level. Color is a DATA MARK used once: the magnitude bar stays NEUTRAL
+          cream (width alone carries the level), and the score-zone tone (success/warning/muted)
+          rides the leading dot on the label — NEVER the bar fill, NEVER coral (one-accent law). */}
       {tile.fit != null && (
         <div className="space-y-1">
           <div
@@ -186,12 +187,17 @@ export function OutlierTile({
               className="h-full rounded-full"
               style={{
                 width: FIT_BAR[tile.fit.level].width,
-                backgroundColor: FIT_BAR[tile.fit.level].color,
+                background: "linear-gradient(90deg, rgba(236,231,222,0.22), rgba(236,231,222,0.42))",
               }}
             />
           </div>
           <div className="flex flex-col gap-0.5">
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-foreground-muted">
+            <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-foreground-muted">
+              <span
+                className="h-[6px] w-[6px] shrink-0 rounded-full"
+                style={{ backgroundColor: FIT_BAR[tile.fit.level].color }}
+                aria-hidden="true"
+              />
               FIT · {tile.fit.level}
             </span>
             <span className="text-[11px] text-foreground-muted">
@@ -219,11 +225,30 @@ export function OutlierTile({
         }}
       />
 
-      {/* Secondary actions — Save (always) + "+ Track account" (only when tile.trackable).
-          Both are quiet, NON-accent cream chrome — NEVER coral (the Remix CTA below owns the
-          tile's one accent). Save persists the outlier to the Library shelf (item_type="outlier",
-          snapshot = the tile's own props); the shelf echoes the cover + measured strip without a
-          re-fetch. Track writes the watchlist row and toggles to "Tracking ✓" on success. */}
+      {/* Primary CTA — "Remix →": the forward chain step, the ONE cream primary per tile
+          (§0.5.7; primary ≠ accent — the legacy coral fill was retired). Single forward verb;
+          it leads, and Save + Track trail BELOW it (never stacked above). */}
+      <button
+        type="button"
+        onClick={() => onRemix?.(tile)}
+        disabled={!onRemix || remixPending}
+        aria-label="Remix this outlier into a Read"
+        className="w-full inline-flex items-center justify-center rounded-lg text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
+        style={{
+          minHeight: "46px",
+          color: "var(--color-action-foreground)",
+          backgroundColor: "var(--color-action)",
+          border: "none",
+          cursor: onRemix && !remixPending ? "pointer" : "default",
+        }}
+      >
+        {remixPending ? "Remixing…" : "Remix →"}
+      </button>
+
+      {/* Secondary actions — Save (always) + "+ Track account" (only when tile.trackable),
+          demoted BELOW the primary (§0.5.7 — the primary leads, Save trails). Quiet NON-accent
+          cream chrome — NEVER coral (the Remix CTA owns the tile's one accent). Save persists the
+          outlier to the Library shelf; Track writes the watchlist row and toggles to "Tracking ✓". */}
       <div className="flex items-center gap-3">
         {tile.trackable && (
           <button
@@ -252,25 +277,6 @@ export function OutlierTile({
           snapshot={{ ...tile }}
         />
       </div>
-
-      {/* Primary CTA — "Remix → Read": the forward chain step, cream primary (§1.7/§1.8;
-          the legacy coral fill was retired — primary ≠ accent). */}
-      <button
-        type="button"
-        onClick={() => onRemix?.(tile)}
-        disabled={!onRemix || remixPending}
-        aria-label="Remix this outlier into a Read"
-        className="w-full inline-flex items-center justify-center rounded-lg text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
-        style={{
-          minHeight: "46px",
-          color: "var(--color-action-foreground)",
-          backgroundColor: "var(--color-action)",
-          border: "none",
-          cursor: onRemix && !remixPending ? "pointer" : "default",
-        }}
-      >
-        {remixPending ? "Remixing…" : "Remix → Read"}
-      </button>
     </div>
   );
 }
