@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 
+import { CTA_VARIANT } from "@/components/offer/cta-config";
+
 /**
  * Sticky mobile CTA — the always-available close. Hidden on desktop and until
  * the hero has scrolled away (~70% of the first viewport), then slides up. On a
@@ -14,6 +16,10 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 export function StickyCta() {
   const [visible, setVisible] = useState(false);
   const reduced = useReducedMotion();
+
+  const coral = CTA_VARIANT === "coral";
+  const ctaBg = coral ? "bg-accent text-accent-foreground" : "bg-action text-action-foreground";
+  const ctaSub = coral ? "text-accent-foreground/70" : "text-action-foreground/70";
 
   useEffect(() => {
     const onScroll = () => setVisible(window.scrollY > window.innerHeight * 0.7);
@@ -43,12 +49,10 @@ export function StickyCta() {
           >
             <a
               href="#pricing"
-              className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-action text-[15px] font-semibold text-action-foreground transition-transform active:scale-[0.99]"
+              className={`flex h-12 w-full items-center justify-center gap-2 rounded-lg text-[15px] font-semibold transition-transform active:scale-[0.99] ${ctaBg}`}
             >
               Test your first video — $1
-              <span className="text-xs font-normal text-action-foreground/70">
-                $1 for 3 days
-              </span>
+              <span className={`text-xs font-normal ${ctaSub}`}>$1 for 3 days</span>
             </a>
           </div>
         </motion.div>

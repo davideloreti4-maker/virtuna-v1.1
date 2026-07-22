@@ -1,15 +1,17 @@
 import { Section, SectionHeading } from "./section-shell";
 import { BlurFade } from "@/components/velora/blur-fade";
+import { MediaSlot } from "@/components/offer/media-slot";
 import { cn } from "@/lib/utils";
 
 /**
- * Transformation — the loss-aversion beat. A before/after contrast: posting
- * blind (a gamble) vs posting with Maven (a verdict). Conceptual, honest — it
- * does NOT re-render the product; it names the stakes.
+ * Transformation — the loss-aversion beat, restyled as an asymmetric split:
+ * the argument (copy + the two contrast lists) on the left, a real before/after
+ * VISUAL on the right (two 9:16 slots — "posted blind" vs "read by Maven first",
+ * to be filled with real screenshots). Conceptual + honest — it names the stakes
+ * and shows the shape of the difference; it does NOT re-render the product.
  *
- * The RIGHT panel is the one lit element (a single coral liveness dot + a tone
- * step to bg-surface); the LEFT stays muted and dashed, reading as the "before"
- * you want to leave. RSC — composes the client BlurFade for entrance.
+ * The Maven side is the one lit element (a single coral liveness dot); the blind
+ * side stays muted/dashed, reading as the "before" you want to leave.
  */
 
 const BLIND = [
@@ -24,27 +26,18 @@ const KNOWN = [
   "Get the one fix that moves the number — then post with proof.",
 ];
 
-function Panel({
+function ContrastList({
   kicker,
-  title,
   rows,
   tone,
 }: {
   kicker: string;
-  title: string;
   rows: readonly string[];
   tone: "blind" | "known";
 }) {
   const known = tone === "known";
   return (
-    <div
-      className={cn(
-        "relative flex flex-col rounded-2xl p-7 md:p-8",
-        known
-          ? "border border-border-hover/40 bg-surface shadow-[0_20px_50px_-24px_rgba(0,0,0,0.6)]"
-          : "border border-dashed border-border bg-transparent",
-      )}
-    >
+    <div>
       <div className="flex items-center gap-2">
         {known ? (
           <span className="relative flex h-2 w-2">
@@ -63,22 +56,12 @@ function Panel({
           {kicker}
         </span>
       </div>
-
-      <h3
-        className={cn(
-          "mt-4 text-xl font-semibold tracking-tight",
-          known ? "text-foreground" : "text-foreground-secondary",
-        )}
-      >
-        {title}
-      </h3>
-
-      <ul className="mt-5 flex flex-col gap-3.5" role="list">
+      <ul className="mt-3.5 flex flex-col gap-2.5" role="list">
         {rows.map((row) => (
           <li
             key={row}
             className={cn(
-              "flex items-start gap-2.5 text-[15px] leading-relaxed",
+              "flex items-start gap-2.5 text-[14.5px] leading-relaxed",
               known ? "text-foreground-secondary" : "text-foreground-muted",
             )}
           >
@@ -96,33 +79,66 @@ function Panel({
 export function Transformation() {
   return (
     <Section>
-      <SectionHeading
-        eyebrow="The difference"
-        title={
-          <>
-            One posts and hopes. <br className="hidden sm:block" />
-            The other already knows.
-          </>
-        }
-        sub="Same video, two different creators. The gap between them isn't luck — it's whether they saw the reaction first."
-      />
+      <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
+        {/* LEFT — the argument */}
+        <div>
+          <SectionHeading
+            align="left"
+            eyebrow="The difference"
+            title={
+              <>
+                One posts and hopes. <br className="hidden sm:block" />
+                The other already knows.
+              </>
+            }
+            sub="Same video, two different creators. The gap between them isn't luck — it's whether they saw the reaction first."
+          />
 
-      <div className="mx-auto mt-12 grid max-w-4xl gap-5 md:mt-14 lg:grid-cols-2">
-        <BlurFade delay={0.05} direction="up">
-          <Panel
-            kicker="Posting blind"
-            title="A gamble, every single time."
-            rows={BLIND}
-            tone="blind"
-          />
-        </BlurFade>
+          <div className="mt-8 flex flex-col gap-6">
+            <BlurFade delay={0.05} direction="up">
+              <ContrastList kicker="Posting blind" rows={BLIND} tone="blind" />
+            </BlurFade>
+            <div className="h-px w-full bg-border" />
+            <BlurFade delay={0.12} direction="up">
+              <ContrastList kicker="Posting with Maven" rows={KNOWN} tone="known" />
+            </BlurFade>
+          </div>
+        </div>
+
+        {/* RIGHT — the before/after visual */}
         <BlurFade delay={0.14} direction="up">
-          <Panel
-            kicker="Posting with Maven"
-            title="A decision, backed by the reaction."
-            rows={KNOWN}
-            tone="known"
-          />
+          <div className="rounded-2xl border border-border bg-surface p-5 shadow-[0_20px_50px_-24px_rgba(0,0,0,0.6)] md:p-6">
+            <div className="grid grid-cols-2 gap-4">
+              <figure className="flex flex-col gap-3">
+                <MediaSlot
+                  kind="thumbnail"
+                  aspect="9 / 16"
+                  label="Screenshot: a flat post's analytics"
+                  hint="1080×1920"
+                />
+                <figcaption className="flex items-center gap-2 text-[12.5px] text-foreground-muted">
+                  <span className="h-1.5 w-1.5 rounded-full border border-foreground-muted/60" />
+                  Posted blind
+                </figcaption>
+              </figure>
+
+              <figure className="flex flex-col gap-3">
+                <MediaSlot
+                  kind="screenshot"
+                  aspect="9 / 16"
+                  label="Screenshot: the Maven verdict on the same video"
+                  hint="1080×1920"
+                />
+                <figcaption className="flex items-center gap-2 text-[12.5px] font-medium text-foreground-secondary">
+                  <span className="relative flex h-1.5 w-1.5">
+                    <span className="absolute inline-flex h-full w-full rounded-full bg-accent opacity-60 motion-safe:animate-ping" />
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-accent" />
+                  </span>
+                  Read by Maven first
+                </figcaption>
+              </figure>
+            </div>
+          </div>
         </BlurFade>
       </div>
     </Section>

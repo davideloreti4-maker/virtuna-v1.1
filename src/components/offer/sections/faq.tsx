@@ -63,19 +63,25 @@ const FAQ_ITEMS: readonly FaqItem[] = [
 export function Faq() {
   return (
     <Section id="faq" divider>
-      <SectionHeading
-        eyebrow="FAQ"
-        title="Questions, answered"
-        sub="Everything worth knowing before your first prediction."
-      />
+      <div className="grid gap-10 lg:grid-cols-[minmax(0,340px)_1fr] lg:gap-16">
+        {/* LEFT — heading holds its own column (differentiates from the
+            centered-heading sections + reads premium). */}
+        <div className="lg:sticky lg:top-28 lg:self-start">
+          <SectionHeading
+            align="left"
+            eyebrow="FAQ"
+            title="Questions, answered"
+            sub="Everything worth knowing before your first prediction."
+          />
+        </div>
 
-      <div className="mx-auto mt-12 max-w-2xl">
+        {/* RIGHT — the answers */}
         <AccordionRoot type="single" collapsible className="space-y-3">
           {FAQ_ITEMS.map((item) => (
             <AccordionItem
               key={item.id}
               value={item.id}
-              className="border-border bg-surface-elevated/50"
+              className="rounded-xl border-border bg-surface-elevated/50"
             >
               <AccordionTrigger className="text-left text-foreground hover:text-foreground/80 [&>svg]:text-foreground">
                 {item.q}

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Section, SectionHeading } from "./section-shell";
 import { BlurFade } from "@/components/velora/blur-fade";
 import { BorderBeam } from "@/components/velora/border-beam";
+import { PrimaryCta } from "@/components/offer/cta-config";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PLANS, TRIAL, type Plan } from "@/lib/pricing";
@@ -160,12 +161,18 @@ function PlanCard({ plan, annual }: { plan: Plan; annual: boolean }) {
         ))}
       </ul>
 
-      {/* CTA — only Pro carries the filled cream primary; others stay quiet so
-          ONE CTA dominates the section. */}
+      {/* CTA — only Pro carries the filled primary (routed through the page's
+          one CTA switch); others stay quiet so ONE CTA dominates the section. */}
       <div className="mt-auto flex flex-col gap-3 pt-8">
-        <Button asChild variant={highlighted ? "primary" : "secondary"} size="lg">
-          <Link href={SIGNUP_URL}>Start for {TRIAL.price}</Link>
-        </Button>
+        {highlighted ? (
+          <PrimaryCta href={SIGNUP_URL} size="lg" full>
+            Start for {TRIAL.price}
+          </PrimaryCta>
+        ) : (
+          <Button asChild variant="secondary" size="lg">
+            <Link href={SIGNUP_URL}>Start for {TRIAL.price}</Link>
+          </Button>
+        )}
         <p className="text-center text-xs text-foreground-muted">{TRIAL.microcopy}</p>
       </div>
     </article>

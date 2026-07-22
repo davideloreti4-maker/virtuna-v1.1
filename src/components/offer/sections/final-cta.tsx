@@ -1,7 +1,5 @@
-import Link from "next/link";
-
 import { BlurFade } from "@/components/velora/blur-fade";
-import { Button } from "@/components/ui/button";
+import { PrimaryCta } from "@/components/offer/cta-config";
 import { TRIAL } from "@/lib/pricing";
 import { SIGNUP_URL } from "@/lib/routes";
 
@@ -37,9 +35,9 @@ export function FinalCta() {
 
         <BlurFade delay={0.14}>
           <div className="flex flex-col items-center gap-3">
-            <Button asChild variant="primary" size="lg">
-              <Link href={SIGNUP_URL}>Test your first video — {TRIAL.price}</Link>
-            </Button>
+            <PrimaryCta href={SIGNUP_URL} size="lg">
+              Test your first video — {TRIAL.price}
+            </PrimaryCta>
             <p className="text-sm text-foreground-muted">{TRIAL.microcopy}</p>
           </div>
         </BlurFade>

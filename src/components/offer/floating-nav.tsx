@@ -6,6 +6,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 
 import { cn } from "@/lib/utils";
 import { MavenLogo } from "@/components/brand/maven-logo";
+import { CTA_VARIANT } from "@/components/offer/cta-config";
 
 /**
  * FloatingNav — the /go top bar as a clean, premium floating island: a wider,
@@ -152,7 +153,12 @@ export function FloatingNav() {
               <a
                 href="#pricing"
                 onClick={() => setOpen(false)}
-                className="flex min-h-[44px] items-center justify-center rounded-xl bg-action px-4 text-[15px] font-semibold text-action-foreground transition-transform hover:scale-[1.01] active:scale-[0.99]"
+                className={cn(
+                  "flex min-h-[44px] items-center justify-center rounded-xl px-4 text-[15px] font-semibold transition-transform hover:scale-[1.01] active:scale-[0.99]",
+                  CTA_VARIANT === "coral"
+                    ? "bg-accent text-accent-foreground"
+                    : "bg-action text-action-foreground",
+                )}
               >
                 Start for $1
               </a>

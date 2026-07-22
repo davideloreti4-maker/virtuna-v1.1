@@ -2,10 +2,15 @@ import type { Metadata } from "next";
 import { HeroShowcase } from "@/components/offer/hero-showcase";
 import { FloatingNav } from "@/components/offer/floating-nav";
 import { BlurFade } from "@/components/velora/blur-fade";
+import { PrimaryCta } from "@/components/offer/cta-config";
+import { PlatformBar } from "@/components/offer/sections/platform-bar";
 import { Transformation } from "@/components/offer/sections/transformation";
+import { DemoVideo } from "@/components/offer/sections/demo-video";
 import { HowItWorks } from "@/components/offer/sections/how-it-works";
 import { ProofMechanism } from "@/components/offer/sections/proof-mechanism";
+import { Testimonials } from "@/components/offer/sections/testimonials";
 import { Pricing } from "@/components/offer/sections/pricing";
+import { Guarantee } from "@/components/offer/sections/guarantee";
 import { Faq } from "@/components/offer/sections/faq";
 import { FinalCta } from "@/components/offer/sections/final-cta";
 import { OfferFooter } from "@/components/offer/sections/footer";
@@ -101,12 +106,9 @@ export default function OfferPage() {
             </BlurFade>
             <BlurFade delay={0.26}>
               <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-                <a
-                  href="#pricing"
-                  className="inline-flex h-12 items-center justify-center rounded-lg bg-action px-6 text-[15px] font-semibold text-action-foreground transition-transform hover:scale-[1.02] active:scale-[0.99]"
-                >
+                <PrimaryCta href="#pricing" size="lg">
                   Test your first video — $1
-                </a>
+                </PrimaryCta>
                 <span className="text-[13px] text-foreground-muted">
                   $1 for 3 days · cancel anytime
                 </span>
@@ -126,11 +128,17 @@ export default function OfferPage() {
         </div>
       </section>
 
-      {/* the rest of the page — the persuasion arc */}
+      {/* honest credibility strip, directly under the hero */}
+      <PlatformBar />
+
+      {/* the rest of the page — the persuasion arc, in alternating tone-zones */}
       <Transformation />
+      <DemoVideo />
       <HowItWorks />
       <ProofMechanism />
+      <Testimonials />
       <Pricing />
+      <Guarantee />
       <Faq />
       <FinalCta />
       <OfferFooter />

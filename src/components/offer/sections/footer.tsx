@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { MavenMark } from "@/components/brand/maven-logo";
 import { SIGNUP_URL } from "@/lib/routes";
 
 /**
@@ -13,11 +14,9 @@ export function OfferFooter() {
   return (
     <footer className="border-t border-border">
       <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-5 py-10 sm:flex-row">
-        <span className="flex items-center gap-2 text-sm text-foreground-muted">
-          <span className="grid h-5 w-5 place-items-center rounded-md bg-accent text-[11px] font-extrabold text-accent-foreground">
-            M
-          </span>
-          Maven
+        <span className="flex items-center gap-2.5 text-sm text-foreground-muted">
+          <MavenMark size={16} />
+          <span className="font-semibold text-foreground-secondary">Maven</span>
           <span className="text-foreground-muted/70">— a Numen Machines product</span>
         </span>
 
