@@ -42,7 +42,7 @@ const STEPS: readonly Step[] = [
 
 export function HowItWorks() {
   return (
-    <Section divider>
+    <Section id="how-it-works" divider>
       <SectionHeading
         eyebrow="How it works"
         title="Three taps to a verdict"

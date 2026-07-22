@@ -62,7 +62,7 @@ const FAQ_ITEMS: readonly FaqItem[] = [
 
 export function Faq() {
   return (
-    <Section divider>
+    <Section id="faq" divider>
       <SectionHeading
         eyebrow="FAQ"
         title="Questions, answered"
