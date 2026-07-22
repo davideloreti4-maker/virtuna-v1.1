@@ -129,8 +129,10 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
         </div>
 
         {/* Recipe — Topic · Take · Format as a visible formula (this idea card's SIGNATURE; was
-            buried in the expand). A horizontal divided strip reads as the "make-it-from" recipe.
-            The Format cell is omitted when absent — honest, never an empty cell. */}
+            buried in the expand). A labeled, horizontally-divided strip reads as the "make-it-from"
+            recipe. The Format cell is omitted when absent — honest, never an empty cell. */}
+        <div>
+        <p className={`mb-1 ${SECTION_LABEL}`}>Make it from</p>
         <div className="flex overflow-hidden rounded-lg border border-white/[0.06] bg-white/[0.02]">
           {[
             { label: 'Topic', value: topic },
@@ -145,6 +147,7 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
               <p className="mt-0.5 line-clamp-2 text-[13px] leading-snug text-foreground-secondary">{cell.value}</p>
             </div>
           ))}
+        </div>
         </div>
 
         {/* Per-persona generation: the aim + the aimed-at reader's own verdict (the receipt).

@@ -340,6 +340,19 @@ export const HookCardBlockSchema = z.object({
     scored: z.boolean().optional(),
     // Multi-modal hint (corpus/hooks.md) — nullable
     channel: z.string().nullable(),    // e.g. "spoken", "visual", "caption", "edit", "audio"
+    // VISUAL HOOK (owner 2026-07-22): the FIRST-FRAME technique that opens the video, paired
+    // beside the spoken hookLine — the *execution* of the ranked hook, not a competing hook. The
+    // technique name is a real Sandcastles first-frame TECHNIQUE (corpus.ts: 'crash-zoom',
+    // 'match-cut', 'on-screen-text', …), `onScreen` is what is literally on screen at 0s.
+    // OPTIONAL + nullable → hooks without a visual angle omit it entirely (byte-identical to the
+    // pre-visualHook shape → regression gate). Inert in prod until the runner emits it (deferred).
+    visualHook: z
+      .object({
+        technique: z.string(), // named first-frame technique (grounded taxonomy)
+        onScreen: z.string(),  // what is literally on screen at 0s
+      })
+      .nullable()
+      .optional(),
     // predictedFailureMode: retained nullable field. Originally the rubric-critic's
     // "if this flops, here's why" texture (Plan 14-02); the critic was removed in S5
     // (was OFF / ~100% fail), so this is always null today. Kept OPTIONAL/nullable so
@@ -399,9 +412,30 @@ export const ScriptCardBlockSchema = z.object({
         content: z.string(),           // the actual script content for this beat
         timing: z.string(),            // timing window (e.g. "0–3s", "3–15s")
         retentionMarker: z.string(),   // craft reasoning: WHY this beat holds attention — NOT a score
+        // FILMING (owner 2026-07-22): the per-beat director cue — HOW to shoot this beat
+        // (camera/framing · b-roll or on-screen text · delivery), distinct from `content` (what
+        // to say) and `retentionMarker` (why it holds). Visible under the beat's content. OPTIONAL
+        // + nullable → beats without direction omit it (back-compat; inert in prod until wired).
+        filming: z.string().nullable().optional(),
       }),
     ),
     openingBeatSeed: z.string(),       // the one-line hook fed to the Flash hook-beat gate (D-01)
+    // TOPIC / FORMAT (owner 2026-07-22): a script realizes a topic in a format — the meta line
+    // ("Talking-head · Creator growth"). OPTIONAL + nullable → omitted when unknown (back-compat).
+    topic: z.string().nullable().optional(),
+    format: z.string().nullable().optional(),
+    // PRODUCTION (owner 2026-07-22): the consolidated "How to film" summary at the foot of the
+    // card — the shot list, key on-screen text, and setup, complementing the per-beat cues. Owner
+    // chose BOTH per-beat cues AND this summary. OPTIONAL + nullable → omitted when absent.
+    production: z
+      .object({
+        shots: z.string(),                        // shot list summary
+        onScreenText: z.string(),                 // key on-screen text overlays
+        setup: z.string(),                        // gear / lighting / framing setup
+        edit: z.string().nullable().optional(),   // edit style (optional)
+      })
+      .nullable()
+      .optional(),
     // Opener-scoped band signal (Pitfall 5 — OPENER ONLY, not full-watch/general retention)
     band: z.enum(["Strong", "Mixed", "Weak"]),
     fraction: z.string(),              // e.g. "7/10 stop" — opener audience fraction only
@@ -504,6 +538,20 @@ export const RemixCardBlockSchema = z.object({
     // the v2 axes. Feeds the AudienceLens Population·1,000 Sheet. OPTIONAL → General / legacy /
     // uncharacterized runs omit it (byte-identical shape).
     population: PopulationAggregateSchema.optional(),
+    // READY TO FILM (owner 2026-07-22): the shoot plan for YOUR adapted version — how to execute
+    // the borrowed format for your angle. Mirrors the Script card's `production`. This is the
+    // remix's "decode → adapt → FILM" payoff: `sourceDecode`/`formatBorrowed` describe the
+    // ORIGINAL; this describes what YOU shoot. OPTIONAL + nullable → back-compat; inert in prod
+    // until the runner emits it (deferred, same as the script card's production).
+    production: z
+      .object({
+        shots: z.string(),                        // shot list for the adapted version
+        onScreenText: z.string(),                 // key on-screen text overlays
+        setup: z.string(),                        // gear / lighting / framing setup
+        edit: z.string().nullable().optional(),   // edit style (optional)
+      })
+      .nullable()
+      .optional(),
   }),
 });
 

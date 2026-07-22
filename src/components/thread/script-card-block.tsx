@@ -17,7 +17,7 @@
  */
 
 import { useState } from 'react';
-import { Copy, Check } from '@phosphor-icons/react';
+import { Copy, Check, VideoCamera } from '@phosphor-icons/react';
 import type { ScriptCardBlock } from '@/lib/tools/blocks';
 import { useOnTestScript } from '@/lib/script-test-context';
 import { cardScrollQuoteReactions } from '@/components/audience-lens/flat-card-reactions';
@@ -36,7 +36,10 @@ export interface ScriptCardRendererProps {
 }
 
 export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRendererProps) {
-  const { beats, openingBeatSeed, band, fraction, scrollQuote, proof, grounded, population } = block.props;
+  const { beats, openingBeatSeed, topic, format, production, band, fraction, scrollQuote, proof, grounded, population } = block.props;
+
+  // The topic·format meta line (a script realizes a topic in a format). Either may be absent.
+  const metaBits = [format, topic].filter((s): s is string => typeof s === 'string' && s.length > 0);
 
   // Read ScriptTestContext — enables ScriptThreadView to provide the handler without
   // prop-drilling through MessageBlocks (mirrors HookCardRenderer + HookTestContext).
@@ -89,9 +92,19 @@ export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRend
           the beat STRUCTURE). Grounding receipt sits under it when the run was sourced. */}
       <div className="flex flex-col gap-3 px-4 pt-4">
         <div className="flex items-center justify-between gap-3">
-          <p className={SECTION_LABEL}>
-            {beats.length} {beats.length === 1 ? 'beat' : 'beats'}
-          </p>
+          <div className="flex min-w-0 items-center gap-2">
+            <p className={SECTION_LABEL}>
+              {beats.length} {beats.length === 1 ? 'beat' : 'beats'}
+            </p>
+            {/* Topic · Format — a script realizes a topic in a format (owner 2026-07-22). Muted
+                meta beside the beat count; each half omitted when absent (honesty). */}
+            {metaBits.length > 0 && (
+              <>
+                <span className="text-foreground-muted/50" aria-hidden="true">·</span>
+                <p className="truncate text-[12px] text-foreground-muted">{metaBits.join(' · ')}</p>
+              </>
+            )}
+          </div>
           <button
             type="button"
             onClick={handleCopyScript}
@@ -156,6 +169,17 @@ export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRend
 
                 <p className="mt-1 text-[13.5px] leading-relaxed text-foreground-secondary">{beat.content}</p>
 
+                {/* Filming cue — HOW to shoot this beat (camera/framing · b-roll or on-screen
+                    text · delivery). Visible by default: this is the value the owner asked for —
+                    the script now tells you what to say AND how to film it (owner 2026-07-22).
+                    The `retentionMarker` (why it holds) stays on the caret below. */}
+                {beat.filming && (
+                  <p className="mt-1.5 flex gap-1.5 text-[12px] leading-relaxed text-foreground-muted">
+                    <VideoCamera size={13} weight="fill" className="mt-px shrink-0 opacity-70" aria-hidden="true" />
+                    <span>{beat.filming}</span>
+                  </p>
+                )}
+
                 {isExpanded && (
                   <p className="mt-1.5 text-[12px] leading-relaxed text-foreground-muted">
                     ↳ {beat.retentionMarker}
@@ -166,6 +190,31 @@ export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRend
           );
         })}
       </div>
+
+      {/* HOW TO FILM — the consolidated production summary (owner chose BOTH per-beat cues AND
+          this foot summary). A quiet tone-zone: shot list, on-screen text, setup, edit — the
+          creator's shoot checklist once they've read the beats. Absent → nothing (honesty). */}
+      {production && (
+        <div className="border-t border-white/[0.06] px-4 py-3">
+          <div className="flex items-center gap-1.5">
+            <VideoCamera size={13} weight="fill" className="shrink-0 opacity-70 text-foreground-secondary" aria-hidden="true" />
+            <p className={SECTION_LABEL}>How to film</p>
+          </div>
+          <dl className="mt-2 flex flex-col gap-1.5">
+            {[
+              { term: 'Shots', value: production.shots },
+              { term: 'On-screen text', value: production.onScreenText },
+              { term: 'Setup', value: production.setup },
+              ...(production.edit ? [{ term: 'Edit', value: production.edit }] : []),
+            ].map((row) => (
+              <div key={row.term} className="flex gap-2 text-[12.5px] leading-relaxed">
+                <dt className="w-[86px] shrink-0 text-foreground-muted">{row.term}</dt>
+                <dd className="min-w-0 flex-1 text-foreground-secondary">{row.value}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      )}
 
       {/* Proof unit — the quiet room through-line, opener-only (the fraction is scoped to the
           opening beat, Pitfall 5). Sits BELOW the timeline now: the beats are the hero. */}
