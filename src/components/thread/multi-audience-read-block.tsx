@@ -146,6 +146,13 @@ function AudienceRead({
 /**
  * Compact side-by-side verdict header for the 2-audience compare (D-08) — the at-a-glance
  * "wins for X, bombs for Y" row. Band stated ONCE per audience (a colored dot + the word).
+ *
+ * De-boxed 2026-07-22: was a nested `rounded-lg border bg-white/[0.02] px-3.5` box sitting
+ * INSIDE the already-bordered Read card — a box-in-a-box while every sibling section runs
+ * flat/flush. Now a flat summary header, flush with the card's px-4 content, divided from the
+ * per-audience reads below by the same `border-b` hairline the card's other sections use.
+ * Each audience is an inline-flex unit, so a narrow viewport wraps whole units (clean) rather
+ * than breaking mid-audience.
  */
 function CompareVerdictRow({
   audiences,
@@ -153,7 +160,7 @@ function CompareVerdictRow({
   audiences: MultiAudienceReadBlock['props']['audiences'];
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3.5 py-3">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-white/[0.06] pb-4">
       {audiences.map((a, i) => (
         <span key={`${a.name}-${i}`} className="inline-flex items-center gap-2 text-[13.5px]">
           {i > 0 && (
