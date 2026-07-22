@@ -96,6 +96,7 @@ export const PRICING_TEMPLATE: DomainTemplate = {
     // ● voices — coded reasons + exemplar cast
     voices: {
       kicker: "Why · coded from 1,000",
+      total: 1000, // the denominator behind each reason's share bar
       reasons: [
         {
           label: "The price outruns the value",

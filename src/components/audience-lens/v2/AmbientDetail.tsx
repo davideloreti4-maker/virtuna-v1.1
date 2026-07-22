@@ -11,11 +11,13 @@
  * (it added no value — build handoff §4). The verdict stands alone as the biggest type = the answer.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { motion } from "motion/react";
 import { AMBIENT_PANEL_HEIGHT } from "./AmbientOverview";
 import { BrainFrame } from "./BrainTab";
 import { PopulationFrame } from "./AudienceTab";
 import type { DomainTemplate } from "./domain-template";
+import { useCountUp } from "@/hooks/useCountUp";
 
 // ── view-model ───────────────────────────────────────────────────────────────
 
@@ -73,6 +75,10 @@ export interface CodedReason {
   quote: string; // serif verbatim
   who: string; // "Maya · skeptic"
   loss?: boolean; // the dominant objection (coral count)
+  /** Cross-tab thread — this human reason IS a brain moment. `toMoment` matches a brain
+   *  `whyThisSecond.moment` ("0:04 · the drop"); rendered as a tappable link that jumps to the
+   *  brain tab and flashes that moment. The audience "why" and the brain "why" are one story. */
+  thread?: { toMoment: string };
 }
 
 // shared r4 tone system
@@ -87,12 +93,12 @@ export const TONE = {
   well: "#262624",
 } as const;
 
-// shared kicker + "human question owns its number" heads (r4 grammar)
+// shared kicker — quiet, airy small-caps chrome (premium restraint: a whisper, not a shout)
 export function Kick({ children, tag }: { children: React.ReactNode; tag?: string }) {
   return (
-    <div className="flex items-baseline justify-between font-mono text-[12px] uppercase tracking-[0.08em]">
-      <span style={{ color: TONE.faint }}>{children}</span>
-      {tag ? <span style={{ color: "rgba(236,231,222,.28)", letterSpacing: "0.06em" }}>{tag}</span> : null}
+    <div className="flex items-baseline justify-between font-mono text-[10px] uppercase tracking-[0.15em]">
+      <span style={{ color: "rgba(236,231,222,.32)" }}>{children}</span>
+      {tag ? <span style={{ color: "rgba(236,231,222,.24)", letterSpacing: "0.1em" }}>{tag}</span> : null}
     </div>
   );
 }
@@ -140,17 +146,64 @@ export function HowToRead() {
 
 // ── shared: the verdict chip (rides ON the hero figure) + the UNLOCK (the cheat code) ──
 
-/** The verdict now rides as a chip on the hero figure (the figure is the hero, not a big fixed
- *  number). Bottom-left, on a scrim so it reads over the cortex/terrain. */
-export function VerdictChip({ verdict }: { verdict: { value: string; label: string } }) {
+/** Split a pre-formatted verdict ("38.2%", "$24") into a countable number + its prefix/suffix, so
+ *  the chip can count UP to it as the society resolves. Preserves the decimal precision of the source
+ *  (38.2 → one decimal) by scaling. Returns null when there is no number to animate. */
+function parseVerdictValue(
+  value: string,
+): { prefix: string; to: number; scale: number; decimals: number; suffix: string } | null {
+  const m = value.match(/^(\D*)([\d.]+)(.*)$/);
+  if (!m) return null;
+  const prefix = m[1] ?? "";
+  const numStr = m[2] ?? "";
+  const suffix = m[3] ?? "";
+  const num = parseFloat(numStr);
+  if (!Number.isFinite(num)) return null;
+  const decimals = numStr.includes(".") ? (numStr.split(".")[1]?.length ?? 0) : 0;
+  const scale = 10 ** decimals;
+  return { prefix, to: Math.round(num * scale), scale, decimals, suffix };
+}
+
+function AnimatedVerdictValue({
+  parsed,
+  className,
+  color,
+}: {
+  parsed: NonNullable<ReturnType<typeof parseVerdictValue>>;
+  className: string;
+  color: string;
+}) {
+  const { prefix, to, scale, decimals, suffix } = parsed;
+  const display = useCountUp({
+    to,
+    duration: 1.4,
+    format: (v) => `${prefix}${(v / scale).toFixed(decimals)}${suffix}`,
+  });
+  return (
+    <motion.span className={className} style={{ color }}>
+      {display}
+    </motion.span>
+  );
+}
+
+/** The verdict rides as a chip on the hero figure (the figure is the hero, not a big fixed number).
+ *  Bottom-left, on a scrim so it reads over the cortex/terrain. When `animate`, the number counts up
+ *  as the figure resolves (the terrain cascade) — `useCountUp` self-disables on reduced-motion. */
+export function VerdictChip({ verdict, animate = false }: { verdict: { value: string; label: string }; animate?: boolean }) {
+  const parsed = animate ? parseVerdictValue(verdict.value) : null;
+  const valueCls = "text-[24px] font-light leading-none tracking-[-0.01em] tabular-nums";
   return (
     <div
       className="absolute bottom-2.5 left-2.5 flex items-baseline rounded-[10px] px-2.5 py-1.5"
       style={{ background: "rgba(20,20,19,.82)" }}
     >
-      <span className="text-[24px] font-light leading-none tracking-[-0.01em]" style={{ color: TONE.cream }}>
-        {verdict.value}
-      </span>
+      {parsed ? (
+        <AnimatedVerdictValue parsed={parsed} className={valueCls} color={TONE.cream} />
+      ) : (
+        <span className={valueCls} style={{ color: TONE.cream }}>
+          {verdict.value}
+        </span>
+      )}
       <span className="ml-1.5 text-[12px]" style={{ color: TONE.faint }}>
         {verdict.label}
       </span>
@@ -207,12 +260,22 @@ export function AmbientDetail({
   className?: string;
 }) {
   const [tab, setTab] = useState<Tab>(initialTab);
+  // Cross-tab thread — a coded reason on the audience tab jumps here to the brain and briefly flashes
+  // the matching moment (the human "why" and the mechanical "why" are one story). Cleared after the
+  // flash so it doesn't re-trigger on a later manual visit.
+  const [flashMoment, setFlashMoment] = useState<string | null>(null);
   const { backLabel, pager, verdict, unlock, brain, population } = template;
+
+  useEffect(() => {
+    if (!flashMoment) return;
+    const id = setTimeout(() => setFlashMoment(null), 2200);
+    return () => clearTimeout(id);
+  }, [flashMoment]);
 
   return (
     <div
       data-testid="ambient-detail"
-      className={`flex w-full max-w-[380px] flex-col rounded-[16px] ${className ?? ""}`}
+      className={`flex w-full max-w-[480px] flex-col rounded-[16px] ${className ?? ""}`}
       style={{
         height: AMBIENT_PANEL_HEIGHT,
         background: "#1f1f1e",
@@ -265,9 +328,17 @@ export function AmbientDetail({
       {/* body — the hero figure leads (frame renders hero + chip → unlock → detail) */}
       <div className="min-h-0 flex-1 overflow-y-auto px-[26px] pb-[26px]">
         {tab === "brain" ? (
-          <BrainFrame brain={brain} verdict={verdict} unlock={unlock} reducedMotion={reducedMotion} />
+          <BrainFrame brain={brain} verdict={verdict} unlock={unlock} reducedMotion={reducedMotion} flashMoment={flashMoment} />
         ) : population ? (
-          <PopulationFrame population={population} verdict={verdict} reducedMotion={reducedMotion} />
+          <PopulationFrame
+            population={population}
+            verdict={verdict}
+            reducedMotion={reducedMotion}
+            onJumpToBrain={(moment) => {
+              setFlashMoment(moment);
+              setTab("brain");
+            }}
+          />
         ) : (
           <div
             className="flex h-full items-center justify-center py-16 text-center text-[13px]"

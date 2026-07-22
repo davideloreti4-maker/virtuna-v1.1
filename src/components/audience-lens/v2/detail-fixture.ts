@@ -99,6 +99,7 @@ export const CREATOR_TEMPLATE: DomainTemplate = {
     // ● voices — coded reasons + exemplar cast
     voices: {
       kicker: "Why · coded from 1,000",
+      total: 1000, // the denominator behind each reason's share bar
       reasons: [
         {
           label: "The payoff comes too late",
@@ -106,6 +107,8 @@ export const CREATOR_TEMPLATE: DomainTemplate = {
           quote: "i'd be gone before the point lands",
           who: "Maya · skeptic",
           loss: true,
+          // cross-tab thread — this human reason IS the brain's 0:04 attention drop (same moment)
+          thread: { toMoment: "0:04 · the drop" },
         },
         {
           label: "The $400 stake feels real",

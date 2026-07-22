@@ -104,7 +104,13 @@ export interface PopulationFrameData {
   segments?: { title: string; rows: SegmentStop[] }; // ◇ optional — include ONLY when it's a cut
   //   ORTHOGONAL to the terrain districts. Creator omits it (the labeled terrain already says who
   //   stopped); pricing includes it (willingness-to-pay tiers are a different cut than the clusters).
-  voices: { kicker: string; reasons: CodedReason[] }; // ● shared — coded reasons + exemplar cast
+  voices: {
+    kicker: string;
+    reasons: CodedReason[];
+    /** Total coded voices (the "coded from N" denominator) — each reason's `count` is a share of
+     *  this, so the receipts render a proportional weight bar. Defaults to 1000 when omitted. */
+    total?: number;
+  }; // ● shared — coded reasons + exemplar cast
   /** One-line interpretation under the terrain hero — the non-obvious read of the society ("your
    *  believers cluster in builders; skeptics are the ceiling"), so the hero figure carries insight,
    *  not just a labelled map. */
