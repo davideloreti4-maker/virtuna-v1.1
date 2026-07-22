@@ -15,16 +15,7 @@ import { Faq } from "@/components/offer/sections/faq";
 import { FinalCta } from "@/components/offer/sections/final-cta";
 import { OfferFooter } from "@/components/offer/sections/footer";
 import { StickyCta } from "@/components/offer/sections/sticky-cta";
-
-/** Fine film grain (inline, no asset) — the matte texture that keeps the dark wash from reading flat. */
-const GRAIN =
-  "data:image/svg+xml," +
-  encodeURIComponent(
-    "<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'>" +
-      "<filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/>" +
-      "<feColorMatrix type='saturate' values='0'/></filter>" +
-      "<rect width='140' height='140' filter='url(#n)' opacity='0.55'/></svg>",
-  );
+import { GRAIN_URL } from "@/components/offer/atmosphere";
 
 export const metadata: Metadata = {
   title: "Maven — Know if your video will pop before you post",
@@ -76,7 +67,7 @@ export default function OfferPage() {
           {/* film grain */}
           <div
             className="absolute inset-0 opacity-[0.03] mix-blend-soft-light"
-            style={{ backgroundImage: `url("${GRAIN}")`, backgroundSize: "140px 140px" }}
+            style={{ backgroundImage: `url("${GRAIN_URL}")`, backgroundSize: "140px 140px" }}
           />
           {/* settle into the page below */}
           <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-transparent to-background" />

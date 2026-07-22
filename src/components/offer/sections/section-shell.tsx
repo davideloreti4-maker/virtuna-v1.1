@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { GRAIN_URL } from "@/components/offer/atmosphere";
 
 /**
  * Shared section primitives for the /go offer page — one grid, one spacing
@@ -50,6 +51,7 @@ export function Section({
         tone === "surface" && "bg-surface",
       )}
     >
+      <SectionTexture tone={tone} />
       <div
         className={cn(
           "relative mx-auto max-w-6xl px-5",
@@ -60,6 +62,50 @@ export function Section({
         {children}
       </div>
     </section>
+  );
+}
+
+/**
+ * The behind-content texture layer — a faint tooth so the matte grounds never
+ * read dead-flat. Every section gets a whisper of grain; the toned bands
+ * additionally get a masked dot-grid + a soft top-edge seam so the tone-zones
+ * feel crafted, not just recolored. Painted BELOW the content (both this and the
+ * content wrapper are positioned; DOM order puts content on top). Restraint is
+ * the point — enough to catch light, never enough to compete with the copy.
+ */
+function SectionTexture({ tone }: { tone: "default" | "sunken" | "surface" }) {
+  const toned = tone !== "default";
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+      {/* grain — on every section */}
+      <div
+        className="absolute inset-0 opacity-[0.02] mix-blend-soft-light"
+        style={{ backgroundImage: `url("${GRAIN_URL}")`, backgroundSize: "150px 150px" }}
+      />
+      {/* dot-grid — on every section (ties back to the hero), faded toward the
+          seams so it never hard-edges; a touch stronger on the toned bands */}
+      <div
+        className="absolute inset-0"
+        style={{
+          backgroundImage: `radial-gradient(circle at 1px 1px,rgba(236,231,222,${
+            toned ? "0.045" : "0.03"
+          }) 1px,transparent 0)`,
+          backgroundSize: "22px 22px",
+          maskImage: "radial-gradient(125% 78% at 50% 42%,#000 34%,transparent 88%)",
+          WebkitMaskImage: "radial-gradient(125% 78% at 50% 42%,#000 34%,transparent 88%)",
+        }}
+      />
+      {toned && (
+        /* soft cream top-edge seam — a crafted band edge (matte, no glow) */
+        <div
+          className="absolute inset-x-0 top-0 h-px"
+          style={{
+            background:
+              "linear-gradient(90deg,transparent,rgba(236,231,222,0.07),transparent)",
+          }}
+        />
+      )}
+    </div>
   );
 }
 

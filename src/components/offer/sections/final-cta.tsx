@@ -1,5 +1,6 @@
 import { BlurFade } from "@/components/velora/blur-fade";
 import { PrimaryCta } from "@/components/offer/cta-config";
+import { GRAIN_URL } from "@/components/offer/atmosphere";
 import { TRIAL } from "@/lib/pricing";
 import { SIGNUP_URL } from "@/lib/routes";
 
@@ -24,6 +25,23 @@ export function FinalCta() {
             "radial-gradient(68% 60% at 50% 36%, rgba(236,231,222,0.07), transparent 70%)",
         }}
       />
+      {/* grain + dot-grid tooth, matching the sections */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+        <div
+          className="absolute inset-0 opacity-[0.025] mix-blend-soft-light"
+          style={{ backgroundImage: `url("${GRAIN_URL}")`, backgroundSize: "150px 150px" }}
+        />
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle at 1px 1px,rgba(236,231,222,0.04) 1px,transparent 0)",
+            backgroundSize: "22px 22px",
+            maskImage: "radial-gradient(120% 80% at 50% 40%,#000 30%,transparent 82%)",
+            WebkitMaskImage: "radial-gradient(120% 80% at 50% 40%,#000 30%,transparent 82%)",
+          }}
+        />
+      </div>
 
       <div className="mx-auto flex max-w-3xl flex-col items-center gap-8 px-5 text-center">
         <BlurFade delay={0.05}>
