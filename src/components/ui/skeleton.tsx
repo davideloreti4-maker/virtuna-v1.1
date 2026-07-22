@@ -3,29 +3,21 @@ import { cn } from "@/lib/utils";
 interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {}
 
 /**
- * Skeleton - Loading placeholder with shimmer animation.
+ * Skeleton - Loading placeholder with a premium warm shimmer.
  *
- * Uses a moving gradient highlight (shimmer) instead of simple pulse.
+ * A narrow, low-alpha cream band glides slowly across a calm warm base (the
+ * `.skeleton-shimmer` utility in globals.css) — a focused glide, not the old bright
+ * clinical-white wash. Slow enough that a screen of skeletons breathes as one calm
+ * system. Matte: cream-tinted, no glow.
  *
- * Note: motion-reduce:animate-none is applied via the Tailwind class,
- * which sets `animation: none` and overrides the inline animation style.
+ * Reduced-motion: `.skeleton-shimmer` self-guards in CSS (drops to the flat warm
+ * base). Moved off the old inline `animation` style precisely so that guard wins —
+ * an inline style overrides a Tailwind `motion-reduce:` class, which silently left
+ * reduced-motion users still animating.
  */
 function Skeleton({ className, ...props }: SkeletonProps) {
   return (
-    <div
-      className={cn(
-        "rounded-md motion-reduce:animate-none",
-        className
-      )}
-      style={{
-        backgroundColor: "rgba(255, 255, 255, 0.05)",
-        backgroundImage:
-          "linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.08) 50%, transparent 100%)",
-        backgroundSize: "200% 100%",
-        animation: "shimmer 2s ease-in-out infinite",
-      }}
-      {...props}
-    />
+    <div className={cn("skeleton-shimmer rounded-md", className)} {...props} />
   );
 }
 
