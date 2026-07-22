@@ -19,8 +19,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { hashSeed, predictedBold, type DriveInput } from "@/lib/brain/cortex-sim";
-import { TONE, Kick, SecHead, HowToRead, type AttentionData, type NetworkRow, type SignalRow } from "./AmbientDetail";
-import type { AskWhySlot, BrainDriver, BrainFrameData, ResistanceCurveData } from "./domain-template";
+import { TONE, Kick, SecHead, HowToRead, VerdictChip, Unlock, type AttentionData, type NetworkRow, type SignalRow } from "./AmbientDetail";
+import type { BrainDriver, BrainFrameData, DomainTemplate, ResistanceCurveData, WhyThisSecond } from "./domain-template";
 
 // CortexCanvas is WebGL (three.js) — client-only, never SSR (mirrors BrainView.tsx:115).
 const CortexCanvas = dynamic(() => import("../CortexCanvas"), {
@@ -51,11 +51,13 @@ function CortexFigure({
   stopRatio,
   clipSeconds,
   reducedMotion,
+  verdict,
 }: {
   seedKey: string;
   stopRatio: number;
   clipSeconds: number;
   reducedMotion: boolean;
+  verdict?: DomainTemplate["verdict"];
 }) {
   const seed = useMemo(() => hashSeed(seedKey), [seedKey]);
   const drive = useMemo<DriveInput>(
@@ -89,15 +91,15 @@ function CortexFigure({
 
   return (
     <div
-      className="relative mt-3.5 overflow-hidden rounded-[12px]"
-      style={{ height: 180, border: `1px solid ${TONE.border}`, background: "#131210" }}
+      className="relative overflow-hidden rounded-[14px]"
+      style={{ height: 208, border: `1px solid ${TONE.border}`, background: "#131210" }}
     >
       <CortexCanvas seed={seed} bold={bold} t={t} reducedMotion={reducedMotion} />
       <Corner where="tl">Predicted cortex</Corner>
       <Corner where="tr" dim>
-        modeled
+        t = 0:{pad2(Math.floor(t))}
       </Corner>
-      <Corner where="br">t = 0:{pad2(Math.floor(t))}</Corner>
+      {verdict ? <VerdictChip verdict={verdict} /> : null}
     </div>
   );
 }
@@ -110,12 +112,14 @@ const CPAD = 6;
 
 function AttentionScrubber({
   data,
+  synthesis,
   reducedMotion,
 }: {
   data: AttentionData;
+  synthesis?: WhyThisSecond;
   reducedMotion: boolean;
 }) {
-  const { points, transcript, peakWordIndex, moments, hold } = data;
+  const { points, transcript, peakWordIndex, moments } = data;
   const words = useMemo(() => transcript.split(" "), [transcript]);
   const n = points.length;
 
@@ -167,8 +171,7 @@ function AttentionScrubber({
 
   return (
     <div className="mt-8">
-      <Kick tag="modeled">Attention · same playhead</Kick>
-      <SecHead q="Where attention holds" ownLabel="hold" ownValue={String(hold)} weak />
+      <Kick>Where they drop</Kick>
 
       <div className="mt-4 flex items-start gap-3">
         <span
@@ -223,84 +226,107 @@ function AttentionScrubber({
           </button>
         ))}
       </div>
+
+      {/* the plain-language read sits ON the moment (merged from the old WHY-THIS-SECOND section) —
+          not a voice quote (no serif/quotes), an analysis line; coral on the loss clause. */}
+      {synthesis ? (
+        <p className="mt-4 text-[14px] leading-[1.5]">
+          {synthesis.segments.map((s, i) => (
+            <span key={i} style={{ color: s.loss ? TONE.coral : TONE.dim }}>
+              {s.text}
+            </span>
+          ))}
+        </p>
+      ) : null}
     </div>
   );
 }
 
-// ── signal breakdown (0..100) ────────────────────────────────────────────────
+// ── breakdown · vs your typical (signals, tightened) ─────────────────────────
 
-function SignalRows({ signals }: { signals: SignalRow[] }) {
+/** #8 + consolidate — the raw 0..100 score was uninformative on its own (65 of what?) AND the bar
+ *  made three near-identical scores look identical. Tightened to the ONE informative atom: the DELTA
+ *  vs the user's baseline (`signalsBaseline`). Reads as a story — what this does better / worse than
+ *  typical. Negative delta → coral (the loss). Bar + absolute score dropped (declutter). */
+function SignalRows({ signals, baseline }: { signals: SignalRow[]; baseline?: string }) {
   return (
     <div className="mt-8">
-      <Kick tag="modeled">Signal breakdown</Kick>
-      <div className="mt-1">
-        {signals.map((s, i) => (
-          <div
-            key={s.label}
-            className="flex items-center gap-3 py-3"
-            style={{ borderBottom: i < signals.length - 1 ? `1px solid ${TONE.border}` : undefined }}
-          >
-            <span className="w-[104px] flex-none text-[14px]" style={{ color: TONE.dim }}>
-              {s.label}
-            </span>
-            <span className="relative h-[3px] flex-1 overflow-hidden rounded-full" style={{ background: TONE.ghost }}>
-              <span
-                className="absolute inset-0 block origin-left"
-                style={{ transform: `scaleX(${Math.min(1, s.score / 100)})`, background: "rgba(236,231,222,.6)" }}
-              />
-            </span>
-            <span className="w-6 flex-none text-right text-[13px] font-medium" style={{ color: TONE.cream }}>
-              {s.score}
-            </span>
-            <span
-              className="w-11 flex-none text-right font-mono text-[11px] uppercase tracking-[0.06em]"
-              style={{ color: s.band === "strong" ? TONE.faint : s.band === "weak" ? TONE.coral : "rgba(236,231,222,.3)" }}
-            >
-              {s.band}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ── networks at the playhead (z-scored σ, diverging from a centre baseline) ───
-
-function NetworkRows({ networks }: { networks: NetworkRow[] }) {
-  return (
-    <div className="mt-8">
-      <Kick tag="z-scored">Networks · at the playhead</Kick>
-      <div className="mt-1">
-        {networks.map((nw) => {
-          const w = Math.min(50, Math.abs(nw.z) * 34);
-          const pos = nw.z >= 0;
+      <Kick>Breakdown{baseline ? ` · ${baseline}` : ""}</Kick>
+      <div className="mt-1.5">
+        {signals.map((s, i) => {
+          const down = s.vsBase != null && s.vsBase < 0;
           return (
-            <div key={nw.label} className="flex items-center gap-3 py-2.5">
-              <span className="w-[76px] flex-none text-[13px]" style={{ color: TONE.dim }}>
-                {nw.label}
+            <div
+              key={s.label}
+              className="flex items-baseline justify-between py-2.5"
+              style={{ borderBottom: i < signals.length - 1 ? `1px solid ${TONE.border}` : undefined }}
+            >
+              <span className="text-[14px]" style={{ color: down ? TONE.coral : TONE.dim }}>
+                {s.label}
               </span>
-              <span className="relative h-3.5 flex-1">
-                {/* centre baseline */}
-                <span className="absolute bottom-0 top-0 left-1/2 w-px" style={{ background: TONE.hair }} />
-                <span
-                  className="absolute top-[5px] h-1 rounded-full"
-                  style={{
-                    width: `${w}%`,
-                    [pos ? "left" : "right"]: "50%",
-                    background: nw.loss ? TONE.coral : pos ? "rgba(236,231,222,.55)" : "rgba(236,231,222,.35)",
-                    opacity: nw.loss ? 0.8 : 1,
-                  } as React.CSSProperties}
-                />
-              </span>
-              <span className="w-11 flex-none text-right font-mono text-[12px]" style={{ color: TONE.faint }}>
-                {nw.z > 0 ? "+" : nw.z < 0 ? "−" : ""}
-                {Math.abs(nw.z).toFixed(1)}σ
+              <span
+                className="font-mono text-[13px] tabular-nums"
+                style={{ color: s.vsBase == null ? "rgba(236,231,222,.4)" : down ? TONE.coral : TONE.cream }}
+              >
+                {s.vsBase != null ? `${s.vsBase > 0 ? "+" : ""}${s.vsBase}` : `${s.score}`}
               </span>
             </div>
           );
         })}
       </div>
+    </div>
+  );
+}
+
+// ── the brain state: compact cortex + inline network read + claim boundary ────
+
+/** THE BRAIN STATE (consolidated) — the cortex demoted from the top of the card to a compact proof
+ *  figure, made legible by an inline plain-word read of the two networks that matter most (the loss +
+ *  the strength), and closed by the #3 "what it is NOT" claim boundary. This fuses the old separate
+ *  cortex figure + the network σ table into ONE readable block; the full σ is dropped from the main
+ *  view (declutter — the words carry the meaning, the arrow the direction). */
+function BrainHero({
+  brain,
+  verdict,
+  reducedMotion,
+}: {
+  brain: BrainFrameData;
+  verdict: DomainTemplate["verdict"];
+  reducedMotion: boolean;
+}) {
+  const reads = useMemo(() => {
+    const networks = brain.networks ?? [];
+    if (!networks.length) return [];
+    const byZ = [...networks].sort((a, b) => a.z - b.z);
+    const loss = networks.find((n) => n.loss) ?? byZ[0]!;
+    const strong = [...byZ].reverse().find((n) => n.label !== loss.label);
+    return [loss, strong].filter(Boolean) as NetworkRow[];
+  }, [brain.networks]);
+
+  return (
+    <div className="mt-4">
+      <CortexFigure
+        seedKey={brain.cortexSeedKey}
+        stopRatio={Math.min(1, Math.max(0, brain.stopRatio))}
+        clipSeconds={brain.clipSeconds}
+        reducedMotion={reducedMotion}
+        verdict={verdict}
+      />
+      {reads.length ? (
+        <p className="mt-3 text-[14px] leading-[1.5]">
+          {reads.map((nw, i) => (
+            <span key={nw.label} style={{ color: nw.loss ? TONE.coral : TONE.dim }}>
+              {i > 0 ? <span style={{ color: "rgba(236,231,222,.3)" }}> · </span> : null}
+              {nw.label} {nw.read} {nw.z < 0 ? "↓" : "↑"}
+            </span>
+          ))}
+        </p>
+      ) : null}
+      {brain.cortexNote ? (
+        <div className="mt-1.5 text-[12px]" style={{ color: TONE.faint }}>
+          {brain.cortexNote}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -319,7 +345,7 @@ function ResistanceCurve({ data }: { data: ResistanceCurveData }) {
   const sx = CPAD + spikeAt * (CW - 2 * CPAD);
   return (
     <div className="mt-8">
-      <Kick tag="modeled">Price sensitivity</Kick>
+      <Kick>Price sensitivity</Kick>
       <SecHead q={question} ownLabel="spikes at" ownValue={spikeLabel.split(" ")[0] ?? ""} weak />
       <div className="mt-3.5">
         <svg viewBox={`0 0 ${CW} ${CH}`} className="block h-auto w-full">
@@ -337,69 +363,51 @@ function ResistanceCurve({ data }: { data: ResistanceCurveData }) {
 
 // ── driver-axis slot (◇ swap — "why this ___") ────────────────────────────────
 
-/** The Brain's driver-axis figure. Creator = attention-over-the-clip; pricing = resistance-over-price.
- *  A new domain adds a `kind` here without touching the frame's other slots. */
-function BrainDriverSlot({ driver, reducedMotion }: { driver: BrainDriver; reducedMotion: boolean }) {
+/** The Brain's driver-axis figure. Creator = attention-over-the-clip (carries the plain-language
+ *  synthesis read); pricing = resistance-over-price. A new domain adds a `kind` here without touching
+ *  the frame's other slots. */
+function BrainDriverSlot({
+  driver,
+  synthesis,
+  reducedMotion,
+}: {
+  driver: BrainDriver;
+  synthesis?: WhyThisSecond;
+  reducedMotion: boolean;
+}) {
   switch (driver.kind) {
     case "attention-scrubber":
-      return <AttentionScrubber data={driver.data} reducedMotion={reducedMotion} />;
+      return <AttentionScrubber data={driver.data} synthesis={synthesis} reducedMotion={reducedMotion} />;
     case "resistance-curve":
       return <ResistanceCurve data={driver.data} />;
   }
 }
 
-// ── ask-why chat slot (● shared, deferred) ────────────────────────────────────
-
-/** The interrogate-the-room slot. Shared across every domain by design, but there's no chat infra
- *  in v2 yet — so it renders as a disabled affordance that shows the slot without faking a live
- *  answer (honesty: don't pretend it's wired). Enable when the ask-why loop lands. */
-function AskWhyStub({ slot }: { slot: AskWhySlot }) {
-  return (
-    <div className="mt-8">
-      <Kick tag="soon">Ask the room why</Kick>
-      <div
-        className="mt-3 flex items-center gap-2.5 rounded-[10px] px-3.5 py-3"
-        style={{ border: `1px solid ${TONE.border}`, background: "#1a1a19", opacity: slot.enabled ? 1 : 0.55 }}
-      >
-        <span className="min-w-0 flex-1 text-[14px]" style={{ color: TONE.faint }}>
-          {slot.placeholder}
-        </span>
-        <span
-          className="flex h-7 w-7 flex-none items-center justify-center rounded-full text-[12px]"
-          style={{ background: TONE.well, color: TONE.faint }}
-          aria-hidden
-        >
-          ↑
-        </span>
-      </div>
-    </div>
-  );
-}
-
 // ── the brain role-frame ──────────────────────────────────────────────────────
 
-/** BrainFrame — the invariant *why* role, rendered as ordered slots. Fixed slots (cortex · footer)
- *  render always; the driver axis + signals are the swap slots the DomainTemplate fills; networks +
- *  ask-why are optional/deferred. A new domain supplies figures — it never edits this frame. */
+/** BrainFrame — the invariant *why* role (2026-07-21 owner restructure). The BRAIN is the hero:
+ *  cortex big + the verdict chip → THE UNLOCK (the cheat code) → the MOMENT (attention + read) →
+ *  the BREAKDOWN (signals vs baseline) → trust footer. A new domain supplies figures via the
+ *  DomainTemplate — it never edits this frame. */
 export function BrainFrame({
   brain,
+  verdict,
+  unlock,
   reducedMotion = false,
 }: {
   brain: BrainFrameData;
+  verdict: DomainTemplate["verdict"];
+  unlock?: DomainTemplate["unlock"];
   reducedMotion?: boolean;
 }) {
   return (
-    <div className="mt-3.5">
-      <CortexFigure
-        seedKey={brain.cortexSeedKey}
-        stopRatio={Math.min(1, Math.max(0, brain.stopRatio))}
-        clipSeconds={brain.clipSeconds}
-        reducedMotion={reducedMotion}
-      />
-      <BrainDriverSlot driver={brain.driver} reducedMotion={reducedMotion} />
-      <SignalRows signals={brain.signals} />
-      {brain.networks ? <NetworkRows networks={brain.networks} /> : null}
-      {brain.askWhy ? <AskWhyStub slot={brain.askWhy} /> : null}
+    <div>
+      <BrainHero brain={brain} verdict={verdict} reducedMotion={reducedMotion} />
+      {/* retention line sits right UNDER the brain — same clip, one unit (owner mark) */}
+      <BrainDriverSlot driver={brain.driver} synthesis={brain.whyThisSecond} reducedMotion={reducedMotion} />
+      <SignalRows signals={brain.signals} baseline={brain.signalsBaseline} />
+      {/* THE UNLOCK closes the tab — the fix you take away, after you've seen why */}
+      {unlock ? <Unlock unlock={unlock} /> : null}
       <HowToRead />
     </div>
   );

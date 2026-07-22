@@ -17,8 +17,8 @@
  */
 
 import { useMemo } from "react";
-import { TONE, Kick, HowToRead, type CodedReason, type SegmentStop, type TerrainCluster, type TriState } from "./AmbientDetail";
-import type { DemandCurveData, PopulationFrameData, PopulationMain } from "./domain-template";
+import { TONE, Kick, HowToRead, VerdictChip, type CodedReason, type SegmentStop, type TerrainCluster, type TriState } from "./AmbientDetail";
+import type { DemandCurveData, DomainTemplate, PopulationFrameData, PopulationMain } from "./domain-template";
 
 /** The shared society terrain spec — clusters knit into one connected graph. */
 type TerrainSpec = { clusters: TerrainCluster[]; lossClusterIndex: number };
@@ -42,16 +42,18 @@ function useTerrain(terrain: TerrainSpec) {
       return seed / 4294967296;
     };
     const nodes: { x: number; y: number; c: number; u: number }[] = [];
+    const byCluster: number[][] = clusters.map(() => []);
     clusters.forEach((c, ci) => {
       for (let i = 0; i < c.n; i++) {
         const a = rand() * Math.PI * 2;
         const r = Math.sqrt(rand()) * c.spread;
         let x = c.cx + Math.cos(a) * r;
         let y = c.cy + Math.sin(a) * r * 0.72;
-        if (rand() < 0.2) {
+        if (rand() < 0.28) {
           x += (GCX - x) * 0.5;
           y += (GCY - y) * 0.5;
         }
+        byCluster[ci]!.push(nodes.length);
         nodes.push({ x, y, c: ci, u: rand() });
       }
     });
@@ -66,47 +68,99 @@ function useTerrain(terrain: TerrainSpec) {
         if (i < o.j) edges.push([i, o.j]);
       });
     });
+    // Commuter ties — a few deliberate long-range links knit the neighborhoods into ONE society
+    // (the mechanism the owner named: "commuter nodes knit clusters"), so the map reads as one cloud
+    // with districts, not 4 islands. Deterministic: the 2 nearest cross-cluster node pairs per pair
+    // of clusters. (This does the knit via edges, NOT r5's rejected collapse-to-centre rebuild.)
+    for (let a = 0; a < clusters.length; a++) {
+      for (let b = a + 1; b < clusters.length; b++) {
+        const pairs: { i: number; j: number; d: number }[] = [];
+        byCluster[a]!.forEach((i) =>
+          byCluster[b]!.forEach((j) =>
+            pairs.push({ i, j, d: (nodes[i]!.x - nodes[j]!.x) ** 2 + (nodes[i]!.y - nodes[j]!.y) ** 2 }),
+          ),
+        );
+        pairs.sort((p, q) => p.d - q.d);
+        pairs.slice(0, 2).forEach((p) => edges.push([p.i, p.j]));
+      }
+    }
     return { nodes, edges, clusters, lossClusterIndex };
   }, [terrain]);
 }
 
-function TerrainMap({ terrain }: { terrain: TerrainSpec }) {
+/** The terrain is now a HERO CARD matched to the cortex card (same rounded-[14px] border, #131210
+ *  field, ~208px) so the two heroes read as one system. The society is ALIVE: the stopped nodes pulse
+ *  (breathing with activity), the whole map reveals on open — motion is INTENSITY only, positions
+ *  stay stable (design law). Coral loss nodes hold still (the ones who didn't react). */
+function TerrainMap({
+  terrain,
+  verdict,
+  reducedMotion = false,
+}: {
+  terrain: TerrainSpec;
+  verdict?: DomainTemplate["verdict"];
+  reducedMotion?: boolean;
+}) {
   const { nodes, edges, clusters, lossClusterIndex } = useTerrain(terrain);
   return (
-    <div className="-mx-[26px] mt-3.5" style={{ borderTop: `1px solid ${TONE.border}`, borderBottom: `1px solid ${TONE.border}`, background: "#1b1b1a" }}>
-      <svg viewBox={`0 0 ${TVW} ${TVH}`} className="block h-auto w-full">
-        {edges.map(([a, b], i) => (
-          <line
-            key={i}
-            x1={nodes[a]!.x.toFixed(1)}
-            y1={nodes[a]!.y.toFixed(1)}
-            x2={nodes[b]!.x.toFixed(1)}
-            y2={nodes[b]!.y.toFixed(1)}
-            stroke="rgba(255,255,255,.07)"
-            strokeWidth={1}
-          />
-        ))}
-        {nodes.map((n, i) => {
-          const lit = n.u < clusters[n.c]!.lit;
-          const isLoss = n.c === lossClusterIndex;
-          const fill = !lit && isLoss ? TONE.coral : TONE.cream;
-          const op = lit ? 0.92 : isLoss ? 0.5 : 0.15;
-          return <circle key={i} cx={n.x.toFixed(1)} cy={n.y.toFixed(1)} r={3} fill={fill} opacity={op} />;
-        })}
-        {clusters.map((c, ci) => (
-          <text
-            key={c.name}
-            x={c.cx}
-            y={c.cy - c.spread * 0.72 - 8}
-            textAnchor="middle"
-            fontFamily="Inter, sans-serif"
-            fontSize={11}
-            fill={`rgba(236,231,222,${ci === lossClusterIndex ? ".5" : ".3"})`}
-          >
-            {c.name}
-          </text>
-        ))}
+    <div
+      className="relative overflow-hidden rounded-[14px]"
+      style={{ height: 208, border: `1px solid ${TONE.border}`, background: "#131210" }}
+    >
+      <svg viewBox={`0 0 ${TVW} ${TVH}`} preserveAspectRatio="xMidYMid meet" className="absolute inset-0 h-full w-full">
+        {/* the society reveals on open (once) — degrades to visible if SMIL is unavailable */}
+        <g opacity={1}>
+          {!reducedMotion ? <animate attributeName="opacity" values="0;1" dur="0.7s" begin="0s" fill="freeze" /> : null}
+          {edges.map(([a, b], i) => (
+            <line
+              key={i}
+              x1={nodes[a]!.x.toFixed(1)}
+              y1={nodes[a]!.y.toFixed(1)}
+              x2={nodes[b]!.x.toFixed(1)}
+              y2={nodes[b]!.y.toFixed(1)}
+              stroke="rgba(255,255,255,.07)"
+              strokeWidth={1}
+            />
+          ))}
+          {nodes.map((n, i) => {
+            const lit = n.u < clusters[n.c]!.lit;
+            const isLoss = n.c === lossClusterIndex;
+            const fill = !lit && isLoss ? TONE.coral : TONE.cream;
+            const op = lit ? 0.92 : isLoss ? 0.5 : 0.15;
+            return (
+              <circle key={i} cx={n.x.toFixed(1)} cy={n.y.toFixed(1)} r={lit ? 3.2 : isLoss ? 3 : 2.6} fill={fill} opacity={op}>
+                {/* the stopped audience breathes — a gentle, staggered opacity pulse (intensity, not motion) */}
+                {lit && !reducedMotion ? (
+                  <animate
+                    attributeName="opacity"
+                    values={`${op};${Math.min(1, op * 1.35).toFixed(2)};${op}`}
+                    dur="3.2s"
+                    begin={`${(n.u * 3.2).toFixed(2)}s`}
+                    repeatCount="indefinite"
+                  />
+                ) : null}
+              </circle>
+            );
+          })}
+          {clusters.map((c, ci) => (
+            // neighborhood labels now carry the district's rate (lit share) — this MERGES the old
+            // "who stopped · by segment" bar list ONTO the terrain, so the map self-reads (where + how
+            // much at once) and a whole redundant section drops.
+            <text
+              key={c.name}
+              x={c.cx}
+              y={c.cy - c.spread * 0.72 - 8}
+              textAnchor="middle"
+              fontFamily="Inter, sans-serif"
+              fontSize={10.5}
+              fill={ci === lossClusterIndex ? "rgba(255,99,99,.7)" : "rgba(236,231,222,.4)"}
+            >
+              {c.name} {Math.round(c.lit * 100)}%
+            </text>
+          ))}
+        </g>
       </svg>
+      {verdict ? <VerdictChip verdict={verdict} /> : null}
     </div>
   );
 }
@@ -162,10 +216,12 @@ function DemandCurve({ data }: { data: DemandCurveData }) {
 
 function TriStateOutcome({ tri, percentileLine }: { tri: TriState; percentileLine: string }) {
   const cols = [
-    { n: tri.stopped, t: "stopped", s: "strong", loss: false },
-    { n: tri.skimmed, t: "skimmed", s: "okay", loss: false },
-    { n: tri.scrolled, t: "scrolled past", s: "low", loss: true },
+    { n: tri.stopped, t: "stopped", loss: false },
+    { n: tri.skimmed, t: "skimmed", loss: false },
+    { n: tri.scrolled, t: "scrolled past", loss: true },
   ];
+  // Decluttered (as-06): the % + label + coral-on-loss carries the read; the strong/okay/low band
+  // word row was noise restating what the colour already says — dropped.
   return (
     <div className="mt-8">
       <Kick tag="simulated">Outcome · {percentileLine}</Kick>
@@ -185,12 +241,6 @@ function TriStateOutcome({ tri, percentileLine }: { tri: TriState; percentileLin
             </div>
             <div className="mt-0.5 text-[12px]" style={{ color: TONE.faint }}>
               {c.t}
-            </div>
-            <div
-              className="mt-1.5 font-mono text-[11px] uppercase tracking-[0.06em]"
-              style={{ color: c.loss ? "rgba(255,99,99,.6)" : "rgba(236,231,222,.3)" }}
-            >
-              {c.s}
             </div>
           </div>
         ))}
@@ -280,22 +330,32 @@ function Voices({
 
 // ── the population role-frame ──────────────────────────────────────────────────
 
-/** PopulationFrame — the invariant *who / how many* role, rendered as ordered slots. Fixed slots
- *  (terrain · voices · footer) render always; the main figure + segments are the swap slots the
- *  DomainTemplate fills. A new domain supplies figures — it never edits this frame. */
+/** PopulationFrame — the invariant *who / how many* role (2026-07-21 owner restructure). The NODES
+ *  are the hero: terrain card (matched to the cortex card) + verdict chip + a one-line read → the
+ *  distribution → segments (domain-optional) → voices → calibration → footer. The UNLOCK is NOT here
+ *  — a timing/price lever belongs on the brain tab, not the "who" page. A new domain supplies figures
+ *  — it never edits this frame. */
 export function PopulationFrame({
   population,
+  verdict,
+  reducedMotion = false,
   onInterview,
 }: {
   population: PopulationFrameData;
+  verdict: DomainTemplate["verdict"];
   reducedMotion?: boolean;
   onInterview?: (who: string) => void;
 }) {
   return (
-    <div>
-      <TerrainMap terrain={population.terrain} />
+    <div className="mt-4">
+      <TerrainMap terrain={population.terrain} verdict={verdict} reducedMotion={reducedMotion} />
+      {population.heroRead ? (
+        <p className="mt-3 text-[14px] leading-[1.5]" style={{ color: TONE.dim }}>
+          {population.heroRead}
+        </p>
+      ) : null}
       <PopulationMainSlot main={population.main} />
-      <Segments title={population.segments.title} rows={population.segments.rows} />
+      {population.segments ? <Segments title={population.segments.title} rows={population.segments.rows} /> : null}
       <Voices kicker={population.voices.kicker} reasons={population.voices.reasons} onInterview={onInterview} />
       {/* calibration honesty — generalization is bounded by what the audience was calibrated for */}
       {population.calibration ? (

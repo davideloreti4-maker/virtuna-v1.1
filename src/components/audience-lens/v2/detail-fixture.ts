@@ -21,11 +21,20 @@ export const CREATOR_TEMPLATE: DomainTemplate = {
   backLabel: "All 5",
   pager: "hook 2 of 5",
   verdict: { value: "38.2%", label: "would stop" },
+  // THE UNLOCK — the cheat code: a specific lever, the modeled gain, and the counterintuitive read
+  // (the opener already works; it's the *timing* that leaks — so the fix is cheap and high-yield).
+  unlock: {
+    lever: "Cut to the payoff before 0:03",
+    gain: "+11% would stop",
+    insight: "The $400 opener already works — 190 stayed for it. It's the wait that loses the 253 skeptics, not the claim itself.",
+  },
 
   brain: {
     cortexSeedKey: "hook-2-first-10k", // drifts the cortex parcellation; stable per stimulus
     clipSeconds: 12, // cortex replay-loop duration
     stopRatio: 0.382, // from the verdict — drives the cortex bold
+    cortexNote: "A modeled cortical proxy — not measured attention.", // #3 claim boundary
+    signalsBaseline: "vs your typical", // #8 the delta referent
     // ◇ driver axis — creator = attention over the clip (curve-as-scrubber + synced transcript)
     driver: {
       kind: "attention-scrubber",
@@ -42,26 +51,38 @@ export const CREATOR_TEMPLATE: DomainTemplate = {
         ],
       },
     },
-    // ◇ signal breakdown (0..100)
+    // ◇ signal breakdown (0..100) — the delta vs the user's typical hook (#8) is what differentiates
+    // three near-identical scores: emotion is the strength, visual pull is flat.
     signals: [
-      { label: "Emotional hit", score: 65, band: "strong" },
-      { label: "Credibility", score: 62, band: "okay" },
-      { label: "Visual pull", score: 61, band: "okay" },
+      { label: "Emotional hit", score: 65, band: "strong", vsBase: 18 },
+      { label: "Credibility", score: 62, band: "okay", vsBase: 4 },
+      { label: "Visual pull", score: 61, band: "okay", vsBase: -2 },
     ],
-    // ◇ networks at the playhead (z-scored σ) — negative = below the system's resting level
+    // ◇ the plain-language read of the decisive second — now sits ON the attention moment (the read
+    //   that explains the move; distinct copy from the move so the two never repeat each other)
+    whyThisSecond: {
+      moment: "0:04 · the drop",
+      segments: [
+        { text: "At 0:04 the room splits — the $400 stake holds half, " },
+        { text: "the rest are already gone as the payoff stalls", loss: true },
+      ],
+    },
+    // ◇ networks at the decisive second — σ is the receipt; the read translates it into plain words
     networks: [
-      { label: "Focus", z: -1.1, loss: true },
-      { label: "Memory", z: 0.7 },
-      { label: "Emotion", z: 0.4 },
-      { label: "Visual", z: -0.4 },
+      { label: "Focus", z: -1.1, read: "scattered — won't lock on", loss: true },
+      { label: "Memory", z: 0.7, read: "holding the $400 stake" },
+      { label: "Emotion", z: 0.4, read: "a mild lift" },
+      { label: "Visual", z: -0.4, read: "flat, nothing to grab" },
     ],
     // ● ask-why chat — shared slot, deferred (no chat infra in v2 yet)
     askWhy: { enabled: false, placeholder: "Ask why they reacted this way…" },
   },
 
   population: {
+    // one-line read under the terrain hero — the non-obvious pattern, not just a labelled map
+    heroRead: "Your believers cluster in builders — 82% stop. Skeptics are your ceiling: only 12%.",
     // ◇ headline + main figure — creator = the stop/skim/scroll tri-state
-    main: { kind: "tri-state", data: { stopped: 38, skimmed: 41, scrolled: 21 }, percentileLine: "P82 of your 41" },
+    main: { kind: "tri-state", data: { stopped: 38, skimmed: 41, scrolled: 21 }, percentileLine: "top 18% of your last 41 hooks" },
     // ● the society — one connected terrain, clusters knit by commuter edges
     terrain: {
       clusters: [
@@ -72,16 +93,9 @@ export const CREATOR_TEMPLATE: DomainTemplate = {
       ],
       lossClusterIndex: 2, // skeptics = the loudest-no cluster (coral)
     },
-    // ◇ segments — the tiers that matter here
-    segments: {
-      title: "Who stopped · by segment",
-      rows: [
-        { label: "builders", pct: 82 },
-        { label: "scrollers", pct: 51 },
-        { label: "drop-ins", pct: 40 },
-        { label: "skeptics", pct: 12, loss: true },
-      ],
-    },
+    // segments omitted — the terrain labels now carry each district's stop rate (builders 82% …),
+    // so a separate "who stopped · by segment" bar list would just restate the map. Pricing KEEPS its
+    // segments because willingness-to-pay tiers are a cut the terrain districts don't show.
     // ● voices — coded reasons + exemplar cast
     voices: {
       kicker: "Why · coded from 1,000",

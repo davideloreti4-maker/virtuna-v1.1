@@ -32,11 +32,13 @@ export interface SignalRow {
   label: string;
   score: number; // 0..100
   band: "strong" | "okay" | "weak";
+  vsBase?: number; // #8 — delta vs the domain baseline (see BrainFrameData.signalsBaseline); anchors the score
 }
 
 export interface NetworkRow {
   label: string;
-  z: number; // z-score σ; negative = below the system's resting level
+  z: number; // z-score σ — kept as the quiet receipt (credibility), no longer the row's headline
+  read: string; // P2: the plain-word state — "scattered, won't lock on" (translate σ, don't jargon it)
   loss?: boolean;
 }
 
@@ -136,6 +138,57 @@ export function HowToRead() {
   );
 }
 
+// ── shared: the verdict chip (rides ON the hero figure) + the UNLOCK (the cheat code) ──
+
+/** The verdict now rides as a chip on the hero figure (the figure is the hero, not a big fixed
+ *  number). Bottom-left, on a scrim so it reads over the cortex/terrain. */
+export function VerdictChip({ verdict }: { verdict: { value: string; label: string } }) {
+  return (
+    <div
+      className="absolute bottom-2.5 left-2.5 flex items-baseline rounded-[10px] px-2.5 py-1.5"
+      style={{ background: "rgba(20,20,19,.82)" }}
+    >
+      <span className="text-[24px] font-light leading-none tracking-[-0.01em]" style={{ color: TONE.cream }}>
+        {verdict.value}
+      </span>
+      <span className="ml-1.5 text-[12px]" style={{ color: TONE.faint }}>
+        {verdict.label}
+      </span>
+    </div>
+  );
+}
+
+/** THE UNLOCK — the brain tab's closing payoff (the "so do this" after the analysis). De-boxed per
+ *  the grammar law (the old bordered box squeezed the lever against the gain and read as slop); set
+ *  apart instead by a hairline rule + type weight, STACKED so nothing competes for a line: lever →
+ *  gain → the counterintuitive why. Never coral — a fix is a win. Brain-only (a timing/price lever
+ *  makes no sense on the audience "who" page). */
+export function Unlock({ unlock }: { unlock: { lever: string; gain?: string; insight: string } }) {
+  return (
+    <div className="mt-8 pt-6" style={{ borderTop: `1px solid ${TONE.border}` }}>
+      <div className="font-mono text-[11px] uppercase tracking-[0.09em]" style={{ color: TONE.faint }}>
+        the unlock
+      </div>
+      <div className="mt-2.5 text-[17px] font-medium leading-[1.3]" style={{ color: TONE.cream }}>
+        {unlock.lever}
+      </div>
+      {unlock.gain ? (
+        <div className="mt-2 flex items-baseline gap-2">
+          <span className="font-mono text-[15px] font-medium tabular-nums" style={{ color: TONE.cream }}>
+            → {unlock.gain}
+          </span>
+          <span className="font-mono text-[10px] uppercase tracking-[0.06em]" style={{ color: TONE.faint }}>
+            modeled
+          </span>
+        </div>
+      ) : null}
+      <p className="mt-2.5 text-[13.5px] leading-[1.5]" style={{ color: TONE.dim }}>
+        {unlock.insight}
+      </p>
+    </div>
+  );
+}
+
 // ── the detail view ──────────────────────────────────────────────────────────
 
 type Tab = "brain" | "audience";
@@ -154,7 +207,7 @@ export function AmbientDetail({
   className?: string;
 }) {
   const [tab, setTab] = useState<Tab>(initialTab);
-  const { backLabel, pager, verdict, brain, population } = template;
+  const { backLabel, pager, verdict, unlock, brain, population } = template;
 
   return (
     <div
@@ -168,8 +221,9 @@ export function AmbientDetail({
         fontFamily: "var(--font-sans, Inter, system-ui, sans-serif)",
       }}
     >
-      {/* header */}
-      <div className="px-[26px] pt-[26px]">
+      {/* slim top bar — nav + tabs only. The heavy verdict/move block is gone; the hero FIGURE leads
+          each tab (owner mark: the brain is the hero on brain, the nodes on audience). */}
+      <div className="px-[26px] pt-[22px]">
         <div className="flex items-baseline justify-between">
           <button
             type="button"
@@ -186,17 +240,8 @@ export function AmbientDetail({
           </span>
         </div>
 
-        {/* verdict hero — stands alone (glyph removed per owner mark). The value is pre-formatted per
-            domain (creator "38.2%" · pricing "$24") so the hero never hardcodes a unit; label swaps too. */}
-        <div className="mt-[18px] flex items-end">
-          <span className="text-[42px] font-light leading-none tracking-[-0.015em]">{verdict.value}</span>
-          <span className="ml-2 text-[16px]" style={{ color: TONE.faint }}>
-            {verdict.label}
-          </span>
-        </div>
-
         {/* tabs */}
-        <div className="mt-[22px] flex gap-[22px]" style={{ borderBottom: `1px solid ${TONE.border}` }}>
+        <div className="mt-[18px] flex gap-[22px]" style={{ borderBottom: `1px solid ${TONE.border}` }}>
           {(["brain", "audience"] as const).map((t) => {
             const on = t === tab;
             return (
@@ -217,12 +262,12 @@ export function AmbientDetail({
         </div>
       </div>
 
-      {/* body */}
+      {/* body — the hero figure leads (frame renders hero + chip → unlock → detail) */}
       <div className="min-h-0 flex-1 overflow-y-auto px-[26px] pb-[26px]">
         {tab === "brain" ? (
-          <BrainFrame brain={brain} reducedMotion={reducedMotion} />
+          <BrainFrame brain={brain} verdict={verdict} unlock={unlock} reducedMotion={reducedMotion} />
         ) : population ? (
-          <PopulationFrame population={population} reducedMotion={reducedMotion} />
+          <PopulationFrame population={population} verdict={verdict} reducedMotion={reducedMotion} />
         ) : (
           <div
             className="flex h-full items-center justify-center py-16 text-center text-[13px]"

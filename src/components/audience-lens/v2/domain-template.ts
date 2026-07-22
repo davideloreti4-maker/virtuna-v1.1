@@ -55,13 +55,24 @@ export interface AskWhySlot {
   placeholder: string; // "Ask why they reacted this way…"
 }
 
+/** P2 — the "why this second" synthesis: the plain-language read of the decisive moment, so the
+ *  network σ rows below it become EVIDENCE, not the headline (the r4 mark + Sapient's WHY-THIS-SECOND
+ *  box). One sentence, split into segments so the loss clause goes coral (the room law). */
+export interface WhyThisSecond {
+  moment: string; // "0:04 · the drop"
+  segments: { text: string; loss?: boolean }[];
+}
+
 export interface BrainFrameData {
   cortexSeedKey: string; // drifts the cortex parcellation; stable per stimulus
   clipSeconds: number; // cortex replay-loop duration (s)
   stopRatio: number; // 0..1 — drives the cortex bold, from the verdict
+  cortexNote?: string; // #3 — the "what it is NOT" honesty caption ("a modeled proxy, not measured attention")
   driver: BrainDriver; // ◇ swap — the driver axis
   signals: SignalRow[]; // ◇ swap — the decomposition
-  networks?: NetworkRow[]; // ◇ optional creator figure (z-scored σ at the playhead)
+  signalsBaseline?: string; // #8 — the referent the signal deltas are measured against ("vs your typical")
+  whyThisSecond?: WhyThisSecond; // ◇ optional — the P2 synthesis that heads the networks
+  networks?: NetworkRow[]; // ◇ optional creator figure (σ evidence, plain-word read per row)
   askWhy?: AskWhySlot; // ● shared (deferred stub)
 }
 
@@ -88,9 +99,16 @@ export type PopulationMain =
 
 export interface PopulationFrameData {
   main: PopulationMain; // ◇ headline + main figure
-  terrain: { clusters: TerrainCluster[]; lossClusterIndex: number }; // ● shared — the society
-  segments: { title: string; rows: SegmentStop[] }; // ◇ swap — the tiers that matter here
+  terrain: { clusters: TerrainCluster[]; lossClusterIndex: number }; // ● shared — the society (labels
+  //   now carry each district's rate, so the terrain self-reads the "who + how much")
+  segments?: { title: string; rows: SegmentStop[] }; // ◇ optional — include ONLY when it's a cut
+  //   ORTHOGONAL to the terrain districts. Creator omits it (the labeled terrain already says who
+  //   stopped); pricing includes it (willingness-to-pay tiers are a different cut than the clusters).
   voices: { kicker: string; reasons: CodedReason[] }; // ● shared — coded reasons + exemplar cast
+  /** One-line interpretation under the terrain hero — the non-obvious read of the society ("your
+   *  believers cluster in builders; skeptics are the ceiling"), so the hero figure carries insight,
+   *  not just a labelled map. */
+  heroRead?: string;
   /** ◇ optional — the calibration honesty line ("modeled · pricing decision · engagement-calibrated").
    *  The generalization-bounded-by-calibration law: shown when the decision leans on a calibration the
    *  audience wasn't built for (a scroll-calibrated room predicting willingness-to-pay). */
@@ -105,7 +123,12 @@ export interface DomainTemplate {
   backLabel: string; // "All 5"
   pager: string; // "hook 2 of 5"
   verdict: { value: string; label: string }; // the answer they paid for, pre-formatted per domain:
-  //   creator "38.2%" · "would stop"   ·   pricing "$24" · "optimal price"  (not always a %)
+  //   creator "38.2%" · "would stop"  ·  pricing "$24" · "optimal price"  (not always a %). Now rides
+  //   as a chip ON the hero figure (the figure is the hero, per the 2026-07-21 owner mark).
+  /** THE UNLOCK — the cheat-code payload. Not a flat restatement ("cut faster") but the three atoms
+   *  that make an insight feel like an edge: a specific LEVER, a modeled predicted GAIN, and the
+   *  counterintuitive INSIGHT (what already works vs what leaks). This is the card's value peak. */
+  unlock?: { lever: string; gain?: string; insight: string };
   brain: BrainFrameData;
   population: PopulationFrameData | null; // null until a run exists
 }

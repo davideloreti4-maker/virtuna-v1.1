@@ -22,11 +22,20 @@ export const PRICING_TEMPLATE: DomainTemplate = {
   backLabel: "All plans",
   pager: "Pro plan · $29/mo",
   verdict: { value: "$24", label: "optimal price" },
+  // THE UNLOCK — the cheat code: the lever, the modeled revenue gain, and the counterintuitive read
+  // (it's fairness, not value or trust, that breaks $29 — so the fix is the price, not the product).
+  unlock: {
+    lever: "Price at $24, not $29",
+    gain: "+18% revenue",
+    insight: "It's fairness that breaks $29 (−14), not value or trust — those hold. You're not underselling the product; you're overpricing it for the bargain tier.",
+  },
 
   brain: {
     cortexSeedKey: "pricing-pro-29",
     clipSeconds: 12, // the shared cortex figure needs a loop duration (the reaction unfolding)
     stopRatio: 0.55, // reaction intensity — drives the cortex bold (generic, not a stop rate here)
+    cortexNote: "A modeled reaction — not a real purchase decision.", // #3 claim boundary
+    signalsBaseline: "vs a fair-priced plan", // #8 the delta referent
     // ◇ driver axis — pricing = resistance over price ("why this price")
     driver: {
       kind: "resistance-curve",
@@ -37,11 +46,12 @@ export const PRICING_TEMPLATE: DomainTemplate = {
         spikeLabel: "$29 · resistance spikes",
       },
     },
-    // ◇ signals — same figure, relabeled for the domain
+    // ◇ signals — same figure, relabeled for the domain; deltas vs a fair-priced plan (#8) tell the
+    // story: fairness is the problem at $29, trust and value hold.
     signals: [
-      { label: "Perceived value", score: 55, band: "okay" },
-      { label: "Fairness", score: 40, band: "weak" },
-      { label: "Trust", score: 68, band: "strong" },
+      { label: "Perceived value", score: 55, band: "okay", vsBase: 5 },
+      { label: "Fairness", score: 40, band: "weak", vsBase: -14 },
+      { label: "Trust", score: 68, band: "strong", vsBase: 11 },
     ],
     // networks omitted — proves the optional slot (pricing has no playhead-network figure)
     // ● ask-why chat — shared slot, deferred
@@ -49,6 +59,8 @@ export const PRICING_TEMPLATE: DomainTemplate = {
   },
 
   population: {
+    // one-line read under the terrain hero — the non-obvious pattern
+    heroRead: "Value and premium tiers are already sold (66–90%). The bargain tier is priced out at $24 — only 22% in.",
     // ◇ main figure — pricing = the demand curve
     main: {
       kind: "demand-curve",
