@@ -73,6 +73,35 @@ function makeRemixCard(): RemixCardBlock {
   };
 }
 
+/**
+ * A remix card carrying the source attribution the runner really produces: the `proof` receipt
+ * (@handle + views), the back-compat `coverUrl`, and the `audienceName` steer tag. These are the
+ * fields the LIVE content event was silently dropping (they only reappeared after a reload from the
+ * persisted block) — this factory + the guard below prove they now ride the face.
+ */
+function makeRemixCardWithSource(): RemixCardBlock {
+  const base = makeRemixCard();
+  return {
+    ...base,
+    props: {
+      ...base.props,
+      coverUrl: "https://cdn.example/source-cover.jpg",
+      audienceName: "Bootstrapped Founders",
+      proof: {
+        handle: "@sourcecreator",
+        videoUrl: "https://www.tiktok.com/@sourcecreator/video/999",
+        coverUrl: "https://cdn.example/source-cover.jpg",
+        hookTemplate: null,
+        archetype: null,
+        multiplier: null, // a remix source has no follower baseline → null (honesty spine)
+        views: 1_200_000,
+        baselineLabel: null,
+        fitLabel: null, // you chose this video; nothing scored its fit → null
+      },
+    },
+  };
+}
+
 function makeRemixRequest(
   body: unknown,
   options: { origin?: string; contentType?: string } = {},
@@ -299,6 +328,57 @@ describe("POST /api/tools/remix/run (SSE route)", () => {
     const contentIdx = rawOutput.indexOf("event: content");
     const scoreIdx = rawOutput.indexOf("event: score");
     expect(contentIdx).toBeLessThan(scoreIdx);
+  });
+
+  it("content event carries the source attribution — proof + coverUrl + audienceName (rides the FACE, not reload-only)", async () => {
+    // REGRESSION GUARD: remix adapts ONE specific real video, so the source receipt IS the card's
+    // core content. The runner produced + persisted it, but the content event hand-picked props
+    // field-by-field and omitted proof/coverUrl/audienceName — so on the live stream (the only path
+    // a user watches) the source rendered as an anonymous thumbnail until a reload. This asserts the
+    // three fields now ride the face; it FAILS against the pre-fix route that dropped them.
+    const { createClient } = await import("@/lib/supabase/server");
+    const { runRemixPipeline } = await import("@/lib/tools/runners/remix-runner");
+    const { createOpenThreadLazy } = await import("@/lib/threads/threads");
+    const { insertMessage } = await import("@/lib/threads/messages");
+
+    const mockThread = { id: "thread-source" };
+    const mockBlocks = [makeRemixCardWithSource()];
+
+    (createClient as ReturnType<typeof vi.fn>).mockResolvedValue({
+      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: "u-src" } } }) },
+      from: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+    });
+    (createOpenThreadLazy as ReturnType<typeof vi.fn>).mockResolvedValue(mockThread);
+    (runRemixPipeline as ReturnType<typeof vi.fn>).mockResolvedValue({
+      blocks: mockBlocks,
+      warnings: [],
+    });
+    (insertMessage as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "msg-src" });
+
+    const { POST } = await import("@/app/api/tools/remix/run/route");
+    const res = await POST(
+      makeRemixRequest({ url: "https://www.tiktok.com/@creator/video/123", platform: "tiktok" }),
+    );
+
+    const reader = res.body!.getReader();
+    const decoder = new TextDecoder();
+    let rawOutput = "";
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      rawOutput += decoder.decode(value, { stream: true });
+    }
+
+    // Isolate the content event payload so a later persist/followup echo can't produce a false pass.
+    const contentStart = rawOutput.indexOf("event: content");
+    const contentSlice = rawOutput.slice(contentStart, rawOutput.indexOf("event: score", contentStart));
+    expect(contentSlice).toContain("@sourcecreator"); // proof.handle
+    expect(contentSlice).toContain("audienceName");
+    expect(contentSlice).toContain("Bootstrapped Founders");
+    expect(contentSlice).toContain("coverUrl");
   });
 
   it("emits error event when runRemixPipeline returns an error field (SkillRunError surface)", async () => {
