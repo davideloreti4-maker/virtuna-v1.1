@@ -34,8 +34,12 @@ export const PRICING_TEMPLATE: DomainTemplate = {
     cortexSeedKey: "pricing-pro-29",
     clipSeconds: 12, // the shared cortex figure needs a loop duration (the reaction unfolding)
     stopRatio: 0.55, // reaction intensity — drives the cortex bold (generic, not a stop rate here)
-    cortexNote: "A modeled reaction — not a real purchase decision.", // #3 claim boundary
     signalsBaseline: "vs a fair-priced plan", // #8 the delta referent
+    // the single consolidated honesty line at the tab bottom (BrainHero no longer floats a cortexNote).
+    // Content-craft depth (nine-grid · per-second heatmap · buy-intent) is intentionally OMITTED — a
+    // price axis has no craft signals, no per-second timeline, and the demand curve already IS the
+    // purchase-intent-over-price figure. Pricing keeps the lean value/fairness/trust decomposition.
+    calibrationNote: "Modeled reaction · not a real purchase decision",
     // ◇ driver axis — pricing = resistance over price ("why this price")
     driver: {
       kind: "resistance-curve",
@@ -119,7 +123,35 @@ export const PRICING_TEMPLATE: DomainTemplate = {
         },
       ],
     },
-    // ◇ the honest limit — an engagement-calibrated room answering a pricing question
+    // ── who this price is for · willingness-to-pay index vs your typical buyer ──
+    audienceFit: {
+      baseline: "vs your typical buyer",
+      rows: [
+        { label: "premium", index: 40 },
+        { label: "loyal", index: 22 },
+        { label: "value", index: -6 },
+        { label: "bargain", index: -31, loss: true }, // the volume tier, priced out
+      ],
+      read: "Premium and loyal buyers over-index on willingness to pay; the bargain tier — your volume — is priced out. This price skews the plan upmarket.",
+    },
+    // amplification omitted — reach/virality isn't the pricing question (conversion + revenue is).
+    // ── the swing · your revenue upside (the fence-sitters + the would-buy move) ──
+    swing: {
+      nearMiss: 140,
+      fromPct: 53, // would-buy at $29
+      toPct: 67, // would-buy at $24
+      gainLabel: "+18% revenue",
+      read: "140 buyers stall at $29 — priced out, not uninterested. Meet them at $24 and would-buy climbs from 53% to 67% while revenue still rises 18%.",
+    },
+    // ◇ the honest limit — an engagement-calibrated room answering a pricing question. As a trust strip
+    //   the calibration gap is explicit: lower confidence, because engagement ≠ purchase.
     calibration: { note: "modeled · pricing decision · engagement-calibrated" },
+    room: {
+      simulated: 1000,
+      calibratedOn: "engagement, not purchases",
+      confidence: 0.54,
+      confidenceLabel: "Directional",
+      note: "An engagement-calibrated room answering a pricing question — a directional read, not a purchase panel.",
+    },
   },
 };

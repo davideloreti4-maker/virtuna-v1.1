@@ -20,6 +20,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { hashSeed, predictedBold, type DriveInput } from "@/lib/brain/cortex-sim";
 import { TONE, Kick, SecHead, HowToRead, VerdictChip, Unlock, type AttentionData, type NetworkRow, type SignalRow } from "./AmbientDetail";
+import { SignalGridV2, NetworkSigmaBars, KpiHeatmap, BuyIntentCurve } from "./BrainDepth";
 import type { BrainDriver, BrainFrameData, DomainTemplate, ResistanceCurveData, WhyThisSecond } from "./domain-template";
 
 // CortexCanvas is WebGL (three.js) — client-only, never SSR (mirrors BrainView.tsx:115).
@@ -340,11 +341,6 @@ function BrainHero({
           ))}
         </p>
       ) : null}
-      {brain.cortexNote ? (
-        <div className="mt-1.5 text-[12px]" style={{ color: TONE.faint }}>
-          {brain.cortexNote}
-        </div>
-      ) : null}
     </div>
   );
 }
@@ -429,9 +425,26 @@ export function BrainFrame({
       <BrainHero brain={brain} verdict={verdict} reducedMotion={reducedMotion} />
       {/* retention line sits right UNDER the brain — same clip, one unit (owner mark) */}
       <BrainDriverSlot driver={brain.driver} synthesis={brain.whyThisSecond} reducedMotion={reducedMotion} flashMoment={flashMoment} />
-      <SignalRows signals={brain.signals} baseline={brain.signalsBaseline} />
+      {/* the decomposition — the Sapient nine-grid when the domain authors it, else the lean 3-row delta */}
+      {brain.signalGrid ? (
+        <SignalGridV2 cells={brain.signalGrid} />
+      ) : (
+        <SignalRows signals={brain.signals} baseline={brain.signalsBaseline} />
+      )}
+      {/* the deeper read (optional, creator-authored) — raw networks → per-second heatmap → buy intent */}
+      {brain.networkBars ? <NetworkSigmaBars rows={brain.networkBars} reducedMotion={reducedMotion} /> : null}
+      {brain.kpiHeatmap ? <KpiHeatmap data={brain.kpiHeatmap} reducedMotion={reducedMotion} /> : null}
+      {brain.buyIntent ? (
+        <BuyIntentCurve data={brain.buyIntent} clipSeconds={brain.clipSeconds} reducedMotion={reducedMotion} />
+      ) : null}
       {/* THE UNLOCK closes the tab — the fix you take away, after you've seen why */}
       {unlock ? <Unlock unlock={unlock} /> : null}
+      {/* one consolidated honesty line (replaces the scattered per-section "modeled" disclaimers) */}
+      {brain.calibrationNote ? (
+        <div className="mt-6 font-mono text-[10px] uppercase tracking-[0.1em]" style={{ color: TONE.faint }}>
+          {brain.calibrationNote}
+        </div>
+      ) : null}
       <HowToRead />
     </div>
   );

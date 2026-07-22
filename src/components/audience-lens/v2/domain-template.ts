@@ -63,6 +63,43 @@ export interface WhyThisSecond {
   segments: { text: string; loss?: boolean }[];
 }
 
+// ── Sapient-depth sections (optional — the fuller brain read) ──────────────────
+
+/** ① Nine breakdown signals — the Sapient decomposition. Each cell: a modeled 0..100 score, a status
+ *  word (tone-coded), the delta vs the user's typical (#8), and the one-line "why this score". */
+export interface SignalCell {
+  key: string;
+  label: string; // "Visual Pull" | "Voice Impact" | … (from SIGNAL_DEFS)
+  score: number; // 0..100 (modeled)
+  word: string; // display grade — "Weakness" | "Okay" | "Strong"
+  tone: "weak" | "okay" | "strong";
+  delta?: number; // vs the user's typical hook
+  whyScore: string;
+}
+
+/** ② Raw network activation — a network's z-score at the decisive second + its plain band word. */
+export interface NetworkBar {
+  label: string;
+  z: number; // σ from the clip's own baseline
+  band: string; // "slightly above" | "clearly below" | …
+  loss?: boolean; // the standout loss network (coral)
+}
+
+/** ③ KPI activation per second — every decoded system, one row of 0..100 intensities per second. */
+export interface KpiHeatmapData {
+  seconds: number; // clip length in whole seconds (columns)
+  rows: { label: string; values: number[] }[]; // each values[i] = 0..100 at second i
+}
+
+/** ④ Purchase-intent moments — a buy-intent curve over the clip with a threshold + the peak seconds. */
+export interface BuyIntentData {
+  points: number[]; // 0..100 buy-intent across the clip
+  threshold: number; // 0..100 — the clip's own average (the dashed line)
+  abovePct: number; // % of the clip above threshold (the headline number)
+  peaks: { t: string; v: number }[]; // "0:05" · 73
+  caption: string; // the honest "what this is / isn't" one-liner for the section
+}
+
 export interface BrainFrameData {
   cortexSeedKey: string; // drifts the cortex parcellation; stable per stimulus
   clipSeconds: number; // cortex replay-loop duration (s)
@@ -74,6 +111,13 @@ export interface BrainFrameData {
   whyThisSecond?: WhyThisSecond; // ◇ optional — the P2 synthesis that heads the networks
   networks?: NetworkRow[]; // ◇ optional creator figure (σ evidence, plain-word read per row)
   askWhy?: AskWhySlot; // ● shared (deferred stub)
+  // ── Sapient-depth sections (optional; creator authors them, pricing omits). When `signalGrid` is
+  //    present it REPLACES the lean 3-row `signals` delta (its delta lives on each cell instead). ──
+  signalGrid?: SignalCell[]; // ① nine breakdown signals
+  networkBars?: NetworkBar[]; // ② raw network activation · z-scored
+  kpiHeatmap?: KpiHeatmapData; // ③ activation per second · every decoded system
+  buyIntent?: BuyIntentData; // ④ purchase-intent moments
+  calibrationNote?: string; // the single consolidated honesty line at the tab bottom (replaces cortexNote)
 }
 
 // ── Population swap figures ────────────────────────────────────────────────────
@@ -97,6 +141,42 @@ export type PopulationMain =
   | { kind: "tri-state"; data: TriState; percentileLine: string }
   | { kind: "demand-curve"; data: DemandCurveData };
 
+// ── audience-depth sections (optional — the fuller society read) ───────────────
+
+/** Who this is for — each segment's over/under-index vs the creator's typical audience (targeting). */
+export interface AudienceFitData {
+  baseline: string; // "vs your last 41 hooks"
+  rows: { label: string; index: number; loss?: boolean }[]; // index = % over(+)/under(−) the baseline
+  read: string;
+}
+
+/** Who spreads it · how far — the reshare cascade (reach depth) + which segments carry it. */
+export interface AmplificationData {
+  reachMultiplier: number; // ×followers (headline)
+  reached: number; // modeled second-ring reach
+  cascade: { label: string; count: number }[]; // saw it → reshared → their networks (reverse funnel)
+  carriers: { label: string; factor: number; lead?: boolean }[]; // reshare propensity per segment (×)
+  read: string;
+}
+
+/** The swing · your upside — the fence-sitters and the verdict move if you win them. */
+export interface SwingData {
+  nearMiss: number; // people stalled right at the line
+  fromPct: number; // current verdict %
+  toPct: number; // modeled potential %
+  gainLabel: string; // "+11% would stop"
+  read: string;
+}
+
+/** The room · trust — the methodology strip (sample · calibration · confidence). */
+export interface RoomTrustData {
+  simulated: number; // simulated viewers
+  calibratedOn: string; // "your 4.2k followers"
+  confidence: number; // 0..1
+  confidenceLabel: string; // "High" | "Medium" | …
+  note: string; // the honesty line (engagement-calibrated, not purchase)
+}
+
 export interface PopulationFrameData {
   main: PopulationMain; // ◇ headline + main figure
   terrain: { clusters: TerrainCluster[]; lossClusterIndex: number }; // ● shared — the society (labels
@@ -119,6 +199,11 @@ export interface PopulationFrameData {
    *  The generalization-bounded-by-calibration law: shown when the decision leans on a calibration the
    *  audience wasn't built for (a scroll-calibrated room predicting willingness-to-pay). */
   calibration?: { note: string };
+  // ── audience-depth sections (optional; creator authors them) ──
+  audienceFit?: AudienceFitData; // who this is for · vs your typical
+  amplification?: AmplificationData; // who spreads it · how far
+  swing?: SwingData; // the swing · your upside
+  room?: RoomTrustData; // the room · trust strip (richer replacement for `calibration.note`)
 }
 
 // ── the bundle ─────────────────────────────────────────────────────────────────

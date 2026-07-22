@@ -16,6 +16,7 @@
 import { useMemo, useState } from "react";
 import { TONE, Kick, HowToRead, type CodedReason, type SegmentStop, type TerrainCluster, type TriState } from "./AmbientDetail";
 import { TerrainMap } from "./AudienceTerrain";
+import { IndexBars, Amplification, Swing, RoomStrip } from "./AudienceDepth";
 import type { DemandCurveData, DomainTemplate, PopulationFrameData, PopulationMain } from "./domain-template";
 
 // ── the shared dot vocabulary — a node-bar (units = people, lit share = the rate) ─────
@@ -105,13 +106,21 @@ function TriStateOutcome({ tri, percentileLine }: { tri: TriState; percentileLin
       <div className="text-[11px]" style={{ color: TONE.faint }}>
         {percentileLine}
       </div>
-      <div className="mt-3 flex">
-        {cols.map((c, i) => (
-          <div key={c.t} className="flex-1" style={{ paddingLeft: i === 0 ? 0 : 14 }}>
+      {/* three framed cells — the split reads as three distinct outcomes, coral on the loss */}
+      <div className="mt-3 grid grid-cols-3 gap-2.5">
+        {cols.map((c) => (
+          <div
+            key={c.t}
+            className="rounded-[10px] px-3 py-3.5"
+            style={{
+              border: `1px solid ${c.loss ? "rgba(255,99,99,.22)" : TONE.border}`,
+              background: c.loss ? "rgba(255,99,99,.04)" : "rgba(255,255,255,.02)",
+            }}
+          >
             <div className="text-[24px] font-light tabular-nums" style={{ color: c.loss ? TONE.coral : TONE.cream }}>
               {c.n}%
             </div>
-            <div className="mt-0.5 text-[12px]" style={{ color: TONE.faint }}>
+            <div className="mt-1 text-[12px]" style={{ color: c.loss ? "rgba(255,99,99,.7)" : TONE.faint }}>
               {c.t}
             </div>
           </div>
@@ -313,11 +322,20 @@ export function PopulationFrame({
     <div className="mt-4">
       <TerrainMap terrain={population.terrain} verdict={verdict} reducedMotion={reducedMotion} highlightCluster={highlight} />
       {/* the read — the non-obvious "so what" of the society (believers vs your ceiling). The insight,
-          not a caption restating the map — kept as one confident line under the hero. */}
+          not a caption restating the map. Premium quiet treatment: a mono eyebrow + hairline set it
+          apart as an intentional statement, not a floating grey line under the hero. */}
       {population.heroRead ? (
-        <p className="mt-4 text-[14.5px] leading-[1.5]" style={{ color: TONE.dim }}>
-          {population.heroRead}
-        </p>
+        <div className="mt-5 pt-4" style={{ borderTop: `1px solid ${TONE.border}` }}>
+          <div
+            className="font-mono text-[10px] uppercase tracking-[0.15em]"
+            style={{ color: "rgba(236,231,222,.32)" }}
+          >
+            the read
+          </div>
+          <p className="mt-2 text-[15px] leading-[1.55]" style={{ color: TONE.dim }}>
+            {population.heroRead}
+          </p>
+        </div>
       ) : null}
       <DistrictLedger
         clusters={population.terrain.clusters}
@@ -326,6 +344,9 @@ export function PopulationFrame({
         onHover={setHighlight}
       />
       <PopulationMainSlot main={population.main} />
+      {/* who this is for → who spreads it (targeting + reach — the reads the map can't make) */}
+      {population.audienceFit ? <IndexBars data={population.audienceFit} reducedMotion={reducedMotion} /> : null}
+      {population.amplification ? <Amplification data={population.amplification} /> : null}
       {population.segments ? <Segments title={population.segments.title} rows={population.segments.rows} /> : null}
       <Receipts
         kicker={population.voices.kicker}
@@ -333,7 +354,12 @@ export function PopulationFrame({
         onInterview={onInterview}
         onJumpToBrain={onJumpToBrain}
       />
-      {population.calibration ? (
+      {/* the swing — the upside after you've seen who + why */}
+      {population.swing ? <Swing data={population.swing} /> : null}
+      {/* the room — the trust strip (richer than the plain calibration line; falls back to it) */}
+      {population.room ? (
+        <RoomStrip data={population.room} />
+      ) : population.calibration ? (
         <div className="mt-6 font-mono text-[10px] uppercase tracking-[0.1em]" style={{ color: TONE.faint }}>
           {population.calibration.note}
         </div>

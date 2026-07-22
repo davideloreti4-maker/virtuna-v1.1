@@ -139,7 +139,7 @@ export default function AmbientV2DevPage() {
             />
           </div>
         ) : (
-          <div className="w-[480px]" style={{ height: AMBIENT_PANEL_HEIGHT }}>
+          <div className="w-[440px]" style={{ height: AMBIENT_PANEL_HEIGHT }}>
             {surface === "overview" ? (
               <AmbientOverview data={overviewData} onOpenStimulus={() => setSurface("brain")} onTestVariant={() => {}} />
             ) : (
