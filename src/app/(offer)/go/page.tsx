@@ -1,6 +1,16 @@
 import type { Metadata } from "next";
-import { ProductRender } from "@/components/offer/product-render";
+import { HeroShowcase } from "@/components/offer/hero-showcase";
 import { BlurFade } from "@/components/velora/blur-fade";
+
+/** Fine film grain (inline, no asset) — the matte texture that keeps the dark wash from reading flat. */
+const GRAIN =
+  "data:image/svg+xml," +
+  encodeURIComponent(
+    "<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'>" +
+      "<filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/>" +
+      "<feColorMatrix type='saturate' values='0'/></filter>" +
+      "<rect width='140' height='140' filter='url(#n)' opacity='0.55'/></svg>",
+  );
 
 export const metadata: Metadata = {
   title: "Maven — Know if your video will pop before you post",
@@ -39,15 +49,46 @@ export default function OfferPage() {
 
       {/* hero */}
       <section className="relative overflow-hidden">
-        {/* subtle matte coral glow — atmosphere, not paint */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -top-40 right-[-10%] h-[520px] w-[520px] rounded-full opacity-[0.12] blur-[130px]"
-          style={{ background: "radial-gradient(circle,#FF6363,transparent 70%)" }}
-        />
-        <div className="mx-auto grid max-w-6xl items-center gap-10 px-5 py-12 md:grid-cols-[1.05fr_1fr] md:gap-12 md:py-20">
-          {/* copy */}
-          <div>
+        {/* atmosphere — layered matte depth (wash + dot-grid + soft blooms + grain), never glass */}
+        <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+          {/* warm top wash */}
+          <div
+            className="absolute inset-x-0 top-0 h-[70%]"
+            style={{ background: "linear-gradient(180deg,rgba(255,143,112,0.05),transparent 62%)" }}
+          />
+          {/* dot grid, fading toward the edges */}
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage:
+                "radial-gradient(circle at 1px 1px,rgba(236,231,222,0.05) 1px,transparent 0)",
+              backgroundSize: "24px 24px",
+              maskImage: "radial-gradient(120% 80% at 50% 0%,#000 28%,transparent 76%)",
+              WebkitMaskImage: "radial-gradient(120% 80% at 50% 0%,#000 28%,transparent 76%)",
+            }}
+          />
+          {/* coral bloom, top-right (the one warm accent) */}
+          <div
+            className="absolute -top-40 right-[-12%] h-[560px] w-[560px] rounded-full opacity-[0.13] blur-[140px]"
+            style={{ background: "radial-gradient(circle,#FF6363,transparent 70%)" }}
+          />
+          {/* neutral-warm bloom, bottom-left — balances the composition */}
+          <div
+            className="absolute bottom-[-28%] left-[-14%] h-[520px] w-[520px] rounded-full opacity-[0.07] blur-[150px]"
+            style={{ background: "radial-gradient(circle,#ffb27a,transparent 70%)" }}
+          />
+          {/* film grain */}
+          <div
+            className="absolute inset-0 opacity-[0.03] mix-blend-soft-light"
+            style={{ backgroundImage: `url("${GRAIN}")`, backgroundSize: "140px 140px" }}
+          />
+          {/* settle into the page below */}
+          <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-transparent to-background" />
+        </div>
+
+        <div className="relative mx-auto max-w-6xl px-5 py-12 md:py-16">
+          {/* copy — the promise, above the two-surface showcase */}
+          <div className="mx-auto max-w-2xl text-center">
             <BlurFade delay={0.05}>
               <span className="text-xs font-semibold uppercase tracking-[0.14em] text-foreground-muted">
                 Stop posting blind
@@ -61,14 +102,14 @@ export default function OfferPage() {
               </h1>
             </BlurFade>
             <BlurFade delay={0.19}>
-              <p className="mt-4 max-w-[34ch] text-[17px] leading-relaxed text-foreground-secondary">
-                Maven simulates how 1,000 real viewers react to your video,
-                second by second — so you see the exact moment they&apos;d
+              <p className="mx-auto mt-4 max-w-[46ch] text-[17px] leading-relaxed text-foreground-secondary">
+                Maven reads your video frame by frame, then simulates how 1,000
+                real viewers react — so you see the exact moment they&apos;d
                 scroll, and the fix, before you ever hit post.
               </p>
             </BlurFade>
             <BlurFade delay={0.26}>
-              <div className="mt-6 flex flex-wrap items-center gap-3">
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
                 <a
                   href="#pricing"
                   className="inline-flex h-12 items-center justify-center rounded-lg bg-action px-6 text-[15px] font-semibold text-action-foreground transition-transform hover:scale-[1.02] active:scale-[0.99]"
@@ -87,9 +128,9 @@ export default function OfferPage() {
             </BlurFade>
           </div>
 
-          {/* the wow — the REAL product card, rendered live from the app */}
-          <BlurFade delay={0.2} direction="left">
-            <ProductRender />
+          {/* the wow — the REAL product, live: craft card BESIDE the room */}
+          <BlurFade delay={0.2} className="mt-12 md:mt-16">
+            <HeroShowcase />
           </BlurFade>
         </div>
       </section>

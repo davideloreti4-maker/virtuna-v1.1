@@ -10,12 +10,21 @@ A **cold-social → `$1 / 3-day trial` offer page** for Maven, built to convert 
 
 **The hero renders the REAL product** — the shipped `VideoTestCardRenderer` — not a marketing mock. It auto-updates when the card design changes (imports the live component). This was an owner pivot away from a synthetic canvas mock; reason: authenticity/trust + auto-update + shows real value.
 
-**✅ DONE + live-verified this session:** the real Test card renders on `/go` (HTTP 200, 0 console errors, screenshot premium). See "Current state" below.
+**✅ DONE + live-verified (session 1, morning):** the real Test card renders on `/go` (HTTP 200, 0 console errors, screenshot premium).
 
-**▶ NEXT (owner-directed, this is your job):**
-1. **Guided build-motion** on the card (the "wow" choreography) + general motion.
-2. **Add the simulation cards — brain + population — visible** beside/below the Test card (the `AmbientRoom` component; already on this branch).
-3. Rest-of-page premium pass (transformation → pricing → FAQ).
+**✅ DONE + live-verified (session 2, 2026-07-22 pm — THIS session):**
+1. **Guided build-motion** (T1) — a live-chat choreography wrapping the shipped card (never forked).
+2. **Brain + population room** (T2) — the shipped `AmbientRoom` beside the card (desktop) / in a Sheet (mobile).
+3. **Real-chat feel** — the thread streams like a live conversation (typewriter → Maven avatar + streamed reply → card).
+4. **Populated frames** — the empty filmstrip play-tiles now render cinematic SVG stills.
+5. **Richer hero background** — layered matte atmosphere (wash + dot-grid + blooms + grain).
+tsc 0 · `/go` 200 · 0 console errors · verified live in-browser (desktop + mobile Sheet). Committed on `lane/maven-offer`. See "Session 2 changelog" + "NEXT" below.
+
+**▶ NEXT (owner-directed):**
+1. **T3 — rest-of-page premium pass** (transformation → how-it-works → pricing → FAQ → final CTA + footer + sticky mobile CTA). START HERE tomorrow — biggest remaining surface.
+2. **CTA color decision** — cream (dosage-safe) vs a bolder coral conversion variant (owner call, flagged).
+3. **Gate `ask →` off on the landing** — the room's per-persona chat is a real authed API; on a cold public route a send would fail. The wow (brain autoplay + brain/people/population toggle) is all client-side + safe; only `ask →` is the edge. Low priority, but before any real traffic.
+4. **T4 — shared fixture** for true DATA auto-update (extract dev/cards' `video-test-card` props to a module; import in both).
 
 ---
 
@@ -37,12 +46,25 @@ A **cold-social → `$1 / 3-day trial` offer page** for Maven, built to convert 
 | File | Role |
 |---|---|
 | `src/app/(offer)/layout.tsx` | Bare dark pass-through layout for the group; imports `offer.css` |
-| `src/app/(offer)/offer.css` | Scoped keyframes (`mavenPulse`, `mavenScan`, `mavenShimmer`, `mavenGain`) — for motion |
-| `src/app/(offer)/go/page.tsx` | The offer page: slim brand bar + hero (copy left, `<ProductRender/>` right) |
-| `src/components/offer/product-render.tsx` | **The hero centerpiece.** Wraps `VideoTestCardRenderer` in a throwaway `QueryClient` + browser-window frame (mini thread: "test this video for me" → Maven → the card). Non-interactive (`pointer-events-none`), bottom fade. |
-| `src/components/offer/test-card-fixture.ts` | The card's props — a COPY of the `/dev/cards` `video-test-card` fixture. Design auto-updates via the import; DATA is a snapshot (see NEXT-T4). |
-| `src/components/offer/read-stage.tsx` | **SUPERSEDED** synthetic mock (the pre-pivot canvas "read"). Unused. Deletable — kept only in case the motion work reuses its curve/room logic. |
+| `src/app/(offer)/offer.css` | Scoped keyframes (`mavenPulse`, `mavenScan`, `mavenShimmer`, `mavenGain`). NOTE: the guided motion is driven by `motion/react` in the components, NOT these keyframes — they're now largely unused scaffolding (safe to prune later). |
+| `src/app/(offer)/go/page.tsx` | The offer page: slim brand bar + hero. **Restructured session 2:** copy CENTERED on top, then `<HeroShowcase/>` full-width below. Layered matte background (`GRAIN` const + wash/dot-grid/blooms/grain divs). |
+| `src/components/offer/hero-showcase.tsx` | **NEW (T2).** Lays out the two-surface story: `<ProductRender/>` (card) BESIDE `<AmbientPanel/>` (room) on desktop (`lg:grid`); mobile shows the card + a "See how the room reacts →" `Sheet` (bottom) that lazy-mounts the room. Owns the `SheetTitle`/`SheetDescription` (a11y). |
+| `src/components/offer/product-render.tsx` | **The hero card + choreography.** Wraps the shipped `VideoTestCardRenderer` in a throwaway `QueryClient` + browser-window frame. **Session 2:** a `Phase` state machine (`idle→typing→thinking→replying→reading→reveal→done`) drives the live-chat build-motion — visitor bubble types → Maven avatar + streamed reply → self-contained "reading" ring overlay (draws to 77 + `NumberTicker`) → card assembles top-down (clip+blur) → coral `BorderBeam`. Card stays `pointer-events-none`; `prefers-reduced-motion` jumps to done. |
+| `src/components/offer/ambient-panel.tsx` | **NEW (T2).** The shipped `AmbientRoom` in a matching window frame, own throwaway `QueryClient`, lands on the auto-playing **brain** view. `canRewrite={false}`. Fed by `room-fixture.ts`. |
+| `src/components/offer/room-fixture.ts` | **NEW (T2).** Local snapshot of `/dev/cards` `ROOM_FOCUS` (concept + `6/10 stop` + 10 registry-enum personas + siblings). Non-grounded so no gitignored sample-video needed. |
+| `src/components/offer/frame-stills.ts` | **NEW.** Generates cinematic 9:16 "video frames" as inline SVG data-URIs (duotone light + soft subject + vignette + grain), one per cut beat (`coldOpen/setup/stall/payoff/close`). Fixed the empty-play-tile filmstrip. CSP-safe, no asset. |
+| `src/components/offer/test-card-fixture.ts` | The card's props — a COPY of the `/dev/cards` `video-test-card` fixture. **Session 2:** `keyframeUrl`/`coverUrl` (filmstrip + 3 fixes + 2 proofs) now point at `FRAME_STILLS`. Design auto-updates via the import; DATA is a snapshot (see NEXT-T4). |
+| `src/components/offer/read-stage.tsx` | **SUPERSEDED** synthetic mock (the pre-pivot canvas "read"). Unused. Deletable. |
 | `src/components/velora/*` | 7 copied Velora UI components (MIT): `number-ticker`, `blur-fade`, `border-beam`, `iphone-mockup`, `aurora-background`, `shimmer-button`, `animated-gradient-text`. |
+
+### Session 2 changelog (2026-07-22 pm) — technical notes for the next session
+
+- **Choreography lives at the container level.** The shipped `VideoTestCardRenderer` is NEVER forked to animate. All beats (`product-render.tsx`) are the wrapper's: the reading overlay owns its OWN 92px ring SVG + `NumberTicker` (robust to any card redesign — it never reads the card's internal layout); the reveal is a `clipPath: inset()` + blur on the card's `motion.div`; the closing accent is a coral `BorderBeam` on the window frame (the card's own drop flag + Simulate CTA sit below the 600px open-loop cut, so they aren't separately animated).
+- **Provider needs (verified):** `AmbientRoom` + children (`BrainView`, `PersonaChatDrawer`) use NO react-query/Tooltip at mount — they render clean. Each panel still gets its own throwaway `QueryClient` as insurance. Do NOT import the app `Providers` (it mounts `CreditWallListener`).
+- **Brain auto-plays:** `BrainView` sets `playing = !videoSrc && !reducedMotion`, so the non-grounded personas-only mount auto-runs the neural read on the landing — the ambient wow with zero interaction.
+- **Frames:** `CoverFill` renders any `coverUrl` (incl. data-URIs) as an `<img>` over a play-tile; a null/broken src falls back to the tile. The SVG stills are depicted imagery (scene color OK — the matte/coral dosage rule governs UI chrome, not video-frame content).
+- **Verify pattern (screenshots hang):** inject a global `*{animation-duration:0s!important;transition:none!important}` freeze via `browser_evaluate`, THEN `browser_take_screenshot` — the freeze resolves the stability wait that otherwise hangs on this app's ambient animations. Otherwise use `browser_evaluate` DOM asserts.
+- **Layout facts:** desktop showcase = `lg:grid-cols-[minmax(0,560px)_minmax(340px,420px)]` centered in `max-w-[1000px]`; card window capped `max-h-[600px]` (open loop, ~1781px full card); ambient boxed `lg:h-[620px]`. Mobile: desktop ambient `hidden lg:block`, Sheet content lazy-mounts (0 room instances until opened).
 
 **Why the QueryClient wrapper:** `VideoTestCardRenderer` embeds `<SaveAffordance>` which calls `useSaveItem()` (react-query) at mount → needs a `QueryClientProvider`. Nothing fires unless clicked, and the card is `pointer-events-none`, so the dead Save/Simulate links never trigger. This is the ONLY provider the card needs on a public route.
 
