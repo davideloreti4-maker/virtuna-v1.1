@@ -50,7 +50,6 @@ import {
   EXPLORE_BLOCKS,
   ACCOUNT_BLOCK,
   BLOCK_SECTIONS,
-  MULTI_AUDIENCE_READ_BLOCK,
   SINGLE_AUDIENCE_READ_BLOCK,
   USER_TURNS,
   FOLLOWUPS,
@@ -614,14 +613,8 @@ const THREAD_VIEWS: { id: string; label: string; note: string; node: React.React
   {
     id: "read",
     label: "Text Read (concept read)",
-    note: "The Read skill — /api/tools/read. An in-thread card: the chat agent calls request_input(action:read), the creator's concept POSTs to the route, and this multi-audience-read block renders in the thread (billed action:read). One audience: band + interpretation + Lever + who-not-for + reaction drill. Rendered via MessageBlocks (proves the registry routes multi-audience-read → the renderer).",
+    note: "The Read skill — /api/tools/read. An in-thread card: the chat agent calls request_input(action:read), the creator's concept POSTs to the route, and this multi-audience-read block renders in the thread (billed action:read). One audience: band + interpretation + Lever + who-not-for + reaction drill. Rendered via MessageBlocks (proves the registry routes multi-audience-read → the renderer). NOTE: the 2-audience COMPARE shape is intentionally NOT previewed here — it never renders in-thread (only the /audience Compare button produces it, gated on 2+ calibrated audiences), so it isn't a Skills card. Its block shape stays drift-validated via ALL_FIXTURE_BLOCKS.",
     node: <MessageBlocks body={[SINGLE_AUDIENCE_READ_BLOCK]} />,
-  },
-  {
-    id: "read-compare",
-    label: "Text Read — compare (2 audiences)",
-    note: "The same multi-audience-read card in its 2-audience shape — the side-by-side compare (wins-for-X / bombs-for-Y). Produced by the Audience Manager's Compare flow (audience-manager.tsx handleCompare), not the in-thread path, but the same renderer. The CompareVerdictRow header was de-boxed 2026-07-22.",
-    node: <MessageBlocks body={[MULTI_AUDIENCE_READ_BLOCK]} />,
   },
 ];
 
@@ -988,7 +981,7 @@ const STATUS_META: Record<Status, { label: string; dot: string; tone: string }> 
 
 // Skills, in thread order. Their outlier / degraded run-states NEST under the base skill
 // (they are the same run + one SSE affordance) instead of competing as peer sections.
-const SKILL_ORDER = ["ideas", "hooks", "script", "remix", "chat", "explore", "account", "read", "read-compare", "video-test-card"] as const;
+const SKILL_ORDER = ["ideas", "hooks", "script", "remix", "chat", "explore", "account", "read", "video-test-card"] as const;
 const VARIANT_OF: Record<string, string> = {
   "ideas-outliers": "ideas",
   "hooks-degraded": "hooks",

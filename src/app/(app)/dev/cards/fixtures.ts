@@ -563,7 +563,10 @@ const PREDICTION_GAUGE_BLOCK: PredictionGaugeBlock = {
   },
 };
 
-export const MULTI_AUDIENCE_READ_BLOCK: MultiAudienceReadBlock = {
+// The 2-audience COMPARE shape. Not previewed on /dev/cards — it never renders in-thread
+// (only the /audience Compare button produces it, gated on 2+ calibrated audiences), so it's
+// not a Skills card. Kept here purely to keep the shape drift-validated via ALL_FIXTURE_BLOCKS.
+const MULTI_AUDIENCE_READ_BLOCK: MultiAudienceReadBlock = {
   type: "multi-audience-read",
   props: {
     model: "sim1-flash",
@@ -799,10 +802,11 @@ export const BLOCK_SECTIONS: BlockSection[] = [
     note: "HIDDEN — the Predict skill is behind HORIZONTAL_ENABLED (flag OFF). Not shippable today; renderer kept so persisted prediction-gauge blocks still render. Reference-only. Predict skill → honest forecast: band word + one feathered range + factors (each names its analyst).",
     body: [PREDICTION_GAUGE_BLOCK],
   },
-  // NOTE: the two Text Read (multi-audience-read) sections MOVED to the Skills tab
-  // (THREAD_VIEWS "read" + "read-compare" in page.tsx) — the Read is an in-thread skill
-  // output, so it belongs with the other skills, not down here among the primitives. The
-  // blocks themselves stay in ALL_FIXTURE_BLOCKS below so the drift-guard still validates them.
+  // NOTE: the single Text Read (multi-audience-read) section MOVED to the Skills tab
+  // (THREAD_VIEWS "read" in page.tsx) — the Read is an in-thread skill output, so it belongs
+  // with the other skills, not down here among the primitives. The 2-audience COMPARE shape is
+  // NOT previewed anywhere (it never renders in-thread — /audience Compare only). Both blocks
+  // stay in ALL_FIXTURE_BLOCKS below so the drift-guard still validates their shapes.
   {
     type: "corpus-references",
     label: "Chat sources (topical — filtered)",
