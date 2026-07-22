@@ -67,6 +67,11 @@ export interface PartialRemixCard {
   // READY TO FILM (owner 2026-07-22): the shoot plan for YOUR adapted version. undefined when the
   // adapt model returned none. Same reload-only hazard — carried through toBlocks so it renders live.
   production?: RemixCardBlock['props']['production'];
+  // PROVENANCE (new Qwen call system, 2026-07-22): "projected" ⇒ the adapted-hook band/fraction is
+  // the adapt call's generation-time estimate (no persona SIM ran), so the card reads in the
+  // conditional ("would stop") + tags "projected". Absent ⇒ MEASURED (legacy). Same reload-only
+  // hazard as proof — declared + parsed + carried through toBlocks, or the LIVE card lies.
+  provenance?: 'projected' | 'measured';
 }
 
 /**
@@ -85,6 +90,15 @@ function parseProductionProp(raw: unknown): RemixCardBlock['props']['production'
   if (!shots || !onScreenText || !setup) return undefined;
   const edit = str(p.edit);
   return { shots, onScreenText, setup, ...(edit ? { edit } : {}) };
+}
+
+/**
+ * Parse the `provenance` prop off the SSE face. Only the two known literals survive; anything else
+ * (absent, malformed) → undefined ⇒ the card renders as a legacy MEASURED one (back-compat). Without
+ * this the projected card's live face would claim a measurement it never ran (new call system).
+ */
+function parseProvenanceProp(raw: unknown): 'projected' | 'measured' | undefined {
+  return raw === 'projected' || raw === 'measured' ? raw : undefined;
 }
 
 export interface UseRemixStreamReturn {
@@ -272,6 +286,8 @@ export function useRemixStream(): UseRemixStreamReturn {
                     : undefined,
                   population: parsePopulationProp(props.population), // Sim v2: adapted-hook projection → Population·1,000 Sheet
                   production: parseProductionProp(props.production), // owner 2026-07-22: YOUR-version shoot plan renders live, not reload-only
+                  // new call system: "projected" rides the face → honest "would stop", not measured.
+                  provenance: parseProvenanceProp(props.provenance),
                 };
               })
               .filter((c: PartialRemixCard) => c.adaptedHook.length > 0);
@@ -338,6 +354,9 @@ export function useRemixStream(): UseRemixStreamReturn {
         ...(c.population ? { population: c.population } : {}),
         // Ready-to-film (owner 2026-07-22) — the YOUR-version shoot plan renders live, not reload-only.
         ...(c.production ? { production: c.production } : {}),
+        // Provenance (new call system) — a "projected" card must read "would stop / projected" LIVE,
+        // not only after a reload; omitted ⇒ the renderer's MEASURED default (legacy back-compat).
+        ...(c.provenance ? { provenance: c.provenance } : {}),
       },
     }));
   }, [streamingCards]);

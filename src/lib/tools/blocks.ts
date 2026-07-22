@@ -264,6 +264,13 @@ export const IdeaCardBlockSchema = z.object({
     fraction: z.string(),           // e.g. "6/10 stop"
     scrollQuote: z.string(),        // lead per-persona scroll quote (D-04)
     model: z.literal("sim1-flash"), // provenance tag — always Flash for idea cards
+    // PROVENANCE (new Qwen call system, 2026-07-22): is the band/fraction a generation-time
+    // PROJECTION (the single gen call self-estimated `personaStops` /10 — no SIM panel ran) or a
+    // MEASURED room reaction (the persona SIM ran)? Absent ⇒ "measured" (back-compat: every
+    // persisted pre-collapse idea card WAS measured by the Flash panel). A "projected" card must
+    // never claim measurement — the renderer gates all measured wording on this, and "See the
+    // room →" is the door that upgrades a projection to a verdict. Mirrors HookCardBlockSchema.
+    provenance: z.enum(["projected", "measured"]).optional(),
     // A4 (premium-thread): true once the `score` event has patched band/fraction. OPTIONAL +
     // back-compat — absent on persisted/pre-A4 blocks → the renderer treats it as already-scored.
     scored: z.boolean().optional(),
@@ -335,6 +342,13 @@ export const HookCardBlockSchema = z.object({
     fraction: z.string(),              // e.g. "6/10 stop"
     scrollQuote: z.string(),           // lead per-persona scroll quote (D-02/D-04 texture)
     model: z.literal("sim1-flash"),    // provenance tag — always Flash for hook cards
+    // PROVENANCE (new Qwen call system, 2026-07-22): is the band/fraction a generation-time
+    // PROJECTION (the single gen call self-estimated `personaStops` /10 — no SIM panel ran) or a
+    // MEASURED room reaction (the persona SIM ran)? Absent ⇒ "measured" (back-compat: every
+    // persisted pre-collapse hook card WAS measured by the Flash panel). A "projected" card must
+    // never claim measurement — the renderer gates all "the room reacted / SIM-1 Flash / N reactors"
+    // language on this, and "See the room →" is the door that upgrades a projection to a verdict.
+    provenance: z.enum(["projected", "measured"]).optional(),
     // A4 (premium-thread): true once the `score` event has patched band/fraction. OPTIONAL +
     // back-compat — absent on persisted/pre-A4 blocks → the renderer treats it as already-scored.
     scored: z.boolean().optional(),
@@ -441,6 +455,12 @@ export const ScriptCardBlockSchema = z.object({
     fraction: z.string(),              // e.g. "7/10 stop" — opener audience fraction only
     scrollQuote: z.string(),           // lead per-persona scroll quote for the opener (D-04)
     model: z.literal("sim1-flash"),    // provenance tag — always Flash for script cards (D-10)
+    // PROVENANCE (new Qwen call system, 2026-07-22): the opener band/fraction is a generation-time
+    // PROJECTION (the single gen call self-estimated the opener's `personaStops` /10 — no opener SIM
+    // ran) vs a MEASURED opener reaction. Absent ⇒ "measured" (back-compat). A "projected" card must
+    // never claim measurement — opener-scoped honesty (Pitfall 5) still holds either way. Mirrors
+    // HookCardBlockSchema; "See the room →" fires the real opener reaction.
+    provenance: z.enum(["projected", "measured"]).optional(),
     // S3′: the opener's 10-persona reaction. OPTIONAL (back-compat). Ambient modal reads it (PR-2).
     personas: z.array(ReactionPersonaSchema).optional(),
     // GROUNDING (§11f fan-out): the frozen receipt for the real outlier whose proven STRUCTURE
@@ -526,6 +546,12 @@ export const RemixCardBlockSchema = z.object({
     fraction: z.string().min(1),       // e.g. "7/10 stop" — adapted hook audience fraction only
     scrollQuote: z.string().min(1),    // lead per-persona scroll quote for the adapted hook
     model: z.literal("sim1-flash"),    // provenance tag — always Flash for remix cards (D-10)
+    // PROVENANCE (new Qwen call system, 2026-07-22): the adapted-hook band/fraction is a generation-
+    // time PROJECTION (the single adapt call self-estimated each concept's `personaStops` /10 — no
+    // persona SIM ran) vs a MEASURED reaction. Absent ⇒ "measured" (back-compat). A "projected" card
+    // must never claim measurement — the adapted-hook opener scope (Pitfall 5) still holds. Mirrors
+    // HookCardBlockSchema; "See the room →" fires the real reaction.
+    provenance: z.enum(["projected", "measured"]).optional(),
 
     // 08-04 / D-03 STEER tag: the active calibrated audience this remix was generated for.
     // Absent/empty = General (no steer) → renderer shows NO tag (regression-safe no-op).

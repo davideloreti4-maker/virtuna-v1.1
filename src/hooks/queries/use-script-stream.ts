@@ -51,6 +51,15 @@ function parseProductionProp(raw: unknown): ScriptCardBlock['props']['production
   return { shots, onScreenText, setup, ...(edit ? { edit } : {}) };
 }
 
+/**
+ * Parse the `provenance` prop off the SSE face. Only the two known literals survive; anything else
+ * (absent, malformed) → undefined ⇒ the card renders as a legacy MEASURED one (back-compat). Without
+ * this the projected card's live face would claim a measurement it never ran (new call system).
+ */
+function parseProvenanceProp(raw: unknown): 'projected' | 'measured' | undefined {
+  return raw === 'projected' || raw === 'measured' ? raw : undefined;
+}
+
 // ── Partial script card (band/fraction absent until score event) ───────────────
 
 export interface PartialScriptCard {
@@ -79,6 +88,11 @@ export interface PartialScriptCard {
   topic?: string;
   format?: string;
   production?: ScriptCardBlock['props']['production'];
+  // PROVENANCE (new Qwen call system, 2026-07-22): "projected" ⇒ the opener band/fraction is the
+  // writer's generation-time estimate (no opener SIM ran), so the card reads in the conditional
+  // ("would stop"). Absent ⇒ MEASURED (legacy). Same reload-only hazard as proof — declared + parsed
+  // + carried through toBlocks, or the LIVE card claims a measurement it never ran.
+  provenance?: 'projected' | 'measured';
 }
 
 export interface UseScriptStreamReturn {
@@ -327,6 +341,10 @@ export function useScriptStream(): UseScriptStreamReturn {
                   proof: parseProofProp(props.proof), // §11f: receipt arrives with the face
                   grounded: parseGroundedProp(props.grounded), // run had sources, even if this card cited none
                   population: parsePopulationProp(props.population), // Sim v2: opener projection → Population·1,000 Sheet
+                  // new call system: "projected" rides the face → honest "would stop", not measured.
+                  ...(parseProvenanceProp(props.provenance)
+                    ? { provenance: parseProvenanceProp(props.provenance) }
+                    : {}),
                   // Ready-to-film card-level fields (owner 2026-07-22) — carried live off the face,
                   // else they'd render only after a reload from the persisted block. Omitted when absent.
                   ...(typeof props.topic === 'string' && props.topic.trim() ? { topic: props.topic } : {}),
@@ -403,6 +421,9 @@ export function useScriptStream(): UseScriptStreamReturn {
         ...(c.grounded ? { grounded: true } : {}),
         // Sim v2 Stage 2 — the opener projection renders live in the Sheet, not just after reload.
         ...(c.population ? { population: c.population } : {}),
+        // Provenance (new call system) — a "projected" card must read "would stop / projected" LIVE,
+        // not only after a reload; omitted ⇒ the renderer's MEASURED default (legacy back-compat).
+        ...(c.provenance ? { provenance: c.provenance } : {}),
         // Ready-to-film (owner 2026-07-22) — carried onto the live block so the topic·format meta +
         // "How to film" block render in-flight, not only after a reload. Omitted when absent.
         ...(c.topic ? { topic: c.topic } : {}),

@@ -175,3 +175,27 @@ export function aggregateFlash(
 
   return { band, fraction };
 }
+
+// ─── Projection band (generation-time estimate — NO SIM panel) ───────────────────
+/**
+ * Map a raw would-stop count (0–total, total assumed 10) to the qualitative band using the
+ * SAME calibrated thresholds as aggregateFlash's flat path.
+ *
+ * WHY IT EXISTS: the single-call skill runners (the new Qwen call system, 2026-07-22) collapse
+ * generation + the persona SIM into ONE generation call. That call self-estimates `personaStops`
+ * (/10) instead of running the 10-persona Flash panel — a PROJECTION, not a measurement. Deriving
+ * the projected band here (rather than re-implementing the 6/3 cut in each runner) keeps the
+ * projected band and any later MEASURED band (aggregateFlash) on ONE calibration SSOT: if the
+ * thresholds ever move, the estimate and the verdict move together. Pure + deterministic.
+ *
+ * Honesty: this is the writer's own guess at its hook's stopping power — the card must label it a
+ * projection (provenance:"projected"), never a measured room reaction.
+ */
+export function bandFromStops(stops: number, total = 10): FlashBand {
+  const clamped = Number.isFinite(stops) ? Math.max(0, Math.min(total, Math.round(stops))) : 0;
+  return clamped >= STRONG_THRESHOLD
+    ? "Strong"
+    : clamped >= MIXED_THRESHOLD
+      ? "Mixed"
+      : "Weak";
+}

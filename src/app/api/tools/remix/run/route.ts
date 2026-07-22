@@ -229,6 +229,8 @@ export async function POST(request: Request): Promise<Response> {
               sourceDecode: b.props.sourceDecode,
               scrollQuote: b.props.scrollQuote,
               model: b.props.model,
+              provenance: b.props.provenance,    // new call system: "projected" must ride the FACE — else the live card
+                                                 // reads "measured" and only self-corrects to "would stop / projected" after a reload.
               // SOURCE ATTRIBUTION (2026-07-13): remix adapts ONE specific real video — the receipt
               // (handle/views/cover) IS the card's core content. It was persisted but dropped from
               // this face, so the source rendered as an anonymous thumbnail until a reload. Same

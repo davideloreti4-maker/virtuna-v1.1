@@ -227,6 +227,8 @@ export async function POST(request: Request): Promise<Response> {
               openingBeatSeed: b.props.openingBeatSeed,
               scrollQuote: b.props.scrollQuote,
               model: b.props.model,
+              provenance: b.props.provenance,   // new call system: "projected" must ride the FACE — else the live card
+                                                // reads "measured" and only self-corrects to "would stop / projected" after a reload.
               personas: b.props.personas,       // S3′: real per-persona reactions → named ambient Room cast (Task B)
               proof: b.props.proof,             // §11f: receipt streams WITH the face (mirrors hooks)
               grounded: b.props.grounded,       // §11f: the RUN had sources even if this card cited none — gates NoSourceNote

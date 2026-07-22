@@ -234,8 +234,11 @@ export async function POST(request: Request): Promise<Response> {
           send("outliers", { available: true });
         }
 
-        // Status event: SIM has run (legacy status for older clients)
-        send("status", { message: "Scoring on your audience…" });
+        // Status event (legacy, for older clients). New Qwen call system (2026-07-22): there is no
+        // separate "scoring" pass — the projected /10 rode the single generation call, and the cards
+        // are now ranked off it. Say "Ranking hooks…", not the old "Scoring on your audience…" which
+        // would claim a persona reaction that no longer runs on the generation path.
+        send("status", { message: "Ranking hooks…" });
 
         // Content event: ranked card faces WITH lead scrollQuote + audienceArchetype + rank
         // band/fraction deferred to score events below (content-first, IDEAS-02 pattern)
@@ -252,6 +255,9 @@ export async function POST(request: Request): Promise<Response> {
               model: b.props.model,
               channel: b.props.channel,
               visualHook: b.props.visualHook,               // owner 2026-07-22: first-frame visual rides the FACE (else reload-only, per proof/target hazard below)
+              provenance: b.props.provenance,               // new call system: "projected" must ride the FACE — else the live card reads "measured"
+                                                            // ("stopped" / "SIM-1 Flash") and only self-corrects to "would stop / projected" after a
+                                                            // reload. The whole honesty point is that a projection never claims a measurement it didn't run.
               personas: b.props.personas,                   // S3′: real per-persona reactions → named ambient Room cast (Task B)
               proof: b.props.proof,                         // §11f: receipt streams WITH the face (was dropped → receipts only appeared after reload)
               target: b.props.target,                       // per-persona generation: WHO this hook was written for + how they reacted

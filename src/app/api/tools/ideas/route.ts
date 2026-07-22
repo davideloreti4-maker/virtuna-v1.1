@@ -214,8 +214,11 @@ export async function POST(request: Request): Promise<Response> {
           send("outliers", { available: true });
         }
 
-        // Status event: "Scoring on your audience…" (legacy status for older clients)
-        send("status", { message: "Scoring on your audience…" });
+        // Status event (legacy, for older clients). New Qwen call system (2026-07-22): there is no
+        // separate "scoring" pass — the projected /10 rode the single generation call, and the cards
+        // are now ranked off it. Say "Ranking ideas…", not the old "Scoring on your audience…" which
+        // would claim a persona reaction that no longer runs on the generation path.
+        send("status", { message: "Ranking ideas…" });
 
         // Content event: card faces WITH lead scroll-quote (D-04/WARNING-4)
         // The entire card block is emitted so the client renders the face immediately.
@@ -236,6 +239,8 @@ export async function POST(request: Request): Promise<Response> {
               format: b.props.format,
               scrollQuote: b.props.scrollQuote, // D-04 WARNING-4: on the face
               model: b.props.model,
+              provenance: b.props.provenance,   // new call system: "projected" must ride the FACE — else the live card
+                                                // reads "measured" and only self-corrects to "would react / projected" after a reload.
               personas: b.props.personas,       // S3′: real per-persona reactions → named ambient Room cast (Task B)
               proof: b.props.proof,             // §11f: receipt streams WITH the face (mirrors hooks)
               grounded: b.props.grounded,       // §11f: the RUN had sources even if this card cited none — gates NoSourceNote

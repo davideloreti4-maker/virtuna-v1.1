@@ -52,6 +52,8 @@ OUTPUT: Return strict JSON with this exact shape and nothing else:
       "angle": "string — the structural angle or narrative approach borrowed from the source",
       "who_its_for": "string — who in the creator's niche this concept targets",
       "format_borrowed": "string — the specific format pattern borrowed (short label, ≤ 10 words)",
+      "personaStops": "number — YOUR honest estimate, 0–10, of how many of 10 target viewers would STOP scrolling on this adapted hook in the first 2 seconds",
+      "stopQuote": "string — ONE short first-person line of what a viewer who stops thinks in that instant",
       "production": {
         "shots": "string — the shot list to film YOUR version of this concept",
         "onScreenText": "string — key on-screen text overlays",
@@ -61,7 +63,7 @@ OUTPUT: Return strict JSON with this exact shape and nothing else:
     }
   ]
 }
-The "concepts" array MUST contain exactly 3 items. "production" is the READY-TO-FILM shoot plan for the creator's OWN adapted version — how to execute the borrowed format for this angle, grounded in what the concept actually needs. Never invent gear or shots the concept does not call for.`;
+The "concepts" array MUST contain exactly 3 items. "personaStops" is a PROJECTION you are making about the ADAPTED HOOK only (not the full video) — be discriminating, never generous: a generic hook with no real mechanism stops 0–2, a genuinely strong niche-true hook stops 7–8, reserve 9–10 for the rare undeniable one; the creator sees it as your estimate and can then measure it against their real audience, so never phrase it as a finished measurement. "production" is the READY-TO-FILM shoot plan for the creator's OWN adapted version — how to execute the borrowed format for this angle, grounded in what the concept actually needs. Never invent gear or shots the concept does not call for.`;
 
 // =========================================================
 // Zod schemas
@@ -72,6 +74,12 @@ const AdaptConceptZodSchema = z.object({
   angle:           z.string().min(1).max(300),
   who_its_for:     z.string().min(1).max(200),
   format_borrowed: z.string().min(1).max(200),
+  // PROJECTION (new Qwen call system, 2026-07-22) — the adapt call self-estimates each adapted hook's
+  // stop-count (/10) + a stop-quote in place of the removed persona-SIM. OPTIONAL + coerced downstream
+  // so a model that omits them (or the old /api/remix/adapt surface that never asked) still validates
+  // and the 3-concept contract holds; the remix runner defaults a missing personaStops to 0 (Weak).
+  personaStops: z.number().optional(),
+  stopQuote:    z.string().optional(),
   // READY TO FILM (owner 2026-07-22) — OPTIONAL so a model that omits it (or returns a partial
   // block) still validates and the 3-concept contract holds; the card just renders no shoot plan.
   // shots/onScreenText/setup are required together when present; edit is optional.

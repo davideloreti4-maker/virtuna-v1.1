@@ -56,7 +56,14 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
     proof,
     production,
     population,
+    provenance,
   } = block.props;
+
+  // New Qwen call system (2026-07-22): a "projected" card's adapted-hook band/fraction/quote are the
+  // adapt call's generation-time estimate — no persona SIM ran. It must NOT claim a measured
+  // reaction: the proof unit reads in the conditional ("would stop") and the provenance tag says
+  // "projected", not "SIM-1 Flash". "See the room →" measures it. Absent ⇒ legacy MEASURED (back-compat).
+  const projected = provenance === 'projected';
 
   const onDevelopCtx = useOnDevelopRemix();
   const platform = useContext(PlatformContext) ?? 'tiktok';
@@ -179,6 +186,7 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
           fraction={fraction}
           quote={scrollQuote}
           suffix="adapted hook"
+          projected={projected}
           flatPersonas={cardScrollQuoteReactions(fraction, scrollQuote)}
           conceptText={adaptedHook}
           population={population}
@@ -191,7 +199,7 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
             platform,
             leverRidesAnchor: true,
           })}
-          label="See how the room reacted to this adapted hook"
+          label={projected ? 'See how the room would react to this adapted hook' : 'See how the room reacted to this adapted hook'}
         />
 
         {/* Expand toggle — the rest of the decode anatomy (structure + emotional beat) + provenance. */}
@@ -204,7 +212,10 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
         >
           <CaretToggle open={expanded} />
           Structure & the emotional beat
-          <span className="text-foreground-muted/70">· SIM-1 Flash</span>
+          {/* Provenance — honest about whether the /10 was MEASURED (SIM-1 Flash panel) or is a
+              generation-time PROJECTION. A projected card ran no persona SIM, so it must not wear
+              the SIM-1 Flash badge (a measurement claim). */}
+          <span className="text-foreground-muted/70">{projected ? '· projected' : '· SIM-1 Flash'}</span>
         </button>
       </div>
 

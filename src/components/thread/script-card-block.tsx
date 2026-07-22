@@ -36,7 +36,13 @@ export interface ScriptCardRendererProps {
 }
 
 export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRendererProps) {
-  const { beats, openingBeatSeed, topic, format, production, band, fraction, scrollQuote, proof, grounded, population } = block.props;
+  const { beats, openingBeatSeed, topic, format, production, band, fraction, scrollQuote, proof, grounded, population, provenance } = block.props;
+
+  // New Qwen call system (2026-07-22): a "projected" card's opener band/fraction/quote are the
+  // WRITER'S generation-time estimate — no opener SIM ran. It must NOT claim a measured reaction: the
+  // proof unit reads in the conditional ("would stop") — opener-only honesty still holds either way.
+  // "See the room →" fires the real opener reaction. Absent provenance ⇒ legacy MEASURED (back-compat).
+  const projected = provenance === 'projected';
 
   // The topic·format meta line (a script realizes a topic in a format). Either may be absent.
   const metaBits = [format, topic].filter((s): s is string => typeof s === 'string' && s.length > 0);
@@ -224,6 +230,7 @@ export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRend
           fraction={fraction}
           quote={scrollQuote}
           suffix="opener only"
+          projected={projected}
           framed={false}
           flatPersonas={cardScrollQuoteReactions(fraction, scrollQuote)}
           conceptText={openingBeatSeed || (beats[0]?.content ?? '')}
@@ -235,7 +242,7 @@ export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRend
             conceptText: openingBeatSeed || (beats[0]?.content ?? ''),
             platform: 'tiktok',
           })}
-          label="See how the room reacted to this opener"
+          label={projected ? 'See how the room would react to this opener' : 'See how the room reacted to this opener'}
         />
       </div>
 

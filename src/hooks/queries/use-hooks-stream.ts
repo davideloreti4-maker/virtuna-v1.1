@@ -52,6 +52,16 @@ function parseVisualHookProp(raw: unknown): { technique: string; onScreen: strin
   return { technique, onScreen };
 }
 
+/**
+ * Parse the `provenance` prop off the SSE face. Only the two known literals survive; anything else
+ * (absent, malformed) → undefined ⇒ the card renders as a legacy MEASURED one (back-compat). Same
+ * reload-only hazard the other parsers guard: without this, a projected card's live face would claim
+ * a measurement it never ran, self-correcting to "would stop / projected" only after a reload.
+ */
+function parseProvenanceProp(raw: unknown): 'projected' | 'measured' | undefined {
+  return raw === 'projected' || raw === 'measured' ? raw : undefined;
+}
+
 export interface PartialHookCard {
   hookLine: string;
   audienceArchetype: string;   // D-03 audience tag (from deriveAudienceArchetype)
@@ -89,6 +99,11 @@ export interface PartialHookCard {
   // execution beside the spoken line. undefined when the hook is purely spoken. Same reload-only
   // hazard as proof: declared + parsed + carried through toBlocks so it renders live.
   visualHook?: { technique: string; onScreen: string };
+  // PROVENANCE (new Qwen call system, 2026-07-22): "projected" ⇒ the band/fraction is the writer's
+  // generation-time estimate (no persona SIM ran), so the card reads in the conditional ("would
+  // stop") + tags "projected". Absent ⇒ MEASURED (legacy). Same reload-only hazard as proof/target —
+  // declared + parsed + carried through toBlocks, or the LIVE card claims a measurement it never ran.
+  provenance?: 'projected' | 'measured';
 }
 
 export interface UseHooksStreamReturn {
@@ -371,6 +386,7 @@ export function useHooksStream(): UseHooksStreamReturn {
                   target: parseTargetProp(props.target), // who this hook was written for + how they reacted
                   population: parsePopulationProp(props.population), // Sim v2: N-individual projection → Population·1,000 Sheet
                   visualHook: parseVisualHookProp(props.visualHook), // owner 2026-07-22: first-frame visual renders live, not reload-only
+                  provenance: parseProvenanceProp(props.provenance), // new call system: "projected" rides the face → honest "would stop", not measured
                 };
               })
               .filter((c: PartialHookCard) => c.hookLine.length > 0);
@@ -567,6 +583,7 @@ export function useHooksStream(): UseHooksStreamReturn {
                   target: parseTargetProp(props.target), // who this hook was written for + how they reacted
                   population: parsePopulationProp(props.population), // Sim v2: N-individual projection → Population·1,000 Sheet
                   visualHook: parseVisualHookProp(props.visualHook), // owner 2026-07-22: first-frame visual renders live, not reload-only
+                  provenance: parseProvenanceProp(props.provenance), // new call system: "projected" rides the face → honest "would stop", not measured
                 };
               })
               .filter((c: PartialHookCard) => c.hookLine.length > 0);
@@ -660,6 +677,9 @@ export function useHooksStream(): UseHooksStreamReturn {
         // Visual hook (owner 2026-07-22) — the first-frame execution renders live beside the spoken
         // line, not only after a reload. Omitted when the hook is purely spoken.
         ...(c.visualHook ? { visualHook: c.visualHook } : {}),
+        // Provenance (new call system) — a "projected" card must read "would stop / projected" LIVE,
+        // not only after a reload; omitted ⇒ the renderer's MEASURED default (legacy back-compat).
+        ...(c.provenance ? { provenance: c.provenance } : {}),
       },
     }));
   }, [streamingCards]);
