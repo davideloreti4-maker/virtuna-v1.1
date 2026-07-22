@@ -45,9 +45,12 @@ import { assembleBundle } from "@/lib/kc/assembler";
 import type { AssemblerInput } from "@/lib/kc/assembler";
 import { KC_HOOKS_SYSTEM_PROMPT } from "@/lib/kc/compiled";
 import { getQwenClient, QWEN_REASONING_MODEL, QWEN_SEED } from "@/lib/engine/qwen/client";
-import { runFlashTextModeBatch } from "@/lib/engine/flash/run-flash-text-mode";
-import { aggregateFlash, MIXED_THRESHOLD } from "@/lib/engine/flash/flash-aggregate";
-import { deriveAudienceArchetype } from "@/lib/tools/hooks/audience-archetype";
+// New Qwen call system (2026-07-22): the persona SIM is GONE from the generation path. bandFromStops
+// turns the single gen call's self-estimated /10 into the projected band, sharing the SIM's 6/3
+// calibration SSOT. runFlashTextModeBatch / aggregateFlash / buildReactionPanel / buildFlashWeighting
+// / characterizeContent / reactPopulation / deriveAudienceArchetype were the SIM-path machinery and
+// are no longer imported — the persona reaction + population belong to the user-fired simulation now.
+import { bandFromStops } from "@/lib/engine/flash/flash-aggregate";
 import { buildAudienceGroundingLine } from "@/lib/audience/audience-grounding";
 import { applyCreatorPersona } from "@/lib/audience/apply-creator-persona";
 import { selectPersonaTargets, type PersonaTarget } from "@/lib/audience/select-persona-targets";
@@ -57,22 +60,15 @@ import {
   bindTarget,
   type TargetUnitCopy,
 } from "./target-assignment";
-import { buildFlashWeighting } from "@/lib/engine/flash/persona-weighting";
 import type { Audience } from "@/lib/audience/audience-types";
 import type { IntentLens } from "@/lib/audience/intent-lens";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
 import { HookCardBlockSchema } from "@/lib/tools/blocks";
 import type { HookCardBlock, HookProof } from "@/lib/tools/blocks";
-import type { FlashPersona } from "@/lib/engine/flash/flash-schema";
-import { buildReactionPanel } from "@/lib/engine/flash/build-reaction-panel";
-import { characterizeContent } from "@/lib/audience/characterize-content";
-import {
-  reactPopulation,
-  signatureHasPopulationAxes,
-  type ContentVector,
-  type PopulationAggregate,
-} from "@/lib/audience/population";
-import { pinPredictedSignature, type RunnerPinContext } from "./predicted-pin";
+// pinPredictedSignature (the FLYWHEEL pin) pinned the rank-1 hook's SIM personas; with no SIM on this
+// path it moves to the fired simulation. Only the RunnerPinContext type is still referenced (the
+// accepted-but-unused `pin` input, kept so the route call site is unchanged).
+import type { RunnerPinContext } from "./predicted-pin";
 import { gatherCorpusForRun } from "@/lib/grounding/gather-for-run";
 import { buildProofFromSource, coerceSourceIndex } from "./build-proof";
 import { buildAdaptProfile } from "./adapt-profile";
@@ -138,13 +134,27 @@ function isGroundingAdaptEnabled(): boolean {
 const VISUAL_HOOK_FIELD = `, "visualHook": { "technique": string, "onScreen": string } | null`;
 const VISUAL_HOOK_RULE = ` "visualHook" is the FIRST-FRAME visual that opens the video — the EXECUTION of THIS hook, not a second competing hook: "technique" is a named first-frame technique (e.g. "crash-zoom", "match-cut", "on-screen-text", "cold-open", "direct-address"), "onScreen" is what is literally on screen at 0s. Use null when the hook is purely spoken with no distinct visual opener — never invent one.`;
 
+/**
+ * PROJECTION field (new Qwen call system, 2026-07-22) — the single generation call now ALSO
+ * self-estimates each hook's stopping power (`personaStops` /10) + a representative stop quote,
+ * so the card carries its ranking signal WITHOUT the separate persona-SIM call the pipeline used
+ * to make. Shared across all three hook output contracts so the ask is identical everywhere.
+ *
+ * ⚠️ HONESTY: `personaStops` is the WRITER'S OWN ESTIMATE, not a measured room reaction. It drives
+ * the projected band/fraction + the best→worst rank (owner: "ranking is based off the /10 score");
+ * the card labels it a PROJECTION (provenance:"projected") and the real verdict only appears when
+ * the creator fires "See the room →". Ask the model to be discriminating so the estimate is useful.
+ */
+const PROJECTION_FIELD = `, "personaStops": number, "stopQuote": string`;
+const PROJECTION_RULE = ` "personaStops" is YOUR honest estimate, as the writer, of how many out of 10 typical target viewers would STOP scrolling on this hook in the first 2 seconds — an integer 0–10. Be discriminating, never generous: a generic hook with no real mechanism stops 0–2; a genuinely strong, niche-true hook stops 7–8; reserve 9–10 for the rare undeniable one. "stopQuote" is ONE short first-person line of what a viewer who stops thinks in that instant (e.g. "Okay that opening line got me"). Both are a PROJECTION you are making — the creator sees them as your estimate and can then measure the hook against their real audience; never phrase them as a finished measurement.`;
+
 const HOOKS_OUTPUT_CONTRACT = `
 
 ---
 
 OUTPUT FORMAT: Respond with a single JSON object — no markdown, no code fences, no prose.
-Shape: { "hooks": [ { "hookLine": string, "mechanism": string, "seedHook": string, "channel": string | null, "needsTake": boolean${VISUAL_HOOK_FIELD} } ] }
-Return a "hooks" array of exactly ${HOOK_COUNT} STRONG, DISTINCT-mechanism objects — each must earn its place (these are all shown to the creator, not filtered). Every field is required; "hookLine" and "seedHook" must be non-empty. "mechanism" is plain-prose reasoning — never a bracket-tag. "channel" is the delivery channel (spoken/visual/caption/edit/audio) or null.${VISUAL_HOOK_RULE}`;
+Shape: { "hooks": [ { "hookLine": string, "mechanism": string, "seedHook": string, "channel": string | null, "needsTake": boolean${PROJECTION_FIELD}${VISUAL_HOOK_FIELD} } ] }
+Return a "hooks" array of exactly ${HOOK_COUNT} STRONG, DISTINCT-mechanism objects — each must earn its place (these are all shown to the creator, not filtered). Every field is required; "hookLine" and "seedHook" must be non-empty. "mechanism" is plain-prose reasoning — never a bracket-tag. "channel" is the delivery channel (spoken/visual/caption/edit/audio) or null.${PROJECTION_RULE}${VISUAL_HOOK_RULE}`;
 
 /**
  * Grounded output contract (§11f receipts-on-cards). Used ONLY when a corpus grounding block
@@ -159,8 +169,8 @@ const HOOKS_OUTPUT_CONTRACT_GROUNDED = `
 ---
 
 OUTPUT FORMAT: Respond with a single JSON object — no markdown, no code fences, no prose.
-Shape: { "hooks": [ { "hookLine": string, "mechanism": string, "seedHook": string, "channel": string | null, "needsTake": boolean, "sourceIndex": number${VISUAL_HOOK_FIELD} } ] }
-Return a "hooks" array of exactly ${HOOK_COUNT} STRONG, DISTINCT-mechanism objects — each must earn its place (these are all shown to the creator, not filtered). Every field is required; "hookLine" and "seedHook" must be non-empty. "mechanism" is plain-prose reasoning — never a bracket-tag. "channel" is the delivery channel (spoken/visual/caption/edit/audio) or null. "sourceIndex" is the 1-based number of the GROUNDING example (from the numbered GROUNDING list in the prompt) whose proven STRUCTURE this hook adapts, or 0 if the hook adapts no specific example — never cite a source you did not actually use (honesty).${VISUAL_HOOK_RULE}`;
+Shape: { "hooks": [ { "hookLine": string, "mechanism": string, "seedHook": string, "channel": string | null, "needsTake": boolean, "sourceIndex": number${PROJECTION_FIELD}${VISUAL_HOOK_FIELD} } ] }
+Return a "hooks" array of exactly ${HOOK_COUNT} STRONG, DISTINCT-mechanism objects — each must earn its place (these are all shown to the creator, not filtered). Every field is required; "hookLine" and "seedHook" must be non-empty. "mechanism" is plain-prose reasoning — never a bracket-tag. "channel" is the delivery channel (spoken/visual/caption/edit/audio) or null. "sourceIndex" is the 1-based number of the GROUNDING example (from the numbered GROUNDING list in the prompt) whose proven STRUCTURE this hook adapts, or 0 if the hook adapts no specific example — never cite a source you did not actually use (honesty).${PROJECTION_RULE}${VISUAL_HOOK_RULE}`;
 
 /**
  * PER-PERSONA GENERATION — the craft half of the ASSIGNMENT block.
@@ -194,8 +204,8 @@ function targetedOutputContract(grounded: boolean): string {
 ---
 
 OUTPUT FORMAT: Respond with a single JSON object — no markdown, no code fences, no prose.
-Shape: { "hooks": [ { "hookLine": string, "mechanism": string, "seedHook": string, "channel": string | null, "needsTake": boolean, "targetArchetype": string${groundedField}${VISUAL_HOOK_FIELD} } ] }
-Return a "hooks" array of exactly ${HOOK_COUNT} STRONG, DISTINCT-mechanism objects, in assignment order — hook N targets person N from the list above. Every field is required; "hookLine" and "seedHook" must be non-empty. "mechanism" is plain-prose reasoning — never a bracket-tag. "channel" is the delivery channel (spoken/visual/caption/edit/audio) or null. "targetArchetype" is the exact bracketed slug of the person this hook was written for.${groundedRule}${VISUAL_HOOK_RULE}`;
+Shape: { "hooks": [ { "hookLine": string, "mechanism": string, "seedHook": string, "channel": string | null, "needsTake": boolean, "targetArchetype": string${groundedField}${PROJECTION_FIELD}${VISUAL_HOOK_FIELD} } ] }
+Return a "hooks" array of exactly ${HOOK_COUNT} STRONG, DISTINCT-mechanism objects, in assignment order — hook N targets person N from the list above. Every field is required; "hookLine" and "seedHook" must be non-empty. "mechanism" is plain-prose reasoning — never a bracket-tag. "channel" is the delivery channel (spoken/visual/caption/edit/audio) or null. "targetArchetype" is the exact bracketed slug of the person this hook was written for. For "personaStops", estimate the stop-count specifically for THAT assigned person's segment.${groundedRule}${PROJECTION_RULE}${VISUAL_HOOK_RULE}`;
 }
 
 /**
@@ -286,6 +296,18 @@ interface StructuredHook {
    */
   visualHook?: { technique: string; onScreen: string } | null;
   /**
+   * PROJECTION (new Qwen call system, 2026-07-22): the writer's own estimate of how many of 10
+   * target viewers would STOP on this hook (0–10), self-emitted by the single generation call in
+   * place of the removed persona-SIM. Drives the projected band/fraction + the best→worst rank.
+   * An ESTIMATE, never a measurement — the card carries it as provenance:"projected".
+   */
+  personaStops: number;
+  /**
+   * PROJECTION: one first-person line of what a stopping viewer thinks, self-emitted by the same
+   * generation call → the card's lead scroll-quote (replaces the SIM-derived selectLeadScrollQuote).
+   */
+  stopQuote: string;
+  /**
    * 1-based grounding-example index this hook adapted (0 = none). Only ever non-zero on a
    * grounded run (the grounded contract requests it); ungrounded runs default it to 0. Drives
    * the on-card receipt via buildHookProof (§11f).
@@ -316,6 +338,22 @@ function coerceVisualHook(raw: unknown): { technique: string; onScreen: string }
     typeof v.onScreen === "string" && v.onScreen.trim().length > 0 ? v.onScreen : null;
   if (!technique || !onScreen) return null;
   return { technique, onScreen };
+}
+
+/**
+ * Coerce the model's self-estimated stop-count into a clean integer 0–10. Accepts a number or a
+ * numeric string ("8", "8/10" → 8). Anything missing/malformed → 0, which bands as Weak and ranks
+ * the hook LAST — the honest degrade for a writer that gave no estimate, never a fabricated high.
+ */
+function coercePersonaStops(raw: unknown): number {
+  const n =
+    typeof raw === "number"
+      ? raw
+      : typeof raw === "string"
+        ? parseInt(raw, 10)
+        : NaN;
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.min(10, Math.round(n)));
 }
 
 // ─── Qwen generation call ─────────────────────────────────────────────────────
@@ -414,6 +452,11 @@ async function generateHooksStructured(
       // Visual hook — attached only when the model returned a well-formed {technique,onScreen}
       // pair (both non-empty). null / partial / absent → omitted, and the card stays spoken-only.
       ...(visualHook ? { visualHook } : {}),
+      // PROJECTION (new call system): the writer's self-estimated stop-count + representative
+      // stop-quote — the card's ranking signal now that no persona-SIM runs. Clamped 0–10; a
+      // missing estimate degrades to 0 (Weak, ranked last), a missing quote to "" (no lead quote).
+      personaStops: coercePersonaStops(r.personaStops),
+      stopQuote: typeof r.stopQuote === "string" ? r.stopQuote.trim() : "",
       // Attribution index (grounded runs only) — coerced to a clean non-negative int; anything
       // missing/malformed → 0 (no source) so an ungrounded or sloppy response never fabricates one.
       sourceIndex: coerceSourceIndex(r.sourceIndex),
@@ -427,44 +470,10 @@ async function generateHooksStructured(
   return hooks;
 }
 
-// ─── Lead scroll-quote selector (mirrors ideas-runner) ──────────────────────
-
-/**
- * Select the lead scroll-quote from the SIM personas.
- * D-02: the quote ships ON the card face, never deferred.
- * Priority: first stop-verdict persona's quote.
- * Fallback: first persona's quote regardless of verdict.
- */
-function selectLeadScrollQuote(
-  personas: Array<{ verdict: string; quote: string; archetype: string }>,
-): string {
-  const stopper = personas.find((p) => p.verdict === "stop");
-  if (stopper) return stopper.quote;
-  return personas[0]?.quote ?? "";
-}
-
-// ─── Rank comparator helpers ──────────────────────────────────────────────────
-
-/**
- * Band tier ordinal: lower = higher rank (Strong ranks before Mixed).
- * D-01: Strong > Mixed (Weak is already gated out before ranking).
- */
-function bandOrdinal(band: "Strong" | "Mixed" | "Weak"): number {
-  if (band === "Strong") return 0;
-  if (band === "Mixed") return 1;
-  return 2; // Weak — S3′ keeps Weak cards (ranked last), so this IS reached
-}
-
-/**
- * Parse the stop-count numerator from a fraction string (e.g. "6/10 stop" → 6).
- * Returns 0 on parse failure.
- */
-function parseFractionNumerator(fraction: string): number {
-  const match = /^(\d+)\//.exec(fraction);
-  if (!match || !match[1]) return 0;
-  const n = parseInt(match[1], 10);
-  return isNaN(n) ? 0 : n;
-}
+// selectLeadScrollQuote / bandOrdinal / parseFractionNumerator were removed with the persona SIM
+// (new Qwen call system): the lead quote is now the gen call's self-emitted `stopQuote`, and the
+// rank is a single descending sort on the projected `personaStops` /10 — no tier ordinal, no
+// fraction-string parsing (the count is a real number on the candidate, not a string to re-parse).
 
 // ─── runHooksPipeline ─────────────────────────────────────────────────────────
 
@@ -480,20 +489,12 @@ function parseFractionNumerator(fraction: string): number {
  * @param input.anchor      Upstream idea concept (optional; fenced via assembleBundle).
  */
 export async function runHooksPipeline(input: HooksPipelineInput): Promise<HooksPipelineResult> {
-  const { ask, platform, profileRow, anchor, audience = null, intent } = input;
+  const { ask, platform, profileRow, anchor, audience = null } = input;
   const allWarnings: string[] = [];
-  // GAP-C2: the sell lens only applies for a calibrated audience; General/no-audience → undefined
-  // (byte-identical no-op, regression gate). `grow` is also a no-op in buildFlashUserContent.
-  const simIntent: IntentLens | undefined =
-    audience && !audience.is_general ? intent : undefined;
-
-  // ── GATE FLOOR ASSERTION (WARNING-3: fail loud if MIXED_THRESHOLD unreachable) ──
-  if (typeof MIXED_THRESHOLD !== "number" || isNaN(MIXED_THRESHOLD)) {
-    throw new Error(
-      "runHooksPipeline: MIXED_THRESHOLD is not a valid number — Plan-01 gate floor handoff missing or corrupt. " +
-        "Do NOT proceed; complete 04-01-SUMMARY.md first. (WARNING-3)",
-    );
-  }
+  // NOTE: `input.intent` (the sell/grow reaction lens) only ever reframed the persona-SIM verdict.
+  // With the SIM removed from generation it is unused on this path for now; it re-attaches to the
+  // user-fired simulation (which owns the reaction) when that wiring lands. Kept on the interface so
+  // the route call site is unchanged.
 
   // ── STEER (08-04 / AUD-STEER): audience-grounding line replaces buildGroundingLine ──
   // buildAudienceGroundingLine delegates to buildGroundingLine for General/null (no-op).
@@ -564,150 +565,23 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
   // Record which path shipped (Open Q1 resolved decision — mirrors ideas-runner)
   const seedHookPath: "structured" | "markered" = "structured";
 
-  // ── SIM (gate): parallel Flash per candidate ──────────────────────────────
-  // Niche panel + audience repaint via the shared buildReactionPanel helper (Plan 13-01):
-  // resolveNicheKey normalizes free-text/sub-slug niche_primary to a top-level
-  // NICHE_INSTANTIATION key BEFORE the panel (14-01 / KCQ-06/KCQ-01 — otherwise
-  // selectPersonaSlots' exact-slug match silently falls back to generic); audienceRepaint is
-  // undefined for General/no-audience → runFlashTextMode omits the arg → byte-identical no-op.
-  // POST /api/tools/react reuses the SAME helper (RESEARCH Open Q1 / Pitfall 2).
-  const { panel, audienceRepaint } = buildReactionPanel(profileRow, audience);
-
-  // ── REACT path (A1 — weighted SIM aggregation): build the optional Flash weighting ──
-  // General / null / no-override → undefined → flat band (byte-identical, regression gate).
-  // Calibrated audience → per-slot persona_weights bias the weighted stop-MASS band gate.
-  // SIM call + repaint (built above) UNTOUCHED — only the post-SIM band math is weighted.
-  const flashWeighting = buildFlashWeighting(audience ?? null);
-
-  // ── RATE: a rated candidate carries everything the rank+build need ─────────
-  // personas travel ON the candidate so the FLYWHEEL pin + the per-card modal feed
-  // (S3′) read them directly without index bookkeeping.
+  // ── RATE (projection — NO SIM): the candidate carries what rank + build need ──
+  // The single generation call above already self-estimated each hook's stop-count (personaStops
+  // /10) + a stop-quote. There is NO persona SIM, NO population characterization, NO reaction panel
+  // on this path any more — the per-card cast + the N-individual population projection are MEASURED
+  // artefacts that now belong to the user-fired simulation ("See the room →"), not the generation
+  // card. So a rated candidate is a pure derivation of the projection, with nothing async left.
   interface RatedCandidate {
     hook: StructuredHook;
     band: "Strong" | "Mixed" | "Weak";
     fraction: string;
     scrollQuote: string;
-    audienceArchetype: string;
-    predictedFailureMode: string | null; // KCQ-04 (null on clean pass)
-    personas: FlashPersona[];             // for the FLYWHEEL-02 pin + per-card modal feed (S3′)
-    population?: PopulationAggregate;      // Audience Sim v2 Stage 2 — the N-individual projection
-    generationIndex: number;              // preserves generation order for tie-break
+    generationIndex: number; // preserves generation order for the rank tie-break
   }
 
-  // ── Audience Sim v2 (Stage 2): population projection gate ──────────────────
-  // A calibrated signature carrying the v2 axes (topic_vocab + scored persona.reaction) is the
-  // gate — General / legacy / preset audiences skip it (population stays undefined → the card
-  // omits the field, byte-identical to the pre-v2 shape). Resolved ONCE per run.
-  const populationSignature = audience?.signature ?? null;
-  const wantPopulation = signatureHasPopulationAxes(populationSignature);
-  const populationVocab = populationSignature?.audience.topic_vocab ?? [];
-
-  /**
-   * S3′ generate-rate-rank: ONE batched SIM call rates ALL candidates, then KEEP them all
-   * (ranked) — no Weak cut, no trim. The ONLY drop is a candidate with a missing/invalid
-   * reaction (rare — whole-batch parse failure, or a single malformed candidate): it can't
-   * be shown without a real reaction (honesty spine — we never fabricate a band). Ranking
-   * happens AFTER, on the returned rated candidates (D-01 order preserved).
-   */
-  async function rateHooks(hookBatch: StructuredHook[]): Promise<RatedCandidate[]> {
-    // Stable ids = generation index (echoed by the model, mapped back; positional fallback).
-    const candidates = hookBatch.map((hook, i) => ({
-      id: String(i),
-      text: hook.seedHook ?? hook.hookLine,
-    }));
-
-    // ── Audience Sim v2 (Stage 2): characterize each hook CONCURRENTLY with the SIM ──
-    // Fire the per-candidate content-characterization calls BEFORE awaiting the batched Flash
-    // reaction so they run in parallel (no serial latency added — mirrors /api/tools/react).
-    // Each resolves to the ContentVector the cheap O(N) scorer reacts on; a per-call failure
-    // degrades to null (that card just omits the population field). Gated off entirely for
-    // audiences without the v2 axes → all null, no LLM calls, byte-identical old behaviour.
-    // Scored on the SAME `text` the SIM reacts to, so the projection and the panel agree.
-    const vectorPromises: Promise<ContentVector | null>[] = candidates.map((c) =>
-      wantPopulation
-        ? characterizeContent(c.text, populationVocab).catch(() => null)
-        : Promise.resolve(null),
-    );
-
-    const batch = await runFlashTextModeBatch(
-      candidates,
-      "hook",
-      panel,
-      audienceRepaint,
-      simIntent,
-    ).catch((err) => {
-      const msg = err instanceof Error ? err.message : String(err);
-      allWarnings.push(`Batched SIM failed for hooks: ${msg}`);
-      return null; // hard failure → no cards (no auto-regen; user-pressed rewrite handles retry)
-    });
-    if (!batch) return [];
-    allWarnings.push(...batch.warnings);
-
-    // Collect the (already in-flight) content vectors — indexed to match `hookBatch`/candidates.
-    const vectors = await Promise.all(vectorPromises);
-
-    const out: RatedCandidate[] = [];
-
-    hookBatch.forEach((hook, i) => {
-      const sim = batch.results.get(String(i));
-      if (!sim) {
-        // Un-scorable candidate → drop (can't show a card with no reaction). Keep-all
-        // never fabricates a band; a missing reaction is the only reason a hook drops.
-        allWarnings.push(
-          `SIM produced no reaction for hook "${hook.hookLine.slice(0, 60)}" — dropped`,
-        );
-        return;
-      }
-
-      const personas = sim.personas;
-      const { band, fraction } = aggregateFlash(personas, flashWeighting);
-
-      // S3′: NO Weak gate — keep ALL rated bands (rank handles ordering).
-
-      // D-02: select lead scrollQuote NOW — ships on the card face (WARNING-4)
-      const scrollQuote = selectLeadScrollQuote(personas);
-
-      // D-03: derive audience archetype tag (audience persona, never craft slug — D-04)
-      const audienceArchetype = deriveAudienceArchetype(
-        personas.map((p) => ({
-          archetype: p.archetype,
-          verdict: p.verdict as "stop" | "scroll",
-          quote: p.quote,
-        })),
-      );
-
-      // Audience Sim v2 (Stage 2): the population projection — pure O(N) once the vector lands.
-      // A null vector (skip / characterize failure) or a scorer throw → undefined (card omits the
-      // field). Never let the projection break a card: the SIM band/fraction is the load-bearing
-      // signal, the population is additive texture.
-      let population: PopulationAggregate | undefined;
-      const vector = vectors[i];
-      if (populationSignature && vector) {
-        try {
-          population = reactPopulation(populationSignature, vector);
-        } catch {
-          population = undefined;
-        }
-      }
-
-      out.push({
-        hook,
-        band,
-        fraction,
-        scrollQuote,
-        audienceArchetype,
-        predictedFailureMode: null, // S5: rubric critic removed (was OFF / ~100% fail)
-        personas,
-        population,
-        generationIndex: i,
-      });
-    });
-
-    return out;
-  }
-
-  // Generate exactly HOOK_COUNT hooks (no over-gen buffer — all are shown).
-  // ── STAGE: Generating (real boundary — the big LLM call) ──
+  // Generate exactly HOOK_COUNT hooks (no over-gen buffer — all are shown). ONE Qwen call now
+  // carries the whole pipeline: the candidates AND their /10 projection AND the ranking signal.
+  // ── STAGE: Generating (real boundary — the single LLM call) ──
   input.onStage?.("Generating", "active");
   const firstBatch = await generateHooksStructured(userMessage, Boolean(corpus), targets);
   input.onStage?.("Generating", "done");
@@ -715,27 +589,26 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
     return { blocks: [], warnings: allWarnings, seedHookPath, scrapeAvailable };
   }
 
-  // S3′: ONE batched SIM rates all candidates. NO conditional regen (D-06 removed) —
-  // keep-all + user-pressed rewrite (PR-3) replaces the auto-regenerate-on-zero loop.
-  // ── STAGE: Simulating your audience (real boundary — the batched Flash SIM call) ──
-  input.onStage?.("Simulating your audience", "active");
-  const rated = await rateHooks(firstBatch);
-  input.onStage?.("Simulating your audience", "done");
-
-  // ── STAGE: Ranking (real boundary — sort + build; fast) ──
+  // ── STAGE: Ranking (real boundary — a pure map + sort; NO second call) ──
   input.onStage?.("Ranking", "active");
 
-  // ── RANK (keep-all): order by band tier → fraction → generation order. No Weak cut,
-  //    no trim below what was generated; slice(HOOK_COUNT) is a safety bound only. ──
-  // Primary: band tier (Strong=0 > Mixed=1 > Weak=2)
-  // Secondary: stop-count descending (numerator of fraction string)
-  // Tie-break: preserve generation order (lower generationIndex ranks first)
+  // Rate each hook straight off its self-estimated /10 — band via bandFromStops (shares the SIM's
+  // 6/3 calibration SSOT), fraction as the honest "N/10 stop" count, lead quote = the stopQuote.
+  const rated: RatedCandidate[] = firstBatch.map((hook, i) => ({
+    hook,
+    band: bandFromStops(hook.personaStops),
+    fraction: `${hook.personaStops}/10 stop`,
+    scrollQuote: hook.stopQuote,
+    generationIndex: i,
+  }));
+
+  // ── RANK: best → worst by the projected /10 stop-count (owner: "ranking is based off the /10
+  //    score anyways"). Tie-break preserves generation order. Bands derive monotonically from
+  //    personaStops, so this single sort is already band-consistent (Strong before Mixed before
+  //    Weak) — no separate tier ordinal needed. slice(HOOK_COUNT) is a safety bound only.
   rated.sort((a, b) => {
-    const bandDiff = bandOrdinal(a.band) - bandOrdinal(b.band);
-    if (bandDiff !== 0) return bandDiff;
-    const fractionDiff =
-      parseFractionNumerator(b.fraction) - parseFractionNumerator(a.fraction); // descending
-    if (fractionDiff !== 0) return fractionDiff;
+    const stopDiff = b.hook.personaStops - a.hook.personaStops; // descending
+    if (stopDiff !== 0) return stopDiff;
     return a.generationIndex - b.generationIndex; // preserve generation order
   });
 
@@ -753,16 +626,15 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
     // byte-identical to the pre-grounding card (regression gate + honesty spine).
     const proof = buildHookProof(candidate.hook.sourceIndex, groundingExamples);
 
-    // WHO this hook was written for + how that exact person reacted. null on an uncalibrated run,
-    // and null on a calibrated run whose writer named nobody we assigned — the card then simply
-    // carries no target line (an honest absence beats a personalised label over a generic hook).
-    // NOTE the positional lookup uses generationIndex, not `rank`: the cards have been SORTED by
-    // band since generation, so rank-1 is not assignment-1.
+    // WHO this hook was written for. The reaction half (verdict/quote) is NULL now — no SIM ran on
+    // this path — so bindTarget receives an EMPTY panel and returns the assignment WITHOUT a
+    // reaction receipt. That receipt arrives when the creator fires the room. Uncalibrated runs
+    // still return null. (The positional lookup uses generationIndex, not `rank`: cards are sorted.)
     const target = bindTarget({
       claimedArchetype: candidate.hook.targetArchetype,
       positionalTarget: targets[candidate.generationIndex],
       assignments,
-      personas: candidate.personas,
+      personas: [], // no persona SIM on the generation path — the reaction is deferred to the fired run
       warnings: allWarnings,
       unitNoun: "Hook",
       subject: candidate.hook.hookLine,
@@ -772,7 +644,9 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
       type: "hook-card" as const,
       props: {
         hookLine: candidate.hook.hookLine,
-        audienceArchetype: candidate.audienceArchetype,
+        // The audience tag = the person this hook was WRITTEN FOR (calibrated run), else empty. Was
+        // deriveAudienceArchetype(SIM personas); with no SIM it comes from the assignment binding.
+        audienceArchetype: target?.archetype ?? "",
         mechanism: candidate.hook.mechanism,
         seedHook: candidate.hook.seedHook,
         rank,
@@ -780,12 +654,18 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
         fraction: candidate.fraction,
         scrollQuote: candidate.scrollQuote,
         model: "sim1-flash" as const,
+        // PROJECTION (new call system): band/fraction/quote are the WRITER'S self-estimate, not a
+        // measured room reaction. The renderer gates ALL measurement language ("the room reacted",
+        // "SIM-1 Flash", "N reactors") on this; the measured verdict replaces the projection when
+        // the creator fires "See the room →".
+        provenance: "projected" as const,
         channel: candidate.hook.channel,
         // Visual hook (owner 2026-07-22) — the first-frame execution beside the spoken line.
         // Omitted when the hook is purely spoken (parser returned none) → pre-visualHook shape.
         ...(candidate.hook.visualHook ? { visualHook: candidate.hook.visualHook } : {}),
-        predictedFailureMode: candidate.predictedFailureMode, // KCQ-04 (null on clean pass)
-        personas: candidate.personas, // S3′: per-card reaction for the ambient modal (PR-2)
+        predictedFailureMode: null, // S5: rubric critic removed (was OFF / ~100% fail)
+        // personas + population INTENTIONALLY OMITTED — the per-card cast and the N-individual
+        // projection are MEASURED artefacts of the fired simulation, not the generation-time card.
         ...(proof ? { proof } : {}),  // §11f — only when a real source was attributed
         // Did the RUN earn a grounding claim, regardless of what THIS card cited? Set from the
         // shared WARRANT (warrant.ts), NOT from `proof` — a grounded run where the model attributed
@@ -795,9 +675,6 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
         // Per-persona generation — omitted entirely when there is no named reader, so General
         // and every pre-target persisted card keep their exact shape (regression gate).
         ...(target ? { target } : {}),
-        // Audience Sim v2 (Stage 2) — the N-individual population projection. Omitted when the
-        // audience lacks the v2 axes or characterization failed → byte-identical pre-v2 shape.
-        ...(candidate.population ? { population: candidate.population } : {}),
       },
     };
 
@@ -816,20 +693,10 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
   // ── STAGE: Ranking (done) — cards are built + ready to stream ──
   input.onStage?.("Ranking", "done");
 
-  // ── FLYWHEEL-02: pin the predicted signature (non-fatal, fire-after-compute) ──
-  // Pin the rank-1 hook's personas (the hook most likely posted), falling back to
-  // the first rated candidate so a run that produced any reaction pins a vector.
-  // void (not awaited): never delays card render; pinPredictedSignature swallows errors.
-  if (input.pin) {
-    const pinnedPersonas = ranked[0]?.personas ?? rated[0]?.personas ?? null;
-    if (pinnedPersonas && pinnedPersonas.length > 0) {
-      const audienceId = audience && !audience.is_general ? audience.id : null;
-      void pinPredictedSignature(input.pin.supabase, pinnedPersonas, {
-        audienceId,
-        analysisId: input.pin.analysisId ?? null,
-      });
-    }
-  }
+  // FLYWHEEL-02 pin REMOVED from the generation path: it pinned the rank-1 hook's SIM personas as
+  // the predicted disposition vector, and no SIM runs here now. The predicted-vector pin moves to
+  // the user-fired simulation (the run that actually produces a reaction). `input.pin` is accepted
+  // but unused on this path (kept so the route call site is unchanged).
 
   return { blocks, warnings: allWarnings, seedHookPath, scrapeAvailable };
 }

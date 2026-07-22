@@ -76,6 +76,14 @@ export interface ProofUnitProps {
    */
   scored?: boolean;
   /**
+   * PROJECTION mode (new Qwen call system, 2026-07-22): the band/fraction/quote are a generation-
+   * time ESTIMATE the writer made, not a measured room reaction (no persona SIM ran). When true the
+   * count reads in the CONDITIONAL — "would stop", not "stopped" — so the unit never claims a
+   * reaction it didn't run. "See the room →" is the door that turns the projection into a verdict.
+   * Defaults false ⇒ MEASURED wording, unchanged (every persisted/pre-collapse card + Simulate).
+   */
+  projected?: boolean;
+  /**
    * Variant-A "quiet" de-box (Script first, 2026-07-18): when false the unit drops its border +
    * fill and reads as a borderless reaction row, so it stops being a box-within-the-card. It stays
    * the click target — a gentle inset hover replaces the border feedback — and keeps the 44px tap
@@ -115,7 +123,7 @@ export function ProofUnit({
   fraction,
   quote,
   suffix,
-  verb = 'stopped',
+  verb,
   flatPersonas,
   conceptText,
   population,
@@ -123,10 +131,15 @@ export function ProofUnit({
   platform = 'tiktok',
   label = 'See how the room reacted',
   scored = true,
+  projected = false,
   framed = true,
 }: ProofUnitProps) {
   const parsed = parseFraction(fraction);
   const bandColor = BAND_COLOR[band];
+  // The verb the count is stated in. An explicit `verb` always wins (Simulate passes "react").
+  // Otherwise a PROJECTION reads in the conditional ("would stop") and a measured card in the past
+  // tense ("stopped") — the honesty seam between a writer's estimate and a real room reaction.
+  const displayVerb = verb ?? (projected ? 'would stop' : 'stopped');
 
   // Inside the home composer, "See the room →" opens the docked CURRENT-audience Room anchored
   // on this card (via OpenRoomContext) — the live audience + this card's real per-persona
@@ -153,7 +166,9 @@ export function ProofUnit({
       {!scored ? (
         <div className="flex w-full items-center gap-2.5 text-[13px]" aria-busy="true">
           <Skeleton className="h-[7px] w-[7px] shrink-0 rounded-full" />
-          <span className="shrink-0 text-foreground-muted">Scoring with your 10 reactors…</span>
+          <span className="shrink-0 text-foreground-muted">
+            {projected ? 'Estimating the stop…' : 'Scoring with your 10 reactors…'}
+          </span>
           <Skeleton className="h-[3px] flex-1 rounded-full" />
         </div>
       ) : (
@@ -171,7 +186,7 @@ export function ProofUnit({
                 <span className="font-semibold tabular-nums text-foreground">
                   {parsed.stop}/{parsed.total}
                 </span>{' '}
-                {verb}
+                {displayVerb}
               </>
             ) : (
               fraction

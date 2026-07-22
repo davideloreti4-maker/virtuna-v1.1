@@ -88,6 +88,31 @@ describe('HookCardRenderer — visual hook', () => {
   });
 });
 
+describe('HookCardRenderer — projected vs measured provenance (honesty spine)', () => {
+  // New Qwen call system (2026-07-22): a generation-time card's /10 is the WRITER'S estimate, no
+  // persona SIM ran. It MUST NOT claim a measured room reaction — no past-tense "stopped", no
+  // "SIM-1 Flash" badge. "would stop" + "· projected" is the honest read; "See the room →" measures.
+  it('a projected card reads in the conditional and never claims a measurement', () => {
+    const { container } = renderWithClient(
+      <HookCardRenderer block={makeHook({ provenance: 'projected', fraction: '8/10 stop' })} />,
+    );
+    const text = container.textContent ?? '';
+    expect(text).toContain('would stop'); // conditional, not past tense
+    expect(text).toContain('projected'); // the honest provenance tag
+    expect(text).not.toContain('SIM-1 Flash'); // must not wear the measured-panel badge
+    expect(text).not.toContain('stopped'); // must not claim a completed reaction
+  });
+
+  it('a card WITHOUT provenance is a legacy MEASURED card — unchanged wording (back-compat)', () => {
+    const { container } = renderWithClient(<HookCardRenderer block={makeHook({ fraction: '8/10 stop' })} />);
+    const text = container.textContent ?? '';
+    expect(text).toContain('stopped'); // measured past tense
+    expect(text).toContain('SIM-1 Flash'); // the measured-panel provenance
+    expect(text).not.toContain('would stop');
+    expect(text).not.toContain('projected');
+  });
+});
+
 describe('ScriptCardRenderer — filming instructions', () => {
   it('renders the per-beat filming cue by default (not behind the caret)', () => {
     renderWithClient(<ScriptCardRenderer block={makeScript()} />);

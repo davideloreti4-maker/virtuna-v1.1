@@ -56,7 +56,15 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
     grounded,
     target,
     population,
+    provenance,
   } = block.props;
+
+  // New Qwen call system (2026-07-22): a "projected" card's band/fraction/quote are the WRITER'S
+  // generation-time estimate — no persona SIM ran. It must NOT claim a measured room reaction
+  // ("looking is not measuring"): the proof unit reads in the conditional ("would react") and the
+  // provenance tag says "projected", not "SIM-1 Flash". "See the room →" is the measure-it door.
+  // Absent provenance ⇒ a legacy/persisted MEASURED card → unchanged wording (back-compat).
+  const projected = provenance === 'projected';
 
   // hooks→script handoff (CHAIN_HANDOFFS hooks→script — "Write script →", the forward chain).
   // The prop override takes precedence if explicitly passed.
@@ -171,6 +179,7 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
           band={band}
           fraction={fraction}
           scored={scored ?? true}
+          projected={projected}
           quote={scrollQuote}
           flatPersonas={cardScrollQuoteReactions(fraction, scrollQuote)}
           conceptText={hookLine}
@@ -182,7 +191,7 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
             conceptText: hookLine,
             platform: 'tiktok',
           })}
-          label="See how the room reacted to this hook"
+          label={projected ? 'See how the room would react to this hook' : 'See how the room reacted to this hook'}
         />
 
         {/* Expand toggle — clearer affordance, with the provenance demoted onto this line. */}
@@ -195,7 +204,10 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
         >
           <CaretToggle open={expanded} />
           {expanded ? 'Hide details' : 'Why & details'}
-          <span className="text-foreground-muted/70">· SIM-1 Flash</span>
+          {/* Provenance — honest about whether the /10 was MEASURED (SIM-1 Flash panel) or is a
+              generation-time PROJECTION. A projected card has run no persona SIM, so it must not
+              wear the SIM-1 Flash badge (a measurement claim). */}
+          <span className="text-foreground-muted/70">{projected ? '· projected' : '· SIM-1 Flash'}</span>
         </button>
       </div>
 

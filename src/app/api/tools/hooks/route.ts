@@ -234,8 +234,11 @@ export async function POST(request: Request): Promise<Response> {
           send("outliers", { available: true });
         }
 
-        // Status event: SIM has run (legacy status for older clients)
-        send("status", { message: "Scoring on your audience…" });
+        // Status event (legacy, for older clients). New Qwen call system (2026-07-22): there is no
+        // separate "scoring" pass — the projected /10 rode the single generation call, and the cards
+        // are now ranked off it. Say "Ranking hooks…", not the old "Scoring on your audience…" which
+        // would claim a persona reaction that no longer runs on the generation path.
+        send("status", { message: "Ranking hooks…" });
 
         // Content event: ranked card faces WITH lead scrollQuote + audienceArchetype + rank
         // band/fraction deferred to score events below (content-first, IDEAS-02 pattern)

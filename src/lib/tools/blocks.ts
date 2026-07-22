@@ -335,6 +335,13 @@ export const HookCardBlockSchema = z.object({
     fraction: z.string(),              // e.g. "6/10 stop"
     scrollQuote: z.string(),           // lead per-persona scroll quote (D-02/D-04 texture)
     model: z.literal("sim1-flash"),    // provenance tag — always Flash for hook cards
+    // PROVENANCE (new Qwen call system, 2026-07-22): is the band/fraction a generation-time
+    // PROJECTION (the single gen call self-estimated `personaStops` /10 — no SIM panel ran) or a
+    // MEASURED room reaction (the persona SIM ran)? Absent ⇒ "measured" (back-compat: every
+    // persisted pre-collapse hook card WAS measured by the Flash panel). A "projected" card must
+    // never claim measurement — the renderer gates all "the room reacted / SIM-1 Flash / N reactors"
+    // language on this, and "See the room →" is the door that upgrades a projection to a verdict.
+    provenance: z.enum(["projected", "measured"]).optional(),
     // A4 (premium-thread): true once the `score` event has patched band/fraction. OPTIONAL +
     // back-compat — absent on persisted/pre-A4 blocks → the renderer treats it as already-scored.
     scored: z.boolean().optional(),
