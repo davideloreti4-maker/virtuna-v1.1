@@ -49,6 +49,61 @@ export const PERSONAS: ReactionPersona[] = [
   { archetype: "The Believer", verdict: "stop", quote: "This is exactly the nudge I needed today." },
 ];
 
+/**
+ * PER-PERSONA GENERATION (`target`) — WHO a calibrated card was written FOR, and how that exact
+ * reader then reacted in the SIM. Present ONLY on a calibrated run (a General run omits it). The
+ * generative fixtures below carry this on their FIRST (calibrated) card so the dev gallery previews
+ * the "Written for The Aspirant → they stopped" line the live card shows; the second variant omits
+ * it to preview the un-targeted state. `archetype` binds to one of the fixed 10; `label` is the
+ * display name.
+ */
+const TARGET_ASPIRANT: import("@/lib/tools/blocks").CardTarget = {
+  archetype: "aspirant",
+  label: "The Aspirant",
+  share: 0.14,
+  verdict: "stop",
+  quote: "Okay that opening line got me, I need to know the rest.",
+};
+const TARGET_BUSY_PRO: import("@/lib/tools/blocks").CardTarget = {
+  archetype: "busy-pro",
+  label: "The Busy Pro",
+  share: 0.11,
+  verdict: "stop",
+  quote: "Fast and to the point — I'll give it 10 seconds.",
+};
+
+/**
+ * AUDIENCE SIM v2 (`population`) — the honest N-individual projection: a REAL O(N) score of ~1,000
+ * sampled individuals across the signature's 10 segments (NOT the 10's rollup). Carried on a
+ * calibrated card so the AudienceLens Population·1,000 Sheet renders the genuine distribution. The
+ * generative fixtures below reference this on their calibrated card so the gallery previews the
+ * Sheet without a live characterized run. Totals reconcile: shares sum to 1.00, segment totals sum
+ * to 1,000, and segment stops sum to the top-line stop (544).
+ */
+export const POPULATION_1K: import("@/lib/tools/blocks").PopulationAggregateBlock = {
+  total: 1000,
+  stop: 544,
+  scroll: 456,
+  stopPct: 54.4,
+  segments: [
+    { archetype: "skeptic", displayName: "The Skeptic", share: 0.12, total: 120, stop: 40, stopPct: 33.3 },
+    { archetype: "aspirant", displayName: "The Aspirant", share: 0.14, total: 140, stop: 98, stopPct: 70.0 },
+    { archetype: "busy-pro", displayName: "The Busy Pro", share: 0.11, total: 110, stop: 74, stopPct: 67.3 },
+    { archetype: "lurker", displayName: "The Lurker", share: 0.09, total: 90, stop: 27, stopPct: 30.0 },
+    { archetype: "superfan", displayName: "The Superfan", share: 0.08, total: 80, stop: 64, stopPct: 80.0 },
+    { archetype: "newcomer", displayName: "The Newcomer", share: 0.1, total: 100, stop: 62, stopPct: 62.0 },
+    { archetype: "critic", displayName: "The Critic", share: 0.09, total: 90, stop: 25, stopPct: 27.8 },
+    { archetype: "sharer", displayName: "The Sharer", share: 0.1, total: 100, stop: 71, stopPct: 71.0 },
+    { archetype: "time-poor", displayName: "The Time-poor", share: 0.08, total: 80, stop: 20, stopPct: 25.0 },
+    { archetype: "believer", displayName: "The Believer", share: 0.09, total: 90, stop: 63, stopPct: 70.0 },
+  ],
+  reasons: [
+    { reason: "The outcome-first claim opened a concrete curiosity gap.", count: 231 },
+    { reason: "Recognized the pain from their own experience.", count: 168 },
+    { reason: "Read as another over-promising ad and kept scrolling.", count: 142 },
+  ],
+};
+
 /** A completed 3-step stage plan → drives the collapsed "✓ Ran your audience · N steps" receipt. */
 export const doneStages = (names: string[]): StageState[] =>
   names.map((name) => ({ name, status: "done" }));
@@ -93,6 +148,10 @@ export const IDEA_BLOCKS: IdeaCardBlock[] = [
         baselineLabel: "vs followers",
         fitLabel: "adjacent",
       },
+      // Calibrated run → this idea was WRITTEN FOR a named reader, and the Population·1,000 Sheet
+      // renders the genuine N-individual distribution. The second card omits both (un-targeted).
+      target: TARGET_ASPIRANT,
+      population: POPULATION_1K,
     },
   },
   {
@@ -159,6 +218,10 @@ export const HOOK_BLOCKS: HookCardBlock[] = [
         baselineLabel: "vs followers",
         fitLabel: "adjacent",
       },
+      // Calibrated run → written for a named reader + the Population·1,000 projection. The rank-2
+      // fixture below omits both to preview the un-targeted (General) hook state.
+      target: TARGET_BUSY_PRO,
+      population: POPULATION_1K,
     },
   },
   {
@@ -233,6 +296,11 @@ export const SCRIPT_BLOCKS: ScriptCardBlock[] = [
         baselineLabel: "vs followers",
         fitLabel: "structural",
       },
+      // The script develops the hook the creator picked, so it inherits that hook's target reader;
+      // `verdict`/`quote` are that reader's reaction to the OPENER only (D-01). Population·1,000
+      // renders the opener-as-hook projection.
+      target: TARGET_BUSY_PRO,
+      population: POPULATION_1K,
     },
   },
 ];
@@ -282,6 +350,9 @@ export const REMIX_BLOCKS: RemixCardBlock[] = [
         setup: "Phone at eye level, one soft key light, lav mic; sit close for the confession tone.",
         edit: "Cut on the reveal ('the team was AI') — hold nothing before it; punchy, no B-roll music bed.",
       },
+      // The adapted hook's N-individual projection → the Population·1,000 Sheet (remix has no
+      // per-persona `target`; its calibrated reader is named by `audienceName` above).
+      population: POPULATION_1K,
     },
   },
 ];
