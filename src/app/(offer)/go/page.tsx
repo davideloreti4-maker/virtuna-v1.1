@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { HeroShowcase } from "@/components/offer/hero-showcase";
+import { FloatingNav } from "@/components/offer/floating-nav";
 import { BlurFade } from "@/components/velora/blur-fade";
 import { Transformation } from "@/components/offer/sections/transformation";
 import { HowItWorks } from "@/components/offer/sections/how-it-works";
@@ -28,32 +29,14 @@ export const metadata: Metadata = {
 
 /**
  * /go — the cold-traffic offer page (paid social → this).
- * Slice 1: sticky brand bar + the interactive hero (copy + the ReadStage wow).
- * Transformation / pricing / FAQ sections land next.
+ * A floating premium brand island + the interactive hero, then the persuasion
+ * arc (transformation → pricing → FAQ → CTA).
  */
 export default function OfferPage() {
   return (
     <main>
-      {/* slim brand bar */}
-      <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-md">
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-5">
-          <span className="flex items-center gap-2 font-semibold tracking-tight">
-            <span className="grid h-6 w-6 place-items-center rounded-md bg-accent text-[13px] font-extrabold text-accent-foreground">
-              M
-            </span>
-            Maven
-            <span className="text-[11px] font-medium text-foreground-muted">
-              by Numen
-            </span>
-          </span>
-          <a
-            href="#pricing"
-            className="rounded-lg bg-action px-3.5 py-1.5 text-sm font-semibold text-action-foreground transition-transform hover:scale-[1.02]"
-          >
-            Start for $1
-          </a>
-        </div>
-      </header>
+      {/* floating premium brand island — centered, detached, scroll-aware */}
+      <FloatingNav />
 
       {/* hero */}
       <section className="relative overflow-hidden">
@@ -94,7 +77,7 @@ export default function OfferPage() {
           <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-transparent to-background" />
         </div>
 
-        <div className="relative mx-auto max-w-6xl px-5 py-12 md:py-16">
+        <div className="relative mx-auto max-w-6xl px-5 pb-12 pt-24 md:pb-16 md:pt-28">
           {/* copy — the promise, above the two-surface showcase */}
           <div className="mx-auto max-w-2xl text-center">
             <BlurFade delay={0.05}>
