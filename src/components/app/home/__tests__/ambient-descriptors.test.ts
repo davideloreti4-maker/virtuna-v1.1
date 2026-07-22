@@ -155,6 +155,7 @@ describe('toAmbientDescriptor — only a scored card is reactable', () => {
     const d = toAmbientDescriptor(card('hook-card', 'Hook A', '6/10 stop'), 0);
     expect(d).toEqual({
       id: 'hook-0',
+      kind: 'hook',
       conceptText: 'Hook A',
       fraction: '6/10 stop',
       scrollQuote: 'q-Hook A',

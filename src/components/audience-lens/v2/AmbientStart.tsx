@@ -120,31 +120,6 @@ function Icon({ kind }: { kind: ActionIcon }) {
   }
 }
 
-// ── a maker skill, as a choosable tile (icon well · label · the lens it arms) ──────────────────
-
-function SkillTile({ skill, index, onPick }: { skill: StartSkill; index: number; onPick?: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onPick}
-      style={{ animationDelay: `${0.06 + index * 0.045}s` }}
-      className="group ambient-row-in flex items-center gap-3 rounded-[12px] border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)] p-3 text-left transition-colors hover:border-[rgba(255,255,255,0.13)] hover:bg-[rgba(255,255,255,0.045)]"
-    >
-      <span className="flex h-9 w-9 flex-none items-center justify-center rounded-[10px] border border-[rgba(255,255,255,0.08)] bg-[#2a2a28] text-[rgba(236,231,222,0.42)] transition-colors group-hover:text-[#ece7de]">
-        <Icon kind={skill.icon} />
-      </span>
-      <span className="flex min-w-0 flex-col">
-        <span className="text-[14px] font-medium leading-tight text-[rgba(236,231,222,0.7)] transition-colors group-hover:text-[#ece7de]">
-          {skill.label}
-        </span>
-        <span className="mt-0.5 truncate text-[11.5px] leading-tight text-[rgba(236,231,222,0.38)]">
-          {skill.lens}
-        </span>
-      </span>
-    </button>
-  );
-}
-
 // ── conditions strip (loud-at-birth here; the same control pins thin in-thread) ────────────────
 
 /** Lightweight de-boxed picker — the scene / fidelity dials. Closes on outside click / Esc. */
@@ -263,19 +238,23 @@ export function AmbientStart({
   onScene,
   onFidelity,
   onSkill,
-  onSubmit,
+  activeSkillId,
 }: {
   data: StartData;
   onScene?: (v: string) => void;
   onFidelity?: (v: string) => void;
   onSkill?: (skillId: string) => void;
+  /** Accepted for the eventual post-pick compose step; the Start card itself has no free-text box. */
   onSubmit?: (text: string) => void;
+  /** The currently-armed skill id (the composer's active tool). Shown on the selector bar. */
+  activeSkillId?: string;
 }) {
-  const { name, conditions, skillGroups, composerPlaceholder } = data;
+  const { name, conditions, skillGroups } = data;
   // client-only greeting: the wall clock differs server↔client, so resolve it after mount (lazy
   // init would run on the server and hydration-mismatch across an hour/timezone boundary).
   const [greeting, setGreeting] = useState("Welcome back");
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setGreeting(timeGreeting());
   }, []);
 
@@ -287,7 +266,7 @@ export function AmbientStart({
       {/* the clean AS-style card — self-contained, floats on the darker room field */}
       <div
         data-testid="ambient-start"
-        className="ambient-row-in flex w-full max-w-[540px] flex-col rounded-[20px] px-8 pb-7 pt-8"
+        className="ambient-row-in flex w-full max-w-[640px] flex-col rounded-[20px] px-8 pb-7 pt-8"
         style={{
           color: TONE.cream,
           background: "#1f1f1e",
@@ -305,63 +284,62 @@ export function AmbientStart({
 
         <div className="mt-6 h-px w-full" style={{ background: TONE.border }} />
 
-        {/* every skill the user can run, grouped by verb — choosable tiles, each shows its lens */}
-        {(() => {
-          let flat = 0; // running index → the entrance stagger reads across the whole set
-          return skillGroups.map((group, gi) => (
-            <div key={group.label} className={gi === 0 ? "mt-6" : "mt-6"}>
-              <div className="font-mono text-[11px] uppercase tracking-[0.09em]" style={{ color: TONE.faint }}>
+        {/* The categorized grid IS the default Start (Artificial-Societies concept): choose WHAT to
+            make; the pick arms the skill + drops into the thread composer to write the topic. No
+            free-text box, no modal — the grid is the surface. */}
+        <div className="mt-6 grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-3">
+          {skillGroups.map((group) => (
+            <div key={group.label}>
+              <div className="font-mono text-[11px] uppercase tracking-[0.1em]" style={{ color: TONE.faint }}>
                 {group.label}
               </div>
-              <div className="mt-3 grid grid-cols-2 gap-2.5">
+              <div className="mt-3 flex flex-col gap-1">
                 {group.skills.map((sk) => (
-                  <SkillTile key={sk.id} skill={sk} index={flat++} onPick={() => onSkill?.(sk.id)} />
+                  <SkillTile
+                    key={sk.id}
+                    skill={sk}
+                    active={sk.id === activeSkillId}
+                    onPick={() => onSkill?.(sk.id)}
+                  />
                 ))}
               </div>
             </div>
-          ));
-        })()}
-
-        {/* composer — the fallback: type anything, develop it into a simulation */}
-        <ComposerRow placeholder={composerPlaceholder} onSubmit={onSubmit} />
+          ))}
+        </div>
       </div>
     </div>
   );
 }
 
-function ComposerRow({ placeholder, onSubmit }: { placeholder: string; onSubmit?: (t: string) => void }) {
-  const [text, setText] = useState("");
-  const submit = () => {
-    if (text.trim()) onSubmit?.(text.trim());
-  };
-  const ready = !!text.trim();
+/** A skill tile in the categorized default-Start grid — icon well + label, highlighted when it's the
+ *  armed skill. A pick arms the skill; the composer then drops the creator into the thread to write. */
+function SkillTile({
+  skill,
+  active = false,
+  onPick,
+}: {
+  skill: StartSkill;
+  active?: boolean;
+  onPick?: () => void;
+}) {
   return (
-    <div className="mt-7 flex items-center gap-2 rounded-[12px] border border-[rgba(255,255,255,0.06)] bg-[#191918] py-2 pl-4 pr-2 transition-colors focus-within:border-[rgba(255,255,255,0.14)]">
-      <input
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") submit();
-        }}
-        placeholder={placeholder}
-        className="min-w-0 flex-1 bg-transparent text-[14px] outline-none placeholder:text-[rgba(236,231,222,0.4)]"
-        style={{ color: TONE.cream }}
-      />
-      <button
-        type="button"
-        onClick={submit}
-        aria-label="Send"
-        disabled={!ready}
-        className="flex h-8 w-8 flex-none items-center justify-center rounded-full text-[14px] transition-all"
-        style={{
-          background: ready ? TONE.cream : TONE.well,
-          color: ready ? "#1c1b19" : TONE.faint,
-          border: ready ? "none" : `1px solid ${TONE.hair}`,
-          cursor: ready ? "pointer" : "default",
-        }}
+    <button
+      type="button"
+      onClick={onPick}
+      aria-pressed={active}
+      className={`group flex items-center gap-3 rounded-[10px] px-2 py-2 text-left transition-colors ${
+        active ? "bg-[rgba(255,255,255,0.06)]" : "hover:bg-[rgba(255,255,255,0.045)]"
+      }`}
+    >
+      <span
+        className="flex h-10 w-10 flex-none items-center justify-center rounded-[10px] border border-[rgba(255,255,255,0.08)] bg-[#242422] transition-colors group-hover:text-[#ece7de]"
+        style={{ color: active ? TONE.cream : "rgba(236,231,222,0.75)" }}
       >
-        ↑
-      </button>
-    </div>
+        <Icon kind={skill.icon} />
+      </span>
+      <span className="text-[15px] font-medium" style={{ color: TONE.cream }}>
+        {skill.label}
+      </span>
+    </button>
   );
 }

@@ -48,6 +48,7 @@ import { nanoid } from "nanoid";
 import dynamic from "next/dynamic";
 import { cn } from "@/lib/utils";
 import { HORIZONTAL_ENABLED } from "@/lib/flags/horizontal";
+import { AMBIENT_V2_ENABLED } from "@/lib/flags/ambient-v2";
 import { queryKeys } from "@/lib/queries/query-keys";
 import {
   setActiveThreadCookie,
@@ -98,6 +99,9 @@ import { ThreadLoadingSkeleton } from "@/components/thread/thread-loading";
 import { ThreadShell, ThreadAssistantTurn } from "@/components/thread/thread-shell";
 import { Spinner } from "@/components/ui/spinner";
 import { AudiencePresence, type AudienceAsk, type AudiencePresenceProps } from "@/components/audience-lens/audience-presence";
+import { AmbientOverviewRail } from "@/components/audience-lens/v2/AmbientOverviewRail";
+import { AmbientStartHome } from "@/components/audience-lens/v2/AmbientStartHome";
+import { GENERAL_AUDIENCE } from "@/lib/audience/audience-repo";
 import { BuildChooser } from "./build-chooser";
 import { HomeStarter, HomeFirstRunDemo } from "./home-starter";
 import { useAmbientFocus, type AmbientCardDescriptor } from "./use-ambient-focus";
@@ -370,6 +374,26 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     }
   }, []);
 
+  // Ambient v2 Start (④) home: its own composer row seeds the field + arms the one-shot auto-run,
+  // so a Start submit fires the armed skill through the SAME handleSubmit path as the legacy field.
+  const seedAndRun = useCallback((text: string) => {
+    const t = text.trim();
+    if (t.length === 0) return;
+    setUrl(t);
+    setPendingAutoRun(true);
+  }, []);
+
+  // Ambient v2 Start (④, option B): picking a skill from the default grid ARMS the tool AND drops the
+  // creator into the thread composer to write the topic — `startEngaged` swaps the grid → the field.
+  const [startEngaged, setStartEngaged] = useState(false);
+  const pickStartSkill = useCallback(
+    (id: string) => {
+      handleUserSelectTool(id as ToolId);
+      setStartEngaged(true);
+    },
+    [handleUserSelectTool],
+  );
+
   // Reset model tier when the armed skill changes (skill is SSOT for default).
   useEffect(() => {
     setSelectedModel(getSkill(activeTool).model);
@@ -413,6 +437,11 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   const [asking, setAsking] = useState(false);
 
   const selectedAudience = audiences.find((a) => a.id === selectedAudienceId) ?? null;
+  // The RESOLVED audience: `selectedAudienceId === null` means the General default (a virtual
+  // constant absent from the `audiences` rows), so `selectedAudience` is null there. Fall back to
+  // GENERAL_AUDIENCE so surfaces that need a concrete audience (the Ambient v2 Start/Overview) always
+  // have one — mirrors how AudiencePresence treats a null audience as General internally.
+  const effectiveAudience = selectedAudience ?? GENERAL_AUDIENCE;
   // Sent as the first-class platform param to the skill routes (derived, not picked).
   const platform: Platform = audienceToPlatform(selectedAudience?.platform);
 
@@ -2115,6 +2144,16 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // Same props (same focus/asks/reacting state), so the rail reacts to scroll-spy exactly as the
   // dock peek did; only the container + DOM owner change. Rendered ONLY via the portal below.
   const audienceRail = <AudiencePresence {...presenceCommonProps} variant="rail" />;
+  // Ambient Audience v2 (parallel-run, AMBIENT_V2_ENABLED) — the SAME rail slot, fed the SAME real
+  // inputs (active audience + the live projection ledger), rendering the v2 Overview⇄Simulate flow.
+  // Legacy rail is the default; this only swaps the ≥xl thread-rail portal content when the flag is on.
+  const audienceRailV2 = (
+    <AmbientOverviewRail
+      audience={effectiveAudience}
+      descriptors={ambientDescriptors}
+      reducedMotion={reducedMotion}
+    />
+  );
   // P2 (A2b) — the <xl header: a 68px bar that expands DOWNWARD. Same props again; rendered at the
   // TOP of the thread branch (below), not the dock.
   const audienceHeader = <AudiencePresence {...presenceCommonProps} variant="header" />;
@@ -2661,7 +2700,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
           <xl thread → the HEADER above the thread (A2b, rendered in the thread branch — not here);
           empty / permalink → bloom panel only while roomExpanded (no chip affordance on home). */}
       {useRail && railHost
-        ? createPortal(audienceRail, railHost)
+        ? createPortal(AMBIENT_V2_ENABLED ? audienceRailV2 : audienceRail, railHost)
         : useHeader || !roomExpanded
           ? null
           : audiencePresence}
@@ -2827,9 +2866,26 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
       {/* The FIELD is the hero (2026-07-20, owner call — the reference pattern): the empty
           home reads greeting → composer → starter. The cards are suggestions UNDER the
           field, not a wall in front of it. The show-once demo stays a quiet footer below. */}
-      {composerDock}
-      {homeStarter}
-      {homeFirstRunDemo}
+      {AMBIENT_V2_ENABLED && !hasConversationContent && !startEngaged ? (
+        // Ambient v2 Start (④) as the empty-home hero (parallel-run): the categorized skill grid.
+        // Picking a skill (option B) arms the tool + drops into the thread composer below.
+        <AmbientStartHome
+          audience={effectiveAudience}
+          // The Start grid ids are curated SKILL_RUN_META keys (all valid ToolIds).
+          onSkill={pickStartSkill}
+          onSubmit={seedAndRun}
+          activeSkillId={activeTool}
+        />
+      ) : AMBIENT_V2_ENABLED && !hasConversationContent && startEngaged ? (
+        // Post-pick (option B): just the composer field, the chosen skill armed, ready for the topic.
+        composerDock
+      ) : (
+        <>
+          {composerDock}
+          {homeStarter}
+          {homeFirstRunDemo}
+        </>
+      )}
     </div>
   );
 }

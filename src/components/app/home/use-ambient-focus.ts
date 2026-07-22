@@ -40,6 +40,9 @@ import type { PopulationAggregate } from '@/lib/audience/population';
  */
 export interface AmbientCardDescriptor {
   id: string;
+  /** The card's kind (`hook` | `idea` | `script` | `remix`) — from the block type, so a mixed
+   *  board is legible per-row (the Ambient v2 Overview surfaces it as a kind chip). */
+  kind?: string;
   conceptText: string;
   fraction: string;
   scrollQuote: string;
