@@ -33,10 +33,17 @@ export interface BandBlockProps {
 // Zone color CSS variables (same tokens as score-gauge.tsx ZONE_VAR).
 // Exported so the multi-audience-read renderer reuses the EXACT same band→color
 // map (08-05 — verdict bands must never be re-rolled or coral-tinted).
+//
+// CALM PALETTE (owner 2026-07-22): unified onto the Test card's restrained system — the Test
+// card felt calmer than the Make cards' bright bands, so every band surface now speaks its
+// language. Strong = sage (--color-positive, the matte warm green, NOT the bright --color-success);
+// Weak = the soft accent-TEXT coral (#ff8080, legible-on-dark, the same token the Test card's
+// NOT-WORKING column uses — NOT the solid #FF6363 fill). Mixed stays amber (already matched Test).
+// One map, applied once per card (the ProofUnit dot + word), recolors every band surface at once.
 export const BAND_COLOR: Record<'Strong' | 'Mixed' | 'Weak', string> = {
-  Strong: 'var(--color-success)',
+  Strong: 'var(--color-positive)',
   Mixed: 'var(--color-warning)',
-  Weak: 'var(--color-error)',
+  Weak: 'var(--color-accent-text)',
 };
 
 // Model label display map (D-10 vocabulary mirrors the composer model-selector).

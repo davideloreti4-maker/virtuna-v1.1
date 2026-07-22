@@ -46,6 +46,7 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
     mechanism,
     seedHook,
     rank,
+    visualHook,
     band,
     fraction,
     scored,
@@ -124,6 +125,26 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
         <p className="font-serif text-[21px] font-medium leading-[1.3] tracking-[-0.005em] text-foreground">
           {hookLine}
         </p>
+
+        {/* Visual hook — the FIRST-FRAME technique that opens the video: the *execution* of the
+            spoken line above, not a second hook. The technique name is a real first-frame
+            technique (grounded taxonomy); the sub-line is what's literally on screen at 0s. A
+            hook is spoken AND shot — the card now carries both channels (owner 2026-07-22).
+            Absent → nothing renders (honesty spine; no fabricated shot). */}
+        {visualHook && (
+          <div className="flex flex-col gap-1.5 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3.5 py-3">
+            <div className="flex items-center gap-2">
+              <p className={SECTION_LABEL}>Visual</p>
+              <span
+                className="rounded-full border border-white/[0.06] bg-white/[0.03] px-2 py-0.5 text-[11px] font-medium text-foreground-secondary"
+                title="First-frame technique"
+              >
+                {visualHook.technique}
+              </span>
+            </div>
+            <p className="text-[13px] leading-relaxed text-foreground-secondary">{visualHook.onScreen}</p>
+          </div>
+        )}
 
         {/* Per-persona generation: the aim + the aimed-at reader's own verdict (the receipt).
             Absent on General/uncalibrated runs, and on a calibrated run whose writer named nobody

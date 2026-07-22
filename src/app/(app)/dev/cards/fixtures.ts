@@ -136,6 +136,13 @@ export const HOOK_BLOCKS: HookCardBlock[] = [
       model: "sim1-flash",
       scored: true,
       channel: "spoken",
+      // The FIRST-FRAME technique that opens the video — the visual execution of this ranked
+      // hook (owner 2026-07-22). `technique` is a real Sandcastles first-frame technique; the
+      // second fixture below omits `visualHook` to preview the honest-absent state.
+      visualHook: {
+        technique: "crash-zoom",
+        onScreen: "Hard cut to your face mid-sentence as the words slam on in bold caps.",
+      },
       personas: PERSONAS,
       // §11f receipts-on-cards — the grounded variant carries a proof receipt (real outlier
       // the structure was drawn from). The other fixture below omits it (ungrounded card).
@@ -191,13 +198,23 @@ export const SCRIPT_BLOCKS: ScriptCardBlock[] = [
     type: "script-card",
     props: {
       openingBeatSeed: "I stopped editing my videos and my views tripled.",
+      // A script realizes a topic in a format — the meta line beside the beat count.
+      topic: "Creator growth",
+      format: "Talking-head + screen-record b-roll",
       beats: [
-        { label: "Hook", content: "I stopped editing my videos and my views tripled.", timing: "0–3s", retentionMarker: "Outcome-first claim creates an immediate 'how?' gap." },
-        { label: "Setup", content: "For two years I spent 6 hours per video in CapCut. Cuts, captions, zooms — the works.", timing: "3–10s", retentionMarker: "Relatable pain establishes the stakes before the turn." },
-        { label: "Turn", content: "Then I noticed my raw, one-take clips were outperforming the polished ones 3 to 1.", timing: "10–20s", retentionMarker: "The counter-intuitive reversal is the payoff hinge." },
-        { label: "Payoff", content: "Turns out the algorithm rewards watch-time, and over-editing was killing my pacing.", timing: "20–35s", retentionMarker: "Names the mechanism — gives the viewer a transferable rule." },
-        { label: "CTA", content: "Try one unedited take this week and tell me your retention. I bet it climbs.", timing: "35–40s", retentionMarker: "Low-friction challenge invites a comment (engagement)." },
+        { label: "Hook", content: "I stopped editing my videos and my views tripled.", timing: "0–3s", retentionMarker: "Outcome-first claim creates an immediate 'how?' gap.", filming: "Close-up, handheld · text slams in on 'tripled' · deadpan delivery, no smile." },
+        { label: "Setup", content: "For two years I spent 6 hours per video in CapCut. Cuts, captions, zooms — the works.", timing: "3–10s", retentionMarker: "Relatable pain establishes the stakes before the turn.", filming: "B-roll of the CapCut timeline scrubbing · VO over the screen-record · frantic pace." },
+        { label: "Turn", content: "Then I noticed my raw, one-take clips were outperforming the polished ones 3 to 1.", timing: "10–20s", retentionMarker: "The counter-intuitive reversal is the payoff hinge.", filming: "Cut back to face · split-screen the two analytics graphs · let the numbers breathe." },
+        { label: "Payoff", content: "Turns out the algorithm rewards watch-time, and over-editing was killing my pacing.", timing: "20–35s", retentionMarker: "Names the mechanism — gives the viewer a transferable rule.", filming: "Face, medium shot · one bold on-screen text: 'watch-time > polish' · slower, steady." },
+        { label: "CTA", content: "Try one unedited take this week and tell me your retention. I bet it climbs.", timing: "35–40s", retentionMarker: "Low-friction challenge invites a comment (engagement).", filming: "Direct to camera · point at the comment area · warm, challenging tone." },
       ],
+      // The consolidated "How to film" summary at the foot (owner chose BOTH per-beat + summary).
+      production: {
+        shots: "1 talking-head (phone, eye level) + 2 b-roll (CapCut screen-record, analytics graphs).",
+        onScreenText: "Hook caption on 'tripled'; one payoff card: 'watch-time > polish'.",
+        setup: "Phone at eye level, window light on your face, lav or phone mic close.",
+        edit: "Hard cuts only — no zooms or transitions; keep the raw, one-take feel the video is about.",
+      },
       band: "Strong",
       fraction: "7/10 stop",
       scrollQuote: "Fast and to the point — I'll give it 10 seconds.",
@@ -257,6 +274,14 @@ export const REMIX_BLOCKS: RemixCardBlock[] = [
       model: "sim1-flash",
       audienceName: "Bootstrapped Founders",
       personas: PERSONAS,
+      // The shoot plan for YOUR adapted version — how to execute the borrowed "talking-head
+      // confession + receipts overlay" format for the firing angle. Parallels the script card.
+      production: {
+        shots: "You to camera for the confession + screen-record b-roll of the 3 prompts firing.",
+        onScreenText: "Cold-open caption on 'fired'; receipts overlay of the before/after numbers.",
+        setup: "Phone at eye level, one soft key light, lav mic; sit close for the confession tone.",
+        edit: "Cut on the reveal ('the team was AI') — hold nothing before it; punchy, no B-roll music bed.",
+      },
     },
   },
 ];

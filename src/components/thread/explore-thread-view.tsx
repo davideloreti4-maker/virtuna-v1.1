@@ -214,7 +214,15 @@ export function ExploreThreadView({
 
       {(hasStreamingContent || hasPersistedContent) && (
         <ThreadAssistantTurn>
-          <SkillResultCard hero={resultHero}>
+          {/* Headline lifted OUT of the card (owner 2026-07-22): it now sits ABOVE the bordered
+              grid as a section header (sibling under the "Maven" eyebrow, gap-3), not inside the
+              card's own header row — the grid card holds only the tiles. */}
+          {resultHero && (
+            <p className="text-[15px] font-semibold leading-snug tracking-[-0.01em] text-foreground">
+              {resultHero}
+            </p>
+          )}
+          <SkillResultCard>
             {hasStreamingContent && (
               <div className="flex flex-col gap-4">
                 {streamingBlocks.map((block, index) => (
