@@ -1,6 +1,14 @@
 import type { Metadata } from "next";
 import { HeroShowcase } from "@/components/offer/hero-showcase";
 import { BlurFade } from "@/components/velora/blur-fade";
+import { Transformation } from "@/components/offer/sections/transformation";
+import { HowItWorks } from "@/components/offer/sections/how-it-works";
+import { ProofMechanism } from "@/components/offer/sections/proof-mechanism";
+import { Pricing } from "@/components/offer/sections/pricing";
+import { Faq } from "@/components/offer/sections/faq";
+import { FinalCta } from "@/components/offer/sections/final-cta";
+import { OfferFooter } from "@/components/offer/sections/footer";
+import { StickyCta } from "@/components/offer/sections/sticky-cta";
 
 /** Fine film grain (inline, no asset) — the matte texture that keeps the dark wash from reading flat. */
 const GRAIN =
@@ -134,6 +142,18 @@ export default function OfferPage() {
           </BlurFade>
         </div>
       </section>
+
+      {/* the rest of the page — the persuasion arc */}
+      <Transformation />
+      <HowItWorks />
+      <ProofMechanism />
+      <Pricing />
+      <Faq />
+      <FinalCta />
+      <OfferFooter />
+
+      {/* always-available mobile close */}
+      <StickyCta />
     </main>
   );
 }
