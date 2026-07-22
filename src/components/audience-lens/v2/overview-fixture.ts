@@ -16,18 +16,23 @@ import type { OverviewData } from "./AmbientOverview";
 
 export const OVERVIEW_R4: OverviewData = {
   audienceName: "Your audience",
-  provenance: "calibrated · 3d",
+  provenance: "calibrated",
   tier: "flash",
   watching: {
     stimulus: "Nobody tells you the first 10k is the hardest…",
     verdictPct: 31.7, // revealed only at n-of-n (sealed until then)
   },
   ranked: [
-    { id: "h1", stimulus: "Last Tuesday I posted a 7-second clip with no…", stopPct: 41.9 },
-    { id: "h2", stimulus: "I quit my 9-5 with $400 in my account…", stopPct: 38.2 },
-    { id: "h3", stimulus: "I analyzed why my best story got 200 views…", stopPct: 29.5 },
-    { id: "h4", stimulus: "Everyone tells you to post consistently to…", stopPct: 21.0 },
-    { id: "h5", stimulus: "Your video didn't flop because the algorithm…", stopPct: 12.4, loss: true },
+    { id: "h1", stimulus: "Last Tuesday I posted a 7-second clip with no…", stopPct: 41.9, kind: "hook" },
+    { id: "h2", stimulus: "I quit my 9-5 with $400 in my account…", stopPct: 38.2, kind: "idea" },
+    { id: "h3", stimulus: "The cold-plunge cut, tested frame by frame…", stopPct: 29.5, kind: "video" },
+    { id: "h4", stimulus: "Everyone tells you to post consistently to…", stopPct: 21.0, kind: "hook" },
+    { id: "h5", stimulus: "Your video didn't flop because the algorithm…", stopPct: 12.4, kind: "script" },
+    // Variants on the board but not yet run past the AUDIENCE — they still carry the personas'
+    // N-of-10-would-stop rank from generation (their own bar), and a quick-simulate door. The
+    // measured would-stop % is withheld (0) until the audience actually runs (design law).
+    { id: "h6", stimulus: "The 3 edits that saved my worst video…", stopPct: 0, personaStops: 8, kind: "remix", state: "queued" },
+    { id: "h7", stimulus: "I stopped chasing trends for 30 days…", stopPct: 0, personaStops: 6, kind: "idea", state: "queued" },
   ],
   cast: [
     { id: "m", initial: "M" },

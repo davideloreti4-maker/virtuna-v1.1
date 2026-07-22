@@ -19,20 +19,30 @@ export const START_R4: StartData = {
     fidelity: "SIM-1 Flash",
     fidelityOptions: ["SIM-1 Flash", "SIM-1 Max"],
   },
-  // MAKE — the maker grid (grows as verticals are added); each carries a preset lens
-  makeLabel: "Make something",
-  makeSkills: [
-    { label: "Hook", lens: "would stop", icon: "sparkle" },
-    { label: "Script", lens: "would finish", icon: "pen" },
-    { label: "Caption", lens: "would stop", icon: "hash" },
-    { label: "Idea", lens: "would want", icon: "idea" },
-    { label: "Thumbnail", lens: "would stop", icon: "frame" },
-    { label: "Repurpose", lens: "would stop", icon: "repeat" },
+  // Every skill the platform offers (SKILL_RUN_META), grouped by verb. Each carries a short lens:
+  // what it produces / the audience question its thin rank arms.
+  skillGroups: [
+    {
+      label: "Make",
+      skills: [
+        { id: "hooks", label: "Hooks", lens: "Would they stop?", icon: "sparkle" },
+        { id: "ideas", label: "Ideas", lens: "Would they want it?", icon: "idea" },
+        { id: "script", label: "Script", lens: "Would they finish?", icon: "pen" },
+        { id: "remix", label: "Remix", lens: "Would it travel?", icon: "repeat" },
+      ],
+    },
+    {
+      label: "Analyze",
+      skills: [
+        { id: "test", label: "Test", lens: "Frame-by-frame read", icon: "target" },
+        { id: "read", label: "Read", lens: "Would it land?", icon: "doc" },
+        { id: "account", label: "Account", lens: "What's working", icon: "list" },
+      ],
+    },
+    {
+      label: "Discover",
+      skills: [{ id: "explore", label: "Explore", lens: "What's breaking out", icon: "search" }],
+    },
   ],
-  // SIMULATE — the one separate door (cold-start: nothing to develop yet)
-  simDoor: {
-    title: "Test something against your audience",
-    subtitle: "a video, a draft, or ask the room — the full read",
-  },
   composerPlaceholder: "…or just ask",
 };

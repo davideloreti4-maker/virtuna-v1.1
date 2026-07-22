@@ -26,13 +26,14 @@ export const SIMULATE_R4: SimulateData = {
   provenance: "TikTok", // what the audience was CALIBRATED from (fact, from the audience-page badge)
   scene: "TikTok", // how they ENCOUNTER this stimulus (choice, inherited thread chip). ≠ provenance ⇒ tag
   fidelity: "flash",
-  // the behavioral funnel — each lens is a decision the room makes (owner call 2026-07-21)
+  // the behavioral funnel — each lens is a decision the room makes, in funnel order (owner call
+  // 2026-07-21). The `stage` names where in the funnel it sits so the choice is legible.
   lenses: [
-    { key: "stop", label: "Stop", gloss: "stop scrolling" },
-    { key: "finish", label: "Finish", gloss: "watch it through" },
-    { key: "share", label: "Share", gloss: "send it on" },
-    { key: "follow", label: "Follow", gloss: "follow you" },
-    { key: "buy", label: "Buy", gloss: "act on it" },
+    { key: "stop", label: "Stop", gloss: "stop scrolling", stage: "Attention — the thumb-stop in the first 2 seconds" },
+    { key: "finish", label: "Finish", gloss: "watch it through", stage: "Retention — do they stay to the end" },
+    { key: "share", label: "Share", gloss: "send it to someone", stage: "Spread — worth passing on" },
+    { key: "follow", label: "Follow", gloss: "follow you", stage: "Growth — worth coming back for" },
+    { key: "buy", label: "Buy", gloss: "act on the CTA", stage: "Conversion — click, buy, or sign up" },
   ],
   defaultLens: 0, // armed from the ACTIONS preset ("Test a real video" → would stop)
   // slices of the calibrated room (share reduces n; whole-room is the default)

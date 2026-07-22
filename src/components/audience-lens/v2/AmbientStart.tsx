@@ -42,12 +42,21 @@ export type ActionIcon =
   | "doc"
   | "list"
   | "idea"
-  | "frame";
+  | "frame"
+  | "target"
+  | "search";
 
 export interface StartSkill {
+  id: string; // the SKILL_RUN_META key (ideas · hooks · script · remix · explore · read · account · test)
   label: string;
-  lens: string; // the preset question this skill's rank arms ("would stop" …)
+  lens: string; // a short line: what the skill produces / the audience question it arms
   icon: ActionIcon;
+}
+
+/** Skills, grouped by verb (Make · Analyze · Discover) — the real platform set. */
+export interface SkillGroup {
+  label: string;
+  skills: StartSkill[];
 }
 
 export interface StartConditions {
@@ -58,17 +67,10 @@ export interface StartConditions {
   fidelityOptions: string[];
 }
 
-export interface StartSimDoor {
-  title: string; // "Test something against your audience"
-  subtitle: string; // "a video, a draft, or ask the room — the full read"
-}
-
 export interface StartData {
   name: string;
   conditions: StartConditions;
-  makeLabel: string; // the quiet kicker over the maker grid — "Make something"
-  makeSkills: StartSkill[]; // the maker grid; grows as verticals are added
-  simDoor: StartSimDoor; // the one distinct, separate simulation door
+  skillGroups: SkillGroup[]; // every skill the user can run, grouped by verb
   composerPlaceholder: string;
 }
 
@@ -111,7 +113,36 @@ function Icon({ kind }: { kind: ActionIcon }) {
       return <svg {...s} aria-hidden><path d="M8 1.8 L14.2 8 L8 14.2 L1.8 8 Z" /></svg>;
     case "frame":
       return <svg {...s} aria-hidden><path d="M2.5 3.5 H13.5 V12.5 H2.5 Z M2.5 10.2 L6 7 L8.4 9.2 L10.6 7.4 L13.5 10" /><circle cx="5.4" cy="6" r=".9" /></svg>;
+    case "target":
+      return <svg {...s} aria-hidden><circle cx="8" cy="8" r="5.6" /><circle cx="8" cy="8" r="2.4" /><circle cx="8" cy="8" r=".5" fill="currentColor" stroke="none" /></svg>;
+    case "search":
+      return <svg {...s} aria-hidden><circle cx="7" cy="7" r="4.4" /><path d="M10.3 10.3 L13.8 13.8" /></svg>;
   }
+}
+
+// ── a maker skill, as a choosable tile (icon well · label · the lens it arms) ──────────────────
+
+function SkillTile({ skill, index, onPick }: { skill: StartSkill; index: number; onPick?: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onPick}
+      style={{ animationDelay: `${0.06 + index * 0.045}s` }}
+      className="group ambient-row-in flex items-center gap-3 rounded-[12px] border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)] p-3 text-left transition-colors hover:border-[rgba(255,255,255,0.13)] hover:bg-[rgba(255,255,255,0.045)]"
+    >
+      <span className="flex h-9 w-9 flex-none items-center justify-center rounded-[10px] border border-[rgba(255,255,255,0.08)] bg-[#2a2a28] text-[rgba(236,231,222,0.42)] transition-colors group-hover:text-[#ece7de]">
+        <Icon kind={skill.icon} />
+      </span>
+      <span className="flex min-w-0 flex-col">
+        <span className="text-[14px] font-medium leading-tight text-[rgba(236,231,222,0.7)] transition-colors group-hover:text-[#ece7de]">
+          {skill.label}
+        </span>
+        <span className="mt-0.5 truncate text-[11.5px] leading-tight text-[rgba(236,231,222,0.38)]">
+          {skill.lens}
+        </span>
+      </span>
+    </button>
+  );
 }
 
 // ── conditions strip (loud-at-birth here; the same control pins thin in-thread) ────────────────
@@ -144,7 +175,9 @@ function Pick({ value, options, onSelect }: { value: string; options: string[]; 
         onMouseLeave={(e) => (e.currentTarget.style.borderColor = TONE.hair)}
       >
         {value}
-        <span style={{ color: TONE.faint }}>▾</span>
+        <svg width="9" height="9" viewBox="0 0 12 12" aria-hidden style={{ color: TONE.faint }}>
+          <path d="M2.5 4.5L6 8l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
       </button>
       {open ? (
         <div
@@ -223,44 +256,6 @@ function ConditionsStrip({
   );
 }
 
-// ── the one distinct simulation door (the separate act) ────────────────────────────────────────
-
-function SimDoor({ door, onOpen }: { door: StartSimDoor; onOpen?: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className="flex w-full items-center gap-3 rounded-[12px] px-4 py-3.5 text-left transition-colors"
-      style={{
-        border: `1px solid ${TONE.hair}`,
-        background: "rgba(255,255,255,.015)",
-      }}
-      onMouseEnter={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,.14)")}
-      onMouseLeave={(e) => (e.currentTarget.style.borderColor = TONE.hair)}
-    >
-      {/* target/aperture ring — reads as "screen against the room", distinct from the maker glyphs */}
-      <span className="flex-none" style={{ color: TONE.dim }} aria-hidden>
-        <svg viewBox="0 0 20 20" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.3">
-          <circle cx="10" cy="10" r="7" />
-          <circle cx="10" cy="10" r="3" />
-          <circle cx="10" cy="10" r=".6" fill="currentColor" />
-        </svg>
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-[14px] font-medium" style={{ color: TONE.cream }}>
-          {door.title}
-        </span>
-        <span className="mt-0.5 block text-[12px]" style={{ color: TONE.faint }}>
-          {door.subtitle}
-        </span>
-      </span>
-      <span className="flex-none text-[16px]" style={{ color: TONE.faint }} aria-hidden>
-        →
-      </span>
-    </button>
-  );
-}
-
 // ── the surface ──────────────────────────────────────────────────────────────
 
 export function AmbientStart({
@@ -268,22 +263,19 @@ export function AmbientStart({
   onScene,
   onFidelity,
   onSkill,
-  onTestDoor,
   onSubmit,
 }: {
   data: StartData;
   onScene?: (v: string) => void;
   onFidelity?: (v: string) => void;
-  onSkill?: (skillIdx: number) => void;
-  onTestDoor?: () => void;
+  onSkill?: (skillId: string) => void;
   onSubmit?: (text: string) => void;
 }) {
-  const { name, conditions, makeLabel, makeSkills, simDoor, composerPlaceholder } = data;
+  const { name, conditions, skillGroups, composerPlaceholder } = data;
   // client-only greeting: the wall clock differs server↔client, so resolve it after mount (lazy
   // init would run on the server and hydration-mismatch across an hour/timezone boundary).
   const [greeting, setGreeting] = useState("Welcome back");
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing to the browser clock
     setGreeting(timeGreeting());
   }, []);
 
@@ -295,7 +287,7 @@ export function AmbientStart({
       {/* the clean AS-style card — self-contained, floats on the darker room field */}
       <div
         data-testid="ambient-start"
-        className="flex w-full max-w-[540px] flex-col rounded-[20px] px-8 pb-7 pt-8"
+        className="ambient-row-in flex w-full max-w-[540px] flex-col rounded-[20px] px-8 pb-7 pt-8"
         style={{
           color: TONE.cream,
           background: "#1f1f1e",
@@ -303,19 +295,8 @@ export function AmbientStart({
           boxShadow: "0 24px 64px rgba(0,0,0,.4)",
         }}
       >
-        {/* brand glyph */}
-        <svg viewBox="0 0 22 16" className="h-4 w-[22px]" aria-hidden>
-          <circle cx="3" cy="12" r="1.6" fill="#ece7de" opacity=".9" />
-          <circle cx="9" cy="5" r="1.3" fill="#ece7de" opacity=".55" />
-          <circle cx="15" cy="10" r="1.6" fill="#ece7de" opacity=".8" />
-          <circle cx="19" cy="3" r="1.2" fill="#FF6363" opacity=".9" />
-          <line x1="3" y1="12" x2="9" y2="5" stroke="#ece7de" strokeOpacity=".25" />
-          <line x1="9" y1="5" x2="15" y2="10" stroke="#ece7de" strokeOpacity=".25" />
-          <line x1="15" y1="10" x2="19" y2="3" stroke="#ece7de" strokeOpacity=".25" />
-        </svg>
-
         {/* quiet time-of-day greeting (serif = the room's voice) */}
-        <h1 className="mt-[18px] font-serif text-[26px] font-normal leading-[1.15] tracking-[-0.01em]">
+        <h1 className="font-serif text-[26px] font-normal leading-[1.15] tracking-[-0.01em]">
           {greeting}, {name}
         </h1>
 
@@ -324,41 +305,22 @@ export function AmbientStart({
 
         <div className="mt-6 h-px w-full" style={{ background: TONE.border }} />
 
-        {/* MAKE — the maker grid (a quiet kicker, not a loud "simulate" hero; skills MAKE, they don't sim) */}
-        <div className="mt-6 font-mono text-[11px] uppercase tracking-[0.07em]" style={{ color: TONE.faint }}>
-          {makeLabel}
-        </div>
-        <div className="mt-3 grid grid-cols-2 gap-x-8 gap-y-0.5">
-          {makeSkills.map((sk, si) => (
-            <button
-              key={sk.label}
-              type="button"
-              onClick={() => onSkill?.(si)}
-              className="-mx-2 flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors"
-              style={{ color: TONE.dim }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = TONE.well;
-                e.currentTarget.style.color = TONE.cream;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "transparent";
-                e.currentTarget.style.color = TONE.dim;
-              }}
-            >
-              <span className="flex-none" style={{ color: TONE.faint }}>
-                <Icon kind={sk.icon} />
-              </span>
-              <span className="text-[14px]">{sk.label}</span>
-            </button>
-          ))}
-        </div>
-
-        <div className="mt-6 h-px w-full" style={{ background: TONE.border }} />
-
-        {/* SIMULATE — the one separate, deliberate act (its own door, never a maker in the list) */}
-        <div className="mt-6">
-          <SimDoor door={simDoor} onOpen={onTestDoor} />
-        </div>
+        {/* every skill the user can run, grouped by verb — choosable tiles, each shows its lens */}
+        {(() => {
+          let flat = 0; // running index → the entrance stagger reads across the whole set
+          return skillGroups.map((group, gi) => (
+            <div key={group.label} className={gi === 0 ? "mt-6" : "mt-6"}>
+              <div className="font-mono text-[11px] uppercase tracking-[0.09em]" style={{ color: TONE.faint }}>
+                {group.label}
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2.5">
+                {group.skills.map((sk) => (
+                  <SkillTile key={sk.id} skill={sk} index={flat++} onPick={() => onSkill?.(sk.id)} />
+                ))}
+              </div>
+            </div>
+          ));
+        })()}
 
         {/* composer — the fallback: type anything, develop it into a simulation */}
         <ComposerRow placeholder={composerPlaceholder} onSubmit={onSubmit} />
@@ -372,11 +334,9 @@ function ComposerRow({ placeholder, onSubmit }: { placeholder: string; onSubmit?
   const submit = () => {
     if (text.trim()) onSubmit?.(text.trim());
   };
+  const ready = !!text.trim();
   return (
-    <div
-      className="mt-6 flex items-center gap-2 rounded-[12px] py-2 pl-4 pr-2"
-      style={{ border: `1px solid ${TONE.border}`, background: "#1a1a19" }}
-    >
+    <div className="mt-7 flex items-center gap-2 rounded-[12px] border border-[rgba(255,255,255,0.06)] bg-[#191918] py-2 pl-4 pr-2 transition-colors focus-within:border-[rgba(255,255,255,0.14)]">
       <input
         value={text}
         onChange={(e) => setText(e.target.value)}
@@ -384,15 +344,21 @@ function ComposerRow({ placeholder, onSubmit }: { placeholder: string; onSubmit?
           if (e.key === "Enter") submit();
         }}
         placeholder={placeholder}
-        className="min-w-0 flex-1 bg-transparent text-[14px] outline-none"
+        className="min-w-0 flex-1 bg-transparent text-[14px] outline-none placeholder:text-[rgba(236,231,222,0.4)]"
         style={{ color: TONE.cream }}
       />
       <button
         type="button"
         onClick={submit}
         aria-label="Send"
-        className="flex h-8 w-8 flex-none items-center justify-center rounded-full text-[13px] transition-opacity"
-        style={{ background: TONE.cream, color: "#1c1b19", opacity: text.trim() ? 1 : 0.4 }}
+        disabled={!ready}
+        className="flex h-8 w-8 flex-none items-center justify-center rounded-full text-[14px] transition-all"
+        style={{
+          background: ready ? TONE.cream : TONE.well,
+          color: ready ? "#1c1b19" : TONE.faint,
+          border: ready ? "none" : `1px solid ${TONE.hair}`,
+          cursor: ready ? "pointer" : "default",
+        }}
       >
         ↑
       </button>

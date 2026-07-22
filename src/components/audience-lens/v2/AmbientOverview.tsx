@@ -3,19 +3,25 @@
 /**
  * AmbientOverview — Ambient Audience v2, surface ① (the room's home).
  *
- * Round-4 grammar (`.scratch/panel-v6-round4.html`), built in real code:
- *   room header (rest) · SIMULATING-NOW watching-in-place · RANKED screening list · cast on call.
+ * Round-4 grammar (`.scratch/panel-v6-round4.html`), built in real code + a 2026-07-22 premium pass:
+ *   room header (rest) · SIMULATING-NOW live card · RANKED screening list · cast on call.
  *
  * Design laws honored:
- *  - Sapient DE-BOX: hairline dividers, no bordered tiles.
+ *  - Sapient DE-BOX: hairline dividers, no bordered tiles (the one live card earns its hairline).
  *  - Section = mono kicker + human question + owning number.
  *  - Cream is the room; coral is only where you lose them (the loudest-no row).
  *  - Sealed verdicts during watching — staged progress is honest, never a fabricated partial.
- *  - Words are the enemy; motion is simulation physics (the staged fill reports real progress).
+ *  - Words are the enemy; motion is simulation physics (staged fill + a travelling scan report
+ *    real progress; the ranked bars settle in on mount, they do not perform).
  *
- * Reuse note: this is a clean composition of the round-4 anatomy — it deliberately does NOT drag
- * in `audience-presence`'s switcher/portal apparatus (build handoff §5 dedup reckoning). Data
- * shapes mirror the live contract (`AmbientFocusSibling`, `Person`) so an adapter grafts later.
+ * Premium pass (2026-07-22):
+ *  - Live card: a breathing live dot, a travelling cream scan over the fill, a connected stage
+ *    stepper (replacing four loose words), and a sealed-lock affordance that reveals the verdict.
+ *  - Ranked selector: rank numerals, a settle-in cascade, sharper hover, and — per owner ask —
+ *    each row now SHOWS its run state (sealed vs queued) instead of one blanket "simulated" tag.
+ *
+ * Reuse note: a clean composition of the round-4 anatomy — it deliberately does NOT drag in
+ * `audience-presence`'s switcher/portal apparatus. Data shapes mirror the live contract.
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -25,12 +31,25 @@ import { useEffect, useRef, useState } from "react";
 /** Fidelity tier (L5): SIM-1 Flash n=1,000 / SIM-1 Max n=10,000. */
 export type SimTier = "flash" | "max";
 
-/** One screened stimulus in the ranked list. `stopPct` = would-stop %, `loss` = the loudest-no. */
+/** Run provenance of a ranked row. `simulated` = a sealed result (default). `queued` = added
+ *  but not yet run (shown as an honest absence, never a fabricated score). */
+export type RankState = "simulated" | "queued";
+
+/** What KIND of thing was screened — so a mixed board (hooks + ideas + a video test…) is legible
+ *  at a glance. Surfaced as a small mono kind chip per row. */
+export type RankKind = "hook" | "idea" | "video" | "script" | "remix" | "concept";
+
+/** One screened stimulus in the ranked list. `stopPct` = the audience's would-stop % (sealed
+ *  rows, ranked; the top is the win). `personaStops` = how many of 10 personas would stop at
+ *  GENERATION — queued rows are already ranked by it before the audience runs, so they carry
+ *  their own rank + bar (a persona estimate, not a measured verdict, shown muted). */
 export interface RankedStimulus {
   id: string;
   stimulus: string;
   stopPct: number;
-  loss?: boolean;
+  personaStops?: number; // 0–10 — generation-time personas who would stop (queued rows)
+  kind?: RankKind;
+  state?: RankState; // defaults to "simulated"
 }
 
 /** A run in flight. Verdict is SEALED until every agent decides; `verdictPct` reveals then. */
@@ -69,9 +88,11 @@ const TONE = {
   dim: "rgba(236,231,222,.62)",
   faint: "rgba(236,231,222,.38)",
   ghost: "rgba(236,231,222,.16)",
-  coral: "#FF6363",
+  mute: "rgba(236,231,222,.25)",
+  sage: "#8ea68a", // --color-positive: the winning bar (the best would-stop)
   border: "rgba(255,255,255,.06)",
   hair: "rgba(255,255,255,.08)",
+  hover: "rgba(255,255,255,.03)",
 } as const;
 
 // The ranked bars measure against "half the room stops" as the visual full — gives low-ish
@@ -80,10 +101,26 @@ const BAR_REF = 50;
 
 // ── small primitives (r4 grammar) ────────────────────────────────────────────
 
-function Kicker({ children, tag }: { children: React.ReactNode; tag?: string }) {
+function Kicker({
+  children,
+  tag,
+  live,
+}: {
+  children: React.ReactNode;
+  tag?: React.ReactNode;
+  live?: boolean;
+}) {
   return (
     <div className="flex items-baseline justify-between font-mono text-[12px] uppercase tracking-[0.08em]">
-      <span style={{ color: TONE.faint }}>{children}</span>
+      <span className="flex items-center gap-2" style={{ color: TONE.faint }}>
+        {live ? (
+          <span
+            className="ambient-live-pulse inline-block h-[6px] w-[6px] flex-none translate-y-[-1px] rounded-full"
+            style={{ background: TONE.cream }}
+          />
+        ) : null}
+        {children}
+      </span>
       {tag ? (
         <span style={{ color: "rgba(236,231,222,.28)", letterSpacing: "0.06em" }}>{tag}</span>
       ) : null}
@@ -91,10 +128,66 @@ function Kicker({ children, tag }: { children: React.ReactNode; tag?: string }) 
   );
 }
 
-// ── watching card (staged fill, sealed verdict) ──────────────────────────────
+/** The sealed padlock — the verdict is withheld until n-of-n decide (design law: sealed). */
+function SealGlyph({ color }: { color: string }) {
+  return (
+    <svg width="10" height="12" viewBox="0 0 10 12" aria-hidden style={{ color }}>
+      <rect x="1.25" y="5" width="7.5" height="6" rx="1.4" fill="none" stroke="currentColor" strokeWidth="1" />
+      <path d="M3 5V3.6a2 2 0 0 1 4 0V5" fill="none" stroke="currentColor" strokeWidth="1" />
+    </svg>
+  );
+}
+
+// ── stage stepper (connected rail, live node breathes) ───────────────────────
 
 const STAGES = ["reading", "brains", "votes", "verdict"] as const;
 const CUTS = [0.12, 0.55, 0.96, 1.01];
+
+function StageStepper({ liveStage, complete }: { liveStage: number; complete: boolean }) {
+  return (
+    <div className="mt-4 flex items-start">
+      {STAGES.map((s, i) => {
+        const done = complete || i < liveStage;
+        const live = !complete && i === liveStage;
+        const first = i === 0;
+        const last = i === STAGES.length - 1;
+        return (
+          <div key={s} className="flex min-w-0 flex-1 flex-col items-center">
+            <div className="flex w-full items-center">
+              <span
+                className="h-px flex-1"
+                style={{ background: first ? "transparent" : done || live ? TONE.faint : TONE.ghost }}
+              />
+              <span
+                className={live ? "animate-stage-breathe" : ""}
+                style={{
+                  flex: "none",
+                  width: done || live ? 7 : 6,
+                  height: done || live ? 7 : 6,
+                  borderRadius: 9999,
+                  background: done || live ? TONE.cream : "transparent",
+                  border: done || live ? "none" : `1px solid ${TONE.mute}`,
+                }}
+              />
+              <span
+                className="h-px flex-1"
+                style={{ background: last ? "transparent" : done ? TONE.faint : TONE.ghost }}
+              />
+            </div>
+            <span
+              className="mt-2 font-mono text-[11px] tracking-[0.04em] transition-colors duration-300"
+              style={{ color: live ? TONE.cream : done ? TONE.faint : TONE.mute }}
+            >
+              {s}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── watching card (staged fill, travelling scan, sealed verdict) ─────────────
 
 function WatchingCard({
   run,
@@ -153,19 +246,19 @@ function WatchingCard({
 
   return (
     <div
-      className="mt-3 rounded-[12px] p-4"
-      style={{ border: `1px solid ${TONE.hair}` }}
+      className="ambient-row-in mt-3 rounded-[12px] p-4"
+      style={{ border: `1px solid ${TONE.hair}`, background: "rgba(236,231,222,.02)" }}
     >
       <div
-        className="overflow-hidden text-ellipsis whitespace-nowrap text-[14px]"
+        className="overflow-hidden text-ellipsis whitespace-nowrap text-[14px] leading-snug"
         style={{ color: TONE.cream }}
       >
         {run.stimulus}
       </div>
 
-      {/* progress track — cream fill, driven by rAF via transform (no per-frame re-render) */}
+      {/* progress track — cream fill (rAF via transform) + a travelling cream scan for liveness */}
       <div
-        className="relative mt-3.5 h-1 overflow-hidden rounded-full"
+        className="relative mt-4 h-[5px] overflow-hidden rounded-full"
         style={{ background: TONE.ghost }}
       >
         <span
@@ -173,52 +266,201 @@ function WatchingCard({
           className="absolute inset-0 block origin-left rounded-full"
           style={{ background: TONE.cream, opacity: 0.85, transform: "scaleX(0)" }}
         />
+        {!complete ? (
+          <span
+            className="ambient-fill-flow absolute inset-y-0 left-0 block w-1/3 rounded-full"
+            style={{
+              background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,.9) 50%, transparent 100%)",
+            }}
+          />
+        ) : null}
       </div>
 
-      {/* staged log: reading · brains · votes · verdict */}
-      <div className="mt-3 flex gap-3.5 font-mono text-[12px] tracking-[0.05em]">
-        {STAGES.map((s, i) => {
-          const done = complete || i < liveStage;
-          const live = !complete && i === liveStage;
-          return (
-            <span
-              key={s}
-              className="transition-colors duration-300"
-              style={{ color: live ? TONE.cream : done ? TONE.faint : "rgba(236,231,222,.25)" }}
-            >
-              {s}
-            </span>
-          );
-        })}
-      </div>
+      {/* connected stage stepper: reading · brains · votes · verdict */}
+      <StageStepper liveStage={liveStage} complete={complete} />
 
       {/* meta: N decided · sealed → verdict on complete */}
-      <div className="mt-2.5 flex items-baseline justify-between text-[13px]">
-        <span style={{ color: TONE.faint }}>
+      <div className="mt-4 flex items-center justify-between text-[13px]">
+        <span className="tabular-nums" style={{ color: TONE.faint }}>
           {complete
             ? `${withCommas(n)} of ${withCommas(n)}`
             : `${withCommas(decided)} of ${withCommas(n)} decided`}
         </span>
-        <span style={{ color: complete ? TONE.cream : TONE.dim }}>
-          {complete && run.verdictPct != null ? `${run.verdictPct}% would stop` : "sealed"}
-        </span>
+        {complete && run.verdictPct != null ? (
+          <span className="tabular-nums text-[14px] font-medium" style={{ color: TONE.cream }}>
+            {run.verdictPct}% <span className="text-[12px] font-normal" style={{ color: TONE.dim }}>would stop</span>
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 font-mono text-[12px] uppercase tracking-[0.06em]" style={{ color: TONE.dim }}>
+            <SealGlyph color={TONE.faint} />
+            sealed
+          </span>
+        )}
       </div>
     </div>
   );
 }
 
-// ── room header glyph (r4 constellation, one coral node) ─────────────────────
+// ── ranked row ───────────────────────────────────────────────────────────────
+
+/** A kind chip — a small mono tag so a mixed board (hook / idea / video …) is legible at a glance. */
+function KindChip({ kind, dim }: { kind: RankKind; dim?: boolean }) {
+  return (
+    <span
+      className="flex-none font-mono text-[10.5px] uppercase tracking-[0.06em]"
+      style={{ color: dim ? TONE.mute : TONE.faint }}
+    >
+      {kind}
+    </span>
+  );
+}
+
+/** A SEALED result row — ranked, clickable into the detail/brain. */
+function SealedRow({
+  rank,
+  r,
+  index,
+  onOpen,
+}: {
+  rank: number;
+  r: RankedStimulus;
+  index: number;
+  onOpen?: (id: string) => void;
+}) {
+  const w = Math.min(1, r.stopPct / BAR_REF);
+  const top = rank === 1;
+
+  return (
+    <li className="ambient-row-in" style={{ animationDelay: `${0.04 + index * 0.05}s` }}>
+      <button
+        type="button"
+        onClick={() => onOpen?.(r.id)}
+        className="group block w-full cursor-pointer rounded-[8px] px-2 py-3.5 text-left transition-colors"
+        style={{ borderBottom: `1px solid ${TONE.border}` }}
+        onMouseEnter={(e) => (e.currentTarget.style.background = TONE.hover)}
+        onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+      >
+        <span className="flex items-baseline gap-3">
+          <span
+            className="w-[14px] flex-none tabular-nums font-mono text-[12px]"
+            style={{ color: top ? TONE.dim : TONE.faint }}
+          >
+            {rank}
+          </span>
+          <span
+            className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[14px]"
+            style={{ color: TONE.cream, opacity: top ? 1 : 0.88 }}
+          >
+            {r.stimulus}
+          </span>
+          {r.kind ? <KindChip kind={r.kind} /> : null}
+          <span className="flex-none tabular-nums text-[14px] font-medium" style={{ color: TONE.cream }}>
+            {r.stopPct.toFixed(1)}%
+          </span>
+        </span>
+
+        <span
+          className="relative mt-2.5 ml-[26px] block h-[3px] overflow-hidden rounded-full transition-[filter] group-hover:brightness-110"
+          style={{ background: TONE.ghost }}
+        >
+          {/* the top would-stop is the win — its bar goes sage-green; the rest hold cream */}
+          <span
+            className="absolute inset-0 block origin-left rounded-full"
+            style={{ transform: `scaleX(${w})`, background: top ? TONE.sage : "rgba(236,231,222,.55)" }}
+          />
+        </span>
+      </button>
+    </li>
+  );
+}
+
+/** A QUEUED row — ranked at GENERATION by the personas (N of 10 would stop), not yet run past the
+ *  audience. Same anatomy as a sealed row (rank · stimulus · kind · value · bar-under) so the two
+ *  groups read as one system; the bar is MUTED (a persona estimate, not a measured verdict) and
+ *  the whole row is the quick-simulate door — the value slot reveals `Simulate →` on hover. */
+function QueuedRow({
+  rank,
+  r,
+  index,
+  onSimulate,
+}: {
+  rank: number;
+  r: RankedStimulus;
+  index: number;
+  onSimulate?: (id: string) => void;
+}) {
+  const n = r.personaStops ?? 0;
+  const w = Math.min(1, n / 10);
+
+  return (
+    <li className="ambient-row-in" style={{ animationDelay: `${0.04 + index * 0.05}s` }}>
+      <button
+        type="button"
+        onClick={() => onSimulate?.(r.id)}
+        className="group block w-full cursor-pointer rounded-[8px] px-2 py-3.5 text-left transition-colors"
+        style={{ borderBottom: `1px solid ${TONE.border}` }}
+        onMouseEnter={(e) => (e.currentTarget.style.background = TONE.hover)}
+        onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+      >
+        <span className="flex items-baseline gap-3">
+          <span className="w-[14px] flex-none tabular-nums font-mono text-[12px]" style={{ color: TONE.mute }}>
+            {rank}
+          </span>
+          <span
+            className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[14px]"
+            style={{ color: TONE.cream, opacity: 0.62 }}
+          >
+            {r.stimulus}
+          </span>
+          {r.kind ? <KindChip kind={r.kind} dim /> : null}
+          {/* value slot — fixed width so N/10 ⇄ Simulate → swaps with no layout shift */}
+          <span className="relative flex-none" style={{ minWidth: 66, height: 16 }}>
+            <span
+              className="block text-right tabular-nums text-[13px] transition-opacity group-hover:opacity-0"
+              style={{ color: TONE.dim }}
+            >
+              {n}
+              <span className="text-[11px]" style={{ color: TONE.mute }}>
+                /10
+              </span>
+            </span>
+            <span
+              className="absolute inset-0 flex items-center justify-end whitespace-nowrap font-mono text-[10.5px] uppercase tracking-[0.06em] opacity-0 transition-opacity group-hover:opacity-100"
+              style={{ color: TONE.cream }}
+            >
+              Simulate&nbsp;→
+            </span>
+          </span>
+        </span>
+
+        {/* bar — the personas' N/10, muted (an estimate, not a measured verdict) */}
+        <span
+          className="relative mt-2.5 ml-[26px] block h-[3px] overflow-hidden rounded-full"
+          style={{ background: TONE.ghost }}
+        >
+          <span
+            className="absolute inset-0 block origin-left rounded-full"
+            style={{ transform: `scaleX(${w})`, background: "rgba(236,231,222,.34)" }}
+          />
+        </span>
+      </button>
+    </li>
+  );
+}
+
+// ── room header glyph — a calm audience cluster (people, not a sparkline) ─────
+// The old constellation's connecting lines read as a stock line-chart. This is a small crowd of
+// cream nodes at varied depth (opacity), no lines — reads as "your room of people". Static: the
+// only live motion on the surface belongs to the run in flight (SIMULATING NOW), so the mark stays
+// calm and doesn't compete.
 
 function RoomGlyph() {
   return (
-    <svg viewBox="0 0 22 16" className="h-4 w-[22px] flex-none" aria-hidden>
-      <circle cx="3" cy="12" r="1.6" fill="#ece7de" opacity=".9" />
-      <circle cx="9" cy="5" r="1.3" fill="#ece7de" opacity=".55" />
-      <circle cx="15" cy="10" r="1.6" fill="#ece7de" opacity=".8" />
-      <circle cx="19" cy="3" r="1.2" fill="#FF6363" opacity=".9" />
-      <line x1="3" y1="12" x2="9" y2="5" stroke="#ece7de" strokeOpacity=".25" />
-      <line x1="9" y1="5" x2="15" y2="10" stroke="#ece7de" strokeOpacity=".25" />
-      <line x1="15" y1="10" x2="19" y2="3" stroke="#ece7de" strokeOpacity=".25" />
+    <svg viewBox="0 0 20 16" className="h-[15px] w-[18px] flex-none" aria-hidden>
+      <circle cx="4" cy="11" r="2" fill="#ece7de" opacity=".9" />
+      <circle cx="9.5" cy="6" r="2" fill="#ece7de" opacity=".62" />
+      <circle cx="14.5" cy="11.5" r="1.9" fill="#ece7de" opacity=".78" />
+      <circle cx="16.5" cy="5" r="1.5" fill="#ece7de" opacity=".4" />
     </svg>
   );
 }
@@ -229,16 +471,26 @@ export function AmbientOverview({
   data,
   reducedMotion = false,
   onOpenStimulus,
+  onQuickSimulate,
   onTestVariant,
   className,
 }: {
   data: OverviewData;
   reducedMotion?: boolean;
   onOpenStimulus?: (id: string) => void;
+  onQuickSimulate?: (id: string) => void;
   onTestVariant?: () => void;
   className?: string;
 }) {
   const { audienceName, provenance, tier, watching, ranked, cast, castOverflow } = data;
+
+  // Split the board: SEALED results on top (ranked high→low), the un-run QUEUED ones below.
+  const sealed = ranked
+    .filter((r) => r.state !== "queued")
+    .sort((a, b) => b.stopPct - a.stopPct);
+  const queued = ranked
+    .filter((r) => r.state === "queued")
+    .sort((a, b) => (b.personaStops ?? 0) - (a.personaStops ?? 0));
 
   return (
     <div
@@ -252,76 +504,72 @@ export function AmbientOverview({
         fontFamily: "var(--font-sans, Inter, system-ui, sans-serif)",
       }}
     >
-      {/* room header */}
+      {/* room header — audience mark · name · calibration chip · switch caret */}
       <div className="flex items-center gap-2.5 px-[26px] pt-[26px]">
         <RoomGlyph />
-        <span className="text-[16px] font-semibold tracking-[-0.01em]">{audienceName}</span>
+        <span className="text-[16px] font-semibold tracking-[-0.015em]">{audienceName}</span>
         <span
-          className="rounded-full px-2.5 py-[3px] font-mono text-[11px] uppercase tracking-[0.08em]"
+          className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-[3px] font-mono text-[10px] uppercase tracking-[0.1em]"
           style={{ color: TONE.faint, border: `1px solid ${TONE.hair}` }}
         >
+          <span className="inline-block h-[5px] w-[5px] rounded-full" style={{ background: TONE.dim }} />
           {provenance}
         </span>
-        <span className="ml-auto text-[12px]" style={{ color: TONE.faint }}>
-          ▾
-        </span>
+        <button
+          type="button"
+          aria-label="Switch audience"
+          className="ml-auto flex h-6 w-6 flex-none items-center justify-center rounded-full transition-colors"
+          style={{ color: TONE.faint }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = TONE.cream;
+            e.currentTarget.style.background = TONE.hover;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = TONE.faint;
+            e.currentTarget.style.background = "transparent";
+          }}
+        >
+          <svg width="11" height="11" viewBox="0 0 12 12" aria-hidden>
+            <path d="M2.5 4.5L6 8l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
       </div>
 
       {/* scroll region — watching + ranked */}
       <div className="min-h-0 flex-1 overflow-y-auto px-[26px]">
         {watching ? (
           <div className="mt-8">
-            <Kicker tag={TIER_LABEL[tier]}>Simulating now</Kicker>
+            <Kicker tag={TIER_LABEL[tier]} live>
+              Simulating now
+            </Kicker>
             <WatchingCard run={watching} tier={tier} reducedMotion={reducedMotion} />
           </div>
         ) : null}
 
         <div className="mt-8">
-          <Kicker tag="simulated">Ranked · would they stop</Kicker>
-          <ul className="mt-1">
-            {ranked.map((r) => {
-              const w = Math.min(1, r.stopPct / BAR_REF);
-              return (
-                <li key={r.id}>
-                  <button
-                    type="button"
-                    onClick={() => onOpenStimulus?.(r.id)}
-                    className="group block w-full cursor-pointer py-3.5 text-left"
-                    style={{ borderBottom: `1px solid ${TONE.border}` }}
-                  >
-                    <span className="flex items-baseline gap-3">
-                      <span
-                        className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[14px] opacity-[.88] transition-opacity group-hover:opacity-100"
-                        style={{ color: TONE.cream }}
-                      >
-                        {r.stimulus}
-                      </span>
-                      <span className="flex-none text-[14px] font-medium" style={{ color: TONE.cream }}>
-                        {r.stopPct.toFixed(1)}%
-                      </span>
-                    </span>
-                    <span
-                      className="relative mt-2.5 block h-[3px] overflow-hidden rounded-full"
-                      style={{ background: TONE.ghost }}
-                    >
-                      <span
-                        className="absolute inset-0 block origin-left"
-                        style={{
-                          transform: `scaleX(${w})`,
-                          background: r.loss ? TONE.coral : "rgba(236,231,222,.55)",
-                          opacity: r.loss ? 0.8 : 1,
-                        }}
-                      />
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
+          <Kicker tag={`${sealed.length} sealed`}>Ranked · would they stop</Kicker>
+          <ul className="mt-1.5">
+            {sealed.map((r, i) => (
+              <SealedRow key={r.id} rank={i + 1} r={r} index={i} onOpen={onOpenStimulus} />
+            ))}
           </ul>
+
+          {/* the un-run group — split below, an honest waiting-room with a quick-simulate door */}
+          {queued.length > 0 ? (
+            <div className="mt-7">
+              <Kicker tag={`${queued.length} queued`}>Not simulated yet</Kicker>
+              <ul className="mt-1.5">
+                {queued.map((r, i) => (
+                  <QueuedRow key={r.id} rank={i + 1} r={r} index={sealed.length + i} onSimulate={onQuickSimulate} />
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
           <button
             type="button"
             onClick={onTestVariant}
-            className="w-full cursor-pointer py-3.5 text-left text-[13px] transition-colors"
+            className="mt-1 w-full cursor-pointer rounded-[8px] px-2 py-3.5 text-left text-[13px] transition-colors"
             style={{ color: TONE.faint }}
             onMouseEnter={(e) => (e.currentTarget.style.color = TONE.cream)}
             onMouseLeave={(e) => (e.currentTarget.style.color = TONE.faint)}

@@ -542,6 +542,46 @@
   }
 }
 
+/* Ambient Audience v2 — Overview premium pass (2026-07-22). The horizontal analogue of
+ * spine-flow: a soft cream highlight travels along the LIVE simulation fill, reading as agents
+ * deciding in real time (a scan sweeping the room). Matte cream, no glow. Reduced-motion drops
+ * the travel entirely (the static rAF fill stays honest). */
+@keyframes ambient-fill-flow {
+  0% { transform: translateX(-120%); opacity: 0; }
+  22% { opacity: 1; }
+  78% { opacity: 1; }
+  100% { transform: translateX(240%); opacity: 0; }
+}
+.ambient-fill-flow {
+  animation: ambient-fill-flow 1.9s var(--ease-out-cubic) infinite;
+}
+
+/* Live-run dot — a calm cream breathe (opacity + a hair of scale), motion-only. */
+@keyframes ambient-live-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.72); }
+}
+.ambient-live-pulse {
+  animation: ambient-live-pulse 1.5s var(--ease-out-cubic) infinite;
+}
+
+/* Ranked rows settle in on mount — staggered fade + a short rise. Premium, calm, matte. */
+@keyframes ambient-row-in {
+  from { opacity: 0; transform: translateY(7px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.ambient-row-in {
+  animation: ambient-row-in 0.5s var(--ease-out-cubic) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ambient-fill-flow,
+  .ambient-live-pulse,
+  .ambient-row-in {
+    animation: none;
+  }
+}
+
 /* ============================================
  * UTILITY CLASSES
  * ============================================ */

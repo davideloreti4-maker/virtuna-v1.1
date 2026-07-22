@@ -125,7 +125,6 @@ export default function AmbientV2DevPage() {
           <AmbientStart
             data={START_R4}
             onSkill={() => openSim("develop")}
-            onTestDoor={() => openSim("cold")}
             onSubmit={() => openSim("develop")}
           />
         ) : surface === "simulate" ? (
@@ -141,7 +140,12 @@ export default function AmbientV2DevPage() {
         ) : (
           <div className="w-[440px]" style={{ height: AMBIENT_PANEL_HEIGHT }}>
             {surface === "overview" ? (
-              <AmbientOverview data={overviewData} onOpenStimulus={() => setSurface("brain")} onTestVariant={() => {}} />
+              <AmbientOverview
+                data={overviewData}
+                onOpenStimulus={() => setSurface("brain")}
+                onQuickSimulate={() => openSim("develop")}
+                onTestVariant={() => openSim("cold")}
+              />
             ) : (
               <AmbientDetail template={template} onBack={() => setSurface("overview")} />
             )}
