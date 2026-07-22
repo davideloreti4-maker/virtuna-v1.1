@@ -377,12 +377,13 @@ describe('Composer — persisted multi-audience-read restores on the thread', ()
 
     renderWithClient(<Composer />);
 
-    // The Read card renders through the real MessageBlocks registry — eyebrow +
-    // interpretation prove the actual renderer mounted, not a placeholder.
+    // The Read card renders through the real MessageBlocks registry — the interpretation
+    // line proves the actual renderer mounted, not a placeholder. (The old "The Read" eyebrow
+    // was removed 2026-07-21 as generic restatement; asserting on it left this test waiting on
+    // deleted chrome — the timeout is what surfaced the stray :3000 fetch during teardown.)
     await waitFor(() => {
-      expect(screen.getByText('The Read')).toBeInTheDocument();
+      expect(screen.getByText(/General wins \(Strong\)\./)).toBeInTheDocument();
     });
-    expect(screen.getByText(/General wins \(Strong\)\./)).toBeInTheDocument();
   });
 });
 

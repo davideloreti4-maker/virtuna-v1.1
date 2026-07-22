@@ -60,10 +60,12 @@ describe('OutlierTile — standard conformance', () => {
   it('keeps the FIT bar neutral cream — the level tone rides a dot, not the fill', () => {
     const { container } = renderWithClient(<OutlierTile tile={TILE} onRemix={vi.fn()} />);
     const fill = container.querySelector('[role="presentation"] > div') as HTMLElement;
-    expect(fill.style.backgroundColor).not.toContain('success');
-    // The success tone now lives on the leading dot of the FIT label.
+    expect(fill.style.backgroundColor).not.toContain('positive');
+    // The level tone rides the leading dot of the FIT label. Strong now uses the calm sage
+    // `--color-positive` (unified 2026-07-22 to the band palette), NOT the old bright
+    // `--color-success` — see FIT_BAR in outlier-tile.tsx.
     const label = screen.getByText(/FIT ·/);
     const dot = label.firstElementChild as HTMLElement;
-    expect(dot.style.backgroundColor).toContain('success');
+    expect(dot.style.backgroundColor).toContain('positive');
   });
 });

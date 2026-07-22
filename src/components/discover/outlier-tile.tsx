@@ -70,11 +70,15 @@ export interface OutlierTileData {
 
 /**
  * Fit-bar fill geometry + tone by level (UI-SPEC §Color "Fit-score visual encoding").
- * Tones are score-zone, NEVER coral: Strong→success, Fair→warning, Weak→muted (a weak
- * *fit estimate* is honest under-promise, not an error → muted, not red).
+ * Unified 2026-07-22 to the calm band palette (band-block.tsx BAND_COLOR): Strong→sage
+ * `--color-positive` (the matte warm green, NOT the bright clinical `--color-success` this
+ * used to carry — that bright green was the "separate/loud" tone flagged for unify). Fair
+ * stays amber `--color-warning` (already matched the band's Mixed). Weak stays MUTED, not
+ * the band's soft coral: a weak *fit estimate* is honest under-promise (not an error), and
+ * the tile's one-accent law reserves coral for the single Remix CTA — so muted, never red.
  */
 const FIT_BAR: Record<FitLevel, { width: string; color: string }> = {
-  Strong: { width: "100%", color: "var(--color-success)" },
+  Strong: { width: "100%", color: "var(--color-positive)" },
   Fair: { width: "66%", color: "var(--color-warning)" },
   Weak: { width: "33%", color: "var(--color-foreground-muted)" },
 };
