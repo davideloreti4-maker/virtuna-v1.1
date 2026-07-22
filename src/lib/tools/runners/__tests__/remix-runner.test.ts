@@ -225,6 +225,34 @@ describe("runRemixPipeline (runner)", () => {
     expect(mockGenerateAdaptConcepts).toHaveBeenCalledTimes(1);
   });
 
+  it("wires production: the adapt concept's shoot plan flows to the remix card (owner 2026-07-22)", async () => {
+    setupHappyPath();
+    // A concept carrying the ready-to-film plan — what a wired adapt call now returns.
+    const production = {
+      shots: "Cold-open talking-head, cut to habit-tracker b-roll",
+      onScreenText: "'90% quit' overlay at 0s",
+      setup: "Phone on tripod, window light",
+      edit: "Hard cuts on the turn",
+    };
+    const concepts = makeAdaptConcepts();
+    (concepts[0] as Record<string, unknown>).production = production;
+    mockGenerateAdaptConcepts.mockResolvedValue(concepts);
+
+    const { runRemixPipeline } = await import("@/lib/tools/runners/remix-runner");
+    const result = await runRemixPipeline({
+      url: "https://www.tiktok.com/@creator/video/123456",
+      platform: "tiktok",
+      profileRow: makeProfileRow(),
+      requestId: "req-abc",
+    });
+
+    const card = result.blocks.find((b) => b.props.adaptedHook === concepts[0]!.hook);
+    expect(card!.props.production).toEqual(production);
+    // A concept with no shoot plan omits it (byte-identical to pre-wiring).
+    const noPlan = result.blocks.find((b) => b.props.adaptedHook === concepts[1]!.hook);
+    expect(noPlan!.props.production).toBeUndefined();
+  });
+
   it("cleanup() is called in finally even when decode returns null (T-03-02)", async () => {
     mockResolveAndRehost.mockResolvedValue({
       signedUrl: "https://supabase.example.com/videos/remix-temp/req-abc.mp4",

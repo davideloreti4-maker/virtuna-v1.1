@@ -55,6 +55,27 @@ export interface PartialRemixCard {
   // 1,000 Sheet. undefined on General/uncalibrated/uncharacterized runs. Declared + parsed +
   // carried through toBlocks so it renders live, not only after a reload (the reload-only hazard).
   population?: PopulationAggregateBlock;
+  // READY TO FILM (owner 2026-07-22): the shoot plan for YOUR adapted version. undefined when the
+  // adapt model returned none. Same reload-only hazard — carried through toBlocks so it renders live.
+  production?: RemixCardBlock['props']['production'];
+}
+
+/**
+ * Parse a raw `production` prop off the SSE face into a validated shoot-plan, or undefined. Mirrors
+ * the runner's coercion: shots+onScreenText+setup are required together (partial → dropped whole);
+ * edit optional. Keeps the live remix card honest — no fabricated shoot plan from a malformed payload.
+ */
+function parseProductionProp(raw: unknown): RemixCardBlock['props']['production'] {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const p = raw as Record<string, unknown>;
+  const str = (v: unknown): string | undefined =>
+    typeof v === 'string' && v.trim().length > 0 ? v : undefined;
+  const shots = str(p.shots);
+  const onScreenText = str(p.onScreenText);
+  const setup = str(p.setup);
+  if (!shots || !onScreenText || !setup) return undefined;
+  const edit = str(p.edit);
+  return { shots, onScreenText, setup, ...(edit ? { edit } : {}) };
 }
 
 export interface UseRemixStreamReturn {
@@ -238,6 +259,7 @@ export function useRemixStream(): UseRemixStreamReturn {
                     ? (props.personas as ReactionPersona[])
                     : undefined,
                   population: parsePopulationProp(props.population), // Sim v2: adapted-hook projection → Population·1,000 Sheet
+                  production: parseProductionProp(props.production), // owner 2026-07-22: YOUR-version shoot plan renders live, not reload-only
                 };
               })
               .filter((c: PartialRemixCard) => c.adaptedHook.length > 0);
@@ -295,6 +317,8 @@ export function useRemixStream(): UseRemixStreamReturn {
         personas: c.personas, // S3′: real per-persona reactions → named ambient Room cast (Task B)
         // Sim v2 Stage 2 — the adapted-hook projection renders live in the Sheet, not just after reload.
         ...(c.population ? { population: c.population } : {}),
+        // Ready-to-film (owner 2026-07-22) — the YOUR-version shoot plan renders live, not reload-only.
+        ...(c.production ? { production: c.production } : {}),
       },
     }));
   }, [streamingCards]);

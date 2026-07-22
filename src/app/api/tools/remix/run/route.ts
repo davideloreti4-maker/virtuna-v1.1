@@ -225,6 +225,7 @@ export async function POST(request: Request): Promise<Response> {
               angle: b.props.angle,
               whoItsFor: b.props.whoItsFor,
               formatBorrowed: b.props.formatBorrowed,
+              production: b.props.production,    // owner 2026-07-22: YOUR-version shoot plan rides the FACE (else reload-only)
               sourceDecode: b.props.sourceDecode,
               scrollQuote: b.props.scrollQuote,
               model: b.props.model,

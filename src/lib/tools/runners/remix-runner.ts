@@ -410,6 +410,10 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
           whoItsFor: r.concept.who_its_for,
           formatBorrowed: r.concept.format_borrowed,
 
+          // READY TO FILM (owner 2026-07-22) — the shoot plan for YOUR adapted version. Omitted
+          // when the adapt model returned none, so a pre-wiring remix card stays byte-identical.
+          ...(r.concept.production ? { production: r.concept.production } : {}),
+
           // Source decode anatomy — REAL 4-beat structural decode (D-05 moat)
           sourceDecode,
 

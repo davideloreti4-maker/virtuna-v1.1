@@ -51,11 +51,17 @@ OUTPUT: Return strict JSON with this exact shape and nothing else:
       "hook": "string — bold, actionable headline adapted to the niche (≤ 15 words)",
       "angle": "string — the structural angle or narrative approach borrowed from the source",
       "who_its_for": "string — who in the creator's niche this concept targets",
-      "format_borrowed": "string — the specific format pattern borrowed (short label, ≤ 10 words)"
+      "format_borrowed": "string — the specific format pattern borrowed (short label, ≤ 10 words)",
+      "production": {
+        "shots": "string — the shot list to film YOUR version of this concept",
+        "onScreenText": "string — key on-screen text overlays",
+        "setup": "string — gear / lighting / framing setup",
+        "edit": "string — edit style"
+      }
     }
   ]
 }
-The "concepts" array MUST contain exactly 3 items.`;
+The "concepts" array MUST contain exactly 3 items. "production" is the READY-TO-FILM shoot plan for the creator's OWN adapted version — how to execute the borrowed format for this angle, grounded in what the concept actually needs. Never invent gear or shots the concept does not call for.`;
 
 // =========================================================
 // Zod schemas
@@ -66,6 +72,17 @@ const AdaptConceptZodSchema = z.object({
   angle:           z.string().min(1).max(300),
   who_its_for:     z.string().min(1).max(200),
   format_borrowed: z.string().min(1).max(200),
+  // READY TO FILM (owner 2026-07-22) — OPTIONAL so a model that omits it (or returns a partial
+  // block) still validates and the 3-concept contract holds; the card just renders no shoot plan.
+  // shots/onScreenText/setup are required together when present; edit is optional.
+  production: z
+    .object({
+      shots:        z.string().min(1).max(600),
+      onScreenText: z.string().min(1).max(600),
+      setup:        z.string().min(1).max(600),
+      edit:         z.string().min(1).max(400).optional(),
+    })
+    .optional(),
 });
 
 const AdaptConceptsZodSchema = z.object({

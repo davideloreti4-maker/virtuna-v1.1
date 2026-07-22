@@ -223,7 +223,7 @@ export async function POST(request: Request): Promise<Response> {
           blocks: blocks.map((b) => ({
             type: b.type,
             props: {
-              beats: b.props.beats,
+              beats: b.props.beats,             // per-beat `filming` cue rides along here (owner 2026-07-22)
               openingBeatSeed: b.props.openingBeatSeed,
               scrollQuote: b.props.scrollQuote,
               model: b.props.model,
@@ -231,6 +231,11 @@ export async function POST(request: Request): Promise<Response> {
               proof: b.props.proof,             // §11f: receipt streams WITH the face (mirrors hooks)
               grounded: b.props.grounded,       // §11f: the RUN had sources even if this card cited none — gates NoSourceNote
               population: b.props.population,    // Audience Sim v2 Stage 2: the N-individual projection → Population·1,000 Sheet (rides the face)
+              // Ready-to-film card-level fields (owner 2026-07-22) — forwarded on the FACE so they
+              // render live, not only after a reload from the persisted block. undefined → omitted.
+              topic: b.props.topic,
+              format: b.props.format,
+              production: b.props.production,
               // band/fraction deferred to score event (content-first)
             },
           })),

@@ -127,13 +127,24 @@ function isGroundingAdaptEnabled(): boolean {
  * mechanism is PROSE reasoning — NOT a craft-archetype slug (D-04).
  * No craft-archetype slug field requested in the output shape (D-04).
  */
+/**
+ * VISUAL HOOK field (owner 2026-07-22) — shared across all three hook output contracts (base,
+ * grounded, targeted) so the first-frame visual is requested identically everywhere. Injected via
+ * interpolation so a change lands once. OPTIONAL + nullable: the parser tolerates absence/null and
+ * the card omits it (byte-identical to the pre-visualHook shape). Honesty: the visual is the
+ * EXECUTION of the spoken hook, never a second competing hook, and null when there is no distinct
+ * visual opener — the model must not invent one.
+ */
+const VISUAL_HOOK_FIELD = `, "visualHook": { "technique": string, "onScreen": string } | null`;
+const VISUAL_HOOK_RULE = ` "visualHook" is the FIRST-FRAME visual that opens the video — the EXECUTION of THIS hook, not a second competing hook: "technique" is a named first-frame technique (e.g. "crash-zoom", "match-cut", "on-screen-text", "cold-open", "direct-address"), "onScreen" is what is literally on screen at 0s. Use null when the hook is purely spoken with no distinct visual opener — never invent one.`;
+
 const HOOKS_OUTPUT_CONTRACT = `
 
 ---
 
 OUTPUT FORMAT: Respond with a single JSON object — no markdown, no code fences, no prose.
-Shape: { "hooks": [ { "hookLine": string, "mechanism": string, "seedHook": string, "channel": string | null, "needsTake": boolean } ] }
-Return a "hooks" array of exactly ${HOOK_COUNT} STRONG, DISTINCT-mechanism objects — each must earn its place (these are all shown to the creator, not filtered). Every field is required; "hookLine" and "seedHook" must be non-empty. "mechanism" is plain-prose reasoning — never a bracket-tag. "channel" is the delivery channel (spoken/visual/caption/edit/audio) or null.`;
+Shape: { "hooks": [ { "hookLine": string, "mechanism": string, "seedHook": string, "channel": string | null, "needsTake": boolean${VISUAL_HOOK_FIELD} } ] }
+Return a "hooks" array of exactly ${HOOK_COUNT} STRONG, DISTINCT-mechanism objects — each must earn its place (these are all shown to the creator, not filtered). Every field is required; "hookLine" and "seedHook" must be non-empty. "mechanism" is plain-prose reasoning — never a bracket-tag. "channel" is the delivery channel (spoken/visual/caption/edit/audio) or null.${VISUAL_HOOK_RULE}`;
 
 /**
  * Grounded output contract (§11f receipts-on-cards). Used ONLY when a corpus grounding block
@@ -148,8 +159,8 @@ const HOOKS_OUTPUT_CONTRACT_GROUNDED = `
 ---
 
 OUTPUT FORMAT: Respond with a single JSON object — no markdown, no code fences, no prose.
-Shape: { "hooks": [ { "hookLine": string, "mechanism": string, "seedHook": string, "channel": string | null, "needsTake": boolean, "sourceIndex": number } ] }
-Return a "hooks" array of exactly ${HOOK_COUNT} STRONG, DISTINCT-mechanism objects — each must earn its place (these are all shown to the creator, not filtered). Every field is required; "hookLine" and "seedHook" must be non-empty. "mechanism" is plain-prose reasoning — never a bracket-tag. "channel" is the delivery channel (spoken/visual/caption/edit/audio) or null. "sourceIndex" is the 1-based number of the GROUNDING example (from the numbered GROUNDING list in the prompt) whose proven STRUCTURE this hook adapts, or 0 if the hook adapts no specific example — never cite a source you did not actually use (honesty).`;
+Shape: { "hooks": [ { "hookLine": string, "mechanism": string, "seedHook": string, "channel": string | null, "needsTake": boolean, "sourceIndex": number${VISUAL_HOOK_FIELD} } ] }
+Return a "hooks" array of exactly ${HOOK_COUNT} STRONG, DISTINCT-mechanism objects — each must earn its place (these are all shown to the creator, not filtered). Every field is required; "hookLine" and "seedHook" must be non-empty. "mechanism" is plain-prose reasoning — never a bracket-tag. "channel" is the delivery channel (spoken/visual/caption/edit/audio) or null. "sourceIndex" is the 1-based number of the GROUNDING example (from the numbered GROUNDING list in the prompt) whose proven STRUCTURE this hook adapts, or 0 if the hook adapts no specific example — never cite a source you did not actually use (honesty).${VISUAL_HOOK_RULE}`;
 
 /**
  * PER-PERSONA GENERATION — the craft half of the ASSIGNMENT block.
@@ -183,8 +194,8 @@ function targetedOutputContract(grounded: boolean): string {
 ---
 
 OUTPUT FORMAT: Respond with a single JSON object — no markdown, no code fences, no prose.
-Shape: { "hooks": [ { "hookLine": string, "mechanism": string, "seedHook": string, "channel": string | null, "needsTake": boolean, "targetArchetype": string${groundedField} } ] }
-Return a "hooks" array of exactly ${HOOK_COUNT} STRONG, DISTINCT-mechanism objects, in assignment order — hook N targets person N from the list above. Every field is required; "hookLine" and "seedHook" must be non-empty. "mechanism" is plain-prose reasoning — never a bracket-tag. "channel" is the delivery channel (spoken/visual/caption/edit/audio) or null. "targetArchetype" is the exact bracketed slug of the person this hook was written for.${groundedRule}`;
+Shape: { "hooks": [ { "hookLine": string, "mechanism": string, "seedHook": string, "channel": string | null, "needsTake": boolean, "targetArchetype": string${groundedField}${VISUAL_HOOK_FIELD} } ] }
+Return a "hooks" array of exactly ${HOOK_COUNT} STRONG, DISTINCT-mechanism objects, in assignment order — hook N targets person N from the list above. Every field is required; "hookLine" and "seedHook" must be non-empty. "mechanism" is plain-prose reasoning — never a bracket-tag. "channel" is the delivery channel (spoken/visual/caption/edit/audio) or null. "targetArchetype" is the exact bracketed slug of the person this hook was written for.${groundedRule}${VISUAL_HOOK_RULE}`;
 }
 
 /**
@@ -269,6 +280,12 @@ interface StructuredHook {
   channel: string | null;
   needsTake: boolean;
   /**
+   * VISUAL HOOK (owner 2026-07-22): the first-frame technique + what's on screen at 0s — the
+   * visual execution of this hook. `null`/absent when the hook is purely spoken. Carried onto the
+   * card only when present, so a run that emits none renders byte-identically to pre-wiring.
+   */
+  visualHook?: { technique: string; onScreen: string } | null;
+  /**
    * 1-based grounding-example index this hook adapted (0 = none). Only ever non-zero on a
    * grounded run (the grounded contract requests it); ungrounded runs default it to 0. Drives
    * the on-card receipt via buildHookProof (§11f).
@@ -282,6 +299,23 @@ interface StructuredHook {
    * personalised label. Only ever set on a targeted (calibrated) run.
    */
   targetArchetype: string;
+}
+
+/**
+ * Coerce a raw `visualHook` into a {technique, onScreen} pair, or null. Both fields are required
+ * together (the card renders them as one row); a partial or empty value is dropped whole so the
+ * card never shows a half-formed visual. Never fabricates a field. Shared shape with the script/
+ * remix production coercion — a well-formed object or nothing.
+ */
+function coerceVisualHook(raw: unknown): { technique: string; onScreen: string } | null {
+  if (!raw || typeof raw !== "object") return null;
+  const v = raw as Record<string, unknown>;
+  const technique =
+    typeof v.technique === "string" && v.technique.trim().length > 0 ? v.technique : null;
+  const onScreen =
+    typeof v.onScreen === "string" && v.onScreen.trim().length > 0 ? v.onScreen : null;
+  if (!technique || !onScreen) return null;
+  return { technique, onScreen };
 }
 
 // ─── Qwen generation call ─────────────────────────────────────────────────────
@@ -369,6 +403,7 @@ async function generateHooksStructured(
     const r = raw as Record<string, unknown>;
     if (typeof r.hookLine !== "string" || !r.hookLine) continue;
     if (typeof r.seedHook !== "string" || !r.seedHook) continue;
+    const visualHook = coerceVisualHook(r.visualHook);
     hooks.push({
       hookLine: r.hookLine,
       mechanism: typeof r.mechanism === "string" ? r.mechanism : "",
@@ -376,6 +411,9 @@ async function generateHooksStructured(
       channel:
         typeof r.channel === "string" && r.channel.trim().length > 0 ? r.channel : null,
       needsTake: typeof r.needsTake === "boolean" ? r.needsTake : false,
+      // Visual hook — attached only when the model returned a well-formed {technique,onScreen}
+      // pair (both non-empty). null / partial / absent → omitted, and the card stays spoken-only.
+      ...(visualHook ? { visualHook } : {}),
       // Attribution index (grounded runs only) — coerced to a clean non-negative int; anything
       // missing/malformed → 0 (no source) so an ungrounded or sloppy response never fabricates one.
       sourceIndex: coerceSourceIndex(r.sourceIndex),
@@ -743,6 +781,9 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
         scrollQuote: candidate.scrollQuote,
         model: "sim1-flash" as const,
         channel: candidate.hook.channel,
+        // Visual hook (owner 2026-07-22) — the first-frame execution beside the spoken line.
+        // Omitted when the hook is purely spoken (parser returned none) → pre-visualHook shape.
+        ...(candidate.hook.visualHook ? { visualHook: candidate.hook.visualHook } : {}),
         predictedFailureMode: candidate.predictedFailureMode, // KCQ-04 (null on clean pass)
         personas: candidate.personas, // S3′: per-card reaction for the ambient modal (PR-2)
         ...(proof ? { proof } : {}),  // §11f — only when a real source was attributed

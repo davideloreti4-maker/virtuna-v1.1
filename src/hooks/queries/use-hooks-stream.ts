@@ -36,6 +36,22 @@ import type { IntentLens } from '@/lib/audience/intent-lens';
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 /** Card as it arrives in the content event (band/fraction absent — filled by score events). */
+/**
+ * Parse a raw `visualHook` prop off the SSE face into a {technique, onScreen} pair, or undefined.
+ * Both fields are required together (the card renders them as one row); a partial/empty/null value
+ * is dropped whole so the live card never shows a half-formed visual. Mirrors the runner coercion.
+ */
+function parseVisualHookProp(raw: unknown): { technique: string; onScreen: string } | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const v = raw as Record<string, unknown>;
+  const technique =
+    typeof v.technique === 'string' && v.technique.trim().length > 0 ? v.technique : undefined;
+  const onScreen =
+    typeof v.onScreen === 'string' && v.onScreen.trim().length > 0 ? v.onScreen : undefined;
+  if (!technique || !onScreen) return undefined;
+  return { technique, onScreen };
+}
+
 export interface PartialHookCard {
   hookLine: string;
   audienceArchetype: string;   // D-03 audience tag (from deriveAudienceArchetype)
@@ -69,6 +85,10 @@ export interface PartialHookCard {
   // undefined on General/uncalibrated/uncharacterized runs. Same reload-only hazard as proof/target:
   // declared + parsed + carried through toBlocks so it renders live, not only after a reload.
   population?: PopulationAggregateBlock;
+  // VISUAL HOOK (owner 2026-07-22): the first-frame technique + what's on screen at 0s — the visual
+  // execution beside the spoken line. undefined when the hook is purely spoken. Same reload-only
+  // hazard as proof: declared + parsed + carried through toBlocks so it renders live.
+  visualHook?: { technique: string; onScreen: string };
 }
 
 export interface UseHooksStreamReturn {
@@ -350,6 +370,7 @@ export function useHooksStream(): UseHooksStreamReturn {
                   grounded: parseGroundedProp(props.grounded), // run had sources, even if this card cited none
                   target: parseTargetProp(props.target), // who this hook was written for + how they reacted
                   population: parsePopulationProp(props.population), // Sim v2: N-individual projection → Population·1,000 Sheet
+                  visualHook: parseVisualHookProp(props.visualHook), // owner 2026-07-22: first-frame visual renders live, not reload-only
                 };
               })
               .filter((c: PartialHookCard) => c.hookLine.length > 0);
@@ -545,6 +566,7 @@ export function useHooksStream(): UseHooksStreamReturn {
                   grounded: parseGroundedProp(props.grounded), // run had sources, even if this card cited none
                   target: parseTargetProp(props.target), // who this hook was written for + how they reacted
                   population: parsePopulationProp(props.population), // Sim v2: N-individual projection → Population·1,000 Sheet
+                  visualHook: parseVisualHookProp(props.visualHook), // owner 2026-07-22: first-frame visual renders live, not reload-only
                 };
               })
               .filter((c: PartialHookCard) => c.hookLine.length > 0);
@@ -635,6 +657,9 @@ export function useHooksStream(): UseHooksStreamReturn {
         ...(c.target ? { target: c.target } : {}),
         // Sim v2 Stage 2 — the population projection renders live in the Sheet, not just after reload.
         ...(c.population ? { population: c.population } : {}),
+        // Visual hook (owner 2026-07-22) — the first-frame execution renders live beside the spoken
+        // line, not only after a reload. Omitted when the hook is purely spoken.
+        ...(c.visualHook ? { visualHook: c.visualHook } : {}),
       },
     }));
   }, [streamingCards]);
