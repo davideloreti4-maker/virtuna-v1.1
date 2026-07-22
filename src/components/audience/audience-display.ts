@@ -320,7 +320,7 @@ export interface CompositionSegment {
   temperature: Temperature;
 }
 
-const GENERAL_SEGMENT_TEMPS: Temperature[] = [
+export const GENERAL_SEGMENT_TEMPS: Temperature[] = [
   "cold", "warm", "warm", "cold", "warm", "hot", "cold", "warm", "hot", "warm",
 ];
 
