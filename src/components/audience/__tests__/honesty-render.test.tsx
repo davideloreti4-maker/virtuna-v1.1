@@ -226,10 +226,11 @@ describe("Built from states the real provenance (SPEC §4)", () => {
 
     renderIndex([a]);
     expect(screen.getByText("Nothing yet")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Build" })).toBeInTheDocument();
+    // The only state that asks to act — the empty card's inline CTA.
+    expect(screen.getByRole("button", { name: "Read your @handle →" })).toBeInTheDocument();
   });
 
-  it("General is not a managed row — the fallback is stated as a fact line instead", () => {
+  it("General is not a managed card — it is stated as the default baseline instead", () => {
     const a = baseAudience({ id: "general", name: "General", is_general: true });
     expect(getBuiltFrom(a)).toMatchObject({
       label: "Maven's baseline",
@@ -238,11 +239,11 @@ describe("Built from states the real provenance (SPEC §4)", () => {
     });
 
     renderIndex([a]);
-    // No General row, no preset rows — the list only manages what the user owns.
-    expect(screen.queryByText("General")).toBeNull();
+    // General never renders as an owned/managed card, and never as a trust claim.
     expect(screen.queryByText("The control every Read is compared against")).toBeNull();
-    // The fallback fact-line renders when nothing is pinned (defaultAudienceId null).
-    expect(screen.getByText(/New threads use General/)).toBeInTheDocument();
+    // It is surfaced in the default banner as what seeds new threads (nothing pinned).
+    expect(screen.getByText(/Testing new content against/)).toBeInTheDocument();
+    expect(screen.getByText("General")).toBeInTheDocument();
   });
 
   it("preset rows never render", () => {
@@ -266,7 +267,8 @@ describe("the default marker renders the audience that seeds new threads", () =>
       />,
     );
 
-    expect(screen.getByText(/New threads use General/)).toBeInTheDocument();
+    expect(screen.getByText(/Testing new content against/)).toBeInTheDocument();
+    expect(screen.getByText("General")).toBeInTheDocument();
     expect(screen.queryByText("Default")).toBeNull();
   });
 
@@ -284,10 +286,8 @@ describe("the default marker renders the audience that seeds new threads", () =>
     );
 
     expect(screen.getByText("Default")).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Make Other the default" }),
-    ).toBeInTheDocument();
-    // The fallback fact-line only appears when General is actually the fallback.
-    expect(screen.queryByText(/New threads use General/)).toBeNull();
+    expect(screen.getByRole("button", { name: "Set default" })).toBeInTheDocument();
+    // The banner reflects the pinned audience — the General fallback is not shown.
+    expect(screen.queryByText("General")).toBeNull();
   });
 });
