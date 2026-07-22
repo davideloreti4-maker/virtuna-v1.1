@@ -10,8 +10,14 @@
  *
  * The animation still carries the value (owner call: "narrative cascade"): the crowd is present but
  * dim, then the stoppers IGNITE district-by-district in rank order — believers first, the coral
- * ceiling last — while the verdict counts up. Then a gentle staggered breathe. Design law preserved:
- * motion is INTENSITY only — nodes never move; the seeded layout is byte-identical server & client.
+ * ceiling last — while the verdict counts up. Then a gentle staggered breathe.
+ *
+ * Living-cloud pass (owner review): the four districts now bleed together into ONE breathing cloud —
+ * looser scatter + more nodes pulled toward the gravity centre so the blobs fill their gaps, and each
+ * node drifts on a small seeded oscillation. The old "nodes never move" law is relaxed for this
+ * calm drift (amplitude ~1–3px), but districts are preserved: every node keeps its cluster identity,
+ * so the ledger hover-spotlight and the builders/skeptics meaning still hold. The drift is seeded
+ * (byte-identical SSR) and fully disabled under reduced-motion.
  *
  * The same dot vocabulary reappears in the district ledger below (node-bars), so map + ledger read as
  * ONE system. Hovering a ledger row spotlights its district here (a soft hull).
@@ -37,7 +43,13 @@ const REVEAL_JITTER = 0.3; // intra-district stagger, from each node's seeded u
 const INTRO_DUR = 0.45; // the ignite ramp
 const BREATHE_DUR = 3.2; // the resting breathe on stopped nodes
 
-type TerrainNode = { x: number; y: number; c: number; u: number };
+// ── living-cloud drift (the whole field breathes; nodes never leave their district) ──
+const DRIFT_MIN = 1.2; // px — the calmest node's swing
+const DRIFT_VAR = 1.7; // px — extra swing scaled by the node's seeded u
+const DRIFT_DUR = 7; // s — base oscillation period
+const DRIFT_DUR_VAR = 4; // s — per-node period spread (cx/cy differ → organic Lissajous)
+
+type TerrainNode = { x: number; y: number; c: number; u: number; v: number };
 
 function useTerrain(terrain: TerrainSpec) {
   return useMemo(() => {
@@ -50,17 +62,26 @@ function useTerrain(terrain: TerrainSpec) {
       return seed / 4294967296;
     };
     const nodes: TerrainNode[] = [];
+    // Slide each district ~40% toward the shared centre BEFORE scattering, so the four islands
+    // collapse into one overlapping cloud (relative bearing kept — builders still upper-right, the
+    // coral ceiling still lower-right — so district identity + the ledger spotlight survive). The
+    // moved centre feeds the hover-hull too, so the spotlight stays aligned to where the nodes are.
+    const kC = 0.4;
+    const centers: { x: number; y: number }[] = [];
     clusters.forEach((c, ci) => {
+      const ccx = c.cx + (GCX - c.cx) * kC;
+      const ccy = c.cy + (GCY - c.cy) * kC;
+      centers.push({ x: ccx, y: ccy });
       for (let i = 0; i < c.n; i++) {
         const a = rand() * Math.PI * 2;
-        const r = Math.sqrt(rand()) * c.spread;
-        let x = c.cx + Math.cos(a) * r;
-        let y = c.cy + Math.sin(a) * r * 0.72;
-        if (rand() < 0.28) {
-          x += (GCX - x) * 0.5;
-          y += (GCY - y) * 0.5;
+        const r = Math.sqrt(rand()) * c.spread * 1.28; // wider spread ⇒ neighbouring districts interleave
+        let x = ccx + Math.cos(a) * r;
+        let y = ccy + Math.sin(a) * r * 0.72;
+        if (rand() < 0.3) {
+          x += (GCX - x) * 0.4;
+          y += (GCY - y) * 0.4;
         }
-        nodes.push({ x, y, c: ci, u: rand() });
+        nodes.push({ x, y, c: ci, u: rand(), v: rand() });
       }
     });
     // Ignite rank — districts light in order of their stop rate (believers first, ceiling last).
@@ -71,7 +92,7 @@ function useTerrain(terrain: TerrainSpec) {
       .forEach((o, idx) => {
         rank[o.i] = idx;
       });
-    return { nodes, clusters, lossClusterIndex, rank };
+    return { nodes, clusters, centers, lossClusterIndex, rank };
   }, [terrain]);
 }
 
@@ -89,7 +110,7 @@ export function TerrainMap({
   /** Ledger → map link: the district row under the pointer; spotlights that cluster with a soft hull. */
   highlightCluster?: number | null;
 }) {
-  const { nodes, clusters, lossClusterIndex, rank } = useTerrain(terrain);
+  const { nodes, clusters, centers, lossClusterIndex, rank } = useTerrain(terrain);
   return (
     <div
       className="relative overflow-hidden rounded-[14px]"
@@ -114,10 +135,10 @@ export function TerrainMap({
         {clusters.map((c, ci) => (
           <ellipse
             key={`hull-${c.name}`}
-            cx={c.cx}
-            cy={c.cy}
-            rx={c.spread * 1.18}
-            ry={c.spread * 0.72 * 1.18}
+            cx={centers[ci]!.x}
+            cy={centers[ci]!.y}
+            rx={c.spread * 1.28 * 1.15}
+            ry={c.spread * 0.72 * 1.28 * 1.15}
             fill={ci === lossClusterIndex ? "rgba(255,99,99,.09)" : "rgba(236,231,222,.05)"}
             stroke={ci === lossClusterIndex ? "rgba(255,99,99,.20)" : "rgba(236,231,222,.12)"}
             strokeWidth={1}
@@ -136,8 +157,39 @@ export function TerrainMap({
           const delay = rank[n.c]! * REVEAL_STEP + n.u * REVEAL_JITTER;
           const baseOp = reducedMotion || !animated ? resolvedOp : START_OP;
           const breatheHi = Math.min(1, resolvedOp * 1.32).toFixed(2);
+          // living-cloud drift — a small seeded oscillation around the resolved position; cx and cy
+          // run on different periods (from u/v) so the swing is an organic Lissajous, never a shuffle.
+          const amp = DRIFT_MIN + n.u * DRIFT_VAR;
+          const durX = (DRIFT_DUR + n.v * DRIFT_DUR_VAR).toFixed(1);
+          const durY = (DRIFT_DUR + n.u * DRIFT_DUR_VAR).toFixed(1);
+          const beginX = (-(n.u * 8)).toFixed(1);
+          const beginY = (-(n.v * 8)).toFixed(1);
           return (
             <circle key={i} cx={n.x.toFixed(1)} cy={n.y.toFixed(1)} r={r} fill={fill} opacity={baseOp}>
+              {!reducedMotion ? (
+                <>
+                  <animate
+                    attributeName="cx"
+                    values={`${(n.x - amp).toFixed(1)};${(n.x + amp).toFixed(1)};${(n.x - amp).toFixed(1)}`}
+                    dur={`${durX}s`}
+                    begin={`${beginX}s`}
+                    calcMode="spline"
+                    keyTimes="0;0.5;1"
+                    keySplines="0.45 0 0.55 1;0.45 0 0.55 1"
+                    repeatCount="indefinite"
+                  />
+                  <animate
+                    attributeName="cy"
+                    values={`${(n.y - amp * 0.7).toFixed(1)};${(n.y + amp * 0.7).toFixed(1)};${(n.y - amp * 0.7).toFixed(1)}`}
+                    dur={`${durY}s`}
+                    begin={`${beginY}s`}
+                    calcMode="spline"
+                    keyTimes="0;0.5;1"
+                    keySplines="0.45 0 0.55 1;0.45 0 0.55 1"
+                    repeatCount="indefinite"
+                  />
+                </>
+              ) : null}
               {animated && !reducedMotion ? (
                 <animate
                   attributeName="opacity"

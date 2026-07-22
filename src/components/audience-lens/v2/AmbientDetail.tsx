@@ -222,20 +222,25 @@ export function Unlock({ unlock }: { unlock: { lever: string; gain?: string; ins
       <div className="font-mono text-[11px] uppercase tracking-[0.09em]" style={{ color: TONE.faint }}>
         the unlock
       </div>
-      <div className="mt-2.5 text-[17px] font-medium leading-[1.3]" style={{ color: TONE.cream }}>
+      <div className="mt-2.5 text-[18px] font-medium leading-[1.3]" style={{ color: TONE.cream }}>
         {unlock.lever}
       </div>
       {unlock.gain ? (
-        <div className="mt-2 flex items-baseline gap-2">
-          <span className="font-mono text-[15px] font-medium tabular-nums" style={{ color: TONE.cream }}>
-            → {unlock.gain}
+        // the payoff, framed as the takeaway — the card's value peak (never coral: a fix is a win).
+        // The "modeled" honesty now lives once in the calibration line, not tagged on every number.
+        <div
+          className="mt-3.5 inline-flex items-baseline gap-2 rounded-[9px] px-3.5 py-2"
+          style={{ background: TONE.well, border: `1px solid ${TONE.hair}` }}
+        >
+          <span className="font-mono text-[13px]" style={{ color: TONE.faint }}>
+            →
           </span>
-          <span className="font-mono text-[10px] uppercase tracking-[0.06em]" style={{ color: TONE.faint }}>
-            modeled
+          <span className="font-mono text-[16px] font-medium tabular-nums" style={{ color: TONE.cream }}>
+            {unlock.gain}
           </span>
         </div>
       ) : null}
-      <p className="mt-2.5 text-[13.5px] leading-[1.5]" style={{ color: TONE.dim }}>
+      <p className="mt-3.5 text-[13.5px] leading-[1.5]" style={{ color: TONE.dim }}>
         {unlock.insight}
       </p>
     </div>
@@ -275,7 +280,7 @@ export function AmbientDetail({
   return (
     <div
       data-testid="ambient-detail"
-      className={`flex w-full max-w-[480px] flex-col rounded-[16px] ${className ?? ""}`}
+      className={`flex w-full max-w-[440px] flex-col rounded-[16px] ${className ?? ""}`}
       style={{
         height: AMBIENT_PANEL_HEIGHT,
         background: "#1f1f1e",
@@ -286,7 +291,7 @@ export function AmbientDetail({
     >
       {/* slim top bar — nav + tabs only. The heavy verdict/move block is gone; the hero FIGURE leads
           each tab (owner mark: the brain is the hero on brain, the nodes on audience). */}
-      <div className="px-[26px] pt-[22px]">
+      <div className="px-[22px] pt-[22px]">
         <div className="flex items-baseline justify-between">
           <button
             type="button"
@@ -326,7 +331,7 @@ export function AmbientDetail({
       </div>
 
       {/* body — the hero figure leads (frame renders hero + chip → unlock → detail) */}
-      <div className="min-h-0 flex-1 overflow-y-auto px-[26px] pb-[26px]">
+      <div className="min-h-0 flex-1 overflow-y-auto px-[22px] pb-[26px]">
         {tab === "brain" ? (
           <BrainFrame brain={brain} verdict={verdict} unlock={unlock} reducedMotion={reducedMotion} flashMoment={flashMoment} />
         ) : population ? (

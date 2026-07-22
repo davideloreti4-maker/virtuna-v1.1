@@ -15,6 +15,30 @@
 
 import type { DomainTemplate } from "./domain-template";
 
+// ── deterministic fixture builders for the Sapient-depth sections ──────────────
+// Seeded (no Math.random) so the heatmap + buy-intent curve are byte-identical on server & client.
+function seededLcg(seed: number) {
+  let s = seed >>> 0;
+  return () => {
+    s = (s * 1664525 + 1013904223) >>> 0;
+    return s / 4294967296;
+  };
+}
+
+const HEAT_SECONDS = 12; // matches the clip length (clipSeconds)
+const KPI_LABELS = ["Visual", "Audio", "Face", "Text", "Language", "Effort", "Reward", "Affect", "Story", "Surprise"];
+const KPI_ROWS = KPI_LABELS.map((label, r) => {
+  const rnd = seededLcg(1009 + r * 37);
+  return {
+    label, // single word — the rail stays one line per row (no wrap collisions)
+    values: Array.from({ length: HEAT_SECONDS }, (_, i) => {
+      const wave = 52 + 26 * Math.sin(i * 0.72 + r * 0.9); // a per-row phase → the grid reads as structured, not noise
+      const jit = (rnd() - 0.5) * 34;
+      return Math.max(6, Math.min(100, Math.round(wave + jit)));
+    }),
+  };
+});
+
 export const CREATOR_TEMPLATE: DomainTemplate = {
   id: "creator",
   label: "Creator · content",
@@ -33,8 +57,9 @@ export const CREATOR_TEMPLATE: DomainTemplate = {
     cortexSeedKey: "hook-2-first-10k", // drifts the cortex parcellation; stable per stimulus
     clipSeconds: 12, // cortex replay-loop duration
     stopRatio: 0.382, // from the verdict — drives the cortex bold
-    cortexNote: "A modeled cortical proxy — not measured attention.", // #3 claim boundary
     signalsBaseline: "vs your typical", // #8 the delta referent
+    // the single consolidated honesty line at the tab bottom (replaces the old floating cortexNote)
+    calibrationNote: "Modeled from a cortical proxy · not measured attention",
     // ◇ driver axis — creator = attention over the clip (curve-as-scrubber + synced transcript)
     driver: {
       kind: "attention-scrubber",
@@ -76,6 +101,33 @@ export const CREATOR_TEMPLATE: DomainTemplate = {
     ],
     // ● ask-why chat — shared slot, deferred (no chat infra in v2 yet)
     askWhy: { enabled: false, placeholder: "Ask why they reacted this way…" },
+
+    // ── ① nine breakdown signals (Sapient decomposition) — REPLACES the lean 3-row delta above ──
+    signalGrid: [
+      { key: "visual", label: "Visual Pull", score: 38, word: "Weakness", tone: "weak", delta: -2, whyScore: "Flat opener — nothing grabs the eye in the first frame." },
+      { key: "voice", label: "Voice Impact", score: 61, word: "Okay", tone: "okay", delta: 6, whyScore: "Steady delivery; the $400 line lands but the cadence is even." },
+      { key: "grip", label: "Cognitive Grip", score: 47, word: "Okay", tone: "okay", delta: -3, whyScore: "Focus scatters as the payoff stalls past 0:03." },
+      { key: "emotion", label: "Emotional Hit", score: 65, word: "Strong", tone: "strong", delta: 18, whyScore: "The stake reads as real — the strongest lever in the clip." },
+      { key: "memory", label: "Memorability", score: 49, word: "Okay", tone: "okay", delta: 1, whyScore: "The number sticks; the arc is familiar, so recall is average." },
+      { key: "attention", label: "Attention", score: 38, word: "Weakness", tone: "weak", delta: -9, whyScore: "Drops hard at 0:04 — the wait costs the skeptics." },
+      { key: "buy", label: "Buy Signal", score: 47, word: "Okay", tone: "okay", delta: 4, whyScore: "Reward pulls, but hesitation holds it near baseline." },
+      { key: "risk", label: "Hesitation / Risk", score: 28, word: "Strong", tone: "strong", delta: 12, whyScore: "Low resistance — few red flags fire while watching." },
+      { key: "effort", label: "Mental Effort", score: 53, word: "Okay", tone: "okay", delta: 2, whyScore: "Easy to follow; no load spike that would push a scroll." },
+    ],
+    // ── ② raw network activation · z-scored (7 networks at the decisive second) ──
+    networkBars: [
+      { label: "Visual", z: -0.43, band: "slightly below" },
+      { label: "Somatomotor", z: 0.08, band: "about normal" },
+      { label: "Dorsal Attention", z: -1.14, band: "clearly below", loss: true },
+      { label: "Ventral Attention", z: -0.76, band: "clearly below" },
+      { label: "Limbic", z: 0.38, band: "slightly above" },
+      { label: "Frontoparietal", z: -0.08, band: "about normal" },
+      { label: "Default Mode", z: 0.68, band: "slightly above" },
+    ],
+    // ── ③ activation per second · every decoded system (10 KPIs × the clip) ──
+    kpiHeatmap: { seconds: HEAT_SECONDS, rows: KPI_ROWS },
+    // ④ purchase-intent moments — intentionally OMITTED for creator/content: "buy intent" doesn't
+    //    fit a regular hook. The BuyIntentData contract + BuyIntentCurve stay for a commerce domain.
   },
 
   population: {
@@ -123,6 +175,50 @@ export const CREATOR_TEMPLATE: DomainTemplate = {
           who: "Priya · scroller",
         },
       ],
+    },
+    // ── who this is for · vs your typical (targeting index) ──
+    audienceFit: {
+      baseline: "vs your last 41 hooks",
+      rows: [
+        { label: "builders", index: 34 },
+        { label: "drop-ins", index: 9 },
+        { label: "scrollers", index: -12, loss: true }, // your biggest audience cools on this one
+        { label: "skeptics", index: -22 },
+      ],
+      read: "This hook over-indexes with builders and cools on your scroller base — it's narrowing toward a high-intent niche. Powerful, but a smaller top of funnel.",
+    },
+    // ── who spreads it · how far (reshare cascade + carriers) ──
+    amplification: {
+      reachMultiplier: 5.8,
+      reached: 5800,
+      cascade: [
+        { label: "saw it", count: 1000 },
+        { label: "reshared", count: 180 },
+        { label: "their networks", count: 5800 },
+      ],
+      carriers: [
+        { label: "builders", factor: 3.2, lead: true },
+        { label: "drop-ins", factor: 1.4 },
+        { label: "scrollers", factor: 0.7 },
+        { label: "skeptics", factor: 0.3 },
+      ],
+      read: "Your reach rides on builders resharing — your smallest lit district. Win one more builder cohort and the second ring nearly doubles.",
+    },
+    // ── the swing · your upside (fence-sitters + the verdict move) ──
+    swing: {
+      nearMiss: 88,
+      fromPct: 38,
+      toPct: 49,
+      gainLabel: "+11% would stop",
+      read: "88 viewers stalled right at 0:04 — not gone, just unconvinced. Cut to the payoff and the room moves from 38% to 49%.",
+    },
+    // ── the room · trust strip (replaces the plain calibration note) ──
+    room: {
+      simulated: 1000,
+      calibratedOn: "your 4.2k followers",
+      confidence: 0.78,
+      confidenceLabel: "High",
+      note: "A modeled society · calibrated for engagement, not purchase.",
     },
   },
 };
