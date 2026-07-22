@@ -563,7 +563,7 @@ const PREDICTION_GAUGE_BLOCK: PredictionGaugeBlock = {
   },
 };
 
-const MULTI_AUDIENCE_READ_BLOCK: MultiAudienceReadBlock = {
+export const MULTI_AUDIENCE_READ_BLOCK: MultiAudienceReadBlock = {
   type: "multi-audience-read",
   props: {
     model: "sim1-flash",
@@ -594,7 +594,7 @@ const MULTI_AUDIENCE_READ_BLOCK: MultiAudienceReadBlock = {
 // The DEFAULT Read shape since P3: ONE audience, read alone (the forced General second
 // side is dead). This fixture also carries the orphaned-pin fallback marker, so the one
 // state that says "Audience removed · scoring against General." is visually inspectable.
-const SINGLE_AUDIENCE_READ_BLOCK: MultiAudienceReadBlock = {
+export const SINGLE_AUDIENCE_READ_BLOCK: MultiAudienceReadBlock = {
   type: "multi-audience-read",
   props: {
     model: "sim1-flash",
@@ -799,20 +799,10 @@ export const BLOCK_SECTIONS: BlockSection[] = [
     note: "HIDDEN — the Predict skill is behind HORIZONTAL_ENABLED (flag OFF). Not shippable today; renderer kept so persisted prediction-gauge blocks still render. Reference-only. Predict skill → honest forecast: band word + one feathered range + factors (each names its analyst).",
     body: [PREDICTION_GAUGE_BLOCK],
   },
-  {
-    type: "multi-audience-read",
-    label: "Text Read (explicit compare)",
-    note: "The compare — per-audience band + interpretation + Lever + who-not-for + persona drill. Explicit-only since P3 (the list page's Compare).",
-    body: [MULTI_AUDIENCE_READ_BLOCK],
-  },
-  {
-    // `type` doubles as the section's React key + anchor id on /dev/cards, so this
-    // second multi-audience-read section carries a distinct suffix (same block type).
-    type: "multi-audience-read--single",
-    label: "Text Read (single + orphaned pin)",
-    note: "The DEFAULT Read since P3 — one audience, read alone. This one also shows the orphaned-pin line: the pinned audience was deleted, so it scored General and says so.",
-    body: [SINGLE_AUDIENCE_READ_BLOCK],
-  },
+  // NOTE: the two Text Read (multi-audience-read) sections MOVED to the Skills tab
+  // (THREAD_VIEWS "read" + "read-compare" in page.tsx) — the Read is an in-thread skill
+  // output, so it belongs with the other skills, not down here among the primitives. The
+  // blocks themselves stay in ALL_FIXTURE_BLOCKS below so the drift-guard still validates them.
   {
     type: "corpus-references",
     label: "Chat sources (topical — filtered)",
@@ -867,5 +857,9 @@ export const ALL_FIXTURE_BLOCKS: unknown[] = [
   ...EXPLORE_BLOCKS,
   ACCOUNT_BLOCK,
   { type: "account-read", props: { handle: "brand.new.creator", fallback: "thin" } },
+  // The two Read blocks now render under the Skills tab (not BLOCK_SECTIONS), so validate
+  // them explicitly here — the drift-guard must still see every shipped block shape.
+  MULTI_AUDIENCE_READ_BLOCK,
+  SINGLE_AUDIENCE_READ_BLOCK,
   ...BLOCK_SECTIONS.flatMap((s) => s.body),
 ];
