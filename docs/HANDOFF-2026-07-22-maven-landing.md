@@ -20,11 +20,25 @@ A **cold-social → `$1 / 3-day trial` offer page** for Maven, built to convert 
 5. **Richer hero background** — layered matte atmosphere (wash + dot-grid + blooms + grain).
 tsc 0 · `/go` 200 · 0 console errors · verified live in-browser (desktop + mobile Sheet). Committed on `lane/maven-offer`. See "Session 2 changelog" + "NEXT" below.
 
+**✅ DONE + live-verified (session 3, 2026-07-22 — THIS session — commit `812222ea`):**
+**T3 — the entire rest of the page.** 8 new offer-local sections under `src/components/offer/sections/` (+ page wiring), matching the hero's motion language, with conversion psychology baked into each beat:
+1. **Transformation** — loss-aversion before/after ("One posts and hopes. The other already knows."); the Maven panel is the one lit element (coral liveness dot), the blind panel dashed/muted.
+2. **How it works** — friction reduction, 3 steps, `NumberTicker` on the ~90s time-to-verdict.
+3. **Proof of mechanism** — HONEST authority (500 videos · 1,000 viewers · ~90s) that REPLACES the banned fictional social-proof strip + testimonials (no fake counts/names/logos).
+4. **Pricing** (`#pricing` anchor — resolves the hero + brand-bar CTAs) — decision-shrinker ($1), **honest annual toggle** ("2 months free" = 10 months billed → real per-month-equiv $41/$83/$416 vs the true monthly struck through — NOT a fabricated anchor), choreographed to Pro (tone-step + "Best value" + lone coral `BorderBeam` + the single cream primary CTA). Reads `PLANS`/`TRIAL` SSOT; CTAs → `SIGNUP_URL`.
+5. **FAQ** — objection handling at the decision point; reuses the accordion primitive via the call-site override pattern; copy reconciled to honest claims (1,000 viewers, ~90s).
+6. **Final CTA band** — full-bleed serif close-line bookending the hero ("Your audience already knows. *Find out* before you post.").
+7. **Footer** — "Maven — a Numen Machines product" (no dead legal links; see below).
+8. **Sticky mobile CTA** — always-available close, reveals after the hero scrolls ~70% away, backdrop-filter via inline style, reduced-motion = fade only.
+Verified: tsc 0 · `/go` 200 · 0 console errors · all sections in SSR · **no fictional proof leaked** (grepped) · annual toggle math · Pro choreography · FAQ expands · sticky CTA hide/show + bottom-pinned · **matte guard 38/38**. Screenshots premium.
+**Decisions I took (both flagged in T5, owner can still override):** CTA color = **cream** (dosage-locked; structured swap-ready for a future coral A/B). Founding-price strikethrough = **NOT built** (would violate the no-fake-anchor honesty rule); the honest annual toggle ships in its place.
+
 **▶ NEXT (owner-directed):**
-1. **T3 — rest-of-page premium pass** (transformation → how-it-works → pricing → FAQ → final CTA + footer + sticky mobile CTA). START HERE tomorrow — biggest remaining surface.
-2. **CTA color decision** — cream (dosage-safe) vs a bolder coral conversion variant (owner call, flagged).
-3. **Gate `ask →` off on the landing** — the room's per-persona chat is a real authed API; on a cold public route a send would fail. The wow (brain autoplay + brain/people/population toggle) is all client-side + safe; only `ask →` is the edge. Low priority, but before any real traffic.
-4. **T4 — shared fixture** for true DATA auto-update (extract dev/cards' `video-test-card` props to a module; import in both).
+1. **T4 — shared fixture** for true DATA auto-update (extract dev/cards' `video-test-card` props to a module; import in both). START HERE.
+2. **Gate `ask →` off on the landing** — the room's per-persona chat is a real authed API; on a cold public route a send would fail. The wow (brain autoplay + brain/people/population toggle) is all client-side + safe; only `ask →` is the edge. Before any real traffic.
+3. **Legal pages before real paid traffic** — `/terms`, `/privacy`, `/trial-policy` don't exist (footer intentionally ships no dead links). Checkout compliance needs them.
+4. **Owner decisions still open** (T5): coral-CTA A/B (currently cream), and a REAL founding-price cohort if you want the anchor (only if genuinely time-boxed/enforced).
+5. **Pricing CTAs → `SIGNUP_URL` (`/signup`)** — confirm that's the right cold-traffic destination vs a direct checkout.
 
 ---
 
@@ -55,7 +69,8 @@ tsc 0 · `/go` 200 · 0 console errors · verified live in-browser (desktop + mo
 | `src/components/offer/frame-stills.ts` | **NEW.** Generates cinematic 9:16 "video frames" as inline SVG data-URIs (duotone light + soft subject + vignette + grain), one per cut beat (`coldOpen/setup/stall/payoff/close`). Fixed the empty-play-tile filmstrip. CSP-safe, no asset. |
 | `src/components/offer/test-card-fixture.ts` | The card's props — a COPY of the `/dev/cards` `video-test-card` fixture. **Session 2:** `keyframeUrl`/`coverUrl` (filmstrip + 3 fixes + 2 proofs) now point at `FRAME_STILLS`. Design auto-updates via the import; DATA is a snapshot (see NEXT-T4). |
 | `src/components/offer/read-stage.tsx` | **SUPERSEDED** synthetic mock (the pre-pivot canvas "read"). Unused. Deletable. |
-| `src/components/velora/*` | 7 copied Velora UI components (MIT): `number-ticker`, `blur-fade`, `border-beam`, `iphone-mockup`, `aurora-background`, `shimmer-button`, `animated-gradient-text`. |
+| `src/components/offer/sections/*` | **NEW (T3, session 3).** The rest-of-page arc: `section-shell.tsx` (shared `Section` + `SectionHeading`, hero-style eyebrow), `transformation.tsx`, `how-it-works.tsx`, `proof-mechanism.tsx`, `pricing.tsx` (client — annual toggle + Pro choreography), `faq.tsx` (client — accordion), `final-cta.tsx`, `footer.tsx`, `sticky-cta.tsx` (client — scroll-reveal). RSC by default; `"use client"` only where they hold state/scroll. Reuse `BlurFade`/`NumberTicker`/`BorderBeam`, `Button`/`Badge`/accordion primitives, `PLANS`/`TRIAL`, `SIGNUP_URL`. |
+| `src/components/velora/*` | 7 copied Velora UI components (MIT): `number-ticker`, `blur-fade`, `border-beam`, `iphone-mockup`, `aurora-background`, `shimmer-button`, `animated-gradient-text`. ⚠️ `shimmer-button`/`animated-gradient-text`/`aurora-background` are BROKEN here (undefined `brand-*`/`primary` utils) + violate the matte rule — DO NOT use; prefer `blur-fade`/`number-ticker`/`border-beam` (beam needs explicit `colorFrom`/`colorTo`). |
 
 ### Session 2 changelog (2026-07-22 pm) — technical notes for the next session
 
