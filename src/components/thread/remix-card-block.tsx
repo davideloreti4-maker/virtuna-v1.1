@@ -16,6 +16,7 @@
  */
 
 import { useContext, useState } from 'react';
+import { Copy, Check } from '@phosphor-icons/react';
 import type { RemixCardBlock } from '@/lib/tools/blocks';
 import { useOnDevelopRemix } from '@/lib/remix-develop-context';
 import { PlatformContext } from '@/lib/platform-context';
@@ -63,9 +64,23 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
 
   const [expanded, setExpanded] = useState(false);
 
+  // Copy the adapted hook — the remix's deliverable IS a line (your version of the borrowed
+  // pattern), so it gets the same one-tap copy the Hook card has. Clipboard guarded for happy-dom.
+  const [copied, setCopied] = useState(false);
+  function handleCopy() {
+    if (typeof navigator === 'undefined' || !navigator.clipboard) return;
+    navigator.clipboard.writeText(adaptedHook).then(
+      () => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1600);
+      },
+      () => {},
+    );
+  }
+
   return (
     <div
-      className="overflow-hidden rounded-xl border border-white/[0.06] bg-surface-sunken"
+      className="elev-rest overflow-hidden rounded-xl border border-white/[0.06] bg-surface-sunken"
       aria-label={`Remix: ${adaptedHook.slice(0, 60)}`}
     >
       {/* FACE — adapted hook anatomy (always visible). */}
@@ -96,9 +111,57 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
           </div>
         ) : null}
 
-        {/* "Borrowed · {format}" — the technique the remix carries; kept as a content chip (it
-            names WHAT was borrowed, not chrome). The "as your {audience}" restatement eyebrow tag
-            was removed 2026-07-21 (the run capsule above already names the audience). */}
+        {/* DECODE — the remix MOAT (why the original worked), promoted from the expand onto the
+            face. This is the remix card's SIGNATURE: a teardown of the source that becomes your
+            version (owner 2026-07-22: each Make card should lead with its own value). The two
+            load-bearing fields lead; Structure + Emotional beat stay one tap away below. */}
+        <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3.5 py-3">
+          <p className={`mb-2 ${SECTION_LABEL}`}>Why the original worked</p>
+          <div className="flex flex-col gap-2.5">
+            <div>
+              <p className="text-[12px] font-medium text-foreground-muted">Hook pattern</p>
+              <p className="mt-0.5 text-[13px] leading-relaxed text-foreground-secondary">{sourceDecode.hookPattern}</p>
+            </div>
+            <div>
+              <p className="text-[12px] font-medium text-foreground-muted">The turn</p>
+              <p className="mt-0.5 text-[13px] leading-relaxed text-foreground-secondary">{sourceDecode.theTurn}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Transformation divider — the decode BECOMES your version. */}
+        <div className="flex items-center gap-3 text-[11px] uppercase tracking-[0.05em] text-foreground-muted">
+          <span className="h-px flex-1 bg-white/[0.06]" aria-hidden="true" />
+          your version
+          <span className="h-px flex-1 bg-white/[0.06]" aria-hidden="true" />
+        </div>
+
+        {/* Adapted hook — the hero deliverable (editorial serif, the brand voice-moment face) +
+            Copy (it's a line you'll lift). */}
+        <div className="flex items-start justify-between gap-3">
+          <p className="font-serif text-[21px] font-medium leading-[1.3] tracking-[-0.005em] text-foreground">{adaptedHook}</p>
+          <button
+            type="button"
+            onClick={handleCopy}
+            aria-label="Copy adapted hook to clipboard"
+            className="mt-0.5 inline-flex shrink-0 items-center gap-1 text-[12px] font-medium text-foreground-muted transition-colors hover:text-foreground-secondary"
+          >
+            {copied ? (
+              <>
+                <Check size={13} weight="bold" aria-hidden="true" />
+                Copied
+              </>
+            ) : (
+              <>
+                <Copy size={13} aria-hidden="true" />
+                Copy
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* "Borrowed · {format}" — the technique carried into your version; a content chip (it
+            names WHAT was borrowed). */}
         <div className="flex items-center">
           <span
             className="rounded-full border border-white/[0.06] bg-white/[0.02] px-2.5 py-1 text-[12px] text-foreground-secondary"
@@ -108,9 +171,6 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
             Borrowed · {formatBorrowed}
           </span>
         </div>
-
-        {/* Adapted hook headline — the hero. */}
-        <p className="text-[17px] font-semibold leading-snug tracking-[-0.01em] text-foreground">{adaptedHook}</p>
 
         {/* Angle / For — two quiet columns. */}
         <div className="flex gap-6">
@@ -124,7 +184,7 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
           </div>
         </div>
 
-        {/* Proof unit — adapted-hook scroll-stop (honesty-scoped). */}
+        {/* Proof unit — the quiet room through-line, adapted-hook scroll-stop (honesty-scoped). */}
         <ProofUnit
           framed={false}
           band={band}
@@ -147,7 +207,7 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
           label="See how the room reacted to this adapted hook"
         />
 
-        {/* Expand toggle — the decode anatomy (why the original worked) + provenance. */}
+        {/* Expand toggle — the rest of the decode anatomy (structure + emotional beat) + provenance. */}
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
@@ -156,25 +216,17 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
           aria-label={expanded ? 'Collapse decode anatomy' : 'Expand decode anatomy'}
         >
           <CaretToggle open={expanded} />
-          Why the original worked
+          Structure & the emotional beat
           <span className="text-foreground-muted/70">· SIM-1 Flash</span>
         </button>
       </div>
 
-      {/* EXPAND — the real decode anatomy (D-05 moat). */}
+      {/* EXPAND — the rest of the decode anatomy (hook pattern + the turn already lead the face). */}
       {expanded && (
         <div className="flex flex-col gap-4 border-t border-white/[0.06] px-4 py-3">
           <div>
-            <p className={`mb-1 ${SECTION_LABEL}`}>Hook pattern</p>
-            <p className="text-[13.5px] leading-relaxed text-foreground-secondary">{sourceDecode.hookPattern}</p>
-          </div>
-          <div>
             <p className={`mb-1 ${SECTION_LABEL}`}>Structure</p>
             <p className="text-[13.5px] leading-relaxed text-foreground-secondary">{sourceDecode.structure}</p>
-          </div>
-          <div>
-            <p className={`mb-1 ${SECTION_LABEL}`}>The turn</p>
-            <p className="text-[13.5px] leading-relaxed text-foreground-secondary">{sourceDecode.theTurn}</p>
           </div>
           <div>
             <p className={`mb-1 ${SECTION_LABEL}`}>Emotional beat</p>
