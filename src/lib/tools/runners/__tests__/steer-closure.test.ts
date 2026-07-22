@@ -86,12 +86,15 @@ vi.mock("@/lib/engine/remix/decode-types", () => ({
   decodeResultToAdaptInput: vi.fn((_decode: unknown, niche: string) => ({ niche })),
 }));
 vi.mock("@/lib/engine/remix/adapt", () => ({
+  // New call system: the adapt call self-estimates the /10 + stop-quote (the removed SIM's job).
   generateAdaptConcepts: vi.fn(async () => [
     {
       hook: "Adapted hook line",
       angle: "Borrowed angle",
       who_its_for: "fitness beginners",
       format_borrowed: "before/after",
+      personaStops: 8,
+      stopQuote: "Okay that got me.",
     },
   ]),
 }));
@@ -212,6 +215,7 @@ describe("steer-closure: hooks-runner", () => {
   async function run(audience?: Audience | null) {
     const { getQwenClient } = await import("@/lib/engine/qwen/client");
     const { runFlashTextModeBatch } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { assembleBundle } = await import("@/lib/kc/assembler");
     (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue(
       mockQwenStructured({
         hooks: Array.from({ length: 3 }, (_, i) => ({
@@ -220,6 +224,8 @@ describe("steer-closure: hooks-runner", () => {
           seedHook: `Seed ${i}`,
           channel: null,
           needsTake: false,
+          personaStops: 8,
+          stopQuote: `Stop ${i}`,
         })),
       }),
     );
@@ -231,27 +237,25 @@ describe("steer-closure: hooks-runner", () => {
       profileRow: { niche_primary: "fitness" } as never,
       audience,
     });
-    return { result, runFlashTextModeBatch };
+    return { result, runFlashTextModeBatch, assembleBundle };
   }
 
-  it("General/null no-op: batched SIM called WITHOUT an audienceRepaint arg", async () => {
-    const { runFlashTextModeBatch } = await run(generalAudience);
-    expect((runFlashTextModeBatch as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(0);
-    for (const call of (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mock.calls) {
-      // 4th positional arg (audienceRepaint) must be undefined for General — same arg slot
-      // as the old N=1 call (candidates, framing, panel, audienceRepaint, intent).
-      expect(call[3]).toBeUndefined();
-    }
+  // NEW QWEN CALL SYSTEM (2026-07-22): the persona SIM is GONE from the generation path, so the
+  // steer no longer reaches a SIM — it now reaches ONLY the generation PROMPT (assembleBundle
+  // overrides). The invariant is preserved at the prompt boundary; the SIM is asserted NOT called.
+  it("General/null no-op: NO SIM call, and assembleBundle gets no audience-steer override", async () => {
+    const { runFlashTextModeBatch, assembleBundle } = await run(generalAudience);
+    expect((runFlashTextModeBatch as ReturnType<typeof vi.fn>).mock.calls.length).toBe(0);
+    const input = (assembleBundle as ReturnType<typeof vi.fn>).mock.calls[0]![0] as { overrides?: string };
+    expect(input.overrides).toBeUndefined();
   });
 
-  it("calibrated steer: batched SIM receives a per-archetype audienceRepaint map", async () => {
-    const { runFlashTextModeBatch } = await run(calibratedAudience);
-    const calls = (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mock.calls;
-    expect(calls.length).toBeGreaterThan(0);
-    const repaint = calls[0]![3] as Record<string, string> | undefined;
-    expect(repaint).toBeDefined();
-    expect(repaint!.tough_crowd).toBe("Doubts every claim");
-    expect(repaint!.niche_deep_buyer).toBe("Ready to buy");
+  it("calibrated steer: NO SIM call, and assembleBundle receives the audience grounding line as an override", async () => {
+    const { runFlashTextModeBatch, assembleBundle } = await run(calibratedAudience);
+    expect((runFlashTextModeBatch as ReturnType<typeof vi.fn>).mock.calls.length).toBe(0);
+    const input = (assembleBundle as ReturnType<typeof vi.fn>).mock.calls[0]![0] as { overrides?: string };
+    expect(input.overrides).toBeDefined();
+    expect(input.overrides!.toLowerCase()).toContain("audience");
   });
 });
 
@@ -263,6 +267,7 @@ describe("steer-closure: script-runner", () => {
   async function run(audience?: Audience | null) {
     const { getQwenClient } = await import("@/lib/engine/qwen/client");
     const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { assembleBundle } = await import("@/lib/kc/assembler");
     (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue(
       mockQwenStructured({
         beats: [
@@ -270,6 +275,8 @@ describe("steer-closure: script-runner", () => {
           { label: "Payoff", content: "Payoff line", timing: "3–15s", retentionMarker: "why2" },
         ],
         openingBeatSeed: "Opening line",
+        personaStops: 8,
+        stopQuote: "Stop",
       }),
     );
     (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue(mockFlashReturn());
@@ -280,23 +287,23 @@ describe("steer-closure: script-runner", () => {
       profileRow: { niche_primary: "fitness" } as never,
       audience,
     });
-    return { result, runFlashTextMode };
+    return { result, runFlashTextMode, assembleBundle };
   }
 
-  it("General/null no-op: opener Flash called WITHOUT an audienceRepaint arg", async () => {
-    const { runFlashTextMode } = await run(null);
-    const calls = (runFlashTextMode as ReturnType<typeof vi.fn>).mock.calls;
-    expect(calls.length).toBe(1);
-    expect(calls[0]![3]).toBeUndefined();
+  // NEW QWEN CALL SYSTEM: no opener SIM on the generation path — the steer reaches the PROMPT only.
+  it("General/null no-op: NO opener SIM, and assembleBundle gets no audience-steer override", async () => {
+    const { runFlashTextMode, assembleBundle } = await run(null);
+    expect((runFlashTextMode as ReturnType<typeof vi.fn>).mock.calls.length).toBe(0);
+    const input = (assembleBundle as ReturnType<typeof vi.fn>).mock.calls[0]![0] as { overrides?: string };
+    expect(input.overrides).toBeUndefined();
   });
 
-  it("calibrated steer: opener Flash receives the audienceRepaint map", async () => {
-    const { runFlashTextMode } = await run(calibratedAudience);
-    const calls = (runFlashTextMode as ReturnType<typeof vi.fn>).mock.calls;
-    expect(calls.length).toBe(1);
-    const repaint = calls[0]![3] as Record<string, string> | undefined;
-    expect(repaint).toBeDefined();
-    expect(repaint!.tough_crowd).toBe("Doubts every claim");
+  it("calibrated steer: NO opener SIM, and assembleBundle receives the audience grounding line as an override", async () => {
+    const { runFlashTextMode, assembleBundle } = await run(calibratedAudience);
+    expect((runFlashTextMode as ReturnType<typeof vi.fn>).mock.calls.length).toBe(0);
+    const input = (assembleBundle as ReturnType<typeof vi.fn>).mock.calls[0]![0] as { overrides?: string };
+    expect(input.overrides).toBeDefined();
+    expect(input.overrides!.toLowerCase()).toContain("audience");
   });
 });
 
@@ -372,11 +379,11 @@ describe("steer-closure: remix-runner", () => {
     return { result, runFlashTextModeBatch };
   }
 
-  it("General/null no-op: batched SIM called WITHOUT an audienceRepaint arg; no audienceName on card", async () => {
+  // NEW QWEN CALL SYSTEM: no persona SIM on the remix path — the adapt call self-estimates the /10.
+  // The steer reaches the adapt NICHE + the card's audienceName tag, never a SIM.
+  it("General/null no-op: NO SIM call; no audienceName on card", async () => {
     const { result, runFlashTextModeBatch } = await run(generalAudience);
-    const calls = (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mock.calls;
-    expect(calls.length).toBe(1);
-    expect(calls[0]![3]).toBeUndefined();
+    expect((runFlashTextModeBatch as ReturnType<typeof vi.fn>).mock.calls.length).toBe(0);
     // adapt mock returns 1 concept → 1 ranked card (keep-all ships all rated concepts)
     expect(result.blocks.length).toBe(1);
     // General → no steer tag on the card (regression-safe no-op)
@@ -385,13 +392,9 @@ describe("steer-closure: remix-runner", () => {
     ).toBeUndefined();
   });
 
-  it("calibrated steer: batched SIM gets repaint, panel niche from audience, card carries audienceName", async () => {
+  it("calibrated steer: NO SIM call; card carries audienceName", async () => {
     const { result, runFlashTextModeBatch } = await run(calibratedAudience);
-    const calls = (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mock.calls;
-    expect(calls.length).toBe(1);
-    const repaint = calls[0]![3] as Record<string, string> | undefined;
-    expect(repaint).toBeDefined();
-    expect(repaint!.tough_crowd).toBe("Doubts every claim");
+    expect((runFlashTextModeBatch as ReturnType<typeof vi.fn>).mock.calls.length).toBe(0);
     expect(result.blocks.length).toBe(1);
     expect((result.blocks[0]!.props as { audienceName?: string }).audienceName).toBe(
       "Skincare Buyers",

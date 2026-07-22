@@ -14,7 +14,9 @@ import { render, screen, cleanup } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { HookCardRenderer } from '@/components/thread/hook-card-block';
 import { ScriptCardRenderer } from '@/components/thread/script-card-block';
-import type { HookCardBlock, ScriptCardBlock } from '@/lib/tools/blocks';
+import { IdeaCardRenderer } from '@/components/thread/idea-card-block';
+import { RemixCardRenderer } from '@/components/thread/remix-card-block';
+import type { HookCardBlock, ScriptCardBlock, IdeaCardBlock, RemixCardBlock } from '@/lib/tools/blocks';
 
 function renderWithClient(ui: Parameters<typeof render>[0]) {
   const qc = new QueryClient({
@@ -37,6 +39,51 @@ function makeHook(overrides: Partial<HookCardBlock['props']> = {}): HookCardBloc
       scrollQuote: 'Fast and to the point.',
       model: 'sim1-flash',
       channel: 'spoken',
+      ...overrides,
+    },
+  };
+}
+
+function makeIdea(overrides: Partial<IdeaCardBlock['props']> = {}): IdeaCardBlock {
+  return {
+    type: 'idea-card',
+    props: {
+      title: 'The unglamorous edit that tripled my views',
+      angle: 'Show the boring change nobody talks about.',
+      whyItFits: 'fits your growth-focused fitness niche',
+      mechanism: 'Curiosity gap on an unexpected lever.',
+      seedHook: 'I stopped editing and my views tripled.',
+      needsTake: false,
+      topic: 'Editing',
+      take: 'Less is more',
+      format: 'Talking-head',
+      band: 'Strong',
+      fraction: '8/10 stop',
+      scrollQuote: 'Wait, less editing?',
+      model: 'sim1-flash',
+      ...overrides,
+    },
+  };
+}
+
+function makeRemix(overrides: Partial<RemixCardBlock['props']> = {}): RemixCardBlock {
+  return {
+    type: 'remix-card',
+    props: {
+      adaptedHook: 'The real reason 90% of beginners quit',
+      angle: 'Cold-open pattern interrupt for your niche.',
+      whoItsFor: 'Beginner fitness creators',
+      formatBorrowed: 'open-loop cold open',
+      sourceDecode: {
+        hookPattern: 'Pattern interrupt in the first frame.',
+        structure: 'Fast setup then payoff.',
+        theTurn: 'Unexpected pivot.',
+        emotionalBeat: 'Hope and resolve.',
+      },
+      band: 'Strong',
+      fraction: '8/10 stop',
+      scrollQuote: 'Okay that got me.',
+      model: 'sim1-flash',
       ...overrides,
     },
   };
@@ -145,5 +192,74 @@ describe('ScriptCardRenderer — filming instructions', () => {
   it('omits production + meta when absent (honesty spine)', () => {
     renderWithClient(<ScriptCardRenderer block={makeScript()} />);
     expect(screen.queryByText('How to film')).toBeNull();
+  });
+});
+
+// New Qwen call system (2026-07-22) — the projected/measured honesty seam, fanned out to the other
+// Make cards. A generation-time card's /10 is the WRITER'S estimate (no persona SIM ran), so it MUST
+// read in the conditional ("would stop") and MUST NOT wear a measurement badge ("SIM-1 Flash") or
+// past-tense ("stopped"). Absent provenance ⇒ legacy MEASURED (back-compat).
+
+describe('IdeaCardRenderer — projected vs measured provenance (honesty spine)', () => {
+  it('a projected card reads in the conditional and never claims a measurement', () => {
+    const { container } = renderWithClient(
+      <IdeaCardRenderer block={makeIdea({ provenance: 'projected' })} />,
+    );
+    const text = container.textContent ?? '';
+    expect(text).toContain('would stop');
+    expect(text).toContain('projected');
+    expect(text).not.toContain('SIM-1 Flash');
+    expect(text).not.toContain('stopped');
+  });
+
+  it('a card WITHOUT provenance is a legacy MEASURED card — unchanged wording (back-compat)', () => {
+    const { container } = renderWithClient(<IdeaCardRenderer block={makeIdea()} />);
+    const text = container.textContent ?? '';
+    expect(text).toContain('stopped');
+    expect(text).toContain('SIM-1 Flash');
+    expect(text).not.toContain('would stop');
+    expect(text).not.toContain('projected');
+  });
+});
+
+describe('ScriptCardRenderer — projected vs measured provenance (honesty spine)', () => {
+  // NOTE: assert on the fraction-verb of the ProofUnit ("7/10 would stop" / "7/10 stopped"), not a
+  // bare "stopped" — the beat CONTENT ("I stopped editing…") also contains the word.
+  it('a projected card reads the opener count in the conditional, never past tense', () => {
+    const { container } = renderWithClient(
+      <ScriptCardRenderer block={makeScript({ provenance: 'projected' })} />,
+    );
+    const text = container.textContent ?? '';
+    expect(text).toMatch(/\d+\/10 would stop/);
+    expect(text).not.toMatch(/\d+\/10 stopped/);
+  });
+
+  it('a card WITHOUT provenance keeps the measured past tense (back-compat)', () => {
+    const { container } = renderWithClient(<ScriptCardRenderer block={makeScript()} />);
+    const text = container.textContent ?? '';
+    expect(text).toMatch(/\d+\/10 stopped/);
+    expect(text).not.toMatch(/\d+\/10 would stop/);
+  });
+});
+
+describe('RemixCardRenderer — projected vs measured provenance (honesty spine)', () => {
+  it('a projected card reads in the conditional and never claims a measurement', () => {
+    const { container } = renderWithClient(
+      <RemixCardRenderer block={makeRemix({ provenance: 'projected' })} />,
+    );
+    const text = container.textContent ?? '';
+    expect(text).toContain('would stop');
+    expect(text).toContain('projected');
+    expect(text).not.toContain('SIM-1 Flash');
+    expect(text).not.toContain('stopped');
+  });
+
+  it('a card WITHOUT provenance is a legacy MEASURED card — unchanged wording (back-compat)', () => {
+    const { container } = renderWithClient(<RemixCardRenderer block={makeRemix()} />);
+    const text = container.textContent ?? '';
+    expect(text).toContain('stopped');
+    expect(text).toContain('SIM-1 Flash');
+    expect(text).not.toContain('would stop');
+    expect(text).not.toContain('projected');
   });
 });

@@ -40,25 +40,24 @@ import { assembleBundle } from "@/lib/kc/assembler";
 import type { AssemblerInput } from "@/lib/kc/assembler";
 import { KC_SCRIPT_SYSTEM_PROMPT } from "@/lib/kc/compiled";
 import { getQwenClient, QWEN_REASONING_MODEL, QWEN_SEED } from "@/lib/engine/qwen/client";
-import { runFlashTextMode } from "@/lib/engine/flash/run-flash-text-mode";
-import { aggregateFlash } from "@/lib/engine/flash/flash-aggregate";
-import { buildReactionPanel } from "@/lib/engine/flash/build-reaction-panel";
+// New Qwen call system (2026-07-22): the persona SIM is GONE from the generation path (fan-out from
+// hooks-runner). bandFromStops turns the single gen call's self-estimated OPENER /10 into the
+// projected band, sharing the SIM's 6/3 calibration SSOT. runFlashTextMode / aggregateFlash /
+// buildReactionPanel / buildFlashWeighting / characterizeContent / reactPopulation were the SIM-path
+// machinery and are no longer imported — the opener reaction + population belong to the user-fired
+// simulation now.
+import { bandFromStops } from "@/lib/engine/flash/flash-aggregate";
 import { buildAudienceGroundingLine } from "@/lib/audience/audience-grounding";
 import { applyCreatorPersona } from "@/lib/audience/apply-creator-persona";
-import { buildFlashWeighting } from "@/lib/engine/flash/persona-weighting";
-import { characterizeContent } from "@/lib/audience/characterize-content";
-import {
-  reactPopulation,
-  signatureHasPopulationAxes,
-  type ContentVector,
-  type PopulationAggregate,
-} from "@/lib/audience/population";
 import type { Audience } from "@/lib/audience/audience-types";
 import type { IntentLens } from "@/lib/audience/intent-lens";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
 import { ScriptCardBlockSchema } from "@/lib/tools/blocks";
 import type { ScriptCardBlock } from "@/lib/tools/blocks";
-import { pinPredictedSignature, type RunnerPinContext } from "./predicted-pin";
+// pinPredictedSignature (the FLYWHEEL pin) pinned the opener's SIM personas; with no SIM on this path
+// it moves to the fired simulation. Only the RunnerPinContext type is still referenced (the
+// accepted-but-unused `pin` input, kept so the route call site is unchanged).
+import type { RunnerPinContext } from "./predicted-pin";
 import { gatherCorpusForRun } from "@/lib/grounding/gather-for-run";
 import { buildProofFromSource, coerceSourceIndex } from "./build-proof";
 import { buildAdaptProfile } from "./adapt-profile";
@@ -119,13 +118,27 @@ const FILMING_BEAT_FIELD = `, "filming": string`;
 const FILMING_CARD_FIELDS = `, "topic": string, "format": string, "production": { "shots": string, "onScreenText": string, "setup": string, "edit": string }`;
 const FILMING_RULES = ` "filming" is a one-line DIRECTOR CUE for HOW to shoot the beat — camera/framing · b-roll or on-screen text · delivery — distinct from "content" (what to say) and "retentionMarker" (why it holds). "topic" is the subject in a few words; "format" is the video format (e.g. "Talking-head", "Voiceover + b-roll", "Screen-record"). "production" is the consolidated shoot plan for the WHOLE script: "shots" (the shot list), "onScreenText" (key text overlays), "setup" (gear / lighting / framing), "edit" (edit style, optional). Ground every cue in what the script actually needs — never invent gear or shots the beats do not call for.`;
 
+/**
+ * PROJECTION fields (new Qwen call system, 2026-07-22 — fan-out from hooks) — the single generation
+ * call now ALSO self-estimates the OPENER's stopping power (`personaStops` /10) + a representative
+ * stop quote, so the card carries its band signal WITHOUT the separate opener-SIM call the pipeline
+ * used to make. Shared across all three script output contracts (base/grounded/targeted).
+ *
+ * ⚠️ HONESTY + OPENER-ONLY (Pitfall 5): `personaStops` is the WRITER'S OWN ESTIMATE of the OPENING
+ * beat's scroll-stop, not a measured reaction and NOT a full-watch promise. It drives the projected
+ * opener band/fraction; the card labels it a PROJECTION (provenance:"projected") and the real
+ * verdict only appears when the creator fires "See the room →".
+ */
+const PROJECTION_FIELD = `, "personaStops": number, "stopQuote": string`;
+const PROJECTION_RULE = ` "personaStops" is YOUR honest estimate, as the writer, of how many out of 10 typical target viewers would STOP scrolling on the OPENING beat (openingBeatSeed) in the first 2 seconds — an integer 0–10, about the OPENER only, never the full watch. Be discriminating, never generous: a generic opener with no real mechanism stops 0–2; a genuinely strong, niche-true opener stops 7–8; reserve 9–10 for the rare undeniable one. "stopQuote" is ONE short first-person line of what a viewer who stops on the opener thinks in that instant (e.g. "Okay I need to hear the rest"). Both are a PROJECTION you are making — the creator sees them as your estimate and can then measure the opener against their real audience; never phrase them as a finished measurement.`;
+
 const SCRIPT_OUTPUT_CONTRACT = `
 
 ---
 
 OUTPUT FORMAT: Respond with a single JSON object — no markdown, no code fences, no prose.
-Shape: { "beats": [ { "label": string, "content": string, "timing": string, "retentionMarker": string${FILMING_BEAT_FIELD} } ], "openingBeatSeed": string${FILMING_CARD_FIELDS} }
-Return exactly ONE script object. "beats" is an ordered array (Hook → Setup → Turn → Payoff → CTA). Each beat field is required and non-empty. "timing" is the time window (e.g. "0–3s", "3–15s"). "retentionMarker" is plain-prose craft reasoning explaining WHY this beat holds attention — NEVER a numeric score. "openingBeatSeed" is the verbatim first-2s opening line fed to audience simulation — must equal the "content" of the first beat.${FILMING_RULES}`;
+Shape: { "beats": [ { "label": string, "content": string, "timing": string, "retentionMarker": string${FILMING_BEAT_FIELD} } ], "openingBeatSeed": string${PROJECTION_FIELD}${FILMING_CARD_FIELDS} }
+Return exactly ONE script object. "beats" is an ordered array (Hook → Setup → Turn → Payoff → CTA). Each beat field is required and non-empty. "timing" is the time window (e.g. "0–3s", "3–15s"). "retentionMarker" is plain-prose craft reasoning explaining WHY this beat holds attention — NEVER a numeric score. "openingBeatSeed" is the verbatim first-2s opening line fed to audience simulation — must equal the "content" of the first beat.${PROJECTION_RULE}${FILMING_RULES}`;
 
 /**
  * Grounded output contract (§11f fan-out — mirrors HOOKS_OUTPUT_CONTRACT_GROUNDED). Used ONLY
@@ -140,8 +153,8 @@ const SCRIPT_OUTPUT_CONTRACT_GROUNDED = `
 ---
 
 OUTPUT FORMAT: Respond with a single JSON object — no markdown, no code fences, no prose.
-Shape: { "beats": [ { "label": string, "content": string, "timing": string, "retentionMarker": string${FILMING_BEAT_FIELD} } ], "openingBeatSeed": string, "sourceIndex": number${FILMING_CARD_FIELDS} }
-Return exactly ONE script object. "beats" is an ordered array (Hook → Setup → Turn → Payoff → CTA). Each beat field is required and non-empty. "timing" is the time window (e.g. "0–3s", "3–15s"). "retentionMarker" is plain-prose craft reasoning explaining WHY this beat holds attention — NEVER a numeric score. "openingBeatSeed" is the verbatim first-2s opening line fed to audience simulation — must equal the "content" of the first beat. "sourceIndex" is the 1-based number of the GROUNDING example (from the numbered GROUNDING list in the prompt) whose proven STRUCTURE this script adapts, or 0 if it adapts no specific example — never cite a source you did not actually use (honesty).${FILMING_RULES}`;
+Shape: { "beats": [ { "label": string, "content": string, "timing": string, "retentionMarker": string${FILMING_BEAT_FIELD} } ], "openingBeatSeed": string, "sourceIndex": number${PROJECTION_FIELD}${FILMING_CARD_FIELDS} }
+Return exactly ONE script object. "beats" is an ordered array (Hook → Setup → Turn → Payoff → CTA). Each beat field is required and non-empty. "timing" is the time window (e.g. "0–3s", "3–15s"). "retentionMarker" is plain-prose craft reasoning explaining WHY this beat holds attention — NEVER a numeric score. "openingBeatSeed" is the verbatim first-2s opening line fed to audience simulation — must equal the "content" of the first beat. "sourceIndex" is the 1-based number of the GROUNDING example (from the numbered GROUNDING list in the prompt) whose proven STRUCTURE this script adapts, or 0 if it adapts no specific example — never cite a source you did not actually use (honesty).${PROJECTION_RULE}${FILMING_RULES}`;
 
 /**
  * PER-PERSONA GENERATION (fan-out from hooks #299) — the craft half of the assignment.
@@ -192,8 +205,8 @@ function targetedOutputContract(grounded: boolean): string {
 ---
 
 OUTPUT FORMAT: Respond with a single JSON object — no markdown, no code fences, no prose.
-Shape: { "beats": [ { "label": string, "content": string, "timing": string, "retentionMarker": string${FILMING_BEAT_FIELD} } ], "openingBeatSeed": string, "targetArchetype": string${groundedField}${FILMING_CARD_FIELDS} }
-Return exactly ONE script object. "beats" is an ordered array (Hook → Setup → Turn → Payoff → CTA). Each beat field is required and non-empty. "timing" is the time window (e.g. "0–3s", "3–15s"). "retentionMarker" is plain-prose craft reasoning explaining WHY this beat holds attention — NEVER a numeric score. "openingBeatSeed" is the verbatim first-2s opening line fed to audience simulation — must equal the "content" of the first beat. "targetArchetype" is the bare slug of the person this script was written for.${groundedRule}${FILMING_RULES}`;
+Shape: { "beats": [ { "label": string, "content": string, "timing": string, "retentionMarker": string${FILMING_BEAT_FIELD} } ], "openingBeatSeed": string, "targetArchetype": string${groundedField}${PROJECTION_FIELD}${FILMING_CARD_FIELDS} }
+Return exactly ONE script object. "beats" is an ordered array (Hook → Setup → Turn → Payoff → CTA). Each beat field is required and non-empty. "timing" is the time window (e.g. "0–3s", "3–15s"). "retentionMarker" is plain-prose craft reasoning explaining WHY this beat holds attention — NEVER a numeric score. "openingBeatSeed" is the verbatim first-2s opening line fed to audience simulation — must equal the "content" of the first beat. "targetArchetype" is the bare slug of the person this script was written for. For "personaStops", estimate the OPENER's stop-count specifically for THAT assigned person's segment.${groundedRule}${PROJECTION_RULE}${FILMING_RULES}`;
 }
 
 // ─── Input type ───────────────────────────────────────────────────────────────
@@ -290,6 +303,18 @@ interface StructuredScript {
   /** The card-foot shoot plan (owner 2026-07-22). OPTIONAL → omitted unless the model returns a
    * well-formed block (all of shots/onScreenText/setup non-empty). */
   production?: StructuredProduction;
+  /**
+   * PROJECTION (new Qwen call system, 2026-07-22): the writer's own estimate of how many of 10
+   * target viewers would STOP on this script's OPENER (0–10), self-emitted by the single generation
+   * call in place of the removed opener-SIM. Drives the projected opener band/fraction (Pitfall 5:
+   * opener-only, never full-watch). An ESTIMATE — the card carries it as provenance:"projected".
+   */
+  personaStops: number;
+  /**
+   * PROJECTION: one first-person line of what a viewer who stops on the OPENER thinks, self-emitted
+   * by the same generation call → the card's lead scroll-quote (replaces the SIM-derived selector).
+   */
+  stopQuote: string;
   /**
    * 1-based grounding-example index this script adapted (0 = none). Only ever non-zero on a
    * grounded run (the grounded contract requests it); ungrounded runs default it to 0. Drives
@@ -426,11 +451,32 @@ async function generateScriptStructured(
     ...(topic ? { topic } : {}),
     ...(format ? { format } : {}),
     ...(production ? { production } : {}),
+    // PROJECTION (new call system): the writer's self-estimated OPENER stop-count + stop-quote —
+    // the card's band signal now that no opener-SIM runs. Clamped 0–10; a missing estimate degrades
+    // to 0 (Weak), a missing quote to "" (no lead quote).
+    personaStops: coercePersonaStops(obj.personaStops),
+    stopQuote: typeof obj.stopQuote === "string" ? obj.stopQuote.trim() : "",
     sourceIndex: coerceSourceIndex(obj.sourceIndex),
     // Whom the model SAYS it wrote this for. Not trusted yet — validated against the assignment
     // below, because a slug we never assigned is not a person we can name.
     targetArchetype: normalizeTargetArchetype(obj.targetArchetype),
   };
+}
+
+/**
+ * Coerce the model's self-estimated OPENER stop-count into a clean integer 0–10. Accepts a number or
+ * a numeric string ("8", "8/10" → 8). Anything missing/malformed → 0, which bands as Weak — the
+ * honest degrade for a writer that gave no estimate, never a fabricated high. Mirrors hooks-runner.
+ */
+function coercePersonaStops(raw: unknown): number {
+  const n =
+    typeof raw === "number"
+      ? raw
+      : typeof raw === "string"
+        ? parseInt(raw, 10)
+        : NaN;
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.min(10, Math.round(n)));
 }
 
 /**
@@ -451,21 +497,8 @@ function coerceProduction(raw: unknown): StructuredProduction | undefined {
   return { shots, onScreenText, setup, ...(edit ? { edit } : {}) };
 }
 
-// ─── Lead scroll-quote selector (mirrors hooks-runner) ────────────────────────
-
-/**
- * Select the lead scroll-quote from the SIM personas.
- * D-04: the quote ships ON the card face, never deferred.
- * Priority: first stop-verdict persona's quote.
- * Fallback: first persona's quote regardless of verdict.
- */
-function selectLeadScrollQuote(
-  personas: Array<{ verdict: string; quote: string; archetype: string }>,
-): string {
-  const stopper = personas.find((p) => p.verdict === "stop");
-  if (stopper) return stopper.quote;
-  return personas[0]?.quote ?? "";
-}
+// selectLeadScrollQuote was removed with the opener SIM (new Qwen call system): the lead quote is now
+// the gen call's self-emitted `stopQuote`, not a pick from a reacted panel.
 
 // ─── runScriptPipeline ────────────────────────────────────────────────────────
 
@@ -481,11 +514,12 @@ function selectLeadScrollQuote(
  * @param input.anchor      Upstream hook anchor — the chosen hookLine from Hooks→Script.
  */
 export async function runScriptPipeline(input: ScriptPipelineInput): Promise<ScriptPipelineResult> {
-  const { ask, platform, profileRow, anchor, audience = null, intent, targetArchetype } = input;
-  // GAP-C2: sell lens applies only for a calibrated audience (General → undefined no-op).
-  const simIntent: IntentLens | undefined =
-    audience && !audience.is_general ? intent : undefined;
+  const { ask, platform, profileRow, anchor, audience = null, targetArchetype } = input;
   const allWarnings: string[] = [];
+  // NOTE: `input.intent` (the sell/grow reaction lens) only ever reframed the opener-SIM verdict.
+  // With the SIM removed from generation it is unused on this path for now; it re-attaches to the
+  // user-fired simulation when that wiring lands. Kept on the interface so the route call site is
+  // unchanged. Same for `input.pin` (the FLYWHEEL pin — see below).
 
   // ── STEER (08-04 / AUD-STEER): audience-grounding line replaces buildGroundingLine ──
   // Calibrated audience → fold the audience-facing line into assembleBundle.overrides so
@@ -575,73 +609,16 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
     return { blocks: [], warnings: allWarnings, scrapeAvailable };
   }
 
-  // ── REACT path (A1 — weighted SIM aggregation): build the optional Flash weighting ──
-  // General / null / no-override → undefined → flat band (byte-identical, regression gate).
-  // Calibrated audience → per-slot persona_weights bias the weighted stop-MASS band gate.
-  const flashWeighting = buildFlashWeighting(audience ?? null);
-
-  // ── GATE (D-01 — OPENER ONLY): Flash on the opening beat seed only ───────────
-  // S1 fix: route through the shared buildReactionPanel helper so niche resolves via
-  // resolveNicheKey (was raw niche_primary → exact-slug miss → niche-blind "all Mixed").
-  // Matches hooks/ideas runners; audienceRepaint construction is byte-identical to before.
-  const { panel, audienceRepaint } = buildReactionPanel(profileRow, audience);
-
-  // ── Audience Sim v2 (Stage 2): population projection gate + concurrent characterize ──
-  // A calibrated signature with the v2 axes is the gate — General / legacy / preset skip it
-  // (population stays undefined → byte-identical pre-v2 shape). The script card's reaction is
-  // OPENER-ONLY in "hook" mode (D-01), so we characterize the SAME openingBeatSeed the SIM scores
-  // → the projection and the on-card panel agree (a script is a hook HERE, by the opener design).
-  // Fired BEFORE the SIM so it runs concurrently (no serial latency); a failure degrades to null.
-  const populationSignature = audience?.signature ?? null;
-  const wantPopulation = signatureHasPopulationAxes(populationSignature);
-  const populationVocab = populationSignature?.audience.topic_vocab ?? [];
-  const vectorPromise: Promise<ContentVector | null> = wantPopulation
-    ? characterizeContent(script.openingBeatSeed, populationVocab).catch(() => null)
-    : Promise.resolve(null);
-
-  let simResult: Awaited<ReturnType<typeof runFlashTextMode>> | null;
-  // ── STAGE: Simulating your audience (real boundary — the opener SIM call) ──
-  input.onStage?.("Simulating your audience", "active");
-  try {
-    simResult = await runFlashTextMode(script.openingBeatSeed, "hook", panel, audienceRepaint, simIntent);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    allWarnings.push(`SIM failed for script opener "${script.openingBeatSeed.slice(0, 60)}": ${msg}`);
-    return { blocks: [], warnings: allWarnings, scrapeAvailable };
-  }
-  input.onStage?.("Simulating your audience", "done");
-
-  const personas = simResult.result.personas;
-  const { band, fraction } = aggregateFlash(personas, flashWeighting);
-
-  // D-04: select lead scrollQuote NOW — ships on the card face
-  const scrollQuote = selectLeadScrollQuote(personas);
-
-  // Audience Sim v2 (Stage 2): the population projection — pure O(N) once the vector lands.
-  // A null vector (skip / characterize failure) or a scorer throw → undefined (card omits the
-  // field). Never let the projection break a card: the SIM band/fraction is the load-bearing
-  // signal, the population is additive texture.
-  let population: PopulationAggregate | undefined;
-  const contentVector = await vectorPromise;
-  if (populationSignature && contentVector) {
-    try {
-      population = reactPopulation(populationSignature, contentVector);
-    } catch {
-      population = undefined;
-    }
-  }
-
-  // ── FLYWHEEL-02: pin the predicted signature (non-fatal, fire-after-compute) ──
-  // The opener's personas ARE the run's prediction (opener-only SIM, D-01). Pinned
-  // before build so even a dropped card still records the SIM's predicted vector.
-  // void (not awaited): never delays card render; pinPredictedSignature swallows errors.
-  if (input.pin && personas.length > 0) {
-    const audienceId = audience && !audience.is_general ? audience.id : null;
-    void pinPredictedSignature(input.pin.supabase, personas, {
-      audienceId,
-      analysisId: input.pin.analysisId ?? null,
-    });
-  }
+  // ── RATE (projection — NO SIM): the OPENER band signal off the self-estimated /10 ──
+  // The single generation call above already self-estimated the OPENER's stop-count (personaStops
+  // /10) + a stop-quote. There is NO opener SIM, NO population characterization, NO reaction panel
+  // on this path any more — the opener's per-persona cast + the N-individual projection are MEASURED
+  // artefacts that now belong to the user-fired simulation ("See the room →"). band via bandFromStops
+  // (shares the SIM's 6/3 calibration SSOT), fraction as the honest "N/10 stop", quote = stopQuote.
+  // OPENER-ONLY (Pitfall 5): the /10 is about the opening beat, never the full watch.
+  const band = bandFromStops(script.personaStops);
+  const fraction = `${script.personaStops}/10 stop`;
+  const scrollQuote = script.stopQuote;
 
   // ── BUILD: assemble script-card block ─────────────────────────────────────────
   // §11f receipts-on-cards: attach the frozen receipt for the outlier this script adapted.
@@ -649,14 +626,16 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
   // byte-identical to the pre-grounding card (regression gate + honesty spine).
   const proof = buildProofFromSource(script.sourceIndex, groundingExamples);
 
-  // WHO this script was written for + how that exact person reacted to its OPENER (the only beat
-  // the SIM ever scores — D-01/Pitfall 5; the verdict is honest about the hook, not the full watch).
-  // null on an uncalibrated run, and null on a calibrated run whose writer named nobody we assigned.
+  // WHO this script was written for. The reaction half (verdict/quote) is NULL now — no opener SIM
+  // ran on this path — so bindTarget receives an EMPTY panel and returns the assignment WITHOUT a
+  // reaction receipt. That receipt arrives when the creator fires the room. Uncalibrated runs still
+  // return null. (Script targeting is DORMANT anyway — see SCRIPT_UNIT — so `target` is null on
+  // every route today; the binding is kept runnable for a future re-measure.)
   const cardTarget = bindTarget({
     claimedArchetype: script.targetArchetype,
     positionalTarget: target ?? undefined,
     assignments,
-    personas,
+    personas: [], // no opener SIM on the generation path — reaction deferred to the fired run
     warnings: allWarnings,
     unitNoun: "Script",
     subject: script.openingBeatSeed,
@@ -673,7 +652,12 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
       fraction,
       scrollQuote,
       model: "sim1-flash" as const,
-      personas, // S3′: opener reaction for the ambient modal (PR-2)
+      // PROJECTION (new call system): the opener band/fraction/quote are the WRITER'S self-estimate,
+      // not a measured opener reaction. The renderer gates ALL measurement language on this; the
+      // measured opener verdict replaces the projection when the creator fires "See the room →".
+      provenance: "projected" as const,
+      // personas + population INTENTIONALLY OMITTED — the opener's cast and the N-individual
+      // projection are MEASURED artefacts of the fired simulation, not the generation-time card.
       // Ready-to-film (owner 2026-07-22) — each omitted when the model returned it empty, so an
       // ungrounded/uncooperative run keeps the exact pre-wiring block shape (regression-safe).
       ...(script.topic ? { topic: script.topic } : {}),
@@ -688,9 +672,6 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
       // Per-persona generation — omitted entirely when there is no named reader, so General and
       // every pre-target persisted card keep their exact shape (regression gate).
       ...(cardTarget ? { target: cardTarget } : {}),
-      // Audience Sim v2 (Stage 2) — the N-individual population projection (opener-as-hook).
-      // Omitted when the audience lacks the v2 axes or characterization failed → pre-v2 shape.
-      ...(population ? { population } : {}),
     },
   };
 

@@ -35,6 +35,15 @@ import { parseProofProp, parseGroundedProp, parseTargetProp, parsePopulationProp
 import type { StageState } from '@/components/thread/progress-checklist';
 import type { IntentLens } from '@/lib/audience/intent-lens';
 
+/**
+ * Parse the `provenance` prop off the SSE face. Only the two known literals survive; anything else
+ * (absent, malformed) → undefined ⇒ the card renders as a legacy MEASURED one (back-compat). Without
+ * this the projected card's live face would claim a measurement it never ran (new call system).
+ */
+function parseProvenanceProp(raw: unknown): 'projected' | 'measured' | undefined {
+  return raw === 'projected' || raw === 'measured' ? raw : undefined;
+}
+
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 /** Card as it arrives in the content event (band/fraction absent — filled by score events). */
@@ -72,6 +81,11 @@ export interface PartialIdeaCard {
   // undefined on General/uncalibrated/uncharacterized runs. Same reload-only hazard as proof:
   // declared + parsed + carried through toBlocks so it renders live, not only after a reload.
   population?: PopulationAggregateBlock;
+  // PROVENANCE (new Qwen call system, 2026-07-22): "projected" ⇒ the band/fraction is the writer's
+  // generation-time estimate (no persona SIM ran), so the card reads in the conditional ("would
+  // react") + tags "projected". Absent ⇒ MEASURED (legacy). Same reload-only hazard as proof —
+  // declared + parsed + carried through toBlocks, or the LIVE card claims a measurement it never ran.
+  provenance?: 'projected' | 'measured';
 }
 
 export interface UseIdeasStreamReturn {
@@ -343,6 +357,8 @@ export function useIdeasStream(): UseIdeasStreamReturn {
                   grounded: parseGroundedProp(props.grounded), // run had sources, even if this card cited none
                   target: parseTargetProp(props.target), // who this idea was written for + how they reacted
                   population: parsePopulationProp(props.population), // Sim v2: N-individual projection → Population·1,000 Sheet
+                  // new call system: "projected" rides the face → honest "would react", not measured.
+                  provenance: parseProvenanceProp(props.provenance),
                 };
               })
               .filter((c: PartialIdeaCard) => c.title.length > 0);
@@ -536,6 +552,8 @@ export function useIdeasStream(): UseIdeasStreamReturn {
                   grounded: parseGroundedProp(props.grounded), // run had sources, even if this card cited none
                   target: parseTargetProp(props.target), // who this idea was written for + how they reacted
                   population: parsePopulationProp(props.population), // Sim v2: N-individual projection → Population·1,000 Sheet
+                  // new call system: "projected" rides the face → honest "would react", not measured.
+                  provenance: parseProvenanceProp(props.provenance),
                 };
               })
               .filter((c: PartialIdeaCard) => c.title.length > 0);
@@ -625,6 +643,9 @@ export function useIdeasStream(): UseIdeasStreamReturn {
         ...(c.target ? { target: c.target } : {}),
         // Sim v2 Stage 2 — the population projection renders live in the Sheet, not just after reload.
         ...(c.population ? { population: c.population } : {}),
+        // Provenance (new call system) — a "projected" card must read "would react / projected" LIVE,
+        // not only after a reload; omitted ⇒ the renderer's MEASURED default (legacy back-compat).
+        ...(c.provenance ? { provenance: c.provenance } : {}),
       },
     }));
   }, [streamingCards]);

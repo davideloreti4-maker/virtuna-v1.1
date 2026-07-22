@@ -53,7 +53,15 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
     grounded,
     target,
     population,
+    provenance,
   } = block.props;
+
+  // New Qwen call system (2026-07-22): a "projected" card's band/fraction/quote are the WRITER'S
+  // generation-time estimate — no persona SIM ran. It must NOT claim a measured room reaction: the
+  // proof unit reads in the conditional ("would stop") and the provenance tag says "projected", not
+  // "SIM-1 Flash". "See the room →" is the measure-it door. Absent provenance ⇒ a legacy/persisted
+  // MEASURED card → unchanged wording (back-compat).
+  const projected = provenance === 'projected';
 
   const platform = usePlatform();
   const [expanded, setExpanded] = useState(false);
@@ -167,6 +175,7 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
           band={band}
           fraction={fraction}
           scored={scored ?? true}
+          projected={projected}
           quote={scrollQuote}
           flatPersonas={cardScrollQuoteReactions(fraction, scrollQuote)}
           /* The room LOOKS this card up by conceptText (openRoomForCard → the ledger's
@@ -185,7 +194,7 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
             conceptText: `${title}\n\n${angle}`,
             platform,
           })}
-          label="See how the room reacted to this idea"
+          label={projected ? 'See how the room would react to this idea' : 'See how the room reacted to this idea'}
         />
 
         {/* Expand — the seed hook (the line this idea would open with) + provenance. */}
@@ -198,7 +207,10 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
         >
           <CaretToggle open={expanded} />
           {expanded ? 'Hide seed hook' : 'Seed hook'}
-          <span className="text-foreground-muted/70">· SIM-1 Flash</span>
+          {/* Provenance — honest about whether the /10 was MEASURED (SIM-1 Flash panel) or is a
+              generation-time PROJECTION. A projected card ran no persona SIM, so it must not wear
+              the SIM-1 Flash badge (a measurement claim). */}
+          <span className="text-foreground-muted/70">{projected ? '· projected' : '· SIM-1 Flash'}</span>
         </button>
       </div>
 

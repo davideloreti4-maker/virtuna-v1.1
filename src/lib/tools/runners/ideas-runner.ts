@@ -52,26 +52,24 @@ import { assembleBundle } from "@/lib/kc/assembler";
 import type { AssemblerInput } from "@/lib/kc/assembler";
 import { KC_IDEAS_SYSTEM_PROMPT } from "@/lib/kc/compiled";
 import { getQwenClient, QWEN_REASONING_MODEL, QWEN_SEED } from "@/lib/engine/qwen/client";
-import { runFlashTextModeBatch } from "@/lib/engine/flash/run-flash-text-mode";
-import { aggregateFlash, MIXED_THRESHOLD } from "@/lib/engine/flash/flash-aggregate";
+// New Qwen call system (2026-07-22): the persona SIM is GONE from the generation path (fan-out from
+// hooks-runner). bandFromStops turns the single gen call's self-estimated /10 into the projected
+// band, sharing the SIM's 6/3 calibration SSOT. runFlashTextModeBatch / aggregateFlash /
+// buildReactionPanel / buildFlashWeighting / characterizeContent / reactPopulation were the SIM-path
+// machinery and are no longer imported — the per-persona reaction + population belong to the
+// user-fired simulation now.
+import { bandFromStops } from "@/lib/engine/flash/flash-aggregate";
 import { buildAudienceGroundingLine } from "@/lib/audience/audience-grounding";
 import { applyCreatorPersona } from "@/lib/audience/apply-creator-persona";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
-import { buildFlashWeighting } from "@/lib/engine/flash/persona-weighting";
 import type { Audience } from "@/lib/audience/audience-types";
 import type { IntentLens } from "@/lib/audience/intent-lens";
 import { IdeaCardBlockSchema } from "@/lib/tools/blocks";
 import type { IdeaCardBlock } from "@/lib/tools/blocks";
-import type { FlashPersona } from "@/lib/engine/flash/flash-schema";
-import { buildReactionPanel } from "@/lib/engine/flash/build-reaction-panel";
-import { characterizeContent } from "@/lib/audience/characterize-content";
-import {
-  reactPopulation,
-  signatureHasPopulationAxes,
-  type ContentVector,
-  type PopulationAggregate,
-} from "@/lib/audience/population";
-import { pinPredictedSignature, type RunnerPinContext } from "./predicted-pin";
+// pinPredictedSignature (the FLYWHEEL pin) pinned the rank-1 idea's SIM personas; with no SIM on this
+// path it moves to the fired simulation. Only the RunnerPinContext type is still referenced (the
+// accepted-but-unused `pin` input, kept so the route call site is unchanged).
+import type { RunnerPinContext } from "./predicted-pin";
 import { gatherCorpusForRun } from "@/lib/grounding/gather-for-run";
 import { buildProofFromSource, coerceSourceIndex } from "./build-proof";
 import { buildAdaptProfile } from "./adapt-profile";
@@ -118,35 +116,40 @@ function isGroundingAdaptEnabled(): boolean {
   return process.env.GROUNDING_IDEAS_ADAPT === "true";
 }
 
-// ─── Rank helpers (S3′ — mirrors hooks-runner) ──────────────────────────────────
-/** Band tier ordinal for ranking: Strong=0 > Mixed=1 > Weak=2 (keep-all, Weak ranked last). */
-function bandOrdinal(band: "Strong" | "Mixed" | "Weak"): number {
-  if (band === "Strong") return 0;
-  if (band === "Mixed") return 1;
-  return 2;
-}
+// bandOrdinal / parseFractionNumerator were removed with the persona SIM (new Qwen call system):
+// the rank is now a single descending sort on the projected `personaStops` /10 — the band derives
+// monotonically from that count (bandFromStops), so a stop-count sort is already band-consistent
+// (Strong before Mixed before Weak). No tier ordinal, no fraction-string re-parsing.
 
-/** Parse the stop-count numerator from a fraction string (e.g. "6/10 stop" → 6); NaN-safe → 0. */
-function parseFractionNumerator(fraction: string): number {
-  const n = parseInt(fraction, 10);
-  return Number.isNaN(n) ? 0 : n;
-}
+/**
+ * PROJECTION field (new Qwen call system, 2026-07-22 — fan-out from hooks) — the single generation
+ * call now ALSO self-estimates each idea's stopping power (`personaStops` /10) + a representative
+ * stop quote, so the card carries its ranking signal WITHOUT the separate persona-SIM call the
+ * pipeline used to make. Shared across all three idea output contracts so the ask is identical.
+ *
+ * ⚠️ HONESTY: `personaStops` is the WRITER'S OWN ESTIMATE, not a measured room reaction. It drives
+ * the projected band/fraction + the best→worst rank; the card labels it a PROJECTION
+ * (provenance:"projected") and the real verdict only appears when the creator fires "See the room →".
+ * The stop is estimated on the idea's SEED HOOK — the same line the SIM used to react to — so the
+ * projection is about the idea's opener, not a full-watch promise.
+ */
+const PROJECTION_FIELD = `, "personaStops": number, "stopQuote": string`;
+const PROJECTION_RULE = ` "personaStops" is YOUR honest estimate, as the writer, of how many out of 10 typical target viewers would STOP scrolling on this idea's SEED HOOK in the first 2 seconds — an integer 0–10. Be discriminating, never generous: a generic idea with no real mechanism stops 0–2; a genuinely strong, niche-true concept stops 7–8; reserve 9–10 for the rare undeniable one. "stopQuote" is ONE short first-person line of what a viewer who stops thinks in that instant (e.g. "Okay I actually want to watch this"). Both are a PROJECTION you are making — the creator sees them as your estimate and can then measure the idea against their real audience; never phrase them as a finished measurement.`;
 
 /**
  * Output-serialization contract — owned by the runner because the runner owns
  * `response_format: json_object`. DashScope/Qwen rejects json_object mode with a
  * 400 ("messages must contain the word 'json'") unless the literal word appears
  * in the messages; the compiled KC prompt is pure craft knowledge and carries no
- * serialization directive, so the contract lives here. Static (byte-stable) so it
- * stays part of the warm system-prefix cache. Mirrors the StructuredIdea shape.
+ * serialization directive, so the contract lives here. Mirrors the StructuredIdea shape.
  */
 const IDEAS_OUTPUT_CONTRACT = `
 
 ---
 
 OUTPUT FORMAT: Respond with a single JSON object — no markdown, no code fences, no prose.
-Shape: { "ideas": [ { "title": string, "angle": string, "mechanism": string, "seedHook": string, "needsTake": boolean, "topic": string, "take": string, "format": string | null } ] }
-Return an "ideas" array of exactly ${IDEA_COUNT} STRONG, distinct idea objects — each must earn its place (these are all shown to the creator, not filtered). Every field is required (use "" or null where empty); "seedHook" must be non-empty.`;
+Shape: { "ideas": [ { "title": string, "angle": string, "mechanism": string, "seedHook": string, "needsTake": boolean, "topic": string, "take": string, "format": string | null${PROJECTION_FIELD} } ] }
+Return an "ideas" array of exactly ${IDEA_COUNT} STRONG, distinct idea objects — each must earn its place (these are all shown to the creator, not filtered). Every field is required (use "" or null where empty); "seedHook" must be non-empty.${PROJECTION_RULE}`;
 
 /**
  * Grounded output contract (§11f fan-out — mirrors HOOKS_OUTPUT_CONTRACT_GROUNDED). Used ONLY
@@ -161,8 +164,8 @@ const IDEAS_OUTPUT_CONTRACT_GROUNDED = `
 ---
 
 OUTPUT FORMAT: Respond with a single JSON object — no markdown, no code fences, no prose.
-Shape: { "ideas": [ { "title": string, "angle": string, "mechanism": string, "seedHook": string, "needsTake": boolean, "topic": string, "take": string, "format": string | null, "sourceIndex": number } ] }
-Return an "ideas" array of exactly ${IDEA_COUNT} STRONG, distinct idea objects — each must earn its place (these are all shown to the creator, not filtered). Every field is required (use "" or null where empty); "seedHook" must be non-empty. "sourceIndex" is the 1-based number of the GROUNDING example (from the numbered GROUNDING list in the prompt) whose proven STRUCTURE this idea adapts, or 0 if the idea adapts no specific example — never cite a source you did not actually use (honesty).`;
+Shape: { "ideas": [ { "title": string, "angle": string, "mechanism": string, "seedHook": string, "needsTake": boolean, "topic": string, "take": string, "format": string | null, "sourceIndex": number${PROJECTION_FIELD} } ] }
+Return an "ideas" array of exactly ${IDEA_COUNT} STRONG, distinct idea objects — each must earn its place (these are all shown to the creator, not filtered). Every field is required (use "" or null where empty); "seedHook" must be non-empty. "sourceIndex" is the 1-based number of the GROUNDING example (from the numbered GROUNDING list in the prompt) whose proven STRUCTURE this idea adapts, or 0 if the idea adapts no specific example — never cite a source you did not actually use (honesty).${PROJECTION_RULE}`;
 
 /**
  * PER-PERSONA GENERATION (fan-out from hooks #299) — the craft half of the assignment.
@@ -201,8 +204,8 @@ function targetedOutputContract(grounded: boolean): string {
 ---
 
 OUTPUT FORMAT: Respond with a single JSON object — no markdown, no code fences, no prose.
-Shape: { "ideas": [ { "title": string, "angle": string, "mechanism": string, "seedHook": string, "needsTake": boolean, "topic": string, "take": string, "format": string | null, "targetArchetype": string${groundedField} } ] }
-Return an "ideas" array of exactly ${IDEA_COUNT} STRONG, distinct idea objects, in assignment order — idea N is for person N from the list above. Every field is required (use "" or null where empty); "seedHook" must be non-empty. "targetArchetype" is the bare slug of the person this idea was written for.${groundedRule}`;
+Shape: { "ideas": [ { "title": string, "angle": string, "mechanism": string, "seedHook": string, "needsTake": boolean, "topic": string, "take": string, "format": string | null, "targetArchetype": string${groundedField}${PROJECTION_FIELD} } ] }
+Return an "ideas" array of exactly ${IDEA_COUNT} STRONG, distinct idea objects, in assignment order — idea N is for person N from the list above. Every field is required (use "" or null where empty); "seedHook" must be non-empty. "targetArchetype" is the bare slug of the person this idea was written for. For "personaStops", estimate the stop-count specifically for THAT assigned person's segment.${groundedRule}${PROJECTION_RULE}`;
 }
 
 // ─── Input type ───────────────────────────────────────────────────────────────
@@ -279,6 +282,18 @@ interface StructuredIdea {
   take: string;
   format: string | null;
   /**
+   * PROJECTION (new Qwen call system, 2026-07-22): the writer's own estimate of how many of 10
+   * target viewers would STOP on this idea's seed hook (0–10), self-emitted by the single generation
+   * call in place of the removed persona-SIM. Drives the projected band/fraction + the best→worst
+   * rank. An ESTIMATE, never a measurement — the card carries it as provenance:"projected".
+   */
+  personaStops: number;
+  /**
+   * PROJECTION: one first-person line of what a stopping viewer thinks, self-emitted by the same
+   * generation call → the card's lead scroll-quote (replaces the SIM-derived selectLeadScrollQuote).
+   */
+  stopQuote: string;
+  /**
    * 1-based grounding-example index this idea adapted (0 = none). Only ever non-zero on a
    * grounded run (the grounded contract requests it); ungrounded runs default it to 0. Drives
    * the on-card receipt via buildProofFromSource (§11f).
@@ -292,6 +307,23 @@ interface StructuredIdea {
    * personalised label. Only ever set on a targeted (calibrated) run.
    */
   targetArchetype: string;
+}
+
+/**
+ * Coerce the model's self-estimated stop-count into a clean integer 0–10. Accepts a number or a
+ * numeric string ("8", "8/10" → 8). Anything missing/malformed → 0, which bands as Weak and ranks
+ * the idea LAST — the honest degrade for a writer that gave no estimate, never a fabricated high.
+ * Mirrors hooks-runner's coercePersonaStops.
+ */
+function coercePersonaStops(raw: unknown): number {
+  const n =
+    typeof raw === "number"
+      ? raw
+      : typeof raw === "string"
+        ? parseInt(raw, 10)
+        : NaN;
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.min(10, Math.round(n)));
 }
 
 // ─── Qwen generation call ────────────────────────────────────────────────────
@@ -389,6 +421,11 @@ async function generateIdeasStructured(
       take: typeof r.take === "string" ? r.take : "",
       format:
         typeof r.format === "string" && r.format.trim().length > 0 ? r.format : null,
+      // PROJECTION (new call system): the writer's self-estimated stop-count + representative
+      // stop-quote — the card's ranking signal now that no persona-SIM runs. Clamped 0–10; a
+      // missing estimate degrades to 0 (Weak, ranked last), a missing quote to "" (no lead quote).
+      personaStops: coercePersonaStops(r.personaStops),
+      stopQuote: typeof r.stopQuote === "string" ? r.stopQuote.trim() : "",
       // Attribution index (grounded runs only) — missing/malformed → 0 (no source) so an
       // ungrounded or sloppy response never fabricates one (§11f honesty spine).
       sourceIndex: coerceSourceIndex(r.sourceIndex),
@@ -402,23 +439,8 @@ async function generateIdeasStructured(
   return ideas;
 }
 
-// ─── Lead scroll-quote selector ───────────────────────────────────────────────
-
-/**
- * Select the lead scroll-quote from the SIM personas.
- * D-04: the quote ships ON the card face, never deferred.
- * Priority: first stop-verdict persona's quote (they're the audience that engaged).
- * Fallback: first persona's quote regardless of verdict.
- */
-function selectLeadScrollQuote(
-  personas: Array<{ verdict: string; quote: string; archetype: string }>,
-): string {
-  // Prefer a stop-verdict persona (they stopped → their quote is the pull signal)
-  const stopper = personas.find((p) => p.verdict === "stop");
-  if (stopper) return stopper.quote;
-  // Fallback: first persona (persona count guaranteed ≥1 by FlashResultSchema)
-  return personas[0]?.quote ?? "";
-}
+// selectLeadScrollQuote was removed with the persona SIM (new Qwen call system): the lead quote is
+// now the gen call's self-emitted `stopQuote`, not a pick from a reacted panel.
 
 // ─── runIdeasPipeline ─────────────────────────────────────────────────────────
 
@@ -433,20 +455,12 @@ function selectLeadScrollQuote(
  * @param input.profileRow  Creator profile (null = cold-start, never blocks on onboarding).
  */
 export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<IdeasPipelineResult> {
-  const { ask, platform, profileRow, audience = null, intent } = input;
+  const { ask, platform, profileRow, audience = null } = input;
   const allWarnings: string[] = [];
-  // GAP-C2: sell lens applies only for a calibrated audience (General → undefined no-op).
-  const simIntent: IntentLens | undefined =
-    audience && !audience.is_general ? intent : undefined;
-
-  // ── GATE FLOOR ASSERTION (WARNING-3: fail loud if MIXED_THRESHOLD unreachable) ──
-  // This fires only if the import itself resolves a bad value (e.g. undefined/NaN).
-  if (typeof MIXED_THRESHOLD !== "number" || isNaN(MIXED_THRESHOLD)) {
-    throw new Error(
-      "runIdeasPipeline: MIXED_THRESHOLD is not a valid number — Plan-01 gate floor handoff missing or corrupt. " +
-        "Do NOT proceed; complete 03-01-SUMMARY.md first. (WARNING-3)",
-    );
-  }
+  // NOTE: `input.intent` (the sell/grow reaction lens) only ever reframed the persona-SIM verdict.
+  // With the SIM removed from generation it is unused on this path for now; it re-attaches to the
+  // user-fired simulation (which owns the reaction) when that wiring lands. Kept on the interface so
+  // the route call site is unchanged. Same for `input.pin` (the FLYWHEEL pin — see below).
 
   // ── §P step-7: creator voice (fallback) + steer from the per-audience creator_persona ──
   // genProfileRow may carry a voice backfilled from creator_persona.writing_style_sample;
@@ -512,124 +526,28 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
   // Record which path shipped (Open Q1 resolved decision)
   const seedHookPath: "structured" | "markered" = "structured";
 
-  // ── RATE (S3′): ONE batched Flash call scores all candidates ───────────────
-  // Niche panel + audience repaint via the shared buildReactionPanel helper (Plan 13-01):
-  // resolveNicheKey normalizes free-text/sub-slug niche_primary to a top-level
-  // NICHE_INSTANTIATION key BEFORE the panel (14-01 — otherwise selectPersonaSlots' exact-slug
-  // match silently falls back to generic "all Mixed"); audienceRepaint is undefined for
-  // General/no-audience → runFlashTextMode omits the arg → byte-identical no-op (regression gate).
-  // The new POST /api/tools/react route reuses the SAME helper so type-to-room discriminates
-  // by niche exactly like a card reaction (RESEARCH Open Q1 / Pitfall 2).
-  const { panel, audienceRepaint } = buildReactionPanel(profileRow, audience);
-
-  // ── REACT path (A1 — weighted SIM aggregation): build the optional Flash weighting ──
-  // General / null / no-override audience → undefined → aggregateFlash takes its flat path
-  // (byte-identical band, ENGINE_VERSION 3.19.0 regression gate). Calibrated audience →
-  // per-slot persona_weights bias the weighted stop-MASS band gate (which candidates survive).
-  // The SIM call + repaint (built above) are UNTOUCHED — only the post-SIM band math is
-  // weighted. This is what finally CONSUMES audience.persona_weights (void before A1).
-  const flashWeighting = buildFlashWeighting(audience ?? null);
-
-  // ── STEER path (07-04 / AUD-05): audience-grounding line replaces buildGroundingLine ──
-  // buildAudienceGroundingLine delegates to buildGroundingLine for General/null (AUD-08
-  // blast-radius gate: only ideas-runner uses audience-grounding in P7).
+  // ── STEER path (07-04 / AUD-05): audience-grounding line → the card's whyItFits ──
+  // buildAudienceGroundingLine delegates to buildGroundingLine for General/null. This is the
+  // "why it fits your profile" line, NOT a SIM artefact — it stays on this path.
   const { line: groundingLine } = buildAudienceGroundingLine(audience, platform, profileRow);
 
-  // S3′ generate-rate-rank: a rated idea carries everything the rank+build need;
-  // personas travel ON it for the FLYWHEEL pin + the per-card modal feed (PR-2).
+  // ── RATE (projection — NO SIM): the candidate carries what rank + build need ──
+  // The single generation call above already self-estimated each idea's stop-count (personaStops
+  // /10) + a stop-quote. There is NO batched SIM, NO population characterization, NO reaction panel
+  // on this path any more — the per-card cast + the N-individual population projection are MEASURED
+  // artefacts that now belong to the user-fired simulation ("See the room →"), not the generation
+  // card. A rated idea is a pure derivation of the projection, with nothing async left.
   interface RatedIdea {
     idea: StructuredIdea;
     band: "Strong" | "Mixed" | "Weak";
     fraction: string;
     scrollQuote: string;
-    personas: FlashPersona[];
-    population?: PopulationAggregate; // Audience Sim v2 Stage 2 — the N-individual projection
-    generationIndex: number;
+    generationIndex: number; // preserves generation order for the rank tie-break
   }
 
-  // ── Audience Sim v2 (Stage 2): population projection gate ──────────────────
-  // A calibrated signature carrying the v2 axes (topic_vocab + scored persona.reaction) is the
-  // gate — General / legacy / preset audiences skip it (population stays undefined → the card
-  // omits the field, byte-identical to the pre-v2 shape). Resolved ONCE per run (mirrors hooks).
-  const populationSignature = audience?.signature ?? null;
-  const wantPopulation = signatureHasPopulationAxes(populationSignature);
-  const populationVocab = populationSignature?.audience.topic_vocab ?? [];
-
-  /**
-   * S3′ generate-rate-rank: ONE batched SIM call rates ALL candidates, then KEEP them all
-   * (ranked) — no Weak cut, no trim. The ONLY drop is a candidate with a missing/invalid
-   * reaction (honesty spine — we never fabricate a band). Ranking happens AFTER (D-01 order).
-   */
-  async function ratePass(ideaBatch: StructuredIdea[]): Promise<RatedIdea[]> {
-    // Stable ids = generation index (echoed by the model, mapped back; positional fallback).
-    const candidates = ideaBatch.map((idea, i) => ({ id: String(i), text: idea.seedHook }));
-
-    // ── Audience Sim v2 (Stage 2): characterize each idea CONCURRENTLY with the SIM ──
-    // Fire the per-candidate content-characterization calls BEFORE awaiting the batched Flash
-    // reaction so they run in parallel (no serial latency added — mirrors hooks-runner). Each
-    // resolves to the ContentVector the cheap O(N) scorer reacts on; a per-call failure degrades
-    // to null (that card just omits the population field). Gated off entirely for audiences
-    // without the v2 axes → all null, no LLM calls, byte-identical old behaviour. Characterized on
-    // the SAME `seedHook` the SIM reacts to, so the projection and the on-card panel agree.
-    const vectorPromises: Promise<ContentVector | null>[] = candidates.map((c) =>
-      wantPopulation
-        ? characterizeContent(c.text, populationVocab).catch(() => null)
-        : Promise.resolve(null),
-    );
-
-    const batch = await runFlashTextModeBatch(
-      candidates,
-      "idea",
-      panel,
-      audienceRepaint,
-      simIntent,
-    ).catch((err) => {
-      const msg = err instanceof Error ? err.message : String(err);
-      allWarnings.push(`Batched SIM failed for ideas: ${msg}`);
-      return null; // hard failure → no cards (no auto-regen; user-pressed rewrite handles retry)
-    });
-    if (!batch) return [];
-    allWarnings.push(...batch.warnings);
-
-    // Collect the (already in-flight) content vectors — indexed to match `ideaBatch`/candidates.
-    const vectors = await Promise.all(vectorPromises);
-
-    const out: RatedIdea[] = [];
-
-    ideaBatch.forEach((idea, i) => {
-      const sim = batch.results.get(String(i));
-      if (!sim) {
-        allWarnings.push(`SIM produced no reaction for idea "${idea.title}" — dropped`);
-        return; // un-scorable → drop (can't show a card with no reaction)
-      }
-
-      const personas = sim.personas;
-      const { band, fraction } = aggregateFlash(personas, flashWeighting);
-      // S3′: NO Weak gate — keep ALL rated bands (rank handles ordering).
-      const scrollQuote = selectLeadScrollQuote(personas);
-
-      // Audience Sim v2 (Stage 2): the population projection — pure O(N) once the vector lands.
-      // A null vector (skip / characterize failure) or a scorer throw → undefined (card omits the
-      // field). Never let the projection break a card: the SIM band/fraction is the load-bearing
-      // signal, the population is additive texture.
-      let population: PopulationAggregate | undefined;
-      const vector = vectors[i];
-      if (populationSignature && vector) {
-        try {
-          population = reactPopulation(populationSignature, vector);
-        } catch {
-          population = undefined;
-        }
-      }
-
-      out.push({ idea, band, fraction, scrollQuote, personas, population, generationIndex: i });
-    });
-
-    return out;
-  }
-
-  // Generate exactly IDEA_COUNT ideas (no over-gen buffer — all are shown).
-  // ── STAGE: Generating (real boundary — the big LLM call) ──
+  // Generate exactly IDEA_COUNT ideas (no over-gen buffer — all are shown). ONE Qwen call now
+  // carries the whole pipeline: the candidates AND their /10 projection AND the ranking signal.
+  // ── STAGE: Generating (real boundary — the single LLM call) ──
   input.onStage?.("Generating", "active");
   const firstBatch = await generateIdeasStructured(userMessage, Boolean(corpus), targets);
   input.onStage?.("Generating", "done");
@@ -637,24 +555,27 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
     return { blocks: [], warnings: allWarnings, seedHookPath, scrapeAvailable };
   }
 
-  // S3′: ONE batched SIM rates all candidates. NO conditional regen (D-06 removed) —
-  // keep-all + user-pressed rewrite (PR-3) replaces the auto-regenerate-on-zero loop.
-  // ── STAGE: Simulating your audience (real boundary — the batched Flash SIM call) ──
-  input.onStage?.("Simulating your audience", "active");
-  const rated = await ratePass(firstBatch);
-  input.onStage?.("Simulating your audience", "done");
-
-  // ── STAGE: Ranking (real boundary — sort + build; fast) ──
+  // ── STAGE: Ranking (real boundary — a pure map + sort; NO second call) ──
   input.onStage?.("Ranking", "active");
 
-  // ── RANK (keep-all): band tier → fraction → generation order. No Weak cut, no trim
-  //    below what was generated; slice(IDEA_COUNT) is a safety bound only. ──
+  // Rate each idea straight off its self-estimated /10 — band via bandFromStops (shares the SIM's
+  // 6/3 calibration SSOT), fraction as the honest "N/10 stop" count, lead quote = the stopQuote.
+  const rated: RatedIdea[] = firstBatch.map((idea, i) => ({
+    idea,
+    band: bandFromStops(idea.personaStops),
+    fraction: `${idea.personaStops}/10 stop`,
+    scrollQuote: idea.stopQuote,
+    generationIndex: i,
+  }));
+
+  // ── RANK (keep-all): best → worst by the projected /10 stop-count. Tie-break preserves
+  //    generation order. Bands derive monotonically from personaStops, so this single sort is
+  //    already band-consistent (Strong before Mixed before Weak) — no separate tier ordinal
+  //    needed. slice(IDEA_COUNT) is a safety bound only. (Same selection behaviour as before —
+  //    keep-all + rank — only the ranking SIGNAL moved from the SIM to the self-estimated /10.)
   rated.sort((a, b) => {
-    const bandDiff = bandOrdinal(a.band) - bandOrdinal(b.band);
-    if (bandDiff !== 0) return bandDiff;
-    const fractionDiff =
-      parseFractionNumerator(b.fraction) - parseFractionNumerator(a.fraction); // descending
-    if (fractionDiff !== 0) return fractionDiff;
+    const stopDiff = b.idea.personaStops - a.idea.personaStops; // descending
+    if (stopDiff !== 0) return stopDiff;
     return a.generationIndex - b.generationIndex; // preserve generation order
   });
   const ranked = rated.slice(0, IDEA_COUNT);
@@ -667,16 +588,15 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
     // byte-identical to the pre-grounding card (regression gate + honesty spine).
     const proof = buildProofFromSource(candidate.idea.sourceIndex, groundingExamples);
 
-    // WHO this idea was written for + how that exact person reacted. null on an uncalibrated run,
-    // and null on a calibrated run whose writer named nobody we assigned — the card then simply
-    // carries no target line (an honest absence beats a personalised label over a generic idea).
-    // NOTE the positional lookup uses generationIndex, not the loop position: the cards have been
-    // SORTED by band since generation, so the first card is not assignment-1.
+    // WHO this idea was written for. The reaction half (verdict/quote) is NULL now — no SIM ran on
+    // this path — so bindTarget receives an EMPTY panel and returns the assignment WITHOUT a
+    // reaction receipt. That receipt arrives when the creator fires the room. Uncalibrated runs
+    // still return null. (The positional lookup uses generationIndex, not loop position: sorted.)
     const target = bindTarget({
       claimedArchetype: candidate.idea.targetArchetype,
       positionalTarget: targets[candidate.generationIndex],
       assignments,
-      personas: candidate.personas,
+      personas: [], // no persona SIM on the generation path — reaction deferred to the fired run
       warnings: allWarnings,
       unitNoun: "Idea",
       subject: candidate.idea.title,
@@ -698,8 +618,13 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
         fraction: candidate.fraction,
         scrollQuote: candidate.scrollQuote,
         model: "sim1-flash" as const,
+        // PROJECTION (new call system): band/fraction/quote are the WRITER'S self-estimate, not a
+        // measured room reaction. The renderer gates ALL measurement language on this; the measured
+        // verdict replaces the projection when the creator fires "See the room →".
+        provenance: "projected" as const,
         predictedFailureMode: null, // S5: rubric critic removed (was OFF / ~100% fail)
-        personas: candidate.personas, // S3′: per-card reaction for the ambient modal (PR-2)
+        // personas + population INTENTIONALLY OMITTED — the per-card cast and the N-individual
+        // projection are MEASURED artefacts of the fired simulation, not the generation-time card.
         ...(proof ? { proof } : {}),  // §11f — only when a real source was attributed
         // Did the RUN earn a grounding claim, regardless of what THIS card cited? Set from the
         // shared WARRANT (warrant.ts), NOT from `proof` — a grounded run where the model attributed
@@ -709,9 +634,6 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
         // Per-persona generation — omitted entirely when there is no named reader, so General
         // and every pre-target persisted card keep their exact shape (regression gate).
         ...(target ? { target } : {}),
-        // Audience Sim v2 (Stage 2) — the N-individual population projection. Omitted when the
-        // audience lacks the v2 axes or characterization failed → byte-identical pre-v2 shape.
-        ...(candidate.population ? { population: candidate.population } : {}),
       },
     };
 
@@ -730,20 +652,10 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
   // ── STAGE: Ranking (done) — cards are built + ready to stream ──
   input.onStage?.("Ranking", "done");
 
-  // ── FLYWHEEL-02: pin the predicted signature (non-fatal, fire-after-compute) ──
-  // The predicted vector is computed ONCE from the rank-1 idea's personas (falling back
-  // to the first rated idea) and persisted with the run's audience_id — the "predict"
-  // half of the moat loop. void (not awaited): never delays card render.
-  if (input.pin) {
-    const pinnedPersonas = ranked[0]?.personas ?? rated[0]?.personas ?? null;
-    if (pinnedPersonas && pinnedPersonas.length > 0) {
-      const audienceId = audience && !audience.is_general ? audience.id : null;
-      void pinPredictedSignature(input.pin.supabase, pinnedPersonas, {
-        audienceId,
-        analysisId: input.pin.analysisId ?? null,
-      });
-    }
-  }
+  // FLYWHEEL-02 pin REMOVED from the generation path: it pinned the rank-1 idea's SIM personas as
+  // the predicted disposition vector, and no SIM runs here now. The predicted-vector pin moves to
+  // the user-fired simulation (the run that actually produces a reaction). `input.pin` is accepted
+  // but unused on this path (kept so the route call site is unchanged).
 
   return { blocks, warnings: allWarnings, seedHookPath, scrapeAvailable };
 }

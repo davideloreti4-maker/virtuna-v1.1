@@ -39,25 +39,23 @@ import { analyzeVideoWithOmni } from "@/lib/engine/qwen/omni-analysis";
 import { omniOutputToStructuralInput, runDecode } from "@/lib/engine/remix/decode";
 import { decodeResultToAdaptInput } from "@/lib/engine/remix/decode-types";
 import { generateAdaptConcepts } from "@/lib/engine/remix/adapt";
-import { runFlashTextModeBatch } from "@/lib/engine/flash/run-flash-text-mode";
-import type { FlashPersona } from "@/lib/engine/flash/flash-schema";
-import { aggregateFlash } from "@/lib/engine/flash/flash-aggregate";
-import { buildReactionPanel } from "@/lib/engine/flash/build-reaction-panel";
+// New Qwen call system (2026-07-22): the persona SIM is GONE from the remix path (fan-out from
+// hooks-runner). The ADAPT call is the generation call — it now self-estimates each adapted hook's
+// /10 + stop-quote, and bandFromStops turns that into the projected band (SIM's 6/3 calibration
+// SSOT). runFlashTextModeBatch / aggregateFlash / buildReactionPanel / buildFlashWeighting /
+// characterizeContent / reactPopulation were the SIM-path machinery and are no longer imported — the
+// per-persona reaction + population belong to the user-fired simulation now.
+import { bandFromStops } from "@/lib/engine/flash/flash-aggregate";
 import { buildAudienceGroundingLine } from "@/lib/audience/audience-grounding";
-import { buildFlashWeighting } from "@/lib/engine/flash/persona-weighting";
-import { characterizeContent } from "@/lib/audience/characterize-content";
-import {
-  reactPopulation,
-  signatureHasPopulationAxes,
-  type ContentVector,
-  type PopulationAggregate,
-} from "@/lib/audience/population";
 import type { Audience } from "@/lib/audience/audience-types";
 import type { IntentLens } from "@/lib/audience/intent-lens";
 import { RemixCardBlockSchema } from "@/lib/tools/blocks";
 import type { RemixCardBlock, HookProof } from "@/lib/tools/blocks";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
-import { pinPredictedSignature, type RunnerPinContext } from "./predicted-pin";
+// pinPredictedSignature (the FLYWHEEL pin) pinned the rank-1 adapted hook's SIM personas; with no SIM
+// on this path it moves to the fired simulation. Only the RunnerPinContext type is still referenced
+// (the accepted-but-unused `pin` input, kept so the route call site is unchanged).
+import type { RunnerPinContext } from "./predicted-pin";
 
 // ─── Input / Output types ─────────────────────────────────────────────────────
 
@@ -110,20 +108,23 @@ export interface RemixPipelineResult {
   error?: "resolve_failed" | "decode_failed" | "adapt_failed";
 }
 
-// ─── Lead scroll-quote selector (mirrors script-runner) ──────────────────────
+// selectLeadScrollQuote was removed with the persona SIM (new Qwen call system): the lead quote is
+// now the adapt call's self-emitted `stopQuote`, not a pick from a reacted panel.
 
 /**
- * Select the lead scroll-quote from the SIM personas.
- * D-04: quote ships ON the card face, never deferred.
- * Priority: first stop-verdict persona's quote.
- * Fallback: first persona's quote regardless of verdict.
+ * Coerce the adapt call's self-estimated stop-count into a clean integer 0–10. Accepts a number or a
+ * numeric string ("8", "8/10" → 8). Anything missing/malformed → 0, which bands as Weak and ranks
+ * the concept LAST — the honest degrade, never a fabricated high. Mirrors hooks-runner.
  */
-function selectLeadScrollQuote(
-  personas: Array<{ verdict: string; quote: string; archetype: string }>,
-): string {
-  const stopper = personas.find((p) => p.verdict === "stop");
-  if (stopper) return stopper.quote;
-  return personas[0]?.quote ?? "";
+function coercePersonaStops(raw: unknown): number {
+  const n =
+    typeof raw === "number"
+      ? raw
+      : typeof raw === "string"
+        ? parseInt(raw, 10)
+        : NaN;
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.min(10, Math.round(n)));
 }
 
 // ─── runRemixPipeline ─────────────────────────────────────────────────────────
@@ -143,36 +144,23 @@ function selectLeadScrollQuote(
  * @param input.requestId   Unique ID for the temp rehost path
  */
 export async function runRemixPipeline(input: RemixPipelineInput): Promise<RemixPipelineResult> {
-  const { url, platform, profileRow, requestId, audience = null, intent } = input;
+  const { url, platform, profileRow, requestId, audience = null } = input;
   const allWarnings: string[] = [];
-  // GAP-C2: sell lens applies only for a calibrated audience (General → undefined no-op).
-  const simIntent: IntentLens | undefined =
-    audience && !audience.is_general ? intent : undefined;
+  // NOTE: `input.intent` (the sell/grow reaction lens) only ever reframed the persona-SIM verdict.
+  // With the SIM removed from generation it is unused on this path for now; it re-attaches to the
+  // user-fired simulation when that wiring lands. Kept on the interface so the route call site is
+  // unchanged. Same for `input.pin` (the FLYWHEEL pin — see below).
 
-  // ── STEER (08-04 / AUD-STEER + REMIX-01): audience-grounding + niche + repaint ──
+  // ── STEER (08-04 / AUD-STEER + REMIX-01): audience-grounding + niche ──
   // buildAudienceGroundingLine delegates to buildGroundingLine for General/null (no-op).
   const isCalibrated = Boolean(audience && !audience.is_general);
   const { line: groundingLine } = buildAudienceGroundingLine(audience, platform, profileRow);
   void groundingLine; // grounding folds into the adapt niche + card steer tag below
 
-  // ── REACT path (A1 — weighted SIM aggregation): build the optional Flash weighting ──
-  // General / null / no-override → undefined → flat band (byte-identical, regression gate).
-  // Calibrated audience → per-slot persona_weights bias the weighted stop-MASS band gate.
-  const flashWeighting = buildFlashWeighting(audience ?? null);
-
-  // S1 fix: shared buildReactionPanel resolves niche via resolveNicheKey (was raw
-  // niche_primary at the gate → exact-slug miss → niche-blind "all Mixed"). Matches
-  // hooks/ideas runners; audienceRepaint construction is byte-identical to before.
-  // `panel` is also consumed at the Flash gate (STEP 5) below.
-  const { panel, audienceRepaint } = buildReactionPanel(profileRow, audience);
-
-  // ── Audience Sim v2 (Stage 2): population projection gate ──────────────────
-  // A calibrated signature carrying the v2 axes is the gate — General / legacy / preset skip it
-  // (population stays undefined → byte-identical pre-v2 shape). Resolved ONCE per run (mirrors
-  // hooks/ideas). The RATE step characterizes each ADAPTED hook (opener-scoped, Pitfall 5) below.
-  const populationSignature = audience?.signature ?? null;
-  const wantPopulation = signatureHasPopulationAxes(populationSignature);
-  const populationVocab = populationSignature?.audience.topic_vocab ?? [];
+  // The persona SIM is GONE from this path (new Qwen call system): no flashWeighting, no
+  // buildReactionPanel, no population characterization. The ADAPT call self-estimates each adapted
+  // hook's /10 (RATE step below), and the per-persona reaction + population belong to the user-fired
+  // simulation now.
 
   // ── STEP 1: RESOLVE — resolveAndRehost wraps temp mp4 rehost ──────────────────
   // cleanup MUST run in finally (T-03-02 — derive-and-drop invariant).
@@ -255,115 +243,47 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
     }
     input.onStage?.("Adapting", "done");
 
-    // ── STEP 5: RATE (D-05 opener-scoped) — ONE batched Flash call on ALL adapted hooks ──
-    // S3′ generate-rate-rank: KEEP all adapted concepts (was concepts[0] only). Each concept
-    // is a distinct adaptation of the SAME decoded source, so sourceDecode is shared across the
-    // cards. This rates the ADAPTED hook text only — never a full-video score (Pitfall 5).
-    const candidates = concepts.map((c, i) => ({ id: String(i), text: c.hook }));
-
-    // ── Audience Sim v2 (Stage 2): characterize each adapted hook CONCURRENTLY with the SIM ──
-    // Fired BEFORE awaiting the batch so they run in parallel (no serial latency — mirrors
-    // hooks/ideas). Each resolves to the ContentVector the cheap O(N) scorer reacts on; a per-call
-    // failure degrades to null (that card omits population). Gated off entirely for audiences
-    // without the v2 axes → all null, no LLM calls, byte-identical old behaviour. Characterized on
-    // the SAME adapted `hook` the SIM reacts to (opener-scoped, Pitfall 5), so they agree.
-    const vectorPromises: Promise<ContentVector | null>[] = candidates.map((c) =>
-      wantPopulation
-        ? characterizeContent(c.text, populationVocab).catch(() => null)
-        : Promise.resolve(null),
-    );
-
-    // ── STAGE: Simulating your audience (real boundary — batched Flash on the adapted hooks) ──
-    input.onStage?.("Simulating your audience", "active");
-    const batch = await runFlashTextModeBatch(
-      candidates,
-      "hook",
-      panel,
-      audienceRepaint,
-      simIntent,
-    ).catch((flashErr) => {
-      const msg = flashErr instanceof Error ? flashErr.message : String(flashErr);
-      allWarnings.push(`Batched Flash gate failed for adapted hooks: ${msg}`);
-      return null;
-    });
-    if (!batch) {
-      return { blocks: [], warnings: allWarnings, error: "adapt_failed" };
-    }
-    allWarnings.push(...batch.warnings);
-    input.onStage?.("Simulating your audience", "done");
-
-    // Collect the (already in-flight) content vectors — indexed to match `concepts`/candidates.
-    const vectors = await Promise.all(vectorPromises);
-
-    // Rank helpers (S3′): band tier → stop-count.
-    const bandOrdinal = (b: "Strong" | "Mixed" | "Weak") =>
-      b === "Strong" ? 0 : b === "Mixed" ? 1 : 2;
-    const fractionNumerator = (f: string) => {
-      const n = parseInt(f, 10);
-      return Number.isNaN(n) ? 0 : n;
-    };
-
+    // ── STEP 5: RATE (projection — NO SIM) — the adapted hook's /10 rode the ADAPT call ──
+    // New Qwen call system: the ADAPT call (generateAdaptConcepts) is the generation call, and it
+    // now self-estimated each concept's stop-count (personaStops /10) + a stop-quote. There is NO
+    // batched Flash SIM, NO population characterization on this path any more — the per-persona cast
+    // + the N-individual projection are MEASURED artefacts that belong to the user-fired simulation
+    // ("See the room →"). band via bandFromStops (shares the SIM's 6/3 calibration SSOT), fraction as
+    // the honest "N/10 stop", quote = the stopQuote. This rates the ADAPTED hook only (Pitfall 5).
     interface RatedConcept {
       concept: (typeof concepts)[number];
       band: "Strong" | "Mixed" | "Weak";
       fraction: string;
       scrollQuote: string;
-      personas: FlashPersona[];
-      population?: PopulationAggregate; // Audience Sim v2 Stage 2 — the N-individual projection
+      stops: number; // the projected /10 — the rank key
       generationIndex: number;
     }
 
-    const rated: RatedConcept[] = [];
-    concepts.forEach((concept, i) => {
-      const sim = batch.results.get(String(i));
-      if (!sim) {
-        allWarnings.push(
-          `SIM produced no reaction for adapted hook "${concept.hook.slice(0, 60)}" — dropped`,
-        );
-        return; // un-scorable → drop (honesty spine — never fabricate a band)
-      }
-      const personas = sim.personas;
-      const { band, fraction } = aggregateFlash(personas, flashWeighting);
-      const scrollQuote = selectLeadScrollQuote(personas);
-
-      // Audience Sim v2 (Stage 2): the population projection — pure O(N) once the vector lands.
-      // A null vector (skip / characterize failure) or a scorer throw → undefined (card omits the
-      // field). Never let the projection break a card: the SIM band/fraction stays load-bearing.
-      let population: PopulationAggregate | undefined;
-      const vector = vectors[i];
-      if (populationSignature && vector) {
-        try {
-          population = reactPopulation(populationSignature, vector);
-        } catch {
-          population = undefined;
-        }
-      }
-
-      rated.push({ concept, band, fraction, scrollQuote, personas, population, generationIndex: i });
+    const rated: RatedConcept[] = concepts.map((concept, i) => {
+      const stops = coercePersonaStops(concept.personaStops);
+      return {
+        concept,
+        band: bandFromStops(stops),
+        fraction: `${stops}/10 stop`,
+        scrollQuote: typeof concept.stopQuote === "string" ? concept.stopQuote.trim() : "",
+        stops,
+        generationIndex: i,
+      };
     });
 
-    if (rated.length === 0) {
-      return { blocks: [], warnings: allWarnings, error: "adapt_failed" };
-    }
-
-    // RANK (keep-all): band tier → stop-count → generation order.
+    // RANK (keep-all): best → worst by the projected /10 stop-count. Tie-break preserves generation
+    // order. Bands derive monotonically from `stops`, so this single sort is already band-consistent
+    // (Strong before Mixed before Weak) — no separate tier ordinal needed. (Same keep-all + rank
+    // selection behaviour as before — only the ranking SIGNAL moved from the SIM to the /10.)
     rated.sort((a, b) => {
-      const bandDiff = bandOrdinal(a.band) - bandOrdinal(b.band);
-      if (bandDiff !== 0) return bandDiff;
-      const fractionDiff = fractionNumerator(b.fraction) - fractionNumerator(a.fraction);
-      if (fractionDiff !== 0) return fractionDiff;
+      const stopDiff = b.stops - a.stops; // descending
+      if (stopDiff !== 0) return stopDiff;
       return a.generationIndex - b.generationIndex;
     });
 
-    // ── FLYWHEEL-02: pin the rank-1 adapted hook's personas (the run's prediction, D-05) ──
-    // void (not awaited): never delays card render; pinPredictedSignature swallows errors.
-    if (input.pin && rated[0] && rated[0].personas.length > 0) {
-      const audienceId = audience && !audience.is_general ? audience.id : null;
-      void pinPredictedSignature(input.pin.supabase, rated[0].personas, {
-        audienceId,
-        analysisId: input.pin.analysisId ?? null,
-      });
-    }
+    // FLYWHEEL-02 pin REMOVED from the generation path: it pinned the rank-1 adapted hook's SIM
+    // personas, and no SIM runs here now. The predicted-vector pin moves to the user-fired
+    // simulation. `input.pin` is accepted but unused on this path (route call site unchanged).
 
     // ── STEP 6: BUILD — one remix-card per ranked concept (D-05 moat: real 4-beat decode) ──
     // sourceDecode is the SAME real structural decode for every card (shared source video).
@@ -430,16 +350,16 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
           fraction: r.fraction,
           scrollQuote: r.scrollQuote,
           model: "sim1-flash" as const,
+          // PROJECTION (new call system): the adapted-hook band/fraction/quote are the adapt call's
+          // self-estimate, not a measured reaction. The renderer gates ALL measurement language on
+          // this; the measured verdict replaces the projection when the creator fires "See the room →".
+          provenance: "projected" as const,
 
           // 08-04 / D-03 STEER tag — populated only for a calibrated audience (General → omitted).
           ...(isCalibrated && audience ? { audienceName: audience.name } : {}),
 
-          // S3′: per-card reaction for the ambient modal (PR-2)
-          personas: r.personas,
-
-          // Audience Sim v2 (Stage 2) — the N-individual population projection (adapted-hook).
-          // Omitted when the audience lacks the v2 axes or characterization failed → pre-v2 shape.
-          ...(r.population ? { population: r.population } : {}),
+          // personas + population INTENTIONALLY OMITTED — the per-card cast and the N-individual
+          // projection are MEASURED artefacts of the fired simulation, not the generation-time card.
         },
       };
 

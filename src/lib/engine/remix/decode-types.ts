@@ -191,6 +191,19 @@ export interface AdaptConcept {
   /** The format pattern borrowed from the source (chip text, e.g. "open-loop cold open"). */
   format_borrowed: string;
   /**
+   * PROJECTION (new Qwen call system, 2026-07-22 — fan-out from hooks): the adapt call's OWN estimate
+   * of how many of 10 target viewers would STOP on this adapted hook (0–10), self-emitted in place of
+   * the removed persona-SIM. Drives the remix card's projected band/fraction. OPTIONAL so the old
+   * `/api/remix/adapt` engine surface (which ignores it) and any pre-wiring response still validate;
+   * the remix runner coerces a missing value to 0 (Weak). An ESTIMATE, never a measurement.
+   */
+  personaStops?: number;
+  /**
+   * PROJECTION: one first-person line of what a viewer who stops on the adapted hook thinks →
+   * the remix card's lead scroll-quote. OPTIONAL (same back-compat reason as personaStops).
+   */
+  stopQuote?: string;
+  /**
    * READY TO FILM (owner 2026-07-22): the shoot plan for YOUR adapted version — how to execute the
    * borrowed format for this angle. Mirrors the Script card's `production`. OPTIONAL → omitted when
    * the model returns none (back-compat; the remix card's "How to film" block simply doesn't render).
