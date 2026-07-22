@@ -16,6 +16,7 @@ import { useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { HomeGreeting } from "./home-greeting";
+import { AMBIENT_V2_ENABLED } from "@/lib/flags/ambient-v2";
 import { Composer } from "./composer";
 
 export function HomePageLayout() {
@@ -72,10 +73,11 @@ export function HomePageLayout() {
         emptyHome && "justify-center",
       )}
     >
-      {emptyHome && (
+      {emptyHome && !AMBIENT_V2_ENABLED && (
         // Empty home: the hero (greeting · promise · constellation) caps the centered
         // group. shrink-0 (natural height) so it sits directly above the composer with a
         // comfortable gap, and a small top offset guarantees breathing room from the chrome.
+        // Suppressed under AMBIENT_V2_ENABLED — the v2 Start surface carries its own greeting.
         <div
           className={cn(
             "flex w-full max-w-[760px] shrink-0 flex-col items-center px-4 pt-6 pb-8",

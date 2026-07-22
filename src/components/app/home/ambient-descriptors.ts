@@ -84,6 +84,7 @@ export function toAmbientDescriptor(block: unknown, idx: number): AmbientCardDes
   const population = p.population ?? undefined;
   return {
     id: `${kind.id}-${idx}`,
+    kind: kind.id,
     conceptText: concept,
     fraction,
     scrollQuote: typeof scrollQuote === 'string' ? scrollQuote : '',
