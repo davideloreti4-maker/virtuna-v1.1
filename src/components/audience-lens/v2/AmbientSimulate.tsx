@@ -61,7 +61,8 @@ export interface DevelopContext {
 export interface SimLens {
   key: "stop" | "finish" | "share" | "follow" | "buy";
   label: string;
-  gloss: string; // "stop scrolling"
+  gloss: string; // "stop scrolling" → "Would they stop scrolling?"
+  stage: string; // the funnel stage it reads — "Attention · the first 2 seconds"
 }
 
 export interface SimSegment {
@@ -155,7 +156,9 @@ function Dropdown({
         onMouseLeave={(e) => (e.currentTarget.style.borderColor = TONE.hair)}
       >
         {label}
-        <span style={{ color: TONE.faint }}>▾</span>
+        <svg width="9" height="9" viewBox="0 0 12 12" aria-hidden style={{ color: TONE.faint }}>
+          <path d="M2.5 4.5L6 8l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
       </button>
       {open ? (
         <div
@@ -224,8 +227,6 @@ function ArmCard({
   const n = Math.round(TIER_N[fidelity] * seg.share);
   const mismatch = scene.toLowerCase() !== provenance.toLowerCase();
 
-  const receipt = `Screen to ${withCommas(n)} of ${room} · would they ${activeLens.label.toLowerCase()} · on ${scene} · SIM-1 ${TIER_LABEL[fidelity]}`;
-
   return (
     <div data-testid="ambient-simulate" data-phase="arm" className="flex w-full max-w-[460px] flex-col rounded-[16px]" style={SHEET_STYLE}>
       {/* header + the stimulus under test */}
@@ -250,38 +251,53 @@ function ArmCard({
 
         {/* develop tie-back — the rank this sim is deepening (refines, never contradicts) */}
         {develop ? (
-          <div className="mt-3 flex items-center gap-2 text-[12px]" style={{ color: TONE.faint }}>
-            <span className="h-1.5 w-1.5 flex-none rounded-full" style={{ background: TONE.dim }} aria-hidden />
+          <div
+            className="mt-3.5 inline-flex items-center gap-2 rounded-full py-1 pl-1.5 pr-3 text-[12px]"
+            style={{ background: "rgba(255,255,255,.03)", border: `1px solid ${TONE.hair}`, color: TONE.faint }}
+          >
+            <span
+              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-[10.5px] uppercase tracking-[0.05em]"
+              style={{ background: TONE.well, color: TONE.dim }}
+            >
+              {develop.band} {develop.value}
+            </span>
             <span>
-              Developing this rank ·{" "}
-              <span style={{ color: TONE.dim }}>
-                {develop.band} {develop.value} {develop.lensLabel}
-              </span>{" "}
-              — the sim opens it up, never overturns it
+              deepening your rank — refines it, never overturns it
             </span>
           </div>
         ) : null}
 
-        <div className="mt-3 flex items-start gap-2.5 rounded-[12px] p-3.5" style={{ background: TONE.well }}>
+        {/* the stimulus under test — content, so it reads at full strength */}
+        <div
+          className="mt-3.5 flex items-start gap-3 rounded-[12px] p-3.5"
+          style={{ background: TONE.well, border: `1px solid ${TONE.border}` }}
+        >
           <span
-            className="mt-px flex-none rounded-md px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.06em]"
-            style={{ background: "rgba(255,255,255,.05)", color: TONE.faint }}
+            className="mt-[1px] flex-none rounded-md px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.06em]"
+            style={{ background: "rgba(255,255,255,.06)", color: TONE.faint }}
           >
             {stimulus.kind}
           </span>
-          <span className="text-[14px] leading-[1.4]" style={{ color: TONE.dim }}>
+          <span className="text-[14px] leading-[1.45]" style={{ color: TONE.cream }}>
             {stimulus.text}
           </span>
         </div>
       </div>
 
-      {/* THE LENS — the one loud dial */}
-      <div className="mt-6 px-[26px]">
-        <Kick>The lens</Kick>
-        <div className="mt-1.5 text-[15px] font-medium" style={{ color: TONE.cream }}>
-          What are we measuring?
+      {/* THE LENS — the one loud dial: the single behaviour we score the room for */}
+      <div className="mt-7 px-[26px]">
+        <div className="flex items-baseline justify-between">
+          <Kick>The lens</Kick>
+          <span className="text-[11.5px]" style={{ color: TONE.faint }}>
+            the behaviour we score
+          </span>
         </div>
-        <div className="mt-3 flex flex-wrap gap-2">
+
+        {/* the behavioural funnel as a segmented control (Stop → Finish → Share → Follow → Buy) */}
+        <div
+          className="mt-3 flex gap-1 rounded-[11px] p-1"
+          style={{ border: `1px solid ${TONE.border}`, background: TONE.well }}
+        >
           {lenses.map((l, i) => {
             const on = i === compiledIdx;
             return (
@@ -292,11 +308,17 @@ function ArmCard({
                   setCustom("");
                   setLensIdx(i);
                 }}
-                className="rounded-lg px-3 py-1.5 text-[14px] transition-colors"
+                className="flex-1 rounded-[8px] py-1.5 text-[13px] transition-colors"
                 style={{
-                  border: `1px solid ${on ? "rgba(255,255,255,.18)" : TONE.hair}`,
                   background: on ? TONE.cream : "transparent",
                   color: on ? "#1c1b19" : TONE.dim,
+                  fontWeight: on ? 600 : 400,
+                }}
+                onMouseEnter={(e) => {
+                  if (!on) e.currentTarget.style.color = TONE.cream;
+                }}
+                onMouseLeave={(e) => {
+                  if (!on) e.currentTarget.style.color = TONE.dim;
                 }}
               >
                 {l.label}
@@ -304,30 +326,43 @@ function ArmCard({
             );
           })}
         </div>
-        {/* selected lens spelled out as the question, + custom-compile */}
-        <div className="mt-2.5 text-[13px]" style={{ color: TONE.faint }}>
-          Would they <span style={{ color: TONE.dim }}>{activeLens.gloss}</span>?
+
+        {/* the active lens, spelled out — the measured question + its funnel stage */}
+        <div className="mt-3.5">
+          <div className="text-[15px] font-medium" style={{ color: TONE.cream }}>
+            Would they {activeLens.gloss}?
+          </div>
+          <div className="mt-1 text-[12.5px]" style={{ color: TONE.faint }}>
+            {activeLens.stage}
+          </div>
         </div>
+
+        {/* custom question — compiles VISIBLY to the nearest behavioural lens */}
         <input
           value={custom}
           onChange={(e) => setCustom(e.target.value)}
-          placeholder="or ask your own…"
-          className="mt-3 w-full rounded-[10px] px-3.5 py-2.5 text-[14px] outline-none transition-colors"
+          placeholder="or ask your own question…"
+          className="mt-3.5 w-full rounded-[10px] px-3.5 py-2.5 text-[14px] outline-none transition-colors placeholder:text-[rgba(236,231,222,0.38)]"
           style={{ border: `1px solid ${TONE.border}`, background: "#1a1a19", color: TONE.cream }}
           onFocus={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,.14)")}
           onBlur={(e) => (e.currentTarget.style.borderColor = TONE.border)}
         />
         {custom.trim() ? (
-          <div className="mt-2 font-mono text-[12px]" style={{ color: TONE.faint }}>
-            ↳ nearest lens · <span style={{ color: TONE.dim }}>would {activeLens.label.toLowerCase()}</span>
+          <div className="mt-2 font-mono text-[11.5px]" style={{ color: TONE.faint }}>
+            ↳ scored as the nearest lens · <span style={{ color: TONE.dim }}>would {activeLens.label.toLowerCase()}</span>
           </div>
         ) : null}
       </div>
 
-      {/* THE SLICE — who, and how many */}
-      <div className="mt-6 px-[26px]">
-        <Kick>The slice</Kick>
-        <div className="mt-1.5 flex items-center justify-between">
+      {/* THE SLICE — who in the room we screen, and how many minds that is */}
+      <div className="mt-7 px-[26px]">
+        <div className="flex items-baseline justify-between">
+          <Kick>The slice</Kick>
+          <span className="text-[11.5px]" style={{ color: TONE.faint }}>
+            who we put it in front of
+          </span>
+        </div>
+        <div className="mt-3 flex items-center justify-between">
           <span className="text-[15px] font-medium" style={{ color: TONE.cream }}>
             Who are we asking?
           </span>
@@ -345,13 +380,28 @@ function ArmCard({
             onSelect={(k) => setSegIdx(Number(k))}
           />
         </div>
-        <div className="mt-2 text-[13px]" style={{ color: TONE.faint }}>
-          {withCommas(n)} simulated minds{seg.share < 1 ? ` · the ${seg.label.toLowerCase()} slice` : " · the whole room"}
+        {/* headcount + how much of the room it is, with a slim share bar */}
+        <div className="mt-3 flex items-baseline gap-2 text-[13px]" style={{ color: TONE.faint }}>
+          <span className="tabular-nums text-[15px] font-medium" style={{ color: TONE.cream }}>
+            {withCommas(n)}
+          </span>
+          <span>
+            minds ·{" "}
+            {seg.share < 1
+              ? `the ${seg.label.toLowerCase()} slice · ${Math.round(seg.share * 100)}% of the room`
+              : "the whole room"}
+          </span>
+        </div>
+        <div className="relative mt-2.5 h-[3px] overflow-hidden rounded-full" style={{ background: TONE.ghost }}>
+          <span
+            className="absolute inset-0 block origin-left rounded-full transition-transform"
+            style={{ transform: `scaleX(${seg.share})`, background: "rgba(236,231,222,.5)" }}
+          />
         </div>
       </div>
 
       {/* inherited thread context — quiet receipt, tap-to-override scene; projection tag if it drifts */}
-      <div className="mt-6 px-[26px]">
+      <div className="mt-7 px-[26px]">
         <div className="flex items-center justify-between border-t pt-4" style={{ borderColor: TONE.border }}>
           <span className="text-[13px]" style={{ color: TONE.faint }}>
             in <span style={{ color: TONE.dim }}>{room}</span> · as
@@ -371,11 +421,15 @@ function ArmCard({
       </div>
 
       {/* footer — the spend moment: the assembling receipt + arm + fidelity override */}
-      <div className="mt-6 border-t px-[26px] py-[18px]" style={{ borderColor: TONE.border }}>
-        <div className="text-[12px] leading-[1.5]" style={{ color: TONE.faint }}>
-          {receipt}
+      <div className="mt-7 border-t px-[26px] py-[18px]" style={{ borderColor: TONE.border }}>
+        <div className="text-[12px] leading-[1.6]" style={{ color: TONE.faint }}>
+          Screening{" "}
+          <span className="tabular-nums" style={{ color: TONE.dim }}>{withCommas(n)}</span> of{" "}
+          <span style={{ color: TONE.dim }}>{room}</span> for{" "}
+          <span style={{ color: TONE.dim }}>“would they {activeLens.label.toLowerCase()}”</span> · on{" "}
+          <span style={{ color: TONE.dim }}>{scene}</span> · SIM-1 {TIER_LABEL[fidelity]}
         </div>
-        <div className="mt-3 flex items-center justify-between">
+        <div className="mt-3.5 flex items-center justify-between">
           <button
             type="button"
             onClick={() =>
@@ -388,10 +442,8 @@ function ArmCard({
                 fidelity,
               })
             }
-            className="flex items-center gap-2 rounded-full px-4 py-2 text-[14px] font-medium transition-opacity"
+            className="flex items-center gap-2 rounded-full px-5 py-2.5 text-[14px] font-medium transition-transform hover:scale-[1.02]"
             style={{ background: TONE.cream, color: "#1c1b19" }}
-            onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
-            onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
           >
             Simulate <span aria-hidden>↑</span>
           </button>

@@ -78,6 +78,66 @@ function IntakeGlyph({ family }: { family: IntakeOption["family"] }) {
   );
 }
 
+/** The three intake families, in order — each a small verb the user is choosing between. */
+const FAMILY_ORDER: { key: IntakeOption["family"]; label: string; hint: string }[] = [
+  { key: "screen", label: "Screen", hint: "put a real thing in front of the room" },
+  { key: "compare", label: "Compare", hint: "run variants side by side" },
+  { key: "query", label: "Query", hint: "ask the room directly" },
+];
+
+function IntakeTile({ opt, index, onPick }: { opt: IntakeOption; index: number; onPick: (o: IntakeOption) => void }) {
+  const active = opt.status === "active";
+  return (
+    <button
+      type="button"
+      disabled={!active}
+      onClick={() => active && onPick(opt)}
+      style={{ animationDelay: `${0.05 + index * 0.04}s`, cursor: active ? "pointer" : "default" }}
+      className={`group ambient-row-in flex w-full items-center gap-3 rounded-[12px] border p-3 text-left transition-colors ${
+        active
+          ? "border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)] hover:border-[rgba(255,255,255,0.13)] hover:bg-[rgba(255,255,255,0.045)]"
+          : "border-[rgba(255,255,255,0.05)] bg-transparent opacity-55"
+      }`}
+    >
+      <span
+        className={`flex h-9 w-9 flex-none items-center justify-center rounded-[10px] border border-[rgba(255,255,255,0.08)] bg-[#2a2a28] transition-colors ${
+          active ? "text-[rgba(236,231,222,0.5)] group-hover:text-[#ece7de]" : "text-[rgba(236,231,222,0.3)]"
+        }`}
+      >
+        <IntakeGlyph family={opt.family} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span
+          className={`block text-[14px] font-medium leading-tight transition-colors ${
+            active ? "text-[rgba(236,231,222,0.82)] group-hover:text-[#ece7de]" : "text-[rgba(236,231,222,0.55)]"
+          }`}
+        >
+          {opt.label}
+        </span>
+        <span className="mt-0.5 block text-[11.5px] leading-tight" style={{ color: TONE.faint }}>
+          {opt.sub}
+        </span>
+      </span>
+      {active ? (
+        <span
+          className="flex h-7 w-7 flex-none items-center justify-center rounded-full text-[13px] transition-all group-hover:translate-x-0.5"
+          style={{ color: TONE.faint }}
+          aria-hidden
+        >
+          →
+        </span>
+      ) : (
+        <span
+          className="flex-none rounded-md px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.06em]"
+          style={{ background: "rgba(255,255,255,.05)", color: TONE.faint }}
+        >
+          soon
+        </span>
+      )}
+    </button>
+  );
+}
+
 export function IntakeStep({
   data,
   onClose,
@@ -87,8 +147,9 @@ export function IntakeStep({
   onClose?: () => void;
   onPick: (opt: IntakeOption) => void;
 }) {
+  let flat = 0; // running index → the entrance stagger reads across the whole set
   return (
-    <div data-testid="ambient-simulate" data-phase="intake" className="flex w-full max-w-[460px] flex-col rounded-[16px]" style={SHEET_STYLE}>
+    <div data-testid="ambient-simulate" data-phase="intake" className="ambient-row-in flex w-full max-w-[460px] flex-col rounded-[16px]" style={SHEET_STYLE}>
       <div className="px-[26px] pt-[24px]">
         <div className="flex items-start justify-between">
           <Kick>Test against your audience</Kick>
@@ -102,41 +163,26 @@ export function IntakeStep({
         </div>
       </div>
 
-      <div className="mt-4 px-[16px] pb-[18px]">
-        {data.intake.map((opt) => {
-          const active = opt.status === "active";
+      <div className="mt-5 flex flex-col gap-5 px-[22px] pb-[20px]">
+        {FAMILY_ORDER.map(({ key, label, hint }) => {
+          const opts = data.intake.filter((o) => o.family === key);
+          if (opts.length === 0) return null;
           return (
-            <button
-              key={opt.kind}
-              type="button"
-              disabled={!active}
-              onClick={() => active && onPick(opt)}
-              className="flex w-full items-center gap-3 rounded-[12px] px-[10px] py-3 text-left transition-colors"
-              style={{ cursor: active ? "pointer" : "default", opacity: active ? 1 : 0.5 }}
-              onMouseEnter={(e) => active && (e.currentTarget.style.background = TONE.well)}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-            >
-              <span className="flex-none" style={{ color: active ? TONE.dim : TONE.faint }}>
-                <IntakeGlyph family={opt.family} />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-[14px] font-medium" style={{ color: active ? TONE.cream : TONE.dim }}>
-                  {opt.label}
+            <div key={key}>
+              <div className="flex items-baseline justify-between px-1">
+                <span className="font-mono text-[11px] uppercase tracking-[0.09em]" style={{ color: TONE.faint }}>
+                  {label}
                 </span>
-                <span className="mt-0.5 block text-[12px]" style={{ color: TONE.faint }}>
-                  {opt.sub}
+                <span className="text-[11px]" style={{ color: TONE.faint }}>
+                  {hint}
                 </span>
-              </span>
-              {active ? (
-                <span className="flex-none text-[15px]" style={{ color: TONE.faint }} aria-hidden>
-                  →
-                </span>
-              ) : (
-                <span className="flex-none rounded-md px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.06em]" style={{ background: "rgba(255,255,255,.05)", color: TONE.faint }}>
-                  soon
-                </span>
-              )}
-            </button>
+              </div>
+              <div className="mt-2 flex flex-col gap-2">
+                {opts.map((opt) => (
+                  <IntakeTile key={opt.kind} opt={opt} index={flat++} onPick={onPick} />
+                ))}
+              </div>
+            </div>
           );
         })}
       </div>
