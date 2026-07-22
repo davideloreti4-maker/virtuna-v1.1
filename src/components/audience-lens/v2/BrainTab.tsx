@@ -92,7 +92,7 @@ function CortexFigure({
   return (
     <div
       className="relative overflow-hidden rounded-[14px]"
-      style={{ height: 208, border: `1px solid ${TONE.border}`, background: "#131210" }}
+      style={{ height: 270, border: `1px solid ${TONE.border}`, background: "#131210" }}
     >
       <CortexCanvas seed={seed} bold={bold} t={t} reducedMotion={reducedMotion} />
       <Corner where="tl">Predicted cortex</Corner>
@@ -114,14 +114,25 @@ function AttentionScrubber({
   data,
   synthesis,
   reducedMotion,
+  flashMoment = null,
 }: {
   data: AttentionData;
   synthesis?: WhyThisSecond;
   reducedMotion: boolean;
+  flashMoment?: string | null;
 }) {
   const { points, transcript, peakWordIndex, moments } = data;
   const words = useMemo(() => transcript.split(" "), [transcript]);
   const n = points.length;
+
+  // Cross-tab thread target — the moment chip whose time token matches the flashed moment.
+  const flashT = flashMoment ? flashMoment.split(" ")[0] : null;
+  const flashRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (flashT && flashRef.current) {
+      flashRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [flashT]);
 
   const px = (i: number) => CPAD + (i / (n - 1)) * (CW - 2 * CPAD);
   const py = (v: number) => CH - CPAD - (v / 80) * (CH - 2 * CPAD);
@@ -171,9 +182,7 @@ function AttentionScrubber({
 
   return (
     <div className="mt-8">
-      <Kick>Where they drop</Kick>
-
-      <div className="mt-4 flex items-start gap-3">
+      <div className="flex items-start gap-3">
         <span
           className="mt-0.5 flex h-8 w-8 flex-none items-center justify-center rounded-full text-[11px]"
           style={{ border: `1px solid ${TONE.hair}`, background: TONE.well, color: TONE.dim }}
@@ -210,21 +219,30 @@ function AttentionScrubber({
       </div>
 
       <div className="mt-3 flex gap-2">
-        {moments.map((m) => (
-          <button
-            key={m.t}
-            type="button"
-            className="rounded-lg px-2.5 py-[5px] font-mono text-[12px] tracking-[0.04em] transition-colors"
-            style={{ border: `1px solid ${TONE.hair}`, color: TONE.dim }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = TONE.cream)}
-            onMouseLeave={(e) => (e.currentTarget.style.color = TONE.dim)}
-          >
-            {m.t}
-            <b className="ml-1.5 font-medium" style={{ color: m.dip ? TONE.coral : TONE.cream }}>
-              {m.v}
-            </b>
-          </button>
-        ))}
+        {moments.map((m) => {
+          const flashed = flashT != null && m.t === flashT;
+          return (
+            <button
+              key={m.t}
+              ref={flashed ? flashRef : undefined}
+              type="button"
+              className="rounded-lg px-2.5 py-[5px] font-mono text-[12px] tracking-[0.04em]"
+              style={{
+                border: `1px solid ${flashed ? TONE.coral : TONE.hair}`,
+                color: flashed ? TONE.cream : TONE.dim,
+                boxShadow: flashed ? `0 0 0 3px rgba(255,99,99,.18)` : "none",
+                transition: "border-color .35s, color .35s, box-shadow .35s",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = TONE.cream)}
+              onMouseLeave={(e) => (e.currentTarget.style.color = flashed ? TONE.cream : TONE.dim)}
+            >
+              {m.t}
+              <b className="ml-1.5 font-medium" style={{ color: m.dip ? TONE.coral : TONE.cream }}>
+                {m.v}
+              </b>
+            </button>
+          );
+        })}
       </div>
 
       {/* the plain-language read sits ON the moment (merged from the old WHY-THIS-SECOND section) —
@@ -251,7 +269,7 @@ function AttentionScrubber({
 function SignalRows({ signals, baseline }: { signals: SignalRow[]; baseline?: string }) {
   return (
     <div className="mt-8">
-      <Kick>Breakdown{baseline ? ` · ${baseline}` : ""}</Kick>
+      <Kick>{baseline ?? "breakdown"}</Kick>
       <div className="mt-1.5">
         {signals.map((s, i) => {
           const down = s.vsBase != null && s.vsBase < 0;
@@ -370,14 +388,16 @@ function BrainDriverSlot({
   driver,
   synthesis,
   reducedMotion,
+  flashMoment = null,
 }: {
   driver: BrainDriver;
   synthesis?: WhyThisSecond;
   reducedMotion: boolean;
+  flashMoment?: string | null;
 }) {
   switch (driver.kind) {
     case "attention-scrubber":
-      return <AttentionScrubber data={driver.data} synthesis={synthesis} reducedMotion={reducedMotion} />;
+      return <AttentionScrubber data={driver.data} synthesis={synthesis} reducedMotion={reducedMotion} flashMoment={flashMoment} />;
     case "resistance-curve":
       return <ResistanceCurve data={driver.data} />;
   }
@@ -394,17 +414,21 @@ export function BrainFrame({
   verdict,
   unlock,
   reducedMotion = false,
+  flashMoment = null,
 }: {
   brain: BrainFrameData;
   verdict: DomainTemplate["verdict"];
   unlock?: DomainTemplate["unlock"];
   reducedMotion?: boolean;
+  /** Cross-tab thread — when the audience tab jumps here, the matching moment ("0:04 · the drop")
+   *  flashes and scrolls into view, so you land on the mechanism behind the coded reason. */
+  flashMoment?: string | null;
 }) {
   return (
     <div>
       <BrainHero brain={brain} verdict={verdict} reducedMotion={reducedMotion} />
       {/* retention line sits right UNDER the brain — same clip, one unit (owner mark) */}
-      <BrainDriverSlot driver={brain.driver} synthesis={brain.whyThisSecond} reducedMotion={reducedMotion} />
+      <BrainDriverSlot driver={brain.driver} synthesis={brain.whyThisSecond} reducedMotion={reducedMotion} flashMoment={flashMoment} />
       <SignalRows signals={brain.signals} baseline={brain.signalsBaseline} />
       {/* THE UNLOCK closes the tab — the fix you take away, after you've seen why */}
       {unlock ? <Unlock unlock={unlock} /> : null}
