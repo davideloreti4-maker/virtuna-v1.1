@@ -187,6 +187,42 @@ describe("runHooksPipeline (runner — S3′ generate-rate-rank)", () => {
     }
   });
 
+  it("wires visualHook: a well-formed {technique,onScreen} flows to the card; null/absent stays spoken-only (owner 2026-07-22)", async () => {
+    const { getQwenClient } = await import("@/lib/engine/qwen/client");
+    const { runFlashTextModeBatch } = await import("@/lib/engine/flash/run-flash-text-mode");
+
+    const response = makeStructuredHookResponse(3);
+    // Hook 0 opens with a real first-frame technique; hook 1 is purely spoken (null).
+    (response.hooks[0]! as Record<string, unknown>).visualHook = {
+      technique: "crash-zoom",
+      onScreen: "Deadpan face, no text",
+    };
+    (response.hooks[1]! as Record<string, unknown>).visualHook = null;
+
+    const mockCreate = vi.fn().mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify(response) } }],
+    });
+    (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue({
+      chat: { completions: { create: mockCreate } },
+    });
+    (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mockImplementation(
+      (candidates: { id: string; text: string }[]) =>
+        Promise.resolve(makeBatchResult(candidates, makePersonasMixed())),
+    );
+
+    const { runHooksPipeline } = await import("@/lib/tools/runners/hooks-runner");
+    const result = await runHooksPipeline({ ask: "hooks", platform: "tiktok", profileRow: null });
+
+    const withVisual = result.blocks.find(
+      (b) => b.props.hookLine === response.hooks[0]!.hookLine,
+    );
+    const spokenOnly = result.blocks.find(
+      (b) => b.props.hookLine === response.hooks[1]!.hookLine,
+    );
+    expect(withVisual!.props.visualHook).toEqual({ technique: "crash-zoom", onScreen: "Deadpan face, no text" });
+    expect(spokenOnly!.props.visualHook).toBeUndefined();
+  });
+
   it("runFlashTextModeBatch receives 'hook' framing, correct panel, and candidate ids '0','1',... (HOOKS-02)", async () => {
     const { getQwenClient } = await import("@/lib/engine/qwen/client");
     const { runFlashTextModeBatch } = await import("@/lib/engine/flash/run-flash-text-mode");

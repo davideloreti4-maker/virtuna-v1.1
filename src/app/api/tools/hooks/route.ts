@@ -251,6 +251,7 @@ export async function POST(request: Request): Promise<Response> {
               scrollQuote: b.props.scrollQuote,             // D-02/D-04: on the face
               model: b.props.model,
               channel: b.props.channel,
+              visualHook: b.props.visualHook,               // owner 2026-07-22: first-frame visual rides the FACE (else reload-only, per proof/target hazard below)
               personas: b.props.personas,                   // S3′: real per-persona reactions → named ambient Room cast (Task B)
               proof: b.props.proof,                         // §11f: receipt streams WITH the face (was dropped → receipts only appeared after reload)
               target: b.props.target,                       // per-persona generation: WHO this hook was written for + how they reacted

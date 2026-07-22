@@ -106,13 +106,26 @@ function isGroundingAdaptEnabled(): boolean {
  * D-02: ONE script (beats+timing+retention), no array of scripts.
  * openingBeatSeed = the first-2s opener hook — fed to the Flash gate (D-01).
  */
+/**
+ * READY-TO-FILM fields (owner 2026-07-22) — shared across all three script output contracts (base,
+ * grounded, targeted) so the per-beat `filming` cue + card-level topic/format + the consolidated
+ * "How to film" production block are requested identically everywhere. Injected via interpolation so
+ * a change lands once, not three times. Every field is OPTIONAL: the parser tolerates absence and
+ * the card omits what the model does not return (back-compat — a run that emits none renders exactly
+ * as it did before wiring). Honesty: cues describe HOW to shoot what the beats already say, never
+ * invented gear/shots.
+ */
+const FILMING_BEAT_FIELD = `, "filming": string`;
+const FILMING_CARD_FIELDS = `, "topic": string, "format": string, "production": { "shots": string, "onScreenText": string, "setup": string, "edit": string }`;
+const FILMING_RULES = ` "filming" is a one-line DIRECTOR CUE for HOW to shoot the beat — camera/framing · b-roll or on-screen text · delivery — distinct from "content" (what to say) and "retentionMarker" (why it holds). "topic" is the subject in a few words; "format" is the video format (e.g. "Talking-head", "Voiceover + b-roll", "Screen-record"). "production" is the consolidated shoot plan for the WHOLE script: "shots" (the shot list), "onScreenText" (key text overlays), "setup" (gear / lighting / framing), "edit" (edit style, optional). Ground every cue in what the script actually needs — never invent gear or shots the beats do not call for.`;
+
 const SCRIPT_OUTPUT_CONTRACT = `
 
 ---
 
 OUTPUT FORMAT: Respond with a single JSON object — no markdown, no code fences, no prose.
-Shape: { "beats": [ { "label": string, "content": string, "timing": string, "retentionMarker": string } ], "openingBeatSeed": string }
-Return exactly ONE script object. "beats" is an ordered array (Hook → Setup → Turn → Payoff → CTA). Each beat field is required and non-empty. "timing" is the time window (e.g. "0–3s", "3–15s"). "retentionMarker" is plain-prose craft reasoning explaining WHY this beat holds attention — NEVER a numeric score. "openingBeatSeed" is the verbatim first-2s opening line fed to audience simulation — must equal the "content" of the first beat.`;
+Shape: { "beats": [ { "label": string, "content": string, "timing": string, "retentionMarker": string${FILMING_BEAT_FIELD} } ], "openingBeatSeed": string${FILMING_CARD_FIELDS} }
+Return exactly ONE script object. "beats" is an ordered array (Hook → Setup → Turn → Payoff → CTA). Each beat field is required and non-empty. "timing" is the time window (e.g. "0–3s", "3–15s"). "retentionMarker" is plain-prose craft reasoning explaining WHY this beat holds attention — NEVER a numeric score. "openingBeatSeed" is the verbatim first-2s opening line fed to audience simulation — must equal the "content" of the first beat.${FILMING_RULES}`;
 
 /**
  * Grounded output contract (§11f fan-out — mirrors HOOKS_OUTPUT_CONTRACT_GROUNDED). Used ONLY
@@ -127,8 +140,8 @@ const SCRIPT_OUTPUT_CONTRACT_GROUNDED = `
 ---
 
 OUTPUT FORMAT: Respond with a single JSON object — no markdown, no code fences, no prose.
-Shape: { "beats": [ { "label": string, "content": string, "timing": string, "retentionMarker": string } ], "openingBeatSeed": string, "sourceIndex": number }
-Return exactly ONE script object. "beats" is an ordered array (Hook → Setup → Turn → Payoff → CTA). Each beat field is required and non-empty. "timing" is the time window (e.g. "0–3s", "3–15s"). "retentionMarker" is plain-prose craft reasoning explaining WHY this beat holds attention — NEVER a numeric score. "openingBeatSeed" is the verbatim first-2s opening line fed to audience simulation — must equal the "content" of the first beat. "sourceIndex" is the 1-based number of the GROUNDING example (from the numbered GROUNDING list in the prompt) whose proven STRUCTURE this script adapts, or 0 if it adapts no specific example — never cite a source you did not actually use (honesty).`;
+Shape: { "beats": [ { "label": string, "content": string, "timing": string, "retentionMarker": string${FILMING_BEAT_FIELD} } ], "openingBeatSeed": string, "sourceIndex": number${FILMING_CARD_FIELDS} }
+Return exactly ONE script object. "beats" is an ordered array (Hook → Setup → Turn → Payoff → CTA). Each beat field is required and non-empty. "timing" is the time window (e.g. "0–3s", "3–15s"). "retentionMarker" is plain-prose craft reasoning explaining WHY this beat holds attention — NEVER a numeric score. "openingBeatSeed" is the verbatim first-2s opening line fed to audience simulation — must equal the "content" of the first beat. "sourceIndex" is the 1-based number of the GROUNDING example (from the numbered GROUNDING list in the prompt) whose proven STRUCTURE this script adapts, or 0 if it adapts no specific example — never cite a source you did not actually use (honesty).${FILMING_RULES}`;
 
 /**
  * PER-PERSONA GENERATION (fan-out from hooks #299) — the craft half of the assignment.
@@ -179,8 +192,8 @@ function targetedOutputContract(grounded: boolean): string {
 ---
 
 OUTPUT FORMAT: Respond with a single JSON object — no markdown, no code fences, no prose.
-Shape: { "beats": [ { "label": string, "content": string, "timing": string, "retentionMarker": string } ], "openingBeatSeed": string, "targetArchetype": string${groundedField} }
-Return exactly ONE script object. "beats" is an ordered array (Hook → Setup → Turn → Payoff → CTA). Each beat field is required and non-empty. "timing" is the time window (e.g. "0–3s", "3–15s"). "retentionMarker" is plain-prose craft reasoning explaining WHY this beat holds attention — NEVER a numeric score. "openingBeatSeed" is the verbatim first-2s opening line fed to audience simulation — must equal the "content" of the first beat. "targetArchetype" is the bare slug of the person this script was written for.${groundedRule}`;
+Shape: { "beats": [ { "label": string, "content": string, "timing": string, "retentionMarker": string${FILMING_BEAT_FIELD} } ], "openingBeatSeed": string, "targetArchetype": string${groundedField}${FILMING_CARD_FIELDS} }
+Return exactly ONE script object. "beats" is an ordered array (Hook → Setup → Turn → Payoff → CTA). Each beat field is required and non-empty. "timing" is the time window (e.g. "0–3s", "3–15s"). "retentionMarker" is plain-prose craft reasoning explaining WHY this beat holds attention — NEVER a numeric score. "openingBeatSeed" is the verbatim first-2s opening line fed to audience simulation — must equal the "content" of the first beat. "targetArchetype" is the bare slug of the person this script was written for.${groundedRule}${FILMING_RULES}`;
 }
 
 // ─── Input type ───────────────────────────────────────────────────────────────
@@ -254,11 +267,29 @@ interface StructuredBeat {
   content: string;
   timing: string;
   retentionMarker: string;
+  /** Per-beat director cue — HOW to shoot the beat. OPTIONAL (owner 2026-07-22): back-compat. */
+  filming?: string;
+}
+
+/** The consolidated "How to film" shoot plan (owner 2026-07-22). All three of shots/onScreenText/
+ * setup are required together (schema); edit is optional. */
+interface StructuredProduction {
+  shots: string;
+  onScreenText: string;
+  setup: string;
+  edit?: string;
 }
 
 interface StructuredScript {
   beats: StructuredBeat[];
   openingBeatSeed: string;
+  /** The subject + video format meta line (owner 2026-07-22). OPTIONAL → omitted when the model
+   * returns neither (back-compat). */
+  topic?: string;
+  format?: string;
+  /** The card-foot shoot plan (owner 2026-07-22). OPTIONAL → omitted unless the model returns a
+   * well-formed block (all of shots/onScreenText/setup non-empty). */
+  production?: StructuredProduction;
   /**
    * 1-based grounding-example index this script adapted (0 = none). Only ever non-zero on a
    * grounded run (the grounded contract requests it); ungrounded runs default it to 0. Drives
@@ -361,6 +392,10 @@ async function generateScriptStructured(
       content: b.content,
       timing: b.timing,
       retentionMarker: b.retentionMarker,
+      // Per-beat filming cue — carried through only when the model returned a non-empty one.
+      ...(typeof b.filming === "string" && b.filming.trim().length > 0
+        ? { filming: b.filming }
+        : {}),
     });
   }
 
@@ -374,16 +409,46 @@ async function generateScriptStructured(
 
   if (!openingBeatSeed) return null;
 
+  // Ready-to-film card-level fields (owner 2026-07-22) — each tolerated as absent so a run that
+  // returns none renders byte-identically to pre-wiring. topic/format are bare strings; production
+  // is included only when the whole required trio (shots/onScreenText/setup) came back non-empty.
+  const topic =
+    typeof obj.topic === "string" && obj.topic.trim().length > 0 ? obj.topic : undefined;
+  const format =
+    typeof obj.format === "string" && obj.format.trim().length > 0 ? obj.format : undefined;
+  const production = coerceProduction(obj.production);
+
   // Attribution index (grounded runs only) — missing/malformed → 0 (no source) so an
   // ungrounded or sloppy response never fabricates one (§11f honesty spine).
   return {
     beats,
     openingBeatSeed,
+    ...(topic ? { topic } : {}),
+    ...(format ? { format } : {}),
+    ...(production ? { production } : {}),
     sourceIndex: coerceSourceIndex(obj.sourceIndex),
     // Whom the model SAYS it wrote this for. Not trusted yet — validated against the assignment
     // below, because a slug we never assigned is not a person we can name.
     targetArchetype: normalizeTargetArchetype(obj.targetArchetype),
   };
+}
+
+/**
+ * Coerce a raw `production` value into a StructuredProduction, or undefined. The card schema
+ * requires shots + onScreenText + setup together, so a partial block (model gave only "shots") is
+ * dropped whole rather than shipped half-formed. `edit` is optional. Never fabricates a field.
+ */
+function coerceProduction(raw: unknown): StructuredProduction | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const p = raw as Record<string, unknown>;
+  const str = (v: unknown): string | undefined =>
+    typeof v === "string" && v.trim().length > 0 ? v : undefined;
+  const shots = str(p.shots);
+  const onScreenText = str(p.onScreenText);
+  const setup = str(p.setup);
+  if (!shots || !onScreenText || !setup) return undefined;
+  const edit = str(p.edit);
+  return { shots, onScreenText, setup, ...(edit ? { edit } : {}) };
 }
 
 // ─── Lead scroll-quote selector (mirrors hooks-runner) ────────────────────────
@@ -600,6 +665,8 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
   const blockData = {
     type: "script-card" as const,
     props: {
+      // beats carry their per-beat `filming` cue through directly — the schema allows it optional,
+      // and generateScriptStructured only attaches it when the model returned a non-empty one.
       beats: script.beats,
       openingBeatSeed: script.openingBeatSeed,
       band,
@@ -607,6 +674,11 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
       scrollQuote,
       model: "sim1-flash" as const,
       personas, // S3′: opener reaction for the ambient modal (PR-2)
+      // Ready-to-film (owner 2026-07-22) — each omitted when the model returned it empty, so an
+      // ungrounded/uncooperative run keeps the exact pre-wiring block shape (regression-safe).
+      ...(script.topic ? { topic: script.topic } : {}),
+      ...(script.format ? { format: script.format } : {}),
+      ...(script.production ? { production: script.production } : {}),
       ...(proof ? { proof } : {}),  // §11f — only when a real source was attributed
       // Did the RUN earn a grounding claim, regardless of what the script cited? Set from the
       // shared WARRANT (warrant.ts), NOT from `proof` — a grounded run where the model attributed

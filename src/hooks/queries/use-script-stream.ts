@@ -32,6 +32,25 @@ import { parseProofProp, parseGroundedProp, parsePopulationProp } from '@/lib/to
 import type { StageState } from '@/components/thread/progress-checklist';
 import type { IntentLens } from '@/lib/audience/intent-lens';
 
+/**
+ * Parse a raw `production` prop off the SSE face into a validated shoot-plan, or undefined. Mirrors
+ * the runner's coercion: shots+onScreenText+setup are required together (a partial block is dropped
+ * whole, never rendered half-formed); edit is optional. Keeps the live stream honest — no fabricated
+ * shoot plan appears from a malformed payload.
+ */
+function parseProductionProp(raw: unknown): ScriptCardBlock['props']['production'] {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const p = raw as Record<string, unknown>;
+  const str = (v: unknown): string | undefined =>
+    typeof v === 'string' && v.trim().length > 0 ? v : undefined;
+  const shots = str(p.shots);
+  const onScreenText = str(p.onScreenText);
+  const setup = str(p.setup);
+  if (!shots || !onScreenText || !setup) return undefined;
+  const edit = str(p.edit);
+  return { shots, onScreenText, setup, ...(edit ? { edit } : {}) };
+}
+
 // ── Partial script card (band/fraction absent until score event) ───────────────
 
 export interface PartialScriptCard {
@@ -55,6 +74,11 @@ export interface PartialScriptCard {
   // Sheet. undefined on General/uncalibrated/uncharacterized runs. Same reload-only hazard as
   // proof: declared + parsed + carried through toBlocks so it renders live, not only after reload.
   population?: PopulationAggregateBlock;
+  // READY TO FILM (owner 2026-07-22): topic·format meta line + the "How to film" production block.
+  // Same reload-only hazard as proof — declared + carried through toBlocks so they render live.
+  topic?: string;
+  format?: string;
+  production?: ScriptCardBlock['props']['production'];
 }
 
 export interface UseScriptStreamReturn {
@@ -278,13 +302,19 @@ export function useScriptStream(): UseScriptStreamReturn {
                 const block = b as Record<string, unknown>;
                 const props = (block.props ?? {}) as Record<string, unknown>;
                 const beats = Array.isArray(props.beats)
-                  ? (props.beats as Array<{ label?: unknown; content?: unknown; timing?: unknown; retentionMarker?: unknown }>).map((beat) => ({
+                  ? (props.beats as Array<{ label?: unknown; content?: unknown; timing?: unknown; retentionMarker?: unknown; filming?: unknown }>).map((beat) => ({
                       label: String(beat.label ?? ''),
                       content: String(beat.content ?? ''),
                       timing: String(beat.timing ?? ''),
                       retentionMarker: String(beat.retentionMarker ?? ''),
+                      // Per-beat filming cue (owner 2026-07-22) — carried live; omitted when absent
+                      // so a beat with no director cue stays cue-less (honest-absent), not "".
+                      ...(typeof beat.filming === 'string' && beat.filming.trim().length > 0
+                        ? { filming: beat.filming }
+                        : {}),
                     }))
                   : [];
+                const production = parseProductionProp(props.production);
                 return {
                   beats,
                   openingBeatSeed: String(props.openingBeatSeed ?? ''),
@@ -297,6 +327,11 @@ export function useScriptStream(): UseScriptStreamReturn {
                   proof: parseProofProp(props.proof), // §11f: receipt arrives with the face
                   grounded: parseGroundedProp(props.grounded), // run had sources, even if this card cited none
                   population: parsePopulationProp(props.population), // Sim v2: opener projection → Population·1,000 Sheet
+                  // Ready-to-film card-level fields (owner 2026-07-22) — carried live off the face,
+                  // else they'd render only after a reload from the persisted block. Omitted when absent.
+                  ...(typeof props.topic === 'string' && props.topic.trim() ? { topic: props.topic } : {}),
+                  ...(typeof props.format === 'string' && props.format.trim() ? { format: props.format } : {}),
+                  ...(production ? { production } : {}),
                 };
               })
               .filter((c: PartialScriptCard) => c.beats.length > 0);
@@ -368,6 +403,11 @@ export function useScriptStream(): UseScriptStreamReturn {
         ...(c.grounded ? { grounded: true } : {}),
         // Sim v2 Stage 2 — the opener projection renders live in the Sheet, not just after reload.
         ...(c.population ? { population: c.population } : {}),
+        // Ready-to-film (owner 2026-07-22) — carried onto the live block so the topic·format meta +
+        // "How to film" block render in-flight, not only after a reload. Omitted when absent.
+        ...(c.topic ? { topic: c.topic } : {}),
+        ...(c.format ? { format: c.format } : {}),
+        ...(c.production ? { production: c.production } : {}),
       },
     }));
   }, [streamingCards]);

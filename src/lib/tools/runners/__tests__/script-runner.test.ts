@@ -196,6 +196,71 @@ describe("runScriptPipeline (runner)", () => {
     }
   });
 
+  it("wires ready-to-film fields: per-beat filming + topic/format + production flow to the card (owner 2026-07-22)", async () => {
+    const { getQwenClient } = await import("@/lib/engine/qwen/client");
+    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+
+    // A response that carries the new optional fields — the shape a wired live run now returns.
+    const response = {
+      ...makeScriptResponse(),
+      topic: "Consistency systems",
+      format: "Talking-head",
+      production: {
+        shots: "Static talking-head, one b-roll insert of a habit tracker",
+        onScreenText: "'90% quit' stat card at 0s",
+        setup: "Phone on tripod, window light",
+        edit: "Hard cuts on each beat",
+      },
+    };
+    (response.beats[0]! as Record<string, unknown>).filming = "Crash-zoom on face, deadpan delivery";
+
+    const mockCreate = vi.fn().mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify(response) } }],
+    });
+    (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue({
+      chat: { completions: { create: mockCreate } },
+    });
+    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
+      result: { personas: makePersonasMixed() },
+      warnings: [],
+    });
+
+    const { runScriptPipeline } = await import("@/lib/tools/runners/script-runner");
+    const result = await runScriptPipeline({ ask: "Write a script", platform: "tiktok", profileRow: null });
+
+    const card = result.blocks[0] as ScriptCardBlock;
+    expect(card.props.topic).toBe("Consistency systems");
+    expect(card.props.format).toBe("Talking-head");
+    expect(card.props.production).toEqual(response.production);
+    expect(card.props.beats[0]!.filming).toBe("Crash-zoom on face, deadpan delivery");
+    // A beat the model gave no cue for stays cue-less (honest-absent, not a fabricated cue).
+    expect(card.props.beats[1]!.filming).toBeUndefined();
+  });
+
+  it("drops a partial production block whole rather than shipping it half-formed (honesty)", async () => {
+    const { getQwenClient } = await import("@/lib/engine/qwen/client");
+    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+
+    // Model returned only "shots" — schema needs shots+onScreenText+setup together, so the whole
+    // block is dropped; the card omits production entirely (byte-identical to pre-wiring).
+    const response = { ...makeScriptResponse(), production: { shots: "Static talking-head" } };
+    const mockCreate = vi.fn().mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify(response) } }],
+    });
+    (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue({
+      chat: { completions: { create: mockCreate } },
+    });
+    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
+      result: { personas: makePersonasMixed() },
+      warnings: [],
+    });
+
+    const { runScriptPipeline } = await import("@/lib/tools/runners/script-runner");
+    const result = await runScriptPipeline({ ask: "Write a script", platform: "tiktok", profileRow: null });
+
+    expect((result.blocks[0] as ScriptCardBlock).props.production).toBeUndefined();
+  });
+
   it("band/fraction come from aggregateFlash of the opener SIM (Pitfall 5 opener-scoped honesty)", async () => {
     const { getQwenClient } = await import("@/lib/engine/qwen/client");
     const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");

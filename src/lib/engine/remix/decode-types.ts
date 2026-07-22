@@ -190,6 +190,17 @@ export interface AdaptConcept {
   who_its_for: string;
   /** The format pattern borrowed from the source (chip text, e.g. "open-loop cold open"). */
   format_borrowed: string;
+  /**
+   * READY TO FILM (owner 2026-07-22): the shoot plan for YOUR adapted version — how to execute the
+   * borrowed format for this angle. Mirrors the Script card's `production`. OPTIONAL → omitted when
+   * the model returns none (back-compat; the remix card's "How to film" block simply doesn't render).
+   */
+  production?: {
+    shots: string;
+    onScreenText: string;
+    setup: string;
+    edit?: string;
+  };
 }
 
 // =====================================================

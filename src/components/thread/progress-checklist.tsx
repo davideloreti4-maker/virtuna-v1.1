@@ -239,8 +239,7 @@ function StageRow({ stage, index, isLast }: StageRowProps) {
   }, [isActive, rotation.length]);
 
   const sub = isActive ? stage.detail ?? rotation[subIdx % rotation.length] ?? null : null;
-  // The connecting line below this node fills with progress: done → full, active → half.
-  const fill = status === 'done' ? '100%' : isActive ? '50%' : '0%';
+  const isDone = status === 'done';
 
   return (
     <div
@@ -248,15 +247,20 @@ function StageRow({ stage, index, isLast }: StageRowProps) {
       style={{ animationDelay: `${index * 0.06}s` }}
       aria-label={`${name}: ${status}`}
     >
-      {/* Rail — node + connecting spine line. */}
+      {/* Rail — node + connecting spine line. The line below this node reads its state:
+          done → a solid cream fill; active → a soft cream pulse traveling DOWN it (energy
+          flowing toward the next step); pending → the bare faint rail. */}
       <div className="flex flex-col items-center">
         <StageNode status={status} />
         {!isLast && (
           <div className="relative my-1 w-[2px] flex-1 min-h-[14px] overflow-hidden rounded-full bg-white/[0.06]">
-            <div
-              className="absolute inset-x-0 top-0 rounded-full transition-[height] duration-500 ease-[var(--ease-out-cubic)]"
-              style={{ height: fill, backgroundColor: 'var(--color-cream-secondary)' }}
-            />
+            {isDone && (
+              <div
+                className="absolute inset-0 rounded-full reading-reveal"
+                style={{ backgroundColor: 'var(--color-cream-secondary)' }}
+              />
+            )}
+            {isActive && <div className="spine-flow absolute inset-x-0 top-0 h-full rounded-full" />}
           </div>
         )}
       </div>

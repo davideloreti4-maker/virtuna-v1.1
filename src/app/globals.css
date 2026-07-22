@@ -471,6 +471,77 @@
   }
 }
 
+/* Progress spine (premium loading) — the ACTIVE connecting line is no longer a static half-fill:
+ * a soft cream pulse travels DOWN it, reading as energy flowing toward the next (pending) step —
+ * "working, moving forward". Matte + cream-toned (no coral, no glow). The pulse rides over the
+ * faint base rail already on the element. Reduced-motion falls back to a static top-half fill
+ * (the honest "in progress" cue the flow replaced) — guard below. */
+@keyframes spine-flow {
+  0% {
+    background-position: 0 -70%;
+    opacity: 0;
+  }
+  22% {
+    opacity: 1;
+  }
+  78% {
+    opacity: 1;
+  }
+  100% {
+    background-position: 0 170%;
+    opacity: 0;
+  }
+}
+.spine-flow {
+  background-image: linear-gradient(
+    180deg,
+    transparent 0%,
+    var(--color-cream-secondary) 50%,
+    transparent 100%
+  );
+  background-size: 100% 62%;
+  background-repeat: no-repeat;
+  animation: spine-flow 1.9s var(--ease-out-cubic) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .spine-flow {
+    animation: none;
+    background-image: linear-gradient(
+      180deg,
+      var(--color-cream-secondary) 0%,
+      var(--color-cream-secondary) 50%,
+      transparent 50%
+    );
+    opacity: 0.7;
+  }
+}
+
+/* Skeleton (premium loading) — the base placeholder surface. A single WARM, cream-tinted band
+ * glides slowly across a calm warm base, replacing the old bright clinical-white 2s sweep. The
+ * highlight is narrow + low-alpha (a focused glide, not a wide wash) and slow, so a screen full of
+ * skeletons breathes as one calm system rather than a strobing grid. Matte: cream tint, no glow.
+ * Reduced-motion → the flat warm base only (no sweep). Class-based so the reduced-motion guard
+ * actually wins (an inline `animation` style would override a Tailwind `motion-reduce:` class). */
+.skeleton-shimmer {
+  background-color: rgba(236, 231, 222, 0.04);
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    transparent 32%,
+    rgba(236, 231, 222, 0.085) 50%,
+    transparent 68%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-shimmer {
+    animation: none;
+    background-image: none;
+  }
+}
+
 /* ============================================
  * UTILITY CLASSES
  * ============================================ */
