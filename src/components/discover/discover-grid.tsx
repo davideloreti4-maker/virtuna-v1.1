@@ -49,6 +49,12 @@ interface DiscoverGridProps {
   trackedIds?: Set<string>;
   /** Re-runs the last pull (error Retry). */
   onRetry?: () => void;
+  /**
+   * Tile chrome variant, forwarded to every OutlierTile. `'grid'` (default) = the Discover-page
+   * cream primary; `'thread'` = the in-thread Explore card's quiet tonal primary (matches its
+   * sibling thread cards). See OutlierTile `variant`.
+   */
+  variant?: "grid" | "thread";
 }
 
 const GRID_CLASS =
@@ -87,6 +93,7 @@ export function DiscoverGrid({
   trackPendingId,
   trackedIds,
   onRetry,
+  variant = "grid",
 }: DiscoverGridProps) {
   // ── Loading — tile skeletons, NO fake progress % (slow Apify pull) ──────────
   if (state === "loading") {
@@ -142,6 +149,7 @@ export function DiscoverGrid({
         <OutlierTile
           key={tile.platformVideoId}
           tile={tile}
+          variant={variant}
           onRemix={onRemix}
           remixPending={remixPendingId === tile.platformVideoId}
           onTrack={onTrack}

@@ -38,6 +38,12 @@ interface OutlierGridBlockRendererProps {
   trackPendingId?: string | null;
   /** The set of already-tracked handles — drives each tile's "Tracking ✓" state. */
   trackedIds?: Set<string>;
+  /**
+   * Tile chrome variant. Defaults to `'thread'` here — this renderer only runs in-thread
+   * (ExploreThreadView), so its tiles wear the quiet tonal primary that matches the sibling
+   * thread cards. The Discover PAGE renders DiscoverGrid directly (cream), never this block.
+   */
+  variant?: "grid" | "thread";
 }
 
 export function OutlierGridBlockRenderer({
@@ -47,12 +53,14 @@ export function OutlierGridBlockRenderer({
   remixPendingId,
   trackPendingId,
   trackedIds,
+  variant = "thread",
 }: OutlierGridBlockRendererProps) {
   return (
     <DiscoverGrid
       state="results"
       tiles={block.props.tiles}
       sourceLabel={block.props.mode === "niche" ? "niche" : "handle"}
+      variant={variant}
       onRemix={onRemix}
       onTrack={onTrack}
       remixPendingId={remixPendingId}

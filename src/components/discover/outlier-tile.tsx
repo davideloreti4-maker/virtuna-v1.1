@@ -28,6 +28,7 @@
 
 import { Check, Eye, Heart, ChatCircle, ShareNetwork } from "@phosphor-icons/react";
 import { SaveAffordance } from "@/components/thread/save-affordance";
+import { CardPrimaryAction } from "@/components/thread/card-primitives";
 import { CoverFill } from "@/components/primitives/CoverFill";
 import { formatCount } from "@/lib/competitors-utils";
 import type { FitLevel } from "@/lib/discover/explore-rank";
@@ -113,6 +114,15 @@ interface OutlierTileProps {
   trackPending?: boolean;
   /** When true, the track button shows the persisted "Tracking ✓" state. */
   tracked?: boolean;
+  /**
+   * Chrome variant. `'grid'` (default) = the Discover/Feed grid look: the loud CREAM primary
+   * (`--color-action`). `'thread'` = the in-thread Explore card: the quiet MATTE TONAL
+   * `CardPrimaryAction`, so the tile matches its sibling thread cards (owner 2026-07-22 —
+   * "Explore seems off compared to the other cards' design language"). Deliberately scoped:
+   * the Discover PAGE keeps cream (that CTA was not part of the tonal restyle —
+   * docs/HANDOFF-2026-07-22-cards-ui.md), so the same tile renders correctly in both worlds.
+   */
+  variant?: "grid" | "thread";
 }
 
 export function OutlierTile({
@@ -122,9 +132,125 @@ export function OutlierTile({
   onTrack,
   trackPending = false,
   tracked = false,
+  variant = "grid",
 }: OutlierTileProps) {
   const duration = formatDuration(tile.durationSeconds);
   const CoverTag = tile.videoUrl ? "a" : "div";
+
+  // ── Thread variant: the DE-LOADED gallery tile ──────────────────────────────
+  // The in-thread Explore card renders 15–20 of these in one grid (owner 2026-07-22:
+  // "overloaded"). The Discover-page tile stacks ~11 elements each — a wall at that count.
+  // This variant lets the COVER carry the signal (multiplier + duration ride the thumbnail)
+  // and collapses the body to ONE meta line (fit · views · source) + a one-line caption +
+  // a single action row. Same data, a third of the vertical noise. The `grid` layout below
+  // is unchanged (Discover / Feed keep the dense tile).
+  if (variant === "thread") {
+    const fitColor = tile.fit ? FIT_BAR[tile.fit.level].color : undefined;
+    return (
+      <div className="flex flex-col gap-2">
+        <CoverTag
+          {...(tile.videoUrl
+            ? { href: tile.videoUrl, target: "_blank", rel: "noopener noreferrer" }
+            : {})}
+          className="group relative block aspect-[9/16] w-full overflow-hidden rounded-[8px] border border-white/[0.06]"
+          title={tile.caption || undefined}
+        >
+          <CoverFill coverUrl={tile.coverUrl} playSize={24} className="transition-opacity group-hover:opacity-90" />
+          {/* Multiplier — the outlier signal, promoted onto the cover so the body stays quiet.
+              D-05: NEVER bare — the baseline label ("vs own"/"vs niche") rides with it. */}
+          <span className="absolute left-1.5 top-1.5 inline-flex items-baseline gap-1 rounded bg-black/70 px-1.5 py-0.5 text-white/95 backdrop-blur-[1px]">
+            <span className="text-[12px] font-semibold leading-none tabular-nums">
+              {formatMultiplier(tile.multiplier)}
+            </span>
+            <span className="text-[9px] font-semibold uppercase tracking-wide text-white/70">
+              {tile.baselineLabel}
+            </span>
+          </span>
+          {duration ? (
+            <span className="absolute bottom-1 right-1 rounded bg-black/70 px-1 py-0.5 text-[10px] font-medium tabular-nums text-white/90">
+              {duration}
+            </span>
+          ) : null}
+        </CoverTag>
+
+        {/* ONE meta line — fit (honest dot+word, OMITTED when null, D-02) · views · source.
+            Replaces the old multiplier row + FIT bar + "predicted" subline + 4-metric row. */}
+        <div className="flex min-w-0 items-center gap-1.5 text-[11px] text-foreground-muted">
+          {tile.fit != null && (
+            <>
+              <span className="inline-flex shrink-0 items-center gap-1 font-semibold uppercase tracking-wide">
+                <span
+                  className="h-[6px] w-[6px] shrink-0 rounded-full"
+                  style={{ backgroundColor: fitColor }}
+                  aria-hidden="true"
+                />
+                {tile.fit.level}
+              </span>
+              <span aria-hidden="true" className="text-foreground-muted/40">·</span>
+            </>
+          )}
+          <span className="inline-flex shrink-0 items-center gap-1 tabular-nums">
+            <Eye className="h-3 w-3" aria-hidden="true" />
+            {formatCount(tile.views)}
+          </span>
+          <span aria-hidden="true" className="text-foreground-muted/40">·</span>
+          <span className="truncate">{tile.source}</span>
+        </div>
+
+        {/* Caption — ONE line at scale (the dense tile ran two). */}
+        <p
+          className={`line-clamp-1 text-[13px] leading-snug ${
+            tile.caption ? "text-foreground" : "italic text-foreground-muted"
+          }`}
+        >
+          {tile.caption || "No caption"}
+        </p>
+
+        {/* Action — the quiet tonal primary LEADS (flex-1), Save trails as an ml-auto icon
+            (§0.5.7). Track is a rare, trackable-only micro-row below so the common tile stays a
+            single action row. */}
+        <div className="mt-0.5 flex flex-col gap-1.5">
+          <div className="flex items-center gap-2">
+            <CardPrimaryAction
+              onClick={() => onRemix?.(tile)}
+              disabled={!onRemix || remixPending}
+              aria-label="Remix this outlier into a Read"
+              className="flex-1"
+            >
+              {remixPending ? "Remixing…" : "Remix →"}
+            </CardPrimaryAction>
+            <SaveAffordance
+              className="shrink-0 text-xs"
+              item_type="outlier"
+              title={tile.caption}
+              snapshot={{ ...tile }}
+            />
+          </div>
+          {tile.trackable && (
+            <button
+              type="button"
+              onClick={() => onTrack?.(tile)}
+              disabled={!onTrack || trackPending || tracked}
+              aria-label={tracked ? "Account tracked" : "Track this account"}
+              aria-pressed={tracked}
+              className="inline-flex items-center gap-1 self-start text-[11px] font-medium text-foreground-muted transition-opacity hover:text-foreground disabled:opacity-60"
+              style={{ cursor: onTrack && !trackPending && !tracked ? "pointer" : "default" }}
+            >
+              {tracked ? (
+                <>
+                  <Check size={12} weight="bold" aria-hidden="true" />
+                  Tracking
+                </>
+              ) : (
+                trackPending ? "Tracking…" : "+ Track account"
+              )}
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-2">
       {/* Cover — the native 9:16 vertical-video format (was a fixed 176px landscape banner that
@@ -241,7 +367,9 @@ export function OutlierTile({
 
       {/* Primary CTA — "Remix →": the forward chain step, the ONE cream primary per tile
           (§0.5.7; primary ≠ accent — the legacy coral fill was retired). Single forward verb;
-          it leads, and Save + Track trail BELOW it (never stacked above). */}
+          it leads, and Save + Track trail BELOW it. This is the DENSE Discover/Feed grid tile
+          (`variant="grid"`); the in-thread Explore card returns the de-loaded layout above with
+          the quiet tonal CardPrimaryAction. */}
       <button
         type="button"
         onClick={() => onRemix?.(tile)}

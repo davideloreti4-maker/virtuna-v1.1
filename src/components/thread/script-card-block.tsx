@@ -17,6 +17,7 @@
  */
 
 import { useState } from 'react';
+import { Copy, Check } from '@phosphor-icons/react';
 import type { ScriptCardBlock } from '@/lib/tools/blocks';
 import { useOnTestScript } from '@/lib/script-test-context';
 import { cardScrollQuoteReactions } from '@/components/audience-lens/flat-card-reactions';
@@ -24,7 +25,7 @@ import { buildCardRewrite } from '@/components/audience-lens/card-rewrite';
 import { ProofUnit } from './proof-unit';
 import { ProofReceipt, NoSourceNote } from './proof-receipt';
 import { SaveAffordance } from '@/components/thread/save-affordance';
-import { CardPrimaryAction, CardActionBar } from './card-primitives';
+import { CardPrimaryAction, CardActionBar, SECTION_LABEL } from './card-primitives';
 import { CaretToggle } from './caret-toggle';
 
 export interface ScriptCardRendererProps {
@@ -61,26 +62,114 @@ export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRend
     });
   }
 
+  // Copy the WHOLE beat sheet — a script is the one Make output you want to lift in full (the
+  // Hook card copies a single line; here Copy grabs every beat). Clipboard guarded for happy-dom.
+  const [copied, setCopied] = useState(false);
+  function handleCopyScript() {
+    if (typeof navigator === 'undefined' || !navigator.clipboard) return;
+    const scriptText = beats
+      .map((b) => `[${b.label} · ${b.timing}]\n${b.content}`)
+      .join('\n\n');
+    navigator.clipboard.writeText(scriptText).then(
+      () => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1600);
+      },
+      () => {},
+    );
+  }
+
   return (
     <div
-      className="overflow-hidden rounded-xl border border-white/[0.06] bg-surface-sunken"
+      className="elev-rest overflow-hidden rounded-xl border border-white/[0.06] bg-surface-sunken"
       aria-label="Script card"
     >
-      {/* FACE — opener signal (Pitfall 5: opener-only honesty spine). */}
-      <div className="flex flex-col gap-3 px-4 pb-3 pt-4">
-        {/* The "Opener stops the scroll" kicker eyebrow was removed 2026-07-21 (generic restatement;
-            the run capsule above already names the skill). The opener's stop-rate is carried by the
-            ProofUnit below, and the beat count reads from the Script section. */}
+      {/* HEADER — a script IS a beat sheet, so the card names it and offers Copy-the-whole-thing
+          (owner 2026-07-22: each Make card should lead with its own value; the script's value is
+          the beat STRUCTURE). Grounding receipt sits under it when the run was sourced. */}
+      <div className="flex flex-col gap-3 px-4 pt-4">
+        <div className="flex items-center justify-between gap-3">
+          <p className={SECTION_LABEL}>
+            {beats.length} {beats.length === 1 ? 'beat' : 'beats'}
+          </p>
+          <button
+            type="button"
+            onClick={handleCopyScript}
+            aria-label="Copy the full script to clipboard"
+            className="inline-flex shrink-0 items-center gap-1 text-[12px] font-medium text-foreground-muted transition-colors hover:text-foreground-secondary"
+          >
+            {copied ? (
+              <>
+                <Check size={13} weight="bold" aria-hidden="true" />
+                Copied
+              </>
+            ) : (
+              <>
+                <Copy size={13} aria-hidden="true" />
+                Copy script
+              </>
+            )}
+          </button>
+        </div>
 
-        {/* Proof receipt (§11f fan-out) — the real outlier this script's structure was drawn
-            from. Only present on grounded runs where a real source was attributed. A script has
-            no sibling to look half-rendered against, but the absence is the same fact and the
-            primitive is shared, so it states it too (2026-07-14). */}
+        {/* Proof receipt (§11f fan-out) — the real outlier this script's structure was drawn from,
+            when the run was grounded (honesty spine). */}
         {proof ? <ProofReceipt proof={proof} /> : grounded ? <NoSourceNote /> : null}
+      </div>
 
-        {/* Proof unit — opener-only (the fraction is scoped to the opening beat). Variant-A
-            "quiet" de-box: borderless reaction row so the framed receipt above is the card's one
-            inner frame (2026-07-18). */}
+      {/* BEATS — the SCRIPT CARD'S SIGNATURE: a TIMELINE. A left timing column + a connecting rail
+          (dot per beat) read as a shot list, so the script stops looking like the line/brief/decode
+          cards. Retention reasoning stays one tap away per beat. */}
+      <div className="mt-3 flex flex-col border-t border-white/[0.06] px-4 pt-1">
+        {beats.map((beat, index) => {
+          const isExpanded = expandedBeats.has(index);
+          const isLast = index === beats.length - 1;
+          return (
+            <div key={index} className="flex gap-3 py-3">
+              {/* Timing — the left column of the timeline. */}
+              <span className="w-10 shrink-0 pt-px text-right text-[11px] font-semibold tabular-nums text-foreground-secondary">
+                {beat.timing}
+              </span>
+
+              {/* Rail — a dot on this beat + a line down to the next (omitted on the last). */}
+              <div className="flex flex-col items-center" aria-hidden="true">
+                <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-white/30" />
+                {!isLast && <span className="mt-1 w-px flex-1 bg-white/[0.10]" />}
+              </div>
+
+              {/* Beat body — label + content, retention reasoning on expand. */}
+              <div className="min-w-0 flex-1 pb-0.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[12px] font-semibold uppercase tracking-[0.05em] text-foreground">
+                    {beat.label}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => toggleBeat(index)}
+                    className="shrink-0 text-[12px] text-foreground-muted transition-colors hover:text-foreground-secondary"
+                    aria-expanded={isExpanded}
+                    aria-label={isExpanded ? `Collapse ${beat.label} reasoning` : `Expand ${beat.label} reasoning`}
+                  >
+                    <CaretToggle open={isExpanded} />
+                  </button>
+                </div>
+
+                <p className="mt-1 text-[13.5px] leading-relaxed text-foreground-secondary">{beat.content}</p>
+
+                {isExpanded && (
+                  <p className="mt-1.5 text-[12px] leading-relaxed text-foreground-muted">
+                    ↳ {beat.retentionMarker}
+                  </p>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Proof unit — the quiet room through-line, opener-only (the fraction is scoped to the
+          opening beat, Pitfall 5). Sits BELOW the timeline now: the beats are the hero. */}
+      <div className="border-t border-white/[0.06] px-4 py-3">
         <ProofUnit
           band={band}
           fraction={fraction}
@@ -99,49 +188,6 @@ export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRend
           })}
           label="See how the room reacted to this opener"
         />
-      </div>
-
-      {/* BEATS — Variant-A "quiet" de-box (2026-07-18): borderless rows separated by hairlines,
-          aligned to the card edge. Was five bordered boxes-within-the-card (spec-sheet density);
-          whitespace + hairlines carry the rhythm now. Retention reasoning inline on expand. */}
-      <div className="flex flex-col border-t border-white/[0.06] px-4">
-        {beats.map((beat, index) => {
-          const isExpanded = expandedBeats.has(index);
-          return (
-            <div
-              key={index}
-              className="flex flex-col gap-1.5 border-b border-white/[0.06] py-3.5 last:border-b-0"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-[12px] font-semibold uppercase tracking-[0.05em] text-foreground">
-                    {beat.label}
-                  </span>
-                  <span className="text-[11px] tabular-nums text-foreground-muted" aria-label={`Timing: ${beat.timing}`}>
-                    {beat.timing}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => toggleBeat(index)}
-                  className="text-[12px] text-foreground-muted transition-colors hover:text-foreground-secondary"
-                  aria-expanded={isExpanded}
-                  aria-label={isExpanded ? `Collapse ${beat.label} reasoning` : `Expand ${beat.label} reasoning`}
-                >
-                  <CaretToggle open={isExpanded} />
-                </button>
-              </div>
-
-              <p className="text-[13.5px] leading-relaxed text-foreground-secondary">{beat.content}</p>
-
-              {isExpanded && (
-                <p className="text-[12px] leading-relaxed text-foreground-muted">
-                  ↳ {beat.retentionMarker}
-                </p>
-              )}
-            </div>
-          );
-        })}
       </div>
 
       {/* Actions — one cream primary (forward chain "Test full →") + Save icon (§0.5.7). */}

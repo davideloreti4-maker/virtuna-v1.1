@@ -94,18 +94,18 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
 
   return (
     <div
-      className="overflow-hidden rounded-xl border border-white/[0.06] bg-surface-sunken"
+      className="elev-rest overflow-hidden rounded-xl border border-white/[0.06] bg-surface-sunken"
       aria-label={`Idea: ${title}`}
     >
-      {/* FACE — always visible */}
+      {/* FACE — the idea reads as a CONCEPT BRIEF, not a line: title + angle, the mechanism it
+          works by, and a Topic·Take·Format RECIPE formula — each promoted onto the face so the
+          card carries its own value and stops looking like the hook/remix cards (owner 2026-07-22:
+          "they all should have their value, atm they kinda look the same"). No Copy affordance —
+          an idea is a brief you develop, not a line you lift (that's the Hook card). */}
       <div className="flex flex-col gap-3 px-4 pb-3 pt-4">
-        {/* The title IS the idea — the audience kicker eyebrow was removed 2026-07-21 (the run
-            capsule above already names the skill + audience). The "your take" flag is a functional
-            signal (this idea needs a perspective only you can supply), so it survives — demoted to
-            a small chip beside the title rather than a header meta. */}
+        {/* Title (hero) + the functional "your take" signal (a perspective only you can supply). */}
         <div className="flex items-start justify-between gap-3">
-          {/* Title — the hero */}
-          <h3 className="text-[17px] font-semibold leading-snug tracking-[-0.01em] text-foreground">{title}</h3>
+          <h3 className="font-serif text-[21px] font-medium leading-[1.3] tracking-[-0.005em] text-foreground">{title}</h3>
           {needsTake && (
             <span
               className="mt-0.5 shrink-0 rounded-full border px-2 py-0.5 text-[11px] uppercase tracking-[0.05em]"
@@ -117,10 +117,35 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
           )}
         </div>
 
-        {/* Why-line — the angle premise + the muted "fits because" clause (whyItFits folded in). */}
+        {/* Angle — the concept's premise + the muted "fits because" clause (whyItFits folded in). */}
         <p className="text-[13px] leading-relaxed text-foreground-secondary">
           {angle} <span className="text-foreground-muted">— {whyItFits}</span>
         </p>
+
+        {/* Why it lands — the mechanism, promoted from expand to a labeled payload on the face. */}
+        <div>
+          <p className={`mb-1 ${SECTION_LABEL}`}>Why it lands</p>
+          <p className="text-[13.5px] leading-relaxed text-foreground-secondary">{mechanism}</p>
+        </div>
+
+        {/* Recipe — Topic · Take · Format as a visible formula (this idea card's SIGNATURE; was
+            buried in the expand). A horizontal divided strip reads as the "make-it-from" recipe.
+            The Format cell is omitted when absent — honest, never an empty cell. */}
+        <div className="flex overflow-hidden rounded-lg border border-white/[0.06] bg-white/[0.02]">
+          {[
+            { label: 'Topic', value: topic },
+            { label: 'Take', value: take },
+            ...(format ? [{ label: 'Format', value: format }] : []),
+          ].map((cell, i) => (
+            <div
+              key={cell.label}
+              className={`min-w-0 flex-1 px-3 py-2 ${i > 0 ? 'border-l border-white/[0.06]' : ''}`}
+            >
+              <p className={SECTION_LABEL}>{cell.label}</p>
+              <p className="mt-0.5 line-clamp-2 text-[13px] leading-snug text-foreground-secondary">{cell.value}</p>
+            </div>
+          ))}
+        </div>
 
         {/* Per-persona generation: the aim + the aimed-at reader's own verdict (the receipt).
             Absent on General/uncalibrated runs, and on a calibrated run whose writer named nobody
@@ -133,7 +158,7 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
             receipt-shaped hole beside a sibling that has one (2026-07-14). */}
         {proof ? <ProofReceipt proof={proof} /> : grounded ? <NoSourceNote /> : null}
 
-        {/* Proof unit — the single audience-reaction block + visible Lens entry. */}
+        {/* Proof unit — the quiet room through-line (the single audience-reaction block + Lens). */}
         <ProofUnit
           framed={false}
           band={band}
@@ -160,7 +185,7 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
           label="See how the room reacted to this idea"
         />
 
-        {/* Expand toggle + provenance. */}
+        {/* Expand — the seed hook (the line this idea would open with) + provenance. */}
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
@@ -169,39 +194,17 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
           aria-label={expanded ? 'Collapse idea details' : 'Expand idea details'}
         >
           <CaretToggle open={expanded} />
-          {expanded ? 'Hide details' : 'Angle & format'}
+          {expanded ? 'Hide seed hook' : 'Seed hook'}
           <span className="text-foreground-muted/70">· SIM-1 Flash</span>
         </button>
       </div>
 
-      {/* EXPAND — mechanism, seed hook, Topic × Take × Format. */}
+      {/* EXPAND — the seed hook (mechanism + recipe now live on the face). */}
       {expanded && (
         <div className="flex flex-col gap-3 border-t border-white/[0.06] px-4 py-3">
           <div>
-            <p className={`mb-1 ${SECTION_LABEL}`}>Mechanism</p>
-            <p className="text-[13.5px] leading-relaxed text-foreground-secondary">{mechanism}</p>
-          </div>
-          <div>
             <p className={`mb-1 ${SECTION_LABEL}`}>Seed hook</p>
             <p className="text-[13.5px] leading-relaxed text-foreground-secondary">{seedHook}</p>
-          </div>
-          <div className="overflow-hidden rounded-lg border border-white/[0.06] bg-white/[0.02]">
-            <div className="divide-y divide-white/[0.04]">
-              <div className="px-3 py-2">
-                <span className={SECTION_LABEL}>Topic</span>
-                <p className="mt-0.5 text-[13.5px] leading-snug text-foreground-secondary">{topic}</p>
-              </div>
-              <div className="px-3 py-2">
-                <span className={SECTION_LABEL}>Take</span>
-                <p className="mt-0.5 text-[13.5px] leading-snug text-foreground-secondary">{take}</p>
-              </div>
-              {format && (
-                <div className="px-3 py-2">
-                  <span className={SECTION_LABEL}>Format</span>
-                  <p className="mt-0.5 text-[13.5px] leading-snug text-foreground-secondary">{format}</p>
-                </div>
-              )}
-            </div>
           </div>
         </div>
       )}

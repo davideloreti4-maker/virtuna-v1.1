@@ -20,6 +20,7 @@
  */
 
 import { useState } from 'react';
+import { Copy, Check } from '@phosphor-icons/react';
 import type { HookCardBlock } from '@/lib/tools/blocks';
 import { useOnWriteScriptHook } from '@/lib/hook-test-context';
 import { cardScrollQuoteReactions } from '@/components/audience-lens/flat-card-reactions';
@@ -65,19 +66,62 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
 
   const [expanded, setExpanded] = useState(false);
 
+  // Copy — a hook is a line you USE, so the card offers the one-tap copy that text-on-a-card
+  // never did (owner 2026-07-22). Clipboard is guarded (absent in the happy-dom test env).
+  const [copied, setCopied] = useState(false);
+  function handleCopy() {
+    if (typeof navigator === 'undefined' || !navigator.clipboard) return;
+    navigator.clipboard.writeText(hookLine).then(
+      () => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1600);
+      },
+      () => {},
+    );
+  }
+
   return (
     <div
-      className="overflow-hidden rounded-xl border border-white/[0.06] bg-surface-sunken"
+      className="elev-rest overflow-hidden rounded-xl border border-white/[0.06] bg-surface-sunken"
       aria-label={`Hook #${rank}: ${hookLine.slice(0, 60)}`}
     >
       {/* FACE — always visible (D-11) */}
       <div className="flex flex-col gap-3 px-4 pb-3 pt-4">
-        {/* The hook line IS the opener — the archetype kicker + rank eyebrow was removed 2026-07-21
-            (the run capsule above already names the skill; the streamed order conveys rank; who it
-            was written for now reads from the TargetReaction receipt below). */}
+        {/* Asset header — the rank (scannability at a glance) on the left, a Copy affordance on
+            the right. The hook reads as a deliverable you can lift, not generic text-on-a-card
+            (owner 2026-07-22 — the four Make cards looked the same + buried each skill's value).
+            The archetype/rank EYEBROW stays retired (2026-07-21); this is a lean asset header. */}
+        <div className="flex items-center justify-between gap-3">
+          {typeof rank === 'number' && rank > 0 ? (
+            <span className="text-[12px] font-semibold tabular-nums text-foreground-muted">#{rank}</span>
+          ) : (
+            <span aria-hidden="true" />
+          )}
+          <button
+            type="button"
+            onClick={handleCopy}
+            aria-label="Copy hook to clipboard"
+            className="inline-flex shrink-0 items-center gap-1 text-[12px] font-medium text-foreground-muted transition-colors hover:text-foreground-secondary"
+          >
+            {copied ? (
+              <>
+                <Check size={13} weight="bold" aria-hidden="true" />
+                Copied
+              </>
+            ) : (
+              <>
+                <Copy size={13} aria-hidden="true" />
+                Copy
+              </>
+            )}
+          </button>
+        </div>
 
-        {/* Hook line — the hero */}
-        <p className="text-[17px] font-semibold leading-snug tracking-[-0.01em] text-foreground">
+        {/* Hook line — the hero deliverable, set in the EDITORIAL SERIF (Newsreader, the brand's
+            voice-moment face) at 21px. The serif + size gives the card a crafted focal point
+            instead of another block of Inter — the fix for "still looks bland" (owner 2026-07-22).
+            This is a genuine hero/voice-moment, the one place the design system sanctions serif. */}
+        <p className="font-serif text-[21px] font-medium leading-[1.3] tracking-[-0.005em] text-foreground">
           {hookLine}
         </p>
 
@@ -92,11 +136,13 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
             hole beside a sibling that has one (2026-07-14). */}
         {proof ? <ProofReceipt proof={proof} /> : grounded ? <NoSourceNote /> : null}
 
-        {/* Why-teaser — the mechanism surfaced on the face (full reasoning, clamped). */}
-        <p className="line-clamp-2 text-[13px] leading-relaxed text-foreground-secondary">
-          <span className="text-foreground-muted">Why it works — </span>
-          {mechanism}
-        </p>
+        {/* Why it works — the hook's MECHANISM, promoted from a clamped teaser to a labeled
+            payload. This is the value the hook uniquely carries; it used to be a two-line muted
+            teaser that read the same as every sibling card's why-line. Full reasoning now. */}
+        <div>
+          <p className={`mb-1 ${SECTION_LABEL}`}>Why it works</p>
+          <p className="text-[13.5px] leading-relaxed text-foreground-secondary">{mechanism}</p>
+        </div>
 
         {/* Proof unit — the single audience-reaction block + visible Lens entry. */}
         <ProofUnit
