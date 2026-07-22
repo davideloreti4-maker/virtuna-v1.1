@@ -229,6 +229,13 @@ export async function POST(request: Request): Promise<Response> {
               sourceDecode: b.props.sourceDecode,
               scrollQuote: b.props.scrollQuote,
               model: b.props.model,
+              // SOURCE ATTRIBUTION (2026-07-13): remix adapts ONE specific real video — the receipt
+              // (handle/views/cover) IS the card's core content. It was persisted but dropped from
+              // this face, so the source rendered as an anonymous thumbnail until a reload. Same
+              // reload-only hazard as proof on hooks/ideas — must ride the face, not just persist.
+              proof: b.props.proof,             // attributed source video receipt
+              coverUrl: b.props.coverUrl,       // back-compat source thumbnail (superseded by proof for display)
+              audienceName: b.props.audienceName, // D-03 steer tag — the calibrated audience this remix was generated for
               personas: b.props.personas,       // S3′: real per-persona reactions → named ambient Room cast (Task B)
               population: b.props.population,    // Audience Sim v2 Stage 2: the N-individual projection → Population·1,000 Sheet (rides the face)
               // band/fraction deferred to score event

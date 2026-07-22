@@ -26,8 +26,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { reportCredit402 } from '@/lib/billing/credit-wall';
-import type { RemixCardBlock, PopulationAggregateBlock, ReactionPersona } from '@/lib/tools/blocks';
-import { parsePopulationProp } from '@/lib/tools/blocks';
+import type { RemixCardBlock, PopulationAggregateBlock, ReactionPersona, HookProof } from '@/lib/tools/blocks';
+import { parsePopulationProp, parseProofProp } from '@/lib/tools/blocks';
 import type { StageState } from '@/components/thread/progress-checklist';
 import type { IntentLens } from '@/lib/audience/intent-lens';
 
@@ -49,6 +49,15 @@ export interface PartialRemixCard {
   band?: 'Strong' | 'Mixed' | 'Weak';
   fraction?: string;
   scored: boolean;
+  // SOURCE ATTRIBUTION (2026-07-13): the attributed source-video receipt (handle/views/cover) — the
+  // core of a remix card (it adapts ONE specific real video). undefined when the actor named no
+  // author. Same reload-only hazard as proof on hooks/ideas: declared + parsed + carried through
+  // toBlocks so the source renders live, not as an anonymous thumbnail until a reload.
+  proof?: HookProof;
+  // Back-compat source thumbnail (superseded by `proof` for display). undefined when absent.
+  coverUrl?: string;
+  // D-03 steer tag: the calibrated audience this remix was generated for. undefined = General (no tag).
+  audienceName?: string;
   // S3′: adapted hook's real per-persona reactions → named ambient Room cast live, pre-reload (Task B).
   personas?: ReactionPersona[];
   // AUDIENCE SIM v2 (Stage 2): the adapted hook's N-individual population projection → Population·
@@ -255,6 +264,9 @@ export function useRemixStream(): UseRemixStreamReturn {
                   scrollQuote: String(props.scrollQuote ?? ''),
                   model: 'sim1-flash' as const,
                   scored: false,
+                  proof: parseProofProp(props.proof), // source attribution rides the face (else reload-only)
+                  coverUrl: typeof props.coverUrl === 'string' && props.coverUrl.length > 0 ? props.coverUrl : undefined,
+                  audienceName: typeof props.audienceName === 'string' && props.audienceName.length > 0 ? props.audienceName : undefined,
                   personas: Array.isArray(props.personas)
                     ? (props.personas as ReactionPersona[])
                     : undefined,
@@ -315,6 +327,13 @@ export function useRemixStream(): UseRemixStreamReturn {
         scrollQuote: c.scrollQuote,
         model: 'sim1-flash',
         personas: c.personas, // S3′: real per-persona reactions → named ambient Room cast (Task B)
+        // Source attribution — the receipt renders live (was dropped → source was an anonymous
+        // thumbnail until a reload). This object is hand-built field-by-field, so a prop parsed off
+        // the wire but not copied HERE is silently dropped on the streaming path — the only path a
+        // user actually watches. Same trap the proof/target/population lines fix on the other cards.
+        ...(c.proof ? { proof: c.proof } : {}),
+        ...(c.coverUrl ? { coverUrl: c.coverUrl } : {}),
+        ...(c.audienceName ? { audienceName: c.audienceName } : {}),
         // Sim v2 Stage 2 — the adapted-hook projection renders live in the Sheet, not just after reload.
         ...(c.population ? { population: c.population } : {}),
         // Ready-to-film (owner 2026-07-22) — the YOUR-version shoot plan renders live, not reload-only.
