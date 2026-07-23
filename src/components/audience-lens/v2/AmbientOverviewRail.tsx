@@ -93,100 +93,6 @@ function fractionToStopPct(fraction: string): number | null {
   return Math.max(0, Math.min(100, Math.round((n / d) * 100)));
 }
 
-// r4 tone (mirrors AmbientOverview's local palette — kept in sync for the connected rail).
-const RTONE = {
-  cream: "#ece7de",
-  dim: "rgba(236,231,222,.62)",
-  faint: "rgba(236,231,222,.38)",
-  mute: "rgba(236,231,222,.25)",
-  sage: "#8ea68a",
-  border: "rgba(255,255,255,.06)",
-  hair: "rgba(255,255,255,.08)",
-} as const;
-
-/** The honest result for a SEALED row that has NO population depth (a General/uncalibrated audience —
- *  the Stage-2 room projection needs a calibrated signature). We DON'T fabricate a room; we show what
- *  the run really produced: the measured would-stop verdict, the room's headline objection
- *  (`scrollQuote`), and the real per-persona reactions. Connected rail styling (fills, #181817). */
-function SealResult({
-  audienceName,
-  pct,
-  scrollQuote,
-  personas,
-  onBack,
-}: {
-  audienceName: string;
-  pct: number;
-  scrollQuote?: string;
-  personas?: PopulationPersona[];
-  onBack: () => void;
-}) {
-  const cast = personas ?? [];
-  const stops = cast.filter((p) => p.verdict === "stop").length;
-  return (
-    <div
-      className="flex h-full w-full max-w-[440px] flex-col"
-      style={{ background: "#181817", borderLeft: `1px solid ${RTONE.border}`, color: RTONE.cream }}
-    >
-      <div className="flex items-center gap-2.5 px-[26px] pt-[26px]">
-        <button
-          type="button"
-          onClick={onBack}
-          className="-ml-1 flex items-center gap-1 font-mono text-[12px] uppercase tracking-[0.08em] transition-colors"
-          style={{ color: RTONE.faint }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = RTONE.cream)}
-          onMouseLeave={(e) => (e.currentTarget.style.color = RTONE.faint)}
-        >
-          ‹ Overview
-        </button>
-      </div>
-
-      <div className="px-[26px] pt-5">
-        <div className="font-mono text-[12px] uppercase tracking-[0.08em]" style={{ color: RTONE.faint }}>
-          {audienceName} · would they stop
-        </div>
-        <div className="mt-2 flex items-baseline gap-2">
-          <span className="text-[34px] font-semibold tracking-[-0.02em]" style={{ color: RTONE.cream }}>
-            {pct.toFixed(1)}%
-          </span>
-          <span className="text-[13px]" style={{ color: RTONE.dim }}>
-            {stops} of {cast.length || 10} would stop
-          </span>
-        </div>
-        {scrollQuote ? (
-          <p className="mt-4 text-[14px] leading-snug" style={{ color: RTONE.dim }}>
-            “{scrollQuote}”
-          </p>
-        ) : null}
-      </div>
-
-      <div className="mt-6 min-h-0 flex-1 overflow-y-auto px-[26px] pb-[26px]">
-        <div className="font-mono text-[12px] uppercase tracking-[0.08em]" style={{ color: RTONE.faint }}>
-          The room · {cast.length} reactions
-        </div>
-        <ul className="mt-3 flex flex-col gap-3">
-          {cast.map((p, i) => (
-            <li key={`${p.archetype}-${i}`} className="flex gap-2.5">
-              <span
-                className="mt-[6px] h-[6px] w-[6px] flex-none rounded-full"
-                style={{ background: p.verdict === "stop" ? RTONE.sage : RTONE.mute }}
-              />
-              <span className="min-w-0">
-                <span className="block font-mono text-[10.5px] uppercase tracking-[0.06em]" style={{ color: RTONE.faint }}>
-                  {p.archetype.replace(/_/g, " ")} · {p.verdict === "stop" ? "stops" : "scrolls"}
-                </span>
-                <span className="mt-0.5 block text-[13px] leading-snug" style={{ color: RTONE.dim }}>
-                  “{p.quote}”
-                </span>
-              </span>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>
-  );
-}
-
 /** A tested video's row label — its real opening words (spoken, else on-screen), clipped; an honest
  *  "Tested video" fallback when the transcript is bare. Never invents a title. */
 function videoLabel(v: SimSealVideo): string {
@@ -269,14 +175,19 @@ export function AmbientOverviewRail({
     [sessionSeals, persistedSeals, descriptors],
   );
 
-  // Clicking a row: a SEALED row (any snapshot) opens its RESULT — the population room for a
-  // calibrated sim, else the honest persona-reactions result (General). It must NEVER re-open the ARM
-  // config (owner-caught: clicking a sealed row wrongly re-armed instead of showing the result). Only
-  // an un-run QUEUED row (no snapshot) opens develop to arm.
+  // Clicking a row:
+  //  - a SEALED row WITH population → the real Population page we built (AmbientDetail). This is the
+  //    ONLY depth page shown for a text sim; ONLY calibrated audiences yield a population projection.
+  //  - a SEALED General/uncalibrated row (no population) → inert. There is NO population page for it
+  //    (the Stage-2 room projection needs a calibrated signature) — the row's measured % IS the
+  //    result. We never invent a page, and never re-open the ARM config (owner-caught).
+  //  - an un-run QUEUED row (no snapshot) → develop, to arm.
   const openStimulus = useCallback(
     (id: string) => {
-      if (snapshotFor(id)) setDetailId(id);
-      else openDevelop(id);
+      const snap = snapshotFor(id);
+      if (snap?.population) setDetailId(id);
+      else if (!snap) openDevelop(id);
+      // General sealed (snap but no population): inert — the % on the row is the answer.
     },
     [snapshotFor],
   );
@@ -437,21 +348,9 @@ export function AmbientOverviewRail({
         </div>
       );
     }
-    // A SEALED row with NO population depth (General/uncalibrated) — show the honest result we DO have
-    // (verdict + room objection + real persona reactions), not a re-arm.
-    if (snap) {
-      return (
-        <SealResult
-          audienceName={meta.name}
-          pct={snap.pct}
-          scrollQuote={snap.scrollQuote}
-          personas={snap.personas}
-          onBack={() => setDetailId(null)}
-        />
-      );
-    }
-    // Snapshot went away (thread switch / cleared) — fall through to the Overview; the effect above
-    // clears the stale detailId (no setState during render).
+    // No population (General) or snapshot gone — fall through to the Overview. A General sealed row has
+    // no population page (never invented); openStimulus keeps it inert, so this path is only reached if
+    // a detailId was set for a row that has since lost its population (thread switch / clear).
   }
 
   // Merge the seal sources into the per-descriptor-id map buildOverviewData reads: a fresh in-session
