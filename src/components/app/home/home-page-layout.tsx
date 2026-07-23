@@ -111,9 +111,11 @@ export function HomePageLayout() {
         // host. shrink-0 fixed width; full height with internal scroll (the rail body scrolls).
         <aside
           aria-label="Your audience"
-          className="hidden h-full min-h-0 w-[340px] shrink-0 flex-col py-4 pl-4 xl:flex"
+          // A floating rail: gaps on ALL four sides (pr-4 added) so the panel reads as a card, not an
+          // edge-to-edge sidebar. The host centers the (height-capped) panel vertically.
+          className="hidden h-full min-h-0 w-[356px] shrink-0 flex-col p-4 xl:flex"
         >
-          <div ref={setRailHost} className="min-h-0 w-full flex-1" />
+          <div ref={setRailHost} className="flex min-h-0 w-full flex-1 items-center justify-center" />
         </aside>
       )}
     </div>

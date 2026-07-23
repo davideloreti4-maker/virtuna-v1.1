@@ -131,7 +131,7 @@ describe("AmbientOverviewRail", () => {
     expect(screen.getByTestId("ambient-detail")).toBeTruthy();
   });
 
-  it("quick-sim fires the real react route and SEALS the row with the measured fraction (Phase D)", async () => {
+  it("tapping a queued row opens the ARM config FIRST, then its Simulate fires the react route (config→run)", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ fraction: "8/10 stop" }),
@@ -139,31 +139,35 @@ describe("AmbientOverviewRail", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     render(<AmbientOverviewRail audience={audience} descriptors={descriptors} reducedMotion />);
-    // the whole queued row is the quick-sim door — tap it to fire the sealed sim
+    // tapping a queued row opens the ARM panel — it must NOT fire the sim yet (config comes first)
     fireEvent.click(screen.getByRole("button", { name: /I quit my 9-5 with \$400/ }));
+    expect(fetchMock).not.toHaveBeenCalled();
+    // the develop/ARM surface is now up (its Simulate control is present)
+    const armSimulate = screen.getByRole("button", { name: /^Simulate/ });
 
-    // it hit the REAL react route with the concept text (not the General-only /simulate verb)
+    // NOW the run fires — from inside the ARM panel
+    fireEvent.click(armSimulate);
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/tools/react",
       expect.objectContaining({ method: "POST" }),
     );
     const sentBody = JSON.parse((fetchMock.mock.calls[0]![1] as RequestInit).body as string);
     expect(sentBody.text).toMatch(/I quit my 9-5/);
-    expect(sentBody.framing).toBe("idea"); // idea kind → the "would they want it" framing
     expect(sentBody.pin).toBe(true); // a deliberate sim captures the flywheel vector (Phase D)
 
     // 8/10 stop → a sealed 80.0% would-stop row (measured, not the projection)
     expect(await screen.findByText(/80\.0%/)).toBeTruthy();
   });
 
-  it("does NOT seal the row when the react route fails — the honest queued state holds", async () => {
+  it("does NOT seal the row when the react route (fired from the ARM panel) fails — queued state holds", async () => {
     const fetchMock = vi.fn().mockResolvedValue({ ok: false, json: async () => ({}) });
     vi.stubGlobal("fetch", fetchMock);
 
     render(<AmbientOverviewRail audience={audience} descriptors={descriptors} reducedMotion />);
+    fireEvent.click(screen.getByRole("button", { name: /I quit my 9-5 with \$400/ }));
     // wrap in act so the rejected fetch + the watcher-clear state update settle inside React
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: /I quit my 9-5 with \$400/ }));
+      fireEvent.click(screen.getByRole("button", { name: /^Simulate/ }));
       await Promise.resolve();
       await Promise.resolve();
     });

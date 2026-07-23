@@ -30,7 +30,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AMBIENT_PANEL_HEIGHT, AmbientOverview, type WatchingRun } from "./AmbientOverview";
+import { AmbientOverview, type WatchingRun } from "./AmbientOverview";
 import { AmbientSimulate, type StimulusKind } from "./AmbientSimulate";
 import { AmbientDetail } from "./AmbientDetail";
 import {
@@ -247,14 +247,16 @@ export function AmbientOverviewRail({
     [descriptors],
   );
 
-  // A row's quick-simulate (value-slot tap). A VIDEO reveals its already-measured attention % (no
-  // re-run); a concept fires the real react sim.
+  // A row's Simulate tap. A VIDEO reveals its already-measured attention % (no re-run — nothing to
+  // configure). A concept OPENS the ARM panel first (pick lens/slice), whose own "Simulate ↑" then
+  // fires the real sim — config BEFORE the run, never a run that back-fills into a config (owner call
+  // 2026-07-23: the loading-then-config order was backwards).
   const handleQuickSimulate = useCallback(
     (id: string) => {
       if (videoSeals[id]) return revealVideo(id);
-      return fireSim(id);
+      return openDevelop(id);
     },
-    [videoSeals, revealVideo, fireSim],
+    [videoSeals, revealVideo],
   );
 
   // A row's body tap. A revealed VIDEO drills into its (real) Brain depth; an unrevealed one reveals
@@ -360,7 +362,7 @@ export function AmbientOverviewRail({
   }));
   const overview = buildOverviewData({ audience: meta, descriptors, measured, videos, watching });
   return (
-    <div style={{ height: AMBIENT_PANEL_HEIGHT }} className="flex w-full justify-center">
+    <div className="flex h-full w-full items-center justify-center">
       <AmbientOverview
         data={overview}
         reducedMotion={reducedMotion}

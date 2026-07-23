@@ -522,9 +522,13 @@ export function AmbientOverview({
       data-testid="ambient-overview"
       className={`flex w-full max-w-[380px] flex-col rounded-[16px] ${className ?? ""}`}
       style={{
-        height: AMBIENT_PANEL_HEIGHT,
-        background: "#1f1f1e",
+        // Fill the (padded) rail host, but never taller than the design height — so in a tall aside it
+        // reads as a FLOATING card with breathing room top+bottom, not an edge-to-edge sidebar.
+        height: "100%",
+        maxHeight: AMBIENT_PANEL_HEIGHT,
+        background: "#181817",
         border: `1px solid ${TONE.border}`,
+        boxShadow: "0 8px 30px rgba(0,0,0,.28)",
         color: TONE.cream,
         fontFamily: "var(--font-sans, Inter, system-ui, sans-serif)",
       }}
