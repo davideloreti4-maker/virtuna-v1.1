@@ -204,6 +204,7 @@ function ArmCard({
   onClose,
   onBack,
   onSimulate,
+  connected,
 }: {
   data: SimulateData;
   stimulus: { text: string; kind: StimulusKind };
@@ -211,6 +212,8 @@ function ArmCard({
   onClose?: () => void;
   onBack?: () => void;
   onSimulate?: (config: SimulateConfig) => void;
+  /** Rail mode — render as a CONNECTED panel (fills, #181817, no card shadow/rounding), not a sheet. */
+  connected?: boolean;
 }) {
   const { room, provenance, lenses, segments } = data;
   const [lensIdx, setLensIdx] = useState(data.defaultLens);
@@ -228,7 +231,25 @@ function ArmCard({
   const mismatch = scene.toLowerCase() !== provenance.toLowerCase();
 
   return (
-    <div data-testid="ambient-simulate" data-phase="arm" className="flex w-full max-w-[460px] flex-col rounded-[16px]" style={SHEET_STYLE}>
+    <div
+      data-testid="ambient-simulate"
+      data-phase="arm"
+      className={
+        connected
+          ? "flex h-full w-full max-w-[440px] flex-col overflow-y-auto"
+          : "flex w-full max-w-[460px] flex-col rounded-[16px]"
+      }
+      style={
+        connected
+          ? {
+              background: "#181817",
+              borderLeft: `1px solid ${TONE.border}`,
+              color: TONE.cream,
+              fontFamily: "var(--font-sans, Inter, system-ui, sans-serif)",
+            }
+          : SHEET_STYLE
+      }
+    >
       {/* header + the stimulus under test */}
       <div className="px-[26px] pt-[24px]">
         <div className="flex items-start justify-between">
@@ -474,11 +495,14 @@ export function AmbientSimulate({
   mode = "develop",
   onClose,
   onSimulate,
+  connected,
 }: {
   data: SimulateData;
   mode?: SimEntryMode;
   onClose?: () => void;
   onSimulate?: (config: SimulateConfig) => void;
+  /** Rail mode — render the arm card as a CONNECTED panel, not a floating sheet. */
+  connected?: boolean;
 }) {
   // cold entry lands on the intake step; develop entry is pre-filled → straight to the arm card.
   const [picked, setPicked] = useState<IntakeOption | null>(null);
@@ -499,6 +523,7 @@ export function AmbientSimulate({
       onClose={onClose}
       onBack={mode === "cold" ? () => setPicked(null) : undefined}
       onSimulate={onSimulate}
+      connected={connected}
     />
   );
 }

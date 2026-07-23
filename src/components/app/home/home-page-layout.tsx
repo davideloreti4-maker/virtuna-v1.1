@@ -69,7 +69,10 @@ export function HomePageLayout() {
         // taller than the viewport (mobile) overflowed out the TOP, unreachably — the
         // greeting rendered under the fixed hamburger (live-caught 2026-07-20).
         // min-h-full grows with content, so centering never clips and the page scrolls.
-        threadMode ? "h-full flex-row justify-center" : "min-h-full flex-col items-center",
+        // Thread mode: the work column FLEXES to fill (it self-centers its content at 760 via its own
+        // mx-auto), so the rail is pushed flush to the page's right edge (owner call — the rail
+        // connects to the right side completely). Not justify-center, which left a symmetric gap.
+        threadMode ? "h-full flex-row" : "min-h-full flex-col items-center",
         emptyHome && "justify-center",
       )}
     >
@@ -94,7 +97,9 @@ export function HomePageLayout() {
       <div
         className={cn(
           "flex w-full flex-col",
-          threadMode ? "min-w-0 flex-1 min-h-0 max-w-[760px]" : "max-w-[760px] px-4",
+          // Thread mode: fill remaining space (no max-w cap on the WRAPPER — the Composer caps its own
+          // content at 760 via mx-auto), so the rail sits flush right. Empty/permalink stay centered.
+          threadMode ? "min-w-0 flex-1 min-h-0" : "max-w-[760px] px-4",
         )}
       >
         <Composer
@@ -113,7 +118,7 @@ export function HomePageLayout() {
           aria-label="Your audience"
           // A CONNECTED rail — part of the thread page, full height, flush (no floating gaps). The
           // panel fills the column top-to-bottom; its own left hairline divides it from the thread.
-          className="hidden h-full min-h-0 w-[340px] shrink-0 flex-col xl:flex"
+          className="hidden h-full min-h-0 w-[400px] shrink-0 flex-col xl:flex"
         >
           <div ref={setRailHost} className="flex min-h-0 w-full flex-1" />
         </aside>

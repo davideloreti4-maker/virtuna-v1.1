@@ -520,7 +520,7 @@ export function AmbientOverview({
   return (
     <div
       data-testid="ambient-overview"
-      className={`flex w-full max-w-[380px] flex-col ${className ?? ""}`}
+      className={`flex w-full max-w-[440px] flex-col ${className ?? ""}`}
       style={{
         // Connected rail — fills its column top-to-bottom (part of the thread page, NOT a floating
         // card). A single left hairline divides it from the thread; no shadow, no rounding, no gaps.
