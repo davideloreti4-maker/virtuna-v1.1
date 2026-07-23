@@ -233,6 +233,90 @@ Overview rail). `/ambient-v2` still serves the fixture surfaces for reference.
 **Gates at commit**: tsc 0 · eslint 0 · touched-area sweep 182 pass / 9 skip (incl. matte 38/38) ·
 `/ambient-v2` 200 · `/home` compiles. Files: 6 modified + 8 new (see the commit).
 
+## ▶▶ RESUME HERE (fresh context, 2026-07-23 session 3) — Start polish DONE · Phase D-minimal SHIPPED
+
+**Owner decisions this session (via AskUserQuestion):**
+1. **Conditions strip** — KEEP between greeting + grid (no change; the locked loud-at-birth form).
+2. **Post-pick (option B)** — picking a skill just drops into the **normal fresh-chat start** with the
+   skill armed. No bespoke bare-field state, no back-to-grid chrome.
+3. **Build order** — do **Phase D-minimal now** (not Phase C first). Recommendation accepted.
+
+**What shipped (NOT committed — owner commits):**
+
+1. **Start post-pick simplified** (`composer.tsx`): the `startEngaged` branch that rendered a bare
+   `composerDock` was collapsed into the SAME fresh-home cluster (`composerDock` + `homeStarter` +
+   `homeFirstRunDemo`) the legacy path renders — so a skill-pick lands in the normal fresh chat with
+   the tool armed. Plus `setStartEngaged(false)` added to the thread-switch wipe (~line 793) so a
+   NEW/empty thread returns to the Start grid instead of the post-pick home. Item 1 done.
+
+2. **Phase D-minimal — the "Simulate →" door fires a REAL sealed sim** (`AmbientOverviewRail.tsx`,
+   client-only, ZERO server change):
+   - **Key architecture finding:** `/api/tools/simulate` + `runSimulate` are **Directional-only**
+     (`resolveTier(audience) !== "Directional"` → 400 / throw). `SOCIALS_CALIBRATION.baselineRef` is
+     set, so the default `GENERAL_AUDIENCE` (mode `socials`) resolves **Validated**, as does every
+     calibrated audience → BOTH are refused by that verb. The simulate verb is exclusively for
+     `mode:"general"`/person DM-reaction SIMs. **It cannot simulate a content card against the socials
+     audience the v2 rail uses.**
+   - **The right producer = `POST /api/tools/react`** (the shipped type-to-room route): resolves the
+     active audience SERVER-SIDE off the open thread (works for ANY audience), runs the same
+     `runFlashTextMode` + `aggregateFlash` engine every card uses, returns real
+     `{ fraction, scrollQuote, personas, population }`.
+   - Wiring: `fireSim(id)` → `POST /api/tools/react` with `{ text: conceptText, framing }` (hook/idea
+     framing from kind) → parse the honest `"N/10 stop"` fraction → `measured[id] = round(n/d·100)` →
+     `buildOverviewData` seals that row above every queued one. While in flight the Overview shows the
+     SEALED watcher (verdict withheld — the sealed-verdict law). A failed/unparseable run does NOT
+     seal (row stays honestly queued). Quick-sim (row tap) fires immediately; a rank tap still opens
+     the develop arming card whose Run also fires. Tests: `AmbientOverviewRail.test.tsx` (2 → **4**:
+     fire→seal + honest-fail-no-seal).
+3. **Flywheel pin RELOCATED (2026-07-23 follow-up — the pin piece of Phase D-full):** the once-
+   orphaned `pinPredictedSignature` now fires on a real fired sim, via an **opt-in `pin` flag on
+   `/api/tools/react`** (`ReactBodySchema.pin`, default OFF → type-to-room byte-unchanged, pins
+   nothing). When `pin:true` (the v2 rail's DELIBERATE Overview sim sets it) the route calls
+   `pinPredictedSignature(supabase, personas, { audienceId })` after aggregating — non-fatal (never
+   blocks the reaction). `audienceId` = the persisted audience id, or **null** for a virtual constant
+   (General / preset / template → `user_id:"__virtual__"`, no DB row) per the pin contract's "null for
+   General". `analysis_id` is null (a concept-sim has no posted-video outcome yet). Chose the opt-in
+   flag over a new route: no schema commitment, no thread pollution, react's default byte-unchanged.
+   Tests: react route +3 (persisted→id · General→null · omitted→no-pin); flywheel + all runner tests
+   still **111 pass**.
+
+4. **Seal PERSISTENCE — reload-survival (2026-07-23, owner chose Option A = jsonb on `threads`):** a
+   sealed measured % now survives reload. **NOT a new table** (Option B rejected as over-built before
+   its consumers exist) and NOT thread-message persistence (that injects a `reaction-distribution`
+   CARD into the chat — pollution).
+   - **Migration** `supabase/migrations/20260723090753_thread_sim_seals.sql` — adds `sim_seals jsonb
+     NOT NULL DEFAULT '{}'` to `public.threads` (RLS inherited). Types hand-added to
+     `database.types.ts` threads Row/Insert/Update (mirrors a regen — no live-DB round-trip).
+   - **Store shape:** `{ [trimmed concept text] : { pct, band, at } }` — CONTENT-addressed, because
+     the descriptor's positional id (`hook-0`) is NOT stable across reload. Lib
+     `src/lib/threads/sim-seals.ts` (`readSimSeals` validate-or-drop · `writeSimSeal` merge, NON-FATAL
+     · `sealKey`). No runtime supabase import (client passes it) so it's boundary-clean.
+   - **Write:** `/api/tools/react` opt-in `persist:true` (orthogonal to `pin`; v2 rail sends both) →
+     `writeSimSeal(supabase, openThread, text, { pct, band, at })` after aggregate; unparseable
+     fraction writes nothing. **Read:** `GET /api/threads/open` returns `simSeals` → `composer.tsx`
+     rehydrates into `persistedSimSeals` (reset on thread switch) → passes to `AmbientOverviewRail`
+     `persistedSeals` → merged into `measured` (in-session fire wins; else persisted by concept text).
+   - **Safe pre-migration:** until the column exists, `readSimSeals` → `{}` and `writeSimSeal` gets a
+     "column does not exist" error → swallowed non-fatal → the reaction still 200s; persistence just
+     no-ops (in-session seal still works). **⚠️ the migration must be APPLIED for persistence to
+     activate** — not auto-applied here (prod schema change = owner's call; apply via your migration
+     flow / supabase).
+   - Tests: sim-seals lib (8: parse/drop/merge/non-fatal) · react route +2 (persist writes merged ·
+     omit writes nothing) · rail +1 (persisted re-seal on mount, no fire).
+
+**Gates:** tsc 0 · eslint 0 (all touched files CLEAN; 3 pre-existing composer warnings) · matte 38/38 ·
+affected sweep **95 pass / 11 files** (sim-seals 8 · open-thread 18 · react route 14 · rail 5 ·
+adapters+StartHome+month-plan · predicted-pin 3) · `/ambient-v2` 200 · `/home` 307 ·
+`/api/threads/open` 401 · `/api/tools/react` 401 (all compile). Files: 9 code/test + migration + this
+doc (all NOT committed — owner commits).
+
+**▶ NEXT:**
+- **Apply the migration** (`20260723090753_thread_sim_seals.sql`) so persistence activates.
+- **Phase C** — Brain/Population depth producers (still needs a rich SimSnapshot; the jsonb seal store
+  is verdict-only. Grow to a `sim_snapshots` table — Option B — when the deep screens need the
+  personas/population/brain payload; surfaces still unmounted).
+- **Cutover** — rip `AudiencePresence`, wire the full flow, retire the flag.
+
 ## ENV / gotchas
 - Dev :3007 (NOT :3011 = stale skill-cards-prod). Screenshots hang → verify via DOM.
 - `grep -rn` single-quoted. Tests: `node ./node_modules/vitest/vitest.mjs run <file>`.

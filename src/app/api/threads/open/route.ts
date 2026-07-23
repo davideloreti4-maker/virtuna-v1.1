@@ -21,6 +21,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getOpenThread } from "@/lib/threads/threads";
 import { loadMessages } from "@/lib/threads/messages";
+import { readSimSeals } from "@/lib/threads/sim-seals";
 
 export async function GET(_request: Request): Promise<Response> {
   const supabase = await createClient();
@@ -50,5 +51,9 @@ export async function GET(_request: Request): Promise<Response> {
   // they are NEVER dropped (T-04-11 / D-14).
   const messages = await loadMessages(openThread.id);
 
-  return Response.json({ threadId: openThread.id, messages });
+  // Ambient v2 Phase D: the thread's sealed-sim verdicts (trimmed stimulus → { pct, band }), so the
+  // composer can re-seal the v2 Overview rows on rehydrate (the measured % survives a reload).
+  const simSeals = readSimSeals(openThread);
+
+  return Response.json({ threadId: openThread.id, messages, simSeals });
 }

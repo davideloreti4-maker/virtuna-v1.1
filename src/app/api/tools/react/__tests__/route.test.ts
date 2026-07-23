@@ -42,6 +42,12 @@ vi.mock("@/lib/engine/flash/run-flash-text-mode", () => ({
   runFlashTextMode: vi.fn(),
 }));
 
+// The FLYWHEEL pin (opt-in, Ambient v2 Phase D) — mocked so no DB write runs; tests assert the
+// route fires it ONLY when pin:true and with the right audience_id (null for a virtual audience).
+vi.mock("@/lib/tools/runners/predicted-pin", () => ({
+  pinPredictedSignature: vi.fn().mockResolvedValue(true),
+}));
+
 // The content-characterization LLM call is mocked; reactPopulation runs REAL (pure math) so the
 // tests exercise the actual Stage 2 aggregate, not a stubbed shape.
 vi.mock("@/lib/audience/characterize-content", () => ({
@@ -325,6 +331,169 @@ describe("POST /api/tools/react", () => {
     const call = (runFlashTextMode as ReturnType<typeof vi.fn>).mock.calls[0]!;
     const audienceRepaint = call[3];
     expect(audienceRepaint).toEqual({ tough_crowd: "Skeptical regular" });
+  });
+
+  it("pin:true captures the flywheel vector with the persisted audience_id (Phase D relocation)", async () => {
+    const { createClient } = await import("@/lib/supabase/server");
+    const { createOpenThreadLazy } = await import("@/lib/threads/threads");
+    const { getAudience } = await import("@/lib/audience/audience-repo");
+    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { pinPredictedSignature } = await import("@/lib/tools/runners/predicted-pin");
+
+    const client = mockAuthedClient();
+    (createClient as ReturnType<typeof vi.fn>).mockResolvedValue(client);
+    (createOpenThreadLazy as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "thread-1",
+      active_audience_id: "aud-real",
+    });
+    // A persisted audience (real user_id, no v2 axes → no population path) → pins its own id.
+    (getAudience as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "aud-real",
+      user_id: "creator-1",
+      is_general: false,
+      personas: [{ archetype: "tough_crowd", repaint: "Skeptical regular" }],
+    });
+    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
+      result: { personas: makePersonas(7) },
+      warnings: [],
+    });
+
+    const { POST } = await import("@/app/api/tools/react/route");
+    const res = await POST(makeRequest({ text: "a deliberate sim", pin: true }));
+
+    expect(res.status).toBe(200);
+    expect(pinPredictedSignature).toHaveBeenCalledTimes(1);
+    const [, personas, ctx] = (pinPredictedSignature as ReturnType<typeof vi.fn>).mock.calls[0]!;
+    expect(personas).toHaveLength(10); // the fired sim's personas, passed straight through
+    expect(ctx).toEqual({ audienceId: "aud-real" });
+  });
+
+  it("pin:true on the General default pins a NULL audience_id (virtual constant, no DB row)", async () => {
+    const { createClient } = await import("@/lib/supabase/server");
+    const { createOpenThreadLazy } = await import("@/lib/threads/threads");
+    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { pinPredictedSignature } = await import("@/lib/tools/runners/predicted-pin");
+
+    (createClient as ReturnType<typeof vi.fn>).mockResolvedValue(mockAuthedClient());
+    (createOpenThreadLazy as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "thread-1",
+      active_audience_id: null, // General default → the virtual GENERAL_AUDIENCE (user_id __virtual__)
+    });
+    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
+      result: { personas: makePersonas(5) },
+      warnings: [],
+    });
+
+    const { POST } = await import("@/app/api/tools/react/route");
+    const res = await POST(makeRequest({ text: "a general sim", pin: true }));
+
+    expect(res.status).toBe(200);
+    expect(pinPredictedSignature).toHaveBeenCalledTimes(1);
+    const [, , ctx] = (pinPredictedSignature as ReturnType<typeof vi.fn>).mock.calls[0]!;
+    expect(ctx).toEqual({ audienceId: null });
+  });
+
+  it("omitting pin captures NOTHING — type-to-room stays ephemeral", async () => {
+    const { createClient } = await import("@/lib/supabase/server");
+    const { createOpenThreadLazy } = await import("@/lib/threads/threads");
+    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { pinPredictedSignature } = await import("@/lib/tools/runners/predicted-pin");
+
+    (createClient as ReturnType<typeof vi.fn>).mockResolvedValue(mockAuthedClient());
+    (createOpenThreadLazy as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "thread-1",
+      active_audience_id: null,
+    });
+    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
+      result: { personas: makePersonas(6) },
+      warnings: [],
+    });
+
+    const { POST } = await import("@/app/api/tools/react/route");
+    const res = await POST(makeRequest({ text: "just a passing thought" }));
+
+    expect(res.status).toBe(200);
+    expect(pinPredictedSignature).not.toHaveBeenCalled();
+  });
+
+  it("persist:true writes the sealed verdict to the thread (survives reload, Phase D)", async () => {
+    const { createClient } = await import("@/lib/supabase/server");
+    const { createOpenThreadLazy } = await import("@/lib/threads/threads");
+    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+
+    // A client whose threads.update→eq resolves ok and captures the payload; profiles select works.
+    const eq = vi.fn().mockResolvedValue({ error: null });
+    const update = vi.fn().mockReturnValue({ eq });
+    const client = {
+      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: "user-123" } } }) },
+      from: vi.fn((table: string) =>
+        table === "threads"
+          ? { update }
+          : {
+              select: () => ({
+                eq: () => ({ maybeSingle: () => Promise.resolve({ data: { niche_primary: "fitness" }, error: null }) }),
+              }),
+            },
+      ),
+    };
+    (createClient as ReturnType<typeof vi.fn>).mockResolvedValue(client);
+    (createOpenThreadLazy as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "thread-1",
+      active_audience_id: null, // General → no getAudience; the seal still writes
+      sim_seals: { "an older card": { pct: 30, band: "Weak", at: "old" } },
+    });
+    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
+      result: { personas: makePersonas(6) }, // 6/10 stop → 60%, band Strong
+      warnings: [],
+    });
+
+    const { POST } = await import("@/app/api/tools/react/route");
+    const res = await POST(makeRequest({ text: "  my new hook  ", persist: true }));
+
+    expect(res.status).toBe(200);
+    expect(update).toHaveBeenCalledTimes(1);
+    const payload = update.mock.calls[0]![0] as { sim_seals: Record<string, { pct: number; band: string }> };
+    // merged (older seal kept) + the new one keyed by the TRIMMED stimulus
+    expect(payload.sim_seals["an older card"]).toEqual({ pct: 30, band: "Weak", at: "old" });
+    expect(payload.sim_seals["my new hook"]!.pct).toBe(60);
+    expect(payload.sim_seals["my new hook"]!.band).toBe("Strong");
+    expect(eq).toHaveBeenCalledWith("id", "thread-1");
+  });
+
+  it("omitting persist writes NO seal — type-to-room leaves the thread untouched", async () => {
+    const { createClient } = await import("@/lib/supabase/server");
+    const { createOpenThreadLazy } = await import("@/lib/threads/threads");
+    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+
+    const update = vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) });
+    const client = {
+      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: "user-123" } } }) },
+      from: vi.fn((table: string) =>
+        table === "threads"
+          ? { update }
+          : {
+              select: () => ({
+                eq: () => ({ maybeSingle: () => Promise.resolve({ data: { niche_primary: "fitness" }, error: null }) }),
+              }),
+            },
+      ),
+    };
+    (createClient as ReturnType<typeof vi.fn>).mockResolvedValue(client);
+    (createOpenThreadLazy as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "thread-1",
+      active_audience_id: null,
+      sim_seals: {},
+    });
+    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
+      result: { personas: makePersonas(6) },
+      warnings: [],
+    });
+
+    const { POST } = await import("@/app/api/tools/react/route");
+    const res = await POST(makeRequest({ text: "just a thought" }));
+
+    expect(res.status).toBe(200);
+    expect(update).not.toHaveBeenCalled();
   });
 
   it("returns 502 { error: 'reaction_failed' } when the Flash primitive throws", async () => {

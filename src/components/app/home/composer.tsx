@@ -386,6 +386,9 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // Ambient v2 Start (④, option B): picking a skill from the default grid ARMS the tool AND drops the
   // creator into the thread composer to write the topic — `startEngaged` swaps the grid → the field.
   const [startEngaged, setStartEngaged] = useState(false);
+  // Ambient v2 Phase D: sealed-sim verdicts for the open thread (trimmed concept text → measured
+  // would-stop %), rehydrated from `threads.sim_seals` so the v2 Overview seal survives a reload.
+  const [persistedSimSeals, setPersistedSimSeals] = useState<Record<string, number>>({});
   const pickStartSkill = useCallback(
     (id: string) => {
       handleUserSelectTool(id as ToolId);
@@ -791,6 +794,14 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
       focusByThought(null);
       setAudienceAsks([]);
       setRoomDrill(false);
+      // Ambient v2 (AMBIENT_V2_ENABLED): a thread switch to a brand-new/empty thread must land
+      // back on the Start grid, not the post-pick fresh-chat home. `startEngaged` is per-session
+      // UI state, so clear it here alongside the other per-thread wipes — the rehydration below
+      // repopulates content for a re-opened thread (which then renders thread mode, not Start).
+      setStartEngaged(false);
+      // Ambient v2 Phase D: clear the prior thread's sealed verdicts; the rehydration below
+      // repopulates them from the re-opened thread's `sim_seals` (or leaves them empty for a new one).
+      setPersistedSimSeals({});
       // Let the rehydration below restore the right tool for the loaded thread.
       hasUserSelectedToolRef.current = false;
     }
@@ -803,8 +814,18 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
         const data = await res.json() as {
           threadId?: string;
           messages?: Array<{ role?: string; blocks?: Array<{ type?: string; props?: unknown }> }>;
+          // Ambient v2 Phase D: sealed-sim verdicts (trimmed concept text → { pct, band }).
+          simSeals?: Record<string, { pct?: number }>;
         };
         if (cancelled) return;
+        // Ambient v2 Phase D: re-seal the v2 Overview rows from the persisted verdicts — trimmed
+        // concept text → the measured would-stop %, so a seal survives reload (AMBIENT_V2 only).
+        const rawSeals = data.simSeals ?? {};
+        const seals: Record<string, number> = {};
+        for (const [k, v] of Object.entries(rawSeals)) {
+          if (v && typeof v.pct === "number") seals[k] = v.pct;
+        }
+        setPersistedSimSeals(seals);
         // Capture thread id for AudienceChip per-thread pin (07-05 / D-04) and sync
         // the sidebar active-row highlight (survives refresh: the pointer cookie
         // drives the server, this drives the client highlight). null → blank/new.
@@ -2152,6 +2173,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
       audience={effectiveAudience}
       descriptors={ambientDescriptors}
       reducedMotion={reducedMotion}
+      persistedSeals={persistedSimSeals}
     />
   );
   // P2 (A2b) — the <xl header: a 68px bar that expands DOWNWARD. Same props again; rendered at the
@@ -2868,7 +2890,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
           field, not a wall in front of it. The show-once demo stays a quiet footer below. */}
       {AMBIENT_V2_ENABLED && !hasConversationContent && !startEngaged ? (
         // Ambient v2 Start (④) as the empty-home hero (parallel-run): the categorized skill grid.
-        // Picking a skill (option B) arms the tool + drops into the thread composer below.
+        // Picking a skill (option B) arms the tool + drops into the normal fresh-chat home below.
         <AmbientStartHome
           audience={effectiveAudience}
           // The Start grid ids are curated SKILL_RUN_META keys (all valid ToolIds).
@@ -2876,10 +2898,10 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
           onSubmit={seedAndRun}
           activeSkillId={activeTool}
         />
-      ) : AMBIENT_V2_ENABLED && !hasConversationContent && startEngaged ? (
-        // Post-pick (option B): just the composer field, the chosen skill armed, ready for the topic.
-        composerDock
       ) : (
+        // Post-pick (option B, owner call 2026-07-23): drop straight into the fresh-chat start —
+        // the same composer + starter + demo as the legacy home, with the chosen skill armed. No
+        // bespoke bare-field state, no back-to-grid chrome; picking a skill just enters the chat.
         <>
           {composerDock}
           {homeStarter}

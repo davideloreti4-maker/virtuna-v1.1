@@ -38,6 +38,8 @@ import type { IntentLens } from "@/lib/audience/intent-lens";
 import { runFlashTextMode } from "@/lib/engine/flash/run-flash-text-mode";
 import { aggregateFlash } from "@/lib/engine/flash/flash-aggregate";
 import { buildReactionPanel } from "@/lib/engine/flash/build-reaction-panel";
+import { pinPredictedSignature } from "@/lib/tools/runners/predicted-pin";
+import { writeSimSeal } from "@/lib/threads/sim-seals";
 import { characterizeContent } from "@/lib/audience/characterize-content";
 import {
   reactPopulation,
@@ -57,6 +59,17 @@ const ReactBodySchema = z.object({
   framing: z.enum(["hook", "idea"]).optional(),
   // Per-run reaction lens (GAP-C2 / §P.10) — composer override; absent → audience default.
   intent: z.enum(["grow", "sell"]).optional(),
+  // Opt-in FLYWHEEL capture (Ambient v2 Phase D). Default OFF → type-to-room stays ephemeral +
+  // pins nothing. The Ambient v2 Overview's DELIBERATE "Simulate →" sets it: a fired sim pins its
+  // PREDICTED disposition vector for later reconciliation (relocates the orphaned pin onto a real
+  // fired sim). The pin persists an outcome-signature row ONLY — never the thought/reaction (react
+  // stays ephemeral for the reaction itself). Non-fatal: a pin failure never blocks the reaction.
+  pin: z.boolean().optional(),
+  // Opt-in SEAL persistence (Ambient v2 Phase D). Default OFF → type-to-room writes nothing. The
+  // v2 Overview's deliberate sim sets it: the sealed verdict (pct + band) is written to the open
+  // thread's `sim_seals` keyed by the trimmed stimulus, so the Overview seal SURVIVES a reload.
+  // Orthogonal to `pin` (flywheel vs UI-state); non-fatal, never blocks the reaction.
+  persist: z.boolean().optional(),
 });
 
 // ── Lead scroll-quote selector ─────────────────────────────────────────────────
@@ -109,7 +122,7 @@ export async function POST(request: Request): Promise<Response> {
       { status: 400 },
     );
   }
-  const { text, framing, intent: bodyIntent } = parsed.data;
+  const { text, framing, intent: bodyIntent, pin: wantPin, persist: wantPersist } = parsed.data;
 
   // ── (3) Load creator profile (cold-start safe — null profile is valid) ─────
   // Same select the ideas route uses; the runtime shape matches ProfileRow.
@@ -164,8 +177,41 @@ export async function POST(request: Request): Promise<Response> {
 
   // ── (7) Aggregate → { fraction, scrollQuote } (the exact shape the client feeds
   //         to cardScrollQuoteReactions → spotlight + Lens) ─────────────────────
-  const { fraction } = aggregateFlash(personas);
+  const { band, fraction } = aggregateFlash(personas);
   const scrollQuote = selectLeadScrollQuote(personas);
+
+  // ── (7a) FLYWHEEL pin (Ambient v2 Phase D, opt-in) ─────────────────────────
+  // A DELIBERATE Overview sim (pin:true) captures its PREDICTED disposition vector for later
+  // reconciliation — the relocation of the once-orphaned `pinPredictedSignature` onto a real fired
+  // sim. audience_id is pinned ONLY for a persisted audience (a virtual constant — General / preset /
+  // template — carries `user_id:"__virtual__"` and no DB row, so it pins a null audience per the
+  // pin contract's "null for General/no-audience"). Non-fatal by contract: never throws, never
+  // blocks the reaction. analysis_id is null — a concept-sim has no posted-video outcome yet.
+  if (wantPin) {
+    await pinPredictedSignature(supabase, personas, {
+      audienceId: audience.user_id === "__virtual__" ? null : audience.id,
+    });
+  }
+
+  // ── (7a′) SEAL persistence (Ambient v2 Phase D, opt-in) ────────────────────
+  // A DELIBERATE Overview sim (persist:true) writes its sealed verdict (pct + band) to the open
+  // thread's `sim_seals`, keyed by the trimmed stimulus, so the Overview seal survives a reload.
+  // pct is the honest "N/10 stop" fraction as a percentage; an unparseable fraction writes nothing
+  // (never fabricate a seal). Non-fatal (writeSimSeal swallows failures) — never blocks the reaction.
+  if (wantPersist) {
+    const m = /(\d+)\s*\/\s*(\d+)/.exec(fraction);
+    const pct =
+      m && Number(m[2]) > 0
+        ? Math.max(0, Math.min(100, Math.round((Number(m[1]) / Number(m[2])) * 100)))
+        : null;
+    if (pct !== null) {
+      await writeSimSeal(supabase, openThread, text, {
+        pct,
+        band: band ?? null,
+        at: new Date().toISOString(),
+      });
+    }
+  }
 
   // ── (7b) Population aggregate — the honest N-individual projection (Stage 2) ─
   // A REAL O(N) score of ~1,000 individuals sampled off the signature's 10 segments, not
