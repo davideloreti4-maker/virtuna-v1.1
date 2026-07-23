@@ -428,34 +428,24 @@ function QueuedRow({
             {r.stimulus}
           </span>
           {r.kind ? <KindChip kind={r.kind} dim /> : null}
-          {/* value slot — fixed width so the native score ⇄ Simulate → swaps with no layout shift */}
-          <span className="relative flex-none" style={{ minWidth: 66, height: 16 }}>
-            <span
-              className="block text-right tabular-nums text-[13px] transition-opacity group-hover:opacity-0"
-              style={{ color: TONE.dim }}
-            >
-              {isVideo && viral != null ? (
-                <>
-                  {viral}
-                  <span className="ml-1 text-[10px] uppercase tracking-[0.06em]" style={{ color: TONE.mute }}>
-                    viral
-                  </span>
-                </>
-              ) : (
-                <>
-                  {n}
-                  <span className="text-[11px]" style={{ color: TONE.mute }}>
-                    /10
-                  </span>
-                </>
-              )}
-            </span>
-            <span
-              className="absolute inset-0 flex items-center justify-end whitespace-nowrap font-mono text-[10.5px] uppercase tracking-[0.06em] opacity-0 transition-opacity group-hover:opacity-100"
-              style={{ color: TONE.cream }}
-            >
-              Simulate&nbsp;→
-            </span>
+          {/* value slot — the native score stays put (the Simulate cue is its own persistent line
+              below, so it reads on every device, not just on hover) */}
+          <span className="flex-none text-right tabular-nums text-[13px]" style={{ color: TONE.dim }}>
+            {isVideo && viral != null ? (
+              <>
+                {viral}
+                <span className="ml-1 text-[10px] uppercase tracking-[0.06em]" style={{ color: TONE.mute }}>
+                  viral
+                </span>
+              </>
+            ) : (
+              <>
+                {n}
+                <span className="text-[11px]" style={{ color: TONE.mute }}>
+                  /10
+                </span>
+              </>
+            )}
           </span>
         </span>
 
@@ -470,10 +460,10 @@ function QueuedRow({
           />
         </span>
 
-        {/* touch affordance — a touch device can't hover, so the value-slot "Simulate →" never shows.
-            Persist it here as its own line on no-hover devices (desktop keeps the hover swap above). */}
+        {/* the Simulate cue — its own persistent line on EVERY device (hover-reveal hid it from touch
+            users and buried it on desktop). Brightens with the row on hover for a pointer affordance. */}
         <span
-          className="mt-2.5 ml-[26px] flex items-center gap-1.5 border-t pt-2 font-mono text-[10.5px] uppercase tracking-[0.06em] [@media(hover:hover)]:hidden"
+          className="mt-2.5 ml-[26px] flex items-center gap-1.5 border-t pt-2 font-mono text-[10.5px] uppercase tracking-[0.06em] transition-colors group-hover:text-[#ece7de]"
           style={{ borderColor: TONE.hair, color: TONE.dim }}
         >
           Simulate&nbsp;→
