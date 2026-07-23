@@ -193,26 +193,6 @@ export async function POST(request: Request): Promise<Response> {
     });
   }
 
-  // ── (7a′) SEAL persistence (Ambient v2 Phase D, opt-in) ────────────────────
-  // A DELIBERATE Overview sim (persist:true) writes its sealed verdict (pct + band) to the open
-  // thread's `sim_seals`, keyed by the trimmed stimulus, so the Overview seal survives a reload.
-  // pct is the honest "N/10 stop" fraction as a percentage; an unparseable fraction writes nothing
-  // (never fabricate a seal). Non-fatal (writeSimSeal swallows failures) — never blocks the reaction.
-  if (wantPersist) {
-    const m = /(\d+)\s*\/\s*(\d+)/.exec(fraction);
-    const pct =
-      m && Number(m[2]) > 0
-        ? Math.max(0, Math.min(100, Math.round((Number(m[1]) / Number(m[2])) * 100)))
-        : null;
-    if (pct !== null) {
-      await writeSimSeal(supabase, openThread, text, {
-        pct,
-        band: band ?? null,
-        at: new Date().toISOString(),
-      });
-    }
-  }
-
   // ── (7b) Population aggregate — the honest N-individual projection (Stage 2) ─
   // A REAL O(N) score of ~1,000 individuals sampled off the signature's 10 segments, not
   // the 10's rollup at higher resolution. Pure math once characterize() lands; a null
@@ -224,6 +204,32 @@ export async function POST(request: Request): Promise<Response> {
       population = reactPopulation(audience.signature, contentVector);
     } catch {
       population = null; // never let the projection break the reaction
+    }
+  }
+
+  // ── (7c) SEAL persistence (Ambient v2 Phase D verdict + Phase C depth, opt-in) ─
+  // A DELIBERATE Overview sim (persist:true) writes its sealed verdict (pct + band) AND the depth
+  // payload (the Stage-2 `population` projection + the exemplar `personas` + `scrollQuote`) to the
+  // open thread's `sim_seals`, keyed by the trimmed stimulus, so BOTH the Overview seal and the
+  // audience-depth drill survive a reload. pct is the honest "N/10 stop" fraction as a percentage; an
+  // unparseable fraction writes nothing (never fabricate a seal). Runs AFTER the population compute so
+  // the depth rides along. `population` is null for a General/uncalibrated audience → depth omitted,
+  // verdict still sealed. Non-fatal (writeSimSeal swallows failures) — never blocks the reaction.
+  if (wantPersist) {
+    const m = /(\d+)\s*\/\s*(\d+)/.exec(fraction);
+    const pct =
+      m && Number(m[2]) > 0
+        ? Math.max(0, Math.min(100, Math.round((Number(m[1]) / Number(m[2])) * 100)))
+        : null;
+    if (pct !== null) {
+      await writeSimSeal(supabase, openThread, text, {
+        pct,
+        band: band ?? null,
+        at: new Date().toISOString(),
+        population,
+        personas,
+        scrollQuote,
+      });
     }
   }
 

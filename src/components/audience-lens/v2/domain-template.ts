@@ -220,6 +220,9 @@ export interface DomainTemplate {
    *  that make an insight feel like an edge: a specific LEVER, a modeled predicted GAIN, and the
    *  counterintuitive INSIGHT (what already works vs what leaks). This is the card's value peak. */
   unlock?: { lever: string; gain?: string; insight: string };
-  brain: BrainFrameData;
+  /** OPTIONAL — a text/concept sim has no brain read (the brain decomposition is a VIDEO producer:
+   *  fold attention + craft dims). When undefined, `AmbientDetail` shows the honest brain-unavailable
+   *  state (`brainNote`) and defaults to the audience tab. The authored fixtures always provide it. */
+  brain?: BrainFrameData;
   population: PopulationFrameData | null; // null until a run exists
 }

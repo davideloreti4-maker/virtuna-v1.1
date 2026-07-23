@@ -32,10 +32,22 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AMBIENT_PANEL_HEIGHT, AmbientOverview, type WatchingRun } from "./AmbientOverview";
 import { AmbientSimulate, type StimulusKind } from "./AmbientSimulate";
+import { AmbientDetail } from "./AmbientDetail";
 import { buildOverviewData, buildSimulateData, parsePersonaStops } from "@/lib/surfaces/ambient-v2-adapters";
+import { buildDomainTemplate, type PopulationPersona } from "@/lib/surfaces/ambient-v2-population";
 import { audienceToMeta } from "@/lib/surfaces/ambient-v2-audience-meta";
 import type { Audience } from "@/lib/audience/audience-types";
 import type { AmbientCardDescriptor } from "@/components/app/home/use-ambient-focus";
+import type { PopulationAggregate } from "@/lib/audience/population";
+import type { SimSealMap } from "@/lib/threads/sim-seals";
+
+/** One fired sim's full result, kept per descriptor id for the Overview seal + the depth drill. */
+interface RailSnapshot {
+  pct: number;
+  population?: PopulationAggregate | null;
+  personas?: PopulationPersona[];
+  scrollQuote?: string;
+}
 
 /** The descriptor kind → the Simulate stimulus kind (script/remix are drafts under test). */
 function stimulusKindOf(kind?: string): StimulusKind {
@@ -84,22 +96,60 @@ export function AmbientOverviewRail({
   audience: Audience;
   descriptors: AmbientCardDescriptor[];
   reducedMotion?: boolean;
-  /** Sealed verdicts rehydrated from `threads.sim_seals`, keyed by TRIMMED concept text → measured
-   *  would-stop %. These re-seal rows on reload; a fresh in-session fire (below) takes precedence. */
-  persistedSeals?: Record<string, number>;
+  /** Sealed sims rehydrated from `threads.sim_seals`, keyed by TRIMMED concept text → the full seal
+   *  (measured %, + the Phase-C population/personas depth). These re-seal rows AND repopulate the
+   *  depth drill on reload; a fresh in-session fire (below) takes precedence. */
+  persistedSeals?: SimSealMap;
 }) {
   const meta = audienceToMeta(audience);
   // "develop" carries the tapped rank into Simulate; null ⇒ Overview.
   const [developId, setDevelopId] = useState<string | null>(null);
-  // Sealed MEASURED would-stop % per descriptor id, from FIRED sims THIS session. Absent ⇒ fall back
-  // to a persisted seal (by concept text), else an honest queued row.
-  const [sessionMeasured, setSessionMeasured] = useState<Record<string, number>>({});
+  // "detail" opens the Brain/Population depth drill for a SEALED row; null ⇒ not open.
+  const [detailId, setDetailId] = useState<string | null>(null);
+  // Sealed sims fired THIS session, per descriptor id (measured % + the depth payload). Absent ⇒ fall
+  // back to a persisted seal (by concept text), else an honest queued row.
+  const [sessionSeals, setSessionSeals] = useState<Record<string, RailSnapshot>>({});
   // The run in flight — sealed (verdict withheld) until `/api/tools/react` returns.
   const [watching, setWatching] = useState<WatchingRun | null>(null);
   const inflightRef = useRef<AbortController | null>(null);
   useEffect(() => () => inflightRef.current?.abort(), []);
 
   const openDevelop = (id: string) => setDevelopId(id);
+
+  // Reset the open drill wholesale when the thread's descriptor set changes (thread switch), so a
+  // stale positional id can't render a mismatched depth view.
+  useEffect(() => {
+    setDetailId(null);
+    setDevelopId(null);
+  }, [descriptors]);
+
+  // Resolve a descriptor id → its sealed snapshot: a fresh in-session fire wins; else a persisted seal
+  // matched by trimmed concept text (survives reload). Undefined ⇒ the row is still honestly queued.
+  const snapshotFor = useCallback(
+    (id: string): RailSnapshot | undefined => {
+      if (sessionSeals[id]) return sessionSeals[id];
+      const d = descriptors.find((x) => x.id === id);
+      const seal = d ? persistedSeals?.[d.conceptText.trim()] : undefined;
+      if (!seal) return undefined;
+      return {
+        pct: seal.pct,
+        population: seal.population,
+        personas: seal.personas,
+        scrollQuote: seal.scrollQuote,
+      };
+    },
+    [sessionSeals, persistedSeals, descriptors],
+  );
+
+  // Open the depth drill when a real calibrated sim has sealed a population; otherwise fall through to
+  // develop (arm/run) — the depth exists ONLY after a run, and only a calibrated audience yields one.
+  const openStimulus = useCallback(
+    (id: string) => {
+      if (snapshotFor(id)?.population) setDetailId(id);
+      else openDevelop(id);
+    },
+    [snapshotFor],
+  );
 
   // Fire the REAL sealed sim for one ranked stimulus and seal its row with the measured fraction.
   const fireSim = useCallback(
@@ -130,11 +180,27 @@ export function AmbientOverviewRail({
         });
         if (controller.signal.aborted) return;
         if (!res.ok) throw new Error("reaction_failed");
-        const data: { fraction?: string } = await res.json();
+        const data: {
+          fraction?: string;
+          scrollQuote?: string;
+          personas?: PopulationPersona[];
+          population?: PopulationAggregate | null;
+        } = await res.json();
         if (controller.signal.aborted) return;
         const pct = fractionToStopPct(data.fraction ?? "");
         // Seal the row only with a real, parseable fraction (honesty spine — never a fabricated %).
-        if (pct !== null) setSessionMeasured((prev) => ({ ...prev, [id]: pct }));
+        // Capture the full snapshot (population/personas) too, so the depth drill opens without a re-run.
+        if (pct !== null) {
+          setSessionSeals((prev) => ({
+            ...prev,
+            [id]: {
+              pct,
+              population: data.population ?? null,
+              personas: data.personas,
+              scrollQuote: data.scrollQuote,
+            },
+          }));
+        }
       } catch {
         // Aborted or failed → drop the watcher; the row stays honestly queued (no seal).
       } finally {
@@ -169,11 +235,40 @@ export function AmbientOverviewRail({
     );
   }
 
+  // Phase C: a SEALED calibrated row drills into the real Population depth (brain omitted — a text sim
+  // has no attention/craft read, so AmbientDetail shows its honest brain-unavailable state).
+  if (detailId !== null) {
+    const snap = snapshotFor(detailId);
+    const d = descriptors.find((x) => x.id === detailId);
+    if (snap?.population) {
+      const template = buildDomainTemplate({
+        pct: snap.pct,
+        aggregate: snap.population,
+        personas: snap.personas ?? [],
+        calibratedFrom: meta.calibratedFrom,
+        tier: meta.tier,
+        conceptLabel: d?.kind ?? "concept",
+      });
+      return (
+        <div className="flex w-full items-start justify-center">
+          <AmbientDetail
+            template={template}
+            reducedMotion={reducedMotion}
+            onBack={() => setDetailId(null)}
+            brainNote="The brain reads a video's frames. This was a text concept sim — run it on a draft to see the attention read."
+          />
+        </div>
+      );
+    }
+    // Snapshot went away (thread switch / cleared) — fall through to the Overview; the effect above
+    // clears the stale detailId (no setState during render).
+  }
+
   // Merge the seal sources into the per-descriptor-id map buildOverviewData reads: a fresh in-session
   // fire wins; else a persisted seal matched by trimmed concept text (survives reload); else queued.
   const measured: Record<string, number> = {};
   for (const d of descriptors) {
-    const pct = sessionMeasured[d.id] ?? persistedSeals?.[d.conceptText.trim()];
+    const pct = snapshotFor(d.id)?.pct;
     if (typeof pct === "number") measured[d.id] = pct;
   }
   const overview = buildOverviewData({ audience: meta, descriptors, measured, watching });
@@ -182,9 +277,9 @@ export function AmbientOverviewRail({
       <AmbientOverview
         data={overview}
         reducedMotion={reducedMotion}
-        // Phase C: a rank tap should open the Brain/Population depth — its producers aren't real yet,
-        // so for now it routes to Simulate (develop) for that rank instead of a fixture depth view.
-        onOpenStimulus={openDevelop}
+        // A rank tap opens the real Population depth for a SEALED calibrated row; an unsealed row (or a
+        // General/uncalibrated audience with no population) routes to Simulate (develop) to arm/run.
+        onOpenStimulus={openStimulus}
         // Quick-sim fires the real sealed sim immediately (no arming step).
         onQuickSimulate={fireSim}
         onTestVariant={() => descriptors[0] && openDevelop(descriptors[0].id)}

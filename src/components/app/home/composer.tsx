@@ -49,6 +49,7 @@ import dynamic from "next/dynamic";
 import { cn } from "@/lib/utils";
 import { HORIZONTAL_ENABLED } from "@/lib/flags/horizontal";
 import { AMBIENT_V2_ENABLED } from "@/lib/flags/ambient-v2";
+import type { SimSealMap } from "@/lib/threads/sim-seals";
 import { queryKeys } from "@/lib/queries/query-keys";
 import {
   setActiveThreadCookie,
@@ -386,9 +387,10 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // Ambient v2 Start (④, option B): picking a skill from the default grid ARMS the tool AND drops the
   // creator into the thread composer to write the topic — `startEngaged` swaps the grid → the field.
   const [startEngaged, setStartEngaged] = useState(false);
-  // Ambient v2 Phase D: sealed-sim verdicts for the open thread (trimmed concept text → measured
-  // would-stop %), rehydrated from `threads.sim_seals` so the v2 Overview seal survives a reload.
-  const [persistedSimSeals, setPersistedSimSeals] = useState<Record<string, number>>({});
+  // Ambient v2 Phase D/C: sealed-sim results for the open thread (trimmed concept text → the full
+  // seal: measured would-stop % + the Phase-C population/personas depth), rehydrated from
+  // `threads.sim_seals` so BOTH the v2 Overview seal AND the audience-depth drill survive a reload.
+  const [persistedSimSeals, setPersistedSimSeals] = useState<SimSealMap>({});
   const pickStartSkill = useCallback(
     (id: string) => {
       handleUserSelectTool(id as ToolId);
@@ -814,18 +816,14 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
         const data = await res.json() as {
           threadId?: string;
           messages?: Array<{ role?: string; blocks?: Array<{ type?: string; props?: unknown }> }>;
-          // Ambient v2 Phase D: sealed-sim verdicts (trimmed concept text → { pct, band }).
-          simSeals?: Record<string, { pct?: number }>;
+          // Ambient v2 Phase D/C: server-validated sealed sims (trimmed concept text → the full seal,
+          // incl. the population/personas depth). `readSimSeals` already dropped malformed entries.
+          simSeals?: SimSealMap;
         };
         if (cancelled) return;
-        // Ambient v2 Phase D: re-seal the v2 Overview rows from the persisted verdicts — trimmed
-        // concept text → the measured would-stop %, so a seal survives reload (AMBIENT_V2 only).
-        const rawSeals = data.simSeals ?? {};
-        const seals: Record<string, number> = {};
-        for (const [k, v] of Object.entries(rawSeals)) {
-          if (v && typeof v.pct === "number") seals[k] = v.pct;
-        }
-        setPersistedSimSeals(seals);
+        // Ambient v2: re-seal the v2 Overview rows AND repopulate the depth drill from the persisted
+        // seals — trimmed concept text → the sealed sim, so both survive reload (AMBIENT_V2 only).
+        setPersistedSimSeals(data.simSeals ?? {});
         // Capture thread id for AudienceChip per-thread pin (07-05 / D-04) and sync
         // the sidebar active-row highlight (survives refresh: the pointer cookie
         // drives the server, this drives the client highlight). null → blank/new.

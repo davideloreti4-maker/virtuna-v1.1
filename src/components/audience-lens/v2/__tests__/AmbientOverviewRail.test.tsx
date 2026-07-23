@@ -51,12 +51,45 @@ describe("AmbientOverviewRail", () => {
         descriptors={descriptors}
         reducedMotion
         // keyed by the trimmed concept text (matches the persisted store)
-        persistedSeals={{ "I quit my 9-5 with $400…": 80 }}
+        persistedSeals={{ "I quit my 9-5 with $400…": { pct: 80, band: "Strong", at: "" } }}
       />,
     );
     // the persisted verdict shows as a sealed 80.0% row without any network call
     expect(screen.getByText(/80\.0%/)).toBeTruthy();
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("drills a SEALED calibrated row into the real Population depth (brain honestly unavailable for text)", () => {
+    const population = {
+      total: 1000,
+      stop: 800,
+      scroll: 200,
+      stopPct: 80,
+      segments: [
+        { archetype: "builder", displayName: "builders", share: 0.6, total: 600, stop: 540, stopPct: 90 },
+        { archetype: "skeptic", displayName: "skeptics", share: 0.4, total: 400, stop: 260, stopPct: 65 },
+      ],
+      reasons: [{ reason: "the stake feels real", count: 300 }],
+    };
+    const personas = [{ archetype: "builder", verdict: "stop" as const, quote: "that detail made me stay" }];
+    render(
+      <AmbientOverviewRail
+        audience={audience}
+        descriptors={descriptors}
+        reducedMotion
+        persistedSeals={{
+          "I quit my 9-5 with $400…": { pct: 80, band: "Strong", at: "", population, personas, scrollQuote: "" },
+        }}
+      />,
+    );
+    // tapping the SEALED row opens the depth drill (not Simulate) — it has a real population
+    fireEvent.click(screen.getByRole("button", { name: /I quit my 9-5 with \$400/ }));
+    expect(screen.getByTestId("ambient-detail")).toBeTruthy();
+    // opens on the audience tab (brain is a video read) — a REAL district renders
+    expect(screen.getAllByText(/builders/).length).toBeGreaterThan(0);
+    // the brain tab is present but honestly unavailable for a text sim
+    fireEvent.click(screen.getByRole("button", { name: /The brain/ }));
+    expect(screen.getByText(/text concept sim/i)).toBeTruthy();
   });
 
   it("quick-sim fires the real react route and SEALS the row with the measured fraction (Phase D)", async () => {
