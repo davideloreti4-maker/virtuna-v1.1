@@ -235,6 +235,11 @@ Overview rail). `/ambient-v2` still serves the fixture surfaces for reference.
 
 ## ▶▶ RESUME HERE (fresh context, 2026-07-23 session 3) — Start polish DONE · Phase D-minimal SHIPPED
 
+> ✅ **MERGED to main: PR #373, merge `3ae89bfe` (code `d303ba5d`).** Migration APPLIED to the DB
+> (`virtuna-v1.1` / `qyxvxleheckijapurisj`). Clean fresh-context kickoff:
+> `docs/HANDOFF-2026-07-23-ambient-v2-phase-d-SHIPPED.md`.
+
+
 **Owner decisions this session (via AskUserQuestion):**
 1. **Conditions strip** — KEEP between greeting + grid (no change; the locked loud-at-birth form).
 2. **Post-pick (option B)** — picking a skill just drops into the **normal fresh-chat start** with the
