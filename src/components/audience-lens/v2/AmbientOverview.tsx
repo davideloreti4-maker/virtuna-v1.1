@@ -520,15 +520,13 @@ export function AmbientOverview({
   return (
     <div
       data-testid="ambient-overview"
-      className={`flex w-full max-w-[380px] flex-col rounded-[16px] ${className ?? ""}`}
+      className={`flex w-full max-w-[380px] flex-col ${className ?? ""}`}
       style={{
-        // Fill the (padded) rail host, but never taller than the design height — so in a tall aside it
-        // reads as a FLOATING card with breathing room top+bottom, not an edge-to-edge sidebar.
+        // Connected rail — fills its column top-to-bottom (part of the thread page, NOT a floating
+        // card). A single left hairline divides it from the thread; no shadow, no rounding, no gaps.
         height: "100%",
-        maxHeight: AMBIENT_PANEL_HEIGHT,
         background: "#181817",
-        border: `1px solid ${TONE.border}`,
-        boxShadow: "0 8px 30px rgba(0,0,0,.28)",
+        borderLeft: `1px solid ${TONE.border}`,
         color: TONE.cream,
         fontFamily: "var(--font-sans, Inter, system-ui, sans-serif)",
       }}

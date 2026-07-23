@@ -111,11 +111,11 @@ export function HomePageLayout() {
         // host. shrink-0 fixed width; full height with internal scroll (the rail body scrolls).
         <aside
           aria-label="Your audience"
-          // A floating rail: gaps on ALL four sides (pr-4 added) so the panel reads as a card, not an
-          // edge-to-edge sidebar. The host centers the (height-capped) panel vertically.
-          className="hidden h-full min-h-0 w-[356px] shrink-0 flex-col p-4 xl:flex"
+          // A CONNECTED rail — part of the thread page, full height, flush (no floating gaps). The
+          // panel fills the column top-to-bottom; its own left hairline divides it from the thread.
+          className="hidden h-full min-h-0 w-[340px] shrink-0 flex-col xl:flex"
         >
-          <div ref={setRailHost} className="flex min-h-0 w-full flex-1 items-center justify-center" />
+          <div ref={setRailHost} className="flex min-h-0 w-full flex-1" />
         </aside>
       )}
     </div>

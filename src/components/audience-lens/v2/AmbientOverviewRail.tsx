@@ -362,7 +362,7 @@ export function AmbientOverviewRail({
   }));
   const overview = buildOverviewData({ audience: meta, descriptors, measured, videos, watching });
   return (
-    <div className="flex h-full w-full items-center justify-center">
+    <div className="flex h-full w-full">
       <AmbientOverview
         data={overview}
         reducedMotion={reducedMotion}
