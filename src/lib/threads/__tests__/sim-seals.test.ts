@@ -46,6 +46,28 @@ describe("readSimSeals", () => {
     expect(readSimSeals({ sim_seals: [] as never })).toEqual({});
     expect(readSimSeals({ sim_seals: "nope" as never })).toEqual({});
   });
+
+  it("passes through a well-formed Phase-C depth payload", () => {
+    const population = { total: 1000, stop: 620, scroll: 380, stopPct: 62, segments: [], reasons: [] };
+    const personas = [{ archetype: "skeptic", verdict: "scroll", quote: "meh" }];
+    const map = readSimSeals({
+      sim_seals: {
+        k: { pct: 62, band: "Mixed", at: "t", population, personas, scrollQuote: "meh" },
+      } as never,
+    });
+    expect(map.k!.population).toEqual(population);
+    expect(map.k!.personas).toEqual(personas);
+    expect(map.k!.scrollQuote).toBe("meh");
+  });
+
+  it("drops a malformed depth blob but keeps the verdict seal", () => {
+    const map = readSimSeals({
+      sim_seals: {
+        k: { pct: 62, band: "Mixed", at: "t", population: { total: "nope" }, personas: "x" },
+      } as never,
+    });
+    expect(map.k).toEqual({ pct: 62, band: "Mixed", at: "t" }); // depth dropped, verdict survives
+  });
 });
 
 /** A supabase mock whose update→eq resolves { error }, capturing the update payload. */

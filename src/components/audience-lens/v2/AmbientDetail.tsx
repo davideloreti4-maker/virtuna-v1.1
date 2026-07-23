@@ -253,23 +253,30 @@ type Tab = "brain" | "audience";
 
 export function AmbientDetail({
   template,
-  initialTab = "brain",
+  initialTab,
   reducedMotion = false,
   onBack,
   className,
+  brainNote,
 }: {
   template: DomainTemplate;
   initialTab?: Tab;
   reducedMotion?: boolean;
   onBack?: () => void;
   className?: string;
+  /** When set (or `template.brain` is absent), the brain read is UNAVAILABLE — a text/concept sim has
+   *  no attention/craft decomposition. The brain tab shows this honest line and the view opens on the
+   *  audience tab. NEVER a fabricated brain figure. */
+  brainNote?: string;
 }) {
-  const [tab, setTab] = useState<Tab>(initialTab);
+  const { backLabel, pager, verdict, unlock, brain, population } = template;
+  // Brain is a VIDEO producer — absent for a text sim. Honest-unavailable, never faked.
+  const brainAvailable = !!brain && !brainNote;
+  const [tab, setTab] = useState<Tab>(initialTab ?? (brainAvailable ? "brain" : "audience"));
   // Cross-tab thread — a coded reason on the audience tab jumps here to the brain and briefly flashes
   // the matching moment (the human "why" and the mechanical "why" are one story). Cleared after the
   // flash so it doesn't re-trigger on a later manual visit.
   const [flashMoment, setFlashMoment] = useState<string | null>(null);
-  const { backLabel, pager, verdict, unlock, brain, population } = template;
 
   useEffect(() => {
     if (!flashMoment) return;
@@ -312,13 +319,14 @@ export function AmbientDetail({
         <div className="mt-[18px] flex gap-[22px]" style={{ borderBottom: `1px solid ${TONE.border}` }}>
           {(["brain", "audience"] as const).map((t) => {
             const on = t === tab;
+            const dim = t === "brain" && !brainAvailable; // honest locked affordance for a text sim
             return (
               <button
                 key={t}
                 type="button"
                 onClick={() => setTab(t)}
                 className="relative pb-2.5 text-[14px]"
-                style={{ color: on ? TONE.cream : TONE.faint }}
+                style={{ color: on ? TONE.cream : TONE.faint, opacity: dim && !on ? 0.5 : 1 }}
               >
                 {t === "brain" ? "The brain" : "The audience"}
                 {on ? (
@@ -333,13 +341,29 @@ export function AmbientDetail({
       {/* body — the hero figure leads (frame renders hero + chip → unlock → detail) */}
       <div className="min-h-0 flex-1 overflow-y-auto px-[22px] pb-[26px]">
         {tab === "brain" ? (
-          <BrainFrame brain={brain} verdict={verdict} unlock={unlock} reducedMotion={reducedMotion} flashMoment={flashMoment} />
+          brainAvailable && brain ? (
+            <BrainFrame brain={brain} verdict={verdict} unlock={unlock} reducedMotion={reducedMotion} flashMoment={flashMoment} />
+          ) : (
+            <div
+              className="flex h-full flex-col items-center justify-center gap-2 py-16 text-center"
+              style={{ color: TONE.faint }}
+            >
+              <span className="text-[13px]" style={{ color: TONE.dim }}>
+                The brain — a video read
+              </span>
+              <span className="max-w-[280px] text-[12.5px] leading-[1.5]">
+                {brainNote ?? "The brain decomposition reads a video's frames. This was a text concept sim — no attention timeline to show."}
+              </span>
+            </div>
+          )
         ) : population ? (
           <PopulationFrame
             population={population}
             verdict={verdict}
             reducedMotion={reducedMotion}
             onJumpToBrain={(moment) => {
+              // Only cross to the brain when it exists (a video read); otherwise stay on the audience.
+              if (!brainAvailable) return;
               setFlashMoment(moment);
               setTab("brain");
             }}
