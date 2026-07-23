@@ -29,17 +29,23 @@
  * Build spec: docs/HANDOFF-2026-07-22-ambient-v2-wiring-provenance-audit.md
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AMBIENT_PANEL_HEIGHT, AmbientOverview, type WatchingRun } from "./AmbientOverview";
 import { AmbientSimulate, type StimulusKind } from "./AmbientSimulate";
 import { AmbientDetail } from "./AmbientDetail";
-import { buildOverviewData, buildSimulateData, parsePersonaStops } from "@/lib/surfaces/ambient-v2-adapters";
+import {
+  buildOverviewData,
+  buildSimulateData,
+  parsePersonaStops,
+  type OverviewVideoRow,
+} from "@/lib/surfaces/ambient-v2-adapters";
 import { buildDomainTemplate, type PopulationPersona } from "@/lib/surfaces/ambient-v2-population";
+import { buildVideoDomainTemplate } from "@/lib/surfaces/ambient-v2-brain";
 import { audienceToMeta } from "@/lib/surfaces/ambient-v2-audience-meta";
 import type { Audience } from "@/lib/audience/audience-types";
 import type { AmbientCardDescriptor } from "@/components/app/home/use-ambient-focus";
 import type { PopulationAggregate } from "@/lib/audience/population";
-import type { SimSealMap } from "@/lib/threads/sim-seals";
+import type { SimSealMap, SimSealVideo } from "@/lib/threads/sim-seals";
 
 /** One fired sim's full result, kept per descriptor id for the Overview seal + the depth drill. */
 interface RailSnapshot {
@@ -87,6 +93,15 @@ function fractionToStopPct(fraction: string): number | null {
   return Math.max(0, Math.min(100, Math.round((n / d) * 100)));
 }
 
+/** A tested video's row label — its real opening words (spoken, else on-screen), clipped; an honest
+ *  "Tested video" fallback when the transcript is bare. Never invents a title. */
+function videoLabel(v: SimSealVideo): string {
+  const hook = v.verbatim?.hook;
+  const text = (hook?.spoken_words ?? hook?.on_screen_text ?? "").trim();
+  if (text.length === 0) return "Tested video";
+  return text.length > 64 ? `${text.slice(0, 63)}…` : text;
+}
+
 export function AmbientOverviewRail({
   audience,
   descriptors,
@@ -113,6 +128,25 @@ export function AmbientOverviewRail({
   const [watching, setWatching] = useState<WatchingRun | null>(null);
   const inflightRef = useRef<AbortController | null>(null);
   useEffect(() => () => inflightRef.current?.abort(), []);
+
+  // Tested videos, sourced from the seal store — a `sim_seals` entry carrying a `video` blob (written
+  // at Test time, keyed by analysisId). These are a DIFFERENT kind of row than a projected concept:
+  // they carry a native VIRAL score (craft) and an ALREADY-measured attention %, and they route
+  // through their own reveal/drill handlers below (never through the concept fireSim/develop path).
+  const videoSeals = useMemo<Record<string, SimSealVideo>>(() => {
+    const out: Record<string, SimSealVideo> = {};
+    for (const [key, seal] of Object.entries(persistedSeals ?? {})) {
+      if (seal.video) out[key] = seal.video;
+    }
+    return out;
+  }, [persistedSeals]);
+
+  // Which video rows have been "simulated" this session — a click reveals the persisted attention %
+  // (no re-run: the Test analysis already produced it). Until then the row shows only its viral score.
+  const [revealedVideos, setRevealedVideos] = useState<Record<string, boolean>>({});
+  const revealVideo = useCallback((id: string) => {
+    setRevealedVideos((prev) => (prev[id] ? prev : { ...prev, [id]: true }));
+  }, []);
 
   const openDevelop = (id: string) => setDevelopId(id);
 
@@ -213,6 +247,50 @@ export function AmbientOverviewRail({
     [descriptors],
   );
 
+  // A row's quick-simulate (value-slot tap). A VIDEO reveals its already-measured attention % (no
+  // re-run); a concept fires the real react sim.
+  const handleQuickSimulate = useCallback(
+    (id: string) => {
+      if (videoSeals[id]) return revealVideo(id);
+      return fireSim(id);
+    },
+    [videoSeals, revealVideo, fireSim],
+  );
+
+  // A row's body tap. A revealed VIDEO drills into its (real) Brain depth; an unrevealed one reveals
+  // first (the % gates the drill). A concept routes to the existing population/develop opener.
+  const handleOpenStimulus = useCallback(
+    (id: string) => {
+      if (videoSeals[id]) {
+        if (revealedVideos[id]) setDetailId(id);
+        else revealVideo(id);
+        return;
+      }
+      openStimulus(id);
+    },
+    [videoSeals, revealedVideos, revealVideo, openStimulus],
+  );
+
+  // A drilled VIDEO row → its real Brain-depth Detail (brain-first; population omitted for a video →
+  // the honest audience-unavailable state). Guarded before the concept branch (disjoint id spaces).
+  if (detailId !== null && videoSeals[detailId] && revealedVideos[detailId]) {
+    const v = videoSeals[detailId];
+    const template = buildVideoDomainTemplate({
+      heatmap: v.heatmap,
+      videoSignals: v.videoSignals,
+      verbatim: v.verbatim,
+      stopPct: v.stopPct,
+      stimulusKey: detailId,
+      conceptLabel: "video",
+      population: null,
+    });
+    return (
+      <div className="flex w-full items-start justify-center">
+        <AmbientDetail template={template} reducedMotion={reducedMotion} onBack={() => setDetailId(null)} />
+      </div>
+    );
+  }
+
   if (developId !== null) {
     const d = descriptors.find((x) => x.id === developId);
     const stops = d ? parsePersonaStops(d.fraction) : 0;
@@ -271,17 +349,26 @@ export function AmbientOverviewRail({
     const pct = snapshotFor(d.id)?.pct;
     if (typeof pct === "number") measured[d.id] = pct;
   }
-  const overview = buildOverviewData({ audience: meta, descriptors, measured, watching });
+  // Tested videos from the seal store → ranked in alongside the concepts. A revealed video ranks by
+  // its measured attention %; an unrevealed one stays queued (viral score shown, % withheld).
+  const videos: OverviewVideoRow[] = Object.entries(videoSeals).map(([id, v]) => ({
+    id,
+    label: videoLabel(v),
+    viralScore: v.craftScore ?? null,
+    stopPct: v.stopPct,
+    revealed: !!revealedVideos[id],
+  }));
+  const overview = buildOverviewData({ audience: meta, descriptors, measured, videos, watching });
   return (
     <div style={{ height: AMBIENT_PANEL_HEIGHT }} className="flex w-full justify-center">
       <AmbientOverview
         data={overview}
         reducedMotion={reducedMotion}
-        // A rank tap opens the real Population depth for a SEALED calibrated row; an unsealed row (or a
-        // General/uncalibrated audience with no population) routes to Simulate (develop) to arm/run.
-        onOpenStimulus={openStimulus}
-        // Quick-sim fires the real sealed sim immediately (no arming step).
-        onQuickSimulate={fireSim}
+        // A rank tap opens the real Population depth for a SEALED calibrated row (or the Brain depth for
+        // a revealed video); an unsealed row routes to Simulate (develop) / reveals a video's %.
+        onOpenStimulus={handleOpenStimulus}
+        // Quick-sim fires the real sealed sim (concept) or reveals the measured % (video).
+        onQuickSimulate={handleQuickSimulate}
         onTestVariant={() => descriptors[0] && openDevelop(descriptors[0].id)}
       />
     </div>

@@ -197,6 +197,7 @@ export async function POST(request: Request): Promise<Response> {
         video: {
           analysisId,
           stopPct: Math.max(0, Math.min(100, Math.round(hold * 100))),
+          craftScore: block.props.craftScore ?? null, // the row's native viral score (craft, not %)
           heatmap,
           videoSignals: variants?.craft?.video_signals ?? null,
           verbatim: source.verbatim,

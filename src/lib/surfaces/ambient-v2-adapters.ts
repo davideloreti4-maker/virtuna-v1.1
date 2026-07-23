@@ -82,6 +82,18 @@ export function rankKindOf(kind?: string): RankKind {
 
 // ── ① Overview ─────────────────────────────────────────────────────────────────
 
+/** A tested video surfaced in the Overview — sourced from a `threads.sim_seals` entry carrying a
+ *  `video` blob. It carries a NATIVE viral score (craft, shown always) AND an attention `stopPct`
+ *  (already measured at Test time) that stays WITHHELD until the row is `revealed` — clicking
+ *  Simulate reveals it (no re-run: the analysis already produced it). */
+export interface OverviewVideoRow {
+  id: string; // the seal key (analysisId) — stable across reload
+  label: string; // the row's stimulus text (the video's concept/title)
+  viralScore?: number | null; // 0–100 native craft score (never the attention %)
+  stopPct: number; // 0–100 attention %, from the sealed brain read — shown only once revealed
+  revealed: boolean; // true once the user clicked Simulate this session
+}
+
 export interface OverviewInput {
   audience: AudienceMeta;
   /** The thread's projected cards (the ledger) — each carries its own personaStops via `fraction`. */
@@ -89,20 +101,32 @@ export interface OverviewInput {
   /** Measured would-stop % per descriptor id, from FIRED sims (sealed). An id present here ⇒ that
    *  row is `simulated`; absent ⇒ `queued` (withheld % = 0). */
   measured?: Record<string, number>;
+  /** Tested videos from the seal store — ranked in alongside the concepts (see `OverviewVideoRow`). */
+  videos?: OverviewVideoRow[];
   /** A sim in flight — sealed until n-of-n decide (`verdictPct` revealed only then). */
   watching?: WatchingRun | null;
 }
 
+/** The queued-group sort key. Concepts rank by their persona-stop count (0–10); a video has no
+ *  personas, so it ranks by its viral score normalized to the same 0–10 scale — an honest heuristic
+ *  (its only pre-sim signal), never a fabricated persona count. */
+function queuedRankKey(r: RankedStimulus): number {
+  if (r.kind === "video") return (r.viralScore ?? 0) / 10;
+  return r.personaStops ?? 0;
+}
+
 /** Build the Overview view-model. Ranked order: sealed rows first (by measured stopPct desc), then
- *  queued rows (by personaStops desc) — so a run always outranks a projection, and the top is the
- *  win. Stable tie-break on generation order (the descriptor sequence). */
+ *  queued rows (by the queued key desc) — so a run always outranks a projection, and the top is the
+ *  win. Tested videos rank in by the same rule (revealed ⇒ sealed by %, else queued by viral score).
+ *  Stable tie-break on generation order (the descriptor sequence, then the video sequence). */
 export function buildOverviewData({
   audience,
   descriptors,
   measured,
+  videos,
   watching,
 }: OverviewInput): OverviewData {
-  const ranked: RankedStimulus[] = descriptors.map((d) => {
+  const conceptRows: RankedStimulus[] = descriptors.map((d) => {
     const m = measured?.[d.id];
     const sealed = typeof m === "number";
     return {
@@ -115,12 +139,23 @@ export function buildOverviewData({
     };
   });
 
+  const videoRows: RankedStimulus[] = (videos ?? []).map((v) => ({
+    id: v.id,
+    stimulus: v.label,
+    stopPct: v.revealed ? v.stopPct : 0,
+    viralScore: v.viralScore ?? null,
+    kind: "video",
+    state: v.revealed ? "simulated" : "queued",
+  }));
+
+  const ranked: RankedStimulus[] = [...conceptRows, ...videoRows];
+
   ranked.sort((a, b) => {
     const aSealed = a.state === "simulated";
     const bSealed = b.state === "simulated";
     if (aSealed !== bSealed) return aSealed ? -1 : 1;
     if (aSealed) return b.stopPct - a.stopPct;
-    return (b.personaStops ?? 0) - (a.personaStops ?? 0);
+    return queuedRankKey(b) - queuedRankKey(a);
   });
 
   return {

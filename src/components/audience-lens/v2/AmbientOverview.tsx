@@ -48,6 +48,8 @@ export interface RankedStimulus {
   stimulus: string;
   stopPct: number;
   personaStops?: number; // 0–10 — generation-time personas who would stop (queued rows)
+  viralScore?: number | null; // VIDEO rows only — the tested video's native craft/viral score (0–100),
+  //  shown in place of a projection. Distinct from the attention % (which appears only once simulated).
   kind?: RankKind;
   state?: RankState; // defaults to "simulated"
 }
@@ -354,6 +356,15 @@ function SealedRow({
             {r.stimulus}
           </span>
           {r.kind ? <KindChip kind={r.kind} /> : null}
+          {/* a tested video keeps its native viral score in view — the % is the audience read on top */}
+          {r.kind === "video" && r.viralScore != null ? (
+            <span
+              className="flex-none font-mono text-[10.5px] uppercase tracking-[0.06em]"
+              style={{ color: TONE.faint }}
+            >
+              {r.viralScore} viral
+            </span>
+          ) : null}
           <span className="flex-none tabular-nums text-[14px] font-medium" style={{ color: TONE.cream }}>
             {r.stopPct.toFixed(1)}%
           </span>
@@ -390,7 +401,11 @@ function QueuedRow({
   onSimulate?: (id: string) => void;
 }) {
   const n = r.personaStops ?? 0;
-  const w = Math.min(1, n / 10);
+  // A VIDEO carries a native viral score (0–100), not a persona estimate — its native slot shows that
+  // and its bar measures against 100. A concept shows N/10. Both swap to "Simulate →" on hover.
+  const isVideo = r.kind === "video";
+  const viral = r.viralScore ?? null;
+  const w = isVideo && viral != null ? Math.min(1, viral / 100) : Math.min(1, n / 10);
 
   return (
     <li className="ambient-row-in" style={{ animationDelay: `${0.04 + index * 0.05}s` }}>
@@ -413,16 +428,27 @@ function QueuedRow({
             {r.stimulus}
           </span>
           {r.kind ? <KindChip kind={r.kind} dim /> : null}
-          {/* value slot — fixed width so N/10 ⇄ Simulate → swaps with no layout shift */}
+          {/* value slot — fixed width so the native score ⇄ Simulate → swaps with no layout shift */}
           <span className="relative flex-none" style={{ minWidth: 66, height: 16 }}>
             <span
               className="block text-right tabular-nums text-[13px] transition-opacity group-hover:opacity-0"
               style={{ color: TONE.dim }}
             >
-              {n}
-              <span className="text-[11px]" style={{ color: TONE.mute }}>
-                /10
-              </span>
+              {isVideo && viral != null ? (
+                <>
+                  {viral}
+                  <span className="ml-1 text-[10px] uppercase tracking-[0.06em]" style={{ color: TONE.mute }}>
+                    viral
+                  </span>
+                </>
+              ) : (
+                <>
+                  {n}
+                  <span className="text-[11px]" style={{ color: TONE.mute }}>
+                    /10
+                  </span>
+                </>
+              )}
             </span>
             <span
               className="absolute inset-0 flex items-center justify-end whitespace-nowrap font-mono text-[10.5px] uppercase tracking-[0.06em] opacity-0 transition-opacity group-hover:opacity-100"
@@ -433,7 +459,7 @@ function QueuedRow({
           </span>
         </span>
 
-        {/* bar — the personas' N/10, muted (an estimate, not a measured verdict) */}
+        {/* bar — the native estimate (concept N/10 · video viral score), muted (not a measured verdict) */}
         <span
           className="relative mt-2.5 ml-[26px] block h-[3px] overflow-hidden rounded-full"
           style={{ background: TONE.ghost }}

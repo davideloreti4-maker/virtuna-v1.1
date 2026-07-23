@@ -92,6 +92,45 @@ describe("AmbientOverviewRail", () => {
     expect(screen.getByText(/text concept sim/i)).toBeTruthy();
   });
 
+  it("a tested VIDEO shows its viral score + Simulate; a tap reveals the % then drills into Brain depth", () => {
+    const videoSeal = {
+      pct: 62,
+      band: null,
+      at: "",
+      video: {
+        analysisId: "an-1",
+        stopPct: 62,
+        craftScore: 84, // the native viral score — shown before any sim
+        heatmap: { weighted_curve: [0.9, 0.5, 0.6], segments: [] },
+        videoSignals: null,
+        verbatim: { hook: { spoken_words: "Here is the money truth" } },
+      },
+    };
+    render(
+      <AmbientOverviewRail
+        audience={audience}
+        descriptors={descriptors}
+        reducedMotion
+        persistedSeals={{ "an-1": videoSeal as never }}
+      />,
+    );
+    // the video is a QUEUED row: its real opening words as the label, its viral score, NO attention %
+    const row = screen.getByRole("button", { name: /Here is the money truth/ });
+    expect(row).toBeTruthy();
+    expect(screen.getByText(/84/)).toBeTruthy();
+    expect(screen.getByText(/viral/)).toBeTruthy();
+    expect(screen.queryByText(/62\.0%/)).toBeNull(); // withheld until Simulate
+
+    // tap 1 → reveal the already-measured attention % (no network — the Test analysis produced it)
+    fireEvent.click(row);
+    expect(screen.getByText(/62\.0%/)).toBeTruthy();
+    expect(screen.getByText(/84 viral/)).toBeTruthy(); // native score stays in view
+
+    // tap 2 → drill into the real Brain depth (brain-first for a video)
+    fireEvent.click(screen.getByRole("button", { name: /Here is the money truth/ }));
+    expect(screen.getByTestId("ambient-detail")).toBeTruthy();
+  });
+
   it("quick-sim fires the real react route and SEALS the row with the measured fraction (Phase D)", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,

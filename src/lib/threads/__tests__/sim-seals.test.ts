@@ -73,6 +73,7 @@ describe("readSimSeals", () => {
     const video = {
       analysisId: "a1",
       stopPct: 41,
+      craftScore: 77, // the native viral score rides through untouched
       heatmap: { weighted_curve: [0.8, 0.3, 0.6], segments: [] },
       videoSignals: { hook_visual_impact: 8 },
       verbatim: { hook: { spoken_words: "hi" } },

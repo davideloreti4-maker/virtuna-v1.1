@@ -27,6 +27,8 @@ import type { GeminiVideoSignals, HeatmapPayload, VerbatimPayload } from "@/lib/
 export interface SimSealVideo {
   analysisId: string; // the persisted analysis this depth came from (stable id)
   stopPct: number; // 0..100 would-stop % (heatmap.weighted_hook_score) — drives the cortex + verdict
+  craftScore?: number | null; // the video's NATIVE viral score (mean of craft dims; NOT the attention
+  //  %). Shown on the Overview row before a sim — the row's own worth, distinct from the audience %.
   heatmap: HeatmapPayload; // per-segment attention (weighted_curve) + the segment grid
   videoSignals?: GeminiVideoSignals | null; // the four craft dims (absent → no signal rows)
   verbatim?: VerbatimPayload | null; // the transcript (absent → the scrubber reads segment labels)

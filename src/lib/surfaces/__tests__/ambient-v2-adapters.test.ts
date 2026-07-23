@@ -108,6 +108,30 @@ describe("buildOverviewData", () => {
     expect(vm.audienceName).toBe("Your audience");
     expect(vm.provenance).toBe("calibrated · 3d");
   });
+
+  it("an UNREVEALED tested video ranks queued (viral score shown, attention % withheld)", () => {
+    const vm = buildOverviewData({
+      audience,
+      descriptors,
+      videos: [{ id: "vid-a", label: "my video", viralScore: 84, stopPct: 71, revealed: false }],
+    });
+    const row = vm.ranked.find((r) => r.id === "vid-a")!;
+    expect(row).toMatchObject({ kind: "video", state: "queued", viralScore: 84, stopPct: 0 });
+    // ranks among the queued by viral/10 (8.4) — below the 9/10 idea, above the 6 and 3 concepts
+    expect(vm.ranked.map((r) => r.id)).toEqual(["idea-1", "vid-a", "script-2", "hook-0"]);
+  });
+
+  it("a REVEALED tested video seals by its measured attention %, ranked among the sealed rows", () => {
+    const vm = buildOverviewData({
+      audience,
+      descriptors,
+      measured: { "script-2": 55 }, // a concept sealed at 55%
+      videos: [{ id: "vid-a", label: "my video", viralScore: 84, stopPct: 71, revealed: true }],
+    });
+    // both sealed rows sort above every queued row, by measured % desc (video 71 > concept 55)
+    expect(vm.ranked.slice(0, 2).map((r) => r.id)).toEqual(["vid-a", "script-2"]);
+    expect(vm.ranked[0]).toMatchObject({ id: "vid-a", state: "simulated", stopPct: 71, viralScore: 84 });
+  });
 });
 
 describe("buildSimulateData", () => {
