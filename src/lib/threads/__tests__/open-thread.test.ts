@@ -38,6 +38,7 @@ function makeOpenRow(overrides: Partial<ThreadRow> = {}): ThreadRow {
     reading_id: null,
     active_audience_id: null,
     title: null,
+    sim_seals: {},
     created_at: "2026-06-17T00:00:00Z",
     updated_at: "2026-06-17T00:00:00Z",
     ...overrides,

@@ -2032,6 +2032,7 @@ export type Database = {
           created_at: string
           id: string
           reading_id: string | null
+          sim_seals: Json
           title: string | null
           type: string
           updated_at: string
@@ -2042,6 +2043,7 @@ export type Database = {
           created_at?: string
           id?: string
           reading_id?: string | null
+          sim_seals?: Json
           title?: string | null
           type: string
           updated_at?: string
@@ -2052,6 +2054,7 @@ export type Database = {
           created_at?: string
           id?: string
           reading_id?: string | null
+          sim_seals?: Json
           title?: string | null
           type?: string
           updated_at?: string
