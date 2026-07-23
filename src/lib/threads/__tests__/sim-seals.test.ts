@@ -68,6 +68,31 @@ describe("readSimSeals", () => {
     });
     expect(map.k).toEqual({ pct: 62, band: "Mixed", at: "t" }); // depth dropped, verdict survives
   });
+
+  it("passes through a well-formed VIDEO depth payload (Phase C brain)", () => {
+    const video = {
+      analysisId: "a1",
+      stopPct: 41,
+      heatmap: { weighted_curve: [0.8, 0.3, 0.6], segments: [] },
+      videoSignals: { hook_visual_impact: 8 },
+      verbatim: { hook: { spoken_words: "hi" } },
+    };
+    const map = readSimSeals({
+      sim_seals: { k: { pct: 41, band: null, at: "t", video } } as never,
+    });
+    expect(map.k!.video).toEqual(video);
+  });
+
+  it("drops a malformed VIDEO blob (empty curve / no id) but keeps the verdict", () => {
+    const map = readSimSeals({
+      sim_seals: {
+        noCurve: { pct: 41, at: "t", video: { analysisId: "a", stopPct: 4, heatmap: { weighted_curve: [] } } },
+        noId: { pct: 42, at: "t", video: { stopPct: 4, heatmap: { weighted_curve: [0.5] } } },
+      } as never,
+    });
+    expect(map.noCurve).toEqual({ pct: 41, band: null, at: "t" });
+    expect(map.noId).toEqual({ pct: 42, band: null, at: "t" });
+  });
 });
 
 /** A supabase mock whose update→eq resolves { error }, capturing the update payload. */
