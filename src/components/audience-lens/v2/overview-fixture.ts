@@ -25,12 +25,17 @@ export const OVERVIEW_R4: OverviewData = {
   ranked: [
     { id: "h1", stimulus: "Last Tuesday I posted a 7-second clip with no…", stopPct: 41.9, kind: "hook" },
     { id: "h2", stimulus: "I quit my 9-5 with $400 in my account…", stopPct: 38.2, kind: "idea" },
-    { id: "h3", stimulus: "The cold-plunge cut, tested frame by frame…", stopPct: 29.5, kind: "video" },
+    // A TESTED video, revealed: it carries its native VIRAL score (craft) AND — now that it's been
+    // simulated — the audience attention %. Both read on the row; the % is the audience read on top.
+    { id: "h3", stimulus: "The cold-plunge cut, tested frame by frame…", stopPct: 29.5, viralScore: 91, kind: "video" },
     { id: "h4", stimulus: "Everyone tells you to post consistently to…", stopPct: 21.0, kind: "hook" },
     { id: "h5", stimulus: "Your video didn't flop because the algorithm…", stopPct: 12.4, kind: "script" },
     // Variants on the board but not yet run past the AUDIENCE — they still carry the personas'
     // N-of-10-would-stop rank from generation (their own bar), and a quick-simulate door. The
     // measured would-stop % is withheld (0) until the audience actually runs (design law).
+    // A tested video, UNREVEALED: its VIRAL score stands in for the concept's N/10 — the attention %
+    // stays withheld until Simulate (which reveals the already-measured read, no re-run).
+    { id: "h8", stimulus: "The morning-routine cut, 42s, one take…", stopPct: 0, viralScore: 84, kind: "video", state: "queued" },
     { id: "h6", stimulus: "The 3 edits that saved my worst video…", stopPct: 0, personaStops: 8, kind: "remix", state: "queued" },
     { id: "h7", stimulus: "I stopped chasing trends for 30 days…", stopPct: 0, personaStops: 6, kind: "idea", state: "queued" },
   ],

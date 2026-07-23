@@ -469,6 +469,15 @@ function QueuedRow({
             style={{ transform: `scaleX(${w})`, background: "rgba(236,231,222,.34)" }}
           />
         </span>
+
+        {/* touch affordance — a touch device can't hover, so the value-slot "Simulate →" never shows.
+            Persist it here as its own line on no-hover devices (desktop keeps the hover swap above). */}
+        <span
+          className="mt-2.5 ml-[26px] flex items-center gap-1.5 border-t pt-2 font-mono text-[10.5px] uppercase tracking-[0.06em] [@media(hover:hover)]:hidden"
+          style={{ borderColor: TONE.hair, color: TONE.dim }}
+        >
+          Simulate&nbsp;→
+        </span>
       </button>
     </li>
   );
