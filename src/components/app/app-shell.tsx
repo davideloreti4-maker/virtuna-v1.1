@@ -1,7 +1,7 @@
 "use client";
 
 import { AuthGuard } from "./auth-guard";
-import { Sidebar, SidebarHamburger } from "@/components/sidebar/Sidebar";
+import { Sidebar, SidebarHamburger, MOBILE_NAV_BAND } from "@/components/sidebar/Sidebar";
 import { useSidebarStore } from "@/stores/sidebar-store";
 import { useIsMobileHydrated } from "@/hooks/useIsMobile";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
@@ -40,17 +40,24 @@ export function AppShell({ children }: AppShellProps) {
         <SidebarHamburger />
         <Sidebar />
         <main
-          // The blanket 56px mobile top pad is GONE (2026-07-24). It existed for exactly one reason:
-          // to keep page content out from under the fixed hamburger at `left-4 top-4`. That opener is
-          // now an EDGE TAB on the vertical centre of the left rail (Sidebar.tsx), so nothing floats
-          // over the top of the page and no page owes it a band. Mobile pages start at the top; the
-          // only reservation left is the notch, which is the device's, not the hamburger's.
+          // Mobile reserves the top-nav band so no page renders under the fixed opener tab
+          // (Sidebar.tsx). It is sized FROM that tab's own geometry — 55px, not a hand-tuned 56 that
+          // drifts the next time the tab changes shape. /home cancels it and puts the audience bar
+          // in the band instead (composer.tsx); every other page just starts below it.
+          // Pure CSS at the same 768px boundary as the tab's `md:hidden` — it used to ride the
+          // JS `treatAsMobile`, which is false until the post-mount measurement, so the pad landed
+          // one frame late and anything offsetting against it jumped.
           // marginLeft stays inline: it depends on the real sidebar width, which CSS can't know.
-          className="relative h-full overflow-auto pt-[env(safe-area-inset-top)] md:pt-0"
-          style={{
-            marginLeft: `${offset}px`,
-            transition: reducedMotion ? undefined : "margin-left 150ms var(--ease-out-cubic)",
-          }}
+          // The band rides a custom PROPERTY, not an inline paddingTop: an inline padding would
+          // outrank `md:pt-0` and the desktop would keep the mobile band forever.
+          className="relative h-full overflow-auto pt-[calc(env(safe-area-inset-top)+var(--mobile-nav-band))] md:pt-0"
+          style={
+            {
+              marginLeft: `${offset}px`,
+              "--mobile-nav-band": `${MOBILE_NAV_BAND}px`,
+              transition: reducedMotion ? undefined : "margin-left 150ms var(--ease-out-cubic)",
+            } as React.CSSProperties
+          }
         >
           {children}
         </main>

@@ -619,18 +619,38 @@ export function Sidebar() {
 }
 
 /**
- * Mobile nav opener — an EDGE TAB, shown when the sidebar is closed.
+ * Mobile nav opener — a TAB in the top row, shown when the sidebar is closed.
  *
- * Was a 34px hamburger floating at `left-4 top-4` (owner call 2026-07-24: replaced). It sat in the
- * top-left corner, which forced `<main>` to reserve a blanket 56px of top padding on every mobile
- * page just to keep content out from under it — a whole band of chrome spent on one button, and it
- * crowded the audience bar that now owns the top row.
+ * History (2026-07-24): a 34px hamburger at `left-4 top-4`, then briefly an edge sliver at the
+ * vertical centre, now this — bar height, sitting immediately left of the audience bar so the two
+ * read as ONE navigation row (owner call). The caret still points right: the sidebar slides in from
+ * that edge, and the tab hugs the row's left margin.
  *
- * As an edge tab it costs ZERO vertical space: welded flush to the viewport's left edge, vertically
- * centred, rounded on the right only so it reads as something to PULL — the sidebar it opens slides
- * from exactly there. The visible sliver is thin (14px); the hit area is a full 44px wide, extending
- * inward under the content, so the touch target is honest even though the mark is quiet.
+ * Its geometry is COUPLED to the composer's audience header slot (`composer.tsx`). This one is
+ * `fixed` — it must survive on the mobile pages that have no audience bar — while the bar is in
+ * flow with a matching left inset, so the two are laid out against the same numbers. They live in
+ * `MOBILE_NAV` below; change them here and the slot's inset follows, or the row drifts apart.
  */
+/** The mobile top-nav band, shared by this tab and the composer's audience bar. All px. */
+export const MOBILE_NAV = {
+  /** Page gutter — the tab's left edge, and the row's right edge. */
+  gutter: 10,
+  /** Top offset of the band. */
+  top: 10,
+  /** Bar height — the tab matches the audience bar exactly (owner ask). */
+  height: 45,
+  /** Tab width. */
+  width: 32,
+  /** Gap between the tab and the bar. */
+  gap: 8,
+} as const;
+
+/** Left inset the audience bar needs to clear the tab: gutter + tab + gap. */
+export const MOBILE_NAV_BAR_INSET = MOBILE_NAV.gutter + MOBILE_NAV.width + MOBILE_NAV.gap;
+
+/** Vertical band the fixed tab occupies — what a page must reserve so nothing renders under it. */
+export const MOBILE_NAV_BAND = MOBILE_NAV.top + MOBILE_NAV.height;
+
 export function SidebarHamburger() {
   const { isOpen, open } = useSidebarStore();
 
@@ -639,27 +659,23 @@ export function SidebarHamburger() {
       type="button"
       onClick={open}
       aria-label="Open sidebar"
+      style={{
+        left: MOBILE_NAV.gutter,
+        top: MOBILE_NAV.top,
+        height: MOBILE_NAV.height,
+        width: MOBILE_NAV.width,
+      }}
       className={cn(
-        "group fixed left-0 top-1/2 z-[var(--z-sidebar)] -translate-y-1/2",
-        // 44px of hit area, of which only the leading 14px is painted (see the sliver below) —
-        // a11y target size without a 44px slab of chrome sitting on the content.
-        "h-[76px] w-11 items-center justify-start",
+        "fixed z-[var(--z-sidebar)] items-center justify-center",
+        // Same radius, hairline and ground as the audience bar beside it — one row, one material.
+        "rounded-[12px] border border-white/[0.06] bg-[#181817] transition-colors active:bg-[#32312e]",
         // Mobile only — the desktop sidebar is always present, so the opener
         // never appears ≥md regardless of isOpen.
         "md:hidden",
         isOpen ? "hidden" : "flex",
       )}
     >
-      {/* the painted sliver: flat-warm matte, hairline on the three visible sides, rounded right */}
-      <span
-        className={cn(
-          "flex h-full w-[14px] items-center justify-center rounded-r-[7px]",
-          "border border-l-0 border-white/[0.06] bg-background-elevated shadow-float",
-          "transition-colors group-active:bg-[#32312e]",
-        )}
-      >
-        <CaretRight className="h-3.5 w-3.5 text-foreground/50" weight="bold" />
-      </span>
+      <CaretRight className="h-3.5 w-3.5 text-foreground/50" weight="bold" />
     </button>
   );
 }

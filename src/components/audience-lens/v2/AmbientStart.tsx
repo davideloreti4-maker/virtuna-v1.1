@@ -484,7 +484,9 @@ export function AmbientStart({
         data-testid="ambient-start"
         // 760 — the composer dock's width. Start sits directly ABOVE the field on the empty home,
         // so the two must share an edge; a wider card would float off the column it introduces.
-        className="ambient-row-in flex w-full max-w-[760px] flex-col rounded-[20px] px-7 pb-6 pt-7"
+        // px-5 on a phone, px-7 from sm: 28px of card padding on top of the page gutter left a
+        // narrow reading column on a 390px screen (owner ask — tighten the side margins).
+        className="ambient-row-in flex w-full max-w-[760px] flex-col rounded-[20px] px-5 pb-6 pt-7 sm:px-7"
         style={{
           color: TONE.cream,
           // #181817 — the v2 room's ground. It was #1f1f1e, byte-identical to the page behind it, so
