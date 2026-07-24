@@ -40,13 +40,13 @@ export function AppShell({ children }: AppShellProps) {
         <SidebarHamburger />
         <Sidebar />
         <main
-          // Mobile: clear the fixed hamburger (top-4 + 34px) so page H1s don't render underneath it.
-          // PURE CSS at the same 768px boundary as `treatAsMobile` / the hamburger's own `md:hidden`
-          // — it used to ride `treatAsMobile`, which is false until the post-mount measurement, so
-          // the pad appeared one frame late. Anything that offsets ITSELF against this band (the
-          // composer's <xl audience header claims it with `-mt-14`) would jump for that frame.
+          // The blanket 56px mobile top pad is GONE (2026-07-24). It existed for exactly one reason:
+          // to keep page content out from under the fixed hamburger at `left-4 top-4`. That opener is
+          // now an EDGE TAB on the vertical centre of the left rail (Sidebar.tsx), so nothing floats
+          // over the top of the page and no page owes it a band. Mobile pages start at the top; the
+          // only reservation left is the notch, which is the device's, not the hamburger's.
           // marginLeft stays inline: it depends on the real sidebar width, which CSS can't know.
-          className="relative h-full overflow-auto pt-14 md:pt-0"
+          className="relative h-full overflow-auto pt-[env(safe-area-inset-top)] md:pt-0"
           style={{
             marginLeft: `${offset}px`,
             transition: reducedMotion ? undefined : "margin-left 150ms var(--ease-out-cubic)",

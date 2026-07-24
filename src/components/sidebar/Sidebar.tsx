@@ -27,7 +27,7 @@ import {
   SlidersHorizontal,
   ClockCountdown,
   UserCircle,
-  List,
+  CaretRight,
   SidebarSimple,
   SignOut,
   CaretUpDown,
@@ -618,7 +618,19 @@ export function Sidebar() {
   );
 }
 
-/** Mobile hamburger toggle — shows when sidebar is closed */
+/**
+ * Mobile nav opener — an EDGE TAB, shown when the sidebar is closed.
+ *
+ * Was a 34px hamburger floating at `left-4 top-4` (owner call 2026-07-24: replaced). It sat in the
+ * top-left corner, which forced `<main>` to reserve a blanket 56px of top padding on every mobile
+ * page just to keep content out from under it — a whole band of chrome spent on one button, and it
+ * crowded the audience bar that now owns the top row.
+ *
+ * As an edge tab it costs ZERO vertical space: welded flush to the viewport's left edge, vertically
+ * centred, rounded on the right only so it reads as something to PULL — the sidebar it opens slides
+ * from exactly there. The visible sliver is thin (14px); the hit area is a full 44px wide, extending
+ * inward under the content, so the touch target is honest even though the mark is quiet.
+ */
 export function SidebarHamburger() {
   const { isOpen, open } = useSidebarStore();
 
@@ -628,17 +640,26 @@ export function SidebarHamburger() {
       onClick={open}
       aria-label="Open sidebar"
       className={cn(
-        "fixed left-4 top-4 z-[var(--z-sidebar)]",
-        "h-[34px] w-[34px] items-center justify-center rounded-[10px]",
-        // flat-warm matte: solid charcoal + hairline + soft float shadow (no glass, no blur)
-        "bg-background-elevated border border-white/[0.06] shadow-float",
-        // Mobile only — the desktop sidebar is always present, so the hamburger
+        "group fixed left-0 top-1/2 z-[var(--z-sidebar)] -translate-y-1/2",
+        // 44px of hit area, of which only the leading 14px is painted (see the sliver below) —
+        // a11y target size without a 44px slab of chrome sitting on the content.
+        "h-[76px] w-11 items-center justify-start",
+        // Mobile only — the desktop sidebar is always present, so the opener
         // never appears ≥md regardless of isOpen.
         "md:hidden",
         isOpen ? "hidden" : "flex",
       )}
     >
-      <List className="h-4 w-4 text-foreground/70" />
+      {/* the painted sliver: flat-warm matte, hairline on the three visible sides, rounded right */}
+      <span
+        className={cn(
+          "flex h-full w-[14px] items-center justify-center rounded-r-[7px]",
+          "border border-l-0 border-white/[0.06] bg-background-elevated shadow-float",
+          "transition-colors group-active:bg-[#32312e]",
+        )}
+      >
+        <CaretRight className="h-3.5 w-3.5 text-foreground/50" weight="bold" />
+      </span>
     </button>
   );
 }

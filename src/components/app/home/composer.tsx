@@ -2863,17 +2863,12 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
             shrink-0 so it holds its height; the sheet blooms over the thread below (z-55). The
             xl:hidden is belt-and-suspenders against the one-frame pre-hydration flash.
 
-            Positioning (2026-07-24 fix): below md, AppShell pads `<main>` by a blanket 56px to clear
-            the FIXED hamburger (left-4 top-4, 34px) — which left the audience bar stranded under an
-            otherwise empty band, two stacked chrome rows deep on a ~844px-tall phone. The bar now
-            claims that band: `-mt-14` cancels the 56px pad and `pl-[58px]` (16 + 34 + 8) clears the
-            hamburger, so the room reads as the mobile top bar it always meant to be. md:… restores
-            the plain in-flow bar for md–xl, where the hamburger and the 56px pad are both gone. */}
+            Positioning (2026-07-24): the audience IS the mobile top navigation — nothing shares its
+            row. It briefly carried a `-mt-14 pl-[58px]` dodge around the fixed hamburger; that opener
+            moved to a left-edge tab and AppShell dropped its 56px band, so the bar simply sits at the
+            top of the column at full width. */}
         {useHeader && (
-          <div
-            data-testid="audience-header-slot"
-            className="relative z-10 shrink-0 -mt-14 pl-[58px] pr-4 pt-[11px] md:mt-0 md:px-4 md:pt-2 xl:hidden"
-          >
+          <div data-testid="audience-header-slot" className="relative z-10 shrink-0 px-4 pt-2 xl:hidden">
             <div className="mx-auto w-full max-w-[760px]">{audienceHeader}</div>
           </div>
         )}
