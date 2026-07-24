@@ -217,29 +217,34 @@ export function VerdictChip({ verdict, animate = false }: { verdict: { value: st
  *  makes no sense on the audience "who" page). */
 export function Unlock({ unlock }: { unlock: { lever: string; gain?: string; insight: string } }) {
   return (
-    <div className="mt-8 pt-6" style={{ borderTop: `1px solid ${TONE.border}` }}>
-      <div className="font-mono text-[11px] uppercase tracking-[0.09em]" style={{ color: TONE.faint }}>
-        the unlock
+    <div className="mt-9 pt-6" style={{ borderTop: `1px solid ${TONE.border}` }}>
+      {/* editorial kicker — a small-caps label that trails into a hairline, so the takeaway reads set-apart */}
+      <div className="flex items-center gap-2.5">
+        <span className="font-mono text-[11px] uppercase tracking-[0.14em]" style={{ color: TONE.faint }}>
+          the unlock
+        </span>
+        <span className="h-px flex-1" style={{ background: TONE.border }} />
       </div>
-      <div className="mt-2.5 text-[18px] font-medium leading-[1.3]" style={{ color: TONE.cream }}>
+      <div className="mt-3.5 text-[19px] font-medium leading-[1.32]" style={{ color: TONE.cream }}>
         {unlock.lever}
       </div>
       {unlock.gain ? (
         // the payoff, framed as the takeaway — the card's value peak (never coral: a fix is a win).
-        // The "modeled" honesty now lives once in the calibration line, not tagged on every number.
+        // Labelled "projected" so the modeled swing is honest at a glance; the calibration line carries the rest.
         <div
-          className="mt-3.5 inline-flex items-baseline gap-2 rounded-[9px] px-3.5 py-2"
+          className="mt-4 inline-flex items-center gap-2.5 rounded-[10px] py-2 pl-3 pr-3.5"
           style={{ background: TONE.well, border: `1px solid ${TONE.hair}` }}
         >
-          <span className="font-mono text-[13px]" style={{ color: TONE.faint }}>
-            →
+          <span className="font-mono text-[9px] uppercase tracking-[0.1em]" style={{ color: TONE.faint }}>
+            projected
           </span>
-          <span className="font-mono text-[16px] font-medium tabular-nums" style={{ color: TONE.cream }}>
+          <span className="h-3.5 w-px" style={{ background: TONE.hair }} />
+          <span className="font-mono text-[15px] font-medium tabular-nums" style={{ color: TONE.cream }}>
             {unlock.gain}
           </span>
         </div>
       ) : null}
-      <p className="mt-3.5 text-[13.5px] leading-[1.5]" style={{ color: TONE.dim }}>
+      <p className="mt-4 text-[13.5px] leading-[1.55]" style={{ color: TONE.dim }}>
         {unlock.insight}
       </p>
     </div>

@@ -29,12 +29,15 @@ import type {
   PopulationFrameData,
   ReasonBreakdownData,
   RoomTrustData,
+  WhyThisSecond,
 } from "@/components/audience-lens/v2/domain-template";
 import {
   classifyReasons,
   humanizeReason,
   modeledAmplification,
+  modeledAttentionData,
   modeledAudienceFit,
+  modeledDecisionStates,
   modeledKpiHeatmap,
   modeledNetworkBars,
   modeledNetworks,
@@ -189,6 +192,9 @@ export function buildPopulationFrameData(input: PopulationSnapshotInput): Popula
       reasons: codedReasons(agg, personas),
     },
     heroRead: heroRead(agg),
+    // the room recategorized into four decision-states (the conversion funnel) — replaces the archetype
+    // ledger with a playbook; every count is a real partition of the projection, levers from real reasons
+    decisionStates: modeledDecisionStates(agg, classifyReasons(agg.reasons)),
     // ── modeled-depth parity (Phase-C ②) — the fuller society read; carried by the one calibration line ──
     audienceFit: modeledAudienceFit(agg),
     amplification: modeledAmplification(agg),
@@ -218,17 +224,41 @@ function reasonBreakdown(agg: PopulationAggregate): ReasonBreakdownData {
   return { question: "What carried the stop", total: agg.stop, rows, read };
 }
 
+/** The text "why they stopped" synthesis that heads the retention scrubber — the SAME slot the video's
+ *  measured-dip read fills. Built from the REAL top reason (the top friction reason when one exists, so
+ *  the coral clause names the actual leak; else the strongest pull). `dipTime` ties it to the modeled
+ *  curve's trough so the moment token matches a scrubber chip, exactly like the video path. */
+function reasonSynthesis(breakdown: ReasonBreakdownData, stoppers: number, dipTime?: string): WhyThisSecond | undefined {
+  const lead = breakdown.rows.find((r) => r.loss) ?? breakdown.rows[0];
+  if (!lead) return undefined;
+  const moment = dipTime ? `${dipTime} · the drop` : "the drop";
+  if (lead.loss) {
+    return {
+      moment,
+      segments: [
+        { text: `Most who stalled did so on ` },
+        { text: lead.label.toLowerCase(), loss: true },
+        { text: ` — ${lead.count} of ${stoppers}.` },
+      ],
+    };
+  }
+  return { moment, segments: [{ text: `${lead.label} carried the stop — ${lead.count} of ${stoppers} stayed for it.` }] };
+}
+
 /**
- * Map a fired text sim's REAL projection → the `BrainFrameData` the brain tab reads. Honest by
- * construction: the cortex is the owner-locked MODELED proxy (seeded by the concept, bold-driven by the
- * real stop-ratio); the driver is the REAL dominant-reason tally (`reason-breakdown`), never an invented
- * attention curve. No craft signals (a text sim has no visual dims) → `signals: []` (SignalRows renders
- * nothing). The calibration line states plainly what is modeled vs measured.
+ * Map a fired text sim's REAL projection → the `BrainFrameData` the brain tab reads — now at FULL video
+ * parity (owner call 2026-07-24): the SAME attention-scrubber the video draws (retention curve + the
+ * real concept transcript), the SAME depth sections. The retention curve is a MODELED reading-attention
+ * proxy (text has no measured timeline); the transcript is REAL; the visual-only reads (Visual Pull, the
+ * Visual/Audio/Face KPI rows) are GREYED — a text concept has no video substrate to measure. The "why"
+ * that heads the scrubber is the REAL top reason. Honesty rides on the single calibration line.
  */
 export function buildReasonBrainFrameData(input: {
   aggregate: PopulationAggregate;
   stopPct: number;
   stimulusKey: string;
+  /** The REAL concept text — the scrubber's transcript. Absent → the scrubber reads the coded reasons. */
+  transcript?: string;
 }): BrainFrameData {
   const breakdown = reasonBreakdown(input.aggregate);
   const reasons: ModeledReason[] = breakdown.rows.map((r) => ({
@@ -243,7 +273,13 @@ export function buildReasonBrainFrameData(input: {
     curve: null, // text has no attention curve → the proxies self-seed from the stop rate + reason mix
     craft: null,
     reasons,
+    mutedSensory: true, // grey the visual-only reads (no video/audio to measure on a text concept)
   };
+  const transcript =
+    input.transcript?.trim() ||
+    breakdown.rows.map((r) => r.label).join(" · "); // fallback: the coded reasons, never empty
+  const attention = modeledAttentionData(modeledInput, transcript);
+  const dipTime = attention.moments.find((m) => m.dip)?.t;
   const networkBars = modeledNetworkBars(modeledInput);
   return {
     cortexSeedKey: input.stimulusKey,
@@ -251,17 +287,18 @@ export function buildReasonBrainFrameData(input: {
     // presented as a measured length). Kept short so the parcellation reads as a brief pulse.
     clipSeconds: 6,
     stopRatio: clamp(input.stopPct / 100, 0, 1),
-    driver: { kind: "reason-breakdown", data: breakdown },
+    // The retention scrubber — the SAME driver the video uses; the curve is modeled, the words are real.
+    driver: { kind: "attention-scrubber", data: attention },
     signals: [], // the lean row list is superseded by the modeled signalGrid below
-    // (no whyThisSecond: it renders only on the attention-scrubber path; the reason-breakdown's own
-    //  `read` IS the text "why", so a second synthesis line would just duplicate it)
+    // the "why they stopped" read heads the scrubber (the video's measured-dip slot) — the REAL top reason
+    whyThisSecond: reasonSynthesis(breakdown, input.aggregate.stop, dipTime),
     // ── modeled-depth parity (Phase-C ②) — text renders the SAME fuller read as video; MODELED ──
     signalGrid: modeledSignalGrid(modeledInput),
     networkBars,
     networks: modeledNetworks(networkBars),
     kpiHeatmap: modeledKpiHeatmap(modeledInput),
     // buyIntent omitted — a commerce figure, not a text/creator one (matches the authored template)
-    calibrationNote: "Modeled cognitive proxy from a text sim · the reasons are real, the depth read is modeled — not measured attention",
+    calibrationNote: "Modeled cognitive proxy from a text sim · the reasons are real, the retention curve + depth read are modeled — not measured attention",
   };
 }
 
@@ -273,6 +310,8 @@ export interface DomainTemplateInput extends PopulationSnapshotInput {
   conceptLabel?: string;
   /** A stable per-stimulus key (the row id / trimmed concept) — seeds the cortex parcellation. */
   stimulusKey: string;
+  /** The REAL concept text — the retention scrubber's transcript. Absent → the scrubber reads the reasons. */
+  transcript?: string;
 }
 
 /**
@@ -282,7 +321,7 @@ export interface DomainTemplateInput extends PopulationSnapshotInput {
  * 2026-07-24: the brain fires on all text content). The verdict is the sealed measured %.
  */
 export function buildDomainTemplate(input: DomainTemplateInput): DomainTemplate {
-  const { pct, conceptLabel, stimulusKey, aggregate } = input;
+  const { pct, conceptLabel, stimulusKey, aggregate, transcript } = input;
   const population = buildPopulationFrameData(input);
   // unlock classifies by reason SEMANTICS (the token map), not the voices' cosmetic exemplar verdict
   const reasons: ModeledReason[] = classifyReasons(aggregate.reasons);
@@ -293,7 +332,7 @@ export function buildDomainTemplate(input: DomainTemplateInput): DomainTemplate 
     pager: conceptLabel ?? "concept",
     verdict: { value: `${Math.round(pct)}%`, label: "would stop" },
     unlock: modeledUnlock(reasons, population.swing),
-    brain: buildReasonBrainFrameData({ aggregate, stopPct: pct, stimulusKey }),
+    brain: buildReasonBrainFrameData({ aggregate, stopPct: pct, stimulusKey, transcript }),
     population,
   };
 }

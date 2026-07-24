@@ -133,6 +133,26 @@ describe("buildPopulationFrameData", () => {
     expect(p.heroRead).toContain("builders");
     expect(p.heroRead).toContain("skeptics");
   });
+
+  it("decisionStates partition the whole room into four action-states (sold → gone), summing to total", () => {
+    const p = buildPopulationFrameData(base);
+    const ds = p.decisionStates!;
+    expect(ds.states.map((s) => s.key)).toEqual(["sold", "winnable", "skeptical", "gone"]);
+    // sold = the stoppers; the four counts partition the room exactly
+    expect(ds.states.find((s) => s.key === "sold")!.count).toBe(620); // agg.stop
+    expect(ds.states.reduce((a, s) => a + s.count, 0)).toBe(ds.total); // === agg.total (1000)
+    expect(ds.total).toBe(1000);
+    // winnable = the fence segment's non-stoppers (scrollers 350 − 200); skeptical = the loss segment's
+    // non-stoppers (skeptics 250 − 80); gone = the remaining scrollers.
+    expect(ds.states.find((s) => s.key === "winnable")!.count).toBe(150);
+    expect(ds.states.find((s) => s.key === "skeptical")!.count).toBe(170);
+    expect(ds.states.find((s) => s.key === "gone")!.count).toBe(60);
+    // only the gone state is the definitive loss (coral)
+    expect(ds.states.find((s) => s.key === "gone")!.loss).toBe(true);
+    expect(ds.states.filter((s) => s.loss)).toHaveLength(1);
+    // shares are % of the room
+    expect(ds.states.find((s) => s.key === "sold")!.share).toBe(62);
+  });
 });
 
 describe("buildReasonBrainFrameData (the text brain — owner call 2026-07-24)", () => {
@@ -145,20 +165,35 @@ describe("buildReasonBrainFrameData (the text brain — owner call 2026-07-24)",
     ],
   };
 
-  it("the driver is the REAL reason tally — weightiest first, humanized, shares over the stopper count", () => {
-    const b = buildReasonBrainFrameData({ aggregate: AGG_REASONS, stopPct: 62, stimulusKey: "k1" });
-    expect(b.driver.kind).toBe("reason-breakdown");
-    if (b.driver.kind !== "reason-breakdown") throw new Error("expected reason-breakdown");
+  it("the driver is the SAME attention-scrubber as video — a MODELED retention curve + the REAL transcript", () => {
+    const b = buildReasonBrainFrameData({
+      aggregate: AGG_REASONS,
+      stopPct: 62,
+      stimulusKey: "k1",
+      transcript: "the promise in the first line pulls you in",
+    });
+    expect(b.driver.kind).toBe("attention-scrubber");
+    if (b.driver.kind !== "attention-scrubber") throw new Error("expected attention-scrubber");
     const d = b.driver.data;
-    expect(d.total).toBe(620); // agg.stop — the denominator
-    expect(d.rows[0]).toMatchObject({ label: "Strong hook", count: 400 });
-    expect(d.rows[0]!.share).toBeCloseTo(400 / 620, 4);
-    // friction reasons ride loss (coral); pull reasons don't.
-    expect(d.rows.find((r) => r.label === "Too slow")!.loss).toBe(true);
-    expect(d.rows.find((r) => r.label === "Strong hook")!.loss).toBeUndefined();
-    // rows are sorted weightiest-first.
-    expect(d.rows.map((r) => r.count)).toEqual([400, 140, 80]);
-    expect(d.read).toMatch(/strong hook/i);
+    expect(d.transcript).toBe("the promise in the first line pulls you in"); // the REAL words
+    expect(d.points.length).toBeGreaterThanOrEqual(4); // a modeled curve, not empty
+    expect(d.points.every((v) => v >= 0 && v <= 80)).toBe(true); // on the scrubber's 0..80 axis
+    expect(d.moments.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("with no transcript the scrubber falls back to the coded reasons (never empty)", () => {
+    const b = buildReasonBrainFrameData({ aggregate: AGG_REASONS, stopPct: 62, stimulusKey: "k1" });
+    if (b.driver.kind !== "attention-scrubber") throw new Error("expected attention-scrubber");
+    expect(b.driver.data.transcript.length).toBeGreaterThan(0);
+  });
+
+  it("the 'why' that heads the scrubber is the REAL top friction reason (coral on the loss clause)", () => {
+    const b = buildReasonBrainFrameData({ aggregate: AGG_REASONS, stopPct: 62, stimulusKey: "k1" });
+    // the top LOSS reason (too-slow, 80) leads; total denominator = agg.stop (620)
+    expect(b.whyThisSecond).toBeDefined();
+    const seg = b.whyThisSecond!.segments;
+    expect(seg.some((s) => s.loss && /too slow/i.test(s.text))).toBe(true);
+    expect(seg.map((s) => s.text).join("")).toMatch(/80 of 620/);
   });
 
   it("the cortex is a seeded MODELED proxy driven by the real stop-ratio; the honesty line says so", () => {
@@ -173,7 +208,7 @@ describe("buildReasonBrainFrameData (the text brain — owner call 2026-07-24)",
   it("buildDomainTemplate now ships a REAL brain for a text sim (no longer undefined)", () => {
     const tpl = buildDomainTemplate({ ...base, aggregate: AGG_REASONS, pct: 62, stimulusKey: "k1", conceptLabel: "hook" });
     expect(tpl.brain).toBeDefined();
-    expect(tpl.brain!.driver.kind).toBe("reason-breakdown");
+    expect(tpl.brain!.driver.kind).toBe("attention-scrubber");
     expect(tpl.population).not.toBeNull(); // both tabs real
   });
 
@@ -184,9 +219,19 @@ describe("buildReasonBrainFrameData (the text brain — owner call 2026-07-24)",
     expect(b.networks).toHaveLength(4);
     expect(b.kpiHeatmap!.rows).toHaveLength(10);
     expect(b.buyIntent).toBeUndefined(); // commerce-only figure — omitted (matches authored)
-    // no whyThisSecond on text — it renders only on the attention-scrubber path; the reason-breakdown
-    // driver's own `read` IS the text "why" (a second synthesis would duplicate it)
-    expect(b.whyThisSecond).toBeUndefined();
+    expect(b.whyThisSecond).toBeDefined(); // the real reason, in the video's measured-dip slot
+  });
+
+  it("the visual-only reads are GREYED on a text sim (no video substrate to measure)", () => {
+    const b = buildReasonBrainFrameData({ aggregate: AGG_REASONS, stopPct: 62, stimulusKey: "k1" });
+    // the Visual Pull signal cell is muted; the rest are not
+    const visualCell = b.signalGrid!.find((c) => c.key === "visual")!;
+    expect(visualCell.muted).toBe(true);
+    expect(b.signalGrid!.filter((c) => c.muted).map((c) => c.key)).toEqual(["visual"]);
+    // the Visual/Audio/Face KPI rows are muted; the text-applicable systems are not
+    const muted = b.kpiHeatmap!.rows.filter((r) => r.muted).map((r) => r.label);
+    expect(muted).toEqual(["Visual", "Audio", "Face"]);
+    expect(b.kpiHeatmap!.rows.find((r) => r.label === "Text")!.muted).toBeUndefined();
   });
 
   it("the unlock is built from REAL reason labels (top pull works · top friction leaks)", () => {

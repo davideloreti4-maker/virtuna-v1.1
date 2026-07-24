@@ -143,4 +143,8 @@ export const CREATOR_LIVE_TEXT_TEMPLATE: DomainTemplate = buildDomainTemplate({
   pct: 44,
   conceptLabel: "hook",
   stimulusKey: "text-hook-sim-demo",
+  // the REAL concept text → the retention scrubber's transcript (same hook as the video tab, for a clean
+  // side-by-side; the curve is modeled, the words are real).
+  transcript:
+    "I quit my nine to five with four hundred dollars in my account and I want to be honest with you here is exactly what month one looked like the numbers surprised even me so here is what I would do differently",
 });

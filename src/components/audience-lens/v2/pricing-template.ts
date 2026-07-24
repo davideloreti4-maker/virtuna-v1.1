@@ -65,6 +65,20 @@ export const PRICING_TEMPLATE: DomainTemplate = {
   population: {
     // one-line read under the terrain hero — the non-obvious pattern
     heroRead: "Value and premium tiers are already sold (66–90%). The bargain tier is priced out at $24 — only 22% in.",
+    // the room by what they did with the PRICE (the pricing analog of the audience-tab behaviour read) —
+    // replaces the tier district ledger with a purchase funnel. Honest partition of 1,000: 530 would pay
+    // at $29 (fromPct), 140 are won by dropping to $24 (the near-miss swing), 140 won't commit without a
+    // trial (the real coded reason), the remaining 190 walk at any price (coral, the definitive loss).
+    decisionStates: {
+      total: 1000,
+      states: [
+        { key: "sold", label: "Would pay", count: 530, share: 53, lever: "in at $29 — no discount needed" },
+        { key: "winnable", label: "Won at $24", count: 140, share: 14, lever: "a fair-price move converts them" },
+        { key: "skeptical", label: "Wants a trial", count: 140, share: 14, lever: "won't commit unseen — offer a trial" },
+        { key: "gone", label: "Won't pay", count: 190, share: 19, lever: "out at any price", loss: true },
+      ],
+      read: "140 stall at $29 but buy at $24 — a fair-price move, not a discount.",
+    },
     // ◇ main figure — pricing = the demand curve
     main: {
       kind: "demand-curve",

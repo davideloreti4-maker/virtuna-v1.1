@@ -175,20 +175,22 @@ export function Swing({ data }: { data: SwingData }) {
   return (
     <div className="mt-9">
       <Kick>the swing</Kick>
-      <div className="mt-2 flex items-baseline gap-2">
-        <span className="text-[28px] font-light leading-none tabular-nums" style={{ color: TONE.cream }}>
+      <div className="mt-2.5 flex items-baseline gap-2">
+        <span className="text-[30px] font-light leading-none tabular-nums" style={{ color: TONE.cream }}>
           {nearMiss}
         </span>
         <span className="text-[13px]" style={{ color: TONE.faint }}>
           on the fence
         </span>
       </div>
-      {/* the verdict move — solid = today, the ghost extension = the modeled upside */}
-      <div className="relative mt-3 h-[8px] rounded-full" style={{ background: "rgba(255,255,255,.05)" }}>
-        <div className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${toPct}%`, background: "rgba(236,231,222,.2)" }} />
-        <div className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${fromPct}%`, background: TONE.cream, opacity: 0.85 }} />
+      {/* the verdict move — solid cream = today, the brighter band = the swing you can still win, a tick
+          at the boundary so the gain reads as its own segment (a fix is a win → never coral) */}
+      <div className="relative mt-4 h-[10px] rounded-full" style={{ background: "rgba(255,255,255,.05)" }}>
+        <div className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${toPct}%`, background: "rgba(236,231,222,.28)" }} />
+        <div className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${fromPct}%`, background: TONE.cream, opacity: 0.9 }} />
+        <div className="absolute w-px" style={{ left: `${fromPct}%`, top: -2, bottom: -2, background: "rgba(236,231,222,.55)" }} />
       </div>
-      <div className="mt-2 flex items-baseline gap-2 font-mono text-[12px] tabular-nums">
+      <div className="mt-2.5 flex items-baseline gap-2 font-mono text-[12px] tabular-nums">
         <span style={{ color: TONE.cream }}>{fromPct}%</span>
         <span style={{ color: "rgba(236,231,222,.3)" }}>→</span>
         <span style={{ color: TONE.cream }}>{toPct}%</span>
@@ -196,7 +198,7 @@ export function Swing({ data }: { data: SwingData }) {
           {gainLabel}
         </span>
       </div>
-      <p className="mt-3 text-[13px] leading-[1.5]" style={{ color: TONE.dim }}>
+      <p className="mt-3 text-[13px] leading-[1.55]" style={{ color: TONE.dim }}>
         {read}
       </p>
     </div>
@@ -208,27 +210,33 @@ export function Swing({ data }: { data: SwingData }) {
 export function RoomStrip({ data }: { data: RoomTrustData }) {
   const pct = Math.round(data.confidence * 100);
   return (
-    <div className="mt-8 pt-5" style={{ borderTop: `1px solid ${TONE.border}` }}>
+    <div className="mt-9 pt-6" style={{ borderTop: `1px solid ${TONE.border}` }}>
       <div className="flex items-center justify-between">
-        <span className="font-mono text-[10px] uppercase tracking-[0.1em]" style={{ color: TONE.faint }}>
+        <span className="font-mono text-[10px] uppercase tracking-[0.14em]" style={{ color: TONE.faint }}>
           the room
         </span>
         <span className="font-mono text-[10px] uppercase tracking-[0.08em]" style={{ color: "rgba(236,231,222,.5)" }}>
           {data.confidenceLabel} confidence
         </span>
       </div>
-      <div className="mt-2.5 flex items-center gap-3">
-        <span className="relative h-[5px] flex-1 rounded-full" style={{ background: "rgba(255,255,255,.05)" }}>
-          <span className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${pct}%`, background: "rgba(236,231,222,.55)" }} />
+      <div className="mt-3 flex items-center gap-3">
+        <span className="relative h-[6px] flex-1 overflow-hidden rounded-full" style={{ background: "rgba(255,255,255,.05)" }}>
+          <span
+            className="absolute inset-y-0 left-0 rounded-full"
+            style={{ width: `${pct}%`, background: "linear-gradient(90deg, rgba(236,231,222,.3), rgba(236,231,222,.62))" }}
+          />
         </span>
-        <span className="flex-none font-mono text-[11px] tabular-nums" style={{ color: TONE.dim }}>
+        <span className="flex-none font-mono text-[12px] tabular-nums" style={{ color: TONE.dim }}>
           {data.confidence.toFixed(2)}
         </span>
       </div>
-      <div className="mt-2.5 font-mono text-[11px]" style={{ color: TONE.faint }}>
-        {fmt(data.simulated)} simulated · calibrated on {data.calibratedOn}
+      <div className="mt-3 font-mono text-[11px]" style={{ color: TONE.faint }}>
+        <span className="tabular-nums" style={{ color: "rgba(236,231,222,.6)" }}>
+          {fmt(data.simulated)}
+        </span>{" "}
+        simulated · calibrated on {data.calibratedOn}
       </div>
-      <p className="mt-1.5 text-[12px]" style={{ color: "rgba(236,231,222,.32)" }}>
+      <p className="mt-1.5 text-[12px] leading-[1.5]" style={{ color: "rgba(236,231,222,.32)" }}>
         {data.note}
       </p>
     </div>

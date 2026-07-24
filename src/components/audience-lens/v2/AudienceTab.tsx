@@ -17,7 +17,7 @@ import { useMemo, useState } from "react";
 import { TONE, Kick, HowToRead, type CodedReason, type SegmentStop, type TerrainCluster, type TriState } from "./AmbientDetail";
 import { TerrainMap } from "./AudienceTerrain";
 import { IndexBars, Amplification, Swing, RoomStrip } from "./AudienceDepth";
-import type { DemandCurveData, DomainTemplate, PopulationFrameData, PopulationMain } from "./domain-template";
+import type { DecisionStatesData, DemandCurveData, DomainTemplate, PopulationFrameData, PopulationMain } from "./domain-template";
 
 // ── the shared dot vocabulary — a node-bar (units = people, lit share = the rate) ─────
 
@@ -182,6 +182,42 @@ function DistrictLedger({
   );
 }
 
+// ── the room · by decision — the conversion funnel (replaces the archetype ledger) ──
+
+/** DecisionStates — the whole room read by what each viewer DID with the content on the feed (stopped
+ *  → almost → not for them → scrolled past), each a REAL count that partitions the society. The SAME
+ *  node-bar dot vocabulary as the map (units = people, the lit share = this behaviour's slice of the
+ *  room), so map + read are one system. Clean and simple: name · dots · count; coral marks the
+ *  definitive loss (scrolled past). Content + human-behaviour framing, not a sales funnel. */
+function DecisionStates({ data }: { data: DecisionStatesData }) {
+  const { states, total } = data;
+  const fmtN = (n: number) => n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return (
+    <div className="mt-6">
+      <Kick tag={`${fmtN(total)} simulated`}>the room · what they did</Kick>
+      <div className="mt-3">
+        {states.map((s) => {
+          const loss = !!s.loss;
+          return (
+            <div key={s.key} className="flex items-center gap-3.5 py-[10px]">
+              <span className="w-[104px] flex-none text-[14px]" style={{ color: loss ? TONE.coral : TONE.cream }}>
+                {s.label}
+              </span>
+              <NodeBar frac={total ? s.count / total : 0} loss={loss} />
+              <span
+                className="w-[46px] flex-none text-right text-[13px] font-medium tabular-nums"
+                style={{ color: loss ? TONE.coral : TONE.cream }}
+              >
+                {fmtN(s.count)}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ── willingness-to-pay segments (pricing only) — same node-bar vocabulary ─────
 
 function Segments({ title, rows }: { title: string; rows: SegmentStop[] }) {
@@ -337,12 +373,18 @@ export function PopulationFrame({
           </p>
         </div>
       ) : null}
-      <DistrictLedger
-        clusters={population.terrain.clusters}
-        lossIndex={population.terrain.lossClusterIndex}
-        highlight={highlight}
-        onHover={setHighlight}
-      />
+      {/* the read's home — creator recategorizes the room into decision-states (the playbook); other
+          domains (pricing) keep the archetype district ledger. */}
+      {population.decisionStates ? (
+        <DecisionStates data={population.decisionStates} />
+      ) : (
+        <DistrictLedger
+          clusters={population.terrain.clusters}
+          lossIndex={population.terrain.lossClusterIndex}
+          highlight={highlight}
+          onHover={setHighlight}
+        />
+      )}
       <PopulationMainSlot main={population.main} />
       {/* who this is for → who spreads it (targeting + reach — the reads the map can't make) */}
       {population.audienceFit ? <IndexBars data={population.audienceFit} reducedMotion={reducedMotion} /> : null}

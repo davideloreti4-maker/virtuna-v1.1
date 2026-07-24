@@ -88,6 +88,7 @@ export interface SignalCell {
   tone: "weak" | "okay" | "strong";
   delta?: number; // vs the user's typical hook
   whyScore: string;
+  muted?: boolean; // a visual-only read on a TEXT sim (no video substrate to measure) → rendered greyed
 }
 
 /** ② Raw network activation — a network's z-score at the decisive second + its plain band word. */
@@ -101,7 +102,8 @@ export interface NetworkBar {
 /** ③ KPI activation per second — every decoded system, one row of 0..100 intensities per second. */
 export interface KpiHeatmapData {
   seconds: number; // clip length in whole seconds (columns)
-  rows: { label: string; values: number[] }[]; // each values[i] = 0..100 at second i
+  rows: { label: string; values: number[]; muted?: boolean }[]; // each values[i] = 0..100 at second i;
+  //   `muted` = a sensory row (Visual/Audio/Face) on a TEXT sim — greyed (no video/audio to measure)
 }
 
 /** ④ Purchase-intent moments — a buy-intent curve over the clip with a threshold + the peak seconds. */
@@ -181,6 +183,23 @@ export interface SwingData {
   read: string;
 }
 
+/** The room, by decision — the whole society recategorized into four action-states (a conversion
+ *  funnel), so the audience read is a playbook (who's in · who's winnable · who needs work · who's
+ *  gone) rather than a census of archetypes. Every count is a REAL partition of the projection. */
+export interface DecisionStateRow {
+  key: "sold" | "winnable" | "skeptical" | "gone";
+  label: string; // "Sold" | "Winnable" | "Skeptical" | "Gone"
+  count: number; // people in this state (partitions the room; the four sum to `total`)
+  share: number; // 0..100 of the room
+  lever: string; // the one action for this state ("cut the wait", "show the receipts", …)
+  loss?: boolean; // the definitive loss (the scrolled-and-gone) → coral
+}
+export interface DecisionStatesData {
+  states: DecisionStateRow[]; // exactly four, sold → gone
+  total: number; // the room size (the four counts sum to this)
+  read?: string; // the one-line "so what" (where the next point comes from)
+}
+
 /** The room · trust — the methodology strip (sample · calibration · confidence). */
 export interface RoomTrustData {
   simulated: number; // simulated viewers
@@ -212,6 +231,9 @@ export interface PopulationFrameData {
    *  The generalization-bounded-by-calibration law: shown when the decision leans on a calibration the
    *  audience wasn't built for (a scroll-calibrated room predicting willingness-to-pay). */
   calibration?: { note: string };
+  /** ◇ optional — the room recategorized into four decision-states (the conversion funnel). When
+   *  present it REPLACES the archetype district ledger (creator sets it; pricing keeps the ledger). */
+  decisionStates?: DecisionStatesData;
   // ── audience-depth sections (optional; creator authors them) ──
   audienceFit?: AudienceFitData; // who this is for · vs your typical
   amplification?: AmplificationData; // who spreads it · how far

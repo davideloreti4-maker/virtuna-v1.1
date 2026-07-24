@@ -37,14 +37,14 @@ export function SignalGridV2({ cells }: { cells: SignalCell[] }) {
           <StaggerReveal.Item key={c.key}>
             <div
               className="py-3 pr-3"
-              style={{ borderTop: `1px solid ${TONE.border}` }}
+              style={{ borderTop: `1px solid ${TONE.border}`, opacity: c.muted ? 0.34 : 1 }}
               title={c.whyScore}
             >
               <div className="flex items-baseline gap-1.5">
-                <span className="text-[26px] font-light leading-none tabular-nums" style={{ color: TONE.cream }}>
-                  {c.score}
+                <span className="text-[26px] font-light leading-none tabular-nums" style={{ color: c.muted ? "rgba(236,231,222,.45)" : TONE.cream }}>
+                  {c.muted ? "—" : c.score}
                 </span>
-                {c.delta != null ? (
+                {!c.muted && c.delta != null ? (
                   <span
                     className="font-mono text-[10px] tabular-nums"
                     style={{ color: c.delta < 0 ? TONE.coral : "rgba(236,231,222,.4)" }}
@@ -57,8 +57,8 @@ export function SignalGridV2({ cells }: { cells: SignalCell[] }) {
               <div className="mt-2 font-mono text-[9px] uppercase leading-tight tracking-[0.07em]" style={{ color: TONE.faint }}>
                 {c.label}
               </div>
-              <div className="mt-1 font-mono text-[9px] uppercase tracking-[0.09em]" style={{ color: toneColor(c.tone) }}>
-                {c.word}
+              <div className="mt-1 font-mono text-[9px] uppercase tracking-[0.09em]" style={{ color: c.muted ? "rgba(236,231,222,.28)" : toneColor(c.tone) }}>
+                {c.muted ? "No signal" : c.word}
               </div>
             </div>
           </StaggerReveal.Item>
@@ -131,27 +131,45 @@ export function NetworkSigmaBars({ rows, reducedMotion }: { rows: NetworkBar[]; 
 }
 
 // ── ③ activation per second · every decoded system ─────────────────────────────
+// Premium pass (2026-07-24): larger breathing cells + a per-row peak accent (the strongest second per
+// system rings cream) + a cleaner axis/legend. Sensory rows on a TEXT sim (Visual/Audio/Face) render
+// GREYED (no video substrate to measure) with one honest footnote.
 
-const cellBg = (v: number) => `rgba(236,231,222,${(0.05 + 0.6 * (v / 100)).toFixed(3)})`;
+const cellBg = (v: number, muted?: boolean) =>
+  muted ? "rgba(236,231,222,.045)" : `rgba(236,231,222,${(0.06 + 0.62 * (v / 100)).toFixed(3)})`;
 
-const RAIL = 60; // px — the left label rail
-const CELL_H = 13; // px — one KPI cell
+const RAIL = 66; // px — the left label rail
+const CELL_H = 15; // px — one KPI cell
 
 export function KpiHeatmap({ data, reducedMotion }: { data: KpiHeatmapData; reducedMotion: boolean }) {
   const { seconds, rows } = data;
   const cols = Array.from({ length: seconds }, (_, i) => i);
   // sparse second-axis ticks — first, middle, last (kept to 3 so the tiny type never crowds)
   const ticks = [0, Math.floor((seconds - 1) / 2), seconds - 1];
-  const Cell = (row: KpiHeatmapData["rows"][number], i: number) => (
-    <span key={row.label} className="block rounded-[2px]" style={{ height: CELL_H, background: cellBg(row.values[i] ?? 0) }} />
-  );
+  // the peak second per row — rings cream so the eye catches each system's loudest moment (muted → none)
+  const peakOf = new Map(rows.map((r) => [r.label, r.muted ? -1 : r.values.indexOf(Math.max(...r.values))]));
+  const anyMuted = rows.some((r) => r.muted);
+  const Cell = (row: KpiHeatmapData["rows"][number], i: number) => {
+    const isPeak = !row.muted && peakOf.get(row.label) === i;
+    return (
+      <span
+        key={row.label}
+        className="block rounded-[3px]"
+        style={{
+          height: CELL_H,
+          background: cellBg(row.values[i] ?? 0, row.muted),
+          boxShadow: isPeak ? "inset 0 0 0 1px rgba(236,231,222,.55)" : undefined,
+        }}
+      />
+    );
+  };
   return (
     <div className="mt-9">
       <Kick tag={`${seconds}s · ${rows.length} systems`}>activation per second</Kick>
 
       {/* second-axis, aligned to the grid (offset past the rail) */}
-      <div className="mt-3 flex" style={{ paddingLeft: RAIL + 8 }}>
-        <div className="relative h-[10px] flex-1 font-mono text-[8.5px] tabular-nums" style={{ color: "rgba(236,231,222,.32)" }}>
+      <div className="mt-3.5 flex" style={{ paddingLeft: RAIL + 10 }}>
+        <div className="relative h-[10px] flex-1 font-mono text-[9px] tabular-nums" style={{ color: "rgba(236,231,222,.34)" }}>
           {ticks.map((t) => (
             <span
               key={t}
@@ -164,14 +182,14 @@ export function KpiHeatmap({ data, reducedMotion }: { data: KpiHeatmapData; redu
         </div>
       </div>
 
-      <div className="mt-1 flex gap-2">
+      <div className="mt-1.5 flex gap-2.5">
         {/* left label rail — right-aligned, one line per row, aligned 1:1 with the cells */}
-        <div className="flex flex-none flex-col gap-[2px]" style={{ width: RAIL }}>
+        <div className="flex flex-none flex-col gap-[3px]" style={{ width: RAIL }}>
           {rows.map((row) => (
             <span
               key={row.label}
-              className="flex items-center justify-end truncate font-mono uppercase tracking-[0.03em]"
-              style={{ height: CELL_H, fontSize: "8.5px", color: "rgba(236,231,222,.42)" }}
+              className="flex items-center justify-end truncate font-mono uppercase tracking-[0.04em]"
+              style={{ height: CELL_H, fontSize: "9px", color: row.muted ? "rgba(236,231,222,.24)" : "rgba(236,231,222,.5)" }}
             >
               {row.label}
             </span>
@@ -179,17 +197,17 @@ export function KpiHeatmap({ data, reducedMotion }: { data: KpiHeatmapData; redu
         </div>
         {/* the grid, revealed column-by-column left → right */}
         {reducedMotion ? (
-          <div className="flex flex-1 gap-[2px]">
+          <div className="flex flex-1 gap-[3px]">
             {cols.map((i) => (
-              <div key={i} className="flex flex-1 flex-col gap-[2px]">
+              <div key={i} className="flex flex-1 flex-col gap-[3px]">
                 {rows.map((row) => Cell(row, i))}
               </div>
             ))}
           </div>
         ) : (
-          <StaggerReveal className="flex flex-1 gap-[2px]" staggerDelay={0.02} initialDelay={0.04}>
+          <StaggerReveal className="flex flex-1 gap-[3px]" staggerDelay={0.02} initialDelay={0.04}>
             {cols.map((i) => (
-              <StaggerReveal.Item key={i} className="flex flex-1 flex-col gap-[2px]">
+              <StaggerReveal.Item key={i} className="flex flex-1 flex-col gap-[3px]">
                 {rows.map((row) => Cell(row, i))}
               </StaggerReveal.Item>
             ))}
@@ -198,12 +216,12 @@ export function KpiHeatmap({ data, reducedMotion }: { data: KpiHeatmapData; redu
       </div>
 
       {/* legend */}
-      <div className="mt-3 flex items-center justify-between" style={{ paddingLeft: RAIL + 8 }}>
+      <div className="mt-3.5 flex items-center justify-between" style={{ paddingLeft: RAIL + 10 }}>
         <div className="flex items-center gap-2 font-mono text-[9px] uppercase tracking-[0.06em]" style={{ color: TONE.faint }}>
           <span>weak</span>
           <span
             className="block h-[5px] w-[56px] rounded-full"
-            style={{ background: "linear-gradient(90deg, rgba(236,231,222,.05), rgba(236,231,222,.65))" }}
+            style={{ background: "linear-gradient(90deg, rgba(236,231,222,.05), rgba(236,231,222,.66))" }}
           />
           <span>strong</span>
         </div>
@@ -211,6 +229,13 @@ export function KpiHeatmap({ data, reducedMotion }: { data: KpiHeatmapData; redu
           each cell = 1 sec
         </span>
       </div>
+
+      {/* the honest footnote when sensory rows are greyed (a text sim has no video/audio to decode) */}
+      {anyMuted ? (
+        <div className="mt-2.5 font-mono text-[9px] uppercase tracking-[0.05em]" style={{ paddingLeft: RAIL + 10, color: "rgba(236,231,222,.26)" }}>
+          Visual · Audio · Face — no video substrate in a text sim
+        </div>
+      ) : null}
     </div>
   );
 }

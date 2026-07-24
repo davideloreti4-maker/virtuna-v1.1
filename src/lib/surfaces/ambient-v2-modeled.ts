@@ -16,11 +16,12 @@
 
 import type { GeminiVideoSignals } from "@/lib/engine/types";
 import type { PopulationAggregate } from "@/lib/audience/population";
-import type { NetworkRow } from "@/components/audience-lens/v2/AmbientDetail";
+import type { AttentionData, NetworkRow } from "@/components/audience-lens/v2/AmbientDetail";
 import type {
   AmplificationData,
   AudienceFitData,
   BuyIntentData,
+  DecisionStatesData,
   DomainTemplate,
   KpiHeatmapData,
   NetworkBar,
@@ -109,6 +110,9 @@ export interface ModeledBrainInput {
   craft?: GeminiVideoSignals | null;
   /** The real coded reasons (label + count + loss), when the population produced them. */
   reasons?: ModeledReason[] | null;
+  /** A TEXT sim has no video substrate → the visual-only reads (Visual/Audio/Face KPI rows, the Visual
+   *  Pull signal cell) are greyed rather than presented as measured. Video leaves this false. */
+  mutedSensory?: boolean;
 }
 
 // ── ① the nine-signal decomposition ─────────────────────────────────────────────
@@ -160,6 +164,8 @@ export function modeledSignalGrid(input: ModeledBrainInput): SignalCell[] {
     const delta = Math.round((rnd() - 0.4) * 30);
     const toneLead = tone === "strong" ? "A strength" : tone === "weak" ? "A weak point" : "Middling";
     const anchor = d.craft && input.craft ? " (anchored on the measured craft read)" : "";
+    // a text sim has no video → the Visual Pull read is greyed (nothing to see)
+    const muted = input.mutedSensory && d.key === "visual";
     return {
       key: d.key,
       label: d.label,
@@ -167,7 +173,10 @@ export function modeledSignalGrid(input: ModeledBrainInput): SignalCell[] {
       word: WORD[tone],
       tone,
       delta,
-      whyScore: `${toneLead} — modeled from ${d.frag} at a ${Math.round(input.stopPct)}% stop rate${anchor}.`,
+      whyScore: muted
+        ? "No visual substrate — a text concept has no opening frame to read."
+        : `${toneLead} — modeled from ${d.frag} at a ${Math.round(input.stopPct)}% stop rate${anchor}.`,
+      ...(muted ? { muted: true as const } : {}),
     };
   });
 }
@@ -234,6 +243,8 @@ export function modeledNetworks(bars: NetworkBar[]): NetworkRow[] {
 // ── ③ the per-second KPI heatmap ─────────────────────────────────────────────────
 
 const KPI_LABELS = ["Visual", "Audio", "Face", "Text", "Language", "Effort", "Reward", "Affect", "Story", "Surprise"];
+/** The sensory-input systems — measurable only from a video's frames/audio. On a text sim they're greyed. */
+const KPI_SENSORY = new Set(["Visual", "Audio", "Face"]);
 
 /** Interpolate the real curve (0..1, n points) onto second `i` of `seconds`. */
 function curveAt(curve: number[], i: number, seconds: number): number {
@@ -257,9 +268,55 @@ export function modeledKpiHeatmap(input: ModeledBrainInput): KpiHeatmapData {
       const v = base * 0.55 + wave * 0.45 + (rnd() - 0.5) * 18;
       return clamp(Math.round(v), 6, 100);
     });
-    return { label, values };
+    const muted = input.mutedSensory && KPI_SENSORY.has(label);
+    return { label, values, ...(muted ? { muted: true as const } : {}) };
   });
   return { seconds, rows };
+}
+
+// ── the text retention driver (a MODELED reading-attention curve) ──────────────────
+
+const ATT_MAX = 80; // the scrubber's own 0..80 attention axis (AmbientDetail's `points`)
+
+/** A MODELED reading-retention curve for a TEXT sim — the same attention-scrubber the video draws, but
+ *  the curve is a deterministic proxy (text has no measured attention timeline), seeded from the stop
+ *  rate + friction mix. The transcript is the REAL concept text; `peakWordIndex` underlines the word at
+ *  the retention peak. Honesty rides on the tab's single calibration line (owner call 2026-07-24). */
+export function modeledAttentionData(input: ModeledBrainInput, transcript: string): AttentionData {
+  const rnd = lcg(hashSeed(`att:${input.stimulusKey}`));
+  const seconds = clamp(Math.round(input.clipSeconds), 4, 12);
+  const anchor = clamp(input.stopPct / 100, 0, 1);
+  const reasons = input.reasons ?? [];
+  const total = Math.max(1, reasons.reduce((a, r) => a + r.count, 0));
+  const lossShare = reasons.filter((r) => r.loss).reduce((a, r) => a + r.count, 0) / total;
+
+  // a retention shape: a strong open, a mid-clip trough (deepened by the friction share), a partial
+  // recover toward the payoff — all modeled, no measured attention behind it.
+  const points = Array.from({ length: seconds }, (_, i) => {
+    const p = seconds > 1 ? i / (seconds - 1) : 0;
+    const decay = 1 - 0.32 * p;
+    const trough = -0.34 * Math.exp(-Math.pow((p - 0.44) / 0.18, 2)) * (0.6 + lossShare);
+    const base = clamp(0.42 + anchor * 0.42 + (decay - 1) * 0.5 + trough, 0.12, 0.98);
+    return clamp(Math.round((base + (rnd() - 0.5) * 0.08) * ATT_MAX), 6, ATT_MAX);
+  });
+
+  const peakI = points.indexOf(Math.max(...points));
+  const dipI = points.indexOf(Math.min(...points));
+  const words = transcript ? transcript.split(/\s+/).filter(Boolean) : [];
+  const wc = words.length;
+  const peakWordIndex = wc > 0 && seconds > 1 ? Math.min(wc - 1, Math.round((peakI / (seconds - 1)) * (wc - 1))) : 0;
+  const segAt = (i: number) => fmtTime(seconds > 1 ? (i / (seconds - 1)) * input.clipSeconds : 0);
+
+  const moments: AttentionData["moments"] = [{ t: segAt(peakI), v: points[peakI]! }];
+  if (dipI !== peakI && segAt(dipI) !== segAt(peakI)) {
+    moments.push({ t: segAt(dipI), v: points[dipI]!, dip: true });
+  }
+  moments.sort((a, b) => {
+    const s = (t: string) => t.split(":").reduce((acc, x) => acc * 60 + (Number(x) || 0), 0);
+    return s(a.t) - s(b.t);
+  });
+
+  return { hold: Math.round(anchor * 100), transcript, peakWordIndex, clipSeconds: input.clipSeconds, points, moments };
 }
 
 // ── ④ the buy-intent lens ────────────────────────────────────────────────────────
@@ -360,6 +417,52 @@ export function modeledAmplification(agg: PopulationAggregate): AmplificationDat
     carriers,
     read: `Reach rides on ${lead.label} resharing — win one more ${lead.label} cohort and the second ring widens.`,
   };
+}
+
+/** The room, by behaviour — an HONEST partition of the whole society by what each viewer DID with the
+ *  content on the feed. `Stopped` = the stoppers (the hook caught them). The scrollers split by how
+ *  close they came: the fence segment's non-stoppers `Almost` stopped (the swing), the lowest-stop
+ *  segment `Not for them` (wrong fit), the rest `Scrolled past` (never caught — the definitive loss,
+ *  coral). The four counts sum to the room. Levers ride the real reason mix (kept for a future read).
+ *  Content + human-behaviour framing, not a sales funnel. */
+export function modeledDecisionStates(
+  agg: PopulationAggregate,
+  reasons?: ModeledReason[] | null,
+): DecisionStatesData | undefined {
+  const segs = agg.segments;
+  if (segs.length < 2) return undefined;
+  const total = agg.total;
+  const stopped = agg.stop;
+  // the lowest-stop segment → its non-stoppers are the wrong-fit "not for them"; the non-loss segment
+  // closest to the 50% line → its non-stoppers "almost" stopped (distinct segments by construction).
+  const loss = segs.slice().sort((a, b) => a.stopPct - b.stopPct)[0]!;
+  const fence =
+    segs
+      .slice()
+      .sort((a, b) => Math.abs(a.stopPct - 50) - Math.abs(b.stopPct - 50))
+      .find((s) => s.displayName !== loss.displayName) ?? loss;
+  const almost = Math.max(0, fence.total - fence.stop);
+  const wrongFit = fence.displayName === loss.displayName ? 0 : Math.max(0, loss.total - loss.stop);
+  const scrolled = Math.max(0, agg.scroll - almost - wrongFit);
+
+  const rs = reasons ?? [];
+  const pull = rs.filter((r) => !r.loss).sort((a, b) => b.count - a.count)[0];
+  const friction = rs.filter((r) => r.loss).sort((a, b) => b.count - a.count)[0];
+
+  const raw: Omit<DecisionStatesData["states"][number], "share">[] = [
+    { key: "sold", label: "Stopped", count: stopped, lever: pull ? `the hook landed — lead with ${pull.label.toLowerCase()}` : "the hook caught them" },
+    { key: "winnable", label: "Almost", count: almost, lever: friction ? `nearly stopped — fix ${friction.label.toLowerCase()}` : "nearly stopped — tighten the open" },
+    { key: "skeptical", label: "Not for them", count: wrongFit, lever: "wrong fit — not their content" },
+    { key: "gone", label: "Scrolled past", count: scrolled, lever: "never caught — kept scrolling", loss: true },
+  ];
+  const states = raw.map((s) => ({ ...s, share: total ? Math.round((s.count / total) * 100) : 0 }));
+  const read = almost > 0 ? `${fmtCount(almost)} almost stopped — the closest thing to a stop you didn't get.` : undefined;
+  return { states, total, read };
+}
+
+/** Fixed en-US thousands grouping (mirrors ambient-v2-population's fmtCount — locale-proof). */
+function fmtCount(n: number): string {
+  return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
 /** The swing · your upside — the near-line segment's non-stoppers as fence-sitters, and the modeled
