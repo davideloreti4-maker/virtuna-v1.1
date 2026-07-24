@@ -127,6 +127,70 @@ function selectFixSuggestions(source: VideoTestSource): CounterfactualSuggestion
   return all.filter((s) => s.type === "fix").slice(0, MAX_FIXES);
 }
 
+// ── Apollo-derived fixes (the fallback when the pipeline emits NO counterfactuals) ──────────────
+// The analyze pipeline stopped generating counterfactuals (Plan 02 R9), so on real runs the fix
+// source above is empty and the card lost its two signature sections. The Apollo craft read is
+// always present and carries a per-dimension `evidence` (a REAL, video-specific diagnosis) + a
+// `lever`. So a weak/mid craft dim IS a director's fix: the video-specific read is its evidence;
+// the title/lever/why are the neutral craft frame (honest general mechanism, never a fabricated
+// claim about this video — mirrors WHY_BY_ANCHOR). Retention is a craft FIX (the mid-video dip)
+// even though it is excluded from the craft SCORE (reception), matching the old counterfactual set.
+
+/** Dims eligible to become a director's fix, in priority order (the improvable craft levers). */
+const FIX_DIMS = ["hook", "retention", "substance", "credibility", "clarity"] as const;
+
+/** dim → the named craft lever shown on the fix (extends LEVER_BY_ANCHOR to the craft dims). */
+const LEVER_BY_DIM: Record<string, string> = {
+  hook: "Stakes",
+  retention: "Momentum",
+  substance: "Payoff",
+  credibility: "Proof",
+  clarity: "Clarity",
+};
+
+/** dim → the neutral craft MOVE (a general directive; the video-specific read is the dim evidence). */
+const FIX_TITLE_BY_DIM: Record<string, string> = {
+  hook: "Sharpen the open",
+  retention: "Hold the middle",
+  substance: "Deepen the take",
+  credibility: "Anchor a proof point",
+  clarity: "Tighten the read",
+};
+
+/** dim → the neutral psychological "why" (textbook mechanism, keyed to the dim; null → stands on its
+ *  evidence + move alone). Reuses the WHY_BY_ANCHOR lines where they already say it well. */
+const WHY_BY_DIM: Record<string, string> = {
+  hook: WHY_BY_ANCHOR.hook!,
+  retention: WHY_BY_ANCHOR.retention!,
+  substance:
+    "A familiar take earns a nod, not a send. One non-obvious angle is what makes a viewer feel they learned something worth passing on.",
+  clarity:
+    "Every extra beat a viewer spends decoding is a beat they can spend leaving. The fewer the reads, the longer the hold.",
+};
+
+/** The weak/mid craft dims → the fix source, weakest first, capped. Empty when Apollo is strong all
+ *  round (nothing to fix — the card then shows no fixes, honestly, rather than inventing a weakness). */
+function apolloFixDims(source: VideoTestSource): ApolloDimension[] {
+  const dims = source.apollo_reasoning?.dimensions ?? [];
+  return FIX_DIMS.map((n) => dims.find((d) => d.name === n))
+    .filter((d): d is ApolloDimension => Boolean(d) && d!.band !== "strong")
+    .sort((a, b) => a.score - b.score)
+    .slice(0, MAX_FIXES);
+}
+
+/** The segment at the attention curve's minimum (the MEASURED dip) — the weak beat when there is no
+ *  labelled 'stall' segment and no counterfactual. Maps the curve-index min → its segment
+ *  proportionally (curve resolution may differ from the segment count). undefined when no curve. */
+function curveDipSegment(heatmap: HeatmapPayload | null | undefined): HeatmapPayload["segments"][number] | undefined {
+  const curve = heatmap?.weighted_curve;
+  const segs = heatmap?.segments ?? [];
+  if (!Array.isArray(curve) || curve.length === 0 || segs.length === 0) return undefined;
+  let minI = 0;
+  for (let i = 1; i < curve.length; i++) if ((curve[i] ?? 1) < (curve[minI] ?? 1)) minI = i;
+  const segI = Math.min(segs.length - 1, Math.round((minI / (curve.length - 1 || 1)) * (segs.length - 1)));
+  return segs[segI];
+}
+
 /** The craft-subset dimensions present in the result, in the fixed craft order (retention dropped). */
 function craftDimensions(source: VideoTestSource): ApolloDimension[] {
   const dims = source.apollo_reasoning?.dimensions ?? [];
@@ -155,11 +219,19 @@ export function deriveFixGroundingQueries(
   source: VideoTestSource,
 ): Array<{ query: string; axis: "topical" | "structural" } | null> {
   const rewrites = source.apollo_reasoning?.rewrites ?? [];
-  return selectFixSuggestions(source).map((fix) => {
-    const anchor = fix.signal_anchor;
-    // A hook fix grounds best on a concrete hook line (the sharpened rewrite); others on the headline.
-    const query =
-      anchor === "hook" ? rewrites[0]?.variant ?? fix.headline : fix.headline;
+  const cf = selectFixSuggestions(source);
+  if (cf.length > 0) {
+    return cf.map((fix) => {
+      const anchor = fix.signal_anchor;
+      // A hook fix grounds best on a concrete hook line (the sharpened rewrite); others on the headline.
+      const query = anchor === "hook" ? rewrites[0]?.variant ?? fix.headline : fix.headline;
+      const q = query.trim();
+      return q ? { query: q, axis: "structural" as const } : null;
+    });
+  }
+  // Apollo fallback — aligned to `apolloFixDims` order so `queries[i]` still grounds `fixes[i]`.
+  return apolloFixDims(source).map((dim) => {
+    const query = dim.name === "hook" ? rewrites[0]?.variant ?? FIX_TITLE_BY_DIM.hook! : FIX_TITLE_BY_DIM[dim.name] ?? dim.name;
     const q = query.trim();
     return q ? { query: q, axis: "structural" as const } : null;
   });
@@ -194,7 +266,13 @@ export function predictionResultToVideoTestCard(
     .sort((a, b) => b.score - a.score)
     .map((d) => ({ name: cap(d.name as CraftDimName), score: d.score, band: d.band }));
 
-  // ── Filmstrip — the weak beat is the 'stall' segment, else the first retention fix's segment ──
+  // Fixes come from the counterfactuals when the pipeline produced them; else fall back to the
+  // Apollo craft read (the pipeline stopped emitting counterfactuals — Plan 02 R9).
+  const apolloFixes = fixSuggestions.length === 0 ? apolloFixDims(source) : [];
+  const useApollo = apolloFixes.length > 0 && fixSuggestions.length === 0;
+
+  // ── Filmstrip — the weak beat is the 'stall' segment, else the retention fix's segment, else the
+  //    MEASURED attention-curve dip (so the frame story survives with no counterfactual) ──
   const retentionFix = fixSuggestions.find((f) => f.signal_anchor === "retention");
   const stallSeg = segments.find((s) => (s.label ?? "").toLowerCase().includes("stall"));
   const weakSeg =
@@ -205,7 +283,8 @@ export function predictionResultToVideoTestCard(
             retentionFix.timestamp_ms / 1000 >= s.t_start &&
             retentionFix.timestamp_ms / 1000 < s.t_end,
         )
-      : undefined);
+      : undefined) ??
+    (useApollo ? curveDipSegment(source.heatmap) : undefined);
   const filmstrip = segments.map((s) => ({
     idx: s.idx,
     label: cap(s.label ?? `Segment ${s.idx + 1}`),
@@ -235,31 +314,57 @@ export function predictionResultToVideoTestCard(
     if (working.length >= MAX_LEDGER) break;
     if (!working.includes(line)) working.push(line);
   }
-  const notWorking = fixSuggestions.map((f) => ({
-    text: f.headline.trim(),
-    atMs: f.timestamp_ms > 0 ? f.timestamp_ms : null,
-  }));
-
-  // ── The director's fixes ──
+  // ── The director's fixes + the not-working ledger ──
+  // Counterfactual path (kept for when the stage returns) vs Apollo-craft fallback (the live path).
   const rewrites = source.apollo_reasoning?.rewrites ?? [];
   const hookLine = verbatimHook(source.verbatim);
-  const fixes = fixSuggestions.map((fix) => {
-    const anchor = fix.signal_anchor;
-    const isHook = anchor === "hook";
-    const diagnosis =
-      isHook && hookLine ? `Your open — “${hookLine}”. ${fix.detail.trim()}` : fix.detail.trim();
-    return {
-      title: fix.headline.trim(),
-      lever: LEVER_BY_ANCHOR[anchor] ?? null,
-      atMs: fix.timestamp_ms > 0 ? fix.timestamp_ms : null,
-      keyframeUrl:
-        fix.timestamp_ms > 0 ? resolveKeyframeUrl(frames, keyframeSegments, fix.timestamp_ms) : null,
-      diagnosis,
-      why: WHY_BY_ANCHOR[anchor] ?? null,
-      move: isHook ? rewrites[0]?.variant?.trim() ?? null : null,
-      proof: null, // the route grounds the top 1–2 fixes; honest absence otherwise
-    };
-  });
+  // The measured dip drives the retention fix's frame when we're on the Apollo path.
+  const dipMs = weakSeg ? Math.round(weakSeg.t_start * 1000) : null;
+
+  const notWorking = useApollo
+    ? apolloFixes.map((d) => ({
+        text: `${cap(d.name)} — ${clip(d.evidence)}`,
+        atMs: d.name === "retention" ? dipMs : null,
+      }))
+    : fixSuggestions.map((f) => ({
+        text: f.headline.trim(),
+        atMs: f.timestamp_ms > 0 ? f.timestamp_ms : null,
+      }));
+
+  const fixes = useApollo
+    ? apolloFixes.map((d) => {
+        const isHook = d.name === "hook";
+        const atMs = d.name === "retention" ? dipMs : null; // Apollo dims aren't time-coded (bar the dip)
+        const diagnosis =
+          isHook && hookLine ? `Your open — “${hookLine}”. ${clip(d.evidence, 180)}` : clip(d.evidence, 200);
+        return {
+          title: FIX_TITLE_BY_DIM[d.name] ?? `Strengthen ${cap(d.name)}`,
+          lever: LEVER_BY_DIM[d.name] ?? null,
+          atMs,
+          keyframeUrl: atMs != null ? resolveKeyframeUrl(frames, keyframeSegments, atMs) : null,
+          diagnosis,
+          why: WHY_BY_DIM[d.name] ?? null,
+          move: isHook ? rewrites[0]?.variant?.trim() ?? null : null,
+          proof: null, // the route grounds the top 1–2 fixes; honest absence otherwise
+        };
+      })
+    : fixSuggestions.map((fix) => {
+        const anchor = fix.signal_anchor;
+        const isHook = anchor === "hook";
+        const diagnosis =
+          isHook && hookLine ? `Your open — “${hookLine}”. ${fix.detail.trim()}` : fix.detail.trim();
+        return {
+          title: fix.headline.trim(),
+          lever: LEVER_BY_ANCHOR[anchor] ?? null,
+          atMs: fix.timestamp_ms > 0 ? fix.timestamp_ms : null,
+          keyframeUrl:
+            fix.timestamp_ms > 0 ? resolveKeyframeUrl(frames, keyframeSegments, fix.timestamp_ms) : null,
+          diagnosis,
+          why: WHY_BY_ANCHOR[anchor] ?? null,
+          move: isHook ? rewrites[0]?.variant?.trim() ?? null : null,
+          proof: null, // the route grounds the top 1–2 fixes; honest absence otherwise
+        };
+      });
 
   return {
     type: "video-test-card",

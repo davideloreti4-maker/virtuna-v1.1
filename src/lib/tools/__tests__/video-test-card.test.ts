@@ -49,6 +49,34 @@ const FIXES: CounterfactualSuggestionItem[] = [
 
 const OPTS = { analysisId: "an-1", audienceName: "Skincare buyers", tier: "Directional" as const };
 
+// ── Apollo-fallback fixtures — the LIVE pipeline emits NO counterfactuals, so fixes/notWorking are
+//    derived from the weak/mid craft dims. No 'stall' label here → the weak beat is the curve dip. ──
+const APOLLO_ONLY_DIMS: ApolloDimension[] = [
+  { name: "hook", band: "mid", score: 50, lever: "Contrast (§2.1)", evidence: "Opens on a low-stakes line; nothing at risk in the first second." },
+  { name: "retention", band: "mid", score: 45, lever: "Momentum (§2.3)", evidence: "Attention bottoms out mid-video; no open loop holds the middle." },
+  { name: "clarity", band: "strong", score: 80, lever: "One message (§2.4)", evidence: "One legible idea, clean overlay." },
+  { name: "substance", band: "mid", score: 55, lever: "Payoff (§2.6)", evidence: "Executes a familiar trope without a fresh angle." },
+  { name: "credibility", band: "weak", score: 40, lever: "Proof (§2.7)", evidence: "No proof point anchors the claim; stands on delivery alone." },
+];
+const APOLLO_SEGMENTS: HeatmapPayload["segments"] = [
+  { idx: 0, t_start: 0, t_end: 3, label: "cold open", is_hook_zone: true, keyframe_uri: null },
+  { idx: 1, t_start: 3, t_end: 6, label: "setup", is_hook_zone: false, keyframe_uri: null },
+  { idx: 2, t_start: 6, t_end: 9, label: "middle", is_hook_zone: false, keyframe_uri: null },
+  { idx: 3, t_start: 9, t_end: 12, label: "payoff", is_hook_zone: false, keyframe_uri: null },
+  { idx: 4, t_start: 12, t_end: 15, label: "close", is_hook_zone: false, keyframe_uri: null },
+];
+// weighted_curve minimum at idx 2 (0.20) → maps to segment idx 2 (t_start 6s) = the measured dip.
+const CURVE_HEATMAP = { segments: APOLLO_SEGMENTS, personas: [], weighted_curve: [0.8, 0.5, 0.2, 0.6, 0.7] } as unknown as HeatmapPayload;
+function apolloOnlySource(over: Partial<VideoTestSource> = {}): VideoTestSource {
+  return {
+    apollo_reasoning: { dimensions: APOLLO_ONLY_DIMS, rewrites: REWRITES },
+    heatmap: CURVE_HEATMAP,
+    counterfactuals: null, // the live pipeline no longer emits counterfactuals (Plan 02 R9)
+    verbatim: { hook: { spoken_words: "Here are three things nobody tells you about freelancing", on_screen_text: null } },
+    ...over,
+  };
+}
+
 function healthySource(over: Partial<VideoTestSource> = {}): VideoTestSource {
   return {
     apollo_reasoning: { dimensions: DIMENSIONS, rewrites: REWRITES },
@@ -156,5 +184,68 @@ describe("predictionResultToVideoTestCard (craft teardown)", () => {
     expect(keys).not.toContain("fraction");
     expect(keys).not.toContain("reactions");
     expect(keys).not.toContain("goNoGo");
+  });
+});
+
+describe("predictionResultToVideoTestCard — Apollo fallback (no counterfactuals, the live path)", () => {
+  it("derives the director's fixes from the weak/mid craft dims, weakest first", () => {
+    const block = predictionResultToVideoTestCard(apolloOnlySource(), OPTS)!;
+    expect(VideoTestCardBlockSchema.safeParse(block).success).toBe(true);
+    // weak/mid dims among the fix set, sorted asc: credibility 40, retention 45, hook 50 (substance 55 capped)
+    expect(block.props.fixes.map((f) => f.title)).toEqual([
+      "Anchor a proof point",
+      "Hold the middle",
+      "Sharpen the open",
+    ]);
+    expect(block.props.fixes.map((f) => f.lever)).toEqual(["Proof", "Momentum", "Stakes"]);
+    // The hook fix quotes their verbatim open + carries the Apollo rewrite; the others carry no move.
+    const hookFix = block.props.fixes.find((f) => f.lever === "Stakes")!;
+    expect(hookFix.move).toBe(REWRITES[0]!.variant);
+    expect(hookFix.diagnosis).toContain("Here are three things nobody tells you");
+    expect(block.props.fixes.filter((f) => f.move === null)).toHaveLength(2);
+    // The diagnosis is the dim's REAL evidence (video-specific) — never a fabricated claim.
+    expect(block.props.fixes[0]!.diagnosis).toContain("No proof point anchors the claim");
+    expect(block.props.fixes.every((f) => f.proof === null)).toBe(true);
+  });
+
+  it("anchors the retention fix to the MEASURED attention dip; other dims carry no timestamp", () => {
+    const block = predictionResultToVideoTestCard(apolloOnlySource(), OPTS)!;
+    const retention = block.props.fixes.find((f) => f.lever === "Momentum")!;
+    expect(retention.atMs).toBe(6000); // curve min at idx 2 → segment t_start 6s
+    // the dip also marks the weak beat + drives the drop label, with NO 'stall' label present.
+    expect(block.props.filmstrip[2]!.mark).toBe("weak");
+    expect(block.props.dropLabel).toBe("0:06 drop");
+    // Apollo dims aren't time-coded → the non-retention fixes have no frame.
+    expect(block.props.fixes.find((f) => f.lever === "Proof")!.atMs).toBeNull();
+    expect(block.props.fixes.find((f) => f.lever === "Stakes")!.atMs).toBeNull();
+  });
+
+  it("not-working ledger mirrors the fix dims with their real evidence; working keeps strong dims", () => {
+    const block = predictionResultToVideoTestCard(apolloOnlySource(), OPTS)!;
+    expect(block.props.notWorking).toHaveLength(3);
+    expect(block.props.notWorking[0]!.text).toContain("Credibility —");
+    expect(block.props.notWorking.find((n) => n.text.startsWith("Retention"))!.atMs).toBe(6000);
+    expect(block.props.working.some((w) => w.startsWith("Clarity"))).toBe(true); // strong dim (80)
+  });
+
+  it("grounding queries align to the Apollo fixes (hook → rewrite, others → the craft move)", () => {
+    expect(deriveFixGroundingQueries(apolloOnlySource())).toEqual([
+      { query: "Anchor a proof point", axis: "structural" },
+      { query: "Hold the middle", axis: "structural" },
+      { query: REWRITES[0]!.variant, axis: "structural" },
+    ]);
+  });
+
+  it("shows NO fixes when every craft dim is strong (never invents a weakness)", () => {
+    const allStrong = APOLLO_ONLY_DIMS.map((d) => ({ ...d, band: "strong" as const, score: 85 }));
+    const block = predictionResultToVideoTestCard(
+      apolloOnlySource({ apollo_reasoning: { dimensions: allStrong, rewrites: REWRITES } }),
+      OPTS,
+    )!;
+    expect(block.props.fixes).toHaveLength(0);
+    expect(block.props.notWorking).toHaveLength(0);
+    // still a valid card — the craft ring + drivers + filmstrip + working carry it.
+    expect(VideoTestCardBlockSchema.safeParse(block).success).toBe(true);
+    expect(block.props.craftScore).not.toBeNull();
   });
 });
