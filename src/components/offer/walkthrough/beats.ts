@@ -79,6 +79,9 @@ export const BEATS: readonly Beat[] = [
 
 const ORDER: readonly BeatId[] = BEATS.map((b) => b.id);
 
+/** Every beat id, in rail order. Exported for the dev-only `?beat=` jump's validation. */
+export const BEAT_IDS: readonly BeatId[] = ORDER;
+
 export function beatAt(id: BeatId): Beat {
   const beat = BEATS.find((b) => b.id === id);
   if (!beat) throw new Error(`unknown beat: ${id}`);

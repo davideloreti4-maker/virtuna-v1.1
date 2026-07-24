@@ -160,7 +160,7 @@ function LockedPanel({ onCheckout }: { onCheckout: () => void }) {
     >
       <div className="flex items-baseline gap-2">
         <span className="font-mono text-[13px] text-accent-text">{LOSS_MOMENT}</span>
-        <span className="text-[13px] text-foreground-secondary">the deepest drop</span>
+        <span className="text-[13px] text-foreground-secondary">the steepest drop</span>
         <span className="ml-auto font-mono text-[13px] text-foreground-muted">
           craft {CRAFT_SCORE}
         </span>
@@ -218,8 +218,8 @@ export interface WalkthroughProps {
   initialBeat?: BeatId;
 }
 
-export function Walkthrough({ onCheckout, initialBeat = "frames" }: WalkthroughProps) {
-  const [beatId, setBeatId] = useState<BeatId>(initialBeat);
+export function Walkthrough({ onCheckout, initialBeat }: WalkthroughProps) {
+  const [beatId, setBeatId] = useState<BeatId>(initialBeat ?? "frames");
   const beat = beatAt(beatId);
   const { step, total } = beatPosition(beatId);
 

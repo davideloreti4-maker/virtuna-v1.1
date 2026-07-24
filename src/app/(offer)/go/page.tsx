@@ -16,6 +16,7 @@ import { FinalCta } from "@/components/offer/sections/final-cta";
 import { OfferFooter } from "@/components/offer/sections/footer";
 import { StickyCta } from "@/components/offer/sections/sticky-cta";
 import { Walkthrough } from "@/components/offer/walkthrough/walkthrough";
+import { BEAT_IDS, type BeatId } from "@/components/offer/walkthrough/beats";
 import { GRAIN_URL } from "@/components/offer/atmosphere";
 
 export const metadata: Metadata = {
@@ -29,7 +30,28 @@ export const metadata: Metadata = {
  * A floating premium brand island + the interactive hero, then the persuasion
  * arc (transformation → pricing → FAQ → CTA).
  */
-export default function OfferPage() {
+/**
+ * Dev-only beat jump — `/go?beat=open` renders the unlocked payoff, which is otherwise reachable
+ * only by paying. For REVIEWING the demo, never for using it.
+ *
+ * Resolved here, in the server component, and hard-gated to non-production: in production the wall
+ * is the paywall, and a query string that skipped it would hand the withheld analysis to anyone who
+ * guessed the URL. Returning undefined leaves the walkthrough on its normal first beat.
+ */
+function previewBeat(raw: string | string[] | undefined): BeatId | undefined {
+  if (process.env.NODE_ENV === "production") return undefined;
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  if (!value) return undefined;
+  return (BEAT_IDS as readonly string[]).includes(value) ? (value as BeatId) : undefined;
+}
+
+export default async function OfferPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const beat = previewBeat((await searchParams).beat);
+
   return (
     <main>
       {/* floating premium brand island — centered, detached, scroll-aware */}
@@ -122,8 +144,9 @@ export default function OfferPage() {
 
       {/* S1 — the interactive walkthrough. Sits directly under the hero on purpose: the
           time-to-aha budget is ~10s to the first insight and ~45s to the wall, and a demo
-          buried below four persuasion sections cannot meet it. Renders null in production
-          while the fixture is placeholder data (see `walkthroughEnabled`). */}
+          buried below four persuasion sections cannot meet it. The fixture is a REAL frozen
+          run, so this renders in production; `walkthroughEnabled` re-arms only if someone
+          replaces it with authored numbers. */}
       <section className="relative px-5 py-14 md:py-20">
         <div className="mx-auto mb-8 max-w-2xl text-center">
           <span className="text-xs font-semibold uppercase tracking-[0.14em] text-foreground-muted">
@@ -133,7 +156,7 @@ export default function OfferPage() {
             This is the actual product, not a screenshot.
           </h2>
         </div>
-        <Walkthrough />
+        <Walkthrough initialBeat={beat} />
       </section>
 
       {/* honest credibility strip, directly under the hero */}
