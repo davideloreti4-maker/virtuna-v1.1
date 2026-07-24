@@ -52,6 +52,52 @@ delivers an email round-trip and a username field. Time-to-aha is days, or never
 
 ---
 
+## 2a. The traffic profile — organic social (owner, 2026-07-24)
+
+**No paid ads. Traffic is organic from TikTok / Instagram / other social**, i.e. link-in-bio and link
+stickers. That single fact drives more of this build than any copy decision, because of what it
+implies about the *browser* the funnel runs in.
+
+### 🔴 BLOCKER — in-app webviews break both identity paths
+
+Social apps open links in **embedded webviews**, not the system browser. Today this codebase offers
+exactly two ways to get an account, and both fail there:
+
+| Path | What happens in a TikTok/IG webview |
+|---|---|
+| Google OAuth (`signup-form.tsx:23`) | **Blocked by Google** — embedded webviews are refused (`disallowed_useragent`). Not a bug we can patch; it is Google's policy. |
+| Email + password (`signup/actions.ts:52`) | Sends a confirmation email. The user must leave the webview, open a mail app, and click a link that opens in a *different* browser — no session, no referral cookie, no checkout intent. Gone. |
+
+`grep signInWithOtp` returns **zero hits** — there is no magic link and no OTP in the codebase.
+So on the only traffic this product has, the funnel currently cannot produce an account at all, and
+it fails *between the aha and the dollar* — the worst position in the funnel.
+
+**Required fix: email OTP as the primary identity step.** A 6-digit code typed back into the same
+page (`supabase.auth.signInWithOtp`, unused today). The user never leaves the webview, so intent and
+cookies survive. Google stays as the fast path on desktop and real mobile browsers, where it works.
+This is a **prerequisite for S2**, not a nice-to-have.
+
+### Mobile-first is the default, not the adaptation
+
+`hero-showcase.tsx` is a desktop composition (`max-w-[1000px]`, three responsive utilities in the
+whole file). The demo (S1) must be **designed at 390px and allowed to grow**, not designed wide and
+squeezed. A filmstrip scrub authored for a mouse does not land its aha under a thumb.
+
+### ⚠️ Verify on a real device before building around it
+
+**Whop checkout inside an embedded webview.** Payment sheets, Apple Pay availability, and 3DS
+redirects are all unreliable in in-app browsers. If the embed is flaky there, the tripwire needs a
+different presentation on webview traffic. Test before, not after.
+
+### The upside
+
+Organic social traffic is **warm** — they have already watched the creator's content and arrive with
+context and some trust. The demo carries less cold-persuasion load than it would on paid traffic, so
+it can be shorter and more specific. Volume is lower, which raises the cost of every leak: there is
+no budget knob to compensate for a broken step.
+
+---
+
 ## 3. The psychological spine
 
 Ten states, in order. Each screen below owns exactly one.
@@ -104,9 +150,16 @@ testimonials.
 
 ### The commitment — still on `/go`, zero navigation
 
-**S2 · Identity.** One tap Google. Framed as part of the purchase, never as "create an account":
-*"Continue with Google — then $1."* Email/password stays available but must become magic-link;
-the confirmation wall cannot survive into this funnel.
+**S2 · Identity.** Framed as part of the purchase, never as "create an account".
+
+Because the traffic is in-app webviews (§2a), the order is **inverted from the usual**:
+
+- **Email + 6-digit code is the PRIMARY path.** One field, code typed back into the same page, no
+  navigation, no mail-app round trip. Works everywhere, including every webview.
+- **"Continue with Google" is offered only where it works** — detect the webview and hide it there
+  rather than showing a button that returns a Google error page mid-funnel.
+- **The password + confirmation-email path is removed from this funnel entirely.** It cannot survive
+  an embedded browser.
 
 **S3 · The tripwire.** Whop embed modal, in place.
 - Button says what they GET: **"Test my video — $1"**.
@@ -239,8 +292,9 @@ flowing through checkout.
 
 | Slice | Deliverable | Gate |
 |---|---|---|
-| **S1** | Playable demo on `/go` — 3 real pre-computed analyses, real v2 components | 3 one-time engine runs frozen as fixtures |
-| **S2** | OAuth → Whop modal inline; kill the confirm-email wall for cold traffic | magic-link replaces password confirm |
+| **S0** | 🔴 **Email OTP auth + webview detection.** Unblocks everything downstream | `signInWithOtp`; verified in a real TikTok/IG in-app browser |
+| **S1** | Playable demo on `/go` — 3 real pre-computed analyses, real v2 components, **designed at 390px** | 3 one-time engine runs frozen as fixtures |
+| **S2** | OTP-first identity → Whop modal inline; password+confirm removed from this funnel | Whop embed verified on a real device inside a webview |
 | **S3** | **Delete `/welcome`.** Checkout lands in Ambient v2 Start; first-run = empty rail + one lit path | deletes `connect-step.tsx`, the 2-step `onboarding-store`, and the middleware `/welcome` bounce (`middleware.ts:167`) |
 | **S4** | First real actions on the real account: room calibrates in the rail (visible labor) → their video → the gap → the intention prompt | rides `NEXT_PUBLIC_AMBIENT_V2`; ≤12 credits |
 | **S5** | Upside only, AFTER the $1 path converts: prediction check at ~24h, balance nudge at ~48h | not required for launch — the renewal is automatic |
