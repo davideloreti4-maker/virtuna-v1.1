@@ -24,8 +24,10 @@ import type {
   TriState,
 } from "@/components/audience-lens/v2/AmbientDetail";
 import type {
+  BrainFrameData,
   DomainTemplate,
   PopulationFrameData,
+  ReasonBreakdownData,
   RoomTrustData,
 } from "@/components/audience-lens/v2/domain-template";
 
@@ -170,29 +172,92 @@ export function buildPopulationFrameData(input: PopulationSnapshotInput): Popula
   };
 }
 
+// ── the text brain (real reason-drivers — the cognitive "why they stopped") ───────────────────────
+
+/** Human labels for the population math's dominant-reason tokens (pStop's `why`). Friction reasons
+ *  (a hook below their bar, a novelty mismatch, hype-vs-skeptic, a slow build) ride `loss` → coral;
+ *  the two pull reasons (on-topic interest, a strong hook) stay cream. Unknown tokens title-case. */
+const REASON_LABEL: Record<string, { label: string; loss?: boolean }> = {
+  interest: { label: "On-topic interest" },
+  "strong-hook": { label: "Strong hook" },
+  "weak-hook": { label: "Weak hook", loss: true },
+  "novelty-mismatch": { label: "Novelty mismatch", loss: true },
+  "hype-vs-skeptic": { label: "Hype vs skepticism", loss: true },
+  "too-slow": { label: "Too slow", loss: true },
+};
+
+function humanizeReason(token: string): { label: string; loss?: boolean } {
+  return REASON_LABEL[token] ?? { label: token.replace(/[-_]/g, " ").replace(/^\w/, (c) => c.toUpperCase()) };
+}
+
+/** Build the REAL reason-breakdown driver from the projection's per-stopper dominant-reason tally.
+ *  Counts are the aggregate's own `reasons` (deterministic pStop output); the denominator is the real
+ *  stopper count. Weightiest first. */
+function reasonBreakdown(agg: PopulationAggregate): ReasonBreakdownData {
+  const total = Math.max(1, agg.stop);
+  const rows = agg.reasons
+    .slice()
+    .sort((a, b) => b.count - a.count)
+    .map((r) => {
+      const h = humanizeReason(r.reason);
+      return { label: h.label, count: r.count, share: r.count / total, ...(h.loss ? { loss: true as const } : {}) };
+    });
+  const top = rows[0];
+  const read = top
+    ? `Most who stopped did so on ${top.label.toLowerCase()} — ${top.count} of ${agg.stop}.`
+    : undefined;
+  return { question: "What carried the stop", total: agg.stop, rows, read };
+}
+
+/**
+ * Map a fired text sim's REAL projection → the `BrainFrameData` the brain tab reads. Honest by
+ * construction: the cortex is the owner-locked MODELED proxy (seeded by the concept, bold-driven by the
+ * real stop-ratio); the driver is the REAL dominant-reason tally (`reason-breakdown`), never an invented
+ * attention curve. No craft signals (a text sim has no visual dims) → `signals: []` (SignalRows renders
+ * nothing). The calibration line states plainly what is modeled vs measured.
+ */
+export function buildReasonBrainFrameData(input: {
+  aggregate: PopulationAggregate;
+  stopPct: number;
+  stimulusKey: string;
+}): BrainFrameData {
+  return {
+    cortexSeedKey: input.stimulusKey,
+    // A text concept has no clip; the cortex loops on a nominal proxy duration (animation only, never
+    // presented as a measured length). Kept short so the parcellation reads as a brief pulse.
+    clipSeconds: 6,
+    stopRatio: clamp(input.stopPct / 100, 0, 1),
+    driver: { kind: "reason-breakdown", data: reasonBreakdown(input.aggregate) },
+    signals: [], // no visual craft dims on a text sim → the breakdown section is omitted
+    calibrationNote: "Modeled cognitive proxy from a text sim · the reasons are real, the cortex is a proxy — not measured attention",
+  };
+}
+
 /** Everything `buildDomainTemplate` needs to assemble the depth drill from a fired sim's seal. */
 export interface DomainTemplateInput extends PopulationSnapshotInput {
   /** The sealed measured would-stop % (the Overview verdict) — the answer they paid for. */
   pct: number;
   /** A short concept label for the pager ("hook" · "idea" · "concept"). */
   conceptLabel?: string;
+  /** A stable per-stimulus key (the row id / trimmed concept) — seeds the cortex parcellation. */
+  stimulusKey: string;
 }
 
 /**
  * Assemble the `DomainTemplate` the Overview→Detail drill renders for a SEALED text/concept sim.
- * Population is REAL (from `buildPopulationFrameData`); `brain` is DELIBERATELY undefined — a text sim
- * has no attention/craft read, so `AmbientDetail` shows its honest brain-unavailable state (never a
- * fabricated figure). The verdict is the sealed measured %.
+ * BOTH tabs are REAL now: `population` from `buildPopulationFrameData`, and `brain` from
+ * `buildReasonBrainFrameData` — the cortex proxy + the real reason-driver breakdown (owner call
+ * 2026-07-24: the brain fires on all text content). The verdict is the sealed measured %.
  */
 export function buildDomainTemplate(input: DomainTemplateInput): DomainTemplate {
-  const { pct, conceptLabel } = input;
+  const { pct, conceptLabel, stimulusKey, aggregate } = input;
   return {
     id: "creator",
     label: "Creator · content",
     backLabel: "Overview",
     pager: conceptLabel ?? "concept",
     verdict: { value: `${Math.round(pct)}%`, label: "would stop" },
-    brain: undefined, // text sim — no brain read (the honest-unavailable state renders)
+    brain: buildReasonBrainFrameData({ aggregate, stopPct: pct, stimulusKey }),
     population: buildPopulationFrameData(input),
   };
 }

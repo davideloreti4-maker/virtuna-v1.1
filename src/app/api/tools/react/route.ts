@@ -33,6 +33,7 @@ import { csrfGuard } from "@/lib/http/csrf-guard";
 import { rateLimitGuard } from "@/lib/http/rate-limit";
 import { createOpenThreadLazy } from "@/lib/threads/threads";
 import { resolveThreadAudience } from "@/lib/audience/resolve-thread-audience";
+import { GENERAL_BASELINE_SIGNATURE } from "@/lib/audience/general-baseline-signature";
 import { goalIntentToLens } from "@/lib/audience/intent-lens";
 import type { IntentLens } from "@/lib/audience/intent-lens";
 import { runFlashTextMode } from "@/lib/engine/flash/run-flash-text-mode";
@@ -157,10 +158,17 @@ export async function POST(request: Request): Promise<Response> {
   // signature's named axes — one extra LLM call. It does NOT depend on the flash result,
   // so it runs in PARALLEL (no serial latency added). A calibrated signature with v2 axes
   // is the gate; General / legacy / preset signatures skip it (byte-identical old behaviour).
+  // The signature that drives the population projection. A calibrated audience uses its own frozen
+  // signature; General (uncalibrated) has none, so it falls back to the honest GENERIC BASELINE
+  // (general-baseline-signature.ts) — so a new user still lands on the SAME Population room. Injected
+  // HERE only (the population boundary), never baked onto the GENERAL_AUDIENCE constant, so no other
+  // route/reveal/tier path is affected. Presets stay null → verdict-only (no baseline for them).
+  const populationSignature =
+    audience?.signature ?? (audience?.is_general ? GENERAL_BASELINE_SIGNATURE : null);
   const wantPopulation =
-    !!audience?.signature && signatureHasPopulationAxes(audience.signature);
+    !!populationSignature && signatureHasPopulationAxes(populationSignature);
   const contentVectorPromise: Promise<ContentVector | null> = wantPopulation
-    ? characterizeContent(text, audience!.signature!.audience.topic_vocab ?? []).catch(() => null)
+    ? characterizeContent(text, populationSignature!.audience.topic_vocab ?? []).catch(() => null)
     : Promise.resolve(null);
 
   // default framing "hook" (first-2s "do you stop?" — RESEARCH A1). The client shows
@@ -199,9 +207,9 @@ export async function POST(request: Request): Promise<Response> {
   // vector (skip / failure) → no population, and the client falls back to the rollup swarm.
   const contentVector = await contentVectorPromise;
   let population: PopulationAggregate | null = null;
-  if (contentVector && audience?.signature) {
+  if (contentVector && populationSignature) {
     try {
-      population = reactPopulation(audience.signature, contentVector);
+      population = reactPopulation(populationSignature, contentVector);
     } catch {
       population = null; // never let the projection break the reaction
     }
@@ -213,8 +221,9 @@ export async function POST(request: Request): Promise<Response> {
   // open thread's `sim_seals`, keyed by the trimmed stimulus, so BOTH the Overview seal and the
   // audience-depth drill survive a reload. pct is the honest "N/10 stop" fraction as a percentage; an
   // unparseable fraction writes nothing (never fabricate a seal). Runs AFTER the population compute so
-  // the depth rides along. `population` is null for a General/uncalibrated audience → depth omitted,
-  // verdict still sealed. Non-fatal (writeSimSeal swallows failures) — never blocks the reaction.
+  // the depth rides along. `population` is now non-null for General too (the generic baseline
+  // projection) → its seal carries the Population depth like a calibrated one; only presets stay
+  // verdict-only. Non-fatal (writeSimSeal swallows failures) — never blocks the reaction.
   if (wantPersist) {
     const m = /(\d+)\s*\/\s*(\d+)/.exec(fraction);
     const pct =

@@ -13,7 +13,6 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "motion/react";
-import { AMBIENT_PANEL_HEIGHT } from "./AmbientOverview";
 import { BrainFrame } from "./BrainTab";
 import { PopulationFrame } from "./AudienceTab";
 import type { DomainTemplate } from "./domain-template";
@@ -287,11 +286,15 @@ export function AmbientDetail({
   return (
     <div
       data-testid="ambient-detail"
-      className={`flex w-full max-w-[440px] flex-col rounded-[16px] ${className ?? ""}`}
+      className={`flex w-full max-w-[440px] flex-col ${className ?? ""}`}
       style={{
-        height: AMBIENT_PANEL_HEIGHT,
-        background: "#1f1f1e",
-        border: `1px solid ${TONE.border}`,
+        // Connected rail — mirrors AmbientOverview's root exactly: fills its column top-to-bottom (part
+        // of the thread page, NOT a floating card), same darker #181817 tone, a single left hairline
+        // divider, no rounding, no full border, no shadow (owner call 2026-07-24 — the Brain/Audience
+        // detail must read as the SAME surface as the Overview it drills from).
+        height: "100%",
+        background: "#181817",
+        borderLeft: `1px solid ${TONE.border}`,
         color: TONE.cream,
         fontFamily: "var(--font-sans, Inter, system-ui, sans-serif)",
       }}

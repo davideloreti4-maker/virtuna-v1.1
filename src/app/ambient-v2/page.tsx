@@ -10,6 +10,7 @@ import { AmbientOverview, AMBIENT_PANEL_HEIGHT } from "@/components/audience-len
 import { OVERVIEW_R4, OVERVIEW_R4_REST } from "@/components/audience-lens/v2/overview-fixture";
 import { AmbientDetail } from "@/components/audience-lens/v2/AmbientDetail";
 import { CREATOR_TEMPLATE } from "@/components/audience-lens/v2/detail-fixture";
+import { CREATOR_LIVE_TEMPLATE } from "@/components/audience-lens/v2/detail-live-fixture";
 import { PRICING_TEMPLATE } from "@/components/audience-lens/v2/pricing-template";
 import { AmbientStart } from "@/components/audience-lens/v2/AmbientStart";
 import { START_R4 } from "@/components/audience-lens/v2/start-fixture";
@@ -47,9 +48,14 @@ export default function AmbientV2DevPage() {
   const [surface, setSurface] = useState<Surface>("overview");
   const [mode, setMode] = useState<"simulating" | "rest">("simulating");
   const [simMode, setSimMode] = useState<"develop" | "cold">("develop");
-  const [domain, setDomain] = useState<"creator" | "pricing">("creator");
+  const [domain, setDomain] = useState<"creator" | "creator-live" | "pricing">("creator");
   const overviewData = mode === "simulating" ? OVERVIEW_R4 : OVERVIEW_R4_REST;
-  const template = domain === "creator" ? CREATOR_TEMPLATE : PRICING_TEMPLATE;
+  const template =
+    domain === "creator"
+      ? CREATOR_TEMPLATE
+      : domain === "creator-live"
+        ? CREATOR_LIVE_TEMPLATE
+        : PRICING_TEMPLATE;
   // ⑤ entry: develop = pre-filled from a rank (a skill / the composer); cold = the ④ door → intake
   const openSim = (m: "develop" | "cold") => {
     setSimMode(m);
@@ -108,7 +114,10 @@ export default function AmbientV2DevPage() {
               <span style={{ color: "rgba(236,231,222,.2)" }}>·</span>
               <div className="flex gap-1.5">
                 <Chip on={domain === "creator"} onClick={() => setDomain("creator")}>
-                  creator template
+                  creator · authored
+                </Chip>
+                <Chip on={domain === "creator-live"} onClick={() => setDomain("creator-live")}>
+                  creator · LIVE adapter
                 </Chip>
                 <Chip on={domain === "pricing"} onClick={() => setDomain("pricing")}>
                   pricing template

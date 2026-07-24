@@ -30,6 +30,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { createOpenThreadLazy } from "@/lib/threads/threads";
 import { insertMessage } from "@/lib/threads/messages";
+import { writeSimSeal } from "@/lib/threads/sim-seals";
+import { hasBrainData } from "@/lib/surfaces/ambient-v2-brain";
+import { AMBIENT_V2_ENABLED } from "@/lib/flags/ambient-v2";
 import { kcStamp } from "@/lib/kc/kc-stamp";
 import { getAudience, GENERAL_AUDIENCE } from "@/lib/audience/audience-repo";
 import { resolveTier } from "@/lib/audience/resolve-tier";
@@ -48,6 +51,7 @@ import type {
   ApolloDimension,
   ApolloRewrite,
   CounterfactualResult,
+  GeminiVideoSignals,
   HeatmapPayload,
   VerbatimPayload,
 } from "@/lib/engine/types";
@@ -121,8 +125,12 @@ export async function POST(request: Request): Promise<Response> {
   // apollo lives in the variants JSONB bag (the analyze route persists variants.apollo — the FULL
   // Apollo object, incl. dimensions); heatmap / counterfactuals / verbatim are first-class columns.
   const variants =
-    (row as { variants?: { apollo?: { dimensions?: ApolloDimension[]; rewrites?: ApolloRewrite[] } | null } | null })
-      .variants ?? null;
+    (row as {
+      variants?: {
+        apollo?: { dimensions?: ApolloDimension[]; rewrites?: ApolloRewrite[] } | null;
+        craft?: { video_signals?: GeminiVideoSignals | null } | null;
+      } | null;
+    }).variants ?? null;
   const source: VideoTestSource = {
     apollo_reasoning: variants?.apollo
       ? { dimensions: variants.apollo.dimensions ?? null, rewrites: variants.apollo.rewrites ?? null }
@@ -170,6 +178,32 @@ export async function POST(request: Request): Promise<Response> {
     }
   } catch {
     /* grounding is additive — never blocks the card */
+  }
+
+  // ── (9b) Seal the Ambient v2 VIDEO depth (Phase C, opt-in behind AMBIENT_V2, non-fatal) ──────
+  // The persisted analysis already holds the REAL fold-derived Brain read (heatmap weighted_curve +
+  // craft dims + verbatim). Seal it into the thread's `sim_seals` jsonb — keyed by the analysisId —
+  // so the Brain drill survives reload WITHOUT a fresh (billed) fold. Only when a real attention
+  // curve exists (`hasBrainData`); the would-stop % is the first-2s hold (weighted_hook_score),
+  // falling back to weighted completion. Never blocks the card (writeSimSeal swallows failures).
+  if (AMBIENT_V2_ENABLED && hasBrainData(source.heatmap)) {
+    const heatmap = source.heatmap!;
+    const hold = heatmap.weighted_hook_score ?? heatmap.weighted_completion_pct ?? null;
+    if (hold !== null) {
+      await writeSimSeal(supabase, openThread, analysisId, {
+        pct: Math.max(0, Math.min(100, Math.round(hold * 100))),
+        band: null,
+        at: new Date().toISOString(),
+        video: {
+          analysisId,
+          stopPct: Math.max(0, Math.min(100, Math.round(hold * 100))),
+          craftScore: block.props.craftScore ?? null, // the row's native viral score (craft, not %)
+          heatmap,
+          videoSignals: variants?.craft?.video_signals ?? null,
+          verbatim: source.verbatim,
+        },
+      });
+    }
   }
 
   // ── (10) Persist the block to the open thread (re-validated + KC-stamped) ────

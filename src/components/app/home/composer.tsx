@@ -2895,6 +2895,16 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
           onSkill={pickStartSkill}
           onSubmit={seedAndRun}
           activeSkillId={activeTool}
+          // Pre-thread audience choice: the "Testing against" chip is a real picker here (no thread
+          // to lock to yet). Same reground as the presence's onSelectAudience — a switched audience
+          // must not carry a stale thought read / ask ledger.
+          audiences={audiences}
+          selectedAudienceId={selectedAudienceId}
+          onSelectAudience={(a) => {
+            focusByThought(null);
+            setAudienceAsks([]);
+            void handleSelectAudience(a);
+          }}
         />
       ) : (
         // Post-pick (option B, owner call 2026-07-23): drop straight into the fresh-chat start —

@@ -16,6 +16,23 @@ import type { ThreadRow } from "./threads";
 import type { Json } from "@/types/database.types";
 import type { PopulationAggregate } from "@/lib/audience/population";
 import type { PopulationPersona } from "@/lib/surfaces/ambient-v2-population";
+import type { GeminiVideoSignals, HeatmapPayload, VerbatimPayload } from "@/lib/engine/types";
+
+/** The Phase-C Brain (VIDEO) depth payload — the persisted-analysis read a video Test seals so the
+ *  Brain drill survives reload. All REAL, from the `/api/analyze` Max row: the per-segment attention
+ *  `heatmap`, the four `GeminiVideoSignals` craft dims, the `VerbatimPayload` transcript, and the
+ *  honest would-stop `stopPct` (the first-2s hold). `ambient-v2-brain.ts` maps it → the Brain tab.
+ *  Distinct from the TEXT-sim `population` depth above: a video seal carries `video`, a text seal
+ *  carries `population` — the drill picks the Brain-first or Population-first Detail accordingly. */
+export interface SimSealVideo {
+  analysisId: string; // the persisted analysis this depth came from (stable id)
+  stopPct: number; // 0..100 would-stop % (heatmap.weighted_hook_score) — drives the cortex + verdict
+  craftScore?: number | null; // the video's NATIVE viral score (mean of craft dims; NOT the attention
+  //  %). Shown on the Overview row before a sim — the row's own worth, distinct from the audience %.
+  heatmap: HeatmapPayload; // per-segment attention (weighted_curve) + the segment grid
+  videoSignals?: GeminiVideoSignals | null; // the four craft dims (absent → no signal rows)
+  verbatim?: VerbatimPayload | null; // the transcript (absent → the scrubber reads segment labels)
+}
 
 /** One sealed verdict — the honest aggregate, no fabricated precision.
  *
@@ -28,9 +45,10 @@ export interface SimSeal {
   pct: number; // 0..100 would-stop % (aggregateFlash "N/10 stop" as a percentage)
   band: string | null; // "Strong" | "Mixed" | "Weak" — the qualitative aggregate
   at: string; // ISO timestamp the seal was written
-  population?: PopulationAggregate | null; // Stage-2 N-individual projection (Phase C depth)
+  population?: PopulationAggregate | null; // Stage-2 N-individual projection (Phase C text depth)
   personas?: PopulationPersona[]; // the 10 real per-persona reactions (exemplar voices)
   scrollQuote?: string; // the lead scroll-verdict quote (the room's headline objection)
+  video?: SimSealVideo | null; // Phase C VIDEO depth (the persisted-analysis Brain read)
 }
 
 /** trimmed concept text → its sealed verdict. */
@@ -49,6 +67,16 @@ function isPopulationLike(v: unknown): boolean {
   return typeof p.total === "number" && Array.isArray(p.segments) && Array.isArray(p.reasons);
 }
 
+/** A minimal shape guard for a persisted `SimSealVideo` — a real heatmap curve + the ids the Brain
+ *  adapter reads. A blob failing this is dropped (the verdict seal still survives). */
+function isVideoLike(v: unknown): boolean {
+  if (!v || typeof v !== "object" || Array.isArray(v)) return false;
+  const p = v as { analysisId?: unknown; stopPct?: unknown; heatmap?: unknown };
+  if (typeof p.analysisId !== "string" || typeof p.stopPct !== "number") return false;
+  const h = p.heatmap as { weighted_curve?: unknown } | undefined | null;
+  return !!h && typeof h === "object" && Array.isArray(h.weighted_curve) && h.weighted_curve.length > 0;
+}
+
 /** Parse a thread's `sim_seals` jsonb into a typed, validated map. Malformed entries are dropped
  *  (never guessed) so a corrupt row can never fabricate a seal. */
 export function readSimSeals(thread: Pick<ThreadRow, "sim_seals">): SimSealMap {
@@ -64,6 +92,7 @@ export function readSimSeals(thread: Pick<ThreadRow, "sim_seals">): SimSealMap {
         population?: unknown;
         personas?: unknown;
         scrollQuote?: unknown;
+        video?: unknown;
       };
       if (typeof val.pct === "number" && Number.isFinite(val.pct)) {
         const seal: SimSeal = {
@@ -80,6 +109,11 @@ export function readSimSeals(thread: Pick<ThreadRow, "sim_seals">): SimSealMap {
           seal.personas = val.personas as PopulationPersona[];
         }
         if (typeof val.scrollQuote === "string") seal.scrollQuote = val.scrollQuote;
+        // Optional Phase-C VIDEO depth — passed through only when well-formed (a real heatmap curve);
+        // a malformed blob is dropped but the verdict seal survives.
+        if (isVideoLike(val.video)) {
+          seal.video = val.video as SimSealVideo;
+        }
         out[k] = seal;
       }
     }

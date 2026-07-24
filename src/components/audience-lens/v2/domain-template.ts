@@ -42,10 +42,23 @@ export interface ResistanceCurveData {
   spikeLabel: string; // "$29 · resistance spikes"
 }
 
-/** The "why this ___" driver-axis figure (◇ swap). Creator = attention over the clip; pricing =
- *  resistance over price. A new domain adds a `kind` here + a figure in BrainTab's BrainDriverSlot. */
+/** The cognitive "why they reacted" breakdown for a TEXT/concept sim (◇ swap). A text sim has no
+ *  attention-over-time axis; its honest driver is the REAL dominant-reason tally the population math
+ *  emits for each stopper (interest / strong-hook / weak-hook / novelty-mismatch / hype-vs-skeptic /
+ *  too-slow) — real deterministic counts, not an invented curve. Friction reasons ride `loss` (coral). */
+export interface ReasonBreakdownData {
+  question: string; // "Why they stopped"
+  total: number; // stoppers coded — the denominator each row's count is a share of
+  rows: { label: string; count: number; share: number; loss?: boolean }[]; // real reason counts, weightiest first
+  read?: string; // one-line plain synthesis of the leading driver
+}
+
+/** The "why this ___" driver-axis figure (◇ swap). Creator video = attention over the clip; text =
+ *  the reason breakdown; pricing = resistance over price. A new domain adds a `kind` here + a figure in
+ *  BrainTab's BrainDriverSlot. */
 export type BrainDriver =
   | { kind: "attention-scrubber"; data: AttentionData }
+  | { kind: "reason-breakdown"; data: ReasonBreakdownData }
   | { kind: "resistance-curve"; data: ResistanceCurveData };
 
 /** The shared ask-why chat slot (●). Deferred in v2 — rendered as a disabled affordance until chat

@@ -25,6 +25,9 @@ export function AmbientStartHome({
   onScene,
   onFidelity,
   activeSkillId,
+  audiences,
+  selectedAudienceId,
+  onSelectAudience,
 }: {
   audience: Audience;
   /** Arm a skill by its SKILL_RUN_META id (the composer's tool picker). */
@@ -35,6 +38,11 @@ export function AmbientStartHome({
   onFidelity?: (fidelity: string) => void;
   /** The composer's active tool → highlights the armed skill tile + primes the composer row. */
   activeSkillId?: string;
+  // Pre-thread audience switching — the "Testing against" chip becomes a real picker on Start (this
+  // is where a new user picks their room). Threaded straight through to AmbientStart.
+  audiences?: Audience[];
+  selectedAudienceId?: string | null;
+  onSelectAudience?: (a: Audience) => void;
 }) {
   const { data: profile } = useProfile();
   const name = profile?.name?.trim().split(/\s+/)[0] || "";
@@ -49,6 +57,9 @@ export function AmbientStartHome({
         onScene={onScene}
         onFidelity={onFidelity}
         activeSkillId={activeSkillId}
+        audiences={audiences}
+        selectedAudienceId={selectedAudienceId}
+        onSelectAudience={onSelectAudience}
       />
     </div>
   );

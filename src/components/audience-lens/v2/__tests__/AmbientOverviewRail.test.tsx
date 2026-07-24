@@ -59,7 +59,7 @@ describe("AmbientOverviewRail", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("drills a SEALED calibrated row into the real Population depth (brain honestly unavailable for text)", () => {
+  it("drills a SEALED text row into the real depth — brain-first (real reason breakdown) + the Population tab", () => {
     const population = {
       total: 1000,
       stop: 800,
@@ -69,7 +69,10 @@ describe("AmbientOverviewRail", () => {
         { archetype: "builder", displayName: "builders", share: 0.6, total: 600, stop: 540, stopPct: 90 },
         { archetype: "skeptic", displayName: "skeptics", share: 0.4, total: 400, stop: 260, stopPct: 65 },
       ],
-      reasons: [{ reason: "the stake feels real", count: 300 }],
+      reasons: [
+        { reason: "strong-hook", count: 520 },
+        { reason: "too-slow", count: 120 },
+      ],
     };
     const personas = [{ archetype: "builder", verdict: "stop" as const, quote: "that detail made me stay" }];
     render(
@@ -85,14 +88,57 @@ describe("AmbientOverviewRail", () => {
     // tapping the SEALED row opens the depth drill (not Simulate) — it has a real population
     fireEvent.click(screen.getByRole("button", { name: /I quit my 9-5 with \$400/ }));
     expect(screen.getByTestId("ambient-detail")).toBeTruthy();
-    // opens on the audience tab (brain is a video read) — a REAL district renders
+    // opens BRAIN-first now (owner call 2026-07-24): the real reason-driver breakdown renders, with the
+    // friction reason humanized + coral. Never the old "text concept sim — unavailable" state.
+    expect(screen.getByText(/What carried the stop/i)).toBeTruthy();
+    expect(screen.getByText(/Strong hook/)).toBeTruthy();
+    expect(screen.getByText(/Too slow/)).toBeTruthy();
+    expect(screen.queryByText(/text concept sim/i)).toBeNull();
+    // the Population tab is still reachable — the same sim's REAL districts render there
+    fireEvent.click(screen.getByRole("button", { name: /The audience/ }));
     expect(screen.getAllByText(/builders/).length).toBeGreaterThan(0);
-    // the brain tab is present but honestly unavailable for a text sim
-    fireEvent.click(screen.getByRole("button", { name: /The brain/ }));
-    expect(screen.getByText(/text concept sim/i)).toBeTruthy();
   });
 
-  it("quick-sim fires the real react route and SEALS the row with the measured fraction (Phase D)", async () => {
+  it("a tested VIDEO shows its viral score + Simulate; a tap reveals the % then drills into Brain depth", () => {
+    const videoSeal = {
+      pct: 62,
+      band: null,
+      at: "",
+      video: {
+        analysisId: "an-1",
+        stopPct: 62,
+        craftScore: 84, // the native viral score — shown before any sim
+        heatmap: { weighted_curve: [0.9, 0.5, 0.6], segments: [] },
+        videoSignals: null,
+        verbatim: { hook: { spoken_words: "Here is the money truth" } },
+      },
+    };
+    render(
+      <AmbientOverviewRail
+        audience={audience}
+        descriptors={descriptors}
+        reducedMotion
+        persistedSeals={{ "an-1": videoSeal as never }}
+      />,
+    );
+    // the video is a QUEUED row: its real opening words as the label, its viral score, NO attention %
+    const row = screen.getByRole("button", { name: /Here is the money truth/ });
+    expect(row).toBeTruthy();
+    expect(screen.getByText(/84/)).toBeTruthy();
+    expect(screen.getByText(/viral/)).toBeTruthy();
+    expect(screen.queryByText(/62\.0%/)).toBeNull(); // withheld until Simulate
+
+    // tap 1 → reveal the already-measured attention % (no network — the Test analysis produced it)
+    fireEvent.click(row);
+    expect(screen.getByText(/62\.0%/)).toBeTruthy();
+    expect(screen.getByText(/84 viral/)).toBeTruthy(); // native score stays in view
+
+    // tap 2 → drill into the real Brain depth (brain-first for a video)
+    fireEvent.click(screen.getByRole("button", { name: /Here is the money truth/ }));
+    expect(screen.getByTestId("ambient-detail")).toBeTruthy();
+  });
+
+  it("tapping a queued row opens the ARM config FIRST, then its Simulate fires the react route (config→run)", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ fraction: "8/10 stop" }),
@@ -100,31 +146,35 @@ describe("AmbientOverviewRail", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     render(<AmbientOverviewRail audience={audience} descriptors={descriptors} reducedMotion />);
-    // the whole queued row is the quick-sim door — tap it to fire the sealed sim
+    // tapping a queued row opens the ARM panel — it must NOT fire the sim yet (config comes first)
     fireEvent.click(screen.getByRole("button", { name: /I quit my 9-5 with \$400/ }));
+    expect(fetchMock).not.toHaveBeenCalled();
+    // the develop/ARM surface is now up (its Simulate control is present)
+    const armSimulate = screen.getByRole("button", { name: /^Simulate/ });
 
-    // it hit the REAL react route with the concept text (not the General-only /simulate verb)
+    // NOW the run fires — from inside the ARM panel
+    fireEvent.click(armSimulate);
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/tools/react",
       expect.objectContaining({ method: "POST" }),
     );
     const sentBody = JSON.parse((fetchMock.mock.calls[0]![1] as RequestInit).body as string);
     expect(sentBody.text).toMatch(/I quit my 9-5/);
-    expect(sentBody.framing).toBe("idea"); // idea kind → the "would they want it" framing
     expect(sentBody.pin).toBe(true); // a deliberate sim captures the flywheel vector (Phase D)
 
     // 8/10 stop → a sealed 80.0% would-stop row (measured, not the projection)
     expect(await screen.findByText(/80\.0%/)).toBeTruthy();
   });
 
-  it("does NOT seal the row when the react route fails — the honest queued state holds", async () => {
+  it("does NOT seal the row when the react route (fired from the ARM panel) fails — queued state holds", async () => {
     const fetchMock = vi.fn().mockResolvedValue({ ok: false, json: async () => ({}) });
     vi.stubGlobal("fetch", fetchMock);
 
     render(<AmbientOverviewRail audience={audience} descriptors={descriptors} reducedMotion />);
+    fireEvent.click(screen.getByRole("button", { name: /I quit my 9-5 with \$400/ }));
     // wrap in act so the rejected fetch + the watcher-clear state update settle inside React
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: /I quit my 9-5 with \$400/ }));
+      fireEvent.click(screen.getByRole("button", { name: /^Simulate/ }));
       await Promise.resolve();
       await Promise.resolve();
     });

@@ -48,6 +48,8 @@ export interface RankedStimulus {
   stimulus: string;
   stopPct: number;
   personaStops?: number; // 0–10 — generation-time personas who would stop (queued rows)
+  viralScore?: number | null; // VIDEO rows only — the tested video's native craft/viral score (0–100),
+  //  shown in place of a projection. Distinct from the attention % (which appears only once simulated).
   kind?: RankKind;
   state?: RankState; // defaults to "simulated"
 }
@@ -354,6 +356,15 @@ function SealedRow({
             {r.stimulus}
           </span>
           {r.kind ? <KindChip kind={r.kind} /> : null}
+          {/* a tested video keeps its native viral score in view — the % is the audience read on top */}
+          {r.kind === "video" && r.viralScore != null ? (
+            <span
+              className="flex-none font-mono text-[10.5px] uppercase tracking-[0.06em]"
+              style={{ color: TONE.faint }}
+            >
+              {r.viralScore} viral
+            </span>
+          ) : null}
           <span className="flex-none tabular-nums text-[14px] font-medium" style={{ color: TONE.cream }}>
             {r.stopPct.toFixed(1)}%
           </span>
@@ -390,7 +401,11 @@ function QueuedRow({
   onSimulate?: (id: string) => void;
 }) {
   const n = r.personaStops ?? 0;
-  const w = Math.min(1, n / 10);
+  // A VIDEO carries a native viral score (0–100), not a persona estimate — its native slot shows that
+  // and its bar measures against 100. A concept shows N/10. Both swap to "Simulate →" on hover.
+  const isVideo = r.kind === "video";
+  const viral = r.viralScore ?? null;
+  const w = isVideo && viral != null ? Math.min(1, viral / 100) : Math.min(1, n / 10);
 
   return (
     <li className="ambient-row-in" style={{ animationDelay: `${0.04 + index * 0.05}s` }}>
@@ -413,27 +428,28 @@ function QueuedRow({
             {r.stimulus}
           </span>
           {r.kind ? <KindChip kind={r.kind} dim /> : null}
-          {/* value slot — fixed width so N/10 ⇄ Simulate → swaps with no layout shift */}
-          <span className="relative flex-none" style={{ minWidth: 66, height: 16 }}>
-            <span
-              className="block text-right tabular-nums text-[13px] transition-opacity group-hover:opacity-0"
-              style={{ color: TONE.dim }}
-            >
-              {n}
-              <span className="text-[11px]" style={{ color: TONE.mute }}>
-                /10
-              </span>
-            </span>
-            <span
-              className="absolute inset-0 flex items-center justify-end whitespace-nowrap font-mono text-[10.5px] uppercase tracking-[0.06em] opacity-0 transition-opacity group-hover:opacity-100"
-              style={{ color: TONE.cream }}
-            >
-              Simulate&nbsp;→
-            </span>
+          {/* value slot — the native score stays put (the Simulate cue is its own persistent line
+              below, so it reads on every device, not just on hover) */}
+          <span className="flex-none text-right tabular-nums text-[13px]" style={{ color: TONE.dim }}>
+            {isVideo && viral != null ? (
+              <>
+                {viral}
+                <span className="ml-1 text-[10px] uppercase tracking-[0.06em]" style={{ color: TONE.mute }}>
+                  viral
+                </span>
+              </>
+            ) : (
+              <>
+                {n}
+                <span className="text-[11px]" style={{ color: TONE.mute }}>
+                  /10
+                </span>
+              </>
+            )}
           </span>
         </span>
 
-        {/* bar — the personas' N/10, muted (an estimate, not a measured verdict) */}
+        {/* bar — the native estimate (concept N/10 · video viral score), muted (not a measured verdict) */}
         <span
           className="relative mt-2.5 ml-[26px] block h-[3px] overflow-hidden rounded-full"
           style={{ background: TONE.ghost }}
@@ -442,6 +458,15 @@ function QueuedRow({
             className="absolute inset-0 block origin-left rounded-full"
             style={{ transform: `scaleX(${w})`, background: "rgba(236,231,222,.34)" }}
           />
+        </span>
+
+        {/* the Simulate cue — its own persistent line on EVERY device (hover-reveal hid it from touch
+            users and buried it on desktop). Brightens with the row on hover for a pointer affordance. */}
+        <span
+          className="mt-2.5 ml-[26px] flex items-center gap-1.5 border-t pt-2 font-mono text-[10.5px] uppercase tracking-[0.06em] transition-colors group-hover:text-[#ece7de]"
+          style={{ borderColor: TONE.hair, color: TONE.dim }}
+        >
+          Simulate&nbsp;→
         </span>
       </button>
     </li>
@@ -495,11 +520,13 @@ export function AmbientOverview({
   return (
     <div
       data-testid="ambient-overview"
-      className={`flex w-full max-w-[380px] flex-col rounded-[16px] ${className ?? ""}`}
+      className={`flex w-full max-w-[440px] flex-col ${className ?? ""}`}
       style={{
-        height: AMBIENT_PANEL_HEIGHT,
-        background: "#1f1f1e",
-        border: `1px solid ${TONE.border}`,
+        // Connected rail — fills its column top-to-bottom (part of the thread page, NOT a floating
+        // card). A single left hairline divides it from the thread; no shadow, no rounding, no gaps.
+        height: "100%",
+        background: "#181817",
+        borderLeft: `1px solid ${TONE.border}`,
         color: TONE.cream,
         fontFamily: "var(--font-sans, Inter, system-ui, sans-serif)",
       }}

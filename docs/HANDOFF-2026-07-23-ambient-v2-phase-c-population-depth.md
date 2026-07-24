@@ -1,8 +1,10 @@
-# Ambient Audience v2 — Phase C (Population depth) SHIPPED (2026-07-23)
+# Ambient Audience v2 — Phase C (Population depth) ✅ MERGED (2026-07-23)
 
-Branch `design/ambient-audience-v2` · worktree `~/virtuna-ambient-audience-v2` · dev **:3007** (NOT
-:3011 = stale skill-cards-prod). Prior: `docs/HANDOFF-2026-07-23-ambient-v2-phase-d-SHIPPED.md`
-(Phase D) · full provenance audit `docs/HANDOFF-2026-07-22-ambient-v2-wiring-provenance-audit.md`.
+**Merged to main: PR #375, merge `d96b49b6`** (code commit `364fbb98`). Branch
+`design/ambient-audience-v2` kept for continued work · worktree `~/virtuna-ambient-audience-v2` · dev
+**:3007** (NOT :3011 = stale skill-cards-prod). Prior:
+`docs/HANDOFF-2026-07-23-ambient-v2-phase-d-SHIPPED.md` (Phase D) · full provenance audit
+`docs/HANDOFF-2026-07-22-ambient-v2-wiring-provenance-audit.md`.
 
 ## What this session shipped — the honest Population-depth slice of Phase C
 
