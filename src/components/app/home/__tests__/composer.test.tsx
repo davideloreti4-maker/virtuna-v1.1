@@ -417,7 +417,7 @@ describe('Composer — chat-agent unified reload', () => {
 
   afterEach(() => vi.restoreAllMocks());
 
-  it('a stamped thread reloads into the chat view: card AND co-pilot line both render', async () => {
+  it('a stamped thread reloads into the unified stream: card AND co-pilot line both render', async () => {
     installFetchMockWithThread([
       { role: 'user', blocks: [{ type: 'markdown', props: { text: 'ideas about morning routines' } }] },
       { role: 'assistant', blocks: [IDEA_CARD] },
@@ -426,13 +426,16 @@ describe('Composer — chat-agent unified reload', () => {
     renderWithClient(<Composer />);
     // The card lands...
     expect(await screen.findByText('The 5am myth')).toBeInTheDocument();
-    // ...and the co-pilot line renders too — only possible in the CHAT view (ideas view shows no markdown).
+    // ...and the co-pilot line renders too — the unified PersistedThreadStream renders every block type.
     expect(await screen.findByText(/want hooks/i)).toBeInTheDocument();
   });
 
-  it('an UNSTAMPED thread (selector) does NOT render the co-pilot line in a card view', async () => {
-    // Same cards, but the markdown carries NO origin marker → isChatAgentThread false → activeTool
-    // restores to "idea" and the ideas view (idea-cards only) renders — the markdown line is absent.
+  it('an UNSTAMPED thread (selector) ALSO renders its co-pilot line — unified stream, no more vanishing text', async () => {
+    // Thread-unification (symptom 1 fix): the co-pilot markdown line beside the cards used to DISAPPEAR on
+    // reload of an ordinary selector thread — the old per-tool partition dropped every block type its
+    // active tool didn't own, so the ideas view showed cards but never the markdown. PersistedThreadStream
+    // now renders the whole ordered thread (any block type) regardless of the chat-agent stamp, so the
+    // line survives the reload. This assertion is the INVERSE of the retired guard (which locked the bug).
     installFetchMockWithThread([
       { role: 'user', blocks: [{ type: 'markdown', props: { text: 'ideas about morning routines' } }] },
       { role: 'assistant', blocks: [IDEA_CARD] },
@@ -440,9 +443,8 @@ describe('Composer — chat-agent unified reload', () => {
     ]);
     renderWithClient(<Composer />);
     expect(await screen.findByText('The 5am myth')).toBeInTheDocument();
-    // The unmarked co-pilot line is NOT surfaced (ideas view renders no markdown) — proves no accidental
-    // unification of ordinary selector threads.
-    await waitFor(() => expect(screen.queryByText(/want hooks/i)).toBeNull());
+    // The unmarked co-pilot line IS now surfaced (the disappearing-text bug is fixed).
+    expect(await screen.findByText(/want hooks/i)).toBeInTheDocument();
   });
 });
 

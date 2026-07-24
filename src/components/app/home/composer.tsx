@@ -37,9 +37,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { reportCredit402 } from "@/lib/billing/credit-wall";
 import { createPortal } from "react-dom";
-import { OpenRoomContext } from "@/lib/hook-test-context";
+import { OpenRoomContext, HookTestContext, HookWriteScriptContext } from "@/lib/hook-test-context";
 import { InThreadInputContext } from "@/lib/in-thread-input-context";
 import { FollowupContext } from "@/lib/followup-context";
+import { PlatformContext } from "@/lib/platform-context";
+import { ScriptTestContext } from "@/lib/script-test-context";
+import { RemixDevelopContext } from "@/lib/remix-develop-context";
 import { useParams, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowUp, Plus } from "lucide-react";
@@ -58,7 +61,6 @@ import {
 } from "@/lib/threads/active-thread-cookie";
 import { Button } from "@/components/ui/button";
 import { VideoUpload } from "@/components/app/video-upload";
-import { MessageBlocks } from "@/components/thread/message-blocks";
 import { useAnalysisStream } from "@/hooks/queries/use-analysis-stream";
 import { useSubscription } from "@/hooks/use-subscription";
 import { isPaidPlanId, creditsRemainingLabel } from "@/lib/pricing";
@@ -86,6 +88,7 @@ import { useHooksStream } from "@/hooks/queries/use-hooks-stream";
 import { HooksThreadView } from "@/components/thread/hooks-thread-view";
 import { useChatStream } from "@/hooks/queries/use-chat-stream";
 import { ChatThreadView } from "@/components/thread/chat-thread-view";
+import { PersistedThreadStream } from "@/components/thread/persisted-thread-stream";
 import { isChatAgentThread, orderedAssistantBlocks, orderedTurns } from "@/components/app/home/rehydrate-thread";
 import type { RehydrateTurn } from "@/components/app/home/rehydrate-thread";
 import { useScriptStream } from "@/hooks/queries/use-script-stream";
@@ -513,9 +516,13 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // CRITICAL: ideas.start() NEVER arms pendingNavRef/stream.start (T-03-13).
   const ideas = useIdeasStream();
   const ideasBlocks = ideas.toBlocks();
+  // LIVE-ONLY gate (thread-unification Phase 3): persisted history is owned by PersistedThreadStream, so
+  // this view mounts ONLY for a live/in-flight (or just-completed, un-reset) run — NOT on persisted state.
+  // Dropping the `|| persisted*Blocks.length > 0` clause is what stops a reload/skill-switch from double-
+  // painting the cards (unified stream + this view) and lets the unified stream own history alone.
   const showIdeasView =
     activeTool === "idea" &&
-    (ideas.isStreaming || ideasBlocks.length > 0 || ideas.error !== null || persistedIdeaBlocks.length > 0);
+    (ideas.isStreaming || ideasBlocks.length > 0 || ideas.error !== null);
 
   // ── Hooks stream (Plan 04-03, Task 1 — D-09) ──────────────────────────────
   // Provides SSE hook-card blocks rendered above the composer in HooksThreadView.
@@ -524,7 +531,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   const hooksBlocks = hooks.toBlocks();
   const showHooksView =
     activeTool === "hooks" &&
-    (hooks.isStreaming || hooksBlocks.length > 0 || hooks.error !== null || persistedHookBlocks.length > 0);
+    (hooks.isStreaming || hooksBlocks.length > 0 || hooks.error !== null);
 
   // ── Chat stream (Plan 05-03, Task 2 — D-05/D-08) ─────────────────────────
   // Provides SSE markdown turns rendered above the composer in ChatThreadView.
@@ -537,12 +544,15 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // unconditionally "for its own empty state", but its empty state is 48px of ThreadShell
   // padding rendering as a dead band between the hero and the composer (measured
   // live 2026-07-20). The starter owns the empty home; this view owns turns.
+  // Chat view is live-only for its turn render (PersistedThreadStream owns history), but it STAYS mounted
+  // when the thread has persisted turns so the follow-up chips still render after the live turn swaps into
+  // the persisted stream (the chips key off the last persisted turn). persistedChatBlocks (markdown-only)
+  // is dropped — that bucket is retired.
   const showChatView =
     activeTool === "chat" &&
     (chat.isStreaming ||
       chatBlocks.length > 0 ||
       chat.error !== null ||
-      persistedChatBlocks.length > 0 ||
       persistedChatTurns.length > 0);
 
   // ── Script stream (Plan 06-05 — D-09) ─────────────────────────────────────
@@ -552,7 +562,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   const scriptBlocks = script.toBlocks();
   const showScriptView =
     activeTool === "script" &&
-    (script.isStreaming || scriptBlocks.length > 0 || script.error !== null || persistedScriptBlocks.length > 0);
+    (script.isStreaming || scriptBlocks.length > 0 || script.error !== null);
 
   // ── Remix stream (Plan 06-05 — REMIX-01) ──────────────────────────────────
   // Provides SSE remix-card blocks rendered above the composer in RemixThreadView.
@@ -561,7 +571,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   const remixBlocks = remix.toBlocks();
   const showRemixView =
     activeTool === "remix" &&
-    (remix.isStreaming || remixBlocks.length > 0 || remix.error !== null || persistedRemixBlocks.length > 0);
+    (remix.isStreaming || remixBlocks.length > 0 || remix.error !== null);
 
   // ── Explore stream (Plan 11-07 — EXPLORE-01/02/04) ─────────────────────────
   // Provides the SSE outlier-grid block rendered above the composer in
@@ -616,6 +626,8 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     persistedRemixBlocks.length > 0 ||
     persistedExploreBlocks.length > 0 ||
     persistedProfileBlocks.length > 0 || // profile-read / reaction-distribution (05-06)
+    persistedChatTurns.length > 0 || // the unified persisted stream (thread-unification) — the SSOT for
+    // "this thread has history"; the per-type persisted buckets above are retired in Phase 5, this term stays.
     hasAccountContent;
   // ⚠️ DO NOT re-add `showChatView || showExploreView || showAccountView` here.
   // Arming a skill is not a thread. Those three lines used to flip hasThread on TOOL
@@ -1236,6 +1248,51 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       cancelled = true;
     };
   }, [chatIsDone, chatIsStreaming, chatReset, reloadChatThread]);
+
+  // ── Skill-switch persistence (thread-unification) ──────────────────────────
+  // PersistedThreadStream (ungated) owns thread history, but a JUST-RUN skill's cards live in its live
+  // view (the streaming tail), NOT yet in persistedChatTurns — which is a mount/switch snapshot, not
+  // refreshed on tool selection. Switching skills unmounts that live view, so without this its cards
+  // would vanish until a page reload (the exact "I go from hooks to another skill and lose it" report).
+  // So when the creator LEAVES a skill that has a completed (non-streaming) run on screen, fold that run
+  // into the unified stream (reloadChatThread refreshes persistedChatTurns from the server, where every
+  // card already persisted during the run) and reset the skill's stream — swapping live→persisted in one
+  // commit, mirroring the chat swap above. The run's transient chrome (outliers offer, warnings) is a
+  // live-run affordance and does not survive the switch, by design. Guarded on a non-streaming run so a
+  // mid-stream switch never interrupts an in-flight generation.
+  const prevActiveToolRef = useRef(activeTool);
+  useEffect(() => {
+    const leaving = prevActiveToolRef.current;
+    if (leaving === activeTool) return;
+    prevActiveToolRef.current = activeTool;
+    // The leaving skill's stream + whether it has a completed run to fold (read fresh at switch time).
+    const entry =
+      leaving === "hooks"
+        ? { stream: hooks, has: hooksBlocks.length > 0 }
+        : leaving === "idea"
+          ? { stream: ideas, has: ideasBlocks.length > 0 }
+          : leaving === "script"
+            ? { stream: script, has: scriptBlocks.length > 0 }
+            : leaving === "remix"
+              ? { stream: remix, has: remixBlocks.length > 0 }
+              : leaving === "explore"
+                ? { stream: explore, has: exploreBlocks.length > 0 }
+                : null;
+    if (!entry || !entry.has || entry.stream.isStreaming) return; // nothing to fold, or still running
+    let cancelled = false;
+    void (async () => {
+      const ok = await reloadChatThread();
+      if (cancelled || !ok) return;
+      entry.stream.reset(); // clears the live view; persistedChatTurns now carries the run
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // Fires only on activeTool change (guarded by the ref); reads the leaving stream's current state
+    // from this render's closure. Streams/blocks are intentionally omitted from deps to avoid re-running
+    // on every render (the file's established pattern for switch-scoped effects).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTool]);
 
   // ── Chat follow-up chips (chat-followups.ts) ───────────────────────────────
   // A tapped follow-up continues the conversation in THIS chat thread: it echoes the prompt as the
@@ -2273,22 +2330,24 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     <OpenRoomContext.Provider value={openRoomForCard}>
      <InThreadInputContext.Provider value={inThreadInputValue}>
       <FollowupContext.Provider value={sendChatFollowup}>
+       {/* Card-CTA contexts lifted to the thread root (thread-unification Phase 1): any card rendered
+           through MessageBlocks — persisted stream OR live view — keeps its "Test full →" / "Write the
+           script →" / "Develop into hooks →" / "Develop this →" action. The callbacks already exist in
+           the composer; the per-skill views' own (nested, identical) providers stay for now (idempotent). */}
+       <PlatformContext.Provider value={platform}>
+        <HookTestContext.Provider value={handleTestHook}>
+         <HookWriteScriptContext.Provider value={handleWriteScript}>
+          <ScriptTestContext.Provider value={handleTestScript}>
+           <RemixDevelopContext.Provider value={handleDevelopRemix}>
       {testSubmitTurn}
-      {/* Profile thread view (05-06 — D-07) — the profile-read + reaction-distribution
-          blocks render here via the shared MessageBlocks renderer (registered in 05-01).
-          Not gated on any CARD tool: the evidence-drop affordance is the entry, and the
-          profile-read card carries its own Simulate CTA → reaction-distribution lands in
-          the SAME thread (SIMU-03). Sibling to the creator tool views — additive only.
-          EXCEPT the chat view: ChatThreadView renders the whole thread as ordered turns
-          (every block type, via the same MessageBlocks registry), so with chat active this
-          bucket would paint the SAME blocks a second time — live-caught when the chat
-          default (#316) met the tool-agnostic bucket (a Read-only thread restored to chat
-          and "The Read" rendered twice, 2026-07-17). */}
-      {!showChatView && persistedProfileBlocks.length > 0 && (
-        <div data-testid="profile-thread-view" className="px-1 py-4">
-          <MessageBlocks body={persistedProfileBlocks} />
-        </div>
-      )}
+      {/* THE UNIFIED PERSISTED STREAM (thread-unification Phase 2) — the ONE renderer of this thread's
+          history, ungated by activeTool. Renders every persisted turn (question + its blocks, ANY block
+          type, via the type-complete MessageBlocks registry), so markdown text beside cards, video-test
+          cards, account reads, and the profile-read family all rehydrate and survive reload + skill-switch.
+          The per-skill views below now render ONLY their live/in-flight run (streaming tail). This replaces
+          the old per-tool bucket partition (persistedIdeaBlocks/…/persistedProfileBlocks) + the profile
+          bucket render that used to live here. */}
+      <PersistedThreadStream persistedTurns={persistedChatTurns} />
 
       {/* Ideas thread view — renders above the composer when the Idea tool is active.
           Consumes useIdeasStream state; provides PlatformContext to IdeaCardRenderer
@@ -2296,7 +2355,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           Plan 05-04: stages + followupText + error + onRetry wired (STUDIO-01/02 + W2). */}
       {showIdeasView && (
         <IdeasThreadView
-          persistedBlocks={persistedIdeaBlocks}
+          persistedBlocks={[]}
           streamingBlocks={ideasBlocks}
           statusMessage={ideas.statusMessage}
           stages={ideas.stages}
@@ -2318,7 +2377,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           Plan 05-04: stages + followupText + error + onRetry wired (STUDIO-01/02 + W2). */}
       {showHooksView && (
         <HooksThreadView
-          persistedBlocks={persistedHookBlocks}
+          persistedBlocks={[]}
           streamingBlocks={hooksBlocks}
           statusMessage={hooks.statusMessage}
           stages={hooks.stages}
@@ -2341,7 +2400,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           Plan 06-05: script send NEVER navigates; no pendingNavRef (T-06-20). */}
       {showScriptView && (
         <ScriptThreadView
-          persistedBlocks={persistedScriptBlocks}
+          persistedBlocks={[]}
           streamingBlocks={scriptBlocks}
           stages={script.stages}
           warnings={script.warnings}
@@ -2363,7 +2422,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           Plan 06-05: remix send NEVER navigates; no pendingNavRef (T-06-20). */}
       {showRemixView && (
         <RemixThreadView
-          persistedBlocks={persistedRemixBlocks}
+          persistedBlocks={[]}
           streamingBlocks={remixBlocks}
           stages={remix.stages}
           followupText={remix.followupText}
@@ -2384,7 +2443,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           The chip tap fires ONLY on onClick — never auto-fires (D-05). */}
       {showChatView && (
         <ChatThreadView
-          persistedBlocks={persistedChatBlocks}
+          persistedBlocks={[]}
           persistedTurns={persistedChatTurns}
           streamingBlocks={chatBlocks}
           streamingCardBlocks={chat.streamingBlocks}
@@ -2410,7 +2469,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           both call explore.start (no pendingNavRef, Pitfall 1). */}
       {showExploreView && (
         <ExploreThreadView
-          persistedBlocks={persistedExploreBlocks}
+          persistedBlocks={[]}
           streamingBlocks={exploreBlocks}
           stages={explore.stages}
           isStreaming={explore.isStreaming}
@@ -2434,6 +2493,11 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           userTurn={lastUserTurn}
         />
       )}
+           </RemixDevelopContext.Provider>
+          </ScriptTestContext.Provider>
+         </HookWriteScriptContext.Provider>
+        </HookTestContext.Provider>
+       </PlatformContext.Provider>
       </FollowupContext.Provider>
      </InThreadInputContext.Provider>
     </OpenRoomContext.Provider>
