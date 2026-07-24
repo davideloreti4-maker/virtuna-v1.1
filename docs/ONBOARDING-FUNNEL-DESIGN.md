@@ -1,8 +1,9 @@
 # Onboarding funnel — design contract
 
 **Milestone:** `milestone/onboarding` · worktree `~/virtuna-onboarding` · off `main@99c494d1`
-**Owner calls locked 2026-07-24:** $1 **before** any personal run · anonymous traffic gets a **canned
-(but real) demo**, never a free engine run · built on **Ambient v2 Start**.
+**Owner calls locked 2026-07-24:** $1 **before** any personal run · cold traffic gets an
+**interactive demo preloaded with real examples** — no live video, no engine run · built on
+**Ambient v2 Start** · traffic is **organic social**, so the funnel runs in in-app webviews (§2a).
 
 ---
 
@@ -38,7 +39,8 @@ delivers an email round-trip and a username field. Time-to-aha is days, or never
 ## 2. Constraints the code imposes
 
 - **`/api/whop/checkout` requires an authenticated user** (`route.ts:10` → 401). "Pay first" therefore
-  means *1-tap Google OAuth → checkout on the same screen*, never a page nav, never a confirm email.
+  means *identity → checkout on the same screen*, never a page nav, never a confirm email. On this
+  traffic that identity step must be **email OTP**, not Google — see §2a.
 - **What the $1 actually buys.** Not a calibration, not a test — **3 days and 50 credits, which
   auto-convert to the chosen plan's monthly price** (`TRIAL.days = 3`, `TRIAL.credits = 50`,
   `pricing.ts:101`). The plan is picked at checkout; $49 Creator is the default. **It auto-renews —
