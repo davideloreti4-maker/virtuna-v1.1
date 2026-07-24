@@ -46,6 +46,9 @@ const arg = (name: string): string | undefined =>
 
 const platformFilter = arg("platform");
 const limit = Number(arg("limit") ?? 0) || undefined;
+/** Instagram is the ONLY branch that spends money — it must be asked for explicitly. */
+const doInstagram = argv.includes("--instagram");
+const IG_BATCH = Number(arg("ig-batch") ?? 0) || 100;
 
 // ── env (scripts are not Next, so .env.local is not auto-loaded) ──────────────
 
@@ -162,6 +165,78 @@ async function repair(row: Row): Promise<Outcome> {
   return "failed";
 }
 
+// ── Instagram: the only path that costs money ────────────────────────────────
+
+/**
+ * IG has no usable free path: public oEmbed is deprecated and the post page now serves a JS shell
+ * with ZERO `og:` tags to an unauthenticated fetch (verified 2026-07-24 — 600KB, no metadata). So
+ * the bytes must come from a scrape.
+ *
+ * `apify/instagram-scraper` accepts MANY `directUrls` per run, so 333 posts is a handful of runs
+ * rather than 333 — the difference between cents and dollars. `displayUrl` on each item is the
+ * cover, served from `scontent*.cdninstagram.com` (already on the rehost allowlist).
+ *
+ * Opt-in only: this never runs without `--instagram`, so nobody spends by accident.
+ */
+async function repairInstagramBatch(rows: Row[]): Promise<Record<string, number>> {
+  const { ApifyClient } = await import("apify-client");
+  const token = process.env.APIFY_TOKEN;
+  if (!token) {
+    console.error("[covers] --instagram needs APIFY_TOKEN in the environment");
+    return { failed: rows.length };
+  }
+  const client = new ApifyClient({ token });
+
+  const byShortcode = new Map<string, Row>();
+  for (const r of rows) {
+    const code = r.video_url?.match(/\/(?:reel|p|tv)\/([^/?#]+)/)?.[1];
+    if (code) byShortcode.set(code, r);
+  }
+  const urls = [...byShortcode.keys()].map((c) => `https://www.instagram.com/reel/${c}/`);
+  console.log(`[covers] instagram: ${urls.length} resolvable post urls → scraping in batches`);
+
+  const tally: Record<string, number> = { repaired: 0, failed: 0 };
+
+  for (let i = 0; i < urls.length; i += IG_BATCH) {
+    const batch = urls.slice(i, i + IG_BATCH);
+    console.log(`[covers] instagram batch ${i / IG_BATCH + 1} (${batch.length} urls)…`);
+    let items: Array<Record<string, unknown>> = [];
+    try {
+      const run = await client
+        .actor("apify/instagram-scraper")
+        .call({ directUrls: batch, resultsType: "posts", resultsLimit: 1 }, { waitSecs: 600 });
+      const ds = await client.dataset(run.defaultDatasetId).listItems();
+      items = ds.items as Array<Record<string, unknown>>;
+    } catch (err) {
+      console.warn(`[covers] instagram batch failed: ${String(err)}`);
+      tally.failed = (tally.failed ?? 0) + batch.length;
+      continue;
+    }
+
+    for (const item of items) {
+      const code = String(item.shortCode ?? "");
+      const display = typeof item.displayUrl === "string" ? item.displayUrl : null;
+      const row = byShortcode.get(code);
+      if (!row || !display) continue;
+      const durable = await rehostCover(
+        service,
+        display,
+        `corpus/instagram/${row.platform_video_id}`,
+      );
+      if (!durable) {
+        tally.failed = (tally.failed ?? 0) + 1;
+        continue;
+      }
+      const { error } = await service
+        .from("outlier_teardowns")
+        .update({ cover_url: durable })
+        .eq("id", row.id);
+      tally[error ? "failed" : "repaired"] = (tally[error ? "failed" : "repaired"] ?? 0) + 1;
+    }
+  }
+  return tally;
+}
+
 // ── driver ────────────────────────────────────────────────────────────────────
 
 /** Small pool — TikTok's oEmbed is unauthenticated and we are guests on it. */
@@ -210,14 +285,26 @@ async function main(): Promise<void> {
     return acc;
   }, {});
 
-  console.log("[covers] result:", tally);
-  if (!apply) console.log("[covers] dry run — nothing written. Re-run with --apply.");
-  if (instagram.length) {
+  console.log("[covers] free result:", tally);
+
+  if (instagram.length && doInstagram) {
+    if (!apply) {
+      console.log(
+        `[covers] instagram: ${instagram.length} rows WOULD be scraped ` +
+          `(~${Math.ceil(instagram.length / IG_BATCH)} actor runs). Re-run with --apply to spend.`,
+      );
+    } else {
+      const igTally = await repairInstagramBatch(instagram);
+      console.log("[covers] instagram result:", igTally);
+    }
+  } else if (instagram.length) {
     console.log(
-      `[covers] NOTE: ${instagram.length} instagram rows still dead. They need fresh bytes ` +
-        `(Apify re-scrape or an FB app token) — a decision, not a bug.`,
+      `[covers] NOTE: ${instagram.length} instagram rows still dead — pass --instagram to scrape ` +
+        `them (costs Apify credit). Not run by default.`,
     );
   }
+
+  if (!apply) console.log("[covers] dry run — nothing written. Re-run with --apply.");
 }
 
 void main();
