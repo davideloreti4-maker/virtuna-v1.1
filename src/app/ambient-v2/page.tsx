@@ -16,6 +16,14 @@ import { AmbientStart } from "@/components/audience-lens/v2/AmbientStart";
 import { START_R4 } from "@/components/audience-lens/v2/start-fixture";
 import { AmbientSimulate } from "@/components/audience-lens/v2/AmbientSimulate";
 import { SIMULATE_R4 } from "@/components/audience-lens/v2/simulate-fixture";
+import { GENERAL_AUDIENCE, PRESET_AUDIENCES } from "@/lib/audience/audience-repo";
+import { filterHorizontalAudiences } from "@/lib/flags/horizontal";
+import type { Audience } from "@/lib/audience/audience-types";
+
+/** The real audience rows the Start picker offers on this dev surface — the same constants the app
+ *  serves, run through the horizontal filter so a `mode:"general"` panel can't leak while the flag
+ *  is off. Real objects, so the picker's grouping + tier badges render the truth, not a fixture. */
+const DEV_AUDIENCES: Audience[] = filterHorizontalAudiences([GENERAL_AUDIENCE, ...PRESET_AUDIENCES]);
 
 type Surface = "start" | "simulate" | "overview" | "brain";
 
@@ -49,6 +57,10 @@ export default function AmbientV2DevPage() {
   const [mode, setMode] = useState<"simulating" | "rest">("simulating");
   const [simMode, setSimMode] = useState<"develop" | "cold">("develop");
   const [domain, setDomain] = useState<"creator" | "creator-live" | "creator-text" | "pricing">("creator");
+  // Start's audience is a real CHOICE pre-thread (null ⇒ the General baseline, matching the app's
+  // `is_general` convention). Passing these three props is what turns the locked chip into a picker.
+  const [audienceId, setAudienceId] = useState<string | null>(null);
+  const selectedAudience = DEV_AUDIENCES.find((a) => a.id === audienceId) ?? GENERAL_AUDIENCE;
   const overviewData = mode === "simulating" ? OVERVIEW_R4 : OVERVIEW_R4_REST;
   const template =
     domain === "creator"
@@ -137,9 +149,16 @@ export default function AmbientV2DevPage() {
       <div className="flex w-full flex-1 items-stretch justify-center px-6 py-12">
         {surface === "start" ? (
           <AmbientStart
-            data={START_R4}
+            data={{
+              ...START_R4,
+              // the chip must NAME the picked row, or switching does nothing visible
+              conditions: { ...START_R4.conditions, audience: selectedAudience.name },
+            }}
             onSkill={() => openSim("develop")}
             onSubmit={() => openSim("develop")}
+            audiences={DEV_AUDIENCES}
+            selectedAudienceId={audienceId}
+            onSelectAudience={(a) => setAudienceId(a.is_general ? null : a.id)}
           />
         ) : surface === "simulate" ? (
           // a sheet, not an 800px panel — self-center so items-stretch doesn't stretch its height

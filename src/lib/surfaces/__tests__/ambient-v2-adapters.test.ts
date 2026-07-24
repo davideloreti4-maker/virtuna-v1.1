@@ -168,6 +168,18 @@ describe("buildStartData", () => {
     const ids = vm.skillGroups.flatMap((g) => g.skills.map((s) => s.id));
     expect(ids).toContain("hooks");
     expect(ids).toContain("explore");
-    expect(vm.skillGroups.map((g) => g.label)).toEqual(["Make", "Analyze", "Discover"]);
+    // Artifact axis, not the verb axis — grouped by what you're working on.
+    expect(vm.skillGroups.map((g) => g.label)).toEqual(["Content", "Intel"]);
+  });
+
+  it("gives every tile a lens line, and marks unwired artifacts `soon`", () => {
+    const vm = buildStartData({ name: "Davide", audience });
+    const skills = vm.skillGroups.flatMap((g) => g.skills);
+    // The lens IS the disambiguation (a label alone can't separate Video test from Draft read).
+    for (const s of skills) expect(s.lens.trim().length, `${s.id} needs a lens`).toBeGreaterThan(0);
+    // Neither `ad` nor `compare` has a runner in SKILL_TOOLS/SKILL_RUN_META — both must stay inert
+    // until one exists, or a pick arms a tool the composer can't run.
+    expect(skills.find((s) => s.id === "ad")?.status).toBe("soon");
+    expect(skills.find((s) => s.id === "compare")?.status).toBe("soon");
   });
 });

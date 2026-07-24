@@ -250,28 +250,44 @@ export const INTAKE_DOORS: IntakeOption[] = [
   { kind: "survey", label: "Run a survey", sub: "structured answers across the room", family: "query", status: "soon" },
 ];
 
-/** Every skill the platform offers, grouped by verb. `id`s are the real SKILL_RUN_META keys; `lens`
- *  + `icon` are authored presentation. (A drift guard against SKILL_TOOLS is a cheap follow-up.) */
+/**
+ * Every artifact the platform offers, grouped by WHAT YOU'RE WORKING ON (Content · Intel) rather
+ * than by verb (the old Make/Analyze/Discover). The verb axis made every new capability its own
+ * tile — it grows as `verbs × artifacts` and explodes the moment the product goes horizontal. The
+ * artifact axis grows one tile per artifact and lets the verbs ride the sentence (chat-agent-loop
+ * already routes "test this" / "give me ideas" from natural language).
+ *
+ * `id`s are the real SKILL_RUN_META keys; `label` + `lens` + `icon` are authored presentation.
+ * Each `lens` says what you GET BACK, in the fewest plain words that survive a glance — a label
+ * alone cannot disambiguate "Test" from "Read", but "Frame by frame, and the one fix" vs "Run a
+ * draft past your audience" can. (A drift guard against SKILL_TOOLS is a cheap follow-up.)
+ */
 export const START_SKILL_GROUPS: SkillGroup[] = [
   {
-    label: "Make",
+    // 2 tracks, 2 inner columns — Content carries ~2× Intel's artifacts, so it gets 2× the width
+    // and both sides bottom out level.
+    label: "Content",
+    span: 2,
     skills: [
-      { id: "hooks", label: "Hooks", lens: "Would they stop?", icon: "sparkle" },
-      { id: "ideas", label: "Ideas", lens: "Would they want it?", icon: "idea" },
-      { id: "script", label: "Script", lens: "Would they finish?", icon: "pen" },
-      { id: "remix", label: "Remix", lens: "Would it travel?", icon: "repeat" },
+      { id: "ideas", label: "Ideas", lens: "Concepts for your audience", icon: "bulb" },
+      { id: "hooks", label: "Hooks", lens: "Openers ranked by who stops", icon: "firstline" },
+      { id: "script", label: "Script", lens: "A full short-form script", icon: "page" },
+      { id: "remix", label: "Remix", lens: "Rebuild a video that worked", icon: "repeat" },
+      { id: "test", label: "Video test", lens: "Frame by frame, one fix", icon: "filmstrip" },
+      // Named, not wired: there is no `ad` runner in SKILL_TOOLS / SKILL_RUN_META yet, so the tile
+      // is inert. Ad creative is a short video with money attached — it inherits the whole frame
+      // stack AND the Socials calibration anchor, which is why it's the first business artifact.
+      { id: "ad", label: "Ad creative", lens: "Test an ad before you spend", icon: "mega", status: "soon" },
     ],
   },
   {
-    label: "Analyze",
+    label: "Intel",
     skills: [
-      { id: "test", label: "Test", lens: "Frame-by-frame read", icon: "target" },
-      { id: "read", label: "Read", lens: "Would it land?", icon: "doc" },
-      { id: "account", label: "Account", lens: "What's working", icon: "list" },
+      { id: "explore", label: "Explore", lens: "What's breaking out", icon: "compass" },
+      { id: "account", label: "Account teardown", lens: "Yours, or a rival's", icon: "at" },
+      // Compare is INTEL, not Content: it produces a verdict about two things that already exist,
+      // it does not produce a new artifact. No runner yet — inert until one exists.
+      { id: "compare", label: "Compare A/B", lens: "Two versions, one winner", icon: "ab", status: "soon" },
     ],
-  },
-  {
-    label: "Discover",
-    skills: [{ id: "explore", label: "Explore", lens: "What's breaking out", icon: "search" }],
   },
 ];

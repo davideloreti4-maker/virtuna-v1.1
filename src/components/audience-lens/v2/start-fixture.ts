@@ -19,29 +19,28 @@ export const START_R4: StartData = {
     fidelity: "SIM-1 Flash",
     fidelityOptions: ["SIM-1 Flash", "SIM-1 Max"],
   },
-  // Every skill the platform offers (SKILL_RUN_META), grouped by verb. Each carries a short lens:
-  // what it produces / the audience question its thin rank arms.
+  // Every artifact the platform offers (SKILL_RUN_META ids), grouped by what you're working on.
+  // Mirrors START_SKILL_GROUPS in ambient-v2-adapters.ts — keep the two in step.
   skillGroups: [
     {
-      label: "Make",
+      label: "Content",
+      span: 2,
       skills: [
-        { id: "hooks", label: "Hooks", lens: "Would they stop?", icon: "sparkle" },
-        { id: "ideas", label: "Ideas", lens: "Would they want it?", icon: "idea" },
-        { id: "script", label: "Script", lens: "Would they finish?", icon: "pen" },
-        { id: "remix", label: "Remix", lens: "Would it travel?", icon: "repeat" },
+        { id: "ideas", label: "Ideas", lens: "Concepts for your audience", icon: "bulb" },
+        { id: "hooks", label: "Hooks", lens: "Openers ranked by who stops", icon: "firstline" },
+        { id: "script", label: "Script", lens: "A full short-form script", icon: "page" },
+        { id: "remix", label: "Remix", lens: "Rebuild a video that worked", icon: "repeat" },
+        { id: "test", label: "Video test", lens: "Frame by frame, one fix", icon: "filmstrip" },
+        { id: "ad", label: "Ad creative", lens: "Test an ad before you spend", icon: "mega", status: "soon" },
       ],
     },
     {
-      label: "Analyze",
+      label: "Intel",
       skills: [
-        { id: "test", label: "Test", lens: "Frame-by-frame read", icon: "target" },
-        { id: "read", label: "Read", lens: "Would it land?", icon: "doc" },
-        { id: "account", label: "Account", lens: "What's working", icon: "list" },
+        { id: "explore", label: "Explore", lens: "What's breaking out", icon: "compass" },
+        { id: "account", label: "Account teardown", lens: "Yours, or a rival's", icon: "at" },
+        { id: "compare", label: "Compare A/B", lens: "Two versions, one winner", icon: "ab", status: "soon" },
       ],
-    },
-    {
-      label: "Discover",
-      skills: [{ id: "explore", label: "Explore", lens: "What's breaking out", icon: "search" }],
     },
   ],
   composerPlaceholder: "…or just ask",
