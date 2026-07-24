@@ -107,10 +107,10 @@ Ten states, in order. Each screen below owns exactly one.
 | # | State | Mechanism | Where it fires |
 |---|---|---|---|
 | 1 | Recognition — "this is my problem" | self-identification | S0 hero |
-| 2 | Curiosity gap | Loewenstein information gap | S1 demo pick |
+| 2 | Curiosity gap | Loewenstein information gap | S1 — the LOCKED 'why' |
 | 3 | Vicarious aha | learning something true on a stranger's video | S1 scrub |
 | 4 | Mechanism trust | proof of *how*, not claims of *how good* | S1 fix + receipt |
-| 5 | Transfer of desire | "what would MINE score?" — the open loop that pays | S1 exit |
+| 5 | Transfer of desire | "what would MINE score?" — the open loop that pays | S1 exit → S2 |
 | 6 | Micro-commitment | tripwire; browser → buyer is the real state change | S3 $1 |
 | 7 | Consistency pressure | having paid, they act to stay consistent | handle + video |
 | 8 | Effort justification | IKEA effect + labor illusion; co-built asset | the room builds |
@@ -155,24 +155,59 @@ The pattern is already proven in this repo:
 So S1 productizes an existing dev surface: curated fixtures + static keyframe stills in `/public` +
 a mobile-first shell. Not new rendering work.
 
-**Guided rails, not free roam.** A tap-anything demo lets people reach a state that means nothing to
-them, which on mobile reads as broken. Each beat lights only the affordance that advances it — but
-it is the **real control**, not a glowing overlay on a screenshot. The visitor drives; they just
-cannot drive off the road.
+**It is a WALKTHROUGH of the real platform, not a tour of a mockup** (owner, 2026-07-24). The visitor
+performs the same motions they will perform after paying — on the **real surface**: the real rail,
+the real card, the real composer from Ambient v2 Start. Only the data is prefabricated.
+
+Two payoffs, both large:
+1. A real product surface is far more convincing than a marketing replica of one.
+2. After checkout they land on **the screen they just used**, so first-run friction is near zero.
+   The demo doubles as training without ever looking like a tutorial.
+
+**Guided rails, not free roam.** Each beat lights only the affordance that advances it — but it is
+the **real control**, not a glowing overlay on a screenshot. The visitor drives; they cannot drive
+off the road. One example video (owner supplies it), so there is no opening pick to slow things down.
+
+### The teaser paywall — the load-bearing mechanic
+
+**The results are never fully shown. The $1 unlocks them** (owner, 2026-07-24). The wall sits
+*inside* the insight, at maximum curiosity, not after it.
+
+The seam matters more than anything else in this milestone. Withhold too much and it reads as bait;
+too little and there is no reason to pay:
+
+| SHOWN — proves the mechanism | LOCKED — the reason to pay |
+|---|---|
+| the filmstrip, real frames | — |
+| **WHERE** they leave — "they're gone at 0:04" | **WHY** they leave (the diagnosis) |
+| that a fix exists, and its shape | the fix itself (the director's move) |
+| the craft score | the audience-specific score + the gap |
+
+Showing the **where** is what makes the mechanism credible — a specific timestamp on a real video is
+not a claim, it is a demonstration. Withholding the **why** is maximum tension: knowing you lose
+people at 0:04 *without knowing why* is more frustrating than never knowing at all. That is the gap
+the dollar closes.
+
+**Honesty floor — two hard rules:**
+1. The analysis must be **real**, run once through the real pipeline and frozen. Invented numbers are
+   fabricated proof and must not ship — same rule as the offer page's testimonials.
+2. **The locked panel must contain that real output, genuinely withheld** — never a blur over
+   placeholder text. Paying reveals exactly what was behind the wall. A fake blur would poison the
+   one asset the demo exists to build: trust in the mechanism.
+
+### Unlock order — close the old loop before opening the new one
+
+On successful checkout, reveal **the withheld fix immediately**, before asking for anything. They paid
+to close that loop; honor it first. Only then ask for their handle. Reversing this — payment, then a
+new demand — makes the purchase feel redirected rather than honored.
 
 ```
-pick an example            → the card lands, score visible
-tap the dip on the curve   → "0:04 — they leave here"
-tap the fix                → the director's fix opens, with its ProofReceipt
-                           → "That's Jake's video. What does yours do?"  → S2
+walkthrough → "they're gone at 0:04"  → why? ▓▓ locked ▓▓
+                                              ↓  $1
+                                       the fix, revealed
+                                              ↓
+                                       "now run it on yours" → @handle
 ```
-
-Four taps, each returning something true, no dead ends. The opening pick (3 structurally different
-failure modes — hook loses them / mid-payoff drop / weak ending) does the self-identification work
-no headline can, and stays cheap on mobile: three thumbnails, one tap.
-
-**Honesty floor:** these must be **real analyses of real videos**, run once and frozen. Invented
-numbers here are fabricated proof and must not ship — same rule as the offer page's testimonials.
 
 ### The commitment — still on `/go`, zero navigation
 
