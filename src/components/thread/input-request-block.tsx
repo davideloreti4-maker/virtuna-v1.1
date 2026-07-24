@@ -34,9 +34,10 @@ import { useAnalysisStream } from '@/hooks/queries/use-analysis-stream';
 import { VideoUpload } from '@/components/app/video-upload';
 import { createClient } from '@/lib/supabase/client';
 import { TIKTOK_URL_PATTERN } from '@/lib/tiktok-url';
-import { ProgressChecklist, type StageState } from './progress-checklist';
+import { ProgressChecklist } from './progress-checklist';
 import { SKILL_RUN_META } from './run-capsule';
 import { CardPrimaryAction } from './card-primitives';
+import { useTestRunStages } from './use-test-run-stages';
 
 export interface InputRequestBlockRendererProps {
   block: InputRequestBlock;
@@ -587,51 +588,4 @@ function UploadField({ block }: InputRequestBlockRendererProps) {
 /** Map an analysis stream error to a plain sentence (the raw message is usually already human). */
 function testErrorCopy(error: string): string {
   return error || 'Something went wrong testing that video — try again.';
-}
-
-/**
- * The Test field's elapsed-floor stage floors, per step (mirrors reading-skeleton.tsx
- * STEP_FALLBACK_MS): with no reveal signals available to this field, elapsed time carries the
- * spine — the pipeline's order is fixed and known, so advancing on time is an estimate, not an
- * invention (no number, picture or reaction is fabricated by it).
- */
-const TEST_STEP_FALLBACK_MS = [12_000, 75_000] as const;
-
-/**
- * Derive the in-thread Test run's 3-step spine (SKILL_RUN_META.test.plan — the SAME names as
- * the flagship /analyze skeleton) from what the field really knows:
- *  - staging (before analyzing: the clip is uploading) → the clock hasn't started: step 1 active.
- *  - analyzing → elapsed floors advance steps 1→2→3 (the ~2-minute stretch that used to be a
- *    single static spinner line).
- *  - carding  → the pipeline finished, the card adapter is running: every step done. Building
- *    the card is a sub-second tail — a step that flashes is worse than no step (the reason
- *    "Self-judge"/scoring were dropped from the other spines).
- */
-function useTestRunStages(opts: { analyzing: boolean; carding: boolean }): StageState[] {
-  const { analyzing, carding } = opts;
-  const plan = SKILL_RUN_META.test!.plan;
-  const [startedAt, setStartedAt] = useState<number | null>(null);
-  const [now, setNow] = useState(() => Date.now());
-
-  useEffect(() => {
-    if (!analyzing) {
-      // Idle (a fresh submit resets the clock). `carding` keeps the finished timestamp — the
-      // spine is all-done there and the elapsed value no longer matters.
-      if (!carding) setStartedAt(null);
-      return;
-    }
-    setStartedAt((t) => t ?? Date.now());
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, [analyzing, carding]);
-
-  const elapsed = startedAt == null ? 0 : now - startedAt;
-  const gotVideo = carding || (analyzing && elapsed > TEST_STEP_FALLBACK_MS[0]);
-  const footageRead = carding || (analyzing && elapsed > TEST_STEP_FALLBACK_MS[1]);
-
-  return [
-    { name: plan[0]!, status: gotVideo ? 'done' : 'active' },
-    { name: plan[1]!, status: footageRead ? 'done' : gotVideo ? 'active' : 'pending' },
-    { name: plan[2]!, status: carding ? 'done' : footageRead ? 'active' : 'pending' },
-  ];
 }

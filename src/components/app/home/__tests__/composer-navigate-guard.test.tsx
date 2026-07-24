@@ -1,29 +1,29 @@
 /** @vitest-environment happy-dom */
 /**
- * WR-05 — composer navigate-on-id guard (pinned/permalink layout).
+ * Composer Test seal-in-thread guard (D-05 rework — supersedes the WR-05 navigate-on-id guard).
  *
- * The composer pushes to /analyze/[id] on a null->string analysisId flip.
- * In the pinned layout, useAnalysisStream ALSO sets analysisId from the URL on
- * hydration (use-analysis-stream.ts:521) — a null->string flip the user did
- * NOT cause. Board guards this with a ref that marks "an id I started
- * streaming"; the composer must do the same so a hydration-sourced id can
- * never navigate.
+ * The composer's Test path USED to push to /analyze/[id] the moment analysisId flipped null->string.
+ * It now stays IN-THREAD for the whole run and, on `phase: 'complete'`, POSTs the analysisId to
+ * /api/tools/test/card (the seal) — the card lands in the open thread, no navigate-out. The only
+ * navigate-out that survives is the honest degrade: a row with no craft material (route →
+ * { degraded }) or a build/network failure falls back to the full frame-by-frame page.
  *
- * These tests drive analysisId transitions with NO submit (hydration) and WITH
- * a submit, asserting router.push only fires for the submitted run.
+ * The guard that mattered before still matters: a hydration-sourced analysisId (permalink layout,
+ * use-analysis-stream sets it from the URL) is NOT a real submit, so it must neither seal nor
+ * navigate. pendingSealRef — armed ONLY in handleSubmit's Test branch — is what distinguishes the
+ * two, mirroring the old pendingNavRef. Chip selection is not a submit and must not arm it either.
  *
- * Extended (Plan 01-04 / Pitfall #5): assert that chip selection does NOT arm
- * navigation — a chip click is NOT a submit; pendingNavRef must stay false after
- * clicking a chip. A hydration-sourced analysisId that appears AFTER a chip click
- * must still not navigate.
+ * These tests drive analysisId/phase transitions with NO submit (hydration) and WITH a submit,
+ * asserting the seal POST + the degrade fallback fire only for the submitted run.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, fireEvent, cleanup, act } from '@testing-library/react';
+import { screen, fireEvent, cleanup, act, waitFor } from '@testing-library/react';
 import { renderWithClient } from '@/test/render-with-client';
 
 // ── controllable stream mock ────────────────────────────────────────────
 const start = vi.fn().mockResolvedValue(undefined);
 let analysisId: string | null = null;
+let phase = 'idle';
 
 vi.mock('@/hooks/queries/use-analysis-stream', () => ({
   useAnalysisStream: () => ({
@@ -33,7 +33,7 @@ vi.mock('@/hooks/queries/use-analysis-stream', () => ({
     stages: [],
     partial: { personas: [] },
     panelReady: {},
-    phase: 'idle',
+    phase,
     error: null,
     reconnect: vi.fn(),
     filmstrips: {},
@@ -71,6 +71,19 @@ vi.mock('@/lib/supabase/client', () => ({
   }),
 }));
 
+// ── fetch mock: the seal POST (/api/tools/test/card) + the thread reload (/api/threads/open) ──
+// `cardOk`/`cardBody` let each test choose the seal outcome (sealed vs degraded); everything else
+// resolves to a benign empty payload so an incidental mount fetch never throws.
+let cardOk = true;
+let cardBody: Record<string, unknown> = { block: {} };
+const fetchMock = vi.fn((input: RequestInfo | URL) => {
+  const url = typeof input === 'string' ? input : input.toString();
+  if (url.includes('/api/tools/test/card')) {
+    return Promise.resolve({ ok: cardOk, json: async () => cardBody } as Response);
+  }
+  return Promise.resolve({ ok: true, json: async () => ({ messages: [] }) } as Response);
+});
+
 import { Composer } from '../composer';
 
 function urlInput(): HTMLInputElement {
@@ -81,11 +94,8 @@ function submitButton(): HTMLButtonElement {
 }
 
 /**
- * The skill chip. Found by aria-label, not by face text: the chip used to render the VERB
- * GROUP ("Test"), and this helper matched that literal string. It now renders the SKILL's
- * own name, so the group name is not on the chip face at all — matching text here would
- * couple the navigation guard to skill copy, which is exactly the kind of brittleness that
- * makes people stop trusting a guard. The aria-label is the stable handle.
+ * The skill chip. Found by aria-label, not by face text: the chip renders the SKILL's own name,
+ * so matching text here would couple this guard to skill copy. The aria-label is the stable handle.
  */
 function skillChip(): HTMLButtonElement {
   return screen.getByRole('button', { name: /skill:/i }) as HTMLButtonElement;
@@ -98,63 +108,105 @@ function selectSkillBySlash(command: string) {
   fireEvent.keyDown(field, { key: 'Enter' });
 }
 
+/** Drive a real Test submit (arm Test → type a valid URL → click send). */
+async function submitTestRun() {
+  selectSkillBySlash('test');
+  fireEvent.change(urlInput(), {
+    target: { value: 'https://www.tiktok.com/@creator/video/123' },
+  });
+  await act(async () => {
+    fireEvent.click(submitButton());
+  });
+}
+
+/** Flush the seal effect's async work (fetch → reloadChatThread) after a phase→complete rerender. */
+async function flush() {
+  await act(async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+}
+
 beforeEach(() => {
   start.mockClear();
   push.mockClear();
+  fetchMock.mockClear();
   analysisId = null;
+  phase = 'idle';
   routeId = 'permalink-xyz';
+  cardOk = true;
+  cardBody = { block: {} };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (globalThis as any).fetch = fetchMock;
   cleanup();
 });
 
-describe('Composer navigate guard (WR-05)', () => {
-  it('does NOT navigate when analysisId appears via hydration (no submit)', () => {
+describe('Composer Test seal guard', () => {
+  it('does NOT seal or navigate when analysisId appears via hydration (no submit)', () => {
     // First render: analysisId null (composer mounted on a permalink).
     const { rerender } = renderWithClient(<Composer />);
     expect(push).not.toHaveBeenCalled();
 
-    // Simulate hydration setting analysisId from the URL — a null->string flip
-    // the composer did NOT initiate (no handleSubmit ran).
+    // Simulate hydration surfacing a COMPLETED analysisId from the URL — a flip the composer did
+    // NOT initiate (no handleSubmit ran), so pendingSealRef was never armed.
     analysisId = 'permalink-xyz';
+    phase = 'complete';
     act(() => {
       rerender(<Composer />);
     });
 
-    // The guard (pendingNavRef never armed) must suppress navigation.
+    // The guard suppresses both the seal POST and any navigation.
     expect(push).not.toHaveBeenCalled();
+    expect(
+      fetchMock.mock.calls.some(([u]) => String(u).includes('/api/tools/test/card')),
+    ).toBe(false);
   });
 
-  it('DOES navigate after a real submit produces a new id', async () => {
+  it('SEALS in-thread (POSTs the card) and does NOT navigate after a real submit completes', async () => {
     const { rerender } = renderWithClient(<Composer />);
 
-    // Arm Test first: the composer boots into Chat now, and only the video skill navigates
-    // to /analyze. Chat/ideas/hooks never do — that is the whole point of the guard.
-    selectSkillBySlash('test');
-
-    // Type a valid TikTok URL and submit — this arms pendingNavRef.
-    fireEvent.change(urlInput(), {
-      target: { value: 'https://www.tiktok.com/@creator/video/123' },
-    });
-    await act(async () => {
-      fireEvent.click(submitButton());
-    });
+    await submitTestRun();
     expect(start).toHaveBeenCalledTimes(1);
 
-    // The stream sets analysisId null at start, then emits a fresh id.
-    analysisId = null;
-    act(() => {
-      rerender(<Composer />);
-    });
+    // The stream connects (analysisId null at start) then completes with a fresh id.
+    phase = 'complete';
     analysisId = 'fresh-submit-id';
-    act(() => {
+    await act(async () => {
       rerender(<Composer />);
     });
+    await flush();
 
-    expect(push).toHaveBeenCalledWith('/analyze/fresh-submit-id');
+    // Sealed in-thread — the card adapter was POSTed the fresh id, and NO navigate-out fired.
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(([u]) => String(u).includes('/api/tools/test/card')),
+      ).toBe(true);
+    });
+    expect(push).not.toHaveBeenCalledWith('/analyze/fresh-submit-id');
+  });
+
+  it('falls back to the full breakdown page when the seal degrades', async () => {
+    const { rerender } = renderWithClient(<Composer />);
+    cardBody = { degraded: 'no_craft' }; // route: nothing to card in-thread
+
+    await submitTestRun();
+
+    phase = 'complete';
+    analysisId = 'fresh-submit-id';
+    await act(async () => {
+      rerender(<Composer />);
+    });
+    await flush();
+
+    // Degrade honesty: the only navigate-out that survives.
+    await waitFor(() => {
+      expect(push).toHaveBeenCalledWith('/analyze/fresh-submit-id');
+    });
   });
 });
 
-describe('Composer chip-select does NOT arm navigation (Pitfall #5 / Plan 01-04)', () => {
-  it('does NOT navigate after clicking the skill chip (chip is not a submit)', () => {
+describe('Composer chip-select does NOT arm the seal (Pitfall #5 / Plan 01-04)', () => {
+  it('does NOT seal or navigate after clicking the skill chip (chip is not a submit)', () => {
     // Pinned layout — routeId is set in beforeEach.
     const { rerender } = renderWithClient(<Composer />);
     expect(push).not.toHaveBeenCalled();
@@ -163,29 +215,36 @@ describe('Composer chip-select does NOT arm navigation (Pitfall #5 / Plan 01-04)
     fireEvent.click(skillChip());
     expect(push).not.toHaveBeenCalled();
 
-    // Even if a hydration analysisId arrives after the chip click, no navigation.
+    // Even if a completed analysisId arrives after the chip click, no seal + no navigation.
     analysisId = 'hydration-after-chip-click';
+    phase = 'complete';
     act(() => {
       rerender(<Composer />);
     });
 
-    // pendingNavRef was never armed by the chip click, so navigation is suppressed.
     expect(push).not.toHaveBeenCalled();
+    expect(
+      fetchMock.mock.calls.some(([u]) => String(u).includes('/api/tools/test/card')),
+    ).toBe(false);
   });
 
-  it('hydration id does NOT navigate even after a chip interaction followed by no submit', () => {
+  it('a hydration id does NOT seal even after a chip interaction followed by no submit', () => {
     const { rerender } = renderWithClient(<Composer />);
 
     // Click chip — not a submit
     fireEvent.click(skillChip());
 
-    // Hydration sets analysisId (simulates the URL on mount)
+    // Hydration surfaces a completed analysisId (simulates the URL on mount)
     analysisId = 'permalink-xyz';
+    phase = 'complete';
     act(() => {
       rerender(<Composer />);
     });
 
-    // Guard holds — no navigation
+    // Guard holds — no seal, no navigation
     expect(push).not.toHaveBeenCalled();
+    expect(
+      fetchMock.mock.calls.some(([u]) => String(u).includes('/api/tools/test/card')),
+    ).toBe(false);
   });
 });
