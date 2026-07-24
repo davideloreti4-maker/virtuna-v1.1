@@ -40,12 +40,15 @@ export function AppShell({ children }: AppShellProps) {
         <SidebarHamburger />
         <Sidebar />
         <main
-          className="relative h-full overflow-auto"
+          // Mobile: clear the fixed hamburger (top-4 + 34px) so page H1s don't render underneath it.
+          // PURE CSS at the same 768px boundary as `treatAsMobile` / the hamburger's own `md:hidden`
+          // — it used to ride `treatAsMobile`, which is false until the post-mount measurement, so
+          // the pad appeared one frame late. Anything that offsets ITSELF against this band (the
+          // composer's <xl audience header claims it with `-mt-14`) would jump for that frame.
+          // marginLeft stays inline: it depends on the real sidebar width, which CSS can't know.
+          className="relative h-full overflow-auto pt-14 md:pt-0"
           style={{
             marginLeft: `${offset}px`,
-            // Mobile: clear the fixed hamburger (top-4 + 34px) so page H1s
-            // don't render underneath it.
-            paddingTop: treatAsMobile ? "56px" : undefined,
             transition: reducedMotion ? undefined : "margin-left 150ms var(--ease-out-cubic)",
           }}
         >

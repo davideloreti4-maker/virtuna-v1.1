@@ -49,6 +49,7 @@ import dynamic from "next/dynamic";
 import { cn } from "@/lib/utils";
 import { HORIZONTAL_ENABLED } from "@/lib/flags/horizontal";
 import { AMBIENT_V2_ENABLED } from "@/lib/flags/ambient-v2";
+import { AmbientOverviewSheet } from "@/components/audience-lens/v2/AmbientOverviewSheet";
 import type { SimSealMap } from "@/lib/threads/sim-seals";
 import { queryKeys } from "@/lib/queries/query-keys";
 import {
@@ -2194,7 +2195,23 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   );
   // P2 (A2b) — the <xl header: a 68px bar that expands DOWNWARD. Same props again; rendered at the
   // TOP of the thread branch (below), not the dock.
-  const audienceHeader = <AudiencePresence {...presenceCommonProps} variant="header" />;
+  //
+  // Ambient v2 (2026-07-24 fix): the flag used to swap ONLY the ≥xl rail, so a phone kept the retired
+  // room (constellation crown · "N people ready" · the "say hi →" cast) while desktop got the ranked
+  // v2 board — one product, two rooms. The header now swaps on the SAME flag, to the SAME surfaces
+  // fed the SAME live inputs as `audienceRailV2`, presented as a sheet instead of a column.
+  const audienceHeader = AMBIENT_V2_ENABLED ? (
+    <AmbientOverviewSheet
+      audience={effectiveAudience}
+      descriptors={ambientDescriptors}
+      reducedMotion={reducedMotion}
+      persistedSeals={persistedSimSeals}
+      open={roomExpanded}
+      onOpenChange={handleRoomExpandedChange}
+    />
+  ) : (
+    <AudiencePresence {...presenceCommonProps} variant="header" />
+  );
 
   // ── Build-an-audience chooser host (UX-04 / D-03 / D-08) ────────────────────
   // onBuilt → the cloned General SIM becomes the active audience; onEvidence reuses
@@ -2841,12 +2858,22 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           className,
         )}
       >
-        {/* P2 (A2b) — the mobile/tablet audience HEADER (<xl only; the rail owns ≥xl). A 68px bar
-            above the thread that expands DOWNWARD, top-anchored so it survives the keyboard (§2).
+        {/* P2 (A2b) — the mobile/tablet audience HEADER (<xl only; the rail owns ≥xl). A bar above
+            the thread that expands DOWNWARD, top-anchored so it survives the keyboard (§2).
             shrink-0 so it holds its height; the sheet blooms over the thread below (z-55). The
-            xl:hidden is belt-and-suspenders against the one-frame pre-hydration flash. */}
+            xl:hidden is belt-and-suspenders against the one-frame pre-hydration flash.
+
+            Positioning (2026-07-24 fix): below md, AppShell pads `<main>` by a blanket 56px to clear
+            the FIXED hamburger (left-4 top-4, 34px) — which left the audience bar stranded under an
+            otherwise empty band, two stacked chrome rows deep on a ~844px-tall phone. The bar now
+            claims that band: `-mt-14` cancels the 56px pad and `pl-[58px]` (16 + 34 + 8) clears the
+            hamburger, so the room reads as the mobile top bar it always meant to be. md:… restores
+            the plain in-flow bar for md–xl, where the hamburger and the 56px pad are both gone. */}
         {useHeader && (
-          <div data-testid="audience-header-slot" className="relative z-10 shrink-0 px-4 pt-2 xl:hidden">
+          <div
+            data-testid="audience-header-slot"
+            className="relative z-10 shrink-0 -mt-14 pl-[58px] pr-4 pt-[11px] md:mt-0 md:px-4 md:pt-2 xl:hidden"
+          >
             <div className="mx-auto w-full max-w-[760px]">{audienceHeader}</div>
           </div>
         )}
