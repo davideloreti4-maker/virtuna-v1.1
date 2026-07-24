@@ -29,6 +29,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { TONE } from "./AmbientDetail";
+import type { Audience } from "@/lib/audience/audience-types";
+import { groupAudiences } from "@/components/audience/audience-display";
+import { resolveTier } from "@/lib/audience/resolve-tier";
 
 // ── view-model ───────────────────────────────────────────────────────────────
 
@@ -181,33 +184,171 @@ function Pick({ value, options, onSelect }: { value: string; options: string[]; 
   );
 }
 
+/**
+ * The audience selector on the Start (pre-thread) surface. On Start there is NO thread yet, so the
+ * audience is a real CHOICE here — this is where a new user should pick their calibrated room (or
+ * stay on General). Grouped Socials/General like the in-thread presence switcher, with the honest
+ * neutral tier badge. In-thread the SAME conditions strip pins the audience LOCKED (a new audience
+ * means a new thread) — the locked span below covers that reuse (no switch props passed).
+ */
+function AudiencePick({
+  label,
+  audiences,
+  selectedAudienceId,
+  onSelectAudience,
+}: {
+  label: string;
+  audiences: Audience[];
+  selectedAudienceId: string | null;
+  onSelectAudience: (a: Audience) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const { baseline, templates, generalTemplates, yours } = groupAudiences(audiences);
+  // Socials (baseline General + presets + your socials rows) then General SIMs — mirrors the dock.
+  const socials = [...baseline, ...templates, ...yours.filter((a) => a.mode !== "general")];
+  const general = [...generalTemplates, ...yours.filter((a) => a.mode === "general")];
+  const isActive = (a: Audience) => (a.is_general ? selectedAudienceId === null : a.id === selectedAudienceId);
+
+  const Row = ({ a }: { a: Audience }) => {
+    const on = isActive(a);
+    return (
+      <button
+        type="button"
+        role="menuitemradio"
+        aria-checked={on}
+        onClick={() => {
+          onSelectAudience(a);
+          setOpen(false);
+        }}
+        className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] transition-colors"
+        style={{ color: on ? TONE.cream : TONE.dim }}
+        onMouseEnter={(e) => (e.currentTarget.style.background = TONE.well)}
+        onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+      >
+        <span className="min-w-0 flex-1 truncate">{a.name}</span>
+        <span className="shrink-0 text-[11px]" style={{ color: TONE.faint }}>
+          {resolveTier(a)}
+        </span>
+        <span aria-hidden className="w-3 shrink-0 text-center" style={{ color: TONE.cream, opacity: on ? 1 : 0 }}>
+          ✓
+        </span>
+      </button>
+    );
+  };
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={`Audience: ${label}. Switch audience`}
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[14px] transition-colors"
+        style={{ border: `1px solid ${TONE.hair}`, background: TONE.well, color: TONE.cream }}
+        onMouseEnter={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,.14)")}
+        onMouseLeave={(e) => (e.currentTarget.style.borderColor = TONE.hair)}
+      >
+        <span aria-hidden style={{ color: TONE.faint }}>◇</span>
+        {label}
+        <svg width="9" height="9" viewBox="0 0 12 12" aria-hidden style={{ color: TONE.faint }}>
+          <path d="M2.5 4.5L6 8l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      {open ? (
+        <div
+          role="menu"
+          aria-label="Your audiences"
+          className="absolute left-0 z-20 mt-1.5 max-h-[320px] min-w-[240px] overflow-y-auto rounded-[10px] py-1"
+          style={{ border: `1px solid ${TONE.border}`, background: "#212120", boxShadow: "0 12px 32px rgba(0,0,0,.4)" }}
+        >
+          {socials.length > 0 ? (
+            <>
+              <p className="px-3 pb-1 pt-1.5 font-mono text-[10px] uppercase tracking-[0.09em]" style={{ color: TONE.faint }}>
+                Socials
+              </p>
+              {socials.map((a) => (
+                <Row key={a.id} a={a} />
+              ))}
+            </>
+          ) : null}
+          {general.length > 0 ? (
+            <>
+              <p className="mt-1 px-3 pb-1 pt-1.5 font-mono text-[10px] uppercase tracking-[0.09em]" style={{ color: TONE.faint }}>
+                General
+              </p>
+              {general.map((a) => (
+                <Row key={a.id} a={a} />
+              ))}
+            </>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function ConditionsStrip({
   conditions,
   onScene,
   onFidelity,
+  audiences,
+  selectedAudienceId,
+  onSelectAudience,
 }: {
   conditions: StartConditions;
   onScene?: (v: string) => void;
   onFidelity?: (v: string) => void;
+  // When these are supplied (the pre-thread Start surface), the audience is a real CHOICE (picker).
+  // Absent (the in-thread reuse / dev fixture) → the audience stays LOCKED (non-interactive span).
+  audiences?: Audience[];
+  selectedAudienceId?: string | null;
+  onSelectAudience?: (a: Audience) => void;
 }) {
   const [scene, setScene] = useState(conditions.scene);
   const [fidelity, setFidelity] = useState(conditions.fidelity);
+  const audienceSelectable = !!onSelectAudience && !!audiences;
   return (
     <div className="mt-7">
       <div className="font-mono text-[11px] uppercase tracking-[0.09em]" style={{ color: TONE.faint }}>
         Testing against
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-2 text-[14px]">
-        {/* audience — locked for the thread (L1); no ▾, dimmer, non-interactive */}
-        <span
-          className="flex cursor-default items-center gap-1.5 rounded-lg px-3 py-1.5"
-          style={{ border: `1px solid ${TONE.border}`, background: "transparent", color: TONE.dim }}
-          title="Locked for this thread — a new audience means a new thread"
-        >
-          <span aria-hidden style={{ color: TONE.faint }}>◇</span>
-          {conditions.audience}
-          <span aria-hidden style={{ color: TONE.ghost, fontSize: 11 }}>⤫</span>
-        </span>
+        {audienceSelectable ? (
+          // Pre-thread Start: pick the audience here (no thread yet to lock to).
+          <AudiencePick
+            label={conditions.audience}
+            audiences={audiences!}
+            selectedAudienceId={selectedAudienceId ?? null}
+            onSelectAudience={onSelectAudience!}
+          />
+        ) : (
+          // In-thread reuse: audience is locked for the thread (L1) — no ▾, dimmer, non-interactive.
+          <span
+            className="flex cursor-default items-center gap-1.5 rounded-lg px-3 py-1.5"
+            style={{ border: `1px solid ${TONE.border}`, background: "transparent", color: TONE.dim }}
+            title="Locked for this thread — a new audience means a new thread"
+          >
+            <span aria-hidden style={{ color: TONE.faint }}>◇</span>
+            {conditions.audience}
+            <span aria-hidden style={{ color: TONE.ghost, fontSize: 11 }}>⤫</span>
+          </span>
+        )}
         <span aria-hidden style={{ color: TONE.faint }}>as</span>
         <Pick
           value={scene}
@@ -239,6 +380,9 @@ export function AmbientStart({
   onFidelity,
   onSkill,
   activeSkillId,
+  audiences,
+  selectedAudienceId,
+  onSelectAudience,
 }: {
   data: StartData;
   onScene?: (v: string) => void;
@@ -248,6 +392,11 @@ export function AmbientStart({
   onSubmit?: (text: string) => void;
   /** The currently-armed skill id (the composer's active tool). Shown on the selector bar. */
   activeSkillId?: string;
+  // Audience switching on the pre-thread Start surface. When provided, the "Testing against"
+  // audience chip becomes a real picker (a new user chooses their room here). Omitted → locked.
+  audiences?: Audience[];
+  selectedAudienceId?: string | null;
+  onSelectAudience?: (a: Audience) => void;
 }) {
   const { name, conditions, skillGroups } = data;
   // client-only greeting: the wall clock differs server↔client, so resolve it after mount (lazy
@@ -280,7 +429,14 @@ export function AmbientStart({
         </h1>
 
         {/* the standing conditions — loud once, at birth (the persistent strip in its loud form) */}
-        <ConditionsStrip conditions={conditions} onScene={onScene} onFidelity={onFidelity} />
+        <ConditionsStrip
+          conditions={conditions}
+          onScene={onScene}
+          onFidelity={onFidelity}
+          audiences={audiences}
+          selectedAudienceId={selectedAudienceId}
+          onSelectAudience={onSelectAudience}
+        />
 
         <div className="mt-6 h-px w-full" style={{ background: TONE.border }} />
 
