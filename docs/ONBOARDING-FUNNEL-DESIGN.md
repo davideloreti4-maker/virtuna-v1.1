@@ -41,8 +41,8 @@ delivers an email round-trip and a username field. Time-to-aha is days, or never
   means *1-tap Google OAuth → checkout on the same screen*, never a page nav, never a confirm email.
 - **What the $1 actually buys.** Not a calibration, not a test — **3 days and 50 credits, which
   auto-convert to the chosen plan's monthly price** (`TRIAL.days = 3`, `TRIAL.credits = 50`,
-  `pricing.ts:101`). The plan is picked at checkout; $49 Creator is the default. This single fact
-  sets the milestone's true north (§4a).
+  `pricing.ts:101`). The plan is picked at checkout; $49 Creator is the default. **It auto-renews —
+  there is no second conversion to win** (§4a).
 - **Trial pool = 50 credits** (`pricing.ts:116`). `score` = 10, `simulate` = 2 (`CREDIT_COSTS`).
   The first run spends **~12**, leaving ~38 ≈ 3–4 more real tests across the 72 hours.
 - **Calibration is unbilled** — no credit gate on `/api/audiences/calibrate`. It costs Apify money,
@@ -69,14 +69,14 @@ Ten states, in order. Each screen below owns exactly one.
 | 9 | Peak | the gap reveal — proof the room was worth it | the gap |
 | 10 | Open loop | Zeigarnik + implementation intention | "when are you posting?" |
 
-**The load-bearing insight:** the $1 is not revenue, it is a *self-concept switch*. Everything
-downstream — activation, return visits, $1→$49 — correlates with that switch far more than with the
-dollar. Which means S1's only job is to make the dollar feel like the cheapest way to close an open
-loop, not like a purchase decision.
+**The load-bearing insight:** the $1 is not revenue, it is a *self-concept switch* — and since the
+plan auto-renews, it is also **the only conversion in the entire funnel.** States 1–6 exist to
+produce it. S1's whole job is to make the dollar feel like the cheapest way to close an open loop
+rather than like a purchase decision.
 
-**The corollary:** because the dollar buys 72 hours rather than an outcome, the funnel does not end
-at checkout. States 7–10 all happen **on the real platform, on the real account, spending real
-credits** — see §4a.
+**The corollary:** states 7–10 are not selling anything. They happen **on the real platform, on the
+real account, spending real credits**, and their only job is to make sure nobody reaches the cancel
+button — see §4a.
 
 ---
 
@@ -171,22 +171,31 @@ is a loop the user wants closed — and no competitor scores itself.
 **Never a congratulations screen.** Peak-end rule: the session ends with the product working and a
 loop open, not a modal saying "you're all set."
 
-### 4a. True north — the 72 hours, not the first session
+### 4a. The 72 hours — a retention problem, not a second conversion
 
-The $1 auto-converts. So the milestone is not finished when the user activates; it is finished when
-**cancelling feels like a loss by hour 72.** That reframes days 1–3 as part of onboarding, not
-lifecycle marketing:
+**Owner call 2026-07-24: there is exactly ONE conversion in this funnel — the $1.** The trial
+auto-renews into the plan; nobody has to be sold twice. Days 1–3 are therefore not a campaign, and
+they do not get campaign-sized effort. The job is narrower and easier: **give them no reason to
+cancel.**
 
-| Hour | Trigger | Frame |
-|---|---|---|
-| 0 | first session | room built · first test · the gap · loop opened |
-| ~24 | they post | **the prediction check — we grade ourselves.** The one thing no competitor does |
-| ~48 | mid-trial | "38 credits left, 2 days" — capability remaining, never scarcity pressure |
-| ~66 | pre-renewal | **honest heads-up before the charge**: the plan, the price, one-click cancel |
-| 72 | conversion | "your room stays. Your credits reset." — the asset is the reason to stay |
+Which reduces to three things, in order of how often they break it:
 
-The hour-66 notice is not optional and not a conversion leak. An unannounced $49 is the single
-largest chargeback and refund-request vector in this design (§6).
+1. **The room exists and the first test happened.** A trial that ends with an empty rail cancels
+   itself. This is why §4's first session matters — not as a sales moment, as the floor.
+2. **Nothing is visibly broken.** Failed scrape, stuck job, a card that renders empty. Ordinary
+   product quality, weighted higher than usual because the window is 72 hours long.
+3. **The renewal is not a surprise.** Disclosure at checkout (`TRIAL.microcopy`, already written,
+   states both the 50-credit cap and the renewal price) plus one-click cancel reachable in-app.
+   That is the floor, and it is a dispute-avoidance measure, not a growth tactic.
+
+Everything else on this arc — the prediction check at ~24h, the balance nudge at ~48h — is **upside,
+not requirement**. Build it after the $1 path converts, because it is worth nothing until traffic is
+flowing through checkout.
+
+> ⚠️ **Verify before shipping:** Whop is merchant of record. Find out what renewal / pre-charge
+> notices Whop already sends on the trial SKU, so we neither double-send nor assume a notice exists
+> that doesn't. Auto-renew disclosure obligations vary by jurisdiction — worth one check with
+> whoever owns the terms, since the merchant-of-record relationship changes who is responsible.
 
 ---
 
@@ -207,11 +216,11 @@ largest chargeback and refund-request vector in this design (§6).
 1. **`/go` now carries 100% of conversion.** Mitigation: S1 must be genuinely playable. If it ships
    as a recording, the tripwire will not fire and no amount of copy will save it.
 2. **The surprise $49 is the real chargeback vector** — not the dollar, and not "they paid before
-   seeing value." A trial that silently becomes a subscription is how a $1 buyer becomes a dispute.
-   Mitigations, all mandatory: `TRIAL.microcopy` visible under every CTA (already written, states
-   both the 50-credit cap and the renewal price), one-click cancel reachable from the app at all
-   times, and the **hour-66 pre-renewal notice** (§4a). Burying any of the three is not a growth
-   tactic, it is a refund queue.
+   seeing value." Since the trial auto-renews and nobody is re-sold, the renewal charge is where all
+   the revenue actually lands, and a dispute there costs more than the subscription earns.
+   Floor, non-negotiable: `TRIAL.microcopy` visible under every CTA (already written — states both
+   the 50-credit cap and the renewal price) and one-click cancel reachable in-app. Confirm what Whop
+   sends as merchant of record (§4a) before deciding whether we send anything ourselves.
 3. **Calibration can fail** (private account, dead handle, Apify hiccup) *after* they paid.
    This does **not** invalidate the purchase — they still hold 3 days and 50 credits. So it is a
    **recovery ladder, never a refund**:
@@ -234,7 +243,7 @@ largest chargeback and refund-request vector in this design (§6).
 | **S2** | OAuth → Whop modal inline; kill the confirm-email wall for cold traffic | magic-link replaces password confirm |
 | **S3** | **Delete `/welcome`.** Checkout lands in Ambient v2 Start; first-run = empty rail + one lit path | deletes `connect-step.tsx`, the 2-step `onboarding-store`, and the middleware `/welcome` bounce (`middleware.ts:167`) |
 | **S4** | First real actions on the real account: room calibrates in the rail (visible labor) → their video → the gap → the intention prompt | rides `NEXT_PUBLIC_AMBIENT_V2`; ≤12 credits |
-| **S5** | The 72-hour arc: prediction check, hour-48 balance, **hour-66 pre-renewal notice**, conversion | S5's hour-66 notice ships WITH S3 — it is not a later phase |
+| **S5** | Upside only, AFTER the $1 path converts: prediction check at ~24h, balance nudge at ~48h | not required for launch — the renewal is automatic |
 
 **Deletions this implies:** `onboarding-store.ts` two-step machine · `connect-step.tsx` ·
 the orphaned `ProfileInterviewModal` on `content-form.tsx` (fold goal · stage · pain into S6's wait,
@@ -242,9 +251,11 @@ infer everything else from the scrape).
 
 ## 8. Activation + instrumentation
 
-**Activation = a sealed test against a calibrated audience, in the first session.**
-**Success = that user still subscribed at hour 73.** Activation is the leading indicator; the trial
-conversion is the milestone's actual scoreboard.
+**The scoreboard is `checkout_paid`.** One conversion, and it happens on `/go`. Everything after it
+is measured to catch breakage, not to optimize a second sale.
+
+**Activation = a sealed test against a calibrated audience, in the first session** — the leading
+indicator that the trial won't cancel itself.
 
 Events, in funnel order — none of these exist today, which is why the funnel cannot currently be
 debugged:
@@ -255,7 +266,8 @@ video_submit → gap_shown → intention_set → prediction_checked → renewal_
 trial_converted`
 
 Three derived numbers, in priority order:
-1. **checkout_paid → trial_converted** — the only one that pays for the milestone.
-2. **demo_fix_open → checkout_paid** — does the canned demo actually sell the trial?
-3. **checkout_paid → gap_shown (same session)** — did they reach the peak before the trial clock
-   started eating itself? Every hour of delay here shows up as a cancellation at 72.
+1. **demo_view → checkout_paid** — the milestone. Everything else is diagnostics for this number.
+2. **demo_pick → demo_fix_open** — does the demo actually land its aha? If people pick a video and
+   never open a fix, the demo is decorative and the funnel dies upstream of the money.
+3. **checkout_paid → gap_shown (same session)** — the cancellation predictor. A paid user who never
+   reaches the gap is the one who cancels inside 72 hours.
