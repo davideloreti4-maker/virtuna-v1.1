@@ -262,16 +262,23 @@ export function AmbientDetail({
   onBack,
   className,
   brainNote,
+  populationNote,
 }: {
   template: DomainTemplate;
   initialTab?: Tab;
   reducedMotion?: boolean;
+  /** Omit to render no back affordance at all — a back button that goes nowhere is a dead control. */
   onBack?: () => void;
   className?: string;
   /** When set (or `template.brain` is absent), the brain read is UNAVAILABLE — a text/concept sim has
    *  no attention/craft decomposition. The brain tab shows this honest line and the view opens on the
    *  audience tab. NEVER a fabricated brain figure. */
   brainNote?: string;
+  /** The `population === null` counterpart to `brainNote`. Absent population has more than one honest
+   *  cause — no run yet, or a run whose audience read is deliberately WITHHELD (the /go walkthrough's
+   *  teaser wall) — and "no run yet" is the wrong sentence for the second. Says which, in the caller's
+   *  words. NEVER a fabricated population figure either way. */
+  populationNote?: string;
 }) {
   const { backLabel, pager, verdict, unlock, brain, population } = template;
   // Brain is a VIDEO producer — absent for a text sim. Honest-unavailable, never faked.
@@ -308,16 +315,20 @@ export function AmbientDetail({
           each tab (owner mark: the brain is the hero on brain, the nodes on audience). */}
       <div className="px-[22px] pt-[22px]">
         <div className="flex items-baseline justify-between">
-          <button
-            type="button"
-            onClick={onBack}
-            className="text-[13px] transition-colors"
-            style={{ color: TONE.faint }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = TONE.cream)}
-            onMouseLeave={(e) => (e.currentTarget.style.color = TONE.faint)}
-          >
-            ← {backLabel}
-          </button>
+          {onBack ? (
+            <button
+              type="button"
+              onClick={onBack}
+              className="text-[13px] transition-colors"
+              style={{ color: TONE.faint }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = TONE.cream)}
+              onMouseLeave={(e) => (e.currentTarget.style.color = TONE.faint)}
+            >
+              ← {backLabel}
+            </button>
+          ) : (
+            <span />
+          )}
           <span className="font-mono text-[12px] tracking-[0.06em]" style={{ color: TONE.faint }}>
             {pager}
           </span>
@@ -327,7 +338,9 @@ export function AmbientDetail({
         <div className="mt-[18px] flex gap-[22px]" style={{ borderBottom: `1px solid ${TONE.border}` }}>
           {(["brain", "audience"] as const).map((t) => {
             const on = t === tab;
-            const dim = t === "brain" && !brainAvailable; // honest locked affordance for a text sim
+            // Honest locked affordance: a text sim has no brain, and a withheld/absent run has no
+            // audience. Dimming says "this tab has nothing behind it" before the tap, not after.
+            const dim = (t === "brain" && !brainAvailable) || (t === "audience" && !population);
             return (
               <button
                 key={t}
@@ -381,7 +394,7 @@ export function AmbientDetail({
             className="flex h-full items-center justify-center py-16 text-center text-[13px]"
             style={{ color: TONE.faint }}
           >
-            The audience — no run yet.
+            {populationNote ?? "The audience — no run yet."}
           </div>
         )}
       </div>

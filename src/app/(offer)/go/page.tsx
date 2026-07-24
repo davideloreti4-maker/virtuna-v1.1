@@ -15,6 +15,7 @@ import { Faq } from "@/components/offer/sections/faq";
 import { FinalCta } from "@/components/offer/sections/final-cta";
 import { OfferFooter } from "@/components/offer/sections/footer";
 import { StickyCta } from "@/components/offer/sections/sticky-cta";
+import { Walkthrough } from "@/components/offer/walkthrough/walkthrough";
 import { GRAIN_URL } from "@/components/offer/atmosphere";
 
 export const metadata: Metadata = {
@@ -117,6 +118,22 @@ export default function OfferPage() {
             <HeroShowcase />
           </BlurFade>
         </div>
+      </section>
+
+      {/* S1 — the interactive walkthrough. Sits directly under the hero on purpose: the
+          time-to-aha budget is ~10s to the first insight and ~45s to the wall, and a demo
+          buried below four persuasion sections cannot meet it. Renders null in production
+          while the fixture is placeholder data (see `walkthroughEnabled`). */}
+      <section className="relative px-5 py-14 md:py-20">
+        <div className="mx-auto mb-8 max-w-2xl text-center">
+          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-foreground-muted">
+            Try it on a real video
+          </span>
+          <h2 className="mt-3 font-serif text-[clamp(1.8rem,4vw,2.6rem)] font-medium leading-[1.1] tracking-tight text-balance">
+            This is the actual product, not a screenshot.
+          </h2>
+        </div>
+        <Walkthrough />
       </section>
 
       {/* honest credibility strip, directly under the hero */}
