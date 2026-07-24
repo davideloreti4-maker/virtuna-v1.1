@@ -26,7 +26,6 @@ import type {
   NetworkBar,
   SignalCell,
   SwingData,
-  WhyThisSecond,
 } from "@/components/audience-lens/v2/domain-template";
 
 const clamp = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v));
@@ -148,15 +147,19 @@ export function modeledSignalGrid(input: ModeledBrainInput): SignalCell[] {
   const pullShare = reasons.filter((r) => !r.loss).reduce((a, r) => a + r.count, 0) / total;
 
   return GRID_DIMS.map((d) => {
-    let score = 55 + d.couple * dev * 70 + (rnd() - 0.5) * 14;
-    if (d.craft && input.craft) score = score * 0.4 + clamp(d.craft(input.craft), 0, 10) * 10 * 0.6;
+    // a stable per-dim CHARACTER (±22) spreads the nine into a real weak/okay/strong story instead of
+    // clustering flat at ~50 when the stop rate sits near the middle; the stop rate sets the DIRECTION.
+    const character = (rnd() - 0.5) * 44;
+    let score = 52 + d.couple * dev * 90 + character;
+    if (d.craft && input.craft) score = score * 0.35 + clamp(d.craft(input.craft), 0, 10) * 10 * 0.65;
     if (d.key === "attention" || d.key === "visual") score -= lossShare * 18;
     if (d.key === "emotion" || d.key === "memory") score += pullShare * 12;
     score = clamp(Math.round(score), 6, 96);
     const good = d.invert ? 100 - score : score;
     const tone = bandOf(good);
     const delta = Math.round((rnd() - 0.4) * 30);
-    const anchor = d.craft && input.craft ? " and the measured craft read" : "";
+    const toneLead = tone === "strong" ? "A strength" : tone === "weak" ? "A weak point" : "Middling";
+    const anchor = d.craft && input.craft ? " (anchored on the measured craft read)" : "";
     return {
       key: d.key,
       label: d.label,
@@ -164,7 +167,7 @@ export function modeledSignalGrid(input: ModeledBrainInput): SignalCell[] {
       word: WORD[tone],
       tone,
       delta,
-      whyScore: `Modeled from ${d.frag} at a ${Math.round(input.stopPct)}% stop rate${anchor}.`,
+      whyScore: `${toneLead} — modeled from ${d.frag} at a ${Math.round(input.stopPct)}% stop rate${anchor}.`,
     };
   });
 }
@@ -285,19 +288,6 @@ export function modeledBuyIntent(input: ModeledBrainInput): BuyIntentData {
     abovePct,
     peaks,
     caption: "A modeled buy-intent lens · not a measured purchase signal.",
-  };
-}
-
-// ── the "why this second" for a text sim (no clip → the leading friction reason) ──
-
-/** For a text sim there is no decisive SECOND; the honest decisive point is the leading friction reason.
- *  Emitted only when a real loss reason exists. */
-export function modeledWhyThisPoint(reasons: ModeledReason[] | null | undefined): WhyThisSecond | undefined {
-  const loss = (reasons ?? []).filter((r) => r.loss).sort((a, b) => b.count - a.count)[0];
-  if (!loss) return undefined;
-  return {
-    moment: "where it thins",
-    segments: [{ text: "Most who leave go on " }, { text: loss.label.toLowerCase(), loss: true }],
   };
 }
 

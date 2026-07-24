@@ -2,21 +2,21 @@
  * CREATOR_LIVE_TEMPLATE — the Detail drill built by the REAL adapters, not authored by hand.
  *
  * This is the honest counterpart to `CREATOR_TEMPLATE` (detail-fixture.ts). Where that fixture is
- * hand-authored to the full round-4 design (including the four MODELED Sapient-depth sections —
- * signalGrid / networkBars / kpiHeatmap — whose producers don't exist yet), THIS template is the
- * output of `buildVideoDomainTemplate` (Brain) + `buildPopulationFrameData` (Population) run over a
- * realistic PERSISTED-analysis input — the exact shape `/api/analyze` Max writes. It shows what the
- * Detail actually looks like on real data today: a real attention-scrubber (the curve IS the fold's
- * weighted_curve), real craft signals (the four GeminiVideoSignals dims), a "why this second" that
- * reads the measured dip only, and the modeled sections HONESTLY ABSENT (BrainFrame falls back to the
- * lean read). The `/ambient-v2` dev page toggles between the two so the owner reviews honest-vs-authored
- * side by side — the "review LIVE, refine in code" loop.
+ * hand-authored to the full round-4 design, THIS template is the output of `buildVideoDomainTemplate`
+ * (Brain) + `buildPopulationFrameData` (Population) run over a realistic PERSISTED-analysis input — the
+ * exact shape `/api/analyze` Max writes. It renders the FULL instrument at parity with the authored
+ * page (2026-07-24): a real attention-scrubber (the curve IS the fold's weighted_curve), real craft
+ * signals (the four GeminiVideoSignals dims), a measured-dip "why this second", PLUS the modeled-depth
+ * sections (signalGrid / networkBars / kpiHeatmap) via `ambient-v2-modeled.ts` — labeled by the single
+ * calibration line. buyIntent is omitted (a commerce figure the creator template doesn't carry).
+ * The `/ambient-v2` dev page toggles authored / LIVE-video / TEXT-sim so the owner reviews them side by
+ * side — the "review LIVE, refine in code" loop.
  *
  * Fixture values only (no DB, no fetch) — the point is to exercise the real mappers, not real IO.
  */
 
 import type { PopulationAggregate } from "@/lib/audience/population";
-import { buildPopulationFrameData } from "@/lib/surfaces/ambient-v2-population";
+import { buildDomainTemplate, buildPopulationFrameData } from "@/lib/surfaces/ambient-v2-population";
 import { buildVideoDomainTemplate, type BrainSnapshotInput } from "@/lib/surfaces/ambient-v2-brain";
 import type { DomainTemplate } from "./domain-template";
 
@@ -83,6 +83,8 @@ const LIVE_PERSONAS = [
   { archetype: "skeptic", verdict: "scroll" as const, quote: "i'd be gone before the point lands" },
   { archetype: "builder", verdict: "stop" as const, quote: "the $400 detail made me stay" },
   { archetype: "scroller", verdict: "scroll" as const, quote: "felt slow right after the opener" },
+  { archetype: "scroller", verdict: "scroll" as const, quote: "seen this exact arc a hundred times" },
+  { archetype: "builder", verdict: "stop" as const, quote: "the honesty hooked me, i wanted the numbers" },
 ];
 
 /** The Detail template built entirely by the real adapters over the realistic input above. */
@@ -100,4 +102,45 @@ export const CREATOR_LIVE_TEMPLATE: DomainTemplate = buildVideoDomainTemplate({
     calibratedFrom: "your 4.2k followers",
     tier: "max",
   }),
+});
+
+// ── the TEXT sim (a hooks/concept sim through the real adapters) ───────────────────────────────────
+// The exact shape `POST /api/tools/react` returns for a sealed TEXT concept: a binary stop/scroll
+// projection (no attention curve, no craft dims) + the pStop dominant-reason TOKEN tally. Built by
+// `buildDomainTemplate` — the same producer the rail uses — so this is the honest text-sim Detail.
+const TEXT_POP: PopulationAggregate = {
+  total: 1000,
+  stop: 440,
+  scroll: 560,
+  stopPct: 44,
+  segments: [
+    { archetype: "builder", displayName: "builders", share: 0.28, total: 280, stop: 224, stopPct: 80 },
+    { archetype: "scroller", displayName: "scrollers", share: 0.4, total: 400, stop: 176, stopPct: 44 },
+    { archetype: "skeptic", displayName: "skeptics", share: 0.19, total: 190, stop: 30, stopPct: 16 },
+    { archetype: "drop-in", displayName: "drop-ins", share: 0.13, total: 130, stop: 52, stopPct: 40 },
+  ],
+  reasons: [
+    { reason: "strong-hook", count: 224 },
+    { reason: "interest", count: 121 },
+    { reason: "too-slow", count: 63 },
+    { reason: "weak-hook", count: 32 },
+  ],
+};
+
+const TEXT_PERSONAS = [
+  { archetype: "builder", verdict: "stop" as const, quote: "the promise in the first line pulled me straight in" },
+  { archetype: "scroller", verdict: "scroll" as const, quote: "took too long to tell me why i should care" },
+  { archetype: "skeptic", verdict: "scroll" as const, quote: "sounds like every other hook in my feed" },
+  { archetype: "drop-in", verdict: "stop" as const, quote: "curious enough to stick around for the payoff" },
+];
+
+/** A sealed TEXT/concept sim's Detail — the reason-breakdown Brain + the full modeled-depth parity. */
+export const CREATOR_LIVE_TEXT_TEMPLATE: DomainTemplate = buildDomainTemplate({
+  aggregate: TEXT_POP,
+  personas: TEXT_PERSONAS,
+  calibratedFrom: "your 4.2k followers",
+  tier: "max",
+  pct: 44,
+  conceptLabel: "hook",
+  stimulusKey: "text-hook-sim-demo",
 });

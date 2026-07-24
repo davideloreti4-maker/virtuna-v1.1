@@ -35,14 +35,12 @@ import {
   humanizeReason,
   modeledAmplification,
   modeledAudienceFit,
-  modeledBuyIntent,
   modeledKpiHeatmap,
   modeledNetworkBars,
   modeledNetworks,
   modeledSignalGrid,
   modeledSwing,
   modeledUnlock,
-  modeledWhyThisPoint,
   type ModeledBrainInput,
   type ModeledReason,
 } from "./ambient-v2-modeled";
@@ -76,6 +74,12 @@ const GOLDEN = 2.399963229728653; // rad — the golden angle, deterministic sca
 const DISPLAY_NODES = 90; // total nodes drawn across all clusters (downsample from ~1,000 for the SVG)
 
 const clamp = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v));
+
+/** Fixed en-US thousands grouping — `toLocaleString()` without a locale honors the machine's locale,
+ *  which rendered "1.000" (European) instead of "1,000" on this box. Deterministic + locale-proof. */
+function fmtCount(n: number): string {
+  return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
 
 /** Deterministically place `k` real districts around the gravity centre on a golden-angle spiral, so
  *  the same segments always land in the same spots (stable across renders) without any RNG. */
@@ -176,11 +180,11 @@ export function buildPopulationFrameData(input: PopulationSnapshotInput): Popula
     main: {
       kind: "tri-state",
       data: tri,
-      percentileLine: `${agg.total.toLocaleString()} simulated · engagement-calibrated`,
+      percentileLine: `${fmtCount(agg.total)} simulated · engagement-calibrated`,
     },
     terrain: { clusters, lossClusterIndex },
     voices: {
-      kicker: `Why · coded from ${agg.total.toLocaleString()}`,
+      kicker: `Why · coded from ${fmtCount(agg.total)}`,
       total: agg.total,
       reasons: codedReasons(agg, personas),
     },
@@ -249,13 +253,14 @@ export function buildReasonBrainFrameData(input: {
     stopRatio: clamp(input.stopPct / 100, 0, 1),
     driver: { kind: "reason-breakdown", data: breakdown },
     signals: [], // the lean row list is superseded by the modeled signalGrid below
-    whyThisSecond: modeledWhyThisPoint(reasons),
+    // (no whyThisSecond: it renders only on the attention-scrubber path; the reason-breakdown's own
+    //  `read` IS the text "why", so a second synthesis line would just duplicate it)
     // ── modeled-depth parity (Phase-C ②) — text renders the SAME fuller read as video; MODELED ──
     signalGrid: modeledSignalGrid(modeledInput),
     networkBars,
     networks: modeledNetworks(networkBars),
     kpiHeatmap: modeledKpiHeatmap(modeledInput),
-    buyIntent: modeledBuyIntent(modeledInput),
+    // buyIntent omitted — a commerce figure, not a text/creator one (matches the authored template)
     calibrationNote: "Modeled cognitive proxy from a text sim · the reasons are real, the depth read is modeled — not measured attention",
   };
 }
