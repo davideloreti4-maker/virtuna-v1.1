@@ -30,6 +30,22 @@ import type {
   ReasonBreakdownData,
   RoomTrustData,
 } from "@/components/audience-lens/v2/domain-template";
+import {
+  classifyReasons,
+  humanizeReason,
+  modeledAmplification,
+  modeledAudienceFit,
+  modeledBuyIntent,
+  modeledKpiHeatmap,
+  modeledNetworkBars,
+  modeledNetworks,
+  modeledSignalGrid,
+  modeledSwing,
+  modeledUnlock,
+  modeledWhyThisPoint,
+  type ModeledBrainInput,
+  type ModeledReason,
+} from "./ambient-v2-modeled";
 
 /** One real per-persona reaction (the exact `FlashPersona` shape react returns) — the exemplar cast. */
 export interface PopulationPersona {
@@ -109,7 +125,8 @@ function codedReasons(agg: PopulationAggregate, personas: PopulationPersona[]): 
         : scrollers;
     const voice = pool.length ? pool[i % pool.length]! : personas[i % Math.max(1, personas.length)];
     return {
-      label: r.reason,
+      // humanize the pStop token ("weak-hook" → "Weak hook"); real sentence reasons pass through
+      label: humanizeReason(r.reason).label,
       count: r.count,
       quote: voice?.quote ?? "",
       who: voice?.archetype ?? "a viewer",
@@ -168,27 +185,15 @@ export function buildPopulationFrameData(input: PopulationSnapshotInput): Popula
       reasons: codedReasons(agg, personas),
     },
     heroRead: heroRead(agg),
+    // ── modeled-depth parity (Phase-C ②) — the fuller society read; carried by the one calibration line ──
+    audienceFit: modeledAudienceFit(agg),
+    amplification: modeledAmplification(agg),
+    swing: modeledSwing(agg),
     room: roomTrust(agg, calibratedFrom, tier),
   };
 }
 
 // ── the text brain (real reason-drivers — the cognitive "why they stopped") ───────────────────────
-
-/** Human labels for the population math's dominant-reason tokens (pStop's `why`). Friction reasons
- *  (a hook below their bar, a novelty mismatch, hype-vs-skeptic, a slow build) ride `loss` → coral;
- *  the two pull reasons (on-topic interest, a strong hook) stay cream. Unknown tokens title-case. */
-const REASON_LABEL: Record<string, { label: string; loss?: boolean }> = {
-  interest: { label: "On-topic interest" },
-  "strong-hook": { label: "Strong hook" },
-  "weak-hook": { label: "Weak hook", loss: true },
-  "novelty-mismatch": { label: "Novelty mismatch", loss: true },
-  "hype-vs-skeptic": { label: "Hype vs skepticism", loss: true },
-  "too-slow": { label: "Too slow", loss: true },
-};
-
-function humanizeReason(token: string): { label: string; loss?: boolean } {
-  return REASON_LABEL[token] ?? { label: token.replace(/[-_]/g, " ").replace(/^\w/, (c) => c.toUpperCase()) };
-}
 
 /** Build the REAL reason-breakdown driver from the projection's per-stopper dominant-reason tally.
  *  Counts are the aggregate's own `reasons` (deterministic pStop output); the denominator is the real
@@ -221,15 +226,37 @@ export function buildReasonBrainFrameData(input: {
   stopPct: number;
   stimulusKey: string;
 }): BrainFrameData {
+  const breakdown = reasonBreakdown(input.aggregate);
+  const reasons: ModeledReason[] = breakdown.rows.map((r) => ({
+    label: r.label,
+    count: r.count,
+    ...(r.loss ? { loss: true as const } : {}),
+  }));
+  const modeledInput: ModeledBrainInput = {
+    stopPct: input.stopPct,
+    stimulusKey: input.stimulusKey,
+    clipSeconds: 6, // nominal proxy duration (a text concept has no clip)
+    curve: null, // text has no attention curve → the proxies self-seed from the stop rate + reason mix
+    craft: null,
+    reasons,
+  };
+  const networkBars = modeledNetworkBars(modeledInput);
   return {
     cortexSeedKey: input.stimulusKey,
     // A text concept has no clip; the cortex loops on a nominal proxy duration (animation only, never
     // presented as a measured length). Kept short so the parcellation reads as a brief pulse.
     clipSeconds: 6,
     stopRatio: clamp(input.stopPct / 100, 0, 1),
-    driver: { kind: "reason-breakdown", data: reasonBreakdown(input.aggregate) },
-    signals: [], // no visual craft dims on a text sim → the breakdown section is omitted
-    calibrationNote: "Modeled cognitive proxy from a text sim · the reasons are real, the cortex is a proxy — not measured attention",
+    driver: { kind: "reason-breakdown", data: breakdown },
+    signals: [], // the lean row list is superseded by the modeled signalGrid below
+    whyThisSecond: modeledWhyThisPoint(reasons),
+    // ── modeled-depth parity (Phase-C ②) — text renders the SAME fuller read as video; MODELED ──
+    signalGrid: modeledSignalGrid(modeledInput),
+    networkBars,
+    networks: modeledNetworks(networkBars),
+    kpiHeatmap: modeledKpiHeatmap(modeledInput),
+    buyIntent: modeledBuyIntent(modeledInput),
+    calibrationNote: "Modeled cognitive proxy from a text sim · the reasons are real, the depth read is modeled — not measured attention",
   };
 }
 
@@ -251,13 +278,17 @@ export interface DomainTemplateInput extends PopulationSnapshotInput {
  */
 export function buildDomainTemplate(input: DomainTemplateInput): DomainTemplate {
   const { pct, conceptLabel, stimulusKey, aggregate } = input;
+  const population = buildPopulationFrameData(input);
+  // unlock classifies by reason SEMANTICS (the token map), not the voices' cosmetic exemplar verdict
+  const reasons: ModeledReason[] = classifyReasons(aggregate.reasons);
   return {
     id: "creator",
     label: "Creator · content",
     backLabel: "Overview",
     pager: conceptLabel ?? "concept",
     verdict: { value: `${Math.round(pct)}%`, label: "would stop" },
+    unlock: modeledUnlock(reasons, population.swing),
     brain: buildReasonBrainFrameData({ aggregate, stopPct: pct, stimulusKey }),
-    population: buildPopulationFrameData(input),
+    population,
   };
 }
