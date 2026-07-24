@@ -13,7 +13,7 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Audience } from "@/lib/audience/audience-types";
-import type { ApolloDimension, CounterfactualSuggestionItem, HeatmapPayload } from "@/lib/engine/types";
+import type { ApolloDimension, CounterfactualSuggestionItem, GeminiVideoSignals, HeatmapPayload } from "@/lib/engine/types";
 
 // ─── Mocks (IO seams only) ──────────────────────────────────────────────────────
 
@@ -30,16 +30,24 @@ vi.mock("@/lib/audience/audience-repo", () => ({
   getAudience: vi.fn(),
   GENERAL_AUDIENCE: { id: "general", name: "General", mode: "general", is_general: true } as unknown as Audience,
 }));
+// Ambient v2 Phase C video-seal branch (route §9b): flag ON so the branch is reachable, and
+// writeSimSeal mocked so the test can assert the sealed `video` blob shape without a real UPDATE.
+// Safe for the other tests — their fixture heatmap carries no `weighted_curve`, so `hasBrainData`
+// is false and the branch stays inert regardless of the flag.
+vi.mock("@/lib/flags/ambient-v2", () => ({ AMBIENT_V2_ENABLED: true }));
+vi.mock("@/lib/threads/sim-seals", () => ({ writeSimSeal: vi.fn(async () => true) }));
 
 import { createClient } from "@/lib/supabase/server";
 import { createOpenThreadLazy } from "@/lib/threads/threads";
 import { insertMessage } from "@/lib/threads/messages";
 import { executeCorpusSearch } from "@/lib/grounding/corpus-tool";
+import { writeSimSeal } from "@/lib/threads/sim-seals";
 
 const mockCreateClient = createClient as ReturnType<typeof vi.fn>;
 const mockOpenThread = createOpenThreadLazy as ReturnType<typeof vi.fn>;
 const mockInsertMessage = insertMessage as ReturnType<typeof vi.fn>;
 const mockCorpusSearch = executeCorpusSearch as ReturnType<typeof vi.fn>;
+const mockWriteSimSeal = writeSimSeal as ReturnType<typeof vi.fn>;
 
 // ─── Craft fixture (the persisted row's craft slice) ────────────────────────────
 
@@ -75,6 +83,31 @@ function scoredRow(overrides: Record<string, unknown> = {}) {
     verbatim: null,
     ...overrides,
   };
+}
+
+/** The four craft dims the Brain signal rows read — a sentinel (identity-asserted through the seal). */
+const VIDEO_SIGNALS = {
+  hook_visual_impact: 8,
+  visual_production_quality: 7,
+  pacing_score: 6,
+  transition_quality: 5,
+} as unknown as GeminiVideoSignals;
+
+/** A row carrying a REAL per-segment attention curve — the gate (`hasBrainData`) for the video seal.
+ *  `weighted_hook_score` 0.6 → the first-2s hold → 60% would-stop; `variants.craft.video_signals`
+ *  rides into the seal so the reload Brain drill has its craft rows. */
+function brainRow(overrides: Record<string, unknown> = {}) {
+  return scoredRow({
+    variants: { apollo: { dimensions: DIMENSIONS, rewrites: [] }, craft: { video_signals: VIDEO_SIGNALS } },
+    heatmap: {
+      segments: SEGMENTS,
+      personas: [],
+      weighted_curve: [0.8, 0.6, 0.3, 0.5],
+      weighted_hook_score: 0.6,
+      weighted_completion_pct: 0.4,
+    },
+    ...overrides,
+  });
 }
 
 function makeSupabase(userId: string | null, row: unknown, rowErr: unknown = null) {
@@ -154,6 +187,46 @@ describe("POST /api/tools/test/card", () => {
     expect(threadId).toBe("thread-1");
     expect(role).toBe("assistant");
     expect(blocks[0].type).toBe("video-test-card");
+
+    // No attention curve on this row (`hasBrainData` false) → NO video seal (never a fabricated one).
+    expect(mockWriteSimSeal).not.toHaveBeenCalled();
+  });
+
+  it("seals the Ambient v2 VIDEO depth when the row carries a real attention curve (§9b)", async () => {
+    mockCreateClient.mockResolvedValue(makeSupabase("user-1", brainRow()));
+    const res = await callPOST({ analysisId: "an-1" });
+    expect(res.status).toBe(200); // the card still ships — the seal is additive + non-fatal
+
+    // The persisted analysis' REAL Brain read is sealed into the thread, keyed by analysisId, so the
+    // Overview→Detail Brain drill survives reload WITHOUT a fresh (billed) fold.
+    expect(mockWriteSimSeal).toHaveBeenCalledTimes(1);
+    const [, thread, key, seal] = mockWriteSimSeal.mock.calls[0]!;
+    expect(thread.id).toBe("thread-1");
+    expect(key).toBe("an-1"); // video seals are keyed by analysisId (not the concept text)
+    expect(seal.pct).toBe(60); // weighted_hook_score 0.6 → 60% would-stop
+    expect(seal.band).toBeNull();
+    expect(seal.video).toMatchObject({
+      analysisId: "an-1",
+      stopPct: 60,
+      craftScore: 77, // the card's native viral score (mean of the craft dims), carried onto the seal
+      videoSignals: VIDEO_SIGNALS, // the four craft dims ride through for the reload Brain rows
+      verbatim: null, // absent on this row → the scrubber falls back to segment labels
+    });
+    expect(seal.video.heatmap.weighted_curve).toEqual([0.8, 0.6, 0.3, 0.5]); // the REAL curve
+    // The card is still persisted (the seal never blocks it).
+    expect(mockInsertMessage).toHaveBeenCalledTimes(1);
+  });
+
+  it("skips the video seal when the hold is unreadable (no fabricated %)", async () => {
+    // A curve exists (hasBrainData true) but neither hook-score nor completion → no honest %.
+    mockCreateClient.mockResolvedValue(
+      makeSupabase("user-1", brainRow({
+        heatmap: { segments: SEGMENTS, personas: [], weighted_curve: [0.8, 0.6, 0.3, 0.5] },
+      })),
+    );
+    const res = await callPOST({ analysisId: "an-1" });
+    expect(res.status).toBe(200);
+    expect(mockWriteSimSeal).not.toHaveBeenCalled();
   });
 
   it("attempts to ground the top fixes (best-effort) without failing the card", async () => {
