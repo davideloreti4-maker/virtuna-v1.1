@@ -30,7 +30,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AmbientOverview, type WatchingRun } from "./AmbientOverview";
+import { AmbientOverview, type AmbientPresentation, type WatchingRun } from "./AmbientOverview";
 import { AmbientSimulate, type StimulusKind } from "./AmbientSimulate";
 import { AmbientDetail } from "./AmbientDetail";
 import {
@@ -54,6 +54,10 @@ interface RailSnapshot {
   personas?: PopulationPersona[];
   scrollQuote?: string;
 }
+
+/** Sheet-mode shell: the host sheet is the flex column that owns the height cap, so every surface
+ *  inside flexes into it (min-h-0 lets their internal scroll regions shrink below content height). */
+const SHEET_SHELL = "flex min-h-0 w-full flex-1";
 
 /** The descriptor kind → the Simulate stimulus kind (script/remix are drafts under test). */
 function stimulusKindOf(kind?: string): StimulusKind {
@@ -107,16 +111,26 @@ export function AmbientOverviewRail({
   descriptors,
   reducedMotion = false,
   persistedSeals,
+  presentation = "rail",
+  onDismiss,
 }: {
   audience: Audience;
   descriptors: AmbientCardDescriptor[];
   reducedMotion?: boolean;
+  /** Full-screen (mobile) only — the Overview header's caret closes the room. The drilled surfaces
+   *  keep their own back/close, which return HERE; only the Overview is the exit. */
+  onDismiss?: () => void;
+  /** Where this rail is mounted. `rail` = the ≥xl right column (default). `sheet` = the <xl mobile
+   *  header sheet, whose host bar already owns the identity, the ground and the height cap — the
+   *  SAME surfaces and the SAME live data either way, only the chrome differs. */
+  presentation?: AmbientPresentation;
   /** Sealed sims rehydrated from `threads.sim_seals`, keyed by TRIMMED concept text → the full seal
    *  (measured %, + the Phase-C population/personas depth). These re-seal rows AND repopulate the
    *  depth drill on reload; a fresh in-session fire (below) takes precedence. */
   persistedSeals?: SimSealMap;
 }) {
   const meta = audienceToMeta(audience);
+  const sheet = presentation === "sheet";
   // "develop" carries the tapped rank into Simulate; null ⇒ Overview.
   const [developId, setDevelopId] = useState<string | null>(null);
   // "detail" opens the Brain/Population depth drill for a SEALED row; null ⇒ not open.
@@ -294,8 +308,13 @@ export function AmbientOverviewRail({
       population: null,
     });
     return (
-      <div className="flex w-full items-start justify-center">
-        <AmbientDetail template={template} reducedMotion={reducedMotion} onBack={() => setDetailId(null)} />
+      <div className={sheet ? SHEET_SHELL : "flex w-full items-start justify-center"}>
+        <AmbientDetail
+          template={template}
+          reducedMotion={reducedMotion}
+          presentation={presentation}
+          onBack={() => setDetailId(null)}
+        />
       </div>
     );
   }
@@ -310,11 +329,12 @@ export function AmbientOverviewRail({
     });
     const armedId = developId;
     return (
-      <div className="flex h-full w-full">
+      <div className={sheet ? SHEET_SHELL : "flex h-full w-full"}>
         <AmbientSimulate
           data={simData}
           mode="develop"
           connected
+          presentation={presentation}
           onClose={() => setDevelopId(null)}
           // Phase D-minimal: fire the real react sim → sealed measured % replaces the projection.
           onSimulate={() => fireSim(armedId)}
@@ -340,10 +360,11 @@ export function AmbientOverviewRail({
         stimulusKey: detailId,
       });
       return (
-        <div className="flex h-full w-full">
+        <div className={sheet ? SHEET_SHELL : "flex h-full w-full"}>
           <AmbientDetail
             template={template}
             reducedMotion={reducedMotion}
+            presentation={presentation}
             onBack={() => setDetailId(null)}
           />
         </div>
@@ -372,10 +393,12 @@ export function AmbientOverviewRail({
   }));
   const overview = buildOverviewData({ audience: meta, descriptors, measured, videos, watching });
   return (
-    <div className="flex h-full w-full">
+    <div className={sheet ? SHEET_SHELL : "flex h-full w-full"}>
       <AmbientOverview
         data={overview}
         reducedMotion={reducedMotion}
+        presentation={presentation}
+        onDismiss={onDismiss}
         // A rank tap opens the real Population depth for a SEALED calibrated row (or the Brain depth for
         // a revealed video); an unsealed row routes to Simulate (develop) / reveals a video's %.
         onOpenStimulus={handleOpenStimulus}

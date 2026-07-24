@@ -16,6 +16,7 @@ import { motion } from "motion/react";
 import { BrainFrame } from "./BrainTab";
 import { PopulationFrame } from "./AudienceTab";
 import type { DomainTemplate } from "./domain-template";
+import type { AmbientPresentation } from "./AmbientOverview";
 import { useCountUp } from "@/hooks/useCountUp";
 
 // ── view-model ───────────────────────────────────────────────────────────────
@@ -260,6 +261,7 @@ export function AmbientDetail({
   initialTab,
   reducedMotion = false,
   onBack,
+  presentation = "rail",
   className,
   brainNote,
 }: {
@@ -267,6 +269,8 @@ export function AmbientDetail({
   initialTab?: Tab;
   reducedMotion?: boolean;
   onBack?: () => void;
+  /** `rail` (≥xl column) vs `sheet` (the <xl header sheet, whose host owns ground/cap). */
+  presentation?: AmbientPresentation;
   className?: string;
   /** When set (or `template.brain` is absent), the brain read is UNAVAILABLE — a text/concept sim has
    *  no attention/craft decomposition. The brain tab shows this honest line and the view opens on the
@@ -291,15 +295,21 @@ export function AmbientDetail({
   return (
     <div
       data-testid="ambient-detail"
-      className={`flex w-full max-w-[440px] flex-col ${className ?? ""}`}
+      data-presentation={presentation}
+      className={
+        (presentation === "sheet"
+          ? "flex min-h-0 w-full flex-1 flex-col"
+          : "flex w-full max-w-[440px] flex-col") + ` ${className ?? ""}`
+      }
       style={{
         // Connected rail — mirrors AmbientOverview's root exactly: fills its column top-to-bottom (part
         // of the thread page, NOT a floating card), same darker #181817 tone, a single left hairline
         // divider, no rounding, no full border, no shadow (owner call 2026-07-24 — the Brain/Audience
         // detail must read as the SAME surface as the Overview it drills from).
-        height: "100%",
-        background: "#181817",
-        borderLeft: `1px solid ${TONE.border}`,
+        // Sheet mode inherits ground + cap + rounding from its host bar instead.
+        ...(presentation === "sheet"
+          ? {}
+          : { height: "100%", background: "#181817", borderLeft: `1px solid ${TONE.border}` }),
         color: TONE.cream,
         fontFamily: "var(--font-sans, Inter, system-ui, sans-serif)",
       }}
