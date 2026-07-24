@@ -26,12 +26,12 @@ export const START_R4: StartData = {
       label: "Content",
       span: 2,
       skills: [
-        { id: "ideas", label: "Ideas", lens: "Concepts for your audience", icon: "bulb" },
-        { id: "hooks", label: "Hooks", lens: "Openers ranked by who stops", icon: "firstline" },
+        { id: "ideas", label: "Ideas", lens: "Concepts worth making", icon: "bulb" },
+        { id: "hooks", label: "Hooks", lens: "Openers that stop them", icon: "firstline" },
         { id: "script", label: "Script", lens: "A full short-form script", icon: "page" },
-        { id: "remix", label: "Remix", lens: "Rebuild a video that worked", icon: "repeat" },
+        { id: "remix", label: "Remix", lens: "Rebuild what worked", icon: "repeat" },
         { id: "test", label: "Video test", lens: "Frame by frame, one fix", icon: "filmstrip" },
-        { id: "ad", label: "Ad creative", lens: "Test an ad before you spend", icon: "mega", status: "soon" },
+        { id: "ad", label: "Ad creative", lens: "Test before you spend", icon: "mega", status: "soon" },
       ],
     },
     {

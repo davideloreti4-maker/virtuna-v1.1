@@ -30,7 +30,7 @@ describe("AmbientStartHome", () => {
     expect(screen.getByText("Hooks")).toBeTruthy();
     expect(screen.getByText("Explore")).toBeTruthy();
     // each tile carries its lens line — the label alone can't separate Video test from Draft read
-    expect(screen.getByText("Openers ranked by who stops")).toBeTruthy();
+    expect(screen.getByText("Openers that stop them")).toBeTruthy();
     expect(screen.getByText("Frame by frame, one fix")).toBeTruthy();
     expect(screen.queryByText("What would you like to make?")).toBeNull();
   });

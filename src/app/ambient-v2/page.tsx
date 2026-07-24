@@ -148,6 +148,7 @@ export default function AmbientV2DevPage() {
       {/* the surface (room panels frame at the shared fixed height; start fills + centers) */}
       <div className="flex w-full flex-1 items-stretch justify-center px-6 py-12">
         {surface === "start" ? (
+          <div className="flex w-full flex-col items-center gap-4">
           <AmbientStart
             data={{
               ...START_R4,
@@ -160,6 +161,26 @@ export default function AmbientV2DevPage() {
             selectedAudienceId={audienceId}
             onSelectAudience={(a) => setAudienceId(a.is_general ? null : a.id)}
           />
+          {/* A STAND-IN for the real composerDock, which lives in composer.tsx and can't mount on a
+              fixture page. Present only so this dev surface previews the real empty-home stack —
+              grid above, field below. Inert by design: do not grow features on it. */}
+          <div
+            className="w-full max-w-[760px] rounded-[16px] px-5 py-4"
+            style={{ border: "1px solid rgba(255,255,255,.06)", background: "#1a1a19" }}
+          >
+            <p className="text-[15px]" style={{ color: "rgba(236,231,222,.42)" }}>
+              {START_R4.composerPlaceholder}
+            </p>
+            <div className="mt-7 flex items-center justify-end">
+              <span
+                className="rounded-lg px-4 py-2 text-[13.5px] font-medium"
+                style={{ background: "#ece7de", color: "#1c1b19" }}
+              >
+                ask →
+              </span>
+            </div>
+          </div>
+          </div>
         ) : surface === "simulate" ? (
           // a sheet, not an 800px panel — self-center so items-stretch doesn't stretch its height
           <div className="flex w-full items-center justify-center self-center">

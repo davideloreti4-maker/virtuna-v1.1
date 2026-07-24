@@ -269,15 +269,15 @@ export const START_SKILL_GROUPS: SkillGroup[] = [
     label: "Content",
     span: 2,
     skills: [
-      { id: "ideas", label: "Ideas", lens: "Concepts for your audience", icon: "bulb" },
-      { id: "hooks", label: "Hooks", lens: "Openers ranked by who stops", icon: "firstline" },
+      { id: "ideas", label: "Ideas", lens: "Concepts worth making", icon: "bulb" },
+      { id: "hooks", label: "Hooks", lens: "Openers that stop them", icon: "firstline" },
       { id: "script", label: "Script", lens: "A full short-form script", icon: "page" },
-      { id: "remix", label: "Remix", lens: "Rebuild a video that worked", icon: "repeat" },
+      { id: "remix", label: "Remix", lens: "Rebuild what worked", icon: "repeat" },
       { id: "test", label: "Video test", lens: "Frame by frame, one fix", icon: "filmstrip" },
       // Named, not wired: there is no `ad` runner in SKILL_TOOLS / SKILL_RUN_META yet, so the tile
       // is inert. Ad creative is a short video with money attached — it inherits the whole frame
       // stack AND the Socials calibration anchor, which is why it's the first business artifact.
-      { id: "ad", label: "Ad creative", lens: "Test an ad before you spend", icon: "mega", status: "soon" },
+      { id: "ad", label: "Ad creative", lens: "Test before you spend", icon: "mega", status: "soon" },
     ],
   },
   {

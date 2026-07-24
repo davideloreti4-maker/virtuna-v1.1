@@ -260,6 +260,8 @@ export interface ComposerProps {
   /** Called whenever the thread-content presence changes (ideas or hooks cards exist/disappear).
    *  Parent (HomePageLayout) uses this to switch between centered and full-height layout. */
   onThreadChange?: (hasThread: boolean) => void;
+  /** A skill has been armed from the v2 Start grid — opens the audience rail. */
+  onEngagedChange?: (engaged: boolean) => void;
   /** Called when conversation content exists (blocks, streaming, or a submitted turn).
    *  Parent uses this to hide the empty-state welcome hero. */
   onConversationChange?: (hasConversation: boolean) => void;
@@ -274,7 +276,7 @@ export interface ComposerProps {
   railHost?: HTMLElement | null;
 }
 
-export function Composer({ className, onThreadChange, onConversationChange, onRehydratingChange, railHost = null }: ComposerProps) {
+export function Composer({ className, onThreadChange, onEngagedChange, onConversationChange, onRehydratingChange, railHost = null }: ComposerProps) {
   const router = useRouter();
   const reducedMotion = usePrefersReducedMotion();
   // P2 (A2a): ≥xl the room lives in HomePageLayout's rail, not the dock. useMediaQuery is SSR-safe
@@ -630,6 +632,13 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   useEffect(() => {
     onThreadChange?.(hasThread);
   }, [hasThread, onThreadChange]);
+
+  // The RAIL gate. Separate from `hasThread` on purpose: the rail should open the moment a skill is
+  // armed (owner call 2026-07-24) — you've committed to a run, so the room belongs on screen — but
+  // `hasThread` must keep meaning "real content exists" (see the regression note above).
+  useEffect(() => {
+    onEngagedChange?.(startEngaged);
+  }, [startEngaged, onEngagedChange]);
 
   // ── Test brief state (Task 2 — D-05/D-06 handoff) ─────────────────────────
   // When "Test full →" is clicked on a hook card, we switch to the Test tool
@@ -1903,7 +1912,16 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // is rehydrating (A1) — so the shell stays mounted across the load gap instead of
   // collapsing to the centered hero. Empty home (no thread, not rehydrating) keeps
   // the existing centered hero layout (no regression).
-  const homeThreadMode = (hasThread || rehydrating) && !hasSimulation;
+  // Under Ambient v2 the empty home uses the THREAD layout too (owner call 2026-07-24): the Start
+  // panel rides the scroll region and the composer sits in the floating bottom dock, so the field
+  // is where a chat's field always is instead of floating mid-page. Post-pick the panel simply
+  // drops out and the starter takes its place above the dock — same shell, no remount, no jump.
+  //
+  // NOTE the 2026-07-xx regression recorded above `onThreadChange`: flipping *hasThread* on skill
+  // SELECTION tore the empty home in half (greeting pinned top, composer bottom, dead gap). This is
+  // not that. `hasThread` still means "real content exists" — only the LAYOUT branch moves, and the
+  // greeting that made the old break visible is suppressed under v2 (home-page-layout.tsx:79).
+  const homeThreadMode = (hasThread || rehydrating || AMBIENT_V2_ENABLED) && !hasSimulation;
   // P2 (A2b): <xl thread mode, the room is a 68px HEADER above the thread (variant='header'),
   // not the bottom-dock peek — it survives the keyboard (top-anchored). ≥xl the rail (A2a) owns it,
   // so `!isXl` keeps them exclusive. Empty/permalink keep the dock peek (no thread to head).
@@ -2855,6 +2873,25 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
                 send button, so the grid stays what it should be — a fresh-home affordance. */}
             {rehydrating && !hasConversationContent ? (
               <ThreadLoadingSkeleton variant="chat" caption="Opening thread…" />
+            ) : AMBIENT_V2_ENABLED && !hasConversationContent && !startEngaged ? (
+              // v2 Start (④) rides the SCROLL region — the artifact grid sits where the first
+              // message would, with the composer docked below it. Picking a skill sets
+              // startEngaged, this drops out, and you land on an empty chat.
+              <div className="flex min-h-full flex-col justify-end pt-6">
+                <AmbientStartHome
+                  audience={effectiveAudience}
+                  onSkill={pickStartSkill}
+                  onSubmit={seedAndRun}
+                  activeSkillId={activeTool}
+                  audiences={audiences}
+                  selectedAudienceId={selectedAudienceId}
+                  onSelectAudience={(a) => {
+                    focusByThought(null);
+                    setAudienceAsks([]);
+                    void handleSelectAudience(a);
+                  }}
+                />
+              </div>
             ) : (
               threadContent
             )}
@@ -2869,6 +2906,12 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
             at 760px to align with the thread column above. */}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 pb-4">
           <div className="w-full max-w-[760px] mx-auto px-4">
+            {/* The six quick actions live ABOVE the field, never below it (owner call 2026-07-24):
+                below, they read as results of a chat that hasn't happened. Only on the post-pick
+                empty chat — once real content lands, the thread is the offer. */}
+            {AMBIENT_V2_ENABLED && startEngaged && !hasConversationContent ? (
+              <div className="pointer-events-auto mb-3">{homeStarter}</div>
+            ) : null}
             {composerDock}
           </div>
         </div>
@@ -2887,8 +2930,12 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
           home reads greeting → composer → starter. The cards are suggestions UNDER the
           field, not a wall in front of it. The show-once demo stays a quiet footer below. */}
       {AMBIENT_V2_ENABLED && !hasConversationContent && !startEngaged ? (
-        // Ambient v2 Start (④) as the empty-home hero (parallel-run): the categorized skill grid.
-        // Picking a skill (option B) arms the tool + drops into the normal fresh-chat home below.
+        // Ambient v2 Start (④) as the empty-home hero (parallel-run): the categorized artifact grid
+        // ABOVE the live composer (owner call 2026-07-24). The grid used to REPLACE the field until
+        // you picked something, which read as a menu you had to get past; showing both makes the
+        // empty home read as the start of a chat that happens to offer shortcuts. Picking a skill
+        // still arms the tool and drops into the normal fresh-chat home.
+        <>
         <AmbientStartHome
           audience={effectiveAudience}
           // The Start grid ids are curated SKILL_RUN_META keys (all valid ToolIds).
@@ -2906,6 +2953,8 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
             void handleSelectAudience(a);
           }}
         />
+        {composerDock}
+        </>
       ) : (
         // Post-pick (option B, owner call 2026-07-23): drop straight into the fresh-chat start —
         // the same composer + starter + demo as the legacy home, with the chosen skill armed. No

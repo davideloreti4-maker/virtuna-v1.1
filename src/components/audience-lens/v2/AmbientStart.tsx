@@ -466,12 +466,16 @@ export function AmbientStart({
       {/* the clean AS-style card — self-contained, floats on the darker room field */}
       <div
         data-testid="ambient-start"
-        className="ambient-row-in flex w-full max-w-[860px] flex-col rounded-[20px] px-8 pb-7 pt-8"
+        // 760 — the composer dock's width. Start sits directly ABOVE the field on the empty home,
+        // so the two must share an edge; a wider card would float off the column it introduces.
+        className="ambient-row-in flex w-full max-w-[760px] flex-col rounded-[20px] px-7 pb-6 pt-7"
         style={{
           color: TONE.cream,
           background: "#1f1f1e",
           border: `1px solid ${TONE.border}`,
-          boxShadow: "0 24px 64px rgba(0,0,0,.4)",
+          // matte system: a shadow that SEPARATES, not one that floats. The card now sits directly
+          // above the composer, and a heavy drop read as two unrelated slabs.
+          boxShadow: "0 4px 16px rgba(0,0,0,.16)",
         }}
       >
         {/* quiet time-of-day greeting (serif = the room's voice) */}
@@ -494,14 +498,14 @@ export function AmbientStart({
         {/* The categorized grid IS the default Start (Artificial-Societies concept): choose WHAT to
             make; the pick arms the skill + drops into the thread composer to write the topic. No
             free-text box, no modal — the grid is the surface. */}
-        <div className="mt-6 grid grid-cols-1 items-start gap-x-7 gap-y-6 sm:grid-cols-3">
+        <div className="mt-6 grid grid-cols-1 items-start gap-x-6 gap-y-6 sm:grid-cols-3">
           {skillGroups.map((group) => (
             <div key={group.label} className={group.span === 2 ? "sm:col-span-2" : undefined}>
               <div className="font-mono text-[11px] uppercase tracking-[0.1em]" style={{ color: TONE.faint }}>
                 {group.label}
               </div>
               <div
-                className={`mt-3 grid gap-x-7 gap-y-1 ${group.span === 2 ? "sm:grid-cols-2" : "grid-cols-1"}`}
+                className={`mt-3 grid gap-x-5 gap-y-1 ${group.span === 2 ? "sm:grid-cols-2" : "grid-cols-1"}`}
               >
                 {group.skills.map((sk) => (
                   <SkillTile

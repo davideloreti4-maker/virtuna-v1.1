@@ -21,6 +21,8 @@ import { Composer } from "./composer";
 
 export function HomePageLayout() {
   const [hasThread, setHasThread] = useState(false);
+  // A skill armed from the v2 Start grid. Opens the rail without claiming a thread exists.
+  const [engaged, setEngaged] = useState(false);
   const [hasConversation, setHasConversation] = useState(false);
   // A1: true while the composer rehydrates a switched-to thread. Keeps the thread
   // shell mounted + suppresses the welcome hero across the load gap (so the layout
@@ -36,6 +38,10 @@ export function HomePageLayout() {
     setHasThread(next);
   }, []);
 
+  const handleEngagedChange = useCallback((next: boolean) => {
+    setEngaged(next);
+  }, []);
+
   const handleConversationChange = useCallback((next: boolean) => {
     setHasConversation(next);
   }, []);
@@ -47,7 +53,7 @@ export function HomePageLayout() {
   // Thread mode owns a full-width scroll surface (composer re-centers content at
   // 760px internally) so the conversation scrolls page-wide like a real chat.
   // Empty home stays a centered 760px column (greeting above, composer pinned below).
-  const threadMode = hasThread || rehydrating;
+  const threadMode = hasThread || rehydrating || engaged;
   // True on the fresh empty home (no thread, nothing streamed). Drives the
   // greeting + the vertical-centering of the greeting→actions→composer group.
   const emptyHome = !hasConversation && !rehydrating;
@@ -105,6 +111,7 @@ export function HomePageLayout() {
         <Composer
           className={cn(threadMode && "flex-1 min-h-0")}
           onThreadChange={handleThreadChange}
+          onEngagedChange={handleEngagedChange}
           onConversationChange={handleConversationChange}
           onRehydratingChange={handleRehydratingChange}
           railHost={railHost}
