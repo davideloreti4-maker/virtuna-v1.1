@@ -125,7 +125,8 @@ function codedReasons(agg: PopulationAggregate, personas: PopulationPersona[]): 
         : scrollers;
     const voice = pool.length ? pool[i % pool.length]! : personas[i % Math.max(1, personas.length)];
     return {
-      label: r.reason,
+      // humanize the pStop token ("weak-hook" → "Weak hook"); real sentence reasons pass through
+      label: humanizeReason(r.reason).label,
       count: r.count,
       quote: voice?.quote ?? "",
       who: voice?.archetype ?? "a viewer",

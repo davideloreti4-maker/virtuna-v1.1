@@ -105,6 +105,14 @@ describe("buildPopulationFrameData", () => {
     expect(PERSONAS.map((x) => x.quote)).toContain(p.voices.reasons[0]!.quote); // a REAL voice
   });
 
+  it("voices humanize the pStop reason TOKENS for display (weak-hook → Weak hook)", () => {
+    const p = buildPopulationFrameData({
+      ...base,
+      aggregate: { ...AGG, reasons: [{ reason: "weak-hook", count: 200 }, { reason: "interest", count: 90 }] },
+    });
+    expect(p.voices.reasons.map((r) => r.label)).toEqual(["Weak hook", "On-topic interest"]);
+  });
+
   it("the trust strip is the real sample; confidence is modeled (labeled)", () => {
     const p = buildPopulationFrameData(base);
     expect(p.room!.simulated).toBe(1000);
