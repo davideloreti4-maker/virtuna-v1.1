@@ -39,10 +39,15 @@ delivers an email round-trip and a username field. Time-to-aha is days, or never
 
 - **`/api/whop/checkout` requires an authenticated user** (`route.ts:10` → 401). "Pay first" therefore
   means *1-tap Google OAuth → checkout on the same screen*, never a page nav, never a confirm email.
+- **What the $1 actually buys.** Not a calibration, not a test — **3 days and 50 credits, which
+  auto-convert to the chosen plan's monthly price** (`TRIAL.days = 3`, `TRIAL.credits = 50`,
+  `pricing.ts:101`). The plan is picked at checkout; $49 Creator is the default. This single fact
+  sets the milestone's true north (§4a).
 - **Trial pool = 50 credits** (`pricing.ts:116`). `score` = 10, `simulate` = 2 (`CREDIT_COSTS`).
-  Onboarding spends **~12**, leaving ~38 ≈ 3–4 more real tests inside the 3-day window.
+  The first run spends **~12**, leaving ~38 ≈ 3–4 more real tests across the 72 hours.
 - **Calibration is unbilled** — no credit gate on `/api/audiences/calibrate`. It costs Apify money,
-  not user credits. Safe to put in onboarding; must be refund-protected on failure (§6).
+  not user credits. A failed scrape does **not** invalidate the purchase; it gets recovered, not
+  refunded (§6).
 - **One trial per account**, enforced by `trial_used_at` (`whop/checkout/route.ts:30`).
 
 ---
@@ -59,15 +64,19 @@ Ten states, in order. Each screen below owns exactly one.
 | 4 | Mechanism trust | proof of *how*, not claims of *how good* | S1 fix + receipt |
 | 5 | Transfer of desire | "what would MINE score?" — the open loop that pays | S1 exit |
 | 6 | Micro-commitment | tripwire; browser → buyer is the real state change | S3 $1 |
-| 7 | Consistency pressure | having paid, they act to stay consistent | S4–S5 |
-| 8 | Effort justification | IKEA effect + labor illusion; co-built asset | S6 build-out |
-| 9 | Peak | the gap reveal — proof the room was worth it | S7 |
-| 10 | Open loop for day 2 | Zeigarnik + implementation intention | S8 |
+| 7 | Consistency pressure | having paid, they act to stay consistent | handle + video |
+| 8 | Effort justification | IKEA effect + labor illusion; co-built asset | the room builds |
+| 9 | Peak | the gap reveal — proof the room was worth it | the gap |
+| 10 | Open loop | Zeigarnik + implementation intention | "when are you posting?" |
 
 **The load-bearing insight:** the $1 is not revenue, it is a *self-concept switch*. Everything
-downstream — activation, D2 return, $1→$49 — correlates with that switch far more than with the
+downstream — activation, return visits, $1→$49 — correlates with that switch far more than with the
 dollar. Which means S1's only job is to make the dollar feel like the cheapest way to close an open
 loop, not like a purchase decision.
+
+**The corollary:** because the dollar buys 72 hours rather than an outcome, the funnel does not end
+at checkout. States 7–10 all happen **on the real platform, on the real account, spending real
+credits** — see §4a.
 
 ---
 
@@ -105,61 +114,79 @@ the confirmation wall cannot survive into this funnel.
   ("$1 for 3 days · 50 credits, then the plan price — cancel anytime").
 - Burying either the credit cap or the renewal price is how you earn chargebacks. It stays visible.
 
-### Guided onboarding — replaces `/welcome` entirely, ~2 min, 4 screens
+### Post-payment — **the real platform. No wizard.**
 
-Progress indicator starts at **40% filled** — "account ✓ · payment ✓" (endowed progress; a bar that
-starts empty is a bar that gets abandoned).
+The demo sold the trial. The trial is now running. From here the user is on their real account,
+building their real audience, running real actions that spend real credits. There is **no separate
+onboarding surface** — `/welcome` is deleted outright, and checkout lands them directly in Ambient
+v2 Start.
 
-**S4 · "What's your handle?"**
-One field, no skip. On submit, **`/api/audiences/calibrate` fires immediately in the background.**
-The user is not waiting for it — they move straight to S5. Two waits collapse into one.
+**Guidance is sequencing, not scaffolding.** Three mechanisms, all of them already shipped
+behaviour, none of them an overlay:
 
-**S5 · "Drop the video you're about to post."**
-Co-creation: the user supplies the stake. Underneath, calibration progress is already ticking.
-**No dead end:** *"Nothing ready? We'll test your last post instead"* — the ONE-SCRAPE already
-writes `account_posts` during calibration, so this path always has material. Nobody reaches S7 empty.
+1. **The empty rail is the call to action.** The audience rail is where the room lives. On first
+   run it holds no room, and that absence — plus one lit affordance, *"build your room from your
+   account"* — is the entire instruction. No coach marks, no tour, no modal.
+2. **The Start grid stays fully live.** Nothing is padlocked. A creator who wants to run Hooks
+   before building a room can. But every run without a room returns against the **General
+   population baseline, already labeled as such** — so the product itself says *"this is the general
+   audience, not yours"* on every card. That is honest, it is shipped, and it creates pull instead
+   of a gate. A lock punishes; an honest baseline invites.
+3. **`status` already supports an inert tile** (`AmbientStart.tsx:72`) if a first-run state ever
+   needs to quiet a tile down. Use it sparingly, and never on anything the creator paid for.
 
-**S6 · The build-out (60–90s).** The most under-valued screen in the product.
-A spinner throws away the perceived value of real work. Show the labor, honestly, because it is real:
+**First real action — the room.**
+`@handle` → `/api/audiences/calibrate` → the room builds in the rail, live and watchable:
 
 ```
 reading @handle's last 34 posts        ✓
 finding your pillars                   ✓
 assembling 1,000 viewers who match     ▓▓▓▓▓░░░
-watching your video, second by second
 ```
 
-Labor illusion only works when the labor is real — no padded delays, no fake steps.
+This is the single most under-valued moment in the product. A spinner throws away the perceived
+value of work that is genuinely happening. Show the labor — honestly, no padded delays, no invented
+steps. The room that appears is theirs, it took visible effort, and it does not port to a competitor.
 
-**S7 · The gap. ← the peak**
+**Second real action — the video.**
+Their own video, on their real account, spending real credits. **No dead end:** if they have nothing
+ready, we test their last post — the ONE-SCRAPE already wrote `account_posts` during calibration, so
+this path always has material.
+
+**The peak — the gap.**
 ```
 General audience says 71.
 YOUR audience says 58.
 They leave at 0:04 — the cut lands before the payoff.
 ```
-Then, and only then: *"This is your room. Nobody else has it."*
-This is the single screen that justifies the subscription. It is the only moment where the
-calibrated audience proves it changes the answer.
+The only moment in the product where the calibrated audience *proves* it changes the answer. It is
+also the argument for the $49, so it must land inside the first session, not on day 2.
 
-**S8 · Implementation intention + the open loop.**
-- *"When are you posting this?"* → today / tomorrow / this week.
-  Implementation intentions roughly double follow-through — this converts vague intent into a
-  scheduled return.
-- *"We said 58. Post it, and we'll grade ourselves against your real numbers."*
-  An ungraded prediction is an open loop the user wants closed. No competitor scores itself.
+**The open loop.**
+*"When are you posting this?"* → today / tomorrow / this week. Implementation intentions roughly
+double follow-through, and this one schedules the return visit.
+*"We said 58. Post it, and we'll grade ourselves against your real numbers."* An ungraded prediction
+is a loop the user wants closed — and no competitor scores itself.
 
-**S9 · Land in Ambient v2 Start.**
-Rail live with their room. Thread already holding their first test card.
-**Never a congratulations screen. Never an empty state.** Peak-end rule: the end is the product
-working, not a modal saying it worked.
+**Never a congratulations screen.** Peak-end rule: the session ends with the product working and a
+loop open, not a modal saying "you're all set."
 
-### Days 1–3 — the trial window
+### 4a. True north — the 72 hours, not the first session
 
-| Day | Trigger | Frame |
+The $1 auto-converts. So the milestone is not finished when the user activates; it is finished when
+**cancelling feels like a loss by hour 72.** That reframes days 1–3 as part of onboarding, not
+lifecycle marketing:
+
+| Hour | Trigger | Frame |
 |---|---|---|
-| D1 | they post | the prediction check — we grade ourselves, publicly to them |
-| D2 | mid-trial | "38 credits left, 2 days" — capability remaining, not scarcity pressure |
-| D3 | conversion | "your room stays. Your credits reset." — the asset is the reason to convert |
+| 0 | first session | room built · first test · the gap · loop opened |
+| ~24 | they post | **the prediction check — we grade ourselves.** The one thing no competitor does |
+| ~48 | mid-trial | "38 credits left, 2 days" — capability remaining, never scarcity pressure |
+| ~66 | pre-renewal | **honest heads-up before the charge**: the plan, the price, one-click cancel |
+| 72 | conversion | "your room stays. Your credits reset." — the asset is the reason to stay |
+
+The hour-66 notice is not optional and not a conversion leak. An unannounced $49 is the single
+largest chargeback and refund-request vector in this design (§6).
 
 ---
 
@@ -179,13 +206,23 @@ working, not a modal saying it worked.
 
 1. **`/go` now carries 100% of conversion.** Mitigation: S1 must be genuinely playable. If it ships
    as a recording, the tripwire will not fire and no amount of copy will save it.
-2. **They pay before seeing their own result → chargeback exposure.** Mitigation: honest microcopy
-   (already written), one-click cancel visible in-app, and S4–S7 completing inside ~2 minutes. A user
-   who paid $1 and watched a spinner refunds *and* tells people.
+2. **The surprise $49 is the real chargeback vector** — not the dollar, and not "they paid before
+   seeing value." A trial that silently becomes a subscription is how a $1 buyer becomes a dispute.
+   Mitigations, all mandatory: `TRIAL.microcopy` visible under every CTA (already written, states
+   both the 50-credit cap and the renewal price), one-click cancel reachable from the app at all
+   times, and the **hour-66 pre-renewal notice** (§4a). Burying any of the three is not a growth
+   tactic, it is a refund queue.
 3. **Calibration can fail** (private account, dead handle, Apify hiccup) *after* they paid.
-   Mitigation: **auto-refund the dollar** on calibration failure + "we couldn't read @x — here's your
-   dollar back." Cheap insurance and a story people repeat.
-4. **Trial pool is finite.** Onboarding must never spend more than ~12 of the 50 credits.
+   This does **not** invalidate the purchase — they still hold 3 days and 50 credits. So it is a
+   **recovery ladder, never a refund**:
+   1. auto-retry once, silently;
+   2. "@x looks private — connect the account, or try another handle";
+   3. fall back to a **General-population first run** so the trial still produces a real test today,
+      with the room offered again later. The creator must never be stranded credit-rich and
+      surface-poor.
+   Refund only if they ask. The dollar is not the thing at stake — the 72 hours are.
+4. **Trial pool is finite.** The first session must never spend more than ~12 of the 50 credits, or
+   the trial cannot survive to hour 72 with anything left to run.
 
 ---
 
@@ -195,9 +232,9 @@ working, not a modal saying it worked.
 |---|---|---|
 | **S1** | Playable demo on `/go` — 3 real pre-computed analyses, real v2 components | 3 one-time engine runs frozen as fixtures |
 | **S2** | OAuth → Whop modal inline; kill the confirm-email wall for cold traffic | magic-link replaces password confirm |
-| **S3** | New guided `/welcome`: handle → background calibrate ‖ video test → gap → intention | deletes `connect-step.tsx` + the 2-step `onboarding-store` machine |
-| **S4** | Exit into Ambient v2 Start, rail armed, thread seeded | rides `NEXT_PUBLIC_AMBIENT_V2` |
-| **S5** | Prediction ledger + D1–D3 lifecycle | worthless before S1–S4 convert anyone |
+| **S3** | **Delete `/welcome`.** Checkout lands in Ambient v2 Start; first-run = empty rail + one lit path | deletes `connect-step.tsx`, the 2-step `onboarding-store`, and the middleware `/welcome` bounce (`middleware.ts:167`) |
+| **S4** | First real actions on the real account: room calibrates in the rail (visible labor) → their video → the gap → the intention prompt | rides `NEXT_PUBLIC_AMBIENT_V2`; ≤12 credits |
+| **S5** | The 72-hour arc: prediction check, hour-48 balance, **hour-66 pre-renewal notice**, conversion | S5's hour-66 notice ships WITH S3 — it is not a later phase |
 
 **Deletions this implies:** `onboarding-store.ts` two-step machine · `connect-step.tsx` ·
 the orphaned `ProfileInterviewModal` on `content-form.tsx` (fold goal · stage · pain into S6's wait,
@@ -206,13 +243,19 @@ infer everything else from the scrape).
 ## 8. Activation + instrumentation
 
 **Activation = a sealed test against a calibrated audience, in the first session.**
+**Success = that user still subscribed at hour 73.** Activation is the leading indicator; the trial
+conversion is the milestone's actual scoreboard.
 
 Events, in funnel order — none of these exist today, which is why the funnel cannot currently be
 debugged:
 
 `demo_view → demo_pick → demo_scrub → demo_fix_open → oauth_start → oauth_done →
-checkout_open → checkout_paid → handle_submit → calibrate_done → video_submit →
-gap_shown → intention_set → start_landed → d1_post → d2_return → trial_converted`
+checkout_open → checkout_paid → start_landed → handle_submit → calibrate_done →
+video_submit → gap_shown → intention_set → prediction_checked → renewal_notice_seen →
+trial_converted`
 
-Two derived numbers to watch above all: **demo_fix_open → checkout_paid** (does the demo sell?)
-and **checkout_paid → gap_shown** (does the product deliver before the regret window?).
+Three derived numbers, in priority order:
+1. **checkout_paid → trial_converted** — the only one that pays for the milestone.
+2. **demo_fix_open → checkout_paid** — does the canned demo actually sell the trial?
+3. **checkout_paid → gap_shown (same session)** — did they reach the peak before the trial clock
+   started eating itself? Every hour of delay here shows up as a cancellation at 72.
