@@ -133,20 +133,44 @@ button — see §4a.
 **S0 · Hero.** Already shipped: the real `video-test-card` beside the room.
 Job: recognition. Unchanged.
 
-**S1 · The playable demo.** ← *the highest-leverage build item in this milestone*
+**S1 · The interactive demo.** ← *the highest-leverage build item in this milestone*
 
-Not a video. Not a GIF. The **real v2 components on pre-computed real analyses.**
+**Owner call 2026-07-24: no live video, no engine run. An INTERACTIVE demo, preloaded with
+examples.** The real product components, hydrated entirely from bundled example data, driven by taps.
 
-- Opens with a choice: *"Which is closest to what you make?"* → 3 pre-analyzed real videos
-  (e.g. talking-head / b-roll edit / product demo). The choice is the first foot-in-the-door and
-  does the self-identification work no headline can.
-- They scrub the filmstrip. The retention dip is annotated where the audience actually left.
-- One director's fix opens, with its `ProofReceipt`.
-- **Exit line is an open loop, not a CTA:** *"That's Jake's video. What does yours do?"*
+**Zero network calls after page load.** No engine spend, no rate limiting, no abuse surface, nothing
+to fail on a slow mobile connection — and, critically for §2a traffic, **no video element**, so there
+is no autoplay policy to lose in a TikTok/IG webview.
 
-**Honesty floor:** these must be real analyses of real videos, run once and frozen as fixtures.
-Invented numbers here are fabricated proof and must not ship — same rule as the offer page's
-testimonials.
+The pattern is already proven in this repo:
+
+| Piece | Already exists |
+|---|---|
+| Real v2 components rendering from fixture modules | `/ambient-v2` dev page + `detail-live-fixture.ts`, `overview-fixture.ts`, `start-fixture.ts` |
+| Segment/keyframe structure with an image field | `detail-live-fixture.ts:31` (`keyframe_uri`, currently `null`) |
+| Keyframes consumed as stills, not video | `retention-scrubber.tsx`, `thumbnail-strip.tsx` |
+
+So S1 productizes an existing dev surface: curated fixtures + static keyframe stills in `/public` +
+a mobile-first shell. Not new rendering work.
+
+**Guided rails, not free roam.** A tap-anything demo lets people reach a state that means nothing to
+them, which on mobile reads as broken. Each beat lights only the affordance that advances it — but
+it is the **real control**, not a glowing overlay on a screenshot. The visitor drives; they just
+cannot drive off the road.
+
+```
+pick an example            → the card lands, score visible
+tap the dip on the curve   → "0:04 — they leave here"
+tap the fix                → the director's fix opens, with its ProofReceipt
+                           → "That's Jake's video. What does yours do?"  → S2
+```
+
+Four taps, each returning something true, no dead ends. The opening pick (3 structurally different
+failure modes — hook loses them / mid-payoff drop / weak ending) does the self-identification work
+no headline can, and stays cheap on mobile: three thumbnails, one tap.
+
+**Honesty floor:** these must be **real analyses of real videos**, run once and frozen. Invented
+numbers here are fabricated proof and must not ship — same rule as the offer page's testimonials.
 
 ### The commitment — still on `/go`, zero navigation
 
@@ -293,7 +317,7 @@ flowing through checkout.
 | Slice | Deliverable | Gate |
 |---|---|---|
 | **S0** | 🔴 **Email OTP auth + webview detection.** Unblocks everything downstream | `signInWithOtp`; verified in a real TikTok/IG in-app browser |
-| **S1** | Playable demo on `/go` — 3 real pre-computed analyses, real v2 components, **designed at 390px** | 3 one-time engine runs frozen as fixtures |
+| **S1** | Interactive demo on `/go` — real v2 components + preloaded example data + static keyframe stills, **designed at 390px**, guided rails, zero network | 3 one-time engine runs frozen as fixtures |
 | **S2** | OTP-first identity → Whop modal inline; password+confirm removed from this funnel | Whop embed verified on a real device inside a webview |
 | **S3** | **Delete `/welcome`.** Checkout lands in Ambient v2 Start; first-run = empty rail + one lit path | deletes `connect-step.tsx`, the 2-step `onboarding-store`, and the middleware `/welcome` bounce (`middleware.ts:167`) |
 | **S4** | First real actions on the real account: room calibrates in the rail (visible labor) → their video → the gap → the intention prompt | rides `NEXT_PUBLIC_AMBIENT_V2`; ≤12 credits |
