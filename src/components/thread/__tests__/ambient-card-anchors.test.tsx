@@ -28,6 +28,7 @@ import { render, cleanup } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ChatThreadView } from '../chat-thread-view';
 import { HooksThreadView } from '../hooks-thread-view';
+import { PersistedThreadStream } from '../persisted-thread-stream';
 import { buildAmbientDescriptors } from '@/components/app/home/ambient-descriptors';
 import type { HookCardBlock } from '@/lib/tools/blocks';
 
@@ -128,14 +129,7 @@ describe('ambient scroll-spy anchors — the observer watches the real cards', (
 
   it('tags each rendered chat card with the ledger id for that card', () => {
     const cards = [hookCard('Stop posting at 9am', 1), hookCard('Your hook is the whole video', 2)];
-    const { descriptors } = buildAmbientDescriptors({
-      activeTool: 'chat',
-      hook: [],
-      idea: [],
-      script: [],
-      remix: [],
-      chat: cards,
-    });
+    const { descriptors } = buildAmbientDescriptors(cards);
 
     const { container } = renderWithClient(
       <ChatThreadView {...chatBase} streamingCardBlocks={cards} />,
@@ -173,36 +167,39 @@ describe('ambient scroll-spy anchors — the observer watches the real cards', (
     expect(found[0]!.dataset.cardId).toBe('idea-1');
   });
 
-  it("THE OFF-BY-OFFSET LOCK: every anchor's id resolves to the descriptor whose concept is that anchor's own text — even though this run's cards render ABOVE the earlier ones", () => {
-    // The reversal that makes local indices wrong: the ledger is [...persisted, ...streaming],
-    // the DOM is [streaming..., "Earlier", ...persisted].
+  it("THE OFF-BY-OFFSET LOCK (unified stream): every anchor's id resolves to the descriptor whose concept is that anchor's own text, across the persisted stream + the live view", () => {
+    // Thread-unification Phase 4: history renders in PersistedThreadStream (base 0), the live view
+    // renders the streaming tail based at the persisted block count. The ledger is the SAME flat array
+    // `[...persistedFlat, ...streaming]`, so a card's id must match its `data-card-id` anchor no matter
+    // which component drew it. A view that anchored its streaming cards at 0 (its own local index)
+    // instead of the persisted count would collide two cards onto one id — this catches exactly that.
     const persisted = [hookCard('An earlier hook', 1), hookCard('Another earlier hook', 2)];
     const streaming = [hookCard('A fresh hook', 1), hookCard('A second fresh hook', 2)];
+    const persistedFlat = [...persisted];
 
-    const { descriptors } = buildAmbientDescriptors({
-      activeTool: 'hooks',
-      hook: [...persisted, ...streaming],
-      idea: [],
-      script: [],
-      remix: [],
-      chat: [],
-    });
+    const { descriptors } = buildAmbientDescriptors([...persistedFlat, ...streaming]);
     const conceptById = new Map(descriptors.map((d) => [d.id, d.conceptText]));
 
     const { container } = renderWithClient(
-      <HooksThreadView
-        {...hooksBase}
-        persistedBlocks={persisted as unknown as HookCardBlock[]}
-        streamingBlocks={streaming as unknown as HookCardBlock[]}
-      />,
+      <>
+        <PersistedThreadStream
+          persistedTurns={[{ userTurn: 'give me hooks', blocks: persisted }]}
+          ambientBaseIndex={0}
+        />
+        <HooksThreadView
+          {...hooksBase}
+          persistedBlocks={[]}
+          ambientBaseIndex={persistedFlat.length}
+          streamingBlocks={streaming as unknown as HookCardBlock[]}
+        />
+      </>,
     );
 
     const found = anchors(container);
     expect(found).toHaveLength(4);
 
     // The room must read THIS card's reaction — so the id on a card has to point at the descriptor
-    // built from that same card. A renderer using its own local index passes the count check above
-    // and fails right here.
+    // built from that same card. A renderer using its own local index fails right here.
     for (const node of found) {
       const id = node.dataset.cardId!;
       const concept = conceptById.get(id);
@@ -210,7 +207,7 @@ describe('ambient scroll-spy anchors — the observer watches the real cards', (
       expect(node.textContent, `anchor "${id}" carries another card's reaction`).toContain(concept!);
     }
 
-    // And the ids are the real ledger ids, in DOM order: fresh cards (ledger 2,3) render first.
-    expect(found.map((n) => n.dataset.cardId)).toEqual(['hook-2', 'hook-3', 'hook-0', 'hook-1']);
+    // DOM order under the unified stream: persisted first (ledger 0,1), then the live tail (ledger 2,3).
+    expect(found.map((n) => n.dataset.cardId)).toEqual(['hook-0', 'hook-1', 'hook-2', 'hook-3']);
   });
 });

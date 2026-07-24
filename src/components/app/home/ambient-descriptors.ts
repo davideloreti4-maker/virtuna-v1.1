@@ -30,25 +30,6 @@ const KIND_BY_BLOCK_TYPE: Record<string, { id: string; label: string }> = {
 const FALLBACK_LABEL = 'Concept';
 const MIXED_LABEL = 'Card';
 
-/** The block arrays each thread view renders, in DOM order. */
-export interface AmbientLedgerSource {
-  activeTool: string;
-  /** [...persistedHookBlocks, ...hooksBlocks] — the hooks view's rendered cards. */
-  hook: unknown[];
-  /** [...persistedIdeaBlocks, ...ideasBlocks] — the ideas view's rendered cards. */
-  idea: unknown[];
-  /** [...persistedScriptBlocks, ...scriptBlocks] — the script view's rendered cards. */
-  script: unknown[];
-  /** [...persistedRemixBlocks, ...remixBlocks] — the remix view's rendered cards. */
-  remix: unknown[];
-  /**
-   * The chat view's rendered cards, in DOM order: every persisted turn's blocks followed by this
-   * turn's streamed blocks. Non-empty only for a chat-as-agent dispatch (CHAT_AGENT_DISPATCH) —
-   * a plain chat turn streams prose and contributes nothing.
-   */
-  chat: unknown[];
-}
-
 export interface AmbientLedger {
   descriptors: AmbientCardDescriptor[];
   /** The singular kind label for the batch — 'Hook', 'Idea', … or 'Card' when kinds are mixed. */
@@ -130,28 +111,25 @@ function labelFor(blocks: unknown[]): string {
 }
 
 /**
- * The ledger: the mounted view's rendered cards → descriptors + the batch's kind label.
+ * The ledger: the thread's on-screen blocks, IN DOM ORDER → reaction descriptors + the batch's
+ * kind label. What each card IS comes from the block's own type, never from the chip (a chat-
+ * dispatched idea card is correctly named an Idea while the chip reads "chat").
  *
- * Which SET is on screen is keyed by the active tool (only one view mounts at a time). What each
- * card IS comes from the block's own type — never from the chip, which is why a chat-dispatched
- * idea card is correctly named an Idea while the chip reads "chat".
+ * `ledger` is the ONE flat array the thread renders, in DOM order:
+ *   [...persistedChatTurns.flatMap(t => t.blocks), ...activeStreamCards]
+ * — the SAME array `PersistedThreadStream` (persisted turns) + the active live view (streaming
+ * cards) render into, so a descriptor's positional id `${kind}-${idx}` matches the `data-card-id`
+ * scroll-spy anchor `MessageBlocks` stamps at that same index (thread-unification Phase 4). It
+ * includes non-card blocks (markdown, …) so the index stays aligned with the rendered body; they
+ * contribute no descriptor (toAmbientDescriptor returns null) but DO consume an index.
+ *
+ * The honesty spine is upheld by the CALLER's construction of this array: only the persisted
+ * history that is actually rendered plus the mounted view's live cards go in — a card the creator
+ * cannot see is never in the ledger, and every card they can see is.
  */
-export function buildAmbientDescriptors(source: AmbientLedgerSource): AmbientLedger {
-  const { activeTool } = source;
-  const blocks =
-    activeTool === 'hooks'
-      ? source.hook
-      : activeTool === 'idea'
-        ? source.idea
-        : activeTool === 'script'
-          ? source.script
-          : activeTool === 'remix'
-            ? source.remix
-            : activeTool === 'chat'
-              ? source.chat
-              : [];
-  const descriptors = blocks
+export function buildAmbientDescriptors(ledger: unknown[]): AmbientLedger {
+  const descriptors = ledger
     .map((b, i) => toAmbientDescriptor(b, i))
     .filter((d): d is AmbientCardDescriptor => d !== null);
-  return { descriptors, kindLabel: labelFor(blocks) };
+  return { descriptors, kindLabel: labelFor(ledger) };
 }

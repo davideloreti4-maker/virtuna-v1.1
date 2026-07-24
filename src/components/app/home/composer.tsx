@@ -1991,18 +1991,32 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // { fraction, scrollQuote } + a concept line — the spotlight READS that data, never re-runs
   // a model (D-03 determinism-gate-safe; zero new model calls).
   //
-  // The ledger is keyed on the BLOCKS, never on the composer chip: chat-as-agent
-  // (CHAT_AGENT_DISPATCH) dispatches real idea/hook/script cards inline while the chip stays
-  // "chat", so the chat view's cards are its own dispatched blocks — every persisted turn's,
-  // then this turn's stream. See ambient-descriptors.ts for the decision + its guard.
-  const { descriptors: ambientDescriptors, kindLabel: ambientKindLabel } = buildAmbientDescriptors({
-    activeTool,
-    hook: [...persistedHookBlocks, ...hooksBlocks],
-    idea: [...persistedIdeaBlocks, ...ideasBlocks],
-    script: [...persistedScriptBlocks, ...scriptBlocks],
-    remix: [...persistedRemixBlocks, ...remixBlocks],
-    chat: [...persistedChatTurns.flatMap((t) => t.blocks), ...chat.streamingBlocks],
-  });
+  // THE UNIFIED AMBIENT LEDGER (thread-unification Phase 4). The room reacts to what is ON SCREEN,
+  // and the whole thread now renders as ONE flat stream — the persisted history (PersistedThreadStream)
+  // then the active skill's live cards — so the ledger is that same flat array, in DOM order. This
+  // replaces the per-tool pick, which undercounted a mixed thread (a hooks + ideas thread showed both
+  // sets of cards but the rail only knew one tool's). The ledger is keyed on the BLOCKS, never the chip.
+  const persistedFlatBlocks = persistedChatTurns.flatMap((t) => t.blocks);
+  // The active skill's live cards (the streaming tail rendered after the persisted stream). Only the
+  // mounted view's cards — a card from an unmounted tool is not on screen and must not move the room.
+  const activeStreamCards: unknown[] =
+    activeTool === "hooks"
+      ? hooksBlocks
+      : activeTool === "idea"
+        ? ideasBlocks
+        : activeTool === "script"
+          ? scriptBlocks
+          : activeTool === "remix"
+            ? remixBlocks
+            : activeTool === "chat"
+              ? chat.streamingBlocks
+              : [];
+  const ambientLedgerBlocks = [...persistedFlatBlocks, ...activeStreamCards];
+  // The live view's streaming cards render AFTER every persisted block, so their scroll-spy anchors
+  // must be based at the persisted block count to line up with their ledger ids.
+  const ambientLiveBaseIndex = persistedFlatBlocks.length;
+  const { descriptors: ambientDescriptors, kindLabel: ambientKindLabel } =
+    buildAmbientDescriptors(ambientLedgerBlocks);
 
   const {
     focus: ambientFocus,
@@ -2347,7 +2361,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           The per-skill views below now render ONLY their live/in-flight run (streaming tail). This replaces
           the old per-tool bucket partition (persistedIdeaBlocks/…/persistedProfileBlocks) + the profile
           bucket render that used to live here. */}
-      <PersistedThreadStream persistedTurns={persistedChatTurns} />
+      <PersistedThreadStream persistedTurns={persistedChatTurns} ambientBaseIndex={0} />
 
       {/* Ideas thread view — renders above the composer when the Idea tool is active.
           Consumes useIdeasStream state; provides PlatformContext to IdeaCardRenderer
@@ -2356,6 +2370,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       {showIdeasView && (
         <IdeasThreadView
           persistedBlocks={[]}
+          ambientBaseIndex={ambientLiveBaseIndex}
           streamingBlocks={ideasBlocks}
           statusMessage={ideas.statusMessage}
           stages={ideas.stages}
@@ -2378,6 +2393,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       {showHooksView && (
         <HooksThreadView
           persistedBlocks={[]}
+          ambientBaseIndex={ambientLiveBaseIndex}
           streamingBlocks={hooksBlocks}
           statusMessage={hooks.statusMessage}
           stages={hooks.stages}
@@ -2401,6 +2417,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       {showScriptView && (
         <ScriptThreadView
           persistedBlocks={[]}
+          ambientBaseIndex={ambientLiveBaseIndex}
           streamingBlocks={scriptBlocks}
           stages={script.stages}
           warnings={script.warnings}
@@ -2423,6 +2440,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       {showRemixView && (
         <RemixThreadView
           persistedBlocks={[]}
+          ambientBaseIndex={ambientLiveBaseIndex}
           streamingBlocks={remixBlocks}
           stages={remix.stages}
           followupText={remix.followupText}
