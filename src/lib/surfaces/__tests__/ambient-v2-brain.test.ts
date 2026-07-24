@@ -130,7 +130,7 @@ describe("buildBrainFrameData — modeled-depth parity (full render)", () => {
     expect(brain.networkBars).toHaveLength(7);
     expect(brain.networks).toHaveLength(4);
     expect(brain.kpiHeatmap!.rows).toHaveLength(10);
-    expect(brain.buyIntent!.points.length).toBeGreaterThan(0);
+    expect(brain.buyIntent).toBeUndefined(); // commerce-only figure — omitted for creator (matches authored)
   });
   it("the signalGrid Visual Pull anchors on the REAL craft dim (hook_visual_impact 8.5 → ~85)", () => {
     const visual = brain.signalGrid!.find((c) => c.key === "visual")!;
@@ -142,6 +142,10 @@ describe("buildBrainFrameData — modeled-depth parity (full render)", () => {
     const { seconds, rows } = brain.kpiHeatmap!;
     expect(rows.every((r) => r.values.length === seconds)).toBe(true);
     expect(rows.every((r) => r.values.every((v) => v >= 6 && v <= 100))).toBe(true);
+  });
+  it("the signalGrid SPREADS into a real story (not all one flat band)", () => {
+    const tones = new Set(brain.signalGrid!.map((c) => c.tone));
+    expect(tones.size).toBeGreaterThanOrEqual(2); // weak/okay/strong mix, not a flat wall of OKAY
   });
   it("is DETERMINISTIC — same stimulus, byte-identical proxies", () => {
     expect(buildBrainFrameData(base).signalGrid).toEqual(brain.signalGrid);

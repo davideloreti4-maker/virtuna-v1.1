@@ -77,6 +77,14 @@ describe("buildPopulationFrameData", () => {
     expect(a.swing).toEqual(b.swing);
   });
 
+  it("counts are en-US grouped regardless of machine locale (1,000 — never European 1.000)", () => {
+    const p = buildPopulationFrameData(base);
+    if (p.main.kind !== "tri-state") throw new Error("expected tri-state");
+    expect(p.main.percentileLine).toContain("1,000");
+    expect(p.voices.kicker).toContain("1,000");
+    expect(p.main.percentileLine).not.toContain("1.000");
+  });
+
   it("terrain districts are the real segments; loss index = lowest stop rate", () => {
     const p = buildPopulationFrameData(base);
     expect(p.terrain.clusters.map((c) => c.name)).toEqual(["builders", "scrollers", "skeptics"]);
@@ -175,9 +183,10 @@ describe("buildReasonBrainFrameData (the text brain — owner call 2026-07-24)",
     expect(b.networkBars).toHaveLength(7);
     expect(b.networks).toHaveLength(4);
     expect(b.kpiHeatmap!.rows).toHaveLength(10);
-    expect(b.buyIntent!.points.length).toBeGreaterThan(0);
-    // a text sim has no clip → the "why" reads the leading friction reason, not a fabricated second
-    expect(b.whyThisSecond!.segments.some((s) => s.loss)).toBe(true);
+    expect(b.buyIntent).toBeUndefined(); // commerce-only figure — omitted (matches authored)
+    // no whyThisSecond on text — it renders only on the attention-scrubber path; the reason-breakdown
+    // driver's own `read` IS the text "why" (a second synthesis would duplicate it)
+    expect(b.whyThisSecond).toBeUndefined();
   });
 
   it("the unlock is built from REAL reason labels (top pull works · top friction leaks)", () => {

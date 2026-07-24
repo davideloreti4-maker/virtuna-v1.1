@@ -35,7 +35,6 @@ import type {
 } from "@/components/audience-lens/v2/domain-template";
 import {
   classifyReasons,
-  modeledBuyIntent,
   modeledKpiHeatmap,
   modeledNetworkBars,
   modeledNetworks,
@@ -226,7 +225,8 @@ export function buildBrainFrameData(input: BrainSnapshotInput): BrainFrameData {
     networkBars,
     networks: modeledNetworks(networkBars),
     kpiHeatmap: modeledKpiHeatmap(modeledInput),
-    buyIntent: modeledBuyIntent(modeledInput),
+    // buyIntent is a COMMERCE figure — the authored creator template omits it (a regular hook has no
+    // "purchase-intent" axis); we match that. `modeledBuyIntent` stays for a future commerce domain.
     calibrationNote: "Modeled from a cortical proxy · not measured attention",
   };
 }
