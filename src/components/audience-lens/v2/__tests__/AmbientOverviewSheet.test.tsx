@@ -62,7 +62,7 @@ describe("AmbientOverviewSheet", () => {
     expect(screen.queryByTestId("audience-presence")).toBeNull();
   });
 
-  it("names the audience ONCE — the bar carries the identity, so the board drops its room header", () => {
+  it("opens FULL SCREEN — fixed to the viewport, not a capped dropdown off the bar", () => {
     render(
       <AmbientOverviewSheet
         audience={audience}
@@ -72,9 +72,53 @@ describe("AmbientOverviewSheet", () => {
         onOpenChange={noop}
       />,
     );
-    // exactly one "Your audience" on the whole surface (the legacy header said it twice in 60px)
-    expect(screen.getAllByText("Your audience")).toHaveLength(1);
-    expect(screen.getByTestId("ambient-overview").textContent).not.toMatch(/Your audience/);
+    const panel = screen.getByTestId("ambient-sheet-panel");
+    expect(panel.className).toMatch(/fixed/);
+    expect(panel.className).toMatch(/inset-0/);
+    // the tall v2 surfaces get the whole column — no height cap, no anchor to the bar
+    expect(panel.className).not.toMatch(/max-h-/);
+    expect(panel.className).not.toMatch(/top-full/);
+    expect(panel.getAttribute("aria-modal")).toBe("true");
+    // portalled to <body>, because a fixed overlay inside the transformed thread would be trapped
+    expect(panel.closest("[data-testid=ambient-overview-sheet]")).toBeNull();
+    expect(panel.parentElement).toBe(document.body);
+  });
+
+  it("full screen, the board carries its OWN header — the bar that opened it is covered", () => {
+    const onOpenChange = vi.fn();
+    render(
+      <AmbientOverviewSheet
+        audience={audience}
+        descriptors={descriptors}
+        reducedMotion
+        open
+        onOpenChange={onOpenChange}
+      />,
+    );
+    // the identity is inside the board itself now (the bar underneath is off-screen)
+    expect(screen.getByTestId("ambient-overview").textContent).toMatch(/Your audience/);
+    // and its caret is the way OUT — the only exit from a full-screen room
+    const close = screen.getByRole("button", { name: /close your audience/i });
+    fireEvent.click(close);
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("Escape closes the full-screen room and the page behind it cannot scroll", () => {
+    const onOpenChange = vi.fn();
+    const { unmount } = render(
+      <AmbientOverviewSheet
+        audience={audience}
+        descriptors={descriptors}
+        reducedMotion
+        open
+        onOpenChange={onOpenChange}
+      />,
+    );
+    expect(document.body.style.overflow).toBe("hidden");
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    unmount();
+    expect(document.body.style.overflow).toBe(""); // restored, never left locked
   });
 
   it("renders the board in `sheet` presentation — the host owns the ground, cap and rounding", () => {
@@ -103,8 +147,9 @@ describe("AmbientOverviewSheet", () => {
     expect(board.dataset.presentation).toBe("rail");
     expect(board.className).toMatch(/max-w-\[440px\]/);
     expect(board.getAttribute("style") ?? "").toMatch(/border-left/i);
-    // and the room header the sheet omits IS present here (the ≥xl rail has no bar above it)
-    expect(board.textContent).toMatch(/Your audience/);
+    // the rail's header caret is the inert SWITCH, never a dismiss (there is nothing to dismiss)
+    expect(screen.getByRole("button", { name: /switch audience/i })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /close your audience/i })).toBeNull();
   });
 
   it("the collapsed bar states the room: name · calibration · how many are ranked", () => {

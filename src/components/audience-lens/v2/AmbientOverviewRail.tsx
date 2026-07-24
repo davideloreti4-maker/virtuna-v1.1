@@ -112,10 +112,14 @@ export function AmbientOverviewRail({
   reducedMotion = false,
   persistedSeals,
   presentation = "rail",
+  onDismiss,
 }: {
   audience: Audience;
   descriptors: AmbientCardDescriptor[];
   reducedMotion?: boolean;
+  /** Full-screen (mobile) only — the Overview header's caret closes the room. The drilled surfaces
+   *  keep their own back/close, which return HERE; only the Overview is the exit. */
+  onDismiss?: () => void;
   /** Where this rail is mounted. `rail` = the ≥xl right column (default). `sheet` = the <xl mobile
    *  header sheet, whose host bar already owns the identity, the ground and the height cap — the
    *  SAME surfaces and the SAME live data either way, only the chrome differs. */
@@ -394,6 +398,7 @@ export function AmbientOverviewRail({
         data={overview}
         reducedMotion={reducedMotion}
         presentation={presentation}
+        onDismiss={onDismiss}
         // A rank tap opens the real Population depth for a SEALED calibrated row (or the Brain depth for
         // a revealed video); an unsealed row routes to Simulate (develop) / reveals a video's %.
         onOpenStimulus={handleOpenStimulus}

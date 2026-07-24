@@ -514,6 +514,7 @@ export function AmbientOverview({
   onOpenStimulus,
   onQuickSimulate,
   onTestVariant,
+  onDismiss,
   presentation = "rail",
   className,
 }: {
@@ -522,6 +523,9 @@ export function AmbientOverview({
   onOpenStimulus?: (id: string) => void;
   onQuickSimulate?: (id: string) => void;
   onTestVariant?: () => void;
+  /** When the board IS the whole screen (the mobile full-screen room), the header caret is the way
+   *  OUT. Given ⇒ it closes; absent ⇒ the rail's inert switch caret, unchanged. */
+  onDismiss?: () => void;
   presentation?: AmbientPresentation;
   className?: string;
 }) {
@@ -559,15 +563,15 @@ export function AmbientOverview({
         fontFamily: "var(--font-sans, Inter, system-ui, sans-serif)",
       }}
     >
-      {/* room header — audience mark · name · calibration chip · switch caret. Omitted in sheet
-          mode: the mobile bar the sheet hangs from ALREADY carries this exact identity, and the
-          legacy header's sin was saying the audience's name twice in 60 vertical pixels. */}
-      {sheet ? null : (
-      <div className="flex items-center gap-2.5 px-[26px] pt-[26px]">
+      {/* room header — audience mark · name · calibration chip · caret. The board carries its own
+          identity in BOTH presentations: in the rail because there is no bar above it, and full
+          screen because the bar it was launched from is no longer on screen. `onDismiss` (mobile)
+          turns the caret into the way out; without it the caret is the rail's inert switch. */}
+      <div className={`flex items-center gap-2.5 ${gutter} ${sheet ? "pt-[18px]" : "pt-[26px]"}`}>
         <RoomGlyph />
-        <span className="text-[16px] font-semibold tracking-[-0.015em]">{audienceName}</span>
+        <span className="min-w-0 truncate text-[16px] font-semibold tracking-[-0.015em]">{audienceName}</span>
         <span
-          className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-[3px] font-mono text-[10px] uppercase tracking-[0.1em]"
+          className="inline-flex flex-none items-center gap-1.5 rounded-full px-2.5 py-[3px] font-mono text-[10px] uppercase tracking-[0.1em]"
           style={{ color: TONE.faint, border: `1px solid ${TONE.hair}` }}
         >
           <span className="inline-block h-[5px] w-[5px] rounded-full" style={{ background: TONE.dim }} />
@@ -575,8 +579,13 @@ export function AmbientOverview({
         </span>
         <button
           type="button"
-          aria-label="Switch audience"
-          className="ml-auto flex h-6 w-6 flex-none items-center justify-center rounded-full transition-colors"
+          onClick={onDismiss}
+          aria-label={onDismiss ? "Close your audience" : "Switch audience"}
+          // 24px is fine for a pointer; a touch target that closes the whole screen is not allowed
+          // to be under 44px (the caret is the ONLY way out of the full-screen room).
+          className={`ml-auto flex flex-none items-center justify-center rounded-full transition-colors ${
+            sheet ? "-mr-2 h-11 w-11" : "h-6 w-6"
+          }`}
           style={{ color: TONE.faint }}
           onMouseEnter={(e) => {
             e.currentTarget.style.color = TONE.cream;
@@ -587,12 +596,18 @@ export function AmbientOverview({
             e.currentTarget.style.background = "transparent";
           }}
         >
-          <svg width="11" height="11" viewBox="0 0 12 12" aria-hidden>
+          <svg
+            width={sheet ? "14" : "11"}
+            height={sheet ? "14" : "11"}
+            viewBox="0 0 12 12"
+            aria-hidden
+            // Dismiss points UP — the room came down over the thread, the caret sends it back.
+            className={onDismiss ? "rotate-180" : ""}
+          >
             <path d="M2.5 4.5L6 8l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
       </div>
-      )}
 
       {/* scroll region — watching + ranked */}
       <div className={`min-h-0 flex-1 overflow-y-auto ${gutter}`}>
