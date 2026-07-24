@@ -7,6 +7,85 @@
 
 ---
 
+## 0a. Owner calls — funnel review, 2026-07-24 (session 2)
+
+Three decisions taken after a conversion review of the flow above. **They supersede the ordering in
+§4 and §7 where they conflict.**
+
+### ① Payment first, account after — identity moves BEHIND the money
+
+The old order (aha → OTP → checkout) put a full step between peak intent and the money, and the
+worst possible step for this traffic: reading a 6-digit code means switching to a mail app, and some
+in-app webviews are killed when backgrounded. Whop collects an email as part of the purchase anyway,
+so the identity step is redundant *before* the charge.
+
+```
+aha → LOCKED beat → $1 (Whop captures the email) → the withheld fix, revealed → "claim your account" (OTP)
+```
+
+OTP now runs when motivation is at its peak and abandonment costs them something they have paid for.
+
+**What this changes in the code** (none of it is a Whop constraint — it is all ours):
+- `api/whop/checkout/route.ts:10` — the 401-if-no-user guard must lift for the funnel path.
+- `metadata.supabase_user_id` does not exist yet at checkout. Send an anonymous correlation id
+  instead, and reconcile on the webhook.
+- The webhook must **provision** the Supabase user from the payment email (admin API), not merely
+  look one up. This turns the known "paid, no access" hazard (§7 of the handoff) from a warning into
+  a code path that must be correct — it is now the *primary* path, not an edge case.
+- S0's OTP form survives unchanged; it just fires later in the sequence.
+
+### ② The wall: reveal beat 1 in full, lock beat 2
+
+The old wall withheld the diagnosis of the *example* video, which asked the visitor to pay to satisfy
+curiosity about a stranger, with no evidence our answers are any good. Two objections fired at the
+worst moment: *"I don't care about his video"* and *"is this analysis even worth a dollar?"*
+
+| Beat | Drop | Treatment |
+|---|---|---|
+| **1** | the smaller, earlier drop | **fully revealed** — where, why, and the director's fix |
+| **2** | the big drop (0:04) | **locked** — this is the wall |
+
+Beat 1 is the mechanism proof and a genuine aha; it costs nothing because the fixture is free.
+Beat 2 is then withholding something whose value has just been *demonstrated* rather than asserted.
+
+The lock leads with **"what would YOURS score"**, not with the example's diagnosis — the motivating
+state is transfer of desire (§3 state 5), not curiosity about a stranger.
+
+**The honesty floor from §4 is unchanged and still absolute:** beat 2's panel holds the real,
+genuinely withheld output. Never a blur over placeholder text.
+
+### ③ Trial stays at 3 days — and that raises the stakes elsewhere
+
+Considered and **rejected**: extending to 7 days. Recorded so it is not re-argued — but the
+consequence has to be designed around, because it is real:
+
+> The strongest retention mechanic in this design — *"we said 58. Post it, and we'll grade ourselves
+> against your real numbers"* — needs the creator to post, accumulate views, and return. Creators post
+> 2–5×/week. **In 72 hours that loop frequently cannot close at all.**
+
+So, with 3 days locked:
+1. **The first session carries all of the retention weight.** It is not "the floor" (§4a) — it is the
+   whole thing. If the room is not built and a real test is not run in session one, the trial ends
+   having proven nothing and renews at $49 against a user with no evidence. That is the dispute.
+2. **The pre-charge reminder becomes more important, not less** — 72 hours is short enough that the
+   renewal genuinely surprises people. See §6.2; confirm what Whop sends, and fill the gap ourselves.
+3. Day-2/day-3 nudges (§4a, "upside only") move up in priority, because there is no day 5 to recover
+   in.
+
+### Also adopted, no decision needed
+
+- **Ship the analytics spine WITH S1** (§8), not after. None of the above is arguable without
+  `demo_view → checkout_paid`, and it retrofits badly.
+- **Time-to-aha budget:** first "oh shit" within ~10s of load, wall by ~45s.
+- **CTA leads with the outcome, not the jargon.** "50 credits" is meaningless to a cold visitor.
+  Lead: *"$1 — test your next 4 videos before you post."* `TRIAL.microcopy` stays underneath,
+  carrying the credit cap and the renewal price, unchanged.
+- **Post-payment, calibration runs in parallel with the first test, not in front of it** (§4). The
+  handle→calibrate step has the highest failure rate in the product and must not stall the value.
+- Keep the fixture module multi-video-ready so swapping the example is a data change (§6.1).
+
+---
+
 ## 0. The one rule
 
 **Onboarding is not a form in front of the product. It is the product's first run.**
