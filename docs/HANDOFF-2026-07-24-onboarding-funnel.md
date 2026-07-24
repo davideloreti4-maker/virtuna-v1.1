@@ -1,150 +1,152 @@
-# Handoff — onboarding funnel milestone (2026-07-24)
+# Handoff — onboarding funnel milestone
 
 **Worktree:** `~/virtuna-onboarding` · **Branch:** `milestone/onboarding` · **Base:** `main@99c494d1`
-**Tip:** `4abbfb73` · pushed to `origin/milestone/onboarding` · **NOT merged (deliberate — see §5)**
-**Suite:** 4476 passed / 0 failed · **tsc:** 0 · **eslint:** 0
+**Tip:** `5c3f5e42` · pushed · **NOT merged — see §6, there are two live production hazards**
+**Green:** suite 4479 / 0 · tsc 0 · eslint 0
 
-> **Session 2 (2026-07-24) changed the design.** Read `ONBOARDING-FUNNEL-DESIGN.md` **§0a** first —
-> it holds three owner calls that SUPERSEDE §4/§7 of that doc: payment now runs **before** identity,
-> the wall **reveals beat 1 in full** before withholding beat 2, and the 3-day trial is confirmed
-> (with its consequence designed around). **S1 is built** (§3a). The Supabase blocker is **cleared**.
-
-**SSOT for the design:** `docs/ONBOARDING-FUNNEL-DESIGN.md` — read it first, it is the contract.
-**Setup blocker doc:** `docs/OTP-EMAIL-TEMPLATE-SETUP.md`
+**Read first:** `docs/ONBOARDING-FUNNEL-DESIGN.md` — the contract. **§0a holds the session-2 owner
+calls and SUPERSEDES §4/§7 where they conflict.** Do not re-derive the design; it is locked.
+**Owner checklist for the last blocker:** `docs/WHOP-SETUP.md`.
 
 ---
 
 ## 1. What this milestone is
 
-Replace the inert one-field `/welcome` with a conversion-optimized funnel. Traced state on `main`:
-every offer CTA → bare `/signup` → **email-confirm wall** → `/login` → `/welcome` (one text field
-writing an **inert** TikTok handle, plus "Skip for now") → `/home`. The $1 promised on `/go` is never
-collected; the moat (`/api/audiences/calibrate`) is not in the funnel at all.
+Replace the inert one-field `/welcome` with a conversion funnel: a real-surface interactive demo on
+`/go` with a teaser paywall, a $1 tripwire, and identity folded into the purchase. Traffic is organic
+TikTok/Instagram, so the whole thing runs inside in-app webviews.
 
-## 2. Owner calls locked this session
+## 2. The design, as locked
 
-| Decision | Detail |
-|---|---|
-| **Pay first** | $1 collected **before** any personal engine run |
-| **Demo** | Interactive walkthrough of the **real Ambient v2 surface**, prefabricated data. **No live video, no engine call, zero network after load.** |
-| **Teaser paywall** | Results are **never fully shown**. The wall sits INSIDE the insight: SHOW where they leave ("0:04") + that a fix exists + craft score. LOCK the **why**, the fix, the audience-specific score. |
-| **Unlock order** | On payment, reveal the withheld fix **first** (close the loop they paid for), *then* ask for their handle. |
-| **Traffic** | Organic TikTok/IG only, **no paid ads** → the funnel runs in in-app webviews |
-| **One conversion** | The plan auto-renews. Nobody is sold twice. The 72h is a *retention* problem ("give them no reason to cancel"), not a second campaign. |
-| **Surface** | Built on Ambient v2 Start (`NEXT_PUBLIC_AMBIENT_V2`) |
-| **Demo video** | Alex Hormozi, public, "for now" (swappable): `https://www.tiktok.com/@ahormozi/video/7602332913333472525` |
+```
+/go hero → walkthrough (4 beats) → WALL → $1 → reveal the withheld fix → claim account (OTP) → real platform
+```
 
-## 3. What is BUILT (S0) — code-complete, **not yet functional**
+- **Pay first.** $1 before any personal engine run.
+- **Payment BEFORE identity** (§0a ①, changed this session). OTP between the aha and the money was a
+  step at peak intent that also forced an app-switch to a mail client — which some webviews do not
+  survive. Whop captures the email anyway.
+- **The wall samples before it withholds** (§0a ②, changed this session). Beat 1 is given away in
+  full so the mechanism is proven; beat 2 is locked.
+- **3-day trial kept** (§0a ③). Consequence: the "post it and we'll grade ourselves" loop often
+  cannot close in 72h, so session one carries ALL the retention weight.
+- **One conversion.** The plan auto-renews; nobody is sold twice.
 
-- `src/lib/auth/in-app-browser.ts` — webview UA detection. TikTok (4 shipped signatures incl. the
-  `trill_…` form), Meta, Snapchat, LinkedIn, Pinterest, X, WeChat, Line + generic Android `; wv)`.
-  Fails **open** on a missing UA. 15 tests pin real UA strings.
-- `src/lib/auth/otp.ts` — `sendOtp` / `verifyOtp`, customer-facing error mapping,
-  `shouldCreateUser: true` so ONE call covers signup and login (never make a visitor choose which
-  they are — that is a fork at peak intent).
-- `src/components/auth/email-otp-form.tsx` — two stages, one surface. `autocomplete="one-time-code"`,
-  numeric keypad, auto-submit on the 6th digit, resend cooldown.
-- `src/app/(onboarding)/login/login-form.tsx` — OTP is the front door; Google renders **only** where
-  Google accepts it; password folded behind a disclosure.
-- `supabase/templates/otp-*.html` + `config.toml` — templates version-controlled.
+## 3. What is BUILT
 
-> A test caught a real bug pre-merge: `/\btrill\b/` cannot match TikTok's actual
-> `trill_2022905030` because `_` is a word character, so the closing boundary never fires.
+### S0 — identity (code-complete, unverified on a real device)
+- `lib/auth/in-app-browser.ts` — webview UA detection, 15 tests pinning real UA strings.
+- `lib/auth/otp.ts` — `sendOtp`/`verifyOtp`, `shouldCreateUser: true` so one call covers signup and
+  login (never make a visitor choose which they are at peak intent).
+- `components/auth/email-otp-form.tsx`, `(onboarding)/login/login-form.tsx` — OTP leads, Google only
+  where Google works, password behind a disclosure.
 
-## 3a. What is BUILT (S1) — the walkthrough, verified in a browser
-
-- `components/offer/walkthrough/` — the shell drives the **real `AmbientDetail`** from a frozen
-  fixture. Four beats, one lit affordance each (`beats.ts`, data not control flow, so the rail is
-  testable without rendering and A/B-able without a component edit). Mounted on `/go` under the hero.
+### S1 — the walkthrough (built, browser-verified, running on REAL data)
+- `components/offer/walkthrough/` — mounted on `/go` directly under the hero (the time-to-aha budget
+  is ~10s to beat 1, ~45s to the wall; a demo buried below four persuasion sections cannot meet it).
+- Drives the **real `AmbientDetail`** — the instrument they land on after paying. Only the data is
+  prefabricated. Zero network after load, and no video element, so there is no autoplay policy to
+  lose in a webview.
 - **The seal is DATA, not a view flag.** `sealTemplate` strips the fix, the diagnosis and the
   audience score out of the template, so the real component renders its own honest unavailable
-  states. Verified live: the sealed copy is absent from the DOM at the wall. No blur anywhere.
+  states. Verified live: the sealed text is absent from the DOM at the wall.
+- Four beats, one lit affordance each: `frames → revealed → wall → open`.
+- `scripts/freeze-walkthrough-fixture.mts` — turns a persisted analysis into the fixture and
+  **refuses degraded runs**.
 - `lib/analytics/funnel-events.ts` — the §8 event spine. **No sink yet**; `track()` buffers and logs
-  in dev. The call sites are the expensive part to retrofit, so they ship now.
-- 🔴 The fixture is **placeholder data**. `WALKTHROUGH_IS_PLACEHOLDER` hard-blocks the mount in
-  production and a test pins the flag armed — invented numbers on a commercial page are fabricated
-  proof (design §4).
+  in dev. Call sites are the expensive part to retrofit, so they ship now.
+- **Preview any beat in dev:** `/go?beat=frames|revealed|wall|open`. Hard-gated to non-production —
+  in prod that wall IS the paywall.
 
-> Two defects came out of driving it in a real browser, not out of the tests, and both were fixed in
-> `AmbientDetail` itself: absent `population` said **"no run yet"**, which made the *locked* product
-> read as a *broken* one (now `populationNote`, mirroring `brainNote`); and the back button rendered
-> with no `onBack` — a dead control that was also an exit from the guided rail.
+### The frozen analysis
+Real run `vSoTpo5AixUS` through the production route (`tiktok_url`, engine 3.21.0) over
+`https://www.tiktok.com/@ahormozi/video/7665552990991895822` — Alex Hormozi, public, **29s**.
+Both insight payloads are the engine's **own words**, split into why/fix, with a test pinning the
+exact phrases so nobody can quietly rewrite them into marketing copy. Craft score (55) is derived
+from the four measured dims. `WALKTHROUGH_IS_PLACEHOLDER` is now `false`.
 
-## 4. Blocked on the owner
+> The curve declines **monotonically** — `[0.78, 0.74, 0.70, 0.56, 0.48]`, no local dips. So the
+> LOWEST point is trivially the last segment and means nothing; the wall anchors on the steepest
+> **drop** instead — 0:12, −14 points — which is what a viewer experiences as "where I left".
 
-1. ✅ **DONE — Supabase OTP templates are live in production.** Patched 2026-07-24 via the Management
-   API and verified: both `confirmation` and `magic_link` render `{{ .Token }}`, neither contains
+## 4. What is NOT built
+
+| Gap | State |
+|---|---|
+| **The `$1` button does nothing** | fires `checkout_open`, returns. `/go` passes no `onCheckout` because Whop has no keys |
+| Whop checkout | 503 by design. **The funnel's only conversion point does not exist** |
+| Payment-first rewiring (§0a ①) | the 401 at `api/whop/checkout/route.ts:10` still stands; webhook does not provision users |
+| `/welcome` deletion (S3) | untouched, still bounced to by `middleware.ts:167` |
+| Post-payment first session (S4) | not started |
+| Keyframe stills | `keyframe_uri` is null even on good runs — a separate extraction step. The filmstrip is currently curve + transcript only |
+| Analytics sink | events buffer in memory and go nowhere |
+
+## 5. Blocked on the owner
+
+1. ✅ **DONE — Supabase OTP templates are live in production.** Patched via the Management API and
+   verified: both `confirmation` and `magic_link` render `{{ .Token }}`, neither has
    `{{ .ConfirmationURL }}`.
-   ⛔ **Do NOT run `npx supabase config push` on this project.** It pushes the whole `[auth]` block,
+   ⛔ **Never run `npx supabase config push` on this project.** It pushes the whole `[auth]` block,
    and `config.toml` is still the local-dev scaffold — it would set `site_url` to `127.0.0.1`, wipe
    the redirect allow-list, and cap auth email at 2/hour. Patch the Management API instead.
-2. 🔴 **Whop does not exist yet** — `/api/whop/checkout` returns **503** by design (`route.ts:63`
-   refuses rather than granting an unbilled pass). **The funnel's only conversion point.** Full
-   owner-executable checklist, incl. the three questions Whop has to answer before S2:
-   **`docs/WHOP-SETUP.md`**.
-3. 🔴 **Prod auth config drift**, found while patching the templates. Not changed — each is an owner
-   call with production blast radius:
-   - `rate_limit_email_sent = 2` — two auth emails **per hour**, project-wide. This will kill the OTP
-     funnel on contact with traffic. Needs custom SMTP; the built-in sender is capped regardless.
-   - `site_url = http://localhost:3000` and a localhost-only `uri_allow_list`. **Unverified** whether
-     prod OAuth/password-reset currently break — check before assuming either way.
-   - `mailer_autoconfirm = true`, which contradicts the design's premise that email/password signup
-     dead-ends on a confirmation email. That premise may be stale.
-4. **Real-device pass**, after 2: open the link from a TikTok bio on iOS + Android and run OTP +
-   checkout inside the in-app browser.
+2. 🔴 **Whop** — products, the $1/3-day trial SKUs, API key, webhook secret. `docs/WHOP-SETUP.md`.
+3. 🔴 **`rate_limit_email_sent = 2` in production** — two auth emails **per hour**, project-wide.
+   This throttles OTP to nothing under any real traffic. Needs custom SMTP.
+4. 🔴 **`site_url = http://localhost:3000`** in prod, with a localhost-only `uri_allow_list`.
+   **Unverified** whether prod OAuth / password reset currently break — check, do not assume.
+5. **Real-device pass** — TikTok bio link → in-app browser → OTP → checkout, iOS and Android.
+6. **Rotate the Apify key** — the replacement key was pasted into a chat transcript on 2026-07-24.
 
-## 5. ⚠️ Why this is NOT merged to main
+## 6. ⚠️ Merge readiness — three things to handle first
 
-`login-form.tsx` now leads with OTP. **Until the templates are pushed, `signInWithOtp` emails a magic
-LINK, while the UI asks for a 6-digit code that does not exist in the email.** Merging to `main`
-auto-deploys to Vercel and would degrade sign-in for existing users (password still reachable, but
-behind a disclosure). Sequence must be:
+The original reason for not merging (OTP templates unpushed) is **cleared**. Two new hazards replaced
+it, plus one mechanical gotcha:
 
-```
-templates pushed  →  verified on a real device  →  THEN merge
-```
+1. **OTP would become the front door on a project capped at 2 auth emails/hour** (§5.3). Existing
+   users can still get in via password or Google, so it degrades rather than locks out — but it is a
+   real regression for anyone who takes the primary path. **Fix the rate limit before or with the merge.**
+2. **`/go` would ship a `$1` button that does nothing.** The walkthrough renders in production now
+   (`WALKTHROUGH_IS_PLACEHOLDER` is false), so a visitor reaches the wall and dead-ends. Acceptable
+   only if `/go` has no meaningful traffic yet — which it should not, since Whop was never configured.
+3. **This branch deletes 143 `.planning/` files.** That is inherited GSD state cleaned when the
+   worktree was created, **not** work from this milestone. Merging naively removes the Numen GSI
+   milestone's phase/research docs from `main`. The real diff is **22 files, +2,722 / −70**.
 
-Merge command when green:
+**Merge recipe that preserves `.planning/`:**
 ```bash
-cd ~/virtuna-v1.1 && git switch main && git merge --no-ff milestone/onboarding
+cd ~/virtuna-v1.1 && git switch main && git pull
+git merge --no-ff milestone/onboarding          # resolve conflicts if any
+git checkout HEAD^ -- .planning                  # restore main's planning tree
+git commit --amend --no-edit                     # fold the restore into the merge commit
+git diff HEAD^ HEAD --stat -- .planning          # MUST be empty
+npm run build                                    # main auto-deploys to Vercel
 ```
 
-## 6. Next actions, in order
+## 7. Hazards carried forward
 
-1. **Whop products + keys** — `docs/WHOP-SETUP.md`. Longest lead time, and nothing downstream of the
-   wall can be built or measured until checkout exists. Start here.
-2. **Freeze the demo analysis.** `/api/analyze` accepts `input_mode: "tiktok_url"` (`route.ts:482`).
-   Run it through the REAL route as the owner so the frozen fixture comes from exactly the production
-   code path. Costs 10 credits (`score`). Then extract keyframe stills to `/public`, paste the result
-   into `walkthrough-fixture.ts`, and flip `WALKTHROUGH_IS_PLACEHOLDER` — in the same commit as the
-   test that pins it.
-3. **S2 — rewired for payment-first** (design §0a ①). This is no longer "OTP then checkout":
-   - lift the 401 in `api/whop/checkout/route.ts:10` for the funnel path;
-   - send an anonymous correlation id in `metadata` instead of `supabase_user_id`, which does not
-     exist yet at checkout;
-   - **the webhook must PROVISION the Supabase user** from the payment email. The known "paid, no
-     access" hazard (§7) is now the primary path, not an edge case — it has to be correct;
-   - then OTP, to claim the account, after the fix has been revealed.
-   Branch presentation on the existing `isInAppBrowser`: embed on real browsers, **full-page hosted
-   checkout inside webviews**, which makes the webview question moot rather than merely answering it.
-   ⚠️ Unknown: whether Whop's v5 `checkout_sessions` response carries a hosted purchase URL. The route
-   keeps only `checkoutConfigId` (`route.ts:110`). Check the moment credentials exist.
-4. **Wire a sink to the funnel events** (`lib/analytics/funnel-events.ts`). Use `sendBeacon` — this
-   traffic is mobile webviews, and a `fetch` in flight when the page is backgrounded is a lost event.
-4. **S3** — delete `/welcome` outright, incl. the middleware bounce (`middleware.ts:167`); checkout
-   lands in Ambient v2 Start.
-5. **S4** — first real actions: room calibrates in the rail (visible labor) → their video → the gap
-   → the intention prompt. ≤12 of the 50 trial credits.
+- **`/api/analyze` lies in three ways** — see `docs/` and the memory note: it silently replays a
+  cached row (need `bypass_cache=true`), a degraded run still returns 200 with a score and a
+  confidence label, and the `tiktok_url` re-host times out on videos over ~30s **locally** (an
+  ~1.8 Mbps upstream, not a size cap — the bucket allows 200MB; likely fine on Vercel).
+- **Confidence rises as signals disappear.** A scrape-failed run with gemini/personas/ml/rules/audio
+  /retrieval all false was labeled **HIGH (0.55)**; a real full-signal run scores **LOW (0.35)**.
+  Not traced — worth a look before any confidence label is shown to a paying user.
+- **Webhook drops a grant** if `metadata.supabase_user_id` is missing (`webhooks/whop/route.ts:62`
+  warns only). Under §0a ① that id will not exist at checkout — this stops being theoretical.
+- **Calibration failure after payment is a recovery ladder, never a refund.**
+- **Tests:** `npm test` is a fake script. Use `node ./node_modules/vitest/vitest.mjs run`.
+- **Dev server:** `NEXT_PUBLIC_AMBIENT_V2=true`, nohup (not setsid — absent on macOS). This worktree
+  needs `.env.local` copied from `~/virtuna-v1.1/` (untracked, does not follow a worktree).
+- **Third-party content:** the demo publicly analyses a named creator's video on a commercial page.
+  Keep it analytical, imply no endorsement, keep the fixture swappable.
 
-## 7. Known hazards carried forward
+## 8. Next actions, in order
 
-- **Webhook silently drops a grant** if `metadata.supabase_user_id` is missing
-  (`api/webhooks/whop/route.ts:62` warns only). Today theoretical; once money flows it is
-  "paid, no access." Harden in this milestone.
-- **Calibration failure after payment** is a **recovery ladder, never a refund** — the purchase is
-  still good (3 days, 50 credits). Retry → private-account prompt → General-population fallback.
-- **Dev server** must launch with `NEXT_PUBLIC_AMBIENT_V2=true` (nohup, not setsid — absent on macOS).
-  Verify the flag behaviourally, not via `ps`.
-- **Tests:** `npm test` is a fake script here. Use `node ./node_modules/vitest/vitest.mjs run`.
-- **Third-party content:** the demo publicly tears down a named creator's video on a commercial page.
-  Keep it analytical, no implied endorsement, keep fixtures swappable.
+1. **Whop** — longest lead time, and nothing past the wall can be built or measured without it.
+2. **Fix the prod email rate limit** (custom SMTP), then merge per §6.
+3. **S2 rewired for payment-first** (§0a ①): lift the 401, send an anonymous correlation id, make the
+   webhook **provision** the user from the payment email, then OTP to claim.
+4. **S3** — delete `/welcome` and the middleware bounce.
+5. Keyframe stills into `/public` so the filmstrip is a filmstrip.
+6. Wire a sink to the funnel events — use `sendBeacon`, since a `fetch` in flight when a webview is
+   backgrounded is a lost event.
