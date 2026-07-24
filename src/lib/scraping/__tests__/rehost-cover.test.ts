@@ -74,6 +74,37 @@ describe("rehostCover — SSRF allowlist", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
+  /**
+   * TikTok serves the SAME asset from per-region image CDNs and which one you get depends on where
+   * the request lands. The allowlist enumerated `-us` only, so the 2026-07-24 corpus backfill
+   * failed EVERY row: oEmbed returned `p16-common-sign.tiktokcdn-eu.com` and the guard rejected
+   * TikTok's own CDN. Regional hosts must pass; the lookalike/suffix attacks below must not.
+   */
+  it.each([
+    "https://p16-common-sign.tiktokcdn-eu.com/tos-maliva/x~tplv-origin.image?x-expires=1",
+    "https://p16-common-sign.tiktokcdn-us.com/tos-maliva/x.jpeg",
+    "https://p16.tiktokcdn.com/tos/x.jpeg",
+  ])("accepts the regional TikTok image CDN: %s", async (url) => {
+    const { service, uploads } = makeService();
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(new Uint8Array([1, 2, 3]), {
+        status: 200,
+        headers: { "content-type": "image/jpeg" },
+      }),
+    );
+    const out = await rehostCover(service, url, "corpus/tiktok/1");
+    expect(out).toContain("/covers/corpus/tiktok/1.jpg");
+    expect(uploads).toHaveLength(1);
+  });
+
+  it("still rejects a host that merely CONTAINS the cdn name (nottiktokcdn.com)", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    const { service } = makeService();
+    const out = await rehostCover(service, "https://nottiktokcdn.com/x.jpg", "tiktok/1");
+    expect(out).toBeNull();
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
   it("rejects a lookalike suffix (tiktokcdn-us.com.evil.com)", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch");
     const { service } = makeService();

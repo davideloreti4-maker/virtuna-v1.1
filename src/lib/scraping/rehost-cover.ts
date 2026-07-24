@@ -36,8 +36,16 @@ const COVER_HOST_SUFFIXES = [
 const MAX_BYTES = 5 * 1024 * 1024; // 5MB cap — covers are ~50-300KB; this only guards pathology
 const FETCH_TIMEOUT_MS = 8_000;
 
+/** TikTok serves the SAME asset from per-region image CDNs — `tiktokcdn-us`, `tiktokcdn-eu`, … —
+ *  and which one you get depends on where the request lands. Enumerating them one at a time is how
+ *  the 2026-07-24 corpus backfill failed every row: oEmbed handed back `p16-common-sign.
+ *  tiktokcdn-eu.com` and the guard rejected TikTok's own CDN. Match the regional family instead,
+ *  still anchored to a `.com` TikTok CDN suffix so this stays an allowlist, not a wildcard. */
+const TIKTOK_REGIONAL_CDN = /(^|\.)tiktokcdn(-[a-z0-9]+)?\.com$/;
+
 function isAllowedCoverHost(u: URL): boolean {
   if (u.protocol !== "https:") return false;
+  if (TIKTOK_REGIONAL_CDN.test(u.hostname)) return true;
   return COVER_HOST_SUFFIXES.some(
     (s) => u.hostname === s.slice(1) || u.hostname.endsWith(s),
   );
