@@ -1,9 +1,10 @@
 /**
  * ambient-v2-population.test.ts — the Population-depth adapter (Phase C).
  *
- * Locks the honesty spine: text tri-state has NO skim band (binary verdict); the three modeled-depth
- * sections (audienceFit / amplification / swing) are OMITTED (their producers aren't built); terrain
- * districts + loss index + coded reasons are the projection's REAL numbers; layout is deterministic.
+ * Locks the honesty spine: text tri-state has NO skim band (binary verdict); the modeled-depth
+ * sections (audienceFit / amplification / swing) render as MODELED proxies (full parity, owner call
+ * 2026-07-24) derived from the REAL segment stop rates; terrain districts + loss index + coded reasons
+ * are the projection's REAL numbers; layout is deterministic.
  */
 import { describe, it, expect } from "vitest";
 import {
@@ -50,11 +51,30 @@ describe("buildPopulationFrameData", () => {
     expect(p.main.data).toEqual({ stopped: 62, skimmed: 0, scrolled: 38 });
   });
 
-  it("OMITS the modeled-depth sections (no fabrication)", () => {
+  it("emits the modeled-depth sections, each derived from the REAL segment numbers", () => {
     const p = buildPopulationFrameData(base);
-    expect(p.audienceFit).toBeUndefined();
-    expect(p.amplification).toBeUndefined();
-    expect(p.swing).toBeUndefined();
+    // audienceFit: builders (85% vs 62% mean) over-index; skeptics (32%) cool + carry loss
+    expect(p.audienceFit!.rows[0]!.label).toBe("builders");
+    expect(p.audienceFit!.rows[0]!.index).toBeGreaterThan(0);
+    const skeptic = p.audienceFit!.rows.find((r) => r.label === "skeptics")!;
+    expect(skeptic.index).toBeLessThan(0);
+    expect(skeptic.loss).toBe(true);
+    // amplification: cascade top = the real sample; builders lead the carriers (highest reshare prior)
+    expect(p.amplification!.cascade[0]).toEqual({ label: "saw it", count: 1000 });
+    expect(p.amplification!.carriers[0]!.label).toBe("builders");
+    expect(p.amplification!.carriers[0]!.lead).toBe(true);
+    // swing: a real fence-sitter count + a bounded modeled gain (from → to)
+    expect(p.swing!.fromPct).toBe(62);
+    expect(p.swing!.toPct).toBeGreaterThan(p.swing!.fromPct);
+    expect(p.swing!.gainLabel).toMatch(/would stop/);
+  });
+
+  it("the modeled-depth sections are DETERMINISTIC (byte-identical across calls)", () => {
+    const a = buildPopulationFrameData(base);
+    const b = buildPopulationFrameData(base);
+    expect(a.audienceFit).toEqual(b.audienceFit);
+    expect(a.amplification).toEqual(b.amplification);
+    expect(a.swing).toEqual(b.swing);
   });
 
   it("terrain districts are the real segments; loss index = lowest stop rate", () => {
@@ -139,5 +159,23 @@ describe("buildReasonBrainFrameData (the text brain — owner call 2026-07-24)",
     expect(tpl.brain).toBeDefined();
     expect(tpl.brain!.driver.kind).toBe("reason-breakdown");
     expect(tpl.population).not.toBeNull(); // both tabs real
+  });
+
+  it("text renders the SAME modeled-depth parity as video (9 signals · 7 nets · heatmap · buy · why)", () => {
+    const b = buildReasonBrainFrameData({ aggregate: AGG_REASONS, stopPct: 62, stimulusKey: "k1" });
+    expect(b.signalGrid).toHaveLength(9);
+    expect(b.networkBars).toHaveLength(7);
+    expect(b.networks).toHaveLength(4);
+    expect(b.kpiHeatmap!.rows).toHaveLength(10);
+    expect(b.buyIntent!.points.length).toBeGreaterThan(0);
+    // a text sim has no clip → the "why" reads the leading friction reason, not a fabricated second
+    expect(b.whyThisSecond!.segments.some((s) => s.loss)).toBe(true);
+  });
+
+  it("the unlock is built from REAL reason labels (top pull works · top friction leaks)", () => {
+    const tpl = buildDomainTemplate({ ...base, aggregate: AGG_REASONS, pct: 62, stimulusKey: "k1" });
+    expect(tpl.unlock!.lever.toLowerCase()).toContain("too slow");
+    expect(tpl.unlock!.insight).toMatch(/Strong hook/);
+    expect(tpl.unlock!.gain).toMatch(/would stop/);
   });
 });

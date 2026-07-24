@@ -88,6 +88,12 @@ const LIVE_PERSONAS = [
 /** The Detail template built entirely by the real adapters over the realistic input above. */
 export const CREATOR_LIVE_TEMPLATE: DomainTemplate = buildVideoDomainTemplate({
   ...LIVE_BRAIN_INPUT,
+  // the raw pStop dominant-reason tally (tokens, as the projection emits) → the unlock's lever + insight
+  reasons: [
+    { reason: "too-slow", count: 253 },
+    { reason: "strong-hook", count: 190 },
+    { reason: "interest", count: 121 },
+  ],
   population: buildPopulationFrameData({
     aggregate: LIVE_POP,
     personas: LIVE_PERSONAS,

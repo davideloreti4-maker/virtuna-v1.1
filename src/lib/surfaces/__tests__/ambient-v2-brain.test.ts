@@ -4,8 +4,9 @@
  * Locks the honesty spine: the attention curve IS the real `weighted_curve` (scaled to the 0..80
  * axis); the transcript is the REAL verbatim (falls back to segment labels, never fabricated); the
  * signal rows are the four real craft dims (0..10 → 0..100), omitted when absent; the "why this
- * second" describes the MEASURED dip only; and the four modeled Sapient-depth sections
- * (signalGrid/networkBars/kpiHeatmap/buyIntent/networks) are DELIBERATELY OMITTED.
+ * second" describes the MEASURED dip only; and the modeled-depth sections (signalGrid/networkBars/
+ * kpiHeatmap/buyIntent/networks) render as MODELED proxies (full parity, owner call 2026-07-24) —
+ * deterministic, coupled to the real stop rate + curve, carried by the one consolidated calibration line.
  */
 import { describe, it, expect } from "vitest";
 import {
@@ -122,14 +123,30 @@ describe("buildBrainFrameData — signals (REAL craft dims)", () => {
   });
 });
 
-describe("buildBrainFrameData — honesty: modeled sections OMITTED", () => {
+describe("buildBrainFrameData — modeled-depth parity (full render)", () => {
   const brain = buildBrainFrameData(base);
-  it("omits every NEW modeled Sapient-depth section", () => {
-    expect(brain.signalGrid).toBeUndefined();
-    expect(brain.networkBars).toBeUndefined();
-    expect(brain.kpiHeatmap).toBeUndefined();
-    expect(brain.buyIntent).toBeUndefined();
-    expect(brain.networks).toBeUndefined();
+  it("emits every modeled Sapient-depth section (full parity with the authored template)", () => {
+    expect(brain.signalGrid).toHaveLength(9);
+    expect(brain.networkBars).toHaveLength(7);
+    expect(brain.networks).toHaveLength(4);
+    expect(brain.kpiHeatmap!.rows).toHaveLength(10);
+    expect(brain.buyIntent!.points.length).toBeGreaterThan(0);
+  });
+  it("the signalGrid Visual Pull anchors on the REAL craft dim (hook_visual_impact 8.5 → ~85)", () => {
+    const visual = brain.signalGrid!.find((c) => c.key === "visual")!;
+    // score = modeled·0.4 + craft(85)·0.6 → lands in the strong band, near the measured dim
+    expect(visual.score).toBeGreaterThan(60);
+    expect(brain.signalGrid!.every((c) => c.score >= 6 && c.score <= 96)).toBe(true);
+  });
+  it("the kpiHeatmap has one intensity per clip-second (0..100)", () => {
+    const { seconds, rows } = brain.kpiHeatmap!;
+    expect(rows.every((r) => r.values.length === seconds)).toBe(true);
+    expect(rows.every((r) => r.values.every((v) => v >= 6 && v <= 100))).toBe(true);
+  });
+  it("is DETERMINISTIC — same stimulus, byte-identical proxies", () => {
+    expect(buildBrainFrameData(base).signalGrid).toEqual(brain.signalGrid);
+    expect(buildBrainFrameData(base).networkBars).toEqual(brain.networkBars);
+    expect(buildBrainFrameData(base).kpiHeatmap).toEqual(brain.kpiHeatmap);
   });
   it("carries the consolidated cortical-proxy honesty line", () => {
     expect(brain.calibrationNote).toMatch(/not measured attention/i);

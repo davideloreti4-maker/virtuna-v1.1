@@ -33,6 +33,16 @@ import type {
   PopulationFrameData,
   WhyThisSecond,
 } from "@/components/audience-lens/v2/domain-template";
+import {
+  classifyReasons,
+  modeledBuyIntent,
+  modeledKpiHeatmap,
+  modeledNetworkBars,
+  modeledNetworks,
+  modeledSignalGrid,
+  modeledUnlock,
+  type ModeledBrainInput,
+} from "./ambient-v2-modeled";
 
 const clamp = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v));
 
@@ -195,6 +205,15 @@ function signalRows(videoSignals?: GeminiVideoSignals | null): SignalRow[] {
  * Deterministic — safe on every render. Call only when `hasBrainData(heatmap)` is true.
  */
 export function buildBrainFrameData(input: BrainSnapshotInput): BrainFrameData {
+  const modeledInput: ModeledBrainInput = {
+    stopPct: input.stopPct,
+    stimulusKey: input.stimulusKey,
+    clipSeconds: clipSecondsOf(input.heatmap),
+    curve: input.heatmap.weighted_curve,
+    craft: input.videoSignals ?? null,
+    reasons: null, // reasons are a population read; the brain layer couples to the curve + craft only
+  };
+  const networkBars = modeledNetworkBars(modeledInput);
   return {
     cortexSeedKey: input.stimulusKey,
     clipSeconds: clipSecondsOf(input.heatmap),
@@ -202,6 +221,12 @@ export function buildBrainFrameData(input: BrainSnapshotInput): BrainFrameData {
     driver: { kind: "attention-scrubber", data: attentionData(input) },
     signals: signalRows(input.videoSignals),
     whyThisSecond: whyThisSecond(input),
+    // ── modeled-depth parity (Phase-C ②) — the fuller read; MODELED, carried by the one calibration line ──
+    signalGrid: modeledSignalGrid(modeledInput),
+    networkBars,
+    networks: modeledNetworks(networkBars),
+    kpiHeatmap: modeledKpiHeatmap(modeledInput),
+    buyIntent: modeledBuyIntent(modeledInput),
     calibrationNote: "Modeled from a cortical proxy · not measured attention",
   };
 }
@@ -211,6 +236,9 @@ export interface VideoDomainTemplateInput extends BrainSnapshotInput {
   /** The audience-tab population read when it's available (the same sim's projection); else null so
    *  the drill opens on the (real) Brain tab. Mapped separately by `ambient-v2-population.ts`. */
   population?: PopulationFrameData | null;
+  /** The projection's raw dominant-reason tally (`aggregate.reasons`) — classified by SEMANTICS for the
+   *  unlock lever (top friction) + insight (top pull). Absent → no unlock (omit, never fabricate). */
+  reasons?: { reason: string; count: number }[] | null;
 }
 
 /**
@@ -219,13 +247,15 @@ export interface VideoDomainTemplateInput extends BrainSnapshotInput {
  * brain tab is the payoff for a video). The verdict is the sealed measured would-stop %.
  */
 export function buildVideoDomainTemplate(input: VideoDomainTemplateInput): DomainTemplate {
+  const population = input.population ?? null;
   return {
     id: "creator",
     label: "Creator · content",
     backLabel: "Overview",
     pager: input.conceptLabel ?? "video",
     verdict: { value: `${Math.round(input.stopPct)}%`, label: "would stop" },
+    unlock: modeledUnlock(classifyReasons(input.reasons), population?.swing),
     brain: buildBrainFrameData(input),
-    population: input.population ?? null,
+    population,
   };
 }
