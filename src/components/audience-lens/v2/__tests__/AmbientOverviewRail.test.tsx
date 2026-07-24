@@ -42,6 +42,34 @@ describe("AmbientOverviewRail", () => {
     expect(screen.getByTestId("ambient-overview")).toBeTruthy();
   });
 
+  /**
+   * The "on call" cast footer is derived from the room's NAMED SLICES (`audience.personas` →
+   * `segments` → `deriveCast`). General carries none, and General is the default for every new
+   * creator — so the footer used to render as a bare "on call" label under a border rule, with
+   * zero avatars, as the first thing a new user sees in the rail (caught live 2026-07-24).
+   * No cast ⇒ no footer. We never invent slices to fill it.
+   */
+  it("hides the on-call footer entirely for the General baseline room (no named slices)", () => {
+    render(<AmbientOverviewRail audience={audience} descriptors={descriptors} reducedMotion />);
+    expect(screen.queryByText("on call")).toBeNull();
+  });
+
+  it("shows the on-call footer with real initials once the room HAS named slices", () => {
+    const calibrated: Audience = {
+      ...audience,
+      is_general: false,
+      personas: [
+        { archetype: "loyalist", label: "Gym regulars", share: 0.6 },
+        { archetype: "fyp", label: "Drive-by scrollers", share: 0.4 },
+      ] as Audience["personas"],
+    };
+    render(<AmbientOverviewRail audience={calibrated} descriptors={descriptors} reducedMotion />);
+    expect(screen.getByText("on call")).toBeTruthy();
+    // initials of the REAL slice labels — never invented
+    expect(screen.getByText("G")).toBeTruthy();
+    expect(screen.getByText("D")).toBeTruthy();
+  });
+
   it("re-seals a row from persistedSeals on mount — no fire needed (survives reload, Phase D)", () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);

@@ -22,6 +22,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServiceClient } from "@/lib/supabase/service";
+import { rehostCover } from "@/lib/scraping/rehost-cover";
 import type {
   SourcePool,
   HookSource,
@@ -130,6 +131,24 @@ function serializeOutlier(input: OutlierTeardownInsert): Record<string, unknown>
 }
 
 /**
+ * Every corpus receipt's cover is an EPHEMERAL signed CDN URL (TikTok `x-expires`, Instagram `oe=`)
+ * that 403s once it lapses. The corpus is "extract once / cache forever", so a raw URL stored here
+ * is dead on every later read — which is why ProofReceipts on skill cards rendered their placeholder
+ * tile instead of a thumbnail (2026-07-24). Rehost at WRITE time, while the signature is still
+ * valid, exactly as the Discover ingest paths already do. Failure degrades to the ephemeral URL
+ * (no worse than before); the key is stable so a re-extraction overwrites the same object.
+ */
+async function durableCover(
+  supabase: SupabaseClient,
+  input: { platform: string; platformVideoId: string; coverUrl?: string | null },
+): Promise<string | null> {
+  if (!input.coverUrl) return null;
+  const key = `corpus/${input.platform}/${input.platformVideoId}`;
+  const rehosted = await rehostCover(supabase, input.coverUrl, key);
+  return rehosted ?? input.coverUrl;
+}
+
+/**
  * Upsert a SHARED teardown (dedup on platform + platform_video_id). Returns the row id.
  * `onConflict` merges — a later, deeper extraction (e.g. a `watched` pass) overwrites
  * the cheaper cached row for the same video.
@@ -138,9 +157,12 @@ export async function upsertOutlierTeardown(
   supabase: SupabaseClient,
   input: OutlierTeardownInsert,
 ): Promise<string> {
+  const coverUrl = await durableCover(supabase, input);
   const { data, error } = await supabase
     .from("outlier_teardowns")
-    .upsert(serializeOutlier(input), { onConflict: "platform,platform_video_id" })
+    .upsert(serializeOutlier({ ...input, coverUrl }), {
+      onConflict: "platform,platform_video_id",
+    })
     .select("id")
     .single();
   if (error) throw new Error(`upsertOutlierTeardown failed: ${error.message}`);
@@ -207,9 +229,10 @@ export async function upsertPersonalTeardown(
   supabase: SupabaseClient,
   input: PersonalTeardownInsert,
 ): Promise<string> {
+  const coverUrl = await durableCover(supabase, input);
   const { data, error } = await supabase
     .from("personal_teardowns")
-    .upsert(serializePersonal(input), {
+    .upsert(serializePersonal({ ...input, coverUrl }), {
       onConflict: "user_id,platform,platform_video_id",
     })
     .select("id")

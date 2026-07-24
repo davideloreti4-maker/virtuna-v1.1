@@ -11,10 +11,24 @@
  *
  * Asserted on stable data attributes (not styling classes) so the test is not
  * brittle to flat-warm design-system changes.
+ *
+ * FLAG-AWARE (2026-07-24): the "centered" empty-home state is LEGACY-only. Under
+ * `AMBIENT_V2_ENABLED` the composer is always in thread mode (`homeThreadMode` ORs the flag in) so
+ * the v2 Start surface can dock it — an intentional divergence, not a regression. The flag is
+ * mocked as a live binding and pinned per-test so the ship path is asserted explicitly instead of
+ * inherited from whatever `NEXT_PUBLIC_AMBIENT_V2` the runner happened to have.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, cleanup } from '@testing-library/react';
 import { renderWithClient } from '@/test/render-with-client';
+
+/** Live-binding flag mock (see the file header) — flipped per-test, never read from the env. */
+let ambientV2 = false;
+vi.mock('@/lib/flags/ambient-v2', () => ({
+  get AMBIENT_V2_ENABLED() {
+    return ambientV2;
+  },
+}));
 
 vi.mock('@/hooks/queries/use-analysis-stream', () => ({
   useAnalysisStream: () => ({
@@ -100,6 +114,7 @@ beforeEach(() => {
   ideasIsStreaming = false;
   hooksMockBlocks = [];
   hooksIsStreaming = false;
+  ambientV2 = false;
   cleanup();
 });
 
@@ -185,5 +200,26 @@ describe('Composer — home thread mode (post-UAT UX pin fix)', () => {
     // Permalink always uses layout="pinned" regardless of thread content.
     expect(composerForm()).toHaveAttribute('data-layout', 'pinned');
     expect(screen.queryByTestId('composer-shell')).toBeNull();
+  });
+});
+
+/**
+ * The SHIP path. `homeThreadMode` ORs `AMBIENT_V2_ENABLED` in, so an empty /home is in THREAD
+ * layout from the first paint — that is what lets the v2 Start surface render with the composer
+ * docked beneath it rather than floating centered. Legacy "centered" is unreachable under the flag.
+ */
+describe('Composer — empty home under AMBIENT_V2_ENABLED (the shipped path)', () => {
+  it('docks the composer in thread layout on an empty /home instead of centering it', () => {
+    ambientV2 = true;
+    routeId = undefined;
+    renderWithClient(<Composer />);
+    expect(composerForm()).toHaveAttribute('data-layout', 'thread');
+  });
+
+  it('still honours the permalink route — the flag does not override "pinned"', () => {
+    ambientV2 = true;
+    routeId = 'abc123';
+    renderWithClient(<Composer />);
+    expect(composerForm()).toHaveAttribute('data-layout', 'pinned');
   });
 });

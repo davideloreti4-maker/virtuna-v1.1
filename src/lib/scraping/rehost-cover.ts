@@ -19,12 +19,18 @@ const log = createLogger({ module: "scraping.rehost-cover" });
 export const COVERS_BUCKET = "covers";
 export const AVATARS_BUCKET = "avatars";
 
-/** Image CDN hosts a scraped cover may live on (TikTok signed image CDNs). SSRF allowlist. */
+/** Image CDN hosts a scraped cover may live on (TikTok + Instagram signed image CDNs). SSRF
+ *  allowlist. Instagram was added 2026-07-24: the grounding corpus carries IG receipts, whose
+ *  covers live on `scontent*.cdninstagram.com` / `*.fbcdn.net` and expire via an `oe=` param the
+ *  same way TikTok's `x-expires` does. Without these suffixes an IG cover fails the guard and is
+ *  never rehosted, so every IG-sourced ProofReceipt renders its placeholder tile forever. */
 const COVER_HOST_SUFFIXES = [
   ".tiktokcdn.com",
   ".tiktokcdn-us.com",
   ".ibyteimg.com",
   ".ttwstatic.com",
+  ".cdninstagram.com",
+  ".fbcdn.net",
 ];
 
 const MAX_BYTES = 5 * 1024 * 1024; // 5MB cap — covers are ~50-300KB; this only guards pathology

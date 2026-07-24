@@ -653,7 +653,11 @@ export function AmbientOverview({
         </div>
       </div>
 
-      {/* cast on call — pinned footer */}
+      {/* cast on call — pinned footer. Rendered ONLY when the room has named slices to show: the
+          General baseline audience carries no segments, so `deriveCast` returns [] and the footer
+          would otherwise be a bare "on call" label under a border rule (the default first-run
+          state for every new user). No cast ⇒ no footer; we never invent slices to fill it. */}
+      {cast.length > 0 ? (
       <div
         className={`${sheet ? "mx-[18px] mb-[18px]" : "mx-[26px] mb-[26px]"} mt-[18px] flex items-center gap-1.5 pt-4`}
         style={{ borderTop: `1px solid ${TONE.border}` }}
@@ -679,6 +683,7 @@ export function AmbientOverview({
           on call
         </span>
       </div>
+      ) : null}
     </div>
   );
 }

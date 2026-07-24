@@ -5,10 +5,26 @@
  * The serif greeting is visible only before conversation content exists.
  * Once blocks stream in or a turn is submitted, the greeting is removed entirely
  * (not receded to a top banner).
+ *
+ * FLAG-AWARE (2026-07-24): these assertions describe the LEGACY empty home. Under
+ * `AMBIENT_V2_ENABLED` the v2 Start surface carries its own greeting, so this one is deliberately
+ * suppressed (`home-page-layout.tsx`). The suite used to inherit whatever `NEXT_PUBLIC_AMBIENT_V2`
+ * happened to be in the environment — green on a dev box with the flag off, RED the moment you ran
+ * it the way you ship. The flag is now mocked as a live binding and pinned per-test, so both paths
+ * are asserted and neither depends on ambient env.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, cleanup } from '@testing-library/react';
 import { renderWithClient } from '@/test/render-with-client';
+
+/** Live-binding flag mock: the getter is re-read on every access, so flipping `ambientV2` between
+ *  tests flips the branch the component takes without a module reset. */
+let ambientV2 = false;
+vi.mock('@/lib/flags/ambient-v2', () => ({
+  get AMBIENT_V2_ENABLED() {
+    return ambientV2;
+  },
+}));
 
 vi.mock('@/hooks/queries/use-analysis-stream', () => ({
   useAnalysisStream: () => ({
@@ -78,6 +94,7 @@ import { HomePageLayout } from '../home-page-layout';
 
 beforeEach(() => {
   ideasMockBlocks = [];
+  ambientV2 = false;
   cleanup();
 });
 
@@ -97,5 +114,21 @@ describe('HomePageLayout — welcome hero visibility', () => {
     ideasMockBlocks = [{ type: 'idea-card', props: { headline: 'Test idea' } }];
     renderWithClient(<HomePageLayout />);
     expect(screen.queryByRole('heading', { level: 1 })).toBeNull();
+  });
+
+  /**
+   * The SHIP path. Under the flag the v2 Start surface owns the greeting, so the LEGACY hero is
+   * suppressed — the creator still sees exactly one greeting, never two stacked. The tell is the
+   * legacy hero's promise line ("simulate your audience"), which v2 Start does not carry: assert on
+   * that rather than on the h1 count alone, or a regression that dropped BOTH greetings would pass.
+   */
+  it('suppresses the LEGACY hero under AMBIENT_V2_ENABLED — v2 Start carries the only greeting', () => {
+    ambientV2 = true;
+    renderWithClient(<HomePageLayout />);
+    const headings = screen.getAllByRole('heading', { level: 1 });
+    expect(headings).toHaveLength(1);
+    expect(headings[0]?.textContent).toMatch(/good (morning|afternoon|evening)|welcome back/i);
+    // the legacy hero's promise line is gone — this greeting is v2 Start's, not the old one
+    expect(screen.queryByText(/simulate your audience/i)).toBeNull();
   });
 });
