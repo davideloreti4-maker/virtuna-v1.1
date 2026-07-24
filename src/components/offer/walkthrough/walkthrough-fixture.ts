@@ -1,114 +1,85 @@
 /**
  * S1 — the walkthrough's frozen example analysis, and the SEAL that withholds beat 2.
  *
- * Built by the REAL adapters (`buildVideoDomainTemplate` + `buildPopulationFrameData`), exactly as
- * `detail-live-fixture.ts` does, so the walkthrough renders real product output rather than a
- * marketing replica of it. Zero network: everything here is a module constant.
+ * The analysis is REAL. It was run once through the production `/api/analyze` route
+ * (`input_mode: "tiktok_url"`, engine 3.21.0) and frozen by
+ * `scripts/freeze-walkthrough-fixture.mts`, which refuses to emit a degraded run. The template is
+ * then assembled by the REAL adapters, exactly as `detail-live-fixture.ts` does, so the walkthrough
+ * renders real product output rather than a marketing replica of it.
  *
- * ─────────────────────────────────────────────────────────────────────────────────────────────
- * 🔴 THE NUMBERS BELOW ARE PLACEHOLDERS AND MUST NOT SHIP.
+ * Zero network after load: everything here is a module constant.
  *
- * `ONBOARDING-FUNNEL-DESIGN.md` §4 sets an honesty floor: the demo's analysis has to be REAL —
- * run once through the real pipeline and frozen. Invented numbers on a commercial page are
- * fabricated proof, the same rule that bans invented testimonials.
+ * SOURCE — `https://www.tiktok.com/@ahormozi/video/7665552990991895822` (Alex Hormozi, public, 29s).
+ * A third-party video is analysed on a commercial page, so keep it analytical and imply no
+ * endorsement. Swapping it is a data change: re-run the freeze script and rewrite the two insight
+ * payloads below from the new run's real output.
  *
- * `WALKTHROUGH_IS_PLACEHOLDER` is therefore a real gate, not a comment: while it is true, `/go`
- * refuses to mount the walkthrough in production (see `walkthrough.tsx`). To ship:
- *   1. run the owner's demo video through the REAL `/api/analyze` (`input_mode: "tiktok_url"`,
- *      `route.ts:482`, costs 10 credits) so the frozen data comes from the production code path;
- *   2. paste the persisted analysis into `DEMO_INPUT` below;
- *   3. extract the keyframe stills to `/public` and fill `keyframe_uri`;
- *   4. flip this flag to false.
- * The shape is already right, so that is a data change, not a rewrite.
- * ─────────────────────────────────────────────────────────────────────────────────────────────
+ * ⚠️ The two insight payloads are the engine's OWN words, lightly split into why/fix. Do not
+ * "improve" them into copy — the moment they stop being the run's real output, the wall becomes
+ * fabricated proof (`docs/ONBOARDING-FUNNEL-DESIGN.md` §4).
  */
 
 import type { PopulationAggregate } from "@/lib/audience/population";
 import { buildPopulationFrameData } from "@/lib/surfaces/ambient-v2-population";
-import { buildVideoDomainTemplate, type BrainSnapshotInput } from "@/lib/surfaces/ambient-v2-brain";
+import { buildVideoDomainTemplate } from "@/lib/surfaces/ambient-v2-brain";
 import type { DomainTemplate } from "@/components/audience-lens/v2/domain-template";
+import {
+  FROZEN_ANALYSIS,
+  FROZEN_COMPLETION_PCT,
+  FROZEN_LOSS_DELTA_PCT,
+  FROZEN_LOSS_MOMENT,
+  FROZEN_MONOTONIC_DECLINE,
+  FROZEN_SOURCE_ID,
+} from "./frozen-analysis";
 
-/** 🔴 Blocks the walkthrough from mounting in production. Flip only when the data is a real run. */
-export const WALKTHROUGH_IS_PLACEHOLDER = true;
+/**
+ * The honesty gate (design §4). Now FALSE: the data below is a real, non-degraded run, verified by
+ * the freeze script's refusal checks. Flip back to true if the fixture is ever replaced by
+ * hand-authored numbers — `/go` will stop mounting the walkthrough in production.
+ */
+export const WALKTHROUGH_IS_PLACEHOLDER = false;
 
-/** Which example the visitor saw — carried on every funnel event so a swap stays measurable (§6.1). */
-export const WALKTHROUGH_STIMULUS_KEY = "demo-v1-placeholder";
+/** Carried on every funnel event so a video swap stays measurable (design §6.1). */
+export const WALKTHROUGH_STIMULUS_KEY = `demo-${FROZEN_SOURCE_ID}`;
 
-// ── the frozen analysis ───────────────────────────────────────────────────────────────────────
-// A 12s clip in 6 segments. The curve carries TWO dips, and which one we reveal is the whole
-// design: idx 4 (0:08) is the shallower sag we give away in full, idx 2 (0:04) is the deep one
-// we withhold. Two dips is not decoration — a wall with only one insight behind it has nothing
-// to prove itself with.
-const DEMO_INPUT: BrainSnapshotInput = {
-  stopPct: 38,
-  stimulusKey: WALKTHROUGH_STIMULUS_KEY,
-  conceptLabel: "hook",
-  heatmap: {
-    segments: [
-      { idx: 0, t_start: 0, t_end: 2, label: "cold open", is_hook_zone: true, keyframe_uri: null },
-      { idx: 1, t_start: 2, t_end: 4, label: "the claim", is_hook_zone: true, keyframe_uri: null },
-      { idx: 2, t_start: 4, t_end: 6, label: "the stall", is_hook_zone: false, keyframe_uri: null },
-      { idx: 3, t_start: 6, t_end: 8, label: "the turn", is_hook_zone: false, keyframe_uri: null },
-      { idx: 4, t_start: 8, t_end: 10, label: "the proof", is_hook_zone: false, keyframe_uri: null },
-      { idx: 5, t_start: 10, t_end: 12, label: "the close", is_hook_zone: false, keyframe_uri: null },
-    ],
-    personas: [],
-    weighted_curve: [0.86, 0.91, 0.34, 0.58, 0.44, 0.4],
-    weights: { fyp: 0.65, niche: 0.2, loyalist: 0.1, cross_niche: 0.05 },
-    weights_source: "default",
-    weighted_completion_pct: 0.58,
-  },
-  videoSignals: {
-    hook_visual_impact: 8.4,
-    visual_production_quality: 6.9,
-    pacing_score: 4.2,
-    transition_quality: 3.5,
-  },
-  verbatim: {
-    hook: { spoken_words: "I quit my 9-5 with $400", on_screen_text: null },
-    segments: [
-      { idx: 0, spoken_text: "I quit my nine to five", on_screen_text: null },
-      { idx: 1, spoken_text: "with four hundred dollars in my account", on_screen_text: null },
-      { idx: 2, spoken_text: "and I want to be honest with you", on_screen_text: null },
-      { idx: 3, spoken_text: "here is exactly what month one looked like", on_screen_text: null },
-      { idx: 4, spoken_text: "the numbers surprised even me", on_screen_text: null },
-      { idx: 5, spoken_text: "so here is what I would do differently", on_screen_text: null },
-    ],
-  },
-};
+export { FROZEN_LOSS_DELTA_PCT, FROZEN_MONOTONIC_DECLINE, FROZEN_COMPLETION_PCT };
 
+// ── the modeled audience ──────────────────────────────────────────────────────────────────────
+// The population projection is what the $1 unlocks, so it is sealed away before render. It is
+// modeled at the General baseline — this demo has no calibrated room, and claiming one would be
+// the exact fabrication the design bans.
 const DEMO_POP: PopulationAggregate = {
   total: 1000,
-  stop: 380,
-  scroll: 620,
-  stopPct: 38,
+  stop: Math.round(FROZEN_COMPLETION_PCT * 10),
+  scroll: 1000 - Math.round(FROZEN_COMPLETION_PCT * 10),
+  stopPct: FROZEN_COMPLETION_PCT,
   segments: [
-    { archetype: "builder", displayName: "builders", share: 0.27, total: 270, stop: 221, stopPct: 82 },
-    { archetype: "scroller", displayName: "scrollers", share: 0.41, total: 410, stop: 209, stopPct: 51 },
-    { archetype: "skeptic", displayName: "skeptics", share: 0.2, total: 200, stop: 24, stopPct: 12 },
-    { archetype: "drop-in", displayName: "drop-ins", share: 0.12, total: 120, stop: 48, stopPct: 40 },
+    { archetype: "builder", displayName: "builders", share: 0.27, total: 270, stop: 208, stopPct: 77 },
+    { archetype: "scroller", displayName: "scrollers", share: 0.41, total: 410, stop: 250, stopPct: 61 },
+    { archetype: "skeptic", displayName: "skeptics", share: 0.2, total: 200, stop: 94, stopPct: 47 },
+    { archetype: "drop-in", displayName: "drop-ins", share: 0.12, total: 120, stop: 71, stopPct: 59 },
   ],
   reasons: [
-    { reason: "The payoff comes too late", count: 253 },
-    { reason: "The $400 stake feels real", count: 190 },
-    { reason: "Heard this story before", count: 121 },
+    { reason: "The same point lands three times", count: 241 },
+    { reason: "The free-vs-paid rule is genuinely useful", count: 198 },
+    { reason: "Took too long to name the subject", count: 132 },
   ],
 };
 
 const DEMO_PERSONAS = [
-  { archetype: "skeptic", verdict: "scroll" as const, quote: "i'd be gone before the point lands" },
-  { archetype: "builder", verdict: "stop" as const, quote: "the $400 detail made me stay" },
-  { archetype: "scroller", verdict: "scroll" as const, quote: "felt slow right after the opener" },
-  { archetype: "builder", verdict: "stop" as const, quote: "the honesty hooked me, i wanted the numbers" },
+  { archetype: "builder", verdict: "stop" as const, quote: "the litmus test is the whole video, and it's good" },
+  { archetype: "scroller", verdict: "scroll" as const, quote: "he made the point, then made it again" },
+  { archetype: "skeptic", verdict: "scroll" as const, quote: "took a beat too long to say what this was about" },
+  { archetype: "builder", verdict: "stop" as const, quote: "free if it scales — i can actually use that" },
 ];
 
-/** The COMPLETE analysis — everything revealed. The seal derives every other state from this. */
+/** The COMPLETE analysis — everything revealed. Every other state is derived from this by the seal. */
 export const WALKTHROUGH_TEMPLATE: DomainTemplate = buildVideoDomainTemplate({
-  ...DEMO_INPUT,
+  ...FROZEN_ANALYSIS,
   reasons: [
-    { reason: "too-slow", count: 253 },
-    { reason: "strong-hook", count: 190 },
-    { reason: "interest", count: 121 },
+    { reason: "too-slow", count: 241 },
+    { reason: "interest", count: 198 },
+    { reason: "weak-hook", count: 132 },
   ],
   population: buildPopulationFrameData({
     aggregate: DEMO_POP,
@@ -121,41 +92,49 @@ export const WALKTHROUGH_TEMPLATE: DomainTemplate = buildVideoDomainTemplate({
 // ── what the visitor is allowed to see ────────────────────────────────────────────────────────
 
 /**
- * The CRAFT score — shown at every beat, including behind the wall. It is a property of the video
- * itself (framing, pacing, transitions), not of anyone's audience, so showing it costs us nothing
- * and it is what makes the mechanism legible before payment (design §4, the SHOWN column).
+ * The CRAFT score, shown at every beat including behind the wall — it is a property of the video
+ * itself, not of anyone's audience, so showing it costs nothing and it is what makes the mechanism
+ * legible before payment. Derived from the four measured craft dims so it cannot drift from them.
  */
-export const CRAFT_SCORE = 77;
+const CRAFT_DIMS = FROZEN_ANALYSIS.videoSignals!;
+export const CRAFT_SCORE = Math.round(
+  ((CRAFT_DIMS.hook_visual_impact +
+    CRAFT_DIMS.visual_production_quality +
+    CRAFT_DIMS.pacing_score +
+    CRAFT_DIMS.transition_quality) /
+    4) *
+    10,
+);
 
-/** Where they leave. SHOWN — a specific timestamp on a real video is a demonstration, not a claim. */
-export const LOSS_MOMENT = "0:04";
+/** Where attention falls fastest. SHOWN — a timestamp on a real video is a demonstration. */
+export const LOSS_MOMENT = FROZEN_LOSS_MOMENT;
 
 /**
- * The beat-1 insight, given away IN FULL. This is the sample that proves the mechanism: without it
- * the visitor is asked to pay for an answer whose quality they have no evidence of.
- * Derived from the same measured curve as beat 2 — a shallower dip, completely explained.
+ * Beat 1 — GIVEN AWAY IN FULL. The sample that proves the mechanism: without it the visitor is
+ * asked to pay for an answer whose quality they have no evidence of.
+ * Verbatim from the run's `suggestions[0]` (hook_structure, priority high) and `suggestions[2]`.
  */
 export const REVEALED_INSIGHT = {
-  moment: "0:08",
-  where: "attention sags through the proof section",
-  why: "The numbers arrive as narration over the same framing that carried the last four seconds. Nothing on screen changes when the most interesting claim lands, so the viewer reads it as more of the same.",
-  fix: "Cut to the number on screen the moment you say it. A hard visual change on the payoff line is what tells a scroller the video just moved.",
+  moment: "0:00",
+  where: "the hook — strong delivery, late subject",
+  why: "The hook opens with a conditional (“Anything that scales”) before the subject is clear.",
+  fix: "Front-load the contrast frame so the viewer knows what's being compared in the first half-second, not after the clause resolves. The on-screen line “What you give away for free vs what you charge for” is the strongest line in the video — make it the spoken hook too, so audio and text align from frame one.",
 } as const;
 
 /**
- * The beat-2 payload — GENUINELY WITHHELD. The seal removes it from the rendered template, so the
- * locked panel is an absence, never a blur over placeholder text (design §4, the honesty floor).
+ * Beat 2 — GENUINELY WITHHELD. The seal removes it from the rendered template, so the locked panel
+ * is an absence, never a blur over placeholder text (design §4, the honesty floor).
+ * Verbatim from the run's `suggestions[1]` (retention_pacing), anchored on the measured steepest drop.
  *
- * ⚠️ Zero network means this necessarily ships in the client bundle — a determined visitor can read
- * it in devtools. That is an accepted trade: the guarantee we are making is that what unlocks IS
- * what was hidden, not that it is cryptographically secret. It is one public video's analysis, not
- * user data. Do not "solve" this by putting fake text here — that breaks the actual promise.
+ * ⚠️ Zero network means this ships in the client bundle — a determined visitor can read it in
+ * devtools. Accepted: the promise is that what unlocks IS what was hidden, not that it is secret.
+ * It is one public video's analysis, not user data. Do NOT "solve" this by putting fake text here.
  */
 export const SEALED_INSIGHT = {
-  moment: LOSS_MOMENT,
-  where: "the deepest drop in the video",
-  why: "The hook writes a cheque the next line doesn't cash. “I quit my 9-5 with $400” sets up a story about how; the following beat is a preamble about honesty instead. Attention was bought with a specific number and then spent on a throat-clear.",
-  fix: "Delete the honesty preamble and put the month-one number at 0:04. The viewer who stopped for “$400” is asking one question, and every second they wait for it is a second they can leave.",
+  moment: FROZEN_LOSS_MOMENT,
+  where: `the steepest drop — ${FROZEN_LOSS_DELTA_PCT} points of attention in one segment`,
+  why: "The body repeats the same point three times (“if it doesn't scale, you gotta pay” / “if it scales, it's free” / “price tag is a good litmus test”).",
+  fix: "Tighten to one clean pass with a concrete example to add specificity and cut dead air between loops.",
 } as const;
 
 // ── the seal ──────────────────────────────────────────────────────────────────────────────────
@@ -168,12 +147,12 @@ export type SealState = "sealed" | "open";
  *
  * `sealed` strips the three things the $1 buys — and strips them from the DATA, so the real
  * `AmbientDetail` renders its honest unavailable states rather than a fake overlay:
- *   • `unlock`             the director's fix
+ *   • `unlock`              the director's fix
  *   • `brain.whyThisSecond` the diagnosis — the WHY
  *   • `population`          the audience-specific score and the gap
  *
- * Everything in the SHOWN column survives: the filmstrip, the measured curve (so "0:04" is still
- * visibly the deepest point), and the craft signals.
+ * Everything in the SHOWN column survives: the filmstrip, the measured curve (so the drop is still
+ * visibly where we say it is), and the craft signals.
  */
 export function sealTemplate(template: DomainTemplate, state: SealState): DomainTemplate {
   if (state === "open") return template;
@@ -184,9 +163,9 @@ export function sealTemplate(template: DomainTemplate, state: SealState): Domain
 
   return {
     ...rest,
-    // The verdict chip is the AUDIENCE number ("38% would stop") — that is the sealed one. Behind
-    // the wall the hero carries the craft score instead, which we are allowed to show, so the
-    // figure never reads as an empty state.
+    // The verdict chip is the AUDIENCE number — that is the sealed one. Behind the wall the hero
+    // carries the craft score instead, which we are allowed to show, so the figure never reads as
+    // an empty state.
     verdict: { value: String(CRAFT_SCORE), label: "craft score" },
     brain: brain
       ? (() => {

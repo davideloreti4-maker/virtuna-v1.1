@@ -10,6 +10,7 @@
 import { describe, expect, it } from "vitest";
 import {
   CRAFT_SCORE,
+  FROZEN_LOSS_DELTA_PCT,
   isSealed,
   REVEALED_INSIGHT,
   SEALED_INSIGHT,
@@ -17,6 +18,7 @@ import {
   WALKTHROUGH_IS_PLACEHOLDER,
   WALKTHROUGH_TEMPLATE,
 } from "../walkthrough-fixture";
+import { FROZEN_LOSS_MOMENT } from "../frozen-analysis";
 import { BEATS, beatAt, beatPosition, nextBeat } from "../beats";
 
 describe("the frozen example", () => {
@@ -32,16 +34,38 @@ describe("the frozen example", () => {
     expect(WALKTHROUGH_TEMPLATE.brain?.whyThisSecond).toBeDefined();
   });
 
-  it("has TWO dips, so the wall has something to prove itself with", () => {
-    // Revealing one insight only works as a sample if a DIFFERENT one stays locked. A single-dip
-    // curve would mean beat 1 and beat 2 are the same moment, and the wall becomes a re-ask.
+  it("reveals and withholds two DIFFERENT moments", () => {
+    // Revealing one insight only works as a sample if a different one stays locked. If both beats
+    // pointed at the same second, the wall would be re-asking for what was just given away.
     expect(REVEALED_INSIGHT.moment).not.toBe(SEALED_INSIGHT.moment);
   });
 
-  it("keeps the placeholder gate armed until a real run replaces the data", () => {
-    // This asserts the CURRENT honest state. When the real analysis is frozen, flip the fixture
-    // flag and this expectation together — deliberately, in the same commit.
-    expect(WALKTHROUGH_IS_PLACEHOLDER).toBe(true);
+  it("anchors the wall on the measured steepest drop, not on a chosen second", () => {
+    // The frozen curve declines monotonically, so the LOWEST point is trivially the last segment
+    // and says nothing. The honest "where they left" is where attention falls fastest — and the
+    // wall's moment must be that, straight from the freeze script.
+    expect(SEALED_INSIGHT.moment).toBe(FROZEN_LOSS_MOMENT);
+    expect(FROZEN_LOSS_DELTA_PCT).toBeGreaterThan(0);
+  });
+
+  it("ships REAL data — the placeholder gate is disarmed", () => {
+    // Flipped 2026-07-24 in the same commit as the frozen run (analysis vSoTpo5AixUS). If anyone
+    // replaces the fixture with hand-authored numbers, this must go back to true and /go will
+    // stop mounting the walkthrough in production.
+    expect(WALKTHROUGH_IS_PLACEHOLDER).toBe(false);
+  });
+
+  it("takes the insight text from the engine's own output", () => {
+    // The wall's credibility rests on this being real analysis, not copy. These are the exact
+    // phrases the run emitted; if someone rewrites them into marketing prose, this fails.
+    expect(REVEALED_INSIGHT.why).toContain("conditional");
+    expect(SEALED_INSIGHT.why).toContain("repeats the same point three times");
+    expect(SEALED_INSIGHT.fix).toContain("one clean pass");
+  });
+
+  it("derives the craft score from the four measured dims", () => {
+    // Shown behind the wall, so it must be the video's real craft, never a flattering constant.
+    expect(CRAFT_SCORE).toBe(55);
   });
 });
 
