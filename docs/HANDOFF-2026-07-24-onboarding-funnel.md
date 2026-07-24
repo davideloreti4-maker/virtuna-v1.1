@@ -1,8 +1,13 @@
 # Handoff — onboarding funnel milestone (2026-07-24)
 
 **Worktree:** `~/virtuna-onboarding` · **Branch:** `milestone/onboarding` · **Base:** `main@99c494d1`
-**Tip:** `bee79e60` · 10 commits · pushed to `origin/milestone/onboarding` · **NOT merged (deliberate — see §5)**
-**Suite:** 4453 passed / 0 failed (404 files) · **tsc:** 0 errors
+**Tip:** `4abbfb73` · pushed to `origin/milestone/onboarding` · **NOT merged (deliberate — see §5)**
+**Suite:** 4476 passed / 0 failed · **tsc:** 0 · **eslint:** 0
+
+> **Session 2 (2026-07-24) changed the design.** Read `ONBOARDING-FUNNEL-DESIGN.md` **§0a** first —
+> it holds three owner calls that SUPERSEDE §4/§7 of that doc: payment now runs **before** identity,
+> the wall **reveals beat 1 in full** before withholding beat 2, and the 3-day trial is confirmed
+> (with its consequence designed around). **S1 is built** (§3a). The Supabase blocker is **cleared**.
 
 **SSOT for the design:** `docs/ONBOARDING-FUNNEL-DESIGN.md` — read it first, it is the contract.
 **Setup blocker doc:** `docs/OTP-EMAIL-TEMPLATE-SETUP.md`
@@ -46,22 +51,47 @@ collected; the moat (`/api/audiences/calibrate`) is not in the funnel at all.
 > A test caught a real bug pre-merge: `/\btrill\b/` cannot match TikTok's actual
 > `trill_2022905030` because `_` is a word character, so the closing boundary never fires.
 
-## 4. 🔴 Blocked on the owner — nothing downstream works until these land
+## 3a. What is BUILT (S1) — the walkthrough, verified in a browser
 
-1. **Push the Supabase email templates.** `signInWithOtp` sends **Confirm signup** to NEW addresses
-   (≈ all cold traffic) and **Magic Link** to known ones. Both must render `{{ .Token }}`.
-   ```bash
-   npx supabase login && npx supabase link --project-ref qyxvxleheckijapurisj && npx supabase config push
-   ```
-   Fallbacks (dashboard, Management API curl) in `docs/OTP-EMAIL-TEMPLATE-SETUP.md`.
-2. **Custom SMTP.** Supabase's built-in sender allows a few emails/hour. Real traffic will hit
-   "too many codes requested" — surfaced honestly by `otp.ts`, but it still costs the conversion.
-3. **Whop does not exist yet.** `WHOP_API_KEY`, `WHOP_PRODUCT_ID_*`, `WHOP_TRIAL_PLAN_ID_*` are unset
-   in trunk AND worktree, so `/api/whop/checkout` returns **503** by design (`route.ts:63` refuses
-   rather than granting an unbilled pass). Needs: 3 products, the $1/3-day trial SKUs, API key,
-   webhook secret. **The funnel's only conversion point does not exist until this is done.**
-4. **Real-device pass**, after 1 and 3: open the link from a TikTok bio on iOS + Android, and run
-   OTP + checkout inside the in-app browser.
+- `components/offer/walkthrough/` — the shell drives the **real `AmbientDetail`** from a frozen
+  fixture. Four beats, one lit affordance each (`beats.ts`, data not control flow, so the rail is
+  testable without rendering and A/B-able without a component edit). Mounted on `/go` under the hero.
+- **The seal is DATA, not a view flag.** `sealTemplate` strips the fix, the diagnosis and the
+  audience score out of the template, so the real component renders its own honest unavailable
+  states. Verified live: the sealed copy is absent from the DOM at the wall. No blur anywhere.
+- `lib/analytics/funnel-events.ts` — the §8 event spine. **No sink yet**; `track()` buffers and logs
+  in dev. The call sites are the expensive part to retrofit, so they ship now.
+- 🔴 The fixture is **placeholder data**. `WALKTHROUGH_IS_PLACEHOLDER` hard-blocks the mount in
+  production and a test pins the flag armed — invented numbers on a commercial page are fabricated
+  proof (design §4).
+
+> Two defects came out of driving it in a real browser, not out of the tests, and both were fixed in
+> `AmbientDetail` itself: absent `population` said **"no run yet"**, which made the *locked* product
+> read as a *broken* one (now `populationNote`, mirroring `brainNote`); and the back button rendered
+> with no `onBack` — a dead control that was also an exit from the guided rail.
+
+## 4. Blocked on the owner
+
+1. ✅ **DONE — Supabase OTP templates are live in production.** Patched 2026-07-24 via the Management
+   API and verified: both `confirmation` and `magic_link` render `{{ .Token }}`, neither contains
+   `{{ .ConfirmationURL }}`.
+   ⛔ **Do NOT run `npx supabase config push` on this project.** It pushes the whole `[auth]` block,
+   and `config.toml` is still the local-dev scaffold — it would set `site_url` to `127.0.0.1`, wipe
+   the redirect allow-list, and cap auth email at 2/hour. Patch the Management API instead.
+2. 🔴 **Whop does not exist yet** — `/api/whop/checkout` returns **503** by design (`route.ts:63`
+   refuses rather than granting an unbilled pass). **The funnel's only conversion point.** Full
+   owner-executable checklist, incl. the three questions Whop has to answer before S2:
+   **`docs/WHOP-SETUP.md`**.
+3. 🔴 **Prod auth config drift**, found while patching the templates. Not changed — each is an owner
+   call with production blast radius:
+   - `rate_limit_email_sent = 2` — two auth emails **per hour**, project-wide. This will kill the OTP
+     funnel on contact with traffic. Needs custom SMTP; the built-in sender is capped regardless.
+   - `site_url = http://localhost:3000` and a localhost-only `uri_allow_list`. **Unverified** whether
+     prod OAuth/password-reset currently break — check before assuming either way.
+   - `mailer_autoconfirm = true`, which contradicts the design's premise that email/password signup
+     dead-ends on a confirmation email. That premise may be stale.
+4. **Real-device pass**, after 2: open the link from a TikTok bio on iOS + Android and run OTP +
+   checkout inside the in-app browser.
 
 ## 5. ⚠️ Why this is NOT merged to main
 
@@ -81,19 +111,26 @@ cd ~/virtuna-v1.1 && git switch main && git merge --no-ff milestone/onboarding
 
 ## 6. Next actions, in order
 
-1. **S1 — the walkthrough shell.** Buildable NOW against `detail-live-fixture.ts` placeholder data:
-   lock/reveal mechanics, guided-rail sequencing, 390px-first layout. The fixture contract is already
-   the right shape, so swapping in the real Hormozi analysis is a data change, not a rewrite.
-2. **Freeze the Hormozi analysis.** `/api/analyze` accepts `input_mode: "tiktok_url"` (`route.ts:482`).
-   Preferred path: dev server + run it through the REAL route as the owner, so the frozen fixture
-   comes from exactly the production code path. Costs 10 credits (`score`). Then extract keyframe
-   stills to `/public`.
-3. **S2** — OTP-first identity → Whop checkout inline. When keys exist, branch presentation on the
-   existing `isInAppBrowser`: `WhopCheckoutEmbed` on real browsers, **full-page hosted checkout inside
-   webviews** (same session, same cookies, returns via `redirect_url`) — that makes the webview
-   question moot instead of merely answering it.
+1. **Whop products + keys** — `docs/WHOP-SETUP.md`. Longest lead time, and nothing downstream of the
+   wall can be built or measured until checkout exists. Start here.
+2. **Freeze the demo analysis.** `/api/analyze` accepts `input_mode: "tiktok_url"` (`route.ts:482`).
+   Run it through the REAL route as the owner so the frozen fixture comes from exactly the production
+   code path. Costs 10 credits (`score`). Then extract keyframe stills to `/public`, paste the result
+   into `walkthrough-fixture.ts`, and flip `WALKTHROUGH_IS_PLACEHOLDER` — in the same commit as the
+   test that pins it.
+3. **S2 — rewired for payment-first** (design §0a ①). This is no longer "OTP then checkout":
+   - lift the 401 in `api/whop/checkout/route.ts:10` for the funnel path;
+   - send an anonymous correlation id in `metadata` instead of `supabase_user_id`, which does not
+     exist yet at checkout;
+   - **the webhook must PROVISION the Supabase user** from the payment email. The known "paid, no
+     access" hazard (§7) is now the primary path, not an edge case — it has to be correct;
+   - then OTP, to claim the account, after the fix has been revealed.
+   Branch presentation on the existing `isInAppBrowser`: embed on real browsers, **full-page hosted
+   checkout inside webviews**, which makes the webview question moot rather than merely answering it.
    ⚠️ Unknown: whether Whop's v5 `checkout_sessions` response carries a hosted purchase URL. The route
-   currently keeps only `checkoutConfigId` (`route.ts:110`). Check the moment credentials exist.
+   keeps only `checkoutConfigId` (`route.ts:110`). Check the moment credentials exist.
+4. **Wire a sink to the funnel events** (`lib/analytics/funnel-events.ts`). Use `sendBeacon` — this
+   traffic is mobile webviews, and a `fetch` in flight when the page is backgrounded is a lost event.
 4. **S3** — delete `/welcome` outright, incl. the middleware bounce (`middleware.ts:167`); checkout
    lands in Ambient v2 Start.
 5. **S4** — first real actions: room calibrates in the rail (visible labor) → their video → the gap
