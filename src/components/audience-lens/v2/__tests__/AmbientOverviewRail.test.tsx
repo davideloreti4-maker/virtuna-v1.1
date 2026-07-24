@@ -59,7 +59,7 @@ describe("AmbientOverviewRail", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("drills a SEALED text row into the real depth — brain-first (real reason breakdown) + the Population tab", () => {
+  it("drills a SEALED text row into the real depth — brain-first attention-scrubber (real top-reason synthesis) + the Population tab", () => {
     const population = {
       total: 1000,
       stop: 800,
@@ -88,12 +88,17 @@ describe("AmbientOverviewRail", () => {
     // tapping the SEALED row opens the depth drill (not Simulate) — it has a real population
     fireEvent.click(screen.getByRole("button", { name: /I quit my 9-5 with \$400/ }));
     expect(screen.getByTestId("ambient-detail")).toBeTruthy();
-    // opens BRAIN-first now (owner call 2026-07-24): the real reason-driver breakdown renders, with the
-    // friction reason humanized + coral. Never the old "text concept sim — unavailable" state.
-    expect(screen.getByText(/What carried the stop/i)).toBeTruthy();
-    expect(screen.getByText(/Strong hook/)).toBeTruthy();
-    expect(screen.getByText(/Too slow/)).toBeTruthy();
-    expect(screen.queryByText(/text concept sim/i)).toBeNull();
+    // opens BRAIN-first (owner call 2026-07-24: text sim = full video Brain parity). The text brain is
+    // the SAME attention-scrubber the video draws (modeled retention curve + real transcript), headed by
+    // the REAL top-reason synthesis — the friction (loss) reason, humanized + coral. This REVERSED the
+    // old reason-bars stance, so "What carried the stop" must NOT render; and it is NEVER the "text
+    // concept sim — unavailable" paused state. (textContent matcher tolerates the synthesis' spans.)
+    const bodyHas = (re: RegExp) =>
+      screen.getAllByText((_content, el) => !!el && re.test(el.textContent ?? "")).length > 0;
+    expect(bodyHas(/Most who stalled did so on/i)).toBe(true); // the real "why they stopped" synthesis
+    expect(bodyHas(/too slow/i)).toBe(true); // the friction (loss) reason leads it (520 vs 120: loss wins)
+    expect(screen.queryByText(/What carried the stop/i)).toBeNull(); // the reversed-away reason-bars header
+    expect(screen.queryByText(/text concept sim/i)).toBeNull(); // never the unavailable fallback
     // the Population tab is still reachable — the same sim's REAL districts render there
     fireEvent.click(screen.getByRole("button", { name: /The audience/ }));
     expect(screen.getAllByText(/builders/).length).toBeGreaterThan(0);
