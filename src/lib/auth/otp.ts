@@ -8,11 +8,17 @@
  * paying. A six-digit code is typed back into the SAME page: no navigation, no
  * app switch, nothing lost.
  *
- * ⚠️ DEPLOY REQUIREMENT — this code cannot work alone. Supabase's default email
- * template for this flow sends a magic link, NOT a code. The project's
- * "Magic Link" template must include `{{ .Token }}` or the user receives a link
- * and there is nothing to type. That is a dashboard change; there is no code
- * path here that can compensate for it.
+ * ⚠️ DEPLOY REQUIREMENT — this code cannot work alone. Supabase's default
+ * templates send a magic LINK, not a code, and `signInWithOtp` picks the
+ * template by whether the address is already known:
+ *
+ *   - new address  → **Confirm signup** template  ← the funnel's whole volume
+ *   - known address → **Magic Link** template
+ *
+ * BOTH must contain `{{ .Token }}`, and Confirm signup is the one that matters
+ * for acquisition — miss it and every first-time visitor receives a link with
+ * nothing to type, which is the exact failure this module exists to prevent.
+ * Dashboard/Management-API change; no code path here can compensate.
  */
 
 import { createClient } from "@/lib/supabase/client";
