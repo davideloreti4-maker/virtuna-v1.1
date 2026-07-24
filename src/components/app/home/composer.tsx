@@ -1127,6 +1127,11 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       const allBlocks = messages.flatMap((m: { blocks?: Array<{ type?: string; props?: unknown }> }) => m.blocks ?? []);
       const newHookBlocks = allBlocks.filter((b: { type?: string }) => b.type === 'hook-card');
       setPersistedHookBlocks(newHookBlocks);
+      // Thread-unification: the developed hook cards render through PersistedThreadStream, which reads
+      // persistedChatTurns — NOT persistedHookBlocks. Refresh the unified stream so the cards actually
+      // appear (the develop endpoint has no SSE, so hooks.isStreaming never flips and the live view
+      // never mounts). Without this the thread switches to hooks and shows a blank gap until reload.
+      setPersistedChatTurns(orderedTurns(messages));
     } catch {
       // Network error — silent (user can retry)
     }
@@ -1212,6 +1217,11 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           b.type === 'multi-audience-read', // the Read — tool-agnostic (mirrors rehydration)
       );
       setPersistedProfileBlocks(profileBlocks);
+      // Thread-unification: the profile-read / reaction-distribution / prediction-gauge / Read cards
+      // render through PersistedThreadStream (persistedChatTurns), NOT the retired persistedProfileBlocks
+      // bucket. Refresh the unified stream so an evidence-drop / Simulate / Predict result surfaces
+      // in-session (dormant behind HORIZONTAL_ENABLED today, but the write path must stay honest).
+      setPersistedChatTurns(orderedTurns(messages));
     } catch {
       // Network error — silent (the user can retry the drop)
     }
@@ -1996,7 +2006,16 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // then the active skill's live cards — so the ledger is that same flat array, in DOM order. This
   // replaces the per-tool pick, which undercounted a mixed thread (a hooks + ideas thread showed both
   // sets of cards but the rail only knew one tool's). The ledger is keyed on the BLOCKS, never the chip.
-  const persistedFlatBlocks = persistedChatTurns.flatMap((t) => t.blocks);
+  // `outlier-grid` (Explore) is the one persisted block whose Remix/Track handlers ride PROPS, not
+  // context, so it can't rehydrate interactively through PersistedThreadStream's generic MessageBlocks.
+  // It renders in ExploreThreadView instead (which owns those handlers), so we filter it OUT of the
+  // unified stream — and out of the ledger too, so the flat indices PersistedThreadStream anchors and
+  // the ledger scores stay identical (grids are non-reactable, so this only drops dead index slots).
+  const persistedStreamTurns = persistedChatTurns.map((t) => ({
+    ...t,
+    blocks: t.blocks.filter((b) => (b as { type?: string }).type !== "outlier-grid"),
+  }));
+  const persistedFlatBlocks = persistedStreamTurns.flatMap((t) => t.blocks);
   // The active skill's live cards (the streaming tail rendered after the persisted stream). Only the
   // mounted view's cards — a card from an unmounted tool is not on screen and must not move the room.
   const activeStreamCards: unknown[] =
@@ -2361,7 +2380,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           The per-skill views below now render ONLY their live/in-flight run (streaming tail). This replaces
           the old per-tool bucket partition (persistedIdeaBlocks/…/persistedProfileBlocks) + the profile
           bucket render that used to live here. */}
-      <PersistedThreadStream persistedTurns={persistedChatTurns} ambientBaseIndex={0} />
+      <PersistedThreadStream persistedTurns={persistedStreamTurns} ambientBaseIndex={0} />
 
       {/* Ideas thread view — renders above the composer when the Idea tool is active.
           Consumes useIdeasStream state; provides PlatformContext to IdeaCardRenderer
@@ -2462,7 +2481,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       {showChatView && (
         <ChatThreadView
           persistedBlocks={[]}
-          persistedTurns={persistedChatTurns}
+          persistedTurns={persistedStreamTurns}
           streamingBlocks={chatBlocks}
           streamingCardBlocks={chat.streamingBlocks}
           stages={chat.stages}
@@ -2487,7 +2506,11 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           both call explore.start (no pendingNavRef, Pitfall 1). */}
       {showExploreView && (
         <ExploreThreadView
-          persistedBlocks={[]}
+          // Explore keeps its own persisted grids (filtered out of PersistedThreadStream above): its
+          // OutlierGridBlockRenderer wires the Remix/Track handlers via props, which the generic
+          // MessageBlocks path can't forward — so rehydrating through the unified stream would render
+          // inert tiles. This view owns the handlers, so the persisted grid stays interactive on reload.
+          persistedBlocks={persistedExploreBlocks}
           streamingBlocks={exploreBlocks}
           stages={explore.stages}
           isStreaming={explore.isStreaming}
