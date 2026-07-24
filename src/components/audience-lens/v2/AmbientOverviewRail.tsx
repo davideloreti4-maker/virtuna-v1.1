@@ -176,18 +176,18 @@ export function AmbientOverviewRail({
   );
 
   // Clicking a row:
-  //  - a SEALED row WITH population → the real Population page we built (AmbientDetail). This is the
-  //    ONLY depth page shown for a text sim; ONLY calibrated audiences yield a population projection.
-  //  - a SEALED General/uncalibrated row (no population) → inert. There is NO population page for it
-  //    (the Stage-2 room projection needs a calibrated signature) — the row's measured % IS the
-  //    result. We never invent a page, and never re-open the ARM config (owner-caught).
+  //  - a SEALED row WITH population → the real Population page (AmbientDetail). BOTH calibrated and
+  //    General yield a population now — General reacts through the honest generic baseline signature
+  //    (general-baseline-signature.ts), so a new user drills into the SAME Population room.
+  //  - a SEALED row with NO population (presets, or a projection failure) → inert; the measured % IS
+  //    the result. We never invent a page, and never re-open the ARM config (owner-caught).
   //  - an un-run QUEUED row (no snapshot) → develop, to arm.
   const openStimulus = useCallback(
     (id: string) => {
       const snap = snapshotFor(id);
       if (snap?.population) setDetailId(id);
       else if (!snap) openDevelop(id);
-      // General sealed (snap but no population): inert — the % on the row is the answer.
+      // Sealed but no population (preset / failure): inert — the % on the row is the answer.
     },
     [snapshotFor],
   );
@@ -323,8 +323,9 @@ export function AmbientOverviewRail({
     );
   }
 
-  // Phase C: a SEALED calibrated row drills into the real Population depth (brain omitted — a text sim
-  // has no attention/craft read, so AmbientDetail shows its honest brain-unavailable state).
+  // A SEALED row drills into the real depth. BOTH tabs are real now (owner call 2026-07-24): the
+  // Population projection AND the Brain — the cortex proxy + the real reason-driver breakdown built off
+  // the same sim (buildDomainTemplate → buildReasonBrainFrameData). The drill opens brain-first.
   if (detailId !== null) {
     const snap = snapshotFor(detailId);
     const d = descriptors.find((x) => x.id === detailId);
@@ -336,6 +337,7 @@ export function AmbientOverviewRail({
         calibratedFrom: meta.calibratedFrom,
         tier: meta.tier,
         conceptLabel: d?.kind ?? "concept",
+        stimulusKey: detailId,
       });
       return (
         <div className="flex h-full w-full">
@@ -343,7 +345,6 @@ export function AmbientOverviewRail({
             template={template}
             reducedMotion={reducedMotion}
             onBack={() => setDetailId(null)}
-            brainNote="The brain reads a video's frames. This was a text concept sim — run it on a draft to see the attention read."
           />
         </div>
       );

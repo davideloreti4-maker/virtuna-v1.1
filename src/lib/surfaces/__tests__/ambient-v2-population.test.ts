@@ -6,7 +6,12 @@
  * districts + loss index + coded reasons are the projection's REAL numbers; layout is deterministic.
  */
 import { describe, it, expect } from "vitest";
-import { buildPopulationFrameData, type PopulationSnapshotInput } from "../ambient-v2-population";
+import {
+  buildPopulationFrameData,
+  buildReasonBrainFrameData,
+  buildDomainTemplate,
+  type PopulationSnapshotInput,
+} from "../ambient-v2-population";
 import type { PopulationAggregate } from "@/lib/audience/population";
 
 const AGG: PopulationAggregate = {
@@ -91,5 +96,48 @@ describe("buildPopulationFrameData", () => {
     const p = buildPopulationFrameData(base);
     expect(p.heroRead).toContain("builders");
     expect(p.heroRead).toContain("skeptics");
+  });
+});
+
+describe("buildReasonBrainFrameData (the text brain — owner call 2026-07-24)", () => {
+  const AGG_REASONS: PopulationAggregate = {
+    ...AGG,
+    reasons: [
+      { reason: "strong-hook", count: 400 },
+      { reason: "interest", count: 140 },
+      { reason: "too-slow", count: 80 },
+    ],
+  };
+
+  it("the driver is the REAL reason tally — weightiest first, humanized, shares over the stopper count", () => {
+    const b = buildReasonBrainFrameData({ aggregate: AGG_REASONS, stopPct: 62, stimulusKey: "k1" });
+    expect(b.driver.kind).toBe("reason-breakdown");
+    if (b.driver.kind !== "reason-breakdown") throw new Error("expected reason-breakdown");
+    const d = b.driver.data;
+    expect(d.total).toBe(620); // agg.stop — the denominator
+    expect(d.rows[0]).toMatchObject({ label: "Strong hook", count: 400 });
+    expect(d.rows[0]!.share).toBeCloseTo(400 / 620, 4);
+    // friction reasons ride loss (coral); pull reasons don't.
+    expect(d.rows.find((r) => r.label === "Too slow")!.loss).toBe(true);
+    expect(d.rows.find((r) => r.label === "Strong hook")!.loss).toBeUndefined();
+    // rows are sorted weightiest-first.
+    expect(d.rows.map((r) => r.count)).toEqual([400, 140, 80]);
+    expect(d.read).toMatch(/strong hook/i);
+  });
+
+  it("the cortex is a seeded MODELED proxy driven by the real stop-ratio; the honesty line says so", () => {
+    const b = buildReasonBrainFrameData({ aggregate: AGG_REASONS, stopPct: 62, stimulusKey: "k1" });
+    expect(b.cortexSeedKey).toBe("k1");
+    expect(b.stopRatio).toBeCloseTo(0.62, 4);
+    expect(b.signals).toEqual([]); // no visual craft dims on a text sim
+    expect(b.calibrationNote).toMatch(/proxy/i);
+    expect(b.calibrationNote).toMatch(/not measured/i);
+  });
+
+  it("buildDomainTemplate now ships a REAL brain for a text sim (no longer undefined)", () => {
+    const tpl = buildDomainTemplate({ ...base, aggregate: AGG_REASONS, pct: 62, stimulusKey: "k1", conceptLabel: "hook" });
+    expect(tpl.brain).toBeDefined();
+    expect(tpl.brain!.driver.kind).toBe("reason-breakdown");
+    expect(tpl.population).not.toBeNull(); // both tabs real
   });
 });

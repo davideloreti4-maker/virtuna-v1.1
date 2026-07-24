@@ -21,7 +21,7 @@ import dynamic from "next/dynamic";
 import { hashSeed, predictedBold, type DriveInput } from "@/lib/brain/cortex-sim";
 import { TONE, Kick, SecHead, HowToRead, VerdictChip, Unlock, type AttentionData, type NetworkRow, type SignalRow } from "./AmbientDetail";
 import { SignalGridV2, NetworkSigmaBars, KpiHeatmap, BuyIntentCurve } from "./BrainDepth";
-import type { BrainDriver, BrainFrameData, DomainTemplate, ResistanceCurveData, WhyThisSecond } from "./domain-template";
+import type { BrainDriver, BrainFrameData, DomainTemplate, ReasonBreakdownData, ResistanceCurveData, WhyThisSecond } from "./domain-template";
 
 // CortexCanvas is WebGL (three.js) — client-only, never SSR (mirrors BrainView.tsx:115).
 const CortexCanvas = dynamic(() => import("../CortexCanvas"), {
@@ -268,6 +268,9 @@ function AttentionScrubber({
  *  vs the user's baseline (`signalsBaseline`). Reads as a story — what this does better / worse than
  *  typical. Negative delta → coral (the loss). Bar + absolute score dropped (declutter). */
 function SignalRows({ signals, baseline }: { signals: SignalRow[]; baseline?: string }) {
+  // No craft signals (a text/concept sim has no visual craft dims) → render nothing, never an empty
+  // labelled section. The reason-breakdown driver above already carries the text brain's decomposition.
+  if (!signals.length) return null;
   return (
     <div className="mt-8">
       <Kick>{baseline ?? "breakdown"}</Kick>
@@ -375,6 +378,46 @@ function ResistanceCurve({ data }: { data: ResistanceCurveData }) {
   );
 }
 
+// ── reason breakdown (text driver — "why they stopped") ───────────────────────
+
+/** The cognitive WHY for a text/concept sim: the REAL dominant-reason tally among the stoppers, drawn
+ *  as weighted bars (share of the coded stoppers). Friction reasons (weak hook / novelty mismatch /
+ *  hype / too slow) go coral; pull reasons (interest / strong hook) stay cream. A text sim has no time
+ *  axis, so this replaces the attention scrubber — real counts, never an invented curve. */
+function ReasonBreakdown({ data }: { data: ReasonBreakdownData }) {
+  const { question, rows, read } = data;
+  const max = Math.max(1, ...rows.map((r) => r.count));
+  return (
+    <div className="mt-8">
+      <Kick>Why they stopped</Kick>
+      <SecHead q={question} ownLabel="coded" ownValue={String(data.total)} />
+      <div className="mt-3.5 flex flex-col gap-2.5">
+        {rows.map((r) => (
+          <div key={r.label} className="flex items-center gap-3">
+            <span className="w-[136px] flex-none text-[13px]" style={{ color: r.loss ? TONE.coral : TONE.dim }}>
+              {r.label}
+            </span>
+            <span className="relative h-[7px] flex-1 overflow-hidden rounded-full" style={{ background: "rgba(236,231,222,.06)" }}>
+              <span
+                className="absolute inset-y-0 left-0 rounded-full"
+                style={{ width: `${Math.round((r.count / max) * 100)}%`, background: r.loss ? TONE.coral : "rgba(236,231,222,.6)" }}
+              />
+            </span>
+            <span className="w-10 flex-none text-right font-mono text-[12px] tabular-nums" style={{ color: r.loss ? TONE.coral : TONE.cream }}>
+              {Math.round(r.share * 100)}%
+            </span>
+          </div>
+        ))}
+      </div>
+      {read ? (
+        <p className="mt-4 text-[14px] leading-[1.5]" style={{ color: TONE.dim }}>
+          {read}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 // ── driver-axis slot (◇ swap — "why this ___") ────────────────────────────────
 
 /** The Brain's driver-axis figure. Creator = attention-over-the-clip (carries the plain-language
@@ -394,6 +437,8 @@ function BrainDriverSlot({
   switch (driver.kind) {
     case "attention-scrubber":
       return <AttentionScrubber data={driver.data} synthesis={synthesis} reducedMotion={reducedMotion} flashMoment={flashMoment} />;
+    case "reason-breakdown":
+      return <ReasonBreakdown data={driver.data} />;
     case "resistance-curve":
       return <ResistanceCurve data={driver.data} />;
   }

@@ -59,7 +59,7 @@ describe("AmbientOverviewRail", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("drills a SEALED calibrated row into the real Population depth (brain honestly unavailable for text)", () => {
+  it("drills a SEALED text row into the real depth — brain-first (real reason breakdown) + the Population tab", () => {
     const population = {
       total: 1000,
       stop: 800,
@@ -69,7 +69,10 @@ describe("AmbientOverviewRail", () => {
         { archetype: "builder", displayName: "builders", share: 0.6, total: 600, stop: 540, stopPct: 90 },
         { archetype: "skeptic", displayName: "skeptics", share: 0.4, total: 400, stop: 260, stopPct: 65 },
       ],
-      reasons: [{ reason: "the stake feels real", count: 300 }],
+      reasons: [
+        { reason: "strong-hook", count: 520 },
+        { reason: "too-slow", count: 120 },
+      ],
     };
     const personas = [{ archetype: "builder", verdict: "stop" as const, quote: "that detail made me stay" }];
     render(
@@ -85,11 +88,15 @@ describe("AmbientOverviewRail", () => {
     // tapping the SEALED row opens the depth drill (not Simulate) — it has a real population
     fireEvent.click(screen.getByRole("button", { name: /I quit my 9-5 with \$400/ }));
     expect(screen.getByTestId("ambient-detail")).toBeTruthy();
-    // opens on the audience tab (brain is a video read) — a REAL district renders
+    // opens BRAIN-first now (owner call 2026-07-24): the real reason-driver breakdown renders, with the
+    // friction reason humanized + coral. Never the old "text concept sim — unavailable" state.
+    expect(screen.getByText(/What carried the stop/i)).toBeTruthy();
+    expect(screen.getByText(/Strong hook/)).toBeTruthy();
+    expect(screen.getByText(/Too slow/)).toBeTruthy();
+    expect(screen.queryByText(/text concept sim/i)).toBeNull();
+    // the Population tab is still reachable — the same sim's REAL districts render there
+    fireEvent.click(screen.getByRole("button", { name: /The audience/ }));
     expect(screen.getAllByText(/builders/).length).toBeGreaterThan(0);
-    // the brain tab is present but honestly unavailable for a text sim
-    fireEvent.click(screen.getByRole("button", { name: /The brain/ }));
-    expect(screen.getByText(/text concept sim/i)).toBeTruthy();
   });
 
   it("a tested VIDEO shows its viral score + Simulate; a tap reveals the % then drills into Brain depth", () => {
