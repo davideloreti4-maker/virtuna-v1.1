@@ -19,7 +19,28 @@ Supabase picks the template by whether the address is already known:
 **Both need `{{ .Token }}`.** Confirm signup is the critical one — miss it and every first-time
 visitor gets a link with nothing to type.
 
-## Option A — dashboard (2 minutes)
+## Option A — the CLI, from the repo ← **preferred**
+
+The templates are now **version-controlled**, so this stops being a dashboard click nobody can audit:
+
+- `supabase/templates/otp-confirmation.html` — the new-address path (all cold traffic)
+- `supabase/templates/otp-magic-link.html` — the returning-user path
+- wired up in `supabase/config.toml` under `[auth.email.template.confirmation]` and
+  `[auth.email.template.magic_link]`
+
+`config.toml` already sets `otp_length = 6` and `otp_expiry = 3600`, matching `lib/auth/otp.ts`.
+
+Run these yourself — `supabase login` is interactive and the token must not enter an agent session:
+
+```bash
+npx supabase login                          # opens a browser, stores the token locally
+npx supabase link --project-ref qyxvxleheckijapurisj
+npx supabase config push                    # pushes [auth.*] incl. both templates
+```
+
+If the installed CLI predates `config push`, fall back to Option C below.
+
+## Option B — dashboard (2 minutes)
 
 1. Open **Authentication → Emails** for project `qyxvxleheckijapurisj`.
 2. Select **Confirm signup**. Replace the `{{ .ConfirmationURL }}` link with the code, e.g.
@@ -33,7 +54,7 @@ visitor gets a link with nothing to type.
 
 3. Repeat for the **Magic Link** template.
 
-## Option B — Management API
+## Option C — Management API
 
 Requires a Supabase personal access token. **Run this yourself** so the token stays out of the
 session — paste it into the prompt prefixed with `!`, or run it in your own shell.
