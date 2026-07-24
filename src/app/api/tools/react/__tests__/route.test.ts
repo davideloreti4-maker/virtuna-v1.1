@@ -171,16 +171,21 @@ describe("POST /api/tools/react", () => {
     const { createClient } = await import("@/lib/supabase/server");
     const { createOpenThreadLazy } = await import("@/lib/threads/threads");
     const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { characterizeContent } = await import("@/lib/audience/characterize-content");
 
     (createClient as ReturnType<typeof vi.fn>).mockResolvedValue(mockAuthedClient());
     (createOpenThreadLazy as ReturnType<typeof vi.fn>).mockResolvedValue({
       id: "thread-1",
-      active_audience_id: null, // General default → no audience query
+      active_audience_id: null, // General default → the generic BASELINE signature (has axes)
     });
     (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
       result: { personas: makePersonas(6) }, // 6 stop → "6/10 stop"
       warnings: [],
     });
+    // General now rides the generic baseline signature (has v2 axes) → characterize IS invoked.
+    // A null content vector is the honest "no characterization" outcome → population stays null,
+    // so this test still isolates the { fraction, scrollQuote } shape without a population.
+    (characterizeContent as ReturnType<typeof vi.fn>).mockResolvedValue(null);
 
     const { POST } = await import("@/app/api/tools/react/route");
     const res = await POST(makeRequest({ text: "what if I open with a question?" }));
@@ -189,7 +194,7 @@ describe("POST /api/tools/react", () => {
     const json = await res.json();
     expect(json.fraction).toBe("6/10 stop");
     expect(json.scrollQuote).toBe("Quote from persona 0"); // first stop-verdict persona
-    // General/no-signature audience → no v2 axes → population is null (the guard holds).
+    // General has a baseline signature, but a null content vector → no projection → population null.
     expect(json.population).toBeNull();
   });
 
