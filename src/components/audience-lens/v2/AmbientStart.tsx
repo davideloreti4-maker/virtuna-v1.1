@@ -360,10 +360,10 @@ function AudiencePick({
   );
 }
 
-/** A conditions cell — its own mono label above its control. Two of these sit side by side. */
-function ConditionCell({ label, children }: { label: string; children: React.ReactNode }) {
+/** A conditions ROW — its mono label on the left, its dial on the right. Two of these stack. */
+function ConditionRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex min-w-0 flex-col gap-2">
+    <div className="flex min-w-0 items-center justify-between gap-4">
       <span className="font-mono text-[10px] uppercase tracking-[0.1em]" style={{ color: TONE.faint }}>
         {label}
       </span>
@@ -394,13 +394,16 @@ function ConditionsStrip({
       <div className="font-mono text-[11px] uppercase tracking-[0.09em]" style={{ color: TONE.faint }}>
         Testing against
       </div>
-      {/* Two labelled cells side by side (owner call 2026-07-24), not one inline "A as B · C" run.
-          That run had no per-control labels, so the reader had to infer what each pill WAS from its
-          value — and at 390px it wrapped mid-sentence, breaking "as" away from what it joined.
-          Each dial now says its own name. The SIM fidelity dial is gone from Start entirely: the
-          model is a per-run choice and it lives on the composer, where the run is actually fired. */}
-      <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-4 text-[14px]">
-        <ConditionCell label="Audience">
+      {/* TWO ROWS, stacked — one per dial (owner call 2026-07-24, corrected from the side-by-side
+          first pass: two columns still read as a single row). Each row names its dial on the left
+          and carries it on the right, so the pair reads as a short config list rather than a
+          sentence. The old inline "General as TikTok · SIM-1 Flash" run had no per-control labels
+          (the reader inferred what each pill WAS from its value) and at 390px it wrapped
+          mid-sentence, breaking "as" away from what it joined. The SIM fidelity dial is gone from
+          Start entirely: the model is a per-run choice and it lives on the composer, where the run
+          is actually fired. */}
+      <div className="mt-3 flex flex-col gap-2.5 text-[14px]">
+        <ConditionRow label="Audience">
           {audienceSelectable ? (
             // Pre-thread Start: pick the audience here (no thread yet to lock to).
             <AudiencePick
@@ -425,8 +428,8 @@ function ConditionsStrip({
               <span aria-hidden style={{ color: TONE.ghost, fontSize: 11 }}>⤫</span>
             </span>
           )}
-        </ConditionCell>
-        <ConditionCell label="Scene">
+        </ConditionRow>
+        <ConditionRow label="Scene">
           <Pick
             value={scene}
             options={conditions.sceneOptions}
@@ -435,7 +438,7 @@ function ConditionsStrip({
               onScene?.(v);
             }}
           />
-        </ConditionCell>
+        </ConditionRow>
       </div>
     </div>
   );
