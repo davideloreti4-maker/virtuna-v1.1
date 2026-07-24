@@ -23,7 +23,6 @@ export function AmbientStartHome({
   onSkill,
   onSubmit,
   onScene,
-  onFidelity,
   activeSkillId,
   audiences,
   selectedAudienceId,
@@ -35,7 +34,6 @@ export function AmbientStartHome({
   /** Seed the field + fire the armed skill (the composer's auto-run). */
   onSubmit: (text: string) => void;
   onScene?: (scene: string) => void;
-  onFidelity?: (fidelity: string) => void;
   /** The composer's active tool → highlights the armed skill tile + primes the composer row. */
   activeSkillId?: string;
   // Pre-thread audience switching — the "Testing against" chip becomes a real picker on Start (this
@@ -55,7 +53,6 @@ export function AmbientStartHome({
         onSkill={onSkill}
         onSubmit={onSubmit}
         onScene={onScene}
-        onFidelity={onFidelity}
         activeSkillId={activeSkillId}
         audiences={audiences}
         selectedAudienceId={selectedAudienceId}

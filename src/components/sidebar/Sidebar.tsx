@@ -27,7 +27,7 @@ import {
   SlidersHorizontal,
   ClockCountdown,
   UserCircle,
-  List,
+  CaretRight,
   SidebarSimple,
   SignOut,
   CaretUpDown,
@@ -618,7 +618,39 @@ export function Sidebar() {
   );
 }
 
-/** Mobile hamburger toggle — shows when sidebar is closed */
+/**
+ * Mobile nav opener — a TAB in the top row, shown when the sidebar is closed.
+ *
+ * History (2026-07-24): a 34px hamburger at `left-4 top-4`, then briefly an edge sliver at the
+ * vertical centre, now this — bar height, sitting immediately left of the audience bar so the two
+ * read as ONE navigation row (owner call). The caret still points right: the sidebar slides in from
+ * that edge, and the tab hugs the row's left margin.
+ *
+ * Its geometry is COUPLED to the composer's audience header slot (`composer.tsx`). This one is
+ * `fixed` — it must survive on the mobile pages that have no audience bar — while the bar is in
+ * flow with a matching left inset, so the two are laid out against the same numbers. They live in
+ * `MOBILE_NAV` below; change them here and the slot's inset follows, or the row drifts apart.
+ */
+/** The mobile top-nav band, shared by this tab and the composer's audience bar. All px. */
+export const MOBILE_NAV = {
+  /** Page gutter — the tab's left edge, and the row's right edge. */
+  gutter: 10,
+  /** Top offset of the band. */
+  top: 10,
+  /** Bar height — the tab matches the audience bar exactly (owner ask). */
+  height: 45,
+  /** Tab width. */
+  width: 32,
+  /** Gap between the tab and the bar. */
+  gap: 8,
+} as const;
+
+/** Left inset the audience bar needs to clear the tab: gutter + tab + gap. */
+export const MOBILE_NAV_BAR_INSET = MOBILE_NAV.gutter + MOBILE_NAV.width + MOBILE_NAV.gap;
+
+/** Vertical band the fixed tab occupies — what a page must reserve so nothing renders under it. */
+export const MOBILE_NAV_BAND = MOBILE_NAV.top + MOBILE_NAV.height;
+
 export function SidebarHamburger() {
   const { isOpen, open } = useSidebarStore();
 
@@ -627,18 +659,23 @@ export function SidebarHamburger() {
       type="button"
       onClick={open}
       aria-label="Open sidebar"
+      style={{
+        left: MOBILE_NAV.gutter,
+        top: MOBILE_NAV.top,
+        height: MOBILE_NAV.height,
+        width: MOBILE_NAV.width,
+      }}
       className={cn(
-        "fixed left-4 top-4 z-[var(--z-sidebar)]",
-        "h-[34px] w-[34px] items-center justify-center rounded-[10px]",
-        // flat-warm matte: solid charcoal + hairline + soft float shadow (no glass, no blur)
-        "bg-background-elevated border border-white/[0.06] shadow-float",
-        // Mobile only — the desktop sidebar is always present, so the hamburger
+        "fixed z-[var(--z-sidebar)] items-center justify-center",
+        // Same radius, hairline and ground as the audience bar beside it — one row, one material.
+        "rounded-[12px] border border-white/[0.06] bg-[#181817] transition-colors active:bg-[#32312e]",
+        // Mobile only — the desktop sidebar is always present, so the opener
         // never appears ≥md regardless of isOpen.
         "md:hidden",
         isOpen ? "hidden" : "flex",
       )}
     >
-      <List className="h-4 w-4 text-foreground/70" />
+      <CaretRight className="h-3.5 w-3.5 text-foreground/50" weight="bold" />
     </button>
   );
 }

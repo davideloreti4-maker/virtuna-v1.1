@@ -52,6 +52,8 @@ import dynamic from "next/dynamic";
 import { cn } from "@/lib/utils";
 import { HORIZONTAL_ENABLED } from "@/lib/flags/horizontal";
 import { AMBIENT_V2_ENABLED } from "@/lib/flags/ambient-v2";
+import { AmbientOverviewSheet } from "@/components/audience-lens/v2/AmbientOverviewSheet";
+import { MOBILE_NAV, MOBILE_NAV_BAND, MOBILE_NAV_BAR_INSET } from "@/components/sidebar/Sidebar";
 import type { SimSealMap } from "@/lib/threads/sim-seals";
 import { queryKeys } from "@/lib/queries/query-keys";
 import {
@@ -2284,7 +2286,23 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   );
   // P2 (A2b) — the <xl header: a 68px bar that expands DOWNWARD. Same props again; rendered at the
   // TOP of the thread branch (below), not the dock.
-  const audienceHeader = <AudiencePresence {...presenceCommonProps} variant="header" />;
+  //
+  // Ambient v2 (2026-07-24 fix): the flag used to swap ONLY the ≥xl rail, so a phone kept the retired
+  // room (constellation crown · "N people ready" · the "say hi →" cast) while desktop got the ranked
+  // v2 board — one product, two rooms. The header now swaps on the SAME flag, to the SAME surfaces
+  // fed the SAME live inputs as `audienceRailV2`, presented as a sheet instead of a column.
+  const audienceHeader = AMBIENT_V2_ENABLED ? (
+    <AmbientOverviewSheet
+      audience={effectiveAudience}
+      descriptors={ambientDescriptors}
+      reducedMotion={reducedMotion}
+      persistedSeals={persistedSimSeals}
+      open={roomExpanded}
+      onOpenChange={handleRoomExpandedChange}
+    />
+  ) : (
+    <AudiencePresence {...presenceCommonProps} variant="header" />
+  );
 
   // ── Build-an-audience chooser host (UX-04 / D-03 / D-08) ────────────────────
   // onBuilt → the cloned General SIM becomes the active audience; onEvidence reuses
@@ -2946,12 +2964,33 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           className,
         )}
       >
-        {/* P2 (A2b) — the mobile/tablet audience HEADER (<xl only; the rail owns ≥xl). A 68px bar
-            above the thread that expands DOWNWARD, top-anchored so it survives the keyboard (§2).
+        {/* P2 (A2b) — the mobile/tablet audience HEADER (<xl only; the rail owns ≥xl). A bar above
+            the thread that expands DOWNWARD, top-anchored so it survives the keyboard (§2).
             shrink-0 so it holds its height; the sheet blooms over the thread below (z-55). The
-            xl:hidden is belt-and-suspenders against the one-frame pre-hydration flash. */}
+            xl:hidden is belt-and-suspenders against the one-frame pre-hydration flash.
+
+            Positioning (2026-07-24): the audience bar IS the mobile top navigation, sharing its row
+            with ONE thing — the sidebar opener tab, immediately to its left at the same 45px height
+            (owner call). Every number here comes from `MOBILE_NAV` in Sidebar.tsx, which the fixed
+            tab lays itself out from too, so the pair cannot drift: the negative margin cancels the
+            band AppShell reserves for that tab, and the left inset is exactly gutter + tab + gap.
+            md:… hands the row back to a plain in-flow bar for md–xl, where the tab is hidden and the
+            band is zero. */}
         {useHeader && (
-          <div data-testid="audience-header-slot" className="relative z-10 shrink-0 px-4 pt-2 xl:hidden">
+          <div
+            data-testid="audience-header-slot"
+            // Custom properties, not inline margin/padding: an inline value would outrank the
+            // `md:` overrides and the tablet would keep the phone's inset.
+            style={
+              {
+                "--nav-mt": `-${MOBILE_NAV_BAND}px`,
+                "--nav-pt": `${MOBILE_NAV.top}px`,
+                "--nav-pl": `${MOBILE_NAV_BAR_INSET}px`,
+                "--nav-pr": `${MOBILE_NAV.gutter}px`,
+              } as React.CSSProperties
+            }
+            className="relative z-10 shrink-0 mt-[var(--nav-mt)] pl-[var(--nav-pl)] pr-[var(--nav-pr)] pt-[var(--nav-pt)] md:mt-0 md:px-4 md:pt-2 xl:hidden"
+          >
             <div className="mx-auto w-full max-w-[760px]">{audienceHeader}</div>
           </div>
         )}
@@ -2967,7 +3006,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           data-testid="composer-thread-region"
           className="flex-1 min-h-0 overflow-y-auto pb-[184px]"
         >
-          <div className="w-full max-w-[760px] mx-auto px-4">
+          <div className="w-full max-w-[760px] mx-auto px-2.5 sm:px-4">
             {/* A1: while a switch is rehydrating and no content has landed yet, fill the
                 scroll with the branded skeleton — never the prior thread's emptied views
                 or the centered serif hero. When the persisted blocks arrive (or it's a
@@ -3010,7 +3049,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
             BOX (see composerDock), which is where the card actually starts. Content is re-centered
             at 760px to align with the thread column above. */}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 pb-4">
-          <div className="w-full max-w-[760px] mx-auto px-4">
+          <div className="w-full max-w-[760px] mx-auto px-2.5 sm:px-4">
             {/* The six quick actions live ABOVE the field, never below it (owner call 2026-07-24):
                 below, they read as results of a chat that hasn't happened. Only on the post-pick
                 empty chat — once real content lands, the thread is the offer. */}

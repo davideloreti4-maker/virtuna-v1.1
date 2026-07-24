@@ -78,6 +78,22 @@ export interface OverviewData {
 /** Shared fixed height across all three v2 surfaces (build handoff §4 — "same fixed height"). */
 export const AMBIENT_PANEL_HEIGHT = 800;
 
+/**
+ * How a v2 surface is mounted.
+ *  - `rail` (default) — the ≥xl right column: fills top-to-bottom, capped at 440, its own left
+ *    hairline divides it from the thread, paints its own #181817 ground.
+ *  - `sheet` — the <xl mobile header sheet: full-bleed inside a host that already owns the ground,
+ *    the rounding and the height cap, so the surface drops its width cap, hairline and background
+ *    and simply flexes to the space the sheet gives it. Tighter gutters for a ~390px viewport.
+ *
+ * This is a PRESENTATION switch only — every surface renders the same anatomy and the same real
+ * data in both modes (the mobile room must not become a second, lesser room).
+ */
+export type AmbientPresentation = "rail" | "sheet";
+
+/** Horizontal gutter per presentation — 26px reads generous in a 400px rail, cramped at 390 - 52. */
+export const ambientGutter = (p: AmbientPresentation) => (p === "sheet" ? "px-[18px]" : "px-[26px]");
+
 const TIER_N: Record<SimTier, number> = { flash: 1000, max: 10000 };
 const TIER_LABEL: Record<SimTier, string> = { flash: "sim-1 flash", max: "sim-1 max" };
 
@@ -498,6 +514,8 @@ export function AmbientOverview({
   onOpenStimulus,
   onQuickSimulate,
   onTestVariant,
+  onDismiss,
+  presentation = "rail",
   className,
 }: {
   data: OverviewData;
@@ -505,9 +523,15 @@ export function AmbientOverview({
   onOpenStimulus?: (id: string) => void;
   onQuickSimulate?: (id: string) => void;
   onTestVariant?: () => void;
+  /** When the board IS the whole screen (the mobile full-screen room), the header caret is the way
+   *  OUT. Given ⇒ it closes; absent ⇒ the rail's inert switch caret, unchanged. */
+  onDismiss?: () => void;
+  presentation?: AmbientPresentation;
   className?: string;
 }) {
   const { audienceName, provenance, tier, watching, ranked, cast, castOverflow } = data;
+  const sheet = presentation === "sheet";
+  const gutter = ambientGutter(presentation);
 
   // Split the board: SEALED results on top (ranked high→low), the un-run QUEUED ones below.
   const sealed = ranked
@@ -520,23 +544,34 @@ export function AmbientOverview({
   return (
     <div
       data-testid="ambient-overview"
-      className={`flex w-full max-w-[440px] flex-col ${className ?? ""}`}
+      data-presentation={presentation}
+      className={
+        (sheet
+          ? // Sheet: the host bar owns the ground, the rounding and the height cap; the surface just
+            // flexes into it (min-h-0 so its scroll region can shrink below content height).
+            "flex min-h-0 w-full flex-1 flex-col"
+          : "flex w-full max-w-[440px] flex-col") + ` ${className ?? ""}`
+      }
       style={{
         // Connected rail — fills its column top-to-bottom (part of the thread page, NOT a floating
         // card). A single left hairline divides it from the thread; no shadow, no rounding, no gaps.
-        height: "100%",
-        background: "#181817",
-        borderLeft: `1px solid ${TONE.border}`,
+        // Sheet mode inherits all three from its host instead.
+        ...(sheet
+          ? {}
+          : { height: "100%", background: "#181817", borderLeft: `1px solid ${TONE.border}` }),
         color: TONE.cream,
         fontFamily: "var(--font-sans, Inter, system-ui, sans-serif)",
       }}
     >
-      {/* room header — audience mark · name · calibration chip · switch caret */}
-      <div className="flex items-center gap-2.5 px-[26px] pt-[26px]">
+      {/* room header — audience mark · name · calibration chip · caret. The board carries its own
+          identity in BOTH presentations: in the rail because there is no bar above it, and full
+          screen because the bar it was launched from is no longer on screen. `onDismiss` (mobile)
+          turns the caret into the way out; without it the caret is the rail's inert switch. */}
+      <div className={`flex items-center gap-2.5 ${gutter} ${sheet ? "pt-[18px]" : "pt-[26px]"}`}>
         <RoomGlyph />
-        <span className="text-[16px] font-semibold tracking-[-0.015em]">{audienceName}</span>
+        <span className="min-w-0 truncate text-[16px] font-semibold tracking-[-0.015em]">{audienceName}</span>
         <span
-          className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-[3px] font-mono text-[10px] uppercase tracking-[0.1em]"
+          className="inline-flex flex-none items-center gap-1.5 rounded-full px-2.5 py-[3px] font-mono text-[10px] uppercase tracking-[0.1em]"
           style={{ color: TONE.faint, border: `1px solid ${TONE.hair}` }}
         >
           <span className="inline-block h-[5px] w-[5px] rounded-full" style={{ background: TONE.dim }} />
@@ -544,8 +579,13 @@ export function AmbientOverview({
         </span>
         <button
           type="button"
-          aria-label="Switch audience"
-          className="ml-auto flex h-6 w-6 flex-none items-center justify-center rounded-full transition-colors"
+          onClick={onDismiss}
+          aria-label={onDismiss ? "Close your audience" : "Switch audience"}
+          // 24px is fine for a pointer; a touch target that closes the whole screen is not allowed
+          // to be under 44px (the caret is the ONLY way out of the full-screen room).
+          className={`ml-auto flex flex-none items-center justify-center rounded-full transition-colors ${
+            sheet ? "-mr-2 h-11 w-11" : "h-6 w-6"
+          }`}
           style={{ color: TONE.faint }}
           onMouseEnter={(e) => {
             e.currentTarget.style.color = TONE.cream;
@@ -556,14 +596,21 @@ export function AmbientOverview({
             e.currentTarget.style.background = "transparent";
           }}
         >
-          <svg width="11" height="11" viewBox="0 0 12 12" aria-hidden>
+          <svg
+            width={sheet ? "14" : "11"}
+            height={sheet ? "14" : "11"}
+            viewBox="0 0 12 12"
+            aria-hidden
+            // Dismiss points UP — the room came down over the thread, the caret sends it back.
+            className={onDismiss ? "rotate-180" : ""}
+          >
             <path d="M2.5 4.5L6 8l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
       </div>
 
       {/* scroll region — watching + ranked */}
-      <div className="min-h-0 flex-1 overflow-y-auto px-[26px]">
+      <div className={`min-h-0 flex-1 overflow-y-auto ${gutter}`}>
         {watching ? (
           <div className="mt-8">
             <Kicker tag={TIER_LABEL[tier]} live>
@@ -608,7 +655,7 @@ export function AmbientOverview({
 
       {/* cast on call — pinned footer */}
       <div
-        className="mx-[26px] mb-[26px] mt-[18px] flex items-center gap-1.5 pt-4"
+        className={`${sheet ? "mx-[18px] mb-[18px]" : "mx-[26px] mb-[26px]"} mt-[18px] flex items-center gap-1.5 pt-4`}
         style={{ borderTop: `1px solid ${TONE.border}` }}
       >
         {cast.map((c) => (
