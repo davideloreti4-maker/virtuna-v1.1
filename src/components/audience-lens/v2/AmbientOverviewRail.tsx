@@ -61,6 +61,7 @@ import {
   SEALED_BRAIN_NOTE,
   SEALED_POPULATION_NOTE,
 } from "@/lib/surfaces/ambient-v2-sealed";
+import { SealedWallCta } from "@/components/onboarding/sealed-wall-cta";
 
 /** One fired sim's full result, kept per descriptor id for the Overview seal + the depth drill. */
 interface RailSnapshot {
@@ -373,6 +374,7 @@ export function AmbientOverviewRail({
           template={template}
           brainNote={SEALED_BRAIN_NOTE}
           populationNote={SEALED_POPULATION_NOTE}
+          noteAction={<SealedWallCta />}
           reducedMotion={reducedMotion}
           presentation={presentation}
           onBack={() => setDetailId(null)}

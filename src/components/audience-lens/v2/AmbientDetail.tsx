@@ -265,6 +265,7 @@ export function AmbientDetail({
   className,
   brainNote,
   populationNote,
+  noteAction,
 }: {
   template: DomainTemplate;
   initialTab?: Tab;
@@ -283,6 +284,9 @@ export function AmbientDetail({
    *  teaser wall) — and "no run yet" is the wrong sentence for the second. Says which, in the caller's
    *  words. NEVER a fabricated population figure either way. */
   populationNote?: string;
+  /** Rendered under BOTH honest-absence notes — the sealed drill's one action (the $1 wall CTA).
+   *  A slot, not behavior: this view stays ignorant of checkout. Absent ⇒ notes render alone. */
+  noteAction?: React.ReactNode;
 }) {
   const { backLabel, pager, verdict, unlock, brain, population } = template;
   // Brain is a VIDEO producer — absent for a text sim. Honest-unavailable, never faked.
@@ -385,6 +389,7 @@ export function AmbientDetail({
               <span className="max-w-[280px] text-[12.5px] leading-[1.5]">
                 {brainNote ?? "The brain decomposition reads a video's frames. This was a text concept sim — no attention timeline to show."}
               </span>
+              {noteAction}
             </div>
           )
         ) : population ? (
@@ -401,10 +406,13 @@ export function AmbientDetail({
           />
         ) : (
           <div
-            className="flex h-full items-center justify-center py-16 text-center text-[13px]"
+            className="flex h-full flex-col items-center justify-center py-16 text-center text-[13px]"
             style={{ color: TONE.faint }}
           >
-            {populationNote ?? "The audience — no run yet."}
+            <span className="max-w-[280px] leading-[1.5]">
+              {populationNote ?? "The audience — no run yet."}
+            </span>
+            {noteAction}
           </div>
         )}
       </div>

@@ -161,3 +161,27 @@ describe("POST /api/whop/checkout — one trial per account", () => {
     expect(res.status).toBe(400);
   });
 });
+
+describe("POST /api/whop/checkout — where the buyer lands after paying", () => {
+  it("sends the FUNNEL buyer back to /home — an anonymous visitor has no business on /settings", async () => {
+    const calls = mockWhopFetch();
+    subRow = null;
+
+    await post({ planId: "starter", trial: true, funnel: true });
+
+    const redirect = String(calls[0]!.body.redirect_url);
+    expect(redirect).toContain("/home?checkout=success");
+    expect(redirect).not.toContain("/settings");
+  });
+
+  it("keeps the settings redirect for a normal (non-funnel) checkout", async () => {
+    const calls = mockWhopFetch();
+    subRow = null;
+
+    await post({ planId: "starter", trial: true });
+
+    expect(String(calls[0]!.body.redirect_url)).toContain(
+      "/settings?tab=billing&checkout=success"
+    );
+  });
+});

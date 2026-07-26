@@ -22,6 +22,18 @@ interface CheckoutModalProps {
    * a buyer is never charged less than what the button promised.
    */
   trial?: boolean;
+  /**
+   * The onboarding funnel's checkout (the sealed drill's $1 wall). Forwarded to the API so
+   * any full-page redirect out of the embed lands back on /home — an anonymous visitor has
+   * no business on /settings.
+   */
+  funnel?: boolean;
+  /**
+   * Copy overrides for the RESOLVED-trial state only. The denied/full-price branches keep
+   * their honest defaults — a caller's funnel framing must never dress a full-price charge.
+   */
+  heading?: string;
+  subheading?: string;
   onComplete?: () => void;
 }
 
@@ -30,6 +42,9 @@ export function CheckoutModal({
   onClose,
   planId,
   trial = false,
+  funnel = false,
+  heading,
+  subheading,
   onComplete,
 }: CheckoutModalProps) {
   const plan = getPlan(planId);
@@ -55,7 +70,7 @@ export function CheckoutModal({
         const res = await fetch("/api/whop/checkout", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ planId, trial }),
+          body: JSON.stringify({ planId, trial, funnel }),
         });
 
         if (!res.ok) {
@@ -73,7 +88,7 @@ export function CheckoutModal({
     };
 
     fetchCheckoutConfig();
-  }, [open, planId, trial]);
+  }, [open, planId, trial, funnel]);
 
   // Reset state when modal closes
   useEffect(() => {
@@ -102,14 +117,15 @@ export function CheckoutModal({
         <DialogHeader className="p-6 pb-4">
           <DialogTitle>
             {trialApplied
-              ? `Start ${plan.name} for ${TRIAL.price}`
+              ? (heading ?? `Start ${plan.name} for ${TRIAL.price}`)
               : trial
                 ? `Get ${plan.name}`
                 : `Upgrade to ${plan.name}`}
           </DialogTitle>
           <DialogDescription>
             {trialApplied
-              ? `${TRIAL.price} for ${TRIAL.days} days, then ${plan.price}${plan.priceSuffix}. Cancel anytime.`
+              ? (subheading ??
+                `${TRIAL.price} for ${TRIAL.days} days, then ${plan.price}${plan.priceSuffix}. Cancel anytime.`)
               : trial
                 ? `Your account has already used its $1 trial — ${plan.name} is ${plan.price}${plan.priceSuffix}.`
                 : `Complete your payment to unlock ${plan.name}.`}
