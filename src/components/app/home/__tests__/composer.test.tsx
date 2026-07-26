@@ -91,6 +91,8 @@ vi.mock('@/hooks/queries/use-hooks-stream', () => ({
 
 import { Composer } from '../composer';
 import { HORIZONTAL_ENABLED } from '@/lib/flags/horizontal';
+import { AMBIENT_V2_ENABLED } from '@/lib/flags/ambient-v2';
+import { ACTIVE_THREAD_COOKIE, NEW_THREAD_SENTINEL } from '@/lib/threads/active-thread-cookie';
 
 const D21 = 'Maven reads TikTok videos for now';
 
@@ -119,6 +121,7 @@ function installFetchMock() {
     fetchCalls.push({ url, init });
     let body: unknown = {};
     if (url.includes('/api/audiences')) body = { audiences: [GENERAL_AUD] };
+    else if (url.includes('/api/threads/new')) body = { threadId: 't-new' };
     else if (url.includes('/api/threads/open')) body = { threadId: 't1', messages: [] };
     else if (url.includes('/api/tracked-accounts')) body = { accounts: [] };
     else if (url.includes('/api/tools/simulate') || url.includes('/api/tools/predict')) {
@@ -488,5 +491,148 @@ describe('Composer — Ask the room is a verb (07-18)', () => {
     fireEvent.click(submitBtn(container));
     await waitFor(() => expect(hooksStart).toHaveBeenCalled());
     expect(calledWith('/api/tools/react')).toBe(false);
+  });
+});
+
+// ── F-019: the paid video-Test card must land in a thread the UI can open ────
+// A Test sent as the FIRST send of a new thread used to strand its own result. Two
+// independent breaks, one symptom (a ~4.5-min paid Max run completing into a blank screen):
+//   L1 — `test` was excluded from ensureThreadForSend, so the active-thread pointer stayed
+//        on the sentinel for the whole run and every server-side createOpenThreadLazy minted
+//        a FRESH row; the sealed card landed in a thread the client never pointed at.
+//   L2 — even pointed at the RIGHT thread, hasConversationContent counted only the per-skill
+//        buckets, and `video-test-card` is the one block type outside all of them, so the
+//        Start grid rendered OVER the card the API had just returned.
+// Both assertions below FAIL against the pre-fix composer.
+describe('Composer — the Test send materialises its thread (F-019 layer 1)', () => {
+  beforeEach(() => {
+    installFetchMock();
+    document.cookie = `${ACTIVE_THREAD_COOKIE}=${NEW_THREAD_SENTINEL}; path=/`;
+  });
+  afterEach(() => {
+    document.cookie = `${ACTIVE_THREAD_COOKIE}=; path=/; max-age=0`;
+    vi.restoreAllMocks();
+  });
+
+  it('a Test send off a NEW thread POSTs /api/threads/new before starting the run', async () => {
+    renderWithClient(<Composer />);
+    selectSkillBySlash('test');
+    fireEvent.change(urlInput(), {
+      target: { value: 'https://www.tiktok.com/@creator/video/123' },
+    });
+    fireEvent.click(submitButton());
+
+    await waitFor(() => expect(calledWith('/api/threads/new')).toBe(true));
+    // ...and the run itself still fires (the thread creation is a prelude, not a detour).
+    await waitFor(() => expect(start).toHaveBeenCalled());
+  });
+
+  it('persists the Test user turn AFTER the thread exists, so a reload shows the question above the card', async () => {
+    renderWithClient(<Composer />);
+    selectSkillBySlash('test');
+    fireEvent.change(urlInput(), {
+      target: { value: 'https://www.tiktok.com/@creator/video/123' },
+    });
+    fireEvent.click(submitButton());
+
+    await waitFor(() => expect(calledWith('/api/threads/user-turn')).toBe(true));
+    const turnCall = fetchCalls.find((c) => c.url.includes('/api/threads/user-turn'))!;
+    expect(JSON.parse(String(turnCall.init?.body)).text).toBe(
+      'https://www.tiktok.com/@creator/video/123',
+    );
+    // ORDERING is the contract: the turn must target the thread ensureThreadForSend just
+    // created, never the sentinel (which would mint a second row server-side).
+    const newIdx = fetchCalls.findIndex((c) => c.url.includes('/api/threads/new'));
+    const turnIdx = fetchCalls.findIndex((c) => c.url.includes('/api/threads/user-turn'));
+    expect(newIdx).toBeGreaterThanOrEqual(0);
+    expect(newIdx).toBeLessThan(turnIdx);
+  });
+
+  it('an EXISTING thread is reused — no second row minted on a Test send', async () => {
+    document.cookie = `${ACTIVE_THREAD_COOKIE}=t1; path=/`;
+    renderWithClient(<Composer />);
+    selectSkillBySlash('test');
+    fireEvent.change(urlInput(), {
+      target: { value: 'https://www.tiktok.com/@creator/video/123' },
+    });
+    fireEvent.click(submitButton());
+
+    await waitFor(() => expect(start).toHaveBeenCalled());
+    expect(calledWith('/api/threads/new')).toBe(false);
+  });
+
+  // T-03-13 in its original form: arming the seal is EXCLUSIVE to the Test path. The Idea
+  // send must still never navigate to /analyze — adding `test` to the two sets above must
+  // not have widened either one.
+  it('an Idea send still creates its thread and never routes to /analyze', async () => {
+    renderWithClient(<Composer />);
+    selectSkillBySlash('idea');
+    const field = screen.getByRole('textbox') as HTMLTextAreaElement;
+    fireEvent.change(field, { target: { value: 'morning routines' } });
+    fireEvent.keyDown(field, { key: 'Enter' });
+
+    await waitFor(() => expect(calledWith('/api/threads/new')).toBe(true));
+    expect(start).not.toHaveBeenCalled();
+    expect(push).not.toHaveBeenCalledWith(expect.stringContaining('/analyze/'));
+  });
+});
+
+describe('Composer — a Test-only thread renders its card (F-019 layer 2)', () => {
+  const VIDEO_TEST_CARD = {
+    type: 'video-test-card',
+    props: {
+      craftScore: 77,
+      drivers: [{ name: 'Hook', score: 82, band: 'strong' }],
+      filmstrip: [],
+      dropLabel: null,
+      durationLabel: '0:29',
+      working: ['The cold open lands'],
+      notWorking: [],
+      fixes: [],
+      audienceName: 'Your audience',
+      analysisId: 'an-1',
+      model: 'sim1-max',
+      tier: 'Validated',
+    },
+  };
+
+  /**
+   * The stranded thread EXACTLY as F-019 left it: ONE assistant message holding the sealed
+   * card, and NO user turn (pre-fix, `test` was outside USER_TURN_TOOLS, so nothing else was
+   * ever written). The user message is deliberately absent — with one present, `lastUserTurn`
+   * flips hasConversationContent on its own and the layer-2 break hides.
+   */
+  function installThreadWithCard() {
+    fetchCalls = [];
+    global.fetch = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      fetchCalls.push({ url });
+      let body: unknown = {};
+      if (url.includes('/api/audiences')) body = { audiences: [GENERAL_AUD] };
+      else if (url.includes('/api/threads/open')) {
+        body = {
+          threadId: 't1',
+          messages: [{ id: 'm1', role: 'assistant', blocks: [VIDEO_TEST_CARD] }],
+        };
+      } else if (url.includes('/api/tracked-accounts')) body = { accounts: [] };
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(body) } as Response);
+    }) as typeof fetch;
+  }
+
+  afterEach(() => vi.restoreAllMocks());
+
+  it('renders the sealed card on rehydration — the one block type outside every per-skill bucket', async () => {
+    installThreadWithCard();
+    renderWithClient(<Composer />);
+    // The working-ledger line proves the real VideoTestCardRenderer mounted, not a placeholder.
+    expect(await screen.findByText('The cold open lands')).toBeInTheDocument();
+  });
+
+  it.skipIf(!AMBIENT_V2_ENABLED)('does NOT render the Start grid over it', async () => {
+    installThreadWithCard();
+    renderWithClient(<Composer />);
+    await screen.findByText('The cold open lands');
+    // "Concepts worth making" is the Ideas tile's lens — present only on the Start grid.
+    expect(screen.queryByText(/Concepts worth making/i)).toBeNull();
   });
 });
