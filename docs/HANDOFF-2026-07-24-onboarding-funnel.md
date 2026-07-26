@@ -1,5 +1,12 @@
 # Handoff — onboarding funnel milestone
 
+> ⛔ **SUPERSEDED 2026-07-26 — do NOT build from this file.**
+> The 4-beat walkthrough described below is retired as the funnel's demo. The demo is now
+> the REAL platform run anonymously, gated at the simulation verdict.
+> **Read `HANDOFF-2026-07-26-funnel-is-the-platform.md` and `ONBOARDING-FUNNEL-DESIGN.md` §0b.**
+> Kept for the merge hazards (§6) and the frozen-fixture provenance (§3) only.
+
+
 **Worktree:** `~/virtuna-onboarding` · **Branch:** `milestone/onboarding` · **Base:** `main@99c494d1`
 **Tip:** `5c3f5e42` · pushed · **NOT merged — see §6, there are two live production hazards**
 **Green:** suite 4479 / 0 · tsc 0 · eslint 0

@@ -86,6 +86,77 @@ So, with 3 days locked:
 
 ---
 
+## 0b. Owner calls — the demo IS the platform, 2026-07-26 (session 3)
+
+**These SUPERSEDE §0a②, §2's checkout constraint, and all of §4's "S1 · The interactive demo".**
+The 4-beat walkthrough on a frozen Hormozi fixture is **retired as the funnel's demo.** The code
+stays in the tree for now (`components/offer/walkthrough/`) as a possible fallback for visitors who
+will not enter a video, but it is no longer the conversion path.
+
+### ① The demo is the real product, run anonymously — not a walkthrough of it
+
+Owner, repeatedly and emphatically: *"I want a real experience, same as on the platform."* Not cards,
+not a fixture route, not a tour. **The live composer, the live thread, and the rail** — what a
+logged-in user sees, seen by someone who has not paid.
+
+The visitor is signed in **anonymously** on landing (`supabase.auth.signInAnonymously`). They are
+then a real `auth.users` row with `is_anonymous = true`, so there is no parallel demo code path:
+it feels identical to being logged in **because it is**.
+
+### ② The flow
+
+```
+land on /go
+  → signInAnonymously (silent, no UI)
+  → the REAL /home shell: composer + thread + rail
+  → they pick the SCALE they want (AmbientSimulate: flash 1,000 / max 10,000)
+  → upload a file or paste a link  ← NOT @handle; see ④
+  → the real run, real SSE stages, on their own video
+  → the Test card seals in-thread                          ← FREE, complete
+  → the Simulate door opens the brain + population page
+  → the room animates with REAL nodes, the VERDICT is sealed  ← THE WALL
+  → $1
+  → the simulation call is made, the page unlocks
+  → their email identity is linked onto the same anon user  ← the thread SURVIVES
+```
+
+The last line is load-bearing: they do not "now create an account", they keep the thread they just
+built. Requires `enable_manual_linking`.
+
+### ③ What is free and what the dollar buys
+
+| Free — the Test | $1 — the Simulation |
+|---|---|
+| the craft read, complete, in-thread | the brain + population verdict |
+| their transcript, frames, cuts | the why, the fix, the audience score |
+| the room ANIMATING (nodes are real) | + 50 credits, 3 days, their calibrated room |
+
+**It is 1,000 viewers, not 10** (owner, explicit). `expandSignature` expands an `AudienceSignature`
+into `DEFAULT_POPULATION_N = 1000` individuals — pure local math, deterministic seed, **zero API
+cost**. The only paid step in the whole simulation is one bounded Qwen call
+(`characterizeContent`), which is what fires on payment.
+⚠️ The 10-archetype figure in `ambient-v2-video-population.ts` is the *fold-reception adapter*, a
+different and cheaper thing. Do not "correct" the copy to 10.
+
+**So the pre-payment animation is honest by construction:** the 1,000 nodes genuinely exist, for
+free. What has not happened is the *reaction*. Nothing is fabricated, and the honesty floor in §4
+still stands absolutely.
+
+### ④ Entry is upload or link — NOT @handle
+
+Rejected, with reason recorded so it is not re-argued: many visitors have **no posted videos yet or
+a private account**, and those people are disproportionately the best customers — someone with
+nothing posted has the most to gain from "will this work before I post it." `@handle` belongs to
+post-payment calibration, where its high failure rate is survivable.
+
+### ⑤ The free run costs us money, and is capped
+
+`DEMO_CREDITS` = one Reading, keyed on `is_anonymous` (**never** on tier `free` — every existing
+user is tier free). Enforced **regardless of `BILLING_ENFORCE_QUOTA`**, and it fails **CLOSED**.
+See `lib/pricing.ts` and the commit message on `8de8f1d0` for the full rationale.
+
+---
+
 ## 0. The one rule
 
 **Onboarding is not a form in front of the product. It is the product's first run.**
