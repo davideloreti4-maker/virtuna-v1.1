@@ -181,8 +181,34 @@ nothing depends on that value) and the Whop / Supabase-SMTP items in `docs/PRICI
 ## 9. 🚀 The reconnect runbook (owner confirmed: git is DISCONNECTED from Vercel)
 
 Cause found and confirmed by the owner — the GitHub integration is disconnected, which is why zero
-deployments were even *triggered* since 07-19. `main` is now `1de3229c` (this session
-fast-forwarded it; 9 commits, 0 behind).
+deployments were even *triggered* since 07-19. `main` is now `e534cd08` (fast-forwarded 2026-07-26 s6).
+
+**⚠️ The disconnect was DELIBERATE, not an accident** (owner, 2026-07-26): with **113 remote
+branches**, every push triggered a full Next.js preview build, and the spend was the reason. Right
+instinct, wrong lever — it also killed production deploys. **So do NOT simply reconnect: land the
+build gate first** (§9-0), or reconnecting re-creates the exact problem that caused the disconnect and
+it will be pulled again.
+
+### 9-0. ✅ DONE — the build gate that makes reconnecting safe (`e534cd08`)
+
+`vercel.json` now carries:
+
+```json
+"ignoreCommand": "[ \"$VERCEL_ENV\" = \"production\" ] && exit 1 || exit 0"
+```
+
+**Exit 1 = BUILD, exit 0 = SKIP** — backwards from intuition, and getting it inverted means silently
+never deploying again. Production builds; every preview from all 113 branches is skipped before it
+consumes build minutes. Branch-count independent, so branch #114 is covered too.
+
+Rejected on purpose: `git.deploymentEnabled` maps branch names to booleans and **unspecified branches
+default to `true`**, so there is no "only main" allowlist — it would mean a 113-entry denylist that
+rots on every new branch. And `git.deploymentEnabled: false` disables auto-deploys *including main*,
+which is this exact trap in softer clothing.
+
+**Trade-off, stated:** no preview URLs. Every merge to `main` goes straight to production with no
+staged check, so verification stays local (real browser + a real prod row + the suite both flag ways —
+the §6 loop). To get a preview back for one branch, name it in the condition.
 
 ### 9a. Pre-flight: the schema is READY — verified, not assumed
 
@@ -230,7 +256,10 @@ rollback lever) is spent on the same deploy that introduced the risk.
 
 ### 9d. Verify after the deploy
 
-- Production serves `1de3229c` (Vercel → Deployments → the production alias).
+- **Verify the build gate in BOTH directions** — push a no-op commit to any branch and confirm the
+  deployment reads *skipped*; push to `main` and confirm it *builds*. An inverted `ignoreCommand`
+  fails silently (nothing ever deploys), which looks exactly like the bug being fixed here.
+- Production serves `e534cd08` (Vercel → Deployments → the production alias).
 - **Crons: read the SCHEDULED-fire logs, never a manual curl** — a manual curl 401s by design and
   has previously been misread as "crons dead" ([[vercel-crons-dead-401]]).
 - Spot-check one paid path end-to-end; the credits meter writes `reading_events.credits`.
@@ -295,3 +324,10 @@ would redraw the leader full-width every time and erase what the section measure
 coral. Mobile sheet at 390px: zero horizontal overflow, header figure 90px clear of the kicker.
 
 Gates: suite **4510 / 0 with the flag ON *and* unset** · `tsc` 0 · `eslint` clean on every touched file.
+
+### 9e. 💸 The other cost lever, while you are in there
+
+`vercel.json` schedules **10 crons**, one HOURLY (`calculate-trends`) and `scrape-trending` every 6
+hours — and the scrapers reach paid APIs (Apify). Those fire on production regardless of builds, so on
+a project reporting `"live": false` with no users they are spend buying nothing. Pause the ones that
+are not earning until launch. (Not done here — it changes runtime behaviour and is the owner's call.)
