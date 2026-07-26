@@ -43,6 +43,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/components/ui/toast";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { MavenMark } from "@/components/brand/maven-logo";
@@ -291,6 +292,7 @@ export function Sidebar() {
   const setActiveThreadId = useBoardStore((s) => s.setActiveThreadId);
   const activeThreadId = useBoardStore((s) => s.activeThreadId);
   const archiveThread = useArchiveThread();
+  const { toast } = useToast();
 
   // Mobile drawer hygiene: ANY navigation tap must land the creator ON the
   // destination, not back under the still-open sheet (live-caught 2026-07-20:
@@ -329,7 +331,14 @@ export function Sidebar() {
     try {
       await archiveThread.mutateAsync(id);
     } catch {
-      // Non-fatal: the thread-list refetch reconciles the sidebar either way.
+      // This catch used to be empty, justified by "the refetch reconciles the sidebar
+      // either way" — it does not. The optimistic drop (use-threads onMutate) removes the
+      // row instantly and the rollback puts it back ~2 s later, so a server failure read as
+      // a UI glitch: the thread "flickered deleted" and returned, silently, forever (F-021).
+      // Tell the creator, and DON'T fall through to the active-thread cleanup below — the
+      // thread still exists, so dropping the pointer would strand them off a live thread.
+      toast({ variant: "error", title: "Couldn't delete that thread." });
+      return;
     }
     if (wasActive && pathname === "/home") {
       clearActiveThreadCookie();

@@ -1,4 +1,5 @@
 /** @vitest-environment happy-dom */
+import { ToastProvider } from "@/components/ui/toast";
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { axe } from 'vitest-axe';
@@ -39,14 +40,14 @@ import { Sidebar } from '../Sidebar';
 
 describe('Sidebar a11y', () => {
   it('no violations expanded', async () => {
-    const { container } = render(<Sidebar />);
+    const { container } = render(<ToastProvider><Sidebar /></ToastProvider>);
     const results = await axe(container);
     // @ts-expect-error -- vitest-axe matcher type augmentation not picked up
     expect(results).toHaveNoViolations();
   });
 
   it('exposes the launch-cut top-level nav items: New Thread, Audience', () => {
-    render(<Sidebar />);
+    render(<ToastProvider><Sidebar /></ToastProvider>);
     // MVP launch cut (lane/launch-prep, 2026-07-15): the standalone briefing was removed after
     // preview — New Thread (→ /home composer) IS the home, and Audience (the calibrated moat) is
     // the one persistent destination. Calendar · Discover · Library · Start are hidden
@@ -73,7 +74,7 @@ describe('Sidebar a11y', () => {
   });
 
   it('drops the Create / Analyze / Assets group labels after the launch cut', () => {
-    render(<Sidebar />);
+    render(<ToastProvider><Sidebar /></ToastProvider>);
     // With Calendar/Discover/Library hidden, each umbrella group had a single child, so the
     // labels were removed — the nav is now a flat Start · Audience list.
     expect(screen.queryByText('Create')).not.toBeInTheDocument();
