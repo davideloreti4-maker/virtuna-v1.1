@@ -127,6 +127,7 @@ import { detectRefineIntent } from "@/lib/tools/refine";
 // server check. ContentForm's SOCIAL_URL_PATTERN ALSO allows Instagram — the
 // slim composer must NOT (TikTok-only for v1).
 import { TIKTOK_URL_PATTERN } from "@/lib/tiktok-url";
+import { consumePendingUpload } from "@/lib/onboarding/pending-upload";
 import type { Verb } from "@/lib/room-contract/types";
 import { LAUNCH_PARAM } from "@/lib/room-contract/thread-launch";
 
@@ -1898,16 +1899,28 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     if (tool === "test") setShowUpload(true); // Test absorbs upload — reveal its drop zone (v6)
     if (seedParam) setUrl(seedParam);
 
+    // The hero's file handoff (ONBOARDING-FUNNEL-DESIGN.md §0b④). A File can't ride a query
+    // string, so the /go hero stages it in module scope and it is consumed HERE, on the other
+    // side of the client-side push. Consume-once, so a re-render can never replay the same
+    // upload into a second billed run. Nothing staged (a hard reload, a pasted URL) simply
+    // leaves the revealed drop zone empty — the pre-existing fallback, unchanged.
+    const stagedUpload = consumePendingUpload();
+    if (stagedUpload) {
+      setFile(stagedUpload);
+      setShowUpload(true);
+    }
+
     // Runnable from a text seed? Make (hooks/idea/script) runs even empty (Auto mode). Ask
-    // (chat) needs a thought. Test can only run headless from a valid TikTok URL — a video
-    // upload needs a file the surface can't carry, so it degrades to pre-fill (the safe fallback).
+    // (chat) needs a thought. Test runs headless from a valid TikTok URL — OR from a file the
+    // surface staged for us (above). Without a staged file an upload still degrades to
+    // pre-fill, which stays the safe fallback for every surface that can't stage one.
     const runnable =
       tool === "hooks" || tool === "idea" || tool === "script"
         ? true
         : tool === "chat"
           ? !!seedParam?.trim()
           : tool === "test"
-            ? !!seedParam && TIKTOK_URL_PATTERN.test(seedParam.trim())
+            ? (!!seedParam && TIKTOK_URL_PATTERN.test(seedParam.trim())) || !!stagedUpload
             : false;
     if (runParam && runnable) setPendingAutoRun(true);
 

@@ -12,7 +12,7 @@
  *     card on a small screen.
  */
 
-import { ProductRender } from "@/components/offer/product-render";
+import { HeroEntry } from "@/components/offer/hero-entry";
 import { AmbientPanel } from "@/components/offer/ambient-panel";
 import {
   Sheet,
@@ -26,8 +26,10 @@ export function HeroShowcase() {
   return (
     <div className="mx-auto w-full max-w-[1000px]">
       <div className="grid gap-5 lg:grid-cols-[minmax(0,560px)_minmax(340px,420px)] lg:items-start">
-        {/* Surface 1 — the Test card (craft), with the guided build-motion */}
-        <ProductRender />
+        {/* Surface 1 — the LIVE entry. Was ProductRender, a fixture of the Test card; the
+            demo IS the platform now (§0b), so this slot takes the real input instead of
+            depicting the output. ProductRender stays in the tree, unreferenced here. */}
+        <HeroEntry />
 
         {/* Surface 2 — the room (reception). Beside on desktop, a Sheet on mobile. */}
         <div className="hidden lg:block lg:h-[620px]">
