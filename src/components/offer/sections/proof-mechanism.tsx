@@ -8,13 +8,19 @@ import { cn } from "@/lib/utils";
  * Proof of mechanism — the authority beat, and the HONEST substitute for a fake
  * social-proof strip. We don't borrow trust with invented creator counts, logos
  * or testimonials. We earn it by showing the real mechanism — dissect → simulate
- * → pinpoint — backing it with true numbers, and then stating plainly what the
- * product does NOT claim.
+ * → pinpoint — backing it with true numbers, and closing on the receipt.
  *
- * That last block is deliberate. For a skeptical audience (and "predict my
- * video" invites skepticism), naming the limits converts better than another
- * superlative: it's the one thing a hype page can't copy. It also keeps the page
- * consistent with the app, where a Directional read is labelled Directional.
+ * ⚠️ The closing block used to be "And what it doesn't claim" — a full card of
+ * three limits at the page's authority beat. It was removed 2026-07-26 (owner:
+ * optimise for conversion, not for defensiveness). The receipt that replaced it
+ * carries the same credibility forward-facing: a real corpus video, its real
+ * multiplier. Don't restore a limits card here — the honest edges that still
+ * matter live in the FAQ, where a skeptic goes looking for them.
+ *
+ * The receipt's wording is deliberately conditional ("when a fix maps to a
+ * pattern the corpus has already seen work"). A fix's `proof` is OPTIONAL in
+ * `HookProofSchema` — an ungrounded run renders no receipt — so "every fix cites
+ * a source" would be false. Keep the conditional.
  */
 
 interface Mechanic {
@@ -54,11 +60,15 @@ const STATS: readonly Stat[] = [
   { value: 90, prefix: "~", suffix: "s", label: "from input to a full verdict" },
 ];
 
-/** What Maven doesn't claim. Each line is a real limit, not false modesty. */
-const LIMITS: readonly string[] = [
-  "It isn't a view count. No tool can promise you numbers the algorithm decides.",
-  "It's a simulation, not an audience — a reasoned model of how viewers behave, labelled Directional in the app when that's what it is.",
-  "It reads craft and reception. It won't fix a video that has nothing to say.",
+/**
+ * The receipt on the fix — the real numbers from a corpus video the model cited
+ * (`TEST_CARD_FIXTURE.props.fixes[0].proof`: 14.2× its creator's usual, 2.4M
+ * views). Shown on the shipped card, and photographed into the Transformation
+ * shot above — so this is the same claim, twice, from the same source.
+ */
+const RECEIPT: readonly { figure: string; label: string }[] = [
+  { figure: "14.2×", label: "that creator's usual views" },
+  { figure: "2.4M", label: "views the cited video did" },
 ];
 
 export function ProofMechanism() {
@@ -134,21 +144,32 @@ export function ProofMechanism() {
         ))}
       </Stagger>
 
-      {/* The limits. Stated by us, before a skeptic has to ask. */}
+      {/* The receipt — the corpus proof that closes the authority beat. */}
       <Reveal gesture="settle" className="mx-auto mt-16 max-w-3xl">
-        <div className="rounded-2xl border border-border bg-surface-sunken/60 p-6 md:p-7">
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-foreground-muted">
-            And what it doesn&apos;t claim
-          </p>
-          <Stagger as="ul" className="mt-4 flex flex-col gap-3" step={0.07}>
-            {LIMITS.map((limit) => (
-              <StaggerItem
-                as="li"
-                key={limit}
-                className="flex items-start gap-2.5 text-[14px] leading-relaxed text-foreground-secondary"
-              >
-                <span aria-hidden className="mt-[7px] h-1 w-3 shrink-0 rounded-full bg-border-hover" />
-                {limit}
+        <div className="rounded-2xl border border-border bg-surface-sunken/60 p-6 md:flex md:items-center md:gap-8 md:p-7">
+          <div className="md:flex-1">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-foreground-muted">
+              And the fix comes with a receipt
+            </p>
+            <p className="mt-3 text-[14.5px] leading-relaxed text-foreground-secondary">
+              When a fix maps to a pattern the corpus has already seen work, Maven shows you the
+              video that ran it — the creator, the hook it used, and what it did for them.
+            </p>
+          </div>
+
+          <Stagger
+            as="dl"
+            className="mt-6 flex gap-6 border-t border-border pt-5 md:mt-0 md:shrink-0 md:gap-8 md:border-l md:border-t-0 md:pl-8 md:pt-0"
+            step={0.08}
+          >
+            {RECEIPT.map((r) => (
+              <StaggerItem key={r.figure} gesture="rise" className="flex flex-col">
+                <dd className="text-[26px] font-semibold leading-none tracking-tight text-foreground">
+                  {r.figure}
+                </dd>
+                <dt className="mt-2 max-w-[16ch] text-[12.5px] leading-snug text-foreground-muted">
+                  {r.label}
+                </dt>
               </StaggerItem>
             ))}
           </Stagger>
