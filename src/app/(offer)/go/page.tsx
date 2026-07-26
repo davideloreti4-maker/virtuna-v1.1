@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { HeroShowcase } from "@/components/offer/hero-showcase";
 import { FloatingNav } from "@/components/offer/floating-nav";
 import { BlurFade } from "@/components/velora/blur-fade";
-import { PrimaryCta } from "@/components/offer/cta-config";
 import { PlatformBar } from "@/components/offer/sections/platform-bar";
 import { Transformation } from "@/components/offer/sections/transformation";
 import { HowItWorks } from "@/components/offer/sections/how-it-works";
@@ -95,25 +94,18 @@ export default function OfferPage() {
                 they&apos;d scroll, and the fix, before you ever hit post.
               </p>
             </BlurFade>
+            {/* The hero's action IS the composer below — a "$1 → #pricing" button here sent
+                the fold's traffic AWAY from the flow (and contradicted "free, no account").
+                The dollar belongs to the wall inside the product and to #pricing below. */}
             <BlurFade delay={0.26}>
-              <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-                <PrimaryCta href="#pricing" size="lg">
-                  Test your first video — $1
-                </PrimaryCta>
-                <span className="text-[13px] text-foreground-muted">
-                  $1 for 3 days · cancel anytime
-                </span>
-              </div>
-            </BlurFade>
-            <BlurFade delay={0.33}>
-              <p className="mt-6 text-[13px] text-foreground-muted">
+              <p className="mt-5 text-[13px] text-foreground-muted">
                 🔒 Trained on 500 dissected viral videos
               </p>
             </BlurFade>
           </div>
 
-          {/* the wow — the REAL product, live: craft card BESIDE the room */}
-          <BlurFade delay={0.2} className="mt-12 md:mt-16">
+          {/* the flow — the REAL product, live: the entry is the hero */}
+          <BlurFade delay={0.2} className="mt-10 md:mt-12">
             <HeroShowcase />
           </BlurFade>
         </div>

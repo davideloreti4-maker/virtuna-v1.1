@@ -1,15 +1,17 @@
 "use client";
 
 /**
- * HeroShowcase — the two-surface story, side by side: the Test card (craft) and
- * the ambient room (reception). This is the landing's core promise made visible
- * — Maven both reads the craft AND simulates how the room reacts.
+ * HeroShowcase — the entry IS the hero (owner call 2026-07-27: "we want traffic
+ * actually go into the flow").
  *
- *   • Desktop (lg+): the room sits BESIDE the card, always on (the brain
- *     auto-plays its neural read).
- *   • Mobile: the card leads; the room is a Sheet the visitor pulls up on tap
- *     ("See how the room reacts →") — NOT always open, so it never buries the
- *     card on a small screen.
+ * The previous shape paired the live composer with an always-on room panel in a
+ * second column. That panel — however faithful — was an exhibit: a fixture of a
+ * surface the visitor reaches FOR REAL two clicks later (§0b: the demo is the
+ * platform). Side by side, the exhibit competed with the entry. So the hero is
+ * now ONE centered surface — the live composer — and the room demotes to a
+ * deliberate pull-up ("See how the room reacts →"), the pattern mobile already
+ * used, on every viewport. Proof stays one tap away; the paste/drop is the only
+ * thing the fold asks for.
  */
 
 import { HeroEntry } from "@/components/offer/hero-entry";
@@ -24,32 +26,23 @@ import {
 
 export function HeroShowcase() {
   return (
-    <div className="mx-auto w-full max-w-[1000px]">
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,560px)_minmax(340px,420px)] lg:items-start">
-        {/* Surface 1 — the LIVE entry. Was ProductRender, a fixture of the Test card; the
-            demo IS the platform now (§0b), so this slot takes the real input instead of
-            depicting the output. ProductRender stays in the tree, unreferenced here. */}
-        <HeroEntry />
+    <div className="mx-auto w-full max-w-[640px]">
+      {/* The ONE surface — the live entry. Was ProductRender (a fixture), then a
+          two-column pairing with the room; the slot now takes the real input alone. */}
+      <HeroEntry />
 
-        {/* Surface 2 — the room (reception). Beside on desktop, a Sheet on mobile. */}
-        <div className="hidden lg:block lg:h-[720px]">
-          <AmbientPanel />
-        </div>
-      </div>
-
-      {/* Mobile-only opener for the room — a deliberate pull-up, never always open */}
-      <div className="mt-4 lg:hidden">
+      {/* The room, demoted to a pull-up on ALL viewports — a deliberate tap, never an
+          always-on exhibit beside the entry. */}
+      <div className="mt-4">
         <Sheet>
           <SheetTrigger asChild>
             <button
               type="button"
-              className="flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-surface-elevated px-4 py-3 text-[14px] font-medium text-foreground transition-colors hover:bg-surface-elevated/80"
+              className="mx-auto flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-[13px] font-medium text-foreground-muted transition-colors hover:text-foreground"
             >
               <span className="h-1.5 w-1.5 rounded-full bg-accent" />
               See how the room reacts
-              <span aria-hidden className="text-foreground-muted">
-                →
-              </span>
+              <span aria-hidden>→</span>
             </button>
           </SheetTrigger>
           <SheetContent
@@ -63,7 +56,7 @@ export function HeroShowcase() {
               How your simulated audience reads a video — the brain, and the
               audience.
             </SheetDescription>
-            <div className="h-full px-3 pb-3 pt-2">
+            <div className="mx-auto h-full w-full max-w-[520px] px-3 pb-3 pt-2">
               <AmbientPanel />
             </div>
           </SheetContent>

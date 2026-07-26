@@ -107,14 +107,10 @@ export function HeroEntry() {
   };
 
   return (
-    // Matches the room's height on lg so the two columns read as ONE composition rather than a
-    // short block floating beside a tall one (they measured 262px vs 620px, align-items:start).
-    // The composer is centered in that height, which is also where the eye lands from the H1.
-    <div className="flex flex-col justify-center lg:h-[620px]">
-      {/* The eyebrow mirrors the room's "The room · live" dot-and-caps treatment, so the pair
-          still reads as a set now that ProductRender's browser chrome — what the room's header
-          was built to mirror (ambient-panel.tsx) — is gone from this slot. */}
-      <div className="mb-3 flex items-center gap-1.5">
+    // Natural height — the 620px column-match (and the ~200px of dead air it padded above and
+    // below the composer) went with the side panel. The entry is the hero's only surface now.
+    <div className="flex flex-col">
+      <div className="mb-3 flex items-center justify-center gap-1.5">
         <span className="h-1.5 w-1.5 rounded-full bg-accent" />
         <span className="text-[11px] uppercase tracking-[0.14em] text-foreground-muted">
           Test a video now · free, no account
@@ -143,7 +139,7 @@ export function HeroEntry() {
       />
 
       {/* Reserve the row so a message never reflows the hero under the visitor's cursor. */}
-      <div className="mt-3 min-h-[20px] px-1 text-[13px]" aria-live="polite">
+      <div className="mt-3 min-h-[20px] px-1 text-center text-[13px]" aria-live="polite">
         {error ? (
           <span className="text-accent-text">{error}</span>
         ) : starting ? (
