@@ -20,6 +20,30 @@ function trialWindowFrom(now: Date) {
   };
 }
 
+/**
+ * The event name, in one spelling, whatever Whop actually sent.
+ *
+ * Two independent ambiguities, both observed against the live API on 2026-07-26 and neither
+ * resolvable from the docs:
+ *
+ *  1. **The key.** Whop's classic payload carries the event under `action`; newer shapes use
+ *     `event`. Reading only one and finding it `undefined` sends every delivery to `default`,
+ *     which is silent — the customer pays and no tier is granted.
+ *  2. **The separator.** The webhook API only ACCEPTS underscored subscription names
+ *     (`membership_went_valid`) and echoes them back underscored, but the historical payload
+ *     spelling is dotted (`membership.went_valid`). Whop even stores them inconsistently —
+ *     the same webhook came back holding `membership_went_valid` and `payment.failed`.
+ *
+ * So: take either key, and fold the FIRST underscore to a dot (only the first — the resource
+ * prefix is what it separates; `membership_cancel_at_period_end_changed` must become
+ * `membership.cancel_at_period_end_changed`, not a string of dots).
+ */
+export function normalizeEventName(payload: { event?: unknown; action?: unknown }): string {
+  const raw = payload?.event ?? payload?.action;
+  if (typeof raw !== "string" || !raw) return "";
+  return raw.includes(".") ? raw : raw.replace("_", ".");
+}
+
 /** Only the fields we read off a Whop webhook, each optional across payload versions. */
 type WhopWebhookData = {
   id?: string;
@@ -100,19 +124,23 @@ export async function POST(request: Request) {
 
     // Parse webhook payload
     const payload = JSON.parse(body);
-    const { event, data } = payload;
+    const data = payload.data;
+    const event = normalizeEventName(payload);
 
     // Create service role client (bypasses RLS)
     const supabase = createServiceClient();
 
     // Handle webhook events
     switch (event) {
-      // `membership.activated` is Whop's CURRENT name for "this membership is now valid".
-      // It replaced `membership.went_valid`, which no longer fires — the old case fell
-      // through to `default` and logged "Unknown webhook event", so a paying customer was
-      // never granted a tier. `membership.went_valid` is kept as an alias in case an older
-      // webhook version is configured on the endpoint.
-      case "membership.activated":
+      // "this membership is now valid" — grant the tier.
+      //
+      // ⚠️ VERIFIED AGAINST THE LIVE API 2026-07-26: `membership_went_valid` /
+      // `membership_went_invalid` / `payment_failed` are the ONLY membership-and-payment
+      // events Whop accepts on a webhook subscription. `membership.activated` and
+      // `membership.deactivated` appear in Whop's published event list but the webhook
+      // endpoint REJECTS them ("is not a valid event") on every api_version — so they are
+      // not reachable and are not handled here. Do not "modernise" these names without
+      // re-probing the API; the docs and the API disagree.
       case "membership.went_valid": {
         const supabaseUserId = supabaseUserIdOf(data);
 
@@ -193,9 +221,8 @@ export async function POST(request: Request) {
         break;
       }
 
-      // Current name for "no longer valid" — cancellation, expiry, or a failed payment
-      // that exhausted its retries. Replaced `membership.went_invalid`.
-      case "membership.deactivated":
+      // "no longer valid" — cancellation, expiry, or a failed payment that exhausted its
+      // retries. (`membership.deactivated` is NOT a subscribable Whop event; see above.)
       case "membership.went_invalid": {
         const supabaseUserId = supabaseUserIdOf(data);
 
@@ -225,14 +252,13 @@ export async function POST(request: Request) {
         break;
       }
 
-      // A failed charge. Whop's current taxonomy puts this on the PAYMENT, not the
-      // membership (`membership.payment_failed` no longer fires); `invoice.past_due` is
-      // the invoice-side signal for the same condition. The membership itself stays valid
-      // until retries are exhausted, at which point `membership.deactivated` arrives — so
-      // this case only marks `past_due`, it never drops the tier.
-      case "payment.failed":
-      case "invoice.past_due":
-      case "membership.payment_failed": {
+      // A failed charge. Whop puts this on the PAYMENT, not the membership — the webhook
+      // API rejects `membership.payment_failed`, so `payment.failed` is the real signal
+      // (verified live 2026-07-26). The membership stays valid while Whop retries, and
+      // `membership.went_invalid` arrives only if the retries are exhausted — so this case
+      // marks `past_due` and deliberately NEVER drops the tier. A card that needs one retry
+      // must not lock a paying customer out mid-month.
+      case "payment.failed": {
         const supabaseUserId = supabaseUserIdOf(data);
 
         if (!supabaseUserId) {
@@ -261,7 +287,16 @@ export async function POST(request: Request) {
       }
 
       default:
-        log.info("Unknown webhook event", { event });
+        // WARN, not info. An event we do not recognise is the exact shape the old bug took:
+        // a subscribed, signature-valid delivery that quietly changes nothing. Log the raw
+        // spelling and the payload keys so the first sandbox event tells us what Whop really
+        // sends, instead of us guessing from docs that have already been wrong twice.
+        log.warn("Unhandled webhook event", {
+          event,
+          raw_event: payload?.event ?? payload?.action ?? null,
+          payload_keys: Object.keys(payload ?? {}),
+          data_keys: Object.keys(data ?? {}),
+        });
         break;
     }
 
