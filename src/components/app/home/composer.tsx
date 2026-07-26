@@ -406,9 +406,17 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // seal: measured would-stop % + the Phase-C population/personas depth), rehydrated from
   // `threads.sim_seals` so BOTH the v2 Overview seal AND the audience-depth drill survive a reload.
   const [persistedSimSeals, setPersistedSimSeals] = useState<SimSealMap>({});
+  // The Start grid hands back a tile id as a plain string. It used to be CAST — `id as ToolId` —
+  // which is how a one-character typo (`ideas` for `idea`) armed a tool no branch matched and
+  // dropped the creator into handleSubmit's final else: the paid SIM-1 Max video Test (F-017).
+  // A cast cannot fail, so tsc never saw it and the pill happily read "Ideas" the whole time.
+  // Validate against the SKILLS registry instead: an unknown id now arms NOTHING, so the worst a
+  // future tile typo can do is make its tile inert — never spend a creator's money on the wrong skill.
   const pickStartSkill = useCallback(
     (id: string) => {
-      handleUserSelectTool(id as ToolId);
+      const skill = SKILLS.find((s) => s.id === id);
+      if (!skill) return;
+      handleUserSelectTool(skill.id);
       setStartEngaged(true);
     },
     [handleUserSelectTool],
@@ -3165,7 +3173,9 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
         <>
         <AmbientStartHome
           audience={effectiveAudience}
-          // The Start grid ids are curated SKILL_RUN_META keys (all valid ToolIds).
+          // The Start grid ids are ToolIds — NOT SKILL_RUN_META keys, which this comment used to
+          // claim were "all valid ToolIds". They are not: SKILL_RUN_META spells Ideas `ideas`
+          // (F-017). pickStartSkill validates against SKILLS, so an unknown id is now inert.
           onSkill={pickStartSkill}
           onSubmit={seedAndRun}
           activeSkillId={activeTool}

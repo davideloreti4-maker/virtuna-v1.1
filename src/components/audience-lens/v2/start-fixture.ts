@@ -19,14 +19,15 @@ export const START_R4: StartData = {
     fidelity: "SIM-1 Flash",
     fidelityOptions: ["SIM-1 Flash", "SIM-1 Max"],
   },
-  // Every artifact the platform offers (SKILL_RUN_META ids), grouped by what you're working on.
+  // Every artifact the platform offers (composer ToolIds — NOT SKILL_RUN_META keys, F-017),
+  // grouped by what you're working on.
   // Mirrors START_SKILL_GROUPS in ambient-v2-adapters.ts — keep the two in step.
   skillGroups: [
     {
       label: "Content",
       span: 2,
       skills: [
-        { id: "ideas", label: "Ideas", lens: "Concepts worth making", icon: "bulb" },
+        { id: "idea", label: "Ideas", lens: "Concepts worth making", icon: "bulb" },
         { id: "hooks", label: "Hooks", lens: "Openers that stop them", icon: "firstline" },
         { id: "script", label: "Script", lens: "A full short-form script", icon: "page" },
         { id: "remix", label: "Remix", lens: "Rebuild what worked", icon: "repeat" },

@@ -62,7 +62,18 @@ export type ActionIcon =
   | "ab";
 
 export interface StartSkill {
-  id: string; // the SKILL_RUN_META key (ideas · hooks · script · remix · explore · read · account · test)
+  /**
+   * The composer's `ToolId` — this is what `onSkill` hands back and what `activeSkillId` is
+   * compared against, so an ACTIVE tile's id must name a real skill in SKILLS
+   * (`composer-controls.tsx`). Asserted by ambient-v2-adapters' start-skill-ids test.
+   *
+   * ⚠️ NOT the `SKILL_RUN_META` key — that is a separate display namespace which spells the
+   * Ideas skill `ideas`, plural, where ToolId spells it `idea`. This comment used to name
+   * SKILL_RUN_META, the grid followed it, and the Ideas tile silently armed the paid video
+   * Test (F-017). A `status: "soon"` tile is inert (no onPick), so it may name an artifact
+   * that has no ToolId yet — `compare` does.
+   */
+  id: string;
   label: string;
   lens: string; // a short line: what you get back — rendered under the label
   icon: ActionIcon;
