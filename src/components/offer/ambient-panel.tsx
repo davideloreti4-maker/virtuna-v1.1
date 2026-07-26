@@ -44,7 +44,7 @@ export function AmbientPanel({ className = "" }: { className?: string }) {
             The room · live
           </span>
           <span className="ml-auto text-[11px] text-foreground-muted">
-            1,000 simulated viewers
+            10 named viewers
           </span>
         </div>
 

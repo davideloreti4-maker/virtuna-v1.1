@@ -58,7 +58,7 @@ export function HeroShowcase() {
               The simulated audience room
             </SheetTitle>
             <SheetDescription className="sr-only">
-              How a simulated room of 1,000 viewers reacts to your video — the
+              How a simulated room of named viewers reacts to your video — the
               brain, the people, and the population.
             </SheetDescription>
             <div className="h-full px-3 pb-3 pt-2">
