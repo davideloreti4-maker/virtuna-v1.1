@@ -98,6 +98,25 @@ export const CREDITS_PER_READING = CREDIT_COSTS.score;
  */
 export const UNLIMITED_DAILY_CREDIT_CEILING = 300;
 
+/**
+ * THE DEMO POOL — what an ANONYMOUS visitor may spend before the $1.
+ *
+ * The `/go` funnel signs the visitor in anonymously and hands them the REAL platform, so the
+ * free half of the wall is a genuine engine run on their own video. That run has to be paid
+ * for by us, which makes this number the funnel's cost-per-visitor ceiling.
+ *
+ * Exactly ONE full Reading — the video Test whose card is given away. Everything past it
+ * (a second video, the simulation verdict) is what the dollar buys.
+ *
+ * ⚠️ Unlike every other allowance here, this one is enforced **regardless of
+ * `BILLING_ENFORCE_QUOTA`** (see `lib/billing/quota.ts`). That flag exists so real customers
+ * are not locked out before the Whop plans are buyable; it has nothing to say about how much
+ * free engine spend an unauthenticated stranger may trigger, and anonymous users are
+ * unbounded in number. Leaving this to the flag would mean the demo is uncapped in exactly
+ * the window where the funnel is live and the meter is off.
+ */
+export const DEMO_CREDITS = CREDIT_COSTS.score;
+
 /** The $1 trial, offered on every plan. */
 export const TRIAL = {
   /** What the card is charged today. */

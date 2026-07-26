@@ -9,7 +9,7 @@ import {
   isTrialActive,
   type TrialWindow,
 } from "../quota";
-import { CREDIT_COSTS, UNLIMITED_DAILY_CREDIT_CEILING } from "@/lib/pricing";
+import { CREDIT_COSTS, DEMO_CREDITS, UNLIMITED_DAILY_CREDIT_CEILING } from "@/lib/pricing";
 
 /**
  * The credit meter. The properties that matter:
@@ -380,5 +380,71 @@ describe("the meter's fallback chain — RPC → ledger count × 10 → legacy c
     expect(calls).not.toContain("analysis_results");
     expect(verdict.allowed).toBe(true);
     expect(verdict.used).toBe(0);
+  });
+});
+
+/**
+ * THE ANONYMOUS DEMO POOL — the `/go` funnel's free run.
+ *
+ * The funnel signs a cold visitor in anonymously and hands them the REAL platform, so the
+ * free half of the wall is a genuine engine run we pay for. Two properties carry the money:
+ *
+ *   1. an anonymous user is tier `free` (allowance 0), so WITHOUT the demo pool the funnel's
+ *      own free run is refused the instant enforcement flips on for the Whop launch, and
+ *   2. the cap holds whether or not BILLING_ENFORCE_QUOTA is set. That flag exists so real
+ *      customers are not locked out before the plans are buyable — it says nothing about how
+ *      much free engine spend an unauthenticated stranger may trigger, and anonymous users
+ *      are unbounded in number.
+ */
+describe("the anonymous demo pool (/go funnel)", () => {
+  const ANON = { isAnonymous: true };
+
+  it("gives an anonymous visitor exactly one Reading, not tier free's zero", async () => {
+    const { client } = stubClient({ rpc: 0 });
+    const verdict = await checkCreditQuota(client, "anon", "free", READING, NO_TRIAL, NOW, null, ANON);
+    expect(verdict.limit).toBe(DEMO_CREDITS);
+    expect(verdict.allowed).toBe(true);
+    expect(verdict.isDemo).toBe(true);
+  });
+
+  it("refuses the SECOND run — the free test is one, not unlimited", async () => {
+    const { client } = stubClient({ rpc: DEMO_CREDITS }); // first run already spent
+    const verdict = await checkCreditQuota(client, "anon", "free", READING, NO_TRIAL, NOW, null, ANON);
+    expect(verdict.allowed).toBe(false);
+    expect(verdict.reason).toBe("demo_used");
+  });
+
+  it("CAPS the demo even with BILLING_ENFORCE_QUOTA off — the money guard", async () => {
+    // The regression this whole block exists for. With the flag off (its state today), the
+    // old code reported enforced:false and every caller let the request through, so a
+    // stranger could trigger unbounded engine runs on the one page built to attract them.
+    process.env.BILLING_ENFORCE_QUOTA = "false";
+    const { client } = stubClient({ rpc: DEMO_CREDITS });
+    const verdict = await checkCreditQuota(client, "anon", "free", READING, NO_TRIAL, NOW, null, ANON);
+    expect(verdict.enforced).toBe(true);
+    expect(verdict.allowed).toBe(false);
+  });
+
+  it("leaves signed-up free-tier users alone — the pool is anonymous-only", async () => {
+    // Blast-radius guard: every existing user is tier `free`. Widening the allowance in
+    // creditAllowanceFor instead of keying on is_anonymous would have handed all of them
+    // free engine runs.
+    const { client } = stubClient({ rpc: 0 });
+    const verdict = await checkCreditQuota(client, "u1", "free", READING, NO_TRIAL, NOW);
+    expect(verdict.limit).toBe(0);
+    expect(verdict.allowed).toBe(false);
+    expect(verdict.isDemo).toBe(false);
+  });
+
+  it("fails CLOSED for the demo when the meter breaks (it fails OPEN for customers)", async () => {
+    // Asymmetric on purpose: failing open here would hand EVERY visitor unlimited runs for
+    // as long as the ledger is down. Losing conversions is the cheaper failure.
+    const { client } = stubClient({ rpc: "boom", readingEvents: "boom" });
+    const demo = await checkCreditQuota(client, "anon", "free", READING, NO_TRIAL, NOW, null, ANON);
+    expect(demo.allowed).toBe(false);
+    expect(demo.reason).toBe("demo_used");
+
+    const customer = await checkCreditQuota(client, "u1", "starter", READING, NO_TRIAL, NOW);
+    expect(customer.allowed).toBe(true);
   });
 });

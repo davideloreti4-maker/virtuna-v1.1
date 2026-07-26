@@ -73,7 +73,19 @@ describe("every paid tool route gates and bills", () => {
       join(__dirname, "../../../app/api/analyze/route.ts"),
       "utf8"
     );
-    expect(src).toContain("getCreditQuotaVerdict(supabase, user.id, CREDITS_PER_READING)");
+    expect(src).toContain("getCreditQuotaVerdict(supabase, user.id, CREDITS_PER_READING");
     expect(src).toContain("recordUsage(");
+  });
+
+  it("the analyze route prices an ANONYMOUS visitor on the demo pool, not tier free", () => {
+    // The /go funnel's free run happens here. An anonymous user is tier `free` (allowance
+    // 0), so if this route stops declaring `isAnonymous` the demo silently starts refusing
+    // every visitor the day BILLING_ENFORCE_QUOTA flips on — on the one page built to
+    // convert them, with a 402 nobody would be watching for.
+    const src = readFileSync(
+      join(__dirname, "../../../app/api/analyze/route.ts"),
+      "utf8"
+    );
+    expect(src).toContain("isAnonymous: user.is_anonymous === true");
   });
 });
