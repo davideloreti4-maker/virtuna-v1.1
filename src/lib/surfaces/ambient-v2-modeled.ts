@@ -470,9 +470,21 @@ function fmtCount(n: number): string {
 export function modeledSwing(agg: PopulationAggregate): SwingData | undefined {
   const segs = agg.segments;
   if (segs.length === 0) return undefined;
-  // the district sitting closest to the 50% line = the most persuadable fence-sitters
-  const fence = segs.slice().sort((a, b) => Math.abs(a.stopPct - 50) - Math.abs(b.stopPct - 50))[0]!;
+  // The district sitting closest to the 50% line = the most persuadable fence-sitters — but NEVER the
+  // weakest district. |0−50| ties |100−50|, so on decided districts the sort happily returned the
+  // LOSS district and the section then described the people most gone as "not gone, just unconvinced"
+  // — flatly contradicting the terrain, which paints that same district coral. `modeledDecisionStates`
+  // already excludes the loss when it picks its fence; this now matches it.
+  const loss = segs.slice().sort((a, b) => a.stopPct - b.stopPct)[0]!;
+  const byNearLine = segs.slice().sort((a, b) => Math.abs(a.stopPct - 50) - Math.abs(b.stopPct - 50));
+  const fence = byNearLine.find((s) => s.displayName !== loss.displayName);
+  if (!fence) return undefined; // a single district, and it is the loss — nothing to swing
   const nearMiss = Math.max(0, fence.total - fence.stop);
+  // No fence-sitters ⇒ NO swing section. "0 viewers stalled right at the line" is not an upside, it
+  // is a sentence about nobody. Reachable whenever every district is decided (a small panel — e.g. a
+  // video fold's 10 archetypes — lands on 0%/100% districts), and latent for any all-or-nothing text
+  // projection. Omit rather than print a zero-subject read.
+  if (nearMiss === 0) return undefined;
   const fromPct = Math.round(agg.stopPct);
   const gain = clamp(Math.round((nearMiss / Math.max(1, agg.total)) * 100 * 0.45), 3, 15);
   const toPct = clamp(fromPct + gain, 0, 100);
@@ -481,6 +493,6 @@ export function modeledSwing(agg: PopulationAggregate): SwingData | undefined {
     fromPct,
     toPct,
     gainLabel: `+${gain}% would stop`,
-    read: `${nearMiss} viewers stalled right at the line in ${fence.displayName} — not gone, just unconvinced. Win them and the room moves from ${fromPct}% to ${toPct}%.`,
+    read: `${nearMiss} ${nearMiss === 1 ? "viewer" : "viewers"} stalled right at the line in ${fence.displayName} — not gone, just unconvinced. Win them and the room moves from ${fromPct}% to ${toPct}%.`,
   };
 }
