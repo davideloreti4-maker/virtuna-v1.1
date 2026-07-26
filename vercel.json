@@ -6,47 +6,5 @@
       "maxDuration": 300,
       "memory": 2048
     }
-  },
-  "crons": [
-    {
-      "path": "/api/cron/calculate-trends",
-      "schedule": "0 * * * *"
-    },
-    {
-      "path": "/api/cron/scrape-trending",
-      "schedule": "0 */6 * * *"
-    },
-    {
-      "path": "/api/cron/sync-whop",
-      "schedule": "0 */12 * * *"
-    },
-    {
-      "path": "/api/cron/refresh-competitors",
-      "schedule": "0 6 * * *"
-    },
-    {
-      "path": "/api/cron/refresh-account-snapshots",
-      "schedule": "0 7 * * *"
-    },
-    {
-      "path": "/api/cron/validate-rules",
-      "schedule": "0 2 * * *"
-    },
-    {
-      "path": "/api/cron/refresh-corpus",
-      "schedule": "0 6 1 * *"
-    },
-    {
-      "path": "/api/cron/delete-retained-videos",
-      "schedule": "0 3 * * *"
-    },
-    {
-      "path": "/api/cron/sweep-orphan-videos",
-      "schedule": "0 4 * * 0"
-    },
-    {
-      "path": "/api/cron/audience-drift",
-      "schedule": "0 5 * * 1"
-    }
-  ]
+  }
 }
