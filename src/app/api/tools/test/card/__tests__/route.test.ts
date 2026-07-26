@@ -110,6 +110,33 @@ function brainRow(overrides: Record<string, unknown> = {}) {
   });
 }
 
+/** A brain row that ALSO carries the fold cast — `analysis_results.personas`, in its real shape. */
+function mockSupabaseWithFold() {
+  const foldPersona = (archetype: string, slot_type: string, scroll_past_second: number) => ({
+    persona_id: `${slot_type}-${archetype}`,
+    archetype,
+    slot_type,
+    niche: "general",
+    scroll_past_second,
+    watch_through_pct: scroll_past_second === 0 ? 90 : 30,
+    comment_intent: 0,
+    share_intent: 0,
+    save_intent: 0,
+    rewatch_intent: 0,
+    reasoning: `fold-derived: ${archetype}`,
+  });
+  return makeSupabase(
+    "user-1",
+    brainRow({
+      personas: [
+        foldPersona("tough_crowd", "fyp", 2.8),
+        foldPersona("lurker", "fyp", 0),
+        foldPersona("cross_niche_curiosity", "cross_niche", 8.5),
+      ],
+    }),
+  );
+}
+
 function makeSupabase(userId: string | null, row: unknown, rowErr: unknown = null) {
   const builder: Record<string, unknown> = {};
   builder.select = () => builder;
@@ -213,8 +240,33 @@ describe("POST /api/tools/test/card", () => {
       verbatim: null, // absent on this row → the scrubber falls back to segment labels
     });
     expect(seal.video.heatmap.weighted_curve).toEqual([0.8, 0.6, 0.3, 0.5]); // the REAL curve
+    // This row carries NO fold cast (`personas` absent) → no audience depth is invented; the drill
+    // stays honestly brain-only.
+    expect(seal.population).toBeUndefined();
+    expect(seal.video.skimmedPct).toBeUndefined();
     // The card is still persisted (the seal never blocks it).
     expect(mockInsertMessage).toHaveBeenCalledTimes(1);
+  });
+
+  it("seals the AUDIENCE depth too when the row carries the fold cast (§9b)", async () => {
+    // The fold ran against this thread's active audience (analyze R1′b), so these 10 archetype
+    // reactors ARE the creator's room — the Population drill's source, from the SAME paid run.
+    mockCreateClient.mockResolvedValue(
+      mockSupabaseWithFold(),
+    );
+    const res = await callPOST({ analysisId: "an-1" });
+    expect(res.status).toBe(200);
+
+    const [, , , seal] = mockWriteSimSeal.mock.calls[0]!;
+    // real headcounts off the real bail seconds, against the row's OWN 3s hook window (SEGMENTS[0])
+    expect(seal.population.total).toBe(3);
+    expect(seal.population.scroll).toBe(1); // tough_crowd bailed at 2.8s — inside the hook
+    expect(seal.population.stop).toBe(2);
+    expect(seal.population.segments.map((s: { archetype: string }) => s.archetype)).toContain("tough_crowd");
+    // no per-viewer objections exist on a video fold, so none are coded
+    expect(seal.population.reasons).toEqual([]);
+    // the third band a video can honestly report: cross_niche bailed at 8.5s — after the hook
+    expect(seal.video.skimmedPct).toBe(33);
   });
 
   it("skips the video seal when the hold is unreadable (no fabricated %)", async () => {

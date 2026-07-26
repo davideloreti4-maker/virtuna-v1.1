@@ -23,8 +23,9 @@
  *     ephemeral BY DESIGN (no persistence), and a speculative concept-sim has no reconcilable
  *     posted-video outcome to pin against. The pin belongs on the PERSISTED calibrated sealed sim
  *     (Phase D-full), where an outcome linkage exists. Deferred there, not silently dropped.
- *   - the Brain/Population depth detail (`onOpenStimulus`) — Phase C (its producers aren't real yet),
- *     so a rank tap opens Simulate in develop mode rather than a fixture-backed depth view.
+ *   - a rank tap on an UNSEALED concept row still opens Simulate in develop mode (there is no depth
+ *     to drill until a run exists). Both depth tabs are real once a row is sealed — concepts via the
+ *     react projection, videos via the Test run's fold reception panel.
  *
  * Build spec: docs/HANDOFF-2026-07-22-ambient-v2-wiring-provenance-audit.md
  */
@@ -39,7 +40,11 @@ import {
   parsePersonaStops,
   type OverviewVideoRow,
 } from "@/lib/surfaces/ambient-v2-adapters";
-import { buildDomainTemplate, type PopulationPersona } from "@/lib/surfaces/ambient-v2-population";
+import {
+  buildDomainTemplate,
+  buildPopulationFrameData,
+  type PopulationPersona,
+} from "@/lib/surfaces/ambient-v2-population";
 import { buildVideoDomainTemplate } from "@/lib/surfaces/ambient-v2-brain";
 import { audienceToMeta } from "@/lib/surfaces/ambient-v2-audience-meta";
 import type { Audience } from "@/lib/audience/audience-types";
@@ -294,10 +299,17 @@ export function AmbientOverviewRail({
     [videoSeals, revealedVideos, revealVideo, openStimulus],
   );
 
-  // A drilled VIDEO row → its real Brain-depth Detail (brain-first; population omitted for a video →
-  // the honest audience-unavailable state). Guarded before the concept branch (disjoint id spaces).
+  // A drilled VIDEO row → its real Detail. BOTH tabs are real now: the Brain from the sealed
+  // attention read, and the Population from the SAME run's fold reception panel (the analyze route
+  // repaints the fold with this thread's active audience, so those 10 archetype reactors ARE this
+  // creator's room). Guarded before the concept branch (disjoint id spaces).
   if (detailId !== null && videoSeals[detailId] && revealedVideos[detailId]) {
     const v = videoSeals[detailId];
+    // The AUDIENCE tab, from the SAME sealed run — the fold's real archetype reactors, mapped by
+    // `buildVideoPopulation` at Test time and persisted on the seal. Absent on a Wave-3-degraded row
+    // (and on every seal written before this shipped), which keeps the honest brain-only drill.
+    const videoAggregate = persistedSeals?.[detailId]?.population ?? null;
+    const skimmedPct = typeof v.skimmedPct === "number" ? v.skimmedPct : undefined;
     const template = buildVideoDomainTemplate({
       heatmap: v.heatmap,
       videoSignals: v.videoSignals,
@@ -305,7 +317,15 @@ export function AmbientOverviewRail({
       stopPct: v.stopPct,
       stimulusKey: detailId,
       conceptLabel: "video",
-      population: null,
+      population: videoAggregate
+        ? buildPopulationFrameData({
+            aggregate: videoAggregate,
+            personas: [], // a video fold emits no exemplar voices — the receipts section omits itself
+            calibratedFrom: meta.calibratedFrom,
+            tier: "max", // a Test is the Max video pipeline, never Flash
+            ...(skimmedPct !== undefined ? { skimmedPct } : {}),
+          })
+        : null,
     });
     return (
       <div className={sheet ? SHEET_SHELL : "flex w-full items-start justify-center"}>
