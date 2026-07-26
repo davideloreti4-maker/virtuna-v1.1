@@ -83,7 +83,9 @@ describe('Sidebar chat thread list', () => {
       { id: 'abc', title: 'Hook ideas for launch', updated_at: new Date().toISOString(), created_at: new Date().toISOString() },
     ]);
     const { Sidebar: Fresh } = await import('../Sidebar');
-    render(<Fresh />);
+    // Same module registry as Fresh (vi.resetModules above) — a static import would be a different React context.
+    const { ToastProvider: TP } = await import('@/components/ui/toast');
+    render(<TP><Fresh /></TP>);
     const labels = screen.getAllByTestId('sidebar-thread-label');
     expect(labels[0]?.textContent).toContain('Hook ideas for launch');
   });
@@ -94,7 +96,9 @@ describe('Sidebar chat thread list', () => {
       { id: 'xyz', title: null, updated_at: new Date().toISOString(), created_at: new Date().toISOString() },
     ]);
     const { Sidebar: Fresh } = await import('../Sidebar');
-    render(<Fresh />);
+    // Same module registry as Fresh (vi.resetModules above) — a static import would be a different React context.
+    const { ToastProvider: TP } = await import('@/components/ui/toast');
+    render(<TP><Fresh /></TP>);
     const labels = screen.getAllByTestId('sidebar-thread-label');
     expect(labels[0]?.textContent).toMatch(/^New chat\s·/);
   });
@@ -105,7 +109,9 @@ describe('Sidebar chat thread list', () => {
       { id: 'no-date', title: null, updated_at: '', created_at: '' },
     ]);
     const { Sidebar: Fresh } = await import('../Sidebar');
-    render(<Fresh />);
+    // Same module registry as Fresh (vi.resetModules above) — a static import would be a different React context.
+    const { ToastProvider: TP } = await import('@/components/ui/toast');
+    render(<TP><Fresh /></TP>);
     const labels = screen.getAllByTestId('sidebar-thread-label');
     const text = (labels[0]?.textContent ?? '').trim();
     expect(text).toBe('New chat');
@@ -120,7 +126,9 @@ describe('Sidebar composition — Threads label + no dead affordances', () => {
       { id: 'abc', title: 'A chat', updated_at: new Date().toISOString(), created_at: new Date().toISOString() },
     ]);
     const { Sidebar: Fresh } = await import('../Sidebar');
-    render(<Fresh />);
+    // Same module registry as Fresh (vi.resetModules above) — a static import would be a different React context.
+    const { ToastProvider: TP } = await import('@/components/ui/toast');
+    render(<TP><Fresh /></TP>);
     expect(screen.getByText('Threads')).toBeInTheDocument();
     expect(screen.queryByText('Simulations')).toBeNull();
     expect(screen.queryByText('Recent')).toBeNull();
@@ -130,7 +138,9 @@ describe('Sidebar composition — Threads label + no dead affordances', () => {
     vi.resetModules();
     mockThreads([]);
     const { Sidebar: Fresh } = await import('../Sidebar');
-    render(<Fresh />);
+    // Same module registry as Fresh (vi.resetModules above) — a static import would be a different React context.
+    const { ToastProvider: TP } = await import('@/components/ui/toast');
+    render(<TP><Fresh /></TP>);
     expect(screen.queryByText('Pinned')).toBeNull();
     expect(screen.queryByText('Projects')).toBeNull();
     expect(screen.queryByText('Boards')).toBeNull();
@@ -140,7 +150,9 @@ describe('Sidebar composition — Threads label + no dead affordances', () => {
     vi.resetModules();
     mockThreads([]);
     const { Sidebar: Fresh } = await import('../Sidebar');
-    render(<Fresh />);
+    // Same module registry as Fresh (vi.resetModules above) — a static import would be a different React context.
+    const { ToastProvider: TP } = await import('@/components/ui/toast');
+    render(<TP><Fresh /></TP>);
     expect(screen.getByText(/no threads yet/i)).toBeInTheDocument();
   });
 });
@@ -160,7 +172,9 @@ describe('Sidebar thread delete — two-step confirm', () => {
       useArchiveThread: () => ({ mutateAsync: archiveMock }),
     }));
     const { Sidebar: Fresh } = await import('../Sidebar');
-    render(<Fresh />);
+    // Same module registry as Fresh (vi.resetModules above) — a static import would be a different React context.
+    const { ToastProvider: TP } = await import('@/components/ui/toast');
+    render(<TP><Fresh /></TP>);
   }
 
   it('does NOT archive on the first (arming) click', async () => {
@@ -182,5 +196,18 @@ describe('Sidebar thread delete — two-step confirm', () => {
     fireEvent.click(screen.getByRole('button', { name: /^delete doomed thread$/i }));
 
     expect(archiveMock).toHaveBeenCalledWith('abc');
+  });
+
+  // F-021: the server said no for MONTHS and the creator was never told. The optimistic
+  // drop removed the row instantly, the rollback put it back ~2 s later, and the catch was
+  // empty — so a hard 500 read as a UI flicker. A failed delete must SAY so.
+  it('tells the creator when the delete fails — never a silent flicker', async () => {
+    const archiveMock = vi.fn().mockRejectedValue(new Error('Failed to delete thread'));
+    await renderWithArchive(archiveMock);
+
+    fireEvent.click(screen.getByRole('button', { name: /delete thread: doomed thread/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^delete doomed thread$/i }));
+
+    expect(await screen.findByText(/couldn't delete that thread/i)).toBeInTheDocument();
   });
 });

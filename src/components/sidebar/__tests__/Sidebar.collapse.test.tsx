@@ -12,6 +12,7 @@
  * Written first (Task 1) — RED against the current sidebar (hardcoded
  * effectiveCollapsed = false + no keybind); Task 3 makes it green.
  */
+import { ToastProvider } from "@/components/ui/toast";
 import type { ReactElement } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render as rtlRender, screen, fireEvent, cleanup } from '@testing-library/react';
@@ -101,19 +102,19 @@ beforeEach(() => {
 
 describe('Sidebar collapse — keybind', () => {
   it('Cmd-\\ keydown toggles the persisted collapse (calls toggleCollapsed)', () => {
-    render(<Sidebar />);
+    render(<ToastProvider><Sidebar /></ToastProvider>);
     fireEvent.keyDown(window, { key: '\\', metaKey: true });
     expect(toggleCollapsed).toHaveBeenCalledTimes(1);
   });
 
   it('Ctrl-\\ keydown toggles collapse too (cross-platform)', () => {
-    render(<Sidebar />);
+    render(<ToastProvider><Sidebar /></ToastProvider>);
     fireEvent.keyDown(window, { key: '\\', ctrlKey: true });
     expect(toggleCollapsed).toHaveBeenCalledTimes(1);
   });
 
   it('a plain \\ keystroke (no modifier) does NOT toggle', () => {
-    render(<Sidebar />);
+    render(<ToastProvider><Sidebar /></ToastProvider>);
     fireEvent.keyDown(window, { key: '\\' });
     expect(toggleCollapsed).not.toHaveBeenCalled();
   });
@@ -123,7 +124,7 @@ describe('Sidebar collapse — rendering branches', () => {
   it('desktop + collapsed renders an icon rail narrower than the 220px expanded width', () => {
     storeState.isCollapsed = true;
     mobile = false;
-    render(<Sidebar />);
+    render(<ToastProvider><Sidebar /></ToastProvider>);
     const nav = screen.getByRole('navigation', { name: /app navigation/i });
     // Expanded width class must NOT be present once collapsed to the rail.
     expect(nav.className).not.toContain('w-[220px]');
@@ -134,7 +135,7 @@ describe('Sidebar collapse — rendering branches', () => {
   it('desktop + expanded renders the full 220px nav with the Thread label', () => {
     storeState.isCollapsed = false;
     mobile = false;
-    render(<Sidebar />);
+    render(<ToastProvider><Sidebar /></ToastProvider>);
     const nav = screen.getByRole('navigation', { name: /app navigation/i });
     expect(nav.className).toContain('w-[220px]');
     expect(screen.getByText('Threads')).toBeInTheDocument();
@@ -143,7 +144,7 @@ describe('Sidebar collapse — rendering branches', () => {
   it('mobile is the full-width drawer, never the collapsed rail (even when isCollapsed is true)', () => {
     storeState.isCollapsed = true; // desktop pref is collapsed…
     mobile = true; // …but on mobile it must be ignored (drawer, not rail)
-    render(<Sidebar />);
+    render(<ToastProvider><Sidebar /></ToastProvider>);
     const nav = screen.getByRole('navigation', { name: /app navigation/i });
     // On mobile the drawer keeps the full expanded width (it slides in/out, not a rail).
     expect(nav.className).toContain('w-[220px]');
