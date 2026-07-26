@@ -171,10 +171,30 @@ describe("the frame the video aggregate produces", () => {
     expect(frame.swing).toBeUndefined();
   });
 
+  it("omits 'who spreads it' — the reshare priors do not know these archetypes, so it has no answer", () => {
+    // `RESHARE_PRIOR` is keyed on the TEXT vocabulary, so every fold archetype defaults to ×1.0.
+    // Rendered, that was ten identical carriers plus "Reach rides on Tough Crowd resharing" — naming
+    // the district that bailed at 2.8s as the lead spreader, purely on a tie-break.
+    expect(frame.amplification).toBeUndefined();
+  });
+
+  it("counts a tie instead of crowning one of its members, and reads the shape it describes", () => {
+    const read = frame.audienceFit!.read;
+    // 8 of 9 districts sit at 100%: naming the first of them would present a sort order as a finding.
+    expect(read).toMatch(/8 districts/);
+    expect(read).not.toMatch(/over-indexes with (Quiet Watchers|Regulars|Commenters)/);
+    // Tough Crowd genuinely IS alone at the bottom, so it is named.
+    expect(read).toContain("Tough Crowd");
+    // …and a result where most of the room holds must not call itself narrow.
+    expect(read).not.toMatch(/narrower/);
+    expect(read).toMatch(/plays broad/);
+  });
+
   it("still carries the sections its real numbers DO support", () => {
     expect(frame.audienceFit).toBeDefined();
-    expect(frame.amplification).toBeDefined();
-    expect(frame.heroRead).toContain("Tough Crowd");
     expect(frame.room!.calibratedOn).toBe("your audience");
+    // the hero read counts the 8-way tie at the top and names the district genuinely alone at the
+    // bottom — the same rule the fit read follows, via the shared `peerLabel`
+    expect(frame.heroRead).toBe("8 districts stop most (100%); Tough Crowd are the ceiling (0%).");
   });
 });

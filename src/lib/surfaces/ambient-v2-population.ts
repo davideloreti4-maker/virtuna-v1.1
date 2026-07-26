@@ -44,6 +44,7 @@ import {
   modeledSignalGrid,
   modeledSwing,
   modeledUnlock,
+  peerLabel,
   type ModeledBrainInput,
   type ModeledReason,
 } from "./ambient-v2-modeled";
@@ -170,10 +171,14 @@ function heroRead(agg: PopulationAggregate): string {
   if (segs.length === 0) return `${agg.stop} of ${agg.total} kept watching.`;
   const top = segs.reduce((a, b) => (b.stopPct > a.stopPct ? b : a));
   const low = segs.reduce((a, b) => (b.stopPct < a.stopPct ? b : a));
-  if (top.displayName === low.displayName) {
-    return `${top.displayName} stop at ${Math.round(top.stopPct)}%.`;
+  if (top.stopPct === low.stopPct) {
+    // Every district at the same rate — there is no "most" and no ceiling, just one flat room.
+    return `Every district stops at ${Math.round(top.stopPct)}%.`;
   }
-  return `${top.displayName} stop most (${Math.round(top.stopPct)}%); ${low.displayName} are the ceiling (${Math.round(low.stopPct)}%).`;
+  // Name a district only when it leads alone; otherwise count its peers (see `peerLabel`).
+  const topLabel = peerLabel(segs.filter((s) => s.stopPct === top.stopPct).length, top.displayName);
+  const lowLabel = peerLabel(segs.filter((s) => s.stopPct === low.stopPct).length, low.displayName);
+  return `${topLabel} stop most (${Math.round(top.stopPct)}%); ${lowLabel} are the ceiling (${Math.round(low.stopPct)}%).`;
 }
 
 /**
