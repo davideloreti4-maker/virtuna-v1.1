@@ -15,8 +15,6 @@ import { Faq } from "@/components/offer/sections/faq";
 import { FinalCta } from "@/components/offer/sections/final-cta";
 import { OfferFooter } from "@/components/offer/sections/footer";
 import { StickyCta } from "@/components/offer/sections/sticky-cta";
-import { Walkthrough } from "@/components/offer/walkthrough/walkthrough";
-import { BEAT_IDS, type BeatId } from "@/components/offer/walkthrough/beats";
 import { GRAIN_URL } from "@/components/offer/atmosphere";
 
 export const metadata: Metadata = {
@@ -30,28 +28,8 @@ export const metadata: Metadata = {
  * A floating premium brand island + the interactive hero, then the persuasion
  * arc (transformation → pricing → FAQ → CTA).
  */
-/**
- * Dev-only beat jump — `/go?beat=open` renders the unlocked payoff, which is otherwise reachable
- * only by paying. For REVIEWING the demo, never for using it.
- *
- * Resolved here, in the server component, and hard-gated to non-production: in production the wall
- * is the paywall, and a query string that skipped it would hand the withheld analysis to anyone who
- * guessed the URL. Returning undefined leaves the walkthrough on its normal first beat.
- */
-function previewBeat(raw: string | string[] | undefined): BeatId | undefined {
-  if (process.env.NODE_ENV === "production") return undefined;
-  const value = Array.isArray(raw) ? raw[0] : raw;
-  if (!value) return undefined;
-  return (BEAT_IDS as readonly string[]).includes(value) ? (value as BeatId) : undefined;
-}
 
-export default async function OfferPage({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
-  const beat = previewBeat((await searchParams).beat);
-
+export default function OfferPage() {
   return (
     <main>
       {/* floating premium brand island — centered, detached, scroll-aware */}
@@ -142,22 +120,18 @@ export default async function OfferPage({
         </div>
       </section>
 
-      {/* S1 — the interactive walkthrough. Sits directly under the hero on purpose: the
-          time-to-aha budget is ~10s to the first insight and ~45s to the wall, and a demo
-          buried below four persuasion sections cannot meet it. The fixture is a REAL frozen
-          run, so this renders in production; `walkthroughEnabled` re-arms only if someone
-          replaces it with authored numbers. */}
-      <section className="relative px-5 py-14 md:py-20">
-        <div className="mx-auto mb-8 max-w-2xl text-center">
-          <span className="text-xs font-semibold uppercase tracking-[0.14em] text-foreground-muted">
-            Try it on a real video
-          </span>
-          <h2 className="mt-3 font-serif text-[clamp(1.8rem,4vw,2.6rem)] font-medium leading-[1.1] tracking-tight text-balance">
-            This is the actual product, not a screenshot.
-          </h2>
-        </div>
-        <Walkthrough initialBeat={beat} />
-      </section>
+      {/* The 4-beat walkthrough is UNMOUNTED — retired as the funnel's demo
+          (`ONBOARDING-FUNNEL-DESIGN.md` §0b). It is not deleted: the component and its frozen
+          fixture stay in the tree as a possible fallback for visitors who will not enter a video.
+
+          It must not ship on this page in the meantime. Its `$1` button fires `checkout_open`
+          and returns — `/go` passes no `onCheckout`, because Whop has no keys — so a visitor
+          who reached the wall would dead-end at the one moment the page exists to convert.
+          (It also mounts `AmbientDetail` in an unbounded-height wrapper, rendering 2,182px
+          instead of 800: 3.24 screens on a phone, with that dead button 2.87 screens down.)
+
+          What replaces it is the real platform, run anonymously, gated at the simulation
+          verdict — see the handoff. Until that lands, `/go` is the persuasion page it is today. */}
 
       {/* honest credibility strip, directly under the hero */}
       <PlatformBar />
