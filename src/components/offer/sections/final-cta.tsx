@@ -1,4 +1,4 @@
-import { BlurFade } from "@/components/velora/blur-fade";
+import { Reveal } from "@/components/offer/motion/reveal";
 import { PrimaryCta } from "@/components/offer/cta-config";
 import { GRAIN_URL } from "@/components/offer/atmosphere";
 import { TRIAL } from "@/lib/pricing";
@@ -15,7 +15,10 @@ import { SIGNUP_URL } from "@/lib/routes";
  */
 export function FinalCta() {
   return (
-    <div className="relative w-full overflow-hidden border-y border-border bg-surface-elevated py-20 shadow-[0_-40px_80px_-24px_rgba(0,0,0,0.48)] md:py-28">
+    <div
+      id="final-cta"
+      className="relative w-full overflow-hidden border-y border-border bg-surface-elevated py-20 shadow-[0_-40px_80px_-24px_rgba(0,0,0,0.48)] md:py-28"
+    >
       {/* cream tone-step warm-seat — 7% cream, matte, not a glow */}
       <div
         aria-hidden
@@ -44,21 +47,21 @@ export function FinalCta() {
       </div>
 
       <div className="mx-auto flex max-w-3xl flex-col items-center gap-8 px-5 text-center">
-        <BlurFade delay={0.05}>
+        <Reveal gesture="lift">
           <h2 className="max-w-[20ch] text-balance font-serif text-[clamp(2rem,5vw,3.2rem)] font-medium leading-[1.08] tracking-tight text-foreground">
             Your audience already knows.{" "}
             <span className="italic text-accent-text">Find out</span> before you post.
           </h2>
-        </BlurFade>
+        </Reveal>
 
-        <BlurFade delay={0.14}>
+        <Reveal gesture="settle" delay={0.12}>
           <div className="flex flex-col items-center gap-3">
             <PrimaryCta href={SIGNUP_URL} size="lg">
               Test your first video — {TRIAL.price}
             </PrimaryCta>
             <p className="text-sm text-foreground-muted">{TRIAL.microcopy}</p>
           </div>
-        </BlurFade>
+        </Reveal>
       </div>
     </div>
   );

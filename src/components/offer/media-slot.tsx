@@ -27,11 +27,18 @@ const KIND_ICON: Record<MediaKind, typeof ImageIcon> = {
 
 interface MediaSlotProps {
   kind: MediaKind;
-  /** What goes here — shown on the empty placeholder so the owner knows the ask. */
+  /**
+   * Visitor-facing line for the empty state. This SHIPS, so write it for a
+   * customer ("the walkthrough is being recorded"), not as a note to ourselves.
+   */
   label: string;
   /** CSS aspect-ratio, e.g. "16 / 9", "9 / 16", "1 / 1". Default 16/9. */
   aspect?: string;
-  /** Optional dimension/format hint under the label (e.g. "1080×1920 · .mp4"). */
+  /**
+   * The production ask — dimensions/format for whoever fills the slot. Rendered
+   * in DEVELOPMENT ONLY: "1920×1080 · .MP4 · ~90S" is an internal spec, and a
+   * paid visitor reading it learns only that the page is unfinished.
+   */
   hint?: string;
   /** Swap in a real image — renders it, drops the placeholder chrome. */
   src?: string;
@@ -128,9 +135,9 @@ export function MediaSlot({
             <span className="text-[12.5px] font-medium leading-tight text-foreground-secondary">
               {label}
             </span>
-            {hint && (
+            {hint && process.env.NODE_ENV !== "production" && (
               <span className="font-mono text-[10.5px] uppercase tracking-[0.12em] text-foreground-muted/80">
-                {hint}
+                {hint} · dev-only
               </span>
             )}
           </div>

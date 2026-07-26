@@ -1,29 +1,33 @@
 import { Section, SectionHeading } from "./section-shell";
-import { BlurFade } from "@/components/velora/blur-fade";
-import { MediaSlot } from "@/components/offer/media-slot";
+import { Reveal, Stagger, StaggerItem, Parallax } from "@/components/offer/motion/reveal";
+import { ShotFigure, SHOTS } from "@/components/offer/product-shot";
 import { cn } from "@/lib/utils";
 
 /**
- * Transformation — the loss-aversion beat, restyled as an asymmetric split:
- * the argument (copy + the two contrast lists) on the left, a real before/after
- * VISUAL on the right (two 9:16 slots — "posted blind" vs "read by Maven first",
- * to be filled with real screenshots). Conceptual + honest — it names the stakes
- * and shows the shape of the difference; it does NOT re-render the product.
+ * Transformation — the loss-aversion beat, as an asymmetric split: the argument
+ * (copy + the two contrast lists) on the left, and on the right the REAL output
+ * that makes "already knows" concrete — the director's fixes, photographed from
+ * the shipped card.
+ *
+ * It used to hold two empty 9:16 placeholders labelled "a flat post's analytics"
+ * and "the Maven verdict". The first was unbuildable honestly (we can't produce
+ * someone's TikTok analytics), and two boxes split the eye. One real artifact,
+ * captioned, argues harder than a matched pair of drawings.
  *
  * The Maven side is the one lit element (a single coral liveness dot); the blind
- * side stays muted/dashed, reading as the "before" you want to leave.
+ * side stays muted, reading as the "before" you want to leave.
  */
 
 const BLIND = [
-  "You post, then refresh — hoping the first 3 seconds landed.",
-  "A flat video costs you a week of reach you can't get back.",
+  "Post, then refresh — hoping the first three seconds landed.",
+  "A flat video burns a week of reach you don't get back.",
   "No idea why it missed, so the next one is another coin flip.",
 ];
 
 const KNOWN = [
-  "See the verdict before you post — score, watch-through, drop point.",
-  "Watch 1,000 simulated viewers react, second by second.",
-  "Get the one fix that moves the number — then post with proof.",
+  "The verdict before you post — score, drop point, watch-through.",
+  "The exact second attention goes, and who leaves at it.",
+  "One named fix, with the frame it refers to.",
 ];
 
 function ContrastList({
@@ -56,9 +60,10 @@ function ContrastList({
           {kicker}
         </span>
       </div>
-      <ul className="mt-3.5 flex flex-col gap-2.5" role="list">
+      <Stagger as="ul" className="mt-3.5 flex flex-col gap-2.5" step={0.07}>
         {rows.map((row) => (
-          <li
+          <StaggerItem
+            as="li"
             key={row}
             className={cn(
               "flex items-start gap-2.5 text-[14.5px] leading-relaxed",
@@ -69,9 +74,9 @@ function ContrastList({
               {known ? "✓" : "✗"}
             </span>
             {row}
-          </li>
+          </StaggerItem>
         ))}
-      </ul>
+      </Stagger>
     </div>
   );
 }
@@ -79,67 +84,46 @@ function ContrastList({
 export function Transformation() {
   return (
     <Section>
-      <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
+      <div className="grid items-center gap-12 lg:grid-cols-[1fr_minmax(0,520px)] lg:gap-16">
         {/* LEFT — the argument */}
         <div>
-          <SectionHeading
-            align="left"
-            eyebrow="The difference"
-            title={
-              <>
-                One posts and hopes. <br className="hidden sm:block" />
-                The other already knows.
-              </>
-            }
-            sub="Same video, two different creators. The gap between them isn't luck — it's whether they saw the reaction first."
-          />
+          <Reveal gesture="lift">
+            <SectionHeading
+              align="left"
+              eyebrow="The difference"
+              title={
+                <>
+                  One posts and hopes. <br className="hidden sm:block" />
+                  The other already knows.
+                </>
+              }
+              sub="Same video, two creators. The gap isn't luck — it's whether they saw the reaction first."
+            />
+          </Reveal>
 
           <div className="mt-8 flex flex-col gap-6">
-            <BlurFade delay={0.05} direction="up">
-              <ContrastList kicker="Posting blind" rows={BLIND} tone="blind" />
-            </BlurFade>
+            <ContrastList kicker="Posting blind" rows={BLIND} tone="blind" />
             <div className="h-px w-full bg-border" />
-            <BlurFade delay={0.12} direction="up">
-              <ContrastList kicker="Posting with Maven" rows={KNOWN} tone="known" />
-            </BlurFade>
+            <ContrastList kicker="Posting with Maven" rows={KNOWN} tone="known" />
           </div>
         </div>
 
-        {/* RIGHT — the before/after visual */}
-        <BlurFade delay={0.14} direction="up">
-          <div className="rounded-2xl border border-border bg-surface p-5 shadow-[0_20px_50px_-24px_rgba(0,0,0,0.6)] md:p-6">
-            <div className="grid grid-cols-2 gap-4">
-              <figure className="flex flex-col gap-3">
-                <MediaSlot
-                  kind="thumbnail"
-                  aspect="9 / 16"
-                  label="Screenshot: a flat post's analytics"
-                  hint="1080×1920"
-                />
-                <figcaption className="flex items-center gap-2 text-[12.5px] text-foreground-muted">
-                  <span className="h-1.5 w-1.5 rounded-full border border-foreground-muted/60" />
-                  Posted blind
-                </figcaption>
-              </figure>
-
-              <figure className="flex flex-col gap-3">
-                <MediaSlot
-                  kind="screenshot"
-                  aspect="9 / 16"
-                  label="Screenshot: the Maven verdict on the same video"
-                  hint="1080×1920"
-                />
-                <figcaption className="flex items-center gap-2 text-[12.5px] font-medium text-foreground-secondary">
-                  <span className="relative flex h-1.5 w-1.5">
-                    <span className="absolute inline-flex h-full w-full rounded-full bg-accent opacity-60 motion-safe:animate-ping" />
-                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-accent" />
-                  </span>
-                  Read by Maven first
-                </figcaption>
-              </figure>
-            </div>
-          </div>
-        </BlurFade>
+        {/* RIGHT — the real output. Parallax gives the artifact depth against the
+            copy beside it; the fade says the card continues past the crop. */}
+        <Parallax distance={22}>
+          <ShotFigure
+            shot={SHOTS.fixes}
+            sizes="(min-width: 1024px) 520px, 92vw"
+            edge="fade"
+            maxHeight={620}
+            caption={
+              <>
+                Real output — the fix, the frame it points at, and a proven example from the
+                corpus that ran 14.2× its creator&apos;s usual views.
+              </>
+            }
+          />
+        </Parallax>
       </div>
     </Section>
   );
