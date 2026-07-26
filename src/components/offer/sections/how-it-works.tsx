@@ -40,13 +40,13 @@ const STEPS: readonly Step[] = [
     title: "A room of viewers watches it",
     body: (
       <>
-        A synthetic audience watches frame by frame and reacts in character — who stops, who
-        scrolls, and what each of them thought.
+        A synthetic audience watches frame by frame and reacts — who stops, who scrolls,
+        and where your believers cluster.
       </>
     ),
     shot: SHOTS.react,
     maxHeight: 520,
-    caption: "Six of ten stopped — with the words each viewer had, and the four who scrolled past.",
+    caption: "38.2% would stop — the read in one sentence, and how each cohort of viewers reacted.",
   },
   {
     n: "03",

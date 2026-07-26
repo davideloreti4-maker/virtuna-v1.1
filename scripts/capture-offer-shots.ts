@@ -52,14 +52,11 @@ const SETTLE_MS: Record<string, number> = {
 
 /**
  * Some stages need a click first to reach the state the section wants to show.
- * The room, for instance, lands on the brain — which is already the hero's shot;
- * the "audience reacts" step wants the PEOPLE scale instead, so the two surfaces
- * on the page never photograph the same thing. Text is matched inside the stage.
+ * Text is matched inside the stage. Currently empty: the v2 read stage opens
+ * directly on the audience tab via `initialTab` (the legacy room needed a
+ * "The people" click; that surface is retired from the stages).
  */
-const PREPARE: Record<string, string[]> = {
-  "step-react": ["The people"],
-  "step-react-sm": ["The people"],
-};
+const PREPARE: Record<string, string[]> = {};
 
 async function main() {
   fs.mkdirSync(OUT_DIR, { recursive: true });
