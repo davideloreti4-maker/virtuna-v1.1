@@ -331,3 +331,69 @@ Gates: suite **4510 / 0 with the flag ON *and* unset** · `tsc` 0 · `eslint` cl
 hours — and the scrapers reach paid APIs (Apify). Those fire on production regardless of builds, so on
 a project reporting `"live": false` with no users they are spend buying nothing. Pause the ones that
 are not earning until launch. (Not done here — it changes runtime behaviour and is the owner's call.)
+
+---
+
+## 11. 🔑 The Vercel environment — enumerated from the CODE, not from `.env.example`
+
+⚠️ **`.env.example` is STALE and misleading**: it says "all 7 cron routes" (there are 10), its
+`# --- AI / LLM (Qwen via DashScope) ---` section is EMPTY — omitting `DASHSCOPE_API_KEY`, the one key
+that actually THROWS — and it still lists `DEEPSEEK_API_KEY`, which has **no runtime reader left**.
+The list below is `grep process.env` over `src/`, with each var's real failure mode checked.
+(`.env.example` is write-protected in this environment, so it could not be corrected here.)
+
+### 11a. REQUIRED — prod is broken without these
+
+| Var | Failure mode if missing |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | read with `!` — runtime crash on first DB call |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | same |
+| `SUPABASE_SERVICE_ROLE_KEY` | same (service client: crons, filmstrip signing, webhooks) |
+| `DASHSCOPE_API_KEY` | **THROWS** `"Missing DASHSCOPE_API_KEY"` — every LLM call routes through it (Qwen-only pipeline). No engine, no product. |
+| `NEXT_PUBLIC_APP_URL` | Apify webhook callbacks + referral links resolve to the wrong origin. Set to the real production origin. |
+
+### 11b. SET THESE TOO — silent degradation, not a crash
+
+| Var | What breaks quietly |
+|---|---|
+| `CRON_SECRET` | 🔴 **security.** `verifyCronAuth` compares against `` `Bearer ${process.env.CRON_SECRET}` ``, so with it UNSET the expected header is the literal string `"Bearer undefined"` — guessable. The 10 cron ROUTES stay publicly deployed even with every schedule removed. **Set it anyway.** |
+| `UPSTASH_REDIS_REST_URL` + `_TOKEN` | rate limiting is **FAIL-OPEN by design** — unset means no limiting at all, one warning logged. Fine while private; set both before public traffic. |
+| `FILMSTRIP_EXTRACT_SECRET` | the extract step aborts early (logged), so analyses run with **no keyframes** — the Test card's filmstrip goes empty. |
+| `APIFY_TOKEN` | all scraping/ingest fails (Discover, competitor refresh, corpus). |
+| `APIFY_WEBHOOK_SECRET` | inbound Apify webhooks fail verification. |
+| `NEXT_PUBLIC_SENTRY_DSN` | no error tracking on the first deploy in five weeks — exactly when you want it. |
+
+### 11c. LEAVE UNSET / OFF (deliberate)
+
+| Var | Why |
+|---|---|
+| `BILLING_ENFORCE_QUOTA` | defaults OFF (`=== "true"`). Enforcement is verified working but stays inert until the Whop step (`docs/PRICING.md`). |
+| `NEXT_PUBLIC_AMBIENT_V2` | **unset for deploy #1.** Inlined at BUILD time ⇒ only takes effect on a rebuild, which is why it is deploy #2 (§9b). |
+| `WHOP_*` (api key, webhook secret, 3 product ids, 3 trial plan ids) | absent BY DESIGN — a missing plan id is the checkout 503; a missing *trial* id degrades to full price and never undercharges. |
+| `GEMINI_API_KEY` | its only runtime reader was the `calculate-trends` cron. With crons off it is **not needed at all**. |
+| `DEEPSEEK_API_KEY` | **dead** — no non-test reader anywhere in `src/`. |
+
+### 11d. Optional overrides — all have in-code defaults, skip unless tuning
+
+Model pins (`FOLD_MODEL`, `FLASH_MODEL`, `EMBEDDING_MODEL`, `QWEN_{APOLLO,DECODE,OMNI,REASONING,EMBEDDING}_MODEL`), fold tuning
+(`FOLD_{TEMPERATURE,MAX_TOKENS,ATTEMPT_TIMEOUT_MS,DIVERSITY_RETRY_TEMP}`, `OMNI_MAX_TOKENS`,
+`DEEPSEEK_THINKING_BUDGET`), grounding (`GROUNDING_*` — **hooks/ideas/script default OFF**, needing
+`="true"`; `GROUNDING_CHAT_TOOL` / `GROUNDING_CHAT_PREFLIGHT` default **ON**, needing `="false"` to
+disable), `CHAT_AGENT_DISPATCH` (defaults **ON**), `APIFY_ACTOR_ID`, `SCRAPER_HASHTAGS`,
+`NEXT_PUBLIC_REACT_SCAN`.
+
+`AB_*`, `SWEEP_BUDGETS`, `SPIKE_REAL`, `SMOKE_ASK`, `RUN_VISION_LIVE_SMOKE`, `GATE_MODEL`,
+`PASS2_THINKING_BUDGET`, `QWEN_FAST_MODEL`, `OUT`, `T`, `YAW`, `PITCH` are **local research scripts
+only** — never set them on Vercel.
+
+### 11e. Crons: ALL 10 schedules removed (`716b5312`)
+
+Owner call — they fired on production regardless of builds, two reach paid Apify, on a project
+reporting `"live": false`. The routes stay deployed behind `verifyCronAuth`; only the schedules are
+gone, so restoring is a revert (git history holds the array verbatim).
+
+🔴 **Two are RETENTION, not refresh** — turning them off changes what the product DOES with user data,
+not just what it spends: `delete-retained-videos` auto-deletes uploads older than 30 days for users
+who did not opt into retention (Phase 11 / INT-05), and `sweep-orphan-videos` clears orphaned rows.
+Inert with no users. **Before real signups, restore both or honour the 30-day deletion another way** —
+otherwise the product keeps uploads it told people it would delete.
