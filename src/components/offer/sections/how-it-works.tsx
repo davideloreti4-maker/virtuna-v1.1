@@ -145,7 +145,7 @@ export function HowItWorks() {
         <PrimaryCta href={SIGNUP_URL} size="lg">
           Test your first video — {TRIAL.price}
         </PrimaryCta>
-        <p className="text-[13px] text-foreground-muted">{TRIAL.microcopy}</p>
+        <p className="text-center text-[13px] text-foreground-muted">{TRIAL.microcopy}</p>
       </Reveal>
     </Section>
   );

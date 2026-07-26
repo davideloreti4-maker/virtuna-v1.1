@@ -5,7 +5,6 @@ import { BlurFade } from "@/components/velora/blur-fade";
 import { PrimaryCta } from "@/components/offer/cta-config";
 import { PlatformBar } from "@/components/offer/sections/platform-bar";
 import { Transformation } from "@/components/offer/sections/transformation";
-import { DemoVideo } from "@/components/offer/sections/demo-video";
 import { HowItWorks } from "@/components/offer/sections/how-it-works";
 import { ProofMechanism } from "@/components/offer/sections/proof-mechanism";
 import { Testimonials } from "@/components/offer/sections/testimonials";
@@ -20,7 +19,7 @@ import { GRAIN_URL } from "@/components/offer/atmosphere";
 export const metadata: Metadata = {
   title: "Maven — Know if your video will pop before you post",
   description:
-    "Maven simulates how 1,000 viewers react to your video, second by second — see the exact moment they'd scroll, and the fix, before you post. Test your first video for $1.",
+    "Maven simulates how up to 1,000 viewers react to your video, second by second — see the exact moment they'd scroll, and the fix, before you post. Test your first video for $1.",
 };
 
 /**
@@ -91,9 +90,9 @@ export default function OfferPage() {
             </BlurFade>
             <BlurFade delay={0.19}>
               <p className="mx-auto mt-4 max-w-[46ch] text-[17px] leading-relaxed text-foreground-secondary">
-                Maven reads your video frame by frame, then simulates how 1,000
-                real viewers react — so you see the exact moment they&apos;d
-                scroll, and the fix, before you ever hit post.
+                Maven reads your video frame by frame, then simulates how a
+                room of real viewers reacts — so you see the exact moment
+                they&apos;d scroll, and the fix, before you ever hit post.
               </p>
             </BlurFade>
             <BlurFade delay={0.26}>
@@ -144,9 +143,11 @@ export default function OfferPage() {
         • Pricing sits directly after ProofMechanism. It used to be 6,500px down,
           behind an empty demo band and an empty testimonial grid — a convinced
           visitor had to scroll past two unfinished sections to find the ask.
-        • DemoVideo moved BELOW the ask precisely because its slot is still empty.
-          When a real walkthrough lands in it, move it back up to just after
-          HowItWorks — seeing the product move belongs before the price.
+        • DemoVideo is UNMOUNTED (owner call 2026-07-26): an empty 16:9 slot on
+          a paid page is a conversion cost with no offsetting benefit. The
+          section stays on disk — when the real walkthrough recording exists,
+          remount it just after HowItWorks with `videoSrc` + `poster` — seeing
+          the product move belongs before the price.
         • Testimonials moved below the ask too: "we have no quotes yet" was the
           last thing read before the price. After it, the same section reads as an
           invitation to the founding cohort.
@@ -156,7 +157,6 @@ export default function OfferPage() {
       <ProofMechanism />
       <Pricing />
       <Guarantee />
-      <DemoVideo />
       <Testimonials />
       <Faq />
       <FinalCta />

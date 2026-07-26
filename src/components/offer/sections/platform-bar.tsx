@@ -6,7 +6,7 @@ import { Reveal } from "@/components/offer/motion/reveal";
  * fake logo wall: it states only true facts, and each one is a fact no OTHER
  * section already states.
  *
- * Two corrections live here:
+ * Three corrections live here:
  *  • It used to repeat "trained on 500 dissected viral videos" and the viewer
  *    count within 400px of the hero saying the same thing. Duplicated claims read
  *    as thin, not emphatic — the numbers now live once, in ProofMechanism.
@@ -15,11 +15,22 @@ import { Reveal } from "@/components/offer/motion/reveal";
  *    a `video_upload` in Supabase storage in order to read frames. The honest
  *    claim — the one we can actually stand behind — is that your RESULTS are
  *    private to your account. Never restore the old wording.
+ *  • The chips stated MECHANISM ("reads the video frame by frame", "a simulated
+ *    room reacts, in character"). Under a hero that already sells the mechanism,
+ *    a visitor's next question is what they walk away with — so they now state
+ *    the outcome (2026-07-26).
+ *
+ * Two constraints when editing these, both learned the hard way:
+ *  • Nothing that restates the hero. It sits ~400px below it.
+ *  • NO viewer count. The hero was reconciled 2026-07-26 (the subhead sells the
+ *    room, the panel chip says "10 named viewers", "up to 1,000" survives only
+ *    in metadata) — a second number here would just re-open the two-scales
+ *    question that `faq-scale` already answers.
  */
 
 const CHIPS: readonly { label: string; muted?: boolean }[] = [
-  { label: "Reads the video frame by frame" },
-  { label: "A simulated room reacts, in character" },
+  { label: "A full read in about 90 seconds" },
+  { label: "Read what each viewer actually thought" },
   { label: "Your results are private to your account" },
   { label: "Instagram Reels & YouTube Shorts — coming soon", muted: true },
 ];

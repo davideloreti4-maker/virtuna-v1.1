@@ -4,16 +4,17 @@ import { cn } from "@/lib/utils";
 /**
  * CTA_VARIANT — the single dosage switch for the /go offer page's primary CTAs.
  *
- * "cream" is the shipped, dosage-compliant default: coral (`--color-accent`)
- * stays precious to the hero liveness + the one lit Pro destination, and every
- * primary CTA is cream (`--color-action`). Flip this ONE constant to "coral" to
- * run the conversion A/B — every primary CTA on the page follows in a single
- * edit, with no per-call-site changes and no accent literals scattered around.
+ * "coral" is live — owner call 2026-07-26 ("we want a high conversion rate").
+ * It spends the accent (`--color-accent`) on every primary CTA; "cream"
+ * (`--color-action`) is the dosage-compliant fallback if the accent starts
+ * competing with the hero liveness. One constant — every primary CTA on the
+ * page follows in a single edit, with no per-call-site changes and no accent
+ * literals scattered around.
  *
  * Keep it a plain module const (no client boundary) so `PrimaryCta` is safe to
  * render from server AND client sections alike.
  */
-export const CTA_VARIANT: "cream" | "coral" = "cream";
+export const CTA_VARIANT: "cream" | "coral" = "coral";
 
 const VARIANT_CLASS: Record<"cream" | "coral", string> = {
   cream: "bg-action text-action-foreground",

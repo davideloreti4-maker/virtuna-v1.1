@@ -1,6 +1,9 @@
 import { Section, SectionHeading } from "./section-shell";
 import { Reveal, Stagger, StaggerItem, Parallax } from "@/components/offer/motion/reveal";
 import { ShotFigure, SHOTS } from "@/components/offer/product-shot";
+import { PrimaryCta } from "@/components/offer/cta-config";
+import { TRIAL } from "@/lib/pricing";
+import { SIGNUP_URL } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
 /**
@@ -125,6 +128,23 @@ export function Transformation() {
           />
         </Parallax>
       </div>
+
+      {/* The first ask, at ~2,200px. Before this, the earliest CTA below the hero
+          was HowItWorks' at ~3,900px — a visitor sold by the contrast alone had
+          to scroll two more sections to find one. Deliberately quieter than the
+          pricing ask (a line of context above it, no card, no badge): this is an
+          exit ramp for the already-convinced, not the page's main close. */}
+      <Reveal gesture="settle" className="mt-14 flex flex-col items-center gap-3 md:mt-16">
+        <p className="max-w-[38ch] text-center text-[15px] leading-relaxed text-foreground-secondary">
+          The gap between the two is one read, and it takes about 90 seconds.
+        </p>
+        <PrimaryCta href={SIGNUP_URL} size="lg">
+          Test your first video — {TRIAL.price}
+        </PrimaryCta>
+        {/* text-center matters: the microcopy is one line at 1440 but wraps at
+            390, and without it the orphan hangs left under a centered button. */}
+        <p className="text-center text-[13px] text-foreground-muted">{TRIAL.microcopy}</p>
+      </Reveal>
     </Section>
   );
 }

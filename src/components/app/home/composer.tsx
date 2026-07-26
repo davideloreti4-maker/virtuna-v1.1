@@ -727,6 +727,10 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     persistedRemixBlocks.length > 0 ||
     persistedExploreBlocks.length > 0 ||
     persistedProfileBlocks.length > 0 || // profile-read / reaction-distribution (05-06)
+    persistedChatTurns.length > 0 || // the unified persisted stream — mirrors hasThread (:639).
+    // Without this term a thread whose only block sits outside every per-skill bucket
+    // (`video-test-card` is the one such type) reads as EMPTY, so :3090 rendered the Start
+    // grid OVER a correctly-loaded paid card — F-019 layer 2.
     hasAccountContent ||
     !!lastUserTurn;
 
@@ -938,6 +942,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
             'script-card': 'script',
             'remix-card': 'remix',
             'outlier-grid': 'explore',
+            'video-test-card': 'test',
           };
           let restored: ToolId | null = null;
           for (let i = messages.length - 1; i >= 0 && !restored; i--) {
@@ -1514,11 +1519,14 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // CRITICAL: Idea path NEVER sets pendingSealRef or calls stream.start (T-03-13).
   const handleSubmit = useCallback(async () => {
     // Skills that persist into the open chat thread AND whose user turn must be
-    // persisted client-side (chat persists its own turn server-side; Test navigates
-    // to /analyze and owns no chat thread). Kept in sync with the ensureThreadForSend
+    // persisted client-side (chat is the exception — it persists its own turn
+    // server-side to keep its refine anchor). Kept in sync with the ensureThreadForSend
     // set below — every tool here creates its thread lazily on first send.
+    // `test` belongs here since the D-05 seal-in-thread rework: the run ends as a
+    // video-test-card IN the thread, so a reload without this shows a card with no
+    // question above it (upload path persists the file name, URL path the URL).
     const USER_TURN_TOOLS: ToolId[] = [
-      "idea", "hooks", "script", "remix", "explore", "simulate", "predict",
+      "idea", "hooks", "script", "remix", "explore", "simulate", "predict", "test",
     ];
     const captureUserTurn = (raw: string) => {
       const t = raw.trim();
@@ -1565,14 +1573,19 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       }
     };
     // Skills that persist into the open chat thread create it lazily on first send.
-    // (Test/video navigates to /analyze and owns no chat thread — excluded.)
+    // `test` is in this set since the D-05 rework made it seal in-thread. While it was
+    // excluded, a Test sent as the FIRST send of a new thread left the pointer on the
+    // NEW_THREAD_SENTINEL for the whole run, so every server-side createOpenThreadLazy
+    // minted a FRESH row (three per run) and the sealed card landed in a thread the
+    // client was never pointing at — a paid Max run completing into a blank screen (F-019).
     if (
       activeTool === "idea" ||
       activeTool === "hooks" ||
       activeTool === "chat" ||
       activeTool === "script" ||
       activeTool === "remix" ||
-      activeTool === "explore"
+      activeTool === "explore" ||
+      activeTool === "test"
     ) {
       await ensureThreadForSend();
     }

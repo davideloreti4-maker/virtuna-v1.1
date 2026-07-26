@@ -25,7 +25,17 @@ import { Reveal, Stagger, StaggerItem } from "@/components/offer/motion/reveal";
  * ours. We never upload or retain your content." That is false — reading frames
  * requires the file, so `/api/analyze` re-hosts a `tiktok_url` and stores an
  * upload in Supabase storage. It now describes what actually happens. Don't
- * revert it to the friendlier wording.
+ * revert it to the friendlier wording. It was cut to three sentences on
+ * 2026-07-26 (the argumentative "any tool claiming otherwise…" aside was
+ * defensive, not informative) — shorter, same facts. Accuracy here is a
+ * chargeback question, so trim it, never soften it.
+ *
+ * Tone pass 2026-07-26: "What if the prediction is wrong?" led the accuracy
+ * objection with our own doubt and answered "sometimes it will be". It's now
+ * "How accurate is it?", answered with what the read is strongest at and a
+ * concrete way to test it inside the trial. Nothing was over-claimed — the
+ * Directional-labelling caveat simply belongs in the app, where it renders on
+ * the read itself, not pre-empted on the sales page.
  */
 
 interface FaqItem {
@@ -41,9 +51,9 @@ const FAQ_ITEMS: readonly FaqItem[] = [
     a: "It reads your video frame by frame — hook, pacing, every cut — against a corpus of 500 dissected viral videos, then runs a room of viewer profiles built from real engagement patterns. Each one watches and reacts in character. You get a craft score, the drivers behind it, the second attention drops, and who leaves at it. It's a simulation with reasoning you can inspect, not a number from a black box.",
   },
   {
-    id: "faq-wrong",
-    q: "What if the prediction is wrong?",
-    a: "Sometimes it will be — it's a model of viewer behaviour, not a view counter, and the app labels a read Directional when that's what it is. What it's reliably good at is the thing you can act on: finding the moment your video loses people and naming the change that addresses it. Judge it on your own videos during the trial, on content whose real numbers you already know. That comparison is exactly what the $1 is for.",
+    id: "faq-accuracy",
+    q: "How accurate is it?",
+    a: "It's strongest at the part you can act on: finding the second your video loses people, and naming the change that fixes it. Test that the fast way — run videos whose real numbers you already know and see whether the read matches what happened. That comparison is exactly what the $1 is for.",
   },
   {
     id: "faq-platforms",
@@ -63,7 +73,7 @@ const FAQ_ITEMS: readonly FaqItem[] = [
   {
     id: "faq-privacy",
     q: "What happens to my video?",
-    a: "Reading frames means Maven has to process the file, so your video is fetched (or uploaded) and stored while the read runs — that's the honest answer, and any tool claiming otherwise isn't reading your frames. It is never published, never shown to another user, and never sold or used to sell. Your results are private to your account.",
+    a: "It's fetched (or uploaded) and stored while the read runs — reading frames means processing the file. It is never published, never shown to another user, and never sold. Your results are private to your account.",
   },
   {
     id: "faq-free-trial",
@@ -89,7 +99,7 @@ export function Faq() {
               align="left"
               eyebrow="FAQ"
               title="Questions, answered"
-              sub="Everything worth knowing before your first read — including the parts that don't flatter us."
+              sub="Everything worth knowing before your first read."
             />
           </Reveal>
         </div>
