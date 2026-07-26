@@ -30,7 +30,7 @@ export function HeroShowcase() {
         <ProductRender />
 
         {/* Surface 2 — the room (reception). Beside on desktop, a Sheet on mobile. */}
-        <div className="hidden lg:block lg:h-[620px]">
+        <div className="hidden lg:block lg:h-[720px]">
           <AmbientPanel />
         </div>
       </div>
@@ -58,8 +58,8 @@ export function HeroShowcase() {
               The simulated audience room
             </SheetTitle>
             <SheetDescription className="sr-only">
-              How a simulated room of named viewers reacts to your video — the
-              brain, the people, and the population.
+              How your simulated audience reads a video — the brain, and the
+              audience.
             </SheetDescription>
             <div className="h-full px-3 pb-3 pt-2">
               <AmbientPanel />
