@@ -53,7 +53,7 @@ const FAQ_ITEMS: readonly FaqItem[] = [
   {
     id: "faq-accuracy",
     q: "How accurate is it?",
-    a: "It's strongest at the part you can act on: finding the second your video loses people, and naming the change that fixes it. Test that the fast way — run videos whose real numbers you already know and see whether the read matches what happened. That comparison is exactly what the $1 is for.",
+    a: "It's strongest at the part you can act on: finding the second your video loses people, and naming the change that fixes it. Test that the fast way — run a video whose real numbers you already know and see whether the read matches what happened. Your first read is free, so that comparison costs you nothing.",
   },
   {
     id: "faq-platforms",
@@ -78,7 +78,7 @@ const FAQ_ITEMS: readonly FaqItem[] = [
   {
     id: "faq-free-trial",
     q: "Is there a free trial?",
-    a: "Not a free one — a $1 one. Any plan starts at $1 for 3 days and includes 50 credits, enough for 5 full Readings to judge the predictions against your own videos. Every feature of the plan you picked is unlocked. On day 4 it renews at the plan price unless you cancel, and you can cancel any time from settings. We'd rather charge you a dollar and show you the real product than hand you a crippled free tier.",
+    a: "Your first Test is free — right from this page, no account. You get the full craft read on your own video. The simulation verdict on it (the room's reaction, the why, the fix) unlocks for $1, which also starts 3 days of the plan you pick with 50 credits — enough for 5 full Readings. On day 4 it renews at the plan price unless you cancel, and you can cancel any time from settings.",
   },
   {
     id: "faq-duration",

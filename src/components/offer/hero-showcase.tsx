@@ -37,8 +37,12 @@ export function HeroShowcase() {
 
   return (
     <div className="w-full">
+      {/* id="test": the shared FREE_ENTRY anchor (cta-config.tsx) — every
+          below-fold entry CTA scrolls back to this composer. scroll-mt clears
+          the floating nav island. */}
       <div
-        className="mx-auto w-full max-w-[640px]"
+        id="test"
+        className="mx-auto w-full max-w-[640px] scroll-mt-28"
         onFocusCapture={() => setEngaged(true)}
       >
         <HeroEntry />

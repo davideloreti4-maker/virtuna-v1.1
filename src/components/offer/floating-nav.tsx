@@ -6,7 +6,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 
 import { cn } from "@/lib/utils";
 import { MavenLogo } from "@/components/brand/maven-logo";
-import { CTA_VARIANT } from "@/components/offer/cta-config";
+import { CTA_VARIANT, FREE_ENTRY } from "@/components/offer/cta-config";
 
 /**
  * FloatingNav — the /go top bar as a clean, premium floating island: a wider,
@@ -18,7 +18,7 @@ import { CTA_VARIANT } from "@/components/offer/cta-config";
  * Scroll-aware depth — the pill solidifies + its shadow deepens once you begin
  * scrolling (bg/border/shadow transition only, so reduced-motion-safe).
  *
- * The burger opens a floating menu card (in-page anchors + the $1 CTA) with the
+ * The burger opens a floating menu card (in-page anchors + the free-entry CTA) with the
  * standard disclosure a11y: Escape + click-outside close, close on link tap,
  * focus the first item on open, restore focus to the trigger on close.
  */
@@ -151,7 +151,7 @@ export function FloatingNav() {
               <div className="my-1.5 h-px bg-border" />
 
               <a
-                href="#pricing"
+                href={FREE_ENTRY.href}
                 onClick={() => setOpen(false)}
                 className={cn(
                   "flex min-h-[44px] items-center justify-center rounded-xl px-4 text-[15px] font-semibold transition-transform hover:scale-[1.01] active:scale-[0.99]",
@@ -160,7 +160,7 @@ export function FloatingNav() {
                     : "bg-action text-action-foreground",
                 )}
               >
-                Start for $1
+                {FREE_ENTRY.label}
               </a>
             </motion.div>
           )}

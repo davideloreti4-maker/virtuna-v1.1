@@ -16,6 +16,22 @@ import { cn } from "@/lib/utils";
  */
 export const CTA_VARIANT: "cream" | "coral" = "coral";
 
+/**
+ * FREE_ENTRY — the one entry ask of the page (reconciled 2026-07-27).
+ *
+ * The hero gives a free, no-account Test; every below-fold momentum CTA used
+ * to sell "$1" against it and route to /signup — the bare email round-trip the
+ * funnel replaced. All entry CTAs now share this SSOT: they point INTO the
+ * flow (the hero composer, `#test`) and sell what the click actually gives —
+ * a free read. The $1 stays where money is decided: the pricing section's
+ * trial mechanics and the wall inside the product.
+ */
+export const FREE_ENTRY = {
+  href: "#test",
+  label: "Test a video free",
+  microcopy: "No account needed — the full verdict unlocks for $1 after",
+} as const;
+
 const VARIANT_CLASS: Record<"cream" | "coral", string> = {
   cream: "bg-action text-action-foreground",
   coral: "bg-accent text-accent-foreground",

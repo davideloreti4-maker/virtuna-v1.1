@@ -1,9 +1,7 @@
 import { Section, SectionHeading } from "./section-shell";
 import { Reveal, Parallax, CountUp } from "@/components/offer/motion/reveal";
 import { ProductShot, SHOTS, type ShotSpec } from "@/components/offer/product-shot";
-import { PrimaryCta } from "@/components/offer/cta-config";
-import { TRIAL } from "@/lib/pricing";
-import { SIGNUP_URL } from "@/lib/routes";
+import { FREE_ENTRY, PrimaryCta } from "@/components/offer/cta-config";
 import { cn } from "@/lib/utils";
 
 /**
@@ -142,10 +140,10 @@ export function HowItWorks() {
       {/* Close the loop here — the mechanism is the most convincing beat on the
           page, and the ask used to be 3,000px further down. */}
       <Reveal gesture="settle" className="mt-16 flex flex-col items-center gap-3">
-        <PrimaryCta href={SIGNUP_URL} size="lg">
-          Test your first video — {TRIAL.price}
+        <PrimaryCta href={FREE_ENTRY.href} size="lg">
+          {FREE_ENTRY.label}
         </PrimaryCta>
-        <p className="text-center text-[13px] text-foreground-muted">{TRIAL.microcopy}</p>
+        <p className="text-center text-[13px] text-foreground-muted">{FREE_ENTRY.microcopy}</p>
       </Reveal>
     </Section>
   );

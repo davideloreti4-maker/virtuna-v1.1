@@ -1,16 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 
 import { Section, SectionHeading } from "./section-shell";
 import { Reveal, Stagger, StaggerItem } from "@/components/offer/motion/reveal";
 import { BorderBeam } from "@/components/velora/border-beam";
-import { PrimaryCta } from "@/components/offer/cta-config";
+import { FREE_ENTRY, PrimaryCta } from "@/components/offer/cta-config";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PLANS, TRIAL, type Plan } from "@/lib/pricing";
-import { SIGNUP_URL } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
 /**
@@ -23,7 +21,9 @@ import { cn } from "@/lib/utils";
  *  3. Choreography — Pro is the one lit destination: the tone-step, the "Best
  *     value" flag, the single cream primary CTA, and the lone coral BorderBeam.
  *
- * CTAs route to SIGNUP_URL. No fake founding-price anchor, no fake urgency.
+ * CTAs route through FREE_ENTRY (the hero composer) — the trial is bought at
+ * the in-product wall, after the free read. No fake founding-price anchor, no
+ * fake urgency.
  */
 
 interface PriceView {
@@ -164,13 +164,16 @@ function PlanCard({ plan, annual }: { plan: Plan; annual: boolean }) {
       {/* CTA — only Pro carries the filled primary (routed through the page's
           one CTA switch); others stay quiet so ONE CTA dominates the section. */}
       <div className="mt-auto flex flex-col gap-3 pt-8">
+        {/* Both routes lead through the free test (FREE_ENTRY): the $1 trial is
+            bought at the wall INSIDE the product, after the free read — a card
+            click that landed on /signup routed around the funnel entirely. */}
         {highlighted ? (
-          <PrimaryCta href={SIGNUP_URL} size="lg" full>
-            Start for {TRIAL.price}
+          <PrimaryCta href={FREE_ENTRY.href} size="lg" full>
+            Start with a free test
           </PrimaryCta>
         ) : (
           <Button asChild variant="secondary" size="lg">
-            <Link href={SIGNUP_URL}>Start for {TRIAL.price}</Link>
+            <a href={FREE_ENTRY.href}>Start with a free test</a>
           </Button>
         )}
         <p className="text-center text-xs text-foreground-muted">{TRIAL.microcopy}</p>
@@ -190,7 +193,7 @@ export function Pricing() {
         <SectionHeading
           eyebrow="Pricing"
           title="Start for a dollar"
-          sub="Every plan opens with the same $1 trial — 50 credits, five full reads on your own videos. Cancel before it renews and you've spent a dollar."
+          sub="Your first Test is free, no account. Every plan then opens with the same $1 trial — 50 credits, five full reads on your own videos. Cancel before it renews and you've spent a dollar."
         />
       </Reveal>
 

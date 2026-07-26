@@ -18,7 +18,7 @@ import { GRAIN_URL } from "@/components/offer/atmosphere";
 export const metadata: Metadata = {
   title: "Maven — Know if your video will pop before you post",
   description:
-    "Maven simulates how up to 1,000 viewers react to your video, second by second — see the exact moment they'd scroll, and the fix, before you post. Test your first video for $1.",
+    "Maven simulates how up to 1,000 viewers react to your video, second by second — see the exact moment they'd scroll, and the fix, before you post. Your first test is free, no account.",
 };
 
 /**
