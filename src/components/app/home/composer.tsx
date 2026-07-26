@@ -73,6 +73,7 @@ import { useSubscription } from "@/hooks/use-subscription";
 import { isPaidPlanId, creditsRemainingLabel } from "@/lib/pricing";
 import { useBoardStore } from "@/stores/board-store";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
+import { useToast } from "@/components/ui/toast";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -292,6 +293,7 @@ export interface ComposerProps {
 
 export function Composer({ className, onThreadChange, onEngagedChange, onConversationChange, onRehydratingChange, railHost = null }: ComposerProps) {
   const router = useRouter();
+  const { toast } = useToast();
   const reducedMotion = usePrefersReducedMotion();
   // P2 (A2a): ≥xl the room lives in HomePageLayout's rail, not the dock. useMediaQuery is SSR-safe
   // (false until mounted) + railHost is null until the aside mounts, so the portal only engages
@@ -2151,6 +2153,57 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     },
     [persistedSimSeals],
   );
+
+  // ── The funnel-return inlet (ONBOARDING-FUNNEL-DESIGN.md §0b②) ─────────────
+  // Two markers land a funnel visitor back on /home:
+  //   ?claimed=1        — the OAuth link round-trip (claim-account.ts). The identity has
+  //                       landed on the SAME anon user, so every seal is already open —
+  //                       what's missing is the moment: nothing re-opened the verdict
+  //                       they paid for. Auto-open the tested video's drill and say so.
+  //   ?checkout=success — Whop's funnel redirect_url (whop/checkout/route.ts). Payment
+  //                       landed but this return path bypassed the in-page claim step, so
+  //                       the visitor is paid-but-unlinked: the drill re-opens on the
+  //                       sealed wall, whose CTA is already "Finish unlocking — link your
+  //                       account" (sealed-wall-cta.tsx). One behavior serves both — open
+  //                       the drill; the drill's own sealed/unsealed state says the rest.
+  // Armed once from location.search and stripped immediately (a refresh must never
+  // re-celebrate); fired only once the rehydration above has landed the thread's seals.
+  // A thread with no video seal leaves the arm to expire silently — never a dead drill.
+  const funnelReturnRef = useRef<"claimed" | "checkout" | null>(null);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const sp = new URLSearchParams(window.location.search);
+    const marker =
+      sp.get("claimed") === "1"
+        ? ("claimed" as const)
+        : sp.get("checkout") === "success"
+          ? ("checkout" as const)
+          : null;
+    if (!marker) return;
+    funnelReturnRef.current = marker;
+    sp.delete("claimed");
+    sp.delete("checkout");
+    const rest = sp.toString();
+    router.replace(rest ? `/home?${rest}` : "/home", { scroll: false });
+  }, [router]);
+
+  useEffect(() => {
+    const marker = funnelReturnRef.current;
+    if (!marker) return;
+    const videoEntries = Object.entries(persistedSimSeals).filter(([, s]) => s?.video);
+    if (videoEntries.length === 0) return; // seals not hydrated yet — stay armed
+    funnelReturnRef.current = null;
+    const entry = videoEntries[videoEntries.length - 1];
+    if (!entry) return;
+    simulateVideoInRoom(entry[0]);
+    if (marker === "claimed") {
+      toast({
+        variant: "success",
+        title: "Account linked",
+        description: "Your thread is yours — the verdict is unlocked.",
+      });
+    }
+  }, [persistedSimSeals, simulateVideoInRoom, toast]);
 
   // ── The Room Rewrite loop (PR-3, LIVE-07) ──────────────────────────────────
   // The Population weak-spot's "Rewrite to win back the N% who bounced →" CTA re-runs the

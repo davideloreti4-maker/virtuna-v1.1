@@ -27,9 +27,11 @@ import { createClient } from "@/lib/supabase/client";
 export type ClaimLinkResult = { ok: true } | { ok: false; error: string };
 
 /** Where the OAuth round-trip lands. `next` survives the provider redirect via the
- *  callback's `safeNext` — /home re-opens the visitor's (now unsealed) thread. */
+ *  callback's `safeNext` (which preserves the query) — /home re-opens the visitor's
+ *  (now unsealed) thread, and `claimed=1` tells its funnel-return inlet to auto-open
+ *  the verdict they paid for instead of leaving them on a silent thread. */
 export function googleLinkRedirectUrl(origin: string): string {
-  return `${origin}/auth/callback?next=${encodeURIComponent("/home")}`;
+  return `${origin}/auth/callback?next=${encodeURIComponent("/home?claimed=1")}`;
 }
 
 async function stampOnboardingComplete(

@@ -84,7 +84,7 @@ describe("beginGoogleLink", () => {
     expect(callLog.find((c) => c.startsWith("upsert:"))).toContain('"onConflict":"user_id"');
   });
 
-  it("links GOOGLE with a redirect through the auth callback back to /home", async () => {
+  it("links GOOGLE with a redirect through the auth callback back to /home?claimed=1 (the funnel-return marker)", async () => {
     await beginGoogleLink("http://localhost:3000");
 
     const link = callLog.find((c) => c.startsWith("linkIdentity"))!;
@@ -92,8 +92,11 @@ describe("beginGoogleLink", () => {
     expect(link).toContain(
       JSON.stringify(googleLinkRedirectUrl("http://localhost:3000")),
     );
+    // `claimed=1` survives safeNext (it preserves the query) and tells /home's
+    // funnel-return inlet to auto-open the now-unsealed verdict.
     expect(googleLinkRedirectUrl("http://localhost:3000")).toBe(
-      "http://localhost:3000/auth/callback?next=%2Fhome",
+      "http://localhost:3000/auth/callback?next=" +
+        encodeURIComponent("/home?claimed=1"),
     );
   });
 
