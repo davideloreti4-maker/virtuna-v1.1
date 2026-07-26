@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 
 import { Section, SectionHeading } from "./section-shell";
-import { BlurFade } from "@/components/velora/blur-fade";
+import { Reveal, Stagger, StaggerItem } from "@/components/offer/motion/reveal";
 import { BorderBeam } from "@/components/velora/border-beam";
 import { PrimaryCta } from "@/components/offer/cta-config";
 import { Button } from "@/components/ui/button";
@@ -183,29 +183,43 @@ export function Pricing() {
   const [annual, setAnnual] = useState(false);
 
   return (
-    <Section id="pricing" divider>
-      <SectionHeading
-        eyebrow="Pricing"
-        title="Start for a dollar"
-        sub="Every plan opens with a $1 trial — 50 credits, enough to test the predictions against 5 of your own videos. Cancel before it renews and you've spent a dollar."
-      />
+    // Lifted ground — the brightest band in the arc, so the ask reads as the
+    // destination rather than one more section.
+    <Section id="pricing" tone="lifted" divider>
+      <Reveal gesture="lift">
+        <SectionHeading
+          eyebrow="Pricing"
+          title="Start for a dollar"
+          sub="Every plan opens with the same $1 trial — 50 credits, five full reads on your own videos. Cancel before it renews and you've spent a dollar."
+        />
+      </Reveal>
 
-      <BillingToggle annual={annual} onChange={setAnnual} />
+      <Reveal gesture="rise" delay={0.06}>
+        <BillingToggle annual={annual} onChange={setAnnual} />
+      </Reveal>
 
-      <div className="mx-auto mt-12 grid max-w-5xl items-stretch gap-5 lg:grid-cols-3">
-        {PLANS.map((plan, i) => (
-          <BlurFade key={plan.id} delay={0.05 + i * 0.08} direction="up" className="flex">
+      <Stagger className="mx-auto mt-12 grid max-w-5xl items-stretch gap-5 lg:grid-cols-3" step={0.08}>
+        {PLANS.map((plan) => (
+          <StaggerItem key={plan.id} gesture="settle" className="flex">
             <div className="flex w-full">
               <PlanCard plan={plan} annual={annual} />
             </div>
-          </BlurFade>
+          </StaggerItem>
         ))}
-      </div>
+      </Stagger>
 
-      <p className="mx-auto mt-8 max-w-[52ch] text-center text-[13px] text-foreground-muted">
-        Prices are the launch prices. The $1 is a decision-shrinker, not a discount —
-        you&apos;re judging the real product on real videos before you commit.
-      </p>
+      {/* The one place the trial is spelled out in full. Cold traffic's real
+          question is "what happens on day 4", so answer it at the decision. */}
+      <Reveal gesture="rise" className="mx-auto mt-8 flex max-w-[56ch] flex-col items-center gap-2 text-center">
+        <p className="text-[13px] leading-relaxed text-foreground-secondary">
+          The dollar buys three days of the plan you picked, in full — then it renews at the
+          plan price unless you cancel, which takes two taps in settings.
+        </p>
+        <p className="text-[12.5px] text-foreground-muted">
+          Launch prices. The $1 isn&apos;t a discount — it&apos;s so the decision is
+          &ldquo;worth a dollar?&rdquo; instead of &ldquo;worth {PLANS[1]?.price ?? "$99"} a month?&rdquo;.
+        </p>
+      </Reveal>
     </Section>
   );
 }

@@ -20,12 +20,19 @@ interface SectionProps {
   /** A faint hairline divider at the top, to separate tone-zones. */
   divider?: boolean;
   /**
-   * Full-bleed background band. "sunken"/"surface" paint the whole viewport
-   * width behind the contained content, so alternating sections read as
-   * distinct tone-zones instead of one continuous scroll. Content stays in the
-   * shared max-w-6xl measure regardless.
+   * Full-bleed background band, painted the whole viewport width behind the
+   * contained content so alternating sections read as distinct tone-zones
+   * instead of one continuous scroll. Content stays in the shared max-w-6xl
+   * measure regardless.
+   *
+   * ⚠️ This used to offer "sunken" AND "surface" — but `--color-surface` and
+   * `--color-surface-sunken` are BOTH `#1a1a19`, so the two tones were the same
+   * pixel and the alternation silently collapsed to one band. Now there are two
+   * real zones around the `#1f1f1e` page ground: `sunken` steps DOWN, `lifted`
+   * steps UP. Verify a new tone by measuring the computed color, not by reading
+   * the token name.
    */
-  tone?: "default" | "sunken" | "surface";
+  tone?: "default" | "sunken" | "lifted";
   /** Tighten the vertical rhythm (bands that sit flush against a neighbour). */
   compact?: boolean;
   children: React.ReactNode;
@@ -48,14 +55,20 @@ export function Section({
         id && "scroll-mt-24 md:scroll-mt-28",
         divider && "border-t border-border",
         tone === "sunken" && "bg-surface-sunken",
-        tone === "surface" && "bg-surface",
+        // A lifted matte step above the #1f1f1e page ground. Exact hex on
+        // purpose: Tailwind v4 miscompiles very dark colors through oklch in
+        // @theme, so dark values are written literally (see CLAUDE.md).
+        tone === "lifted" && "bg-[#242423]",
       )}
     >
       <SectionTexture tone={tone} />
+      {/* Rhythm is deliberately tighter than the usual marketing 28/32: this page
+          runs ~9 sections, and every extra 32px of band padding is another 300px
+          between a convinced visitor and the pricing anchor. */}
       <div
         className={cn(
           "relative mx-auto max-w-6xl px-5",
-          compact ? "py-14 md:py-20" : "py-20 md:py-28",
+          compact ? "py-12 md:py-16" : "py-16 md:py-24",
           className,
         )}
       >
@@ -73,7 +86,7 @@ export function Section({
  * content wrapper are positioned; DOM order puts content on top). Restraint is
  * the point — enough to catch light, never enough to compete with the copy.
  */
-function SectionTexture({ tone }: { tone: "default" | "sunken" | "surface" }) {
+function SectionTexture({ tone }: { tone: "default" | "sunken" | "lifted" }) {
   const toned = tone !== "default";
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">

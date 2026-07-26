@@ -1,14 +1,21 @@
 import { ShieldCheck, LockKey, Sparkle } from "@phosphor-icons/react/dist/ssr";
 import { Section } from "./section-shell";
-import { BlurFade } from "@/components/velora/blur-fade";
+import { Stagger, StaggerItem } from "@/components/offer/motion/reveal";
 
 /**
  * Guarantee — the risk-reversal band, right after pricing to defuse the last
  * doubts before the FAQ + final ask. HONEST reassurances only (no fabricated
- * guarantee badges): the claims here match the page's shipped honesty contract
- * — the $1 trial mechanics, the privacy posture from the FAQ, and what the
- * dollar actually buys. Deliberately headingless (a plain reassurance band) so
- * it breaks the repeating section-heading rhythm.
+ * guarantee badges): the $1 trial mechanics, the real privacy posture, and what
+ * the dollar actually buys. Deliberately headingless (a plain reassurance band)
+ * so it breaks the repeating section-heading rhythm.
+ *
+ * ⚠️ The privacy card used to read "your video never leaves TikTok, and we never
+ * upload or store it." That is false — reading frames REQUIRES the file, so
+ * `/api/analyze` re-hosts a `tiktok_url` (resolveAndRehost) and stores an upload
+ * in Supabase storage. It now says what's actually true: the video is processed
+ * to run the read, and the results are private to the account. Keep it that way;
+ * a privacy claim we can't stand behind is the one defect on this page that could
+ * cost more than a conversion.
  */
 
 interface Reassurance {
@@ -25,8 +32,8 @@ const REASSURANCES: readonly Reassurance[] = [
   },
   {
     icon: LockKey,
-    title: "Your videos stay private",
-    body: "Maven reads the link — your video never leaves TikTok, and we never upload or store it. Your results are private to your account. Never shared, never sold.",
+    title: "Your work stays yours",
+    body: "Your video is processed to run your read, and nothing else — never published, never shown to another user, never sold or used to sell. Your results are private to your account.",
   },
   {
     icon: Sparkle,
@@ -37,12 +44,12 @@ const REASSURANCES: readonly Reassurance[] = [
 
 export function Guarantee() {
   return (
-    <Section tone="surface" divider compact>
-      <div className="grid gap-10 md:grid-cols-3 md:gap-8">
-        {REASSURANCES.map((r, i) => {
+    <Section divider compact>
+      <Stagger className="grid gap-10 md:grid-cols-3 md:gap-8" step={0.08}>
+        {REASSURANCES.map((r) => {
           const Icon = r.icon;
           return (
-            <BlurFade key={r.title} delay={0.05 + i * 0.08} direction="up">
+            <StaggerItem key={r.title} gesture="rise">
               <div className="flex flex-col">
                 <span className="grid h-11 w-11 place-items-center rounded-xl border border-border bg-surface-sunken text-foreground shadow-[0_1px_2px_rgba(0,0,0,0.28)]">
                   <Icon size={20} aria-hidden />
@@ -54,10 +61,10 @@ export function Guarantee() {
                   {r.body}
                 </p>
               </div>
-            </BlurFade>
+            </StaggerItem>
           );
         })}
-      </div>
+      </Stagger>
     </Section>
   );
 }
