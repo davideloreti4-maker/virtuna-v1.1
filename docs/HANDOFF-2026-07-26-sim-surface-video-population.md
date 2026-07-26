@@ -397,3 +397,30 @@ not just what it spends: `delete-retained-videos` auto-deletes uploads older tha
 who did not opt into retention (Phase 11 / INT-05), and `sweep-orphan-videos` clears orphaned rows.
 Inert with no users. **Before real signups, restore both or honour the 30-day deletion another way** —
 otherwise the product keeps uploads it told people it would delete.
+
+### 11f. Actual prod env state (checked 2026-07-26 via `vercel env ls production`)
+
+**14 vars set** — every REQUIRED one was already there, most from 7 days ago:
+
+`NEXT_PUBLIC_SUPABASE_URL` · `NEXT_PUBLIC_SUPABASE_ANON_KEY` · `SUPABASE_SERVICE_ROLE_KEY` ·
+`DASHSCOPE_API_KEY` · `NEXT_PUBLIC_APP_URL` · `CRON_SECRET` · `APIFY_TOKEN` ·
+**`APIFY_WEBHOOK_SECRET`** (added this session — generated; sender and receiver read the same var so a
+fresh value is self-consistent, and without it the webhook route rejects everything) ·
+`FILMSTRIP_EXTRACT_SECRET` · `GROUNDING_{HOOKS,IDEAS,SCRIPT}_ENABLED` · `DEEPSEEK_API_KEY` (dead,
+harmless) · `GEMINI_API_KEY` (unneeded with crons off, harmless).
+
+Correctly ABSENT: `NEXT_PUBLIC_AMBIENT_V2` (deploy #2) · `BILLING_ENFORCE_QUOTA` · all `WHOP_*`.
+
+Still MISSING, both needing an external account (owner):
+- `UPSTASH_REDIS_REST_URL` + `_TOKEN` — rate limiting is fail-open, so prod currently has **none**.
+- `NEXT_PUBLIC_SENTRY_DSN` — no error tracking on the first deploy in five weeks.
+
+⚠️ **Values cannot be read back.** These are stored as Vercel *Sensitive* vars, so `vercel env pull`
+writes the literal string `[SENSITIVE]` instead of the value — any grep against a pulled file returns
+false for every content check and that is NOT evidence the value is wrong. Presence/absence is the
+only thing a pull can tell you.
+
+🔴 **The one unverified risk: `NEXT_PUBLIC_APP_URL`.** The local `.env.local` it was likely copied from
+holds `http://localhost:3000`. If prod's copy came from there, Apify webhook callbacks and referral
+links point at localhost. It cannot be read back — **eyeball it in the dashboard**, or overwrite it
+with the production origin (`https://virtuna-v11.vercel.app`) to remove the doubt.
