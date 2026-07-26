@@ -110,10 +110,12 @@ export function HeroEntry() {
     // Natural height — the 620px column-match (and the ~200px of dead air it padded above and
     // below the composer) went with the side panel. The entry is the hero's only surface now.
     <div className="flex flex-col">
-      <div className="mb-3 flex items-center justify-center gap-1.5">
-        <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-        <span className="text-[11px] uppercase tracking-[0.14em] text-foreground-muted">
-          Test a video now · free, no account
+      {/* A plain heading row, not a tracking-caps eyebrow — cold traffic parses "Test a
+          video" + a free badge instantly; caps-whisper chrome reads as decoration. */}
+      <div className="mb-2.5 flex items-center justify-between px-1">
+        <span className="text-[15px] font-medium text-foreground">Test a video</span>
+        <span className="rounded-full border border-white/[0.06] px-2.5 py-1 text-[11px] font-medium text-foreground-secondary">
+          Free · no account
         </span>
       </div>
 
@@ -139,14 +141,14 @@ export function HeroEntry() {
       />
 
       {/* Reserve the row so a message never reflows the hero under the visitor's cursor. */}
-      <div className="mt-3 min-h-[20px] px-1 text-center text-[13px]" aria-live="polite">
+      <div className="mt-2.5 min-h-[20px] px-1 text-center text-[13px]" aria-live="polite">
         {error ? (
           <span className="text-accent-text">{error}</span>
         ) : starting ? (
           <span className="text-foreground-muted">Starting your read…</span>
         ) : (
           <span className="text-foreground-muted">
-            Paste a TikTok link or drop your file · MP4, MOV, WebM
+            MP4, MOV or WebM · up to 200MB · reads in about a minute
           </span>
         )}
       </div>
