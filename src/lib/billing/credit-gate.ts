@@ -33,6 +33,13 @@ interface Log {
  * where the tier and the window are known; the dialog SHOWS this, it never invents its own.
  */
 export function quotaRefusalMessage(verdict: QuotaVerdict, cost?: number): string {
+  // The anonymous funnel visitor. They are not "out of credits, upgrade" — they have just
+  // used the free run the demo promised them, and the next step is the $1, not a plan page.
+  // Checked FIRST: an anonymous user is tier `free` with limit 0 under the old branches,
+  // which would send them to "start a plan" — the wrong door at the highest-intent moment.
+  if (verdict.isDemo) {
+    return `That was your free test. ${TRIAL.price} unlocks the simulation and ${TRIAL.credits} credits for ${TRIAL.days} days.`;
+  }
   if (verdict.inTrial) {
     return `Your $1 trial includes ${verdict.limit} credits. Your full plan allowance starts when the trial converts.`;
   }
@@ -88,10 +95,17 @@ export async function creditGate(
   userId: string,
   action: BillableAction,
   log?: Log,
-  costOverride?: number
+  costOverride?: number,
+  /**
+   * Pass `isAnonymous: true` for a `/go` funnel visitor. It swaps the tier allowance for the
+   * DEMO pool and enforces it regardless of BILLING_ENFORCE_QUOTA — anonymous users are
+   * unbounded in number, so their free engine spend cannot ride on a flag whose purpose is
+   * to avoid locking out paying customers.
+   */
+  opts: { isAnonymous?: boolean } = {}
 ): Promise<CreditGateResult> {
   const cost = costOverride ?? creditCost(action);
-  const verdict = await getCreditQuotaVerdict(supabase, userId, cost);
+  const verdict = await getCreditQuotaVerdict(supabase, userId, cost, new Date(), opts);
 
   if (verdict.enforced && !verdict.allowed) {
     log?.info?.("credit_gate_refused", {

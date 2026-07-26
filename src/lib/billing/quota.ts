@@ -48,6 +48,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   creditAllowanceFor,
   CREDITS_PER_READING,
+  DEMO_CREDITS,
   UNLIMITED_DAILY_CREDIT_CEILING,
 } from "@/lib/pricing";
 import type { NumenTier } from "@/lib/whop/config";
@@ -152,7 +153,13 @@ export interface QuotaVerdict {
    * Which wall a refusal hit: the period allowance, or the fair-use daily ceiling that
    * backs "unlimited". Only meaningful when `allowed` is false.
    */
-  reason: "allowance" | "fair_use" | null;
+  reason: "allowance" | "fair_use" | "demo_used" | null;
+  /**
+   * True when the allowance being applied is the anonymous DEMO pool rather than a plan's.
+   * The wall reads differently here — an anonymous visitor is not "out of credits, upgrade",
+   * they have just finished the free run and the next step is the $1.
+   */
+  isDemo: boolean;
   /** When the window being counted began — the trial's start, or the billing anchor. */
   periodStart: Date;
   /** When this allowance next resets. Null when unknown (no subscription row). */
@@ -249,11 +256,19 @@ export async function checkCreditQuota(
   cost: number,
   trial: TrialWindow = { trialStartedAt: null, trialEndsAt: null },
   now: Date = new Date(),
-  periodEnd: Date | null = null
+  periodEnd: Date | null = null,
+  opts: { isAnonymous?: boolean } = {}
 ): Promise<QuotaVerdict> {
   const inTrial = isTrialActive(trial, now);
-  const limit = creditAllowanceFor(tier, { inTrial });
-  const enforced = isQuotaEnforced();
+  const isDemo = opts.isAnonymous === true;
+  // The anonymous demo pool overrides the tier allowance outright. An anonymous user is
+  // always tier `free` (allowance 0), so without this the funnel's own free run would be
+  // refused the moment enforcement flips on.
+  const limit = isDemo ? DEMO_CREDITS : creditAllowanceFor(tier, { inTrial });
+  // Anonymous spend is capped ALWAYS. `BILLING_ENFORCE_QUOTA` exists so paying customers are
+  // not locked out before the plans are buyable — it is not a licence for unbounded free
+  // engine runs by strangers. See the DEMO_CREDITS note in pricing.ts.
+  const enforced = isDemo || isQuotaEnforced();
 
   // The trial pool is counted from the trial's start; a plan's allowance from its billing
   // anchor. The trial's "renewal" is the day it converts.
@@ -261,7 +276,7 @@ export async function checkCreditQuota(
     inTrial && trial.trialStartedAt ? trial.trialStartedAt : currentPeriodStart(now, periodEnd);
   const renewsAt = inTrial ? trial.trialEndsAt : periodEnd;
 
-  const base = { enforced, tier, inTrial, periodStart, renewsAt };
+  const base = { enforced, tier, inTrial, periodStart, renewsAt, isDemo };
 
   // Unlimited (Studio, outside a trial): no monthly wall, but the fair-use daily ceiling.
   if (limit === null) {
@@ -288,12 +303,27 @@ export async function checkCreditQuota(
   try {
     used = await countCreditsSince(supabase, userId, periodStart);
   } catch (error) {
+    // Fail OPEN for real customers — a flaky meter must never block someone who paid.
+    // Fail CLOSED for the anonymous demo, and deliberately so: the two failures are not
+    // symmetric. Failing open here would hand EVERY visitor unlimited free engine runs for
+    // as long as the meter is broken, which is unbounded spend; failing closed costs
+    // conversions during an outage. Cheaper to lose the conversion.
+    if (isDemo) {
+      console.error("[quota] demo count failed — failing CLOSED", error);
+      return { ...base, allowed: false, used: limit, limit, reason: "demo_used" };
+    }
     console.error("[quota] count failed — failing open", error);
     return { ...base, allowed: true, used: 0, limit, reason: null };
   }
 
   const fits = used + cost <= limit;
-  return { ...base, allowed: fits, used, limit, reason: fits ? null : "allowance" };
+  return {
+    ...base,
+    allowed: fits,
+    used,
+    limit,
+    reason: fits ? null : isDemo ? "demo_used" : "allowance",
+  };
 }
 
 /**
@@ -315,7 +345,8 @@ export async function getCreditQuotaVerdict(
   supabase: SupabaseClient,
   userId: string,
   cost: number,
-  now: Date = new Date()
+  now: Date = new Date(),
+  opts: { isAnonymous?: boolean } = {}
 ): Promise<QuotaVerdict> {
   let tier: NumenTier = "free";
   let trial: TrialWindow = { trialStartedAt: null, trialEndsAt: null };
@@ -338,21 +369,27 @@ export async function getCreditQuotaVerdict(
     periodEnd = toDate(row?.current_period_end);
   } catch (error) {
     // Same fail-open rationale: if we cannot read the tier we must not invent a limit.
-    console.error("[quota] tier lookup failed — failing open", error);
+    // The anonymous demo is the exception — see the fail-CLOSED note in checkCreditQuota.
+    const isDemo = opts.isAnonymous === true;
+    console.error(
+      `[quota] tier lookup failed — failing ${isDemo ? "CLOSED (demo)" : "open"}`,
+      error
+    );
     return {
-      enforced: isQuotaEnforced(),
-      allowed: true,
-      used: 0,
-      limit: null,
+      enforced: isDemo || isQuotaEnforced(),
+      allowed: !isDemo,
+      used: isDemo ? DEMO_CREDITS : 0,
+      limit: isDemo ? DEMO_CREDITS : null,
       tier: "free",
       inTrial: false,
-      reason: null,
+      reason: isDemo ? "demo_used" : null,
       periodStart: currentPeriodStart(now),
       renewsAt: null,
+      isDemo,
     };
   }
 
-  return checkCreditQuota(supabase, userId, tier, cost, trial, now, periodEnd);
+  return checkCreditQuota(supabase, userId, tier, cost, trial, now, periodEnd, opts);
 }
 
 /** A timestamptz off a raw row — null for a missing column, a null value, or an unparseable one. */

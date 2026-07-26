@@ -4,11 +4,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { creditGate, quotaRefusalMessage, quotaRefusalBody } from "../credit-gate";
 import { isCreditQuotaExceeded } from "../quota-error";
 import type { QuotaVerdict } from "../quota";
+import { DEMO_CREDITS } from "@/lib/pricing";
 
 /**
  * The gate every paid route calls. What matters:
  *   1. a refusal is a 402 whose body the client-side type-guard recognises,
- *   2. the four walls get four DIFFERENT sentences (trial ≠ no-plan ≠ spent ≠ fair-use),
+ *   2. the five walls get five DIFFERENT sentences (trial ≠ no-plan ≠ spent ≠ fair-use ≠ demo),
  *   3. no enforcement → no refusal, whatever the numbers say.
  */
 
@@ -63,12 +64,13 @@ describe("creditGate", () => {
   });
 });
 
-describe("the four walls get four different sentences", () => {
+describe("the five walls get five different sentences", () => {
   const base: QuotaVerdict = {
     enforced: true,
     allowed: false,
     used: 500,
     limit: 500,
+    isDemo: false,
     tier: "starter",
     inTrial: false,
     reason: "allowance",
@@ -93,6 +95,23 @@ describe("the four walls get four different sentences", () => {
     const msg = quotaRefusalMessage({ ...base, tier: "free", limit: 0 });
     expect(msg).toContain("Start a plan");
     expect(msg).toContain("$1 trial");
+  });
+
+  it("anonymous demo spent → the $1, NOT the plan page", () => {
+    // An anonymous visitor is tier `free` with a spent pool, which is exactly the shape the
+    // "no plan → Start a plan" branch above matches. Sending the funnel's highest-intent
+    // moment to a plan page instead of to checkout is the failure this guards.
+    const msg = quotaRefusalMessage({
+      ...base,
+      tier: "free",
+      isDemo: true,
+      limit: DEMO_CREDITS,
+      used: DEMO_CREDITS,
+      reason: "demo_used",
+    });
+    expect(msg).toContain("free test");
+    expect(msg).toContain("$1");
+    expect(msg).not.toContain("Start a plan");
   });
 
   it("plan spent → the number they bought", () => {

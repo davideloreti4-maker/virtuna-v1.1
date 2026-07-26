@@ -407,7 +407,13 @@ export async function POST(request: Request) {
     // logged either way, so the real usage can be watched before the gate ever closes on a
     // customer. Quota failures fail OPEN (see lib/billing/quota.ts) — a flaky count must
     // not cost a paid Reading.
-    const quota = await getCreditQuotaVerdict(supabase, user.id, CREDITS_PER_READING);
+    // `is_anonymous` marks a `/go` funnel visitor: the demo signs them in anonymously and
+    // hands them the REAL platform, so this run is the free half of the wall and is paid for
+    // by us. It draws on the DEMO pool (one Reading) and is capped whether or not
+    // BILLING_ENFORCE_QUOTA is on — see lib/pricing.ts DEMO_CREDITS.
+    const quota = await getCreditQuotaVerdict(supabase, user.id, CREDITS_PER_READING, new Date(), {
+      isAnonymous: user.is_anonymous === true,
+    });
     if (quota.enforced && !quota.allowed) {
       log.info("quota exceeded", {
         tier: quota.tier,
