@@ -50,7 +50,17 @@ import { audienceToMeta } from "@/lib/surfaces/ambient-v2-audience-meta";
 import type { Audience } from "@/lib/audience/audience-types";
 import type { AmbientCardDescriptor } from "@/components/app/home/use-ambient-focus";
 import type { PopulationAggregate } from "@/lib/audience/population";
-import type { SimSealMap, SimSealVideo } from "@/lib/threads/sim-seals";
+import type { SimSealVideo } from "@/lib/threads/sim-seals";
+import {
+  isSealedSimSeal,
+  type SealedSimSeal,
+  type WireSimSealMap,
+} from "@/lib/onboarding/verdict-seal";
+import {
+  buildSealedVideoDomainTemplate,
+  SEALED_BRAIN_NOTE,
+  SEALED_POPULATION_NOTE,
+} from "@/lib/surfaces/ambient-v2-sealed";
 
 /** One fired sim's full result, kept per descriptor id for the Overview seal + the depth drill. */
 interface RailSnapshot {
@@ -132,8 +142,10 @@ export function AmbientOverviewRail({
   presentation?: AmbientPresentation;
   /** Sealed sims rehydrated from `threads.sim_seals`, keyed by TRIMMED concept text → the full seal
    *  (measured %, + the Phase-C population/personas depth). These re-seal rows AND repopulate the
-   *  depth drill on reload; a fresh in-session fire (below) takes precedence. */
-  persistedSeals?: SimSealMap;
+   *  depth drill on reload; a fresh in-session fire (below) takes precedence.
+   *  An ANONYMOUS session receives the sealed wire form instead (verdict-seal.ts): no %, no
+   *  population, no curve — those rows open the sealed drill (§0b② THE WALL), never a verdict. */
+  persistedSeals?: WireSimSealMap;
   /**
    * A request to open a TESTED VIDEO's depth directly — the Test card's "Simulate with your audience
    * →" door. `id` is the analysisId (the video seal's key); `nonce` makes a repeat tap on the SAME
@@ -167,7 +179,18 @@ export function AmbientOverviewRail({
   const videoSeals = useMemo<Record<string, SimSealVideo>>(() => {
     const out: Record<string, SimSealVideo> = {};
     for (const [key, seal] of Object.entries(persistedSeals ?? {})) {
-      if (seal.video) out[key] = seal.video;
+      if (!isSealedSimSeal(seal) && seal.video) out[key] = seal.video;
+    }
+    return out;
+  }, [persistedSeals]);
+
+  // SEALED video seals — the anonymous wire form (§0b② THE WALL). Only the free half arrives
+  // (analysisId + craft score); these rows open the sealed drill and can never reveal a %,
+  // because the % was never transmitted.
+  const sealedVideos = useMemo<Record<string, SealedSimSeal["video"]>>(() => {
+    const out: Record<string, SealedSimSeal["video"]> = {};
+    for (const [key, seal] of Object.entries(persistedSeals ?? {})) {
+      if (isSealedSimSeal(seal)) out[key] = seal.video;
     }
     return out;
   }, [persistedSeals]);
@@ -193,11 +216,18 @@ export function AmbientOverviewRail({
   // declaration order) instead of being wiped by the reset it arrived with.
   useEffect(() => {
     const id = focusVideo?.id;
-    if (!id || !videoSeals[id]) return; // no matching sealed video ⇒ ignore, never open an empty drill
+    if (!id) return;
+    if (sealedVideos[id]) {
+      // The wall (§0b②): the door opens the SEALED drill directly — there is no % to reveal.
+      setDevelopId(null);
+      setDetailId(id);
+      return;
+    }
+    if (!videoSeals[id]) return; // no matching sealed video ⇒ ignore, never open an empty drill
     revealVideo(id);
     setDevelopId(null);
     setDetailId(id);
-  }, [focusVideo, videoSeals, revealVideo]);
+  }, [focusVideo, videoSeals, sealedVideos, revealVideo]);
 
   // Resolve a descriptor id → its sealed snapshot: a fresh in-session fire wins; else a persisted seal
   // matched by trimmed concept text (survives reload). Undefined ⇒ the row is still honestly queued.
@@ -206,7 +236,8 @@ export function AmbientOverviewRail({
       if (sessionSeals[id]) return sessionSeals[id];
       const d = descriptors.find((x) => x.id === id);
       const seal = d ? persistedSeals?.[d.conceptText.trim()] : undefined;
-      if (!seal) return undefined;
+      // A sealed wire seal carries no verdict — the row stays honestly queued (§0b②).
+      if (!seal || isSealedSimSeal(seal)) return undefined;
       return {
         pct: seal.pct,
         population: seal.population,
@@ -302,16 +333,22 @@ export function AmbientOverviewRail({
   // 2026-07-23: the loading-then-config order was backwards).
   const handleQuickSimulate = useCallback(
     (id: string) => {
+      // A sealed video has no % to reveal — the tap opens the sealed drill (the wall).
+      if (sealedVideos[id]) return setDetailId(id);
       if (videoSeals[id]) return revealVideo(id);
       return openDevelop(id);
     },
-    [videoSeals, revealVideo],
+    [sealedVideos, videoSeals, revealVideo],
   );
 
   // A row's body tap. A revealed VIDEO drills into its (real) Brain depth; an unrevealed one reveals
   // first (the % gates the drill). A concept routes to the existing population/develop opener.
   const handleOpenStimulus = useCallback(
     (id: string) => {
+      if (sealedVideos[id]) {
+        setDetailId(id);
+        return;
+      }
       if (videoSeals[id]) {
         if (revealedVideos[id]) setDetailId(id);
         else revealVideo(id);
@@ -319,8 +356,30 @@ export function AmbientOverviewRail({
       }
       openStimulus(id);
     },
-    [videoSeals, revealedVideos, revealVideo, openStimulus],
+    [sealedVideos, videoSeals, revealedVideos, revealVideo, openStimulus],
   );
+
+  // A SEALED video row (anonymous wire seal) → the sealed drill: craft chip, honest withheld
+  // notes, nothing else — the wire never carried the verdict, so this surface cannot leak it
+  // (§0b② THE WALL). Checked before the full-video branch: the maps are disjoint by construction
+  // (one wire seal is either sealed or full), but the sealed drill must win if that ever drifts.
+  if (detailId !== null && sealedVideos[detailId]) {
+    const template = buildSealedVideoDomainTemplate({
+      craftScore: sealedVideos[detailId]!.craftScore,
+    });
+    return (
+      <div className={sheet ? SHEET_SHELL : "flex w-full items-start justify-center"}>
+        <AmbientDetail
+          template={template}
+          brainNote={SEALED_BRAIN_NOTE}
+          populationNote={SEALED_POPULATION_NOTE}
+          reducedMotion={reducedMotion}
+          presentation={presentation}
+          onBack={() => setDetailId(null)}
+        />
+      </div>
+    );
+  }
 
   // A drilled VIDEO row → its real Detail. BOTH tabs are real now: the Brain from the sealed
   // attention read, and the Population from the SAME run's fold reception panel (the analyze route
@@ -331,7 +390,11 @@ export function AmbientOverviewRail({
     // The AUDIENCE tab, from the SAME sealed run — the fold's real archetype reactors, mapped by
     // `buildVideoPopulation` at Test time and persisted on the seal. Absent on a Wave-3-degraded row
     // (and on every seal written before this shipped), which keeps the honest brain-only drill.
-    const videoAggregate = persistedSeals?.[detailId]?.population ?? null;
+    // (This branch only runs for FULL seals — videoSeals excludes the sealed wire form — so the
+    // narrowing here is for the type, not a reachable sealed path.)
+    const fullSeal = persistedSeals?.[detailId];
+    const videoAggregate =
+      fullSeal && !isSealedSimSeal(fullSeal) ? fullSeal.population ?? null : null;
     const skimmedPct = typeof v.skimmedPct === "number" ? v.skimmedPct : undefined;
     // What they'd DO with it — sealed numbers only; the one-line read is derived in the adapter.
     const actionIntent = v.intents;
@@ -430,13 +493,25 @@ export function AmbientOverviewRail({
   }
   // Tested videos from the seal store → ranked in alongside the concepts. A revealed video ranks by
   // its measured attention %; an unrevealed one stays queued (viral score shown, % withheld).
-  const videos: OverviewVideoRow[] = Object.entries(videoSeals).map(([id, v]) => ({
-    id,
-    label: videoLabel(v),
-    viralScore: v.craftScore ?? null,
-    stopPct: v.stopPct,
-    revealed: !!revealedVideos[id],
-  }));
+  const videos: OverviewVideoRow[] = [
+    ...Object.entries(videoSeals).map(([id, v]) => ({
+      id,
+      label: videoLabel(v),
+      viralScore: v.craftScore ?? null,
+      stopPct: v.stopPct,
+      revealed: !!revealedVideos[id],
+    })),
+    // SEALED rows (§0b②): craft score shown, the audience % NEVER — the wire seal carries none.
+    // `revealed` is hardcoded false, so the adapter's withheld-0 sentinel stays inert; the wire
+    // seal has no verbatim, so the label is the honest fallback.
+    ...Object.entries(sealedVideos).map(([id, v]) => ({
+      id,
+      label: "Tested video",
+      viralScore: v.craftScore ?? null,
+      stopPct: 0,
+      revealed: false,
+    })),
+  ];
   const overview = buildOverviewData({ audience: meta, descriptors, measured, videos, watching });
   return (
     <div className={sheet ? SHEET_SHELL : "flex h-full w-full"}>

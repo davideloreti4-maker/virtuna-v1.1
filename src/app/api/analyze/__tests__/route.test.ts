@@ -642,3 +642,120 @@ describe("POST /api/analyze — Fix 1: persist overall_score via UPDATE (SSE pat
     expect(payload).toContain("event: complete");
   });
 });
+
+// =====================================================
+// The funnel wall — the verdict seal (ONBOARDING-FUNNEL-DESIGN.md §0b②)
+// =====================================================
+// An anonymous /go visitor's Test runs the real pipeline FREE, but the reception
+// read — the attention curve (which carries the would-stop %), the fold cast, the
+// action intents, the engagement forecast — is what the $1 buys. It must be ABSENT
+// from every response shape to an anonymous session: JSON, SSE complete, cache hit.
+
+describe("POST /api/analyze — the funnel wall (verdict seal, §0b②)", () => {
+  /** A final result that DOES carry the reception read the wall strips. */
+  const receptionResult = {
+    ...fakeFinalResult,
+    heatmap: {
+      segments: [],
+      personas: [],
+      weighted_curve: [0.8, 0.4],
+      weights: { fyp: 0.65, niche: 0.2, loyalist: 0.1, cross_niche: 0.05 },
+      weights_source: "default",
+      weighted_hook_score: 0.61,
+    },
+    personas: [{ archetype: "skeptic", verdict: "scroll", quote: "gone early" }],
+    persona_behavioral_aggregate: { share_pct: 30, save_pct: 20 },
+  };
+
+  /** An authed client for an ANONYMOUS session. Carries the rpc the demo credit
+   *  meter counts with (0 used → the free Test is allowed; the demo pool fails
+   *  CLOSED, so an rpc-less mock would 402 before the seal is ever exercised). */
+  const anonClient = () => ({
+    auth: {
+      getUser: vi.fn().mockResolvedValue({
+        data: { user: { id: "anon-1", is_anonymous: true } },
+        error: null,
+      }),
+    },
+    from: vi.fn(() => ({
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          single: vi.fn(() => Promise.resolve({ data: null, error: null })),
+          maybeSingle: vi.fn(() => Promise.resolve({ data: null, error: null })),
+        })),
+      })),
+    })),
+    rpc: vi.fn(() => Promise.resolve({ data: 0, error: null })),
+  });
+
+  const parseCompleteEvent = (payload: string): Record<string, unknown> | null => {
+    const m = payload.match(/event: complete\ndata: (.+)\n/);
+    return m ? (JSON.parse(m[1]!) as Record<string, unknown>) : null;
+  };
+
+  it("JSON path: an anonymous response carries NO reception read, stamped verdict_sealed", async () => {
+    const { createClient } = await import("@/lib/supabase/server");
+    (createClient as unknown as ReturnType<typeof vi.fn>).mockReturnValueOnce(anonClient());
+    (aggregateScores as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(receptionResult);
+
+    const res = await POST(makeRequest(validInput, { Accept: "application/json" }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+
+    expect(body.verdict_sealed).toBe(true);
+    expect(body.heatmap).toBeNull();
+    expect(body.personas).toBeNull();
+    expect(body.persona_behavioral_aggregate).toBeNull();
+    expect(body.behavioral_predictions).toBeNull();
+    expect(body.predicted_engagement).toBeNull();
+    // The craft half survives.
+    expect(body.overall_score).toBe(80);
+  });
+
+  it("SSE path: the complete event to an anonymous session is sealed", async () => {
+    const { createClient } = await import("@/lib/supabase/server");
+    (createClient as unknown as ReturnType<typeof vi.fn>).mockReturnValueOnce(anonClient());
+    (aggregateScores as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(receptionResult);
+
+    const res = await POST(makeRequest(validInput));
+    const payload = await readSSEPayload(res);
+    const complete = parseCompleteEvent(payload);
+
+    expect(complete).not.toBeNull();
+    expect(complete!.verdict_sealed).toBe(true);
+    expect(complete!.heatmap).toBeNull();
+    expect(complete!.personas).toBeNull();
+    expect(complete!.behavioral_predictions).toBeNull();
+    expect(payload).not.toContain("weighted_curve");
+  });
+
+  it("cache hit: a cached verdict is sealed for an anonymous session too", async () => {
+    const { createClient } = await import("@/lib/supabase/server");
+    (createClient as unknown as ReturnType<typeof vi.fn>).mockReturnValueOnce(anonClient());
+    (lookupPredictionCache as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ...receptionResult,
+      id: "cached-1",
+    });
+
+    const res = await POST(makeRequest(validInput, { Accept: "application/json" }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+
+    expect(body.verdict_sealed).toBe(true);
+    expect(body.heatmap).toBeNull();
+    expect(body.personas).toBeNull();
+  });
+
+  it("a REAL session keeps the full reception read — the wall never narrows a customer", async () => {
+    (aggregateScores as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(receptionResult);
+
+    const res = await POST(makeRequest(validInput, { Accept: "application/json" }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+
+    expect(body.verdict_sealed).toBeUndefined();
+    expect(body.heatmap).not.toBeNull();
+    expect(body.heatmap.weighted_curve).toEqual([0.8, 0.4]);
+    expect(body.personas).toHaveLength(1);
+  });
+});

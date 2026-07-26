@@ -42,6 +42,7 @@ import { buildReactionPanel } from "@/lib/engine/flash/build-reaction-panel";
 import { pinPredictedSignature } from "@/lib/tools/runners/predicted-pin";
 import { writeSimSeal } from "@/lib/threads/sim-seals";
 import { characterizeContent } from "@/lib/audience/characterize-content";
+import { isSealedVisitor } from "@/lib/onboarding/verdict-seal";
 import {
   reactPopulation,
   signatureHasPopulationAxes,
@@ -95,6 +96,15 @@ export async function POST(request: Request): Promise<Response> {
   } = await supabase.auth.getUser();
   if (!user) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // ── (1a) THE WALL (ONBOARDING-FUNNEL-DESIGN.md §0b②) — a react run IS a simulation
+  // verdict, which is what an anonymous /go visitor's $1 buys. Refused BEFORE any engine
+  // call or credit spend: running the sim and then withholding the result would spend the
+  // demo pool on an answer nobody sees. The client drops its watcher on the non-OK
+  // response and the row stays honestly queued.
+  if (isSealedVisitor(user)) {
+    return Response.json({ error: "verdict_sealed" }, { status: 403 });
   }
 
   // ── Layer 2 mock short-circuit (dev only) — skip (no fixture stream yet), no engine call ──

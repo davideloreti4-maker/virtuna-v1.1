@@ -434,3 +434,69 @@ describe("AmbientOverviewRail", () => {
     expect(screen.queryByText(/\d+\.\d%/)).toBeNull();
   });
 });
+
+// ─── The funnel wall — sealed wire seals (ONBOARDING-FUNNEL-DESIGN.md §0b②) ───
+// An anonymous session's /api/threads/open sends the SEALED wire form: analysisId +
+// craft score, nothing else. The rail must render that as a queued row that opens the
+// sealed drill — honest withheld notes, and no % anywhere, because none was transmitted.
+
+describe("AmbientOverviewRail — the funnel wall (sealed wire seals, §0b②)", () => {
+  const sealedSeal = {
+    sealed: true as const,
+    at: "2026-07-26T12:00:00Z",
+    video: { analysisId: "an-1", craftScore: 84 },
+  };
+
+  it("a sealed video renders as a queued row (craft score, no %) and a tap opens the SEALED drill", () => {
+    render(
+      <AmbientOverviewRail
+        audience={audience}
+        descriptors={[]}
+        reducedMotion
+        persistedSeals={{ "an-1": sealedSeal }}
+      />,
+    );
+    // The row: honest fallback label (the wire seal carries no verbatim) + the craft score.
+    const row = screen.getByRole("button", { name: /Tested video/ });
+    expect(row).toBeTruthy();
+    expect(screen.getByText(/84/)).toBeTruthy();
+    // No attention % anywhere — the wire never carried one.
+    expect(screen.queryByText(/\d+(\.\d+)?%/)).toBeNull();
+
+    // The tap opens the sealed drill directly — there is no % to reveal first.
+    fireEvent.click(row);
+    expect(screen.getByTestId("ambient-detail")).toBeTruthy();
+    // The audience tab leads (no brain) with the WALL sentence — withheld, not "no run yet".
+    expect(screen.getByText(/reaction is sealed/i)).toBeTruthy();
+    // Still no % after the drill — the sealed surface cannot leak what it never received.
+    expect(screen.queryByText(/\d+(\.\d+)?%/)).toBeNull();
+  });
+
+  it("the sealed drill's brain tab carries the sealed note, not the text-sim excuse", () => {
+    render(
+      <AmbientOverviewRail
+        audience={audience}
+        descriptors={[]}
+        reducedMotion
+        persistedSeals={{ "an-1": sealedSeal }}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Tested video/ }));
+    fireEvent.click(screen.getByRole("button", { name: "The brain" }));
+    expect(screen.getByText(/unlocks with the simulation verdict/i)).toBeTruthy();
+  });
+
+  it("a focusVideo request (the Test card's Simulate door) opens the sealed drill directly", () => {
+    render(
+      <AmbientOverviewRail
+        audience={audience}
+        descriptors={[]}
+        reducedMotion
+        persistedSeals={{ "an-1": sealedSeal }}
+        focusVideo={{ id: "an-1", nonce: 1 }}
+      />,
+    );
+    expect(screen.getByTestId("ambient-detail")).toBeTruthy();
+    expect(screen.getByText(/reaction is sealed/i)).toBeTruthy();
+  });
+});

@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { computeOptimalPostWindow } from "@/lib/engine/optimal-post";
+import { isSealedVisitor, sealAnalysisPayload } from "@/lib/onboarding/verdict-seal";
 
 /**
  * GET /api/analysis/:id
@@ -215,7 +216,10 @@ export async function GET(
       optimal_post_window,
     };
 
-    return Response.json(enriched);
+    // THE WALL (ONBOARDING-FUNNEL-DESIGN.md §0b②) — sealed AFTER enrichment, so the
+    // synthesized heatmap shim above cannot hand an anonymous session the curve the
+    // persisted row happened not to carry.
+    return Response.json(isSealedVisitor(user) ? sealAnalysisPayload(enriched) : enriched);
   } catch (error) {
     console.error("[analysis/id] GET error:", error);
     return Response.json({ error: "Internal server error" }, { status: 500 });

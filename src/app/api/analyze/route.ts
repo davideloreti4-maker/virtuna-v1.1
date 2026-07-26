@@ -7,6 +7,7 @@ import { createScrapingProvider } from "@/lib/scraping";
 import { createLogger } from "@/lib/logger";
 import { getCreditQuotaVerdict } from "@/lib/billing/quota";
 import { quotaRefusalBody } from "@/lib/billing/credit-gate";
+import { isSealedVisitor, sealAnalysisPayload } from "@/lib/onboarding/verdict-seal";
 import { recordUsage } from "@/lib/billing/record-usage";
 import { CREDITS_PER_READING } from "@/lib/pricing";
 import { TIKTOK_URL_PATTERN } from "@/lib/tiktok-url";
@@ -414,6 +415,15 @@ export async function POST(request: Request) {
     const quota = await getCreditQuotaVerdict(supabase, user.id, CREDITS_PER_READING, new Date(), {
       isAnonymous: user.is_anonymous === true,
     });
+
+    // THE WALL (ONBOARDING-FUNNEL-DESIGN.md §0b②) — an anonymous visitor's run is free,
+    // but the reception read (attention curve, fold cast, intents, forecast) is what the
+    // $1 buys. Every response shape below — JSON, SSE complete, cache hit — passes through
+    // this before it crosses the wire, so the verdict is never transmitted, not merely
+    // hidden. The FULL result still persists server-side for the post-payment unlock.
+    const verdictSealed = isSealedVisitor(user);
+    const sealForWire = <T extends object>(payload: T): T =>
+      verdictSealed ? sealAnalysisPayload(payload) : payload;
     if (quota.enforced && !quota.allowed) {
       log.info("quota exceeded", {
         tier: quota.tier,
@@ -679,7 +689,7 @@ export async function POST(request: Request) {
       cleanupUploadedStorage(service, validated, retentionOptedIn, log);
 
       if (wantsJSON) {
-        return Response.json(cached);
+        return Response.json(sealForWire(cached));
       }
 
       // SSE cache-hit — single `event: complete` with cached payload.
@@ -688,7 +698,7 @@ export async function POST(request: Request) {
         start(controller) {
           controller.enqueue(
             cacheEncoder.encode(
-              `event: complete\ndata: ${JSON.stringify(cached)}\n\n`
+              `event: complete\ndata: ${JSON.stringify(sealForWire(cached))}\n\n`
             )
           );
           controller.close();
@@ -926,7 +936,7 @@ export async function POST(request: Request) {
         }
       })();
 
-      return Response.json(finalResult);
+      return Response.json(sealForWire(finalResult));
     }
 
     // -------------------------------------------------------
@@ -1234,7 +1244,7 @@ export async function POST(request: Request) {
             ms: Math.round(performance.now() - tDb),
           });
 
-          send("complete", finalResult);
+          send("complete", sealForWire(finalResult));
 
           // reading-ux 2026-06-15 (Option A): KEEP the uploaded video on success so the
           // retention scrubber resolves a playable URL on permalink reload (mirrors the

@@ -59,7 +59,7 @@ import { HORIZONTAL_ENABLED } from "@/lib/flags/horizontal";
 import { AMBIENT_V2_ENABLED } from "@/lib/flags/ambient-v2";
 import { AmbientOverviewSheet } from "@/components/audience-lens/v2/AmbientOverviewSheet";
 import { MOBILE_NAV, MOBILE_NAV_BAND, MOBILE_NAV_BAR_INSET } from "@/components/sidebar/Sidebar";
-import type { SimSealMap } from "@/lib/threads/sim-seals";
+import type { WireSimSealMap } from "@/lib/onboarding/verdict-seal";
 import { queryKeys } from "@/lib/queries/query-keys";
 import {
   setActiveThreadCookie,
@@ -406,7 +406,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // Ambient v2 Phase D/C: sealed-sim results for the open thread (trimmed concept text → the full
   // seal: measured would-stop % + the Phase-C population/personas depth), rehydrated from
   // `threads.sim_seals` so BOTH the v2 Overview seal AND the audience-depth drill survive a reload.
-  const [persistedSimSeals, setPersistedSimSeals] = useState<SimSealMap>({});
+  const [persistedSimSeals, setPersistedSimSeals] = useState<WireSimSealMap>({});
   const pickStartSkill = useCallback(
     (id: string) => {
       handleUserSelectTool(id as ToolId);
@@ -857,7 +857,8 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           messages?: Array<{ role?: string; blocks?: Array<{ type?: string; props?: unknown }> }>;
           // Ambient v2 Phase D/C: server-validated sealed sims (trimmed concept text → the full seal,
           // incl. the population/personas depth). `readSimSeals` already dropped malformed entries.
-          simSeals?: SimSealMap;
+          // An anonymous session receives the SEALED wire form instead (verdict-seal.ts §0b②).
+          simSeals?: WireSimSealMap;
         };
         if (cancelled) return;
         // Ambient v2: re-seal the v2 Overview rows AND repopulate the depth drill from the persisted
