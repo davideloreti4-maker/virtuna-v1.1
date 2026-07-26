@@ -103,26 +103,52 @@ for chargeback reasons, not moral ones).
 
 ---
 
-## 3. ▶ NEXT — the agreed conversion pass (ranked, none of it started)
+## 3. ✅ DONE — the conversion pass (all six, merged)
 
-| # | Fix | Why |
+Shipped 2026-07-26 in `c689aed2` ("conversion pass below the hero — stop leading with limits").
+Copy/structure only — no new captures, no new assets, no hero files touched.
+
+| # | Fix | What landed |
 |---|---|---|
-| 1 | **Delete "And what it doesn't claim"** — the 3-limit card in `proof-mechanism.tsx` | A full card of anti-copy at the authority beat. Replace with the corpus proof (`14.2×`, `2.4M`) — same credibility, forward-facing |
-| 2 | **Testimonials → a benefit block** (`testimonials.tsx`) | "These seats are open" still announces "no customers" mid-arc |
-| 3 | **Demo band copy** (`demo-video.tsx`) | "we're recording it… lands here when it's honest" apologizes for a missing asset — make it neutral, or cut the section |
-| 4 | **FAQ tone** (`faq.tsx`) | "What if the prediction is wrong?" leads with doubt; the privacy answer is a defensive paragraph. Both → short and confident |
-| 5 | **Add a CTA after Transformation** | First ask is ~3,900px in; add one at ~2,200px |
-| 6 | **PlatformBar → benefit-led** (`platform-bar.tsx`) | Chips state mechanism ("reads frame by frame"), not outcome |
+| 1 | Delete "And what it doesn't claim" (`proof-mechanism.tsx`) | Gone. Replaced by the receipt already on the shipped card: **14.2×** that creator's usual, **2.4M** views |
+| 2 | Testimonials → benefit block (`testimonials.tsx`) | "These seats are open" → the first week (day one / day two / after that), closing on a CTA. Real-quote swap contract untouched |
+| 3 | Demo band copy (`demo-video.tsx`) | "lands here when it's honest" → neutral. Section KEPT (see the open call below) |
+| 4 | FAQ tone (`faq.tsx`) | "What if the prediction is wrong?" → **"How accurate is it?"**; privacy answer 4 sentences → 3; dropped "the parts that don't flatter us" |
+| 5 | CTA after Transformation | First ask **3,900px → 2,217px** desktop / 2,389px mobile |
+| 6 | PlatformBar → benefit-led (`platform-bar.tsx`) | Chips now state outcome, not mechanism |
 
-All six are copy/structure only — no new captures, no new assets.
+Plus: `text-center` on the trial microcopy under all three inline CTAs — one line at 1440, wraps
+at 390, and the orphan hung left under a centered button. (The pre-existing HowItWorks CTA had it too.)
+
+### Two constraints that shaped the copy — don't "improve" these back
+
+- **The receipt's wording is CONDITIONAL** ("*when* a fix maps to a pattern the corpus has already
+  seen work"). `proof` is **optional** in `HookProofSchema` — an ungrounded run renders no receipt —
+  so "every fix cites a source" would be false. It is the stronger sentence, and it is not available.
+- **No viewer count in the PlatformBar.** The hero claims 1,000 (Pro-only, still §5's open call)
+  while every plan ships a room of ten. A number in a bar ~400px under the hero puts both scales on
+  one screen. The bar is the wrong place to resolve that; the FAQ's `faq-scale` already does.
+
+### Still open on this surface
+
+- **The demo band still renders an empty 16:9 slot** below the ask. The copy is neutral now, but an
+  empty box on a paid page is itself a conversion cost. Cutting the section until the recording
+  exists is a one-line change in `page.tsx` — owner's call, not taken.
+- Pricing moved 5,103px → **5,255px** (+152), the cost of the early CTA. Net win: the first ask is
+  1,700px earlier.
 
 ---
 
-## 4. 🔴 Two owner decisions — the biggest remaining levers
+## 4. 🔴 Two owner decisions — the biggest remaining levers (STILL OPEN, asked 2026-07-26)
+
+Both were put to the owner at the end of the conversion pass; neither is answered, so neither is
+built. They are now the largest remaining conversion levers on this page.
 
 1. **Real scarcity.** A founding cohort with a price actually locked (e.g. first 100 keep $49
    forever) is the strongest untapped lever and it *fills the testimonial hole with a reason to act
    now*. Do NOT invent a countdown — build it only if the owner will honor it.
+   ⚠️ The new benefit block in `testimonials.tsx` deliberately ships **no** founding-cohort perks
+   for exactly this reason. That's where one would go.
 2. **Coral CTA A/B.** `CTA_VARIANT` in `src/components/offer/cta-config.tsx` is a **one-line flip**
    (`"cream"` → `"coral"`), already wired through every primary CTA. Cream is dosage-compliant;
    coral will likely convert better. Owner has not decided.
@@ -134,6 +160,26 @@ All six are copy/structure only — no new captures, no new assets.
 "1,000 viewers" is still claimed in hero-owned copy, and it's Pro-only:
 - `src/app/(offer)/go/page.tsx` — the `metadata.description` and the hero subhead
 - `src/components/offer/ambient-panel.tsx:47` — the room header chip
+
+---
+
+## 6a. Verification — the conversion pass (`c689aed2`)
+
+`tsc` 0 · matte guard 38/38 · eslint 0 in scope · `/go` live at **1440 and 390**: 0 console errors,
+0 horizontal overflow, **24/24** reveals resolve, all six edits asserted present/absent in the DOM.
+
+Two non-defects chased down so the next session doesn't re-chase them:
+
+- **`NumberTicker` reads mid-spring.** The corpus stat photographs as `0` / `468` / `476`. SSR is
+  `500`, and it settles at `500` — it's just slower than 3s to converge. Verified three ways:
+  parked +3s (`476`), scrolled away and back (`500`), JS disabled (`500`). Not a regression.
+- **`composer.test.tsx`** still fails at clean HEAD (§6 below).
+
+**Screenshot harness gotcha (cost a round):** the CSS animation freeze does NOT stop `Stagger`
+children — motion drives inline transforms in JS, so `animation-duration:0` misses them and they
+photograph mid-blur. Force `[data-slot="offer-reveal"]` visible *and* wait ~1.6s after each scroll.
+Also: `tsx` can't run a Playwright script — esbuild's `keepNames` injects `__name` into
+`page.evaluate` bodies, which throws in the browser. Use plain `.mjs` + `node`.
 
 ---
 
