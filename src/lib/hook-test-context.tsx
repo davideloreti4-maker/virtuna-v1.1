@@ -68,6 +68,28 @@ export function useOpenRoomForCard(): OpenRoomForCardFn | null {
 }
 
 /**
+ * SimulateVideoContext — the tested-video card's "Simulate with your audience →" door.
+ *
+ * The Test card owns CRAFT and hands RECEPTION (the crowd, the drop-off, who stops) to the
+ * simulation. That simulation is not a new run: `/api/analyze` already measured it against this
+ * thread's active audience, and `/api/tools/test/card` sealed it — so the door does not spend, it
+ * OPENS the room on the read the creator already paid for.
+ *
+ * `analysisId` keys the video seal. Returns true when the room took it; FALSE when there is nothing
+ * to open (the ambient room is off, the seal is absent, or the run degraded before producing a fold
+ * cast), and the card then keeps its `/analyze/[id]` link rather than dead-ending on a button that
+ * silently does nothing. Default null ⇒ not inside the home composer (library / saved / dev
+ * gallery) ⇒ the link, exactly as before.
+ */
+export type SimulateVideoFn = (analysisId: string) => boolean;
+
+export const SimulateVideoContext = createContext<SimulateVideoFn | null>(null);
+
+export function useSimulateVideo(): SimulateVideoFn | null {
+  return useContext(SimulateVideoContext);
+}
+
+/**
  * AmbientCardIdContext — the LEDGER id of the card currently being rendered (`hook-0`, `idea-16`…).
  *
  * MessageBlocks already computes this per card (the SAME `toAmbientDescriptor` id it stamps on the

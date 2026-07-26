@@ -37,7 +37,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { reportCredit402 } from "@/lib/billing/credit-wall";
 import { createPortal } from "react-dom";
-import { OpenRoomContext, HookTestContext, HookWriteScriptContext } from "@/lib/hook-test-context";
+import {
+  OpenRoomContext,
+  HookTestContext,
+  HookWriteScriptContext,
+  SimulateVideoContext,
+} from "@/lib/hook-test-context";
 import { InThreadInputContext } from "@/lib/in-thread-input-context";
 import { FollowupContext } from "@/lib/followup-context";
 import { PlatformContext } from "@/lib/platform-context";
@@ -2100,6 +2105,26 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     [ambientDescriptors, focusByTap],
   );
 
+  // ── The tested-video door (Test card → the room's audience read) ────────────
+  // A video Test's RECEPTION was already measured — the analyze run repainted the fold with this
+  // thread's active audience and `/api/tools/test/card` sealed it. So "Simulate with your audience →"
+  // does not spend: it opens the room on that seal. The nonce makes a repeat tap on the SAME video a
+  // fresh request, so backing out of the drill and tapping again re-opens it.
+  const [focusVideo, setFocusVideo] = useState<{ id: string; nonce: number } | null>(null);
+  const simulateVideoInRoom = useCallback(
+    (analysisId: string): boolean => {
+      // Only claim the tap when there is a real sealed video to open. No seal (the ambient room is
+      // off, or the run degraded before producing an attention curve) ⇒ return false and the card
+      // keeps its /analyze link instead of dead-ending on an inert button.
+      if (!persistedSimSeals?.[analysisId]?.video) return false;
+      setFocusVideo((prev) => ({ id: analysisId, nonce: (prev?.nonce ?? 0) + 1 }));
+      // Desktop shows the rail already; a phone needs the sheet opened onto the same drill.
+      setRoomExpanded(true);
+      return true;
+    },
+    [persistedSimSeals],
+  );
+
   // ── The Room Rewrite loop (PR-3, LIVE-07) ──────────────────────────────────
   // The Population weak-spot's "Rewrite to win back the N% who bounced →" CTA re-runs the
   // ORIGINATING skill steered by the bouncers' real words (the `lever`), via the composer's OWN
@@ -2316,6 +2341,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       descriptors={ambientDescriptors}
       reducedMotion={reducedMotion}
       persistedSeals={persistedSimSeals}
+      focusVideo={focusVideo}
     />
   );
   // P2 (A2b) — the <xl header: a 68px bar that expands DOWNWARD. Same props again; rendered at the
@@ -2331,6 +2357,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       descriptors={ambientDescriptors}
       reducedMotion={reducedMotion}
       persistedSeals={persistedSimSeals}
+      focusVideo={focusVideo}
       open={roomExpanded}
       onOpenChange={handleRoomExpandedChange}
     />
@@ -2420,6 +2447,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
 
   const threadContent = (
     <OpenRoomContext.Provider value={openRoomForCard}>
+     <SimulateVideoContext.Provider value={simulateVideoInRoom}>
      <InThreadInputContext.Provider value={inThreadInputValue}>
       <FollowupContext.Provider value={sendChatFollowup}>
        {/* Card-CTA contexts lifted to the thread root (thread-unification Phase 1): any card rendered
@@ -2600,6 +2628,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
        </PlatformContext.Provider>
       </FollowupContext.Provider>
      </InThreadInputContext.Provider>
+    </SimulateVideoContext.Provider>
     </OpenRoomContext.Provider>
   );
 

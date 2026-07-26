@@ -118,6 +118,7 @@ export function AmbientOverviewRail({
   persistedSeals,
   presentation = "rail",
   onDismiss,
+  focusVideo,
 }: {
   audience: Audience;
   descriptors: AmbientCardDescriptor[];
@@ -133,6 +134,17 @@ export function AmbientOverviewRail({
    *  (measured %, + the Phase-C population/personas depth). These re-seal rows AND repopulate the
    *  depth drill on reload; a fresh in-session fire (below) takes precedence. */
   persistedSeals?: SimSealMap;
+  /**
+   * A request to open a TESTED VIDEO's depth directly — the Test card's "Simulate with your audience
+   * →" door. `id` is the analysisId (the video seal's key); `nonce` makes a repeat tap on the SAME
+   * video a new request, so backing out and tapping again re-opens it (a bare id would compare equal
+   * and the effect would never re-fire).
+   *
+   * It skips the reveal gate on purpose: tapping that CTA IS the deliberate ask, so making the
+   * creator tap the row twice more to see what they already asked for would be ceremony. Ignored
+   * when no video seal matches — the card only routes here when the composer confirms one exists.
+   */
+  focusVideo?: { id: string; nonce: number } | null;
 }) {
   const meta = audienceToMeta(audience);
   const sheet = presentation === "sheet";
@@ -175,6 +187,17 @@ export function AmbientOverviewRail({
     setDetailId(null);
     setDevelopId(null);
   }, [descriptors]);
+
+  // A Test card asked for THIS video's audience read. Declared AFTER the reset above so that when a
+  // thread switch and a focus request land in the same commit, the request wins (effects run in
+  // declaration order) instead of being wiped by the reset it arrived with.
+  useEffect(() => {
+    const id = focusVideo?.id;
+    if (!id || !videoSeals[id]) return; // no matching sealed video ⇒ ignore, never open an empty drill
+    revealVideo(id);
+    setDevelopId(null);
+    setDetailId(id);
+  }, [focusVideo, videoSeals, revealVideo]);
 
   // Resolve a descriptor id → its sealed snapshot: a fresh in-session fire wins; else a persisted seal
   // matched by trimmed concept text (survives reload). Undefined ⇒ the row is still honestly queued.

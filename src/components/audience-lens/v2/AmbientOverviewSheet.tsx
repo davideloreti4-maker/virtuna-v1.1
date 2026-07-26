@@ -85,6 +85,7 @@ export function AmbientOverviewSheet({
   persistedSeals,
   open,
   onOpenChange,
+  focusVideo,
 }: {
   audience: Audience;
   descriptors: AmbientCardDescriptor[];
@@ -92,6 +93,10 @@ export function AmbientOverviewSheet({
   persistedSeals?: SimSealMap;
   open: boolean;
   onOpenChange: (next: boolean) => void;
+  /** Passed straight through to the rail — a Test card's "Simulate with your audience →" request.
+   *  The composer also opens the sheet when it sets one, so the phone lands on the same drill the
+   *  desktop rail opens in place. */
+  focusVideo?: { id: string; nonce: number } | null;
 }) {
   const meta = audienceToMeta(audience);
 
@@ -192,6 +197,7 @@ export function AmbientOverviewSheet({
                 reducedMotion={reducedMotion}
                 persistedSeals={persistedSeals}
                 presentation="sheet"
+                focusVideo={focusVideo}
                 // The Overview header's caret is the way out (the bar that opened it is now covered).
                 onDismiss={() => onOpenChange(false)}
               />

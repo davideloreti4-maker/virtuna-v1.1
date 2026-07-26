@@ -247,6 +247,54 @@ describe("AmbientOverviewRail", () => {
     expect(screen.queryByText(/Why · coded from/)).toBeNull();
   });
 
+  it("a focusVideo request opens that video's depth directly — the Test card's door", () => {
+    const seals = {
+      "an-1": {
+        pct: 62,
+        band: null,
+        at: "",
+        video: {
+          analysisId: "an-1",
+          stopPct: 62,
+          craftScore: 84,
+          heatmap: { weighted_curve: [0.9, 0.5, 0.6], segments: [] },
+          videoSignals: null,
+          verbatim: { hook: { spoken_words: "Here is the money truth" } },
+        },
+      },
+    } as never;
+    const { rerender } = render(
+      <AmbientOverviewRail audience={audience} descriptors={descriptors} reducedMotion persistedSeals={seals} />,
+    );
+    // At rest the room is the Overview and the video's % is withheld behind its reveal gate.
+    expect(screen.queryByTestId("ambient-detail")).toBeNull();
+
+    // The card's CTA IS the deliberate ask, so the request skips the reveal gate and lands on the
+    // depth — making the creator tap the row twice more for what they just asked for is ceremony.
+    rerender(
+      <AmbientOverviewRail
+        audience={audience}
+        descriptors={descriptors}
+        reducedMotion
+        persistedSeals={seals}
+        focusVideo={{ id: "an-1", nonce: 1 }}
+      />,
+    );
+    expect(screen.getByTestId("ambient-detail")).toBeTruthy();
+  });
+
+  it("ignores a focusVideo request with no matching seal — never opens an empty drill", () => {
+    render(
+      <AmbientOverviewRail
+        audience={audience}
+        descriptors={descriptors}
+        reducedMotion
+        focusVideo={{ id: "an-does-not-exist", nonce: 1 }}
+      />,
+    );
+    expect(screen.queryByTestId("ambient-detail")).toBeNull();
+  });
+
   it("a drilled VIDEO with NO fold cast keeps the honest audience-unavailable state", () => {
     render(
       <AmbientOverviewRail
