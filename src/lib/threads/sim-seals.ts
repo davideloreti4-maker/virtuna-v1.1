@@ -32,6 +32,11 @@ export interface SimSealVideo {
   heatmap: HeatmapPayload; // per-segment attention (weighted_curve) + the segment grid
   videoSignals?: GeminiVideoSignals | null; // the four craft dims (absent → no signal rows)
   verbatim?: VerbatimPayload | null; // the transcript (absent → the scrubber reads segment labels)
+  /** % of the fold cast who stopped scrolling but bailed before the end — the tri-state's MIDDLE
+   *  band. Only a producer that observes a timeline can supply it, so it rides on the VIDEO seal;
+   *  a text sim's binary verdict has no middle and honestly omits it. Optional: seals written
+   *  before this landed simply render the binary tri-state. */
+  skimmedPct?: number;
 }
 
 /** One sealed verdict — the honest aggregate, no fabricated precision.
@@ -45,7 +50,10 @@ export interface SimSeal {
   pct: number; // 0..100 would-stop % (aggregateFlash "N/10 stop" as a percentage)
   band: string | null; // "Strong" | "Mixed" | "Weak" — the qualitative aggregate
   at: string; // ISO timestamp the seal was written
-  population?: PopulationAggregate | null; // Stage-2 N-individual projection (Phase C text depth)
+  /** The audience-depth projection, from EITHER path: a TEXT sim's Stage-2 N-individual projection
+   *  (react), or a VIDEO Test's fold reception panel (`buildVideoPopulation` — the 10 real archetype
+   *  reactors, weighted by the room mix). One field, one `isPopulationLike` guard, one drill. */
+  population?: PopulationAggregate | null;
   personas?: PopulationPersona[]; // the 10 real per-persona reactions (exemplar voices)
   scrollQuote?: string; // the lead scroll-verdict quote (the room's headline objection)
   video?: SimSealVideo | null; // Phase C VIDEO depth (the persisted-analysis Brain read)

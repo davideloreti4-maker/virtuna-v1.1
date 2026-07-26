@@ -14,6 +14,11 @@
  * Renders the two client pieces (HomeGreeting + Composer) the server page
  * composes — the server page itself is an async RSC and is covered structurally
  * by the plan's file-presence verify, not rendered here.
+ *
+ * FLAG-AWARE (2026-07-24): everything below describes the LEGACY empty home. Under
+ * `AMBIENT_V2_ENABLED` the v2 Start surface replaces the greeting + quick-action chips wholesale,
+ * so these assertions are pinned to the flag being OFF and the ship path gets its own block at the
+ * end. Previously the whole file silently inherited `NEXT_PUBLIC_AMBIENT_V2` from the environment.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
@@ -23,6 +28,14 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { renderWithClient } from '@/test/render-with-client';
+
+/** Live-binding flag mock (see the file header) — flipped per-test, never read from the env. */
+let ambientV2 = false;
+vi.mock('@/lib/flags/ambient-v2', () => ({
+  get AMBIENT_V2_ENABLED() {
+    return ambientV2;
+  },
+}));
 
 vi.mock('@/hooks/queries/use-analysis-stream', () => ({
   useAnalysisStream: () => ({
@@ -85,6 +98,7 @@ const DEMO_SEEN_KEY = 'numen.home.demo.seen';
 
 beforeEach(() => {
   cleanup();
+  ambientV2 = false;
   window.localStorage.clear();
   // Benign fetch stub: composer mount (GET /api/threads/open) + the demo POST both
   // resolve to an empty-ok JSON so nothing throws; individual tests inspect the spy.
@@ -192,5 +206,33 @@ describe('Home — empty-state quick actions + first-run demo (UX-05 / D-04)', (
     const nonRosterLists = lists.filter((el) => el.closest('.sr-only') === null);
     expect(nonRosterLists).toHaveLength(0);
     expect(screen.queryByTestId('sidebar-board-label')).toBeNull();
+  });
+});
+
+/**
+ * The SHIP path. Under the flag the v2 Start surface OWNS the empty home: the legacy quick-action
+ * chips and the legacy hero promise line are gone, replaced by the artifact-axis grid (Content ·
+ * Intel). Asserting the replacement — not merely the absence — is what keeps a regression that
+ * renders NEITHER surface from sneaking through as "green".
+ */
+describe('Home — empty home under AMBIENT_V2_ENABLED (the shipped path)', () => {
+  it('replaces the legacy quick-action chips with the v2 Start artifact grid', () => {
+    ambientV2 = true;
+    renderWithClient(<Home />);
+    // the legacy chips are gone…
+    expect(screen.queryByRole('button', { name: 'Get content ideas' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Write scroll-stopping hooks' })).toBeNull();
+    // …replaced by the artifact-axis grid (the real START_SKILL_GROUPS tiles + their lens lines)
+    expect(screen.getByText('Ideas')).toBeInTheDocument();
+    expect(screen.getByText('Concepts worth making')).toBeInTheDocument();
+    expect(screen.getByText('Video test')).toBeInTheDocument();
+  });
+
+  it('renders unbuilt artifacts as INERT "Soon" tiles — a named door must never be clickable', () => {
+    ambientV2 = true;
+    renderWithClient(<Home />);
+    const ad = screen.getByText('Ad creative').closest('button');
+    expect(ad).toBeDisabled();
+    expect(ad?.textContent).toMatch(/soon/i);
   });
 });

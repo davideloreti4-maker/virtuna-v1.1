@@ -32,6 +32,7 @@ import { createOpenThreadLazy } from "@/lib/threads/threads";
 import { insertMessage } from "@/lib/threads/messages";
 import { writeSimSeal } from "@/lib/threads/sim-seals";
 import { hasBrainData } from "@/lib/surfaces/ambient-v2-brain";
+import { buildVideoPopulation } from "@/lib/surfaces/ambient-v2-video-population";
 import { AMBIENT_V2_ENABLED } from "@/lib/flags/ambient-v2";
 import { kcStamp } from "@/lib/kc/kc-stamp";
 import { getAudience, GENERAL_AUDIENCE } from "@/lib/audience/audience-repo";
@@ -53,6 +54,7 @@ import type {
   CounterfactualResult,
   GeminiVideoSignals,
   HeatmapPayload,
+  PersonaSimulationResult,
   VerbatimPayload,
 } from "@/lib/engine/types";
 
@@ -190,10 +192,19 @@ export async function POST(request: Request): Promise<Response> {
     const heatmap = source.heatmap!;
     const hold = heatmap.weighted_hook_score ?? heatmap.weighted_completion_pct ?? null;
     if (hold !== null) {
+      // The AUDIENCE depth, from the same row. The fold ran against this thread's active audience
+      // (analyze route R1′b), so `personas` is a real, audience-specific reception panel — the
+      // Population drill's source. Null on a Wave-3-degraded row ⇒ the drill stays brain-only,
+      // exactly as before.
+      const foldPopulation = buildVideoPopulation({
+        personas: (row as { personas?: PersonaSimulationResult[] | null }).personas ?? [],
+        heatmap,
+      });
       await writeSimSeal(supabase, openThread, analysisId, {
         pct: Math.max(0, Math.min(100, Math.round(hold * 100))),
         band: null,
         at: new Date().toISOString(),
+        ...(foldPopulation ? { population: foldPopulation.aggregate } : {}),
         video: {
           analysisId,
           stopPct: Math.max(0, Math.min(100, Math.round(hold * 100))),
@@ -201,6 +212,7 @@ export async function POST(request: Request): Promise<Response> {
           heatmap,
           videoSignals: variants?.craft?.video_signals ?? null,
           verbatim: source.verbatim,
+          ...(foldPopulation ? { skimmedPct: foldPopulation.skimmedPct } : {}),
         },
       });
     }

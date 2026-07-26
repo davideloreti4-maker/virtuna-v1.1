@@ -28,7 +28,6 @@
  * Markdown turns render through MarkdownBlockRenderer via MessageBlocks (not plain text).
  */
 
-import { Fragment } from 'react';
 import { MessageBlocks } from '@/components/thread/message-blocks';
 import { ThreadShell, ThreadAssistantTurn, ThreadUserTurn } from '@/components/thread/thread-shell';
 import { ChatTypingIndicator } from '@/components/thread/thread-loading';
@@ -136,10 +135,10 @@ export function ChatThreadView({
   // markdown-only persisted body when present. A normal chat thread has no turns → markdown-only path,
   // byte-identical to the shipped chat.
   const hasPersistedTurns = persistedTurns.length > 0;
-  // The markdown-only persisted body is the original chat path; it is NOT used when per-turn data is
-  // present (the chat-agent thread also populates persistedBlocks with its markdown, but the turns are
-  // the complete, correctly-attributed source, so they win — matching the old stream-wins precedence).
-  const showMarkdownBody = !hasPersistedTurns && persistedBlocks.length > 0;
+  // Thread-unification Phase 2: this view NO LONGER renders persisted history — PersistedThreadStream
+  // owns it, once, for every thread. persistedTurns/persistedBlocks survive here ONLY to (a) key the
+  // follow-up chips off the last completed turn and (b) gate the "a completed turn exists" signal, so
+  // the chips still render after the live turn swaps into the persisted stream.
   const hasPersistedContent = hasPersistedTurns || persistedBlocks.length > 0;
   const hasStreamingContent = streamingBlocks.length > 0;
   // Chat-as-agent skill cards streamed this turn (CHAT_AGENT_DISPATCH). Drive the result-card
@@ -166,20 +165,13 @@ export function ChatThreadView({
   const nicheLabel = niche && niche.trim() ? niche.trim() : 'your niche';
   const platformLabel = platform && platform.trim() ? platform.trim() : 'your platform';
 
-  // Build raw body arrays for MessageBlocks (it expects unknown[]). The markdown-only path maps its
-  // blocks; the per-turn path passes each turn's blocks verbatim below. MessageBlocks re-validates
-  // every block either way (D-14).
-  const persistedMarkdownBody: unknown[] = persistedBlocks.map((b) => ({ type: b.type, props: b.props }));
-
-  // ── The ambient room's scroll-spy anchor offsets ────────────────────────────────────────────
+  // ── The ambient room's scroll-spy anchor offset for the LIVE streaming cards ────────────────
   // The room's chat ledger (composer.tsx → buildAmbientDescriptors) is the FLAT concat, in DOM
-  // order: [...persistedTurns.flatMap(t => t.blocks), ...streamingCardBlocks]. Card ids are that
-  // array's indices, so each body below must render with its own offset into it — otherwise a card
-  // carries another card's id and the room reads out the wrong reaction.
-  // `persistedBlocks` (the markdown-only reload path) is NOT in the ledger and gets no offset.
-  const persistedBaseIndex = (turnIndex: number) =>
-    persistedTurns.slice(0, turnIndex).reduce((n, t) => n + t.blocks.length, 0);
-  const streamingCardsBaseIndex = persistedBaseIndex(persistedTurns.length);
+  // order: [...persistedTurns.flatMap(t => t.blocks), ...streamingCardBlocks]. The persisted turns
+  // are rendered (and anchored) by PersistedThreadStream now; this view renders only the live turn,
+  // whose streamed cards sit AFTER every persisted block — so their base offset is the total count
+  // of persisted blocks. Keeping this offset (not zero) preserves each live card's ledger id.
+  const streamingCardsBaseIndex = persistedTurns.reduce((n, t) => n + t.blocks.length, 0);
 
   const streamingBody: unknown[] = streamingBlocks.map((b) => ({
     type: b.type,
@@ -203,7 +195,7 @@ export function ChatThreadView({
   // Pure-chat "thinking" dots: streaming with nothing yet AND no skill involved. A grounded/plain
   // chat turn emits no stages and no dispatch → this is byte-identical to the shipped behavior.
   const thinking = isStreaming && !hasStreamingContent && !hasStreamingCards && !skillInvolved;
-  const showLiveTurn = isStreaming || hasStreamingContent || hasStreamingCards || showMarkdownBody;
+  const showLiveTurn = isStreaming || hasStreamingContent || hasStreamingCards;
   const liveQuestion = userTurn?.trim();
 
   return (
@@ -223,24 +215,11 @@ export function ChatThreadView({
         </p>
       )}
 
-      {/* PERSISTED: one question-bubble + one clean assistant turn PER turn, in order (multi-turn
-          reload fidelity). Turn boundaries preserved → each question sits above only its own answer. */}
-      {hasPersistedTurns &&
-        persistedTurns.map((turn, i) => (
-          <Fragment key={i}>
-            {turn.userTurn?.trim() && <ThreadUserTurn text={turn.userTurn.trim()} />}
-            {turn.blocks.length > 0 && (
-              <ThreadAssistantTurn>
-                {/* Scroll-spy anchors: the room's chat ledger is the FLAT concat
-                    `[...persistedTurns.flatMap(t => t.blocks), ...streamingCardBlocks]`, so this
-                    turn's blocks start after every earlier turn's. */}
-                <MessageBlocks body={turn.blocks} ambientBaseIndex={persistedBaseIndex(i)} />
-              </ThreadAssistantTurn>
-            )}
-          </Fragment>
-        ))}
+      {/* Persisted history is rendered by PersistedThreadStream (thread-unification Phase 2), once, for
+          every thread — NOT here. This view owns only the live/in-flight turn plus the nudge, error, and
+          follow-up chips. */}
 
-      {/* LIVE turn (in-flight stream) + the markdown-only reload fallback. Renders its own question
+      {/* LIVE turn (in-flight stream). Renders its own question
           bubble from `userTurn`, then the assistant turn: a typing indicator while thinking, then the
           streamed cards/prose as they arrive. On a pure reload showLiveTurn is false. */}
       {showLiveTurn && (
@@ -274,7 +253,6 @@ export function ChatThreadView({
                 <MessageBlocks body={streamingBody} />
               </div>
             )}
-            {showMarkdownBody && <MessageBlocks body={persistedMarkdownBody} />}
           </ThreadAssistantTurn>
         </>
       )}

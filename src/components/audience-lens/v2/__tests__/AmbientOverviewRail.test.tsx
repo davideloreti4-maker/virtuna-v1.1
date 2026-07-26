@@ -11,8 +11,30 @@ import { describe, it, expect, afterEach, vi } from "vitest";
 import { render, screen, cleanup, fireEvent, act } from "@testing-library/react";
 import { AmbientOverviewRail } from "../AmbientOverviewRail";
 import { GENERAL_AUDIENCE } from "@/lib/audience/audience-repo";
+import { buildVideoPopulation } from "@/lib/surfaces/ambient-v2-video-population";
 import type { Audience } from "@/lib/audience/audience-types";
+import type { PersonaSimulationResult } from "@/lib/engine/types";
 import type { AmbientCardDescriptor } from "@/components/app/home/use-ambient-focus";
+
+/** One fold reactor in the shape `analysis_results.personas` really stores. */
+const foldPersona = (
+  archetype: string,
+  slot_type: PersonaSimulationResult["slot_type"],
+  scroll_past_second: number,
+): PersonaSimulationResult =>
+  ({
+    persona_id: `${slot_type}-${archetype}`,
+    archetype,
+    slot_type,
+    niche: "general",
+    scroll_past_second,
+    watch_through_pct: scroll_past_second === 0 ? 90 : 30,
+    comment_intent: 0,
+    share_intent: 0,
+    save_intent: 0,
+    rewatch_intent: 0,
+    reasoning: `fold-derived: ${archetype}`,
+  }) as PersonaSimulationResult;
 
 afterEach(() => {
   cleanup();
@@ -40,6 +62,34 @@ describe("AmbientOverviewRail", () => {
   it("renders the Overview (not Simulate) at rest — the develop surface is gated behind a rank tap", () => {
     render(<AmbientOverviewRail audience={audience} descriptors={descriptors} reducedMotion />);
     expect(screen.getByTestId("ambient-overview")).toBeTruthy();
+  });
+
+  /**
+   * The "on call" cast footer is derived from the room's NAMED SLICES (`audience.personas` →
+   * `segments` → `deriveCast`). General carries none, and General is the default for every new
+   * creator — so the footer used to render as a bare "on call" label under a border rule, with
+   * zero avatars, as the first thing a new user sees in the rail (caught live 2026-07-24).
+   * No cast ⇒ no footer. We never invent slices to fill it.
+   */
+  it("hides the on-call footer entirely for the General baseline room (no named slices)", () => {
+    render(<AmbientOverviewRail audience={audience} descriptors={descriptors} reducedMotion />);
+    expect(screen.queryByText("on call")).toBeNull();
+  });
+
+  it("shows the on-call footer with real initials once the room HAS named slices", () => {
+    const calibrated: Audience = {
+      ...audience,
+      is_general: false,
+      personas: [
+        { archetype: "loyalist", label: "Gym regulars", share: 0.6 },
+        { archetype: "fyp", label: "Drive-by scrollers", share: 0.4 },
+      ] as Audience["personas"],
+    };
+    render(<AmbientOverviewRail audience={calibrated} descriptors={descriptors} reducedMotion />);
+    expect(screen.getByText("on call")).toBeTruthy();
+    // initials of the REAL slice labels — never invented
+    expect(screen.getByText("G")).toBeTruthy();
+    expect(screen.getByText("D")).toBeTruthy();
   });
 
   it("re-seals a row from persistedSeals on mount — no fire needed (survives reload, Phase D)", () => {
@@ -141,6 +191,139 @@ describe("AmbientOverviewRail", () => {
     // tap 2 → drill into the real Brain depth (brain-first for a video)
     fireEvent.click(screen.getByRole("button", { name: /Here is the money truth/ }));
     expect(screen.getByTestId("ambient-detail")).toBeTruthy();
+  });
+
+  it("a drilled VIDEO fills the Population tab from the SAME run's fold cast — named districts, no invented receipts", () => {
+    // The aggregate is produced by the real mapper off a real fold shape — the exact path the Test
+    // route seals, so this proves producer → seal → drill end to end, not a hand-written blob.
+    const fold = buildVideoPopulation({
+      personas: [
+        foldPersona("tough_crowd", "fyp", 2.8),
+        foldPersona("lurker", "fyp", 0),
+        foldPersona("high_engager", "fyp", 0),
+        foldPersona("loyalist", "loyalist", 0),
+        foldPersona("cross_niche_curiosity", "cross_niche", 8.5),
+      ],
+      heatmap: {
+        segments: [{ idx: 0, t_start: 0, t_end: 3, is_hook_zone: true, keyframe_uri: null }],
+        weights: { fyp: 0.65, niche: 0.2, loyalist: 0.1, cross_niche: 0.05 },
+      } as never,
+    })!;
+    render(
+      <AmbientOverviewRail
+        audience={audience}
+        descriptors={descriptors}
+        reducedMotion
+        persistedSeals={{
+          "an-1": {
+            pct: 62,
+            band: null,
+            at: "",
+            population: fold.aggregate,
+            video: {
+              analysisId: "an-1",
+              stopPct: 62,
+              craftScore: 84,
+              heatmap: { weighted_curve: [0.9, 0.5, 0.6], segments: [] },
+              videoSignals: null,
+              verbatim: { hook: { spoken_words: "Here is the money truth" } },
+              skimmedPct: fold.skimmedPct,
+            },
+          } as never,
+        }}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Here is the money truth/ })); // reveal
+    fireEvent.click(screen.getByRole("button", { name: /Here is the money truth/ })); // drill
+    fireEvent.click(screen.getByRole("button", { name: /The audience/ }));
+
+    // the fold's REAL archetypes are the districts — the room, named, not a placeholder
+    // (display names, so this also proves the slugs go through `archetypeDisplayName`)
+    expect(screen.getAllByText(/Tough Crowd/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Regulars/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Passers-by/).length).toBeGreaterThan(0);
+    // and NO receipts heading: a video fold codes no per-viewer reasons, so the section omits itself
+    // rather than printing a kicker over nothing (the orphaned-label defect).
+    expect(screen.queryByText(/Why · coded from/)).toBeNull();
+  });
+
+  it("a focusVideo request opens that video's depth directly — the Test card's door", () => {
+    const seals = {
+      "an-1": {
+        pct: 62,
+        band: null,
+        at: "",
+        video: {
+          analysisId: "an-1",
+          stopPct: 62,
+          craftScore: 84,
+          heatmap: { weighted_curve: [0.9, 0.5, 0.6], segments: [] },
+          videoSignals: null,
+          verbatim: { hook: { spoken_words: "Here is the money truth" } },
+        },
+      },
+    } as never;
+    const { rerender } = render(
+      <AmbientOverviewRail audience={audience} descriptors={descriptors} reducedMotion persistedSeals={seals} />,
+    );
+    // At rest the room is the Overview and the video's % is withheld behind its reveal gate.
+    expect(screen.queryByTestId("ambient-detail")).toBeNull();
+
+    // The card's CTA IS the deliberate ask, so the request skips the reveal gate and lands on the
+    // depth — making the creator tap the row twice more for what they just asked for is ceremony.
+    rerender(
+      <AmbientOverviewRail
+        audience={audience}
+        descriptors={descriptors}
+        reducedMotion
+        persistedSeals={seals}
+        focusVideo={{ id: "an-1", nonce: 1 }}
+      />,
+    );
+    expect(screen.getByTestId("ambient-detail")).toBeTruthy();
+  });
+
+  it("ignores a focusVideo request with no matching seal — never opens an empty drill", () => {
+    render(
+      <AmbientOverviewRail
+        audience={audience}
+        descriptors={descriptors}
+        reducedMotion
+        focusVideo={{ id: "an-does-not-exist", nonce: 1 }}
+      />,
+    );
+    expect(screen.queryByTestId("ambient-detail")).toBeNull();
+  });
+
+  it("a drilled VIDEO with NO fold cast keeps the honest audience-unavailable state", () => {
+    render(
+      <AmbientOverviewRail
+        audience={audience}
+        descriptors={descriptors}
+        reducedMotion
+        persistedSeals={{
+          "an-1": {
+            pct: 62,
+            band: null,
+            at: "",
+            // no `population` — a Wave-3-degraded row, or a seal written before this shipped
+            video: {
+              analysisId: "an-1",
+              stopPct: 62,
+              craftScore: 84,
+              heatmap: { weighted_curve: [0.9, 0.5, 0.6], segments: [] },
+              videoSignals: null,
+              verbatim: { hook: { spoken_words: "Here is the money truth" } },
+            },
+          } as never,
+        }}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Here is the money truth/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Here is the money truth/ }));
+    // the Brain drill still opens — the depth we DO have is never withheld because the other is absent
+    expect(screen.getByTestId("ambient-detail")).toBeTruthy();
+    expect(screen.queryByText(/Tough Crowd/)).toBeNull();
   });
 
   it("tapping a queued row opens the ARM config FIRST, then its Simulate fires the react route (config→run)", async () => {

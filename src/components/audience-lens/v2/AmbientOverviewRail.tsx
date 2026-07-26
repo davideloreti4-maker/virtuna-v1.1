@@ -23,14 +23,15 @@
  *     ephemeral BY DESIGN (no persistence), and a speculative concept-sim has no reconcilable
  *     posted-video outcome to pin against. The pin belongs on the PERSISTED calibrated sealed sim
  *     (Phase D-full), where an outcome linkage exists. Deferred there, not silently dropped.
- *   - the Brain/Population depth detail (`onOpenStimulus`) — Phase C (its producers aren't real yet),
- *     so a rank tap opens Simulate in develop mode rather than a fixture-backed depth view.
+ *   - a rank tap on an UNSEALED concept row still opens Simulate in develop mode (there is no depth
+ *     to drill until a run exists). Both depth tabs are real once a row is sealed — concepts via the
+ *     react projection, videos via the Test run's fold reception panel.
  *
  * Build spec: docs/HANDOFF-2026-07-22-ambient-v2-wiring-provenance-audit.md
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AmbientOverview, type WatchingRun } from "./AmbientOverview";
+import { AmbientOverview, type AmbientPresentation, type WatchingRun } from "./AmbientOverview";
 import { AmbientSimulate, type StimulusKind } from "./AmbientSimulate";
 import { AmbientDetail } from "./AmbientDetail";
 import {
@@ -39,7 +40,11 @@ import {
   parsePersonaStops,
   type OverviewVideoRow,
 } from "@/lib/surfaces/ambient-v2-adapters";
-import { buildDomainTemplate, type PopulationPersona } from "@/lib/surfaces/ambient-v2-population";
+import {
+  buildDomainTemplate,
+  buildPopulationFrameData,
+  type PopulationPersona,
+} from "@/lib/surfaces/ambient-v2-population";
 import { buildVideoDomainTemplate } from "@/lib/surfaces/ambient-v2-brain";
 import { audienceToMeta } from "@/lib/surfaces/ambient-v2-audience-meta";
 import type { Audience } from "@/lib/audience/audience-types";
@@ -54,6 +59,10 @@ interface RailSnapshot {
   personas?: PopulationPersona[];
   scrollQuote?: string;
 }
+
+/** Sheet-mode shell: the host sheet is the flex column that owns the height cap, so every surface
+ *  inside flexes into it (min-h-0 lets their internal scroll regions shrink below content height). */
+const SHEET_SHELL = "flex min-h-0 w-full flex-1";
 
 /** The descriptor kind → the Simulate stimulus kind (script/remix are drafts under test). */
 function stimulusKindOf(kind?: string): StimulusKind {
@@ -107,16 +116,38 @@ export function AmbientOverviewRail({
   descriptors,
   reducedMotion = false,
   persistedSeals,
+  presentation = "rail",
+  onDismiss,
+  focusVideo,
 }: {
   audience: Audience;
   descriptors: AmbientCardDescriptor[];
   reducedMotion?: boolean;
+  /** Full-screen (mobile) only — the Overview header's caret closes the room. The drilled surfaces
+   *  keep their own back/close, which return HERE; only the Overview is the exit. */
+  onDismiss?: () => void;
+  /** Where this rail is mounted. `rail` = the ≥xl right column (default). `sheet` = the <xl mobile
+   *  header sheet, whose host bar already owns the identity, the ground and the height cap — the
+   *  SAME surfaces and the SAME live data either way, only the chrome differs. */
+  presentation?: AmbientPresentation;
   /** Sealed sims rehydrated from `threads.sim_seals`, keyed by TRIMMED concept text → the full seal
    *  (measured %, + the Phase-C population/personas depth). These re-seal rows AND repopulate the
    *  depth drill on reload; a fresh in-session fire (below) takes precedence. */
   persistedSeals?: SimSealMap;
+  /**
+   * A request to open a TESTED VIDEO's depth directly — the Test card's "Simulate with your audience
+   * →" door. `id` is the analysisId (the video seal's key); `nonce` makes a repeat tap on the SAME
+   * video a new request, so backing out and tapping again re-opens it (a bare id would compare equal
+   * and the effect would never re-fire).
+   *
+   * It skips the reveal gate on purpose: tapping that CTA IS the deliberate ask, so making the
+   * creator tap the row twice more to see what they already asked for would be ceremony. Ignored
+   * when no video seal matches — the card only routes here when the composer confirms one exists.
+   */
+  focusVideo?: { id: string; nonce: number } | null;
 }) {
   const meta = audienceToMeta(audience);
+  const sheet = presentation === "sheet";
   // "develop" carries the tapped rank into Simulate; null ⇒ Overview.
   const [developId, setDevelopId] = useState<string | null>(null);
   // "detail" opens the Brain/Population depth drill for a SEALED row; null ⇒ not open.
@@ -156,6 +187,17 @@ export function AmbientOverviewRail({
     setDetailId(null);
     setDevelopId(null);
   }, [descriptors]);
+
+  // A Test card asked for THIS video's audience read. Declared AFTER the reset above so that when a
+  // thread switch and a focus request land in the same commit, the request wins (effects run in
+  // declaration order) instead of being wiped by the reset it arrived with.
+  useEffect(() => {
+    const id = focusVideo?.id;
+    if (!id || !videoSeals[id]) return; // no matching sealed video ⇒ ignore, never open an empty drill
+    revealVideo(id);
+    setDevelopId(null);
+    setDetailId(id);
+  }, [focusVideo, videoSeals, revealVideo]);
 
   // Resolve a descriptor id → its sealed snapshot: a fresh in-session fire wins; else a persisted seal
   // matched by trimmed concept text (survives reload). Undefined ⇒ the row is still honestly queued.
@@ -280,10 +322,17 @@ export function AmbientOverviewRail({
     [videoSeals, revealedVideos, revealVideo, openStimulus],
   );
 
-  // A drilled VIDEO row → its real Brain-depth Detail (brain-first; population omitted for a video →
-  // the honest audience-unavailable state). Guarded before the concept branch (disjoint id spaces).
+  // A drilled VIDEO row → its real Detail. BOTH tabs are real now: the Brain from the sealed
+  // attention read, and the Population from the SAME run's fold reception panel (the analyze route
+  // repaints the fold with this thread's active audience, so those 10 archetype reactors ARE this
+  // creator's room). Guarded before the concept branch (disjoint id spaces).
   if (detailId !== null && videoSeals[detailId] && revealedVideos[detailId]) {
     const v = videoSeals[detailId];
+    // The AUDIENCE tab, from the SAME sealed run — the fold's real archetype reactors, mapped by
+    // `buildVideoPopulation` at Test time and persisted on the seal. Absent on a Wave-3-degraded row
+    // (and on every seal written before this shipped), which keeps the honest brain-only drill.
+    const videoAggregate = persistedSeals?.[detailId]?.population ?? null;
+    const skimmedPct = typeof v.skimmedPct === "number" ? v.skimmedPct : undefined;
     const template = buildVideoDomainTemplate({
       heatmap: v.heatmap,
       videoSignals: v.videoSignals,
@@ -291,11 +340,24 @@ export function AmbientOverviewRail({
       stopPct: v.stopPct,
       stimulusKey: detailId,
       conceptLabel: "video",
-      population: null,
+      population: videoAggregate
+        ? buildPopulationFrameData({
+            aggregate: videoAggregate,
+            personas: [], // a video fold emits no exemplar voices — the receipts section omits itself
+            calibratedFrom: meta.calibratedFrom,
+            tier: "max", // a Test is the Max video pipeline, never Flash
+            ...(skimmedPct !== undefined ? { skimmedPct } : {}),
+          })
+        : null,
     });
     return (
-      <div className="flex w-full items-start justify-center">
-        <AmbientDetail template={template} reducedMotion={reducedMotion} onBack={() => setDetailId(null)} />
+      <div className={sheet ? SHEET_SHELL : "flex w-full items-start justify-center"}>
+        <AmbientDetail
+          template={template}
+          reducedMotion={reducedMotion}
+          presentation={presentation}
+          onBack={() => setDetailId(null)}
+        />
       </div>
     );
   }
@@ -310,11 +372,12 @@ export function AmbientOverviewRail({
     });
     const armedId = developId;
     return (
-      <div className="flex h-full w-full">
+      <div className={sheet ? SHEET_SHELL : "flex h-full w-full"}>
         <AmbientSimulate
           data={simData}
           mode="develop"
           connected
+          presentation={presentation}
           onClose={() => setDevelopId(null)}
           // Phase D-minimal: fire the real react sim → sealed measured % replaces the projection.
           onSimulate={() => fireSim(armedId)}
@@ -340,10 +403,11 @@ export function AmbientOverviewRail({
         stimulusKey: detailId,
       });
       return (
-        <div className="flex h-full w-full">
+        <div className={sheet ? SHEET_SHELL : "flex h-full w-full"}>
           <AmbientDetail
             template={template}
             reducedMotion={reducedMotion}
+            presentation={presentation}
             onBack={() => setDetailId(null)}
           />
         </div>
@@ -372,10 +436,12 @@ export function AmbientOverviewRail({
   }));
   const overview = buildOverviewData({ audience: meta, descriptors, measured, videos, watching });
   return (
-    <div className="flex h-full w-full">
+    <div className={sheet ? SHEET_SHELL : "flex h-full w-full"}>
       <AmbientOverview
         data={overview}
         reducedMotion={reducedMotion}
+        presentation={presentation}
+        onDismiss={onDismiss}
         // A rank tap opens the real Population depth for a SEALED calibrated row (or the Brain depth for
         // a revealed video); an unsealed row routes to Simulate (develop) / reveals a video's %.
         onOpenStimulus={handleOpenStimulus}

@@ -28,6 +28,7 @@ import { TrustBadge } from '@/components/audience/trust-badge';
 import { SaveAffordance } from '@/components/thread/save-affordance';
 import { ProofReceipt } from './proof-receipt';
 import { CoverFill } from '@/components/primitives/CoverFill';
+import { useSimulateVideo } from '@/lib/hook-test-context';
 import { CardPrimaryAction, CardActionBar, SECTION_LABEL } from './card-primitives';
 
 export interface VideoTestCardRendererProps {
@@ -97,6 +98,19 @@ export function VideoTestCardRenderer({ block }: VideoTestCardRendererProps) {
 
   const CIRC = 2 * Math.PI * 33; // ring radius 33
   const hasHeader = craftScore != null || drivers.length > 0;
+
+  // THE DOOR OUT. In the composer, the ambient room already holds this video's sealed reception —
+  // the same Max run measured it against this thread's audience — so the CTA OPENS that read in
+  // place instead of navigating to the old board. Everywhere else (library, saved, /dev/cards), and
+  // whenever the room has no seal to show, it stays the `/analyze/[id]` link it has always been.
+  const simulateVideo = useSimulateVideo();
+  const openRoom = simulateVideo
+    ? () => {
+        // A false return means the room had nothing to open. Fall back to the link rather than
+        // leaving the creator on a button that did nothing.
+        if (!simulateVideo(analysisId)) window.location.assign(`/analyze/${analysisId}`);
+      }
+    : undefined;
 
   return (
     <div
@@ -305,9 +319,13 @@ export function VideoTestCardRenderer({ block }: VideoTestCardRendererProps) {
         lives in the simulation.
       </p>
       <CardActionBar>
-        <CardPrimaryAction href={`/analyze/${analysisId}`}>
-          Simulate with your audience →
-        </CardPrimaryAction>
+        {openRoom ? (
+          <CardPrimaryAction onClick={openRoom}>Simulate with your audience →</CardPrimaryAction>
+        ) : (
+          <CardPrimaryAction href={`/analyze/${analysisId}`}>
+            Simulate with your audience →
+          </CardPrimaryAction>
+        )}
         <SaveAffordance
           className="ml-auto"
           item_type="read"

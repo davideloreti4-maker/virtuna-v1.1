@@ -2,20 +2,15 @@
  * buildAmbientDescriptors — the ambient room's card LEDGER (which rendered cards the room reacts
  * to, and what the stepper calls them).
  *
- * THE BUG THIS LOCKS: the ledger used to be keyed on the composer CHIP —
+ * Thread-unification Phase 4: the ledger is now a SINGLE flat array — the thread's on-screen blocks
+ * in DOM order, `[...persistedChatTurns.flatMap(t => t.blocks), ...activeStreamCards]` — the SAME
+ * array PersistedThreadStream + the active live view render. So a descriptor's positional id
+ * `${kind}-${idx}` matches the `data-card-id` scroll-spy anchor MessageBlocks stamps at that index.
+ * The "which cards are on screen" decision (the honesty spine) now lives in the CALLER's construction
+ * of this array — only rendered persisted history + the mounted view's live cards go in.
  *
- *   if (activeTool === "hooks")  return pick(...);
- *   ...
- *   return [];                              // ← chat landed here
- *
- * — while DEFAULT_TOOL is "chat" and chat-as-agent (CHAT_AGENT_DISPATCH, default-ON) dispatches
- * REAL idea/hook/script cards inline from a chat thread. The chip stays "chat" the whole time, so
- * the product's DEFAULT path generated scored cards the audience never reacted to: the moat sat
- * silent on the main road. Kind is a property of the BLOCK, never of the chip.
- *
- * The honesty spine cuts both ways, so both directions are locked here:
- *  - a card the creator CAN see must move the room (the chat regression),
- *  - a card they CANNOT see must never move it (only the mounted view's blocks count).
+ * The prior bug the shape guards against: kind is a property of the BLOCK, never of the chip — a
+ * chat-dispatched idea card is an Idea even while the chip reads "chat".
  */
 import { describe, it, expect } from 'vitest';
 import { buildAmbientDescriptors, toAmbientDescriptor, resolveFocusDescriptor } from '../ambient-descriptors';
@@ -26,83 +21,68 @@ const card = (type: string, title: string, fraction = '7/10 stop') => ({
   type,
   props: { title, hookLine: title, fraction, scrollQuote: `q-${title}` },
 });
+const md = (text: string) => ({ type: 'markdown', props: { text } });
 
-const EMPTY = { hook: [], idea: [], script: [], remix: [], chat: [] };
-
-describe('buildAmbientDescriptors — the ledger is keyed on the blocks, not the chip', () => {
-  it('REGRESSION: a chat-as-agent dispatch (chip="chat") yields descriptors for its inline cards', () => {
-    const { descriptors } = buildAmbientDescriptors({
-      ...EMPTY,
-      activeTool: 'chat',
-      chat: [card('idea-card', 'Morning routine'), card('idea-card', 'Cold plunge')],
-    });
-    // The old chip-keyed ledger returned [] here — the room went silent next to two real cards.
+describe('buildAmbientDescriptors — the flat unified ledger', () => {
+  it('a flat ledger yields a descriptor per reactable card, named by the BLOCK', () => {
+    const { descriptors, kindLabel } = buildAmbientDescriptors([
+      card('idea-card', 'Morning routine'),
+      card('idea-card', 'Cold plunge'),
+    ]);
     expect(descriptors).toHaveLength(2);
     expect(descriptors.map((d) => d.conceptText)).toEqual(['Morning routine', 'Cold plunge']);
+    expect(kindLabel).toBe('Idea'); // named by the block type, never the chip
   });
 
-  it('REGRESSION: a chat dispatch is named by the BLOCK, not the chip ("Idea", never "Concept")', () => {
-    const { kindLabel } = buildAmbientDescriptors({
-      ...EMPTY,
-      activeTool: 'chat',
-      chat: [card('idea-card', 'Morning routine')],
-    });
-    expect(kindLabel).toBe('Idea');
-  });
-
-  it('a mixed-kind chat batch is named "Card" and keeps unique ids across kinds', () => {
-    const { descriptors, kindLabel } = buildAmbientDescriptors({
-      ...EMPTY,
-      activeTool: 'chat',
-      chat: [card('idea-card', 'A'), card('hook-card', 'B'), card('script-card', 'C')],
-    });
+  it('a mixed-kind batch is named "Card" and keeps unique ids across kinds', () => {
+    const { descriptors, kindLabel } = buildAmbientDescriptors([
+      card('idea-card', 'A'),
+      card('hook-card', 'B'),
+      card('script-card', 'C'),
+    ]);
     expect(kindLabel).toBe('Card');
-    // Indexed across the LEDGER (not per-kind), so a mixed batch cannot collide.
     expect(descriptors.map((d) => d.id)).toEqual(['idea-0', 'hook-1', 'script-2']);
   });
 
-  it('a plain chat turn (prose only, no cards) is the honest idle ledger', () => {
-    const { descriptors, kindLabel } = buildAmbientDescriptors({
-      ...EMPTY,
-      activeTool: 'chat',
-      chat: [{ type: 'markdown', props: { text: 'here are some thoughts' } }],
-    });
-    expect(descriptors).toEqual([]);
-    expect(kindLabel).toBe('Concept');
+  it('ALIGNMENT: non-card blocks consume an index so ids match the rendered DOM anchors', () => {
+    // The ledger is the SAME flat array MessageBlocks renders, and MessageBlocks indexes over EVERY
+    // block (markdown included). A markdown block yields no descriptor but MUST still consume its index,
+    // or every later card's id would be off-by-one from its `data-card-id` anchor (the #306 failure).
+    const { descriptors } = buildAmbientDescriptors([
+      md('you asked for hooks'), // idx 0 — user/co-pilot prose, not reactable
+      card('hook-card', 'Hook one'), // idx 1
+      card('hook-card', 'Hook two'), // idx 2
+      md('want a script?'), // idx 3 — co-pilot line
+      card('idea-card', 'An idea'), // idx 4
+    ]);
+    expect(descriptors.map((d) => d.id)).toEqual(['hook-1', 'hook-2', 'idea-4']);
+    expect(descriptors.map((d) => d.conceptText)).toEqual(['Hook one', 'Hook two', 'An idea']);
   });
 
-  it('the mounted view wins: cards from an UNMOUNTED tool never move the room', () => {
-    // Ideas were generated, then the creator switched the chip to hooks → the ideas view is
-    // unmounted. The room must not react to cards that are no longer on screen.
-    const { descriptors } = buildAmbientDescriptors({
-      ...EMPTY,
-      activeTool: 'hooks',
-      idea: [card('idea-card', 'Off-screen idea')],
-      hook: [card('hook-card', 'On-screen hook')],
-    });
-    expect(descriptors.map((d) => d.conceptText)).toEqual(['On-screen hook']);
+  it('a persisted-history + live-tail ledger indexes the live cards after the persisted ones', () => {
+    // Composer builds [...persistedFlat, ...activeStreamCards]; the live cards' ids continue the
+    // count, matching the live view's ambientBaseIndex = persisted block count.
+    const persistedFlat = [md('q'), card('hook-card', 'Persisted hook')];
+    const liveCards = [card('idea-card', 'Live idea 1'), card('idea-card', 'Live idea 2')];
+    const { descriptors } = buildAmbientDescriptors([...persistedFlat, ...liveCards]);
+    expect(descriptors.map((d) => d.id)).toEqual(['hook-1', 'idea-2', 'idea-3']);
   });
 
-  it('the per-tool ids stay byte-identical to the shipped scheme (hook-0, hook-1)', () => {
-    const { descriptors, kindLabel } = buildAmbientDescriptors({
-      ...EMPTY,
-      activeTool: 'hooks',
-      hook: [card('hook-card', 'A'), card('hook-card', 'B')],
-    });
+  it('an empty ledger, or prose only, is the honest idle ledger', () => {
+    expect(buildAmbientDescriptors([]).descriptors).toEqual([]);
+    expect(buildAmbientDescriptors([]).kindLabel).toBe('Concept');
+    const proseOnly = buildAmbientDescriptors([md('here are some thoughts')]);
+    expect(proseOnly.descriptors).toEqual([]);
+    expect(proseOnly.kindLabel).toBe('Concept');
+  });
+
+  it('a uniform batch keeps the byte-identical scheme (hook-0, hook-1) + its label', () => {
+    const { descriptors, kindLabel } = buildAmbientDescriptors([
+      card('hook-card', 'A'),
+      card('hook-card', 'B'),
+    ]);
     expect(descriptors.map((d) => d.id)).toEqual(['hook-0', 'hook-1']);
     expect(kindLabel).toBe('Hook');
-  });
-
-  it('a tool with no reactable view (test/explore/account) is the idle ledger', () => {
-    for (const activeTool of ['test', 'explore', 'account']) {
-      const { descriptors, kindLabel } = buildAmbientDescriptors({
-        ...EMPTY,
-        activeTool,
-        chat: [card('idea-card', 'not mine')],
-      });
-      expect(descriptors).toEqual([]);
-      expect(kindLabel).toBe('Concept');
-    }
   });
 });
 

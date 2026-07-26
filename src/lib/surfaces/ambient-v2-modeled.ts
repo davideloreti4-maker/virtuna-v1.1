@@ -382,11 +382,41 @@ export function modeledAudienceFit(agg: PopulationAggregate): AudienceFitData | 
   const low = rows[rows.length - 1]!;
   if (low.index < 0) low.loss = true as const;
   const top = rows[0]!;
+  // Name a district only when it actually leads. On a small panel the districts land on a couple of
+  // shared values, and naming the first of an eight-way tie reads as a finding when it is a sort
+  // order. Count the tie instead — "eight districts over-index" is the true shape of that result.
+  const topTied = rows.filter((r) => r.index === top.index).length;
+  const lowTied = rows.filter((r) => r.index === low.index).length;
+  const topLabel = peerLabel(topTied, top.label);
+  const lowLabel = peerLabel(lowTied, low.label, "others");
+  // The closing clause is an INTERPRETATION and has to match the shape it just described. "A
+  // narrower, higher-intent cut" was hardcoded, so a result where most of the room over-indexes
+  // reported itself as narrow — the opposite of what its own numbers said.
+  const broad = topTied * 2 > rows.length;
+  const tail = broad
+    ? "it plays broad — most of the room holds, so the ceiling is the few that do not"
+    : "a narrower, higher-intent cut than a broad reach";
   return {
     baseline: "vs the room average",
     rows,
-    read: `This over-indexes with ${top.label} and cools on ${low.label} — a narrower, higher-intent cut than a broad reach.`,
+    read:
+      topTied > 1 && lowTied > 1
+        ? `${topLabel} over-index together and ${lowLabel} cool — the room splits, it does not rank.`
+        : `This over-indexes with ${topLabel} and cools on ${lowLabel} — ${tail}.`,
   };
+}
+
+/**
+ * Name a district, or count its tie.
+ *
+ * Every ranked read in these adapters picked `[0]` after a sort and printed its label. On a large
+ * text projection that is fine — segments rarely tie. On a small panel (a video fold's 10 archetype
+ * reactors land on 0%/100%) it presents a SORT ORDER as a finding: "Quiet Watchers stop most" when
+ * eight districts sit at exactly 100%. Three separate reads shipped that shape. One helper, so the
+ * fourth does not.
+ */
+export function peerLabel(tiedCount: number, label: string, noun = "districts"): string {
+  return tiedCount > 1 ? `${tiedCount} ${noun}` : label;
 }
 
 /** Modeled reshare propensity per archetype (×) — the priors the cascade rides. */
@@ -400,6 +430,14 @@ export function modeledAmplification(agg: PopulationAggregate): AmplificationDat
   const carriers: AmplificationData["carriers"] = segs
     .map((s) => ({ label: s.displayName, factor: priorOf(s.archetype) }))
     .sort((a, b) => b.factor - a.factor);
+  // NO discrimination ⇒ NO section. `RESHARE_PRIOR` is keyed on the TEXT signature's vocabulary
+  // (builder / drop-in / scroller / skeptic); a VIDEO fold's engine archetypes (tough_crowd, lurker,
+  // loyalist, …) all fall through to the 1.0 default. The section then rendered ten identical ×1.0
+  // carriers and — because `lead` is just whoever won a ten-way tie — announced "Reach rides on Tough
+  // Crowd resharing" about the district that had bailed at 2.8s. A tie is not a ranking, and "who
+  // spreads it" with no way to tell who spreads it has no answer. Omit until a producer supplies real
+  // reshare signal (the fold's per-persona `share_intent` is the honest source).
+  if (carriers.length > 1 && carriers.every((c) => c.factor === carriers[0]!.factor)) return undefined;
   const lead = carriers[0]!;
   lead.lead = true as const;
   const weighted = segs.reduce((a, s) => a + s.share * priorOf(s.archetype), 0);
@@ -470,9 +508,21 @@ function fmtCount(n: number): string {
 export function modeledSwing(agg: PopulationAggregate): SwingData | undefined {
   const segs = agg.segments;
   if (segs.length === 0) return undefined;
-  // the district sitting closest to the 50% line = the most persuadable fence-sitters
-  const fence = segs.slice().sort((a, b) => Math.abs(a.stopPct - 50) - Math.abs(b.stopPct - 50))[0]!;
+  // The district sitting closest to the 50% line = the most persuadable fence-sitters — but NEVER the
+  // weakest district. |0−50| ties |100−50|, so on decided districts the sort happily returned the
+  // LOSS district and the section then described the people most gone as "not gone, just unconvinced"
+  // — flatly contradicting the terrain, which paints that same district coral. `modeledDecisionStates`
+  // already excludes the loss when it picks its fence; this now matches it.
+  const loss = segs.slice().sort((a, b) => a.stopPct - b.stopPct)[0]!;
+  const byNearLine = segs.slice().sort((a, b) => Math.abs(a.stopPct - 50) - Math.abs(b.stopPct - 50));
+  const fence = byNearLine.find((s) => s.displayName !== loss.displayName);
+  if (!fence) return undefined; // a single district, and it is the loss — nothing to swing
   const nearMiss = Math.max(0, fence.total - fence.stop);
+  // No fence-sitters ⇒ NO swing section. "0 viewers stalled right at the line" is not an upside, it
+  // is a sentence about nobody. Reachable whenever every district is decided (a small panel — e.g. a
+  // video fold's 10 archetypes — lands on 0%/100% districts), and latent for any all-or-nothing text
+  // projection. Omit rather than print a zero-subject read.
+  if (nearMiss === 0) return undefined;
   const fromPct = Math.round(agg.stopPct);
   const gain = clamp(Math.round((nearMiss / Math.max(1, agg.total)) * 100 * 0.45), 3, 15);
   const toPct = clamp(fromPct + gain, 0, 100);
@@ -481,6 +531,6 @@ export function modeledSwing(agg: PopulationAggregate): SwingData | undefined {
     fromPct,
     toPct,
     gainLabel: `+${gain}% would stop`,
-    read: `${nearMiss} viewers stalled right at the line in ${fence.displayName} — not gone, just unconvinced. Win them and the room moves from ${fromPct}% to ${toPct}%.`,
+    read: `${nearMiss} ${nearMiss === 1 ? "viewer" : "viewers"} stalled right at the line in ${fence.displayName} — not gone, just unconvinced. Win them and the room moves from ${fromPct}% to ${toPct}%.`,
   };
 }

@@ -45,6 +45,13 @@ import type { HookCardBlock } from '@/lib/tools/blocks';
 export interface HooksThreadViewProps {
   /** Validated hook-card blocks from the persisted open thread (rehydration). */
   persistedBlocks: HookCardBlock[];
+  /**
+   * The base offset into the unified ambient ledger for THIS view's streaming cards (thread-unification
+   * Phase 4). The live cards render after every persisted block, so their scroll-spy anchors must be
+   * based at the persisted block count to line up with their ledger ids. Defaults to persistedBlocks.length
+   * for the legacy self-contained render (persistedBlocks now always [] under the unified stream).
+   */
+  ambientBaseIndex?: number;
   /** In-flight streamed cards (partial during stream, full after scoring). */
   streamingBlocks: HookCardBlock[];
   /** Status message from the SSE stream — fallback text while streaming. */
@@ -93,6 +100,7 @@ export interface HooksThreadViewProps {
 
 export function HooksThreadView({
   persistedBlocks,
+  ambientBaseIndex,
   streamingBlocks,
   stages,
   followupText,
@@ -180,7 +188,7 @@ export function HooksThreadView({
                   {/* Scroll-spy anchors: this run's cards render FIRST here but sit LAST in the
                       room's ledger ([...persisted, ...streaming]) — so the offset is the persisted
                       count. Anchor ids are LEDGER positions, never DOM positions. */}
-                  <MessageBlocks body={streamingBody} ambientBaseIndex={persistedBlocks.length} />
+                  <MessageBlocks body={streamingBody} ambientBaseIndex={ambientBaseIndex ?? persistedBlocks.length} />
                 </div>
               )}
 

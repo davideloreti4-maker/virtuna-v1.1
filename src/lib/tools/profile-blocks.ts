@@ -269,7 +269,10 @@ export const VideoTestCardBlockSchema = z.object({
 
       // ── Provenance + the door out ──
       audienceName: z.string().min(1),
-      analysisId: z.string().min(1), // powers "Simulate it →" (→ /analyze/[id] until the Sim surface ships)
+      // Powers "Simulate with your audience →". In the composer it keys the sealed video in the
+      // ambient room (the SAME run's reception, already measured) and the CTA opens that drill in
+      // place; off-composer, or with no seal to open, it stays the /analyze/[id] link.
+      analysisId: z.string().min(1),
       model: z.literal("sim1-max"), // provenance — the Max VIDEO tier (D-10)
       tier: z.enum(["Validated", "Directional"]),
     })

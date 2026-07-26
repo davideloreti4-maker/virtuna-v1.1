@@ -30,7 +30,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { TONE } from "./AmbientDetail";
-import type { SimTier } from "./AmbientOverview";
+import type { AmbientPresentation, SimTier } from "./AmbientOverview";
 import { CloseButton, IntakeStep, Kick, SHEET_STYLE } from "./SimulateIntake";
 
 // ── view-model ───────────────────────────────────────────────────────────────
@@ -205,6 +205,7 @@ function ArmCard({
   onBack,
   onSimulate,
   connected,
+  presentation = "rail",
 }: {
   data: SimulateData;
   stimulus: { text: string; kind: StimulusKind };
@@ -214,8 +215,11 @@ function ArmCard({
   onSimulate?: (config: SimulateConfig) => void;
   /** Rail mode — render as a CONNECTED panel (fills, #181817, no card shadow/rounding), not a sheet. */
   connected?: boolean;
+  /** With `connected`: `rail` (own ground + left hairline + 440 cap) vs `sheet` (host owns them). */
+  presentation?: AmbientPresentation;
 }) {
   const { room, provenance, lenses, segments } = data;
+  const inSheet = connected && presentation === "sheet";
   const [lensIdx, setLensIdx] = useState(data.defaultLens);
   const [custom, setCustom] = useState("");
   const [segIdx, setSegIdx] = useState(0);
@@ -234,20 +238,25 @@ function ArmCard({
     <div
       data-testid="ambient-simulate"
       data-phase="arm"
+      data-presentation={connected ? presentation : undefined}
       className={
-        connected
-          ? "flex h-full w-full max-w-[440px] flex-col overflow-y-auto"
-          : "flex w-full max-w-[460px] flex-col rounded-[16px]"
+        inSheet
+          ? "flex min-h-0 w-full flex-1 flex-col overflow-y-auto"
+          : connected
+            ? "flex h-full w-full max-w-[440px] flex-col overflow-y-auto"
+            : "flex w-full max-w-[460px] flex-col rounded-[16px]"
       }
       style={
-        connected
-          ? {
-              background: "#181817",
-              borderLeft: `1px solid ${TONE.border}`,
-              color: TONE.cream,
-              fontFamily: "var(--font-sans, Inter, system-ui, sans-serif)",
-            }
-          : SHEET_STYLE
+        inSheet
+          ? { color: TONE.cream, fontFamily: "var(--font-sans, Inter, system-ui, sans-serif)" }
+          : connected
+            ? {
+                background: "#181817",
+                borderLeft: `1px solid ${TONE.border}`,
+                color: TONE.cream,
+                fontFamily: "var(--font-sans, Inter, system-ui, sans-serif)",
+              }
+            : SHEET_STYLE
       }
     >
       {/* header + the stimulus under test */}
@@ -496,6 +505,7 @@ export function AmbientSimulate({
   onClose,
   onSimulate,
   connected,
+  presentation = "rail",
 }: {
   data: SimulateData;
   mode?: SimEntryMode;
@@ -503,6 +513,8 @@ export function AmbientSimulate({
   onSimulate?: (config: SimulateConfig) => void;
   /** Rail mode — render the arm card as a CONNECTED panel, not a floating sheet. */
   connected?: boolean;
+  /** With `connected`: `rail` (own ground + left hairline + 440 cap) vs `sheet` (host owns them). */
+  presentation?: AmbientPresentation;
 }) {
   // cold entry lands on the intake step; develop entry is pre-filled → straight to the arm card.
   const [picked, setPicked] = useState<IntakeOption | null>(null);
@@ -524,6 +536,7 @@ export function AmbientSimulate({
       onBack={mode === "cold" ? () => setPicked(null) : undefined}
       onSimulate={onSimulate}
       connected={connected}
+      presentation={presentation}
     />
   );
 }

@@ -44,6 +44,12 @@ import type { ScriptCardBlock } from '@/lib/tools/blocks';
 export interface ScriptThreadViewProps {
   /** Validated script-card blocks from the persisted open thread (rehydration). */
   persistedBlocks: ScriptCardBlock[];
+  /**
+   * Base offset into the unified ambient ledger for this view's streaming cards (thread-unification
+   * Phase 4) — they render after every persisted block, so their scroll-spy anchors must be based at
+   * the persisted block count. Defaults to persistedBlocks.length for the legacy self-contained render.
+   */
+  ambientBaseIndex?: number;
   /** In-flight streamed cards (partial during stream, full after scoring). */
   streamingBlocks: ScriptCardBlock[];
   /** Pipeline stage states from SSE stage events (STUDIO-01). */
@@ -89,6 +95,7 @@ export interface ScriptThreadViewProps {
 
 export function ScriptThreadView({
   persistedBlocks,
+  ambientBaseIndex,
   streamingBlocks,
   stages,
   followupText,
@@ -162,7 +169,7 @@ export function ScriptThreadView({
                   {/* Scroll-spy anchors: this run's cards render FIRST here but sit LAST in the
                       room's ledger ([...persisted, ...streaming]) — so the offset is the persisted
                       count. Anchor ids are LEDGER positions, never DOM positions. */}
-                  <MessageBlocks body={streamingBody} ambientBaseIndex={persistedBlocks.length} />
+                  <MessageBlocks body={streamingBody} ambientBaseIndex={ambientBaseIndex ?? persistedBlocks.length} />
                 </div>
               )}
 

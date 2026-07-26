@@ -44,6 +44,7 @@ import {
   modeledSignalGrid,
   modeledSwing,
   modeledUnlock,
+  peerLabel,
   type ModeledBrainInput,
   type ModeledReason,
 } from "./ambient-v2-modeled";
@@ -65,6 +66,14 @@ export interface PopulationSnapshotInput {
   calibratedFrom: string;
   /** Sim fidelity → the trust strip's modeled confidence (never a measured number). */
   tier?: "flash" | "max";
+  /**
+   * The tri-state's MIDDLE band — % who stopped scrolling but did not reach the end. Only a producer
+   * that can observe a timeline may set it: a VIDEO fold knows when each persona bailed
+   * (`ambient-v2-video-population.ts`), so its skim band is real. A text sim's verdict is binary, so
+   * it omits this and the band stays honestly 0 — the absence is the honest answer, not a gap.
+   * Bounded by `stopPct` (a skimmer stopped first), so the three bands always sum to 100.
+   */
+  skimmedPct?: number;
 }
 
 // ── terrain layout (cosmetic placement of the real districts in the 380×210 viewBox) ──────────────
@@ -162,21 +171,34 @@ function heroRead(agg: PopulationAggregate): string {
   if (segs.length === 0) return `${agg.stop} of ${agg.total} kept watching.`;
   const top = segs.reduce((a, b) => (b.stopPct > a.stopPct ? b : a));
   const low = segs.reduce((a, b) => (b.stopPct < a.stopPct ? b : a));
-  if (top.displayName === low.displayName) {
-    return `${top.displayName} stop at ${Math.round(top.stopPct)}%.`;
+  if (top.stopPct === low.stopPct) {
+    // Every district at the same rate — there is no "most" and no ceiling, just one flat room.
+    return `Every district stops at ${Math.round(top.stopPct)}%.`;
   }
-  return `${top.displayName} stop most (${Math.round(top.stopPct)}%); ${low.displayName} are the ceiling (${Math.round(low.stopPct)}%).`;
+  // Name a district only when it leads alone; otherwise count its peers (see `peerLabel`).
+  const topLabel = peerLabel(segs.filter((s) => s.stopPct === top.stopPct).length, top.displayName);
+  const lowLabel = peerLabel(segs.filter((s) => s.stopPct === low.stopPct).length, low.displayName);
+  return `${topLabel} stop most (${Math.round(top.stopPct)}%); ${lowLabel} are the ceiling (${Math.round(low.stopPct)}%).`;
 }
 
 /**
  * Map a fired sim's REAL population projection → the `PopulationFrameData` the audience-depth tab
- * reads. Text-sim honest: tri-state's skim band is 0 (binary verdict); the three modeled-depth
- * sections are omitted (their producers aren't built). Deterministic — safe to call on every render.
+ * reads. Text-sim honest: the tri-state's skim band is 0 unless the producer can observe a timeline
+ * (a VIDEO fold can — see `skimmedPct`); a binary verdict has no middle. Deterministic — safe to call
+ * on every render.
  */
 export function buildPopulationFrameData(input: PopulationSnapshotInput): PopulationFrameData {
   const { aggregate: agg, personas, calibratedFrom, tier } = input;
-  const stopped = Math.round(agg.stopPct);
-  const tri: TriState = { stopped, skimmed: 0, scrolled: Math.max(0, 100 - stopped) };
+  // The three bands partition the room: scrolled = never stopped; skimmed = stopped, didn't finish;
+  // stopped = stayed. `stopPct` counts skimmers (they DID stop), so the skim band is carved out of it
+  // — clamped so a malformed producer can never push a band negative or the sum past 100.
+  const stoppedTotal = Math.round(agg.stopPct);
+  const skimmed = clamp(Math.round(input.skimmedPct ?? 0), 0, stoppedTotal);
+  const tri: TriState = {
+    stopped: stoppedTotal - skimmed,
+    skimmed,
+    scrolled: Math.max(0, 100 - stoppedTotal),
+  };
   const { clusters, lossClusterIndex } = terrainClusters(agg);
 
   return {
@@ -193,8 +215,15 @@ export function buildPopulationFrameData(input: PopulationSnapshotInput): Popula
     },
     heroRead: heroRead(agg),
     // the room recategorized into four decision-states (the conversion funnel) — replaces the archetype
-    // ledger with a playbook; every count is a real partition of the projection, levers from real reasons
-    decisionStates: modeledDecisionStates(agg, classifyReasons(agg.reasons)),
+    // ledger with a playbook; every count is a real partition of the projection, levers from real reasons.
+    // Gated on HAVING real reasons: the four states earn their place by naming a LEVER per state, and
+    // every lever is reason-derived. With no reasons the levers degrade to restatements of the state
+    // itself ("nearly stopped — tighten the open"), which is worth less than the archetype district
+    // ledger it would replace. A VIDEO fold has no coded reasons by construction, so it keeps the
+    // ledger — the named cast IS its stronger read.
+    ...(agg.reasons.length > 0
+      ? { decisionStates: modeledDecisionStates(agg, classifyReasons(agg.reasons)) }
+      : {}),
     // ── modeled-depth parity (Phase-C ②) — the fuller society read; carried by the one calibration line ──
     audienceFit: modeledAudienceFit(agg),
     amplification: modeledAmplification(agg),

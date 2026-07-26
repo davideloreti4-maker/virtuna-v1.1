@@ -24,7 +24,7 @@
  * IDEAS ROUTING (Plan 04, D-12/D-07, Pitfall 5):
  *   When activeTool === "idea", submit routes to the Ideas pipeline via
  *   useIdeasStream.start() instead of stream.start. CRITICAL: the Idea path
- *   MUST NOT set pendingNavRef.current = true and MUST NOT call stream.start —
+ *   MUST NOT set pendingSealRef.current = true and MUST NOT call stream.start —
  *   those are exclusive to the Test upload/URL paths so an Idea send never
  *   navigates to /analyze/[id] (T-03-13, WR-05).
  *   The platform chip (D-07) sets the first-class platform param on the Ideas request.
@@ -37,9 +37,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { reportCredit402 } from "@/lib/billing/credit-wall";
 import { createPortal } from "react-dom";
-import { OpenRoomContext } from "@/lib/hook-test-context";
+import {
+  OpenRoomContext,
+  HookTestContext,
+  HookWriteScriptContext,
+  SimulateVideoContext,
+} from "@/lib/hook-test-context";
 import { InThreadInputContext } from "@/lib/in-thread-input-context";
 import { FollowupContext } from "@/lib/followup-context";
+import { PlatformContext } from "@/lib/platform-context";
+import { ScriptTestContext } from "@/lib/script-test-context";
+import { RemixDevelopContext } from "@/lib/remix-develop-context";
 import { useParams, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowUp, Plus } from "lucide-react";
@@ -49,6 +57,8 @@ import dynamic from "next/dynamic";
 import { cn } from "@/lib/utils";
 import { HORIZONTAL_ENABLED } from "@/lib/flags/horizontal";
 import { AMBIENT_V2_ENABLED } from "@/lib/flags/ambient-v2";
+import { AmbientOverviewSheet } from "@/components/audience-lens/v2/AmbientOverviewSheet";
+import { MOBILE_NAV, MOBILE_NAV_BAND, MOBILE_NAV_BAR_INSET } from "@/components/sidebar/Sidebar";
 import type { SimSealMap } from "@/lib/threads/sim-seals";
 import { queryKeys } from "@/lib/queries/query-keys";
 import {
@@ -58,7 +68,6 @@ import {
 } from "@/lib/threads/active-thread-cookie";
 import { Button } from "@/components/ui/button";
 import { VideoUpload } from "@/components/app/video-upload";
-import { MessageBlocks } from "@/components/thread/message-blocks";
 import { useAnalysisStream } from "@/hooks/queries/use-analysis-stream";
 import { useSubscription } from "@/hooks/use-subscription";
 import { isPaidPlanId, creditsRemainingLabel } from "@/lib/pricing";
@@ -86,6 +95,7 @@ import { useHooksStream } from "@/hooks/queries/use-hooks-stream";
 import { HooksThreadView } from "@/components/thread/hooks-thread-view";
 import { useChatStream } from "@/hooks/queries/use-chat-stream";
 import { ChatThreadView } from "@/components/thread/chat-thread-view";
+import { PersistedThreadStream } from "@/components/thread/persisted-thread-stream";
 import { isChatAgentThread, orderedAssistantBlocks, orderedTurns } from "@/components/app/home/rehydrate-thread";
 import type { RehydrateTurn } from "@/components/app/home/rehydrate-thread";
 import { useScriptStream } from "@/hooks/queries/use-script-stream";
@@ -98,6 +108,9 @@ import { useAccountReadStream } from "@/hooks/queries/use-account-read-stream";
 import { AccountReadThreadView } from "@/components/thread/account-read-thread-view";
 import { ThreadLoadingSkeleton } from "@/components/thread/thread-loading";
 import { ThreadShell, ThreadAssistantTurn } from "@/components/thread/thread-shell";
+import { ProgressChecklist } from "@/components/thread/progress-checklist";
+import { SKILL_RUN_META } from "@/components/thread/run-capsule";
+import { useTestRunStages } from "@/components/thread/use-test-run-stages";
 import { Spinner } from "@/components/ui/spinner";
 import { AudiencePresence, type AudienceAsk, type AudiencePresenceProps } from "@/components/audience-lens/audience-presence";
 import { AmbientOverviewRail } from "@/components/audience-lens/v2/AmbientOverviewRail";
@@ -330,7 +343,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // ── Tool chip state (D-06/D-07) ─────────────────────────────────────────────
   // activeTool drives the placeholder + active-model field (D-09).
   // Default: "test" — the only live tool in P1 (D-08). Idea live in P3 (D-12).
-  // NOTE: chip selection is NOT a submit; it MUST NEVER arm pendingNavRef (Pitfall #5).
+  // NOTE: chip selection is NOT a submit; it MUST NEVER arm pendingSealRef (Pitfall #5).
   const [activeTool, setActiveTool] = useState<ToolId>(DEFAULT_TOOL);
   // SIM-1 tier picker — defaults from the armed skill; creator override persists until
   // the skill changes. UI-only for now (routing still skill-driven).
@@ -510,25 +523,29 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
 
   // ── Ideas stream (Plan 04, Task 2) ────────────────────────────────────────
   // Provides SSE cards rendered above the composer in IdeasThreadView.
-  // CRITICAL: ideas.start() NEVER arms pendingNavRef/stream.start (T-03-13).
+  // CRITICAL: ideas.start() NEVER arms pendingSealRef/stream.start (T-03-13).
   const ideas = useIdeasStream();
   const ideasBlocks = ideas.toBlocks();
+  // LIVE-ONLY gate (thread-unification Phase 3): persisted history is owned by PersistedThreadStream, so
+  // this view mounts ONLY for a live/in-flight (or just-completed, un-reset) run — NOT on persisted state.
+  // Dropping the `|| persisted*Blocks.length > 0` clause is what stops a reload/skill-switch from double-
+  // painting the cards (unified stream + this view) and lets the unified stream own history alone.
   const showIdeasView =
     activeTool === "idea" &&
-    (ideas.isStreaming || ideasBlocks.length > 0 || ideas.error !== null || persistedIdeaBlocks.length > 0);
+    (ideas.isStreaming || ideasBlocks.length > 0 || ideas.error !== null);
 
   // ── Hooks stream (Plan 04-03, Task 1 — D-09) ──────────────────────────────
   // Provides SSE hook-card blocks rendered above the composer in HooksThreadView.
-  // CRITICAL: hooks.start() NEVER arms pendingNavRef/stream.start (T-03-13/T-04-13).
+  // CRITICAL: hooks.start() NEVER arms pendingSealRef/stream.start (T-03-13/T-04-13).
   const hooks = useHooksStream();
   const hooksBlocks = hooks.toBlocks();
   const showHooksView =
     activeTool === "hooks" &&
-    (hooks.isStreaming || hooksBlocks.length > 0 || hooks.error !== null || persistedHookBlocks.length > 0);
+    (hooks.isStreaming || hooksBlocks.length > 0 || hooks.error !== null);
 
   // ── Chat stream (Plan 05-03, Task 2 — D-05/D-08) ─────────────────────────
   // Provides SSE markdown turns rendered above the composer in ChatThreadView.
-  // CRITICAL: chat.start() NEVER arms pendingNavRef/stream.start — chat send
+  // CRITICAL: chat.start() NEVER arms pendingSealRef/stream.start — chat send
   // NEVER navigates to /analyze (D-05, no silent auto-fire).
   const chat = useChatStream();
   const chatBlocks = chat.toBlocks();
@@ -537,35 +554,38 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // unconditionally "for its own empty state", but its empty state is 48px of ThreadShell
   // padding rendering as a dead band between the hero and the composer (measured
   // live 2026-07-20). The starter owns the empty home; this view owns turns.
+  // Chat view is live-only for its turn render (PersistedThreadStream owns history), but it STAYS mounted
+  // when the thread has persisted turns so the follow-up chips still render after the live turn swaps into
+  // the persisted stream (the chips key off the last persisted turn). persistedChatBlocks (markdown-only)
+  // is dropped — that bucket is retired.
   const showChatView =
     activeTool === "chat" &&
     (chat.isStreaming ||
       chatBlocks.length > 0 ||
       chat.error !== null ||
-      persistedChatBlocks.length > 0 ||
       persistedChatTurns.length > 0);
 
   // ── Script stream (Plan 06-05 — D-09) ─────────────────────────────────────
   // Provides SSE script-card blocks rendered above the composer in ScriptThreadView.
-  // CRITICAL: script.start() NEVER arms pendingNavRef/stream.start (T-03-13/T-06-20).
+  // CRITICAL: script.start() NEVER arms pendingSealRef/stream.start (T-03-13/T-06-20).
   const script = useScriptStream();
   const scriptBlocks = script.toBlocks();
   const showScriptView =
     activeTool === "script" &&
-    (script.isStreaming || scriptBlocks.length > 0 || script.error !== null || persistedScriptBlocks.length > 0);
+    (script.isStreaming || scriptBlocks.length > 0 || script.error !== null);
 
   // ── Remix stream (Plan 06-05 — REMIX-01) ──────────────────────────────────
   // Provides SSE remix-card blocks rendered above the composer in RemixThreadView.
-  // CRITICAL: remix.start() NEVER arms pendingNavRef/stream.start (T-03-13/T-06-20).
+  // CRITICAL: remix.start() NEVER arms pendingSealRef/stream.start (T-03-13/T-06-20).
   const remix = useRemixStream();
   const remixBlocks = remix.toBlocks();
   const showRemixView =
     activeTool === "remix" &&
-    (remix.isStreaming || remixBlocks.length > 0 || remix.error !== null || persistedRemixBlocks.length > 0);
+    (remix.isStreaming || remixBlocks.length > 0 || remix.error !== null);
 
   // ── Explore stream (Plan 11-07 — EXPLORE-01/02/04) ─────────────────────────
   // Provides the SSE outlier-grid block rendered above the composer in
-  // ExploreThreadView. CRITICAL: explore.start() NEVER arms pendingNavRef/stream.start
+  // ExploreThreadView. CRITICAL: explore.start() NEVER arms pendingSealRef/stream.start
   // (Pitfall 1 — Explore renders in-thread in /home, NEVER navigates to /analyze/[id]).
   const explore = useExploreStream();
   const exploreBlocks = explore.toBlocks();
@@ -616,6 +636,8 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     persistedRemixBlocks.length > 0 ||
     persistedExploreBlocks.length > 0 ||
     persistedProfileBlocks.length > 0 || // profile-read / reaction-distribution (05-06)
+    persistedChatTurns.length > 0 || // the unified persisted stream (thread-unification) — the SSOT for
+    // "this thread has history"; the per-type persisted buckets above are retired in Phase 5, this term stays.
     hasAccountContent;
   // ⚠️ DO NOT re-add `showChatView || showExploreView || showAccountView` here.
   // Arming a skill is not a thread. Those three lines used to flip hasThread on TOOL
@@ -654,6 +676,13 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   const [url, setUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // Test seal-in-thread (D-05 rework): after the Max analysis completes, the composer POSTs the
+  // analysisId to /api/tools/test/card, which drops the video-test-card in the open thread — the
+  // Test lands 1:1 in-thread like every other skill, NO navigate-out. `carding` is that POST in
+  // flight (the sub-second card-adapter tail on the run spine). A degrade / build failure falls
+  // back to the honest full-breakdown page (setTestDegradeId → router.push), mirroring the
+  // in-thread UploadField. See test-vs-simulation-split.
+  const [carding, setCarding] = useState(false);
 
   // WR-04 — Test upload pre-flight error (session-expired / storage-upload failure).
   // The URL path uses showUrlError; the analysis stream owns post-start errors. This
@@ -1062,7 +1091,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // "Write script →". Switches to the Script tool and starts a script run anchored on
   // the chosen hookLine (streams into ScriptThreadView, mirroring the Script-chip path).
   // The hook is the anchor (PINNED: /api/tools/script accepts { ask?, anchor, platform }).
-  // CRITICAL: NEVER sets pendingNavRef / calls stream.start — Script never navigates to /analyze.
+  // CRITICAL: NEVER sets pendingSealRef / calls stream.start — Script never navigates to /analyze.
   const handleWriteScript = useCallback((hookLine: string, _audienceArchetype: string) => {
     setActiveTool("script");
     setScriptAnchorHook(hookLine); // PR-2: cite this input hook in the script intro
@@ -1087,7 +1116,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // Card-POST model: POSTs adaptedHook as anchor to /api/tools/ideas/develop (PINNED endpoint).
   // After develop completes, reloads the open thread to surface the new hook cards.
   // CRITICAL: this fires ONLY on explicit tap (D-05 honesty spine).
-  // CRITICAL: NEVER arms pendingNavRef / calls stream.start (T-03-13/T-06-20).
+  // CRITICAL: NEVER arms pendingSealRef / calls stream.start (T-03-13/T-06-20).
   const handleDevelopRemix = useCallback(async (adaptedHook: string, remixPlatform: string) => {
     // Switch to hooks view so the user sees the in-progress state
     setActiveTool("hooks");
@@ -1115,6 +1144,11 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       const allBlocks = messages.flatMap((m: { blocks?: Array<{ type?: string; props?: unknown }> }) => m.blocks ?? []);
       const newHookBlocks = allBlocks.filter((b: { type?: string }) => b.type === 'hook-card');
       setPersistedHookBlocks(newHookBlocks);
+      // Thread-unification: the developed hook cards render through PersistedThreadStream, which reads
+      // persistedChatTurns — NOT persistedHookBlocks. Refresh the unified stream so the cards actually
+      // appear (the develop endpoint has no SSE, so hooks.isStreaming never flips and the live view
+      // never mounts). Without this the thread switches to hooks and shows a blank gap until reload.
+      setPersistedChatTurns(orderedTurns(messages));
     } catch {
       // Network error — silent (user can retry)
     }
@@ -1200,6 +1234,11 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           b.type === 'multi-audience-read', // the Read — tool-agnostic (mirrors rehydration)
       );
       setPersistedProfileBlocks(profileBlocks);
+      // Thread-unification: the profile-read / reaction-distribution / prediction-gauge / Read cards
+      // render through PersistedThreadStream (persistedChatTurns), NOT the retired persistedProfileBlocks
+      // bucket. Refresh the unified stream so an evidence-drop / Simulate / Predict result surfaces
+      // in-session (dormant behind HORIZONTAL_ENABLED today, but the write path must stay honest).
+      setPersistedChatTurns(orderedTurns(messages));
     } catch {
       // Network error — silent (the user can retry the drop)
     }
@@ -1236,6 +1275,51 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       cancelled = true;
     };
   }, [chatIsDone, chatIsStreaming, chatReset, reloadChatThread]);
+
+  // ── Skill-switch persistence (thread-unification) ──────────────────────────
+  // PersistedThreadStream (ungated) owns thread history, but a JUST-RUN skill's cards live in its live
+  // view (the streaming tail), NOT yet in persistedChatTurns — which is a mount/switch snapshot, not
+  // refreshed on tool selection. Switching skills unmounts that live view, so without this its cards
+  // would vanish until a page reload (the exact "I go from hooks to another skill and lose it" report).
+  // So when the creator LEAVES a skill that has a completed (non-streaming) run on screen, fold that run
+  // into the unified stream (reloadChatThread refreshes persistedChatTurns from the server, where every
+  // card already persisted during the run) and reset the skill's stream — swapping live→persisted in one
+  // commit, mirroring the chat swap above. The run's transient chrome (outliers offer, warnings) is a
+  // live-run affordance and does not survive the switch, by design. Guarded on a non-streaming run so a
+  // mid-stream switch never interrupts an in-flight generation.
+  const prevActiveToolRef = useRef(activeTool);
+  useEffect(() => {
+    const leaving = prevActiveToolRef.current;
+    if (leaving === activeTool) return;
+    prevActiveToolRef.current = activeTool;
+    // The leaving skill's stream + whether it has a completed run to fold (read fresh at switch time).
+    const entry =
+      leaving === "hooks"
+        ? { stream: hooks, has: hooksBlocks.length > 0 }
+        : leaving === "idea"
+          ? { stream: ideas, has: ideasBlocks.length > 0 }
+          : leaving === "script"
+            ? { stream: script, has: scriptBlocks.length > 0 }
+            : leaving === "remix"
+              ? { stream: remix, has: remixBlocks.length > 0 }
+              : leaving === "explore"
+                ? { stream: explore, has: exploreBlocks.length > 0 }
+                : null;
+    if (!entry || !entry.has || entry.stream.isStreaming) return; // nothing to fold, or still running
+    let cancelled = false;
+    void (async () => {
+      const ok = await reloadChatThread();
+      if (cancelled || !ok) return;
+      entry.stream.reset(); // clears the live view; persistedChatTurns now carries the run
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // Fires only on activeTool change (guarded by the ref); reads the leaving stream's current state
+    // from this render's closure. Streams/blocks are intentionally omitted from deps to avoid re-running
+    // on every render (the file's established pattern for switch-scoped effects).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTool]);
 
   // ── Chat follow-up chips (chat-followups.ts) ───────────────────────────────
   // A tapped follow-up continues the conversation in THIS chat thread: it echoes the prompt as the
@@ -1373,37 +1457,59 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     return () => clearInterval(id);
   }, [awaitingReaction, reloadProfileThread]);
 
-  // ── Navigate-on-id (lifted from Board.tsx L300-307, guarded per WR-05) ───
-  // The id originates server-side: POST /api/analyze does nanoid(12) + emits
-  // SSE started{id}; useAnalysisStream surfaces it as stream.analysisId. A
-  // null -> string transition is what fires the /analyze/[id] navigation.
+  // ── Seal-on-complete (Test lands 1:1 in-thread — D-05 rework) ────────────
+  // Test USED to navigate to /analyze/[id] the moment the `started` SSE flipped analysisId (1–3s).
+  // It now stays in-thread for the whole run and, on COMPLETE, POSTs the analysisId to
+  // /api/tools/test/card — the cheap adapter that turns the persisted row into the honest
+  // video-test-card and drops it in the open thread (createOpenThreadLazy + insertMessage,
+  // server-side). reloadChatThread() then surfaces that card through PersistedThreadStream. This
+  // mirrors the in-thread UploadField (input-request-block.tsx) exactly — same seal, same degrade.
   //
-  // WR-05: a bare null->string flip is NOT a safe trigger in the pinned
-  // (permalink) layout — useAnalysisStream also sets analysisId from the URL
-  // on hydration (use-analysis-stream.ts:521), which would push us to an
-  // /analyze/[id] the user never submitted. Board distinguishes "an id I
-  // started streaming" from "an id that appeared via hydration" with a ref.
-  // We mirror that: navigation is ARMED only when handleSubmit actually calls
-  // stream.start (pendingNavRef), so a hydration-sourced id can never navigate.
+  // Arming (pendingSealRef) is EXCLUSIVE to the Test path (set in handleSubmit's Test branch), so a
+  // hydration-sourced complete (permalink) never seals — mirrors the old pendingSealRef guard. On
+  // /home there is no urlAnalysisId, so the stream never auto-completes off a permalink anyway
+  // (use-analysis-stream.ts), but the ref keeps the intent honest. sealHandledRef fires the seal
+  // once per run (a fresh submit resets it). CRITICAL (T-03-13): the Idea path never arms this.
   //
-  // CRITICAL (T-03-13): pendingNavRef is EXCLUSIVE to the Test path.
-  // The Idea path never sets it — an Idea send must not navigate to /analyze.
-  const prevAnalysisIdRef = useRef<string | null>(stream.analysisId);
-  const pendingNavRef = useRef(false);
+  // Degrade honesty: a row with no craft material (route → { degraded }) or a build/network failure
+  // falls back to the full frame-by-frame page — the only navigate-out that survives, and only when
+  // there is genuinely nothing to card in-thread.
+  const pendingSealRef = useRef(false);
+  const sealHandledRef = useRef(false);
   useEffect(() => {
-    const id = stream.analysisId;
-    if (id && prevAnalysisIdRef.current === null && pendingNavRef.current) {
-      pendingNavRef.current = false;
-      router.push(`/analyze/${id}`);
+    if (stream.phase !== "complete" || !stream.analysisId || !pendingSealRef.current || sealHandledRef.current) {
+      return;
     }
-    // Re-arming only happens in handleSubmit (Test path); here we just track the
-    // value so the next genuine null->string (after a fresh submit) is detectable.
-    prevAnalysisIdRef.current = id;
-  }, [stream.analysisId, router]);
+    sealHandledRef.current = true;
+    pendingSealRef.current = false;
+    const id = stream.analysisId;
+    void (async () => {
+      setCarding(true);
+      try {
+        const res = await fetch("/api/tools/test/card", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ analysisId: id }),
+        });
+        const data = (await res.json().catch(() => ({}))) as { degraded?: string };
+        if (!res.ok || data.degraded) {
+          // No honest craft card to drop → the full breakdown page is the honest fallback.
+          router.push(`/analyze/${id}`);
+          return;
+        }
+        // Surface the freshly-sealed card in the unified stream (no navigate-out).
+        await reloadChatThread();
+      } catch {
+        router.push(`/analyze/${id}`);
+      } finally {
+        setCarding(false);
+      }
+    })();
+  }, [stream.phase, stream.analysisId, router, reloadChatThread]);
 
   // ── Submit -> create (lifted/adapted from Board.tsx handleContentSubmit) ──
   // Slim: only the TikTok-URL and video-upload paths for Test; Ideas pipeline for Idea.
-  // CRITICAL: Idea path NEVER sets pendingNavRef or calls stream.start (T-03-13).
+  // CRITICAL: Idea path NEVER sets pendingSealRef or calls stream.start (T-03-13).
   const handleSubmit = useCallback(async () => {
     // Skills that persist into the open chat thread AND whose user turn must be
     // persisted client-side (chat persists its own turn server-side; Test navigates
@@ -1480,7 +1586,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     }
 
     // ── Idea tool path (D-12) ───────────────────────────────────────────────
-    // CRITICAL: this block must never set pendingNavRef.current or call stream.start.
+    // CRITICAL: this block must never set pendingSealRef.current or call stream.start.
     // Empty ask = Auto mode; typed ask = seeded mode (D-12).
     if (activeTool === "idea") {
       const ask = trimmedUrl; // empty string → Auto; non-empty → seeded
@@ -1492,7 +1598,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     }
 
     // ── Hooks tool path (D-09, Plan 04-03 Task 1) ───────────────────────────
-    // CRITICAL: this block must never set pendingNavRef.current or call stream.start.
+    // CRITICAL: this block must never set pendingSealRef.current or call stream.start.
     // Empty ask = Auto/anchored mode; typed ask = seeded mode (D-09).
     // T-03-13/T-04-13: Hook send NEVER navigates to /analyze.
     if (activeTool === "hooks") {
@@ -1505,7 +1611,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     }
 
     // ── Chat tool path (Plan 05-03, D-05) ────────────────────────────────────
-    // CRITICAL: this block MUST NOT set pendingNavRef.current or call stream.start.
+    // CRITICAL: this block MUST NOT set pendingSealRef.current or call stream.start.
     // Chat send NEVER navigates to /analyze (D-05 — no silent auto-fire).
     // ask must be non-empty (canSubmit already gates on trimmedUrl.length > 0).
     if (activeTool === "chat") {
@@ -1586,7 +1692,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     }
 
     // ── Script tool path (Plan 06-05, D-09) ──────────────────────────────────
-    // CRITICAL: NEVER sets pendingNavRef.current or calls stream.start (T-03-13/T-06-20).
+    // CRITICAL: NEVER sets pendingSealRef.current or calls stream.start (T-03-13/T-06-20).
     // Script send NEVER navigates to /analyze.
     // ask = typed topic or empty; anchor = carried hookLine from hooks→script seam.
     if (activeTool === "script") {
@@ -1601,7 +1707,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     }
 
     // ── Remix tool path (Plan 06-05, REMIX-01) ────────────────────────────────
-    // CRITICAL: NEVER sets pendingNavRef.current or calls stream.start (T-03-13/T-06-20).
+    // CRITICAL: NEVER sets pendingSealRef.current or calls stream.start (T-03-13/T-06-20).
     // Remix send NEVER navigates to /analyze.
     // URL is required (canSubmit gates on trimmedUrl.length > 0 for remix).
     if (activeTool === "remix") {
@@ -1614,9 +1720,9 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     }
 
     // ── Explore tool path (Plan 11-07, EXPLORE-01 — Pitfall 1 CRITICAL) ───────
-    // CRITICAL: this block MUST NOT set pendingNavRef.current and MUST NOT call
+    // CRITICAL: this block MUST NOT set pendingSealRef.current and MUST NOT call
     // stream.start — Explore renders in-thread in /home and NEVER navigates to
-    // /analyze/[id] (Pitfall 1; pendingNavRef/stream.start are Test-exclusive).
+    // /analyze/[id] (Pitfall 1; pendingSealRef/stream.start are Test-exclusive).
     // A typed field-send maps to the niche param (empty → un-niched pull). The
     // params popover + quick-actions are the richer entry points (onRunExplore /
     // onQuickAction → explore.start), but a bare field-send still works.
@@ -1634,7 +1740,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     // CTAs. CRITICAL (T-07-04-01 gate): both REQUIRE a selected General audience —
     // when absent, route the user to Build and return WITHOUT firing an ungated
     // stimulus (the client gate is UX; the server independently enforces auth +
-    // the D-08 honesty guards). CRITICAL: NEVER set pendingNavRef / call stream.start
+    // the D-08 honesty guards). CRITICAL: NEVER set pendingSealRef / call stream.start
     // — a General verb never navigates to /analyze (Pitfall 2 / sibling of Chat).
     // The draft/scenario is passed RAW (T-07-04-02) — never pre-concatenated into a
     // prompt; the routes data-fence it downstream.
@@ -1683,11 +1789,11 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       return;
     }
 
-    // ── Test tool path (pendingNavRef/stream.start exclusive here) ─
-    // A3: echo the submitted input before the navigation gap. The Test path only
-    // reaches /analyze/[id] once the `started` SSE flips analysisId (1–3s); until
-    // then it was a silent spinner. captureUserTurn(...) drives the optimistic echo
-    // + status line (testSubmitTurn) so the wait reads as work, not a dead button.
+    // ── Test tool path (pendingSealRef/stream.start exclusive here) ─
+    // A3: echo the submitted input so the ~2-min run reads as work, not a dead button. The Test
+    // now stays IN-THREAD for the whole run and seals the video-test-card on complete (the
+    // seal-on-complete effect above) — no navigate-out. captureUserTurn(...) drives the optimistic
+    // echo + the run-capsule spine (testSubmitTurn) until the card lands.
     if (file !== null) {
       // Upload path — stage the file to Supabase storage, then start with the path.
       captureUserTurn(file.name);
@@ -1717,10 +1823,11 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           setSubmitting(false);
           return;
         }
-        // WR-05: arm navigation — this run's started{id} is a real submission,
-        // so the null->string flip it produces SHOULD navigate (unlike a
-        // hydration-sourced id, which never arms this).
-        pendingNavRef.current = true;
+        // Arm the in-thread seal — this run's completion is a real submission, so its complete
+        // SHOULD card in-thread (unlike a hydration-sourced complete, which never arms this).
+        // sealHandledRef reset so this fresh run's complete fires the seal once.
+        pendingSealRef.current = true;
+        sealHandledRef.current = false;
         // WR-04: no client-side storage cleanup on failure here (unlike the profile path).
         // /api/analyze consumes video_storage_path in a background job, so deleting the blob
         // on a stream error would race the server that may still read it. Orphans on the Test
@@ -1745,8 +1852,9 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     setSubmitError(null);
     setSubmitting(true);
     try {
-      // WR-05: arm navigation for this real submission (see upload path above).
-      pendingNavRef.current = true;
+      // Arm the in-thread seal for this real submission (see upload path above).
+      pendingSealRef.current = true;
+      sealHandledRef.current = false;
       await stream
         .start({
           input_mode: "tiktok_url",
@@ -1934,18 +2042,41 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // { fraction, scrollQuote } + a concept line — the spotlight READS that data, never re-runs
   // a model (D-03 determinism-gate-safe; zero new model calls).
   //
-  // The ledger is keyed on the BLOCKS, never on the composer chip: chat-as-agent
-  // (CHAT_AGENT_DISPATCH) dispatches real idea/hook/script cards inline while the chip stays
-  // "chat", so the chat view's cards are its own dispatched blocks — every persisted turn's,
-  // then this turn's stream. See ambient-descriptors.ts for the decision + its guard.
-  const { descriptors: ambientDescriptors, kindLabel: ambientKindLabel } = buildAmbientDescriptors({
-    activeTool,
-    hook: [...persistedHookBlocks, ...hooksBlocks],
-    idea: [...persistedIdeaBlocks, ...ideasBlocks],
-    script: [...persistedScriptBlocks, ...scriptBlocks],
-    remix: [...persistedRemixBlocks, ...remixBlocks],
-    chat: [...persistedChatTurns.flatMap((t) => t.blocks), ...chat.streamingBlocks],
-  });
+  // THE UNIFIED AMBIENT LEDGER (thread-unification Phase 4). The room reacts to what is ON SCREEN,
+  // and the whole thread now renders as ONE flat stream — the persisted history (PersistedThreadStream)
+  // then the active skill's live cards — so the ledger is that same flat array, in DOM order. This
+  // replaces the per-tool pick, which undercounted a mixed thread (a hooks + ideas thread showed both
+  // sets of cards but the rail only knew one tool's). The ledger is keyed on the BLOCKS, never the chip.
+  // `outlier-grid` (Explore) is the one persisted block whose Remix/Track handlers ride PROPS, not
+  // context, so it can't rehydrate interactively through PersistedThreadStream's generic MessageBlocks.
+  // It renders in ExploreThreadView instead (which owns those handlers), so we filter it OUT of the
+  // unified stream — and out of the ledger too, so the flat indices PersistedThreadStream anchors and
+  // the ledger scores stay identical (grids are non-reactable, so this only drops dead index slots).
+  const persistedStreamTurns = persistedChatTurns.map((t) => ({
+    ...t,
+    blocks: t.blocks.filter((b) => (b as { type?: string }).type !== "outlier-grid"),
+  }));
+  const persistedFlatBlocks = persistedStreamTurns.flatMap((t) => t.blocks);
+  // The active skill's live cards (the streaming tail rendered after the persisted stream). Only the
+  // mounted view's cards — a card from an unmounted tool is not on screen and must not move the room.
+  const activeStreamCards: unknown[] =
+    activeTool === "hooks"
+      ? hooksBlocks
+      : activeTool === "idea"
+        ? ideasBlocks
+        : activeTool === "script"
+          ? scriptBlocks
+          : activeTool === "remix"
+            ? remixBlocks
+            : activeTool === "chat"
+              ? chat.streamingBlocks
+              : [];
+  const ambientLedgerBlocks = [...persistedFlatBlocks, ...activeStreamCards];
+  // The live view's streaming cards render AFTER every persisted block, so their scroll-spy anchors
+  // must be based at the persisted block count to line up with their ledger ids.
+  const ambientLiveBaseIndex = persistedFlatBlocks.length;
+  const { descriptors: ambientDescriptors, kindLabel: ambientKindLabel } =
+    buildAmbientDescriptors(ambientLedgerBlocks);
 
   const {
     focus: ambientFocus,
@@ -1972,6 +2103,26 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       return true;
     },
     [ambientDescriptors, focusByTap],
+  );
+
+  // ── The tested-video door (Test card → the room's audience read) ────────────
+  // A video Test's RECEPTION was already measured — the analyze run repainted the fold with this
+  // thread's active audience and `/api/tools/test/card` sealed it. So "Simulate with your audience →"
+  // does not spend: it opens the room on that seal. The nonce makes a repeat tap on the SAME video a
+  // fresh request, so backing out of the drill and tapping again re-opens it.
+  const [focusVideo, setFocusVideo] = useState<{ id: string; nonce: number } | null>(null);
+  const simulateVideoInRoom = useCallback(
+    (analysisId: string): boolean => {
+      // Only claim the tap when there is a real sealed video to open. No seal (the ambient room is
+      // off, or the run degraded before producing an attention curve) ⇒ return false and the card
+      // keeps its /analyze link instead of dead-ending on an inert button.
+      if (!persistedSimSeals?.[analysisId]?.video) return false;
+      setFocusVideo((prev) => ({ id: analysisId, nonce: (prev?.nonce ?? 0) + 1 }));
+      // Desktop shows the rail already; a phone needs the sheet opened onto the same drill.
+      setRoomExpanded(true);
+      return true;
+    },
+    [persistedSimSeals],
   );
 
   // ── The Room Rewrite loop (PR-3, LIVE-07) ──────────────────────────────────
@@ -2190,11 +2341,29 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       descriptors={ambientDescriptors}
       reducedMotion={reducedMotion}
       persistedSeals={persistedSimSeals}
+      focusVideo={focusVideo}
     />
   );
   // P2 (A2b) — the <xl header: a 68px bar that expands DOWNWARD. Same props again; rendered at the
   // TOP of the thread branch (below), not the dock.
-  const audienceHeader = <AudiencePresence {...presenceCommonProps} variant="header" />;
+  //
+  // Ambient v2 (2026-07-24 fix): the flag used to swap ONLY the ≥xl rail, so a phone kept the retired
+  // room (constellation crown · "N people ready" · the "say hi →" cast) while desktop got the ranked
+  // v2 board — one product, two rooms. The header now swaps on the SAME flag, to the SAME surfaces
+  // fed the SAME live inputs as `audienceRailV2`, presented as a sheet instead of a column.
+  const audienceHeader = AMBIENT_V2_ENABLED ? (
+    <AmbientOverviewSheet
+      audience={effectiveAudience}
+      descriptors={ambientDescriptors}
+      reducedMotion={reducedMotion}
+      persistedSeals={persistedSimSeals}
+      focusVideo={focusVideo}
+      open={roomExpanded}
+      onOpenChange={handleRoomExpandedChange}
+    />
+  ) : (
+    <AudiencePresence {...presenceCommonProps} variant="header" />
+  );
 
   // ── Build-an-audience chooser host (UX-04 / D-03 / D-08) ────────────────────
   // onBuilt → the cloned General SIM becomes the active audience; onEvidence reuses
@@ -2242,53 +2411,63 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     audienceLabel: threadAudienceLabel,
   };
 
-  // A3 — Test/URL submit feedback. No thread view renders for the Test tool, so the
-  // submit→started→/analyze nav was a silent spinner. Echo the input (ThreadShell)
-  // + a live status line (ThreadAssistantTurn) while the run is in flight. Gated on
-  // the in-flight window only, so nothing lingers after navigation or an early error.
+  // Test in-flight feedback. The Test now runs the full Max pipeline (~2 min) IN-THREAD, then seals
+  // the card (no navigate-out) — so the wait needs the SAME run-capsule spine the in-thread Upload
+  // field + the flagship /analyze skeleton show, not a lone spinner. `analyzing` spans the whole
+  // stream-connected stretch (analyzing → any reconnect/poll dropback); `carding` is the card-adapter
+  // POST tail. useTestRunStages is called unconditionally (React rules) and idle until a Test runs.
+  const testAnalyzing =
+    stream.phase === "analyzing" ||
+    stream.phase === "reconnecting" ||
+    stream.phase === "polling";
+  const testRunStages = useTestRunStages({ analyzing: testAnalyzing, carding });
   const testSubmitPending =
-    activeTool === "test" && (submitting || stream.phase === "analyzing");
+    activeTool === "test" && (submitting || testAnalyzing || carding);
   const testSubmitTurn = testSubmitPending ? (
     <ThreadShell userTurn={lastUserTurn}>
       <ThreadAssistantTurn>
-        <div
-          className="flex items-center gap-2 text-sm text-foreground-muted"
-          aria-live="polite"
-        >
-          <Spinner size="sm" />
-          <span>
-            {/* Upload path stages a file first ("Uploading…"); the URL path goes
-                straight to the analysis POST. Both resolve to "Starting analysis…"
-                once the stream phase flips to analyzing. */}
-            {file && stream.phase !== "analyzing"
-              ? "Uploading your video…"
-              : "Starting analysis…"}
-          </span>
-        </div>
+        {/* Staging (a file is uploading, before the stream connects) has no clock yet — a lone
+            spinner reads honestly there. Once analyzing/carding, the 3-step spine carries the wait. */}
+        {submitting && file && !testAnalyzing && !carding ? (
+          <div className="flex items-center gap-2 text-sm text-foreground-muted" aria-live="polite">
+            <Spinner size="sm" />
+            <span>Uploading your video…</span>
+          </div>
+        ) : (
+          <div aria-live="polite" aria-atomic="false">
+            <p className="mb-2 text-[13px] font-medium text-foreground-secondary">
+              {SKILL_RUN_META.test!.running}
+            </p>
+            <ProgressChecklist stages={testRunStages} plan={SKILL_RUN_META.test!.plan} />
+          </div>
+        )}
       </ThreadAssistantTurn>
     </ThreadShell>
   ) : null;
 
   const threadContent = (
     <OpenRoomContext.Provider value={openRoomForCard}>
+     <SimulateVideoContext.Provider value={simulateVideoInRoom}>
      <InThreadInputContext.Provider value={inThreadInputValue}>
       <FollowupContext.Provider value={sendChatFollowup}>
+       {/* Card-CTA contexts lifted to the thread root (thread-unification Phase 1): any card rendered
+           through MessageBlocks — persisted stream OR live view — keeps its "Test full →" / "Write the
+           script →" / "Develop into hooks →" / "Develop this →" action. The callbacks already exist in
+           the composer; the per-skill views' own (nested, identical) providers stay for now (idempotent). */}
+       <PlatformContext.Provider value={platform}>
+        <HookTestContext.Provider value={handleTestHook}>
+         <HookWriteScriptContext.Provider value={handleWriteScript}>
+          <ScriptTestContext.Provider value={handleTestScript}>
+           <RemixDevelopContext.Provider value={handleDevelopRemix}>
       {testSubmitTurn}
-      {/* Profile thread view (05-06 — D-07) — the profile-read + reaction-distribution
-          blocks render here via the shared MessageBlocks renderer (registered in 05-01).
-          Not gated on any CARD tool: the evidence-drop affordance is the entry, and the
-          profile-read card carries its own Simulate CTA → reaction-distribution lands in
-          the SAME thread (SIMU-03). Sibling to the creator tool views — additive only.
-          EXCEPT the chat view: ChatThreadView renders the whole thread as ordered turns
-          (every block type, via the same MessageBlocks registry), so with chat active this
-          bucket would paint the SAME blocks a second time — live-caught when the chat
-          default (#316) met the tool-agnostic bucket (a Read-only thread restored to chat
-          and "The Read" rendered twice, 2026-07-17). */}
-      {!showChatView && persistedProfileBlocks.length > 0 && (
-        <div data-testid="profile-thread-view" className="px-1 py-4">
-          <MessageBlocks body={persistedProfileBlocks} />
-        </div>
-      )}
+      {/* THE UNIFIED PERSISTED STREAM (thread-unification Phase 2) — the ONE renderer of this thread's
+          history, ungated by activeTool. Renders every persisted turn (question + its blocks, ANY block
+          type, via the type-complete MessageBlocks registry), so markdown text beside cards, video-test
+          cards, account reads, and the profile-read family all rehydrate and survive reload + skill-switch.
+          The per-skill views below now render ONLY their live/in-flight run (streaming tail). This replaces
+          the old per-tool bucket partition (persistedIdeaBlocks/…/persistedProfileBlocks) + the profile
+          bucket render that used to live here. */}
+      <PersistedThreadStream persistedTurns={persistedStreamTurns} ambientBaseIndex={0} />
 
       {/* Ideas thread view — renders above the composer when the Idea tool is active.
           Consumes useIdeasStream state; provides PlatformContext to IdeaCardRenderer
@@ -2296,7 +2475,8 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           Plan 05-04: stages + followupText + error + onRetry wired (STUDIO-01/02 + W2). */}
       {showIdeasView && (
         <IdeasThreadView
-          persistedBlocks={persistedIdeaBlocks}
+          persistedBlocks={[]}
+          ambientBaseIndex={ambientLiveBaseIndex}
           streamingBlocks={ideasBlocks}
           statusMessage={ideas.statusMessage}
           stages={ideas.stages}
@@ -2318,7 +2498,8 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           Plan 05-04: stages + followupText + error + onRetry wired (STUDIO-01/02 + W2). */}
       {showHooksView && (
         <HooksThreadView
-          persistedBlocks={persistedHookBlocks}
+          persistedBlocks={[]}
+          ambientBaseIndex={ambientLiveBaseIndex}
           streamingBlocks={hooksBlocks}
           statusMessage={hooks.statusMessage}
           stages={hooks.stages}
@@ -2338,10 +2519,11 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
 
       {/* Script thread view — renders above the composer when the Script tool is active.
           Provides ScriptTestContext so ScriptCardRenderer's "Test full →" can fire.
-          Plan 06-05: script send NEVER navigates; no pendingNavRef (T-06-20). */}
+          Plan 06-05: script send NEVER navigates; no pendingSealRef (T-06-20). */}
       {showScriptView && (
         <ScriptThreadView
-          persistedBlocks={persistedScriptBlocks}
+          persistedBlocks={[]}
+          ambientBaseIndex={ambientLiveBaseIndex}
           streamingBlocks={scriptBlocks}
           stages={script.stages}
           warnings={script.warnings}
@@ -2360,10 +2542,11 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
 
       {/* Remix thread view — renders above the composer when the Remix tool is active.
           Provides RemixDevelopContext so RemixCardRenderer's "Develop into hooks →" can fire.
-          Plan 06-05: remix send NEVER navigates; no pendingNavRef (T-06-20). */}
+          Plan 06-05: remix send NEVER navigates; no pendingSealRef (T-06-20). */}
       {showRemixView && (
         <RemixThreadView
-          persistedBlocks={persistedRemixBlocks}
+          persistedBlocks={[]}
+          ambientBaseIndex={ambientLiveBaseIndex}
           streamingBlocks={remixBlocks}
           stages={remix.stages}
           followupText={remix.followupText}
@@ -2378,14 +2561,14 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
 
       {/* Chat thread view — renders above the composer when the Chat tool is active.
           ChatThreadView owns its own empty state + cold-start nudge + error state.
-          CRITICAL: chat send NEVER navigates; no pendingNavRef (D-05).
+          CRITICAL: chat send NEVER navigates; no pendingSealRef (D-05).
           Follow-up chips SEND A NEW CHAT MESSAGE into this same thread (sendChatFollowup) —
           the agent then routes it. No tool-switch, no blank re-run (the retired behavior).
           The chip tap fires ONLY on onClick — never auto-fires (D-05). */}
       {showChatView && (
         <ChatThreadView
-          persistedBlocks={persistedChatBlocks}
-          persistedTurns={persistedChatTurns}
+          persistedBlocks={[]}
+          persistedTurns={persistedStreamTurns}
           streamingBlocks={chatBlocks}
           streamingCardBlocks={chat.streamingBlocks}
           stages={chat.stages}
@@ -2407,9 +2590,13 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           outlier grids. Tile taps fire the discover→remix chain internally, surfacing the
           persisted remix-card via onThreadReload (in-place, RESEARCH Q2).
           CRITICAL: Explore NEVER navigates to /analyze — the starter's cards and onRetry
-          both call explore.start (no pendingNavRef, Pitfall 1). */}
+          both call explore.start (no pendingSealRef, Pitfall 1). */}
       {showExploreView && (
         <ExploreThreadView
+          // Explore keeps its own persisted grids (filtered out of PersistedThreadStream above): its
+          // OutlierGridBlockRenderer wires the Remix/Track handlers via props, which the generic
+          // MessageBlocks path can't forward — so rehydrating through the unified stream would render
+          // inert tiles. This view owns the handlers, so the persisted grid stays interactive on reload.
           persistedBlocks={persistedExploreBlocks}
           streamingBlocks={exploreBlocks}
           stages={explore.stages}
@@ -2434,8 +2621,14 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           userTurn={lastUserTurn}
         />
       )}
+           </RemixDevelopContext.Provider>
+          </ScriptTestContext.Provider>
+         </HookWriteScriptContext.Provider>
+        </HookTestContext.Provider>
+       </PlatformContext.Provider>
       </FollowupContext.Provider>
      </InThreadInputContext.Provider>
+    </SimulateVideoContext.Provider>
     </OpenRoomContext.Provider>
   );
 
@@ -2841,12 +3034,33 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           className,
         )}
       >
-        {/* P2 (A2b) — the mobile/tablet audience HEADER (<xl only; the rail owns ≥xl). A 68px bar
-            above the thread that expands DOWNWARD, top-anchored so it survives the keyboard (§2).
+        {/* P2 (A2b) — the mobile/tablet audience HEADER (<xl only; the rail owns ≥xl). A bar above
+            the thread that expands DOWNWARD, top-anchored so it survives the keyboard (§2).
             shrink-0 so it holds its height; the sheet blooms over the thread below (z-55). The
-            xl:hidden is belt-and-suspenders against the one-frame pre-hydration flash. */}
+            xl:hidden is belt-and-suspenders against the one-frame pre-hydration flash.
+
+            Positioning (2026-07-24): the audience bar IS the mobile top navigation, sharing its row
+            with ONE thing — the sidebar opener tab, immediately to its left at the same 45px height
+            (owner call). Every number here comes from `MOBILE_NAV` in Sidebar.tsx, which the fixed
+            tab lays itself out from too, so the pair cannot drift: the negative margin cancels the
+            band AppShell reserves for that tab, and the left inset is exactly gutter + tab + gap.
+            md:… hands the row back to a plain in-flow bar for md–xl, where the tab is hidden and the
+            band is zero. */}
         {useHeader && (
-          <div data-testid="audience-header-slot" className="relative z-10 shrink-0 px-4 pt-2 xl:hidden">
+          <div
+            data-testid="audience-header-slot"
+            // Custom properties, not inline margin/padding: an inline value would outrank the
+            // `md:` overrides and the tablet would keep the phone's inset.
+            style={
+              {
+                "--nav-mt": `-${MOBILE_NAV_BAND}px`,
+                "--nav-pt": `${MOBILE_NAV.top}px`,
+                "--nav-pl": `${MOBILE_NAV_BAR_INSET}px`,
+                "--nav-pr": `${MOBILE_NAV.gutter}px`,
+              } as React.CSSProperties
+            }
+            className="relative z-10 shrink-0 mt-[var(--nav-mt)] pl-[var(--nav-pl)] pr-[var(--nav-pr)] pt-[var(--nav-pt)] md:mt-0 md:px-4 md:pt-2 xl:hidden"
+          >
             <div className="mx-auto w-full max-w-[760px]">{audienceHeader}</div>
           </div>
         )}
@@ -2862,7 +3076,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           data-testid="composer-thread-region"
           className="flex-1 min-h-0 overflow-y-auto pb-[184px]"
         >
-          <div className="w-full max-w-[760px] mx-auto px-4">
+          <div className="w-full max-w-[760px] mx-auto px-2.5 sm:px-4">
             {/* A1: while a switch is rehydrating and no content has landed yet, fill the
                 scroll with the branded skeleton — never the prior thread's emptied views
                 or the centered serif hero. When the persisted blocks arrive (or it's a
@@ -2905,7 +3119,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
             BOX (see composerDock), which is where the card actually starts. Content is re-centered
             at 760px to align with the thread column above. */}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 pb-4">
-          <div className="w-full max-w-[760px] mx-auto px-4">
+          <div className="w-full max-w-[760px] mx-auto px-2.5 sm:px-4">
             {/* The six quick actions live ABOVE the field, never below it (owner call 2026-07-24):
                 below, they read as results of a chat that hasn't happened. Only on the post-pick
                 empty chat — once real content lands, the thread is the offer. */}

@@ -105,7 +105,10 @@ export function HomePageLayout() {
           "flex w-full flex-col",
           // Thread mode: fill remaining space (no max-w cap on the WRAPPER — the Composer caps its own
           // content at 760 via mx-auto), so the rail sits flush right. Empty/permalink stay centered.
-          threadMode ? "min-w-0 flex-1 min-h-0" : "max-w-[760px] px-4",
+          // NO horizontal padding in either mode: the Composer's own columns own the page gutter, and
+          // a gutter here too DOUBLED it — on the empty Start that was 32px of dead edge per side on a
+          // 390px phone (found measuring the owner's tighten-the-margins ask, 2026-07-24).
+          threadMode ? "min-w-0 flex-1 min-h-0" : "max-w-[760px]",
         )}
       >
         <Composer

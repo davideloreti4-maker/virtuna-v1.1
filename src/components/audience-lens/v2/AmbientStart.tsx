@@ -9,8 +9,10 @@
  *
  *   - a quiet time-of-day greeting (serif = the room's voice),
  *   - the STANDING CONDITIONS block — "Testing against" · ◇ audience (locked, L1) · scene ▾ ·
- *     fidelity ▾. This is the loud-at-birth form of the persistent strip that pins to the top of the
- *     thread once you're running (same control, two intensities — L4). NO auto-rank dial: the thin
+ *     scene ▾. Two labelled cells, side by side. This is the loud-at-birth form of the persistent
+ *     strip that pins to the top of the thread once you're running (same control, two intensities —
+ *     L4). The SIM fidelity dial is NOT here (owner call 2026-07-24): the model is a per-run choice
+ *     and it belongs on the composer, where the run is fired. NO auto-rank dial either: the thin
  *     rank is always-on, intrinsic to every skill, never a start-screen toggle,
  *   - the MAKE GRID — a quiet "Make something" kicker over the maker skills (Hook · Script · … ),
  *     each carrying a preset lens; grows as verticals are added,
@@ -188,12 +190,16 @@ function Pick({ value, options, onSelect }: { value: string; options: string[]; 
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-2 rounded-full px-3.5 py-2 text-[14px] transition-colors"
-        style={{ border: `1px solid ${TONE.hair}`, background: TONE.well, color: TONE.cream }}
+        // The CELLS are the even pair (an equal grid track each); the pill inside hugs its value —
+        // stretched to the full track it read as an empty input box on a 640px desktop card.
+        className="flex w-fit max-w-full items-center gap-2 rounded-full px-3.5 py-2 text-[14px] transition-colors"
+        // #242422 — the SKILL TILE fill. The dials are controls, not text, and the card ground went
+        // darker beneath them; sharing the tiles' tone makes every tappable thing on Start one family.
+        style={{ border: `1px solid ${TONE.hair}`, background: "#242422", color: TONE.cream }}
         onMouseEnter={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,.14)")}
         onMouseLeave={(e) => (e.currentTarget.style.borderColor = TONE.hair)}
       >
-        {value}
+        <span className="min-w-0 truncate">{value}</span>
         <svg width="9" height="9" viewBox="0 0 12 12" aria-hidden style={{ color: TONE.faint }}>
           <path d="M2.5 4.5L6 8l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
@@ -300,8 +306,12 @@ function AudiencePick({
         aria-expanded={open}
         aria-label={`Audience: ${label}. Switch audience`}
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-2 rounded-full px-3.5 py-2 text-[14px] transition-colors"
-        style={{ border: `1px solid ${TONE.hair}`, background: TONE.well, color: TONE.cream }}
+        // The CELLS are the even pair (an equal grid track each); the pill inside hugs its value —
+        // stretched to the full track it read as an empty input box on a 640px desktop card.
+        className="flex w-fit max-w-full items-center gap-2 rounded-full px-3.5 py-2 text-[14px] transition-colors"
+        // #242422 — the SKILL TILE fill. The dials are controls, not text, and the card ground went
+        // darker beneath them; sharing the tiles' tone makes every tappable thing on Start one family.
+        style={{ border: `1px solid ${TONE.hair}`, background: "#242422", color: TONE.cream }}
         onMouseEnter={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,.14)")}
         onMouseLeave={(e) => (e.currentTarget.style.borderColor = TONE.hair)}
       >
@@ -312,7 +322,7 @@ function AudiencePick({
           className="h-[5px] w-[5px] flex-none rounded-full"
           style={{ background: "var(--color-accent)", boxShadow: "0 0 0 3px var(--color-accent-soft)" }}
         />
-        {label}
+        <span className="min-w-0 truncate">{label}</span>
         <svg width="9" height="9" viewBox="0 0 12 12" aria-hidden style={{ color: TONE.faint }}>
           <path d="M2.5 4.5L6 8l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
@@ -350,17 +360,27 @@ function AudiencePick({
   );
 }
 
+/** A conditions ROW — its mono label on the left, its dial on the right. Two of these stack. */
+function ConditionRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex min-w-0 items-center justify-between gap-4">
+      <span className="font-mono text-[10px] uppercase tracking-[0.1em]" style={{ color: TONE.faint }}>
+        {label}
+      </span>
+      {children}
+    </div>
+  );
+}
+
 function ConditionsStrip({
   conditions,
   onScene,
-  onFidelity,
   audiences,
   selectedAudienceId,
   onSelectAudience,
 }: {
   conditions: StartConditions;
   onScene?: (v: string) => void;
-  onFidelity?: (v: string) => void;
   // When these are supplied (the pre-thread Start surface), the audience is a real CHOICE (picker).
   // Absent (the in-thread reuse / dev fixture) → the audience stays LOCKED (non-interactive span).
   audiences?: Audience[];
@@ -368,56 +388,57 @@ function ConditionsStrip({
   onSelectAudience?: (a: Audience) => void;
 }) {
   const [scene, setScene] = useState(conditions.scene);
-  const [fidelity, setFidelity] = useState(conditions.fidelity);
   const audienceSelectable = !!onSelectAudience && !!audiences;
   return (
     <div className="mt-7">
       <div className="font-mono text-[11px] uppercase tracking-[0.09em]" style={{ color: TONE.faint }}>
         Testing against
       </div>
-      <div className="mt-3 flex flex-wrap items-center gap-2 text-[14px]">
-        {audienceSelectable ? (
-          // Pre-thread Start: pick the audience here (no thread yet to lock to).
-          <AudiencePick
-            label={conditions.audience}
-            audiences={audiences!}
-            selectedAudienceId={selectedAudienceId ?? null}
-            onSelectAudience={onSelectAudience!}
-          />
-        ) : (
-          // In-thread reuse: audience is locked for the thread (L1) — no ▾, dimmer, non-interactive.
-          <span
-            className="flex cursor-default items-center gap-2 rounded-full px-3.5 py-2"
-            style={{ border: `1px solid ${TONE.border}`, background: "transparent", color: TONE.dim }}
-            title="Locked for this thread — a new audience means a new thread"
-          >
-            <span
-              aria-hidden
-              className="h-[5px] w-[5px] flex-none rounded-full"
-              style={{ background: "var(--color-accent)", boxShadow: "0 0 0 3px var(--color-accent-soft)" }}
+      {/* TWO ROWS, stacked — one per dial (owner call 2026-07-24, corrected from the side-by-side
+          first pass: two columns still read as a single row). Each row names its dial on the left
+          and carries it on the right, so the pair reads as a short config list rather than a
+          sentence. The old inline "General as TikTok · SIM-1 Flash" run had no per-control labels
+          (the reader inferred what each pill WAS from its value) and at 390px it wrapped
+          mid-sentence, breaking "as" away from what it joined. The SIM fidelity dial is gone from
+          Start entirely: the model is a per-run choice and it lives on the composer, where the run
+          is actually fired. */}
+      <div className="mt-3 flex flex-col gap-2.5 text-[14px]">
+        <ConditionRow label="Audience">
+          {audienceSelectable ? (
+            // Pre-thread Start: pick the audience here (no thread yet to lock to).
+            <AudiencePick
+              label={conditions.audience}
+              audiences={audiences!}
+              selectedAudienceId={selectedAudienceId ?? null}
+              onSelectAudience={onSelectAudience!}
             />
-            {conditions.audience}
-            <span aria-hidden style={{ color: TONE.ghost, fontSize: 11 }}>⤫</span>
-          </span>
-        )}
-        <span aria-hidden style={{ color: TONE.faint }}>as</span>
-        <Pick
-          value={scene}
-          options={conditions.sceneOptions}
-          onSelect={(v) => {
-            setScene(v);
-            onScene?.(v);
-          }}
-        />
-        <span aria-hidden className="mx-1 inline-block h-3.5 w-px" style={{ background: TONE.hair }} />
-        <Pick
-          value={fidelity}
-          options={conditions.fidelityOptions}
-          onSelect={(v) => {
-            setFidelity(v);
-            onFidelity?.(v);
-          }}
-        />
+          ) : (
+            // In-thread reuse: audience is locked for the thread (L1) — no ▾, dimmer, non-interactive.
+            <span
+              className="flex w-full cursor-default items-center gap-2 rounded-full px-3.5 py-2"
+              style={{ border: `1px solid ${TONE.border}`, background: "transparent", color: TONE.dim }}
+              title="Locked for this thread — a new audience means a new thread"
+            >
+              <span
+                aria-hidden
+                className="h-[5px] w-[5px] flex-none rounded-full"
+                style={{ background: "var(--color-accent)", boxShadow: "0 0 0 3px var(--color-accent-soft)" }}
+              />
+              <span className="min-w-0 flex-1 truncate">{conditions.audience}</span>
+              <span aria-hidden style={{ color: TONE.ghost, fontSize: 11 }}>⤫</span>
+            </span>
+          )}
+        </ConditionRow>
+        <ConditionRow label="Scene">
+          <Pick
+            value={scene}
+            options={conditions.sceneOptions}
+            onSelect={(v) => {
+              setScene(v);
+              onScene?.(v);
+            }}
+          />
+        </ConditionRow>
       </div>
     </div>
   );
@@ -428,7 +449,6 @@ function ConditionsStrip({
 export function AmbientStart({
   data,
   onScene,
-  onFidelity,
   onSkill,
   activeSkillId,
   audiences,
@@ -437,7 +457,6 @@ export function AmbientStart({
 }: {
   data: StartData;
   onScene?: (v: string) => void;
-  onFidelity?: (v: string) => void;
   onSkill?: (skillId: string) => void;
   /** Accepted for the eventual post-pick compose step; the Start card itself has no free-text box. */
   onSubmit?: (text: string) => void;
@@ -468,10 +487,15 @@ export function AmbientStart({
         data-testid="ambient-start"
         // 760 — the composer dock's width. Start sits directly ABOVE the field on the empty home,
         // so the two must share an edge; a wider card would float off the column it introduces.
-        className="ambient-row-in flex w-full max-w-[760px] flex-col rounded-[20px] px-7 pb-6 pt-7"
+        // px-5 on a phone, px-7 from sm: 28px of card padding on top of the page gutter left a
+        // narrow reading column on a 390px screen (owner ask — tighten the side margins).
+        className="ambient-row-in flex w-full max-w-[760px] flex-col rounded-[20px] px-5 pb-6 pt-7 sm:px-7"
         style={{
           color: TONE.cream,
-          background: "#1f1f1e",
+          // #181817 — the v2 room's ground. It was #1f1f1e, byte-identical to the page behind it, so
+          // the card had no surface of its own: only its 6% hairline said it was a card at all. Going
+          // DARKER than the page turns it into a well the chips and tiles sit inside (owner call).
+          background: "#181817",
           border: `1px solid ${TONE.border}`,
           // matte system: a shadow that SEPARATES, not one that floats. The card now sits directly
           // above the composer, and a heavy drop read as two unrelated slabs.
@@ -487,7 +511,6 @@ export function AmbientStart({
         <ConditionsStrip
           conditions={conditions}
           onScene={onScene}
-          onFidelity={onFidelity}
           audiences={audiences}
           selectedAudienceId={selectedAudienceId}
           onSelectAudience={onSelectAudience}

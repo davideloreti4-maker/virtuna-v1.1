@@ -313,6 +313,11 @@ function Receipts({
   onInterview?: (who: string) => void;
   onJumpToBrain?: (moment: string) => void;
 }) {
+  // No coded reasons ⇒ NO section. A kicker with nothing under it is an orphaned label (the same
+  // defect as the cast footer that rendered "on call" above zero avatars). A VIDEO sim reaches here
+  // legitimately empty: the fold emits no per-viewer objections, and its real "why" is the Brain
+  // tab's measured-dip read. We never invent a reason to keep a heading company.
+  if (reasons.length === 0) return null;
   const leaking = reasons.filter((r) => r.loss);
   const holding = reasons.filter((r) => !r.loss);
   return (
