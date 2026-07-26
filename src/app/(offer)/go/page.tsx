@@ -122,19 +122,33 @@ export default function OfferPage() {
       {/* honest credibility strip, directly under the hero */}
       <PlatformBar />
 
-      {/* the rest of the page — the persuasion arc, in alternating tone-zones */}
+      {/*
+        The persuasion arc, in alternating tone-zones: stakes → mechanism →
+        authority → the ask → risk reversal → objections → close.
+
+        Order is a conversion decision, not a list:
+        • Pricing sits directly after ProofMechanism. It used to be 6,500px down,
+          behind an empty demo band and an empty testimonial grid — a convinced
+          visitor had to scroll past two unfinished sections to find the ask.
+        • DemoVideo moved BELOW the ask precisely because its slot is still empty.
+          When a real walkthrough lands in it, move it back up to just after
+          HowItWorks — seeing the product move belongs before the price.
+        • Testimonials moved below the ask too: "we have no quotes yet" was the
+          last thing read before the price. After it, the same section reads as an
+          invitation to the founding cohort.
+      */}
       <Transformation />
-      <DemoVideo />
       <HowItWorks />
       <ProofMechanism />
-      <Testimonials />
       <Pricing />
       <Guarantee />
+      <DemoVideo />
+      <Testimonials />
       <Faq />
       <FinalCta />
       <OfferFooter />
 
-      {/* always-available mobile close */}
+      {/* always-available close — a bottom bar on mobile, a pill on desktop */}
       <StickyCta />
     </main>
   );

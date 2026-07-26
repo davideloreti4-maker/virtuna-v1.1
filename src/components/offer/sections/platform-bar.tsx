@@ -1,19 +1,26 @@
 import { TiktokLogo } from "@phosphor-icons/react/dist/ssr";
-import { BlurFade } from "@/components/velora/blur-fade";
+import { Reveal } from "@/components/offer/motion/reveal";
 
 /**
  * PlatformBar — a slim honest credibility strip directly under the hero. NOT a
- * fake logo wall: it states only true facts (built for TikTok, corpus size,
- * privacy posture, honest roadmap). Establishes trust in one glance before the
- * argument begins, without borrowing credibility we haven't earned.
+ * fake logo wall: it states only true facts, and each one is a fact no OTHER
+ * section already states.
  *
- * Matte + muted by design — this recedes; it is a floor of facts, not a claim.
+ * Two corrections live here:
+ *  • It used to repeat "trained on 500 dissected viral videos" and the viewer
+ *    count within 400px of the hero saying the same thing. Duplicated claims read
+ *    as thin, not emphatic — the numbers now live once, in ProofMechanism.
+ *  • It used to claim "your videos stay on TikTok — never uploaded". That is
+ *    false: `/api/analyze` re-hosts a `tiktok_url` (resolveAndRehost) and stores
+ *    a `video_upload` in Supabase storage in order to read frames. The honest
+ *    claim — the one we can actually stand behind — is that your RESULTS are
+ *    private to your account. Never restore the old wording.
  */
 
 const CHIPS: readonly { label: string; muted?: boolean }[] = [
-  { label: "Trained on 500 dissected viral videos" },
-  { label: "1,000-viewer simulation per video" },
-  { label: "Your videos stay on TikTok — never uploaded" },
+  { label: "Reads the video frame by frame" },
+  { label: "A simulated room reacts, in character" },
+  { label: "Your results are private to your account" },
   { label: "Instagram Reels & YouTube Shorts — coming soon", muted: true },
 ];
 
@@ -21,14 +28,14 @@ export function PlatformBar() {
   return (
     <div className="border-y border-border bg-surface-sunken/40">
       <div className="mx-auto max-w-6xl px-5 py-5">
-        <BlurFade delay={0.05}>
-          <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2.5 text-center">
+        <Reveal gesture="rise" duration={0.5}>
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2.5 text-center">
             <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-foreground-secondary">
               <TiktokLogo size={16} weight="fill" className="text-foreground" aria-hidden />
               Built for TikTok
             </span>
             {CHIPS.map((chip) => (
-              <span key={chip.label} className="inline-flex items-center gap-5">
+              <span key={chip.label} className="inline-flex items-center gap-4">
                 <span aria-hidden className="hidden h-3 w-px bg-border sm:block" />
                 <span
                   className={
@@ -42,7 +49,7 @@ export function PlatformBar() {
               </span>
             ))}
           </div>
-        </BlurFade>
+        </Reveal>
       </div>
     </div>
   );
