@@ -94,6 +94,39 @@ describe("readSimSeals", () => {
     expect(map.noCurve).toEqual({ pct: 41, band: null, at: "t" });
     expect(map.noId).toEqual({ pct: 42, band: null, at: "t" });
   });
+
+  it("passes through well-formed action INTENTS on the video blob", () => {
+    const intents = {
+      share: 38, save: 48, comment: 45, rewatch: 21,
+      watchThroughPct: 69, total: 10, actors: 8, inert: 2, watchedButInert: 1,
+    };
+    const video = { analysisId: "a1", stopPct: 41, heatmap: { weighted_curve: [0.8] }, intents };
+    const map = readSimSeals({ sim_seals: { k: { pct: 41, band: null, at: "t", video } } as never });
+    expect(map.k!.video!.intents).toEqual(intents);
+  });
+
+  it("drops a malformed intents payload but KEEPS the video (the Brain read survives)", () => {
+    // These numbers get printed as a sentence ("Share leads at 38"), so a string or a hole would
+    // render "leads at NaN" rather than fail visibly — hence a stricter guard than its siblings.
+    const heatmap = { weighted_curve: [0.8] };
+    const map = readSimSeals({
+      sim_seals: {
+        stringy: {
+          pct: 41, at: "t",
+          video: { analysisId: "a", stopPct: 4, heatmap, intents: { share: "38", save: 48, comment: 45, watchThroughPct: 69, total: 10, actors: 8, inert: 2, watchedButInert: 1 } },
+        },
+        holed: {
+          pct: 42, at: "t",
+          video: { analysisId: "a", stopPct: 4, heatmap, intents: { share: 38, save: 48 } },
+        },
+      } as never,
+    });
+    expect(map.stringy!.video!.intents).toBeUndefined();
+    expect(map.holed!.video!.intents).toBeUndefined();
+    // the seal and its Brain payload are untouched
+    expect(map.stringy!.video!.analysisId).toBe("a");
+    expect(map.holed!.pct).toBe(42);
+  });
 });
 
 /** A supabase mock whose update→eq resolves { error }, capturing the update payload. */

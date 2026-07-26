@@ -21,6 +21,7 @@ const foldPersona = (
   archetype: string,
   slot_type: PersonaSimulationResult["slot_type"],
   scroll_past_second: number,
+  intents: [share: number, save: number, comment: number, rewatch: number] = [0, 0, 0, 0],
 ): PersonaSimulationResult =>
   ({
     persona_id: `${slot_type}-${archetype}`,
@@ -29,10 +30,10 @@ const foldPersona = (
     niche: "general",
     scroll_past_second,
     watch_through_pct: scroll_past_second === 0 ? 90 : 30,
-    comment_intent: 0,
-    share_intent: 0,
-    save_intent: 0,
-    rewatch_intent: 0,
+    share_intent: intents[0],
+    save_intent: intents[1],
+    comment_intent: intents[2],
+    rewatch_intent: intents[3],
     reasoning: `fold-derived: ${archetype}`,
   }) as PersonaSimulationResult;
 
@@ -245,6 +246,68 @@ describe("AmbientOverviewRail", () => {
     // and NO receipts heading: a video fold codes no per-viewer reasons, so the section omits itself
     // rather than printing a kicker over nothing (the orphaned-label defect).
     expect(screen.queryByText(/Why · coded from/)).toBeNull();
+    // no action profile on this seal either — it predates the intents, so the section is simply gone
+    expect(screen.queryByText(/what they’d do with it/i)).toBeNull();
+  });
+
+  it("a drilled VIDEO renders the action profile when its seal carries the intents", () => {
+    const personas = [
+      foldPersona("tough_crowd", "fyp", 2.8),
+      foldPersona("lurker", "fyp", 0),
+      foldPersona("high_engager", "fyp", 0, [45, 30, 60, 20]),
+      foldPersona("loyalist", "loyalist", 0, [50, 40, 80, 30]),
+      foldPersona("cross_niche_curiosity", "cross_niche", 8.5, [15, 10, 5, 0]),
+    ];
+    // producer → seal → drill, off the REAL `vSoTpo5AixUS` aggregate — no hand-written section blob
+    const fold = buildVideoPopulation({
+      personas,
+      heatmap: {
+        segments: [{ idx: 0, t_start: 0, t_end: 3, is_hook_zone: true, keyframe_uri: null }],
+        weights: { fyp: 0.65, niche: 0.2, loyalist: 0.1, cross_niche: 0.05 },
+      } as never,
+      aggregate: {
+        completion_pct: 68.8,
+        share_pct: 38.285714285714285,
+        save_pct: 48.142857142857146,
+        comment_pct: 44.971428571428575,
+        loop_pct: 21,
+      } as never,
+    })!;
+    render(
+      <AmbientOverviewRail
+        audience={audience}
+        descriptors={descriptors}
+        reducedMotion
+        persistedSeals={{
+          "an-1": {
+            pct: 62, band: null, at: "",
+            population: fold.aggregate,
+            video: {
+              analysisId: "an-1", stopPct: 62, craftScore: 84,
+              heatmap: { weighted_curve: [0.9, 0.5, 0.6], segments: [] },
+              videoSignals: null,
+              verbatim: { hook: { spoken_words: "Here is the money truth" } },
+              skimmedPct: fold.skimmedPct,
+              intents: fold.intents,
+            },
+          } as never,
+        }}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Here is the money truth/ })); // reveal
+    fireEvent.click(screen.getByRole("button", { name: /Here is the money truth/ })); // drill
+    fireEvent.click(screen.getByRole("button", { name: /The audience/ }));
+
+    expect(screen.getByText(/what they’d do with it/i)).toBeInTheDocument();
+    // the four verbs, and the real headcount off the real cast (3 of 5 carry any intent)
+    expect(screen.getByText("rewatch")).toBeInTheDocument();
+    expect(screen.getByText(/3 of 5/)).toBeInTheDocument();
+    // the read GROUPS the head — save tops comment by 3 points, which is sort order, not a finding
+    expect(screen.getByText(/run together \(38–48\); rewatch is the floor at 21\./)).toBeInTheDocument();
+    // and the denominator is stated: these are not rates
+    expect(screen.getByText(/not a room average/)).toBeInTheDocument();
+    // the section it sits beside stays absent — intent is not a reach claim
+    expect(screen.queryByText(/who spreads it/i)).toBeNull();
   });
 
   it("a focusVideo request opens that video's depth directly — the Test card's door", () => {

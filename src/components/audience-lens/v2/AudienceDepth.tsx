@@ -6,6 +6,9 @@
  * Each section carries a read the map + ledger + tri-state can't:
  *   ① IndexBars    — who this is for (over/under-index vs the creator's typical audience → targeting)
  *   ② Amplification — who spreads it · how far (the reshare cascade / reach depth + carrier segments)
+ *   ②b ActionIntent — what they'd DO with it (the room's action profile; VIDEO only). Fills the slot
+ *      ② omits itself from on a video run, and answers a NARROWER question on purpose: intent, not
+ *      reach. No multiplier, no cascade, no carriers — we hold what they'd do, not how far it travels.
  *   ③ Swing        — the swing · your upside (the fence-sitters + the verdict move if you win them)
  *   ④ RoomStrip    — the room · trust (sample · calibration · confidence — a richer calibration line)
  *
@@ -16,7 +19,13 @@
 import { motion } from "motion/react";
 import { useCountUp } from "@/hooks/useCountUp";
 import { TONE, Kick } from "./AmbientDetail";
-import type { AmplificationData, AudienceFitData, RoomTrustData, SwingData } from "./domain-template";
+import type {
+  ActionIntentData,
+  AmplificationData,
+  AudienceFitData,
+  RoomTrustData,
+  SwingData,
+} from "./domain-template";
 
 const fmt = (n: number) => n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
@@ -163,6 +172,87 @@ export function Amplification({ data }: { data: AmplificationData }) {
 
       <p className="mt-3 text-[13px] leading-[1.5]" style={{ color: TONE.dim }}>
         {data.read}
+      </p>
+    </div>
+  );
+}
+
+// ── ②b what they'd do with it · the action profile (VIDEO only) ────────────────
+
+/** The bar scale. The verbs are a 0–100 intent index, so the axis is the index itself — NOT the
+ *  row max. A max-relative scale would redraw the leader at full width on every video and erase the
+ *  one thing this section measures: how much intent there actually is. */
+const INTENT_MAX = 100;
+
+export function ActionIntent({ data }: { data: ActionIntentData }) {
+  return (
+    <div className="mt-9">
+      <div className="flex items-start justify-between">
+        <Kick tag="modeled intent">what they&rsquo;d do with it</Kick>
+        {/* The watch-through rate rides HERE, apart from the bars, because it is a different kind of
+            number: a real flat mean of the cast's watch-through, not a weighted intent index. */}
+        <span className="flex items-baseline gap-1.5">
+          <span className="text-[24px] font-light leading-none tabular-nums" style={{ color: TONE.cream }}>
+            {Math.round(data.watchThroughPct)}%
+          </span>
+          <span className="font-mono text-[9px] uppercase leading-tight tracking-[0.06em]" style={{ color: TONE.faint }}>
+            avg watch
+            <br />
+            through
+          </span>
+        </span>
+      </div>
+
+      <div className="mt-4">
+        {data.rows.map((r) => {
+          const frac = Math.min(1, Math.max(0, r.value) / INTENT_MAX);
+          return (
+            <div key={r.label} className="flex items-center gap-3 py-[6px]">
+              <span className="w-[72px] flex-none text-[14px]" style={{ color: TONE.dim }}>
+                {r.label}
+              </span>
+              <span className="relative h-[6px] flex-1 rounded-full" style={{ background: "rgba(255,255,255,.05)" }}>
+                <span
+                  className="absolute inset-y-0 left-0 rounded-full"
+                  style={{ width: `${(frac * 100).toFixed(1)}%`, background: "rgba(236,231,222,.62)" }}
+                />
+              </span>
+              <span
+                className="w-[40px] flex-none text-right font-mono text-[12px] tabular-nums"
+                style={{ color: "rgba(236,231,222,.55)" }}
+              >
+                {Math.round(r.value)}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* the real headcounts — unweighted, exact, and the only figures here that are counts of people */}
+      <div className="mt-3.5 font-mono text-[11px]" style={{ color: TONE.faint }}>
+        <span className="tabular-nums" style={{ color: "rgba(236,231,222,.6)" }}>
+          {data.actors} of {data.total}
+        </span>{" "}
+        would act
+        {data.inert > 0 ? (
+          <>
+            {" · "}
+            <span className="tabular-nums">{data.inert}</span> would do nothing
+            {data.watchedButInert > 0 ? (
+              <>
+                {" · "}
+                <span className="tabular-nums">{data.watchedButInert}</span> of those watched it through
+              </>
+            ) : null}
+          </>
+        ) : null}
+      </div>
+
+      <p className="mt-2.5 text-[13px] leading-[1.5]" style={{ color: TONE.dim }}>
+        {data.read}
+      </p>
+      <p className="mt-1.5 font-mono text-[10px]" style={{ color: "rgba(236,231,222,.3)" }}>
+        {data.note}
       </p>
     </div>
   );

@@ -16,7 +16,7 @@
 import { useMemo, useState } from "react";
 import { TONE, Kick, HowToRead, type CodedReason, type SegmentStop, type TerrainCluster, type TriState } from "./AmbientDetail";
 import { TerrainMap } from "./AudienceTerrain";
-import { IndexBars, Amplification, Swing, RoomStrip } from "./AudienceDepth";
+import { IndexBars, Amplification, ActionIntent, Swing, RoomStrip } from "./AudienceDepth";
 import type { DecisionStatesData, DemandCurveData, DomainTemplate, PopulationFrameData, PopulationMain } from "./domain-template";
 
 // ── the shared dot vocabulary — a node-bar (units = people, lit share = the rate) ─────
@@ -394,6 +394,9 @@ export function PopulationFrame({
       {/* who this is for → who spreads it (targeting + reach — the reads the map can't make) */}
       {population.audienceFit ? <IndexBars data={population.audienceFit} reducedMotion={reducedMotion} /> : null}
       {population.amplification ? <Amplification data={population.amplification} /> : null}
+      {/* what they'd DO with it — the video-only action profile; sits in the slot amplification
+          omits itself from on a fold run (intent, not reach) */}
+      {population.actionIntent ? <ActionIntent data={population.actionIntent} /> : null}
       {population.segments ? <Segments title={population.segments.title} rows={population.segments.rows} /> : null}
       <Receipts
         kicker={population.voices.kicker}

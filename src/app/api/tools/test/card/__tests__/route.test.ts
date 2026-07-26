@@ -110,32 +110,49 @@ function brainRow(overrides: Record<string, unknown> = {}) {
   });
 }
 
-/** A brain row that ALSO carries the fold cast — `analysis_results.personas`, in its real shape. */
-function mockSupabaseWithFold() {
-  const foldPersona = (archetype: string, slot_type: string, scroll_past_second: number) => ({
+/** A brain row that ALSO carries the fold cast — `analysis_results.personas`, in its real shape,
+ *  plus the `persona_behavioral_aggregate` that rides with it on every real row (one Wave-3 gate). */
+function mockSupabaseWithFold(aggregate: unknown = FOLD_AGGREGATE) {
+  const foldPersona = (
+    archetype: string,
+    slot_type: string,
+    scroll_past_second: number,
+    intents: [number, number, number, number] = [0, 0, 0, 0],
+  ) => ({
     persona_id: `${slot_type}-${archetype}`,
     archetype,
     slot_type,
     niche: "general",
     scroll_past_second,
     watch_through_pct: scroll_past_second === 0 ? 90 : 30,
-    comment_intent: 0,
-    share_intent: 0,
-    save_intent: 0,
-    rewatch_intent: 0,
+    share_intent: intents[0],
+    save_intent: intents[1],
+    comment_intent: intents[2],
+    rewatch_intent: intents[3],
     reasoning: `fold-derived: ${archetype}`,
   });
   return makeSupabase(
     "user-1",
     brainRow({
       personas: [
+        // tough_crowd + lurker carry nothing; only the cross-niche viewer would act
         foldPersona("tough_crowd", "fyp", 2.8),
         foldPersona("lurker", "fyp", 0),
-        foldPersona("cross_niche_curiosity", "cross_niche", 8.5),
+        foldPersona("cross_niche_curiosity", "cross_niche", 8.5, [15, 10, 5, 0]),
       ],
+      persona_behavioral_aggregate: aggregate,
     }),
   );
 }
+
+/** The engine's own weighted intent read, shaped as it lands on a real row. */
+const FOLD_AGGREGATE = {
+  completion_pct: 58,
+  share_pct: 35.857142857142854,
+  save_pct: 8.285714285714286,
+  comment_pct: 30.857142857142858,
+  loop_pct: 15.285714285714286,
+};
 
 function makeSupabase(userId: string | null, row: unknown, rowErr: unknown = null) {
   const builder: Record<string, unknown> = {};
@@ -267,6 +284,23 @@ describe("POST /api/tools/test/card", () => {
     expect(seal.population.reasons).toEqual([]);
     // the third band a video can honestly report: cross_niche bailed at 8.5s — after the hook
     expect(seal.video.skimmedPct).toBe(33);
+    // …and what they'd DO with it: the engine's weighted verbs, rounded, plus real headcounts
+    expect(seal.video.intents).toEqual({
+      share: 36, save: 8, comment: 31, rewatch: 15,
+      watchThroughPct: 58,
+      total: 3, actors: 1, inert: 2,
+      // of the two inert reactors only the lurker never scrolled away
+      watchedButInert: 1,
+    });
+  });
+
+  it("seals NO intents when the row carries no behavioral aggregate (degraded Wave 3)", async () => {
+    mockCreateClient.mockResolvedValue(mockSupabaseWithFold(null));
+    expect((await callPOST({ analysisId: "an-1" })).status).toBe(200);
+    const [, , , seal] = mockWriteSimSeal.mock.calls[0]!;
+    // the reception panel still seals — only the action profile is absent
+    expect(seal.population.total).toBe(3);
+    expect(seal.video.intents).toBeUndefined();
   });
 
   it("skips the video seal when the hold is unreadable (no fabricated %)", async () => {

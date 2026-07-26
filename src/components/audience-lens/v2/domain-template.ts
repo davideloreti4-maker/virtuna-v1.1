@@ -174,6 +174,28 @@ export interface AmplificationData {
   read: string;
 }
 
+/**
+ * What they'd do with it — the room's ACTION profile (VIDEO only: a text sim's verdict is
+ * stop/scroll, it has no action axis).
+ *
+ * NOT amplification: there is no reach claim here — no multiplier, no cascade, no carrier ranking.
+ * We hold intent, not distribution, and the per-archetype ranking is a constant of the persona
+ * registry rather than a read on the video (see `ambient-v2-video-population.ts` §5).
+ */
+export interface ActionIntentData {
+  /** The action verbs, strongest first. `value` is a 0–100 intent INDEX, not a rate — see `note`. */
+  rows: { label: string; value: number }[];
+  /** The real population rate (flat mean of watch-through). A DIFFERENT kind of number from `rows`,
+   *  so it rides the header as its own figure and never joins the bar set. */
+  watchThroughPct: number;
+  total: number; // the real cast
+  actors: number; // …with any action intent above zero
+  inert: number; // …at zero on every verb
+  watchedButInert: number; // …of those, the ones who never scrolled away
+  read: string; // one sentence, two facts: what leads (or runs together) + what the floor is
+  note: string; // the denominator disclosure (the weighting)
+}
+
 /** The swing · your upside — the fence-sitters and the verdict move if you win them. */
 export interface SwingData {
   nearMiss: number; // people stalled right at the line
@@ -237,6 +259,9 @@ export interface PopulationFrameData {
   // ── audience-depth sections (optional; creator authors them) ──
   audienceFit?: AudienceFitData; // who this is for · vs your typical
   amplification?: AmplificationData; // who spreads it · how far
+  /** ◇ optional — what they'd DO with it (VIDEO only). Sits in the slot `amplification` omits itself
+   *  from on a video run: it answers the neighbouring question honestly (intent, not reach). */
+  actionIntent?: ActionIntentData;
   swing?: SwingData; // the swing · your upside
   room?: RoomTrustData; // the room · trust strip (richer replacement for `calibration.note`)
 }

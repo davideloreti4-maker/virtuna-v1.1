@@ -54,6 +54,7 @@ import type {
   CounterfactualResult,
   GeminiVideoSignals,
   HeatmapPayload,
+  PersonaBehavioralAggregate,
   PersonaSimulationResult,
   VerbatimPayload,
 } from "@/lib/engine/types";
@@ -199,6 +200,11 @@ export async function POST(request: Request): Promise<Response> {
       const foldPopulation = buildVideoPopulation({
         personas: (row as { personas?: PersonaSimulationResult[] | null }).personas ?? [],
         heatmap,
+        // The engine's own weighted intent read — the action profile's four verbs. Co-present with
+        // `personas` on every real row (one Wave-3 gate, 10-or-0), so it adds no new empty state.
+        aggregate:
+          (row as { persona_behavioral_aggregate?: PersonaBehavioralAggregate | null })
+            .persona_behavioral_aggregate ?? null,
       });
       await writeSimSeal(supabase, openThread, analysisId, {
         pct: Math.max(0, Math.min(100, Math.round(hold * 100))),
@@ -213,6 +219,7 @@ export async function POST(request: Request): Promise<Response> {
           videoSignals: variants?.craft?.video_signals ?? null,
           verbatim: source.verbatim,
           ...(foldPopulation ? { skimmedPct: foldPopulation.skimmedPct } : {}),
+          ...(foldPopulation?.intents ? { intents: foldPopulation.intents } : {}),
         },
       });
     }

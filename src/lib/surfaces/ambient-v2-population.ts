@@ -18,6 +18,7 @@
  */
 
 import type { PopulationAggregate } from "@/lib/audience/population";
+import { buildActionIntent, type VideoActionIntent } from "./ambient-v2-video-population";
 import type {
   CodedReason,
   TerrainCluster,
@@ -74,6 +75,13 @@ export interface PopulationSnapshotInput {
    * Bounded by `stopPct` (a skimmer stopped first), so the three bands always sum to 100.
    */
   skimmedPct?: number;
+  /**
+   * What the room would DO with it — the fold's action intents, as sealed. VIDEO only: a text sim's
+   * verdict is binary stop/scroll, so it has no action axis at all and honestly omits the section
+   * (the same shape as `skimmedPct`). The one-line read is derived HERE from these numbers rather
+   * than sealed alongside them, so the copy stays editable without a re-seal.
+   */
+  actionIntent?: VideoActionIntent;
 }
 
 // ── terrain layout (cosmetic placement of the real districts in the 380×210 viewBox) ──────────────
@@ -227,6 +235,9 @@ export function buildPopulationFrameData(input: PopulationSnapshotInput): Popula
     // ── modeled-depth parity (Phase-C ②) — the fuller society read; carried by the one calibration line ──
     audienceFit: modeledAudienceFit(agg),
     amplification: modeledAmplification(agg),
+    // what they'd DO with it — real only on a video (the fold's action intents); a text sim has no
+    // action axis, so the section is absent rather than zeroed.
+    ...(input.actionIntent ? { actionIntent: buildActionIntent(input.actionIntent) } : {}),
     swing: modeledSwing(agg),
     room: roomTrust(agg, calibratedFrom, tier),
   };

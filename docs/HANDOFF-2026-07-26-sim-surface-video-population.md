@@ -144,10 +144,14 @@ Rows owned by the e2e user: `vSoTpo5AixUS` (29s, 10 personas) · `-pCnMyJKF6zz` 
 
 ## 7. ▶▶ NEXT
 
-1. **Real amplification from `share_intent`.** The fold stores per-persona `share_intent` /
-   `save_intent` / `comment_intent` / `rewatch_intent` and the aggregate carries honest percentile
-   labels. That is the true "who spreads it" producer, and the richest video-only slice still not
-   surfaced anywhere. It needs a real slot — `PopulationFrameData` has no intents section.
+1. ~~**Real amplification from `share_intent`.**~~ ✅ **SHIPPED** — but NOT as amplification. Measured
+   across every 10-persona prod row: `sharer` tops `share_intent` on 9 of the 9 rows where a Sharer is
+   cast, `lurker` sits at 0–2 share on all of them, `tough_crowd` rewatch is always 0. **The carrier
+   ranking is decided by the persona registry, not by the video**, so a "who spreads it" list would
+   print the same winner forever — the tie defect wearing a foregone conclusion. What DOES move per
+   video is the room-level profile (save alone spans 6 → 48), so the section reports that and makes no
+   reach claim. Landed as `PopulationFrameData.actionIntent` + `SimSealVideo.intents` (jsonb, no
+   migration). See §10.
 2. **`SimulateIntake` / `mode="cold"`** — still mounted nowhere.
 3. **Does a simulation need to persist as a thread card?** Owner call this session: **no, the rail
    only, for now.** Worth revisiting — the room is ephemeral, so unlike every other skill a Sim
@@ -230,3 +234,64 @@ rollback lever) is spent on the same deploy that introduced the risk.
 - **Crons: read the SCHEDULED-fire logs, never a manual curl** — a manual curl 401s by design and
   has previously been misread as "crons dead" ([[vercel-crons-dead-401]]).
 - Spot-check one paid path end-to-end; the credits meter writes `reading_events.credits`.
+
+---
+
+## 10. The action-intent section — "what they'd do with it" (2026-07-26, session 2)
+
+The last video-only read still unsurfaced. Gate is the SAME Wave-3 gate as everything else here
+(`personas` ⇔ `persona_behavioral_aggregate` co-present on 11 of 11 real rows, `loop_pct` and all five
+percentile labels included) ⇒ no new empty-card class.
+
+### 10a. 🔑 Three measurements that shaped it — none visible from the schema
+
+1. **The carrier ranking is a registry constant, not a read.** `sharer` tops `share_intent` 9/9 when
+   cast. So intents are NOT the honest producer for the removed "who spreads it" — they are the honest
+   producer for a room PROFILE. No carriers shipped, and no reach claim: we hold intent, not
+   distribution.
+2. **The top-two verb gap is noise on 10 of 11 rows** (2.3 · 3.0 · 3.0 · 3.1 · 4.6 · 5.0 · 5.1 · 5.3 ·
+   6.1 · 6.3 · 12.1). Share and comment are locked together, so a "what they'd do most" crown reports
+   sort order. Hence `INTENT_GAP_MIN = 8` — above the noise cluster, below the one real separation.
+   Verbs GROUP unless separated; the head and the floor are found by walking consecutive gaps. This is
+   `peerLabel`'s lesson generalized from ties to gaps.
+3. **The five numbers are not the same KIND of number.** `completion_pct` is a flat mean of
+   watch-through (a real population rate); `share/save/comment/loop_pct` are top-3-enthusiast weighted
+   (`aggregator.ts:43-50`) — a 0–100 index, NOT "38% would share". One bar set would misrepresent four
+   of five, so watch-through rides the header as its own figure and the note states the weighting.
+
+### 10b. Owner calls
+
+- **Band labels dropped** (`percentileLabel` → "low intent" ×4 on the reference row). They are fixed
+  thresholds, not a corpus rank — the code was explicitly renamed off "top X%" for that reason (WR-05).
+  Four stacked "low intent" chips read as a verdict on the video. Bring them back when a corpus
+  baseline exists.
+- **Rewatch kept** — the completion-vs-rewatch contrast ("69% watched it through, 21 would come back")
+  is the sharpest honest sentence the section makes.
+- **One sentence, two facts, no third clause** — every section here that shipped a third clause ended
+  up hardcoding it (`modeledAudienceFit`'s "a narrower, higher-intent cut").
+
+### 10c. Shape
+
+Producer `buildVideoPopulation` gains `aggregate` → returns `intents` (NUMBERS only). Sealed on
+`SimSealVideo.intents` (jsonb, optional, no migration) with its own strict `isIntentsLike` guard — these
+values get printed as a sentence, so a malformed blob would render "leads at NaN" rather than fail
+visibly; a bad payload drops the section, never the Brain read. **The prose read is derived at RENDER**
+(`buildActionIntent`), improving on the `skimmedPct` precedent: copy stays editable without a re-seal.
+Rendered by `ActionIntent` in `AudienceDepth.tsx`, in the slot `amplification` omits itself from.
+
+### 10d. Verified live (free, repeatable)
+
+Both reference rows re-sealed through `POST /api/tools/test/card` (no engine work, no billing):
+
+| row | rendered read |
+|---|---|
+| `vSoTpo5AixUS` | 69% · save 48 / comment 45 / share 38 / rewatch 21 · 8 of 10 would act · 2 would do nothing · 1 of those watched it through — *"Save, comment and share run together (38–48); rewatch is the floor at 21."* |
+| `-pCnMyJKF6zz` | 58% · share 36 / comment 31 / rewatch 15 / save 8 · 7 of 10 would act · 3 would do nothing — *"Share and comment run together (31–36); rewatch and save are the floor (8–15)."* |
+
+Two videos, two genuinely different reads — and the second correctly OMITS the "of those watched it
+through" clause (its count is 0), the orphaned-label guard doing its job. Bar geometry measured, not
+eyeballed: fills land at exactly 48/45/38/21% of track on a fixed 0–100 axis (a max-relative scale
+would redraw the leader full-width every time and erase what the section measures), cream only, no
+coral. Mobile sheet at 390px: zero horizontal overflow, header figure 90px clear of the kicker.
+
+Gates: suite **4510 / 0 with the flag ON *and* unset** · `tsc` 0 · `eslint` clean on every touched file.

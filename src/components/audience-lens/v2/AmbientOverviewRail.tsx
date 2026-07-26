@@ -333,6 +333,8 @@ export function AmbientOverviewRail({
     // (and on every seal written before this shipped), which keeps the honest brain-only drill.
     const videoAggregate = persistedSeals?.[detailId]?.population ?? null;
     const skimmedPct = typeof v.skimmedPct === "number" ? v.skimmedPct : undefined;
+    // What they'd DO with it — sealed numbers only; the one-line read is derived in the adapter.
+    const actionIntent = v.intents;
     const template = buildVideoDomainTemplate({
       heatmap: v.heatmap,
       videoSignals: v.videoSignals,
@@ -347,6 +349,7 @@ export function AmbientOverviewRail({
             calibratedFrom: meta.calibratedFrom,
             tier: "max", // a Test is the Max video pipeline, never Flash
             ...(skimmedPct !== undefined ? { skimmedPct } : {}),
+            ...(actionIntent ? { actionIntent } : {}),
           })
         : null,
     });

@@ -39,11 +39,26 @@
  * DIFFERENT measures — a weighted attention level at the hook vs. how many of the cast survived it —
  * so they legitimately differ. Each is labelled with its own denominator; neither is derived from the
  * other.
+ *
+ * 5. **The action intents are a ROOM profile, never a carrier ranking.** Measured across every
+ *    10-persona row on prod: `sharer` tops `share_intent` on 9 of the 9 rows where a Sharer is cast
+ *    (the other two rows have none); `lurker` sits at 0–2 share on every row; `tough_crowd` rewatch is
+ *    always exactly 0. So "who spreads it" is decided by the persona REGISTRY, not by the video — a
+ *    carrier list would print "Reach rides on The Sharer" forever. That is the same defect
+ *    `modeledAmplification` was omitted for, only wearing a foregone conclusion instead of a tie. What
+ *    genuinely moves per video is the room-level profile (save alone spans 6 → 48 across real rows),
+ *    so that — and only that — is what this section reports. No carriers, and no reach claim: we hold
+ *    intent, not distribution.
  */
 
 import type { PopulationAggregate, SegmentReaction } from "@/lib/audience/population";
 import { archetypeDisplayName } from "@/lib/audience/archetype-names";
-import type { HeatmapPayload, PersonaSimulationResult } from "@/lib/engine/types";
+import type { ActionIntentData } from "@/components/audience-lens/v2/domain-template";
+import type {
+  HeatmapPayload,
+  PersonaBehavioralAggregate,
+  PersonaSimulationResult,
+} from "@/lib/engine/types";
 
 /** The fold's real reception panel, as persisted on the analysis row. */
 export interface VideoPopulationInput {
@@ -51,6 +66,34 @@ export interface VideoPopulationInput {
   personas: PersonaSimulationResult[];
   /** `analysis_results.heatmap` — read ONLY for `weights` (the room mix) and the hook window. */
   heatmap?: HeatmapPayload | null;
+  /** `analysis_results.persona_behavioral_aggregate` — the engine's own weighted intent read. Absent
+   *  on a Wave-3-degraded row (the same 10-or-0 gate as `personas`), which omits the intent section. */
+  aggregate?: PersonaBehavioralAggregate | null;
+}
+
+/**
+ * The NUMBERS behind the action-intent section, exactly as sealed. Deliberately prose-free: the
+ * one-line read is derived at RENDER (`buildActionIntent`), not baked into the seal, so a copy fix
+ * never needs a re-seal. (The `skimmedPct` precedent seals a number for the same reason.)
+ */
+export interface VideoActionIntent {
+  /** 0–100 INTENT INDEX per verb — the engine's top-3-enthusiast weighting, NOT a room rate.
+   *  `rewatch` is absent when the row predates `loop_pct` (omit the row, never render a 0). */
+  share: number;
+  save: number;
+  comment: number;
+  rewatch?: number;
+  /** The real population RATE — the flat mean of survivors' watch-through. A different KIND of
+   *  number from the four above (see the honesty note in `buildActionIntent`). */
+  watchThroughPct: number;
+  /** Real headcounts off the real cast — no weighting, no threshold beyond "any intent at all". */
+  total: number;
+  /** Personas with at least one action intent above zero. */
+  actors: number;
+  /** Personas at zero on all four verbs. */
+  inert: number;
+  /** …of whom, the ones who never scrolled away — they watched it through and would still do nothing. */
+  watchedButInert: number;
 }
 
 /** The aggregate plus the third band a video can honestly report (text's tri-state middle is 0). */
@@ -58,6 +101,8 @@ export interface VideoPopulation {
   aggregate: PopulationAggregate;
   /** % of the cast who stopped scrolling but did NOT reach the end (bailed after the hook). */
   skimmedPct: number;
+  /** What the room would DO with it — omitted when the row carries no behavioral aggregate. */
+  intents?: VideoActionIntent;
 }
 
 /**
@@ -172,6 +217,8 @@ export function buildVideoPopulation(input: VideoPopulationInput): VideoPopulati
     })
     .sort((a, b) => b.share - a.share); // weightiest district first (the aggregate's contract)
 
+  const intents = actionIntent(personas, input.aggregate);
+
   return {
     aggregate: {
       total,
@@ -184,5 +231,154 @@ export function buildVideoPopulation(input: VideoPopulationInput): VideoPopulati
       reasons: [],
     },
     skimmedPct: Math.round((skimmed / total) * 100),
+    ...(intents ? { intents } : {}),
+  };
+}
+
+// ── the action intents ────────────────────────────────────────────────────────────────────────────
+
+/** The four action verbs a persona carries, with the label the section prints. */
+const INTENT_FIELDS = [
+  { key: "share_intent", label: "share" },
+  { key: "save_intent", label: "save" },
+  { key: "comment_intent", label: "comment" },
+  { key: "rewatch_intent", label: "rewatch" },
+] as const;
+
+const intentValue = (p: PersonaSimulationResult, key: (typeof INTENT_FIELDS)[number]["key"]): number => {
+  const v = p[key];
+  return typeof v === "number" && Number.isFinite(v) ? v : 0;
+};
+
+/** Round a 0–100 index to a whole number, or null when the engine did not emit it. */
+function idx(v: number | undefined | null): number | null {
+  return typeof v === "number" && Number.isFinite(v) ? Math.round(Math.min(100, Math.max(0, v))) : null;
+}
+
+/**
+ * The room's action profile: the ENGINE's own weighted intent read + real headcounts off the cast.
+ *
+ * The four verb values come from `persona_behavioral_aggregate` rather than a fresh mean over
+ * `personas` on purpose — that aggregate is the number the rest of the app already shows for this
+ * video, and computing a second, differently-weighted "share" figure for the same run would put two
+ * contradictory answers on screen. The price is that it is top-3-enthusiast weighted, so the section
+ * MUST disclose that (it does — `note`). Headcounts are unweighted and exact.
+ */
+function actionIntent(
+  personas: PersonaSimulationResult[],
+  aggregate?: PersonaBehavioralAggregate | null,
+): VideoActionIntent | undefined {
+  if (!aggregate) return undefined;
+  const share = idx(aggregate.share_pct);
+  const save = idx(aggregate.save_pct);
+  const comment = idx(aggregate.comment_pct);
+  const watchThroughPct = idx(aggregate.completion_pct);
+  // The three core verbs are required by the schema; a row missing any of them is malformed, and a
+  // profile with holes in it is worse than no profile. `loop_pct` IS optional (older aggregates
+  // predate it) so its absence just drops that one row.
+  if (share === null || save === null || comment === null || watchThroughPct === null) return undefined;
+  const rewatch = idx(aggregate.loop_pct);
+
+  const acts = (p: PersonaSimulationResult): boolean =>
+    INTENT_FIELDS.some((f) => intentValue(p, f.key) > 0);
+  const actors = personas.filter(acts).length;
+  const inertCast = personas.filter((p) => !acts(p));
+
+  return {
+    share,
+    save,
+    comment,
+    ...(rewatch !== null ? { rewatch } : {}),
+    watchThroughPct,
+    total: personas.length,
+    actors,
+    inert: inertCast.length,
+    // "watched it through" reuses the module's own stayed rule (never scrolled away) rather than a
+    // watch-% threshold, so the count means exactly what the tri-state's `stayed` band means.
+    watchedButInert: inertCast.filter((p) => bailedAt(p) === null).length,
+  };
+}
+
+/**
+ * The gap (index points) a verb must clear to be named alone.
+ *
+ * Measured on every 10-persona prod row: the top-to-second gap lands at 2.3 · 3.0 · 3.0 · 3.1 · 4.6 ·
+ * 5.0 · 5.1 · 5.3 · 6.1 · 6.3 · 12.1. Share and comment are effectively locked together, so a
+ * "what they'd do most" crown would be reporting SORT ORDER on ten of eleven videos — the
+ * `peerLabel` defect again, one axis over. 8 sits clear above the noise cluster (max 6.3) and below
+ * the one genuine separation (12.1). Below the gap, verbs are GROUPED, never ranked.
+ */
+const INTENT_GAP_MIN = 8;
+
+/** The maximal run from `from` (walking by `step`) whose CONSECUTIVE gaps all stay under the min. */
+function runWithinGap(values: number[], from: number, step: 1 | -1): number {
+  let n = 1;
+  for (let i = from + step; i >= 0 && i < values.length; i += step) {
+    if (Math.abs(values[i]! - values[i - step]!) >= INTENT_GAP_MIN) break;
+    n += 1;
+  }
+  return n;
+}
+
+const cap = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
+
+/** "save, comment and share" */
+function joinLabels(labels: string[]): string {
+  if (labels.length <= 1) return labels[0] ?? "";
+  return `${labels.slice(0, -1).join(", ")} and ${labels[labels.length - 1]}`;
+}
+
+/**
+ * Derive the section's one-line read from the sealed numbers. TWO facts, one sentence: what leads
+ * (or what runs together) and what the floor is. There is deliberately no third, interpretive clause
+ * — every section in this frame that shipped one ended up hardcoding it (`modeledAudienceFit` closed
+ * with "a narrower, higher-intent cut" no matter what it had just reported).
+ */
+export function buildActionIntent(raw: VideoActionIntent): ActionIntentData {
+  const rows = [
+    { label: "share", value: raw.share },
+    { label: "save", value: raw.save },
+    { label: "comment", value: raw.comment },
+    ...(typeof raw.rewatch === "number" ? [{ label: "rewatch", value: raw.rewatch }] : []),
+  ].sort((a, b) => b.value - a.value);
+
+  const values = rows.map((r) => r.value);
+  const headN = runWithinGap(values, 0, 1);
+  const floorN = runWithinGap(values, values.length - 1, -1);
+
+  let read: string;
+  if (headN >= rows.length) {
+    // Nothing is separated from anything — say so flatly rather than manufacture a leader.
+    const lo = values[values.length - 1]!;
+    const hi = values[0]!;
+    read =
+      lo === hi
+        ? `All four verbs land on ${hi} — the room draws no distinction between them.`
+        : `All four verbs land in the same band (${lo}–${hi}) — nothing separates them.`;
+  } else {
+    const head = rows.slice(0, headN);
+    const floor = rows.slice(rows.length - floorN);
+    const headClause =
+      head.length === 1
+        ? `${cap(head[0]!.label)} leads at ${head[0]!.value}`
+        : `${cap(joinLabels(head.map((r) => r.label)))} run together (${head[head.length - 1]!.value}–${head[0]!.value})`;
+    const floorClause =
+      floor.length === 1
+        ? `${floor[0]!.label} is the floor at ${floor[0]!.value}`
+        : `${joinLabels(floor.map((r) => r.label))} are the floor (${floor[floor.length - 1]!.value}–${floor[0]!.value})`;
+    read = `${headClause}; ${floorClause}.`;
+  }
+
+  return {
+    rows,
+    watchThroughPct: raw.watchThroughPct,
+    total: raw.total,
+    actors: raw.actors,
+    inert: raw.inert,
+    watchedButInert: raw.watchedButInert,
+    read,
+    // The denominator disclosure. Without it the four values read as rates ("38% would share"), which
+    // they are not — unlike `watchThroughPct`, which is a real flat mean and rides the header instead.
+    note: "intent index 0–100 · weighted toward the 3 keenest, not a room average",
   };
 }

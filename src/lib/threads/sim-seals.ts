@@ -16,6 +16,7 @@ import type { ThreadRow } from "./threads";
 import type { Json } from "@/types/database.types";
 import type { PopulationAggregate } from "@/lib/audience/population";
 import type { PopulationPersona } from "@/lib/surfaces/ambient-v2-population";
+import type { VideoActionIntent } from "@/lib/surfaces/ambient-v2-video-population";
 import type { GeminiVideoSignals, HeatmapPayload, VerbatimPayload } from "@/lib/engine/types";
 
 /** The Phase-C Brain (VIDEO) depth payload — the persisted-analysis read a video Test seals so the
@@ -37,6 +38,11 @@ export interface SimSealVideo {
    *  a text sim's binary verdict has no middle and honestly omits it. Optional: seals written
    *  before this landed simply render the binary tri-state. */
   skimmedPct?: number;
+  /** What the room would DO with it — the fold's action intents (`persona_behavioral_aggregate` +
+   *  real cast headcounts). Numbers only: the one-line read is derived at render, so copy stays
+   *  editable without a re-seal. Optional — absent on older seals and on Wave-3-degraded rows, which
+   *  simply omit the section. */
+  intents?: VideoActionIntent;
 }
 
 /** One sealed verdict — the honest aggregate, no fabricated precision.
@@ -85,6 +91,28 @@ function isVideoLike(v: unknown): boolean {
   return !!h && typeof h === "object" && Array.isArray(h.weighted_curve) && h.weighted_curve.length > 0;
 }
 
+/** The numeric fields `VideoActionIntent` cannot render without. `rewatch` is deliberately absent —
+ *  it is optional by contract (older aggregates predate `loop_pct`) and simply drops its row. */
+const INTENT_KEYS = [
+  "share",
+  "save",
+  "comment",
+  "watchThroughPct",
+  "total",
+  "actors",
+  "inert",
+  "watchedButInert",
+] as const;
+
+/** A shape guard for a persisted `VideoActionIntent`. Stricter than the sibling guards on purpose:
+ *  these numbers are printed as a sentence ("Share leads at 38"), so a malformed blob would render
+ *  "leads at NaN" rather than fail visibly. Dropped intents cost the section, never the seal. */
+function isIntentsLike(v: unknown): boolean {
+  if (!v || typeof v !== "object" || Array.isArray(v)) return false;
+  const p = v as Record<string, unknown>;
+  return INTENT_KEYS.every((k) => typeof p[k] === "number" && Number.isFinite(p[k] as number));
+}
+
 /** Parse a thread's `sim_seals` jsonb into a typed, validated map. Malformed entries are dropped
  *  (never guessed) so a corrupt row can never fabricate a seal. */
 export function readSimSeals(thread: Pick<ThreadRow, "sim_seals">): SimSealMap {
@@ -120,7 +148,12 @@ export function readSimSeals(thread: Pick<ThreadRow, "sim_seals">): SimSealMap {
         // Optional Phase-C VIDEO depth — passed through only when well-formed (a real heatmap curve);
         // a malformed blob is dropped but the verdict seal survives.
         if (isVideoLike(val.video)) {
-          seal.video = val.video as SimSealVideo;
+          const video = val.video as SimSealVideo;
+          // The action intents ride INSIDE the video blob, so they are guarded separately: a
+          // malformed intents payload drops just that section, leaving the Brain read intact.
+          seal.video = isIntentsLike((video as { intents?: unknown }).intents)
+            ? video
+            : { ...video, intents: undefined };
         }
         out[k] = seal;
       }
