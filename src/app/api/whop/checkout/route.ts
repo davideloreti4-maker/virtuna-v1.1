@@ -3,6 +3,10 @@ import { createClient } from "@/lib/supabase/server";
 import { resolveWhopPlanId, WHOP_TRIAL_PLAN_IDS } from "@/lib/whop/config";
 import { isPaidPlanId } from "@/lib/pricing";
 
+/** Whop's current checkout-session endpoint. Exported so the test can pin it. */
+export const WHOP_CHECKOUT_ENDPOINT =
+  "https://api.whop.com/api/v1/checkout_configurations";
+
 export async function POST(request: Request) {
   try {
     // 1. Authenticate user
@@ -70,9 +74,16 @@ export async function POST(request: Request) {
       );
     }
 
-    // 5. Create Whop checkout session
+    // 5. Create the Whop checkout session.
+    //    ⚠️ ENDPOINT: `/api/v1/checkout_configurations`. This used to POST
+    //    `/api/v5/checkout_sessions`, which Whop has REMOVED — it answers 404, so every
+    //    checkout would have 500'd on the first real customer. It was never caught because
+    //    the route's test stubs `fetch` wholesale and asserted only the request body, never
+    //    the URL (the test below now pins the URL too). The v1 endpoint takes the same
+    //    fields and returns `id` as a `ch_…` checkout-session id, which is exactly what
+    //    `<WhopCheckoutEmbed sessionId>` consumes.
     const whopResponse = await fetch(
-      "https://api.whop.com/api/v5/checkout_sessions",
+      WHOP_CHECKOUT_ENDPOINT,
       {
         method: "POST",
         headers: {
