@@ -28,6 +28,7 @@ export const metadata: Metadata = {
  * A floating premium brand island + the interactive hero, then the persuasion
  * arc (transformation → pricing → FAQ → CTA).
  */
+
 export default function OfferPage() {
   return (
     <main>
@@ -118,6 +119,19 @@ export default function OfferPage() {
           </BlurFade>
         </div>
       </section>
+
+      {/* The 4-beat walkthrough is UNMOUNTED — retired as the funnel's demo
+          (`ONBOARDING-FUNNEL-DESIGN.md` §0b). It is not deleted: the component and its frozen
+          fixture stay in the tree as a possible fallback for visitors who will not enter a video.
+
+          It must not ship on this page in the meantime. Its `$1` button fires `checkout_open`
+          and returns — `/go` passes no `onCheckout`, because Whop has no keys — so a visitor
+          who reached the wall would dead-end at the one moment the page exists to convert.
+          (It also mounts `AmbientDetail` in an unbounded-height wrapper, rendering 2,182px
+          instead of 800: 3.24 screens on a phone, with that dead button 2.87 screens down.)
+
+          What replaces it is the real platform, run anonymously, gated at the simulation
+          verdict — see the handoff. Until that lands, `/go` is the persuasion page it is today. */}
 
       {/* honest credibility strip, directly under the hero */}
       <PlatformBar />

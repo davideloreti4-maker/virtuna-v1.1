@@ -1,13 +1,16 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Clock, Info } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { InputField } from "@/components/ui/input";
 import { Heading, Text } from "@/components/ui/typography";
 import { createClient } from "@/lib/supabase/client";
+import { EmailOtpForm } from "@/components/auth/email-otp-form";
+import { isInAppBrowserClient } from "@/lib/auth/in-app-browser";
 import { login } from "./actions";
 
 interface LoginFormProps {
@@ -19,6 +22,23 @@ interface LoginFormProps {
 
 export function LoginForm({ error, expired, next, message }: LoginFormProps) {
   const [_state, formAction, isPending] = useActionState(login, null);
+  const router = useRouter();
+
+  /**
+   * Password sign-in stays available, but it is no longer the front door: the
+   * product's traffic arrives inside social webviews where the emailed CODE is
+   * the only path that survives (see `in-app-browser.ts`). Password is folded
+   * behind a disclosure so returning users can still reach it.
+   */
+  const [showPassword, setShowPassword] = useState(false);
+
+  /**
+   * Resolved after mount — `navigator` does not exist during SSR, and rendering
+   * the Google button on the server and then removing it would flash a control
+   * that Google is going to refuse anyway.
+   */
+  const [inAppBrowser, setInAppBrowser] = useState(false);
+  useEffect(() => setInAppBrowser(isInAppBrowserClient()), []);
 
   const handleGoogleOAuth = async () => {
     const supabase = createClient();
@@ -66,66 +86,91 @@ export function LoginForm({ error, expired, next, message }: LoginFormProps) {
         </div>
       )}
 
-      <form action={formAction} className="space-y-4">
-        <input type="hidden" name="next" value={next || "/home"} />
-        <InputField
-          label="Email"
-          name="email"
-          type="email"
-          placeholder="you@example.com"
-          required
-        />
-        <InputField
-          label="Password"
-          name="password"
-          type="password"
-          placeholder="Enter your password"
-          required
-        />
-        <div className="-mt-2 text-right">
-          <Link
-            href="/forgot-password"
-            className="text-sm text-foreground-secondary hover:underline"
+      {/* The front door: email → six digits → session, without leaving the page. */}
+      <EmailOtpForm
+        submitLabel="Continue"
+        onAuthenticated={() => {
+          router.replace(next || "/home");
+          router.refresh();
+        }}
+      />
+
+      {error && (
+        <p className="mt-4 text-sm text-error" role="alert">
+          {error}
+        </p>
+      )}
+
+      {/* Google is offered ONLY where Google accepts it. Inside a TikTok/Instagram
+          webview it answers `disallowed_useragent`, so showing the button would
+          send the visitor to an error page instead of into the product. */}
+      {!inAppBrowser && (
+        <>
+          <div className="my-6 flex items-center gap-3">
+            <div className="h-px flex-1 bg-white/[0.06]" />
+            <Text as="span" size="sm" muted>
+              or
+            </Text>
+            <div className="h-px flex-1 bg-white/[0.06]" />
+          </div>
+
+          <Button
+            type="button"
+            variant="secondary"
+            className="w-full"
+            onClick={handleGoogleOAuth}
           >
-            Forgot password?
-          </Link>
-        </div>
+            <GoogleIcon />
+            Continue with Google
+          </Button>
+        </>
+      )}
 
-        {error && (
-          <p className="text-sm text-error" role="alert">
-            {error}
-          </p>
-        )}
-
-        <Button
-          type="submit"
-          variant="primary"
-          className="w-full"
-          loading={isPending}
-        >
-          Sign in
-        </Button>
-      </form>
-
-      <div className="my-6 flex items-center gap-3">
-        <div className="h-px flex-1 bg-white/[0.06]" />
-        <Text as="span" size="sm" muted>
-          or
-        </Text>
-        <div className="h-px flex-1 bg-white/[0.06]" />
-      </div>
-
-      <div className="space-y-3">
-        <Button
+      {/* Password stays reachable for accounts that already have one — folded away
+          so it does not compete with the path that works everywhere. */}
+      {!showPassword ? (
+        <button
           type="button"
-          variant="secondary"
-          className="w-full"
-          onClick={handleGoogleOAuth}
+          onClick={() => setShowPassword(true)}
+          className="mt-6 block w-full text-center text-sm text-foreground-secondary transition-colors hover:text-foreground"
         >
-          <GoogleIcon />
-          Continue with Google
-        </Button>
-      </div>
+          Sign in with a password instead
+        </button>
+      ) : (
+        <form action={formAction} className="mt-6 space-y-4">
+          <input type="hidden" name="next" value={next || "/home"} />
+          <InputField
+            label="Email"
+            name="email"
+            type="email"
+            placeholder="you@example.com"
+            required
+          />
+          <InputField
+            label="Password"
+            name="password"
+            type="password"
+            placeholder="Enter your password"
+            required
+          />
+          <div className="-mt-2 text-right">
+            <Link
+              href="/forgot-password"
+              className="text-sm text-foreground-secondary hover:underline"
+            >
+              Forgot password?
+            </Link>
+          </div>
+          <Button
+            type="submit"
+            variant="primary"
+            className="w-full"
+            loading={isPending}
+          >
+            Sign in
+          </Button>
+        </form>
+      )}
 
       <Text size="sm" muted className="mt-8 text-center">
         Don&apos;t have an account?{" "}

@@ -227,6 +227,24 @@ otp_expiry = 3600
 # subject = "You have been invited"
 # content_path = "./supabase/templates/invite.html"
 
+# ── Email OTP (milestone/onboarding S0) ───────────────────────────────────────
+# The funnel signs users in with a 6-digit CODE, never a link: the traffic arrives
+# inside TikTok/Instagram webviews, and following a link abandons the session
+# (docs/ONBOARDING-FUNNEL-DESIGN.md §2a).
+#
+# `signInWithOtp` picks the template by whether the address is already known:
+#   new address   -> `confirmation`  <- essentially all cold funnel traffic
+#   known address -> `magic_link`
+# BOTH must render {{ .Token }}. Templates live in-repo so the change is reviewed
+# and repeatable instead of a dashboard click nobody can audit.
+[auth.email.template.confirmation]
+subject = "Your Maven code"
+content_path = "./supabase/templates/otp-confirmation.html"
+
+[auth.email.template.magic_link]
+subject = "Your Maven code"
+content_path = "./supabase/templates/otp-magic-link.html"
+
 # Uncomment to customize notification email template
 # [auth.email.notification.password_changed]
 # enabled = true
