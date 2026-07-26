@@ -171,3 +171,62 @@ Two consequences:
 
 Also still open: **rotate the Apify key** (plaintext in the 2026-07-25 transcript; `.env.local` only,
 nothing depends on that value) and the Whop / Supabase-SMTP items in `docs/PRICING.md`.
+
+---
+
+## 9. 🚀 The reconnect runbook (owner confirmed: git is DISCONNECTED from Vercel)
+
+Cause found and confirmed by the owner — the GitHub integration is disconnected, which is why zero
+deployments were even *triggered* since 07-19. `main` is now `1de3229c` (this session
+fast-forwarded it; 9 commits, 0 behind).
+
+### 9a. Pre-flight: the schema is READY — verified, not assumed
+
+Prod code is five weeks stale, so the first deploy jumps ~50 PRs at once. The failure mode that
+matters is code arriving ahead of its migrations. **It won't**: every object the incoming code needs
+is already live (the DB is AHEAD of the deployed code — the safe direction).
+
+| Checked in prod | Result |
+|---|---|
+| `threads.sim_seals` · `threads.active_audience_id` | ✅ present (this session wrote a real seal through it) |
+| `reading_events.credits` (the credits meter) | ✅ present |
+| `user_subscriptions.trial_started_at` · `trial_used_at` | ✅ present |
+| `teardown_collections` · `reading_events` | ✅ present |
+| the 5 `match_*` RPCs (facets recreate) | ✅ all present |
+
+⚠️ Two migration FILENAMES are misleading and cost a false alarm here: `..._credits_ledger.sql` adds
+a **column to `reading_events`**, not a `credits_ledger` table, and `..._match_rpc_facets.sql`
+**recreates existing RPCs** rather than adding a `match_*facet*` function. Probe for the real object,
+not the filename.
+
+### 9b. 🔑 Do the reconnect and the flag flip as TWO separate deploys
+
+`NEXT_PUBLIC_AMBIENT_V2` is **inlined at build time**, so it only takes effect on a rebuild. That
+makes the ordering a real decision, not a detail:
+
+1. **Leave `NEXT_PUBLIC_AMBIENT_V2` UNSET.** Reconnect git (Vercel → Project Settings → Git →
+   connect `davideloreti4-maker/virtuna-v1.1`, production branch `main`). This ships five weeks of
+   merged work — billing, thread unification, the Test seal, the mobile room, the corpus covers —
+   with v2 still off.
+2. **Verify prod is healthy on that deploy** (below).
+3. **Then** set `NEXT_PUBLIC_AMBIENT_V2=true` and redeploy — one isolated change with a clean
+   rollback.
+
+Doing both at once means a regression has two suspects and the flag's entire purpose (a cheap
+rollback lever) is spent on the same deploy that introduced the risk.
+
+### 9c. Keep these OFF / expect these to be absent
+
+- `BILLING_ENFORCE_QUOTA` — stays **false/unset**. Enforcement is verified working but deliberately
+  inert until the owner's Whop step (`docs/PRICING.md`).
+- Whop plan ids — absent **by design**: a missing plan id is the checkout 503, and a missing *trial*
+  id degrades to full price (never undercharges).
+- Supabase custom SMTP is still unset, so prod auth email is capped at ~2/hour. Fine for a smoke
+  test, **not** for real signup traffic.
+
+### 9d. Verify after the deploy
+
+- Production serves `1de3229c` (Vercel → Deployments → the production alias).
+- **Crons: read the SCHEDULED-fire logs, never a manual curl** — a manual curl 401s by design and
+  has previously been misread as "crons dead" ([[vercel-crons-dead-401]]).
+- Spot-check one paid path end-to-end; the credits meter writes `reading_events.credits`.
