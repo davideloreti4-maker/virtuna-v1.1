@@ -107,45 +107,52 @@ export function HeroEntry() {
   };
 
   return (
-    <div className="flex flex-col justify-center">
-      <div className="rounded-xl border border-border bg-surface-elevated p-4 md:p-5">
-        <div className="mb-3 flex items-center gap-2">
-          <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-          <span className="text-[13px] font-medium text-foreground">
-            Test a video now — free, no account
+    // Matches the room's height on lg so the two columns read as ONE composition rather than a
+    // short block floating beside a tall one (they measured 262px vs 620px, align-items:start).
+    // The composer is centered in that height, which is also where the eye lands from the H1.
+    <div className="flex flex-col justify-center lg:h-[620px]">
+      {/* The eyebrow mirrors the room's "The room · live" dot-and-caps treatment, so the pair
+          still reads as a set now that ProductRender's browser chrome — what the room's header
+          was built to mirror (ambient-panel.tsx) — is gone from this slot. */}
+      <div className="mb-3 flex items-center gap-1.5">
+        <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+        <span className="text-[11px] uppercase tracking-[0.14em] text-foreground-muted">
+          Test a video now · free, no account
+        </span>
+      </div>
+
+      {/* NO wrapper card. The composer already owns its surface — a 24px-radius, 6%-border,
+          surface-elevated shell — so boxing it in a second 16px-radius card of the SAME fill
+          and border put a larger radius inside a smaller one and read as a box in a box. */}
+      <EmbeddedComposer
+        verb={verb}
+        onVerbChange={setVerb}
+        onLaunch={onLaunch}
+        onAttach={() => fileInputRef.current?.click()}
+        disabled={starting}
+      />
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="video/*"
+        className="sr-only"
+        onChange={onFilePicked}
+        tabIndex={-1}
+        aria-hidden="true"
+      />
+
+      {/* Reserve the row so a message never reflows the hero under the visitor's cursor. */}
+      <div className="mt-3 min-h-[20px] px-1 text-[13px]" aria-live="polite">
+        {error ? (
+          <span className="text-accent-text">{error}</span>
+        ) : starting ? (
+          <span className="text-foreground-muted">Starting your read…</span>
+        ) : (
+          <span className="text-foreground-muted">
+            Paste a TikTok link or drop your file · MP4, MOV, WebM
           </span>
-        </div>
-
-        <EmbeddedComposer
-          verb={verb}
-          onVerbChange={setVerb}
-          onLaunch={onLaunch}
-          onAttach={() => fileInputRef.current?.click()}
-          disabled={starting}
-        />
-
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="video/*"
-          className="sr-only"
-          onChange={onFilePicked}
-          tabIndex={-1}
-          aria-hidden="true"
-        />
-
-        {/* Reserve the row so a message never reflows the hero under the visitor's cursor. */}
-        <div className="mt-3 min-h-[20px] text-[13px]" aria-live="polite">
-          {error ? (
-            <span className="text-accent-text">{error}</span>
-          ) : starting ? (
-            <span className="text-foreground-muted">Starting your read…</span>
-          ) : (
-            <span className="text-foreground-muted">
-              Paste a TikTok link or drop your file · MP4, MOV, WebM
-            </span>
-          )}
-        </div>
+        )}
       </div>
     </div>
   );
