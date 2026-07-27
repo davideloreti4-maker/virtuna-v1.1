@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { resolveWhopPlanId, WHOP_TRIAL_PLAN_IDS } from "@/lib/whop/config";
 import { isPaidPlanId } from "@/lib/pricing";
+import { hasUsedTrial } from "@/lib/billing/trial-eligibility";
 
 /** Whop's current checkout-session endpoint. Exported so the test can pin it. */
 export const WHOP_CHECKOUT_ENDPOINT =
@@ -36,7 +37,9 @@ export async function POST(request: Request) {
     //    already spent its $1 trial gets the FULL-PRICE SKU, quietly. The Whop embed shows
     //    the real price before any charge, and the response says which price was resolved
     //    (`trialApplied`) so the modal's copy can tell the truth too.
-    //    `trial_started_at` is checked as a belt on pre-`trial_used_at` rows.
+    //    The predicate lives in `lib/billing/trial-eligibility` because `/api/subscription`
+    //    has to answer the SAME question for the UI — a CTA that promises a price this route
+    //    then refuses is the chargeback shape we are avoiding.
     //    Fail-open on a read error: never block a purchase to protect a $1 guard.
     let effectiveTrial = trial === true;
     let trialDenied = false;
@@ -49,8 +52,7 @@ export async function POST(request: Request) {
           .select("*")
           .eq("user_id", user.id)
           .maybeSingle();
-        const row = data as Record<string, unknown> | null;
-        if (row?.trial_used_at || row?.trial_started_at) {
+        if (hasUsedTrial(data as Record<string, unknown> | null)) {
           effectiveTrial = false;
           trialDenied = true;
         }

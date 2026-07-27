@@ -70,6 +70,7 @@ export function BillingSection() {
     status,
     usage,
     isTrial,
+    trialUsed,
     currentPeriodEnd,
     whopConnected,
     cancelAtPeriodEnd,
@@ -139,7 +140,9 @@ export function BillingSection() {
                 Your plan ends at the end of the current period.
               </p>
             )}
-            {tier === "free" && (
+            {/* `free` covers two different customers: one who never subscribed, and one who
+                trialled, converted and cancelled. Only the first still has a dollar coming. */}
+            {tier === "free" && !trialUsed && (
               <p className="mt-2 text-sm text-foreground-secondary">
                 Start any plan for {TRIAL.price} — {TRIAL.credits} credits over {TRIAL.days} days.
               </p>
@@ -197,7 +200,11 @@ export function BillingSection() {
                     className="mt-4 w-full"
                     onClick={() => setCheckoutPlan(p.id)}
                   >
-                    {tier === "free" ? `Start for ${TRIAL.price}` : `Switch to ${p.name}`}
+                    {tier === "free"
+                      ? trialUsed
+                        ? `Upgrade · ${p.price}/month`
+                        : `Start for ${TRIAL.price}`
+                      : `Switch to ${p.name}`}
                   </Button>
                 )}
               </div>
@@ -223,7 +230,9 @@ export function BillingSection() {
           onClose={() => setCheckoutPlan(null)}
           planId={checkoutPlan}
           // Everyone without a plan comes in through the $1 trial — it is the only door.
-          trial={tier === "free"}
+          // Unless they have already walked through it once: one trial per account, and
+          // asking for a second one just makes the dialog correct itself a beat later.
+          trial={tier === "free" && !trialUsed}
           onComplete={() => {
             setCheckoutPlan(null);
             void refetch();

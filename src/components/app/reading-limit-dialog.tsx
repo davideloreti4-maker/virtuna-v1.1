@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { CheckoutModal } from "@/components/app/checkout-modal";
+import { useSubscription } from "@/hooks/use-subscription";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -57,6 +58,12 @@ function formatDate(value: string): string {
 
 export function ReadingLimitDialog({ quota, open, onClose, renewsAt }: ReadingLimitDialogProps) {
   const [checkoutPlan, setCheckoutPlan] = useState<PaidPlanId | null>(null);
+  // The NO PLAN wall is reached by two different people: someone who never subscribed, and
+  // someone who trialled, converted and cancelled (cancellation returns tier `free` but
+  // `trial_used_at` survives it, by design). Only the first is still owed a dollar.
+  // This component is dynamically imported and rendered only once a 402 has landed, so the
+  // fetch costs nothing until a customer is actually standing at the wall.
+  const { trialUsed } = useSubscription();
 
   const plan = isPaidPlanId(quota.tier) ? getPlan(quota.tier) : null;
   const fairUse = quota.reason === "fair_use";
@@ -122,7 +129,9 @@ export function ReadingLimitDialog({ quota, open, onClose, renewsAt }: ReadingLi
 
             {noPlan && (
               <Button variant="primary" onClick={() => setCheckoutPlan("starter")}>
-                Start for {TRIAL.price}
+                {trialUsed
+                  ? `Upgrade · ${getPlan("starter").price}/month`
+                  : `Start for ${TRIAL.price}`}
               </Button>
             )}
 
@@ -140,10 +149,11 @@ export function ReadingLimitDialog({ quota, open, onClose, renewsAt }: ReadingLi
           open={!!checkoutPlan}
           onClose={() => setCheckoutPlan(null)}
           planId={checkoutPlan}
-          // Only a customer with no plan enters through the $1 trial. An existing subscriber
-          // upgrading pays the plan price — handing them a second $1 trial would be a free
-          // month, and (per the webhook's stamp-once guard) a fresh 5-Reading cap on top.
-          trial={noPlan}
+          // Only a customer with no plan AND no trial history enters through the $1 trial. An
+          // existing subscriber upgrading pays the plan price — handing them a second $1 trial
+          // would be a free month, and (per the webhook's stamp-once guard) a fresh 5-Reading
+          // cap on top. A returning ex-subscriber is in the same position.
+          trial={noPlan && !trialUsed}
           onComplete={() => {
             setCheckoutPlan(null);
             onClose();
