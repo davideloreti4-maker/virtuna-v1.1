@@ -174,7 +174,14 @@ export async function POST(request: Request) {
       // endpoint REJECTS them ("is not a valid event") on every api_version — so they are
       // not reachable and are not handled here. Do not "modernise" these names without
       // re-probing the API; the docs and the API disagree.
-      case "membership.went_valid": {
+      // ⚠️ Whop has TWO vocabularies for the same event and switches between them without
+      // notice. On 2026-07-26 its API REJECTED `membership.activated` as invalid and stored
+      // `membership_went_valid`. On 2026-07-27, after the webhook was edited in the
+      // dashboard, the same endpoint came back holding `membership.activated` — and the
+      // api_version had silently flipped v2 → v1 too. Betting on either spelling means a
+      // paying customer is granted nothing the next time Whop changes its mind.
+      case "membership.went_valid":
+      case "membership.activated": {
         const supabaseUserId = supabaseUserIdOf(data);
 
         if (!supabaseUserId) {
@@ -256,7 +263,9 @@ export async function POST(request: Request) {
 
       // "no longer valid" — cancellation, expiry, or a failed payment that exhausted its
       // retries. (`membership.deactivated` is NOT a subscribable Whop event; see above.)
-      case "membership.went_invalid": {
+      // Same pair of spellings for "this membership stopped being valid" — see above.
+      case "membership.went_invalid":
+      case "membership.deactivated": {
         const supabaseUserId = supabaseUserIdOf(data);
 
         if (!supabaseUserId) {
