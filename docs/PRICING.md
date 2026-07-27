@@ -71,7 +71,7 @@ One pool per plan; every paid action draws from it at a public price (`CREDIT_CO
 Enforcement is deliberately inert (`BILLING_ENFORCE_QUOTA` unset) until these are done, in
 this order:
 
-### 1. Whop: create 6 plans + 3 secrets (the only blocking step)
+### 1. ✅ Whop: 6 plans + 3 secrets — PROVISIONED 2026-07-26, integration merged `b3b21bd5` 2026-07-27
 
 One full-price plan per tier, plus one **$1 / 3-day trial SKU per tier** that renews into the
 full price:
@@ -128,27 +128,51 @@ destination.
 > is logged at WARN/ERROR with the raw spelling and payload keys — never silently swallowed.
 > **The first sandbox event settles it.**
 
-### 2. Supabase Auth dashboard (15 minutes, one-time)
+### 2. ✅ Supabase Auth dashboard — DONE 2026-07-27
 
-| Setting | Where | Value |
+| Setting | Where | State |
 |---|---|---|
-| Leaked-password protection | Auth → Providers → Email | **ON** (advisor currently flags it off) |
-| Minimum password length | Auth → Providers → Email | **8** (forms already enforce 8 client-side) |
-| Site URL | Auth → URL Configuration | the production domain (currently `https://virtuna-v11.vercel.app`) |
-| Redirect URLs | Auth → URL Configuration | `https://<domain>/auth/callback`, `http://localhost:3000/auth/callback` |
-| Custom SMTP | Auth → SMTP | **Required before launch** — default Supabase SMTP is ~2 emails/hour, which breaks signup confirmations and password resets at any real volume. Resend/Postmark, 10 min setup |
-| Google OAuth | Auth → Providers → Google | confirm prod client id/secret + the prod redirect URL in Google Console |
+| Minimum password length | Auth → Providers → Email | ✅ **8**. ⚠️ This is the *only* enforcement at signup — `signup-form.tsx` has no `minLength` and `signup/actions.ts` passes the password straight to `signUp` with no validation. (`reset-password-form.tsx` does enforce 8 client-side; an earlier revision of this file generalised that to "forms already enforce 8", which was wrong.) |
+| Leaked-password protection | Auth → Providers → Email | ⛔ **Pro-plan only** — cannot be enabled on this plan. Accepted gap; the advisor will keep flagging it. Signup is genuinely password-based (`signUp` + `signInWithPassword`), so if this ever matters, the free alternative is a HIBP k-anonymity check inside `signup/actions.ts` (~20 lines, no key, password never leaves the server). |
+| Site URL | Auth → URL Configuration | ✅ `https://numenmachines.com` |
+| Redirect URLs | Auth → URL Configuration | ✅ `https://numenmachines.com/**`, `https://www.numenmachines.com/**`, `http://localhost:3000/**`. **Wildcards are required, not cosmetic** — the app redirects to `${origin}/auth/callback?next=/welcome` and `?next=/reset-password`; a bare `/auth/callback` entry does not match the query string and the redirect is rejected *after* the user has already clicked the link in their email. |
+| Custom SMTP | Auth → SMTP | ✅ **Resend**, `smtp.resend.com:587`, user `resend`, sender `Maven <noreply@numenmachines.com>`. Verified end to end 2026-07-27: `POST /recover` → 200, mail delivered. ⚠️ Also raise Auth → Rate Limits → *emails per hour* — it stays at **30** even after custom SMTP is attached, so Supabase throttles below whatever the provider allows. |
+| Google OAuth | Auth → Providers → Google | ✅ confirmed |
+
+⚠️ **Deliverability, not configuration:** the first message landed in Gmail **spam**. SPF and
+DKIM both pass and both align (`resend._domainkey.numenmachines.com` signs `d=numenmachines.com`;
+return-path `send.numenmachines.com` → `include:amazonses.com`), so this is reputation on a domain
+whose entire history is a parked page and then a suspended cPanel account — not an auth failure.
+It warms up with volume and engagement. Levers, in order of effect: recipients marking "not spam";
+deploying a real email template (Supabase's stock recovery mail is a near-empty body with one bare
+link — a textbook spam shape, and `supabase/templates/*.html` are **local-dev only**, prod uses
+stock); DMARC `p=none` → `p=quarantine`; Google Postmaster Tools. **Not a launch blocker** — mail
+is delivered and accepted, just filed in the wrong folder.
 
 ### 3. Flip the meter: `BILLING_ENFORCE_QUOTA=true`
 
 Until then the quota is computed, shown and logged but never blocks. Flip AFTER the sandbox
 pass (below).
 
-### 4. Grandfather rule (7 users in prod, 3 active/30d, 0 subscriptions)
+### 4. ✅ Grandfather rule — there is nobody to grandfather
 
-Everyone is tier `free` (allowance 0) — on flip day they stop at zero. Recommendation: comp
-the owner's own account(s) (insert a `user_subscriptions` row at `studio`, or unbilled ledger
-rows), let the handful of others start a $1 trial. Decide which emails get comped.
+This step used to read *"7 users in prod, 3 active/30d"* and ask which emails to comp. Queried
+against `auth.users` on 2026-07-27, those seven are:
+
+| Email | Analyses | What it is |
+|---|---|---|
+| `e2e-test@virtuna.local` | 58 | the E2E suite |
+| `test@virtuna.dev` · `e2e-home-fresh@virtuna.local` · `tester@numen.dev` · `maven-e2e-2026@example.com` | 0–2 | test fixtures |
+| `davide.loreti4@gmail.com` | 7 | the owner |
+| `davide@gmail.com` | 0 | never signed in — a typo account |
+
+**Zero real users, zero subscriptions.** The count was real; the interpretation was not — `.local`
+and `example.com` addresses were being counted as people. So: comp the owner's account, ignore the
+rest, and note that **`BILLING_ENFORCE_QUOTA` has no blast radius** — flipping it strands nobody and
+needs no migration or announcement.
+
+29 *anonymous* users exist (demo pool, all within 24h, minted two at a time — worth checking that
+double-invocation before real traffic). They carry no subscription and are unaffected.
 
 ### 5. The sandbox pass (with Whop test mode, before real customers)
 
