@@ -142,3 +142,65 @@ describe("verifyWebhookSignature — fails closed", () => {
     expect(verifyWebhookSignature(PAYLOAD, headers, SECRET)).toBe(false);
   });
 });
+
+/**
+ * Whop's secret is NOT `whsec_<base64>`. It is a raw 67-character string with no prefix,
+ * used as HMAC key bytes directly.
+ *
+ * This is what kept the endpoint 401ing on 2026-07-27 after the header names were already
+ * fixed. `Buffer.from(raw67, "base64")` does not throw — it discards the characters it
+ * cannot read and returns 50 wrong bytes, so the HMAC was computed correctly over the wrong
+ * key and every layer looked healthy. The live log said it exactly:
+ * `secret_raw_chars: 67, secret_has_whsec_prefix: false, secret_decoded_bytes: 50`.
+ */
+describe("verifyWebhookSignature — Whop's raw (non-base64) secret", () => {
+  const RAW_SECRET = `ws_${"a1B2c3D4".repeat(8)}`; // 67 chars, no whsec_ prefix
+
+  /** Sign the way Whop does: the secret's own bytes are the key. */
+  function signRaw(id: string, timestamp: number, payload: string, secret: string) {
+    const mac = createHmac("sha256", Buffer.from(secret, "utf8"))
+      .update(`${id}.${timestamp}.${payload}`)
+      .digest("base64");
+    return `v1,${mac}`;
+  }
+
+  it("accepts a signature keyed on the raw secret bytes", () => {
+    expect(RAW_SECRET).toHaveLength(67);
+    expect(RAW_SECRET.startsWith("whsec_")).toBe(false);
+    // The trap itself: 67 raw chars silently become 50 bytes, and nothing throws.
+    expect(Buffer.from(RAW_SECRET, "base64")).toHaveLength(50);
+
+    const ts = nowSeconds();
+    const headers = new Headers({
+      "webhook-id": WEBHOOK_ID,
+      "webhook-timestamp": String(ts),
+      "webhook-signature": signRaw(WEBHOOK_ID, ts, PAYLOAD, RAW_SECRET),
+    });
+
+    expect(verifyWebhookSignature(PAYLOAD, headers, RAW_SECRET)).toBe(true);
+  });
+
+  it("still accepts a genuinely Svix-formatted whsec_ secret", () => {
+    const ts = nowSeconds();
+    const headers = new Headers({
+      "webhook-id": WEBHOOK_ID,
+      "webhook-timestamp": String(ts),
+      "webhook-signature": sign(WEBHOOK_ID, ts, PAYLOAD),
+    });
+
+    expect(verifyWebhookSignature(PAYLOAD, headers, SECRET)).toBe(true);
+  });
+
+  it("still rejects a WRONG raw secret — accepting more encodings is not accepting more secrets", () => {
+    const ts = nowSeconds();
+    const headers = new Headers({
+      "webhook-id": WEBHOOK_ID,
+      "webhook-timestamp": String(ts),
+      "webhook-signature": signRaw(WEBHOOK_ID, ts, PAYLOAD, RAW_SECRET),
+    });
+
+    expect(
+      verifyWebhookSignature(PAYLOAD, headers, `ws_${"9z8Y7x6W".repeat(8)}`)
+    ).toBe(false);
+  });
+});

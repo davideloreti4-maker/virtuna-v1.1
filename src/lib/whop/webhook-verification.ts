@@ -62,7 +62,26 @@ export function verifyWebhookSignature(
     const secretWithoutPrefix = secret.startsWith("whsec_")
       ? secret.slice(6)
       : secret;
-    const secretBytes = Buffer.from(secretWithoutPrefix, "base64");
+    // ⚠️ The secret is NOT necessarily base64. Svix/Standard Webhooks specifies
+    // `whsec_<base64>`, and this module assumed it — but Whop issues a RAW 67-character
+    // string with no `whsec_` prefix. `Buffer.from(s, "base64")` does not throw on input
+    // that is not base64: it silently discards the characters it cannot read and returns a
+    // shorter, wrong key (67 chars → 50 bytes here). The HMAC is then computed perfectly
+    // over the wrong bytes, so every layer looks correct and nothing matches. Verified live
+    // 2026-07-27 against hook_Jw56rQjnWOIVO.
+    //
+    // So: try each plausible reading of the secret and accept if ANY produces the signature.
+    // This is not weakening the check — every candidate must still reproduce Whop's HMAC
+    // over the exact signed content, and a wrong secret matches none of them.
+    const secretCandidates: Buffer[] = [
+      // Raw bytes of the secret as issued (Whop's actual format).
+      Buffer.from(secret, "utf8"),
+      // Raw bytes minus a `whsec_` prefix, if one is present.
+      Buffer.from(secretWithoutPrefix, "utf8"),
+      // The Svix reading: base64 payload after the prefix. Kept so a genuinely
+      // Svix-formatted secret still verifies.
+      Buffer.from(secretWithoutPrefix, "base64"),
+    ];
 
     // 2. Check timestamp tolerance (5 minutes)
     const timestamp = parseInt(webhookTimestamp, 10);
@@ -76,10 +95,10 @@ export function verifyWebhookSignature(
     // 3. Build the signature content
     const signedContent = `${webhookId}.${webhookTimestamp}.${payload}`;
 
-    // 4. Compute HMAC-SHA256
-    const expectedSignature = createHmac("sha256", secretBytes)
-      .update(signedContent)
-      .digest();
+    // 4. Compute HMAC-SHA256 under each candidate reading of the secret
+    const expectedSignatures = secretCandidates
+      .filter((key) => key.length > 0)
+      .map((key) => createHmac("sha256", key).update(signedContent).digest());
 
     // 5. Extract v1 signatures from the header
     const signatures = signatureHeader.split(" ");
@@ -97,13 +116,15 @@ export function verifyWebhookSignature(
       try {
         const signatureBytes = Buffer.from(v1Sig, "base64");
 
-        // Ensure both buffers are the same length for timingSafeEqual
-        if (signatureBytes.length !== expectedSignature.length) {
-          continue;
-        }
+        for (const expectedSignature of expectedSignatures) {
+          // Ensure both buffers are the same length for timingSafeEqual
+          if (signatureBytes.length !== expectedSignature.length) {
+            continue;
+          }
 
-        if (timingSafeEqual(expectedSignature, signatureBytes)) {
-          return true; // Valid signature found
+          if (timingSafeEqual(expectedSignature, signatureBytes)) {
+            return true; // Valid signature found
+          }
         }
       } catch {
         // Invalid base64 or comparison error, try next signature
