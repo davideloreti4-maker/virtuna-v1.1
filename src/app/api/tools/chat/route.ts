@@ -34,6 +34,8 @@ import { createOpenThreadLazy, getOpenThread, setThreadTitleIfEmpty } from "@/li
 import { insertMessage, loadMessages } from "@/lib/threads/messages";
 import { runChatPipeline, isColdStart } from "@/lib/tools/runners/chat-runner";
 import { runChatAgentStream } from "@/lib/tools/chat-agent-loop";
+import { FREE_SKILL_TOOLS } from "@/lib/tools/skill-dispatch";
+import { isSealedVisitor } from "@/lib/onboarding/verdict-seal";
 import { assembleBundle } from "@/lib/kc/assembler";
 import { KC_CHAT_SYSTEM_PROMPT } from "@/lib/kc/compiled";
 import { kcStamp } from "@/lib/kc/kc-stamp";
@@ -387,25 +389,35 @@ export async function POST(request: Request): Promise<Response> {
           // runChatPipeline builds it (assembleBundle → <<<USER_CONTENT>>>). Prior turns go to the loop
           // as real role messages (natural turn structure for the agent), not folded into the anchor.
           const userMessage = assembleBundle({ ask: rawAsk, platform, mode: "chat" }, profileRow);
-          const agentResult = await runChatAgentStream({
-            ask: userMessage,
-            systemPrompt: KC_CHAT_SYSTEM_PROMPT,
-            priorTurns,
-            grounding: isCorpusChatToolEnabled(),
-            context: {
-              platform,
-              profileRow,
-              audience: activeAudience,
-              // Real skill phase boundaries → the client's progress spine (mirrors skill routes).
-              onStage: (name, status) => send("stage", { name, status }),
+          const agentResult = await runChatAgentStream(
+            {
+              ask: userMessage,
+              systemPrompt: KC_CHAT_SYSTEM_PROMPT,
+              priorTurns,
+              grounding: isCorpusChatToolEnabled(),
+              context: {
+                platform,
+                profileRow,
+                audience: activeAudience,
+                // Real skill phase boundaries → the client's progress spine (mirrors skill routes).
+                onStage: (name, status) => send("stage", { name, status }),
+              },
+              onToken: (delta) => send("token", { delta }),
+              onBlock: (block) => send("block", { block }),
+              // The run-capsule seam: the moment the agent commits to a skill, tell the client WHICH
+              // (display key), so the spine labels itself + seeds that skill's stage plan before the
+              // first stage event. One frame, additive — old clients simply ignore the event.
+              onDispatch: (skill) => send("dispatch", { skill }),
             },
-            onToken: (delta) => send("token", { delta }),
-            onBlock: (block) => send("block", { block }),
-            // The run-capsule seam: the moment the agent commits to a skill, tell the client WHICH
-            // (display key), so the spine labels itself + seeds that skill's stage plan before the
-            // first stage event. One frame, additive — old clients simply ignore the event.
-            onDispatch: (skill) => send("dispatch", { skill }),
-          });
+            // THE TRIAL WALL, on chat's back door. This route is free BY DECISION (the glue of the
+            // product) — but the skills the agent can dispatch are not: ideas, hooks and scripts are
+            // metered actions with their own creditGate and their own 402. An anonymous /go visitor is
+            // entitled to ONE free Test and nothing else, so the paid tools are not even BOUND for
+            // them: the agent answers in words instead of running an engine this route would neither
+            // gate nor bill. Filtering the registry is the whole fix because `deps.skills` drives both
+            // what the model is offered and what the loop will execute.
+            isSealedVisitor(user) ? { skills: FREE_SKILL_TOOLS } : {}
+          );
 
           // Persist: each skill's card-blocks first (in run order), then the assistant text. A turn that
           // ran a skill marks the text origin:"chat-agent" so the thread reloads as ONE ordered stream in

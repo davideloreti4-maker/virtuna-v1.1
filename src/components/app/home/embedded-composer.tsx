@@ -73,6 +73,10 @@ export interface EmbeddedComposerProps {
   onLaunch: (input: string, verb: Verb) => void;
   onAttach?: () => void;
   disabled?: boolean;
+  /** In-flight launch: the send disc swaps to a spinner. Distinct from `disabled`
+   *  (which is a dead control) — busy is the affirmative "working on it" state the
+   *  /go hero shows while the session + navigation are in flight. */
+  busy?: boolean;
   className?: string;
 }
 
@@ -83,6 +87,7 @@ export function EmbeddedComposer({
   onLaunch,
   onAttach,
   disabled,
+  busy,
   className,
 }: EmbeddedComposerProps) {
   const [value, setValue] = useState("");
@@ -221,18 +226,36 @@ export function EmbeddedComposer({
             </button>
           </div>
 
-          {/* Launch — the clean cream disc (same Button + sizing as the /home send). */}
+          {/* Launch — the clean cream disc (same Button + sizing as the /home send).
+              Busy: the disc holds its place and spins — pressing the page's one
+              button must visibly DO something for as long as the launch takes. */}
           <Button
             type="button"
             variant="primary"
             size="sm"
-            aria-label="Launch"
-            disabled={disabled || value.trim().length === 0}
+            aria-label={busy ? "Starting" : "Launch"}
+            disabled={disabled || busy || value.trim().length === 0}
             onClick={launch}
             style={{ boxShadow: "none" }}
             className="shrink-0 h-[36px] w-[36px] min-w-0 p-0 rounded-full"
           >
-            <ArrowUp className="h-[18px] w-[18px]" strokeWidth={2.25} />
+            {busy ? (
+              <svg
+                viewBox="0 0 16 16"
+                width={16}
+                height={16}
+                className="animate-spin"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                strokeLinecap="round"
+                aria-hidden="true"
+              >
+                <path d="M8 1.5a6.5 6.5 0 1 1-6.5 6.5" />
+              </svg>
+            ) : (
+              <ArrowUp className="h-[18px] w-[18px]" strokeWidth={2.25} />
+            )}
           </Button>
         </div>
       </div>

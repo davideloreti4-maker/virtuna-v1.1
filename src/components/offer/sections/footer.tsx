@@ -1,7 +1,5 @@
-import Link from "next/link";
-
 import { MavenMark } from "@/components/brand/maven-logo";
-import { SIGNUP_URL } from "@/lib/routes";
+import { FreeEntryCta } from "@/components/offer/free-entry-cta";
 
 /**
  * Offer footer — minimal + matte. The quiet Numen endorsement (house brand) and
@@ -21,12 +19,7 @@ export function OfferFooter() {
         </span>
 
         <div className="flex items-center gap-5 text-sm">
-          <Link
-            href={SIGNUP_URL}
-            className="text-foreground-secondary transition-colors hover:text-foreground"
-          >
-            Start for $1
-          </Link>
+          <FreeEntryCta variant="link" />
           <span className="text-foreground-muted/70">© {year} Numen Machines</span>
         </div>
       </div>

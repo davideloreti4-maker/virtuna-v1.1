@@ -21,15 +21,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { EmbeddedComposer } from "@/components/app/home/embedded-composer";
-import { AmbientRoom } from "@/components/audience-lens/AmbientRoom";
+import { AmbientDetail } from "@/components/audience-lens/v2/AmbientDetail";
+import { CREATOR_TEMPLATE } from "@/components/audience-lens/v2/detail-fixture";
 import { VideoTestCardRenderer } from "@/components/thread/video-test-card-block";
 import { TEST_CARD_FIXTURE } from "@/components/offer/test-card-fixture";
-import {
-  ROOM_CONCEPT,
-  ROOM_FRACTION,
-  ROOM_PERSONAS,
-  ROOM_SIBLINGS,
-} from "@/components/offer/room-fixture";
 
 /**
  * Where the card's "director's fixes" band starts, at the 620px stage width.
@@ -133,18 +128,19 @@ export function ShotStages() {
           <ComposerStage />
         </Stage>
 
-        {/* 02 — react: the shipped room, brain view, auto-playing its read */}
+        {/* 02 — react: the shipped v2 read, audience tab (owner correction
+            2026-07-26: the LEGACY AmbientRoom is a surface the platform no
+            longer shows — photograph the CURRENT drilled read instead). Same
+            fixture the hero window's rail renders, so the two agree to the
+            digit. Bounded flex host per the AmbientPanel pattern; sheet
+            presentation so the host owns ground + cap (no stray rail hairline
+            in a standalone shot). */}
         <Stage id="step-react" width={620} height={724}>
-          <div className="h-[724px]">
-            <AmbientRoom
-              flatPersonas={ROOM_PERSONAS}
-              conceptText={ROOM_CONCEPT}
-              fraction={ROOM_FRACTION}
-              kindLabel="Hook"
-              canRewrite={false}
-              focusId="h3"
-              initialCompareOpen={false}
-              siblings={ROOM_SIBLINGS}
+          <div className="flex h-[724px] flex-col overflow-hidden bg-[#181817]">
+            <AmbientDetail
+              template={CREATOR_TEMPLATE}
+              presentation="sheet"
+              initialTab="audience"
             />
           </div>
         </Stage>
@@ -179,16 +175,11 @@ export function ShotStages() {
         </Stage>
 
         <Stage id="step-react-sm" width={390} height={620}>
-          <div className="h-[620px]">
-            <AmbientRoom
-              flatPersonas={ROOM_PERSONAS}
-              conceptText={ROOM_CONCEPT}
-              fraction={ROOM_FRACTION}
-              kindLabel="Hook"
-              canRewrite={false}
-              focusId="h3"
-              initialCompareOpen={false}
-              siblings={ROOM_SIBLINGS}
+          <div className="flex h-[620px] flex-col overflow-hidden bg-[#181817]">
+            <AmbientDetail
+              template={CREATOR_TEMPLATE}
+              presentation="sheet"
+              initialTab="audience"
             />
           </div>
         </Stage>

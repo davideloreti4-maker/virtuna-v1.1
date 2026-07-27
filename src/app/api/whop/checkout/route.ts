@@ -23,7 +23,7 @@ export async function POST(request: Request) {
 
     // 2. Parse and validate request body
     const body = await request.json();
-    const { planId, trial } = body;
+    const { planId, trial, funnel } = body;
 
     if (!isPaidPlanId(planId)) {
       return NextResponse.json(
@@ -98,9 +98,17 @@ export async function POST(request: Request) {
             supabase_user_id: user.id,
             supabase_email: user.email,
           },
+          // The funnel's buyer is an anonymous visitor mid-drill: any full-page redirect
+          // out of the embed must land them back in their room, not on /settings. The two
+          // paths are server-side literals (never client-supplied), so no open-redirect
+          // surface is added.
           redirect_url: `${
             process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
-          }/settings?tab=billing&checkout=success`,
+          }${
+            funnel === true
+              ? "/home?checkout=success"
+              : "/settings?tab=billing&checkout=success"
+          }`,
         }),
       }
     );

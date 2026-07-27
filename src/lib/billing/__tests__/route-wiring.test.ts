@@ -43,8 +43,14 @@ describe("every paid tool route gates and bills", () => {
     it(`${file} gates before spend and bills "${action}" on delivery`, () => {
       const src = readFileSync(join(ROOT, file), "utf8");
 
-      expect(src, `${file} must call creditGate`).toContain(
-        action === "explore" ? `creditGate(supabase, user.id, "explore")` : `creditGate(supabase, user.id, "${action}")`
+      // The USER, never `user.id`: `is_anonymous` decides which allowance applies, and while it
+      // was an optional 6th argument eleven of these twelve routes never passed it — so an
+      // anonymous /go visitor read as a customer and ran every skill free and unmetered.
+      expect(src, `${file} must call creditGate with the user object`).toContain(
+        `creditGate(supabase, user, "${action}")`
+      );
+      expect(src, `${file} must not pass a bare user id — anonymity would be lost`).not.toContain(
+        "creditGate(supabase, user.id"
       );
       expect(src, `${file} must bill on the success path`).toContain("billUsage(");
       // The bill names its action (explore bills a ternary — scrape vs cached).
@@ -68,24 +74,35 @@ describe("every paid tool route gates and bills", () => {
     });
   }
 
+  it("the free chat route does not hand an ANONYMOUS visitor the paid skills", () => {
+    // Chat is free by decision, but the agent loop can DISPATCH paid skills (ideas/hooks/script)
+    // in-process — the pipelines behind three gated routes, reached without their gates. For an
+    // anonymous /go visitor that is the trial wall's back door: the demo entitles one Test, so the
+    // route must bind the free-only registry. (⚠️ For a real CUSTOMER those dispatched runs are
+    // still neither gated nor billed — a separate hole in the meter, not this guard's business.)
+    const src = readFileSync(join(ROOT, "chat/route.ts"), "utf8");
+    expect(src).toContain("FREE_SKILL_TOOLS");
+    expect(src).toContain("isSealedVisitor(user)");
+  });
+
   it("the analyze route (score + remix decode) gates at the Reading price", () => {
     const src = readFileSync(
       join(__dirname, "../../../app/api/analyze/route.ts"),
       "utf8"
     );
-    expect(src).toContain("getCreditQuotaVerdict(supabase, user.id, CREDITS_PER_READING");
+    expect(src).toContain('getCreditQuotaVerdict(supabase, user, "score", CREDITS_PER_READING');
     expect(src).toContain("recordUsage(");
   });
 
-  it("the analyze route prices an ANONYMOUS visitor on the demo pool, not tier free", () => {
-    // The /go funnel's free run happens here. An anonymous user is tier `free` (allowance
-    // 0), so if this route stops declaring `isAnonymous` the demo silently starts refusing
-    // every visitor the day BILLING_ENFORCE_QUOTA flips on — on the one page built to
-    // convert them, with a 402 nobody would be watching for.
+  it("the analyze route hands the meter the USER, so the /go visitor cannot read as a customer", () => {
+    // The funnel's free run happens here. An anonymous visitor is tier `free` (allowance 0),
+    // so a gate that only sees `user.id` refuses the demo the day BILLING_ENFORCE_QUOTA flips
+    // on — on the one page built to convert them, with a 402 nobody would be watching for.
+    // Passing the user makes `is_anonymous` impossible to drop without a type error.
     const src = readFileSync(
       join(__dirname, "../../../app/api/analyze/route.ts"),
       "utf8"
     );
-    expect(src).toContain("isAnonymous: user.is_anonymous === true");
+    expect(src).not.toContain("getCreditQuotaVerdict(supabase, user.id");
   });
 });

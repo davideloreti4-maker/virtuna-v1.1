@@ -522,3 +522,38 @@ describe("POST /api/tools/react", () => {
     expect(json.error).toBe("reaction_failed");
   });
 });
+
+// ─── The funnel wall — the verdict seal (ONBOARDING-FUNNEL-DESIGN.md §0b②) ────
+// A react run IS a simulation verdict. For an anonymous /go visitor the verdict is
+// what the $1 buys, so the route refuses BEFORE any engine call or credit spend —
+// the client's watcher drops and the row stays honestly queued.
+
+describe("POST /api/tools/react — the funnel wall (verdict seal, §0b②)", () => {
+  // The file's clearing beforeEach lives inside the main describe above — clear here too,
+  // or the engine-call spies still carry the earlier tests' invocations.
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("refuses an anonymous session with 403 verdict_sealed before ANY engine call", async () => {
+    const { createClient } = await import("@/lib/supabase/server");
+    (createClient as ReturnType<typeof vi.fn>).mockResolvedValue({
+      auth: {
+        getUser: vi
+          .fn()
+          .mockResolvedValue({ data: { user: { id: "anon-1", is_anonymous: true } } }),
+      },
+    });
+
+    const { POST } = await import("@/app/api/tools/react/route");
+    const res = await POST(makeRequest({ text: "a thought worth reacting to" }));
+
+    expect(res.status).toBe(403);
+    expect((await res.json()).error).toBe("verdict_sealed");
+
+    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { characterizeContent } = await import("@/lib/audience/characterize-content");
+    expect(runFlashTextMode).not.toHaveBeenCalled();
+    expect(characterizeContent).not.toHaveBeenCalled();
+  });
+});

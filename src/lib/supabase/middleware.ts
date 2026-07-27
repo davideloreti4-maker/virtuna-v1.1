@@ -159,8 +159,18 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Redirect authenticated users without onboarding to /welcome
-  if (user && pathname !== "/welcome" && isProtectedPath(pathname)) {
+  // Redirect authenticated users without onboarding to /welcome.
+  //
+  // ANONYMOUS visitors are exempt (the /go funnel — ONBOARDING-FUNNEL-DESIGN.md §0b). They are
+  // signed in silently from the hero and handed the real /home shell, so for them the first run
+  // IS the onboarding; bouncing them into the /welcome form is precisely the step this funnel
+  // exists to delete. It is also unescapable rather than merely wrong: no `creator_profiles` row
+  // is ever written for an anonymous user, so without this exemption every demo visitor would
+  // land on /welcome, complete nothing that satisfies the gate, and loop.
+  //
+  // ⚠️ Not caught by the funnel spike, which measured API routes (all 200 with an anon session)
+  // and never navigated a PAGE through middleware.
+  if (user && !user.is_anonymous && pathname !== "/welcome" && isProtectedPath(pathname)) {
     const { data: profile, error: profileError } = await supabase
       .from("creator_profiles")
       .select("onboarding_completed_at")

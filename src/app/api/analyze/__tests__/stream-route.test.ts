@@ -253,3 +253,74 @@ describe("GET /api/analyze/[id]/stream", () => {
     (global as any).setTimeout = origST;
   });
 });
+
+// ─── The funnel wall — the verdict seal (ONBOARDING-FUNNEL-DESIGN.md §0b②) ────
+// The reconnect stream replays the persisted row. To an anonymous session that row
+// must arrive WITHOUT the reception read — curve, cast, intents, forecast — or the
+// wall is one page-refresh deep.
+
+describe("GET /api/analyze/[id]/stream — the funnel wall (verdict seal, §0b②)", () => {
+  const receptionRow = {
+    id: "abc",
+    user_id: "anon-1",
+    overall_score: 74,
+    confidence: 0.8,
+    deleted_at: null,
+    heatmap: { segments: [], personas: [], weighted_curve: [0.8, 0.4] },
+    personas: [{ archetype: "skeptic", verdict: "scroll" }],
+    persona_behavioral_aggregate: { share_pct: 30 },
+    behavioral_predictions: { completion_pct: 55 },
+  };
+
+  function anonClientOnce() {
+    return {
+      auth: {
+        getUser: vi.fn(async () => ({
+          data: { user: { id: "anon-1", is_anonymous: true } },
+        })),
+      },
+      from: vi.fn(() => ({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        is: vi.fn().mockReturnThis(),
+        single: singleMock,
+      })),
+    };
+  }
+
+  it("seals the terminal complete replay for an anonymous session", async () => {
+    const server = await import("@/lib/supabase/server");
+    (server.createClient as ReturnType<typeof vi.fn>).mockResolvedValueOnce(anonClientOnce());
+    singleMock.mockResolvedValueOnce({ data: receptionRow, error: null });
+
+    const { GET } = await import("@/app/api/analyze/[id]/stream/route");
+    const res = await GET(buildReq("abc"), { params: Promise.resolve({ id: "abc" }) });
+    const body = await readAll(res);
+
+    expect(body).toContain("event: complete");
+    const m = body.match(/event: complete\ndata: (.+)\n/);
+    const complete = JSON.parse(m![1]!) as Record<string, unknown>;
+    expect(complete.verdict_sealed).toBe(true);
+    expect(complete.heatmap).toBeNull();
+    expect(complete.personas).toBeNull();
+    expect(complete.persona_behavioral_aggregate).toBeNull();
+    expect(complete.behavioral_predictions).toBeNull();
+    expect(body).not.toContain("weighted_curve");
+    // The craft half survives.
+    expect(complete.overall_score).toBe(74);
+  });
+
+  it("a REAL session's replay keeps the reception read", async () => {
+    singleMock.mockResolvedValueOnce({
+      data: { ...receptionRow, user_id: "user-a" },
+      error: null,
+    });
+
+    const { GET } = await import("@/app/api/analyze/[id]/stream/route");
+    const res = await GET(buildReq("abc"), { params: Promise.resolve({ id: "abc" }) });
+    const body = await readAll(res);
+
+    expect(body).toContain("weighted_curve");
+    expect(body).not.toContain("verdict_sealed");
+  });
+});

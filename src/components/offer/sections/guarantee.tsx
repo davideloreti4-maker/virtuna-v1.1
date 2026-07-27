@@ -27,8 +27,8 @@ interface Reassurance {
 const REASSURANCES: readonly Reassurance[] = [
   {
     icon: ShieldCheck,
-    title: "$1 to try, cancel anytime",
-    body: "Start for a dollar and keep going only if it earns it. Cancel in two taps from settings before day 4 — no email, no hoops.",
+    title: "Free to try, $1 to unlock",
+    body: "Your first Test is free, no account. The $1 unlocks the simulation verdict and 3 days of the full plan — cancel in two taps from settings before day 4, no email, no hoops.",
   },
   {
     icon: LockKey,

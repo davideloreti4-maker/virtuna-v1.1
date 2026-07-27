@@ -1,9 +1,8 @@
 import { Section, SectionHeading } from "./section-shell";
 import { Reveal, Parallax, CountUp } from "@/components/offer/motion/reveal";
 import { ProductShot, SHOTS, type ShotSpec } from "@/components/offer/product-shot";
-import { PrimaryCta } from "@/components/offer/cta-config";
-import { TRIAL } from "@/lib/pricing";
-import { SIGNUP_URL } from "@/lib/routes";
+import { FREE_ENTRY } from "@/components/offer/cta-config";
+import { FreeEntryCta } from "@/components/offer/free-entry-cta";
 import { cn } from "@/lib/utils";
 
 /**
@@ -42,13 +41,13 @@ const STEPS: readonly Step[] = [
     title: "A room of viewers watches it",
     body: (
       <>
-        A synthetic audience watches frame by frame and reacts in character — who stops, who
-        scrolls, and what each of them thought.
+        A synthetic audience watches frame by frame and reacts — who stops, who scrolls,
+        and where your believers cluster.
       </>
     ),
     shot: SHOTS.react,
     maxHeight: 520,
-    caption: "Six of ten stopped — with the words each viewer had, and the four who scrolled past.",
+    caption: "38.2% would stop — the read in one sentence, and how each cohort of viewers reacted.",
   },
   {
     n: "03",
@@ -142,10 +141,8 @@ export function HowItWorks() {
       {/* Close the loop here — the mechanism is the most convincing beat on the
           page, and the ask used to be 3,000px further down. */}
       <Reveal gesture="settle" className="mt-16 flex flex-col items-center gap-3">
-        <PrimaryCta href={SIGNUP_URL} size="lg">
-          Test your first video — {TRIAL.price}
-        </PrimaryCta>
-        <p className="text-center text-[13px] text-foreground-muted">{TRIAL.microcopy}</p>
+        <FreeEntryCta size="lg" />
+        <p className="text-center text-[13px] text-foreground-muted">{FREE_ENTRY.microcopy}</p>
       </Reveal>
     </Section>
   );

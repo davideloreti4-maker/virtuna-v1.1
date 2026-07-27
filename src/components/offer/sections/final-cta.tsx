@@ -1,8 +1,7 @@
 import { Reveal } from "@/components/offer/motion/reveal";
-import { PrimaryCta } from "@/components/offer/cta-config";
+import { FREE_ENTRY } from "@/components/offer/cta-config";
+import { FreeEntryCta } from "@/components/offer/free-entry-cta";
 import { GRAIN_URL } from "@/components/offer/atmosphere";
-import { TRIAL } from "@/lib/pricing";
-import { SIGNUP_URL } from "@/lib/routes";
 
 /**
  * Final CTA band — the close. Full-bleed (breaks the page's inner measure), a
@@ -56,10 +55,8 @@ export function FinalCta() {
 
         <Reveal gesture="settle" delay={0.12}>
           <div className="flex flex-col items-center gap-3">
-            <PrimaryCta href={SIGNUP_URL} size="lg">
-              Test your first video — {TRIAL.price}
-            </PrimaryCta>
-            <p className="text-sm text-foreground-muted">{TRIAL.microcopy}</p>
+            <FreeEntryCta size="lg" />
+            <p className="text-sm text-foreground-muted">{FREE_ENTRY.microcopy}</p>
           </div>
         </Reveal>
       </div>

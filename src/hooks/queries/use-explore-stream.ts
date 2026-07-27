@@ -26,7 +26,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { reportCredit402 } from '@/lib/billing/credit-wall';
+import { reportCredit402, CreditWallRefusal, isCreditWallRefusal } from '@/lib/billing/credit-wall';
 import type { OutlierGridBlock } from '@/lib/tools/blocks';
 import type { StageState } from '@/components/thread/progress-checklist';
 
@@ -150,7 +150,11 @@ export function useExploreStream(): UseExploreStreamReturn {
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Explore request failed' }));
         const errObj = err as { error?: string; message?: string };
-        reportCredit402(res.status, err); // wall dialog if it's the credit 402
+        if (reportCredit402(res.status, err)) {
+          // The wall dialog is up (CreditWallListener) and it IS the UI: unwind without drawing an
+          // inline error under it (see CreditWallRefusal — the old throw put a futile retry there).
+          throw new CreditWallRefusal(errObj.message);
+        }
         throw new Error(errObj.message ?? errObj.error ?? 'Explore request failed');
       }
       if (!res.body) throw new Error('No response body');
@@ -234,6 +238,9 @@ export function useExploreStream(): UseExploreStreamReturn {
       }
     } catch (err) {
       if ((err as Error).name === 'AbortError') return; // intentional cancel
+      // The credit wall is already up and owns this refusal — an inline error under the modal
+      // would offer a retry that gets the same 402 (see CreditWallRefusal). `finally` still resets.
+      if (isCreditWallRefusal(err)) return;
       if (isMountedRef.current) {
         setError(err instanceof Error ? err.message : 'Explore stream error');
       }

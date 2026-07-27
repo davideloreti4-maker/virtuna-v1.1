@@ -28,7 +28,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { AmbientDetail } from "@/components/audience-lens/v2/AmbientDetail";
-import { CREATOR_TEMPLATE } from "@/components/audience-lens/v2/detail-fixture";
+import { FEATURED_ROOM_TEMPLATE } from "@/components/offer/featured-room-template";
 
 export function AmbientPanel({ className = "" }: { className?: string }) {
   const [qc] = useState(
@@ -50,7 +50,7 @@ export function AmbientPanel({ className = "" }: { className?: string }) {
             presentation expects its host to own the cap: flex + overflow-hidden bounds the root,
             the detail's own min-h-0 internals scroll. */}
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <AmbientDetail template={CREATOR_TEMPLATE} presentation="sheet" />
+          <AmbientDetail template={FEATURED_ROOM_TEMPLATE} presentation="sheet" />
         </div>
       </div>
     </QueryClientProvider>

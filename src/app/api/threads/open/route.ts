@@ -22,6 +22,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getOpenThread } from "@/lib/threads/threads";
 import { loadMessages } from "@/lib/threads/messages";
 import { readSimSeals } from "@/lib/threads/sim-seals";
+import { isSealedVisitor, sealSimSeals } from "@/lib/onboarding/verdict-seal";
 
 export async function GET(_request: Request): Promise<Response> {
   const supabase = await createClient();
@@ -55,5 +56,12 @@ export async function GET(_request: Request): Promise<Response> {
   // composer can re-seal the v2 Overview rows on rehydrate (the measured % survives a reload).
   const simSeals = readSimSeals(openThread);
 
-  return Response.json({ threadId: openThread.id, messages, simSeals });
+  // THE WALL (ONBOARDING-FUNNEL-DESIGN.md §0b②) — an anonymous visitor's seals cross the
+  // wire WITHOUT the verdict: no would-stop %, no population, no attention curve, no
+  // intents. Only the free half (analysisId + craft score) is transmitted; the full seal
+  // stays in `threads.sim_seals` for the post-payment unlock. Messages pass untouched —
+  // the Test card block IS the free half.
+  const wireSeals = isSealedVisitor(user) ? sealSimSeals(simSeals) : simSeals;
+
+  return Response.json({ threadId: openThread.id, messages, simSeals: wireSeals });
 }

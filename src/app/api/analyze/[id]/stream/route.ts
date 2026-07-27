@@ -6,6 +6,7 @@ import { resolveThreadAudience } from "@/lib/audience/resolve-thread-audience";
 import { GENERAL_ROSTER } from "@/lib/audience/persona-names";
 import { getOpenThread } from "@/lib/threads/threads";
 import { createLogger } from "@/lib/logger";
+import { isSealedVisitor, sealAnalysisPayload } from "@/lib/onboarding/verdict-seal";
 
 // Phase 3 (Plan 08) — helpers for filmstrip polling and partial persona state tracking.
 // Reads variants.filmstrip_segments[].keyframe_uri from the JSONB analysis_results column.
@@ -195,6 +196,14 @@ export async function GET(
     return Response.json({ error: "Analysis not found" }, { status: 404 });
   }
 
+  // THE WALL (ONBOARDING-FUNNEL-DESIGN.md §0b②) — the reconnect replay serves the
+  // persisted row; to an anonymous session it must arrive WITHOUT the reception read
+  // (curve, cast, intents, forecast), or the wall is one page-refresh deep. The roster /
+  // source / filmstrip events below are the free half and pass untouched.
+  const verdictSealed = isSealedVisitor(user);
+  const sealForWire = <T extends object>(payload: T): T =>
+    verdictSealed ? sealAnalysisPayload(payload) : payload;
+
   const lastEventId = request.headers.get("Last-Event-ID");
   log.info("stream connect", {
     id,
@@ -231,7 +240,7 @@ export async function GET(
 
       try {
         if (row.overall_score !== null) {
-          send("complete", row, "complete");
+          send("complete", sealForWire(row), "complete");
         } else {
           const deadline = Date.now() + POLL_BUDGET_MS;
           // Phase 3 (Plan 08) — filmstrip polling state.
@@ -322,7 +331,7 @@ export async function GET(
               }
 
               if (fresh.overall_score !== null) {
-                send("complete", fresh, "complete");
+                send("complete", sealForWire(fresh), "complete");
                 break;
               }
             }

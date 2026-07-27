@@ -190,6 +190,31 @@ describe("POST /api/tools/simulate — audience eligibility (WR-03)", () => {
   });
 });
 
+// ─── The funnel wall — the verdict seal (ONBOARDING-FUNNEL-DESIGN.md §0b②) ────
+// A Simulate run produces a reaction verdict and persists it into the thread. For
+// an anonymous /go visitor that verdict is what the $1 buys — refused BEFORE any
+// run, any credit spend, and any thread write.
+
+describe("POST /api/tools/simulate — the funnel wall (verdict seal, §0b②)", () => {
+  it("refuses an anonymous session with 403 verdict_sealed before any run or write", async () => {
+    mockCreateClient.mockResolvedValue({
+      auth: {
+        getUser: vi.fn().mockResolvedValue({
+          data: { user: { id: "anon-1", is_anonymous: true } },
+          error: null,
+        }),
+      },
+    });
+
+    const res = await callPOST({ audienceId: "aud-1", message: "a reply" });
+
+    expect(res.status).toBe(403);
+    expect((await res.json()).error).toBe("verdict_sealed");
+    expect(mockRunSimulate).not.toHaveBeenCalled();
+    expect(mockInsertMessage).not.toHaveBeenCalled();
+  });
+});
+
 describe("POST /api/tools/simulate — happy path (SIMU-03)", () => {
   it("returns 200 { block } reaction-distribution and persists once to the open thread", async () => {
     const res = await callPOST({ audienceId: "aud-1", message: "Sounds good — Friday works." });

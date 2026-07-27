@@ -7,6 +7,7 @@ import { createScrapingProvider } from "@/lib/scraping";
 import { createLogger } from "@/lib/logger";
 import { getCreditQuotaVerdict } from "@/lib/billing/quota";
 import { quotaRefusalBody } from "@/lib/billing/credit-gate";
+import { isSealedVisitor, sealAnalysisPayload } from "@/lib/onboarding/verdict-seal";
 import { recordUsage } from "@/lib/billing/record-usage";
 import { CREDITS_PER_READING } from "@/lib/pricing";
 import { TIKTOK_URL_PATTERN } from "@/lib/tiktok-url";
@@ -407,13 +408,25 @@ export async function POST(request: Request) {
     // logged either way, so the real usage can be watched before the gate ever closes on a
     // customer. Quota failures fail OPEN (see lib/billing/quota.ts) — a flaky count must
     // not cost a paid Reading.
-    // `is_anonymous` marks a `/go` funnel visitor: the demo signs them in anonymously and
-    // hands them the REAL platform, so this run is the free half of the wall and is paid for
-    // by us. It draws on the DEMO pool (one Reading) and is capped whether or not
-    // BILLING_ENFORCE_QUOTA is on — see lib/pricing.ts DEMO_CREDITS.
-    const quota = await getCreditQuotaVerdict(supabase, user.id, CREDITS_PER_READING, new Date(), {
-      isAnonymous: user.is_anonymous === true,
-    });
+    // The gate takes the USER, not their id: `is_anonymous` marks a `/go` funnel visitor, and
+    // that decides which allowance applies — the demo entitlement (one free Test, enforced
+    // whether or not BILLING_ENFORCE_QUOTA is on) rather than tier `free`'s zero. See
+    // lib/billing/quota.ts (QuotaUser) for why it is the identity and not an option.
+    //
+    // Priced as `score` for BOTH modes of this route: a remix decode is the same 10-credit
+    // Reading, and the body is not parsed until further down (the gate must run before any
+    // spend, and parsing is not spend). For an anonymous visitor that means whichever mode
+    // they run draws the single free Reading — /go only ever launches the Test.
+    const quota = await getCreditQuotaVerdict(supabase, user, "score", CREDITS_PER_READING);
+
+    // THE WALL (ONBOARDING-FUNNEL-DESIGN.md §0b②) — an anonymous visitor's run is free,
+    // but the reception read (attention curve, fold cast, intents, forecast) is what the
+    // $1 buys. Every response shape below — JSON, SSE complete, cache hit — passes through
+    // this before it crosses the wire, so the verdict is never transmitted, not merely
+    // hidden. The FULL result still persists server-side for the post-payment unlock.
+    const verdictSealed = isSealedVisitor(user);
+    const sealForWire = <T extends object>(payload: T): T =>
+      verdictSealed ? sealAnalysisPayload(payload) : payload;
     if (quota.enforced && !quota.allowed) {
       log.info("quota exceeded", {
         tier: quota.tier,
@@ -679,7 +692,7 @@ export async function POST(request: Request) {
       cleanupUploadedStorage(service, validated, retentionOptedIn, log);
 
       if (wantsJSON) {
-        return Response.json(cached);
+        return Response.json(sealForWire(cached));
       }
 
       // SSE cache-hit — single `event: complete` with cached payload.
@@ -688,7 +701,7 @@ export async function POST(request: Request) {
         start(controller) {
           controller.enqueue(
             cacheEncoder.encode(
-              `event: complete\ndata: ${JSON.stringify(cached)}\n\n`
+              `event: complete\ndata: ${JSON.stringify(sealForWire(cached))}\n\n`
             )
           );
           controller.close();
@@ -926,7 +939,7 @@ export async function POST(request: Request) {
         }
       })();
 
-      return Response.json(finalResult);
+      return Response.json(sealForWire(finalResult));
     }
 
     // -------------------------------------------------------
@@ -1234,7 +1247,7 @@ export async function POST(request: Request) {
             ms: Math.round(performance.now() - tDb),
           });
 
-          send("complete", finalResult);
+          send("complete", sealForWire(finalResult));
 
           // reading-ux 2026-06-15 (Option A): KEEP the uploaded video on success so the
           // retention scrubber resolves a playable URL on permalink reload (mirrors the

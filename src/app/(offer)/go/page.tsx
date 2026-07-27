@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { HeroShowcase } from "@/components/offer/hero-showcase";
+import { OutcomeReceipt } from "@/components/offer/outcome-receipt";
+import { FreeEntryCta } from "@/components/offer/free-entry-cta";
+import { FREE_ENTRY } from "@/components/offer/cta-config";
 import { FloatingNav } from "@/components/offer/floating-nav";
 import { BlurFade } from "@/components/velora/blur-fade";
-import { PrimaryCta } from "@/components/offer/cta-config";
 import { PlatformBar } from "@/components/offer/sections/platform-bar";
 import { Transformation } from "@/components/offer/sections/transformation";
 import { HowItWorks } from "@/components/offer/sections/how-it-works";
@@ -13,13 +15,12 @@ import { Guarantee } from "@/components/offer/sections/guarantee";
 import { Faq } from "@/components/offer/sections/faq";
 import { FinalCta } from "@/components/offer/sections/final-cta";
 import { OfferFooter } from "@/components/offer/sections/footer";
-import { StickyCta } from "@/components/offer/sections/sticky-cta";
 import { GRAIN_URL } from "@/components/offer/atmosphere";
 
 export const metadata: Metadata = {
   title: "Maven — Know if your video will pop before you post",
   description:
-    "Maven simulates how up to 1,000 viewers react to your video, second by second — see the exact moment they'd scroll, and the fix, before you post. Test your first video for $1.",
+    "Maven simulates how up to 1,000 viewers react to your video, second by second — see the exact moment they'd scroll, and the fix, before you post. Your first test is free, no account.",
 };
 
 /**
@@ -73,8 +74,18 @@ export default function OfferPage() {
           <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-transparent to-background" />
         </div>
 
-        <div className="relative mx-auto max-w-6xl px-5 pb-12 pt-24 md:pb-16 md:pt-28">
-          {/* copy — the promise, above the two-surface showcase */}
+        {/* Fold budget is tight and load-bearing: the receipt's two tiles are ~300px, and at the
+            previous rhythm the CTA measured BELOW the fold on a 1512×860 MacBook and on a 390×844
+            phone — the page's one ask, off screen. Verified back above the fold on both. */}
+        <div className="relative mx-auto max-w-6xl px-5 pb-12 pt-16 md:pb-16 md:pt-20">
+          {/* copy — the OUTCOME, which is the fold's whole job (owner call 2026-07-27).
+              The fold used to lead with the mechanism ("a room of simulated viewers
+              watches your video") over a live composer. Two problems: it asked a cold
+              visitor to go find a video and wait a minute before anything happened, and
+              the composer's empty state communicated nothing about what comes back. The
+              fold now sells what the product DID — one real video, the same cut twice —
+              and the entry is a button. The mechanism moves to the probe below, where a
+              visitor can watch it instead of read it. */}
           <div className="mx-auto max-w-2xl text-center">
             <BlurFade delay={0.05}>
               <span className="text-xs font-semibold uppercase tracking-[0.14em] text-foreground-muted">
@@ -82,6 +93,9 @@ export default function OfferPage() {
               </span>
             </BlurFade>
             <BlurFade delay={0.12}>
+              {/* Reverted to the original wording (owner, 2026-07-27). The numbers-as-headline
+                  version ("231 views. Then 183,000.") is gone — the receipt below carries the
+                  outcome, and the headline goes back to naming what the product does. */}
               <h1 className="mt-3 font-serif text-[clamp(2.3rem,5.2vw,3.6rem)] font-medium leading-[1.05] tracking-tight text-balance">
                 Know if your video will pop —{" "}
                 <span className="italic text-accent-text">before</span> you post
@@ -89,31 +103,33 @@ export default function OfferPage() {
               </h1>
             </BlurFade>
             <BlurFade delay={0.19}>
+              {/* Two lines, not three — the fold stacks few, larger moments. The
+                  "trained on 500" claim is NOT lost: it lives in ProofMechanism
+                  (PlatformBar's rule: every claim stated once). */}
               <p className="mx-auto mt-4 max-w-[46ch] text-[17px] leading-relaxed text-foreground-secondary">
-                Maven reads your video frame by frame, then simulates how a
-                room of real viewers reacts — so you see the exact moment
-                they&apos;d scroll, and the fix, before you ever hit post.
-              </p>
-            </BlurFade>
-            <BlurFade delay={0.26}>
-              <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-                <PrimaryCta href="#pricing" size="lg">
-                  Test your first video — $1
-                </PrimaryCta>
-                <span className="text-[13px] text-foreground-muted">
-                  $1 for 3 days · cancel anytime
-                </span>
-              </div>
-            </BlurFade>
-            <BlurFade delay={0.33}>
-              <p className="mt-6 text-[13px] text-foreground-muted">
-                🔒 Trained on 500 dissected viral videos
+                A room of simulated viewers watches your video — the exact
+                second they&apos;d scroll, and the fix, before you post.
               </p>
             </BlurFade>
           </div>
 
-          {/* the wow — the REAL product, live: craft card BESIDE the room */}
-          <BlurFade delay={0.2} className="mt-12 md:mt-16">
+          {/* the receipt — the thumbnail and the views, concretely */}
+          <BlurFade delay={0.26} className="mt-7 md:mt-8">
+            <OutcomeReceipt />
+          </BlurFade>
+
+          {/* the one ask */}
+          <BlurFade delay={0.32} className="mt-6">
+            <div className="flex flex-col items-center gap-3">
+              <FreeEntryCta size="lg" />
+              <p className="text-center text-[13px] text-foreground-muted">
+                {FREE_ENTRY.microcopy}
+              </p>
+            </div>
+          </BlurFade>
+
+          {/* the probe — what it showed them, at full platform fidelity */}
+          <BlurFade delay={0.38} className="mt-14 md:mt-20">
             <HeroShowcase />
           </BlurFade>
         </div>
@@ -161,9 +177,9 @@ export default function OfferPage() {
       <Faq />
       <FinalCta />
       <OfferFooter />
-
-      {/* always-available close — a bottom bar on mobile, a pill on desktop */}
-      <StickyCta />
+      {/* StickyCta UNMOUNTED (owner call 2026-07-27): the floating pill overlapped the read
+          rail's own rows inside the product window and competed with the fold's button, which
+          is now the page's one standing ask. The component stays on disk. */}
     </main>
   );
 }

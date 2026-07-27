@@ -99,23 +99,38 @@ export const CREDITS_PER_READING = CREDIT_COSTS.score;
 export const UNLIMITED_DAILY_CREDIT_CEILING = 300;
 
 /**
- * THE DEMO POOL — what an ANONYMOUS visitor may spend before the $1.
+ * THE DEMO ENTITLEMENT — what an ANONYMOUS visitor gets before the $1.
  *
- * The `/go` funnel signs the visitor in anonymously and hands them the REAL platform, so the
- * free half of the wall is a genuine engine run on their own video. That run has to be paid
- * for by us, which makes this number the funnel's cost-per-visitor ceiling.
+ * Owner, 2026-07-27: *"we give the demo to the user for free but to unlock the complete
+ * result/value they need to start their 3 day trial and unlock the complete platform."*
  *
- * Exactly ONE full Reading — the video Test whose card is given away. Everything past it
- * (a second video, the simulation verdict) is what the dollar buys.
+ * So it is ONE free Test — a genuine engine run on the visitor's own video, paid for by us —
+ * and NOTHING else. Every other skill, and the simulation verdict on that very run, is what
+ * the dollar buys. This makes one Reading the funnel's cost-per-visitor ceiling.
  *
- * ⚠️ Unlike every other allowance here, this one is enforced **regardless of
- * `BILLING_ENFORCE_QUOTA`** (see `lib/billing/quota.ts`). That flag exists so real customers
- * are not locked out before the Whop plans are buyable; it has nothing to say about how much
- * free engine spend an unauthenticated stranger may trigger, and anonymous users are
- * unbounded in number. Leaving this to the flag would mean the demo is uncapped in exactly
- * the window where the funnel is live and the meter is off.
+ * ⚠️ It is an ENTITLEMENT, not a wallet. This constant was `DEMO_CREDITS` alone and the check
+ * was `used + cost <= DEMO_CREDITS`, which reads as "10 credits to spend" — so one 1-credit
+ * Ideas tap made it 11 > 10 and the free Test was refused *permanently*, with the words "That
+ * was your free test" to someone who had never had one. The meter now counts DELIVERED RUNS of
+ * `DEMO_ACTION` (see `lib/billing/quota.ts`), which nothing else can consume.
+ *
+ * ⚠️ Unlike every other allowance here, it is enforced **regardless of
+ * `BILLING_ENFORCE_QUOTA`**. That flag exists so real customers are not locked out before the
+ * Whop plans are buyable; it has nothing to say about how much free engine spend an
+ * unauthenticated stranger may trigger, and anonymous users are unbounded in number. Leaving
+ * this to the flag would mean the demo is uncapped in exactly the window where the funnel is
+ * live and the meter is off.
  */
-export const DEMO_CREDITS = CREDIT_COSTS.score;
+/** The one action the demo entitles: a full video Test. Its ledger `mode` is what's counted. */
+export const DEMO_ACTION = "score" as const;
+/** How many of them. One. */
+export const DEMO_RUNS = 1;
+/**
+ * The demo's credit-equivalent — one Test's price. NOT a spendable balance: it is what the
+ * wall reports as `limit` (and, once the run is used, as `used`) so the 402 body stays in the
+ * same units as every other refusal. The admission decision is `DEMO_RUNS`, never this.
+ */
+export const DEMO_CREDITS = CREDIT_COSTS[DEMO_ACTION];
 
 /** The $1 trial, offered on every plan. */
 export const TRIAL = {

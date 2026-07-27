@@ -32,7 +32,7 @@ import { AmbientOverviewRail } from "./AmbientOverviewRail";
 import { audienceToMeta } from "@/lib/surfaces/ambient-v2-audience-meta";
 import type { Audience } from "@/lib/audience/audience-types";
 import type { AmbientCardDescriptor } from "@/components/app/home/use-ambient-focus";
-import type { SimSealMap } from "@/lib/threads/sim-seals";
+import type { WireSimSealMap } from "@/lib/onboarding/verdict-seal";
 
 // Local tone mirror — the v2 surfaces keep their palette inline for pixel fidelity to the round-4
 // target, so the bar that hangs them matches by using the same values (not a second system).
@@ -90,7 +90,7 @@ export function AmbientOverviewSheet({
   audience: Audience;
   descriptors: AmbientCardDescriptor[];
   reducedMotion?: boolean;
-  persistedSeals?: SimSealMap;
+  persistedSeals?: WireSimSealMap;
   open: boolean;
   onOpenChange: (next: boolean) => void;
   /** Passed straight through to the rail — a Test card's "Simulate with your audience →" request.

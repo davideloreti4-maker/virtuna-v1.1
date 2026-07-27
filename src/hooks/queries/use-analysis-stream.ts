@@ -25,6 +25,7 @@ import { useBoardStore } from "@/stores/board-store";
 import { queryKeys } from "@/lib/queries/query-keys";
 import type { PredictionResult } from "@/lib/engine/types";
 import type { StageEvent } from "@/lib/engine/events";
+import { STREAM_TIMEOUT_ERROR } from "@/lib/engine/stream-errors";
 import { isCreditQuotaExceeded, type CreditQuotaExceeded } from "@/lib/billing/quota-error";
 import {
   PANEL_IDS,
@@ -466,7 +467,7 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
     if (phase !== "polling") return;
     const t = setTimeout(() => {
       if (phaseRef.current === "polling") {
-        setError("Stream timed out — analysis still running");
+        setError(STREAM_TIMEOUT_ERROR);
         setPhase("error");
       }
     }, POLLING_CEILING_MS);

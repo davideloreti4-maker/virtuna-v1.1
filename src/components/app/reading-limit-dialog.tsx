@@ -24,11 +24,15 @@ import { PLANS, TRIAL, getPlan, isPaidPlanId, creditsLabel, type PaidPlanId } fr
  * the stream hook as `new Error(err.error)` and the user read the string
  * `credit_quota_exceeded` in a failure line — indistinguishable from the engine crashing.
  *
- * Four walls, four honest next steps — and they are NOT the same:
+ * Six walls, six honest next steps — and they are NOT the same:
  *
  *   · TRIAL SPENT — they have paid us $1 and their plan is about to start. Pushing a second
  *     purchase here would be a way to double-charge a customer who already bought. So the
  *     answer is a date, not a checkout.
+ *   · FREE TEST USED (/go, anonymous) — they have had the one run the demo gives. The $1 door,
+ *     and the verdict on the run they are looking at is what it opens.
+ *   · NEEDS THE TRIAL (/go, anonymous) — they tapped a skill the demo never included. Their
+ *     free Test may still be untouched, so this wall must not claim they spent it.
  *   · NO PLAN — the $1 trial is the only door in. Offer it.
  *   · PLAN SPENT — offer the next plan up, and say when the current one resets, because
  *     "wait until the 16th" is a perfectly good answer that costs them nothing.
@@ -67,6 +71,16 @@ export function ReadingLimitDialog({ quota, open, onClose, renewsAt }: ReadingLi
 
   const plan = isPaidPlanId(quota.tier) ? getPlan(quota.tier) : null;
   const fairUse = quota.reason === "fair_use";
+  // The /go funnel visitor who just spent the anonymous demo pool. They are tier `free` with
+  // no plan, so without this they fell into the no-plan branch and the dialog opened with
+  // "You don't have a plan yet" — a sentence that contradicts its own body ("That was your
+  // free test…") and answers a question nobody asked, on a page that spent its whole length
+  // promising "free · no account". State what actually happened instead.
+  const demo = quota.reason === "demo_used";
+  // The same visitor, one step earlier: they tapped something the free demo never included, and
+  // their free Test may still be sitting untouched. "That's your free test used" would be false
+  // here, and "You don't have a plan yet" answers a question nobody asked — name the situation.
+  const trialRequired = quota.reason === "trial_required";
   // No upsell inside a trial (they already paid) and none at the fair-use ceiling (there is
   // nothing above Studio) — those two walls end in a date, never a checkout.
   const upgrade = quota.inTrial || fairUse ? null : nextPlanUp(quota.tier);
@@ -79,9 +93,13 @@ export function ReadingLimitDialog({ quota, open, onClose, renewsAt }: ReadingLi
     ? "Your trial credits are spent"
     : fairUse
       ? "That's today's fair-use ceiling"
-      : noPlan
-        ? "You don't have a plan yet"
-        : "You're out of credits";
+      : trialRequired
+        ? "That one needs the trial"
+        : demo
+          ? "That's your free test used"
+          : noPlan
+            ? "You don't have a plan yet"
+            : "You're out of credits";
 
   return (
     <>

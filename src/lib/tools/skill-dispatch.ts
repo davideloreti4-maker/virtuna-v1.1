@@ -159,6 +159,19 @@ export const SKILL_TOOLS: SkillTool[] = [
   },
 ];
 
+/**
+ * The skills that cost NOTHING to run — what an anonymous `/go` visitor may reach through chat.
+ *
+ * Chat itself is free by decision, but a skill the agent dispatches is a metered action with its
+ * own `creditGate` and its own 402 on its own route. The demo entitles one free Test and nothing
+ * else, so the chat route binds THIS list for an anonymous session: a wall on /api/tools/hooks is
+ * worthless if the same pipeline can be reached by asking the agent nicely.
+ *
+ * Derived, not hand-listed — a new paid skill is behind the wall the day it is added. Empty today,
+ * and that is the honest state: every skill in the registry hits the paid engine.
+ */
+export const FREE_SKILL_TOOLS: SkillTool[] = SKILL_TOOLS.filter((s) => !s.paid);
+
 // ─── The dispatcher loop ─────────────────────────────────────────────────────
 
 export type ChatComplete = (params: Record<string, unknown>) => Promise<{

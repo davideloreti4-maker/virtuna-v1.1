@@ -59,7 +59,7 @@ import { HORIZONTAL_ENABLED } from "@/lib/flags/horizontal";
 import { AMBIENT_V2_ENABLED } from "@/lib/flags/ambient-v2";
 import { AmbientOverviewSheet } from "@/components/audience-lens/v2/AmbientOverviewSheet";
 import { MOBILE_NAV, MOBILE_NAV_BAND, MOBILE_NAV_BAR_INSET } from "@/components/sidebar/Sidebar";
-import type { SimSealMap } from "@/lib/threads/sim-seals";
+import type { WireSimSealMap } from "@/lib/onboarding/verdict-seal";
 import { queryKeys } from "@/lib/queries/query-keys";
 import {
   setActiveThreadCookie,
@@ -69,10 +69,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { VideoUpload } from "@/components/app/video-upload";
 import { useAnalysisStream } from "@/hooks/queries/use-analysis-stream";
+import { STREAM_TIMEOUT_ERROR } from "@/lib/engine/stream-errors";
 import { useSubscription } from "@/hooks/use-subscription";
 import { isPaidPlanId, creditsRemainingLabel } from "@/lib/pricing";
 import { useBoardStore } from "@/stores/board-store";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
+import { useToast } from "@/components/ui/toast";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -111,6 +113,7 @@ import { ThreadShell, ThreadAssistantTurn } from "@/components/thread/thread-she
 import { ProgressChecklist } from "@/components/thread/progress-checklist";
 import { SKILL_RUN_META } from "@/components/thread/run-capsule";
 import { useTestRunStages } from "@/components/thread/use-test-run-stages";
+import { SkillRunError } from "@/components/thread/run-notices";
 import { Spinner } from "@/components/ui/spinner";
 import { AudiencePresence, type AudienceAsk, type AudiencePresenceProps } from "@/components/audience-lens/audience-presence";
 import { AmbientOverviewRail } from "@/components/audience-lens/v2/AmbientOverviewRail";
@@ -127,6 +130,7 @@ import { detectRefineIntent } from "@/lib/tools/refine";
 // server check. ContentForm's SOCIAL_URL_PATTERN ALSO allows Instagram — the
 // slim composer must NOT (TikTok-only for v1).
 import { TIKTOK_URL_PATTERN } from "@/lib/tiktok-url";
+import { consumePendingUpload } from "@/lib/onboarding/pending-upload";
 import type { Verb } from "@/lib/room-contract/types";
 import { LAUNCH_PARAM } from "@/lib/room-contract/thread-launch";
 
@@ -291,6 +295,7 @@ export interface ComposerProps {
 
 export function Composer({ className, onThreadChange, onEngagedChange, onConversationChange, onRehydratingChange, railHost = null }: ComposerProps) {
   const router = useRouter();
+  const { toast } = useToast();
   const reducedMotion = usePrefersReducedMotion();
   // P2 (A2a): ≥xl the room lives in HomePageLayout's rail, not the dock. useMediaQuery is SSR-safe
   // (false until mounted) + railHost is null until the aside mounts, so the portal only engages
@@ -405,7 +410,9 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // Ambient v2 Phase D/C: sealed-sim results for the open thread (trimmed concept text → the full
   // seal: measured would-stop % + the Phase-C population/personas depth), rehydrated from
   // `threads.sim_seals` so BOTH the v2 Overview seal AND the audience-depth drill survive a reload.
-  const [persistedSimSeals, setPersistedSimSeals] = useState<SimSealMap>({});
+  // WireSimSealMap, not SimSealMap: this branch seals the sim verdict SERVER-side, so what the
+  // client holds is the WIRE shape with the verdict withheld until it is paid for.
+  const [persistedSimSeals, setPersistedSimSeals] = useState<WireSimSealMap>({});
   // The Start grid hands back a tile id as a plain string. It used to be CAST — `id as ToolId` —
   // which is how a one-character typo (`ideas` for `idea`) armed a tool no branch matched and
   // dropped the creator into handleSubmit's final else: the paid SIM-1 Max video Test (F-017).
@@ -868,7 +875,8 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           messages?: Array<{ role?: string; blocks?: Array<{ type?: string; props?: unknown }> }>;
           // Ambient v2 Phase D/C: server-validated sealed sims (trimmed concept text → the full seal,
           // incl. the population/personas depth). `readSimSeals` already dropped malformed entries.
-          simSeals?: SimSealMap;
+          // An anonymous session receives the SEALED wire form instead (verdict-seal.ts §0b②).
+          simSeals?: WireSimSealMap;
         };
         if (cancelled) return;
         // Ambient v2: re-seal the v2 Overview rows AND repopulate the depth drill from the persisted
@@ -1919,16 +1927,28 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     if (tool === "test") setShowUpload(true); // Test absorbs upload — reveal its drop zone (v6)
     if (seedParam) setUrl(seedParam);
 
+    // The hero's file handoff (ONBOARDING-FUNNEL-DESIGN.md §0b④). A File can't ride a query
+    // string, so the /go hero stages it in module scope and it is consumed HERE, on the other
+    // side of the client-side push. Consume-once, so a re-render can never replay the same
+    // upload into a second billed run. Nothing staged (a hard reload, a pasted URL) simply
+    // leaves the revealed drop zone empty — the pre-existing fallback, unchanged.
+    const stagedUpload = consumePendingUpload();
+    if (stagedUpload) {
+      setFile(stagedUpload);
+      setShowUpload(true);
+    }
+
     // Runnable from a text seed? Make (hooks/idea/script) runs even empty (Auto mode). Ask
-    // (chat) needs a thought. Test can only run headless from a valid TikTok URL — a video
-    // upload needs a file the surface can't carry, so it degrades to pre-fill (the safe fallback).
+    // (chat) needs a thought. Test runs headless from a valid TikTok URL — OR from a file the
+    // surface staged for us (above). Without a staged file an upload still degrades to
+    // pre-fill, which stays the safe fallback for every surface that can't stage one.
     const runnable =
       tool === "hooks" || tool === "idea" || tool === "script"
         ? true
         : tool === "chat"
           ? !!seedParam?.trim()
           : tool === "test"
-            ? !!seedParam && TIKTOK_URL_PATTERN.test(seedParam.trim())
+            ? (!!seedParam && TIKTOK_URL_PATTERN.test(seedParam.trim())) || !!stagedUpload
             : false;
     if (runParam && runnable) setPendingAutoRun(true);
 
@@ -2145,6 +2165,57 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     },
     [persistedSimSeals],
   );
+
+  // ── The funnel-return inlet (ONBOARDING-FUNNEL-DESIGN.md §0b②) ─────────────
+  // Two markers land a funnel visitor back on /home:
+  //   ?claimed=1        — the OAuth link round-trip (claim-account.ts). The identity has
+  //                       landed on the SAME anon user, so every seal is already open —
+  //                       what's missing is the moment: nothing re-opened the verdict
+  //                       they paid for. Auto-open the tested video's drill and say so.
+  //   ?checkout=success — Whop's funnel redirect_url (whop/checkout/route.ts). Payment
+  //                       landed but this return path bypassed the in-page claim step, so
+  //                       the visitor is paid-but-unlinked: the drill re-opens on the
+  //                       sealed wall, whose CTA is already "Finish unlocking — link your
+  //                       account" (sealed-wall-cta.tsx). One behavior serves both — open
+  //                       the drill; the drill's own sealed/unsealed state says the rest.
+  // Armed once from location.search and stripped immediately (a refresh must never
+  // re-celebrate); fired only once the rehydration above has landed the thread's seals.
+  // A thread with no video seal leaves the arm to expire silently — never a dead drill.
+  const funnelReturnRef = useRef<"claimed" | "checkout" | null>(null);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const sp = new URLSearchParams(window.location.search);
+    const marker =
+      sp.get("claimed") === "1"
+        ? ("claimed" as const)
+        : sp.get("checkout") === "success"
+          ? ("checkout" as const)
+          : null;
+    if (!marker) return;
+    funnelReturnRef.current = marker;
+    sp.delete("claimed");
+    sp.delete("checkout");
+    const rest = sp.toString();
+    router.replace(rest ? `/home?${rest}` : "/home", { scroll: false });
+  }, [router]);
+
+  useEffect(() => {
+    const marker = funnelReturnRef.current;
+    if (!marker) return;
+    const videoEntries = Object.entries(persistedSimSeals).filter(([, s]) => s?.video);
+    if (videoEntries.length === 0) return; // seals not hydrated yet — stay armed
+    funnelReturnRef.current = null;
+    const entry = videoEntries[videoEntries.length - 1];
+    if (!entry) return;
+    simulateVideoInRoom(entry[0]);
+    if (marker === "claimed") {
+      toast({
+        variant: "success",
+        title: "Account linked",
+        description: "Your thread is yours — the verdict is unlocked.",
+      });
+    }
+  }, [persistedSimSeals, simulateVideoInRoom, toast]);
 
   // ── The Room Rewrite loop (PR-3, LIVE-07) ──────────────────────────────────
   // The Population weak-spot's "Rewrite to win back the N% who bounced →" CTA re-runs the
@@ -2466,6 +2537,50 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     </ThreadShell>
   ) : null;
 
+  // Test's FAILURE turn — the sibling of testSubmitTurn above.
+  //
+  // Every other skill renders <SkillRunError> off its stream's `error` (hooks, ideas, script,
+  // remix, explore all do). Test was the one that never did: the composer reads `stream.phase`,
+  // `analysisId`, `isStreaming`, `quotaError` — and dropped `stream.error` on the floor. So when
+  // a run died, `testSubmitPending` simply went false and testSubmitTurn unmounted: the progress
+  // spine, the echoed link, all of it vanished and left an empty composer with no word of what
+  // happened. Measured against a production build on 2026-07-27 by refusing /api/analyze with a
+  // 500 — the whole screen wiped, silently. That is the /go funnel's own failure path (a private,
+  // deleted or region-locked post is an ordinary TikTok outcome), so the silence landed on exactly
+  // the visitor the page exists to convert.
+  //
+  // NOT the quota 402: that sets `quotaError` too, and the wall dialog below owns it — rendering
+  // both would put an inline "retry" under a modal that just said the allowance is spent.
+  const testRunFailed =
+    activeTool === "test" &&
+    stream.phase === "error" &&
+    !stream.quotaError &&
+    !testSubmitPending;
+  // The polling ceiling is the one error where the pipeline may still be ALIVE server-side, so a
+  // "retry" there would start a second billed run on top of it. Offer the truth instead of a button.
+  const testRunStillAlive = stream.error === STREAM_TIMEOUT_ERROR;
+  const testFailedTurn = testRunFailed ? (
+    <ThreadShell userTurn={lastUserTurn}>
+      <ThreadAssistantTurn>
+        <SkillRunError
+          headline={
+            testRunStillAlive ? "This read is taking longer than usual." : "Couldn’t finish that read."
+          }
+          body={
+            testRunStillAlive
+              ? "Your video is still being read — it just outran the live connection. Reload in a minute and the card will be waiting in this thread."
+              : "The run dropped before the read was finished. A private, deleted or region-locked post will do that. Tap to retry — nothing was charged."
+          }
+          // Billing happens only in /api/analyze's success branch ("BILL THE READING — inside the
+          // success branch, on purpose"), so a dead run really did cost them nothing, and a retry
+          // really is free. Both halves of that sentence are load-bearing; don't soften either.
+          onRetry={testRunStillAlive ? undefined : () => void handleSubmit()}
+          retryLabel="Retry the video test"
+        />
+      </ThreadAssistantTurn>
+    </ThreadShell>
+  ) : null;
+
   const threadContent = (
     <OpenRoomContext.Provider value={openRoomForCard}>
      <SimulateVideoContext.Provider value={simulateVideoInRoom}>
@@ -2481,6 +2596,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           <ScriptTestContext.Provider value={handleTestScript}>
            <RemixDevelopContext.Provider value={handleDevelopRemix}>
       {testSubmitTurn}
+      {testFailedTurn}
       {/* THE UNIFIED PERSISTED STREAM (thread-unification Phase 2) — the ONE renderer of this thread's
           history, ungated by activeTool. Renders every persisted turn (question + its blocks, ANY block
           type, via the type-complete MessageBlocks registry), so markdown text beside cards, video-test

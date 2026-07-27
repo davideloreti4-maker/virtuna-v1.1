@@ -1,18 +1,24 @@
 "use client";
 
 /**
- * HeroShowcase — the two-surface story, side by side: the Test card (craft) and
- * the ambient room (reception). This is the landing's core promise made visible
- * — Maven both reads the craft AND simulates how the room reacts.
+ * HeroShowcase — the probe: what the product looks and feels like, without asking for anything.
  *
- *   • Desktop (lg+): the room sits BESIDE the card, always on (the brain
- *     auto-plays its neural read).
- *   • Mobile: the card leads; the room is a Sheet the visitor pulls up on tap
- *     ("See how the room reacts →") — NOT always open, so it never buries the
- *     card on a small screen.
+ * Was "the live entry, with the product itself underneath" — a composer above a product window.
+ * Owner call 2026-07-27, after four rejected "show" concepts (handoff 2026-07-27 §3, all of them
+ * abstractions of the product): the composer leaves, because it made a cold visitor do the work
+ * before they saw any result, and the window becomes the whole surface — "a preloaded animated
+ * demo, 1:1 accurate to the platform, so users get a feel of it". The ask is now a button in the
+ * fold above, and the composer inside the window is part of the SHOT, not a real field.
+ *
+ * Composition:
+ *   1. HeroProductWindow — the REAL platform surface at full fidelity: the thread with the real
+ *      Test card, the real drilled read rail beside it, and the guided build-motion. Deliberately
+ *      NON-interactive (`inert`) — it is a probe, not a control surface;
+ *   2. a quiet link into the full v2 read (bottom sheet) — the same fixture the window's rail
+ *      renders, so shot and deep-dive agree to the digit.
  */
 
-import { ProductRender } from "@/components/offer/product-render";
+import { HeroProductWindow } from "@/components/offer/hero-product-window";
 import { AmbientPanel } from "@/components/offer/ambient-panel";
 import {
   Sheet,
@@ -24,30 +30,20 @@ import {
 
 export function HeroShowcase() {
   return (
-    <div className="mx-auto w-full max-w-[1000px]">
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,560px)_minmax(340px,420px)] lg:items-start">
-        {/* Surface 1 — the Test card (craft), with the guided build-motion */}
-        <ProductRender />
-
-        {/* Surface 2 — the room (reception). Beside on desktop, a Sheet on mobile. */}
-        <div className="hidden lg:block lg:h-[720px]">
-          <AmbientPanel />
-        </div>
+    <div className="w-full">
+      <div className="mx-auto w-full max-w-[1024px]">
+        <HeroProductWindow />
       </div>
 
-      {/* Mobile-only opener for the room — a deliberate pull-up, never always open */}
-      <div className="mt-4 lg:hidden">
+      <div className="mt-4 text-center">
         <Sheet>
           <SheetTrigger asChild>
             <button
               type="button"
-              className="flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-surface-elevated px-4 py-3 text-[14px] font-medium text-foreground transition-colors hover:bg-surface-elevated/80"
+              className="mx-auto inline-flex items-center gap-2 rounded-lg px-3 py-2 text-[12.5px] text-foreground-muted transition-colors hover:text-foreground"
             >
-              <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-              See how the room reacts
-              <span aria-hidden className="text-foreground-muted">
-                →
-              </span>
+              See the full sample read — the brain, and the room
+              <span aria-hidden>→</span>
             </button>
           </SheetTrigger>
           <SheetContent
@@ -61,7 +57,7 @@ export function HeroShowcase() {
               How your simulated audience reads a video — the brain, and the
               audience.
             </SheetDescription>
-            <div className="h-full px-3 pb-3 pt-2">
+            <div className="mx-auto h-full w-full max-w-[520px] px-3 pb-3 pt-2">
               <AmbientPanel />
             </div>
           </SheetContent>
