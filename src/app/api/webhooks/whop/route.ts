@@ -116,6 +116,26 @@ export async function POST(request: Request) {
     const isValid = verifyWebhookSignature(body, request.headers, secret);
 
     if (!isValid) {
+      // A silent 401 here cost a full diagnosis round-trip on 2026-07-27: a SECOND
+      // Whop webhook had been created against this same URL, signing with its own
+      // secret, and from the logs that was indistinguishable from the header-name bug
+      // this module had just been fixed for. The failure has to say which shape arrived.
+      // Log NAMES and the webhook id only — never the signature, never the body.
+      log.warn("Webhook signature rejected", {
+        signature_headers_present: [
+          "webhook-id",
+          "webhook-timestamp",
+          "webhook-signature",
+          "svix-id",
+          "svix-timestamp",
+          "svix-signature",
+        ].filter((name) => request.headers.get(name) !== null),
+        webhook_id:
+          request.headers.get("webhook-id") ??
+          request.headers.get("svix-id") ??
+          null,
+        body_bytes: body.length,
+      });
       return NextResponse.json(
         { error: "Invalid webhook signature" },
         { status: 401 }
