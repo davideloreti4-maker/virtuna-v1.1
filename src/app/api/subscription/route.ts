@@ -58,7 +58,7 @@ export async function GET() {
     // fair-use spend, since unlimited has no monthly window to report.)
     const quota = await checkCreditQuota(
       supabase,
-      user.id,
+      user,
       tier,
       0,
       {

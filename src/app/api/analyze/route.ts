@@ -408,13 +408,16 @@ export async function POST(request: Request) {
     // logged either way, so the real usage can be watched before the gate ever closes on a
     // customer. Quota failures fail OPEN (see lib/billing/quota.ts) — a flaky count must
     // not cost a paid Reading.
-    // `is_anonymous` marks a `/go` funnel visitor: the demo signs them in anonymously and
-    // hands them the REAL platform, so this run is the free half of the wall and is paid for
-    // by us. It draws on the DEMO pool (one Reading) and is capped whether or not
-    // BILLING_ENFORCE_QUOTA is on — see lib/pricing.ts DEMO_CREDITS.
-    const quota = await getCreditQuotaVerdict(supabase, user.id, CREDITS_PER_READING, new Date(), {
-      isAnonymous: user.is_anonymous === true,
-    });
+    // The gate takes the USER, not their id: `is_anonymous` marks a `/go` funnel visitor, and
+    // that decides which allowance applies — the demo entitlement (one free Test, enforced
+    // whether or not BILLING_ENFORCE_QUOTA is on) rather than tier `free`'s zero. See
+    // lib/billing/quota.ts (QuotaUser) for why it is the identity and not an option.
+    //
+    // Priced as `score` for BOTH modes of this route: a remix decode is the same 10-credit
+    // Reading, and the body is not parsed until further down (the gate must run before any
+    // spend, and parsing is not spend). For an anonymous visitor that means whichever mode
+    // they run draws the single free Reading — /go only ever launches the Test.
+    const quota = await getCreditQuotaVerdict(supabase, user, "score", CREDITS_PER_READING);
 
     // THE WALL (ONBOARDING-FUNNEL-DESIGN.md §0b②) — an anonymous visitor's run is free,
     // but the reception read (attention curve, fold cast, intents, forecast) is what the

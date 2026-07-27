@@ -23,6 +23,9 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+/** The gate takes the USER — `is_anonymous` is part of the identity, not an optional flag. */
+const U1 = { id: "u1" };
+
 /** A client whose subscription row and credit sum are canned. */
 function stubClient(row: Record<string, unknown> | null, creditsUsed: number) {
   return {
@@ -38,7 +41,7 @@ function stubClient(row: Record<string, unknown> | null, creditsUsed: number) {
 describe("creditGate", () => {
   it("refuses a spent allowance with a 402 the client type-guard recognises", async () => {
     const client = stubClient({ virtuna_tier: "starter" }, 500);
-    const { refusal, verdict } = await creditGate(client, "u1", "hooks");
+    const { refusal, verdict } = await creditGate(client, U1, "hooks");
 
     expect(refusal).not.toBeNull();
     expect(refusal!.status).toBe(402);
@@ -50,7 +53,7 @@ describe("creditGate", () => {
 
   it("lets an affordable action through and hands back the verdict for billing", async () => {
     const client = stubClient({ virtuna_tier: "pro" }, 100);
-    const { refusal, verdict } = await creditGate(client, "u1", "score");
+    const { refusal, verdict } = await creditGate(client, U1, "score");
     expect(refusal).toBeNull();
     expect(verdict.tier).toBe("pro"); // the success path stamps this on the ledger row
   });
@@ -58,7 +61,7 @@ describe("creditGate", () => {
   it("never refuses while enforcement is off", async () => {
     process.env.BILLING_ENFORCE_QUOTA = "false";
     const client = stubClient({ virtuna_tier: "free" }, 0);
-    const { refusal, verdict } = await creditGate(client, "u1", "score");
+    const { refusal, verdict } = await creditGate(client, U1, "score");
     expect(refusal).toBeNull(); // free/0 would be refused if the flag were on…
     expect(verdict.allowed).toBe(false); // …and the verdict says so honestly
   });

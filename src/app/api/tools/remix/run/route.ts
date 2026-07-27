@@ -105,7 +105,7 @@ export async function POST(request: Request): Promise<Response> {
   if (guard) return guard;
 
   // ── Credit gate (BILLING) — priced admission BEFORE any engine spend ─────────
-  const { refusal, verdict: creditVerdict } = await creditGate(supabase, user.id, "remix");
+  const { refusal, verdict: creditVerdict } = await creditGate(supabase, user, "remix");
   if (refusal) return refusal;
 
   // ── (4) Zod body validation — 400 on invalid (T-04-06) ─────────────────────

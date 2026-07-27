@@ -47,11 +47,29 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
   creditAllowanceFor,
+  creditCost,
   CREDITS_PER_READING,
   DEMO_CREDITS,
   UNLIMITED_DAILY_CREDIT_CEILING,
+  type BillableAction,
 } from "@/lib/pricing";
 import type { NumenTier } from "@/lib/whop/config";
+
+/**
+ * WHO the meter is measuring — and `is_anonymous` is part of that identity, not an option
+ * beside it.
+ *
+ * It used to be an optional 6th argument (`opts.isAnonymous`) on `creditGate`, and eleven of
+ * the twelve paid routes simply never passed it: an anonymous visitor read as a real customer,
+ * enforcement fell back to `BILLING_ENFORCE_QUOTA` (off in production), and every skill but
+ * the Test ran free and unmetered for strangers. Taking the USER means a route cannot forget —
+ * omitting it is a type error, not a silent policy change.
+ */
+export interface QuotaUser {
+  id: string;
+  /** The Supabase JWT claim. Absent/false = a real user (see verdict-seal.ts on polarity). */
+  is_anonymous?: boolean;
+}
 
 /** Enforcement is opt-in — see the module note. */
 export function isQuotaEnforced(): boolean {
@@ -251,16 +269,16 @@ async function countLegacyAnalysisRows(
  */
 export async function checkCreditQuota(
   supabase: SupabaseClient,
-  userId: string,
+  user: QuotaUser,
   tier: NumenTier,
   cost: number,
   trial: TrialWindow = { trialStartedAt: null, trialEndsAt: null },
   now: Date = new Date(),
-  periodEnd: Date | null = null,
-  opts: { isAnonymous?: boolean } = {}
+  periodEnd: Date | null = null
 ): Promise<QuotaVerdict> {
+  const userId = user.id;
   const inTrial = isTrialActive(trial, now);
-  const isDemo = opts.isAnonymous === true;
+  const isDemo = user.is_anonymous === true;
   // The anonymous demo pool overrides the tier allowance outright. An anonymous user is
   // always tier `free` (allowance 0), so without this the funnel's own free run would be
   // refused the moment enforcement flips on.
@@ -343,10 +361,10 @@ export async function checkCreditQuota(
  */
 export async function getCreditQuotaVerdict(
   supabase: SupabaseClient,
-  userId: string,
-  cost: number,
-  now: Date = new Date(),
-  opts: { isAnonymous?: boolean } = {}
+  user: QuotaUser,
+  action: BillableAction,
+  cost: number = creditCost(action),
+  now: Date = new Date()
 ): Promise<QuotaVerdict> {
   let tier: NumenTier = "free";
   let trial: TrialWindow = { trialStartedAt: null, trialEndsAt: null };
@@ -356,7 +374,7 @@ export async function getCreditQuotaVerdict(
     const { data } = await supabase
       .from("user_subscriptions")
       .select("*")
-      .eq("user_id", userId)
+      .eq("user_id", user.id)
       .maybeSingle();
 
     const row = data as Record<string, unknown> | null;
@@ -370,7 +388,7 @@ export async function getCreditQuotaVerdict(
   } catch (error) {
     // Same fail-open rationale: if we cannot read the tier we must not invent a limit.
     // The anonymous demo is the exception — see the fail-CLOSED note in checkCreditQuota.
-    const isDemo = opts.isAnonymous === true;
+    const isDemo = user.is_anonymous === true;
     console.error(
       `[quota] tier lookup failed — failing ${isDemo ? "CLOSED (demo)" : "open"}`,
       error
@@ -389,7 +407,7 @@ export async function getCreditQuotaVerdict(
     };
   }
 
-  return checkCreditQuota(supabase, userId, tier, cost, trial, now, periodEnd, opts);
+  return checkCreditQuota(supabase, user, tier, cost, trial, now, periodEnd);
 }
 
 /** A timestamptz off a raw row — null for a missing column, a null value, or an unparseable one. */
