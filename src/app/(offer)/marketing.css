@@ -1,0 +1,399 @@
+/**
+ * The marketing surface — floor tokens + the ambient motion vocabulary for /go-v2.
+ *
+ * ⚠️ IMPORTED BY `go-v2/page.tsx` ONLY — never by `(offer)/layout.tsx`, and never by the app.
+ * That import boundary is the structural guarantee that this file cannot reach `/go` or any
+ * signed-in surface. The app's own floor (`--charcoal-app` #1f1f1e) is UNCHANGED by design;
+ * `--mk-floor` is a marketing-only step down to near-black, because a product screenshot
+ * against #0d0d0c reads as lit from within and against #1f1f1e it reads as flat.
+ *
+ * ── WHY THIS FILE EXISTS AT ALL ───────────────────────────────────────────────────────────
+ * Measured 2026-07-27 at 1440x900 and again at 390x844: Linear runs 180 infinite CSS
+ * animations (both viewports — they do NOT cut motion on phones), Cursor 37, Attio 12, and
+ * /go runs ONE, which is Tailwind's `ping`. Neither reference uses <video>: it is all CSS,
+ * SVG and WAAPI. `BlurFade`/`Reveal` fire once on scroll and freeze forever, which is the
+ * signature of a generated landing page and precisely what the owner called "AI trash".
+ *
+ * THE RULE: motion belongs INSIDE the product surface, never on its container.
+ *
+ * ── TWO LAWS THIS FILE ENFORCES BY CONSTRUCTION ───────────────────────────────────────────
+ * 1. DESYNCHRONISATION. Attio runs the same animation at 3.8s AND 4.15s so the loops never
+ *    phase-lock — a page pulsing in unison reads cheap. No two keyframe utilities here may
+ *    share a period, and repeated instances take a per-index period from `ambient.ts`.
+ *    Pinned by `__tests__/ambient.test.ts`.
+ * 2. REDUCED MOTION. Every class below appears in the single collective reduce block at the
+ *    foot of this file. `animation: none` sets `animationName` to `none`, which is exactly
+ *    what the motion probe filters on — so "≈0 animations under prefers-reduced-motion" is
+ *    satisfied structurally rather than by auditing call sites. Also pinned by that test.
+ *
+ * Transform and opacity ONLY. No layout properties, no `filter` in a loop, no glow, no glass —
+ * the matte rule still governs. Movement, not shine.
+ *
+ * Names are semantic (`mk-beat-pulse`), the way Attio names `pipeline-radar-bob`. Never
+ * `fade-1`.
+ */
+
+/* ══ the marketing floor ══════════════════════════════════════════════════════════════════
+   Exact hex, never oklch: Tailwind v4 miscompiles L<0.15 colours through @theme, and every
+   value here is below that line (CLAUDE.md). */
+.mk-root {
+  --mk-floor: #0d0d0c;
+  --mk-s1: #141413;
+  --mk-s2: #1a1a19;
+  --mk-s3: #1f1f1e;
+  --mk-s4: #232322;
+  --mk-hairline: rgba(255, 255, 255, 0.06);
+  --mk-hairline-strong: rgba(255, 255, 255, 0.1);
+
+  min-height: 100vh;
+  background: var(--mk-floor);
+  color: #ece7de;
+}
+
+/* Tone-zones. `sunken` steps DOWN off the floor, `lifted` steps UP — verified as two distinct
+   pixels, unlike the old surface/surface-sunken pair which were the same colour. */
+.mk-tone-sunken {
+  background: #0a0a09;
+}
+.mk-tone-lifted {
+  background: var(--mk-s1);
+}
+
+/* ══ ambient loops ════════════════════════════════════════════════════════════════════════
+   Durations are deliberately non-round and mutually prime-ish. Do not "tidy" them to whole
+   seconds — that IS the phase-lock this system exists to avoid. */
+
+/* The composer's caret in the hero shot — the product is mid-thought, permanently. */
+@keyframes mk-caret-blink {
+  0%,
+  46% {
+    opacity: 1;
+  }
+  54%,
+  100% {
+    opacity: 0.05;
+  }
+}
+.mk-caret-blink {
+  animation: mk-caret-blink 1.06s steps(1, end) infinite;
+}
+
+/* A live-run dot. Cream breathe, matte — opacity + a hair of scale, never a glow. */
+@keyframes mk-live-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.34;
+    transform: scale(0.72);
+  }
+}
+.mk-live-pulse {
+  animation: mk-live-pulse 2.32s cubic-bezier(0.33, 0, 0.67, 1) infinite;
+}
+
+/* The "thinking" triplet. Three instances, each taking its own delay from `ambient.ts`. */
+@keyframes mk-think-dot {
+  0%,
+  100% {
+    opacity: 0.22;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.mk-think-dot {
+  animation: mk-think-dot 1.37s cubic-bezier(0.33, 0, 0.67, 1) infinite;
+}
+
+/* A reading ring, sweeping. `stroke-dashoffset` is compositor-cheap on an SVG circle and is
+   how the product's own reading ring already draws. */
+@keyframes mk-ring-sweep {
+  0% {
+    stroke-dashoffset: 0;
+  }
+  100% {
+    stroke-dashoffset: -207.35;
+  }
+}
+.mk-ring-sweep {
+  animation: mk-ring-sweep 6.73s linear infinite;
+}
+
+/* The craft ring's slow revolution — a different period AND a different direction to the
+   reading ring, so two rings on one surface never march together. */
+@keyframes mk-craft-sweep {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(-360deg);
+  }
+}
+.mk-craft-sweep {
+  animation: mk-craft-sweep 8.31s linear infinite;
+  transform-origin: center;
+}
+
+/* Weak-beat markers on the filmstrip. Per-marker period from `ambient.ts` — this is the
+   single most visible place a synchronised pulse would look cheap, because they sit in a row. */
+@keyframes mk-beat-pulse {
+  0%,
+  100% {
+    opacity: 0.42;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.18);
+  }
+}
+.mk-beat-pulse {
+  animation: mk-beat-pulse 3.71s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  transform-origin: center;
+}
+
+/* A playhead scrubbing the attention curve / filmstrip. The curve already renders; this is
+   the cheapest way to make it read as a measurement rather than a picture. */
+@keyframes mk-playhead-scrub {
+  0% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  6% {
+    opacity: 1;
+  }
+  94% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(var(--mk-scrub-distance, 100%));
+    opacity: 0;
+  }
+}
+.mk-playhead-scrub {
+  animation: mk-playhead-scrub 9.43s cubic-bezier(0.37, 0, 0.63, 1) infinite;
+}
+
+/* Constellation drift. Every node gets its own period AND its own delay, so the cloud
+   breathes as a society rather than a metronome. Amplitude stays tiny (1–3px): nodes must
+   never leave their district, or the ledger's meaning breaks. */
+@keyframes mk-node-drift {
+  0%,
+  100% {
+    transform: translate3d(calc(var(--mk-amp, 2px) * -1), calc(var(--mk-amp, 2px) * -0.6), 0);
+  }
+  50% {
+    transform: translate3d(var(--mk-amp, 2px), calc(var(--mk-amp, 2px) * 0.6), 0);
+  }
+}
+.mk-node-drift {
+  animation: mk-node-drift 7.13s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+/* A verdict ring, holding steady then settling — the room is still counting. */
+@keyframes mk-verdict-ring {
+  0%,
+  100% {
+    opacity: 0.28;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.62;
+    transform: scale(1.035);
+  }
+}
+.mk-verdict-ring {
+  animation: mk-verdict-ring 5.87s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  transform-origin: center;
+}
+
+/* Two marquee tracks at different speeds — the logo wall reads as continuous rather than as
+   a carousel with a seam. Linear runs its own `scroll` at 30s. */
+@keyframes mk-marquee-a {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+.mk-marquee-a {
+  animation: mk-marquee-a 31.4s linear infinite;
+}
+@keyframes mk-marquee-b {
+  0% {
+    transform: translate3d(-50%, 0, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+.mk-marquee-b {
+  animation: mk-marquee-b 37.9s linear infinite;
+}
+
+/* Placeholder slots breathe so an unfilled wall still reads as a living surface rather than
+   as a broken one. Per-slot period from `ambient.ts`. */
+@keyframes mk-slot-breathe {
+  0%,
+  100% {
+    opacity: 0.34;
+  }
+  50% {
+    opacity: 0.72;
+  }
+}
+.mk-slot-breathe {
+  animation: mk-slot-breathe 4.19s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Signal bars in the brain section — scaleY only, so no layout is touched. */
+@keyframes mk-signal-breathe {
+  0%,
+  100% {
+    transform: scaleY(0.55);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scaleY(1);
+    opacity: 0.92;
+  }
+}
+.mk-signal-breathe {
+  animation: mk-signal-breathe 4.91s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  transform-origin: bottom;
+}
+
+/* A hairline travelling along a section seam. This is the matte answer to Linear's `shine`:
+   a moving EDGE, not a specular highlight. */
+@keyframes mk-seam-travel {
+  0% {
+    transform: translate3d(-100%, 0, 0);
+  }
+  100% {
+    transform: translate3d(100%, 0, 0);
+  }
+}
+.mk-seam-travel {
+  animation: mk-seam-travel 14.23s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+/* Metric underlines, re-drawing on a long cycle so the band never fully settles. */
+@keyframes mk-tick-underline {
+  0%,
+  8% {
+    transform: scaleX(0);
+    opacity: 0;
+  }
+  20%,
+  80% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+  96%,
+  100% {
+    transform: scaleX(0);
+    opacity: 0;
+  }
+}
+.mk-tick-underline {
+  animation: mk-tick-underline 11.31s cubic-bezier(0.22, 0.61, 0.24, 1) infinite;
+  transform-origin: left;
+}
+
+/* The case-study connector — a token travelling from the drained tile to the lit one, which
+   is the whole claim of that section expressed as motion. */
+@keyframes mk-count-flow {
+  0% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  88% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(var(--mk-flow-distance, 100%), 0, 0);
+    opacity: 0;
+  }
+}
+.mk-count-flow {
+  animation: mk-count-flow 6.11s cubic-bezier(0.37, 0, 0.63, 1) infinite;
+}
+
+/* The brand mark — the accent's one liveness moment, per the LOCKED dosage rule. */
+@keyframes mk-brandmark-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.mk-brandmark-pulse {
+  animation: mk-brandmark-pulse 3.13s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Three orbit speeds for the three-up's micro-figures — one per statement, all different. */
+@keyframes mk-orbit {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+.mk-orbit-slow {
+  animation: mk-orbit 21.7s linear infinite;
+  transform-origin: center;
+}
+.mk-orbit-mid {
+  animation: mk-orbit 17.3s linear infinite;
+  transform-origin: center;
+}
+.mk-orbit-fast {
+  animation: mk-orbit 13.9s linear infinite;
+  transform-origin: center;
+}
+
+/* ══ REDUCED MOTION ═══════════════════════════════════════════════════════════════════════
+   One collective block, listing EVERY class above. `animation: none` clears `animationName`,
+   so the motion probe reports ≈0 here — the acceptance criterion is met by construction.
+   `__tests__/ambient.test.ts` fails if a class is added above and not added here. */
+@media (prefers-reduced-motion: reduce) {
+  .mk-caret-blink,
+  .mk-live-pulse,
+  .mk-think-dot,
+  .mk-ring-sweep,
+  .mk-craft-sweep,
+  .mk-beat-pulse,
+  .mk-playhead-scrub,
+  .mk-node-drift,
+  .mk-verdict-ring,
+  .mk-marquee-a,
+  .mk-marquee-b,
+  .mk-slot-breathe,
+  .mk-signal-breathe,
+  .mk-seam-travel,
+  .mk-tick-underline,
+  .mk-count-flow,
+  .mk-brandmark-pulse,
+  .mk-orbit-slow,
+  .mk-orbit-mid,
+  .mk-orbit-fast {
+    animation: none;
+  }
+  /* The scrub/flow markers exist only to move; at rest they would sit frozen mid-track,
+     reading as a rendering fault. Hide them instead. */
+  .mk-playhead-scrub,
+  .mk-count-flow,
+  .mk-seam-travel {
+    opacity: 0;
+  }
+}

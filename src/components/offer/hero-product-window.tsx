@@ -79,7 +79,71 @@ const REVEAL_EASE = [0.21, 0.47, 0.32, 0.98] as const;
 /** How long each of the read's two pages holds before the probe crosses to the other. */
 const TAB_DWELL_MS = 5_000;
 
-export function HeroProductWindow() {
+/**
+ * `loop` only: how long after the sequence completes before it plays again.
+ *
+ * The build finishes at 6.3s and the read's two pages then alternate on a 5s dwell, so 28s
+ * lets a visitor see the whole choreography plus two full passes of the read before anything
+ * repeats. Shorter and the restart interrupts someone mid-sentence; longer and the "the fold
+ * is still alive at 30 seconds" property this exists for stops holding.
+ */
+const LOOP_RESTART_MS = 28_000;
+
+interface HeroProductWindowProps {
+  /**
+   * Browser-window chrome — titlebar, traffic lights, fake URL, and the frame's border and
+   * radius. Default `true` keeps every existing mount byte-identical.
+   *
+   * /go-v2 passes `false`: measured 2026-07-27, the hero shot on linear.app and cursor.com is
+   * a full-bleed image at 90–100% viewport width with `border-radius: 0px` and
+   * `border-width: 0px` — on desktop AND on a phone. A framed window inside a page is the
+   * shape of a screenshot; an unframed bleed is the shape of the product itself.
+   *
+   * ⚠️ Turning the chrome off does NOT drop the "Sample read" disclosure — that label is an
+   * honesty requirement, not decoration. The caller must render it (see `hero-shot.tsx`,
+   * which places it as a caption chip on the surface).
+   */
+  chrome?: boolean;
+  /**
+   * Replay the choreography indefinitely, with a long pause between passes.
+   *
+   * Default `false` — one-shot, which is what `/go` ships. The whole diagnosis of this
+   * rebuild is that a fold which finishes at 5900ms and then freezes forever reads as dead;
+   * a marketing surface a visitor may sit on for a minute needs to still be moving at 0:30.
+   */
+  loop?: boolean;
+  /**
+   * The warm bloom anchored behind the frame. Default `true`.
+   *
+   * /go-v2 passes `false`: the accent dosage rule is LOCKED at near-zero and the current fold
+   * spends FIVE accent moments (page bloom, receipt bloom, the ↑792× badge, the italic
+   * *before*, the coral CTA). Linear spends its one chromatic colour on the brand mark, focus
+   * rings and one CTA per section. This is one of the four being cut.
+   */
+  bloom?: boolean;
+  /**
+   * Start the choreography on MOUNT rather than waiting to be scrolled to. Default `false`.
+   *
+   * Intersection-arming exists because on `/go` this window is the page's SECOND surface: it
+   * used to start on mount, finish at 5900ms while sitting below a headline and a composer, and
+   * so perform to an empty viewport on every real visit. That reasoning inverts when the window
+   * IS the fold, as it is on /go-v2 — there, waiting for an intersection that has already
+   * happened just means the visitor's first impression is an empty slab of product surface.
+   *
+   * ⚠️ The intersection guard also carries a `-25%` bottom margin, so a surface whose top sits
+   * in the lowest quarter of the viewport does NOT count as visible. Measured on /go-v2's fold:
+   * the shot's top lands at ~70% of a 900px viewport, inside that dead band — so it would never
+   * have armed until the visitor scrolled, on the one surface that has to be alive on arrival.
+   */
+  armOnMount?: boolean;
+}
+
+export function HeroProductWindow({
+  chrome = true,
+  loop = false,
+  bloom = true,
+  armOnMount = false,
+}: HeroProductWindowProps = {}) {
   const [qc] = useState(
     () =>
       new QueryClient({
@@ -110,7 +174,17 @@ export function HeroProductWindow() {
   const [railTab, setRailTab] = useState<"audience" | "brain">("brain");
 
   const timersRef = useRef<number[]>([]);
-  const startedRef = useRef(false);
+  /** The pass number this component last armed; `-1` before the first. See the effect below. */
+  const startedRef = useRef(-1);
+
+  /**
+   * `loop` only: bumping this re-runs the choreography from `idle`.
+   *
+   * A counter rather than a boolean because the effect must re-fire on EVERY pass, and because
+   * the cleanup that tears down the previous pass's timers is the same cleanup that already
+   * runs on unmount — so looping adds no second teardown path to get wrong.
+   */
+  const [pass, setPass] = useState(0);
 
   /**
    * ARMED ON INTERSECTION, not on mount. Until 2026-07-27 the run began the moment the page
@@ -120,7 +194,8 @@ export function HeroProductWindow() {
    * that worse. Firing when the window is actually on screen is the whole point of a demo.
    */
   const rootRef = useRef<HTMLDivElement>(null);
-  const inView = useInView(rootRef, { once: true, margin: "0px 0px -25% 0px" });
+  const scrolledTo = useInView(rootRef, { once: true, margin: "0px 0px -25% 0px" });
+  const inView = armOnMount || scrolledTo;
 
   const finish = () => {
     timersRef.current.forEach((t) => {
@@ -137,17 +212,27 @@ export function HeroProductWindow() {
     // Reduced motion: land on the finished surface immediately, without waiting to be seen.
     // One-shot by `startedRef`, and it cannot be a lazy initial state — `useReducedMotion`
     // resolves after first render. Same exemption `use-test-run-stages.ts` takes.
+    // Reduced motion never loops — a replaying surface is exactly what the preference is
+    // asking us not to do, and `finish()` has already landed on the completed state.
     if (reduced) {
-      if (startedRef.current) return;
-      startedRef.current = true;
+      if (startedRef.current >= 0) return;
+      startedRef.current = pass;
       // eslint-disable-next-line react-hooks/set-state-in-effect
       finish();
       return;
     }
-    if (!inView || startedRef.current) return;
-    startedRef.current = true;
+    // `startedRef` holds the pass number it last armed, so the one-shot guard and the loop's
+    // re-arm are the same check. `-1` before the first pass; `0` is a real pass, which is why
+    // this is a number and not the boolean it used to be.
+    if (!inView || startedRef.current === pass) return;
+    startedRef.current = pass;
 
     setPhase("typing");
+    // Explicit resets, because on pass ≥ 1 these still hold the previous pass's finished
+    // values — without them the "replay" would open on a fully-typed composer.
+    setTyped(0);
+    setMavenTyped(0);
+    setRailTab("brain");
     let ui = 0;
     const userTyper = window.setInterval(() => {
       ui += 1;
@@ -187,6 +272,12 @@ export function HeroProductWindow() {
       }, TAB_DWELL_MS),
     ];
 
+    // `loop`: schedule the next pass. Nothing is torn down here — bumping `pass` re-runs this
+    // effect, and its cleanup clears every timer above, including the tab cycle.
+    if (loop) {
+      timersRef.current.push(window.setTimeout(() => setPass((p) => p + 1), LOOP_RESTART_MS));
+    }
+
     const timers = timersRef.current;
     return () => {
       timers.forEach((t) => {
@@ -194,7 +285,7 @@ export function HeroProductWindow() {
         window.clearInterval(t);
       });
     };
-  }, [reduced, inView]);
+  }, [reduced, inView, loop, pass]);
 
   const cardOut = WITH_RAIL.includes(phase) || phase === "reveal";
   const sent = AFTER_SEND.includes(phase);
@@ -222,31 +313,45 @@ export function HeroProductWindow() {
             blooms are loose atmosphere; a premium app-shot sits in its own
             light). Matte-safe: a blurred radial behind the frame, no glass, no
             element glow — same family as the hero atmosphere layers. */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -inset-x-24 -top-28 h-[460px] opacity-[0.16] blur-[110px]"
-          style={{
-            background:
-              "radial-gradient(55% 60% at 50% 30%, #FF6363, rgba(255,178,122,0.4) 55%, transparent 75%)",
-          }}
-        />
+        {bloom && (
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -inset-x-24 -top-28 h-[460px] opacity-[0.16] blur-[110px]"
+            style={{
+              background:
+                "radial-gradient(55% 60% at 50% 30%, #FF6363, rgba(255,178,122,0.4) 55%, transparent 75%)",
+            }}
+          />
+        )}
 
-        {/* Browser-window chrome (relative → hosts the BorderBeam). The inset
-            top hairline catches the bloom like an edge-lit frame. */}
-        <div className="relative overflow-hidden rounded-2xl border border-border bg-surface-sunken shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_44px_96px_-32px_rgba(0,0,0,0.85)]">
-        {/* top bar */}
-        <div className="flex items-center gap-2 border-b border-border px-4 py-2.5">
-          <span aria-hidden className="flex gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-white/15" />
-            <span className="h-2.5 w-2.5 rounded-full bg-white/15" />
-            <span className="h-2.5 w-2.5 rounded-full bg-white/15" />
-          </span>
-          <span className="mx-auto flex items-center gap-1.5 rounded-md bg-background px-3 py-1 text-[11px] text-foreground-muted">
-            <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-            maven.numenmachines.com
-          </span>
-          <span className="text-[11px] text-foreground-muted">Sample read</span>
-        </div>
+        {/* The frame (relative → hosts the BorderBeam). With `chrome`, a browser window: inset
+            top hairline catching the bloom like an edge-lit frame. Without it, no border, no
+            radius and no drop shadow — the measured shape of Linear's and Cursor's hero shots,
+            which is a surface that simply IS the page rather than a screenshot placed on it. */}
+        <div
+          className={
+            chrome
+              ? "relative overflow-hidden rounded-2xl border border-border bg-surface-sunken shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_44px_96px_-32px_rgba(0,0,0,0.85)]"
+              : "relative overflow-hidden bg-surface-sunken"
+          }
+        >
+        {/* top bar — the "Sample read" honesty tag lives here. When the chrome is off, the
+            CALLER must render that disclosure instead (`hero-shot.tsx` puts it on the surface
+            as a caption chip); it is a §8 requirement and is never simply dropped. */}
+        {chrome && (
+          <div className="flex items-center gap-2 border-b border-border px-4 py-2.5">
+            <span aria-hidden className="flex gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-white/15" />
+              <span className="h-2.5 w-2.5 rounded-full bg-white/15" />
+              <span className="h-2.5 w-2.5 rounded-full bg-white/15" />
+            </span>
+            <span className="mx-auto flex items-center gap-1.5 rounded-md bg-background px-3 py-1 text-[11px] text-foreground-muted">
+              <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+              maven.numenmachines.com
+            </span>
+            <span className="text-[11px] text-foreground-muted">Sample read</span>
+          </div>
+        )}
 
         {/* app body — the thread column + the drilled read rail, the real ≥xl layout.
             `inert`: a shot of the product; its controls must not be reachable. */}

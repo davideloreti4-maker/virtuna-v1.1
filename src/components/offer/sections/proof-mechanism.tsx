@@ -71,7 +71,19 @@ const RECEIPT: readonly { figure: string; label: string }[] = [
   { figure: "2.4M", label: "views the cited video did" },
 ];
 
-export function ProofMechanism() {
+interface ProofMechanismProps {
+  /**
+   * The three-number ribbon (500 / 10 / ~90s). Default `true` — `/go` is unchanged.
+   *
+   * /go-v2 passes `false`: it carries those same three numbers in a dedicated metrics band,
+   * in the grammar Attio and Cursor use for them, and this page's standing rule is that every
+   * claim is stated EXACTLY ONCE. Two rows of the same three figures on one scroll is the
+   * fastest way to make a true number look like filler.
+   */
+  showStats?: boolean;
+}
+
+export function ProofMechanism({ showStats = true }: ProofMechanismProps = {}) {
   return (
     <Section divider>
       <Reveal gesture="lift">
@@ -119,30 +131,32 @@ export function ProofMechanism() {
 
       {/* Three true numbers — a slim ribbon, not another boxed card. CountUp
           renders the real figure server-side, then animates once it's seen. */}
-      <Stagger
-        as="dl"
-        className="mx-auto mt-16 grid max-w-3xl grid-cols-1 gap-8 border-t border-border pt-10 sm:grid-cols-3 sm:gap-0"
-      >
-        {STATS.map((stat, i) => (
-          <StaggerItem
-            key={stat.label}
-            gesture="rise"
-            className={cn(
-              "flex flex-col items-center text-center",
-              i > 0 && "sm:border-l sm:border-border",
-            )}
-          >
-            <dd className="text-[clamp(2.2rem,5.5vw,3rem)] font-semibold leading-none tracking-tight text-foreground">
-              {stat.prefix}
-              <CountUp value={stat.value} className="text-foreground" />
-              {stat.suffix}
-            </dd>
-            <dt className="mt-3 max-w-[24ch] px-2 text-[13px] leading-relaxed text-foreground-muted">
-              {stat.label}
-            </dt>
-          </StaggerItem>
-        ))}
-      </Stagger>
+      {showStats && (
+        <Stagger
+          as="dl"
+          className="mx-auto mt-16 grid max-w-3xl grid-cols-1 gap-8 border-t border-border pt-10 sm:grid-cols-3 sm:gap-0"
+        >
+          {STATS.map((stat, i) => (
+            <StaggerItem
+              key={stat.label}
+              gesture="rise"
+              className={cn(
+                "flex flex-col items-center text-center",
+                i > 0 && "sm:border-l sm:border-border",
+              )}
+            >
+              <dd className="text-[clamp(2.2rem,5.5vw,3rem)] font-semibold leading-none tracking-tight text-foreground">
+                {stat.prefix}
+                <CountUp value={stat.value} className="text-foreground" />
+                {stat.suffix}
+              </dd>
+              <dt className="mt-3 max-w-[24ch] px-2 text-[13px] leading-relaxed text-foreground-muted">
+                {stat.label}
+              </dt>
+            </StaggerItem>
+          ))}
+        </Stagger>
+      )}
 
       {/* The receipt — the corpus proof that closes the authority beat. */}
       <Reveal gesture="settle" className="mx-auto mt-16 max-w-3xl">
