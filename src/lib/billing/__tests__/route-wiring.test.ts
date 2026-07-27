@@ -74,6 +74,17 @@ describe("every paid tool route gates and bills", () => {
     });
   }
 
+  it("the free chat route does not hand an ANONYMOUS visitor the paid skills", () => {
+    // Chat is free by decision, but the agent loop can DISPATCH paid skills (ideas/hooks/script)
+    // in-process — the pipelines behind three gated routes, reached without their gates. For an
+    // anonymous /go visitor that is the trial wall's back door: the demo entitles one Test, so the
+    // route must bind the free-only registry. (⚠️ For a real CUSTOMER those dispatched runs are
+    // still neither gated nor billed — a separate hole in the meter, not this guard's business.)
+    const src = readFileSync(join(ROOT, "chat/route.ts"), "utf8");
+    expect(src).toContain("FREE_SKILL_TOOLS");
+    expect(src).toContain("isSealedVisitor(user)");
+  });
+
   it("the analyze route (score + remix decode) gates at the Reading price", () => {
     const src = readFileSync(
       join(__dirname, "../../../app/api/analyze/route.ts"),

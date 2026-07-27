@@ -459,7 +459,12 @@ describe("POST /api/tools/chat (SSE route)", () => {
   // ─── Chat-as-agent dispatch (CHAT_AGENT_DISPATCH, default OFF) ────────────────
 
   /** Standard authed harness with a resolvable open thread + null profile. */
-  async function primeDispatchHarness(userId = "user-dispatch", threadId = "thread-dispatch") {
+  async function primeDispatchHarness(
+    userId = "user-dispatch",
+    threadId = "thread-dispatch",
+    /** `/go` funnel visitor — the demo entitles one Test and nothing the agent can dispatch. */
+    isAnonymous = false
+  ) {
     const { createClient } = await import("@/lib/supabase/server");
     const { createServiceClient } = await import("@/lib/supabase/service");
     const { createOpenThreadLazy } = await import("@/lib/threads/threads");
@@ -477,7 +482,11 @@ describe("POST /api/tools/chat (SSE route)", () => {
       maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
     };
     (createClient as ReturnType<typeof vi.fn>).mockResolvedValue({
-      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: userId } } }) },
+      auth: {
+        getUser: vi.fn().mockResolvedValue({
+          data: { user: isAnonymous ? { id: userId, is_anonymous: true } : { id: userId } },
+        }),
+      },
       ...chain,
     });
     (createServiceClient as ReturnType<typeof vi.fn>).mockReturnValue(chain);
@@ -535,6 +544,58 @@ describe("POST /api/tools/chat (SSE route)", () => {
     expect((markdownCall![2][0] as { props: { text: string; origin?: string } }).props.text).toBe("I made 2 angles — want hooks for one?");
     // A turn that ran a skill marks the text so the thread reloads unified in the chat view.
     expect((markdownCall![2][0] as { props: { origin?: string } }).props.origin).toBe("chat-agent");
+  });
+
+  it("Test 6b: an ANONYMOUS /go visitor is not offered the PAID skills — chat's back door to the engine", async () => {
+    // Chat is free on purpose, but the skills the agent can dispatch are NOT: ideas, hooks and
+    // scripts are metered actions with their own gates and their own 402. The demo entitles ONE
+    // Test and nothing else, so an anonymous visitor who asks chat for hooks must get an answer
+    // in words, never a paid engine run — the wall on /api/tools/hooks is worthless if the same
+    // pipeline is reachable by asking nicely.
+    process.env.CHAT_AGENT_DISPATCH = "true";
+    await primeDispatchHarness("anon-chat", "thread-anon-chat", true);
+    const { runChatAgentStream } = await import("@/lib/tools/chat-agent-loop");
+    (runChatAgentStream as ReturnType<typeof vi.fn>).mockImplementation(
+      async (input: { onToken: (d: string) => void }) => {
+        input.onToken("here's how I'd think about it");
+        return { text: "here's how I'd think about it", skillRuns: [], uiBlocks: [], toolCalls: [] };
+      }
+    );
+
+    const { POST } = await import("@/app/api/tools/chat/route");
+    const res = await POST(makeChatRequest({ ask: "give me 5 hooks about cold plunges", platform: "tiktok" }));
+    expect(res.status).toBe(200);
+    await readSSE(res);
+
+    const [, deps] = (runChatAgentStream as ReturnType<typeof vi.fn>).mock.calls[0] as [
+      unknown,
+      { skills?: Array<{ name: string; paid: boolean }> },
+    ];
+    expect(deps?.skills, "an anonymous turn must bind an explicit skill list").toBeDefined();
+    expect(deps!.skills!.some((s) => s.paid)).toBe(false);
+    expect(deps!.skills!.map((s) => s.name)).not.toContain("generate_hooks");
+  });
+
+  it("Test 6c: a real user keeps every skill — the filter is anonymous-only", async () => {
+    process.env.CHAT_AGENT_DISPATCH = "true";
+    await primeDispatchHarness();
+    const { runChatAgentStream } = await import("@/lib/tools/chat-agent-loop");
+    (runChatAgentStream as ReturnType<typeof vi.fn>).mockImplementation(
+      async (input: { onToken: (d: string) => void }) => {
+        input.onToken("ok");
+        return { text: "ok", skillRuns: [], uiBlocks: [], toolCalls: [] };
+      }
+    );
+
+    const { POST } = await import("@/app/api/tools/chat/route");
+    await readSSE(await POST(makeChatRequest({ ask: "give me 5 hooks", platform: "tiktok" })));
+
+    const [, deps] = (runChatAgentStream as ReturnType<typeof vi.fn>).mock.calls[0] as [
+      unknown,
+      { skills?: unknown } | undefined,
+    ];
+    // No override at all → the loop's own default registry (every skill, paid included).
+    expect(deps?.skills).toBeUndefined();
   });
 
   it("Test 7: agent loop pure chat (no skill) → streams the answer directly, NO runChatPipeline fallback, plain markdown", async () => {
