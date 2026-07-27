@@ -88,24 +88,21 @@ export default function OfferPage() {
               </h1>
             </BlurFade>
             <BlurFade delay={0.19}>
+              {/* Two lines, not three — the fold stacks few, larger moments. The
+                  "trained on 500" claim is NOT lost: it lives in ProofMechanism
+                  (PlatformBar's rule: every claim stated once). The old 🔒 emoji
+                  line was both a duplicate of it and the one emoji in a serif
+                  hero. The hero's action IS the composer below — a "$1 →
+                  #pricing" button here sent fold traffic AWAY from the flow. */}
               <p className="mx-auto mt-4 max-w-[46ch] text-[17px] leading-relaxed text-foreground-secondary">
-                Maven reads your video frame by frame, then simulates how a
-                room of real viewers reacts — so you see the exact moment
-                they&apos;d scroll, and the fix, before you ever hit post.
-              </p>
-            </BlurFade>
-            {/* The hero's action IS the composer below — a "$1 → #pricing" button here sent
-                the fold's traffic AWAY from the flow (and contradicted "free, no account").
-                The dollar belongs to the wall inside the product and to #pricing below. */}
-            <BlurFade delay={0.26}>
-              <p className="mt-5 text-[13px] text-foreground-muted">
-                🔒 Trained on 500 dissected viral videos
+                A room of simulated viewers watches your video — the exact
+                second they&apos;d scroll, and the fix, before you post.
               </p>
             </BlurFade>
           </div>
 
           {/* the flow — the REAL product, live: the entry is the hero */}
-          <BlurFade delay={0.2} className="mt-10 md:mt-12">
+          <BlurFade delay={0.2} className="mt-8 md:mt-10">
             <HeroShowcase />
           </BlurFade>
         </div>

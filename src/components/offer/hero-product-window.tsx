@@ -17,7 +17,12 @@
  * — typing → thinking → reply → reading ring → the card assembles — extended
  * with one new beat: the read rail materialises AFTER the card lands (craft
  * first, then reception — the order the product itself produces them), then a
- * single BorderBeam pass marks completion. Plays ONCE on scroll into view.
+ * single BorderBeam pass marks completion. Plays ONCE, starting ON LOAD: the
+ * window's top ~250px peek above the fold, and a scroll-armed start left that
+ * peek EMPTY — dead pixels on the most valuable band of the page. Starting on
+ * load makes the peek itself alive (the link typing, Maven answering); a
+ * visitor who scrolls later meets the finished card + rail, which is not a
+ * missed show — it is the shot.
  *
  * Honesty: fixture data, labeled — a "Sample read" tag lives in the window
  * chrome. The rail opens on the AUDIENCE tab: the card already shows craft;
@@ -31,13 +36,17 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion, useInView, useReducedMotion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { VideoTestCardRenderer } from "@/components/thread/video-test-card-block";
 import { AmbientDetail } from "@/components/audience-lens/v2/AmbientDetail";
 import { CREATOR_TEMPLATE } from "@/components/audience-lens/v2/detail-fixture";
 import { NumberTicker } from "@/components/velora/number-ticker";
 import { BorderBeam } from "@/components/velora/border-beam";
 import { TEST_CARD_FIXTURE } from "./test-card-fixture";
+
+/** The rail's fixture, minus its pager — "hook 2 of 5" is app context a cold
+ *  visitor doesn't have; inside the marketing window it reads as noise. */
+const WINDOW_TEMPLATE = { ...CREATOR_TEMPLATE, pager: "" };
 
 const USER_MSG = "test this video for me";
 const MAVEN_MSG = "On it — reading your video frame by frame.";
@@ -77,11 +86,6 @@ export function HeroProductWindow({ skip = false }: { skip?: boolean }) {
       }),
   );
 
-  const wrapRef = useRef<HTMLDivElement>(null);
-  // -30%: the window peeks above the fold, and a -15% margin fired the one-shot
-  // choreography while the visitor was still reading the headline — they'd
-  // scroll down to an already-finished run. Waits for a real scroll instead.
-  const inView = useInView(wrapRef, { once: true, margin: "0px 0px -30% 0px" });
   const reduced = useReducedMotion();
 
   const [phase, setPhase] = useState<Phase>("idle");
@@ -104,8 +108,10 @@ export function HeroProductWindow({ skip = false }: { skip?: boolean }) {
     setPhase("done");
   };
 
+  // Starts on MOUNT (see the header comment): the fold peek must be alive, so
+  // the run begins the moment the page does — not when the visitor scrolls.
   useEffect(() => {
-    if (!inView || startedRef.current) return;
+    if (startedRef.current) return;
     startedRef.current = true;
 
     // Reduced motion (or the visitor already started typing): no choreography —
@@ -151,7 +157,7 @@ export function HeroProductWindow({ skip = false }: { skip?: boolean }) {
       });
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inView, reduced]);
+  }, [reduced]);
 
   // The demo must never keep performing under a visitor who has started for
   // real — one-way jump to the finished shot.
@@ -175,8 +181,23 @@ export function HeroProductWindow({ skip = false }: { skip?: boolean }) {
         {CREATOR_TEMPLATE.verdict.label}.
       </p>
 
-      {/* Browser-window chrome (relative → hosts the BorderBeam) */}
-      <div className="relative overflow-hidden rounded-2xl border border-border bg-surface-sunken shadow-[0_28px_70px_-30px_rgba(0,0,0,0.75)]">
+      <div className="relative">
+        {/* Composed light — a warm bloom ANCHORED to the shot (the page's other
+            blooms are loose atmosphere; a premium app-shot sits in its own
+            light). Matte-safe: a blurred radial behind the frame, no glass, no
+            element glow — same family as the hero atmosphere layers. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -inset-x-24 -top-28 h-[460px] opacity-[0.16] blur-[110px]"
+          style={{
+            background:
+              "radial-gradient(55% 60% at 50% 30%, #FF6363, rgba(255,178,122,0.4) 55%, transparent 75%)",
+          }}
+        />
+
+        {/* Browser-window chrome (relative → hosts the BorderBeam). The inset
+            top hairline catches the bloom like an edge-lit frame. */}
+        <div className="relative overflow-hidden rounded-2xl border border-border bg-surface-sunken shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_44px_96px_-32px_rgba(0,0,0,0.85)]">
         {/* top bar */}
         <div className="flex items-center gap-2 border-b border-border px-4 py-2.5">
           <span aria-hidden className="flex gap-1.5">
@@ -193,11 +214,7 @@ export function HeroProductWindow({ skip = false }: { skip?: boolean }) {
 
         {/* app body — the thread column + the drilled read rail, the real ≥xl layout.
             `inert`: a shot of the product; its controls must not be reachable. */}
-        <div
-          ref={wrapRef}
-          inert
-          className="flex h-[560px] bg-background lg:h-[640px]"
-        >
+        <div inert className="flex h-[560px] bg-background lg:h-[640px]">
           {/* thread pane */}
           <div className="relative min-w-0 flex-1 overflow-hidden">
             <div className="flex flex-col gap-4 px-4 py-5 md:px-6">
@@ -359,7 +376,7 @@ export function HeroProductWindow({ skip = false }: { skip?: boolean }) {
               transition={{ duration: 0.7, ease: REVEAL_EASE }}
             >
               <AmbientDetail
-                template={CREATOR_TEMPLATE}
+                template={WINDOW_TEMPLATE}
                 presentation="rail"
                 initialTab="audience"
               />
@@ -367,15 +384,16 @@ export function HeroProductWindow({ skip = false }: { skip?: boolean }) {
           </div>
         </div>
 
-        {/* coral border-beam — ignites once the surface is complete; liveness only */}
-        {phase === "done" && !reduced && (
-          <BorderBeam
-            size={140}
-            duration={7}
-            colorFrom="transparent"
-            colorTo="var(--color-accent)"
-          />
-        )}
+          {/* coral border-beam — ignites once the surface is complete; liveness only */}
+          {phase === "done" && !reduced && (
+            <BorderBeam
+              size={140}
+              duration={7}
+              colorFrom="transparent"
+              colorTo="var(--color-accent)"
+            />
+          )}
+        </div>
       </div>
     </QueryClientProvider>
   );

@@ -110,10 +110,10 @@ export function HeroEntry() {
     // Natural height — the 620px column-match (and the ~200px of dead air it padded above and
     // below the composer) went with the side panel. The entry is the hero's only surface now.
     <div className="flex flex-col">
-      {/* A plain heading row, not a tracking-caps eyebrow — cold traffic parses "Test a
-          video" + a free badge instantly; caps-whisper chrome reads as decoration. */}
-      <div className="mb-2.5 flex items-center justify-between px-1">
-        <span className="text-[15px] font-medium text-foreground">Test a video</span>
+      {/* One centered badge, no label — "Test a video" restated the composer's own
+          placeholder, and the left-aligned row was the fold's only break from its
+          center axis. The badge is the conversion lever; it stands alone. */}
+      <div className="mb-2.5 flex justify-center">
         <span className="rounded-full border border-white/[0.06] px-2.5 py-1 text-[11px] font-medium text-foreground-secondary">
           Free · no account
         </span>

@@ -48,7 +48,7 @@ export function HeroShowcase() {
         <HeroEntry />
       </div>
 
-      <div className="mx-auto mt-12 w-full max-w-[1024px] md:mt-14">
+      <div className="mx-auto mt-8 w-full max-w-[1024px] md:mt-10">
         <HeroProductWindow skip={engaged} />
       </div>
 
