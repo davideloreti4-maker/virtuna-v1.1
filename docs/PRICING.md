@@ -174,7 +174,57 @@ needs no migration or announcement.
 29 *anonymous* users exist (demo pool, all within 24h, minted two at a time — worth checking that
 double-invocation before real traffic). They carry no subscription and are unaffected.
 
-### 5. The sandbox pass (with Whop test mode, before real customers)
+### 5. The sandbox pass — 4 of 7 VERIFIED LIVE 2026-07-27
+
+Run against production with a real $0 promo purchase (`TEST_MAVEN2`) on
+`davide.loreti88@gmail.com`. `BILLING_ENFORCE_QUOTA=true` since `331888ca`.
+
+**The core money loop is proven end to end: buy → grant → bill → cancel → revoke.**
+
+- [x] **Trial purchase grants tier + stamps the window** — `starter`, `is_trial`,
+      2026-07-27 10:46 → 07-30, `trial_used_at` set. Membership `mem_o3mXSuod9Gxteg`,
+      plan `plan_OTX4xMIHYyDoY`.
+- [x] **A Reading bills 10 credits from the 50-credit trial pool** — confirmed in the
+      `reading_events` ledger (1 row, 10 credits), not just the UI.
+- [x] **A second trial resolves FULL PRICE** — `/pricing` → Pro offered $99, not $1.
+      ⚠️ The GUARD is server-side only (`checkout/route.ts:53` reads `trial_used_at`); **no UI
+      file references it**, so the card still says "Start for $1" to someone who cannot have
+      one. Clicking $1 and landing on $99 is a chargeback shape. Fix the copy before real
+      traffic: once `trial_used_at` is set the card should read "Upgrade · $99/month".
+- [x] **Cancel → tier `free`, status `cancelled`** — and this is the first time
+      `membership.deactivated` ever fired. Without the alias fix (`d9c8162a`) a cancellation
+      would have left the customer with full access **forever**. `trial_used_at` correctly
+      survives (history, not state). `is_trial` is left `true` — harmless, since tier `free`
+      has allowance 0, but it is stale.
+- [ ] 50-credit wall: the 6th Reading 402s with trial copy (a DATE, no checkout). Costs 4 more
+      real engine runs; the cheap honest alternative is to fill `reading_events` to 50 spent,
+      since the ledger sum is the gate's only input.
+- [ ] Conversion (day 4) does NOT re-stamp the window — needs 2026-07-30, or a unit test of
+      the stamping branch rather than a live purchase.
+- [ ] `sync-whop` reconciles a manually-desynced row. ⚠️ Note it only `select`s and `update`s —
+      **it has no insert path**, so it CANNOT repair a missed webhook (no row to update). The
+      "drift reconciliation" safety net does not cover the failure that actually happened.
+- [ ] A failed run bills nothing.
+
+#### What four real defects taught us (all found 2026-07-27, all in production)
+
+Every Whop env var was set and the integration was "done" — and the money path was dead. Four
+defects sat behind one another, each invisible until the one in front was cleared:
+
+1. verifier read `svix-*`; Whop sends `webhook-*` → every delivery 401'd
+2. setting the URL in the dashboard **created a second webhook** with its own secret → 401
+3. the secret is **not base64**; `Buffer.from(s,"base64")` silently returned 50 wrong bytes
+   from a 67-char raw string → HMAC computed flawlessly over the wrong key
+4. the v2 payload puts the event under **`type`**, not `event`/`action` → resolved to `""`,
+   fell to `default:`, answered **200 having granted nothing**
+
+Plus: merely OPENING and SAVING the webhook in Whop's dashboard silently rewrote its events
+from `membership_went_valid` to `membership.activated` **and flipped api_version v2 → v1**.
+
+**A 200 from a webhook proves delivery, never effect.** And never encode Whop's current
+vocabulary as a contract — accept every spelling, log anything unrecognised loudly.
+
+### 5b. Original checklist (superseded by 5 above)
 
 - [ ] Trial purchase → webhook grants tier + stamps `trial_started_at`/`trial_used_at`
 - [ ] 50-credit pool enforced: 5 Readings pass, the 6th 402s with trial copy (a DATE, no checkout)
