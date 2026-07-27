@@ -41,8 +41,18 @@ function trialWindowFrom(now: Date) {
  * prefix is what it separates; `membership_cancel_at_period_end_changed` must become
  * `membership.cancel_at_period_end_changed`, not a string of dots).
  */
-export function normalizeEventName(payload: { event?: unknown; action?: unknown }): string {
-  const raw = payload?.event ?? payload?.action;
+export function normalizeEventName(payload: {
+  event?: unknown;
+  action?: unknown;
+  type?: unknown;
+}): string {
+  // ⚠️ `type` is where the v2 payload actually puts it. Verified against a real purchase
+  // 2026-07-27: the delivery carried keys ["id","api_version","timestamp","data","type",
+  // "company_id"] — no `event`, no `action`. Reading only those two resolved the name to "",
+  // fell through to `default:`, and answered 200 {received:true} having granted NOTHING.
+  // The customer had paid. Signature verification passed. Nothing looked wrong anywhere.
+  // Checked last so a payload that does carry `event`/`action` keeps its existing meaning.
+  const raw = payload?.event ?? payload?.action ?? payload?.type;
   if (typeof raw !== "string" || !raw) return "";
   return raw.includes(".") ? raw : raw.replace("_", ".");
 }

@@ -73,4 +73,55 @@ describe("normalizeEventName", () => {
       expect(HANDLED.has(normalizeEventName(p))).toBe(true);
     }
   });
+
+  /**
+   * The v2 delivery puts the name under `type`. Observed on a real purchase 2026-07-27:
+   * payload keys were ["id","api_version","timestamp","data","type","company_id"] — no
+   * `event`, no `action`. Reading only those two yielded "", fell through to `default:`,
+   * and answered 200 {received:true} having granted nothing. The customer had paid, the
+   * signature had verified, and every layer reported success.
+   */
+  it("reads the v2 `type` key", () => {
+    expect(normalizeEventName({ type: "membership_went_valid" })).toBe(
+      "membership.went_valid"
+    );
+    expect(normalizeEventName({ type: "membership.went_valid" })).toBe(
+      "membership.went_valid"
+    );
+  });
+
+  it("keeps `event` and `action` ahead of `type` so existing payloads do not change meaning", () => {
+    expect(
+      normalizeEventName({ event: "membership_went_invalid", type: "payment.succeeded" })
+    ).toBe("membership.went_invalid");
+    expect(
+      normalizeEventName({ action: "membership_went_invalid", type: "payment.succeeded" })
+    ).toBe("membership.went_invalid");
+  });
+
+  it("resolves the exact real-world v2 payload to a HANDLED case", () => {
+    // Shape as delivered by Whop for the trial purchase that granted nothing.
+    const real = {
+      id: "evt_x",
+      api_version: "v2",
+      timestamp: 1785000000,
+      company_id: "biz_LyBwGuDUAoMFco",
+      type: "membership_went_valid",
+      data: {
+        id: "mem_kov2c6GxbY3d31",
+        status: "trialing",
+        plan: { id: "plan_OTX4xMIHYyDoY" },
+        product: { id: "prod_zNxqka5RmfYSe" },
+        metadata: { supabase_user_id: "cab41c2e-63ae-414e-be94-c1f6074bd676" },
+        renewal_period_end: "2026-07-30T10:19:45.367Z",
+      },
+    };
+    // The three cases the switch actually handles.
+    const handled = new Set([
+      "membership.went_valid",
+      "membership.went_invalid",
+      "payment.failed",
+    ]);
+    expect(handled.has(normalizeEventName(real))).toBe(true);
+  });
 });
