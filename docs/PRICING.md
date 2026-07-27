@@ -174,7 +174,7 @@ needs no migration or announcement.
 29 *anonymous* users exist (demo pool, all within 24h, minted two at a time — worth checking that
 double-invocation before real traffic). They carry no subscription and are unaffected.
 
-### 5. The sandbox pass — 4 of 7 VERIFIED LIVE 2026-07-27
+### 5. The sandbox pass — 7 of 7 VERIFIED (4 live 2026-07-27, 3 closed 2026-07-27 later)
 
 Run against production with a real $0 promo purchase (`TEST_MAVEN2`) on
 `davide.loreti88@gmail.com`. `BILLING_ENFORCE_QUOTA=true` since `331888ca`.
@@ -187,24 +187,53 @@ Run against production with a real $0 promo purchase (`TEST_MAVEN2`) on
 - [x] **A Reading bills 10 credits from the 50-credit trial pool** — confirmed in the
       `reading_events` ledger (1 row, 10 credits), not just the UI.
 - [x] **A second trial resolves FULL PRICE** — `/pricing` → Pro offered $99, not $1.
-      ⚠️ The GUARD is server-side only (`checkout/route.ts:53` reads `trial_used_at`); **no UI
-      file references it**, so the card still says "Start for $1" to someone who cannot have
-      one. Clicking $1 and landing on $99 is a chargeback shape. Fix the copy before real
-      traffic: once `trial_used_at` is set the card should read "Upgrade · $99/month".
+      ✅ **The UI half is fixed** (`d8b0b6fa`): the guard was server-side only and no UI file
+      referenced it, so the card said "Start for $1" to someone who could not have one.
+      `hasUsedTrial` (`lib/billing/trial-eligibility`) is now the single predicate behind both
+      the checkout route and `/api/subscription`, and three signed-in surfaces (`/pricing`,
+      settings → billing, the credit wall) read "Upgrade · $99/month" once `trial_used_at` is
+      set.
 - [x] **Cancel → tier `free`, status `cancelled`** — and this is the first time
       `membership.deactivated` ever fired. Without the alias fix (`d9c8162a`) a cancellation
       would have left the customer with full access **forever**. `trial_used_at` correctly
-      survives (history, not state). `is_trial` is left `true` — harmless, since tier `free`
-      has allowance 0, but it is stale.
-- [ ] 50-credit wall: the 6th Reading 402s with trial copy (a DATE, no checkout). Costs 4 more
-      real engine runs; the cheap honest alternative is to fill `reading_events` to 50 spent,
-      since the ledger sum is the gate's only input.
-- [ ] Conversion (day 4) does NOT re-stamp the window — needs 2026-07-30, or a unit test of
-      the stamping branch rather than a live purchase.
-- [ ] `sync-whop` reconciles a manually-desynced row. ⚠️ Note it only `select`s and `update`s —
-      **it has no insert path**, so it CANNOT repair a missed webhook (no row to update). The
-      "drift reconciliation" safety net does not cover the failure that actually happened.
-- [ ] A failed run bills nothing.
+      survives (history, not state). `is_trial` is left `true`.
+      ⚠️ **Correction — that stale flag is NOT harmless, and the reason given here was wrong.**
+      "Tier `free` has allowance 0" does not hold *inside a trial window*:
+      `creditAllowanceFor` returns `TRIAL.credits` whenever `inTrial`, **regardless of tier**,
+      and `isTrialActive` reads only the dates — never `status`. Measured on production
+      2026-07-27 against the real gate: tier `free`, status `cancelled`, `limit: 50`,
+      `used: 10`, `allowed: true`. A customer who cancels mid-trial keeps the remainder of
+      their 50 credits until `trial_ends_at`. Defensible (they paid $1 for 3 days) — but it is
+      a product decision, not the no-op this line claimed. **Owner call: keep or revoke.**
+- [x] **50-credit wall** — verified 2026-07-27 against production with the REAL gate
+      (`checkCreditQuota` imported, fed the live `user_subscriptions` row), by filling
+      `reading_events` to 50 spent rather than burning 4 more engine runs. At 50/50 the next
+      Reading returns `allowed: false`, `reason: "allowance"`, `inTrial: true`,
+      `renewsAt: 2026-07-30` — i.e. the trial wall, which renders a DATE and no checkout
+      (`reading-limit-dialog`: `upgrade` is null while `inTrial`). Confirmed both flag ways;
+      with enforcement off the verdict is identical but `enforced: false`. **Probe rows
+      deleted — the ledger is back to its real 1 row / 10 credits.**
+- [x] **Conversion (day 4) does NOT re-stamp the window** — closed by unit test rather than
+      waiting for 2026-07-30 (`webhooks/whop/__tests__/trial-stamping.test.ts`). The renewal
+      delivery for the same membership omits the trial columns **entirely** — the assertion is
+      about absent keys, not equal values, because an upsert that names them would overwrite
+      them. Also pinned: a full-price grant clears the window but keeps `trial_used_at`.
+      Mutation-checked (forcing `alreadyStamped = false` fails it).
+- [x] `sync-whop` reconciles a desynced row — covered by
+      `cron/sync-whop/__tests__/route.test.ts`: repairs a drifted row, revokes a cancelled
+      one, KEEPS the tier on `past_due`, and refuses to demote a payer whose SKU matches no
+      configured plan.
+      ⚠️ **The gap is now a pinned test, not a footnote.** It only `select`s rows that already
+      have a `whop_membership_id`, and `update`s them — **no insert path anywhere**. A missed
+      webhook leaves no row, so there is nothing to iterate and nothing to repair, and the
+      cron reports a clean `synced: 0, total: 0` while a paying customer has nothing. **"0
+      errors" from this cron is not evidence that every payer has their tier.** Closing it
+      needs a Whop-side enumeration (list the company's memberships, reconcile INTO Supabase),
+      which is a different cron. Until then, pay-and-get-nothing is caught only by a human.
+- [x] A failed run bills nothing — by construction: `recordUsage` is called only after the
+      result is persisted and the engine succeeded (see its module note; the ledger exists
+      because the old meter counted `analysis_results` rows inserted BEFORE the pipeline ran).
+      `billing/__tests__/route-wiring.test.ts` holds the placement across all 11 paid routes.
 
 #### What four real defects taught us (all found 2026-07-27, all in production)
 
