@@ -69,6 +69,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { VideoUpload } from "@/components/app/video-upload";
 import { useAnalysisStream } from "@/hooks/queries/use-analysis-stream";
+import { STREAM_TIMEOUT_ERROR } from "@/lib/engine/stream-errors";
 import { useSubscription } from "@/hooks/use-subscription";
 import { isPaidPlanId, creditsRemainingLabel } from "@/lib/pricing";
 import { useBoardStore } from "@/stores/board-store";
@@ -112,6 +113,7 @@ import { ThreadShell, ThreadAssistantTurn } from "@/components/thread/thread-she
 import { ProgressChecklist } from "@/components/thread/progress-checklist";
 import { SKILL_RUN_META } from "@/components/thread/run-capsule";
 import { useTestRunStages } from "@/components/thread/use-test-run-stages";
+import { SkillRunError } from "@/components/thread/run-notices";
 import { Spinner } from "@/components/ui/spinner";
 import { AudiencePresence, type AudienceAsk, type AudiencePresenceProps } from "@/components/audience-lens/audience-presence";
 import { AmbientOverviewRail } from "@/components/audience-lens/v2/AmbientOverviewRail";
@@ -2525,6 +2527,50 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     </ThreadShell>
   ) : null;
 
+  // Test's FAILURE turn — the sibling of testSubmitTurn above.
+  //
+  // Every other skill renders <SkillRunError> off its stream's `error` (hooks, ideas, script,
+  // remix, explore all do). Test was the one that never did: the composer reads `stream.phase`,
+  // `analysisId`, `isStreaming`, `quotaError` — and dropped `stream.error` on the floor. So when
+  // a run died, `testSubmitPending` simply went false and testSubmitTurn unmounted: the progress
+  // spine, the echoed link, all of it vanished and left an empty composer with no word of what
+  // happened. Measured against a production build on 2026-07-27 by refusing /api/analyze with a
+  // 500 — the whole screen wiped, silently. That is the /go funnel's own failure path (a private,
+  // deleted or region-locked post is an ordinary TikTok outcome), so the silence landed on exactly
+  // the visitor the page exists to convert.
+  //
+  // NOT the quota 402: that sets `quotaError` too, and the wall dialog below owns it — rendering
+  // both would put an inline "retry" under a modal that just said the allowance is spent.
+  const testRunFailed =
+    activeTool === "test" &&
+    stream.phase === "error" &&
+    !stream.quotaError &&
+    !testSubmitPending;
+  // The polling ceiling is the one error where the pipeline may still be ALIVE server-side, so a
+  // "retry" there would start a second billed run on top of it. Offer the truth instead of a button.
+  const testRunStillAlive = stream.error === STREAM_TIMEOUT_ERROR;
+  const testFailedTurn = testRunFailed ? (
+    <ThreadShell userTurn={lastUserTurn}>
+      <ThreadAssistantTurn>
+        <SkillRunError
+          headline={
+            testRunStillAlive ? "This read is taking longer than usual." : "Couldn’t finish that read."
+          }
+          body={
+            testRunStillAlive
+              ? "Your video is still being read — it just outran the live connection. Reload in a minute and the card will be waiting in this thread."
+              : "The run dropped before the read was finished. A private, deleted or region-locked post will do that. Tap to retry — nothing was charged."
+          }
+          // Billing happens only in /api/analyze's success branch ("BILL THE READING — inside the
+          // success branch, on purpose"), so a dead run really did cost them nothing, and a retry
+          // really is free. Both halves of that sentence are load-bearing; don't soften either.
+          onRetry={testRunStillAlive ? undefined : () => void handleSubmit()}
+          retryLabel="Retry the video test"
+        />
+      </ThreadAssistantTurn>
+    </ThreadShell>
+  ) : null;
+
   const threadContent = (
     <OpenRoomContext.Provider value={openRoomForCard}>
      <SimulateVideoContext.Provider value={simulateVideoInRoom}>
@@ -2540,6 +2586,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           <ScriptTestContext.Provider value={handleTestScript}>
            <RemixDevelopContext.Provider value={handleDevelopRemix}>
       {testSubmitTurn}
+      {testFailedTurn}
       {/* THE UNIFIED PERSISTED STREAM (thread-unification Phase 2) — the ONE renderer of this thread's
           history, ungated by activeTool. Renders every persisted turn (question + its blocks, ANY block
           type, via the type-complete MessageBlocks registry), so markdown text beside cards, video-test
