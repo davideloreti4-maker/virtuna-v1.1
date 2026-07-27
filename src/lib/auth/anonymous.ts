@@ -15,8 +15,12 @@ import { createClient } from "@/lib/supabase/client";
  *   - a returning anonymous visitor must keep the thread they already built, since the
  *     whole point of linking identity at checkout is that the thread survives.
  *
- * Called on submit, never on mount — an account per page-view would mint a row for every
- * bot that ever crawls the landing. (They accumulate either way; the reaper is still owed.)
+ * Called on submit — and, since 2026-07-27, pre-warmed on the hero composer's first
+ * FOCUS (hero-entry.tsx): the sign-in round-trip measured ~3s and held the visitor on a
+ * frozen /go after pressing the page's one button. Focus keeps this rule's intent: never
+ * on mount, so a crawler's page-view still mints nothing — focusing the field is a real
+ * intent signal. Idempotent either way (the submit path re-calls and reuses the session).
+ * (Rows accumulate regardless; the reaper is still owed.)
  */
 export type AnonymousSessionResult =
   | { ok: true; userId: string; created: boolean }

@@ -55,6 +55,24 @@ export function HeroEntry() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   /**
+   * Pre-warm the anonymous session on FIRST FOCUS. Measured seam (2026-07-27):
+   * the sign-in round-trip held the visitor on /go for ~3s after pressing the
+   * page's one button, with only the hint line moving. Firing it when they
+   * focus the field runs the sign-in WHILE they type/paste, so submit becomes
+   * a near-instant push. Focus — not mount — keeps the anonymous.ts rule's
+   * intent: crawlers page-view without focusing, so no row per bot visit.
+   * Fire-and-forget: `launch` still awaits its own ensureAnonymousSession
+   * (idempotent — it reuses the session this one minted), so a failed pre-warm
+   * costs nothing and changes no behavior.
+   */
+  const prewarmedRef = useRef(false);
+  const prewarm = () => {
+    if (prewarmedRef.current) return;
+    prewarmedRef.current = true;
+    void ensureAnonymousSession();
+  };
+
+  /**
    * The one path into the product. Signs in (or reuses a session), then hands off through the
    * existing Seam-4 URL. `run: true` fires the skill once on arrival — honesty-spine-safe
    * because the visitor's explicit send here IS the fire, never a silent auto-run.
@@ -109,7 +127,7 @@ export function HeroEntry() {
   return (
     // Natural height — the 620px column-match (and the ~200px of dead air it padded above and
     // below the composer) went with the side panel. The entry is the hero's only surface now.
-    <div className="flex flex-col">
+    <div className="flex flex-col" onFocusCapture={prewarm}>
       {/* One centered badge, no label — "Test a video" restated the composer's own
           placeholder, and the left-aligned row was the fold's only break from its
           center axis. The badge is the conversion lever; it stands alone. */}
@@ -128,6 +146,7 @@ export function HeroEntry() {
         onLaunch={onLaunch}
         onAttach={() => fileInputRef.current?.click()}
         disabled={starting}
+        busy={starting}
       />
 
       <input
