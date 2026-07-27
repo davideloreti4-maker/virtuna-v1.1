@@ -1,0 +1,20 @@
+# SPIKE — derived Gemma 4 E4B-QAT tuned for the Numen engine on M4/16GB.
+#
+# Why a derived model instead of base gemma4:e4b-it-qat:
+#   - num_ctx: Ollama defaults context to ~4K. The Apollo stage sends a ~16K-token
+#     KNOWLEDGE_CORE prompt + frame vision tokens + output. At 4K the prompt is
+#     SILENTLY TRUNCATED → garbage scoring. 32K holds the largest stage with margin.
+#   - temperature 0 + seed: the engine is built on determinism (same video → same
+#     score). Bake the engine's seed (7) so every stage inherits it even if a call
+#     forgets to pass it.
+#
+# Trade-off on 16GB: 32K KV cache for E4B is ~2-3GB on top of the 6.1GB weights.
+# Fits alongside a Node harness (no Next dev server). If RAM-pressured, drop to
+# num_ctx 16384 or swap FROM to gemma4:e2b-it-qat.
+FROM gemma4:e4b-it-qat
+
+PARAMETER num_ctx 32768
+PARAMETER temperature 0
+PARAMETER seed 7
+# keep the whole model resident between the pipeline's many sequential stage calls
+PARAMETER num_keep 24
