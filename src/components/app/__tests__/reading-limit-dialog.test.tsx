@@ -121,6 +121,31 @@ describe("the quota wall", () => {
     expect(screen.queryByText(/reset August 1/i)).toBeNull();
   });
 
+  it("names the /go visitor's actual situation — never 'you don't have a plan yet'", () => {
+    // The funnel's highest-intent moment. An anonymous visitor is tier `free` with no plan, so
+    // they used to fall into the no-plan branch and get a heading about not having a plan —
+    // directly contradicting its own body, one screen after /go promised "free · no account".
+    // The $1 door still opens; only the sentence above it changes.
+    render(
+      <ReadingLimitDialog
+        open
+        quota={wall({
+          tier: "free",
+          limit: 10,
+          used: 10,
+          reason: "demo_used",
+          message: "That was your free test. $1 unlocks the simulation and 50 credits for 3 days.",
+        })}
+        onClose={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole("heading", { name: /free test used/i })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: /don't have a plan/i })).toBeNull();
+    expect(screen.getByText(/\$1 unlocks the simulation/i)).toBeTruthy();
+    expect(screen.getByRole("button", { name: /start for/i })).toBeTruthy();
+  });
+
   it("does not push a plan at a trialling Studio's ceiling — a trial never upsells", () => {
     render(
       <ReadingLimitDialog

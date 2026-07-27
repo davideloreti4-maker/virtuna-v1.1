@@ -32,8 +32,21 @@ export interface CreditQuotaExceeded {
   limit: number | null;
   /** True = they spent the 50-credit $1-trial pool, NOT their plan's allowance. */
   inTrial: boolean;
-  /** Which wall: the period allowance, or the fair-use daily ceiling behind "unlimited". */
-  reason: "allowance" | "fair_use";
+  /**
+   * Which wall was hit.
+   *  - `allowance`  — the period allowance is spent.
+   *  - `fair_use`   — the daily ceiling behind "unlimited".
+   *  - `demo_used`  — the /go funnel visitor spent the anonymous DEMO pool. A DIFFERENT
+   *    situation from the other two and the highest-intent moment in the product: they are
+   *    not a customer who ran out, they are a stranger who just watched their free read and
+   *    is one dollar from the rest of it.
+   *
+   * ⚠️ `demo_used` has always crossed the wire (quotaRefusalBody forwards `verdict.reason`
+   * verbatim, and quota.ts sets it for every anonymous refusal) — this union simply never
+   * admitted it, so the one branch worth special-casing was invisible to every client that
+   * narrowed on this field.
+   */
+  reason: "allowance" | "fair_use" | "demo_used";
   /** What the refused action would have cost, in credits. */
   cost: number;
 }

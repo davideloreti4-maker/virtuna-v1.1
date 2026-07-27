@@ -60,6 +60,12 @@ export function ReadingLimitDialog({ quota, open, onClose, renewsAt }: ReadingLi
 
   const plan = isPaidPlanId(quota.tier) ? getPlan(quota.tier) : null;
   const fairUse = quota.reason === "fair_use";
+  // The /go funnel visitor who just spent the anonymous demo pool. They are tier `free` with
+  // no plan, so without this they fell into the no-plan branch and the dialog opened with
+  // "You don't have a plan yet" — a sentence that contradicts its own body ("That was your
+  // free test…") and answers a question nobody asked, on a page that spent its whole length
+  // promising "free · no account". State what actually happened instead.
+  const demo = quota.reason === "demo_used";
   // No upsell inside a trial (they already paid) and none at the fair-use ceiling (there is
   // nothing above Studio) — those two walls end in a date, never a checkout.
   const upgrade = quota.inTrial || fairUse ? null : nextPlanUp(quota.tier);
@@ -72,9 +78,11 @@ export function ReadingLimitDialog({ quota, open, onClose, renewsAt }: ReadingLi
     ? "Your trial credits are spent"
     : fairUse
       ? "That's today's fair-use ceiling"
-      : noPlan
-        ? "You don't have a plan yet"
-        : "You're out of credits";
+      : demo
+        ? "That's your free test used"
+        : noPlan
+          ? "You don't have a plan yet"
+          : "You're out of credits";
 
   return (
     <>
