@@ -87,11 +87,46 @@ full price:
 | `WHOP_API_KEY` | Dashboard → Developer → API key (server-side checkout sessions) |
 | `WHOP_WEBHOOK_SECRET` | Webhook endpoint secret for `https://<domain>/api/webhooks/whop` |
 
-Set them in Vercel (Production). Configure the webhook in Whop to send
-`membership.went_valid`, `membership.went_invalid`, `membership.payment_failed`.
-A missing **trial** id degrades to full price (never undercharge — and the modal now says
-which price was resolved); a missing **plan** id makes checkout 503 rather than silently
-granting access.
+Set them in Vercel (Production). A missing **trial** id degrades to full price (never
+undercharge — and the modal now says which price was resolved); a missing **plan** id makes
+checkout 503 rather than silently granting access.
+
+**Build each trial SKU as: `Initial fee` $1 + `Free trial` 3 days + subscription price =
+the plan price.** Whop charges an initial fee immediately and only the *subscription* waits
+for the trial to end — which is exactly "$1 now, $49 on day 4". There is no separate
+"paid trial" primitive.
+
+Subscribe the webhook (`https://<domain>/api/webhooks/whop`) to exactly these three:
+**`membership_went_valid`**, **`membership_went_invalid`**, **`payment_failed`**.
+
+> ⚠️ **The docs and the API disagree. Trust the API.** Whop's published event list advertises
+> `membership.activated` / `membership.deactivated`, and an earlier edit of this file told you
+> to use them. **The webhook endpoint rejects both** — "is not a valid event" — on every
+> `api_version`. Probed live 2026-07-26 against the real account. The only accepted
+> membership/payment events are the three above. `invoice_past_due` is also rejected.
+>
+> The API accepts only the **underscored** spelling, and echoes it back underscored — yet the
+> same created webhook stored `["membership_went_valid", "membership_went_invalid",
+> "payment.failed"]`, mixing both conventions in one array. The handler therefore normalises
+> the first underscore to a dot and reads the name from either `event` or `action`
+> (`normalizeEventName`), so all four spellings land on one case.
+>
+> **Do not "modernise" these names from the docs without re-probing the API.**
+
+**What was actually broken** (audit 2026-07-26 — none of it had ever run against real Whop):
+`/api/v5/checkout_sessions` and `/api/v5/memberships` were **removed** and answered 404, so
+the first purchase would have 500'd; the verifier read `svix-*` headers where Whop sends
+Standard Webhooks `webhook-*`, so every delivery 401'd. Both fixed and **verified live**:
+a real checkout session now returns a `ch_…` id with metadata round-tripping.
+It survived unnoticed because the checkout test stubbed `fetch` wholesale and asserted only
+the request *body* — never the URL. A mocked transport proves a call's shape, not its
+destination.
+
+> **Still unverified** (needs a real purchase): the webhook **payload** — whether the event
+> arrives under `event` or `action`, and how the plan id is nested. The handler reads
+> `plan.id → plan_id → product.id → product_id`, and an unrecognised event or unmatched SKU
+> is logged at WARN/ERROR with the raw spelling and payload keys — never silently swallowed.
+> **The first sandbox event settles it.**
 
 ### 2. Supabase Auth dashboard (15 minutes, one-time)
 
