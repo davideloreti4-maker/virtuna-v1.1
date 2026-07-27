@@ -10,10 +10,11 @@ Enumerated from `grep process.env` over `src/` and verified against `vercel env 
 date above; re-verify with the grep if much time has passed.
 
 Project: `virtuna-v1.1` · `prj_WUmPu9fRmFNlbj5rtGIaRmBC8Url` · team `davide-loretis-projects`
-Production origin: `https://virtuna-v11.vercel.app` — **use this, not the custom domain** (§6).
+Production origin: **`https://numenmachines.com`** (live 2026-07-27 — §6). `https://virtuna-v11.vercel.app` still works.
 
-**Nothing is missing for the app to boot or serve.** Every var the code requires is set (22/22).
-What remains is one value worth correcting (§3), DNS (§6), and two optional accounts (§1).
+**Nothing is missing for the app to boot or serve.** Every var the code requires is set (22/22), and
+`NEXT_PUBLIC_APP_URL` + DNS were resolved 2026-07-27 (§3, §6). What remains is two optional accounts
+(§1) and the cron decision (§5, step 5).
 
 ---
 
@@ -39,7 +40,7 @@ What remains is one value worth correcting (§3), DNS (§6), and two optional ac
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ✅ set | same |
 | `SUPABASE_SERVICE_ROLE_KEY` | ✅ set | same; service client (webhooks, filmstrip signing) |
 | `DASHSCOPE_API_KEY` | ✅ set | **THROWS** without it — every LLM call routes here |
-| `NEXT_PUBLIC_APP_URL` | ⚠️ set, **unverified** | see §3 |
+| `NEXT_PUBLIC_APP_URL` | ✅ `https://numenmachines.com` | overwritten + redeployed 2026-07-27; see §3 for why it matters |
 | `CRON_SECRET` | ✅ set | still required — see §2 |
 | `APIFY_TOKEN` | ✅ set | unset ⇒ all scraping fails |
 | `APIFY_WEBHOOK_SECRET` | ✅ set 2026-07-26 | generated; unset ⇒ webhook route rejects everything |
@@ -85,9 +86,9 @@ literal string `"Bearer undefined"` — trivially guessable. **Keep it set.**
 
 ---
 
-## 3. ⚠️ `NEXT_PUBLIC_APP_URL` — the one value left worth correcting
+## 3. ✅ `NEXT_PUBLIC_APP_URL` — resolved, and worth understanding
 
-Six readers, and the blast radius is wider than "referral links":
+Six readers, and the blast radius is wider than the "referral links" this file used to claim:
 
 | Reader | If the value is `http://localhost:3000` |
 |---|---|
@@ -97,17 +98,18 @@ Six readers, and the blast radius is wider than "referral links":
 | `settings/page.tsx:104` | referral links point at localhost |
 | `signup/actions.ts`, `forgot-password/actions.ts` | fall back to the request `origin` first, so these two are **safe** either way |
 
-It was most likely copied from a local `.env.local` holding `http://localhost:3000`. It is Sensitive,
-so it **cannot be read back** (§0.2) and it renders in no client bundle. Check the dashboard, or just
-overwrite — the write is idempotent, so overwriting costs nothing if it was already right:
+It is Sensitive, so it **cannot be read back** (§0.2) and it renders in no client bundle — there was
+no way to learn its old value short of the dashboard. It was overwritten twice on 2026-07-27: first
+to the `vercel.app` origin, then to `https://numenmachines.com` once DNS landed (§6).
 
 ```bash
-printf 'https://virtuna-v11.vercel.app' | vercel env add NEXT_PUBLIC_APP_URL production --force
+printf 'https://numenmachines.com' | vercel env add NEXT_PUBLIC_APP_URL production --force
 ```
 
-Use the `vercel.app` origin, **not** `numenmachines.com` — see §6. Being a `NEXT_PUBLIC_*`, it only
-takes effect on the next build, so it needs a redeploy (empty commit on `main`, or redeploy from the
-dashboard) before any of the above is actually fixed.
+The write is idempotent, so overwriting costs nothing if the value was already right — which is the
+cheapest way to resolve an unreadable var. Being a `NEXT_PUBLIC_*` it only takes effect on the next
+build, so each write needs a redeploy (empty commit on `main`, or redeploy from the dashboard). **Set
+it again if the production origin ever changes.**
 
 ---
 
@@ -138,34 +140,71 @@ is not linked. Note that `vercel link` appends `VERCEL_OIDC_TOKEN` to the local 
    8 Preview deployments `Canceled` after 6–7s (the skip path) and one Production deployment `● Ready`
    in 2m (`dpl_HLxbrjipKheQuAVenJvxj8ZbGYD9`, 2026-07-27 00:56). The inverted exit codes
    (**1 = build, 0 = skip**) are therefore confirmed correct as written.
-4. ▶ Fix `NEXT_PUBLIC_APP_URL` (§3) and redeploy — do this **before** anything depends on filmstrip
-   keyframes, Apify ingest, or a Whop checkout return.
+4. ✅ `NEXT_PUBLIC_APP_URL` corrected — `https://virtuna-v11.vercel.app`, then
+   `https://numenmachines.com` once DNS landed (§6). Two writes, two builds; that is the cost of a
+   build-time-inlined value.
 5. ▶ Verify prod is healthy. Crons: read SCHEDULED-fire logs, never a manual curl (a manual curl 401s
-   by design and has been misread as "crons dead" before). Note `vercel.json` currently schedules none.
+   by design and has been misread as "crons dead" before). ⚠️ `vercel.json` currently schedules
+   **none**, and `sync-whop` is one of the ten — billing has no drift reconciliation until that is
+   decided.
 6. ▶ **Then** set `NEXT_PUBLIC_AMBIENT_V2=true` and redeploy — one isolated change, clean rollback.
 
 Full runbook with the schema pre-flight: `docs/HANDOFF-2026-07-26-sim-surface-video-population.md` §9.
 
 ---
 
-## 6. 🔴 `numenmachines.com` is attached to the project but DNS still points elsewhere
+## 6. ✅ `numenmachines.com` — DNS migrated to Vercel nameservers 2026-07-27
 
-`vercel domains ls` shows it added (2026-07-26) and aliased onto the production deployment, which
-makes it *look* live. It is not:
+Live: apex + `www` both 200, both certs issued, every public resolver (1.1.1.1 / 8.8.8.8 / 9.9.9.9)
+returns Vercel anycast. `NEXT_PUBLIC_APP_URL` is now `https://numenmachines.com`.
 
-```
-$ curl -sI https://numenmachines.com
-HTTP/2 302 · server: LiteSpeed
-location: https://numenmachines.com/cgi-sys/suspendedpage.cgi
-```
+**Before**: the domain was attached to the project and aliased onto the production deployment, which
+made it *look* live while it served a cPanel **suspended-account page**. `vercel domains ls` showing
+an alias is not evidence of DNS — `curl` it.
 
-The nameservers are still `dns{1,2}.namecheaphosting.com`, so the domain resolves to the old cPanel
-host and serves a **suspended-account page**. Vercel's own check agrees (`✘` on both nameservers).
+### Why the A-record route was not available
 
-Owner action, either one:
-- **A record** `numenmachines.com → 76.76.21.21` at Namecheap [Vercel-recommended], or
-- switch nameservers to `ns1.vercel-dns.com` / `ns2.vercel-dns.com`.
+The nameservers were `dns{1,2}.namecheaphosting.com` — the *hosting's* nameservers, not Namecheap's
+own DNS. Namecheap's Advanced DNS tab only edits records when nameservers are BasicDNS/PremiumDNS, so
+the zone lived inside a cPanel behind a suspended account. Nameservers were the only available lever,
+which forces full delegation and a zone rebuild either way. (Namecheap's **PERSONAL DNS SERVER**
+panel — the one asking for a host + IP — is glue-record registration for running your own
+nameservers. Unrelated; skip it.)
 
-Until that resolves, `https://virtuna-v11.vercel.app` is the only working origin — which is why §3
-sets `NEXT_PUBLIC_APP_URL` to it. When DNS lands, that var must be **re-set and redeployed** (it is
-build-time inlined), and the Whop redirect URLs re-checked.
+### The zone was captured before the switch, and re-created after
+
+Once delegation moves the old records are unreadable — AXFR is refused, so the zone was assembled by
+per-record-type query against `dns1.namecheaphosting.com` and saved to
+`.vercel/zone-backup-numenmachines.txt` (gitignored). Ported to Vercel DNS:
+
+| Record | Note |
+|---|---|
+| `MX` ×3 → `mx{1,2,3}-hosting.jellyfish.systems` @ 5/10/20 | mail delivery |
+| `TXT` SPF | **`+a` deliberately dropped** — see below |
+| `_dmarc` `v=DMARC1; p=none;` · `default._domainkey` (409-char DKIM) | verbatim |
+| `mail` / `webmail` / `autodiscover` / `autoconfig` A → `162.213.255.22` | verbatim |
+| `cpanel` / `whm` / `ftp` | **dropped** — dead admin endpoints on the suspended box |
+
+Apex and `www` need no records: with Vercel nameservers, a domain attached to a project is wired
+automatically. `www` did have to be **added to the project** (`vercel domains add`) or the hostname
+serves nothing.
+
+⚠️ **Porting the SPF verbatim would have been the bug.** The record was `v=spf1 +a +mx …`. `+a`
+authorizes *whatever the apex A record points at* to send mail as the domain — formerly the owner's
+own cPanel box, now Vercel's **shared** anycast IPs. A faithful copy would have silently authorized
+infrastructure we do not control. `+mx` and the two `ip4` literals still cover the real mail path.
+**A record can be byte-identical and still mean something new once what it points at changes.**
+
+### Certificate timing — do not panic-fix it
+
+`www` (added after delegation) got its cert in seconds; the **apex** took ~10 minutes longer because
+Vercel's own domain check kept reading the cached `dns{1,2}.namecheaphosting.com` delegation while
+the `.com` registry had already flipped. During that window the apex failed TLS with *"no alternative
+certificate subject name matches"* while `www` served fine. Re-adding the domain would not have
+helped; waiting did.
+
+### If a mail provider is added later (Resend/Postmark)
+
+Its records go in Vercel DNS now (`vercel dns add numenmachines.com …`). Resend verifies on a `send.`
+subdomain plus `resend._domainkey`, so it does **not** collide with the apex MX/SPF or the ported
+`default._domainkey` above.
