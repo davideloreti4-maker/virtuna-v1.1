@@ -76,6 +76,9 @@ const WITH_RAIL: Phase[] = ["rail", "done"];
 
 const REVEAL_EASE = [0.21, 0.47, 0.32, 0.98] as const;
 
+/** How long each of the read's two pages holds before the probe crosses to the other. */
+const TAB_DWELL_MS = 5_000;
+
 export function HeroProductWindow() {
   const [qc] = useState(
     () =>
@@ -95,15 +98,16 @@ export function HeroProductWindow() {
   /**
    * Which of the read's two pages the rail is showing. The probe is non-interactive, so the
    * only way to tell a visitor the room has TWO pages — the brain and the audience — is to
-   * visit them. After the read lands it holds on the audience, crosses to the brain, and
-   * returns; the tab header moves with it, which is what reads as "these are clickable".
+   * visit them. It opens on the BRAIN and then alternates on a steady dwell, indefinitely —
+   * owner call 2026-07-27, after a one-shot there-and-back read as a glitch rather than as a
+   * tour. A continuous cycle is legible as a cycle.
    *
    * Driven by `AmbientDetail`'s CONTROLLED `tab` prop. The first pass remounted it with a
    * `key`, which tore down and rebuilt the whole pane — header, figure and all — so the switch
    * flashed and reflowed instead of swapping. The controlled prop changes only the body, which
    * is what the real view does when a tab is clicked.
    */
-  const [railTab, setRailTab] = useState<"audience" | "brain">("audience");
+  const [railTab, setRailTab] = useState<"audience" | "brain">("brain");
 
   const timersRef = useRef<number[]>([]);
   const startedRef = useRef(false);
@@ -171,11 +175,16 @@ export function HeroProductWindow() {
       window.setTimeout(() => setPhase("reveal"), 4600),
       window.setTimeout(() => setPhase("rail"), 5550),
       window.setTimeout(() => setPhase("done"), 6300),
-      // Visit the other page, then come back. Rests on the audience for the same reason the
-      // rail opens there: craft is already on the card, the reception verdict is the surface
-      // a visitor cannot guess from it.
-      window.setTimeout(() => setRailTab("brain"), 10_000),
-      window.setTimeout(() => setRailTab("audience"), 15_500),
+      // The read opens on the brain; from here the two pages alternate for as long as the
+      // window is mounted. The dwell is long enough to actually read a page — a faster cycle
+      // reads as a flicker, which is the failure the one-shot version had.
+      window.setTimeout(() => {
+        const cycle = window.setInterval(
+          () => setRailTab((t) => (t === "brain" ? "audience" : "brain")),
+          TAB_DWELL_MS,
+        );
+        timersRef.current.push(cycle);
+      }, TAB_DWELL_MS),
     ];
 
     const timers = timersRef.current;
