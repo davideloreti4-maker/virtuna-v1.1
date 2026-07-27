@@ -1,86 +1,96 @@
+"use client";
+
 import Image from "next/image";
+import { motion } from "motion/react";
 import { NumberTicker } from "@/components/velora/number-ticker";
 import { FEATURED_VIDEO } from "./featured-video";
 
 /**
- * OutcomeReceipt — the fold's whole argument, as one artifact.
+ * OutcomeReceipt — the fold's proof, as one artifact.
  *
- * Owner call 2026-07-27: the hero sells the OUTCOME, and the receipt is shown concretely —
- * "show the thumbnail and the views how they evolve" — not as a floating statistic. Because
- * this is the SAME video recut and reposted, one cover with a counter climbing from 231 to
- * 183,000 is literally what happened to that post; two thumbnails would imply two videos.
+ * Owner call 2026-07-27: show the receipt concretely — "the thumbnail and the views how they
+ * evolve" — and then, on the redesign: "we want a premium hero ui design and animation".
  *
- * The bars are proportional with a visible floor: 231/183,000 is 0.13%, which renders as
- * nothing, so the "before" bar is pinned to a hairline. The printed numbers carry the precision
- * — the bars only carry the shape of the gap, which is the point a visitor takes in one glance.
+ * The first pass was a two-row before/after table with proportional bars. It read as an
+ * infographic, and it fought its own best fact: this is ONE post, recut and reposted, so a
+ * table of two rows implies two videos. The premium form of the same truth is a single counter
+ * that TRANSFORMS — the post sits there, the number climbs from what it did to what it did
+ * after, and the multiple lands last. Nothing loops; the motion resolves and stays resolved.
  *
- * The counter is a `NumberTicker` starting at the BEFORE value, so it climbs the real distance
- * when it enters view (and jumps straight to the end under reduced motion).
+ * A visitor arriving after the animation still gets the contrast, because the "was 231" line
+ * persists underneath rather than being carried only by the motion.
  *
- * Anonymous by owner call — no handle, no niche. The clip itself is placeholder footage and is
- * being replaced; everything here reads from `FEATURED_VIDEO`, so the swap is one edit.
+ * Accent dosage: the big number is CREAM, not coral. The only accent is the multiple's chip —
+ * one small lit spot, which is what the liveness-only rule reserves it for.
  */
 export function OutcomeReceipt() {
-  const { cover, outcome } = FEATURED_VIDEO;
+  const { cover, durationLabel, outcome } = FEATURED_VIDEO;
   const { viewsBefore, viewsAfter, credit } = outcome;
 
-  // Hairline floor so the baseline is legible rather than mathematically invisible.
-  const beforeWidth = Math.max((viewsBefore / viewsAfter) * 100, 1.5);
+  const multiple = Math.round(viewsAfter / viewsBefore);
 
   return (
-    <div className="mx-auto w-full max-w-[540px]">
-      <div className="flex items-center gap-5 rounded-2xl border border-border bg-surface-sunken p-4 sm:gap-6 sm:p-5">
-        {/* the post itself — one cover, because it is one post */}
-        <div className="relative aspect-[9/16] w-[86px] shrink-0 overflow-hidden rounded-xl border border-border sm:w-[104px]">
+    <div className="mx-auto w-full max-w-[560px]">
+      <motion.div
+        initial={{ opacity: 0, y: 14, filter: "blur(6px)" }}
+        whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+        viewport={{ once: true, margin: "0px 0px -12% 0px" }}
+        transition={{ duration: 0.7, ease: [0.21, 0.47, 0.32, 0.98] }}
+        className="flex items-center gap-5 rounded-2xl border border-border bg-surface-sunken p-5 shadow-[0_32px_64px_-40px_rgba(0,0,0,0.9)] sm:gap-7 sm:p-6"
+      >
+        {/* the post — one cover, because it is one post */}
+        <div className="relative aspect-[9/16] w-[100px] shrink-0 overflow-hidden rounded-xl ring-1 ring-white/[0.08] sm:w-[116px]">
           <Image
             src={cover}
             alt="A frame from the video this page is about"
             fill
-            sizes="104px"
+            sizes="116px"
             className="object-cover"
+            priority
           />
+          {/* runtime, where a video surface puts it */}
+          <span className="absolute bottom-1.5 left-1.5 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-white/85">
+            {durationLabel}
+          </span>
         </div>
 
         <div className="min-w-0 flex-1">
-          {/* before */}
-          <div>
-            <div className="text-[10.5px] font-medium uppercase tracking-[0.13em] text-foreground-muted">
-              Before
-            </div>
-            <div className="mt-1 text-[15px] tabular-nums text-foreground-secondary">
-              {viewsBefore.toLocaleString("en-US")} views
-            </div>
-            <div className="mt-2 h-[3px] overflow-hidden rounded-full bg-white/[0.06]">
-              <div
-                className="h-full rounded-full bg-foreground-muted"
-                style={{ width: `${beforeWidth}%` }}
-              />
-            </div>
+          <div className="text-[10.5px] font-medium uppercase tracking-[0.13em] text-foreground-muted">
+            The same video, recut
           </div>
 
-          {/* after — the same post, recut */}
-          <div className="mt-5">
-            <div className="text-[10.5px] font-medium uppercase tracking-[0.13em] text-foreground-muted">
-              After the recut
-            </div>
-            <div className="mt-0.5 flex items-baseline gap-1.5">
-              <NumberTicker
-                value={viewsAfter}
-                startValue={viewsBefore}
-                delay={0.25}
-                className="text-[30px] font-medium leading-none tabular-nums tracking-tight text-accent-text sm:text-[36px]"
-              />
-              <span className="text-[13px] text-foreground-muted">views</span>
-            </div>
-            <div className="mt-2.5 h-[3px] overflow-hidden rounded-full bg-white/[0.06]">
-              <div className="h-full w-full rounded-full bg-accent" />
-            </div>
+          {/* the counter that transforms — starts at what the post actually did */}
+          <div className="mt-1.5 flex items-baseline gap-2">
+            <NumberTicker
+              value={viewsAfter}
+              startValue={viewsBefore}
+              delay={0.45}
+              className="text-[38px] font-medium leading-none tabular-nums tracking-[-0.02em] text-foreground sm:text-[50px]"
+            />
+            <span className="text-[13px] text-foreground-muted">views</span>
+          </div>
+
+          <div className="mt-3 flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+            {/* the multiple lands last — the one lit spot on the card */}
+            <motion.span
+              initial={{ opacity: 0, scale: 0.9 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ delay: 1.5, duration: 0.45, ease: [0.21, 0.47, 0.32, 0.98] }}
+              className="inline-flex items-center gap-1 rounded-md bg-accent-soft px-2 py-0.5 text-[12px] font-semibold tabular-nums text-accent-text"
+            >
+              <span aria-hidden>↑</span>
+              {multiple}×
+            </motion.span>
+            <span className="text-[13px] text-foreground-muted">
+              was {viewsBefore.toLocaleString("en-US")} before the recut
+            </span>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* what actually changed — and which surface said so */}
-      <p className="mx-auto mt-4 max-w-[44ch] text-center text-[13.5px] leading-relaxed text-foreground-muted">
+      <p className="mx-auto mt-4 max-w-[46ch] text-center text-[13.5px] leading-relaxed text-foreground-muted">
         {credit}
       </p>
     </div>

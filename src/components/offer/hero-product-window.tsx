@@ -41,6 +41,7 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useInView, useReducedMotion } from "motion/react";
 import { EmbeddedComposer } from "@/components/app/home/embedded-composer";
 import { VideoTestCardRenderer } from "@/components/thread/video-test-card-block";
+import { ThreadAssistantTurn, ThreadUserTurn } from "@/components/thread/thread-shell";
 import { AmbientDetail } from "@/components/audience-lens/v2/AmbientDetail";
 import { NumberTicker } from "@/components/velora/number-ticker";
 import { BorderBeam } from "@/components/velora/border-beam";
@@ -75,14 +76,6 @@ const WITH_RAIL: Phase[] = ["rail", "done"];
 
 const REVEAL_EASE = [0.21, 0.47, 0.32, 0.98] as const;
 
-function MavenAvatar() {
-  return (
-    <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-border bg-surface-elevated text-[12px] font-bold text-accent-text">
-      M
-    </span>
-  );
-}
-
 export function HeroProductWindow() {
   const [qc] = useState(
     () =>
@@ -98,6 +91,16 @@ export function HeroProductWindow() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [typed, setTyped] = useState(0);
   const [mavenTyped, setMavenTyped] = useState(0);
+
+  /**
+   * Which of the read's two pages the rail is showing. The probe is non-interactive, so the
+   * only way to tell a visitor the room has TWO pages — the brain and the audience — is to
+   * visit them. After the read lands it holds on the audience, crosses to the brain, and
+   * returns; the tab header moves with it, which is what reads as "these are clickable".
+   * Remounting via `key` rather than adding a controlled prop keeps `AmbientDetail` — shared
+   * with /ambient-v2, pricing-template and shot-stages — untouched.
+   */
+  const [railTab, setRailTab] = useState<"audience" | "brain">("audience");
 
   const timersRef = useRef<number[]>([]);
   const startedRef = useRef(false);
@@ -165,6 +168,11 @@ export function HeroProductWindow() {
       window.setTimeout(() => setPhase("reveal"), 4600),
       window.setTimeout(() => setPhase("rail"), 5550),
       window.setTimeout(() => setPhase("done"), 6300),
+      // Visit the other page, then come back. Rests on the audience for the same reason the
+      // rail opens there: craft is already on the card, the reception verdict is the surface
+      // a visitor cannot guess from it.
+      window.setTimeout(() => setRailTab("brain"), 10_000),
+      window.setTimeout(() => setRailTab("audience"), 15_500),
     ];
 
     const timers = timersRef.current;
@@ -241,57 +249,51 @@ export function HeroProductWindow() {
         <div inert className="relative flex h-[600px] bg-background lg:h-[720px]">
           {/* thread pane — a column, because the real thread docks its composer at the foot */}
           <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
-            <div className="relative flex flex-1 flex-col gap-4 overflow-hidden px-4 py-5 md:px-6">
-              {/* visitor turn — rises out of the composer once sent */}
+            {/* The real thread's own column rhythm — max-w-760, gap-5, px-4 py-6 (ThreadShell). */}
+            <div className="relative mx-auto flex w-full max-w-[760px] flex-1 flex-col gap-5 overflow-hidden px-4 py-6">
+              {/* visitor turn — the REAL `ThreadUserTurn`, rising out of the composer once sent */}
               <AnimatePresence>
                 {sent && (
                   <motion.div
-                    className="flex justify-end"
                     initial={{ opacity: 0, y: 16, scale: 0.97 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     transition={{ duration: 0.42, ease: REVEAL_EASE }}
                   >
-                    <span className="max-w-[80%] rounded-2xl rounded-br-sm bg-surface-elevated px-3.5 py-2 text-[14px] text-foreground">
-                      {USER_MSG}
-                    </span>
+                    <ThreadUserTurn text={USER_MSG} />
                   </motion.div>
                 )}
               </AnimatePresence>
 
-              {/* Maven turn — avatar + label, then a streamed reply, then the card */}
+              {/* Maven turn — the REAL `ThreadAssistantTurn`: a quiet label and the content, with
+                  NO avatar and NO bubble. The window carried an invented coral "M" disc and wrapped
+                  the reply in a chat bubble; the platform has neither, and the owner reads the
+                  difference instantly. Using the shipped components means it cannot drift again. */}
               <AnimatePresence>
                 {showMaven && (
                   <motion.div
                     initial={{ opacity: 0, y: 4 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="flex gap-2.5"
                   >
-                    <MavenAvatar />
-                    <div className="flex min-w-0 flex-1 flex-col gap-2">
-                      <div className="flex h-4 items-center gap-2">
-                        <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-foreground-muted">
-                          Maven
+                    <ThreadAssistantTurn>
+                      {phase === "thinking" && (
+                        <span className="flex h-4 items-center gap-1">
+                          {[0, 1, 2].map((d) => (
+                            <motion.span
+                              key={d}
+                              className="h-1 w-1 rounded-full bg-foreground-muted"
+                              animate={{ opacity: [0.25, 1, 0.25] }}
+                              transition={{ duration: 0.9, repeat: Infinity, delay: d * 0.15 }}
+                            />
+                          ))}
                         </span>
-                        {phase === "thinking" && (
-                          <span className="flex gap-1">
-                            {[0, 1, 2].map((d) => (
-                              <motion.span
-                                key={d}
-                                className="h-1 w-1 rounded-full bg-foreground-muted"
-                                animate={{ opacity: [0.25, 1, 0.25] }}
-                                transition={{ duration: 0.9, repeat: Infinity, delay: d * 0.15 }}
-                              />
-                            ))}
-                          </span>
-                        )}
-                      </div>
+                      )}
 
-                      {/* streamed reply bubble */}
+                      {/* streamed reply — plain text at the thread's own size, not a bubble */}
                       {showReply && (
-                        <motion.span
+                        <motion.p
                           initial={{ opacity: 0, y: 3 }}
                           animate={{ opacity: 1, y: 0 }}
-                          className="w-fit max-w-[92%] rounded-2xl rounded-tl-sm bg-surface-elevated px-3.5 py-2 text-[14px] leading-snug text-foreground-secondary"
+                          className="text-[15px] leading-relaxed text-foreground-secondary"
                         >
                           {mavenTyped >= MAVEN_MSG.length ? (
                             MAVEN_MSG
@@ -301,7 +303,7 @@ export function HeroProductWindow() {
                               <span className="ml-px inline-block h-[1.05em] w-px translate-y-[0.15em] animate-pulse bg-foreground/60" />
                             </>
                           )}
-                        </motion.span>
+                        </motion.p>
                       )}
 
                       {/* the REAL card — assembles top-down on reveal. */}
@@ -382,7 +384,7 @@ export function HeroProductWindow() {
                           </AnimatePresence>
                         </div>
                       )}
-                    </div>
+                    </ThreadAssistantTurn>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -397,13 +399,18 @@ export function HeroProductWindow() {
                 (which also neutralises the component's own focus-on-seed effect), so `onLaunch`
                 and `onVerbChange` can never fire. The choreography drives its text through the
                 same `seed` channel a tapped card uses in the real app. */}
-            <div className="shrink-0 px-4 pb-4 md:px-6">
+            <div className="mx-auto w-full max-w-[760px] shrink-0 px-4 pb-4">
+              {/* Shorter than the /home default: the composer's 72px min-height field plus p-4
+                  ate ~120px of a pane that has a tall card to show. Trimmed through the
+                  descendant variant rather than a `compact` prop, so the shared component stays
+                  untouched and the surface keeps the real one's shape. */}
               <EmbeddedComposer
                 verb="Test"
                 onVerbChange={() => {}}
                 onLaunch={() => {}}
                 seed={{ text: composerText, nonce: sent ? -1 : typed }}
                 busy={phase === "sending"}
+                className="gap-2.5 p-3 [&_textarea]:min-h-[40px]"
               />
             </div>
           </div>
@@ -424,9 +431,10 @@ export function HeroProductWindow() {
               transition={{ duration: 0.7, ease: REVEAL_EASE }}
             >
               <AmbientDetail
+                key={railTab}
                 template={WINDOW_TEMPLATE}
                 presentation="rail"
-                initialTab="audience"
+                initialTab={railTab}
               />
             </motion.div>
           </div>
@@ -460,9 +468,10 @@ export function HeroProductWindow() {
                 transition={{ duration: 0.62, ease: REVEAL_EASE }}
               >
                 <AmbientDetail
+                  key={railTab}
                   template={WINDOW_TEMPLATE}
                   presentation="sheet"
-                  initialTab="audience"
+                  initialTab={railTab}
                 />
               </motion.div>
             )}

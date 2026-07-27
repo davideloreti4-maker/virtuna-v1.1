@@ -15,7 +15,6 @@ import { Guarantee } from "@/components/offer/sections/guarantee";
 import { Faq } from "@/components/offer/sections/faq";
 import { FinalCta } from "@/components/offer/sections/final-cta";
 import { OfferFooter } from "@/components/offer/sections/footer";
-import { StickyCta } from "@/components/offer/sections/sticky-cta";
 import { GRAIN_URL } from "@/components/offer/atmosphere";
 
 export const metadata: Metadata = {
@@ -87,23 +86,26 @@ export default function OfferPage() {
           <div className="mx-auto max-w-2xl text-center">
             <BlurFade delay={0.05}>
               <span className="text-xs font-semibold uppercase tracking-[0.14em] text-foreground-muted">
-                The same video, recut
+                Stop posting blind
               </span>
             </BlurFade>
             <BlurFade delay={0.12}>
+              {/* Reverted to the original wording (owner, 2026-07-27). The numbers-as-headline
+                  version ("231 views. Then 183,000.") is gone — the receipt below carries the
+                  outcome, and the headline goes back to naming what the product does. */}
               <h1 className="mt-3 font-serif text-[clamp(2.3rem,5.2vw,3.6rem)] font-medium leading-[1.05] tracking-tight text-balance">
-                231 views. Then{" "}
-                <span className="italic text-accent-text">183,000</span>.
+                Know if your video will pop —{" "}
+                <span className="italic text-accent-text">before</span> you post
+                it.
               </h1>
             </BlurFade>
             <BlurFade delay={0.19}>
-              {/* Names the product in the same breath as the result — a stranger who reads
-                  only the numbers still has to learn what sold them. The "trained on 500"
-                  claim is NOT lost: it lives in ProofMechanism (PlatformBar's rule: every
-                  claim stated once). */}
+              {/* Two lines, not three — the fold stacks few, larger moments. The
+                  "trained on 500" claim is NOT lost: it lives in ProofMechanism
+                  (PlatformBar's rule: every claim stated once). */}
               <p className="mx-auto mt-4 max-w-[46ch] text-[17px] leading-relaxed text-foreground-secondary">
-                Maven read the video before it went back up — the exact second
-                the room left, and what to change.
+                A room of simulated viewers watches your video — the exact
+                second they&apos;d scroll, and the fix, before you post.
               </p>
             </BlurFade>
           </div>
@@ -172,9 +174,9 @@ export default function OfferPage() {
       <Faq />
       <FinalCta />
       <OfferFooter />
-
-      {/* always-available close — a bottom bar on mobile, a pill on desktop */}
-      <StickyCta />
+      {/* StickyCta UNMOUNTED (owner call 2026-07-27): the floating pill overlapped the read
+          rail's own rows inside the product window and competed with the fold's button, which
+          is now the page's one standing ask. The component stays on disk. */}
     </main>
   );
 }

@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { VideoTestCardBlockSchema } from "@/lib/tools/blocks";
 import { FEATURED_VIDEO } from "../featured-video";
+import { FEATURED_ROOM_TEMPLATE } from "../featured-room-template";
 import { TEST_CARD_FIXTURE } from "../test-card-fixture";
 
 /**
@@ -59,6 +60,31 @@ describe("featured video — the /go page's one clip", () => {
     const { viewsBefore, viewsAfter } = FEATURED_VIDEO.outcome;
     expect(viewsBefore).toBeGreaterThan(0);
     expect(viewsAfter).toBeGreaterThan(viewsBefore);
+  });
+
+  it("carries none of the retired fixture's video into the room read", () => {
+    // FEATURED_ROOM_TEMPLATE inherits from CREATOR_TEMPLATE, which narrates a DIFFERENT video
+    // in detail. Two rounds of this leaked in review — the brain page still said "the $400
+    // stake holds half" under a business Q&A, and the audience page still clustered in
+    // "builders". Inheritance is the right call, but it silently carries prose, so pin it.
+    const prose = JSON.stringify(FEATURED_ROOM_TEMPLATE);
+    for (const ghost of ["$400", "9-5", "builders", "month one"]) {
+      expect(prose).not.toContain(ghost);
+    }
+  });
+
+  it("threads the audience's coded reason to a brain moment that exists", () => {
+    // `thread.toMoment` is matched by STRING against the brain's moment to jump tabs and flash
+    // the beat. A stale value doesn't throw — it just silently stops working.
+    const moment = FEATURED_ROOM_TEMPLATE.brain?.whyThisSecond?.moment;
+    expect(moment).toBeTruthy();
+
+    const threaded = (FEATURED_ROOM_TEMPLATE.population?.voices?.reasons ?? [])
+      .map((r) => (r as { thread?: { toMoment?: string } }).thread?.toMoment)
+      .filter(Boolean);
+
+    expect(threaded.length).toBeGreaterThan(0);
+    for (const target of threaded) expect(target).toBe(moment);
   });
 
   it("attaches no fabricated corpus receipt to a fix", () => {

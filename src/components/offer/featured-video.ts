@@ -160,6 +160,58 @@ export const FEATURED_VIDEO = {
     transcript: "our revenue from scaling is everything — uhm — what's your current rate on the reach outs?",
     /** Index of the held word in `transcript` — "rate", the first concrete thing said. */
     peakWordIndex: 10,
+    /**
+     * The brain tab's attention curve over the 53s clip, and the beats it calls out. These
+     * became load-bearing the moment the probe started VISITING the brain page: the inherited
+     * fixture narrated a 12-second video about a "$400 stake" dropping at 0:04, which is a
+     * different video from the one on screen.
+     */
+    attentionPoints: [70, 62, 54, 47, 38, 26, 24, 31, 44, 52, 49, 45, 42],
+    attentionMoments: [
+      { t: "0:00", v: 70 },
+      { t: "0:12", v: 24, dip: true },
+      { t: "0:20", v: 44 },
+    ],
+    /** The plain-language read of the decisive second. */
+    whyThisSecond: {
+      moment: "0:12 · the stall",
+      lead: "At 0:12 the room splits — the ones who came for the answer wait, ",
+      loss: "the rest leave while the question is still being set up",
+    },
+    /**
+     * The audience tab's coded reasons. `thread.toMoment` must equal `whyThisSecond.moment` —
+     * that string is how a reason jumps to the brain page and flashes the matching beat, so a
+     * stale value silently breaks the one cross-tab interaction the read has.
+     */
+    reasons: [
+      {
+        label: "The question takes too long to arrive",
+        count: 268,
+        quote: "i'd be gone before he finishes asking",
+        who: "Maya · skeptic",
+        loss: true,
+        thread: { toMoment: "0:12 · the stall" },
+      },
+      {
+        label: "The answer is worth staying for",
+        count: 181,
+        quote: "that part is why i watched it twice",
+        who: "Dev · operator",
+      },
+      {
+        label: "Heard this take before",
+        count: 124,
+        quote: "every panel says some version of this",
+        who: "Priya · scroller",
+      },
+    ],
+    /** Networks at the decisive second — the σ receipts, translated. */
+    networks: [
+      { label: "Focus", z: -1.2, read: "scattered — no question to hold", loss: true },
+      { label: "Memory", z: 0.5, read: "holding the rate figure" },
+      { label: "Emotion", z: 0.2, read: "flat until the answer" },
+      { label: "Visual", z: -0.3, read: "one static frame, nothing to grab" },
+    ],
     unlock: {
       lever: "Open on the question",
       gain: "+14% would stop",
