@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { verifyWebhookSignature } from "@/lib/whop/webhook-verification";
+import {
+  verifyWebhookSignature,
+  describeSignatureFailure,
+} from "@/lib/whop/webhook-verification";
 import { mapWhopProductToTier, isTrialPlanId } from "@/lib/whop/config";
 import { TRIAL } from "@/lib/pricing";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -38,8 +41,18 @@ function trialWindowFrom(now: Date) {
  * prefix is what it separates; `membership_cancel_at_period_end_changed` must become
  * `membership.cancel_at_period_end_changed`, not a string of dots).
  */
-export function normalizeEventName(payload: { event?: unknown; action?: unknown }): string {
-  const raw = payload?.event ?? payload?.action;
+export function normalizeEventName(payload: {
+  event?: unknown;
+  action?: unknown;
+  type?: unknown;
+}): string {
+  // ⚠️ `type` is where the v2 payload actually puts it. Verified against a real purchase
+  // 2026-07-27: the delivery carried keys ["id","api_version","timestamp","data","type",
+  // "company_id"] — no `event`, no `action`. Reading only those two resolved the name to "",
+  // fell through to `default:`, and answered 200 {received:true} having granted NOTHING.
+  // The customer had paid. Signature verification passed. Nothing looked wrong anywhere.
+  // Checked last so a payload that does carry `event`/`action` keeps its existing meaning.
+  const raw = payload?.event ?? payload?.action ?? payload?.type;
   if (typeof raw !== "string" || !raw) return "";
   return raw.includes(".") ? raw : raw.replace("_", ".");
 }
@@ -116,6 +129,26 @@ export async function POST(request: Request) {
     const isValid = verifyWebhookSignature(body, request.headers, secret);
 
     if (!isValid) {
+      // A silent 401 here cost a full diagnosis round-trip on 2026-07-27: a SECOND
+      // Whop webhook had been created against this same URL, signing with its own
+      // secret, and from the logs that was indistinguishable from the header-name bug
+      // this module had just been fixed for. The failure has to say which shape arrived.
+      // Log NAMES and the webhook id only — never the signature, never the body.
+      log.warn("Webhook signature rejected", {
+        header_names_seen: [
+          "webhook-id",
+          "webhook-timestamp",
+          "webhook-signature",
+          "svix-id",
+          "svix-timestamp",
+          "svix-signature",
+        ].filter((name) => request.headers.get(name) !== null),
+        webhook_id:
+          request.headers.get("webhook-id") ??
+          request.headers.get("svix-id") ??
+          null,
+        ...describeSignatureFailure(body, request.headers, secret),
+      });
       return NextResponse.json(
         { error: "Invalid webhook signature" },
         { status: 401 }
@@ -141,7 +174,14 @@ export async function POST(request: Request) {
       // endpoint REJECTS them ("is not a valid event") on every api_version — so they are
       // not reachable and are not handled here. Do not "modernise" these names without
       // re-probing the API; the docs and the API disagree.
-      case "membership.went_valid": {
+      // ⚠️ Whop has TWO vocabularies for the same event and switches between them without
+      // notice. On 2026-07-26 its API REJECTED `membership.activated` as invalid and stored
+      // `membership_went_valid`. On 2026-07-27, after the webhook was edited in the
+      // dashboard, the same endpoint came back holding `membership.activated` — and the
+      // api_version had silently flipped v2 → v1 too. Betting on either spelling means a
+      // paying customer is granted nothing the next time Whop changes its mind.
+      case "membership.went_valid":
+      case "membership.activated": {
         const supabaseUserId = supabaseUserIdOf(data);
 
         if (!supabaseUserId) {
@@ -223,7 +263,9 @@ export async function POST(request: Request) {
 
       // "no longer valid" — cancellation, expiry, or a failed payment that exhausted its
       // retries. (`membership.deactivated` is NOT a subscribable Whop event; see above.)
-      case "membership.went_invalid": {
+      // Same pair of spellings for "this membership stopped being valid" — see above.
+      case "membership.went_invalid":
+      case "membership.deactivated": {
         const supabaseUserId = supabaseUserIdOf(data);
 
         if (!supabaseUserId) {

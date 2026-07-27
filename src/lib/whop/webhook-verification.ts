@@ -62,7 +62,26 @@ export function verifyWebhookSignature(
     const secretWithoutPrefix = secret.startsWith("whsec_")
       ? secret.slice(6)
       : secret;
-    const secretBytes = Buffer.from(secretWithoutPrefix, "base64");
+    // ⚠️ The secret is NOT necessarily base64. Svix/Standard Webhooks specifies
+    // `whsec_<base64>`, and this module assumed it — but Whop issues a RAW 67-character
+    // string with no `whsec_` prefix. `Buffer.from(s, "base64")` does not throw on input
+    // that is not base64: it silently discards the characters it cannot read and returns a
+    // shorter, wrong key (67 chars → 50 bytes here). The HMAC is then computed perfectly
+    // over the wrong bytes, so every layer looks correct and nothing matches. Verified live
+    // 2026-07-27 against hook_Jw56rQjnWOIVO.
+    //
+    // So: try each plausible reading of the secret and accept if ANY produces the signature.
+    // This is not weakening the check — every candidate must still reproduce Whop's HMAC
+    // over the exact signed content, and a wrong secret matches none of them.
+    const secretCandidates: Buffer[] = [
+      // Raw bytes of the secret as issued (Whop's actual format).
+      Buffer.from(secret, "utf8"),
+      // Raw bytes minus a `whsec_` prefix, if one is present.
+      Buffer.from(secretWithoutPrefix, "utf8"),
+      // The Svix reading: base64 payload after the prefix. Kept so a genuinely
+      // Svix-formatted secret still verifies.
+      Buffer.from(secretWithoutPrefix, "base64"),
+    ];
 
     // 2. Check timestamp tolerance (5 minutes)
     const timestamp = parseInt(webhookTimestamp, 10);
@@ -76,10 +95,10 @@ export function verifyWebhookSignature(
     // 3. Build the signature content
     const signedContent = `${webhookId}.${webhookTimestamp}.${payload}`;
 
-    // 4. Compute HMAC-SHA256
-    const expectedSignature = createHmac("sha256", secretBytes)
-      .update(signedContent)
-      .digest();
+    // 4. Compute HMAC-SHA256 under each candidate reading of the secret
+    const expectedSignatures = secretCandidates
+      .filter((key) => key.length > 0)
+      .map((key) => createHmac("sha256", key).update(signedContent).digest());
 
     // 5. Extract v1 signatures from the header
     const signatures = signatureHeader.split(" ");
@@ -97,13 +116,15 @@ export function verifyWebhookSignature(
       try {
         const signatureBytes = Buffer.from(v1Sig, "base64");
 
-        // Ensure both buffers are the same length for timingSafeEqual
-        if (signatureBytes.length !== expectedSignature.length) {
-          continue;
-        }
+        for (const expectedSignature of expectedSignatures) {
+          // Ensure both buffers are the same length for timingSafeEqual
+          if (signatureBytes.length !== expectedSignature.length) {
+            continue;
+          }
 
-        if (timingSafeEqual(expectedSignature, signatureBytes)) {
-          return true; // Valid signature found
+          if (timingSafeEqual(expectedSignature, signatureBytes)) {
+            return true; // Valid signature found
+          }
         }
       } catch {
         // Invalid base64 or comparison error, try next signature
@@ -117,4 +138,53 @@ export function verifyWebhookSignature(
     // Any error during verification should fail closed
     return false;
   }
+}
+
+/**
+ * Describe WHY a signature was rejected, in terms safe to write to a log.
+ *
+ * A bare 401 is indistinguishable across every failure this module can have — wrong header
+ * names, a secret that is not the one this endpoint signs with, a secret that is not base64,
+ * or a signature header that omits the `v1,` scheme. Each needs a different fix and they all
+ * look the same from outside. This returns SHAPES ONLY: which header names arrived, byte
+ * LENGTHS, scheme names, and clock skew. It never returns the secret, the signature, or the
+ * body — a diagnostic that leaks the thing it is diagnosing is worse than no diagnostic.
+ */
+export function describeSignatureFailure(
+  payload: string,
+  headers: WebhookHeaders,
+  secret: string
+): Record<string, unknown> {
+  const { id, timestamp, signature } = readSignatureHeaders(headers);
+  const stripped = secret.startsWith("whsec_") ? secret.slice(6) : secret;
+
+  // Whop's secret is ASSUMED base64 (Standard Webhooks says so). If it is not, base64
+  // decoding does not throw — it silently drops the invalid characters and yields a
+  // shorter, wrong key. A decoded length far below the raw length is that tell.
+  const decodedBytes = Buffer.from(stripped, "base64").length;
+
+  const parts = signature ? signature.split(" ") : [];
+  const schemes = parts.map((p) =>
+    p.includes(",") ? p.slice(0, p.indexOf(",")) : "(no scheme prefix)"
+  );
+
+  const ts = parseInt(timestamp, 10);
+
+  return {
+    headers_present: {
+      id: id !== "",
+      timestamp: timestamp !== "",
+      signature: signature !== "",
+    },
+    secret_raw_chars: secret.length,
+    secret_has_whsec_prefix: secret.startsWith("whsec_"),
+    secret_decoded_bytes: decodedBytes,
+    secret_trailing_whitespace: secret !== secret.trim(),
+    signature_parts: parts.length,
+    signature_schemes: schemes,
+    clock_skew_seconds: Number.isFinite(ts)
+      ? Math.abs(Math.floor(Date.now() / 1000) - ts)
+      : null,
+    body_bytes: payload.length,
+  };
 }

@@ -257,10 +257,13 @@ export const INTAKE_DOORS: IntakeOption[] = [
  * artifact axis grows one tile per artifact and lets the verbs ride the sentence (chat-agent-loop
  * already routes "test this" / "give me ideas" from natural language).
  *
- * `id`s are the real SKILL_RUN_META keys; `label` + `lens` + `icon` are authored presentation.
- * Each `lens` says what you GET BACK, in the fewest plain words that survive a glance — a label
- * alone cannot disambiguate "Test" from "Read", but "Frame by frame, and the one fix" vs "Run a
- * draft past your audience" can. (A drift guard against SKILL_TOOLS is a cheap follow-up.)
+ * `id`s are composer **ToolIds** (the SKILLS registry in `composer-controls.tsx`) — this line read
+ * "the real SKILL_RUN_META keys" until 2026-07-27, and the grid believed it: SKILL_RUN_META is a
+ * separate display namespace that spells Ideas `ideas`, so the tile armed a tool no branch matched
+ * and fell through to the paid video Test (F-017). `label` + `lens` + `icon` are authored
+ * presentation. Each `lens` says what you GET BACK, in the fewest plain words that survive a glance
+ * — a label alone cannot disambiguate "Test" from "Read", but "Frame by frame, and the one fix" vs
+ * "Run a draft past your audience" can. The drift guard now exists: start-registry-drift.test.ts.
  */
 export const START_SKILL_GROUPS: SkillGroup[] = [
   {
@@ -269,7 +272,12 @@ export const START_SKILL_GROUPS: SkillGroup[] = [
     label: "Content",
     span: 2,
     skills: [
-      { id: "ideas", label: "Ideas", lens: "Concepts worth making", icon: "bulb" },
+      // `idea`, SINGULAR — these ids are consumed as composer ToolIds (onSkill → pickStartSkill,
+      // and the armed-tile highlight compares against activeTool). `ideas` is the SKILL_RUN_META
+      // display key, a DIFFERENT namespace; using it here armed a tool no branch matched, and
+      // handleSubmit's final else is the paid video Test — so the Ideas tile ran a SIM-1 Max
+      // video Test off a pasted URL (F-017). The two namespaces differ in exactly this one id.
+      { id: "idea", label: "Ideas", lens: "Concepts worth making", icon: "bulb" },
       { id: "hooks", label: "Hooks", lens: "Openers that stop them", icon: "firstline" },
       { id: "script", label: "Script", lens: "A full short-form script", icon: "page" },
       { id: "remix", label: "Remix", lens: "Rebuild what worked", icon: "repeat" },

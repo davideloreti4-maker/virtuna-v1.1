@@ -13,11 +13,18 @@
  * `usage.enforced` says whether we would actually BLOCK, while `used` / `limit` are true either
  * way. The UI shows a customer their balance the moment they have a plan; the flag only decides
  * whether hitting the limit stops them.
+ *
+ * `trialUsed` is here for one reason: every "Start for $1" CTA in the product needs to know
+ * whether this account can still HAVE the dollar before it promises one. `/api/whop/checkout`
+ * has always denied a second trial server-side; until this field existed the UI could not see
+ * that decision, so a returning customer was offered $1 and charged $99. Same predicate, same
+ * columns — see `lib/billing/trial-eligibility`.
  */
 
 import { NextResponse } from "next/server";
 
 import { checkCreditQuota } from "@/lib/billing/quota";
+import { hasUsedTrial } from "@/lib/billing/trial-eligibility";
 import { DEMO_ACTION } from "@/lib/pricing";
 import { createClient } from "@/lib/supabase/server";
 import type { NumenTier } from "@/lib/whop/config";
@@ -97,6 +104,9 @@ export async function GET() {
         status: "active",
         isTrial: false,
         trialEndsAt: null,
+        // No row at all — nobody has ever stamped a trial window for this account, so the
+        // dollar is genuinely still on the table.
+        trialUsed: false,
         whopConnected: false,
         cancelAtPeriodEnd: false,
         currentPeriodEnd: null,
@@ -111,6 +121,9 @@ export async function GET() {
       // not the denormalised `is_trial` flag, which exists for reporting.
       isTrial: quota.inTrial,
       trialEndsAt: (row.trial_ends_at as string | null) ?? null,
+      // Whether the $1 is still available to offer. NOT the same question as `isTrial`
+      // (are they in one right now) — this is history, and it outlives cancellation.
+      trialUsed: hasUsedTrial(row),
       whopConnected: !!row.whop_membership_id,
       cancelAtPeriodEnd: (row.cancel_at_period_end as boolean | null) ?? false,
       currentPeriodEnd: (row.current_period_end as string | null) ?? null,

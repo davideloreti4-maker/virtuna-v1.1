@@ -4,13 +4,17 @@
 environment variables belong on the Vercel production project, and which must deliberately stay off.*
 
 Enumerated from `grep process.env` over `src/` and verified against `vercel env ls production` on
-**2026-07-26**. `.env.example` was stale before that date — it omitted `DASHSCOPE_API_KEY` entirely
+**2026-07-27**. `.env.example` was stale before 2026-07-26 — it omitted `DASHSCOPE_API_KEY` entirely
 (the one key that throws), claimed "all 7 cron routes" when there are 10, and documented
 `DEEPSEEK_API_KEY`, which has no runtime reader left. Trust this file and `.env.example` as of the
 date above; re-verify with the grep if much time has passed.
 
 Project: `virtuna-v1.1` · `prj_WUmPu9fRmFNlbj5rtGIaRmBC8Url` · team `davide-loretis-projects`
-Production origin: `https://virtuna-v11.vercel.app`
+Production origin: **`https://numenmachines.com`** (live 2026-07-27 — §6). `https://virtuna-v11.vercel.app` still works.
+
+**Nothing is missing for the app to boot or serve.** Every var the code requires is set (22/22), and
+`NEXT_PUBLIC_APP_URL` + DNS were resolved 2026-07-27 (§3, §6). What remains is two optional accounts
+(§1) and the cron decision (§5, step 5).
 
 ---
 
@@ -18,13 +22,17 @@ Production origin: `https://virtuna-v11.vercel.app`
 
 1. **`NEXT_PUBLIC_*` is inlined at BUILD time.** Setting or changing one on Vercel does *nothing*
    until a redeploy. This is why flipping `NEXT_PUBLIC_AMBIENT_V2` is its own deploy, not a toggle.
-2. **Vercel *Sensitive* vars cannot be read back.** `vercel env pull` writes the literal string
-   `[SENSITIVE]` instead of the value, so a content grep against a pulled file returns false for
-   *every* check — that is **not** evidence a value is wrong. Presence/absence is all a pull tells you.
+2. **Vercel *Sensitive* vars cannot be read back.** All 22 project vars here are Sensitive, so
+   `vercel env pull` writes `NAME=""` for every one of them — an *empty string*, not the value and
+   not the `[SENSITIVE]` placeholder some Vercel versions emit. A content grep against a pulled file
+   therefore returns false for *every* check; that is **not** evidence a value is wrong or unset.
+   Presence/absence is all a pull tells you. To actually read a value: the dashboard, or overwrite it.
+   (Nor can prod output be grepped for it — the only `NEXT_PUBLIC_APP_URL` reader that renders,
+   `settings/page.tsx`, is a **server** component, so the value is inlined into no client bundle.)
 
 ---
 
-## 1. Current production state (14 vars, checked 2026-07-26)
+## 1. Current production state (22 vars, checked 2026-07-27)
 
 | Var | Status | Notes |
 |---|---|---|
@@ -32,7 +40,7 @@ Production origin: `https://virtuna-v11.vercel.app`
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ✅ set | same |
 | `SUPABASE_SERVICE_ROLE_KEY` | ✅ set | same; service client (webhooks, filmstrip signing) |
 | `DASHSCOPE_API_KEY` | ✅ set | **THROWS** without it — every LLM call routes here |
-| `NEXT_PUBLIC_APP_URL` | ⚠️ set, **unverified** | see §3 |
+| `NEXT_PUBLIC_APP_URL` | ✅ `https://numenmachines.com` | overwritten + redeployed 2026-07-27; see §3 for why it matters |
 | `CRON_SECRET` | ✅ set | still required — see §2 |
 | `APIFY_TOKEN` | ✅ set | unset ⇒ all scraping fails |
 | `APIFY_WEBHOOK_SECRET` | ✅ set 2026-07-26 | generated; unset ⇒ webhook route rejects everything |
@@ -40,8 +48,9 @@ Production origin: `https://virtuna-v11.vercel.app`
 | `GROUNDING_HOOKS_ENABLED` | ✅ set | defaults OFF in code, needs explicit `"true"` |
 | `GROUNDING_IDEAS_ENABLED` | ✅ set | same |
 | `GROUNDING_SCRIPT_ENABLED` | ✅ set | same |
-| `DEEPSEEK_API_KEY` | ✅ set (harmless) | **dead** — no runtime reader left |
-| `GEMINI_API_KEY` | ✅ set (harmless) | only reader was the `calculate-trends` cron; crons are off |
+| `WHOP_API_KEY` | ✅ set 2026-07-26 | + `WHOP_WEBHOOK_SECRET`, 3× `WHOP_PRODUCT_ID_*`, 3× `WHOP_TRIAL_PLAN_ID_*` = **8 vars**, all set. Provisioned live against company `biz_LyBwGuDUAoMFco`. These were "correctly absent" in the previous revision of this file — that is no longer true. |
+| `DEEPSEEK_API_KEY` | ✅ set (harmless) | **dead** — no runtime reader left (only `DEEPSEEK_THINKING_BUDGET`, which has a default) |
+| `GEMINI_API_KEY` | ✅ set (harmless) | **dead** — grep finds it only in *comments*. `retrieval/embedder.ts` `embedQuery`/`embedBatch` are DEFERRED to M2 and throw by design (retrieval weight = 0, callers degrade), and the `calculate-trends` cron is unscheduled. |
 
 ### Still missing — both need an external account
 
@@ -56,7 +65,6 @@ Production origin: `https://virtuna-v11.vercel.app`
 |---|---|
 | `NEXT_PUBLIC_AMBIENT_V2` | ships as **deploy #2**, isolated, so a regression has one suspect and the flag keeps its value as a rollback lever |
 | `BILLING_ENFORCE_QUOTA` | defaults OFF; enforcement is verified working but stays inert until the Whop step (`docs/PRICING.md`) |
-| all 8 `WHOP_*` | absent **by design** — a missing product id is the checkout 503, and a missing *trial* id degrades to full price, never undercharging |
 | `AB_*`, `SWEEP_BUDGETS`, `SPIKE_REAL`, `SMOKE_ASK`, `RUN_VISION_LIVE_SMOKE`, `GATE_MODEL`, `PASS2_THINKING_BUDGET`, `QWEN_FAST_MODEL`, `OUT`, `T`, `YAW`, `PITCH` | local research scripts only |
 
 Everything else (`FOLD_*`, `QWEN_*_MODEL`, the remaining `GROUNDING_*`, `CHAT_AGENT_DISPATCH`,
@@ -78,18 +86,30 @@ literal string `"Bearer undefined"` — trivially guessable. **Keep it set.**
 
 ---
 
-## 3. ⚠️ `NEXT_PUBLIC_APP_URL` — the one value worth eyeballing
+## 3. ✅ `NEXT_PUBLIC_APP_URL` — resolved, and worth understanding
 
-It is used for Apify webhook callbacks and referral links. The local `.env.local` it was most likely
-copied from holds `http://localhost:3000`; if production carries that value, both silently point at
-localhost. Because it is stored Sensitive it **cannot be read back** — check it in the dashboard, or
-just overwrite it:
+Six readers, and the blast radius is wider than the "referral links" this file used to claim:
+
+| Reader | If the value is `http://localhost:3000` |
+|---|---|
+| `api/whop/checkout/route.ts:89` | **a paying customer is redirected to localhost after checkout** |
+| `lib/engine/filmstrip/queue.ts:36` | the self-`fetch` to `/api/filmstrip/extract` never leaves the box ⇒ analyses run with **no keyframes**, silently (it is a `void fetch`) |
+| `api/cron/scrape-trending/route.ts:71` | Apify calls back to localhost ⇒ scrape results never ingest |
+| `settings/page.tsx:104` | referral links point at localhost |
+| `signup/actions.ts`, `forgot-password/actions.ts` | fall back to the request `origin` first, so these two are **safe** either way |
+
+It is Sensitive, so it **cannot be read back** (§0.2) and it renders in no client bundle — there was
+no way to learn its old value short of the dashboard. It was overwritten twice on 2026-07-27: first
+to the `vercel.app` origin, then to `https://numenmachines.com` once DNS landed (§6).
 
 ```bash
-printf 'https://virtuna-v11.vercel.app' | vercel env add NEXT_PUBLIC_APP_URL production --force
+printf 'https://numenmachines.com' | vercel env add NEXT_PUBLIC_APP_URL production --force
 ```
 
-Being a `NEXT_PUBLIC_*`, it only takes effect on the next build.
+The write is idempotent, so overwriting costs nothing if the value was already right — which is the
+cheapest way to resolve an unreadable var. Being a `NEXT_PUBLIC_*` it only takes effect on the next
+build, so each write needs a redeploy (empty commit on `main`, or redeploy from the dashboard). **Set
+it again if the production origin ever changes.**
 
 ---
 
@@ -112,16 +132,79 @@ is not linked. Note that `vercel link` appends `VERCEL_OIDC_TOKEN` to the local 
 
 ---
 
-## 5. Deploy order
+## 5. Deploy order — steps 1–3 are DONE
 
-1. Land the build gate + this config on `main` (done — `ignoreCommand`, production-only builds).
-2. Reconnect the GitHub integration with `NEXT_PUBLIC_AMBIENT_V2` **unset**. Ships five weeks of
-   merged work with v2 still off.
-3. Verify the gate **both ways**: push a no-op to a branch → *skipped*; push to `main` → *builds*.
-   The exit codes are inverted from intuition (1 = build, 0 = skip) and getting them backwards means
-   silently never deploying again.
-4. Verify prod is healthy. Crons: read SCHEDULED-fire logs, never a manual curl (a manual curl 401s
-   by design and has been misread as "crons dead" before).
-5. **Then** set `NEXT_PUBLIC_AMBIENT_V2=true` and redeploy — one isolated change, clean rollback.
+1. ✅ Build gate on `main` (`ignoreCommand`, production-only builds).
+2. ✅ GitHub integration reconnected, `NEXT_PUBLIC_AMBIENT_V2` still unset.
+3. ✅ **Gate verified both ways in the wild**, not by reasoning about exit codes: `vercel ls` shows
+   8 Preview deployments `Canceled` after 6–7s (the skip path) and one Production deployment `● Ready`
+   in 2m (`dpl_HLxbrjipKheQuAVenJvxj8ZbGYD9`, 2026-07-27 00:56). The inverted exit codes
+   (**1 = build, 0 = skip**) are therefore confirmed correct as written.
+4. ✅ `NEXT_PUBLIC_APP_URL` corrected — `https://virtuna-v11.vercel.app`, then
+   `https://numenmachines.com` once DNS landed (§6). Two writes, two builds; that is the cost of a
+   build-time-inlined value.
+5. ▶ Verify prod is healthy. Crons: read SCHEDULED-fire logs, never a manual curl (a manual curl 401s
+   by design and has been misread as "crons dead" before). ⚠️ `vercel.json` currently schedules
+   **none**, and `sync-whop` is one of the ten — billing has no drift reconciliation until that is
+   decided.
+6. ▶ **Then** set `NEXT_PUBLIC_AMBIENT_V2=true` and redeploy — one isolated change, clean rollback.
 
 Full runbook with the schema pre-flight: `docs/HANDOFF-2026-07-26-sim-surface-video-population.md` §9.
+
+---
+
+## 6. ✅ `numenmachines.com` — DNS migrated to Vercel nameservers 2026-07-27
+
+Live: apex + `www` both 200, both certs issued, every public resolver (1.1.1.1 / 8.8.8.8 / 9.9.9.9)
+returns Vercel anycast. `NEXT_PUBLIC_APP_URL` is now `https://numenmachines.com`.
+
+**Before**: the domain was attached to the project and aliased onto the production deployment, which
+made it *look* live while it served a cPanel **suspended-account page**. `vercel domains ls` showing
+an alias is not evidence of DNS — `curl` it.
+
+### Why the A-record route was not available
+
+The nameservers were `dns{1,2}.namecheaphosting.com` — the *hosting's* nameservers, not Namecheap's
+own DNS. Namecheap's Advanced DNS tab only edits records when nameservers are BasicDNS/PremiumDNS, so
+the zone lived inside a cPanel behind a suspended account. Nameservers were the only available lever,
+which forces full delegation and a zone rebuild either way. (Namecheap's **PERSONAL DNS SERVER**
+panel — the one asking for a host + IP — is glue-record registration for running your own
+nameservers. Unrelated; skip it.)
+
+### The zone was captured before the switch, and re-created after
+
+Once delegation moves the old records are unreadable — AXFR is refused, so the zone was assembled by
+per-record-type query against `dns1.namecheaphosting.com` and saved to
+`.vercel/zone-backup-numenmachines.txt` (gitignored). Ported to Vercel DNS:
+
+| Record | Note |
+|---|---|
+| `MX` ×3 → `mx{1,2,3}-hosting.jellyfish.systems` @ 5/10/20 | mail delivery |
+| `TXT` SPF | **`+a` deliberately dropped** — see below |
+| `_dmarc` `v=DMARC1; p=none;` · `default._domainkey` (409-char DKIM) | verbatim |
+| `mail` / `webmail` / `autodiscover` / `autoconfig` A → `162.213.255.22` | verbatim |
+| `cpanel` / `whm` / `ftp` | **dropped** — dead admin endpoints on the suspended box |
+
+Apex and `www` need no records: with Vercel nameservers, a domain attached to a project is wired
+automatically. `www` did have to be **added to the project** (`vercel domains add`) or the hostname
+serves nothing.
+
+⚠️ **Porting the SPF verbatim would have been the bug.** The record was `v=spf1 +a +mx …`. `+a`
+authorizes *whatever the apex A record points at* to send mail as the domain — formerly the owner's
+own cPanel box, now Vercel's **shared** anycast IPs. A faithful copy would have silently authorized
+infrastructure we do not control. `+mx` and the two `ip4` literals still cover the real mail path.
+**A record can be byte-identical and still mean something new once what it points at changes.**
+
+### Certificate timing — do not panic-fix it
+
+`www` (added after delegation) got its cert in seconds; the **apex** took ~10 minutes longer because
+Vercel's own domain check kept reading the cached `dns{1,2}.namecheaphosting.com` delegation while
+the `.com` registry had already flipped. During that window the apex failed TLS with *"no alternative
+certificate subject name matches"* while `www` served fine. Re-adding the domain would not have
+helped; waiting did.
+
+### If a mail provider is added later (Resend/Postmark)
+
+Its records go in Vercel DNS now (`vercel dns add numenmachines.com …`). Resend verifies on a `send.`
+subdomain plus `resend._domainkey`, so it does **not** collide with the apex MX/SPF or the ported
+`default._domainkey` above.

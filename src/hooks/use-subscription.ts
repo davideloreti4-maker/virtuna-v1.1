@@ -28,6 +28,12 @@ interface SubscriptionData {
   status: string;
   isTrial: boolean;
   trialEndsAt: string | null;
+  /**
+   * Has this account already spent its one $1 trial? History, not state — it stays true
+   * after the trial converts AND after the plan is cancelled. Any CTA that says "$1" must
+   * check this first, or it promises a price `/api/whop/checkout` will refuse.
+   */
+  trialUsed: boolean;
   whopConnected: boolean;
   cancelAtPeriodEnd: boolean;
   currentPeriodEnd: string | null;
@@ -46,6 +52,7 @@ function toSubscriptionData(json: Record<string, unknown>): SubscriptionData {
     status: (json.status as string) ?? "active",
     isTrial: (json.isTrial as boolean) ?? false,
     trialEndsAt: (json.trialEndsAt as string | null) ?? null,
+    trialUsed: (json.trialUsed as boolean) ?? false,
     whopConnected: (json.whopConnected as boolean) ?? false,
     cancelAtPeriodEnd: (json.cancelAtPeriodEnd as boolean) ?? false,
     currentPeriodEnd: (json.currentPeriodEnd as string | null) ?? null,
@@ -143,6 +150,10 @@ export function useSubscription() {
     status: data?.status ?? "active",
     isTrial: data?.isTrial ?? false,
     trialEndsAt: data?.trialEndsAt ?? null,
+    // Defaults false while the first fetch is in flight: an unloaded hook must not silently
+    // withdraw the offer from a genuinely new customer. `isLoading` is exported for callers
+    // that would rather show nothing than show the wrong price.
+    trialUsed: data?.trialUsed ?? false,
     trialDaysRemaining,
     usage: data?.usage ?? null,
     // The subscription row's own fields. BillingSection used to fetch /api/subscription a

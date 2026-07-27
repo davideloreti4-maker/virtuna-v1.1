@@ -123,9 +123,21 @@ export async function DELETE(
     return Response.json({ error: "Thread id required" }, { status: 400 });
   }
 
-  const ok = await archiveThread(user.id, threadId);
-  if (!ok) {
-    return Response.json({ error: "Thread not found" }, { status: 404 });
+  // archiveThread THROWS on a DB error, and this route had no catch — so the one
+  // failure it did not anticipate (the `threads_type_check` drift that rejected
+  // 'archived', F-021) surfaced as an unhandled 500 with no usable body. A 404 is
+  // the honest answer for "not an owned open thread"; anything else is ours, and
+  // the client needs to be able to say so.
+  try {
+    const ok = await archiveThread(user.id, threadId);
+    if (!ok) {
+      return Response.json({ error: "Thread not found" }, { status: 404 });
+    }
+  } catch (err) {
+    return Response.json(
+      { error: err instanceof Error ? err.message : "Failed to archive thread" },
+      { status: 500 },
+    );
   }
 
   return Response.json({ threadId });

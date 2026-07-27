@@ -21,6 +21,12 @@ import { PLANS, TRIAL, getPlan, creditsLabel, type PaidPlanId } from "@/lib/pric
  * the page, the landing teaser, the checkout dialog and the quota check all move together.
  *
  * Tier ids (`starter`) are persisted and never displayed; `plan.name` ("Creator") is.
+ *
+ * ⚠️ ONE TRIAL PER ACCOUNT, and this page has to say so BEFORE the click. `/api/whop/checkout`
+ * has always refused a second $1 trial; this page used to promise one anyway, so a returning
+ * customer read "Start for $1" and met $99 in the embed. Everything trial-flavoured here —
+ * the CTA, the microcopy, the subhead — is gated on `trialUsed` for that reason. It is not a
+ * copy preference; an offer you will not honour is the shape a chargeback takes.
  */
 
 interface PricingFeature {
@@ -89,7 +95,11 @@ export function PricingSection() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [checkoutPlan, setCheckoutPlan] = useState<PaidPlanId | null>(null);
   const [checkoutSuccess, setCheckoutSuccess] = useState<PaidPlanId | null>(null);
-  const { tier, pollForTierChange, isPolling } = useSubscription();
+  const { tier, trialUsed, pollForTierChange, isPolling } = useSubscription();
+
+  // Only a signed-in account HAS a trial history. A signed-out visitor is offered the dollar
+  // because, as far as anything on this page can know, it is still theirs to take.
+  const trialAvailable = !(isAuthenticated && trialUsed);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -122,7 +132,8 @@ export function PricingSection() {
       );
     }
 
-    // Signed in, not on this plan → the $1 trial (all three plans carry it).
+    // Signed in, not on this plan. The $1 is offered only if this account can still have it —
+    // otherwise the button names the price that will actually be charged.
     return (
       <Button
         variant={variant}
@@ -130,7 +141,9 @@ export function PricingSection() {
         className="w-full"
         onClick={() => setCheckoutPlan(planTier)}
       >
-        Start for {TRIAL.price}
+        {trialAvailable
+          ? `Start for ${TRIAL.price}`
+          : `Upgrade · ${plan.price}/month`}
       </Button>
     );
   }
@@ -145,9 +158,18 @@ export function PricingSection() {
               Simple, transparent pricing
             </h1>
             <p className="mt-4 text-lg text-foreground-secondary max-w-xl mx-auto">
-              Every plan starts at {TRIAL.price} for {TRIAL.days} days — {TRIAL.credits}{" "}
-              credits to judge it on your own videos. Cancel before it renews and
-              you&apos;ve spent a dollar.
+              {trialAvailable ? (
+                <>
+                  Every plan starts at {TRIAL.price} for {TRIAL.days} days — {TRIAL.credits}{" "}
+                  credits to judge it on your own videos. Cancel before it renews and
+                  you&apos;ve spent a dollar.
+                </>
+              ) : (
+                <>
+                  You&apos;ve already used your {TRIAL.price} trial — one per account. Pick a
+                  plan below at its monthly price, and cancel anytime.
+                </>
+              )}
             </p>
           </div>
         </FadeIn>
@@ -206,7 +228,10 @@ export function PricingSection() {
                 </div>
                 {renderCTA(plan.id)}
                 <p className="mt-3 text-center text-xs text-foreground-muted">
-                  {TRIAL.microcopy}
+                  {/* The meter is already stated above the CTA — don't repeat it here. */}
+                  {trialAvailable
+                    ? TRIAL.microcopy
+                    : `${plan.price}${plan.priceSuffix}, billed monthly — cancel anytime`}
                 </p>
               </div>
             ))}
@@ -267,8 +292,10 @@ export function PricingSection() {
           open={!!checkoutPlan}
           onClose={() => setCheckoutPlan(null)}
           planId={checkoutPlan}
-          // Every plan is sold as the $1 / 3-day trial that converts into it.
-          trial
+          // Every plan is sold as the $1 / 3-day trial that converts into it — but only to an
+          // account that still has its trial. Asking for one the server will refuse makes the
+          // dialog open on the wrong heading and correct itself a beat later.
+          trial={trialAvailable}
           onComplete={async () => {
             const plan = checkoutPlan;
             setCheckoutPlan(null);
