@@ -1,6 +1,6 @@
 # Handoff — the demo entitlement (2026-07-27, session 10)
 
-**Worktree:** `~/virtuna-onboarding` · **Branch:** `milestone/onboarding` · **Tip:** `31c1685a`
+**Worktree:** `~/virtuna-onboarding` · **Branch:** `milestone/onboarding` · **Tip:** `2e382d38` (last code commit `31c1685a`; the two after it are this doc)
 **Green:** suite 426 files / 4,703 (flags off) · 4,704 (flags on) / **0 fail BOTH ways** · `tsc` 0 · lint 0
 (the same 3 pre-existing composer unhandled-rejections — `stream.start()` returns undefined under the
 composer test's mock; unrelated to billing, present on the stashed baseline too)
