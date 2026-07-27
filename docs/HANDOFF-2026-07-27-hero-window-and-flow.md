@@ -1,6 +1,7 @@
 # Handoff — the hero window + the flow's connective tissue (2026-07-27, session 8)
 
-**Worktree:** `~/virtuna-onboarding` · **Branch:** `milestone/onboarding` (pushed, tip `43444fec`)
+**Worktree:** `~/virtuna-onboarding` · **Branch:** `milestone/onboarding` (pushed — §1b adds
+two commits on top of `43444fec`)
 **Green:** suite 424 files / 0 fail BOTH flag ways after every commit · `tsc` 0 · lint clean
 (3 pre-existing composer warnings + 1 pre-existing error in unmounted `product-render.tsx`)
 
@@ -90,11 +91,50 @@ Re-captured via `npx tsx scripts/capture-offer-shots.ts --url=http://localhost:3
 "The people" click removed. Step-02 copy + alt now describe the new pixels (38.2% would
 stop, cohort bars). `room-fixture.ts` unreferenced, left on disk.
 
+## 1b. The premium pass (same day, owner: "high converting and premium … visually verified")
+
+Two more commits, each visually verified at 1440 + 390:
+
+### Fold polish (P1–P4 + P6 of the recommendation)
+
+- **The peek is alive**: the window's choreography starts ON LOAD, not on scroll — the
+  ~250px fold peek used to be empty chrome + a cursor; now it's the link typing and Maven
+  answering, settling into the card's head + rail tabs. (The -30% scroll-arm traded a dead
+  fold for "don't miss the show"; starting on load wins both — the finished shot IS the
+  show for a late scroller.)
+- **Composed light**: a warm radial bloom anchored behind the window (0.16, blur-110,
+  matte-safe), inset top hairline on the chrome, deeper drop shadow.
+- **Four fold beats, not seven**: 🔒 emoji line deleted (it duplicated ProofMechanism's
+  claim — PlatformBar's stated-once rule), subhead cut to exactly 2 measured lines,
+  "Test a video" label dropped (it restated the placeholder), the Free badge centered
+  alone — the fold's one axis break is gone.
+- The rail's "hook 2 of 5" pager is blanked in the window (`WINDOW_TEMPLATE`,
+  `pager: ""`) — app context a cold visitor doesn't have. The captured webps keep it.
+
+### The seam (P5) — measured, then fixed
+
+Frame-burst capture with `/api/analyze` intercepted (held 6s → 402; no engine spend):
+pressing the hero's one button froze /go for **~3.2s** (anon sign-in + nav) with only the
+13px hint changing; /home's thread engaged at ~4.6s. Fixes:
+
+- **Pre-warm on first focus** (`hero-entry.tsx`): `ensureAnonymousSession` fires when the
+  visitor focuses the composer, so the sign-in runs while they paste. Submit → thread
+  engaged measured at **~1.4s**. Focus keeps `anonymous.ts`'s no-row-per-page-view intent;
+  the submit path re-calls it (idempotent) so a failed pre-warm changes nothing.
+- **`busy` prop on `EmbeddedComposer`** (additive): the send disc spins for the residual.
+- Arrival verified frame-by-frame: stage list live, rail mounted, no greeting/Start flash.
+- **Known blink, deliberately left**: `/home/loading.tsx` draws the EMPTY-home furniture
+  (greeting + 6-card grid) for <350ms — wrong for mid-run visitors AND returning
+  thread-users alike. Shell-wide follow-up, not a funnel fix.
+- ⚠️ The captures minted **3 throwaway anon rows** in prod auth (reaper-eligible, harmless).
+- One flags-ON suite run flaked 2 tests under repeated-suite load; 3 consecutive full
+  green runs since, both flag ways. Not reproduced, nothing near the changed files.
+
 ## 3. Still open, in order
 
 1. **🔴 The hero window needs the owner's eyes.** It is the 4th candidate; §3 of session
-   7's handoff still governs. If rejected, the next lever is dressing (glow, tilt,
-   entrance) — the surface itself is now the real one, which was the diagnosis.
+   7's handoff still governs. The premium dressing pass (§1b) is IN — if it still misses,
+   the next lever is stronger staging (tilt/entrance), not another surface.
 2. **First-steps surface** for a fresh anon /home visit (the starter-grid owner question) —
    owner-gated, untouched.
 3. **Demo-pool sharp edge** (one 1-credit hook forecloses the free Test, 402) — owner call,
