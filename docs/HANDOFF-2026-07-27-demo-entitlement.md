@@ -138,3 +138,18 @@ data, but the loop has not been closed end-to-end.
 |---|---|
 | `verify-demo-entitlement.mjs` | fresh anon session → probes all 11 paid routes, the analyze admission, `/api/subscription`. No spend. |
 | `verify-wall-dialog.mjs` | taps a Start tile as an anon visitor, asserts the wall's heading/copy/door AND that nothing futile sits behind it; shoots `wall-trial-required.png` |
+
+---
+
+## 5. Where this session ended
+
+- Tip `0c7e3389`, pushed, tree clean. Nothing in flight, nothing half-applied.
+- **A dev server is running on :3000** (`nohup env NEXT_PUBLIC_AMBIENT_V2=true AMBIENT_V2_ENABLED=true
+  npx next dev -p 3000`, log `.scratch/dev-3000.log`) because the owner asked to preview. ⚠️ Judge the
+  hero on it if you like, but **NOT the /go → /home arrival** — §0 of session 9's handoff. Swap back
+  with `pkill -f "next dev -p 3000"; npm run build; nohup env … npx next start -p 3000 &`.
+- **The next session opens with a DISCUSSION, not a task.** The owner has feedback to give and will
+  lead. Do not start building, do not re-audit, do not pick up §2 unprompted — take the feedback
+  first, and only then decide what §2 items (if any) it displaces.
+- The two owner calls in §2 (chat-dispatched runs unmetered · `/api/account-read` ungated and
+  unpriced) are **decisions**, not tickets: both need a price or a policy from the owner before code.
