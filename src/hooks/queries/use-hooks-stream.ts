@@ -27,7 +27,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { reportCredit402 } from '@/lib/billing/credit-wall';
+import { reportCredit402, CreditWallRefusal, isCreditWallRefusal } from '@/lib/billing/credit-wall';
 import type { HookCardBlock, CardTarget, HookProof, PopulationAggregateBlock, ReactionPersona } from '@/lib/tools/blocks';
 import { parseProofProp, parseGroundedProp, parseTargetProp, parsePopulationProp } from '@/lib/tools/blocks';
 import type { StageState } from '@/components/thread/progress-checklist';
@@ -278,8 +278,9 @@ export function useHooksStream(): UseHooksStreamReturn {
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Hooks request failed' }));
         if (reportCredit402(res.status, err)) {
-          // The wall dialog is up (CreditWallListener); surface the human sentence, not the slug.
-          throw new Error(err.message);
+          // The wall dialog is up (CreditWallListener) and it IS the UI: unwind without drawing an
+          // inline error under it (see CreditWallRefusal — the old throw put a futile retry there).
+          throw new CreditWallRefusal(err.message);
         }
         throw new Error((err as { error?: string }).error ?? 'Hooks request failed');
       }
@@ -444,6 +445,9 @@ export function useHooksStream(): UseHooksStreamReturn {
       }
     } catch (err) {
       if ((err as Error).name === 'AbortError') return; // intentional cancel
+      // The credit wall is already up and owns this refusal — an inline error under the modal
+      // would offer a retry that gets the same 402 (see CreditWallRefusal). `finally` still resets.
+      if (isCreditWallRefusal(err)) return;
       if (isMountedRef.current) {
         setError(err instanceof Error ? err.message : 'Hooks stream error');
       }
@@ -502,8 +506,9 @@ export function useHooksStream(): UseHooksStreamReturn {
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Refine request failed' }));
         if (reportCredit402(res.status, err)) {
-          // The wall dialog is up (CreditWallListener); surface the human sentence, not the slug.
-          throw new Error(err.message);
+          // The wall dialog is up (CreditWallListener) and it IS the UI: unwind without drawing an
+          // inline error under it (see CreditWallRefusal — the old throw put a futile retry there).
+          throw new CreditWallRefusal(err.message);
         }
         throw new Error((err as { error?: string }).error ?? 'Refine request failed');
       }
@@ -633,6 +638,9 @@ export function useHooksStream(): UseHooksStreamReturn {
       }
     } catch (err) {
       if ((err as Error).name === 'AbortError') return;
+      // The credit wall is already up and owns this refusal — an inline error under the modal
+      // would offer a retry that gets the same 402 (see CreditWallRefusal). `finally` still resets.
+      if (isCreditWallRefusal(err)) return;
       if (isMountedRef.current) {
         setError(err instanceof Error ? err.message : 'Refine stream error');
       }

@@ -26,7 +26,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { reportCredit402 } from '@/lib/billing/credit-wall';
+import { reportCredit402, CreditWallRefusal, isCreditWallRefusal } from '@/lib/billing/credit-wall';
 import type { HookProof, ScriptCardBlock, PopulationAggregateBlock, ReactionPersona } from '@/lib/tools/blocks';
 import { parseProofProp, parseGroundedProp, parsePopulationProp } from '@/lib/tools/blocks';
 import type { StageState } from '@/components/thread/progress-checklist';
@@ -235,8 +235,9 @@ export function useScriptStream(): UseScriptStreamReturn {
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Script request failed' }));
         if (reportCredit402(res.status, err)) {
-          // The wall dialog is up (CreditWallListener); surface the human sentence, not the slug.
-          throw new Error(err.message);
+          // The wall dialog is up (CreditWallListener) and it IS the UI: unwind without drawing an
+          // inline error under it (see CreditWallRefusal — the old throw put a futile retry there).
+          throw new CreditWallRefusal(err.message);
         }
         throw new Error((err as { error?: string }).error ?? 'Script request failed');
       }
@@ -387,6 +388,9 @@ export function useScriptStream(): UseScriptStreamReturn {
       }
     } catch (err) {
       if ((err as Error).name === 'AbortError') return;
+      // The credit wall is already up and owns this refusal — an inline error under the modal
+      // would offer a retry that gets the same 402 (see CreditWallRefusal). `finally` still resets.
+      if (isCreditWallRefusal(err)) return;
       if (isMountedRef.current) {
         setError(err instanceof Error ? err.message : 'Script stream error');
       }
