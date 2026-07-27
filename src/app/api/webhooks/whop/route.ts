@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { verifyWebhookSignature } from "@/lib/whop/webhook-verification";
+import {
+  verifyWebhookSignature,
+  describeSignatureFailure,
+} from "@/lib/whop/webhook-verification";
 import { mapWhopProductToTier, isTrialPlanId } from "@/lib/whop/config";
 import { TRIAL } from "@/lib/pricing";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -122,7 +125,7 @@ export async function POST(request: Request) {
       // this module had just been fixed for. The failure has to say which shape arrived.
       // Log NAMES and the webhook id only — never the signature, never the body.
       log.warn("Webhook signature rejected", {
-        signature_headers_present: [
+        header_names_seen: [
           "webhook-id",
           "webhook-timestamp",
           "webhook-signature",
@@ -134,7 +137,7 @@ export async function POST(request: Request) {
           request.headers.get("webhook-id") ??
           request.headers.get("svix-id") ??
           null,
-        body_bytes: body.length,
+        ...describeSignatureFailure(body, request.headers, secret),
       });
       return NextResponse.json(
         { error: "Invalid webhook signature" },

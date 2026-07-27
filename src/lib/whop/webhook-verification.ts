@@ -118,3 +118,52 @@ export function verifyWebhookSignature(
     return false;
   }
 }
+
+/**
+ * Describe WHY a signature was rejected, in terms safe to write to a log.
+ *
+ * A bare 401 is indistinguishable across every failure this module can have — wrong header
+ * names, a secret that is not the one this endpoint signs with, a secret that is not base64,
+ * or a signature header that omits the `v1,` scheme. Each needs a different fix and they all
+ * look the same from outside. This returns SHAPES ONLY: which header names arrived, byte
+ * LENGTHS, scheme names, and clock skew. It never returns the secret, the signature, or the
+ * body — a diagnostic that leaks the thing it is diagnosing is worse than no diagnostic.
+ */
+export function describeSignatureFailure(
+  payload: string,
+  headers: WebhookHeaders,
+  secret: string
+): Record<string, unknown> {
+  const { id, timestamp, signature } = readSignatureHeaders(headers);
+  const stripped = secret.startsWith("whsec_") ? secret.slice(6) : secret;
+
+  // Whop's secret is ASSUMED base64 (Standard Webhooks says so). If it is not, base64
+  // decoding does not throw — it silently drops the invalid characters and yields a
+  // shorter, wrong key. A decoded length far below the raw length is that tell.
+  const decodedBytes = Buffer.from(stripped, "base64").length;
+
+  const parts = signature ? signature.split(" ") : [];
+  const schemes = parts.map((p) =>
+    p.includes(",") ? p.slice(0, p.indexOf(",")) : "(no scheme prefix)"
+  );
+
+  const ts = parseInt(timestamp, 10);
+
+  return {
+    headers_present: {
+      id: id !== "",
+      timestamp: timestamp !== "",
+      signature: signature !== "",
+    },
+    secret_raw_chars: secret.length,
+    secret_has_whsec_prefix: secret.startsWith("whsec_"),
+    secret_decoded_bytes: decodedBytes,
+    secret_trailing_whitespace: secret !== secret.trim(),
+    signature_parts: parts.length,
+    signature_schemes: schemes,
+    clock_skew_seconds: Number.isFinite(ts)
+      ? Math.abs(Math.floor(Date.now() / 1000) - ts)
+      : null,
+    body_bytes: payload.length,
+  };
+}
