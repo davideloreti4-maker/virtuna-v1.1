@@ -259,6 +259,7 @@ type Tab = "brain" | "audience";
 export function AmbientDetail({
   template,
   initialTab,
+  tab: controlledTab,
   reducedMotion = false,
   onBack,
   presentation = "rail",
@@ -269,6 +270,12 @@ export function AmbientDetail({
 }: {
   template: DomainTemplate;
   initialTab?: Tab;
+  /** CONTROLLED tab. Omit for the normal self-managed view (every in-app mount). When set, the
+   *  host drives which page is shown and the view stops owning it — added for the /go probe,
+   *  which is `inert` and has to VISIT both pages on a timer to show they exist. Driving it by
+   *  prop rather than remounting with a `key` is the difference between the body swapping and
+   *  the whole pane tearing down and reflowing under the visitor. */
+  tab?: Tab;
   reducedMotion?: boolean;
   /** Omit to render no back affordance at all — a back button that goes nowhere is a dead control. */
   onBack?: () => void;
@@ -291,7 +298,8 @@ export function AmbientDetail({
   const { backLabel, pager, verdict, unlock, brain, population } = template;
   // Brain is a VIDEO producer — absent for a text sim. Honest-unavailable, never faked.
   const brainAvailable = !!brain && !brainNote;
-  const [tab, setTab] = useState<Tab>(initialTab ?? (brainAvailable ? "brain" : "audience"));
+  const [internalTab, setTab] = useState<Tab>(initialTab ?? (brainAvailable ? "brain" : "audience"));
+  const tab = controlledTab ?? internalTab;
   // Cross-tab thread — a coded reason on the audience tab jumps here to the brain and briefly flashes
   // the matching moment (the human "why" and the mechanical "why" are one story). Cleared after the
   // flash so it doesn't re-trigger on a later manual visit.

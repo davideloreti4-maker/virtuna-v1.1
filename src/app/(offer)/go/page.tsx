@@ -74,7 +74,10 @@ export default function OfferPage() {
           <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-b from-transparent to-background" />
         </div>
 
-        <div className="relative mx-auto max-w-6xl px-5 pb-12 pt-24 md:pb-16 md:pt-28">
+        {/* Fold budget is tight and load-bearing: the receipt's two tiles are ~300px, and at the
+            previous rhythm the CTA measured BELOW the fold on a 1512×860 MacBook and on a 390×844
+            phone — the page's one ask, off screen. Verified back above the fold on both. */}
+        <div className="relative mx-auto max-w-6xl px-5 pb-12 pt-16 md:pb-16 md:pt-20">
           {/* copy — the OUTCOME, which is the fold's whole job (owner call 2026-07-27).
               The fold used to lead with the mechanism ("a room of simulated viewers
               watches your video") over a live composer. Two problems: it asked a cold
@@ -111,12 +114,12 @@ export default function OfferPage() {
           </div>
 
           {/* the receipt — the thumbnail and the views, concretely */}
-          <BlurFade delay={0.26} className="mt-9 md:mt-10">
+          <BlurFade delay={0.26} className="mt-7 md:mt-8">
             <OutcomeReceipt />
           </BlurFade>
 
           {/* the one ask */}
-          <BlurFade delay={0.32} className="mt-8">
+          <BlurFade delay={0.32} className="mt-6">
             <div className="flex flex-col items-center gap-3">
               <FreeEntryCta size="lg" />
               <p className="text-center text-[13px] text-foreground-muted">

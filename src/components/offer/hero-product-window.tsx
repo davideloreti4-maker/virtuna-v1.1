@@ -97,8 +97,11 @@ export function HeroProductWindow() {
    * only way to tell a visitor the room has TWO pages — the brain and the audience — is to
    * visit them. After the read lands it holds on the audience, crosses to the brain, and
    * returns; the tab header moves with it, which is what reads as "these are clickable".
-   * Remounting via `key` rather than adding a controlled prop keeps `AmbientDetail` — shared
-   * with /ambient-v2, pricing-template and shot-stages — untouched.
+   *
+   * Driven by `AmbientDetail`'s CONTROLLED `tab` prop. The first pass remounted it with a
+   * `key`, which tore down and rebuilt the whole pane — header, figure and all — so the switch
+   * flashed and reflowed instead of swapping. The controlled prop changes only the body, which
+   * is what the real view does when a tab is clicked.
    */
   const [railTab, setRailTab] = useState<"audience" | "brain">("audience");
 
@@ -431,10 +434,9 @@ export function HeroProductWindow() {
               transition={{ duration: 0.7, ease: REVEAL_EASE }}
             >
               <AmbientDetail
-                key={railTab}
                 template={WINDOW_TEMPLATE}
                 presentation="rail"
-                initialTab={railTab}
+                tab={railTab}
               />
             </motion.div>
           </div>
@@ -468,10 +470,9 @@ export function HeroProductWindow() {
                 transition={{ duration: 0.62, ease: REVEAL_EASE }}
               >
                 <AmbientDetail
-                  key={railTab}
                   template={WINDOW_TEMPLATE}
                   presentation="sheet"
-                  initialTab={railTab}
+                  tab={railTab}
                 />
               </motion.div>
             )}
