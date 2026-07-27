@@ -1,7 +1,8 @@
 import { Section, SectionHeading } from "./section-shell";
 import { Reveal, Stagger, StaggerItem, Parallax } from "@/components/offer/motion/reveal";
 import { ShotFigure, SHOTS } from "@/components/offer/product-shot";
-import { FREE_ENTRY, PrimaryCta } from "@/components/offer/cta-config";
+import { FREE_ENTRY } from "@/components/offer/cta-config";
+import { FreeEntryCta } from "@/components/offer/free-entry-cta";
 import { cn } from "@/lib/utils";
 
 /**
@@ -136,9 +137,7 @@ export function Transformation() {
         <p className="max-w-[38ch] text-center text-[15px] leading-relaxed text-foreground-secondary">
           The gap between the two is one read, and it takes about 90 seconds.
         </p>
-        <PrimaryCta href={FREE_ENTRY.href} size="lg">
-          {FREE_ENTRY.label}
-        </PrimaryCta>
+        <FreeEntryCta size="lg" />
         {/* text-center matters: the microcopy is one line at 1440 but wraps at
             390, and without it the orphan hangs left under a centered button. */}
         <p className="text-center text-[13px] text-foreground-muted">{FREE_ENTRY.microcopy}</p>

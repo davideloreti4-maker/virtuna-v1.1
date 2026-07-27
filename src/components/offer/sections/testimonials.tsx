@@ -2,7 +2,8 @@ import { Quotes } from "@phosphor-icons/react/dist/ssr";
 import { Section, SectionHeading } from "./section-shell";
 import { Reveal, Stagger, StaggerItem } from "@/components/offer/motion/reveal";
 import { MediaSlot } from "@/components/offer/media-slot";
-import { FREE_ENTRY, PrimaryCta } from "@/components/offer/cta-config";
+import { FREE_ENTRY } from "@/components/offer/cta-config";
+import { FreeEntryCta } from "@/components/offer/free-entry-cta";
 
 /**
  * Testimonials — social proof, HONESTLY. This page must never ship fabricated
@@ -140,9 +141,7 @@ export function Testimonials() {
       {/* The block ends on the action it just described, not on a disclaimer. */}
       {!hasReal && (
         <Reveal gesture="rise" className="mt-10 flex flex-col items-center gap-3">
-          <PrimaryCta href={FREE_ENTRY.href} size="lg">
-            {FREE_ENTRY.label}
-          </PrimaryCta>
+          <FreeEntryCta size="lg" />
           <p className="text-center text-[13px] text-foreground-muted">{FREE_ENTRY.microcopy}</p>
         </Reveal>
       )}

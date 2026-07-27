@@ -5,8 +5,7 @@ import { useState } from "react";
 import { Section, SectionHeading } from "./section-shell";
 import { Reveal, Stagger, StaggerItem } from "@/components/offer/motion/reveal";
 import { BorderBeam } from "@/components/velora/border-beam";
-import { FREE_ENTRY, PrimaryCta } from "@/components/offer/cta-config";
-import { Button } from "@/components/ui/button";
+import { FreeEntryCta } from "@/components/offer/free-entry-cta";
 import { Badge } from "@/components/ui/badge";
 import { PLANS, TRIAL, type Plan } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
@@ -168,13 +167,13 @@ function PlanCard({ plan, annual }: { plan: Plan; annual: boolean }) {
             bought at the wall INSIDE the product, after the free read — a card
             click that landed on /signup routed around the funnel entirely. */}
         {highlighted ? (
-          <PrimaryCta href={FREE_ENTRY.href} size="lg" full>
+          <FreeEntryCta size="lg" full>
             Start with a free test
-          </PrimaryCta>
+          </FreeEntryCta>
         ) : (
-          <Button asChild variant="secondary" size="lg">
-            <a href={FREE_ENTRY.href}>Start with a free test</a>
-          </Button>
+          <FreeEntryCta variant="secondary" size="lg" full>
+            Start with a free test
+          </FreeEntryCta>
         )}
         <p className="text-center text-xs text-foreground-muted">{TRIAL.microcopy}</p>
       </div>

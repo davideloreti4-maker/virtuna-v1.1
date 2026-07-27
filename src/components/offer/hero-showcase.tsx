@@ -1,24 +1,23 @@
 "use client";
 
 /**
- * HeroShowcase — the live entry, with the product itself underneath.
+ * HeroShowcase — the probe: what the product looks and feels like, without asking for anything.
  *
- * Composition (owner feedback trail, handoff 2026-07-27 §3 — three "show"
- * concepts rejected, all abstractions of the product):
- *   1. the live composer (HeroEntry), centered — the ONE ask of the fold;
- *   2. HeroProductWindow — the REAL platform surface at full fidelity in one
- *      large app window: the thread with the real Test card, the real drilled
- *      read rail beside it, the guided build-motion playing ONCE on scroll.
- *      Focus entering the composer jumps it to the finished shot: a demo must
- *      never keep performing under a visitor who has already started;
- *   3. a quiet link into the full v2 read (bottom sheet) — the same fixture
- *      the window's rail renders, so shot and deep-dive agree to the digit.
- *      Below lg the window hides its rail pane, so the sheet is the only path
- *      to the read there — keep it.
+ * Was "the live entry, with the product itself underneath" — a composer above a product window.
+ * Owner call 2026-07-27, after four rejected "show" concepts (handoff 2026-07-27 §3, all of them
+ * abstractions of the product): the composer leaves, because it made a cold visitor do the work
+ * before they saw any result, and the window becomes the whole surface — "a preloaded animated
+ * demo, 1:1 accurate to the platform, so users get a feel of it". The ask is now a button in the
+ * fold above, and the composer inside the window is part of the SHOT, not a real field.
+ *
+ * Composition:
+ *   1. HeroProductWindow — the REAL platform surface at full fidelity: the thread with the real
+ *      Test card, the real drilled read rail beside it, and the guided build-motion. Deliberately
+ *      NON-interactive (`inert`) — it is a probe, not a control surface;
+ *   2. a quiet link into the full v2 read (bottom sheet) — the same fixture the window's rail
+ *      renders, so shot and deep-dive agree to the digit.
  */
 
-import { useState } from "react";
-import { HeroEntry } from "@/components/offer/hero-entry";
 import { HeroProductWindow } from "@/components/offer/hero-product-window";
 import { AmbientPanel } from "@/components/offer/ambient-panel";
 import {
@@ -30,26 +29,10 @@ import {
 } from "@/components/ui/sheet";
 
 export function HeroShowcase() {
-  // Focus anywhere inside the composer block = the visitor has started; the
-  // window's choreography yields to them. One-way on purpose — resuming
-  // choreography under someone mid-thought is noise.
-  const [engaged, setEngaged] = useState(false);
-
   return (
     <div className="w-full">
-      {/* id="test": the shared FREE_ENTRY anchor (cta-config.tsx) — every
-          below-fold entry CTA scrolls back to this composer. scroll-mt clears
-          the floating nav island. */}
-      <div
-        id="test"
-        className="mx-auto w-full max-w-[640px] scroll-mt-28"
-        onFocusCapture={() => setEngaged(true)}
-      >
-        <HeroEntry />
-      </div>
-
-      <div className="mx-auto mt-8 w-full max-w-[1024px] md:mt-10">
-        <HeroProductWindow skip={engaged} />
+      <div className="mx-auto w-full max-w-[1024px]">
+        <HeroProductWindow />
       </div>
 
       <div className="mt-4 text-center">

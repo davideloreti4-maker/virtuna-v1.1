@@ -6,7 +6,8 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 
 import { cn } from "@/lib/utils";
 import { MavenLogo } from "@/components/brand/maven-logo";
-import { CTA_VARIANT, FREE_ENTRY } from "@/components/offer/cta-config";
+import { CTA_VARIANT } from "@/components/offer/cta-config";
+import { useFreeEntry } from "@/components/offer/free-entry-cta";
 
 /**
  * FloatingNav — the /go top bar as a clean, premium floating island: a wider,
@@ -33,6 +34,8 @@ export function FloatingNav() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const reduced = useReducedMotion();
+  // The nav's entry is the same one the rest of the page uses — it just also closes the menu.
+  const { linkProps, label } = useFreeEntry();
 
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -151,8 +154,11 @@ export function FloatingNav() {
               <div className="my-1.5 h-px bg-border" />
 
               <a
-                href={FREE_ENTRY.href}
-                onClick={() => setOpen(false)}
+                {...linkProps}
+                onClick={(e) => {
+                  setOpen(false);
+                  void linkProps.onClick(e);
+                }}
                 className={cn(
                   "flex min-h-[44px] items-center justify-center rounded-xl px-4 text-[15px] font-semibold transition-transform hover:scale-[1.01] active:scale-[0.99]",
                   CTA_VARIANT === "coral"
@@ -160,7 +166,7 @@ export function FloatingNav() {
                     : "bg-action text-action-foreground",
                 )}
               >
-                {FREE_ENTRY.label}
+                {label}
               </a>
             </motion.div>
           )}

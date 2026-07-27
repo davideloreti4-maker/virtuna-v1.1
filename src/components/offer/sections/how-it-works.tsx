@@ -1,7 +1,8 @@
 import { Section, SectionHeading } from "./section-shell";
 import { Reveal, Parallax, CountUp } from "@/components/offer/motion/reveal";
 import { ProductShot, SHOTS, type ShotSpec } from "@/components/offer/product-shot";
-import { FREE_ENTRY, PrimaryCta } from "@/components/offer/cta-config";
+import { FREE_ENTRY } from "@/components/offer/cta-config";
+import { FreeEntryCta } from "@/components/offer/free-entry-cta";
 import { cn } from "@/lib/utils";
 
 /**
@@ -140,9 +141,7 @@ export function HowItWorks() {
       {/* Close the loop here — the mechanism is the most convincing beat on the
           page, and the ask used to be 3,000px further down. */}
       <Reveal gesture="settle" className="mt-16 flex flex-col items-center gap-3">
-        <PrimaryCta href={FREE_ENTRY.href} size="lg">
-          {FREE_ENTRY.label}
-        </PrimaryCta>
+        <FreeEntryCta size="lg" />
         <p className="text-center text-[13px] text-foreground-muted">{FREE_ENTRY.microcopy}</p>
       </Reveal>
     </Section>

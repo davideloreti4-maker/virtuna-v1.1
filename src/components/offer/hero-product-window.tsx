@@ -13,40 +13,43 @@
  * (`AmbientDetail`, `presentation="rail"`, the exact ≥xl /home mount) — so
  * what a visitor is shown IS what a signed-in user sees after a run.
  *
- * Successor to `ProductRender` (kept in-tree): same proven guided build-motion
- * — typing → thinking → reply → reading ring → the card assembles — extended
- * with one new beat: the read rail materialises AFTER the card lands (craft
- * first, then reception — the order the product itself produces them), then a
- * single BorderBeam pass marks completion. Plays ONCE, starting ON LOAD: the
- * window's top ~250px peek above the fold, and a scroll-armed start left that
- * peek EMPTY — dead pixels on the most valuable band of the page. Starting on
- * load makes the peek itself alive (the link typing, Maven answering); a
- * visitor who scrolls later meets the finished card + rail, which is not a
- * missed show — it is the shot.
+ * Successor to `ProductRender` (kept in-tree): the guided build-motion, restaged 2026-07-27
+ * to begin where the product begins — the visitor's line types INTO the docked composer,
+ * sends, and the turn rises into the thread; then thinking → reply → reading ring → the card
+ * assembles → the read rail materialises (craft first, then reception — the order the product
+ * itself produces them) → a single BorderBeam pass marks completion.
+ *
+ * Plays ONCE, ARMED ON INTERSECTION. It used to start on mount, reaching `done` at 5900ms
+ * while the window sat below a headline and a live composer — so in practice it performed to
+ * an empty viewport and every real visitor met a finished, static shot and reported the page
+ * as having no demo. Now that the fold sells the outcome and the window is the page's second
+ * surface, on-mount would be strictly worse. It starts when it is actually on screen.
  *
  * Honesty: fixture data, labeled — a "Sample read" tag lives in the window
  * chrome. The rail opens on the AUDIENCE tab: the card already shows craft;
  * the reception verdict is the surface the visitor can't guess from the card.
  *
- * The body is `inert`: the real card carries live buttons (Save / Simulate)
- * that must be neither tabbable nor readable as page UI — this is a shot of
- * the product, not the product's controls. An sr-only line in the parent
- * describes the scene instead.
+ * The body is `inert` and STAYS inert (owner call 2026-07-27: "make the demo not interactive,
+ * and the composer not real — a probe to give the user a feeling of the platform"). The real
+ * card carries live buttons (Save / Simulate) and the docked composer carries a real submit;
+ * none of them may be tabbable or readable as page UI. This is a shot of the product, not the
+ * product's controls. An sr-only line in the parent describes the scene instead.
  */
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { AnimatePresence, motion, useInView, useReducedMotion } from "motion/react";
+import { EmbeddedComposer } from "@/components/app/home/embedded-composer";
 import { VideoTestCardRenderer } from "@/components/thread/video-test-card-block";
 import { AmbientDetail } from "@/components/audience-lens/v2/AmbientDetail";
-import { CREATOR_TEMPLATE } from "@/components/audience-lens/v2/detail-fixture";
 import { NumberTicker } from "@/components/velora/number-ticker";
 import { BorderBeam } from "@/components/velora/border-beam";
 import { TEST_CARD_FIXTURE } from "./test-card-fixture";
+import { FEATURED_ROOM_TEMPLATE } from "./featured-room-template";
 
-/** The rail's fixture, minus its pager — "hook 2 of 5" is app context a cold
- *  visitor doesn't have; inside the marketing window it reads as noise. */
-const WINDOW_TEMPLATE = { ...CREATOR_TEMPLATE, pager: "" };
+/** The room's read of the SAME clip the card reads — see `featured-room-template.ts` for why
+ *  the shared v2 fixture is retargeted rather than mutated. */
+const WINDOW_TEMPLATE = FEATURED_ROOM_TEMPLATE;
 
 const USER_MSG = "test this video for me";
 const MAVEN_MSG = "On it — reading your video frame by frame.";
@@ -56,12 +59,16 @@ const CIRC = 2 * Math.PI * 33; // ring radius 33 — matches the card's own ring
 type Phase =
   | "idle"
   | "typing"
+  | "sending"
   | "thinking"
   | "replying"
   | "reading"
   | "reveal"
   | "rail"
   | "done";
+/** The visitor's turn is in the THREAD from `thinking` on — before that it is still in the
+ *  composer being typed, which is the whole point of the restaged opening. */
+const AFTER_SEND: Phase[] = ["thinking", "replying", "reading", "reveal", "rail", "done"];
 const AFTER_REPLY: Phase[] = ["replying", "reading", "reveal", "rail", "done"];
 const WITH_CARD: Phase[] = ["reading", "reveal", "rail", "done"];
 const WITH_RAIL: Phase[] = ["rail", "done"];
@@ -76,7 +83,7 @@ function MavenAvatar() {
   );
 }
 
-export function HeroProductWindow({ skip = false }: { skip?: boolean }) {
+export function HeroProductWindow() {
   const [qc] = useState(
     () =>
       new QueryClient({
@@ -92,10 +99,18 @@ export function HeroProductWindow({ skip = false }: { skip?: boolean }) {
   const [typed, setTyped] = useState(0);
   const [mavenTyped, setMavenTyped] = useState(0);
 
-  // Timer handles live in refs so the skip path (visitor focused the composer
-  // mid-choreography) can cancel the run from outside the start effect.
   const timersRef = useRef<number[]>([]);
   const startedRef = useRef(false);
+
+  /**
+   * ARMED ON INTERSECTION, not on mount. Until 2026-07-27 the run began the moment the page
+   * did and reached `done` at 5900ms, while the window sat below a headline and a composer —
+   * so on any real visit the choreography played to an empty viewport and the visitor met a
+   * finished, static shot. It is now the page's second surface, further down, which would make
+   * that worse. Firing when the window is actually on screen is the whole point of a demo.
+   */
+  const rootRef = useRef<HTMLDivElement>(null);
+  const inView = useInView(rootRef, { once: true, margin: "0px 0px -25% 0px" });
 
   const finish = () => {
     timersRef.current.forEach((t) => {
@@ -108,18 +123,19 @@ export function HeroProductWindow({ skip = false }: { skip?: boolean }) {
     setPhase("done");
   };
 
-  // Starts on MOUNT (see the header comment): the fold peek must be alive, so
-  // the run begins the moment the page does — not when the visitor scrolls.
   useEffect(() => {
-    if (startedRef.current) return;
-    startedRef.current = true;
-
-    // Reduced motion (or the visitor already started typing): no choreography —
-    // land on the finished surface immediately.
-    if (reduced || skip) {
+    // Reduced motion: land on the finished surface immediately, without waiting to be seen.
+    // One-shot by `startedRef`, and it cannot be a lazy initial state — `useReducedMotion`
+    // resolves after first render. Same exemption `use-test-run-stages.ts` takes.
+    if (reduced) {
+      if (startedRef.current) return;
+      startedRef.current = true;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       finish();
       return;
     }
+    if (!inView || startedRef.current) return;
+    startedRef.current = true;
 
     setPhase("typing");
     let ui = 0;
@@ -132,7 +148,9 @@ export function HeroProductWindow({ skip = false }: { skip?: boolean }) {
     let mavenTyper = 0;
     timersRef.current = [
       userTyper,
-      window.setTimeout(() => setPhase("thinking"), 1050),
+      // The send beat: the field goes busy, then the turn leaves the composer for the thread.
+      window.setTimeout(() => setPhase("sending"), 1150),
+      window.setTimeout(() => setPhase("thinking"), 1450),
       window.setTimeout(() => {
         setPhase("replying");
         let mi = 0;
@@ -142,11 +160,11 @@ export function HeroProductWindow({ skip = false }: { skip?: boolean }) {
           if (mi >= MAVEN_MSG.length) window.clearInterval(mavenTyper);
         }, 26);
         timersRef.current.push(mavenTyper);
-      }, 1500),
-      window.setTimeout(() => setPhase("reading"), 2650),
-      window.setTimeout(() => setPhase("reveal"), 4200),
-      window.setTimeout(() => setPhase("rail"), 5150),
-      window.setTimeout(() => setPhase("done"), 5900),
+      }, 1900),
+      window.setTimeout(() => setPhase("reading"), 3050),
+      window.setTimeout(() => setPhase("reveal"), 4600),
+      window.setTimeout(() => setPhase("rail"), 5550),
+      window.setTimeout(() => setPhase("done"), 6300),
     ];
 
     const timers = timersRef.current;
@@ -156,32 +174,30 @@ export function HeroProductWindow({ skip = false }: { skip?: boolean }) {
         window.clearInterval(t);
       });
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reduced]);
-
-  // The demo must never keep performing under a visitor who has started for
-  // real — one-way jump to the finished shot.
-  useEffect(() => {
-    if (skip && startedRef.current && phase !== "done") finish();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [skip]);
+  }, [reduced, inView]);
 
   const cardOut = WITH_RAIL.includes(phase) || phase === "reveal";
-  const showMaven = phase !== "idle" && phase !== "typing";
+  const sent = AFTER_SEND.includes(phase);
+  const showMaven = sent;
   const showReply = AFTER_REPLY.includes(phase);
   const showCard = WITH_CARD.includes(phase);
   const showRail = WITH_RAIL.includes(phase);
+
+  // What the composer in the shot is holding. It types the visitor's line, then empties on
+  // send exactly as the real one does. The nonce re-seeds on every character, which is how
+  // `EmbeddedComposer` accepts pushed text — so this is the real field, really filling.
+  const composerText = sent ? "" : USER_MSG.slice(0, typed);
 
   return (
     <QueryClientProvider client={qc}>
       <p className="sr-only">
         A sample of the product: the Test card Maven returns for a video —
         craft {CRAFT}, with the working beats and the fixes — and beside it the
-        simulated room&apos;s read: {CREATOR_TEMPLATE.verdict.value}{" "}
-        {CREATOR_TEMPLATE.verdict.label}.
+        simulated room&apos;s read: {WINDOW_TEMPLATE.verdict.value}{" "}
+        {WINDOW_TEMPLATE.verdict.label}.
       </p>
 
-      <div className="relative">
+      <div ref={rootRef} className="relative">
         {/* Composed light — a warm bloom ANCHORED to the shot (the page's other
             blooms are loose atmosphere; a premium app-shot sits in its own
             light). Matte-safe: a blurred radial behind the frame, no glass, no
@@ -214,23 +230,33 @@ export function HeroProductWindow({ skip = false }: { skip?: boolean }) {
 
         {/* app body — the thread column + the drilled read rail, the real ≥xl layout.
             `inert`: a shot of the product; its controls must not be reachable. */}
-        <div inert className="flex h-[560px] bg-background lg:h-[640px]">
-          {/* thread pane */}
-          <div className="relative min-w-0 flex-1 overflow-hidden">
-            <div className="flex flex-col gap-4 px-4 py-5 md:px-6">
-              {/* visitor turn — types in */}
-              <div className="flex justify-end">
-                <span className="max-w-[80%] rounded-2xl rounded-br-sm bg-surface-elevated px-3.5 py-2 text-[14px] text-foreground">
-                  {typed >= USER_MSG.length ? (
-                    USER_MSG
-                  ) : (
-                    <>
-                      {USER_MSG.slice(0, typed)}
-                      <span className="ml-px inline-block h-[1.05em] w-px translate-y-[0.15em] animate-pulse bg-foreground/70" />
-                    </>
-                  )}
-                </span>
-              </div>
+        {/* Taller than it was: the docked composer takes ~120px off the thread pane, and at the
+            old 640 the card was cut through the middle of its filmstrip labels — a clip that
+            read as broken rather than as "the thread continues below". */}
+        {/* Mobile height is capped so the WHOLE surface fits a phone viewport with its chrome:
+            at 680 the window outgrew the screen and a visitor mid-sequence was looking at an
+            empty band of thread with a composer under it. Desktop is taller because the docked
+            composer takes ~120px off the pane, and at 640 the card was cut through its own
+            filmstrip labels — a clip that read as broken rather than as "continues below". */}
+        <div inert className="relative flex h-[600px] bg-background lg:h-[720px]">
+          {/* thread pane — a column, because the real thread docks its composer at the foot */}
+          <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
+            <div className="relative flex flex-1 flex-col gap-4 overflow-hidden px-4 py-5 md:px-6">
+              {/* visitor turn — rises out of the composer once sent */}
+              <AnimatePresence>
+                {sent && (
+                  <motion.div
+                    className="flex justify-end"
+                    initial={{ opacity: 0, y: 16, scale: 0.97 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{ duration: 0.42, ease: REVEAL_EASE }}
+                  >
+                    <span className="max-w-[80%] rounded-2xl rounded-br-sm bg-surface-elevated px-3.5 py-2 text-[14px] text-foreground">
+                      {USER_MSG}
+                    </span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* Maven turn — avatar + label, then a streamed reply, then the card */}
               <AnimatePresence>
@@ -304,7 +330,13 @@ export function HeroProductWindow({ skip = false }: { skip?: boolean }) {
                                 animate={{ opacity: 1 }}
                                 exit={{ opacity: 0, scale: 1.02, filter: "blur(4px)" }}
                                 transition={{ duration: 0.4 }}
-                                className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 rounded-xl border border-white/[0.06] bg-surface-sunken"
+                                /* Pinned to the TOP of the card area, not centred in it. The
+                                   card is ~1400px tall at phone width, so `inset-0` +
+                                   `justify-center` put the ring far below the fold of the
+                                   window: mobile showed ~500px of empty box for the whole
+                                   reading beat. Capped height keeps the ring where the card
+                                   actually is on screen, on both breakpoints. */
+                                className="absolute inset-x-0 top-0 z-10 flex h-[340px] max-h-full flex-col items-center justify-center gap-4 rounded-xl border border-white/[0.06] bg-surface-sunken lg:h-[460px]"
                               >
                                 <div className="relative h-[92px] w-[92px]">
                                   <svg width="92" height="92" viewBox="0 0 92 92" className="block -rotate-90">
@@ -354,10 +386,26 @@ export function HeroProductWindow({ skip = false }: { skip?: boolean }) {
                   </motion.div>
                 )}
               </AnimatePresence>
+
+              {/* bottom fade — the thread continues below (the open loop) */}
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-background to-transparent" />
             </div>
 
-            {/* bottom fade — the thread continues below (the open loop) */}
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-background to-transparent" />
+            {/* The composer, docked — the real `EmbeddedComposer`, because a thread without one
+                is not the platform, and the window's whole claim is that it IS the platform.
+                It is part of the SHOT: the `inert` body makes it unfocusable and unsubmittable
+                (which also neutralises the component's own focus-on-seed effect), so `onLaunch`
+                and `onVerbChange` can never fire. The choreography drives its text through the
+                same `seed` channel a tapped card uses in the real app. */}
+            <div className="shrink-0 px-4 pb-4 md:px-6">
+              <EmbeddedComposer
+                verb="Test"
+                onVerbChange={() => {}}
+                onLaunch={() => {}}
+                seed={{ text: composerText, nonce: sent ? -1 : typed }}
+                busy={phase === "sending"}
+              />
+            </div>
           </div>
 
           {/* read rail — the real drilled surface, the exact ≥xl mount. The pane
@@ -382,6 +430,43 @@ export function HeroProductWindow({ skip = false }: { skip?: boolean }) {
               />
             </motion.div>
           </div>
+
+          {/* MOBILE read — the drill the real app performs on a phone.
+              Below lg the rail pane is hidden, which used to mean a phone visitor saw the
+              thread and NONE of the read: the wrong half of the product, on the surface most
+              of the traffic arrives from. Squeezing the two-pane desktop layout would be the
+              wrong fix — on a phone the product itself drills into the read as a SHEET, so
+              playing that drill is *more* 1:1 than a shrunken rail, and because the probe is
+              non-interactive we can run it on a timer.
+
+              The container is explicitly bounded (`top-…`/`bottom-0`) and a flex column:
+              `presentation="sheet"` renders `flex-1` and inherits its ground from the host, and
+              an unbounded-height AmbientDetail wrapper is the known trap that once rendered
+              2,182px instead of 800. */}
+          <AnimatePresence>
+            {showRail && (
+              <motion.div
+                key="mobile-read"
+                // Near-full, like the real drill. A part-height sheet was tried so the card
+                // stayed visible above it, and measured worse: at any phone-sized height the
+                // audience read clips at its own heading, so the payoff sentence — the single
+                // most valuable line in the pane — is what gets cut. The card is seen during
+                // the sequence; the read is the RESTING state for the same reason the desktop
+                // rail opens on the audience tab: craft is already on the card, the reception
+                // verdict is the surface a visitor cannot guess from it.
+                className="absolute inset-x-0 bottom-0 top-16 z-20 flex flex-col overflow-hidden rounded-t-2xl border-t border-border bg-[#181817] shadow-[0_-24px_48px_-24px_rgba(0,0,0,0.9)] lg:hidden"
+                initial={{ y: "100%" }}
+                animate={{ y: 0 }}
+                transition={{ duration: 0.62, ease: REVEAL_EASE }}
+              >
+                <AmbientDetail
+                  template={WINDOW_TEMPLATE}
+                  presentation="sheet"
+                  initialTab="audience"
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
           {/* coral border-beam — ignites once the surface is complete; liveness only */}

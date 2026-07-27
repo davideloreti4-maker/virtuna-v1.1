@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import { HeroShowcase } from "@/components/offer/hero-showcase";
+import { OutcomeReceipt } from "@/components/offer/outcome-receipt";
+import { FreeEntryCta } from "@/components/offer/free-entry-cta";
+import { FREE_ENTRY } from "@/components/offer/cta-config";
 import { FloatingNav } from "@/components/offer/floating-nav";
 import { BlurFade } from "@/components/velora/blur-fade";
 import { PlatformBar } from "@/components/offer/sections/platform-bar";
@@ -73,36 +76,55 @@ export default function OfferPage() {
         </div>
 
         <div className="relative mx-auto max-w-6xl px-5 pb-12 pt-24 md:pb-16 md:pt-28">
-          {/* copy — the promise, above the two-surface showcase */}
+          {/* copy — the OUTCOME, which is the fold's whole job (owner call 2026-07-27).
+              The fold used to lead with the mechanism ("a room of simulated viewers
+              watches your video") over a live composer. Two problems: it asked a cold
+              visitor to go find a video and wait a minute before anything happened, and
+              the composer's empty state communicated nothing about what comes back. The
+              fold now sells what the product DID — one real video, the same cut twice —
+              and the entry is a button. The mechanism moves to the probe below, where a
+              visitor can watch it instead of read it. */}
           <div className="mx-auto max-w-2xl text-center">
             <BlurFade delay={0.05}>
               <span className="text-xs font-semibold uppercase tracking-[0.14em] text-foreground-muted">
-                Stop posting blind
+                The same video, recut
               </span>
             </BlurFade>
             <BlurFade delay={0.12}>
               <h1 className="mt-3 font-serif text-[clamp(2.3rem,5.2vw,3.6rem)] font-medium leading-[1.05] tracking-tight text-balance">
-                Know if your video will pop —{" "}
-                <span className="italic text-accent-text">before</span> you post
-                it.
+                231 views. Then{" "}
+                <span className="italic text-accent-text">183,000</span>.
               </h1>
             </BlurFade>
             <BlurFade delay={0.19}>
-              {/* Two lines, not three — the fold stacks few, larger moments. The
-                  "trained on 500" claim is NOT lost: it lives in ProofMechanism
-                  (PlatformBar's rule: every claim stated once). The old 🔒 emoji
-                  line was both a duplicate of it and the one emoji in a serif
-                  hero. The hero's action IS the composer below — a "$1 →
-                  #pricing" button here sent fold traffic AWAY from the flow. */}
+              {/* Names the product in the same breath as the result — a stranger who reads
+                  only the numbers still has to learn what sold them. The "trained on 500"
+                  claim is NOT lost: it lives in ProofMechanism (PlatformBar's rule: every
+                  claim stated once). */}
               <p className="mx-auto mt-4 max-w-[46ch] text-[17px] leading-relaxed text-foreground-secondary">
-                A room of simulated viewers watches your video — the exact
-                second they&apos;d scroll, and the fix, before you post.
+                Maven read the video before it went back up — the exact second
+                the room left, and what to change.
               </p>
             </BlurFade>
           </div>
 
-          {/* the flow — the REAL product, live: the entry is the hero */}
-          <BlurFade delay={0.2} className="mt-8 md:mt-10">
+          {/* the receipt — the thumbnail and the views, concretely */}
+          <BlurFade delay={0.26} className="mt-9 md:mt-10">
+            <OutcomeReceipt />
+          </BlurFade>
+
+          {/* the one ask */}
+          <BlurFade delay={0.32} className="mt-8">
+            <div className="flex flex-col items-center gap-3">
+              <FreeEntryCta size="lg" />
+              <p className="text-center text-[13px] text-foreground-muted">
+                {FREE_ENTRY.microcopy}
+              </p>
+            </div>
+          </BlurFade>
+
+          {/* the probe — what it showed them, at full platform fidelity */}
+          <BlurFade delay={0.38} className="mt-14 md:mt-20">
             <HeroShowcase />
           </BlurFade>
         </div>
