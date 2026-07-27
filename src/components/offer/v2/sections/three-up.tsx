@@ -76,9 +76,19 @@ export function ThreeUp() {
         title="Three surfaces, ninety seconds."
         sub="Every claim below is something the product renders. Scroll and you will see each one running."
       />
-      <div className="mt-16 grid gap-12 md:mt-20 md:grid-cols-3 md:gap-10">
+      {/*
+        CARDS, not bare text. The first pass rendered these as three unbounded text columns on
+        the page floor, and next to Attio's bordered panels it read as a document rather than a
+        product page. A hairline and a lifted ground are what make three statements read as
+        three OBJECTS — which is most of the difference between "designed" and "typed".
+      */}
+      <div className="mt-10 grid gap-4 md:mt-12 md:grid-cols-3">
         {STATEMENTS.map((s) => (
-          <div key={s.index} className="flex flex-col items-center text-center md:items-start md:text-left">
+          <div
+            key={s.index}
+            className="flex flex-col rounded-[14px] p-6 md:p-7"
+            style={{ border: "1px solid var(--mk-hairline)", background: "var(--mk-s1)" }}
+          >
             <Figure orbit={s.orbit} rings={s.rings} />
             <div className="mt-6 flex items-baseline gap-2.5">
               <span className="font-mono text-[11.5px] font-semibold tracking-[0.16em] text-[#6d6961]">
@@ -86,7 +96,7 @@ export function ThreeUp() {
               </span>
               <h3 className="text-[19px] font-semibold text-[#ece7de]">{s.title}</h3>
             </div>
-            <p className="mt-3 max-w-[38ch] text-[15.5px] leading-[1.55] text-[#c2bdb4]">{s.body}</p>
+            <p className="mt-3 text-[15.5px] leading-[1.55] text-[#c2bdb4]">{s.body}</p>
           </div>
         ))}
       </div>

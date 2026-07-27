@@ -65,7 +65,7 @@ export function RoomSection() {
         align="left"
       />
 
-      <div className="mt-14 grid gap-8 md:mt-16 lg:grid-cols-[1.15fr_1fr] lg:gap-10">
+      <div className="mt-10 grid gap-8 md:mt-12 lg:grid-cols-[1.15fr_1fr] lg:gap-10">
         {/* the field */}
         <div
           className="relative overflow-hidden rounded-[14px]"

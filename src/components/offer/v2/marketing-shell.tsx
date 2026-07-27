@@ -25,9 +25,12 @@
  *
  * 🔑 The mobile fold is NOT a scaled desktop fold. Air above the headline is 196–226px on a
  * phone against /go's current 64 — the single largest geometric miss on the surface most of
- * the traffic actually sees. And the hero shot is FULL BLEED with zero radius and zero border
- * on both references that show one, which is the same conclusion the desktop pass reached by
- * a different route.
+ * the traffic actually sees.
+ *
+ * ⚠️ The "r0 border-0" row above is MOBILE ONLY, and reading it as a general rule is a mistake
+ * this rebuild already made once: on desktop both references FRAME the shot (Linear a radius +
+ * hairline, Attio a full macOS window), and shipping it unframed left the fold looking like a
+ * text block on a grey slab. See `hero-shot.tsx`.
  *
  * Two references are LIGHT (Attio, Cursor) and only Linear is dark. Linear is therefore the
  * VISUAL reference; Attio and Cursor are GRAMMAR references — logo wall, metrics band,
@@ -86,9 +89,10 @@ export function MarketingSection({
       <div
         className={cn(
           "relative",
-          // Measured rhythm: ~88px on a phone (Attio), 128–152 on desktop. The old page ran
-          // 115 flat, which was simultaneously too loose for a phone and too tight for 1440.
-          compact ? "py-14 md:py-20" : "py-[88px] md:py-32 lg:py-[152px]",
+          // ~88px on a phone (Attio), 128 on desktop (Linear). Attio's 152 was tried and
+          // reverted: they fill that space with dense bordered panels, so it reads as rhythm.
+          // On a sparser page the same number reads as dead air between text blocks.
+          compact ? "py-14 md:py-20" : "py-[88px] md:py-28 lg:py-32",
           !bleed && "mx-auto w-full max-w-[1400px] px-5 md:px-8",
           className,
         )}
@@ -145,36 +149,53 @@ export function MarketingHeading({
   className,
 }: MarketingHeadingProps) {
   const left = align === "left";
-  return (
-    <div className={cn(left ? "max-w-3xl text-left" : "mx-auto max-w-3xl text-center", className)}>
-      {(eyebrow || index) && (
-        <div
-          className={cn(
-            "flex items-baseline gap-2.5 text-[11.5px] font-semibold uppercase tracking-[0.16em]",
-            !left && "justify-center",
-          )}
-        >
-          {index && <span className="font-mono text-[#6d6961]">{index}</span>}
-          {eyebrow && <span className="text-[#8a857c]">{eyebrow}</span>}
+
+  const eyebrowRow = (eyebrow || index) && (
+    <div className={cn("flex items-baseline gap-2.5 text-[11.5px] font-semibold uppercase tracking-[0.16em]", !left && "justify-center")}>
+      {index && <span className="font-mono text-[#6d6961]">{index}</span>}
+      {eyebrow && <span className="text-[#8a857c]">{eyebrow}</span>}
+    </div>
+  );
+
+  // Inter, never serif — the serif is reserved for the h1's voice moment. Tracking matches the
+  // measured hero value, so headings and headline read as one type system.
+  const heading = (
+    <h2
+      className="text-balance text-[clamp(1.75rem,3.4vw,2.6rem)] font-semibold leading-[1.08] text-[#ece7de]"
+      style={{ letterSpacing: "-0.022em" }}
+    >
+      {title}
+    </h2>
+  );
+
+  /*
+    LEFT-ALIGNED HEADINGS RUN AS TWO COLUMNS: title left, supporting line right.
+    A left-aligned title stacked above its own subhead leaves the right HALF of a 1400px column
+    empty, and a row that is half empty reads as a document, not a designed page — which was a
+    large part of why the first pass looked unfinished at desktop width. Linear pairs a left
+    heading with a paragraph opposite it for exactly this reason. Centred headings are
+    unaffected: they stack, because a centred column is not leaving a side empty.
+  */
+  if (left) {
+    return (
+      <div className={cn("grid gap-x-12 gap-y-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:items-end", className)}>
+        <div>
+          {eyebrowRow}
+          <div className="mt-3.5">{heading}</div>
         </div>
-      )}
-      {/* Inter, never serif — the serif is reserved for the h1's voice moment. Tracking matches
-          the measured hero value so headings and headline read as one type system. */}
-      <h2
-        className="mt-3.5 text-balance text-[clamp(1.75rem,3.4vw,2.6rem)] font-semibold leading-[1.08] text-[#ece7de]"
-        style={{ letterSpacing: "-0.022em" }}
-      >
-        {title}
-      </h2>
+        {sub && (
+          <p className="max-w-[46ch] text-[16px] leading-[1.55] text-[#c2bdb4] lg:pb-1.5">{sub}</p>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className={cn("mx-auto max-w-3xl text-center", className)}>
+      {eyebrowRow}
+      <div className="mt-3.5">{heading}</div>
       {sub && (
-        <p
-          className={cn(
-            "mt-4 max-w-[52ch] text-[16px] leading-[1.55] text-[#c2bdb4]",
-            !left && "mx-auto",
-          )}
-        >
-          {sub}
-        </p>
+        <p className="mx-auto mt-4 max-w-[52ch] text-[16px] leading-[1.55] text-[#c2bdb4]">{sub}</p>
       )}
     </div>
   );

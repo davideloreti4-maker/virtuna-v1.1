@@ -32,7 +32,7 @@ export function TestimonialWall() {
         eyebrow="Placeholder — real quotes pending"
         title="What creators say after the first run."
       />
-      <div className="mt-14 grid gap-4 md:mt-16 md:grid-cols-3">
+      <div className="mt-10 grid gap-4 md:mt-12 md:grid-cols-3">
         {TESTIMONIAL_SLOTS.map((slot, i) => (
           <PlaceholderBox key={slot.id} slot={slot} index={i + 11} shape="card" />
         ))}

@@ -61,7 +61,7 @@ export function BrainSection() {
         align="left"
       />
 
-      <div className="mt-14 grid gap-8 md:mt-16 lg:grid-cols-[1.3fr_1fr] lg:gap-10">
+      <div className="mt-10 grid gap-8 md:mt-12 lg:grid-cols-[1.3fr_1fr] lg:gap-10">
         {/* the curve */}
         <div
           className="relative overflow-hidden rounded-[14px] px-5 pb-4 pt-5"

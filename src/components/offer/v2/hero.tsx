@@ -45,11 +45,58 @@
 
 import { FreeEntryCta } from "@/components/offer/free-entry-cta";
 import { FREE_ENTRY } from "@/components/offer/cta-config";
+import { GRAIN_URL } from "@/components/offer/atmosphere";
+import { AnnouncementPill } from "./marketing-nav";
 import { HeroShot } from "./hero-shot";
+
+/**
+ * Atmosphere — the layer the first pass deleted, and shouldn't have.
+ *
+ * Cutting the accent dosage from five moments to one was correct. Cutting every depth layer
+ * along with it was not: what was left was #0d0d0c flat edge to edge, and a serif headline
+ * centred on an unlit void reads as a template, however good the type is. Neither reference
+ * runs a flat fold — Linear sits its headline in a soft vignette, Attio floats its shot on a
+ * pale gradient wash.
+ *
+ * This is the matte version of that: a broad neutral-cream stage light behind the headline, a
+ * masked dot grid, and grain. NO coral (the accent's one moment in this fold is the CTA), no
+ * glass, no glow — nothing here is a light source on an element, only ground under it.
+ */
+function HeroAtmosphere() {
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+      {/* the stage light — broad, neutral, very low; the shot emerges out of it */}
+      <div
+        className="absolute inset-x-0 top-0 h-[900px]"
+        style={{
+          background:
+            "radial-gradient(120% 62% at 50% 18%, rgba(236,231,222,0.075), rgba(236,231,222,0.022) 46%, transparent 72%)",
+        }}
+      />
+      {/* dot grid, faded well before the edges so it never hard-edges */}
+      <div
+        className="absolute inset-0"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at 1px 1px,rgba(236,231,222,0.055) 1px,transparent 0)",
+          backgroundSize: "26px 26px",
+          maskImage: "radial-gradient(115% 70% at 50% 6%,#000 22%,transparent 74%)",
+          WebkitMaskImage: "radial-gradient(115% 70% at 50% 6%,#000 22%,transparent 74%)",
+        }}
+      />
+      {/* film grain — the tooth that stops the matte reading dead-flat */}
+      <div
+        className="absolute inset-0 opacity-[0.035] mix-blend-soft-light"
+        style={{ backgroundImage: `url("${GRAIN_URL}")`, backgroundSize: "140px 140px" }}
+      />
+    </div>
+  );
+}
 
 export function Hero() {
   return (
-    <section className="relative overflow-hidden">
+    <section id="top" className="relative overflow-hidden">
+      <HeroAtmosphere />
       {/* Air above the headline: 200 on a phone, 300 on desktop. Measured, not chosen. */}
       <div className="relative mx-auto w-full max-w-[1400px] px-5 pb-0 pt-[200px] md:px-8 md:pt-[240px]">
         {/*
@@ -63,6 +110,8 @@ export function Hero() {
           own h1 measures 88vw on mobile). Re-run `.scratch/verify-v2.js` after ANY change here —
           it asserts the CTA's position rather than trusting it.
         */}
+        <AnnouncementPill />
+
         <div className="mx-auto max-w-[88vw] text-center md:max-w-[760px]">
           <h1
             className="text-balance font-serif font-medium text-[#ece7de]"

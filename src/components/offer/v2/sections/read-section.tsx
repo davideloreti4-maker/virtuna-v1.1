@@ -41,7 +41,7 @@ export function ReadSection() {
       />
 
       <div
-        className="mt-14 overflow-hidden rounded-[14px] md:mt-16"
+        className="mt-10 overflow-hidden rounded-[14px] md:mt-12"
         style={{ border: "1px solid var(--mk-hairline)", background: "#131210" }}
       >
         {/* strip header — craft, runtime, the marked drop */}

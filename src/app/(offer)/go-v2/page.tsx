@@ -8,7 +8,7 @@ import type { Metadata } from "next";
  */
 import "../marketing.css";
 
-import { FloatingNav } from "@/components/offer/floating-nav";
+import { MarketingNav } from "@/components/offer/v2/marketing-nav";
 import { Hero } from "@/components/offer/v2/hero";
 import { LogoWall } from "@/components/offer/v2/sections/logo-wall";
 import { ThreeUp } from "@/components/offer/v2/sections/three-up";
@@ -78,7 +78,7 @@ export const metadata: Metadata = {
 export default function OfferPageV2() {
   return (
     <div className="mk-root">
-      <FloatingNav />
+      <MarketingNav />
 
       <main>
         <Hero />
