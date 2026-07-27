@@ -146,6 +146,35 @@ describe("the quota wall", () => {
     expect(screen.getByRole("button", { name: /start for/i })).toBeTruthy();
   });
 
+  it("does not claim the /go visitor spent a test they still have — the trial wall", () => {
+    // One step before the wall above: they tapped a skill the free demo never included (Ideas,
+    // hooks, a script…). Their free Test is untouched, so "That's your free test used" would be
+    // a lie — and "You don't have a plan yet" is the no-plan branch they also match. The door is
+    // the same $1; the sentence is not.
+    render(
+      <ReadingLimitDialog
+        open
+        quota={wall({
+          tier: "free",
+          limit: 10,
+          used: 0,
+          cost: 1,
+          reason: "trial_required",
+          message: "$1 unlocks the whole platform for 3 days — every skill, 50 credits.",
+        })}
+        onClose={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole("heading", { name: /needs the trial/i })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: /free test used/i })).toBeNull();
+    expect(screen.queryByRole("heading", { name: /don't have a plan/i })).toBeNull();
+    expect(screen.getByText(/unlocks the whole platform/i)).toBeTruthy();
+    // The $1 door still opens, and it opens as a TRIAL (not a plan purchase).
+    expect(screen.getByRole("button", { name: /start for \$1/i })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /upgrade/i })).toBeNull();
+  });
+
   it("does not push a plan at a trialling Studio's ceiling — a trial never upsells", () => {
     render(
       <ReadingLimitDialog

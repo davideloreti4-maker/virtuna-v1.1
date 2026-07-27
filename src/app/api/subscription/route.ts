@@ -18,6 +18,7 @@
 import { NextResponse } from "next/server";
 
 import { checkCreditQuota } from "@/lib/billing/quota";
+import { DEMO_ACTION } from "@/lib/pricing";
 import { createClient } from "@/lib/supabase/server";
 import type { NumenTier } from "@/lib/whop/config";
 
@@ -56,10 +57,15 @@ export async function GET() {
     // Cost 0: this is a BALANCE readout, not an admission check — "where do they stand",
     // not "can they afford action X". (For Studio this also means `used` reports TODAY's
     // fair-use spend, since unlimited has no monthly window to report.)
+    //
+    // Priced as the DEMO action so an anonymous /go visitor reads back their actual standing:
+    // "the free Test is still available" or "it's been used". Any other action would report the
+    // trial wall, which is not a balance.
     const quota = await checkCreditQuota(
       supabase,
       user,
       tier,
+      DEMO_ACTION,
       0,
       {
         trialStartedAt: toDate(row?.trial_started_at),

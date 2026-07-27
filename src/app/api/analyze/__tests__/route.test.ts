@@ -667,26 +667,32 @@ describe("POST /api/analyze — the funnel wall (verdict seal, §0b②)", () => 
     persona_behavioral_aggregate: { share_pct: 30, save_pct: 20 },
   };
 
-  /** An authed client for an ANONYMOUS session. Carries the rpc the demo credit
-   *  meter counts with (0 used → the free Test is allowed; the demo pool fails
-   *  CLOSED, so an rpc-less mock would 402 before the seal is ever exercised). */
-  const anonClient = () => ({
-    auth: {
-      getUser: vi.fn().mockResolvedValue({
-        data: { user: { id: "anon-1", is_anonymous: true } },
-        error: null,
-      }),
-    },
-    from: vi.fn(() => ({
-      select: vi.fn(() => ({
-        eq: vi.fn(() => ({
-          single: vi.fn(() => Promise.resolve({ data: null, error: null })),
-          maybeSingle: vi.fn(() => Promise.resolve({ data: null, error: null })),
-        })),
-      })),
-    })),
-    rpc: vi.fn(() => Promise.resolve({ data: 0, error: null })),
-  });
+  /** An authed client for an ANONYMOUS session. It has to answer the DEMO ENTITLEMENT's meter:
+   *  a HEAD count of delivered `reading_events` rows for the action, awaited off the builder
+   *  itself (`.select(…).eq().eq().eq()`, no terminal call). Zero prior runs → the free Test is
+   *  allowed. The demo fails CLOSED, so a builder that throws mid-chain 402s the request and the
+   *  seal below is never exercised at all. */
+  const anonClient = () => {
+    const builder: Record<string, unknown> = {};
+    builder.select = vi.fn(() => builder);
+    builder.eq = vi.fn(() => builder);
+    builder.gte = vi.fn(() => builder);
+    builder.single = vi.fn(() => Promise.resolve({ data: null, error: null }));
+    builder.maybeSingle = vi.fn(() => Promise.resolve({ data: null, error: null }));
+    // No prior delivered runs — this visitor's one free Test is still owed to them.
+    builder.then = (resolve: (v: unknown) => void) => resolve({ count: 0, error: null });
+
+    return {
+      auth: {
+        getUser: vi.fn().mockResolvedValue({
+          data: { user: { id: "anon-1", is_anonymous: true } },
+          error: null,
+        }),
+      },
+      from: vi.fn(() => builder),
+      rpc: vi.fn(() => Promise.resolve({ data: 0, error: null })),
+    };
+  };
 
   const parseCompleteEvent = (payload: string): Record<string, unknown> | null => {
     const m = payload.match(/event: complete\ndata: (.+)\n/);
