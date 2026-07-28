@@ -25,6 +25,7 @@ export const SIMULATE_R4: SimulateData = {
   room: "Your audience",
   provenance: "TikTok", // what the audience was CALIBRATED from (fact, from the audience-page badge)
   scene: "TikTok", // how they ENCOUNTER this stimulus (choice, inherited thread chip). ≠ provenance ⇒ tag
+  sceneOptions: ["TikTok", "No feed"], // only scenes with a real engine frame (TikTok → socials, No feed → general)
   fidelity: "flash",
   // the behavioral funnel — each lens is a decision the room makes, in funnel order (owner call
   // 2026-07-21). The `stage` names where in the funnel it sits so the choice is legible.
@@ -37,12 +38,13 @@ export const SIMULATE_R4: SimulateData = {
   ],
   defaultLens: 0, // armed from the ACTIONS preset ("Test a real video" → would stop)
   // slices of the calibrated room (share reduces n; whole-room is the default)
+  // `archetype` is the ENGINE key the projection is read by; the label is display text only.
   segments: [
-    { label: "Everyone", share: 1 },
-    { label: "Builders", share: 0.41 },
-    { label: "Scrollers", share: 0.26 },
-    { label: "Drop-ins", share: 0.14 },
-    { label: "Skeptics", share: 0.12 },
+    { archetype: null, label: "Everyone", share: 1 },
+    { archetype: "niche_buyer", label: "Builders", share: 0.41 },
+    { archetype: "casual_scroller", label: "Scrollers", share: 0.26 },
+    { archetype: "cross_niche_curiosity", label: "Drop-ins", share: 0.14 },
+    { archetype: "tough_crowd", label: "Skeptics", share: 0.12 },
   ],
   // the rank this run is deepening (only shown on a `develop` entry) — the sim refines it, never overturns it
   develop: { band: "Strong", value: "8/10", lensLabel: "stopped" },
@@ -57,8 +59,11 @@ export const SIMULATE_R4: SimulateData = {
   ],
 };
 
-/** Same run, but the encounter scene ≠ calibration provenance — demonstrates the projection tag. */
+/** Same run, but the encounter scene ≠ calibration provenance — demonstrates the projection tag.
+ *  The drift runs the other way now: the scene is always one the engine can simulate, and it is the
+ *  PROVENANCE that differs (an Instagram-calibrated audience screened in the TikTok frame). Before
+ *  2026-07-28 this fixture set `scene: "Instagram"`, a scene with no engine frame behind it. */
 export const SIMULATE_R4_MISMATCH: SimulateData = {
   ...SIMULATE_R4,
-  scene: "Instagram",
+  provenance: "Instagram",
 };

@@ -33,11 +33,12 @@ import {
   buildFlashBatchSystemPrompt,
   buildFlashBatchUserContent,
 } from "./flash-prompts";
-import type { FlashFraming, NichePanel, IntentLens, DomainLens } from "./flash-prompts";
+import type { FlashFraming, NichePanel, IntentLens, DomainLens, BehaviorLens } from "./flash-prompts";
 import type { ContentTypeSlug } from "../types";
 
-// Re-export FlashFraming, NichePanel, IntentLens and DomainLens so callers can import them here
-export type { FlashFraming, NichePanel, IntentLens, DomainLens };
+// Re-export FlashFraming, NichePanel, IntentLens, DomainLens and BehaviorLens so callers can
+// import them here
+export type { FlashFraming, NichePanel, IntentLens, DomainLens, BehaviorLens };
 // Re-export ContentTypeSlug for convenience (D-05 callers need it for the panel)
 export type { ContentTypeSlug };
 
@@ -94,6 +95,12 @@ export interface FlashRunResult {
  * @param domain          Optional reaction FRAME (MODE-01). `general` swaps the TikTok-FYP population
  *                        + question for a merit-judging panel (a `mode: 'general'` audience is not a
  *                        crowd scrolling a feed). `socials`/undefined → byte-identical no-op.
+ * @param lens            Optional per-run BEHAVIOUR lens (⑤'s loud dial) — the single action the
+ *                        room is scored for (stop | finish | share | follow | buy). Re-aims what the
+ *                        stop/scroll tokens MEAN and what the band counts, via a user-message
+ *                        directive; `stop`/undefined → byte-identical no-op. Same posture as
+ *                        `intent`: the system-prompt cache prefix (D-17) and ENGINE_VERSION are
+ *                        untouched, because nothing per-run enters the system prompt.
  * @returns FlashRunResult with parsed FlashResult and any warnings.
  * @throws if the model response fails Zod validation after coercion.
  */
@@ -104,6 +111,7 @@ export async function runFlashTextMode(
   audienceRepaint?: Record<string, string>,
   intent?: IntentLens,
   domain: DomainLens = "socials",
+  lens: BehaviorLens = "stop",
 ): Promise<FlashRunResult> {
   const ai = getQwenClient();
   const warnings: string[] = [];
@@ -130,7 +138,7 @@ export async function runFlashTextMode(
       },
       {
         role: "user" as const,
-        content: buildFlashUserContent(content_text, framing, intent, domain),
+        content: buildFlashUserContent(content_text, framing, intent, domain, lens),
       },
     ],
     response_format: { type: "json_object" as const },
