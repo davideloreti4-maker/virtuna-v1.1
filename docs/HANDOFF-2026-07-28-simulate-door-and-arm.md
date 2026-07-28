@@ -1,7 +1,66 @@
 # Handoff — The ＋ door (bring your own stimulus) + the ARM screen redesign
 
 **Date:** 2026-07-28 · **Worktree:** `~/virtuna-platform` · **Branch:** `lane/platform-surface`
-**Status:** ✅ **Phase 1 LANDED** (`0f5d292c`, pushed). Phases 2–6 open. Read §0.5 before anything.
+**Status:** ✅ **Phases 1, 2 and the Phase-4 PREREQUISITE LANDED.** Phases 3–6 open.
+Read §0.4 first, then §0.5.
+
+---
+
+## §0.4 — STATUS after session 2 (2026-07-28). This supersedes §0.5 and §10.
+
+Four commits on `lane/platform-surface`, plus a merge of `origin/main` (the lane was 6 behind):
+
+| commit | what |
+|---|---|
+| `fe067d1b` | **the Phase-4 prerequisite** — `/api/tools/react` gated + priced at **1 credit**, own `react` key |
+| `e29d3930` | **Phase 2** — the cold door collects a real stimulus instead of arming the caller's text |
+| `90591647` | merge `origin/main` — brings in `9902b45f` (Stop no longer fires a second BILLED run) |
+| `39fc42d7` | the react gate's client half — a refused "Ask the room" raises the wall instead of vanishing |
+
+**Baselines (measured on this tree, both flag ways):** **4800/0 flag off · 4801/0 flag on**
+(`AMBIENT_V2_ENABLED=true NEXT_PUBLIC_AMBIENT_V2=true`). tsc clean. `npm run build` passes.
+
+### ⚠️ Three MORE things this doc got wrong. That is eight across two sessions.
+
+1. **§10's contention warning is STALE, and was already stale when session 2 started.** The other
+   session's work did NOT land in this worktree — it went to `main` via PR #392 (`9902b45f`).
+   `git status` was CLEAN at session start; `composer.tsx` was never contested here, it was just
+   **6 commits behind**, still carrying the Stop-double-billing bug. The lane has now merged
+   `origin/main`. **Phase 3 is UNBLOCKED and `composer.tsx` is current.**
+2. **"`creditGate` only refuses when `BILLING_ENFORCE_QUOTA` is on" is INCOMPLETE, and the gap is
+   a live 402.** `enforced = isAnonymous || isQuotaEnforced()` (`quota.ts`) — an anonymous visitor
+   is metered *regardless of the flag*, and `react` is **not** the `DEMO_ACTION`, so they'd be
+   refused `trial_required`. React is safe only because **THE WALL (`isSealedVisitor`) 403s them
+   first**. That ORDERING is load-bearing and nothing asserted it. It does now
+   (`route-wiring.test.ts`). **Check this before gating any other route.**
+3. **The `CreditWallRefusal` "futile retry under the paywall" does NOT apply to the `ask` verb.**
+   A failed ask records `error: true` and the only consumer of the ask trail **filters errored
+   asks out** (`audience-presence.tsx:417`) — so a refused ask rendered *nothing at all*. The
+   defect was total SILENCE, not a bad retry. The fix is the same line; the reasoning was wrong,
+   and the test asserts the silence rather than assuming it.
+
+### One honest caveat on a new guard
+
+The file/link exclusivity in `CollectStep` is enforced **three times over** (clear-on-select · the
+field unmounts while a file is held · `submit` reads the file first) and the three **mask each
+other**: mutation-tested, breaking any ONE leaves the tests green. The test catches the compound
+break and the unmount. It is redundancy, not three guards — do not read that green as coverage.
+
+### ▶ Next: Phases 3 and 4 must land TOGETHER
+
+Deliberately not started. The rail's `＋` currently either does nothing (empty rail) or lies
+(re-arms `descriptors[0]`), and wiring it to the new cold intake **without** Phase 4's routing
+would open a real door onto a dead "Simulate" — the same class of defect this lane exists to
+remove. They are one unit of work:
+
+- **Phase 3:** `onTestVariant` → cold intake (not `openDevelop`); relabel `＋ Test a new variant`
+  → `＋ Test something of your own`; the `AmbientStart` door + `onSimDoor` through
+  `AmbientStartHome` → composer (all now unblocked).
+- **Phase 4:** route the `BroughtStimulus` — draft → `/api/tools/react`, file/link →
+  `/api/analyze`. `ArmCard` already holds the stimulus; it is not yet on the emitted
+  `SimulateConfig` (left off deliberately — add the field WITH its consumer).
+- ⚠️ **§0.5 correction #4 still stands and is the trap:** a brought TEXT needs a card block
+  inserted as well as a seal, or the seal is orphaned and nothing renders. Video is fine.
 
 ---
 
@@ -83,9 +142,9 @@ read and does not describe a slice.
 `audience.mode` and fed a `mode:'general'` audience (analyst panel, hiring panel) the TikTok-FYP
 prompt. It now agrees with `two-audience-read.ts` and `simulate-runner.ts`.
 
-### ▶ Recommended next step
+### ▶ Recommended next step — ✅ DONE in session 2 (`fe067d1b`). See §0.4 for what is next.
 
-**The Phase-4 prerequisite: gate + price `/api/tools/react` (1 credit, own `react` key).** It is
+~~**The Phase-4 prerequisite: gate + price `/api/tools/react` (1 credit, own `react` key).**~~ It is
 decided, mechanical (mirror the four lines the other 11 paid routes use: `creditGate` → `if
 (refusal) return refusal` → … → `billUsage`), and it is the only open item where being wrong costs
 money. It is safe to land now — `creditGate` only refuses when `BILLING_ENFORCE_QUOTA` is on (it is
@@ -449,8 +508,9 @@ Everything below marked ✅ was checked against the code or the running app on 2
 
 ## §8 — Open owner decisions
 
-1. ~~**Pricing.**~~ ✅ **DECIDED 2026-07-28 (owner): gate + price `/api/tools/react` BEFORE the door
-   ships.** It is currently ungated with no `CREDIT_COSTS` entry, and the `＋` door would promote an
+1. ~~**Pricing.**~~ ✅ **DECIDED — and ✅ SHIPPED in session 2 (`fe067d1b`): 1 credit, own `react`
+   key, gate + bill + both callers handled.** Original note below.
+   ~~**gate + price `/api/tools/react` BEFORE the door ships.**~~ It is currently ungated with no `CREDIT_COSTS` entry, and the `＋` door would promote an
    unlimited free Flash read to a primary action. This is now a Phase-4 prerequisite, not a follow-up
    — the door does not ship without it. Pick the credit price against the existing ladder
    (`read: 1` · `simulate: 2` · `score: 10`) and gate it the same way `/api/analyze` does
@@ -498,9 +558,13 @@ Everything below marked ✅ was checked against the code or the running app on 2
 - **Run E2E on a production build**, not `next dev`. Dev StrictMode double-invoke fakes a broken
   funnel on this app (cost ~3h once). `npm run build && next start`.
 - **Run the suite both flag ways.** It defaults `AMBIENT_V2_ENABLED` **off**, so a green run can be
-  green for the product you are not shipping. ~~Baseline **4717/0**~~ — stale. **Baseline after
-  Phase 1: 4787/0 flag off · 4788/0 flag on** (`AMBIENT_V2_ENABLED=true NEXT_PUBLIC_AMBIENT_V2=true`).
-  Note that count includes the other session's uncommitted tests (§10).
+  green for the product you are not shipping. ~~Baseline **4717/0**~~ · ~~**4787/4788**~~ — both
+  stale. **Baseline after session 2: 4800/0 flag off · 4801/0 flag on**
+  (`AMBIENT_V2_ENABLED=true NEXT_PUBLIC_AMBIENT_V2=true`).
+  ⚠️ The 4787/4788 figures were measured on a tree holding another session's uncommitted tests
+  that **never landed here** — they went to `main` via PR #392. A fresh clone of this lane read
+  4781. If your count is *below* the baseline, suspect a stale number before you suspect a
+  deletion; this doc has now published a wrong one twice.
 - **`npm run build` is a REQUIRED gate here, not optional.** See the surfaces-import trap below —
   it is the only thing that catches a client/server bundle violation.
 - **`AmbientDetail` / the v2 panels need a bounded host.** An unbounded-height wrapper rendered
@@ -514,6 +578,17 @@ Everything below marked ✅ was checked against the code or the running app on 2
 ---
 
 ## §10 — Coordination: read this before you touch anything
+
+### ✅ RESOLVED in session 2 — this section is HISTORY. Read §0.4 instead.
+
+`git status` was **clean** at session 2's start and stayed clean. The second session never wrote
+into this worktree again: its batch went to `main` as PR #392 (`9902b45f`), which this lane has
+now merged (`90591647`). **Nothing here is contested.** `composer.tsx`, `use-active-run.ts` and
+their two test files are all present and current. Phase 3 is unblocked.
+
+Keep running `git status` first anyway — it cost nothing and it is how this was caught.
+
+<details><summary>The original session-1 warning, kept for the record</summary>
 
 ### 🔴 STILL LIVE as of session 1's end (2026-07-28) — `git status` FIRST, every time.
 
@@ -551,6 +626,8 @@ that file before adding the Phase-6 section to it.
 Their plan lists as **out of scope / ships after**: deleting the composer skill pill and the `ask`
 "Ask the room" skill — but notes **`/api/tools/react` stays, because the room rail is its other
 caller.** That is why this lane's door does not depend on the `ask` verb and is safe to build now.
+
+</details>
 
 ---
 
