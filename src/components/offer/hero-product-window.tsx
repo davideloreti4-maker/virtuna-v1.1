@@ -375,7 +375,7 @@ export function HeroProductWindow() {
                                       delay={0.05}
                                       className="text-[30px] font-semibold leading-none text-foreground"
                                     />
-                                    <span className="text-[8.5px] uppercase tracking-[0.05em] text-foreground-muted">
+                                    <span className="text-[8px] uppercase tracking-[0.05em] text-foreground-muted">
                                       Craft
                                     </span>
                                   </span>

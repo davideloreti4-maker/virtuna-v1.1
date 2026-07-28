@@ -54,7 +54,7 @@ function FixCard({ fix }: { fix: CounterfactualSuggestionItem }) {
         <span className="text-[13px] font-medium text-foreground" data-testid="fix-first-headline">
           {fix.headline}
         </span>
-        <span className="text-[12.5px] leading-relaxed text-foreground-muted" data-testid="fix-first-detail">
+        <span className="text-[12px] leading-relaxed text-foreground-muted" data-testid="fix-first-detail">
           {fix.detail}
         </span>
       </div>
@@ -138,7 +138,7 @@ export function FixFirstList({ fixes, rewrites, score, weakestLever }: FixFirstL
           data-testid="fix-first-more"
           onClick={() => setExpanded(true)}
           aria-expanded={false}
-          className="self-start text-xs text-foreground-secondary underline-offset-2 hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/10"
+          className="self-start text-xs text-foreground-secondary underline-offset-2 hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[color:var(--focus-ring)]"
         >
           {overflow} more fixes &rarr;
         </button>

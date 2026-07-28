@@ -243,7 +243,7 @@ export function AudienceBreakout({ heatmap, simResults, dropT }: AudienceBreakou
                   side="bottom"
                   align="start"
                   sideOffset={6}
-                  className="z-50 max-w-[240px] rounded-md border border-[var(--color-border-hover)] bg-[var(--color-surface-elevated)] px-3 py-2 text-[11.5px] leading-[1.5] text-foreground-secondary shadow-[0_10px_26px_rgba(0,0,0,0.45)]"
+                  className="z-50 max-w-[240px] rounded-md border border-[var(--color-border-hover)] bg-[var(--color-surface-elevated)] px-3 py-2 text-[12px] leading-[1.5] text-foreground-secondary shadow-[0_10px_26px_rgba(0,0,0,0.45)]"
                 >
                   Each bar is the{' '}
                   <span className="font-semibold text-foreground">% who keep watching</span> as the
@@ -257,7 +257,7 @@ export function AudienceBreakout({ heatmap, simResults, dropT }: AudienceBreakou
         </div>
         <span
           data-testid="audience-breakout-badge"
-          className="text-[11.5px] font-semibold text-foreground-muted"
+          className="text-[12px] font-semibold text-foreground-muted"
         >
           {badge}
         </span>
@@ -343,14 +343,14 @@ export function AudienceBreakout({ heatmap, simResults, dropT }: AudienceBreakou
             >
               {s.rate}%
             </div>
-            <div className="mt-[2px] text-[10.5px] text-foreground-muted">{s.stage}</div>
+            <div className="mt-[2px] text-[10px] text-foreground-muted">{s.stage}</div>
           </div>
         ))}
       </div>
 
       <p
         data-testid="audience-breakout-foot"
-        className="mt-4 border-t border-[var(--color-border)] pt-3.5 text-[12.5px] leading-[1.5] text-foreground-secondary"
+        className="mt-4 border-t border-[var(--color-border)] pt-3.5 text-[12px] leading-[1.5] text-foreground-secondary"
       >
         {foot}
       </p>

@@ -216,7 +216,7 @@ export function HooksThreadView({
               {hasPersistedContent && !isStreaming && (
                 <div className="flex flex-col gap-3">
                   {hasStreamingContent && (
-                    <p className="pt-1 text-[11px] uppercase tracking-wide text-foreground-muted/50">
+                    <p className="pt-1 text-caption uppercase tracking-wide text-foreground-muted/50">
                       Earlier
                     </p>
                   )}

@@ -251,7 +251,7 @@ export function AudienceForm({ existing, initialMode, accounts = [], preselect, 
               onClick={() => setType(t)}
               className={cn(
                 "flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)]",
                 type === t
                   ? "border-border-hover bg-hover text-foreground"
                   : "border-white/[0.06] text-foreground-secondary hover:border-white/[0.1] hover:bg-white/[0.03] hover:text-foreground",
@@ -293,7 +293,7 @@ export function AudienceForm({ existing, initialMode, accounts = [], preselect, 
                   )}
                 >
                   @{a.handle}
-                  <span className="ml-1.5 font-mono text-[9px] uppercase tracking-[0.06em] opacity-70">
+                  <span className="ml-1.5 font-mono text-micro uppercase tracking-[0.06em] opacity-70">
                     {ACCOUNT_PLATFORM_LABEL[a.platform]}
                   </span>
                 </button>
@@ -376,7 +376,7 @@ export function AudienceForm({ existing, initialMode, accounts = [], preselect, 
             <span className="text-sm text-foreground-secondary">User-added grounding</span>
             <p className="text-xs text-foreground-muted">
               Context you supply — tagged{" "}
-              <span className="rounded bg-white/[0.06] px-1.5 py-0.5 text-[11px] font-medium text-foreground-secondary">
+              <span className="rounded bg-white/[0.06] px-1.5 py-0.5 text-caption font-medium text-foreground-secondary">
                 user-added
               </span>{" "}
               and shown apart from scraped evidence. Strengthens provenance, never fakes it.
@@ -389,7 +389,7 @@ export function AudienceForm({ existing, initialMode, accounts = [], preselect, 
             {customContext.map((c, i) => (
               <li key={i} className="flex items-start gap-2">
                 <span
-                  className="mt-2 shrink-0 rounded bg-accent/15 px-1.5 py-0.5 text-[11px] font-medium text-accent"
+                  className="mt-2 shrink-0 rounded bg-accent/15 px-1.5 py-0.5 text-caption font-medium text-accent"
                   aria-hidden="true"
                 >
                   user-added

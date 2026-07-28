@@ -82,7 +82,7 @@ export function HomeGreeting({ className }: HomeGreetingProps) {
       </h1>
 
       {/* The promise, in chrome type — one line, muted, no hedge. */}
-      <p className="mt-3 max-w-[440px] text-[14px] leading-relaxed text-foreground-muted">
+      <p className="mt-3 max-w-[440px] text-reading leading-relaxed text-foreground-muted">
         Simulate your audience — see how the room reacts to an idea, a hook, or
         a video, before you post.
       </p>

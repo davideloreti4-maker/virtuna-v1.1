@@ -21,7 +21,7 @@ const PERF_LABELS = ["Clicks", "Conversions", "Earnings", "Conversion rate"] as 
 function PerfTile({ label, value }: { label: string; value: string }) {
   return (
     <div className="elev-rest flex flex-col rounded-xl border border-border bg-surface-elevated px-[13px] py-3">
-      <span className="text-[11.5px] font-medium text-foreground-secondary">{label}</span>
+      <span className="text-[12px] font-medium text-foreground-secondary">{label}</span>
       <span className="mt-[7px] text-[23px] font-semibold leading-none tracking-[-0.02em] text-foreground [font-variant-numeric:tabular-nums]">
         {value}
       </span>
@@ -67,18 +67,18 @@ export function ReferralsSection({
         {/* Compact upgrade card, centered over the locked preview. */}
         <div className="absolute inset-0 flex items-center justify-center p-4">
           <div className="elev-rest flex max-w-[360px] flex-col items-center gap-3 rounded-2xl border border-border bg-surface-elevated px-6 py-7 text-center">
-            <span className="rounded-[4px] border border-border-hover px-1.5 py-px font-mono text-[8.5px] uppercase tracking-[0.08em] text-foreground-secondary">
+            <span className="rounded-[4px] border border-border-hover px-1.5 py-px font-mono text-[8px] uppercase tracking-[0.08em] text-foreground-secondary">
               Pro
             </span>
             <div>
-              <p className="m-0 text-[13.5px] font-semibold text-foreground">Unlock your referral link</p>
-              <p className="mx-auto mt-1 max-w-[300px] text-[11.5px] leading-[1.5] text-foreground-muted">
+              <p className="m-0 text-[14px] font-semibold text-foreground">Unlock your referral link</p>
+              <p className="mx-auto mt-1 max-w-[300px] text-[12px] leading-[1.5] text-foreground-muted">
                 Earn <b className="font-semibold text-foreground-secondary">$10</b> for every creator who joins — track clicks, conversions, and earnings here.
               </p>
             </div>
             <Link
               href="/pricing"
-              className="mt-1 rounded-[10px] bg-[color:var(--color-action)] px-4 py-2.5 text-[12.5px] font-semibold text-[color:var(--color-action-foreground)] transition-opacity hover:opacity-90"
+              className="mt-1 rounded-[10px] bg-[color:var(--color-action)] px-4 py-2.5 text-[12px] font-semibold text-[color:var(--color-action-foreground)] transition-opacity hover:opacity-90"
             >
               View pricing →
             </Link>
@@ -102,7 +102,7 @@ export function ReferralsSection({
       {/* Referral link */}
       <section className="rounded-2xl bg-surface-sunken px-4 py-4">
         <h2 className="m-0 text-[15px] font-semibold tracking-[-0.01em] text-foreground">Your referral link</h2>
-        <p className="mt-1 text-[12.5px] leading-[1.5] text-foreground-secondary">
+        <p className="mt-1 text-[12px] leading-[1.5] text-foreground-secondary">
           Share it. When a creator signs up and subscribes, you earn{" "}
           <b className="font-semibold text-foreground">$10</b>.
         </p>
@@ -110,7 +110,7 @@ export function ReferralsSection({
           <code className="min-w-0 flex-1 truncate font-mono text-[12px] text-foreground">{referralLink}</code>
           <CopyButton text={referralLink} label="Copy" />
         </div>
-        <p className="mt-2 font-mono text-[9.5px] text-foreground-muted">
+        <p className="mt-2 font-mono text-[10px] text-foreground-muted">
           Tip: drop it in your TikTok bio, or share with creator friends.
         </p>
       </section>

@@ -289,7 +289,7 @@ function StageRow({ stage, index, isLast }: StageRowProps) {
           // key={subIdx} remounts the line each rotation → a soft fade between phrases.
           <p
             key={subIdx}
-            className="proof-resolve mt-1 text-[12.5px] leading-snug text-foreground-muted"
+            className="proof-resolve mt-1 text-label leading-snug text-foreground-muted"
           >
             {sub}
           </p>
@@ -332,7 +332,7 @@ function StageNode({ status }: { status: StageState['status'] }) {
       />
       {/* Done check — fades in. */}
       <span
-        className="relative text-[9px] font-bold leading-none transition-opacity duration-300"
+        className="relative text-micro font-bold leading-none transition-opacity duration-300"
         style={{ color: 'var(--color-background)', opacity: isDone ? 1 : 0 }}
       >
         ✓
@@ -385,7 +385,7 @@ export function SkillProgress({ stages, plan, isStreaming, summaryLabel }: Skill
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="reading-reveal group flex items-center gap-2 self-start rounded-sm py-0.5 text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10"
+        className="reading-reveal group flex items-center gap-2 self-start rounded-sm py-0.5 text-body transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring)]"
         aria-expanded={expanded}
         aria-label={`${summaryLabel} — ${plan.length} steps. ${expanded ? 'Collapse' : 'Expand'} the steps.`}
       >
@@ -399,7 +399,7 @@ export function SkillProgress({ stages, plan, isStreaming, summaryLabel }: Skill
         <span className="text-foreground-muted/60">·</span>
         <span className="text-foreground-muted/60">{plan.length} steps</span>
         <span
-          className="ml-0.5 text-[10px] text-foreground-muted/50 transition-transform duration-300"
+          className="ml-0.5 text-micro text-foreground-muted/50 transition-transform duration-300"
           style={{ transform: expanded ? 'rotate(180deg)' : 'none' }}
           aria-hidden="true"
         >
@@ -414,7 +414,7 @@ export function SkillProgress({ stages, plan, isStreaming, summaryLabel }: Skill
           {plan.map((name) => (
             <div key={name} className="flex items-center gap-2.5">
               <CheckMini />
-              <span className="text-[13px] leading-none text-foreground-muted">{name}</span>
+              <span className="text-body leading-none text-foreground-muted">{name}</span>
             </div>
           ))}
         </div>
@@ -432,7 +432,7 @@ function CheckMini() {
       aria-hidden="true"
     >
       <span
-        className="text-[8px] font-bold leading-none"
+        className="text-micro font-bold leading-none"
         style={{ color: 'var(--color-background)' }}
       >
         ✓

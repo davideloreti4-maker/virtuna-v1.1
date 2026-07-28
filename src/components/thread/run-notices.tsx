@@ -44,7 +44,7 @@ export function SkillRunError({
         <button
           type="button"
           onClick={onRetry}
-          className="mt-1 text-sm font-medium self-start transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10"
+          className="mt-1 text-sm font-medium self-start transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring)]"
           style={{ color: 'var(--color-cream-secondary)' }}
           aria-label={retryLabel}
         >
@@ -67,7 +67,7 @@ export function RunWarnings({ warnings }: RunWarningsProps) {
       role="status"
       aria-live="polite"
     >
-      <p className="text-[11px] uppercase tracking-wide" style={{ color: 'var(--color-cream-muted)' }}>
+      <p className="text-caption uppercase tracking-wide" style={{ color: 'var(--color-cream-muted)' }}>
         Heads up — this run degraded
       </p>
       {warnings.map((w, i) => (

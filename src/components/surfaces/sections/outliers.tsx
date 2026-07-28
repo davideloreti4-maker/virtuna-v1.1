@@ -39,7 +39,7 @@ export function Outliers({
       {status === "warming" ? (
         <WarmingRail />
       ) : outliers.length === 0 ? (
-        <p className="px-1 py-6 text-[12.5px] leading-[1.5] text-foreground-muted">
+        <p className="px-1 py-6 text-[12px] leading-[1.5] text-foreground-muted">
           No outliers to remix yet. As we track more creators in your space, their
           winners — scored for how <span className="text-foreground-secondary">your</span> people
           would react — show up here.
@@ -61,7 +61,7 @@ export function Outliers({
 function WarmingRail() {
   return (
     <div>
-      <p className="mb-2 px-1 font-mono text-[10.5px] text-foreground-muted">
+      <p className="mb-2 px-1 font-mono text-[10px] text-foreground-muted">
         Testing today’s outliers on your people…
       </p>
       {/* Same scroll geometry as the ready rail — a skeleton must not be wider than the page. */}

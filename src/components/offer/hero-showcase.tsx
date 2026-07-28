@@ -40,7 +40,7 @@ export function HeroShowcase() {
           <SheetTrigger asChild>
             <button
               type="button"
-              className="mx-auto inline-flex items-center gap-2 rounded-lg px-3 py-2 text-[12.5px] text-foreground-muted transition-colors hover:text-foreground"
+              className="mx-auto inline-flex items-center gap-2 rounded-lg px-3 py-2 text-[12px] text-foreground-muted transition-colors hover:text-foreground"
             >
               See the full sample read — the brain, and the room
               <span aria-hidden>→</span>

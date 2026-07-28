@@ -56,7 +56,7 @@ export function OutcomeReceipt() {
         >
           <div className="relative aspect-[9/16] w-[104px] overflow-hidden rounded-xl opacity-55 ring-1 ring-white/[0.06] grayscale sm:w-[118px]">
             <Image src={cover} alt="" fill sizes="118px" className="object-cover" />
-            <span className="absolute bottom-1.5 left-1.5 inline-flex items-center gap-1 rounded bg-black/65 px-1.5 py-0.5 text-[10.5px] font-medium tabular-nums text-white/85">
+            <span className="absolute bottom-1.5 left-1.5 inline-flex items-center gap-1 rounded bg-black/65 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-white/85">
               <PlayGlyph />
               {viewsBefore.toLocaleString("en-US")}
             </span>
@@ -116,7 +116,7 @@ export function OutcomeReceipt() {
       </div>
 
       {/* what actually changed — and which surface said so */}
-      <p className="mx-auto mt-5 max-w-[46ch] text-center text-[13.5px] leading-relaxed text-foreground-muted">
+      <p className="mx-auto mt-5 max-w-[46ch] text-center text-[14px] leading-relaxed text-foreground-muted">
         {credit}
       </p>
     </div>

@@ -218,7 +218,7 @@ export function ExploreThreadView({
               grid as a section header (sibling under the "Maven" eyebrow, gap-3), not inside the
               card's own header row — the grid card holds only the tiles. */}
           {resultHero && (
-            <p className="text-[15px] font-semibold leading-snug tracking-[-0.01em] text-foreground">
+            <p className="text-reading font-semibold leading-snug tracking-[-0.01em] text-foreground">
               {resultHero}
             </p>
           )}

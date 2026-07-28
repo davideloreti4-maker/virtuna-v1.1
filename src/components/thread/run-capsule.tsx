@@ -84,7 +84,7 @@ export function SkillRunCapsule({ skill, stages, isRunning, audienceLabel }: Ski
     return (
       <div className="flex flex-col gap-2.5" aria-live="polite" aria-atomic="false">
         {meta && (
-          <p className="reading-reveal text-[13px] font-medium text-foreground-secondary">
+          <p className="reading-reveal text-body font-medium text-foreground-secondary">
             {meta.running}
             {audienceLabel ? (
               <span className="text-foreground-muted"> — for {audienceLabel}</span>

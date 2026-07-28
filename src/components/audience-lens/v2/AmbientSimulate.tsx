@@ -286,7 +286,7 @@ function ArmCard({
             style={{ background: "rgba(255,255,255,.03)", border: `1px solid ${TONE.hair}`, color: TONE.faint }}
           >
             <span
-              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-[10.5px] uppercase tracking-[0.05em]"
+              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.05em]"
               style={{ background: TONE.well, color: TONE.dim }}
             >
               {develop.band} {develop.value}
@@ -318,7 +318,7 @@ function ArmCard({
       <div className="mt-7 px-[26px]">
         <div className="flex items-baseline justify-between">
           <Kick>The lens</Kick>
-          <span className="text-[11.5px]" style={{ color: TONE.faint }}>
+          <span className="text-[12px]" style={{ color: TONE.faint }}>
             the behaviour we score
           </span>
         </div>
@@ -362,7 +362,7 @@ function ArmCard({
           <div className="text-[15px] font-medium" style={{ color: TONE.cream }}>
             Would they {activeLens.gloss}?
           </div>
-          <div className="mt-1 text-[12.5px]" style={{ color: TONE.faint }}>
+          <div className="mt-1 text-[12px]" style={{ color: TONE.faint }}>
             {activeLens.stage}
           </div>
         </div>
@@ -378,7 +378,7 @@ function ArmCard({
           onBlur={(e) => (e.currentTarget.style.borderColor = TONE.border)}
         />
         {custom.trim() ? (
-          <div className="mt-2 font-mono text-[11.5px]" style={{ color: TONE.faint }}>
+          <div className="mt-2 font-mono text-[12px]" style={{ color: TONE.faint }}>
             ↳ scored as the nearest lens · <span style={{ color: TONE.dim }}>would {activeLens.label.toLowerCase()}</span>
           </div>
         ) : null}
@@ -388,7 +388,7 @@ function ArmCard({
       <div className="mt-7 px-[26px]">
         <div className="flex items-baseline justify-between">
           <Kick>The slice</Kick>
-          <span className="text-[11.5px]" style={{ color: TONE.faint }}>
+          <span className="text-[12px]" style={{ color: TONE.faint }}>
             who we put it in front of
           </span>
         </div>

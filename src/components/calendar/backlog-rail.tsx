@@ -57,7 +57,7 @@ export function BacklogRail({
             )}
           >
             {tab}{" "}
-            <span className="font-mono text-[9.5px] opacity-80">
+            <span className="font-mono text-[10px] opacity-80">
               {tab === "ideas" ? pool.length : scheduled.length}
             </span>
           </button>
@@ -73,7 +73,7 @@ export function BacklogRail({
       <div className="flex max-h-[440px] flex-col gap-1.5 overflow-y-auto p-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {activeTab === "ideas" ? (
           pool.length === 0 ? (
-            <p className="px-3 py-6 text-center text-[11.5px] leading-[1.5] text-foreground-muted">
+            <p className="px-3 py-6 text-center text-[12px] leading-[1.5] text-foreground-muted">
               {warming
                 ? "Testing today’s ideas on your people…"
                 : "Every tested idea is on the calendar. Maven warms a fresh batch each day."}
@@ -134,7 +134,7 @@ export function BacklogRail({
             })
           )
         ) : scheduled.length === 0 ? (
-          <p className="px-3 py-6 text-center text-[11.5px] leading-[1.5] text-foreground-muted">
+          <p className="px-3 py-6 text-center text-[12px] leading-[1.5] text-foreground-muted">
             Nothing scheduled yet. Tap an idea, then a day.
           </p>
         ) : (
@@ -198,12 +198,12 @@ function IdeaFace({
           {format}
         </span>
       </div>
-      <p className="m-0 mb-2 text-[12.5px] leading-[1.32] text-foreground">{title}</p>
+      <p className="m-0 mb-2 text-[12px] leading-[1.32] text-foreground">{title}</p>
       <div className="mb-1.5 flex items-center gap-2">
         <span className="h-[5px] flex-1 overflow-hidden rounded-full bg-white/[0.06]">
           <span className="block h-full rounded-full" style={{ width: `${stop * 10}%`, background: toneBar[tone] }} />
         </span>
-        <span className="shrink-0 font-mono text-[9.5px] tabular-nums text-foreground-secondary">
+        <span className="shrink-0 font-mono text-[10px] tabular-nums text-foreground-secondary">
           {stop}/10 would stop
         </span>
       </div>

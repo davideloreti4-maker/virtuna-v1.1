@@ -154,7 +154,7 @@ function ProvLine({ audience }: { audience: Audience }) {
   return (
     <p
       className={cn(
-        "flex items-center gap-1.5 text-[12.5px] text-foreground-muted",
+        "flex items-center gap-1.5 text-label text-foreground-muted",
         built.needsAction && "text-[color:var(--color-warning-raw)]",
       )}
     >
@@ -197,7 +197,7 @@ function CardShell({ ariaLabel, onClick, empty, children }: CardShellProps) {
       className={cn(
         "group relative flex min-h-[172px] cursor-pointer flex-col gap-3.5 rounded-2xl px-4 pt-4",
         "border transition-colors duration-150",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)]",
         empty
           ? "border-dashed border-white/[0.10] bg-transparent hover:border-white/[0.16]"
           : "border-border bg-surface-elevated hover:border-border-hover",
@@ -222,7 +222,7 @@ function CardHead({
 }) {
   return (
     <div className="flex items-center justify-between gap-2.5">
-      <p className="flex min-w-0 items-center gap-2 truncate text-[15px] font-semibold tracking-[-0.01em] text-foreground">
+      <p className="flex min-w-0 items-center gap-2 truncate text-reading font-semibold tracking-[-0.01em] text-foreground">
         {isPrimary && (
           <span
             aria-hidden="true"
@@ -231,7 +231,7 @@ function CardHead({
         )}
         <span className="truncate">{name}</span>
         {platform && (
-          <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.1em] text-foreground-muted">
+          <span className="shrink-0 font-mono text-micro uppercase tracking-[0.1em] text-foreground-muted">
             {platform}
           </span>
         )}
@@ -243,7 +243,7 @@ function CardHead({
 
 function DefaultPill() {
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-border-hover px-2.5 py-1 text-[11px] font-semibold text-foreground-secondary">
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-border-hover px-2.5 py-1 text-caption font-semibold text-foreground-secondary">
       <span aria-hidden="true" className="h-[5px] w-[5px] rounded-full bg-[color:var(--color-positive)]" />
       Default
     </span>
@@ -268,7 +268,7 @@ function CardAction({
         onClick();
       }}
       className={cn(
-        "pointer-coarse:h-9 rounded-[7px] px-2.5 py-1.5 text-[12.5px] transition-colors",
+        "pointer-coarse:h-9 rounded-[7px] px-2.5 py-1.5 text-label transition-colors",
         variant === "cta"
           ? "border border-border-hover font-semibold text-foreground hover:border-white/[0.2] hover:bg-white/[0.03]"
           : variant === "primary"
@@ -284,7 +284,7 @@ function CardAction({
 function CardFooter({ left, right }: { left?: React.ReactNode; right?: React.ReactNode }) {
   return (
     <div className="-mx-4 mt-auto flex items-center justify-between gap-2 border-t border-white/[0.05] px-4 py-2.5">
-      <span className="min-w-0 truncate text-[12px] text-foreground-muted">{left}</span>
+      <span className="min-w-0 truncate text-label text-foreground-muted">{left}</span>
       {right}
     </div>
   );
@@ -295,7 +295,7 @@ function CardFooter({ left, right }: { left?: React.ReactNode; right?: React.Rea
 function Zone({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <section>
-      <p className="mb-3 px-0.5 font-mono text-[10px] uppercase tracking-[0.14em] text-foreground-muted">
+      <p className="mb-3 px-0.5 font-mono text-micro uppercase tracking-[0.14em] text-foreground-muted">
         {label}
       </p>
       <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">{children}</div>
@@ -362,7 +362,7 @@ function DefaultBanner({
   const action = isGeneral ? (
     <Link
       href="/audience/general"
-      className="pointer-coarse:h-9 shrink-0 rounded-lg border border-border-hover px-3.5 py-1.5 text-[13px] font-medium text-foreground-secondary transition-colors hover:border-white/[0.18] hover:bg-white/[0.02] hover:text-foreground"
+      className="pointer-coarse:h-9 shrink-0 rounded-lg border border-border-hover px-3.5 py-1.5 text-body font-medium text-foreground-secondary transition-colors hover:border-white/[0.18] hover:bg-white/[0.02] hover:text-foreground"
     >
       View
     </Link>
@@ -370,7 +370,7 @@ function DefaultBanner({
     <button
       type="button"
       onClick={() => onOpen(defaultAudience)}
-      className="pointer-coarse:h-9 shrink-0 rounded-lg border border-border-hover px-3.5 py-1.5 text-[13px] font-medium text-foreground-secondary transition-colors hover:border-white/[0.18] hover:bg-white/[0.02] hover:text-foreground"
+      className="pointer-coarse:h-9 shrink-0 rounded-lg border border-border-hover px-3.5 py-1.5 text-body font-medium text-foreground-secondary transition-colors hover:border-white/[0.18] hover:bg-white/[0.02] hover:text-foreground"
     >
       Open
     </button>
@@ -387,12 +387,12 @@ function DefaultBanner({
         />
       )}
       <div className="min-w-0 flex-1">
-        <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-foreground-muted">
+        <p className="font-mono text-micro uppercase tracking-[0.14em] text-foreground-muted">
           Testing new content against
         </p>
         <p className="mt-1 flex items-baseline gap-2 truncate">
-          <span className="text-[16px] font-semibold tracking-[-0.01em] text-foreground">{name}</span>
-          <span className="truncate text-[13px] text-foreground-muted">{sub}</span>
+          <span className="text-title font-semibold tracking-[-0.01em] text-foreground">{name}</span>
+          <span className="truncate text-body text-foreground-muted">{sub}</span>
         </p>
       </div>
       {action}
@@ -470,7 +470,7 @@ export function AudienceIndex({
 
         <CompositionFace audience={audience} />
 
-        {insight && <p className="truncate text-[13px] text-foreground-secondary">{insight}</p>}
+        {insight && <p className="truncate text-body text-foreground-secondary">{insight}</p>}
 
         <ProvLine audience={audience} />
 
@@ -519,10 +519,10 @@ export function AudienceIndex({
                     className="h-[10px] w-full rounded-[4px] border border-dashed border-white/[0.07] opacity-60"
                     aria-hidden="true"
                   />
-                  <p className="text-[13px] text-foreground-muted">
+                  <p className="text-body text-foreground-muted">
                     Simulation isn&apos;t available for {platform} yet.
                   </p>
-                  <p className="flex items-center gap-1.5 text-[12.5px] text-foreground-muted">
+                  <p className="flex items-center gap-1.5 text-label text-foreground-muted">
                     <span aria-hidden="true" className="h-[5px] w-[5px] rounded-full bg-foreground-muted" />
                     Analytics only
                   </p>

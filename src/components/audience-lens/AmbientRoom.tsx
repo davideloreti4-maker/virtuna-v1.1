@@ -351,7 +351,7 @@ export function AmbientRoom({
               How the room ranked your {rankedSiblings.length} {kindLabel.toLowerCase()}s
             </p>
             {topTie && (
-              <p className="mt-1.5 text-[12.5px] leading-snug text-[var(--color-foreground-muted)]">
+              <p className="mt-1.5 text-[12px] leading-snug text-[var(--color-foreground-muted)]">
                 Your top {topTie.count === 2 ? 'two' : topTie.count === 3 ? 'three' : topTie.count === 4 ? 'four' : topTie.count} are
                 tied at {topTie.stop}/{topTie.total} — the room can&rsquo;t separate them.
               </p>
@@ -378,7 +378,7 @@ export function AmbientRoom({
                           order the data refuses. The sort + bar + score carry the order; true ties
                           are named in the header above. */}
                       <span className="min-w-0 flex-1">
-                        <span className="line-clamp-2 text-[11.5px] leading-[1.35] text-foreground">
+                        <span className="line-clamp-2 text-[12px] leading-[1.35] text-foreground">
                           {s.conceptText}
                         </span>
                         <span className="mt-2 block h-[4px] overflow-hidden rounded-[4px] bg-white/[0.06]">
@@ -388,7 +388,7 @@ export function AmbientRoom({
                           />
                         </span>
                       </span>
-                      <span className="shrink-0 font-mono text-[11.5px] text-foreground tabular-nums">
+                      <span className="shrink-0 font-mono text-[12px] text-foreground tabular-nums">
                         {scoreLabel}
                       </span>
                       <span aria-hidden className="shrink-0 text-[var(--color-foreground-muted)]">
@@ -421,7 +421,7 @@ export function AmbientRoom({
                     >
                       ‹
                     </button>
-                    <span className="whitespace-nowrap font-mono text-[10.5px] tracking-[0.02em] text-foreground">
+                    <span className="whitespace-nowrap font-mono text-[10px] tracking-[0.02em] text-foreground">
                       <span className="text-[var(--color-foreground-muted)]">{kindLabel}</span> {focusIdx + 1}{' '}
                       <span className="text-[var(--color-foreground-muted)]">of {rankedSiblings.length}</span>
                     </span>
@@ -442,7 +442,7 @@ export function AmbientRoom({
                     type="button"
                     onClick={() => setCompareOpen(true)}
                     aria-label={`View all ${rankedSiblings.length} ${kindLabel.toLowerCase()}s ranked`}
-                    className="ml-auto shrink-0 whitespace-nowrap rounded-[7px] px-[9px] py-1 font-mono text-[10.5px] text-[var(--color-foreground-muted)] transition-colors hover:bg-white/[0.04] hover:text-[var(--color-foreground-secondary)]"
+                    className="ml-auto shrink-0 whitespace-nowrap rounded-[7px] px-[9px] py-1 font-mono text-[10px] text-[var(--color-foreground-muted)] transition-colors hover:bg-white/[0.04] hover:text-[var(--color-foreground-secondary)]"
                   >
                     ⤺ all {rankedSiblings.length}
                   </button>
@@ -454,7 +454,7 @@ export function AmbientRoom({
               <span className="text-[var(--color-foreground-muted)]">would stop</span>
             </p>
             <p
-              className="mt-2 truncate text-[12.5px] leading-snug text-[var(--color-foreground-muted)]"
+              className="mt-2 truncate text-[12px] leading-snug text-[var(--color-foreground-muted)]"
               title={conceptText}
             >
               {conceptText}
@@ -480,7 +480,7 @@ export function AmbientRoom({
                     aria-pressed={active}
                     onClick={() => setScale(opt.value)}
                     className={
-                      '-mb-px border-b pb-2 pt-1 text-[12.5px] font-medium transition-colors ' +
+                      '-mb-px border-b pb-2 pt-1 text-[12px] font-medium transition-colors ' +
                       (active
                         ? 'border-[var(--color-foreground-secondary)] text-foreground'
                         : 'border-transparent text-[var(--color-foreground-muted)] hover:text-[var(--color-foreground-secondary)]')
@@ -806,7 +806,7 @@ function PopulationView({
       <div className="flex justify-center gap-8 pb-1 pt-1">
         <div className="text-center">
           <span className="block font-serif text-[26px] leading-none text-foreground">{stayK}</span>
-          <span className="mt-1.5 block text-[10.5px] text-[var(--color-foreground-muted)]">
+          <span className="mt-1.5 block text-[10px] text-[var(--color-foreground-muted)]">
             would stay
           </span>
         </div>
@@ -814,7 +814,7 @@ function PopulationView({
           <span className="block font-serif text-[26px] leading-none text-[var(--color-accent-text)]">
             {bounceK}
           </span>
-          <span className="mt-1.5 block text-[10.5px] text-[var(--color-foreground-muted)]">
+          <span className="mt-1.5 block text-[10px] text-[var(--color-foreground-muted)]">
             would bounce
           </span>
         </div>
@@ -898,7 +898,7 @@ function PopulationView({
                 <span className="w-[46px] shrink-0 text-[12px] font-semibold text-[var(--color-foreground-secondary)]">
                   {n.name ?? n.label}
                 </span>
-                <span className="font-serif text-[13.5px] leading-[1.32] text-[var(--color-foreground-secondary)]">
+                <span className="font-serif text-[14px] leading-[1.32] text-[var(--color-foreground-secondary)]">
                   &ldquo;{stripWrappingQuotes(n.quote)}&rdquo;
                 </span>
               </li>
@@ -945,7 +945,7 @@ function PopulationView({
               type="button"
               onClick={() => void onRewriteTap(lever)}
               disabled={rewriteBusy}
-              className="w-full rounded-[11px] bg-action px-4 py-3 text-center text-[12.5px] font-semibold tracking-[0.005em] text-action-foreground transition-opacity hover:opacity-90 disabled:opacity-60"
+              className="w-full rounded-[11px] bg-action px-4 py-3 text-center text-[12px] font-semibold tracking-[0.005em] text-action-foreground transition-opacity hover:opacity-90 disabled:opacity-60"
               aria-label="Rewrite this concept to win back the viewers who bounced"
             >
               {rewriteBusy

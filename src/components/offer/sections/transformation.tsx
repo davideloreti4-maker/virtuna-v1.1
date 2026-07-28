@@ -68,7 +68,7 @@ function ContrastList({
             as="li"
             key={row}
             className={cn(
-              "flex items-start gap-2.5 text-[14.5px] leading-relaxed",
+              "flex items-start gap-2.5 text-[14px] leading-relaxed",
               known ? "text-foreground-secondary" : "text-foreground-muted",
             )}
           >

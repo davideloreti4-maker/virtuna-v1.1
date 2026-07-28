@@ -41,10 +41,10 @@ function Ring({ ring, mounted }: { ring: RingStat; mounted: boolean }) {
         </span>
       </div>
       <span className="flex flex-col items-center leading-tight">
-        <span className="font-mono text-[10.5px] font-medium tabular-nums text-foreground">
+        <span className="font-mono text-[10px] font-medium tabular-nums text-foreground">
           {ring.value}
         </span>
-        <span className="mt-px whitespace-nowrap text-[8.5px] font-medium uppercase tracking-[0.07em] text-foreground-muted">
+        <span className="mt-px whitespace-nowrap text-[8px] font-medium uppercase tracking-[0.07em] text-foreground-muted">
           {ring.label}
         </span>
       </span>

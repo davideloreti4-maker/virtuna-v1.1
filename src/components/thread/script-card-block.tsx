@@ -107,7 +107,7 @@ export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRend
             {metaBits.length > 0 && (
               <>
                 <span className="text-foreground-muted/50" aria-hidden="true">·</span>
-                <p className="truncate text-[12px] text-foreground-muted">{metaBits.join(' · ')}</p>
+                <p className="truncate text-label text-foreground-muted">{metaBits.join(' · ')}</p>
               </>
             )}
           </div>
@@ -115,7 +115,7 @@ export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRend
             type="button"
             onClick={handleCopyScript}
             aria-label="Copy the full script to clipboard"
-            className="inline-flex shrink-0 items-center gap-1 text-[12px] font-medium text-foreground-muted transition-colors hover:text-foreground-secondary"
+            className="inline-flex shrink-0 items-center gap-1 text-label font-medium text-foreground-muted transition-colors hover:text-foreground-secondary"
           >
             {copied ? (
               <>
@@ -146,7 +146,7 @@ export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRend
           return (
             <div key={index} className="flex gap-3 py-3">
               {/* Timing — the left column of the timeline. */}
-              <span className="w-10 shrink-0 pt-px text-right text-[11px] font-semibold tabular-nums text-foreground-secondary">
+              <span className="w-10 shrink-0 pt-px text-right text-caption font-semibold tabular-nums text-foreground-secondary">
                 {beat.timing}
               </span>
 
@@ -159,13 +159,13 @@ export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRend
               {/* Beat body — label + content, retention reasoning on expand. */}
               <div className="min-w-0 flex-1 pb-0.5">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[12px] font-semibold uppercase tracking-[0.05em] text-foreground">
+                  <span className="text-label font-semibold uppercase tracking-[0.05em] text-foreground">
                     {beat.label}
                   </span>
                   <button
                     type="button"
                     onClick={() => toggleBeat(index)}
-                    className="shrink-0 text-[12px] text-foreground-muted transition-colors hover:text-foreground-secondary"
+                    className="shrink-0 text-label text-foreground-muted transition-colors hover:text-foreground-secondary"
                     aria-expanded={isExpanded}
                     aria-label={isExpanded ? `Collapse ${beat.label} reasoning` : `Expand ${beat.label} reasoning`}
                   >
@@ -173,21 +173,21 @@ export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRend
                   </button>
                 </div>
 
-                <p className="mt-1 text-[13.5px] leading-relaxed text-foreground-secondary">{beat.content}</p>
+                <p className="mt-1 text-reading leading-relaxed text-foreground-secondary">{beat.content}</p>
 
                 {/* Filming cue — HOW to shoot this beat (camera/framing · b-roll or on-screen
                     text · delivery). Visible by default: this is the value the owner asked for —
                     the script now tells you what to say AND how to film it (owner 2026-07-22).
                     The `retentionMarker` (why it holds) stays on the caret below. */}
                 {beat.filming && (
-                  <p className="mt-1.5 flex gap-1.5 text-[12px] leading-relaxed text-foreground-muted">
+                  <p className="mt-1.5 flex gap-1.5 text-label leading-relaxed text-foreground-muted">
                     <VideoCamera size={13} weight="fill" className="mt-px shrink-0 opacity-70" aria-hidden="true" />
                     <span>{beat.filming}</span>
                   </p>
                 )}
 
                 {isExpanded && (
-                  <p className="mt-1.5 text-[12px] leading-relaxed text-foreground-muted">
+                  <p className="mt-1.5 text-label leading-relaxed text-foreground-muted">
                     ↳ {beat.retentionMarker}
                   </p>
                 )}
@@ -213,7 +213,7 @@ export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRend
               { term: 'Setup', value: production.setup },
               ...(production.edit ? [{ term: 'Edit', value: production.edit }] : []),
             ].map((row) => (
-              <div key={row.term} className="flex gap-2 text-[12.5px] leading-relaxed">
+              <div key={row.term} className="flex gap-2 text-label leading-relaxed">
                 <dt className="w-[86px] shrink-0 text-foreground-muted">{row.term}</dt>
                 <dd className="min-w-0 flex-1 text-foreground-secondary">{row.value}</dd>
               </div>

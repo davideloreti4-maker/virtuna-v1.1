@@ -1,4 +1,5 @@
 import { Skeleton } from "@/components/ui/skeleton";
+import { PageShell } from "@/components/surfaces/surface-header";
 
 /**
  * /audience route loading skeleton.
@@ -10,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
  */
 export default function AudienceLoading() {
   return (
-    <div className="mx-auto w-full max-w-[880px] px-4 pb-24 pt-6 lg:px-6">
+    <PageShell>
       {/* Header — heading left, the two actions right */}
       <div className="mb-6 flex items-center justify-between gap-4">
         <Skeleton className="h-7 w-36 rounded" />
@@ -35,6 +36,6 @@ export default function AudienceLoading() {
           ))}
         </div>
       </div>
-    </div>
+    </PageShell>
   );
 }

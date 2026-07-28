@@ -94,10 +94,10 @@ function StepRow({ step, i }: { step: Step; i: number }) {
             {step.title}
           </h3>
         </div>
-        <p className="mt-3 max-w-[42ch] text-[15.5px] leading-relaxed text-foreground-secondary">
+        <p className="mt-3 max-w-[42ch] text-[16px] leading-relaxed text-foreground-secondary">
           {step.body}
         </p>
-        <p className="mt-4 max-w-[42ch] border-l border-border pl-3 text-[12.5px] leading-relaxed text-foreground-muted">
+        <p className="mt-4 max-w-[42ch] border-l border-border pl-3 text-[12px] leading-relaxed text-foreground-muted">
           {step.caption}
         </p>
       </Reveal>

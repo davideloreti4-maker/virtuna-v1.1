@@ -20,12 +20,9 @@ import { useEffect, useMemo, useState } from "react";
 import { MagnifyingGlass, BookmarkSimple } from "@phosphor-icons/react";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+import { cn, FOCUS_RING as focusRing } from "@/lib/utils";
 import type { FeedFilterState } from "@/hooks/queries/use-feed";
 import type { FeedTab } from "@/lib/feed/feed-query";
-
-const focusRing =
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/10";
 
 /** A watched-channel option for the per-channel narrowing chips. */
 export interface WatchedChannelOption {

@@ -92,7 +92,7 @@ const PLATFORM_LABEL: Record<AccountView["platform"] | "custom", string> = {
 
 const ZONE = "rounded-2xl bg-white/[0.02]";
 const ZONE_LABEL =
-  "font-mono text-[10px] uppercase tracking-[0.12em] text-foreground-muted";
+  "font-mono text-micro uppercase tracking-[0.12em] text-foreground-muted";
 
 /** Rosters longer than this fold behind one quiet "N more…" row. */
 const PERSONA_FOLD = 6;
@@ -111,7 +111,7 @@ function MonoMeta({ parts }: { parts: (string | null)[] }) {
   const line = parts.filter(Boolean).join(" · ");
   if (!line) return null;
   return (
-    <span className="font-mono text-[10.5px] uppercase tracking-[0.12em] text-foreground-muted">
+    <span className="font-mono text-micro uppercase tracking-[0.12em] text-foreground-muted">
       {line}
     </span>
   );
@@ -129,7 +129,7 @@ function RailGroup({ label, children }: { label: string; children: React.ReactNo
 
 function Kv({ k, children }: { k: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-baseline justify-between gap-3 py-[3.5px] text-[13px]">
+    <div className="flex items-baseline justify-between gap-3 py-[3.5px] text-body">
       <span className="text-foreground-muted">{k}</span>
       <span className="text-right text-foreground-secondary">{children}</span>
     </div>
@@ -313,7 +313,7 @@ export function AudienceDetail({
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <header className="flex flex-wrap items-center gap-3.5">
         {account?.is_primary && audience && <LivenessDot />}
-        <h1 className="text-[22px] font-semibold tracking-[-0.01em] text-foreground">
+        <h1 className="text-heading font-semibold tracking-[-0.01em] text-foreground">
           {title}
         </h1>
         <MonoMeta parts={metaParts} />
@@ -321,7 +321,7 @@ export function AudienceDetail({
           <button
             type="button"
             onClick={() => router.push(`/audience/${audience!.id}?edit=1`)}
-            className="ml-auto text-[12px] text-foreground-muted transition-colors hover:text-foreground-secondary"
+            className="ml-auto text-label text-foreground-muted transition-colors hover:text-foreground-secondary"
           >
             Edit details
           </button>
@@ -344,8 +344,8 @@ export function AudienceDetail({
           {/* The empty shell states its one fact — the only state that earns colour. */}
           {emptyRoom && (
             <section className={cn(ZONE, "px-5 py-6")}>
-              <p className="text-[13.5px] text-[color:var(--color-warning-raw)]">Nothing yet</p>
-              <p className="mt-1 text-[13px] text-foreground-muted">
+              <p className="text-reading text-[color:var(--color-warning-raw)]">Nothing yet</p>
+              <p className="mt-1 text-body text-foreground-muted">
                 Read your @handle to fill it.
               </p>
               <Button
@@ -362,8 +362,8 @@ export function AudienceDetail({
           {/* Analytics-only account — no room behind it. */}
           {!audience && account && (
             <section className={cn(ZONE, "px-5 py-6")}>
-              <p className="text-[13.5px] text-foreground">No audience behind this account</p>
-              <p className="mt-1 text-[13px] text-foreground-muted">
+              <p className="text-reading text-foreground">No audience behind this account</p>
+              <p className="mt-1 text-body text-foreground-muted">
                 {account.platform === "tiktok"
                   ? "Build one from this handle."
                   : "Audience simulation reads TikTok accounts. This one syncs analytics."}
@@ -391,27 +391,27 @@ export function AudienceDetail({
                   className="group flex items-baseline gap-4 border-t border-white/[0.05] py-4 first:border-t-0"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="text-[14px] font-semibold tracking-[-0.005em] text-foreground">
+                    <p className="text-reading font-semibold tracking-[-0.005em] text-foreground">
                       {row.name}
                     </p>
                     {row.desc && (
-                      <p className="mt-[3px] text-[13px] leading-[1.5] text-foreground-muted">
+                      <p className="mt-[3px] text-body leading-[1.5] text-foreground-muted">
                         {row.desc}
                       </p>
                     )}
                     {row.receipt && (
-                      <p className="mt-1.5 border-l border-white/[0.12] pl-2.5 text-[11.5px] leading-relaxed text-foreground-muted">
+                      <p className="mt-1.5 border-l border-white/[0.12] pl-2.5 text-label leading-relaxed text-foreground-muted">
                         <span className="text-foreground-secondary">Evidence · </span>
                         {row.receipt}
                       </p>
                     )}
                   </div>
                   <div className="w-[88px] shrink-0 text-right">
-                    <span className="text-[13px] tabular-nums text-foreground-secondary">
+                    <span className="text-body tabular-nums text-foreground-secondary">
                       {row.sharePct}%
                     </span>
                     {row.disposition && (
-                      <span className="mt-0.5 block font-mono text-[9.5px] uppercase tracking-[0.08em] text-foreground-muted">
+                      <span className="mt-0.5 block font-mono text-micro uppercase tracking-[0.08em] text-foreground-muted">
                         {row.disposition}
                       </span>
                     )}
@@ -421,7 +421,7 @@ export function AudienceDetail({
                       type="button"
                       onClick={() => setEditingIndex(row.editIndex)}
                       aria-label={`Edit ${row.name}`}
-                      className="pointer-coarse:opacity-100 shrink-0 self-center rounded-md px-2 py-1 text-[12px] text-foreground-muted opacity-0 transition-opacity hover:bg-white/[0.06] hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10 group-hover:opacity-100"
+                      className="pointer-coarse:opacity-100 shrink-0 self-center rounded-md px-2 py-1 text-label text-foreground-muted opacity-0 transition-opacity hover:bg-white/[0.06] hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] group-hover:opacity-100"
                     >
                       Edit
                     </button>
@@ -432,7 +432,7 @@ export function AudienceDetail({
                 <button
                   type="button"
                   onClick={() => setShowAllPersonas(true)}
-                  className="w-full border-t border-white/[0.05] py-3 text-left text-[12.5px] text-foreground-muted transition-colors hover:text-foreground-secondary"
+                  className="w-full border-t border-white/[0.05] py-3 text-left text-label text-foreground-muted transition-colors hover:text-foreground-secondary"
                 >
                   {roster.length - PERSONA_FOLD} more…
                 </button>
@@ -460,10 +460,10 @@ export function AudienceDetail({
                       key={post.id}
                       className="flex h-[118px] w-[72px] shrink-0 flex-col justify-between overflow-hidden rounded-lg border border-white/[0.06] bg-[linear-gradient(165deg,#33322f_0%,#2a2927_60%,#262523_100%)] p-2"
                     >
-                      <p className="line-clamp-4 text-[9px] leading-[1.4] text-foreground-muted">
+                      <p className="line-clamp-4 text-micro leading-[1.4] text-foreground-muted">
                         {post.caption}
                       </p>
-                      <span className="font-mono text-[9.5px] tabular-nums text-foreground-secondary">
+                      <span className="font-mono text-micro tabular-nums text-foreground-secondary">
                         {formatCount(post.views)}
                       </span>
                     </div>
@@ -475,7 +475,7 @@ export function AudienceDetail({
                 <div className="mt-6 flex flex-wrap items-baseline gap-x-10 gap-y-4">
                   {source.figures.map((f) => (
                     <div key={f.label}>
-                      <div className="text-[23px] font-semibold tracking-[-0.02em] text-foreground tabular-nums">
+                      <div className="text-heading font-semibold tracking-[-0.02em] text-foreground tabular-nums">
                         {f.value}
                       </div>
                       <div className={cn(ZONE_LABEL, "mt-1 tracking-[0.12em]")}>{f.label}</div>
@@ -488,7 +488,7 @@ export function AudienceDetail({
                 <div className="mt-6">
                   {source.pillars.map((p) => (
                     <div key={p.name} className="mt-3 first:mt-0">
-                      <div className="mb-[5px] flex justify-between text-[12.5px]">
+                      <div className="mb-[5px] flex justify-between text-label">
                         <span className="text-foreground-secondary">{p.name}</span>
                         <span className="tabular-nums text-foreground-muted">
                           {Math.round(p.share * 100)}%
@@ -515,7 +515,7 @@ export function AudienceDetail({
             <section className={cn(ZONE, "mt-6 px-5 pb-5 pt-[18px]")}>
               <p className={cn(ZONE_LABEL, "mb-3")}>Source</p>
               {audience.calibration?.source === "description" && audience.goal_label && (
-                <p className="text-[13.5px] leading-relaxed text-foreground-secondary">
+                <p className="text-reading leading-relaxed text-foreground-secondary">
                   {audience.goal_label}
                 </p>
               )}
@@ -524,7 +524,7 @@ export function AudienceDetail({
                   {(audience.custom_context ?? []).map((c, i) => (
                     <li
                       key={i}
-                      className="rounded-lg bg-white/[0.03] px-3 py-2 text-[12.5px] text-foreground-secondary"
+                      className="rounded-lg bg-white/[0.03] px-3 py-2 text-label text-foreground-secondary"
                     >
                       {c.note}
                     </li>
@@ -534,7 +534,7 @@ export function AudienceDetail({
             </section>
           )}
 
-          {error && <p className="mt-4 text-[12.5px] text-error">{error}</p>}
+          {error && <p className="mt-4 text-label text-error">{error}</p>}
         </div>
 
         {/* ── Rail — one quiet fact column, no boxes ───────────────────────── */}
@@ -583,7 +583,7 @@ export function AudienceDetail({
               <button
                 type="button"
                 onClick={() => setDangerOpen(true)}
-                className="text-[12.5px] text-error/80 transition-colors hover:text-error"
+                className="text-label text-error/80 transition-colors hover:text-error"
               >
                 {dangerLabel}
               </button>

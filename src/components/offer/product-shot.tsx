@@ -188,7 +188,7 @@ export function ShotFigure({
           maxHeight={maxHeight}
         />
         {caption && (
-          <figcaption className="text-[12.5px] leading-relaxed text-foreground-muted">
+          <figcaption className="text-[12px] leading-relaxed text-foreground-muted">
             {caption}
           </figcaption>
         )}

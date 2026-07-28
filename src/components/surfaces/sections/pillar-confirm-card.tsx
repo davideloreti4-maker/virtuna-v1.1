@@ -51,7 +51,7 @@ export function PillarConfirmCard({ pillars }: { pillars: Pillar[] }) {
           review · once
         </span>
       </div>
-      <p className="m-0 mb-3 text-[11.5px] leading-[1.5] text-foreground-muted">
+      <p className="m-0 mb-3 text-[12px] leading-[1.5] text-foreground-muted">
         We spotted these in your recent posts. Rename or remove any — then confirm they’re yours.
       </p>
 
@@ -63,7 +63,7 @@ export function PillarConfirmCard({ pillars }: { pillars: Pillar[] }) {
               onChange={(e) => setNames((n) => ({ ...n, [p.id]: e.target.value }))}
               maxLength={40}
               aria-label={`Rename the ${p.name} theme`}
-              className="min-w-0 flex-1 rounded-lg border border-border bg-transparent px-2.5 py-1.5 text-[12.5px] text-foreground outline-none transition-colors focus:border-[color:var(--color-accent)]"
+              className="min-w-0 flex-1 rounded-lg border border-border bg-transparent px-2.5 py-1.5 text-[12px] text-foreground outline-none transition-colors focus:border-[color:var(--color-accent)]"
             />
             <button
               type="button"
@@ -93,7 +93,7 @@ export function PillarConfirmCard({ pillars }: { pillars: Pillar[] }) {
         type="button"
         onClick={confirm}
         disabled={saving}
-        className="mt-3 w-full rounded-lg bg-[color:var(--color-accent)] py-2 text-[12.5px] font-semibold text-[#1a1714] transition-opacity hover:opacity-90 disabled:opacity-60"
+        className="mt-3 w-full rounded-lg bg-[color:var(--color-accent)] py-2 text-[12px] font-semibold text-[#1a1714] transition-opacity hover:opacity-90 disabled:opacity-60"
       >
         {saving ? "Saving…" : kept.length === 0 ? "Confirm — start over" : "Looks right"}
       </button>

@@ -37,6 +37,7 @@ import {
   type SourceData,
 } from "@/components/audience/audience-detail";
 import { AudienceForm } from "@/components/audience/audience-form";
+import { PageShell } from "@/components/surfaces/surface-header";
 
 export const metadata = {
   title: "Audience | Maven",
@@ -55,21 +56,21 @@ function toView(a: ConnectedAccount): AccountView {
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="relative min-h-full text-foreground">
-      <div className="mx-auto w-full max-w-[880px] px-4 pb-24 pt-6 sm:px-6">
+      <PageShell>
         <div className="rv-in mb-6 flex items-center gap-3">
           <Link
             href="/audience"
             aria-label="Back to audiences"
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-foreground-secondary transition-colors hover:bg-white/[0.06] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-foreground-secondary transition-colors hover:bg-white/[0.06] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)]"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
-          <p className="text-[13px] text-foreground-muted">Audiences</p>
+          <p className="text-body text-foreground-muted">Audiences</p>
         </div>
         <div className="rv-in" style={{ animationDelay: "0.06s" }}>
           {children}
         </div>
-      </div>
+      </PageShell>
     </div>
   );
 }

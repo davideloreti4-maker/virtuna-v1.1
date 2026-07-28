@@ -325,7 +325,7 @@ function WatchingCard({
 function KindChip({ kind, dim }: { kind: RankKind; dim?: boolean }) {
   return (
     <span
-      className="flex-none font-mono text-[10.5px] uppercase tracking-[0.06em]"
+      className="flex-none font-mono text-[10px] uppercase tracking-[0.06em]"
       style={{ color: dim ? TONE.mute : TONE.faint }}
     >
       {kind}
@@ -375,7 +375,7 @@ function SealedRow({
           {/* a tested video keeps its native viral score in view — the % is the audience read on top */}
           {r.kind === "video" && r.viralScore != null ? (
             <span
-              className="flex-none font-mono text-[10.5px] uppercase tracking-[0.06em]"
+              className="flex-none font-mono text-[10px] uppercase tracking-[0.06em]"
               style={{ color: TONE.faint }}
             >
               {r.viralScore} viral
@@ -479,7 +479,7 @@ function QueuedRow({
         {/* the Simulate cue — its own persistent line on EVERY device (hover-reveal hid it from touch
             users and buried it on desktop). Brightens with the row on hover for a pointer affordance. */}
         <span
-          className="mt-2.5 ml-[26px] flex items-center gap-1.5 border-t pt-2 font-mono text-[10.5px] uppercase tracking-[0.06em] transition-colors group-hover:text-[#ece7de]"
+          className="mt-2.5 ml-[26px] flex items-center gap-1.5 border-t pt-2 font-mono text-[10px] uppercase tracking-[0.06em] transition-colors group-hover:text-[#ece7de]"
           style={{ borderColor: TONE.hair, color: TONE.dim }}
         >
           Simulate&nbsp;→
@@ -558,7 +558,7 @@ export function AmbientOverview({
         // Sheet mode inherits all three from its host instead.
         ...(sheet
           ? {}
-          : { height: "100%", background: "#181817", borderLeft: `1px solid ${TONE.border}` }),
+          : { height: "100%", background: "var(--color-chrome)", borderLeft: `1px solid ${TONE.border}` }),
         color: TONE.cream,
         fontFamily: "var(--font-sans, Inter, system-ui, sans-serif)",
       }}

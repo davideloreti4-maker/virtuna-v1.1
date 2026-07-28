@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { SurfaceEmptyState } from "@/components/ui/surface-empty-state";
 import { cn } from "@/lib/utils";
 import { filterHorizontalAudiences } from "@/lib/flags/horizontal";
+import { PageShell } from "@/components/surfaces/surface-header";
 
 /** Slim, client-serializable view of a connected account — the roster's ACCOUNTS
  *  zone reads it (and /audience/new's source picker imports the type). */
@@ -138,10 +139,10 @@ export function AudienceManager({ className, accounts = [] }: AudienceManagerPro
 
   return (
     <div className={cn("relative min-h-full text-foreground", className)}>
-      <div className="mx-auto w-full max-w-[880px] px-4 pb-24 pt-6 lg:px-6">
+      <PageShell>
         <header className="mb-6 flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="text-[19px] font-semibold tracking-[-0.01em] text-foreground lg:text-[22px]">
+            <h1 className="text-subhead font-semibold text-foreground lg:text-heading">
               Audiences
             </h1>
           </div>
@@ -186,7 +187,7 @@ export function AudienceManager({ className, accounts = [] }: AudienceManagerPro
         {!loading && !error && audiences.length > 0 && (
           <div className="rv-in">{renderIndex()}</div>
         )}
-      </div>
+      </PageShell>
     </div>
   );
 }

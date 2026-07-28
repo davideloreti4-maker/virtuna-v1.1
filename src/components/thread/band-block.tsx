@@ -76,7 +76,7 @@ export function BandBlockRenderer({ block }: BandBlockProps) {
           and Predict both copied it as their hero. §0.5.2 — the hero is the thing the user came
           for, "not a label, not a name, not a score". A band primitive has no deliverable of its
           own; it reports one. So it reads as a row, and the drift has no source to copy. */}
-      <div className="flex items-center gap-2.5 text-[13px]">
+      <div className="flex items-center gap-2.5 text-body">
         <span
           className="inline-flex shrink-0 items-center gap-1.5 font-semibold"
           style={{ color: zoneColor }}

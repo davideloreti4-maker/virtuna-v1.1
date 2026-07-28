@@ -107,7 +107,7 @@ export function StickyCta() {
           >
             <a
               {...linkProps}
-              className={`flex h-12 items-center gap-2.5 rounded-full px-6 text-[14.5px] font-semibold shadow-[0_18px_40px_-16px_rgba(0,0,0,0.7)] transition-transform hover:scale-[1.02] active:scale-[0.99] ${ctaBg}`}
+              className={`flex h-12 items-center gap-2.5 rounded-full px-6 text-[14px] font-semibold shadow-[0_18px_40px_-16px_rgba(0,0,0,0.7)] transition-transform hover:scale-[1.02] active:scale-[0.99] ${ctaBg}`}
             >
               {label}
               <span className={`text-[12px] font-normal ${ctaSub}`}>no account</span>

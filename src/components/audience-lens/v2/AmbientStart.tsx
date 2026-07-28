@@ -594,18 +594,18 @@ function SkillTile({
       </span>
       <span className="min-w-0 flex-1">
         <span
-          className="flex items-center gap-2 whitespace-nowrap text-[14.5px] font-medium leading-[1.2]"
+          className="flex items-center gap-2 whitespace-nowrap text-[14px] font-medium leading-[1.2]"
           style={{ color: TONE.cream }}
         >
           {skill.label}
           {soon ? (
-            <span className="font-mono text-[9.5px] uppercase tracking-[0.09em]" style={{ color: TONE.faint }}>
+            <span className="font-mono text-[10px] uppercase tracking-[0.09em]" style={{ color: TONE.faint }}>
               Soon
             </span>
           ) : null}
         </span>
         {/* one line, never wrapped — the lens is a glance, not a paragraph */}
-        <span className="mt-0.5 block truncate text-[11.5px] leading-[1.3]" style={{ color: TONE.faint }}>
+        <span className="mt-0.5 block truncate text-[12px] leading-[1.3]" style={{ color: TONE.faint }}>
           {skill.lens}
         </span>
       </span>

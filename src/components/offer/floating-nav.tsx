@@ -102,7 +102,7 @@ export function FloatingNav() {
             onClick={() =>
               window.scrollTo({ top: 0, behavior: reduced ? "auto" : "smooth" })
             }
-            className="flex items-center rounded-full text-foreground transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10"
+            className="flex items-center rounded-full text-foreground transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)]"
           >
             <MavenLogo size={24} />
           </button>
@@ -115,7 +115,7 @@ export function FloatingNav() {
             aria-expanded={open}
             aria-controls="offer-nav-menu"
             aria-label={open ? "Close menu" : "Open menu"}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full text-foreground-secondary transition-colors hover:bg-white/[0.06] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full text-foreground-secondary transition-colors hover:bg-white/[0.06] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)]"
           >
             {open ? (
               <X size={20} weight="bold" aria-hidden />

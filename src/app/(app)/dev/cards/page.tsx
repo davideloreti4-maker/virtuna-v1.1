@@ -1106,7 +1106,7 @@ export default function DevCardsPage() {
         </div>
 
         {/* Active-tab blurb */}
-        <p className="max-w-2xl pt-5 text-[12.5px] leading-relaxed text-foreground-muted">
+        <p className="max-w-2xl pt-5 text-[12px] leading-relaxed text-foreground-muted">
           {TABS.find((t) => t.id === tab)?.blurb}
         </p>
 
@@ -1475,7 +1475,7 @@ function SectionHead({
         <code className="rounded bg-white/[0.06] px-1.5 py-0.5 text-[11px] text-foreground-muted">{code}</code>
         {status && <StatusPill status={status} />}
       </div>
-      <p className="text-[12.5px] leading-relaxed text-foreground-muted">{note}</p>
+      <p className="text-[12px] leading-relaxed text-foreground-muted">{note}</p>
     </div>
   );
 }

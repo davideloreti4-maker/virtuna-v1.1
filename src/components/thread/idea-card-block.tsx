@@ -113,10 +113,10 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
       <div className="flex flex-col gap-3 px-4 pb-3 pt-4">
         {/* Title (hero) + the functional "your take" signal (a perspective only you can supply). */}
         <div className="flex items-start justify-between gap-3">
-          <h3 className="font-serif text-[21px] font-medium leading-[1.3] tracking-[-0.005em] text-foreground">{title}</h3>
+          <h3 className="font-serif text-heading font-medium leading-[1.3] tracking-[-0.005em] text-foreground">{title}</h3>
           {needsTake && (
             <span
-              className="mt-0.5 shrink-0 rounded-full border px-2 py-0.5 text-[11px] uppercase tracking-[0.05em]"
+              className="mt-0.5 shrink-0 rounded-full border px-2 py-0.5 text-caption uppercase tracking-[0.05em]"
               style={{ color: 'var(--color-warning)', borderColor: 'rgba(224,189,114,0.25)' }}
               title="This idea leans on a perspective only you can supply"
             >
@@ -126,14 +126,14 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
         </div>
 
         {/* Angle — the concept's premise + the muted "fits because" clause (whyItFits folded in). */}
-        <p className="text-[13px] leading-relaxed text-foreground-secondary">
+        <p className="text-body leading-relaxed text-foreground-secondary">
           {angle} <span className="text-foreground-muted">— {whyItFits}</span>
         </p>
 
         {/* Why it lands — the mechanism, promoted from expand to a labeled payload on the face. */}
         <div>
           <p className={`mb-1 ${SECTION_LABEL}`}>Why it lands</p>
-          <p className="text-[13.5px] leading-relaxed text-foreground-secondary">{mechanism}</p>
+          <p className="text-reading leading-relaxed text-foreground-secondary">{mechanism}</p>
         </div>
 
         {/* Recipe — Topic · Take · Format as a visible formula (this idea card's SIGNATURE; was
@@ -152,7 +152,7 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
               className={`min-w-0 flex-1 px-3 py-2 ${i > 0 ? 'border-l border-white/[0.06]' : ''}`}
             >
               <p className={SECTION_LABEL}>{cell.label}</p>
-              <p className="mt-0.5 line-clamp-2 text-[13px] leading-snug text-foreground-secondary">{cell.value}</p>
+              <p className="mt-0.5 line-clamp-2 text-body leading-snug text-foreground-secondary">{cell.value}</p>
             </div>
           ))}
         </div>
@@ -201,7 +201,7 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
-          className="flex items-center gap-1.5 self-start text-[12.5px] text-foreground-muted transition-colors hover:text-foreground-secondary"
+          className="flex items-center gap-1.5 self-start text-label text-foreground-muted transition-colors hover:text-foreground-secondary"
           aria-expanded={expanded}
           aria-label={expanded ? 'Collapse idea details' : 'Expand idea details'}
         >
@@ -219,7 +219,7 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
         <div className="flex flex-col gap-3 border-t border-white/[0.06] px-4 py-3">
           <div>
             <p className={`mb-1 ${SECTION_LABEL}`}>Seed hook</p>
-            <p className="text-[13.5px] leading-relaxed text-foreground-secondary">{seedHook}</p>
+            <p className="text-reading leading-relaxed text-foreground-secondary">{seedHook}</p>
           </div>
         </div>
       )}
@@ -236,13 +236,13 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
               {developing ? 'Writing hooks…' : 'Write hooks for this →'}
             </CardPrimaryAction>
             {developError && (
-              <p className="text-[12px]" style={{ color: 'var(--color-error)' }} role="alert">
+              <p className="text-label" style={{ color: 'var(--color-error)' }} role="alert">
                 {developError}
               </p>
             )}
           </>
         ) : (
-          <p className="text-[13px] text-foreground-muted">Hooks queued — check the thread below.</p>
+          <p className="text-body text-foreground-muted">Hooks queued — check the thread below.</p>
         )}
 
         <SaveAffordance className="ml-auto" item_type="idea" title={title} snapshot={block.props} />

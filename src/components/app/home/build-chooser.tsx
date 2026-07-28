@@ -47,7 +47,7 @@ const ROW_CLASS = cn(
   // 8px radius selectable row — matte, NO accent, hover-lift to #2f2e2b + 10% border.
   "flex w-full items-center gap-3 rounded-lg border border-white/[0.06] px-3 py-3 text-left",
   "text-foreground transition-colors hover:bg-[#2f2e2b] hover:border-white/[0.1]",
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10",
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)]",
 );
 
 export function BuildChooser({
@@ -155,7 +155,7 @@ export function BuildChooser({
                 <Article className="h-5 w-5 shrink-0 text-foreground-muted" weight="regular" />
                 <span className="flex flex-col gap-0.5">
                   <span className="text-sm text-foreground">From a description</span>
-                  <span className="text-[12px] text-foreground-muted">
+                  <span className="text-label text-foreground-muted">
                     Calibrate a General audience from a written brief.
                   </span>
                 </span>
@@ -165,7 +165,7 @@ export function BuildChooser({
                 <Paperclip className="h-5 w-5 shrink-0 text-foreground-muted" weight="regular" />
                 <span className="flex flex-col gap-0.5">
                   <span className="text-sm text-foreground">From evidence</span>
-                  <span className="text-[12px] text-foreground-muted">
+                  <span className="text-label text-foreground-muted">
                     Drop a chat, screenshot, or clip — Profile bakes a SIM.
                   </span>
                 </span>
@@ -175,7 +175,7 @@ export function BuildChooser({
                 <Stack className="h-5 w-5 shrink-0 text-foreground-muted" weight="regular" />
                 <span className="flex flex-col gap-0.5">
                   <span className="text-sm text-foreground">From a template</span>
-                  <span className="text-[12px] text-foreground-muted">
+                  <span className="text-label text-foreground-muted">
                     Clone a ready-made panel and edit it.
                   </span>
                 </span>
@@ -195,7 +195,7 @@ export function BuildChooser({
                 >
                   <Stack className="h-5 w-5 shrink-0 text-foreground-muted" weight="regular" />
                   <span className="flex-1 text-sm text-foreground">{tpl.name}</span>
-                  <span className="text-[11px] font-medium text-foreground-muted">
+                  <span className="text-caption font-medium text-foreground-muted">
                     {resolveTier(tpl)}
                   </span>
                 </button>
@@ -216,7 +216,7 @@ export function BuildChooser({
                   onChange={(e) => setName(e.target.value)}
                   maxLength={NAME_CAP}
                   placeholder="e.g. Analyst Panel"
-                  className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-sm text-foreground placeholder:text-foreground-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10"
+                  className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-sm text-foreground placeholder:text-foreground-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)]"
                 />
               </div>
 

@@ -93,7 +93,7 @@ function QuoteRow({ q, isLead }: { q: WallQuote; isLead: boolean }) {
       {/* Audience + archetype tag — small, muted, never coral. Multiple audiences when the
           same archetype landed on this exact line in more than one of them (see collectQuotes:
           merged into ONE row rather than printed twice). */}
-      <p className="pl-3 text-[11px] uppercase tracking-[0.05em] text-foreground-muted">
+      <p className="pl-3 text-caption uppercase tracking-[0.05em] text-foreground-muted">
         {q.audienceNames.join(' + ')} · {q.archetype.replace(/_/g, ' ')}
       </p>
     </div>
@@ -114,7 +114,7 @@ function VerdictGroup({
   if (quotes.length === 0) return null;
   return (
     <div className="flex flex-col gap-3">
-      <p className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.05em] text-foreground-muted">
+      <p className="flex items-center gap-1.5 text-caption uppercase tracking-[0.05em] text-foreground-muted">
         <span className={`h-[6px] w-[6px] shrink-0 rounded-full ${dotClass}`} aria-hidden="true" />
         {label}
         <span className="ml-0.5 font-normal text-foreground-muted/60">{quotes.length}</span>
@@ -149,7 +149,7 @@ export function VerbatimWall({ audiences }: VerbatimWallProps) {
     /* De-boxed (2026-07-21): the room is a hairline-separated SECTION of the Read card, not a
        nested bordered box within it (the within-card nesting #327/#329 removed everywhere else). */
     <div className="flex flex-col gap-5 border-t border-white/[0.06] pt-4">
-      <p className="text-[11px] uppercase tracking-[0.05em] text-foreground-muted">
+      <p className="text-caption uppercase tracking-[0.05em] text-foreground-muted">
         The room
       </p>
       <VerdictGroup label="Stopped the scroll" dotClass="bg-success" quotes={stopped} />
