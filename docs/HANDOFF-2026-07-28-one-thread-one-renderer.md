@@ -201,19 +201,23 @@ optimization — so treat them as a deliberate trade, not an oversight.
 
 ---
 
-## 8. LANE 2 — in progress (`lane/composer-chrome`, worktree `~/virtuna-composer`)
+## 8. LANE 2 — ALL FIVE STEPS DONE (`lane/composer-pill`, worktree `~/virtuna-composer`)
 
-**Steps 1–2 are MERGED to `main` — PR #395, squash `6392ff85`.** Steps 3–5 are **not started**.
+**Steps 1–2 merged to `main` — PR #395, `6392ff85`. Steps 3+4+5 are on `lane/composer-pill`,
+commit `c63f8a51`, and they LANDED TOGETHER on purpose** (see §8.7).
 
 | # | Step | State |
 |---|------|-------|
 | 1 | Prefill fix (was: add 4 skills to `SKILL_TOOLS`) | ✅ merged `6392ff85` |
 | 2 | Gate + bill agent-fired runs (+ the wall) | ✅ merged `6392ff85` |
-| 3 | Delete the skill pill | ⬜ not started |
-| 4 | Delete "Ask the room" | ⬜ not started |
-| 5 | Start-grid tile → one-shot → chat | ⬜ not started |
+| 3 | Delete the skill pill | ✅ `c63f8a51` |
+| 4 | Delete "Ask the room" | ✅ `c63f8a51` — owner RE-CONFIRMED against new facts (§8.7) |
+| 5 | Start-grid tile → one-shot → chat | ✅ `c63f8a51` |
 
-Suite **4813/0** on the merged tree · `tsc` clean · production build compiles.
+Suite **4824/0** flag off · **4825/0** flag on (441 files, from a 4813/0 baseline) · `tsc` clean ·
+production build compiles · **live walk-through PASSED on a production build** (§8.8).
+
+Owner calls taken this session: **remove the `ask` verb** · **KEEP the `/` slash menu**.
 
 ### §8.1 — Step 1's premise was false. Read this before trusting a plan again.
 
@@ -371,3 +375,105 @@ Carry these two habits in — both were earned expensively:
     the product onto an ungated, unbilled path.
   - Mutation-verify every guard. A test you have not watched fail is a guess.
 ```
+
+### §8.7 — Step 4: §8.5 was right to stop, and wrong about what was at stake
+
+§8.5 said deleting "Ask the room" would "delete a revenue line that is four days old". Measured
+before touching anything, and it was not:
+
+- **The verb and the rail's armed sim are two different doors** to `/api/tools/react`. The route,
+  its 1-credit price, the `＋ Test something of your own` cold door and `AmbientOverviewRail.fireSim`
+  are all untouched by step 4. What the ARM lane invested in was the rail's door, and it survives.
+- **`NEXT_PUBLIC_AMBIENT_V2` is NOT set in production** (`vercel env ls production` — 23 vars, not
+  among them). Prod still renders the LEGACY room, so the v2 rail the ARM lane built is not live yet.
+- **The verb billed for silence.** A throwaway probe rendered the real `Composer`, fired a
+  *successful* ask, and asked what reached the DOM:
+
+  | | react call | thought shown | verdict shown |
+  |---|---|---|---|
+  | flag OFF, fresh /home | 1 (billed) | ✗ | ✗ |
+  | flag OFF, existing thread | 1 (billed) | ✓ (collapsed pulse bar) | ✗ |
+  | flag ON, either state | 1 (billed) | ✗ | ✗ |
+
+  Under the v2 flag `AmbientOverviewRail`/`Sheet` never consumed `audienceAsks` or the thought
+  focus at all — so the direction the product is heading in made the verb *more* dead, not less.
+
+Its only doors were the pill (deleted the same day) and `/ask`. **The owner re-confirmed the
+original call with these facts in hand.**
+
+⚠️ **The deletion's other half:** the ONLY test asserting that a refused room reaction raises the
+credit wall was `composer-ask-credit-wall.test.tsx` — written against the *verb*. Deleting the verb
+would have taken that coverage with it and left the surviving, owner-invested door with none. The
+behaviour moved, so the test moved: `AmbientOverviewRail.credit-wall.test.tsx`.
+
+### §8.8 — Steps 3+5 are ONE change, and what building it actually taught
+
+**Why they cannot ship apart.** Deleting the pill removes the only way to *un-arm* yourself. Without
+the one-shot, a creator who tapped a Start tile — or merely reloaded a thread of hook cards, which
+used to restore the arm — would sit silently armed on a paid skill, and every plain sentence they
+typed afterwards would buy another pack. The pill's deletion is what makes the one-shot mandatory.
+
+**`activeTool` had to split in two.** `activeTool` = what the NEXT send does (submit router,
+placeholder, model tier, Start tile highlight, armed indicator). `runningTool` = what the LAST send
+did. Everything keyed on the run that is ON SCREEN moved to `runningTool`, and each would have
+broken silently otherwise:
+
+- `testSubmitPending` — the ~2-minute Test progress spine would have blanked the instant the run
+  started, because that is exactly when the arm reverts.
+- `testRunFailed` — the failure turn would never render.
+- `canRoomRewrite` / `onRoomRewrite` / the reseed effect — the "Rewrite to win back the N% who
+  bounced →" CTA appears AFTER a run produces cards, i.e. after the revert. It would have vanished
+  at the moment it becomes meaningful.
+
+**Three things only the build revealed:**
+
+1. 🔴 **The rehydration fetch is a round-trip, and it clobbered a live run.** Seeding `runningTool`
+   from the thread's last persisted card landed AFTER a run the creator had started in the meantime
+   and overwrote it — a funnel visitor's dead video Test rendered *nothing at all*. Guarded by
+   `hasDispatchedRunRef`; caught by the Test failure-turn suite the moment the seed was added.
+2. 🔑 **A retry must NAME its tool.** `handleSubmit()` reads the CURRENT arm, which by the time an
+   error card exists is chat — so "Retry the video test" would have sent the failed video's URL as a
+   chat message. Hence `handleSubmit(toolOverride?: ToolId)` and `handleSubmit("test")`.
+3. 🔑 **`armFired()` sits at each DISPATCH, never at the top of handleSubmit.** A branch that bails
+   (the General-verb audience gate, an expired session, a failed upload, a non-TikTok URL) must keep
+   its arm, or a creator whose upload failed would have to walk back to the Start grid.
+
+**The pill's replacement is not a smaller pill.** `armedIndicator` STATES the armed skill and offers
+exactly one control — `×`, back to chat. No menu. It exists because the placeholder was going to be
+the only signal that the next send spends 10 credits on a video Test, and a placeholder vanishes the
+moment you type. If it ever grows a popover it has become the thing that was deleted.
+
+**Nine guards, all mutation-verified** — each watched failing against a deliberate reintroduction of
+the bug it claims to catch (pill restored · one-shot removed · reload re-arming · retry inferring its
+tool · spine on the arm · the rehydration race · `ask` resurrected in the registry · the rail's wall
+removed).
+
+**LIVE WALK-THROUGH — PASSED 2026-07-28**, production build, real anonymous session, port 3210:
+
+| Check | Result |
+|---|---|
+| skill pill (`#composer-skill-pill`, `aria-label^="Skill:"`) | **absent** |
+| `/` slash menu | opens, 8 skills, groups Make/Test/Ask |
+| `/ask` · an "Ask the room" row | **gone** |
+| `?v=Test` launch → armed indicator | "A real video" |
+| indicator `×` | → chat placeholder, Test drop zone collapses to 0px |
+| Start grid Hooks tile | arms "Hooks"; **zero** API calls on arming |
+| send | `/api/tools/hooks` · indicator gone · placeholder back to chat |
+| **the next send** | **`/api/tools/chat`** — NOT a second hooks pack |
+| `/api/tools/react` | **never called**, on any path |
+| reload | thread restored, **no arm restored** |
+
+⚠️ Two traps re-confirmed while doing it: `NEXT_PUBLIC_*` inlines at BUILD time (the first build
+predated copying `.env.local`, so every Supabase client threw), and `~/virtuna-composer` starts with
+**no `.env.local`** — copy it from trunk. `NEXT_PUBLIC_AMBIENT_V2=true` was added to that copy so the
+Start grid renders; **production does not have it.**
+
+### §8.9 — Still open after Lane 2
+
+- 🔴 **`/api/account-read` still has NO gate and no `account` key in `CREDIT_COSTS`** — re-checked
+  this session, unchanged. An agent-dispatched account read is still free. It is a pricing call the
+  owner owes, not a code task.
+- `runSkillDispatch` (skill-dispatch.ts) remains off the live path with no billing seam (§8.4).
+- The composer's `ask` deletion left `asks` / `asking` / `onReask` on `<AudiencePresence>` as
+  optional props with **no producer**. Left in place deliberately: that component is already on the
+  v2 cutover's list, and widening this diff into it bought nothing.
