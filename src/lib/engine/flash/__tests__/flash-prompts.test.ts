@@ -229,3 +229,61 @@ describe("buildFlashUserContent — intent lens (GAP-C2)", () => {
     expect(sell).toContain('"scroll"');
   });
 });
+
+// ─── buildFlashUserContent — BEHAVIOUR lens (⑤'s loud dial, 2026-07-28) ──────────
+// The dial the ARM screen calls its one loud control, and which reached the engine through
+// nothing at all until this landed: the screen collected five settings and its caller dropped
+// every one, so each run was the audience default whatever was picked.
+describe("buildFlashUserContent — behaviour lens", () => {
+  const LENSES = ["finish", "share", "follow", "buy"] as const;
+
+  it("stop is the no-op default — undefined === stop, byte-identical", () => {
+    // Load-bearing: every existing caller omits the lens, so if `stop` were not byte-identical
+    // this change would silently re-word every hook/idea/script/remix reaction in the product.
+    expect(buildFlashUserContent("hook copy", "hook")).toBe(
+      buildFlashUserContent("hook copy", "hook", undefined, "socials", "stop"),
+    );
+    expect(buildFlashUserContent("hook copy", "hook", "sell", "socials")).toBe(
+      buildFlashUserContent("hook copy", "hook", "sell", "socials", "stop"),
+    );
+  });
+
+  it("stop introduces no lens block at all", () => {
+    const stop = buildFlashUserContent("hook copy", "hook", undefined, "socials", "stop");
+    expect(stop).not.toContain("Lens (this run)");
+  });
+
+  it.each(LENSES)("%s appends its directive and re-aims the band", (lens) => {
+    const msg = buildFlashUserContent("hook copy", "hook", undefined, "socials", lens);
+    expect(msg).toContain("Lens (this run)");
+    // The band means something different per lens, and the message must say so — a re-aimed
+    // verdict under the original band verbiage is a mislabelled measurement.
+    expect(msg).toContain("NOT the first-2s stop rate");
+  });
+
+  it.each(LENSES)("%s keeps the verdict tokens — no schema drift", (lens) => {
+    const msg = buildFlashUserContent("x", "hook", undefined, "socials", lens);
+    expect(msg).toContain('"stop"');
+    expect(msg).toContain('"scroll"');
+  });
+
+  it("the buy lens does NOT stack a second buying directive under a sell intent", () => {
+    // Both re-aim toward purchase. Pushing both would instruct the model to adopt a buying
+    // frame twice in one message; the lens is the more specific instruction and wins.
+    const msg = buildFlashUserContent("x", "hook", "sell", "socials", "buy");
+    expect(msg.match(/POTENTIAL BUYER/g)).toHaveLength(1);
+  });
+
+  it("the general frame gets its OWN lens wording, never the feed wording", () => {
+    // Without a general variant the loud dial would go silently inert whenever the scene is
+    // "No feed" (which resolves to domain `general`) — the one thing this dial must never do.
+    const general = buildFlashUserContent("x", "idea", undefined, "general", "finish");
+    expect(general).toContain("Lens (this run)");
+    expect(general).not.toContain("watch to the end"); // that is the socials wording
+  });
+
+  it.each(LENSES)("%s is live in the general frame too", (lens) => {
+    const msg = buildFlashUserContent("x", "idea", undefined, "general", lens);
+    expect(msg).toContain("Lens (this run)");
+  });
+});

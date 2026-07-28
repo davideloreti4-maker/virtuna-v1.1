@@ -31,12 +31,15 @@ import { createClient } from "@/lib/supabase/server";
 import { maybeMockSkillRun } from "@/lib/tools/mock/mock-sse";
 import { csrfGuard } from "@/lib/http/csrf-guard";
 import { rateLimitGuard } from "@/lib/http/rate-limit";
+import { billUsage, creditGate } from "@/lib/billing/credit-gate";
 import { createOpenThreadLazy } from "@/lib/threads/threads";
 import { resolveThreadAudience } from "@/lib/audience/resolve-thread-audience";
 import { GENERAL_BASELINE_SIGNATURE } from "@/lib/audience/general-baseline-signature";
 import { goalIntentToLens } from "@/lib/audience/intent-lens";
 import type { IntentLens } from "@/lib/audience/intent-lens";
+import { sceneToDomain } from "@/lib/engine/flash/flash-prompts";
 import { runFlashTextMode } from "@/lib/engine/flash/run-flash-text-mode";
+import type { DomainLens } from "@/lib/engine/flash/run-flash-text-mode";
 import { aggregateFlash } from "@/lib/engine/flash/flash-aggregate";
 import { buildReactionPanel } from "@/lib/engine/flash/build-reaction-panel";
 import { pinPredictedSignature } from "@/lib/tools/runners/predicted-pin";
@@ -61,6 +64,19 @@ const ReactBodySchema = z.object({
   framing: z.enum(["hook", "idea"]).optional(),
   // Per-run reaction lens (GAP-C2 / §P.10) — composer override; absent → audience default.
   intent: z.enum(["grow", "sell"]).optional(),
+  // ── ⑤'s ARM dials (2026-07-28). Every one of these was collected by the ARM screen and
+  // discarded by its caller, so every run was the audience default no matter what was picked.
+  //
+  // The BEHAVIOUR the room is scored for — ⑤'s loud dial. Absent → "stop", the engine's existing
+  // default, which emits no directive and is byte-identical to the pre-lens message.
+  lens: z.enum(["stop", "finish", "share", "follow", "buy"]).optional(),
+  // How they ENCOUNTER it. Maps to the engine's DomainLens: "No feed" → the merit-judging panel
+  // frame, anything else → the scrolling-FYP frame. Only scenes with a real frame are ever offered.
+  scene: z.string().trim().min(1).optional(),
+  // WHICH SLICE to read — an engine ARCHETYPE, never a display label (the labels are creator-
+  // editable). Absent → the whole room. A slice is answered from the population projection's own
+  // per-archetype split, so it is honoured only when that projection exists (see `slice` below).
+  segment: z.string().trim().min(1).optional(),
   // Opt-in FLYWHEEL capture (Ambient v2 Phase D). Default OFF → type-to-room stays ephemeral +
   // pins nothing. The Ambient v2 Overview's DELIBERATE "Simulate →" sets it: a fired sim pins its
   // PREDICTED disposition vector for later reconciliation (relocates the orphaned pin onto a real
@@ -119,6 +135,25 @@ export async function POST(request: Request): Promise<Response> {
   const limited = await rateLimitGuard(user.id, "react");
   if (limited) return limited;
 
+  // ── Credit gate (BILLING) — priced admission BEFORE any engine spend ─────────
+  // ⚠️ THIS ROUTE WAS FREE until 2026-07-28. It is real engine spend (a Flash panel run, plus
+  // a characterizeContent call on a v2-axis audience) and the `＋ Test something of your own`
+  // door promotes it to a primary action, so the owner priced it at 1 credit under its own
+  // `react` key. That makes the composer's "Ask the room" cost a credit — intended, not a
+  // side effect.
+  //
+  // No customer sees a 402 the day this ships: `creditGate` only refuses when
+  // BILLING_ENFORCE_QUOTA is on (off in production) — while `billUsage` starts metering
+  // immediately, which is the point of landing the gate before the door.
+  //
+  // ⚠️ The ONE case enforcement does NOT wait for that flag is an anonymous visitor
+  // (`enforced = isAnonymous || isQuotaEnforced()` — quota.ts). It cannot be reached here
+  // only because THE WALL at (1a) already 403s every anonymous session before this line. If
+  // that wall ever moves or goes, this gate starts refusing /go visitors with
+  // `trial_required` — react is not the DEMO_ACTION, so the demo does not cover it.
+  const { refusal, verdict: creditVerdict } = await creditGate(supabase, user, "react");
+  if (refusal) return refusal;
+
   // ── (2) Parse + Zod-validate body (CLAUDE.md boundary) ─────────────────────
   let rawBody: unknown = {};
   try {
@@ -133,7 +168,16 @@ export async function POST(request: Request): Promise<Response> {
       { status: 400 },
     );
   }
-  const { text, framing, intent: bodyIntent, pin: wantPin, persist: wantPersist } = parsed.data;
+  const {
+    text,
+    framing,
+    intent: bodyIntent,
+    pin: wantPin,
+    persist: wantPersist,
+    lens = "stop",
+    scene,
+    segment,
+  } = parsed.data;
 
   // ── (3) Load creator profile (cold-start safe — null profile is valid) ─────
   // Same select the ideas route uses; the runtime shape matches ProfileRow.
@@ -163,6 +207,19 @@ export async function POST(request: Request): Promise<Response> {
       ? bodyIntent ?? goalIntentToLens(audience.goal_intent)
       : undefined;
 
+  // ── (5c) Resolve the reaction FRAME (MODE-01 + ⑤'s scene dial) ──────────────
+  // Two independent reasons to drop the scrolling-FYP frame, so it is a union, not a precedence:
+  //   - the AUDIENCE is a panel (`mode: 'general'` — an analyst panel, a hiring panel, one named
+  //     person). They are not scrolling anything, whatever scene is picked.
+  //   - the RUN picks "No feed" — the creator wants to know how it lands away from a feed.
+  // ⚠️ This route passed NO domain until 2026-07-28, so it was the one text-mode caller that
+  // ignored `audience.mode` and fed a general-mode audience the TikTok-FYP prompt. It now agrees
+  // with two-audience-read.ts and simulate-runner.ts, which have always derived it this way.
+  const domain: DomainLens =
+    audience.mode === "general" || (scene ? sceneToDomain(scene) : "socials") === "general"
+      ? "general"
+      : "socials";
+
   // ── (6) Fire the Flash reaction AND characterize the content CONCURRENTLY ──
   // The population aggregate (Audience Sim v2 Stage 2) needs the content scored into the
   // signature's named axes — one extra LLM call. It does NOT depend on the flash result,
@@ -187,7 +244,15 @@ export async function POST(request: Request): Promise<Response> {
   // .catch, so a flash short-circuit here leaves no unhandled rejection.
   let personas: FlashPersona[];
   try {
-    const { result } = await runFlashTextMode(text, framing ?? "hook", panel, audienceRepaint, simIntent);
+    const { result } = await runFlashTextMode(
+      text,
+      framing ?? "hook",
+      panel,
+      audienceRepaint,
+      simIntent,
+      domain,
+      lens,
+    );
     personas = result.personas;
   } catch {
     return Response.json({ error: "reaction_failed" }, { status: 502 });
@@ -225,6 +290,45 @@ export async function POST(request: Request): Promise<Response> {
     }
   }
 
+  // ── (7b′) THE SLICE — the picked slice's own verdict (⑤'s segment dial) ─────
+  // A slice is READ OUT of the projection that already ran, never simulated separately, and that
+  // is a deliberate design decision worth stating:
+  //
+  //   The 10-archetype LLM panel CANNOT be filtered to one slice. Its prompt carries a "Critical
+  //   Divergence Requirement" — the ten verdicts MUST differ by profile — so feeding it ten copies
+  //   of one archetype asks for divergence from identical inputs. And a fraction taken from the
+  //   one-or-two matching slots ("1/1 stop") is noise dressed as a measurement.
+  //
+  //   `reactPopulation` already scores ~1,000 sampled individuals and reports a REAL per-archetype
+  //   split. `segments[i].total` is `share × N` — which is exactly the headcount the ARM screen
+  //   promises ("410 minds · the builders slice · 41% of the room"). So the honest slice verdict
+  //   already exists on every run; it just had no way to be asked for.
+  //
+  // A slice is therefore honoured only where the projection exists. When it does not (a signature
+  // with no v2 axes, or a characterize failure) the run is NOT quietly answered with the room's
+  // number under a slice's name — it comes back `honored: false` with a reason for the client to
+  // show. Fail visible: a wrong slice verdict is worse than an unavailable one.
+  const slice = ((): {
+    archetype: string;
+    honored: boolean;
+    stopPct?: number;
+    total?: number;
+    reason?: string;
+  } | null => {
+    if (!segment) return null; // "Everyone" — the whole-room run, unchanged
+    const seg = population?.segments.find((s) => s.archetype === segment);
+    if (!seg) {
+      return {
+        archetype: segment,
+        honored: false,
+        reason: population
+          ? "this audience has no such slice"
+          : "this audience's signature can't be projected into slices yet",
+      };
+    }
+    return { archetype: segment, honored: true, stopPct: seg.stopPct, total: seg.total };
+  })();
+
   // ── (7c) SEAL persistence (Ambient v2 Phase D verdict + Phase C depth, opt-in) ─
   // A DELIBERATE Overview sim (persist:true) writes its sealed verdict (pct + band) AND the depth
   // payload (the Stage-2 `population` projection + the exemplar `personas` + `scrollQuote`) to the
@@ -234,20 +338,30 @@ export async function POST(request: Request): Promise<Response> {
   // the depth rides along. `population` is now non-null for General too (the generic baseline
   // projection) → its seal carries the Population depth like a calibrated one; only presets stay
   // verdict-only. Non-fatal (writeSimSeal swallows failures) — never blocks the reaction.
+  //
+  // ⚠️ A SLICED run seals the SLICE's verdict, not the room's. The two are different questions
+  // ("does this land?" vs "does this land with Builders?") and the board shows them in one ranked
+  // column, so the seal also records WHICH slice — the row prints that label beside the %, which
+  // is what stops a 41%-of-Builders reading as 41%-of-the-room. A slice that could not be honoured
+  // seals NOTHING: there is no verdict to record, and the room's number is not a stand-in for it.
   if (wantPersist) {
     const m = /(\d+)\s*\/\s*(\d+)/.exec(fraction);
-    const pct =
+    const roomPct =
       m && Number(m[2]) > 0
         ? Math.max(0, Math.min(100, Math.round((Number(m[1]) / Number(m[2])) * 100)))
         : null;
+    const pct = slice ? (slice.honored ? slice.stopPct! : null) : roomPct;
     if (pct !== null) {
       await writeSimSeal(supabase, openThread, text, {
         pct,
-        band: band ?? null,
+        // The band describes the 10-persona ROOM read; it does not describe a slice, so a sliced
+        // seal carries none rather than borrowing one that was measured on a different population.
+        band: slice ? null : band ?? null,
         at: new Date().toISOString(),
         population,
         personas,
         scrollQuote,
+        ...(slice?.honored ? { slice: { archetype: slice.archetype, total: slice.total! } } : {}),
       });
     }
   }
@@ -258,5 +372,16 @@ export async function POST(request: Request): Promise<Response> {
   // thought — same as a generated card's own S3′ personas (The Room, Task B). Shape is
   // { archetype, verdict, quote } (FlashPersona) — the exact AmbientPersonaReaction shape.
   // `population` is the Stage 2 projection (null when the audience lacks v2 axes).
-  return Response.json({ fraction, scrollQuote, personas, population });
+  // `slice` is present only when a segment was ASKED for: `honored` runs carry that slice's own
+  // stopPct + headcount (what the client shows instead of the room's fraction), and un-honoured
+  // ones carry the reason, so the client can say why rather than showing the room's number under
+  // the slice's name. Null ⇒ a whole-room run, and the response is what it has always been.
+  //
+  // BILL — on delivery only. The reaction is computed and about to be returned; the two
+  // failure paths above (a Flash throw → 502, a refused admission → 402) both leave before
+  // here, so nothing that reaches this line can be un-delivered. A run whose SLICE could not
+  // be honoured still bills: the room read ran, the engine was paid for, and the response
+  // carries the real personas + population — the slice is one field of it, not the product.
+  await billUsage({ userId: user.id, action: "react", tier: creditVerdict.tier });
+  return Response.json({ fraction, scrollQuote, personas, population, slice });
 }

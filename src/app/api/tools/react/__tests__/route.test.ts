@@ -301,6 +301,116 @@ describe("POST /api/tools/react", () => {
     expect(panel.contentType).toBeNull();
   });
 
+  // ── ⑤'s ARM dials (2026-07-28) ───────────────────────────────────────────────
+  // The ARM screen collected lens · slice · scene · N · fidelity and its caller discarded all
+  // five, so every run was the audience default however the dials were set. These assert each
+  // one now REACHES the engine — the specific failure being guarded is a silent no-op, which
+  // no amount of green suite caught before, because nothing asserted the arguments.
+
+  it("the lens reaches runFlashTextMode (⑤'s loud dial)", async () => {
+    const { createClient } = await import("@/lib/supabase/server");
+    const { createOpenThreadLazy } = await import("@/lib/threads/threads");
+    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+
+    (createClient as ReturnType<typeof vi.fn>).mockResolvedValue(mockAuthedClient());
+    (createOpenThreadLazy as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "thread-1",
+      active_audience_id: null,
+    });
+    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
+      result: { personas: makePersonas(5) },
+      warnings: [],
+    });
+
+    const { POST } = await import("@/app/api/tools/react/route");
+    await POST(makeRequest({ text: "a hook", lens: "share" }));
+
+    const call = (runFlashTextMode as ReturnType<typeof vi.fn>).mock.calls[0]!;
+    expect(call[6]).toBe("share"); // the lens arg, not the framing and not the intent
+  });
+
+  it("omitting the lens sends the `stop` default — the byte-identical no-op", async () => {
+    const { createClient } = await import("@/lib/supabase/server");
+    const { createOpenThreadLazy } = await import("@/lib/threads/threads");
+    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+
+    (createClient as ReturnType<typeof vi.fn>).mockResolvedValue(mockAuthedClient());
+    (createOpenThreadLazy as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "thread-1",
+      active_audience_id: null,
+    });
+    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
+      result: { personas: makePersonas(5) },
+      warnings: [],
+    });
+
+    const { POST } = await import("@/app/api/tools/react/route");
+    await POST(makeRequest({ text: "a hook" }));
+
+    expect((runFlashTextMode as ReturnType<typeof vi.fn>).mock.calls[0]![6]).toBe("stop");
+  });
+
+  it('the scene "No feed" selects the general frame; TikTok keeps socials', async () => {
+    const { createClient } = await import("@/lib/supabase/server");
+    const { createOpenThreadLazy } = await import("@/lib/threads/threads");
+    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+
+    (createClient as ReturnType<typeof vi.fn>).mockResolvedValue(mockAuthedClient());
+    (createOpenThreadLazy as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "thread-1",
+      active_audience_id: null,
+    });
+    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
+      result: { personas: makePersonas(5) },
+      warnings: [],
+    });
+
+    const { POST } = await import("@/app/api/tools/react/route");
+    await POST(makeRequest({ text: "a hook", scene: "No feed" }));
+    expect((runFlashTextMode as ReturnType<typeof vi.fn>).mock.calls[0]![5]).toBe("general");
+
+    vi.clearAllMocks();
+    (createClient as ReturnType<typeof vi.fn>).mockResolvedValue(mockAuthedClient());
+    (createOpenThreadLazy as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "thread-1",
+      active_audience_id: null,
+    });
+    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
+      result: { personas: makePersonas(5) },
+      warnings: [],
+    });
+    await POST(makeRequest({ text: "a hook", scene: "TikTok" }));
+    expect((runFlashTextMode as ReturnType<typeof vi.fn>).mock.calls[0]![5]).toBe("socials");
+  });
+
+  it("a general-MODE audience takes the general frame whatever the scene says", async () => {
+    // This route passed no domain at all until 2026-07-28 — it was the one text-mode caller
+    // that ignored `audience.mode` and fed an analyst panel the TikTok-FYP prompt.
+    const { createClient } = await import("@/lib/supabase/server");
+    const { createOpenThreadLazy } = await import("@/lib/threads/threads");
+    const { getAudience } = await import("@/lib/audience/audience-repo");
+    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+
+    (createClient as ReturnType<typeof vi.fn>).mockResolvedValue(mockAuthedClient());
+    (createOpenThreadLazy as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "thread-1",
+      active_audience_id: "aud-panel",
+    });
+    (getAudience as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ...makeAudienceWithAxes(),
+      mode: "general",
+    });
+    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
+      result: { personas: makePersonas(5) },
+      warnings: [],
+    });
+
+    const { POST } = await import("@/app/api/tools/react/route");
+    await POST(makeRequest({ text: "a proposal", scene: "TikTok" }));
+
+    expect((runFlashTextMode as ReturnType<typeof vi.fn>).mock.calls[0]![5]).toBe("general");
+  });
+
   it("resolves the audience server-side from the open thread (never the body)", async () => {
     const { createClient } = await import("@/lib/supabase/server");
     const { createOpenThreadLazy } = await import("@/lib/threads/threads");
@@ -463,6 +573,159 @@ describe("POST /api/tools/react", () => {
     expect(payload.sim_seals["my new hook"]!.pct).toBe(60);
     expect(payload.sim_seals["my new hook"]!.band).toBe("Strong");
     expect(eq).toHaveBeenCalledWith("id", "thread-1");
+  });
+
+  it("a SLICED run seals the slice's own verdict, not the room's, and records which slice", async () => {
+    // The whole point of the dial: asking about one slice and sealing the room's number would
+    // answer a question nobody asked — and the two land in the same ranked column, so the seal
+    // must also carry WHICH slice, or the row reads as a verdict on the whole audience.
+    const { createClient } = await import("@/lib/supabase/server");
+    const { createOpenThreadLazy } = await import("@/lib/threads/threads");
+    const { getAudience } = await import("@/lib/audience/audience-repo");
+    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { characterizeContent } = await import("@/lib/audience/characterize-content");
+
+    const eq = vi.fn().mockResolvedValue({ error: null });
+    const update = vi.fn().mockReturnValue({ eq });
+    (createClient as ReturnType<typeof vi.fn>).mockResolvedValue({
+      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: "user-123" } } }) },
+      from: vi.fn((table: string) =>
+        table === "threads"
+          ? { update }
+          : {
+              select: () => ({
+                eq: () => ({ maybeSingle: () => Promise.resolve({ data: { niche_primary: "fitness" }, error: null }) }),
+              }),
+            },
+      ),
+    });
+    (createOpenThreadLazy as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "thread-1",
+      active_audience_id: "aud-calibrated",
+    });
+    (getAudience as ReturnType<typeof vi.fn>).mockResolvedValue(makeAudienceWithAxes());
+    // 6/10 → the ROOM's fraction is 60%. The slice's number must not be this.
+    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
+      result: { personas: makePersonas(6) },
+      warnings: [],
+    });
+    // A craft-heavy hook: `niche_deep_buyer` has craft interest 0.9 and a long attention span,
+    // `lurker` has neither — so the two slices genuinely diverge rather than both tracking 60%.
+    (characterizeContent as ReturnType<typeof vi.fn>).mockResolvedValue({
+      topics: { craft: 0.95 },
+      hookStrength: 0.9,
+      novelty: 0.5,
+      hype: 0.1,
+      slowness: 0.1,
+    });
+
+    const { POST } = await import("@/app/api/tools/react/route");
+    const res = await POST(
+      makeRequest({ text: "a craft hook", persist: true, segment: "niche_deep_buyer" }),
+    );
+
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.slice).toMatchObject({ archetype: "niche_deep_buyer", honored: true });
+
+    // The sealed pct is the SLICE's stop rate, read from the projection's own per-archetype split.
+    const seg = json.population.segments.find(
+      (s: { archetype: string }) => s.archetype === "niche_deep_buyer",
+    );
+    const payload = update.mock.calls[0]![0] as {
+      sim_seals: Record<string, { pct: number; band: string | null; slice?: { archetype: string; total: number } }>;
+    };
+    const seal = payload.sim_seals["a craft hook"]!;
+    expect(seal.pct).toBe(seg.stopPct);
+    expect(seal.slice).toEqual({ archetype: "niche_deep_buyer", total: seg.total });
+    // The band describes the 10-persona ROOM read and does not describe a slice, so it is not
+    // borrowed onto one.
+    expect(seal.band).toBeNull();
+  });
+
+  it("an UN-HONOURABLE slice seals nothing — the room's number is not a stand-in", async () => {
+    // No population (no v2 axes) ⇒ there is no slice verdict to give. Answering with the room's
+    // number under the slice's name is the exact silent lie this whole lane exists to remove,
+    // so the run comes back with a reason and the row stays honestly queued.
+    const { createClient } = await import("@/lib/supabase/server");
+    const { createOpenThreadLazy } = await import("@/lib/threads/threads");
+    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+
+    const eq = vi.fn().mockResolvedValue({ error: null });
+    const update = vi.fn().mockReturnValue({ eq });
+    (createClient as ReturnType<typeof vi.fn>).mockResolvedValue({
+      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: "user-123" } } }) },
+      from: vi.fn((table: string) =>
+        table === "threads"
+          ? { update }
+          : {
+              select: () => ({
+                eq: () => ({ maybeSingle: () => Promise.resolve({ data: { niche_primary: "fitness" }, error: null }) }),
+              }),
+            },
+      ),
+    });
+    (createOpenThreadLazy as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "thread-1",
+      active_audience_id: null, // General → no calibrated signature for this slice
+    });
+    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
+      result: { personas: makePersonas(6) },
+      warnings: [],
+    });
+
+    const { POST } = await import("@/app/api/tools/react/route");
+    const res = await POST(
+      makeRequest({ text: "a hook", persist: true, segment: "no_such_archetype" }),
+    );
+
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.slice.honored).toBe(false);
+    expect(json.slice.reason).toBeTruthy();
+    // NOTHING was sealed — not the room's 60% wearing the slice's name.
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("omitting the segment is unchanged — the room's fraction seals, with no slice", async () => {
+    const { createClient } = await import("@/lib/supabase/server");
+    const { createOpenThreadLazy } = await import("@/lib/threads/threads");
+    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+
+    const eq = vi.fn().mockResolvedValue({ error: null });
+    const update = vi.fn().mockReturnValue({ eq });
+    (createClient as ReturnType<typeof vi.fn>).mockResolvedValue({
+      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: "user-123" } } }) },
+      from: vi.fn((table: string) =>
+        table === "threads"
+          ? { update }
+          : {
+              select: () => ({
+                eq: () => ({ maybeSingle: () => Promise.resolve({ data: { niche_primary: "fitness" }, error: null }) }),
+              }),
+            },
+      ),
+    });
+    (createOpenThreadLazy as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "thread-1",
+      active_audience_id: null,
+    });
+    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
+      result: { personas: makePersonas(6) },
+      warnings: [],
+    });
+
+    const { POST } = await import("@/app/api/tools/react/route");
+    const res = await POST(makeRequest({ text: "a hook", persist: true }));
+
+    const json = await res.json();
+    expect(json.slice).toBeNull();
+    const payload = update.mock.calls[0]![0] as {
+      sim_seals: Record<string, { pct: number; band: string | null; slice?: unknown }>;
+    };
+    expect(payload.sim_seals["a hook"]!.pct).toBe(60); // the room's 6/10
+    expect(payload.sim_seals["a hook"]!.band).toBe("Strong");
+    expect(payload.sim_seals["a hook"]!.slice).toBeUndefined();
   });
 
   it("omitting persist writes NO seal — type-to-room leaves the thread untouched", async () => {

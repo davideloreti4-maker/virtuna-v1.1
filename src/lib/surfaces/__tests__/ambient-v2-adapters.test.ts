@@ -25,13 +25,13 @@ const audience: AudienceMeta = {
   calibratedFrom: "TikTok",
   tier: "flash",
   scene: "TikTok",
-  sceneOptions: ["TikTok", "Instagram", "No feed"],
+  sceneOptions: ["TikTok", "No feed"],
   segments: [
-    { label: "Builders", share: 0.41 },
-    { label: "Scrollers", share: 0.26 },
-    { label: "Drop-ins", share: 0.14 },
-    { label: "Skeptics", share: 0.12 },
-    { label: "Lurkers", share: 0.08 },
+    { archetype: "niche_buyer", label: "Builders", share: 0.41 },
+    { archetype: "casual_scroller", label: "Scrollers", share: 0.26 },
+    { archetype: "cross_niche_curiosity", label: "Drop-ins", share: 0.14 },
+    { archetype: "tough_crowd", label: "Skeptics", share: 0.12 },
+    { archetype: "lurker", label: "Lurkers", share: 0.08 },
   ],
 };
 
@@ -145,7 +145,10 @@ describe("buildSimulateData", () => {
     expect(vm.provenance).toBe("TikTok"); // calibratedFrom, NOT the recency badge
     expect(vm.scene).toBe("TikTok");
     expect(vm.fidelity).toBe("flash");
-    expect(vm.segments[0]).toEqual({ label: "Everyone", share: 1 });
+    // "Everyone" carries a NULL archetype — that absence is what the route reads to tell a
+    // whole-room run from a sliced one, so it is asserted rather than merely tolerated.
+    expect(vm.segments[0]).toEqual({ archetype: null, label: "Everyone", share: 1 });
+    expect(vm.segments[1]).toMatchObject({ archetype: "niche_buyer", label: "Builders" });
     expect(vm.segments).toHaveLength(audience.segments.length + 1);
     expect(vm.lenses.map((l) => l.key)).toEqual(["stop", "finish", "share", "follow", "buy"]);
     expect(vm.intake.some((i) => i.family === "screen" && i.status === "active")).toBe(true);

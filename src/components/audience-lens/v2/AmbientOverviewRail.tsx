@@ -32,7 +32,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AmbientOverview, type AmbientPresentation, type WatchingRun } from "./AmbientOverview";
-import { AmbientSimulate, type StimulusKind } from "./AmbientSimulate";
+import { AmbientSimulate, type StimulusKind, type SimulateConfig } from "./AmbientSimulate";
 import { AmbientDetail } from "./AmbientDetail";
 import {
   buildOverviewData,
@@ -46,10 +46,11 @@ import {
   type PopulationPersona,
 } from "@/lib/surfaces/ambient-v2-population";
 import { buildVideoDomainTemplate } from "@/lib/surfaces/ambient-v2-brain";
-import { audienceToMeta } from "@/lib/surfaces/ambient-v2-audience-meta";
+import { audienceToMeta, humanizeArchetype } from "@/lib/surfaces/ambient-v2-audience-meta";
 import type { Audience } from "@/lib/audience/audience-types";
 import type { AmbientCardDescriptor } from "@/components/app/home/use-ambient-focus";
 import type { PopulationAggregate } from "@/lib/audience/population";
+import { reportCredit402 } from "@/lib/billing/credit-wall";
 import type { SimSealVideo } from "@/lib/threads/sim-seals";
 import {
   isSealedSimSeal,
@@ -69,6 +70,9 @@ interface RailSnapshot {
   population?: PopulationAggregate | null;
   personas?: PopulationPersona[];
   scrollQuote?: string;
+  /** Present ⇒ `pct` is THIS SLICE's stop rate, not the room's. The row prints `label` beside the
+   *  %, because the two land in the same ranked column and only the label distinguishes them. */
+  slice?: { archetype: string; label: string };
 }
 
 /** Sheet-mode shell: the host sheet is the flex column that owns the height cap, so every surface
@@ -244,6 +248,10 @@ export function AmbientOverviewRail({
         population: seal.population,
         personas: seal.personas,
         scrollQuote: seal.scrollQuote,
+        // A sliced seal must survive reload still knowing it is a slice — otherwise the row comes
+        // back after a refresh looking like a reading of the whole room. The persisted seal has
+        // only the archetype, so the label falls back to it (humanised at render).
+        ...(seal.slice ? { slice: { archetype: seal.slice.archetype, label: humanizeArchetype(seal.slice.archetype) } } : {}),
       };
     },
     [sessionSeals, persistedSeals, descriptors],
@@ -267,8 +275,14 @@ export function AmbientOverviewRail({
   );
 
   // Fire the REAL sealed sim for one ranked stimulus and seal its row with the measured fraction.
+  //
+  // `config` is what ⑤ ARMED — the lens, the slice, the scene. It used to be dropped on the floor
+  // (`onSimulate={() => fireSim(armedId)}`), so every run was the audience default however the
+  // dials were set. It is OPTIONAL because the quick-simulate door on a queued row fires without
+  // ever opening ⑤, and that path genuinely has no config: absent ⇒ the room, the stop lens, the
+  // inherited scene — which is exactly what it always did.
   const fireSim = useCallback(
-    async (id: string) => {
+    async (id: string, config?: SimulateConfig) => {
       const d = descriptors.find((x) => x.id === id);
       const text = (d?.conceptText ?? "").trim();
       if (text.length === 0) return;
@@ -290,19 +304,54 @@ export function AmbientOverviewRail({
           // A DELIBERATE Overview sim: pin:true captures the predicted vector for the flywheel
           // (relocated `pinPredictedSignature`); persist:true writes the sealed verdict to the
           // thread so the seal survives reload. Type-to-room omits both and stays ephemeral.
-          body: JSON.stringify({ text, pin: true, persist: true, ...(framing ? { framing } : {}) }),
+          //
+          // `framing` and `lens` are DIFFERENT axes and both ride along: framing is what the
+          // stimulus IS (a hook vs an idea, from the descriptor's kind), the lens is what this run
+          // MEASURES (would they stop / finish / share / follow / buy). Conflating them is the
+          // mistake an earlier reading of this screen made.
+          body: JSON.stringify({
+            text,
+            pin: true,
+            persist: true,
+            ...(framing ? { framing } : {}),
+            ...(config
+              ? {
+                  lens: config.lensKey,
+                  scene: config.scene,
+                  ...(config.segment ? { segment: config.segment } : {}),
+                }
+              : {}),
+          }),
           signal: controller.signal,
         });
         if (controller.signal.aborted) return;
-        if (!res.ok) throw new Error("reaction_failed");
+        if (!res.ok) {
+          // THE WALL (2026-07-28): `/api/tools/react` is priced at 1 credit, so this fetch can
+          // now come back 402. Announce it so the ONE paywall dialog renders the server's
+          // sentence; the row still drops back to honestly queued below, which is the right
+          // resting state — a refused run produced no verdict to show.
+          const err = await res.json().catch(() => null);
+          reportCredit402(res.status, err);
+          throw new Error("reaction_failed");
+        }
         const data: {
           fraction?: string;
           scrollQuote?: string;
           personas?: PopulationPersona[];
           population?: PopulationAggregate | null;
+          slice?: { archetype: string; honored: boolean; stopPct?: number; total?: number; reason?: string } | null;
         } = await res.json();
         if (controller.signal.aborted) return;
-        const pct = fractionToStopPct(data.fraction ?? "");
+        // A SLICED run's verdict is the slice's own stop rate, not the room's fraction — asking
+        // about Builders and sealing the room's number would answer a question nobody asked.
+        // An un-honoured slice seals NOTHING (the row stays queued) rather than falling back to
+        // the room, which would be the same lie arriving quietly.
+        const sliced = data.slice ?? null;
+        const pct = sliced
+          ? sliced.honored
+            ? sliced.stopPct ?? null
+            : null
+          : fractionToStopPct(data.fraction ?? "");
         // Seal the row only with a real, parseable fraction (honesty spine — never a fabricated %).
         // Capture the full snapshot (population/personas) too, so the depth drill opens without a re-run.
         if (pct !== null) {
@@ -313,6 +362,9 @@ export function AmbientOverviewRail({
               population: data.population ?? null,
               personas: data.personas,
               scrollQuote: data.scrollQuote,
+              ...(sliced?.honored
+                ? { slice: { archetype: sliced.archetype, label: config?.segmentLabel ?? sliced.archetype } }
+                : {}),
             },
           }));
         }
@@ -448,7 +500,9 @@ export function AmbientOverviewRail({
           presentation={presentation}
           onClose={() => setDevelopId(null)}
           // Phase D-minimal: fire the real react sim → sealed measured % replaces the projection.
-          onSimulate={() => fireSim(armedId)}
+          // The ARMED config travels with it — until 2026-07-28 this was `() => fireSim(armedId)`
+          // and the five dials ⑤ collects were discarded here, one call short of the engine.
+          onSimulate={(config) => fireSim(armedId, config)}
         />
       </div>
     );
@@ -489,9 +543,14 @@ export function AmbientOverviewRail({
   // Merge the seal sources into the per-descriptor-id map buildOverviewData reads: a fresh in-session
   // fire wins; else a persisted seal matched by trimmed concept text (survives reload); else queued.
   const measured: Record<string, number> = {};
+  const measuredSlice: Record<string, string> = {};
   for (const d of descriptors) {
-    const pct = snapshotFor(d.id)?.pct;
-    if (typeof pct === "number") measured[d.id] = pct;
+    const snap = snapshotFor(d.id);
+    if (typeof snap?.pct === "number") {
+      measured[d.id] = snap.pct;
+      // Whose percentage it is travels with the percentage itself.
+      if (snap.slice) measuredSlice[d.id] = snap.slice.label;
+    }
   }
   // Tested videos from the seal store → ranked in alongside the concepts. A revealed video ranks by
   // its measured attention %; an unrevealed one stays queued (viral score shown, % withheld).
@@ -514,7 +573,7 @@ export function AmbientOverviewRail({
       revealed: false,
     })),
   ];
-  const overview = buildOverviewData({ audience: meta, descriptors, measured, videos, watching });
+  const overview = buildOverviewData({ audience: meta, descriptors, measured, measuredSlice, videos, watching });
   return (
     <div className={sheet ? SHEET_SHELL : "flex h-full w-full"}>
       <AmbientOverview

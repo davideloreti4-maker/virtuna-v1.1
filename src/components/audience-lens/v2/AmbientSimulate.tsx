@@ -30,8 +30,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { TONE } from "./AmbientDetail";
+import type { BehaviorLens } from "@/lib/engine/flash/flash-prompts";
 import type { AmbientPresentation, SimTier } from "./AmbientOverview";
-import { CloseButton, IntakeStep, Kick, SHEET_STYLE } from "./SimulateIntake";
+import { CloseButton, CollectStep, IntakeStep, Kick, SHEET_STYLE } from "./SimulateIntake";
 
 // ── view-model ───────────────────────────────────────────────────────────────
 
@@ -51,6 +52,30 @@ export interface IntakeOption {
   stimulusKind?: StimulusKind; // what an active pick arms the run with
 }
 
+/**
+ * WHAT THE CREATOR BROUGHT — the stimulus collected by the cold intake, as opposed to the one
+ * a skill generated.
+ *
+ * Until 2026-07-28 there was no such thing: `cold` mode read `data.stimulus.text` off its
+ * CALLER and only swapped the `kind`, so picking "Screen a draft" armed a run against whatever
+ * text the host happened to be holding. There was not one `<input>` in the intake to type into.
+ *
+ * `text` is the single field every consumer can rely on — it is what the ARM screen shows as
+ * the thing under test, and for a draft it IS the stimulus the run sends. A video brings a
+ * `file` or a `url` beside it (the two ways in, one door) and `text` is then only its NAME:
+ * a filename or the link, never something to feed a text run. The two are mutually exclusive
+ * by construction — the collect step clears one when the other is set.
+ */
+export interface BroughtStimulus {
+  kind: StimulusKind;
+  /** What the ARM screen prints under "testing". For a draft, also the run's actual stimulus. */
+  text: string;
+  /** Video door, upload path → `/api/analyze` `input_mode: "video_upload"` (Phase 4). */
+  file?: File;
+  /** Video door, link path → `/api/analyze` `input_mode: "tiktok_url"` (Phase 4). */
+  url?: string;
+}
+
 /** The rank a `develop` entry is deepening — the tie-back (sim refines this, never contradicts it). */
 export interface DevelopContext {
   band: string; // "Strong"
@@ -59,13 +84,20 @@ export interface DevelopContext {
 }
 
 export interface SimLens {
-  key: "stop" | "finish" | "share" | "follow" | "buy";
+  /** The engine's OWN lens union — imported, never re-declared. These two lived as separate
+   *  string unions until 2026-07-28; re-typing them here is how the loud dial and the directive
+   *  table it drives are kept from silently drifting apart (a mismatch is now a tsc error, not a
+   *  run that quietly scores the wrong behaviour). */
+  key: BehaviorLens;
   label: string;
   gloss: string; // "stop scrolling" → "Would they stop scrolling?"
   stage: string; // the funnel stage it reads — "Attention · the first 2 seconds"
 }
 
 export interface SimSegment {
+  /** The engine archetype this slice reads, or null for "Everyone" (the whole-room run).
+   *  `label` is creator-editable, so it names the slice for a human and identifies it to nobody. */
+  archetype: string | null;
   label: string;
   share: number; // 0..1 of the calibrated room
 }
@@ -75,6 +107,9 @@ export interface SimulateData {
   room: string; // "Your audience"
   provenance: string; // what it was calibrated FROM (fact)
   scene: string; // how they ENCOUNTER this stimulus (choice)
+  /** The scenes the ENGINE can simulate — each maps to a real DomainLens. Never a superset:
+   *  an option with no frame behind it runs a different simulation than the one it names. */
+  sceneOptions: string[];
   fidelity: SimTier;
   lenses: SimLens[];
   defaultLens: number;
@@ -86,7 +121,12 @@ export interface SimulateData {
 export interface SimulateConfig {
   lensKey: SimLens["key"];
   custom?: string;
-  segment: string;
+  /** The picked slice's ENGINE archetype, or null for the whole room. Sent to the route.
+   *  (This was the display LABEL until 2026-07-28 — and every field of this object was
+   *  discarded by the caller, so nothing ever caught it.) */
+  segment: string | null;
+  /** The picked slice's display label — for copy and for the seal's provenance line only. */
+  segmentLabel: string;
   n: number;
   scene: string;
   fidelity: SimTier;
@@ -94,6 +134,12 @@ export interface SimulateConfig {
 
 const TIER_N: Record<SimTier, number> = { flash: 1000, max: 10000 };
 const TIER_LABEL: Record<SimTier, string> = { flash: "Flash", max: "Max" };
+
+/** The v1 fidelity lock, per stimulus — the tier that actually has a live path, and why. */
+const FIDELITY_LOCK: Record<"text" | "video", { tier: SimTier; reason: string }> = {
+  text: { tier: "flash", reason: "text reads run Flash — Max for text isn’t wired yet" },
+  video: { tier: "max", reason: "video reads run Max — there is no Flash video path" },
+};
 
 /** Deterministic thousands separator (toLocaleString is locale-dependent → SSR/client drift). */
 const withCommas = (n: number) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
@@ -223,8 +269,19 @@ function ArmCard({
   const [lensIdx, setLensIdx] = useState(data.defaultLens);
   const [custom, setCustom] = useState("");
   const [segIdx, setSegIdx] = useState(0);
-  const [fidelity, setFidelity] = useState<SimTier>(data.fidelity);
   const [scene, setScene] = useState(data.scene);
+
+  // FIDELITY IS LOCKED IN v1, and which way it locks is measured, not chosen:
+  //   video → Max   there is no Flash video path at all (the react route is text-only), and the
+  //                 rail already hardcodes tier "max" for video seals.
+  //   text  → Flash text→Max has no live caller anywhere in the product (only a test fixture,
+  //                 eval-runner, and the unmounted legacy content-form), so offering it would
+  //                 ship an unexercised engine path. The develop entry locks here too: `fireSim`
+  //                 has only ever POSTed the Flash react route, so no variant has ever run Max.
+  // Rendered as a locked chip WITH its reason — a dial that silently does nothing, or one that
+  // quietly disappears between variants, both read as bugs.
+  const lock = FIDELITY_LOCK[stimulus.kind === "video" ? "video" : "text"];
+  const fidelity = lock.tier;
 
   // custom text overrides the chip selection, compiling to the nearest lens (shown to the user)
   const compiledIdx = custom.trim() ? compileToLens(custom, lenses) : lensIdx;
@@ -436,10 +493,14 @@ function ArmCard({
           <span className="text-[13px]" style={{ color: TONE.faint }}>
             in <span style={{ color: TONE.dim }}>{room}</span> · as
           </span>
+          {/* Only scenes the engine can actually simulate (data.sceneOptions). This used to splice
+              in a hardcoded "Instagram" plus the audience's provenance — neither of which has a
+              reaction frame behind it, so picking either ran the TikTok simulation under a
+              different name. Provenance is still shown, as the FACT it is, by the mismatch tag. */}
           <Dropdown
             label={scene}
             align="right"
-            options={[provenance, "Instagram", "No feed"].filter((v, i, a) => a.indexOf(v) === i).map((s) => ({ key: s, label: s }))}
+            options={data.sceneOptions.map((s) => ({ key: s, label: s }))}
             onSelect={setScene}
           />
         </div>
@@ -466,7 +527,8 @@ function ArmCard({
               onSimulate?.({
                 lensKey: activeLens.key,
                 custom: custom.trim() || undefined,
-                segment: seg.label,
+                segment: seg.archetype,
+                segmentLabel: seg.label,
                 n,
                 scene,
                 fidelity,
@@ -477,20 +539,24 @@ function ArmCard({
           >
             Simulate <span aria-hidden>↑</span>
           </button>
-          <Dropdown
-            label={`SIM-1 ${TIER_LABEL[fidelity]}`}
-            align="right"
-            options={(["flash", "max"] as SimTier[]).map((t) => ({
-              key: t,
-              label: (
-                <span className="flex w-full items-center justify-between gap-6">
-                  <span>SIM-1 {TIER_LABEL[t]}</span>
-                  <span style={{ color: TONE.faint }}>{withCommas(TIER_N[t])}</span>
-                </span>
-              ),
-            }))}
-            onSelect={(k) => setFidelity(k as SimTier)}
-          />
+          {/* LOCKED, not hidden — the reason rides with it (see FIDELITY_LOCK). */}
+          <div className="flex flex-col items-end gap-1">
+            <span
+              data-testid="sim-fidelity-locked"
+              data-tier={fidelity}
+              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[14px]"
+              style={{ border: `1px solid ${TONE.hair}`, background: TONE.well, color: TONE.dim }}
+            >
+              SIM-1 {TIER_LABEL[fidelity]}
+              <svg width="10" height="10" viewBox="0 0 12 12" aria-hidden style={{ color: TONE.faint }}>
+                <rect x="2.5" y="5.5" width="7" height="5" rx="1.2" fill="none" stroke="currentColor" strokeWidth="1.2" />
+                <path d="M4.25 5.5V4a1.75 1.75 0 0 1 3.5 0v1.5" fill="none" stroke="currentColor" strokeWidth="1.2" />
+              </svg>
+            </span>
+            <span className="text-right text-[11px]" style={{ color: TONE.faint }}>
+              {lock.reason}
+            </span>
+          </div>
         </div>
       </div>
     </div>
@@ -516,16 +582,42 @@ export function AmbientSimulate({
   /** With `connected`: `rail` (own ground + left hairline + 440 cap) vs `sheet` (host owns them). */
   presentation?: AmbientPresentation;
 }) {
-  // cold entry lands on the intake step; develop entry is pre-filled → straight to the arm card.
+  // COLD is now THREE steps, not two: pick a door → bring the thing → arm it.
+  //
+  // The middle one is new (2026-07-28). Cold used to jump from the door straight to the arm card
+  // and take its stimulus from `data.stimulus.text` — the CALLER's text, with only the `kind`
+  // swapped to the door's. So "Screen a draft" armed a run against whatever the host happened to
+  // be holding, and there was no way to bring anything of your own. `brought` is what the creator
+  // actually typed/dropped/pasted, and on the cold path it is the ONLY source of the stimulus.
   const [picked, setPicked] = useState<IntakeOption | null>(null);
-  const onIntake = mode === "cold" && !picked;
+  const [brought, setBrought] = useState<BroughtStimulus | null>(null);
 
-  if (onIntake) {
+  if (mode === "cold" && !picked) {
     return <IntakeStep data={data} onClose={onClose} onPick={setPicked} />;
   }
 
-  // the stimulus: from the picked intake door (cold) or the pre-filled data (develop).
-  const stimulus = picked?.stimulusKind ? { text: data.stimulus.text, kind: picked.stimulusKind } : data.stimulus;
+  if (mode === "cold" && picked && !brought) {
+    return (
+      <CollectStep
+        data={data}
+        opt={picked}
+        onClose={onClose}
+        // Back to the doors clears what was collected under the OLD door — a link pasted for
+        // "Test a real video" is not a draft, and carrying it across would arm the wrong thing.
+        onBack={() => {
+          setBrought(null);
+          setPicked(null);
+        }}
+        onCollect={setBrought}
+      />
+    );
+  }
+
+  // The stimulus: what the creator BROUGHT (cold), or the pre-filled rank (develop). Cold never
+  // falls back to `data.stimulus` — reaching the arm card cold without a brought stimulus is not
+  // a state this component can produce, and silently showing the caller's text would be the exact
+  // bug this step exists to remove.
+  const stimulus = brought ?? data.stimulus;
 
   return (
     <ArmCard
@@ -533,7 +625,9 @@ export function AmbientSimulate({
       stimulus={stimulus}
       develop={mode === "develop" ? data.develop : undefined}
       onClose={onClose}
-      onBack={mode === "cold" ? () => setPicked(null) : undefined}
+      // Cold: back to the COLLECT step (keep the door), so a creator fixing a typo in their draft
+      // does not get sent all the way out to "What are you testing?".
+      onBack={mode === "cold" ? () => setBrought(null) : undefined}
       onSimulate={onSimulate}
       connected={connected}
       presentation={presentation}

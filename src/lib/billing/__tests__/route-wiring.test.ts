@@ -13,9 +13,14 @@ import { CREDIT_COSTS } from "@/lib/pricing";
  * `creditGate` line from one of eleven routes, which the route's own green suite would
  * never notice — enforcement is off in tests, so nothing fails when billing vanishes.
  *
- * FREE routes are listed too, as a decision, not an omission: chat and type-to-room are
- * free ON PURPOSE (the glue of the product), and the test fails if someone starts billing
- * them without moving them to the paid list.
+ * FREE routes are listed too, as a decision, not an omission: chat is free ON PURPOSE (the
+ * glue of the product), and the test fails if someone starts billing it without moving it to
+ * the paid list.
+ *
+ * ⚠️ `react/route.ts` was on that free list until 2026-07-28. It is a real Flash panel run,
+ * and the `＋ Test something of your own` door promotes it to a primary action, so the owner
+ * priced it at 1 credit under its own `react` key. Moving it here is the guard's whole point
+ * working in the other direction: the list is where a pricing decision is written down.
  */
 
 const ROOT = join(__dirname, "../../../app/api/tools");
@@ -33,17 +38,21 @@ const PAID_ROUTES: Record<string, keyof typeof CREDIT_COSTS> = {
   "profile/route.ts": "profile",
   "explore/route.ts": "explore",
   "remix/run/route.ts": "remix",
+  "react/route.ts": "react",
 };
 
 /**
  * Free on purpose. Billing appearing here is a product decision that needs a human.
  *
- * `chat/route.ts` USED to be on this list, and that was the wrong shape for it: the conversation is
- * free by decision, but the agent it runs can dispatch PAID skills, and a blanket "no billUsage in
- * this file" assertion is satisfied just as well by the meter being missing as by it being
- * deliberately absent. It has its own test below, which pins both halves separately.
+ * The list emptied out from BOTH ends on 2026-07-28, which is the guard working as intended —
+ * it is where a pricing decision gets written down:
+ *   - `react/route.ts` moved UP to the paid list (a real Flash panel run, priced at 1 credit).
+ *   - `chat/route.ts` moved OUT to its own test below. A blanket "no billUsage in this file"
+ *     assertion was the wrong shape for it: the conversation is free by decision, but the agent
+ *     it runs dispatches PAID skills, and the assertion is satisfied just as well by the meter
+ *     being MISSING as by it being deliberately absent. Both halves are pinned separately now.
  */
-const FREE_ROUTES = ["react/route.ts", "test/card/route.ts"];
+const FREE_ROUTES = ["test/card/route.ts"];
 
 describe("every paid tool route gates and bills", () => {
   for (const [file, action] of Object.entries(PAID_ROUTES)) {
@@ -113,6 +122,22 @@ describe("every paid tool route gates and bills", () => {
     expect(src, "dispatched skills must be gated").toContain("creditGate(supabase, user, action)");
     expect(src, "dispatched skills must be billed").toContain("billUsage(");
     expect(src, "the loop must be handed the till").toContain("billing: skillBilling(");
+  });
+
+  it("the react route walls the anonymous visitor BEFORE it gates them", () => {
+    // Enforcement is opt-in for customers (`BILLING_ENFORCE_QUOTA`, off in production) but NOT
+    // for an anonymous session: `enforced = isAnonymous || isQuotaEnforced()`. `react` is not
+    // the DEMO_ACTION, so a /go visitor reaching this gate is refused `trial_required` — a live
+    // 402 on a route that shipped its gate on the promise that nobody would see one yet.
+    //
+    // The only reason they cannot reach it is ORDER: THE WALL 403s every anonymous session
+    // first. That ordering is load-bearing, and nothing else in the file says so.
+    const src = readFileSync(join(ROOT, "react/route.ts"), "utf8");
+    const wall = src.indexOf("isSealedVisitor(user)");
+    const gate = src.indexOf("creditGate(");
+    expect(wall, "react/route.ts must wall the anonymous visitor").toBeGreaterThan(-1);
+    expect(gate, "react/route.ts must gate").toBeGreaterThan(-1);
+    expect(wall, "THE WALL must run before the credit gate").toBeLessThan(gate);
   });
 
   it("the analyze route (score + remix decode) gates at the Reading price", () => {

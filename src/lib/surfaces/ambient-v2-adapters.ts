@@ -46,8 +46,9 @@ export interface AudienceMeta {
   scene: string; // how they ENCOUNTER the stimulus (the current platform choice)
   sceneOptions: string[];
   /** The signature's named slices (each `share` is 0..1 of the room). Drives Simulate's segment
-   *  picker + Overview's on-call cast. */
-  segments: { label: string; share: number }[];
+   *  picker + Overview's on-call cast. `archetype` is the ENGINE key the projection is read by;
+   *  `label` is creator-editable display text and must never be used to identify a slice. */
+  segments: { archetype: string; label: string; share: number }[];
 }
 
 const TIER_LABEL: Record<SimTier, string> = { flash: "SIM-1 Flash", max: "SIM-1 Max" };
@@ -101,6 +102,9 @@ export interface OverviewInput {
   /** Measured would-stop % per descriptor id, from FIRED sims (sealed). An id present here ⇒ that
    *  row is `simulated`; absent ⇒ `queued` (withheld % = 0). */
   measured?: Record<string, number>;
+  /** For ids whose measured % is ONE SLICE's rather than the room's: that slice's display name.
+   *  Travels beside `measured` because the number alone cannot say what it is a percentage OF. */
+  measuredSlice?: Record<string, string>;
   /** Tested videos from the seal store — ranked in alongside the concepts (see `OverviewVideoRow`). */
   videos?: OverviewVideoRow[];
   /** A sim in flight — sealed until n-of-n decide (`verdictPct` revealed only then). */
@@ -123,12 +127,17 @@ export function buildOverviewData({
   audience,
   descriptors,
   measured,
+  measuredSlice,
   videos,
   watching,
 }: OverviewInput): OverviewData {
   const conceptRows: RankedStimulus[] = descriptors.map((d) => {
     const m = measured?.[d.id];
     const sealed = typeof m === "number";
+    // The slice label rides ONLY on a sealed row: an unsealed row has no measured number for it
+    // to qualify, and labelling a projection with a slice it was never run against is the bug
+    // this field exists to prevent.
+    const sliceLabel = sealed ? measuredSlice?.[d.id] : undefined;
     return {
       id: d.id,
       stimulus: d.conceptText,
@@ -136,6 +145,7 @@ export function buildOverviewData({
       personaStops: parsePersonaStops(d.fraction),
       kind: rankKindOf(d.kind),
       state: sealed ? "simulated" : "queued",
+      ...(sliceLabel ? { sliceLabel } : {}),
     };
   });
 
@@ -194,10 +204,13 @@ export function buildSimulateData({ audience, stimulus, develop }: SimulateInput
     room: audience.name,
     provenance: audience.calibratedFrom,
     scene: audience.scene,
+    sceneOptions: audience.sceneOptions,
     fidelity: audience.tier,
     lenses: BEHAVIORAL_LENSES,
     defaultLens: 0,
-    segments: [{ label: "Everyone", share: 1 }, ...audience.segments],
+    // "Everyone" carries NO archetype — that absence is what marks the whole-room run, and it is
+    // what the route reads to decide between the room's verdict and a slice's.
+    segments: [{ archetype: null, label: "Everyone", share: 1 }, ...audience.segments],
     develop,
     intake: INTAKE_DOORS,
   };
