@@ -166,6 +166,12 @@ export interface ChatAgentStreamInput {
    * free tools (request_input / search_corpus) — nothing runs on those.
    */
   onDispatch?: (skill: string) => void;
+  /**
+   * Fired when a billable skill is REFUSED by the gate, with the structured 402 body. The route
+   * streams it so the client can raise the credit wall — the same dialog, with the same server
+   * sentence, that a 402 from the skill's own route would have raised.
+   */
+  onCreditWall?: (quota: unknown) => void;
 }
 
 export interface ChatAgentStreamResult {
@@ -203,7 +209,18 @@ export interface SkillBilling {
    * the loop hands it to the model as a tool result to relay, since a mid-stream turn cannot
    * become a 402.
    */
-  gate: (action: BillableAction) => Promise<{ allowed: boolean; reason?: string; tier?: NumenTier | null }>;
+  gate: (action: BillableAction) => Promise<{
+    allowed: boolean;
+    reason?: string;
+    tier?: NumenTier | null;
+    /**
+     * The structured 402 body a dedicated route would have RETURNED. Carried so the client can
+     * raise the same paywall dialog here: a streaming turn can't answer 402, and without this the
+     * creator hits the wall as a sentence in the chat with no upgrade door — the worst possible
+     * moment to lose one. The loop just relays it; `credit-wall.ts` decides what to draw.
+     */
+    quota?: unknown;
+  }>;
   /**
    * Bill a DELIVERED run. Best-effort by contract — never throws, never blocks the answer. Takes
    * the `tier` the gate resolved, so the ledger row is stamped with the plan that was checked
@@ -552,7 +569,7 @@ export async function runChatAgentStream(
       // creator can afford one. A run count is a blast radius, not consent to spend, and it was
       // the only thing standing between an agent decision and the paid engine.
       // The verdict's tier carries forward to the bill (see below).
-      let admission: { allowed: boolean; reason?: string; tier?: NumenTier | null } | null = null;
+      let admission: { allowed: boolean; reason?: string; tier?: NumenTier | null; quota?: unknown } | null = null;
       if (skill.billable) {
         if (!deps.billing) {
           // FAIL CLOSED. No till wired → the run does not happen. The alternative (run it free)
@@ -572,6 +589,9 @@ export async function runChatAgentStream(
         admission = await deps.billing.gate(skill.billable);
         if (!admission.allowed) {
           toolCalls.push({ name: skill.name, ran: false, note: "credit gate refused" });
+          // Raise the SAME paywall the dedicated routes raise. The model still relays a sentence
+          // below (the turn must not just stop), but the dialog is what carries the upgrade door.
+          if (admission.quota !== undefined) input.onCreditWall?.(admission.quota);
           messages.push({
             role: "tool",
             tool_call_id: call.id,

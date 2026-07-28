@@ -35,7 +35,7 @@ import { insertMessage, loadMessages } from "@/lib/threads/messages";
 import { runChatPipeline, isColdStart } from "@/lib/tools/runners/chat-runner";
 import { runChatAgentStream, type SkillBilling } from "@/lib/tools/chat-agent-loop";
 import { FREE_SKILL_TOOLS } from "@/lib/tools/skill-dispatch";
-import { billUsage, creditGate, quotaRefusalMessage } from "@/lib/billing/credit-gate";
+import { billUsage, creditGate, quotaRefusalBody, quotaRefusalMessage } from "@/lib/billing/credit-gate";
 import { creditCost, type BillableAction } from "@/lib/pricing";
 import type { QuotaUser } from "@/lib/billing/quota";
 import type { NumenTier } from "@/lib/whop/config";
@@ -116,10 +116,16 @@ function skillBilling(supabase: Awaited<ReturnType<typeof createClient>>, user: 
   return {
     gate: async (action: BillableAction) => {
       const { refusal, verdict } = await creditGate(supabase, user, action);
-      // `refusal` is the 402 Response the routes return; here only its VERDICT matters — the
-      // Response itself is discarded, which is the price of keeping one gate implementation.
       if (refusal) {
-        return { allowed: false, reason: quotaRefusalMessage(verdict, creditCost(action)), tier: verdict.tier };
+        const cost = creditCost(action);
+        return {
+          allowed: false,
+          reason: quotaRefusalMessage(verdict, cost),
+          tier: verdict.tier,
+          // The same body the 402 carries, so the client can raise the SAME wall dialog. Rebuilt
+          // rather than read off `refusal` (a Response whose body is a stream we would consume).
+          quota: quotaRefusalBody(verdict, cost),
+        };
       }
       return { allowed: true, tier: verdict.tier };
     },
@@ -441,6 +447,9 @@ export async function POST(request: Request): Promise<Response> {
               // (display key), so the spine labels itself + seeds that skill's stage plan before the
               // first stage event. One frame, additive — old clients simply ignore the event.
               onDispatch: (skill) => send("dispatch", { skill }),
+              // A streaming turn cannot answer 402, so the refusal body rides its own frame and the
+              // client raises the same paywall dialog every other refused skill raises.
+              onCreditWall: (quota) => send("credit-wall", { quota }),
             },
             {
               // THE TRIAL WALL, on chat's back door. This route is free BY DECISION (the glue of the

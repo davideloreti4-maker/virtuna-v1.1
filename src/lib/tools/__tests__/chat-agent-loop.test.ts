@@ -610,6 +610,45 @@ describe("runChatAgentStream [billing]", () => {
     expect(toolResult?.content).toContain("You've used all 500 credits on your plan this month.");
   });
 
+  it("a REFUSED gate raises the credit wall, so chat is not a dead end at the paywall", async () => {
+    // Without this the creator hits the wall as a sentence in the thread with no upgrade door —
+    // and once the skill pill is gone, that is EVERY generator refusal. The dedicated routes all
+    // answer 402 → dialog; a streaming turn can't, so the body rides its own frame instead.
+    const quotaBody = { error: "credit_quota_exceeded", message: "out of credits", cost: 1 };
+    const billing = mkBilling({ allowed: false, reason: "out of credits" });
+    billing.gate.mockImplementation(async () => ({
+      allowed: false,
+      reason: "out of credits",
+      tier: "pro" as const,
+      quota: quotaBody,
+    }));
+    const onCreditWall = vi.fn();
+    const stream = mockStream([
+      [toolName(0, "c1", "generate_ideas"), toolArgs(0, '{"topic": "a"}')],
+      [textChunk("you're out of credits")],
+    ]);
+
+    await runChatAgentStream(
+      baseInput({ onCreditWall }),
+      DEPS(stream, { skills: [mkSkill("generate_ideas")], billing }),
+    );
+
+    expect(onCreditWall).toHaveBeenCalledTimes(1);
+    expect(onCreditWall).toHaveBeenCalledWith(quotaBody);
+  });
+
+  it("an ALLOWED run never raises the wall", async () => {
+    const onCreditWall = vi.fn();
+    const stream = mockStream([
+      [toolName(0, "c1", "generate_ideas"), toolArgs(0, '{"topic": "a"}')],
+      [textChunk("made them")],
+    ]);
+
+    await runChatAgentStream(baseInput({ onCreditWall }), DEPS(stream, { skills: [mkSkill("generate_ideas")] }));
+
+    expect(onCreditWall).not.toHaveBeenCalled();
+  });
+
   it("FAILS CLOSED: a billable skill with no billing seam is refused, never run for free", async () => {
     // The whole defect this seam closes was an ungated path nobody noticed. If a future caller
     // forgets to wire the till, the run must STOP — a silent free fallback would rebuild the bug.
