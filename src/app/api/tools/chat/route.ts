@@ -33,8 +33,12 @@ import { maybeMockSkillRun } from "@/lib/tools/mock/mock-sse";
 import { createOpenThreadLazy, getOpenThread, setThreadTitleIfEmpty } from "@/lib/threads/threads";
 import { insertMessage, loadMessages } from "@/lib/threads/messages";
 import { runChatPipeline, isColdStart } from "@/lib/tools/runners/chat-runner";
-import { runChatAgentStream } from "@/lib/tools/chat-agent-loop";
+import { runChatAgentStream, type SkillBilling } from "@/lib/tools/chat-agent-loop";
 import { FREE_SKILL_TOOLS } from "@/lib/tools/skill-dispatch";
+import { billUsage, creditGate, quotaRefusalMessage } from "@/lib/billing/credit-gate";
+import { creditCost, type BillableAction } from "@/lib/pricing";
+import type { QuotaUser } from "@/lib/billing/quota";
+import type { NumenTier } from "@/lib/whop/config";
 import { isSealedVisitor } from "@/lib/onboarding/verdict-seal";
 import { assembleBundle } from "@/lib/kc/assembler";
 import { KC_CHAT_SYSTEM_PROMPT } from "@/lib/kc/compiled";
@@ -95,6 +99,35 @@ function parsePersonaGrounding(raw: unknown): PersonaGrounding | null {
     reactionToConcept: { verdict, quote },
     conceptText,
     ...named,
+  };
+}
+
+/**
+ * The gate + till the chat agent charges a dispatched skill through.
+ *
+ * Deliberately a thin wrapper over the SAME `creditGate` / `billUsage` / `quotaRefusalMessage` the
+ * dedicated skill routes call: the price, the admission rules and the refusal wording all have one
+ * implementation, so "ask the agent for hooks" and "press the Hooks skill" can never quietly become
+ * two different products. The only difference is the SHAPE of a refusal — a route returns a 402, but
+ * a turn that is already streaming cannot, so the honest sentence goes back as a tool result for the
+ * model to relay (chat-agent-loop.ts hands it over with an instruction not to fake the result).
+ */
+function skillBilling(supabase: Awaited<ReturnType<typeof createClient>>, user: QuotaUser): SkillBilling {
+  return {
+    gate: async (action: BillableAction) => {
+      const { refusal, verdict } = await creditGate(supabase, user, action);
+      // `refusal` is the 402 Response the routes return; here only its VERDICT matters — the
+      // Response itself is discarded, which is the price of keeping one gate implementation.
+      if (refusal) {
+        return { allowed: false, reason: quotaRefusalMessage(verdict, creditCost(action)), tier: verdict.tier };
+      }
+      return { allowed: true, tier: verdict.tier };
+    },
+    // Best-effort by contract (billUsage swallows + logs its own failures) — a delivered pack of
+    // cards outranks our accounting, exactly as on every other route.
+    bill: async (action: BillableAction, tier?: NumenTier | null) => {
+      await billUsage({ userId: user.id, action, tier });
+    },
   };
 }
 
@@ -409,14 +442,23 @@ export async function POST(request: Request): Promise<Response> {
               // first stage event. One frame, additive — old clients simply ignore the event.
               onDispatch: (skill) => send("dispatch", { skill }),
             },
-            // THE TRIAL WALL, on chat's back door. This route is free BY DECISION (the glue of the
-            // product) — but the skills the agent can dispatch are not: ideas, hooks and scripts are
-            // metered actions with their own creditGate and their own 402. An anonymous /go visitor is
-            // entitled to ONE free Test and nothing else, so the paid tools are not even BOUND for
-            // them: the agent answers in words instead of running an engine this route would neither
-            // gate nor bill. Filtering the registry is the whole fix because `deps.skills` drives both
-            // what the model is offered and what the loop will execute.
-            isSealedVisitor(user) ? { skills: FREE_SKILL_TOOLS } : {}
+            {
+              // THE TRIAL WALL, on chat's back door. This route is free BY DECISION (the glue of the
+              // product) — but the skills the agent can dispatch are not: ideas, hooks and scripts are
+              // metered actions with their own creditGate and their own 402. An anonymous /go visitor is
+              // entitled to ONE free Test and nothing else, so the paid tools are not even BOUND for
+              // them: the agent answers in words instead of running an engine. Filtering the registry is
+              // the whole fix because `deps.skills` drives both what the model is offered and what the
+              // loop will execute.
+              ...(isSealedVisitor(user) ? { skills: FREE_SKILL_TOOLS } : {}),
+              // THE TILL, for everyone else. Until this was wired the sentence above ended "…an engine
+              // this route would neither gate nor bill" — and that was literally true for every signed-in
+              // customer too: an agent-dispatched ideas/hooks/script run hit the paid engine with no
+              // admission check and left no ledger row, while the identical pack cost credits when run
+              // from the skill pill. Same price, same helpers, same refusal copy as the dedicated routes,
+              // so the two doors into the engine cannot drift apart.
+              billing: skillBilling(supabase, user),
+            }
           );
 
           // Persist: each skill's card-blocks first (in run order), then the assistant text. A turn that

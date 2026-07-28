@@ -43,7 +43,8 @@ function mkSkill(name: string, opts: { paid?: boolean; primaryArg?: "topic" | "d
     name,
     // Display key (the run-capsule seam) — mirrors the real registry's mapping shape.
     skillKey: opts.skillKey ?? name.replace(/^generate_|^write_/, ""),
-    paid: opts.paid ?? true,
+    // `paid` in the fixture opts means "declares a price" — the real registry names WHICH price.
+    ...((opts.paid ?? true) ? { billable: "ideas" as const } : {}),
     primaryArg: opts.primaryArg,
     schema: { type: "function", function: { name, parameters: { type: "object", properties: {} } } },
     run:
@@ -61,10 +62,26 @@ const baseInput = (over: Partial<ChatAgentStreamInput> = {}): ChatAgentStreamInp
   ...over,
 });
 
+/**
+ * A recording gate + till. Allows by default; `allowed: false` makes it the out-of-credits case.
+ * Every test that RUNS a billable skill must pass one — the loop refuses a priced skill it has no
+ * way to charge for (see the fail-closed test below), which is why DEPS supplies one by default.
+ */
+function mkBilling(opts: { allowed?: boolean; reason?: string } = {}) {
+  const gate = vi.fn(async () => ({
+    allowed: opts.allowed ?? true,
+    ...(opts.reason ? { reason: opts.reason } : {}),
+    tier: "pro" as const,
+  }));
+  const bill = vi.fn(async () => {});
+  return { gate, bill };
+}
+
 const DEPS = (streamComplete: StreamingChatComplete, over: Partial<ChatAgentStreamDeps> = {}): ChatAgentStreamDeps => ({
   streamComplete,
   model: "test-model",
   seed: 1,
+  billing: mkBilling(),
   ...over,
 });
 
@@ -528,5 +545,122 @@ describe("runChatAgentStream [tools]", () => {
     expect(res.toolCalls[0]!.ran).toBe(false);
     expect(res.toolCalls[0]!.note).toBe("error");
     expect(res.text).toBe("sorry, that failed");
+  });
+});
+
+// ── THE MONEY SEAM ────────────────────────────────────────────────────────────
+// A skill reached through the pill went to its own gated, billed route; the same skill reached
+// through the agent came through this loop, which charged nothing. These lock the two doors to the
+// same price — and lock the failure direction, which is the part that actually protects the money.
+
+describe("runChatAgentStream [billing]", () => {
+  it("gates a billable skill BEFORE the engine runs, then bills it on delivery", async () => {
+    const billing = mkBilling();
+    const ideas = mkSkill("generate_ideas");
+    const order: string[] = [];
+    billing.gate.mockImplementation(async () => {
+      order.push("gate");
+      return { allowed: true, tier: "pro" as const };
+    });
+    billing.bill.mockImplementation(async () => {
+      order.push("bill");
+    });
+    (ideas.run as ReturnType<typeof vi.fn>).mockImplementation(async () => {
+      order.push("run");
+      return { blocks: [{ type: "idea-card", props: {} }], warnings: [] };
+    });
+    const stream = mockStream([
+      [toolName(0, "c1", "generate_ideas"), toolArgs(0, '{"topic": "a"}')],
+      [textChunk("made them")],
+    ]);
+
+    const res = await runChatAgentStream(baseInput(), DEPS(stream, { skills: [ideas], billing }));
+
+    // Admission first — a refused run must cost nothing, so the gate cannot follow the engine.
+    expect(order).toEqual(["gate", "run", "bill"]);
+    expect(billing.gate).toHaveBeenCalledWith("ideas");
+    // The bill is stamped with the tier the GATE resolved, not one re-read afterwards.
+    expect(billing.bill).toHaveBeenCalledWith("ideas", "pro");
+    expect(res.skillRuns).toHaveLength(1);
+  });
+
+  it("a REFUSED gate does not run the engine, and hands the model the wall's own sentence", async () => {
+    const billing = mkBilling({ allowed: false, reason: "You've used all 500 credits on your plan this month." });
+    const ideas = mkSkill("generate_ideas");
+    const stream = mockStream([
+      [toolName(0, "c1", "generate_ideas"), toolArgs(0, '{"topic": "a"}')],
+      [textChunk("You're out of credits this month.")],
+    ]);
+
+    const res = await runChatAgentStream(baseInput(), DEPS(stream, { skills: [ideas], billing }));
+
+    expect(ideas.run).not.toHaveBeenCalled();
+    expect(billing.bill).not.toHaveBeenCalled();
+    expect(res.skillRuns).toHaveLength(0);
+    expect(res.toolCalls[0]).toMatchObject({ ran: false, note: "credit gate refused" });
+    expect(res.text).toBe("You're out of credits this month.");
+
+    // The refusal copy is the SERVER's, not the model's invention. A streaming turn cannot BE a
+    // 402, so the wall's own sentence has to reach the model as a tool result for it to relay —
+    // assert it actually landed in the next round's messages rather than trusting the shape.
+    const secondRound = (stream as unknown as ReturnType<typeof vi.fn>).mock.calls[1]![0] as {
+      messages: Array<{ role: string; content?: string }>;
+    };
+    const toolResult = secondRound.messages.find((m) => m.role === "tool");
+    expect(toolResult?.content).toContain("You've used all 500 credits on your plan this month.");
+  });
+
+  it("FAILS CLOSED: a billable skill with no billing seam is refused, never run for free", async () => {
+    // The whole defect this seam closes was an ungated path nobody noticed. If a future caller
+    // forgets to wire the till, the run must STOP — a silent free fallback would rebuild the bug.
+    const ideas = mkSkill("generate_ideas");
+    const stream = mockStream([
+      [toolName(0, "c1", "generate_ideas"), toolArgs(0, '{"topic": "a"}')],
+      [textChunk("can't do that right now")],
+    ]);
+
+    const res = await runChatAgentStream(
+      baseInput(),
+      DEPS(stream, { skills: [ideas], billing: undefined }),
+    );
+
+    expect(ideas.run).not.toHaveBeenCalled();
+    expect(res.skillRuns).toHaveLength(0);
+    expect(res.toolCalls[0]).toMatchObject({ ran: false, note: "no billing seam" });
+  });
+
+  it("a FREE skill (no declared price) runs with no gate and no bill", async () => {
+    const free = mkSkill("free_tool", { paid: false });
+    const billing = mkBilling();
+    const stream = mockStream([
+      [toolName(0, "c1", "free_tool"), toolArgs(0, '{"topic": "a"}')],
+      [textChunk("done")],
+    ]);
+
+    const res = await runChatAgentStream(baseInput(), DEPS(stream, { skills: [free], billing }));
+
+    expect(free.run).toHaveBeenCalled();
+    expect(billing.gate).not.toHaveBeenCalled();
+    expect(billing.bill).not.toHaveBeenCalled();
+    expect(res.skillRuns).toHaveLength(1);
+  });
+
+  it("a run that THROWS is never billed — the till follows delivery, not intent", async () => {
+    const billing = mkBilling();
+    const ideas = mkSkill("generate_ideas", {
+      run: vi.fn(async () => {
+        throw new Error("engine down");
+      }),
+    });
+    const stream = mockStream([
+      [toolName(0, "c1", "generate_ideas"), toolArgs(0, '{"topic": "a"}')],
+      [textChunk("that failed")],
+    ]);
+
+    const res = await runChatAgentStream(baseInput(), DEPS(stream, { skills: [ideas], billing }));
+
+    expect(billing.gate).toHaveBeenCalledTimes(1);
+    expect(billing.bill).not.toHaveBeenCalled();
+    expect(res.skillRuns).toHaveLength(0);
   });
 });

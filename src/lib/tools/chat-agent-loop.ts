@@ -13,6 +13,13 @@
  * Reuses: the SKILL_TOOLS registry + adapters + paid-engine leash (skill-dispatch.ts), and
  * SEARCH_CORPUS_TOOL + executeCorpusSearch (corpus-tool.ts). The streaming completion is an injectable
  * seam (`deps.streamComplete`) so the whole loop is unit-tested with a mock chunk stream, network-free.
+ *
+ * MONEY: a skill the agent decides to run is gated and billed HERE, through `deps.billing`, at the
+ * same price its own route charges — see SkillBilling. Before that seam existed this loop called the
+ * runners directly with no gate and no bill, so the identical hooks pack cost 1 credit when pressed
+ * from the skill pill and 0 when asked for in chat. The pill was the only thing keeping most traffic
+ * on the paid path, which made deleting the pill a pricing change. A billable skill with no seam
+ * wired is REFUSED, never run for free.
  */
 
 import {
@@ -31,6 +38,8 @@ import {
   type SkillCapability,
 } from "@/lib/tools/skill-capabilities";
 import { TIKTOK_URL_PATTERN } from "@/lib/tiktok-url";
+import type { BillableAction } from "@/lib/pricing";
+import type { NumenTier } from "@/lib/whop/config";
 
 // ─── In-thread input affordance (request_input) ──────────────────────────────
 // A free, non-paid tool: instead of guessing a value (a URL, a concept, a niche) or answering in
@@ -175,6 +184,34 @@ export interface ChatAgentStreamResult {
   toolCalls: Array<{ name: string; ran: boolean; note?: string }>;
 }
 
+/**
+ * THE MONEY SEAM — admission + the till, for a skill the AGENT decided to run.
+ *
+ * A skill reached through the pill goes to its own route, which gates before spending and bills on
+ * delivery. A skill reached through the agent goes through THIS loop, which called the runner
+ * directly and charged nothing — so the same hooks pack cost 1 credit when pressed and 0 when
+ * asked for. Chat was the free door into the paid engine, and the pill was the only thing keeping
+ * most traffic off it.
+ *
+ * Supplied by the route (it holds the supabase client + the user); injectable so the loop stays
+ * network-free under test.
+ */
+export interface SkillBilling {
+  /**
+   * Admission for one run of `action`, priced. Called BEFORE the runner — a refused run must cost
+   * nothing. `reason` is the honest creator-facing sentence (the same copy the 402 wall shows);
+   * the loop hands it to the model as a tool result to relay, since a mid-stream turn cannot
+   * become a 402.
+   */
+  gate: (action: BillableAction) => Promise<{ allowed: boolean; reason?: string; tier?: NumenTier | null }>;
+  /**
+   * Bill a DELIVERED run. Best-effort by contract — never throws, never blocks the answer. Takes
+   * the `tier` the gate resolved, so the ledger row is stamped with the plan that was checked
+   * rather than one re-read afterwards (they can differ mid-turn, and the gate's is the true one).
+   */
+  bill: (action: BillableAction, tier?: NumenTier | null) => Promise<void>;
+}
+
 export interface ChatAgentStreamDeps {
   streamComplete?: StreamingChatComplete;
   skills?: SkillTool[];
@@ -185,6 +222,14 @@ export interface ChatAgentStreamDeps {
   maxRounds?: number;
   /** Paid-engine leash: skill invocations per turn (skills hit the paid engine). */
   maxSkillRuns?: number;
+  /**
+   * Gate + till for billable skills. **Omitting it does not make them free** — a skill that
+   * declares a `billable` action and has no way to charge for it is REFUSED, loudly, rather than
+   * run for nothing. Failing closed is the whole point: the defect this seam exists to fix was an
+   * ungated path nobody noticed, and a silent free fallback would rebuild it the first time a
+   * caller forgot to wire this.
+   */
+  billing?: SkillBilling;
 }
 
 const DEFAULT_MAX_ROUNDS = 4;
@@ -492,7 +537,7 @@ export async function runChatAgentStream(
         messages.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify({ error: `no ${primary} provided` }) });
         continue;
       }
-      if (skill.paid && paidRuns >= maxSkillRuns) {
+      if (skill.billable && paidRuns >= maxSkillRuns) {
         toolCalls.push({ name: skill.name, ran: false, note: "leash: run limit reached" });
         messages.push({
           role: "tool",
@@ -501,12 +546,60 @@ export async function runChatAgentStream(
         });
         continue;
       }
+
+      // ── THE GATE — before the runner, because a refused run must cost nothing ──
+      // The leash above bounds HOW MANY runs a turn may fire; it says nothing about whether this
+      // creator can afford one. A run count is a blast radius, not consent to spend, and it was
+      // the only thing standing between an agent decision and the paid engine.
+      // The verdict's tier carries forward to the bill (see below).
+      let admission: { allowed: boolean; reason?: string; tier?: NumenTier | null } | null = null;
+      if (skill.billable) {
+        if (!deps.billing) {
+          // FAIL CLOSED. No till wired → the run does not happen. The alternative (run it free)
+          // is exactly the defect this seam exists to close, and it would come back silently.
+          toolCalls.push({ name: skill.name, ran: false, note: "no billing seam" });
+          messages.push({
+            role: "tool",
+            tool_call_id: call.id,
+            content: JSON.stringify({
+              error:
+                "this skill cannot be run right now — tell the creator plainly that it is unavailable " +
+                "and suggest they try again shortly; do NOT answer the request in prose instead",
+            }),
+          });
+          continue;
+        }
+        admission = await deps.billing.gate(skill.billable);
+        if (!admission.allowed) {
+          toolCalls.push({ name: skill.name, ran: false, note: "credit gate refused" });
+          messages.push({
+            role: "tool",
+            tool_call_id: call.id,
+            content: JSON.stringify({
+              error: "not enough credits to run this",
+              // The honest sentence the 402 wall would have shown. A mid-stream turn cannot BE a
+              // 402, so the model relays it verbatim rather than inventing its own excuse.
+              tell_the_creator: admission.reason ?? "You're out of credits for this action.",
+              note: "do NOT run or fake the result, and do not answer the request in prose as though it succeeded",
+            }),
+          });
+          continue;
+        }
+      }
+
       try {
         // Announce the dispatch BEFORE the run: the client's capsule labels itself + seeds the
         // skill's stage plan off this, ahead of the first onStage event (~seconds later).
         input.onDispatch?.(skill.skillKey);
         const { blocks } = await skill.run(args, input.context);
-        if (skill.paid) paidRuns++;
+        if (skill.billable) {
+          paidRuns++;
+          // BILL ON DELIVERY — the cards are about to stream to the creator and nothing after this
+          // can un-deliver them. (The dedicated routes bill after their insertMessage; here the
+          // route persists once the loop returns, so this is the same "delivered" moment reached a
+          // beat earlier. Best-effort by contract, so a ledger hiccup never costs the answer.)
+          await deps.billing!.bill(skill.billable, admission?.tier);
+        }
         for (const block of blocks) input.onBlock(block);
         skillRuns.push({ name: skill.name, blocks, warnings: [] });
         toolCalls.push({ name: skill.name, ran: true });
