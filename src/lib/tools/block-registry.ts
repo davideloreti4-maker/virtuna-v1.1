@@ -15,6 +15,7 @@
 import { type z } from "zod";
 import {
   MarkdownBlockSchema,
+  RunHeaderBlockSchema,
   BandBlockSchema,
   PersonasBlockSchema,
   IdeaCardBlockSchema,
@@ -39,6 +40,7 @@ import {
 
 export const BLOCK_REGISTRY = {
   markdown: { schema: MarkdownBlockSchema as z.ZodType },
+  "run-header": { schema: RunHeaderBlockSchema as z.ZodType },
   band: { schema: BandBlockSchema as z.ZodType },
   personas: { schema: PersonasBlockSchema as z.ZodType },
   "idea-card": { schema: IdeaCardBlockSchema as z.ZodType },

@@ -190,8 +190,11 @@ describe("POST /api/tools/script (SSE route)", () => {
     expect(threadId).toBe("thread-persist-check");
     expect(role).toBe("assistant");
     expect(Array.isArray(blocks)).toBe(true);
-    expect((blocks as unknown[]).length).toBe(1);
-    expect((blocks as ScriptCardBlock[])[0]!.type).toBe("script-card");
+    // The turn's RUN STAMP leads the message, then the card (lib/tools/run-header.ts).
+    expect((blocks as unknown[]).length).toBe(2);
+    expect((blocks as { type: string }[])[0]!.type).toBe("run-header");
+    expect((blocks as { props: { skill: string } }[])[0]!.props.skill).toBe("script");
+    expect((blocks as ScriptCardBlock[])[1]!.type).toBe("script-card");
     expect(typeof kcGenVersion).toBe("string");
     expect((kcGenVersion as string)).toMatch(/^gen\./);
   });

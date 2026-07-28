@@ -918,10 +918,42 @@ export const CorpusReferencesBlockSchema = z.object({
 export type CorpusReference = z.infer<typeof CorpusReferenceSchema>;
 export type CorpusReferencesBlock = z.infer<typeof CorpusReferencesBlockSchema>;
 
+// ─── Run header block ─────────────────────────────────────────────────────────
+/**
+ * The turn's RUN STAMP — which skill produced it, and the inputs its intro line cites.
+ *
+ * Persisted as the FIRST block of a skill run's assistant message so a reloaded thread can
+ * rebuild the voice layer (ThreadIntro + the collapsed stage receipt) that was previously
+ * derived client-side and therefore vanished on reload. The outro text already persisted as a
+ * `markdown` block; the intro and the receipt did not, so a reloaded turn was a bare card dump.
+ *
+ * ⚠️ `skill` is the DISPLAY namespace (`ChatTurnKind` / SKILL_RUN_META / STAGE_PLANS keys —
+ * "ideas", PLURAL), never the composer `ToolId` ("idea", singular). The two namespaces differ in
+ * exactly this one id, and a cast between them cannot fail at compile time — that is precisely how
+ * F-017 shipped (a tile armed a tool no branch matched and fell through to the paid video Test).
+ * Kept as a plain string enum here so the schema stays server-importable with no React dependency.
+ */
+export const RunHeaderBlockSchema = z.object({
+  type: z.literal("run-header"),
+  props: z.object({
+    /** ChatTurnKind — "ideas" | "hooks" | "script" | "remix" | "explore" | "account" | "test" | … */
+    skill: z.string(),
+    /** The audience the run was aimed at, as named on the intro line. */
+    audienceLabel: z.string().optional(),
+    /** "tiktok" | "instagram" | "youtube" — the intro's platform word. */
+    platform: z.string().optional(),
+    /** The input hook a script run was built from (introLine cites it). */
+    hookLine: z.string().nullable().optional(),
+  }),
+});
+
+export type RunHeaderBlock = z.infer<typeof RunHeaderBlockSchema>;
+
 // ─── Union ────────────────────────────────────────────────────────────────────
 
 export const BlockUnionSchema = z.discriminatedUnion("type", [
   MarkdownBlockSchema,
+  RunHeaderBlockSchema,
   BandBlockSchema,
   PersonasBlockSchema,
   IdeaCardBlockSchema,

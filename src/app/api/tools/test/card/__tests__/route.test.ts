@@ -225,12 +225,17 @@ describe("POST /api/tools/test/card", () => {
     expect(body.block.props.audienceName).toBe("General");
     expect(body.block.props.filmstrip).toHaveLength(4);
 
-    // The block was persisted to the open thread.
+    // The block was persisted to the open thread, behind the turn's RUN STAMP.
     expect(mockInsertMessage).toHaveBeenCalledTimes(1);
     const [threadId, role, blocks] = mockInsertMessage.mock.calls[0]!;
     expect(threadId).toBe("thread-1");
     expect(role).toBe("assistant");
-    expect(blocks[0].type).toBe("video-test-card");
+    // run-header is FIRST by contract: <ThreadTurn> reads it to rebuild the intro + stage receipt
+    // a reload would otherwise lose, and it holds a ledger slot (never filtered) so the ambient
+    // room's positional card ids stay aligned. See lib/tools/run-header.ts.
+    expect(blocks[0].type).toBe("run-header");
+    expect(blocks[0].props.skill).toBe("test");
+    expect(blocks[1].type).toBe("video-test-card");
 
     // No attention curve on this row (`hasBrainData` false) → NO video seal (never a fabricated one).
     expect(mockWriteSimSeal).not.toHaveBeenCalled();

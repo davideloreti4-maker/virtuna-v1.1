@@ -15,6 +15,7 @@ import { validateBlock } from '@/lib/tools/block-registry';
 import type { BlockType } from '@/lib/tools/block-registry';
 import { toAmbientDescriptor } from '@/components/app/home/ambient-descriptors';
 import { MarkdownBlockRenderer } from '@/components/thread/markdown-block';
+import { RunHeaderBlockRenderer } from '@/components/thread/run-header-block';
 import { BandBlockRenderer } from '@/components/thread/band-block';
 import { PersonasBlockRenderer } from '@/components/thread/personas-block';
 import { IdeaCardRenderer } from '@/components/thread/idea-card-block';
@@ -38,6 +39,9 @@ import { UnsupportedBlock } from './unsupported-block';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const BLOCK_COMPONENTS: Record<BlockType, React.ComponentType<{ block: any }>> = {
   markdown: MarkdownBlockRenderer,
+  // Metadata, not UI — <ThreadTurn> reads it; this renders null. Kept in the array (never filtered)
+  // so the ambient ledger's positional card ids stay aligned. See run-header-block.tsx.
+  'run-header': RunHeaderBlockRenderer,
   band: BandBlockRenderer,
   personas: PersonasBlockRenderer,
   "idea-card": IdeaCardRenderer,

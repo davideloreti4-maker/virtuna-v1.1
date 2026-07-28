@@ -30,6 +30,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createOpenThreadLazy } from "@/lib/threads/threads";
 import { insertMessage } from "@/lib/threads/messages";
+import { runHeaderBlock } from "@/lib/tools/run-header";
 import { writeSimSeal } from "@/lib/threads/sim-seals";
 import { hasBrainData } from "@/lib/surfaces/ambient-v2-brain";
 import { buildVideoPopulation } from "@/lib/surfaces/ambient-v2-video-population";
@@ -227,7 +228,12 @@ export async function POST(request: Request): Promise<Response> {
 
   // ── (10) Persist the block to the open thread (re-validated + KC-stamped) ────
   try {
-    await insertMessage(openThread.id, "assistant", [block], kcStamp().kcGenVersion);
+    await insertMessage(
+      openThread.id,
+      "assistant",
+      [runHeaderBlock({ skill: "test", audienceLabel: audience?.name }), block],
+      kcStamp().kcGenVersion,
+    );
     return Response.json({ block });
   } catch (err) {
     return Response.json(

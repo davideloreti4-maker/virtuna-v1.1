@@ -204,7 +204,10 @@ describe("POST /api/tools/hooks (SSE route)", () => {
     expect(threadId).toBe("thread-hooks-abc");
     expect(role).toBe("assistant");
     expect(Array.isArray(blocks)).toBe(true);
-    expect((blocks as unknown[]).length).toBe(3);
+    // The turn's RUN STAMP leads the message, then the cards (lib/tools/run-header.ts).
+    expect((blocks as { type: string }[])[0]!.type).toBe("run-header");
+    expect((blocks as { props: { skill: string } }[])[0]!.props.skill).toBe("hooks");
+    expect((blocks as unknown[]).length).toBe(4);
     expect(typeof kcGenVersion).toBe("string");
     expect((kcGenVersion as string)).toMatch(/^gen\./);
   });

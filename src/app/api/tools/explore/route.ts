@@ -45,6 +45,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createOpenThreadLazy } from "@/lib/threads/threads";
 import { insertMessage } from "@/lib/threads/messages";
+import { runHeaderBlock } from "@/lib/tools/run-header";
 import { kcStamp } from "@/lib/kc/kc-stamp";
 import { resolveThreadAudience } from "@/lib/audience/resolve-thread-audience";
 import { requireSocialsAudience } from "@/lib/audience/require-socials-audience";
@@ -392,7 +393,12 @@ export async function POST(request: Request): Promise<Response> {
         send("content", { blocks: [block] });
 
         // Persist: blocks array (canonical body) + KC_GEN_VERSION stamp (D-10).
-        await insertMessage(openThread.id, "assistant", [block], kcStamp().kcGenVersion);
+        await insertMessage(
+          openThread.id,
+          "assistant",
+          [runHeaderBlock({ skill: "explore", audienceLabel: activeAudience?.name }), block],
+          kcStamp().kcGenVersion,
+        );
 
         // BILL — on delivery only, priced by what actually ran: a cache hit is a cheap
         // explore (1), a live pull is a scrape (5). Gated at the cheap price above — an
