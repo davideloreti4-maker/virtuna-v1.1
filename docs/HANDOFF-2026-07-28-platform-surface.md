@@ -86,6 +86,10 @@ Kept deliberately narrow — an ask that merely *contains* a link or filename mu
 
 **Schema.** `threads.pinned_at timestamptz` nullable + partial index. Applied via **`mcp__supabase__apply_migration`** — the SQL-editor path. ⚠️ `supabase db push` remains **UNSAFE** here (48 local-only / 41 remote-only migrations; it would recreate `threads`). Dev and prod share one project, so this ran against **production**.
 
+Remote records it as `20260728091759_add_thread_pinned_at`, and `supabase/migrations/20260728091759_add_thread_pinned_at.sql` is committed at the **same version** so the local ledger matches. Applying out of band and *not* committing the file is what widens the drift in the first place — I did exactly that for about twenty minutes before catching it. Both statements are `IF NOT EXISTS`, so replaying is a no-op.
+
+Verified in prod: column present (`timestamp with time zone`, nullable), index `threads_user_pinned_idx` present, 1 pinned row.
+
 `listOpenThreads` orders pinned-first via **`nullsFirst: false`** — Postgres sorts NULLs *first* on DESC by default, which would float every unpinned thread above the pinned ones.
 
 **Rename** overwrites (unlike derivation) — the user naming a thread beats anything inferred. Empty clears to null → back to automatic derivation. Both mutations optimistic; pin re-sorts locally because a row that stays put until refetch reads as a dead click.
