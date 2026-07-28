@@ -4,18 +4,28 @@
  * SimulateIntake — the cold-start phase of surface ⑤ + the shared sheet chrome.
  *
  * When ⑤ is entered COLD (the ④ "Test something against your audience →" door) there's no stimulus
- * to develop yet, so this step collects one before the run is armed: "What are you testing?" over the
- * intake doors. Each door names the SCREEN vs QUERY fork (domain-scaffold) — video / draft = *screen*,
- * ask / survey = *query*, A/B = *compare*. Scope 2026-07-21: screen doors are active; compare + query
- * are shown but deferred ("soon") until their arms/outputs get their own read-templates.
+ * to develop yet, so this module collects one before the run is armed — in TWO steps:
+ *
+ *   `IntakeStep`  — "What are you testing?", the doors. Each names the SCREEN vs QUERY fork
+ *                   (domain-scaffold): video / draft = *screen*, ask / survey = *query*,
+ *                   A/B = *compare*. Scope 2026-07-21: screen doors are active; compare + query
+ *                   are shown but deferred ("soon") until their arms/outputs get read-templates.
+ *   `CollectStep` — the actual bring-your-own input for the picked door (2026-07-28).
+ *
+ * ⚠️ That second step did not exist until 2026-07-28, and this docstring claimed the first one
+ * collected a stimulus. It did not: there was not one `<input>` in the file, and cold entry armed
+ * whatever text the CALLER was holding. The ＋ door could not be built on top of that.
  *
  * This is a LEAF module: it owns the shared sheet primitives (`SHEET_STYLE`, `Kick`, `CloseButton`)
  * so the gateway can import them here without a runtime import cycle (AmbientSimulate → SimulateIntake,
  * never the reverse; the type imports below are erased at compile).
  */
 
+import { useCallback, useState } from "react";
+import { VideoUpload } from "@/components/app/video-upload";
+import { TIKTOK_URL_PATTERN } from "@/lib/tiktok-url";
 import { TONE } from "./AmbientDetail";
-import type { IntakeOption, SimulateData } from "./AmbientSimulate";
+import type { BroughtStimulus, IntakeOption, SimulateData } from "./AmbientSimulate";
 
 // ── shared sheet chrome ────────────────────────────────────────────────────────
 
@@ -135,6 +145,183 @@ function IntakeTile({ opt, index, onPick }: { opt: IntakeOption; index: number; 
         </span>
       )}
     </button>
+  );
+}
+
+// ── the collect step ───────────────────────────────────────────────────────────
+
+/**
+ * COLLECT — the step that was missing, and the reason the ＋ door could not exist.
+ *
+ * Before 2026-07-28 picking a door went straight to the arm card and the stimulus was read off
+ * the CALLER (`data.stimulus.text`), with only its `kind` swapped. There was not one `<input>`
+ * in this whole file: "Screen a draft" armed a run against whatever text the host was holding.
+ * So this step is the actual bring-your-own intake — a textarea for a draft, and for a video the
+ * two ways in behind one door (a file, or a link).
+ *
+ * The file/link halves are the SHIPPED path, reused not rebuilt: `VideoUpload` (bare) is the
+ * same drop zone `input-request-block` and the composer mount, and the link is validated with
+ * `TIKTOK_URL_PATTERN` — the one regex the /api/analyze trust boundary uses, so a URL this step
+ * accepts is a URL the server accepts (they drifted once, case-sensitivity, and the client
+ * enabled a submit the server then 400'd).
+ *
+ * FILE AND LINK ARE EXCLUSIVE — they are two different `input_mode`s and a stimulus carrying
+ * both has no honest answer. Three things enforce it, and they MASK each other: selecting a file
+ * clears the url, the link field unmounts while a file is held, and `submit` reads the file
+ * first. Mutation-tested 2026-07-28: breaking any ONE of the three leaves the tests green,
+ * because either of the others still lands the file. That is redundancy, not three guards — the
+ * test only catches the compound break. Worth knowing before trusting a green run here.
+ */
+const DRAFT_MAX = 2000;
+
+export function CollectStep({
+  data,
+  opt,
+  onClose,
+  onBack,
+  onCollect,
+}: {
+  data: SimulateData;
+  opt: IntakeOption;
+  onClose?: () => void;
+  onBack?: () => void;
+  onCollect: (brought: BroughtStimulus) => void;
+}) {
+  const isVideo = opt.stimulusKind === "video";
+  const [draft, setDraft] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [url, setUrl] = useState("");
+
+  const trimmedUrl = url.trim();
+  const trimmedDraft = draft.trim();
+  const validUrl = trimmedUrl.length > 0 && TIKTOK_URL_PATTERN.test(trimmedUrl);
+  const urlError = trimmedUrl.length > 0 && !validUrl;
+  const ready = isVideo ? !!file || validUrl : trimmedDraft.length > 0;
+
+  // One of the two, never both. This is one of THREE overlapping enforcements (see the module
+  // note) — it is the one that matters if the link field is ever shown alongside a held file.
+  const pickFile = useCallback((f: File | null) => {
+    setFile(f);
+    if (f) setUrl("");
+  }, []);
+
+  const submit = useCallback(() => {
+    if (!ready) return;
+    if (!isVideo) {
+      onCollect({ kind: opt.stimulusKind ?? "draft", text: trimmedDraft });
+      return;
+    }
+    // A video's `text` is its NAME, never a stimulus to feed a text run — the arm card prints it,
+    // and Phase 4 routes the file/url to /api/analyze on the matching input_mode.
+    if (file) onCollect({ kind: "video", text: file.name, file });
+    else onCollect({ kind: "video", text: trimmedUrl, url: trimmedUrl });
+  }, [ready, isVideo, opt.stimulusKind, trimmedDraft, file, trimmedUrl, onCollect]);
+
+  return (
+    <div
+      data-testid="ambient-simulate"
+      data-phase="collect"
+      data-door={opt.kind}
+      className="ambient-row-in flex w-full max-w-[460px] flex-col rounded-[16px]"
+      style={SHEET_STYLE}
+    >
+      <div className="px-[26px] pt-[24px]">
+        <div className="flex items-start justify-between">
+          <button
+            type="button"
+            onClick={onBack}
+            className="-ml-1 flex items-center gap-1 font-mono text-[12px] uppercase tracking-[0.08em] transition-colors"
+            style={{ color: TONE.faint }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = TONE.cream)}
+            onMouseLeave={(e) => (e.currentTarget.style.color = TONE.faint)}
+          >
+            ‹ What are you testing?
+          </button>
+          <CloseButton onClose={onClose} />
+        </div>
+        <div className="mt-2.5 text-[17px] font-medium" style={{ color: TONE.cream }}>
+          {isVideo ? "Bring the video" : "Paste the draft"}
+        </div>
+        <div className="mt-1 text-[13px]" style={{ color: TONE.faint }}>
+          {isVideo
+            ? `Upload the file or paste the link — ${data.room.toLowerCase()} watches it end to end.`
+            : `The hook, script, or caption you're weighing. ${data.room} reads it cold.`}
+        </div>
+      </div>
+
+      <div className="mt-4 flex flex-col gap-3 px-[26px] pb-[22px]">
+        {isVideo ? (
+          <>
+            <VideoUpload file={file} onFileSelect={pickFile} bare />
+            {!file && (
+              <>
+                <div
+                  className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.06em]"
+                  style={{ color: TONE.faint }}
+                >
+                  <span className="h-px flex-1" style={{ background: TONE.hair }} />
+                  or paste a link
+                  <span className="h-px flex-1" style={{ background: TONE.hair }} />
+                </div>
+                <input
+                  type="url"
+                  inputMode="url"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      submit();
+                    }
+                  }}
+                  placeholder="https://tiktok.com/…"
+                  aria-label="Paste a TikTok link"
+                  className="w-full rounded-[10px] px-3 py-2.5 text-[14px] outline-none transition-colors placeholder:text-[rgba(236,231,222,0.35)]"
+                  style={{ background: TONE.well, border: `1px solid ${TONE.border}`, color: TONE.cream }}
+                />
+              </>
+            )}
+          </>
+        ) : (
+          <>
+            <textarea
+              value={draft}
+              onChange={(e) => setDraft(e.target.value.slice(0, DRAFT_MAX))}
+              rows={5}
+              autoFocus
+              placeholder="Three years of footage and nobody watched past the first second…"
+              aria-label="Paste the draft to screen"
+              className="w-full resize-none rounded-[10px] px-3 py-2.5 text-[14px] leading-[1.5] outline-none transition-colors placeholder:text-[rgba(236,231,222,0.35)]"
+              style={{ background: TONE.well, border: `1px solid ${TONE.border}`, color: TONE.cream }}
+            />
+            <div className="flex justify-end text-[11px] font-mono" style={{ color: TONE.faint }}>
+              {trimmedDraft.length}/{DRAFT_MAX}
+            </div>
+          </>
+        )}
+
+        {urlError && !file ? (
+          <div className="text-[12px]" style={{ color: TONE.faint }}>
+            That doesn&apos;t look like a TikTok video URL.
+          </div>
+        ) : null}
+
+        <button
+          type="button"
+          onClick={submit}
+          disabled={!ready}
+          className="mt-1 self-end rounded-[10px] px-4 py-2 text-[13px] font-medium transition-colors"
+          style={{
+            background: ready ? "rgba(255,255,255,.09)" : "rgba(255,255,255,.03)",
+            border: `1px solid ${ready ? "rgba(255,255,255,.14)" : TONE.hair}`,
+            color: ready ? TONE.cream : TONE.faint,
+            cursor: ready ? "pointer" : "default",
+          }}
+        >
+          Arm the run →
+        </button>
+      </div>
+    </div>
   );
 }
 

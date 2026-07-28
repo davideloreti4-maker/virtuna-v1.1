@@ -32,7 +32,7 @@ import { useEffect, useRef, useState } from "react";
 import { TONE } from "./AmbientDetail";
 import type { BehaviorLens } from "@/lib/engine/flash/flash-prompts";
 import type { AmbientPresentation, SimTier } from "./AmbientOverview";
-import { CloseButton, IntakeStep, Kick, SHEET_STYLE } from "./SimulateIntake";
+import { CloseButton, CollectStep, IntakeStep, Kick, SHEET_STYLE } from "./SimulateIntake";
 
 // ── view-model ───────────────────────────────────────────────────────────────
 
@@ -50,6 +50,30 @@ export interface IntakeOption {
   family: "screen" | "compare" | "query";
   status: "active" | "soon";
   stimulusKind?: StimulusKind; // what an active pick arms the run with
+}
+
+/**
+ * WHAT THE CREATOR BROUGHT — the stimulus collected by the cold intake, as opposed to the one
+ * a skill generated.
+ *
+ * Until 2026-07-28 there was no such thing: `cold` mode read `data.stimulus.text` off its
+ * CALLER and only swapped the `kind`, so picking "Screen a draft" armed a run against whatever
+ * text the host happened to be holding. There was not one `<input>` in the intake to type into.
+ *
+ * `text` is the single field every consumer can rely on — it is what the ARM screen shows as
+ * the thing under test, and for a draft it IS the stimulus the run sends. A video brings a
+ * `file` or a `url` beside it (the two ways in, one door) and `text` is then only its NAME:
+ * a filename or the link, never something to feed a text run. The two are mutually exclusive
+ * by construction — the collect step clears one when the other is set.
+ */
+export interface BroughtStimulus {
+  kind: StimulusKind;
+  /** What the ARM screen prints under "testing". For a draft, also the run's actual stimulus. */
+  text: string;
+  /** Video door, upload path → `/api/analyze` `input_mode: "video_upload"` (Phase 4). */
+  file?: File;
+  /** Video door, link path → `/api/analyze` `input_mode: "tiktok_url"` (Phase 4). */
+  url?: string;
 }
 
 /** The rank a `develop` entry is deepening — the tie-back (sim refines this, never contradicts it). */
@@ -558,16 +582,42 @@ export function AmbientSimulate({
   /** With `connected`: `rail` (own ground + left hairline + 440 cap) vs `sheet` (host owns them). */
   presentation?: AmbientPresentation;
 }) {
-  // cold entry lands on the intake step; develop entry is pre-filled → straight to the arm card.
+  // COLD is now THREE steps, not two: pick a door → bring the thing → arm it.
+  //
+  // The middle one is new (2026-07-28). Cold used to jump from the door straight to the arm card
+  // and take its stimulus from `data.stimulus.text` — the CALLER's text, with only the `kind`
+  // swapped to the door's. So "Screen a draft" armed a run against whatever the host happened to
+  // be holding, and there was no way to bring anything of your own. `brought` is what the creator
+  // actually typed/dropped/pasted, and on the cold path it is the ONLY source of the stimulus.
   const [picked, setPicked] = useState<IntakeOption | null>(null);
-  const onIntake = mode === "cold" && !picked;
+  const [brought, setBrought] = useState<BroughtStimulus | null>(null);
 
-  if (onIntake) {
+  if (mode === "cold" && !picked) {
     return <IntakeStep data={data} onClose={onClose} onPick={setPicked} />;
   }
 
-  // the stimulus: from the picked intake door (cold) or the pre-filled data (develop).
-  const stimulus = picked?.stimulusKind ? { text: data.stimulus.text, kind: picked.stimulusKind } : data.stimulus;
+  if (mode === "cold" && picked && !brought) {
+    return (
+      <CollectStep
+        data={data}
+        opt={picked}
+        onClose={onClose}
+        // Back to the doors clears what was collected under the OLD door — a link pasted for
+        // "Test a real video" is not a draft, and carrying it across would arm the wrong thing.
+        onBack={() => {
+          setBrought(null);
+          setPicked(null);
+        }}
+        onCollect={setBrought}
+      />
+    );
+  }
+
+  // The stimulus: what the creator BROUGHT (cold), or the pre-filled rank (develop). Cold never
+  // falls back to `data.stimulus` — reaching the arm card cold without a brought stimulus is not
+  // a state this component can produce, and silently showing the caller's text would be the exact
+  // bug this step exists to remove.
+  const stimulus = brought ?? data.stimulus;
 
   return (
     <ArmCard
@@ -575,7 +625,9 @@ export function AmbientSimulate({
       stimulus={stimulus}
       develop={mode === "develop" ? data.develop : undefined}
       onClose={onClose}
-      onBack={mode === "cold" ? () => setPicked(null) : undefined}
+      // Cold: back to the COLLECT step (keep the door), so a creator fixing a typo in their draft
+      // does not get sent all the way out to "What are you testing?".
+      onBack={mode === "cold" ? () => setBrought(null) : undefined}
       onSimulate={onSimulate}
       connected={connected}
       presentation={presentation}
