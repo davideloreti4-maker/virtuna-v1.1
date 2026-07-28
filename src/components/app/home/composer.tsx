@@ -115,6 +115,8 @@ import { Spinner } from "@/components/ui/spinner";
 import { AudiencePresence, type AudienceAsk, type AudiencePresenceProps } from "@/components/audience-lens/audience-presence";
 import { AmbientOverviewRail } from "@/components/audience-lens/v2/AmbientOverviewRail";
 import { AmbientStartHome } from "@/components/audience-lens/v2/AmbientStartHome";
+import { SimulateDoorHost } from "@/components/audience-lens/v2/SimulateDoorHost";
+import type { BroughtStimulus } from "@/components/audience-lens/v2/AmbientSimulate";
 import { GENERAL_AUDIENCE } from "@/lib/audience/audience-repo";
 import { BuildChooser } from "./build-chooser";
 import { HomeStarter, HomeFirstRunDemo } from "./home-starter";
@@ -1549,6 +1551,38 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     })();
   }, [stream.phase, stream.analysisId, router, reloadChatThread]);
 
+  // ── Lazy thread creation (issue 2 — no blank threads in history) ──────────
+  // "New Thread" creates NO row; the pointer is the NEW_THREAD_SENTINEL and the composer renders
+  // empty. The row is materialised on the first real send, so a thread only enters history once it
+  // holds a message. Flips the pointer to the fresh id BEFORE the run, so every tool route appends
+  // to THIS thread.
+  //
+  // Hoisted out of `handleSubmit` (2026-07-28) because the ＋ door has to call it too, and for the
+  // same reason `test` was added to the set below: while the pointer sits on the sentinel, every
+  // server-side `createOpenThreadLazy` mints its OWN fresh row, so the run's card lands in a thread
+  // the client is not pointing at — a completed run finishing into a blank screen (F-019). A brought
+  // stimulus fired as the first send of a new thread is that exact shape.
+  const ensureThreadForSend = useCallback(async (): Promise<void> => {
+    if (getActiveThreadCookie() !== NEW_THREAD_SENTINEL) return; // resuming an existing thread
+    try {
+      const res = await fetch("/api/threads/new", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      });
+      if (!res.ok) return;
+      const { threadId } = (await res.json()) as { threadId: string };
+      setActiveThreadCookie(threadId);
+      setOpenThreadId(threadId);
+      setActiveThreadId(threadId);
+      // Surface the new thread (and, once titled, its label) in the sidebar.
+      void queryClient.invalidateQueries({ queryKey: queryKeys.threads.list() });
+    } catch {
+      // Network error — the tool route's createOpenThreadLazy still resolves a target thread
+      // server-side, so the send is not lost.
+    }
+  }, [queryClient, setActiveThreadId]);
+
   // ── Submit -> create (lifted/adapted from Board.tsx handleContentSubmit) ──
   // Slim: only the TikTok-URL and video-upload paths for Test; Ideas pipeline for Idea.
   // CRITICAL: Idea path NEVER sets pendingSealRef or calls stream.start (T-03-13).
@@ -1582,31 +1616,6 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       }
     };
 
-    // ── Lazy thread creation (issue 2 — no blank threads in history) ──────────
-    // "New Thread" creates NO row; the pointer is the NEW_THREAD_SENTINEL and the
-    // composer renders empty. The row is materialised HERE, on the first real send,
-    // so a thread only enters history once it holds a message. Flips the pointer to
-    // the fresh id BEFORE the skill runs, so every tool route appends to this thread.
-    const ensureThreadForSend = async (): Promise<void> => {
-      if (getActiveThreadCookie() !== NEW_THREAD_SENTINEL) return; // resuming an existing thread
-      try {
-        const res = await fetch("/api/threads/new", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: "{}",
-        });
-        if (!res.ok) return;
-        const { threadId } = (await res.json()) as { threadId: string };
-        setActiveThreadCookie(threadId);
-        setOpenThreadId(threadId);
-        setActiveThreadId(threadId);
-        // Surface the new thread (and, once titled, its label) in the sidebar.
-        void queryClient.invalidateQueries({ queryKey: queryKeys.threads.list() });
-      } catch {
-        // Network error — the tool route's createOpenThreadLazy still resolves a
-        // target thread server-side, so the send is not lost.
-      }
-    };
     // Skills that persist into the open chat thread create it lazily on first send.
     // `test` is in this set since the D-05 rework made it seal in-thread. While it was
     // excluded, a Test sent as the FIRST send of a new thread left the pointer on the
@@ -2170,6 +2179,92 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     [persistedSimSeals],
   );
 
+  // ── The ＋ door: bring your own stimulus (Phases 3+4, 2026-07-28) ───────────
+  // ONE host, opened from the board's ＋ (in-thread) and from the Start card's SIMULATE DOOR
+  // (pre-thread). It has to live here rather than inside the rail because on the empty home
+  // `railHost` is NULL — HomePageLayout only mounts the rail <aside> in thread mode — so the rail,
+  // and anything inside it, does not exist yet on the surface that needs the door most.
+  const [simDoorOpen, setSimDoorOpen] = useState(false);
+
+  // A brought TEXT landed: its `brought-card` is in the thread and its seal is written. Re-read
+  // BOTH — reloadChatThread alone leaves `persistedSimSeals` stale, so the new row would appear
+  // honestly QUEUED until the next full reload even though a measured verdict already exists for it.
+  const reloadThreadAndSeals = useCallback(async () => {
+    await reloadChatThread();
+    try {
+      const res = await fetch("/api/threads/open", { cache: "no-store" });
+      if (!res.ok) return;
+      const data = (await res.json()) as { simSeals?: WireSimSealMap };
+      setPersistedSimSeals(data.simSeals ?? {});
+    } catch {
+      // The card is already in the thread; the row just stays queued until the next load.
+    }
+  }, [reloadChatThread]);
+
+  // A brought VIDEO — the ~2-minute /api/analyze Max pipeline. Deliberately NOT re-implemented in
+  // the door: this arms the SAME seams the Test skill uses (`pendingSealRef` → the seal-on-complete
+  // effect above → /api/tools/test/card → the video seal the board reads by analysisId), so the
+  // brought video lands exactly like a Test and nothing about the money path forks.
+  const runBroughtVideo = useCallback(
+    async (brought: BroughtStimulus) => {
+      const file = brought.file ?? null;
+      const url = (brought.url ?? "").trim();
+      if (!file && url.length === 0) return;
+
+      // The thread must exist BEFORE the run, or every server-side createOpenThreadLazy mints its
+      // own row and the sealed card lands where the client is not looking (F-019).
+      await ensureThreadForSend();
+      // The echo that makes a 2-minute wait read as work, and restores the question on reload.
+      const turn = file ? file.name : url;
+      setLastUserTurn(turn);
+      void fetch("/api/threads/user-turn", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: turn }),
+      }).catch(() => {});
+
+      setSubmitError(null);
+      setSubmitting(true);
+      try {
+        let storagePath: string | null = null;
+        if (file) {
+          const supabase = createClient();
+          const { data: userData } = await supabase.auth.getUser();
+          const userId = userData.user?.id;
+          if (!userId) {
+            setSubmitError(ERROR_SESSION_EXPIRED);
+            return;
+          }
+          const ext = (file.name.split(".").pop() ?? "mp4").toLowerCase();
+          const path = `${userId}/${nanoid()}.${ext}`;
+          const { error } = await supabase.storage
+            .from("videos")
+            .upload(path, file, { contentType: file.type || "video/mp4", upsert: false });
+          if (error) {
+            setSubmitError(ERROR_UPLOAD_FAILED);
+            return;
+          }
+          storagePath = path;
+        }
+        // Arm the in-thread seal for THIS run (a hydration-sourced complete never arms it).
+        pendingSealRef.current = true;
+        sealHandledRef.current = false;
+        await stream
+          .start(
+            storagePath
+              ? { input_mode: "video_upload", content_type: "video", video_storage_path: storagePath }
+              : { input_mode: "tiktok_url", content_type: "video", tiktok_url: url },
+          )
+          .catch(() => {
+            /* stream.phase -> error transition owns the UI */
+          });
+      } finally {
+        setSubmitting(false);
+      }
+    },
+    [ensureThreadForSend, stream],
+  );
+
   // ── The funnel-return inlet (ONBOARDING-FUNNEL-DESIGN.md §0b②) ─────────────
   // Two markers land a funnel visitor back on /home:
   //   ?claimed=1        — the OAuth link round-trip (claim-account.ts). The identity has
@@ -2454,6 +2549,9 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       reducedMotion={reducedMotion}
       persistedSeals={persistedSimSeals}
       focusVideo={focusVideo}
+      // The ＋ door. The rail hands the tap up here because what comes through it has to be routed
+      // to a real run — the rail can reach neither the analyze stream nor the thread reload.
+      onTestVariant={() => setSimDoorOpen(true)}
     />
   );
   // P2 (A2b) — the <xl header: a 68px bar that expands DOWNWARD. Same props again; rendered at the
@@ -2470,6 +2568,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       reducedMotion={reducedMotion}
       persistedSeals={persistedSimSeals}
       focusVideo={focusVideo}
+      onTestVariant={() => setSimDoorOpen(true)}
       open={roomExpanded}
       onOpenChange={handleRoomExpandedChange}
     />
@@ -3066,6 +3165,21 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           onClose={stream.clearQuotaError}
         />
       )}
+
+      {/* THE ＋ DOOR (Phases 3+4) — bring your own hook, script, video or link.
+          Mounted in the DOCK because the dock is the one thing both layout branches render, so a
+          single host serves the board's ＋ (thread mode) and Start's SIMULATE DOOR (empty home).
+          Only under the v2 flag: both doors that open it are v2 surfaces. */}
+      {AMBIENT_V2_ENABLED && (
+        <SimulateDoorHost
+          audience={effectiveAudience}
+          open={simDoorOpen}
+          onClose={() => setSimDoorOpen(false)}
+          onLanded={reloadThreadAndSeals}
+          onVideo={(brought) => void runBroughtVideo(brought)}
+          ensureThread={ensureThreadForSend}
+        />
+      )}
     </div>
   );
 
@@ -3184,6 +3298,9 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
                   audience={effectiveAudience}
                   onSkill={pickStartSkill}
                   onSubmit={seedAndRun}
+                  // The SIMULATE DOOR — a creator holding a script should not have to run a skill
+                  // first to get it in front of the room. Same host as the board's ＋.
+                  onSimDoor={() => setSimDoorOpen(true)}
                   activeSkillId={activeTool}
                   audiences={audiences}
                   selectedAudienceId={selectedAudienceId}
@@ -3245,6 +3362,8 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           // (F-017). pickStartSkill validates against SKILLS, so an unknown id is now inert.
           onSkill={pickStartSkill}
           onSubmit={seedAndRun}
+          // The SIMULATE DOOR (see the branch-A mount) — the second verb, its own act.
+          onSimDoor={() => setSimDoorOpen(true)}
           activeSkillId={activeTool}
           // Pre-thread audience choice: the "Testing against" chip is a real picker here (no thread
           // to lock to yet). Same reground as the presence's onSelectAudience — a switched audience

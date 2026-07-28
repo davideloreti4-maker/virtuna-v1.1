@@ -461,6 +461,7 @@ export function AmbientStart({
   data,
   onScene,
   onSkill,
+  onSimDoor,
   activeSkillId,
   audiences,
   selectedAudienceId,
@@ -469,6 +470,17 @@ export function AmbientStart({
   data: StartData;
   onScene?: (v: string) => void;
   onSkill?: (skillId: string) => void;
+  /**
+   * THE SIMULATE DOOR — "Test something against your audience →".
+   *
+   * The docstring above has described this element since 2026-07-21 and it did not exist: this file
+   * had exactly one `onSkill?.()` call site (the skill tiles) and no door, so a creator arriving
+   * with a script already written had to run a skill first to get anything in front of the room.
+   * Opens the cold intake (text · video file · link).
+   *
+   * Omitted ⇒ no door, never an inert one (same rule as the board's ＋).
+   */
+  onSimDoor?: () => void;
   /** Accepted for the eventual post-pick compose step; the Start card itself has no free-text box. */
   onSubmit?: (text: string) => void;
   /** The currently-armed skill id (the composer's active tool). Shown on the selector bar. */
@@ -553,6 +565,56 @@ export function AmbientStart({
             </div>
           ))}
         </div>
+
+        {/* THE SIMULATE DOOR — the second verb, and its own act.
+            MAKE (the grid above) produces content and a thin rank rides every output. SIMULATE is
+            the deliberate screening of something that already exists — which, until this door,
+            meant something a skill had made. It is kept visually distinct and below its own rule so
+            it never reads as one more maker in the list (the composition law in the docstring).
+            Rendered only when a host can run what comes through it. */}
+        {onSimDoor ? (
+          <>
+            <div className="mt-6 h-px w-full" style={{ background: TONE.border }} />
+            <button
+              type="button"
+              data-testid="ambient-start-sim-door"
+              onClick={onSimDoor}
+              className="group mt-5 flex w-full items-center gap-3 rounded-[12px] border px-3 py-3 text-left transition-colors"
+              style={{ borderColor: TONE.border, background: "rgba(255,255,255,0.02)" }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = "rgba(255,255,255,0.13)";
+                e.currentTarget.style.background = "rgba(255,255,255,0.045)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = TONE.border;
+                e.currentTarget.style.background = "rgba(255,255,255,0.02)";
+              }}
+            >
+              <span
+                className="flex h-9 w-9 flex-none items-center justify-center rounded-[10px] border border-[rgba(255,255,255,0.08)] bg-[#242422]"
+                style={{ color: "rgba(236,231,222,0.75)" }}
+              >
+                {/* the aperture — the same screen-family mark the intake's doors carry */}
+                <Icon kind="target" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[14px] font-medium leading-[1.2]" style={{ color: TONE.cream }}>
+                  Test something against your audience
+                </span>
+                <span className="mt-0.5 block truncate text-[12px] leading-[1.3]" style={{ color: TONE.faint }}>
+                  A draft, a video, or a link — brought by you
+                </span>
+              </span>
+              <span
+                aria-hidden
+                className="flex-none text-[13px] transition-transform group-hover:translate-x-0.5"
+                style={{ color: TONE.faint }}
+              >
+                →
+              </span>
+            </button>
+          </>
+        ) : null}
       </div>
     </div>
   );

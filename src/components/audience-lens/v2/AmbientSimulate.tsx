@@ -121,6 +121,16 @@ export interface SimulateData {
 export interface SimulateConfig {
   lensKey: SimLens["key"];
   custom?: string;
+  /**
+   * WHAT THE CREATOR BROUGHT — present only on a `cold` run (the ＋ door). Absent on `develop`,
+   * where the stimulus is a card already in the thread and the caller resolves it from the id.
+   *
+   * This field is what makes the door more than a door: it carries the draft / file / link out to
+   * the host, which routes it (text → `/api/tools/react`, video → `/api/analyze`). It was
+   * deliberately left OFF this object in Phase 2 and added here WITH its consumer — a payload field
+   * nobody reads is how the five dials came to be collected and discarded in the first place.
+   */
+  stimulus?: BroughtStimulus;
   /** The picked slice's ENGINE archetype, or null for the whole room. Sent to the route.
    *  (This was the display LABEL until 2026-07-28 — and every field of this object was
    *  discarded by the caller, so nothing ever caught it.) */
@@ -140,6 +150,35 @@ const FIDELITY_LOCK: Record<"text" | "video", { tier: SimTier; reason: string }>
   text: { tier: "flash", reason: "text reads run Flash — Max for text isn’t wired yet" },
   video: { tier: "max", reason: "video reads run Max — there is no Flash video path" },
 };
+
+/**
+ * THE VIDEO LOCKS — measured against the route, not chosen (2026-07-28, Phase 4).
+ *
+ * A brought VIDEO runs `/api/analyze` (`input_mode: video_upload | tiktok_url`), and that route
+ * accepts NO lens, NO segment and NO scene: it resolves the audience server-side off the thread pin
+ * and reads the whole fold. So on the video variant those three dials cannot reach the engine at
+ * all — and a live dropdown that changes nothing is exactly the defect this lane exists to remove
+ * (⑤ collected five dials and discarded all five until Phase 1). They render LOCKED with the
+ * reason, the same treatment fidelity already gets. The text variant is untouched: every one of
+ * these IS honoured by `/api/tools/react`.
+ */
+const VIDEO_LOCK = {
+  lens: "a full video read scores every behaviour at once — the whole curve, not one dial",
+  slice: "a video read is scored by the whole room; slices are read off a text projection",
+  scene: "a video is read in the feed it was made for — the scene isn’t a dial here",
+} as const;
+
+/**
+ * How many minds a VIDEO read really screens: ten.
+ *
+ * `TIER_N.max` (10,000) is the TEXT projection's number — `reactPopulation` genuinely scores ~1,000
+ * sampled individuals per Flash run, which is why the text variant's headcount is literally true. A
+ * video run never calls it: the fold is a 10-reactor panel, and the video adapter's own honesty
+ * spine says so in as many words ("N is 10, and it says so" — ambient-v2-video-population.ts §1,
+ * which refuses to clone those ten into a thousand). Printing "10,000 minds" over a ten-reactor read
+ * would be the exact fabrication this screen exists to stop doing.
+ */
+const VIDEO_PANEL_N = 10;
 
 /** Deterministic thousands separator (toLocaleString is locale-dependent → SSR/client drift). */
 const withCommas = (n: number) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
@@ -243,9 +282,34 @@ function Dropdown({
 
 // ── the arm card (the screen path — assembles the run + fires the spend) ───────
 
+/** A dial that cannot reach the engine, rendered as the fact it is: the value, then WHY it is fixed.
+ *  Same treatment the fidelity chip already gets — a control that silently does nothing, or one that
+ *  quietly disappears between variants, both read as bugs. */
+function Locked({ value, reason }: { value: string; reason: string }) {
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <span
+        data-testid="sim-locked"
+        className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[14px]"
+        style={{ border: `1px solid ${TONE.hair}`, background: TONE.well, color: TONE.dim }}
+      >
+        {value}
+        <svg width="10" height="10" viewBox="0 0 12 12" aria-hidden style={{ color: TONE.faint }}>
+          <rect x="2.5" y="5.5" width="7" height="5" rx="1.2" fill="none" stroke="currentColor" strokeWidth="1.2" />
+          <path d="M4.25 5.5V4a1.75 1.75 0 0 1 3.5 0v1.5" fill="none" stroke="currentColor" strokeWidth="1.2" />
+        </svg>
+      </span>
+      <span className="max-w-[260px] text-right text-[11px]" style={{ color: TONE.faint }}>
+        {reason}
+      </span>
+    </div>
+  );
+}
+
 function ArmCard({
   data,
   stimulus,
+  brought,
   develop,
   onClose,
   onBack,
@@ -255,6 +319,8 @@ function ArmCard({
 }: {
   data: SimulateData;
   stimulus: { text: string; kind: StimulusKind };
+  /** What the creator brought (cold only) — travels out on the config so the host can route it. */
+  brought?: BroughtStimulus;
   develop?: DevelopContext;
   onClose?: () => void;
   onBack?: () => void;
@@ -280,16 +346,19 @@ function ArmCard({
   //                 has only ever POSTed the Flash react route, so no variant has ever run Max.
   // Rendered as a locked chip WITH its reason — a dial that silently does nothing, or one that
   // quietly disappears between variants, both read as bugs.
-  const lock = FIDELITY_LOCK[stimulus.kind === "video" ? "video" : "text"];
+  const isVideo = stimulus.kind === "video";
+  const lock = FIDELITY_LOCK[isVideo ? "video" : "text"];
   const fidelity = lock.tier;
 
   // custom text overrides the chip selection, compiling to the nearest lens (shown to the user)
   const compiledIdx = custom.trim() ? compileToLens(custom, lenses) : lensIdx;
   const activeLens = lenses[compiledIdx] ?? lenses[0];
-  const seg = segments[segIdx] ?? segments[0];
+  // A video read has no slice to pick, so it is always the whole room — segments[0] by construction
+  // ("Everyone", archetype null), never whatever the creator last selected on a text run.
+  const seg = (isVideo ? segments[0] : segments[segIdx]) ?? segments[0];
   if (!activeLens || !seg) return null; // degenerate fixture (no lenses/segments) — nothing to arm
-  const n = Math.round(TIER_N[fidelity] * seg.share);
-  const mismatch = scene.toLowerCase() !== provenance.toLowerCase();
+  const n = isVideo ? VIDEO_PANEL_N : Math.round(TIER_N[fidelity] * seg.share);
+  const mismatch = !isVideo && scene.toLowerCase() !== provenance.toLowerCase();
 
   return (
     <div
@@ -371,7 +440,10 @@ function ArmCard({
         </div>
       </div>
 
-      {/* THE LENS — the one loud dial: the single behaviour we score the room for */}
+      {/* THE LENS — the one loud dial: the single behaviour we score the room for.
+          On a VIDEO it is not a dial at all (the Max fold measures every behaviour and the route
+          takes no lens), so the band stays — same layout, same place — carrying the locked fact
+          instead of a control that would change nothing. */}
       <div className="mt-7 px-[26px]">
         <div className="flex items-baseline justify-between">
           <Kick>The lens</Kick>
@@ -380,6 +452,15 @@ function ArmCard({
           </span>
         </div>
 
+        {isVideo ? (
+          <div className="mt-3 flex items-start justify-between gap-4">
+            <span className="text-[15px] font-medium" style={{ color: TONE.cream }}>
+              Every behaviour
+            </span>
+            <Locked value="Whole curve" reason={VIDEO_LOCK.lens} />
+          </div>
+        ) : (
+          <>
         {/* the behavioural funnel as a segmented control (Stop → Finish → Share → Follow → Buy) */}
         <div
           className="mt-3 flex gap-1 rounded-[11px] p-1"
@@ -439,6 +520,8 @@ function ArmCard({
             ↳ scored as the nearest lens · <span style={{ color: TONE.dim }}>would {activeLens.label.toLowerCase()}</span>
           </div>
         ) : null}
+          </>
+        )}
       </div>
 
       {/* THE SLICE — who in the room we screen, and how many minds that is */}
@@ -449,23 +532,27 @@ function ArmCard({
             who we put it in front of
           </span>
         </div>
-        <div className="mt-3 flex items-center justify-between">
+        <div className="mt-3 flex items-start justify-between gap-4">
           <span className="text-[15px] font-medium" style={{ color: TONE.cream }}>
             Who are we asking?
           </span>
-          <Dropdown
-            label={seg.label}
-            options={segments.map((s, i) => ({
-              key: String(i),
-              label: (
-                <span className="flex w-full items-center justify-between gap-6">
-                  <span>{s.label}</span>
-                  <span style={{ color: TONE.faint }}>{withCommas(Math.round(TIER_N[fidelity] * s.share))}</span>
-                </span>
-              ),
-            }))}
-            onSelect={(k) => setSegIdx(Number(k))}
-          />
+          {isVideo ? (
+            <Locked value="The whole room" reason={VIDEO_LOCK.slice} />
+          ) : (
+            <Dropdown
+              label={seg.label}
+              options={segments.map((s, i) => ({
+                key: String(i),
+                label: (
+                  <span className="flex w-full items-center justify-between gap-6">
+                    <span>{s.label}</span>
+                    <span style={{ color: TONE.faint }}>{withCommas(Math.round(TIER_N[fidelity] * s.share))}</span>
+                  </span>
+                ),
+              }))}
+              onSelect={(k) => setSegIdx(Number(k))}
+            />
+          )}
         </div>
         {/* headcount + how much of the room it is, with a slim share bar */}
         <div className="mt-3 flex items-baseline gap-2 text-[13px]" style={{ color: TONE.faint }}>
@@ -473,10 +560,15 @@ function ArmCard({
             {withCommas(n)}
           </span>
           <span>
-            minds ·{" "}
-            {seg.share < 1
-              ? `the ${seg.label.toLowerCase()} slice · ${Math.round(seg.share * 100)}% of the room`
-              : "the whole room"}
+            {isVideo ? (
+              // Ten REACTORS, not ten "minds out of a thousand": the video fold is a 10-archetype
+              // panel watching it end to end. Saying so is the whole point of VIDEO_PANEL_N.
+              <>reactors · the whole room, watching it end to end</>
+            ) : seg.share < 1 ? (
+              `minds · the ${seg.label.toLowerCase()} slice · ${Math.round(seg.share * 100)}% of the room`
+            ) : (
+              "minds · the whole room"
+            )}
           </span>
         </div>
         <div className="relative mt-2.5 h-[3px] overflow-hidden rounded-full" style={{ background: TONE.ghost }}>
@@ -496,13 +588,18 @@ function ArmCard({
           {/* Only scenes the engine can actually simulate (data.sceneOptions). This used to splice
               in a hardcoded "Instagram" plus the audience's provenance — neither of which has a
               reaction frame behind it, so picking either ran the TikTok simulation under a
-              different name. Provenance is still shown, as the FACT it is, by the mismatch tag. */}
-          <Dropdown
-            label={scene}
-            align="right"
-            options={data.sceneOptions.map((s) => ({ key: s, label: s }))}
-            onSelect={setScene}
-          />
+              different name. Provenance is still shown, as the FACT it is, by the mismatch tag.
+              A VIDEO run reaches `/api/analyze`, which takes no scene at all — locked, with why. */}
+          {isVideo ? (
+            <Locked value={scene} reason={VIDEO_LOCK.scene} />
+          ) : (
+            <Dropdown
+              label={scene}
+              align="right"
+              options={data.sceneOptions.map((s) => ({ key: s, label: s }))}
+              onSelect={setScene}
+            />
+          )}
         </div>
         {mismatch ? (
           <div className="mt-2 font-mono text-[11px] uppercase tracking-[0.06em]" style={{ color: TONE.faint }}>
@@ -517,8 +614,13 @@ function ArmCard({
           Screening{" "}
           <span className="tabular-nums" style={{ color: TONE.dim }}>{withCommas(n)}</span> of{" "}
           <span style={{ color: TONE.dim }}>{room}</span> for{" "}
-          <span style={{ color: TONE.dim }}>“would they {activeLens.label.toLowerCase()}”</span> · on{" "}
-          <span style={{ color: TONE.dim }}>{scene}</span> · SIM-1 {TIER_LABEL[fidelity]}
+          {isVideo ? (
+            // The video receipt cannot claim one behaviour — the fold measures all of them.
+            <span style={{ color: TONE.dim }}>every behaviour</span>
+          ) : (
+            <span style={{ color: TONE.dim }}>“would they {activeLens.label.toLowerCase()}”</span>
+          )}{" "}
+          · on <span style={{ color: TONE.dim }}>{scene}</span> · SIM-1 {TIER_LABEL[fidelity]}
         </div>
         <div className="mt-3.5 flex items-center justify-between">
           <button
@@ -532,6 +634,9 @@ function ArmCard({
                 n,
                 scene,
                 fidelity,
+                // The brought stimulus rides the config — this is the field that turns the ＋ door
+                // from a door into a run. Absent on `develop` (the caller resolves that from the id).
+                ...(brought ? { stimulus: brought } : {}),
               })
             }
             className="flex items-center gap-2 rounded-full px-5 py-2.5 text-[14px] font-medium transition-transform hover:scale-[1.02]"
@@ -623,6 +728,9 @@ export function AmbientSimulate({
     <ArmCard
       data={data}
       stimulus={stimulus}
+      // Only a COLD entry has a brought stimulus to route; `develop` deliberately passes none, so
+      // its config keeps the exact shape its caller has always received.
+      brought={brought ?? undefined}
       develop={mode === "develop" ? data.develop : undefined}
       onClose={onClose}
       // Cold: back to the COLLECT step (keep the door), so a creator fixing a typo in their draft

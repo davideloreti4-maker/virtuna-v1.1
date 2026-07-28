@@ -15,15 +15,23 @@
 import type { AmbientCardDescriptor } from '@/components/app/home/use-ambient-focus';
 
 /**
- * Block type → the kind the stepper names it by. These four are exactly the card types that
- * carry a scored reaction (`{ fraction, scrollQuote }`) for the room to read; every other block
+ * Block type → the kind the stepper names it by. These are exactly the card types that carry a
+ * scored reaction (`{ fraction, scrollQuote }`) for the room to read; every other block
  * (markdown, band, personas, grids…) is not a reactable card and is filtered out.
+ *
+ * `brought-card` (2026-07-28) is the ＋ door's card — a stimulus the CREATOR brought rather than
+ * one a skill generated. It is here because a descriptor is the ONLY way a sealed row reaches the
+ * board: seals are read through `descriptors.find(...)` → `persistedSeals[d.conceptText.trim()]`,
+ * so a brought stimulus with no descriptor has an ORPHANED seal that nothing renders. Its kind is
+ * `concept` — the generic rank kind `rankKindOf`/`FALLBACK_LABEL` already speak, because a pasted
+ * draft is not one of the four generated artifacts and must not be labelled as one.
  */
 const KIND_BY_BLOCK_TYPE: Record<string, { id: string; label: string }> = {
   'idea-card': { id: 'idea', label: 'Idea' },
   'hook-card': { id: 'hook', label: 'Hook' },
   'script-card': { id: 'script', label: 'Script' },
   'remix-card': { id: 'remix', label: 'Remix' },
+  'brought-card': { id: 'concept', label: 'Concept' },
 };
 
 /** The label when the ledger is empty, or holds kinds that don't share one name. */
@@ -51,7 +59,10 @@ export function toAmbientDescriptor(block: unknown, idx: number): AmbientCardDes
   if (!kind) return null;
   const p = b?.props;
   if (!p) return null;
-  const concept: string | undefined = p.hookLine ?? p.title ?? p.openingBeatSeed ?? p.adaptedHook;
+  // `stimulus` is the brought card's concept — and it is the SAME string the react route keyed the
+  // seal by, which is what links the two. If these ever drift the row goes back to queued.
+  const concept: string | undefined =
+    p.hookLine ?? p.title ?? p.openingBeatSeed ?? p.adaptedHook ?? p.stimulus;
   const fraction: string | undefined = p.fraction;
   const scrollQuote: string | undefined = p.scrollQuote;
   if (typeof concept !== 'string' || typeof fraction !== 'string') return null;

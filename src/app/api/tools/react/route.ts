@@ -33,6 +33,8 @@ import { csrfGuard } from "@/lib/http/csrf-guard";
 import { rateLimitGuard } from "@/lib/http/rate-limit";
 import { billUsage, creditGate } from "@/lib/billing/credit-gate";
 import { createOpenThreadLazy } from "@/lib/threads/threads";
+import { insertMessage } from "@/lib/threads/messages";
+import { kcStamp } from "@/lib/kc/kc-stamp";
 import { resolveThreadAudience } from "@/lib/audience/resolve-thread-audience";
 import { GENERAL_BASELINE_SIGNATURE } from "@/lib/audience/general-baseline-signature";
 import { goalIntentToLens } from "@/lib/audience/intent-lens";
@@ -77,12 +79,31 @@ const ReactBodySchema = z.object({
   // editable). Absent → the whole room. A slice is answered from the population projection's own
   // per-archetype split, so it is honoured only when that projection exists (see `slice` below).
   segment: z.string().trim().min(1).optional(),
+  // The picked slice's DISPLAY label, for the card's disclosure line only — never for identifying
+  // a slice (that is `segment`). It is creator-editable text the ARM screen owns, so the client is
+  // its correct source; absent ⇒ the card falls back to the raw archetype rather than inventing a
+  // name. (The humaniser lives in `src/lib/surfaces/**`, which an API route MUST NOT import — that
+  // import drags the client component graph into the server bundle and breaks `npm run build`.)
+  segmentLabel: z.string().trim().min(1).max(80).optional(),
   // Opt-in FLYWHEEL capture (Ambient v2 Phase D). Default OFF → type-to-room stays ephemeral +
   // pins nothing. The Ambient v2 Overview's DELIBERATE "Simulate →" sets it: a fired sim pins its
   // PREDICTED disposition vector for later reconciliation (relocates the orphaned pin onto a real
   // fired sim). The pin persists an outcome-signature row ONLY — never the thought/reaction (react
   // stays ephemeral for the reaction itself). Non-fatal: a pin failure never blocks the reaction.
   pin: z.boolean().optional(),
+  // ── The ＋ door's card (2026-07-28, Phase 4) ────────────────────────────────────────────────
+  // Opt-in THREAD CARD. Default OFF → nothing is inserted and every existing caller is
+  // byte-identical (type-to-room and the composer's `ask` verb stay ephemeral; the rail's own
+  // "Simulate →" already has a card — the one the skill generated — and must not get a second).
+  //
+  // Set ONLY by the ＋ door, and it is what stops that path from producing an ORPHAN SEAL:
+  // `persist` writes a seal keyed by this text, seals are read through DESCRIPTORS, and descriptors
+  // derive purely from rendered card blocks. A brought stimulus with no block therefore seals a row
+  // that renders NOWHERE. `card` inserts the `brought-card` whose `stimulus` IS the seal key.
+  card: z.boolean().optional(),
+  // What the creator called it at the door (draft / hook / idea / script) — carried onto the card
+  // so it names the artifact honestly instead of being labelled as one of the four generated kinds.
+  cardKind: z.enum(["draft", "hook", "idea", "script"]).optional(),
   // Opt-in SEAL persistence (Ambient v2 Phase D). Default OFF → type-to-room writes nothing. The
   // v2 Overview's deliberate sim sets it: the sealed verdict (pct + band) is written to the open
   // thread's `sim_seals` keyed by the trimmed stimulus, so the Overview seal SURVIVES a reload.
@@ -174,9 +195,12 @@ export async function POST(request: Request): Promise<Response> {
     intent: bodyIntent,
     pin: wantPin,
     persist: wantPersist,
+    card: wantCard,
+    cardKind,
     lens = "stop",
     scene,
     segment,
+    segmentLabel,
   } = parsed.data;
 
   // ── (3) Load creator profile (cold-start safe — null profile is valid) ─────
@@ -328,6 +352,73 @@ export async function POST(request: Request): Promise<Response> {
     }
     return { archetype: segment, honored: true, stopPct: seg.stopPct, total: seg.total };
   })();
+
+  // ── (7b″) THE ＋ DOOR'S CARD — what makes a brought stimulus land as a row (opt-in) ─────────
+  //
+  // THE TRAP THIS CLOSES: `persist` writes a SEAL and this route writes no message at all, but a
+  // seal is only ever READ through a descriptor — `snapshotFor` does `descriptors.find(...)` then
+  // `persistedSeals[d.conceptText.trim()]` — and descriptors derive purely from rendered CARD
+  // BLOCKS (`buildAmbientDescriptors`). So a stimulus the creator brought through the ＋ door had
+  // no block, therefore no descriptor, therefore an ORPHANED seal: a measured verdict that
+  // rendered nowhere. The block below IS the row.
+  //
+  // Its `stimulus` is the same `text` the seal is keyed by — that identity is the link, and the
+  // descriptor guard test asserts it rather than trusting it.
+  //
+  // Ordered BEFORE the seal write on purpose. Both writes are non-fatal, so one can land without
+  // the other, and the two failure directions are not equal: a card with no seal is an honest
+  // QUEUED row (the state every un-simulated card is in), while a seal with no card is the orphan
+  // this section exists to prevent. So the card goes first.
+  //
+  // No `run-header` block rides with it. That stamp's `skill` is the DISPLAY namespace
+  // (ChatTurnKind / SKILL_RUN_META), and a brought stimulus is not any of those skills — inventing
+  // an id there is the exact cast that shipped F-017. Without a stamp `classifyTurn` reads the turn
+  // as plain, which renders the card alone: correct, since the card carries the whole run.
+  if (wantCard) {
+    try {
+      await insertMessage(
+        openThread.id,
+        "assistant",
+        [
+          {
+            type: "brought-card",
+            props: {
+              stimulus: text,
+              kind: cardKind ?? "draft",
+              lens,
+              band,
+              fraction,
+              scrollQuote,
+              model: "sim1-flash",
+              ...(scene ? { scene } : {}),
+              // The slice rides along whether or not it could be answered — an un-honoured slice
+              // is a question the run did not answer, and the card says so rather than letting the
+              // room's fraction pass for it.
+              ...(slice
+                ? {
+                    slice: {
+                      archetype: slice.archetype,
+                      label: segmentLabel ?? slice.archetype,
+                      honored: slice.honored,
+                      ...(slice.stopPct !== undefined ? { stopPct: slice.stopPct } : {}),
+                      ...(slice.total !== undefined ? { total: slice.total } : {}),
+                      ...(slice.reason ? { reason: slice.reason } : {}),
+                    },
+                  }
+                : {}),
+              personas,
+              ...(population ? { population } : {}),
+            },
+          },
+        ],
+        kcStamp().kcGenVersion,
+      );
+    } catch {
+      // Non-fatal, like every other write on this route: the reaction is already computed and the
+      // creator paid for it, so a failed insert must still return the verdict. The row is then
+      // missing rather than wrong, and the seal below is what a retry would re-link to.
+    }
+  }
 
   // ── (7c) SEAL persistence (Ambient v2 Phase D verdict + Phase C depth, opt-in) ─
   // A DELIBERATE Overview sim (persist:true) writes its sealed verdict (pct + band) AND the depth
