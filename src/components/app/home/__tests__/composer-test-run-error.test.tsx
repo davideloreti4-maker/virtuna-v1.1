@@ -158,6 +158,42 @@ describe("the Test run's failure turn", () => {
     expect(screen.queryByRole('button', { name: 'Retry the video test' })).toBeNull();
   });
 
+  /**
+   * THE ONE-SHOT'S SHARPEST EDGE (Lane 2 step 5, 2026-07-28).
+   *
+   * A dispatched run disarms the composer immediately — `activeTool` is back to chat long
+   * before this failure turn exists. So a retry wired as a bare `handleSubmit()` would read
+   * the CURRENT arm and send the failed video's URL as a chat message, under a button that
+   * says "Retry the video test". Green suite, plausible UI, wrong run: the creator would be
+   * told their video was being re-read while a text model answered a question about a link.
+   *
+   * The fix is `handleSubmit("test")` — the tool passed explicitly, not inferred. This asserts
+   * the OUTCOME (a real video analysis starts), not the call shape, so it stays honest if the
+   * plumbing is ever refactored.
+   */
+  it('the retry re-runs the VIDEO TEST, not a chat turn — the arm is long gone by then', async () => {
+    streamState = { phase: 'error', error: 'Analysis failed', quotaError: null };
+    landFromFunnel();
+    renderWithClient(<Composer />);
+
+    const retry = await waitFor(() =>
+      screen.getByRole('button', { name: 'Retry the video test' }),
+    );
+    streamStart.mockClear();
+    fetchMock.mockClear();
+    retry.click();
+
+    // The video pipeline is what re-runs, on the same URL.
+    await waitFor(() => expect(streamStart).toHaveBeenCalledTimes(1));
+    expect(streamStart).toHaveBeenCalledWith(
+      expect.objectContaining({ input_mode: 'tiktok_url', tiktok_url: TIKTOK_URL }),
+    );
+    // …and emphatically NOT the chat route, which is what the disarmed composer would send.
+    expect(
+      fetchMock.mock.calls.some(([u]) => String(u).includes('/api/tools/chat')),
+    ).toBe(false);
+  });
+
   it('the polling-ceiling timeout offers NO retry — the run may still be billing', async () => {
     streamState = { phase: 'error', error: STREAM_TIMEOUT_ERROR, quotaError: null };
     landFromFunnel();

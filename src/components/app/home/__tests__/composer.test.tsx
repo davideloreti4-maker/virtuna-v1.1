@@ -451,39 +451,204 @@ describe('Composer — chat-agent unified reload', () => {
   });
 });
 
-// ── B (07-18): "Ask the room" is a VERB, not a hidden `audienceOpen` MODE ─────
-// The old mode silently rerouted the composer field to the room; after P2 made the room
-// always-present, a permanently-open rail made handleSubmit unreachable. Ask is a skill now
-// (activeTool === "ask" → askAudience → POST /api/tools/react). Each of these FAILS against the
-// pre-07-18 composer: `/ask` matched no skill, so send fell through to the chat/skill pipeline,
-// /api/tools/react was never called, and the placement-neutral placeholder did not exist. The
-// old "Ask your audience…" string only ever appeared while the (now-deleted) mode was open.
-describe('Composer — Ask the room is a verb (07-18)', () => {
+// ── Lane 2 (2026-07-28): the skill pill is DELETED, and an arm lasts exactly one send ──
+//
+// Three owner calls land here at once, and they only make sense together:
+//   step 3 — the skill PILL is gone. It was a picker; the `/` slash menu is the picker now.
+//   step 4 — the `ask` VERB is gone. It POSTed the (newly priced) /api/tools/react and its
+//            result rendered nowhere, so it billed for silence. The ROUTE and its price stay,
+//            reached through the room's own armed sim.
+//   step 5 — a skill is armed for ONE send (the one-shot), then the composer is back on chat.
+//
+// Step 5 is not a nicety layered on step 3: without the pill there is no chip to un-arm
+// yourself with, so an arm that outlived its run would silently bill every later sentence as
+// another pack. These assertions FAIL against the pre-Lane-2 composer.
+describe('Composer — the skill pill is gone (step 3)', () => {
   beforeEach(() => {
     installFetchMock();
     hooksStart.mockClear();
   });
   afterEach(() => vi.restoreAllMocks());
 
-  it('routes send to /api/tools/react when the Ask verb is armed (never the skill pipeline)', async () => {
+  it('mounts no skill picker at rest — no pill, no popover trigger, no rows', () => {
     renderWithClient(<Composer />);
-    selectSkillBySlash('ask');
+    // document, not the container: the pill's popover PORTALED to <body>, so a container-only
+    // query would pass even with the pill mounted and open.
+    expect(document.getElementById('composer-skill-pill')).toBeNull();
+    expect(screen.queryByRole('button', { name: /^skill:/i })).toBeNull();
+    expect(screen.queryByRole('menuitemradio')).toBeNull();
+  });
+
+  it('still opens the `/` slash menu — the door the owner kept', () => {
+    renderWithClient(<Composer />);
     const field = screen.getByRole('textbox') as HTMLTextAreaElement;
-    fireEvent.change(field, { target: { value: 'a hot take on protein timing' } });
-    fireEvent.keyDown(field, { key: 'Enter' });
-    await waitFor(() => expect(calledWith('/api/tools/react')).toBe(true));
-    // ...and it did NOT fall through to a content-generation stream.
-    expect(hooksStart).not.toHaveBeenCalled();
+    fireEvent.change(field, { target: { value: '/' } });
+    expect(screen.getByRole('menu', { name: /skills/i })).toBeInTheDocument();
+    expect(screen.getByRole('menuitemradio', { name: /hooks/i })).toBeInTheDocument();
   });
 
-  it('arming Ask shows the placement-neutral placeholder, never the retired "Ask your audience…" mode string', () => {
+  it('and that door still arms a skill that then runs', async () => {
+    const { container } = renderWithClient(<Composer />);
+    selectSkillBySlash('hooks');
+    const field = screen.getByRole('textbox') as HTMLTextAreaElement;
+    fireEvent.change(field, { target: { value: 'protein timing' } });
+    fireEvent.click(submitBtn(container));
+    await waitFor(() => expect(hooksStart).toHaveBeenCalled());
+  });
+});
+
+describe('Composer — the armed skill is STATED, since nothing else says it (step 3)', () => {
+  beforeEach(() => {
+    installFetchMock();
+    hooksStart.mockClear();
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  it('shows nothing while chat (the front door) is armed', () => {
     renderWithClient(<Composer />);
-    selectSkillBySlash('ask');
-    expect(screen.getByPlaceholderText(/watch the whole room react/i)).toBeInTheDocument();
-    expect(screen.queryByPlaceholderText(/ask your audience/i)).toBeNull();
+    expect(screen.queryByTestId('composer-armed-skill')).toBeNull();
   });
 
-  it('still streams a real skill (Hooks) — the verb split did not break content generation', async () => {
+  it('names the armed skill once one is armed', () => {
+    renderWithClient(<Composer />);
+    selectSkillBySlash('hooks');
+    const armed = screen.getByTestId('composer-armed-skill');
+    expect(armed).toHaveTextContent('Hooks');
+    expect(armed).toHaveAttribute('data-skill', 'hooks');
+  });
+
+  /**
+   * The indicator is NOT a smaller pill: it states, it does not pick. Its only control is the
+   * one that gets you out. If this ever grows a menu it has become the thing that was deleted.
+   */
+  it('offers no menu — only a way back to chat', () => {
+    renderWithClient(<Composer />);
+    selectSkillBySlash('test');
+    const armed = screen.getByTestId('composer-armed-skill');
+    expect(within(armed).getAllByRole('button')).toHaveLength(1);
+    expect(armed).not.toHaveAttribute('aria-haspopup');
+
+    fireEvent.click(within(armed).getByRole('button', { name: /back to chat/i }));
+    expect(screen.queryByTestId('composer-armed-skill')).toBeNull();
+    expect(screen.getByPlaceholderText(/ask about your niche/i)).toBeInTheDocument();
+  });
+});
+
+describe('Composer — an arm lasts exactly ONE send (step 5, the one-shot)', () => {
+  beforeEach(() => {
+    installFetchMock();
+    hooksStart.mockClear();
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  it('disarms the moment the run is dispatched, and the NEXT send is a chat turn', async () => {
+    const { container } = renderWithClient(<Composer />);
+    selectSkillBySlash('hooks');
+    expect(screen.getByTestId('composer-armed-skill')).toHaveAttribute('data-skill', 'hooks');
+
+    const field = screen.getByRole('textbox') as HTMLTextAreaElement;
+    fireEvent.change(field, { target: { value: 'protein timing' } });
+    fireEvent.click(submitBtn(container));
+    await waitFor(() => expect(hooksStart).toHaveBeenCalledTimes(1));
+
+    // Disarmed: the indicator is gone and the placeholder is chat's again.
+    await waitFor(() => expect(screen.queryByTestId('composer-armed-skill')).toBeNull());
+    expect(screen.getByPlaceholderText(/ask about your niche/i)).toBeInTheDocument();
+
+    // THE POINT: the next sentence is a conversation, not a second billed hooks pack.
+    fireEvent.change(field, { target: { value: 'which one should I shoot?' } });
+    fireEvent.click(submitBtn(container));
+    await waitFor(() => expect(calledWith('/api/tools/chat')).toBe(true));
+    expect(hooksStart).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * The other half of the contract. A branch that BAILS before dispatching must keep the arm,
+   * or a creator whose upload failed would have to walk back to the Start grid to try again.
+   * Test with an empty field: canSubmit is false, handleSubmit never dispatches.
+   */
+  it('keeps the arm when a send does NOT dispatch a run', () => {
+    const { container } = renderWithClient(<Composer />);
+    selectSkillBySlash('remix'); // remix requires a URL — an empty send cannot fire
+    fireEvent.click(submitBtn(container));
+    expect(screen.getByTestId('composer-armed-skill')).toHaveAttribute('data-skill', 'remix');
+  });
+
+  /**
+   * The trap this design exists to avoid. A reload used to restore the arm from the thread's
+   * last card — so opening a thread of hook cards left Hooks silently armed. With no pill to
+   * disarm with, every later sentence would have bought another pack.
+   */
+  it('never restores an arm from a reloaded thread', async () => {
+    // A thread whose LAST card is a hook-card — exactly what used to restore an armed Hooks.
+    const messages = [
+      { role: 'user', blocks: [{ type: 'markdown', props: { text: 'hooks about protein' } }] },
+      {
+        role: 'assistant',
+        blocks: [
+          { type: 'markdown', props: { text: 'A PRIOR TURN' } },
+          { type: 'hook-card', props: { rank: 1, hook: 'A prior hook', band: 'Strong', fraction: '4/5' } },
+        ],
+      },
+    ];
+    fetchCalls = [];
+    global.fetch = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      fetchCalls.push({ url });
+      let body: unknown = {};
+      if (url.includes('/api/audiences')) body = { audiences: [GENERAL_AUD] };
+      else if (url.includes('/api/threads/open')) body = { threadId: 't1', messages };
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(body) } as Response);
+    }) as typeof fetch;
+
+    renderWithClient(<Composer />);
+    // Wait for the rehydration to actually land before asserting on the arm — otherwise this
+    // passes trivially against the pre-fix composer, which had not restored anything yet.
+    expect(await screen.findByText('A PRIOR TURN')).toBeInTheDocument();
+    expect(screen.queryByTestId('composer-armed-skill')).toBeNull();
+    expect(screen.getByPlaceholderText(/ask about your niche/i)).toBeInTheDocument();
+  });
+});
+
+describe('Composer — "Ask the room" is gone from the field (step 4)', () => {
+  beforeEach(() => {
+    installFetchMock();
+    hooksStart.mockClear();
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  it('has no ask skill to arm — `/ask` matches nothing', () => {
+    renderWithClient(<Composer />);
+    const field = screen.getByRole('textbox') as HTMLTextAreaElement;
+    fireEvent.change(field, { target: { value: '/ask' } });
+    expect(screen.queryByRole('menuitemradio', { name: /ask the room/i })).toBeNull();
+    fireEvent.keyDown(field, { key: 'Enter' });
+    // Nothing resolved, so nothing was armed and the query is still sitting in the field.
+    expect(field.value).toBe('/ask');
+    expect(screen.queryByTestId('composer-armed-skill')).toBeNull();
+  });
+
+  /**
+   * The billing half. /api/tools/react is priced at 1 credit; the composer field used to be a
+   * second, blind door to it. No path through the field may reach it now.
+   */
+  it('never POSTs /api/tools/react, whatever is sent', async () => {
+    const { container } = renderWithClient(<Composer />);
+    const field = screen.getByRole('textbox') as HTMLTextAreaElement;
+
+    fireEvent.change(field, { target: { value: 'does this hook land?' } });
+    fireEvent.keyDown(field, { key: 'Enter' });
+    await waitFor(() => expect(calledWith('/api/tools/chat')).toBe(true));
+
+    selectSkillBySlash('hooks');
+    fireEvent.change(field, { target: { value: 'protein timing' } });
+    fireEvent.click(submitBtn(container));
+    await waitFor(() => expect(hooksStart).toHaveBeenCalled());
+
+    expect(calledWith('/api/tools/react')).toBe(false);
+  });
+
+  it('still streams a real skill — removing the verb did not touch generation', async () => {
     const { container } = renderWithClient(<Composer />);
     selectSkillBySlash('hooks');
     const field = screen.getByRole('textbox') as HTMLTextAreaElement;
