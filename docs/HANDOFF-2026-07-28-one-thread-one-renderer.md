@@ -201,23 +201,27 @@ optimization — so treat them as a deliberate trade, not an oversight.
 
 ---
 
-## 8. LANE 2 — ALL FIVE STEPS DONE (`lane/composer-pill`, worktree `~/virtuna-composer`)
+## 8. LANE 2 — ✅ COMPLETE AND MERGED TO `main`
 
-**Steps 1–2 merged to `main` — PR #395, `6392ff85`. Steps 3+4+5 are on `lane/composer-pill`,
-commit `c63f8a51`, and they LANDED TOGETHER on purpose** (see §8.7).
+**All five steps are on `main`.** Steps 1–2 via PR #395 (`6392ff85`); steps 3+4+5 via
+**PR #398, squash `5006f9c3`** — they landed together on purpose (see §8.8).
 
 | # | Step | State |
 |---|------|-------|
 | 1 | Prefill fix (was: add 4 skills to `SKILL_TOOLS`) | ✅ merged `6392ff85` |
 | 2 | Gate + bill agent-fired runs (+ the wall) | ✅ merged `6392ff85` |
-| 3 | Delete the skill pill | ✅ `c63f8a51` |
-| 4 | Delete "Ask the room" | ✅ `c63f8a51` — owner RE-CONFIRMED against new facts (§8.7) |
-| 5 | Start-grid tile → one-shot → chat | ✅ `c63f8a51` |
+| 3 | Delete the skill pill | ✅ merged `5006f9c3` |
+| 4 | Delete "Ask the room" | ✅ merged `5006f9c3` — owner RE-CONFIRMED against new facts (§8.7) |
+| 5 | Start-grid tile → one-shot → chat | ✅ merged `5006f9c3` |
 
-Suite **4824/0** flag off · **4825/0** flag on (441 files, from a 4813/0 baseline) · `tsc` clean ·
-production build compiles · **live walk-through PASSED on a production build** (§8.8).
+Verified **on the merged `main` tree**, not just on the branch: suite **4824/0** (441 files,
+1 skipped) · `tsc` clean. On the branch it was also 4825/0 with `NEXT_PUBLIC_AMBIENT_V2=true`,
+the production build compiled, and the **live walk-through PASSED on a production build** (§8.8).
+Baseline before the lane: 4813/0.
 
 Owner calls taken this session: **remove the `ask` verb** · **KEEP the `/` slash menu**.
+
+⚠️ **If you are the ＋door / ARM lane, read §8.10 BEFORE you rebase.**
 
 ### §8.1 — Step 1's premise was false. Read this before trusting a plan again.
 
@@ -477,3 +481,106 @@ Start grid renders; **production does not have it.**
 - The composer's `ask` deletion left `asks` / `asking` / `onReask` on `<AudiencePresence>` as
   optional props with **no producer**. Left in place deliberately: that component is already on the
   v2 cutover's list, and widening this diff into it bought nothing.
+
+### §8.10 — ⚠️ THE ＋DOOR LANE MUST REBASE, AND `composer.tsx` IS WHERE IT WILL HURT
+
+`lane/platform-surface` (＋door Phases 3+4, `257fecbf`) was **unmerged** when Lane 2 landed, and
+both lanes edit `src/components/app/home/composer.tsx`:
+
+| lane | composer.tsx |
+|---|---|
+| ＋door (`lane/platform-surface`) | +144 / −25 |
+| Lane 2 (merged `5006f9c3`) | +309 / −249 |
+
+A dry-run `git merge-tree` reported a conflict **before** the merge, which is exactly why Lane 2
+was landed first: it was finished and verified end-to-end, while the ＋door lane is still moving
+(Phases 5+6 to come). Rebasing a moving branch onto a settled file is the cheap direction.
+
+**What changed underneath you, and what it means for the conflict:**
+
+1. **`activeTool` is no longer the whole story.** It split into `activeTool` (what the NEXT send
+   does) and `runningTool` (what the LAST send did). If your hunk reads `activeTool` to decide
+   something about a run that is ON SCREEN — a spine, a receipt, a CTA, a retry — it is now
+   wrong and must read `runningTool`. `activeTool` reverts to `chat` the instant a run dispatches.
+2. **`handleSubmit` takes an optional tool**: `handleSubmit(toolOverride?: ToolId)`. Any new
+   retry/re-run path must NAME its tool, or it fires as a chat turn.
+3. **`ToolId` no longer contains `"ask"`**, and `SKILLS` / `SKILL_ICON` / `VERB_BY_TOOL` /
+   `PLACEHOLDER_BY_TOOL` lost their `ask` entries. tsc will catch a resurrection; a string id in
+   a registry will not — `composer-controls.test.tsx` has the guard for that.
+4. **`ComposerControls` no longer takes `onSelectTool` / `activeMode`** and renders `null` under
+   every skill except `explore`.
+5. **`AmbientOverviewRail.credit-wall.test.tsx` is new** and pins `fireSim`'s 402 → wall path.
+   Your lane also edits `AmbientOverviewRail.tsx`; keep that test green — it is the ONLY
+   remaining assertion that a refused room reaction says anything at all.
+
+**Rebase, then re-run both flag ways** (`node node_modules/vitest/vitest.mjs run`, and again with
+`NEXT_PUBLIC_AMBIENT_V2=true`). A green run one way is green for the product you did not ship.
+
+---
+
+## 9. COPY-PASTE BRIEF FOR THE FRESH SESSION
+
+Everything below is verified as of 2026-07-28, `main` at `5006f9c3`.
+
+```
+Virtuna. Lane 2 (composer chrome) is DONE and MERGED — all five steps, main 5006f9c3.
+Do not re-open it. Read docs/HANDOFF-2026-07-28-one-thread-one-renderer.md §8 only if
+you need the WHY; §8.10 is the part that affects live work.
+
+STATE OF main (5006f9c3), verified on the merged tree:
+  suite 4824 passed / 0 failed (441 files, 1 skipped) · tsc clean
+  The 3 "unhandled errors" in a full run are PRE-EXISTING (composer.test.tsx, a mocked
+  stream.start on the tiktok_url path). They misattribute the blame line to whatever
+  test was running — read the "Failed Tests" block, never the error's "originated in".
+
+WHAT LANDED, so you don't trip on it:
+  - The composer skill PILL is deleted. The `/` slash menu is the skill picker now
+    (owner call: keep). A non-interactive armed indicator
+    (data-testid="composer-armed-skill") states the armed skill; its only control is
+    × back to chat.
+  - "Ask the room" is gone from the composer FIELD. /api/tools/react, its 1-credit
+    price, the ＋ cold door and AmbientOverviewRail.fireSim are all UNTOUCHED — that
+    door survives and is the only one now.
+  - THE ONE-SHOT: a skill is armed for exactly ONE send. activeTool = what the NEXT
+    send does; runningTool = what the LAST send did. Anything about a run that is ON
+    SCREEN (Test progress spine, its failure turn, the Room Rewrite CTA) reads
+    runningTool. A reload restores runningTool but NEVER an arm.
+  - handleSubmit(toolOverride?: ToolId) — a retry must NAME its tool or it fires as chat.
+
+▶ THE ONE URGENT THING: `lane/platform-surface` (＋door Phases 3+4, 257fecbf) is
+  UNMERGED and edits composer.tsx (+144/−25) against Lane 2's (+309/−249). It WILL
+  conflict. §8.10 lists exactly what moved underneath it. Rebase it onto main before
+  building Phases 5+6, and re-run the suite BOTH flag ways after.
+
+🔴 OWNER-OWED, not a code task: /api/account-read has NO credit gate and `account` is
+  not in CREDIT_COSTS, so an agent-dispatched account read is still free. It is a
+  1–3 min Apify call. Re-checked 2026-07-28, unchanged. Name the price, then it's
+  a small piece of work.
+
+Verification gotchas that cost real time:
+  - The shell wrapper mangles npx/pnpm exec. Use:
+      node node_modules/vitest/vitest.mjs run
+      node node_modules/next/dist/bin/next build
+      node node_modules/typescript/bin/tsc --noEmit
+  - Run the suite BOTH ways — `NEXT_PUBLIC_AMBIENT_V2=true` prefixed, and without.
+    Production does NOT set that var (checked via `vercel env ls production`), so the
+    default run is prod parity and the flagged run is the direction of travel.
+  - A fresh worktree has NO .env.local — copy it from ~/virtuna-v1.1 BEFORE you build.
+    NEXT_PUBLIC_* inlines at BUILD time, so building first gives you a bundle whose
+    Supabase client throws on every page.
+  - /home reopens the last thread — click "New Thread" for a clean one.
+  - The login page has TWO input[name="email"]; fill form input[name="email"] LAST.
+  - Screenshots hang (the ambient room never settles). Assert on the DOM.
+  - To reach /home without credentials: open /go and click "Test a video free" — it
+    mints an anonymous session. Anonymous is entitled to ONE Test; everything else
+    refuses with the trial paywall, which is a fine way to exercise a refusal path.
+
+Two habits, both earned expensively on this lane:
+  - A plan's file-level claims are GUESSES until you read the source. §8.5 said step 4
+    would "delete a revenue line four days old"; measuring found the opposite — the
+    verb billed 1 credit and rendered NOTHING, both flag ways.
+  - Mutation-verify every guard: watch it FAIL against a deliberate reintroduction of
+    the bug it claims to catch. Nine were verified this way, and one of them caught a
+    real defect the moment it was written (a rehydration round-trip clobbering a live
+    run).
+```
