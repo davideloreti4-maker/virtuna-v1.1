@@ -15,16 +15,22 @@
  * (SaveAffordance needs the query client). AppShell owns <main>; this is a plain content div.
  */
 
-import { IdeasThreadView } from "@/components/thread/ideas-thread-view";
-import { HooksThreadView } from "@/components/thread/hooks-thread-view";
-import { ScriptThreadView } from "@/components/thread/script-thread-view";
-import { RemixThreadView } from "@/components/thread/remix-thread-view";
-import { ChatThreadView } from "@/components/thread/chat-thread-view";
-import { ExploreThreadView } from "@/components/thread/explore-thread-view";
-import { AccountReadThreadView } from "@/components/thread/account-read-thread-view";
+import { ThreadTurn, type LiveRun } from "@/components/thread/thread-turn";
+import { ThreadShell } from "@/components/thread/thread-shell";
 import { MessageBlocks } from "@/components/thread/message-blocks";
 import { AmbientRoom } from "@/components/audience-lens/AmbientRoom";
 import { AudiencePresence } from "@/components/audience-lens/audience-presence";
+import { AmbientOverviewRail } from "@/components/audience-lens/v2/AmbientOverviewRail";
+import { AmbientOverviewSheet } from "@/components/audience-lens/v2/AmbientOverviewSheet";
+import { AmbientDetail } from "@/components/audience-lens/v2/AmbientDetail";
+import {
+  CREATOR_LIVE_TEMPLATE,
+  CREATOR_LIVE_TEXT_TEMPLATE,
+} from "@/components/audience-lens/v2/detail-live-fixture";
+import { AMBIENT_V2_ENABLED } from "@/lib/flags/ambient-v2";
+import { GENERAL_AUDIENCE } from "@/lib/audience/audience-repo";
+import type { AmbientCardDescriptor } from "@/components/app/home/use-ambient-focus";
+import type { WireSimSealMap } from "@/lib/onboarding/verdict-seal";
 import { useState, useEffect } from "react";
 import { ProgressChecklist } from "@/components/thread/progress-checklist";
 import { SKILL_RUN_META } from "@/components/thread/run-capsule";
@@ -53,11 +59,131 @@ import {
   SINGLE_AUDIENCE_READ_BLOCK,
   USER_TURNS,
   FOLLOWUPS,
+  POPULATION_1K,
   doneStages,
 } from "./fixtures";
 
 const AUDIENCE = "Bootstrapped Founders";
 const noop = () => {};
+
+// ── The per-skill view adapters ──────────────────────────────────────────────────
+//
+// The seven `*-thread-view.tsx` wrappers this gallery used to mount are GONE. They were
+// per-skill LIVE surfaces gated on `activeTool`, and that gating is exactly what made a
+// finished run live outside the thread until the creator switched skills. Production now
+// renders every turn — live or reloaded — through ONE <ThreadTurn>.
+//
+// These adapters keep the gallery's call sites intact while routing them at the real
+// component, so this page stays what its header promises: 1:1 with a real thread. If it
+// re-forked from production it would be worse than useless — a stale reference that reads
+// as authoritative (which has already cost a design session once).
+//
+// A run's `live` half carries what a settled turn cannot re-derive (the stage receipt, the
+// engine's outro text, degrade notices). Passing it with `isStreaming: false` is precisely
+// the just-completed state each entry below wants to show.
+
+type GalleryTurnProps = {
+  userTurn?: string | null;
+  blocks: unknown[];
+  live?: Partial<LiveRun> & { skill: LiveRun["skill"] };
+};
+
+function GalleryTurn({ userTurn, blocks, live }: GalleryTurnProps) {
+  return (
+    <ThreadShell userTurn={undefined}>
+      <ThreadTurn
+        userTurn={userTurn ?? null}
+        blocks={blocks}
+        live={live ? { isStreaming: false, ...live } : null}
+      />
+    </ThreadShell>
+  );
+}
+
+/** Shared shape of the generative skill views (ideas / hooks / script / remix). */
+type SkillViewProps = {
+  streamingBlocks?: unknown[];
+  persistedBlocks?: unknown[];
+  stages?: LiveRun["stages"];
+  followupText?: string | null;
+  warnings?: string[];
+  outliersAvailable?: boolean;
+  onFindOutliers?: () => void;
+  isStreaming?: boolean;
+  error?: string | null;
+  platform?: string;
+  userTurn?: string | null;
+  audienceLabel?: string;
+  inputHookLine?: string | null;
+  // Accepted and ignored: the card CTAs ride context in production, never props.
+  statusMessage?: string | null;
+  onTestHook?: () => void;
+  onWriteScriptHook?: () => void;
+  onTestScript?: () => void;
+  onDevelop?: () => void;
+  onRetry?: () => void;
+  skillLabel?: string;
+};
+
+function skillView(skill: LiveRun["skill"]) {
+  return function SkillView(p: SkillViewProps) {
+    const blocks = [...(p.streamingBlocks ?? []), ...(p.persistedBlocks ?? [])];
+    return (
+      <GalleryTurn
+        userTurn={p.userTurn}
+        blocks={blocks}
+        live={{
+          skill,
+          isStreaming: p.isStreaming ?? false,
+          stages: p.stages ?? [],
+          followupText: p.followupText ?? null,
+          warnings: p.warnings ?? [],
+          error: p.error ?? null,
+          outliersAvailable: p.outliersAvailable ?? false,
+          onFindOutliers: p.onFindOutliers,
+          onRetry: p.onRetry,
+          audienceLabel: p.audienceLabel ?? AUDIENCE,
+          platform: p.platform ?? "tiktok",
+          hookLine: p.inputHookLine ?? null,
+        }}
+      />
+    );
+  };
+}
+
+const IdeasThreadView = skillView("ideas");
+const HooksThreadView = skillView("hooks");
+const ScriptThreadView = skillView("script");
+const RemixThreadView = skillView("remix");
+const ExploreThreadView = skillView("explore");
+
+/** Chat turns carry no run stamp — <ThreadTurn> classifies them from their block types. */
+function ChatThreadView(p: {
+  persistedBlocks?: unknown[];
+  persistedTurns?: { userTurn?: string | null; blocks: unknown[] }[];
+  streamingBlocks?: unknown[];
+  userTurn?: string | null;
+  [k: string]: unknown;
+}) {
+  const turns =
+    p.persistedTurns ??
+    [{ userTurn: p.userTurn ?? null, blocks: [...(p.persistedBlocks ?? []), ...(p.streamingBlocks ?? [])] }];
+  return (
+    <ThreadShell userTurn={undefined}>
+      {turns.map((t, i) => (
+        <ThreadTurn key={i} userTurn={t.userTurn ?? null} blocks={t.blocks} />
+      ))}
+    </ThreadShell>
+  );
+}
+
+function AccountReadThreadView(p: {
+  block?: unknown;
+  userTurn?: string | null;
+  [k: string]: unknown;
+}) {
+  return <GalleryTurn userTurn={p.userTurn} blocks={p.block ? [p.block] : []} live={{ skill: "account" }} />;
+}
 
 // ── Group A: the real skill thread views, in their just-completed state ──────────
 // Each is fed the fresh-run-complete combo (streamingBlocks populated + isStreaming:false +
@@ -921,7 +1047,10 @@ const DEV_BRAIN_SOURCE = {
   },
 };
 
-// ── The Room — the ambient audience panel body (The brain ⇄ The people ⇄ Population). ──
+// ── The Room — the LEGACY ambient audience panel body (The brain ⇄ The people ⇄ Population). ──
+// ⚠️ This is the room the app renders ONLY while `AMBIENT_V2_ENABLED` is false. With the flag on
+// (the dev default) the composer mounts the v2 surfaces below instead — see ROOM_V2_* and the
+// "which room this build ships" banner in the Room tab, which reads the real flag.
 // The same <AmbientRoom> the dock blooms open, fed a fixture focus so the three scales are
 // previewable without running a skill. Non-embedded (h-full) → it lives in a fixed-height box
 // that stands in for the panel.
@@ -962,6 +1091,53 @@ const RAIL_SIBLINGS = [
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
+// The Room, v2 (ambient-audience-v2) — what the composer ACTUALLY mounts today.
+//
+// The rail is `<AmbientOverviewRail>` (≥xl right column) and the <xl header is
+// `<AmbientOverviewSheet>`, both behind `AMBIENT_V2_ENABLED`. Everything below feeds them the
+// SAME prop shapes composer.tsx passes — a real `Audience`, the thread's `AmbientCardDescriptor[]`
+// ledger, and the `threads.sim_seals` map — so this previews the real component, not a mock of it.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** The real General constant the app serves a new creator (drives the "not calibrated" chip). */
+const ROOM_V2_AUDIENCE = GENERAL_AUDIENCE;
+
+/** The projected-card ledger `use-ambient-focus` builds from a thread's cards. Same five hooks as
+ *  the legacy fixture above, so the two rooms are diffable on identical input. */
+const ROOM_V2_DESCRIPTORS: AmbientCardDescriptor[] = [
+  { id: "h1", kind: "hook", conceptText: "The edit nobody tells you about.", fraction: "9/10 stop", scrollQuote: "Every editor says this. Prove it in 3 seconds." },
+  { id: "h2", kind: "hook", conceptText: "I deleted 40 hours of B-roll.", fraction: "7/10 stop", scrollQuote: "Nothing here tells me what it costs me." },
+  { id: "h3", kind: "hook", conceptText: "Stop editing your videos. Do this instead.", fraction: "6/10 stop", scrollQuote: "The hook promises more than the caption delivers." },
+  { id: "h4", kind: "hook", conceptText: "Your cuts are why they leave.", fraction: "4/10 stop", scrollQuote: "Feels like last month's advice." },
+  { id: "h5", kind: "idea", conceptText: "Editing is a trap.", fraction: "2/10 stop", scrollQuote: "Too vague to act on." },
+];
+
+/**
+ * One SEALED row, rehydrated the way `/api/threads/open` rehydrates `threads.sim_seals` — keyed by
+ * TRIMMED concept text, carrying the MEASURED verdict plus the Phase-C depth payload.
+ *
+ * Sealing h3 is what makes this gallery worth opening: without a seal every row is honestly queued
+ * and the depth drill is unreachable, because the drill only opens on a row that has a population.
+ * The numbers are deliberately reconciled — `pct: 54` is `POPULATION_1K.stopPct` (54.4) rounded, so
+ * the row's verdict and the page it drills into cannot disagree. It also reads as the real story the
+ * surface exists to tell: the projection said 6/10, the measured sim said 54%.
+ *
+ * Tapping "Simulate →" on a QUEUED row still POSTs the real `/api/tools/react` — there is no thread
+ * here, so it fails and the row falls honestly back to queued (fireSim's catch). That is the real
+ * failure path, not a gallery stub.
+ */
+const ROOM_V2_SEALS: WireSimSealMap = {
+  "Stop editing your videos. Do this instead.": {
+    pct: 54,
+    band: "Mixed",
+    at: "2026-07-28T09:00:00.000Z",
+    population: POPULATION_1K,
+    personas: ROOM_FOCUS.personas,
+    scrollQuote: "The hook promises more than the caption delivers.",
+  },
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // The classification — production status + category for every renderable above.
 // DERIVED, never duplicated: the node JSX stays in the arrays; this only sorts it
 // into tabs and tags each with its real production status, so the page is an honest
@@ -972,6 +1148,12 @@ const RAIL_SIBLINGS = [
 //              registry-kept for persisted history. (band, personas.)
 // ─────────────────────────────────────────────────────────────────────────────
 type Status = "live" | "flag-off" | "legacy";
+
+// The Room has TWO implementations and they are mutually exclusive, decided at BUILD time by
+// AMBIENT_V2_ENABLED. Deriving both statuses from the real flag is what stops this page drifting
+// again: it labels whichever room this build actually ships, in every build.
+const V2_STATUS: Status = AMBIENT_V2_ENABLED ? "live" : "flag-off";
+const LEGACY_ROOM_STATUS: Status = AMBIENT_V2_ENABLED ? "flag-off" : "live";
 
 const STATUS_META: Record<Status, { label: string; dot: string; tone: string }> = {
   live: { label: "Live", dot: "bg-[var(--color-accent)]", tone: "text-foreground-secondary" },
@@ -1019,7 +1201,7 @@ const TABS: Tab[] = [
   { id: "loading", label: "Loading", blurb: "The in-flight states — the run capsule mid-run. Reachable in production only by spending a real paid run; mounted here in their live mid-run shapes." },
   { id: "inputs", label: "Inputs", blurb: "The agent-surfaced in-thread affordances (request_input fields) + the context-aware chat follow-up chips." },
   { id: "reading", label: "Reading", blurb: "The Test skill's full /analyze surface — every state, not just the happy path. Each option mounts the REAL component." },
-  { id: "room", label: "The Room", blurb: "The ambient audience panel body — what the dock blooms open (brain ⇄ people ⇄ population) + the persistent rail." },
+  { id: "room", label: "The Room", blurb: "The audience surface beside the thread. The Ambient v2 surfaces the composer mounts today — the ≥xl rail, the <xl header sheet, and the depth drill a sealed row opens — plus the legacy pre-v2 room, which still ships wherever the flag is off." },
   { id: "blocks", label: "Blocks", blurb: "The live in-thread blocks rendered through the SAME MessageBlocks dispatch the thread uses." },
   { id: "hidden", label: "Hidden & legacy", blurb: "Renderers kept alive but NOT shippable today: the horizontal verbs behind HORIZONTAL_ENABLED (flag off) + the standalone primitives no live skill emits (legacy)." },
 ];
@@ -1028,6 +1210,9 @@ export default function DevCardsPage() {
   const [tab, setTab] = useState("overview");
   const [readingState, setReadingState] = useState("complete");
   const [pendingAnchor, setPendingAnchor] = useState<string | null>(null);
+  // The <xl header sheet is a controlled surface (composer.tsx owns `roomExpanded`); the gallery
+  // owns it here so the collapsed bar AND the full-screen room are both reachable.
+  const [roomSheetOpen, setRoomSheetOpen] = useState(false);
 
   const active = READING_STATES.find((s) => s.id === readingState) ?? READING_STATES[1]!;
 
@@ -1059,7 +1244,8 @@ export default function DevCardsPage() {
     loading: INFLIGHT_VIEWS.length,
     inputs: inputs.length,
     reading: READING_STATES.length,
-    room: 2,
+    room: 5, // 3 v2 surfaces (rail · sheet · depth) + the 2 legacy ones, kept while the flag can flip
+
     blocks: liveBlocks.length,
     hidden: hiddenBlocks.length,
   };
@@ -1140,11 +1326,14 @@ export default function DevCardsPage() {
             />
             <OverviewGroup
               title="The Room"
-              status="live"
+              status={V2_STATUS}
               onOpen={() => goTo("room")}
               chips={[
-                { id: "room-bloom", label: "Bloom (brain ⇄ people ⇄ population)", status: "live", onClick: () => goTo("room", "room-bloom") },
-                { id: "room-rail", label: "Persistent rail", status: "live", onClick: () => goTo("room", "room-rail") },
+                { id: "room-rail", label: "Rail · Ambient v2", status: V2_STATUS, onClick: () => goTo("room", "room-rail") },
+                { id: "room-sheet", label: "Header sheet (<xl)", status: V2_STATUS, onClick: () => goTo("room", "room-sheet") },
+                { id: "room-detail", label: "Depth drill (brain ⇄ audience)", status: V2_STATUS, onClick: () => goTo("room", "room-detail") },
+                { id: "room-bloom", label: "Legacy bloom", status: LEGACY_ROOM_STATUS, onClick: () => goTo("room", "room-bloom") },
+                { id: "room-legacy-rail", label: "Legacy rail", status: LEGACY_ROOM_STATUS, onClick: () => goTo("room", "room-legacy-rail") },
               ]}
             />
             <OverviewGroup
@@ -1260,12 +1449,78 @@ export default function DevCardsPage() {
         {/* ── THE ROOM ─────────────────────────────────────────────────────── */}
         {tab === "room" && (
           <div className="flex flex-col gap-8 pt-6">
+            {/* Which room THIS build ships. Read off the real flag, so the page cannot claim a
+                room the composer isn't mounting (it did exactly that until 2026-07-28). */}
+            <RoomFlagBanner />
+
+            {/* ── v2 · the rail the composer mounts at ≥xl ─────────────────── */}
+            <section id="room-rail" className="scroll-mt-32">
+              <SectionHead
+                label="The Room · rail (Ambient v2)"
+                code="AmbientOverviewRail"
+                note="The ≥xl right column, exactly as composer.tsx mounts it: a real Audience, the thread's projected-card ledger, and the sim_seals map. Boxed at the real host geometry (400px wide, full height). Rows h1/h2/h4/h5 are honestly QUEUED; h3 is SEALED from a rehydrated seal — tap it to drill into the real depth. Tapping Simulate → on a queued row POSTs the real /api/tools/react, which fails without a thread and drops the row back to queued (the real failure path)."
+                status={V2_STATUS}
+              />
+              <div className="flex flex-wrap gap-4">
+                <div className="h-[860px] w-[400px] max-w-full overflow-hidden rounded-[var(--radius-lg)] border border-white/[0.06]">
+                  <AmbientOverviewRail
+                    audience={ROOM_V2_AUDIENCE}
+                    descriptors={ROOM_V2_DESCRIPTORS}
+                    persistedSeals={ROOM_V2_SEALS}
+                  />
+                </div>
+                {/* The EMPTY rail — a thread with no projected cards yet. The state a creator
+                    actually opens on, and the one a fixture-only gallery never showed. */}
+                <div className="h-[860px] w-[400px] max-w-full overflow-hidden rounded-[var(--radius-lg)] border border-white/[0.06]">
+                  <AmbientOverviewRail audience={ROOM_V2_AUDIENCE} descriptors={[]} />
+                </div>
+              </div>
+            </section>
+
+            {/* ── v2 · the <xl header sheet ────────────────────────────────── */}
+            <section id="room-sheet" className="scroll-mt-32">
+              <SectionHead
+                label="The Room · header sheet (<xl)"
+                code="AmbientOverviewSheet"
+                note="What a phone gets: a collapsed bar (room glyph · audience · calibration · N ranked · caret) that opens the SAME rail full screen. The box below is a 390px phone width; the open room portals to <body>, so it takes the whole viewport here exactly as it does on a device — Escape closes it."
+                status={V2_STATUS}
+              />
+              <div className="w-[390px] max-w-full rounded-[var(--radius-lg)] border border-white/[0.06] p-2">
+                <AmbientOverviewSheet
+                  audience={ROOM_V2_AUDIENCE}
+                  descriptors={ROOM_V2_DESCRIPTORS}
+                  persistedSeals={ROOM_V2_SEALS}
+                  open={roomSheetOpen}
+                  onOpenChange={setRoomSheetOpen}
+                />
+              </div>
+            </section>
+
+            {/* ── v2 · the depth drill ─────────────────────────────────────── */}
+            <section id="room-detail" className="scroll-mt-32">
+              <SectionHead
+                label="The Room · depth drill (The brain ⇄ The audience)"
+                code="AmbientDetail"
+                note="Where a sealed row opens. Both templates are built by the REAL adapters over realistic persisted input — left is a tested VIDEO (buildVideoDomainTemplate: attention scrubber, craft signals, measured-dip why-this-second), right is a TEXT sim (buildDomainTemplate), whose brain tab is honestly unavailable because a concept has no attention read. onBack omitted on purpose — a back button that goes nowhere is a dead control."
+                status={V2_STATUS}
+              />
+              <div className="flex flex-wrap gap-4">
+                <div id="detail-video" className="h-[800px] w-[400px] max-w-full overflow-hidden rounded-[var(--radius-lg)] border border-white/[0.06]">
+                  <AmbientDetail template={CREATOR_LIVE_TEMPLATE} />
+                </div>
+                <div id="detail-text" className="h-[800px] w-[400px] max-w-full overflow-hidden rounded-[var(--radius-lg)] border border-white/[0.06]">
+                  <AmbientDetail template={CREATOR_LIVE_TEXT_TEMPLATE} />
+                </div>
+              </div>
+            </section>
+
+            {/* ── LEGACY · the pre-v2 room ─────────────────────────────────── */}
             <section id="room-bloom" className="scroll-mt-32">
               <SectionHead
-                label="The Room · bloom"
+                label="The Room · bloom (legacy, pre-v2)"
                 code="AmbientRoom.tsx"
-                note="What the audience dock blooms open: The brain (simulated neural read — the landing view) ⇄ The people (named voices) ⇄ The population. Fed a fixture focus; the box stands in for the panel."
-                status="live"
+                note="The room the dock bloomed open BEFORE Ambient v2: The brain (simulated neural read) ⇄ The people (named voices) ⇄ The population. Still the shipped room in any build where AMBIENT_V2_ENABLED is false — which is why it stays here instead of being deleted. Do not diff new work against it."
+                status={LEGACY_ROOM_STATUS}
               />
               <div className="grid gap-4 lg:grid-cols-2">
                 <div className="h-[900px] overflow-hidden rounded-[var(--radius-lg)] border border-white/[0.06] bg-[var(--color-surface-elevated)]">
@@ -1304,13 +1559,13 @@ export default function DevCardsPage() {
               </div>
             </section>
 
-            {/* The PERSISTENT rail presentation (variant='rail') — same body, in-flow, no bloom. */}
-            <section id="room-rail" className="scroll-mt-32">
+            {/* The PERSISTENT legacy rail (variant='rail') — same body, in-flow, no bloom. */}
+            <section id="room-legacy-rail" className="scroll-mt-32">
               <SectionHead
-                label="The Room · persistent rail (P2)"
+                label="The Room · persistent rail (legacy, pre-v2)"
                 code="AudiencePresence variant='rail'"
-                note="variant='rail' — the panel body always shown in-flow inside a fixed-height column: never blooms, never collapses, no overlay. The box below stands in for the rail column (340×720)."
-                status="live"
+                note="variant='rail' — the legacy panel body always shown in-flow inside a fixed-height column: never blooms, never collapses, no overlay. Superseded by AmbientOverviewRail above; it still fills the ≥xl rail whenever AMBIENT_V2_ENABLED is false. The box stands in for the old rail column (340×720)."
+                status={LEGACY_ROOM_STATUS}
               />
               <div className="flex flex-wrap gap-4">
                 {/* Ranked-compare view (a batch → the ranked overview). */}
@@ -1402,12 +1657,32 @@ function StatusPill({ status }: { status: Status }) {
   );
 }
 
+// ── Which room this build ships ──────────────────────────────────────────────
+// `AMBIENT_V2_ENABLED` is a build-time NEXT_PUBLIC constant, so this reads the same value the
+// composer branches on. Printing it here is the whole anti-drift device: the page can no longer
+// present a retired room as the product (it did, from the v2 cutover until 2026-07-28 — long
+// enough that /go was built against the wrong reference).
+function RoomFlagBanner() {
+  return (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-[var(--radius-md)] border border-white/[0.06] bg-surface-sunken px-3 py-2.5 text-[11px] text-foreground-muted">
+      <code className="rounded bg-white/[0.06] px-1.5 py-0.5 text-[11px] text-foreground-secondary">
+        NEXT_PUBLIC_AMBIENT_V2={String(AMBIENT_V2_ENABLED)}
+      </code>
+      <span>
+        {AMBIENT_V2_ENABLED
+          ? "→ this build mounts the Ambient v2 rail + header sheet. The legacy room below is unreachable here; it is kept only because the flag can be flipped back."
+          : "→ this build still mounts the LEGACY room. The Ambient v2 surfaces below are unreachable here; set the env var and restart the dev server to render them for real."}
+      </span>
+    </div>
+  );
+}
+
 function StatusLegend() {
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-[var(--radius-md)] border border-white/[0.06] bg-surface-sunken px-3 py-2.5 text-[11px] text-foreground-muted">
       <span className="uppercase tracking-[0.06em] text-foreground-muted/60">Legend</span>
       <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-[var(--color-accent)]" /> Live — a skill emits it today</span>
-      <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full ring-1 ring-inset ring-white/30" /> Flag off — behind HORIZONTAL_ENABLED</span>
+      <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full ring-1 ring-inset ring-white/30" /> Flag off — a flag hides it in this build</span>
       <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-white/25" /> Legacy — no live producer</span>
     </div>
   );

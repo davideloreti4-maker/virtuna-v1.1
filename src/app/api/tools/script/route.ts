@@ -40,6 +40,7 @@ import { createClient } from "@/lib/supabase/server";
 import { maybeMockSkillRun } from "@/lib/tools/mock/mock-sse";
 import { createOpenThreadLazy } from "@/lib/threads/threads";
 import { insertMessage } from "@/lib/threads/messages";
+import { runHeaderBlock } from "@/lib/tools/run-header";
 import { runScriptPipeline } from "@/lib/tools/runners/script-runner";
 import { kcStamp } from "@/lib/kc/kc-stamp";
 import { getQwenClient, QWEN_REASONING_MODEL } from "@/lib/engine/qwen/client";
@@ -255,7 +256,21 @@ export async function POST(request: Request): Promise<Response> {
 
         // ── PERSIST: blocks + KC_GEN_VERSION provenance stamp (D-10) ─────────
         if (blocks.length > 0) {
-          await insertMessage(openThread.id, "assistant", blocks, kcStamp().kcGenVersion);
+          await insertMessage(
+            openThread.id,
+            "assistant",
+            [
+              runHeaderBlock({
+                skill: "script",
+                audienceLabel: activeAudience?.name,
+                platform,
+                // The input hook the script was anchored on — the intro cites it verbatim.
+                hookLine: rawAnchor,
+              }),
+              ...blocks,
+            ],
+            kcStamp().kcGenVersion,
+          );
         }
 
         // ── DONE (S2): emit BEFORE the follow-up turn ────────────────────────

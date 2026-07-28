@@ -197,7 +197,11 @@ describe("POST /api/tools/ideas (route)", () => {
     expect(threadId).toBe("thread-abc");
     expect(role).toBe("assistant");
     expect(Array.isArray(blocks)).toBe(true);
-    expect(blocks as unknown[]).toHaveLength(3);
+    // The turn's RUN STAMP leads the message, then the cards. <ThreadTurn> reads it to rebuild the
+    // intro + stage receipt a reload would otherwise lose (lib/tools/run-header.ts).
+    expect((blocks as { type: string }[])[0]!.type).toBe("run-header");
+    expect((blocks as { props: { skill: string } }[])[0]!.props.skill).toBe("ideas");
+    expect(blocks as unknown[]).toHaveLength(4);
     expect(typeof kcGenVersion).toBe("string");
     expect(kcGenVersion as string).toMatch(/^gen\./);
   });

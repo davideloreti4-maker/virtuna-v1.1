@@ -16,21 +16,24 @@
  *   `data-card-id` resolves to the LEDGER descriptor whose concept is that same text.
  *
  * The second half is what makes this more than a presence check. Ledger ids are positional
- * (`hook-0`, `hook-1` = index into `buildAmbientDescriptors`' source array), while the tool views
- * render this run's cards ABOVE the earlier ones under an "Earlier" divider — the reverse grouping.
- * So a renderer that tags cards with its own local index produces ids that point at the WRONG
- * descriptor, and the room would confidently show you another card's reaction. Asserting
- * id -> descriptor -> concept === the node's own text is what catches that, and a presence-only
- * assertion never would.
+ * (`hook-0`, `hook-1` = index into `buildAmbientDescriptors`' source array), so a renderer that
+ * tags cards with its own LOCAL index produces ids pointing at the WRONG descriptor, and the room
+ * would confidently show you another card's reaction.
+ *
+ * Under the unified stream that arithmetic moved INTO <PersistedThreadStream>, which now draws the
+ * persisted turns AND the live tail: it must base each turn at the running count of blocks in every
+ * earlier turn. So this file no longer wires the offset by hand — it asserts the component computes
+ * it, which is the stronger property and the one that can actually regress.
+ *
+ * The `run-header` block matters here too. It persists as a real block, so it occupies a LEDGER
+ * SLOT — which is exactly why <ThreadTurn> renders it (as null) instead of filtering it out. A
+ * filter on one side only would shift every later card's id by one.
  */
 import { describe, it, expect, afterEach } from 'vitest';
 import { render, cleanup } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ChatThreadView } from '../chat-thread-view';
-import { HooksThreadView } from '../hooks-thread-view';
 import { PersistedThreadStream } from '../persisted-thread-stream';
 import { buildAmbientDescriptors } from '@/components/app/home/ambient-descriptors';
-import type { HookCardBlock } from '@/lib/tools/blocks';
 
 afterEach(cleanup);
 
@@ -91,48 +94,37 @@ function anchors(container: HTMLElement): HTMLElement[] {
   return Array.from(container.querySelectorAll<HTMLElement>('[data-ambient-card]'));
 }
 
-const chatBase = {
-  persistedBlocks: [],
-  streamingBlocks: [],
-  isStreaming: false,
-  coldStart: false,
-  nudgeShown: false,
-  error: null,
-};
-
-const hooksBase = {
-  statusMessage: null,
-  stages: [],
-  followupText: null,
-  warnings: [], // main's RunWarnings (#320) made this a required HooksThreadView prop
-  isStreaming: false,
-  error: null,
-  platform: 'tiktok',
-};
+/** The live tail, as the composer hands it to the stream. */
+function liveTurn(blocks: unknown[]) {
+  return {
+    userTurn: null,
+    blocks,
+    live: { skill: 'hooks' as const, isStreaming: false, stages: [], error: null },
+  };
+}
 
 describe('ambient scroll-spy anchors — the observer watches the real cards', () => {
   // PRECONDITION, not a nicety. The first draft of this guard used an invalid hook-card fixture, so
   // every card rendered as <UnsupportedBlock> and all four tests failed with "0 anchors" — the exact
-  // symptom of the bug they were written to catch, for entirely the wrong reason. A guard that fails
-  // for the wrong reason proves nothing. This asserts the cards are really on screen first.
+  // symptom of the bug they were written to catch, for entirely the wrong reason.
   it('PRECONDITION: the fixtures render as real cards (not UnsupportedBlock)', () => {
     const { container } = renderWithClient(
-      <HooksThreadView
-        {...hooksBase}
-        persistedBlocks={[hookCard('An earlier hook', 1)] as unknown as HookCardBlock[]}
-        streamingBlocks={[hookCard('A fresh hook', 1)] as unknown as HookCardBlock[]}
+      <PersistedThreadStream
+        persistedTurns={[{ userTurn: 'give me hooks', blocks: [hookCard('An earlier hook', 1)] }]}
+        liveTurn={liveTurn([hookCard('A fresh hook', 1)])}
+        ambientBaseIndex={0}
       />,
     );
     expect(container.textContent).toContain('A fresh hook');
     expect(container.textContent).toContain('An earlier hook');
   });
 
-  it('tags each rendered chat card with the ledger id for that card', () => {
+  it('tags each rendered card with the ledger id for that card', () => {
     const cards = [hookCard('Stop posting at 9am', 1), hookCard('Your hook is the whole video', 2)];
     const { descriptors } = buildAmbientDescriptors(cards);
 
     const { container } = renderWithClient(
-      <ChatThreadView {...chatBase} streamingCardBlocks={cards} />,
+      <PersistedThreadStream persistedTurns={[]} liveTurn={liveTurn(cards)} ambientBaseIndex={0} />,
     );
 
     const found = anchors(container);
@@ -143,7 +135,7 @@ describe('ambient scroll-spy anchors — the observer watches the real cards', (
   it('anchors are the cards themselves — each carries its own card text, not an empty shadow marker', () => {
     const cards = [hookCard('Stop posting at 9am', 1), hookCard('Your hook is the whole video', 2)];
     const { container } = renderWithClient(
-      <ChatThreadView {...chatBase} streamingCardBlocks={cards} />,
+      <PersistedThreadStream persistedTurns={[]} liveTurn={liveTurn(cards)} ambientBaseIndex={0} />,
     );
 
     const found = anchors(container);
@@ -158,45 +150,44 @@ describe('ambient scroll-spy anchors — the observer watches the real cards', (
 
   it('does NOT tag blocks that carry no reaction for the room to read (markdown, prose)', () => {
     const { container } = renderWithClient(
-      <ChatThreadView {...chatBase} streamingCardBlocks={[MARKDOWN_BLOCK, IDEA_CARD]} />,
+      <PersistedThreadStream
+        persistedTurns={[]}
+        liveTurn={liveTurn([MARKDOWN_BLOCK, IDEA_CARD])}
+        ambientBaseIndex={0}
+      />,
     );
 
     const found = anchors(container);
-    // Only the idea card is reactable; the markdown block must not become an anchor.
+    // Only the idea card is reactable; the markdown block must not become an anchor — but it still
+    // holds its ledger SLOT, so the card is `idea-1`, not `idea-0`.
     expect(found).toHaveLength(1);
     expect(found[0]!.dataset.cardId).toBe('idea-1');
   });
 
-  it("THE OFF-BY-OFFSET LOCK (unified stream): every anchor's id resolves to the descriptor whose concept is that anchor's own text, across the persisted stream + the live view", () => {
-    // Thread-unification Phase 4: history renders in PersistedThreadStream (base 0), the live view
-    // renders the streaming tail based at the persisted block count. The ledger is the SAME flat array
-    // `[...persistedFlat, ...streaming]`, so a card's id must match its `data-card-id` anchor no matter
-    // which component drew it. A view that anchored its streaming cards at 0 (its own local index)
-    // instead of the persisted count would collide two cards onto one id — this catches exactly that.
-    const persisted = [hookCard('An earlier hook', 1), hookCard('Another earlier hook', 2)];
+  it("THE OFF-BY-OFFSET LOCK: every anchor's id resolves to the descriptor whose concept is that anchor's own text, across persisted turns + the live tail", () => {
+    // The ledger is the flat array `[...persistedTurns.flatMap(t => t.blocks), ...liveBlocks]`, and
+    // the stream must base each turn at the running block count. A turn drawn at its own local
+    // index would collide two cards onto one id — this catches exactly that.
+    const turnOne = [hookCard('An earlier hook', 1), hookCard('Another earlier hook', 2)];
+    const turnTwo = [hookCard('A third earlier hook', 1)];
     const streaming = [hookCard('A fresh hook', 1), hookCard('A second fresh hook', 2)];
-    const persistedFlat = [...persisted];
 
-    const { descriptors } = buildAmbientDescriptors([...persistedFlat, ...streaming]);
+    const { descriptors } = buildAmbientDescriptors([...turnOne, ...turnTwo, ...streaming]);
     const conceptById = new Map(descriptors.map((d) => [d.id, d.conceptText]));
 
     const { container } = renderWithClient(
-      <>
-        <PersistedThreadStream
-          persistedTurns={[{ userTurn: 'give me hooks', blocks: persisted }]}
-          ambientBaseIndex={0}
-        />
-        <HooksThreadView
-          {...hooksBase}
-          persistedBlocks={[]}
-          ambientBaseIndex={persistedFlat.length}
-          streamingBlocks={streaming as unknown as HookCardBlock[]}
-        />
-      </>,
+      <PersistedThreadStream
+        persistedTurns={[
+          { userTurn: 'give me hooks', blocks: turnOne },
+          { userTurn: 'more', blocks: turnTwo },
+        ]}
+        liveTurn={liveTurn(streaming)}
+        ambientBaseIndex={0}
+      />,
     );
 
     const found = anchors(container);
-    expect(found).toHaveLength(4);
+    expect(found).toHaveLength(5);
 
     // The room must read THIS card's reaction — so the id on a card has to point at the descriptor
     // built from that same card. A renderer using its own local index fails right here.
@@ -207,7 +198,33 @@ describe('ambient scroll-spy anchors — the observer watches the real cards', (
       expect(node.textContent, `anchor "${id}" carries another card's reaction`).toContain(concept!);
     }
 
-    // DOM order under the unified stream: persisted first (ledger 0,1), then the live tail (ledger 2,3).
-    expect(found.map((n) => n.dataset.cardId)).toEqual(['hook-0', 'hook-1', 'hook-2', 'hook-3']);
+    expect(found.map((n) => n.dataset.cardId)).toEqual([
+      'hook-0',
+      'hook-1',
+      'hook-2',
+      'hook-3',
+      'hook-4',
+    ]);
+  });
+
+  it('a persisted run-header holds its ledger slot (rendered as null, never filtered)', () => {
+    // The stamp is a real persisted block, so it counts in the ledger. <ThreadTurn> renders it as
+    // null rather than filtering it, because filtering on one side only would shift every later
+    // card's id by one and hand the room the wrong reaction.
+    const RUN_HEADER = { type: 'run-header', props: { skill: 'hooks', audienceLabel: 'General', platform: 'tiktok' } };
+    const blocks = [RUN_HEADER, hookCard('Stop posting at 9am', 1)];
+    const { descriptors } = buildAmbientDescriptors(blocks);
+    expect(descriptors.map((d) => d.id)).toEqual(['hook-1']);
+
+    const { container } = renderWithClient(
+      <PersistedThreadStream
+        persistedTurns={[{ userTurn: 'give me hooks', blocks }]}
+        ambientBaseIndex={0}
+      />,
+    );
+
+    const found = anchors(container);
+    expect(found).toHaveLength(1);
+    expect(found[0]!.dataset.cardId).toBe('hook-1');
   });
 });

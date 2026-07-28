@@ -27,6 +27,7 @@ import { listReconciliations } from "@/lib/flywheel/reconciliation-repo";
 import { generateAccountRead } from "@/lib/account-read/account-read";
 import { createOpenThreadLazy } from "@/lib/threads/threads";
 import { insertMessage } from "@/lib/threads/messages";
+import { runHeaderBlock } from "@/lib/tools/run-header";
 import { kcStamp } from "@/lib/kc/kc-stamp";
 import type { AccountReadBlock } from "@/lib/tools/blocks";
 
@@ -171,7 +172,12 @@ export async function POST(request: Request): Promise<Response> {
         if (persist) {
           try {
             const openThread = await createOpenThreadLazy(user.id);
-            await insertMessage(openThread.id, "assistant", [block], kcStamp().kcGenVersion);
+            await insertMessage(
+              openThread.id,
+              "assistant",
+              [runHeaderBlock({ skill: "account" }), block],
+              kcStamp().kcGenVersion,
+            );
           } catch {
             /* non-fatal — the streamed block still reaches the client */
           }

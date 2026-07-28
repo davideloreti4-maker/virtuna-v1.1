@@ -46,20 +46,39 @@ export function introLine(
   audienceLabel: string,
   platform: string,
   hookLine?: string | null,
+  /**
+   * The run is already finished — a reloaded thread, or a turn scrolled back to. The intro is
+   * PERSISTENT now (it is rebuilt from the turn's `run-header` stamp instead of dying with the
+   * client's live state), so it has to be readable after the fact: "Pulling hooks for X" sitting
+   * above cards that already exist claims a run is in flight when it finished yesterday. Same
+   * inputs, same orientation, correct tense.
+   */
+  settled = false,
 ): string {
   const who = audienceLabel;
   const where = PLATFORM_LABEL[platform] ?? 'TikTok';
   switch (skill) {
     case 'hooks':
-      return `Pulling hooks for ${who} — I'll react each one with your 10 reactors and rank the strongest first.`;
+      return settled
+        ? `Pulled hooks for ${who} — reacted with your 10 reactors, strongest first.`
+        : `Pulling hooks for ${who} — I'll react each one with your 10 reactors and rank the strongest first.`;
     case 'ideas':
-      return `Looking for angles ${who} would actually stop on — scoring each against your 10 reactors.`;
+      return settled
+        ? `Looked for angles ${who} would actually stop on — each scored against your 10 reactors.`
+        : `Looking for angles ${who} would actually stop on — scoring each against your 10 reactors.`;
     case 'script':
+      if (settled) {
+        return hookLine
+          ? `Wrote a script from "${truncate(hookLine, 60)}" — the open pressure-tested against ${who}.`
+          : `Wrote a script for ${who} — the open pressure-tested with your 10 reactors.`;
+      }
       return hookLine
         ? `Writing a script from "${truncate(hookLine, 60)}" — then pressure-testing the open against ${who}.`
         : `Writing a script for ${who} — then pressure-testing the open with your 10 reactors.`;
     case 'remix':
-      return `Decoding this video, then rewriting it for ${who} on ${where}.`;
+      return settled
+        ? `Decoded this video and rewrote it for ${who} on ${where}.`
+        : `Decoding this video, then rewriting it for ${who} on ${where}.`;
   }
 }
 
@@ -116,18 +135,21 @@ export function ThreadIntro({
   audienceLabel,
   platform,
   hookLine,
+  settled = false,
 }: {
   skill: ThreadSkill;
   audienceLabel: string;
   platform: string;
   hookLine?: string | null;
+  /** The run already finished (a reload, or a turn scrolled back to) → past tense. */
+  settled?: boolean;
 }) {
   // The intent line TYPES OUT (per-word cascade) — a smoother, more alive entrance than a hard
   // appear. This is the header voice moment; the result + outro still land only after the spine
   // completes (never answer text streaming early — that path stays gated on !isStreaming).
   return (
     <WordFade
-      text={introLine(skill, audienceLabel, platform, hookLine)}
+      text={introLine(skill, audienceLabel, platform, hookLine, settled)}
       className="block text-reading leading-relaxed text-foreground"
       perWordMs={30}
     />

@@ -51,6 +51,7 @@ import { billUsage, creditGate } from "@/lib/billing/credit-gate";
 import { rateLimitGuard } from "@/lib/http/rate-limit";
 import { createOpenThreadLazy } from "@/lib/threads/threads";
 import { insertMessage } from "@/lib/threads/messages";
+import { runHeaderBlock } from "@/lib/tools/run-header";
 import { runIdeasPipeline } from "@/lib/tools/runners/ideas-runner";
 import { kcStamp } from "@/lib/kc/kc-stamp";
 import { getQwenClient, QWEN_REASONING_MODEL } from "@/lib/engine/qwen/client";
@@ -266,7 +267,12 @@ export async function POST(request: Request): Promise<Response> {
         // insertMessage validates each block and stores the { kcGenVersion, blocks }
         // wrapper; loadMessages unwraps it back to the array on rehydration (T-03-12).
         if (blocks.length > 0) {
-          await insertMessage(openThread.id, "assistant", blocks, kcStamp().kcGenVersion);
+          await insertMessage(
+            openThread.id,
+            "assistant",
+            [runHeaderBlock({ skill: "ideas", audienceLabel: activeAudience?.name, platform }), ...blocks],
+            kcStamp().kcGenVersion,
+          );
         }
 
         // ── DONE (S2): emit BEFORE the follow-up turn ────────────────────────

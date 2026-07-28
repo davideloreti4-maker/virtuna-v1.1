@@ -49,6 +49,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createOpenThreadLazy, setThreadTitleIfEmpty } from "@/lib/threads/threads";
 import { insertMessage } from "@/lib/threads/messages";
+import { runHeaderBlock } from "@/lib/tools/run-header";
 import { runHooksPipeline } from "@/lib/tools/runners/hooks-runner";
 import { kcStamp } from "@/lib/kc/kc-stamp";
 import { getQwenClient, QWEN_REASONING_MODEL } from "@/lib/engine/qwen/client";
@@ -284,7 +285,12 @@ export async function POST(request: Request): Promise<Response> {
 
         // Persist: blocks array (canonical body) + KC_GEN_VERSION provenance stamp (D-10)
         if (blocks.length > 0) {
-          await insertMessage(openThread.id, "assistant", blocks, kcStamp().kcGenVersion);
+          await insertMessage(
+            openThread.id,
+            "assistant",
+            [runHeaderBlock({ skill: "hooks", audienceLabel: activeAudience?.name, platform }), ...blocks],
+            kcStamp().kcGenVersion,
+          );
 
           // Title the thread from the most topical signal this run carries:
           // typed ask > carried anchor (idea concept) > rank-1 hook line. Auto
