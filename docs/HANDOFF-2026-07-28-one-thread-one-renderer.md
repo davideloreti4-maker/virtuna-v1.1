@@ -1,11 +1,12 @@
-# One thread, one renderer — Lane 1 SHIPPED · Lane 2 open
+# One thread, one renderer — Lane 1 CLOSED · Lane 2 open
 
-**Status:** Lane 1 complete. Suite **4758/0** · `tsc` clean · `npm run build` compiles · lint at
-baseline (9 pre-existing errors, **0 new**). Net **−1,788 lines** across 31 files.
+**Status:** Lane 1 complete and **CLOSED**. Net **−1,788 lines** across 31 files.
 
 **✅ VERIFIED LIVE 2026-07-28** on a production build, all six steps — §5. The walk-through found
 two defects Lane 1 had introduced (the Stop disc firing a second billed run; every finished run
-rendering twice); both are fixed and mutation-guarded. Suite **4787/0** · `tsc` clean.
+rendering twice). Both are fixed, mutation-guarded, **merged to `main` as `9902b45f` (PR #392)**
+and **live in production** (deploy READY, aliased to numenmachines.com). Suite **4764/0** on the
+fix branch · `tsc` clean · build compiles.
 
 ---
 
@@ -141,6 +142,35 @@ intro nor receipt. `classifyTurn` ranks `video-test-card` above `hook-card`. Leg
 
 The composer chrome. Deliberately deferred: it carries the money risk and deserves its own context.
 
+### START HERE — two preconditions, both learned the hard way on 2026-07-28
+
+1. **Lane 2 gets its OWN worktree, off `main`.** Not `~/virtuna-platform`. That worktree sits on
+   `lane/platform-surface`, a SECOND session was committing into it live (the ARM `＋`-door lane,
+   `0f5d292c`/`0ea85d9d`), and its half-finished `/api/tools/react` edit broke the build in the
+   middle of Lane 1's verification — the walk-through only completed because the work was moved to
+   a throwaway worktree. Lane 2 edits `composer.tsx`, the same neighbourhood.
+
+   ```bash
+   git -C ~/virtuna-platform fetch origin
+   git -C ~/virtuna-platform worktree add -b lane/composer-chrome ~/virtuna-composer origin/main
+   ```
+
+2. **`lane/platform-surface` still carries the PRE-FIX thread code** until it merges `main`.
+   Anything measured in that worktree will still show the duplicate turn and the double-fire.
+
+### Verifying anything on this app (cost ~1h to work out)
+
+- `/home` **reopens the last thread** — click "New Thread" for a clean one, or step 2 lands in the
+  wrong thread and reads as a bug.
+- The login page has **two** `input[name="email"]`: the OTP front door shadows the folded password
+  form. Fill `form input[name="email"]` **last**, or the sign-in silently never happens.
+- Launch the server as `node node_modules/next/dist/bin/next start -p 3210`. A shell wrapper
+  mangles `npx next` (and `git diff`) into a useless summary and exits 1.
+- Screenshots hang — the ambient room never settles. Assert on the DOM.
+- A run's real cost is ~20s; budget for it rather than polling tightly.
+
+### The order
+
 1. **Add `test` / `account` / `remix` / `explore` to `SKILL_TOOLS`** (`skill-dispatch.ts` — today
    only 3 of 9: ideas/hooks/script). **Blocking.** Until this lands, removing the pill DELETES
    capability: a pasted TikTok link in chat currently reaches an agent with no test tool, so it
@@ -155,3 +185,11 @@ The composer chrome. Deliberately deferred: it carries the money risk and deserv
 
 **Owner calls already locked:** keep the Start grid · remove Ask the room · no skill pill in the
 composer · one run at a time · intro/outro/loading states preserved 1:1.
+
+## 7. Follow-up left open (not a blocker)
+
+The late-follow-up reload (§5) costs a second `GET /api/threads/open` per run to collect one
+sentence. It is correct, but the cleaner shapes are: emit `followup` BEFORE `done`, or expose a
+real stream-closed signal from the four generative hooks so the fold can wait for it. Both are
+larger than that fix deserved on the day, and both touch the S2 "unblock the UI early"
+optimization — so treat them as a deliberate trade, not an oversight.
