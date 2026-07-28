@@ -19,28 +19,41 @@ Historical milestones (pre-2026-02-08) used global numbering 1-63.
 off its single shared `.git`. Worktrees are not clones: a commit in one is
 instantly visible to all; deleting a worktree folder keeps its branch + commits.
 
+**Live inventory — reconciled 2026-07-27 (43 → 14 worktrees).** Counts are commits not in `main`.
+
 | Path | Branch | Role |
 |------|--------|------|
-| `~/virtuna-v1.1/` | `main` | **Trunk / command center.** Stays on `main` (✅ synced to `origin/main` 2026-06-29 — GSI v7.0 merged tip `b09c4f51`; reset clean, dropped stray auto-wip docs commit `120ea41b`). New milestones launch into their own sibling worktree. |
-| `~/virtuna-refine/` | `lane/refine` | **🟢 ACTIVE — post-GSI refinement / debt lane (created 2026-06-29).** Persistent dev-server worktree for step-by-step UI/engine/debt fixes found while operating the app. Off `origin/main` (GSI-merged). Inventory SSOT = `docs/OPEN-DEBT-AUDIT-2026-06-29.md` (carried here). Cut a short branch per discrete fix → PR → merge, or batch atomic commits on the lane. |
-| `~/virtuna-billing/` | `lane/billing-prod` | **✅ MERGED 2026-07-20 — billing production pass shipped to main (PR #341, merge `0b0284ce`).** Credits meter end-to-end (SSOT `src/lib/pricing.ts` · gate on every paid route · one honest 402 wall · $1-trial-once · password reset). Full suite 4231/0; E2E quota verified locally with `BILLING_ENFORCE_QUOTA=true`. **Enforcement stays OFF in prod** until the owner's Whop step — launch runbook `docs/PRICING.md`. Keep worktree for the Whop sandbox pass; retire after. |
-| `~/virtuna-numen-gsi/` | `milestone/numen-gsi` | **✅ MERGED 2026-06-29 — v7.0 Numen GSI shipped to main (PR #91, `b09c4f51`) + archived (`6d83bfb1`).** Synthetic-population simulator (Profile/Simulate/Predict). Worktree retire-able once verified no stranded uncommitted work (audit flags `audience-presence.tsx` modified — verify/revert). Do NOT `git merge rework/engine-core`. |
-| `~/virtuna-numen-surface/` | `milestone/numen-surface` | **PAUSED (v5.0, "old") — deprioritized vs GSI (2026-06-26).** Mobile-first rebrand + UX rework. Debt (Phase-3 smoke gate unrun + P5–7) stays in-worktree `.planning`. |
-| `~/virtuna-mvp-ready/` | `milestone/mvp-ready` | **Merged + pruned (2026-06-11).** v4.1 Phase 1 (engine, ENGINE_VERSION 3.19.0) merged to main; P2–5 superseded by Numen Surface. Branch retained in `.git`. |
-| `~/virtuna-engine-opt/` | `milestone/engine-opt` | **Merged (PR #17) + pruned (2026-06-11).** v4.0 Apollo engine audit remediation. |
-| `~/virtuna-ui-opt/` | `milestone/ui-opt` | In progress |
-| `~/virtuna-viral-remix/` | `milestone/viral-remix` | In progress (v3.2) |
-| `~/virtuna-viral-remix-adapt/` | `milestone/viral-remix-adapt` | In progress |
-| `~/virtuna-landing/` | `milestone/landing` | In progress |
-| `~/virtuna-engine-rework/` | idle (was `rework/engine-core`) | **Track COMPLETE 2026-06-26 — all merged to main.** Production-readiness dissection/rework (audience signature, calibration, fold/model consolidation). Headline work landed via PRs #53–#58 (R1′ 2-model stack + live-validated fold, fold↔calibrated-audience unify, omni null-coercion, R2/R4 closes, tracked ledger). Worktree now idle; remaining engine debt is all lower-value (see `docs/WORKTREE-DEBT-LEDGER.md` §0 + `docs/DISSECTION-BACKLOG.md`: R3/R5/E2/G3/A6/A-T/S6). |
-| `~/virtuna-ui-restrained/` | `design/ui-restrained` (merged) · `fix/tsc-clean-gate` (superseded) | **RETIRED 2026-06-25 — mission complete, worktree safe to remove.** Restrained de-Claude rebrand merged to main (PR #36, squash `46912461`): near-zero accent DOSAGE (liveness-only) lever, terracotta `#d97757`. Follow-ups ALL landed: P7 dead-code deletion (#45) + konva/react-konva dep removal (#46) + tsc gate→0 (#47). `fix/tsc-clean-gate` is fully superseded — every change landed via #43/#44/#45–47; verified branch-behind with zero stranded work — safe to `git worktree remove ~/virtuna-ui-restrained` + delete branch. LOCKED dosage rule in `docs/DESIGN-SYSTEM.md`; rules `.cursor/rules/ui-design.mdc`. |
+| `~/virtuna-v1.1/` | `main` | **Trunk / command center.** Stays on `main` (✅ synced to `origin/main` 2026-07-27, tip `28fb6372` — PRs #387/#388 merged the onboarding funnel + the /go rebuild). Never holds a long-lived branch. |
+| `~/virtuna-platform/` | `lane/platform-surface` | **🟢 ACTIVE — in-app platform surface lane (created 2026-07-27).** Cut off `28fb6372`. Baseline verified on creation: tsc 0 errors, suite 4,746 passed / 434 files. ⚠️ set `NEXT_PUBLIC_AMBIENT_V2=true` in its `.env.local` or you render the LEGACY room, not the v2 rail. Dev server: use a free port — **3000 belongs to `~/virtuna-onboarding`**. |
+| `~/virtuna-onboarding/` | `milestone/onboarding` | **🟢 ACTIVE — merged, still being worked (do not prune).** #387/#388 landed the demo entitlement + /go rebuild. Carries **uncommitted** `/go-v2` work: `src/app/(offer)/go-v2/`, `src/components/offer/v2/` (~1.4k lines), `marketing.css`. ⚠️ its own handoff doc claims "nothing has been built yet" — **false**; trust the tree, not the doc. Owns port 3000. |
+| `~/virtuna-audience-sim-v2/` | `feat/audience-sim-v2` | 20 unmerged (2026-07-17). Audience simulation v2 — verify against the shipped ambient-v2 before reviving. |
+| `~/virtuna-thread-cards/` | `feat/thread-cards` | 12 unmerged (2026-07-21). |
+| `~/virtuna-e2e-audit/` | `audit/e2e-walkthrough` | 17 unmerged, **docs only** (2026-07-26). The 3 code blockers (F-019/F-017/F-021) already landed on `main`. |
+| `~/virtuna-explore-b/` | `feat/per-persona-ideas-script` | 3 unmerged (2026-07-16). |
+| `~/virtuna-polish/` | `polish/cards-next` | 3 unmerged (2026-06-27). |
+| `~/virtuna-grounding-tools/` | `feat/grounding-reference-cards` | 2 unmerged (2026-07-20). One of a 5-branch grounding cluster; the rest are branch-only, no worktree. |
+| `~/virtuna-start-composer/` | `design/start-composer-v2` | 2 unmerged (2026-07-20). |
+| `~/virtuna-ui-opt/` | `milestone/ui-opt` | 2 unmerged (2026-06-01) — stale, candidate for retirement. |
+| `~/virtuna-prod/` | `docs/handoff-make-card-polish` | 2 unmerged (2026-07-27, incl. archived p4-live sketches). |
+| `~/virtuna-explore-c/` | `docs/handoff-read-family-cards` | 1 unmerged (2026-07-19). |
+| `~/virtuna-the-room/` | `docs/pillars-handoff` | 1 unmerged (2026-07-06). |
 
-> Keep this table current — but the **canonical map is now `docs/WORKTREE-DEBT-LEDGER.md`**
-> (tracked, full branch survey). Last reconciled 2026-06-26: engine-rework COMPLETE + production-
-> readiness sprint done (GAP-REMIX-01 #63, dead `/api/outcomes` cut #64, tsc 15→4); **GSI milestone
-> scaffolded** at `~/virtuna-numen-gsi`; **trunk synced** to `origin/main`; the earlier branch-cleanup
-> pruned 63→14 remote (incl. the new GSI branch); ui-restrained Cursor WT `cursor/27a9b701` kept —
-> uncommitted edits, see ledger §6.
+**Retired 2026-07-27** (worktree removed, **branch + commits kept** in `.git`): `lane/refine` · `lane/billing-prod` · `lane/launch-prep` · `lane/shell` · `lane/frame` · `lane/cursor-ui` · `lane/maven-offer` · `lane/skill-cards-prod` · `fix/whop-api-drift` · `milestone/numen-gsi` · `milestone/numen-surface` · `milestone/numen-landing` · `milestone/numen-tools` · `milestone/landing` · `milestone/viral-remix` · `milestone/viral-remix-adapt` · `milestone/ambient-room-v2` · `reconcile/reading-pr19` · `verify/main-state` · `final-verify` · 3 spikes · `rework/engine-core` (idle) · 3 superseded audience branches (below).
+
+> ⚠️ **Three audience branches are SUPERSEDED — never merge them.** `feat/audience-brain-panel`
+> (324 behind), `design/ambient-audience-ui` (264 behind), `design/audience-rework` (245 behind,
+> PR #343 **closed** 2026-07-27). Their work shipped via **#339** (ambient audience production
+> pass), **#317** (Audience rebuild) and **#312**; every file existing only on them was *deliberately
+> deleted* from `main`. Merging would resurrect ~51k lines of dead code. Branches retained for history.
+>
+> 🔑 **How to tell if a branch is dead:** `git diff --stat main...br` (three-dot) shows what the branch
+> *added since it forked* — it says NOTHING about whether `main` already has it, and reads as huge
+> pending work when the branch is actually stale. Use instead: `git rev-list --count br..main`
+> (how far behind) plus `comm -23` of the two `git ls-tree` file lists (what exists ONLY on the branch).
+> Zero branch-only files ⇒ superseded.
+>
+> Canonical historical map: `docs/WORKTREE-DEBT-LEDGER.md` (tracked, full branch survey) — note it
+> predates this reconcile and still lists the retired worktrees above.
 
 ### How to work (don't repeat the multi-session-same-worktree mess)
 
@@ -50,12 +63,25 @@ instantly visible to all; deleting a worktree folder keeps its branch + commits.
   From `~/virtuna-v1.1/` on `main`: `/gsd-new-milestone` creates the sibling
   `~/virtuna-<name>/` worktree, branch, and clean scoped `.planning/`. Then
   `cd` there and work. One tmux tab per milestone worktree.
+- **Incremental lane** (step-by-step fixes/polish on one surface) → sibling
+  worktree + `lane/<surface>` branch off `main`: `git worktree add ~/virtuna-<name>
+  -b lane/<name> main`. Batch atomic commits on the lane, or cut a short branch
+  per discrete fix → PR → merge.
 - **Quick fix** (one sitting) → in `~/virtuna-v1.1/`: `git switch -c fix/<thing>`
   off `main`, do the work (`/gsd-quick`), then PR + merge + delete the branch
   the same session. Trunk returns to clean `main`.
 - **Always** run `git worktree list` + check your branch BEFORE launching `cc`.
+- **A new worktree is not ready to run.** It needs its own `npm install`
+  (~278M) and its own `.env.local` — neither is shared. Copy `.env.local` from
+  trunk, then add whatever flags that lane needs.
+- **One dev server per port.** Concurrent worktrees collide on :3000 — pass
+  `--port 300X` and check with `lsof -ti:3000` first, or you will spend an hour
+  debugging the wrong running app.
 - **Merge milestones promptly** — a milestone PR should land in days, not grow
   to dozens of commits across weeks.
+- **Prune on merge.** Removing a worktree keeps its branch + commits, so retire
+  the folder the moment its branch lands. Left alone this reached 43 worktrees /
+  ~24 GB, most of them fully merged.
 
 ## Known Technical Issues
 

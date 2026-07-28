@@ -1338,6 +1338,31 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     };
   }, [activeRunSkill, activeRunIsDone, activeRunIsStreaming, activeRunReset, reloadChatThread]);
 
+  // ── The LATE follow-up → one more reload ───────────────────────────────────
+  // Every generative route emits `done` BEFORE its closing line and keeps the SSE open ~2s to
+  // stream it, persisting it as a trailing markdown message just before it sends the `followup`
+  // event. So the fold above — which fires on `done` — reloads history a beat too EARLY to ever
+  // see that line: the outro sits in the database, unread, until something else happens to reload
+  // the thread. (Before 2026-07-28 it was visible, but only because the emptied stream re-claimed
+  // the tail and rendered the whole run a second time; see use-active-run.ts `hasContent`.)
+  //
+  // A follow-up arriving on a stream whose blocks are already GONE is precisely the signal "the
+  // closing line is now persisted" — the fold has run, so one more reload can only add the outro
+  // to the turn that is already on screen. It cannot resurrect a duplicate: the live stream is
+  // empty by then, and follow-up text alone no longer counts as a tail turn.
+  const settledFollowup = [
+    hooksBlocks.length === 0 ? hooks.followupText : null,
+    ideasBlocks.length === 0 ? ideas.followupText : null,
+    scriptBlocks.length === 0 ? script.followupText : null,
+    remixBlocks.length === 0 ? remix.followupText : null,
+  ]
+    .filter(Boolean)
+    .join(' ');
+  useEffect(() => {
+    if (!settledFollowup) return;
+    void reloadChatThread();
+  }, [settledFollowup, reloadChatThread]);
+
   // ── Chat follow-up chips (chat-followups.ts) ───────────────────────────────
   // A tapped follow-up continues the conversation in THIS chat thread: it echoes the prompt as the
   // optimistic user bubble (lastUserTurn) and re-enters the SSE loop (chat.start). No tool-switch,
@@ -2886,7 +2911,23 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
                     (--shadow-button) can never re-add a border. */}
                 <Button
                   type={isAnyStreaming ? "button" : "submit"}
-                  onClick={isAnyStreaming ? stopActive : undefined}
+                  // ⚠️ preventDefault is LOAD-BEARING, not defensive tidiness. `type` alone does
+                  // not close the race: form submission is the CLICK's default action, and the
+                  // default action runs AFTER React has flushed this discrete event — so
+                  // `stopActive()` sets isStreaming false, React re-renders the very same DOM node
+                  // to type="submit", and the browser then submits the form it is now looking at.
+                  // Measured live 2026-07-28: one click on Stop aborted the run and fired a SECOND
+                  // billed /api/tools/hooks in the same 100ms, and the two runs' cards merged into
+                  // one 10-card turn. Cancelling the default action kills it whatever `type` says
+                  // by the time the default action is dispatched.
+                  onClick={
+                    isAnyStreaming
+                      ? (e) => {
+                          e.preventDefault();
+                          stopActive();
+                        }
+                      : undefined
+                  }
                   variant="primary"
                   size="sm"
                   // Account fell through to "Simulate" here — it was never submittable, so the
