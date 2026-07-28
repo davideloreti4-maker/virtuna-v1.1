@@ -37,11 +37,20 @@ export interface SkillCapability {
   /** Placeholder for text/link fields (ignored for `none`). */
   placeholder?: string;
   /**
-   * Whether the model may pass a `value` to PRE-FILL the field (text kinds only). The value is
-   * model-extracted DATA the creator already stated (a niche, a concept) — still user-editable and
-   * still requiring a submit tap, so it never spends money on its own. Ignored for link/none.
+   * What a model-supplied `value` must LOOK like to PRE-FILL this field — absent when the field is
+   * never prefillable (`none` has nothing to fill). The value is model-extracted DATA the creator
+   * ALREADY stated in their message; it stays user-editable and still requires a submit tap, so a
+   * prefill never spends money on its own.
+   *
+   *   "text"       — free text (a niche, a concept). Trimmed + capped; nothing else to check.
+   *   "url"        — any http(s) URL. Remix takes any public video link (its route classifies it).
+   *   "tiktok-url" — a TikTok video URL, the only thing /test's field will accept.
+   *
+   * The shape is CHECKED at the loop's tool-arg boundary (chat-agent-loop.ts): a value that does
+   * not match is DROPPED and the field renders empty, so the model can never seed a field with a
+   * value we already know that field will reject.
    */
-  prefillable?: boolean;
+  prefill?: "text" | "url" | "tiktok-url";
   /** One line telling the MODEL when to request this input — fed verbatim into the tool description. */
   when: string;
 }
@@ -51,8 +60,12 @@ export const SKILL_CAPABILITIES: Record<SkillInputAction, SkillCapability> = {
     kind: "link",
     label: "Paste the video link and I'll adapt it for your audience.",
     placeholder: "https://…",
+    // A creator who PASTED a link and asked to remix it should not have to paste it again — the
+    // field opens holding the URL they already gave, one tap from running.
+    prefill: "url",
     when:
-      "the creator wants to REMIX / adapt / recreate a specific trending or competitor video but gave no link",
+      "the creator wants to REMIX / adapt / recreate a specific trending or competitor video — " +
+      "pass the link as `value` when they already gave one, otherwise omit it and the field asks",
   },
   account: {
     kind: "none",
@@ -64,7 +77,7 @@ export const SKILL_CAPABILITIES: Record<SkillInputAction, SkillCapability> = {
     kind: "text",
     label: "Name a niche or a competitor to scan — or leave it blank to pull your niche.",
     placeholder: "e.g. fitness coaches, @creator…",
-    prefillable: true,
+    prefill: "text",
     when:
       "the creator wants to DISCOVER outlier / trending videos to learn from (\"what's working right now\", \"show me outliers\", \"what are people posting about X\")",
   },
@@ -72,7 +85,7 @@ export const SKILL_CAPABILITIES: Record<SkillInputAction, SkillCapability> = {
     kind: "text",
     label: "What should I run past your audience?",
     placeholder: "Paste a hook, concept, or draft…",
-    prefillable: true,
+    prefill: "text",
     when:
       "the creator wants to know how their AUDIENCE would react to a concept, hook, or draft (\"what would my audience think of…\", \"read this idea\", \"would this land\")",
   },
@@ -80,8 +93,11 @@ export const SKILL_CAPABILITIES: Record<SkillInputAction, SkillCapability> = {
     kind: "upload",
     label: "Drop the video (or paste its link) and I'll test it against your audience.",
     placeholder: "https://tiktok.com/…",
+    // A pasted TikTok link is the ONE thing this field can be seeded with — a file drop obviously
+    // cannot be. Anything that is not a TikTok URL is dropped, because the field itself rejects it.
+    prefill: "tiktok-url",
     when:
-      "the creator wants to TEST a real, FINISHED video they already have — score how it will perform or how their audience will react to the actual clip (\"test this video\", \"how will this do\", \"score my video\", \"rate this clip\"). This runs the full frame-by-frame video analysis, so it needs a real video FILE or a TikTok URL — never text",
+      "the creator wants to TEST a real, FINISHED video they already have — score how it will perform or how their audience will react to the actual clip (\"test this video\", \"how will this do\", \"score my video\", \"rate this clip\"). This runs the full frame-by-frame video analysis, so it needs a real video FILE or a TikTok URL — never text. Pass the TikTok link as `value` when they already pasted one",
   },
 };
 

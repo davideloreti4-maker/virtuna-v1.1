@@ -28,7 +28,9 @@ import {
   SKILL_CAPABILITIES,
   SKILL_INPUT_ACTIONS,
   isSkillInputAction,
+  type SkillCapability,
 } from "@/lib/tools/skill-capabilities";
+import { TIKTOK_URL_PATTERN } from "@/lib/tiktok-url";
 
 // ─── In-thread input affordance (request_input) ──────────────────────────────
 // A free, non-paid tool: instead of guessing a value (a URL, a concept, a niche) or answering in
@@ -64,9 +66,11 @@ export const REQUEST_INPUT_TOOL = {
         value: {
           type: "string",
           description:
-            "OPTIONAL — for 'explore' and 'read' only: the niche or concept the creator ALREADY stated " +
-            "in their message, used to PRE-FILL the field so they review-and-go instead of retyping. " +
-            "They can still edit it. Omit entirely when there is nothing to pre-fill.",
+            "OPTIONAL — something the creator ALREADY gave you in their message, used to PRE-FILL the " +
+            "field so they review-and-go instead of typing it twice. They can still edit it. " +
+            "For 'explore' and 'read': the niche or concept they named. For 'remix' and 'test': the " +
+            "video LINK they pasted, copied exactly. Omit entirely when there is nothing to pre-fill — " +
+            "never invent a value, and never pass one for 'account' (it needs nothing typed).",
         },
       },
       required: ["action"],
@@ -76,6 +80,32 @@ export const REQUEST_INPUT_TOOL = {
 
 /** Server-side cap on a model-supplied prefill value (mirrors the read/chat route ask caps). */
 const PREFILL_CAP = 2000;
+
+/**
+ * Validate + normalize a model-supplied prefill against the shape the capability declares
+ * (SKILL_CAPABILITIES[action].prefill). Returns undefined when the field is not prefillable, the
+ * value is absent/blank, or it does not match the declared shape — and an unmatched value is
+ * DROPPED rather than passed through, so the model can never seed a field with something that
+ * field would visibly reject.
+ *
+ * The URL shapes matter because a pasted link is exactly what a creator should not have to type
+ * twice: `remix` takes any public video link (its route classifies it), `test` takes only a TikTok
+ * URL (the same TIKTOK_URL_PATTERN its field validates against, so client and loop can't disagree).
+ */
+function resolvePrefill(shape: SkillCapability["prefill"], raw: unknown): string | undefined {
+  if (!shape) return undefined;
+  if (typeof raw !== "string") return undefined;
+  const value = raw.trim().slice(0, PREFILL_CAP);
+  if (value.length === 0) return undefined;
+  switch (shape) {
+    case "text":
+      return value;
+    case "url":
+      return /^https?:\/\/\S+$/.test(value) ? value : undefined;
+    case "tiktok-url":
+      return TIKTOK_URL_PATTERN.test(value) ? value : undefined;
+  }
+}
 
 // ─── Streaming completion seam ───────────────────────────────────────────────
 
@@ -417,11 +447,9 @@ export async function runChatAgentStream(
           continue;
         }
         const cap = SKILL_CAPABILITIES[action];
-        // Prefill only for text kinds the capability marks prefillable; cap the model value.
-        const prefill =
-          cap.prefillable && cap.kind === "text" && typeof rawValue === "string" && rawValue.trim().length > 0
-            ? rawValue.trim().slice(0, PREFILL_CAP)
-            : undefined;
+        // Prefill per the capability's declared shape (text / url / tiktok-url); a value that
+        // doesn't match is dropped, and a non-prefillable field never takes one.
+        const prefill = resolvePrefill(cap.prefill, rawValue);
         const fieldBlock = {
           type: "input-request",
           props: {

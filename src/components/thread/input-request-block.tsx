@@ -12,7 +12,9 @@
  * the open thread; then it asks the host to reload (InThreadInputContext.onComplete) so the card
  * appears in-place. No tool-switch, no navigation — the whole exchange stays in one thread.
  *
- * NO model-generated UI: the model only chose the action (+ an optional text prefill it extracted).
+ * NO model-generated UI: the model only chose the action (+ an optional prefill it extracted from
+ * what the creator already said — a niche, a concept, or the video link they pasted; shape-checked
+ * against SKILL_CAPABILITIES at the loop boundary, and never enough to run anything on its own).
  * One sub-component per action, each calling exactly ONE stream hook unconditionally (React rules) —
  * the top-level renderer just picks which to mount from `block.props.action`.
  *
@@ -108,13 +110,16 @@ export function InputRequestBlockRenderer({ block }: InputRequestBlockRendererPr
 // ── Remix (kind: link) ───────────────────────────────────────────────────────────
 
 function RemixField({ block }: InputRequestBlockRendererProps) {
-  const { label, placeholder, platform: blockPlatform } = block.props;
+  const { label, placeholder, prefill, platform: blockPlatform } = block.props;
   const ctxPlatform = usePlatform();
   const platform = blockPlatform ?? ctxPlatform;
   const { onComplete } = useInThreadInput();
 
   const { start: remixStart, isStreaming, error, isDone, stages } = useRemixStream();
-  const [url, setUrl] = useState('');
+  // Seeded with the link the creator already pasted (loop-validated as an http(s) URL) so the
+  // field opens one tap from running instead of asking for it a second time. Still editable, and
+  // still requires the tap — a prefill never spends on its own.
+  const [url, setUrl] = useState(prefill ?? '');
   const completeHandledRef = useRef(false);
   const done = isDone && !error;
 
@@ -390,13 +395,16 @@ function AccountField({ block }: InputRequestBlockRendererProps) {
 // results) degrades to that link-out rather than fabricating a crowd.
 
 function UploadField({ block }: InputRequestBlockRendererProps) {
-  const { label, placeholder } = block.props;
+  const { label, placeholder, prefill } = block.props;
   const { onComplete } = useInThreadInput();
 
   const { start, phase, analysisId, error: streamError, quotaError } = useAnalysisStream();
 
   const [file, setFile] = useState<File | null>(null);
-  const [url, setUrl] = useState('');
+  // A pasted TikTok link is the only seedable half of this field (a file drop cannot be), and the
+  // loop already checked it against the same TIKTOK_URL_PATTERN validated below — so a prefill
+  // arrives valid and `canSubmit` is true on first render. The tap is still the creator's.
+  const [url, setUrl] = useState(prefill ?? '');
   const [staging, setStaging] = useState(false);
   const [stageError, setStageError] = useState<string | null>(null);
   const [carding, setCarding] = useState(false);

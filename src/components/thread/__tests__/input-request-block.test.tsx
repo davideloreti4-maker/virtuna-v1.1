@@ -105,6 +105,16 @@ describe("Remix field (kind: link)", () => {
     expect(remixState.start).toHaveBeenCalledWith("https://tiktok.com/@x/video/1", "tiktok");
   });
 
+  it("seeds the field from the model prefill, so a pasted link is not typed twice", () => {
+    renderField({ ...REMIX, props: { ...REMIX.props, prefill: "https://tiktok.com/@x/video/9" } });
+    const input = screen.getByLabelText("Paste the video link") as HTMLInputElement;
+    expect(input.value).toBe("https://tiktok.com/@x/video/9");
+    // Seeded, but NOT auto-run — the creator's tap is still what spends.
+    expect(remixState.start).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByText("Adapt it →"));
+    expect(remixState.start).toHaveBeenCalledWith("https://tiktok.com/@x/video/9", "tiktok");
+  });
+
   it("an empty field runs nothing", () => {
     renderField(REMIX);
     fireEvent.click(screen.getByText("Adapt it →"));
@@ -241,6 +251,21 @@ describe("Test field (kind: upload — a video file OR a TikTok URL)", () => {
       input_mode: "tiktok_url",
       content_type: "video",
       tiktok_url: "https://tiktok.com/@x/video/1",
+    });
+  });
+
+  it("seeds the URL half from the model prefill, so a pasted link is not typed twice", () => {
+    renderField({ ...TEST, props: { ...TEST.props, prefill: "https://tiktok.com/@x/video/7" } });
+    expect((screen.getByPlaceholderText("https://tiktok.com/…") as HTMLInputElement).value).toBe(
+      "https://tiktok.com/@x/video/7",
+    );
+    // Seeded, but NOT auto-run — a paid Max run still waits for the creator's tap (D-05).
+    expect(analysisState.start).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByText("Test it →"));
+    expect(analysisState.start).toHaveBeenCalledWith({
+      input_mode: "tiktok_url",
+      content_type: "video",
+      tiktok_url: "https://tiktok.com/@x/video/7",
     });
   });
 

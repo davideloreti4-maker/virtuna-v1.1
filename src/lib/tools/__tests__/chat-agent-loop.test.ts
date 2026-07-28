@@ -423,15 +423,76 @@ describe("runChatAgentStream [tools]", () => {
       type: "input-request",
       props: { kind: "upload", action: "test", label: expect.any(String) },
     });
-    // Upload kind is not prefillable — a model `value` never lands on it (it's a real video, not text).
+    // No `value` supplied → nothing to seed the URL half with; the field opens empty.
     expect((res.uiBlocks[0] as { props: { prefill?: string } }).props.prefill).toBeUndefined();
     expect(res.toolCalls.find((t) => t.name === "request_input")?.ran).toBe(true);
   });
 
-  it("request_input(test) IGNORES a model-supplied prefill value (upload is not a text field)", async () => {
+  it("request_input(test) DROPS a prefill that is not a TikTok URL (the field would reject it)", async () => {
     const stream = mockStream([
       [toolName(0, "c1", "request_input"), toolArgs(0, '{"action": "test", "value": "some text"}')],
       [textChunk("Drop the video.")],
+    ]);
+
+    const res = await runChatAgentStream(baseInput(), DEPS(stream, { skills: [mkSkill("generate_ideas")] }));
+
+    expect((res.uiBlocks[0] as { props: { prefill?: string } }).props.prefill).toBeUndefined();
+  });
+
+  // ── The pasted link is not typed twice ────────────────────────────────────────
+  // A creator who pastes a link and says "test this" gave us the value already. Before these,
+  // `test`/`remix` surfaced an EMPTY field and asked for it a second time.
+
+  it("request_input(test) carries a pasted TikTok link through as the field's prefill", async () => {
+    const stream = mockStream([
+      [
+        toolName(0, "c1", "request_input"),
+        toolArgs(0, '{"action": "test", "value": "https://www.tiktok.com/@a/video/123"}'),
+      ],
+      [textChunk("Testing that one.")],
+    ]);
+
+    const res = await runChatAgentStream(baseInput(), DEPS(stream, { skills: [mkSkill("generate_ideas")] }));
+
+    expect(res.uiBlocks[0]).toMatchObject({
+      type: "input-request",
+      props: { kind: "upload", action: "test", prefill: "https://www.tiktok.com/@a/video/123" },
+    });
+  });
+
+  it("request_input(remix) carries a pasted link through as the field's prefill", async () => {
+    const stream = mockStream([
+      [
+        toolName(0, "c1", "request_input"),
+        toolArgs(0, '{"action": "remix", "value": "https://www.instagram.com/reel/xyz/"}'),
+      ],
+      [textChunk("Adapting that one.")],
+    ]);
+
+    const res = await runChatAgentStream(baseInput(), DEPS(stream, { skills: [mkSkill("generate_ideas")] }));
+
+    // Remix takes any public video link — its route classifies it, so the loop only checks http(s).
+    expect(res.uiBlocks[0]).toMatchObject({
+      type: "input-request",
+      props: { kind: "link", action: "remix", prefill: "https://www.instagram.com/reel/xyz/" },
+    });
+  });
+
+  it("request_input(remix) DROPS a prefill that is not a URL", async () => {
+    const stream = mockStream([
+      [toolName(0, "c1", "request_input"), toolArgs(0, '{"action": "remix", "value": "that dance video"}')],
+      [textChunk("Paste the link.")],
+    ]);
+
+    const res = await runChatAgentStream(baseInput(), DEPS(stream, { skills: [mkSkill("generate_ideas")] }));
+
+    expect((res.uiBlocks[0] as { props: { prefill?: string } }).props.prefill).toBeUndefined();
+  });
+
+  it("request_input(account) never takes a prefill — a `none` field has nothing to fill", async () => {
+    const stream = mockStream([
+      [toolName(0, "c1", "request_input"), toolArgs(0, '{"action": "account", "value": "https://tiktok.com/@me"}')],
+      [textChunk("Press the button.")],
     ]);
 
     const res = await runChatAgentStream(baseInput(), DEPS(stream, { skills: [mkSkill("generate_ideas")] }));

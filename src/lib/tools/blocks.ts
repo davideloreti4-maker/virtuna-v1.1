@@ -864,9 +864,11 @@ export const InputRequestBlockSchema = z.object({
     // Field label / confirm-card prompt + placeholder (deterministic copy, set by the loop — never model text).
     label: z.string().min(1),
     placeholder: z.string().optional(),
-    // OPTIONAL prefill for text fields — a value the creator ALREADY stated (a niche, a concept) that
-    // the model extracted, so they review-and-tap instead of retyping. Editable + still requires a
-    // submit tap (never auto-spends). Absent on link/none fields and every pre-2026-07-18 block.
+    // OPTIONAL prefill — a value the creator ALREADY gave (a niche, a concept, or the video link they
+    // pasted) that the model extracted, so they review-and-tap instead of typing it twice. Editable +
+    // still requires a submit tap (never auto-spends). The loop shape-checks it against the action's
+    // declared SKILL_CAPABILITIES.prefill and drops a mismatch, so a `link`/`upload` prefill is always
+    // a real URL. Absent on `none` fields and every pre-2026-07-18 block.
     prefill: z.string().optional(),
     // Platform the action runs on (carried from the turn so the skill targets the right feed).
     platform: z.enum(["tiktok", "instagram", "youtube"]).optional(),
