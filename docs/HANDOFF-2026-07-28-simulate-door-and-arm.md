@@ -716,4 +716,11 @@ VERIFY per §9 (corrected — these are the traps that actually bit):
   Creds: e2e-test@virtuna.local / e2e-test-password-2026
 - Mutation-test every new guard: break it, WATCH it fail, restore. And check the guard fails for
   the reason you think — one of session 2's passed for the wrong reason and only mutation caught it.
+- PRE-EXISTING, not yours: `composer.test.tsx` emits **3 unhandled rejections**
+  (`Cannot read properties of undefined (reading 'catch')` at composer.tsx:1913) — a mocked
+  `stream.start` returning undefined on the tiktok_url path. All tests still PASS. Verified
+  2026-07-28 to be independent of this lane; don't chase it, and don't let it mask a NEW one.
+- ⚠️ Another session is active in `src/lib/billing/**` — PR #395 (`6392ff85`) landed chat-agent
+  skill billing the same day and rewrote `route-wiring.test.ts` around this lane's `react` entry.
+  It merged clean, but check `git log origin/main` before assuming that file is yours.
 ```
