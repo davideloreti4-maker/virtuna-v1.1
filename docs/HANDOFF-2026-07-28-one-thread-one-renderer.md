@@ -203,17 +203,17 @@ optimization — so treat them as a deliberate trade, not an oversight.
 
 ## 8. LANE 2 — in progress (`lane/composer-chrome`, worktree `~/virtuna-composer`)
 
-Steps 1–2 are **done, verified and pushed**. Steps 3–5 are **not started**.
+**Steps 1–2 are MERGED to `main` — PR #395, squash `6392ff85`.** Steps 3–5 are **not started**.
 
 | # | Step | State |
 |---|------|-------|
-| 1 | Prefill fix (was: add 4 skills to `SKILL_TOOLS`) | ✅ `f724deb7` |
-| 2 | Gate + bill agent-fired runs | ✅ `5c01f0ed` + wall `b242cabb` |
+| 1 | Prefill fix (was: add 4 skills to `SKILL_TOOLS`) | ✅ merged `6392ff85` |
+| 2 | Gate + bill agent-fired runs (+ the wall) | ✅ merged `6392ff85` |
 | 3 | Delete the skill pill | ⬜ not started |
 | 4 | Delete "Ask the room" | ⬜ not started |
 | 5 | Start-grid tile → one-shot → chat | ⬜ not started |
 
-Suite **4777/0** · `tsc` clean · production build compiles.
+Suite **4813/0** on the merged tree · `tsc` clean · production build compiles.
 
 ### §8.1 — Step 1's premise was false. Read this before trusting a plan again.
 
@@ -290,3 +290,84 @@ has its own test pinning both halves separately: the turn stays free, the dispat
 - `runSkillDispatch` (skill-dispatch.ts) is **not on the live path** — the route uses
   `runChatAgentStream`. It kept its own leash and is now `billable`-aware, but it has no billing
   seam. If it is ever revived, it needs one.
+
+### §8.5 — ⚠️ THE ARM LANE CHANGED STEP 4'S PREMISE. Do not start step 4 without the owner.
+
+While Lane 2 steps 1–2 were in flight, a second session shipped to `main`:
+
+- `fe067d1b` — **"Ask the room" is now a PRICED action**: `/api/tools/react` gates and bills at
+  **1 credit** under its own `react` key in `CREDIT_COSTS`.
+- `39fc42d7` — a refused Ask-the-room **raises the credit wall** (the same fix this lane made for a
+  refused agent dispatch — the two sessions converged independently).
+- `e29d3930` — the `＋ Test something of your own` cold door promotes the room reaction to a
+  **primary action**, which is *why* it got priced.
+
+Step 4 as written is **"delete Ask the room"** (an owner call, locked). That call was made when the
+room reaction was a free side-feature. It is now a priced, walled, primary-doored action that
+another lane just invested in. **Deleting it would delete a revenue line that is four days old.**
+
+This is not a conflict to resolve in code — it is a product decision the owner has to re-make with
+the new facts. `/api/tools/react` was always going to STAY (the room rail is its other caller); what
+is now in question is whether the composer's `ask` VERB should go at all.
+
+### §8.6 — Copy-paste brief for the fresh session
+
+Everything below is verified as of 2026-07-28, tip `6392ff85`.
+
+```
+Continuing Virtuna, Lane 2 (composer chrome). Steps 1-2 are MERGED to main
+(PR #395, squash 6392ff85) and the worktree ~/virtuna-composer is already on
+that tip with node_modules installed — work there, do NOT use ~/virtuna-platform
+(another session commits into it live).
+
+Read docs/HANDOFF-2026-07-28-one-thread-one-renderer.md §8 first. It is the SSOT
+and it records the two places the original Lane 2 plan was wrong.
+
+Cut a fresh branch off main before touching anything:
+  cd ~/virtuna-composer && git fetch origin && git checkout -b lane/composer-pill origin/main
+
+REMAINING WORK, in order:
+  3. Delete the skill pill (composer-controls.tsx + its popover).
+  5. Start-grid tile becomes a one-shot, then falls back to chat.
+  4. "Ask the room" — DISCUSS WITH THE OWNER FIRST, do not just delete it (§8.5).
+
+Steps 3 and 5 are COUPLED — do them together. activeTool is no longer a render
+input (Lane 1 fixed that) but it is STILL the submit router across ~28 call
+sites, including the Start-grid arming that step 5 needs. Do NOT delete
+activeTool; delete only the pill UI. Also decide the `/` slash menu's fate — it
+is a second door to the same picker and shares isSkillVisible, so removing the
+pill alone leaves half a selector.
+
+Owner calls LOCKED: keep the Start grid · no skill pill in the composer · one
+run at a time · intro/outro/loading states preserved 1:1. ("remove Ask the room"
+was also locked, but §8.5 explains why it now needs re-confirming.)
+
+Before step 3 lands, two things are owed:
+  - A LIVE walk-through of the billing path on a production build. The suite is
+    green and tsc is clean, and Lane 1 proved that is not enough — both defects
+    it shipped were found live. Deleting the pill is what makes this path
+    load-bearing.
+  - The `account` pricing call: /api/account-read has NO gate and `account` is
+    not in CREDIT_COSTS, so an agent-dispatched account read is still free.
+    That is a decision, not a code task.
+
+Verification gotchas that cost real time (§6 + §8.3):
+  - The shell wrapper mangles npx/pnpm exec. Use:
+      node node_modules/vitest/vitest.mjs run
+      node node_modules/next/dist/bin/next build
+      node node_modules/typescript/bin/tsc --noEmit
+  - A full suite run reports 3 UNHANDLED ERRORS that are PRE-EXISTING (verified
+    on origin/main). They misattribute the blame line to whatever test was
+    running, so a real failure can look like it is in an unrelated file. Read the
+    "Failed Tests" block, not the error's "originated in" line.
+  - /home reopens the last thread — click "New Thread" for a clean one.
+  - The login page has TWO input[name="email"]; fill form input[name="email"] LAST.
+  - Screenshots hang (the ambient room never settles). Assert on the DOM.
+
+Carry these two habits in — both were earned expensively:
+  - A plan's file-level claims are GUESSES until you read the source. Lane 1's
+    plan was wrong in 5 places; Lane 2's step 1 premise was simply false, and
+    building it as written would have moved the two most expensive actions in
+    the product onto an ungated, unbilled path.
+  - Mutation-verify every guard. A test you have not watched fail is a guess.
+```
