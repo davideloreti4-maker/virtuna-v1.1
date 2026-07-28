@@ -171,6 +171,11 @@ The composer chrome. Deliberately deferred: it carries the money risk and deserv
 
 ### The order
 
+> ⚠️ **Step 1 below was WRONG on the facts, and step 2 was bigger than it looked.** Both were
+> re-scoped on 2026-07-28 after reading the code; the corrected state is in §8. Left here as
+> written because the error is instructive: every claim in it is plausible and none survived
+> contact with the source.
+
 1. **Add `test` / `account` / `remix` / `explore` to `SKILL_TOOLS`** (`skill-dispatch.ts` — today
    only 3 of 9: ideas/hooks/script). **Blocking.** Until this lands, removing the pill DELETES
    capability: a pasted TikTok link in chat currently reaches an agent with no test tool, so it
@@ -193,3 +198,95 @@ sentence. It is correct, but the cleaner shapes are: emit `followup` BEFORE `don
 real stream-closed signal from the four generative hooks so the fold can wait for it. Both are
 larger than that fix deserved on the day, and both touch the S2 "unblock the UI early"
 optimization — so treat them as a deliberate trade, not an oversight.
+
+---
+
+## 8. LANE 2 — in progress (`lane/composer-chrome`, worktree `~/virtuna-composer`)
+
+Steps 1–2 are **done, verified and pushed**. Steps 3–5 are **not started**.
+
+| # | Step | State |
+|---|------|-------|
+| 1 | Prefill fix (was: add 4 skills to `SKILL_TOOLS`) | ✅ `f724deb7` |
+| 2 | Gate + bill agent-fired runs | ✅ `5c01f0ed` + wall `b242cabb` |
+| 3 | Delete the skill pill | ⬜ not started |
+| 4 | Delete "Ask the room" | ⬜ not started |
+| 5 | Start-grid tile → one-shot → chat | ⬜ not started |
+
+Suite **4777/0** · `tsc` clean · production build compiles.
+
+### §8.1 — Step 1's premise was false. Read this before trusting a plan again.
+
+**The claim:** removing the pill deletes capability, because chat has no test/account/remix/explore
+tool. **The fact:** chat has reached all five (those four + `read`) for months — not through
+`SKILL_TOOLS` but through **`request_input`** (`chat-agent-loop.ts` + `skill-capabilities.ts`). The
+agent calls `request_input({action})`, the loop emits an `input-request` block, and
+`input-request-block.tsx` renders a field whose submit runs that skill's **own dedicated route** —
+gated, billed, with its own 300s budget. All five submit branches ship today.
+
+**Doing step 1 as written would have been actively harmful.** `SkillTool.run` executes the runner
+*in-process inside the chat route*, which (a) declares **no `maxDuration`** while `remix/run`,
+`account-read` and `analyze` each declare `300`, (b) bypassed billing entirely, and (c) has no
+runner for `test` at all — it needs an uploaded file, which a model tool call cannot supply. It
+would have moved the two most expensive actions in the product onto an ungated, unbilled,
+too-short path.
+
+**The real defect nearby was much smaller:** a pasted link had to be typed **twice** — prefill was
+restricted to `cap.prefillable && cap.kind === "text"`, so `test`/`remix` surfaced an empty field.
+That is what step 1 became. `SKILL_CAPABILITIES.prefillable` (boolean) is now `prefill` (the
+declared SHAPE: `"text" | "url" | "tiktok-url"`), checked at the loop boundary; a mismatch is
+DROPPED, so the model can never seed a field the field would visibly reject.
+
+### §8.2 — The pill was load-bearing for REVENUE, not just UX
+
+The actual blocker, and it was step 2. `creditGate`/`billUsage` appeared **nowhere** in
+`chat/route.ts`, `chat-agent-loop.ts` or `skill-dispatch.ts` — only in comments. So ideas/hooks/
+script ran through the agent with **no gate and no ledger row**, while the identical pack cost
+credits from the pill. Deleting the pill would have moved **100% of generator traffic onto the free
+door** — a pricing change wearing a UI change's clothes.
+
+- `SkillTool.paid: boolean` → `billable?: BillableAction`. A skill now declares WHICH price it
+  carries; "it costs money" was not enough information to charge anything.
+- `deps.billing` (`SkillBilling`) is the gate + till, implemented in the route over the SAME
+  `creditGate` / `billUsage` / `quotaRefusalMessage` the dedicated routes call — one implementation,
+  so the two doors into the engine cannot drift.
+- Order is load-bearing: **gate → run → bill**. A refused run costs nothing; a run that throws is
+  never billed.
+- 🔑 **FAILS CLOSED.** A skill that declares a price with no seam wired is REFUSED, never run free.
+  The 4 existing tests that reach the paid engine all went red until handed a till — the guard
+  proved itself by construction.
+- The refusal also raises the **real paywall dialog** (`credit-wall` SSE frame → `reportCredit402`
+  → the existing listener), not just a sentence the model relays. Without it, once the pill is gone
+  that is the ONLY paywall a creator meets, and it would have no upgrade door.
+
+⚠️ `route-wiring.test.ts` listed chat under `FREE_ROUTES` asserting *"no gate, no bill (a decision,
+not an omission)"* — **and its own comment already flagged the hole it was covering for.** A blanket
+"no `billUsage` in this file" assertion passes loudest exactly when the meter is missing. Chat now
+has its own test pinning both halves separately: the turn stays free, the dispatched skills pay.
+
+### §8.3 — Traps for steps 3–5
+
+- **Steps 3 and 5 are COUPLED and must be designed together.** `activeTool` is no longer a render
+  input (Lane 1 fixed that), but it is still the **submit router** — ~28 call sites, incl. the
+  slash menu, the audience-mode coercion, the rehydrate restore, and the Start-grid arming
+  (`setActiveTool("test")` at composer.tsx:1106/1130, `"script"` :1118, `"hooks"` :1144). Step 5's
+  one-shot tile needs that router; step 3 only removes the pill UI. Do not delete `activeTool`.
+- **The `/` slash menu is a second door to the same picker** and shares `isSkillVisible` with the
+  pill (composer.tsx:2019-2026). Deleting the pill without deciding the slash menu's fate leaves
+  half a selector.
+- Full-suite runs report **3 unhandled errors** — **pre-existing**, verified on `origin/main`
+  (which is 4764/0 with the same 3). They misattribute the blame line to whatever test was running,
+  so a real failure can look like it is in an unrelated file. Read the `Failed Tests` block, not
+  the error's "originated in" line.
+- The shell wrapper mangles `npx`/`pnpm exec`. Use `node node_modules/vitest/vitest.mjs run` and
+  `node node_modules/next/dist/bin/next build`.
+- A fresh worktree has **no `node_modules`** — `pnpm install --frozen-lockfile` first (~1 min).
+
+### §8.4 — Still open
+
+- An agent-dispatched **`account`** run is still neither gated nor billed — `/api/account-read` has
+  no gate at all (pre-existing; it is a pricing call the owner owes, and `account` is not in
+  `CREDIT_COSTS`). The chat path reaches it via `request_input`, so it inherits that hole.
+- `runSkillDispatch` (skill-dispatch.ts) is **not on the live path** — the route uses
+  `runChatAgentStream`. It kept its own leash and is now `billable`-aware, but it has no billing
+  seam. If it is ever revived, it needs one.
