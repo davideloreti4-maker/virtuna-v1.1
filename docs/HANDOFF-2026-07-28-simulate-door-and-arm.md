@@ -1,16 +1,29 @@
 # Handoff — The ＋ door (bring your own stimulus) + the ARM screen redesign
 
 **Date:** 2026-07-28 · **Worktree:** `~/virtuna-platform` · **Branch:** `lane/platform-surface`
-**Status:** ✅ **Phases 1, 2, 3, 4 and the react gate are BUILT.** 1+2+gate are merged to main and
-deployed (PR #394, `79b3e635`); **3+4 are on the lane, unmerged** — see §0.3.
-Read §0.3 first, then §0.4, then §0.5. Phases 5–6 remain open.
+**Status:** ✅ **Phases 1, 2, 3, 4 and the react gate are ALL MERGED TO MAIN.** Phases 5–6 remain open.
+Read §0.3 first, then §0.4, then §0.5. §11 is the copy-paste kickoff for 5+6.
 
 ---
 
 ## §0.3 — STATUS after session 3 (2026-07-28). This supersedes §0.4, §0.5 and the body.
 
-✅ **PHASES 3 AND 4 ARE BUILT AND LIVE-VERIFIED on a production build.** They landed together, as
-required: the door and the thing behind it are one unit.
+✅ **PHASES 3 AND 4 ARE MERGED TO MAIN — PR #399, commit `257fecbf`.** Live-verified on a production
+build before merge. They landed together, as required: the door and the thing behind it are one unit.
+
+⚠️ **Main moved twice more the same hour, from a SECOND lane** (`#398` "the skill pill goes, and an
+arm lasts exactly one send" — the composer-chrome lane's steps 3+5, which rewrote ~558 lines of
+`composer.tsx`). Neither lane was verified against the other before merging, so this session merged
+`origin/main` back into the lane and re-ran everything on the COMBINED tree:
+
+- **tsc clean · suite 4849/0 flag off · 4850/0 flag on (444 files) · `npm run build` passes.**
+- All four ＋-door call sites survived their rewrite (`onTestVariant` ×2, `onSimDoor` ×2, plus the
+  `SimulateDoorHost` mount and `ensureThread`).
+- The 3 unhandled errors are still the pre-existing `composer.test.tsx` ones — the site moved to
+  `composer.tsx:2003` from their edits; the code did not change.
+- ⚠️ Verified at **`18950c59`**. `origin/main` had already advanced to `e050bd84` by the end of the
+  session — **re-sync and re-run before trusting these numbers.** The next session's FIRST command
+  after `git status` should be `git fetch && git log --oneline -3 origin/main`.
 
 **The door now exists, twice, and what comes through it runs:**
 
@@ -93,10 +106,20 @@ before the thread exists, and collapsing the lens verbs to "stopped".
 ### ▶ Next
 
 Phases 5 (the ARM redesign — variant ② first, §5) and 6 (`/dev/cards` pinning) are open and
-independent. Note Phase 5 is now **smaller than §5 describes**: the video variant's lens/slice/scene
-treatment landed here out of necessity, so what remains is the layout/budget work on the text variant.
+independent. **§11 is the copy-paste kickoff prompt for them.**
 
-⚠️ **Not merged.** Phases 3+4 are on `lane/platform-surface` only.
+Phase 5 is now **smaller than §5 describes**: the video variant's lens/slice/scene treatment landed
+here out of necessity (the route honours none of them), so what remains is the LAYOUT/budget work —
+the 286px preamble that outweighs the lens 1.7:1, the footer that restates 5 of 5 facts already on
+screen, and the audience named three ways at once. **Re-measure before designing:** those numbers were
+taken on the pre-Phase-3/4 screen and the cold variants now render differently.
+
+### Owner-owed, unchanged by this session
+
+- 🔴 **`/api/tools/react` is now a THREE-caller paid route** (the rail sim · the composer's `ask`
+  verb · the ＋ door). Any fourth caller needs `reportCredit402` or the refusal is silent.
+- 🔴 **`/api/account-read` is still ungated with no `CREDIT_COSTS` entry** — 1–3 minutes of Apify per
+  call. Open across three sessions; a pricing decision, not an implementation detail.
 
 ---
 
@@ -732,88 +755,97 @@ caller.** That is why this lane's door does not depend on the `ask` verb and is 
 
 ---
 
-## §11 — Copy-paste kickoff prompt for a fresh context
+## §11 — Copy-paste kickoff prompt for a fresh context (Phases 5 + 6)
 
-⚠️ The session-1 prompt that lived here is **spent** — its two jobs (the react gate, Phase 2) are
-done and merged. This is the Phases 3+4 prompt. Everything in it was verified on 2026-07-28.
+⚠️ The Phases-3+4 prompt that lived here is **spent** — both are merged (PR #399, `257fecbf`).
+This is the Phases 5+6 prompt. Everything in it was verified on 2026-07-28.
 
 ```
-Read docs/HANDOFF-2026-07-28-simulate-door-and-arm.md — §0.4 FIRST, then §0.5, then the rest.
+Read docs/HANDOFF-2026-07-28-simulate-door-and-arm.md — §0.3 FIRST, then §0.4, then §5 and §6.
 
-Context: virtuna-platform, branch lane/platform-surface (synced to main — PR #394 merged as
-79b3e635). Phases 1 and 2 and the react credit gate are DONE and IN PRODUCTION. §0.4 is the
-status block; §0.5 is session 1's. The body below them is the ORIGINAL spec and has now been
-wrong EIGHT times — trust §0.4 > §0.5 > body, and verify any claim against the source before
-you build on it. Say what you found.
+Context: virtuna-platform, branch lane/platform-surface. Phases 1, 2, 3, 4 and the react credit
+gate are ALL MERGED TO MAIN and the ＋ door works end to end (PR #399, `257fecbf`). §0.3 is the
+status block; §0.4 and §0.5 are earlier sessions'. The body below them is the ORIGINAL spec and has
+been wrong NINE times — trust §0.3 > §0.4 > §0.5 > body, and verify any claim against the source
+before you build on it. Say what you found.
 
-FIRST COMMAND: `git status`, then `git log --oneline -3`. (The old §10 warning about a second
-session sharing this worktree is RESOLVED — that work went to main via PR #392. Nothing is
-contested. Run git status anyway; it is how that was caught.)
+FIRST COMMANDS: `git status`, then `git fetch && git log --oneline -3 origin/main`, then
+`git rev-list --count HEAD..origin/main`. A SECOND lane (composer chrome) has been merging into
+main the same day and rewrote ~558 lines of composer.tsx in PR #398. Session 3 verified the
+combined tree at 18950c59, but main was already at e050bd84 by the end of that session. If you
+are behind, merge origin/main FIRST and re-baseline before touching anything.
 
-GOAL: Phases 3 and 4, which MUST land together. Phase 3 opens the ＋ door; Phase 4 is the only
-thing that makes what is behind it run. Shipping 3 alone opens a real door onto a dead
-"Simulate" button — the exact defect class this lane exists to remove.
+GOAL: Phase 5 (the ARM screen redesign) and Phase 6 (pin it in /dev/cards). They are
+INDEPENDENT — 6 is mechanical and can be done first or last; 5 is the design work.
 
-PHASE 3 — wire the doors
-- AmbientOverviewRail.tsx:589 `onTestVariant={() => descriptors[0] && openDevelop(descriptors[0].id)}`
-  → open the COLD intake. Two defects in that one line: on an empty rail `descriptors[0]` is
-  undefined and the button is DEAD (verified live — it is a new creator's only control), and on
-  a non-empty rail it re-arms your FIRST EXISTING CARD instead of testing anything new.
-- Relabel "＋ Test a new variant" (AmbientOverview.tsx:666) → "＋ Test something of your own".
-- AmbientStart: add the real SIMULATE DOOR its own docstring describes but never had; thread a
-  new `onSimDoor` handler through AmbientStartHome → composer.tsx. All three files are clean and
-  uncontested now.
+PHASE 5 — the ARM redesign (§5). Design variant ② FIRST; ① is ② plus one band, ③ is ② with
+dials changed.
+- ⚠️ RE-MEASURE BEFORE DESIGNING. §5's band table (preamble 286px / 33%, THE LENS 166px / 19%,
+  trailing dead space 92px) was measured on the PRE-Phase-3/4 screen. The cold variants now
+  render differently: a brought VIDEO renders THREE locked dials with reason lines instead of
+  dropdowns, and the cold entries carry a `‹ Arm a simulation` back button the develop entry
+  does not. Measure the real thing at a real 858px panel before costing any of it.
+- What is genuinely still wrong, and is the whole point of the phase:
+  · the preamble outweighs THE LENS 1.7:1 while the component's own docstring states "the LENS
+    is the one loud dial; everything else is quiet" — the screen contradicts its own spec,
+    measurably;
+  · the footer restates 5 of 5 facts already on screen ("Screening 1,000 of General for 'would
+    they stop' · on TikTok · SIM-1 Flash" — every one appears above it);
+  · the audience is named THREE ways at once: "Everyone" (the slice chip) · "the whole room"
+    (the caption) · "in General" (the conditions line).
+- The tie-back band must NOT render on either cold variant (there is no rank to deepen). Already
+  true — keep it true.
+- DO NOT re-litigate the locks. lens/slice/scene lock on VIDEO because /api/analyze accepts none
+  of them; fidelity locks on BOTH because text→Max has no live caller. Those are measured facts
+  with mutation-verified guards (sim-door.test.tsx). Restyling them is fine; making them live
+  is a route change, not a design change.
+- The video variant states TEN reactors, not 10,000. A video fold is a 10-reactor panel
+  (ambient-v2-video-population.ts §1 says so and refuses to clone them). Do not "fix" that
+  number to match the text path.
 
-PHASE 4 — route the brought stimulus and land it as a row
-- `CollectStep` already produces a `BroughtStimulus { kind, text, file?, url? }` (Phase 2).
-  `ArmCard` holds it. It is deliberately NOT on the emitted `SimulateConfig` yet — add that field
-  WITH its consumer, not before.
-- draft → POST /api/tools/react { text, pin:true, persist:true, + the ARM dials } → concept row.
-- video file → POST /api/analyze input_mode:"video_upload"; link → input_mode:"tiktok_url" → video
-  row. Reuse the composer's storage upload (`supabase.storage.from("videos")`,
-  `${userId}/${nanoid()}.${ext}`) and the Test skill's /api/tools/test/card seam.
-- text → Max is OUT of v1 (no live caller anywhere — §4). The fidelity dial already locks with a
-  reason; leave it locked.
+PHASE 6 — pin it in /dev/cards (§6)
+- Add a `room-simulate` section to The Room tab: all three ARM variants + the intake states
+  (intake · collect-draft · collect-video · arm-text · arm-video) so this screen stops being
+  reachable only by clicking through a real run.
+- Follow the pattern already there (the tab reads AMBIENT_V2_ENABLED and labels itself — keep it).
+- ⚠️ The gallery passes NO `onTestVariant`, so it renders NO ＋ door BY DESIGN (a door with no
+  host to run it is the dead-button class this lane removed). Do not add a fake handler to make
+  the gallery look complete — mount the intake directly, which is what /ambient-v2 already does.
+- A brought-card fixture belongs here too: `src/lib/tools/mock/fixtures.ts` feeds
+  dev/cards/__tests__/fixtures.test.ts, which validates every fixture against the registry.
 
-🔴 THE TRAP THAT WILL BITE — §0.5 correction #4, still open and still true:
-A brought-in TEXT needs a CARD BLOCK inserted as well as a seal. `persist:true` writes ONLY a
-seal; the react route has no `insertMessage` at all. Seals are read THROUGH descriptors
-(`snapshotFor` → `descriptors.find(...)` → `persistedSeals[d.conceptText.trim()]`), and
-descriptors derive purely from rendered thread blocks (`buildAmbientDescriptors` — exactly 4
-types: idea-card / hook-card / script-card / remix-card, each requiring `props.fraction`). No
-block ⇒ no descriptor ⇒ an ORPHAN SEAL that nothing renders. /api/tools/read is NOT the seam (it
-emits `multi-audience-read`, not a descriptor type).
-VIDEO IS FINE — video rows read straight from the seal store keyed by `analysisId`
-(`ambient-v2-adapters.ts:142`), no descriptor needed.
-
-Also true and easy to trip on:
-- The ＋ door must NEVER queue a brought stimulus. `parsePersonaStops("")` returns 0, so a queued
-  draft sorts dead last showing 0/10 — a fabricated "the room hates this" for something the room
-  has never seen. Straight to ARM.
-- `develop` mode is meaningless on this path (no rank to deepen) — the tie-back band must not render.
-- /api/tools/react now COSTS 1 CREDIT and both its callers handle the 402. Any THIRD caller you
-  add needs `reportCredit402` too.
-
-VERIFY per §9 (corrected — these are the traps that actually bit):
+VERIFY per §9 (still accurate):
 - `npm run build` is a REQUIRED gate. Importing a `src/lib/surfaces/*` module into an API route
-  breaks the production build while tsc AND the whole suite stay green. It cost a build here.
-- Suite baseline 4800/0 flag off · 4801/0 flag on
-  (`AMBIENT_V2_ENABLED=true NEXT_PUBLIC_AMBIENT_V2=true`). Run it BOTH ways. If your count is
-  BELOW baseline, suspect a stale number before a deletion — this doc published a wrong one twice.
+  breaks the production build while tsc AND the whole suite stay green.
+- Suite baseline on the combined tree at 18950c59: **4849/0 flag off · 4850/0 flag on**, 444
+  files (`AMBIENT_V2_ENABLED=true NEXT_PUBLIC_AMBIENT_V2=true`). Run it BOTH ways. RE-BASELINE on
+  your first green run — two lanes are landing into main daily and this doc has published a stale
+  number three times.
+- PRE-EXISTING, not yours: `composer.test.tsx` emits 3 unhandled rejections
+  (`Cannot read properties of undefined (reading 'catch')`, a mocked `stream.start` returning
+  undefined on the tiktok_url path). All tests still PASS. The line number MOVES whenever
+  composer.tsx changes (1913 → 1922 → 2003 across three sessions) — match on the message, not
+  the line, and don't let it mask a NEW one: the count is 3.
 - E2E on a production build (`npm run build && npx next start -p 3111`), never `next dev`.
 - Playwright screenshots hang on this app — probe with getBoundingClientRect / getComputedStyle.
   Raw Playwright from a scratch dir needs an ABSOLUTE import of node_modules/playwright/index.mjs.
-- /ambient-v2 is no-auth + fixture-driven (fast, misses adapter bugs) and has a "cold · the ④ door"
-  chip that mounts the intake directly. /dev/cards needs auth; the login button is "Sign in", NOT
-  the first button[type=submit] (that one is permanently disabled and hangs 30s).
-  Creds: e2e-test@virtuna.local / e2e-test-password-2026
-- Mutation-test every new guard: break it, WATCH it fail, restore. And check the guard fails for
-  the reason you think — one of session 2's passed for the wrong reason and only mutation caught it.
-- PRE-EXISTING, not yours: `composer.test.tsx` emits **3 unhandled rejections**
-  (`Cannot read properties of undefined (reading 'catch')` at composer.tsx:1913) — a mocked
-  `stream.start` returning undefined on the tiktok_url path. All tests still PASS. Verified
-  2026-07-28 to be independent of this lane; don't chase it, and don't let it mask a NEW one.
-- ⚠️ Another session is active in `src/lib/billing/**` — PR #395 (`6392ff85`) landed chat-agent
-  skill billing the same day and rewrote `route-wiring.test.ts` around this lane's `react` entry.
-  It merged clean, but check `git log origin/main` before assuming that file is yours.
+- /ambient-v2 is no-auth + fixture-driven (fast, misses adapter bugs). /dev/cards needs auth; the
+  login button is "Sign in", NOT the first button[type=submit] (that one is the OTP form's
+  "Continue" — permanently disabled, hangs 30s).
+    Creds: e2e-test@virtuna.local / e2e-test-password-2026
+  ⚠️ The e2e account has a stale open thread with content, so /home renders THREAD mode and the
+  Start card (and its SIMULATE DOOR) does not mount. Force a fresh thread first:
+    await page.evaluate(() => { document.cookie = "maven_active_thread=__new__; path=/; samesite=lax"; });
+  ⚠️ The board rail is PORTALED into an <aside> OUTSIDE <main> — reading main.innerText finds no
+  board at all. Probe `[data-testid="ambient-overview"]` directly. (This cost a wrong "the row
+  did not land" reading in session 3.)
+- Mutation-test every new guard: break it, WATCH it fail, restore — and check it fails for the
+  reason you think. Session 3 ran 9 mutations; two earlier sessions each had a guard that passed
+  for the wrong reason and only mutation testing said so.
+
+DO NOT TOUCH without an owner decision:
+- `/api/tools/react` is a THREE-caller paid route (rail sim · composer `ask` · the ＋ door). A
+  fourth caller needs `reportCredit402` or the refusal is silent.
+- `/api/account-read` is still ungated with no CREDIT_COSTS entry (1–3 min of Apify). Open across
+  three sessions. It is a pricing call.
 ```
