@@ -244,7 +244,7 @@ function ProofChip({
   const pct = m && Number(m[2]) > 0 ? (Number(m[1]) / Number(m[2])) * 100 : null;
   return (
     <div className="flex flex-col gap-1.5 rounded-[10px] border border-white/[0.06] bg-white/[0.02] px-3 py-2 transition-colors group-hover:border-white/[0.10]">
-      <div className="flex items-center gap-2.5 text-[12.5px]">
+      <div className="flex items-center gap-2.5 text-[12px]">
         <span className="inline-flex shrink-0 items-center gap-1.5 font-semibold" style={{ color: tone }}>
           <span className="h-[7px] w-[7px] rounded-full" style={{ backgroundColor: tone }} aria-hidden="true" />
           {band}
@@ -341,8 +341,8 @@ export function SavedItemCard({ item, variant = "card" }: SavedItemCardProps) {
       onClick={onForward}
       disabled={launching}
       className={cn(
-        "inline-flex items-center gap-1 whitespace-nowrap text-[12.5px] font-semibold text-foreground-secondary transition-[color,gap] hover:gap-1.5 hover:text-foreground",
-        "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10 disabled:opacity-60",
+        "inline-flex items-center gap-1 whitespace-nowrap text-[12px] font-semibold text-foreground-secondary transition-[color,gap] hover:gap-1.5 hover:text-foreground",
+        "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring)] disabled:opacity-60",
       )}
       aria-label={`${forwardLabel} — ${TYPE_LABEL[item.item_type]}`}
     >
@@ -420,11 +420,11 @@ export function SavedItemCard({ item, variant = "card" }: SavedItemCardProps) {
           )}
         </span>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[13.5px] font-semibold text-foreground">
+          <p className="truncate text-[14px] font-semibold text-foreground">
             {vm.heroPrefix ? <span className="text-foreground">{vm.heroPrefix} </span> : null}
             {vm.hero}
           </p>
-          <p className="mt-0.5 flex items-center gap-1.5 truncate text-[11.5px] text-foreground-muted">
+          <p className="mt-0.5 flex items-center gap-1.5 truncate text-[12px] text-foreground-muted">
             <span>{TYPE_LABEL[item.item_type]}</span>
             {vm.segment ? (
               <>
@@ -442,7 +442,7 @@ export function SavedItemCard({ item, variant = "card" }: SavedItemCardProps) {
         </div>
         <div className="flex shrink-0 items-center gap-3">
           {forwardCta}
-          <span className="w-[52px] text-right text-[11.5px] tabular-nums text-foreground-muted">{timestamp}</span>
+          <span className="w-[52px] text-right text-[12px] tabular-nums text-foreground-muted">{timestamp}</span>
           {removeDialog}
         </div>
       </div>
@@ -490,7 +490,7 @@ export function SavedItemCard({ item, variant = "card" }: SavedItemCardProps) {
                 aria-hidden="true"
               />
             )}
-            <span className="shrink-0 text-[10.5px] font-semibold uppercase tracking-[0.06em] text-foreground-muted">
+            <span className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.06em] text-foreground-muted">
               {vm.kicker}
             </span>
             {vm.segment ? (
@@ -501,7 +501,7 @@ export function SavedItemCard({ item, variant = "card" }: SavedItemCardProps) {
           </span>
           <span className="flex shrink-0 items-center gap-1.5">
             {vm.rank != null && (
-              <span className="text-[11.5px] font-semibold tabular-nums text-foreground-muted">#{vm.rank}</span>
+              <span className="text-[12px] font-semibold tabular-nums text-foreground-muted">#{vm.rank}</span>
             )}
             {removeDialog}
           </span>
@@ -515,7 +515,7 @@ export function SavedItemCard({ item, variant = "card" }: SavedItemCardProps) {
 
         {/* Why-teaser */}
         {vm.why && (
-          <p className="line-clamp-2 text-[12.5px] leading-relaxed text-foreground-muted">
+          <p className="line-clamp-2 text-[12px] leading-relaxed text-foreground-muted">
             {item.item_type === "hook" && <span>Why — </span>}
             {vm.why}
           </p>
@@ -538,7 +538,7 @@ export function SavedItemCard({ item, variant = "card" }: SavedItemCardProps) {
 
       {/* Footer — date + forward action */}
       <div className="flex items-center justify-between gap-2 border-t border-white/[0.06] px-4 py-2.5">
-        <span className="text-[11.5px] tabular-nums text-foreground-muted">{timestamp}</span>
+        <span className="text-[12px] tabular-nums text-foreground-muted">{timestamp}</span>
         {forwardCta}
       </div>
     </div>

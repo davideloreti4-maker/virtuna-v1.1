@@ -27,7 +27,7 @@ export function TheLoop({
       </h3>
 
       {receipts.length === 0 ? (
-        <p className="py-1.5 text-[12.5px] leading-[1.45] text-foreground-muted">
+        <p className="py-1.5 text-[12px] leading-[1.45] text-foreground-muted">
           No posts measured yet. Posted a pre-tested idea? Add its link above — your
           predicted-vs-actual reads land here and sharpen every post.
         </p>
@@ -44,7 +44,7 @@ export function TheLoop({
                   <SurfaceIcon name="check" size={12} strokeWidth={2.2} />
                 </span>
                 <div className="min-w-0 flex-1">
-                  <div className="text-[12.5px] leading-[1.35] text-foreground">
+                  <div className="text-[12px] leading-[1.35] text-foreground">
                     {r.headline ?? "Measured against your prediction"}
                   </div>
                   <div className="mt-[3px] font-mono text-[10px] leading-[1.4] text-foreground-muted">
@@ -66,7 +66,7 @@ export function TheLoop({
                 </div>
                 {r.matchPct != null && (
                   <span
-                    className="shrink-0 whitespace-nowrap rounded-md border px-[7px] py-[3px] font-mono text-[9.5px]"
+                    className="shrink-0 whitespace-nowrap rounded-md border px-[7px] py-[3px] font-mono text-[10px]"
                     style={{ color: "var(--color-positive)", borderColor: "rgba(142,166,138,0.34)" }}
                   >
                     {r.matchPct}% match
@@ -110,7 +110,7 @@ export function TheLoop({
                 sharper every post.
                 {accuracy.trendPts != null && accuracy.trendPts > 0 && (
                   <span
-                    className="mt-[3px] inline-flex items-center gap-1 font-mono text-[9.5px]"
+                    className="mt-[3px] inline-flex items-center gap-1 font-mono text-[10px]"
                     style={{ color: "var(--color-positive)" }}
                   >
                     <SurfaceIcon name="up" size={9} strokeWidth={2.2} />+{accuracy.trendPts} pts

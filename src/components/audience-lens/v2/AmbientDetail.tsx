@@ -245,7 +245,7 @@ export function Unlock({ unlock }: { unlock: { lever: string; gain?: string; ins
           </span>
         </div>
       ) : null}
-      <p className="mt-4 text-[13.5px] leading-[1.55]" style={{ color: TONE.dim }}>
+      <p className="mt-4 text-[14px] leading-[1.55]" style={{ color: TONE.dim }}>
         {unlock.insight}
       </p>
     </div>
@@ -394,7 +394,7 @@ export function AmbientDetail({
               <span className="text-[13px]" style={{ color: TONE.dim }}>
                 The brain — a video read
               </span>
-              <span className="max-w-[280px] text-[12.5px] leading-[1.5]">
+              <span className="max-w-[280px] text-[12px] leading-[1.5]">
                 {brainNote ?? "The brain decomposition reads a video's frames. This was a text concept sim — no attention timeline to show."}
               </span>
               {noteAction}

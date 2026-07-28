@@ -130,7 +130,7 @@ export function AudienceChip({ threadId, onAudienceChange, className }: Audience
   return (
     <div ref={containerRef} className={cn("relative flex items-center gap-1", className)}>
       {/* "for" prefix — matches PlatformChip's "on" prefix */}
-      <span className="mr-0.5 text-[10px] text-foreground-muted/50 uppercase tracking-wide select-none">
+      <span className="mr-0.5 text-micro text-foreground-muted/50 uppercase tracking-wide select-none">
         for
       </span>
 
@@ -142,8 +142,8 @@ export function AudienceChip({ threadId, onAudienceChange, className }: Audience
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "flex items-center gap-1 rounded-lg border px-2 py-0.5 text-[10px] font-medium transition-colors",
-          "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10 focus-visible:ring-offset-1 focus-visible:ring-offset-background",
+          "flex items-center gap-1 rounded-lg border px-2 py-0.5 text-micro font-medium transition-colors",
+          "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-1 focus-visible:ring-offset-background",
           "pointer-coarse:min-h-[44px] pointer-coarse:px-3",
           chipActive
             ? "border-border-hover bg-hover text-foreground"

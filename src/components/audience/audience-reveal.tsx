@@ -80,7 +80,7 @@ export function AudienceReveal({ audience, reveal, onUse, className }: AudienceR
 
       {posts.length > 0 && (
         <div>
-          <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.14em] text-foreground-muted">
+          <p className="mb-2 text-micro font-medium uppercase tracking-[0.14em] text-foreground-muted">
             Your posts we read
           </p>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">

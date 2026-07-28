@@ -54,7 +54,7 @@ export function MonthGrid({
         {WEEKDAY_HEADS.map((h) => (
           <div
             key={h}
-            className="pb-1 text-center font-mono text-[9.5px] font-medium uppercase tracking-[0.06em] text-foreground-muted"
+            className="pb-1 text-center font-mono text-[10px] font-medium uppercase tracking-[0.06em] text-foreground-muted"
           >
             <span className="sm:hidden">{h.slice(0, 1)}</span>
             <span className="hidden sm:inline">{h}</span>

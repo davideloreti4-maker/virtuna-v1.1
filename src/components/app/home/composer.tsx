@@ -2527,7 +2527,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           </div>
         ) : (
           <div aria-live="polite" aria-atomic="false">
-            <p className="mb-2 text-[13px] font-medium text-foreground-secondary">
+            <p className="mb-2 text-body font-medium text-foreground-secondary">
               {SKILL_RUN_META.test!.running}
             </p>
             <ProgressChecklist stages={testRunStages} plan={SKILL_RUN_META.test!.plan} />
@@ -2880,7 +2880,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
                   setEvidenceFile(null);
                   setEvidenceError(null);
                 }}
-                className="shrink-0 rounded p-0.5 text-foreground-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10"
+                className="shrink-0 rounded p-0.5 text-foreground-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring)]"
               >
                 <XIcon className="h-4 w-4" />
               </button>
@@ -2935,12 +2935,13 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
               }
               aria-invalid={showUrlError || undefined}
               className={cn(
-                "w-full min-w-0 resize-none bg-transparent px-1 pt-0.5 text-[15px] text-foreground",
+                "w-full min-w-0 resize-none bg-transparent px-1 pt-0.5 text-reading text-foreground",
                 "placeholder:text-foreground-muted focus:outline-none",
-                // The empty box breathes: the placeholder sits at the top and the controls
-                // rest at the bottom edge with real void between them. This air — not the
-                // radius or the border — is what separates a premium composer from a cramped one.
-                "min-h-[72px] max-h-[200px] leading-[1.55]",
+                // The empty box breathes — but 72px of void above the controls read as an
+                // empty panel rather than an input, and it pushed the whole dock to 180px.
+                // 48px still gives the placeholder room to sit high with air beneath it,
+                // and the dock lands nearer 150px. It grows to 200 as you type, as before.
+                "min-h-[48px] max-h-[200px] leading-[1.55]",
               )}
             />
 
@@ -2976,7 +2977,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
                     aria-label={EVIDENCE_ATTACH_LABEL}
                     title={EVIDENCE_ATTACH_LABEL}
                     onClick={() => evidenceInputRef.current?.click()}
-                    className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-full text-foreground-muted transition-colors hover:bg-white/[0.06] hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10 pointer-coarse:h-11 pointer-coarse:w-11"
+                    className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-full text-foreground-muted transition-colors hover:bg-white/[0.06] hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring)] pointer-coarse:h-11 pointer-coarse:w-11"
                   >
                     <Plus className="h-[18px] w-[18px]" strokeWidth={1.75} />
                   </button>
@@ -3094,7 +3095,10 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
             // the two read as one surface. Driven by the VISUAL expand, never the ask verb.
             !roomExpanded && "overflow-hidden",
             roomExpanded && "rounded-t-none border-t-0",
-            layout === "centered" && "shadow-float",
+            // Was --shadow-float (0 10px 30px rgba(0,0,0,.35)) — a 30px blur that pooled
+            // visibly on the surface behind the dock. Halved the blur and the alpha so the
+            // composer still reads as floating without casting a smudge under it.
+            layout === "centered" && "shadow-[0_6px_16px_rgba(0,0,0,0.18)]",
             !reducedMotion && "transition-shadow duration-200",
           )}
         >

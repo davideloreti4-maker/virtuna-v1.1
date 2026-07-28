@@ -22,12 +22,12 @@ import Link from 'next/link';
 
 /**
  * THE canonical section-label className (§0.5 "Type + geometry"):
- * `text-[11px] uppercase tracking-[0.05em] text-foreground-muted`. Use for every sub-label
+ * `text-caption uppercase tracking-[0.05em] text-foreground-muted`. Use for every sub-label
  * inside a card (e.g. "Posts we read", "Recurring hooks") so the whole app runs one stack —
  * NOT 0.06em, not 10px, not a mono face. The section-label guard enforces it.
  */
 export const SECTION_LABEL =
-  'text-[11px] uppercase tracking-[0.05em] text-foreground-muted';
+  'text-caption uppercase tracking-[0.05em] text-foreground-muted';
 
 /**
  * CardEyebrow — §0.5.1, the quiet kicker at the top of a card. An optional band-colored dot,
@@ -104,7 +104,7 @@ export function CardPrimaryAction({
   title?: string;
 }) {
   const cls =
-    'inline-flex items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.05] px-3.5 py-2 text-[13px] font-semibold text-foreground transition-colors hover:border-white/[0.12] hover:bg-white/[0.09] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/15 disabled:cursor-default disabled:opacity-40 disabled:hover:border-white/[0.08] disabled:hover:bg-white/[0.05]' +
+    'inline-flex items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.05] px-3.5 py-2 text-body font-semibold text-foreground transition-colors hover:border-white/[0.12] hover:bg-white/[0.09] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/15 disabled:cursor-default disabled:opacity-40 disabled:hover:border-white/[0.08] disabled:hover:bg-white/[0.05]' +
     (className ? ` ${className}` : '');
 
   if (href) {

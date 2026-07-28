@@ -353,7 +353,7 @@ export function CalendarWorkspace({
                   style={{ width: `${cadencePct}%` }}
                 />
               </span>
-              <span className="shrink-0 font-mono text-[9.5px] text-foreground-muted">
+              <span className="shrink-0 font-mono text-[10px] text-foreground-muted">
                 Next 7 days · <span className="text-foreground-secondary">{next7} of ~{WEEKLY_TARGET}</span> planned
               </span>
             </div>
@@ -374,7 +374,7 @@ export function CalendarWorkspace({
           <button
             type="button"
             onClick={() => setPlacingId(null)}
-            className="rounded-lg border border-border px-2.5 py-1.5 text-[11.5px] text-foreground-muted transition-colors hover:border-border-hover hover:text-foreground"
+            className="rounded-lg border border-border px-2.5 py-1.5 text-[12px] text-foreground-muted transition-colors hover:border-border-hover hover:text-foreground"
           >
             Cancel
           </button>

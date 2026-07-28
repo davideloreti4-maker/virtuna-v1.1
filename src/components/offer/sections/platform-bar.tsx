@@ -51,8 +51,8 @@ export function PlatformBar() {
                 <span
                   className={
                     chip.muted
-                      ? "text-[12.5px] text-foreground-muted/70"
-                      : "text-[12.5px] text-foreground-muted"
+                      ? "text-[12px] text-foreground-muted/70"
+                      : "text-[12px] text-foreground-muted"
                   }
                 >
                   {chip.label}

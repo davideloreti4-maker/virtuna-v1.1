@@ -23,7 +23,7 @@ export function SectionHeader({
         <button
           type="button"
           onClick={action.onClick}
-          className="ml-auto inline-flex items-center gap-1 text-[11.5px] text-foreground-muted transition-colors hover:text-foreground-secondary"
+          className="ml-auto inline-flex items-center gap-1 text-[12px] text-foreground-muted transition-colors hover:text-foreground-secondary"
         >
           {action.label}
           {action.withChevron && <ChevronRight aria-hidden className="size-3" />}

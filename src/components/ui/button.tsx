@@ -35,7 +35,7 @@ const buttonVariants = cva(
     "inline-flex items-center justify-center gap-2",
     "font-medium transition-colors",
     // Focus ring using semantic tokens
-    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-background",
     // Disabled state
     "disabled:pointer-events-none disabled:opacity-50",
     // Ensure cursor pointer for interactive element

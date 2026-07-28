@@ -34,10 +34,10 @@ export function AttentionCurve({ curve, tSec, durationS }: { curve: Curve; tSec:
         Predicted attention
       </p>
       <div className="flex items-start justify-between gap-2">
-        <span className="text-[12.5px] leading-tight text-foreground">Where attention holds across the clip</span>
+        <span className="text-[12px] leading-tight text-foreground">Where attention holds across the clip</span>
         <span className="flex shrink-0 items-baseline gap-1">
           <span className="font-serif text-[22px] leading-none tracking-[-0.02em] tabular-nums text-foreground">{hold}</span>
-          <span className="font-mono text-[7.5px] uppercase tracking-[0.1em] text-[var(--color-foreground-muted)]">modeled hold</span>
+          <span className="font-mono text-[8px] uppercase tracking-[0.1em] text-[var(--color-foreground-muted)]">modeled hold</span>
         </span>
       </div>
 
@@ -51,7 +51,7 @@ export function AttentionCurve({ curve, tSec, durationS }: { curve: Curve; tSec:
       </svg>
 
       {peaks.length > 0 && (
-        <p className="mt-1.5 text-[10.5px] leading-[1.45] text-[var(--color-foreground-muted)]">
+        <p className="mt-1.5 text-[10px] leading-[1.45] text-[var(--color-foreground-muted)]">
           Attention peaks near {peaks.map((p) => mmss(p.t)).join(', ')}. The dots mark those crests on the
           curve — modeled from your audience&rsquo;s real retention, not a measured attention span.
         </p>

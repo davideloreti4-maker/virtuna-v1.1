@@ -76,7 +76,7 @@ function Eyebrow({ handle }: { handle?: string }) {
     <CardEyebrow
       kicker="A Read on your account"
       dotColor="var(--color-foreground-muted)"
-      meta={handle ? <span className="text-[12px] text-foreground-muted">@{handle}</span> : undefined}
+      meta={handle ? <span className="text-label text-foreground-muted">@{handle}</span> : undefined}
     />
   );
 }
@@ -104,7 +104,7 @@ function ProfileHeader({ profile }: { profile: AccountReadProfile }) {
     <div className="flex items-center gap-3" data-testid="account-read-profile">
       {/* Avatar — real scrape image over a warm placeholder; broken/empty → the initial shows. */}
       <span className="relative h-11 w-11 shrink-0 overflow-hidden rounded-full bg-white/[0.06]">
-        <span className="absolute inset-0 flex items-center justify-center text-[15px] font-semibold text-foreground-muted" aria-hidden="true">
+        <span className="absolute inset-0 flex items-center justify-center text-reading font-semibold text-foreground-muted" aria-hidden="true">
           {initial}
         </span>
         {profile.avatarUrl ? (
@@ -122,10 +122,10 @@ function ProfileHeader({ profile }: { profile: AccountReadProfile }) {
       </span>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
-          <span className="truncate text-[15px] font-semibold text-foreground">{name}</span>
+          <span className="truncate text-reading font-semibold text-foreground">{name}</span>
           {profile.verified ? <VerifiedTick /> : null}
         </div>
-        <p className="truncate text-[12.5px] text-foreground-muted">
+        <p className="truncate text-label text-foreground-muted">
           @{profile.handle} · {formatCompact(profile.followerCount)} followers · {formatCompact(profile.videoCount)} posts
         </p>
       </div>
@@ -139,7 +139,7 @@ function ProfileHeader({ profile }: { profile: AccountReadProfile }) {
 function CoverStrip({ videos }: { videos: AnalyzedVideos }) {
   return (
     <div data-testid="account-read-covers">
-      <p className="mb-2 text-[11px] uppercase tracking-[0.05em] text-foreground-muted">Posts we read</p>
+      <p className="mb-2 text-caption uppercase tracking-[0.05em] text-foreground-muted">Posts we read</p>
       <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-5">
         {videos.map((v, i) => {
           const Tag = v.videoUrl ? 'a' : 'div';
@@ -152,7 +152,7 @@ function CoverStrip({ videos }: { videos: AnalyzedVideos }) {
             >
               <CoverFill coverUrl={v.coverUrl} playSize={20} className="transition-opacity group-hover:opacity-90" />
               {/* Views overlay — over imagery (white on a dark gradient), legible even if cover fails. */}
-              <span className="absolute inset-x-0 bottom-0 flex items-center gap-0.5 bg-gradient-to-t from-black/75 to-transparent px-1.5 pb-1 pt-4 text-[10px] font-medium tabular-nums text-white/90">
+              <span className="absolute inset-x-0 bottom-0 flex items-center gap-0.5 bg-gradient-to-t from-black/75 to-transparent px-1.5 pb-1 pt-4 text-micro font-medium tabular-nums text-white/90">
                 <svg viewBox="0 0 8 8" className="h-[7px] w-[7px]" fill="currentColor" aria-hidden="true">
                   <path d="M1.5 1L7 4L1.5 7Z" />
                 </svg>
@@ -181,11 +181,11 @@ function ListBlock({
 }) {
   return (
     <div data-testid={testid}>
-      <p className="mb-1.5 text-[11px] uppercase tracking-[0.05em] text-foreground-muted">{label}</p>
+      <p className="mb-1.5 text-caption uppercase tracking-[0.05em] text-foreground-muted">{label}</p>
       {items.length > 0 ? (
         <ul className="flex flex-col gap-1" role="list">
           {items.map((item, i) => (
-            <li key={`${testid}-${i}`} className="flex gap-2 text-[13px] leading-relaxed text-foreground-secondary">
+            <li key={`${testid}-${i}`} className="flex gap-2 text-body leading-relaxed text-foreground-secondary">
               <span
                 className="mt-[7px] h-[4px] w-[4px] shrink-0 rounded-full"
                 style={{ backgroundColor: dotColor ?? 'var(--color-foreground-muted)' }}
@@ -197,7 +197,7 @@ function ListBlock({
         </ul>
       ) : (
         // Honest empty — em-dash muted, never a fabricated entry.
-        <p className="text-[13px] text-foreground-muted">— none detected yet</p>
+        <p className="text-body text-foreground-muted">— none detected yet</p>
       )}
     </div>
   );
@@ -207,11 +207,11 @@ function ListBlock({
 function FormatMixBlock({ formatMix }: { formatMix: FormatMix }) {
   return (
     <div data-testid="account-read-format-mix">
-      <p className="mb-1.5 text-[11px] uppercase tracking-[0.05em] text-foreground-muted">Format mix</p>
+      <p className="mb-1.5 text-caption uppercase tracking-[0.05em] text-foreground-muted">Format mix</p>
       {formatMix.length > 0 ? (
         <ul className="flex flex-col gap-2" role="list">
           {formatMix.map((entry, i) => (
-            <li key={`fmt-${i}`} className="flex items-center gap-3 text-[12.5px]">
+            <li key={`fmt-${i}`} className="flex items-center gap-3 text-label">
               <span className="min-w-[112px] text-foreground-secondary">{entry.label}</span>
               <span className="h-[5px] flex-1 overflow-hidden rounded-full bg-white/[0.07]">
                 <span
@@ -227,7 +227,7 @@ function FormatMixBlock({ formatMix }: { formatMix: FormatMix }) {
           ))}
         </ul>
       ) : (
-        <p className="text-[13px] text-foreground-muted">— none detected yet</p>
+        <p className="text-body text-foreground-muted">— none detected yet</p>
       )}
     </div>
   );
@@ -237,7 +237,7 @@ function FormatMixBlock({ formatMix }: { formatMix: FormatMix }) {
 function Accuracy({ trackRecord }: { trackRecord: AccountReadBlock['props']['trackRecord'] }) {
   return (
     <p
-      className="border-t border-white/[0.06] pt-3 text-[13px] leading-relaxed text-foreground-secondary"
+      className="border-t border-white/[0.06] pt-3 text-body leading-relaxed text-foreground-secondary"
       data-testid="account-read-track-record"
     >
       {trackRecord ? (
@@ -316,10 +316,10 @@ function ThinFallback({ handle }: { handle: string }) {
     <div className={CARD} data-testid="account-read-thin">
       <div className="flex flex-col gap-3 px-4 pb-4 pt-4">
         <Eyebrow handle={handle} />
-        <p className="text-[15px] font-semibold" style={{ color: 'var(--color-warning)' }}>
+        <p className="text-reading font-semibold" style={{ color: 'var(--color-warning)' }}>
           Not enough history to read yet
         </p>
-        <p className="text-[13.5px] leading-relaxed text-foreground-secondary">
+        <p className="text-reading leading-relaxed text-foreground-secondary">
           We couldn&rsquo;t find enough public posts on your account to read its patterns honestly.
           Post more, or check your handle is public, and try again.
         </p>
@@ -352,7 +352,7 @@ export function AccountReadBlockRenderer({ block, threadId }: AccountReadBlockPr
         {/* Real scrape identity opens the card — the "A Read on your account" eyebrow was removed
             2026-07-21 (the run capsule above already labels the skill). Back-compat: a pre-Tier-C
             snapshot (no profile) falls back to the bare handle. */}
-        {profile ? <ProfileHeader profile={profile} /> : <p className="text-[13px] text-foreground-muted">@{handle}</p>}
+        {profile ? <ProfileHeader profile={profile} /> : <p className="text-body text-foreground-muted">@{handle}</p>}
 
         {/* The analyzed posts — real cover thumbnails (top performers), proof the Read is grounded. */}
         {analyzedVideos && analyzedVideos.length > 0 ? <CoverStrip videos={analyzedVideos} /> : null}
@@ -379,7 +379,7 @@ export function AccountReadBlockRenderer({ block, threadId }: AccountReadBlockPr
             <button
               type="button"
               onClick={() => setDetailOpen((v) => !v)}
-              className="flex items-center gap-1.5 self-start text-[12.5px] text-foreground-muted transition-colors hover:text-foreground-secondary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10"
+              className="flex items-center gap-1.5 self-start text-label text-foreground-muted transition-colors hover:text-foreground-secondary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring)]"
               aria-expanded={detailOpen}
               data-testid="account-read-breakdown-toggle"
             >

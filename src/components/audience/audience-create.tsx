@@ -288,10 +288,10 @@ export function AudienceCreate({ initialDoor, prefillHandle, className }: Audien
           {evidence ? (
             <>
               <div className="flex items-baseline gap-2.5">
-                <span className="text-[17px] font-semibold tracking-[-0.01em] text-foreground">
+                <span className="text-subhead font-semibold tracking-[-0.01em] text-foreground">
                   @{evidence.handle}
                 </span>
-                <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-foreground-muted">
+                <span className="font-mono text-micro uppercase tracking-[0.08em] text-foreground-muted">
                   TikTok
                 </span>
               </div>
@@ -316,7 +316,7 @@ export function AudienceCreate({ initialDoor, prefillHandle, className }: Audien
 
           <div className="mt-5 flex items-center gap-2" data-testid="create-building">
             <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-[color:var(--color-accent)]" />
-            <span className="text-[13px] text-foreground-secondary">Building audience</span>
+            <span className="text-body text-foreground-secondary">Building audience</span>
           </div>
         </div>
       </div>
@@ -337,7 +337,7 @@ export function AudienceCreate({ initialDoor, prefillHandle, className }: Audien
               onClick={() => pickDoor(d.key)}
               className={cn(
                 "rounded-xl border p-4 text-left transition-colors",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)]",
                 on
                   ? "border-white/[0.14] bg-white/[0.04]"
                   : "border-white/[0.06] hover:border-white/[0.1] hover:bg-white/[0.02]",
@@ -353,7 +353,7 @@ export function AudienceCreate({ initialDoor, prefillHandle, className }: Audien
               </span>
               <span
                 className={cn(
-                  "mt-1 block text-[13px] leading-normal transition-colors",
+                  "mt-1 block text-body leading-normal transition-colors",
                   on ? "text-foreground-secondary" : "text-foreground-muted",
                 )}
               >
@@ -392,7 +392,7 @@ export function AudienceCreate({ initialDoor, prefillHandle, className }: Audien
                     aria-pressed={template === t.key}
                     onClick={() => applyTemplate(t.key)}
                     className={cn(
-                      "rounded-md border px-2.5 py-1 text-[12px] font-medium transition-colors",
+                      "rounded-md border px-2.5 py-1 text-label font-medium transition-colors",
                       template === t.key
                         ? "border-border-hover bg-white/[0.04] text-foreground"
                         : "border-white/[0.06] text-foreground-secondary hover:border-white/[0.1] hover:text-foreground",
@@ -434,7 +434,7 @@ export function AudienceCreate({ initialDoor, prefillHandle, className }: Audien
                 className="w-36"
               />
             ) : (
-              <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-foreground-muted">
+              <span className="font-mono text-micro uppercase tracking-[0.08em] text-foreground-muted">
                 TikTok
               </span>
             )}
@@ -450,13 +450,13 @@ export function AudienceCreate({ initialDoor, prefillHandle, className }: Audien
         )}
 
         {door === "connect" && platform !== "tiktok" && (
-          <p className="mt-3 border-t border-white/[0.06] pt-3 text-[13px] text-foreground-muted">
+          <p className="mt-3 border-t border-white/[0.06] pt-3 text-body text-foreground-muted">
             Analytics only.
           </p>
         )}
 
         {errorMsg && (
-          <p className="mt-3 border-t border-white/[0.06] pt-3 text-[13px] text-error" data-testid="create-error">
+          <p className="mt-3 border-t border-white/[0.06] pt-3 text-body text-error" data-testid="create-error">
             {errorMsg}
           </p>
         )}
@@ -469,10 +469,10 @@ export function AudienceCreate({ initialDoor, prefillHandle, className }: Audien
 function RevealFigure({ n, label, exact }: { n: number; label: string; exact?: boolean }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-[22px] font-semibold tabular-nums tracking-[-0.01em] text-foreground">
+      <span className="text-heading font-semibold tabular-nums tracking-[-0.01em] text-foreground">
         {exact ? n : formatCount(n)}
       </span>
-      <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-foreground-muted">
+      <span className="font-mono text-micro uppercase tracking-[0.08em] text-foreground-muted">
         {label}
       </span>
     </div>

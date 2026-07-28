@@ -55,7 +55,7 @@ export function SigmaBars({ sigmas, tSec, why }: { sigmas: NetworkSigma[]; tSec:
         <span>Raw network activation · z-scored</span>
         <span className="font-mono text-[8px] tracking-[0.1em] tabular-nums opacity-70">at t = {mmss(tSec)}</span>
       </p>
-      <p className="mb-1 text-[10.5px] leading-[1.45] text-[var(--color-foreground-muted)]">
+      <p className="mb-1 text-[10px] leading-[1.45] text-[var(--color-foreground-muted)]">
         Sigma (σ) is how far this second sits from the clip&rsquo;s own baseline — negative is below its
         usual level for this clip, positive above.
       </p>
@@ -67,7 +67,7 @@ export function SigmaBars({ sigmas, tSec, why }: { sigmas: NetworkSigma[]; tSec:
       {why && (
         <div className="mt-2 border-l border-[var(--color-border)] pl-3">
           <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--color-foreground-muted)]">Why this second</p>
-          <p className="mt-1 text-[10.5px] leading-[1.5] text-[var(--color-foreground-secondary)]">{why}</p>
+          <p className="mt-1 text-[10px] leading-[1.5] text-[var(--color-foreground-secondary)]">{why}</p>
         </div>
       )}
     </section>

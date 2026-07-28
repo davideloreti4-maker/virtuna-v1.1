@@ -56,7 +56,7 @@ export function PersonasBlockRenderer({ block, conceptText }: PersonasBlockProps
       <span className="font-normal text-foreground-muted">
         {stopCount}/{total} stopped
       </span>
-      <span className="ml-auto flex shrink-0 items-center gap-1.5 whitespace-nowrap text-[12px] text-foreground-secondary">
+      <span className="ml-auto flex shrink-0 items-center gap-1.5 whitespace-nowrap text-label text-foreground-secondary">
         <span className="flex" aria-hidden="true">
           {[0, 1, 2].map((i) => (
             <span

@@ -35,7 +35,7 @@ export function TargetReaction({ target }: { target: CardTarget }) {
 
   return (
     <div className="flex flex-col gap-1 rounded-md border border-white/[0.06] px-3 py-2">
-      <p className="text-[12px] leading-snug text-foreground-secondary">
+      <p className="text-label leading-snug text-foreground-secondary">
         <span className="text-foreground-muted">Written for </span>
         <span className="font-medium text-foreground">{displayName}</span>
         <span className="text-foreground-muted"> · {Math.round(share * 100)}% of your audience</span>
@@ -43,7 +43,7 @@ export function TargetReaction({ target }: { target: CardTarget }) {
 
       {/* The receipt. No verdict in the panel → state the aim, claim nothing about the reaction. */}
       {verdict && (
-        <p className="text-[12.5px] leading-relaxed text-foreground-secondary">
+        <p className="text-label leading-relaxed text-foreground-secondary">
           <span className={stopped ? 'font-medium text-foreground' : 'text-foreground-muted'}>
             {stopped ? 'They stopped' : 'They scrolled past'}
           </span>

@@ -173,7 +173,7 @@ export default function AmbientV2DevPage() {
             </p>
             <div className="mt-7 flex items-center justify-end">
               <span
-                className="rounded-lg px-4 py-2 text-[13.5px] font-medium"
+                className="rounded-lg px-4 py-2 text-[14px] font-medium"
                 style={{ background: "#ece7de", color: "#1c1b19" }}
               >
                 ask →

@@ -330,7 +330,7 @@ export function BuyIntentCurve({
           </span>
         ))}
       </div>
-      <p className="mt-3 text-[12.5px] leading-[1.5]" style={{ color: TONE.faint }}>
+      <p className="mt-3 text-[12px] leading-[1.5]" style={{ color: TONE.faint }}>
         {caption}
       </p>
     </div>

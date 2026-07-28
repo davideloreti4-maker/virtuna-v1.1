@@ -80,7 +80,7 @@ export function ScoreDistribution({
       )}
 
       {/* axis row */}
-      <div className="relative h-[30px] text-[9.5px] text-foreground-muted">
+      <div className="relative h-[30px] text-[10px] text-foreground-muted">
         <span className="absolute left-px top-[9px]">0</span>
         <span className="absolute right-px top-[9px]">100</span>
         {niche && (

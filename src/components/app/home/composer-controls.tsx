@@ -310,7 +310,7 @@ function Popover({
 
 function GroupLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="px-2.5 pb-1 pt-2.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-foreground-muted/60">
+    <div className="px-2.5 pb-1 pt-2.5 text-micro font-semibold uppercase tracking-[0.1em] text-foreground-muted/60">
       {children}
     </div>
   );
@@ -401,15 +401,15 @@ export function SkillRows({
           )}
         />
         <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-1.5 text-[13.5px] font-medium leading-tight text-foreground">
+          <span className="flex items-center gap-1.5 text-reading font-medium leading-tight text-foreground">
             {s.label}
             {s.model === "Max" && (
-              <span className="shrink-0 rounded-[4px] border border-white/[0.09] bg-white/[0.03] px-[5px] py-px text-[8.5px] font-semibold uppercase leading-none tracking-[0.06em] text-foreground-muted">
+              <span className="shrink-0 rounded-[4px] border border-white/[0.09] bg-white/[0.03] px-[5px] py-px text-micro font-semibold uppercase leading-none tracking-[0.06em] text-foreground-muted">
                 MAX
               </span>
             )}
           </span>
-          <span className="mt-[3px] block truncate text-[11.5px] leading-tight text-foreground-muted">
+          <span className="mt-[3px] block truncate text-label leading-tight text-foreground-muted">
             {s.desc}
           </span>
         </span>
@@ -418,13 +418,13 @@ export function SkillRows({
             only one row ever used. The check now REPLACES the command on the active row:
             the selected skill is the one wearing a tick, and nothing else has to move. */}
         {!s.enabled ? (
-          <span className="shrink-0 text-[10px] uppercase tracking-wide text-foreground-muted/45">
+          <span className="shrink-0 text-micro uppercase tracking-wide text-foreground-muted/45">
             soon
           </span>
         ) : isActive ? (
           <Ico name="check" size={15} className="shrink-0 text-foreground" />
         ) : (
-          <span className="shrink-0 font-mono text-[11px] tracking-tight text-foreground-muted/40 transition-colors group-hover/row:text-foreground-muted/70">
+          <span className="shrink-0 font-mono text-caption tracking-tight text-foreground-muted/40 transition-colors group-hover/row:text-foreground-muted/70">
             {s.command}
           </span>
         )}
@@ -453,7 +453,7 @@ export function SkillRows({
       )}
       {general.map(Row)}
       {!hasSocials && general.length === 0 && (
-        <div className="px-2.5 py-3 text-[12px] text-foreground-muted">No skills match.</div>
+        <div className="px-2.5 py-3 text-label text-foreground-muted">No skills match.</div>
       )}
     </>
   );
@@ -505,7 +505,7 @@ export function SimModelSelector({ value, onChange, className }: SimModelSelecto
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "inline-flex h-[34px] items-center gap-1 rounded-lg px-2 text-[12.5px] transition-colors",
+          "inline-flex h-[34px] items-center gap-1 rounded-lg px-2 text-label transition-colors",
           "hover:bg-white/[0.05] focus:outline-none focus-visible:ring-1 focus-visible:ring-white/20 pointer-coarse:h-11",
         )}
       >
@@ -534,10 +534,10 @@ export function SimModelSelector({ value, onChange, className }: SimModelSelecto
               )}
             >
               <span className="min-w-0 flex-1">
-                <span className="block text-[13.5px] font-medium leading-tight text-foreground">
+                <span className="block text-reading font-medium leading-tight text-foreground">
                   {tier.label}
                 </span>
-                <span className="mt-0.5 block text-[12px] leading-snug text-foreground-muted">
+                <span className="mt-0.5 block text-label leading-snug text-foreground-muted">
                   {tier.desc}
                 </span>
               </span>
@@ -672,7 +672,7 @@ export function ComposerControls({
           onClick={() => toggle("skill")}
           className={cn(
             "inline-flex h-[34px] items-center gap-1.5 rounded-lg bg-white/[0.05] px-3",
-            "text-[13.5px] font-medium text-foreground transition-colors hover:bg-white/[0.08]",
+            "text-reading font-medium text-foreground transition-colors hover:bg-white/[0.08]",
             "focus:outline-none focus-visible:ring-1 focus-visible:ring-white/20 pointer-coarse:h-11",
           )}
         >
@@ -759,7 +759,7 @@ export function ComposerControls({
                         aria-pressed={on}
                         onClick={() => setExWindow(o.id)}
                         className={cn(
-                          "flex-1 rounded-lg border px-2 py-1.5 text-[12.5px] transition-colors",
+                          "flex-1 rounded-lg border px-2 py-1.5 text-label transition-colors",
                           on
                             ? "border-border-hover bg-hover text-foreground"
                             : "border-white/[0.06] text-foreground-secondary hover:border-white/[0.1]",
@@ -786,11 +786,11 @@ export function ComposerControls({
                   aria-label="Serendipity — on-niche to surprise me"
                   className="w-full accent-foreground-muted"
                 />
-                <div className="flex justify-between text-[11px] text-foreground-muted">
+                <div className="flex justify-between text-caption text-foreground-muted">
                   <span>On-niche</span>
                   <span>Surprise me</span>
                 </div>
-                <span className="text-[11px] text-foreground-muted/70">
+                <span className="text-caption text-foreground-muted/70">
                   Slide right to widen beyond your niche.
                 </span>
               </div>
@@ -807,7 +807,7 @@ export function ComposerControls({
                   });
                   setPop(null);
                 }}
-                className="mt-0.5 rounded-lg bg-action px-3 py-2 text-[13px] font-medium text-action-foreground transition-colors hover:bg-action/90"
+                className="mt-0.5 rounded-lg bg-action px-3 py-2 text-body font-medium text-action-foreground transition-colors hover:bg-action/90"
               >
                 Run Explore
               </button>

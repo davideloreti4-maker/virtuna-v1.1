@@ -83,7 +83,7 @@ export function Hero({ className }: HeroProps) {
             // with the primary: cream-muted text, no fill, no coral.
             "inline-flex min-h-[44px] items-center justify-center px-2",
             "text-sm text-foreground-muted transition-colors hover:text-foreground-secondary",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           )}
         >
           See how it works ↓

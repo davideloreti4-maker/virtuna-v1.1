@@ -27,16 +27,13 @@ import { PlatformAvatar } from "./platform-avatar";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+import { cn, FOCUS_RING as focusRing } from "@/lib/utils";
 import { formatCount } from "@/lib/competitors-utils";
 import { useChannelSearch } from "@/hooks/queries/use-channels";
 import {
   suggestedByCategory,
   SUGGESTED_CATEGORIES,
 } from "@/lib/channels/suggested-channels";
-
-const focusRing =
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/10";
 
 /** The big elevated input box shared by Describe / Search / Add URL. */
 const INPUT_CARD =

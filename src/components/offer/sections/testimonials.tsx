@@ -74,7 +74,7 @@ function WeekCard({
       <h3 className="mt-3 text-[16px] font-semibold leading-snug tracking-tight text-foreground">
         {title}
       </h3>
-      <p className="mt-2.5 text-[14.5px] leading-relaxed text-foreground-secondary">{line}</p>
+      <p className="mt-2.5 text-[14px] leading-relaxed text-foreground-secondary">{line}</p>
     </div>
   );
 }

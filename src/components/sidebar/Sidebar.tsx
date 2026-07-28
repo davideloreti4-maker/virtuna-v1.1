@@ -24,6 +24,9 @@ import { useEffect, useState } from "react";
 import type { Icon as PhosphorIcon } from "@phosphor-icons/react";
 import {
   Plus,
+  MagnifyingGlass,
+  PushPin,
+  PencilSimple,
   SlidersHorizontal,
   ClockCountdown,
   UserCircle,
@@ -45,11 +48,13 @@ import { Icon } from "@/components/ui/icon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/toast";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
+import { cn, FOCUS_RING as focusRing } from "@/lib/utils";
 import { MavenMark } from "@/components/brand/maven-logo";
 import {
   useThreadList,
   useArchiveThread,
+  useRenameThread,
+  usePinThread,
   type ThreadSummary,
 } from "@/hooks/queries";
 import {
@@ -85,11 +90,6 @@ function relativeTime(iso: string | undefined): string {
   if (abs < 31536000) return rtf.format(Math.round(diffSec / 2592000), 'month');
   return rtf.format(Math.round(diffSec / 31536000), 'year');
 }
-
-// Branded keyboard-focus ring — replaces the browser-default blue outline on
-// raw <button>s. Inset so it never spills past the panel's rounded clip.
-const focusRing =
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/10";
 import { useSidebarStore } from "@/stores/sidebar-store";
 import { createClient } from "@/lib/supabase/client";
 
@@ -100,7 +100,7 @@ function SectionLabel({ children, className }: { children: React.ReactNode; clas
   return (
     <span
       className={cn(
-        "block px-2.5 mb-1.5 text-[10px] font-semibold text-foreground-muted uppercase tracking-[0.08em]",
+        "block px-2.5 mb-1.5 text-caption font-semibold text-foreground-muted uppercase tracking-[0.08em]",
         "transition-opacity duration-150",
         className,
       )}
@@ -135,12 +135,16 @@ function NavItem({
       type="button"
       onClick={onClick}
       className={cn(
-        "w-full flex items-center gap-2.5 px-2.5 min-h-[34px] rounded-lg text-sm font-medium",
+        // Density matched to the references (2026-07-28). Ours ran 34px rows / 14px
+        // text / 20px icons; Linear runs roughly 30 / 13 / 16. The chunkier row read
+        // as a touch target in a desktop app — and with only two destinations in the
+        // nav, the extra weight made the panel look emptier, not fuller.
+        "w-full flex items-center gap-2 px-2.5 min-h-[30px] rounded-md text-body font-medium",
         "transition-colors duration-100",
         focusRing,
         isCollapsed && "justify-center px-0",
         isActive
-          ? "bg-white/[0.06] text-foreground shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)]"
+          ? "bg-white/[0.06] text-foreground"
           : "text-foreground-secondary hover:bg-white/[0.04] hover:text-foreground",
         className,
       )}
@@ -148,7 +152,7 @@ function NavItem({
     >
       <Icon
         icon={IconComp}
-        size={20}
+        size={16}
         weight={isActive ? "fill" : "regular"}
         className={cn(
           isActive && "text-foreground",
@@ -188,6 +192,8 @@ function ThreadRow({
   isPending = false,
   onOpen,
   onDelete,
+  onTogglePin,
+  onRename,
 }: {
   thread: ThreadSummary;
   isActive: boolean;
@@ -197,10 +203,47 @@ function ThreadRow({
   isPending?: boolean;
   onOpen: () => void;
   onDelete: () => void;
+  onTogglePin: () => void;
+  onRename: (title: string) => void;
 }) {
   const [confirming, setConfirming] = useState(false);
+  const [renaming, setRenaming] = useState(false);
   const when = relativeTime(thread.updated_at);
   const label = thread.title ?? "New chat";
+  const isPinned = thread.pinned_at != null;
+  const onStartRename = () => setRenaming(true);
+
+  // Rename mode replaces the whole row with a bare input. Enter commits, Escape
+  // and blur both cancel-or-commit as you'd expect; an emptied field clears the
+  // title, which hands the thread back to automatic derivation.
+  if (renaming) {
+    return (
+      <div className="flex items-center rounded-lg bg-white/[0.04] px-1">
+        <input
+          autoFocus
+          defaultValue={thread.title ?? ""}
+          aria-label={`Rename ${label}`}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              onRename((e.target as HTMLInputElement).value);
+              setRenaming(false);
+            } else if (e.key === "Escape") {
+              setRenaming(false);
+            }
+          }}
+          onBlur={(e) => {
+            onRename(e.target.value);
+            setRenaming(false);
+          }}
+          className={cn(
+            "w-full min-w-0 bg-transparent px-1.5 py-1 text-body text-foreground",
+            "outline-none placeholder:text-foreground-muted",
+          )}
+          placeholder="Thread name"
+        />
+      </div>
+    );
+  }
 
   return (
     <div
@@ -221,7 +264,7 @@ function ThreadRow({
         type="button"
         onClick={onOpen}
         className={cn(
-          "min-w-0 flex-1 flex items-center gap-2 pl-2.5 pr-1 min-h-[30px] text-left text-[13px]",
+          "min-w-0 flex-1 flex items-center gap-2 pl-2.5 pr-1 min-h-[30px] text-left text-body",
           focusRing,
           isActive
             ? "text-foreground"
@@ -229,6 +272,13 @@ function ThreadRow({
         )}
         aria-current={isActive ? "page" : undefined}
       >
+        {isPinned && (
+          <PushPin
+            className="h-3 w-3 shrink-0 text-foreground-muted"
+            weight="fill"
+            aria-hidden
+          />
+        )}
         <span className="truncate flex-1" data-testid="sidebar-thread-label">
           {thread.title ? (
             label
@@ -261,19 +311,47 @@ function ThreadRow({
           </button>
         </div>
       ) : (
-        <button
-          type="button"
-          onClick={() => setConfirming(true)}
-          aria-label={`Delete thread: ${label}`}
-          className={cn(
-            "mr-1 rounded p-1 text-foreground-muted opacity-0 transition-opacity",
-            "group-hover/row:opacity-100 focus-visible:opacity-100",
-            "hover:text-foreground hover:bg-white/[0.06]",
-            focusRing,
-          )}
-        >
-          <Trash className="h-3.5 w-3.5" />
-        </button>
+        // Hover affordances: pin · rename · delete. All three stay hidden until the
+        // row is hovered or keyboard-focused, so a long history reads as a clean list
+        // rather than a wall of icons. The pin also shows persistently on the LABEL
+        // side when set (above) — that one is state, not an action.
+        <div className="mr-1 flex items-center gap-0.5 opacity-0 transition-opacity group-hover/row:opacity-100 focus-within:opacity-100">
+          <button
+            type="button"
+            onClick={onTogglePin}
+            aria-label={isPinned ? `Unpin ${label}` : `Pin ${label}`}
+            aria-pressed={isPinned}
+            className={cn(
+              "rounded p-1 hover:bg-white/[0.06] hover:text-foreground",
+              isPinned ? "text-foreground" : "text-foreground-muted",
+              focusRing,
+            )}
+          >
+            <PushPin className="h-3.5 w-3.5" weight={isPinned ? "fill" : "regular"} />
+          </button>
+          <button
+            type="button"
+            onClick={onStartRename}
+            aria-label={`Rename ${label}`}
+            className={cn(
+              "rounded p-1 text-foreground-muted hover:bg-white/[0.06] hover:text-foreground",
+              focusRing,
+            )}
+          >
+            <PencilSimple className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirming(true)}
+            aria-label={`Delete thread: ${label}`}
+            className={cn(
+              "rounded p-1 text-foreground-muted hover:bg-white/[0.06] hover:text-foreground",
+              focusRing,
+            )}
+          >
+            <Trash className="h-3.5 w-3.5" />
+          </button>
+        </div>
       )}
     </div>
   );
@@ -285,13 +363,15 @@ export function Sidebar() {
   const router = useRouter();
   const pathname = usePathname();
   const supabase = createClient();
-  const { isOpen, close, isCollapsed, toggleCollapsed } = useSidebarStore();
+  const { isOpen, close, isCollapsed, toggleCollapsed, setCommandOpen } = useSidebarStore();
   const isMobile = useIsMobile();
   const reducedMotion = usePrefersReducedMotion();
   const switchThread = useBoardStore((s) => s.switchThread);
   const setActiveThreadId = useBoardStore((s) => s.setActiveThreadId);
   const activeThreadId = useBoardStore((s) => s.activeThreadId);
   const archiveThread = useArchiveThread();
+  const renameThread = useRenameThread();
+  const pinThread = usePinThread();
   const { toast } = useToast();
 
   // Mobile drawer hygiene: ANY navigation tap must land the creator ON the
@@ -421,16 +501,26 @@ export function Sidebar() {
 
       <nav
         className={cn(
-          // Base — flat-warm matte: solid charcoal sidebar + hairline (no glass, no blur, no inset shine)
-          "fixed top-3 left-3 bottom-3 z-[var(--z-sidebar)]",
-          "flex flex-col overflow-hidden rounded-xl",
-          "bg-background-elevated border border-white/[0.06]",
-          effectiveCollapsed ? "w-[60px]" : "w-[220px]",
+          // FLUSH TO THE EDGE (2026-07-28). This used to be a floating inset card:
+          // `top-3 left-3 bottom-3 … rounded-xl border` on a LIFTED surface. It read
+          // as a widget parked next to the app rather than as the app's own chrome —
+          // and it cost 24px of horizontal room to say so. Linear, Attio and Cursor
+          // all run the nav flush to the window edge, separated from content by a
+          // single hairline and nothing else. Same panel, one border, no gap.
+          "fixed inset-y-0 left-0 z-[var(--z-sidebar)]",
+          "flex flex-col overflow-hidden",
+          // Same tone as the content surface — the hairline does ALL the separating.
+          // (Was bg-background-elevated #2c2c2b, a visible tone-step that made the
+          // panel read as raised.) On mobile it's an overlay drawer, but it keeps its
+          // existing bg-black/50 scrim below, so it still reads as floating there.
+          "bg-[var(--color-chrome)] border-r border-white/[0.06]",
+          effectiveCollapsed ? "w-[56px]" : "w-[220px]",
           !reducedMotion && "transition-[transform,width] duration-150 ease-[var(--ease-out-cubic)]",
           // Mobile: slide-in driven by isOpen. Desktop (md:): ALWAYS visible
           // (md:translate-x-0 overrides the hidden transform) — persistent, never
           // slid off-canvas. ⌘\ / the header button collapse it to a rail instead.
-          isOpen ? "translate-x-0" : "-translate-x-[calc(100%+12px)] md:translate-x-0",
+          // Plain -translate-x-full now: there is no 12px inset left to clear.
+          isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
         )}
         aria-label="App navigation"
       >
@@ -462,8 +552,13 @@ export function Sidebar() {
         {/* Scrollable body — scrollbar hidden for a clean glass edge */}
         <div className="flex flex-1 flex-col overflow-y-auto overflow-x-hidden gap-0.5 px-2 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
 
-          {/* ── ⊕ New Thread ── */}
-          <div className="pb-1">
+          {/* ── ⌕ Search / ⊕ New Thread — the two verbs, in the reference idiom ──
+              Attio and Linear both open the nav with a search affordance above the
+              destinations, because search IS the primary navigation once history
+              outgrows the panel. The palette itself mounts in AppShell, not here:
+              this <nav> animates with translate-x, and a transformed ancestor makes
+              a fixed-position child resolve against IT rather than the viewport. */}
+          <div className="flex flex-col gap-0.5 pb-1">
             <NavItem
               icon={Plus}
               label="New Thread"
@@ -471,7 +566,7 @@ export function Sidebar() {
               onClick={() => { void handleNewThread(); }}
               badge={
                 !effectiveCollapsed && (
-                  <span className="ml-auto text-[11px] text-foreground-muted font-normal tabular-nums">⌘N</span>
+                  <span className="ml-auto text-caption text-foreground-muted font-normal tabular-nums">⌘N</span>
                 )
               }
             />
@@ -496,7 +591,29 @@ export function Sidebar() {
 
           {/* ── Chat thread history (multi-thread) ── */}
           <div className="pt-4 flex-1">
-            {!effectiveCollapsed && <SectionLabel>Threads</SectionLabel>}
+            {/* Threads header — and the search that acts ON it. Search opened the nav
+                (Attio/Linear idiom) until it read as odd here: those products search a
+                large place graph, ours has two destinations, so a top-anchored Search
+                promised navigation it can't deliver. Sitting on the Threads header it
+                says what it actually does. ⌘K is unchanged and still global. */}
+            {!effectiveCollapsed && (
+              <div className="flex items-center justify-between pr-1">
+                <SectionLabel className="mb-0">Threads</SectionLabel>
+                <button
+                  type="button"
+                  onClick={() => { closeIfMobile(); setCommandOpen(true); }}
+                  aria-label="Search threads"
+                  className={cn(
+                    "-mt-1 flex items-center gap-1 rounded-md px-1.5 py-1",
+                    "text-foreground-muted transition-colors hover:bg-white/[0.04] hover:text-foreground",
+                    focusRing,
+                  )}
+                >
+                  <Icon icon={MagnifyingGlass} size={16} />
+                  <span className="text-caption font-normal tabular-nums">⌘K</span>
+                </button>
+              </div>
+            )}
             {threadsLoading && !effectiveCollapsed && (
               <div className="flex flex-col gap-2 px-2.5 pt-1">
                 <Skeleton className="h-3.5 w-full" />
@@ -523,6 +640,8 @@ export function Sidebar() {
                       isPending={false}
                       onOpen={() => { handleOpenThread(thread.id); }}
                       onDelete={() => { void handleDeleteThread(thread.id, isActive); }}
+                      onTogglePin={() => { pinThread.mutate({ id: thread.id, pinned: thread.pinned_at == null }); }}
+                      onRename={(title) => { renameThread.mutate({ id: thread.id, title }); }}
                     />
                   );
                 })}
@@ -572,7 +691,7 @@ export function Sidebar() {
                   }
                   size="xs"
                 />
-                <span className="flex-1 truncate text-left text-[13px] font-medium">
+                <span className="flex-1 truncate text-left text-body font-medium">
                   {profile?.name ?? profile?.email ?? "Account"}
                 </span>
                 <CaretUpDown weight="bold" className="h-3.5 w-3.5 shrink-0 text-foreground-muted" />

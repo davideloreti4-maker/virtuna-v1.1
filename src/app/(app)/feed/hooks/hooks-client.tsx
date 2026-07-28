@@ -177,7 +177,7 @@ export function HooksClient() {
             className={cn(
               "inline-flex items-center gap-2 rounded-lg border border-white/[0.06] px-3 py-1.5 text-xs font-medium",
               "text-foreground-secondary hover:bg-white/[0.03] hover:text-foreground transition-colors",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)]",
             )}
             title={showTemplate ? "Showing templates" : "Showing examples"}
           >

@@ -34,8 +34,8 @@ export interface MultiAudienceReadBlockProps {
 }
 
 const VERDICT_STYLE: Record<'stop' | 'scroll', string> = {
-  stop: 'text-[10px] font-semibold px-2 py-0.5 rounded-full bg-success/10 text-success border border-success/20',
-  scroll: 'text-[10px] font-semibold px-2 py-0.5 rounded-full bg-error/10 text-error border border-error/20',
+  stop: 'text-micro font-semibold px-2 py-0.5 rounded-full bg-success/10 text-success border border-success/20',
+  scroll: 'text-micro font-semibold px-2 py-0.5 rounded-full bg-error/10 text-error border border-error/20',
 };
 
 const VERDICT_LABEL: Record<'stop' | 'scroll', string> = {
@@ -66,7 +66,7 @@ function AudienceRead({
       {/* Verdict row — band dot + name + the band WORD (colored, once) + emitted fraction. The
           band word lives HERE so the interpretation below stays cream; in compare mode it rides
           the CompareVerdictRow instead (showBand=false) and never doubles. */}
-      <div className="flex items-baseline gap-2 text-[13.5px] font-semibold text-foreground">
+      <div className="flex items-baseline gap-2 text-reading font-semibold text-foreground">
         <span className="h-[7px] w-[7px] shrink-0 self-center rounded-full" style={{ backgroundColor: bandColor }} aria-hidden="true" />
         {name}
         {showBand && (
@@ -75,18 +75,18 @@ function AudienceRead({
             <span style={{ color: bandColor }}>{band}</span>
           </>
         )}
-        <span className="text-[12px] font-normal text-foreground-muted">
+        <span className="text-label font-normal text-foreground-muted">
           {showBand ? `· ${fraction}` : fraction}
         </span>
       </div>
 
       {/* Interpretation — plain cream prose. The band word is stated once above (row or compare
           header); the sentence must not colorize it a second time (no "{band} Read." lead). */}
-      <p className="text-[13.5px] leading-relaxed text-foreground">{interpretation}</p>
+      <p className="text-reading leading-relaxed text-foreground">{interpretation}</p>
 
       {/* Lever — the one thing to act on. Neutral cream left-rule (NOT a coral panel). */}
       <p
-        className="border-l-2 py-0.5 pl-3 text-[13.5px] leading-relaxed text-foreground-secondary"
+        className="border-l-2 py-0.5 pl-3 text-reading leading-relaxed text-foreground-secondary"
         style={{ borderColor: 'var(--color-foreground-secondary)' }}
       >
         <b className="font-semibold text-foreground">Lever →</b> {lever}
@@ -94,7 +94,7 @@ function AudienceRead({
 
       {/* Who-it's-NOT-for — derived from low-disposition personas (D-10). Empty → nothing. */}
       {whoNotFor.length > 0 && (
-        <p className="text-[12px] text-foreground-muted">
+        <p className="text-label text-foreground-muted">
           <span className="font-medium">Scrolls past:</span> {whoNotFor}
         </p>
       )}
@@ -107,13 +107,13 @@ function AudienceRead({
           className="flex w-full items-center justify-between px-3.5 py-2.5 text-left transition-colors hover:bg-white/[0.02]"
           aria-expanded={expanded}
         >
-          <span className="text-[13px] font-medium text-foreground">
+          <span className="text-body font-medium text-foreground">
             Audience reactions
             <span className="ml-2 font-normal text-foreground-muted">
               {stopCount}/{total} stop
             </span>
           </span>
-          <span className="inline-flex items-center gap-1 text-[12px] text-foreground-muted" aria-hidden="true">
+          <span className="inline-flex items-center gap-1 text-label text-foreground-muted" aria-hidden="true">
             <CaretToggle open={expanded} size={12} />
             {expanded ? 'Hide' : 'Show'}
           </span>
@@ -124,14 +124,14 @@ function AudienceRead({
             {personas.map((persona, i) => (
               <li key={`${persona.archetype}-${i}`} className="flex flex-col gap-1 px-3.5 py-2.5">
                 <div className="flex items-center gap-2">
-                  <span className="text-[12.5px] font-medium capitalize text-foreground">
+                  <span className="text-label font-medium capitalize text-foreground">
                     {persona.archetype.replace(/_/g, ' ')}
                   </span>
                   <span className={VERDICT_STYLE[persona.verdict]} aria-label={VERDICT_LABEL[persona.verdict]}>
                     {VERDICT_LABEL[persona.verdict]}
                   </span>
                 </div>
-                <p className="text-[12.5px] italic leading-snug text-foreground-muted">
+                <p className="text-label italic leading-snug text-foreground-muted">
                   &ldquo;{stripWrappingQuotes(persona.quote)}&rdquo;
                 </p>
               </li>
@@ -162,7 +162,7 @@ function CompareVerdictRow({
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-white/[0.06] pb-4">
       {audiences.map((a, i) => (
-        <span key={`${a.name}-${i}`} className="inline-flex items-center gap-2 text-[13.5px]">
+        <span key={`${a.name}-${i}`} className="inline-flex items-center gap-2 text-reading">
           {i > 0 && (
             <span className="mr-1 text-foreground-muted/40" aria-hidden="true">
               ·
@@ -173,7 +173,7 @@ function CompareVerdictRow({
           <span className="font-semibold" style={{ color: BAND_COLOR[a.band] }}>
             {a.band}
           </span>
-          <span className="text-[12px] text-foreground-muted">{a.fraction}</span>
+          <span className="text-label text-foreground-muted">{a.fraction}</span>
         </span>
       ))}
     </div>
@@ -208,7 +208,7 @@ export function MultiAudienceReadBlockRenderer({ block }: MultiAudienceReadBlock
         {/* Orphaned-pin fallback (P3): the thread's pinned audience no longer exists, so this
             Read scored General instead — said out loud, once, quietly. Never a silent swap. */}
         {block.props.fallback === 'audience-removed' && (
-          <p className="text-[12px] text-foreground-muted">
+          <p className="text-label text-foreground-muted">
             Audience removed · scoring against General.
           </p>
         )}
@@ -237,7 +237,7 @@ export function MultiAudienceReadBlockRenderer({ block }: MultiAudienceReadBlock
           it holds the primary slot's position rather than sitting in a row of its own.
           Tier falls back to "Directional" — the honest default, NEVER silently "Validated". */}
       <div className="flex items-center gap-3.5 border-t border-white/[0.06] px-4 py-3">
-        <span className="text-[11px] text-foreground-muted/70">· SIM-1 Flash</span>
+        <span className="text-caption text-foreground-muted/70">· SIM-1 Flash</span>
         <SaveAffordance
           className="ml-auto"
           item_type="read"

@@ -98,11 +98,11 @@ function StarterCard({ card }: { card: StarterCardModel }) {
     >
       <span className="flex items-center gap-1.5 text-foreground-muted transition-colors group-hover:text-foreground-secondary">
         <Ico name={card.icon} size={13} />
-        <span className="text-[10.5px] font-medium uppercase leading-none tracking-[0.08em]">
+        <span className="text-micro font-medium uppercase leading-none tracking-[0.08em]">
           {card.kicker}
         </span>
       </span>
-      <span className="text-[14px] font-medium leading-snug text-foreground">
+      <span className="text-reading font-medium leading-snug text-foreground">
         {card.title}
       </span>
     </button>
@@ -257,14 +257,14 @@ export function HomeFirstRunDemo({ onDemoComplete, className }: HomeFirstRunDemo
         type="button"
         onClick={handleSeeItInAction}
         disabled={running}
-        className="rounded-lg bg-action px-3 py-2 text-[13px] font-medium text-action-foreground transition-colors hover:bg-action/90 disabled:opacity-60"
+        className="rounded-lg bg-action px-3 py-2 text-body font-medium text-action-foreground transition-colors hover:bg-action/90 disabled:opacity-60"
       >
         See it in action
       </button>
       <button
         type="button"
         onClick={handleDismiss}
-        className="text-[12px] font-normal text-foreground-muted transition-colors hover:text-foreground-secondary"
+        className="text-label font-normal text-foreground-muted transition-colors hover:text-foreground-secondary"
       >
         Dismiss
       </button>

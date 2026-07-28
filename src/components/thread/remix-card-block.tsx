@@ -118,27 +118,27 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
           {/* Column headers */}
           <div className="border-b border-white/[0.06] bg-white/[0.02] px-3.5 py-2">
             <p className={SECTION_LABEL}>The original</p>
-            <p className="mt-0.5 text-[11px] text-foreground-muted">why it worked</p>
+            <p className="mt-0.5 text-caption text-foreground-muted">why it worked</p>
           </div>
           <div className="border-b border-l-0 border-white/[0.06] bg-white/[0.02] px-3.5 py-2 sm:border-l">
             <p className={SECTION_LABEL}>Your version</p>
-            <p className="mt-0.5 text-[11px] text-foreground-muted">ready to film</p>
+            <p className="mt-0.5 text-caption text-foreground-muted">ready to film</p>
           </div>
 
           {/* Row 1 — Hook: pattern → your adapted hook (the serif deliverable + Copy) */}
           <MapCell side="left" label="Hook">
-            <p className="text-[13px] leading-relaxed text-foreground-muted">{sourceDecode.hookPattern}</p>
+            <p className="text-body leading-relaxed text-foreground-muted">{sourceDecode.hookPattern}</p>
           </MapCell>
           <MapCell side="right" label="Your hook">
             <div className="flex items-start justify-between gap-2">
-              <p className="font-serif text-[18px] font-medium leading-[1.3] tracking-[-0.005em] text-foreground">
+              <p className="font-serif text-subhead font-medium leading-[1.3] tracking-[-0.005em] text-foreground">
                 {adaptedHook}
               </p>
               <button
                 type="button"
                 onClick={handleCopy}
                 aria-label="Copy adapted hook to clipboard"
-                className="mt-0.5 inline-flex shrink-0 items-center gap-1 text-[12px] font-medium text-foreground-muted transition-colors hover:text-foreground-secondary"
+                className="mt-0.5 inline-flex shrink-0 items-center gap-1 text-label font-medium text-foreground-muted transition-colors hover:text-foreground-secondary"
               >
                 {copied ? (
                   <>
@@ -157,25 +157,25 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
 
           {/* Row 2 — The turn: original reversal → your angle */}
           <MapCell side="left" label="The turn">
-            <p className="text-[13px] leading-relaxed text-foreground-muted">{sourceDecode.theTurn}</p>
+            <p className="text-body leading-relaxed text-foreground-muted">{sourceDecode.theTurn}</p>
           </MapCell>
           <MapCell side="right" label="Your angle">
-            <p className="text-[13px] leading-relaxed text-foreground-secondary">{angle}</p>
+            <p className="text-body leading-relaxed text-foreground-secondary">{angle}</p>
           </MapCell>
 
           {/* Row 3 — Format: borrowed pattern → your shots */}
           <MapCell side="left" label="Format" last>
-            <p className="text-[13px] leading-relaxed text-foreground-muted">{formatBorrowed}</p>
+            <p className="text-body leading-relaxed text-foreground-muted">{formatBorrowed}</p>
           </MapCell>
           <MapCell side="right" label="Your shots" last>
-            <p className="text-[13px] leading-relaxed text-foreground-secondary">
+            <p className="text-body leading-relaxed text-foreground-secondary">
               {production ? production.shots : `Recreate the ${formatBorrowed.toLowerCase()} for your angle.`}
             </p>
           </MapCell>
         </div>
 
         {/* Built-for line — who your version lands on (whoItsFor), a quiet caption under the map. */}
-        <p className="text-[12px] text-foreground-muted">
+        <p className="text-label text-foreground-muted">
           Built for <span className="text-foreground-secondary">{whoItsFor}</span>
         </p>
 
@@ -206,7 +206,7 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
-          className="flex items-center gap-1.5 self-start text-[12.5px] text-foreground-muted transition-colors hover:text-foreground-secondary"
+          className="flex items-center gap-1.5 self-start text-label text-foreground-muted transition-colors hover:text-foreground-secondary"
           aria-expanded={expanded}
           aria-label={expanded ? 'Collapse decode anatomy' : 'Expand decode anatomy'}
         >
@@ -236,7 +236,7 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
               { term: 'Setup', value: production.setup },
               ...(production.edit ? [{ term: 'Edit', value: production.edit }] : []),
             ].map((row) => (
-              <div key={row.term} className="flex gap-2 text-[12.5px] leading-relaxed">
+              <div key={row.term} className="flex gap-2 text-label leading-relaxed">
                 <dt className="w-[92px] shrink-0 text-foreground-muted">{row.term}</dt>
                 <dd className="min-w-0 flex-1 text-foreground-secondary">{row.value}</dd>
               </div>
@@ -250,11 +250,11 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
         <div className="flex flex-col gap-4 border-t border-white/[0.06] px-4 py-3">
           <div>
             <p className={`mb-1 ${SECTION_LABEL}`}>Structure</p>
-            <p className="text-[13.5px] leading-relaxed text-foreground-secondary">{sourceDecode.structure}</p>
+            <p className="text-reading leading-relaxed text-foreground-secondary">{sourceDecode.structure}</p>
           </div>
           <div>
             <p className={`mb-1 ${SECTION_LABEL}`}>Emotional beat</p>
-            <p className="text-[13.5px] leading-relaxed text-foreground-secondary">{sourceDecode.emotionalBeat}</p>
+            <p className="text-reading leading-relaxed text-foreground-secondary">{sourceDecode.emotionalBeat}</p>
           </div>
         </div>
       )}

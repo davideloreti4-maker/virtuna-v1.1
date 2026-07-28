@@ -155,7 +155,7 @@ export function AmbientOverviewSheet({
         </span>
         {count > 0 ? (
           <span
-            className="ml-auto flex-none font-mono text-[10.5px] uppercase tracking-[0.06em]"
+            className="ml-auto flex-none font-mono text-[10px] uppercase tracking-[0.06em]"
             style={{ color: TONE.faint }}
           >
             {count} ranked

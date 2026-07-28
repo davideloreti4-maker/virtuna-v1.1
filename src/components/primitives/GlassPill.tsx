@@ -83,7 +83,7 @@ export function GlassPill({
         showBorder && (active ? "border-white/[0.10]" : "border-white/[0.06]"),
         // Interactive states
         isInteractive && "cursor-pointer hover:bg-white/[0.05] hover:text-foreground",
-        isInteractive && "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10",
+        isInteractive && "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring)]",
         // Disabled state
         disabled && "opacity-50 cursor-not-allowed",
         className

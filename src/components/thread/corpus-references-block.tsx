@@ -102,11 +102,11 @@ export function CorpusReferencesBlockRenderer({ block }: { block: CorpusReferenc
       aria-label={`${heading}${query ? ` for ${query}` : ''}`}
     >
       <header className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-        <h4 className="text-[11px] font-semibold uppercase tracking-[0.05em] text-foreground-muted">
+        <h4 className="text-caption font-semibold uppercase tracking-[0.05em] text-foreground-muted">
           {heading}
         </h4>
         {subheading && (
-          <span className="text-[12px] leading-snug text-foreground-muted">{subheading}</span>
+          <span className="text-label leading-snug text-foreground-muted">{subheading}</span>
         )}
       </header>
 
@@ -115,7 +115,7 @@ export function CorpusReferencesBlockRenderer({ block }: { block: CorpusReferenc
           {Object.entries(filters).map(([key, value]) => (
             <li
               key={key}
-              className="rounded-full border border-white/[0.06] bg-white/[0.02] px-2 py-0.5 text-[11px] text-foreground-secondary"
+              className="rounded-full border border-white/[0.06] bg-white/[0.02] px-2 py-0.5 text-caption text-foreground-secondary"
             >
               <span className="text-foreground-muted">{FILTER_LABEL[key] ?? key}</span>{' '}
               {formatFacetValue(value)}

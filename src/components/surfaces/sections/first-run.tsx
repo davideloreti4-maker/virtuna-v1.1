@@ -33,7 +33,7 @@ export function FirstRun({ onConnect }: { onConnect: () => void }) {
       >
         Connect your account →
       </button>
-      <div className="mt-3 text-center text-[11.5px] text-foreground-muted">or just make something now ↓</div>
+      <div className="mt-3 text-center text-[12px] text-foreground-muted">or just make something now ↓</div>
       <div className="mt-5 flex flex-col">
         {steps.map((s, i) => (
           <div

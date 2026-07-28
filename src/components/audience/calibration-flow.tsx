@@ -279,10 +279,10 @@ export function CalibrationFlow({ audience, onDone, onSkip, prefillHandle, prefi
             <div className="h-11 w-11 shrink-0 rounded-full border border-white/[0.06] bg-white/[0.03]" />
           )}
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[15px] font-medium text-foreground">
+            <p className="truncate text-reading font-medium text-foreground">
               {evidence.displayName || `@${evidence.handle}`}
             </p>
-            <p className="mt-0.5 text-[13px] text-foreground-muted">
+            <p className="mt-0.5 text-body text-foreground-muted">
               @{evidence.handle}
               {evidence.followerCount > 0 && ` · ${formatCount(evidence.followerCount)} followers`}
             </p>

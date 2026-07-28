@@ -113,10 +113,10 @@ export function PopulationField({
         ))}
       </svg>
       <div className="mt-3.5 flex items-baseline justify-between gap-4">
-        <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-foreground-muted">
+        <span className="font-mono text-micro uppercase tracking-[0.12em] text-foreground-muted">
           {viewers} viewers · {shares.length} personas
         </span>
-        <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-foreground-muted opacity-60">
+        <span className="font-mono text-micro uppercase tracking-[0.12em] text-foreground-muted opacity-60">
           {provenance}
         </span>
       </div>

@@ -36,7 +36,7 @@ export function PlatformChip({ value, onChange, className }: PlatformChipProps) 
       role="group"
       aria-label="Platform selection"
     >
-      <span className="mr-0.5 text-[10px] text-foreground-muted/50 uppercase tracking-wide select-none">
+      <span className="mr-0.5 text-micro text-foreground-muted/50 uppercase tracking-wide select-none">
         on
       </span>
       {PLATFORMS.map((platform) => {
@@ -49,8 +49,8 @@ export function PlatformChip({ value, onChange, className }: PlatformChipProps) 
             onClick={() => onChange(platform)}
             className={cn(
               // Base: 8px radius, 6% border (Raycast)
-              "rounded-lg border px-2 py-0.5 text-[10px] font-medium transition-colors",
-              "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10 focus-visible:ring-offset-1 focus-visible:ring-offset-background",
+              "rounded-lg border px-2 py-0.5 text-micro font-medium transition-colors",
+              "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-1 focus-visible:ring-offset-background",
               isActive && [
                 "border-border-hover bg-hover text-foreground",
               ],

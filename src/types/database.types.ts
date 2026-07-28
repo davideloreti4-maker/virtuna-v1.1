@@ -2031,6 +2031,7 @@ export type Database = {
           active_audience_id: string | null
           created_at: string
           id: string
+          pinned_at: string | null
           reading_id: string | null
           sim_seals: Json
           title: string | null
@@ -2042,6 +2043,7 @@ export type Database = {
           active_audience_id?: string | null
           created_at?: string
           id?: string
+          pinned_at?: string | null
           reading_id?: string | null
           sim_seals?: Json
           title?: string | null
@@ -2053,6 +2055,7 @@ export type Database = {
           active_audience_id?: string | null
           created_at?: string
           id?: string
+          pinned_at?: string | null
           reading_id?: string | null
           sim_seals?: Json
           title?: string | null

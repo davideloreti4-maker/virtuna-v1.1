@@ -41,7 +41,7 @@ export function FollowupRow({
           key={f.label}
           type="button"
           onClick={() => handler?.(f.prompt)}
-          className="inline-flex items-center rounded-full border border-white/[0.08] bg-transparent px-3 py-1.5 text-[12.5px] font-medium leading-snug text-foreground-secondary transition-colors hover:border-white/[0.14] hover:bg-white/[0.05] hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/15"
+          className="inline-flex items-center rounded-full border border-white/[0.08] bg-transparent px-3 py-1.5 text-label font-medium leading-snug text-foreground-secondary transition-colors hover:border-white/[0.14] hover:bg-white/[0.05] hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/15"
           aria-label={`Follow up: ${f.label}`}
         >
           {f.label}

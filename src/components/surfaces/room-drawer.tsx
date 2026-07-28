@@ -87,7 +87,7 @@ export function RoomDrawer({
               <button
                 type="button"
                 onClick={onOpenFull}
-                className="ml-auto inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-[7px] border border-border px-2 py-[3px] font-mono text-[10.5px] text-foreground-muted transition-colors hover:text-foreground-secondary"
+                className="ml-auto inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-[7px] border border-border px-2 py-[3px] font-mono text-[10px] text-foreground-muted transition-colors hover:text-foreground-secondary"
               >
                 open full room
                 <SurfaceIcon name="chevron" size={11} />
@@ -95,7 +95,7 @@ export function RoomDrawer({
             </div>
             <div className="mt-[5px] font-serif text-[21px] leading-[1.1] text-foreground">
               {face.stop} of 10 {metric}
-              <small className="mt-[3px] block font-sans text-[10.5px] leading-[1.35] text-foreground-muted">
+              <small className="mt-[3px] block font-sans text-[10px] leading-[1.35] text-foreground-muted">
                 {title}
               </small>
             </div>
@@ -126,7 +126,7 @@ export function RoomDrawer({
         <button
           type="button"
           onClick={() => onDevelop(focus)}
-          className="mx-3 mb-3 mt-2 shrink-0 rounded-[10px] bg-accent px-3 py-[11px] text-center text-[12.5px] font-semibold text-[color:var(--color-accent-foreground)] transition-colors hover:bg-accent-hover"
+          className="mx-3 mb-3 mt-2 shrink-0 rounded-[10px] bg-accent px-3 py-[11px] text-center text-[12px] font-semibold text-[color:var(--color-accent-foreground)] transition-colors hover:bg-accent-hover"
         >
           {kind === "Outlier" ? "Remix this in a thread →" : "Develop this in a thread →"}
         </button>

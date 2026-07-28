@@ -164,7 +164,7 @@ export function ProofUnit({
           (the fraction stated ONCE) resolve in. The quote + Lens cue below ship with the
           card, so the unit is never empty while scoring. */}
       {!scored ? (
-        <div className="flex w-full items-center gap-2.5 text-[13px]" aria-busy="true">
+        <div className="flex w-full items-center gap-2.5 text-body" aria-busy="true">
           <Skeleton className="h-[7px] w-[7px] shrink-0 rounded-full" />
           <span className="shrink-0 text-foreground-muted">
             {projected ? 'Estimating the stop…' : 'Scoring with your 10 reactors…'}
@@ -172,7 +172,7 @@ export function ProofUnit({
           <Skeleton className="h-[3px] flex-1 rounded-full" />
         </div>
       ) : (
-        <div className="proof-resolve flex w-full items-center gap-2.5 text-[13px]">
+        <div className="proof-resolve flex w-full items-center gap-2.5 text-body">
           <span
             className="inline-flex shrink-0 items-center gap-1.5 font-semibold"
             style={{ color: bandColor }}
@@ -210,10 +210,10 @@ export function ProofUnit({
       {/* Quote + the now-visible Lens cue. */}
       {quote ? (
         <div className="flex w-full items-center justify-between gap-2.5">
-          <blockquote className="border-l-2 border-white/[0.10] pl-3 text-[13px] italic leading-snug text-foreground/80">
+          <blockquote className="border-l-2 border-white/[0.10] pl-3 text-body italic leading-snug text-foreground/80">
             &ldquo;{stripWrappingQuotes(quote)}&rdquo;
           </blockquote>
-          <span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-[12px] text-foreground-secondary">
+          <span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-label text-foreground-secondary">
             <RoomAvatars />
             See the room →
           </span>
@@ -224,7 +224,7 @@ export function ProofUnit({
         // Gated on real reactions, so a reaction-less unit shows nothing (parity with the quote row).
         flatPersonas.length > 0 && (
           <div className="flex w-full items-center justify-end">
-            <span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-[12px] text-foreground-secondary">
+            <span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-label text-foreground-secondary">
               <RoomAvatars />
               See the room →
             </span>

@@ -85,7 +85,7 @@ export function HookRow({ hook, showTemplate, favorite, onToggleFavorite }: Hook
           aria-pressed={favorite}
           aria-label={favorite ? "Remove from favorites" : "Add to favorites"}
           className={cn(
-            "shrink-0 rounded-lg p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10",
+            "shrink-0 rounded-lg p-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)]",
             favorite
               ? "text-[color:var(--color-accent)] hover:bg-white/[0.04]"
               : "text-foreground-muted hover:bg-white/[0.04] hover:text-foreground",

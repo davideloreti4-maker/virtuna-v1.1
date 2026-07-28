@@ -125,7 +125,7 @@ function PlanCard({ plan, annual }: { plan: Plan; annual: boolean }) {
       <h3 className="mt-4 text-xl font-semibold tracking-tight text-foreground">
         {plan.name}
       </h3>
-      <p className="mt-1 text-[13.5px] leading-relaxed text-foreground-muted">
+      <p className="mt-1 text-[14px] leading-relaxed text-foreground-muted">
         {plan.tagline}
       </p>
 
@@ -217,7 +217,7 @@ export function Pricing() {
           The dollar buys three days of the plan you picked, in full — then it renews at the
           plan price unless you cancel, which takes two taps in settings.
         </p>
-        <p className="text-[12.5px] text-foreground-muted">
+        <p className="text-[12px] text-foreground-muted">
           Launch prices. The $1 isn&apos;t a discount — it&apos;s so the decision is
           &ldquo;worth a dollar?&rdquo; instead of &ldquo;worth {PLANS[1]?.price ?? "$99"} a month?&rdquo;.
         </p>

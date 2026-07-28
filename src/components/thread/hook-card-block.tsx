@@ -102,7 +102,7 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
             The archetype/rank EYEBROW stays retired (2026-07-21); this is a lean asset header. */}
         <div className="flex items-center justify-between gap-3">
           {typeof rank === 'number' && rank > 0 ? (
-            <span className="text-[12px] font-semibold tabular-nums text-foreground-muted">#{rank}</span>
+            <span className="text-label font-semibold tabular-nums text-foreground-muted">#{rank}</span>
           ) : (
             <span aria-hidden="true" />
           )}
@@ -110,7 +110,7 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
             type="button"
             onClick={handleCopy}
             aria-label="Copy hook to clipboard"
-            className="inline-flex shrink-0 items-center gap-1 text-[12px] font-medium text-foreground-muted transition-colors hover:text-foreground-secondary"
+            className="inline-flex shrink-0 items-center gap-1 text-label font-medium text-foreground-muted transition-colors hover:text-foreground-secondary"
           >
             {copied ? (
               <>
@@ -130,7 +130,7 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
             voice-moment face) at 21px. The serif + size gives the card a crafted focal point
             instead of another block of Inter — the fix for "still looks bland" (owner 2026-07-22).
             This is a genuine hero/voice-moment, the one place the design system sanctions serif. */}
-        <p className="font-serif text-[21px] font-medium leading-[1.3] tracking-[-0.005em] text-foreground">
+        <p className="font-serif text-heading font-medium leading-[1.3] tracking-[-0.005em] text-foreground">
           {hookLine}
         </p>
 
@@ -144,13 +144,13 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
             <div className="flex items-center gap-2">
               <p className={SECTION_LABEL}>Visual</p>
               <span
-                className="rounded-full border border-white/[0.06] bg-white/[0.03] px-2 py-0.5 text-[11px] font-medium text-foreground-secondary"
+                className="rounded-full border border-white/[0.06] bg-white/[0.03] px-2 py-0.5 text-caption font-medium text-foreground-secondary"
                 title="First-frame technique"
               >
                 {visualHook.technique}
               </span>
             </div>
-            <p className="text-[13px] leading-relaxed text-foreground-secondary">{visualHook.onScreen}</p>
+            <p className="text-body leading-relaxed text-foreground-secondary">{visualHook.onScreen}</p>
           </div>
         )}
 
@@ -170,7 +170,7 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
             teaser that read the same as every sibling card's why-line. Full reasoning now. */}
         <div>
           <p className={`mb-1 ${SECTION_LABEL}`}>Why it works</p>
-          <p className="text-[13.5px] leading-relaxed text-foreground-secondary">{mechanism}</p>
+          <p className="text-reading leading-relaxed text-foreground-secondary">{mechanism}</p>
         </div>
 
         {/* Proof unit — the single audience-reaction block + visible Lens entry. */}
@@ -198,7 +198,7 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
-          className="flex items-center gap-1.5 self-start text-[12.5px] text-foreground-muted transition-colors hover:text-foreground-secondary"
+          className="flex items-center gap-1.5 self-start text-label text-foreground-muted transition-colors hover:text-foreground-secondary"
           aria-expanded={expanded}
           aria-label={expanded ? 'Collapse hook details' : 'Expand hook details'}
         >
@@ -217,13 +217,13 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
           {seedHook !== hookLine && (
             <div>
               <p className={`mb-1 ${SECTION_LABEL}`}>Seed hook</p>
-              <p className="text-[13.5px] leading-relaxed text-foreground-secondary">{seedHook}</p>
+              <p className="text-reading leading-relaxed text-foreground-secondary">{seedHook}</p>
             </div>
           )}
           {channel && (
             <div>
               <p className={`mb-1 ${SECTION_LABEL}`}>Delivery</p>
-              <p className="text-[13.5px] capitalize leading-relaxed text-foreground-secondary">{channel}</p>
+              <p className="text-reading capitalize leading-relaxed text-foreground-secondary">{channel}</p>
             </div>
           )}
         </div>

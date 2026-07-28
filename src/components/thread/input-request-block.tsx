@@ -48,7 +48,7 @@ export interface InputRequestBlockRendererProps {
 const SHELL_CLASS =
   'flex flex-col gap-3 rounded-xl border border-white/[0.06] bg-surface-sunken px-4 py-4';
 const INPUT_CLASS =
-  'min-w-0 flex-1 rounded-md border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-[13px] text-foreground placeholder:text-foreground-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20';
+  'min-w-0 flex-1 rounded-md border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-body text-foreground placeholder:text-foreground-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20';
 // The field CTA is the shared cream primary (<CardPrimaryAction className="shrink-0">) — the
 // old CTA_CLASS string was the third hand-rolled copy of it in the thread.
 
@@ -59,14 +59,14 @@ function DoneReceipt({ text }: { text: string }) {
       className="rounded-xl border border-white/[0.06] bg-surface-sunken px-4 py-3"
       data-testid="input-request-done"
     >
-      <p className="text-[13px] text-foreground-muted">{text}</p>
+      <p className="text-body text-foreground-muted">{text}</p>
     </div>
   );
 }
 
 function ErrorLine({ text }: { text: string }) {
   return (
-    <p className="text-[12px]" style={{ color: 'var(--color-error)' }} role="alert">
+    <p className="text-label" style={{ color: 'var(--color-error)' }} role="alert">
       {text}
     </p>
   );
@@ -136,7 +136,7 @@ function RemixField({ block }: InputRequestBlockRendererProps) {
 
   return (
     <div className={SHELL_CLASS} data-testid="input-request">
-      <label htmlFor="in-thread-link" className="text-[13px] font-medium text-foreground-secondary">
+      <label htmlFor="in-thread-link" className="text-body font-medium text-foreground-secondary">
         {isStreaming ? SKILL_RUN_META.remix!.running : label}
       </label>
       {isStreaming ? (
@@ -215,7 +215,7 @@ function ExploreField({ block }: InputRequestBlockRendererProps) {
 
   return (
     <div className={SHELL_CLASS} data-testid="input-request">
-      <label htmlFor="in-thread-explore" className="text-[13px] font-medium text-foreground-secondary">
+      <label htmlFor="in-thread-explore" className="text-body font-medium text-foreground-secondary">
         {isStreaming ? SKILL_RUN_META.explore!.running : label}
       </label>
       {isStreaming ? (
@@ -294,7 +294,7 @@ function ReadField({ block }: InputRequestBlockRendererProps) {
     <div className={SHELL_CLASS} data-testid="input-request">
       {/* While running the one-row capsule carries the job name — no stale question above it. */}
       {!submitting && (
-        <label htmlFor="in-thread-read" className="text-[13px] font-medium text-foreground-secondary">
+        <label htmlFor="in-thread-read" className="text-body font-medium text-foreground-secondary">
           {label}
         </label>
       )}
@@ -360,7 +360,7 @@ function AccountField({ block }: InputRequestBlockRendererProps) {
 
   return (
     <div className={SHELL_CLASS} data-testid="input-request">
-      {!isStreaming && <p className="text-[13px] font-medium text-foreground-secondary">{label}</p>}
+      {!isStreaming && <p className="text-body font-medium text-foreground-secondary">{label}</p>}
       {isStreaming ? (
         // The account read is one scrape call (no stages) — the one-row capsule idiom.
         <SingleStageWait name={SKILL_RUN_META.account!.running} />
@@ -371,7 +371,7 @@ function AccountField({ block }: InputRequestBlockRendererProps) {
       )}
       {/* Thin-history fallback is a calm warning, not a hard error (SELF-02). */}
       {!error && fallbackMessage && (
-        <p className="text-[12px] text-foreground-muted" role="status">
+        <p className="text-label text-foreground-muted" role="status">
           {fallbackMessage}
         </p>
       )}
@@ -519,12 +519,12 @@ function UploadField({ block }: InputRequestBlockRendererProps) {
     return (
       <div className={SHELL_CLASS} data-testid="input-request">
         {cardError && <ErrorLine text={cardError} />}
-        <p className="text-[13px] text-foreground-secondary">
+        <p className="text-body text-foreground-secondary">
           Analyzed your video — open the full frame-by-frame breakdown:
         </p>
         <Link
           href={`/analyze/${degradedId}`}
-          className="self-start text-[13px] font-medium text-foreground-secondary transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10"
+          className="self-start text-body font-medium text-foreground-secondary transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring)]"
         >
           See the full breakdown →
         </Link>
@@ -534,7 +534,7 @@ function UploadField({ block }: InputRequestBlockRendererProps) {
 
   return (
     <div className={SHELL_CLASS} data-testid="input-request">
-      <p className="text-[13px] font-medium text-foreground-secondary">
+      <p className="text-body font-medium text-foreground-secondary">
         {busy ? SKILL_RUN_META.test!.running : label}
       </p>
       {busy ? (
@@ -549,7 +549,7 @@ function UploadField({ block }: InputRequestBlockRendererProps) {
           <VideoUpload file={file} onFileSelect={setFile} bare />
           {!file && (
             <>
-              <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.05em] text-foreground-muted">
+              <div className="flex items-center gap-2 text-caption uppercase tracking-[0.05em] text-foreground-muted">
                 <span className="h-px flex-1 bg-white/[0.06]" />
                 or paste a link
                 <span className="h-px flex-1 bg-white/[0.06]" />

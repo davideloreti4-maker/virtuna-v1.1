@@ -128,7 +128,7 @@ export function ThreadIntro({
   return (
     <WordFade
       text={introLine(skill, audienceLabel, platform, hookLine)}
-      className="block text-[15px] leading-relaxed text-foreground"
+      className="block text-reading leading-relaxed text-foreground"
       perWordMs={30}
     />
   );
@@ -184,7 +184,7 @@ export function ThreadOutro({
                 onClick={chip.onClick}
                 disabled={!chip.onClick}
                 className={cn(
-                  'rounded-md px-3.5 py-2 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20 disabled:cursor-default disabled:opacity-40',
+                  'rounded-md px-3.5 py-2 text-body font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20 disabled:cursor-default disabled:opacity-40',
                   'border border-white/[0.06] bg-white/[0.02] text-foreground-secondary hover:border-white/[0.10] hover:text-foreground',
                 )}
               >

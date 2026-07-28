@@ -60,7 +60,7 @@ export function StatRow({ stats }: { stats: StatCard[] }) {
           >
             <div className="flex items-center justify-between">
               <span className="text-[12px] font-medium text-foreground-secondary">{s.label}</span>
-              <span className="font-mono text-[8.5px] tracking-[0.1em] text-foreground-muted">L7D</span>
+              <span className="font-mono text-[8px] tracking-[0.1em] text-foreground-muted">L7D</span>
             </div>
             <div className="mt-3 text-[28px] font-semibold leading-none tracking-[-0.025em] text-foreground [font-variant-numeric:tabular-nums]">
               {s.value}
@@ -97,7 +97,7 @@ export function StatRowEmpty() {
       <span className="text-foreground-muted" aria-hidden>
         <SurfaceIcon name="up" size={15} strokeWidth={1.6} />
       </span>
-      <p className="m-0 text-[11.5px] leading-[1.45] text-foreground-muted">
+      <p className="m-0 text-[12px] leading-[1.45] text-foreground-muted">
         Gathering your account numbers — followers, likes, and posts land here as they come in.
       </p>
     </div>

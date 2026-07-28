@@ -178,7 +178,7 @@ export function SavedShelf() {
               onClick={() => setFilter(f.id)}
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] px-3 py-1.5 text-xs font-medium transition-colors",
-                "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10",
+                "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring)]",
                 active ? "text-foreground" : "text-foreground-muted hover:text-foreground-secondary",
               )}
               style={{

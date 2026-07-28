@@ -76,7 +76,7 @@ export function primaryCtaClass({
   return cn(
     "inline-flex items-center justify-center gap-2 rounded-lg font-semibold",
     "transition-transform hover:scale-[1.02] active:scale-[0.99]",
-    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-background",
     "disabled:pointer-events-none disabled:opacity-70",
     VARIANT_CLASS[CTA_VARIANT],
     SIZE_CLASS[size],

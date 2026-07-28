@@ -114,7 +114,7 @@ function IntakeTile({ opt, index, onPick }: { opt: IntakeOption; index: number; 
         >
           {opt.label}
         </span>
-        <span className="mt-0.5 block text-[11.5px] leading-tight" style={{ color: TONE.faint }}>
+        <span className="mt-0.5 block text-[12px] leading-tight" style={{ color: TONE.faint }}>
           {opt.sub}
         </span>
       </span>
