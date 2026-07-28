@@ -22,6 +22,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { reportCredit402 } from '@/lib/billing/credit-wall';
 import type { MarkdownBlock } from '@/lib/tools/blocks';
 import type { StageState } from '@/components/thread/progress-checklist';
 
@@ -236,6 +237,15 @@ export function useChatStream(): UseChatStreamReturn {
               blocksRef.current = [...blocksRef.current, block];
               if (isMountedRef.current) setStreamingBlocks([...blocksRef.current]);
             }
+
+          } else if (eventType === 'credit-wall') {
+            // A skill the agent tried to dispatch was refused by the credit gate. The route cannot
+            // answer 402 mid-stream, so it forwards the refusal body here and the ONE wall listener
+            // draws the dialog — identical to hitting the same wall on the skill's own route. The
+            // model also relays a sentence in the same turn; the dialog is what carries the upgrade
+            // door, and without it a refusal in chat would be a dead end with nothing to act on.
+            const quota = (data as { quota?: unknown }).quota;
+            if (quota !== undefined) reportCredit402(402, quota);
 
           } else if (eventType === 'dispatch') {
             // The agent committed to a skill run (the run-capsule seam). Arrives BEFORE the first

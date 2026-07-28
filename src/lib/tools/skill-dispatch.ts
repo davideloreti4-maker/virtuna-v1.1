@@ -21,6 +21,7 @@
 
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
 import type { Audience } from "@/lib/audience/audience-types";
+import type { BillableAction } from "@/lib/pricing";
 import { runIdeasPipeline } from "@/lib/tools/runners/ideas-runner";
 import { runHooksPipeline } from "@/lib/tools/runners/hooks-runner";
 import { runScriptPipeline } from "@/lib/tools/runners/script-runner";
@@ -60,8 +61,17 @@ export interface SkillTool {
    * so the spine can say WHAT is running before the first stage event lands.
    */
   skillKey: string;
-  /** Hits the paid engine (generate + SIM) → counts against the leash. */
-  paid: boolean;
+  /**
+   * WHAT THIS SKILL COSTS — the ledger action the run is gated and billed under, or absent when
+   * the skill is genuinely free. This is the same `BillableAction` the skill's own dedicated route
+   * charges, so a run costs the creator the same whether they asked the agent or pressed the skill.
+   *
+   * It replaced a bare `paid: boolean`, which could say THAT a skill spends money but not how much
+   * — so the agent path had no price to charge and ran the paid engine for free. A skill that
+   * declares a price is gated before it runs and billed on delivery; one that declares none is
+   * free everywhere. Presence also drives the per-turn leash and FREE_SKILL_TOOLS.
+   */
+  billable?: BillableAction;
   /** Which arg the model MUST supply for this skill to run (defaults to "topic" — the generator shape). */
   primaryArg?: "topic" | "draft";
   /** OpenAI/DashScope tool schema the model sees. */
@@ -95,7 +105,7 @@ export const SKILL_TOOLS: SkillTool[] = [
   {
     name: "generate_ideas",
     skillKey: "ideas",
-    paid: true,
+    billable: "ideas",
     schema: skillSchema(
       "generate_ideas",
       "Generate content IDEAS (angles/concepts) for a topic. Use when the creator asks for ideas, " +
@@ -116,7 +126,7 @@ export const SKILL_TOOLS: SkillTool[] = [
   {
     name: "generate_hooks",
     skillKey: "hooks",
-    paid: true,
+    billable: "hooks",
     schema: skillSchema(
       "generate_hooks",
       "Generate scroll-stopping HOOK lines (opening lines) for a topic or a chosen idea. Use when the " +
@@ -138,7 +148,7 @@ export const SKILL_TOOLS: SkillTool[] = [
   {
     name: "write_script",
     skillKey: "script",
-    paid: true,
+    billable: "script",
     schema: skillSchema(
       "write_script",
       "Write a short-form SCRIPT / video outline for a topic or a chosen hook. Use when the creator " +
@@ -170,7 +180,7 @@ export const SKILL_TOOLS: SkillTool[] = [
  * Derived, not hand-listed — a new paid skill is behind the wall the day it is added. Empty today,
  * and that is the honest state: every skill in the registry hits the paid engine.
  */
-export const FREE_SKILL_TOOLS: SkillTool[] = SKILL_TOOLS.filter((s) => !s.paid);
+export const FREE_SKILL_TOOLS: SkillTool[] = SKILL_TOOLS.filter((s) => !s.billable);
 
 // ─── The dispatcher loop ─────────────────────────────────────────────────────
 
@@ -307,7 +317,7 @@ export async function runSkillDispatch(
         messages.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify({ error: `no ${primary} provided` }) });
         continue;
       }
-      if (skill.paid && paidRuns >= maxSkillRuns) {
+      if (skill.billable && paidRuns >= maxSkillRuns) {
         toolCalls.push({ name: skill.name, args, ran: false, note: "leash: run limit reached" });
         messages.push({
           role: "tool",
@@ -319,7 +329,7 @@ export async function runSkillDispatch(
 
       try {
         const { blocks, warnings } = await skill.run(args, input.context);
-        if (skill.paid) paidRuns++;
+        if (skill.billable) paidRuns++;
         skillRuns.push({ name: skill.name, blocks, warnings });
         toolCalls.push({ name: skill.name, args, ran: true });
         // The model doesn't need the full blocks (they render to the UI) — just confirmation + count.

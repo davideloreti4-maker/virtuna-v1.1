@@ -41,8 +41,18 @@ const PAID_ROUTES: Record<string, keyof typeof CREDIT_COSTS> = {
   "react/route.ts": "react",
 };
 
-/** Free on purpose. Billing appearing here is a product decision that needs a human. */
-const FREE_ROUTES = ["chat/route.ts", "test/card/route.ts"];
+/**
+ * Free on purpose. Billing appearing here is a product decision that needs a human.
+ *
+ * The list emptied out from BOTH ends on 2026-07-28, which is the guard working as intended —
+ * it is where a pricing decision gets written down:
+ *   - `react/route.ts` moved UP to the paid list (a real Flash panel run, priced at 1 credit).
+ *   - `chat/route.ts` moved OUT to its own test below. A blanket "no billUsage in this file"
+ *     assertion was the wrong shape for it: the conversation is free by decision, but the agent
+ *     it runs dispatches PAID skills, and the assertion is satisfied just as well by the meter
+ *     being MISSING as by it being deliberately absent. Both halves are pinned separately now.
+ */
+const FREE_ROUTES = ["test/card/route.ts"];
 
 describe("every paid tool route gates and bills", () => {
   for (const [file, action] of Object.entries(PAID_ROUTES)) {
@@ -82,13 +92,36 @@ describe("every paid tool route gates and bills", () => {
 
   it("the free chat route does not hand an ANONYMOUS visitor the paid skills", () => {
     // Chat is free by decision, but the agent loop can DISPATCH paid skills (ideas/hooks/script)
-    // in-process — the pipelines behind three gated routes, reached without their gates. For an
-    // anonymous /go visitor that is the trial wall's back door: the demo entitles one Test, so the
-    // route must bind the free-only registry. (⚠️ For a real CUSTOMER those dispatched runs are
-    // still neither gated nor billed — a separate hole in the meter, not this guard's business.)
+    // in-process — the pipelines behind three gated routes. For an anonymous /go visitor that is the
+    // trial wall's back door: the demo entitles one Test, so the route must bind the free-only
+    // registry. (For a real CUSTOMER those runs are now gated + billed too — the test below.)
     const src = readFileSync(join(ROOT, "chat/route.ts"), "utf8");
     expect(src).toContain("FREE_SKILL_TOOLS");
     expect(src).toContain("isSealedVisitor(user)");
+  });
+
+  it("chat/route.ts is free to TALK to, but charges for the skills its agent dispatches", () => {
+    // The two halves of this route pull in opposite directions and both matter:
+    //
+    //   the TURN is free      — chat is the glue of the product; admission-pricing a sentence would
+    //                           make the thread hostile, so there is no gate on the conversation.
+    //   the SKILLS are not    — ideas/hooks/script hit the same paid engine as their own routes. For
+    //                           months they ran here with no gate and no ledger row, so the identical
+    //                           pack cost 1 credit from the skill pill and 0 from chat. That made
+    //                           deleting the pill a pricing change, not a UI change.
+    //
+    // A single "no billUsage in this file" assertion cannot tell those apart — it passes loudest
+    // exactly when the meter is missing. So pin each half to what it must actually contain.
+    const src = readFileSync(join(ROOT, "chat/route.ts"), "utf8");
+
+    // No admission price on the conversation itself — a gate on a LITERAL action would be one.
+    expect(src, "the chat turn itself must stay free").not.toMatch(/creditGate\(supabase, user, "/);
+
+    // …but a dispatched skill goes through the same gate + till as its own dedicated route, priced
+    // by the action the skill declares, so the two doors into the engine cannot drift apart.
+    expect(src, "dispatched skills must be gated").toContain("creditGate(supabase, user, action)");
+    expect(src, "dispatched skills must be billed").toContain("billUsage(");
+    expect(src, "the loop must be handed the till").toContain("billing: skillBilling(");
   });
 
   it("the react route walls the anonymous visitor BEFORE it gates them", () => {

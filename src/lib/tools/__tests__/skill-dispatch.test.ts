@@ -14,7 +14,7 @@ function mkSkill(name: string, opts: { paid?: boolean; run?: SkillTool["run"] } 
   return {
     name,
     skillKey: name,
-    paid: opts.paid ?? true,
+    ...((opts.paid ?? true) ? { billable: "ideas" as const } : {}),
     schema: { type: "function", function: { name, parameters: { type: "object", properties: {} } } },
     run:
       opts.run ??
@@ -27,7 +27,7 @@ function mkAnalysisSkill(name: string, opts: { run?: SkillTool["run"] } = {}): S
   return {
     name,
     skillKey: name,
-    paid: true,
+    billable: "ideas",
     primaryArg: "draft",
     schema: { type: "function", function: { name, parameters: { type: "object", properties: {} } } },
     run:
