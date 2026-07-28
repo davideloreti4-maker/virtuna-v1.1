@@ -3,8 +3,9 @@
 **Status:** Lane 1 complete. Suite **4758/0** · `tsc` clean · `npm run build` compiles · lint at
 baseline (9 pre-existing errors, **0 new**). Net **−1,788 lines** across 31 files.
 
-**⚠️ NOT YET VERIFIED LIVE.** `/home` needs auth and there is no E2E harness in the repo. The
-browser walk-through is the FIRST thing the next session does — steps in §5.
+**✅ VERIFIED LIVE 2026-07-28** on a production build, all six steps — §5. The walk-through found
+two defects Lane 1 had introduced (the Stop disc firing a second billed run; every finished run
+rendering twice); both are fixed and mutation-guarded. Suite **4787/0** · `tsc` clean.
 
 ---
 
@@ -93,27 +94,48 @@ Re-read this before touching the thread again; each was invisible until the code
 - Two per-file FS-lint gates (`radius-scale`, `section-label-scale`) lost 6 tests each simply
   because there are 6 fewer files to scan. Test-count delta is fully accounted: `4755 − 12 + 15`.
 
-## 5. FIRST THING NEXT SESSION — the live walk-through
+## 5. THE LIVE WALK-THROUGH — DONE 2026-07-28. All six steps pass; two defects found and fixed.
 
-Credentials are in the session-start prompt (deliberately **not** committed here).
+Run on a production build (`npm run build` → `next start -p 3210`) driven by raw Playwright, asserting
+on the DOM rather than screenshots (the ambient-room animations never settle, so captures hang).
 
-```bash
-npm run build && npx next start -p 3210
-```
+| # | Step | Result |
+|---|------|--------|
+| 1 | Hooks → intro, spine, cards, outro | ✅ live intro present-tense + spine, settles to past tense + ✓ receipt (3 steps) + 5 cards + outro |
+| 2 | **Script without switching** | ✅ **THE REPORTED BUG IS FIXED** — hooks turn untouched, script appends its own intro/spine/receipt/card |
+| 3 | Reload | ✅ both turns identical, past-tense intros, receipts, outros, correct order |
+| 4 | Stop mid-stream | ❌ → ✅ **fired a SECOND billed run** (see below) |
+| 5 | Send during a run | ✅ `canSubmit` is false while streaming; Enter starts nothing |
+| 6 | Pre-existing thread | ✅ unstamped legacy turns get intro + receipt from `classifyTurn` — no backfill needed |
 
-On a **production build** — `next dev` StrictMode fakes a broken funnel on this app and has cost
-~3h before. In ONE thread:
+**DEFECT A — the Stop disc fired a second billed run.** One click on Stop aborted the run *and*
+POSTed `/api/tools/hooks` again within 100ms; the two runs' cards merged into a single **ten-card**
+turn in the persisted thread. Form submission is the CLICK's default action, dispatched *after*
+React flushes the discrete event — so `stopActive()` flipped `isStreaming`, React re-rendered the
+same node to `type="submit"`, and the browser submitted the form it was then looking at. `type`
+alone cannot close this. Fixed by cancelling the default action in the handler
+(`composer.tsx`, the send disc). Guard: `__tests__/composer-stop-disc.test.tsx`.
 
-1. Run **Hooks** → intro, spine, cards, outro.
-2. **Without switching**, run **Script** → the hooks turn stays; script appends with its own intro,
-   spine, outro. ← **THE REPORTED BUG. This is the one that matters.**
-3. **Reload** → both turns intact, **past-tense** intros + receipts + outros, correct order.
-4. Start a run, hit **Stop** mid-stream → aborts, send returns, thread stays coherent.
-5. Send during a run → the disc is a stop control, not a second run.
-6. Open a **pre-existing** thread → renders with inferred intros/receipts, nothing lost.
+**DEFECT B — every finished run rendered TWICE.** ~2s after each run settled, a duplicate user
+bubble plus a second Maven block appeared (same past-tense intro, same closing line, no cards, no
+receipt) and never cleared. Cause: routes emit `done` BEFORE the closing line and hold the SSE open
+to stream it (§S2), so the fold — which fires on `done` — reloads history, `reset()`s the stream,
+and *then* the late `followup` frame refills one field of the emptied hook. `hasContent()` counted
+follow-up text as content, so the empty stream re-claimed the tail. It could never self-heal:
+`reset()` also cleared `isDone`, leaving the completion effect nothing to fire on. Fixed by
+excluding `followupText` from `hasContent` (`use-active-run.ts`). Guard:
+`__tests__/use-active-run.test.ts`.
 
-Screenshots hang on this app (the ambient-room animations never settle). Use raw Playwright with
-`animations: 'disabled'` + `caret: 'hide'`, or assert via `getComputedStyle` / `getBoundingClientRect`.
+That exclusion alone would have cost the last run its closing line until the next reload, so the
+composer now does **one more reload when a follow-up lands on an already-folded stream** — the
+frame's only remaining job is to say "the line is persisted now". Measured: fold-reload at t+27.3s,
+follow-up reload at t+29.5s, outro on screen at t+29.9s, `turns=1` throughout.
+
+Both guards are **mutation-verified** — each was watched going red against the un-fixed code.
+
+⚠️ Still open, seen in passing (NOT a regression): a legacy turn whose blocks mix a skill run with
+`video-test-card`s classifies as `test`, which has no authored intro, so that turn shows neither
+intro nor receipt. `classifyTurn` ranks `video-test-card` above `hook-card`. Legacy data shape only.
 
 ## 6. LANE 2 — not started (owner-confirmed order)
 

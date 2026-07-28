@@ -81,14 +81,35 @@ function normalize(c: RunCandidate): ActiveRun {
   };
 }
 
-/** True when a candidate still has anything worth rendering as the tail turn. */
+/**
+ * True when a candidate still has anything worth rendering as the tail turn.
+ *
+ * ⚠️ `followupText` is deliberately NOT content on its own, and that exclusion is the whole fix
+ * for the duplicate turn measured live on 2026-07-28.
+ *
+ * Every generative route emits `done` BEFORE its closing line and keeps the SSE open to stream it
+ * (hooks/route.ts §S2 — the follow-up is a second model call, off the critical path, ~2s). The
+ * composer folds the run into history on `done`: reload persisted history, then `reset()` the
+ * stream. Then the late `followup` frame lands on the stream that was just reset and calls
+ * `setFollowupText` — refilling ONE field of an otherwise empty hook.
+ *
+ * Counting that as content made the emptied stream claim the tail again, so the thread rendered
+ * the just-folded run TWICE: the persisted turn with its cards, then a second Maven block with the
+ * same past-tense intro, no cards, no receipt, and the same closing line — plus a duplicate of the
+ * user's own bubble. It never cleared, because `reset()` also cleared `isDone`, so the
+ * run-completion effect had nothing left to fire on.
+ *
+ * Nothing is lost by excluding it: every route persists that line as a trailing markdown message
+ * BEFORE it sends the event, so the folded turn already carries the outro. And while a run is
+ * genuinely live its blocks/stages/isStreaming already make it the tail — a follow-up has never
+ * arrived before them.
+ */
 function hasContent(c: RunCandidate): boolean {
   return (
     c.isStreaming ||
     (c.blocks?.length ?? 0) > 0 ||
     (c.stages?.length ?? 0) > 0 ||
-    !!c.error ||
-    !!c.followupText
+    !!c.error
   );
 }
 
