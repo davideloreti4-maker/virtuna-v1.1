@@ -28,6 +28,7 @@ import {
   AccountReadBlockSchema,
   InputRequestBlockSchema,
   CorpusReferencesBlockSchema,
+  BroughtCardBlockSchema,
 } from "./blocks";
 import {
   ProfileReadBlockSchema,
@@ -53,6 +54,9 @@ export const BLOCK_REGISTRY = {
   "account-read": { schema: AccountReadBlockSchema as z.ZodType },
   "input-request": { schema: InputRequestBlockSchema as z.ZodType },
   "corpus-references": { schema: CorpusReferencesBlockSchema as z.ZodType },
+  // The ＋ door's own card — a stimulus the creator brought, and the room's measured read of it.
+  // It exists so a brought text HAS a descriptor: without one its seal is orphaned (see blocks.ts).
+  "brought-card": { schema: BroughtCardBlockSchema as z.ZodType },
   "profile-read": { schema: ProfileReadBlockSchema as z.ZodType },
   "reaction-distribution": { schema: ReactionDistributionBlockSchema as z.ZodType },
   "prediction-gauge": { schema: PredictionGaugeBlockSchema as z.ZodType },

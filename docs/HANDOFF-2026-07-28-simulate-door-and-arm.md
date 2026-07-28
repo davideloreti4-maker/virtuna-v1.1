@@ -1,9 +1,102 @@
 # Handoff — The ＋ door (bring your own stimulus) + the ARM screen redesign
 
 **Date:** 2026-07-28 · **Worktree:** `~/virtuna-platform` · **Branch:** `lane/platform-surface`
-**Status:** ✅ **Phases 1, 2 and the Phase-4 PREREQUISITE ARE MERGED TO MAIN AND DEPLOYED**
-(PR #394, merge `79b3e635`). Phases 3–6 open — start with §11's kickoff prompt.
-Read §0.4 first, then §0.5.
+**Status:** ✅ **Phases 1, 2, 3, 4 and the react gate are BUILT.** 1+2+gate are merged to main and
+deployed (PR #394, `79b3e635`); **3+4 are on the lane, unmerged** — see §0.3.
+Read §0.3 first, then §0.4, then §0.5. Phases 5–6 remain open.
+
+---
+
+## §0.3 — STATUS after session 3 (2026-07-28). This supersedes §0.4, §0.5 and the body.
+
+✅ **PHASES 3 AND 4 ARE BUILT AND LIVE-VERIFIED on a production build.** They landed together, as
+required: the door and the thing behind it are one unit.
+
+**The door now exists, twice, and what comes through it runs:**
+
+| piece | what shipped |
+|---|---|
+| board `＋` | `onTestVariant` is a real host handler. The old one-liner carried TWO defects — dead on an empty rail (`descriptors[0]` undefined), and on a full one it re-armed the creator's FIRST EXISTING CARD. Copy is now "＋ Test something of your own". |
+| Start door | The SIMULATE DOOR its docstring described since 2026-07-21 and never had. `onSimDoor` → `AmbientStartHome` → composer. |
+| no dead doors | **Both doors render ONLY when a host can run them.** No handler ⇒ no door — the dead-button class is removed at the source, not relocated. |
+| the run | `SimulateConfig.stimulus` carries the brought draft/file/link out. Draft → `/api/tools/react`; video file/link → the composer's existing `/api/analyze` + `test/card` seams (not re-implemented). |
+| the row | A new `brought-card` block. **This is the anti-orphan half** — see below. |
+
+### 🔑 The orphan-seal trap, and why it needed a NEW block type
+
+§0.5 correction #4 was right: a brought text needs a card block or its seal is orphaned. What it did
+not say is that **none of the four existing card types can carry one honestly.** `hook-card` REQUIRES
+`mechanism` (a named attention mechanism) and `rank` — neither exists for a text nobody generated, so
+reusing it means inventing both. So `brought-card` was added instead: registry + renderer +
+`KIND_BY_BLOCK_TYPE` (kind `concept`, the generic rank kind that was already in the vocabulary and
+unreachable until now) + a title headline. It claims exactly what ran.
+
+- The route gained opt-in **`card: true`** (+ `cardKind`, `segmentLabel`). Default off ⇒ type-to-room
+  and the composer's `ask` verb stay byte-identical and ephemeral; the rail's own "Simulate →" must
+  NOT set it (its stimulus already has a card — the generated one it is sealing).
+- The card is inserted **BEFORE** the seal write. Both writes are non-fatal, and the failure
+  directions are not equal: a card with no seal is an honest QUEUED row; a seal with no card is the
+  orphan. So the card goes first.
+- **No `run-header` rides with it.** That stamp's `skill` is the DISPLAY namespace and a brought
+  stimulus is none of those skills — inventing an id there is the exact cast that shipped F-017.
+  Without it `classifyTurn` reads the turn as plain and the card renders alone, which is correct.
+
+### ⚠️ Three things this session found that the spec did not say
+
+1. **A brought VIDEO's ARM screen was about to grow three decorative dials.** `/api/analyze` accepts
+   NO lens, NO segment and NO scene — it resolves the audience server-side and reads the whole fold.
+   Phase 4 made that screen reachable for the first time, so shipping live dropdowns there would have
+   re-created the exact defect Phase 1 removed. All three now render LOCKED with their reason
+   (`VIDEO_LOCK`), the same treatment fidelity already had.
+2. **`TIER_N.max` (10,000) would have been a fabrication on the video variant.** A video fold is a
+   **10-reactor panel** — `ambient-v2-video-population.ts` §1 says so in as many words and REFUSES to
+   clone those ten into a thousand. The 1,000/10,000 numbers are the TEXT projection's
+   (`reactPopulation`), which a video run never calls. The video variant states **10 reactors**.
+3. **The brought paths needed `ensureThreadForSend`, which lived inside `handleSubmit`.** While the
+   client pointer sits on the new-thread sentinel, every server-side `createOpenThreadLazy` mints its
+   OWN row, so the card lands in a thread the client is not pointing at — **F-019 exactly**. Hoisted
+   to component scope and awaited before BOTH brought runs (the text one too: it is a server write).
+   Also: `reloadChatThread` does **not** refresh `sim_seals`, so the new row would have appeared
+   honestly QUEUED until the next full reload. `reloadThreadAndSeals` re-reads both.
+
+### Verified live on a production build (`npm run build && next start -p 3111`)
+
+Start door → intake → collect → ARM → **one real billed react run** (1 credit, 1 POST, 200):
+
+- `brought-card` in the thread carrying the draft, "You brought this", **Strong 7/10 stopped**
+  (the lens's own verb, not a hardcoded "stopped").
+- The board: **`1 SEALED` · the draft · `CONCEPT` · 70.0%** — and it **survives a reload** (the block
+  rehydrates → descriptor; the seal rehydrates → the %). That is the orphan trap closed end to end.
+- The board `＋` opens the intake and **not** the develop card (no tie-back band).
+- The video variant: 3 locked dials, "reactors", no 10,000 claim, tier `max`. **Not fired** — a
+  ~2-minute 10-credit Max run; its wiring is asserted by test, not by spend.
+
+### Baselines — the §9/§0.4 numbers were STALE (as flagged, PR #395 added tests)
+
+| | measured on this tree |
+|---|---|
+| before this work | **4813/0** flag off · **4814/0** flag on · 442 files |
+| after | **4838/0** flag off · **4839/0** flag on · 444 files |
+
++25 = 14 door guards + 5 renderer guards + 4 route guards + **2 auto-generated** (two file-scanning
+idiom guards pick up each new component file — both pass). tsc clean. `npm run build` passes.
+The **3 unhandled errors are the pre-existing `composer.test.tsx` ones** — same count, same single
+site (`stream.start(...).catch` on the mocked tiktok_url path; the line number moved 1913→1922 from
+the hoist, the code did not).
+
+**Every new guard is mutation-verified** — 9 mutations, each caught by the intended test: reverting
+the broken `onTestVariant` one-liner (caught by 3), breaking the block↔seal key identity, removing the
+insert entirely, inserting without the flag, dropping `stimulus` from the config (caught by 4),
+`TIER_N` for video, unlocking the video dials, an inert Start door, dropping `card:true`, fetching
+before the thread exists, and collapsing the lens verbs to "stopped".
+
+### ▶ Next
+
+Phases 5 (the ARM redesign — variant ② first, §5) and 6 (`/dev/cards` pinning) are open and
+independent. Note Phase 5 is now **smaller than §5 describes**: the video variant's lens/slice/scene
+treatment landed here out of necessity, so what remains is the layout/budget work on the text variant.
+
+⚠️ **Not merged.** Phases 3+4 are on `lane/platform-surface` only.
 
 ---
 

@@ -920,6 +920,76 @@ export const CorpusReferencesBlockSchema = z.object({
 export type CorpusReference = z.infer<typeof CorpusReferenceSchema>;
 export type CorpusReferencesBlock = z.infer<typeof CorpusReferencesBlockSchema>;
 
+// ─── Brought-card block (the ＋ door — "Test something of your own") ────────────
+/**
+ * A stimulus the CREATOR brought — a pasted hook, script or caption — and the room's measured
+ * read of it. Every other card block records something a SKILL generated; this one records
+ * something that arrived from outside the product and was screened.
+ *
+ * WHY IT HAS TO EXIST (the orphan-seal trap, 2026-07-28): `/api/tools/react` persists a SEAL
+ * and nothing else. Seals are only ever read THROUGH a descriptor (`snapshotFor` →
+ * `descriptors.find(...)` → `persistedSeals[d.conceptText.trim()]`), and descriptors derive
+ * purely from rendered card blocks (`buildAmbientDescriptors`). So a brought stimulus with no
+ * block gets no descriptor, its seal is orphaned, and the row it was supposed to become renders
+ * NOWHERE. Reusing `hook-card` was the alternative and was rejected: its schema REQUIRES a
+ * `mechanism` (a named attention mechanism) and a `rank`, neither of which exists for a text
+ * nobody generated — so it could only be filled by inventing one. This block claims exactly
+ * what ran and nothing more.
+ *
+ * Honesty spine:
+ *  - `band` + `fraction` are the ROOM's real aggregate (`aggregateFlash`), always measured — the
+ *    Flash panel ran, which is what the creator paid a credit for. There is no `provenance` field
+ *    because there is no projected variant of this card: it cannot exist before a run.
+ *  - `lens` is the behaviour the run scored, so the renderer words the count in the run's own verb
+ *    instead of assuming "stopped" (a `finish` run that said "stopped" would re-word the engine's
+ *    claim into one it never made — the ProofUnit `verb` lesson).
+ *  - `slice` is present only when the ARM screen asked about ONE archetype and the projection could
+ *    honour it. Both numbers then ride together: the slice's own stop rate is what the board row
+ *    shows, and the room's fraction is what the panel measured. Neither stands in for the other.
+ */
+export const BroughtCardBlockSchema = z.object({
+  type: z.literal("brought-card"),
+  props: z.object({
+    /** What the creator brought, verbatim. ALSO the ambient descriptor's concept text and the
+     *  `sim_seals` key, which is what links this card to its sealed row — they must not drift. */
+    stimulus: z.string(),
+    /** Which door it came through — "draft" (a hook / script / caption). Video never lands here:
+     *  a tested video is read straight off the seal store by `analysisId`, no descriptor needed. */
+    kind: z.enum(["draft", "hook", "idea", "script"]),
+    /** The behaviour this run scored (⑤'s loud dial) — the verb the count is stated in. */
+    lens: z.enum(["stop", "finish", "share", "follow", "buy"]),
+    band: z.enum(["Strong", "Mixed", "Weak"]),
+    fraction: z.string(), // the room's honest "N/10 stop"
+    scrollQuote: z.string(),
+    model: z.literal("sim1-flash"), // react is Flash-and-text-only; there is no Max text path yet
+    /** How they encountered it (⑤'s scene dial), as the run was armed. */
+    scene: z.string().optional(),
+    /**
+     * Present ⇒ the ARM screen asked about ONE slice. `honored` says whether the projection could
+     * answer it: true carries that slice's own rate + headcount (what the board row shows), false
+     * carries the REASON. The un-honoured case is recorded rather than dropped on purpose — the
+     * room's fraction is not a stand-in for a slice's, so the card has to be able to say the
+     * question went unanswered instead of quietly presenting a different one (fail visible).
+     */
+    slice: z
+      .object({
+        archetype: z.string(),
+        label: z.string(),
+        honored: z.boolean(),
+        stopPct: z.number().optional(),
+        total: z.number().optional(),
+        reason: z.string().optional(),
+      })
+      .optional(),
+    /** The run's own 10-persona reaction (real registry archetypes) — feeds the Lens cast. */
+    personas: z.array(ReactionPersonaSchema).optional(),
+    /** The Stage-2 N-individual projection, when the signature carries the v2 axes. */
+    population: PopulationAggregateSchema.optional(),
+  }),
+});
+
+export type BroughtCardBlock = z.infer<typeof BroughtCardBlockSchema>;
+
 // ─── Run header block ─────────────────────────────────────────────────────────
 /**
  * The turn's RUN STAMP — which skill produced it, and the inputs its intro line cites.
@@ -968,6 +1038,7 @@ export const BlockUnionSchema = z.discriminatedUnion("type", [
   AccountReadBlockSchema,
   InputRequestBlockSchema,
   CorpusReferencesBlockSchema,
+  BroughtCardBlockSchema,
   ProfileReadBlockSchema,
   ReactionDistributionBlockSchema,
   PredictionGaugeBlockSchema,

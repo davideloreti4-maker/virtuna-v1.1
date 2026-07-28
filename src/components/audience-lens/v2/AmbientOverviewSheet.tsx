@@ -86,6 +86,7 @@ export function AmbientOverviewSheet({
   open,
   onOpenChange,
   focusVideo,
+  onTestVariant,
 }: {
   audience: Audience;
   descriptors: AmbientCardDescriptor[];
@@ -97,6 +98,9 @@ export function AmbientOverviewSheet({
    *  The composer also opens the sheet when it sets one, so the phone lands on the same drill the
    *  desktop rail opens in place. */
   focusVideo?: { id: string; nonce: number } | null;
+  /** The ＋ door, straight through to the rail. The phone gets the same door the desktop board has —
+   *  the flag used to swap only the ≥xl rail and left one product with two rooms. */
+  onTestVariant?: () => void;
 }) {
   const meta = audienceToMeta(audience);
 
@@ -198,6 +202,7 @@ export function AmbientOverviewSheet({
                 persistedSeals={persistedSeals}
                 presentation="sheet"
                 focusVideo={focusVideo}
+                onTestVariant={onTestVariant}
                 // The Overview header's caret is the way out (the bar that opened it is now covered).
                 onDismiss={() => onOpenChange(false)}
               />

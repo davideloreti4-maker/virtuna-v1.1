@@ -54,6 +54,13 @@ vi.mock("@/lib/audience/characterize-content", () => ({
   characterizeContent: vi.fn(),
 }));
 
+// The thread WRITE boundary. Mocked so no DB insert runs, and so the ＋ door tests can assert the
+// exact block the route emits — then hand that same block to the REAL validateBlock + the REAL
+// descriptor builder, which is where the orphan-seal contract actually lives.
+vi.mock("@/lib/threads/messages", () => ({
+  insertMessage: vi.fn().mockResolvedValue(undefined),
+}));
+
 // buildReactionPanel is real (we want to assert the route wires the resolved panel through).
 // resolveNicheKey + the helper run unmocked so a real niche resolves to a non-null panel.niche.
 
@@ -818,5 +825,216 @@ describe("POST /api/tools/react — the funnel wall (verdict seal, §0b②)", ()
     const { characterizeContent } = await import("@/lib/audience/characterize-content");
     expect(runFlashTextMode).not.toHaveBeenCalled();
     expect(characterizeContent).not.toHaveBeenCalled();
+  });
+});
+
+// ─── The ＋ door's card (Phase 4) ────────────────────────────────────────────────
+/**
+ * THE ORPHAN-SEAL TRAP, locked shut.
+ *
+ * `persist:true` writes a SEAL and nothing else. A seal is only ever READ through a descriptor
+ * (`snapshotFor` → `descriptors.find(...)` → `persistedSeals[d.conceptText.trim()]`) and
+ * descriptors are built ONLY from rendered card blocks (`buildAmbientDescriptors`). So a stimulus
+ * the creator brought through the ＋ door had no block ⇒ no descriptor ⇒ a measured verdict that
+ * rendered NOWHERE. `card:true` is the half that closes it.
+ *
+ * The load-bearing assertion is the IDENTITY: the block's `stimulus` and the seal's KEY must be
+ * the same string. If those ever drift the row silently falls back to queued — a wrong number
+ * would be loud, a missing row is not.
+ */
+describe("POST /api/tools/react — card:true (the ＋ door's thread card)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  /** A client whose threads.update captures the seal payload; profiles select resolves. */
+  function clientCapturingSeal() {
+    const eq = vi.fn().mockResolvedValue({ error: null });
+    const update = vi.fn().mockReturnValue({ eq });
+    const client = {
+      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: "user-123" } } }) },
+      from: vi.fn((table: string) =>
+        table === "threads"
+          ? { update }
+          : {
+              select: () => ({
+                eq: () => ({ maybeSingle: () => Promise.resolve({ data: { niche_primary: "fitness" }, error: null }) }),
+              }),
+            },
+      ),
+    };
+    return { client, update };
+  }
+
+  it("inserts a brought-card whose stimulus IS the seal key — the link that de-orphans the row", async () => {
+    const { createClient } = await import("@/lib/supabase/server");
+    const { createOpenThreadLazy } = await import("@/lib/threads/threads");
+    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { insertMessage } = await import("@/lib/threads/messages");
+    const { validateBlock } = await import("@/lib/tools/block-registry");
+
+    const { client, update } = clientCapturingSeal();
+    (createClient as ReturnType<typeof vi.fn>).mockResolvedValue(client);
+    (createOpenThreadLazy as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "thread-1",
+      active_audience_id: null,
+      sim_seals: {},
+    });
+    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
+      result: { personas: makePersonas(6) }, // 6/10 stop → Strong
+      warnings: [],
+    });
+
+    const { POST } = await import("@/app/api/tools/react/route");
+    const res = await POST(
+      makeRequest({
+        text: "  a script I wrote myself  ",
+        pin: true,
+        persist: true,
+        card: true,
+        cardKind: "script",
+        lens: "finish",
+        scene: "TikTok",
+      }),
+    );
+    expect(res.status).toBe(200);
+
+    // ONE assistant message, carrying exactly the brought card (no run-header: its `skill` is the
+    // display namespace and a brought stimulus is not one of those skills — that cast is F-017).
+    expect(insertMessage).toHaveBeenCalledTimes(1);
+    const [threadId, role, blocks] = (insertMessage as ReturnType<typeof vi.fn>).mock.calls[0]!;
+    expect(threadId).toBe("thread-1");
+    expect(role).toBe("assistant");
+    expect(blocks).toHaveLength(1);
+
+    const block = blocks[0] as { type: string; props: Record<string, unknown> };
+    expect(block.type).toBe("brought-card");
+    // It must survive the write boundary it is about to be handed to (insertMessage re-validates,
+    // and a rejected block would be dropped SILENTLY — the row would simply never appear).
+    expect(validateBlock(block).ok).toBe(true);
+
+    // The measured run, as it ran: the lens that was armed, the room's real fraction, Flash.
+    expect(block.props.kind).toBe("script");
+    expect(block.props.lens).toBe("finish");
+    expect(block.props.band).toBe("Strong");
+    expect(block.props.fraction).toContain("6/10");
+    expect(block.props.scene).toBe("TikTok");
+    expect(block.props.model).toBe("sim1-flash");
+
+    // ── THE LINK. The descriptor's concept text comes from `stimulus`; the seal is keyed by the
+    // trimmed text. Same string ⇒ the row seals. Different ⇒ an orphan nothing renders.
+    const sealPayload = update.mock.calls[0]![0] as { sim_seals: Record<string, unknown> };
+    const sealKeys = Object.keys(sealPayload.sim_seals);
+    expect(sealKeys).toEqual(["a script I wrote myself"]);
+    expect(block.props.stimulus).toBe(sealKeys[0]);
+  });
+
+  it("the block feeds a real descriptor — the whole point of inserting it", async () => {
+    // Proves the contract END TO END rather than by inspection: the block the route emits, run
+    // through the SAME function the composer's ledger uses, must yield a descriptor whose
+    // conceptText matches the seal key. A rename of `stimulus` on either side fails here.
+    const { createClient } = await import("@/lib/supabase/server");
+    const { createOpenThreadLazy } = await import("@/lib/threads/threads");
+    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { insertMessage } = await import("@/lib/threads/messages");
+    const { toAmbientDescriptor } = await import("@/components/app/home/ambient-descriptors");
+
+    const { client, update } = clientCapturingSeal();
+    (createClient as ReturnType<typeof vi.fn>).mockResolvedValue(client);
+    (createOpenThreadLazy as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "thread-1",
+      active_audience_id: null,
+      sim_seals: {},
+    });
+    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
+      result: { personas: makePersonas(4) },
+      warnings: [],
+    });
+
+    const { POST } = await import("@/app/api/tools/react/route");
+    await POST(makeRequest({ text: "my own hook", persist: true, card: true }));
+
+    const blocks = (insertMessage as ReturnType<typeof vi.fn>).mock.calls[0]![2] as unknown[];
+    const descriptor = toAmbientDescriptor(blocks[0], 0);
+    expect(descriptor).not.toBeNull();
+    expect(descriptor!.kind).toBe("concept"); // not one of the four generated kinds
+    const sealKey = Object.keys(
+      (update.mock.calls[0]![0] as { sim_seals: Record<string, unknown> }).sim_seals,
+    )[0];
+    expect(descriptor!.conceptText.trim()).toBe(sealKey);
+  });
+
+  it("records an UN-HONOURED slice instead of letting the room's number pass for it", async () => {
+    const { createClient } = await import("@/lib/supabase/server");
+    const { createOpenThreadLazy } = await import("@/lib/threads/threads");
+    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { insertMessage } = await import("@/lib/threads/messages");
+
+    const { client, update } = clientCapturingSeal();
+    (createClient as ReturnType<typeof vi.fn>).mockResolvedValue(client);
+    (createOpenThreadLazy as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "thread-1",
+      active_audience_id: null,
+      sim_seals: {},
+    });
+    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
+      result: { personas: makePersonas(7) },
+      warnings: [],
+    });
+
+    const { POST } = await import("@/app/api/tools/react/route");
+    // A slice this room does not have. (Note: General is NOT a slice-less audience — it projects
+    // through the generic baseline signature, so asking for one of ITS archetypes is honoured. The
+    // un-honourable case is a slice the projection has no segment for.)
+    const res = await POST(
+      makeRequest({
+        text: "a draft for the builders",
+        persist: true,
+        card: true,
+        segment: "no_such_archetype",
+        segmentLabel: "Craft nerds",
+      }),
+    );
+    expect(res.status).toBe(200);
+
+    const block = (insertMessage as ReturnType<typeof vi.fn>).mock.calls[0]![2][0] as {
+      props: { slice?: { honored: boolean; label: string; stopPct?: number; reason?: string } };
+    };
+    // The question is recorded as ASKED and UNANSWERED — with the reason, and with no number.
+    expect(block.props.slice).toBeDefined();
+    expect(block.props.slice!.honored).toBe(false);
+    expect(block.props.slice!.label).toBe("Craft nerds");
+    expect(block.props.slice!.stopPct).toBeUndefined();
+    expect(block.props.slice!.reason).toBeTruthy();
+    // And an un-honourable slice seals NOTHING (unchanged Phase-1 law) — no row, no verdict.
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("writes NO message without card:true — type-to-room and the ask verb stay ephemeral", async () => {
+    const { createClient } = await import("@/lib/supabase/server");
+    const { createOpenThreadLazy } = await import("@/lib/threads/threads");
+    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { insertMessage } = await import("@/lib/threads/messages");
+
+    const { client } = clientCapturingSeal();
+    (createClient as ReturnType<typeof vi.fn>).mockResolvedValue(client);
+    (createOpenThreadLazy as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "thread-1",
+      active_audience_id: null,
+      sim_seals: {},
+    });
+    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
+      result: { personas: makePersonas(6) },
+      warnings: [],
+    });
+
+    const { POST } = await import("@/app/api/tools/react/route");
+    // The rail's own "Simulate →" (persist, no card): its stimulus ALREADY has a card — the one the
+    // skill generated — so inserting a second would duplicate the row it is sealing.
+    await POST(makeRequest({ text: "an existing card's text", pin: true, persist: true }));
+    // The composer's ask verb: nothing persisted at all.
+    await POST(makeRequest({ text: "just asking the room" }));
+
+    expect(insertMessage).not.toHaveBeenCalled();
   });
 });

@@ -134,6 +134,7 @@ export function AmbientOverviewRail({
   presentation = "rail",
   onDismiss,
   focusVideo,
+  onTestVariant,
 }: {
   audience: Audience;
   descriptors: AmbientCardDescriptor[];
@@ -162,6 +163,17 @@ export function AmbientOverviewRail({
    * when no video seal matches — the card only routes here when the composer confirms one exists.
    */
   focusVideo?: { id: string; nonce: number } | null;
+  /**
+   * The ＋ door — "Test something of your own". The HOST owns it (the composer), because what comes
+   * through it has to be ROUTED: a draft to `/api/tools/react`, a video file or link to the
+   * `/api/analyze` pipeline the composer already drives. The rail has no access to either seam.
+   *
+   * ⚠️ This replaced `onTestVariant={() => descriptors[0] && openDevelop(descriptors[0].id)}`, which
+   * was dead on an empty rail (`descriptors[0]` undefined ⇒ `&&` short-circuits) and, on a non-empty
+   * one, re-armed the creator's FIRST EXISTING CARD — the opposite of testing something new.
+   * Omitted ⇒ the board renders no ＋ at all, rather than a door onto nothing.
+   */
+  onTestVariant?: () => void;
 }) {
   const meta = audienceToMeta(audience);
   const sheet = presentation === "sheet";
@@ -586,7 +598,9 @@ export function AmbientOverviewRail({
         onOpenStimulus={handleOpenStimulus}
         // Quick-sim fires the real sealed sim (concept) or reveals the measured % (video).
         onQuickSimulate={handleQuickSimulate}
-        onTestVariant={() => descriptors[0] && openDevelop(descriptors[0].id)}
+        // The ＋ door, handed straight to the host (see the prop doc for the two defects the old
+        // one-liner here carried). No handler ⇒ no door, never a dead one.
+        onTestVariant={onTestVariant}
       />
     </div>
   );

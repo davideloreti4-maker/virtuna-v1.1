@@ -537,6 +537,18 @@ export function AmbientOverview({
   reducedMotion?: boolean;
   onOpenStimulus?: (id: string) => void;
   onQuickSimulate?: (id: string) => void;
+  /**
+   * The ＋ door — "Test something of your own". Opens the cold intake, which is the ONLY way to put
+   * a stimulus the creator brought in front of the room.
+   *
+   * ⚠️ Absent ⇒ the row is NOT RENDERED, deliberately. It used to render unconditionally with
+   * `onTestVariant={() => descriptors[0] && openDevelop(descriptors[0].id)}` behind it, which meant
+   * two defects in one line: on an empty rail `descriptors[0]` is undefined and the ＋ was a DEAD
+   * BUTTON (verified live — and it is the only control a new creator's board has), while on a
+   * non-empty rail it re-armed their FIRST EXISTING CARD instead of testing anything new. A door
+   * with nothing behind it is worse than no door, so a host that cannot run a brought stimulus
+   * (the /dev/cards gallery, the fixture review page) shows no door.
+   */
   onTestVariant?: () => void;
   /** When the board IS the whole screen (the mobile full-screen room), the header caret is the way
    *  OUT. Given ⇒ it closes; absent ⇒ the rail's inert switch caret, unchanged. */
@@ -655,16 +667,23 @@ export function AmbientOverview({
             </div>
           ) : null}
 
-          <button
-            type="button"
-            onClick={onTestVariant}
-            className="mt-1 w-full cursor-pointer rounded-[8px] px-2 py-3.5 text-left text-[13px] transition-colors"
-            style={{ color: TONE.faint }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = TONE.cream)}
-            onMouseLeave={(e) => (e.currentTarget.style.color = TONE.faint)}
-          >
-            ＋ Test a new variant
-          </button>
+          {/* The ＋ door. Rendered only when a host can actually run what comes through it (see the
+              prop doc). The copy changed with the wiring: "Test a new variant" promised a variant of
+              an existing row — which is what the old handler wrongly delivered — where this door
+              takes something the creator brings from outside the product. */}
+          {onTestVariant ? (
+            <button
+              type="button"
+              data-testid="ambient-sim-door"
+              onClick={onTestVariant}
+              className="mt-1 w-full cursor-pointer rounded-[8px] px-2 py-3.5 text-left text-[13px] transition-colors"
+              style={{ color: TONE.faint }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = TONE.cream)}
+              onMouseLeave={(e) => (e.currentTarget.style.color = TONE.faint)}
+            >
+              ＋ Test something of your own
+            </button>
+          ) : null}
         </div>
       </div>
 

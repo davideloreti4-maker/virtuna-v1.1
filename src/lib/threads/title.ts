@@ -86,6 +86,9 @@ const BLOCK_HEADLINE: Record<string, (props: Record<string, unknown>) => unknown
   "hook-card": (p) => p.hookLine,
   "script-card": (p) => p.openingBeatSeed,
   "remix-card": (p) => p.adaptedHook,
+  // The ＋ door's card. What the creator brought IS the most topical thing in the thread — and it
+  // is the only signal that turn carries, since the react route persists no user turn beside it.
+  "brought-card": (p) => p.stimulus,
   "persona-chat-turn": (p) => p.text,
   "account-read": (p) => p.handle,
   "multi-audience-read": (p) => p.name,
