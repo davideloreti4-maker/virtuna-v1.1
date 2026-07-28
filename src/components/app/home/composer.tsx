@@ -35,7 +35,9 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { reportCredit402, CreditWallRefusal, isCreditWallRefusal } from "@/lib/billing/credit-wall";
+// CreditWallRefusal / isCreditWallRefusal went with `askAudience` (step 4) — it was the one
+// caller here that had to distinguish "refused" from "failed" to avoid recording a dead ask.
+import { reportCredit402 } from "@/lib/billing/credit-wall";
 import { createPortal } from "react-dom";
 import {
   OpenRoomContext,
@@ -80,9 +82,11 @@ import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { createClient } from "@/lib/supabase/client";
 import {
   ComposerControls,
+  Ico,
   SimModelSelector,
   SkillRows,
   SKILLS,
+  SKILL_ICON,
   getSkill,
   isSkillVisible,
   type ToolId,
@@ -112,7 +116,7 @@ import { SKILL_RUN_META } from "@/components/thread/run-capsule";
 import { useTestRunStages } from "@/components/thread/use-test-run-stages";
 import { SkillRunError } from "@/components/thread/run-notices";
 import { Spinner } from "@/components/ui/spinner";
-import { AudiencePresence, type AudienceAsk, type AudiencePresenceProps } from "@/components/audience-lens/audience-presence";
+import { AudiencePresence, type AudiencePresenceProps } from "@/components/audience-lens/audience-presence";
 import { AmbientOverviewRail } from "@/components/audience-lens/v2/AmbientOverviewRail";
 import { AmbientStartHome } from "@/components/audience-lens/v2/AmbientStartHome";
 import { GENERAL_AUDIENCE } from "@/lib/audience/audience-repo";
@@ -196,9 +200,6 @@ const PLACEHOLDER_BY_TOOL: Record<ToolId, string> = {
   idea: "A topic to build ideas around — or leave empty and I'll pick the angles…",
   hooks: "A topic to write hooks for — or leave empty and I'll pick the angles…",
   chat: "Ask about your niche, your audience, or an idea you're weighing…",
-  // Ask the room (replaces the old `audienceOpen` "Ask your audience…" mode placeholder).
-  // Placement-neutral: the room is a rail (≥xl) / header (<xl), never literally "below".
-  ask: "Type a thought and watch the whole room react…",
   script: "A topic to script — or leave empty to carry in the hook you picked…",
   remix: "Paste a TikTok URL — I'll decode why it worked, then rebuild it as yours…",
   explore: "A niche or competitor to scan — or leave empty and I'll pull your niche…",
@@ -342,11 +343,46 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
         ? "text-warning"
         : "text-foreground-muted";
 
-  // ── Tool chip state (D-06/D-07) ─────────────────────────────────────────────
-  // activeTool drives the placeholder + active-model field (D-09).
-  // Default: "test" — the only live tool in P1 (D-08). Idea live in P3 (D-12).
-  // NOTE: chip selection is NOT a submit; it MUST NEVER arm pendingSealRef (Pitfall #5).
+  // ── The armed skill, and the skill that RAN ────────────────────────────────
+  //
+  // TWO pieces of state, because they answer two different questions and one variable
+  // answering both is what made the one-shot dangerous to build.
+  //
+  //   activeTool  — what the NEXT send will do. The submit router, the placeholder, the
+  //                 model tier, the Start tile highlight, the armed indicator.
+  //   runningTool — what the LAST send actually did. Everything keyed on the run that is
+  //                 on screen: the Test progress spine + failure turn, the Room Rewrite
+  //                 CTA and its reseed. Survives the revert; restored on reload from the
+  //                 thread's own last card.
+  //
+  // ⚠️ THE ONE-SHOT (Lane 2 step 5). A skill is armed for exactly ONE send: `armFired()`
+  // inside handleSubmit puts activeTool back to chat the moment a run is actually
+  // dispatched. With the skill pill gone there is no chip to un-arm yourself with, so an
+  // arm that outlived its run would be a trap — reload into a thread of hook cards and
+  // every plain sentence you typed would silently buy another hooks pack.
+  //
+  // Reverting on SUBMIT, not on completion, is deliberate: a run that FAILS leaves nothing
+  // armed either, and its retry re-arms explicitly (`handleSubmit("test")`), so a retry can
+  // never fire the wrong skill. And a branch that BAILS before dispatching (the General-verb
+  // audience gate, an expired session, a failed upload) never calls armFired at all, so the
+  // creator keeps their arm and can just press send again.
+  //
+  // NOTE: arming is NOT a submit; it MUST NEVER arm pendingSealRef (Pitfall #5).
   const [activeTool, setActiveTool] = useState<ToolId>(DEFAULT_TOOL);
+  const [runningTool, setRunningTool] = useState<ToolId | null>(null);
+  // Has a run been DISPATCHED in this thread since mount/switch? The rehydration below seeds
+  // `runningTool` from the thread's last persisted card, and that fetch is a round-trip — so
+  // without this it lands AFTER a run the creator started in the meantime and overwrites it
+  // with whatever the thread used to hold (null, on a fresh thread). Caught by the Test
+  // failure-turn suite the moment the seed was added: a funnel visitor's dead run rendered
+  // NOTHING, because the reload had just wiped the `runningTool === "test"` the run had set.
+  const hasDispatchedRunRef = useRef(false);
+  // Every real dispatch goes through here, so the guard can never be set in one place and
+  // forgotten in another. `armFired` (handleSubmit) and the card-chain handoffs all call it.
+  const noteRun = useCallback((tool: ToolId) => {
+    hasDispatchedRunRef.current = true;
+    setRunningTool(tool);
+  }, []);
   // SIM-1 tier picker — defaults from the armed skill; creator override persists until
   // the skill changes. UI-only for now (routing still skill-driven).
   const [selectedModel, setSelectedModel] = useState<SkillModel>("Flash");
@@ -445,17 +481,15 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   const [buildOpen, setBuildOpen] = useState(false);
 
   // ── Audience PRESENCE panel state (P13, redesigned 2026-06-21; mode killed 2026-07-18) ─────
-  // `roomExpanded` is now PURELY VISUAL: it blooms the dock peek (empty/permalink) and expands
-  // the <xl header sheet — nothing more. It used to be `audienceOpen`, a fused flag that ALSO
-  // put the composer field into a hidden "ask the room" input MODE. That mode is dead: after P2
-  // the room is always present, so a permanently-open rail made handleSubmit unreachable. Asking
-  // the room is now the explicit `ask` VERB (activeTool === "ask" → askAudience). The rail (≥xl)
-  // ignores this flag entirely (persistent, in-flow), so it's only the dock + header that read it.
+  // `roomExpanded` is PURELY VISUAL: it blooms the dock peek (empty/permalink) and expands the
+  // <xl header sheet — nothing more. It used to be `audienceOpen`, a fused flag that ALSO put
+  // the composer field into a hidden "ask the room" input MODE. That mode died in 07-18, when
+  // it became the explicit `ask` VERB; the verb itself died on 2026-07-28 (owner call, Lane 2
+  // step 4 — see the deleted SKILLS entry in composer-controls.tsx for why). Nothing routes
+  // the composer field at the room any more: the room's own armed sim is the one door, and
+  // `/api/tools/react` keeps its price through that door. The rail (≥xl) ignores this flag
+  // entirely (persistent, in-flow), so it's only the dock + header that read it.
   const [roomExpanded, setRoomExpanded] = useState(false);
-  // Asking the room is a composer VERB now, not a panel mode: when the `ask` skill is armed, the
-  // field's submit/keydown route to askAudience and the placeholder/send-button say "ask", while
-  // the room stays visually wherever P2 placed it. One boolean, read everywhere the old mode was.
-  const isAsk = activeTool === "ask";
   // True while the presence was opened by a card's "See the room →" (a targeted single-card
   // entry) → the Room drills straight into that card instead of the ranked overview. Reset on
   // close so the next plain tab-tap opens the overview (the default bloom).
@@ -465,8 +499,6 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     setRoomExpanded(next);
     if (!next) setRoomDrill(false);
   }, []);
-  const [audienceAsks, setAudienceAsks] = useState<AudienceAsk[]>([]);
-  const [asking, setAsking] = useState(false);
 
   const selectedAudience = audiences.find((a) => a.id === selectedAudienceId) ?? null;
   // The RESOLVED audience: `selectedAudienceId === null` means the General default (a virtual
@@ -479,8 +511,8 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
 
   // Task C (v6): intent is a PROPERTY OF THE AUDIENCE's goal (goal_intent → grow/sell lens),
   // never a per-run composer toggle (the Grow/Sell control retired — THE-ROOM-HANDOFF §3.5).
-  // Switching audience swaps the lens automatically. Still sent to the skill routes + askAudience
-  // (a calibrated audience re-frames the SIM verdict; General → no-op).
+  // Switching audience swaps the lens automatically. Still sent to the skill routes (a calibrated
+  // audience re-frames the SIM verdict; General → no-op).
   const intent: Intent = goalIntentToLens(selectedAudience?.goal_intent ?? null);
 
   // ── Open thread id (07-05 — D-04 per-thread pin for AudienceChip) ───────────
@@ -621,9 +653,13 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // rather than a TDZ one. It spends a Reading — so it fires from the creator's tap, never a
   // render (D-05).
   const handleStarterAccountRun = useCallback(() => {
-    handleUserSelectTool("account");
+    // Arms AND runs in one tap, so it never passes through handleSubmit's armFired(). It has
+    // to do both halves itself: name the run, and leave the composer on chat.
+    noteRun("account");
+    setActiveTool(DEFAULT_TOOL);
+    setShowUpload(false);
     void account.start();
-  }, [handleUserSelectTool, account]);
+  }, [account]);
 
 
   // ── Thread-presence signal (UX-pin fix, post-UAT) ─────────────────────────
@@ -852,7 +888,6 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       // focus over the fresh/re-opened thread, and the idle "meet your room" cast never
       // shows on a new thread. Card focuses need no wipe (descriptors empty themselves).
       focusByThought(null);
-      setAudienceAsks([]);
       setRoomDrill(false);
       // Ambient v2 (AMBIENT_V2_ENABLED): a thread switch to a brand-new/empty thread must land
       // back on the Start grid, not the post-pick fresh-chat home. `startEngaged` is per-session
@@ -862,8 +897,12 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       // Ambient v2 Phase D: clear the prior thread's sealed verdicts; the rehydration below
       // repopulates them from the re-opened thread's `sim_seals` (or leaves them empty for a new one).
       setPersistedSimSeals({});
-      // Let the rehydration below restore the right tool for the loaded thread.
+      // Let the rehydration below restore the right state for the loaded thread: the ARM
+      // resets to the front door, and `runningTool` is re-seeded from the new thread's own
+      // last card (so the previous thread's run never gates a CTA over this one's cards).
       hasUserSelectedToolRef.current = false;
+      hasDispatchedRunRef.current = false;
+      setRunningTool(null);
     }
     isFirstThreadLoadRef.current = false;
 
@@ -942,42 +981,46 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
         // gates the restore-to-chat decision below (regression-safe for selector threads).
         setPersistedChatTurns(orderedTurns(messages));
 
-        // ── RESTORE activeTool on rehydration (render-after-reload fix) ──────────
-        // activeTool defaults to "test", but every thread-view gate used to require
-        // activeTool === its matching tool. On a reload of
-        // a thread that already holds idea/hook/script/remix/explore cards, hasThread
-        // flips to thread-layout but NO view renders — a blank home with a pinned
-        // composer. Restore the tool of the MOST RECENT persisted card so the creator
-        // lands back where they left off. Guarded by hasUserSelectedToolRef so a pick
-        // made while this fetch was in flight always wins.
+        // ── RESTORE on rehydration — but restore the RUN, never the ARM ─────────
+        //
+        // This used to restore `activeTool` from the last persisted card, because every
+        // thread-view gate required `activeTool ===` its matching tool and a reload
+        // otherwise rendered a blank home under a pinned composer. Lane 1 deleted those
+        // gates, and the one-shot (Lane 2 step 5) makes restoring the ARM actively wrong:
+        // reload into a thread of hook cards and the composer would sit silently armed on
+        // Hooks with no pill left to disarm it, so the next plain sentence you typed would
+        // buy another pack. THE ARM NEVER SURVIVES A RELOAD — it resets to the front door.
+        //
+        // What the last card DOES still tell us is which skill produced what is on screen,
+        // and that is `runningTool`: it keeps the Room Rewrite CTA alive across a reload
+        // (it gates on hooks/idea/script) without arming anything.
+        const TYPE_TO_TOOL: Record<string, ToolId> = {
+          'idea-card': 'idea',
+          'hook-card': 'hooks',
+          'script-card': 'script',
+          'remix-card': 'remix',
+          'outlier-grid': 'explore',
+          'video-test-card': 'test',
+        };
+        let ranSkill: ToolId | null = null;
+        for (let i = messages.length - 1; i >= 0 && !ranSkill; i--) {
+          const blocks = messages[i]?.blocks ?? [];
+          for (let j = blocks.length - 1; j >= 0; j--) {
+            const t = blocks[j]?.type;
+            if (t && TYPE_TO_TOOL[t]) { ranSkill = TYPE_TO_TOOL[t]; break; }
+          }
+        }
+        // Only seed when nothing has run since this thread was opened — otherwise this
+        // round-trip lands on top of a run the creator started while it was in flight.
+        if (!hasDispatchedRunRef.current) setRunningTool(ranSkill);
+        // `chatAgentThread` no longer changes anything here: every thread renders through the
+        // one unified stream, so there is no per-tool view left for it to route to. It stays
+        // read above only as the marker it is.
+        void chatAgentThread;
+        // Guarded by hasUserSelectedToolRef so an arm made while this fetch was in flight
+        // (a Start tile tapped during the load) always wins over the reset.
         if (!hasUserSelectedToolRef.current) {
-          const TYPE_TO_TOOL: Record<string, ToolId> = {
-            'idea-card': 'idea',
-            'hook-card': 'hooks',
-            'script-card': 'script',
-            'remix-card': 'remix',
-            'outlier-grid': 'explore',
-            'video-test-card': 'test',
-          };
-          let restored: ToolId | null = null;
-          for (let i = messages.length - 1; i >= 0 && !restored; i--) {
-            const blocks = messages[i]?.blocks ?? [];
-            for (let j = blocks.length - 1; j >= 0; j--) {
-              const t = blocks[j]?.type;
-              if (t && TYPE_TO_TOOL[t]) { restored = TYPE_TO_TOOL[t]; break; }
-            }
-          }
-          // A chat-agent thread lands back in the unified chat view regardless of its last card type —
-          // that view renders the whole thread as ordered turns (persistedChatTurns), so the cards show there.
-          if (chatAgentThread) restored = 'chat';
-          // A thread with cards restores ITS tool. A thread with none — a brand-new thread —
-          // resets to the DEFAULT. Without the else, "New Thread" silently inherited the last
-          // thread's skill: open a hooks thread, hit New Thread, and you got a blank page
-          // still armed with Hooks. The empty thread has nothing to restore, so it must fall
-          // back to the front door rather than to whatever you happened to do last.
-          if (!hasUserSelectedToolRef.current) {
-            setActiveTool(restored ?? DEFAULT_TOOL);
-          }
+          setActiveTool(DEFAULT_TOOL);
         }
       } catch {
         // Network error or parse error — silent (no crash, views stay idle)
@@ -1053,10 +1096,12 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     // reset to the in-mode default — "test" for socials, the first General verb for
     // general — so the pill, slash menu, placeholder, and submit path stay coherent.
     const newMode = audience.mode ?? "socials";
+    // An out-of-mode arm resets to the in-mode front door. The socials fallback used to be
+    // "test" — the most expensive skill in the product, silently armed by switching audience.
     setActiveTool((current) =>
       getSkill(current).modes.includes(newMode)
         ? current
-        : newMode === "general" ? "profile" : "test",
+        : newMode === "general" ? "profile" : DEFAULT_TOOL,
     );
     if (!openThreadId) return;
     // Only persist a per-thread pin for null (General) or a REAL audience UUID. Virtual
@@ -1115,7 +1160,10 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // The hook is the anchor (PINNED: /api/tools/script accepts { ask?, anchor, platform }).
   // CRITICAL: NEVER sets pendingSealRef / calls stream.start — Script never navigates to /analyze.
   const handleWriteScript = useCallback((hookLine: string, _audienceArchetype: string) => {
-    setActiveTool("script");
+    // This FIRES a script run (below) rather than arming one, so it names the RUN. Arming the
+    // composer here would strand the creator on Script after a card CTA they never aimed at
+    // the field — the one-shot's whole point.
+    noteRun("script");
     setScriptAnchorHook(hookLine); // PR-2: cite this input hook in the script intro
     script.reset();
     // ask empty — the carried hookLine anchors the script generation.
@@ -1140,8 +1188,8 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // CRITICAL: this fires ONLY on explicit tap (D-05 honesty spine).
   // CRITICAL: NEVER arms pendingSealRef / calls stream.start (T-03-13/T-06-20).
   const handleDevelopRemix = useCallback(async (adaptedHook: string, remixPlatform: string) => {
-    // Switch to hooks view so the user sees the in-progress state
-    setActiveTool("hooks");
+    // POSTs a develop run below — it fires, so it names the RUN, not the composer's arm.
+    noteRun("hooks");
     hooks.reset();
     try {
       // POST the adapted hook as the anchor to the PINNED develop endpoint.
@@ -1552,7 +1600,28 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // ── Submit -> create (lifted/adapted from Board.tsx handleContentSubmit) ──
   // Slim: only the TikTok-URL and video-upload paths for Test; Ideas pipeline for Idea.
   // CRITICAL: Idea path NEVER sets pendingSealRef or calls stream.start (T-03-13).
-  const handleSubmit = useCallback(async () => {
+  //
+  // `toolOverride` exists for ONE reason: the one-shot. A retry fires long after `activeTool`
+  // has reverted to chat, so an error card's "Retry" would otherwise send a plain chat turn
+  // instead of re-running the skill that failed. Passing the tool explicitly makes the retry
+  // say what it means — it cannot silently become a different, cheaper, wrong run.
+  const handleSubmit = useCallback(async (toolOverride?: ToolId) => {
+    const tool = toolOverride ?? activeTool;
+
+    // THE ONE-SHOT (Lane 2 step 5). Called at the exact point a branch DISPATCHES a run —
+    // never at the top, because a branch that bails (the General-verb audience gate, an
+    // expired session, a failed upload, a non-TikTok URL) must leave the arm intact so the
+    // creator can just press send again rather than re-arming from the grid.
+    //
+    // Two writes, and they are not the same fact: `runningTool` remembers what is on screen
+    // (the Test spine, the failure turn, the Rewrite CTA read it); `activeTool` goes back to
+    // chat so the NEXT sentence is a conversation, not another billed pack.
+    const armFired = () => {
+      noteRun(tool);
+      setActiveTool(DEFAULT_TOOL);
+      setShowUpload(false);
+    };
+
     // Skills that persist into the open chat thread AND whose user turn must be
     // persisted client-side (chat is the exception — it persists its own turn
     // server-side to keep its refine anchor). Kept in sync with the ensureThreadForSend
@@ -1571,7 +1640,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       // lastUserTurn independent of persisted order, so it never needs awaiting.
       // Must run AFTER the thread exists (ensureThreadForSend) so it targets the
       // right thread — guaranteed by call ordering in every branch below.
-      if (t && USER_TURN_TOOLS.includes(activeTool)) {
+      if (t && USER_TURN_TOOLS.includes(tool)) {
         void fetch("/api/threads/user-turn", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -1614,13 +1683,13 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     // minted a FRESH row (three per run) and the sealed card landed in a thread the
     // client was never pointing at — a paid Max run completing into a blank screen (F-019).
     if (
-      activeTool === "idea" ||
-      activeTool === "hooks" ||
-      activeTool === "chat" ||
-      activeTool === "script" ||
-      activeTool === "remix" ||
-      activeTool === "explore" ||
-      activeTool === "test"
+      tool === "idea" ||
+      tool === "hooks" ||
+      tool === "chat" ||
+      tool === "script" ||
+      tool === "remix" ||
+      tool === "explore" ||
+      tool === "test"
     ) {
       await ensureThreadForSend();
     }
@@ -1629,8 +1698,9 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     // Bodyless: the read resolves the creator's OWN handle server-side, so the field is
     // ignored entirely. This fires from an explicit send (a real user gesture), which is
     // what D-05 requires — it is not an auto-fire on render.
-    if (activeTool === "account") {
+    if (tool === "account") {
       setUrl(""); // the field was never an input here; don't leave a stale draft behind
+      armFired();
       await account.start();
       return;
     }
@@ -1638,10 +1708,11 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     // ── Idea tool path (D-12) ───────────────────────────────────────────────
     // CRITICAL: this block must never set pendingSealRef.current or call stream.start.
     // Empty ask = Auto mode; typed ask = seeded mode (D-12).
-    if (activeTool === "idea") {
+    if (tool === "idea") {
       const ask = trimmedUrl; // empty string → Auto; non-empty → seeded
       captureUserTurn(ask);
       setUrl(""); // clear input after send
+      armFired();
       // ideas.start() does the full fetch+getReader SSE loop (BLOCKER-1 compliant)
       await ideas.start(ask, platform, intent);
       return;
@@ -1651,10 +1722,11 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     // CRITICAL: this block must never set pendingSealRef.current or call stream.start.
     // Empty ask = Auto/anchored mode; typed ask = seeded mode (D-09).
     // T-03-13/T-04-13: Hook send NEVER navigates to /analyze.
-    if (activeTool === "hooks") {
+    if (tool === "hooks") {
       const ask = trimmedUrl; // empty string → Auto; non-empty → seeded
       captureUserTurn(ask);
       setUrl(""); // clear input after send
+      armFired();
       // hooks.start() does the full fetch+getReader SSE loop (BLOCKER-1 compliant)
       await hooks.start(ask, platform, intent);
       return;
@@ -1664,10 +1736,11 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     // CRITICAL: this block MUST NOT set pendingSealRef.current or call stream.start.
     // Chat send NEVER navigates to /analyze (D-05 — no silent auto-fire).
     // ask must be non-empty (canSubmit already gates on trimmedUrl.length > 0).
-    if (activeTool === "chat") {
+    if (tool === "chat") {
       const ask = trimmedUrl;
       captureUserTurn(ask);
       setUrl(""); // clear input after send
+      armFired();
 
       // ── Plan 05-05: Refine-intent detection (D-04 / D-05) ──────────────────
       // Before routing to a plain chat turn, check whether the message is a
@@ -1704,8 +1777,10 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           const anchor = buildRefineAnchor(foundCard.props, instruction ?? ask);
           // Route to hooks stream refine path — error surfaces via hooks.error → SkillRunError
           hooks.reset();
-          // Switch to hooks view so the new card renders in the hooks thread
-          setActiveTool("hooks");
+          // The refine RUNS as hooks, so the thread's live tail is a hooks run — but the
+          // composer must not stay armed on it (one-shot). `setActiveTool("hooks")` here used
+          // to switch a per-skill VIEW that Lane 1 deleted; naming the run is all it ever meant.
+          noteRun("hooks");
           await hooks.startRefine({ skill: "hooks", instruction: instruction ?? ask, anchor, cardRef, platform });
         } else {
           // skill === "idea"
@@ -1727,8 +1802,8 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           const anchor = buildRefineAnchor(foundCard.props, instruction ?? ask);
           // Route to ideas stream refine path — error surfaces via ideas.error → SkillRunError
           ideas.reset();
-          // Switch to ideas view so the new card renders in the ideas thread
-          setActiveTool("idea");
+          // Same as the hooks branch above — name the run, never re-arm the composer.
+          noteRun("idea");
           await ideas.startRefine({ skill: "idea", instruction: instruction ?? ask, anchor, cardRef, platform });
         }
         return;
@@ -1745,11 +1820,12 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     // CRITICAL: NEVER sets pendingSealRef.current or calls stream.start (T-03-13/T-06-20).
     // Script send NEVER navigates to /analyze.
     // ask = typed topic or empty; anchor = carried hookLine from hooks→script seam.
-    if (activeTool === "script") {
+    if (tool === "script") {
       const ask = trimmedUrl; // topic seed or empty (anchor drives the script when carried)
       captureUserTurn(ask);
       setUrl(""); // clear input after send
       setScriptAnchorHook(null); // direct topic send — no anchor hook → thinner intro
+      armFired();
       script.reset();
       // script.start(ask, platform, anchor?) — anchor omitted from direct composer sends
       await script.start(ask, platform, undefined, intent);
@@ -1760,10 +1836,11 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     // CRITICAL: NEVER sets pendingSealRef.current or calls stream.start (T-03-13/T-06-20).
     // Remix send NEVER navigates to /analyze.
     // URL is required (canSubmit gates on trimmedUrl.length > 0 for remix).
-    if (activeTool === "remix") {
+    if (tool === "remix") {
       const url = trimmedUrl; // trending/competitor TikTok URL (required)
       captureUserTurn(url);
       setUrl(""); // clear input after send
+      armFired();
       remix.reset();
       await remix.start(url, platform, intent);
       return;
@@ -1776,10 +1853,11 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     // A typed field-send maps to the niche param (empty → un-niched pull). The
     // params popover + quick-actions are the richer entry points (onRunExplore /
     // onQuickAction → explore.start), but a bare field-send still works.
-    if (activeTool === "explore") {
+    if (tool === "explore") {
       const ask = trimmedUrl; // typed niche/keywords or empty
       captureUserTurn(ask);
       setUrl(""); // clear input after send
+      armFired();
       // explore.start() does the full fetch+getReader SSE loop (BLOCKER-1 compliant).
       await explore.start({ niche: ask || undefined });
       return;
@@ -1794,7 +1872,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     // — a General verb never navigates to /analyze (Pitfall 2 / sibling of Chat).
     // The draft/scenario is passed RAW (T-07-04-02) — never pre-concatenated into a
     // prompt; the routes data-fence it downstream.
-    if (activeTool === "simulate" || activeTool === "predict") {
+    if (tool === "simulate" || tool === "predict") {
       // Gate: a General audience must be selected (asymmetry §16.4). A General verb
       // can be active while no General audience is selected (e.g. picked via the `/`
       // slash menu, or after switching audience away) — route to Build, never fire.
@@ -1810,10 +1888,11 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       await ensureThreadForSend();
       captureUserTurn(draft);
       setUrl(""); // clear input after send
+      armFired();
       const endpoint =
-        activeTool === "simulate" ? "/api/tools/simulate" : "/api/tools/predict";
+        tool === "simulate" ? "/api/tools/simulate" : "/api/tools/predict";
       const body =
-        activeTool === "simulate"
+        tool === "simulate"
           ? { audienceId: selectedAudience.id, message: draft }
           : { audienceId: selectedAudience.id, scenario: draft };
       setSubmitting(true);
@@ -1878,6 +1957,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
         // sealHandledRef reset so this fresh run's complete fires the seal once.
         pendingSealRef.current = true;
         sealHandledRef.current = false;
+        armFired();
         // WR-04: no client-side storage cleanup on failure here (unlike the profile path).
         // /api/analyze consumes video_storage_path in a background job, so deleting the blob
         // on a stream error would race the server that may still read it. Orphans on the Test
@@ -1905,6 +1985,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       // Arm the in-thread seal for this real submission (see upload path above).
       pendingSealRef.current = true;
       sealHandledRef.current = false;
+      armFired();
       await stream
         .start({
           input_mode: "tiktok_url",
@@ -1991,14 +2072,6 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
 
   const onSubmitForm = (e: React.FormEvent) => {
     e.preventDefault();
-    // Ask-the-room verb: the field sends into the room, not a skill pipeline (mode → verb, 07-18).
-    if (isAsk) {
-      if (url.trim().length > 0) {
-        void askAudience(url);
-        setUrl("");
-      }
-      return;
-    }
     // Evidence-drop mode (D-07): a staged chat/screenshot/clip POSTs to /api/tools/profile.
     // Sibling to the creator path — the creator tool/submit flow below is byte-identical.
     if (evidenceFile) {
@@ -2009,20 +2082,25 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     void handleSubmit();
   };
 
-  // ── `/` slash entry (UX-01) ────────────────────────────────────────────────
-  // Typing `/` in the field opens the skill list as a command menu, filterable;
-  // selecting sets the skill and clears the `/`. A URL never starts with `/`, so
-  // this never collides with the Test/Remix URL paths.
-  // `/` always opens the skill switcher — it's how you leave any verb, Ask included (typing
-  // `/hooks` from Ask arms Hooks). A real thought rarely starts with `/`, and only a leading
-  // `/` triggers, so it never eats a mid-sentence slash.
+  // ── `/` slash entry (UX-01) — THE skill picker now ─────────────────────────
+  // Typing `/` in the field opens the skill list as a command menu, filterable; selecting
+  // ARMS the skill (for one send) and clears the `/`. A URL never starts with `/`, so this
+  // never collides with the Test/Remix URL paths, and only a LEADING `/` triggers, so it
+  // never eats a mid-sentence slash.
+  //
+  // ⚠️ Owner call 2026-07-28: this door STAYS while the skill pill goes. The two were a
+  // deliberate pair — same SkillRows, same isSkillVisible gate — and deleting both would
+  // have left the chat agent as the only router, i.e. no deterministic way to reach a
+  // skill's own gated, billed, 300s route. This one carries no persistent chrome: it does
+  // not exist until you type `/`, which is why it survives "no skill pill in the composer".
   const slashActive = url.startsWith("/");
   const slashQuery = slashActive ? url.slice(1) : "";
   const firstSlashSkill = () => {
     const q = slashQuery.trim().toLowerCase();
-    // Gate identically to the skill pill / slash menu via the shared isSkillVisible
-    // (WR-01) so Enter can never select a skill the menu never displayed — and the
-    // always-visible General verbs ARE selectable here too.
+    // Gate identically to the rendered slash menu via the shared isSkillVisible (WR-01) so
+    // Enter can never select a skill the menu never displayed — and the always-visible
+    // General verbs ARE selectable here too. (This used to say "the skill pill / slash
+    // menu"; the pill is gone, and the two-door lock-step it describes is now one door.)
     const slashMode = selectedAudience?.mode ?? "socials";
     return (
       SKILLS.find(
@@ -2058,21 +2136,15 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     // Enter submits (Shift+Enter = newline) — textarea needs this explicitly.
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      // Ask-the-room verb: send the thought into the room (mode → verb, 07-18).
-      if (isAsk) {
-        if (url.trim().length > 0) {
-          void askAudience(url);
-          setUrl("");
-        }
-        return;
-      }
       if (canSubmit) void handleSubmit();
     }
   };
 
-  // Placeholder follows the active chip (the `ask` verb's copy lives in PLACEHOLDER_BY_TOOL now,
-  // not a mode branch); in the pinned state the follow-up copy takes precedence so it's
-  // contextually accurate (D-07 / D-24).
+  // Placeholder follows the ARMED skill; in the pinned state the follow-up copy takes
+  // precedence so it's contextually accurate (D-07 / D-24).
+  //
+  // ⚠️ Load-bearing since the skill pill was deleted: with the armed indicator, this is
+  // half of what tells a creator what their next send will do (and therefore spend).
   const activePlaceholder = hasSimulation
     ? PLACEHOLDER_ACTIVE
     : PLACEHOLDER_BY_TOOL[activeTool];
@@ -2229,8 +2301,12 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // streams into the SAME thread + Read, and on completion we land focus on the winning (highest-
   // stop) card so the Room shows the real delta (prior → new). Only the text-seedable skills
   // rewrite; remix (URL-seeded) has no lever-reseed path → the CTA is gated off there.
+  // ⚠️ runningTool, NOT activeTool. This gates the Population weak-spot's "Rewrite to win back
+  // the N% who bounced →" CTA, which by definition appears AFTER a run has produced cards — by
+  // which time the one-shot has already put activeTool back to chat. Reading the arm here would
+  // have made the CTA vanish at the exact moment it becomes meaningful.
   const canRoomRewrite =
-    activeTool === "hooks" || activeTool === "idea" || activeTool === "script";
+    runningTool === "hooks" || runningTool === "idea" || runningTool === "script";
   // Bumped once a reseed lands + the Room re-focuses; the Room reveals the delta only after this
   // advances past the value it captured at tap-time (so its "current" read is the post-rewrite one).
   const [rewriteNonce, setRewriteNonce] = useState(0);
@@ -2244,21 +2320,24 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       if (seed.length === 0) return;
       // reset() clears the prior batch (isDone → false) BEFORE we arm the flag, so the completion
       // effect can't misfire on the previous run; the reseed then streams a fresh steered batch.
-      if (activeTool === "hooks") {
+      // The reseed re-runs the ORIGINATING skill — the one whose cards are on screen — so it
+      // reads runningTool. It also leaves runningTool alone: a rewrite of a hooks batch is
+      // still a hooks run, so the CTA survives its own use.
+      if (runningTool === "hooks") {
         hooks.reset();
         roomRewriteExpectingRef.current = true;
         await hooks.start(seed, platform, intent);
-      } else if (activeTool === "idea") {
+      } else if (runningTool === "idea") {
         ideas.reset();
         roomRewriteExpectingRef.current = true;
         await ideas.start(seed, platform, intent);
-      } else if (activeTool === "script") {
+      } else if (runningTool === "script") {
         script.reset();
         roomRewriteExpectingRef.current = true;
         await script.start(seed, platform, undefined, intent);
       }
     },
-    [activeTool, hooks, ideas, script, platform, intent],
+    [runningTool, hooks, ideas, script, platform, intent],
   );
 
   // Reseed completion: once the active skill's stream closes, land the Room's focus on the winning
@@ -2269,18 +2348,18 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   useEffect(() => {
     if (!roomRewriteExpectingRef.current) return;
     const stream =
-      activeTool === "hooks"
+      runningTool === "hooks"
         ? hooks
-        : activeTool === "idea"
+        : runningTool === "idea"
           ? ideas
-          : activeTool === "script"
+          : runningTool === "script"
             ? script
             : null;
     if (!stream || stream.isStreaming || !stream.isDone) return;
     const streamingCount =
-      activeTool === "hooks"
+      runningTool === "hooks"
         ? hooksBlocks.length
-        : activeTool === "idea"
+        : runningTool === "idea"
           ? ideasBlocks.length
           : scriptBlocks.length;
     if (streamingCount === 0) return;
@@ -2296,7 +2375,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     focusByTap(best.id);
     setRewriteNonce((n) => n + 1);
   }, [
-    activeTool,
+    runningTool,
     hooks.isDone,
     hooks.isStreaming,
     ideas.isDone,
@@ -2310,70 +2389,26 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     focusByTap,
   ]);
 
-  // ── Ask-the-room handler (P13; mode → `ask` verb 2026-07-18) ────────────────
-  // The `ask` verb makes the composer FIELD the room input (no second input): submit routes to
-  // askAudience (POST /api/tools/react) → appends a turn + sets the focus so the Lens shows the
-  // room's read. (`isAsk` is declared up top so the submit/render code can branch on it.)
-  const askInflightRef = useRef<AbortController | null>(null);
-  useEffect(() => () => askInflightRef.current?.abort(), []);
-
-  const askAudience = useCallback(
-    async (raw: string) => {
-      const text = raw.trim();
-      if (text.length === 0 || asking) return;
-      askInflightRef.current?.abort();
-      const controller = new AbortController();
-      askInflightRef.current = controller;
-      setAsking(true);
-      try {
-        const res = await fetch("/api/tools/react", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text, intent }),
-          signal: controller.signal,
-        });
-        if (controller.signal.aborted) return;
-        if (!res.ok) {
-          // "Ask the room" became a PAID action on 2026-07-28 (/api/tools/react, 1 credit), so
-          // this fetch can now come back 402. Without the wall that refusal is COMPLETELY SILENT:
-          // the catch below records `error: true`, and the only consumer of the ask trail filters
-          // errored asks out (`audience-presence.tsx`), so a refused ask renders nothing at all.
-          // The dialog is not the nicer feedback here — it is the ONLY feedback.
-          //
-          // (This is NOT the stream hooks' CreditWallRefusal case, where an error card really did
-          // draw a futile retry under the modal. Checked 2026-07-28 — nothing renders here.)
-          const err = await res.json().catch(() => null);
-          if (reportCredit402(res.status, err)) throw new CreditWallRefusal();
-          throw new Error("reaction_failed");
-        }
-        const data: {
-          fraction?: string;
-          scrollQuote?: string;
-          personas?: { archetype: string; verdict: "stop" | "scroll"; quote: string }[];
-          population?: import("@/lib/audience/population").PopulationAggregate | null;
-        } = await res.json();
-        if (controller.signal.aborted) return;
-        const fraction = data.fraction ?? "";
-        const scrollQuote = data.scrollQuote ?? "";
-        const personas = Array.isArray(data.personas) ? data.personas : undefined;
-        // Stage 2 population projection — present only for a calibrated audience with v2 axes.
-        const population = data.population ?? undefined;
-        setAudienceAsks((a) => [...a, { id: nanoid(), thought: text, fraction, scrollQuote, personas, population }]);
-        // Lens shows this read — with the real named cast (react route returns registry-enum personas).
-        focusByThought({ conceptText: text, fraction, scrollQuote, personas, population });
-      } catch (e) {
-        if (controller.signal.aborted || (e instanceof DOMException && e.name === "AbortError")) return;
-        // The wall is already up and it IS the UI for this failure. Don't also record an errored
-        // ask: nothing renders it, so it is dead state that only makes the trail lie about how
-        // many asks were made.
-        if (isCreditWallRefusal(e)) return;
-        setAudienceAsks((a) => [...a, { id: nanoid(), thought: text, fraction: "", scrollQuote: "", error: true }]);
-      } finally {
-        if (askInflightRef.current === controller) setAsking(false);
-      }
-    },
-    [asking, focusByThought, intent],
-  );
+  // ── The ask-the-room handler is GONE (2026-07-28 — owner call, Lane 2 step 4) ────────────
+  //
+  // `askAudience` POSTed the composer field to /api/tools/react and pushed the result into the
+  // legacy <AudiencePresence> ask trail + the thought focus. It was deleted because it billed
+  // for silence. Probed against the real component, both flag ways, before touching anything:
+  //
+  //   flag OFF, fresh /home      → 1 billed call, NOTHING on screen
+  //   flag OFF, existing thread  → the thought appears in the collapsed pulse bar; no verdict
+  //   flag ON  (either state)    → 1 billed call, NOTHING on screen — AmbientOverviewRail and
+  //                                AmbientOverviewSheet never consumed `asks` or the focus
+  //
+  // and on 2026-07-28 the route became a PAID action (1 credit). Its only doors were the skill
+  // pill (deleted the same day) and `/ask`.
+  //
+  // WHAT SURVIVES: the route, its price, the ＋ door, and `AmbientOverviewRail.fireSim` — the
+  // room's own armed sim, which is a real surface with a real result. This deletion removed a
+  // second, blind door to the same engine call; it did not remove the revenue line.
+  //
+  // `focusByThought` stays: the per-thread wipes and the audience switch still clear a stale
+  // read through it. Nothing SETS a thought focus now, which is exactly the point.
 
   // The presence props for the ONE docked peek+Bloom presence (all breakpoints — the desktop
   // rail presentation was retired in #208 and its code deleted).
@@ -2404,31 +2439,24 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     audiences,
     selectedAudienceId,
     onSelectAudience: (a: Audience) => {
-      // A typed-thought read + the ask ledger were produced against the PREVIOUS audience —
-      // leaving them in focus would show the old room's reaction under the new audience's
-      // name. Clear them; the focus falls back to the thread's own cards (each card carries
-      // its own read, anchored to the thread history, so those stay).
+      // A typed-thought read was produced against the PREVIOUS audience — leaving it in focus
+      // would show the old room's reaction under the new audience's name. Clear it; the focus
+      // falls back to the thread's own cards (each card carries its own read, anchored to the
+      // thread history, so those stay).
       focusByThought(null);
-      setAudienceAsks([]);
       void handleSelectAudience(a);
     },
     focus: ambientFocus,
     reducedMotion,
     // Visual expand only (dock bloom + <xl header sheet). The rail ignores it; tapping the band
-    // no longer arms an input mode — asking the room is the `ask` verb (activeTool === "ask").
+    // arms nothing — the composer field has no route to the room at all now (step 4).
     open: roomExpanded,
     onOpenChange: handleRoomExpandedChange,
     drillIntoFocus: roomDrill,
-    asks: audienceAsks,
-    asking,
-    onReask: (a: AudienceAsk) =>
-      focusByThought({
-        conceptText: a.thought,
-        fraction: a.fraction,
-        scrollQuote: a.scrollQuote,
-        personas: a.personas,
-        population: a.population,
-      }),
+    // `asks` / `asking` / `onReask` are NOT passed any more: the composer's ask verb was the only
+    // producer, and it is gone. They stay optional on <AudiencePresence> (which is itself on the
+    // v2 cutover's list) so nothing there had to change — but with no producer, the trail is
+    // permanently empty and `earlierAsks` renders null by construction.
     onBuildAudience: () => setBuildOpen(true),
     focusList: ambientDescriptors,
     onStep: focusByTap,
@@ -2493,8 +2521,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
         // A built SIM becoming active is an audience switch — same re-ground as
         // onSelectAudience above (a stale thought read must not carry the new name).
         focusByThought(null);
-        setAudienceAsks([]);
-        handleBuiltAudience(saved);
+          handleBuiltAudience(saved);
       }}
       onEvidence={() => evidenceInputRef.current?.click()}
     />
@@ -2580,8 +2607,11 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     stream.phase === "reconnecting" ||
     stream.phase === "polling";
   const testRunStages = useTestRunStages({ analyzing: testAnalyzing, carding });
+  // ⚠️ runningTool, NOT activeTool. armFired() reverts the arm to chat the instant the Test is
+  // dispatched — a ~2-minute run — so keying the progress spine on the arm would have blanked
+  // the whole wait the moment it started. This is the read that made the one-shot safe.
   const testSubmitPending =
-    activeTool === "test" && (submitting || testAnalyzing || carding);
+    runningTool === "test" && (submitting || testAnalyzing || carding);
   const testSubmitTurn = testSubmitPending ? (
     <ThreadShell userTurn={lastUserTurn}>
       <ThreadAssistantTurn>
@@ -2619,7 +2649,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // NOT the quota 402: that sets `quotaError` too, and the wall dialog below owns it — rendering
   // both would put an inline "retry" under a modal that just said the allowance is spent.
   const testRunFailed =
-    activeTool === "test" &&
+    runningTool === "test" &&
     stream.phase === "error" &&
     !stream.quotaError &&
     !testSubmitPending;
@@ -2641,7 +2671,10 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           // Billing happens only in /api/analyze's success branch ("BILL THE READING — inside the
           // success branch, on purpose"), so a dead run really did cost them nothing, and a retry
           // really is free. Both halves of that sentence are load-bearing; don't soften either.
-          onRetry={testRunStillAlive ? undefined : () => void handleSubmit()}
+          // handleSubmit("test") — explicitly, not handleSubmit(). By the time this button
+          // exists the one-shot has reverted the arm to chat, so a bare retry would have sent
+          // the failed video URL as a CHAT MESSAGE and called it a retry.
+          onRetry={testRunStillAlive ? undefined : () => void handleSubmit("test")}
           retryLabel="Retry the video test"
         />
       </ThreadAssistantTurn>
@@ -2688,6 +2721,39 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     </OpenRoomContext.Provider>
   );
 
+  // ── THE ARMED INDICATOR — what replaced the skill pill, and why it is not one ────────────
+  //
+  // The pill was a PICKER: a chip that opened a nine-row popover and set `activeTool`. It is
+  // deleted (owner call). But deleting it alone would have left a real hole: with the pill
+  // gone, and a Start tile able to arm a SIM-1 Max video Test, the only thing on screen saying
+  // what the next send costs would have been the placeholder — which vanishes the moment you
+  // type a character. "Press send and find out" is not a thing to ship on a metered product.
+  //
+  // So this states the armed skill and offers exactly ONE control: `×`, back to chat. No menu,
+  // no popover, no list — the `/` slash menu is where you PICK a skill. It renders only while
+  // something other than chat is armed, so the default composer is a clean field, and it
+  // disappears by itself the moment the one-shot fires.
+  const armedSkill = activeTool === DEFAULT_TOOL ? null : getSkill(activeTool);
+  const armedIndicator = armedSkill ? (
+    <span
+      data-testid="composer-armed-skill"
+      data-skill={activeTool}
+      className="inline-flex h-[34px] min-w-0 shrink items-center gap-1.5 rounded-lg bg-white/[0.05] pl-2.5 pr-1.5 text-reading font-medium text-foreground pointer-coarse:h-11"
+    >
+      <Ico name={SKILL_ICON[activeTool]} size={15} className="shrink-0 text-foreground-secondary" />
+      <span className="truncate">{armedSkill.label}</span>
+      <button
+        type="button"
+        aria-label={`Disarm ${armedSkill.label} — back to chat`}
+        title="Back to chat"
+        onClick={() => handleUserSelectTool(DEFAULT_TOOL)}
+        className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-[6px] text-foreground-muted transition-colors hover:bg-white/[0.08] hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring)]"
+      >
+        <XIcon className="h-[13px] w-[13px]" />
+      </button>
+    </span>
+  ) : null;
+
   // Shared form element (identical markup; referenced by both layout branches).
   const composerForm = (
     <form
@@ -2696,9 +2762,8 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       onSubmit={onSubmitForm}
       onDragOver={(e) => {
         // Evidence-drop overlay (D-07). Additive: VideoUpload stops propagation on its
-        // own drop zone, so the creator upload path is unaffected. Inert while the ask verb
-        // owns the field — submit goes to askAudience, so a staged file would be dropped.
-        if (isAsk) return;
+        // own drop zone, so the creator upload path is unaffected. (The `isAsk` bail that
+        // used to guard this went with the ask verb — no skill hijacks the field now.)
         e.preventDefault();
         if (!dragOver) setDragOver(true);
       }}
@@ -2707,7 +2772,6 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
         setDragOver(false);
       }}
       onDrop={(e) => {
-        if (isAsk) return;
         e.preventDefault();
         setDragOver(false);
         const f = e.dataTransfer.files?.[0];
@@ -2728,7 +2792,8 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
         <div className="relative p-4">
           {/* `/` slash command menu (UX-01) — opens UPWARD above the composer when
               the field value starts with `/`. Filterable; selecting sets the skill
-              and clears the `/`. Reuses SkillRows (the same list as the skill pill). */}
+              and clears the `/`. SkillRows is the same list the pill used to show — this is
+              the only place it renders now. */}
           {slashActive && (
             <div
               role="menu"
@@ -2865,17 +2930,16 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
             />
 
             {/* Row 2 — controls, split the way Claude/Perplexity split theirs: the LEFT
-                cluster is what you're about to do (attach · verb), the RIGHT cluster is what
-                you're talking to (the SIM-1 tier) plus the send. Every control is a bare or
-                quietly-filled glyph — the cream send disc is the surface's ONE bright element.
-                The skill menu is mode-scoped (07-01/UX-02/D-07): activeMode is DERIVED from the
-                selected audience (null/Socials → "socials" — Pitfall 2). */}
+                cluster is what you're about to do (attach · armed skill), the RIGHT cluster is
+                what you're talking to (the SIM-1 tier) plus the send. Every control is a bare or
+                quietly-filled glyph — the cream send disc is the surface's ONE bright element. */}
             <div className="flex items-center justify-between gap-2">
-              {/* LEFT cluster — attach + verb. The `+` attach is HIDDEN while the ask verb owns
-                  the field: submit routes to askAudience (onSubmitForm's first branch), so a staged
-                  evidence file would be silently discarded. The verb chip STAYS in every mode —
-                  it's the only way OUT of Ask (Ask is a verb now, not a trap you can't leave). The
-                  file <input> stays mounted regardless — handleUserSelectTool("profile") clicks it. */}
+              {/* LEFT cluster — attach · armed indicator · (Explore params, when armed).
+                  The skill PILL used to sit here; it is gone (owner call — Lane 2 step 3). The
+                  `+` attach is now unconditional: it was hidden under the ask verb because that
+                  verb hijacked submit and would have discarded a staged file, and the verb is
+                  gone too. The file <input> stays mounted regardless — handleUserSelectTool
+                  ("profile") clicks it from inside the click gesture. */}
               <div className="flex min-w-0 items-center gap-1.5">
                 {/* In-input evidence attach (05-06 / D-07) — a chat / screenshot (the Profile
                     evidence door). Opens a file picker; drag-drop is the form overlay. */}
@@ -2890,22 +2954,20 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
                     e.target.value = ""; // allow re-selecting the same file
                   }}
                 />
-                {!isAsk && (
-                  <button
-                    type="button"
-                    aria-label={EVIDENCE_ATTACH_LABEL}
-                    title={EVIDENCE_ATTACH_LABEL}
-                    onClick={() => evidenceInputRef.current?.click()}
-                    className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-full text-foreground-muted transition-colors hover:bg-white/[0.06] hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring)] pointer-coarse:h-11 pointer-coarse:w-11"
-                  >
-                    <Plus className="h-[18px] w-[18px]" strokeWidth={1.75} />
-                  </button>
-                )}
+                <button
+                  type="button"
+                  aria-label={EVIDENCE_ATTACH_LABEL}
+                  title={EVIDENCE_ATTACH_LABEL}
+                  onClick={() => evidenceInputRef.current?.click()}
+                  className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-full text-foreground-muted transition-colors hover:bg-white/[0.06] hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring)] pointer-coarse:h-11 pointer-coarse:w-11"
+                >
+                  <Plus className="h-[18px] w-[18px]" strokeWidth={1.75} />
+                </button>
+
+                {armedIndicator}
 
                 <ComposerControls
                   activeTool={activeTool}
-                  onSelectTool={handleUserSelectTool}
-                  activeMode={selectedAudience?.mode ?? "socials"}
                   onRunExplore={(params) => void explore.start(params)}
                   className="shrink-0"
                 />
@@ -2950,11 +3012,11 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
                   // chain never needed a case for it. Now that send RUNS the read, the button
                   // has to say so: a screen-reader user pressing "Simulate" and being charged
                   // for an account scrape is the same bug as a sighted one, just louder.
-                  aria-label={isAnyStreaming ? "Stop the run" : isAsk ? "Ask the room" : evidenceFile ? "Read this evidence" : activeTool === "idea" ? "Generate ideas" : activeTool === "hooks" ? "Generate hooks" : activeTool === "chat" ? "Send message" : activeTool === "script" ? "Generate script" : activeTool === "remix" ? "Remix video" : activeTool === "explore" ? "Run Explore" : activeTool === "account" ? "Read my account" : "Simulate"}
-                  disabled={isAnyStreaming ? false : isAsk ? url.trim().length === 0 || asking : evidenceFile ? profiling : !canSubmit}
+                  aria-label={isAnyStreaming ? "Stop the run" : evidenceFile ? "Read this evidence" : activeTool === "idea" ? "Generate ideas" : activeTool === "hooks" ? "Generate hooks" : activeTool === "chat" ? "Send message" : activeTool === "script" ? "Generate script" : activeTool === "remix" ? "Remix video" : activeTool === "explore" ? "Run Explore" : activeTool === "account" ? "Read my account" : "Simulate"}
+                  disabled={isAnyStreaming ? false : evidenceFile ? profiling : !canSubmit}
                   // A spinner would HIDE the stop affordance, so the streaming state wears the
                   // square instead. `loading` is left for the pre-stream waits only.
-                  loading={isAnyStreaming ? false : isAsk ? asking : profiling || submitting}
+                  loading={isAnyStreaming ? false : profiling || submitting}
                   style={{ boxShadow: "none" }}
                   className="shrink-0 h-[36px] w-[36px] min-w-0 p-0 rounded-full"
                 >
@@ -3189,8 +3251,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
                   selectedAudienceId={selectedAudienceId}
                   onSelectAudience={(a) => {
                     focusByThought(null);
-                    setAudienceAsks([]);
-                    void handleSelectAudience(a);
+                                  void handleSelectAudience(a);
                   }}
                 />
               </div>
@@ -3253,8 +3314,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           selectedAudienceId={selectedAudienceId}
           onSelectAudience={(a) => {
             focusByThought(null);
-            setAudienceAsks([]);
-            void handleSelectAudience(a);
+                  void handleSelectAudience(a);
           }}
         />
         {composerDock}

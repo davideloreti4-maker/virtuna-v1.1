@@ -4,9 +4,14 @@
  *
  * Three signals tell the creator where they are, and each one used to lie:
  *
- *   what the app can do     → the starter grid   (was: redrew itself per skill)
- *   what is armed RIGHT NOW → the skill chip     (was: named the VERB GROUP, not the skill)
- *   what that skill wants   → the placeholder    (was: vague, and Test was the boot default)
+ *   what the app can do     → the starter grid       (was: redrew itself per skill)
+ *   what is armed RIGHT NOW → the armed indicator    (was: the skill CHIP, which named the
+ *                                                     VERB GROUP rather than the skill)
+ *   what that skill wants   → the placeholder        (was: vague, and Test was the boot default)
+ *
+ * ⚠️ 2026-07-28: the skill chip was a PICKER and the owner deleted it (Lane 2 step 3). The
+ * middle signal survives as a non-interactive indicator — see `armedSkill()` below. One
+ * assertion here is deliberately INVERTED by the same change; it carries its own note.
  *
  * This suite locks the composer half of that (the grid is locked in home-starter.test.tsx).
  * Everything here is a REGRESSION lock on a bug that shipped, not a hypothetical:
@@ -97,7 +102,17 @@ function mockOpenThread(blocks: Array<{ type: string; props?: unknown }>) {
   });
 }
 
-const skillChip = () => screen.getByRole('button', { name: /skill:/i });
+/**
+ * What is armed, read off the surface that states it.
+ *
+ * This used to be `screen.getByRole('button', { name: /skill:/i })` — the skill PILL, deleted
+ * on 2026-07-28 (Lane 2 step 3). The signal did not go with it: the armed indicator states the
+ * same fact and is the composer's only claim about what the next send will do. Chat is the
+ * front door, so it renders NOTHING at all — an absent indicator IS "Chat", which is why this
+ * returns the string rather than an element.
+ */
+const armedSkill = () =>
+  screen.queryByTestId('composer-armed-skill')?.textContent?.trim() ?? 'Chat';
 const sendBtn = () => document.querySelector('button[type="submit"]') as HTMLButtonElement;
 
 function selectSkillBySlash(command: string) {
@@ -133,18 +148,34 @@ describe('Composer — the app opens on Chat', () => {
     mockOpenThread([]);
     renderWithClient(<Composer />);
 
-    await waitFor(() => expect(skillChip()).toHaveTextContent('Chat'));
+    await waitFor(() => expect(armedSkill()).toBe('Chat'));
     const field = screen.getByRole('textbox') as HTMLTextAreaElement;
     // The placeholder is the per-skill instruction now — it must invite a sentence.
     expect(field.placeholder).toMatch(/ask about your niche/i);
     expect(field.placeholder).not.toMatch(/paste a tiktok/i);
   });
 
-  it('restores the tool of a thread that HAS cards (the rehydration case still works)', async () => {
+  /**
+   * ⚠️ THIS ASSERTION IS INVERTED ON PURPOSE (2026-07-28, Lane 2 step 5).
+   *
+   * It used to read "restores the tool of a thread that HAS cards" — reloading a thread of hook
+   * cards came back with Hooks armed, because every thread-view gate needed `activeTool ===`
+   * its tool to render anything at all. Lane 1 deleted those gates, and the one-shot makes the
+   * restore actively dangerous: with the skill pill gone there is nothing to disarm with, so a
+   * reload that silently re-armed Hooks would bill the creator's next plain sentence as another
+   * pack. THE ARM NEVER SURVIVES A RELOAD.
+   *
+   * What the thread's last card still tells us is which skill produced what is on screen —
+   * that is `runningTool`, which is seeded here and keeps the Room Rewrite CTA alive without
+   * arming anything. The thread still renders in full; only the ARM resets.
+   */
+  it('does NOT restore an arm from a thread that HAS cards — reloading is not re-arming', async () => {
     mockOpenThread([{ type: 'hook-card', props: {} }]);
     renderWithClient(<Composer />);
 
-    await waitFor(() => expect(skillChip()).toHaveTextContent('Hooks'));
+    await waitFor(() => expect(screen.getByRole('textbox')).toBeInTheDocument());
+    expect(armedSkill()).toBe('Chat');
+    expect(screen.queryByTestId('composer-armed-skill')).toBeNull();
   });
 
   /**
@@ -154,37 +185,37 @@ describe('Composer — the app opens on Chat', () => {
   it('a thread with NO cards resets to Chat — it does not inherit the last skill', async () => {
     mockOpenThread([]);
     renderWithClient(<Composer />);
-    await waitFor(() => expect(skillChip()).toHaveTextContent('Chat'));
+    await waitFor(() => expect(armedSkill()).toBe('Chat'));
 
     // Arm Hooks by hand, exactly as a creator would…
     selectSkillBySlash('hooks');
-    await waitFor(() => expect(skillChip()).toHaveTextContent('Hooks'));
+    await waitFor(() => expect(armedSkill()).toBe('Hooks'));
 
     // …then land on an empty thread. It must come back to the front door, not to Hooks.
     // (A user pick wins over the restore while in flight — hence the explicit remount.)
     cleanup();
     mockOpenThread([]);
     renderWithClient(<Composer />);
-    await waitFor(() => expect(skillChip()).toHaveTextContent('Chat'));
+    await waitFor(() => expect(armedSkill()).toBe('Chat'));
   });
 });
 
 // ── The chip names the skill ──────────────────────────────────────────────────
 
-describe('Composer — the chip names the SKILL, not the verb group', () => {
+describe('Composer — the armed skill is named by its own label, not its verb group', () => {
   it.each([
     ['hooks', 'Hooks'],
     ['script', 'Script'],
     ['explore', 'Explore'],
     ['remix', 'Remix'],
-  ])('arming /%s puts "%s" on the chip (all four used to say "Make")', async (cmd, label) => {
+  ])('arming /%s states "%s" (all four used to say "Make")', async (cmd, label) => {
     mockOpenThread([]);
     renderWithClient(<Composer />);
-    await waitFor(() => expect(skillChip()).toHaveTextContent('Chat'));
+    await waitFor(() => expect(armedSkill()).toBe('Chat'));
 
     selectSkillBySlash(cmd);
-    await waitFor(() => expect(skillChip()).toHaveTextContent(label));
-    expect(skillChip()).not.toHaveTextContent('Make');
+    await waitFor(() => expect(armedSkill()).toBe(label));
+    expect(armedSkill()).not.toContain('Make');
   });
 });
 
@@ -194,13 +225,13 @@ describe('Composer — Account is sendable (its door in every state)', () => {
   it('enables send on an EMPTY field — the empty field is not a missing input', async () => {
     mockOpenThread([]);
     renderWithClient(<Composer />);
-    await waitFor(() => expect(skillChip()).toHaveTextContent('Chat'));
+    await waitFor(() => expect(armedSkill()).toBe('Chat'));
 
     // Chat with an empty field: nothing to send.
     expect(sendBtn()).toBeDisabled();
 
     selectSkillBySlash('account');
-    await waitFor(() => expect(skillChip()).toHaveTextContent('Your account'));
+    await waitFor(() => expect(armedSkill()).toBe('Your account'));
 
     // Account takes no input, so send is live with the field untouched.
     expect(sendBtn()).not.toBeDisabled();
@@ -209,10 +240,10 @@ describe('Composer — Account is sendable (its door in every state)', () => {
   it('send RUNS the read', async () => {
     mockOpenThread([]);
     renderWithClient(<Composer />);
-    await waitFor(() => expect(skillChip()).toHaveTextContent('Chat'));
+    await waitFor(() => expect(armedSkill()).toBe('Chat'));
 
     selectSkillBySlash('account');
-    await waitFor(() => expect(skillChip()).toHaveTextContent('Your account'));
+    await waitFor(() => expect(armedSkill()).toBe('Your account'));
     expect(accountStart).not.toHaveBeenCalled();
 
     await act(async () => {
@@ -228,12 +259,12 @@ describe('Composer — Account is sendable (its door in every state)', () => {
   it('NEVER runs the read on render or on mere selection — it spends a Reading (D-05)', async () => {
     mockOpenThread([]);
     renderWithClient(<Composer />);
-    await waitFor(() => expect(skillChip()).toHaveTextContent('Chat'));
+    await waitFor(() => expect(armedSkill()).toBe('Chat'));
 
     expect(accountStart).not.toHaveBeenCalled();
 
     selectSkillBySlash('account');
-    await waitFor(() => expect(skillChip()).toHaveTextContent('Your account'));
+    await waitFor(() => expect(armedSkill()).toBe('Your account'));
 
     // Arming is not running. Only the send (or the starter card) may spend.
     expect(accountStart).not.toHaveBeenCalled();
@@ -242,10 +273,10 @@ describe('Composer — Account is sendable (its door in every state)', () => {
   it('announces itself as a Read, not as "Simulate"', async () => {
     mockOpenThread([]);
     renderWithClient(<Composer />);
-    await waitFor(() => expect(skillChip()).toHaveTextContent('Chat'));
+    await waitFor(() => expect(armedSkill()).toBe('Chat'));
 
     selectSkillBySlash('account');
-    await waitFor(() => expect(skillChip()).toHaveTextContent('Your account'));
+    await waitFor(() => expect(armedSkill()).toBe('Your account'));
 
     expect(sendBtn()).toHaveAttribute('aria-label', 'Read my account');
   });
