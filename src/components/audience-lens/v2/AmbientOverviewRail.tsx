@@ -50,6 +50,7 @@ import { audienceToMeta, humanizeArchetype } from "@/lib/surfaces/ambient-v2-aud
 import type { Audience } from "@/lib/audience/audience-types";
 import type { AmbientCardDescriptor } from "@/components/app/home/use-ambient-focus";
 import type { PopulationAggregate } from "@/lib/audience/population";
+import { reportCredit402 } from "@/lib/billing/credit-wall";
 import type { SimSealVideo } from "@/lib/threads/sim-seals";
 import {
   isSealedSimSeal,
@@ -324,7 +325,15 @@ export function AmbientOverviewRail({
           signal: controller.signal,
         });
         if (controller.signal.aborted) return;
-        if (!res.ok) throw new Error("reaction_failed");
+        if (!res.ok) {
+          // THE WALL (2026-07-28): `/api/tools/react` is priced at 1 credit, so this fetch can
+          // now come back 402. Announce it so the ONE paywall dialog renders the server's
+          // sentence; the row still drops back to honestly queued below, which is the right
+          // resting state — a refused run produced no verdict to show.
+          const err = await res.json().catch(() => null);
+          reportCredit402(res.status, err);
+          throw new Error("reaction_failed");
+        }
         const data: {
           fraction?: string;
           scrollQuote?: string;

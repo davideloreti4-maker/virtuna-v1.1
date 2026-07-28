@@ -31,6 +31,7 @@ import { createClient } from "@/lib/supabase/server";
 import { maybeMockSkillRun } from "@/lib/tools/mock/mock-sse";
 import { csrfGuard } from "@/lib/http/csrf-guard";
 import { rateLimitGuard } from "@/lib/http/rate-limit";
+import { billUsage, creditGate } from "@/lib/billing/credit-gate";
 import { createOpenThreadLazy } from "@/lib/threads/threads";
 import { resolveThreadAudience } from "@/lib/audience/resolve-thread-audience";
 import { GENERAL_BASELINE_SIGNATURE } from "@/lib/audience/general-baseline-signature";
@@ -133,6 +134,25 @@ export async function POST(request: Request): Promise<Response> {
   // ── Rate limit (HARDEN-01) — per user, per route; fail-open if unconfigured ──
   const limited = await rateLimitGuard(user.id, "react");
   if (limited) return limited;
+
+  // ── Credit gate (BILLING) — priced admission BEFORE any engine spend ─────────
+  // ⚠️ THIS ROUTE WAS FREE until 2026-07-28. It is real engine spend (a Flash panel run, plus
+  // a characterizeContent call on a v2-axis audience) and the `＋ Test something of your own`
+  // door promotes it to a primary action, so the owner priced it at 1 credit under its own
+  // `react` key. That makes the composer's "Ask the room" cost a credit — intended, not a
+  // side effect.
+  //
+  // No customer sees a 402 the day this ships: `creditGate` only refuses when
+  // BILLING_ENFORCE_QUOTA is on (off in production) — while `billUsage` starts metering
+  // immediately, which is the point of landing the gate before the door.
+  //
+  // ⚠️ The ONE case enforcement does NOT wait for that flag is an anonymous visitor
+  // (`enforced = isAnonymous || isQuotaEnforced()` — quota.ts). It cannot be reached here
+  // only because THE WALL at (1a) already 403s every anonymous session before this line. If
+  // that wall ever moves or goes, this gate starts refusing /go visitors with
+  // `trial_required` — react is not the DEMO_ACTION, so the demo does not cover it.
+  const { refusal, verdict: creditVerdict } = await creditGate(supabase, user, "react");
+  if (refusal) return refusal;
 
   // ── (2) Parse + Zod-validate body (CLAUDE.md boundary) ─────────────────────
   let rawBody: unknown = {};
@@ -356,5 +376,12 @@ export async function POST(request: Request): Promise<Response> {
   // stopPct + headcount (what the client shows instead of the room's fraction), and un-honoured
   // ones carry the reason, so the client can say why rather than showing the room's number under
   // the slice's name. Null ⇒ a whole-room run, and the response is what it has always been.
+  //
+  // BILL — on delivery only. The reaction is computed and about to be returned; the two
+  // failure paths above (a Flash throw → 502, a refused admission → 402) both leave before
+  // here, so nothing that reaches this line can be un-delivered. A run whose SLICE could not
+  // be honoured still bills: the room read ran, the engine was paid for, and the response
+  // carries the real personas + population — the slice is one field of it, not the product.
+  await billUsage({ userId: user.id, action: "react", tier: creditVerdict.tier });
   return Response.json({ fraction, scrollQuote, personas, population, slice });
 }
