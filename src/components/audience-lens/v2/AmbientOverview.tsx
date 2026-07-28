@@ -52,6 +52,11 @@ export interface RankedStimulus {
   //  shown in place of a projection. Distinct from the attention % (which appears only once simulated).
   kind?: RankKind;
   state?: RankState; // defaults to "simulated"
+  /** Set ⇒ `stopPct` is ONE SLICE's stop rate, not the room's, and this is that slice's name.
+   *  The board ranks sliced and whole-room verdicts in the same column — they answer different
+   *  questions, so the label is what keeps "41% of Builders" from being read as "41% of the room".
+   *  It is printed on the row, never dropped: an unlabelled sliced verdict is a mislabelled one. */
+  sliceLabel?: string;
 }
 
 /** A run in flight. Verdict is SEALED until every agent decides; `verdictPct` reveals then. */
@@ -379,6 +384,16 @@ function SealedRow({
               style={{ color: TONE.faint }}
             >
               {r.viralScore} viral
+            </span>
+          ) : null}
+          {/* A SLICED verdict says whose it is, right next to the number. Without this the row is
+              indistinguishable from a reading of the whole room — same column, same bar. */}
+          {r.sliceLabel ? (
+            <span
+              className="flex-none rounded-md px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.06em]"
+              style={{ background: "rgba(255,255,255,.05)", color: TONE.faint }}
+            >
+              {r.sliceLabel}
             </span>
           ) : null}
           <span className="flex-none tabular-nums text-[14px] font-medium" style={{ color: TONE.cream }}>

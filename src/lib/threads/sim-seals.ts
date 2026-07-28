@@ -63,6 +63,14 @@ export interface SimSeal {
   personas?: PopulationPersona[]; // the 10 real per-persona reactions (exemplar voices)
   scrollQuote?: string; // the lead scroll-verdict quote (the room's headline objection)
   video?: SimSealVideo | null; // Phase C VIDEO depth (the persisted-analysis Brain read)
+  /** WHICH SLICE this verdict is about (⑤'s segment dial, 2026-07-28). Absent ⇒ the whole room,
+   *  which is what every seal written before this meant and still means.
+   *
+   *  Load-bearing for honesty, not decoration: a sliced `pct` is that slice's stop rate, and it
+   *  lands in the SAME ranked column as whole-room verdicts. Without this field a run against a
+   *  12%-share skeptic slice would sit on the board looking exactly like a reading of the room.
+   *  The row prints the label from `archetype`, so the basis of the number travels with it. */
+  slice?: { archetype: string; total: number };
 }
 
 /** trimmed concept text → its sealed verdict. */
@@ -129,6 +137,7 @@ export function readSimSeals(thread: Pick<ThreadRow, "sim_seals">): SimSealMap {
         personas?: unknown;
         scrollQuote?: unknown;
         video?: unknown;
+        slice?: unknown;
       };
       if (typeof val.pct === "number" && Number.isFinite(val.pct)) {
         const seal: SimSeal = {
@@ -145,6 +154,16 @@ export function readSimSeals(thread: Pick<ThreadRow, "sim_seals">): SimSealMap {
           seal.personas = val.personas as PopulationPersona[];
         }
         if (typeof val.scrollQuote === "string") seal.scrollQuote = val.scrollQuote;
+        // The slice this verdict is about. Guarded like the rest — a malformed blob is DROPPED,
+        // and dropping it makes the row read as a whole-room verdict, which is the one wrong
+        // answer here. So both halves must be well-formed or the field does not survive at all;
+        // a seal whose slice cannot be trusted is better shown unlabelled than mislabelled.
+        if (val.slice && typeof val.slice === "object" && !Array.isArray(val.slice)) {
+          const s = val.slice as { archetype?: unknown; total?: unknown };
+          if (typeof s.archetype === "string" && s.archetype.length > 0 && typeof s.total === "number") {
+            seal.slice = { archetype: s.archetype, total: s.total };
+          }
+        }
         // Optional Phase-C VIDEO depth — passed through only when well-formed (a real heatmap curve);
         // a malformed blob is dropped but the verdict seal survives.
         if (isVideoLike(val.video)) {

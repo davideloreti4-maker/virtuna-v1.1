@@ -72,6 +72,19 @@ export const CREDIT_COSTS = {
   develop: 1,
   /** A concept Read against the selected audience. */
   read: 1,
+  /**
+   * A room reaction — one Flash text-mode run against the audience panel
+   * (`/api/tools/react`): the composer's "Ask the room" and the Overview rail's armed sim.
+   *
+   * Its OWN key rather than folding into `read`, so the ledger can tell the two apart: they
+   * are different engine calls (a Flash 10-persona reaction vs the two-audience read) and a
+   * usage statement that prints them under one name cannot be reconciled line by line.
+   *
+   * ⚠️ It was FREE until 2026-07-28 (owner call to price it). It is real engine spend — a
+   * Flash panel run, plus a `characterizeContent` call when the audience carries v2 axes —
+   * and the `＋ Test something of your own` door promotes it to a primary action.
+   */
+  react: 1,
   /** A scoped card refine (fresh SIM-scored re-run). */
   refine: 1,
   /** Explore from the cached corpus. */

@@ -35,7 +35,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { reportCredit402 } from "@/lib/billing/credit-wall";
+import { reportCredit402, CreditWallRefusal, isCreditWallRefusal } from "@/lib/billing/credit-wall";
 import { createPortal } from "react-dom";
 import {
   OpenRoomContext,
@@ -2333,7 +2333,19 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           signal: controller.signal,
         });
         if (controller.signal.aborted) return;
-        if (!res.ok) throw new Error("reaction_failed");
+        if (!res.ok) {
+          // "Ask the room" became a PAID action on 2026-07-28 (/api/tools/react, 1 credit), so
+          // this fetch can now come back 402. Without the wall that refusal is COMPLETELY SILENT:
+          // the catch below records `error: true`, and the only consumer of the ask trail filters
+          // errored asks out (`audience-presence.tsx`), so a refused ask renders nothing at all.
+          // The dialog is not the nicer feedback here — it is the ONLY feedback.
+          //
+          // (This is NOT the stream hooks' CreditWallRefusal case, where an error card really did
+          // draw a futile retry under the modal. Checked 2026-07-28 — nothing renders here.)
+          const err = await res.json().catch(() => null);
+          if (reportCredit402(res.status, err)) throw new CreditWallRefusal();
+          throw new Error("reaction_failed");
+        }
         const data: {
           fraction?: string;
           scrollQuote?: string;
@@ -2351,6 +2363,10 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
         focusByThought({ conceptText: text, fraction, scrollQuote, personas, population });
       } catch (e) {
         if (controller.signal.aborted || (e instanceof DOMException && e.name === "AbortError")) return;
+        // The wall is already up and it IS the UI for this failure. Don't also record an errored
+        // ask: nothing renders it, so it is dead state that only makes the trail lie about how
+        // many asks were made.
+        if (isCreditWallRefusal(e)) return;
         setAudienceAsks((a) => [...a, { id: nanoid(), thought: text, fraction: "", scrollQuote: "", error: true }]);
       } finally {
         if (askInflightRef.current === controller) setAsking(false);
