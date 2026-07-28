@@ -96,6 +96,7 @@ export async function GET(_request: Request): Promise<Response> {
       title: t.title ?? derivedByThread.get(t.id) ?? null,
       updated_at: t.updated_at,
       created_at: t.created_at,
+      pinned_at: t.pinned_at ?? null,
     })),
   });
 }
