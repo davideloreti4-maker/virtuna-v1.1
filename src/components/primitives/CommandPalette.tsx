@@ -283,31 +283,31 @@ export function CommandPalette({
         onKeyDown={handleKeyDown}
         className={cn(
           "relative w-full max-w-[640px] mx-4",
-          // Raycast-style glass panel
-          "rounded-[var(--rounding-lg)]",
+          // Flat-warm matte panel. This component predates the v5/v6 migration and
+          // still carried the retired Raycast system: --rounding-lg, --shadow-elevated,
+          // --color-bg-100, --color-grey-800/300/200 and an animate-scale-in that were
+          // ALL undefined, so the panel rendered with no background, no radius and no
+          // shadow — the page showed straight through it. It had never been mounted, so
+          // nothing surfaced the rot until it was.
+          "rounded-xl",
           "border border-white/[0.06]",
-          "shadow-[var(--shadow-elevated)]",
+          "shadow-[0_16px_50px_rgba(0,0,0,0.5)]",
           "overflow-hidden",
-          // Animation
-          "animate-scale-in",
           className
         )}
-        style={{
-          backgroundColor: "var(--color-bg-100)",
-          backdropFilter: "blur(20px)",
-          WebkitBackdropFilter: "blur(20px)",
-          ...style,
-        }}
+        // Solid tone — no backdrop blur. The glass panel was Raycast-era; the flat-warm
+        // system is matte (docs/DESIGN-SYSTEM.md). The scrim behind still blurs.
+        style={{ backgroundColor: "var(--color-charcoal-chip)", ...style }}
       >
         {/* Search input - Raycast style */}
         <div
           className="flex items-center gap-3 px-4 border-b border-white/5"
-          style={{ backgroundColor: "var(--color-grey-800)" }}
+          style={{ backgroundColor: "var(--color-charcoal-composer)" }}
         >
           <MagnifyingGlass
             size={18}
             weight="bold"
-            className="text-[var(--color-grey-300)] flex-shrink-0"
+            className="text-foreground-muted flex-shrink-0"
           />
           <input
             ref={inputRef}
@@ -317,16 +317,16 @@ export function CommandPalette({
             placeholder={placeholder}
             className={cn(
               "flex-1 bg-transparent py-4",
-              "text-[15px] text-[var(--color-fg)]",
-              "placeholder:text-[var(--color-grey-300)]",
+              "text-reading text-foreground",
+              "placeholder:text-foreground-muted",
               "outline-none border-none"
             )}
           />
           {/* Keyboard hint */}
           <kbd
             className={cn(
-              "flex-shrink-0 px-1.5 py-0.5 rounded-[var(--rounding-xs)]",
-              "text-[11px] font-medium text-[var(--color-grey-200)]",
+              "flex-shrink-0 px-1.5 py-0.5 rounded-xs",
+              "text-caption font-medium text-foreground-muted",
               "border border-white/[0.06]",
               "bg-white/5"
             )}
@@ -342,14 +342,14 @@ export function CommandPalette({
           role="listbox"
         >
           {groups.length === 0 ? (
-            <div className="px-4 py-8 text-center text-[var(--color-fg-300)] text-[14px]">
+            <div className="px-4 py-8 text-center text-foreground-muted text-body">
               {emptyMessage}
             </div>
           ) : (
             groups.map((group) => (
               <div key={group.title} className="mb-2 last:mb-0">
                 {/* Group header */}
-                <div className="px-4 py-2 text-[11px] font-semibold uppercase tracking-wider text-[var(--color-fg-400)]">
+                <div className="px-4 py-2 text-caption font-semibold uppercase tracking-wider text-foreground-muted">
                   {group.title}
                 </div>
 
@@ -387,9 +387,9 @@ export function CommandPalette({
                           className={cn(
                             "flex-shrink-0 w-8 h-8",
                             "flex items-center justify-center",
-                            "rounded-[var(--rounding-sm)]",
-                            "text-[var(--color-fg-200)]",
-                            isSelected && "text-[var(--color-fg)]"
+                            "rounded-md",
+                            "text-foreground-secondary",
+                            isSelected && "text-foreground"
                           )}
                           style={{
                             backgroundColor: isSelected
@@ -405,16 +405,16 @@ export function CommandPalette({
                       <div className="flex-1 min-w-0">
                         <div
                           className={cn(
-                            "text-[14px] font-medium truncate",
+                            "text-body font-medium truncate",
                             isSelected
-                              ? "text-[var(--color-fg)]"
-                              : "text-[var(--color-fg-200)]"
+                              ? "text-foreground"
+                              : "text-foreground-secondary"
                           )}
                         >
                           {item.title}
                         </div>
                         {item.subtitle && (
-                          <div className="text-[12px] text-[var(--color-fg-400)] truncate">
+                          <div className="text-label text-foreground-muted truncate">
                             {item.subtitle}
                           </div>
                         )}
@@ -424,8 +424,8 @@ export function CommandPalette({
                       {item.shortcut && (
                         <kbd
                           className={cn(
-                            "flex-shrink-0 px-1.5 py-0.5 rounded-[var(--rounding-xs)]",
-                            "text-[11px] font-medium text-[var(--color-grey-200)]",
+                            "flex-shrink-0 px-1.5 py-0.5 rounded-xs",
+                            "text-caption font-medium text-foreground-muted",
                             "border border-white/[0.06]",
                             "bg-white/5"
                           )}
@@ -439,7 +439,7 @@ export function CommandPalette({
                         <CaretRight
                           size={14}
                           weight="bold"
-                          className="text-[var(--color-fg-300)] flex-shrink-0"
+                          className="text-foreground-muted flex-shrink-0"
                         />
                       )}
                     </button>
@@ -455,7 +455,7 @@ export function CommandPalette({
           className="flex items-center justify-between px-4 py-2 border-t border-white/5"
           style={{ backgroundColor: "rgba(0, 0, 0, 0.2)" }}
         >
-          <div className="flex items-center gap-3 text-[11px] text-[var(--color-fg-400)]">
+          <div className="flex items-center gap-3 text-caption text-foreground-muted">
             <span className="flex items-center gap-1">
               <kbd className="px-1 rounded bg-white/5 border border-white/[0.06]">
                 ↑↓
@@ -469,7 +469,7 @@ export function CommandPalette({
               Select
             </span>
           </div>
-          <div className="flex items-center gap-1 text-[11px] text-[var(--color-fg-400)]">
+          <div className="flex items-center gap-1 text-caption text-foreground-muted">
             <Command size={12} weight="bold" />
             <span>Palette</span>
           </div>

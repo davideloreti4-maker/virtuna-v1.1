@@ -73,6 +73,8 @@ function mockThreads(threads: MockThread[]) {
     useCreateThread: () => ({ mutateAsync: vi.fn().mockResolvedValue('new-id') }),
     useActivateThread: () => ({ mutateAsync: vi.fn().mockResolvedValue('id') }),
     useArchiveThread: () => ({ mutateAsync: vi.fn().mockResolvedValue('id') }),
+    useRenameThread: () => ({ mutate: vi.fn() }),
+    usePinThread: () => ({ mutate: vi.fn() }),
   }));
 }
 
@@ -170,6 +172,8 @@ describe('Sidebar thread delete — two-step confirm', () => {
       useCreateThread: () => ({ mutateAsync: vi.fn() }),
       useActivateThread: () => ({ mutateAsync: vi.fn() }),
       useArchiveThread: () => ({ mutateAsync: archiveMock }),
+      useRenameThread: () => ({ mutate: vi.fn() }),
+      usePinThread: () => ({ mutate: vi.fn() }),
     }));
     const { Sidebar: Fresh } = await import('../Sidebar');
     // Same module registry as Fresh (vi.resetModules above) — a static import would be a different React context.
