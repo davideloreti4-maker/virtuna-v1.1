@@ -1,12 +1,20 @@
 # Handoff — The ＋ door (bring your own stimulus) + the ARM screen redesign
 
 **Date:** 2026-07-28 · **Worktree:** `~/virtuna-platform` · **Branch:** `lane/platform-surface`
-**Status:** ✅ **Phases 1, 2 and the Phase-4 PREREQUISITE LANDED.** Phases 3–6 open.
+**Status:** ✅ **Phases 1, 2 and the Phase-4 PREREQUISITE ARE MERGED TO MAIN AND DEPLOYED**
+(PR #394, merge `79b3e635`). Phases 3–6 open — start with §11's kickoff prompt.
 Read §0.4 first, then §0.5.
 
 ---
 
 ## §0.4 — STATUS after session 2 (2026-07-28). This supersedes §0.5 and §10.
+
+✅ **MERGED TO MAIN: PR #394, merge commit `79b3e635`.** It carried Phase 1 too — that had landed
+on the lane in session 1 but was never merged. The lane is now level with `main`.
+
+⚠️ **This is live in production.** `billUsage` writes `react` rows from the moment it deployed, so
+"Ask the room" and every armed rail sim now consume ledger credits. No customer sees a 402
+(`BILLING_ENFORCE_QUOTA` is off) — but the usage numbers change, and that is expected, not a bug.
 
 Four commits on `lane/platform-surface`, plus a merge of `origin/main` (the lane was 6 behind):
 
@@ -633,50 +641,79 @@ caller.** That is why this lane's door does not depend on the `ask` verb and is 
 
 ## §11 — Copy-paste kickoff prompt for a fresh context
 
+⚠️ The session-1 prompt that lived here is **spent** — its two jobs (the react gate, Phase 2) are
+done and merged. This is the Phases 3+4 prompt. Everything in it was verified on 2026-07-28.
+
 ```
-Read docs/HANDOFF-2026-07-28-simulate-door-and-arm.md — §0.5 FIRST, then the rest.
+Read docs/HANDOFF-2026-07-28-simulate-door-and-arm.md — §0.4 FIRST, then §0.5, then the rest.
 
-Context: virtuna-platform, branch lane/platform-surface. Phase 1 of this lane LANDED as 0f5d292c
-(the five ARM dials now reach the engine or say why they can't). §0.5 is the status block: what
-shipped, and FIVE things the original spec got wrong that are corrected there. The body of the doc
-below §0.5 is the original spec — trust §0.5 over it wherever they disagree.
+Context: virtuna-platform, branch lane/platform-surface (synced to main — PR #394 merged as
+79b3e635). Phases 1 and 2 and the react credit gate are DONE and IN PRODUCTION. §0.4 is the
+status block; §0.5 is session 1's. The body below them is the ORIGINAL spec and has now been
+wrong EIGHT times — trust §0.4 > §0.5 > body, and verify any claim against the source before
+you build on it. Say what you found.
 
-🔴 FIRST COMMAND: `git status`. A second session shares this worktree and was still writing when
-Phase 1 was committed. composer.tsx, use-active-run.ts, two new __tests__ files and their own
-handoff doc were dirty and are NOT yours — never stage them (§10). Commit only files you touched.
+FIRST COMMAND: `git status`, then `git log --oneline -3`. (The old §10 warning about a second
+session sharing this worktree is RESOLVED — that work went to main via PR #392. Nothing is
+contested. Run git status anyway; it is how that was caught.)
 
-Goal for this session, in order:
+GOAL: Phases 3 and 4, which MUST land together. Phase 3 opens the ＋ door; Phase 4 is the only
+thing that makes what is behind it run. Shipping 3 alone opens a real door onto a dead
+"Simulate" button — the exact defect class this lane exists to remove.
 
-1. THE PHASE-4 PREREQUISITE — gate + price /api/tools/react at 1 credit under its own `react` key
-   (owner-decided). Mechanical: mirror the four lines the other 11 paid routes use —
-   `creditGate(supabase, user, "react")` → `if (refusal) return refusal` (before any engine spend)
-   → … → `billUsage({userId, action:"react", tier: verdict.tier})` on delivery only. Add the
-   CREDIT_COSTS entry. Safe to land now: creditGate only refuses when BILLING_ENFORCE_QUOTA is on
-   (OFF in prod), so nobody sees a 402 today while billUsage starts metering immediately.
-   The route has exactly TWO live callers: AmbientOverviewRail.tsx `fireSim` (yours — add
-   reportCredit402) and composer.tsx:2304 the `ask` verb (CONTESTED — leave it, note it).
-   ⚠️ This turns "Ask the room" from free into 1 credit. That is intended; say so in the commit.
+PHASE 3 — wire the doors
+- AmbientOverviewRail.tsx:589 `onTestVariant={() => descriptors[0] && openDevelop(descriptors[0].id)}`
+  → open the COLD intake. Two defects in that one line: on an empty rail `descriptors[0]` is
+  undefined and the button is DEAD (verified live — it is a new creator's only control), and on
+  a non-empty rail it re-arms your FIRST EXISTING CARD instead of testing anything new.
+- Relabel "＋ Test a new variant" (AmbientOverview.tsx:666) → "＋ Test something of your own".
+- AmbientStart: add the real SIMULATE DOOR its own docstring describes but never had; thread a
+  new `onSimDoor` handler through AmbientStartHome → composer.tsx. All three files are clean and
+  uncontested now.
 
-2. PHASE 2 — SimulateIntake gains the actual inputs per door: textarea (draft) · file (video) ·
-   URL (link). Reuse, do NOT rebuild: src/components/thread/input-request-block.tsx already has the
-   file upload path and the link field. `cold` mode must stop reading data.stimulus.text from the
-   caller. Neither file is contested.
+PHASE 4 — route the brought stimulus and land it as a row
+- `CollectStep` already produces a `BroughtStimulus { kind, text, file?, url? }` (Phase 2).
+  `ArmCard` holds it. It is deliberately NOT on the emitted `SimulateConfig` yet — add that field
+  WITH its consumer, not before.
+- draft → POST /api/tools/react { text, pin:true, persist:true, + the ARM dials } → concept row.
+- video file → POST /api/analyze input_mode:"video_upload"; link → input_mode:"tiktok_url" → video
+  row. Reuse the composer's storage upload (`supabase.storage.from("videos")`,
+  `${userId}/${nanoid()}.${ext}`) and the Test skill's /api/tools/test/card seam.
+- text → Max is OUT of v1 (no live caller anywhere — §4). The fidelity dial already locks with a
+  reason; leave it locked.
 
-Phase 3 is BLOCKED on the other session (it needs composer.tsx) — do not start it. If composer.tsx
-is clean by the time you get there, check with me first.
+🔴 THE TRAP THAT WILL BITE — §0.5 correction #4, still open and still true:
+A brought-in TEXT needs a CARD BLOCK inserted as well as a seal. `persist:true` writes ONLY a
+seal; the react route has no `insertMessage` at all. Seals are read THROUGH descriptors
+(`snapshotFor` → `descriptors.find(...)` → `persistedSeals[d.conceptText.trim()]`), and
+descriptors derive purely from rendered thread blocks (`buildAmbientDescriptors` — exactly 4
+types: idea-card / hook-card / script-card / remix-card, each requiring `props.fraction`). No
+block ⇒ no descriptor ⇒ an ORPHAN SEAL that nothing renders. /api/tools/read is NOT the seam (it
+emits `multi-audience-read`, not a descriptor type).
+VIDEO IS FINE — video rows read straight from the seal store keyed by `analysisId`
+(`ambient-v2-adapters.ts:142`), no descriptor needed.
 
-Before building on any claim in the doc, verify it against the code — this spec has now been wrong
-five separate times and each one was only caught by reading the source. Say what you found.
+Also true and easy to trip on:
+- The ＋ door must NEVER queue a brought stimulus. `parsePersonaStops("")` returns 0, so a queued
+  draft sorts dead last showing 0/10 — a fabricated "the room hates this" for something the room
+  has never seen. Straight to ARM.
+- `develop` mode is meaningless on this path (no rank to deepen) — the tie-back band must not render.
+- /api/tools/react now COSTS 1 CREDIT and both its callers handle the 402. Any THIRD caller you
+  add needs `reportCredit402` too.
 
-Verify per §9, which has been corrected with the traps that actually bit:
-- `npm run build` is a REQUIRED gate. Importing a src/lib/surfaces/* module into an API route breaks
-  the production build while tsc AND the full suite stay green. It cost a build here.
-- Suite baseline 4787/0 flag off, 4788/0 with AMBIENT_V2_ENABLED=true NEXT_PUBLIC_AMBIENT_V2=true.
-  Run it BOTH ways.
-- E2E on a prod build (`npm run build && npx next start -p 3111`), never `next dev`.
+VERIFY per §9 (corrected — these are the traps that actually bit):
+- `npm run build` is a REQUIRED gate. Importing a `src/lib/surfaces/*` module into an API route
+  breaks the production build while tsc AND the whole suite stay green. It cost a build here.
+- Suite baseline 4800/0 flag off · 4801/0 flag on
+  (`AMBIENT_V2_ENABLED=true NEXT_PUBLIC_AMBIENT_V2=true`). Run it BOTH ways. If your count is
+  BELOW baseline, suspect a stale number before a deletion — this doc published a wrong one twice.
+- E2E on a production build (`npm run build && npx next start -p 3111`), never `next dev`.
 - Playwright screenshots hang on this app — probe with getBoundingClientRect / getComputedStyle.
-- /ambient-v2 is no-auth and fixture-driven (fast, but misses adapter bugs). /dev/cards needs auth;
-  the working login recipe is in §9 — the button is "Sign in", NOT the first button[type=submit].
-- Mutation-test every new guard: break the thing, watch the test fail, restore. A guard nobody has
-  watched fail is a guess.
+  Raw Playwright from a scratch dir needs an ABSOLUTE import of node_modules/playwright/index.mjs.
+- /ambient-v2 is no-auth + fixture-driven (fast, misses adapter bugs) and has a "cold · the ④ door"
+  chip that mounts the intake directly. /dev/cards needs auth; the login button is "Sign in", NOT
+  the first button[type=submit] (that one is permanently disabled and hangs 30s).
+  Creds: e2e-test@virtuna.local / e2e-test-password-2026
+- Mutation-test every new guard: break it, WATCH it fail, restore. And check the guard fails for
+  the reason you think — one of session 2's passed for the wrong reason and only mutation caught it.
 ```
