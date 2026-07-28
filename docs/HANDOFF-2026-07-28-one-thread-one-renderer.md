@@ -201,23 +201,31 @@ optimization — so treat them as a deliberate trade, not an oversight.
 
 ---
 
-## 8. LANE 2 — ALL FIVE STEPS DONE (`lane/composer-pill`, worktree `~/virtuna-composer`)
+## 8. LANE 2 — ✅ COMPLETE AND MERGED TO `main`
 
-**Steps 1–2 merged to `main` — PR #395, `6392ff85`. Steps 3+4+5 are on `lane/composer-pill`,
-commit `c63f8a51`, and they LANDED TOGETHER on purpose** (see §8.7).
+**All five steps are on `main`.** Steps 1–2 via PR #395 (`6392ff85`); steps 3+4+5 via
+**PR #398, squash `5006f9c3`** — they landed together on purpose (see §8.8).
 
 | # | Step | State |
 |---|------|-------|
 | 1 | Prefill fix (was: add 4 skills to `SKILL_TOOLS`) | ✅ merged `6392ff85` |
 | 2 | Gate + bill agent-fired runs (+ the wall) | ✅ merged `6392ff85` |
-| 3 | Delete the skill pill | ✅ `c63f8a51` |
-| 4 | Delete "Ask the room" | ✅ `c63f8a51` — owner RE-CONFIRMED against new facts (§8.7) |
-| 5 | Start-grid tile → one-shot → chat | ✅ `c63f8a51` |
+| 3 | Delete the skill pill | ✅ merged `5006f9c3` |
+| 4 | Delete "Ask the room" | ✅ merged `5006f9c3` — owner RE-CONFIRMED against new facts (§8.7) |
+| 5 | Start-grid tile → one-shot → chat | ✅ merged `5006f9c3` |
 
-Suite **4824/0** flag off · **4825/0** flag on (441 files, from a 4813/0 baseline) · `tsc` clean ·
-production build compiles · **live walk-through PASSED on a production build** (§8.8).
+Verified **on the merged `main` tree**, not just on the branch: suite **4824/0** (441 files) ·
+`tsc` clean. On the branch it was also 4825/0 with `NEXT_PUBLIC_AMBIENT_V2=true`, the production
+build compiled, and the **live walk-through PASSED on a production build** (§8.8). Baseline before
+the lane: 4813/0.
+
+**Then the ＋door lane merged on top (PR #399).** `main` is now `18950c59` — a merge of `5006f9c3`
+(Lane 2) and `257fecbf` (＋door Phases 3+4). **Re-verified on THAT tree: 4849/0, 444 files.** The
+two lanes coexist; see §8.10.
 
 Owner calls taken this session: **remove the `ask` verb** · **KEEP the `/` slash menu**.
+
+⚠️ **The ＋door lane landed on top of this. §8.10 is what a merged `composer.tsx` now owes you.**
 
 ### §8.1 — Step 1's premise was false. Read this before trusting a plan again.
 
@@ -477,3 +485,115 @@ Start grid renders; **production does not have it.**
 - The composer's `ask` deletion left `asks` / `asking` / `onReask` on `<AudiencePresence>` as
   optional props with **no producer**. Left in place deliberately: that component is already on the
   v2 cutover's list, and widening this diff into it bought nothing.
+
+### §8.10 — TWO LANES LANDED IN `composer.tsx` WITHIN MINUTES, AND THEY COEXIST
+
+This section was written as a *rebase warning* — and was stale within the hour, which is the
+lesson. `lane/platform-surface` (＋door Phases 3+4, `257fecbf`) merged as **PR #399** minutes after
+Lane 2 merged as **PR #398**. `main` is now `18950c59`, a merge of both.
+
+| lane | composer.tsx | merged |
+|---|---|---|
+| Lane 2 — pill / ask / one-shot | +309 / −249 | `5006f9c3` (#398) |
+| ＋door Phases 3+4 | +144 / −25 | `257fecbf` (#399) |
+
+`git merge-tree` predicted a conflict, which is why Lane 2 was landed first (finished and verified,
+against a lane still moving). **Verified after the fact rather than assumed** — on the merged tree:
+
+- suite **4849/0**, 444 files (Lane 2 alone was 4824/0 over 441; the ＋door lane brings +25/+3)
+- Lane 2's invariants survive the resolution: `runningTool` ×23, `armFired` ×16,
+  `hasDispatchedRunRef` ×4, the armed indicator ×1, the pill and the `ask` ToolId both still gone
+
+**What anyone editing `composer.tsx` from here must know** — these are Lane 2's changes, and they
+change the MEANING of existing reads rather than breaking them, which is the dangerous kind:
+
+1. **`activeTool` is no longer the whole story.** It split into `activeTool` (what the NEXT send
+   does) and `runningTool` (what the LAST send did). If your code reads `activeTool` to decide
+   something about a run that is ON SCREEN — a spine, a receipt, a CTA, a retry — it is now wrong
+   and must read `runningTool`. `activeTool` reverts to `chat` the instant a run dispatches, so
+   such a read fails at exactly the moment it matters, and fails quietly.
+2. **`handleSubmit(toolOverride?: ToolId)`.** Any retry/re-run path must NAME its tool, or it fires
+   as a chat turn under a button that claims otherwise.
+3. **`ToolId` no longer contains `"ask"`** (nor `SKILLS` / `SKILL_ICON` / `VERB_BY_TOOL` /
+   `PLACEHOLDER_BY_TOOL`). tsc catches a resurrection in the union; a string id in a registry it
+   will not — `composer-controls.test.tsx` holds that guard.
+4. **`ComposerControls` takes no `onSelectTool` / `activeMode`** and renders `null` under every
+   skill except `explore`.
+5. **`AmbientOverviewRail.credit-wall.test.tsx` is the ONLY remaining assertion** that a refused
+   room reaction says anything at all. The ＋door lane edits that component — keep it green.
+
+**Re-run the suite BOTH flag ways after any change here.** Production does not set
+`NEXT_PUBLIC_AMBIENT_V2`, so the default run is prod parity and the flagged run is the direction of
+travel; green one way is green for the product you did not ship.
+
+## 9. COPY-PASTE BRIEF FOR THE FRESH SESSION
+
+Everything below is verified as of 2026-07-28, `main` at `18950c59`.
+
+```
+Virtuna. Lane 2 (composer chrome) is DONE and MERGED — all five steps, main 5006f9c3.
+Do not re-open it. Read docs/HANDOFF-2026-07-28-one-thread-one-renderer.md §8 only if
+you need the WHY; §8.10 is the part that affects live work.
+
+STATE OF main (18950c59 = Lane 2 #398 + ＋door #399), verified on that exact tree:
+  suite 4849 passed / 0 failed (444 files, 1 skipped) · tsc clean
+  The 3 "unhandled errors" in a full run are PRE-EXISTING (composer.test.tsx, a mocked
+  stream.start on the tiktok_url path). They misattribute the blame line to whatever
+  test was running — read the "Failed Tests" block, never the error's "originated in".
+
+WHAT LANDED, so you don't trip on it:
+  - The composer skill PILL is deleted. The `/` slash menu is the skill picker now
+    (owner call: keep). A non-interactive armed indicator
+    (data-testid="composer-armed-skill") states the armed skill; its only control is
+    × back to chat.
+  - "Ask the room" is gone from the composer FIELD. /api/tools/react, its 1-credit
+    price, the ＋ cold door and AmbientOverviewRail.fireSim are all UNTOUCHED — that
+    door survives and is the only one now.
+  - THE ONE-SHOT: a skill is armed for exactly ONE send. activeTool = what the NEXT
+    send does; runningTool = what the LAST send did. Anything about a run that is ON
+    SCREEN (Test progress spine, its failure turn, the Room Rewrite CTA) reads
+    runningTool. A reload restores runningTool but NEVER an arm.
+  - handleSubmit(toolOverride?: ToolId) — a retry must NAME its tool or it fires as chat.
+
+▶ THE ＋DOOR LANE ALREADY LANDED ON TOP (PR #399, 257fecbf). main = 18950c59, a
+  merge of both. Verified on that tree: 4849/0 over 444 files, and Lane 2's
+  invariants survive the resolution. Nothing to rebase. If you edit composer.tsx,
+  §8.10 lists the five things Lane 2 changed — chiefly that reading `activeTool`
+  about a run that is ON SCREEN is now wrong (use `runningTool`), which fails
+  quietly and only at the moment it matters.
+
+▶ NEXT on the ＋door lane: Phases 5+6, §0.3 of
+  docs/HANDOFF-2026-07-28-simulate-door-and-arm.md.
+
+🔴 OWNER-OWED, not a code task: /api/account-read has NO credit gate and `account` is
+  not in CREDIT_COSTS, so an agent-dispatched account read is still free. It is a
+  1–3 min Apify call. Re-checked 2026-07-28, unchanged. Name the price, then it's
+  a small piece of work.
+
+Verification gotchas that cost real time:
+  - The shell wrapper mangles npx/pnpm exec. Use:
+      node node_modules/vitest/vitest.mjs run
+      node node_modules/next/dist/bin/next build
+      node node_modules/typescript/bin/tsc --noEmit
+  - Run the suite BOTH ways — `NEXT_PUBLIC_AMBIENT_V2=true` prefixed, and without.
+    Production does NOT set that var (checked via `vercel env ls production`), so the
+    default run is prod parity and the flagged run is the direction of travel.
+  - A fresh worktree has NO .env.local — copy it from ~/virtuna-v1.1 BEFORE you build.
+    NEXT_PUBLIC_* inlines at BUILD time, so building first gives you a bundle whose
+    Supabase client throws on every page.
+  - /home reopens the last thread — click "New Thread" for a clean one.
+  - The login page has TWO input[name="email"]; fill form input[name="email"] LAST.
+  - Screenshots hang (the ambient room never settles). Assert on the DOM.
+  - To reach /home without credentials: open /go and click "Test a video free" — it
+    mints an anonymous session. Anonymous is entitled to ONE Test; everything else
+    refuses with the trial paywall, which is a fine way to exercise a refusal path.
+
+Two habits, both earned expensively on this lane:
+  - A plan's file-level claims are GUESSES until you read the source. §8.5 said step 4
+    would "delete a revenue line four days old"; measuring found the opposite — the
+    verb billed 1 credit and rendered NOTHING, both flag ways.
+  - Mutation-verify every guard: watch it FAIL against a deliberate reintroduction of
+    the bug it claims to catch. Nine were verified this way, and one of them caught a
+    real defect the moment it was written (a rehydration round-trip clobbering a live
+    run).
+```
