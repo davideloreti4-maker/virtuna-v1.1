@@ -110,6 +110,8 @@ export interface UseRemixStreamReturn {
   error: string | null;
   /** True once the stream has completed (done event received). */
   isDone: boolean;
+  /** The SSE stream has closed — everything the run will ever persist is on disk. */
+  isClosed: boolean;
   /** Pipeline stages — populated by SSE stage events (STUDIO-01). */
   stages: StageState[];
   /** Model-authored follow-up text from the followup SSE event. */
@@ -137,6 +139,21 @@ export function useRemixStream(): UseRemixStreamReturn {
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDone, setIsDone] = useState(false);
+  /**
+   * THE STREAM IS CLOSED — the server has finished sending, not merely finished the CARDS.
+   *
+   * `isDone` fires on the `done` event, which every generative route emits BEFORE its closing
+   * line (S2: unblock the UI early). The route then persists that line as a trailing markdown
+   * message and only THEN closes. So `isDone` is "the work is over" and this is "there is nothing
+   * more coming" — and only the second one means the whole turn is on disk.
+   *
+   * The composer folds the live run into the persisted thread on THIS, so one reload collects the
+   * outro too. Folding on `isDone` needed a second reload per run to pick it up afterwards.
+   *
+   * Set in `finally`, so an abort or a throw closes it just as a clean end does — a fold that
+   * waits on a signal only the happy path emits is a fold that never runs.
+   */
+  const [isClosed, setIsClosed] = useState(false);
   const [stages, setStages] = useState<StageState[]>([]);
   const [followupText, setFollowupText] = useState<string | null>(null);
 
@@ -159,6 +176,7 @@ export function useRemixStream(): UseRemixStreamReturn {
     setIsStreaming(false);
     setError(null);
     setIsDone(false);
+    setIsClosed(false);
     setStages([]);
     setFollowupText(null);
     cardsRef.current = [];
@@ -180,6 +198,7 @@ export function useRemixStream(): UseRemixStreamReturn {
     setStreamingCards([]);
     setError(null);
     setIsDone(false);
+    setIsClosed(false);
     setIsStreaming(true);
     setStages([]);
     setFollowupText(null);
@@ -329,6 +348,7 @@ export function useRemixStream(): UseRemixStreamReturn {
     } finally {
       if (isMountedRef.current) {
         setIsStreaming(false);
+        setIsClosed(true);
       }
     }
   }, []);
@@ -370,6 +390,7 @@ export function useRemixStream(): UseRemixStreamReturn {
     isStreaming,
     error,
     isDone,
+    isClosed,
     stages,
     followupText,
     start,

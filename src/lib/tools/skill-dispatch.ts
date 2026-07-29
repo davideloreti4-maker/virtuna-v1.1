@@ -15,6 +15,11 @@
  * limit — `maxSkillRuns` caps paid invocations per dispatch; over the cap, the tool returns a refusal
  * the model relays ("ask the creator to confirm") instead of running.
  *
+ * THE LEASH IS NOT A PRICE, and until 2026-07-29 it was the only thing here that knew about money at
+ * all: `skill.run()` invoked the real paid pipeline ungated and unbilled, so a revival of this module
+ * would have run ideas/hooks/script for free. `DispatchDeps.till` is the seam, and it FAILS CLOSED —
+ * a skill declaring `billable` does not run without one. See SkillTill.
+ *
  * Spike-staged: prove routing with mock runners (free), then one real run. Route integration (SSE +
  * insertMessage) reuses the existing skill-route emit/persist code.
  */
@@ -227,6 +232,32 @@ export interface DispatchResult {
   toolCalls: Array<{ name: string; args: SkillToolArgs; ran: boolean; note?: string }>;
 }
 
+/**
+ * THE TILL — the money seam this module ran without until 2026-07-29.
+ *
+ * `maxSkillRuns` is a LEASH, not a price: it caps how many paid runs one dispatch may start and
+ * says nothing about whether the creator can afford them or that anyone was charged. So every
+ * `skill.run()` below invoked the real paid pipeline — ideas, hooks, script — ungated and unbilled.
+ * The module is not on the live path today (the chat route uses `runChatAgentStream`), which is the
+ * only reason that never cost anything; a note saying "if it is ever revived, it needs a billing
+ * seam" is not a thing that stops the revival.
+ *
+ * So the seam exists now, and it FAILS CLOSED: a skill declaring `billable` does not run at all
+ * unless a till is wired and authorizes it. Reviving this module without deciding about money
+ * therefore produces a visible refusal the model relays, never a free paid run. Skills with no
+ * `billable` are unaffected and need no till.
+ *
+ * It is deliberately an interface rather than a direct `creditGate` import: this file is a pure
+ * orchestration module with no request, no Supabase client and no user, and dragging those in would
+ * make it un-unit-testable and couple it to the route. The caller owns the wallet.
+ */
+export interface SkillTill {
+  /** Decide whether ONE paid run may start. A refusal is relayed to the model, and nothing runs. */
+  authorize: (action: BillableAction) => Promise<{ ok: true } | { ok: false; reason: string }>;
+  /** Record the spend, AFTER the run delivered its cards — bill on delivery, never on attempt. */
+  charge: (action: BillableAction) => Promise<void>;
+}
+
 export interface DispatchDeps {
   skills?: SkillTool[];
   complete?: ChatComplete;
@@ -234,6 +265,8 @@ export interface DispatchDeps {
   seed?: number;
   maxRounds?: number;
   maxSkillRuns?: number;
+  /** Required for any skill carrying `billable` — without it those skills refuse (see SkillTill). */
+  till?: SkillTill;
 }
 
 /**
@@ -248,6 +281,7 @@ export async function runSkillDispatch(
   const complete = deps.complete ?? defaultComplete;
   const maxRounds = deps.maxRounds ?? DEFAULT_MAX_ROUNDS;
   const maxSkillRuns = deps.maxSkillRuns ?? DEFAULT_MAX_SKILL_RUNS;
+  const till = deps.till;
   let model = deps.model;
   let seed = deps.seed;
   if (model === undefined || seed === undefined) {
@@ -327,9 +361,43 @@ export async function runSkillDispatch(
         continue;
       }
 
+      // THE TILL, before the engine. The leash above counts runs; this is the only thing that
+      // knows what they cost. No till wired ⇒ a billable skill does not run — fail closed, so
+      // reviving this module without a wallet cannot spend the creator's money.
+      // Carried, rather than re-derived after the run: the charge is then provably for the exact
+      // action that was authorized, and tsc holds the till non-null without an assertion.
+      let authorized: { till: SkillTill; action: BillableAction } | null = null;
+      if (skill.billable) {
+        if (!till) {
+          toolCalls.push({ name: skill.name, args, ran: false, note: "no till wired" });
+          messages.push({
+            role: "tool",
+            tool_call_id: call.id,
+            content: JSON.stringify({ error: "this skill costs credits and no billing seam is wired — it was not run" }),
+          });
+          continue;
+        }
+        const verdict = await till.authorize(skill.billable);
+        if (!verdict.ok) {
+          toolCalls.push({ name: skill.name, args, ran: false, note: "refused: no credits" });
+          messages.push({
+            role: "tool",
+            tool_call_id: call.id,
+            content: JSON.stringify({ error: verdict.reason }),
+          });
+          continue;
+        }
+        authorized = { till, action: skill.billable };
+      }
+
       try {
         const { blocks, warnings } = await skill.run(args, input.context);
-        if (skill.billable) paidRuns++;
+        // BILL ON DELIVERY. The charge sits after the run returned cards, so a skill that threw
+        // lands in the catch below and is never charged — the same rule the live routes follow.
+        if (authorized) {
+          paidRuns++;
+          await authorized.till.charge(authorized.action);
+        }
         skillRuns.push({ name: skill.name, blocks, warnings });
         toolCalls.push({ name: skill.name, args, ran: true });
         // The model doesn't need the full blocks (they render to the UI) — just confirmation + count.

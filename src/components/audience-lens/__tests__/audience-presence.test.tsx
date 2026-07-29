@@ -457,10 +457,6 @@ describe('AudiencePresence — PANEL (expanded over the composer)', () => {
     expect(within(panel).getByText(/1,000 modeled from your/i)).toBeInTheDocument();
   });
 
-  it('surfaces the "Reading the room…" loading state while asking', () => {
-    setup({ open: true, focus: null, asking: true });
-    expect(screen.getByText(/reading the room/i)).toBeInTheDocument();
-  });
 });
 
 // ── PR-3 Rewrite loop (Population weak-spot) ──

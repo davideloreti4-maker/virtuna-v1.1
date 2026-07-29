@@ -53,11 +53,23 @@ function scripted(responses: unknown[]): ChatComplete {
   return vi.fn(async () => responses[Math.min(i++, responses.length - 1)]) as unknown as ChatComplete;
 }
 
+/**
+ * A permissive TILL — every skill from `mkSkill` is billable by default, and since 2026-07-29 a
+ * billable skill does not run without one (fail closed). So the routing tests below have to pay,
+ * and this is the wallet that always says yes. The refusal paths get their own tills, in the
+ * "the till" block at the bottom.
+ */
+const okTill = () => ({
+  authorize: vi.fn(async () => ({ ok: true as const })),
+  charge: vi.fn(async () => {}),
+});
+
 const DEPS = (complete: ChatComplete, skills: SkillTool[], extra: Record<string, unknown> = {}) => ({
   complete,
   skills,
   model: "test-model",
   seed: 1,
+  till: okTill(),
   ...extra,
 });
 
@@ -180,5 +192,93 @@ describe("runSkillDispatch [tools]", () => {
     // ineligible for the default General audience; the standalone selector routes still own them.
     expect(byName.has("simulate_reaction")).toBe(false);
     expect(byName.has("predict_outcome")).toBe(false);
+  });
+});
+
+/**
+ * THE TILL — the money seam, added 2026-07-29.
+ *
+ * `maxSkillRuns` is a leash, not a price: it caps how many paid runs a dispatch may START and knows
+ * nothing about whether the creator can afford them or that anyone was charged. Before this seam,
+ * `skill.run()` invoked the real paid pipeline ungated and unbilled. The module is off the live path
+ * today, which is the only reason that never cost money — and "if it is ever revived, it needs a
+ * billing seam" written in a doc is not a thing that stops a revival.
+ *
+ * So the property under test is that reviving it WITHOUT a wallet cannot spend the creator's money.
+ */
+describe("runSkillDispatch [the till]", () => {
+  it("does NOT run a billable skill when no till is wired — fail closed", async () => {
+    const ideas = mkSkill("generate_ideas");
+    const complete = scripted([toolResp(call("generate_ideas", "morning routines", "c1")), stop("ok")]);
+
+    const res = await runSkillDispatch(
+      { ask: "3 ideas", context: CTX },
+      // Deliberately NOT using DEPS: this is the shape a revival gets if it forgets the wallet.
+      { complete, skills: [ideas], model: "test-model", seed: 1 },
+    );
+
+    expect(ideas.run).not.toHaveBeenCalled();
+    expect(res.skillRuns).toHaveLength(0);
+    expect(res.toolCalls[0]).toMatchObject({ name: "generate_ideas", ran: false, note: "no till wired" });
+  });
+
+  it("still runs a FREE skill with no till — the seam prices, it does not block", async () => {
+    const free = mkSkill("free_skill", { paid: false });
+    const complete = scripted([toolResp(call("free_skill", "anything", "c1")), stop("ok")]);
+
+    const res = await runSkillDispatch(
+      { ask: "go", context: CTX },
+      { complete, skills: [free], model: "test-model", seed: 1 },
+    );
+
+    expect(free.run).toHaveBeenCalledTimes(1);
+    expect(res.skillRuns).toHaveLength(1);
+  });
+
+  it("does not run when the till refuses, and relays its reason to the model", async () => {
+    const ideas = mkSkill("generate_ideas");
+    const complete = scripted([toolResp(call("generate_ideas", "morning routines", "c1")), stop("ok")]);
+    const till = {
+      authorize: vi.fn(async () => ({ ok: false as const, reason: "out of credits" })),
+      charge: vi.fn(async () => {}),
+    };
+
+    const res = await runSkillDispatch(
+      { ask: "3 ideas", context: CTX },
+      DEPS(complete, [ideas], { till }),
+    );
+
+    expect(ideas.run).not.toHaveBeenCalled();
+    expect(till.charge).not.toHaveBeenCalled();
+    expect(res.toolCalls[0]).toMatchObject({ ran: false, note: "refused: no credits" });
+  });
+
+  it("charges ONCE on delivery, under the action the skill declared", async () => {
+    const ideas = mkSkill("generate_ideas");
+    const complete = scripted([toolResp(call("generate_ideas", "morning routines", "c1")), stop("ok")]);
+    const till = okTill();
+
+    await runSkillDispatch({ ask: "3 ideas", context: CTX }, DEPS(complete, [ideas], { till }));
+
+    expect(till.authorize).toHaveBeenCalledTimes(1);
+    expect(till.authorize).toHaveBeenCalledWith("ideas");
+    expect(till.charge).toHaveBeenCalledTimes(1);
+    expect(till.charge).toHaveBeenCalledWith("ideas");
+  });
+
+  it("does NOT charge for a run that threw — bill on delivery, never on attempt", async () => {
+    const ideas = mkSkill("generate_ideas", {
+      run: vi.fn(async () => {
+        throw new Error("engine exploded");
+      }),
+    });
+    const complete = scripted([toolResp(call("generate_ideas", "morning routines", "c1")), stop("ok")]);
+    const till = okTill();
+
+    const res = await runSkillDispatch({ ask: "3 ideas", context: CTX }, DEPS(complete, [ideas], { till }));
+
+    expect(till.authorize).toHaveBeenCalledTimes(1);
+    expect(till.charge).not.toHaveBeenCalled();
+    expect(res.toolCalls[0]).toMatchObject({ ran: false, note: "error" });
   });
 });

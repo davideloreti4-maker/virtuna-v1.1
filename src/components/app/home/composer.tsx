@@ -619,16 +619,16 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // ⚠️ `skill` here is the DISPLAY namespace (ChatTurnKind — "ideas" PLURAL), never ToolId
   // ("idea" singular). The two differ in exactly this one id and a cast cannot fail (F-017).
   const { activeRun, isAnyStreaming, stopActive } = useActiveRun([
-    { skill: "ideas", isStreaming: ideas.isStreaming, isDone: ideas.isDone, blocks: ideasBlocks,
+    { skill: "ideas", isStreaming: ideas.isStreaming, isDone: ideas.isDone, isClosed: ideas.isClosed, blocks: ideasBlocks,
       stages: ideas.stages, followupText: ideas.followupText, warnings: ideas.warnings,
       error: ideas.error, outliersAvailable: ideas.outliersAvailable, stop: ideas.stop, reset: ideas.reset },
-    { skill: "hooks", isStreaming: hooks.isStreaming, isDone: hooks.isDone, blocks: hooksBlocks,
+    { skill: "hooks", isStreaming: hooks.isStreaming, isDone: hooks.isDone, isClosed: hooks.isClosed, blocks: hooksBlocks,
       stages: hooks.stages, followupText: hooks.followupText, warnings: hooks.warnings,
       error: hooks.error, outliersAvailable: hooks.outliersAvailable, stop: hooks.stop, reset: hooks.reset },
-    { skill: "script", isStreaming: script.isStreaming, isDone: script.isDone, blocks: scriptBlocks,
+    { skill: "script", isStreaming: script.isStreaming, isDone: script.isDone, isClosed: script.isClosed, blocks: scriptBlocks,
       stages: script.stages, followupText: script.followupText, warnings: script.warnings,
       error: script.error, outliersAvailable: script.outliersAvailable, stop: script.stop, reset: script.reset },
-    { skill: "remix", isStreaming: remix.isStreaming, isDone: remix.isDone, blocks: remixBlocks,
+    { skill: "remix", isStreaming: remix.isStreaming, isDone: remix.isDone, isClosed: remix.isClosed, blocks: remixBlocks,
       stages: remix.stages, followupText: remix.followupText, error: remix.error,
       stop: remix.stop, reset: remix.reset },
     { skill: "explore", isStreaming: explore.isStreaming, isDone: explore.isDone, blocks: exploreBlocks,
@@ -1365,13 +1365,28 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // showed: the swap is invisible.
   //
   // reset() runs ONLY on a successful reload — a failed fetch must never clear an unpersisted turn.
+  //
+  // ⚠️ IT FOLDS ON `isClosed`, NOT ON `isDone`, and the two are not the same moment. Every
+  // generative route emits `done` BEFORE its closing line (S2: unblock the UI early), persists that
+  // line as a trailing markdown message, and only THEN closes the stream. Folding on `done` reloaded
+  // history a beat too early to ever see the outro, which is why this used to need a SECOND reload
+  // per run to collect one sentence. Waiting for the close costs the creator nothing — the composer
+  // is already unblocked, `isStreaming` still flips on `done` — and it makes the swap atomic: the
+  // turn arrives with its closing line already on it instead of the line popping in ~2s later.
+  //
+  // Close is the only signal that works. A route whose follow-up model call returns empty sends NO
+  // `followup` event at all (`if (followupText.trim())`), so waiting on that frame would stall those
+  // runs forever; and every hook sets `isClosed` in a `finally`, so an abort or a throw folds too.
+  // Streams that never report closure default to `isClosed: true` and fold on `done` as before.
   const runDoneHandledRef = useRef<string | null>(null);
   const activeRunSkill = activeRun?.skill ?? null;
   const activeRunIsDone = activeRun?.isDone ?? false;
+  const activeRunIsClosed = activeRun?.isClosed ?? true;
   const activeRunIsStreaming = activeRun?.isStreaming ?? false;
   const activeRunReset = activeRun?.reset;
+  const activeRunSettled = activeRunIsDone && activeRunIsClosed;
   useEffect(() => {
-    if (!activeRunSkill || !activeRunIsDone) {
+    if (!activeRunSkill || !activeRunSettled) {
       if (!activeRunIsDone) runDoneHandledRef.current = null; // re-arm for the next run
       return;
     }
@@ -1386,32 +1401,24 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     return () => {
       cancelled = true;
     };
-  }, [activeRunSkill, activeRunIsDone, activeRunIsStreaming, activeRunReset, reloadChatThread]);
+  }, [
+    activeRunSkill,
+    activeRunSettled,
+    activeRunIsDone,
+    activeRunIsStreaming,
+    activeRunReset,
+    reloadChatThread,
+  ]);
 
-  // ── The LATE follow-up → one more reload ───────────────────────────────────
-  // Every generative route emits `done` BEFORE its closing line and keeps the SSE open ~2s to
-  // stream it, persisting it as a trailing markdown message just before it sends the `followup`
-  // event. So the fold above — which fires on `done` — reloads history a beat too EARLY to ever
-  // see that line: the outro sits in the database, unread, until something else happens to reload
-  // the thread. (Before 2026-07-28 it was visible, but only because the emptied stream re-claimed
-  // the tail and rendered the whole run a second time; see use-active-run.ts `hasContent`.)
+  // NOTE (2026-07-29): the "late follow-up → one more reload" effect that lived here is GONE, and
+  // deliberately so. It existed because the fold above fired on `done` and therefore always reloaded
+  // BEFORE the closing line was written — a second GET /api/threads/open per run, to collect one
+  // sentence. The fold now waits for `isClosed`, by which point that line is already persisted, so
+  // the first reload carries it and there is no second one to schedule.
   //
-  // A follow-up arriving on a stream whose blocks are already GONE is precisely the signal "the
-  // closing line is now persisted" — the fold has run, so one more reload can only add the outro
-  // to the turn that is already on screen. It cannot resurrect a duplicate: the live stream is
-  // empty by then, and follow-up text alone no longer counts as a tail turn.
-  const settledFollowup = [
-    hooksBlocks.length === 0 ? hooks.followupText : null,
-    ideasBlocks.length === 0 ? ideas.followupText : null,
-    scriptBlocks.length === 0 ? script.followupText : null,
-    remixBlocks.length === 0 ? remix.followupText : null,
-  ]
-    .filter(Boolean)
-    .join(' ');
-  useEffect(() => {
-    if (!settledFollowup) return;
-    void reloadChatThread();
-  }, [settledFollowup, reloadChatThread]);
+  // ⚠️ `hasContent()` in use-active-run.ts must still EXCLUDE `followupText`. That exclusion is not
+  // about this effect — it is what stops a late frame refilling an emptied stream and re-claiming
+  // the tail (the duplicate-turn defect measured live on 2026-07-28). It stays load-bearing.
 
   // ── Chat follow-up chips (chat-followups.ts) ───────────────────────────────
   // A tapped follow-up continues the conversation in THIS chat thread: it echoes the prompt as the
