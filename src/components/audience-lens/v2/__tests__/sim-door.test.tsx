@@ -186,6 +186,84 @@ describe("a brought VIDEO arms honestly", () => {
   });
 });
 
+// ── Phase 5: the ARM screen's budget — what the redesign must not give back ──────
+
+/**
+ * Three defects were measured on the live screen (2026-07-29, production build, 1512×900):
+ * the footer restated 5 of 5 facts already on it (145–161px, 16–20% of the card), the audience
+ * was named THREE ways at once, and the stimulus echo grew without a bound (112 → 295px across a
+ * 42 → 430-character draft, against a LENS fixed at 187px — which is the whole of the "preamble
+ * outweighs the lens 1.7:1" finding, and why clamping the echo is the fix that matches the cause).
+ *
+ * These are the kind of thing that creeps back one helpful sentence at a time, so each is held by
+ * the property rather than by its wording.
+ */
+describe("the ARM screen's budget", () => {
+  function armText() {
+    render(<AmbientSimulate data={SIMULATE_R4} mode="cold" onSimulate={vi.fn()} />);
+    fireEvent.click(screen.getByText("Screen a draft"));
+    fireEvent.change(screen.getByLabelText("Paste the draft to screen"), { target: { value: "a draft" } });
+    fireEvent.click(screen.getByText("Arm the run →"));
+    return screen.getByTestId("ambient-simulate");
+  }
+  const occurrences = (haystack: string, needle: string) => haystack.split(needle).length - 1;
+
+  it("names the room ONCE — three registers for one set reads as three different things", () => {
+    const panel = armText();
+    // "Your audience" (the fixture's room) belongs to the conditions line and nowhere else.
+    expect(occurrences(panel.textContent ?? "", SIMULATE_R4.room)).toBe(1);
+    // And the two paraphrases that used to stand in for it are gone: the slice chip already
+    // says "Everyone", so the caption must not also say "the whole room".
+    expect(panel.textContent).not.toContain("the whole room");
+  });
+
+  it("does not echo the slice chip's own label back at it in the caption", () => {
+    render(<AmbientSimulate data={SIMULATE_R4} mode="cold" onSimulate={vi.fn()} />);
+    fireEvent.click(screen.getByText("Screen a draft"));
+    fireEvent.change(screen.getByLabelText("Paste the draft to screen"), { target: { value: "a draft" } });
+    fireEvent.click(screen.getByText("Arm the run →"));
+    fireEvent.click(screen.getByText("Everyone")); // open the slice dropdown
+    fireEvent.click(screen.getByText("Builders")); // a real signature slice, share 0.41
+    const panel = screen.getByTestId("ambient-simulate");
+    // The chip states the slice; the caption states the arithmetic. Exactly one of them names it.
+    // CASE-INSENSITIVELY: the caption echoed the label LOWERCASED ("the builders slice · 41%…"),
+    // so a case-sensitive count of "Builders" stays at 1 with the echo fully restored — this guard
+    // passed against its own mutation until 2026-07-29.
+    expect(occurrences((panel.textContent ?? "").toLowerCase(), "builders")).toBe(1);
+    expect(panel.textContent).toContain("41% of the room");
+  });
+
+  it("spends the footer on the WAIT, not on restating the form above it", () => {
+    const panel = armText();
+    expect(panel.textContent).toContain("Reads in a few seconds");
+    // The receipt named five facts, every one of which is on the screen already.
+    expect(panel.textContent).not.toContain("Screening");
+  });
+
+  it("states the video wait instead — the two paths differ by minutes, and nothing said so", () => {
+    render(<AmbientSimulate data={SIMULATE_R4} mode="cold" onSimulate={vi.fn()} />);
+    fireEvent.click(screen.getByText("Test a real video"));
+    fireEvent.change(screen.getByLabelText("Upload video file"), {
+      target: { files: [new File(["x"], "my-clip.mp4", { type: "video/mp4" })] },
+    });
+    fireEvent.click(screen.getByText("Arm the run →"));
+    expect(screen.getByTestId("ambient-simulate").textContent).toContain("1–3 minutes");
+  });
+
+  it("CLAMPS the stimulus echo — a 2,000-char draft must not crowd out the one loud dial", () => {
+    const long = "x".repeat(1200);
+    render(<AmbientSimulate data={SIMULATE_R4} mode="cold" onSimulate={vi.fn()} />);
+    fireEvent.click(screen.getByText("Screen a draft"));
+    fireEvent.change(screen.getByLabelText("Paste the draft to screen"), { target: { value: long } });
+    fireEvent.click(screen.getByText("Arm the run →"));
+    const echo = screen.getByTestId("sim-stimulus");
+    // Clamped VISUALLY — the whole draft stays in the DOM, so nothing about it is hidden from
+    // anything that reads the text; only its height is bounded.
+    expect(echo.textContent).toBe(long);
+    expect(echo.getAttribute("data-clamp")).toBe("3");
+  });
+});
+
 // ── The host: what each stimulus is actually routed to ──────────────────────────
 
 describe("SimulateDoorHost routing", () => {
