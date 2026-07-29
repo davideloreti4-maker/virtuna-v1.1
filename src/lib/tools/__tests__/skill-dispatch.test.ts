@@ -281,4 +281,32 @@ describe("runSkillDispatch [the till]", () => {
     expect(till.charge).not.toHaveBeenCalled();
     expect(res.toolCalls[0]).toMatchObject({ ran: false, note: "error" });
   });
+
+  /**
+   * The inverse of the test above, and the one that actually costs the creator something.
+   *
+   * A charge that threw inside the run's own `try` would be caught by the SAME handler that catches
+   * an engine explosion, so a bookkeeping fault would be reported as a RUN failure: the cards are
+   * already built at that point, and the creator would watch delivered work be thrown away and the
+   * model told the skill errored — while still not being charged. Delivery cannot be un-done by a
+   * failed charge, so the run has to stand, and the miss rides out as a warning instead.
+   */
+  it("keeps a delivered run when the CHARGE throws — a bookkeeping fault is not a run failure", async () => {
+    const ideas = mkSkill("generate_ideas");
+    const complete = scripted([toolResp(call("generate_ideas", "morning routines", "c1")), stop("ok")]);
+    const till = {
+      authorize: vi.fn(async () => ({ ok: true as const })),
+      charge: vi.fn(async () => {
+        throw new Error("wallet unreachable");
+      }),
+    };
+
+    const res = await runSkillDispatch({ ask: "3 ideas", context: CTX }, DEPS(complete, [ideas], { till }));
+
+    expect(till.charge).toHaveBeenCalledTimes(1);
+    expect(res.toolCalls[0]).toMatchObject({ name: "generate_ideas", ran: true });
+    expect(res.skillRuns).toHaveLength(1);
+    expect(res.skillRuns[0].blocks).toHaveLength(1);
+    expect(res.skillRuns[0].warnings.join(" ")).toMatch(/charge did not record/i);
+  });
 });

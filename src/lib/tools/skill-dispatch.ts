@@ -394,11 +394,22 @@ export async function runSkillDispatch(
         const { blocks, warnings } = await skill.run(args, input.context);
         // BILL ON DELIVERY. The charge sits after the run returned cards, so a skill that threw
         // lands in the catch below and is never charged — the same rule the live routes follow.
+        //
+        // ⚠️ It is guarded SEPARATELY from the run, and that separation is the point. A charge that
+        // threw inside the same `try` would reach the catch below and be reported as a RUN failure:
+        // the cards exist by then, so a bookkeeping fault would discard work the creator can see was
+        // done, tell the model the skill errored — and still not charge. Delivery is not reversible
+        // by a failed charge. The run stands and the miss rides out as a warning.
+        const billingWarnings: string[] = [];
         if (authorized) {
           paidRuns++;
-          await authorized.till.charge(authorized.action);
+          try {
+            await authorized.till.charge(authorized.action);
+          } catch {
+            billingWarnings.push(`the ${skill.name} run was delivered but its charge did not record`);
+          }
         }
-        skillRuns.push({ name: skill.name, blocks, warnings });
+        skillRuns.push({ name: skill.name, blocks, warnings: [...warnings, ...billingWarnings] });
         toolCalls.push({ name: skill.name, args, ran: true });
         // The model doesn't need the full blocks (they render to the UI) — just confirmation + count.
         messages.push({
