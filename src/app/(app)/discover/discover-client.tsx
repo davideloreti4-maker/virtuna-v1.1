@@ -20,6 +20,7 @@ import { useRouter } from "next/navigation";
 import { DottedGrid } from "@/components/app/dotted-grid";
 import { DiscoverEntry } from "@/components/discover/discover-entry";
 import { DiscoverGrid, type DiscoverGridState } from "@/components/discover/discover-grid";
+import { SurfaceHeader } from "@/components/surfaces/surface-header";
 import type { OutlierTileData } from "@/components/discover/outlier-tile";
 import { classifyDiscoverInput } from "@/lib/discover/classify-input";
 import { handoffsFor } from "@/lib/tools/chain-handoff";
@@ -142,15 +143,14 @@ export function DiscoverClient() {
 
   return (
     <div className="space-y-6">
-      <div className="space-y-1">
-        <h1 className="text-[19px] font-semibold tracking-[-0.01em] text-foreground lg:text-[22px]">Find what&apos;s already working</h1>
-        {state === "idle" && (
-          <p className="text-sm text-foreground-muted max-w-xl">
-            Paste a creator&apos;s @handle or a niche to surface their outliers — the posts
-            beating their own baseline. Then Remix the winner for your audience.
-          </p>
-        )}
-      </div>
+      <SurfaceHeader
+        title="Find what's already working"
+        subtitle={
+          state === "idle"
+            ? "Paste a creator's @handle or a niche to surface their outliers — the posts beating their own baseline. Then Remix the winner for your audience."
+            : undefined
+        }
+      />
 
       <DiscoverEntry onSubmit={runPull} disabled={state === "loading"} />
 

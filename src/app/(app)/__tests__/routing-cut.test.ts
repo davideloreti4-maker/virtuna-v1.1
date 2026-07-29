@@ -7,7 +7,15 @@
  *   - /competitors -> /feed?tab=... -> /home  (dead 2-hop that also DROPS ?tab)
  *   - /feed/hooks, /feed/channels, /competitors/[handle], /competitors/compare  (live orphans)
  *   - /dev/cards shipped to production (auth-gated only, no env gate, despite its "dev" header)
- * These guards lock the fix: every hidden route lands on /home in ONE hop, and /dev is 404 in prod.
+ *
+ * UPDATED 2026-07-29 — Discover was REACTIVATED, which inverts half of this file. The four
+ * "orphans" above are sub-surfaces of the Discover hub, every one of them reachable from it:
+ * DiscoverTabBar links Channels + Hooks, competitor cards/rows link [handle], and both the
+ * competitors list and the intelligence section link compare. So the hub could not come back
+ * alone — restoring /feed while they stayed stubbed would have shipped a tab bar whose own tabs
+ * bounce to /home. Their guards now assert they RENDER, which is the same invariant read the
+ * other way: the subtree agrees with itself. /start + /calendar are still hidden, and /dev is
+ * still 404 in prod — those guards are unchanged.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -17,26 +25,50 @@ const APP = join(process.cwd(), 'src/app/(app)');
 const read = (p: string) =>
   readFileSync(join(APP, p), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
 
-// ── Source guards — redirect destinations collapse to /home; no dead 2-hops or leaked orphans ──
+// ── Source guards — hidden routes land on /home in ONE hop; the Discover subtree renders ──
 describe('P3 routing cut — redirect destinations', () => {
   it('/analyze redirects straight to /home (not the hidden /start 2-hop)', () => {
     const src = read('analyze/page.tsx');
     expect(src).toMatch(/redirect\(\s*['"]\/home['"]\s*\)/);
     expect(src).not.toMatch(/redirect\(\s*['"]\/start['"]/);
   });
-  it('/competitors redirects straight to /home (not /feed?tab which drops the tab)', () => {
-    const src = read('competitors/page.tsx');
-    expect(src).toMatch(/redirect\(\s*['"]\/home['"]\s*\)/);
-    expect(src).not.toMatch(/\/feed\?tab/);
-  });
+  it.each(['start/page.tsx', 'calendar/page.tsx'])(
+    'still-hidden %s redirects to /home in one hop',
+    (p) => {
+      const src = read(p);
+      expect(src).toMatch(/redirect\(\s*['"]\/home['"]\s*\)/);
+    },
+  );
+});
+
+describe('Discover subtree — reactivated 2026-07-29, every entry point resolves', () => {
+  // The hub's own tab bar links Channels + Hooks; competitor cards/rows link [handle]; the
+  // competitors list + intelligence section link compare. A redirect stub in ANY of these is a
+  // nav item that bounces to /home — which is exactly what the launch cut left behind.
   it.each([
+    'feed/page.tsx',
     'feed/hooks/page.tsx',
     'feed/channels/page.tsx',
     'competitors/[handle]/page.tsx',
     'competitors/compare/page.tsx',
-  ])('orphan %s redirects to /home (hidden with its parent, no direct-URL leak)', (p) => {
+    'discover/page.tsx',
+    'library/page.tsx',
+  ])('%s renders a page — no redirect stub', (p) => {
     const src = read(p);
-    expect(src).toMatch(/redirect\(\s*['"]\/home['"]\s*\)/);
+    expect(src).not.toMatch(/redirect\(\s*['"]\/home['"]\s*\)/);
+    expect(src).toMatch(/export default (async )?function/);
+  });
+
+  it('/competitors deep-links the hub tab (its target is live again, so the 2-hop is gone)', () => {
+    const src = read('competitors/page.tsx');
+    expect(src).toMatch(/redirect\(\s*['"]\/feed\?tab=competitors['"]\s*\)/);
+  });
+
+  it('/saved and /discover keep their deep-link redirects to live targets', () => {
+    // /saved → /library is deep-link preservation over the SAME saved_items store.
+    expect(read('saved/page.tsx')).toMatch(/redirect\(\s*['"]\/library['"]\s*\)/);
+    // /discover is its own surface now (the on-demand outlier pull), NOT a redirect to /feed.
+    expect(read('discover/page.tsx')).not.toMatch(/redirect\(/);
   });
 });
 

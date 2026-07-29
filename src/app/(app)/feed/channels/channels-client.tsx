@@ -11,6 +11,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useToast } from "@/components/ui/toast";
 import { DiscoverTabBar } from "@/components/discover/discover-tab-bar";
+import { PageShell, SurfaceHeader } from "@/components/surfaces/surface-header";
 import {
   AddChannelPanel,
   type AddChannelResultLite,
@@ -130,18 +131,20 @@ export function ChannelsClient() {
 
   return (
     // Container + header mirror DiscoverHub exactly (title → mono subtitle → tabs)
-    // so the tab bar doesn't jump position when switching Discover tabs.
-    <div className="mx-auto w-full max-w-[1180px] px-4 pb-24 pt-6 lg:px-6">
-      <header className="mb-4">
-        <h1 className="text-[19px] font-semibold tracking-[-0.01em] text-foreground lg:text-[22px]">Channels</h1>
-        <p className="mt-0.5 font-mono text-[10px] text-foreground-muted">
+    // so the tab bar doesn't jump position when switching Discover tabs. That invariant is
+    // why this tracks the hub onto PageShell (the canonical 880px column, 0f904cf8) —
+    // leaving it at its old private 1180px would slide the bar sideways on every tab click.
+    <PageShell>
+      <div className="mb-4">
+        <SurfaceHeader title="Channels" />
+        <p className="mt-0.5 font-mono text-micro text-foreground-muted">
           pick which channels to include in your videos feed
         </p>
 
         <div className="mt-3">
           <DiscoverTabBar active="channels" />
         </div>
-      </header>
+      </div>
 
       <div className="grid items-start gap-6 lg:grid-cols-[1.7fr_1fr]">
         <AddChannelPanel
@@ -160,6 +163,6 @@ export function ChannelsClient() {
           onExport={handleExport}
         />
       </div>
-    </div>
+    </PageShell>
   );
 }

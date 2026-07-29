@@ -1,13 +1,26 @@
-import { redirect } from "next/navigation";
+import type { Metadata } from "next";
+import { createClient } from "@/lib/supabase/server";
+import { ChannelsClient } from "./channels-client";
+
+export const metadata: Metadata = {
+  title: "Channels | Maven",
+  description: "Watch TikTok creators to build your persistent Videos feed.",
+};
 
 /**
- * /feed/channels — orphaned by the MVP launch cut (2026-07-15). The Discover hub + /feed were hidden
- * (the parent redirects to /home), but this sub-route did not inherit and stayed live, leaking the
- * hidden Channels watchlist via direct URL (P3, ambient-room-v2). Redirect to /home to match the parent.
+ * Server component for /feed/channels (Discover Feed Phase 1.2).
  *
- * The ChannelsClient + ingest/track APIs are LEFT IN PLACE (unreferenced) — restore this route from
- * git to bring the watchlist back post-launch, exactly like /feed and /start.
+ * Auth-gated (defense-in-depth alongside the (app) layout guard, mirrors /discover).
+ * The tabbed add panel + watchlist are owned by the client component; the scrape/track
+ * writes happen in POST /api/channels/ingest + /api/tracked-accounts.
  */
-export default function ChannelsRedirect() {
-  redirect("/home");
+export default async function ChannelsPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return null;
+
+  return <ChannelsClient />;
 }
