@@ -1,8 +1,110 @@
 # Handoff — The ＋ door (bring your own stimulus) + the ARM screen redesign
 
-**Date:** 2026-07-28 · **Worktree:** `~/virtuna-platform` · **Branch:** `lane/platform-surface`
-**Status:** ✅ **Phases 1, 2, 3, 4 and the react gate are ALL MERGED TO MAIN.** Phases 5–6 remain open.
-Read §0.3 first, then §0.4, then §0.5. §11 is the copy-paste kickoff for 5+6.
+**Date:** 2026-07-28 (last session 2026-07-29) · **Worktree:** `~/virtuna-platform` · **Branch:** `lane/platform-surface`
+**Status:** ✅ **ALL SIX PHASES ARE MERGED TO MAIN. This lane is COMPLETE.**
+Read §0.2 first, then §0.3, §0.4, §0.5. §11 is the copy-paste kickoff for whatever comes next.
+
+---
+
+## §0.2 — STATUS after session 4 (2026-07-29). This supersedes everything below it.
+
+✅ **PHASES 5 AND 6 ARE MERGED TO MAIN — PR #401, commit `69414a16`, merge `e3dcbb23`.**
+The lane's six phases are done. There is no Phase 7 in this doc; §11 is now a next-session brief,
+not a phase kickoff.
+
+⚠️ **`origin/main` moved BETWEEN this session's first two commands** (`be4c34e6` → `5e351be0`).
+Both were docs-only, so §0.3's code verification at `18950c59` still held. The re-baseline
+reproduced §0.3's numbers exactly — **4849/0 flag off · 4850/0 flag on** — which is the useful
+signal: when the baseline reproduces, the tree really did not move.
+
+### 🔑 §5's band table did not survive re-measurement. Two of its three numbers were wrong.
+
+This is wrong claim #9 and #10, and both would have mis-costed the phase. Measured on a
+**production build** at real geometry, 1512×900:
+
+| §5 claimed | actually |
+|---|---|
+| trailing dead space **92px / 11%** | **41px / 4.8%**, and ONLY on the develop entry |
+| preamble outweighs the lens **1.7 : 1** | **0.60 / 0.82 / 1.58 : 1** at a 42 / 120 / 430-char draft |
+
+1. **The three ARM variants do not share a container, and §5 measured one and described all
+   three.** ① `develop` mounts `connected` INSIDE the rail — a 400px column at a fixed 858px, so it
+   *can* end in dead space. ② and ③ come through `SimulateDoorHost` **un-`connected`, as a floating
+   460px sheet exactly as tall as its content** — they have NO trailing dead space, structurally,
+   and cannot have any. §11 said "design ② first"; ② is the one geometry the table never described.
+2. **The 1.7 : 1 ratio is not a property of the layout.** The preamble is 112 → 153 → **295px**
+   across draft lengths while THE LENS is fixed at **187px**. The ratio only crosses 1:1 past
+   ~250 characters. §5 measured at the long end and reported it as the screen's shape.
+
+**So the fix matched the cause: CLAMP the echo, don't rebalance the bands.** Three lines, full text
+still in the DOM, "Show all" restores it. A draft can be 2,000 chars (`DRAFT_MAX`), so the unbounded
+case was reachable, not hypothetical — and on ① the footer carries the SPEND BUTTON, which a long
+stimulus scrolls out of the rail. Measured after: **295 → 177px**, lens is the loudest band at every
+length, and ① with a 350-char stimulus lands at **843/858, `scrollH === clientH`, no overflow.**
+
+### The other two §5 defects were real, and are fixed as stated
+
+- **The footer restated 5 of 5 facts already on screen** (145–161px = 16–20% of the card). Every one
+  of "Screening 1,000 of General for 'would they stop' · on TikTok · SIM-1 Flash" appears above it —
+  the tier on a locked chip six pixels to its right. It now states **THE WAIT** (seconds vs 1–3
+  minutes): the only fact the screen never carried, and the only one that differs between the two
+  runs a `Simulate ↑` can start.
+- **The audience was named three ways at once** — "Everyone" (slice chip) · "the whole room"
+  (caption) · "General" (conditions, and again in the footer). The conditions line keeps the name;
+  the caption now states arithmetic only and no longer echoes the chip's own label back at it.
+
+### ⚠️ Three more things this session found
+
+1. **§11's fixture pointer was wrong (#10).** The drift guard reads **`src/app/(app)/dev/cards/fixtures.ts`**
+   (`ALL_FIXTURE_BLOCKS` → `dev/cards/__tests__/fixtures.test.ts`). `src/lib/tools/mock/fixtures.ts`
+   has no `ALL_FIXTURE_BLOCKS` and feeds no drift guard at all.
+2. **A new guard PASSED AGAINST ITS OWN MUTATION.** The "caption must not echo the slice chip"
+   test counted `"Builders"` case-sensitively; the echo renders it **lowercased**, so restoring the
+   defect left the test green. It was caught only because the mutation was verified to have APPLIED —
+   two earlier `perl` mutations had silently no-op'd and reported a meaningless "19 passed".
+   🔑 **A mutation you did not confirm landed is not a mutation test.** Assert the substitution
+   found its target before you trust the result.
+3. **`happy-dom` silently drops `-webkit-line-clamp` and `display:-webkit-box`** from inline styles —
+   only `overflow: hidden` survives. A guard reading the style attribute would have asserted nothing
+   and passed with the clamp deleted. The clamp states itself via `data-clamp` instead.
+
+### Verified on a production build (`npm run build && next start -p 3111`)
+
+- `/dev/cards` → The Room → `#room-simulate`: **1 intake · 2 collect · 3 arm**, 3 `sim-locked` on the
+  video variant, **no ＋ door anywhere in the tab** (by design), no "Screening", no "10,000".
+- The brought-card fixture renders through the real registry: "You brought this", and the count is
+  worded in the RUN's lens (`finish` → "watched it through", not "stopped").
+- ⚠️ **Probe traps that cost time here:** `/login` renders TWO email inputs once the password form is
+  revealed (it is behind **"Sign in with a password instead"**) — filling the FIRST one fills the OTP
+  form and the sign-in silently does nothing. Fill `input[type=email]` **last**, then "Sign in".
+
+### Baselines — RE-BASELINE AGAIN, main moves daily
+
+| | measured on this tree |
+|---|---|
+| before this work | **4849/0** flag off · **4850/0** flag on · 444 files |
+| after (merged) | **4855/0** flag off · **4856/0** flag on · 444 files |
+
++6 = **5 new guards + 1 fixture block** (the brought-card entry grows `ALL_FIXTURE_BLOCKS`). No new
+test FILE, so the file count is unchanged. tsc clean · `npm run build` passes · the **3** unhandled
+`reading 'catch'` rejections in `composer.test.tsx` are unchanged in message and count.
+
+**All 5 new guards mutation-verified** — room-named-once, slice-chip echo (after the fix above),
+footer-restates, video wait, and the clamp.
+
+### ▶ Next — see §11. Nothing in this lane is left.
+
+### Owner-owed, still open after four sessions
+
+- 🔴 **`/api/account-read` is ungated with no `CREDIT_COSTS` entry** — 1–3 minutes of Apify per call.
+  **The only item on this board that costs real money on every call.** A pricing decision.
+- 🔴 **`/api/tools/react` is a THREE-caller paid route** (rail sim · composer `ask` · the ＋ door).
+  A fourth caller needs `reportCredit402` or the refusal is silent.
+- 🎨 **A design question, not a defect:** on the VIDEO variant THE LENS is now the *smallest* band
+  (102px, 14.8%) while THE SLICE is the largest (150px, 21.7%). All three dials are locked there, so
+  ③ is a receipt wearing a dial board's layout. Left alone deliberately — collapsing the three locks
+  would change the mutation-verified `sim-locked` ×3 guard, and §11 rules that re-litigating locks is
+  a route change, not a design change. Owner's call.
 
 ---
 
@@ -481,6 +583,15 @@ implementation detail — do not silently ship it either way.**
 
 ## §5 — The ARM screen: what to redesign
 
+> 🛑 **THE BAND TABLE BELOW IS WRONG AND THE PHASE IT SPECIFIED IS DONE (PR #401). See §0.2.**
+> Two of its three numbers did not survive re-measurement: trailing dead space is **41px / 4.8%**
+> (not 92 / 11%) and exists on the develop entry ONLY — the two cold variants are content-height
+> sheets and cannot have any. And "the preamble outweighs the lens 1.7 : 1" is not a property of
+> the layout at all: it runs **0.60 → 0.82 → 1.58 : 1** as the stimulus grows, so the table
+> measured one long draft and reported it as the screen's shape. **Do not re-derive a budget from
+> the numbers below.** The two defects it got RIGHT — the footer restating 5 of 5 facts, and the
+> audience named three ways — are fixed and guarded.
+
 ### The measured problem
 
 Measured live on the rail at a real 858px panel (`/dev/cards` → The Room → rail → tap a queued row):
@@ -755,97 +866,83 @@ caller.** That is why this lane's door does not depend on the `ask` verb and is 
 
 ---
 
-## §11 — Copy-paste kickoff prompt for a fresh context (Phases 5 + 6)
+## §11 — Copy-paste kickoff prompt for a fresh context
 
-⚠️ The Phases-3+4 prompt that lived here is **spent** — both are merged (PR #399, `257fecbf`).
-This is the Phases 5+6 prompt. Everything in it was verified on 2026-07-28.
+⚠️ The Phases-5+6 prompt that lived here is **spent** — both are merged (PR #401, `69414a16`,
+merge `e3dcbb23`). **This lane is COMPLETE: all six phases are on `main`.** What follows is a
+next-session brief, not a phase kickoff. Everything in it was verified on 2026-07-29.
 
 ```
-Read docs/HANDOFF-2026-07-28-simulate-door-and-arm.md — §0.3 FIRST, then §0.4, then §5 and §6.
+Read docs/HANDOFF-2026-07-28-simulate-door-and-arm.md — §0.2 FIRST. Stop there unless you need
+history; §0.3/§0.4/§0.5 are earlier sessions' and the body below them is the ORIGINAL spec, which
+has now been wrong TEN times. Trust §0.2 > §0.3 > §0.4 > §0.5 > body, and verify any claim against
+the source before you build on it. Say what you found.
 
-Context: virtuna-platform, branch lane/platform-surface. Phases 1, 2, 3, 4 and the react credit
-gate are ALL MERGED TO MAIN and the ＋ door works end to end (PR #399, `257fecbf`). §0.3 is the
-status block; §0.4 and §0.5 are earlier sessions'. The body below them is the ORIGINAL spec and has
-been wrong NINE times — trust §0.3 > §0.4 > §0.5 > body, and verify any claim against the source
-before you build on it. Say what you found.
+Context: virtuna-platform, branch lane/platform-surface. The ＋ door lane is DONE — all six
+phases merged. The lane branch is level with main; there is no half-finished work in this tree.
 
 FIRST COMMANDS: `git status`, then `git fetch && git log --oneline -3 origin/main`, then
-`git rev-list --count HEAD..origin/main`. A SECOND lane (composer chrome) has been merging into
-main the same day and rewrote ~558 lines of composer.tsx in PR #398. Session 3 verified the
-combined tree at 18950c59, but main was already at e050bd84 by the end of that session. If you
-are behind, merge origin/main FIRST and re-baseline before touching anything.
+`git rev-list --count HEAD..origin/main`. Main moves DAILY and has moved mid-session before
+(twice inside one session on 2026-07-29, between two consecutive commands). If you are behind,
+merge origin/main FIRST and re-baseline before touching anything.
 
-GOAL: Phase 5 (the ARM screen redesign) and Phase 6 (pin it in /dev/cards). They are
-INDEPENDENT — 6 is mechanical and can be done first or last; 5 is the design work.
+BASELINE to reproduce before you change anything (measure, don't assume — this doc has published
+a stale number four times):
+  tsc clean · suite 4855/0 flag off · 4856/0 flag on · 444 files
+  (`AMBIENT_V2_ENABLED=true NEXT_PUBLIC_AMBIENT_V2=true` for the flag-on run)
+  `npm run build` passes — this is a REQUIRED gate: a `src/lib/surfaces/*` import into an API
+  route breaks the production build while tsc AND the whole suite stay green.
+  PRE-EXISTING, not yours: composer.test.tsx emits exactly 3 unhandled rejections
+  ("Cannot read properties of undefined (reading 'catch')"). Match on the MESSAGE and the count
+  of 3 — the line number moves whenever composer.tsx changes (1913 → 1922 → 2003 so far).
 
-PHASE 5 — the ARM redesign (§5). Design variant ② FIRST; ① is ② plus one band, ③ is ② with
-dials changed.
-- ⚠️ RE-MEASURE BEFORE DESIGNING. §5's band table (preamble 286px / 33%, THE LENS 166px / 19%,
-  trailing dead space 92px) was measured on the PRE-Phase-3/4 screen. The cold variants now
-  render differently: a brought VIDEO renders THREE locked dials with reason lines instead of
-  dropdowns, and the cold entries carry a `‹ Arm a simulation` back button the develop entry
-  does not. Measure the real thing at a real 858px panel before costing any of it.
-- What is genuinely still wrong, and is the whole point of the phase:
-  · the preamble outweighs THE LENS 1.7:1 while the component's own docstring states "the LENS
-    is the one loud dial; everything else is quiet" — the screen contradicts its own spec,
-    measurably;
-  · the footer restates 5 of 5 facts already on screen ("Screening 1,000 of General for 'would
-    they stop' · on TikTok · SIM-1 Flash" — every one appears above it);
-  · the audience is named THREE ways at once: "Everyone" (the slice chip) · "the whole room"
-    (the caption) · "in General" (the conditions line).
-- The tie-back band must NOT render on either cold variant (there is no rank to deepen). Already
-  true — keep it true.
-- DO NOT re-litigate the locks. lens/slice/scene lock on VIDEO because /api/analyze accepts none
-  of them; fidelity locks on BOTH because text→Max has no live caller. Those are measured facts
-  with mutation-verified guards (sim-door.test.tsx). Restyling them is fine; making them live
-  is a route change, not a design change.
-- The video variant states TEN reactors, not 10,000. A video fold is a 10-reactor panel
-  (ambient-v2-video-population.ts §1 says so and refuses to clone them). Do not "fix" that
-  number to match the text path.
+THERE IS NO ASSIGNED NEXT PHASE. Pick with the owner. The open items, highest-cost first:
 
-PHASE 6 — pin it in /dev/cards (§6)
-- Add a `room-simulate` section to The Room tab: all three ARM variants + the intake states
-  (intake · collect-draft · collect-video · arm-text · arm-video) so this screen stops being
-  reachable only by clicking through a real run.
-- Follow the pattern already there (the tab reads AMBIENT_V2_ENABLED and labels itself — keep it).
-- ⚠️ The gallery passes NO `onTestVariant`, so it renders NO ＋ door BY DESIGN (a door with no
-  host to run it is the dead-button class this lane removed). Do not add a fake handler to make
-  the gallery look complete — mount the intake directly, which is what /ambient-v2 already does.
-- A brought-card fixture belongs here too: `src/lib/tools/mock/fixtures.ts` feeds
-  dev/cards/__tests__/fixtures.test.ts, which validates every fixture against the registry.
+1. 🔴 `/api/account-read` — ungated, no CREDIT_COSTS entry, 1–3 minutes of Apify per call. The
+   only thing on this board that costs real money on every call, open across FOUR sessions. It
+   is a PRICING decision, not an implementation detail: do not just gate it. Get the owner's
+   call on price-it / gate-it / accept-the-cost, then implement.
+   ⚠️ Before gating ANY route here: `enforced = isAnonymous || isQuotaEnforced()`, so a gate
+   meters ANONYMOUS users the moment it lands, flag or no flag. Check whether the action is the
+   DEMO_ACTION and whether anything refuses anonymous sessions earlier in the handler.
 
-VERIFY per §9 (still accurate):
-- `npm run build` is a REQUIRED gate. Importing a `src/lib/surfaces/*` module into an API route
-  breaks the production build while tsc AND the whole suite stay green.
-- Suite baseline on the combined tree at 18950c59: **4849/0 flag off · 4850/0 flag on**, 444
-  files (`AMBIENT_V2_ENABLED=true NEXT_PUBLIC_AMBIENT_V2=true`). Run it BOTH ways. RE-BASELINE on
-  your first green run — two lanes are landing into main daily and this doc has published a stale
-  number three times.
-- PRE-EXISTING, not yours: `composer.test.tsx` emits 3 unhandled rejections
-  (`Cannot read properties of undefined (reading 'catch')`, a mocked `stream.start` returning
-  undefined on the tiktok_url path). All tests still PASS. The line number MOVES whenever
-  composer.tsx changes (1913 → 1922 → 2003 across three sessions) — match on the message, not
-  the line, and don't let it mask a NEW one: the count is 3.
-- E2E on a production build (`npm run build && npx next start -p 3111`), never `next dev`.
+2. 🎨 The VIDEO ARM variant (③) is a receipt wearing a dial board's layout. Measured 2026-07-29:
+   THE LENS is the SMALLEST band (102px, 14.8%) while THE SLICE is the largest (150px, 21.7%),
+   and all three dials are LOCKED there. Grouping them would change the mutation-verified
+   `sim-locked` ×3 guard in sim-door.test.tsx, so it needs an owner decision, not a refactor.
+   DO NOT make the locks live — /api/analyze honours no lens, slice or scene. That is a route
+   change, not a design change.
+
+3. 🔴 `/api/tools/react` is a THREE-caller paid route (rail sim · composer `ask` · the ＋ door).
+   A fourth caller needs `reportCredit402` or the refusal is silent. Constraint, not a task.
+
+HOW TO VERIFY ANYTHING ON THIS SURFACE (all confirmed 2026-07-29):
+- E2E on a PRODUCTION build (`npm run build && ./node_modules/.bin/next start -p 3111`), never
+  `next dev`. Use ./node_modules/.bin/vitest and ./node_modules/.bin/next directly — the npx
+  wrapper here SWALLOWS stderr, so unhandled rejections are invisible through it.
+- /dev/cards needs auth. The login page renders TWO email inputs once the password form is
+  revealed (it is behind "Sign in with a password instead"). Filling the FIRST one fills the OTP
+  form and the sign-in silently does nothing — fill input[type=email] LAST, then click "Sign in"
+  (NOT the first button[type=submit]; that is the OTP form's disabled "Continue").
+    Creds: e2e-test@virtuna.local / e2e-test-password-2026
+- Every ARM state is now PINNED at /dev/cards → The Room → #room-simulate (Phase 6). Use it —
+  it is the measuring rig, and each variant is boxed at the geometry ITS OWN host gives it.
+  ⚠️ The three ARM variants DO NOT share a container. ① develop is `connected` inside the rail
+  (400px × fixed 858px, can end in dead space); ② and ③ are a floating 460px sheet sized to
+  their content and CANNOT have trailing dead space. Measuring one and describing all three is
+  exactly the mistake §5 made.
+- /ambient-v2 is no-auth + fixture-driven and drives the REAL cold flow (intake → collect → arm),
+  which is the cheapest way to measure the ARM screen at several stimulus lengths.
 - Playwright screenshots hang on this app — probe with getBoundingClientRect / getComputedStyle.
   Raw Playwright from a scratch dir needs an ABSOLUTE import of node_modules/playwright/index.mjs.
-- /ambient-v2 is no-auth + fixture-driven (fast, misses adapter bugs). /dev/cards needs auth; the
-  login button is "Sign in", NOT the first button[type=submit] (that one is the OTP form's
-  "Continue" — permanently disabled, hangs 30s).
-    Creds: e2e-test@virtuna.local / e2e-test-password-2026
-  ⚠️ The e2e account has a stale open thread with content, so /home renders THREAD mode and the
-  Start card (and its SIMULATE DOOR) does not mount. Force a fresh thread first:
-    await page.evaluate(() => { document.cookie = "maven_active_thread=__new__; path=/; samesite=lax"; });
-  ⚠️ The board rail is PORTALED into an <aside> OUTSIDE <main> — reading main.innerText finds no
-  board at all. Probe `[data-testid="ambient-overview"]` directly. (This cost a wrong "the row
-  did not land" reading in session 3.)
-- Mutation-test every new guard: break it, WATCH it fail, restore — and check it fails for the
-  reason you think. Session 3 ran 9 mutations; two earlier sessions each had a guard that passed
-  for the wrong reason and only mutation testing said so.
-
-DO NOT TOUCH without an owner decision:
-- `/api/tools/react` is a THREE-caller paid route (rail sim · composer `ask` · the ＋ door). A
-  fourth caller needs `reportCredit402` or the refusal is silent.
-- `/api/account-read` is still ungated with no CREDIT_COSTS entry (1–3 min of Apify). Open across
-  three sessions. It is a pricing call.
+- The board rail is PORTALED into an <aside> OUTSIDE <main> — reading main.innerText finds no
+  board at all. Probe `[data-testid="ambient-overview"]` directly.
+- happy-dom DROPS `-webkit-line-clamp` and `display:-webkit-box` from inline styles. A guard
+  reading the style attribute asserts nothing and passes with the clamp deleted. Assert an
+  explicit attribute instead (the echo carries `data-clamp`).
+- Mutation-test every new guard: break it, WATCH it fail, restore — and CONFIRM THE MUTATION
+  ACTUALLY APPLIED. On 2026-07-29 two `perl -0pi` substitutions silently no-op'd and reported a
+  meaningless "19 passed", and a third guard genuinely passed against its own mutation (it
+  counted a label case-sensitively; the code lowercases it). A mutation you did not confirm
+  landed is not a mutation test.
 ```
