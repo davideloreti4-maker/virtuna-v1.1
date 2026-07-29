@@ -6,11 +6,51 @@ Read §0.2 first, then §0.3, §0.4, §0.5. §11 is the copy-paste kickoff for w
 
 ---
 
+## §0.1 — TWO SESSIONS BUILT PHASES 5+6 AT THE SAME TIME (2026-07-29). Read this first.
+
+⚠️ **A second session built the whole of Phases 5 and 6 in parallel with the one below, and neither
+knew.** Both re-measured the ARM screen, both rewrote the same three files, both shipped. `69414a16`
+merged at 08:47; the other branch (`lane/door-arm`) was committing the same work at 08:5x. That is
+roughly a session of duplicated effort, and it is the third time in three days two lanes have
+touched `composer.tsx`/⑤ within the hour.
+
+**The mechanism, and it is worth knowing before the next one:** `git log --oneline` in this repo
+**elides merge commits**. `origin/main` displayed as `be4c34e6` when it was really the merge
+`5e351be0` (PR #400). A session that branches after reading that output believes it is on a tip it
+is not on, sees no sign of a concurrent lane, and cannot detect the collision until it pushes. Use
+`git log --graph --oneline --all -20` or `git rev-parse origin/main` — never the plain `--oneline`
+tip — before branching.
+
+**What survived from the duplicate branch** (PR #403, the only delta worth keeping — everything else
+it did was superseded by `69414a16`, which found the better answer on every overlapping question):
+the **sealed wait** is now pinned in `/dev/cards` (`SimDoorReading`, extracted from
+`SimulateDoorHost`); the rail note that **claimed a spend which does not happen** is fixed; and the
+`brought-card` fixture gained its **answered-slice** state.
+
+🔑 **The duplicate session's §5 conclusion was WRONG, and how it went wrong is the reusable part.**
+It measured the ARM screen at fixture stimulus lengths only (~42–60 chars), found preamble : lens =
+0.80 : 1, and concluded §5's 1.7 : 1 defect was "inverted — no longer true". It even flagged
+content-dependence as a risk mid-session and then argued it away because rail concept texts are one
+line. The session below measured **three** stimulus lengths and found the actual mechanism: the
+preamble runs 112 → 153 → **295px** for a 42 / 120 / 430-character draft while THE LENS is fixed.
+§5's ratio was never a property of the layout — it is the echo growing unbounded, it reproduces at
+~430 characters, and `DRAFT_MAX` is 2,000, so it is reachable. **One measurement at one input size
+is not a measurement of a content-dependent layout.**
+
+🔴 **`resolve-video.test.ts` is FLAKY under full-suite parallelism** — 2 failures on one run, passes
+alone both flag ways, clean on re-run (the Apify call recorder comes back empty; cross-file
+pollution). It will read as a regression to whoever hits it next.
+
+---
+
 ## §0.2 — STATUS after session 4 (2026-07-29). This supersedes everything below it.
 
 ✅ **PHASES 5 AND 6 ARE MERGED TO MAIN — PR #401, commit `69414a16`, merge `e3dcbb23`.**
 The lane's six phases are done. There is no Phase 7 in this doc; §11 is now a next-session brief,
 not a phase kickoff.
+
+⚠️ See **§0.1** — a second session shipped this same work in parallel; PR #403 carries the three
+gaps this one left.
 
 ⚠️ **`origin/main` moved BETWEEN this session's first two commands** (`be4c34e6` → `5e351be0`).
 Both were docs-only, so §0.3's code verification at `18950c59` still held. The re-baseline
