@@ -41,6 +41,7 @@ Production origin: **`https://numenmachines.com`** (live 2026-07-27 — §6). `h
 | `SUPABASE_SERVICE_ROLE_KEY` | ✅ set | same; service client (webhooks, filmstrip signing) |
 | `DASHSCOPE_API_KEY` | ✅ set | **THROWS** without it — every LLM call routes here |
 | `NEXT_PUBLIC_APP_URL` | ✅ `https://numenmachines.com` | overwritten + redeployed 2026-07-27; see §3 for why it matters |
+| `NEXT_PUBLIC_AMBIENT_V2` | ✅ `true` — set 2026-07-29 | **deploy #2, done.** Set on `main` @ `80a2cb29`, then that production deployment was REDEPLOYED so the value inlined (`dpl_J6TwHG38yJ1tmowSTWQJQQDHEuHe`). The v2 rail is now the default surface; see §7 |
 | `CRON_SECRET` | ✅ set | still required — see §2 |
 | `APIFY_TOKEN` | ✅ set | unset ⇒ all scraping fails |
 | `APIFY_WEBHOOK_SECRET` | ✅ set 2026-07-26 | generated; unset ⇒ webhook route rejects everything |
@@ -63,8 +64,7 @@ Production origin: **`https://numenmachines.com`** (live 2026-07-27 — §6). `h
 
 | Var | Why |
 |---|---|
-| `NEXT_PUBLIC_AMBIENT_V2` | ships as **deploy #2**, isolated, so a regression has one suspect and the flag keeps its value as a rollback lever |
-| `BILLING_ENFORCE_QUOTA` | defaults OFF; enforcement is verified working but stays inert until the Whop step (`docs/PRICING.md`) |
+| `BILLING_ENFORCE_QUOTA` | ⚠️ **this row is stale — the var IS set in Production** (observed in `vercel env ls production`, created ~2026-07-27). Left here because nobody has re-verified *why*; treat the reason column, not the presence, as the open question |
 | `AB_*`, `SWEEP_BUDGETS`, `SPIKE_REAL`, `SMOKE_ASK`, `RUN_VISION_LIVE_SMOKE`, `GATE_MODEL`, `PASS2_THINKING_BUDGET`, `QWEN_FAST_MODEL`, `OUT`, `T`, `YAW`, `PITCH` | local research scripts only |
 
 Everything else (`FOLD_*`, `QWEN_*_MODEL`, the remaining `GROUNDING_*`, `CHAT_AGENT_DISPATCH`,
@@ -132,10 +132,11 @@ is not linked. Note that `vercel link` appends `VERCEL_OIDC_TOKEN` to the local 
 
 ---
 
-## 5. Deploy order — steps 1–3 are DONE
+## 5. Deploy order — steps 1–4 and 6 are DONE
 
 1. ✅ Build gate on `main` (`ignoreCommand`, production-only builds).
-2. ✅ GitHub integration reconnected, `NEXT_PUBLIC_AMBIENT_V2` still unset.
+2. ✅ GitHub integration reconnected. (`NEXT_PUBLIC_AMBIENT_V2` was still unset at this step — it
+   shipped later, as step 6.)
 3. ✅ **Gate verified both ways in the wild**, not by reasoning about exit codes: `vercel ls` shows
    8 Preview deployments `Canceled` after 6–7s (the skip path) and one Production deployment `● Ready`
    in 2m (`dpl_HLxbrjipKheQuAVenJvxj8ZbGYD9`, 2026-07-27 00:56). The inverted exit codes
@@ -147,7 +148,15 @@ is not linked. Note that `vercel link` appends `VERCEL_OIDC_TOKEN` to the local 
    by design and has been misread as "crons dead" before). ⚠️ `vercel.json` currently schedules
    **none**, and `sync-whop` is one of the ten — billing has no drift reconciliation until that is
    decided.
-6. ▶ **Then** set `NEXT_PUBLIC_AMBIENT_V2=true` and redeploy — one isolated change, clean rollback.
+6. ✅ **DONE 2026-07-29** — `NEXT_PUBLIC_AMBIENT_V2=true` set on Production, then the `main`
+   @ `80a2cb29` production deployment redeployed so the value inlined. Build was real (3m, not the
+   6s skip path); new deployment `dpl_J6TwHG38yJ1tmowSTWQJQQDHEuHe` holds the `numenmachines.com`
+   alias. See §7 for the rollback lever and the verification boundary.
+
+⚠️ Step 5 (verify prod healthy / the cron decision) was NOT completed before step 6 — the flag went
+out ahead of it. The two are independent (the rail is not cron-fed), but `vercel.json` still
+schedules **no** crons, so `sync-whop` still gives billing no drift reconciliation. That decision is
+untouched and still open.
 
 Full runbook with the schema pre-flight: `docs/HANDOFF-2026-07-26-sim-surface-video-population.md` §9.
 
@@ -208,3 +217,50 @@ helped; waiting did.
 Its records go in Vercel DNS now (`vercel dns add numenmachines.com …`). Resend verifies on a `send.`
 subdomain plus `resend._domainkey`, so it does **not** collide with the apex MX/SPF or the ported
 `default._domainkey` above.
+
+---
+
+## 7. ✅ `NEXT_PUBLIC_AMBIENT_V2` — flipped ON in production 2026-07-29
+
+The v2 ambient surfaces stopped being dark. Six phases of ＋door / ambient-v2 work were merged and
+rendering for nobody, because the flag they hang off had never been set in Production.
+
+**What was done, in order:**
+
+1. `vercel env add NEXT_PUBLIC_AMBIENT_V2 production` → `true`. Confirmed present in
+   `vercel env ls production` (it was genuinely absent before — 23 vars, no such row).
+2. Redeployed the existing production deployment for `main` @ `80a2cb29`
+   (`dpl_Hqd5Z9JUDC3Sb6cTJktK3BW1RVH2`), because a `NEXT_PUBLIC_*` value is inlined at BUILD time and
+   an env write alone changes nothing (§0, rule 1).
+3. New deployment `dpl_J6TwHG38yJ1tmowSTWQJQQDHEuHe` — **Ready in 3m**, aliased to
+   `numenmachines.com`. The 3m duration is itself the evidence it really built: the skip path
+   finishes in 6–7s (§5, step 3).
+
+**Rollback, and it is cheap.** Two levers, in increasing cost:
+
+- *Instant, no build:* promote the previous deployment `dpl_Hqd5Z9JUDC3Sb6cTJktK3BW1RVH2` — same
+  source commit, flag-off build, already Ready.
+- *Permanent:* `vercel env rm NEXT_PUBLIC_AMBIENT_V2 production`, then redeploy (another ~3m build).
+
+Keeping the flag rather than cutting over in code is what makes the first lever exist at all.
+
+### ⚠️ The verification boundary — read before trusting "it is on"
+
+What is **proven**: the var exists in the Production scope; a real production build ran *after* it
+was set; that build holds the live alias; and `/`, `/home`, `/go`, `/login`, `/ambient-v2`,
+`/pricing` all serve 200.
+
+What is **not proven**: that the v2 rail visually renders for a signed-in creator. There is no
+public surface that reads the flag, so this could not be measured without credentials:
+
+- `/dev/cards` prints the inlined value (`NEXT_PUBLIC_AMBIENT_V2={String(AMBIENT_V2_ENABLED)}`) but
+  sits behind auth — it 302s to `/login`.
+- `/ambient-v2` is **not** a verifier despite the name: it renders the v2 components from *fixtures*,
+  unconditionally, so it looks identical either way.
+- A client-bundle grep does **not** work either. `composer.tsx` builds *both* branches into
+  variables (`audienceRail` / `audienceRailV2`) before the ternary picks one, so neither side is
+  dead-code-eliminated and both strings ship regardless of the flag.
+
+⇒ **The one remaining check is a human loading `/home` signed in on ≥xl and confirming the rail is
+the v2 Overview, not the legacy `AudiencePresence`.** Until someone does that, "the flag is on" is a
+statement about the build, not about what a creator sees.
