@@ -21,6 +21,7 @@ import type { CompetitorsData } from "@/lib/competitors/competitors-data";
 import { FeedClient } from "@/app/(app)/feed/feed-client";
 import { CompetitorsClient } from "@/app/(app)/competitors/competitors-client";
 import { DiscoverTabBar } from "@/components/discover/discover-tab-bar";
+import { PageShell, SurfaceHeader } from "@/components/surfaces/surface-header";
 
 export type DiscoverTab = "watching" | "trending" | "competitors";
 
@@ -47,14 +48,14 @@ export function DiscoverHub({
 
   return (
     <div className="relative min-h-full text-foreground">
-      <div className="mx-auto w-full max-w-[1180px] px-4 pb-24 pt-6 lg:px-6">
-        <header className="mb-4">
-          <h1 className="text-[19px] font-semibold tracking-[-0.01em] text-foreground lg:text-[22px]">Discover</h1>
+      <PageShell>
+        <div className="mb-4">
+          <SurfaceHeader title="Discover" />
 
           <div className="mt-3">
             <DiscoverTabBar active={tab} onSelectContent={select} />
           </div>
-        </header>
+        </div>
 
         {/* Key on the BODY (feed vs competitors), not the tab: watching↔trending keep the
             same FeedClient so its loaded pages survive; feed↔competitors replays rv-in. */}
@@ -69,7 +70,7 @@ export function DiscoverHub({
             <FeedClient tab={feedTab} />
           )}
         </div>
-      </div>
+      </PageShell>
     </div>
   );
 }

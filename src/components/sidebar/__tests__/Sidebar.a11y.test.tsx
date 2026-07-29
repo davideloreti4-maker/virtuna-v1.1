@@ -48,23 +48,22 @@ describe('Sidebar a11y', () => {
     expect(results).toHaveNoViolations();
   });
 
-  it('exposes the launch-cut top-level nav items: New Thread, Audience', () => {
+  it('exposes the top-level nav items: New Thread, Discover, Audience, Library', () => {
     render(<ToastProvider><Sidebar /></ToastProvider>);
-    // MVP launch cut (lane/launch-prep, 2026-07-15): the standalone briefing was removed after
-    // preview — New Thread (→ /home composer) IS the home, and Audience (the calibrated moat) is
-    // the one persistent destination. Calendar · Discover · Library · Start are hidden
-    // (route-guarded → /home); Grow/Analytics/Referrals/Feed/Competitors folded into hubs.
+    // Discover + Library were reactivated 2026-07-29 (they had redirected to /home since the
+    // 2026-07-15 launch cut), so the destinations are Discover · Audience · Library.
     // The CTA's accessible name includes its ⌘N badge ("New Thread ⌘N"), so
     // anchor on the noun rather than an exact string.
     expect(screen.getByRole('button', { name: /^New Thread\b/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Discover' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Audience' })).toBeInTheDocument();
-    // Hidden for the MVP launch cut → no longer standalone nav items.
+    expect(screen.getByRole('button', { name: 'Library' })).toBeInTheDocument();
+    // Still hidden from the MVP launch cut → no standalone nav items (routes → /home).
     expect(screen.queryByRole('button', { name: 'Start' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Home' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Calendar' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Discover' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Library' })).not.toBeInTheDocument();
-    // Dissolved / collapsed into hubs → no longer standalone nav items.
+    // Dissolved / collapsed into hubs → no longer standalone nav items. Feed + Competitors are
+    // LIVE again, but as the Discover hub and one of its tabs — never under their own names.
     expect(screen.queryByRole('button', { name: 'Grow' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Analytics' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Referrals' })).not.toBeInTheDocument();
@@ -75,10 +74,11 @@ describe('Sidebar a11y', () => {
     expect(screen.getByText('Threads')).toBeInTheDocument();
   });
 
-  it('drops the Create / Analyze / Assets group labels after the launch cut', () => {
+  it('keeps the destinations a flat list — no Create / Analyze / Assets group labels', () => {
     render(<ToastProvider><Sidebar /></ToastProvider>);
-    // With Calendar/Discover/Library hidden, each umbrella group had a single child, so the
-    // labels were removed — the nav is now a flat Start · Audience list.
+    // The umbrella labels existed to chunk five items across three groups. Reactivating Discover +
+    // Library brings the list back to three, which doesn't need chunking — a label per pair would
+    // just echo its own item. Kept flat deliberately; this asserts they stay gone.
     expect(screen.queryByText('Create')).not.toBeInTheDocument();
     expect(screen.queryByText('Analyze')).not.toBeInTheDocument();
     expect(screen.queryByText('Assets')).not.toBeInTheDocument();

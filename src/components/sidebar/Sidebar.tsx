@@ -5,14 +5,19 @@
  *
  * Sections (top → bottom):
  *  ⊕ New Thread     — coral primary CTA, ⌘N shortcut; opens the /home composer (which IS the home)
+ *  Discover         — the outward-looking hub (Watching · Trending · Competitors) → /feed
  *  Audience         — the calibrated-audience moat (D-04)
+ *  Library          — saved-content State surface (IA-01 / D-01) → /library
  *  Thread           — chronological chat history; rows re-open in place
  *  👤 Account        — bottom-anchored, user avatar + settings/logout
  *
  * MVP launch cut (lane/launch-prep, 2026-07-15): the standalone briefing was removed after preview
- * (New Thread / the /home composer IS the home). Calendar · Discover · Library · Start nav items
- * are hidden and their routes redirect to /home. Restore the NavItems + revert the page.tsx
- * redirects (git) to bring them back post-launch.
+ * (New Thread / the /home composer IS the home), and Calendar · Discover · Library · Start were
+ * hidden with their routes redirecting to /home.
+ *
+ * Discover + Library were REACTIVATED 2026-07-29 at the owner's request — their NavItems are back
+ * and their page.tsx redirects reverted. Calendar · Start are still hidden (→ /home); restore them
+ * the same way (NavItem + revert the redirect) if they're ever wanted back.
  *
  * Flat-warm matte: no Raycast glass, no blur, no inset shine (THEME-02 Layer B).
  * Desktop: persistent + collapsible to an icon rail via ⌘\ (D-14), choice
@@ -35,6 +40,8 @@ import {
   SignOut,
   CaretUpDown,
   UsersThree,
+  Books,
+  Binoculars,
   Trash,
   Check,
   X,
@@ -468,6 +475,16 @@ export function Sidebar() {
     pathname.startsWith("/audience") ||
     pathname.startsWith("/analytics") ||
     pathname.startsWith("/grow");
+  // Discover is a hub at /feed and everything under it — the content tabs, the Channels/Hooks/
+  // Pull tool tabs, and the two legacy doors that redirect in (/competitors → ?tab=competitors,
+  // /discover → /feed/discover). The /feed prefix covers the subtree; the other two are listed
+  // so the item stays lit during the redirect rather than blinking off mid-navigation.
+  const isOnDiscover =
+    pathname.startsWith("/feed") ||
+    pathname.startsWith("/competitors") ||
+    pathname.startsWith("/discover");
+  // /saved redirects to /library over the same saved_items store, so it lights Library too.
+  const isOnLibrary = pathname.startsWith("/library") || pathname.startsWith("/saved");
 
   const [accountOpen, setAccountOpen] = useState(false);
 
@@ -575,10 +592,22 @@ export function Sidebar() {
           {/* Divider */}
           <div className="mx-2 border-t border-white/[0.06]" />
 
-          {/* ── Destinations — post-briefing cut (2026-07-15): the standalone briefing was removed
-              (New Thread / the /home composer IS the home). Audience — the calibrated moat — is the
-              one persistent destination. Calendar · Discover · Library stay hidden (→ /home). ── */}
+          {/* ── Destinations — Discover · Audience · Library (Discover + Library reactivated
+              2026-07-29; they had redirected to /home since the 2026-07-15 launch cut). Kept as a
+              FLAT list: the old Create/Analyze/Assets umbrella labels existed to chunk five items
+              across three groups, and three items don't need chunking — a label per pair here would
+              just echo its own item. Calendar · Start stay hidden (→ /home). ── */}
           <div className="pt-3 flex flex-col gap-0.5">
+            {/* Discover — the outward-looking hub at /feed: Watching (watched channels' outliers) ·
+                Trending · Competitors, plus the Channels · Hooks · Pull tool tabs. /competitors
+                and /discover deep-link into it, so the whole subtree lights this one item. */}
+            <NavItem
+              icon={Binoculars}
+              label="Discover"
+              isActive={isOnDiscover}
+              isCollapsed={effectiveCollapsed}
+              onClick={() => { closeIfMobile(); router.push("/feed"); }}
+            />
             {/* Audience Manager — the calibrated-audience moat; D-04 per-thread pin entry point. */}
             <NavItem
               icon={UsersThree}
@@ -586,6 +615,15 @@ export function Sidebar() {
               isActive={isOnAudience}
               isCollapsed={effectiveCollapsed}
               onClick={() => { closeIfMobile(); router.push("/audience"); }}
+            />
+            {/* Library — saved State surface (IA-01 / D-01). NO accent: its active
+                state is matte white/[0.06] — the nav's one accent belongs to "New Thread". */}
+            <NavItem
+              icon={Books}
+              label="Library"
+              isActive={isOnLibrary}
+              isCollapsed={effectiveCollapsed}
+              onClick={() => { closeIfMobile(); router.push("/library"); }}
             />
           </div>
 

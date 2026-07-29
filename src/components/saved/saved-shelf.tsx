@@ -20,6 +20,7 @@ import type { SavedItem, SavedItemType } from "@/lib/shelf/shelf-repo";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SurfaceEmptyState } from "@/components/ui/surface-empty-state";
+import { SurfaceHeader } from "@/components/surfaces/surface-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Constellation, buildLoadingDots } from "@/components/brand/constellation";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
@@ -89,16 +90,18 @@ export function SavedShelf() {
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
-      <header className="rv-in flex items-start justify-between gap-4" style={{ animationDelay: "0.02s" }}>
-        <div className="flex flex-col gap-1">
-          <h1 className="text-[19px] font-semibold tracking-[-0.01em] text-foreground lg:text-[22px]">Library</h1>
-        </div>
-        {items.length > 0 && (
-          <span className="shrink-0 rounded-full border border-white/[0.06] bg-surface-elevated px-3 py-1 text-xs text-foreground-muted">
-            <b className="font-semibold tabular-nums text-foreground-secondary">{items.length}</b> saved
-          </span>
-        )}
-      </header>
+      <div className="rv-in" style={{ animationDelay: "0.02s" }}>
+        <SurfaceHeader
+          title="Library"
+          actions={
+            items.length > 0 ? (
+              <span className="rounded-full border border-white/[0.06] bg-surface-elevated px-3 py-1 text-label text-foreground-muted">
+                <b className="font-semibold tabular-nums text-foreground-secondary">{items.length}</b> saved
+              </span>
+            ) : undefined
+          }
+        />
+      </div>
 
       {/* Toolbar — live search + sort + grid⇄list density toggle */}
       <div className="rv-in flex flex-wrap items-center gap-3" style={{ animationDelay: "0.06s" }}>

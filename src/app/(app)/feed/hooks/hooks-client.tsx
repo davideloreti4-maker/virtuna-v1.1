@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { DiscoverTabBar } from "@/components/discover/discover-tab-bar";
+import { PageShell, SurfaceHeader } from "@/components/surfaces/surface-header";
 import { HookRow } from "@/components/feed/hook-row";
 import { DEFAULT_HOOKS, type DefaultHook } from "@/lib/hooks/default-hooks";
 import { cn } from "@/lib/utils";
@@ -119,18 +120,20 @@ export function HooksClient() {
 
   return (
     // Container + header mirror DiscoverHub exactly (title → mono subtitle → tabs)
-    // so the tab bar doesn't jump position when switching Discover tabs.
-    <div className="mx-auto w-full max-w-[1180px] px-4 pb-24 pt-6 lg:px-6">
-      <header className="mb-4">
-        <h1 className="text-[19px] font-semibold tracking-[-0.01em] text-foreground lg:text-[22px]">Hooks</h1>
-        <p className="mt-0.5 font-mono text-[10px] text-foreground-muted">
+    // so the tab bar doesn't jump position when switching Discover tabs. That invariant is
+    // why this tracks the hub onto PageShell (the canonical 880px column, 0f904cf8) —
+    // leaving it at its old private 1180px would slide the bar sideways on every tab click.
+    <PageShell>
+      <div className="mb-4">
+        <SurfaceHeader title="Hooks" />
+        <p className="mt-0.5 font-mono text-micro text-foreground-muted">
           your vault of viral hooks — adapt any one into a script for your audience
         </p>
 
         <div className="mt-3">
           <DiscoverTabBar active="hooks" />
         </div>
-      </header>
+      </div>
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -251,6 +254,6 @@ export function HooksClient() {
           </div>
         )}
       </section>
-    </div>
+    </PageShell>
   );
 }
