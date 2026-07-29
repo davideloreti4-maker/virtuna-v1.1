@@ -27,6 +27,10 @@ import {
   CREATOR_LIVE_TEMPLATE,
   CREATOR_LIVE_TEXT_TEMPLATE,
 } from "@/components/audience-lens/v2/detail-live-fixture";
+import { ArmCard } from "@/components/audience-lens/v2/AmbientSimulate";
+import { CollectStep, IntakeStep } from "@/components/audience-lens/v2/SimulateIntake";
+import { buildSimulateData } from "@/lib/surfaces/ambient-v2-adapters";
+import { audienceToMeta } from "@/lib/surfaces/ambient-v2-audience-meta";
 import { AMBIENT_V2_ENABLED } from "@/lib/flags/ambient-v2";
 import { GENERAL_AUDIENCE } from "@/lib/audience/audience-repo";
 import type { AmbientCardDescriptor } from "@/components/app/home/use-ambient-focus";
@@ -1137,6 +1141,39 @@ const ROOM_V2_SEALS: WireSimSealMap = {
   },
 };
 
+/**
+ * ⑤ SIMULATE — the ＋ door's five states, built from the SAME adapter the door uses.
+ *
+ * `buildSimulateData` + `audienceToMeta` are exactly what `SimulateDoorHost` calls, so the dials,
+ * slices and scene options below are the real ones for this audience rather than a hand-written
+ * echo that can drift from them.
+ *
+ * ⚠️ GEOMETRY IS PART OF THE FIXTURE. The three ARM variants do NOT share a container in
+ * production, and rendering them as if they did is how a redesign gets costed against the wrong
+ * budget: ① `develop` is mounted `connected` INSIDE the rail (a 400px column, full panel height,
+ * so it can end in dead space), while ② and ③ come through `SimulateDoorHost`, which mounts them
+ * un-`connected` as a floating 460px sheet that is exactly as tall as its content. Each is boxed
+ * below at the geometry its own host gives it.
+ */
+const SIM_DEV_DATA = buildSimulateData({
+  audience: audienceToMeta(ROOM_V2_AUDIENCE),
+  // The develop entry's pre-filled stimulus: a card already on the board, plus the rank it deepens.
+  stimulus: { text: "Stop editing your videos. Do this instead.", kind: "hook" },
+  develop: { band: "Mixed", value: "5/10", lensLabel: "would stop" },
+});
+
+/** The cold doors, as the intake itself classifies them — picked out by kind, never re-declared. */
+const SIM_DRAFT_DOOR = SIM_DEV_DATA.intake.find((o) => o.kind === "draft")!;
+const SIM_VIDEO_DOOR = SIM_DEV_DATA.intake.find((o) => o.kind === "video")!;
+
+/** What a creator brought through each cold door — the shape `CollectStep` emits. */
+const SIM_BROUGHT_TEXT = {
+  kind: "draft" as const,
+  text: "Three years of footage and nobody watched past the first second.",
+};
+// A video's `text` is its NAME (a filename or the link), never a stimulus to feed a text run.
+const SIM_BROUGHT_VIDEO = { kind: "video" as const, text: "cold-open-v3.mp4" };
+
 // ─────────────────────────────────────────────────────────────────────────────
 // The classification — production status + category for every renderable above.
 // DERIVED, never duplicated: the node JSX stays in the arrays; this only sorts it
@@ -1201,7 +1238,7 @@ const TABS: Tab[] = [
   { id: "loading", label: "Loading", blurb: "The in-flight states — the run capsule mid-run. Reachable in production only by spending a real paid run; mounted here in their live mid-run shapes." },
   { id: "inputs", label: "Inputs", blurb: "The agent-surfaced in-thread affordances (request_input fields) + the context-aware chat follow-up chips." },
   { id: "reading", label: "Reading", blurb: "The Test skill's full /analyze surface — every state, not just the happy path. Each option mounts the REAL component." },
-  { id: "room", label: "The Room", blurb: "The audience surface beside the thread. The Ambient v2 surfaces the composer mounts today — the ≥xl rail, the <xl header sheet, and the depth drill a sealed row opens — plus the legacy pre-v2 room, which still ships wherever the flag is off." },
+  { id: "room", label: "The Room", blurb: "The audience surface beside the thread. The Ambient v2 surfaces the composer mounts today — the ≥xl rail, the <xl header sheet, the depth drill a sealed row opens, and ⑤ the ＋ door's arm screen — plus the legacy pre-v2 room, which still ships wherever the flag is off." },
   { id: "blocks", label: "Blocks", blurb: "The live in-thread blocks rendered through the SAME MessageBlocks dispatch the thread uses." },
   { id: "hidden", label: "Hidden & legacy", blurb: "Renderers kept alive but NOT shippable today: the horizontal verbs behind HORIZONTAL_ENABLED (flag off) + the standalone primitives no live skill emits (legacy)." },
 ];
@@ -1244,7 +1281,7 @@ export default function DevCardsPage() {
     loading: INFLIGHT_VIEWS.length,
     inputs: inputs.length,
     reading: READING_STATES.length,
-    room: 5, // 3 v2 surfaces (rail · sheet · depth) + the 2 legacy ones, kept while the flag can flip
+    room: 6, // 4 v2 surfaces (rail · sheet · depth · ⑤ arm) + the 2 legacy ones, kept while the flag can flip
 
     blocks: liveBlocks.length,
     hidden: hiddenBlocks.length,
@@ -1332,6 +1369,7 @@ export default function DevCardsPage() {
                 { id: "room-rail", label: "Rail · Ambient v2", status: V2_STATUS, onClick: () => goTo("room", "room-rail") },
                 { id: "room-sheet", label: "Header sheet (<xl)", status: V2_STATUS, onClick: () => goTo("room", "room-sheet") },
                 { id: "room-detail", label: "Depth drill (brain ⇄ audience)", status: V2_STATUS, onClick: () => goTo("room", "room-detail") },
+                { id: "room-simulate", label: "Arm a simulation (the ＋ door)", status: V2_STATUS, onClick: () => goTo("room", "room-simulate") },
                 { id: "room-bloom", label: "Legacy bloom", status: LEGACY_ROOM_STATUS, onClick: () => goTo("room", "room-bloom") },
                 { id: "room-legacy-rail", label: "Legacy rail", status: LEGACY_ROOM_STATUS, onClick: () => goTo("room", "room-legacy-rail") },
               ]}
@@ -1510,6 +1548,66 @@ export default function DevCardsPage() {
                 </div>
                 <div id="detail-text" className="h-[800px] w-[400px] max-w-full overflow-hidden rounded-[var(--radius-lg)] border border-white/[0.06]">
                   <AmbientDetail template={CREATOR_LIVE_TEXT_TEMPLATE} />
+                </div>
+              </div>
+            </section>
+
+            {/* ── v2 · ⑤ the ＋ door: intake → collect → arm ─────────────────── */}
+            <section id="room-simulate" className="scroll-mt-32">
+              <SectionHead
+                label="The Room · ⑤ arm a simulation (the ＋ door)"
+                code="AmbientSimulate · SimulateIntake"
+                note="Every state of the spend moment, which in production is reachable only by clicking through a real run. COLD is three steps (pick a door → bring the thing → arm it); DEVELOP skips straight to the arm card pre-filled from a rank. Each state is mounted DIRECTLY rather than advanced into, so the controls that would move between them are inert here — this is a state inspector, and the state each one leads to is the box beside it. NOTE the two geometries, because they are not interchangeable: ① develop mounts CONNECTED inside the rail (400px column, full panel height, so it can end in dead space), ② and ③ come through SimulateDoorHost as a floating 460px sheet sized to its content. There is no ＋ door in this gallery — the door only renders where a host can run what comes through it, and a gallery cannot; the intake is mounted directly instead, which is what /ambient-v2 does."
+                status={V2_STATUS}
+              />
+              <div className="flex flex-wrap items-start gap-4">
+                <div className="w-[460px] max-w-full">
+                  <div className="mb-2 font-mono text-[11px] uppercase tracking-[0.08em] text-foreground-muted">intake · what are you testing?</div>
+                  <IntakeStep data={SIM_DEV_DATA} onPick={() => {}} />
+                </div>
+                <div className="w-[460px] max-w-full">
+                  <div className="mb-2 font-mono text-[11px] uppercase tracking-[0.08em] text-foreground-muted">collect · draft</div>
+                  <CollectStep data={SIM_DEV_DATA} opt={SIM_DRAFT_DOOR} onCollect={() => {}} />
+                </div>
+                <div className="w-[460px] max-w-full">
+                  <div className="mb-2 font-mono text-[11px] uppercase tracking-[0.08em] text-foreground-muted">collect · video (file or link)</div>
+                  <CollectStep data={SIM_DEV_DATA} opt={SIM_VIDEO_DOOR} onCollect={() => {}} />
+                </div>
+                <div className="w-[460px] max-w-full">
+                  <div className="mb-2 font-mono text-[11px] uppercase tracking-[0.08em] text-foreground-muted">
+                    arm ② · cold · text — every dial live
+                  </div>
+                  <ArmCard
+                    data={SIM_DEV_DATA}
+                    stimulus={SIM_BROUGHT_TEXT}
+                    brought={SIM_BROUGHT_TEXT}
+                    onBack={() => {}}
+                  />
+                </div>
+                <div className="w-[460px] max-w-full">
+                  <div className="mb-2 font-mono text-[11px] uppercase tracking-[0.08em] text-foreground-muted">
+                    arm ③ · cold · video — lens/slice/scene LOCKED, ten reactors
+                  </div>
+                  <ArmCard
+                    data={SIM_DEV_DATA}
+                    stimulus={SIM_BROUGHT_VIDEO}
+                    brought={SIM_BROUGHT_VIDEO}
+                    onBack={() => {}}
+                  />
+                </div>
+                <div>
+                  <div className="mb-2 font-mono text-[11px] uppercase tracking-[0.08em] text-foreground-muted">
+                    arm ① · develop — the tie-back band, at REAL rail geometry
+                  </div>
+                  <div className="h-[860px] w-[400px] max-w-full overflow-hidden rounded-[var(--radius-lg)] border border-white/[0.06]">
+                    <ArmCard
+                      data={SIM_DEV_DATA}
+                      stimulus={SIM_DEV_DATA.stimulus}
+                      develop={SIM_DEV_DATA.develop}
+                      connected
+                      presentation="rail"
+                    />
+                  </div>
                 </div>
               </div>
             </section>

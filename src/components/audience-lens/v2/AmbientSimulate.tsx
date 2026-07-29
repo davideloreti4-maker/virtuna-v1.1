@@ -282,6 +282,81 @@ function Dropdown({
 
 // ── the arm card (the screen path — assembles the run + fires the spend) ───────
 
+/**
+ * THE STIMULUS ECHO — what is under test, clamped so it cannot crowd out the dial.
+ *
+ * Measured 2026-07-29 on a production build, cold/text, at three stimulus lengths: the preamble
+ * runs 112px → 153px → 295px for a 42 / 120 / 430-character draft while THE LENS is fixed at
+ * 187px. So the "preamble outweighs the lens 1.7:1" finding was never a property of the LAYOUT —
+ * it is the stimulus echo growing without a bound, and it reproduces at ~430 characters (1.58:1)
+ * and not at all below ~250. A draft can be 2,000 characters (`DRAFT_MAX`), so the unbounded case
+ * is reachable, not hypothetical.
+ *
+ * Clamping is the fix that matches the cause: three lines is enough to identify what you brought —
+ * you just typed it — and the full text stays one tap away and always in the DOM. Capping the echo
+ * is also what keeps the card inside the rail's 858px on the `develop` entry, where the footer
+ * carries the spend button and scrolling it out of view is the worst outcome on this screen.
+ */
+function StimulusEcho({ kind, text }: { kind: StimulusKind; text: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const [clamped, setClamped] = useState(false);
+  const ref = useRef<HTMLSpanElement>(null);
+
+  // Whether it actually overflows is a LAYOUT question, so measure it rather than guessing from a
+  // character count (font, width and wrapping all move that threshold). jsdom reports 0 for both,
+  // so the toggle simply never appears in tests — the full text is in the DOM either way.
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    setClamped(el.scrollHeight > el.clientHeight + 1);
+  }, [text]);
+
+  return (
+    <div
+      className="mt-3.5 flex items-start gap-3 rounded-[12px] p-3.5"
+      style={{ background: TONE.well, border: `1px solid ${TONE.border}` }}
+    >
+      <span
+        className="mt-[1px] flex-none rounded-md px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.06em]"
+        style={{ background: "rgba(255,255,255,.06)", color: TONE.faint }}
+      >
+        {kind}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span
+          ref={ref}
+          data-testid="sim-stimulus"
+          // The clamp states itself. happy-dom drops `-webkit-line-clamp` and `display:-webkit-box`
+          // from inline styles entirely, so a guard reading the style attribute would assert
+          // nothing at all — and would pass just as happily with the clamp deleted.
+          data-clamp={expanded ? "off" : "3"}
+          className="block text-[14px] leading-[1.45]"
+          style={{
+            color: TONE.cream,
+            ...(expanded
+              ? {}
+              : { display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: 3, overflow: "hidden" }),
+          }}
+        >
+          {text}
+        </span>
+        {clamped ? (
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="mt-1.5 font-mono text-[11px] uppercase tracking-[0.06em] transition-colors"
+            style={{ color: TONE.faint }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = TONE.cream)}
+            onMouseLeave={(e) => (e.currentTarget.style.color = TONE.faint)}
+          >
+            {expanded ? "Show less" : "Show all"}
+          </button>
+        ) : null}
+      </span>
+    </div>
+  );
+}
+
 /** A dial that cannot reach the engine, rendered as the fact it is: the value, then WHY it is fixed.
  *  Same treatment the fidelity chip already gets — a control that silently does nothing, or one that
  *  quietly disappears between variants, both read as bugs. */
@@ -306,7 +381,16 @@ function Locked({ value, reason }: { value: string; reason: string }) {
   );
 }
 
-function ArmCard({
+/**
+ * Exported for `/dev/cards` ONLY — the app always reaches this through `AmbientSimulate`.
+ *
+ * The three ARM variants differ by props the gateway holds as internal state (`brought`, set by
+ * the collect step), so a gallery driving `AmbientSimulate` can reach variant ① and nothing else:
+ * ② and ③ are only reachable by typing into the intake. Exporting the card lets the gallery mount
+ * each variant at its real geometry with real props — no seam added to the shipped path, and no
+ * `initialBrought`-style prop that would exist purely for the gallery and drift from it.
+ */
+export function ArmCard({
   data,
   stimulus,
   brought,
@@ -423,21 +507,8 @@ function ArmCard({
           </div>
         ) : null}
 
-        {/* the stimulus under test — content, so it reads at full strength */}
-        <div
-          className="mt-3.5 flex items-start gap-3 rounded-[12px] p-3.5"
-          style={{ background: TONE.well, border: `1px solid ${TONE.border}` }}
-        >
-          <span
-            className="mt-[1px] flex-none rounded-md px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.06em]"
-            style={{ background: "rgba(255,255,255,.06)", color: TONE.faint }}
-          >
-            {stimulus.kind}
-          </span>
-          <span className="text-[14px] leading-[1.45]" style={{ color: TONE.cream }}>
-            {stimulus.text}
-          </span>
-        </div>
+        {/* the stimulus under test — content, so it reads at full strength (but bounded) */}
+        <StimulusEcho kind={stimulus.kind} text={stimulus.text} />
       </div>
 
       {/* THE LENS — the one loud dial: the single behaviour we score the room for.
@@ -559,15 +630,21 @@ function ArmCard({
           <span className="tabular-nums text-[15px] font-medium" style={{ color: TONE.cream }}>
             {withCommas(n)}
           </span>
+          {/* THE ROOM IS NAMED ONCE, and this is not where. Until 2026-07-29 the same audience was
+              named three ways on one screen — "Everyone" (the slice chip) · "the whole room" (this
+              caption) · "General" (the conditions line, and again in the footer receipt) — three
+              registers for one set, which reads as three different things. The conditions line
+              keeps the name because that is the inherited-context receipt; this caption now states
+              only the arithmetic, and it no longer echoes the chip's label back at it either. */}
           <span>
             {isVideo ? (
               // Ten REACTORS, not ten "minds out of a thousand": the video fold is a 10-archetype
               // panel watching it end to end. Saying so is the whole point of VIDEO_PANEL_N.
-              <>reactors · the whole room, watching it end to end</>
+              <>reactors · watching it end to end</>
             ) : seg.share < 1 ? (
-              `minds · the ${seg.label.toLowerCase()} slice · ${Math.round(seg.share * 100)}% of the room`
+              `minds · ${Math.round(seg.share * 100)}% of the room`
             ) : (
-              "minds · the whole room"
+              "minds · all of them"
             )}
           </span>
         </div>
@@ -610,17 +687,19 @@ function ArmCard({
 
       {/* footer — the spend moment: the assembling receipt + arm + fidelity override */}
       <div className="mt-7 border-t px-[26px] py-[18px]" style={{ borderColor: TONE.border }}>
+        {/* THE WAIT — the one fact at the spend moment that is not already on the screen.
+            This line used to be the "assembling receipt": "Screening 1,000 of General for
+            'would they stop' · on TikTok · SIM-1 Flash". Measured 2026-07-29: all FIVE of those
+            facts appear above it — the headcount in the slice band, the room in the conditions
+            line, the behaviour in the lens band, the scene in the conditions dial, and the tier
+            on the locked chip six pixels to the right of this very line. A receipt that repeats
+            the form it sits under is 145–161px (16–20% of the card) spent restating. How long the
+            creator is about to wait is the thing the screen never said, and it is what actually
+            differs between the two paths a Simulate ↑ can start. */}
         <div className="text-[12px] leading-[1.6]" style={{ color: TONE.faint }}>
-          Screening{" "}
-          <span className="tabular-nums" style={{ color: TONE.dim }}>{withCommas(n)}</span> of{" "}
-          <span style={{ color: TONE.dim }}>{room}</span> for{" "}
-          {isVideo ? (
-            // The video receipt cannot claim one behaviour — the fold measures all of them.
-            <span style={{ color: TONE.dim }}>every behaviour</span>
-          ) : (
-            <span style={{ color: TONE.dim }}>“would they {activeLens.label.toLowerCase()}”</span>
-          )}{" "}
-          · on <span style={{ color: TONE.dim }}>{scene}</span> · SIM-1 {TIER_LABEL[fidelity]}
+          {isVideo
+            ? "The full read takes 1–3 minutes — it lands on your board when it’s done."
+            : "Reads in a few seconds."}
         </div>
         <div className="mt-3.5 flex items-center justify-between">
           <button

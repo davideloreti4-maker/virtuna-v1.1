@@ -775,6 +775,39 @@ const CORPUS_REFERENCES_STRUCTURAL_BLOCK = {
   },
 };
 
+/**
+ * The ＋ door's card — the one block in the thread that records something a SKILL DID NOT MAKE.
+ *
+ * Two things about it are easy to get wrong and are the reason it is pinned here:
+ *  - the count is worded in the RUN'S OWN LENS. This fixture ran `finish`, so the renderer must say
+ *    "watched it through" — wording it "stopped" would restate the engine's claim as one it never
+ *    made, which is exactly the drift `BroughtCardBlock.lens` exists to prevent.
+ *  - `slice.honored: false` is a REAL state, not an error state. The ARM screen asked about one
+ *    archetype and the projection could not answer, so the card says the question went unanswered
+ *    rather than quietly presenting the room's number in its place.
+ * There is no `provenance` and no rank: this card cannot exist before a run, and nothing ranked it.
+ */
+export const BROUGHT_CARD_BLOCK = {
+  type: "brought-card",
+  props: {
+    stimulus: "Three years of footage and nobody watched past the first second.",
+    kind: "draft",
+    lens: "finish",
+    band: "Mixed",
+    fraction: "5/10",
+    scrollQuote: "The opener earns the watch, then the middle gives the reason to leave.",
+    model: "sim1-flash",
+    scene: "TikTok",
+    slice: {
+      archetype: "niche_buyer",
+      label: "Builders",
+      honored: false,
+      reason: "the projection did not carry this archetype at a readable sample size",
+    },
+    personas: PERSONAS,
+  },
+};
+
 export interface BlockSection {
   type: string;
   label: string;
@@ -807,6 +840,12 @@ export const BLOCK_SECTIONS: BlockSection[] = [
   // with the other skills, not down here among the primitives. The 2-audience COMPARE shape is
   // NOT previewed anywhere (it never renders in-thread — /audience Compare only). Both blocks
   // stay in ALL_FIXTURE_BLOCKS below so the drift-guard still validates their shapes.
+  {
+    type: "brought-card",
+    label: "Brought card (the ＋ door)",
+    note: "What lands in the thread when a creator brings their OWN hook, script or caption through “＋ Test something of your own” — the only card here that records something no skill generated, so it carries no rank, no mechanism and no forward chain. It exists for a structural reason as much as a visual one: /api/tools/react persists a SEAL, seals are read only through descriptors, and descriptors come only from rendered card blocks — without this block the brought stimulus seals a row that renders nowhere. Note the count is worded in the RUN's lens (this one scored `finish`, so it reads “watched it through”, not “stopped”), and the slice question is recorded as UNANSWERED rather than answered with the room's number.",
+    body: [BROUGHT_CARD_BLOCK],
+  },
   {
     type: "corpus-references",
     label: "Chat sources (topical — filtered)",
