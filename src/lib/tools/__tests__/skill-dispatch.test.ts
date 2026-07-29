@@ -306,7 +306,7 @@ describe("runSkillDispatch [the till]", () => {
     expect(till.charge).toHaveBeenCalledTimes(1);
     expect(res.toolCalls[0]).toMatchObject({ name: "generate_ideas", ran: true });
     expect(res.skillRuns).toHaveLength(1);
-    expect(res.skillRuns[0].blocks).toHaveLength(1);
-    expect(res.skillRuns[0].warnings.join(" ")).toMatch(/charge did not record/i);
+    expect(res.skillRuns[0]!.blocks).toHaveLength(1);
+    expect(res.skillRuns[0]!.warnings.join(" ")).toMatch(/charge did not record/i);
   });
 });
