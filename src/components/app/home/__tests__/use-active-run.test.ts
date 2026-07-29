@@ -75,6 +75,29 @@ describe('useActiveRun — the tail turn', () => {
     expect(result.current.activeRun?.error).toBe('Hooks stream error');
   });
 
+  /**
+   * `isClosed` is what the composer's fold now waits on, so its DEFAULT is a behavioural decision,
+   * not a formality: a stream that cannot say when it closed must fold on `done` exactly as it
+   * always did. Getting this backwards would strand every non-generative run — chat, explore,
+   * account-read, test — live on screen forever, because none of them will ever report a close.
+   */
+  it('defaults isClosed TRUE for a stream that does not report closure', () => {
+    const { result } = renderHook(() =>
+      useActiveRun([candidate({ skill: 'chat', isDone: true, blocks: [{}] })]),
+    );
+    expect(result.current.activeRun?.isClosed).toBe(true);
+  });
+
+  it('carries a reported isClosed through unchanged — including the not-yet-closed beat', () => {
+    // The ~2s a generative route spends writing its closing line: done, but not closed. The fold
+    // must be able to see that state, or it reloads before the outro exists and needs a second one.
+    const { result } = renderHook(() =>
+      useActiveRun([candidate({ skill: 'hooks', isDone: true, isClosed: false, blocks: [{}] })]),
+    );
+    expect(result.current.activeRun?.isDone).toBe(true);
+    expect(result.current.activeRun?.isClosed).toBe(false);
+  });
+
   it('an idle thread has no tail', () => {
     const { result } = renderHook(() => useActiveRun([candidate(), candidate({ skill: 'script' })]));
     expect(result.current.activeRun).toBeNull();

@@ -35,6 +35,18 @@ export interface ActiveRun {
   skill: ChatTurnKind;
   isStreaming: boolean;
   isDone: boolean;
+  /**
+   * The SSE stream has CLOSED — distinct from `isDone`, and the distinction is the whole point.
+   *
+   * The four generative routes emit `done` before their closing line (S2: unblock the UI early),
+   * persist that line, and only then close. `isDone` therefore means "the cards are finished";
+   * this means "nothing more is coming, and all of it is on disk". The composer folds on this.
+   *
+   * Defaults TRUE for every stream that does not report it (chat · explore · account-read · test),
+   * because those have no late frame to wait for — they fold the moment they are done, exactly as
+   * before. A stream that cannot say when it closed must not be able to stall the fold.
+   */
+  isClosed: boolean;
   blocks: unknown[];
   stages: StageState[];
   followupText: string | null;
@@ -55,6 +67,8 @@ export interface RunCandidate {
   skill: ChatTurnKind;
   isStreaming: boolean;
   isDone?: boolean;
+  /** Omit for streams with no late frame — it defaults TRUE, i.e. "fold as soon as done". */
+  isClosed?: boolean;
   blocks?: unknown[];
   stages?: StageState[];
   followupText?: string | null;
@@ -70,6 +84,7 @@ function normalize(c: RunCandidate): ActiveRun {
     skill: c.skill,
     isStreaming: c.isStreaming,
     isDone: c.isDone ?? false,
+    isClosed: c.isClosed ?? true,
     blocks: c.blocks ?? [],
     stages: c.stages ?? [],
     followupText: c.followupText ?? null,
