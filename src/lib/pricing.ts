@@ -38,7 +38,8 @@ export type PaidPlanId = "starter" | "pro" | "studio";
  *
  *   10 — a full Reading: score a video/concept, decode a remix source, /test in chat.
  *        The heaviest thing we run (video pipeline + population simulation).
- *    5 — a LIVE outlier scrape (explore with "find new outliers") — real Apify spend.
+ *    5 — REAL APIFY SPEND: a LIVE outlier scrape (explore with "find new outliers"),
+ *        or a Read on your own account (two profile/video scrapes, 1-3 min).
  *    2 — deep single-output generation/simulation: one script, a Predict, a Simulate,
  *        a Profile read.
  *    1 — light generation and reads: a hooks pack, an ideas pack, develop-this-idea,
@@ -91,6 +92,25 @@ export const CREDIT_COSTS = {
   explore: 1,
   /** Explore that triggers a LIVE outlier scrape (allowScrape) — Apify spend. */
   explore_scrape: 5,
+  /**
+   * A Read on the creator's OWN account — `/api/account-read`.
+   *
+   * ⚠️ It was FREE and completely unmetered until 2026-07-29 (owner call to price it at 5). Not a
+   * decision — an omission: the route had no `creditGate`, no `billUsage`, and no key here, so it
+   * ran real Apify spend for nothing. It was flagged across six sessions before it got a number.
+   *
+   * Priced at the SCRAPE tier, not the Reading tier, and the two facts that decide it:
+   *   • it fires TWO parallel Apify runs (`scrapeProfile` + `scrapeVideos(handle, 30)`), 1-3 min,
+   *     which is why the route carries `maxDuration = 300`;
+   *   • it makes NO model call at all — every pattern is deterministic extraction.
+   * So it is heavier on Apify than `explore_scrape` and lighter everywhere else, which puts it at
+   * the same 5 rather than at `score`'s 10. Its NAME argues for 10 ("a Read"); its engine spend
+   * does not, and the costs here are anchored to spend.
+   *
+   * Billed ON DELIVERY only. The route has three exits that reach no scrape or no result — no
+   * personal audience on file, thin history, scrape failure — and none of them charge.
+   */
+  account: 5,
 } as const;
 
 export type BillableAction = keyof typeof CREDIT_COSTS;

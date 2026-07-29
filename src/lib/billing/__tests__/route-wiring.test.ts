@@ -24,8 +24,9 @@ import { CREDIT_COSTS } from "@/lib/pricing";
  */
 
 const ROOT = join(__dirname, "../../../app/api/tools");
+const API_ROOT = join(__dirname, "../../../app/api");
 
-/** route file → the action it must gate + bill as. */
+/** route file (relative to `api/tools`) → the action it must gate + bill as. */
 const PAID_ROUTES: Record<string, keyof typeof CREDIT_COSTS> = {
   "hooks/route.ts": "hooks",
   "ideas/route.ts": "ideas",
@@ -54,10 +55,42 @@ const PAID_ROUTES: Record<string, keyof typeof CREDIT_COSTS> = {
  */
 const FREE_ROUTES = ["test/card/route.ts"];
 
+/**
+ * ⚠️ PAID ROUTES THAT DO NOT LIVE UNDER `api/tools` — and the reason this map had to exist.
+ *
+ * `ROOT` above is `api/tools`, so for as long as that was the only path scanned, this guard could
+ * not see a paid route anywhere else in `api/` no matter how expensive it was. `/api/account-read`
+ * sat outside it running TWO Apify scrapes per call, ungated and unbilled, with `account` not even
+ * a key in CREDIT_COSTS — flagged across six sessions and invisible to the one test whose whole
+ * job is catching exactly that. The guard was not failing; it was looking in one directory.
+ *
+ * Add a paid route here the moment it lives outside `api/tools`. A guard that covers one folder
+ * reads like a guard that covers the API.
+ *
+ * NOT covered by this file, and deliberately: `analyze/route.ts` gates and bills `score`/`remix`
+ * through the LOWER-LEVEL pair (`getCreditQuotaVerdict` + `recordUsage`) rather than
+ * `creditGate` + `billUsage`, so these string assertions do not fit its shape. It is genuinely
+ * metered — verified at `analyze/route.ts:420` (gate) and `:908`/`:1174` (bill) — just not by
+ * this mechanism. Asserting the wrong pair here would produce a red test for correct code.
+ */
+const PAID_ROUTES_OUTSIDE_TOOLS: Record<string, keyof typeof CREDIT_COSTS> = {
+  "account-read/route.ts": "account",
+};
+
+/** Every paid route, wherever it lives: [absolute path, action, display name]. */
+const ALL_PAID_ROUTES: Array<[string, keyof typeof CREDIT_COSTS, string]> = [
+  ...Object.entries(PAID_ROUTES).map(
+    ([file, action]) => [join(ROOT, file), action, `tools/${file}`] as [string, keyof typeof CREDIT_COSTS, string],
+  ),
+  ...Object.entries(PAID_ROUTES_OUTSIDE_TOOLS).map(
+    ([file, action]) => [join(API_ROOT, file), action, file] as [string, keyof typeof CREDIT_COSTS, string],
+  ),
+];
+
 describe("every paid tool route gates and bills", () => {
-  for (const [file, action] of Object.entries(PAID_ROUTES)) {
+  for (const [path, action, file] of ALL_PAID_ROUTES) {
     it(`${file} gates before spend and bills "${action}" on delivery`, () => {
-      const src = readFileSync(join(ROOT, file), "utf8");
+      const src = readFileSync(path, "utf8");
 
       // The USER, never `user.id`: `is_anonymous` decides which allowance applies, and while it
       // was an optional 6th argument eleven of these twelve routes never passed it — so an
