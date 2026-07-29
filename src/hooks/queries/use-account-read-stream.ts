@@ -14,6 +14,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { reportCredit402, CreditWallRefusal, isCreditWallRefusal } from "@/lib/billing/credit-wall";
 import type { AccountReadBlock } from "@/lib/tools/blocks";
 
 export interface UseAccountReadStreamReturn {
@@ -97,6 +98,13 @@ export function useAccountReadStream(): UseAccountReadStreamReturn {
           .json()
           .catch(() => ({ error: "Account Read request failed" }));
         const errObj = err as { error?: string; message?: string };
+        // The account Read became a PAID action on 2026-07-29 (5 credits), so this hook can now
+        // receive a 402 — it was the only one of the six stream hooks with no wall handling,
+        // purely because its route was the only one with no gate. Without this the paywall would
+        // arrive as an inline red error string offering a retry that earns the same 402.
+        if (reportCredit402(res.status, err)) {
+          throw new CreditWallRefusal(errObj.message);
+        }
         throw new Error(errObj.message ?? errObj.error ?? "Account Read request failed");
       }
       if (!res.body) throw new Error("No response body");
@@ -158,6 +166,9 @@ export function useAccountReadStream(): UseAccountReadStreamReturn {
       }
     } catch (err) {
       if ((err as Error).name === "AbortError") return; // intentional cancel
+      // The credit wall is already up (CreditWallListener) and it IS the UI — drawing an inline
+      // error underneath it would offer a retry that gets the same 402. `finally` still runs.
+      if (isCreditWallRefusal(err)) return;
       if (isMountedRef.current) {
         setError(err instanceof Error ? err.message : "Account Read stream error");
       }

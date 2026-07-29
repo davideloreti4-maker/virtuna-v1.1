@@ -31,10 +31,23 @@ One pool per plan; every paid action draws from it at a public price (`CREDIT_CO
 | Credits | Actions |
 |---|---|
 | **10** | A full **Reading** — score a video/concept, decode a remix source, `/test` in chat |
-| **5** | Explore with a **live outlier scrape** (real Apify spend) |
+| **5** | **Real Apify spend** — Explore with a live outlier scrape · a **Read on your own account** |
 | **2** | A script · a Predict · a Simulate · a Profile read |
-| **1** | A hooks pack · an ideas pack · develop-this-idea · a concept Read · a card refine · a cached Explore |
-| **0 (free)** | Open chat · type-to-room reactions · viewing anything — free on purpose (the glue), guarded by rate limits, not the meter |
+| **1** | A hooks pack · an ideas pack · develop-this-idea · a concept Read · a **room reaction** · a card refine · a cached Explore |
+| **0 (free)** | Open chat · viewing anything · calibrating an audience — free on purpose (the glue and the setup), guarded by rate limits, not the meter |
+
+> Two corrections to this table, both made 2026-07-29 after the code disagreed with it:
+>
+> - **A Read on your own account is 5, not free.** `/api/account-read` had no gate, no bill, and
+>   no `CREDIT_COSTS` key at all while running TWO Apify scrapes per call (1–3 min). That was an
+>   omission, not a decision — it was flagged across six sessions before it got a number.
+> - **A room reaction is 1, not free.** It was priced on 2026-07-28 under its own `react` key; this
+>   table still listed "type-to-room reactions" among the free actions.
+>
+> ⚠️ **Calibration (`/api/audiences/calibrate`) is still free and still unmetered** — it fires one
+> Apify scrape. Owner call 2026-07-29: it is SETUP, sitting in the onboarding path, and a paywall
+> there refuses a creator before they have seen the product work. Recorded as a decision so the
+> next audit does not read it as the same omission.
 
 > ⚠️ **The per-action numbers are DRAFT until a final owner sign-off** (the plan allowances
 > and ratios are locked). Before flipping enforcement on, verify the costs against measured
