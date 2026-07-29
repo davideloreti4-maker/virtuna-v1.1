@@ -13,6 +13,10 @@
  *
  * Mirrors the competitors page/client RSC-split pattern. NO save/watchlist/shelf
  * affordance — saving is P10; Discover is read-only + chain-launch.
+ *
+ * Moved from /discover to /feed/discover on 2026-07-29 and given the hub's chrome
+ * (PageShell + SurfaceHeader + DiscoverTabBar), so it presents as the "Pull" tool tab
+ * rather than a surface sitting beside the hub. /discover redirects here.
  */
 
 import { useCallback, useState } from "react";
@@ -20,7 +24,8 @@ import { useRouter } from "next/navigation";
 import { DottedGrid } from "@/components/app/dotted-grid";
 import { DiscoverEntry } from "@/components/discover/discover-entry";
 import { DiscoverGrid, type DiscoverGridState } from "@/components/discover/discover-grid";
-import { SurfaceHeader } from "@/components/surfaces/surface-header";
+import { PageShell, SurfaceHeader } from "@/components/surfaces/surface-header";
+import { DiscoverTabBar } from "@/components/discover/discover-tab-bar";
 import type { OutlierTileData } from "@/components/discover/outlier-tile";
 import { classifyDiscoverInput } from "@/lib/discover/classify-input";
 import { handoffsFor } from "@/lib/tools/chain-handoff";
@@ -142,17 +147,23 @@ export function DiscoverClient() {
   );
 
   return (
-    <div className="space-y-6">
-      <SurfaceHeader
-        title="Find what's already working"
-        subtitle={
-          state === "idle"
-            ? "Paste a creator's @handle or a niche to surface their outliers — the posts beating their own baseline. Then Remix the winner for your audience."
-            : undefined
-        }
-      />
+    // Container + header mirror the hub's other tool tabs (title → mono subtitle → tabs) so the
+    // tab bar doesn't move when you switch between Channels, Hooks and Pull.
+    <PageShell>
+      <div className="mb-4">
+        <SurfaceHeader title="Pull" />
+        <p className="mt-0.5 font-mono text-micro text-foreground-muted">
+          pull outliers from any @handle or niche — ranked against their own baseline
+        </p>
 
-      <DiscoverEntry onSubmit={runPull} disabled={state === "loading"} />
+        <div className="mt-3">
+          <DiscoverTabBar active="pull" />
+        </div>
+      </div>
+
+      <div className="mb-6">
+        <DiscoverEntry onSubmit={runPull} disabled={state === "loading"} />
+      </div>
 
       {/* Tiles are a normal responsive grid laid OVER the DottedGrid surface (not pannable). */}
       <div className="relative min-h-[320px]">
@@ -168,6 +179,6 @@ export function DiscoverClient() {
           />
         </div>
       </div>
-    </div>
+    </PageShell>
   );
 }

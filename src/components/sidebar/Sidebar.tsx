@@ -475,9 +475,10 @@ export function Sidebar() {
     pathname.startsWith("/audience") ||
     pathname.startsWith("/analytics") ||
     pathname.startsWith("/grow");
-  // Discover is a hub at /feed: /competitors redirects into it (?tab=competitors), and the
-  // standalone outlier-pull grid at /discover is the same idea under a different door — all
-  // three light the one item, because the nav can only highlight one.
+  // Discover is a hub at /feed and everything under it — the content tabs, the Channels/Hooks/
+  // Pull tool tabs, and the two legacy doors that redirect in (/competitors → ?tab=competitors,
+  // /discover → /feed/discover). The /feed prefix covers the subtree; the other two are listed
+  // so the item stays lit during the redirect rather than blinking off mid-navigation.
   const isOnDiscover =
     pathname.startsWith("/feed") ||
     pathname.startsWith("/competitors") ||
@@ -598,8 +599,8 @@ export function Sidebar() {
               just echo its own item. Calendar · Start stay hidden (→ /home). ── */}
           <div className="pt-3 flex flex-col gap-0.5">
             {/* Discover — the outward-looking hub at /feed: Watching (watched channels' outliers) ·
-                Trending · Competitors. /competitors deep-links its tab; the on-demand outlier pull
-                at /discover is live but has no door of its own yet. */}
+                Trending · Competitors, plus the Channels · Hooks · Pull tool tabs. /competitors
+                and /discover deep-link into it, so the whole subtree lights this one item. */}
             <NavItem
               icon={Binoculars}
               label="Discover"

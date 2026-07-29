@@ -49,9 +49,9 @@ describe('Discover subtree — reactivated 2026-07-29, every entry point resolve
     'feed/page.tsx',
     'feed/hooks/page.tsx',
     'feed/channels/page.tsx',
+    'feed/discover/page.tsx',
     'competitors/[handle]/page.tsx',
     'competitors/compare/page.tsx',
-    'discover/page.tsx',
     'library/page.tsx',
   ])('%s renders a page — no redirect stub', (p) => {
     const src = read(p);
@@ -64,11 +64,31 @@ describe('Discover subtree — reactivated 2026-07-29, every entry point resolve
     expect(src).toMatch(/redirect\(\s*['"]\/feed\?tab=competitors['"]\s*\)/);
   });
 
-  it('/saved and /discover keep their deep-link redirects to live targets', () => {
+  it('/saved and /discover redirect to their live targets in ONE hop', () => {
     // /saved → /library is deep-link preservation over the SAME saved_items store.
     expect(read('saved/page.tsx')).toMatch(/redirect\(\s*['"]\/library['"]\s*\)/);
-    // /discover is its own surface now (the on-demand outlier pull), NOT a redirect to /feed.
-    expect(read('discover/page.tsx')).not.toMatch(/redirect\(/);
+    // /discover → /feed/discover: the pull moved INTO the hub as its "Pull" tool tab. It must
+    // point at the page, never back at /feed — that would drop the visitor on Watching, a
+    // different surface, which is how this route became a dead 2-hop the last two times.
+    expect(read('discover/page.tsx')).toMatch(/redirect\(\s*['"]\/feed\/discover['"]\s*\)/);
+  });
+
+  it('every DiscoverTabBar tab points at a route that renders', () => {
+    // The bar IS the hub's nav. A tab whose href is a redirect stub is a nav item that
+    // bounces — the exact defect the launch cut left behind. Read the hrefs from the bar
+    // itself rather than restating them, so a new tab can't be added without a live page.
+    const bar = readFileSync(
+      join(process.cwd(), 'src/components/discover/discover-tab-bar.tsx'),
+      'utf8',
+    );
+    const hrefs = [...bar.matchAll(/href:\s*"(\/feed[^"?]*)"/g)]
+      .map((m) => m[1])
+      .filter((h): h is string => Boolean(h));
+    expect(hrefs).toEqual(expect.arrayContaining(['/feed/channels', '/feed/hooks', '/feed/discover']));
+    for (const href of new Set(hrefs)) {
+      const src = read(`${href.replace(/^\//, '')}/page.tsx`);
+      expect(src, `${href} must render, not redirect`).not.toMatch(/redirect\(/);
+    }
   });
 });
 
