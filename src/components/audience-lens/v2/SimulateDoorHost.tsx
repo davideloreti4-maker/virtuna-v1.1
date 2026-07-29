@@ -51,6 +51,36 @@ function cardKindOf(kind: BroughtStimulus["kind"]): CardKind {
   return kind === "hook" || kind === "idea" || kind === "draft" ? kind : "draft";
 }
 
+/**
+ * THE SEALED WAIT — the stimulus, and the honest fact that the room is still reading.
+ *
+ * No number appears here: a verdict withheld until n-of-n decide is the sealed-verdict law.
+ *
+ * Extracted + exported for `/dev/cards` (2026-07-29). Phase 6 pinned every other state of ⑤, and
+ * this one got missed because it is the only one that is not a step — it exists solely BETWEEN the
+ * POST and its response, so the only way to look at it was to spend a credit and be quick. The
+ * gallery mounts this, not a copy of it: a copied state is one that drifts in silence.
+ */
+export function SimDoorReading({ stimulus, audienceName }: { stimulus: string; audienceName: string }) {
+  return (
+    <div
+      data-testid="sim-door-reading"
+      className="flex w-full max-w-[460px] flex-col gap-3 rounded-[16px] px-[26px] py-[24px]"
+      style={SHEET_STYLE}
+    >
+      <div className="font-mono text-[12px] uppercase tracking-[0.08em]" style={{ color: TONE.faint }}>
+        Reading the room
+      </div>
+      <p className="text-[14px] leading-[1.45]" style={{ color: TONE.cream }}>
+        {stimulus}
+      </p>
+      <p className="text-[12px]" style={{ color: TONE.faint }}>
+        {audienceName} is reading it now — the verdict lands on your board.
+      </p>
+    </div>
+  );
+}
+
 export function SimulateDoorHost({
   audience,
   open,
@@ -166,23 +196,7 @@ export function SimulateDoorHost({
       }}
     >
       {reading ? (
-        // THE SEALED WAIT — the stimulus, and the honest fact that the room is still reading. No
-        // number appears here: a verdict withheld until n-of-n decide is the sealed-verdict law.
-        <div
-          data-testid="sim-door-reading"
-          className="flex w-full max-w-[460px] flex-col gap-3 rounded-[16px] px-[26px] py-[24px]"
-          style={SHEET_STYLE}
-        >
-          <div className="font-mono text-[12px] uppercase tracking-[0.08em]" style={{ color: TONE.faint }}>
-            Reading the room
-          </div>
-          <p className="text-[14px] leading-[1.45]" style={{ color: TONE.cream }}>
-            {reading}
-          </p>
-          <p className="text-[12px]" style={{ color: TONE.faint }}>
-            {audience.name} is reading it now — the verdict lands on your board.
-          </p>
-        </div>
+        <SimDoorReading stimulus={reading} audienceName={audience.name} />
       ) : (
         <div className="flex w-full max-w-[460px] flex-col gap-2">
           <AmbientSimulate data={data} mode="cold" onClose={onClose} onSimulate={fire} />

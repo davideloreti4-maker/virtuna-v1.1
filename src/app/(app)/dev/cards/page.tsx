@@ -28,6 +28,7 @@ import {
   CREATOR_LIVE_TEXT_TEMPLATE,
 } from "@/components/audience-lens/v2/detail-live-fixture";
 import { ArmCard } from "@/components/audience-lens/v2/AmbientSimulate";
+import { SimDoorReading } from "@/components/audience-lens/v2/SimulateDoorHost";
 import { CollectStep, IntakeStep } from "@/components/audience-lens/v2/SimulateIntake";
 import { buildSimulateData } from "@/lib/surfaces/ambient-v2-adapters";
 import { audienceToMeta } from "@/lib/surfaces/ambient-v2-audience-meta";
@@ -1496,7 +1497,7 @@ export default function DevCardsPage() {
               <SectionHead
                 label="The Room · rail (Ambient v2)"
                 code="AmbientOverviewRail"
-                note="The ≥xl right column, exactly as composer.tsx mounts it: a real Audience, the thread's projected-card ledger, and the sim_seals map. Boxed at the real host geometry (400px wide, full height). Rows h1/h2/h4/h5 are honestly QUEUED; h3 is SEALED from a rehydrated seal — tap it to drill into the real depth. Tapping Simulate → on a queued row POSTs the real /api/tools/react, which fails without a thread and drops the row back to queued (the real failure path)."
+                note="The ≥xl right column, exactly as composer.tsx mounts it: a real Audience, the thread's projected-card ledger, and the sim_seals map. Boxed at the real host geometry (400px wide, full height). Rows h1/h2/h4/h5 are honestly QUEUED; h3 is SEALED from a rehydrated seal — tap it to drill into the real depth. Tapping Simulate → on a QUEUED row spends nothing: it opens the ARM panel (⑤) so a lens and a slice are picked first — config before the run, never a run that back-fills into a config. ⚠️ It is that panel's own 'Simulate ↑' that POSTs the real /api/tools/react, and react has cost 1 CREDIT since 2026-07-28 — the only control on this page that spends money."
                 status={V2_STATUS}
               />
               <div className="flex flex-wrap gap-4">
@@ -1594,6 +1595,20 @@ export default function DevCardsPage() {
                     brought={SIM_BROUGHT_VIDEO}
                     onBack={() => {}}
                   />
+                </div>
+                <div className="w-[460px] max-w-full">
+                  <div className="mb-2 font-mono text-[11px] uppercase tracking-[0.08em] text-foreground-muted">
+                    the sealed wait — between the POST and its answer
+                  </div>
+                  <SimDoorReading stimulus={SIM_BROUGHT_TEXT.text} audienceName={ROOM_V2_AUDIENCE.name} />
+                  <p className="mt-2 max-w-[460px] text-[11px] leading-relaxed text-foreground-muted">
+                    The one state of ⑤ that is not a step: it exists only while the read is in
+                    flight, so seeing it in production means spending a credit and being quick. NO
+                    NUMBER appears — a verdict withheld until n-of-n decide is the sealed-verdict
+                    law. If the read never comes back, one line joins it below the sheet
+                    (&ldquo;That read didn&rsquo;t come back. Nothing was sealed — try it
+                    again.&rdquo;) and the stimulus stays put.
+                  </p>
                 </div>
                 <div>
                   <div className="mb-2 font-mono text-[11px] uppercase tracking-[0.08em] text-foreground-muted">

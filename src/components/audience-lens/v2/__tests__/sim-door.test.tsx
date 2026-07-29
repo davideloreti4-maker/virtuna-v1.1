@@ -30,7 +30,7 @@ vi.mock("@/hooks/queries/use-profile", () => ({
 import { AmbientOverviewRail } from "../AmbientOverviewRail";
 import { AmbientStartHome } from "../AmbientStartHome";
 import { AmbientSimulate, type SimulateConfig } from "../AmbientSimulate";
-import { SimulateDoorHost } from "../SimulateDoorHost";
+import { SimulateDoorHost, SimDoorReading } from "../SimulateDoorHost";
 import { SIMULATE_R4 } from "../simulate-fixture";
 import { GENERAL_AUDIENCE } from "@/lib/audience/audience-repo";
 import { CREDIT_WALL_EVENT } from "@/lib/billing/credit-wall";
@@ -265,6 +265,56 @@ describe("the ARM screen's budget", () => {
 });
 
 // ── The host: what each stimulus is actually routed to ──────────────────────────
+
+// ── The sealed wait: the one state of ⑤ that is not a step ──────────────────────
+
+/**
+ * `SimDoorReading` was extracted from `SimulateDoorHost` so `/dev/cards` could pin it, which left
+ * it with no guard of its own. It needs one more than the steps do: it is the state a creator sees
+ * with a credit already spent and no verdict yet, and the sealed-verdict law says nothing may be
+ * claimed until n-of-n have decided. A number appearing here — a percentage, a fraction, a partial
+ * headcount — would be a verdict announced before the room reached one, which is the single thing
+ * this whole surface exists not to do.
+ */
+describe("the sealed wait", () => {
+  it("states NO number — nothing is claimed until the room has decided", () => {
+    const { container } = render(
+      <SimDoorReading stimulus="Three years of footage." audienceName="Your audience" />,
+    );
+    expect(screen.getByTestId("sim-door-reading")).toBeTruthy();
+    expect(container.textContent).toContain("Three years of footage.");
+    expect(container.textContent).toContain("Your audience");
+    expect(container.textContent ?? "").not.toMatch(/\d/);
+  });
+
+  it("is what the host shows mid-run — the extraction did not change the live path", async () => {
+    // A draft in flight: the host must render the sealed wait, not the arm card, while the POST
+    // is outstanding. This is the assertion that would catch the extraction being wired wrong.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => new Promise(() => {})), // never resolves — hold the run open
+    );
+    render(
+      <SimulateDoorHost
+        audience={audience}
+        open
+        onClose={vi.fn()}
+        onLanded={vi.fn()}
+        onVideo={vi.fn()}
+        ensureThread={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+    fireEvent.click(screen.getByText("Screen a draft"));
+    fireEvent.change(screen.getByLabelText("Paste the draft to screen"), {
+      target: { value: "a draft of my own" },
+    });
+    fireEvent.click(screen.getByText("Arm the run →"));
+    fireEvent.click(screen.getByText("Simulate"));
+
+    await waitFor(() => expect(screen.getByTestId("sim-door-reading")).toBeTruthy());
+    expect(screen.getByTestId("sim-door-reading").textContent).toContain("a draft of my own");
+  });
+});
 
 describe("SimulateDoorHost routing", () => {
   function mountHost() {
