@@ -156,12 +156,43 @@ its job — every non-`main` branch deployment shows `CANCELED`, only `main` bui
 
 ## What's still open from the audit
 
-- **F-014** (owner call) — delete ~8,300 lines behind the route tombstones?
-  ⚠️ never `rm -rf src/components/discover` — `discover-grid.tsx` + `outlier-tile.tsx` are
-  LIVE (they render the **explore** skill).
+*Reconciled against the code 2026-07-30. Each item below says whether it was re-measured or
+merely carried forward, because three items on this list had already been resolved and were
+still costing sessions time — one of them resolved in the OPPOSITE direction to what it asked.*
+
+- ~~**F-014** (owner call) — delete ~8,300 lines behind the route tombstones?~~
+  ✅ **OBSOLETE 2026-07-30 — decided the other way, by shipping.** PR #407 (2026-07-29)
+  **reactivated** Discover and Library rather than deleting them, so there are no tombstones
+  left to clear. Verified: `src/components/discover` is imported by **8 live files**
+  (`feed/page.tsx`, the discover/hooks/channels clients, `discover-hub.tsx`,
+  `use-outlier-grid-actions.ts`, `outlier-grid-block.tsx`, `hook-test-context.tsx`);
+  `/feed` and `/library` render. `/discover` and `/competitors` are still one-liners but are
+  now deliberate deep-link redirects **into** the live hub (`/feed/discover`,
+  `/feed?tab=competitors`) — not stubs. Nothing to delete; no owner call needed.
 - **F-015** (owner call) — the SIM-1 Flash/Max selector is wired to nobody. Bug, or unbuilt?
+  ⚠️ **Carried forward, NOT re-verified.** A 2026-07-30 grep finds Flash/Max across five v2
+  files (`AmbientStart`, `AmbientOverview`, `AmbientSimulate`, `start-fixture.ts`,
+  `composer-controls.tsx`), which is enough to show the question needs tracing from the
+  selector's handler to the run, and not enough to answer it. Treat the claim as unconfirmed
+  until someone follows that path.
 - **F-018 / F-020 / F-022** — minors: a failed run's error doesn't survive reload; the Test
   skill has two names across its two doors; the upload path shows a static spinner for minutes.
+  ⚠️ Carried forward, not re-verified.
 - **The migration ledger** — see F-021 above.
 - `~/virtuna-e2e-audit`'s `AUDIT-E2E-2026-07-26.md` should be marked up with these three
-  closures.
+  closures. ⚠️ Still true — that doc lives only on `audit/e2e-walkthrough` and still lists
+  F-019/F-017/F-021 as open.
+
+## Closed elsewhere, previously tracked as open here or in session notes
+
+- ✅ **`/pricing` promised a $1 trial to an account that had already used one** — fixed
+  `d8b0b6fa` (2026-07-27). `hasUsedTrial` is now one predicate with two callers
+  (`/api/whop/checkout` denies the SKU, `/api/subscription` tells the UI what it may promise).
+  Session notes listed this as open for three days after it shipped.
+- ✅ **`shot-stages.tsx` captured the LEGACY room, so the how-it-works stills were stale
+  against v2** — fixed `43444fec` (2026-07-27). Source and regenerated `.webp`s landed in the
+  same commit; no legacy room imports remain under `src/components/offer/`.
+- ✅ **`/pricing` metadata promised "a 7-day free Pro trial"** against a $1 / 3-day trial —
+  found and fixed 2026-07-30 (PR #408). Same class as `d8b0b6fa` and missed by it because
+  every *rendered* surface already read `TRIAL` and was correct; the stale copy survived only
+  in the string the page never displays, which is also the one search results show.
