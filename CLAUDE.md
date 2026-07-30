@@ -19,15 +19,13 @@ Historical milestones (pre-2026-02-08) used global numbering 1-63.
 off its single shared `.git`. Worktrees are not clones: a commit in one is
 instantly visible to all; deleting a worktree folder keeps its branch + commits.
 
-**Live inventory — re-measured 2026-07-29 (15 worktrees).** Counts are `git cherry main <branch>`
+**Live inventory — re-measured 2026-07-30 (11 worktrees, down from 15).** Counts are `git cherry main <branch>`
 (**patch-id**, so a lane whose work merged reads 0 even when its tip looks ahead). ⚠️ Do NOT use
 `git rev-list --count main..br` for this — it counts rebased/merged commits as unmerged.
 
 | Path | Branch | Role |
 |------|--------|------|
-| `~/virtuna-v1.1/` | `main` | **Trunk / command center.** Stays on `main` (✅ synced to `origin/main` 2026-07-29, tip `896ba6b9` — PR #407 reactivated Discover + Library and folded the outlier pull into the hub). Never holds a long-lived branch. |
-| `~/virtuna-composer/` | `feat/price-account-read` | **🟢 ACTIVE — pricing lane (2026-07-29), owned by a SECOND SESSION.** 1 unique commit, open **PR #406**: prices `/api/account-read` at 5 credits and gates the route. Leave it alone unless you are that session. |
-| `~/virtuna-platform/` | `lane/platform-surface` | **MERGED (#402) — 0 unique commits.** Was the platform-surface + ＋door docs lane; its work is all on `main`. Retire the folder when convenient. ⚠️ if you revive it, set `NEXT_PUBLIC_AMBIENT_V2=true` in its `.env.local` or you render the LEGACY room. |
+| `~/virtuna-v1.1/` | `main` | **Trunk / command center.** Stays on `main` (✅ synced to `origin/main` 2026-07-30, tip `a6b8a0e5` — PR #406 priced `/api/account-read` at 5 credits and gated it; PR #407 below it reactivated Discover + Library). tsc 0 errors; prod deployment `dpl_AtNJQ95d` serves this exact sha. Never holds a long-lived branch. |
 | `~/virtuna-onboarding/` | `milestone/onboarding` | 2 unique (2026-07-27). #387/#388 landed the demo entitlement + /go rebuild. ⚠️ **the old "carries ~1.4k uncommitted lines of /go-v2 work" note was TRUE on 2026-07-27 and is now FALSE** — verified clean 2026-07-29. Owns port 3000. |
 | `~/virtuna-audience-sim-v2/` | `feat/audience-sim-v2` | 20 unique (2026-07-17). Audience simulation v2 — verify against the shipped ambient-v2 before reviving. |
 | `~/virtuna-e2e-audit/` | `audit/e2e-walkthrough` | 17 unique, **docs only** (2026-07-26). The 3 code blockers (F-019/F-017/F-021) already landed on `main`. |
@@ -38,8 +36,31 @@ instantly visible to all; deleting a worktree folder keeps its branch + commits.
 | `~/virtuna-start-composer/` | `design/start-composer-v2` | 2 unique (2026-07-20). |
 | `~/virtuna-ui-opt/` | `milestone/ui-opt` | 2 unique (2026-06-01) — stale, candidate for retirement. |
 | `~/virtuna-prod/` | `docs/handoff-make-card-polish` | 1 unique (2026-07-27, incl. archived p4-live sketches). |
-| `~/virtuna-explore-c/` | `docs/handoff-read-family-cards` | **0 unique** (2026-07-19) — merged; retire the folder. |
-| `~/virtuna-the-room/` | `docs/pillars-handoff` | **0 unique** (2026-07-06) — merged; retire the folder. |
+
+**Retired 2026-07-30** (worktree folder removed, **branch + commits kept** and confirmed on `origin`):
+`feat/price-account-read` (~/virtuna-composer — **PR #406 MERGED `a6b8a0e5`**, lane complete) ·
+`lane/platform-surface` (~/virtuna-platform, #402) · `docs/pillars-handoff` (~/virtuna-the-room) ·
+`docs/handoff-read-family-cards` (~/virtuna-explore-c). All four verified before removal: 0 unique
+by `git cherry`, clean tree, no stashes, tip == `origin/<branch>`. ~7.5 GB reclaimed.
+
+> 🔑 **`comm -13` "branch-only files" do NOT block a retirement.** All four listed
+> `src/app/(app)/discover/discover-client.tsx` + `loading.tsx`, and the two docs lanes listed 14–31
+> more (`components/thread/*-thread-view.tsx`, `lib/billing/record-reading.ts`, …). Every one is a
+> file **`main` deleted** — the branch is simply older. `comm -13` answers "what does the branch
+> still have", never "what has main not got"; only `git cherry` answers the second. Corroborate a
+> surprising list against `git log --diff-filter=D` on `main` before concluding work is stranded.
+>
+> ⚠️ `git worktree remove` deletes the **gitignored** files too — `.env.local` above all, which is
+> on no branch and in no backup. Copy it out first. (The four removed here each differed from
+> trunk's: composer + platform carried `NEXT_PUBLIC_AMBIENT_V2=true`, the two docs lanes were
+> missing the three `GROUNDING_*` flags. Backed up to the session scratchpad 2026-07-30.)
+> ✅ **Trunk's `.env.local` now carries `NEXT_PUBLIC_AMBIENT_V2=true` (added 2026-07-30).** It did
+> not, while production has had the flag ON since 2026-07-29 — so trunk dev rendered the LEGACY
+> room against a v2 prod, and the only worktrees holding the flag were the two just retired.
+> `NEXT_PUBLIC_*` inlines at BUILD time: restart the dev server (and clear `.next/`) after touching it.
+> ⚠️ `~/virtuna-platform` failed its `rmdir` and left ~1.8 GB on disk **after** git had already
+> deregistered it — `git worktree list` said gone while the folder was still there. Check the
+> filesystem, not just the list.
 
 **Retired 2026-07-27** (worktree removed, **branch + commits kept** in `.git`): `lane/refine` · `lane/billing-prod` · `lane/launch-prep` · `lane/shell` · `lane/frame` · `lane/cursor-ui` · `lane/maven-offer` · `lane/skill-cards-prod` · `fix/whop-api-drift` · `milestone/numen-gsi` · `milestone/numen-surface` · `milestone/numen-landing` · `milestone/numen-tools` · `milestone/landing` · `milestone/viral-remix` · `milestone/viral-remix-adapt` · `milestone/ambient-room-v2` · `reconcile/reading-pr19` · `verify/main-state` · `final-verify` · 3 spikes · `rework/engine-core` (idle) · 3 superseded audience branches (below).
 
