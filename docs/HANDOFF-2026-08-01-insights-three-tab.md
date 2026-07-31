@@ -14,7 +14,8 @@ engine to produce the real numbers later."*
 
 | Artifact | Where |
 |---|---|
-| **Mockup (rev 4 — current, awaiting review)** | **`docs/mockups/insights-role-tabs-2026-08-01.html`** |
+| **Mockup (rev 5 — current, awaiting review)** | **`docs/mockups/insights-product-chrome-2026-08-01.html`** |
+| Mockup (rev 4, superseded — right IA, wrong skin) | `docs/mockups/insights-role-tabs-2026-08-01.html` |
 | Mockup (rev 3, superseded) | `docs/mockups/insights-three-tab-2026-07-31.html` |
 | Published, all revs | https://claude.ai/code/artifact/4465380d-3cac-4afe-9022-f4b6d08ea97e |
 | Rev 2 (owner preferred its read) | same URL → version picker → `rev-2-projection-led` |
@@ -198,6 +199,45 @@ Two details worth carrying into implementation:
 - **Deltas vs median** use a tick with the fill running *out* from it. A −8% rendered as a
   42%-long bar implies a magnitude it doesn't have; running left from the median keeps the
   encoding honest without needing a second colour.
+
+### Rev 5 — product chrome *(current; `docs/mockups/insights-product-chrome-2026-08-01.html`)*
+
+**Rev 4 was rejected too:** *"doesn't nail it — we want something Claude, ChatGPT or Perplexity
+would release regarding UI visual design."* Asked which of the three idioms and whether the IA was
+also wrong; owner picked **Perplexity component chrome** and **rethink the structure too**.
+
+Diagnosis of rev 4: it read *terminal / broadsheet*, not flagship-AI-product. Four specific tells,
+all fixed in rev 5:
+
+| Rev 4 (terminal) | Rev 5 (product) |
+|---|---|
+| Grouping by hairline rules | Soft filled cards, `#212120` on the `#181817` rail, 14px radius, **no border** |
+| Uppercase mono micro-labels everywhere | Sentence-case 13px medium + a line icon. **Measured: zero uppercase-mono labels remain** |
+| Hairline-thin numbers at huge sizes | Medium weight at a confident size (31px/500) |
+| Metadata as bare text | Chips carry it — the Perplexity signature |
+| Underline tabs | Segmented control |
+
+**Structural change:** the verdict used to be buried inside a tab. It now rides a persistent
+**answer block** above the segmented control — a plain-language sentence, the numbers behind it, and
+the fix as a tappable chip. Whatever tab you're on, the answer and the action stay on screen; tabs
+are just lenses on the evidence. Tabs are `Overview · Audience · Engagement` (the framing originally
+asked for, and what the owner's chosen preview showed).
+
+Two adaptations that were forced, and are worth not re-litigating:
+- **Perplexity spends its accent on POSITIVE states** (cyan links, active tabs, icons). Virtuna's law
+  is coral = loss only, so active states are cream on a lighter fill (`#343330`) and coral never
+  marks a good thing. Verified: still exactly two hues painted.
+- **The rev-3 ban on card-in-card still holds**, but that failure was *borders inside borders*. Cards
+  here group by **fill** and go exactly **one level deep** — inside a card you get rows, chips and
+  charts, never another card. Measured: 0 nested cards.
+
+The **figure-swaps-per-`StimulusKind`** contract from rev 4 is preserved intact — it was never what
+was rejected. Video Overview = retention curve; text Overview = coded reasons that expand into
+voices. Video Engagement = rates/intents; text Engagement = the projected comment section.
+
+Two build notes: the fixed head needs a bottom hairline or the scrolling cards *merge into the
+segmented control* (identical fill). And the cortex glyph must be held at ~34% max alpha — at full
+brightness it out-shouts the retention curve it exists to annotate.
 
 ### What to keep from all three
 - The narrative spine (rev 2).
