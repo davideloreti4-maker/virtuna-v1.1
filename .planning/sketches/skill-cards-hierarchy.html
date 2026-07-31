@@ -1,0 +1,1005 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Skill cards — hierarchy pass (current vs reworked)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap" rel="stylesheet">
+<style>
+/* ─────────────────────────────────────────────────────────────────────────
+   TOKENS — copied verbatim from src/app/globals.css @theme. Do not invent.
+   ───────────────────────────────────────────────────────────────────────── */
+:root{
+  --charcoal-app:#1f1f1e;
+  --surface-sunken:#1a1a19;
+  --fg:#ece7de;          /* cream-primary   */
+  --fg-2:#c2bdb4;        /* cream-secondary */
+  --fg-3:#8a857c;        /* cream-muted     */
+  --positive:#8ea68a;    /* sage            */
+  --warning:oklch(0.75 0.15 85);
+  --accent:#FF6363;
+  --b:rgba(255,255,255,.06);
+  --b-hover:rgba(255,255,255,.10);
+
+  --t-caption:11px; --t-label:12px; --t-body:13px; --t-reading:14px;
+  --t-title:16px;   --t-subhead:18px; --t-heading:22px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  background:var(--charcoal-app); color:var(--fg);
+  font-family:Inter,system-ui,-apple-system,sans-serif;
+  font-size:var(--t-body); line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  padding:0 0 120px;
+}
+.serif{font-family:Newsreader,Georgia,serif}
+
+/* ── page chrome ───────────────────────────────────────────────────────── */
+.bar{
+  position:sticky; top:0; z-index:20;
+  display:flex; flex-wrap:wrap; align-items:center; gap:14px;
+  padding:12px 20px; background:#151514; border-bottom:1px solid var(--b);
+}
+.bar h1{font-size:var(--t-label);font-weight:600;letter-spacing:.02em;margin-right:auto}
+.bar .hint{font-size:var(--t-caption);color:var(--fg-3)}
+.seg{display:flex;border:1px solid var(--b);border-radius:8px;overflow:hidden}
+.seg button{
+  appearance:none;border:0;background:transparent;color:var(--fg-3);
+  font:inherit;font-size:var(--t-label);padding:6px 12px;cursor:pointer;
+}
+.seg button+button{border-left:1px solid var(--b)}
+.seg button[aria-pressed="true"]{background:rgba(255,255,255,.07);color:var(--fg)}
+
+.section{padding:34px 20px 0;max-width:1640px;margin:0 auto}
+.section>h2{
+  font-size:var(--t-title);font-weight:600;letter-spacing:-.01em;margin-bottom:4px;
+}
+.section>p.note{font-size:var(--t-label);color:var(--fg-3);max-width:70ch;margin-bottom:18px}
+.pair{display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap}
+.col>h3{
+  font-size:var(--t-caption);text-transform:uppercase;letter-spacing:.05em;
+  color:var(--fg-3);margin-bottom:8px;
+}
+.col>h3 em{font-style:normal;color:var(--fg-2)}
+.stage{width:728px;transition:width .18s ease}
+body[data-w="342"] .stage{width:342px}
+body[data-view="after"] .col--before{display:none}
+
+.callout{
+  margin-top:10px;max-width:728px;font-size:var(--t-caption);line-height:1.6;
+  color:var(--fg-3);border-left:2px solid rgba(255,255,255,.10);padding-left:10px;
+}
+.callout b{color:var(--fg-2);font-weight:500}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   CARD PRIMITIVES — 1:1 with src/components/thread/*
+   ───────────────────────────────────────────────────────────────────────── */
+.card{
+  border:1px solid var(--b); border-radius:12px; background:var(--surface-sunken);
+  overflow:hidden;
+}
+.face{display:flex;flex-direction:column;padding:16px 16px 12px}
+.face--gap3>*+*{margin-top:12px}          /* the CURRENT uniform gap-3 rhythm */
+
+.label{
+  font-size:var(--t-caption);text-transform:uppercase;letter-spacing:.05em;
+  color:var(--fg-3);
+}
+.hero{
+  font-size:var(--t-heading);line-height:1.3;letter-spacing:-.005em;
+  font-weight:500;color:var(--fg);
+}
+.reading{font-size:var(--t-reading);line-height:1.6;color:var(--fg-2)}
+.body{font-size:var(--t-body);line-height:1.5;color:var(--fg-2)}
+.meta{font-size:var(--t-label);line-height:1.5;color:var(--fg-3)}
+.muted{color:var(--fg-3)}
+.cream{color:var(--fg)}
+.sec{color:var(--fg-2)}
+
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.copy{
+  display:inline-flex;align-items:center;gap:4px;flex-shrink:0;
+  font-size:var(--t-label);font-weight:500;color:var(--fg-3);
+  background:none;border:0;cursor:pointer;font-family:inherit;
+}
+.copy:hover{color:var(--fg-2)}
+.ico{width:13px;height:13px;flex-shrink:0}
+
+.actionbar{
+  display:flex;align-items:center;gap:14px;
+  border-top:1px solid var(--b);padding:12px 16px;
+}
+.primary{
+  display:inline-flex;align-items:center;justify-content:center;
+  border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.05);
+  border-radius:6px;padding:8px 14px;
+  font-size:var(--t-body);font-weight:600;color:var(--fg);
+  font-family:inherit;cursor:pointer;
+}
+.primary:hover{border-color:rgba(255,255,255,.12);background:rgba(255,255,255,.09)}
+.save{margin-left:auto;color:var(--fg-3);display:inline-flex}
+.caret{display:inline-flex;align-items:center;gap:6px;font-size:var(--t-label);color:var(--fg-3);
+  background:none;border:0;font-family:inherit;cursor:pointer;align-self:flex-start}
+
+/* ── BEFORE-only chrome: the nested bordered boxes ─────────────────────── */
+.boxed{border:1px solid var(--b);background:rgba(255,255,255,.02);border-radius:8px;padding:12px 14px}
+.boxed--tight{border:1px solid var(--b);border-radius:6px;padding:8px 12px;background:none}
+.pill{
+  display:inline-block;border:1px solid var(--b);background:rgba(255,255,255,.03);
+  border-radius:999px;padding:2px 8px;font-size:var(--t-caption);font-weight:500;color:var(--fg-2);
+}
+.pill--warn{border-color:rgba(224,189,114,.25);color:var(--warning);text-transform:uppercase;letter-spacing:.05em}
+.dashed{
+  border:1px dashed var(--b);background:rgba(255,255,255,.01);border-radius:8px;
+  padding:8px 10px;font-size:var(--t-label);color:var(--fg-3);
+}
+
+/* proof receipt — BEFORE (boxed) */
+.receipt{
+  display:flex;align-items:stretch;gap:12px;text-decoration:none;
+  border:1px solid var(--b);background:rgba(255,255,255,.02);border-radius:8px;padding:10px;
+}
+.receipt:hover{border-color:var(--b-hover);background:rgba(255,255,255,.035)}
+/* proof receipt — AFTER (de-boxed, bleeds to the card's 16px edge, hover-only) */
+.receipt--flat{
+  display:flex;align-items:stretch;gap:12px;text-decoration:none;
+  margin:0 -8px;border-radius:8px;padding:8px;border:1px solid transparent;background:none;
+}
+.receipt--flat:hover{background:rgba(255,255,255,.03)}
+.thumb{
+  position:relative;display:block;width:64px;flex-shrink:0;aspect-ratio:9/16;
+  border:1px solid var(--b);border-radius:6px;overflow:hidden;background:#242422;
+}
+/* NOTE: the thumbnail stays at today's 64px. Bumping it to 80px was tried and reverted —
+   the 9:16 tower then runs ~30px taller than its 4-row text column and opens a dead gap
+   under the handle. The box coming off is what gives the cover presence, not extra width. */
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.rcol{display:flex;min-width:0;flex:1;flex-direction:column;gap:4px}
+.tpl{font-size:var(--t-reading);line-height:1.35;font-weight:500;color:var(--fg-2)}
+.tpl .v{background:rgba(255,255,255,.06);border-radius:2px;padding:1px 4px;color:var(--fg);margin:0 1px}
+.chip-pos{
+  display:inline-flex;align-items:center;gap:4px;border-radius:4px;
+  background:rgba(142,166,138,.14);padding:2px 6px;
+  font-size:var(--t-label);font-weight:600;color:var(--positive);font-variant-numeric:tabular-nums;
+}
+.chip-neutral{
+  display:inline-flex;align-items:center;gap:4px;border-radius:4px;
+  background:rgba(255,255,255,.05);padding:2px 6px;
+  font-size:var(--t-label);color:var(--fg-2);font-variant-numeric:tabular-nums;
+}
+.stats{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+
+/* proof unit — BEFORE (the verdict that is being removed) */
+.proof{display:flex;flex-direction:column;gap:10px;margin:0 -8px;border-radius:6px;padding:8px}
+.proof:hover{background:rgba(255,255,255,.03)}
+.proof-top{display:flex;align-items:center;gap:10px;font-size:var(--t-body)}
+.band{display:inline-flex;align-items:center;gap:6px;font-weight:600;flex-shrink:0}
+.band .dot{width:7px;height:7px;border-radius:999px;display:inline-block}
+.frac{flex-shrink:0;color:var(--fg-2)}
+.frac b{color:var(--fg);font-weight:600;font-variant-numeric:tabular-nums}
+.ribbon{position:relative;height:3px;flex:1;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden}
+.ribbon>span{position:absolute;inset-block:0;left:0;border-radius:999px;background:var(--fg-2)}
+.quoterow{display:flex;align-items:center;justify-content:space-between;gap:10px}
+blockquote{
+  border-left:2px solid var(--b-hover);padding-left:12px;
+  font-size:var(--t-body);font-style:italic;line-height:1.375;color:rgba(236,231,222,.8);
+}
+.seeroom{
+  display:inline-flex;align-items:center;gap:6px;flex-shrink:0;white-space:nowrap;
+  font-size:var(--t-label);color:var(--fg-2);
+}
+.avatars{display:inline-flex}
+.avatars span{
+  width:15px;height:15px;border-radius:999px;border:1px solid #252524;background:rgba(255,255,255,.10);
+}
+.avatars span+span{margin-left:-5px}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   AFTER-only: the sim DOOR + the hierarchy rhythm
+   ───────────────────────────────────────────────────────────────────────── */
+/* Variable vertical rhythm IS the hierarchy. A uniform 12px gap is why nothing reads. */
+.mt-hero{margin-top:12px}     /* header  → hero        */
+.mt-lede{margin-top:12px}     /* hero    → the T2 line */
+.mt-sec {margin-top:20px}     /* T2      → evidence    ← the one big break */
+.mt-item{margin-top:12px}     /* between evidence      */
+.mt-meta{margin-top:16px}     /* evidence → T4 meta    */
+
+.lede{font-size:var(--t-reading);line-height:1.55;color:var(--fg)}   /* T2 — CREAM, the new tier */
+.lede .lead-in{color:var(--fg-3);font-weight:500}
+
+.door{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  border-top:1px solid var(--b);padding:11px 16px;min-height:44px;cursor:pointer;
+}
+.door:hover{background:rgba(255,255,255,.025)}
+.door:hover .door-cta{color:var(--fg)}
+.door-state{display:inline-flex;align-items:center;gap:8px;font-size:var(--t-label);color:var(--fg-3)}
+.door-state .hollow{
+  width:7px;height:7px;border-radius:999px;border:1px solid var(--fg-3);display:inline-block;flex-shrink:0;
+}
+.door-state .live{
+  width:7px;height:7px;border-radius:999px;background:var(--accent);display:inline-block;flex-shrink:0;
+  animation:pulse 1.6s ease-in-out infinite;
+}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+/* Measured at 342px: "Not tested yet" + "Simulate with your audience →" is ~260px inside a
+   310px content column, so the full wording holds on one line on mobile. No truncation needed. */
+.door-cta{font-size:var(--t-label);color:var(--fg-2);white-space:nowrap;flex-shrink:0}
+
+/* definition-list idiom — already shipped on script/remix "How to film"; reused for the recipe */
+dl.dl{display:flex;flex-direction:column;gap:6px}
+dl.dl>div{display:flex;gap:8px;font-size:var(--t-label);line-height:1.5}
+dl.dl dt{width:86px;flex-shrink:0;color:var(--fg-3)}
+dl.dl dd{min-width:0;flex:1;color:var(--fg-2)}
+body[data-w="342"] dl.dl>div{flex-direction:column;gap:0}
+body[data-w="342"] dl.dl dt{width:auto}
+
+/* script beats (shared before/after — the timeline is already good) */
+.beats{display:flex;flex-direction:column;border-top:1px solid var(--b);padding:4px 16px 0;margin-top:12px}
+.beat{display:flex;gap:12px;padding:12px 0}
+.beat .timing{
+  width:40px;flex-shrink:0;text-align:right;padding-top:1px;
+  font-size:var(--t-caption);font-weight:600;color:var(--fg-2);font-variant-numeric:tabular-nums;
+}
+.rail{display:flex;flex-direction:column;align-items:center}
+.rail .d{margin-top:4px;width:8px;height:8px;border-radius:999px;background:rgba(255,255,255,.30);flex-shrink:0}
+.rail .l{margin-top:4px;width:1px;flex:1;background:rgba(255,255,255,.10)}
+.beat .bl{font-size:var(--t-label);font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--fg)}
+.beat .bc{margin-top:4px;font-size:var(--t-reading);line-height:1.6;color:var(--fg-2)}
+.beat .bf{margin-top:6px;display:flex;gap:6px;font-size:var(--t-label);line-height:1.6;color:var(--fg-3)}
+.foot{border-top:1px solid var(--b);padding:12px 16px}
+
+/* remix decode map */
+.map{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--b);border-radius:8px;overflow:hidden}
+body[data-w="342"] .map{grid-template-columns:1fr}
+.map .hd{border-bottom:1px solid var(--b);background:rgba(255,255,255,.02);padding:8px 14px}
+.map .hd+.hd{border-left:1px solid var(--b)}
+body[data-w="342"] .map .hd+.hd{border-left:0}
+.mc{padding:12px 14px;border-bottom:1px solid var(--b)}
+.mc.r{border-left:1px solid var(--b)}
+body[data-w="342"] .mc.r{border-left:0}
+.mc.last{border-bottom:0}
+body[data-w="342"] .mc.last.l{border-bottom:1px solid var(--b)}
+/* AFTER: same map, no outer box, hairlines only */
+.map--flat{border:0;border-radius:0}
+.map--flat .hd{background:none;padding:0 14px 8px 0}
+.map--flat .hd+.hd{padding-left:14px}
+body[data-w="342"] .map--flat .hd+.hd{padding-left:0;padding-top:12px}
+.map--flat .mc{padding:12px 14px 12px 0}
+.map--flat .mc.r{padding-left:14px}
+body[data-w="342"] .map--flat .mc.r{padding-left:0}
+</style>
+</head>
+<body data-w="728" data-view="both">
+
+<div class="bar">
+  <h1>Skill cards — hierarchy pass</h1>
+  <span class="hint">keep the substance · fix the weight</span>
+  <div class="seg" role="group" aria-label="Card width">
+    <button data-w="728" aria-pressed="true">728px — in-thread</button>
+    <button data-w="342" aria-pressed="false">342px — mobile</button>
+  </div>
+  <div class="seg" role="group" aria-label="View">
+    <button data-view="both" aria-pressed="true">Before + after</button>
+    <button data-view="after" aria-pressed="false">After only</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     HOOK
+     ═══════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <h2>Hook card</h2>
+  <p class="note">
+    Hierarchy: <b>the line</b> → the visual execution + the proof → the mechanism → who it was aimed at.
+    Three bordered boxes removed (visual / written-for / receipt). Nothing on the face is deleted.
+  </p>
+  <div class="pair">
+
+    <!-- ── BEFORE ─────────────────────────────────────────────────────── -->
+    <div class="col col--before">
+      <h3>Current — <em>3 nested boxes, 3 caps labels, everything 11–14px grey</em></h3>
+      <div class="stage">
+        <div class="card">
+          <div class="face face--gap3">
+            <div class="row">
+              <span style="font-size:var(--t-label);font-weight:600;color:var(--fg-3);font-variant-numeric:tabular-nums">#1</span>
+              <button class="copy"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M216 32H88a8 8 0 0 0-8 8v40H40a8 8 0 0 0-8 8v128a8 8 0 0 0 8 8h128a8 8 0 0 0 8-8v-40h40a8 8 0 0 0 8-8V40a8 8 0 0 0-8-8m-56 176H48V96h112Zm48-48h-32V88a8 8 0 0 0-8-8H96V48h112Z"/></svg>Copy</button>
+            </div>
+
+            <p class="serif hero">Stop editing your videos. Do this instead.</p>
+
+            <div class="boxed">
+              <div style="display:flex;align-items:center;gap:8px">
+                <p class="label">Visual</p>
+                <span class="pill">crash-zoom</span>
+              </div>
+              <p class="body" style="margin-top:6px;line-height:1.6">Hard cut to your face mid-sentence as the words slam on in bold caps.</p>
+            </div>
+
+            <div class="boxed--tight">
+              <p class="meta" style="line-height:1.375;color:var(--fg-2)">
+                <span class="muted">Written for </span><span style="font-weight:500;color:var(--fg)">The Busy Pro</span><span class="muted"> · 34% of your audience</span>
+              </p>
+            </div>
+
+            <a class="receipt" href="#">
+              <span class="thumb"><img alt="" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSc5MCcgaGVpZ2h0PScxNjAnPjxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0nZycgeDE9JzAnIHkxPScwJyB4Mj0nMScgeTI9JzEnPjxzdG9wIG9mZnNldD0nMCcgc3RvcC1jb2xvcj0nIzNhM2EzNycvPjxzdG9wIG9mZnNldD0nMScgc3RvcC1jb2xvcj0nIzI2MjYyNCcvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxyZWN0IHdpZHRoPSc5MCcgaGVpZ2h0PScxNjAnIGZpbGw9J3VybCgjZyknLz48cG9seWdvbiBwb2ludHM9JzM4LDY2IDM4LDk0IDY0LDgwJyBmaWxsPScjZWNlN2RlJyBvcGFjaXR5PScwLjUnLz48L3N2Zz4="></span>
+              <span class="rcol">
+                <span style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+                  <span class="label" style="font-weight:600">Proven structure</span>
+                  <span class="pill" style="font-weight:400">Trap Mistake</span>
+                </span>
+                <span class="tpl">Stop <span class="v">[doing the hard thing]</span>. Do <span class="v">[the easier thing]</span> instead.</span>
+                <span style="display:flex;align-items:center;gap:6px;font-size:var(--t-label);color:var(--fg-3)">◐<span class="sec">@braedan.health</span></span>
+                <span class="stats">
+                  <span class="chip-pos">↗ 90.7×</span>
+                  <span style="font-size:var(--t-caption);color:var(--fg-3)">vs followers</span>
+                  <span class="chip-neutral">👁 621K</span>
+                </span>
+              </span>
+            </a>
+
+            <div>
+              <p class="label" style="margin-bottom:4px">Why it works</p>
+              <p class="reading">Pattern-interrupt via a permission to quit a painful task.</p>
+            </div>
+
+            <div class="proof">
+              <div class="proof-top">
+                <span class="band" style="color:var(--positive)"><span class="dot" style="background:var(--positive)"></span>Strong</span>
+                <span class="frac"><b>7/10</b> would stop</span>
+                <span class="ribbon"><span style="width:70%"></span></span>
+              </div>
+              <div class="quoterow">
+                <blockquote>“Fast and to the point — I'll give it 10 seconds.”</blockquote>
+                <span class="seeroom"><span class="avatars"><span></span><span></span><span></span></span>See the room →</span>
+              </div>
+            </div>
+
+            <button class="caret">▸ Why &amp; details <span style="color:rgba(138,133,124,.7)">· projected</span></button>
+          </div>
+          <div class="actionbar">
+            <button class="primary">Write the script →</button>
+            <span class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg></span>
+          </div>
+        </div>
+      </div>
+      <p class="callout">
+        Reading down: <b>rank · copy · HOOK · box · box · box · label+text · verdict · caret</b>.
+        After the serif line everything is a grey slab of the same weight, and three different
+        kinds of information — a shot, a targeting fact, an external citation — wear one identical costume.
+      </p>
+    </div>
+
+    <!-- ── AFTER ──────────────────────────────────────────────────────── -->
+    <div class="col">
+      <h3>Reworked — <em>same nine facts, four weights</em></h3>
+      <div class="stage">
+        <div class="card">
+          <div class="face">
+            <div class="row">
+              <span class="label" style="color:var(--fg-2)">Top pick</span>
+              <button class="copy"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M216 32H88a8 8 0 0 0-8 8v40H40a8 8 0 0 0-8 8v128a8 8 0 0 0 8 8h128a8 8 0 0 0 8-8v-40h40a8 8 0 0 0 8-8V40a8 8 0 0 0-8-8m-56 176H48V96h112Zm48-48h-32V88a8 8 0 0 0-8-8H96V48h112Z"/></svg>Copy</button>
+            </div>
+
+            <!-- T1 — the deliverable -->
+            <p class="serif hero mt-hero">Stop editing your videos. Do this instead.</p>
+
+            <!-- T2 — CREAM 14px. The technique name becomes a lead-in; the box, the label
+                 and the pill all go. This is the tier the card never had. -->
+            <p class="lede mt-lede"><span class="lead-in">Crash-zoom —</span> hard cut to your face mid-sentence as the words slam on in bold caps.</p>
+
+            <!-- T3 — the evidence, one big break below -->
+            <a class="receipt receipt--flat mt-sec" href="#">
+              <span class="thumb"><img alt="" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSc5MCcgaGVpZ2h0PScxNjAnPjxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0nZycgeDE9JzAnIHkxPScwJyB4Mj0nMScgeTI9JzEnPjxzdG9wIG9mZnNldD0nMCcgc3RvcC1jb2xvcj0nIzNhM2EzNycvPjxzdG9wIG9mZnNldD0nMScgc3RvcC1jb2xvcj0nIzI2MjYyNCcvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxyZWN0IHdpZHRoPSc5MCcgaGVpZ2h0PScxNjAnIGZpbGw9J3VybCgjZyknLz48cG9seWdvbiBwb2ludHM9JzM4LDY2IDM4LDk0IDY0LDgwJyBmaWxsPScjZWNlN2RlJyBvcGFjaXR5PScwLjUnLz48L3N2Zz4="></span>
+              <span class="rcol" style="gap:5px">
+                <span class="label">Proven structure <span style="color:rgba(138,133,124,.6)">·</span> Trap Mistake</span>
+                <span class="tpl">Stop <span class="v">[doing the hard thing]</span>. Do <span class="v">[the easier thing]</span> instead.</span>
+                <span class="stats" style="margin-top:1px">
+                  <span class="chip-pos">↗ 90.7×</span>
+                  <span style="font-size:var(--t-label);color:var(--fg-3)">vs followers · 621K views</span>
+                </span>
+                <span style="display:flex;align-items:center;gap:6px;font-size:var(--t-label);color:var(--fg-3)">◐<span class="sec">@braedan.health</span></span>
+              </span>
+            </a>
+
+            <div class="mt-item">
+              <p class="label" style="margin-bottom:4px">Why it works</p>
+              <p class="body">Pattern-interrupt via a permission to quit a painful task.</p>
+            </div>
+
+            <!-- T4 — meta. Same words, no box, receded. -->
+            <p class="meta mt-meta">
+              Written for <span class="sec">The Busy Pro</span> · 34% of your audience · <span>seed “Stop editing your videos.”</span> · spoken delivery
+            </p>
+          </div>
+
+          <!-- THE DOOR — the mechanism that makes the simulation worth paying for -->
+          <div class="door" role="button" tabindex="0">
+            <span class="door-state"><span class="hollow"></span>Not tested yet</span>
+            <span class="door-cta">Simulate with your audience →</span>
+          </div>
+
+          <div class="actionbar">
+            <button class="primary">Write the script →</button>
+            <span class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg></span>
+          </div>
+        </div>
+      </div>
+      <p class="callout">
+        Four weights: <b>serif 22 cream</b> (the line) → <b>Inter 14 cream</b> (the shot) →
+        <b>13 secondary</b> (structure + mechanism) → <b>12 muted</b> (aim, seed, channel).
+        Seed and channel came OUT of the caret onto the meta line — the expand is now empty, so it's gone.
+        Nine facts still here; two of them are loud.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     IDEA
+     ═══════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <h2>Idea card</h2>
+  <p class="note">
+    The one real inversion on this surface: <b>whyItFits</b> — derived from the creator's own scraped
+    posts, the single line that proves the product read their account — currently renders as a
+    <em>muted em-dash clause</em> at the end of a sentence. It becomes the lede.
+  </p>
+  <div class="pair">
+
+    <div class="col col--before">
+      <h3>Current — <em>the account-knowledge flex is the most muted text on the card</em></h3>
+      <div class="stage">
+        <div class="card">
+          <div class="face face--gap3">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+              <h3 class="serif hero">The 30-day silence experiment</h3>
+              <span class="pill pill--warn" style="margin-top:2px;flex-shrink:0">your take</span>
+            </div>
+
+            <p class="body" style="line-height:1.6">Absence as a growth lever — what happens when you deliberately go quiet. <span class="muted">— Your top 3 posts all lead with a counter-intuitive claim about consistency.</span></p>
+
+            <div>
+              <p class="label" style="margin-bottom:4px">Why it lands</p>
+              <p class="reading">Curiosity gap + identity threat (creators fear disappearing).</p>
+            </div>
+
+            <div>
+              <p class="label" style="margin-bottom:4px">Make it from</p>
+              <div style="display:flex;overflow:hidden;border:1px solid var(--b);background:rgba(255,255,255,.02);border-radius:8px">
+                <div style="min-width:0;flex:1;padding:8px 12px"><p class="label">Topic</p><p class="body" style="margin-top:2px;line-height:1.375">Creator growth</p></div>
+                <div style="min-width:0;flex:1;padding:8px 12px;border-left:1px solid var(--b)"><p class="label">Take</p><p class="body" style="margin-top:2px;line-height:1.375">Consistency is overrated; strategic absence compounds attention.</p></div>
+                <div style="min-width:0;flex:1;padding:8px 12px;border-left:1px solid var(--b)"><p class="label">Format</p><p class="body" style="margin-top:2px;line-height:1.375">Talking-head + on-screen data</p></div>
+              </div>
+            </div>
+
+            <div class="boxed--tight">
+              <p class="meta" style="line-height:1.375;color:var(--fg-2)">
+                <span class="muted">Written for </span><span style="font-weight:500;color:var(--fg)">The Aspirant</span><span class="muted"> · 28% of your audience</span>
+              </p>
+            </div>
+
+            <a class="receipt" href="#">
+              <span class="thumb"><svg viewBox="0 0 90 160" width="100%" height="100%"><rect width="90" height="160" fill="#242422"/><polygon points="38,66 38,94 64,80" fill="#ece7de" opacity=".35"/></svg></span>
+              <span class="rcol">
+                <span style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+                  <span class="label" style="font-weight:600">Proven structure</span>
+                  <span class="pill" style="font-weight:400">Resource Drop</span>
+                </span>
+                <span class="tpl">I stopped <span class="v">[common habit]</span> for <span class="v">[timeframe]</span>. Here's what happened to my <span class="v">[thing]</span>.</span>
+                <span style="display:flex;align-items:center;gap:6px;font-size:var(--t-label);color:var(--fg-3)">◐<span class="sec">@nourish.me.now</span></span>
+                <span class="stats">
+                  <span class="chip-pos">↗ 277×</span>
+                  <span style="font-size:var(--t-caption);color:var(--fg-3)">vs followers</span>
+                  <span class="chip-neutral">👁 4.3M</span>
+                </span>
+              </span>
+            </a>
+
+            <div class="proof">
+              <div class="proof-top">
+                <span class="band" style="color:var(--positive)"><span class="dot" style="background:var(--positive)"></span>Strong</span>
+                <span class="frac"><b>8/10</b> would stop</span>
+                <span class="ribbon"><span style="width:80%"></span></span>
+              </div>
+              <div class="quoterow">
+                <blockquote>“Okay that opening line got me, I need to know the rest.”</blockquote>
+                <span class="seeroom"><span class="avatars"><span></span><span></span><span></span></span>See the room →</span>
+              </div>
+            </div>
+
+            <button class="caret">▸ Seed hook <span style="color:rgba(138,133,124,.7)">· projected</span></button>
+          </div>
+          <div class="actionbar">
+            <button class="primary">Write hooks for this →</button>
+            <span class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg></span>
+          </div>
+        </div>
+      </div>
+      <p class="callout">
+        The three-cell recipe strip is one bordered box holding <b>three more caps labels and two
+        dividers</b> — five pieces of chrome around three short strings. At 342px it is unreadable
+        (switch the width toggle: three columns in 310px).
+      </p>
+    </div>
+
+    <div class="col">
+      <h3>Reworked — <em>“how does it know that about me” reads first</em></h3>
+      <div class="stage">
+        <div class="card">
+          <div class="face">
+            <div class="row"><span class="label" style="color:var(--fg-2)">Top pick</span><span></span></div>
+
+            <h3 class="serif hero mt-hero">The 30-day silence experiment</h3>
+
+            <!-- T2 — the flex, promoted out of the muted trailing clause into cream -->
+            <p class="lede mt-lede">Your top 3 posts all lead with a counter-intuitive claim about consistency.</p>
+
+            <p class="body mt-item">Absence as a growth lever — what happens when you deliberately go quiet.</p>
+
+            <div class="mt-sec">
+              <p class="label" style="margin-bottom:4px">Why it lands</p>
+              <p class="body">Curiosity gap + identity threat (creators fear disappearing).</p>
+            </div>
+
+            <!-- the recipe: same three facts, zero chrome. Reuses the dl idiom
+                 already shipped on script + remix "How to film". -->
+            <dl class="dl mt-item">
+              <div><dt>Topic</dt><dd>Creator growth</dd></div>
+              <div><dt>Take</dt><dd>Consistency is overrated; strategic absence compounds attention.</dd></div>
+              <div><dt>Format</dt><dd>Talking-head + on-screen data</dd></div>
+              <div><dt>Seed hook</dt><dd>I stopped posting for 30 days. Here's what actually happened to my account.</dd></div>
+            </dl>
+
+            <a class="receipt receipt--flat mt-item" href="#">
+              <span class="thumb"><svg viewBox="0 0 90 160" width="100%" height="100%"><rect width="90" height="160" fill="#242422"/><polygon points="38,66 38,94 64,80" fill="#ece7de" opacity=".35"/></svg></span>
+              <span class="rcol" style="gap:5px">
+                <span class="label">Proven structure <span style="color:rgba(138,133,124,.6)">·</span> Resource Drop</span>
+                <span class="tpl">I stopped <span class="v">[common habit]</span> for <span class="v">[timeframe]</span>. Here's what happened to my <span class="v">[thing]</span>.</span>
+                <span class="stats" style="margin-top:1px">
+                  <span class="chip-pos">↗ 277×</span>
+                  <span style="font-size:var(--t-label);color:var(--fg-3)">vs followers · 4.3M views</span>
+                </span>
+                <span style="display:flex;align-items:center;gap:6px;font-size:var(--t-label);color:var(--fg-3)">◐<span class="sec">@nourish.me.now</span></span>
+              </span>
+            </a>
+
+            <p class="meta mt-meta">
+              Written for <span class="sec">The Aspirant</span> · 28% of your audience
+              · <span style="color:var(--warning)">needs your take</span>
+            </p>
+          </div>
+
+          <div class="door" role="button" tabindex="0">
+            <span class="door-state"><span class="hollow"></span>Not tested yet</span>
+            <span class="door-cta">Simulate with your audience →</span>
+          </div>
+
+          <div class="actionbar">
+            <button class="primary">Write hooks for this →</button>
+            <span class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg></span>
+          </div>
+        </div>
+      </div>
+      <p class="callout">
+        <b>“your take” lost its amber bordered pill</b> — it now sits as amber words on the meta line,
+        where it is still functional and no longer competes with the title. The seed hook came out of
+        the caret into the recipe list, where it belongs (it IS part of “make it from”). The expand is gone.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     SCRIPT
+     ═══════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <h2>Script card</h2>
+  <p class="note">
+    Already the best-structured card — the timeline is the hero and it works. Two changes only:
+    the receipt de-boxes, and the verdict row becomes the door. <b>The beat sheet is untouched.</b>
+  </p>
+  <div class="pair">
+
+    <div class="col col--before">
+      <h3>Current</h3>
+      <div class="stage">
+        <div class="card">
+          <div style="display:flex;flex-direction:column;gap:12px;padding:16px 16px 0">
+            <div class="row">
+              <div style="display:flex;min-width:0;align-items:center;gap:8px">
+                <p class="label">5 beats</p>
+                <span style="color:rgba(138,133,124,.5)">·</span>
+                <p class="meta" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Talking-head + screen-record b-roll · Creator growth</p>
+              </div>
+              <button class="copy"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M216 32H88a8 8 0 0 0-8 8v40H40a8 8 0 0 0-8 8v128a8 8 0 0 0 8 8h128a8 8 0 0 0 8-8v-40h40a8 8 0 0 0 8-8V40a8 8 0 0 0-8-8m-56 176H48V96h112Zm48-48h-32V88a8 8 0 0 0-8-8H96V48h112Z"/></svg>Copy script</button>
+            </div>
+            <a class="receipt" href="#">
+              <span class="thumb"><svg viewBox="0 0 90 160" width="100%" height="100%"><rect width="90" height="160" fill="#242422"/><polygon points="38,66 38,94 64,80" fill="#ece7de" opacity=".35"/></svg></span>
+              <span class="rcol">
+                <span style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+                  <span class="label" style="font-weight:600">Proven structure</span>
+                  <span class="pill" style="font-weight:400">Sensory Promise</span>
+                </span>
+                <span class="tpl">I stopped <span class="v">[doing the expected thing]</span> and my <span class="v">[metric]</span> <span class="v">[improved]</span>.</span>
+                <span style="display:flex;align-items:center;gap:6px;font-size:var(--t-label);color:var(--fg-3)">○<span class="sec">@polish1990</span></span>
+                <span class="stats"><span class="chip-pos">↗ 145×</span><span style="font-size:var(--t-caption);color:var(--fg-3)">vs followers</span><span class="chip-neutral">👁 2.0M</span></span>
+              </span>
+            </a>
+          </div>
+
+          <div class="beats">
+            <div class="beat">
+              <span class="timing">0–3s</span>
+              <div class="rail"><span class="d"></span><span class="l"></span></div>
+              <div style="min-width:0;flex:1">
+                <div class="row"><span class="bl">Hook</span><span style="color:var(--fg-3);font-size:var(--t-label)">▾</span></div>
+                <p class="bc">I stopped editing my videos and my views tripled.</p>
+                <p class="bf">🎥 <span>Close-up, handheld · text slams in on 'tripled' · deadpan delivery, no smile.</span></p>
+                <p style="margin-top:6px;font-size:var(--t-label);line-height:1.6;color:var(--fg-3)">↳ Outcome-first claim creates an immediate 'how?' gap.</p>
+              </div>
+            </div>
+            <div class="beat">
+              <span class="timing">3–10s</span>
+              <div class="rail"><span class="d"></span><span class="l"></span></div>
+              <div style="min-width:0;flex:1">
+                <div class="row"><span class="bl">Setup</span><span style="color:var(--fg-3);font-size:var(--t-label)">▸</span></div>
+                <p class="bc">For two years I spent 6 hours per video in CapCut. Cuts, captions, zooms — the works.</p>
+                <p class="bf">🎥 <span>B-roll of the CapCut timeline scrubbing · VO over the screen-record · frantic pace.</span></p>
+              </div>
+            </div>
+            <div class="beat">
+              <span class="timing">10–20s</span>
+              <div class="rail"><span class="d"></span></div>
+              <div style="min-width:0;flex:1">
+                <div class="row"><span class="bl">Turn</span><span style="color:var(--fg-3);font-size:var(--t-label)">▸</span></div>
+                <p class="bc">Then I noticed my raw, one-take clips were outperforming the polished ones 3 to 1.</p>
+                <p class="bf">🎥 <span>Cut back to face · split-screen the two analytics graphs · let the numbers breathe.</span></p>
+              </div>
+            </div>
+          </div>
+
+          <div class="foot">
+            <div style="display:flex;align-items:center;gap:6px"><span style="opacity:.7">🎥</span><p class="label">How to film</p></div>
+            <dl class="dl" style="margin-top:8px">
+              <div><dt>Shots</dt><dd>1 talking-head (phone, eye level) + 2 b-roll.</dd></div>
+              <div><dt>On-screen text</dt><dd>Hook caption on 'tripled'; one payoff card.</dd></div>
+              <div><dt>Setup</dt><dd>Phone at eye level, window light, lav mic close.</dd></div>
+            </dl>
+          </div>
+
+          <div class="foot">
+            <div class="proof">
+              <div class="proof-top">
+                <span class="band" style="color:var(--positive)"><span class="dot" style="background:var(--positive)"></span>Strong</span>
+                <span class="frac"><b>7/10</b> would stop <span class="muted">· opener only</span></span>
+                <span class="ribbon"><span style="width:70%"></span></span>
+              </div>
+              <div class="quoterow">
+                <blockquote>“Fast and to the point — I'll give it 10 seconds.”</blockquote>
+                <span class="seeroom"><span class="avatars"><span></span><span></span><span></span></span>See the room →</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="actionbar">
+            <button class="primary">Test this script →</button>
+            <span class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <h3>Reworked — <em>two edits, the timeline untouched</em></h3>
+      <div class="stage">
+        <div class="card">
+          <div style="display:flex;flex-direction:column;padding:16px 16px 0">
+            <div class="row">
+              <div style="display:flex;min-width:0;align-items:center;gap:8px">
+                <p class="label">5 beats</p>
+                <span style="color:rgba(138,133,124,.5)">·</span>
+                <p class="meta" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Talking-head + screen-record b-roll · Creator growth</p>
+              </div>
+              <button class="copy"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M216 32H88a8 8 0 0 0-8 8v40H40a8 8 0 0 0-8 8v128a8 8 0 0 0 8 8h128a8 8 0 0 0 8-8v-40h40a8 8 0 0 0 8-8V40a8 8 0 0 0-8-8m-56 176H48V96h112Zm48-48h-32V88a8 8 0 0 0-8-8H96V48h112Z"/></svg>Copy script</button>
+            </div>
+            <a class="receipt receipt--flat" style="margin-top:12px" href="#">
+              <span class="thumb"><svg viewBox="0 0 90 160" width="100%" height="100%"><rect width="90" height="160" fill="#242422"/><polygon points="38,66 38,94 64,80" fill="#ece7de" opacity=".35"/></svg></span>
+              <span class="rcol" style="gap:5px">
+                <span class="label">Proven structure <span style="color:rgba(138,133,124,.6)">·</span> Sensory Promise</span>
+                <span class="tpl">I stopped <span class="v">[doing the expected thing]</span> and my <span class="v">[metric]</span> <span class="v">[improved]</span>.</span>
+                <span class="stats" style="margin-top:1px"><span class="chip-pos">↗ 145×</span><span style="font-size:var(--t-label);color:var(--fg-3)">vs followers · 2.0M views</span></span>
+                <span style="display:flex;align-items:center;gap:6px;font-size:var(--t-label);color:var(--fg-3)">○<span class="sec">@polish1990</span></span>
+              </span>
+            </a>
+          </div>
+
+          <div class="beats">
+            <div class="beat">
+              <span class="timing">0–3s</span>
+              <div class="rail"><span class="d"></span><span class="l"></span></div>
+              <div style="min-width:0;flex:1">
+                <div class="row"><span class="bl">Hook</span><span style="color:var(--fg-3);font-size:var(--t-label)">▾</span></div>
+                <p class="bc">I stopped editing my videos and my views tripled.</p>
+                <p class="bf">🎥 <span>Close-up, handheld · text slams in on 'tripled' · deadpan delivery, no smile.</span></p>
+                <p style="margin-top:6px;font-size:var(--t-label);line-height:1.6;color:var(--fg-3)">↳ Outcome-first claim creates an immediate 'how?' gap.</p>
+              </div>
+            </div>
+            <div class="beat">
+              <span class="timing">3–10s</span>
+              <div class="rail"><span class="d"></span><span class="l"></span></div>
+              <div style="min-width:0;flex:1">
+                <div class="row"><span class="bl">Setup</span><span style="color:var(--fg-3);font-size:var(--t-label)">▸</span></div>
+                <p class="bc">For two years I spent 6 hours per video in CapCut. Cuts, captions, zooms — the works.</p>
+                <p class="bf">🎥 <span>B-roll of the CapCut timeline scrubbing · VO over the screen-record · frantic pace.</span></p>
+              </div>
+            </div>
+            <div class="beat">
+              <span class="timing">10–20s</span>
+              <div class="rail"><span class="d"></span></div>
+              <div style="min-width:0;flex:1">
+                <div class="row"><span class="bl">Turn</span><span style="color:var(--fg-3);font-size:var(--t-label)">▸</span></div>
+                <p class="bc">Then I noticed my raw, one-take clips were outperforming the polished ones 3 to 1.</p>
+                <p class="bf">🎥 <span>Cut back to face · split-screen the two analytics graphs · let the numbers breathe.</span></p>
+              </div>
+            </div>
+          </div>
+
+          <div class="foot">
+            <div style="display:flex;align-items:center;gap:6px"><span style="opacity:.7">🎥</span><p class="label">How to film</p></div>
+            <dl class="dl" style="margin-top:8px">
+              <div><dt>Shots</dt><dd>1 talking-head (phone, eye level) + 2 b-roll.</dd></div>
+              <div><dt>On-screen text</dt><dd>Hook caption on 'tripled'; one payoff card.</dd></div>
+              <div><dt>Setup</dt><dd>Phone at eye level, window light, lav mic close.</dd></div>
+            </dl>
+          </div>
+
+          <div class="door" role="button" tabindex="0">
+            <span class="door-state"><span class="hollow"></span>Opener not tested yet</span>
+            <span class="door-cta">Simulate the opener →</span>
+          </div>
+
+          <div class="actionbar">
+            <button class="primary">Test this script →</button>
+            <span class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg></span>
+          </div>
+        </div>
+      </div>
+      <p class="callout">
+        The “opener only” honesty qualifier survives in the door's own words
+        (<b>“Opener not tested yet”</b>) instead of as a muted suffix on a number.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     REMIX
+     ═══════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <h2>Remix card</h2>
+  <p class="note">
+    The decode map stays — it is the card's moat and it already stacks to one column below 640px.
+    Only the map's <b>outer box and header fill</b> come off (hairlines do the same job), the compact
+    receipt de-boxes, and the verdict becomes the door.
+  </p>
+  <div class="pair">
+
+    <div class="col col--before">
+      <h3>Current</h3>
+      <div class="stage">
+        <div class="card">
+          <div class="face face--gap3">
+            <div style="display:inline-flex;align-items:center;gap:12px;align-self:flex-start;border:1px solid var(--b);background:rgba(255,255,255,.02);border-radius:8px;padding:10px">
+              <span class="thumb" style="width:40px;aspect-ratio:1"><svg viewBox="0 0 40 40" width="100%" height="100%"><rect width="40" height="40" fill="#242422"/><polygon points="16,13 16,27 28,20" fill="#ece7de" opacity=".35"/></svg></span>
+              <span class="rcol">
+                <span class="label" style="font-weight:600">The post you're remixing</span>
+                <span style="display:flex;align-items:center;gap:6px;font-size:var(--t-label);color:var(--fg-3)"><span class="sec">@danielle.builds</span></span>
+                <span class="stats"><span class="chip-neutral">👁 2.1M</span></span>
+              </span>
+            </div>
+
+            <div class="map">
+              <div class="hd"><p class="label">The original</p><p style="margin-top:2px;font-size:var(--t-caption);color:var(--fg-3)">why it worked</p></div>
+              <div class="hd"><p class="label">Your version</p><p style="margin-top:2px;font-size:var(--t-caption);color:var(--fg-3)">ready to film</p></div>
+              <div class="mc l"><p class="label" style="margin-bottom:4px">Hook</p><p class="body muted" style="line-height:1.6">Opens on an irreversible, taboo decision ('I fired…') to trigger loss-aversion attention.</p></div>
+              <div class="mc r"><p class="label" style="margin-bottom:4px">Your hook</p>
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+                  <p class="serif" style="font-size:var(--t-subhead);font-weight:500;line-height:1.3;letter-spacing:-.005em;color:var(--fg)">I fired my whole marketing team and replaced them with 3 prompts.</p>
+                  <button class="copy"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M216 32H88a8 8 0 0 0-8 8v40H40a8 8 0 0 0-8 8v128a8 8 0 0 0 8 8h128a8 8 0 0 0 8-8v-40h40a8 8 0 0 0 8-8V40a8 8 0 0 0-8-8m-56 176H48V96h112Zm48-48h-32V88a8 8 0 0 0-8-8H96V48h112Z"/></svg>Copy</button>
+                </div>
+              </div>
+              <div class="mc l"><p class="label" style="margin-bottom:4px">The turn</p><p class="body muted" style="line-height:1.6">The reveal that the 'team' was AI — recontextualizes the whole cold open.</p></div>
+              <div class="mc r"><p class="label" style="margin-bottom:4px">Your angle</p><p class="body" style="line-height:1.6">Shock-firing frame borrowed from a business-teardown viral.</p></div>
+              <div class="mc l last"><p class="label" style="margin-bottom:4px">Format</p><p class="body muted" style="line-height:1.6">Talking-head confession + receipts overlay</p></div>
+              <div class="mc r last"><p class="label" style="margin-bottom:4px">Your shots</p><p class="body" style="line-height:1.6">You to camera for the confession + screen-record b-roll of the 3 prompts firing.</p></div>
+            </div>
+
+            <p class="meta">Built for <span class="sec">Solo founders drowning in growth busywork.</span></p>
+
+            <div class="proof">
+              <div class="proof-top">
+                <span class="band" style="color:var(--warning)"><span class="dot" style="background:var(--warning)"></span>Mixed</span>
+                <span class="frac"><b>5/10</b> would stop <span class="muted">· adapted hook</span></span>
+                <span class="ribbon"><span style="width:50%"></span></span>
+              </div>
+              <div class="quoterow">
+                <blockquote>“Feels like an ad, keep scrolling.”</blockquote>
+                <span class="seeroom"><span class="avatars"><span></span><span></span><span></span></span>See the room →</span>
+              </div>
+            </div>
+
+            <button class="caret">▸ Structure &amp; the emotional beat <span style="color:rgba(138,133,124,.7)">· projected</span></button>
+          </div>
+          <div class="foot">
+            <div style="display:flex;align-items:center;gap:6px"><span style="opacity:.7">🎥</span><p class="label">How to film your version</p></div>
+            <dl class="dl" style="margin-top:8px">
+              <div><dt>On-screen text</dt><dd>Cold-open caption on 'fired'; receipts overlay of before/after.</dd></div>
+              <div><dt>Setup</dt><dd>Phone at eye level, one soft key light, lav mic.</dd></div>
+              <div><dt>Edit</dt><dd>Cut on the reveal ('the team was AI') — hold nothing before it.</dd></div>
+            </dl>
+          </div>
+          <div class="actionbar">
+            <button class="primary">Write hooks for this →</button>
+            <span class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <h3>Reworked — <em>the map keeps its structure, loses its cage</em></h3>
+      <div class="stage">
+        <div class="card">
+          <div class="face">
+            <a class="receipt receipt--flat" href="#" style="align-items:center;align-self:flex-start;margin-left:-8px">
+              <span class="thumb" style="width:44px;aspect-ratio:1"><svg viewBox="0 0 40 40" width="100%" height="100%"><rect width="40" height="40" fill="#242422"/><polygon points="16,13 16,27 28,20" fill="#ece7de" opacity=".35"/></svg></span>
+              <span class="rcol" style="gap:3px">
+                <span class="label">The post you're remixing</span>
+                <span style="font-size:var(--t-label);color:var(--fg-3)"><span class="sec">@danielle.builds</span> · 2.1M views</span>
+              </span>
+            </a>
+
+            <div class="map map--flat mt-sec">
+              <div class="hd"><p class="label">The original</p><p style="margin-top:2px;font-size:var(--t-caption);color:var(--fg-3)">why it worked</p></div>
+              <div class="hd"><p class="label">Your version</p><p style="margin-top:2px;font-size:var(--t-caption);color:var(--fg-3)">ready to film</p></div>
+              <div class="mc l"><p class="label" style="margin-bottom:4px">Hook</p><p class="body muted" style="line-height:1.6">Opens on an irreversible, taboo decision ('I fired…') to trigger loss-aversion attention.</p></div>
+              <div class="mc r"><p class="label" style="margin-bottom:4px">Your hook</p>
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+                  <p class="serif" style="font-size:var(--t-subhead);font-weight:500;line-height:1.3;letter-spacing:-.005em;color:var(--fg)">I fired my whole marketing team and replaced them with 3 prompts.</p>
+                  <button class="copy"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M216 32H88a8 8 0 0 0-8 8v40H40a8 8 0 0 0-8 8v128a8 8 0 0 0 8 8h128a8 8 0 0 0 8-8v-40h40a8 8 0 0 0 8-8V40a8 8 0 0 0-8-8m-56 176H48V96h112Zm48-48h-32V88a8 8 0 0 0-8-8H96V48h112Z"/></svg>Copy</button>
+                </div>
+              </div>
+              <div class="mc l"><p class="label" style="margin-bottom:4px">The turn</p><p class="body muted" style="line-height:1.6">The reveal that the 'team' was AI — recontextualizes the whole cold open.</p></div>
+              <div class="mc r"><p class="label" style="margin-bottom:4px">Your angle</p><p class="body" style="line-height:1.6">Shock-firing frame borrowed from a business-teardown viral.</p></div>
+              <div class="mc l last"><p class="label" style="margin-bottom:4px">Format</p><p class="body muted" style="line-height:1.6">Talking-head confession + receipts overlay</p></div>
+              <div class="mc r last"><p class="label" style="margin-bottom:4px">Your shots</p><p class="body" style="line-height:1.6">You to camera for the confession + screen-record b-roll of the 3 prompts firing.</p></div>
+            </div>
+
+            <p class="meta mt-meta">
+              Built for <span class="sec">solo founders drowning in growth busywork</span>
+            </p>
+            <button class="caret" style="margin-top:10px">▸ Structure &amp; the emotional beat</button>
+          </div>
+
+          <div class="foot">
+            <div style="display:flex;align-items:center;gap:6px"><span style="opacity:.7">🎥</span><p class="label">How to film your version</p></div>
+            <dl class="dl" style="margin-top:8px">
+              <div><dt>On-screen text</dt><dd>Cold-open caption on 'fired'; receipts overlay of before/after.</dd></div>
+              <div><dt>Setup</dt><dd>Phone at eye level, one soft key light, lav mic.</dd></div>
+              <div><dt>Edit</dt><dd>Cut on the reveal ('the team was AI') — hold nothing before it.</dd></div>
+            </dl>
+          </div>
+
+          <div class="door" role="button" tabindex="0">
+            <span class="door-state"><span class="hollow"></span>Adapted hook not tested yet</span>
+            <span class="door-cta">Simulate with your audience →</span>
+          </div>
+
+          <div class="actionbar">
+            <button class="primary">Write hooks for this →</button>
+            <span class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg></span>
+          </div>
+        </div>
+      </div>
+      <p class="callout">
+        <b>Tried and reverted:</b> promoting the adapted hook out of the map into a serif hero like the
+        other three cards. It reads well in isolation but the hook then appears <em>twice</em> — once as
+        the hero, once in the “Your hook” cell it has to keep, because deleting that cell orphans the
+        “Hook / why it worked” row opposite it. The map is the card's moat and it is left alone.
+        This card is the deliberate exception: <b>its hero is inside the map.</b>
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     DOOR STATES + DEGRADED
+     ═══════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <h2>The door — three states, and the states the cards degrade into</h2>
+  <p class="note">
+    State ③ (a completed sim writing its verdict back onto the card) is <b>deferred</b> — the slot ships
+    ready, nothing writes to it. The tap target, <code>conceptText</code>, <code>flatPersonas</code>,
+    <code>population</code> and <code>rewrite</code> are all unchanged, so the room opens exactly as today.
+  </p>
+  <div class="pair">
+    <div class="col">
+      <h3>Door states</h3>
+      <div class="stage" style="display:flex;flex-direction:column;gap:12px">
+        <div class="card"><div class="door"><span class="door-state"><span class="hollow"></span>Not tested yet</span><span class="door-cta">Simulate with your audience →</span></div></div>
+        <div class="card"><div class="door"><span class="door-state"><span class="live"></span>Testing with your audience…</span><span class="door-cta">10 reactors →</span></div></div>
+        <div class="card"><div class="door"><span class="door-state"><span class="hollow" style="border-color:var(--positive);background:var(--positive)"></span>Your audience reacted</span><span class="door-cta">See the room →</span></div></div>
+      </div>
+      <p class="callout">
+        Row 3 is the <b>legacy persisted card</b> that really did carry a measured panel. It states that a
+        reaction exists without printing a number — the card still carries no verdict, and the room owns it.
+        It is not door-state ③; it is the honest wording for data that already exists.
+      </p>
+    </div>
+
+    <div class="col">
+      <h3>Degraded — no proof, no target, no visual</h3>
+      <div class="stage">
+        <div class="card">
+          <div class="face">
+            <div class="row"><span></span><button class="copy"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M216 32H88a8 8 0 0 0-8 8v40H40a8 8 0 0 0-8 8v128a8 8 0 0 0 8 8h128a8 8 0 0 0 8-8v-40h40a8 8 0 0 0 8-8V40a8 8 0 0 0-8-8m-56 176H48V96h112Zm48-48h-32V88a8 8 0 0 0-8-8H96V48h112Z"/></svg>Copy</button></div>
+            <p class="serif hero mt-hero">I analyzed 500 viral videos. They all break one rule.</p>
+            <div class="mt-sec">
+              <p class="label" style="margin-bottom:4px">Why it works</p>
+              <p class="body">Authority + curiosity gap (a hidden rule they don't know).</p>
+            </div>
+            <p class="dashed mt-item">Original — not drawn from a retrieved video.</p>
+            <p class="meta mt-meta">seed “I analyzed 500 viral videos.” · visual</p>
+          </div>
+          <div class="door"><span class="door-state"><span class="hollow"></span>Not tested yet</span><span class="door-cta">Simulate with your audience →</span></div>
+          <div class="actionbar"><button class="primary">Write the script →</button><span class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg></span></div>
+        </div>
+      </div>
+      <p class="callout">
+        With no proof, no visual hook and no target, the card is a line + a mechanism + the door —
+        and it still reads as a deliberate object rather than a card with holes in it. The
+        <code>NoSourceNote</code> keeps its dashed frame: it is the one place a frame earns its
+        keep, because it marks an <em>absence</em> where its siblings have a thumbnail.
+      </p>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <h2>What changed, precisely</h2>
+  <div style="max-width:900px;font-size:var(--t-body);line-height:1.75;color:var(--fg-2)">
+    <p style="margin-bottom:10px"><span class="cream" style="font-weight:600">Removed — chrome only:</span>
+      the hook's Visual box · the Written-for box (hook + idea) · the receipt's box on all four cards ·
+      the idea's three-cell Recipe box (and its 3 caps labels + 2 dividers) · the remix map's outer box
+      and header fill · the technique pill · the archetype pill · the views pill · the “your take” pill ·
+      the <code>#1–#5</code> rank badge · both caret rows on hook and idea (their contents moved onto the face).</p>
+    <p style="margin-bottom:10px"><span class="cream" style="font-weight:600">Removed — content, per the locked decision:</span>
+      the band word · the <code>N/10</code> fraction · the magnitude ribbon · the generated scroll quote ·
+      the <code>· projected</code> / <code>· SIM-1 Flash</code> tag. The verdict now lives in the simulation.
+      <b><code>fraction</code> stays on the block props</b> — the ambient ledger reads it
+      (<code>ambient-descriptors.ts:68</code> returns <code>null</code> without it and silently unhooks the card).</p>
+    <p style="margin-bottom:10px"><span class="cream" style="font-weight:600">Kept, and made louder:</span>
+      every hook line, visual hook, mechanism, angle, whyItFits, topic/take/format, seed hook, channel,
+      beat, filming cue, production plan, decode row, proof thumbnail, template, handle, multiplier, views,
+      fit glyph and targeting fact that is on the cards today. <b>Nothing the creator can use was deleted.</b></p>
+    <p><span class="cream" style="font-weight:600">Added:</span> one tier — 14px cream Inter — and the door.</p>
+  </div>
+</section>
+
+<script>
+document.querySelectorAll('.seg').forEach(function (seg) {
+  seg.addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    seg.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+    if (b.dataset.w) document.body.dataset.w = b.dataset.w;
+    if (b.dataset.view) document.body.dataset.view = b.dataset.view;
+  });
+});
+</script>
+</body>
+</html>
