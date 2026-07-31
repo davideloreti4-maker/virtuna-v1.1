@@ -2,19 +2,32 @@
 
 /**
  * ProgressChecklist — the transient SSE-stage-driven progress SPINE (Plan 05-04; premium
- * thread PR-2 refinement).
+ * thread PR-2 refinement; EVIDENCE pass 2026-07-31).
  *
  * Premium-thread reframe (the most-watched surface — our skills have real latency, so this
  * must read like Perplexity/Claude/Cursor): a connected vertical SPINE of pipeline stages.
  *  - pending = muted label + hollow node; the connecting line is empty.
- *  - active  = bright label + terracotta node (pulsing center dot) + a static value-narrating
- *              sub-detail line; the line above it is half-filled.
- *  - done    = cream label + a filled cream node with a ✓; the line above it is fully filled.
+ *  - active  = bright label + terracotta node (pulsing center dot) + a value-narrating
+ *              sub-detail line + a LIVE SECOND COUNT; the line below it carries a flowing pulse.
+ *  - done    = cream label + a filled cream node with a ✓ + the step's MEASURED duration; the
+ *              line above it is fully filled.
  *
- * Sub-detail (copy-floor §2, decision 2a — static now): renders `stage.detail ?? STAGE_COPY[name]`
- * — one honest line describing the stage's JOB (never a fabricated live count). The optional
- * `detail` field is the FILED ENGINE ASK seam: when the backend later streams a true live status
- * on the stage SSE event, it shows through automatically; until then it degrades to the static map.
+ * THREE THINGS MAKE THE WAIT LEGIBLE, and all three are measured or retrieved, never invented:
+ *
+ *  1. THE PLAN (`plan`) — the whole pipeline up front, so the creator can see where they are.
+ *  2. THE CLOCK — the active step counts real seconds, and a finished step keeps the duration it
+ *     actually took. Every premium agent surface does this (Claude's "Thought for 12s", Cursor's
+ *     per-step stamps) for the same reason: an unquantified wait feels broken at 20s, a quantified
+ *     one still feels fine at 90s. Nothing is predicted — the clock only ever reports the past.
+ *  3. THE EVIDENCE (`evidence`) — the artifacts the engine actually touched, shown under the step
+ *     using them: the proven outlier videos a grounded run is drafting against, the post remix just
+ *     resolved, the keyframes the Test extractor is cutting. See run-evidence.tsx; the payload is
+ *     built server-side from real rows (lib/tools/evidence.ts) and renders nothing when absent.
+ *
+ * Sub-detail (copy-floor §2, decision 2a): renders `stage.detail ?? STAGE_COPY[name]` — one honest
+ * line describing the stage's JOB (never a fabricated live count). The optional `detail` field is
+ * the FILED ENGINE ASK seam: when the backend streams a true live status on the stage SSE event it
+ * shows through automatically; until then it degrades to the static map.
  *
  * Dosage: terracotta appears ONLY on the active (live) node — earned. Done checks are cream,
  * NEVER coral. Matte: the active pulse is an opacity breathe, NOT a box-shadow glow ring.
@@ -23,8 +36,10 @@
  * completion. NOT a registered block (D-02: transient UI, not persisted).
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
+import { RunEvidenceRail } from './run-evidence';
+import type { RunEvidence } from '@/lib/tools/evidence';
 
 export interface StageState {
   name: string;
@@ -49,6 +64,12 @@ export interface ProgressChecklistProps {
    * (render only the live stages, in emit order). See STAGE_PLANS below.
    */
   plan?: string[];
+  /**
+   * The artifacts this run has touched so far, rendered under the ACTIVE step (the "what the
+   * engine is working with right now" slot). Absent/null ⇒ nothing renders and the spine is
+   * byte-identical to its pre-evidence shape.
+   */
+  evidence?: RunEvidence | null;
 }
 
 /**
@@ -169,6 +190,10 @@ const STAGE_COPY_ROTATION: Record<string, string[]> = {
     'Rewriting it for your audience',
     'Retuning the angle for your niche',
   ],
+  'Finding proven outliers': [
+    'Searching what already overperformed',
+    'Measuring each against its baseline',
+  ],
   'Pulling outliers': [
     'Finding what overperformed in your niche',
     'Measuring each against the baseline',
@@ -191,11 +216,18 @@ const STAGE_COPY_ROTATION: Record<string, string[]> = {
   ],
 };
 
-export function ProgressChecklist({ stages, plan }: ProgressChecklistProps) {
+export function ProgressChecklist({ stages, plan, evidence }: ProgressChecklistProps) {
   // With a plan → render the whole pipeline up front (seed pending, overlay live status).
   // Without → legacy: render only the live stages in emit order.
   const rows = plan && plan.length > 0 ? mergePlan(plan, stages) : stages;
   if (rows.length === 0) return null;
+
+  // The evidence rail hangs off the step CURRENTLY running — that is the "what the engine is
+  // working with right now" slot, and it is where a retrieved artifact means the most (the
+  // outliers land during grounding but matter while `Generating` drafts against them). With no
+  // active row (the final beat, everything done) it falls to the last row rather than vanishing.
+  const activeIdx = rows.findIndex((s) => s.status === 'active');
+  const evidenceIdx = activeIdx === -1 ? rows.length - 1 : activeIdx;
 
   return (
     <div aria-live="polite" aria-label="Skill run progress" className="flex flex-col">
@@ -205,6 +237,7 @@ export function ProgressChecklist({ stages, plan }: ProgressChecklistProps) {
           stage={stage}
           index={index}
           isLast={index === rows.length - 1}
+          evidence={index === evidenceIdx ? evidence ?? null : null}
         />
       ))}
     </div>
@@ -217,9 +250,53 @@ interface StageRowProps {
   stage: StageState;
   index: number;
   isLast: boolean;
+  evidence?: RunEvidence | null;
 }
 
-function StageRow({ stage, index, isLast }: StageRowProps) {
+/**
+ * The step's own clock — live seconds while it runs, its true duration once it lands.
+ *
+ * Measured, never modelled: the value is always `now − whenThisRowWentActive`, so a step that
+ * never went active (a plan step replayed as done on a reloaded turn, a pending step) reports
+ * NOTHING and the row shows no stamp. That distinction is the honesty line — a reconstructed
+ * receipt must not wear a duration nobody timed.
+ *
+ * Ticks once a second: the display is whole seconds, so anything faster is re-rendering for
+ * nothing on the app's most-watched surface.
+ */
+function useStageClock(status: StageState['status']): number | null {
+  const startedAtRef = useRef<number | null>(null);
+  const [elapsedMs, setElapsedMs] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (status === 'active') {
+      const t0 = Date.now();
+      startedAtRef.current = t0;
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- starting the clock IS the effect
+      setElapsedMs(0);
+      const id = setInterval(() => setElapsedMs(Date.now() - t0), 1000);
+      return () => clearInterval(id);
+    }
+    if (status === 'done' && startedAtRef.current !== null) {
+      // Freeze the REAL duration. The interval's last tick can be up to a second stale, and a
+      // 2.6s step that reads "2s" forever is a small lie told on every single run.
+      const total = Date.now() - startedAtRef.current;
+      startedAtRef.current = null;
+      setElapsedMs(total);
+    }
+    return undefined;
+  }, [status]);
+
+  return elapsedMs;
+}
+
+/** 800 → "0.8s", 2600 → "2.6s", 14200 → "14s". Sub-10s keeps a decimal; past that it is noise. */
+function formatDuration(ms: number): string {
+  const s = ms / 1000;
+  return s < 10 ? `${Math.round(s * 10) / 10}s` : `${Math.round(s)}s`;
+}
+
+function StageRow({ stage, index, isLast, evidence }: StageRowProps) {
   const { name, status } = stage;
   const isActive = status === 'active';
 
@@ -238,8 +315,12 @@ function StageRow({ stage, index, isLast }: StageRowProps) {
     return () => clearInterval(id);
   }, [isActive, rotation.length]);
 
+  const elapsedMs = useStageClock(status);
   const sub = isActive ? stage.detail ?? rotation[subIdx % rotation.length] ?? null : null;
   const isDone = status === 'done';
+  // A stamp is worth showing once there is a whole second in it. Below that it flickers on and
+  // off between renders and reads as jitter rather than as information.
+  const stamp = elapsedMs !== null && elapsedMs >= 1000 ? formatDuration(elapsedMs) : null;
 
   return (
     <div
@@ -265,26 +346,36 @@ function StageRow({ stage, index, isLast }: StageRowProps) {
         )}
       </div>
 
-      {/* Body — label + (active-only) static sub-detail. The ACTIVE label shimmers (the
-          "working now" cue); done/pending are solid cream tones. */}
+      {/* Body — label row (name + measured stamp), the active-only sub-detail, and the evidence
+          rail. The ACTIVE label shimmers (the "working now" cue); done/pending are solid cream. */}
       <div className="min-w-0 flex-1 pb-3">
-        <p
-          className={cn(
-            'text-sm font-medium leading-snug transition-colors duration-300',
-            status === 'active' && 'text-shimmer',
+        <div className="flex items-baseline gap-2">
+          <p
+            className={cn(
+              'min-w-0 text-body font-medium leading-snug transition-colors duration-300',
+              status === 'active' && 'text-shimmer',
+            )}
+            style={{
+              color:
+                status === 'done'
+                  ? 'var(--color-cream-secondary)'
+                  : status === 'active'
+                  ? undefined // text-shimmer owns the fill
+                  : 'var(--color-cream-muted)',
+              opacity: status === 'pending' ? 0.6 : 1,
+            }}
+          >
+            {name}
+          </p>
+          {stamp && (
+            <span
+              className="shrink-0 text-micro tabular-nums leading-none text-foreground-muted/60"
+              data-testid="stage-elapsed"
+            >
+              {stamp}
+            </span>
           )}
-          style={{
-            color:
-              status === 'done'
-                ? 'var(--color-cream-secondary)'
-                : status === 'active'
-                ? undefined // text-shimmer owns the fill
-                : 'var(--color-cream-muted)',
-            opacity: status === 'pending' ? 0.6 : 1,
-          }}
-        >
-          {name}
-        </p>
+        </div>
         {sub && (
           // key={subIdx} remounts the line each rotation → a soft fade between phrases.
           <p
@@ -294,6 +385,7 @@ function StageRow({ stage, index, isLast }: StageRowProps) {
             {sub}
           </p>
         )}
+        {evidence && <RunEvidenceRail evidence={evidence} className="mt-2.5" />}
       </div>
     </div>
   );
@@ -358,6 +450,8 @@ export interface SkillProgressProps {
   isStreaming: boolean;
   /** Summary receipt label shown after completion, e.g. "Ran your audience". */
   summaryLabel: string;
+  /** Live artifacts for the in-flight spine (see ProgressChecklist.evidence). */
+  evidence?: RunEvidence | null;
 }
 
 /**
@@ -370,11 +464,17 @@ export interface SkillProgressProps {
  * The collapsed receipt only exists for a live run (stages are ephemeral — a pure rehydrate has
  * no stage history, so it renders nothing and the result cards stand alone).
  */
-export function SkillProgress({ stages, plan, isStreaming, summaryLabel }: SkillProgressProps) {
+export function SkillProgress({
+  stages,
+  plan,
+  isStreaming,
+  summaryLabel,
+  evidence,
+}: SkillProgressProps) {
   const [expanded, setExpanded] = useState(false);
 
   if (isStreaming) {
-    return <ProgressChecklist stages={stages} plan={plan} />;
+    return <ProgressChecklist stages={stages} plan={plan} evidence={evidence} />;
   }
 
   // Completed run: show the collapsed receipt. No stage history (rehydrate) → render nothing.

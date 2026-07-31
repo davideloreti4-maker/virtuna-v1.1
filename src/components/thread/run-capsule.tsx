@@ -19,6 +19,7 @@
  */
 
 import { ProgressChecklist, SkillProgress, STAGE_PLANS, type StageState } from './progress-checklist';
+import type { RunEvidence } from '@/lib/tools/evidence';
 
 export interface SkillRunMeta {
   /** Present-tense label while the run is live, e.g. "Writing hooks". */
@@ -69,9 +70,17 @@ export interface SkillRunCapsuleProps {
   isRunning: boolean;
   /** The audience the run is aimed at — named on the label line ("for Bootstrapped Founders"). */
   audienceLabel?: string;
+  /** Live artifacts the run has touched (the `evidence` SSE frame) — rendered inside the spine. */
+  evidence?: RunEvidence | null;
 }
 
-export function SkillRunCapsule({ skill, stages, isRunning, audienceLabel }: SkillRunCapsuleProps) {
+export function SkillRunCapsule({
+  skill,
+  stages,
+  isRunning,
+  audienceLabel,
+  evidence,
+}: SkillRunCapsuleProps) {
   const meta = skill ? SKILL_RUN_META[skill] : undefined;
   // Nothing ran and nothing is running → render nothing (a pure-chat turn / a rehydrate).
   if (!isRunning && stages.length === 0) return null;
@@ -91,7 +100,7 @@ export function SkillRunCapsule({ skill, stages, isRunning, audienceLabel }: Ski
             ) : null}
           </p>
         )}
-        <ProgressChecklist stages={stages} plan={plan} />
+        <ProgressChecklist stages={stages} plan={plan} evidence={evidence} />
       </div>
     );
   }
