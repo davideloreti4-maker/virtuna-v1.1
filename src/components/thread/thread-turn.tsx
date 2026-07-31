@@ -53,6 +53,7 @@ import { SkillRunError, RunWarnings } from '@/components/thread/run-notices';
 import { OutliersOffer } from '@/components/thread/outliers-offer';
 import { SKILL_RUN_META } from '@/components/thread/run-capsule';
 import { ChatTypingIndicator } from '@/components/thread/thread-loading';
+import type { RunEvidence } from '@/lib/tools/evidence';
 import { classifyTurn, followupsForKind, type ChatTurnKind } from '@/lib/tools/chat-followups';
 import { useOnWriteScriptHook } from '@/lib/hook-test-context';
 
@@ -92,6 +93,13 @@ export interface LiveRun {
   skill: ChatTurnKind;
   isStreaming: boolean;
   stages?: StageState[];
+  /**
+   * The artifacts the run has touched so far (`evidence` SSE frame) — the proven outlier videos a
+   * grounded generation is drafting against, the post remix just resolved. Rendered INSIDE the live
+   * spine (see progress-checklist.tsx). Ephemeral like stages: never persisted, so a reloaded turn
+   * shows the receipt without it, exactly as it shows no stage timings.
+   */
+  evidence?: RunEvidence | null;
   followupText?: string | null;
   warnings?: string[];
   error?: string | null;
@@ -311,6 +319,7 @@ export function ThreadTurn({ userTurn, blocks, live, ambientBaseIndex }: ThreadT
               plan={plan ?? settledStages.map((s) => s.name)}
               isStreaming={runLive}
               summaryLabel={meta?.done ?? 'Ran the skill'}
+              evidence={live?.evidence ?? null}
             />
           )}
 

@@ -40,6 +40,7 @@ import { ProgressChecklist } from './progress-checklist';
 import { SKILL_RUN_META } from './run-capsule';
 import { CardPrimaryAction } from './card-primitives';
 import { useTestRunStages } from './use-test-run-stages';
+import { useTestRunEvidence } from './use-test-run-evidence';
 
 export interface InputRequestBlockRendererProps {
   block: InputRequestBlock;
@@ -115,7 +116,7 @@ function RemixField({ block }: InputRequestBlockRendererProps) {
   const platform = blockPlatform ?? ctxPlatform;
   const { onComplete } = useInThreadInput();
 
-  const { start: remixStart, isStreaming, error, isDone, stages } = useRemixStream();
+  const { start: remixStart, isStreaming, error, isDone, stages, evidence } = useRemixStream();
   // Seeded with the link the creator already pasted (loop-validated as an http(s) URL) so the
   // field opens one tap from running instead of asking for it a second time. Still editable, and
   // still requires the tap — a prefill never spends on its own.
@@ -148,7 +149,7 @@ function RemixField({ block }: InputRequestBlockRendererProps) {
         <div aria-live="polite" aria-atomic="false">
           {/* Plan-seeded spine (the run-capsule grammar): the whole remix pipeline is visible
               from the first frame, live events overlay their real status. */}
-          <ProgressChecklist stages={stages} plan={SKILL_RUN_META.remix!.plan} />
+          <ProgressChecklist stages={stages} plan={SKILL_RUN_META.remix!.plan} evidence={evidence} />
         </div>
       ) : (
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -420,6 +421,10 @@ function UploadField({ block }: InputRequestBlockRendererProps) {
   const busy = staging || analyzing || carding;
   // The run-capsule spine for the busy stretch (unconditional hook call — React rules).
   const testStages = useTestRunStages({ analyzing, carding });
+  // The SAME live signals the flagship /analyze skeleton draws its filmstrip from — the post the
+  // scrape resolved, then the creator's own keyframes as the extractor cuts them. `busy` closes the
+  // subscription the moment the run settles.
+  const testEvidence = useTestRunEvidence(analysisId, busy);
   const canSubmit = (!!file || isValidTikTok) && !busy;
 
   // When the analysis completes, turn the persisted row into an in-thread card. Fires once
@@ -550,7 +555,7 @@ function UploadField({ block }: InputRequestBlockRendererProps) {
         // (identical plan names), derived from real phase boundaries + elapsed floors — replaces
         // the single static spinner line this wait used to be.
         <div aria-live="polite" aria-atomic="false">
-          <ProgressChecklist stages={testStages} plan={SKILL_RUN_META.test!.plan} />
+          <ProgressChecklist stages={testStages} plan={SKILL_RUN_META.test!.plan} evidence={testEvidence} />
         </div>
       ) : (
         <div className="flex flex-col gap-3">
