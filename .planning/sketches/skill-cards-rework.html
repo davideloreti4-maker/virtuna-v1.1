@@ -230,6 +230,21 @@ body[data-view="after"] .compare{grid-template-columns:minmax(0,460px)}
 .spine-cell .t{font-size:var(--t-body);font-weight:600;margin-top:4px}
 .spine-cell .d{font-size:var(--t-label);line-height:1.6;color:var(--fg-muted);margin-top:5px}
 .strike{text-decoration:line-through;color:var(--fg-muted);opacity:.6}
+/* audit findings */
+.findings{display:flex;flex-direction:column;gap:12px;margin-top:26px}
+.find{border:1px solid var(--border);border-radius:var(--r-lg);padding:15px 17px;background:rgba(255,255,255,.015)}
+.find-h{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.find-t{font-size:var(--t-reading);font-weight:600;letter-spacing:-0.01em;color:var(--fg)}
+.sev{font-size:var(--t-micro);text-transform:uppercase;letter-spacing:.08em;font-weight:600;
+  padding:3px 7px;border-radius:var(--r-xs);flex:0 0 auto}
+.sev-hi{background:rgba(255,99,99,.14);color:#ff8080}
+.sev-md{background:rgba(224,189,114,.14);color:oklch(0.75 0.15 85)}
+.sev-lo{background:rgba(255,255,255,.06);color:var(--fg-muted)}
+.find-b{font-size:var(--t-body);line-height:1.7;color:var(--fg-secondary)}
+.find-b b{color:var(--fg);font-weight:600}
+.find-f{font-size:var(--t-body);line-height:1.7;color:var(--fg-muted);margin-top:8px;
+  padding-top:8px;border-top:1px solid var(--border)}
+.find-f b{color:var(--positive);font-weight:600}
 ul.tight{margin:10px 0 0 18px}
 ul.tight li{font-size:var(--t-body);line-height:1.7;color:var(--fg-secondary)}
 ul.tight li b{color:var(--fg);font-weight:600}
@@ -857,12 +872,181 @@ them is the reason to run one.</p>
   </div>
 </section>
 
+<!-- ══ AUDIT ══════════════════════════════════════════════════════════════ -->
+<section class="sec">
+  <div class="sec-kick">Audit · root cause</div>
+  <h2>The generation path stopped measuring. The cards still wear the measurement's clothes.</h2>
+  <p class="sec-note">On 2026-07-22 the four Make runners collapsed onto a single Qwen call. The persona SIM went with it —
+  every runner now says so in as many words: <code>personas + population INTENTIONALLY OMITTED</code>
+  (<code>hooks-runner:667</code> · <code>ideas-runner:626</code> · <code>script-runner:659</code> · <code>remix-runner:361</code>).
+  That was the right call for cost and latency. What did not follow is the <b>presentation</b>: five surfaces still read those
+  fields, and each one now renders its degraded half while keeping the chrome that promised a measured result.</p>
+  <p class="sec-note">Each degrade is individually honest — a null check here, a conditional verb there. Together they add up to a
+  product that <b>presents as measured and measures nothing</b> until the creator pays again. That is the same defect as the
+  ranking, found four more times. It also means the door rework is not a taste preference: it is the repair.</p>
+
+  <div class="findings">
+    <div class="find">
+      <div class="find-h"><span class="sev sev-hi">High</span><span class="find-t">The room behind "See the room →" is empty theatre</span></div>
+      <p class="find-b"><code>audience-presence.tsx:255–259</code> — <code>if (focus.personas?.length) return focus.personas; return cardScrollQuoteReactions(...)</code>.
+      Since the runners omit <code>personas</code>, <b>every freshly generated card takes the fallback</b>: the room fills with
+      <code>viewer_1…viewer_10</code> placeholders expanded from the one self-estimated number, and because none of them is a
+      registry enum, <code>isGroundable</code> fails and <b>"Ask them why →" is gated off</b>. The flagship interaction on all four
+      Make cards currently opens a room of nobody.</p>
+      <p class="find-f"><b>Fixed by the rework, structurally.</b> The door goes to ⑤ Simulate instead of the room, so the only way
+      into a room is a run that populated it.</p>
+    </div>
+
+    <div class="find">
+      <div class="find-h"><span class="sev sev-hi">High</span><span class="find-t">The Library contradicts the thread, and the Library is the one that's wrong</span></div>
+      <p class="find-b"><code>saved/saved-item-card.tsx:254</code> and <code>:408</code> print
+      <code>{fracNM(fraction)} stopped</code> — <b>unconditional past tense, no <code>provenance</code> gate</b>. The thread card
+      goes to real trouble to say "7/10 <i>would</i> stop" on a projected card; save that exact card and the Library states
+      "7/10 stopped". Same props, same number, and the shelf makes the measurement claim the thread refused to make.</p>
+      <p class="find-f"><b>Scope addition.</b> The shelf renders the same card DNA and must move in lockstep, or the rework
+      creates the contradiction instead of inheriting it. Sketched below.</p>
+    </div>
+
+    <div class="find">
+      <div class="find-h"><span class="sev sev-md">Medium</span><span class="find-t"><code>TargetReaction</code> is half-dead — a label wearing a receipt's chrome</span></div>
+      <p class="find-b">Its own header states the payoff: <i>"we aimed this at your skeptics, and here is what your skeptics said."</i>
+      The second half never renders. All three callers pass an empty panel — <code>personas: []</code> at
+      <code>hooks-runner:637</code> · <code>ideas-runner:599</code> · <code>script-runner:638</code> — so <code>verdict</code> is
+      always null and the <code>{verdict && …}</code> branch is dead on the generation path. What ships is
+      "Written for The Busy Pro · 34% of your audience" in a bordered box: an <b>aim</b>, presented with the border and weight of
+      a <b>receipt</b>.</p>
+      <p class="find-f"><b>Demote, don't delete.</b> In the rework it becomes one plain line in the drawer — "Written for …" —
+      with no box. It regains its second half when a sim runs, which is exactly when it becomes true.</p>
+    </div>
+
+    <div class="find">
+      <div class="find-h"><span class="sev sev-md">Medium</span><span class="find-t">The design guards have a directory-shaped hole</span></div>
+      <p class="find-b"><code>radius-scale.test.ts:37</code> — <code>GUARDED_DIRS = ['thread', 'reading']</code>. The Library
+      renders the same cards and is not in that list, so it carries exactly the drift the guard exists to stop:
+      <code>rounded-[10px]</code> at <code>saved-item-card.tsx:246</code> and <code>:527</code> (off the 4/6/8/12/16/20/24 scale
+      entirely), plus <code>rounded-[6px]</code>/<code>rounded-[8px]</code> written as arbitrary literals the tokens-only rule
+      bans on value as well as size, and <code>text-[12px]</code> where the type roles give <code>text-label</code>.</p>
+      <p class="find-f"><b>Add <code>saved</code> to <code>GUARDED_DIRS</code> and fix what it catches.</b> Cheap, and it stops
+      this recurring the moment someone builds the next card surface.</p>
+    </div>
+
+    <div class="find">
+      <div class="find-h"><span class="sev sev-lo">Low</span><span class="find-t">"Use in thread →" cannot return you to the thread</span></div>
+      <p class="find-b"><code>thread_id</code> exists on the shelf schema (<code>shelf-repo.ts:31/41/51</code>) and is documented as
+      "for <i>Use in thread →</i> provenance". <b>No card passes it</b> — hook, idea, script and remix all call
+      <code>&lt;SaveAffordance item_type title snapshot /&gt;</code> and nothing more — and the shelf never reads it:
+      <code>handleForward</code> ends in a bare <code>router.push("/home")</code>. The button re-runs the chain step and drops
+      you on whatever thread happens to be open.</p>
+      <p class="find-f"><b>One prop per call site.</b> Pass <code>thread_id</code>, then route to it. Not required for this
+      rework — noting it because the four Save call sites are already being edited.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ LIBRARY ════════════════════════════════════════════════════════════ -->
+<section class="sec">
+  <div class="sec-kick">Library · the parity the rework forces</div>
+  <h2>The shelf is a card surface. It moves with the cards or it starts lying.</h2>
+
+  <div class="compare">
+    <div class="col-before">
+      <div class="col-head"><span class="col-tag tag-before">Before</span><span class="col-sub">claims a measurement the thread refused</span></div>
+      <div class="card" style="border-radius:var(--r-lg)">
+        <div class="face">
+          <div class="metarow"><span class="lbl">Hook</span><span class="lbl">2 days ago</span></div>
+          <p class="hero">Stop editing your videos. Do this instead.</p>
+          <div class="b-proof" style="border-radius:10px">
+            <div class="b-bandrow">
+              <span class="b-band"><i class="dot-solid" style="background:var(--positive)"></i>Strong</span>
+              <span class="b-frac"><b>7/10</b> stopped</span>
+              <span class="b-ribbon"><i style="width:70%"></i></span>
+            </div>
+            <blockquote class="b-quote">"Fast and to the point — I'll give it 10 seconds."</blockquote>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="primary">Use in thread →</button>
+          <button class="icon-btn">✕</button>
+        </div>
+      </div>
+      <p class="state-note">"stopped", past tense, on a card whose <code>provenance</code> is <code>projected</code> — and a
+      <code>rounded-[10px]</code> proof chip that the thread's own radius guard would fail.</p>
+    </div>
+
+    <div class="col-after">
+      <div class="col-head"><span class="col-tag tag-after">After</span><span class="col-sub">same spine as the thread card</span></div>
+      <div class="card">
+        <div class="face face-tight">
+          <div class="metarow"><span class="lbl">Hook · saved 2 days ago</span><button class="ghost-btn">⧉ Copy</button></div>
+          <p class="hero">Stop editing your videos. Do this instead.</p>
+          <p class="why">Pattern-interrupt via a permission to quit a painful task.</p>
+        </div>
+        <button class="door">
+          <span class="dot-hollow"></span>
+          <span class="door-state">Not tested yet</span>
+          <span class="door-cta">Simulate with your audience <span class="door-arrow">→</span></span>
+        </button>
+        <div class="actions">
+          <button class="primary">Write the script →</button>
+          <button class="ghost-btn">⌄ Details</button>
+          <button class="icon-btn">✕</button>
+        </div>
+      </div>
+      <p class="state-note">One spine, two surfaces. A saved card that was never tested says so on the shelf too — and the door
+      works from here, which makes the Library a place you can act from rather than a graveyard.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ COMPARE ════════════════════════════════════════════════════════════ -->
+<section class="sec">
+  <div class="sec-kick">Opportunity · the question the surface never asks</div>
+  <h2>Five hooks arrive. The creator's real question is "which one?" — and nothing answers it.</h2>
+  <p class="sec-note">Today the numbers answer it, badly (one self-estimate, five costumes). Take them away and the question is
+  bare: five equally-weighted lines and a Top pick. The honest answer is a simulation — but the unit is wrong. Five separate
+  runs to compare five variants is five spends and five surfaces the creator has to hold in their head.</p>
+  <p class="sec-note">The intake already anticipates this. <code>SimulateIntake.tsx:94</code> declares a
+  <code>compare</code> family — <b>"run variants side by side"</b> — sitting beside <code>screen</code> and <code>query</code>,
+  with <code>status: "soon"</code>. The product model has the right shape; nothing routes to it.</p>
+
+  <div class="card" style="max-width:560px;margin-top:24px">
+    <div style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid var(--border)">
+      <span class="dot-hollow"></span>
+      <span class="door-state">5 hooks · none tested</span>
+      <span class="door-cta">Simulate all 5, side by side <span class="door-arrow">→</span></span>
+    </div>
+    <div class="face face-tight" style="opacity:.5">
+      <div class="metarow"><span class="lbl">Top pick</span><button class="ghost-btn">⧉ Copy</button></div>
+      <p class="hero">Stop editing your videos. Do this instead.</p>
+    </div>
+    <div style="border-top:1px solid var(--border);padding:10px 16px;opacity:.32">
+      <p class="hero" style="font-size:var(--t-body)">I analyzed 500 viral videos. They all break one rule.</p>
+    </div>
+    <div style="border-top:1px solid var(--border);padding:10px 16px;opacity:.22">
+      <p class="hero" style="font-size:var(--t-body)">This is the best video I've ever made. It flopped.</p>
+    </div>
+  </div>
+
+  <div class="call q">
+    <div class="h">Honest caveat — this one has no mount point yet</div>
+    <p>Thread-unification made the thread ONE flat ordered stream: <code>MessageBlocks</code> maps blocks to renderers with no
+    per-skill grouping, so there is <b>no container that knows "these five cards are one batch"</b>. A batch header needs either a
+    grouping seam in <code>MessageBlocks</code> or a run-scoped wrapper — real work, and it touches the file the ambient ledger's
+    positional card ids depend on. I have sketched it because it is the highest-value thing the surface is missing, not because
+    it is cheap. Separate decision from the rework.</p>
+  </div>
+</section>
+
 <!-- ══ SCOPE ══════════════════════════════════════════════════════════════ -->
 <section class="sec">
   <div class="sec-kick">Scope</div>
   <h2>What this covers, and what it deliberately doesn't yet.</h2>
   <ul class="tight">
     <li><b>In this sketch —</b> hook · idea · script · remix. The four that carry the self-estimated verdict, and the four the ranking question is about.</li>
+    <li><b>Pulled in by the audit —</b> <code>saved/saved-item-card.tsx</code>. Not optional: it renders the same card DNA and
+      already states "stopped" where the thread says "would stop", so leaving it behind turns an inherited defect into one this
+      change created. Carries the guard fix (<code>saved</code> → <code>GUARDED_DIRS</code>) with it.</li>
+    <li><b>Deferred by you —</b> door state ③ (seal write-back onto the card). Slot ships ready; nothing writes to it yet.</li>
     <li><b>Same treatment, no sketch needed —</b> <code>brought-card</code> (the ＋ door's card) carries the same proof unit and inherits the door verbatim.</li>
     <li><b>Different problem, tell me if you want it in this pass —</b> <code>account-read</code> (six stacked CAPS labels, opens on a name not a payoff), <code>outlier-grid</code> (tiles have no card surface), <code>reaction-distribution</code> and <code>prediction-gauge</code> (both flagged 🔴 STRUCTURAL in the SSOT, and the gauge renders a <code>~35–60%</code> the honesty spine forbids). These are real UI debt but they are not about the ranking, and folding them in roughly doubles the diff.</li>
     <li><b>Not touched —</b> block schemas, runners, the ranking sort itself. Presentation only, so every persisted card keeps rendering.</li>
