@@ -35,6 +35,8 @@
  */
 
 import { resolveAndRehost } from "@/lib/engine/remix/resolve-and-rehost";
+import { buildVideoEvidence, evidenceMetric, type RunEvidence } from "@/lib/tools/evidence";
+import { formatCount } from "@/lib/account-metrics/account-metrics";
 import { analyzeVideoWithOmni } from "@/lib/engine/qwen/omni-analysis";
 import { omniOutputToStructuralInput, runDecode } from "@/lib/engine/remix/decode";
 import { decodeResultToAdaptInput } from "@/lib/engine/remix/decode-types";
@@ -92,6 +94,16 @@ export interface RemixPipelineInput {
    * true boundaries, never a fake timer.
    */
   onStage?: (name: string, status: "active" | "done") => void;
+  /**
+   * EVIDENCE callback — fired once, the moment the resolve step hands back the post we fetched.
+   *
+   * Remix is the run with the longest evidence-rich head start in the product: the source's cover,
+   * @handle and view count are in hand within seconds, and the two model calls that follow
+   * (Decoding, Adapting) take the next ~50s. That whole stretch used to render a spine of words
+   * about a video the creator could not see. Never fires when the resolve returned neither a
+   * handle nor a cover — there is nothing honest to show.
+   */
+  onEvidence?: (evidence: RunEvidence) => void;
 }
 
 export interface RemixPipelineResult {
@@ -194,6 +206,31 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
     return { blocks: [], warnings: allWarnings, error: "resolve_failed" };
   }
   input.onStage?.("Resolving", "done");
+
+  // The post we just fetched, handed to the loading spine. A remix run holds this evidence ~50s
+  // before it holds a card; showing it is what turns "Decoding" from a word into a visible fact.
+  // Wrapped: an evidence emit that throws must not lose a resolve we already paid for.
+  if (input.onEvidence) {
+    try {
+      const evidence = buildVideoEvidence(
+        () => "Reworking this video",
+        [
+          {
+            handle: sourceHandle ?? null,
+            image: sourceCoverUrl ?? null,
+            href: sourcePostUrl ?? null,
+            // No multiplier exists here and none is invented: the creator pasted this link, so
+            // nothing measured it against a baseline (the same reason the remix card's receipt
+            // passes fitLabel: null). Views are what the scrape actually returned.
+            metric: evidenceMetric({ views: sourceViews ?? null, formatCount }),
+          },
+        ],
+      );
+      if (evidence) input.onEvidence(evidence);
+    } catch {
+      /* evidence is an enhancement — never fail the run for it */
+    }
+  }
 
   // cleanup is now available — wrap all subsequent work in try/finally
   try {
