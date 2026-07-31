@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Skill cards — hierarchy pass (current vs reworked)</title>
+<title>Skill cards · hierarchy pass v2 (current vs reworked)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap" rel="stylesheet">
 <style>
 /* ─────────────────────────────────────────────────────────────────────────
-   TOKENS — copied verbatim from src/app/globals.css @theme. Do not invent.
+   TOKENS · copied verbatim from src/app/globals.css @theme. Do not invent.
    ───────────────────────────────────────────────────────────────────────── */
 :root{
   --charcoal-app:#1f1f1e;
@@ -53,15 +53,10 @@ body{
 .seg button[aria-pressed="true"]{background:rgba(255,255,255,.07);color:var(--fg)}
 
 .section{padding:34px 20px 0;max-width:1640px;margin:0 auto}
-.section>h2{
-  font-size:var(--t-title);font-weight:600;letter-spacing:-.01em;margin-bottom:4px;
-}
-.section>p.note{font-size:var(--t-label);color:var(--fg-3);max-width:70ch;margin-bottom:18px}
+.section>h2{font-size:var(--t-title);font-weight:600;letter-spacing:-.01em;margin-bottom:4px}
+.section>p.note{font-size:var(--t-label);color:var(--fg-3);max-width:74ch;margin-bottom:18px}
 .pair{display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap}
-.col>h3{
-  font-size:var(--t-caption);text-transform:uppercase;letter-spacing:.05em;
-  color:var(--fg-3);margin-bottom:8px;
-}
+.col>h3{font-size:var(--t-caption);text-transform:uppercase;letter-spacing:.05em;color:var(--fg-3);margin-bottom:8px}
 .col>h3 em{font-style:normal;color:var(--fg-2)}
 .stage{width:728px;transition:width .18s ease}
 body[data-w="342"] .stage{width:342px}
@@ -72,25 +67,17 @@ body[data-view="after"] .col--before{display:none}
   color:var(--fg-3);border-left:2px solid rgba(255,255,255,.10);padding-left:10px;
 }
 .callout b{color:var(--fg-2);font-weight:500}
+.callout+.callout{margin-top:8px}
 
 /* ─────────────────────────────────────────────────────────────────────────
-   CARD PRIMITIVES — 1:1 with src/components/thread/*
+   CARD PRIMITIVES · 1:1 with src/components/thread/*
    ───────────────────────────────────────────────────────────────────────── */
-.card{
-  border:1px solid var(--b); border-radius:12px; background:var(--surface-sunken);
-  overflow:hidden;
-}
+.card{border:1px solid var(--b);border-radius:12px;background:var(--surface-sunken);overflow:hidden}
 .face{display:flex;flex-direction:column;padding:16px 16px 12px}
 .face--gap3>*+*{margin-top:12px}          /* the CURRENT uniform gap-3 rhythm */
 
-.label{
-  font-size:var(--t-caption);text-transform:uppercase;letter-spacing:.05em;
-  color:var(--fg-3);
-}
-.hero{
-  font-size:var(--t-heading);line-height:1.3;letter-spacing:-.005em;
-  font-weight:500;color:var(--fg);
-}
+.label{font-size:var(--t-caption);text-transform:uppercase;letter-spacing:.05em;color:var(--fg-3)}
+.hero{font-size:var(--t-heading);line-height:1.3;letter-spacing:-.005em;font-weight:500;color:var(--fg)}
 .reading{font-size:var(--t-reading);line-height:1.6;color:var(--fg-2)}
 .body{font-size:var(--t-body);line-height:1.5;color:var(--fg-2)}
 .meta{font-size:var(--t-label);line-height:1.5;color:var(--fg-3)}
@@ -107,16 +94,12 @@ body[data-view="after"] .col--before{display:none}
 .copy:hover{color:var(--fg-2)}
 .ico{width:13px;height:13px;flex-shrink:0}
 
-.actionbar{
-  display:flex;align-items:center;gap:14px;
-  border-top:1px solid var(--b);padding:12px 16px;
-}
+.actionbar{display:flex;align-items:center;gap:14px;border-top:1px solid var(--b);padding:12px 16px}
 .primary{
   display:inline-flex;align-items:center;justify-content:center;
   border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.05);
   border-radius:6px;padding:8px 14px;
-  font-size:var(--t-body);font-weight:600;color:var(--fg);
-  font-family:inherit;cursor:pointer;
+  font-size:var(--t-body);font-weight:600;color:var(--fg);font-family:inherit;cursor:pointer;
 }
 .primary:hover{border-color:rgba(255,255,255,.12);background:rgba(255,255,255,.09)}
 .save{margin-left:auto;color:var(--fg-3);display:inline-flex}
@@ -131,47 +114,35 @@ body[data-view="after"] .col--before{display:none}
   border-radius:999px;padding:2px 8px;font-size:var(--t-caption);font-weight:500;color:var(--fg-2);
 }
 .pill--warn{border-color:rgba(224,189,114,.25);color:var(--warning);text-transform:uppercase;letter-spacing:.05em}
-.dashed{
-  border:1px dashed var(--b);background:rgba(255,255,255,.01);border-radius:8px;
-  padding:8px 10px;font-size:var(--t-label);color:var(--fg-3);
-}
+.dashed{border:1px dashed var(--b);background:rgba(255,255,255,.01);border-radius:8px;
+  padding:8px 10px;font-size:var(--t-label);color:var(--fg-3)}
 
-/* proof receipt — BEFORE (boxed) */
-.receipt{
-  display:flex;align-items:stretch;gap:12px;text-decoration:none;
-  border:1px solid var(--b);background:rgba(255,255,255,.02);border-radius:8px;padding:10px;
-}
+/* proof receipt · BEFORE (boxed) */
+.receipt{display:flex;align-items:stretch;gap:12px;text-decoration:none;
+  border:1px solid var(--b);background:rgba(255,255,255,.02);border-radius:8px;padding:10px}
 .receipt:hover{border-color:var(--b-hover);background:rgba(255,255,255,.035)}
-/* proof receipt — AFTER (de-boxed, bleeds to the card's 16px edge, hover-only) */
-.receipt--flat{
-  display:flex;align-items:stretch;gap:12px;text-decoration:none;
-  margin:0 -8px;border-radius:8px;padding:8px;border:1px solid transparent;background:none;
-}
+/* proof receipt · AFTER (de-boxed; bleeds to the card's 16px edge, hover only) */
+.receipt--flat{display:flex;align-items:stretch;gap:12px;text-decoration:none;
+  margin:0 -8px;border-radius:8px;padding:8px;border:1px solid transparent;background:none}
 .receipt--flat:hover{background:rgba(255,255,255,.03)}
-.thumb{
-  position:relative;display:block;width:64px;flex-shrink:0;aspect-ratio:9/16;
-  border:1px solid var(--b);border-radius:6px;overflow:hidden;background:#242422;
-}
-/* NOTE: the thumbnail stays at today's 64px. Bumping it to 80px was tried and reverted —
+/* NOTE: the thumbnail stays at today's 64px. Bumping it to 80px was tried and reverted:
    the 9:16 tower then runs ~30px taller than its 4-row text column and opens a dead gap
-   under the handle. The box coming off is what gives the cover presence, not extra width. */
+   under the handle. Taking the BOX off is what gives the cover presence, not extra width. */
+.thumb{position:relative;display:block;width:64px;flex-shrink:0;aspect-ratio:9/16;
+  border:1px solid var(--b);border-radius:6px;overflow:hidden;background:#242422}
 .thumb img{width:100%;height:100%;object-fit:cover;display:block}
 .rcol{display:flex;min-width:0;flex:1;flex-direction:column;gap:4px}
 .tpl{font-size:var(--t-reading);line-height:1.35;font-weight:500;color:var(--fg-2)}
 .tpl .v{background:rgba(255,255,255,.06);border-radius:2px;padding:1px 4px;color:var(--fg);margin:0 1px}
-.chip-pos{
-  display:inline-flex;align-items:center;gap:4px;border-radius:4px;
+.chip-pos{display:inline-flex;align-items:center;gap:4px;border-radius:4px;
   background:rgba(142,166,138,.14);padding:2px 6px;
-  font-size:var(--t-label);font-weight:600;color:var(--positive);font-variant-numeric:tabular-nums;
-}
-.chip-neutral{
-  display:inline-flex;align-items:center;gap:4px;border-radius:4px;
+  font-size:var(--t-label);font-weight:600;color:var(--positive);font-variant-numeric:tabular-nums}
+.chip-neutral{display:inline-flex;align-items:center;gap:4px;border-radius:4px;
   background:rgba(255,255,255,.05);padding:2px 6px;
-  font-size:var(--t-label);color:var(--fg-2);font-variant-numeric:tabular-nums;
-}
+  font-size:var(--t-label);color:var(--fg-2);font-variant-numeric:tabular-nums}
 .stats{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
 
-/* proof unit — BEFORE (the verdict that is being removed) */
+/* proof unit · BEFORE (the verdict that is being removed) */
 .proof{display:flex;flex-direction:column;gap:10px;margin:0 -8px;border-radius:6px;padding:8px}
 .proof:hover{background:rgba(255,255,255,.03)}
 .proof-top{display:flex;align-items:center;gap:10px;font-size:var(--t-body)}
@@ -182,53 +153,40 @@ body[data-view="after"] .col--before{display:none}
 .ribbon{position:relative;height:3px;flex:1;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden}
 .ribbon>span{position:absolute;inset-block:0;left:0;border-radius:999px;background:var(--fg-2)}
 .quoterow{display:flex;align-items:center;justify-content:space-between;gap:10px}
-blockquote{
-  border-left:2px solid var(--b-hover);padding-left:12px;
-  font-size:var(--t-body);font-style:italic;line-height:1.375;color:rgba(236,231,222,.8);
-}
-.seeroom{
-  display:inline-flex;align-items:center;gap:6px;flex-shrink:0;white-space:nowrap;
-  font-size:var(--t-label);color:var(--fg-2);
-}
+blockquote{border-left:2px solid var(--b-hover);padding-left:12px;
+  font-size:var(--t-body);font-style:italic;line-height:1.375;color:rgba(236,231,222,.8)}
+.seeroom{display:inline-flex;align-items:center;gap:6px;flex-shrink:0;white-space:nowrap;
+  font-size:var(--t-label);color:var(--fg-2)}
 .avatars{display:inline-flex}
-.avatars span{
-  width:15px;height:15px;border-radius:999px;border:1px solid #252524;background:rgba(255,255,255,.10);
-}
+.avatars span{width:15px;height:15px;border-radius:999px;border:1px solid #252524;background:rgba(255,255,255,.10)}
 .avatars span+span{margin-left:-5px}
 
 /* ─────────────────────────────────────────────────────────────────────────
-   AFTER-only: the sim DOOR + the hierarchy rhythm
+   AFTER-only: the hierarchy rhythm + the sim DOOR
    ───────────────────────────────────────────────────────────────────────── */
 /* Variable vertical rhythm IS the hierarchy. A uniform 12px gap is why nothing reads. */
-.mt-hero{margin-top:12px}     /* header  → hero        */
-.mt-lede{margin-top:12px}     /* hero    → the T2 line */
-.mt-sec {margin-top:20px}     /* T2      → evidence    ← the one big break */
-.mt-item{margin-top:12px}     /* between evidence      */
-.mt-meta{margin-top:16px}     /* evidence → T4 meta    */
+.mt-hero{margin-top:12px}     /* header  to hero        */
+.mt-lede{margin-top:12px}     /* hero    to the T2 line */
+.mt-sec {margin-top:20px}     /* T2      to evidence  ← the one big break */
+.mt-item{margin-top:12px}     /* between evidence       */
+.mt-meta{margin-top:16px}     /* evidence to T4 meta    */
 
-.lede{font-size:var(--t-reading);line-height:1.55;color:var(--fg)}   /* T2 — CREAM, the new tier */
-.lede .lead-in{color:var(--fg-3);font-weight:500}
+.lede{font-size:var(--t-reading);line-height:1.55;color:var(--fg)}   /* T2 · CREAM, the new tier */
 
-.door{
-  display:flex;align-items:center;justify-content:space-between;gap:12px;
-  border-top:1px solid var(--b);padding:11px 16px;min-height:44px;cursor:pointer;
-}
+.door{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  border-top:1px solid var(--b);padding:11px 16px;min-height:44px;cursor:pointer}
 .door:hover{background:rgba(255,255,255,.025)}
 .door:hover .door-cta{color:var(--fg)}
 .door-state{display:inline-flex;align-items:center;gap:8px;font-size:var(--t-label);color:var(--fg-3)}
-.door-state .hollow{
-  width:7px;height:7px;border-radius:999px;border:1px solid var(--fg-3);display:inline-block;flex-shrink:0;
-}
-.door-state .live{
-  width:7px;height:7px;border-radius:999px;background:var(--accent);display:inline-block;flex-shrink:0;
-  animation:pulse 1.6s ease-in-out infinite;
-}
+.door-state .hollow{width:7px;height:7px;border-radius:999px;border:1px solid var(--fg-3);display:inline-block;flex-shrink:0}
+.door-state .live{width:7px;height:7px;border-radius:999px;background:var(--accent);display:inline-block;flex-shrink:0;
+  animation:pulse 1.6s ease-in-out infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
 /* Measured at 342px: "Not tested yet" + "Simulate with your audience →" is ~260px inside a
    310px content column, so the full wording holds on one line on mobile. No truncation needed. */
 .door-cta{font-size:var(--t-label);color:var(--fg-2);white-space:nowrap;flex-shrink:0}
 
-/* definition-list idiom — already shipped on script/remix "How to film"; reused for the recipe */
+/* definition-list idiom · already shipped on script/remix "How to film"; reused for the recipe */
 dl.dl{display:flex;flex-direction:column;gap:6px}
 dl.dl>div{display:flex;gap:8px;font-size:var(--t-label);line-height:1.5}
 dl.dl dt{width:86px;flex-shrink:0;color:var(--fg-3)}
@@ -236,13 +194,11 @@ dl.dl dd{min-width:0;flex:1;color:var(--fg-2)}
 body[data-w="342"] dl.dl>div{flex-direction:column;gap:0}
 body[data-w="342"] dl.dl dt{width:auto}
 
-/* script beats (shared before/after — the timeline is already good) */
+/* script beats (shared before/after · the timeline is already good) */
 .beats{display:flex;flex-direction:column;border-top:1px solid var(--b);padding:4px 16px 0;margin-top:12px}
 .beat{display:flex;gap:12px;padding:12px 0}
-.beat .timing{
-  width:40px;flex-shrink:0;text-align:right;padding-top:1px;
-  font-size:var(--t-caption);font-weight:600;color:var(--fg-2);font-variant-numeric:tabular-nums;
-}
+.beat .timing{width:40px;flex-shrink:0;text-align:right;padding-top:1px;
+  font-size:var(--t-caption);font-weight:600;color:var(--fg-2);font-variant-numeric:tabular-nums}
 .rail{display:flex;flex-direction:column;align-items:center}
 .rail .d{margin-top:4px;width:8px;height:8px;border-radius:999px;background:rgba(255,255,255,.30);flex-shrink:0}
 .rail .l{margin-top:4px;width:1px;flex:1;background:rgba(255,255,255,.10)}
@@ -270,16 +226,38 @@ body[data-w="342"] .map--flat .hd+.hd{padding-left:0;padding-top:12px}
 .map--flat .mc{padding:12px 14px 12px 0}
 .map--flat .mc.r{padding-left:14px}
 body[data-w="342"] .map--flat .mc.r{padding-left:0}
+
+/* ── the information inventory table ───────────────────────────────────── */
+table.inv{border-collapse:collapse;width:100%;max-width:1180px;font-size:var(--t-label);margin-top:6px}
+table.inv th,table.inv td{text-align:left;vertical-align:top;padding:7px 12px 7px 0;border-bottom:1px solid var(--b)}
+table.inv th{font-size:var(--t-caption);text-transform:uppercase;letter-spacing:.05em;color:var(--fg-3);font-weight:400;white-space:nowrap}
+table.inv td:first-child{color:var(--fg);font-weight:500}
+table.inv td{color:var(--fg-2)}
+table.inv td.v{white-space:nowrap;font-weight:500}
+.v-kept{color:var(--positive)}
+.v-up{color:var(--fg);font-weight:600}
+.v-down{color:var(--fg-3)}
+.v-gone{color:var(--warning)}
+.tabgroup{margin-bottom:26px}
+.tabgroup>h4{font-size:var(--t-body);font-weight:600;color:var(--fg);margin:18px 0 2px}
+.legend{display:flex;flex-wrap:wrap;gap:16px;font-size:var(--t-caption);color:var(--fg-3);margin-bottom:14px}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:var(--fg-2);
+  background:rgba(255,255,255,.04);border-radius:3px;padding:1px 4px}
+.flagbox{border:1px solid rgba(224,189,114,.22);border-radius:8px;padding:14px 16px;max-width:1180px;
+  font-size:var(--t-label);line-height:1.7;color:var(--fg-2)}
+.flagbox h4{font-size:var(--t-body);font-weight:600;color:var(--warning);margin-bottom:6px}
+.changelog{max-width:1180px;font-size:var(--t-body);line-height:1.8;color:var(--fg-2)}
+.changelog p+p{margin-top:6px}
 </style>
 </head>
 <body data-w="728" data-view="both">
 
 <div class="bar">
-  <h1>Skill cards — hierarchy pass</h1>
-  <span class="hint">keep the substance · fix the weight</span>
+  <h1>Skill cards · hierarchy pass v2</h1>
+  <span class="hint">keep the substance, fix the weight</span>
   <div class="seg" role="group" aria-label="Card width">
-    <button data-w="728" aria-pressed="true">728px — in-thread</button>
-    <button data-w="342" aria-pressed="false">342px — mobile</button>
+    <button data-w="728" aria-pressed="true">728px · in-thread</button>
+    <button data-w="342" aria-pressed="false">342px · mobile</button>
   </div>
   <div class="seg" role="group" aria-label="View">
     <button data-view="both" aria-pressed="true">Before + after</button>
@@ -288,19 +266,33 @@ body[data-w="342"] .map--flat .mc.r{padding-left:0}
 </div>
 
 <!-- ═══════════════════════════════════════════════════════════════════════
+     v2 CHANGE LOG
+     ═══════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <h2>What changed since v1 (your four notes)</h2>
+  <div class="changelog">
+    <p><b class="cream">1. Idea card.</b> The angle now leads in 14px cream and <code>whyItFits</code> sits second at 13px secondary. v1 had these the other way round.</p>
+    <p><b class="cream">2. Hook card.</b> The <code>VISUAL</code> label is back above the cream line. The box and the technique pill still go; the technique keeps its own slot on the label row.</p>
+    <p><b class="cream">3. No em dashes.</b> Every one I own is gone from card chrome and from the sample copy on this page. Six live in components today and are listed with their line numbers at the bottom. The ones the MODEL writes are flagged there too: they need a runner-prompt change, not a component change.</p>
+    <p><b class="cream">4. “Room” is now “audience”</b> on all four cards. The rename table at the bottom lists all 9 strings, plus the one shared component that blocks a clean sweep and why it does not block this change.</p>
+    <p style="color:var(--fg-3)">Still open, because you did not pick: what the door says on a legacy card that really did run a panel. My recommendation is in the door-states section.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
      HOOK
      ═══════════════════════════════════════════════════════════════════ -->
 <section class="section">
   <h2>Hook card</h2>
   <p class="note">
-    Hierarchy: <b>the line</b> → the visual execution + the proof → the mechanism → who it was aimed at.
-    Three bordered boxes removed (visual / written-for / receipt). Nothing on the face is deleted.
+    Hierarchy: <b>the line</b>, then the visual execution and the proof, then the mechanism, then who it
+    was aimed at. Three bordered boxes removed (visual · written-for · receipt). Nothing on the face is deleted.
   </p>
   <div class="pair">
 
     <!-- ── BEFORE ─────────────────────────────────────────────────────── -->
     <div class="col col--before">
-      <h3>Current — <em>3 nested boxes, 3 caps labels, everything 11–14px grey</em></h3>
+      <h3>Current · <em>3 nested boxes, everything 11–14px grey</em></h3>
       <div class="stage">
         <div class="card">
           <div class="face face--gap3">
@@ -354,7 +346,7 @@ body[data-w="342"] .map--flat .mc.r{padding-left:0}
                 <span class="ribbon"><span style="width:70%"></span></span>
               </div>
               <div class="quoterow">
-                <blockquote>“Fast and to the point — I'll give it 10 seconds.”</blockquote>
+                <blockquote>“Fast and to the point, I'll give it 10 seconds.”</blockquote>
                 <span class="seeroom"><span class="avatars"><span></span><span></span><span></span></span>See the room →</span>
               </div>
             </div>
@@ -369,14 +361,14 @@ body[data-w="342"] .map--flat .mc.r{padding-left:0}
       </div>
       <p class="callout">
         Reading down: <b>rank · copy · HOOK · box · box · box · label+text · verdict · caret</b>.
-        After the serif line everything is a grey slab of the same weight, and three different
-        kinds of information — a shot, a targeting fact, an external citation — wear one identical costume.
+        After the serif line everything is a grey slab of the same weight, and three different kinds of
+        information (a shot, a targeting fact, an external citation) wear one identical costume.
       </p>
     </div>
 
     <!-- ── AFTER ──────────────────────────────────────────────────────── -->
     <div class="col">
-      <h3>Reworked — <em>same nine facts, four weights</em></h3>
+      <h3>Reworked · <em>same nine facts, four weights</em></h3>
       <div class="stage">
         <div class="card">
           <div class="face">
@@ -385,14 +377,17 @@ body[data-w="342"] .map--flat .mc.r{padding-left:0}
               <button class="copy"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M216 32H88a8 8 0 0 0-8 8v40H40a8 8 0 0 0-8 8v128a8 8 0 0 0 8 8h128a8 8 0 0 0 8-8v-40h40a8 8 0 0 0 8-8V40a8 8 0 0 0-8-8m-56 176H48V96h112Zm48-48h-32V88a8 8 0 0 0-8-8H96V48h112Z"/></svg>Copy</button>
             </div>
 
-            <!-- T1 — the deliverable -->
+            <!-- T1 · the deliverable -->
             <p class="serif hero mt-hero">Stop editing your videos. Do this instead.</p>
 
-            <!-- T2 — CREAM 14px. The technique name becomes a lead-in; the box, the label
-                 and the pill all go. This is the tier the card never had. -->
-            <p class="lede mt-lede"><span class="lead-in">Crash-zoom —</span> hard cut to your face mid-sentence as the words slam on in bold caps.</p>
+            <!-- T2 · 14px CREAM. Label kept (your call); box and pill gone. The technique
+                 keeps its own slot on the label row, so no pill and no em dash. -->
+            <div class="mt-lede">
+              <p class="label" style="margin-bottom:5px">Visual <span style="color:rgba(138,133,124,.55)">·</span> <span class="sec" style="text-transform:none;letter-spacing:0">crash-zoom</span></p>
+              <p class="lede">Hard cut to your face mid-sentence as the words slam on in bold caps.</p>
+            </div>
 
-            <!-- T3 — the evidence, one big break below -->
+            <!-- T3 · the evidence, one big break below -->
             <a class="receipt receipt--flat mt-sec" href="#">
               <span class="thumb"><img alt="" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSc5MCcgaGVpZ2h0PScxNjAnPjxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0nZycgeDE9JzAnIHkxPScwJyB4Mj0nMScgeTI9JzEnPjxzdG9wIG9mZnNldD0nMCcgc3RvcC1jb2xvcj0nIzNhM2EzNycvPjxzdG9wIG9mZnNldD0nMScgc3RvcC1jb2xvcj0nIzI2MjYyNCcvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxyZWN0IHdpZHRoPSc5MCcgaGVpZ2h0PScxNjAnIGZpbGw9J3VybCgjZyknLz48cG9seWdvbiBwb2ludHM9JzM4LDY2IDM4LDk0IDY0LDgwJyBmaWxsPScjZWNlN2RlJyBvcGFjaXR5PScwLjUnLz48L3N2Zz4="></span>
               <span class="rcol" style="gap:5px">
@@ -411,13 +406,13 @@ body[data-w="342"] .map--flat .mc.r{padding-left:0}
               <p class="body">Pattern-interrupt via a permission to quit a painful task.</p>
             </div>
 
-            <!-- T4 — meta. Same words, no box, receded. -->
+            <!-- T4 · meta. Same words, no box, receded. -->
             <p class="meta mt-meta">
-              Written for <span class="sec">The Busy Pro</span> · 34% of your audience · <span>seed “Stop editing your videos.”</span> · spoken delivery
+              Written for <span class="sec">The Busy Pro</span> · 34% of your audience · seed “Stop editing your videos.” · spoken delivery
             </p>
           </div>
 
-          <!-- THE DOOR — the mechanism that makes the simulation worth paying for -->
+          <!-- THE DOOR · the mechanism that makes the simulation worth paying for -->
           <div class="door" role="button" tabindex="0">
             <span class="door-state"><span class="hollow"></span>Not tested yet</span>
             <span class="door-cta">Simulate with your audience →</span>
@@ -430,10 +425,9 @@ body[data-w="342"] .map--flat .mc.r{padding-left:0}
         </div>
       </div>
       <p class="callout">
-        Four weights: <b>serif 22 cream</b> (the line) → <b>Inter 14 cream</b> (the shot) →
-        <b>13 secondary</b> (structure + mechanism) → <b>12 muted</b> (aim, seed, channel).
-        Seed and channel came OUT of the caret onto the meta line — the expand is now empty, so it's gone.
-        Nine facts still here; two of them are loud.
+        Four weights: <b>serif 22 cream</b> (the line), <b>Inter 14 cream</b> (the shot),
+        <b>13 secondary</b> (structure and mechanism), <b>12 muted</b> (aim, seed, channel).
+        Seed and channel came OUT of the caret onto the meta line, so the expand is now empty and it is gone.
       </p>
     </div>
   </div>
@@ -445,14 +439,13 @@ body[data-w="342"] .map--flat .mc.r{padding-left:0}
 <section class="section">
   <h2>Idea card</h2>
   <p class="note">
-    The one real inversion on this surface: <b>whyItFits</b> — derived from the creator's own scraped
-    posts, the single line that proves the product read their account — currently renders as a
-    <em>muted em-dash clause</em> at the end of a sentence. It becomes the lede.
+    Your call: the <b>angle leads</b> in cream, <code>whyItFits</code> second. Both still get pulled out of
+    the single run-on sentence they share today, where <code>whyItFits</code> is a muted trailing clause.
   </p>
   <div class="pair">
 
     <div class="col col--before">
-      <h3>Current — <em>the account-knowledge flex is the most muted text on the card</em></h3>
+      <h3>Current · <em>angle and whyItFits fused into one 13px sentence</em></h3>
       <div class="stage">
         <div class="card">
           <div class="face face--gap3">
@@ -461,7 +454,7 @@ body[data-w="342"] .map--flat .mc.r{padding-left:0}
               <span class="pill pill--warn" style="margin-top:2px;flex-shrink:0">your take</span>
             </div>
 
-            <p class="body" style="line-height:1.6">Absence as a growth lever — what happens when you deliberately go quiet. <span class="muted">— Your top 3 posts all lead with a counter-intuitive claim about consistency.</span></p>
+            <p class="body" style="line-height:1.6">Absence as a growth lever, and what happens when you deliberately go quiet. <span class="muted">· Your top 3 posts all lead with a counter-intuitive claim about consistency.</span></p>
 
             <div>
               <p class="label" style="margin-bottom:4px">Why it lands</p>
@@ -522,13 +515,13 @@ body[data-w="342"] .map--flat .mc.r{padding-left:0}
       </div>
       <p class="callout">
         The three-cell recipe strip is one bordered box holding <b>three more caps labels and two
-        dividers</b> — five pieces of chrome around three short strings. At 342px it is unreadable
-        (switch the width toggle: three columns in 310px).
+        dividers</b>, five pieces of chrome around three short strings. At 342px it is unreadable:
+        switch the width toggle and watch three columns fight over 310px.
       </p>
     </div>
 
     <div class="col">
-      <h3>Reworked — <em>“how does it know that about me” reads first</em></h3>
+      <h3>Reworked · <em>angle leads in cream, whyItFits second</em></h3>
       <div class="stage">
         <div class="card">
           <div class="face">
@@ -536,18 +529,19 @@ body[data-w="342"] .map--flat .mc.r{padding-left:0}
 
             <h3 class="serif hero mt-hero">The 30-day silence experiment</h3>
 
-            <!-- T2 — the flex, promoted out of the muted trailing clause into cream -->
-            <p class="lede mt-lede">Your top 3 posts all lead with a counter-intuitive claim about consistency.</p>
+            <!-- T2 · the angle, in cream -->
+            <p class="lede mt-lede">Absence as a growth lever, and what happens when you deliberately go quiet.</p>
 
-            <p class="body mt-item">Absence as a growth lever — what happens when you deliberately go quiet.</p>
+            <!-- T3 · whyItFits, its own line, no longer a muted clause inside the angle -->
+            <p class="body mt-item">Your top 3 posts all lead with a counter-intuitive claim about consistency.</p>
 
             <div class="mt-sec">
               <p class="label" style="margin-bottom:4px">Why it lands</p>
               <p class="body">Curiosity gap + identity threat (creators fear disappearing).</p>
             </div>
 
-            <!-- the recipe: same three facts, zero chrome. Reuses the dl idiom
-                 already shipped on script + remix "How to film". -->
+            <!-- the recipe: same facts, zero chrome. Reuses the dl idiom already shipped
+                 on script and remix "How to film". -->
             <dl class="dl mt-item">
               <div><dt>Topic</dt><dd>Creator growth</dd></div>
               <div><dt>Take</dt><dd>Consistency is overrated; strategic absence compounds attention.</dd></div>
@@ -586,9 +580,9 @@ body[data-w="342"] .map--flat .mc.r{padding-left:0}
         </div>
       </div>
       <p class="callout">
-        <b>“your take” lost its amber bordered pill</b> — it now sits as amber words on the meta line,
-        where it is still functional and no longer competes with the title. The seed hook came out of
-        the caret into the recipe list, where it belongs (it IS part of “make it from”). The expand is gone.
+        <b>“your take” lost its amber bordered pill.</b> It now sits as amber words on the meta line,
+        still functional and no longer competing with the title. The seed hook came out of the caret
+        into the recipe list where it belongs (it IS part of “make it from”), so the expand is gone.
       </p>
     </div>
   </div>
@@ -600,8 +594,8 @@ body[data-w="342"] .map--flat .mc.r{padding-left:0}
 <section class="section">
   <h2>Script card</h2>
   <p class="note">
-    Already the best-structured card — the timeline is the hero and it works. Two changes only:
-    the receipt de-boxes, and the verdict row becomes the door. <b>The beat sheet is untouched.</b>
+    Already the best-structured card: the timeline is the hero and it works. Two changes only.
+    The receipt de-boxes and the verdict row becomes the door. <b>The beat sheet is untouched.</b>
   </p>
   <div class="pair">
 
@@ -648,7 +642,7 @@ body[data-w="342"] .map--flat .mc.r{padding-left:0}
               <div class="rail"><span class="d"></span><span class="l"></span></div>
               <div style="min-width:0;flex:1">
                 <div class="row"><span class="bl">Setup</span><span style="color:var(--fg-3);font-size:var(--t-label)">▸</span></div>
-                <p class="bc">For two years I spent 6 hours per video in CapCut. Cuts, captions, zooms — the works.</p>
+                <p class="bc">For two years I spent 6 hours per video in CapCut. Cuts, captions, zooms, the works.</p>
                 <p class="bf">🎥 <span>B-roll of the CapCut timeline scrubbing · VO over the screen-record · frantic pace.</span></p>
               </div>
             </div>
@@ -680,7 +674,7 @@ body[data-w="342"] .map--flat .mc.r{padding-left:0}
                 <span class="ribbon"><span style="width:70%"></span></span>
               </div>
               <div class="quoterow">
-                <blockquote>“Fast and to the point — I'll give it 10 seconds.”</blockquote>
+                <blockquote>“Fast and to the point, I'll give it 10 seconds.”</blockquote>
                 <span class="seeroom"><span class="avatars"><span></span><span></span><span></span></span>See the room →</span>
               </div>
             </div>
@@ -695,7 +689,7 @@ body[data-w="342"] .map--flat .mc.r{padding-left:0}
     </div>
 
     <div class="col">
-      <h3>Reworked — <em>two edits, the timeline untouched</em></h3>
+      <h3>Reworked · <em>two edits, the timeline untouched</em></h3>
       <div class="stage">
         <div class="card">
           <div style="display:flex;flex-direction:column;padding:16px 16px 0">
@@ -734,7 +728,7 @@ body[data-w="342"] .map--flat .mc.r{padding-left:0}
               <div class="rail"><span class="d"></span><span class="l"></span></div>
               <div style="min-width:0;flex:1">
                 <div class="row"><span class="bl">Setup</span><span style="color:var(--fg-3);font-size:var(--t-label)">▸</span></div>
-                <p class="bc">For two years I spent 6 hours per video in CapCut. Cuts, captions, zooms — the works.</p>
+                <p class="bc">For two years I spent 6 hours per video in CapCut. Cuts, captions, zooms, the works.</p>
                 <p class="bf">🎥 <span>B-roll of the CapCut timeline scrubbing · VO over the screen-record · frantic pace.</span></p>
               </div>
             </div>
@@ -771,7 +765,7 @@ body[data-w="342"] .map--flat .mc.r{padding-left:0}
       </div>
       <p class="callout">
         The “opener only” honesty qualifier survives in the door's own words
-        (<b>“Opener not tested yet”</b>) instead of as a muted suffix on a number.
+        (<b>“Opener not tested yet”</b>) instead of as a muted suffix hanging off a number.
       </p>
     </div>
   </div>
@@ -783,7 +777,7 @@ body[data-w="342"] .map--flat .mc.r{padding-left:0}
 <section class="section">
   <h2>Remix card</h2>
   <p class="note">
-    The decode map stays — it is the card's moat and it already stacks to one column below 640px.
+    The decode map stays. It is the card's moat and it already stacks to one column below 640px.
     Only the map's <b>outer box and header fill</b> come off (hairlines do the same job), the compact
     receipt de-boxes, and the verdict becomes the door.
   </p>
@@ -813,7 +807,7 @@ body[data-w="342"] .map--flat .mc.r{padding-left:0}
                   <button class="copy"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M216 32H88a8 8 0 0 0-8 8v40H40a8 8 0 0 0-8 8v128a8 8 0 0 0 8 8h128a8 8 0 0 0 8-8v-40h40a8 8 0 0 0 8-8V40a8 8 0 0 0-8-8m-56 176H48V96h112Zm48-48h-32V88a8 8 0 0 0-8-8H96V48h112Z"/></svg>Copy</button>
                 </div>
               </div>
-              <div class="mc l"><p class="label" style="margin-bottom:4px">The turn</p><p class="body muted" style="line-height:1.6">The reveal that the 'team' was AI — recontextualizes the whole cold open.</p></div>
+              <div class="mc l"><p class="label" style="margin-bottom:4px">The turn</p><p class="body muted" style="line-height:1.6">The reveal that the 'team' was AI, which recontextualizes the whole cold open.</p></div>
               <div class="mc r"><p class="label" style="margin-bottom:4px">Your angle</p><p class="body" style="line-height:1.6">Shock-firing frame borrowed from a business-teardown viral.</p></div>
               <div class="mc l last"><p class="label" style="margin-bottom:4px">Format</p><p class="body muted" style="line-height:1.6">Talking-head confession + receipts overlay</p></div>
               <div class="mc r last"><p class="label" style="margin-bottom:4px">Your shots</p><p class="body" style="line-height:1.6">You to camera for the confession + screen-record b-roll of the 3 prompts firing.</p></div>
@@ -840,7 +834,7 @@ body[data-w="342"] .map--flat .mc.r{padding-left:0}
             <dl class="dl" style="margin-top:8px">
               <div><dt>On-screen text</dt><dd>Cold-open caption on 'fired'; receipts overlay of before/after.</dd></div>
               <div><dt>Setup</dt><dd>Phone at eye level, one soft key light, lav mic.</dd></div>
-              <div><dt>Edit</dt><dd>Cut on the reveal ('the team was AI') — hold nothing before it.</dd></div>
+              <div><dt>Edit</dt><dd>Cut on the reveal ('the team was AI'); hold nothing before it.</dd></div>
             </dl>
           </div>
           <div class="actionbar">
@@ -852,11 +846,11 @@ body[data-w="342"] .map--flat .mc.r{padding-left:0}
     </div>
 
     <div class="col">
-      <h3>Reworked — <em>the map keeps its structure, loses its cage</em></h3>
+      <h3>Reworked · <em>the map keeps its structure, loses its cage</em></h3>
       <div class="stage">
         <div class="card">
           <div class="face">
-            <a class="receipt receipt--flat" href="#" style="align-items:center;align-self:flex-start;margin-left:-8px">
+            <a class="receipt receipt--flat" href="#" style="align-items:center;align-self:flex-start">
               <span class="thumb" style="width:44px;aspect-ratio:1"><svg viewBox="0 0 40 40" width="100%" height="100%"><rect width="40" height="40" fill="#242422"/><polygon points="16,13 16,27 28,20" fill="#ece7de" opacity=".35"/></svg></span>
               <span class="rcol" style="gap:3px">
                 <span class="label">The post you're remixing</span>
@@ -874,15 +868,13 @@ body[data-w="342"] .map--flat .mc.r{padding-left:0}
                   <button class="copy"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M216 32H88a8 8 0 0 0-8 8v40H40a8 8 0 0 0-8 8v128a8 8 0 0 0 8 8h128a8 8 0 0 0 8-8v-40h40a8 8 0 0 0 8-8V40a8 8 0 0 0-8-8m-56 176H48V96h112Zm48-48h-32V88a8 8 0 0 0-8-8H96V48h112Z"/></svg>Copy</button>
                 </div>
               </div>
-              <div class="mc l"><p class="label" style="margin-bottom:4px">The turn</p><p class="body muted" style="line-height:1.6">The reveal that the 'team' was AI — recontextualizes the whole cold open.</p></div>
+              <div class="mc l"><p class="label" style="margin-bottom:4px">The turn</p><p class="body muted" style="line-height:1.6">The reveal that the 'team' was AI, which recontextualizes the whole cold open.</p></div>
               <div class="mc r"><p class="label" style="margin-bottom:4px">Your angle</p><p class="body" style="line-height:1.6">Shock-firing frame borrowed from a business-teardown viral.</p></div>
               <div class="mc l last"><p class="label" style="margin-bottom:4px">Format</p><p class="body muted" style="line-height:1.6">Talking-head confession + receipts overlay</p></div>
               <div class="mc r last"><p class="label" style="margin-bottom:4px">Your shots</p><p class="body" style="line-height:1.6">You to camera for the confession + screen-record b-roll of the 3 prompts firing.</p></div>
             </div>
 
-            <p class="meta mt-meta">
-              Built for <span class="sec">solo founders drowning in growth busywork</span>
-            </p>
+            <p class="meta mt-meta">Built for <span class="sec">solo founders drowning in growth busywork</span></p>
             <button class="caret" style="margin-top:10px">▸ Structure &amp; the emotional beat</button>
           </div>
 
@@ -891,7 +883,7 @@ body[data-w="342"] .map--flat .mc.r{padding-left:0}
             <dl class="dl" style="margin-top:8px">
               <div><dt>On-screen text</dt><dd>Cold-open caption on 'fired'; receipts overlay of before/after.</dd></div>
               <div><dt>Setup</dt><dd>Phone at eye level, one soft key light, lav mic.</dd></div>
-              <div><dt>Edit</dt><dd>Cut on the reveal ('the team was AI') — hold nothing before it.</dd></div>
+              <div><dt>Edit</dt><dd>Cut on the reveal ('the team was AI'); hold nothing before it.</dd></div>
             </dl>
           </div>
 
@@ -908,10 +900,10 @@ body[data-w="342"] .map--flat .mc.r{padding-left:0}
       </div>
       <p class="callout">
         <b>Tried and reverted:</b> promoting the adapted hook out of the map into a serif hero like the
-        other three cards. It reads well in isolation but the hook then appears <em>twice</em> — once as
-        the hero, once in the “Your hook” cell it has to keep, because deleting that cell orphans the
+        other three cards. It reads well in isolation but the hook then appears <em>twice</em>, once as
+        the hero and once in the “Your hook” cell it has to keep, because deleting that cell orphans the
         “Hook / why it worked” row opposite it. The map is the card's moat and it is left alone.
-        This card is the deliberate exception: <b>its hero is inside the map.</b>
+        This card is the deliberate exception: <b>its hero lives inside the map.</b>
       </p>
     </div>
   </div>
@@ -921,11 +913,11 @@ body[data-w="342"] .map--flat .mc.r{padding-left:0}
      DOOR STATES + DEGRADED
      ═══════════════════════════════════════════════════════════════════ -->
 <section class="section">
-  <h2>The door — three states, and the states the cards degrade into</h2>
+  <h2>The door: three states, and the states the cards degrade into</h2>
   <p class="note">
-    State ③ (a completed sim writing its verdict back onto the card) is <b>deferred</b> — the slot ships
-    ready, nothing writes to it. The tap target, <code>conceptText</code>, <code>flatPersonas</code>,
-    <code>population</code> and <code>rewrite</code> are all unchanged, so the room opens exactly as today.
+    State ③ (a completed sim writing its verdict back onto the card) is <b>deferred</b>. The slot ships
+    ready and nothing writes to it. The tap target, <code>conceptText</code>, <code>flatPersonas</code>,
+    <code>population</code> and <code>rewrite</code> are all unchanged, so the audience opens exactly as today.
   </p>
   <div class="pair">
     <div class="col">
@@ -933,17 +925,19 @@ body[data-w="342"] .map--flat .mc.r{padding-left:0}
       <div class="stage" style="display:flex;flex-direction:column;gap:12px">
         <div class="card"><div class="door"><span class="door-state"><span class="hollow"></span>Not tested yet</span><span class="door-cta">Simulate with your audience →</span></div></div>
         <div class="card"><div class="door"><span class="door-state"><span class="live"></span>Testing with your audience…</span><span class="door-cta">10 reactors →</span></div></div>
-        <div class="card"><div class="door"><span class="door-state"><span class="hollow" style="border-color:var(--positive);background:var(--positive)"></span>Your audience reacted</span><span class="door-cta">See the room →</span></div></div>
+        <div class="card"><div class="door"><span class="door-state"><span class="hollow" style="border-color:var(--positive);background:var(--positive)"></span>Your audience reacted</span><span class="door-cta">See your audience →</span></div></div>
       </div>
       <p class="callout">
-        Row 3 is the <b>legacy persisted card</b> that really did carry a measured panel. It states that a
-        reaction exists without printing a number — the card still carries no verdict, and the room owns it.
-        It is not door-state ③; it is the honest wording for data that already exists.
+        <b>You did not pick an option here, so this is still open.</b> Row 3 is the legacy persisted card
+        that really did carry a measured panel. It states that a reaction exists without printing a
+        number, so the card still carries no verdict and the simulation owns it. It is not door-state ③;
+        it is the honest wording for data that already exists. The alternative is to say
+        “Not tested yet” on every card, which is simpler but claims untested about real data.
       </p>
     </div>
 
     <div class="col">
-      <h3>Degraded — no proof, no target, no visual</h3>
+      <h3>Degraded · no proof, no target, no visual</h3>
       <div class="stage">
         <div class="card">
           <div class="face">
@@ -953,41 +947,206 @@ body[data-w="342"] .map--flat .mc.r{padding-left:0}
               <p class="label" style="margin-bottom:4px">Why it works</p>
               <p class="body">Authority + curiosity gap (a hidden rule they don't know).</p>
             </div>
-            <p class="dashed mt-item">Original — not drawn from a retrieved video.</p>
-            <p class="meta mt-meta">seed “I analyzed 500 viral videos.” · visual</p>
+            <p class="dashed mt-item">Original. Not drawn from a retrieved video.</p>
+            <p class="meta mt-meta">seed “I analyzed 500 viral videos.” · visual delivery</p>
           </div>
           <div class="door"><span class="door-state"><span class="hollow"></span>Not tested yet</span><span class="door-cta">Simulate with your audience →</span></div>
           <div class="actionbar"><button class="primary">Write the script →</button><span class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg></span></div>
         </div>
       </div>
       <p class="callout">
-        With no proof, no visual hook and no target, the card is a line + a mechanism + the door —
-        and it still reads as a deliberate object rather than a card with holes in it. The
-        <code>NoSourceNote</code> keeps its dashed frame: it is the one place a frame earns its
-        keep, because it marks an <em>absence</em> where its siblings have a thumbnail.
+        With no proof, no visual hook and no target, the card is a line, a mechanism and the door, and it
+        still reads as a deliberate object rather than a card with holes in it. The <code>NoSourceNote</code>
+        keeps its dashed frame: it is the one place a frame earns its keep, because it marks an
+        <em>absence</em> where its siblings have a thumbnail.
       </p>
     </div>
   </div>
 </section>
 
+<!-- ═══════════════════════════════════════════════════════════════════════
+     INFORMATION INVENTORY
+     ═══════════════════════════════════════════════════════════════════ -->
 <section class="section">
-  <h2>What changed, precisely</h2>
-  <div style="max-width:900px;font-size:var(--t-body);line-height:1.75;color:var(--fg-2)">
-    <p style="margin-bottom:10px"><span class="cream" style="font-weight:600">Removed — chrome only:</span>
-      the hook's Visual box · the Written-for box (hook + idea) · the receipt's box on all four cards ·
-      the idea's three-cell Recipe box (and its 3 caps labels + 2 dividers) · the remix map's outer box
-      and header fill · the technique pill · the archetype pill · the views pill · the “your take” pill ·
-      the <code>#1–#5</code> rank badge · both caret rows on hook and idea (their contents moved onto the face).</p>
-    <p style="margin-bottom:10px"><span class="cream" style="font-weight:600">Removed — content, per the locked decision:</span>
-      the band word · the <code>N/10</code> fraction · the magnitude ribbon · the generated scroll quote ·
-      the <code>· projected</code> / <code>· SIM-1 Flash</code> tag. The verdict now lives in the simulation.
-      <b><code>fraction</code> stays on the block props</b> — the ambient ledger reads it
-      (<code>ambient-descriptors.ts:68</code> returns <code>null</code> without it and silently unhooks the card).</p>
-    <p style="margin-bottom:10px"><span class="cream" style="font-weight:600">Kept, and made louder:</span>
-      every hook line, visual hook, mechanism, angle, whyItFits, topic/take/format, seed hook, channel,
-      beat, filming cue, production plan, decode row, proof thumbnail, template, handle, multiplier, views,
-      fit glyph and targeting fact that is on the cards today. <b>Nothing the creator can use was deleted.</b></p>
-    <p><span class="cream" style="font-weight:600">Added:</span> one tier — 14px cream Inter — and the door.</p>
+  <h2>Information inventory: today's shipped cards vs the rework</h2>
+  <p class="note">
+    Every field the four cards read from their block props, one row each. “Old” is
+    <code>main @ fb0a5a00</code>, what users see right now. This is the audit that answers
+    “did we lose anything”, since the last rework's failure was losing value while looking cleaner.
+  </p>
+  <div class="legend">
+    <span><b class="v-up">PROMOTED</b> reads louder than before</span>
+    <span><b class="v-kept">KEPT</b> same prominence, chrome removed</span>
+    <span><b class="v-down">DEMOTED</b> deliberately quieter</span>
+    <span><b class="v-gone">REMOVED</b> gone from the face</span>
+  </div>
+
+  <div class="tabgroup">
+    <h4>Hook card</h4>
+    <table class="inv">
+      <thead><tr><th>Field</th><th>Old placement and weight</th><th>New placement and weight</th><th>Verdict</th></tr></thead>
+      <tbody>
+        <tr><td>hookLine</td><td>hero, serif 22 cream</td><td>hero, serif 22 cream</td><td class="v v-kept">KEPT</td></tr>
+        <tr><td>visualHook.technique</td><td>bordered pill, 11px secondary</td><td>on the Visual label row, 11px secondary</td><td class="v v-kept">KEPT</td></tr>
+        <tr><td>visualHook.onScreen</td><td>inside a box, 13px secondary</td><td>14px <b>cream</b>, no box</td><td class="v v-up">PROMOTED</td></tr>
+        <tr><td>mechanism</td><td>label + 14px secondary</td><td>label + 13px secondary</td><td class="v v-down">DEMOTED</td></tr>
+        <tr><td>proof.coverUrl</td><td>64px 9:16, inside a box</td><td>64px 9:16, box removed</td><td class="v v-kept">KEPT</td></tr>
+        <tr><td>proof.hookTemplate</td><td>14px chipped template</td><td>14px chipped template</td><td class="v v-kept">KEPT</td></tr>
+        <tr><td>proof.archetype</td><td>bordered pill, right-aligned</td><td>suffix on the receipt eyebrow</td><td class="v v-down">DEMOTED</td></tr>
+        <tr><td>proof.multiplier</td><td>sage chip</td><td>sage chip, now the only chip</td><td class="v v-up">PROMOTED</td></tr>
+        <tr><td>proof.views</td><td>bordered chip</td><td>plain text beside the multiplier</td><td class="v v-down">DEMOTED</td></tr>
+        <tr><td>proof.handle + fitLabel</td><td>12px muted + glyph</td><td>12px muted + glyph</td><td class="v v-kept">KEPT</td></tr>
+        <tr><td>proof.baselineLabel</td><td>11px muted</td><td>12px muted</td><td class="v v-kept">KEPT</td></tr>
+        <tr><td>grounded, no proof</td><td>dashed NoSourceNote</td><td>dashed NoSourceNote</td><td class="v v-kept">KEPT</td></tr>
+        <tr><td>target.label + share</td><td>bordered box, 12px</td><td>meta line, 12px muted</td><td class="v v-down">DEMOTED</td></tr>
+        <tr><td>target.verdict + quote</td><td>never renders (panel always empty)</td><td>unchanged, still conditional</td><td class="v v-kept">KEPT</td></tr>
+        <tr><td>seedHook</td><td>behind the caret</td><td>on the face, meta line</td><td class="v v-up">PROMOTED</td></tr>
+        <tr><td>channel</td><td>behind the caret</td><td>on the face, meta line</td><td class="v v-up">PROMOTED</td></tr>
+        <tr><td>rank</td><td><code>#1</code> to <code>#5</code> badge on every card</td><td>“Top pick” on the lead card only</td><td class="v v-down">DEMOTED</td></tr>
+        <tr><td>band</td><td>colored dot + word</td><td>gone from the face</td><td class="v v-gone">REMOVED</td></tr>
+        <tr><td>fraction</td><td><code>7/10 would stop</code> + ribbon</td><td>gone from the face, <b>stays on props</b></td><td class="v v-gone">REMOVED</td></tr>
+        <tr><td>scrollQuote</td><td>italic blockquote</td><td>gone from the face</td><td class="v v-gone">REMOVED</td></tr>
+        <tr><td>provenance</td><td><code>· projected</code> / <code>· SIM-1 Flash</code></td><td>gone; the door states the truth</td><td class="v v-gone">REMOVED</td></tr>
+        <tr><td>scored</td><td>“Scoring…” shimmer strip</td><td>no score on the face, so no shimmer</td><td class="v v-gone">REMOVED</td></tr>
+        <tr><td>audienceArchetype</td><td>already unused on the face</td><td>unchanged, feeds the script handoff</td><td class="v v-kept">KEPT</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="tabgroup">
+    <h4>Idea card</h4>
+    <table class="inv">
+      <thead><tr><th>Field</th><th>Old placement and weight</th><th>New placement and weight</th><th>Verdict</th></tr></thead>
+      <tbody>
+        <tr><td>title</td><td>hero, serif 22 cream</td><td>hero, serif 22 cream</td><td class="v v-kept">KEPT</td></tr>
+        <tr><td>angle</td><td>13px secondary, fused with whyItFits</td><td>14px <b>cream</b>, its own line</td><td class="v v-up">PROMOTED</td></tr>
+        <tr><td>whyItFits</td><td>muted clause trailing the angle</td><td>13px secondary, its own line</td><td class="v v-up">PROMOTED</td></tr>
+        <tr><td>mechanism</td><td>label + 14px secondary</td><td>label + 13px secondary</td><td class="v v-down">DEMOTED</td></tr>
+        <tr><td>topic / take / format</td><td>3-cell bordered strip, 3 caps labels</td><td>definition list, no box</td><td class="v v-kept">KEPT</td></tr>
+        <tr><td>seedHook</td><td>behind the caret</td><td>4th row of the recipe list</td><td class="v v-up">PROMOTED</td></tr>
+        <tr><td>needsTake</td><td>amber bordered pill by the title</td><td>amber words on the meta line</td><td class="v v-down">DEMOTED</td></tr>
+        <tr><td>proof fields, grounded</td><td colspan="2">identical treatment to the hook card above</td><td class="v v-kept">KEPT</td></tr>
+        <tr><td>target.label + share</td><td>bordered box, 12px</td><td>meta line, 12px muted</td><td class="v v-down">DEMOTED</td></tr>
+        <tr><td>band, fraction, scrollQuote, provenance</td><td>the verdict row</td><td>gone from the face</td><td class="v v-gone">REMOVED</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="tabgroup">
+    <h4>Script card</h4>
+    <table class="inv">
+      <thead><tr><th>Field</th><th>Old placement and weight</th><th>New placement and weight</th><th>Verdict</th></tr></thead>
+      <tbody>
+        <tr><td>beats[] label, timing, content</td><td>timeline with rail and dots</td><td><b>untouched</b></td><td class="v v-kept">KEPT</td></tr>
+        <tr><td>beats[].filming</td><td>12px muted with camera glyph</td><td><b>untouched</b></td><td class="v v-kept">KEPT</td></tr>
+        <tr><td>beats[].retentionMarker</td><td>per-beat caret</td><td><b>untouched</b></td><td class="v v-kept">KEPT</td></tr>
+        <tr><td>production fields</td><td>“How to film” definition list</td><td><b>untouched</b></td><td class="v v-kept">KEPT</td></tr>
+        <tr><td>beats.length, topic, format</td><td>header meta row</td><td><b>untouched</b></td><td class="v v-kept">KEPT</td></tr>
+        <tr><td>proof fields</td><td>boxed receipt</td><td>box removed, same content</td><td class="v v-kept">KEPT</td></tr>
+        <tr><td>band, fraction, scrollQuote</td><td>verdict row, “opener only” suffix</td><td>door: “Opener not tested yet”</td><td class="v v-gone">REMOVED</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="tabgroup">
+    <h4>Remix card</h4>
+    <table class="inv">
+      <thead><tr><th>Field</th><th>Old placement and weight</th><th>New placement and weight</th><th>Verdict</th></tr></thead>
+      <tbody>
+        <tr><td>adaptedHook</td><td>serif 18 cream, in the map</td><td><b>untouched</b></td><td class="v v-kept">KEPT</td></tr>
+        <tr><td>sourceDecode.hookPattern, theTurn</td><td>left map column</td><td><b>untouched</b></td><td class="v v-kept">KEPT</td></tr>
+        <tr><td>angle, formatBorrowed, shots</td><td>right map column</td><td><b>untouched</b></td><td class="v v-kept">KEPT</td></tr>
+        <tr><td>the map's frame</td><td>outer border + tinted header row</td><td>hairlines only, no cage</td><td class="v v-kept">KEPT</td></tr>
+        <tr><td>sourceDecode.structure, emotionalBeat</td><td>behind the caret</td><td>behind the caret, the one caret kept</td><td class="v v-kept">KEPT</td></tr>
+        <tr><td>whoItsFor</td><td>12px muted caption</td><td>meta line, 12px muted</td><td class="v v-kept">KEPT</td></tr>
+        <tr><td>production fields</td><td>“How to film your version”</td><td><b>untouched</b></td><td class="v v-kept">KEPT</td></tr>
+        <tr><td>proof, coverUrl</td><td>boxed compact receipt</td><td>box removed, same content</td><td class="v v-kept">KEPT</td></tr>
+        <tr><td>band, fraction, scrollQuote</td><td>verdict row, “adapted hook” suffix</td><td>door: “Adapted hook not tested yet”</td><td class="v v-gone">REMOVED</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p class="callout" style="max-width:1180px">
+    <b>Net across all four cards: 5 fields promoted, 24 kept, 7 deliberately demoted, 6 removed.</b>
+    Every one of the 6 removals is the verdict the locked decision hands to the simulation:
+    band · fraction · quote · provenance · the scoring shimmer · the numeric rank.
+    <b>No creator-usable content is deleted.</b> <code>fraction</code> leaves the FACE and stays on the
+    block props, because <code>ambient-descriptors.ts:68</code> returns <code>null</code> without it and
+    silently unhooks the card from the ambient ledger and the scroll-spy anchors.
+  </p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     WORDING SWEEPS
+     ═══════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <h2>Wording: “room” becomes “audience”</h2>
+  <p class="note">Every rendered string on the four cards, with the line it lives on today.</p>
+  <table class="inv" style="max-width:1180px">
+    <thead><tr><th>Where</th><th>Today</th><th>Becomes</th></tr></thead>
+    <tbody>
+      <tr><td><code>hook-card-block.tsx:194</code></td><td>See how the room would react to this hook</td><td>See how your audience would react to this hook</td></tr>
+      <tr><td><code>hook-card-block.tsx:194</code></td><td>See how the room reacted to this hook</td><td>See how your audience reacted to this hook</td></tr>
+      <tr><td><code>idea-card-block.tsx:197</code></td><td>See how the room would react to this idea</td><td>See how your audience would react to this idea</td></tr>
+      <tr><td><code>idea-card-block.tsx:197</code></td><td>See how the room reacted to this idea</td><td>See how your audience reacted to this idea</td></tr>
+      <tr><td><code>script-card-block.tsx:245</code></td><td>See how the room would react to this opener</td><td>See how your audience would react to this opener</td></tr>
+      <tr><td><code>script-card-block.tsx:245</code></td><td>See how the room reacted to this opener</td><td>See how your audience reacted to this opener</td></tr>
+      <tr><td><code>remix-card-block.tsx:202</code></td><td>See how the room would react to this adapted hook</td><td>See how your audience would react to this adapted hook</td></tr>
+      <tr><td><code>remix-card-block.tsx:202</code></td><td>See how the room reacted to this adapted hook</td><td>See how your audience reacted to this adapted hook</td></tr>
+      <tr><td>the door (new)</td><td>none</td><td>Simulate with your audience → · Your audience reacted · See your audience →</td></tr>
+    </tbody>
+  </table>
+  <div class="flagbox" style="margin-top:16px">
+    <h4>One thing that would block a clean sweep, and why it does not block this change</h4>
+    <p>The visible text <code>See the room →</code> is not in these four files. It is hardcoded twice inside
+    <code>proof-unit.tsx:165,176</code>, whose default label is also <code>'See how the room reacted'</code>,
+    and the avatar cluster is called <code>RoomAvatars</code>. <b><code>ProofUnit</code> is shared with two
+    out-of-scope surfaces</b>: <code>reaction-distribution-block.tsx</code> (Simulate) and
+    <code>brought-card-block.tsx</code> (the ＋door dial), where the fraction IS the measured product and
+    must keep rendering exactly as today.</p>
+    <p style="margin-top:6px">The four cards stop calling <code>ProofUnit</code> altogether and call the new
+    door instead, so <b>no shared component is edited and Simulate cannot regress.</b> The word “room” then
+    survives only on those two out-of-scope surfaces and in the ambient room itself. Sweeping it there is a
+    separate lane. Say the word and I will scope it.</p>
+  </div>
+</section>
+
+<section class="section">
+  <h2>Em dashes</h2>
+  <div class="pair" style="gap:24px">
+    <div style="flex:1;min-width:430px">
+      <h4 style="font-size:var(--t-body);font-weight:600;margin-bottom:8px">Removed: the six in chrome I own</h4>
+      <table class="inv">
+        <thead><tr><th>Where</th><th>Today</th><th>Becomes</th></tr></thead>
+        <tbody>
+          <tr><td><code>idea-card-block.tsx:130</code></td><td><code>{angle} — {whyItFits}</code></td><td>two separate lines, no joiner</td></tr>
+          <tr><td><code>idea-card-block.tsx:245</code></td><td>Hooks queued — check the thread below.</td><td>Hooks queued. Check the thread below.</td></tr>
+          <tr><td><code>target-reaction.tsx:50</code></td><td><code>— “{quote}”</code></td><td><code>· “{quote}”</code></td></tr>
+          <tr><td><code>proof-receipt.tsx:218</code></td><td>Original — not drawn from a retrieved video.</td><td>Original. Not drawn from a retrieved video.</td></tr>
+          <tr><td><code>proof-receipt.tsx:174</code></td><td>aria label <code>… — match: {fit}</code></td><td>aria label <code>…, match: {fit}</code></td></tr>
+          <tr><td><code>proof-receipt.tsx:238</code></td><td>title <code>join(' — ')</code></td><td>title <code>join(' · ')</code></td></tr>
+        </tbody>
+      </table>
+      <p class="callout">Source comments also use them heavily, but those never reach the DOM, so they are
+      left alone. Only rendered strings are listed here.</p>
+    </div>
+    <div style="flex:1;min-width:430px">
+      <div class="flagbox">
+        <h4>Flagged, not fixed: the model writes them too</h4>
+        <p>The sample copy on this page has been cleaned so you can see the target state. In production these
+        strings come from the model, so a component cannot fix them without rewriting model output, which this
+        codebase treats as an honesty violation elsewhere. The real fix is one line in each runner's prompt:</p>
+        <p style="margin-top:8px"><code>hooks-runner.ts</code> · <code>ideas-runner.ts</code> ·
+        <code>script-runner.ts</code> · <code>remix-runner.ts</code></p>
+        <p style="margin-top:8px">Fields carrying them today: <code>angle</code>, <code>mechanism</code>,
+        <code>whyItFits</code>, <code>sourceDecode</code> rows, <code>beats[].content</code>,
+        <code>production.edit</code>, <code>scrollQuote</code>. Straight from the live fixtures:
+        <em>“Absence as a growth lever — what happens when you deliberately go quiet.”</em> and
+        <em>“The reveal that the 'team' was AI — recontextualizes the whole cold open.”</em></p>
+        <p style="margin-top:8px">You chose <b>“chrome now, flag the prompts”</b>, so this is the follow-up,
+        not part of this change.</p>
+      </div>
+    </div>
   </div>
 </section>
 
