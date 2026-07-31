@@ -1,0 +1,1403 @@
+<title>Virtuna — Video insights, three-tab rework</title>
+
+<style>
+/* ═══════════════════════════════════════════════════════════════════════════
+   VIRTUNA · INSIGHTS — rev 3
+   Palette extends the shipped flat-warm charcoal system with ONE addition:
+   amber #E8B04B, lifted from the cortex model's dorsal-attention hue. It gives
+   the page a third semantic step (strong / neutral / weak) so "good" stops
+   being rendered as grey. Coral stays reserved for loss, exactly as before.
+   Single-theme by choice — this mocks a dark product surface.
+   ═══════════════════════════════════════════════════════════════════════════ */
+:root {
+  --page:   #131312;
+  --panel:  #191918;
+  --card:   #1e1e1c;
+  --card2:  #232320;
+  --figure: #131210;
+
+  --cream:  #ece7de;
+  --dim:    rgba(236,231,222,.60);
+  --faint:  rgba(236,231,222,.36);
+  --ghost:  rgba(236,231,222,.14);
+
+  --coral:  #FF6363;
+  --coralq: rgba(255,99,99,.70);
+  --amber:  #E8B04B;
+  --amberq: rgba(232,176,75,.70);
+
+  --edge:   rgba(255,255,255,.055);
+  --edge2:  rgba(255,255,255,.10);
+
+  --sans: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body, .pg { background: var(--page); color: var(--cream); font-family: var(--sans); -webkit-font-smoothing: antialiased; }
+.pg { padding: 58px 32px 96px; }
+
+/* ── type scale — decisive steps, no in-between sizes ────────────────────── */
+.t-display { font-size: 52px; font-weight: 300; letter-spacing: -.04em; line-height: .92; }
+.t-hero    { font-size: 36px; font-weight: 300; letter-spacing: -.032em; line-height: .96; }
+.t-big     { font-size: 26px; font-weight: 300; letter-spacing: -.026em; line-height: 1; }
+.t-head    { font-size: 20px; font-weight: 500; letter-spacing: -.018em; line-height: 1.3; }
+.t-lead    { font-size: 15px; font-weight: 400; line-height: 1.55; }
+.t-body    { font-size: 13px; font-weight: 400; line-height: 1.55; }
+.t-micro   { font-family: var(--mono); font-size: 11px; letter-spacing: .03em; }
+.t-label   { font-family: var(--mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: .15em; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* ── document chrome ─────────────────────────────────────────────────────── */
+.masthead { max-width: 800px; margin: 0 auto 54px; }
+.masthead .eyebrow { color: var(--faint); }
+.masthead h1 { margin: 15px 0 0; font-size: 33px; font-weight: 500; letter-spacing: -.024em; line-height: 1.14; text-wrap: balance; }
+.masthead p { margin: 18px 0 0; color: var(--dim); max-width: 64ch; }
+.masthead p b { color: var(--cream); font-weight: 500; }
+.masthead p .hi { color: var(--amber); }
+
+.thesis { max-width: 800px; margin: 30px auto 0; display: grid; gap: 1px; grid-template-columns: repeat(3, 1fr);
+  background: var(--edge); border: 1px solid var(--edge); border-radius: 12px; overflow: hidden; }
+.thesis > div { background: var(--card); padding: 16px 18px; }
+.thesis dt { color: var(--faint); }
+.thesis dd { margin: 8px 0 0; color: var(--dim); }
+.thesis dd b { color: var(--cream); font-weight: 500; }
+@media (max-width: 720px) { .thesis { grid-template-columns: 1fr; } }
+
+/* ── the panel rail ──────────────────────────────────────────────────────── */
+.rail { margin: 62px auto 0; max-width: 1400px; display: grid; grid-template-columns: repeat(3, minmax(396px, 1fr)); gap: 30px; align-items: start; }
+@media (max-width: 1340px) { .rail { grid-template-columns: 1fr; max-width: 448px; gap: 54px; } }
+.col { min-width: 0; }
+.tabname { display: flex; align-items: baseline; gap: 11px; margin-bottom: 13px; }
+.tabname .n { color: var(--faint); font-family: var(--mono); font-size: 10px; letter-spacing: .1em; }
+.tabname .t { font-size: 15px; font-weight: 500; letter-spacing: -.012em; }
+.tabname .sub { margin-left: auto; font-size: 12px; color: var(--faint); }
+
+.panel { background: var(--panel); border: 1px solid var(--edge); border-radius: 16px;
+  height: 880px; overflow-y: auto; overflow-x: hidden;
+  scrollbar-width: thin; scrollbar-color: rgba(236,231,222,.10) transparent; }
+.panel::-webkit-scrollbar { width: 7px; }
+.panel::-webkit-scrollbar-thumb { background: rgba(236,231,222,.10); border-radius: 99px; }
+.panel::-webkit-scrollbar-track { background: transparent; }
+
+/* ── persistent header ───────────────────────────────────────────────────── */
+.head { padding: 15px 18px 0; position: sticky; top: 0; z-index: 6; background: var(--panel); }
+.head::after { content: ""; position: absolute; inset-inline: 0; bottom: -14px; height: 14px;
+  background: linear-gradient(to bottom, var(--panel), transparent); pointer-events: none; }
+.slug { display: flex; align-items: center; gap: 12px; }
+.slug .thumb { width: 40px; height: 53px; border-radius: 7px; flex: none; overflow: hidden; border: 1px solid var(--edge2); background: var(--figure); }
+.slug .thumb canvas { display: block; width: 100%; height: 100%; }
+.slug .meta { min-width: 0; }
+.slug .ttl { font-size: 14px; font-weight: 500; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.slug .when { margin-top: 4px; color: var(--faint); }
+.slug .when b { color: var(--amberq); font-weight: 400; }
+
+.stats { display: flex; justify-content: space-between; margin-top: 15px; padding: 0 2px; }
+.stats div { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.stats svg { width: 15px; height: 15px; stroke: rgba(236,231,222,.42); fill: none; stroke-width: 1.5; }
+.stats span { font-size: 14px; letter-spacing: -.015em; }
+.stats .down span { color: var(--coral); }
+
+.tabs { display: flex; gap: 22px; border-bottom: 1px solid var(--edge); margin-top: 16px; }
+.tabs b { position: relative; padding: 0 0 11px; font-size: 13px; font-weight: 400; color: var(--faint); }
+.tabs b.on { color: var(--cream); }
+.tabs b.on::after { content: ""; position: absolute; inset-inline: 0; bottom: -1px; height: 2px; border-radius: 99px; background: var(--cream); }
+
+/* ── the card system ─────────────────────────────────────────────────────── */
+.pad { padding: 16px 18px 32px; display: flex; flex-direction: column; gap: 12px; }
+.card { background: var(--card); border: 1px solid var(--edge); border-radius: 13px; padding: 16px 17px; }
+.card.hero { background: var(--card2); border-color: var(--edge2); padding: 19px 18px 18px; }
+.card.flush { padding: 0; overflow: hidden; }
+.chead { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.chead .k { color: rgba(236,231,222,.34); }
+.chead .tag { font-family: var(--mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: .1em; color: rgba(236,231,222,.26); white-space: nowrap; }
+.cbody { margin-top: 14px; }
+.note { color: var(--dim); margin-top: 13px; }
+.note .loss { color: var(--coral); }
+.note .win  { color: var(--amber); }
+.note b { color: var(--cream); font-weight: 500; }
+.foot { margin-top: 22px; color: var(--faint); font-family: var(--mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: .1em; text-align: center; line-height: 1.6; }
+
+/* chips */
+.band { display: inline-flex; align-items: center; gap: 5px; font-family: var(--mono); font-size: 9px;
+  text-transform: uppercase; letter-spacing: .09em; padding: 3px 7px; border-radius: 5px;
+  border: 1px solid var(--edge2); color: var(--faint); white-space: nowrap; }
+.band.weak   { color: var(--coral); border-color: rgba(255,99,99,.26); background: rgba(255,99,99,.06); }
+.band.solid  { color: var(--dim); }
+.band.strong { color: var(--amber); border-color: rgba(232,176,75,.28); background: rgba(232,176,75,.06); }
+.delta { font-family: var(--mono); font-size: 10.5px; letter-spacing: .02em; font-variant-numeric: tabular-nums; }
+.delta.up { color: var(--amber); }
+.delta.dn { color: var(--coralq); }
+
+/* ── ① the projection hero ──────────────────────────────────────────────── */
+.projline { display: flex; align-items: baseline; gap: 10px; margin-top: 13px; flex-wrap: wrap; }
+.projline .v { color: var(--coral); }
+.projline .u { font-size: 15px; color: var(--faint); }
+.projline .d { margin-left: auto; }
+
+/* the distribution rail — every post you've made, and this one */
+.dist { margin-top: 20px; }
+.dist svg { display: block; width: 100%; height: auto; }
+.dist .ax { display: flex; justify-content: space-between; margin-top: 9px; color: rgba(236,231,222,.30); font-variant-numeric: tabular-nums; }
+.dist .ax .mid { color: rgba(236,231,222,.5); }
+
+/* ── the attention instrument ────────────────────────────────────────────── */
+.figure { position: relative; background: var(--figure); height: 218px; }
+.figure canvas { display: block; width: 100%; height: 100%; }
+.corner { position: absolute; font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: .08em;
+  padding: 3px 8px; border-radius: 6px; background: rgba(19,18,16,.8); color: rgba(236,231,222,.82); }
+.corner.tl { top: 10px; left: 10px; }
+.corner.tr { top: 10px; right: 10px; color: rgba(236,231,222,.44); }
+.verdict { position: absolute; bottom: 11px; left: 11px; display: flex; align-items: baseline; gap: 7px;
+  background: rgba(19,18,16,.84); border-radius: 10px; padding: 7px 11px; }
+.verdict .l { font-size: 12px; color: var(--faint); }
+
+.readout { display: grid; grid-template-columns: repeat(2, 1fr); gap: 7px 14px; padding: 14px 17px 0; }
+.readout div { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.readout i { width: 6px; height: 6px; border-radius: 99px; flex: none; transition: opacity .18s linear; }
+.readout .lbl { color: var(--faint); }
+.readout .val { color: var(--dim); }
+
+.scrubwrap { padding: 15px 17px 17px; }
+.track { position: relative; cursor: ew-resize; touch-action: none; border-radius: 6px; }
+.track:focus-visible { outline: 1px solid var(--ghost); outline-offset: 6px; }
+.track svg { display: block; width: 100%; height: auto; }
+
+.strip { display: flex; gap: 3px; margin-top: 8px; }
+.strip button { flex: 1; height: 44px; border-radius: 5px; overflow: hidden; padding: 0; position: relative;
+  border: 1px solid transparent; background: var(--figure); cursor: pointer; }
+.strip button canvas { display: block; width: 100%; height: 100%; opacity: .5; transition: opacity .22s; }
+.strip button.on { border-color: rgba(236,231,222,.6); }
+.strip button.on canvas { opacity: 1; }
+.strip button.dip { border-color: rgba(255,99,99,.55); }
+.strip button:focus-visible { outline: 1px solid var(--ghost); outline-offset: 2px; }
+.striplab { display: flex; justify-content: space-between; margin-top: 7px; font-family: var(--mono); font-size: 8.5px;
+  text-transform: uppercase; letter-spacing: .05em; color: rgba(236,231,222,.28); }
+.striplab span.hot { color: var(--coralq); }
+.hint { margin-top: 13px; display: flex; align-items: center; gap: 8px; color: rgba(236,231,222,.24);
+  font-family: var(--mono); font-size: 9px; text-transform: uppercase; letter-spacing: .11em; }
+.hint::before { content: ""; width: 14px; height: 1px; background: rgba(236,231,222,.2); }
+
+.transcript { margin-top: 15px; font-size: 14px; line-height: 1.62; color: var(--faint); }
+.transcript w { transition: color .16s linear; }
+.transcript w.said { color: var(--cream); }
+.transcript w.peak { border-bottom: 2px solid var(--amber); padding-bottom: 1px; }
+
+/* ── metric tiles ────────────────────────────────────────────────────────── */
+.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--edge);
+  border: 1px solid var(--edge); border-radius: 11px; overflow: hidden; margin-top: 13px; }
+.tile { background: var(--card); padding: 13px 14px 12px; }
+.tile .k { color: var(--faint); }
+.tile .v { margin-top: 9px; display: flex; align-items: baseline; gap: 1px; }
+.tile .v small { font-size: 13px; font-weight: 400; color: var(--faint); }
+.tile.loss .v { color: var(--coral); }
+.tile.win  .v { color: var(--amber); }
+.tile .foot2 { margin-top: 10px; display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+
+/* ── rows / bars ─────────────────────────────────────────────────────────── */
+.row { display: flex; align-items: center; gap: 12px; padding: 7px 0; }
+.row .nm { width: 90px; flex: none; font-size: 13px; color: var(--cream); line-height: 1.3; }
+.row .nm.loss { color: var(--coral); }
+.row .nm .sub { display: block; margin-top: 3px; font-family: var(--mono); font-size: 9px; letter-spacing: .04em; color: rgba(236,231,222,.28); }
+.row .bar { position: relative; flex: 1; height: 5px; border-radius: 99px; background: rgba(255,255,255,.05); }
+.row .bar i { position: absolute; inset-block: 0; left: 0; border-radius: 99px; background: rgba(236,231,222,.5); transform-origin: left center; }
+.row .bar i.loss { background: var(--coral); opacity: .88; }
+.row .bar i.win  { background: var(--amber); opacity: .9; }
+.row .fig { width: 50px; flex: none; text-align: right; font-size: 13px; font-weight: 500; }
+.row .fig.loss { color: var(--coral); }
+.row .fig.win  { color: var(--amber); }
+.row .meta { flex: 1; display: flex; align-items: center; gap: 8px; }
+
+/* ── traffic donut ───────────────────────────────────────────────────────── */
+.donut { display: flex; align-items: center; gap: 18px; margin-top: 14px; }
+.donut svg { width: 108px; height: 108px; flex: none; }
+.donut .mid { font-size: 11px; }
+.dlegend { flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.dlegend div { display: flex; align-items: center; gap: 8px; font-size: 12px; cursor: default; }
+.dlegend u { width: 7px; height: 7px; border-radius: 2px; flex: none; }
+.dlegend .l { color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dlegend .p { margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--faint); font-variant-numeric: tabular-nums; }
+
+/* ── split bars ──────────────────────────────────────────────────────────── */
+.split + .split { margin-top: 16px; }
+.split .lbls { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 8px; }
+.split .lbls .a { color: var(--cream); }
+.split .lbls .b { color: var(--faint); }
+.split .lbls b { font-weight: 500; }
+.split .tr { display: flex; height: 5px; border-radius: 99px; overflow: hidden; gap: 2px; }
+.split .tr i:first-child { background: rgba(236,231,222,.72); }
+.split .tr i:last-child  { background: rgba(236,231,222,.16); }
+
+/* ── retention by pool ───────────────────────────────────────────────────── */
+.hold { display: grid; grid-template-columns: 74px 1fr 40px; gap: 12px; align-items: center;
+  padding: 8px 7px; border-radius: 8px; cursor: default; transition: background .18s; }
+.hold:hover, .hold.spot { background: rgba(255,255,255,.032); }
+.hold .who { font-size: 12.5px; }
+.hold .who .share { display: block; margin-top: 3px; font-family: var(--mono); font-size: 9px; letter-spacing: .04em; color: rgba(236,231,222,.28); }
+.hold svg { display: block; width: 100%; height: 26px; }
+.hold .pct { text-align: right; font-size: 13px; font-weight: 500; }
+.hold.loss .who, .hold.loss .pct { color: var(--coral); }
+.hold.win  .pct { color: var(--amber); }
+
+/* ── demographics ────────────────────────────────────────────────────────── */
+.demo { display: grid; grid-template-columns: 1.25fr 1fr; gap: 18px; margin-top: 14px; align-items: end; }
+.ages { display: flex; align-items: flex-end; gap: 7px; height: 76px; }
+.ages div { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; }
+.ages i { display: block; border-radius: 3px 3px 1px 1px; background: rgba(236,231,222,.26); transform-origin: bottom; }
+.ages i.top { background: var(--amber); opacity: .85; }
+.ages b { margin-top: 8px; font-family: var(--mono); font-size: 8.5px; font-weight: 400; text-align: center; color: rgba(236,231,222,.3); }
+.ages em { font-style: normal; font-size: 10.5px; text-align: center; color: var(--faint); font-variant-numeric: tabular-nums; margin-top: 4px; }
+.ages div.top em { color: var(--cream); }
+.gauge { text-align: center; }
+.gauge svg { width: 100%; max-width: 128px; height: auto; }
+.gauge .lg { margin-top: 4px; display: flex; justify-content: center; gap: 14px; font-size: 11px; }
+.gauge .lg span { display: flex; align-items: center; gap: 6px; color: var(--faint); }
+.gauge .lg u { width: 7px; height: 3px; border-radius: 99px; }
+
+.geo .g { display: flex; align-items: center; gap: 12px; padding: 6px 0; }
+.geo .g .n { width: 96px; flex: none; font-size: 12.5px; color: var(--dim); }
+.geo .g .b { position: relative; flex: 1; height: 4px; border-radius: 99px; background: rgba(255,255,255,.05); }
+.geo .g .b i { position: absolute; inset-block: 0; left: 0; border-radius: 99px; background: rgba(236,231,222,.42); transform-origin: left; }
+.geo .g .p { width: 36px; text-align: right; font-family: var(--mono); font-size: 11px; color: var(--faint); font-variant-numeric: tabular-nums; }
+
+/* ── when to post ────────────────────────────────────────────────────────── */
+.when-rec { display: flex; align-items: baseline; gap: 9px; margin-top: 13px; flex-wrap: wrap; }
+.when-rec .d { color: var(--amber); }
+.when-rec .z { font-size: 12px; color: var(--faint); }
+.whenchart { margin-top: 14px; }
+.whenchart svg { display: block; width: 100%; height: auto; }
+.whenchart .ax { display: flex; justify-content: space-between; margin-top: 7px; color: rgba(236,231,222,.28); font-family: var(--mono); font-size: 9px; }
+
+/* ── the unlock ──────────────────────────────────────────────────────────── */
+.card.unlock { background: linear-gradient(180deg, #262320 0%, var(--card2) 62%); border-color: rgba(232,176,75,.20); }
+.unlock .hd { display: flex; align-items: center; gap: 11px; }
+.unlock .hd span { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: .16em; color: var(--amberq); }
+.unlock .hd i { flex: 1; height: 1px; background: rgba(232,176,75,.18); }
+.unlock .lever { margin-top: 14px; }
+.unlock p { margin: 15px 0 0; color: var(--dim); }
+.ba { margin-top: 16px; border: 1px solid var(--edge2); border-radius: 11px; background: rgba(19,18,16,.5); padding: 14px 15px 13px; }
+.ba .nums { display: flex; align-items: baseline; gap: 11px; }
+.ba .nums .a { font-size: 19px; font-weight: 300; color: rgba(236,231,222,.34); }
+.ba .nums .arw { color: rgba(236,231,222,.26); font-family: var(--mono); font-size: 13px; }
+.ba .nums .b { color: var(--amber); }
+.ba .nums .u { margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--faint); }
+.ba svg { display: block; width: 100%; height: auto; margin-top: 12px; }
+.ba .lg { margin-top: 10px; display: flex; gap: 16px; font-family: var(--mono); font-size: 8.5px; text-transform: uppercase; letter-spacing: .08em; }
+.ba .lg span { display: flex; align-items: center; gap: 6px; color: rgba(236,231,222,.32); }
+.ba .lg u { width: 12px; height: 1.5px; border-radius: 99px; display: block; }
+
+/* ── what they'd say ─────────────────────────────────────────────────────── */
+.say { padding: 13px 0; border-bottom: 1px solid var(--edge); }
+.say:first-child { padding-top: 4px; }
+.say:last-child { border-bottom: 0; padding-bottom: 0; }
+.say q { display: block; font-size: 13.5px; line-height: 1.5; color: var(--cream); }
+.say .by { margin-top: 9px; display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 10px; letter-spacing: .04em; color: var(--faint); }
+.say .by u { width: 4px; height: 4px; border-radius: 99px; background: var(--amberq); flex: none; }
+.say .by .w { color: rgba(236,231,222,.5); font-variant-numeric: tabular-nums; }
+.say.loss q { color: var(--dim); }
+.say.loss .by u { background: var(--coral); }
+
+/* ── deeper read ─────────────────────────────────────────────────────────── */
+details.deeper > summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between;
+  font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: .12em; color: var(--faint); }
+details.deeper > summary::-webkit-details-marker { display: none; }
+details.deeper > summary:hover { color: var(--dim); }
+details.deeper > summary:focus-visible { outline: 1px solid var(--ghost); outline-offset: 5px; border-radius: 3px; }
+details.deeper .chev { transition: transform .2s ease; }
+details.deeper[open] .chev { transform: rotate(90deg); }
+details.deeper .inner { padding-top: 16px; }
+.grid9 { display: grid; grid-template-columns: repeat(3, 1fr); }
+.grid9 div { border-top: 1px solid var(--edge); padding: 11px 10px 11px 0; }
+.grid9 .s { font-size: 21px; font-weight: 300; line-height: 1; }
+.grid9 .n { margin-top: 8px; font-family: var(--mono); font-size: 8.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--faint); line-height: 1.35; }
+.grid9 .w { margin-top: 4px; font-family: var(--mono); font-size: 8.5px; text-transform: uppercase; letter-spacing: .08em; color: rgba(236,231,222,.46); }
+.grid9 .w.weak { color: var(--coral); }
+.grid9 .w.strong { color: var(--amber); }
+.heat { display: flex; gap: 2px; margin-top: 18px; }
+.heat div { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.heat u { height: 10px; border-radius: 2px; display: block; }
+
+/* ── trust ───────────────────────────────────────────────────────────────── */
+.meter { margin-top: 14px; display: flex; align-items: center; gap: 12px; }
+.meter span { position: relative; flex: 1; height: 5px; border-radius: 99px; background: rgba(255,255,255,.05); overflow: hidden; }
+.meter span i { position: absolute; inset-block: 0; left: 0; border-radius: 99px; transform-origin: left;
+  background: linear-gradient(90deg, rgba(232,176,75,.35), rgba(232,176,75,.72)); }
+.meter b { font-family: var(--mono); font-size: 12px; font-weight: 400; color: var(--dim); font-variant-numeric: tabular-nums; }
+.tlines { margin-top: 14px; font-family: var(--mono); font-size: 10.5px; color: var(--faint); line-height: 1.7; }
+.tlines b { color: rgba(236,231,222,.58); font-weight: 400; font-variant-numeric: tabular-nums; }
+
+/* ── annotations (collapsed by default — the panels read as product) ─────── */
+.why { margin-top: 16px; }
+.why > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 9px;
+  font-family: var(--mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: .13em; color: rgba(236,231,222,.3); }
+.why > summary::-webkit-details-marker { display: none; }
+.why > summary:hover { color: var(--faint); }
+.why > summary:focus-visible { outline: 1px solid var(--ghost); outline-offset: 4px; border-radius: 3px; }
+.why > summary::after { content: ""; flex: 1; height: 1px; background: var(--edge); }
+.why ul { margin: 15px 0 0; padding: 0; list-style: none; display: grid; gap: 11px; }
+.why li { font-size: 12.5px; line-height: 1.55; color: var(--dim); padding-left: 15px; position: relative; }
+.why li::before { content: ""; position: absolute; left: 0; top: 9px; width: 6px; height: 1px; background: rgba(236,231,222,.26); }
+.why li b { color: var(--cream); font-weight: 500; }
+.why li code { font-family: var(--mono); font-size: 11px; color: rgba(236,231,222,.5); background: rgba(255,255,255,.04); padding: 1px 4px; border-radius: 4px; }
+
+/* ── closing ─────────────────────────────────────────────────────────────── */
+.close { max-width: 800px; margin: 88px auto 0; }
+.close h2 { margin: 0; font-size: 21px; font-weight: 500; letter-spacing: -.016em; }
+.close .tbl { margin-top: 24px; overflow-x: auto; }
+.close table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 620px; }
+.close th { text-align: left; font-family: var(--mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: .12em;
+  color: var(--faint); font-weight: 400; padding: 0 14px 11px 0; border-bottom: 1px solid var(--edge); }
+.close td { padding: 12px 14px 12px 0; border-bottom: 1px solid var(--edge); color: var(--dim); vertical-align: top; line-height: 1.5; }
+.close td:first-child { color: var(--cream); width: 26%; }
+.close .new { color: var(--amber); }
+.close p { margin: 18px 0 0; color: var(--dim); max-width: 64ch; }
+
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="pg">
+
+  <header class="masthead">
+    <div class="eyebrow t-label">Ambient Audience v2 · detail drill · rev 3 · 2026-08-01</div>
+    <h1>Your TikTok analytics screen, for a video you haven&rsquo;t posted</h1>
+    <p class="t-lead">
+      Rev 2 got the information right and left the design on the table: nine variations of the same
+      bar, no card structure, and every positive number rendered in grey. Rev 3 is the visual pass —
+      a real type scale, a card system, varied chart forms, and <b>amber</b> lifted from the cortex
+      model&rsquo;s own attention hue so &ldquo;good&rdquo; finally has a colour.
+    </p>
+    <p class="t-lead">
+      One narrative still holds all three tabs: <b>the engagement rates are strong, the hook is
+      not,</b> so distribution gets throttled before the good part is ever seen. The cheat code is
+      <span class="hi">3.2K → 11.4K from one cut</span>.
+    </p>
+
+    <dl class="thesis">
+      <div><dt class="t-label">① Overview</dt><dd class="t-body"><b>What it&rsquo;s worth.</b> The projection against your whole catalogue, the attention instrument, the fix.</dd></div>
+      <div><dt class="t-label">② Audience</dt><dd class="t-body"><b>Where it lands.</b> Discovery, demographics, which pools hold — and when to post it.</dd></div>
+      <div><dt class="t-label">③ Engagement</dt><dd class="t-body"><b>What they&rsquo;d do.</b> What they&rsquo;d say, what it costs them, what carries.</dd></div>
+    </dl>
+  </header>
+
+  <div class="rail">
+
+    <!-- ═══════════════════════════ ① OVERVIEW ════════════════════════════ -->
+    <section class="col">
+      <div class="tabname"><span class="n num">01</span><span class="t">Overview</span><span class="sub">drag the curve →</span></div>
+
+      <div class="panel">
+        <div class="head">
+          <div class="slug">
+            <span class="thumb"><canvas class="kf" data-seg="1" width="80" height="106"></canvas></span>
+            <span class="meta">
+              <span class="ttl">I quit my 9-5 with $400</span>
+              <span class="when t-label">not posted · projected <b>24h</b></span>
+            </span>
+          </div>
+          <div class="stats" id="stats1"></div>
+          <div class="tabs" aria-hidden="true"><b class="on">Overview</b><b>Audience</b><b>Engagement</b></div>
+        </div>
+
+        <div class="pad">
+
+          <!-- HERO — the projection, positioned against the creator's own catalogue -->
+          <div class="card hero">
+            <div class="chead"><span class="k t-label">projected views · first 24h</span></div>
+            <div class="projline">
+              <span class="v t-display ct num" data-to="3200" data-fmt="k">0</span>
+              <span class="u">views</span>
+              <span class="d delta dn">↓60% vs median</span>
+            </div>
+            <div class="dist">
+              <svg viewBox="0 0 340 46" preserveAspectRatio="none" id="distSvg" aria-label="This video against your last 41 posts"></svg>
+              <div class="ax t-micro"><span>500</span><span class="mid">your median 8.1K</span><span>60K</span></div>
+            </div>
+            <p class="note t-body">
+              Lower than <b>34 of your last 41</b>. The people who stay <span class="win">love</span> it —
+              saves and rewatches both beat your median. <span class="loss">Almost nobody stays.</span>
+            </p>
+          </div>
+
+          <!-- the four rates -->
+          <div class="card">
+            <div class="chead"><span class="k t-label">key rates</span><span class="tag">vs your last 41</span></div>
+            <div class="tiles">
+              <div class="tile loss">
+                <div class="k t-label">Hook rate</div>
+                <div class="v t-big"><span class="ct num" data-to="38">0</span><small>%</small></div>
+                <div class="foot2"><span class="band weak">weak</span><span class="delta dn">↓17</span></div>
+              </div>
+              <div class="tile loss">
+                <div class="k t-label">Avg watch</div>
+                <div class="v t-big"><span class="num">4.3</span><small>s</small></div>
+                <div class="foot2"><span class="band weak">weak</span><span class="delta dn">↓2.1s</span></div>
+              </div>
+              <div class="tile loss">
+                <div class="k t-label">Watched full</div>
+                <div class="v t-big"><span class="ct num" data-to="20">0</span><small>%</small></div>
+                <div class="foot2"><span class="band weak">weak</span><span class="delta dn">↓14</span></div>
+              </div>
+              <div class="tile win">
+                <div class="k t-label">Rewatch</div>
+                <div class="v t-big"><span class="ct num" data-to="62">0</span></div>
+                <div class="foot2"><span class="band strong">strong</span><span class="delta up">↑19</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- the instrument: cortex · curve · filmstrip · transcript, one playhead -->
+          <div class="card flush">
+            <div class="figure">
+              <canvas id="cortex" width="800" height="436" aria-label="Predicted cortex, driven by the audience retention curve"></canvas>
+              <span class="corner tl">Predicted cortex</span>
+              <span class="corner tr num" id="clock">t = 0:04</span>
+              <div class="verdict"><span class="t-big num">38%</span><span class="l">would stop</span></div>
+            </div>
+            <div class="readout" id="readout"></div>
+            <div class="scrubwrap">
+              <div class="track" id="track" role="slider" tabindex="0" aria-label="Clip position"
+                   aria-valuemin="0" aria-valuemax="12" aria-valuenow="4">
+                <svg viewBox="0 0 340 72" preserveAspectRatio="none">
+                  <path id="area" fill="rgba(236,231,222,.055)"></path>
+                  <path id="line" fill="none" stroke="rgba(236,231,222,.55)" stroke-width="1.4"></path>
+                  <g id="exits"></g>
+                  <line id="dipMark" stroke="#FF6363" stroke-width="1" stroke-dasharray="3 3" opacity=".5"></line>
+                  <circle id="dipDot" r="3.2" fill="#FF6363" opacity=".9"></circle>
+                  <circle id="head" r="3.6" fill="#ece7de"></circle>
+                </svg>
+              </div>
+              <div class="strip" id="strip"></div>
+              <div class="striplab">
+                <span>cold open</span><span>the claim</span><span class="hot">the stall</span>
+                <span>the turn</span><span>the proof</span><span>the close</span>
+              </div>
+              <p class="transcript" id="transcript"></p>
+              <p class="note t-body">
+                Most viewers stop at <span class="loss">0:04 — the stall</span>, down
+                <span class="loss">62% from the peak</span>. <b>1,488</b> never make it past the cold
+                open; another <b>432</b> leave at the stall.
+              </p>
+              <div class="hint">drag the curve · or tap a frame</div>
+            </div>
+          </div>
+
+          <!-- THE UNLOCK — the payoff, elevated -->
+          <div class="card hero unlock">
+            <div class="hd"><span>the unlock</span><i></i></div>
+            <div class="lever t-head">Cut the stall at 0:04 — go straight from the claim to the number.</div>
+            <div class="ba">
+              <div class="nums">
+                <span class="a num">3.2K</span><span class="arw">→</span>
+                <span class="b t-hero num">11.4K</span><span class="u">×3.6 views</span>
+              </div>
+              <svg viewBox="0 0 320 54" preserveAspectRatio="none" aria-hidden="true">
+                <path id="baNow" fill="none" stroke="rgba(236,231,222,.24)" stroke-width="1.4" stroke-dasharray="3 3"></path>
+                <path id="baFixArea" fill="rgba(232,176,75,.09)"></path>
+                <path id="baFix" fill="none" stroke="#E8B04B" stroke-width="1.6"></path>
+              </svg>
+              <div class="lg">
+                <span><u style="background:rgba(236,231,222,.28)"></u>today</span>
+                <span><u style="background:#E8B04B"></u>after the cut</span>
+              </div>
+            </div>
+            <p class="t-body">
+              Visual pull scores 84 and the claim is your attention peak — the hook is not the problem.
+              You lose them in the two seconds spent setting up honesty before delivering the number
+              they stopped for.
+            </p>
+          </div>
+
+          <div class="card">
+            <div class="chead"><span class="k t-label">craft</span><span class="tag">measured</span></div>
+            <div class="cbody">
+              <div class="row"><span class="nm">Visual pull</span><span class="bar"><i class="win anim" data-w="84"></i></span><span class="fig win num">84</span></div>
+              <div class="row"><span class="nm">Production</span><span class="bar"><i class="anim" data-w="69"></i></span><span class="fig num">69</span></div>
+              <div class="row"><span class="nm loss">Pacing</span><span class="bar"><i class="loss anim" data-w="42"></i></span><span class="fig loss num">42</span></div>
+              <div class="row"><span class="nm loss">Transitions</span><span class="bar"><i class="loss anim" data-w="35"></i></span><span class="fig loss num">35</span></div>
+            </div>
+          </div>
+
+          <details class="card deeper">
+            <summary><span>the deeper read</span><span class="chev">›</span></summary>
+            <div class="inner">
+              <div class="grid9">
+                <div><div class="s num">71</div><div class="n">Visual<br>Pull</div><div class="w strong">Strong</div></div>
+                <div><div class="s num">58</div><div class="n">Voice<br>Impact</div><div class="w">Okay</div></div>
+                <div><div class="s num">39</div><div class="n">Cognitive<br>Grip</div><div class="w weak">Weak</div></div>
+                <div><div class="s num">44</div><div class="n">Emotional<br>Hit</div><div class="w weak">Weak</div></div>
+                <div><div class="s num">52</div><div class="n">Memor-<br>ability</div><div class="w">Okay</div></div>
+                <div><div class="s num">34</div><div class="n">Atten-<br>tion</div><div class="w weak">Weak</div></div>
+              </div>
+              <div class="heat" id="heat"></div>
+            </div>
+          </details>
+
+          <div class="foot">Projection calibrated on your last 41 posts · ±1 band</div>
+        </div>
+      </div>
+
+      <details class="why">
+        <summary>design notes</summary>
+        <ul>
+          <li><b>The distribution rail replaces &ldquo;↓60%&rdquo; as text.</b> Forty-one ticks — every post you&rsquo;ve made, placed by reach, this one in coral. &ldquo;You are here&rdquo; lands in a glance, and it looks like an instrument rather than a stat.</li>
+          <li><b>Amber earns its place.</b> Rev 2 rendered every good number in grey, which is why it read flat. Amber is the cortex&rsquo;s own dorsal-attention hue, so the palette is derived from the product&rsquo;s model rather than picked off a shelf. Coral stays loss-only.</li>
+          <li><b>Cards, and a type scale with actual steps</b> — 52 / 36 / 26 / 20 / 15 / 13 / 11. Rev 2 had six sizes between 12.5 and 14.5px.</li>
+          <li><b>The drop-off ledger folded into the curve.</b> Exit counts now sit as coral ticks on the retention line where they happen — one section removed, one fewer bar chart.</li>
+          <li><b>The unlock moved up and got a surface of its own</b> — warm gradient, amber rule. It was the best card on the page and it was last.</li>
+        </ul>
+      </details>
+    </section>
+
+    <!-- ═══════════════════════════ ② AUDIENCE ════════════════════════════ -->
+    <section class="col">
+      <div class="tabname"><span class="n num">02</span><span class="t">Audience</span><span class="sub">hover a pool →</span></div>
+
+      <div class="panel">
+        <div class="head">
+          <div class="slug">
+            <span class="thumb"><canvas class="kf" data-seg="1" width="80" height="106"></canvas></span>
+            <span class="meta">
+              <span class="ttl">I quit my 9-5 with $400</span>
+              <span class="when t-label">not posted · projected <b>24h</b></span>
+            </span>
+          </div>
+          <div class="stats" id="stats2"></div>
+          <div class="tabs" aria-hidden="true"><b>Overview</b><b class="on">Audience</b><b>Engagement</b></div>
+        </div>
+
+        <div class="pad">
+
+          <div class="card flush">
+            <div class="figure" style="height:182px">
+              <canvas id="terrain" width="800" height="364" aria-label="Your simulated audience — 2,400 viewers across four discovery pools"></canvas>
+              <span class="corner tl">Your audience</span>
+              <div class="verdict"><span class="t-big ct num" data-to="2400" data-fmt="c">0</span><span class="l">simulated</span></div>
+            </div>
+            <div style="padding:15px 17px 17px">
+              <p class="note t-body" style="margin:0">
+                It holds the people who already follow you and <span class="loss">loses the feed</span>.
+                Two thirds of your reach is For&nbsp;You — and For&nbsp;You is where it drops hardest.
+              </p>
+            </div>
+          </div>
+
+          <!-- TikTok's discovery card, as a donut -->
+          <div class="card">
+            <div class="chead"><span class="k t-label">how they&rsquo;d find it</span><span class="tag">traffic sources</span></div>
+            <div class="donut">
+              <svg viewBox="0 0 100 100" id="donutSvg" aria-label="Traffic sources"></svg>
+              <div class="dlegend" id="dlegend"></div>
+            </div>
+            <p class="note t-body">
+              Search is <span class="win">↑6pts</span> above your median — the &ldquo;$400&rdquo;
+              specificity is doing evergreen work. That tail survives a weak first day.
+            </p>
+          </div>
+
+          <!-- the figure nothing else has -->
+          <div class="card">
+            <div class="chead"><span class="k t-label">who holds</span><span class="tag">retention by pool</span></div>
+            <div class="cbody" id="holds"></div>
+            <p class="note t-body">
+              Loyalists ride it to the close. For You — the pool that decides whether this travels —
+              is gone by <span class="loss">0:02</span>.
+            </p>
+          </div>
+
+          <div class="card">
+            <div class="chead"><span class="k t-label">viewer types</span></div>
+            <div class="cbody">
+              <div class="split">
+                <div class="lbls"><span class="a"><b class="num">90%</b> New</span><span class="b">Returning <b class="num">10%</b></span></div>
+                <div class="tr"><i style="width:90%"></i><i style="width:10%"></i></div>
+              </div>
+              <div class="split">
+                <div class="lbls"><span class="a"><b class="num">90%</b> Non-followers</span><span class="b">Followers <b class="num">10%</b></span></div>
+                <div class="tr"><i style="width:90%"></i><i style="width:10%"></i></div>
+              </div>
+            </div>
+            <p class="note t-body">Non-follower reach is <span class="win">strong</span> — a distribution problem, not a reach-mix problem.</p>
+          </div>
+
+          <div class="card">
+            <div class="chead"><span class="k t-label">who they are</span><span class="tag">age · gender</span></div>
+            <div class="demo">
+              <div><div class="ages" id="ages"></div></div>
+              <div class="gauge">
+                <svg viewBox="0 0 120 66" id="genderSvg" aria-label="Gender split"></svg>
+                <div class="lg">
+                  <span><u style="background:var(--amber);opacity:.85"></u>Men 64%</span>
+                  <span><u style="background:rgba(236,231,222,.28)"></u>Women 36%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="chead"><span class="k t-label">top regions</span></div>
+            <div class="geo cbody" id="geo"></div>
+          </div>
+
+          <!-- when to post — the engine already models this -->
+          <div class="card hero">
+            <div class="chead"><span class="k t-label">when to post it</span><span class="tag">your audience</span></div>
+            <div class="when-rec">
+              <span class="d t-hero">Tue 7:40<span style="font-size:16px"> pm</span></span>
+              <span class="z">local · 22 min before their peak</span>
+            </div>
+            <div class="whenchart">
+              <svg viewBox="0 0 340 62" preserveAspectRatio="none" id="whenSvg" aria-label="When your audience is online"></svg>
+              <div class="ax"><span>6am</span><span>noon</span><span>6pm</span><span>midnight</span></div>
+            </div>
+            <p class="note t-body">
+              Posting into the ramp rather than the peak gives the first-hour signal time to compound
+              before the feed gets crowded. <b>+18%</b> first-hour reach against your usual slot.
+            </p>
+          </div>
+
+          <div class="card">
+            <div class="chead"><span class="k t-label">what they did</span><span class="tag">2,400 simulated</span></div>
+            <div class="cbody">
+              <div class="row"><span class="nm">Stayed</span><span class="bar"><i class="win anim" data-w="20"></i></span><span class="fig num">480</span></div>
+              <div class="row"><span class="nm">Skimmed</span><span class="bar"><i class="anim" data-w="18"></i></span><span class="fig num">432</span></div>
+              <div class="row"><span class="nm loss">Scrolled past</span><span class="bar"><i class="loss anim" data-w="62"></i></span><span class="fig loss num">1,488</span></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="chead"><span class="k t-label">the simulation</span><span class="tag">high confidence</span></div>
+            <div class="meter"><span><i class="anim" data-w="82"></i></span><b class="num">0.82</b></div>
+            <div class="tlines">
+              <b>2,400</b> simulated viewers · calibrated on your <b>4.2k</b> followers<br>
+              projection anchored to your last <b>41</b> posts
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <details class="why">
+        <summary>design notes</summary>
+        <ul>
+          <li><b>&ldquo;The room&rdquo; is &ldquo;your audience&rdquo;</b> throughout — tab, hero, ledgers, trust card. Room was internal vocabulary that had leaked onto the surface.</li>
+          <li><b>Form variety.</b> Rev 2 answered every question with a bar. Traffic is now a donut, gender a gauge, age columns, retention sparklines, regions bars — each question gets the shape that suits it, which is what TikTok does.</li>
+          <li><b>Hover a retention pool</b> and its district lights on the map above. The two figures were describing the same people with no visible link.</li>
+          <li><b>When to post</b> — the engine already models <code>OptimalPostWindow</code>. A time recommendation with a reason is pure cheat-code and it was sitting unused.</li>
+          <li><b>Demographics side by side</b> rather than stacked, so the card is one glance instead of two scrolls.</li>
+        </ul>
+      </details>
+    </section>
+
+    <!-- ═══════════════════════════ ③ ENGAGEMENT ══════════════════════════ -->
+    <section class="col">
+      <div class="tabname"><span class="n num">03</span><span class="t">Engagement</span><span class="sub">the payoff tab</span></div>
+
+      <div class="panel">
+        <div class="head">
+          <div class="slug">
+            <span class="thumb"><canvas class="kf" data-seg="1" width="80" height="106"></canvas></span>
+            <span class="meta">
+              <span class="ttl">I quit my 9-5 with $400</span>
+              <span class="when t-label">not posted · projected <b>24h</b></span>
+            </span>
+          </div>
+          <div class="stats" id="stats3"></div>
+          <div class="tabs" aria-hidden="true"><b>Overview</b><b>Audience</b><b class="on">Engagement</b></div>
+        </div>
+
+        <div class="pad">
+
+          <div class="card hero">
+            <div class="chead"><span class="k t-label">engagement rate · by reach</span></div>
+            <div class="projline">
+              <span class="t-display num" style="color:var(--amber)"><span class="ct" data-to="94" data-fmt="d">0</span>%</span>
+              <span class="d delta up">↑2.1 vs median</span>
+            </div>
+            <p class="note t-body">
+              Above the <b>6–10% solid</b> band despite the worst hook rate of your last twenty posts.
+              <span class="win">Everyone who makes it past the stall converts.</span>
+            </p>
+          </div>
+
+          <!-- the wow: the comment section, before you post -->
+          <div class="card">
+            <div class="chead"><span class="k t-label">what they&rsquo;d say</span><span class="tag">projected top comments</span></div>
+            <div class="cbody">
+              <div class="say">
+                <q>wait $400 exactly? drop the spreadsheet please</q>
+                <span class="by"><u></u>The Builder<span>·</span><span class="w">312 would agree</span></span>
+              </div>
+              <div class="say">
+                <q>needed this today, saving for month one</q>
+                <span class="by"><u></u>The Loyalist<span>·</span><span class="w">188 would agree</span></span>
+              </div>
+              <div class="say loss">
+                <q>everyone says this then sells a course</q>
+                <span class="by"><u></u>Tough Crowd<span>·</span><span class="w">143 would agree</span></span>
+              </div>
+            </div>
+            <p class="note t-body">
+              The top comment is a <b>request for the artefact you already have</b>. Put the spreadsheet
+              in the caption and the comment section does your CTA for you.
+            </p>
+          </div>
+
+          <div class="card">
+            <div class="chead"><span class="k t-label">what staying cost them</span><span class="tag">reaction</span></div>
+            <div class="cbody">
+              <div class="row">
+                <span class="nm">Likes<span class="sub">4.4% of views</span></span>
+                <span class="bar"><i class="anim" data-w="44"></i></span><span class="fig num">141</span>
+              </div>
+              <div class="row" style="padding-top:0"><span class="nm"></span>
+                <span class="meta"><span class="band solid">solid</span><span class="delta up">↑0.6</span></span><span class="fig"></span></div>
+              <div class="row">
+                <span class="nm">Saves<span class="sub">1.6% of views</span></span>
+                <span class="bar"><i class="win anim" data-w="61"></i></span><span class="fig win num">52</span>
+              </div>
+              <div class="row" style="padding-top:0"><span class="nm"></span>
+                <span class="meta"><span class="band strong">strong</span><span class="delta up">↑0.9</span></span><span class="fig"></span></div>
+              <div class="row">
+                <span class="nm">Comments<span class="sub">0.6% of views</span></span>
+                <span class="bar"><i class="anim" data-w="41"></i></span><span class="fig num">18</span>
+              </div>
+              <div class="row" style="padding-top:0"><span class="nm"></span>
+                <span class="meta"><span class="band solid">solid</span><span class="delta dn">↓0.1</span></span><span class="fig"></span></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="chead"><span class="k t-label">who&rsquo;d hand it on</span><span class="tag">propagation</span></div>
+            <div class="cbody">
+              <div class="row">
+                <span class="nm">Shares<span class="sub">0.8% of views</span></span>
+                <span class="bar"><i class="anim" data-w="44"></i></span><span class="fig num">24</span>
+              </div>
+              <div class="row" style="padding-top:0"><span class="nm"></span>
+                <span class="meta"><span class="band solid">solid</span><span class="tag">the reach lever</span></span><span class="fig"></span></div>
+              <div class="row">
+                <span class="nm">Rewatches<span class="sub">1.2× per viewer</span></span>
+                <span class="bar"><i class="win anim" data-w="62"></i></span><span class="fig win num">62</span>
+              </div>
+              <div class="row" style="padding-top:0"><span class="nm"></span>
+                <span class="meta"><span class="band strong">strong</span><span class="tag">a loop is new watch time</span></span><span class="fig"></span></div>
+            </div>
+            <p class="note t-body">
+              Saves and rewatches lead. This is reference material, not a conversation — they want to
+              <b>keep</b> it, not argue with it. Lean the caption into that.
+            </p>
+          </div>
+
+          <div class="card">
+            <div class="chead"><span class="k t-label">the swing</span></div>
+            <div class="projline" style="margin-top:11px">
+              <span class="t-hero ct num" data-to="432" data-fmt="c">0</span>
+              <span class="u" style="font-size:13px">on the fence</span>
+            </div>
+            <div style="position:relative;margin-top:17px;height:9px;border-radius:99px;background:rgba(255,255,255,.05)">
+              <div style="position:absolute;inset-block:0;left:0;width:56%;border-radius:99px;background:rgba(232,176,75,.3)"></div>
+              <div style="position:absolute;inset-block:0;left:0;width:38%;border-radius:99px;background:var(--cream);opacity:.88"></div>
+              <div style="position:absolute;width:1px;left:38%;top:-3px;bottom:-3px;background:rgba(236,231,222,.5)"></div>
+            </div>
+            <div class="t-micro num" style="margin-top:12px;display:flex;align-items:baseline;gap:9px">
+              <span style="color:var(--cream)">38%</span><span style="color:rgba(236,231,222,.28)">→</span>
+              <span style="color:var(--amber)">56%</span>
+              <span style="font-family:var(--sans);font-size:11px;color:var(--faint)">if the stall goes</span>
+            </div>
+            <p class="note t-body">
+              432 skimmers stalled at 0:04 — not gone, just unconvinced. The same people the
+              Overview&rsquo;s unlock is aimed at.
+            </p>
+          </div>
+
+          <div class="card hero unlock">
+            <div class="hd"><span>the ceiling</span><i></i></div>
+            <p class="t-lead" style="margin-top:14px;color:var(--dim)">
+              Every reaction rate clears your median. Nothing here is a content problem — it is a
+              distribution problem with a four-second cause. Fix the stall and this stops being your
+              worst-reaching post and starts being your best-converting one.
+            </p>
+          </div>
+
+          <div class="foot">Rates projected against your last 41 posts</div>
+        </div>
+      </div>
+
+      <details class="why">
+        <summary>design notes</summary>
+        <ul>
+          <li><b>The comment section moved to second.</b> It is the strongest cheat-code beat anywhere in the three tabs and it was sitting fourth, below two bar charts.</li>
+          <li><b>Counts, rates, band and delta on one row.</b> Rev 1 said &ldquo;save 61&rdquo;. This says <b>52 saves · 1.6% of views · strong · ↑0.9</b> — same data, four times the meaning.</li>
+          <li><b>Amber marks the wins</b> — saves, rewatches, the ER hero, the swing headroom. The tab now reads as the good-news tab, which is what the narrative needs before the ceiling card lands.</li>
+          <li><b>The ceiling card closes the argument</b> the Overview opened, so the three tabs are one story rather than three dashboards.</li>
+        </ul>
+      </details>
+    </section>
+
+  </div>
+
+  <section class="close">
+    <h2>What rev 3 changed</h2>
+    <div class="tbl">
+      <table>
+        <thead><tr><th>Change</th><th>Why</th><th></th></tr></thead>
+        <tbody>
+          <tr><td>Card system</td><td>Everything floated on one flat ground at uniform density — no structure, no contrast between dense data and space</td><td class="new">visual</td></tr>
+          <tr><td>Type scale</td><td>Six sizes between 12.5 and 14.5px made hierarchy mushy; now 52 / 36 / 26 / 20 / 15 / 13 / 11</td><td class="new">visual</td></tr>
+          <tr><td>Amber as third semantic</td><td>Every positive number was grey, so the page read monotone. Hue taken from the cortex model's own attention network</td><td class="new">visual</td></tr>
+          <tr><td>Donut · gauge · columns</td><td>Nine bar charts across three tabs. Each question now gets the form that suits it</td><td class="new">visual</td></tr>
+          <tr><td>Distribution rail</td><td>&ldquo;↓60% vs median&rdquo; was text. Now it's a position among all 41 posts — <em>you are here</em></td><td class="new">value</td></tr>
+          <tr><td>When to post</td><td><code>OptimalPostWindow</code> already exists in the engine and nothing surfaced it</td><td class="new">value</td></tr>
+          <tr><td>Exits folded into the curve</td><td>A separate drop-off ledger repeated what the curve already showed — one fewer section, one fewer bar chart</td><td class="new">density</td></tr>
+          <tr><td>Unlock elevated</td><td>The best card on the page was last on a long scroll</td><td class="new">order</td></tr>
+          <tr><td>Comments promoted</td><td>The strongest wow beat was fourth on its tab</td><td class="new">order</td></tr>
+          <tr><td>Pool ↔ map cross-highlight</td><td>Two figures describing the same people with no visible connection</td><td class="new">ux</td></tr>
+          <tr><td>Notes collapsed</td><td>Review annotations sat between panels, so the default read was a deck instead of a product</td><td class="new">ux</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="t-lead">
+      Three cards still have no reference on TikTok or YouTube, because nothing does them: the cortex
+      readout, retention by discovery pool, and the projected comment section. Those are the ones to
+      be loud about.
+    </p>
+  </section>
+
+</div>
+
+<script>
+(() => {
+  "use strict";
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const $ = s => document.querySelector(s);
+  const clamp01 = v => v < 0 ? 0 : v > 1 ? 1 : v;
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const mulberry32 = a => () => {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+
+  const CURVE = [0.82, 0.90, 0.34, 0.52, 0.61, 0.55];
+  const DUR = 12;
+  const SEGS = ["cold open","the claim","the stall","the turn","the proof","the close"];
+  const TRANSCRIPT =
+    "I quit my nine to five with four hundred dollars in my account " +
+    "and I want to be honest with you here is exactly what month one looked like " +
+    "the numbers surprised even me so here is what I would do differently";
+  const retentionAt = u => {
+    const x = clamp01(u) * (CURVE.length - 1);
+    const i = Math.min(CURVE.length - 2, Math.floor(x));
+    return lerp(CURVE[i], CURVE[i + 1], x - i);
+  };
+
+  /* ═══ header stat rows ═════════════════════════════════════════════════ */
+  const ICONS = {
+    play: "M4.5 2.8v10.4l8-5.2z",
+    heart: "M8 13.2S2.3 9.8 2.3 6.2A2.9 2.9 0 0 1 8 5a2.9 2.9 0 0 1 5.7 1.2c0 3.6-5.7 7-5.7 7z",
+    comment: "M13.5 8.6c0 2.5-2.5 4.5-5.5 4.5a6.9 6.9 0 0 1-1.9-.3l-3.6 1.1 1.2-2.9a4.2 4.2 0 0 1-1.2-2.4c0-2.5 2.5-4.5 5.5-4.5s5.5 2 5.5 4.5z",
+    share: "M2.5 13.3c.6-4.4 3.4-6.4 7-6.5V3.2l4.2 4.4-4.2 4.3V8.7c-2.9 0-5 1.1-7 4.6z",
+    save: "M4 2.6h8v11l-4-2.9-4 2.9z"
+  };
+  const STAT = [
+    { i:"play", v:"3.2K", down:1, to:3200, fmt:"k" },
+    { i:"heart", v:"141", to:141 },
+    { i:"comment", v:"18", to:18 },
+    { i:"share", v:"24", to:24 },
+    { i:"save", v:"52", to:52 }
+  ];
+  ["#stats1","#stats2","#stats3"].forEach((sel, idx) => {
+    const el = $(sel); if (!el) return;
+    el.innerHTML = STAT.map(s =>
+      `<div class="${s.down ? "down" : ""}">
+         <svg viewBox="0 0 16 16" aria-hidden="true"><path d="${ICONS[s.i]}" stroke-linejoin="round"/></svg>
+         <span class="num${idx === 0 ? " ct" : ""}"${idx === 0 ? ` data-to="${s.to}"${s.fmt ? ` data-fmt="${s.fmt}"` : ""}` : ""}>${idx === 0 ? "0" : s.v}</span>
+       </div>`).join("");
+  });
+
+  /* ═══ count-ups + reveals ══════════════════════════════════════════════ */
+  const fmtK = n => n >= 1000 ? (n / 1000).toFixed(1) + "K" : String(n);
+  const fmtC = n => n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  const fmtD = n => (n / 10).toFixed(1);
+  function countUp(el) {
+    const to = +el.dataset.to;
+    const f = el.dataset.fmt === "k" ? fmtK : el.dataset.fmt === "c" ? fmtC : el.dataset.fmt === "d" ? fmtD : String;
+    if (reduce) { el.textContent = f(to); return; }
+    const t0 = performance.now(), D = 1150;
+    const step = now => {
+      const p = Math.min(1, (now - t0) / D), e = 1 - Math.pow(1 - p, 3);
+      el.textContent = f(Math.round(to * e));
+      if (p < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+  const io = new IntersectionObserver(es => {
+    for (const en of es) {
+      if (!en.isIntersecting) continue;
+      const el = en.target;
+      if (el.classList.contains("ct")) countUp(el);
+      else if (!reduce) {
+        el.style.transition = el.classList.contains("abar")
+          ? "transform .7s cubic-bezier(.25,.1,.25,1)"
+          : "transform .78s cubic-bezier(.25,.1,.25,1)";
+        el.style.transform = "none";
+      } else el.style.transform = "none";
+      io.unobserve(el);
+    }
+  }, { rootMargin: "-24px" });
+  function wire() {
+    document.querySelectorAll(".ct").forEach(el => io.observe(el));
+    document.querySelectorAll(".anim,.gbar").forEach(el => {
+      if (el.dataset.w) el.style.width = el.dataset.w + "%";
+      if (!reduce) el.style.transform = "scaleX(0)";
+      io.observe(el);
+    });
+    document.querySelectorAll(".abar").forEach(el => {
+      if (!reduce) el.style.transform = "scaleY(0)";
+      io.observe(el);
+    });
+  }
+
+  /* ═══ keyframes (stand-in for heatmap.segments[].keyframe_uri) ═════════ */
+  function paintFrame(cv, seg) {
+    const c = cv.getContext("2d"), W = cv.width, H = cv.height;
+    const rnd = mulberry32(0xF00D + seg * 977), lit = CURVE[seg];
+    const hue = [26, 20, 212, 32, 38, 28][seg];
+    const g = c.createLinearGradient(0, 0, W, H);
+    g.addColorStop(0, `hsl(${hue} 28% ${8 + lit * 13}%)`);
+    g.addColorStop(1, `hsl(${hue + 14} 20% ${5 + lit * 6}%)`);
+    c.fillStyle = g; c.fillRect(0, 0, W, H);
+    const kx = W * (.34 + rnd() * .3), ky = H * (.28 + rnd() * .2);
+    const bl = c.createRadialGradient(kx, ky, 0, kx, ky, W * .78);
+    bl.addColorStop(0, `rgba(255,212,166,${(.1 + lit * .24).toFixed(3)})`);
+    bl.addColorStop(1, "rgba(255,212,166,0)");
+    c.fillStyle = bl; c.fillRect(0, 0, W, H);
+    c.fillStyle = `rgba(12,11,10,${(.48 + (1 - lit) * .26).toFixed(2)})`;
+    c.beginPath(); c.ellipse(W * .5, H * .44, W * .2, H * .16, 0, 0, 6.2832); c.fill();
+    c.beginPath(); c.moveTo(W * .14, H); c.quadraticCurveTo(W * .5, H * .54, W * .86, H); c.closePath(); c.fill();
+  }
+  document.querySelectorAll("canvas.kf").forEach(cv => paintFrame(cv, +cv.dataset.seg));
+
+  /* ═══ the distribution rail — 41 posts, and this one ═══════════════════ */
+  {
+    const svg = $("#distSvg");
+    if (svg) {
+      const W = 340, H = 46, P = 8;
+      const lo = Math.log(500), hi = Math.log(60000);
+      const x = v => P + (Math.log(v) - lo) / (hi - lo) * (W - 2 * P);
+      const rnd = mulberry32(7);
+      // a plausible log-normal-ish catalogue around an 8.1K median
+      const posts = Array.from({ length: 41 }, () => {
+        const u = rnd(), v = rnd();
+        const z = Math.sqrt(-2 * Math.log(u || 1e-6)) * Math.cos(6.2832 * v);
+        return Math.max(600, Math.min(58000, Math.exp(Math.log(8100) + z * 0.95)));
+      }).sort((a, b) => a - b);
+      let ticks = posts.map(p => {
+        const xx = x(p).toFixed(1);
+        return `<line x1="${xx}" x2="${xx}" y1="${H - 14}" y2="${H - 26}" stroke="rgba(236,231,222,.22)" stroke-width="1.6" stroke-linecap="round"/>`;
+      }).join("");
+      const mx = x(8100).toFixed(1), tx = x(3200).toFixed(1);
+      ticks += `<line x1="${mx}" x2="${mx}" y1="${H - 8}" y2="${H - 33}" stroke="rgba(236,231,222,.5)" stroke-width="1" stroke-dasharray="2.5 2.5"/>`;
+      ticks += `<line x1="${tx}" x2="${tx}" y1="${H - 6}" y2="${H - 34}" stroke="#FF6363" stroke-width="2.4" stroke-linecap="round"/>`;
+      ticks += `<circle cx="${tx}" cy="${H - 37}" r="2.6" fill="#FF6363"/>`;
+      ticks += `<text x="${tx}" y="9" fill="#FF6363" font-family="ui-monospace,SFMono-Regular,Menlo,monospace" font-size="8.5" text-anchor="middle" letter-spacing=".5">THIS ONE</text>`;
+      svg.innerHTML = ticks;
+    }
+  }
+
+  /* ═══ the grounded drive — mirrors cortex-sim.ts neuralDrive ═══════════ */
+  const NETS = ["visual","somatomotor","dorsal_attention","salience","limbic","control","default"];
+  const gauss = (x, mu, v) => Math.exp(-((x - mu) ** 2) / (2 * v));
+  const smooth = (a, b, x) => { const t = clamp01((x - a) / (b - a)); return t * t * (3 - 2 * t); };
+  function neuralDrive(t) {
+    if (t < 0) return { visual:.18, somatomotor:.14, dorsal_attention:.12, salience:.12, limbic:.12, control:.14, default:.55 };
+    const u = clamp01(t / DUR), r = clamp01(retentionAt(u));
+    const rPrev = clamp01(retentionAt(clamp01(u - .04)));
+    const fall = clamp01((rPrev - r) / .12), onset = gauss(u, .02, .0015);
+    return {
+      visual:           clamp01(.34 + .42 * r + .16 * onset),
+      somatomotor:      clamp01(.14 + .20 * r + .10 * fall),
+      dorsal_attention: clamp01(.10 + .72 * r * r + .20 * onset),
+      salience:         clamp01(.12 + .30 * r + .62 * fall + .34 * onset),
+      limbic:           clamp01(.10 + .44 * r * (.5 + .5 * u) + .22 * fall),
+      control:          clamp01(.12 + .40 * r * smooth(.1, .6, u)),
+      default:          clamp01(.06 + .80 * (1 - r) + .20 * fall)
+    };
+  }
+  const HRF = (() => {
+    const g = (x, a, b) => Math.pow(x, a) * Math.exp(-x / b);
+    const k = []; let s = 0;
+    for (let tau = 0; tau <= 16; tau += .5) {
+      const w = g(tau, 6, .9) / 24 - .35 * g(tau, 16, .9) / 4e5;
+      k.push({ tau, w }); s += Math.abs(w);
+    }
+    return k.map(e => ({ tau: e.tau, w: e.w / s }));
+  })();
+  function predictedBold(t) {
+    const o = {}; NETS.forEach(n => o[n] = 0);
+    for (const { tau, w } of HRF) { const d = neuralDrive(t - tau); for (const n of NETS) o[n] += d[n] * w; }
+    for (const n of NETS) o[n] = clamp01(o[n] * 3.1);
+    return o;
+  }
+  const NET_COLOR = {
+    visual:[124,107,245], somatomotor:[63,182,168], dorsal_attention:[232,176,75],
+    salience:[255,99,99], limbic:[240,138,93], control:[91,141,239], default:[111,191,115]
+  };
+  const NET_LABEL = { dorsal_attention:"Attention", salience:"Salience", limbic:"Emotion", default:"Drift" };
+  const BAND = {
+    dorsal_attention:["quiet","gathering","holding","locked in"],
+    salience:["flat","pricked","charged","seized"],
+    limbic:["cold","warming","moved","surging"],
+    default:["low","creeping","rising","taking over"]
+  };
+  const bandWord = (v, w) => w[Math.min(3, Math.max(0, Math.floor(v * 4)))];
+
+  function cortexPath(c, w, h, ox, oy) {
+    const X = x => ox + x * w, Y = y => oy + y * h;
+    c.beginPath();
+    c.moveTo(X(.06), Y(.60));
+    c.bezierCurveTo(X(.04), Y(.34), X(.20), Y(.10), X(.44), Y(.08));
+    c.bezierCurveTo(X(.68), Y(.06), X(.92), Y(.20), X(.95), Y(.44));
+    c.bezierCurveTo(X(.97), Y(.60), X(.90), Y(.68), X(.82), Y(.70));
+    c.bezierCurveTo(X(.80), Y(.80), X(.74), Y(.86), X(.64), Y(.86));
+    c.bezierCurveTo(X(.56), Y(.92), X(.42), Y(.94), X(.32), Y(.88));
+    c.bezierCurveTo(X(.18), Y(.86), X(.08), Y(.76), X(.06), Y(.60));
+    c.closePath();
+  }
+  const netAt = (x, y) =>
+    x > .74 && y > .30 ? "visual" :
+    x > .60 && y < .34 ? "somatomotor" :
+    x > .38 && x < .70 && y < .32 ? "dorsal_attention" :
+    x > .34 && x < .62 && y > .34 && y < .62 ? "salience" :
+    y > .66 ? "limbic" : x < .34 ? "control" : "default";
+  const PARCELS = (() => {
+    const rnd = mulberry32(0x5EED42), out = []; let g = 0;
+    while (out.length < 112 && g++ < 6000) {
+      const x = rnd(), y = rnd(), cx = (x - .5) / .46, cy = (y - .5) / .44;
+      if (cx * cx + cy * cy > .92) continue;
+      out.push({ x, y, net: netAt(x, y), r: .038 + rnd() * .05, ph: rnd() * 6.28 });
+    }
+    return out;
+  })();
+
+  const cvs = $("#cortex"), ctx = cvs.getContext("2d");
+  function drawCortex(t, phase) {
+    const W = cvs.width, H = cvs.height, bold = predictedBold(t);
+    ctx.globalCompositeOperation = "source-over";
+    ctx.fillStyle = "#131210"; ctx.fillRect(0, 0, W, H);
+    const bw = W * .80, bh = H * .86, ox = (W - bw) / 2, oy = (H - bh) / 2;
+    ctx.save(); cortexPath(ctx, bw, bh, ox, oy); ctx.clip();
+    ctx.fillStyle = "#1a1826"; ctx.fillRect(0, 0, W, H);
+    ctx.globalCompositeOperation = "lighter";
+    for (const p of PARCELS) {
+      const v = bold[p.net];
+      const br = reduce ? 1 : 1 + .06 * Math.sin(phase * .9 + p.ph);
+      const a = Math.pow(v, 1.35) * .92 * br;
+      if (a < .012) continue;
+      const [r, g, b] = NET_COLOR[p.net];
+      const px = ox + p.x * bw, py = oy + p.y * bh, pr = p.r * bw * (.86 + v * .5);
+      const gr = ctx.createRadialGradient(px, py, 0, px, py, pr);
+      gr.addColorStop(0, `rgba(${r},${g},${b},${(a * .95).toFixed(3)})`);
+      gr.addColorStop(.5, `rgba(${r},${g},${b},${(a * .34).toFixed(3)})`);
+      gr.addColorStop(1, `rgba(${r},${g},${b},0)`);
+      ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(px, py, pr, 0, 6.2832); ctx.fill();
+    }
+    ctx.restore();
+    ctx.globalCompositeOperation = "source-over";
+    ctx.save(); cortexPath(ctx, bw, bh, ox, oy);
+    ctx.strokeStyle = "rgba(236,231,222,.13)"; ctx.lineWidth = 1.4; ctx.stroke(); ctx.restore();
+    return bold;
+  }
+
+  /* ═══ the linked scrubber ══════════════════════════════════════════════ */
+  const CW = 340, CH = 72, PAD = 7;
+  const cx_ = i => PAD + (i / (CURVE.length - 1)) * (CW - 2 * PAD);
+  const cy_ = v => CH - PAD - v * (CH - 2 * PAD);
+  const lp = "M" + CURVE.map((v, i) => `${cx_(i).toFixed(1)},${cy_(v).toFixed(1)}`).join(" L");
+  $("#line").setAttribute("d", lp);
+  $("#area").setAttribute("d", `${lp} L${cx_(5).toFixed(1)},${CH - PAD} L${cx_(0).toFixed(1)},${CH - PAD} Z`);
+
+  // exits folded onto the curve — coral ticks where people leave, sized by count
+  $("#exits").innerHTML = [{ i:0, n:1488 }, { i:2, n:432 }].map(e => {
+    const x = cx_(e.i).toFixed(1), y = cy_(CURVE[e.i]).toFixed(1);
+    const h = 5 + (e.n / 1488) * 9;
+    return `<line x1="${x}" x2="${x}" y1="${y}" y2="${(+y + h).toFixed(1)}" stroke="#FF6363" stroke-width="1.6" opacity=".65" stroke-linecap="round"/>
+            <text x="${x}" y="${(+y + h + 9).toFixed(1)}" fill="rgba(255,99,99,.7)" font-family="ui-monospace,Menlo,monospace" font-size="7.5" text-anchor="middle">−${e.n >= 1000 ? (e.n / 1000).toFixed(1) + "k" : e.n}</text>`;
+  }).join("");
+
+  const dipI = CURVE.indexOf(Math.min(...CURVE)), dipX = cx_(dipI);
+  const dm = $("#dipMark");
+  dm.setAttribute("x1", dipX); dm.setAttribute("x2", dipX); dm.setAttribute("y1", 0); dm.setAttribute("y2", CH);
+  const dd = $("#dipDot"); dd.setAttribute("cx", dipX); dd.setAttribute("cy", cy_(CURVE[dipI]));
+
+  const head = $("#head"), clock = $("#clock"), track = $("#track");
+  const strip = $("#strip");
+  strip.innerHTML = SEGS.map((s, i) =>
+    `<button type="button" data-i="${i}" aria-label="Seek to ${s}"${i === dipI ? ' class="dip"' : ""}>
+       <canvas width="80" height="60"></canvas></button>`).join("");
+  const sBtns = [...strip.querySelectorAll("button")];
+  sBtns.forEach((b, i) => {
+    paintFrame(b.querySelector("canvas"), i);
+    b.addEventListener("click", () => { own = true; T = i * (DUR / 5); render(); });
+  });
+
+  const WORDS = TRANSCRIPT.split(" ");
+  const PEAK = Math.round((CURVE.indexOf(Math.max(...CURVE)) / 5) * (WORDS.length - 1));
+  const tEl = $("#transcript");
+  tEl.innerHTML = WORDS.map((w, i) => `<w${i === PEAK ? ' class="peak"' : ""}>${w}</w>`).join(" ");
+  const wEls = [...tEl.querySelectorAll("w")];
+
+  const RO = ["dorsal_attention","salience","limbic","default"];
+  $("#readout").innerHTML = RO.map(n => {
+    const [r, g, b] = NET_COLOR[n];
+    return `<div><i data-n="${n}" style="background:rgb(${r},${g},${b})"></i>
+      <span class="lbl">${NET_LABEL[n]}</span><span class="val" data-v="${n}">—</span></div>`;
+  }).join("");
+  const roD = Object.fromEntries(RO.map(n => [n, $(`[data-n="${n}"]`)]));
+  const roV = Object.fromEntries(RO.map(n => [n, $(`[data-v="${n}"]`)]));
+
+  let T = 4, drag = false, own = false, phase = 0;
+  function render() {
+    const bold = drawCortex(T, phase);
+    const u = clamp01(T / DUR), fi = u * 5;
+    const i0 = Math.min(4, Math.floor(fi));
+    const v = lerp(CURVE[i0], CURVE[i0 + 1], fi - i0);
+    head.setAttribute("cx", (PAD + u * (CW - 2 * PAD)).toFixed(1));
+    head.setAttribute("cy", cy_(v).toFixed(1));
+    clock.textContent = `t = 0:${String(Math.floor(T)).padStart(2, "0")}`;
+    track.setAttribute("aria-valuenow", T.toFixed(1));
+    track.setAttribute("aria-valuetext", `${T.toFixed(1)} seconds, retention ${Math.round(v * 100)} percent`);
+    const cur = Math.round(fi);
+    sBtns.forEach((b, i) => b.classList.toggle("on", i === cur));
+    const said = Math.floor(u * WORDS.length);
+    wEls.forEach((el, i) => el.classList.toggle("said", i <= said));
+    for (const n of RO) {
+      const b = bold[n];
+      roD[n].style.opacity = (.22 + b * .78).toFixed(2);
+      roV[n].textContent = bandWord(b, BAND[n]);
+    }
+  }
+  const seek = e => { const r = track.getBoundingClientRect(); T = clamp01((e.clientX - r.left) / r.width) * DUR; };
+  track.addEventListener("pointerdown", e => { drag = own = true; track.setPointerCapture(e.pointerId); seek(e); render(); });
+  track.addEventListener("pointermove", e => { if (drag) { seek(e); render(); } });
+  track.addEventListener("pointerup", () => drag = false);
+  track.addEventListener("pointercancel", () => drag = false);
+  track.addEventListener("keydown", e => {
+    const s = e.shiftKey ? 1 : .25;
+    if (e.key === "ArrowLeft")  { own = true; T = Math.max(0, T - s); render(); e.preventDefault(); }
+    if (e.key === "ArrowRight") { own = true; T = Math.min(DUR, T + s); render(); e.preventDefault(); }
+  });
+  if (reduce) render();
+  else {
+    let s0 = 0;
+    const loop = now => {
+      if (!s0) s0 = now;
+      phase = (now - s0) / 1000;
+      if (!drag && !own) T = (phase * 1.5) % DUR;
+      render(); requestAnimationFrame(loop);
+    };
+    requestAnimationFrame(loop);
+  }
+
+  /* ═══ before / after ═══════════════════════════════════════════════════ */
+  {
+    const W = 320, H = 54, P = 5, FIX = [.84, .92, .79, .74, .71, .66];
+    const X = i => P + (i / 5) * (W - 2 * P), Y = v => H - P - v * (H - 2 * P);
+    const d = c => "M" + c.map((v, i) => `${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(" L");
+    $("#baNow").setAttribute("d", d(CURVE));
+    const fx = d(FIX);
+    $("#baFix").setAttribute("d", fx);
+    $("#baFixArea").setAttribute("d", `${fx} L${X(5).toFixed(1)},${H - P} L${X(0).toFixed(1)},${H - P} Z`);
+  }
+
+  /* ═══ the audience map (with pool cross-highlight) ═════════════════════ */
+  const POOLS = [
+    { name:"For You",     k:"fyp",   n:9, cx:.27, cy:.44, sp:.19, lit:.29 },
+    { name:"Niche",       k:"niche", n:4, cx:.60, cy:.28, sp:.13, lit:.54 },
+    { name:"Loyalists",   k:"loyal", n:2, cx:.81, cy:.56, sp:.10, lit:.78 },
+    { name:"Cross-niche", k:"cross", n:2, cx:.52, cy:.72, sp:.10, lit:.16 }
+  ];
+  let paintTerrain = () => {};
+  {
+    const cv = $("#terrain");
+    if (cv) {
+      const tx = cv.getContext("2d"), rnd = mulberry32(42), NODES = [];
+      for (const p of POOLS) for (let i = 0; i < p.n * 11; i++) {
+        const a = rnd() * 6.2832, rr = Math.sqrt(rnd()) * p.sp;
+        NODES.push({ x: p.cx + Math.cos(a) * rr, y: p.cy + Math.sin(a) * rr * .74, lit: rnd() < p.lit, d: rnd(), k: p.k });
+      }
+      const W = cv.width, H = cv.height;
+      paintTerrain = (k = 1, hi = null) => {
+        tx.fillStyle = "#131210"; tx.fillRect(0, 0, W, H);
+        for (const n of NODES) {
+          if (n.d > k) continue;
+          const dim = hi && n.k !== hi;
+          const px = n.x * W, py = n.y * H;
+          if (n.lit && !dim) {
+            const g = tx.createRadialGradient(px, py, 0, px, py, 12);
+            g.addColorStop(0, hi ? "rgba(232,176,75,.5)" : "rgba(236,231,222,.44)");
+            g.addColorStop(1, "rgba(236,231,222,0)");
+            tx.fillStyle = g; tx.beginPath(); tx.arc(px, py, 12, 0, 6.2832); tx.fill();
+          }
+          tx.fillStyle = dim ? "rgba(236,231,222,.07)"
+            : n.lit ? (hi ? "#E8B04B" : "rgba(236,231,222,.95)") : "rgba(236,231,222,.15)";
+          tx.beginPath(); tx.arc(px, py, 2, 0, 6.2832); tx.fill();
+        }
+        tx.font = "400 14px ui-monospace,SFMono-Regular,Menlo,monospace";
+        tx.textAlign = "center";
+        for (const p of POOLS) {
+          const dim = hi && p.k !== hi;
+          tx.fillStyle = dim ? "rgba(236,231,222,.16)"
+            : p.lit < .25 ? "rgba(255,99,99,.78)" : (hi ? "#E8B04B" : "rgba(236,231,222,.6)");
+          tx.fillText(`${p.name} · ${Math.round(p.lit * 100)}%`, p.cx * W, (p.cy + p.sp + .11) * H);
+        }
+      };
+      if (reduce) paintTerrain(1);
+      else {
+        const t0 = performance.now();
+        const grow = now => {
+          const k = Math.min(1, (now - t0) / 1400);
+          paintTerrain(k * k);
+          if (k < 1) requestAnimationFrame(grow);
+        };
+        requestAnimationFrame(grow);
+      }
+    }
+  }
+
+  /* ═══ traffic donut ════════════════════════════════════════════════════ */
+  {
+    const TRAFFIC = [
+      { l:"For You feed",     p:61.4, c:"#E8B04B" },
+      { l:"Search",           p:13.8, c:"rgba(236,231,222,.68)" },
+      { l:"Personal profile", p:11.2, c:"rgba(236,231,222,.44)" },
+      { l:"Sound page",       p:8.6,  c:"rgba(236,231,222,.27)" },
+      { l:"Following feed",   p:5.0,  c:"rgba(236,231,222,.15)" }
+    ];
+    const svg = $("#donutSvg");
+    if (svg) {
+      const R = 36, C = 2 * Math.PI * R, GAP = 1.4;
+      let off = 0;
+      const arcs = TRAFFIC.map(t => {
+        const len = (t.p / 100) * C - GAP;
+        const el = `<circle cx="50" cy="50" r="${R}" fill="none" stroke="${t.c}" stroke-width="12"
+          stroke-dasharray="${len.toFixed(2)} ${(C - len).toFixed(2)}"
+          stroke-dashoffset="${(-off).toFixed(2)}" transform="rotate(-90 50 50)" stroke-linecap="butt"/>`;
+        off += (t.p / 100) * C;
+        return el;
+      }).join("");
+      svg.innerHTML = arcs +
+        `<text x="50" y="47" text-anchor="middle" fill="#ece7de" font-size="15" font-weight="300"
+           font-family="Inter,system-ui,sans-serif" letter-spacing="-.5">61%</text>
+         <text x="50" y="60" text-anchor="middle" fill="rgba(236,231,222,.36)" font-size="7"
+           font-family="ui-monospace,Menlo,monospace" letter-spacing=".8">FOR YOU</text>`;
+      $("#dlegend").innerHTML = TRAFFIC.map(t =>
+        `<div><u style="background:${t.c}"></u><span class="l">${t.l}</span><span class="p">${t.p}%</span></div>`).join("");
+    }
+  }
+
+  /* ═══ retention by pool ════════════════════════════════════════════════ */
+  {
+    const HOLDS = [
+      { who:"Loyalists",   k:"loyal", share:"10% of reach", pct:78, win:1, curve:[.95,.94,.88,.84,.80,.78] },
+      { who:"Niche",       k:"niche", share:"20% of reach", pct:54,        curve:[.90,.86,.62,.58,.56,.54] },
+      { who:"For You",     k:"fyp",   share:"65% of reach", pct:29, loss:1, spot:1, curve:[.78,.72,.24,.26,.28,.29] },
+      { who:"Cross-niche", k:"cross", share:"5% of reach",  pct:16, loss:1, curve:[.62,.44,.18,.16,.16,.16] }
+    ];
+    const el = $("#holds");
+    if (el) {
+      el.innerHTML = HOLDS.map(h => {
+        const w = 120, ht = 26, pd = 3;
+        const X = i => pd + (i / 5) * (w - 2 * pd), Y = v => ht - pd - v * (ht - 2 * pd);
+        const d = "M" + h.curve.map((v, i) => `${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(" L");
+        const st = h.loss ? "#FF6363" : h.win ? "#E8B04B" : "rgba(236,231,222,.62)";
+        const fl = h.loss ? "rgba(255,99,99,.10)" : h.win ? "rgba(232,176,75,.10)" : "rgba(236,231,222,.06)";
+        return `<div class="hold${h.loss ? " loss" : ""}${h.win ? " win" : ""}${h.spot ? " spot" : ""}" data-k="${h.k}">
+          <span class="who">${h.who}<span class="share">${h.share}</span></span>
+          <svg viewBox="0 0 ${w} ${ht}" preserveAspectRatio="none" aria-hidden="true">
+            <path d="${d} L${X(5).toFixed(1)},${ht - pd} L${X(0).toFixed(1)},${ht - pd} Z" fill="${fl}"></path>
+            <path d="${d}" fill="none" stroke="${st}" stroke-width="1.4"></path>
+            <circle cx="${X(5).toFixed(1)}" cy="${Y(h.curve[5]).toFixed(1)}" r="2.4" fill="${st}"></circle>
+          </svg><span class="pct num">${h.pct}%</span></div>`;
+      }).join("");
+      el.querySelectorAll(".hold").forEach(row => {
+        row.addEventListener("mouseenter", () => paintTerrain(1, row.dataset.k));
+        row.addEventListener("mouseleave", () => paintTerrain(1, null));
+      });
+    }
+  }
+
+  /* ═══ demographics ═════════════════════════════════════════════════════ */
+  {
+    const AGES = [{ l:"18-24", p:41, top:1 }, { l:"25-34", p:34 }, { l:"35-44", p:17 }, { l:"45+", p:8 }];
+    const el = $("#ages");
+    if (el) el.innerHTML = AGES.map(a =>
+      `<div class="${a.top ? "top" : ""}"><i class="abar${a.top ? " top" : ""}" style="height:${(a.p / 41 * 100).toFixed(0)}%"></i>
+       <em>${a.p}%</em><b>${a.l}</b></div>`).join("");
+
+    const g = $("#genderSvg");
+    if (g) {
+      const cxp = 60, cyp = 58, R = 44, SW = 11;
+      const pt = a => `${(cxp + R * Math.cos(Math.PI - a * Math.PI)).toFixed(2)},${(cyp - R * Math.sin(Math.PI - a * Math.PI)).toFixed(2)}`;
+      const arc = (a0, a1, col) =>
+        `<path d="M${pt(a0)} A${R} ${R} 0 0 1 ${pt(a1)}" fill="none" stroke="${col}" stroke-width="${SW}" stroke-linecap="butt"/>`;
+      g.innerHTML =
+        arc(0, .635, "rgba(232,176,75,.85)") +
+        arc(.655, 1, "rgba(236,231,222,.26)") +
+        `<text x="${cxp}" y="${cyp - 6}" text-anchor="middle" fill="#ece7de" font-size="17" font-weight="300"
+           font-family="Inter,system-ui,sans-serif" letter-spacing="-.6">64%</text>
+         <text x="${cxp}" y="${cyp + 5}" text-anchor="middle" fill="rgba(236,231,222,.34)" font-size="7"
+           font-family="ui-monospace,Menlo,monospace" letter-spacing=".8">MEN</text>`;
+    }
+
+    const GEO = [
+      { n:"United States", p:44 }, { n:"United Kingdom", p:14 }, { n:"Canada", p:11 },
+      { n:"Australia", p:8 }, { n:"Germany", p:5 }
+    ];
+    const ge = $("#geo");
+    if (ge) ge.innerHTML = GEO.map(x =>
+      `<div class="g"><span class="n">${x.n}</span>
+       <span class="b"><i class="gbar" data-w="${(x.p / 44 * 100).toFixed(0)}"></i></span>
+       <span class="p">${x.p}%</span></div>`).join("");
+  }
+
+  /* ═══ when to post ═════════════════════════════════════════════════════ */
+  {
+    const svg = $("#whenSvg");
+    if (svg) {
+      const W = 340, H = 62, P = 4;
+      // audience-online density across 24h — twin peaks, evening dominant
+      const pts = Array.from({ length: 25 }, (_, h) =>
+        .14 + .30 * Math.exp(-Math.pow((h - 12.5) / 3.1, 2)) + .82 * Math.exp(-Math.pow((h - 20.2) / 2.4, 2)));
+      const X = i => P + (i / 24) * (W - 2 * P), Y = v => H - P - v * (H - 2 * P);
+      const d = "M" + pts.map((v, i) => `${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(" L");
+      const wx0 = X(19.4), wx1 = X(20.6);
+      svg.innerHTML =
+        `<rect x="${wx0.toFixed(1)}" y="0" width="${(wx1 - wx0).toFixed(1)}" height="${H}" fill="rgba(232,176,75,.13)"/>
+         <path d="${d} L${X(24).toFixed(1)},${H - P} L${X(0).toFixed(1)},${H - P} Z" fill="rgba(236,231,222,.055)"/>
+         <path d="${d}" fill="none" stroke="rgba(236,231,222,.5)" stroke-width="1.4"/>
+         <line x1="${X(19.66).toFixed(1)}" x2="${X(19.66).toFixed(1)}" y1="0" y2="${H}" stroke="#E8B04B" stroke-width="1.6"/>
+         <circle cx="${X(19.66).toFixed(1)}" cy="${Y(pts[20] * .82).toFixed(1)}" r="3" fill="#E8B04B"/>
+         <text x="${X(19.66).toFixed(1)}" y="9" fill="#E8B04B" font-family="ui-monospace,Menlo,monospace"
+           font-size="8" text-anchor="middle" letter-spacing=".5">POST</text>`;
+    }
+  }
+
+  /* ═══ the filed-away heatmap ═══════════════════════════════════════════ */
+  {
+    const heat = $("#heat");
+    if (heat) {
+      const rnd = mulberry32(0xBEEF);
+      heat.innerHTML = Array.from({ length: 12 }, (_, c) =>
+        `<div>${Array.from({ length: 8 }, (_, r) => {
+          const base = retentionAt(c / 11) * 100;
+          const v = Math.max(6, Math.min(100, base * .55 + (52 + 26 * Math.sin(c * .7 + r * .9)) * .45 + (rnd() - .5) * 18));
+          return `<u style="background:rgba(236,231,222,${(.06 + .5 * v / 100).toFixed(3)})"></u>`;
+        }).join("")}</div>`).join("");
+    }
+  }
+
+  wire();
+})();
+</script>
