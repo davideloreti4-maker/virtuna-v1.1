@@ -25,6 +25,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { reportCredit402 } from '@/lib/billing/credit-wall';
 import type { MarkdownBlock } from '@/lib/tools/blocks';
 import type { StageState } from '@/components/thread/progress-checklist';
+import { parseRunEvidence, type RunEvidence } from '@/lib/tools/evidence';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -44,6 +45,13 @@ export interface UseChatStreamReturn {
    * each `dispatch` event so a second skill run in one turn starts a fresh spine.
    */
   stages: StageState[];
+  /**
+   * The real artifacts this run touched mid-flight (`evidence` SSE frame): the proven outlier
+   * videos it is grounded on, or the post it resolved. Rendered by the loading spine's evidence
+   * rail (run-evidence.tsx). null on a run that produced none — an ungrounded generation, a
+   * resolve that returned no handle and no cover — and the rail then renders nothing.
+   */
+  evidence: RunEvidence | null;
   /**
    * The skill the agent committed to running this turn (event: dispatch — the display key:
    * 'ideas' | 'hooks' | 'script' | …), or null on a plain chat turn / before any dispatch.
@@ -98,6 +106,12 @@ export function useChatStream(): UseChatStreamReturn {
   // plain chat turn — these paths only fire when the route ran a skill (event: block / stage).
   const [streamingBlocks, setStreamingBlocks] = useState<unknown[]>([]);
   const [stages, setStages] = useState<StageState[]>([]);
+  /**
+   * The artifacts this run has touched so far (`evidence` SSE frame) — the proven outliers it is
+   * grounded on, or the post it resolved. Feeds the loading spine's evidence rail. Cleared at the
+   * start of every run so a new send can never inherit the last one's sources.
+   */
+  const [evidence, setEvidence] = useState<RunEvidence | null>(null);
   const [dispatchedSkill, setDispatchedSkill] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -130,6 +144,7 @@ export function useChatStream(): UseChatStreamReturn {
     setStreamingText('');
     setStreamingBlocks([]);
     setStages([]);
+    setEvidence(null);
     setDispatchedSkill(null);
     setIsStreaming(false);
     setError(null);
@@ -157,6 +172,7 @@ export function useChatStream(): UseChatStreamReturn {
     setStreamingText('');
     setStreamingBlocks([]);
     setStages([]);
+    setEvidence(null);
     setDispatchedSkill(null);
     setError(null);
     setIsDone(false);
@@ -255,8 +271,16 @@ export function useChatStream(): UseChatStreamReturn {
             if (skill && isMountedRef.current) {
               stagesRef.current = [];
               setStages([]);
+              setEvidence(null);
               setDispatchedSkill(skill);
             }
+
+          } else if (eventType === 'evidence') {
+            // Real artifacts, mid-run. parseRunEvidence is total (null on anything malformed)
+            // because a throw inside this read loop would kill the whole stream — cards, receipt
+            // and closing line with it — over a decorative thumbnail rail.
+            const parsedEvidence = parseRunEvidence(data);
+            if (parsedEvidence && isMountedRef.current) setEvidence(parsedEvidence);
 
           } else if (eventType === 'stage') {
             // Dispatched skill's real pipeline phase — upsert by name, preserve first-seen order
@@ -315,6 +339,7 @@ export function useChatStream(): UseChatStreamReturn {
     streamingText,
     streamingBlocks,
     stages,
+    evidence,
     dispatchedSkill,
     isStreaming,
     error,
