@@ -14,12 +14,14 @@ engine to produce the real numbers later."*
 
 | Artifact | Where |
 |---|---|
-| Mockup (rev 3, current on disk) | `docs/mockups/insights-three-tab-2026-07-31.html` |
+| **Mockup (rev 4 — current, awaiting review)** | **`docs/mockups/insights-role-tabs-2026-08-01.html`** |
+| Mockup (rev 3, superseded) | `docs/mockups/insights-three-tab-2026-07-31.html` |
 | Published, all revs | https://claude.ai/code/artifact/4465380d-3cac-4afe-9022-f4b6d08ea97e |
 | Rev 2 (owner preferred its read) | same URL → version picker → `rev-2-projection-led` |
 
 **Rev 3 was rejected: "doesn't read clean and premium… colors, visual read like AI slop."**
-Rev 2 was closer. Neither is approved. Nothing in `src/` was touched.
+Rev 2 was closer. **Rev 4 (2026-08-01) is the answer to that rejection** — see §4. Still design
+only; nothing in `src/` has been touched on this branch.
 
 ---
 
@@ -159,6 +161,44 @@ third semantic colour**.
 4. **Form variety for its own sake.** Donut + gauge + columns + sparkline + rail + bars in one
    440 px column reads busy, not premium. Restraint reads premium.
 
+### Rev 4 — role-shaped tabs *(current; `docs/mockups/insights-role-tabs-2026-08-01.html`)*
+
+**The read · The room · The reaction.** Each tab holds an invariant *question*; the *figure* that
+answers it swaps on `StimulusKind`. This is the §1 fix, and it uses the seam
+`domain-template.ts` already ships (`BrainDriver` is a union with both `attention-scrubber` and
+`reason-breakdown` in it — rev 1–3 simply never used it).
+
+| Tab | The question | Video figure | Text figure |
+|---|---|---|---|
+| The read | How far does this go, and what decides it? | Retention curve — one playhead moving cortex · curve · filmstrip · transcript together | Coded-reason breakdown; open a reason to hear the people inside it |
+| The room | Who reaches it, who stays? | Retention **by distribution pool** | Stop rate by district + the four-state playbook |
+| The reaction | What would they do with it? | Engagement vs your median · watch-through · action intents | **The projected comment section** + the one comment you'd have to answer |
+
+Both columns are full and neither borrows the other's figure. Video is numbers and a timeline;
+text is counts and human sentences. Serif (Newsreader) is reserved for audience verbatims *only*,
+which is what makes a text sim feel like a different instrument rather than a degraded one.
+
+How it answers the rejection, each verified by measurement rather than assertion:
+- **One accent.** A sweep of computed style over every element in both rails paints exactly two
+  hues — cream at eight alphas, and coral. No amber, no second accent. Rank is carried by weight,
+  size and position.
+- **Matte.** Same sweep: zero `background-image: *gradient*`, zero `box-shadow`, zero
+  `backdrop-filter`.
+- **Connected surface.** No `.card` class exists in the file; sections are a hairline + 30px of
+  rhythm, the grammar the shipped `Unlock` atom already uses.
+- **Five forms, reused:** the line · the bar-row · the segmented stack · the terrain · the quote.
+  The room mix is one segmented bar, not a donut; retention-by-pool is the line form ×4, not four
+  chart types.
+
+Two details worth carrying into implementation:
+- The **cortex** is a Voronoi parcellation on canvas (pixel→parcel map precomputed, so scrubbing
+  only rewrites alphas). A grid of rects clipped to an ellipse reads as a waffle — this was tried
+  and discarded. Its activation is driven by retention under the playhead, i.e. exactly the
+  `grounded` mode that `BrainTab.tsx:65` currently bypasses (§2.1).
+- **Deltas vs median** use a tick with the fill running *out* from it. A −8% rendered as a
+  42%-long bar implies a magnitude it doesn't have; running left from the median keeps the
+  encoding honest without needing a second colour.
+
 ### What to keep from all three
 - The narrative spine (rev 2).
 - The projection as the opening move, positioned against the creator's own catalogue.
@@ -170,16 +210,22 @@ third semantic colour**.
 
 ---
 
-## 5. Open decisions
+## 5. Open decisions — answered by rev 4 (owner may overrule any of them)
 
-1. **Text-sim tab set.** Same three tabs with swapped figures, or a different set for text?
-   Recommendation: same roles, swapped ◇ figures, per the existing `DomainTemplate` contract.
-2. **Where the verbatim wall lives** for text sims — it's the strongest text asset and has no home
-   in the current three-tab design.
-3. **Benchmark bands** — platform norms are uncalibrated against a simulated panel. Show with a
-   caveat, show bare, or hold.
-4. **Two stop numbers** — print both with denominators, or pick one.
-5. **Whether the cortex rides all three tabs** or Overview only.
+1. **Text-sim tab set** → same three roles, swapped ◇ figures, per the existing `DomainTemplate`
+   contract. One template object per domain; the page never forks.
+2. **Where the verbatim wall lives** → **The reaction.** It is what they'd *say*, which is the same
+   question video answers with action intents. The coded breakdown stays on The read because it is
+   the *mechanism*, not the response. This also makes text's third tab its strongest, not its
+   thinnest.
+3. **Benchmark bands** → **held.** Every comparison in rev 4 is against the creator's own catalogue,
+   which needs no external calibration to be true. Nothing is claimed about platform norms.
+4. **Two stop numbers** → **print both, each with its own denominator, never adjacent.** Weighted
+   hook attention rides the persistent header readout; the headcount rides the ledger; the trust
+   strip states in words that they are different measures and do not round to each other.
+5. **Cortex placement** → **The read only, and video only**, at 72px in the instrument legend as a
+   readout glyph. A text sim has no timeline, so it gets no cortex — giving it one is precisely the
+   §1 mistake.
 
 ---
 
