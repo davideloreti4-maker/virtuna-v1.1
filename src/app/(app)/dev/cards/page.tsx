@@ -38,6 +38,7 @@ import type { AmbientCardDescriptor } from "@/components/app/home/use-ambient-fo
 import type { WireSimSealMap } from "@/lib/onboarding/verdict-seal";
 import { useState, useEffect } from "react";
 import { ProgressChecklist } from "@/components/thread/progress-checklist";
+import type { RunEvidence } from "@/lib/tools/evidence";
 import { SKILL_RUN_META } from "@/components/thread/run-capsule";
 import { Reading } from "@/components/reading/reading";
 import { ReadingSkeleton } from "@/components/reading/reading-skeleton";
@@ -749,6 +750,68 @@ const THREAD_VIEWS: { id: string; label: string; note: string; node: React.React
   },
 ];
 
+/**
+ * EVIDENCE fixtures for the in-flight previews (2026-07-31).
+ *
+ * The evidence rail is the newest thing on the most-watched surface, and — like every other
+ * in-flight state — it exists ONLY during a live paid run, which is exactly how the loading states
+ * drifted unseen before these previews existed. Declared here (not beside the Reading fixtures
+ * further down) because INFLIGHT_VIEWS builds its JSX at module load: a `const` declared below
+ * would be in the temporal dead zone.
+ *
+ * The images are app screenshots that already ship in /public, so the tiles render REAL pictures
+ * (true crop, aspect and load behaviour) with no network fixture. The numbers are made up because
+ * this is a GALLERY — in a live run every one of them comes off a retrieved corpus row.
+ */
+const EVIDENCE_OUTLIERS: RunEvidence = {
+  headline: "Drafting against 3 proven videos",
+  items: [
+    {
+      kind: "video",
+      image: "/images/landing/hero-read.png",
+      label: "zachking",
+      metric: "44× vs followers",
+      href: "https://www.tiktok.com/@zachking/video/1234567890123",
+    },
+    {
+      kind: "video",
+      image: "/images/landing/feature-audience.png",
+      label: "mkbhd",
+      metric: "2.4M views",
+    },
+    // No cover — the tile falls back to the handle's initial and keeps its footprint, which is
+    // what a real expired TikTok-CDN URL looks like a few hours after a scrape.
+    { kind: "video", label: "cleoabram", metric: "12× vs followers" },
+  ],
+};
+
+const EVIDENCE_REMIX_SOURCE: RunEvidence = {
+  headline: "Reworking this video",
+  items: [
+    {
+      kind: "video",
+      image: "/images/landing/showcase-read.png",
+      label: "danielleaskyoutube",
+      // Views only — the creator pasted this link, so nothing measured it against a baseline and
+      // no multiplier is implied (mirrors the remix card's own receipt, which passes fitLabel null).
+      metric: "890K views",
+      href: "https://www.tiktok.com/@x/video/1",
+    },
+  ],
+};
+
+const EVIDENCE_FILMSTRIP: RunEvidence = {
+  headline: "Reading your footage",
+  slots: 8,
+  items: [
+    { kind: "frame", image: "/images/landing/hero-read.png", idx: 0 },
+    { kind: "frame", image: "/images/landing/feature-audience.png", idx: 1 },
+    { kind: "frame", image: "/images/landing/feature-drivers.png", idx: 2 },
+    { kind: "frame", image: "/images/landing/feature-hook.png", idx: 3 },
+    { kind: "frame", image: "/images/landing/feature-retention.png", idx: 4 },
+  ],
+};
+
 // ── Group A2: the IN-FLIGHT states — the run capsule, previewable at last (2026-07-19) ────────
 // The 07-14 audit's lesson: a surface with no cheap way to LOOK at it will drift. The thread
 // views' completed states preview above, and Reading's skeleton previews below — but the thread's
@@ -839,6 +902,58 @@ const INFLIGHT_VIEWS: { id: string; label: string; note: string; node: React.Rea
             { name: "Simulating your audience", status: "pending" },
           ]}
           plan={SKILL_RUN_META.test!.plan}
+        />
+      </div>
+    ),
+  },
+  {
+    id: "loading-evidence-grounded",
+    label: "In-flight · grounded run (the evidence rail)",
+    note: "A grounded hooks/ideas/script run mid-generation. Retrieval settles ~40s BEFORE the first card exists, so the outliers the model is drafting against are shown under the step that is using them — cover, @handle and the measured multiplier, straight off the corpus rows. The third row has no cover (an expired CDN URL) and falls back to its initial rather than a broken tile. Absent on an ungrounded run: the rail renders nothing rather than an empty frame.",
+    node: (
+      <div className="mx-auto w-full max-w-[760px]">
+        <ProgressChecklist
+          stages={[
+            { name: "Finding proven outliers", status: "done" },
+            { name: "Generating", status: "active" },
+          ]}
+          plan={SKILL_RUN_META.hooks!.plan}
+          evidence={EVIDENCE_OUTLIERS}
+        />
+      </div>
+    ),
+  },
+  {
+    id: "loading-evidence-remix",
+    label: "In-flight · Remix (the post it resolved)",
+    note: "Remix holds its evidence longest: the resolve step returns the cover, @handle and views within seconds, then Decoding + Adapting take ~50s. That whole stretch used to be words about a video the creator couldn't see. No multiplier is shown — they pasted this link, so nothing measured it against a baseline.",
+    node: (
+      <div className="mx-auto w-full max-w-[760px]">
+        <ProgressChecklist
+          stages={[
+            { name: "Resolving", status: "done" },
+            { name: "Decoding", status: "active" },
+          ]}
+          plan={SKILL_RUN_META.remix!.plan}
+          evidence={EVIDENCE_REMIX_SOURCE}
+        />
+      </div>
+    ),
+  },
+  {
+    id: "loading-evidence-filmstrip",
+    label: "In-flight · Test (the filmstrip, in-thread)",
+    note: "The 2-minute Test wait, now showing the creator's OWN keyframes as the extractor cuts them — the same reveal signals the flagship /analyze skeleton uses, in the thread's rail idiom. All 8 planned slots are drawn up front and fill in order (5 of 8 here), so the strip reads as progress and never reflows.",
+    node: (
+      <div className="mx-auto w-full max-w-[760px]">
+        <ProgressChecklist
+          stages={[
+            { name: "Fetching your video", status: "done" },
+            { name: "Watching it frame by frame", status: "active" },
+            { name: "Simulating your audience", status: "pending" },
+          ]}
+          plan={SKILL_RUN_META.test!.plan}
+          evidence={EVIDENCE_FILMSTRIP}
         />
       </div>
     ),
