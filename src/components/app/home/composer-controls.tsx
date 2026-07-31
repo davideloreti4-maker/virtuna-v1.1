@@ -518,14 +518,21 @@ export function SimModelSelector({ value, onChange, className }: SimModelSelecto
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
+        // A CHIP, not a bare label (2026-07-31, owner call). It used to be text on the composer
+        // floor — no fill, no edge — so the one control that says which engine will spend the
+        // creator's Reading read as decoration. It now carries the SAME fill every in-thread skill
+        // card carries (`bg-surface-sunken` #1a1a19 — see skill-result-card.tsx, which calls it
+        // "the one in-thread card fill"), a 6% edge, and a little more height, so it reads as a
+        // control at a glance. Hover is a SOLID step up, never a white overlay: the chip sits on
+        // the opaque composer floor and a translucent tint would just wash it (CLAUDE.md).
         className={cn(
-          "inline-flex h-[34px] items-center gap-1 rounded-lg px-2 text-label transition-colors",
-          "hover:bg-white/[0.05] focus:outline-none focus-visible:ring-1 focus-visible:ring-white/20 pointer-coarse:h-11",
+          "inline-flex h-[38px] items-center gap-1 rounded-lg border border-white/[0.06] bg-surface-sunken px-2.5 text-label transition-colors",
+          "hover:border-white/[0.10] hover:bg-[#232322] focus:outline-none focus-visible:ring-1 focus-visible:ring-white/20 pointer-coarse:h-11",
         )}
       >
-        <span className="whitespace-pre text-foreground-muted">{"SIM-1 "}</span>
-        <span className="font-medium text-foreground-secondary">{value}</span>
-        <Ico name="chev" size={13} className="text-foreground-muted" />
+        <span className="whitespace-pre text-foreground-secondary">{"SIM-1 "}</span>
+        <span className="font-medium text-foreground">{value}</span>
+        <Ico name="chev" size={13} className="text-foreground-secondary" />
       </button>
       <Popover open={open} anchorRef={triggerRef} menuRef={menuRef} className="min-w-[260px]">
         {SIM_MODELS.map((tier) => {

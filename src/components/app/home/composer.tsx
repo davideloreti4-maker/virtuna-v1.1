@@ -61,7 +61,7 @@ import { cn } from "@/lib/utils";
 import { HORIZONTAL_ENABLED } from "@/lib/flags/horizontal";
 import { AMBIENT_V2_ENABLED } from "@/lib/flags/ambient-v2";
 import { AmbientOverviewSheet } from "@/components/audience-lens/v2/AmbientOverviewSheet";
-import { MOBILE_NAV, MOBILE_NAV_BAND, MOBILE_NAV_BAR_INSET } from "@/components/sidebar/Sidebar";
+import { MOBILE_NAV_BAND } from "@/components/sidebar/Sidebar";
 import type { WireSimSealMap } from "@/lib/onboarding/verdict-seal";
 import { queryKeys } from "@/lib/queries/query-keys";
 import {
@@ -2606,6 +2606,8 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       onTestVariant={() => setSimDoorOpen(true)}
       open={roomExpanded}
       onOpenChange={handleRoomExpandedChange}
+      // It hangs off the composer now, not the top row — the plate in the dock owns the surface.
+      attached
     />
   ) : (
     <AudiencePresence {...presenceCommonProps} variant="header" />
@@ -3203,22 +3205,49 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
             className="pointer-events-none absolute inset-x-0 -bottom-4 top-0 bg-background"
           />
         )}
+        {/* THE PLATE (2026-07-31, owner call). <xl the audience bar used to sit in the mobile TOP
+            row, a full screen away from the field it describes — you read "18 ranked" at the top and
+            typed at the bottom. It is now the STRIP fused to the composer's top edge, built on the
+            same geometry Claude hangs its usage banner off the BOTTOM of theirs: one outer plate, a
+            quiet full-width row, and the field inset inside it.
+
+            Three surfaces, so the stack reads as depth and not as three cards. The plate is the
+            SKILL-CARD fill (`surface-sunken` #1a1a19 — skill-result-card.tsx calls it "the one
+            in-thread card fill", and every hook/idea/script card carries it), so the banner reads
+            as the same family of surface as the cards it describes rather than a third tone:
+            page #1f1f1e → plate #1a1a19 (`surface-sunken`) → field #2c2c2b (`surface-elevated`).
+            Radii nest (plate 24 = field 20 + the 4px inset) or the corners fight.
+
+            ≥xl the rail still owns the room, so the plate collapses to a passthrough and the
+            composer box below is byte-identical to what it always was. */}
         <div
           className={cn(
-            "relative w-full rounded-[24px] border border-white/[0.06] bg-surface-elevated",
-            // The dock panel blooms flush with the composer top → flatten the box's top edge so
-            // the two read as one surface. Driven by the VISUAL expand, never the ask verb.
-            !roomExpanded && "overflow-hidden",
-            roomExpanded && "rounded-t-none border-t-0",
-            // Was --shadow-float (0 10px 30px rgba(0,0,0,.35)) — a 30px blur that pooled
-            // visibly on the surface behind the dock. Halved the blur and the alpha so the
-            // composer still reads as floating without casting a smudge under it.
-            layout === "centered" && "shadow-[0_6px_16px_rgba(0,0,0,0.18)]",
-            !reducedMotion && "transition-shadow duration-200",
+            "relative w-full",
+            useHeader &&
+              "rounded-[24px] border border-white/[0.06] bg-surface-sunken p-[4px] pt-0",
           )}
         >
-          {composerForm}
-          {buildChooser}
+          {useHeader ? (
+            <div data-testid="audience-header-slot">{audienceHeader}</div>
+          ) : null}
+          <div
+            className={cn(
+              "relative w-full border border-white/[0.06] bg-surface-elevated",
+              useHeader ? "rounded-[20px]" : "rounded-[24px]",
+              // The dock panel blooms flush with the composer top → flatten the box's top edge so
+              // the two read as one surface. Driven by the VISUAL expand, never the ask verb.
+              !roomExpanded && "overflow-hidden",
+              roomExpanded && "rounded-t-none border-t-0",
+              // Was --shadow-float (0 10px 30px rgba(0,0,0,.35)) — a 30px blur that pooled
+              // visibly on the surface behind the dock. Halved the blur and the alpha so the
+              // composer still reads as floating without casting a smudge under it.
+              layout === "centered" && "shadow-[0_6px_16px_rgba(0,0,0,0.18)]",
+              !reducedMotion && "transition-shadow duration-200",
+            )}
+          >
+            {composerForm}
+            {buildChooser}
+          </div>
         </div>
       </div>
 
@@ -3305,36 +3334,10 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           className,
         )}
       >
-        {/* P2 (A2b) — the mobile/tablet audience HEADER (<xl only; the rail owns ≥xl). A bar above
-            the thread that expands DOWNWARD, top-anchored so it survives the keyboard (§2).
-            shrink-0 so it holds its height; the sheet blooms over the thread below (z-55). The
-            xl:hidden is belt-and-suspenders against the one-frame pre-hydration flash.
-
-            Positioning (2026-07-24): the audience bar IS the mobile top navigation, sharing its row
-            with ONE thing — the sidebar opener tab, immediately to its left at the same 45px height
-            (owner call). Every number here comes from `MOBILE_NAV` in Sidebar.tsx, which the fixed
-            tab lays itself out from too, so the pair cannot drift: the negative margin cancels the
-            band AppShell reserves for that tab, and the left inset is exactly gutter + tab + gap.
-            md:… hands the row back to a plain in-flow bar for md–xl, where the tab is hidden and the
-            band is zero. */}
-        {useHeader && (
-          <div
-            data-testid="audience-header-slot"
-            // Custom properties, not inline margin/padding: an inline value would outrank the
-            // `md:` overrides and the tablet would keep the phone's inset.
-            style={
-              {
-                "--nav-mt": `-${MOBILE_NAV_BAND}px`,
-                "--nav-pt": `${MOBILE_NAV.top}px`,
-                "--nav-pl": `${MOBILE_NAV_BAR_INSET}px`,
-                "--nav-pr": `${MOBILE_NAV.gutter}px`,
-              } as React.CSSProperties
-            }
-            className="relative z-10 shrink-0 mt-[var(--nav-mt)] pl-[var(--nav-pl)] pr-[var(--nav-pr)] pt-[var(--nav-pt)] md:mt-0 md:px-4 md:pt-2 xl:hidden"
-          >
-            <div className="mx-auto w-full max-w-[760px]">{audienceHeader}</div>
-          </div>
-        )}
+        {/* The <xl audience bar USED to live here — a row in the mobile top nav, laid out against
+            `MOBILE_NAV` so it sat flush beside the sidebar opener tab. It moved into the dock on
+            2026-07-31 (owner call): a room you consult while composing belongs against the field,
+            not a full phone screen above it. */}
         {/* Scrollable thread region — full width, fills the FULL shell height and scrolls
             UNDER the floating dock (the dock is absolutely positioned below, not in flow).
             The bottom padding clears the collapsed dock so the last message can rest just
@@ -3345,7 +3348,31 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
         <div
           ref={registerThreadRegion}
           data-testid="composer-thread-region"
-          className="flex-1 min-h-0 overflow-y-auto pb-[184px]"
+          // THE BAND IS TRANSPARENT ON THE THREAD (2026-07-31, owner call). AppShell pads `main`
+          // down by MOBILE_NAV_BAND so no page renders under the fixed burger — rent the audience
+          // bar used to pay, when it lived in that band. Once the bar moved into the composer dock
+          // the band became a dead shelf that CLIPPED the conversation: the scroll box began below
+          // it, so a message scrolling up vanished at that edge instead of passing behind the
+          // burger the way it already passes behind the dock.
+          //
+          // The negative margin lifts THE SCROLL BOX over the band and the matching padding puts
+          // the clearance back INSIDE it — so at rest the first message still clears the burger,
+          // but the pad scrolls away and the thread runs full-bleed underneath.
+          //
+          // ⚠️ On the scroll region, NOT the shell. The shell is `h-full` and roots the dock's
+          // `absolute inset-x-0 bottom-0`; pulling the shell up would have carried the dock 46px
+          // off the bottom of the viewport with it. Here the flex column absorbs the margin and
+          // the dock never moves.
+          //
+          // Same 768px boundary as AppShell's `md:pt-0` and the burger's `md:hidden`; custom
+          // properties rather than inline values so the `md:` resets can outrank them.
+          className="flex-1 min-h-0 overflow-y-auto mt-[var(--nav-mt)] pt-[var(--nav-pt)] pb-[184px] md:mt-0 md:pt-0"
+          style={
+            {
+              "--nav-mt": `-${MOBILE_NAV_BAND}px`,
+              "--nav-pt": `${MOBILE_NAV_BAND}px`,
+            } as React.CSSProperties
+          }
         >
           <div className="w-full max-w-[760px] mx-auto px-2.5 sm:px-4">
             {/* A1: while a switch is rehydrating and no content has landed yet, fill the
