@@ -35,7 +35,7 @@ import {
   SlidersHorizontal,
   ClockCountdown,
   UserCircle,
-  CaretRight,
+  List,
   SidebarSimple,
   SignOut,
   CaretUpDown,
@@ -792,22 +792,23 @@ export function Sidebar() {
  * read as ONE navigation row (owner call). The caret still points right: the sidebar slides in from
  * that edge, and the tab hugs the row's left margin.
  *
- * Its geometry is COUPLED to the composer's audience header slot (`composer.tsx`). This one is
- * `fixed` — it must survive on the mobile pages that have no audience bar — while the bar is in
- * flow with a matching left inset, so the two are laid out against the same numbers. They live in
- * `MOBILE_NAV` below; change them here and the slot's inset follows, or the row drifts apart.
+ * ⚠️ The paragraph that stood here described geometry COUPLED to the composer's audience header
+ * slot — the bar that used to share this row. On 2026-07-31 that bar moved into the composer dock
+ * (it is now the strip fused to the field's top edge), so the tab is the row's only occupant and
+ * `MOBILE_NAV_BAR_INSET` has no consumer left. The band + tab numbers below are still live.
  */
-/** The mobile top-nav band, shared by this tab and the composer's audience bar. All px. */
+/** The mobile top-nav band. All px. `gap` is retained for the day a second item joins the row. */
 export const MOBILE_NAV = {
-  /** Page gutter — the tab's left edge, and the row's right edge. */
+  /** Page gutter — the opener's left edge, and the row's right edge. */
   gutter: 10,
   /** Top offset of the band. */
   top: 10,
-  /** Bar height — the tab matches the audience bar exactly (owner ask). */
-  height: 45,
-  /** Tab width. */
-  width: 32,
-  /** Gap between the tab and the bar. */
+  /** Opener height. Was 45 to match the audience bar it shared the row with; that bar moved into
+   *  the composer dock on 2026-07-31, so the opener is square again — a burger, not a tab. */
+  height: 36,
+  /** Opener width. */
+  width: 36,
+  /** Gap between the opener and anything that joins it in the row. */
   gap: 8,
 } as const;
 
@@ -833,15 +834,19 @@ export function SidebarHamburger() {
       }}
       className={cn(
         "fixed z-[var(--z-sidebar)] items-center justify-center",
-        // Same radius, hairline and ground as the audience bar beside it — one row, one material.
-        "rounded-[12px] border border-white/[0.06] bg-[#181817] transition-colors active:bg-[#32312e]",
+        // Keeps its own opaque ground even though the band behind it is transparent now: the thread
+        // scrolls UNDER this button, and a see-through opener over moving text is unreadable.
+        "rounded-[10px] border border-white/[0.06] bg-[#181817] transition-colors active:bg-[#32312e]",
         // Mobile only — the desktop sidebar is always present, so the opener
         // never appears ≥md regardless of isOpen.
         "md:hidden",
         isOpen ? "hidden" : "flex",
       )}
     >
-      <CaretRight className="h-3.5 w-3.5 text-foreground/50" weight="bold" />
+      {/* A burger again (2026-07-31, owner call). The caret was a TAB's glyph — it belonged to the
+          edge-sliver shape that shared a row with the audience bar, and read as "expand this panel"
+          rather than "open the menu" once the bar moved into the composer dock. */}
+      <List className="h-[18px] w-[18px] text-foreground/70" weight="bold" />
     </button>
   );
 }
