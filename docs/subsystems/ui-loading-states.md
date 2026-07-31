@@ -1,7 +1,11 @@
 # UI Surface: Loading & pending states — audit + work map
 
 > Lane: `lane/shell` (chrome). Date: 2026-06-27. Design SoT: `docs/DESIGN-SYSTEM.md` + `src/app/globals.css`.
-> Status: **AUDIT — not yet built.** This is the recon map that drives the next `lane/shell` chunks.
+> Status: **AUDIT (2026-06-27) — partly built.** This is the recon map that drove the `lane/shell` chunks.
+> ⚠️ **Read `docs/HANDOFF-2026-08-01-thread-loading-premium.md` first** for the CURRENT state of the
+> in-thread loading system (PR #411). The §5 NORTH STAR below is still the standing target and the
+> `.planning/sketches/premium-thread.html` v3.2 sketch is still the reference; several §1 items have
+> since shipped, and the primitives table above has been re-pointed at what actually exists today.
 > Sibling spec: `docs/subsystems/ui-skill-cards.md` (the *resting* card design; this doc owns their
 > *loading/pending* states). Continues the chrome pass shipped in PR #72 (route skeletons for
 > brand-deals/discover/referrals; error/404 reskin).
@@ -13,8 +17,10 @@ Build on these; do **not** invent new ones.
 | Primitive | File | Use for |
 |---|---|---|
 | `<Skeleton>` (matte shimmer gradient) | `src/components/ui/skeleton.tsx` | the canonical skeleton brick — every route/inline skeleton |
-| `ThreadLoadingSkeleton` (`variant="skill" \| "chat"`, constellation + caption) | `src/components/thread/thread-loading.tsx:24` | the in-thread "skill is running" gate |
-| `ProgressChecklist` (Perplexity-style stage rows) | `src/components/thread/progress-checklist.tsx:34` | streamed SSE stages |
+| `ThreadLoadingSkeleton` (`variant="skill" \| "chat"`, **turn-geometry** skeleton + caption) | `src/components/thread/thread-loading.tsx` | thread REHYDRATE (opening/switching a thread) |
+| `ChatTypingIndicator` (breathing accent dot + shimmering label) | `src/components/thread/thread-loading.tsx` | a plain chat answer being written (no skill ⇒ no spine) |
+| `RunEvidenceRail` (source chips / filmstrip) | `src/components/thread/run-evidence.tsx` | the real artifacts a run touched, drawn INSIDE the spine |
+| `ProgressChecklist` (seeded-plan spine + measured clock + evidence slot) | `src/components/thread/progress-checklist.tsx` | streamed SSE stages |
 | `ReadingSkeleton` (IA-mirroring + real-signal liveness) | `src/components/reading/reading-skeleton.tsx:24` | the video Read / analyze surface |
 | `<Spinner>` (SVG, currentColor) | `src/components/ui/spinner.tsx:76` | inline button/affordance pending |
 | `useToast()` / `<ToastProvider>` | `src/components/ui/toast.tsx` | async-action feedback (mounted app-wide) |
