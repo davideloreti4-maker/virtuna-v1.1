@@ -198,6 +198,11 @@ export async function POST(request: Request): Promise<Response> {
           audience: activeAudience,
           intent: effectiveIntent,
           onStage: (name, status) => send("stage", { name, status }),
+          // EVIDENCE frame — the real artifacts this run touched (the proven outliers it is
+          // grounded on / the post it resolved), streamed while the pipeline is still working so
+          // the loading spine shows the WORK, not just the step name. Additive: a client that
+          // does not parse `evidence` is unaffected.
+          onEvidence: (evidence) => send("evidence", evidence),
           // FLYWHEEL-02: pin the predicted vector for this run (text skill → no analysis).
           pin: { supabase, analysisId: null },
         });
