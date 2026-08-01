@@ -142,6 +142,74 @@ describe('ProgressChecklist — the evidence rail', () => {
     expect(within(doneRow).queryByTestId('run-evidence')).not.toBeInTheDocument();
   });
 
+  it('honours a payload that NAMES its row, over the row that happens to be active', () => {
+    // A concurrent run breaks the active-row rule. The account read fires two independent Apify
+    // scrapes and a live run measured the posts landing 18s before the profile — so the posts row
+    // is done while the profile row is still going, and "hangs off the active row" would draw the
+    // creator's own covers under "Finding your profile".
+    const PLAN = ['Finding your profile', 'Reading your last 30 posts'];
+    render(
+      <ProgressChecklist
+        stages={[
+          { name: 'Finding your profile', status: 'active' },
+          { name: 'Reading your last 30 posts', status: 'done' },
+        ]}
+        plan={PLAN}
+        evidence={{ ...OUTLIERS, step: 'Reading your last 30 posts' }}
+      />,
+    );
+
+    const postsRow = screen.getByLabelText('Reading your last 30 posts: done');
+    expect(within(postsRow).getByTestId('run-evidence')).toBeInTheDocument();
+
+    // The active row must NOT claim artifacts that belong to the other step.
+    const profileRow = screen.getByLabelText('Finding your profile: active');
+    expect(within(profileRow).queryByTestId('run-evidence')).not.toBeInTheDocument();
+  });
+
+  it('narrates ONE row even when several are genuinely live', () => {
+    // A concurrent pipeline (the account read's two Apify scrapes) can have two rows live at once.
+    // Letting each wear the full live treatment put two coral nodes and two running clocks on
+    // screen for half the wait, undoing the craft pass that took accent-filled elements 4 → 1.
+    const PLAN = ['Finding your profile', 'Reading your last 30 posts'];
+    render(
+      <ProgressChecklist
+        stages={[
+          { name: 'Finding your profile', status: 'active' },
+          { name: 'Reading your last 30 posts', status: 'active' },
+        ]}
+        plan={PLAN}
+      />,
+    );
+
+    // Exactly one shimmering label — the answer to "where am I".
+    expect(document.querySelectorAll('.text-shimmer')).toHaveLength(1);
+    const lead = screen.getByLabelText('Finding your profile: active');
+    expect(lead.querySelector('.text-shimmer')).not.toBeNull();
+
+    // …and the second live row is still LIVE, just quiet: no shimmer, no second clock.
+    const quiet = screen.getByLabelText('Reading your last 30 posts: active');
+    expect(quiet.querySelector('.text-shimmer')).toBeNull();
+    expect(within(quiet).queryByTestId('stage-elapsed')).not.toBeInTheDocument();
+  });
+
+  it('falls back to the active row when the payload names a row that is not in the plan', () => {
+    // Defensive: a stale or mistyped name must degrade to the old behaviour, never to no rail.
+    render(
+      <ProgressChecklist
+        stages={[
+          { name: 'Finding proven outliers', status: 'done' },
+          { name: 'Generating', status: 'active' },
+        ]}
+        plan={STAGE_PLANS.hooks}
+        evidence={{ ...OUTLIERS, step: 'A row that does not exist' }}
+      />,
+    );
+
+    const activeRow = screen.getByLabelText('Generating: active');
+    expect(within(activeRow).getByTestId('run-evidence')).toBeInTheDocument();
+  });
+
   it('renders no rail at all when the run produced no evidence', () => {
     // An ungrounded generation is the DEFAULT path (grounding is env-gated and explicit-scrape
     // only), so "no evidence" must be a silent, unlabelled non-event — not an empty rail.

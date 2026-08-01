@@ -339,11 +339,106 @@ describe("generateAccountRead — evidence is decoration, not a dependency", () 
       provider,
     );
 
+    // Both rows open together — the two scrapes are dispatched together — then each closes on its
+    // own result. With instant mocks the profile chain settles first purely by declaration order.
     expect(stages).toEqual([
       [ACCOUNT_READ_PLAN[0]!, "active"],
-      [ACCOUNT_READ_PLAN[0]!, "done"],
       [ACCOUNT_READ_PLAN[1]!, "active"],
+      [ACCOUNT_READ_PLAN[0]!, "done"],
       [ACCOUNT_READ_PLAN[1]!, "done"],
     ]);
+  });
+});
+
+// ─── The two scrapes RACE — measured on the first live billed run ────────────
+
+describe("generateAccountRead — the two scrapes race and either can win", () => {
+  /** A provider that decides who wins, because a mock that resolves instantly never races. */
+  function makeRacingProvider(profileMs: number, videosMs: number) {
+    const after = <T,>(ms: number, value: T) =>
+      new Promise<T>((resolve) => setTimeout(() => resolve(value), ms));
+    return {
+      scrapeProfile: (_h: string) =>
+        after(profileMs, makeProfile({ followerCount: 500_000 })),
+      scrapeVideos: (_h: string, _l?: number) =>
+        // Covers are required: the filmstrip builder honestly returns null when a scrape surfaced
+        // no renderable image, so a coverless fixture emits no posts evidence to route at all.
+        after(
+          videosMs,
+          Array.from({ length: 12 }, (_, i) =>
+            makeVideo({ coverUrl: `https://cdn.example/cover${i}.jpg` }),
+          ),
+        ),
+    };
+  }
+
+  it("closes the POSTS row when the posts land, even though the profile is still running", async () => {
+    // The live run measured the 30-post pull at 19.1s and the profile at 37.2s — the reverse of
+    // what the code assumed. Chaining row 2 to the PROFILE promise made it go active→done in one
+    // tick: the row whose work actually took the time never rendered as in-progress.
+    const stages: Array<[string, string]> = [];
+    await generateAccountRead(
+      "creator",
+      "u1",
+      { ...RICH_DEPS(), onStage: (name, status) => stages.push([name, status]) },
+      makeRacingProvider(40, 5), // videos win, as they did live
+    );
+
+    const posts = stages.findIndex(
+      ([n, s]) => n === ACCOUNT_READ_PLAN[1] && s === "done",
+    );
+    const profile = stages.findIndex(
+      ([n, s]) => n === ACCOUNT_READ_PLAN[0] && s === "done",
+    );
+
+    expect(posts).toBeGreaterThan(-1);
+    expect(profile).toBeGreaterThan(-1);
+    // The winner finishes first. This is the whole defect: it used to be the other way round.
+    expect(posts).toBeLessThan(profile);
+
+    // And row 2 must have OPENED before anything closed — that is what "it was live while its own
+    // scrape ran" means here. Pre-fix, row 2's `active` was emitted by the profile's callback, so
+    // the second event was `[profile, done]` and row 2 opened and closed in the same tick.
+    expect(stages.slice(0, 2)).toEqual([
+      [ACCOUNT_READ_PLAN[0]!, "active"],
+      [ACCOUNT_READ_PLAN[1]!, "active"],
+    ]);
+  });
+
+  it("counts the posts it READ, not the covers it can fit on the strip", async () => {
+    // The rail caps at MAX_EVIDENCE_ITEMS covers. Announcing that cap said "Reading 8 of your
+    // posts" while the card replacing it seconds later reported 30 analyzed — one run making two
+    // different factual claims about the same work.
+    const seen: string[] = [];
+    await generateAccountRead(
+      "creator",
+      "u1",
+      { ...RICH_DEPS(), onEvidence: (e) => seen.push(e.headline) },
+      makeRacingProvider(40, 5), // 12 videos, capped to 8 tiles
+    );
+
+    expect(seen).toContain("Reading 12 of your posts");
+    expect(seen).not.toContain("Reading 8 of your posts");
+  });
+
+  it("tags each payload with the row it belongs to, so the rail cannot draw it under the other one", async () => {
+    // Two rows are live at once, so "the rail hangs off the active row" would put the post covers
+    // on whichever row is first in the plan — which is the profile.
+    const seen: Array<{ headline: string; step?: string }> = [];
+    await generateAccountRead(
+      "creator",
+      "u1",
+      {
+        ...RICH_DEPS(),
+        onEvidence: (e) => seen.push({ headline: e.headline, step: e.step }),
+      },
+      makeRacingProvider(40, 5),
+    );
+
+    const posts = seen.find((e) => /posts/i.test(e.headline));
+    const profile = seen.find((e) => /your account/i.test(e.headline));
+
+    expect(posts?.step).toBe(ACCOUNT_READ_PLAN[1]);
+    expect(profile?.step).toBe(ACCOUNT_READ_PLAN[0]);
   });
 });

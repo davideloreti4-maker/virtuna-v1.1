@@ -106,6 +106,29 @@ describe('parseRunEvidence — total on every malformed shape', () => {
     expect(parsed?.items[0]).toEqual({ kind: 'frame', image: '/f/0.jpg', idx: 0 });
   });
 
+  it('carries the row name through, so a concurrent run keeps its rail routing', () => {
+    // `step` is what lets a payload say which plan row it belongs to. Dropping it here would
+    // silently restore the active-row fallback — the exact bug the field exists to fix, one
+    // layer further down where nothing would point at it.
+    const parsed = parseRunEvidence({
+      headline: 'Reading 8 of your posts',
+      step: 'Reading your last 30 posts',
+      items: [{ kind: 'frame', image: '/f/0.jpg', idx: 0 }],
+    });
+    expect(parsed?.step).toBe('Reading your last 30 posts');
+  });
+
+  it('omits a blank or non-string row name rather than routing to ""', () => {
+    for (const step of ['', '   ', 42, null, {}]) {
+      const parsed = parseRunEvidence({
+        headline: 'Reading your footage',
+        step,
+        items: [{ kind: 'frame', image: '/f/0.jpg' }],
+      });
+      expect(parsed?.step).toBeUndefined();
+    }
+  });
+
   it('ignores a nonsense slot count instead of drawing a negative strip', () => {
     for (const slots of [-3, 0, 2.5, 'eight']) {
       const parsed = parseRunEvidence({

@@ -208,11 +208,22 @@ function emitEvidenceSafely(deps: AccountReadDeps, build: () => RunEvidence | nu
   }
 }
 
+/** Name the plan row a payload belongs to, so a concurrent run's rail cannot land on the wrong one. */
+function withStep(evidence: RunEvidence | null, step: string): RunEvidence | null {
+  return evidence ? { ...evidence, step } : null;
+}
+
 function buildAccountPostFrames(videos: VideoData[]): RunEvidence | null {
+  // The count is a claim about the READ, not about the strip. `buildFrameEvidence` passes back the
+  // number of tiles it will actually draw — capped at MAX_EVIDENCE_ITEMS — so using it announced
+  // "Reading 8 of your posts" on a read that had just analyzed 30, contradicting the card that
+  // replaces it seconds later. The strip stays a sample of the history; the sentence reports the
+  // work, which is also what makes the strip legible as a sample rather than the whole set.
+  const scraped = videos.length;
   return buildFrameEvidence(
-    (n) => (n === 1 ? "Reading 1 of your posts" : `Reading ${n} of your posts`),
+    () => (scraped === 1 ? "Reading 1 of your posts" : `Reading ${scraped} of your posts`),
     videos.map((v) => v.coverUrl ?? null),
-    videos.length,
+    scraped,
   );
 }
 
@@ -411,27 +422,36 @@ export async function generateAccountRead(
   // fix 4a — the avatar, the follower count and 30 covers were already in hand ~30s before
   // `done`, sitting behind a single static "Reading your account…" line.
   try {
+    // Both scrapes are dispatched together, so both rows light together. Chaining row 2's
+    // transitions to the PROFILE promise encoded an assumption — "the profile lands first" — that
+    // the first live billed run disproved: the 30-post pull came back at 19.1s and the profile at
+    // 37.2s. Row 2 therefore went active and done in the SAME tick, so the row whose work actually
+    // took the time never rendered as in-progress at all, and its covers were drawn under row 1.
+    //
+    // Each row now reports ITS OWN scrape. Two rows are live at once because two scrapes really
+    // are, and whichever wins is shown winning.
     deps.onStage?.(ACCOUNT_READ_PLAN[0]!, 'active');
+    deps.onStage?.(ACCOUNT_READ_PLAN[1]!, 'active');
 
     const profileP = provider.scrapeProfile(handle).then((p) => {
       // The phase boundary is a fact about the PIPELINE and must not depend on whether there is
       // something pretty to show: an account with no avatar and no handle produces no evidence,
       // and gating the transition on it left the spine stuck on step 1 for the whole run.
       deps.onStage?.(ACCOUNT_READ_PLAN[0]!, 'done');
-      deps.onStage?.(ACCOUNT_READ_PLAN[1]!, 'active');
       // The FIRST producer of kind:'profile' — the rail has always supported the avatar disc and
-      // nothing emitted one until now.
-      emitEvidenceSafely(deps, () => buildProfileFrame(p));
+      // nothing emitted one until now. Tagged with its row: with two rows live, "hangs off the
+      // active row" would put it on whichever is first in the plan rather than the one it is of.
+      emitEvidenceSafely(deps, () => withStep(buildProfileFrame(p), ACCOUNT_READ_PLAN[0]!));
       return p;
     });
 
     const videosP = provider.scrapeVideos(handle, 30).then((v) => {
-      emitEvidenceSafely(deps, () => buildAccountPostFrames(v));
+      deps.onStage?.(ACCOUNT_READ_PLAN[1]!, 'done');
+      emitEvidenceSafely(deps, () => withStep(buildAccountPostFrames(v), ACCOUNT_READ_PLAN[1]!));
       return v;
     });
 
     [profile, videos] = await Promise.all([profileP, videosP]);
-    deps.onStage?.(ACCOUNT_READ_PLAN[1]!, 'done');
   } catch (err) {
     // Scrape failure is distinct from thin-data (P7 D-06 / UI-SPEC).
     return {

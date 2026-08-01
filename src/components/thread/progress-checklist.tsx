@@ -263,8 +263,13 @@ export function ProgressChecklist({
   // working with right now" slot, and it is where a retrieved artifact means the most (the
   // outliers land during grounding but matter while `Generating` drafts against them). With no
   // active row (the final beat, everything done) it falls to the last row rather than vanishing.
+  // ...unless the payload names its own row. A CONCURRENT run (the account read's two Apify
+  // scrapes) can land step 2's artifacts while step 1 is still going, and "hangs off the active
+  // row" then draws the covers under the wrong label. A named row wins; absent, nothing changes.
   const activeIdx = rows.findIndex((s) => s.status === 'active');
-  const evidenceIdx = activeIdx === -1 ? rows.length - 1 : activeIdx;
+  const taggedIdx = evidence?.step ? rows.findIndex((s) => s.name === evidence.step) : -1;
+  const evidenceIdx =
+    taggedIdx !== -1 ? taggedIdx : activeIdx === -1 ? rows.length - 1 : activeIdx;
 
   return (
     <div aria-live="polite" aria-label="Skill run progress" className="flex flex-col">
@@ -276,6 +281,12 @@ export function ProgressChecklist({
           isLast={index === rows.length - 1}
           evidence={index === evidenceIdx ? evidence ?? null : null}
           showElapsed={showElapsed}
+          // THE LEAD ROW — the first live one, and the only one that gets the accent, the running
+          // clock and the sub-detail. A concurrent pipeline can have several rows genuinely live at
+          // once (the account read's two scrapes), and letting each wear the full live treatment
+          // put two coral nodes and two running clocks on screen for half the wait — undoing the
+          // craft pass that took accent-filled elements 4 → 1. The others stay honestly live, quietly.
+          isLead={index === activeIdx}
           onMeasured={onMeasured}
         />
       ))}
@@ -291,6 +302,12 @@ interface StageRowProps {
   isLast: boolean;
   evidence?: RunEvidence | null;
   showElapsed?: boolean;
+  /**
+   * Is this the row leading the run — the first live one? Only the lead wears the full live
+   * treatment (accent node, running clock, rotating sub-detail, flowing rail). Defaults true, so a
+   * sequential pipeline, where at most one row is ever live, is byte-identical.
+   */
+  isLead?: boolean;
   onMeasured?: (name: string, ms: number) => void;
 }
 
@@ -366,10 +383,15 @@ function StageRow({
   isLast,
   evidence,
   showElapsed = true,
+  isLead = true,
   onMeasured,
 }: StageRowProps) {
   const { name, status } = stage;
   const isActive = status === 'active';
+  /** Live and leading — the one row allowed to be loud. */
+  const isLeadActive = isActive && isLead;
+  /** Live, but not the one being narrated: running, shown quietly, no accent and no clock. */
+  const isQuietActive = isActive && !isLead;
 
   // Rotating sub-copy: while ACTIVE, cycle through this stage's honest sub-phases so a long wait
   // feels alive. A live backend `detail` overrides the rotation. Non-active steps show nothing.
@@ -379,12 +401,12 @@ function StageRow({
   useEffect(() => {
     // Rotate only while active with >1 phase. Each row mounts once (keyed by name) and starts at
     // subIdx 0 while pending, so no reset is needed on state change.
-    if (!isActive || rotation.length <= 1) return;
+    if (!isLeadActive || rotation.length <= 1) return;
     const id = setInterval(() => {
       setSubIdx((i) => (i + 1) % rotation.length);
     }, 2600);
     return () => clearInterval(id);
-  }, [isActive, rotation.length]);
+  }, [isLeadActive, rotation.length]);
 
   const elapsedMs = useStageClock(
     status,
@@ -394,12 +416,19 @@ function StageRow({
   // "Drafting angles against your audience" directly above "Drafting against 3 proven videos" —
   // the same sentence twice, the second one the only one carrying proof.
   const sub =
-    isActive && !evidence ? stage.detail ?? rotation[subIdx % rotation.length] ?? null : null;
+    isLeadActive && !evidence ? stage.detail ?? rotation[subIdx % rotation.length] ?? null : null;
   const isDone = status === 'done';
   // A stamp is worth showing once there is a whole second in it. Below that it flickers on and
   // off between renders and reads as jitter rather than as information.
+  //
+  // A quiet live row shows none. The clock still RUNS for it — `useStageClock` is what reports the
+  // true duration to the container on freeze — but two counters ticking at once is the per-row
+  // clock noise the craft pass removed. A finished row keeps its frozen stamp: that is a receipt,
+  // not a second running clock.
   const stamp =
-    showElapsed && elapsedMs !== null && elapsedMs >= 1000 ? formatDuration(elapsedMs) : null;
+    showElapsed && !isQuietActive && elapsedMs !== null && elapsedMs >= 1000
+      ? formatDuration(elapsedMs)
+      : null;
 
   return (
     <div
@@ -411,7 +440,7 @@ function StageRow({
           "this step is finished" now that the ✓ is gone: done → a solid cream fill; active → a soft
           cream pulse traveling DOWN it (energy flowing toward the next step); pending → bare rail. */}
       <div className="flex w-3.5 shrink-0 flex-col items-center">
-        <StageNode status={status} />
+        <StageNode status={status} isLead={isLead} />
         {!isLast && (
           <div className="relative my-1 w-px flex-1 min-h-[12px] overflow-hidden bg-white/[0.06]">
             {isDone && (
@@ -422,7 +451,8 @@ function StageRow({
                 style={{ backgroundColor: 'rgba(236, 231, 222, 0.40)' }}
               />
             )}
-            {isActive && <div className="spine-flow absolute inset-x-0 top-0 h-full" />}
+            {/* One travelling pulse, on the lead leg only — two would read as two separate runs. */}
+            {isLeadActive && <div className="spine-flow absolute inset-x-0 top-0 h-full" />}
           </div>
         )}
       </div>
@@ -431,14 +461,16 @@ function StageRow({
           rail. The ACTIVE label shimmers (the "working now" cue); done/pending are solid cream. */}
       {/* Tight resting rhythm; only the LIVE row breathes. A 4-step plan with a sub-detail and an
           evidence rail was a tall block at a uniform pb-3. */}
-      <div className={cn('min-w-0 flex-1', isActive ? 'pb-[11px]' : 'pb-[7px]')}>
+      <div className={cn('min-w-0 flex-1', isLeadActive ? 'pb-[11px]' : 'pb-[7px]')}>
         <div className="flex items-baseline gap-2">
           <p
             className={cn(
               'min-w-0 text-body font-medium leading-snug transition-colors duration-300',
               // The shimmer is the liveness cue, and with the per-step ✓ gone it is carrying more:
               // it is what Claude and ChatGPT actually use to say "working on this one".
-              status === 'active' && 'text-shimmer',
+              // Exactly one row shimmers — it is the answer to "where am I", and two would ask the
+              // reader to pick.
+              isLeadActive && 'text-shimmer',
             )}
             style={{
               color:
@@ -446,9 +478,11 @@ function StageRow({
                   ? // FINISHED WORK RECEDES. It used to brighten to cream-secondary, which made a
                     // column of completed steps the loudest thing on screen for the whole run.
                     'var(--color-cream-muted)'
-                  : status === 'active'
+                  : isLeadActive
                   ? undefined // text-shimmer owns the fill
-                  : 'var(--color-cream-muted)',
+                  : // Quiet live rows sit exactly where finished ones do. Their node carries the
+                    // difference — fill vs outline, which is how this spine separates states.
+                    'var(--color-cream-muted)',
               opacity: status === 'pending' ? 0.55 : 1,
             }}
           >
@@ -496,24 +530,41 @@ function StageRow({
  *             a box-shadow glow ring).
  *  - done:    solid cream at 55%, with a brief scale pop as it lands.
  */
-function StageNode({ status }: { status: StageState['status'] }) {
+function StageNode({
+  status,
+  isLead = true,
+}: {
+  status: StageState['status'];
+  isLead?: boolean;
+}) {
   const isDone = status === 'done';
   const isActive = status === 'active';
+  const isLeadActive = isActive && isLead;
+  const isQuietActive = isActive && !isLead;
 
   return (
     <span
       className={cn(
         'mt-[5px] h-[7px] w-[7px] shrink-0 rounded-full transition-all duration-[400ms] ease-[var(--ease-out-cubic)]',
+        // Both live states breathe — the motion is what says "running". Only the lead is coral.
         isActive && 'animate-stage-breathe',
         isDone && 'animate-node-land',
       )}
       style={{
-        backgroundColor: isActive
+        backgroundColor: isLeadActive
           ? 'var(--color-accent)'
           : isDone
           ? 'rgba(236, 231, 222, 0.55)'
           : 'transparent',
-        boxShadow: isActive || isDone ? 'none' : 'inset 0 0 0 1px rgba(236, 231, 222, 0.16)',
+        // A quiet live row is an OUTLINE, brighter than pending's and breathing where pending is
+        // still. Fill vs outline is how this spine separates states, so a second live row reads as
+        // running without spending the accent — which is reserved for the one row being narrated.
+        boxShadow:
+          isLeadActive || isDone
+            ? 'none'
+            : isQuietActive
+            ? 'inset 0 0 0 1px rgba(236, 231, 222, 0.45)'
+            : 'inset 0 0 0 1px rgba(236, 231, 222, 0.16)',
       }}
       aria-hidden="true"
     />
