@@ -14,20 +14,49 @@
   --border:rgba(255,255,255,.06); --hair:rgba(255,255,255,.08);
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:#0f0f0e;color:var(--cream);font-family:Inter,system-ui,sans-serif;
-  -webkit-font-smoothing:antialiased;display:flex;gap:32px;padding:28px;align-items:flex-start}
+/* The rail below is the artefact under review and keeps Virtuna's committed system untouched
+   (globals.css: charcoal, cream #ece7de, coral #FF6363). This review scaffolding deliberately
+   adds NO display face and NO second accent — a third typeface would compete with the thing
+   being judged. Dark only, on purpose: #181817 is baked into the component, so a light
+   rendering would misrepresent it. */
+body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased}
+.page{display:grid;grid-template-columns:minmax(0,1fr) 440px;gap:56px;
+  max-width:1080px;margin:0 auto;padding:56px 40px 80px;align-items:start}
 
-/* ── control strip (scaffolding — not part of the design) ────────────────── */
-.ctl{width:206px;position:sticky;top:28px;flex:none}
-.ctl h1{font-size:13px;font-weight:600;letter-spacing:-.01em}
-.ctl>p{font-size:11.5px;line-height:1.5;color:var(--faint);margin-top:6px}
-.ctl h2{font-size:9.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--faint);margin:18px 0 7px}
-.ctl button{display:block;width:100%;text-align:left;background:var(--chip);border:0;color:var(--dim);
-  font:500 12px Inter;padding:7px 10px;border-radius:8px;margin-bottom:5px;cursor:pointer}
-.ctl button[aria-pressed="true"]{background:var(--chip-on);color:var(--cream)}
-.note{font-size:11px;line-height:1.55;color:var(--faint);margin-top:16px;border-top:1px solid var(--border);
-  padding-top:13px}
-.note b{color:var(--dim);font-weight:500}
+/* ── review scaffolding (NOT part of the design) ─────────────────────────── */
+.ctl{position:sticky;top:56px;max-width:52ch}
+.brandline{width:34px;height:2px;background:var(--coral);border-radius:1px}
+.ctl h1{font-size:26px;font-weight:600;letter-spacing:-.022em;margin-top:18px;
+  text-wrap:balance;line-height:1.18}
+.ctl p.lede{font-size:15px;line-height:1.6;color:var(--dim);margin-top:12px;max-width:46ch}
+.ctl h2{font-size:11.5px;font-weight:500;letter-spacing:.1em;color:var(--faint);margin:30px 0 10px}
+.grp{display:flex;flex-wrap:wrap;gap:6px}
+.ctl .grp button{background:var(--chip);border:0;color:var(--dim);font:500 13px Inter;
+  padding:8px 14px;border-radius:9px;cursor:pointer;transition:background .15s,color .15s}
+.ctl .grp button:hover,.ctl .grp button[aria-pressed="true"]{background:var(--chip-on);color:var(--cream)}
+.ctl .grp button:focus-visible{outline:2px solid var(--coral);outline-offset:2px}
+.steps,.calls{list-style:none;display:flex;flex-direction:column;gap:11px}
+.steps{counter-reset:s}
+.steps li,.calls li{font-size:13.5px;line-height:1.6;color:var(--dim);
+  padding-left:19px;position:relative;max-width:50ch}
+.steps li{counter-increment:s}
+.steps li::before{content:counter(s);position:absolute;left:0;top:1px;
+  font:500 11px Inter;color:var(--faint);font-variant-numeric:tabular-nums}
+.calls li::before{content:"";position:absolute;left:2px;top:9px;width:4px;height:4px;
+  border-radius:99px;background:rgba(236,231,222,.3)}
+.steps b,.calls b{color:var(--cream);font-weight:500}
+/* NOT `.foot` — that is the rail's own "How to read these numbers" row, and a bare .foot here
+   would silently override its display:flex. Same trap as `.lede` vs a bare `.ctl>p`. */
+.note-foot{font-size:12.5px;line-height:1.6;color:var(--faint);margin-top:30px;
+  padding-top:18px;border-top:1px solid var(--border);max-width:50ch}
+.ctl code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;
+  background:var(--chip);padding:1px 5px;border-radius:4px;color:var(--dim)}
+@media (max-width:980px){
+  .page{grid-template-columns:minmax(0,1fr);gap:40px;padding:36px 20px 64px}
+  .ctl{position:static;max-width:60ch}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
 /* ── the rail — exactly 440 ──────────────────────────────────────────────── */
 .rail{width:440px;height:812px;background:var(--rail);border-left:1px solid var(--border);
@@ -250,26 +279,53 @@ body{background:#0f0f0e;color:var(--cream);font-family:Inter,system-ui,sans-seri
 </head>
 <body>
 
-<div class="ctl">
-  <h1>Insights · rev 6</h1>
-  <p>The hero restored. Rev 5's chrome kept. The cortex driven by the retention curve.</p>
+<div class="page">
+<aside class="ctl">
+  <div class="brandline"></div>
+  <h1>Ambient Audience · insight drill</h1>
+  <p class="lede">Revision 6. The hero is back, and the cortex now reads the retention curve
+    instead of looping a seeded envelope.</p>
 
   <h2>Stimulus</h2>
-  <button data-kind="video" aria-pressed="true">Video · creator</button>
-  <button data-kind="text" aria-pressed="false">Text · hook concept</button>
+  <div class="grp">
+    <button data-kind="video" aria-pressed="true">Video · creator</button>
+    <button data-kind="text" aria-pressed="false">Text · hook concept</button>
+  </div>
 
   <h2>Tab</h2>
-  <button data-tab="overview" aria-pressed="true">Overview</button>
-  <button data-tab="audience" aria-pressed="false">Audience</button>
-  <button data-tab="engagement" aria-pressed="false">Engagement</button>
-
-  <div class="note">
-    <b>Drag the retention curve.</b> One playhead drives the transcript, the clock and the cortex
-    readout together.<br><br>
-    <b>The hero</b> is the shipped <code>CortexCanvas</code> / terrain, here as a still. In the build
-    it repaints live from <code>weighted_curve</code> in <code>grounded</code> mode.
+  <div class="grp">
+    <button data-tab="overview" aria-pressed="true">Overview</button>
+    <button data-tab="audience" aria-pressed="false">Audience</button>
+    <button data-tab="engagement" aria-pressed="false">Engagement</button>
   </div>
-</div>
+
+  <h2>Try this first</h2>
+  <ol class="steps">
+    <li><b>Drag the retention curve</b> on video · Overview. One playhead moves the transcript, the
+      clock and the three network bars together. Attention runs 91%&nbsp;→&nbsp;38% across the break
+      while drift climbs 26%&nbsp;→&nbsp;60%.</li>
+    <li>Walk <b>Audience</b> and <b>Engagement</b> — the same terrain figure, lit for a different
+      question each time.</li>
+    <li>Switch to <b>Text</b>. It should read as a different instrument, not a video screen with
+      empty slots: no timeline anywhere, voices instead.</li>
+  </ol>
+
+  <h2>Calls you may want to reverse</h2>
+  <ul class="calls">
+    <li><b>Cut the signal-cost ladder</b> from Engagement — editorial rather than data, and it
+      repeated the card above it. Rev 3 died of form variety.</li>
+    <li><b>Coral on one reason bar, not three.</b> The shipped component colours every friction
+      reason; at 3-of-5 it shouted. Only the dominant loss is marked now.</li>
+    <li><b>Header cut to 283px</b> to buy the hero its space — so the title is one line with an
+      ellipsis. Restoring the full sentence pushes the hero ~40px below the fold.</li>
+    <li><b>Engagement leads with the terrain re-lit</b> rather than having no hero. Consistency won,
+      but it is the same figure a third time.</li>
+  </ul>
+
+  <p class="note-foot">Mockup only. The hero is a still cropped from the shipped rail — in the build
+    it is the live <code>CortexCanvas</code>, repainting from <code>weighted_curve</code> in
+    <code>grounded</code> mode. That wiring has already shipped.</p>
+</aside>
 
 <div class="rail">
   <div class="head">
@@ -306,6 +362,7 @@ body{background:#0f0f0e;color:var(--cream);font-family:Inter,system-ui,sans-seri
   </div>
 
   <div class="body" id="body"></div>
+</div>
 </div>
 
 <script>

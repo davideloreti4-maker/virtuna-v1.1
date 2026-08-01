@@ -374,3 +374,70 @@ the second mutation-checked (drop the prop → red).
    `reasons`, so the unlock never renders on a real video drill. Rev 6's answer block carries the
    fix chip in the header, which is the video-appropriate unlock the handoff asked for — it lands
    with the implementation.
+
+---
+
+## 10. Rev 7 kickoff — START HERE
+
+The owner reviewed rev 6 and has **a lot of adjustments**, to be given in a fresh session. Rev 6 is
+NOT approved; nothing has been implemented in React. Read §0 (why revs 3/4/5 died), §4 (the
+direction), §6 (the laws), then this section.
+
+### Where everything is
+
+| | |
+|---|---|
+| Worktree · branch | `~/virtuna-slot-b` · `task/insights-rework` — **do not switch branches** |
+| PR | **#412**, open. Tip `a3a074ed`. |
+| The mockup | `docs/mockups/insights-rev6-hero-restored-2026-08-01.html` — **this one file is everything**: the 440px rail AND the review scaffolding column. Open it directly, no server. |
+| The review link | https://claude.ai/code/artifact/f42c45fb-0d27-4d84-8a65-568e9f1e8db3 |
+| Rebuild the link | `node scripts/build-insights-review-artifact.mjs /tmp/review.html`, then publish with the Artifact tool **passing that URL as `url`** so the owner's link keeps working. |
+| Screenshots of rev 6 | `docs/mockups/reference-2026-08-01/rev6-*.png` |
+| Live shipped rail | `/ambient-v2` → `② brain` → `creator · LIVE adapter` / `creator · TEXT sim`. No auth. Port 3002. |
+
+### The loop for an adjustment
+
+1. Edit the mockup. Everything lives in that one file — no build step to see it.
+2. Re-screenshot to check it (screenshots hang on this app; use raw Playwright with
+   `animations:'disabled'`, `caret:'hide'`, and `.screenshot()` on the `.rail` element).
+3. `node scripts/build-insights-review-artifact.mjs` → publish to the SAME artifact URL.
+4. Commit atomically.
+
+### Traps this session hit — they will cost you an hour each
+
+- **Duplicate class names silently break layout.** `.win` was used for both the answer block's
+  positive-emphasis span and the post-window strip; `display:flex` on the strip turned a
+  `<span class="win">` inside a paragraph into a flex container and blew a 2-line paragraph to 5.
+  The header measured 342px instead of 283px and I nearly redesigned the copy to fix it.
+  **Measure the sub-blocks before rewriting anything.**
+- **`.foot` and `.lede` are cascade collisions** between the scaffolding column and the rail. `.foot`
+  is the rail's own "How to read these numbers" row — the aside uses `.note-foot`. And the mockup's
+  `.ctl>p` (0,1,1) beats a bare `.lede` (0,1,0), hence `.ctl p.lede`. Both are commented in place.
+- **The hero stills are cropped from the shipped screenshots**, which carry the shipped surface's
+  own baked chrome. Two `.mask` bands paint it out. **Geometry** (1x coords of the reference PNGs):
+  the cortex window is source y 112→375 at scale 1.0266 (`width:452px;left:-33px;top:-115px`), masks
+  28px top / 42px bottom; the baked corner label sits at y 120–136 and the baked verdict chip at
+  y 336–365, so any reframing must clear both. The terrain is `width:739px;left:-180px;top:-294px`
+  with a 4px bottom mask. **If you change `hero()`, update `CROP` in the build script to match.**
+- **Verify the artifact with all network blocked**, not just locally — that is the condition the CSP
+  actually imposes. `ctx.route('**://**', r => r.request().url().startsWith('file:') ? r.continue() : r.abort())`.
+- **`document.fonts.check()` is false for a face not yet used on screen.** To prove a webfont really
+  rendered, measure a string's width against a forced fallback (Newsreader 321.7 vs Georgia 324.2 vs
+  Inter 350.1 at 40px) — a computed `font-family` proves nothing.
+
+### What is already settled — do not relitigate
+
+- The hero stays. §0. This is the whole reason rev 6 exists.
+- Rev 5's chrome below the hero stays: filled `#212120` cards with no border, chips, segmented
+  control, sentence-case labels, zero uppercase-mono.
+- The persistent answer block stays above the tabs.
+- Video and text are inverse instruments (§3.3) — video has the timeline and no voices, text has the
+  voices and no timeline. Neither side is stubbed.
+- Benchmarks are always the creator's own catalogue, never an industry band (§5.2).
+- The cortex grounding is DONE and merged into this branch (§9). Do not re-do it.
+
+### The four calls most likely to be adjusted
+
+They are listed in the mockup's own scaffolding column, so the owner was reading them while
+reviewing: the cut signal-cost ladder · coral on one reason bar instead of three · the 283px header
+that forced a one-line ellipsised title · Engagement leading with the terrain re-lit a third time.
