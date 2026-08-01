@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Insights rev 7 — metric-first tabs</title>
+<title>Insights rev 8 — the fix acts, the evidence folds</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400&display=swap" rel="stylesheet">
@@ -60,7 +60,7 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 
 /* ── the rail — exactly 440 ──────────────────────────────────────────────── */
 .rail{width:440px;height:812px;background:var(--rail);border-left:1px solid var(--border);
-  display:flex;flex-direction:column;flex:none}
+  display:flex;flex-direction:column;flex:none;position:relative}
 .head{padding:20px 22px 0}
 .navrow{display:flex;align-items:center;justify-content:space-between;height:20px}
 .back{background:0;border:0;color:var(--faint);font:400 13px Inter;cursor:pointer}
@@ -72,8 +72,9 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
   padding:0 4px}
 .pager .pg:hover{color:var(--cream)}
 
-/* identity — thumbnail + one-line title + the TikTok-native stat row.
-   Appears ONCE, above the tabs, and scrolls away (rev 7.3) — never repeated per tab. */
+/* identity — thumbnail + one-line title + the projected counts.
+   rev 8 DEMOTES the stat row: these are projections for a post that does not exist yet, and at
+   cream/12.5px they were the loudest data on the page. The answer must win the first fixation. */
 .ident{display:flex;gap:11px;padding-top:16px;align-items:center}
 .thumb{width:40px;height:54px;border-radius:7px;background:var(--figure);flex:none;position:relative;
   overflow:hidden;display:flex;align-items:flex-end;justify-content:center;padding-bottom:4px}
@@ -83,24 +84,45 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 .ident .meta{min-width:0;flex:1}
 .title{font-size:13px;line-height:1.35;color:var(--dim);white-space:nowrap;overflow:hidden;
   text-overflow:ellipsis}
-.stats{display:flex;gap:15px;margin-top:8px;align-items:center}
+.stats{display:flex;gap:14px;margin-top:7px;align-items:center}
 .ptag{margin-left:auto;background:var(--chip);border-radius:5px;padding:2px 6px;
   font:500 10px Inter;color:var(--faint)}
 .stat{display:flex;align-items:center;gap:5px}
-.stat svg{opacity:.42;flex:none}
-.stat b{font:500 12.5px/1 Inter;color:var(--cream);font-variant-numeric:tabular-nums}
+.stat svg{opacity:.3;flex:none}
+.stat b{font:400 11.5px/1 Inter;color:var(--faint);font-variant-numeric:tabular-nums}
 
+/* ── the answer — the ONE coral zone on the page, and now the ONE control ── */
 .answer{margin-top:14px;padding-left:13px;border-left:2px solid var(--coral)}
 .answer h2{font:600 16.5px/1.28 Inter;letter-spacing:-.018em;color:var(--cream)}
 .answer p{font-size:13px;line-height:1.5;color:var(--dim);margin-top:5px}
 .answer .loss{color:var(--coral)}
 .answer .win{color:var(--cream)}
-/* the fix is a BUTTON and a route: video → the instrument at the break; text → the reasons */
-.fix{display:inline-flex;align-items:center;gap:8px;background:var(--chip);border:0;border-radius:9px;
-  padding:6px 11px 6px 9px;margin-top:10px;cursor:pointer;text-align:left}
-.fix:hover{background:var(--chip-on)}
-.fix .b{font:500 12.5px Inter;color:var(--cream)}
-.fix .g{font:500 12px Inter;color:var(--dim);font-variant-numeric:tabular-nums}
+.arow{display:flex;align-items:center;gap:9px;margin-top:11px;flex-wrap:wrap}
+/* rev 8: the fix APPLIES. It used to route to the evidence and stop there — a lever the user
+   could read but not pull. `domain-template.ts:289` types unlock as {lever,gain,insight}: text,
+   no handler, while the v1 room already has a working onRewrite that re-simulates. */
+.fix{display:inline-flex;align-items:center;gap:8px;background:var(--cream);border:0;border-radius:9px;
+  padding:7px 12px 7px 10px;cursor:pointer;text-align:left}
+.fix:hover{background:#fff}
+.fix svg{opacity:.55}
+.fix .b{font:500 12.5px Inter;color:#1c1b19}
+.fix .g{font:500 12px Inter;color:rgba(28,27,25,.55);font-variant-numeric:tabular-nums}
+.seeit{background:0;border:0;font:400 12px Inter;color:var(--faint);cursor:pointer;padding:0}
+.seeit:hover{color:var(--dim)}
+
+/* the applied result — before → after on one line, then the decision */
+.answer.done{border-left-color:rgba(236,231,222,.5)}
+.delta{display:flex;align-items:center;gap:10px;margin-top:10px;background:var(--card);
+  border-radius:10px;padding:10px 12px}
+.delta .col{display:flex;flex-direction:column;gap:2px}
+.delta i{font-style:normal;font-size:10.5px;color:var(--faint);white-space:nowrap}
+.delta b{font:500 17px/1 Inter;letter-spacing:-.012em;font-variant-numeric:tabular-nums;color:var(--cream)}
+.delta .was b{color:var(--faint);font-weight:400}
+.delta .arw{color:var(--faint);font-size:13px;margin-top:12px}
+.delta .tag{margin-left:auto;align-self:flex-end;background:var(--chip);border-radius:5px;
+  padding:2px 6px;font:500 10px Inter;color:var(--faint)}
+.undo{background:0;border:0;font:400 12px Inter;color:var(--faint);cursor:pointer;padding:0}
+.undo:hover{color:var(--dim)}
 
 /* tabs — INSIDE the scroll, sticking at its top once the identity scrolls away (the TikTok
    pattern). Opaque rail fill so content slides under it cleanly. */
@@ -116,6 +138,19 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
   scrollbar-color:rgba(236,231,222,.14) transparent}
 .body::-webkit-scrollbar{width:6px}
 .body::-webkit-scrollbar-thumb{background:rgba(236,231,222,.14);border-radius:3px}
+.body.hasbar{padding-bottom:78px}
+
+/* rev 8: the action follows you. The drill used to dead-end — Audience and Engagement carry no
+   fix control at all, so the only thing left at the bottom of those pages was the back arrow.
+   The rule is one line and self-describing: show this when no .fix is reachable on screen. It
+   carries the SAME button, never a second one — measured, not guessed at a scroll offset (at an
+   812px rail the answer never scrolls out of Overview, so an offset rule fired never). */
+.actionbar{position:absolute;left:0;right:0;bottom:0;background:var(--rail);
+  border-top:1px solid var(--border);padding:11px 22px;display:flex;align-items:center;gap:10px;
+  transform:translateY(100%);transition:transform .2s ease;z-index:8}
+.actionbar.on{transform:translateY(0)}
+.actionbar .lab{font-size:12px;color:var(--faint);min-width:0;flex:1;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* ── the heroes — full bleed, 270, the figure IS the wow ─────────────────── */
 .hero{position:relative;height:270px;border-radius:14px;overflow:hidden;background:var(--figure);
@@ -134,12 +169,14 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
   background:rgba(20,20,19,.82);border-radius:10px;padding:6px 10px}
 .verdict b{font:300 24px/1 Inter;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
 .verdict span{font-size:12px;color:var(--faint);margin-left:6px}
+/* rev 8: the figure states the claim it is evidence for. The cortex used to be a beautiful
+   surface with the headline written in text underneath it — decoration with a caption. */
+.figread{position:absolute;right:10px;bottom:10px;background:rgba(20,20,19,.82);border-radius:8px;
+  padding:5px 9px;font:500 11px Inter;color:rgba(236,231,222,.72);font-variant-numeric:tabular-nums}
 /* the terrain self-reads — each district carries its own rate (as shipped) */
 .dist{position:absolute;font:500 11px Inter;color:rgba(236,231,222,.82);white-space:nowrap;
   font-variant-numeric:tabular-nums}
 .dist b{font-weight:500;color:rgba(236,231,222,.5);margin-left:5px}
-.dist.loss{color:var(--coral)}
-.dist.loss b{color:rgba(255,99,99,.6)}
 /* the post itself — a mini frame INSIDE the Retention card (TikTok centres the playing video in
    its retention section the same way). Placeholder = inline SVG line pattern, no gradient ramp,
    no external asset; the build renders the drill's real cover. */
@@ -163,13 +200,14 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 .chead .r{font-size:11.5px;color:var(--faint);font-variant-numeric:tabular-nums;white-space:nowrap}
 
 /* ONE takeaway FRAGMENT per card (≤6 words) or nothing — never a sentence with clauses.
-   Anything longer belongs in "How to read these numbers". */
+   rev 8 drops the coral span: the answer block is the page's only coral, so a second red
+   phrase down here was a second claim competing with it. */
 .insight{margin-top:13px;padding-top:11px;border-top:1px solid var(--border);
   font:500 12.5px/1.5 Inter;letter-spacing:-.005em;color:var(--cream)}
-.insight .loss{color:var(--coral)}
 
-/* key-metric tiles — the TikTok idiom: label, big number, delta vs your own median.
-   Coral marks the DOMINANT loss only (.bad); lesser misses keep a quiet ↓. */
+/* key-metric tiles. rev 8: no coral. The dominant loss is named once, in the answer; a tile that
+   also shouted it in red made four red things on one screen and flattened the hierarchy.
+   The loss now reads by POSITION (first tile) and by its delta line. */
 .tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
 .tile{background:var(--chip);border-radius:10px;padding:11px 12px 12px}
 .tile i{font-style:normal;display:block;font-size:11px;color:var(--faint);white-space:nowrap;
@@ -178,20 +216,22 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
   font-variant-numeric:tabular-nums;margin-top:5px}
 .tile em{font-style:normal;display:block;font-size:11px;color:var(--dim);
   font-variant-numeric:tabular-nums;margin-top:3px}
-.tile.bad b,.tile.bad em{color:var(--coral)}
+.tile.lead{background:var(--chip-on)}
 
 /* retention figure — the read is annotated ON the figure, not written under it */
 .curvewrap{margin-top:12px;cursor:ew-resize;touch-action:none;position:relative}
 .anno{position:absolute;left:12%;top:8px;padding:3px 7px;border-radius:6px;
   background:rgba(20,20,19,.78);font:500 10.5px Inter;color:var(--coral);
   font-variant-numeric:tabular-nums;pointer-events:none}
+/* after the fix the playhead parks at 0:02 under the default anno position, and the trimmed curve
+   runs high across the top-left — so the label moves right, where the curve has descended */
+.anno.fixed{color:rgba(236,231,222,.8);left:auto;right:8px}
 .moments{display:flex;gap:7px;margin-top:12px}
 .mo{background:var(--chip);border:0;border-radius:9px;padding:8px 11px;cursor:pointer;
   display:flex;align-items:baseline;gap:7px}
 .mo:hover,.mo[aria-pressed="true"]{background:var(--chip-on)}
 .mo i{font-style:normal;font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums}
 .mo b{font:500 12.5px Inter;font-variant-numeric:tabular-nums;color:var(--cream)}
-.mo.dip b{color:var(--coral)}
 /* the transcript is ONE line, synced to the playhead — rev 6's five-line grey block is gone */
 .tstrip{position:relative;margin-top:12px;height:19px;overflow:hidden;
   -webkit-mask-image:linear-gradient(90deg,transparent,#000 10%,#000 90%,transparent);
@@ -222,14 +262,21 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
   font-variant-numeric:tabular-nums}
 .prow.loss .dr{color:var(--coral)}
 
-/* dot-matrix count rows — the shipped, product-native component */
-.dm{display:flex;align-items:center;gap:12px;padding:9px 0}
+/* dot-matrix count rows — the shipped, product-native component.
+   rev 8: each row is a BUTTON. The v2 AudienceTab already ships onInterview(who) — talking to a
+   simulated viewer is the most differentiated thing in the product and the mock had dropped it. */
+.dm{display:flex;align-items:center;gap:12px;padding:9px 0;width:100%;background:0;border:0;
+  cursor:pointer;text-align:left;border-radius:8px}
+.dm:hover{background:rgba(236,231,222,.03)}
 .dm .nm{width:112px;flex:none;font-size:13px;color:var(--dim)}
 .dm .dots{flex:1;display:flex;gap:5px}
 .dm .dots s{width:5px;height:5px;border-radius:99px;text-decoration:none;background:rgba(236,231,222,.13)}
 .dm .n{width:36px;flex:none;text-align:right;font:500 13.5px Inter;color:var(--cream);
   font-variant-numeric:tabular-nums}
-.dm.loss .nm,.dm.loss .n{color:var(--coral)}
+.dm .cv{width:9px;flex:none;color:var(--faint);font-size:11px;transition:transform .15s}
+.dm[aria-expanded="true"] .cv{transform:rotate(90deg)}
+.dm[aria-expanded="true"] .nm{color:var(--cream)}
+.segv{padding:2px 0 10px 0}
 
 /* voices — the ONLY serif on the surface */
 .voice{padding:13px 0;border-bottom:1px solid var(--border)}
@@ -257,8 +304,8 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
   text-decoration:none}
 .rb .vl{width:32px;flex:none;text-align:right;font:500 12.5px Inter;color:var(--cream);
   font-variant-numeric:tabular-nums}
-.rb.loss .nm,.rb.loss .vl{color:var(--coral)}
-.rb.loss .tr s{background:var(--coral)}
+.rb.lead .nm{color:var(--cream)}
+.rb.lead .tr s{background:rgba(236,231,222,.85)}
 
 /* post window strip */
 .pw{display:flex;gap:4px;margin-top:12px;align-items:flex-end}
@@ -271,8 +318,52 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
   text-decoration:none;font-variant-numeric:tabular-nums}
 
 .foot{margin-top:24px;padding-top:14px;border-top:1px solid var(--border);display:flex;
-  align-items:center;justify-content:space-between;font-size:11.5px;color:var(--faint);cursor:pointer}
+  align-items:center;justify-content:space-between;font-size:11.5px;color:var(--faint);cursor:pointer;
+  width:100%;background:0;border-left:0;border-right:0;border-bottom:0;font-family:Inter}
 .foot:hover{color:var(--dim)}
+.foot .cv{transition:transform .15s}
+.foot[aria-expanded="true"]{color:var(--dim)}
+.foot[aria-expanded="true"] .cv{transform:rotate(90deg)}
+
+/* ── the method drawer ───────────────────────────────────────────────────────
+   Where the shipped rail's instrument goes. It runs FIVE number systems on one screen — 0..100
+   signal scores, z-scores, a 0..100 per-second grid, retention %, and moment scores — and
+   brain-signals.ts says the nine are derived from the same seven networks the σ bars show raw.
+   Same quantity, two scales, stacked. rev 8 keeps every bit of it and stops it LEADING: the
+   surface speaks one unit (% of the room still watching), the instrument proves it one tap down.
+   No coral in here at all — these grades are, per that file, "a cutoff on a MODELED signal, NOT a
+   benchmark against real outcomes", and an unbenchmarked judgement must not shout. */
+.method{margin-top:2px;padding-top:4px}
+.mhead{font:500 10.5px Inter;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);
+  margin:16px 0 9px}
+.mnote{font-size:11.5px;line-height:1.5;color:var(--faint);margin-top:10px}
+.sig{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);
+  border-radius:9px;overflow:hidden}
+.sig div{background:var(--rail);padding:9px 10px 10px}
+.sig b{display:block;font:400 17px/1 Inter;color:var(--dim);font-variant-numeric:tabular-nums}
+.sig i{font-style:normal;display:block;font-size:9.5px;color:var(--faint);margin-top:5px;
+  letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.zr{display:flex;align-items:center;gap:10px;padding:5px 0}
+.zr .nm{width:96px;flex:none;font-size:11.5px;color:var(--faint);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+/* a z-score bar without a zero baseline cannot be read — the shipped one has none, so a bar at
+   −0.73σ and one at +0.35σ look like the same object at different lengths */
+.zr .tk{flex:1;height:14px;position:relative;background:rgba(236,231,222,.05);border-radius:3px}
+.zr .tk u{position:absolute;top:0;bottom:0;left:50%;width:1px;background:rgba(236,231,222,.22);
+  text-decoration:none}
+.zr .tk s{position:absolute;top:4px;height:6px;border-radius:2px;text-decoration:none;
+  background:rgba(236,231,222,.5)}
+.zr .vl{width:44px;flex:none;text-align:right;font:400 11px Inter;color:var(--dim);
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+.heat{display:flex;flex-direction:column;gap:2px}
+.hrow{display:flex;align-items:center;gap:8px}
+.hrow .nm{width:58px;flex:none;font-size:9.5px;color:var(--faint);letter-spacing:.04em;
+  text-transform:uppercase;text-align:right}
+.hrow .cells{flex:1;display:flex;gap:1px}
+.hrow .cells s{flex:1;height:9px;border-radius:1px;text-decoration:none}
+.hax{display:flex;justify-content:space-between;margin:6px 0 0 66px;font-size:9.5px;color:var(--faint);
+  font-variant-numeric:tabular-nums}
+.mdead{font-size:11px;color:var(--faint);margin-top:9px;line-height:1.5}
 </style>
 </head>
 <body>
@@ -281,9 +372,9 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 <aside class="ctl">
   <div class="brandline"></div>
   <h1>Ambient Audience · insight drill</h1>
-  <p class="lede">Revision 7.5 — the audit pass. The fix chip now routes (verdict → evidence →
-    action), the pager steps between the room’s drills, the frame answers the scrubber, and the
-    stat row admits it is projected.</p>
+  <p class="lede">Revision 8 — the fix stops being a sentence and becomes a control. One unit on the
+    surface, the instrument folded one tap down, coral spent exactly once per screen, and the
+    action follows you to the bottom of the page.</p>
 
   <h2>Stimulus</h2>
   <div class="grp">
@@ -300,30 +391,38 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 
   <h2>Try this first</h2>
   <ol class="steps">
-    <li><b>Tap the fix chip</b> on video · Overview — it routes to the instrument, parked on the
-      break. On Text it scrolls to the reasons. Verdict → evidence → action.</li>
-    <li><b>Drag the retention curve</b> on Engagement: playhead, readout, the frame’s progress
-      line and the one-line transcript move together.</li>
-    <li><b>‹ › in the top-right</b> steps between the room’s drills (here: the two fixtures).
-      Switch to Text and the instrument becomes the voices.</li>
+    <li><b>Press “Trim 0:00–0:03”</b> on Overview. It re-simulates: the answer becomes a
+      before → after, the cortex repaints, the tiles move, and Engagement’s curve redraws against
+      the old one. <b>Undo</b> puts it back.</li>
+    <li><b>Switch to Audience or Engagement.</b> Those pages carry no fix of their own, so the same
+      button rides at the foot of the rail — and goes quiet the moment the fix is applied. The
+      drill no longer dead-ends in an explainer.</li>
+    <li><b>Open “How these numbers are made”</b> at the bottom. The nine signals, the σ bars and
+      the per-second grid live there now — demoted, not deleted.</li>
+    <li><b>Tap a row in “What they did”</b> on Audience to hear that segment speak.</li>
   </ol>
 
   <h2>Calls you may want to reverse</h2>
   <ul class="calls">
-    <li><b>The answer sits on Overview</b> (once, after the cortex) — the TL;DR page carries the
-      verdict + fix; the instrument's on-figure annotation tells the same story on Engagement.</li>
-    <li><b>Retention is Engagement's hero</b> — watching second-by-second IS engagement. Each
-      figure appears once: cortex / Overview, room / Audience, post / Engagement.</li>
-    <li><b>Traffic sources stay on Overview</b>, where TikTok has them.</li>
-    <li><b>The nets meter row is cut</b> — in the build the live cortex carries the grounded
-      readout itself.</li>
+    <li><b>The hero now states the loss, not the keep.</b> It read <code>38% · would stop</code>
+      over an answer saying “62% leave” — but <code>CURVE[3]=.38</code> is who <em>stays</em>, and
+      the room row means <em>stopped scrolling</em>. It now reads <code>62% · leave by 0:03</code>.</li>
+    <li><b>Coral once per screen.</b> The tiles, the insights and the dot rows gave it up; the
+      answer block keeps it. Loss reads by position and weight instead.</li>
+    <li><b>The stat row is dimmed</b> to 11.5px faint — projections for an unposted video should
+      not be the loudest data on the page.</li>
+    <li><b>The primary button is cream-filled.</b> The system says active is cream on a lighter
+      fill, never coral — so the one action is the brightest object on the surface.</li>
   </ul>
 
   <p class="note-foot">Mockup only. The cortex and terrain heroes are stills cropped from the
     shipped rail — in the build they are the live <code>CortexCanvas</code> (repainting from
     <code>weighted_curve</code> in <code>grounded</code> mode; that wiring has shipped) and
     <code>AudienceTerrain</code>. Hero framing is unchanged from rev 6, so the build script's
-    <code>CROP</code> still matches.</p>
+    <code>CROP</code> still matches. The re-simulate maps to the <code>onRewrite</code> already
+    wired in the v1 room, which returns a fresh stop count. One honest gap: the cortex still shows
+    the <em>same still</em> after the trim — in the build it repaints from the new curve, which is
+    what its “after the trim” corner is promising.</p>
 </aside>
 
 <div class="rail">
@@ -347,6 +446,8 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
     </div>
     <div id="content"></div>
   </div>
+
+  <div class="actionbar" id="abar"></div>
 </div>
 </div>
 
@@ -354,6 +455,12 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 /* ────────────────────────────────────────────────────────────────────────────
    DATA — every field below maps to a real engine producer. See the metric
    ledger in docs/HANDOFF-2026-08-01-insights-three-tab.md §3.
+
+   ONE UNIT (rev 8): every percentage on the surface is "share of the room still
+   watching". The verdict, the annotation, the hook tile, the moment chips and
+   the per-pool rows all read off CURVE. Anything on another scale — the nine
+   0..100 signals, the z-scores, the per-second grid — moved into the method
+   drawer, which says which scale it is on.
    ──────────────────────────────────────────────────────────────────────────── */
 const CLIP = 28;
 /* heatmap.weighted_curve — 0..1 retention per second */
@@ -362,12 +469,18 @@ const CURVE=[1,.84,.58,.38,.358,.348,.342,.336,.33,.325,.32,.316,.311,.306,.302,
 /* the creator's own median post — the only benchmark band we hold */
 const MEDIAN=[1,.92,.76,.58,.50,.462,.44,.425,.412,.40,.389,.378,.368,.358,.348,.339,.33,.321,
               .312,.303,.294,.284,.274,.264,.253,.241,.227,.21,.175];
+/* the re-simulated curve after the trim — the payoff now opens the video */
+const TRIMMED=[1,.96,.92,.89,.86,.835,.81,.79,.77,.752,.735,.72,.705,.69,.676,.662,.648,.634,.62,
+               .605,.59,.574,.557,.539,.52,.50,.478,.454,.428];
 const BREAK_S=2;
 
 const SCRIPT=("I spent four hundred dollars testing every viral hook format so you don't have to and "+
   "the one that won wasn't the one anyone teaches here's what actually happened I ran the same script "+
   "twelve times and changed only the first three seconds").split(" ");
 const BREAK_WORD=9;
+/* the trim removes 0:00–0:03, so the transcript must open where the video now opens */
+const TRIM_WORDS=4;
+const script=()=>applied&&kind==="video"?SCRIPT.slice(TRIM_WORDS):SCRIPT;
 
 const D={
   video:{
@@ -378,15 +491,26 @@ const D={
     body:[["62% leave before the payoff",1],
           [" — ",0],["3.2K views",2],[" against your usual 8.1K.",0]],
     fixB:"Trim 0:00–0:03", fixG:"→ 8.4K",
+    /* the re-simulated result — in the build this is onRewrite()'s returned stop count */
+    doneHead:"The trim holds the room.",
+    doneBody:[["11% leave by 0:03",2],[" — 8.4K projected, past your usual 8.1K.",0]],
+    was:["62%","leave by 0:03"], now:["11%","leave by 0:03"],
+    verdict:["62%","leave by 0:03"], verdictDone:["11%","leave by 0:03"],
+    figread:"0:03 · 38% still watching", figreadDone:"0:03 · 89% still watching",
   },
   text:{
     pager:"4 of 5", thumb:"HOOK",
     title:"“You don’t need a niche. You need one repeatable format.”",
     stats:[["play","4.9K"],["heart","210"],["msg","41"],["share","36"],["save","96"]],
     head:"The idea works. The phrasing is what leaks.",
-    body:[["41% would stop",2],[" — but ",0],
-          ["218 of 590 had already heard it",1],[".",0]],
-    fixB:"Put a number in the first clause", fixG:"→ 58%",
+    body:[["41% would stop reading",1],[" — but ",0],
+          ["218 of 590 had already heard it",2],[".",0]],
+    fixB:"Put a number in the first clause", fixG:"→ 26%",
+    doneHead:"The number does the work.",
+    doneBody:[["26% would stop reading",2],[" — recognition drops to 14%.",0]],
+    was:["41%","would stop"], now:["26%","would stop"],
+    verdict:["41%","stop reading"], verdictDone:["26%","stop reading"],
+    figread:"590 simulated readers", figreadDone:"590 · re-simulated",
   }
 };
 
@@ -396,20 +520,37 @@ const POOLS=[
   {n:"Followers",   s:"10% of room", pct:10, drop:"0:21", loss:0, k:[1,.97,.93,.89,.86,.84,.82,.805,.79,.777,.765,.753,.74,.728,.715,.703,.69,.677,.663,.648,.632,.614,.594,.57,.542,.508,.466,.412,.34]},
   {n:"Cross-niche", s:"5% of room",  pct:5,  drop:"0:03", loss:0, k:[1,.88,.62,.41,.33,.29,.27,.258,.248,.24,.233,.226,.22,.213,.207,.2,.194,.187,.181,.174,.168,.161,.154,.146,.137,.127,.115,.1,.08]},
 ];
-const ROOM=[["Stopped to watch",380,0],["Almost",201,0],["Not for them",176,0],["Scrolled past",243,1]];
+/* "Stopped to watch" means stopped SCROLLING — the good outcome. rev 7.5 renamed the row for
+   exactly that reason; rev 8 finishes the job by never pairing it with a loss colour. */
+const ROOM=[
+  ["Stopped to watch",380,"builders",0],
+  ["Almost",201,"learners",0],
+  ["Not for them",176,"skeptics",0],
+  ["Scrolled past",243,"drive-by",1],
+];
 
-/* key-metric tiles — label · value · delta vs the creator's own median. `bad` = the ONE
-   dominant loss on the screen; lesser misses keep a quiet ↓ in the delta line only. */
+/* key-metric tiles — label · value · delta vs the creator's own median. `lead` = the metric the
+   answer is about; it reads first by position and by a lighter fill, never by colour. */
 const TILES={
   videoOverview:[
-    {n:"Hook rate",    v:"38%",  d:"↓20 pts vs median", bad:1},
-    {n:"Avg watch",    v:"9.7s", d:"↓1.5s · of 0:28"},
-    {n:"Watched full", v:"3.1%", d:"↓6.3 pts"},
-    {n:"Rewatch",      v:"1.19×",d:"↑0.15 · top fifth"},
+    {n:"Watched past 0:03", v:"38%",  d:"↓20 pts vs median", lead:1},
+    {n:"Avg watch",         v:"9.7s", d:"↓1.5s · of 0:28"},
+    {n:"Watched full",      v:"3.1%", d:"↓6.3 pts"},
+    {n:"Rewatch",           v:"1.19×",d:"↑0.15 · top fifth"},
+  ],
+  videoOverviewDone:[
+    {n:"Watched past 0:03", v:"89%",  d:"↑31 pts vs median", lead:1},
+    {n:"Avg watch",         v:"16.4s",d:"↑5.2s · of 0:25"},
+    {n:"Watched full",      v:"9.8%", d:"↑0.4 pts"},
+    {n:"Rewatch",           v:"1.19×",d:"↑0.15 · top fifth"},
   ],
   textOverview:[
-    {n:"Novel to them",v:"63%",  d:"↓14 pts", bad:1},
+    {n:"Novel to them",v:"63%",  d:"↓14 pts", lead:1},
     {n:"Would finish", v:"55%",  d:"↑3 pts"},
+  ],
+  textOverviewDone:[
+    {n:"Novel to them",v:"78%",  d:"↑1 pt", lead:1},
+    {n:"Would finish", v:"64%",  d:"↑12 pts"},
   ],
   videoEngage:[
     {n:"Saves",    v:"3.2%", d:"↑1.3 pts"},
@@ -425,19 +566,33 @@ const TILES={
   ],
 };
 
-/* One accent, one story: coral marks the DOMINANT loss only — the same one the answer block
-   names. The other frictions carry their weight in the bar, not in a second colour. */
 const REASONS=[
-  {n:"Already heard it", v:37, loss:1},{n:"No proof shown", v:24, loss:0},
-  {n:"Genuinely useful", v:21, loss:0},{n:"Too abstract",   v:11, loss:0},
-  {n:"Wrong for me",     v:7,  loss:0},
+  {n:"Already heard it", v:37, lead:1},{n:"No proof shown", v:24, lead:0},
+  {n:"Genuinely useful", v:21, lead:0},{n:"Too abstract",   v:11, lead:0},
+  {n:"Wrong for me",     v:7,  lead:0},
 ];
 const VOICES=[
   {w:"Maya",t:"builder",q:"ok this is the first time someone’s said the quiet part. the niche advice has been killing me for two years",n:412,loss:0},
   {w:"Dev",t:"skeptic",q:"sounds like everyone else. every account on here says pick a format now",n:218,loss:1},
   {w:"Ana",t:"learner",q:"saving this. what counts as a format though — a series, or a shot type?",n:174,loss:0},
-  {w:"Sam",t:"tough crowd",q:"easy to say with 40k followers. format is all you need when the reach is already there",n:96,loss:1},
+  {w:"Sam",t:"tough crowd",q:"easy to say with 40k followers. format is all you need when the reach is already there",n:96,loss:0},
 ];
+/* what each room segment says — the AudienceTab already ships onInterview(who) */
+const SEGV={
+  "builders":[{w:"Maya",t:"builder",q:"finally someone said the quiet part",n:412}],
+  "learners":[{w:"Ana",t:"learner",q:"saving this — what counts as a format though?",n:174}],
+  "skeptics":[{w:"Dev",t:"skeptic",q:"sounds like everyone else on here",n:218}],
+  "drive-by":[{w:"Sam",t:"tough crowd",q:"easy to say when the reach is already there",n:96}],
+};
+
+/* ── the instrument, as it lives in the drawer ──────────────────────────── */
+const SIGNALS=[["Visual pull",68],["Voice impact",37],["Cognitive grip",50],
+               ["Emotional hit",57],["Memorability",32],["Attention",34],
+               ["Buy signal",35],["Hesitation",58],["Mental effort",50]];
+const SIGMAS=[["Visual",.35],["Somatomotor",.07],["Dorsal attention",-.73],["Ventral attention",-.01],
+              ["Limbic",-.72],["Frontoparietal",-.43],["Default mode",-.52]];
+const SYSTEMS=["Visual","Audio","Face","Text","Language","Effort","Reward","Affect","Story","Surprise"];
+const TEXT_DEAD=new Set(["Visual","Audio","Face"]);
 
 /* ── icons ──────────────────────────────────────────────────────────────── */
 const IC={
@@ -446,46 +601,41 @@ const IC={
   msg:'<path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.5 8.5 0 0 1-3.9-.9L3 21l1.9-5A8.4 8.4 0 0 1 4 11.5a8.5 8.5 0 0 1 8.5-8.5 8.4 8.4 0 0 1 8.5 8.5Z"/>',
   share:'<path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>',
   save:'<path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>',
-  pulse:'<path d="M2 12h4l3-8 4 16 3-8h6"/>',
-  layers:'<path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>',
-  users:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/>',
-  trend:'<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>',
-  brain:'<path d="M9.5 2A2.5 2.5 0 0 0 7 4.5v.4A3 3 0 0 0 5 12a3 3 0 0 0 1 5.7V19a3 3 0 0 0 6 0V4.5A2.5 2.5 0 0 0 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 1 17 4.5v.4a3 3 0 0 1 2 7.1 3 3 0 0 1-1 5.7V19a3 3 0 0 1-6 0"/>',
-  map:'<polygon points="1 6 8 3 16 6 23 3 23 18 16 21 8 18 1 21 1 6"/><line x1="8" y1="3" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="21"/>',
-  clock:'<circle cx="12" cy="12" r="9"/><polyline points="12 6.5 12 12 16 14"/>',
+  bolt:'<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',
 };
-const ico=(k,sz=14)=>`<svg width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="none" stroke="#ece7de"
-  stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${IC[k]}</svg>`;
+const ico=(k,sz=14,st="#ece7de")=>`<svg width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="none"
+  stroke="${st}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${IC[k]}</svg>`;
 /* Card headers are plain text since rev 7.2 — TikTok Studio has no header icons, and the
    right-meta survives only where it carries data, not description. */
 const ch=(t,r='')=>`<div class="chead"><div class="l"><h3>${t}</h3></div>
   ${r?`<span class="r">${r}</span>`:''}</div>`;
-const tiles=(rs,three)=>`<div class="tiles${three?' t3':''}">${rs.map(t=>
-  `<div class="tile ${t.bad?'bad':''}"><i>${t.n}</i><b>${t.v}</b><em>${t.d}</em></div>`).join('')}</div>`;
+const tiles=rs=>`<div class="tiles">${rs.map(t=>
+  `<div class="tile ${t.lead?'lead':''}"><i>${t.n}</i><b>${t.v}</b><em>${t.d}</em></div>`).join('')}</div>`;
 const insight=t=>`<div class="insight"><span>${t}</span></div>`;
 const lgRows=rs=>rs.map(r=>`<div class="lg"><s style="background:${r.c}"></s>
   <span class="nm">${r.n}</span><b>${r.v}</b></div>`).join('');
 const path=(a,w,h,p)=>"M"+a.map((v,i)=>
   `${(p+i/(a.length-1)*(w-2*p)).toFixed(1)},${(h-p-v*(h-2*p)).toFixed(1)}`).join(" L");
-const retAt=u=>{const f=u*(CURVE.length-1),i=Math.floor(f),k=f-i;
-  return CURVE[i]+(CURVE[Math.min(i+1,CURVE.length-1)]-CURVE[i])*k;};
+const live=()=>applied?TRIMMED:CURVE;
+const retAt=u=>{const C=live();const f=u*(C.length-1),i=Math.floor(f),k=f-i;
+  return C[i]+(C[Math.min(i+1,C.length-1)]-C[i])*k;};
 const mmss=s=>`0:${String(Math.floor(s)).padStart(2,"0")}`;
 
 /* ── state ──────────────────────────────────────────────────────────────── */
-let kind="video", tab="overview", ph=BREAK_S/CLIP;
+let kind="video", tab="overview", ph=BREAK_S/CLIP, applied=false, method=false, openSeg=null;
 
 /* ── heroes — three figures, one verdict grammar ────────────────────────── */
-/* The districts the terrain already carries — name + the share of that district that stopped. */
+/* The districts the terrain already carries — name + the share of that district that stayed. */
 const DISTRICTS=[
-  {n:"builders", v:"82%", x:30,  y:64,  loss:0},
-  {n:"learners", v:"44%", x:236, y:122, loss:0},
-  {n:"skeptics", v:"12%", x:132, y:198, loss:1},
+  {n:"builders", v:"82%", x:30,  y:64},
+  {n:"learners", v:"44%", x:236, y:122},
+  {n:"skeptics", v:"12%", x:132, y:198},
 ];
 /* Cortex framing reproduces the shipped hero exactly (source y 112→375 at 1x, scale 1.0266), so the
    brain sits in the upper four fifths and the verdict chip has clear dark ground beneath it — the
    composition the chip's scrim was designed for. Framing is UNCHANGED from rev 6: the build
    script's CROP depends on these numbers. */
-function hero(fig,l,r,vv,vl){
+function hero(fig,l,r,vv,vl,read){
   const src=fig==="cortex"
     ? `<img src="reference-2026-08-01/shipped-video-The-brain.png" style="width:452px;left:-33px;top:-115px">
        <div class="mask" style="top:0;height:28px"></div>
@@ -493,43 +643,52 @@ function hero(fig,l,r,vv,vl){
     : `<img src="reference-2026-08-01/shipped-video-The-audience.png" style="width:739px;left:-180px;top:-294px">
        <div class="mask" style="bottom:0;height:4px"></div>`;
   const labels=fig==="terrain" ? DISTRICTS.map(d=>
-    `<span class="dist ${d.loss?'loss':''}" style="left:${d.x}px;top:${d.y}px">${d.n}<b>${d.v}</b></span>`
+    `<span class="dist" style="left:${d.x}px;top:${d.y}px">${d.n}<b>${d.v}</b></span>`
   ).join('') : '';
   return `<div class="hero"><div class="fig">${src}</div>${labels}
     <span class="corner l">${l}</span><span class="corner r">${r}</span>
-    <div class="verdict"><b>${vv}</b><span>${vl}</span></div></div>`;
+    <div class="verdict"><b>${vv}</b><span>${vl}</span></div>
+    ${read?`<span class="figread">${read}</span>`:''}</div>`;
 }
 
-/* identity: ONCE above the tabs. answer: ONCE, on Overview — the TL;DR page carries the verdict
-   and the fix; the instrument on Engagement tells the same story on the figure. */
+/* identity: ONCE above the tabs. answer: ONCE, on Overview. */
 function identBlock(){
   const d=D[kind];
   return `<div class="ident">
-    <div class="thumb"><span>${d.thumb}</span></div>
+    <div class="thumb"><span>${applied&&kind==="video"?"0:25":d.thumb}</span></div>
     <div class="meta">
       <div class="title">${d.title}</div>
-      <div class="stats">${d.stats.map(([i,v])=>`<span class="stat">${ico(i,12)}<b>${v}</b></span>`).join('')
+      <div class="stats">${d.stats.map(([i,v])=>`<span class="stat">${ico(i,11)}<b>${v}</b></span>`).join('')
         }<span class="ptag">projected</span></div>
     </div>
   </div>`;
 }
+const fixBtn=()=>{const d=D[kind];
+  return `<button class="fix">${ico("bolt",12,"#1c1b19")}
+    <span class="b">${d.fixB}</span><span class="g">${d.fixG}</span></button>`;};
+
 function answerBlock(){
   const d=D[kind];
+  if(applied) return `<div class="answer done">
+    <h2>${d.doneHead}</h2>
+    <p>${d.doneBody.map(([t,m])=>m===1?`<span class="loss">${t}</span>`
+      :m===2?`<span class="win">${t}</span>`:t).join('')}</p>
+    <div class="delta">
+      <div class="col was"><i>${d.was[1]}</i><b>${d.was[0]}</b></div>
+      <span class="arw">→</span>
+      <div class="col"><i>after the fix</i><b>${d.now[0]}</b></div>
+      <span class="tag">projected</span>
+    </div>
+    <div class="arow"><button class="undo">Undo the fix</button></div>
+  </div>`;
   return `<div class="answer">
     <h2>${d.head}</h2>
     <p>${d.body.map(([t,m])=>m===1?`<span class="loss">${t}</span>`
       :m===2?`<span class="win">${t}</span>`:t).join('')}</p>
-    <button class="fix">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ece7de" stroke-width="2"
-           stroke-linecap="round" stroke-linejoin="round" style="opacity:.6">
-        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-      <span class="b">${d.fixB}</span><span class="g">${d.fixG}</span>
-    </button>
+    <div class="arow">${fixBtn()}<button class="seeit">See the evidence →</button></div>
   </div>`;
 }
 
-/* The nets meter row is gone (rev 7.3 declutter) — in the build the LIVE CortexCanvas carries the
-   grounded readout itself; the shipped wiring (`driveFor()`, cortex-sim.ts) is untouched. */
 const vmini=()=>`<div class="vmini">
   <svg class="vfig" width="100%" height="100%">
     <defs><pattern id="vs" width="26" height="26" patternUnits="userSpaceOnUse"
@@ -538,17 +697,22 @@ const vmini=()=>`<div class="vmini">
       <rect width="13" height="26" fill="#1b1a18"/></pattern></defs>
     <rect width="100%" height="100%" fill="url(#vs)"/></svg>
   <div class="playchip">${ico("play",16)}</div>
-  <span class="vdur">0:28</span>
+  <span class="vdur">${applied?"0:25":"0:28"}</span>
   <s class="vprog" id="vprog"></s>
 </div>`;
 
 /* ── retention card (the scrubber) ──────────────────────────────────────── */
 function retentionCard(){
   const W=366,H=108,P=6;
-  const me=path(CURVE,W,H,P), md=path(MEDIAN,W,H,P);
-  const bx=P+BREAK_S/(CURVE.length-1)*(W-2*P);
+  const C=live();
+  const me=path(C,W,H,P), md=path(MEDIAN,W,H,P);
+  const bx=P+BREAK_S/(C.length-1)*(W-2*P);
   const brk="M"+CURVE.slice(0,4).map((v,i)=>
     `${(P+i/(CURVE.length-1)*(W-2*P)).toFixed(1)},${(H-P-v*(H-2*P)).toFixed(1)}`).join(" L");
+  /* after the fix the ORIGINAL stays on the figure as a ghost — a before/after you can see,
+     not two screens you have to remember between */
+  const ghost=applied?`<path d="${path(CURVE,W,H,P)}" fill="none" stroke="rgba(255,99,99,.32)"
+      stroke-width="1.4" stroke-dasharray="3 3"/>`:'';
   return `<div class="card">
     ${ch('Retention',`<span id="retro">${mmss(ph*CLIP)} · ${Math.round(retAt(ph)*100)}%</span>`)}
     ${vmini()}
@@ -556,51 +720,54 @@ function retentionCard(){
       <svg viewBox="0 0 ${W} ${H}" style="display:block;width:100%;height:auto">
         <path d="${me} L${W-P},${H-P} L${P},${H-P} Z" fill="rgba(236,231,222,.045)"/>
         <path d="${md}" fill="none" stroke="rgba(236,231,222,.28)" stroke-width="1.4" stroke-dasharray="4 4"/>
+        ${ghost}
         <path d="${me}" fill="none" stroke="rgba(236,231,222,.72)" stroke-width="1.6"/>
-        <path d="${brk}" fill="none" stroke="#FF6363" stroke-width="2"/>
-        <line x1="${bx}" y1="0" x2="${bx}" y2="${H}" stroke="rgba(255,99,99,.26)" stroke-width="1"/>
+        ${applied?'':`<path d="${brk}" fill="none" stroke="#FF6363" stroke-width="2"/>
+        <line x1="${bx}" y1="0" x2="${bx}" y2="${H}" stroke="rgba(255,99,99,.26)" stroke-width="1"/>`}
         <text x="${W-P-3}" y="${(H-P-MEDIAN[MEDIAN.length-1]*(H-2*P)+12).toFixed(0)}" text-anchor="end"
           font-size="9" fill="rgba(236,231,222,.34)" font-family="Inter">your median</text>
         <line id="phl" x1="0" y1="0" x2="0" y2="${H}" stroke="rgba(236,231,222,.32)" stroke-width="1"/>
         <circle id="phd" r="3.6" fill="#ece7de"/>
       </svg>
-      <span class="anno">62% gone by 0:03</span>
+      <span class="anno${applied?' fixed':''}">${applied?'11% gone by 0:03':'62% gone by 0:03'}</span>
     </div>
-    <div class="moments">
-      <button class="mo dip" data-t="2" aria-pressed="true"><i>0:02</i><b>38</b></button>
-      <button class="mo" data-t="9"><i>0:09</i><b>33</b></button>
-      <button class="mo" data-t="21"><i>0:21</i><b>27</b></button></div>
+    <div class="moments">${(applied
+      ? [[2,92],[9,75],[21,59]]
+      : [[2,58],[9,33],[21,27]]).map(([t,v],i)=>
+      `<button class="mo" data-t="${t}"${i===0?' aria-pressed="true"':''}
+        ><i>${mmss(t)}</i><b>${v}%</b></button>`).join('')}</div>
     <div class="tstrip"><span class="tin" id="tin"></span></div>
   </div>`;
 }
 
 /* ── tabs ───────────────────────────────────────────────────────────────── */
 function overview(){
-  if(kind==="text") return textOverview();
-  return hero("cortex","Predicted cortex","at the break","38%","would stop")
-  + answerBlock()
-  + `<div class="card">${ch('Key metrics','vs your last 41')}
-      ${tiles(TILES.videoOverview)}
-      ${insight(`Only the <span class="loss">hook</span> is broken.`)}
-    </div>`
-  + surfaceCard()
-  + foot();
-}
-
-function textOverview(){
-  return hero("cortex","Predicted cortex","simulated","41%","would stop")
+  const d=D[kind];
+  const v=applied?d.verdictDone:d.verdict;
+  if(kind==="text") return hero("cortex","Predicted cortex","simulated",v[0],v[1],
+      applied?d.figreadDone:d.figread)
   + answerBlock()
   + `<div class="card">${ch('Key metrics','vs your last 41 hooks')}
-      ${tiles(TILES.textOverview)}
-      ${insight(`The <span class="loss">wording</span> is the commodity.`)}
+      ${tiles(TILES[applied?'textOverviewDone':'textOverview'])}
+      ${insight(applied?`Specific beats familiar.`:`The wording is the commodity.`)}
     </div>`
   + `<div class="card" id="reasons">${ch('Why they stopped')}
       <div style="margin-top:10px">${REASONS.map(r=>`
-        <div class="rb ${r.loss?'loss':''}"><span class="nm">${r.n}</span>
+        <div class="rb ${r.lead?'lead':''}"><span class="nm">${r.n}</span>
           <span class="tr"><s style="width:${(r.v/37*100).toFixed(0)}%"></s></span>
           <span class="vl">${r.v}%</span></div>`).join('')}</div>
-      ${insight(`<span class="loss">Recognition</span>, not disagreement.`)}
+      ${insight(`Recognition, not disagreement.`)}
     </div>`
+  + foot();
+
+  return hero("cortex","Predicted cortex",applied?"after the trim":"at the break",v[0],v[1],
+      applied?d.figreadDone:d.figread)
+  + answerBlock()
+  + `<div class="card">${ch('Key metrics','vs your last 41')}
+      ${tiles(TILES[applied?'videoOverviewDone':'videoOverview'])}
+      ${insight(applied?`The room reaches the payoff.`:`Only the hook is broken.`)}
+    </div>`
+  + surfaceCard()
   + foot();
 }
 
@@ -621,15 +788,24 @@ function audience(){
                   stroke="${p.loss?'#FF6363':'rgba(236,231,222,.62)'}" stroke-width="1.4"/>
               </svg><span class="dr">${p.drop}</span>
             </div>`).join('')}</div>
-          ${insight(`Followers hold — <span class="loss">For You is gone by 0:02</span>.`)}`
+          ${insight(`Followers hold. For You is gone by 0:02.`)}`
         : `<div style="margin-top:5px">${lgRows(POOLS.map((p,i)=>({n:p.n,v:p.pct+"%",c:c[i]})))}</div>`}
     </div>`
-  + `<div class="card">${ch('What they did')}
-      <div style="margin-top:2px">${ROOM.map(([n,v,l])=>{
+  + `<div class="card">${ch('What they did','tap to hear them')}
+      <div style="margin-top:2px">${ROOM.map(([n,v,who])=>{
         const lit=Math.round(v/1000*18);let d='';
-        for(let i=0;i<18;i++)d+=`<s${i<lit?` style="background:${l?'#FF6363':'rgba(236,231,222,.78)'}"`:''}></s>`;
-        return `<div class="dm ${l?'loss':''}"><span class="nm">${n}</span>
-          <span class="dots">${d}</span><span class="n">${v}</span></div>`;}).join('')}</div>
+        for(let i=0;i<18;i++)d+=`<s${i<lit?` style="background:rgba(236,231,222,.78)"`:''}></s>`;
+        const on=openSeg===who;
+        return `<button class="dm" data-seg="${who}" aria-expanded="${on}">
+            <span class="nm">${n}</span><span class="dots">${d}</span>
+            <span class="n">${v}</span><span class="cv">›</span></button>
+          ${on?`<div class="segv">${(SEGV[who]||[]).map(x=>`<div class="voice">
+            <div class="vhead"><span class="av">${x.w[0]}</span><b>${x.w}</b>
+              <span class="vtag">${x.t}</span></div>
+            <p class="vq">${x.q}</p>
+            <div class="vecho"><i>${x.n} would echo this</i>
+              <span class="t"><s style="width:${(x.n/412*100).toFixed(0)}%"></s></span></div>
+          </div>`).join('')}</div>`:''}`;}).join('')}</div>
       ${insight(`The 201 “almost” are the winnable ones.`)}
     </div>`
   + foot();
@@ -665,8 +841,8 @@ function engagement(){
   + `<div class="card">${ch('Projected reaction','per reach')}
       ${tiles(TILES[v?'videoEngage':'textEngage'])}
       ${insight(v
-        ? `Everyone who stays converts — <span class="loss">only 38% stay</span>.`
-        : `Argues well, <span class="loss">travels badly</span>.`)}
+        ? `Everyone who stays converts.`
+        : `Argues well, travels badly.`)}
     </div>`
   + `<div class="card">${ch('Best window','followers online')}
       <div class="pw">${["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map((d,i)=>
@@ -676,34 +852,112 @@ function engagement(){
   + foot();
 }
 
-const foot=()=>`<div class="foot"><span>How to read these numbers</span><span>›</span></div>`;
+/* ── the method drawer ──────────────────────────────────────────────────── */
+/* Deterministic, so a screenshot of this page is reproducible. Retention carries most of the
+   weight and the per-system phase only textures it — the grid has to SHOW the collapse after
+   0:03, not bury it under noise. */
+const heatAt=(r,c)=>{
+  const base=CURVE[Math.min(c,CURVE.length-1)];
+  const phase=Math.abs(Math.sin(c*0.7+r*1.9));
+  return Math.max(.05,Math.min(.88,base*0.72+base*phase*0.34));
+};
+function methodPanel(){
+  const isText=kind==="text";
+  const cells=SYSTEMS.map((s,r)=>{
+    const dead=isText&&TEXT_DEAD.has(s);
+    return `<div class="hrow"><span class="nm">${s}</span><span class="cells">${
+      Array.from({length:CLIP},(_,c)=>{
+        const a=dead?.03:heatAt(r,c);
+        return `<s style="background:rgba(236,231,222,${a.toFixed(2)})"></s>`;}).join('')
+    }</span></div>`;}).join('');
+  return `<div class="method">
+    <p class="mnote">Every number above is one unit — the share of the room still watching.
+      Below is the instrument those numbers come out of, on its own scales.</p>
+
+    <div class="mhead">Nine breakdown signals · 0–100</div>
+    <div class="sig">${SIGNALS.map(([n,v])=>`<div><b>${v}</b><i>${n}</i></div>`).join('')}</div>
+    <p class="mnote">Nine signals derived from seven networks — two are composites. The bands are a
+      cutoff on a modeled signal, not a benchmark against real outcomes.</p>
+
+    <div class="mhead">Raw network activation · z-scored</div>
+    ${SIGMAS.map(([n,z])=>{
+      const w=Math.min(48,Math.abs(z)/1.2*50);
+      return `<div class="zr"><span class="nm">${n}</span>
+        <span class="tk"><u></u><s style="${z<0?`right:50%;`:`left:50%;`}width:${w.toFixed(1)}%"></s></span>
+        <span class="vl">${z>0?'+':''}${z.toFixed(2)}σ</span></div>`;}).join('')}
+    <p class="mnote">Against this clip’s own baseline, at the playhead second. Zero is the centre
+      line.</p>
+
+    <div class="mhead">Activation per second · ${CLIP}s · 10 systems</div>
+    <div class="heat">${cells}</div>
+    <div class="hax"><span>0s</span><span>${CLIP}s</span></div>
+    ${isText?`<p class="mdead">Visual, Audio and Face carry no signal — a text concept has no video
+      substrate. They are shown flat rather than hidden so the grid stays the same instrument
+      across both.</p>`:''}
+    <p class="mnote">Modeled from your audience’s real retention · not a brain measurement.</p>
+  </div>`;
+}
+const foot=()=>`<button class="foot" aria-expanded="${method}">
+    <span>How these numbers are made</span><span class="cv">›</span></button>
+  ${method?methodPanel():''}`;
 
 /* ── render ─────────────────────────────────────────────────────────────── */
+/* One rule, measured every scroll and every repaint: if the fix is not reachable on screen and
+   has not been applied, the rail carries it at the foot. On Overview at a tall rail the answer
+   never leaves the viewport, so this stays silent there; on Audience and Engagement — which hold
+   no fix control at all — it is always there. */
+function syncBar(){
+  if(applied){ abar.classList.remove("on"); body.classList.remove("hasbar"); return; }
+  const bt=body.getBoundingClientRect(), inView=[...content.querySelectorAll(".fix")].some(f=>{
+    const r=f.getBoundingClientRect();
+    return r.bottom>bt.top+4 && r.top<bt.bottom-4;
+  });
+  abar.classList.toggle("on",!inView);
+  body.classList.toggle("hasbar",!inView);
+}
+function actionBar(){
+  const d=D[kind];
+  return `<span class="lab">${d.head}</span>${fixBtn()}`;
+}
 function paint(){
   pgTxt.textContent=D[kind].pager;
   identSlot.innerHTML=identBlock();
   content.innerHTML=tab==="overview"?overview():tab==="audience"?audience():engagement();
+  abar.innerHTML=actionBar();
   body.scrollTop=0;
   if(tab==="engagement"&&kind==="video"){bindScrub();syncPlayhead();}
+  syncBar();
 }
 function setKind(k){
-  kind=k;
+  kind=k; applied=false; method=false; openSeg=null; ph=BREAK_S/CLIP;
   document.querySelectorAll("[data-kind]").forEach(x=>x.setAttribute("aria-pressed",x.dataset.kind===kind));
   paint();
 }
-/* the fix chip ROUTES: video → the instrument, parked on the break; text → the reasons */
-function fixJump(){
-  if(kind==="video"){
-    tab="engagement"; ph=BREAK_S/CLIP;
-    document.querySelectorAll("[data-tab]").forEach(x=>x.setAttribute("aria-pressed",x.dataset.tab===tab));
-    paint();
-  }else{
+function setTab(t){
+  tab=t;
+  document.querySelectorAll("[data-tab]").forEach(x=>x.setAttribute("aria-pressed",x.dataset.tab===tab));
+  paint();
+}
+/* the fix RE-SIMULATES. "See the evidence" keeps rev 7.5's routing as a separate, quieter move. */
+function applyFix(){ applied=true; ph=BREAK_S/CLIP; paint(); }
+function seeEvidence(){
+  if(kind==="video"){ ph=BREAK_S/CLIP; setTab("engagement"); }
+  else{
     const el=document.getElementById("reasons");
     if(el)body.scrollTo({top:el.getBoundingClientRect().top-body.getBoundingClientRect().top
       +body.scrollTop-56,behavior:"smooth"});
   }
 }
-body.addEventListener("click",e=>{if(e.target.closest(".fix"))fixJump();});
+document.addEventListener("click",e=>{
+  if(e.target.closest(".fix")) return applyFix();
+  if(e.target.closest(".undo")){ applied=false; paint(); return; }
+  if(e.target.closest(".seeit")) return seeEvidence();
+  const f=e.target.closest(".foot");
+  if(f){ method=!method; paint(); return; }
+  const seg=e.target.closest(".dm");
+  if(seg){ const w=seg.dataset.seg; openSeg=openSeg===w?null:w; paint(); return; }
+});
+body.addEventListener("scroll",syncBar);
 pgPrev.addEventListener("click",()=>setKind(kind==="video"?"text":"video"));
 pgNext.addEventListener("click",()=>setKind(kind==="video"?"text":"video"));
 function syncPlayhead(){
@@ -718,9 +972,10 @@ function syncPlayhead(){
   /* one-line transcript: light words up to the playhead, keep the current word centred */
   const tin=document.getElementById("tin");
   if(tin){
-    const idx=Math.min(SCRIPT.length-1,Math.floor(ph*SCRIPT.length));
-    tin.innerHTML=SCRIPT.map((w,i)=>{
-      const cls=i===BREAK_WORD?'brk':i===idx?'cur':i<idx?'on':'';
+    const W=script();
+    const idx=Math.min(W.length-1,Math.floor(ph*W.length));
+    tin.innerHTML=W.map((w,i)=>{
+      const cls=i===BREAK_WORD&&!applied?'brk':i===idx?'cur':i<idx?'on':'';
       return `<s${cls?` class="${cls}"`:''}>${w}</s>`;}).join(" ");
     const strip=tin.parentElement, cur=tin.children[idx];
     if(cur){
@@ -741,10 +996,7 @@ function bindScrub(){
     document.querySelectorAll(".mo").forEach(x=>x.setAttribute("aria-pressed",x===b));}));
 }
 document.querySelectorAll("[data-kind]").forEach(b=>b.addEventListener("click",()=>setKind(b.dataset.kind)));
-document.querySelectorAll("[data-tab]").forEach(b=>b.addEventListener("click",()=>{
-  tab=b.dataset.tab;
-  document.querySelectorAll("[data-tab]").forEach(x=>x.setAttribute("aria-pressed",x.dataset.tab===tab));
-  paint();}));
+document.querySelectorAll("[data-tab]").forEach(b=>b.addEventListener("click",()=>setTab(b.dataset.tab)));
 paint();
 </script>
 </body>
