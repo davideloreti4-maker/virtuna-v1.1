@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Insights rev 6 — hero restored</title>
+<title>Insights rev 7 — metric-first tabs</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400&display=swap" rel="stylesheet">
@@ -107,7 +107,7 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 .body::-webkit-scrollbar{width:6px}
 .body::-webkit-scrollbar-thumb{background:rgba(236,231,222,.14);border-radius:3px}
 
-/* ── the hero — full bleed, 270, the figure IS the wow ───────────────────── */
+/* ── the heroes — full bleed, 270, the figure IS the wow ─────────────────── */
 .hero{position:relative;height:270px;border-radius:14px;overflow:hidden;background:var(--figure);
   border:1px solid var(--border)}
 .hero .fig{position:absolute;inset:0;overflow:hidden}
@@ -130,18 +130,22 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 .dist b{font-weight:500;color:rgba(236,231,222,.5);margin-left:5px}
 .dist.loss{color:var(--coral)}
 .dist.loss b{color:rgba(255,99,99,.6)}
+/* the third hero — the post itself. Placeholder frame here (an inline SVG line pattern, no
+   gradient ramp, no external asset); the build renders the real cover the drill already holds. */
+.hero .vfig{position:absolute;inset:0;display:block}
+.playchip{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:54px;height:54px;
+  border-radius:99px;background:rgba(38,38,36,.9);display:flex;align-items:center;justify-content:center}
 
 /* the grounded readout — UNDER the figure, so the figure stays clean */
 .nets{display:flex;gap:8px;margin-top:10px}
 .net{flex:1;background:var(--card);border-radius:10px;padding:8px 10px 9px}
-.net i{font-style:normal;display:block;font-size:11px;color:var(--faint)}
+.net .nr{display:flex;align-items:baseline;justify-content:space-between}
+.net i{font-style:normal;font-size:11px;color:var(--faint)}
+.net b{font:500 11.5px/1 Inter;color:var(--dim);font-variant-numeric:tabular-nums}
 .net .t{display:block;height:3px;border-radius:2px;background:rgba(236,231,222,.10);margin-top:7px;
   overflow:hidden}
 .net .t s{display:block;height:100%;border-radius:2px;text-decoration:none;
   background:rgba(236,231,222,.72);transition:width .14s linear,background .14s linear}
-.herofoot{font-size:13px;line-height:1.5;color:var(--dim);margin-top:11px}
-.herofoot .loss{color:var(--coral)}
-.herofoot b{color:var(--cream);font-weight:500}
 
 /* ── cards — filled, no border, one level deep ───────────────────────────── */
 .card{background:var(--card);border-radius:14px;padding:15px 15px 16px;margin-top:12px}
@@ -150,26 +154,29 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 .chead .l svg{flex:none;opacity:.6}
 .chead h3{font:500 13.5px Inter;color:var(--cream);letter-spacing:-.005em;white-space:nowrap}
 .chead .r{font-size:11.5px;color:var(--faint);font-variant-numeric:tabular-nums;white-space:nowrap}
-.read{font-size:13px;line-height:1.55;color:var(--dim);margin-top:12px}
-.read b{color:var(--cream);font-weight:500}
-.read .loss{color:var(--coral)}
-.sub{font-size:11.5px;line-height:1.5;color:var(--faint);margin-top:8px}
 
-/* metric rows — one grammar for every rate on the surface */
-.rate{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
-.rate:last-child{border-bottom:0;padding-bottom:2px}
-.rate .nm{flex:1;min-width:0}
-.rate .nm i{font-style:normal;display:block;font-size:12.5px;color:var(--dim)}
-.rate .nm u{text-decoration:none;display:block;font-size:11px;color:var(--faint);margin-top:3px}
-.rate .vl{font:500 17px/1 Inter;font-variant-numeric:tabular-nums;text-align:right;min-width:50px;
-  color:var(--cream)}
-.rate .dl{font:500 11.5px/1 Inter;font-variant-numeric:tabular-nums;text-align:right;min-width:58px;
-  color:var(--faint)}
-.rate.down .vl,.rate.down .dl{color:var(--coral)}
-.rate.nb{border-bottom:0;padding-bottom:0}
+/* ONE insight line per card — everything else is figures. This replaces rev 6's .read/.sub
+   paragraph pairs; if a sentence doesn't fit here, it belongs in "How to read these numbers". */
+.insight{display:flex;gap:9px;margin-top:13px;padding-top:12px;border-top:1px solid var(--border);
+  font-size:12.5px;line-height:1.55;color:var(--dim)}
+.insight b{color:var(--cream);font-weight:500}
+.insight .loss{color:var(--coral)}
+
+/* key-metric tiles — the TikTok idiom: label, big number, delta vs your own median.
+   Coral marks the DOMINANT loss only (.bad); lesser misses keep a quiet ↓. */
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.tiles.t3{grid-template-columns:repeat(3,1fr)}
+.tile{background:var(--chip);border-radius:10px;padding:11px 12px 12px}
+.tile i{font-style:normal;display:block;font-size:11px;color:var(--faint);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.tile b{display:block;font:500 21px/1.15 Inter;letter-spacing:-.012em;color:var(--cream);
+  font-variant-numeric:tabular-nums;margin-top:5px}
+.tile em{font-style:normal;display:block;font-size:11px;color:var(--faint);
+  font-variant-numeric:tabular-nums;margin-top:3px}
+.tile.bad b,.tile.bad em{color:var(--coral)}
 
 /* where this sits in the creator's own catalogue */
-.ticks{position:relative;height:18px;margin-top:9px}
+.ticks{position:relative;height:18px;margin-top:12px}
 .ticks .base{position:absolute;left:0;right:0;bottom:6px;height:1px;background:rgba(236,231,222,.10)}
 .ticks s{position:absolute;bottom:7px;width:1px;height:5px;background:rgba(236,231,222,.18);
   text-decoration:none}
@@ -190,19 +197,25 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 .mo i{font-style:normal;font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums}
 .mo b{font:500 12.5px Inter;font-variant-numeric:tabular-nums;color:var(--cream)}
 .mo.dip b{color:var(--coral)}
-.script{font-size:13px;line-height:1.6;color:rgba(236,231,222,.28);margin-top:12px}
-.script s{text-decoration:none;transition:color .12s}
-.script s.on{color:var(--cream)}
-.script s.brk{border-bottom:2px solid var(--coral);padding-bottom:1px;color:var(--cream)}
+/* the transcript is ONE line, synced to the playhead — rev 6's five-line grey block is gone */
+.tstrip{position:relative;margin-top:12px;height:19px;overflow:hidden;
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 10%,#000 90%,transparent);
+  mask-image:linear-gradient(90deg,transparent,#000 10%,#000 90%,transparent)}
+.tstrip .tin{position:absolute;left:0;top:0;white-space:nowrap;font-size:12.5px;line-height:19px;
+  color:rgba(236,231,222,.26);transition:transform .09s linear}
+.tstrip s{text-decoration:none}
+.tstrip s.on{color:rgba(236,231,222,.6)}
+.tstrip s.cur{color:var(--cream)}
+.tstrip s.brk{border-bottom:2px solid var(--coral);padding-bottom:1px;color:var(--cream)}
 
-/* mix bar + pills */
+/* mix bar + legend rows */
 .mix{display:flex;gap:3px;margin-top:13px;height:8px}
 .mix s{text-decoration:none;border-radius:2px}
-.pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
-.pill{display:flex;align-items:center;gap:7px;background:var(--chip);border-radius:8px;padding:5px 10px;
-  font-size:12px;color:var(--dim)}
-.pill s{width:6px;height:6px;border-radius:99px;text-decoration:none}
-.pill b{font-weight:500;color:var(--cream);font-variant-numeric:tabular-nums}
+.lg{display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--border)}
+.lg:last-child{border-bottom:0;padding-bottom:2px}
+.lg s{width:7px;height:7px;border-radius:99px;text-decoration:none;flex:none}
+.lg .nm{flex:1;min-width:0;font-size:12.5px;color:var(--dim)}
+.lg b{font:500 13.5px Inter;color:var(--cream);font-variant-numeric:tabular-nums}
 
 /* per-pool retention */
 .prow{display:flex;align-items:center;gap:11px;padding:8px 0}
@@ -260,18 +273,6 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 .pw div.best s{background:rgba(236,231,222,.82)}
 .pw div.best i{color:var(--cream)}
 
-/* the unlock */
-.unlock{margin-top:22px;padding-top:18px;border-top:1px solid var(--border)}
-.unlock .k{display:flex;align-items:center;gap:10px}
-.unlock .k span{font-size:11.5px;color:var(--faint)}
-.unlock .k s{flex:1;height:1px;background:var(--border);text-decoration:none}
-.unlock h4{font:500 18px/1.32 Inter;letter-spacing:-.012em;color:var(--cream);margin-top:12px}
-.unlock .proj{display:inline-flex;align-items:center;gap:10px;background:var(--chip);border-radius:10px;
-  padding:7px 12px;margin-top:13px}
-.unlock .proj i{font-style:normal;font-size:10.5px;color:var(--faint)}
-.unlock .proj s{width:1px;height:13px;background:var(--hair);text-decoration:none}
-.unlock .proj b{font:500 14.5px Inter;color:var(--cream);font-variant-numeric:tabular-nums}
-.unlock p{font-size:13px;line-height:1.55;color:var(--dim);margin-top:13px}
 .foot{margin-top:24px;padding-top:14px;border-top:1px solid var(--border);display:flex;
   align-items:center;justify-content:space-between;font-size:11.5px;color:var(--faint);cursor:pointer}
 .foot:hover{color:var(--dim)}
@@ -283,8 +284,9 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 <aside class="ctl">
   <div class="brandline"></div>
   <h1>Ambient Audience · insight drill</h1>
-  <p class="lede">Revision 6. The hero is back, and the cortex now reads the retention curve
-    instead of looping a seeded envelope.</p>
+  <p class="lede">Revision 7. The three tabs rebuilt metric-first: key-metric tiles instead of
+    paragraphs, exactly one insight line per card, and a third hero — the post itself — so no
+    figure repeats.</p>
 
   <h2>Stimulus</h2>
   <div class="grp">
@@ -301,30 +303,31 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 
   <h2>Try this first</h2>
   <ol class="steps">
-    <li><b>Drag the retention curve</b> on video · Overview. One playhead moves the transcript, the
-      clock and the three network bars together. Attention runs 91%&nbsp;→&nbsp;38% across the break
-      while drift climbs 26%&nbsp;→&nbsp;60%.</li>
-    <li>Walk <b>Audience</b> and <b>Engagement</b> — the same terrain figure, lit for a different
-      question each time.</li>
-    <li>Switch to <b>Text</b>. It should read as a different instrument, not a video screen with
-      empty slots: no timeline anywhere, voices instead.</li>
+    <li><b>Drag the retention curve</b> on video · Overview. One playhead moves the one-line
+      transcript, the clock and the three network meters together. Attention runs
+      91%&nbsp;→&nbsp;38% across the break while drift climbs 26%&nbsp;→&nbsp;60%.</li>
+    <li>Walk the tabs — <b>three different heroes</b> now: the cortex, the room, the post itself.
+      Each verdict chip states that tab's headline number.</li>
+    <li>Switch to <b>Text</b>. Different instrument: no timeline anywhere, voices instead.</li>
   </ol>
 
   <h2>Calls you may want to reverse</h2>
   <ul class="calls">
-    <li><b>Cut the signal-cost ladder</b> from Engagement — editorial rather than data, and it
-      repeated the card above it. Rev 3 died of form variety.</li>
-    <li><b>Coral on one reason bar, not three.</b> The shipped component colours every friction
-      reason; at 3-of-5 it shouted. Only the dominant loss is marked now.</li>
-    <li><b>Header cut to 283px</b> to buy the hero its space — so the title is one line with an
-      ellipsis. Restoring the full sentence pushes the hero ~40px below the fold.</li>
-    <li><b>Engagement leads with the terrain re-lit</b> rather than having no hero. Consistency won,
-      but it is the same figure a third time.</li>
+    <li><b>Engagement leads with the post itself</b> (striped placeholder here; the build renders
+      the drill's real cover) — replaces the terrain re-lit a third time.</li>
+    <li><b>The unlock section is gone.</b> It stated the fix the answer block already carries;
+      its evidence moved into the tiles' deltas. One fact, one place.</li>
+    <li><b>The transcript is one line</b> under the curve, synced to the playhead — rev 6's
+      five-line grey block read as a wall of text.</li>
+    <li><b>Coral is confined to the dominant loss per screen</b> (hook tile, For You row); lesser
+      misses carry a quiet ↓ instead.</li>
   </ul>
 
-  <p class="note-foot">Mockup only. The hero is a still cropped from the shipped rail — in the build
-    it is the live <code>CortexCanvas</code>, repainting from <code>weighted_curve</code> in
-    <code>grounded</code> mode. That wiring has already shipped.</p>
+  <p class="note-foot">Mockup only. The cortex and terrain heroes are stills cropped from the
+    shipped rail — in the build they are the live <code>CortexCanvas</code> (repainting from
+    <code>weighted_curve</code> in <code>grounded</code> mode; that wiring has shipped) and
+    <code>AudienceTerrain</code>. Hero framing is unchanged from rev 6, so the build script's
+    <code>CROP</code> still matches.</p>
 </aside>
 
 <div class="rail">
@@ -394,7 +397,6 @@ const D={
           ["62% leave before the payoff",1],
           [" — ",0],["3.2K views",2],[" against your 8.1K.",0]],
     fixB:"Trim 0:00–0:03", fixG:"→ 8.4K",
-    verdict:["38%","would stop"],
   },
   text:{
     pager:"4 of 5", thumb:"HOOK",
@@ -405,38 +407,47 @@ const D={
           ["218 of 590 had already heard it",1],
           [" — they know the shape.",0]],
     fixB:"Put a number in the first clause", fixG:"→ 58%",
-    verdict:["41%","would stop"],
   }
 };
 
 const POOLS=[
   {n:"For You",     s:"65% of room", pct:65, drop:"0:02", loss:1, k:[1,.82,.44,.22,.17,.15,.14,.135,.13,.128,.125,.123,.12,.118,.115,.113,.11,.108,.105,.103,.1,.098,.095,.092,.089,.085,.08,.074,.066]},
-  {n:"Niche",       s:"20%",         pct:20, drop:"0:11", loss:0, k:[1,.94,.86,.74,.68,.64,.61,.59,.57,.555,.54,.525,.51,.495,.48,.468,.455,.443,.43,.418,.405,.393,.38,.366,.35,.333,.313,.29,.26]},
-  {n:"Followers",   s:"10%",         pct:10, drop:"0:21", loss:0, k:[1,.97,.93,.89,.86,.84,.82,.805,.79,.777,.765,.753,.74,.728,.715,.703,.69,.677,.663,.648,.632,.614,.594,.57,.542,.508,.466,.412,.34]},
-  {n:"Cross-niche", s:"5%",          pct:5,  drop:"0:03", loss:0, k:[1,.88,.62,.41,.33,.29,.27,.258,.248,.24,.233,.226,.22,.213,.207,.2,.194,.187,.181,.174,.168,.161,.154,.146,.137,.127,.115,.1,.08]},
+  {n:"Niche",       s:"20% of room", pct:20, drop:"0:11", loss:0, k:[1,.94,.86,.74,.68,.64,.61,.59,.57,.555,.54,.525,.51,.495,.48,.468,.455,.443,.43,.418,.405,.393,.38,.366,.35,.333,.313,.29,.26]},
+  {n:"Followers",   s:"10% of room", pct:10, drop:"0:21", loss:0, k:[1,.97,.93,.89,.86,.84,.82,.805,.79,.777,.765,.753,.74,.728,.715,.703,.69,.677,.663,.648,.632,.614,.594,.57,.542,.508,.466,.412,.34]},
+  {n:"Cross-niche", s:"5% of room",  pct:5,  drop:"0:03", loss:0, k:[1,.88,.62,.41,.33,.29,.27,.258,.248,.24,.233,.226,.22,.213,.207,.2,.194,.187,.181,.174,.168,.161,.154,.146,.137,.127,.115,.1,.08]},
 ];
 const ROOM=[["Stopped",380,0],["Almost",201,0],["Not for them",176,0],["Scrolled past",243,1]];
 
-const RATES=[
-  {n:"Hook rate",    s:"stopped in the first 3s", v:"38%",  d:"↓20 pts",  down:1, pos:.22, med:.58},
-  {n:"Avg watch",    s:"of 28s",                  v:"9.7s", d:"↓1.5s",    down:1},
-  {n:"Watched full", s:"reached the end",         v:"3.1%", d:"↓6.3 pts", down:1},
-  {n:"Rewatch",      s:"plays ÷ viewers",         v:"1.19×",d:"↑0.15",    down:0},
-];
-
-const REACT={
-  video:[{n:"Saves",s:"they’d come back to it",v:"3.2%",d:"↑1.3 pts",down:0},
-         {n:"Shares",s:"sent to someone else", v:"1.4%",d:"↑0.5 pts",down:0},
-         {n:"Comments",s:"replied under it",   v:"0.5%",d:"↓0.1 pts",down:1},
-         {n:"Follows",s:"followed after",      v:"0.4%",d:"↓0.1 pts",down:1}],
-  text: [{n:"Comments",s:"replied under it",   v:"1.1%",d:"↑0.5 pts",down:0},
-         {n:"Saves",s:"they’d come back to it",v:"2.8%",d:"↑0.9 pts",down:0},
-         {n:"Shares",s:"sent to someone else", v:"0.7%",d:"↓0.2 pts",down:1},
-         {n:"Follows",s:"followed after",      v:"0.3%",d:"↓0.2 pts",down:1}],
+/* key-metric tiles — label · value · delta vs the creator's own median. `bad` = the ONE
+   dominant loss on the screen; lesser misses keep a quiet ↓ in the delta line only. */
+const TILES={
+  videoOverview:[
+    {n:"Hook rate",    v:"38%",  d:"↓20 pts vs median", bad:1},
+    {n:"Avg watch",    v:"9.7s", d:"↓1.5s · of 0:28"},
+    {n:"Watched full", v:"3.1%", d:"↓6.3 pts"},
+    {n:"Rewatch",      v:"1.19×",d:"↑0.15 · top fifth"},
+  ],
+  textOverview:[
+    {n:"Would stop",   v:"41%",  d:"↑8 pts"},
+    {n:"Novel to them",v:"63%",  d:"↓14 pts", bad:1},
+    {n:"Would finish", v:"55%",  d:"↑3 pts"},
+  ],
+  videoEngage:[
+    {n:"Saves",    v:"3.2%", d:"↑1.3 pts"},
+    {n:"Shares",   v:"1.4%", d:"↑0.5 pts"},
+    {n:"Comments", v:"0.5%", d:"↓0.1 pts"},
+    {n:"Follows",  v:"0.4%", d:"↓0.1 pts"},
+  ],
+  textEngage:[
+    {n:"Comments", v:"1.1%", d:"↑0.5 pts"},
+    {n:"Saves",    v:"2.8%", d:"↑0.9 pts"},
+    {n:"Shares",   v:"0.7%", d:"↓0.2 pts"},
+    {n:"Follows",  v:"0.3%", d:"↓0.2 pts"},
+  ],
 };
 
-/* One accent, one story: coral marks the DOMINANT loss only — the same one the answer block and
-   the unlock both name. The other frictions carry their weight in the bar, not in a second colour. */
+/* One accent, one story: coral marks the DOMINANT loss only — the same one the answer block
+   names. The other frictions carry their weight in the bar, not in a second colour. */
 const REASONS=[
   {n:"Already heard it", v:37, loss:1},{n:"No proof shown", v:24, loss:0},
   {n:"Genuinely useful", v:21, loss:0},{n:"Too abstract",   v:11, loss:0},
@@ -468,9 +479,11 @@ const ico=(k,sz=14)=>`<svg width="${sz}" height="${sz}" viewBox="0 0 24 24" fill
   stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${IC[k]}</svg>`;
 const ch=(k,t,r='')=>`<div class="chead"><div class="l">${ico(k)}<h3>${t}</h3></div>
   ${r?`<span class="r">${r}</span>`:''}</div>`;
-const rateRows=rs=>rs.map(r=>`<div class="rate ${r.down?'down':''}">
-  <span class="nm"><i>${r.n}</i><u>${r.s}</u></span>
-  <span class="vl">${r.v}</span><span class="dl">${r.d}</span></div>`).join('');
+const tiles=(rs,three)=>`<div class="tiles${three?' t3':''}">${rs.map(t=>
+  `<div class="tile ${t.bad?'bad':''}"><i>${t.n}</i><b>${t.v}</b><em>${t.d}</em></div>`).join('')}</div>`;
+const insight=t=>`<div class="insight"><span>${t}</span></div>`;
+const lgRows=rs=>rs.map(r=>`<div class="lg"><s style="background:${r.c}"></s>
+  <span class="nm">${r.n}</span><b>${r.v}</b></div>`).join('');
 const path=(a,w,h,p)=>"M"+a.map((v,i)=>
   `${(p+i/(a.length-1)*(w-2*p)).toFixed(1)},${(h-p-v*(h-2*p)).toFixed(1)}`).join(" L");
 const retAt=u=>{const f=u*(CURVE.length-1),i=Math.floor(f),k=f-i;
@@ -480,7 +493,7 @@ const mmss=s=>`0:${String(Math.floor(s)).padStart(2,"0")}`;
 /* ── state ──────────────────────────────────────────────────────────────── */
 let kind="video", tab="overview", ph=BREAK_S/CLIP;
 
-/* ── heroes — the two shipped figures, three readings ───────────────────── */
+/* ── heroes — three figures, one verdict grammar ────────────────────────── */
 /* The districts the terrain already carries — name + the share of that district that stopped. */
 const DISTRICTS=[
   {n:"builders", v:"82%", x:30,  y:64,  loss:0},
@@ -489,14 +502,23 @@ const DISTRICTS=[
 ];
 /* Cortex framing reproduces the shipped hero exactly (source y 112→375 at 1x, scale 1.0266), so the
    brain sits in the upper four fifths and the verdict chip has clear dark ground beneath it — the
-   composition the chip's scrim was designed for. */
+   composition the chip's scrim was designed for. Framing is UNCHANGED from rev 6: the build
+   script's CROP depends on these numbers. */
 function hero(fig,l,r,vv,vl){
   const src=fig==="cortex"
     ? `<img src="reference-2026-08-01/shipped-video-The-brain.png" style="width:452px;left:-33px;top:-115px">
        <div class="mask" style="top:0;height:28px"></div>
        <div class="mask" style="bottom:0;height:42px"></div>`
-    : `<img src="reference-2026-08-01/shipped-video-The-audience.png" style="width:739px;left:-180px;top:-294px">
-       <div class="mask" style="bottom:0;height:4px"></div>`;
+    : fig==="terrain"
+    ? `<img src="reference-2026-08-01/shipped-video-The-audience.png" style="width:739px;left:-180px;top:-294px">
+       <div class="mask" style="bottom:0;height:4px"></div>`
+    : `<svg class="vfig" width="100%" height="100%">
+        <defs><pattern id="vs" width="26" height="26" patternUnits="userSpaceOnUse"
+          patternTransform="rotate(14)">
+          <rect width="26" height="26" fill="#161514"/>
+          <rect width="13" height="26" fill="#1b1a18"/></pattern></defs>
+        <rect width="100%" height="100%" fill="url(#vs)"/></svg>
+       <div class="playchip">${ico("play",18)}</div>`;
   const labels=fig==="terrain" ? DISTRICTS.map(d=>
     `<span class="dist ${d.loss?'loss':''}" style="left:${d.x}px;top:${d.y}px">${d.n}<b>${d.v}</b></span>`
   ).join('') : '';
@@ -522,8 +544,8 @@ function groundedDrive(u){
 }
 function netsRow(){
   const d=groundedDrive(ph);
-  const one=(n,x,loss)=>`<div class="net"><i>${n}</i><span class="t"><s style="width:${
-    (x*100).toFixed(0)}%${loss?';background:var(--coral)':''}"></s></span></div>`;
+  const one=(n,x,loss)=>`<div class="net"><span class="nr"><i>${n}</i><b>${(x*100).toFixed(0)}%</b></span>
+    <span class="t"><s style="width:${(x*100).toFixed(0)}%${loss?';background:var(--coral)':''}"></s></span></div>`;
   return `<div class="nets">${one("Attention",d.attention,0)}${one("Salience",d.salience,0)
     }${one("Drift",d.drift,d.drift>.6)}</div>`;
 }
@@ -536,7 +558,7 @@ function retentionCard(){
   const brk="M"+CURVE.slice(0,4).map((v,i)=>
     `${(P+i/(CURVE.length-1)*(W-2*P)).toFixed(1)},${(H-P-v*(H-2*P)).toFixed(1)}`).join(" L");
   return `<div class="card">
-    ${ch('pulse','Retention',`${mmss(ph*CLIP)} · ${Math.round(retAt(ph)*100)}%`)}
+    ${ch('pulse','Retention',`<span id="retro">${mmss(ph*CLIP)} · ${Math.round(retAt(ph)*100)}%</span>`)}
     <div class="curvewrap" id="scrub">
       <svg viewBox="0 0 ${W} ${H}" style="display:block;width:100%;height:auto">
         <path d="${me} L${W-P},${H-P} L${P},${H-P} Z" fill="rgba(236,231,222,.045)"/>
@@ -552,12 +574,12 @@ function retentionCard(){
       <em><s class="sw d"></s>your median</em>
       <em style="margin-left:auto;color:rgba(236,231,222,.28)">drag to scrub</em></div>
     <div class="moments">
-      <button class="mo dip" data-t="2"><i>0:02</i><b>38</b></button>
+      <button class="mo dip" data-t="2" aria-pressed="true"><i>0:02</i><b>38</b></button>
       <button class="mo" data-t="9"><i>0:09</i><b>33</b></button>
       <button class="mo" data-t="21"><i>0:21</i><b>27</b></button></div>
-    <p class="script" id="script"></p>
-    <p class="read">Attention breaks at <b>0:02</b> — <span class="loss">62% are gone by 0:03</span>.
-      After that the curve runs flatter than your median: the people who stay, stay to the end.</p>
+    <div class="tstrip"><span class="tin" id="tin"></span></div>
+    ${insight(`Breaks at <b>0:02</b> — <span class="loss">62% are gone by 0:03</span>. Past the
+      break the curve runs flatter than your median: the people who stay, stay to the end.`)}
   </div>`;
 }
 
@@ -567,112 +589,96 @@ function overview(){
   let tk='';for(let i=0;i<41;i++)tk+=`<s style="left:${(i/40*100).toFixed(1)}%"></s>`;
   return hero("cortex","Predicted cortex",`t = ${mmss(ph*CLIP)}`,"38%","would stop")
   + netsRow()
-  + `<p class="herofoot">The cortex is driven by the curve below — attention tracks who is still
-      watching, and <span class="loss">drift takes over from 0:02</span>.</p>`
-  + retentionCard()
-  + `<div class="card">${ch('trend','Key rates','vs your last 41')}
-      <div class="rate down"><span class="nm"><i>${RATES[0].n}</i><u>${RATES[0].s}</u></span>
-        <span class="vl">${RATES[0].v}</span><span class="dl">${RATES[0].d}</span></div>
+  + `<div class="card">${ch('trend','Key metrics','vs your last 41')}
+      ${tiles(TILES.videoOverview)}
       <div class="ticks">${tk}<span class="base"></span>
-        <span class="md" style="left:${RATES[0].med*100}%"></span>
-        <span class="me" style="left:${RATES[0].pos*100}%"></span></div>
-      <div class="tickcap"><span>weakest</span><span>your median 58%</span><span>best</span></div>
-      <div style="margin-top:4px">${rateRows(RATES.slice(1))}</div>
-      <p class="read"><b>The hook is the only thing broken.</b> Watch time, completion and rewatch all
-        sit near or above your median among the people who got past 0:03.</p>
+        <span class="md" style="left:58%"></span>
+        <span class="me" style="left:22%"></span></div>
+      <div class="tickcap"><span>weakest</span><span>hook rate · your median 58%</span><span>best</span></div>
+      ${insight(`<b>Only the hook is broken.</b> Watch time, completion and rewatch all sit at or
+        above your median among the people who get past 0:03.`)}
     </div>`
-  + unlock("Trim the first three seconds — open on the result, not the setup.","8.4K views",
-      "Your rewatch rate is in the top fifth of everything you’ve posted. That only happens when the payoff lands. Almost nobody is reaching it.")
+  + retentionCard()
   + foot();
 }
 
 function textOverview(){
   return hero("cortex","Predicted cortex","simulated","41%","would stop")
-  + `<p class="herofoot">A text concept has no timeline. This is a
-      <b>simulated encounter</b>, shaped by the one real aggregate — how much of the room stopped.</p>`
+  + `<div class="card">${ch('trend','Key metrics','vs your last 41 hooks')}
+      ${tiles(TILES.textOverview,1)}
+      ${insight(`It out-stops your median hook. The claim is strong —
+        the <span class="loss">wording is the commodity</span>.`)}
+    </div>`
   + `<div class="card">${ch('brain','Why they stopped','590 coded')}
       <div style="margin-top:10px">${REASONS.map(r=>`
         <div class="rb ${r.loss?'loss':''}"><span class="nm">${r.n}</span>
           <span class="tr"><s style="width:${(r.v/37*100).toFixed(0)}%"></s></span>
           <span class="vl">${r.v}%</span></div>`).join('')}</div>
-      <p class="read">The dominant code isn’t disagreement — it’s <span class="loss">recognition</span>.
-        They have read this sentence before.</p>
+      ${insight(`The dominant code isn’t disagreement — it’s <span class="loss">recognition</span>.
+        218 of 590 have read this sentence before.`)}
     </div>`
-  + `<div class="card">${ch('trend','Key rates','vs your last 41 hooks')}
-      ${rateRows([{n:"Would stop",s:"this hook",v:"41%",d:"↑8 pts",down:0},
-                  {n:"Novel to them",s:"not already heard",v:"63%",d:"↓14 pts",down:1},
-                  {n:"Would finish",s:"read to the end",v:"55%",d:"↑3 pts",down:0}])}
-      <p class="read">It out-stops your median hook and under-performs on novelty. The claim is strong;
-        the <b>wording</b> is the commodity.</p>
-    </div>`
-  + unlock("Put a number in the first clause.","58% would stop",
-      "Every hook you’ve posted that opened on a figure cleared 55%. This one opens on a category — the exact shape they said they’d already heard.")
   + foot();
 }
 
 function audience(){
   const c=["rgba(236,231,222,.88)","rgba(236,231,222,.52)","rgba(236,231,222,.32)","rgba(236,231,222,.18)"];
-  return hero("terrain","The room","1 node ≈ 10 people",D[kind].verdict[0],D[kind].verdict[1])
-  + `<p class="herofoot">Your believers cluster in <b>builders</b>;
-      <span class="loss">skeptics are the ceiling (12%)</span>.</p>`
-  + `<div class="card">${ch('layers','Who this reaches','room mix')}
+  return hero("terrain","The room","1 node ≈ 10 people","90%","non-followers")
+  + `<div class="card">${kind==="video"
+      ? ch('layers','Who watches — and how long','no platform reports this')
+      : ch('layers','Who this reaches','room mix')}
       <div class="mix">${POOLS.map((p,i)=>`<s style="flex:${p.pct};background:${c[i]}"></s>`).join('')}</div>
-      <div class="pills">${POOLS.map((p,i)=>
-        `<span class="pill"><s style="background:${c[i]}"></s>${p.n} <b>${p.pct}%</b></span>`).join('')}</div>
+      ${kind==="video"
+        ? `<div style="margin-top:4px">${POOLS.map(p=>`
+            <div class="prow ${p.loss?'loss':''}">
+              <span class="nm"><i>${p.n}</i><u>${p.s}</u></span>
+              <svg class="sp" viewBox="0 0 150 28" preserveAspectRatio="none">
+                <path d="${path(p.k,150,28,2)} L148,26 L2,26 Z" fill="rgba(236,231,222,.05)"/>
+                <path d="${path(p.k,150,28,2)}" fill="none"
+                  stroke="${p.loss?'#FF6363':'rgba(236,231,222,.62)'}" stroke-width="1.4"/>
+              </svg><span class="dr">${p.drop}</span>
+            </div>`).join('')}</div>
+          ${insight(`<b>Your followers stay to 0:21.</b> The For You pool — two thirds of the room —
+            <span class="loss">is gone by 0:02</span>, and it holds the people you needed to convert.`)}`
+        : `<div style="margin-top:5px">${lgRows(POOLS.map((p,i)=>({n:p.n,v:p.pct+"%",c:c[i]})))}</div>
+          ${insight(`<b>Nine in ten readers would be new to you.</b> A text concept has no timeline,
+            so the pools carry reach, not retention.`)}`}
     </div>`
-  + (kind==="video"?`<div class="card">${ch('trend','Retention by pool','drop-off')}
-      <div style="margin-top:4px">${POOLS.map(p=>`
-        <div class="prow ${p.loss?'loss':''}">
-          <span class="nm"><i>${p.n}</i><u>${p.s}</u></span>
-          <svg class="sp" viewBox="0 0 150 28" preserveAspectRatio="none">
-            <path d="${path(p.k,150,28,2)} L148,26 L2,26 Z" fill="rgba(236,231,222,.05)"/>
-            <path d="${path(p.k,150,28,2)}" fill="none"
-              stroke="${p.loss?'#FF6363':'rgba(236,231,222,.62)'}" stroke-width="1.4"/>
-          </svg><span class="dr">${p.drop}</span>
-        </div>`).join('')}</div>
-      <p class="read"><b>Your followers stay to 0:21.</b> The For You pool — two thirds of the room —
-        <span class="loss">is gone by 0:02</span>. It holds the people you needed to convert.</p>
-      <p class="sub">No platform reports this. It’s the question a creator actually has.</p>
-    </div>`:'')
   + `<div class="card">${ch('users','What they did','1,000 simulated')}
       <div style="margin-top:2px">${ROOM.map(([n,v,l])=>{
         const lit=Math.round(v/1000*18);let d='';
         for(let i=0;i<18;i++)d+=`<s${i<lit?` style="background:${l?'#FF6363':'rgba(236,231,222,.78)'}"`:''}></s>`;
         return `<div class="dm ${l?'loss':''}"><span class="nm">${n}</span>
           <span class="dots">${d}</span><span class="n">${v}</span></div>`;}).join('')}</div>
-      <p class="read">The <b>201 who almost stopped</b> are the winnable ones — they got past the hook
-        and left at the proof.</p>
+      ${insight(`The <b>201 who almost stopped</b> got past the hook and left at the proof —
+        they are the winnable ones.`)}
     </div>`
   + foot();
 }
 
 function engagement(){
   const v=kind==="video";
-  return hero("terrain", v?"Who would pass it on":"Who would reply", "1 node ≈ 10 people",
-              v?"1.4%":"1.1%", v?"would share":"would comment")
-  + `<p class="herofoot">${v
-      ? `Sharing concentrates in the <b>followers</b> district — <span class="loss">the For You pool never reaches the line that would make them send it</span>.`
-      : `Replies concentrate in <b>skeptics</b> — <span class="loss">the argument travels further than the idea</span>.`}</p>`
+  return (v
+    ? hero("video","The post","0:28","1.4%","would share")
+    : hero("terrain","Who would reply","1 node ≈ 10 people","1.1%","would comment"))
   + `<div class="card">${ch('trend','Projected reaction','per reach · vs your median')}
-      ${rateRows(REACT[kind])}
-      <p class="read">${v
-        ? `<b>Everyone who stays converts.</b> Saves and shares — the two signals that actually buy
-           distribution — both beat your median. <span class="loss">Only 38% stay.</span>`
-        : `<b>It argues well and travels badly.</b> Comments run high because a third of the room wants
-           to push back — <span class="loss">but nobody sends it to a friend</span>.`}</p>
-      <p class="sub">Rates are per person reached, not per follower. Projected from the room’s coded intent.</p>
+      ${tiles(TILES[v?'videoEngage':'textEngage'])}
+      ${insight(v
+        ? `<b>Everyone who stays converts.</b> Saves and shares — the signals that buy
+           distribution — both beat your median. <span class="loss">Only 38% stay to give them.</span>`
+        : `<b>It argues well and travels badly.</b> A third of the room wants to push back —
+           <span class="loss">almost nobody sends it to a friend</span>.`)}
     </div>`
   + (v?`<div class="card">${ch('map','Where it would surface','traffic source')}
       <div class="mix">
         <s style="flex:53;background:rgba(236,231,222,.88)"></s>
         <s style="flex:33;background:rgba(236,231,222,.46)"></s>
         <s style="flex:14;background:rgba(236,231,222,.24)"></s></div>
-      <div class="pills">
-        <span class="pill"><s style="background:rgba(236,231,222,.88)"></s>For You <b>53%</b></span>
-        <span class="pill"><s style="background:rgba(236,231,222,.46)"></s>Sound <b>33%</b></span>
-        <span class="pill"><s style="background:rgba(236,231,222,.24)"></s>Search <b>14%</b></span></div>
-      <p class="read">A third of the projected reach rides the <b>sound</b>, not the idea — that reach
-        expires with the trend. Search share is the part that compounds.</p>
+      <div style="margin-top:5px">${lgRows([
+        {n:"For You",c:"rgba(236,231,222,.88)",v:"53%"},
+        {n:"Sound",c:"rgba(236,231,222,.46)",v:"33%"},
+        {n:"Search",c:"rgba(236,231,222,.24)",v:"14%"}])}</div>
+      ${insight(`<b>A third of the reach rides the sound</b>, not the idea — it expires with the
+        trend. The search share is the part that compounds.`)}
     </div>`:`<div class="card">${ch('msg','If you posted this','projected replies')}
       <div>${VOICES.map(x=>`<div class="voice ${x.loss?'loss':''}">
         <div class="vhead"><span class="av">${x.w[0]}</span><b>${x.w}</b><span class="vtag">${x.t}</span></div>
@@ -681,18 +687,17 @@ function engagement(){
           <span class="t"><s style="width:${(x.n/412*100).toFixed(0)}%"></s></span></div>
       </div>`).join('')}</div>
     </div>`)
-  + `<div class="card">${ch('clock','Best window','followers online · 7–9pm')}
+  + `<div class="card">${ch('clock','Best window','followers online')}
       <div class="pw">${["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map((d,i)=>
         `<div class="${i===1?'best':''}"><s style="height:${[17,38,24,29,20,32,11][i]}px"></s><i>${d}</i></div>`).join('')}</div>
-      <p class="read"><b>Tuesday, 7–9pm.</b> Your followers are the only pool that stays past 0:20, and
-        that is when the most of them are on.</p>
+      ${insight(v
+        ? `<b>Tuesday, 7–9pm.</b> Your followers are the only pool that stays past 0:20 — post
+           when most of them are online.`
+        : `<b>Tuesday, 7–9pm.</b> When the people who finish your posts are online.`)}
     </div>`
   + foot();
 }
 
-const unlock=(lever,gain,insight)=>`<div class="unlock"><div class="k"><span>the unlock</span><s></s></div>
-  <h4>${lever}</h4><div class="proj"><i>projected</i><s></s><b>${gain}</b></div>
-  <p>${insight}</p></div>`;
 const foot=()=>`<div class="foot"><span>How to read these numbers</span><span>›</span></div>`;
 
 /* ── render ─────────────────────────────────────────────────────────────── */
@@ -713,17 +718,29 @@ function syncPlayhead(){
   const l=document.getElementById("phl"), dot=document.getElementById("phd");
   if(l){l.setAttribute("x1",x);l.setAttribute("x2",x);}
   if(dot){dot.setAttribute("cx",x);dot.setAttribute("cy",y);}
-  const s=document.getElementById("script");
-  if(s){const upto=Math.floor(ph*SCRIPT.length);
-    s.innerHTML=SCRIPT.map((w,i)=>
-      `<s class="${i===BREAK_WORD?'brk':i<=upto?'on':''}">${w}</s>`).join(" ");}
   const cr=document.querySelector(".corner.r"); if(cr)cr.textContent=`t = ${mmss(ph*CLIP)}`;
-  const hd=document.querySelector(".card .chead .r");
-  if(hd)hd.textContent=`${mmss(ph*CLIP)} · ${Math.round(retAt(ph)*100)}%`;
+  const ro=document.getElementById("retro");
+  if(ro)ro.textContent=`${mmss(ph*CLIP)} · ${Math.round(retAt(ph)*100)}%`;
   const g=groundedDrive(ph), v=[g.attention,g.salience,g.drift];
-  document.querySelectorAll(".nets .net .t s").forEach((el,i)=>{
-    el.style.width=(v[i]*100).toFixed(0)+"%";
-    if(i===2)el.style.background=v[2]>.6?"var(--coral)":"rgba(236,231,222,.72)";});
+  document.querySelectorAll(".nets .net").forEach((el,i)=>{
+    const s=el.querySelector(".t s"), b=el.querySelector(".nr b");
+    if(b)b.textContent=(v[i]*100).toFixed(0)+"%";
+    if(s){s.style.width=(v[i]*100).toFixed(0)+"%";
+      if(i===2)s.style.background=v[2]>.6?"var(--coral)":"rgba(236,231,222,.72)";}});
+  /* one-line transcript: light words up to the playhead, keep the current word centred */
+  const tin=document.getElementById("tin");
+  if(tin){
+    const idx=Math.min(SCRIPT.length-1,Math.floor(ph*SCRIPT.length));
+    tin.innerHTML=SCRIPT.map((w,i)=>{
+      const cls=i===BREAK_WORD?'brk':i===idx?'cur':i<idx?'on':'';
+      return `<s${cls?` class="${cls}"`:''}>${w}</s>`;}).join(" ");
+    const strip=tin.parentElement, cur=tin.children[idx];
+    if(cur){
+      const target=strip.clientWidth/2-(cur.offsetLeft+cur.offsetWidth/2);
+      tin.style.transform=`translateX(${
+        Math.min(0,Math.max(strip.clientWidth-tin.scrollWidth,target)).toFixed(0)}px)`;
+    }
+  }
 }
 function bindScrub(){
   const w=document.getElementById("scrub"); if(!w)return;
