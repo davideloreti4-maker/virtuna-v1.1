@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Insights rev 6 — hero restored</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --rail:#181817; --card:#212120; --chip:#2b2a28; --chip-on:#343330; --figure:#131210;
+  --cream:#ece7de; --dim:rgba(236,231,222,.62); --faint:rgba(236,231,222,.38);
+  --ghost:rgba(236,231,222,.16); --coral:#FF6363;
+  --border:rgba(255,255,255,.06); --hair:rgba(255,255,255,.08);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0f0f0e;color:var(--cream);font-family:Inter,system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;display:flex;gap:32px;padding:28px;align-items:flex-start}
+
+/* ── control strip (scaffolding — not part of the design) ────────────────── */
+.ctl{width:206px;position:sticky;top:28px;flex:none}
+.ctl h1{font-size:13px;font-weight:600;letter-spacing:-.01em}
+.ctl>p{font-size:11.5px;line-height:1.5;color:var(--faint);margin-top:6px}
+.ctl h2{font-size:9.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--faint);margin:18px 0 7px}
+.ctl button{display:block;width:100%;text-align:left;background:var(--chip);border:0;color:var(--dim);
+  font:500 12px Inter;padding:7px 10px;border-radius:8px;margin-bottom:5px;cursor:pointer}
+.ctl button[aria-pressed="true"]{background:var(--chip-on);color:var(--cream)}
+.note{font-size:11px;line-height:1.55;color:var(--faint);margin-top:16px;border-top:1px solid var(--border);
+  padding-top:13px}
+.note b{color:var(--dim);font-weight:500}
+
+/* ── the rail — exactly 440 ──────────────────────────────────────────────── */
+.rail{width:440px;height:812px;background:var(--rail);border-left:1px solid var(--border);
+  display:flex;flex-direction:column;flex:none}
+.head{padding:20px 22px 0}
+.navrow{display:flex;align-items:center;justify-content:space-between;height:20px}
+.back{background:0;border:0;color:var(--faint);font:400 13px Inter;cursor:pointer}
+.back:hover{color:var(--cream)}
+.pager{background:var(--chip);color:var(--faint);font:500 11.5px Inter;padding:3px 9px;border-radius:99px}
+
+/* identity — thumbnail + one-line title + the TikTok-native stat row */
+.ident{display:flex;gap:11px;margin-top:12px;align-items:center}
+.thumb{width:40px;height:54px;border-radius:7px;background:var(--figure);flex:none;position:relative;
+  overflow:hidden;display:flex;align-items:flex-end;justify-content:center;padding-bottom:4px}
+.thumb::before{content:"";position:absolute;inset:0;
+  background:repeating-linear-gradient(104deg,#2c2926 0 8px,#232120 8px 16px);opacity:.5}
+.thumb span{position:relative;font:500 9.5px Inter;color:var(--faint)}
+.ident .meta{min-width:0;flex:1}
+.title{font-size:13px;line-height:1.35;color:var(--dim);white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis}
+.stats{display:flex;gap:15px;margin-top:8px}
+.stat{display:flex;align-items:center;gap:5px}
+.stat svg{opacity:.42;flex:none}
+.stat b{font:500 12.5px/1 Inter;color:var(--cream);font-variant-numeric:tabular-nums}
+
+/* the persistent answer — never behind a tab */
+.answer{margin-top:13px;padding-left:13px;border-left:2px solid var(--coral)}
+.answer h2{font:600 16.5px/1.28 Inter;letter-spacing:-.018em;color:var(--cream)}
+.answer p{font-size:13px;line-height:1.5;color:var(--dim);margin-top:5px}
+.answer .loss{color:var(--coral)}
+.answer .win{color:var(--cream)}
+.fix{display:inline-flex;align-items:center;gap:8px;background:var(--chip);border-radius:9px;
+  padding:6px 11px 6px 9px;margin-top:10px;cursor:pointer}
+.fix:hover{background:var(--chip-on)}
+.fix .b{font:500 12.5px Inter;color:var(--cream)}
+.fix .g{font:500 12px Inter;color:var(--dim);font-variant-numeric:tabular-nums}
+
+/* segmented control */
+.seg{display:flex;background:var(--chip);border-radius:10px;padding:3px;margin-top:12px}
+.seg button{flex:1;background:0;border:0;color:var(--faint);font:500 12.5px Inter;padding:7px 0;
+  border-radius:8px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--chip-on);color:var(--cream)}
+.headrule{height:1px;background:var(--border);margin-top:14px}
+
+/* body */
+.body{flex:1;min-height:0;overflow-y:auto;padding:14px 22px 30px;scrollbar-width:thin;
+  scrollbar-color:rgba(236,231,222,.14) transparent}
+.body::-webkit-scrollbar{width:6px}
+.body::-webkit-scrollbar-thumb{background:rgba(236,231,222,.14);border-radius:3px}
+
+/* ── the hero — full bleed, 270, the figure IS the wow ───────────────────── */
+.hero{position:relative;height:270px;border-radius:14px;overflow:hidden;background:var(--figure);
+  border:1px solid var(--border)}
+.hero .fig{position:absolute;inset:0;overflow:hidden}
+.hero .fig img{position:absolute}
+/* The reference PNGs are screenshots, so they carry the shipped surface's own baked chrome
+   (the uppercase corner labels + the verdict chip). These bands paint them out in the figure's
+   own background colour — what the LIVE CortexCanvas actually renders, with no chrome at all. */
+.hero .mask{position:absolute;left:0;right:0;background:var(--figure)}
+.corner{position:absolute;top:9px;border-radius:7px;padding:4px 8px;background:rgba(20,20,19,.78);
+  font:500 11.5px Inter;color:rgba(236,231,222,.85);letter-spacing:-.005em}
+.corner.l{left:9px}
+.corner.r{right:9px;color:var(--faint);font-variant-numeric:tabular-nums}
+.verdict{position:absolute;bottom:10px;left:10px;display:flex;align-items:baseline;
+  background:rgba(20,20,19,.82);border-radius:10px;padding:6px 10px}
+.verdict b{font:300 24px/1 Inter;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.verdict span{font-size:12px;color:var(--faint);margin-left:6px}
+/* the terrain self-reads — each district carries its own rate (as shipped) */
+.dist{position:absolute;font:500 11px Inter;color:rgba(236,231,222,.82);white-space:nowrap;
+  font-variant-numeric:tabular-nums}
+.dist b{font-weight:500;color:rgba(236,231,222,.5);margin-left:5px}
+.dist.loss{color:var(--coral)}
+.dist.loss b{color:rgba(255,99,99,.6)}
+
+/* the grounded readout — UNDER the figure, so the figure stays clean */
+.nets{display:flex;gap:8px;margin-top:10px}
+.net{flex:1;background:var(--card);border-radius:10px;padding:8px 10px 9px}
+.net i{font-style:normal;display:block;font-size:11px;color:var(--faint)}
+.net .t{display:block;height:3px;border-radius:2px;background:rgba(236,231,222,.10);margin-top:7px;
+  overflow:hidden}
+.net .t s{display:block;height:100%;border-radius:2px;text-decoration:none;
+  background:rgba(236,231,222,.72);transition:width .14s linear,background .14s linear}
+.herofoot{font-size:13px;line-height:1.5;color:var(--dim);margin-top:11px}
+.herofoot .loss{color:var(--coral)}
+.herofoot b{color:var(--cream);font-weight:500}
+
+/* ── cards — filled, no border, one level deep ───────────────────────────── */
+.card{background:var(--card);border-radius:14px;padding:15px 15px 16px;margin-top:12px}
+.chead{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.chead .l{display:flex;align-items:center;gap:8px;min-width:0}
+.chead .l svg{flex:none;opacity:.6}
+.chead h3{font:500 13.5px Inter;color:var(--cream);letter-spacing:-.005em;white-space:nowrap}
+.chead .r{font-size:11.5px;color:var(--faint);font-variant-numeric:tabular-nums;white-space:nowrap}
+.read{font-size:13px;line-height:1.55;color:var(--dim);margin-top:12px}
+.read b{color:var(--cream);font-weight:500}
+.read .loss{color:var(--coral)}
+.sub{font-size:11.5px;line-height:1.5;color:var(--faint);margin-top:8px}
+
+/* metric rows — one grammar for every rate on the surface */
+.rate{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.rate:last-child{border-bottom:0;padding-bottom:2px}
+.rate .nm{flex:1;min-width:0}
+.rate .nm i{font-style:normal;display:block;font-size:12.5px;color:var(--dim)}
+.rate .nm u{text-decoration:none;display:block;font-size:11px;color:var(--faint);margin-top:3px}
+.rate .vl{font:500 17px/1 Inter;font-variant-numeric:tabular-nums;text-align:right;min-width:50px;
+  color:var(--cream)}
+.rate .dl{font:500 11.5px/1 Inter;font-variant-numeric:tabular-nums;text-align:right;min-width:58px;
+  color:var(--faint)}
+.rate.down .vl,.rate.down .dl{color:var(--coral)}
+.rate.nb{border-bottom:0;padding-bottom:0}
+
+/* where this sits in the creator's own catalogue */
+.ticks{position:relative;height:18px;margin-top:9px}
+.ticks .base{position:absolute;left:0;right:0;bottom:6px;height:1px;background:rgba(236,231,222,.10)}
+.ticks s{position:absolute;bottom:7px;width:1px;height:5px;background:rgba(236,231,222,.18);
+  text-decoration:none}
+.ticks .md{position:absolute;bottom:7px;width:1px;height:11px;background:rgba(236,231,222,.42)}
+.ticks .me{position:absolute;bottom:7px;width:2px;height:13px;background:var(--coral);border-radius:1px}
+.tickcap{display:flex;justify-content:space-between;font-size:10.5px;color:var(--faint)}
+
+/* retention figure */
+.curvewrap{margin-top:12px;cursor:ew-resize;touch-action:none}
+.legend{display:flex;align-items:center;gap:14px;margin-top:8px;font-size:11px;color:var(--faint)}
+.legend em{font-style:normal;display:flex;align-items:center;gap:6px}
+.legend .sw{width:13px;height:2px;border-radius:1px;background:var(--cream)}
+.legend .sw.d{background:0;border-top:2px dashed rgba(236,231,222,.34);height:0}
+.moments{display:flex;gap:7px;margin-top:12px}
+.mo{background:var(--chip);border:0;border-radius:9px;padding:6px 10px;cursor:pointer;
+  display:flex;align-items:baseline;gap:7px}
+.mo:hover,.mo[aria-pressed="true"]{background:var(--chip-on)}
+.mo i{font-style:normal;font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums}
+.mo b{font:500 12.5px Inter;font-variant-numeric:tabular-nums;color:var(--cream)}
+.mo.dip b{color:var(--coral)}
+.script{font-size:13px;line-height:1.6;color:rgba(236,231,222,.28);margin-top:12px}
+.script s{text-decoration:none;transition:color .12s}
+.script s.on{color:var(--cream)}
+.script s.brk{border-bottom:2px solid var(--coral);padding-bottom:1px;color:var(--cream)}
+
+/* mix bar + pills */
+.mix{display:flex;gap:3px;margin-top:13px;height:8px}
+.mix s{text-decoration:none;border-radius:2px}
+.pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.pill{display:flex;align-items:center;gap:7px;background:var(--chip);border-radius:8px;padding:5px 10px;
+  font-size:12px;color:var(--dim)}
+.pill s{width:6px;height:6px;border-radius:99px;text-decoration:none}
+.pill b{font-weight:500;color:var(--cream);font-variant-numeric:tabular-nums}
+
+/* per-pool retention */
+.prow{display:flex;align-items:center;gap:11px;padding:8px 0}
+.prow .nm{width:88px;flex:none}
+.prow .nm i{font-style:normal;display:block;font-size:12.5px;color:var(--dim)}
+.prow .nm u{text-decoration:none;display:block;font-size:10.5px;color:var(--faint);margin-top:2px}
+.prow .sp{flex:1;height:28px}
+.prow .dr{width:34px;flex:none;text-align:right;font:500 12.5px Inter;color:var(--faint);
+  font-variant-numeric:tabular-nums}
+.prow.loss .dr{color:var(--coral)}
+
+/* dot-matrix count rows — the shipped, product-native component */
+.dm{display:flex;align-items:center;gap:12px;padding:9px 0}
+.dm .nm{width:100px;flex:none;font-size:13px;color:var(--dim)}
+.dm .dots{flex:1;display:flex;gap:5px}
+.dm .dots s{width:5px;height:5px;border-radius:99px;text-decoration:none;background:rgba(236,231,222,.13)}
+.dm .n{width:36px;flex:none;text-align:right;font:500 13.5px Inter;color:var(--cream);
+  font-variant-numeric:tabular-nums}
+.dm.loss .nm,.dm.loss .n{color:var(--coral)}
+
+/* voices — the ONLY serif on the surface */
+.voice{padding:13px 0;border-bottom:1px solid var(--border)}
+.voice:first-child{padding-top:4px}
+.voice:last-child{border-bottom:0;padding-bottom:0}
+.vhead{display:flex;align-items:center;gap:8px}
+.av{width:23px;height:23px;border-radius:99px;background:var(--chip-on);display:flex;align-items:center;
+  justify-content:center;font:500 10.5px Inter;color:var(--dim);flex:none}
+.vhead b{font:500 12.5px Inter;color:var(--cream)}
+.vtag{background:var(--chip);border-radius:6px;padding:2px 7px;font-size:10.5px;color:var(--faint)}
+.vq{font:400 14.5px/1.5 Newsreader,Georgia,serif;color:var(--cream);margin-top:8px}
+.vecho{display:flex;align-items:center;gap:9px;margin-top:9px}
+.vecho i{font-style:normal;font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums;
+  white-space:nowrap}
+.vecho .t{flex:1;height:3px;border-radius:2px;background:rgba(236,231,222,.09);overflow:hidden}
+.vecho .t s{display:block;height:100%;border-radius:2px;text-decoration:none;background:rgba(236,231,222,.42)}
+.voice.loss .vecho i,.voice.loss .av{color:var(--coral)}
+.voice.loss .vecho .t s{background:var(--coral)}
+
+/* reason bars (text driver) */
+.rb{display:flex;align-items:center;gap:11px;padding:8px 0}
+.rb .nm{width:122px;flex:none;font-size:12.5px;color:var(--dim)}
+.rb .tr{flex:1;height:7px;border-radius:4px;background:rgba(236,231,222,.07);position:relative}
+.rb .tr s{position:absolute;inset:0 auto 0 0;border-radius:4px;background:rgba(236,231,222,.5);
+  text-decoration:none}
+.rb .vl{width:32px;flex:none;text-align:right;font:500 12.5px Inter;color:var(--cream);
+  font-variant-numeric:tabular-nums}
+.rb.loss .nm,.rb.loss .vl{color:var(--coral)}
+.rb.loss .tr s{background:var(--coral)}
+
+/* post window strip */
+.pw{display:flex;gap:4px;margin-top:12px;align-items:flex-end}
+.pw div{flex:1;text-align:center}
+.pw s{display:block;border-radius:5px;background:rgba(236,231,222,.16);text-decoration:none}
+.pw i{font-style:normal;display:block;font-size:10px;color:var(--faint);margin-top:5px}
+.pw div.best s{background:rgba(236,231,222,.82)}
+.pw div.best i{color:var(--cream)}
+
+/* the unlock */
+.unlock{margin-top:22px;padding-top:18px;border-top:1px solid var(--border)}
+.unlock .k{display:flex;align-items:center;gap:10px}
+.unlock .k span{font-size:11.5px;color:var(--faint)}
+.unlock .k s{flex:1;height:1px;background:var(--border);text-decoration:none}
+.unlock h4{font:500 18px/1.32 Inter;letter-spacing:-.012em;color:var(--cream);margin-top:12px}
+.unlock .proj{display:inline-flex;align-items:center;gap:10px;background:var(--chip);border-radius:10px;
+  padding:7px 12px;margin-top:13px}
+.unlock .proj i{font-style:normal;font-size:10.5px;color:var(--faint)}
+.unlock .proj s{width:1px;height:13px;background:var(--hair);text-decoration:none}
+.unlock .proj b{font:500 14.5px Inter;color:var(--cream);font-variant-numeric:tabular-nums}
+.unlock p{font-size:13px;line-height:1.55;color:var(--dim);margin-top:13px}
+.foot{margin-top:24px;padding-top:14px;border-top:1px solid var(--border);display:flex;
+  align-items:center;justify-content:space-between;font-size:11.5px;color:var(--faint);cursor:pointer}
+.foot:hover{color:var(--dim)}
+</style>
+</head>
+<body>
+
+<div class="ctl">
+  <h1>Insights · rev 6</h1>
+  <p>The hero restored. Rev 5's chrome kept. The cortex driven by the retention curve.</p>
+
+  <h2>Stimulus</h2>
+  <button data-kind="video" aria-pressed="true">Video · creator</button>
+  <button data-kind="text" aria-pressed="false">Text · hook concept</button>
+
+  <h2>Tab</h2>
+  <button data-tab="overview" aria-pressed="true">Overview</button>
+  <button data-tab="audience" aria-pressed="false">Audience</button>
+  <button data-tab="engagement" aria-pressed="false">Engagement</button>
+
+  <div class="note">
+    <b>Drag the retention curve.</b> One playhead drives the transcript, the clock and the cortex
+    readout together.<br><br>
+    <b>The hero</b> is the shipped <code>CortexCanvas</code> / terrain, here as a still. In the build
+    it repaints live from <code>weighted_curve</code> in <code>grounded</code> mode.
+  </div>
+</div>
+
+<div class="rail">
+  <div class="head">
+    <div class="navrow">
+      <button class="back">← Overview</button>
+      <span class="pager" id="pager">2 of 5</span>
+    </div>
+
+    <div class="ident">
+      <div class="thumb"><span id="thumbT">0:28</span></div>
+      <div class="meta">
+        <div class="title" id="title"></div>
+        <div class="stats" id="stats"></div>
+      </div>
+    </div>
+
+    <div class="answer">
+      <h2 id="aHead"></h2>
+      <p id="aBody"></p>
+      <div class="fix">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ece7de" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" style="opacity:.6">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        <span class="b" id="fixB"></span><span class="g" id="fixG"></span>
+      </div>
+    </div>
+
+    <div class="seg">
+      <button data-tab="overview" aria-pressed="true">Overview</button>
+      <button data-tab="audience" aria-pressed="false">Audience</button>
+      <button data-tab="engagement" aria-pressed="false">Engagement</button>
+    </div>
+    <div class="headrule"></div>
+  </div>
+
+  <div class="body" id="body"></div>
+</div>
+
+<script>
+/* ────────────────────────────────────────────────────────────────────────────
+   DATA — every field below maps to a real engine producer. See the metric
+   ledger in docs/HANDOFF-2026-08-01-insights-three-tab.md §3.
+   ──────────────────────────────────────────────────────────────────────────── */
+const CLIP = 28;
+/* heatmap.weighted_curve — 0..1 retention per second */
+const CURVE=[1,.84,.58,.38,.358,.348,.342,.336,.33,.325,.32,.316,.311,.306,.302,.297,.293,.288,
+             .284,.279,.274,.269,.264,.258,.251,.243,.234,.222,.209];
+/* the creator's own median post — the only benchmark band we hold */
+const MEDIAN=[1,.92,.76,.58,.50,.462,.44,.425,.412,.40,.389,.378,.368,.358,.348,.339,.33,.321,
+              .312,.303,.294,.284,.274,.264,.253,.241,.227,.21,.175];
+const BREAK_S=2;
+
+const SCRIPT=("I spent four hundred dollars testing every viral hook format so you don't have to and "+
+  "the one that won wasn't the one anyone teaches here's what actually happened I ran the same script "+
+  "twelve times and changed only the first three seconds").split(" ");
+const BREAK_WORD=9;
+
+const D={
+  video:{
+    pager:"2 of 5", thumb:"0:28",
+    title:"“I spent four hundred dollars testing every viral hook format…”",
+    stats:[["play","3.2K"],["heart","130"],["msg","17"],["share","22"],["save","48"]],
+    head:"The first three seconds cap your reach.",
+    body:[["Everything after the hook beats your median, but ",0],
+          ["62% leave before the payoff",1],
+          [" — ",0],["3.2K views",2],[" against your 8.1K.",0]],
+    fixB:"Trim 0:00–0:03", fixG:"→ 8.4K",
+    verdict:["38%","would stop"],
+  },
+  text:{
+    pager:"4 of 5", thumb:"HOOK",
+    title:"“You don’t need a niche. You need one repeatable format.”",
+    stats:[["play","4.9K"],["heart","210"],["msg","41"],["share","36"],["save","96"]],
+    head:"The idea works. The phrasing is what leaks.",
+    body:[["41% would stop",2],[", above your 33% median, but ",0],
+          ["218 of 590 had already heard it",1],
+          [" — they know the shape.",0]],
+    fixB:"Put a number in the first clause", fixG:"→ 58%",
+    verdict:["41%","would stop"],
+  }
+};
+
+const POOLS=[
+  {n:"For You",     s:"65% of room", pct:65, drop:"0:02", loss:1, k:[1,.82,.44,.22,.17,.15,.14,.135,.13,.128,.125,.123,.12,.118,.115,.113,.11,.108,.105,.103,.1,.098,.095,.092,.089,.085,.08,.074,.066]},
+  {n:"Niche",       s:"20%",         pct:20, drop:"0:11", loss:0, k:[1,.94,.86,.74,.68,.64,.61,.59,.57,.555,.54,.525,.51,.495,.48,.468,.455,.443,.43,.418,.405,.393,.38,.366,.35,.333,.313,.29,.26]},
+  {n:"Followers",   s:"10%",         pct:10, drop:"0:21", loss:0, k:[1,.97,.93,.89,.86,.84,.82,.805,.79,.777,.765,.753,.74,.728,.715,.703,.69,.677,.663,.648,.632,.614,.594,.57,.542,.508,.466,.412,.34]},
+  {n:"Cross-niche", s:"5%",          pct:5,  drop:"0:03", loss:0, k:[1,.88,.62,.41,.33,.29,.27,.258,.248,.24,.233,.226,.22,.213,.207,.2,.194,.187,.181,.174,.168,.161,.154,.146,.137,.127,.115,.1,.08]},
+];
+const ROOM=[["Stopped",380,0],["Almost",201,0],["Not for them",176,0],["Scrolled past",243,1]];
+
+const RATES=[
+  {n:"Hook rate",    s:"stopped in the first 3s", v:"38%",  d:"↓20 pts",  down:1, pos:.22, med:.58},
+  {n:"Avg watch",    s:"of 28s",                  v:"9.7s", d:"↓1.5s",    down:1},
+  {n:"Watched full", s:"reached the end",         v:"3.1%", d:"↓6.3 pts", down:1},
+  {n:"Rewatch",      s:"plays ÷ viewers",         v:"1.19×",d:"↑0.15",    down:0},
+];
+
+const REACT={
+  video:[{n:"Saves",s:"they’d come back to it",v:"3.2%",d:"↑1.3 pts",down:0},
+         {n:"Shares",s:"sent to someone else", v:"1.4%",d:"↑0.5 pts",down:0},
+         {n:"Comments",s:"replied under it",   v:"0.5%",d:"↓0.1 pts",down:1},
+         {n:"Follows",s:"followed after",      v:"0.4%",d:"↓0.1 pts",down:1}],
+  text: [{n:"Comments",s:"replied under it",   v:"1.1%",d:"↑0.5 pts",down:0},
+         {n:"Saves",s:"they’d come back to it",v:"2.8%",d:"↑0.9 pts",down:0},
+         {n:"Shares",s:"sent to someone else", v:"0.7%",d:"↓0.2 pts",down:1},
+         {n:"Follows",s:"followed after",      v:"0.3%",d:"↓0.2 pts",down:1}],
+};
+
+/* One accent, one story: coral marks the DOMINANT loss only — the same one the answer block and
+   the unlock both name. The other frictions carry their weight in the bar, not in a second colour. */
+const REASONS=[
+  {n:"Already heard it", v:37, loss:1},{n:"No proof shown", v:24, loss:0},
+  {n:"Genuinely useful", v:21, loss:0},{n:"Too abstract",   v:11, loss:0},
+  {n:"Wrong for me",     v:7,  loss:0},
+];
+const VOICES=[
+  {w:"Maya",t:"builder",q:"ok this is the first time someone’s said the quiet part. the niche advice has been killing me for two years",n:412,loss:0},
+  {w:"Dev",t:"skeptic",q:"sounds like everyone else. every account on here says pick a format now",n:218,loss:1},
+  {w:"Ana",t:"learner",q:"saving this. what counts as a format though — a series, or a shot type?",n:174,loss:0},
+  {w:"Sam",t:"tough crowd",q:"easy to say with 40k followers. format is all you need when the reach is already there",n:96,loss:1},
+];
+
+/* ── icons ──────────────────────────────────────────────────────────────── */
+const IC={
+  play:'<polygon points="5 3 19 12 5 21 5 3"/>',
+  heart:'<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1L12 21l7.7-7.6 1.1-1a5.5 5.5 0 0 0 0-7.8Z"/>',
+  msg:'<path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.5 8.5 0 0 1-3.9-.9L3 21l1.9-5A8.4 8.4 0 0 1 4 11.5a8.5 8.5 0 0 1 8.5-8.5 8.4 8.4 0 0 1 8.5 8.5Z"/>',
+  share:'<path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>',
+  save:'<path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>',
+  pulse:'<path d="M2 12h4l3-8 4 16 3-8h6"/>',
+  layers:'<path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>',
+  users:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/>',
+  trend:'<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>',
+  brain:'<path d="M9.5 2A2.5 2.5 0 0 0 7 4.5v.4A3 3 0 0 0 5 12a3 3 0 0 0 1 5.7V19a3 3 0 0 0 6 0V4.5A2.5 2.5 0 0 0 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 1 17 4.5v.4a3 3 0 0 1 2 7.1 3 3 0 0 1-1 5.7V19a3 3 0 0 1-6 0"/>',
+  map:'<polygon points="1 6 8 3 16 6 23 3 23 18 16 21 8 18 1 21 1 6"/><line x1="8" y1="3" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="21"/>',
+  clock:'<circle cx="12" cy="12" r="9"/><polyline points="12 6.5 12 12 16 14"/>',
+};
+const ico=(k,sz=14)=>`<svg width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="none" stroke="#ece7de"
+  stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${IC[k]}</svg>`;
+const ch=(k,t,r='')=>`<div class="chead"><div class="l">${ico(k)}<h3>${t}</h3></div>
+  ${r?`<span class="r">${r}</span>`:''}</div>`;
+const rateRows=rs=>rs.map(r=>`<div class="rate ${r.down?'down':''}">
+  <span class="nm"><i>${r.n}</i><u>${r.s}</u></span>
+  <span class="vl">${r.v}</span><span class="dl">${r.d}</span></div>`).join('');
+const path=(a,w,h,p)=>"M"+a.map((v,i)=>
+  `${(p+i/(a.length-1)*(w-2*p)).toFixed(1)},${(h-p-v*(h-2*p)).toFixed(1)}`).join(" L");
+const retAt=u=>{const f=u*(CURVE.length-1),i=Math.floor(f),k=f-i;
+  return CURVE[i]+(CURVE[Math.min(i+1,CURVE.length-1)]-CURVE[i])*k;};
+const mmss=s=>`0:${String(Math.floor(s)).padStart(2,"0")}`;
+
+/* ── state ──────────────────────────────────────────────────────────────── */
+let kind="video", tab="overview", ph=BREAK_S/CLIP;
+
+/* ── heroes — the two shipped figures, three readings ───────────────────── */
+/* The districts the terrain already carries — name + the share of that district that stopped. */
+const DISTRICTS=[
+  {n:"builders", v:"82%", x:30,  y:64,  loss:0},
+  {n:"learners", v:"44%", x:236, y:122, loss:0},
+  {n:"skeptics", v:"12%", x:132, y:198, loss:1},
+];
+/* Cortex framing reproduces the shipped hero exactly (source y 112→375 at 1x, scale 1.0266), so the
+   brain sits in the upper four fifths and the verdict chip has clear dark ground beneath it — the
+   composition the chip's scrim was designed for. */
+function hero(fig,l,r,vv,vl){
+  const src=fig==="cortex"
+    ? `<img src="reference-2026-08-01/shipped-video-The-brain.png" style="width:452px;left:-33px;top:-115px">
+       <div class="mask" style="top:0;height:28px"></div>
+       <div class="mask" style="bottom:0;height:42px"></div>`
+    : `<img src="reference-2026-08-01/shipped-video-The-audience.png" style="width:739px;left:-180px;top:-294px">
+       <div class="mask" style="bottom:0;height:4px"></div>`;
+  const labels=fig==="terrain" ? DISTRICTS.map(d=>
+    `<span class="dist ${d.loss?'loss':''}" style="left:${d.x}px;top:${d.y}px">${d.n}<b>${d.v}</b></span>`
+  ).join('') : '';
+  return `<div class="hero"><div class="fig">${src}</div>${labels}
+    <span class="corner l">${l}</span><span class="corner r">${r}</span>
+    <div class="verdict"><b>${vv}</b><span>${vl}</span></div></div>`;
+}
+
+/* The three spoken networks, computed with cortex-sim.ts's GROUNDED drive verbatim
+   (`neuralDrive`, cortex-sim.ts:175-202) — so the readout here is the shipped model, not a
+   look-alike. `retentionAt` is the one prop BrainTab.tsx:65 does not pass today. */
+const clamp01=x=>x<0?0:x>1?1:x;
+const gauss=(x,c,w)=>Math.exp(-((x-c)*(x-c))/w);
+function groundedDrive(u){
+  const r=clamp01(retAt(u));
+  const fall=clamp01((clamp01(retAt(clamp01(u-.04)))-r)/.12);
+  const onset=gauss(u,.02,.0015);
+  return {
+    attention: clamp01(.10+.72*r*r+.20*onset),
+    salience:  clamp01(.12+.30*r+.62*fall+.34*onset),
+    drift:     clamp01(.06+.80*(1-r)+.20*fall),
+  };
+}
+function netsRow(){
+  const d=groundedDrive(ph);
+  const one=(n,x,loss)=>`<div class="net"><i>${n}</i><span class="t"><s style="width:${
+    (x*100).toFixed(0)}%${loss?';background:var(--coral)':''}"></s></span></div>`;
+  return `<div class="nets">${one("Attention",d.attention,0)}${one("Salience",d.salience,0)
+    }${one("Drift",d.drift,d.drift>.6)}</div>`;
+}
+
+/* ── retention card (the scrubber) ──────────────────────────────────────── */
+function retentionCard(){
+  const W=366,H=108,P=6;
+  const me=path(CURVE,W,H,P), md=path(MEDIAN,W,H,P);
+  const bx=P+BREAK_S/(CURVE.length-1)*(W-2*P);
+  const brk="M"+CURVE.slice(0,4).map((v,i)=>
+    `${(P+i/(CURVE.length-1)*(W-2*P)).toFixed(1)},${(H-P-v*(H-2*P)).toFixed(1)}`).join(" L");
+  return `<div class="card">
+    ${ch('pulse','Retention',`${mmss(ph*CLIP)} · ${Math.round(retAt(ph)*100)}%`)}
+    <div class="curvewrap" id="scrub">
+      <svg viewBox="0 0 ${W} ${H}" style="display:block;width:100%;height:auto">
+        <path d="${me} L${W-P},${H-P} L${P},${H-P} Z" fill="rgba(236,231,222,.045)"/>
+        <path d="${md}" fill="none" stroke="rgba(236,231,222,.28)" stroke-width="1.4" stroke-dasharray="4 4"/>
+        <path d="${me}" fill="none" stroke="rgba(236,231,222,.72)" stroke-width="1.6"/>
+        <path d="${brk}" fill="none" stroke="#FF6363" stroke-width="2"/>
+        <line x1="${bx}" y1="0" x2="${bx}" y2="${H}" stroke="rgba(255,99,99,.26)" stroke-width="1"/>
+        <line id="phl" x1="0" y1="0" x2="0" y2="${H}" stroke="rgba(236,231,222,.32)" stroke-width="1"/>
+        <circle id="phd" r="3.6" fill="#ece7de"/>
+      </svg>
+    </div>
+    <div class="legend"><em><s class="sw"></s>this post</em>
+      <em><s class="sw d"></s>your median</em>
+      <em style="margin-left:auto;color:rgba(236,231,222,.28)">drag to scrub</em></div>
+    <div class="moments">
+      <button class="mo dip" data-t="2"><i>0:02</i><b>38</b></button>
+      <button class="mo" data-t="9"><i>0:09</i><b>33</b></button>
+      <button class="mo" data-t="21"><i>0:21</i><b>27</b></button></div>
+    <p class="script" id="script"></p>
+    <p class="read">Attention breaks at <b>0:02</b> — <span class="loss">62% are gone by 0:03</span>.
+      After that the curve runs flatter than your median: the people who stay, stay to the end.</p>
+  </div>`;
+}
+
+/* ── tabs ───────────────────────────────────────────────────────────────── */
+function overview(){
+  if(kind==="text") return textOverview();
+  let tk='';for(let i=0;i<41;i++)tk+=`<s style="left:${(i/40*100).toFixed(1)}%"></s>`;
+  return hero("cortex","Predicted cortex",`t = ${mmss(ph*CLIP)}`,"38%","would stop")
+  + netsRow()
+  + `<p class="herofoot">The cortex is driven by the curve below — attention tracks who is still
+      watching, and <span class="loss">drift takes over from 0:02</span>.</p>`
+  + retentionCard()
+  + `<div class="card">${ch('trend','Key rates','vs your last 41')}
+      <div class="rate down"><span class="nm"><i>${RATES[0].n}</i><u>${RATES[0].s}</u></span>
+        <span class="vl">${RATES[0].v}</span><span class="dl">${RATES[0].d}</span></div>
+      <div class="ticks">${tk}<span class="base"></span>
+        <span class="md" style="left:${RATES[0].med*100}%"></span>
+        <span class="me" style="left:${RATES[0].pos*100}%"></span></div>
+      <div class="tickcap"><span>weakest</span><span>your median 58%</span><span>best</span></div>
+      <div style="margin-top:4px">${rateRows(RATES.slice(1))}</div>
+      <p class="read"><b>The hook is the only thing broken.</b> Watch time, completion and rewatch all
+        sit near or above your median among the people who got past 0:03.</p>
+    </div>`
+  + unlock("Trim the first three seconds — open on the result, not the setup.","8.4K views",
+      "Your rewatch rate is in the top fifth of everything you’ve posted. That only happens when the payoff lands. Almost nobody is reaching it.")
+  + foot();
+}
+
+function textOverview(){
+  return hero("cortex","Predicted cortex","simulated","41%","would stop")
+  + `<p class="herofoot">A text concept has no timeline. This is a
+      <b>simulated encounter</b>, shaped by the one real aggregate — how much of the room stopped.</p>`
+  + `<div class="card">${ch('brain','Why they stopped','590 coded')}
+      <div style="margin-top:10px">${REASONS.map(r=>`
+        <div class="rb ${r.loss?'loss':''}"><span class="nm">${r.n}</span>
+          <span class="tr"><s style="width:${(r.v/37*100).toFixed(0)}%"></s></span>
+          <span class="vl">${r.v}%</span></div>`).join('')}</div>
+      <p class="read">The dominant code isn’t disagreement — it’s <span class="loss">recognition</span>.
+        They have read this sentence before.</p>
+    </div>`
+  + `<div class="card">${ch('trend','Key rates','vs your last 41 hooks')}
+      ${rateRows([{n:"Would stop",s:"this hook",v:"41%",d:"↑8 pts",down:0},
+                  {n:"Novel to them",s:"not already heard",v:"63%",d:"↓14 pts",down:1},
+                  {n:"Would finish",s:"read to the end",v:"55%",d:"↑3 pts",down:0}])}
+      <p class="read">It out-stops your median hook and under-performs on novelty. The claim is strong;
+        the <b>wording</b> is the commodity.</p>
+    </div>`
+  + unlock("Put a number in the first clause.","58% would stop",
+      "Every hook you’ve posted that opened on a figure cleared 55%. This one opens on a category — the exact shape they said they’d already heard.")
+  + foot();
+}
+
+function audience(){
+  const c=["rgba(236,231,222,.88)","rgba(236,231,222,.52)","rgba(236,231,222,.32)","rgba(236,231,222,.18)"];
+  return hero("terrain","The room","1 node ≈ 10 people",D[kind].verdict[0],D[kind].verdict[1])
+  + `<p class="herofoot">Your believers cluster in <b>builders</b>;
+      <span class="loss">skeptics are the ceiling (12%)</span>.</p>`
+  + `<div class="card">${ch('layers','Who this reaches','room mix')}
+      <div class="mix">${POOLS.map((p,i)=>`<s style="flex:${p.pct};background:${c[i]}"></s>`).join('')}</div>
+      <div class="pills">${POOLS.map((p,i)=>
+        `<span class="pill"><s style="background:${c[i]}"></s>${p.n} <b>${p.pct}%</b></span>`).join('')}</div>
+    </div>`
+  + (kind==="video"?`<div class="card">${ch('trend','Retention by pool','drop-off')}
+      <div style="margin-top:4px">${POOLS.map(p=>`
+        <div class="prow ${p.loss?'loss':''}">
+          <span class="nm"><i>${p.n}</i><u>${p.s}</u></span>
+          <svg class="sp" viewBox="0 0 150 28" preserveAspectRatio="none">
+            <path d="${path(p.k,150,28,2)} L148,26 L2,26 Z" fill="rgba(236,231,222,.05)"/>
+            <path d="${path(p.k,150,28,2)}" fill="none"
+              stroke="${p.loss?'#FF6363':'rgba(236,231,222,.62)'}" stroke-width="1.4"/>
+          </svg><span class="dr">${p.drop}</span>
+        </div>`).join('')}</div>
+      <p class="read"><b>Your followers stay to 0:21.</b> The For You pool — two thirds of the room —
+        <span class="loss">is gone by 0:02</span>. It holds the people you needed to convert.</p>
+      <p class="sub">No platform reports this. It’s the question a creator actually has.</p>
+    </div>`:'')
+  + `<div class="card">${ch('users','What they did','1,000 simulated')}
+      <div style="margin-top:2px">${ROOM.map(([n,v,l])=>{
+        const lit=Math.round(v/1000*18);let d='';
+        for(let i=0;i<18;i++)d+=`<s${i<lit?` style="background:${l?'#FF6363':'rgba(236,231,222,.78)'}"`:''}></s>`;
+        return `<div class="dm ${l?'loss':''}"><span class="nm">${n}</span>
+          <span class="dots">${d}</span><span class="n">${v}</span></div>`;}).join('')}</div>
+      <p class="read">The <b>201 who almost stopped</b> are the winnable ones — they got past the hook
+        and left at the proof.</p>
+    </div>`
+  + foot();
+}
+
+function engagement(){
+  const v=kind==="video";
+  return hero("terrain", v?"Who would pass it on":"Who would reply", "1 node ≈ 10 people",
+              v?"1.4%":"1.1%", v?"would share":"would comment")
+  + `<p class="herofoot">${v
+      ? `Sharing concentrates in the <b>followers</b> district — <span class="loss">the For You pool never reaches the line that would make them send it</span>.`
+      : `Replies concentrate in <b>skeptics</b> — <span class="loss">the argument travels further than the idea</span>.`}</p>`
+  + `<div class="card">${ch('trend','Projected reaction','per reach · vs your median')}
+      ${rateRows(REACT[kind])}
+      <p class="read">${v
+        ? `<b>Everyone who stays converts.</b> Saves and shares — the two signals that actually buy
+           distribution — both beat your median. <span class="loss">Only 38% stay.</span>`
+        : `<b>It argues well and travels badly.</b> Comments run high because a third of the room wants
+           to push back — <span class="loss">but nobody sends it to a friend</span>.`}</p>
+      <p class="sub">Rates are per person reached, not per follower. Projected from the room’s coded intent.</p>
+    </div>`
+  + (v?`<div class="card">${ch('map','Where it would surface','traffic source')}
+      <div class="mix">
+        <s style="flex:53;background:rgba(236,231,222,.88)"></s>
+        <s style="flex:33;background:rgba(236,231,222,.46)"></s>
+        <s style="flex:14;background:rgba(236,231,222,.24)"></s></div>
+      <div class="pills">
+        <span class="pill"><s style="background:rgba(236,231,222,.88)"></s>For You <b>53%</b></span>
+        <span class="pill"><s style="background:rgba(236,231,222,.46)"></s>Sound <b>33%</b></span>
+        <span class="pill"><s style="background:rgba(236,231,222,.24)"></s>Search <b>14%</b></span></div>
+      <p class="read">A third of the projected reach rides the <b>sound</b>, not the idea — that reach
+        expires with the trend. Search share is the part that compounds.</p>
+    </div>`:`<div class="card">${ch('msg','If you posted this','projected replies')}
+      <div>${VOICES.map(x=>`<div class="voice ${x.loss?'loss':''}">
+        <div class="vhead"><span class="av">${x.w[0]}</span><b>${x.w}</b><span class="vtag">${x.t}</span></div>
+        <p class="vq">${x.q}</p>
+        <div class="vecho"><i>${x.n} would echo this</i>
+          <span class="t"><s style="width:${(x.n/412*100).toFixed(0)}%"></s></span></div>
+      </div>`).join('')}</div>
+    </div>`)
+  + `<div class="card">${ch('clock','Best window','followers online · 7–9pm')}
+      <div class="pw">${["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map((d,i)=>
+        `<div class="${i===1?'best':''}"><s style="height:${[17,38,24,29,20,32,11][i]}px"></s><i>${d}</i></div>`).join('')}</div>
+      <p class="read"><b>Tuesday, 7–9pm.</b> Your followers are the only pool that stays past 0:20, and
+        that is when the most of them are on.</p>
+    </div>`
+  + foot();
+}
+
+const unlock=(lever,gain,insight)=>`<div class="unlock"><div class="k"><span>the unlock</span><s></s></div>
+  <h4>${lever}</h4><div class="proj"><i>projected</i><s></s><b>${gain}</b></div>
+  <p>${insight}</p></div>`;
+const foot=()=>`<div class="foot"><span>How to read these numbers</span><span>›</span></div>`;
+
+/* ── render ─────────────────────────────────────────────────────────────── */
+function paint(){
+  const d=D[kind];
+  pager.textContent=d.pager; thumbT.textContent=d.thumb; title.textContent=d.title;
+  stats.innerHTML=d.stats.map(([i,v])=>`<span class="stat">${ico(i,12)}<b>${v}</b></span>`).join('');
+  aHead.textContent=d.head;
+  aBody.innerHTML=d.body.map(([t,m])=>m===1?`<span class="loss">${t}</span>`
+    :m===2?`<span class="win">${t}</span>`:t).join('');
+  fixB.textContent=d.fixB; fixG.textContent=d.fixG;
+  body.innerHTML=tab==="overview"?overview():tab==="audience"?audience():engagement();
+  body.scrollTop=0;
+  if(tab==="overview"&&kind==="video"){bindScrub();syncPlayhead();}
+}
+function syncPlayhead(){
+  const W=366,H=108,P=6, x=P+ph*(W-2*P), y=H-P-retAt(ph)*(H-2*P);
+  const l=document.getElementById("phl"), dot=document.getElementById("phd");
+  if(l){l.setAttribute("x1",x);l.setAttribute("x2",x);}
+  if(dot){dot.setAttribute("cx",x);dot.setAttribute("cy",y);}
+  const s=document.getElementById("script");
+  if(s){const upto=Math.floor(ph*SCRIPT.length);
+    s.innerHTML=SCRIPT.map((w,i)=>
+      `<s class="${i===BREAK_WORD?'brk':i<=upto?'on':''}">${w}</s>`).join(" ");}
+  const cr=document.querySelector(".corner.r"); if(cr)cr.textContent=`t = ${mmss(ph*CLIP)}`;
+  const hd=document.querySelector(".card .chead .r");
+  if(hd)hd.textContent=`${mmss(ph*CLIP)} · ${Math.round(retAt(ph)*100)}%`;
+  const g=groundedDrive(ph), v=[g.attention,g.salience,g.drift];
+  document.querySelectorAll(".nets .net .t s").forEach((el,i)=>{
+    el.style.width=(v[i]*100).toFixed(0)+"%";
+    if(i===2)el.style.background=v[2]>.6?"var(--coral)":"rgba(236,231,222,.72)";});
+}
+function bindScrub(){
+  const w=document.getElementById("scrub"); if(!w)return;
+  const set=e=>{const r=w.getBoundingClientRect();
+    ph=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));syncPlayhead();};
+  w.addEventListener("pointerdown",e=>{w.setPointerCapture(e.pointerId);set(e);});
+  w.addEventListener("pointermove",e=>{if(e.buttons)set(e);});
+  document.querySelectorAll(".mo").forEach(b=>b.addEventListener("click",()=>{
+    ph=+b.dataset.t/CLIP;syncPlayhead();
+    document.querySelectorAll(".mo").forEach(x=>x.setAttribute("aria-pressed",x===b));}));
+}
+document.querySelectorAll("[data-kind]").forEach(b=>b.addEventListener("click",()=>{
+  kind=b.dataset.kind;
+  document.querySelectorAll("[data-kind]").forEach(x=>x.setAttribute("aria-pressed",x===b));paint();}));
+document.querySelectorAll("[data-tab]").forEach(b=>b.addEventListener("click",()=>{
+  tab=b.dataset.tab;
+  document.querySelectorAll("[data-tab]").forEach(x=>x.setAttribute("aria-pressed",x.dataset.tab===tab));
+  paint();}));
+paint();
+</script>
+</body>
+</html>
