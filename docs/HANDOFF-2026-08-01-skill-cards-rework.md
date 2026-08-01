@@ -1,5 +1,18 @@
 # HANDOFF — Skill-card rework (in-thread generation cards)
 
+> ## ⚡ SUPERSEDED IN PART — 2026-08-01 evening session (v5–v9.1)
+>
+> §1's questions are ANSWERED and the design converged. The owner rejected every text-column
+> treatment (v4 Document, v5 Answer, v6 Stage/Studio, v7 prose, v8 cells on craft), picked the
+> **Case-study anchor**, and v9.1 (`.planning/sketches/skill-cards-v9-1-signoff.html`) is the
+> sign-off set: **choice cards** (hook/idea) get a 4-element face — cover · quoted serif hero ·
+> dek (idea's dek carries the take) · source line — plus a collapsed "Full brief" row;
+> **deliverable cards** (script/remix) keep timeline/map on the face inside the same shell.
+> Review vs the REAL renderers: `.planning/sketches/skill-cards-v9-review.html`. §2's locks still
+> hold except: the "Visual" label became the dek/brief (owner-approved direction), and detail
+> STAGING (brief row) supersedes "everything on the face". §3, §5, §6 remain valid; read v9.1
+> before implementing. Memory: `skill-cards-hierarchy-not-deletion`.
+
 > ## ▶ START HERE — DO NOT WRITE CODE YET
 >
 > **The owner has an open decision and asked to be consulted before any further work.**
