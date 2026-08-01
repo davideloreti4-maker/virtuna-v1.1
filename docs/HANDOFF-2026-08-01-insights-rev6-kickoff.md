@@ -1,8 +1,10 @@
 # Handoff — Ambient Audience v2 detail drill, rev 6 kickoff
 
 **Date:** 2026-08-01 · **Branch:** `task/insights-rework` · **Worktree:** `~/virtuna-slot-b` · port **3002**
-**Status:** design exploration only — **zero `src/` changes on this branch.** Five mockup revisions,
-all rejected. This document is the complete state so a fresh session starts with everything.
+**Status:** rev 6 mockup built and the cortex wired — see **§9** for what shipped. (Through rev 5
+this branch was design exploration with zero `src/` changes; `7241c11c` ended that.) Revs 1–5 are
+all rejected; §0 is why. This document is the complete state so a fresh session starts with
+everything.
 
 > **Read this file first, then §2 of `docs/HANDOFF-2026-08-01-insights-three-tab.md`** (the verified
 > code findings — still all true, not duplicated here).
