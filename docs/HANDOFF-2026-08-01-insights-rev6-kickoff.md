@@ -517,3 +517,18 @@ playing."* The structural audit against the TikTok screens produced:
 Probes: sticky verified at scrollTop 400, exactly one `.answer`/`.ident` in the DOM, scrub still
 drives clock + readout + transcript, law walk 0. Tab heights: Overview absorbed the instrument
 (1716px), Engagement slimmed to 868px.
+
+**Rev 7.4 (same day).** Owner, circling the Retention instrument: *"this should be the hero on the
+Engagement page, right? think about all the pages — the information should be for the best UX and
+user value."* Confirmed and applied — **one job per page**:
+
+- **Overview = the TL;DR**: cortex hero → the answer (verdict + fix chip, its ONLY home) → Key
+  metrics tiles → traffic sources.
+- **Audience = who**: unchanged.
+- **Engagement = how they engaged**: the Retention instrument LEADS (second-by-second watching IS
+  engagement) → reaction tiles → best window. On Text, the voices lead instead (its instrument).
+- The scrubber moved with the instrument — `paint()` now binds it on `engagement`+`video`. The
+  cortex clock on Overview is static `t = 0:02` (the still opens on the break).
+
+Page weights after: 1219 / 1146 / 1221px — near-equal. Probes re-run: scrub on Engagement drives
+readout + transcript, one `.answer` (Overview only), law walk 0.

@@ -269,9 +269,9 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 <aside class="ctl">
   <div class="brandline"></div>
   <h1>Ambient Audience · insight drill</h1>
-  <p class="lede">Revision 7.3 — the structure re-audited against the TikTok screens. Identity
-    once, above the tabs; the answer once, inside Retention; the playing post and its curve are
-    one instrument; Engagement is a figure-less numbers page.</p>
+  <p class="lede">Revision 7.4 — the three pages, one job each. Overview is the TL;DR: verdict,
+    fix, key numbers. Audience is who. Engagement is how they engaged — led by the video+curve
+    instrument, its hero.</p>
 
   <h2>Stimulus</h2>
   <div class="grp">
@@ -288,22 +288,21 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 
   <h2>Try this first</h2>
   <ol class="steps">
-    <li><b>Scroll video · Overview.</b> The identity row scrolls away and the tabs stick —
-      TikTok's exact chrome. Then <b>drag the retention curve</b>: one playhead moves the clock
-      on the cortex and the one-line transcript together.</li>
-    <li><b>Retention is the instrument now</b> — verdict, fix chip, the playing post, and the
-      curve in one section, like TikTok's retention block.</li>
-    <li>Switch to <b>Text</b>. Different instrument: no timeline anywhere, voices instead.</li>
+    <li><b>Video · Overview is the TL;DR</b> — cortex, the answer with its fix chip, key
+      metrics, traffic. Scroll: the identity row goes, the tabs stick.</li>
+    <li><b>Video · Engagement leads with the instrument</b> — drag the retention curve: the
+      playhead, the readout and the one-line transcript move together.</li>
+    <li>Switch to <b>Text</b>. Different instrument: no timeline anywhere; on Engagement the
+      voices lead instead of the video.</li>
   </ol>
 
   <h2>Calls you may want to reverse</h2>
   <ul class="calls">
-    <li><b>The answer lives inside Retention</b> (Overview only) — the slot TikTok gives its
-      "viewers watched 14%" sentence. On Text it leads "Why they stopped" instead.</li>
-    <li><b>Engagement has no figure</b> — TikTok's engagement tab is numbers only. Each figure
-      appears exactly once: cortex / Overview, room / Audience, post / Retention.</li>
-    <li><b>Traffic sources moved to Overview</b>, where TikTok has them. Engagement is reaction
-      tiles + best window only.</li>
+    <li><b>The answer sits on Overview</b> (once, after the cortex) — the TL;DR page carries the
+      verdict + fix; the instrument's on-figure annotation tells the same story on Engagement.</li>
+    <li><b>Retention is Engagement's hero</b> — watching second-by-second IS engagement. Each
+      figure appears once: cortex / Overview, room / Audience, post / Engagement.</li>
+    <li><b>Traffic sources stay on Overview</b>, where TikTok has them.</li>
     <li><b>The nets meter row is cut</b> — in the build the live cortex carries the grounded
       readout itself.</li>
   </ul>
@@ -489,8 +488,8 @@ function hero(fig,l,r,vv,vl){
     <div class="verdict"><b>${vv}</b><span>${vl}</span></div></div>`;
 }
 
-/* identity: ONCE above the tabs (rev 7.3). answer: ONCE, inside Overview's Retention section —
-   the slot TikTok gives its "viewers watched 14% of your video" sentence. */
+/* identity: ONCE above the tabs. answer: ONCE, on Overview — the TL;DR page carries the verdict
+   and the fix; the instrument on Engagement tells the same story on the figure. */
 function identBlock(){
   const d=D[kind];
   return `<div class="ident">
@@ -538,7 +537,6 @@ function retentionCard(){
     `${(P+i/(CURVE.length-1)*(W-2*P)).toFixed(1)},${(H-P-v*(H-2*P)).toFixed(1)}`).join(" L");
   return `<div class="card">
     ${ch('Retention',`<span id="retro">${mmss(ph*CLIP)} · ${Math.round(retAt(ph)*100)}%</span>`)}
-    ${answerBlock()}
     ${vmini()}
     <div class="curvewrap" id="scrub">
       <svg viewBox="0 0 ${W} ${H}" style="display:block;width:100%;height:auto">
@@ -565,24 +563,24 @@ function retentionCard(){
 /* ── tabs ───────────────────────────────────────────────────────────────── */
 function overview(){
   if(kind==="text") return textOverview();
-  return hero("cortex","Predicted cortex",`t = ${mmss(ph*CLIP)}`,"38%","would stop")
+  return hero("cortex","Predicted cortex",`t = ${mmss(BREAK_S)}`,"38%","would stop")
+  + answerBlock()
   + `<div class="card">${ch('Key metrics','vs your last 41')}
       ${tiles(TILES.videoOverview)}
       ${insight(`Only the <span class="loss">hook</span> is broken.`)}
     </div>`
-  + retentionCard()
   + surfaceCard()
   + foot();
 }
 
 function textOverview(){
   return hero("cortex","Predicted cortex","simulated","41%","would stop")
+  + answerBlock()
   + `<div class="card">${ch('Key metrics','vs your last 41 hooks')}
       ${tiles(TILES.textOverview,1)}
       ${insight(`The <span class="loss">wording</span> is the commodity.`)}
     </div>`
   + `<div class="card">${ch('Why they stopped')}
-      ${answerBlock()}
       <div style="margin-top:10px">${REASONS.map(r=>`
         <div class="rb ${r.loss?'loss':''}"><span class="nm">${r.n}</span>
           <span class="tr"><s style="width:${(r.v/37*100).toFixed(0)}%"></s></span>
@@ -638,17 +636,11 @@ function surfaceCard(){
     </div>`;
 }
 
-/* Engagement is a figure-less numbers page, the TikTok way — each figure appears exactly once:
-   cortex on Overview, the room on Audience, the post inside Retention. */
+/* Engagement = how they engaged: the video+curve instrument LEADS (it is this page's hero);
+   voices lead on Text. Reactions and the post window follow. */
 function engagement(){
   const v=kind==="video";
-  return `<div class="card">${ch('Projected reaction','per reach')}
-      ${tiles(TILES[v?'videoEngage':'textEngage'])}
-      ${insight(v
-        ? `Everyone who stays converts — <span class="loss">only 38% stay</span>.`
-        : `Argues well, <span class="loss">travels badly</span>.`)}
-    </div>`
-  + (v?'':`<div class="card">${ch('If you posted this')}
+  return (v?retentionCard():`<div class="card">${ch('If you posted this')}
       <div>${VOICES.map(x=>`<div class="voice ${x.loss?'loss':''}">
         <div class="vhead"><span class="av">${x.w[0]}</span><b>${x.w}</b><span class="vtag">${x.t}</span></div>
         <p class="vq">${x.q}</p>
@@ -656,6 +648,12 @@ function engagement(){
           <span class="t"><s style="width:${(x.n/412*100).toFixed(0)}%"></s></span></div>
       </div>`).join('')}</div>
     </div>`)
+  + `<div class="card">${ch('Projected reaction','per reach')}
+      ${tiles(TILES[v?'videoEngage':'textEngage'])}
+      ${insight(v
+        ? `Everyone who stays converts — <span class="loss">only 38% stay</span>.`
+        : `Argues well, <span class="loss">travels badly</span>.`)}
+    </div>`
   + `<div class="card">${ch('Best window','Tue · 7–9pm · followers online')}
       <div class="pw">${["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map((d,i)=>
         `<div class="${i===1?'best':''}"><s style="height:${[17,38,24,29,20,32,11][i]}px"></s><i>${d}</i></div>`).join('')}</div>
@@ -671,7 +669,7 @@ function paint(){
   identSlot.innerHTML=identBlock();
   content.innerHTML=tab==="overview"?overview():tab==="audience"?audience():engagement();
   body.scrollTop=0;
-  if(tab==="overview"&&kind==="video"){bindScrub();syncPlayhead();}
+  if(tab==="engagement"&&kind==="video"){bindScrub();syncPlayhead();}
 }
 function syncPlayhead(){
   const W=366,H=108,P=6, x=P+ph*(W-2*P), y=H-P-retAt(ph)*(H-2*P);
