@@ -377,7 +377,11 @@ the second mutation-checked (drop the prop → red).
 
 ---
 
-## 10. Rev 7 kickoff — START HERE
+## 10. Rev 7 kickoff — SUPERSEDED, start at §12
+
+> ⚠️ This section kicked off rev 7 and is now historical. A fresh session starts at **§12** —
+> five owner-directed revisions (7 → 7.5) happened after this was written, and several calls
+> below (the pinned answer, the three heroes, the 283px header) were REVERSED during them.
 
 The owner reviewed rev 6 and has **a lot of adjustments**, to be given in a fresh session. Rev 6 is
 NOT approved; nothing has been implemented in React. Read §0 (why revs 3/4/5 died), §4 (the
@@ -555,3 +559,96 @@ all applied on their "all":
 Probed, not assumed: fix-chip jump lands on Engagement at `0:02 · 58%` with vprog 7.1%; scrub to
 0:21 → vprog 75%; pgNext steps 2 of 5 → 4 of 5 with the title swapping; text fix scrolls body
 288px; law walk 0.
+
+---
+
+## 12. Rev 8 kickoff — START HERE
+
+Rev 7.5 is on the review artifact awaiting the owner's next adjustments. This session (2026-08-01,
+slot-b) ran six owner-directed revisions — each was published to the SAME artifact URL, committed
+atomically, and recorded in §11. Read this section, then §0 (why revs 3/4/5 died), §11 (what
+each 7.x did and WHY — the owner's words are quoted), §6 (the laws). §10 is superseded.
+
+### Where everything is
+
+| | |
+|---|---|
+| Worktree · branch | `~/virtuna-slot-b` · `task/insights-rework` — do not switch branches |
+| PR | **#412**, open. Tip `cdfd50cb` = rev 7.5. |
+| The mockup | `docs/mockups/insights-rev6-hero-restored-2026-08-01.html` — **one file is everything** (rail + review scaffolding). Filename still says rev6 on purpose: the build script and this doc point at it; the `<title>` says rev 7. Open directly, no server. |
+| The review link | https://claude.ai/code/artifact/f42c45fb-0d27-4d84-8a65-568e9f1e8db3 — republish to THIS url or the owner's link dies |
+| Rebuild the link | `node scripts/build-insights-review-artifact.mjs` → publish output (`$TMPDIR/insights-review.html`) with the Artifact tool passing that URL as `url`. Favicon 🧠, title "Insights rev 7 — metric-first tabs". |
+| Screenshots | `docs/mockups/reference-2026-08-01/rev7-*.png` (6 states, current = 7.5) |
+| Live shipped rail | `/ambient-v2` → `② brain` → creator chips. No auth. Port 3002. |
+| React implementation | **deliberately NOT started** (task #3) — five revs were rejected before rev 6; implementation is the expensive step. |
+
+### The structure as of rev 7.5 (the owner shaped every piece of this — do not undo silently)
+
+Pinned chrome = nav row only (`← The room` + the ‹ 2 of 5 › **stepper**, which walks the room's
+drills — in the mockup it toggles the two fixtures). Identity (thumb · title · TikTok 5-stat row +
+"projected" tag) renders ONCE above the tabs and scrolls away; the tabs are `position:sticky`
+inside the scroll (`.tabbar`). One job per page:
+
+- **Overview = the TL;DR.** Cortex hero (corner: "at the break") → the answer block (verdict +
+  one clause + **fix chip**, its ONLY home) → Key metrics tiles → Where it would surface.
+- **Audience = who.** Terrain hero (chip: 90% non-followers) → "Who watches — and how long"
+  (mix bar + per-pool retention sparks + drop times) → "What they did" dot-matrix.
+- **Engagement = how they engaged.** The Retention instrument LEADS: mini video (`.vmini`, with a
+  playhead-synced progress line) + curve (annotated ON the figure: "62% gone by 0:03", "your
+  median") + moment chips + one-line transcript. Then Projected reaction tiles → Best window
+  (7–9pm sits on the Tue bar).
+- **Text inverts** (§3.3): no timeline anywhere; Engagement leads with the VOICES; Overview's
+  answer leads to "Why they stopped" (reason bars); Key metrics = Novel to them · Would finish.
+- **The fix chip ROUTES** (`fixJump()`): video → Engagement parked on the break; text → scrolls
+  to `#reasons`. Verdict → evidence → action.
+
+### Settled THIS session — the owner said each of these explicitly
+
+1. **No sentences in the UI.** Takeaways are ≤6-word fragments or nothing; numbers live in tiles;
+   reads are annotated ON figures. ("nobody wants to read all these sentences")
+2. **The answer block is NOT pinned and NOT repeated** — the rev-5 "persistent answer" decision
+   is owner-REVERSED. It appears once, on Overview, as content.
+3. **TikTok Studio is the structural reference** — identity once above sticky tabs, plain-text
+   card headers (no icons), right-meta only where the label IS data.
+4. **Retention + the playing video are ONE instrument, and it is Engagement's hero.**
+5. Each figure appears exactly once: cortex/Overview, room/Audience, post/Engagement.
+6. Still standing from before: hero restored (§0), figures may carry a colormap while chrome
+   stays one-accent, benchmarks vs the creator's own catalogue only, 440px matte rail (§6).
+
+### The loop for an adjustment
+
+1. Edit the mockup (one file).
+2. Screenshot all six states + probe interactions. The shoot script is deleted after each use —
+   recreate at `scripts/tmp-shoot-rev7.mjs` (a Write to the scratchpad is BLOCKED by a
+   worktree-path-guard hook; write inside the repo and `rm` after). Pattern: raw Playwright,
+   `deviceScaleFactor:2`, per state set `.rail` height to `body.scrollHeight + body.offsetTop`,
+   `.screenshot({animations:'disabled',caret:'hide'})` on `.rail`, then probe (fix-chip jump,
+   scrub → `#retro`/`#vprog`/`#tin`, pager step) and walk computed style for
+   backgroundImage/boxShadow/backdropFilter = 0.
+3. `node scripts/build-insights-review-artifact.mjs` → Artifact tool with the URL above.
+4. Commit atomically (auto-push hook runs; verify `git rev-parse origin/task/insights-rework`).
+
+### Traps (all hit this session; §10's list still applies too)
+
+- **The path-guard hook** rejects Write/Edit outside the worktree — including the session
+  scratchpad AND the memory directory. For memory files use `python3` via Bash.
+- **The build script's `CROP` is coupled to `hero()`'s img framing** — unchanged since rev 6; if
+  you reframe, update both. It THROWS if the img regex misses, and refuses leftover
+  `reference-2026-08-01` refs (that's why `.vmini` is an inline SVG pattern, id `vs`).
+- **`document.fonts.check()`/ready lies for unused faces** — `document.fonts.load('400 40px
+  Newsreader')` FIRST, then compare widths vs Georgia (Newsreader ~437 vs Georgia ~456 @40px on
+  "The room stays to the end").
+- **Verify the artifact with ALL network blocked** (`ctx.route`), not just locally.
+- The two fixtures ARE pager positions 2 and 5 — the stepper toggles `kind`; keep `D[kind].pager`
+  consistent if you add fixtures.
+- Duplicate class names silently break layout (`.win`, `.foot`, `.lede` — see §10 list).
+
+### For the implementation session (when the owner approves)
+
+- `fixJump()` = tab switch + `ph` park; in src this is rail tab state + a seek on the real video.
+- `.vprog` → the real `<video>` seeks with the scrubber (owner: "combined with the video playing").
+- Sticky `.tabbar` needs an opaque rail fill inside the scroll container.
+- §9's HRF warning stands: a free-running grounded cortex opens washed out — offset past
+  `HRF_PEAK_S` or hand the playhead to the user.
+- §3.2 (unlock absent on real video drills) is addressed BY the answer-block fix chip — wire
+  `buildVideoDomainTemplate` accordingly.
