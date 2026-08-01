@@ -1,0 +1,738 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Skill cards v4 · shipped vs Document, and the audience line</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --charcoal-app:#1f1f1e; --surface-sunken:#1a1a19;
+  --fg:#ece7de; --fg-2:#c2bdb4; --fg-3:#8a857c;
+  --positive:#8ea68a; --warning:oklch(0.75 0.15 85); --accent:#FF6363;
+  --b:rgba(255,255,255,.06); --b-hover:rgba(255,255,255,.10);
+  --t-caption:11px; --t-label:12px; --t-body:13px; --t-reading:14px;
+  --t-title:16px; --t-subhead:18px; --t-heading:22px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--charcoal-app);color:var(--fg);
+  font-family:Inter,system-ui,-apple-system,sans-serif;font-size:var(--t-body);line-height:1.5;
+  -webkit-font-smoothing:antialiased;padding:0 0 140px}
+.serif{font-family:Newsreader,Georgia,serif}
+
+.bar{position:sticky;top:0;z-index:20;display:flex;flex-wrap:wrap;align-items:center;gap:14px;
+  padding:12px 20px;background:#151514;border-bottom:1px solid var(--b)}
+.bar h1{font-size:var(--t-label);font-weight:600;letter-spacing:.02em;margin-right:auto}
+.bar .hint{font-size:var(--t-caption);color:var(--fg-3)}
+.seg{display:flex;border:1px solid var(--b);border-radius:8px;overflow:hidden}
+.seg button{appearance:none;border:0;background:transparent;color:var(--fg-3);font:inherit;
+  font-size:var(--t-label);padding:6px 12px;cursor:pointer}
+.seg button+button{border-left:1px solid var(--b)}
+.seg button[aria-pressed="true"]{background:rgba(255,255,255,.07);color:var(--fg)}
+
+.section{padding:38px 20px 0;max-width:1700px;margin:0 auto}
+.section>h2{font-size:var(--t-title);font-weight:600;letter-spacing:-.01em;margin-bottom:5px}
+.section>p.note{font-size:var(--t-label);color:var(--fg-3);max-width:82ch;margin-bottom:22px;line-height:1.7}
+.rowcols{display:flex;gap:30px;align-items:flex-start;flex-wrap:wrap}
+.col>h3{font-size:var(--t-caption);text-transform:uppercase;letter-spacing:.05em;color:var(--fg-3);margin-bottom:4px}
+.col>h3 em{font-style:normal;color:var(--fg-2)}
+.col>h3 .tag{color:var(--positive)}
+.col>p.sub{font-size:var(--t-caption);color:rgba(138,133,124,.78);margin-bottom:11px;max-width:46ch;line-height:1.6}
+.stage{width:728px;transition:width .18s ease}
+body[data-w="342"] .stage{width:342px}
+.callout{margin-top:11px;max-width:728px;font-size:var(--t-caption);line-height:1.7;color:var(--fg-3);
+  border-left:2px solid rgba(255,255,255,.10);padding-left:11px}
+.callout b{color:var(--fg-2);font-weight:500}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:var(--fg-2);
+  background:rgba(255,255,255,.04);border-radius:3px;padding:1px 4px}
+.prose{max-width:1180px;font-size:var(--t-body);line-height:1.8;color:var(--fg-2)}
+.prose b.cream{color:var(--fg);font-weight:500}
+
+/* ── shared card shell ─────────────────────────────────────────────────── */
+.card{border:1px solid var(--b);border-radius:12px;background:var(--surface-sunken);overflow:hidden}
+.hero{font-size:var(--t-heading);line-height:1.3;letter-spacing:-.005em;font-weight:500;color:var(--fg);
+  text-wrap:balance}
+.lede{font-size:var(--t-reading);line-height:1.6;color:var(--fg)}
+.body{font-size:var(--t-body);line-height:1.6;color:var(--fg-2)}
+.reading{font-size:var(--t-reading);line-height:1.6;color:var(--fg-2)}
+.meta{font-size:var(--t-label);line-height:1.5;color:var(--fg-3)}
+.sec{color:var(--fg-2)} .muted{color:var(--fg-3)} .cream{color:var(--fg)}
+.ico{width:13px;height:13px;flex-shrink:0}
+
+/* ══ SHIPPED reproduction — px-4 pt-4 pb-3, gap-3, every nested box intact ══ */
+.s-face{display:flex;flex-direction:column;gap:12px;padding:16px 16px 12px}
+.s-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.s-rank{font-size:var(--t-label);font-weight:600;font-variant-numeric:tabular-nums;color:var(--fg-3)}
+.s-copy{display:inline-flex;align-items:center;gap:4px;flex-shrink:0;font-size:var(--t-label);
+  font-weight:500;color:var(--fg-3);background:none;border:0;cursor:pointer;font-family:inherit}
+.s-label{font-size:var(--t-caption);text-transform:uppercase;letter-spacing:.05em;color:var(--fg-3)}
+.s-box{border:1px solid var(--b);background:rgba(255,255,255,.02);border-radius:8px;padding:12px 14px;
+  display:flex;flex-direction:column;gap:6px}
+.s-pill{display:inline-block;border:1px solid var(--b);background:rgba(255,255,255,.03);border-radius:999px;
+  padding:2px 8px;font-size:var(--t-caption);font-weight:500;color:var(--fg-2)}
+.s-target{border:1px solid var(--b);border-radius:6px;padding:8px 12px;font-size:var(--t-label);
+  line-height:1.4;color:var(--fg-2)}
+/* the shipped ProofReceipt box */
+.s-proof{display:flex;align-items:stretch;gap:12px;border:1px solid var(--b);background:rgba(255,255,255,.02);
+  border-radius:8px;padding:10px;text-decoration:none}
+.s-thumb{position:relative;display:block;width:64px;flex-shrink:0;aspect-ratio:9/16;
+  border:1px solid var(--b);border-radius:6px;overflow:hidden;background:#242422}
+.s-pcol{display:flex;min-width:0;flex:1;flex-direction:column;gap:4px}
+.s-eyebrow{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.s-eyebrow .s-label{font-weight:600}
+.s-chip-mult{display:inline-flex;align-items:center;gap:4px;border-radius:3px;padding:2px 6px;
+  font-size:var(--t-label);font-weight:600;font-variant-numeric:tabular-nums;
+  background:rgba(142,166,138,.14);color:var(--positive)}
+.s-chip-views{display:inline-flex;align-items:center;gap:4px;border-radius:3px;padding:2px 6px;
+  font-size:var(--t-label);font-variant-numeric:tabular-nums;background:rgba(255,255,255,.05);color:var(--fg-2)}
+.s-stats{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+/* the shipped ProofUnit, framed=false */
+.s-unit{margin:0 -8px;display:flex;flex-direction:column;gap:10px;border-radius:6px;padding:8px}
+.s-unit:hover{background:rgba(255,255,255,.03)}
+.s-uniturow{display:flex;align-items:center;gap:10px;font-size:var(--t-body)}
+.s-band{display:inline-flex;flex-shrink:0;align-items:center;gap:6px;font-weight:600;color:var(--positive)}
+.s-band .dot{width:7px;height:7px;border-radius:999px;background:var(--positive)}
+.s-frac{flex-shrink:0;color:var(--fg-2)}
+.s-frac b{font-weight:600;font-variant-numeric:tabular-nums;color:var(--fg)}
+.s-ribbon{position:relative;height:3px;flex:1;overflow:hidden;border-radius:999px;background:rgba(255,255,255,.08)}
+.s-ribbon i{position:absolute;inset:0 auto 0 0;border-radius:999px;background:var(--fg-2)}
+.s-quoterow{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.s-quote{border-left:2px solid rgba(255,255,255,.10);padding-left:12px;font-size:var(--t-body);
+  font-style:italic;line-height:1.35;color:rgba(236,231,222,.8)}
+.s-see{display:flex;flex-shrink:0;align-items:center;gap:6px;white-space:nowrap;font-size:var(--t-label);color:var(--fg-2)}
+.s-avs{display:flex}
+.s-avs i{width:15px;height:15px;border-radius:999px;border:1px solid var(--surface-sunken);background:rgba(255,255,255,.10)}
+.s-avs i+i{margin-left:-5px}
+.s-caret{display:flex;align-items:center;gap:6px;align-self:flex-start;font-size:var(--t-label);color:var(--fg-3)}
+.s-caret .prov{color:rgba(138,133,124,.7)}
+.s-recipe{display:flex;overflow:hidden;border:1px solid var(--b);background:rgba(255,255,255,.02);border-radius:8px}
+.s-recipe>div{min-width:0;flex:1;padding:8px 12px}
+.s-recipe>div+div{border-left:1px solid var(--b)}
+.s-recipe p.v{margin-top:2px;font-size:var(--t-body);line-height:1.35;color:var(--fg-2);
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.s-take{flex-shrink:0;margin-top:2px;border-radius:999px;border:1px solid rgba(224,189,114,.25);
+  padding:2px 8px;font-size:var(--t-caption);text-transform:uppercase;letter-spacing:.05em;color:var(--warning)}
+.s-actions{display:flex;align-items:center;gap:14px;border-top:1px solid var(--b);padding:12px 16px}
+.s-primary{display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.08);
+  background:rgba(255,255,255,.05);border-radius:6px;padding:8px 14px;font-size:var(--t-body);
+  font-weight:600;color:var(--fg);font-family:inherit;cursor:pointer}
+.s-save{margin-left:auto;color:var(--fg-3);display:inline-flex}
+
+/* ══ REWORKED — Document, stacked at EVERY width ═════════════════════════ */
+.face{display:flex;flex-direction:column;padding:20px 20px 18px}
+.toprow{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:12px}
+.pick{font-size:var(--t-label);color:var(--fg-2)}
+.copy{display:inline-flex;align-items:center;gap:5px;flex-shrink:0;font-size:var(--t-label);
+  font-weight:500;color:var(--fg-3);background:none;border:0;cursor:pointer;font-family:inherit}
+.g-lede{margin-top:14px}
+.g-break{margin-top:24px}
+
+/* the definition list — NO left column at any width (your call). Label above content. */
+.dl{display:flex;flex-direction:column;gap:16px}
+.dl>div{display:flex;flex-direction:column;gap:4px}
+.dl dt{font-size:var(--t-label);color:var(--fg-3);line-height:1.5}
+.dl dd{min-width:0}
+
+/* the audience line */
+.aud{font-size:var(--t-reading);line-height:1.6;color:var(--fg-2)}
+.aud .who{color:var(--fg);font-variant-numeric:tabular-nums}
+.aud.clamp{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+
+/* source receipt as ONE media object */
+.src{display:flex;gap:14px;align-items:center;text-decoration:none;
+  margin:0 -10px;padding:10px;border-radius:10px;border:1px solid transparent}
+.src:hover{background:rgba(255,255,255,.03)}
+.thumb{position:relative;display:block;width:56px;flex-shrink:0;aspect-ratio:9/16;
+  border:1px solid var(--b);border-radius:6px;overflow:hidden;background:#242422}
+.srccol{display:flex;min-width:0;flex:1;flex-direction:column;gap:7px}
+.tpl{font-size:var(--t-reading);line-height:1.45;color:var(--fg-2)}
+.tpl .v{background:rgba(255,255,255,.06);border-radius:2px;padding:1px 4px;color:var(--fg);margin:0 1px}
+.srcstats{font-size:var(--t-label);color:var(--fg-3);display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.mult{color:var(--positive);font-weight:600;font-variant-numeric:tabular-nums}
+.dot-sep{color:rgba(138,133,124,.5)}
+
+/* ONE footer row */
+.footer{display:flex;align-items:center;gap:16px;flex-wrap:wrap;border-top:1px solid var(--b);padding:14px 20px}
+.primary{display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.08);
+  background:rgba(255,255,255,.05);border-radius:6px;padding:8px 14px;font-size:var(--t-body);
+  font-weight:600;color:var(--fg);font-family:inherit;cursor:pointer}
+.door{display:inline-flex;align-items:center;gap:8px;margin-left:auto;font-size:var(--t-label);
+  color:var(--fg-3);background:none;border:0;font-family:inherit;cursor:pointer;min-height:32px}
+.door .hollow{width:7px;height:7px;border-radius:999px;border:1px solid var(--fg-3);flex-shrink:0}
+.door-cta{color:var(--fg-2);white-space:nowrap}
+.save{color:var(--fg-3);display:inline-flex}
+/* 342: primary + save keep row one, the door takes its own full-width row UNDER them.
+   Without the order/margin pair the full-width door pushes save onto a third line alone. */
+body[data-w="342"] .footer{row-gap:12px}
+body[data-w="342"] .primary{order:1}
+body[data-w="342"] .save{order:2;margin-left:auto}
+body[data-w="342"] .door{order:3;margin-left:0;width:100%;justify-content:space-between}
+
+.flagbox{border:1px solid rgba(224,189,114,.22);border-radius:8px;padding:14px 16px;max-width:1180px;
+  font-size:var(--t-label);line-height:1.75;color:var(--fg-2)}
+.flagbox h4{font-size:var(--t-body);font-weight:600;color:var(--warning);margin-bottom:6px}
+.flagbox p+p{margin-top:8px}
+.okbox{border:1px solid rgba(142,166,138,.22);border-radius:8px;padding:14px 16px;max-width:1180px;
+  font-size:var(--t-label);line-height:1.75;color:var(--fg-2)}
+.okbox h4{font-size:var(--t-body);font-weight:600;color:var(--positive);margin-bottom:6px}
+
+.variants{display:flex;flex-direction:column;gap:16px;max-width:760px}
+.vcard{border:1px solid var(--b);border-radius:12px;background:var(--surface-sunken);padding:18px 20px}
+.vcard>h4{font-size:var(--t-label);color:var(--fg-3);margin-bottom:12px}
+.vcard>h4 b{color:var(--fg-2);font-weight:500}
+.vwhy{margin-top:12px;font-size:var(--t-caption);line-height:1.7;color:var(--fg-3)}
+.vwhy b{color:var(--fg-2);font-weight:500}
+</style>
+</head>
+<body data-w="728">
+
+<div class="bar">
+  <h1>Skill cards v4 · shipped vs Document, and the audience line</h1>
+  <span class="hint">left column = what ships today, reproduced from source</span>
+  <div class="seg" role="group" aria-label="Card width">
+    <button data-w="728" aria-pressed="true">728px · in-thread</button>
+    <button data-w="342" aria-pressed="false">342px · mobile</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <h2>What this sketch decides</h2>
+  <div class="prose">
+    <p>Two changes from v3, both yours. <b class="cream">1.</b> Direction B (Document) wins, but the quiet
+    left label column is gone: labels sit <b class="cream">above</b> their content at 728px and at 342px,
+    so there is no layout switch at the breakpoint. <b class="cream">2.</b> The audience line is not deleted
+    after all. It is rewritten to carry the one field that has real content in it.</p>
+    <p style="margin-top:12px">The left card in each pair is the <b class="cream">shipped renderer</b>,
+    rebuilt here from <code>hook-card-block.tsx</code>, <code>idea-card-block.tsx</code>,
+    <code>proof-unit.tsx</code>, <code>proof-receipt.tsx</code> and <code>target-reaction.tsx</code> so the
+    comparison is against what a user actually sees today, not against a description of it.</p>
+  </div>
+
+  <div class="okbox" style="margin-top:18px">
+    <h4>Why the audience line comes back, with a different field in it</h4>
+    <p>You were right that <b>“Written for The Aspirant”</b> says nothing. It prints a display name that is
+    either the creator's own label or our derived vocabulary for a slug like <code>lurker</code>. It is a
+    category, and a category is not information.</p>
+    <p>But the persona it names carries a field the card has <b>never shown</b>:
+    <code>reaction_frame</code> (<code>enrich-signature.ts:191</code>), described in the schema as
+    <em>“how THIS audience's segment judges content”</em>. It is the only persona text the writer is ever
+    given (<code>select-persona-targets.ts:81</code>). It is literally the brief this hook was written against.
+    Put it on the face and the line stops being a label and becomes the reason the hook looks the way it does.</p>
+    <p><b>It also stays honest.</b> It states an aim, claims no measurement, and sets up the door instead of
+    competing with it: the card says who this was built for and what makes them bite, the door says go find
+    out whether they did.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     HOOK
+     ═══════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <h2>Hook card</h2>
+  <p class="note">Same nine facts in both, plus the audience line on the right. Everything removed on the
+    right is chrome or the verdict; nothing a creator can use is deleted.</p>
+  <div class="rowcols">
+
+    <!-- ── SHIPPED ───────────────────────────────────────────────────── -->
+    <div class="col">
+      <h3>Shipped today</h3>
+      <p class="sub">Four nested bordered boxes, four uppercase labels, the verdict in five costumes, and a
+        caret whose contents are already on the face.</p>
+      <div class="stage">
+        <div class="card">
+          <div class="s-face">
+            <div class="s-head">
+              <span class="s-rank">#1</span>
+              <button class="s-copy"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M216 32H88a8 8 0 0 0-8 8v40H40a8 8 0 0 0-8 8v128a8 8 0 0 0 8 8h128a8 8 0 0 0 8-8v-40h40a8 8 0 0 0 8-8V40a8 8 0 0 0-8-8m-56 176H48V96h112Zm48-48h-32V88a8 8 0 0 0-8-8H96V48h112Z"/></svg>Copy</button>
+            </div>
+
+            <p class="serif hero">Stop editing your videos. Do this instead.</p>
+
+            <!-- visualHook box -->
+            <div class="s-box">
+              <div style="display:flex;align-items:center;gap:8px">
+                <p class="s-label">Visual</p>
+                <span class="s-pill">Crash-zoom</span>
+              </div>
+              <p class="body">Hard cut to your face mid-sentence as the words slam on in bold caps.</p>
+            </div>
+
+            <!-- TargetReaction box — the receipt branch has never rendered -->
+            <div class="s-target">
+              <span class="muted">Written for </span><span class="cream" style="font-weight:500">The Aspirant</span><span class="muted"> · 34% of your audience</span>
+            </div>
+
+            <!-- ProofReceipt box -->
+            <a class="s-proof" href="#">
+              <span class="s-thumb"><svg viewBox="0 0 90 160" width="100%" height="100%"><rect width="90" height="160" fill="#242422"/><polygon points="38,66 38,94 64,80" fill="#ece7de" opacity=".35"/></svg></span>
+              <span class="s-pcol">
+                <span class="s-eyebrow">
+                  <span class="s-label">Proven structure</span>
+                  <span class="s-pill" style="font-weight:400">Trap Mistake</span>
+                </span>
+                <span class="tpl" style="font-size:var(--t-body)">Stop <span class="v">[doing the hard thing]</span>. Do <span class="v">[the easier thing]</span> instead.</span>
+                <span style="display:flex;align-items:center;gap:6px;font-size:var(--t-label);color:var(--fg-3)">
+                  <span aria-hidden="true">◆</span><span class="sec">@braedan.health</span>
+                </span>
+                <span class="s-stats">
+                  <span class="s-chip-mult">↗ 90.7×</span>
+                  <span style="font-size:var(--t-caption);color:var(--fg-3)">vs followers</span>
+                  <span class="s-chip-views">👁 621K</span>
+                </span>
+              </span>
+            </a>
+
+            <div>
+              <p class="s-label" style="margin-bottom:4px">Why it works</p>
+              <p class="reading">It works as a pattern-interrupt. You are giving them permission to quit a painful task.</p>
+            </div>
+
+            <!-- ProofUnit — band, fraction, ribbon, quote, avatars -->
+            <div class="s-unit">
+              <div class="s-uniturow">
+                <span class="s-band"><span class="dot"></span>Strong</span>
+                <span class="s-frac"><b>8/10</b> would stop</span>
+                <span class="s-ribbon"><i style="width:80%"></i></span>
+              </div>
+              <div class="s-quoterow">
+                <blockquote class="s-quote">&ldquo;Okay that opening line got me&rdquo;</blockquote>
+                <span class="s-see"><span class="s-avs"><i></i><i></i><i></i></span>See the room →</span>
+              </div>
+            </div>
+
+            <div class="s-caret">
+              <span aria-hidden="true">›</span> Why &amp; details <span class="prov">· projected</span>
+            </div>
+          </div>
+
+          <div class="s-actions">
+            <button class="s-primary">Write the script →</button>
+            <span class="s-save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg></span>
+          </div>
+        </div>
+      </div>
+      <p class="callout">
+        <b>The verdict, five times:</b> the band word, the fraction, the ribbon, the invented quote and the
+        <code>#1</code> rank are all the same self-estimated integer. <b>The targeting line</b> names an
+        internal archetype and promises a reaction the card can never show.
+        <b>The caret</b> opens onto the seed and delivery, which is why it survives.
+      </p>
+    </div>
+
+    <!-- ── REWORKED ──────────────────────────────────────────────────── -->
+    <div class="col">
+      <h3>Reworked · <em>Document, stacked</em> <span class="tag">+ audience line</span></h3>
+      <p class="sub">Labels above content, no boxes, no uppercase, no verdict. The audience line leads,
+        because it says who this was written for before it says what it is.</p>
+      <div class="stage">
+        <div class="card">
+          <div class="face">
+            <div class="toprow">
+              <span class="pick">Top pick</span>
+              <button class="copy"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M216 32H88a8 8 0 0 0-8 8v40H40a8 8 0 0 0-8 8v128a8 8 0 0 0 8 8h128a8 8 0 0 0 8-8v-40h40a8 8 0 0 0 8-8V40a8 8 0 0 0-8-8m-56 176H48V96h112Zm48-48h-32V88a8 8 0 0 0-8-8H96V48h112Z"/></svg>Copy</button>
+            </div>
+
+            <p class="serif hero">Stop editing your videos. Do this instead.</p>
+
+            <dl class="dl g-break">
+              <div>
+                <dt>Written for</dt>
+                <dd><p class="aud"><span class="who">34% of your audience</span> who judge a video by whether it saves them a mistake they were about to make.</p></dd>
+              </div>
+              <div>
+                <dt>The shot</dt>
+                <dd><p class="lede">Hard cut to your face mid-sentence as the words slam on in bold caps.</p>
+                    <p class="meta" style="margin-top:4px">Crash-zoom</p></dd>
+              </div>
+              <div>
+                <dt>Why it works</dt>
+                <dd><p class="body">A pattern-interrupt. You are giving them permission to quit a painful task.</p></dd>
+              </div>
+              <div>
+                <dt>Borrowed from</dt>
+                <dd>
+                  <a class="src" href="#">
+                    <span class="thumb"><svg viewBox="0 0 90 160" width="100%" height="100%"><rect width="90" height="160" fill="#242422"/><polygon points="38,66 38,94 64,80" fill="#ece7de" opacity=".35"/></svg></span>
+                    <span class="srccol">
+                      <span class="tpl">Stop <span class="v">[doing the hard thing]</span>. Do <span class="v">[the easier thing]</span> instead.</span>
+                      <span class="srcstats">
+                        <span class="mult">90.7× vs followers</span><span class="dot-sep">·</span>
+                        <span>621K views</span><span class="dot-sep">·</span>
+                        <span class="sec">@braedan.health</span>
+                      </span>
+                    </span>
+                  </a>
+                </dd>
+              </div>
+              <div>
+                <dt>Seed</dt>
+                <dd><p class="body">“Stop editing your videos.” Written to be spoken.</p></dd>
+              </div>
+            </dl>
+          </div>
+
+          <div class="footer">
+            <button class="primary">Write the script →</button>
+            <button class="door"><span class="hollow"></span>Not tested yet<span class="door-cta">Simulate with your audience →</span></button>
+            <span class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg></span>
+          </div>
+        </div>
+      </div>
+      <p class="callout">
+        <b>The audience line now carries the brief, not a name.</b> Compare it to the line on the left: same
+        34%, but this one tells you what that 34% is actually looking for, which is the thing the hook was
+        built to satisfy. <b>Placement is open.</b> It leads here; the alternative is last, under “Seed”,
+        so the hook and its craft read first. Say which you prefer.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     IDEA
+     ═══════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <h2>Idea card</h2>
+  <p class="note">The card with the most facts, so it is the real stress test. On the left the three-cell
+    recipe strip forces a horizontal layout that collapses badly at 342px; on the right it becomes three
+    stacked rows like everything else.</p>
+  <div class="rowcols">
+
+    <div class="col">
+      <h3>Shipped today</h3>
+      <div class="stage">
+        <div class="card">
+          <div class="s-face">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+              <h3 class="serif hero">The 30-day silence experiment</h3>
+              <span class="s-take">your take</span>
+            </div>
+
+            <p class="body">Absence as a growth lever, and what happens when you deliberately go quiet. <span class="muted">— Your top 3 posts all lead with a counter-intuitive claim about consistency.</span></p>
+
+            <div>
+              <p class="s-label" style="margin-bottom:4px">Why it lands</p>
+              <p class="reading">A curiosity gap plus an identity threat. Creators fear disappearing.</p>
+            </div>
+
+            <div>
+              <p class="s-label" style="margin-bottom:4px">Make it from</p>
+              <div class="s-recipe">
+                <div><p class="s-label">Topic</p><p class="v">Creator growth</p></div>
+                <div><p class="s-label">Take</p><p class="v">Consistency is overrated; strategic absence compounds attention</p></div>
+                <div><p class="s-label">Format</p><p class="v">Talking-head with on-screen data</p></div>
+              </div>
+            </div>
+
+            <div class="s-target">
+              <span class="muted">Written for </span><span class="cream" style="font-weight:500">The Aspirant</span><span class="muted"> · 34% of your audience</span>
+            </div>
+
+            <a class="s-proof" href="#">
+              <span class="s-thumb"><svg viewBox="0 0 90 160" width="100%" height="100%"><rect width="90" height="160" fill="#242422"/><polygon points="38,66 38,94 64,80" fill="#ece7de" opacity=".35"/></svg></span>
+              <span class="s-pcol">
+                <span class="s-eyebrow">
+                  <span class="s-label">Proven structure</span>
+                  <span class="s-pill" style="font-weight:400">Time Experiment</span>
+                </span>
+                <span class="tpl" style="font-size:var(--t-body)">I stopped <span class="v">[common habit]</span> for <span class="v">[timeframe]</span>. Here's what happened to my <span class="v">[thing]</span>.</span>
+                <span style="display:flex;align-items:center;gap:6px;font-size:var(--t-label);color:var(--fg-3)">
+                  <span aria-hidden="true">◆</span><span class="sec">@nourish.me.now</span>
+                </span>
+                <span class="s-stats">
+                  <span class="s-chip-mult">↗ 277×</span>
+                  <span style="font-size:var(--t-caption);color:var(--fg-3)">vs followers</span>
+                  <span class="s-chip-views">👁 4.3M</span>
+                </span>
+              </span>
+            </a>
+
+            <div class="s-unit">
+              <div class="s-uniturow">
+                <span class="s-band"><span class="dot"></span>Strong</span>
+                <span class="s-frac"><b>7/10</b> would stop</span>
+                <span class="s-ribbon"><i style="width:70%"></i></span>
+              </div>
+              <div class="s-quoterow">
+                <blockquote class="s-quote">&ldquo;Wait, you actually stopped posting?&rdquo;</blockquote>
+                <span class="s-see"><span class="s-avs"><i></i><i></i><i></i></span>See the room →</span>
+              </div>
+            </div>
+
+            <div class="s-caret">
+              <span aria-hidden="true">›</span> Seed hook <span class="prov">· projected</span>
+            </div>
+          </div>
+
+          <div class="s-actions">
+            <button class="s-primary">Write hooks for this →</button>
+            <span class="s-save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg></span>
+          </div>
+        </div>
+      </div>
+      <p class="callout">
+        <b>Switch to 342px.</b> The three recipe cells become three columns roughly 10 characters wide,
+        each clamped to two lines, so the take is unreadable exactly where it matters most.
+        <b>The em dash</b> joining angle and whyItFits is <code>idea-card-block.tsx:130</code>, one of the
+        six rendered ones on the removal list.
+      </p>
+    </div>
+
+    <div class="col">
+      <h3>Reworked · <em>Document, stacked</em> <span class="tag">+ audience line</span></h3>
+      <div class="stage">
+        <div class="card">
+          <div class="face">
+            <div class="toprow"><span class="pick">Top pick</span><span></span></div>
+            <h3 class="serif hero">The 30-day silence experiment</h3>
+            <p class="lede g-lede">Absence as a growth lever, and what happens when you deliberately go quiet.</p>
+
+            <dl class="dl g-break">
+              <div><dt>Written for</dt><dd><p class="aud"><span class="who">34% of your audience</span> who judge a video by whether it saves them a mistake they were about to make.</p></dd></div>
+              <div><dt>Fits you</dt><dd><p class="body">Your top 3 posts all lead with a counter-intuitive claim about consistency.</p></dd></div>
+              <div><dt>Why it lands</dt><dd><p class="body">A curiosity gap plus an identity threat. Creators fear disappearing.</p></dd></div>
+              <div><dt>Topic</dt><dd><p class="body">Creator growth</p></dd></div>
+              <div><dt>Your take</dt><dd><p class="body">Consistency is overrated; strategic absence compounds attention.</p>
+                <p class="meta" style="margin-top:4px;color:var(--warning)">Only you can supply this one.</p></dd></div>
+              <div><dt>Format</dt><dd><p class="body">Talking-head with on-screen data</p></dd></div>
+              <div><dt>Opens with</dt><dd><p class="body">“I stopped posting for 30 days. Here's what actually happened to my account.”</p></dd></div>
+              <div><dt>Borrowed from</dt><dd>
+                <a class="src" href="#">
+                  <span class="thumb"><svg viewBox="0 0 90 160" width="100%" height="100%"><rect width="90" height="160" fill="#242422"/><polygon points="38,66 38,94 64,80" fill="#ece7de" opacity=".35"/></svg></span>
+                  <span class="srccol">
+                    <span class="tpl">I stopped <span class="v">[common habit]</span> for <span class="v">[timeframe]</span>. Here's what happened to my <span class="v">[thing]</span>.</span>
+                    <span class="srcstats">
+                      <span class="mult">277× vs followers</span><span class="dot-sep">·</span>
+                      <span>4.3M views</span><span class="dot-sep">·</span>
+                      <span class="sec">@nourish.me.now</span>
+                    </span>
+                  </span>
+                </a>
+              </dd></div>
+            </dl>
+          </div>
+          <div class="footer">
+            <button class="primary">Write hooks for this →</button>
+            <button class="door"><span class="hollow"></span>Not tested yet<span class="door-cta">Simulate with your audience →</span></button>
+            <span class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg></span>
+          </div>
+        </div>
+      </div>
+      <p class="callout">
+        <b>Eight rows is the honest cost</b> of stacked Document on the busiest card. Measured, this card is
+        <b>801px at 728 wide against the shipped 630px</b>, and 1005px against 774px on mobile. That is the
+        opposite of what the v3 handoff promised, and the measurements section below decomposes exactly where
+        it went. What it buys: identical structure at both widths, the take fully readable on mobile, and no
+        layout that only works on desktop.
+        <b>If eight rows is too many</b>, the two candidates to fold back into prose are “Topic” and
+        “Format”, which are one-liners wearing a label.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     THE LINE ITSELF
+     ═══════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <h2>The audience line, on its own</h2>
+  <p class="note">Four ways to write it, at card width. The data behind all of them is the same:
+    <code>archetype</code> (already on the card), <code>share</code> (already on the card), and
+    <code>repaint</code>/<code>reaction_frame</code> (real, calibrated, <b>not currently on the card</b>.
+    This is the one field that needs adding to <code>CardTargetSchema</code>).</p>
+
+  <div class="variants">
+
+    <div class="vcard">
+      <h4><b>1 · Frame only</b> · the name is gone, the share leads</h4>
+      <dl class="dl"><div>
+        <dt>Written for</dt>
+        <dd><p class="aud"><span class="who">34% of your audience</span> who judge a video by whether it saves them a mistake they were about to make.</p></dd>
+      </div></dl>
+      <p class="vwhy"><b>What it is:</b> the version used in both cards above. The percentage is the only
+      number on the card and it measures your audience, not the output, so it cannot be mistaken for a
+      verdict. <b>Risk:</b> the segment has no handle, so a creator cannot say “that one again” across cards.</p>
+    </div>
+
+    <div class="vcard">
+      <h4><b>2 · Frame only, no label</b> · prose, closest to Editorial</h4>
+      <p class="aud">Written for the <span class="who">34%</span> of your audience who judge a video by whether it saves them a mistake they were about to make.</p>
+      <p class="vwhy"><b>What it is:</b> the same sentence with the label folded in, so it does not read as a
+      form field. Fits the card better if the audience line ends up <b>last</b> rather than leading.
+      <b>Risk:</b> loses the scan anchor that every other row on the card has.</p>
+    </div>
+
+    <div class="vcard">
+      <h4><b>3 · Name plus frame</b> · the name earns its place by being explained</h4>
+      <dl class="dl"><div>
+        <dt>Written for</dt>
+        <dd><p class="aud"><span class="who">The Aspirant</span>, 34% of your audience.</p>
+            <p class="body" style="margin-top:3px">They judge a video by whether it saves them a mistake they were about to make.</p></dd>
+      </div></dl>
+      <p class="vwhy"><b>What it is:</b> you rejected the bare name, and this is the test of whether the name
+      was the problem or the <em>emptiness</em> was. With the frame under it the name becomes a handle for a
+      group the creator can now recognise. <b>Risk:</b> two lines for one fact, and the name is still ours,
+      not theirs, unless they renamed the persona in the workspace.</p>
+    </div>
+
+    <div class="vcard">
+      <h4><b>4 · Frame plus proof</b> · the strongest, and the one that needs a second field</h4>
+      <dl class="dl"><div>
+        <dt>Written for</dt>
+        <dd><p class="aud"><span class="who">34% of your audience</span> who judge a video by whether it saves them a mistake they were about to make.</p>
+            <p class="meta" style="margin-top:4px">Save rate 4.0% against a 1.8% baseline.</p></dd>
+      </div></dl>
+      <p class="vwhy"><b>What it is:</b> every persona also carries <code>evidence</code>, an
+      engagement-ratio proof derived from the creator's real account (<code>enrich-signature.ts:191</code>;
+      real values look like <code>save-rate 4% vs 1.8% baseline</code>). It is the only thing on any of these
+      cards computed from their <em>own data</em> rather than written by a model. <b>Risk:</b> it describes
+      the segment, not this hook, so it repeats identically on every card aimed at the same person, and a
+      number under an aim can read as a verdict about the hook. <b>This is the moat made visible, and it is
+      also the easiest thing here to mis-read.</b></p>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <h2>The two failure cases, drawn</h2>
+  <p class="note">Both are guaranteed to occur in production, so the layout has to hold in them.</p>
+  <div class="rowcols">
+
+    <div class="col">
+      <h3>No audience data <em>· General or uncalibrated run</em></h3>
+      <p class="sub">No calibrated audience means no target, so the row simply is not rendered. Same silence
+        the card keeps today.</p>
+      <div class="stage">
+        <div class="card"><div class="face">
+          <div class="toprow"><span class="pick">Top pick</span><span class="copy">Copy</span></div>
+          <p class="serif hero">Stop editing your videos. Do this instead.</p>
+          <dl class="dl g-break">
+            <div><dt>The shot</dt><dd><p class="lede">Hard cut to your face mid-sentence as the words slam on in bold caps.</p><p class="meta" style="margin-top:4px">Crash-zoom</p></dd></div>
+            <div><dt>Why it works</dt><dd><p class="body">A pattern-interrupt. You are giving them permission to quit a painful task.</p></dd></div>
+            <div><dt>Seed</dt><dd><p class="body">“Stop editing your videos.” Written to be spoken.</p></dd></div>
+          </dl>
+        </div>
+        <div class="footer"><button class="primary">Write the script →</button>
+          <button class="door"><span class="hollow"></span>Not tested yet<span class="door-cta">Simulate with your audience →</span></button></div>
+        </div>
+      </div>
+      <p class="callout"><b>This is the majority case until a creator calibrates.</b> Worth knowing before you
+        weigh how much the audience line should carry: on an uncalibrated account the card has no audience
+        evidence at all, and the door is the entire pitch.</p>
+    </div>
+
+    <div class="col">
+      <h3>A long frame <em>· model-authored, clamped to two lines</em></h3>
+      <p class="sub"><code>reaction_frame</code> is model output with a 2,000-char schema ceiling. Real ones
+        are one-liners, but the layout cannot assume it.</p>
+      <div class="stage">
+        <div class="card"><div class="face">
+          <div class="toprow"><span class="pick">Top pick</span><span class="copy">Copy</span></div>
+          <p class="serif hero">Stop editing your videos. Do this instead.</p>
+          <dl class="dl g-break">
+            <div><dt>Written for</dt><dd><p class="aud clamp"><span class="who">34% of your audience</span> who judge a video by whether it saves them a mistake they were about to make, and who have been burned before by advice from people who never showed their own numbers, so they hold back until the creator proves it on themselves first.</p></dd></div>
+            <div><dt>The shot</dt><dd><p class="lede">Hard cut to your face mid-sentence as the words slam on in bold caps.</p></dd></div>
+            <div><dt>Why it works</dt><dd><p class="body">A pattern-interrupt. You are giving them permission to quit a painful task.</p></dd></div>
+          </dl>
+        </div>
+        <div class="footer"><button class="primary">Write the script →</button>
+          <button class="door"><span class="hollow"></span>Not tested yet<span class="door-cta">Simulate with your audience →</span></button></div>
+        </div>
+      </div>
+      <p class="callout"><b>Two-line clamp</b> keeps the row from swallowing the card. It truncates mid-sentence,
+        which is ugly. The alternative is a prompt rule capping the frame at one sentence, which is a runner
+        change and cannot fix the frames already stored on existing audiences.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <h2>Measured, and it reverses the v3 claim</h2>
+  <p class="note">Every number below is a real <code>getBoundingClientRect().height</code> off this file and
+    off the v3 file, same script, both widths, no horizontal overflow and no JS errors in either.</p>
+
+  <div class="prose" style="max-width:920px">
+    <table style="width:100%;border-collapse:collapse;font-size:var(--t-label)">
+      <thead>
+        <tr style="color:var(--fg-3);text-align:left">
+          <th style="padding:7px 10px 7px 0;font-weight:400">Card</th>
+          <th style="padding:7px 10px;font-weight:400">Shipped</th>
+          <th style="padding:7px 10px;font-weight:400">v3 B · left column</th>
+          <th style="padding:7px 10px;font-weight:400">v4 B · stacked, no line</th>
+          <th style="padding:7px 10px;font-weight:400">v4 B · stacked + line</th>
+        </tr>
+      </thead>
+      <tbody style="font-variant-numeric:tabular-nums">
+        <tr style="border-top:1px solid var(--b)"><td style="padding:7px 10px 7px 0">hook @728</td><td style="padding:7px 10px">590</td><td style="padding:7px 10px">436</td><td style="padding:7px 10px">530</td><td style="padding:7px 10px;color:var(--fg)">591</td></tr>
+        <tr style="border-top:1px solid var(--b)"><td style="padding:7px 10px 7px 0">hook @342</td><td style="padding:7px 10px">694</td><td style="padding:7px 10px">678</td><td style="padding:7px 10px">646</td><td style="padding:7px 10px;color:var(--warning)">751</td></tr>
+        <tr style="border-top:1px solid var(--b)"><td style="padding:7px 10px 7px 0">idea @728</td><td style="padding:7px 10px">630</td><td style="padding:7px 10px">574</td><td style="padding:7px 10px">740</td><td style="padding:7px 10px;color:var(--warning)">801</td></tr>
+        <tr style="border-top:1px solid var(--b)"><td style="padding:7px 10px 7px 0">idea @342</td><td style="padding:7px 10px">774</td><td style="padding:7px 10px">930</td><td style="padding:7px 10px">900</td><td style="padding:7px 10px;color:var(--warning)">1005</td></tr>
+      </tbody>
+    </table>
+
+    <p style="margin-top:18px"><b class="cream">The v3 handoff's headline was “every card is shorter than
+    today”. Under your two choices that is no longer true</b>, and it is worth knowing before you sign off
+    rather than after. The cost splits cleanly in two, and they are independent:</p>
+
+    <p style="margin-top:12px"><b class="cream">1 · Dropping the left label column costs height, and only at
+    728px.</b> Hook +94, idea +166. At 342px it costs nothing (it is actually ~30px cheaper, from a footer
+    fix made here) because v3's direction B already stacked at that width. You have chosen to pay the mobile
+    layout's height at desktop width too, in exchange for one layout instead of two.</p>
+
+    <p style="margin-top:10px"><b class="cream">2 · The audience line costs a flat 61px at 728 and 105px at
+    342</b>, on every card that has one. That is one row carrying two to three lines of real prose, and it is
+    the same cost on hook and idea.</p>
+
+    <p style="margin-top:14px">Hook comes out level with what ships today (590 → 591 at 728, 694 → 751 at
+    342). Idea is the one that moves: <b class="cream">+27% at 728 and +30% at 342</b>. If that is too much,
+    the cheapest ~120px back is folding “Topic” and “Format” into the lede sentence, since both are
+    one-liners wearing a label. The next cheapest is putting the left column back at 728 only, which is the
+    thing you just rejected.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <h2>What this costs, and what is still open</h2>
+
+  <div class="flagbox">
+    <h4>The audience line is the first thing in this rework that touches the engine</h4>
+    <p><b>1.</b> <code>repaint</code> (and <code>evidence</code>, for variant 4) must be added to
+    <code>CardTargetSchema</code> in <code>blocks.ts</code>, and threaded through <code>bindTarget</code>
+    plus the runners that build a target. Small and additive, but it is a schema change and the plan you
+    approved touches zero engine files.</p>
+    <p><b>2.</b> <b>It only exists on hook and idea cards.</b> Script targeting is dormant
+    (<code>script-runner.ts:632</code>) so <code>target</code> is null on every route today, and
+    <code>remix-runner</code> never emits <code>target</code> at all. Script and remix carry no audience
+    evidence under any of the four variants. If that gap matters, waking script targeting is its own lane.</p>
+    <p><b>3.</b> The frame is model-authored, so it will sometimes carry an em dash. Same category as the
+    other model-written fields you chose to flag rather than fix.</p>
+  </div>
+
+  <div class="flagbox" style="margin-top:16px">
+    <h4>Still unanswered from v3</h4>
+    <p><b>The door on a legacy card that really did run a panel.</b> Either “Your audience reacted · See your
+    audience →” (accurate for data that exists, still prints no number) or “Not tested yet” everywhere
+    (uniform, but says untested about a real measurement). It decides whether the door component reads
+    <code>provenance</code> at all, so it decides how the component gets built.</p>
+    <p><b>Sweep “room” to “audience” beyond these four cards?</b> Done on the four. The word survives in
+    <code>proof-unit.tsx</code> (shared, do not edit), in Simulate, in the ＋door dial and in the ambient
+    room itself.</p>
+  </div>
+</section>
+
+<script>
+document.querySelectorAll('.seg').forEach(function (seg) {
+  seg.addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    seg.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+    if (b.dataset.w) document.body.dataset.w = b.dataset.w;
+  });
+});
+</script>
+</body>
+</html>
