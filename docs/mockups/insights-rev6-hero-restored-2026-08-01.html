@@ -65,7 +65,12 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 .navrow{display:flex;align-items:center;justify-content:space-between;height:20px}
 .back{background:0;border:0;color:var(--faint);font:400 13px Inter;cursor:pointer}
 .back:hover{color:var(--cream)}
-.pager{background:var(--chip);color:var(--faint);font:500 11.5px Inter;padding:3px 9px;border-radius:99px}
+/* the pager is a STEPPER — the drills of this room are siblings, ‹ › walks them */
+.pager{display:inline-flex;align-items:center;gap:2px;background:var(--chip);color:var(--faint);
+  font:500 11.5px Inter;padding:3px 6px;border-radius:99px}
+.pager .pg{background:0;border:0;color:var(--faint);font:400 12.5px/1 Inter;cursor:pointer;
+  padding:0 4px}
+.pager .pg:hover{color:var(--cream)}
 
 /* identity — thumbnail + one-line title + the TikTok-native stat row.
    Appears ONCE, above the tabs, and scrolls away (rev 7.3) — never repeated per tab. */
@@ -78,7 +83,9 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 .ident .meta{min-width:0;flex:1}
 .title{font-size:13px;line-height:1.35;color:var(--dim);white-space:nowrap;overflow:hidden;
   text-overflow:ellipsis}
-.stats{display:flex;gap:15px;margin-top:8px}
+.stats{display:flex;gap:15px;margin-top:8px;align-items:center}
+.ptag{margin-left:auto;background:var(--chip);border-radius:5px;padding:2px 6px;
+  font:500 10px Inter;color:var(--faint)}
 .stat{display:flex;align-items:center;gap:5px}
 .stat svg{opacity:.42;flex:none}
 .stat b{font:500 12.5px/1 Inter;color:var(--cream);font-variant-numeric:tabular-nums}
@@ -88,8 +95,9 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 .answer p{font-size:13px;line-height:1.5;color:var(--dim);margin-top:5px}
 .answer .loss{color:var(--coral)}
 .answer .win{color:var(--cream)}
-.fix{display:inline-flex;align-items:center;gap:8px;background:var(--chip);border-radius:9px;
-  padding:6px 11px 6px 9px;margin-top:10px;cursor:pointer}
+/* the fix is a BUTTON and a route: video → the instrument at the break; text → the reasons */
+.fix{display:inline-flex;align-items:center;gap:8px;background:var(--chip);border:0;border-radius:9px;
+  padding:6px 11px 6px 9px;margin-top:10px;cursor:pointer;text-align:left}
 .fix:hover{background:var(--chip-on)}
 .fix .b{font:500 12.5px Inter;color:var(--cream)}
 .fix .g{font:500 12px Inter;color:var(--dim);font-variant-numeric:tabular-nums}
@@ -140,8 +148,11 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 .vfig{position:absolute;inset:0;display:block}
 .playchip{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:42px;height:42px;
   border-radius:99px;background:rgba(38,38,36,.9);display:flex;align-items:center;justify-content:center}
-.vdur{position:absolute;right:7px;bottom:7px;background:rgba(20,20,19,.78);border-radius:6px;
+.vdur{position:absolute;right:7px;bottom:9px;background:rgba(20,20,19,.78);border-radius:6px;
   padding:2px 6px;font:500 10.5px Inter;color:rgba(236,231,222,.85);font-variant-numeric:tabular-nums}
+/* the frame answers the scrubber — in the build the real video seeks with the playhead */
+.vprog{position:absolute;left:0;bottom:0;height:2px;background:rgba(236,231,222,.85);
+  text-decoration:none;width:7%}
 
 /* ── cards — filled, no border, one level deep ───────────────────────────── */
 .card{background:var(--card);border-radius:14px;padding:15px 15px 16px;margin-top:12px}
@@ -160,13 +171,12 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 /* key-metric tiles — the TikTok idiom: label, big number, delta vs your own median.
    Coral marks the DOMINANT loss only (.bad); lesser misses keep a quiet ↓. */
 .tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
-.tiles.t3{grid-template-columns:repeat(3,1fr)}
 .tile{background:var(--chip);border-radius:10px;padding:11px 12px 12px}
 .tile i{font-style:normal;display:block;font-size:11px;color:var(--faint);white-space:nowrap;
   overflow:hidden;text-overflow:ellipsis}
 .tile b{display:block;font:500 21px/1.15 Inter;letter-spacing:-.012em;color:var(--cream);
   font-variant-numeric:tabular-nums;margin-top:5px}
-.tile em{font-style:normal;display:block;font-size:11px;color:var(--faint);
+.tile em{font-style:normal;display:block;font-size:11px;color:var(--dim);
   font-variant-numeric:tabular-nums;margin-top:3px}
 .tile.bad b,.tile.bad em{color:var(--coral)}
 
@@ -176,7 +186,7 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
   background:rgba(20,20,19,.78);font:500 10.5px Inter;color:var(--coral);
   font-variant-numeric:tabular-nums;pointer-events:none}
 .moments{display:flex;gap:7px;margin-top:12px}
-.mo{background:var(--chip);border:0;border-radius:9px;padding:6px 10px;cursor:pointer;
+.mo{background:var(--chip);border:0;border-radius:9px;padding:8px 11px;cursor:pointer;
   display:flex;align-items:baseline;gap:7px}
 .mo:hover,.mo[aria-pressed="true"]{background:var(--chip-on)}
 .mo i{font-style:normal;font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums}
@@ -214,7 +224,7 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 
 /* dot-matrix count rows — the shipped, product-native component */
 .dm{display:flex;align-items:center;gap:12px;padding:9px 0}
-.dm .nm{width:100px;flex:none;font-size:13px;color:var(--dim)}
+.dm .nm{width:112px;flex:none;font-size:13px;color:var(--dim)}
 .dm .dots{flex:1;display:flex;gap:5px}
 .dm .dots s{width:5px;height:5px;border-radius:99px;text-decoration:none;background:rgba(236,231,222,.13)}
 .dm .n{width:36px;flex:none;text-align:right;font:500 13.5px Inter;color:var(--cream);
@@ -257,6 +267,8 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 .pw i{font-style:normal;display:block;font-size:10px;color:var(--faint);margin-top:5px}
 .pw div.best s{background:rgba(236,231,222,.82)}
 .pw div.best i{color:var(--cream)}
+.pw .hr{display:block;font:500 9.5px Inter;color:var(--cream);margin-bottom:4px;
+  text-decoration:none;font-variant-numeric:tabular-nums}
 
 .foot{margin-top:24px;padding-top:14px;border-top:1px solid var(--border);display:flex;
   align-items:center;justify-content:space-between;font-size:11.5px;color:var(--faint);cursor:pointer}
@@ -269,9 +281,9 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 <aside class="ctl">
   <div class="brandline"></div>
   <h1>Ambient Audience · insight drill</h1>
-  <p class="lede">Revision 7.4 — the three pages, one job each. Overview is the TL;DR: verdict,
-    fix, key numbers. Audience is who. Engagement is how they engaged — led by the video+curve
-    instrument, its hero.</p>
+  <p class="lede">Revision 7.5 — the audit pass. The fix chip now routes (verdict → evidence →
+    action), the pager steps between the room’s drills, the frame answers the scrubber, and the
+    stat row admits it is projected.</p>
 
   <h2>Stimulus</h2>
   <div class="grp">
@@ -288,12 +300,12 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 
   <h2>Try this first</h2>
   <ol class="steps">
-    <li><b>Video · Overview is the TL;DR</b> — cortex, the answer with its fix chip, key
-      metrics, traffic. Scroll: the identity row goes, the tabs stick.</li>
-    <li><b>Video · Engagement leads with the instrument</b> — drag the retention curve: the
-      playhead, the readout and the one-line transcript move together.</li>
-    <li>Switch to <b>Text</b>. Different instrument: no timeline anywhere; on Engagement the
-      voices lead instead of the video.</li>
+    <li><b>Tap the fix chip</b> on video · Overview — it routes to the instrument, parked on the
+      break. On Text it scrolls to the reasons. Verdict → evidence → action.</li>
+    <li><b>Drag the retention curve</b> on Engagement: playhead, readout, the frame’s progress
+      line and the one-line transcript move together.</li>
+    <li><b>‹ › in the top-right</b> steps between the room’s drills (here: the two fixtures).
+      Switch to Text and the instrument becomes the voices.</li>
   </ol>
 
   <h2>Calls you may want to reverse</h2>
@@ -317,8 +329,9 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 <div class="rail">
   <div class="head">
     <div class="navrow">
-      <button class="back">← Overview</button>
-      <span class="pager" id="pager">2 of 5</span>
+      <button class="back">← The room</button>
+      <span class="pager"><button class="pg" id="pgPrev">‹</button><span
+        id="pgTxt">2 of 5</span><button class="pg" id="pgNext">›</button></span>
     </div>
   </div>
 
@@ -383,7 +396,7 @@ const POOLS=[
   {n:"Followers",   s:"10% of room", pct:10, drop:"0:21", loss:0, k:[1,.97,.93,.89,.86,.84,.82,.805,.79,.777,.765,.753,.74,.728,.715,.703,.69,.677,.663,.648,.632,.614,.594,.57,.542,.508,.466,.412,.34]},
   {n:"Cross-niche", s:"5% of room",  pct:5,  drop:"0:03", loss:0, k:[1,.88,.62,.41,.33,.29,.27,.258,.248,.24,.233,.226,.22,.213,.207,.2,.194,.187,.181,.174,.168,.161,.154,.146,.137,.127,.115,.1,.08]},
 ];
-const ROOM=[["Stopped",380,0],["Almost",201,0],["Not for them",176,0],["Scrolled past",243,1]];
+const ROOM=[["Stopped to watch",380,0],["Almost",201,0],["Not for them",176,0],["Scrolled past",243,1]];
 
 /* key-metric tiles — label · value · delta vs the creator's own median. `bad` = the ONE
    dominant loss on the screen; lesser misses keep a quiet ↓ in the delta line only. */
@@ -395,7 +408,6 @@ const TILES={
     {n:"Rewatch",      v:"1.19×",d:"↑0.15 · top fifth"},
   ],
   textOverview:[
-    {n:"Would stop",   v:"41%",  d:"↑8 pts"},
     {n:"Novel to them",v:"63%",  d:"↓14 pts", bad:1},
     {n:"Would finish", v:"55%",  d:"↑3 pts"},
   ],
@@ -496,7 +508,8 @@ function identBlock(){
     <div class="thumb"><span>${d.thumb}</span></div>
     <div class="meta">
       <div class="title">${d.title}</div>
-      <div class="stats">${d.stats.map(([i,v])=>`<span class="stat">${ico(i,12)}<b>${v}</b></span>`).join('')}</div>
+      <div class="stats">${d.stats.map(([i,v])=>`<span class="stat">${ico(i,12)}<b>${v}</b></span>`).join('')
+        }<span class="ptag">projected</span></div>
     </div>
   </div>`;
 }
@@ -506,12 +519,12 @@ function answerBlock(){
     <h2>${d.head}</h2>
     <p>${d.body.map(([t,m])=>m===1?`<span class="loss">${t}</span>`
       :m===2?`<span class="win">${t}</span>`:t).join('')}</p>
-    <div class="fix">
+    <button class="fix">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ece7de" stroke-width="2"
            stroke-linecap="round" stroke-linejoin="round" style="opacity:.6">
         <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
       <span class="b">${d.fixB}</span><span class="g">${d.fixG}</span>
-    </div>
+    </button>
   </div>`;
 }
 
@@ -526,6 +539,7 @@ const vmini=()=>`<div class="vmini">
     <rect width="100%" height="100%" fill="url(#vs)"/></svg>
   <div class="playchip">${ico("play",16)}</div>
   <span class="vdur">0:28</span>
+  <s class="vprog" id="vprog"></s>
 </div>`;
 
 /* ── retention card (the scrubber) ──────────────────────────────────────── */
@@ -545,7 +559,7 @@ function retentionCard(){
         <path d="${me}" fill="none" stroke="rgba(236,231,222,.72)" stroke-width="1.6"/>
         <path d="${brk}" fill="none" stroke="#FF6363" stroke-width="2"/>
         <line x1="${bx}" y1="0" x2="${bx}" y2="${H}" stroke="rgba(255,99,99,.26)" stroke-width="1"/>
-        <text x="${W-P-3}" y="${(H-P-MEDIAN[MEDIAN.length-1]*(H-2*P)-5).toFixed(0)}" text-anchor="end"
+        <text x="${W-P-3}" y="${(H-P-MEDIAN[MEDIAN.length-1]*(H-2*P)+12).toFixed(0)}" text-anchor="end"
           font-size="9" fill="rgba(236,231,222,.34)" font-family="Inter">your median</text>
         <line id="phl" x1="0" y1="0" x2="0" y2="${H}" stroke="rgba(236,231,222,.32)" stroke-width="1"/>
         <circle id="phd" r="3.6" fill="#ece7de"/>
@@ -563,7 +577,7 @@ function retentionCard(){
 /* ── tabs ───────────────────────────────────────────────────────────────── */
 function overview(){
   if(kind==="text") return textOverview();
-  return hero("cortex","Predicted cortex",`t = ${mmss(BREAK_S)}`,"38%","would stop")
+  return hero("cortex","Predicted cortex","at the break","38%","would stop")
   + answerBlock()
   + `<div class="card">${ch('Key metrics','vs your last 41')}
       ${tiles(TILES.videoOverview)}
@@ -577,10 +591,10 @@ function textOverview(){
   return hero("cortex","Predicted cortex","simulated","41%","would stop")
   + answerBlock()
   + `<div class="card">${ch('Key metrics','vs your last 41 hooks')}
-      ${tiles(TILES.textOverview,1)}
+      ${tiles(TILES.textOverview)}
       ${insight(`The <span class="loss">wording</span> is the commodity.`)}
     </div>`
-  + `<div class="card">${ch('Why they stopped')}
+  + `<div class="card" id="reasons">${ch('Why they stopped')}
       <div style="margin-top:10px">${REASONS.map(r=>`
         <div class="rb ${r.loss?'loss':''}"><span class="nm">${r.n}</span>
           <span class="tr"><s style="width:${(r.v/37*100).toFixed(0)}%"></s></span>
@@ -654,9 +668,10 @@ function engagement(){
         ? `Everyone who stays converts — <span class="loss">only 38% stay</span>.`
         : `Argues well, <span class="loss">travels badly</span>.`)}
     </div>`
-  + `<div class="card">${ch('Best window','Tue · 7–9pm · followers online')}
+  + `<div class="card">${ch('Best window','followers online')}
       <div class="pw">${["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map((d,i)=>
-        `<div class="${i===1?'best':''}"><s style="height:${[17,38,24,29,20,32,11][i]}px"></s><i>${d}</i></div>`).join('')}</div>
+        `<div class="${i===1?'best':''}">${i===1?'<u class="hr">7–9pm</u>':''}<s style="height:${
+          [17,38,24,29,20,32,11][i]}px"></s><i>${d}</i></div>`).join('')}</div>
     </div>`
   + foot();
 }
@@ -665,20 +680,41 @@ const foot=()=>`<div class="foot"><span>How to read these numbers</span><span>�
 
 /* ── render ─────────────────────────────────────────────────────────────── */
 function paint(){
-  pager.textContent=D[kind].pager;
+  pgTxt.textContent=D[kind].pager;
   identSlot.innerHTML=identBlock();
   content.innerHTML=tab==="overview"?overview():tab==="audience"?audience():engagement();
   body.scrollTop=0;
   if(tab==="engagement"&&kind==="video"){bindScrub();syncPlayhead();}
 }
+function setKind(k){
+  kind=k;
+  document.querySelectorAll("[data-kind]").forEach(x=>x.setAttribute("aria-pressed",x.dataset.kind===kind));
+  paint();
+}
+/* the fix chip ROUTES: video → the instrument, parked on the break; text → the reasons */
+function fixJump(){
+  if(kind==="video"){
+    tab="engagement"; ph=BREAK_S/CLIP;
+    document.querySelectorAll("[data-tab]").forEach(x=>x.setAttribute("aria-pressed",x.dataset.tab===tab));
+    paint();
+  }else{
+    const el=document.getElementById("reasons");
+    if(el)body.scrollTo({top:el.getBoundingClientRect().top-body.getBoundingClientRect().top
+      +body.scrollTop-56,behavior:"smooth"});
+  }
+}
+body.addEventListener("click",e=>{if(e.target.closest(".fix"))fixJump();});
+pgPrev.addEventListener("click",()=>setKind(kind==="video"?"text":"video"));
+pgNext.addEventListener("click",()=>setKind(kind==="video"?"text":"video"));
 function syncPlayhead(){
   const W=366,H=108,P=6, x=P+ph*(W-2*P), y=H-P-retAt(ph)*(H-2*P);
   const l=document.getElementById("phl"), dot=document.getElementById("phd");
   if(l){l.setAttribute("x1",x);l.setAttribute("x2",x);}
   if(dot){dot.setAttribute("cx",x);dot.setAttribute("cy",y);}
-  const cr=document.querySelector(".corner.r"); if(cr)cr.textContent=`t = ${mmss(ph*CLIP)}`;
   const ro=document.getElementById("retro");
   if(ro)ro.textContent=`${mmss(ph*CLIP)} · ${Math.round(retAt(ph)*100)}%`;
+  const vp=document.getElementById("vprog");
+  if(vp)vp.style.width=(ph*100).toFixed(1)+"%";
   /* one-line transcript: light words up to the playhead, keep the current word centred */
   const tin=document.getElementById("tin");
   if(tin){
@@ -704,9 +740,7 @@ function bindScrub(){
     ph=+b.dataset.t/CLIP;syncPlayhead();
     document.querySelectorAll(".mo").forEach(x=>x.setAttribute("aria-pressed",x===b));}));
 }
-document.querySelectorAll("[data-kind]").forEach(b=>b.addEventListener("click",()=>{
-  kind=b.dataset.kind;
-  document.querySelectorAll("[data-kind]").forEach(x=>x.setAttribute("aria-pressed",x===b));paint();}));
+document.querySelectorAll("[data-kind]").forEach(b=>b.addEventListener("click",()=>setKind(b.dataset.kind)));
 document.querySelectorAll("[data-tab]").forEach(b=>b.addEventListener("click",()=>{
   tab=b.dataset.tab;
   document.querySelectorAll("[data-tab]").forEach(x=>x.setAttribute("aria-pressed",x.dataset.tab===tab));

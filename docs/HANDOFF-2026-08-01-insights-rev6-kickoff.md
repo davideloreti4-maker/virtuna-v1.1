@@ -532,3 +532,26 @@ user value."* Confirmed and applied — **one job per page**:
 
 Page weights after: 1219 / 1146 / 1221px — near-equal. Probes re-run: scrub on Engagement drives
 readout + transcript, one `.answer` (Overview only), law walk 0.
+
+**Rev 7.5 (same day) — the audit pass.** Owner asked for a UX/user-value/flow audit; 12 findings,
+all applied on their "all":
+
+- **The fix chip ROUTES** (`fixJump()`): video → Engagement with the instrument parked on the
+  break; text → smooth-scrolls to `#reasons`. Verdict → evidence → action. The chip is a real
+  `<button>` now.
+- **The pager is a stepper** — ‹ › walk the room's drills (in the mockup: the two fixtures, which
+  is why video is "2 of 5" and text "4 of 5"). Back label fixed: `← The room` (was a collision
+  with the Overview tab).
+- **The frame answers the scrubber** — `.vprog` progress line on the mini video, synced to `ph`;
+  in the build the real video seeks.
+- Overview's cortex corner reads **"at the break"** (the frozen `t = 0:02` clock read as stuck
+  once the scrubber left the page).
+- Stat row carries a quiet **"projected"** tag (it reads as real TikTok analytics otherwise).
+- "Stopped" → **"Stopped to watch"** (dm `.nm` 100→112px) · Best-window's **7–9pm sits on the Tue
+  bar** (meta softened to "followers online") · "your median" label moved **below** the dash ·
+  tile deltas bumped `--faint`→`--dim` · moment chips 6→8px pad · text-Overview's duplicate 41%
+  tile dropped (tiles = Novel to them · Would finish, the `t3` grid died with it).
+
+Probed, not assumed: fix-chip jump lands on Engagement at `0:02 · 58%` with vprog 7.1%; scrub to
+0:21 → vprog 75%; pgNext steps 2 of 5 → 4 of 5 with the title swapping; text fix scrolls body
+288px; law walk 0.
