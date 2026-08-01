@@ -169,16 +169,85 @@ visual design, UX, user value, the data actually displayed, and premium feel.
 
 ---
 
-## 5. ⚠️ Two inputs the owner must re-send
+## 5. The two missing inputs — SUPPLIED 2026-08-01, recorded here so they stop going missing
 
-Neither is in this repo and neither survived into this session's context. **Ask for them before
-starting design work:**
+Both were re-sent by the owner at the rev 6 kickoff. They are written down now because they are not
+otherwise in the repo and a fresh session cannot reconstruct them.
 
-1. **The TikTok + YouTube Studio reference screens** — the visual reference for the analytics idiom.
-2. **The earlier session output on what is most relevant for the TikTok / Instagram algorithm** —
-   which metrics actually drive distribution.
+### 5.1 The TikTok analytics reference screens
 
-What *does* exist is the metric ledger (engine → UI), from §3 of the older handoff:
+Five TikTok "Video analysis" screens (Overview · Viewers · Engagement tabs). What the idiom is
+actually made of, and what rev 6 takes from it:
+
+| TikTok screen | What it shows | Taken into rev 6? |
+|---|---|---|
+| Header, every tab | Thumbnail + post date, then a **5-icon stat row** — plays · likes · comments · shares · saves (94K · 15K · 7,001 · 2,609 · 3,764) | ✅ the header stat row, real line icons, one row |
+| Overview · Key metrics | Four boxed tiles: Video views `94112` · Total play time `719h:27m:22s` · Average watch time `27.7s` · Watched full video `3.54%` · New followers `4845` | ✅ as the **Key rates** card — but each rate carries a delta vs the creator's own median, which TikTok never gives you |
+| Overview · Retention rate | A sentence first — *"On average, viewers watched 14% of your video"* — then the curve, with the drop-off second called out (`00:03 (39%)`) | ✅ answer-first is the whole spine of rev 6; the curve + the named break second |
+| Overview · Traffic sources | Horizontal bars: Other 53.7% · For You 32.6% | ✅ **Where it would surface** card |
+| Viewers · Viewer types | Two split bars: New 66% / Returning 34%, Non-followers 75% / Followers 25% | ✅ folded into **Who this reaches** (the four-pool room mix) |
+| Viewers · Gender | A donut | ❌ not held by the engine — no producer, so it is not drawn |
+
+**The gap rev 6 exists to fill:** every TikTok screen is *post-hoc* — it reports what already
+happened, on a post you cannot change. Virtuna's version runs *before* posting, and answers the
+question TikTok cannot: **retention split by traffic pool.** That is the "No platform reports this"
+line on the Audience tab, and it is the product's actual claim.
+
+### 5.2 What drives distribution on TikTok / Instagram
+
+The mental model, from the owner's earlier session output. Four layers; every metric is a proxy for
+one of them, and **cost of signal rises left → right, which is roughly the algorithmic weight.**
+
+| Layer | The question the algorithm asks | Metric family |
+|---|---|---|
+| Attention | Did they stop and stay? | hook rate, watch time, retention curve, completion |
+| Reaction | Did staying cost them effort? | likes, comments, saves, shares |
+| Propagation | Did they hand it to someone else? | sends/DM shares, external shares, duets/stitches |
+| Consequence | Did it change their relationship to you? | follows, profile visits, link taps, purchases |
+
+Signal-cost ladder (cheap → expensive):
+`impression < 1s view < 3s view < like < completion < rewatch < comment < save < share/send < follow < link tap < purchase`
+
+**TikTok optimizes for time.** Average watch time is its single strongest ranking input; completion
+buys distribution and shares multiply it. Rewatch/loop is a TikTok-specific superpower — a loop
+counts as new watch time.
+**Instagram optimizes for relationships.** Mosseri's stated Reels priority: watch time → likes per
+reach → **sends per reach** (he named this the reach lever) → watched-fully %. Saves buy the long
+tail. Likes are near-noise.
+
+**Both punish the same thing: early drop-off. If hook rate is broken, no downstream metric can save
+the post — fix in the order hook → hold → share.**
+
+> **This single sentence is the spine of rev 6.** It is why the answer block leads with the hook,
+> why the Overview tab is the attention layer, and why the read on Key rates is *"The hook is the
+> only thing broken"* — the content beats the median everywhere the hook lets people reach.
+
+Always normalize by **reach, not followers**. ER-by-followers is inflated theatre. Derived metrics
+worth holding: hook rate (3s ÷ reach) · hold rate (avg watch ÷ length) · completion · save rate ·
+share rate · send-per-reach · follower conversion · velocity (views in first 1h/3h/24h) · long-tail
+ratio (views after day 7 ÷ total).
+
+Rough orientation bands (they swing hard by niche/length/geo — **not** targets):
+
+| Metric | Weak | Solid | Strong |
+|---|---|---|---|
+| TikTok 3s hook rate | <40% | 55–65% | >75% |
+| TikTok completion (<15s) | <25% | 40–55% | >70% |
+| TikTok share rate | <0.3% | 0.8–1.5% | >2.5% |
+| IG Reels ER (by reach) | <3% | 5–8% | >10% |
+| IG non-follower reach | <30% | 50–70% | >85% |
+| IG send-per-reach | <0.5% | 1–2% | >3% |
+
+⚠️ These bands are **orientation for us**, not UI copy. The owner's benchmark decision stands: every
+comparison shown to a creator is against **their own catalogue**, never an industry band.
+
+Negative signals (Not Interested · hide · report · swipe-before-1s · unfollow · mute) are invisible
+in analytics and real in ranking. You infer them from an abnormal reach ceiling despite good rates —
+we do not hold them, so we do not draw them.
+
+### 5.3 The metric ledger (engine → UI)
+
+From §3 of the older handoff:
 
 | TikTok/IG metric | Engine source | Kind |
 |---|---|---|
@@ -257,3 +326,49 @@ What *does* exist is the metric ledger (engine → UI), from §3 of the older ha
 | `src/app/ambient-v2/page.tsx` | **The no-auth live review surface** |
 | `docs/HANDOFF-2026-08-01-insights-three-tab.md` | Prior handoff — §2 verified code findings, §3 metric ledger |
 | `docs/mockups/reference-2026-08-01/` | Screenshots: shipped rail + revs 3/4/5 |
+
+---
+
+## 9. Rev 6 — what shipped on this branch (2026-08-01)
+
+| Commit | What |
+|---|---|
+| `a52702ee` | The rev 6 mockup — `docs/mockups/insights-rev6-hero-restored-2026-08-01.html` + six screenshots in `docs/mockups/reference-2026-08-01/rev6-*.png` |
+| `7241c11c` | The cortex grounded on the real retention curve (§3.1's "highest value-per-line change") |
+
+**The mockup.** Open the HTML directly — no server needed. Left strip switches stimulus
+(video / text) and tab (Overview / Audience / Engagement); the rail is exactly 440px.
+**Drag the retention curve** on video · Overview: one playhead drives the transcript, the clock and
+the cortex readout together. Attention runs 91% → 38% across the break while drift climbs 26% → 60%.
+Those three bars use `cortex-sim`'s grounded drive verbatim (`neuralDrive`, `:175-202`), so the
+mockup's readout *is* the shipped model.
+
+Held to the laws: 440px, 0 gradients, 0 shadows, 0 backdrop-filter, 0 uppercase chrome, Newsreader
+confined to the four voice quotes, coral on losses only. Verified by walking computed style across
+all six screens, not by grepping source.
+
+**Known mockup-only artifacts** (they do not exist in the build): the hero is a *still* cropped from
+the shipped screenshots, so the reference PNGs' own baked chrome is painted out with two `.mask`
+bands. The live `CortexCanvas` renders no chrome at all.
+
+**The grounded wiring.** `driveFor()` in `cortex-sim.ts` is now the ONE place that chooses grounded
+vs simulated; `BrainFrameData.retentionCurve` carries the curve, sourced from the same
+`weighted_curve` the scrubber draws. Covered by `drive-for.test.ts` + `BrainTab.grounded.test.tsx`,
+the second mutation-checked (drop the prop → red).
+
+> ⚠️ **Behaviour change to design around.** Grounded mode plays ONCE (`u = clamp01(t/dur)`), so each
+> replay restarts from resting state and the canonical ~5s HRF lag leaves the first seconds of the
+> loop washed out — verified live at t=0:02, a near-uniform pale map. Simulated mode looped, so its
+> convolution always reached back into a prior cycle and never sat at rest. Rev 6 hands the playhead
+> to the user and opens on the break instead of free-running from 0, which dissolves it. **If the
+> implementation keeps a free-running loop, offset its start past `HRF_PEAK_S` or the hero opens
+> flat.**
+
+### Still to do
+
+1. Implement rev 6 in `src/components/audience-lens/v2/` — held pending owner review of the mockup,
+   because five revisions have been rejected and the implementation is the expensive step.
+2. §3.2 remains open: `AmbientOverviewRail.tsx:467` calls `buildVideoDomainTemplate` without
+   `reasons`, so the unlock never renders on a real video drill. Rev 6's answer block carries the
+   fix chip in the header, which is the video-appropriate unlock the handoff asked for — it lands
+   with the implementation.
