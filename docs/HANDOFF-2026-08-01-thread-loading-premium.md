@@ -1,8 +1,12 @@
-# HANDOFF — premium thread loading (session 2 close)
+# HANDOFF — premium thread loading (session 3 close)
 
-> Date: **2026-08-01** · Branch `task/thread-loading-premium` · **PR #411** (open, NOT merged)
+> Date: **2026-08-01** · Branch `task/thread-loading-premium` · **PR #411 — MERGED**
 > Worktree: `~/virtuna-slot-c` (slot pool), port **3003**. Base: `origin/main` `fb0a5a00`.
-> HEAD: **`1d9ad727`** · 15 commits ahead of main · pushed (post-commit hook auto-pushes).
+> HEAD at merge: **`a053c4ae`** · 17 commits ahead of main · pushed (post-commit hook auto-pushes).
+>
+> ⚠️ **#411 was merged WITHOUT the live billed run its own §5 named as the merge gate.**
+> The gate could not be run — see §7. Read that section before assuming the paid
+> account-read path has been exercised against real Apify. It has not.
 > Design SoT: `src/app/globals.css` + `docs/DESIGN-SYSTEM.md`.
 > Sketch target: `.planning/sketches/premium-thread.html` (v3.2) — its loading spec is now BUILT.
 
@@ -110,16 +114,34 @@ All three were invisible to a green suite. Two were mine.
 
 ---
 
-## 4. ✅ Signed-in verification is UNBLOCKED — but not the documented way
+## 4. ✅ Signed-in verification is UNBLOCKED — and `auth.setup.ts` now works again
 
-**`e2e/auth.setup.ts` cannot work and should be treated as dead code.** It fills
-`input[name="password"]`, but `/login` is now **emailed-code-first**: the only input is `email`, and
-password lives behind a "Sign in with a password instead" button. **That button does nothing** — the
-page throws *"A tree hydrated but some attributes … didn't match. This won't be patched up"*, so
-React never attaches its `onClick`. The config also hardcodes `baseURL: :3000`.
+> **Session 3 correction — both claims below were dev-only artefacts.** `npm run e2e:auth` is
+> fixed and passing (`a053c4ae`); the ordinary Playwright path is live again, and the
+> cookie-minting recipe further down is now a fallback, not the only door.
 
-> ⚠️ **Product bug worth its own look, outside this PR:** if that hydration mismatch reproduces on a
-> PROD build, returning password users cannot reach password sign-in at all.
+**The `/login` hydration bug does NOT reproduce on a production build.** Measured on `next build`
++ `next start` at :3003: the toggle click reveals the password field, a full password sign-in
+lands on `/home` with `sb-<ref>-auth-token` set, and the page logs **zero** pageerror events,
+**zero** console errors and **zero** hydration mentions. **Returning password users are not locked
+out.** (Session 2's dev observation stands as a dev observation; it was not re-verified in dev,
+because prod is what the question was about.)
+
+**`e2e/auth.setup.ts` is fixed, not deleted.** What was actually stale:
+- It filled `input[name="password"]` on arrival, but that field does not exist until the
+  "Sign in with a password instead" disclosure is opened.
+- `input[name="email"]` is now **ambiguous** — the OTP form has one too — so the old unscoped
+  selector is a strict-mode violation. Fields are scoped to the form owning the password input.
+- `networkidle` never settles (dev HMR socket). Replaced with `domcontentloaded` + locator waits.
+- It waited for `dashboard|welcome`; **this app has no `dashboard` route** and an established
+  account lands on `/home`. Now it asserts only that we left `/login`.
+- It now throws when no Supabase cookie was set, instead of writing a `storageState` that
+  authenticates nobody.
+- `baseURL` hardcoded `:3000` → `E2E_BASE_URL` with the same default, so a slot worktree stops
+  silently driving whichever other worktree owns that port.
+
+Verified: `--project=setup` passes in **2.3s** against the prod build and writes the same
+2635-char cookie the manual recipe produced.
 
 **What works — mint the session directly** (full recipe in memory `signed-in-verification-recipe`):
 
@@ -151,15 +173,12 @@ React never attaches its `onClick`. The config also hardcodes `baseURL: :3000`.
 
 ## 5. What is LEFT
 
-### The recommendation (owner has not decided)
+### ✅ DECIDED (session 3) — shipped
 
-**Ship #411 now; do the rest in a fresh lane off main.** It is 15 commits, the two waits the owner
-ranked most painful are done, and what remains is the shallow end. Growing it triples the review
-surface for a fraction of the felt improvement.
+The owner chose **ship #411 now; do the rest in a fresh lane off main.** Merged as a `--no-ff`
+PR merge, the house convention. **4b/4c/4e must branch off `main`, not off this branch.**
 
-**Gate the merge on ONE live account-read run.** Not for the craft — that is measured. For the
-plumbing: a `Promise.all` was split on a 5-credit path and the two defects in §3 were both invisible
-to the mocked tests. One real run is the only thing that closes it.
+The merge gate below could not be run. See **§7** — it is the one thing this PR shipped without.
 
 ### Not done
 
@@ -174,7 +193,7 @@ to the mocked tests. One real run is the only thing that closes it.
   active→done, so a cache MISS parks the spine then flashes. Ranked tiles carry `coverUrl`.
 - **4e — competitors.** Still not surveyed. `src/components/competitors/*-skeleton.tsx`,
   `api/cron/refresh-account-snapshots`.
-- **A live billed run** — see the gate above.
+- **A live billed run** — ⚠️ STILL NOT DONE, and now merged around. See **§7**.
 
 ### Two open calls the owner left as-is (do not "fix" without asking)
 
@@ -199,3 +218,65 @@ state with no prop that fakes it — the only way to look at it is to let a run 
 **Review artifacts** (owner-facing, real components at true 728px width):
 - Craft-pass sketch v2 — <https://claude.ai/code/artifact/10273a2d-97bd-4c32-b98b-7dfa6937bf60>
 - What shipped, before/after — <https://claude.ai/code/artifact/f4c1dcff-9148-4c0d-9eaa-76da2d67f1dc>
+
+**Re-verified at session-3 close** (post `a053c4ae`): `tsc --noEmit` clean · `vitest run`
+**4948 passed / 42 skipped**, exit 0 · `next build` **exit 0** · eslint clean on both changed
+files. The 3 "Unhandled Rejection" lines vitest prints from `composer.test.tsx` are
+**pre-existing** and unrelated — `e2e/` is excluded from tsconfig, so nothing session 3 touched
+is even in vitest's or tsc's scope.
+
+> 🔑 **`npx` is wrapped in this environment and eats command output.** `npx next start` wrote
+> only `Errors: 1` to its log and exited 1, with the real message swallowed; the identical
+> command as `node node_modules/next/dist/bin/next start` started fine. When a CLI fails with
+> output that looks like a summary rather than an error, **re-run it through `node <bin>` before
+> debugging the app.** Same for reading logs — `cat` results get reformatted too.
+
+---
+
+## 7. ⚠️ The merge gate was NOT closed — Apify is at its hard limit
+
+**#411 merged without the live billed account-read run.** Do not read the merge as evidence that
+the paid path works end-to-end; it is not.
+
+**Why it could not run.** The Apify account (`rousing_saxophone`, **FREE** plan) has spent
+**$5.06 against a $5.00 `maxMonthlyUsageUsd` cap**. Every actor run is refused:
+
+```
+HTTP 403  {"error":{"type":"platform-feature-disabled",
+           "message":"Monthly usage hard limit exceeded"}}
+```
+
+The billing cycle runs **2026-07-11 → 2026-08-10**, so the cap lifts on **2026-08-10** unless the
+plan is upgraded. Corroboration that this is environmental and not a code fault: Apify's own run
+history shows the **last actor run was 2026-07-19** — today's attempt never created a run at all.
+
+**What the attempt DID prove** (it reached the real route, signed in, on the real 5-credit path):
+
+| | |
+|---|---|
+| auth + credit gate | passed — HTTP 200, `text/event-stream` opened |
+| `status` frame | emitted at 1.1s |
+| **`stage` frame** | **`Finding your profile → active` at 1.3s** — the new 4a plumbing fires on the real route |
+| failure path | generic copy, `retry:true`, **handle never echoed** (T-10-13 held) |
+| **billing** | **`reading_events` 56 → 56 — NOT charged.** The bill-on-delivery rule held on a real failure |
+
+That last row is worth keeping: a creator whose scrape failed was not billed, verified against the
+production table rather than a mock.
+
+**What remains unproven** — the success half: `buildProfileFrame` and `buildAccountPostFrames`
+against real Apify shapes, `ACCOUNT_READ_PLAN[0] → done` / `[1] → active`, the filmstrip, and the
+`done` frame.
+
+**Why merging anyway was defensible** (owner's call, made on this reasoning): the defect class the
+gate targets was made *structurally impossible* by `1d9ad727`. Both evidence emissions sit inside
+`emitEvidenceSafely` (`account-read.ts:424,429`), whose `catch` swallows everything, and `onStage`
+routes to the route's `send()`, which wraps `enqueue` in its own try/catch (`route.ts:117-125`).
+**The split chain can therefore only reject if the provider itself rejects — the pre-existing
+behaviour, unchanged by this PR.**
+
+**➡️ Owed, first session after 2026-08-10 (or immediately if the plan is topped up):** one
+`POST /api/account-read` signed in as the E2E user. The precondition is already MET — the account
+carries a personal audience calibrated to **`@zachking`**, so the route will scrape rather than
+exit on the thin fallback. Confirm the four success-path items above, and that `reading_events`
+increments by exactly one. The driver script is in the session scratchpad
+(`live-account-read.mjs`) — it prints every SSE frame with elapsed timestamps.
