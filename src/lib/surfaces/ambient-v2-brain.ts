@@ -217,6 +217,10 @@ export function buildBrainFrameData(input: BrainSnapshotInput): BrainFrameData {
     cortexSeedKey: input.stimulusKey,
     clipSeconds: clipSecondsOf(input.heatmap),
     stopRatio: clamp(input.stopPct / 100, 0, 1),
+    // Grounds the cortex on the REAL curve — the SAME `weighted_curve` `attentionData` renders as the
+    // scrubber, so the figure and the curve under it are one instrument. Without this the cortex runs
+    // `simulated` and loops a seeded envelope carrying zero information about the video.
+    retentionCurve: input.heatmap.weighted_curve.map((v) => clamp(v, 0, 1)),
     driver: { kind: "attention-scrubber", data: attentionData(input) },
     signals: signalRows(input.videoSignals),
     whyThisSecond: whyThisSecond(input),
