@@ -57,6 +57,9 @@ export const CREATOR_TEMPLATE: DomainTemplate = {
     cortexSeedKey: "hook-2-first-10k", // drifts the cortex parcellation; stable per stimulus
     clipSeconds: 12, // cortex replay-loop duration
     stopRatio: 0.382, // from the verdict — drives the cortex bold
+    // Grounds the cortex: the SAME curve the scrubber draws below it, on its native 0..1 scale
+    // (`driver.data.points` is this × 80). Keep the two in lockstep — they are one instrument.
+    retentionCurve: [0.825, 0.9, 0.8625, 0.65, 0.35, 0.425, 0.575, 0.675, 0.65, 0.625, 0.6, 0.575, 0.55],
     signalsBaseline: "vs your typical", // #8 the delta referent
     // the single consolidated honesty line at the tab bottom (replaces the old floating cortexNote)
     calibrationNote: "Modeled from a cortical proxy · not measured attention",

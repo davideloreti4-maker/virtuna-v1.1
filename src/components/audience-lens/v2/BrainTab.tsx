@@ -18,7 +18,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import { hashSeed, predictedBold, type DriveInput } from "@/lib/brain/cortex-sim";
+import { driveFor, hashSeed, predictedBold, type DriveInput } from "@/lib/brain/cortex-sim";
 import { TONE, Kick, SecHead, HowToRead, VerdictChip, Unlock, type AttentionData, type NetworkRow, type SignalRow } from "./AmbientDetail";
 import { SignalGridV2, NetworkSigmaBars, KpiHeatmap, BuyIntentCurve } from "./BrainDepth";
 import type { BrainDriver, BrainFrameData, DomainTemplate, ReasonBreakdownData, ResistanceCurveData, WhyThisSecond } from "./domain-template";
@@ -51,19 +51,26 @@ function CortexFigure({
   seedKey,
   stopRatio,
   clipSeconds,
+  retentionCurve,
   reducedMotion,
   verdict,
 }: {
   seedKey: string;
   stopRatio: number;
   clipSeconds: number;
+  /** The room's REAL retention per second (0..1). Present ⇒ grounded; absent ⇒ simulated. */
+  retentionCurve?: number[];
   reducedMotion: boolean;
   verdict?: DomainTemplate["verdict"];
 }) {
   const seed = useMemo(() => hashSeed(seedKey), [seedKey]);
+  // GROUNDED when the room's real retention is in hand — attention IS retention, salience fires at
+  // the breaks, drift rises with the people who checked out. `driveFor` owns that choice (it used to
+  // be a hardcoded `mode: "simulated"` here, which is why every video drill showed a seeded envelope
+  // carrying no information). A text/concept sim has no curve and correctly stays simulated.
   const drive = useMemo<DriveInput>(
-    () => ({ mode: "simulated", stopRatio, durationS: clipSeconds, seedKey }),
-    [stopRatio, clipSeconds, seedKey],
+    () => driveFor({ seedKey, stopRatio, durationS: clipSeconds, retentionCurve }),
+    [retentionCurve, stopRatio, clipSeconds, seedKey],
   );
   const [t, setT] = useState(reducedMotion ? clipSeconds * 0.33 : 0);
 
@@ -331,6 +338,7 @@ function BrainHero({
         seedKey={brain.cortexSeedKey}
         stopRatio={Math.min(1, Math.max(0, brain.stopRatio))}
         clipSeconds={brain.clipSeconds}
+        retentionCurve={brain.retentionCurve}
         reducedMotion={reducedMotion}
         verdict={verdict}
       />

@@ -119,6 +119,13 @@ export interface BrainFrameData {
   cortexSeedKey: string; // drifts the cortex parcellation; stable per stimulus
   clipSeconds: number; // cortex replay-loop duration (s)
   stopRatio: number; // 0..1 — drives the cortex bold, from the verdict
+  /** The audience's REAL retention at each second, 0..1 (`heatmap.weighted_curve`). Present ⇒ the
+   *  cortex runs `cortex-sim`'s **grounded** mode: attention tracks who is still watching, salience
+   *  spikes where the curve breaks, and the default-mode network rises with the people who checked
+   *  out. Absent (a text/concept sim has no timeline) ⇒ the honest seeded `simulated` envelope.
+   *  MUST come from the same curve the attention driver renders — the cortex and the visible curve
+   *  are one instrument, not two readings of the same run. */
+  retentionCurve?: number[];
   cortexNote?: string; // #3 — the "what it is NOT" honesty caption ("a modeled proxy, not measured attention")
   driver: BrainDriver; // ◇ swap — the driver axis
   signals: SignalRow[]; // ◇ swap — the decomposition
