@@ -167,6 +167,32 @@ describe('ProgressChecklist — the evidence rail', () => {
     expect(within(profileRow).queryByTestId('run-evidence')).not.toBeInTheDocument();
   });
 
+  it('narrates ONE row even when several are genuinely live', () => {
+    // A concurrent pipeline (the account read's two Apify scrapes) can have two rows live at once.
+    // Letting each wear the full live treatment put two coral nodes and two running clocks on
+    // screen for half the wait, undoing the craft pass that took accent-filled elements 4 → 1.
+    const PLAN = ['Finding your profile', 'Reading your last 30 posts'];
+    render(
+      <ProgressChecklist
+        stages={[
+          { name: 'Finding your profile', status: 'active' },
+          { name: 'Reading your last 30 posts', status: 'active' },
+        ]}
+        plan={PLAN}
+      />,
+    );
+
+    // Exactly one shimmering label — the answer to "where am I".
+    expect(document.querySelectorAll('.text-shimmer')).toHaveLength(1);
+    const lead = screen.getByLabelText('Finding your profile: active');
+    expect(lead.querySelector('.text-shimmer')).not.toBeNull();
+
+    // …and the second live row is still LIVE, just quiet: no shimmer, no second clock.
+    const quiet = screen.getByLabelText('Reading your last 30 posts: active');
+    expect(quiet.querySelector('.text-shimmer')).toBeNull();
+    expect(within(quiet).queryByTestId('stage-elapsed')).not.toBeInTheDocument();
+  });
+
   it('falls back to the active row when the payload names a row that is not in the plan', () => {
     // Defensive: a stale or mistyped name must degrade to the old behaviour, never to no rail.
     render(
