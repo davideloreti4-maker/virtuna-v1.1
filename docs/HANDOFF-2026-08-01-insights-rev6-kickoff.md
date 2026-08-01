@@ -441,3 +441,39 @@ direction), §6 (the laws), then this section.
 They are listed in the mockup's own scaffolding column, so the owner was reading them while
 reviewing: the cut signal-cost ladder · coral on one reason bar instead of three · the 283px header
 that forced a one-line ellipsised title · Engagement leading with the terrain re-lit a third time.
+
+---
+
+## 11. Rev 7 — the three tabs rebuilt metric-first (2026-08-01)
+
+**The owner's rev 6 critique** (given verbatim as the rev 7 brief): the three tab cards read as
+walls of text, not a good UX; UI not intentional enough; information not clean; below the
+Claude/Perplexity/ChatGPT bar. Keeps: "the concept of having the brain, population nodes, video as
+hero" and the TikTok/IG reference idiom (retention, watch time — the metrics that matter).
+
+**What rev 7 did** (same file, `docs/mockups/insights-rev6-hero-restored-2026-08-01.html` —
+edited in place so the build script and artifact URL keep working; title now says rev 7):
+
+- **De-prosed.** Every `.read`/`.sub`/`.herofoot` paragraph and the unlock section are gone. Each
+  card now ends in exactly ONE `.insight` line; each fact appears exactly once (rev 6 stated the
+  fix twice and "62% leave" three times).
+- **Key-metric tiles** (`.tiles`/`.tile`) — the TikTok "Key metrics" idiom: label · big number ·
+  delta vs the creator's own median. Used on Overview (hook/avg watch/full/rewatch) and Engagement
+  (saves/shares/comments/follows). Coral marks the ONE dominant loss per screen (`.bad`); lesser
+  misses keep a quiet ↓.
+- **Three heroes, no repeats** — cortex on Overview, terrain on Audience, **the post itself on
+  Engagement** (resolves §10's "terrain re-lit a third time"). The video hero is an inline-SVG
+  striped placeholder + play chip in the mockup; the build renders the drill's real cover. Cortex
+  and terrain framing UNCHANGED — the build script's `CROP` still matches.
+- Each hero's verdict chip states that tab's headline: `38% would stop` · `90% non-followers` ·
+  `1.4% would share`.
+- **Transcript is one line** (`.tstrip`), playhead-synced with the current word centred — rev 6's
+  five-line grey block is gone. Nets row now carries live % values.
+- Audience leads with **"Who watches — and how long"**: pool mix bar + per-pool retention rows
+  in one card (right-meta: "no platform reports this"). Pills replaced by `.lg` legend rows.
+
+Verified: all six states screenshotted (`rev7-*.png` in `reference-2026-08-01/`), one-playhead
+sync probed (clock/readout/nets/strip move together), computed-style law walk = 0 violations,
+artifact re-verified under a full network block with fonts proven by width (Newsreader 437.1 vs
+Georgia 456.3 @40px — remember to `document.fonts.load()` first, the §10 trap). Republished to the
+SAME review URL. React implementation still deliberately not started.
