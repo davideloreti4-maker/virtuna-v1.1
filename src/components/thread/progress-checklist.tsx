@@ -263,8 +263,13 @@ export function ProgressChecklist({
   // working with right now" slot, and it is where a retrieved artifact means the most (the
   // outliers land during grounding but matter while `Generating` drafts against them). With no
   // active row (the final beat, everything done) it falls to the last row rather than vanishing.
+  // ...unless the payload names its own row. A CONCURRENT run (the account read's two Apify
+  // scrapes) can land step 2's artifacts while step 1 is still going, and "hangs off the active
+  // row" then draws the covers under the wrong label. A named row wins; absent, nothing changes.
   const activeIdx = rows.findIndex((s) => s.status === 'active');
-  const evidenceIdx = activeIdx === -1 ? rows.length - 1 : activeIdx;
+  const taggedIdx = evidence?.step ? rows.findIndex((s) => s.name === evidence.step) : -1;
+  const evidenceIdx =
+    taggedIdx !== -1 ? taggedIdx : activeIdx === -1 ? rows.length - 1 : activeIdx;
 
   return (
     <div aria-live="polite" aria-label="Skill run progress" className="flex flex-col">

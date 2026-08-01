@@ -59,6 +59,18 @@ export interface RunEvidence {
    * draws exactly the items it has.
    */
   slots?: number;
+  /**
+   * Which plan row these artifacts belong to, by row name.
+   *
+   * Set it when a run's phases can finish OUT OF ORDER. The rail otherwise hangs off whichever row
+   * is currently active, which is right for a sequential pipeline and wrong for a concurrent one:
+   * the account read fires two independent Apify scrapes, and a live run measured the 30-post pull
+   * landing 18s AHEAD of the profile — so the covers were drawn under "Finding your profile", a
+   * step that was still running.
+   *
+   * Absent ⇒ the active-row fallback, byte-identical to every emitter that does not set it.
+   */
+  step?: string;
 }
 
 /** Cap on items rendered in one rail — a wall of thumbnails stops being evidence. */
@@ -149,7 +161,16 @@ export function parseRunEvidence(raw: unknown): RunEvidence | null {
       ? Math.min(r.slots, MAX_EVIDENCE_ITEMS)
       : undefined;
 
-  return { headline, items, ...(slots !== undefined ? { slots } : {}) };
+  // `step` has to survive the parse or the client silently loses the routing and falls back to the
+  // active row — the exact bug this field exists to fix, reintroduced one layer down.
+  const step = cleanString(r.step);
+
+  return {
+    headline,
+    items,
+    ...(slots !== undefined ? { slots } : {}),
+    ...(step ? { step } : {}),
+  };
 }
 
 // ── Emitter-side builders ───────────────────────────────────────────────────────
