@@ -477,3 +477,12 @@ sync probed (clock/readout/nets/strip move together), computed-style law walk = 
 artifact re-verified under a full network block with fonts proven by width (Newsreader 437.1 vs
 Georgia 456.3 @40px — remember to `document.fonts.load()` first, the §10 trap). Republished to the
 SAME review URL. React implementation still deliberately not started.
+
+**Rev 7.1 (same day).** The owner, on rev 7: *"nobody wants to read all these sentences — it
+doesn't feel nice to read the UI."* Even one sentence per card was too much. So: every `.insight`
+became a **≤6-word takeaway fragment** ("Only the hook is broken." · "Who stays, stays to the
+end." · "Recognition, not disagreement.") or was deleted outright (pools-for-text, Best window —
+whose answer moved into its card header meta: `Tue · 7–9pm`). The retention read is now **pinned
+on the figure** (`.anno`, "62% gone by 0:03" at the break — the YouTube key-moments idiom) instead
+of written under it, and the answer-block body shrank to one clause. Tab heights dropped 80–130px.
+The copy bar going forward: **numbers in tiles, type only points — no clauses.**
