@@ -67,8 +67,9 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 .back:hover{color:var(--cream)}
 .pager{background:var(--chip);color:var(--faint);font:500 11.5px Inter;padding:3px 9px;border-radius:99px}
 
-/* identity — thumbnail + one-line title + the TikTok-native stat row */
-.ident{display:flex;gap:11px;margin-top:12px;align-items:center}
+/* identity — thumbnail + one-line title + the TikTok-native stat row.
+   PAGE CONTENT since rev 7.2 (with the answer block) — the fixed strip is nav + tabs only. */
+.ident{display:flex;gap:11px;margin-top:2px;align-items:center}
 .thumb{width:40px;height:54px;border-radius:7px;background:var(--figure);flex:none;position:relative;
   overflow:hidden;display:flex;align-items:flex-end;justify-content:center;padding-bottom:4px}
 .thumb::before{content:"";position:absolute;inset:0;
@@ -82,8 +83,7 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 .stat svg{opacity:.42;flex:none}
 .stat b{font:500 12.5px/1 Inter;color:var(--cream);font-variant-numeric:tabular-nums}
 
-/* the persistent answer — never behind a tab */
-.answer{margin-top:13px;padding-left:13px;border-left:2px solid var(--coral)}
+.answer{margin-top:14px;padding-left:13px;border-left:2px solid var(--coral)}
 .answer h2{font:600 16.5px/1.28 Inter;letter-spacing:-.018em;color:var(--cream)}
 .answer p{font-size:13px;line-height:1.5;color:var(--dim);margin-top:5px}
 .answer .loss{color:var(--coral)}
@@ -109,7 +109,7 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 
 /* ── the heroes — full bleed, 270, the figure IS the wow ─────────────────── */
 .hero{position:relative;height:270px;border-radius:14px;overflow:hidden;background:var(--figure);
-  border:1px solid var(--border)}
+  border:1px solid var(--border);margin-top:14px}
 .hero .fig{position:absolute;inset:0;overflow:hidden}
 .hero .fig img{position:absolute}
 /* The reference PNGs are screenshots, so they carry the shipped surface's own baked chrome
@@ -174,24 +174,11 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
   font-variant-numeric:tabular-nums;margin-top:3px}
 .tile.bad b,.tile.bad em{color:var(--coral)}
 
-/* where this sits in the creator's own catalogue */
-.ticks{position:relative;height:18px;margin-top:12px}
-.ticks .base{position:absolute;left:0;right:0;bottom:6px;height:1px;background:rgba(236,231,222,.10)}
-.ticks s{position:absolute;bottom:7px;width:1px;height:5px;background:rgba(236,231,222,.18);
-  text-decoration:none}
-.ticks .md{position:absolute;bottom:7px;width:1px;height:11px;background:rgba(236,231,222,.42)}
-.ticks .me{position:absolute;bottom:7px;width:2px;height:13px;background:var(--coral);border-radius:1px}
-.tickcap{display:flex;justify-content:space-between;font-size:10.5px;color:var(--faint)}
-
 /* retention figure — the read is annotated ON the figure, not written under it */
 .curvewrap{margin-top:12px;cursor:ew-resize;touch-action:none;position:relative}
 .anno{position:absolute;left:12%;top:8px;padding:3px 7px;border-radius:6px;
   background:rgba(20,20,19,.78);font:500 10.5px Inter;color:var(--coral);
   font-variant-numeric:tabular-nums;pointer-events:none}
-.legend{display:flex;align-items:center;gap:14px;margin-top:8px;font-size:11px;color:var(--faint)}
-.legend em{font-style:normal;display:flex;align-items:center;gap:6px}
-.legend .sw{width:13px;height:2px;border-radius:1px;background:var(--cream)}
-.legend .sw.d{background:0;border-top:2px dashed rgba(236,231,222,.34);height:0}
 .moments{display:flex;gap:7px;margin-top:12px}
 .mo{background:var(--chip);border:0;border-radius:9px;padding:6px 10px;cursor:pointer;
   display:flex;align-items:baseline;gap:7px}
@@ -286,9 +273,9 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 <aside class="ctl">
   <div class="brandline"></div>
   <h1>Ambient Audience · insight drill</h1>
-  <p class="lede">Revision 7.1. The sentences are gone: cards end in a ≤6-word takeaway or in
-    nothing, the retention read is pinned on the figure itself, and the answer body is one
-    clause. Tiles carry the numbers; the type only points.</p>
+  <p class="lede">Revision 7.2. The fixed header is gone — only nav + tabs stay pinned, the
+    TikTok way; the post identity and the answer scroll with each page. Cards decluttered:
+    plain-text headers, right-metas only where they carry data.</p>
 
   <h2>Stimulus</h2>
   <div class="grp">
@@ -315,15 +302,14 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 
   <h2>Calls you may want to reverse</h2>
   <ul class="calls">
-    <li><b>Takeaways are fragments now</b> ("Only the hook is broken."), and four cards carry
-      none at all — Best window's answer moved into its header. If even the fragments should go,
-      say so.</li>
-    <li><b>The retention read is annotated on the figure</b> ("62% gone by 0:03" pinned at the
-      break) instead of written under it.</li>
-    <li><b>Engagement leads with the post itself</b> (striped placeholder here; the build renders
-      the drill's real cover) — replaces the terrain re-lit a third time.</li>
-    <li><b>Coral is confined to the dominant loss per screen</b> (hook tile, For You row); lesser
-      misses carry a quiet ↓ instead.</li>
+    <li><b>The answer scrolls now.</b> It was the rev-5 "persistent answer, never behind a tab" —
+      reversed per your header note. It repeats at the top of every tab instead.</li>
+    <li><b>Only nav + tabs are pinned.</b> TikTok also pins its title bar; ours is one row
+      lighter. Scroll any tab to judge whether the tabs alone are enough chrome.</li>
+    <li><b>The catalogue tick-strip is gone</b> from Key metrics — the hook tile's
+      "↓20 pts vs median" now carries that fact alone.</li>
+    <li><b>Card headers lost their icons</b> and most right-meta labels — kept only where the
+      label is data ("vs your last 41", the live scrub readout, "Tue · 7–9pm").</li>
   </ul>
 
   <p class="note-foot">Mockup only. The cortex and terrain heroes are stills cropped from the
@@ -338,25 +324,6 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
     <div class="navrow">
       <button class="back">← Overview</button>
       <span class="pager" id="pager">2 of 5</span>
-    </div>
-
-    <div class="ident">
-      <div class="thumb"><span id="thumbT">0:28</span></div>
-      <div class="meta">
-        <div class="title" id="title"></div>
-        <div class="stats" id="stats"></div>
-      </div>
-    </div>
-
-    <div class="answer">
-      <h2 id="aHead"></h2>
-      <p id="aBody"></p>
-      <div class="fix">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ece7de" stroke-width="2"
-             stroke-linecap="round" stroke-linejoin="round" style="opacity:.6">
-          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-        <span class="b" id="fixB"></span><span class="g" id="fixG"></span>
-      </div>
     </div>
 
     <div class="seg">
@@ -478,7 +445,9 @@ const IC={
 };
 const ico=(k,sz=14)=>`<svg width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="none" stroke="#ece7de"
   stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${IC[k]}</svg>`;
-const ch=(k,t,r='')=>`<div class="chead"><div class="l">${ico(k)}<h3>${t}</h3></div>
+/* Card headers are plain text since rev 7.2 — TikTok Studio has no header icons, and the
+   right-meta survives only where it carries data, not description. */
+const ch=(t,r='')=>`<div class="chead"><div class="l"><h3>${t}</h3></div>
   ${r?`<span class="r">${r}</span>`:''}</div>`;
 const tiles=(rs,three)=>`<div class="tiles${three?' t3':''}">${rs.map(t=>
   `<div class="tile ${t.bad?'bad':''}"><i>${t.n}</i><b>${t.v}</b><em>${t.d}</em></div>`).join('')}</div>`;
@@ -531,6 +500,33 @@ function hero(fig,l,r,vv,vl){
 /* The three spoken networks, computed with cortex-sim.ts's GROUNDED drive verbatim
    (`neuralDrive`, cortex-sim.ts:175-202) — so the readout here is the shipped model, not a
    look-alike. `retentionAt` is the one prop BrainTab.tsx:65 does not pass today. */
+/* identity + answer — page content at the top of every tab (rev 7.2: the owner killed the
+   fixed header; only nav + tabs stay pinned, the TikTok way) */
+function identBlock(){
+  const d=D[kind];
+  return `<div class="ident">
+    <div class="thumb"><span>${d.thumb}</span></div>
+    <div class="meta">
+      <div class="title">${d.title}</div>
+      <div class="stats">${d.stats.map(([i,v])=>`<span class="stat">${ico(i,12)}<b>${v}</b></span>`).join('')}</div>
+    </div>
+  </div>`;
+}
+function answerBlock(){
+  const d=D[kind];
+  return `<div class="answer">
+    <h2>${d.head}</h2>
+    <p>${d.body.map(([t,m])=>m===1?`<span class="loss">${t}</span>`
+      :m===2?`<span class="win">${t}</span>`:t).join('')}</p>
+    <div class="fix">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ece7de" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round" style="opacity:.6">
+        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      <span class="b">${d.fixB}</span><span class="g">${d.fixG}</span>
+    </div>
+  </div>`;
+}
+
 const clamp01=x=>x<0?0:x>1?1:x;
 const gauss=(x,c,w)=>Math.exp(-((x-c)*(x-c))/w);
 function groundedDrive(u){
@@ -559,7 +555,7 @@ function retentionCard(){
   const brk="M"+CURVE.slice(0,4).map((v,i)=>
     `${(P+i/(CURVE.length-1)*(W-2*P)).toFixed(1)},${(H-P-v*(H-2*P)).toFixed(1)}`).join(" L");
   return `<div class="card">
-    ${ch('pulse','Retention',`<span id="retro">${mmss(ph*CLIP)} · ${Math.round(retAt(ph)*100)}%</span>`)}
+    ${ch('Retention',`<span id="retro">${mmss(ph*CLIP)} · ${Math.round(retAt(ph)*100)}%</span>`)}
     <div class="curvewrap" id="scrub">
       <svg viewBox="0 0 ${W} ${H}" style="display:block;width:100%;height:auto">
         <path d="${me} L${W-P},${H-P} L${P},${H-P} Z" fill="rgba(236,231,222,.045)"/>
@@ -567,14 +563,13 @@ function retentionCard(){
         <path d="${me}" fill="none" stroke="rgba(236,231,222,.72)" stroke-width="1.6"/>
         <path d="${brk}" fill="none" stroke="#FF6363" stroke-width="2"/>
         <line x1="${bx}" y1="0" x2="${bx}" y2="${H}" stroke="rgba(255,99,99,.26)" stroke-width="1"/>
+        <text x="${W-P-3}" y="${(H-P-MEDIAN[MEDIAN.length-1]*(H-2*P)-5).toFixed(0)}" text-anchor="end"
+          font-size="9" fill="rgba(236,231,222,.34)" font-family="Inter">your median</text>
         <line id="phl" x1="0" y1="0" x2="0" y2="${H}" stroke="rgba(236,231,222,.32)" stroke-width="1"/>
         <circle id="phd" r="3.6" fill="#ece7de"/>
       </svg>
       <span class="anno">62% gone by 0:03</span>
     </div>
-    <div class="legend"><em><s class="sw"></s>this post</em>
-      <em><s class="sw d"></s>your median</em>
-      <em style="margin-left:auto;color:rgba(236,231,222,.28)">drag to scrub</em></div>
     <div class="moments">
       <button class="mo dip" data-t="2" aria-pressed="true"><i>0:02</i><b>38</b></button>
       <button class="mo" data-t="9"><i>0:09</i><b>33</b></button>
@@ -587,15 +582,11 @@ function retentionCard(){
 /* ── tabs ───────────────────────────────────────────────────────────────── */
 function overview(){
   if(kind==="text") return textOverview();
-  let tk='';for(let i=0;i<41;i++)tk+=`<s style="left:${(i/40*100).toFixed(1)}%"></s>`;
-  return hero("cortex","Predicted cortex",`t = ${mmss(ph*CLIP)}`,"38%","would stop")
+  return identBlock() + answerBlock()
+  + hero("cortex","Predicted cortex",`t = ${mmss(ph*CLIP)}`,"38%","would stop")
   + netsRow()
-  + `<div class="card">${ch('trend','Key metrics','vs your last 41')}
+  + `<div class="card">${ch('Key metrics','vs your last 41')}
       ${tiles(TILES.videoOverview)}
-      <div class="ticks">${tk}<span class="base"></span>
-        <span class="md" style="left:58%"></span>
-        <span class="me" style="left:22%"></span></div>
-      <div class="tickcap"><span>weakest</span><span>hook rate · your median 58%</span><span>best</span></div>
       ${insight(`Only the <span class="loss">hook</span> is broken.`)}
     </div>`
   + retentionCard()
@@ -603,12 +594,13 @@ function overview(){
 }
 
 function textOverview(){
-  return hero("cortex","Predicted cortex","simulated","41%","would stop")
-  + `<div class="card">${ch('trend','Key metrics','vs your last 41 hooks')}
+  return identBlock() + answerBlock()
+  + hero("cortex","Predicted cortex","simulated","41%","would stop")
+  + `<div class="card">${ch('Key metrics','vs your last 41 hooks')}
       ${tiles(TILES.textOverview,1)}
       ${insight(`The <span class="loss">wording</span> is the commodity.`)}
     </div>`
-  + `<div class="card">${ch('brain','Why they stopped','590 coded')}
+  + `<div class="card">${ch('Why they stopped')}
       <div style="margin-top:10px">${REASONS.map(r=>`
         <div class="rb ${r.loss?'loss':''}"><span class="nm">${r.n}</span>
           <span class="tr"><s style="width:${(r.v/37*100).toFixed(0)}%"></s></span>
@@ -620,10 +612,11 @@ function textOverview(){
 
 function audience(){
   const c=["rgba(236,231,222,.88)","rgba(236,231,222,.52)","rgba(236,231,222,.32)","rgba(236,231,222,.18)"];
-  return hero("terrain","The room","1 node ≈ 10 people","90%","non-followers")
+  return identBlock() + answerBlock()
+  + hero("terrain","The room","1 node ≈ 10 people","90%","non-followers")
   + `<div class="card">${kind==="video"
-      ? ch('layers','Who watches — and how long','no platform reports this')
-      : ch('layers','Who this reaches','room mix')}
+      ? ch('Who watches — and how long')
+      : ch('Who this reaches')}
       <div class="mix">${POOLS.map((p,i)=>`<s style="flex:${p.pct};background:${c[i]}"></s>`).join('')}</div>
       ${kind==="video"
         ? `<div style="margin-top:4px">${POOLS.map(p=>`
@@ -638,7 +631,7 @@ function audience(){
           ${insight(`Followers hold — <span class="loss">For You is gone by 0:02</span>.`)}`
         : `<div style="margin-top:5px">${lgRows(POOLS.map((p,i)=>({n:p.n,v:p.pct+"%",c:c[i]})))}</div>`}
     </div>`
-  + `<div class="card">${ch('users','What they did','1,000 simulated')}
+  + `<div class="card">${ch('What they did')}
       <div style="margin-top:2px">${ROOM.map(([n,v,l])=>{
         const lit=Math.round(v/1000*18);let d='';
         for(let i=0;i<18;i++)d+=`<s${i<lit?` style="background:${l?'#FF6363':'rgba(236,231,222,.78)'}"`:''}></s>`;
@@ -651,16 +644,17 @@ function audience(){
 
 function engagement(){
   const v=kind==="video";
-  return (v
+  return identBlock() + answerBlock()
+  + (v
     ? hero("video","The post","0:28","1.4%","would share")
     : hero("terrain","Who would reply","1 node ≈ 10 people","1.1%","would comment"))
-  + `<div class="card">${ch('trend','Projected reaction','per reach · vs your median')}
+  + `<div class="card">${ch('Projected reaction','per reach')}
       ${tiles(TILES[v?'videoEngage':'textEngage'])}
       ${insight(v
         ? `Everyone who stays converts — <span class="loss">only 38% stay</span>.`
         : `Argues well, <span class="loss">travels badly</span>.`)}
     </div>`
-  + (v?`<div class="card">${ch('map','Where it would surface','traffic source')}
+  + (v?`<div class="card">${ch('Where it would surface')}
       <div class="mix">
         <s style="flex:53;background:rgba(236,231,222,.88)"></s>
         <s style="flex:33;background:rgba(236,231,222,.46)"></s>
@@ -670,7 +664,7 @@ function engagement(){
         {n:"Sound",c:"rgba(236,231,222,.46)",v:"33%"},
         {n:"Search",c:"rgba(236,231,222,.24)",v:"14%"}])}</div>
       ${insight(`Sound reach expires — search compounds.`)}
-    </div>`:`<div class="card">${ch('msg','If you posted this','projected replies')}
+    </div>`:`<div class="card">${ch('If you posted this')}
       <div>${VOICES.map(x=>`<div class="voice ${x.loss?'loss':''}">
         <div class="vhead"><span class="av">${x.w[0]}</span><b>${x.w}</b><span class="vtag">${x.t}</span></div>
         <p class="vq">${x.q}</p>
@@ -678,7 +672,7 @@ function engagement(){
           <span class="t"><s style="width:${(x.n/412*100).toFixed(0)}%"></s></span></div>
       </div>`).join('')}</div>
     </div>`)
-  + `<div class="card">${ch('clock','Best window','Tue · 7–9pm · followers online')}
+  + `<div class="card">${ch('Best window','Tue · 7–9pm · followers online')}
       <div class="pw">${["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map((d,i)=>
         `<div class="${i===1?'best':''}"><s style="height:${[17,38,24,29,20,32,11][i]}px"></s><i>${d}</i></div>`).join('')}</div>
     </div>`
@@ -689,13 +683,7 @@ const foot=()=>`<div class="foot"><span>How to read these numbers</span><span>�
 
 /* ── render ─────────────────────────────────────────────────────────────── */
 function paint(){
-  const d=D[kind];
-  pager.textContent=d.pager; thumbT.textContent=d.thumb; title.textContent=d.title;
-  stats.innerHTML=d.stats.map(([i,v])=>`<span class="stat">${ico(i,12)}<b>${v}</b></span>`).join('');
-  aHead.textContent=d.head;
-  aBody.innerHTML=d.body.map(([t,m])=>m===1?`<span class="loss">${t}</span>`
-    :m===2?`<span class="win">${t}</span>`:t).join('');
-  fixB.textContent=d.fixB; fixG.textContent=d.fixG;
+  pager.textContent=D[kind].pager;
   body.innerHTML=tab==="overview"?overview():tab==="audience"?audience():engagement();
   body.scrollTop=0;
   if(tab==="overview"&&kind==="video"){bindScrub();syncPlayhead();}

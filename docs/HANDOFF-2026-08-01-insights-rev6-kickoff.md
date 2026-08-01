@@ -486,3 +486,13 @@ whose answer moved into its card header meta: `Tue · 7–9pm`). The retention r
 on the figure** (`.anno`, "62% gone by 0:03" at the break — the YouTube key-moments idiom) instead
 of written under it, and the answer-block body shrank to one clause. Tab heights dropped 80–130px.
 The copy bar going forward: **numbers in tiles, type only points — no clauses.**
+
+**Rev 7.2 (same day).** Owner, with a screenshot of the pinned header and the TikTok Studio
+screens: *"I don't like this fixed header at all — remove it or make it content on pages"*, and
+*"declutter the pages."* So: **⚠️ the rev-5 "persistent answer, never behind a tab" decision is
+REVERSED by the owner** — do not restore it. The pinned strip is now nav + tabs only (283px →
+102px, the TikTok chrome); the identity row and the answer block render at the top of every tab's
+scroll content (`identBlock()`/`answerBlock()`). Declutter pass: card headers are plain text (no
+icons), right-metas survive only where the label IS data ("vs your last 41" · the live scrub
+readout · "Tue · 7–9pm"), the 41-tick catalogue strip is gone (the hook tile's delta carries it),
+the curve legend is gone ("your median" is labeled inside the figure).
