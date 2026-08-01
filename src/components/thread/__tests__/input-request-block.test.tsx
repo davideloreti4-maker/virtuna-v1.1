@@ -8,7 +8,7 @@
  * nothing hits the network or the paid engine.
  */
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent, waitFor, within } from "@testing-library/react";
 import type { InputRequestBlock } from "@/lib/tools/blocks";
 import { validateBlock } from "@/lib/tools/block-registry";
 
@@ -20,6 +20,10 @@ const accountState = {
   isStreaming: false,
   error: null as string | null,
   fallbackMessage: null as string | null,
+  // 4a — the read is TWO independent Apify runs, so the hook now reports real phases + the
+  // artifacts each half returns, and the field draws the spine instead of a lone row.
+  stages: [] as { name: string; status: "pending" | "active" | "done" }[],
+  evidence: null as unknown,
   block: null as unknown,
 };
 const analysisState = {
@@ -82,6 +86,7 @@ beforeEach(() => {
   exploreState.isStreaming = false; exploreState.error = null; exploreState.isDone = false; exploreState.stages = [];
   accountState.start = vi.fn(async () => {});
   accountState.isStreaming = false; accountState.error = null; accountState.fallbackMessage = null; accountState.block = null;
+  accountState.stages = []; accountState.evidence = null;
   analysisState.start = vi.fn(async () => {});
   analysisState.phase = "idle"; analysisState.analysisId = null; analysisState.error = null; analysisState.quotaError = null;
   vi.restoreAllMocks();
@@ -345,11 +350,41 @@ describe("Field run capsules", () => {
     expect(screen.getByLabelText("Skill run progress")).toBeTruthy();
   });
 
-  it("account mid-run: the one-row capsule", () => {
+  it("account mid-run, before any phase reports: falls back to the one-row capsule", () => {
     accountState.isStreaming = true;
     renderField(ACCOUNT);
     expect(screen.getByText("Reading your account")).toBeTruthy();
     expect(screen.getByLabelText("Skill run progress")).toBeTruthy();
+  });
+
+  it("account mid-run: the TWO real scrape phases, with the profile under the running step", () => {
+    // 4a — the account read was never "one scrape call": it is scrapeProfile + scrapeVideos, two
+    // independent Apify runs whose results sat behind a single static line for ~30s. Both phases
+    // now drive the spine, and the profile appears the moment its half lands.
+    accountState.isStreaming = true;
+    accountState.stages = [
+      { name: "Finding your profile", status: "done" },
+      { name: "Reading your last 30 posts", status: "active" },
+    ];
+    accountState.evidence = {
+      headline: "Reading your account",
+      items: [
+        {
+          kind: "profile",
+          image: "https://cdn.example/avatar.jpg",
+          label: "davide.creates",
+          metric: "48.2K followers",
+        },
+      ],
+    };
+    renderField(ACCOUNT);
+
+    expect(screen.getByLabelText("Finding your profile: done")).toBeTruthy();
+    const running = screen.getByLabelText("Reading your last 30 posts: active");
+    // The rail hangs off the step that is RUNNING, and it carries the real handle.
+    expect(within(running).getByTestId("run-evidence")).toBeTruthy();
+    expect(within(running).getByText("@davide.creates")).toBeTruthy();
+    expect(within(running).getByText("48.2K followers")).toBeTruthy();
   });
 
   it("test mid-run (analyzing): the 3-step /analyze plan renders, step 1 active", () => {

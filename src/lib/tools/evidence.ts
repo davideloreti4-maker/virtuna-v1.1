@@ -214,3 +214,68 @@ export function buildVideoEvidence(
   if (items.length === 0) return null;
   return { headline: headline(items.length), items };
 }
+
+/**
+ * One account as evidence — the avatar disc the rail has always supported and nothing produced.
+ *
+ * Returns null unless there is something real to show (a handle or a picture); an account read
+ * whose scrape came back without either has nothing to prove and should render no rail at all,
+ * exactly like a degraded grounded run.
+ */
+export function buildProfileEvidence(
+  headline: string,
+  row: { handle: string | null; image: string | null; metric: string | null },
+): RunEvidence | null {
+  const label = normalizeHandle(row.handle);
+  const image = isRenderableImage(row.image) ? row.image.trim() : null;
+  if (!label && !image) return null;
+
+  const head = cleanString(headline);
+  if (!head) return null;
+
+  return {
+    headline: head,
+    items: [
+      {
+        kind: 'profile',
+        ...(image ? { image } : {}),
+        ...(label ? { label } : {}),
+        ...(cleanString(row.metric) ? { metric: cleanString(row.metric)! } : {}),
+      },
+    ],
+  };
+}
+
+/**
+ * A set of covers from ONE account as a filmstrip.
+ *
+ * Chips would repeat the same @handle down the row — noise, not information — so the creator's
+ * own posts get the contiguous-tile shape the Test extractor uses, where the pictures ARE the
+ * content. `slots` is what the run EXPECTS to fill, so the strip is drawn at full width up front
+ * and fills rather than growing (and reflowing) as covers arrive.
+ *
+ * Counts what SURVIVED the drawable filter, never what it was handed — the same rule
+ * buildVideoEvidence follows, so the headline can never over-claim.
+ */
+export function buildFrameEvidence(
+  headline: (count: number) => string,
+  images: Array<string | null | undefined>,
+  slots?: number,
+): RunEvidence | null {
+  const items: EvidenceItem[] = images
+    .map((img, i) =>
+      isRenderableImage(img) ? ({ kind: 'frame', image: img!.trim(), idx: i } as EvidenceItem) : null,
+    )
+    .filter((i): i is EvidenceItem => i !== null)
+    .slice(0, MAX_EVIDENCE_ITEMS);
+
+  if (items.length === 0) return null;
+  // Re-index so the strip fills left-to-right: the surviving covers' ORIGINAL positions are
+  // arbitrary (a mid-list post with no cover would leave a permanent hole).
+  const compacted = items.map((item, i) => ({ ...item, idx: i }));
+  return {
+    headline: headline(compacted.length),
+    items: compacted,
+    slots: Math.min(slots ?? compacted.length, MAX_EVIDENCE_ITEMS),
+  };
+}

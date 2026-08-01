@@ -34,6 +34,13 @@ import { getFollowerTier } from "@/lib/engine/corpus/follower-tier";
 import { CRAFT_DISPOSITIONS } from "@/lib/flywheel/reconcile";
 import type { Reconciliation } from "@/lib/flywheel/reconciliation-repo";
 import type { Disposition } from "@/lib/audience/audience-types";
+import {
+  buildFrameEvidence,
+  buildProfileEvidence,
+  type RunEvidence,
+} from "@/lib/tools/evidence";
+import { formatCount } from "@/lib/account-metrics/account-metrics";
+import { ACCOUNT_READ_PLAN } from "@/lib/account-read/account-read-stages";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -149,6 +156,45 @@ export interface AccountReadDeps {
   reconciliations: Reconciliation[];
   /** The creator's prior Reads (analysis/history) — reserved for working/drop-point enrichment. */
   analysisHistory?: unknown[];
+  /**
+   * The artifacts this read actually pulled, emitted the moment each half of the scrape lands —
+   * the profile (avatar + follower count) and then the posts (covers). Both were already in hand
+   * ~30s before `done`; they just had nowhere to go. Optional: absent ⇒ nothing is emitted and
+   * behaviour is byte-identical.
+   */
+  onEvidence?: (evidence: RunEvidence) => void;
+  /** Real phase boundaries for the loading spine. Optional, same as onEvidence. */
+  onStage?: (name: string, status: 'active' | 'done') => void;
+}
+
+/** Re-exported so server callers keep one import; the names live in a client-safe module. */
+export { ACCOUNT_READ_PLAN } from "@/lib/account-read/account-read-stages";
+
+/**
+ * The scraped account as rail evidence. Every string comes off the scraped row: the follower
+ * count is only claimed when the scrape actually returned one (0 is TikTok's "unknown" here as
+ * much as it is a real zero, and "0 followers" under someone's own avatar would be a lie about
+ * their account).
+ */
+function buildProfileFrame(p: ProfileData): RunEvidence | null {
+  const followers = p.followerCount > 0 ? `${formatCount(p.followerCount)} followers` : null;
+  return buildProfileEvidence("Reading your account", {
+    handle: p.handle,
+    image: p.avatarUrl,
+    metric: followers,
+  });
+}
+
+/**
+ * The creator's own posts as a filmstrip. `slots` is what we ASKED for (30, capped by the strip's
+ * own maximum) so the strip is drawn at full width and fills, rather than growing and reflowing.
+ */
+function buildAccountPostFrames(videos: VideoData[]): RunEvidence | null {
+  return buildFrameEvidence(
+    (n) => (n === 1 ? "Reading 1 of your posts" : `Reading ${n} of your posts`),
+    videos.map((v) => v.coverUrl ?? null),
+    videos.length,
+  );
 }
 
 /** Minimal scraping surface — injectable for tests (mirrors calibration.ts). */
@@ -341,11 +387,33 @@ export async function generateAccountRead(
   let videos: VideoData[];
 
   // ── Scrape own account (parallel — independent Apify runs) ──────────────────
+  // Still parallel and still one await: the two halves are chained INDIVIDUALLY so each can
+  // report the moment it lands, then awaited together exactly as before. This is the whole of
+  // fix 4a — the avatar, the follower count and 30 covers were already in hand ~30s before
+  // `done`, sitting behind a single static "Reading your account…" line.
   try {
-    [profile, videos] = await Promise.all([
-      provider.scrapeProfile(handle),
-      provider.scrapeVideos(handle, 30),
-    ]);
+    deps.onStage?.(ACCOUNT_READ_PLAN[0]!, 'active');
+
+    const profileP = provider.scrapeProfile(handle).then((p) => {
+      // The FIRST producer of kind:'profile' — the rail has always supported the avatar disc and
+      // nothing emitted one until now.
+      const evidence = buildProfileFrame(p);
+      if (evidence) {
+        deps.onStage?.(ACCOUNT_READ_PLAN[0]!, 'done');
+        deps.onStage?.(ACCOUNT_READ_PLAN[1]!, 'active');
+        deps.onEvidence?.(evidence);
+      }
+      return p;
+    });
+
+    const videosP = provider.scrapeVideos(handle, 30).then((v) => {
+      const evidence = buildAccountPostFrames(v);
+      if (evidence) deps.onEvidence?.(evidence);
+      return v;
+    });
+
+    [profile, videos] = await Promise.all([profileP, videosP]);
+    deps.onStage?.(ACCOUNT_READ_PLAN[1]!, 'done');
   } catch (err) {
     // Scrape failure is distinct from thin-data (P7 D-06 / UI-SPEC).
     return {

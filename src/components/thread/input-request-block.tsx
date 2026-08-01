@@ -38,6 +38,7 @@ import { createClient } from '@/lib/supabase/client';
 import { TIKTOK_URL_PATTERN } from '@/lib/tiktok-url';
 import { ProgressChecklist } from './progress-checklist';
 import { SKILL_RUN_META } from './run-capsule';
+import { ACCOUNT_READ_PLAN } from '@/lib/account-read/account-read-stages';
 import { CardPrimaryAction } from './card-primitives';
 import { useTestRunStages } from './use-test-run-stages';
 import { useTestRunEvidence } from './use-test-run-evidence';
@@ -343,7 +344,8 @@ function AccountField({ block }: InputRequestBlockRendererProps) {
   const { label } = block.props;
   const { onComplete } = useInThreadInput();
 
-  const { start, isStreaming, error, fallbackMessage, block: resultBlock } = useAccountReadStream();
+  const { start, isStreaming, error, fallbackMessage, evidence, stages, block: resultBlock } =
+    useAccountReadStream();
   const completeHandledRef = useRef(false);
 
   // Completion = a real block arrived (a thin-history fallback has no block → nothing to reload).
@@ -368,8 +370,20 @@ function AccountField({ block }: InputRequestBlockRendererProps) {
     <div className={SHELL_CLASS} data-testid="input-request">
       {!isStreaming && <p className="text-body font-medium text-foreground-secondary">{label}</p>}
       {isStreaming ? (
-        // The account read is one scrape call (no stages) — the one-row capsule idiom.
-        <SingleStageWait name={SKILL_RUN_META.account!.running} />
+        // 4a — this used to be a ONE-ROW capsule on the premise that "the account read is one
+        // scrape call (no stages)". It never was: it is two independent Apify runs, and both
+        // halves carry exactly the evidence the finished card renders. Now the two real phases
+        // drive the spine and the profile + covers appear under the running step, ~30s before
+        // `done`. Falls back to the single row until the first stage frame lands.
+        stages.length > 0 ? (
+          <ProgressChecklist
+            stages={stages}
+            plan={ACCOUNT_READ_PLAN}
+            evidence={evidence}
+          />
+        ) : (
+          <SingleStageWait name={SKILL_RUN_META.account!.running} />
+        )
       ) : (
         <CardPrimaryAction onClick={handleRun} className="self-start">
           Read my account →

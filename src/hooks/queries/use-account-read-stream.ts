@@ -16,6 +16,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { reportCredit402, CreditWallRefusal, isCreditWallRefusal } from "@/lib/billing/credit-wall";
 import type { AccountReadBlock } from "@/lib/tools/blocks";
+import { parseRunEvidence, type RunEvidence } from "@/lib/tools/evidence";
+import type { StageState } from "@/components/thread/progress-checklist";
 
 export interface UseAccountReadStreamReturn {
   /** The composed account-read block from the done event (null until it arrives). */
@@ -26,6 +28,13 @@ export interface UseAccountReadStreamReturn {
   error: string | null;
   /** Honest thin-history fallback message (SELF-02) — a calm warning, not an error. */
   fallbackMessage: string | null;
+  /**
+   * The artifacts this read has pulled so far (4a): the profile the moment the profile scrape
+   * lands, then the post covers as a filmstrip. Null until one arrives ⇒ no rail, not an empty one.
+   */
+  evidence: RunEvidence | null;
+  /** The two real scrape phases, for the loading spine. Empty until the first frame (4a). */
+  stages: StageState[];
   /**
    * POST /api/account-read and stream the result. Fire ONLY on explicit tap (D-05/D-07).
    * `persist:true` (the in-thread chat field) tells the route to also write the account-read block to
@@ -44,6 +53,8 @@ export function useAccountReadStream(): UseAccountReadStreamReturn {
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fallbackMessage, setFallbackMessage] = useState<string | null>(null);
+  const [evidence, setEvidence] = useState<RunEvidence | null>(null);
+  const [stages, setStages] = useState<StageState[]>([]);
 
   const abortRef = useRef<AbortController | null>(null);
   const isMountedRef = useRef(true);
@@ -62,6 +73,8 @@ export function useAccountReadStream(): UseAccountReadStreamReturn {
     setIsStreaming(false);
     setError(null);
     setFallbackMessage(null);
+    setEvidence(null);
+    setStages([]);
   }, []);
 
   const stop = useCallback(() => {
@@ -78,6 +91,8 @@ export function useAccountReadStream(): UseAccountReadStreamReturn {
     setBlock(null);
     setError(null);
     setFallbackMessage(null);
+    setEvidence(null);
+    setStages([]);
     setIsStreaming(true);
 
     try {
@@ -138,7 +153,28 @@ export function useAccountReadStream(): UseAccountReadStreamReturn {
             continue; // malformed JSON — skip frame
           }
 
-          if (eventType === "fallback") {
+          if (eventType === "stage") {
+            // 4a — the two real scrape phases. Last-write-wins per name so a repeat frame cannot
+            // duplicate a row or let a stale `active` overwrite a `done`.
+            const name = typeof data.name === "string" ? data.name : null;
+            const status = data.status;
+            if (name && (status === "active" || status === "done") && isMountedRef.current) {
+              setStages((prev) => {
+                const i = prev.findIndex((s) => s.name === name);
+                if (i === -1) return [...prev, { name, status }];
+                const next = [...prev];
+                next[i] = { name, status };
+                return next;
+              });
+            }
+
+          } else if (eventType === "evidence") {
+            // parseRunEvidence is TOTAL — it lives in the same read loop as every other frame, so
+            // a malformed payload yields null and the rail simply does not render.
+            const parsedEvidence = parseRunEvidence(data);
+            if (parsedEvidence && isMountedRef.current) setEvidence(parsedEvidence);
+
+          } else if (eventType === "fallback") {
             const msg =
               typeof data.message === "string"
                 ? data.message
@@ -177,5 +213,5 @@ export function useAccountReadStream(): UseAccountReadStreamReturn {
     }
   }, []);
 
-  return { block, isStreaming, error, fallbackMessage, start, stop, reset };
+  return { block, isStreaming, error, fallbackMessage, evidence, stages, start, stop, reset };
 }

@@ -8,6 +8,9 @@
  *
  * SSE event names (10-UI-SPEC §"Account Read card"):
  *   event: status   — { message: string } — "Reading your account…"
+ *   event: stage    — { name: string, status: 'active'|'done' } — the two real scrape phases (4a)
+ *   event: evidence — RunEvidence — the profile the moment it lands (the FIRST kind:'profile'
+ *                     producer in the app), then the post covers as a filmstrip (4a)
  *   event: fallback — { reason: 'thin', message: string } — honest thin-history (SELF-02, warning-toned)
  *   event: error    — { message: string } — scrape/network failure, generic copy (never echoes the handle)
  *   event: done     — { block: AccountReadBlock } — the composed account-read block (thread persists it)
@@ -148,6 +151,11 @@ export async function POST(request: Request): Promise<Response> {
 
         const result = await generateAccountRead(ownHandle, user.id, {
           reconciliations,
+          // 4a — the ~30s of Promise.all held the avatar, the follower count and 30 covers behind
+          // one static line. Both halves now report as they land, in the same idiom as the five
+          // skill routes.
+          onStage: (name, status) => send("stage", { name, status }),
+          onEvidence: (evidence) => send("evidence", evidence),
         });
 
         // ── Scrape failure — generic copy, never echo the handle (T-10-13) ──────
