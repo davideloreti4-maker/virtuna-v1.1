@@ -250,6 +250,137 @@ describe('ProgressChecklist — the measured clock', () => {
   });
 });
 
+/**
+ * The craft pass (2026-08-01). The owner's brief was that the dot+line had to read like something
+ * ChatGPT/Perplexity/Claude would release. The diagnosis was that the progress CHROME out-shouted
+ * the creator's own retrieved material, so these lock the inversion — not the pixel values, but
+ * the decisions that would silently rot back.
+ */
+describe('SkillProgress — one clock, not four', () => {
+  it('shows the run clock in the head and NO per-step stamps while live', () => {
+    vi.useFakeTimers();
+    try {
+      render(
+        <SkillProgress
+          stages={[{ name: 'Generating', status: 'active' }]}
+          plan={STAGE_PLANS.hooks}
+          isStreaming
+          summaryLabel="Ran your audience"
+          runningLabel="Writing hooks"
+          tookLabel="Generated in"
+        />,
+      );
+      act(() => {
+        vi.advanceTimersByTime(12_000);
+      });
+
+      // ONE clock, in the surface head.
+      expect(screen.getByTestId('run-elapsed')).toHaveTextContent('0:12');
+      // …and not a tabular number on every row competing with it.
+      expect(screen.queryAllByTestId('stage-elapsed')).toHaveLength(0);
+      // The run's own name leads the surface.
+      expect(screen.getByText('Writing hooks')).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('collapses to the MEASURED total, and keeps each step’s duration in the expanded receipt', () => {
+    vi.useFakeTimers();
+    try {
+      const props = {
+        plan: ['Generating', 'Ranking'],
+        summaryLabel: 'Ran your audience',
+        runningLabel: 'Writing hooks',
+        tookLabel: 'Generated in',
+      };
+      const { rerender } = render(
+        <SkillProgress {...props} stages={[{ name: 'Generating', status: 'active' }]} isStreaming />,
+      );
+
+      // Generating runs 20s, then lands; Ranking runs 12s.
+      act(() => {
+        vi.advanceTimersByTime(20_000);
+      });
+      rerender(
+        <SkillProgress
+          {...props}
+          stages={[
+            { name: 'Generating', status: 'done' },
+            { name: 'Ranking', status: 'active' },
+          ]}
+          isStreaming
+        />,
+      );
+      act(() => {
+        vi.advanceTimersByTime(12_000);
+      });
+      rerender(
+        <SkillProgress
+          {...props}
+          stages={[
+            { name: 'Generating', status: 'done' },
+            { name: 'Ranking', status: 'done' },
+          ]}
+          isStreaming={false}
+        />,
+      );
+
+      // The receipt wears the real 32s total — the v3.2 sketch's "Generated in 0:32".
+      expect(screen.getByTestId('run-elapsed')).toHaveTextContent('0:32');
+
+      // The per-step durations were lifted out of the rows before they unmounted, and surface here.
+      act(() => {
+        screen.getByTestId('run-receipt').click();
+      });
+      const stamps = screen.getAllByTestId('stage-elapsed').map((n) => n.textContent);
+      expect(stamps).toEqual(['20s', '12s']);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('a RELOADED turn wears no duration — it measured nothing', () => {
+    // thread-turn replays a persisted turn's plan as done without ever streaming. The receipt must
+    // fall back to the step count; a reconstructed receipt must not claim a time nobody recorded.
+    render(
+      <SkillProgress
+        stages={STAGE_PLANS.hooks.map((name) => ({ name, status: 'done' as const }))}
+        plan={STAGE_PLANS.hooks}
+        isStreaming={false}
+        summaryLabel="Ran your audience"
+        runningLabel="Writing hooks"
+        tookLabel="Generated in"
+      />,
+    );
+    expect(screen.queryByTestId('run-elapsed')).not.toBeInTheDocument();
+    expect(screen.getByText(/3 steps/)).toBeInTheDocument();
+  });
+});
+
+describe('ProgressChecklist — the evidence headline replaces the sub-detail', () => {
+  it('does not stack a rotation line above the rail saying the same thing', () => {
+    render(
+      <ProgressChecklist
+        stages={[{ name: 'Generating', status: 'active' }]}
+        plan={STAGE_PLANS.hooks}
+        evidence={OUTLIERS}
+      />,
+    );
+    // The rail's headline is the sub-line…
+    expect(screen.getByText('Drafting against 2 proven videos')).toBeInTheDocument();
+    // …and STAGE_COPY_ROTATION's near-identical phrasing does not also render above it.
+    expect(screen.queryByText('Drafting angles against your audience')).not.toBeInTheDocument();
+  });
+
+  it('still shows the rotating sub-detail on a step with no evidence', () => {
+    render(
+      <ProgressChecklist stages={[{ name: 'Generating', status: 'active' }]} plan={STAGE_PLANS.hooks} />,
+    );
+    expect(screen.getByText('Drafting angles against your audience')).toBeInTheDocument();
+  });
+});
+
 describe('SkillProgress — the settled receipt carries no live rail', () => {
   it('drops the evidence when the run collapses to its receipt', () => {
     // Evidence is in-flight furniture. Once the cards land they ARE the evidence, and a rail of

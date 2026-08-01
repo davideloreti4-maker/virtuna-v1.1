@@ -319,6 +319,8 @@ export function ThreadTurn({ userTurn, blocks, live, ambientBaseIndex }: ThreadT
               plan={plan ?? settledStages.map((s) => s.name)}
               isStreaming={runLive}
               summaryLabel={meta?.done ?? 'Ran the skill'}
+              runningLabel={meta?.running}
+              tookLabel={meta?.took}
               evidence={live?.evidence ?? null}
             />
           )}

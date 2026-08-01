@@ -523,10 +523,30 @@
   animation: stage-breathe 1.6s var(--ease-out-cubic) infinite;
 }
 
+/* Progress spine — a step LANDING. With the per-step ✓ removed (it was the loudest mark on the
+ * screen on every completed row), the moment of completion needed to be carried by motion instead
+ * of by a new glyph: the node settles from a smaller scale with one brief overshoot, then holds.
+ * Runs ONCE — it is a transition, not an ambient loop. */
+@keyframes node-land {
+  0% {
+    transform: scale(0.5);
+  }
+  62% {
+    transform: scale(1.3);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.animate-node-land {
+  animation: node-land 0.34s var(--ease-out-cubic) 1;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-badge-pop,
   .animate-presence-blink,
-  .animate-stage-breathe {
+  .animate-stage-breathe,
+  .animate-node-land {
     animation: none;
   }
 }

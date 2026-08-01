@@ -37,7 +37,7 @@ import { GENERAL_AUDIENCE } from "@/lib/audience/audience-repo";
 import type { AmbientCardDescriptor } from "@/components/app/home/use-ambient-focus";
 import type { WireSimSealMap } from "@/lib/onboarding/verdict-seal";
 import { useState, useEffect } from "react";
-import { ProgressChecklist } from "@/components/thread/progress-checklist";
+import { ProgressChecklist, SkillProgress } from "@/components/thread/progress-checklist";
 import type { RunEvidence } from "@/lib/tools/evidence";
 import { SKILL_RUN_META } from "@/components/thread/run-capsule";
 import { Reading } from "@/components/reading/reading";
@@ -812,12 +812,54 @@ const EVIDENCE_FILMSTRIP: RunEvidence = {
   ],
 };
 
+/**
+ * The full run LIFECYCLE on a loop — pending → active → done → the collapsed receipt.
+ *
+ * Every other in-flight preview is a frozen mid-run shape, which cannot show the two things the
+ * 2026-08-01 craft pass actually changed: the CHOREOGRAPHY (node landing, the rail leg filling,
+ * the label shimmer handing off) and the MEASURED receipt ("Generated in 0:32"). The receipt's
+ * total is real client-measured state — there is no prop that fakes it — so the only way to look
+ * at it is to let a run genuinely play out. This runs a compressed one, forever.
+ */
+function RunLifecycleLoop() {
+  const PLAN = SKILL_RUN_META.hooks!.plan;
+  const [step, setStep] = useState(0);
+  useEffect(() => {
+    // One beat past the last step = settled; two more hold the receipt before looping.
+    const id = setInterval(() => setStep((s) => (s + 1) % (PLAN.length + 3)), 1800);
+    return () => clearInterval(id);
+  }, [PLAN.length]);
+
+  const settled = step >= PLAN.length;
+  return (
+    <SkillProgress
+      stages={PLAN.map((name, i) => ({
+        name,
+        status: settled ? 'done' : i < step ? 'done' : i === step ? 'active' : 'pending',
+      }))}
+      plan={PLAN}
+      isStreaming={!settled}
+      summaryLabel={SKILL_RUN_META.hooks!.done}
+      runningLabel={SKILL_RUN_META.hooks!.running}
+      tookLabel={SKILL_RUN_META.hooks!.took}
+      evidence={!settled && step === 1 ? EVIDENCE_OUTLIERS : null}
+    />
+  );
+}
+
 // ── Group A2: the IN-FLIGHT states — the run capsule, previewable at last (2026-07-19) ────────
 // The 07-14 audit's lesson: a surface with no cheap way to LOOK at it will drift. The thread
 // views' completed states preview above, and Reading's skeleton previews below — but the thread's
 // LIVE loading states (the spine mid-run, the chat capsule, the field waits) were reachable only
 // by spending a real paid run. These mount the REAL components in their mid-run shapes.
 const INFLIGHT_VIEWS: { id: string; label: string; note: string; node: React.ReactNode }[] = [
+  {
+    id: "loading-run-lifecycle",
+    label: "In-flight · Full run lifecycle (loops)",
+    note:
+      "The 2026-08-01 craft pass end to end: 7px marks, a hairline rail whose filled leg IS the completion signal (the per-step ✓ is gone — neither Claude nor ChatGPT uses one), finished rows receding to muted, ONE clock in the head, and the collapse to a real measured total. Loops every ~9s; click the receipt to see each step's true duration.",
+    node: <RunLifecycleLoop />,
+  },
   {
     id: "loading-hooks",
     label: "In-flight · Hooks (skill view)",

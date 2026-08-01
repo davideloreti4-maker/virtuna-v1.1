@@ -25,9 +25,13 @@ import { MAX_EVIDENCE_ITEMS } from '@/lib/tools/evidence';
 
 export type { EvidenceItem, RunEvidence };
 
-/** The rail's own eyebrow — matches the Reading's in-flight section label. */
-const RAIL_LABEL =
-  'text-caption font-medium uppercase tracking-[0.06em] text-foreground-muted';
+/**
+ * The rail's own eyebrow. Sentence case at --text-label, NOT the uppercase tracked caption it
+ * started as: "DRAFTING AGAINST 3 PROVEN VIDEOS" shouted louder than the step name directly above
+ * it, which inverted the hierarchy on the app's most-watched surface. It is a caption for the
+ * chips, so it should read quieter than the label it hangs under.
+ */
+const RAIL_LABEL = 'text-label text-foreground-muted';
 
 export interface RunEvidenceRailProps {
   evidence: RunEvidence | null | undefined;

@@ -27,6 +27,15 @@ export interface SkillRunMeta {
   /** The collapsed receipt line after completion, e.g. "Ran your audience". */
   done: string;
   /**
+   * Past-tense verb phrase the MEASURED receipt is built from: `${took} 0:32` → "Generated in
+   * 0:32" (the v3.2 sketch's specified collapse, Claude's "Thought for 12s" idiom).
+   *
+   * Per-skill because the verb is not generic — "Generated in" is right for a draft and wrong for
+   * a scrape. Used ONLY when the client actually timed the run; a rehydrated turn never measured
+   * anything and falls back to `done` + the step count (see SkillProgress).
+   */
+  took: string;
+  /**
    * The skill's canonical ordered stage plan (names MUST match the runner's real onStage
    * emissions — see STAGE_PLANS). Empty ⇒ the spine grows from live events (legacy shape).
    */
@@ -38,21 +47,22 @@ export interface SkillRunMeta {
  * chat `dispatch` event) and the in-thread field actions (SKILL_CAPABILITIES).
  */
 export const SKILL_RUN_META: Record<string, SkillRunMeta> = {
-  ideas: { running: 'Finding ideas', done: 'Ran your audience', plan: STAGE_PLANS.ideas },
-  hooks: { running: 'Writing hooks', done: 'Ran your audience', plan: STAGE_PLANS.hooks },
-  script: { running: 'Writing your script', done: 'Ran your audience', plan: STAGE_PLANS.script },
-  remix: { running: 'Reworking the video', done: 'Reworked for your audience', plan: STAGE_PLANS.remix },
-  explore: { running: 'Scanning for outliers', done: 'Scored for your audience', plan: STAGE_PLANS.explore },
+  ideas: { running: 'Finding ideas', done: 'Ran your audience', took: 'Found ideas in', plan: STAGE_PLANS.ideas },
+  hooks: { running: 'Writing hooks', done: 'Ran your audience', took: 'Generated in', plan: STAGE_PLANS.hooks },
+  script: { running: 'Writing your script', done: 'Ran your audience', took: 'Generated in', plan: STAGE_PLANS.script },
+  remix: { running: 'Reworking the video', done: 'Reworked for your audience', took: 'Reworked in', plan: STAGE_PLANS.remix },
+  explore: { running: 'Scanning for outliers', done: 'Scored for your audience', took: 'Scanned in', plan: STAGE_PLANS.explore },
   // The in-thread field runs. read/account routes emit no stages (a JSON POST / a scrape), so
   // their fields render ONE active row named `running` (rotating honest sub-copy). The test
   // field derives its 3-step spine client-side from real phase boundaries + elapsed floors —
   // the SAME plan names as the flagship /analyze skeleton (reading-skeleton.tsx READ_PLAN), so
   // the in-thread Test wait speaks the identical language as the full-page one.
-  read: { running: 'Reading it past your audience', done: 'Read by your audience', plan: [] },
-  account: { running: 'Reading your account', done: 'Read your account', plan: [] },
+  read: { running: 'Reading it past your audience', done: 'Read by your audience', took: 'Read in', plan: [] },
+  account: { running: 'Reading your account', done: 'Read your account', took: 'Read your account in', plan: [] },
   test: {
     running: 'Testing your video',
     done: 'Tested against your audience',
+    took: 'Tested in',
     plan: ['Fetching your video', 'Watching it frame by frame', 'Simulating your audience'],
   },
 };
