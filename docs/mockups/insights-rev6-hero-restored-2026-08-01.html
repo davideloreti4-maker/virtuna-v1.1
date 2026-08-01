@@ -155,11 +155,10 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 .chead h3{font:500 13.5px Inter;color:var(--cream);letter-spacing:-.005em;white-space:nowrap}
 .chead .r{font-size:11.5px;color:var(--faint);font-variant-numeric:tabular-nums;white-space:nowrap}
 
-/* ONE insight line per card — everything else is figures. This replaces rev 6's .read/.sub
-   paragraph pairs; if a sentence doesn't fit here, it belongs in "How to read these numbers". */
-.insight{display:flex;gap:9px;margin-top:13px;padding-top:12px;border-top:1px solid var(--border);
-  font-size:12.5px;line-height:1.55;color:var(--dim)}
-.insight b{color:var(--cream);font-weight:500}
+/* ONE takeaway FRAGMENT per card (≤6 words) or nothing — never a sentence with clauses.
+   Anything longer belongs in "How to read these numbers". */
+.insight{margin-top:13px;padding-top:11px;border-top:1px solid var(--border);
+  font:500 12.5px/1.5 Inter;letter-spacing:-.005em;color:var(--cream)}
 .insight .loss{color:var(--coral)}
 
 /* key-metric tiles — the TikTok idiom: label, big number, delta vs your own median.
@@ -184,8 +183,11 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 .ticks .me{position:absolute;bottom:7px;width:2px;height:13px;background:var(--coral);border-radius:1px}
 .tickcap{display:flex;justify-content:space-between;font-size:10.5px;color:var(--faint)}
 
-/* retention figure */
-.curvewrap{margin-top:12px;cursor:ew-resize;touch-action:none}
+/* retention figure — the read is annotated ON the figure, not written under it */
+.curvewrap{margin-top:12px;cursor:ew-resize;touch-action:none;position:relative}
+.anno{position:absolute;left:12%;top:8px;padding:3px 7px;border-radius:6px;
+  background:rgba(20,20,19,.78);font:500 10.5px Inter;color:var(--coral);
+  font-variant-numeric:tabular-nums;pointer-events:none}
 .legend{display:flex;align-items:center;gap:14px;margin-top:8px;font-size:11px;color:var(--faint)}
 .legend em{font-style:normal;display:flex;align-items:center;gap:6px}
 .legend .sw{width:13px;height:2px;border-radius:1px;background:var(--cream)}
@@ -284,9 +286,9 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 <aside class="ctl">
   <div class="brandline"></div>
   <h1>Ambient Audience · insight drill</h1>
-  <p class="lede">Revision 7. The three tabs rebuilt metric-first: key-metric tiles instead of
-    paragraphs, exactly one insight line per card, and a third hero — the post itself — so no
-    figure repeats.</p>
+  <p class="lede">Revision 7.1. The sentences are gone: cards end in a ≤6-word takeaway or in
+    nothing, the retention read is pinned on the figure itself, and the answer body is one
+    clause. Tiles carry the numbers; the type only points.</p>
 
   <h2>Stimulus</h2>
   <div class="grp">
@@ -313,12 +315,13 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 
   <h2>Calls you may want to reverse</h2>
   <ul class="calls">
+    <li><b>Takeaways are fragments now</b> ("Only the hook is broken."), and four cards carry
+      none at all — Best window's answer moved into its header. If even the fragments should go,
+      say so.</li>
+    <li><b>The retention read is annotated on the figure</b> ("62% gone by 0:03" pinned at the
+      break) instead of written under it.</li>
     <li><b>Engagement leads with the post itself</b> (striped placeholder here; the build renders
       the drill's real cover) — replaces the terrain re-lit a third time.</li>
-    <li><b>The unlock section is gone.</b> It stated the fix the answer block already carries;
-      its evidence moved into the tiles' deltas. One fact, one place.</li>
-    <li><b>The transcript is one line</b> under the curve, synced to the playhead — rev 6's
-      five-line grey block read as a wall of text.</li>
     <li><b>Coral is confined to the dominant loss per screen</b> (hook tile, For You row); lesser
       misses carry a quiet ↓ instead.</li>
   </ul>
@@ -393,9 +396,8 @@ const D={
     title:"“I spent four hundred dollars testing every viral hook format…”",
     stats:[["play","3.2K"],["heart","130"],["msg","17"],["share","22"],["save","48"]],
     head:"The first three seconds cap your reach.",
-    body:[["Everything after the hook beats your median, but ",0],
-          ["62% leave before the payoff",1],
-          [" — ",0],["3.2K views",2],[" against your 8.1K.",0]],
+    body:[["62% leave before the payoff",1],
+          [" — ",0],["3.2K views",2],[" against your usual 8.1K.",0]],
     fixB:"Trim 0:00–0:03", fixG:"→ 8.4K",
   },
   text:{
@@ -403,9 +405,8 @@ const D={
     title:"“You don’t need a niche. You need one repeatable format.”",
     stats:[["play","4.9K"],["heart","210"],["msg","41"],["share","36"],["save","96"]],
     head:"The idea works. The phrasing is what leaks.",
-    body:[["41% would stop",2],[", above your 33% median, but ",0],
-          ["218 of 590 had already heard it",1],
-          [" — they know the shape.",0]],
+    body:[["41% would stop",2],[" — but ",0],
+          ["218 of 590 had already heard it",1],[".",0]],
     fixB:"Put a number in the first clause", fixG:"→ 58%",
   }
 };
@@ -569,6 +570,7 @@ function retentionCard(){
         <line id="phl" x1="0" y1="0" x2="0" y2="${H}" stroke="rgba(236,231,222,.32)" stroke-width="1"/>
         <circle id="phd" r="3.6" fill="#ece7de"/>
       </svg>
+      <span class="anno">62% gone by 0:03</span>
     </div>
     <div class="legend"><em><s class="sw"></s>this post</em>
       <em><s class="sw d"></s>your median</em>
@@ -578,8 +580,7 @@ function retentionCard(){
       <button class="mo" data-t="9"><i>0:09</i><b>33</b></button>
       <button class="mo" data-t="21"><i>0:21</i><b>27</b></button></div>
     <div class="tstrip"><span class="tin" id="tin"></span></div>
-    ${insight(`Breaks at <b>0:02</b> — <span class="loss">62% are gone by 0:03</span>. Past the
-      break the curve runs flatter than your median: the people who stay, stay to the end.`)}
+    ${insight(`Who stays, stays to the end.`)}
   </div>`;
 }
 
@@ -595,8 +596,7 @@ function overview(){
         <span class="md" style="left:58%"></span>
         <span class="me" style="left:22%"></span></div>
       <div class="tickcap"><span>weakest</span><span>hook rate · your median 58%</span><span>best</span></div>
-      ${insight(`<b>Only the hook is broken.</b> Watch time, completion and rewatch all sit at or
-        above your median among the people who get past 0:03.`)}
+      ${insight(`Only the <span class="loss">hook</span> is broken.`)}
     </div>`
   + retentionCard()
   + foot();
@@ -606,16 +606,14 @@ function textOverview(){
   return hero("cortex","Predicted cortex","simulated","41%","would stop")
   + `<div class="card">${ch('trend','Key metrics','vs your last 41 hooks')}
       ${tiles(TILES.textOverview,1)}
-      ${insight(`It out-stops your median hook. The claim is strong —
-        the <span class="loss">wording is the commodity</span>.`)}
+      ${insight(`The <span class="loss">wording</span> is the commodity.`)}
     </div>`
   + `<div class="card">${ch('brain','Why they stopped','590 coded')}
       <div style="margin-top:10px">${REASONS.map(r=>`
         <div class="rb ${r.loss?'loss':''}"><span class="nm">${r.n}</span>
           <span class="tr"><s style="width:${(r.v/37*100).toFixed(0)}%"></s></span>
           <span class="vl">${r.v}%</span></div>`).join('')}</div>
-      ${insight(`The dominant code isn’t disagreement — it’s <span class="loss">recognition</span>.
-        218 of 590 have read this sentence before.`)}
+      ${insight(`<span class="loss">Recognition</span>, not disagreement.`)}
     </div>`
   + foot();
 }
@@ -637,11 +635,8 @@ function audience(){
                   stroke="${p.loss?'#FF6363':'rgba(236,231,222,.62)'}" stroke-width="1.4"/>
               </svg><span class="dr">${p.drop}</span>
             </div>`).join('')}</div>
-          ${insight(`<b>Your followers stay to 0:21.</b> The For You pool — two thirds of the room —
-            <span class="loss">is gone by 0:02</span>, and it holds the people you needed to convert.`)}`
-        : `<div style="margin-top:5px">${lgRows(POOLS.map((p,i)=>({n:p.n,v:p.pct+"%",c:c[i]})))}</div>
-          ${insight(`<b>Nine in ten readers would be new to you.</b> A text concept has no timeline,
-            so the pools carry reach, not retention.`)}`}
+          ${insight(`Followers hold — <span class="loss">For You is gone by 0:02</span>.`)}`
+        : `<div style="margin-top:5px">${lgRows(POOLS.map((p,i)=>({n:p.n,v:p.pct+"%",c:c[i]})))}</div>`}
     </div>`
   + `<div class="card">${ch('users','What they did','1,000 simulated')}
       <div style="margin-top:2px">${ROOM.map(([n,v,l])=>{
@@ -649,8 +644,7 @@ function audience(){
         for(let i=0;i<18;i++)d+=`<s${i<lit?` style="background:${l?'#FF6363':'rgba(236,231,222,.78)'}"`:''}></s>`;
         return `<div class="dm ${l?'loss':''}"><span class="nm">${n}</span>
           <span class="dots">${d}</span><span class="n">${v}</span></div>`;}).join('')}</div>
-      ${insight(`The <b>201 who almost stopped</b> got past the hook and left at the proof —
-        they are the winnable ones.`)}
+      ${insight(`The 201 “almost” are the winnable ones.`)}
     </div>`
   + foot();
 }
@@ -663,10 +657,8 @@ function engagement(){
   + `<div class="card">${ch('trend','Projected reaction','per reach · vs your median')}
       ${tiles(TILES[v?'videoEngage':'textEngage'])}
       ${insight(v
-        ? `<b>Everyone who stays converts.</b> Saves and shares — the signals that buy
-           distribution — both beat your median. <span class="loss">Only 38% stay to give them.</span>`
-        : `<b>It argues well and travels badly.</b> A third of the room wants to push back —
-           <span class="loss">almost nobody sends it to a friend</span>.`)}
+        ? `Everyone who stays converts — <span class="loss">only 38% stay</span>.`
+        : `Argues well, <span class="loss">travels badly</span>.`)}
     </div>`
   + (v?`<div class="card">${ch('map','Where it would surface','traffic source')}
       <div class="mix">
@@ -677,8 +669,7 @@ function engagement(){
         {n:"For You",c:"rgba(236,231,222,.88)",v:"53%"},
         {n:"Sound",c:"rgba(236,231,222,.46)",v:"33%"},
         {n:"Search",c:"rgba(236,231,222,.24)",v:"14%"}])}</div>
-      ${insight(`<b>A third of the reach rides the sound</b>, not the idea — it expires with the
-        trend. The search share is the part that compounds.`)}
+      ${insight(`Sound reach expires — search compounds.`)}
     </div>`:`<div class="card">${ch('msg','If you posted this','projected replies')}
       <div>${VOICES.map(x=>`<div class="voice ${x.loss?'loss':''}">
         <div class="vhead"><span class="av">${x.w[0]}</span><b>${x.w}</b><span class="vtag">${x.t}</span></div>
@@ -687,13 +678,9 @@ function engagement(){
           <span class="t"><s style="width:${(x.n/412*100).toFixed(0)}%"></s></span></div>
       </div>`).join('')}</div>
     </div>`)
-  + `<div class="card">${ch('clock','Best window','followers online')}
+  + `<div class="card">${ch('clock','Best window','Tue · 7–9pm · followers online')}
       <div class="pw">${["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map((d,i)=>
         `<div class="${i===1?'best':''}"><s style="height:${[17,38,24,29,20,32,11][i]}px"></s><i>${d}</i></div>`).join('')}</div>
-      ${insight(v
-        ? `<b>Tuesday, 7–9pm.</b> Your followers are the only pool that stays past 0:20 — post
-           when most of them are online.`
-        : `<b>Tuesday, 7–9pm.</b> When the people who finish your posts are online.`)}
     </div>`
   + foot();
 }
