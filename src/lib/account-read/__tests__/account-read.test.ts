@@ -19,6 +19,7 @@
 import { describe, it, expect } from "vitest";
 import {
   generateAccountRead,
+  ACCOUNT_READ_PLAN,
   THIN_MIN_VIDEOS,
   TRACK_RECORD_MIN_ROWS,
   type AccountReadResult,
@@ -288,5 +289,61 @@ describe("generateAccountRead — accuracy track record (SELF-03)", () => {
     const r = result as Extract<AccountReadResult, { patterns: unknown }>;
     expect("patterns" in r).toBe(true);
     expect(r.trackRecord).toBeNull();
+  });
+});
+
+// ─── 4a: the evidence path must never endanger the paid read ─────────────────
+
+describe("generateAccountRead — evidence is decoration, not a dependency", () => {
+  it("a THROWING evidence consumer does not fail a scrape that succeeded", async () => {
+    // The read costs 5 credits and runs two real Apify scrapes. Emitting rail evidence is chained
+    // onto those promises, so an exception on the way out would reject the Promise.all and hand
+    // back `scrape_failed` for work that actually completed — the creator pays and is told it
+    // failed. A thumbnail is not worth that.
+    const provider = makeProvider({
+      profile: makeProfile({ followerCount: 500_000 }),
+      videos: Array.from({ length: 12 }, () => makeVideo()),
+    });
+
+    const result = await generateAccountRead(
+      "creator",
+      "u1",
+      {
+        ...RICH_DEPS(),
+        onEvidence: () => {
+          throw new Error("rail blew up");
+        },
+      },
+      provider,
+    );
+
+    expect("error" in result).toBe(false);
+    expect("fallback" in result).toBe(false);
+    expect((result as { handle: string }).handle).toBe("creator");
+  });
+
+  it("advances the spine even when the profile yields NO evidence to show", async () => {
+    // An account with no avatar and no handle builds no evidence. The phase boundary is a fact
+    // about the pipeline, so it must still fire — gating it on the payload left the spine stuck
+    // on step 1 for the whole run while the read completed behind it.
+    const provider = makeProvider({
+      profile: makeProfile({ handle: "", avatarUrl: "", followerCount: 500_000 }),
+      videos: Array.from({ length: 12 }, () => makeVideo()),
+    });
+
+    const stages: Array<[string, string]> = [];
+    await generateAccountRead(
+      "creator",
+      "u1",
+      { ...RICH_DEPS(), onStage: (name, status) => stages.push([name, status]) },
+      provider,
+    );
+
+    expect(stages).toEqual([
+      [ACCOUNT_READ_PLAN[0]!, "active"],
+      [ACCOUNT_READ_PLAN[0]!, "done"],
+      [ACCOUNT_READ_PLAN[1]!, "active"],
+      [ACCOUNT_READ_PLAN[1]!, "done"],
+    ]);
   });
 });

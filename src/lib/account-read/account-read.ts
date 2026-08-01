@@ -189,6 +189,25 @@ function buildProfileFrame(p: ProfileData): RunEvidence | null {
  * The creator's own posts as a filmstrip. `slots` is what we ASKED for (30, capped by the strip's
  * own maximum) so the strip is drawn at full width and fills, rather than growing and reflowing.
  */
+/**
+ * Emit rail evidence, and NEVER let it break the read.
+ *
+ * The account read costs the creator 5 credits and runs two real Apify scrapes. Evidence is
+ * decoration on top of that: a thrown builder — a null row, an unexpected shape, anything inside
+ * formatCount — would otherwise reject the chained promise, fail the Promise.all, and hand back
+ * `scrape_failed` for a scrape that actually SUCCEEDED. Paying for work that completed and being
+ * told it failed is the worst outcome available here, and a thumbnail is not worth it.
+ */
+function emitEvidenceSafely(deps: AccountReadDeps, build: () => RunEvidence | null): void {
+  if (!deps.onEvidence) return;
+  try {
+    const evidence = build();
+    if (evidence) deps.onEvidence(evidence);
+  } catch {
+    /* the READ is what was paid for — a missing rail is not a failure */
+  }
+}
+
 function buildAccountPostFrames(videos: VideoData[]): RunEvidence | null {
   return buildFrameEvidence(
     (n) => (n === 1 ? "Reading 1 of your posts" : `Reading ${n} of your posts`),
@@ -395,20 +414,19 @@ export async function generateAccountRead(
     deps.onStage?.(ACCOUNT_READ_PLAN[0]!, 'active');
 
     const profileP = provider.scrapeProfile(handle).then((p) => {
+      // The phase boundary is a fact about the PIPELINE and must not depend on whether there is
+      // something pretty to show: an account with no avatar and no handle produces no evidence,
+      // and gating the transition on it left the spine stuck on step 1 for the whole run.
+      deps.onStage?.(ACCOUNT_READ_PLAN[0]!, 'done');
+      deps.onStage?.(ACCOUNT_READ_PLAN[1]!, 'active');
       // The FIRST producer of kind:'profile' — the rail has always supported the avatar disc and
       // nothing emitted one until now.
-      const evidence = buildProfileFrame(p);
-      if (evidence) {
-        deps.onStage?.(ACCOUNT_READ_PLAN[0]!, 'done');
-        deps.onStage?.(ACCOUNT_READ_PLAN[1]!, 'active');
-        deps.onEvidence?.(evidence);
-      }
+      emitEvidenceSafely(deps, () => buildProfileFrame(p));
       return p;
     });
 
     const videosP = provider.scrapeVideos(handle, 30).then((v) => {
-      const evidence = buildAccountPostFrames(v);
-      if (evidence) deps.onEvidence?.(evidence);
+      emitEvidenceSafely(deps, () => buildAccountPostFrames(v));
       return v;
     });
 
