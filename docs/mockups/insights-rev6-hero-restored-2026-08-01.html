@@ -68,8 +68,8 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 .pager{background:var(--chip);color:var(--faint);font:500 11.5px Inter;padding:3px 9px;border-radius:99px}
 
 /* identity — thumbnail + one-line title + the TikTok-native stat row.
-   PAGE CONTENT since rev 7.2 (with the answer block) — the fixed strip is nav + tabs only. */
-.ident{display:flex;gap:11px;margin-top:2px;align-items:center}
+   Appears ONCE, above the tabs, and scrolls away (rev 7.3) — never repeated per tab. */
+.ident{display:flex;gap:11px;padding-top:16px;align-items:center}
 .thumb{width:40px;height:54px;border-radius:7px;background:var(--figure);flex:none;position:relative;
   overflow:hidden;display:flex;align-items:flex-end;justify-content:center;padding-bottom:4px}
 .thumb::before{content:"";position:absolute;inset:0;
@@ -94,15 +94,17 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 .fix .b{font:500 12.5px Inter;color:var(--cream)}
 .fix .g{font:500 12px Inter;color:var(--dim);font-variant-numeric:tabular-nums}
 
-/* segmented control */
-.seg{display:flex;background:var(--chip);border-radius:10px;padding:3px;margin-top:12px}
+/* tabs — INSIDE the scroll, sticking at its top once the identity scrolls away (the TikTok
+   pattern). Opaque rail fill so content slides under it cleanly. */
+.tabbar{position:sticky;top:0;z-index:6;background:var(--rail);padding-top:12px}
+.seg{display:flex;background:var(--chip);border-radius:10px;padding:3px}
 .seg button{flex:1;background:0;border:0;color:var(--faint);font:500 12.5px Inter;padding:7px 0;
   border-radius:8px;cursor:pointer}
 .seg button[aria-pressed="true"]{background:var(--chip-on);color:var(--cream)}
-.headrule{height:1px;background:var(--border);margin-top:14px}
+.headrule{height:1px;background:var(--border);margin-top:12px}
 
 /* body */
-.body{flex:1;min-height:0;overflow-y:auto;padding:14px 22px 30px;scrollbar-width:thin;
+.body{flex:1;min-height:0;overflow-y:auto;padding:0 22px 30px;scrollbar-width:thin;
   scrollbar-color:rgba(236,231,222,.14) transparent}
 .body::-webkit-scrollbar{width:6px}
 .body::-webkit-scrollbar-thumb{background:rgba(236,231,222,.14);border-radius:3px}
@@ -130,22 +132,16 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 .dist b{font-weight:500;color:rgba(236,231,222,.5);margin-left:5px}
 .dist.loss{color:var(--coral)}
 .dist.loss b{color:rgba(255,99,99,.6)}
-/* the third hero — the post itself. Placeholder frame here (an inline SVG line pattern, no
-   gradient ramp, no external asset); the build renders the real cover the drill already holds. */
-.hero .vfig{position:absolute;inset:0;display:block}
-.playchip{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:54px;height:54px;
+/* the post itself — a mini frame INSIDE the Retention card (TikTok centres the playing video in
+   its retention section the same way). Placeholder = inline SVG line pattern, no gradient ramp,
+   no external asset; the build renders the drill's real cover. */
+.vmini{position:relative;width:132px;height:234px;margin:14px auto 0;border-radius:10px;
+  overflow:hidden;background:var(--figure);border:1px solid var(--border)}
+.vfig{position:absolute;inset:0;display:block}
+.playchip{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:42px;height:42px;
   border-radius:99px;background:rgba(38,38,36,.9);display:flex;align-items:center;justify-content:center}
-
-/* the grounded readout — UNDER the figure, so the figure stays clean */
-.nets{display:flex;gap:8px;margin-top:10px}
-.net{flex:1;background:var(--card);border-radius:10px;padding:8px 10px 9px}
-.net .nr{display:flex;align-items:baseline;justify-content:space-between}
-.net i{font-style:normal;font-size:11px;color:var(--faint)}
-.net b{font:500 11.5px/1 Inter;color:var(--dim);font-variant-numeric:tabular-nums}
-.net .t{display:block;height:3px;border-radius:2px;background:rgba(236,231,222,.10);margin-top:7px;
-  overflow:hidden}
-.net .t s{display:block;height:100%;border-radius:2px;text-decoration:none;
-  background:rgba(236,231,222,.72);transition:width .14s linear,background .14s linear}
+.vdur{position:absolute;right:7px;bottom:7px;background:rgba(20,20,19,.78);border-radius:6px;
+  padding:2px 6px;font:500 10.5px Inter;color:rgba(236,231,222,.85);font-variant-numeric:tabular-nums}
 
 /* ── cards — filled, no border, one level deep ───────────────────────────── */
 .card{background:var(--card);border-radius:14px;padding:15px 15px 16px;margin-top:12px}
@@ -273,9 +269,9 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 <aside class="ctl">
   <div class="brandline"></div>
   <h1>Ambient Audience · insight drill</h1>
-  <p class="lede">Revision 7.2. The fixed header is gone — only nav + tabs stay pinned, the
-    TikTok way; the post identity and the answer scroll with each page. Cards decluttered:
-    plain-text headers, right-metas only where they carry data.</p>
+  <p class="lede">Revision 7.3 — the structure re-audited against the TikTok screens. Identity
+    once, above the tabs; the answer once, inside Retention; the playing post and its curve are
+    one instrument; Engagement is a figure-less numbers page.</p>
 
   <h2>Stimulus</h2>
   <div class="grp">
@@ -292,24 +288,24 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 
   <h2>Try this first</h2>
   <ol class="steps">
-    <li><b>Drag the retention curve</b> on video · Overview. One playhead moves the one-line
-      transcript, the clock and the three network meters together. Attention runs
-      91%&nbsp;→&nbsp;38% across the break while drift climbs 26%&nbsp;→&nbsp;60%.</li>
-    <li>Walk the tabs — <b>three different heroes</b> now: the cortex, the room, the post itself.
-      Each verdict chip states that tab's headline number.</li>
+    <li><b>Scroll video · Overview.</b> The identity row scrolls away and the tabs stick —
+      TikTok's exact chrome. Then <b>drag the retention curve</b>: one playhead moves the clock
+      on the cortex and the one-line transcript together.</li>
+    <li><b>Retention is the instrument now</b> — verdict, fix chip, the playing post, and the
+      curve in one section, like TikTok's retention block.</li>
     <li>Switch to <b>Text</b>. Different instrument: no timeline anywhere, voices instead.</li>
   </ol>
 
   <h2>Calls you may want to reverse</h2>
   <ul class="calls">
-    <li><b>The answer scrolls now.</b> It was the rev-5 "persistent answer, never behind a tab" —
-      reversed per your header note. It repeats at the top of every tab instead.</li>
-    <li><b>Only nav + tabs are pinned.</b> TikTok also pins its title bar; ours is one row
-      lighter. Scroll any tab to judge whether the tabs alone are enough chrome.</li>
-    <li><b>The catalogue tick-strip is gone</b> from Key metrics — the hook tile's
-      "↓20 pts vs median" now carries that fact alone.</li>
-    <li><b>Card headers lost their icons</b> and most right-meta labels — kept only where the
-      label is data ("vs your last 41", the live scrub readout, "Tue · 7–9pm").</li>
+    <li><b>The answer lives inside Retention</b> (Overview only) — the slot TikTok gives its
+      "viewers watched 14%" sentence. On Text it leads "Why they stopped" instead.</li>
+    <li><b>Engagement has no figure</b> — TikTok's engagement tab is numbers only. Each figure
+      appears exactly once: cortex / Overview, room / Audience, post / Retention.</li>
+    <li><b>Traffic sources moved to Overview</b>, where TikTok has them. Engagement is reaction
+      tiles + best window only.</li>
+    <li><b>The nets meter row is cut</b> — in the build the live cortex carries the grounded
+      readout itself.</li>
   </ul>
 
   <p class="note-foot">Mockup only. The cortex and terrain heroes are stills cropped from the
@@ -325,16 +321,20 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
       <button class="back">← Overview</button>
       <span class="pager" id="pager">2 of 5</span>
     </div>
-
-    <div class="seg">
-      <button data-tab="overview" aria-pressed="true">Overview</button>
-      <button data-tab="audience" aria-pressed="false">Audience</button>
-      <button data-tab="engagement" aria-pressed="false">Engagement</button>
-    </div>
-    <div class="headrule"></div>
   </div>
 
-  <div class="body" id="body"></div>
+  <div class="body" id="body">
+    <div id="identSlot"></div>
+    <div class="tabbar">
+      <div class="seg">
+        <button data-tab="overview" aria-pressed="true">Overview</button>
+        <button data-tab="audience" aria-pressed="false">Audience</button>
+        <button data-tab="engagement" aria-pressed="false">Engagement</button>
+      </div>
+      <div class="headrule"></div>
+    </div>
+    <div id="content"></div>
+  </div>
 </div>
 </div>
 
@@ -479,16 +479,8 @@ function hero(fig,l,r,vv,vl){
     ? `<img src="reference-2026-08-01/shipped-video-The-brain.png" style="width:452px;left:-33px;top:-115px">
        <div class="mask" style="top:0;height:28px"></div>
        <div class="mask" style="bottom:0;height:42px"></div>`
-    : fig==="terrain"
-    ? `<img src="reference-2026-08-01/shipped-video-The-audience.png" style="width:739px;left:-180px;top:-294px">
-       <div class="mask" style="bottom:0;height:4px"></div>`
-    : `<svg class="vfig" width="100%" height="100%">
-        <defs><pattern id="vs" width="26" height="26" patternUnits="userSpaceOnUse"
-          patternTransform="rotate(14)">
-          <rect width="26" height="26" fill="#161514"/>
-          <rect width="13" height="26" fill="#1b1a18"/></pattern></defs>
-        <rect width="100%" height="100%" fill="url(#vs)"/></svg>
-       <div class="playchip">${ico("play",18)}</div>`;
+    : `<img src="reference-2026-08-01/shipped-video-The-audience.png" style="width:739px;left:-180px;top:-294px">
+       <div class="mask" style="bottom:0;height:4px"></div>`;
   const labels=fig==="terrain" ? DISTRICTS.map(d=>
     `<span class="dist ${d.loss?'loss':''}" style="left:${d.x}px;top:${d.y}px">${d.n}<b>${d.v}</b></span>`
   ).join('') : '';
@@ -497,11 +489,8 @@ function hero(fig,l,r,vv,vl){
     <div class="verdict"><b>${vv}</b><span>${vl}</span></div></div>`;
 }
 
-/* The three spoken networks, computed with cortex-sim.ts's GROUNDED drive verbatim
-   (`neuralDrive`, cortex-sim.ts:175-202) — so the readout here is the shipped model, not a
-   look-alike. `retentionAt` is the one prop BrainTab.tsx:65 does not pass today. */
-/* identity + answer — page content at the top of every tab (rev 7.2: the owner killed the
-   fixed header; only nav + tabs stay pinned, the TikTok way) */
+/* identity: ONCE above the tabs (rev 7.3). answer: ONCE, inside Overview's Retention section —
+   the slot TikTok gives its "viewers watched 14% of your video" sentence. */
 function identBlock(){
   const d=D[kind];
   return `<div class="ident">
@@ -527,25 +516,18 @@ function answerBlock(){
   </div>`;
 }
 
-const clamp01=x=>x<0?0:x>1?1:x;
-const gauss=(x,c,w)=>Math.exp(-((x-c)*(x-c))/w);
-function groundedDrive(u){
-  const r=clamp01(retAt(u));
-  const fall=clamp01((clamp01(retAt(clamp01(u-.04)))-r)/.12);
-  const onset=gauss(u,.02,.0015);
-  return {
-    attention: clamp01(.10+.72*r*r+.20*onset),
-    salience:  clamp01(.12+.30*r+.62*fall+.34*onset),
-    drift:     clamp01(.06+.80*(1-r)+.20*fall),
-  };
-}
-function netsRow(){
-  const d=groundedDrive(ph);
-  const one=(n,x,loss)=>`<div class="net"><span class="nr"><i>${n}</i><b>${(x*100).toFixed(0)}%</b></span>
-    <span class="t"><s style="width:${(x*100).toFixed(0)}%${loss?';background:var(--coral)':''}"></s></span></div>`;
-  return `<div class="nets">${one("Attention",d.attention,0)}${one("Salience",d.salience,0)
-    }${one("Drift",d.drift,d.drift>.6)}</div>`;
-}
+/* The nets meter row is gone (rev 7.3 declutter) — in the build the LIVE CortexCanvas carries the
+   grounded readout itself; the shipped wiring (`driveFor()`, cortex-sim.ts) is untouched. */
+const vmini=()=>`<div class="vmini">
+  <svg class="vfig" width="100%" height="100%">
+    <defs><pattern id="vs" width="26" height="26" patternUnits="userSpaceOnUse"
+      patternTransform="rotate(14)">
+      <rect width="26" height="26" fill="#161514"/>
+      <rect width="13" height="26" fill="#1b1a18"/></pattern></defs>
+    <rect width="100%" height="100%" fill="url(#vs)"/></svg>
+  <div class="playchip">${ico("play",16)}</div>
+  <span class="vdur">0:28</span>
+</div>`;
 
 /* ── retention card (the scrubber) ──────────────────────────────────────── */
 function retentionCard(){
@@ -556,6 +538,8 @@ function retentionCard(){
     `${(P+i/(CURVE.length-1)*(W-2*P)).toFixed(1)},${(H-P-v*(H-2*P)).toFixed(1)}`).join(" L");
   return `<div class="card">
     ${ch('Retention',`<span id="retro">${mmss(ph*CLIP)} · ${Math.round(retAt(ph)*100)}%</span>`)}
+    ${answerBlock()}
+    ${vmini()}
     <div class="curvewrap" id="scrub">
       <svg viewBox="0 0 ${W} ${H}" style="display:block;width:100%;height:auto">
         <path d="${me} L${W-P},${H-P} L${P},${H-P} Z" fill="rgba(236,231,222,.045)"/>
@@ -575,32 +559,30 @@ function retentionCard(){
       <button class="mo" data-t="9"><i>0:09</i><b>33</b></button>
       <button class="mo" data-t="21"><i>0:21</i><b>27</b></button></div>
     <div class="tstrip"><span class="tin" id="tin"></span></div>
-    ${insight(`Who stays, stays to the end.`)}
   </div>`;
 }
 
 /* ── tabs ───────────────────────────────────────────────────────────────── */
 function overview(){
   if(kind==="text") return textOverview();
-  return identBlock() + answerBlock()
-  + hero("cortex","Predicted cortex",`t = ${mmss(ph*CLIP)}`,"38%","would stop")
-  + netsRow()
+  return hero("cortex","Predicted cortex",`t = ${mmss(ph*CLIP)}`,"38%","would stop")
   + `<div class="card">${ch('Key metrics','vs your last 41')}
       ${tiles(TILES.videoOverview)}
       ${insight(`Only the <span class="loss">hook</span> is broken.`)}
     </div>`
   + retentionCard()
+  + surfaceCard()
   + foot();
 }
 
 function textOverview(){
-  return identBlock() + answerBlock()
-  + hero("cortex","Predicted cortex","simulated","41%","would stop")
+  return hero("cortex","Predicted cortex","simulated","41%","would stop")
   + `<div class="card">${ch('Key metrics','vs your last 41 hooks')}
       ${tiles(TILES.textOverview,1)}
       ${insight(`The <span class="loss">wording</span> is the commodity.`)}
     </div>`
   + `<div class="card">${ch('Why they stopped')}
+      ${answerBlock()}
       <div style="margin-top:10px">${REASONS.map(r=>`
         <div class="rb ${r.loss?'loss':''}"><span class="nm">${r.n}</span>
           <span class="tr"><s style="width:${(r.v/37*100).toFixed(0)}%"></s></span>
@@ -612,8 +594,7 @@ function textOverview(){
 
 function audience(){
   const c=["rgba(236,231,222,.88)","rgba(236,231,222,.52)","rgba(236,231,222,.32)","rgba(236,231,222,.18)"];
-  return identBlock() + answerBlock()
-  + hero("terrain","The room","1 node ≈ 10 people","90%","non-followers")
+  return hero("terrain","The room","1 node ≈ 10 people","90%","non-followers")
   + `<div class="card">${kind==="video"
       ? ch('Who watches — and how long')
       : ch('Who this reaches')}
@@ -642,19 +623,9 @@ function audience(){
   + foot();
 }
 
-function engagement(){
-  const v=kind==="video";
-  return identBlock() + answerBlock()
-  + (v
-    ? hero("video","The post","0:28","1.4%","would share")
-    : hero("terrain","Who would reply","1 node ≈ 10 people","1.1%","would comment"))
-  + `<div class="card">${ch('Projected reaction','per reach')}
-      ${tiles(TILES[v?'videoEngage':'textEngage'])}
-      ${insight(v
-        ? `Everyone who stays converts — <span class="loss">only 38% stay</span>.`
-        : `Argues well, <span class="loss">travels badly</span>.`)}
-    </div>`
-  + (v?`<div class="card">${ch('Where it would surface')}
+/* Traffic sources live on Overview, where TikTok has them */
+function surfaceCard(){
+  return `<div class="card">${ch('Where it would surface')}
       <div class="mix">
         <s style="flex:53;background:rgba(236,231,222,.88)"></s>
         <s style="flex:33;background:rgba(236,231,222,.46)"></s>
@@ -664,7 +635,20 @@ function engagement(){
         {n:"Sound",c:"rgba(236,231,222,.46)",v:"33%"},
         {n:"Search",c:"rgba(236,231,222,.24)",v:"14%"}])}</div>
       ${insight(`Sound reach expires — search compounds.`)}
-    </div>`:`<div class="card">${ch('If you posted this')}
+    </div>`;
+}
+
+/* Engagement is a figure-less numbers page, the TikTok way — each figure appears exactly once:
+   cortex on Overview, the room on Audience, the post inside Retention. */
+function engagement(){
+  const v=kind==="video";
+  return `<div class="card">${ch('Projected reaction','per reach')}
+      ${tiles(TILES[v?'videoEngage':'textEngage'])}
+      ${insight(v
+        ? `Everyone who stays converts — <span class="loss">only 38% stay</span>.`
+        : `Argues well, <span class="loss">travels badly</span>.`)}
+    </div>`
+  + (v?'':`<div class="card">${ch('If you posted this')}
       <div>${VOICES.map(x=>`<div class="voice ${x.loss?'loss':''}">
         <div class="vhead"><span class="av">${x.w[0]}</span><b>${x.w}</b><span class="vtag">${x.t}</span></div>
         <p class="vq">${x.q}</p>
@@ -684,7 +668,8 @@ const foot=()=>`<div class="foot"><span>How to read these numbers</span><span>�
 /* ── render ─────────────────────────────────────────────────────────────── */
 function paint(){
   pager.textContent=D[kind].pager;
-  body.innerHTML=tab==="overview"?overview():tab==="audience"?audience():engagement();
+  identSlot.innerHTML=identBlock();
+  content.innerHTML=tab==="overview"?overview():tab==="audience"?audience():engagement();
   body.scrollTop=0;
   if(tab==="overview"&&kind==="video"){bindScrub();syncPlayhead();}
 }
@@ -696,12 +681,6 @@ function syncPlayhead(){
   const cr=document.querySelector(".corner.r"); if(cr)cr.textContent=`t = ${mmss(ph*CLIP)}`;
   const ro=document.getElementById("retro");
   if(ro)ro.textContent=`${mmss(ph*CLIP)} · ${Math.round(retAt(ph)*100)}%`;
-  const g=groundedDrive(ph), v=[g.attention,g.salience,g.drift];
-  document.querySelectorAll(".nets .net").forEach((el,i)=>{
-    const s=el.querySelector(".t s"), b=el.querySelector(".nr b");
-    if(b)b.textContent=(v[i]*100).toFixed(0)+"%";
-    if(s){s.style.width=(v[i]*100).toFixed(0)+"%";
-      if(i===2)s.style.background=v[2]>.6?"var(--coral)":"rgba(236,231,222,.72)";}});
   /* one-line transcript: light words up to the playhead, keep the current word centred */
   const tin=document.getElementById("tin");
   if(tin){

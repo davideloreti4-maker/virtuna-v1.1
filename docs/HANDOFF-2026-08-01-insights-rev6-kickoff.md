@@ -496,3 +496,24 @@ scroll content (`identBlock()`/`answerBlock()`). Declutter pass: card headers ar
 icons), right-metas survive only where the label IS data ("vs your last 41" · the live scrub
 readout · "Tue · 7–9pm"), the 41-tick catalogue strip is gone (the hook tile's delta carries it),
 the curve legend is gone ("your median" is labeled inside the figure).
+
+**Rev 7.3 (same day).** Owner, circling the identity+answer block that 7.2 repeated per tab:
+*"we don't need this on every page and it shouldn't be the hero — audit and review the structure
+from the [TikTok] screenshot; retention and video metrics should be combined with the video
+playing."* The structural audit against the TikTok screens produced:
+
+- **Identity once, above the tabs** — it scrolls away; the tabs are `position:sticky` inside the
+  scroll (`.tabbar`), TikTok's exact chrome. Pinned strip = nav row only.
+- **The answer appears exactly once**, inside Overview's Retention card — the slot TikTok gives
+  its "viewers watched 14% of your video" sentence. On Text it leads "Why they stopped" instead.
+- **Retention is THE instrument**: verdict + fix chip + the playing post (`.vmini`, 132×234
+  centred like TikTok's) + curve + moments + one-line transcript, one card, one timeline.
+- **Traffic sources moved to Overview** (`surfaceCard()`) — TikTok has them there.
+- **Engagement is a figure-less numbers page** (reaction tiles + best window; + voices on Text) —
+  each figure appears exactly once: cortex/Overview, room/Audience, post/Retention.
+- The nets meter row and `groundedDrive()` demo are deleted from the mockup — the shipped
+  `driveFor()` wiring in src is untouched; the live CortexCanvas is its own readout.
+
+Probes: sticky verified at scrollTop 400, exactly one `.answer`/`.ident` in the DOM, scrub still
+drives clock + readout + transcript, law walk 0. Tab heights: Overview absorbed the instrument
+(1716px), Engagement slimmed to 868px.
