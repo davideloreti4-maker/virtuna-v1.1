@@ -1,0 +1,447 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Skill cards v7 · the card becomes an object — First frame vs Case study</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --charcoal-app:#1f1f1e; --surface-sunken:#1a1a19;
+  --fg:#ece7de; --fg-2:#c2bdb4; --fg-3:#8a857c;
+  --positive:#8ea68a; --warning:oklch(0.75 0.15 85); --accent:#FF6363;
+  --b:rgba(255,255,255,.06); --b-hover:rgba(255,255,255,.10);
+  --t-caption:11px; --t-label:12px; --t-body:13px; --t-reading:14px;
+  --t-title:16px; --t-subhead:18px; --t-heading:22px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--charcoal-app);color:var(--fg);
+  font-family:InterV,Inter,system-ui,-apple-system,sans-serif;font-size:var(--t-body);line-height:1.5;
+  -webkit-font-smoothing:antialiased;padding:0 0 140px}
+.serif{font-family:NewsreaderV,Newsreader,Georgia,serif}
+
+.bar{position:sticky;top:0;z-index:20;display:flex;flex-wrap:wrap;align-items:center;gap:14px;
+  padding:12px 20px;background:#151514;border-bottom:1px solid var(--b)}
+.bar h1{font-size:var(--t-label);font-weight:600;letter-spacing:.02em;margin-right:auto}
+.bar .hint{font-size:var(--t-caption);color:var(--fg-3)}
+.seg{display:flex;border:1px solid var(--b);border-radius:8px;overflow:hidden}
+.seg button{appearance:none;border:0;background:transparent;color:var(--fg-3);font:inherit;
+  font-size:var(--t-label);padding:6px 12px;cursor:pointer}
+.seg button+button{border-left:1px solid var(--b)}
+.seg button[aria-pressed="true"]{background:rgba(255,255,255,.07);color:var(--fg)}
+
+.section{padding:38px 20px 0;max-width:2400px;margin:0 auto}
+.section>h2{font-size:var(--t-title);font-weight:600;letter-spacing:-.01em;margin-bottom:5px}
+.section>p.note{font-size:var(--t-label);color:var(--fg-3);max-width:82ch;margin-bottom:22px;line-height:1.7}
+.rowcols{display:flex;gap:30px;align-items:flex-start;flex-wrap:wrap}
+.col>h3{font-size:var(--t-caption);text-transform:uppercase;letter-spacing:.05em;color:var(--fg-3);margin-bottom:4px}
+.col>h3 em{font-style:normal;color:var(--fg-2)}
+.col>h3 .tag{color:var(--positive)}
+.col>p.sub{font-size:var(--t-caption);color:rgba(138,133,124,.78);margin-bottom:11px;max-width:46ch;line-height:1.6}
+.stage{width:728px;transition:width .18s ease}
+body[data-w="342"] .stage{width:342px}
+.callout{margin-top:11px;max-width:728px;font-size:var(--t-caption);line-height:1.7;color:var(--fg-3);
+  border-left:2px solid rgba(255,255,255,.10);padding-left:11px}
+.callout b{color:var(--fg-2);font-weight:500}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:var(--fg-2);
+  background:rgba(255,255,255,.04);border-radius:3px;padding:1px 4px}
+.prose{max-width:1180px;font-size:var(--t-body);line-height:1.8;color:var(--fg-2)}
+.prose b.cream{color:var(--fg);font-weight:500}
+.prose p+p{margin-top:12px}
+.flagbox{border:1px solid rgba(224,189,114,.22);border-radius:8px;padding:14px 16px;max-width:1180px;
+  font-size:var(--t-label);line-height:1.75;color:var(--fg-2)}
+.flagbox h4{font-size:var(--t-body);font-weight:600;color:var(--warning);margin-bottom:6px}
+.flagbox p+p{margin-top:8px}
+table.mt{width:100%;border-collapse:collapse;font-size:var(--t-label)}
+table.mt th{padding:7px 10px;font-weight:400;color:var(--fg-3);text-align:left}
+table.mt th:first-child{padding-left:0}
+table.mt td{padding:7px 10px;border-top:1px solid var(--b);font-variant-numeric:tabular-nums}
+table.mt td:first-child{padding-left:0}
+
+/* ── shell ─────────────────────────────────────────────────────────────── */
+.card{border:1px solid var(--b);border-radius:12px;background:var(--surface-sunken);overflow:hidden}
+.ico{width:13px;height:13px;flex-shrink:0}
+.pick{font-size:var(--t-label);color:var(--fg-2)}
+.copy{display:inline-flex;align-items:center;gap:5px;flex-shrink:0;font-size:var(--t-label);
+  font-weight:500;color:var(--fg-3);background:none;border:0;cursor:pointer;font-family:inherit}
+.mult{color:var(--positive);font-weight:500;font-variant-numeric:tabular-nums}
+.footer{display:flex;align-items:center;gap:16px;flex-wrap:wrap;border-top:1px solid var(--b);padding:14px 20px}
+.primary{display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.08);
+  background:rgba(255,255,255,.05);border-radius:6px;padding:8px 14px;font-size:var(--t-body);
+  font-weight:600;color:var(--fg);font-family:inherit;cursor:pointer}
+.door{display:inline-flex;align-items:center;gap:8px;margin-left:auto;font-size:var(--t-label);
+  color:var(--fg-3);background:none;border:0;font-family:inherit;cursor:pointer;min-height:32px}
+.door .hollow{width:7px;height:7px;border-radius:999px;border:1px solid var(--fg-3);flex-shrink:0}
+.door-cta{color:var(--fg-2);white-space:nowrap}
+.save{color:var(--fg-3);display:inline-flex}
+body[data-w="342"] .footer{row-gap:12px}
+body[data-w="342"] .primary{order:1}
+body[data-w="342"] .save{order:2;margin-left:auto}
+body[data-w="342"] .door{order:3;margin-left:0;width:100%;justify-content:space-between}
+
+/* ══ v7 — the OBJECT. A media panel gives the card geography: panel left,
+   reading column right at 728; on mobile the panel floats beside the hero and
+   the prose flows around and under it. Face word count cut hard. ═══════════ */
+.o-face{padding:22px 22px 18px}
+.o-top{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:16px}
+.o-cols{display:flex;gap:22px;align-items:center}
+.o-media{width:132px;flex-shrink:0;display:block;text-decoration:none}
+.o-main{flex:1;min-width:0}
+.cover,.frame{display:block}
+body[data-w="342"] .o-cols{display:block}
+body[data-w="342"] .o-media{float:right;width:104px;margin:0 0 10px 14px}
+
+/* the rendered first frame — YOUR video at 0s, drawn by us (a styling, not a screenshot) */
+.frame{position:relative;aspect-ratio:9/16;border:1px solid var(--b);border-radius:8px;
+  background:#161615;overflow:hidden;display:flex;align-items:center;padding:14px}
+.frame p{font-weight:800;text-transform:uppercase;font-size:15px;line-height:1.3;
+  letter-spacing:.01em;color:var(--fg)}
+body[data-w="342"] .frame{padding:9px}
+body[data-w="342"] .frame p{font-size:10px}
+/* the source cover — the case-study video, multiplier badged on it */
+.cover{position:relative;aspect-ratio:9/16;border:1px solid var(--b);border-radius:8px;
+  background:#242422;overflow:hidden}
+.cover .play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+.cover .badge{position:absolute;left:8px;bottom:8px;border-radius:4px;padding:2px 7px;
+  background:rgba(20,22,19,.85);color:var(--positive);font-size:var(--t-label);font-weight:600;
+  font-variant-numeric:tabular-nums}
+.o-mediameta{margin-top:7px;font-size:var(--t-caption);line-height:1.5;color:var(--fg-3)}
+.o-mediameta .n{color:var(--fg-2)}
+
+.o-hero{font-size:21px;line-height:1.3;letter-spacing:-.008em;font-weight:500;color:var(--fg);
+  text-wrap:balance}
+body[data-w="342"] .o-hero{font-size:20px}
+.o-hero .q{color:rgba(236,231,222,.45)}
+.o-lede{margin-top:7px;font-size:var(--t-reading);line-height:1.55;color:var(--fg)}
+.o-prose{margin-top:16px;display:flex;flex-direction:column;gap:9px}
+.o-prose p{font-size:var(--t-body);line-height:1.6;color:var(--fg-2)}
+.o-prose p b{color:var(--fg);font-weight:500}
+.o-prose p .take{color:var(--fg)}
+.o-proof{margin-top:16px;display:flex;align-items:center;gap:10px;text-decoration:none}
+.o-proof .mini{position:relative;display:block;width:28px;flex-shrink:0;aspect-ratio:9/16;
+  border:1px solid var(--b);border-radius:4px;overflow:hidden;background:#242422}
+.o-proof p{font-size:var(--t-label);line-height:1.5;color:var(--fg-3);min-width:0}
+.o-proof p .n{color:var(--fg-2);font-weight:500}
+.o-aud{margin-top:12px;display:flex;align-items:center;gap:10px}
+.avs{display:flex;flex-shrink:0}
+.avs i{width:18px;height:18px;border-radius:999px;border:2px solid var(--surface-sunken)}
+.avs i:nth-child(1){background:rgba(255,255,255,.16)}
+.avs i:nth-child(2){background:rgba(255,255,255,.11);margin-left:-6px}
+.avs i:nth-child(3){background:rgba(255,255,255,.07);margin-left:-6px}
+.o-aud p{font-size:var(--t-label);line-height:1.5;color:var(--fg-2);min-width:0}
+.o-aud p .who{color:var(--fg);font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body data-w="728">
+
+<div class="bar">
+  <h1>Skill cards v7 · the card becomes an object</h1>
+  <span class="hint">a media panel gives the card geography; the face loses half its words</span>
+  <div class="seg" role="group" aria-label="Card width">
+    <button data-w="728" aria-pressed="true">728px · in-thread</button>
+    <button data-w="342" aria-pressed="false">342px · mobile</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <h2>The reframe this round</h2>
+  <div class="prose">
+    <p><b class="cream">Six treatments across three rounds all restyled the same medium.</b> Boxes,
+    stacked labels, run-in labels, bold lead-ins, glyphs: every one was a column of sentences, and a
+    column of sentences is a document no matter what the typography does. Your read was right each
+    time.</p>
+    <p><b class="cream">What a document lacks is geography.</b> The cards that feel like product
+    objects (Perplexity discover, Spotify, YouTube Studio) have a visual anchor and a spatial layout:
+    the eye lands on an image, then reads beside it. Every one of these cards is about a video, so the
+    anchor is sitting right there: <b class="cream">show the video.</b> Two ways, one per direction.
+    <b class="cream">First frame</b> renders the video you are about to make: a 9:16 panel with your
+    hook set as on-screen caption caps at 0s. Drawn by us, honest as a styling, and it makes the
+    deliverable feel already half-made. <b class="cream">Case study</b> leads with the proven source
+    video instead: its cover, the multiplier badged on it, your line beside it. The cheat-code story
+    in one glance.</p>
+    <p>Both also cut the face word count roughly in half: one sentence per fact, the audience becomes
+    faces plus a short line, the seed line leaves the face (stays on props). On mobile the panel
+    floats beside the hero and the text flows around it, feed-style; there is no two-column text
+    layout anywhere.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     HOOK
+     ═══════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <h2>Hook card</h2>
+  <div class="rowcols">
+
+    <!-- FIRST FRAME -->
+    <div class="col">
+      <h3>Direction A · <em>First frame</em> <span class="tag">new</span></h3>
+      <p class="sub">The panel is YOUR video at 0s: the hook as caption caps, the technique named
+        under it. The source demotes to one receipt line.</p>
+      <div class="stage">
+        <div class="card" id="mpf-hook">
+          <div class="o-face">
+            <div class="o-top">
+              <span class="pick">Top pick</span>
+              <button class="copy"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M216 32H88a8 8 0 0 0-8 8v40H40a8 8 0 0 0-8 8v128a8 8 0 0 0 8 8h128a8 8 0 0 0 8-8v-40h40a8 8 0 0 0 8-8V40a8 8 0 0 0-8-8m-56 176H48V96h112Zm48-48h-32V88a8 8 0 0 0-8-8H96V48h112Z"/></svg>Copy</button>
+            </div>
+            <div class="o-cols">
+              <div class="o-media">
+                <div class="frame"><p>Stop editing your videos. Do this instead.</p></div>
+                <p class="o-mediameta"><span class="n">Your first frame</span> · crash-zoom, caps slam on</p>
+              </div>
+              <div class="o-main">
+                <p class="serif o-hero"><span class="q">“</span>Stop editing your videos. Do this instead.<span class="q">”</span></p>
+                <div class="o-prose">
+                  <p><b>Open on</b> a crash-zoom: hard cut to your face mid-sentence.</p>
+                  <p><b>Why it works:</b> permission to quit a painful task.</p>
+                </div>
+                <a class="o-proof" href="#">
+                  <span class="mini"><svg viewBox="0 0 90 160" width="100%" height="100%"><rect width="90" height="160" fill="#242422"/><polygon points="38,66 38,94 64,80" fill="#ece7de" opacity=".35"/></svg></span>
+                  <p><span class="n">Proven structure</span> · <span class="mult">90.7× their usual reach</span> · @braedan.health</p>
+                </a>
+                <div class="o-aud">
+                  <span class="avs" aria-hidden="true"><i></i><i></i><i></i></span>
+                  <p>Made for the <span class="who">34% of your audience</span> who watch to dodge mistakes.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="footer">
+            <button class="primary">Write the script →</button>
+            <button class="door"><span class="hollow"></span>Not tested yet<span class="door-cta">Simulate with your audience →</span></button>
+            <span class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg></span>
+          </div>
+        </div>
+      </div>
+      <p class="callout">
+        <b>The frame is a rendering, not a screenshot</b> — we draw the hook in the on-screen style the
+        visual direction describes. It is buildable today with CSS only, from fields already on the
+        block (<code>hookLine</code>, <code>visualHook.technique</code>, <code>visualHook.onScreen</code>).
+        Production adds one honesty cue if you want it: a faint "preview" wordmark in the panel corner.
+      </p>
+    </div>
+
+    <!-- CASE STUDY -->
+    <div class="col">
+      <h3>Direction B · <em>Case study</em> <span class="tag">new</span></h3>
+      <p class="sub">The panel is the PROVEN video: cover, multiplier badged on it. Your line reads
+        beside the evidence. The cheat-code story in one glance.</p>
+      <div class="stage">
+        <div class="card" id="mcs-hook">
+          <div class="o-face">
+            <div class="o-top">
+              <span class="pick">Top pick</span>
+              <button class="copy"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M216 32H88a8 8 0 0 0-8 8v40H40a8 8 0 0 0-8 8v128a8 8 0 0 0 8 8h128a8 8 0 0 0 8-8v-40h40a8 8 0 0 0 8-8V40a8 8 0 0 0-8-8m-56 176H48V96h112Zm48-48h-32V88a8 8 0 0 0-8-8H96V48h112Z"/></svg>Copy</button>
+            </div>
+            <div class="o-cols">
+              <a class="o-media" href="#" aria-label="Open the case study">
+                <span class="cover">
+                  <span class="play"><svg width="34" height="34" viewBox="0 0 34 34"><polygon points="12,9 12,25 26,17" fill="#ece7de" opacity=".45"/></svg></span>
+                  <span class="badge">90.7×</span>
+                </span>
+                <p class="o-mediameta"><span class="n">Case study</span> · @braedan.health · 621K views</p>
+              </a>
+              <div class="o-main">
+                <p class="serif o-hero"><span class="q">“</span>Stop editing your videos. Do this instead.<span class="q">”</span></p>
+                <div class="o-prose">
+                  <p><b>Built on</b> a structure that did 90.7× their usual reach: stop the hard thing, offer the easier thing.</p>
+                  <p><b>Open on</b> a crash-zoom: hard cut to your face mid-sentence.</p>
+                  <p><b>Why it works:</b> permission to quit a painful task.</p>
+                </div>
+                <div class="o-aud">
+                  <span class="avs" aria-hidden="true"><i></i><i></i><i></i></span>
+                  <p>Made for the <span class="who">34% of your audience</span> who watch to dodge mistakes.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="footer">
+            <button class="primary">Write the script →</button>
+            <button class="door"><span class="hollow"></span>Not tested yet<span class="door-cta">Simulate with your audience →</span></button>
+            <span class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg></span>
+          </div>
+        </div>
+      </div>
+      <p class="callout">
+        <b>Real covers exist for 516 of 532 corpus videos</b> (the cover-repair lane), so this panel is
+        real imagery in production, not a grey placeholder. The template line moved into prose as
+        "Built on…", so the citation row disappears entirely. <b>Trade-off:</b> the card's biggest
+        visual celebrates their video, not yours.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     IDEA
+     ═══════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <h2>Idea card</h2>
+  <p class="note">The idea's first frame renders its opening line, so the concept becomes a video
+    before your eyes. Word count nearly halves against v6: one sentence per fact, the take stays the
+    one cream line.</p>
+  <div class="rowcols">
+
+    <!-- FIRST FRAME -->
+    <div class="col">
+      <h3>Direction A · <em>First frame</em> <span class="tag">new</span></h3>
+      <div class="stage">
+        <div class="card" id="mpf-idea">
+          <div class="o-face">
+            <div class="o-top"><span class="pick">Top pick</span><span></span></div>
+            <div class="o-cols">
+              <div class="o-media">
+                <div class="frame"><p>I stopped posting for 30 days</p></div>
+                <p class="o-mediameta"><span class="n">Your first frame</span> · talking-head, analytics on screen</p>
+              </div>
+              <div class="o-main">
+                <h3 class="serif o-hero">The 30-day silence experiment</h3>
+                <p class="o-lede">Absence as a growth lever: go quiet on purpose, show the receipts.</p>
+                <div class="o-prose">
+                  <p><b>It lands on</b> a curiosity gap: creators fear disappearing.</p>
+                  <p><b>Your edge:</b> your top 3 posts lead with counter-intuitive claims.</p>
+                  <p><b>Your take:</b> <span class="take">consistency is overrated; strategic absence compounds attention.</span></p>
+                </div>
+                <a class="o-proof" href="#">
+                  <span class="mini"><svg viewBox="0 0 90 160" width="100%" height="100%"><rect width="90" height="160" fill="#242422"/><polygon points="38,66 38,94 64,80" fill="#ece7de" opacity=".35"/></svg></span>
+                  <p><span class="n">Proven structure</span> · <span class="mult">277× their usual reach</span> · @nourish.me.now</p>
+                </a>
+                <div class="o-aud">
+                  <span class="avs" aria-hidden="true"><i></i><i></i><i></i></span>
+                  <p>Made for the <span class="who">34% of your audience</span> who watch to dodge mistakes.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="footer">
+            <button class="primary">Write hooks for this →</button>
+            <button class="door"><span class="hollow"></span>Not tested yet<span class="door-cta">Simulate with your audience →</span></button>
+            <span class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg></span>
+          </div>
+        </div>
+      </div>
+      <p class="callout">
+        <b>What left the face:</b> "Topic" (the title block says it), "Format" (the frame meta says
+        it), "Opens with" as a row (the frame IS the opening line). Nothing left the props; the door
+        and expand still carry the rest. This is the fewest words any version has put on the idea
+        card while showing more of the video than any of them.
+      </p>
+    </div>
+
+    <!-- CASE STUDY -->
+    <div class="col">
+      <h3>Direction B · <em>Case study</em> <span class="tag">new</span></h3>
+      <div class="stage">
+        <div class="card" id="mcs-idea">
+          <div class="o-face">
+            <div class="o-top"><span class="pick">Top pick</span><span></span></div>
+            <div class="o-cols">
+              <a class="o-media" href="#" aria-label="Open the case study">
+                <span class="cover">
+                  <span class="play"><svg width="34" height="34" viewBox="0 0 34 34"><polygon points="12,9 12,25 26,17" fill="#ece7de" opacity=".45"/></svg></span>
+                  <span class="badge">277×</span>
+                </span>
+                <p class="o-mediameta"><span class="n">Case study</span> · @nourish.me.now · 4.3M views</p>
+              </a>
+              <div class="o-main">
+                <h3 class="serif o-hero">The 30-day silence experiment</h3>
+                <p class="o-lede">Absence as a growth lever: go quiet on purpose, show the receipts.</p>
+                <div class="o-prose">
+                  <p><b>Built on</b> a structure that did 277× their usual reach: I stopped a habit, here is what happened.</p>
+                  <p><b>It lands on</b> a curiosity gap: creators fear disappearing.</p>
+                  <p><b>Your take:</b> <span class="take">consistency is overrated; strategic absence compounds attention.</span></p>
+                </div>
+                <div class="o-aud">
+                  <span class="avs" aria-hidden="true"><i></i><i></i><i></i></span>
+                  <p>Made for the <span class="who">34% of your audience</span> who watch to dodge mistakes.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="footer">
+            <button class="primary">Write hooks for this →</button>
+            <button class="door"><span class="hollow"></span>Not tested yet<span class="door-cta">Simulate with your audience →</span></button>
+            <span class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg></span>
+          </div>
+        </div>
+      </div>
+      <p class="callout">
+        <b>"Your edge" was cut here to keep five lines</b> — the one fact Case study drops from the
+        face that First frame keeps. If both facts matter, First frame is the direction that holds
+        them. On this card the opening-line fact lives only in prose ("I stopped a habit…" is the
+        template, not your line), which is the honest cost of giving the panel to their video.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <h2>System notes</h2>
+  <div class="prose">
+    <p><b class="cream">The system extends without new ideas:</b> the script card's frame renders
+    beat one ("I stopped posting for 30 days…" in caps) above the untouched timeline; the remix
+    card's panel is already its source video, so remix gets direction B's layout for free and its
+    map stays. Script and remix get mocked after you pick a direction, not before.</p>
+    <p><b class="cream">Mobile has no two-column text anywhere:</b> at 342 the panel floats beside
+    the hero at 104px and the prose flows around and under it, the way a feed card wraps its
+    thumbnail. Toggle the width above to check it.</p>
+    <p><b class="cream">Honesty spine holds:</b> the frame is a styling of fields the writer already
+    emits, claims no measurement, and carries no verdict; the door still owns the sim. Covers are
+    real assets for 516/532 corpus videos. The seed line left the face and stays on props.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <h2>Measured heights</h2>
+  <p class="note">Real <code>getBoundingClientRect().height</code> off this file, both widths, no
+    horizontal overflow, no JS errors.</p>
+  <div class="prose" style="max-width:920px">
+    <table class="mt">
+      <thead>
+        <tr><th>Card</th><th>Shipped</th><th>v6 best</th><th>First frame</th><th>Case study</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>hook @728</td><td>590</td><td>451</td><td style="color:var(--fg)">415</td><td>431</td></tr>
+        <tr><td>hook @342</td><td>694</td><td>652</td><td style="color:var(--fg)">509</td><td>531</td></tr>
+        <tr><td>idea @728</td><td>630</td><td>537</td><td style="color:var(--fg)">430</td><td>430</td></tr>
+        <tr><td>idea @342</td><td>774</td><td>795</td><td>621</td><td style="color:var(--fg)">576</td></tr>
+      </tbody>
+    </table>
+    <p style="margin-top:14px"><b class="cream">First version to beat shipped in every cell,
+    including the mobile idea card.</b> The panel did not cost height, it absorbed it: the frame
+    carries the opening line and the format, the cover carries the receipt, so the rows that used to
+    state them are gone. Hook drops 30% at desktop and 27% on mobile against shipped; idea drops
+    32% and 20–26%.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <h2>Open for you</h2>
+  <div class="flagbox">
+    <h4>The calls</h4>
+    <p><b>1 · First frame or Case study</b> — whose video anchors the card: yours-to-be, or the
+    proven one. (First frame keeps more facts on the face; Case study has real imagery on day one.)</p>
+    <p><b>2 · The panel layout uses media-beside-text at 728.</b> The old "no two-column interiors"
+    rejection was about theirs-vs-yours text columns; this is a thumbnail rail like every feed card.
+    Confirm that reading, or this whole round is off the table.</p>
+    <p><b>3 · The face cuts:</b> the seed line and (on Case study) "Your edge" left the face, props
+    untouched. Bless the cuts or name what comes back.</p>
+  </div>
+</section>
+
+<script>
+document.querySelectorAll('.seg').forEach(function (seg) {
+  seg.addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    seg.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+    if (b.dataset.w) document.body.dataset.w = b.dataset.w;
+  });
+});
+</script>
+</body>
+</html>
