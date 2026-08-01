@@ -45,6 +45,9 @@ import { adaptCorpusBlock, type AdaptProfile } from "@/lib/grounding/adapt";
 import { retrieveCachedExamples, resolveRetrieveConfig } from "@/lib/grounding/retrieve";
 import { assessWarrant, type Warrant, type WarrantAxis } from "@/lib/grounding/warrant";
 import type { RetrievedExample } from "@/lib/grounding/types";
+import { buildVideoEvidence, evidenceMetric, type RunEvidence } from "@/lib/tools/evidence";
+import { formatCount } from "@/lib/account-metrics/account-metrics";
+import { MIN_OUTLIER_MULTIPLIER } from "@/lib/grounding/outlier-gate";
 
 /** The stage name shown on the thread loading spine while gathering (shared by all skills). */
 export const GROUNDING_STAGE_NAME = "Finding proven outliers";
@@ -77,6 +80,16 @@ export interface GatherCorpusInput {
   niche: string | null;
   /** Runner stage callback — forwarded at the real gather boundaries. */
   onStage?: (name: string, status: "active" | "done") => void;
+  /**
+   * Runner EVIDENCE callback — fired once, with the proven videos the model is actually shown.
+   *
+   * This is the payoff of grounding, made visible during the wait instead of only afterwards on a
+   * card receipt. The rows exist ~40s before the first hook does (retrieval precedes generation),
+   * and the creator spent that whole stretch looking at a shimmer while the engine held their
+   * evidence in memory. Fires only when rows survive `used` — never on a degrade, so it cannot
+   * imply grounding that did not happen.
+   */
+  onEvidence?: (evidence: RunEvidence) => void;
   /** Runner warning sink — degrade reasons land here (surfaced via the SSE warning event). */
   warnings: string[];
   /**
@@ -139,6 +152,63 @@ export interface GatherCorpusDeps {
 }
 
 /**
+ * The rail's headline states what these rows are evidence OF — the same distinction
+ * corpus-references-block.tsx draws for the chat agent's cited sources, for the same reason: a
+ * STRUCTURAL batch is proven shape borrowed from other subjects, and a creator who reads it as
+ * "3 videos about my topic" has been misled by the wait rather than by the cards.
+ */
+function evidenceHeadline(warrant: Warrant, count: number): string {
+  const videos = count === 1 ? "video" : "videos";
+  if (warrant === "structural") return `Borrowing shape from ${count} proven ${videos}`;
+  if (warrant === "provenance") return `Found ${count} proven ${videos}`;
+  return `Drafting against ${count} proven ${videos}`;
+}
+
+/**
+ * Fire the evidence callback with the rows the model was shown. Degrade-safe by construction:
+ * `buildVideoEvidence` returns null when no row carries a handle or a cover, and a throw here
+ * (a callback that dies mid-run) must never take the generation down with it — grounding is an
+ * enhancement, and so is showing it.
+ */
+function emitEvidence(
+  onEvidence: ((evidence: RunEvidence) => void) | undefined,
+  warrant: Warrant,
+  used: RetrievedExample[],
+): void {
+  if (!onEvidence || used.length === 0) return;
+  try {
+    const evidence = buildVideoEvidence(
+      (count) => evidenceHeadline(warrant, count),
+      used.map((ex) => ({
+        handle: ex.handle,
+        image: ex.coverUrl,
+        href: ex.videoUrl,
+        // The same gate the on-card receipt applies (build-proof.ts provenMultiplier): a
+        // multiplier is a CLAIM, so it ships only when it cleared MIN_OUTLIER_MULTIPLIER. The
+        // corpus admits hand-curated rows scoring below 1× — "0.5× vs followers" is a boast that
+        // refutes itself. Under the bar we fall back to raw views and make no performance claim.
+        metric: evidenceMetric({
+          multiplier:
+            typeof ex.multiplier === "number" &&
+            Number.isFinite(ex.multiplier) &&
+            ex.multiplier >= MIN_OUTLIER_MULTIPLIER
+              ? ex.multiplier
+              : null,
+          views: ex.views,
+          baselineLabel: ex.baselineLabel,
+          formatCount,
+        }),
+      })),
+    );
+    if (evidence) onEvidence(evidence);
+  } catch (err) {
+    console.warn(
+      `[grounding] evidence emit failed (ignored): ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+}
+
+/**
  * Gather outlier teardowns for a skill run (gated, degrade-safe): teardown-cache
  * read-back first, live scrape on miss. Returns `{ corpus: undefined, examples: [] }`
  * on any skip or full failure — the caller's generation path is byte-identical to
@@ -193,6 +263,9 @@ export async function gatherCorpusForRun(
     // a row we retrieved and then dropped cannot warrant anything the model could not read.
     const settle = (corpus: string | undefined, used: RetrievedExample[]): GatherCorpusResult => {
       const { warrant, grounded } = assessWarrant(axis, used);
+      // The loading rail gets the SAME rows the model got, described by the SAME warrant the cards
+      // will be stamped with — so the wait can never advertise evidence the output then disclaims.
+      if (grounded) emitEvidence(input.onEvidence, warrant, used);
       return { corpus, examples: used, scrapeAvailable, warrant, grounded };
     };
     if (input.adapt && ADAPT_SKILLS.has(input.skill) && input.adaptProfile && examples.length > 0) {

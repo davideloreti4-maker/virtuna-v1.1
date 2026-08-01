@@ -38,8 +38,10 @@ import { createClient } from '@/lib/supabase/client';
 import { TIKTOK_URL_PATTERN } from '@/lib/tiktok-url';
 import { ProgressChecklist } from './progress-checklist';
 import { SKILL_RUN_META } from './run-capsule';
+import { ACCOUNT_READ_PLAN } from '@/lib/account-read/account-read-stages';
 import { CardPrimaryAction } from './card-primitives';
 import { useTestRunStages } from './use-test-run-stages';
+import { useTestRunEvidence } from './use-test-run-evidence';
 
 export interface InputRequestBlockRendererProps {
   block: InputRequestBlock;
@@ -115,7 +117,7 @@ function RemixField({ block }: InputRequestBlockRendererProps) {
   const platform = blockPlatform ?? ctxPlatform;
   const { onComplete } = useInThreadInput();
 
-  const { start: remixStart, isStreaming, error, isDone, stages } = useRemixStream();
+  const { start: remixStart, isStreaming, error, isDone, stages, evidence } = useRemixStream();
   // Seeded with the link the creator already pasted (loop-validated as an http(s) URL) so the
   // field opens one tap from running instead of asking for it a second time. Still editable, and
   // still requires the tap — a prefill never spends on its own.
@@ -148,7 +150,7 @@ function RemixField({ block }: InputRequestBlockRendererProps) {
         <div aria-live="polite" aria-atomic="false">
           {/* Plan-seeded spine (the run-capsule grammar): the whole remix pipeline is visible
               from the first frame, live events overlay their real status. */}
-          <ProgressChecklist stages={stages} plan={SKILL_RUN_META.remix!.plan} />
+          <ProgressChecklist stages={stages} plan={SKILL_RUN_META.remix!.plan} evidence={evidence} />
         </div>
       ) : (
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -342,7 +344,8 @@ function AccountField({ block }: InputRequestBlockRendererProps) {
   const { label } = block.props;
   const { onComplete } = useInThreadInput();
 
-  const { start, isStreaming, error, fallbackMessage, block: resultBlock } = useAccountReadStream();
+  const { start, isStreaming, error, fallbackMessage, evidence, stages, block: resultBlock } =
+    useAccountReadStream();
   const completeHandledRef = useRef(false);
 
   // Completion = a real block arrived (a thin-history fallback has no block → nothing to reload).
@@ -367,8 +370,20 @@ function AccountField({ block }: InputRequestBlockRendererProps) {
     <div className={SHELL_CLASS} data-testid="input-request">
       {!isStreaming && <p className="text-body font-medium text-foreground-secondary">{label}</p>}
       {isStreaming ? (
-        // The account read is one scrape call (no stages) — the one-row capsule idiom.
-        <SingleStageWait name={SKILL_RUN_META.account!.running} />
+        // 4a — this used to be a ONE-ROW capsule on the premise that "the account read is one
+        // scrape call (no stages)". It never was: it is two independent Apify runs, and both
+        // halves carry exactly the evidence the finished card renders. Now the two real phases
+        // drive the spine and the profile + covers appear under the running step, ~30s before
+        // `done`. Falls back to the single row until the first stage frame lands.
+        stages.length > 0 ? (
+          <ProgressChecklist
+            stages={stages}
+            plan={ACCOUNT_READ_PLAN}
+            evidence={evidence}
+          />
+        ) : (
+          <SingleStageWait name={SKILL_RUN_META.account!.running} />
+        )
       ) : (
         <CardPrimaryAction onClick={handleRun} className="self-start">
           Read my account →
@@ -420,6 +435,10 @@ function UploadField({ block }: InputRequestBlockRendererProps) {
   const busy = staging || analyzing || carding;
   // The run-capsule spine for the busy stretch (unconditional hook call — React rules).
   const testStages = useTestRunStages({ analyzing, carding });
+  // The SAME live signals the flagship /analyze skeleton draws its filmstrip from — the post the
+  // scrape resolved, then the creator's own keyframes as the extractor cuts them. `busy` closes the
+  // subscription the moment the run settles.
+  const testEvidence = useTestRunEvidence(analysisId, busy);
   const canSubmit = (!!file || isValidTikTok) && !busy;
 
   // When the analysis completes, turn the persisted row into an in-thread card. Fires once
@@ -550,7 +569,7 @@ function UploadField({ block }: InputRequestBlockRendererProps) {
         // (identical plan names), derived from real phase boundaries + elapsed floors — replaces
         // the single static spinner line this wait used to be.
         <div aria-live="polite" aria-atomic="false">
-          <ProgressChecklist stages={testStages} plan={SKILL_RUN_META.test!.plan} />
+          <ProgressChecklist stages={testStages} plan={SKILL_RUN_META.test!.plan} evidence={testEvidence} />
         </div>
       ) : (
         <div className="flex flex-col gap-3">

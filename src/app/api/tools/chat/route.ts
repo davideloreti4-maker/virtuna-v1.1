@@ -440,6 +440,9 @@ export async function POST(request: Request): Promise<Response> {
                 audience: activeAudience,
                 // Real skill phase boundaries → the client's progress spine (mirrors skill routes).
                 onStage: (name, status) => send("stage", { name, status }),
+                // …and the artifacts those phases touched. An agent-dispatched hooks run IS the
+                // hooks pipeline, so its wait shows the same proven outliers the skill route's does.
+                onEvidence: (evidence) => send("evidence", evidence),
               },
               onToken: (delta) => send("token", { delta }),
               onBlock: (block) => send("block", { block }),

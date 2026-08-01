@@ -70,6 +70,7 @@ import type { HookCardBlock, HookProof } from "@/lib/tools/blocks";
 // accepted-but-unused `pin` input, kept so the route call site is unchanged).
 import type { RunnerPinContext } from "./predicted-pin";
 import { gatherCorpusForRun } from "@/lib/grounding/gather-for-run";
+import type { RunEvidence } from "@/lib/tools/evidence";
 import { buildProofFromSource, coerceSourceIndex } from "./build-proof";
 import { buildAdaptProfile } from "./adapt-profile";
 import type { RetrievedExample } from "@/lib/grounding/types";
@@ -257,6 +258,16 @@ export interface HooksPipelineInput {
    * absent = unchanged behavior. Honesty spine: fired at true boundaries, never on a fake timer.
    */
   onStage?: (name: string, status: "active" | "done") => void;
+  /**
+   * EVIDENCE callback — fired once with the proven outlier videos this run is grounded on, the
+   * moment retrieval settles (which is well BEFORE the first card exists — grounding precedes
+   * generation). The route wires it to SSE `send("evidence", …)` so the loading spine can show the
+   * creator the real posts their hooks are being drafted against instead of a shimmer.
+   *
+   * Never fires on an ungrounded or degraded run: gather-for-run only emits when rows survived the
+   * warrant, so the wait can never advertise evidence the cards then disclaim.
+   */
+  onEvidence?: (evidence: RunEvidence) => void;
 }
 
 // ─── Output type ─────────────────────────────────────────────────────────────
@@ -542,6 +553,7 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
     // Explicit-only spend: the user's "Find new outliers" tap is the ONLY thing that sets this.
     allowScrape: input.allowScrape,
     onStage: input.onStage,
+    onEvidence: input.onEvidence,
     warnings: allWarnings,
     // Grounding-as-remix: when ON, the corpus is a fitted+dosed brief instead of the raw slice.
     // The briefer re-voices proven structures toward THIS creator, so hand it their profile.

@@ -29,6 +29,7 @@ import { reportCredit402, CreditWallRefusal, isCreditWallRefusal } from '@/lib/b
 import type { RemixCardBlock, PopulationAggregateBlock, ReactionPersona, HookProof } from '@/lib/tools/blocks';
 import { parsePopulationProp, parseProofProp } from '@/lib/tools/blocks';
 import type { StageState } from '@/components/thread/progress-checklist';
+import { parseRunEvidence, type RunEvidence } from '@/lib/tools/evidence';
 import type { IntentLens } from '@/lib/audience/intent-lens';
 
 // ── Partial remix card (band/fraction absent until score event) ────────────────
@@ -114,6 +115,13 @@ export interface UseRemixStreamReturn {
   isClosed: boolean;
   /** Pipeline stages — populated by SSE stage events (STUDIO-01). */
   stages: StageState[];
+  /**
+   * The real artifacts this run touched mid-flight (`evidence` SSE frame): the proven outlier
+   * videos it is grounded on, or the post it resolved. Rendered by the loading spine's evidence
+   * rail (run-evidence.tsx). null on a run that produced none — an ungrounded generation, a
+   * resolve that returned no handle and no cover — and the rail then renders nothing.
+   */
+  evidence: RunEvidence | null;
   /** Model-authored follow-up text from the followup SSE event. */
   followupText: string | null;
   /**
@@ -155,6 +163,12 @@ export function useRemixStream(): UseRemixStreamReturn {
    */
   const [isClosed, setIsClosed] = useState(false);
   const [stages, setStages] = useState<StageState[]>([]);
+  /**
+   * The artifacts this run has touched so far (`evidence` SSE frame) — the proven outliers it is
+   * grounded on, or the post it resolved. Feeds the loading spine's evidence rail. Cleared at the
+   * start of every run so a new send can never inherit the last one's sources.
+   */
+  const [evidence, setEvidence] = useState<RunEvidence | null>(null);
   const [followupText, setFollowupText] = useState<string | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
@@ -178,6 +192,7 @@ export function useRemixStream(): UseRemixStreamReturn {
     setIsDone(false);
     setIsClosed(false);
     setStages([]);
+    setEvidence(null);
     setFollowupText(null);
     cardsRef.current = [];
     stagesRef.current = [];
@@ -201,6 +216,7 @@ export function useRemixStream(): UseRemixStreamReturn {
     setIsClosed(false);
     setIsStreaming(true);
     setStages([]);
+    setEvidence(null);
     setFollowupText(null);
     cardsRef.current = [];
     stagesRef.current = [];
@@ -253,7 +269,14 @@ export function useRemixStream(): UseRemixStreamReturn {
             continue;
           }
 
-          if (eventType === 'stage') {
+          if (eventType === 'evidence') {
+            // Real artifacts, mid-run. parseRunEvidence is total (null on anything malformed)
+            // because a throw inside this read loop would kill the whole stream — cards, receipt
+            // and closing line with it — over a decorative thumbnail rail.
+            const parsedEvidence = parseRunEvidence(data);
+            if (parsedEvidence && isMountedRef.current) setEvidence(parsedEvidence);
+
+          } else if (eventType === 'stage') {
             const stageName = typeof data.name === 'string' ? data.name : '';
             const stageStatus = (data.status === 'active' || data.status === 'done')
               ? data.status as StageState['status']
@@ -392,6 +415,7 @@ export function useRemixStream(): UseRemixStreamReturn {
     isDone,
     isClosed,
     stages,
+    evidence,
     followupText,
     start,
     stop,

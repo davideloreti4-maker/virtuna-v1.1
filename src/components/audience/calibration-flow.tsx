@@ -18,6 +18,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AudienceReveal } from "./audience-reveal";
 import { ConstellationMark } from "@/components/brand/constellation-mark";
+import {
+  ProgressChecklist,
+  type StageState,
+} from "@/components/thread/progress-checklist";
+import { CALIBRATION_PLAN } from "@/lib/audience/calibration-stages";
 import { READING_CARD } from "@/components/reading/reading-section";
 import { cn } from "@/lib/utils";
 import { WarningCircle } from "@phosphor-icons/react";
@@ -53,6 +58,7 @@ export function CalibrationFlow({ audience, onDone, onSkip, prefillHandle, prefi
   const [calibratedAudience, setCalibratedAudience] = useState<Audience | null>(null);
   const [revealData, setRevealData] = useState<RevealData | null>(null);
   const [evidence, setEvidence] = useState<CalibrationEvidence | null>(null);
+  const [stages, setStages] = useState<StageState[]>([]);
   const [avatarFailed, setAvatarFailed] = useState(false);
   const readerRef = useRef<ReadableStreamDefaultReader<string> | null>(null);
 
@@ -61,6 +67,9 @@ export function CalibrationFlow({ audience, onDone, onSkip, prefillHandle, prefi
     setStatusMsg(isPersonal ? "Reading your followers…" : "Analysing your description…");
     setFallbackMsg("");
     setErrorMsg("");
+    // A retry must not inherit the previous attempt's spine, or the new run opens with steps
+    // already marked done.
+    setStages([]);
 
     const body = isPersonal
       ? {
@@ -124,6 +133,8 @@ export function CalibrationFlow({ audience, onDone, onSkip, prefillHandle, prefi
             retry?: boolean;
             audience?: Audience;
             reveal?: RevealData;
+            name?: string;
+            status?: StageState['status'];
           } & Partial<CalibrationEvidence>;
           try {
             parsed = JSON.parse(raw) as typeof parsed;
@@ -138,6 +149,21 @@ export function CalibrationFlow({ audience, onDone, onSkip, prefillHandle, prefi
           switch (evt) {
             case "status":
               setStatusMsg(parsed.message ?? "");
+              break;
+            case "stage":
+              // 4d — the SAME three phases the status line already carried, now as spine rows.
+              // Last-write-wins per name, order preserved, so a repeated frame cannot duplicate
+              // a row and a `done` cannot be overwritten by a stale `active`.
+              if (parsed.name && parsed.status) {
+                const { name, status } = parsed;
+                setStages((prev) => {
+                  const i = prev.findIndex((s) => s.name === name);
+                  if (i === -1) return [...prev, { name, status }];
+                  const next = [...prev];
+                  next[i] = { name, status };
+                  return next;
+                });
+              }
               break;
             case "evidence":
               // The account we actually pulled + the posts we are about to watch. Arrives
@@ -252,11 +278,17 @@ export function CalibrationFlow({ audience, onDone, onSkip, prefillHandle, prefi
   if (phase === "streaming") {
     if (!evidence) {
       return (
-        <div className={cn("flex flex-col items-center gap-4 py-12", className)}>
+        <div className={cn("flex flex-col items-center gap-5 py-12", className)}>
           <ConstellationMark width={72} className="opacity-80" />
-          <p className="text-sm text-foreground-secondary text-center max-w-xs">
-            {statusMsg}
-          </p>
+          {/* Before the scrape returns there is nothing to show but the plan — which is still far
+              more than the one line that used to stand here for the first ~126s. */}
+          {stages.length > 0 ? (
+            <div className="w-full max-w-[320px]">
+              <ProgressChecklist stages={stages} plan={CALIBRATION_PLAN} />
+            </div>
+          ) : (
+            <p className="text-sm text-foreground-secondary text-center max-w-xs">{statusMsg}</p>
+          )}
         </div>
       );
     }
@@ -289,9 +321,17 @@ export function CalibrationFlow({ audience, onDone, onSkip, prefillHandle, prefi
           </div>
         </div>
 
-        <p className="text-sm text-foreground-secondary" data-testid="calibration-status">
-          {statusMsg}
-        </p>
+        {/* The spine replaces the lone status line once phases are arriving. `statusMsg` stays as
+            the fallback so a stream that somehow sends no `stage` frame still says something. */}
+        {stages.length > 0 ? (
+          <div data-testid="calibration-status">
+            <ProgressChecklist stages={stages} plan={CALIBRATION_PLAN} />
+          </div>
+        ) : (
+          <p className="text-sm text-foreground-secondary" data-testid="calibration-status">
+            {statusMsg}
+          </p>
+        )}
 
         {/* The posts we are about to watch. Only covers we actually have — a post with no cover
             keeps its slot and shows nothing, rather than rendering a broken image. */}

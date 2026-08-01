@@ -30,6 +30,7 @@ import type { BillableAction } from "@/lib/pricing";
 import { runIdeasPipeline } from "@/lib/tools/runners/ideas-runner";
 import { runHooksPipeline } from "@/lib/tools/runners/hooks-runner";
 import { runScriptPipeline } from "@/lib/tools/runners/script-runner";
+import type { RunEvidence } from "@/lib/tools/evidence";
 
 // ─── Shared run context (loaded once by the route; passed to every skill) ────
 
@@ -39,6 +40,13 @@ export interface SkillRunContext {
   audience?: Audience | null;
   /** Forwarded to the runner's phase-boundary callback (the route wires it to SSE `stage`). */
   onStage?: (name: string, status: "active" | "done") => void;
+  /**
+   * Forwarded to the runner's EVIDENCE callback (the route wires it to SSE `evidence`) — the real
+   * artifacts the run touched mid-flight, for the loading spine. An agent-dispatched skill runs the
+   * SAME pipeline as its own route, so it must show the same evidence; without this the chat door
+   * into the engine would be the one wait that stayed blind.
+   */
+  onEvidence?: (evidence: RunEvidence) => void;
 }
 
 /**
@@ -124,6 +132,7 @@ export const SKILL_TOOLS: SkillTool[] = [
         profileRow: ctx.profileRow,
         audience: ctx.audience,
         onStage: ctx.onStage,
+        onEvidence: ctx.onEvidence,
       });
       return { blocks: r.blocks, warnings: r.warnings };
     },
@@ -146,6 +155,7 @@ export const SKILL_TOOLS: SkillTool[] = [
         profileRow: ctx.profileRow,
         audience: ctx.audience,
         onStage: ctx.onStage,
+        onEvidence: ctx.onEvidence,
       });
       return { blocks: r.blocks, warnings: r.warnings };
     },
@@ -168,6 +178,7 @@ export const SKILL_TOOLS: SkillTool[] = [
         profileRow: ctx.profileRow,
         audience: ctx.audience,
         onStage: ctx.onStage,
+        onEvidence: ctx.onEvidence,
       });
       return { blocks: r.blocks, warnings: r.warnings };
     },

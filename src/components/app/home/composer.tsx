@@ -114,6 +114,7 @@ import { ThreadShell, ThreadAssistantTurn } from "@/components/thread/thread-she
 import { ProgressChecklist } from "@/components/thread/progress-checklist";
 import { SKILL_RUN_META } from "@/components/thread/run-capsule";
 import { useTestRunStages } from "@/components/thread/use-test-run-stages";
+import { useTestRunEvidence } from "@/components/thread/use-test-run-evidence";
 import { SkillRunError } from "@/components/thread/run-notices";
 import { Spinner } from "@/components/ui/spinner";
 import { AudiencePresence, type AudiencePresenceProps } from "@/components/audience-lens/audience-presence";
@@ -620,16 +621,16 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // ("idea" singular). The two differ in exactly this one id and a cast cannot fail (F-017).
   const { activeRun, isAnyStreaming, stopActive } = useActiveRun([
     { skill: "ideas", isStreaming: ideas.isStreaming, isDone: ideas.isDone, isClosed: ideas.isClosed, blocks: ideasBlocks,
-      stages: ideas.stages, followupText: ideas.followupText, warnings: ideas.warnings,
+      stages: ideas.stages, evidence: ideas.evidence, followupText: ideas.followupText, warnings: ideas.warnings,
       error: ideas.error, outliersAvailable: ideas.outliersAvailable, stop: ideas.stop, reset: ideas.reset },
     { skill: "hooks", isStreaming: hooks.isStreaming, isDone: hooks.isDone, isClosed: hooks.isClosed, blocks: hooksBlocks,
-      stages: hooks.stages, followupText: hooks.followupText, warnings: hooks.warnings,
+      stages: hooks.stages, evidence: hooks.evidence, followupText: hooks.followupText, warnings: hooks.warnings,
       error: hooks.error, outliersAvailable: hooks.outliersAvailable, stop: hooks.stop, reset: hooks.reset },
     { skill: "script", isStreaming: script.isStreaming, isDone: script.isDone, isClosed: script.isClosed, blocks: scriptBlocks,
-      stages: script.stages, followupText: script.followupText, warnings: script.warnings,
+      stages: script.stages, evidence: script.evidence, followupText: script.followupText, warnings: script.warnings,
       error: script.error, outliersAvailable: script.outliersAvailable, stop: script.stop, reset: script.reset },
     { skill: "remix", isStreaming: remix.isStreaming, isDone: remix.isDone, isClosed: remix.isClosed, blocks: remixBlocks,
-      stages: remix.stages, followupText: remix.followupText, error: remix.error,
+      stages: remix.stages, evidence: remix.evidence, followupText: remix.followupText, error: remix.error,
       stop: remix.stop, reset: remix.reset },
     { skill: "explore", isStreaming: explore.isStreaming, isDone: explore.isDone, blocks: exploreBlocks,
       stages: explore.stages, error: explore.error, stop: explore.stop, reset: explore.reset },
@@ -641,7 +642,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       isStreaming: chat.isStreaming,
       // Cards ABOVE the co-pilot line: a dispatched skill's real cards, then the closing prose.
       blocks: [...chat.streamingBlocks, ...chatBlocks],
-      stages: chat.stages, error: chat.error, stop: chat.stop, reset: chat.reset },
+      stages: chat.stages, evidence: chat.evidence, error: chat.error, stop: chat.stop, reset: chat.reset },
     // Account emits no stages and no card stream — one block, delivered on done.
     { skill: "account", isStreaming: account.isStreaming,
       blocks: account.block ? [account.block] : [], error: account.error,
@@ -2686,6 +2687,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           skill: activeRun.skill,
           isStreaming: activeRun.isStreaming,
           stages: activeRun.stages,
+          evidence: activeRun.evidence,
           followupText: activeRun.followupText,
           warnings: activeRun.warnings,
           error: activeRun.error,
@@ -2715,6 +2717,13 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     stream.phase === "reconnecting" ||
     stream.phase === "polling";
   const testRunStages = useTestRunStages({ analyzing: testAnalyzing, carding });
+  // …and the run's live evidence: the post the scrape resolved, then the real keyframes the
+  // extractor cuts. Same signals the flagship /analyze skeleton uses (use-test-run-evidence.ts),
+  // so the composer's Test wait and the full-page one now show the same proof-of-work.
+  const testRunEvidence = useTestRunEvidence(
+    stream.analysisId,
+    testAnalyzing || carding,
+  );
   // ⚠️ runningTool, NOT activeTool. armFired() reverts the arm to chat the instant the Test is
   // dispatched — a ~2-minute run — so keying the progress spine on the arm would have blanked
   // the whole wait the moment it started. This is the read that made the one-shot safe.
@@ -2735,7 +2744,11 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
             <p className="mb-2 text-body font-medium text-foreground-secondary">
               {SKILL_RUN_META.test!.running}
             </p>
-            <ProgressChecklist stages={testRunStages} plan={SKILL_RUN_META.test!.plan} />
+            <ProgressChecklist
+              stages={testRunStages}
+              plan={SKILL_RUN_META.test!.plan}
+              evidence={testRunEvidence}
+            />
           </div>
         )}
       </ThreadAssistantTurn>

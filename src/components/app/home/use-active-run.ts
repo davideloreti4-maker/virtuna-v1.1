@@ -29,6 +29,7 @@
 import { useState } from 'react';
 import type { ChatTurnKind } from '@/lib/tools/chat-followups';
 import type { StageState } from '@/components/thread/progress-checklist';
+import type { RunEvidence } from '@/lib/tools/evidence';
 
 /** The normalized view of one skill stream, as <ThreadTurn> wants it. */
 export interface ActiveRun {
@@ -49,6 +50,12 @@ export interface ActiveRun {
   isClosed: boolean;
   blocks: unknown[];
   stages: StageState[];
+  /**
+   * The artifacts this run touched mid-flight (`evidence` SSE frame) — the proven outliers it is
+   * grounded on, the post it resolved. Rendered inside the loading spine. Every stream that cannot
+   * produce evidence (explore, account) simply omits it and this is null.
+   */
+  evidence: RunEvidence | null;
   followupText: string | null;
   warnings: string[];
   error: string | null;
@@ -71,6 +78,7 @@ export interface RunCandidate {
   isClosed?: boolean;
   blocks?: unknown[];
   stages?: StageState[];
+  evidence?: RunEvidence | null;
   followupText?: string | null;
   warnings?: string[];
   error?: string | null;
@@ -87,6 +95,7 @@ function normalize(c: RunCandidate): ActiveRun {
     isClosed: c.isClosed ?? true,
     blocks: c.blocks ?? [],
     stages: c.stages ?? [],
+    evidence: c.evidence ?? null,
     followupText: c.followupText ?? null,
     warnings: c.warnings ?? [],
     error: c.error ?? null,

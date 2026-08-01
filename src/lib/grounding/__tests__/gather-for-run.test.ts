@@ -459,3 +459,115 @@ describe("gatherCorpusForRun — the shared warrant contract", () => {
     expect(result).toMatchObject({ grounded: false, warrant: "none" });
   });
 });
+
+/**
+ * The EVIDENCE emit — the retrieved outliers, handed to the loading spine ~40s before the first
+ * card exists.
+ *
+ * Two invariants, and the second is the one that keeps this honest: the rail describes the rows
+ * with the SAME warrant the cards will be stamped with, and it does not fire at all on a run that
+ * is not grounded. A wait that advertises "3 proven videos" over an ungrounded generation is a
+ * promise the output then quietly disclaims.
+ */
+describe("gatherCorpusForRun — evidence for the loading spine", () => {
+  it("emits the rows the model was shown, with their measured multiplier", async () => {
+    const onEvidence = vi.fn();
+
+    await gatherCorpusForRun(
+      { ...baseInput(), skill: "ideas", onEvidence },
+      { retrieve: hit, gather: vi.fn<Gather>() },
+    );
+
+    expect(onEvidence).toHaveBeenCalledTimes(1);
+    const evidence = onEvidence.mock.calls[0]![0];
+    expect(evidence.headline).toBe("Drafting against 2 proven videos");
+    expect(evidence.items).toHaveLength(2);
+    expect(evidence.items[0]).toMatchObject({
+      kind: "video",
+      label: "maker",
+      metric: "12× vs followers",
+      href: "https://tiktok.com/@maker/video/1",
+    });
+  });
+
+  it("says what a STRUCTURAL batch actually is — proven shape, not proof about the topic", async () => {
+    // hooks ranks structurally, so its rows are borrowed from other subjects. A creator who reads
+    // "2 videos on my topic" there has been misled by the wait rather than by the cards.
+    const onEvidence = vi.fn();
+    await gatherCorpusForRun(
+      { ...baseInput(), skill: "hooks", onEvidence },
+      { retrieve: hit, gather: vi.fn<Gather>() },
+    );
+    expect(onEvidence.mock.calls[0]![0].headline).toBe(
+      "Borrowing shape from 2 proven videos",
+    );
+  });
+
+  it("does NOT fire when the run degraded to ungrounded", async () => {
+    const empty: Retrieve = async () => ({
+      examples: [],
+      enough: false,
+      stats: { matched: 0, good: 0, minRows: 2, minSimilarity: 0.6, rank: "topical", archetypes: 0 },
+    });
+    const onEvidence = vi.fn();
+
+    await gatherCorpusForRun(
+      { ...baseInput(), skill: "ideas", onEvidence },
+      { retrieve: empty, gather: vi.fn<Gather>() },
+    );
+
+    expect(onEvidence).not.toHaveBeenCalled();
+  });
+
+  it("does NOT fire when grounding is gated off for the skill", async () => {
+    const onEvidence = vi.fn();
+    await gatherCorpusForRun(
+      { ...baseInput(), enabled: false, onEvidence },
+      { retrieve: hit, gather: vi.fn<Gather>() },
+    );
+    expect(onEvidence).not.toHaveBeenCalled();
+  });
+
+  /**
+   * The corpus admits hand-curated rows that scored BELOW the outlier bar — some below 1×, i.e.
+   * fewer views than the account has followers. The on-card receipt refuses to print those
+   * (build-proof.ts provenMultiplier); the rail must refuse them too, or the wait boasts a number
+   * the card then withholds. Views are the honest fallback: still true, claims nothing.
+   */
+  it("refuses a multiplier that did not clear the outlier bar, and falls back to views", async () => {
+    const weak: Retrieve = async () => ({
+      examples: [{ ...example("weak"), multiplier: 0.5 }],
+      enough: true,
+      stats: { matched: 1, good: 1, minRows: 1, minSimilarity: 0.6, rank: "topical", archetypes: 1 },
+    });
+    const onEvidence = vi.fn();
+
+    await gatherCorpusForRun(
+      { ...baseInput(), skill: "ideas", onEvidence },
+      { retrieve: weak, gather: vi.fn<Gather>() },
+    );
+
+    expect(onEvidence.mock.calls[0]![0].items[0].metric).toBe("1M views");
+  });
+
+  /**
+   * An evidence callback that throws must not take the run down with it. Grounding is an
+   * enhancement to generation; SHOWING grounding is an enhancement to that — two layers away from
+   * anything the creator paid for.
+   */
+  it("survives a throwing callback and still returns the corpus", async () => {
+    const result = await gatherCorpusForRun(
+      {
+        ...baseInput(),
+        skill: "ideas",
+        onEvidence: () => {
+          throw new Error("render blew up");
+        },
+      },
+      { retrieve: hit, gather: vi.fn<Gather>() },
+    );
+
+    expect(result.grounded).toBe(true);
+    expect(result.examples).toHaveLength(2);
+  });
+});
