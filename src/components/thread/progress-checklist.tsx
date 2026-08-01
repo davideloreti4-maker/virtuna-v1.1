@@ -231,6 +231,20 @@ const STAGE_COPY_ROTATION: Record<string, string[]> = {
     'Pulling your latest posts',
     'Finding what recurs across them',
   ],
+  // Audience calibration (api/audiences/calibrate). The longest wait in the product — ~126s of it
+  // is the scrape alone — and until 2026-08-01 the whole thing sat under one plain status line.
+  'Reading your followers': [
+    'Pulling the account and its posts',
+    'Reading who actually engages',
+  ],
+  'Watching your top videos': [
+    'Watching them the way your audience would',
+    'Finding what your best posts have in common',
+  ],
+  'Building your audience profile': [
+    'Shaping the reactors who match them',
+    'Settling their reactions to your work',
+  ],
 };
 
 export function ProgressChecklist({

@@ -25,6 +25,10 @@ import {
   calibrateFromScrape,
   type CalibrationStage,
 } from "@/lib/audience/calibration";
+import {
+  CALIBRATION_PLAN,
+  CALIBRATION_STAGE_NAME,
+} from "@/lib/audience/calibration-stages";
 import { createAudience, updateAudience, listAudiences } from "@/lib/audience/audience-repo";
 import { audienceForAccount } from "@/components/audience/audience-display";
 import { upsertAccountSnapshot } from "@/lib/account-metrics/account-metrics-repo";
@@ -61,6 +65,15 @@ const STAGE_COPY: Record<CalibrationStage, string> = {
   watching: "Watching your top videos…",
   synthesizing: "Building your audience profile…",
 };
+
+/**
+ * 4d, in one line: these three phases were always real and always honest — they were just emitted
+ * as `status` MESSAGES, so a ~126s wait rendered as one plain line while every other wait in the
+ * product rendered as the progress spine. Sending them as `stage` events too (names from the
+ * shared module below) lets the calibration surface mount the same ProgressChecklist as
+ * everything else. The `status` frames are kept exactly as they were: calibration-flow still falls
+ * back to them, and dropping them would be a silent contract break for any other consumer.
+ */
 
 const CalibrateSchema = z.object({
   // A7: the draft audience the form already created. When present, calibration
@@ -140,7 +153,16 @@ export async function POST(request: Request): Promise<Response> {
         const calibrationResult = await calibrateFromScrape(
           { handle, type, platform, goalIntent, name, description },
           {
-            onStage: (stage) => send("status", { message: STAGE_COPY[stage] }),
+            onStage: (stage) => {
+              send("status", { message: STAGE_COPY[stage] });
+              // calibration's onStage fires only on a phase BEGINNING, so the previous phase's
+              // completion is inferred from the next one starting — that is a real boundary the
+              // pipeline crossed, not a guess. The clock stays honest either way: it only ever
+              // times what it watched go active.
+              const i = CALIBRATION_PLAN.indexOf(CALIBRATION_STAGE_NAME[stage]);
+              if (i > 0) send("stage", { name: CALIBRATION_PLAN[i - 1], status: "done" });
+              send("stage", { name: CALIBRATION_STAGE_NAME[stage], status: "active" });
+            },
             // The account + the posts we're about to watch, the moment the scrape returns —
             // ~2 minutes before the audience they produce. A status line claims we are working;
             // the creator's own face and covers prove it.
@@ -255,6 +277,13 @@ export async function POST(request: Request): Promise<Response> {
           send("error", { message: "Calibration failed. Check the handle and try again.", retry: true });
           return;
         }
+
+        // Land the final phase before the run settles. Without this the last row would sit
+        // `active` forever — nothing else fires after `synthesizing` begins.
+        send("stage", {
+          name: CALIBRATION_PLAN[CALIBRATION_PLAN.length - 1],
+          status: "done",
+        });
 
         // reveal = the "it's real" showcase (§P.5): real scraped account + top posts.
         send("done", { audience: persistedAudience, reveal });
