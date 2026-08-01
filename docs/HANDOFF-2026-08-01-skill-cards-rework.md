@@ -1,17 +1,12 @@
 # HANDOFF — Skill-card rework (in-thread generation cards)
 
-> ## ⚡ SUPERSEDED IN PART — 2026-08-01 evening session (v5–v9.1)
+> ## ⚡ SUPERSEDED — read `HANDOFF-2026-08-01-skill-cards-v9-2.md` FIRST
 >
-> §1's questions are ANSWERED and the design converged. The owner rejected every text-column
-> treatment (v4 Document, v5 Answer, v6 Stage/Studio, v7 prose, v8 cells on craft), picked the
-> **Case-study anchor**, and v9.1 (`.planning/sketches/skill-cards-v9-1-signoff.html`) is the
-> sign-off set: **choice cards** (hook/idea) get a 4-element face — cover · quoted serif hero ·
-> dek (idea's dek carries the take) · source line — plus a collapsed "Full brief" row;
-> **deliverable cards** (script/remix) keep timeline/map on the face inside the same shell.
-> Review vs the REAL renderers: `.planning/sketches/skill-cards-v9-review.html`. §2's locks still
-> hold except: the "Visual" label became the dek/brief (owner-approved direction), and detail
-> STAGING (brief row) supersedes "everything on the face". §3, §5, §6 remain valid; read v9.1
-> before implementing. Memory: `skill-cards-hierarchy-not-deletion`.
+> The design converged over v5–v9.2b (2026-08-01 evening session). Current candidate:
+> **v9.2b "four bands"** — `.planning/sketches/skill-cards-v9-2-bands.html`, tip `cc807d93`.
+> This file remains the audit trail: §3 (verified findings with file:line receipts) and §5
+> (early rejections) are still load-bearing; §1's questions are answered, §2/§4/§6 are updated
+> by the new handoff. Memory: `skill-cards-hierarchy-not-deletion`.
 
 > ## ▶ START HERE — DO NOT WRITE CODE YET
 >
