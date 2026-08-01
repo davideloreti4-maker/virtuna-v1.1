@@ -405,6 +405,22 @@ describe("generateAccountRead — the two scrapes race and either can win", () =
     ]);
   });
 
+  it("counts the posts it READ, not the covers it can fit on the strip", async () => {
+    // The rail caps at MAX_EVIDENCE_ITEMS covers. Announcing that cap said "Reading 8 of your
+    // posts" while the card replacing it seconds later reported 30 analyzed — one run making two
+    // different factual claims about the same work.
+    const seen: string[] = [];
+    await generateAccountRead(
+      "creator",
+      "u1",
+      { ...RICH_DEPS(), onEvidence: (e) => seen.push(e.headline) },
+      makeRacingProvider(40, 5), // 12 videos, capped to 8 tiles
+    );
+
+    expect(seen).toContain("Reading 12 of your posts");
+    expect(seen).not.toContain("Reading 8 of your posts");
+  });
+
   it("tags each payload with the row it belongs to, so the rail cannot draw it under the other one", async () => {
     // Two rows are live at once, so "the rail hangs off the active row" would put the post covers
     // on whichever row is first in the plan — which is the profile.

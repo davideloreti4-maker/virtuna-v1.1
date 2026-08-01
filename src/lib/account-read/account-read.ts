@@ -214,10 +214,16 @@ function withStep(evidence: RunEvidence | null, step: string): RunEvidence | nul
 }
 
 function buildAccountPostFrames(videos: VideoData[]): RunEvidence | null {
+  // The count is a claim about the READ, not about the strip. `buildFrameEvidence` passes back the
+  // number of tiles it will actually draw — capped at MAX_EVIDENCE_ITEMS — so using it announced
+  // "Reading 8 of your posts" on a read that had just analyzed 30, contradicting the card that
+  // replaces it seconds later. The strip stays a sample of the history; the sentence reports the
+  // work, which is also what makes the strip legible as a sample rather than the whole set.
+  const scraped = videos.length;
   return buildFrameEvidence(
-    (n) => (n === 1 ? "Reading 1 of your posts" : `Reading ${n} of your posts`),
+    () => (scraped === 1 ? "Reading 1 of your posts" : `Reading ${scraped} of your posts`),
     videos.map((v) => v.coverUrl ?? null),
-    videos.length,
+    scraped,
   );
 }
 
