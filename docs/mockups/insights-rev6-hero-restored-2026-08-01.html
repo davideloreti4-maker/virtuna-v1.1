@@ -144,7 +144,7 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
    fix control at all, so the only thing left at the bottom of those pages was the back arrow.
    The rule is one line and self-describing: show this when no .fix is reachable on screen. It
    carries the SAME button, never a second one — measured, not guessed at a scroll offset (at an
-   812px rail the answer never scrolls out of Overview, so an offset rule fired never). */
+   812px rail the answer never scrolls out of Brain, so an offset rule fired never). */
 .actionbar{position:absolute;left:0;right:0;bottom:0;background:var(--rail);
   border-top:1px solid var(--border);padding:11px 22px;display:flex;align-items:center;gap:10px;
   transform:translateY(100%);transition:transform .2s ease;z-index:8}
@@ -384,14 +384,14 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 
   <h2>Tab</h2>
   <div class="grp">
-    <button data-tab="overview" aria-pressed="true">Overview</button>
+    <button data-tab="brain" aria-pressed="true">Brain</button>
     <button data-tab="audience" aria-pressed="false">Audience</button>
     <button data-tab="engagement" aria-pressed="false">Engagement</button>
   </div>
 
   <h2>Try this first</h2>
   <ol class="steps">
-    <li><b>Press “Trim 0:00–0:03”</b> on Overview. It re-simulates: the answer becomes a
+    <li><b>Press “Trim 0:00–0:03”</b> on Brain. It re-simulates: the answer becomes a
       before → after, the cortex repaints, the tiles move, and Engagement’s curve redraws against
       the old one. <b>Undo</b> puts it back.</li>
     <li><b>Switch to Audience or Engagement.</b> Those pages carry no fix of their own, so the same
@@ -438,7 +438,7 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
     <div id="identSlot"></div>
     <div class="tabbar">
       <div class="seg">
-        <button data-tab="overview" aria-pressed="true">Overview</button>
+        <button data-tab="brain" aria-pressed="true">Brain</button>
         <button data-tab="audience" aria-pressed="false">Audience</button>
         <button data-tab="engagement" aria-pressed="false">Engagement</button>
       </div>
@@ -532,23 +532,23 @@ const ROOM=[
 /* key-metric tiles — label · value · delta vs the creator's own median. `lead` = the metric the
    answer is about; it reads first by position and by a lighter fill, never by colour. */
 const TILES={
-  videoOverview:[
+  videoBrain:[
     {n:"Watched past 0:03", v:"38%",  d:"↓20 pts vs median", lead:1},
     {n:"Avg watch",         v:"9.7s", d:"↓1.5s · of 0:28"},
     {n:"Watched full",      v:"3.1%", d:"↓6.3 pts"},
     {n:"Rewatch",           v:"1.19×",d:"↑0.15 · top fifth"},
   ],
-  videoOverviewDone:[
+  videoBrainDone:[
     {n:"Watched past 0:03", v:"89%",  d:"↑31 pts vs median", lead:1},
     {n:"Avg watch",         v:"16.4s",d:"↑5.2s · of 0:25"},
     {n:"Watched full",      v:"9.8%", d:"↑0.4 pts"},
     {n:"Rewatch",           v:"1.19×",d:"↑0.15 · top fifth"},
   ],
-  textOverview:[
+  textBrain:[
     {n:"Novel to them",v:"63%",  d:"↓14 pts", lead:1},
     {n:"Would finish", v:"55%",  d:"↑3 pts"},
   ],
-  textOverviewDone:[
+  textBrainDone:[
     {n:"Novel to them",v:"78%",  d:"↑1 pt", lead:1},
     {n:"Would finish", v:"64%",  d:"↑12 pts"},
   ],
@@ -622,7 +622,7 @@ const retAt=u=>{const C=live();const f=u*(C.length-1),i=Math.floor(f),k=f-i;
 const mmss=s=>`0:${String(Math.floor(s)).padStart(2,"0")}`;
 
 /* ── state ──────────────────────────────────────────────────────────────── */
-let kind="video", tab="overview", ph=BREAK_S/CLIP, applied=false, method=false, openSeg=null;
+let kind="video", tab="brain", ph=BREAK_S/CLIP, applied=false, method=false, openSeg=null;
 
 /* ── heroes — three figures, one verdict grammar ────────────────────────── */
 /* The districts the terrain already carries — name + the share of that district that stayed. */
@@ -651,7 +651,7 @@ function hero(fig,l,r,vv,vl,read){
     ${read?`<span class="figread">${read}</span>`:''}</div>`;
 }
 
-/* identity: ONCE above the tabs. answer: ONCE, on Overview. */
+/* identity: ONCE above the tabs. answer: ONCE, on Brain (page 1). */
 function identBlock(){
   const d=D[kind];
   return `<div class="ident">
@@ -741,14 +741,14 @@ function retentionCard(){
 }
 
 /* ── tabs ───────────────────────────────────────────────────────────────── */
-function overview(){
+function brainTab(){
   const d=D[kind];
   const v=applied?d.verdictDone:d.verdict;
   if(kind==="text") return hero("cortex","Predicted cortex","simulated",v[0],v[1],
       applied?d.figreadDone:d.figread)
   + answerBlock()
   + `<div class="card">${ch('Key metrics','vs your last 41 hooks')}
-      ${tiles(TILES[applied?'textOverviewDone':'textOverview'])}
+      ${tiles(TILES[applied?'textBrainDone':'textBrain'])}
       ${insight(applied?`Specific beats familiar.`:`The wording is the commodity.`)}
     </div>`
   + `<div class="card" id="reasons">${ch('Why they stopped')}
@@ -764,7 +764,7 @@ function overview(){
       applied?d.figreadDone:d.figread)
   + answerBlock()
   + `<div class="card">${ch('Key metrics','vs your last 41')}
-      ${tiles(TILES[applied?'videoOverviewDone':'videoOverview'])}
+      ${tiles(TILES[applied?'videoBrainDone':'videoBrain'])}
       ${insight(applied?`The room reaches the payoff.`:`Only the hook is broken.`)}
     </div>`
   + surfaceCard()
@@ -811,7 +811,7 @@ function audience(){
   + foot();
 }
 
-/* Traffic sources live on Overview, where TikTok has them */
+/* Traffic sources live on Brain (page 1), where TikTok has them */
 function surfaceCard(){
   return `<div class="card">${ch('Where it would surface')}
       <div class="mix">
@@ -903,7 +903,7 @@ const foot=()=>`<button class="foot" aria-expanded="${method}">
 
 /* ── render ─────────────────────────────────────────────────────────────── */
 /* One rule, measured every scroll and every repaint: if the fix is not reachable on screen and
-   has not been applied, the rail carries it at the foot. On Overview at a tall rail the answer
+   has not been applied, the rail carries it at the foot. On Brain at a tall rail the answer
    never leaves the viewport, so this stays silent there; on Audience and Engagement — which hold
    no fix control at all — it is always there. */
 function syncBar(){
@@ -922,7 +922,7 @@ function actionBar(){
 function paint(){
   pgTxt.textContent=D[kind].pager;
   identSlot.innerHTML=identBlock();
-  content.innerHTML=tab==="overview"?overview():tab==="audience"?audience():engagement();
+  content.innerHTML=tab==="brain"?brainTab():tab==="audience"?audience():engagement();
   abar.innerHTML=actionBar();
   body.scrollTop=0;
   if(tab==="engagement"&&kind==="video"){bindScrub();syncPlayhead();}
