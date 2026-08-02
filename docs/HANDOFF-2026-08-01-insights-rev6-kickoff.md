@@ -1127,6 +1127,73 @@ Audience = hero + 5 cards. Deleted from the codebase: `.actionbar` + `syncBar()`
 Engagement (1 `.rank`, 3 `.rrow`), 5 on Audience, plus all standing probes. Green. Shots
 `rev12-*.png` (8). Same artifact url.
 
+## 21. NEXT SESSION — START HERE (the build exists; review it, then land it)
+
+Read **§20** (what shipped, and the four leaks it found), then §6 (the laws) and §16–§18 (what the
+design IS). §10 · §12 · §13 · §19 are all superseded — §19 was the implementation kickoff and it is
+done. §15's *traps* still apply verbatim.
+
+### Where everything is
+
+| | |
+|---|---|
+| Worktree · branch | `~/virtuna-slot-b` · `task/insights-rework` — **do not switch branches** |
+| PR | **#412**, open. Tip = **`dfed0727`** (the rev-12 implementation), pushed. |
+| ⚠️ Base drift | **63 commits behind `origin/main`** as of 2026-08-02. Rebase before opening the merge — and re-check the count, `main` moves while you work. |
+| The built rail | `/ambient-v2` → `② brain` → the four chips. **No auth.** Port 3002. |
+| Shots of the BUILD | `docs/mockups/reference-2026-08-01/impl-*.png` (8) |
+| Shots of the DESIGN | `docs/mockups/reference-2026-08-01/rev12-*.png` (8) — the reference to diff against |
+| The mockup | `docs/mockups/insights-rev6-hero-restored-2026-08-01.html` — **unchanged**, still the design SSOT |
+| The review link | https://claude.ai/code/artifact/f42c45fb-0d27-4d84-8a65-568e9f1e8db3 — still shows the MOCKUP. Republishing it does not show the build; a session that wants the owner to review the BUILD should send `impl-*.png` or a dev-server walkthrough. |
+
+### The one thing that matters most now
+
+**Five revisions were rejected on the sketch, and the sixth through twelfth were refined on it. There
+is now a REAL one.** The owner has never reviewed the built rail — only stills of a mockup. Get it in
+front of them before touching the design again: what reads differently in a live 440px scroller with
+a spinning cortex is not knowable from a PNG.
+
+Do NOT start by re-editing the mockup. The build is the artefact under review now; the mockup is the
+contract it was measured against.
+
+### The loop for an adjustment (changed — the build is the target)
+
+1. Edit `src/components/audience-lens/v2/` (the pages) or `detail-fixture.ts` (the authored data).
+2. `npx tsc --noEmit` **and** vitest — **vitest does NOT typecheck**, and a green Vercel check is not
+   a build.
+3. Re-shoot + probe live. Recreate the shoot at `scripts/tmp-*.mjs` and `rm` it after (a Write to the
+   scratchpad is BLOCKED by a worktree-path-guard hook). Pattern: raw Playwright,
+   `import pw from '…/playwright/index.js'; const { chromium } = pw;` (CommonJS — the named import
+   FAILS), `deviceScaleFactor:2`, scope tab clicks INSIDE `[data-testid=ambient-detail]` (the dev
+   page's own `② brain` chip collides with the `Brain` tab under strict mode), expand the scroller,
+   `.screenshot({animations:'disabled',caret:'hide'})`. Then walk computed style for
+   `backgroundImage`/`boxShadow`/`backdropFilter` = 0 and assert `/\bstop/i` is absent per page.
+4. Commit atomically (auto-push hook; verify `git rev-parse origin/task/insights-rework`).
+
+### Open, in the order they are worth doing
+
+1. **Owner review of the built rail** — the blocker for everything else.
+2. **Text-sim dead rows** — VISUAL/AUDIO/FACE render flat with one honest note. Whether they should
+   render at all has been open since rev 8 and is still the owner's call.
+3. **The four missing producers**, which is why the LIVE Engagement page is thinner than the authored
+   one: reach/views/likes/follows · the creator's own median post · the last-41 catalogue · the
+   reaction timeline. §5.3's ledger says none exists. The authored fixture carries all four because
+   it is the design's demo clip (tagged `projected`); the adapters OMIT each one.
+   ⚠️ **Do not "fill in" the live page.** That gap IS the honesty spine — an adapter inventing a
+   benchmark band is fabricated proof, and the walkthrough's own honesty gate exists for this.
+4. **`offer/ambient-panel.tsx` and `offer/walkthrough/walkthrough.tsx` have NO consumer.** They
+   typecheck and their fixtures are tested, but nothing mounts them. Either wire them or retire them;
+   right now they are two more surfaces that can silently drift from the rail.
+5. `/dev/cards` renders no gallery content in this worktree — **pre-existing** (verified on the
+   pre-change tree). Do not debug it as a regression from this work.
+
+### Before you merge
+
+**MERGING TO `main` IS DEPLOYING** — production builds ~3s after the merge and there are no preview
+URLs. Verify BEFORE, never after. The rail ships on `/go`, so this is a marketing-page change too.
+
+---
+
 ## 20. Rev 12 — IMPLEMENTED in React (2026-08-02)
 
 §19's kickoff is DONE. The rail on `/ambient-v2` is the reviewed design, not an approximation of it.
