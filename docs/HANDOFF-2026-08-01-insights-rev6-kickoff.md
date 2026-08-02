@@ -835,3 +835,42 @@ rail… add everything which you think is good… as high user value as possible
 
 16 probes PASS (incl. fit/spread order, low≠coral, interview counts, applied-flow intact), law
 walk 0 violations, artifact re-verified offline, republished to the SAME url.
+
+### Rev 9.2 (2026-08-02) — Brain is the instrument again
+
+Owner, after viewing the LIVE brain tab beside the sketch: *"add most of the UI from 'the brain'
+page back into the sketch for the brain. and i want the brain to run of the cortex canvas and
+retention as before"* + the standing rule *"each page should be dedicated and optimized to its
+purpose, each section and page refined to UX and user value / flow."*
+
+**Rev 8 folded the instrument into the drawer so the surface would speak one unit. That was the
+wrong cure** — it left the Brain tab thinner than the shipped one it was replacing. The instrument
+is back on the surface; the unit problem is solved instead by each card's right-meta NAMING its
+scale (`0–100 · vs your baseline`, `z-scored · at the playhead`, `28s · 10 systems`).
+
+**Brain now runs headline → when → what → substrate**, and every block on it is brain material:
+cortex hero (its corner is a live `t = 0:0X`) → the two networks that matter in words (`.nread`,
+the shipped line) → the answer + fix → **The moment** (curve-as-scrubber + moment chips +
+transcript) → **Signal breakdown** (the nine, 3×3, score · delta · grade) → **Network activation**
+(seven σ bars, zero centre line, each with its plain-word read inline) → **Activation per second**
+(10-system heatmap + ramp legend).
+
+- **ONE PLAYHEAD** drives the cortex clock, the hero's figread, the curve, the moment chips and
+  the transcript — and Engagement's video frame is already parked at the same second on arrival
+  (`ph` is global; `paint()` binds the scrubber on Brain and reads it everywhere).
+- **The curve moved Brain-ward from Engagement.** Where attention broke is a cognition question.
+  Engagement keeps the video frame + watch tiles + projected reaction ("What they watched" →
+  "Projected reaction"): each figure still appears exactly once (cortex+curve/Brain, terrain/
+  Audience, post/Engagement).
+- **"See the evidence" scrolls instead of routing** — the evidence is now directly below.
+- **The drawer stopped duplicating and started explaining**: the three scales on the page + what
+  the model cannot claim. Renamed "How to read these numbers" (the shipped label).
+- **Grades stay colourless** (live paints WEAKNESS coral) — an unbenchmarked cutoff must not
+  shout, and Brain's one coral belongs to the loss. Text Brain keeps the whole instrument, with
+  reason bars in the moment's slot and the dead VISUAL/AUDIO/FACE rows explained.
+- Deleted with their last caller: `BEATS`/`beatsCard`/`.beat` (rev 9's stand-in — the real
+  material supersedes it) and `TILES.textBrain*`.
+
+27 probes PASS, law walk 0 violations (Brain carries 2 coral zones — the answer and the curve
+break, which are one claim said once and located once), no JS errors, artifact re-verified
+offline. Page heights 1801/1989/996 (video), 1839/1666/1084 (text).
