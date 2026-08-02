@@ -1,14 +1,20 @@
-# Handoff — Discover rework: BUILT + refined, awaiting owner verification + merge
+# Handoff — Discover rework: SHIPPED, merged, and live in production
 
-**Date:** 2026-08-02 · **Worktree:** `~/virtuna-slot-c` · **Branch:** `task/discover-rework`
-**HEAD:** see `git rev-parse HEAD` (pushed, 0 commits behind `origin/main`) · **NOT MERGED**
+**Date:** 2026-08-02 · **Built in:** `~/virtuna-slot-c` on `task/discover-rework`
+**Merged:** PR **#418** → `main` as **`c7df0b2e`**, deploy READY in 130s, **live on numenmachines.com**
 
-> **Session 2 (2026-08-02, later)** closed §5.1, §5.2, §5.3 and the §3.4 loose end, and did the
-> empty-account pass §5.4 asked for. Jump to **§6** for what changed and what is still open.
+> ✅ **Session 3 (2026-08-02, later still) shipped it.** The owner asked for anything still open in
+> the worktree to be merged, which is the authorisation §3.1 was waiting on. Jump to **§7** for the
+> merge record and the only list that still matters: what is left to do.
 
-> ⚠️ **Merging to `main` IS deploying** — production builds ~3s after the merge, there are no
-> preview URLs, and a green Vercel check is not a build (`ignoreCommand` skips and posts success).
-> The owner merges. Do not merge on their behalf.
+> **Session 2** closed §5.1, §5.2, §5.3 and the §3.4 loose end, and did the empty-account pass
+> §5.4 asked for. **§6** is what it changed.
+
+> ⚠️ **Merging to `main` IS deploying** — production builds within seconds of the merge and there
+> are no preview URLs, so **verify before you merge, never after**. A green Vercel check is not a
+> build. `vercel.json`'s `ignoreCommand` is
+> `[ "$VERCEL_ENV" = "production" ] && exit 1 || exit 0` — production **always** builds (exit 1),
+> every other environment always skips *and posts success*. Even a docs-only merge redeploys prod.
 
 ---
 
@@ -94,9 +100,8 @@ One search field filters all three; `Pull live · 5 credits` appears only for a 
 
 ## 3. Where to continue — ranked
 
-### 3.1 Owner verification, then merge
-Nothing is deployed. The dev server was left on **:3004** this session (a launchd reaper kills idle
-servers after ~10 min; restart with the recipe in §4).
+### 3.1 ~~Owner verification, then merge~~ — ✅ DONE, see §7
+Merged as `c7df0b2e` and verified live. Everything below §3.1 is still open.
 
 ### 3.2 Schedule the crons — this is what makes Outliers a *feed*
 **The corpus is FROZEN**: one bulk insert on 2026-07-14, newest video posted **2026-06-10**, nothing
@@ -374,3 +379,76 @@ covers. Plus everything in §3.2/§3.3/§3.5, untouched.
 **One known polish gap:** closing the detail unmounts it immediately, so Radix's exit animation
 never plays. The open animation does. Left as-is deliberately — fixing it means holding the last
 video in state purely to animate it out.
+
+---
+
+## 7. Session 3 — merged, deployed, verified. And what is actually left.
+
+### 7.1 The merge record
+
+`task/discover-rework` was 8 commits ahead / **29 behind** `origin/main` and had **no PR**. Rebased
+onto `a7ff97f6` — the branch's 37 changed files and main's 70 had **zero overlap**, so all 8 commits
+replayed with no conflicts. PR **#418** → merge **`c7df0b2e`** (parents `a7ff97f6` + `1dc727c6`).
+Deploy `dpl_8sbE4xRoZuRJQPB8eWkQXBgwh35Z` READY in **130s**, aliased to `numenmachines.com`.
+
+**Gates were re-run after the rebase, not inherited from §2/§6.6.** 29 commits of `main` had landed
+underneath, so the old numbers described a tree that no longer existed:
+
+| gate | result |
+|---|---|
+| `tsc --noEmit` | exit **0**, no output |
+| `next build` | exit **0**, compiled in 20.1s |
+| full `vitest run` | **5021 passed, 0 failed**, 42 skipped |
+| discover + feed + billing scope | **141/141**, exit **0** |
+| signed-in @1440px, dev | tabs 230/105/6, bar 144px on all three, 0 broken covers on `/feed` |
+| signed-in on **production**, post-deploy | same counts, 24 cards, `/feed/hooks`→collections, **0 console errors** |
+
+### 7.2 §6.6's vitest finding, diagnosed
+
+§6.6 was right that `vitest run` exits 1 here regardless of this branch, and right not to trust it.
+The **cause** is now known: this worktree carries **vitest 4.1.10**, trunk `~/virtuna-v1.1` carries
+**4.0.18** — each slot ran its own `npm install` at a different time against the same semver range.
+The 3 unhandled rejections in `composer.test.tsx` (`composer.tsx:2012`) reproduce running that file
+**alone**, on files byte-identical to `origin/main`, in a component with no import path to
+`discover/`. §6.6's two `composer-*` timeout failures did **not** recur on a quiet machine, which
+matches its own "intermittent under load" note.
+
+> 🔑 **So the exit code is corrupt in every slot worktree, not just for Discover.** Align the slots'
+> vitest with trunk's before trusting a slot's exit code again. Until then: read the pass/fail
+> counts, and diff any failing file against `origin/main` before believing it.
+
+### 7.3 Two live-data notes
+
+- **Two Watchlist images are 404ing** — expired TikTok signed URLs (`x-expires` decodes to
+  2026-07-12) stored in the DB. Pre-existing rot, not a rendering bug, and both degrade correctly
+  (play placeholder; letter avatar + "Scrape failed — held back until a clean read"). Same class the
+  corpus cover repair fixed before: TikTok oEmbed re-signs the same asset for free.
+- **The `/api/discover` pricing is live in production**, so the Apify leak is closed on the money
+  path, not just on a branch. Ordering verified in the merged source: `isSealedVisitor` → 403 fires
+  **before** `creditGate`; the gate sits **after** the cache check so a warm repeat pull stays free;
+  `billUsage` runs only on delivery.
+
+### 7.4 What is left — the whole list, ranked
+
+Nothing here is blocked; all of it is off `main` now.
+
+1. **Schedule the crons — the only thing that makes Outliers a *feed*.** §3.2. The corpus is still
+   frozen (newest video 2026-06-10); the UI is honest about it, but it is a library. ⚠️ Two traps
+   that make this bigger than it looks: `refresh-corpus` is a **pure stub** returning
+   `{status:"stubbed"}`, and Apify is on rotating FREE accounts with a **$5/mo hard cap** — this
+   spends real money.
+2. **Four Apify routes are still unmetered** — §3.3: `channels/ingest` (unlimited distinct handles),
+   `profile`, `connected-accounts/connect`, `audiences/calibrate`. All invisible to the wiring
+   guard, which scans `app/api/tools` only. Copy `72db51ea`'s shape **including the ordering**.
+3. **Align the slot worktrees' vitest with trunk's** — §7.2. Cheap, and it restores a gate that is
+   currently useless in three worktrees.
+4. **§5.4 polish, still open** — kicker truncation on collection cards (§6.5 found the root cause:
+   `truncate` on an inline `<span>` does nothing, it needs a block wrapper) · no cross-tab search
+   hint ("12 in Collections") · the Watchlist "latest" strip clips its last card · Pull live still
+   navigates away, because its results carry no covers (fix the cover gap first, not the layout).
+5. **§3.5 smaller wins** — Save-to-Library from an outlier card (`saved_items.item_type` already has
+   an unused `"outlier"` value) · `posted_at` backfill (⚠️ single migration via the SQL editor;
+   `supabase db push` is UNSAFE here) · `/start`'s silently-capped outlier rail.
+
+**Do not reopen §5.5** — the three tab names, in-place switching, the ≥100× exclusion, collections
+sorted by views, and `/competitors` keeping the board are all owner-settled.
