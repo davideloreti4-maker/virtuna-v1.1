@@ -111,6 +111,17 @@ export const CREDIT_COSTS = {
    * personal audience on file, thin history, scrape failure — and none of them charge.
    */
   account: 5,
+  /**
+   * A Discover pull — `POST /api/discover`, the hub's on-demand live scrape.
+   *
+   * Ran FREE until 2026-08-02, the same omission shape as `account` above: no gate, no bill,
+   * no key here, and invisible to the wiring guard because the route lives outside
+   * `api/tools`. Its only limiter was an in-memory daily cap that reset on every cold start.
+   * One `scrapeVideos(input, 30)` per cache-miss pull — Apify spend, so it prices at the
+   * scrape tier with `explore_scrape` and `account`. Cache HITS stay free and ungated: a
+   * warm serve costs no Apify, and the gate sits between the cache check and the scrape.
+   */
+  discover: 5,
 } as const;
 
 export type BillableAction = keyof typeof CREDIT_COSTS;

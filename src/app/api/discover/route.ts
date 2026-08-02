@@ -25,6 +25,8 @@ import {
 } from "@/lib/discover/discover-cache";
 import { IngestError } from "@/lib/scraping/types";
 import { csrfGuard } from "@/lib/http/csrf-guard";
+import { billUsage, creditGate } from "@/lib/billing/credit-gate";
+import { isSealedVisitor } from "@/lib/onboarding/verdict-seal";
 
 // Server-side input cap (independent of client). A handle or short niche phrase.
 const MAX_INPUT_LENGTH = 200;
@@ -49,6 +51,15 @@ export async function POST(request: Request): Promise<Response> {
   } = await supabase.auth.getUser();
   if (!user) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // ── (1a) THE WALL — an anonymous /go visitor must never reach the credit gate below:
+  // `creditGate` enforces for anonymous sessions regardless of BILLING_ENFORCE_QUOTA
+  // (`enforced = isAnonymous || isQuotaEnforced()`, quota.ts), and `discover` is not the
+  // DEMO_ACTION, so reaching it would 402 the funnel. Same load-bearing ordering as
+  // /api/tools/react — route-wiring.test.ts pins wall-before-gate for both.
+  if (isSealedVisitor(user)) {
+    return Response.json({ error: "verdict_sealed" }, { status: 403 });
   }
 
   // ── (1b) CSRF guard — Content-Type 415 + cross-origin 403 (WR-01) ─────────
@@ -107,7 +118,13 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ mode, input: normalized, cached: true, tiles: cached });
   }
 
-  // ── (6) Cache miss → scrape (clockworks) → rank → cache → respond ──────────
+  // ── (6) Credit gate — priced admission BEFORE the scrape. Sits AFTER the cache check on
+  // purpose: a warm serve costs no Apify, so repeating today's pull stays free; only the
+  // cache-miss path (real scrape spend) is priced, mirroring explore's cheap/escalate shape.
+  const { refusal, verdict: creditVerdict } = await creditGate(supabase, user, "discover");
+  if (refusal) return refusal;
+
+  // ── (7) Cache miss → scrape (clockworks) → rank → cache → respond ──────────
   try {
     const provider = createScrapingProvider();
     const videos = await provider.scrapeVideos(
@@ -128,6 +145,10 @@ export async function POST(request: Request): Promise<Response> {
 
     setCachedDiscover(normalized, mode, tiles);
     recordUserPull(user.id);
+
+    // Bill ON DELIVERY — after the scrape succeeded and the tiles are in hand. The three
+    // exits above (unsupported input, cap, cache hit) and the catch below charge nothing.
+    await billUsage({ userId: user.id, action: "discover", tier: creditVerdict.tier });
 
     return Response.json({ mode, input: normalized, cached: false, tiles });
   } catch (err) {
