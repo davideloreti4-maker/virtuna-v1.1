@@ -20,46 +20,35 @@
  * is Save (the living AudienceLens is the aspirational P9/GSI upgrade).
  */
 
-import { useState } from 'react';
+import type { ReactNode } from 'react';
 import type { MultiAudienceReadBlock } from '@/lib/tools/blocks';
 import { BAND_COLOR } from './band-block';
 import { VerbatimWall } from './verbatim-wall';
 import { SaveAffordance } from './save-affordance';
-import { CaretToggle } from './caret-toggle';
 import { TrustBadge } from '@/components/audience/trust-badge';
-import { stripWrappingQuotes } from '@/lib/utils';
 
 export interface MultiAudienceReadBlockProps {
   block: MultiAudienceReadBlock;
 }
 
-const VERDICT_STYLE: Record<'stop' | 'scroll', string> = {
-  stop: 'text-micro font-semibold px-2 py-0.5 rounded-full bg-success/10 text-success border border-success/20',
-  scroll: 'text-micro font-semibold px-2 py-0.5 rounded-full bg-error/10 text-error border border-error/20',
-};
-
-const VERDICT_LABEL: Record<'stop' | 'scroll', string> = {
-  stop: 'stops',
-  scroll: 'scrolls',
-};
-
-/** One audience's Read — verdict name + neutral interpret/lever + who-not-for + drill. */
+/** One audience's Read — verdict name + neutral interpret/lever + who-not-for. */
 function AudienceRead({
   audience,
   showBand,
+  trailing,
 }: {
   audience: MultiAudienceReadBlock['props']['audiences'][number];
   /** Show the band WORD (colored) on the verdict row. TRUE only when there is no
    *  CompareVerdictRow above — so the band word appears exactly once (§0.5.6, band color
    *  is a data mark used once). In compare mode the header row is the band word's home. */
   showBand: boolean;
+  /** One right-pinned meta item on the verdict row (the trust tier). The badge used to sit in
+   *  a row of its own above — a near-empty band; it rides the row it qualifies now. */
+  trailing?: ReactNode;
 }) {
-  const { name, band, fraction, interpretation, lever, whoNotFor, personas } = audience;
-  const [expanded, setExpanded] = useState(false);
+  const { name, band, fraction, interpretation, lever, whoNotFor } = audience;
 
   const bandColor = BAND_COLOR[band];
-  const stopCount = personas.filter((p) => p.verdict === 'stop').length;
-  const total = personas.length;
 
   return (
     <div className="flex flex-col gap-2.5">
@@ -78,6 +67,7 @@ function AudienceRead({
         <span className="text-label font-normal text-foreground-muted">
           {showBand ? `· ${fraction}` : fraction}
         </span>
+        {trailing != null && <span className="ml-auto shrink-0 self-center">{trailing}</span>}
       </div>
 
       {/* Interpretation — plain cream prose. The band word is stated once above (row or compare
@@ -99,46 +89,10 @@ function AudienceRead({
         </p>
       )}
 
-      {/* Per-audience reaction drill — collapsible. */}
-      <div className="overflow-hidden rounded-lg border border-white/[0.06]">
-        <button
-          type="button"
-          onClick={() => setExpanded((v) => !v)}
-          className="flex w-full items-center justify-between px-3.5 py-2.5 text-left transition-colors hover:bg-white/[0.02]"
-          aria-expanded={expanded}
-        >
-          <span className="text-body font-medium text-foreground">
-            Audience reactions
-            <span className="ml-2 font-normal text-foreground-muted">
-              {stopCount}/{total} stop
-            </span>
-          </span>
-          <span className="inline-flex items-center gap-1 text-label text-foreground-muted" aria-hidden="true">
-            <CaretToggle open={expanded} size={12} />
-            {expanded ? 'Hide' : 'Show'}
-          </span>
-        </button>
-
-        {expanded && (
-          <ul className="divide-y divide-white/[0.04] border-t border-white/[0.06]" role="list">
-            {personas.map((persona, i) => (
-              <li key={`${persona.archetype}-${i}`} className="flex flex-col gap-1 px-3.5 py-2.5">
-                <div className="flex items-center gap-2">
-                  <span className="text-label font-medium capitalize text-foreground">
-                    {persona.archetype.replace(/_/g, ' ')}
-                  </span>
-                  <span className={VERDICT_STYLE[persona.verdict]} aria-label={VERDICT_LABEL[persona.verdict]}>
-                    {VERDICT_LABEL[persona.verdict]}
-                  </span>
-                </div>
-                <p className="text-label italic leading-snug text-foreground-muted">
-                  &ldquo;{stripWrappingQuotes(persona.quote)}&rdquo;
-                </p>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+      {/* The old "Audience reactions" accordion is GONE (2026-08-02): it drilled into the same
+          per-persona quotes the VerbatimWall below already fans out, so the card carried its one
+          dataset twice — a bordered box AND a quote wall. The wall (grouped, audience-tagged,
+          lead quote pulled) is the stronger presentation, so it is the only one. */}
     </div>
   );
 }
@@ -156,8 +110,11 @@ function AudienceRead({
  */
 function CompareVerdictRow({
   audiences,
+  trailing,
 }: {
   audiences: MultiAudienceReadBlock['props']['audiences'];
+  /** One right-pinned meta item (the trust tier) — rides this row instead of a row of its own. */
+  trailing?: ReactNode;
 }) {
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-white/[0.06] pb-4">
@@ -176,6 +133,7 @@ function CompareVerdictRow({
           <span className="text-label text-foreground-muted">{a.fraction}</span>
         </span>
       ))}
+      {trailing != null && <span className="ml-auto shrink-0">{trailing}</span>}
     </div>
   );
 }
@@ -188,6 +146,9 @@ export function MultiAudienceReadBlockRenderer({ block }: MultiAudienceReadBlock
   const lead = audiences[0];
   const saveTitle = lead ? `${lead.name} — ${lead.band} Read` : 'Read';
 
+  // Every persona who reacted, across audiences — the honest count for the provenance line.
+  const totalReactions = audiences.reduce((n, a) => n + a.personas.length, 0);
+
   return (
     /* The Read is a CARD. It used to be a bare `flex flex-col` — the only skill output in the
        thread with no container — so its sections floated loose on the thread background while
@@ -197,13 +158,9 @@ export function MultiAudienceReadBlockRenderer({ block }: MultiAudienceReadBlock
       aria-label={saveTitle}
     >
       <div className="flex flex-col gap-4 px-4 pb-3 pt-4">
-        {/* The "The Read" kicker eyebrow was removed 2026-07-21 (generic restatement; the run
-            capsule above already names the skill). The tier badge is a grounding signal, not chrome,
-            so it survives — kept top-right on its own row. The model tag still rides the action bar
-            below (the card must not state its provenance twice). */}
-        <div className="flex items-center justify-end">
-          <TrustBadge tier={block.props.tier ?? 'Directional'} />
-        </div>
+        {/* The tier badge is a grounding signal, not chrome — but its own justify-end row was a
+            near-empty band across the top of the card (the pattern the owner keeps flagging).
+            It now rides the first content row: the verdict row (single) or the compare header. */}
 
         {/* Orphaned-pin fallback (P3): the thread's pinned audience no longer exists, so this
             Read scored General instead — said out loud, once, quietly. Never a silent swap. */}
@@ -214,16 +171,29 @@ export function MultiAudienceReadBlockRenderer({ block }: MultiAudienceReadBlock
         )}
 
         {/* 2-audience compare: the side-by-side verdict header (wins-for-X / bombs-for-Y). */}
-        {isCompare && <CompareVerdictRow audiences={audiences} />}
+        {isCompare && (
+          <CompareVerdictRow
+            audiences={audiences}
+            trailing={<TrustBadge tier={block.props.tier ?? 'Directional'} />}
+          />
+        )}
 
-        {/* Per-audience Read — interpretation + Lever + who-not-for + reaction drill. */}
+        {/* Per-audience Read — interpretation + Lever + who-not-for. */}
         <div className="flex flex-col gap-5">
           {audiences.map((audience, i) => (
             <div
               key={`${audience.name}-${i}`}
               className={i > 0 ? 'border-t border-white/[0.06] pt-5' : undefined}
             >
-              <AudienceRead audience={audience} showBand={!isCompare} />
+              <AudienceRead
+                audience={audience}
+                showBand={!isCompare}
+                trailing={
+                  !isCompare && i === 0 ? (
+                    <TrustBadge tier={block.props.tier ?? 'Directional'} />
+                  ) : undefined
+                }
+              />
             </div>
           ))}
         </div>
@@ -232,12 +202,13 @@ export function MultiAudienceReadBlockRenderer({ block }: MultiAudienceReadBlock
         <VerbatimWall audiences={audiences} />
       </div>
 
-      {/* ACTIONS — the same bar every card ends on: provenance quiet on the left, Save as the
-          icon affordance on the right. The static Read's real action IS Save (P9 boundary), so
-          it holds the primary slot's position rather than sitting in a row of its own.
-          Tier falls back to "Directional" — the honest default, NEVER silently "Validated". */}
-      <div className="flex items-center gap-3.5 border-t border-white/[0.06] px-4 py-3">
-        <span className="text-caption text-foreground-muted/70">· SIM-1 Flash</span>
+      {/* ACTIONS — the same bar every card ends on: provenance quiet on the left (plain words,
+          not the model's internal name — the same jargon the Make faces shed), Save as the icon
+          affordance on the right. The static Read's real action IS Save (P9 boundary). */}
+      <div className="flex items-center gap-3.5 border-t border-white/[0.06] px-4 py-2.5">
+        <span className="text-caption text-foreground-muted/70">
+          Simulated{totalReactions > 0 ? ` · ${totalReactions} reactions` : ' read'}
+        </span>
         <SaveAffordance
           className="ml-auto"
           item_type="read"
