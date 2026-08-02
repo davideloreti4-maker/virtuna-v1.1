@@ -22,9 +22,15 @@ import { ThreadIdContext } from "@/lib/save-provenance-context";
 import type { BlockOrigin } from "@/components/app/home/rehydrate-thread";
 
 const mutate = vi.fn();
+const removeMutate = vi.fn();
 
+// SaveAffordance now also reads saved state from the store (it used to derive it from this
+// mutation's own isSuccess flag), so the mock has to cover the whole surface it consumes.
+// `useSavedItemByRef` returning no item is the "not saved yet" case these tests are about.
 vi.mock("@/hooks/queries/use-saved-items", () => ({
   useSaveItem: () => ({ mutate, isPending: false, isSuccess: false }),
+  useDeleteSavedItem: () => ({ mutate: removeMutate, isPending: false }),
+  useSavedItemByRef: () => ({ item: undefined, ready: true }),
 }));
 
 /** A hook card — one of the eleven renderers that mounts <SaveAffordance>. */

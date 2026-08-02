@@ -1,24 +1,37 @@
 "use client";
 
 /**
- * SaveAffordance — reusable "Save → Saved ✓" button for thread output cards
- * (Plan 10-04 Task 2, SAVE-02). The Act→State affordance: any typed thread
- * output can be saved to the flat Saved shelf.
+ * SaveAffordance — the "Save ⇄ Saved" toggle on thread output cards (SAVE-02).
  *
- * Interaction contract (10-UI-SPEC §Interaction Contracts + §Color):
- *  - Default: "Save" + bookmark icon (cream-secondary chrome).
- *  - On success: flips to "Saved ✓" with a CREAM-SECONDARY check — NEVER coral
- *    (mirrors STATE 05-04 "checkmark uses cream-secondary, never coral").
- *  - POSTs { item_type, ref_id?, thread_id?, title?, snapshot } via useSaveItem.
- *    `snapshot` = the block's own props so the shelf renders the SAME typed
- *    renderer without a re-fetch.
+ * ⚠️ REWRITTEN 2026-08-02 (lane/library-rework). It shipped WRITE-ONLY: saved state came from
+ * `save.isSuccess`, which is per-mount mutation state. Consequences, all live:
+ *   - a card saved last week rendered "Save" again on every fresh mount;
+ *   - clicking it wrote a SECOND row, because nothing deduplicated;
+ *   - there was no way to un-save from the card you saved it on.
  *
- * Mount points: hook/idea/script/remix/outlier output cards (and — added in
- * Plan 05 — the account-read card).
+ * State now comes from the saved-items store, keyed on the item's IDENTITY
+ * (item_type, ref_id) — `${messageId}:${index}`, stable across reloads because message bodies are
+ * immutable. That is the same key the partial unique index enforces in Postgres, so the client
+ * and the database agree on what "already saved" means.
+ *
+ * A block with no identity (a live run has no message row yet; /dev/cards has no thread at all)
+ * cannot be looked up, so it falls back to the old per-mount flag and does NOT offer un-save —
+ * it has no row id to remove. Honest degradation rather than a guessed identity.
+ *
+ * COLOUR — this deliberately contradicts an older spec. Plan 10's UI-SPEC said the saved state
+ * uses a cream-secondary check, "never coral". That rule was written against the RETIRED Raycast
+ * coral (#FF7F50). Sketch rev 4 (owner-signed-off 2026-08-02) and rev 5 assign the current accent
+ * #FF6363 to exactly three places — the checked box, the in-thread bookmark, and the save
+ * confirmation — because accent means liveness and interactive state. A filled accent bookmark
+ * here IS that rule, not a violation of it. Do not "restore" the cream check.
  */
 
-import { BookmarkSimple, Check } from "@phosphor-icons/react";
-import { useSaveItem } from "@/hooks/queries/use-saved-items";
+import { BookmarkSimple } from "@phosphor-icons/react";
+import {
+  useSaveItem,
+  useDeleteSavedItem,
+  useSavedItemByRef,
+} from "@/hooks/queries/use-saved-items";
 import { useSaveProvenance } from "@/lib/save-provenance-context";
 import type { SavedItemInput, SavedItemType } from "@/lib/shelf/shelf-repo";
 import { cn } from "@/lib/utils";
@@ -52,16 +65,34 @@ export function SaveAffordance({
   iconOnly = false,
 }: SaveAffordanceProps) {
   const save = useSaveItem();
-  const saved = save.isSuccess;
+  const remove = useDeleteSavedItem();
   // Provenance the renderers cannot pass — they are all invoked as `<Component block={block} />`.
   // An explicit prop always wins; context only fills what the caller left unset.
   const provenance = useSaveProvenance();
 
-  const handleSave = () => {
-    if (saved || save.isPending) return;
+  const effectiveRef = ref_id ?? provenance.refId;
+  const { item: savedRow } = useSavedItemByRef(item_type, effectiveRef);
+
+  // Identity-less blocks keep the old per-mount behaviour — there is nothing to match them to.
+  const savedThisMount = effectiveRef === null && save.isSuccess;
+  const saved = savedRow !== undefined || savedThisMount;
+  // Only a row we can name can be un-saved.
+  const canUnsave = savedRow !== undefined;
+  const busy = save.isPending || remove.isPending;
+
+  const handleClick = () => {
+    if (busy) return;
+
+    if (savedRow) {
+      remove.mutate(savedRow.id);
+      return;
+    }
+    // Saved this mount but unidentifiable: refuse rather than write a duplicate row.
+    if (savedThisMount) return;
+
     const input: SavedItemInput = {
       item_type,
-      ref_id: ref_id ?? provenance.refId,
+      ref_id: effectiveRef,
       thread_id: thread_id ?? provenance.threadId,
       title: title ?? null,
       snapshot,
@@ -69,34 +100,40 @@ export function SaveAffordance({
     save.mutate(input);
   };
 
+  const label = saved
+    ? canUnsave
+      ? "Remove from your Library"
+      : "Saved to shelf"
+    : "Save to shelf";
+
   return (
     <button
       type="button"
-      onClick={handleSave}
-      disabled={saved || save.isPending}
+      onClick={handleClick}
+      disabled={busy || (saved && !canUnsave)}
+      aria-pressed={saved}
       className={cn(
         "inline-flex items-center gap-1.5 text-sm font-medium transition-colors",
         "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring)]",
-        // Cream chrome — NEVER coral, in either state (UI-SPEC §Color).
-        "text-foreground-secondary hover:text-foreground",
-        (saved || save.isPending) && "cursor-default",
+        saved
+          ? "text-accent hover:text-accent/80"
+          : "text-foreground-secondary hover:text-foreground",
+        busy && "cursor-default",
+        saved && !canUnsave && "cursor-default",
         className,
       )}
-      aria-label={saved ? "Saved to shelf" : "Save to shelf"}
-      title={saved ? "Saved to your shelf" : "Save this to your shelf"}
+      aria-label={label}
+      title={
+        saved
+          ? canUnsave
+            ? "Saved — click to remove from your Library"
+            : "Saved to your Library"
+          : "Save this to your Library"
+      }
     >
-      {saved ? (
-        <>
-          {/* Cream-secondary check — never coral (STATE 05-04). */}
-          <Check size={16} weight="bold" className="text-foreground-secondary" />
-          {!iconOnly && "Saved"}
-        </>
-      ) : (
-        <>
-          <BookmarkSimple size={16} weight="regular" />
-          {!iconOnly && (save.isPending ? "Saving…" : "Save")}
-        </>
-      )}
+      {/* One icon in two weights, so the glyph never jumps between states. */}
+      <BookmarkSimple size={16} weight={saved ? "fill" : "regular"} />
+      {!iconOnly && (busy ? (save.isPending ? "Saving…" : "Removing…") : saved ? "Saved" : "Save")}
     </button>
   );
 }

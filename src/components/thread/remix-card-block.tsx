@@ -270,8 +270,11 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
           Write hooks for this →
         </CardPrimaryAction>
 
-        {/* A remix output is an adapted hook; save it as item_type "hook". */}
-        <SaveAffordance className="ml-auto" item_type="hook" title={adaptedHook} snapshot={block.props} />
+        {/* A remix IS an adapted hook, but it is not a hook: it carries the decode→adapt matrix
+            and its forward step is "write hooks for this", not "write a script". Saving it as
+            item_type "hook" (which it did until 2026-08-02, for want of a remix type) made the
+            shelf label it "Hook" and offer it the hook action. `remix` is now a real type. */}
+        <SaveAffordance className="ml-auto" item_type="remix" title={adaptedHook} snapshot={block.props} />
       </CardActionBar>
     </div>
   );
