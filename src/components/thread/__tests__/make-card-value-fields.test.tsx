@@ -147,12 +147,15 @@ describe('the audience band states the aim it can prove, never a reaction it did
       <HookCardRenderer block={makeHook({ provenance: 'projected', target: { ...TARGET } })} />,
     );
     const text = container.textContent ?? '';
+    // "Made for" is the band's sanctioned lead-in (locked wording, handoff §7.6 — never
+    // "Written for"): it states authorship intent, which the structural target assignment
+    // actually proves. What stays banned is the retired loose-caption framing and any claim
+    // about how that persona reacted.
+    expect(text).toContain('Made for');
     expect(text).toContain('Time Poor Creator');
     expect(text).toContain('34% of your audience');
     expect(text).toContain('Simulate with your audience');
-    // The retired framing, and any claim about how that persona reacted.
     expect(text).not.toContain('Written for');
-    expect(text).not.toContain('Made for');
     expect(text).not.toMatch(/stopped|scrolled past/);
   });
 
@@ -181,8 +184,8 @@ describe('the audience band states the aim it can prove, never a reaction it did
       <RemixCardRenderer block={makeRemix({ provenance: 'projected' })} />,
     );
     const text = container.textContent ?? '';
+    expect(text).toContain('Made for'); // the band's lead-in (§7.6), not a loose face caption
     expect(text).toContain('Beginner fitness creators');
-    expect(text).not.toContain('Made for'); // the loose caption is gone from the face
     expect(text).not.toContain('% of your audience'); // free text carries no share
   });
 });

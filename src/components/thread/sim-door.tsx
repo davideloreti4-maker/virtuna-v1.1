@@ -133,7 +133,7 @@ export function SimDoor({
    */
   const aim = personaName ? (
     <span className="min-w-0 text-body leading-snug text-foreground-muted">
-      <span className="font-medium text-foreground-secondary">{personaName}</span>
+      Made for <span className="font-medium text-foreground-secondary">{personaName}</span>
       {sharePct != null && (
         <>
           {' · '}
@@ -144,7 +144,7 @@ export function SimDoor({
     </span>
   ) : aimText ? (
     <span className="min-w-0 line-clamp-2 text-body leading-snug text-foreground-muted">
-      For <span className="text-foreground-secondary">{aimText}</span>
+      Made for <span className="text-foreground-secondary">{aimText}</span>
     </span>
   ) : null;
 
