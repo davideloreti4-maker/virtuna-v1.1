@@ -110,23 +110,15 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
           "they all should have their value, atm they kinda look the same"). No Copy affordance —
           an idea is a brief you develop, not a line you lift (that's the Hook card). */}
       <div className="flex flex-col gap-3 px-4 pb-3 pt-4">
-        {/* Title (hero) + the functional "your take" signal (a perspective only you can supply). */}
-        <div className="flex items-start justify-between gap-3">
-          <h3 className="font-serif text-heading font-medium leading-[1.3] tracking-[-0.005em] text-foreground">{title}</h3>
-          {needsTake && (
-            <span
-              className="mt-0.5 shrink-0 rounded-full border px-2 py-0.5 text-caption uppercase tracking-[0.05em]"
-              style={{ color: 'var(--color-warning)', borderColor: 'rgba(224,189,114,0.25)' }}
-              title="This idea leans on a perspective only you can supply"
-            >
-              your take
-            </span>
-          )}
-        </div>
+        {/* Title — the hero, alone on its row like the hook card's hero line. The old amber
+            "YOUR TAKE" pill competed with the title in uppercase chrome; the your-take signal
+            moved onto the Take cell below, where the take it qualifies actually lives. */}
+        <h3 className="font-serif text-heading font-medium leading-[1.3] tracking-[-0.005em] text-foreground">{title}</h3>
 
-        {/* Angle — the concept's premise + the muted "fits because" clause (whyItFits folded in). */}
+        {/* Angle — the concept's premise + the muted "fits because" clause (whyItFits folded in).
+            Joined by the system's `·`, never an em dash (locked wording, handoff §7.6). */}
         <p className="text-body leading-relaxed text-foreground-secondary">
-          {angle} <span className="text-foreground-muted">— {whyItFits}</span>
+          {angle} <span className="text-foreground-muted">· {whyItFits}</span>
         </p>
 
         {/* Why it lands — the mechanism, promoted from expand to a labeled payload on the face. */}
@@ -149,7 +141,19 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
               key={cell.label}
               className={`min-w-0 flex-1 px-3 py-2 ${i > 0 ? 'border-l border-white/[0.06]' : ''}`}
             >
-              <p className={SECTION_LABEL}>{cell.label}</p>
+              <p className={`flex items-center gap-1.5 ${SECTION_LABEL}`}>
+                {cell.label}
+                {/* The your-take signal, relocated from the old head pill: a quiet amber dot on
+                    the one cell that leans on a perspective only the creator can supply. */}
+                {cell.label === 'Take' && needsTake && (
+                  <span
+                    className="h-[5px] w-[5px] shrink-0 rounded-full"
+                    style={{ backgroundColor: 'var(--color-warning)' }}
+                    title="This idea leans on a perspective only you can supply"
+                    aria-label="Needs your take"
+                  />
+                )}
+              </p>
               <p className="mt-0.5 line-clamp-2 text-body leading-snug text-foreground-secondary">{cell.value}</p>
             </div>
           ))}
