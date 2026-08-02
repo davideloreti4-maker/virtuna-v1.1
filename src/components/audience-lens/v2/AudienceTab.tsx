@@ -1,420 +1,369 @@
 "use client";
 
 /**
- * AudienceTab — Ambient Audience v2, Detail tab ② "The audience" (out-AS Artificial Societies).
+ * AudienceTab — Ambient Audience v2, page ③ "Audience": who was in the room.
  *
- * The *who / how many* role, editorial-minimal: the map's dot vocabulary is the ONLY viz language on
- * the tab. The society map (`AudienceTerrain`) is the hero; the district ledger reuses the SAME dots
- * as node-bars (units = people), so map + ledger are one system — not two unrelated bar treatments.
- * Everything redundant is stripped: no section kickers where the content self-reads, no role words,
- * no caption restating the ledger, no per-reason bars. The ranked numbers + coral + whitespace carry
- * it. The top objection still THREADS to the brain moment (the human "why" = the mechanical "why").
+ *   the terrain — the society, districts self-reading their own rates (the 270px hero)
+ *   → Who watches — and how long: retention split by traffic pool. No platform reports this, and it
+ *     is the product's actual claim — TikTok's screens are all post-hoc on a post you cannot change
+ *   → How they decided: the dot-matrix count rows, and every row SPEAKS when you tap it
+ *   → Who this is for: each pool indexed against the room average, diverging from a zero line
+ *   → Who spreads it: saw → reshared → their networks, then who multiplies it
+ *   → Where & when: the surface mix and the posting window, one card since rev 11
  *
- * Deterministic layout lives in `AudienceTerrain` (seed 42, stable across runs & SSR).
+ * ONE TAXONOMY runs all five: relationship to the creator — Followers · Returning · New viewers ·
+ * Outside niche, TikTok's own analytics vocabulary. The archetype namespace (builders / learners /
+ * skeptics / drive-by) is owner-REJECTED and must not be re-proposed; a caste is not a person. The
+ * voices carry human descriptors instead ("small creator"), and every echo count fits inside the
+ * row it belongs to.
+ *
+ * Rev 11 deleted the page's prose, rev 12 its two segmented composition strips: the percentages
+ * already live in the rows beneath them. Hero + five cards of pure data.
  */
 
-import { useMemo, useState } from "react";
-import { TONE, Kick, HowToRead, type CodedReason, type SegmentStop, type TerrainCluster, type TriState } from "./AmbientDetail";
+import { useState } from "react";
+import { TONE, type SegmentStop } from "./AmbientDetail";
 import { TerrainMap } from "./AudienceTerrain";
-import { IndexBars, Amplification, ActionIntent, Swing, RoomStrip } from "./AudienceDepth";
-import type { DecisionStatesData, DemandCurveData, DomainTemplate, PopulationFrameData, PopulationMain } from "./domain-template";
+import { BarRow, Card, CardHead, LegendRows, MethodFoot, SURFACE, Voice, curvePath } from "./rail-kit";
+import type { AmplificationData, AudienceFitData, DecisionStatesData, DemandCurveData, DomainTemplate, PopulationFrameData, PopulationMain } from "./domain-template";
 
-// ── the shared dot vocabulary — a node-bar (units = people, lit share = the rate) ─────
+// ── who watches — and how long ───────────────────────────────────────────────
 
-/** A node-bar: `dots` units spread across the row, the leading `frac` lit. The SAME cream/coral dots
- *  as the society map, so the ledger and the map read as one system (not a generic progress bar). */
-function NodeBar({ frac, loss = false, dots = 16 }: { frac: number; loss?: boolean; dots?: number }) {
-  const on = Math.round(Math.min(1, Math.max(0, frac)) * dots);
-  const onColor = loss ? TONE.coral : TONE.cream;
+const SPARK_W = 150;
+const SPARK_H = 28;
+
+/** Per-pool retention: the label with its share of the room, its own curve, and the second it drops.
+ *  The coral is spent HERE, on the pool that leaves first — it is the page's one loss. */
+function PoolRows({ rows }: { rows: NonNullable<PopulationFrameData["pools"]>["rows"] }) {
   return (
-    <span className="flex flex-1 items-center justify-between" aria-hidden>
-      {Array.from({ length: dots }, (_, i) => (
-        <span
-          key={i}
-          className="block rounded-full"
-          style={{
-            width: 5,
-            height: 5,
-            background: i < on ? onColor : "rgba(236,231,222,.14)",
-            opacity: i < on ? (loss ? 0.92 : 0.95) : 1,
-          }}
-        />
+    <div className="mt-1">
+      {rows.map((p) => (
+        <div key={p.label} className="flex items-center gap-[11px] py-2">
+          <span className="w-[88px] flex-none">
+            <span className="block text-[13px]" style={{ color: TONE.dim }}>
+              {p.label}
+            </span>
+            <span className="mt-0.5 block text-[11px]" style={{ color: TONE.faint }}>
+              {p.share}
+            </span>
+          </span>
+          {p.curve?.length ? (
+            <svg viewBox={`0 0 ${SPARK_W} ${SPARK_H}`} preserveAspectRatio="none" className="h-7 flex-1">
+              <path d={`${curvePath(p.curve, SPARK_W, SPARK_H, 2)} L${SPARK_W - 2},${SPARK_H - 2} L2,${SPARK_H - 2} Z`} fill="rgba(236,231,222,.05)" />
+              <path d={curvePath(p.curve, SPARK_W, SPARK_H, 2)} fill="none" stroke={p.loss ? TONE.coral : "rgba(236,231,222,.62)"} strokeWidth={1.4} />
+            </svg>
+          ) : (
+            <span className="flex-1" />
+          )}
+          {p.dropAt ? (
+            <span className="w-[34px] flex-none text-right text-[13px] font-medium tabular-nums" style={{ color: p.loss ? TONE.coral : TONE.faint }}>
+              {p.dropAt}
+            </span>
+          ) : null}
+        </div>
       ))}
-    </span>
-  );
-}
-
-// ── main figure slot (◇ swap — the distribution the headline summarizes) ──────
-
-/** The Population's main figure. Creator = the stop/skim/scroll tri-state; pricing = the demand
- *  curve. A new domain adds a `kind` (overlay · answer-distribution) here without touching terrain/
- *  segments/voices. */
-function PopulationMainSlot({ main }: { main: PopulationMain }) {
-  switch (main.kind) {
-    case "tri-state":
-      return <TriStateOutcome tri={main.data} percentileLine={main.percentileLine} />;
-    case "demand-curve":
-      return <DemandCurve data={main.data} />;
-  }
-}
-
-/** Demand curve — would-pay share falls as price rises; a cream dashed marker flags the revenue-
- *  optimal price (cream = the good default; coral stays reserved for the loss, per the room law). */
-function DemandCurve({ data }: { data: DemandCurveData }) {
-  const W = 380;
-  const H = 66;
-  const PAD = 5;
-  const { points, optimalAt, optimalLabel, loLabel, hiLabel, caption, kicker } = data;
-  const n = points.length;
-  const px = (i: number) => PAD + (i / (n - 1)) * (W - 2 * PAD);
-  const py = (v: number) => H - PAD - (v / 100) * (H - 2 * PAD);
-  const linePath = "M" + points.map((v, i) => `${px(i).toFixed(1)},${py(v).toFixed(1)}`).join(" L");
-  const ox = PAD + optimalAt * (W - 2 * PAD);
-  return (
-    <div className="mt-9">
-      <Kick>{kicker}</Kick>
-      <div className="mt-3.5">
-        <svg viewBox={`0 0 ${W} ${H}`} className="block h-auto w-full">
-          <path d={linePath} fill="none" stroke="rgba(236,231,222,.6)" strokeWidth={1.5} />
-          <line x1={ox} y1={0} x2={ox} y2={H} stroke="rgba(236,231,222,.55)" strokeWidth={1} strokeDasharray="3 3" />
-        </svg>
-      </div>
-      <div className="mt-1.5 flex items-baseline justify-between text-[12px]">
-        <span className="font-mono" style={{ color: TONE.dim }}>
-          {optimalLabel}
-        </span>
-        <span style={{ color: TONE.faint }}>{caption}</span>
-      </div>
-      <div className="mt-1 flex justify-between font-mono text-[10px]" style={{ color: TONE.faint }}>
-        <span>{loLabel}</span>
-        <span>{hiLabel}</span>
-      </div>
     </div>
   );
 }
 
-/** The stop / skim / scroll split. Editorial-minimal: a quiet percentile line + the three figures in
- *  light type; coral on the loss. No loud kicker, no column rules — the numbers carry it. */
-function TriStateOutcome({ tri, percentileLine }: { tri: TriState; percentileLine: string }) {
-  const cols = [
-    { n: tri.stopped, t: "stopped", loss: false },
-    { n: tri.skimmed, t: "skimmed", loss: false },
-    { n: tri.scrolled, t: "scrolled past", loss: true },
-  ];
-  return (
-    <div className="mt-9">
-      <div className="text-[11px]" style={{ color: TONE.faint }}>
-        {percentileLine}
-      </div>
-      {/* three framed cells — the split reads as three distinct outcomes, coral on the loss */}
-      <div className="mt-3 grid grid-cols-3 gap-2.5">
-        {cols.map((c) => (
-          <div
-            key={c.t}
-            className="rounded-[10px] px-3 py-3.5"
-            style={{
-              border: `1px solid ${c.loss ? "rgba(255,99,99,.22)" : TONE.border}`,
-              background: c.loss ? "rgba(255,99,99,.04)" : "rgba(255,255,255,.02)",
-            }}
-          >
-            <div className="text-[24px] font-light tabular-nums" style={{ color: c.loss ? TONE.coral : TONE.cream }}>
-              {c.n}%
-            </div>
-            <div className="mt-1 text-[12px]" style={{ color: c.loss ? "rgba(255,99,99,.7)" : TONE.faint }}>
-              {c.t}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+// ── how they decided ─────────────────────────────────────────────────────────
 
-// ── the districts · ranked node-bar ledger (the read's home) ──────────────────
+const DOTS = 18;
 
-/** DistrictLedger — the ranked reading of the society (believers → ceiling). Editorial-minimal: no
- *  kicker, no role words, no caption; each row is name · node-bar · rate, coral on the ceiling. The
- *  believers → ceiling story is carried by the order + the coral, not by words. Hovering a row
- *  spotlights its district on the map (`onHover` → `highlight`). */
-function DistrictLedger({
-  clusters,
-  lossIndex,
-  highlight,
-  onHover,
+/** The dot-matrix count rows — the shipped, product-native component, in plain behaviour: Watched ·
+ *  Almost stayed · Wrong audience · Scrolled past. The verb "stop" is BANNED surface-wide: the live
+ *  rail uses "would stop" as the GOOD outcome (stopped scrolling) while TikTok and every creator
+ *  read it as the loss — one verb, two polarities, so it is gone.
+ *
+ *  Each row is a BUTTON. Talking to a simulated viewer is the most differentiated thing in the
+ *  product and a flat count row never offered it. */
+function DecisionStates({
+  data,
+  onInterview,
 }: {
-  clusters: TerrainCluster[];
-  lossIndex: number;
-  highlight: number | null;
-  onHover: (i: number | null) => void;
+  data: DecisionStatesData;
+  onInterview?: (who: string) => void;
 }) {
-  const ranked = useMemo(
-    () => clusters.map((c, i) => ({ c, i })).sort((a, b) => b.c.lit - a.c.lit),
-    [clusters],
-  );
-  return (
-    <div className="mt-5">
-      {ranked.map(({ c, i }) => {
-        const loss = i === lossIndex;
-        const pct = Math.round(c.lit * 100);
-        const on = highlight === i;
-        return (
-          <div
-            key={c.name}
-            onMouseEnter={() => onHover(i)}
-            onMouseLeave={() => onHover(null)}
-            className="flex items-center gap-3.5 rounded-[8px] px-2 py-[10px]"
-            style={{ background: on ? "rgba(255,255,255,.03)" : "transparent", transition: "background .2s" }}
-          >
-            <span className="w-[74px] flex-none text-[14px]" style={{ color: loss ? TONE.coral : TONE.cream }}>
-              {c.name}
-            </span>
-            <NodeBar frac={c.lit} loss={loss} />
-            <span
-              className="w-[38px] flex-none text-right text-[13px] font-medium tabular-nums"
-              style={{ color: loss ? TONE.coral : TONE.cream }}
-            >
-              {pct}%
-            </span>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-// ── the room · by decision — the conversion funnel (replaces the archetype ledger) ──
-
-/** DecisionStates — the whole room read by what each viewer DID with the content on the feed (stopped
- *  → almost → not for them → scrolled past), each a REAL count that partitions the society. The SAME
- *  node-bar dot vocabulary as the map (units = people, the lit share = this behaviour's slice of the
- *  room), so map + read are one system. Clean and simple: name · dots · count; coral marks the
- *  definitive loss (scrolled past). Content + human-behaviour framing, not a sales funnel. */
-function DecisionStates({ data }: { data: DecisionStatesData }) {
-  const { states, total } = data;
+  const [open, setOpen] = useState<string | null>(null);
   const fmtN = (n: number) => n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   return (
-    <div className="mt-6">
-      <Kick tag={`${fmtN(total)} simulated`}>the room · what they did</Kick>
-      <div className="mt-3">
-        {states.map((s) => {
-          const loss = !!s.loss;
+    <Card>
+      <CardHead title="How they decided" meta={`${fmtN(data.total)} simulated`} />
+      <div className="mt-0.5">
+        {data.states.map((s) => {
+          const lit = data.total ? Math.round((s.count / data.total) * DOTS) : 0;
+          const on = open === s.key;
           return (
-            <div key={s.key} className="flex items-center gap-3.5 py-[10px]">
-              <span className="w-[104px] flex-none text-[14px]" style={{ color: loss ? TONE.coral : TONE.cream }}>
-                {s.label}
-              </span>
-              <NodeBar frac={total ? s.count / total : 0} loss={loss} />
-              <span
-                className="w-[46px] flex-none text-right text-[13px] font-medium tabular-nums"
-                style={{ color: loss ? TONE.coral : TONE.cream }}
+            <div key={s.key}>
+              <button
+                type="button"
+                aria-expanded={on}
+                onClick={() => setOpen(on ? null : s.key)}
+                className="flex w-full items-center gap-3 rounded-lg py-2.5 text-left transition-colors"
+                onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(236,231,222,.03)")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
               >
-                {fmtN(s.count)}
-              </span>
+                <span className="w-[112px] flex-none text-[13px]" style={{ color: on ? TONE.cream : TONE.dim }}>
+                  {s.label}
+                </span>
+                <span className="flex flex-1 gap-[5px]">
+                  {Array.from({ length: DOTS }, (_, i) => (
+                    <span
+                      key={i}
+                      className="h-[5px] w-[5px] rounded-full"
+                      style={{ background: i < lit ? "rgba(236,231,222,.78)" : "rgba(236,231,222,.13)" }}
+                    />
+                  ))}
+                </span>
+                {/* No coral on the count. The page's one coral zone is spent on the terrain and the
+                    pool that leaves first; a red number here made the loss read twice and flattened
+                    the hierarchy. Loss reads by position — it is the last row. */}
+                <span className="w-9 flex-none text-right text-[14px] font-medium tabular-nums" style={{ color: TONE.cream }}>
+                  {fmtN(s.count)}
+                </span>
+                <span
+                  className="w-[9px] flex-none text-[11px]"
+                  style={{ color: TONE.faint, transform: on ? "rotate(90deg)" : undefined, transition: "transform .15s" }}
+                >
+                  ›
+                </span>
+              </button>
+              {on && s.voice ? (
+                <div className="pb-2.5 pt-0.5">
+                  <Voice voice={s.voice} onInterview={onInterview} />
+                </div>
+              ) : null}
             </div>
           );
         })}
       </div>
-    </div>
+    </Card>
   );
 }
 
-// ── willingness-to-pay segments (pricing only) — same node-bar vocabulary ─────
+// ── the targeting + reach reads ──────────────────────────────────────────────
 
-function Segments({ title, rows }: { title: string; rows: SegmentStop[] }) {
+/** Who this is for. Diverging with a zero line, because an over/under index without one is a lie
+ *  about direction: −68% simply draws longer than +5%. Sub-baseline is LOW (faint), never coral —
+ *  the page's coral is already spent on the pool that leaves. */
+function FitCard({ data }: { data: AudienceFitData }) {
+  const max = Math.max(1, ...data.rows.map((r) => Math.abs(r.index)));
   return (
-    <div className="mt-9">
-      <Kick>{title}</Kick>
-      <div className="mt-2">
-        {rows.map((s) => (
-          <div key={s.label} className="flex items-center gap-3.5 py-[10px]">
-            <span className="w-[104px] flex-none text-[14px]" style={{ color: s.loss ? TONE.coral : TONE.dim }}>
-              {s.label}
-            </span>
-            <NodeBar frac={s.pct / 100} loss={s.loss} />
-            <span className="w-[38px] flex-none text-right text-[13px] font-medium tabular-nums" style={{ color: s.loss ? TONE.coral : TONE.cream }}>
-              {s.pct}%
-            </span>
-          </div>
+    <Card>
+      <CardHead title="Who this is for" meta={data.baseline} />
+      <div className="mt-1">
+        {data.rows.map((r, i) => (
+          <BarRow
+            key={r.label}
+            label={r.label}
+            value={`${r.index > 0 ? "+" : ""}${r.index}%`}
+            frac={Math.abs(r.index) / max}
+            negative={r.index < 0}
+            diverging
+            lead={i === 0 && r.index > 0}
+            low={r.index < 0}
+          />
         ))}
       </div>
-    </div>
+    </Card>
   );
 }
 
-// ── the receipts · coded reasons, leaking above a hairline, holding below (● shared) ──
-
-/** One coded reason: label + weight (×count, coral when it's an objection), the verbatim serif quote,
- *  and a condensed meta line — the brain thread (loss reasons only) + the exemplar voice. */
-function ReasonRow({
-  r,
-  last,
-  onInterview,
-  onJumpToBrain,
-}: {
-  r: CodedReason;
-  last: boolean;
-  onInterview?: (who: string) => void;
-  onJumpToBrain?: (moment: string) => void;
-}) {
+/** Who spreads it — the second ring: saw → reshared → their networks, then the carriers. A sub-1×
+ *  multiplier is low, not a loss. */
+function SpreadCard({ data }: { data: AmplificationData }) {
+  const max = Math.max(1, ...data.carriers.map((c) => c.factor));
+  const fmt = (n: number) => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
   return (
-    <div className="py-3.5" style={{ borderBottom: last ? undefined : `1px solid ${TONE.border}` }}>
-      <div className="flex items-baseline justify-between gap-2.5">
-        <span className="text-[14px] font-medium" style={{ color: TONE.cream }}>
-          {r.label}
-        </span>
-        <span className="flex-none font-mono text-[13px] tabular-nums" style={{ color: r.loss ? TONE.coral : TONE.faint }}>
-          ×{r.count}
+    <Card>
+      <CardHead title="Who spreads it" meta="modeled reach" />
+      <div className="mt-2.5 flex items-center gap-2.5 rounded-[10px] px-3 py-2.5" style={{ background: SURFACE.chip }}>
+        {data.cascade.map((c, i) => (
+          <span key={c.label} className="flex items-center gap-2.5">
+            {i > 0 ? (
+              <span className="mt-3 text-[13px]" style={{ color: TONE.faint }}>
+                →
+              </span>
+            ) : null}
+            <span className="flex flex-col gap-0.5">
+              <i className="whitespace-nowrap text-[10px] not-italic" style={{ color: TONE.faint }}>
+                {c.label}
+              </i>
+              <b className="text-[17px] font-medium leading-none tracking-[-0.012em] tabular-nums" style={{ color: TONE.cream }}>
+                {fmt(c.count)}
+              </b>
+            </span>
+          </span>
+        ))}
+        <span className="ml-auto self-end rounded-[5px] px-1.5 py-0.5 text-[10px] font-medium tabular-nums" style={{ background: SURFACE.chipOn, color: TONE.faint }}>
+          ×{data.reachMultiplier.toFixed(1)}
         </span>
       </div>
-      <p className="mt-2 font-serif text-[15px] italic leading-[1.45]" style={{ color: TONE.dim }}>
-        &ldquo;{r.quote}&rdquo;
-      </p>
-      <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px]">
-        {r.thread && onJumpToBrain ? (
-          <>
-            <button
-              type="button"
-              onClick={() => onJumpToBrain(r.thread!.toMoment)}
-              className="transition-colors"
-              style={{ color: "rgba(255,99,99,.75)" }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = TONE.coral)}
-              onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,99,99,.75)")}
-            >
-              ↳ {r.thread.toMoment}
-            </button>
-            <span style={{ color: "rgba(236,231,222,.25)" }}>·</span>
-          </>
-        ) : null}
-        <button
-          type="button"
-          onClick={() => onInterview?.(r.who)}
-          className="transition-colors"
-          style={{ color: TONE.faint }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = TONE.cream)}
-          onMouseLeave={(e) => (e.currentTarget.style.color = TONE.faint)}
-        >
-          {r.who} · interview ›
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/** Receipts — the coded reasons, objections (coral ×count) above a hairline, endorsements below. The
- *  split is a quiet rule, not a shouted LEAKING/HOLDING label; the coral vs faint counts carry it. */
-function Receipts({
-  kicker,
-  reasons,
-  onInterview,
-  onJumpToBrain,
-}: {
-  kicker: string;
-  reasons: CodedReason[];
-  onInterview?: (who: string) => void;
-  onJumpToBrain?: (moment: string) => void;
-}) {
-  // No coded reasons ⇒ NO section. A kicker with nothing under it is an orphaned label (the same
-  // defect as the cast footer that rendered "on call" above zero avatars). A VIDEO sim reaches here
-  // legitimately empty: the fold emits no per-viewer objections, and its real "why" is the Brain
-  // tab's measured-dip read. We never invent a reason to keep a heading company.
-  if (reasons.length === 0) return null;
-  const leaking = reasons.filter((r) => r.loss);
-  const holding = reasons.filter((r) => !r.loss);
-  return (
-    <div className="mt-9">
-      <Kick>{kicker}</Kick>
       <div className="mt-2">
-        {leaking.map((r, i) => (
-          <ReasonRow key={r.label} r={r} last={i === leaking.length - 1} onInterview={onInterview} onJumpToBrain={onJumpToBrain} />
+        {data.carriers.map((c) => (
+          <BarRow key={c.label} label={c.label} value={`×${c.factor.toFixed(1)}`} frac={c.factor / max} lead={c.lead} low={c.factor < 1} />
         ))}
       </div>
-      {holding.length ? (
-        <div className="mt-2 pt-2" style={{ borderTop: leaking.length ? `1px solid ${TONE.border}` : undefined }}>
-          {holding.map((r, i) => (
-            <ReasonRow key={r.label} r={r} last={i === holding.length - 1} onInterview={onInterview} onJumpToBrain={onJumpToBrain} />
+    </Card>
+  );
+}
+
+/** Where & when — ONE card since rev 11. Two thin cards were two more blocks on the page the owner
+ *  called the most overloaded, and they answer one question: where would this land, and when. */
+function DistributionCard({ data }: { data: NonNullable<PopulationFrameData["distribution"]> }) {
+  const peak = Math.max(1, ...(data.week ?? []).map((d) => d.value));
+  return (
+    <Card>
+      <CardHead title={data.title} meta={data.meta} />
+      {data.surfaces?.length ? (
+        <div className="mb-3.5">
+          <LegendRows rows={data.surfaces.map((s) => ({ label: s.label, value: s.value }))} />
+        </div>
+      ) : null}
+      {data.week?.length ? (
+        <div className="mt-3 flex items-end gap-1">
+          {data.week.map((d) => (
+            <div key={d.day} className="flex-1 text-center">
+              {d.hours ? (
+                <span className="mb-1 block text-[10px] font-medium tabular-nums" style={{ color: TONE.cream }}>
+                  {d.hours}
+                </span>
+              ) : null}
+              <span
+                className="block rounded-[5px]"
+                style={{ height: Math.max(6, Math.round((d.value / peak) * 38)), background: d.best ? "rgba(236,231,222,.82)" : "rgba(236,231,222,.16)" }}
+              />
+              <span className="mt-1.5 block text-[10px]" style={{ color: d.best ? TONE.cream : TONE.faint }}>
+                {d.day}
+              </span>
+            </div>
           ))}
         </div>
       ) : null}
-    </div>
+    </Card>
   );
 }
 
-// ── the population role-frame ──────────────────────────────────────────────────
+// ── ◇ swap slots kept alive for the other domains ────────────────────────────
 
-/** PopulationFrame — the invariant *who / how many* role. The society map is the hero; the ranked
- *  node-bar ledger reads it (hovering a row spotlights its district) → the distribution → segments
- *  (pricing only) → the receipts → calibration → footer. A new domain supplies figures; it never
- *  edits this frame. */
+/** Pricing's main figure — would-pay share falls as price rises; a cream marker flags the optimum
+ *  (cream = the good default; coral stays reserved for the loss). */
+function DemandCard({ data }: { data: DemandCurveData }) {
+  const W = 366;
+  const H = 96;
+  const P = 6;
+  const line = curvePath(data.points.map((v) => v / 100), W, H, P);
+  const ox = P + data.optimalAt * (W - 2 * P);
+  return (
+    <Card>
+      <CardHead title={data.kicker} meta={data.caption} />
+      <svg viewBox={`0 0 ${W} ${H}`} className="mt-3 block h-auto w-full">
+        <path d={line} fill="none" stroke="rgba(236,231,222,.72)" strokeWidth={1.6} />
+        <line x1={ox} y1={0} x2={ox} y2={H} stroke="rgba(236,231,222,.55)" strokeWidth={1} strokeDasharray="3 3" />
+      </svg>
+      <div className="mt-2 flex justify-between text-[11px] tabular-nums" style={{ color: TONE.faint }}>
+        <span>{data.loLabel}</span>
+        <span style={{ color: TONE.dim }}>{data.optimalLabel}</span>
+        <span>{data.hiLabel}</span>
+      </div>
+    </Card>
+  );
+}
+
+function SegmentsCard({ title, rows }: { title: string; rows: SegmentStop[] }) {
+  return (
+    <Card>
+      <CardHead title={title} />
+      <div className="mt-1">
+        {rows.map((s) => (
+          <BarRow key={s.label} label={s.label} value={`${s.pct}%`} frac={s.pct / 100} low={s.loss} labelWidth={104} valueWidth={38} />
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+function MainSlot({ main }: { main: PopulationMain }) {
+  // The tri-state row is deliberately NOT drawn: its two figures are the hero chip and the answer's
+  // stat row, and a page must not say one fact twice.
+  return main.kind === "demand-curve" ? <DemandCard data={main.data} /> : null;
+}
+
+// ── the population role-frame ────────────────────────────────────────────────
+
 export function PopulationFrame({
   population,
   verdict,
   reducedMotion = false,
   onInterview,
   onJumpToBrain,
+  method,
+  methodOpen = false,
+  onToggleMethod,
+  simline,
 }: {
   population: PopulationFrameData;
   verdict: DomainTemplate["verdict"];
   reducedMotion?: boolean;
   onInterview?: (who: string) => void;
   onJumpToBrain?: (moment: string) => void;
+  method?: { heading: string; notes: string[] }[];
+  methodOpen?: boolean;
+  onToggleMethod?: () => void;
+  simline?: string;
 }) {
-  const [highlight, setHighlight] = useState<number | null>(null);
+  const threaded = population.voices.reasons.find((r) => r.thread);
   return (
-    <div className="mt-4">
-      <TerrainMap terrain={population.terrain} verdict={verdict} reducedMotion={reducedMotion} highlightCluster={highlight} />
-      {/* the read — the non-obvious "so what" of the society (believers vs your ceiling). The insight,
-          not a caption restating the map. Premium quiet treatment: a mono eyebrow + hairline set it
-          apart as an intentional statement, not a floating grey line under the hero. */}
-      {population.heroRead ? (
-        <div className="mt-5 pt-4" style={{ borderTop: `1px solid ${TONE.border}` }}>
-          <div
-            className="font-mono text-[10px] uppercase tracking-[0.15em]"
-            style={{ color: "rgba(236,231,222,.32)" }}
-          >
-            the read
-          </div>
-          <p className="mt-2 text-[15px] leading-[1.55]" style={{ color: TONE.dim }}>
-            {population.heroRead}
-          </p>
-        </div>
-      ) : null}
-      {/* the read's home — creator recategorizes the room into decision-states (the playbook); other
-          domains (pricing) keep the archetype district ledger. */}
-      {population.decisionStates ? (
-        <DecisionStates data={population.decisionStates} />
-      ) : (
-        <DistrictLedger
-          clusters={population.terrain.clusters}
-          lossIndex={population.terrain.lossClusterIndex}
-          highlight={highlight}
-          onHover={setHighlight}
-        />
-      )}
-      <PopulationMainSlot main={population.main} />
-      {/* who this is for → who spreads it (targeting + reach — the reads the map can't make) */}
-      {population.audienceFit ? <IndexBars data={population.audienceFit} reducedMotion={reducedMotion} /> : null}
-      {population.amplification ? <Amplification data={population.amplification} /> : null}
-      {/* what they'd DO with it — the video-only action profile; sits in the slot amplification
-          omits itself from on a fold run (intent, not reach) */}
-      {population.actionIntent ? <ActionIntent data={population.actionIntent} /> : null}
-      {population.segments ? <Segments title={population.segments.title} rows={population.segments.rows} /> : null}
-      <Receipts
-        kicker={population.voices.kicker}
-        reasons={population.voices.reasons}
-        onInterview={onInterview}
-        onJumpToBrain={onJumpToBrain}
+    <div data-page="audience">
+      <TerrainMap
+        terrain={population.terrain}
+        verdict={population.heroVerdict ?? verdict}
+        reducedMotion={reducedMotion}
+        highlightCluster={null}
+        figread={population.heroFigread}
       />
-      {/* the swing — the upside after you've seen who + why */}
-      {population.swing ? <Swing data={population.swing} /> : null}
-      {/* the room — the trust strip (richer than the plain calibration line; falls back to it) */}
-      {population.room ? (
-        <RoomStrip data={population.room} />
-      ) : population.calibration ? (
-        <div className="mt-6 font-mono text-[10px] uppercase tracking-[0.1em]" style={{ color: TONE.faint }}>
-          {population.calibration.note}
-        </div>
+
+      {population.pools?.rows.length ? (
+        <Card>
+          <CardHead title={population.pools.title} meta={population.pools.meta} />
+          {population.pools.rows.some((r) => r.curve?.length) ? (
+            <PoolRows rows={population.pools.rows} />
+          ) : (
+            <LegendRows rows={population.pools.rows.map((r) => ({ label: r.label, value: r.share }))} />
+          )}
+        </Card>
       ) : null}
-      <HowToRead />
+
+      {population.decisionStates ? <DecisionStates data={population.decisionStates} onInterview={onInterview} /> : null}
+
+      <MainSlot main={population.main} />
+
+      {population.audienceFit ? <FitCard data={population.audienceFit} /> : null}
+      {population.amplification ? <SpreadCard data={population.amplification} /> : null}
+      {population.segments ? <SegmentsCard title={population.segments.title} rows={population.segments.rows} /> : null}
+      {population.distribution ? <DistributionCard data={population.distribution} /> : null}
+
+      {/* The cross-page thread survives: a coded reason IS a brain moment, and following it lands on
+          the mechanism behind the words. Rendered only when a reason actually carries one. */}
+      {threaded && onJumpToBrain ? (
+        <button
+          type="button"
+          onClick={() => onJumpToBrain(threaded.thread!.toMoment)}
+          className="mt-3 text-[12px] transition-colors"
+          style={{ color: "rgba(255,99,99,.75)" }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = TONE.coral)}
+          onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,99,99,.75)")}
+        >
+          ↳ {threaded.thread!.toMoment}
+        </button>
+      ) : null}
+
+      <MethodFoot
+        open={methodOpen}
+        onToggle={onToggleMethod ?? (() => {})}
+        method={method ?? (population.room ? [{ heading: "What this is not", notes: [population.room.note] }] : undefined)}
+        simline={simline}
+      />
     </div>
   );
 }

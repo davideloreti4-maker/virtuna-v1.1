@@ -1,21 +1,32 @@
 "use client";
 
 /**
- * AmbientDetail — Ambient Audience v2, the DETAIL view (one stimulus, two tabs).
+ * AmbientDetail — Ambient Audience v2, the DETAIL view (one stimulus, THREE pages).
  *
- * L3 two-page instrument: `The brain` (out-Sapient) | `The audience` (out-AS). Detail is ALWAYS
- * one stimulus (comparison lives on the Overview). Shared header: back-to-overview · `N of M`
- * pager · the verdict hero · tab switch. Same fixed height as every v2 surface.
+ * Each page answers ONE question, and a block lives on the page whose question it answers:
+ *   Brain — why it happened in the head · Engagement — what they did with it · Audience — who was
+ *   in the room. Order is `brain · engagement · audience`: the answer's evidence is the retention
+ *   curve so verdict and proof are adjacent, Brain and Engagement are both about the CLIP while
+ *   Audience is about the ROOM, and scope widens left to right.
  *
- * Round-4 grammar, with the owner's mark applied: the little bar-chart glyph beside the % is GONE
- * (it added no value — build handoff §4). The verdict stands alone as the biggest type = the answer.
+ * Chrome is TikTok Studio's: the pinned strip is the nav row ONLY. Identity renders once above the
+ * tabs and scrolls away; the tabs are sticky INSIDE the scroll. The rev-5 "persistent answer, never
+ * behind a tab" decision was owner-REVERSED — the answer is content, on Brain, once.
+ *
+ * Twelve revisions settled these; they are not open:
+ *   · the 270px hero figure NEVER shrinks — it is the product's wow, and deleting it killed revs 3–5
+ *   · figures may carry a colormap; CHROME stays one-accent, coral = loss, ≤1 zone per page
+ *   · benchmarks are the creator's OWN catalogue, never an industry band
+ *   · no sentences in the UI: the verdict headline is the surface's one, and cards end on their data
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { BrainFrame } from "./BrainTab";
+import { EngagementFrame } from "./EngagementTab";
 import { PopulationFrame } from "./AudienceTab";
-import type { DomainTemplate } from "./domain-template";
+import { SURFACE } from "./rail-kit";
+import type { DomainTemplate, DrillFixApplied, DrillIdentity } from "./domain-template";
 import type { AmbientPresentation } from "./AmbientOverview";
 import { useCountUp } from "@/hooks/useCountUp";
 
@@ -93,56 +104,11 @@ export const TONE = {
   well: "#262624",
 } as const;
 
-// shared kicker — quiet, airy small-caps chrome (premium restraint: a whisper, not a shout)
-export function Kick({ children, tag }: { children: React.ReactNode; tag?: string }) {
-  return (
-    <div className="flex items-baseline justify-between font-mono text-[10px] uppercase tracking-[0.15em]">
-      <span style={{ color: "rgba(236,231,222,.32)" }}>{children}</span>
-      {tag ? <span style={{ color: "rgba(236,231,222,.24)", letterSpacing: "0.1em" }}>{tag}</span> : null}
-    </div>
-  );
-}
-
-export function SecHead({
-  q,
-  ownLabel,
-  ownValue,
-  weak,
-}: {
-  q: string;
-  ownLabel: string;
-  ownValue: string;
-  weak?: boolean;
-}) {
-  return (
-    <div className="mt-1.5 flex items-baseline justify-between">
-      <span className="text-[15px] font-medium" style={{ color: TONE.cream }}>
-        {q}
-      </span>
-      <span className="text-[13px]" style={{ color: TONE.faint }}>
-        {ownLabel}{" "}
-        <b className="text-[16px] font-medium" style={{ color: weak ? TONE.coral : TONE.cream }}>
-          {ownValue}
-        </b>
-      </span>
-    </div>
-  );
-}
-
-export function HowToRead() {
-  return (
-    <button
-      type="button"
-      className="mt-[30px] flex w-full items-center justify-between pt-4 font-mono text-[12px] uppercase tracking-[0.08em] transition-colors"
-      style={{ borderTop: `1px solid ${TONE.border}`, color: TONE.faint }}
-      onMouseEnter={(e) => (e.currentTarget.style.color = TONE.dim)}
-      onMouseLeave={(e) => (e.currentTarget.style.color = TONE.faint)}
-    >
-      <span>How to read these numbers</span>
-      <span>›</span>
-    </button>
-  );
-}
+// The r4 chrome that used to live here — `Kick`, `SecHead`, `HowToRead` and the boxed `Unlock` —
+// is GONE with the pages that rendered it. It was uppercase-mono micro-labels and hairline rules,
+// the exact tell rev 4 was rejected for; rev 12 speaks in filled cards with sentence-case heads,
+// a right-meta only where the label IS data, and one shared "How to read these numbers" foot
+// (`rail-kit.tsx`). Two grammars for one surface is how the two-namespace drift starts.
 
 // ── shared: the verdict chip (rides ON the hero figure) + the UNLOCK (the cheat code) ──
 
@@ -211,50 +177,72 @@ export function VerdictChip({ verdict, animate = false }: { verdict: { value: st
   );
 }
 
-/** THE UNLOCK — the brain tab's closing payoff (the "so do this" after the analysis). De-boxed per
- *  the grammar law (the old bordered box squeezed the lever against the gain and read as slop); set
- *  apart instead by a hairline rule + type weight, STACKED so nothing competes for a line: lever →
- *  gain → the counterintuitive why. Never coral — a fix is a win. Brain-only (a timing/price lever
- *  makes no sense on the audience "who" page). */
-export function Unlock({ unlock }: { unlock: { lever: string; gain?: string; insight: string } }) {
+// ── identity — thumbnail · one-line title · the projected counts ──────────────
+
+const ICONS: Record<DrillIdentity["stats"][number]["kind"], string> = {
+  play: "M5 3 19 12 5 21Z",
+  heart: "M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1L12 21l7.7-7.6 1.1-1a5.5 5.5 0 0 0 0-7.8Z",
+  msg: "M21 11.5a8.4 8.4 0 0 1-9 8.4 8.5 8.5 0 0 1-3.9-.9L3 21l1.9-5A8.4 8.4 0 0 1 4 11.5a8.5 8.5 0 0 1 8.5-8.5 8.4 8.4 0 0 1 8.5 8.5Z",
+  share: "M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13",
+  save: "M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z",
+};
+
+/** Renders ONCE, above the tabs, and scrolls away. rev 8 DEMOTED the stat row: these are
+ *  projections for a post that does not exist yet, and at cream they were the loudest data on the
+ *  page. The answer has to win the first fixation. */
+function Identity({ identity, thumbLabel }: { identity: DrillIdentity; thumbLabel: string }) {
   return (
-    <div className="mt-9 pt-6" style={{ borderTop: `1px solid ${TONE.border}` }}>
-      {/* editorial kicker — a small-caps label that trails into a hairline, so the takeaway reads set-apart */}
-      <div className="flex items-center gap-2.5">
-        <span className="font-mono text-[11px] uppercase tracking-[0.14em]" style={{ color: TONE.faint }}>
-          the unlock
+    <div className="flex items-center gap-[11px] pt-4">
+      <div
+        className="relative flex h-[54px] w-10 flex-none items-end justify-center overflow-hidden rounded-[7px] pb-1"
+        style={{ background: SURFACE.figure }}
+      >
+        {identity.coverSrc ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={identity.coverSrc} alt="" className="absolute inset-0 h-full w-full object-cover" />
+        ) : (
+          <span
+            className="absolute inset-0"
+            style={{ background: "repeating-linear-gradient(104deg,#2c2926 0 8px,#232120 8px 16px)", opacity: 0.5 }}
+          />
+        )}
+        <span className="relative text-[10px] font-medium tabular-nums" style={{ color: TONE.faint }}>
+          {thumbLabel}
         </span>
-        <span className="h-px flex-1" style={{ background: TONE.border }} />
       </div>
-      <div className="mt-3.5 text-[19px] font-medium leading-[1.32]" style={{ color: TONE.cream }}>
-        {unlock.lever}
-      </div>
-      {unlock.gain ? (
-        // the payoff, framed as the takeaway — the card's value peak (never coral: a fix is a win).
-        // Labelled "projected" so the modeled swing is honest at a glance; the calibration line carries the rest.
-        <div
-          className="mt-4 inline-flex items-center gap-2.5 rounded-[10px] py-2 pl-3 pr-3.5"
-          style={{ background: TONE.well, border: `1px solid ${TONE.hair}` }}
-        >
-          <span className="font-mono text-[9px] uppercase tracking-[0.1em]" style={{ color: TONE.faint }}>
-            projected
-          </span>
-          <span className="h-3.5 w-px" style={{ background: TONE.hair }} />
-          <span className="font-mono text-[15px] font-medium tabular-nums" style={{ color: TONE.cream }}>
-            {unlock.gain}
-          </span>
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-[13px] leading-[1.35]" style={{ color: TONE.dim }}>
+          {identity.title}
         </div>
-      ) : null}
-      <p className="mt-4 text-[14px] leading-[1.55]" style={{ color: TONE.dim }}>
-        {unlock.insight}
-      </p>
+        <div className="mt-[7px] flex items-center gap-3.5">
+          {identity.stats.map((s) => (
+            <span key={s.kind} className="flex items-center gap-1.5">
+              <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke={TONE.cream} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.3 }}>
+                <path d={ICONS[s.kind]} />
+              </svg>
+              <b className="text-[11px] font-normal leading-none tabular-nums" style={{ color: TONE.faint }}>
+                {s.value}
+              </b>
+            </span>
+          ))}
+          {identity.projected ? (
+            <span className="ml-auto rounded-[5px] px-1.5 py-0.5 text-[10px] font-medium" style={{ background: SURFACE.chip, color: TONE.faint }}>
+              projected
+            </span>
+          ) : null}
+        </div>
+      </div>
     </div>
   );
 }
 
 // ── the detail view ──────────────────────────────────────────────────────────
 
-type Tab = "brain" | "audience";
+type Tab = "brain" | "engagement" | "audience";
+
+/** The order is load-bearing — see the file header. Changing it is a design decision, not a tidy-up. */
+const TAB_ORDER = ["brain", "engagement", "audience"] as const;
+const TAB_LABEL: Record<Tab, string> = { brain: "Brain", engagement: "Engagement", audience: "Audience" };
 
 export function AmbientDetail({
   template,
@@ -267,6 +255,10 @@ export function AmbientDetail({
   brainNote,
   populationNote,
   noteAction,
+  onPrev,
+  onNext,
+  onInterview,
+  onApplyFix,
 }: {
   template: DomainTemplate;
   initialTab?: Tab;
@@ -294,12 +286,60 @@ export function AmbientDetail({
   /** Rendered under BOTH honest-absence notes — the sealed drill's one action (the $1 wall CTA).
    *  A slot, not behavior: this view stays ignorant of checkout. Absent ⇒ notes render alone. */
   noteAction?: React.ReactNode;
+  /** The room's drills are siblings — ‹ › walks them. Omit both and the stepper does not render:
+   *  a pager that cannot page is the same dead control as a back button that goes nowhere. */
+  onPrev?: () => void;
+  onNext?: () => void;
+  /** Talking to a simulated viewer is the most differentiated thing in the product; the frames have
+   *  always taken this and the surface finally offers it on every voice. */
+  onInterview?: (who: string) => void;
+  /** THE FIX ACTS. `template.answer.fix` carries the re-simulated state; this fires when the user
+   *  pulls the lever, so a host that can genuinely re-run (the v1 room's `onRewrite`) does. The view
+   *  shows the projected before → after either way, labelled `projected`, and `Undo` restores. */
+  onApplyFix?: (lever: string) => void;
 }) {
-  const { backLabel, pager, verdict, unlock, brain, population } = template;
+  const { backLabel, pager, verdict, unlock, brain, population, identity, answer, engagement, simline, method } = template;
   // Brain is a VIDEO producer — absent for a text sim. Honest-unavailable, never faked.
   const brainAvailable = !!brain && !brainNote;
-  const [internalTab, setTab] = useState<Tab>(initialTab ?? (brainAvailable ? "brain" : "audience"));
+  // Engagement is what the room DID with the clip: the retention instrument, the watch metrics and
+  // the reaction counts. A template that authors none of it has nothing to show, so the tab dims —
+  // the same honest-locked affordance the other two carry, decided before the tap rather than after.
+  const engagementData = engagement ?? (population?.actionIntent ? {} : undefined);
+  const engagementAvailable = !!engagement || !!population?.actionIntent;
+  const [internalTab, setTab] = useState<Tab>(
+    initialTab ?? (brainAvailable ? "brain" : engagementAvailable ? "engagement" : "audience"),
+  );
   const tab = controlledTab ?? internalTab;
+
+  // The fix's applied state and the method drawer are the view's, not a page's: `setTab` must NOT
+  // reset them (walking to the evidence and back is one reading, not two), while a new stimulus
+  // remounts the view and clears them by construction.
+  const [applied, setApplied] = useState(false);
+  const [methodOpen, setMethodOpen] = useState(false);
+
+  // A NEW stimulus clears the fix. `setTab` deliberately does not — walking to the evidence and
+  // back is one reading — but the drill's host swaps `template` in place rather than remounting, so
+  // without this you page from a trimmed clip to the next one and read ITS numbers under the
+  // previous one's applied state. Keyed on a STABLE identity string, not on the template object:
+  // the adapters build a fresh object every render, so `[template]` would clear the fix instantly.
+  const stimulusKey = `${template.id}|${template.pager}|${template.verdict.value}|${template.identity?.title ?? ""}`;
+  const [seenStimulus, setSeenStimulus] = useState(stimulusKey);
+  if (seenStimulus !== stimulusKey) {
+    // Adjusted DURING render, not in an effect: an effect would paint the new stimulus once under
+    // the old applied state before clearing it.
+    setSeenStimulus(stimulusKey);
+    setApplied(false);
+    setMethodOpen(false);
+  }
+  const fix = answer?.fix;
+  const appliedState: DrillFixApplied | null = applied && fix ? fix.applied : null;
+  const bodyRef = useRef<HTMLDivElement>(null);
+
+  const goTab = (t: Tab) => {
+    setTab(t);
+    // A new page starts at its own top; carrying the previous page's offset lands you mid-figure.
+    if (bodyRef.current) bodyRef.current.scrollTop = 0;
+  };
   // Cross-tab thread — a coded reason on the audience tab jumps here to the brain and briefly flashes
   // the matching moment (the human "why" and the mechanical "why" are one story). Cleared after the
   // flash so it doesn't re-trigger on a later manual visit.
@@ -333,10 +373,10 @@ export function AmbientDetail({
         fontFamily: "var(--font-sans, Inter, system-ui, sans-serif)",
       }}
     >
-      {/* slim top bar — nav + tabs only. The heavy verdict/move block is gone; the hero FIGURE leads
-          each tab (owner mark: the brain is the hero on brain, the nodes on audience). */}
-      <div className="px-[22px] pt-[22px]">
-        <div className="flex items-baseline justify-between">
+      {/* The pinned strip is the NAV ROW ONLY (owner, 7.2: "I don't like this fixed header at all").
+          Identity and the tabs live inside the scroll, TikTok Studio's exact chrome. */}
+      <div className="px-[22px] pt-5">
+        <div className="flex h-5 items-center justify-between">
           {onBack ? (
             <button
               type="button"
@@ -351,79 +391,151 @@ export function AmbientDetail({
           ) : (
             <span />
           )}
-          <span className="font-mono text-[12px] tracking-[0.06em]" style={{ color: TONE.faint }}>
+          <span
+            className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-[3px] text-[12px] font-medium tabular-nums"
+            style={{ background: SURFACE.chip, color: TONE.faint }}
+          >
+            {onPrev ? <Step onClick={onPrev}>‹</Step> : null}
             {pager}
+            {onNext ? <Step onClick={onNext}>›</Step> : null}
           </span>
-        </div>
-
-        {/* tabs */}
-        <div className="mt-[18px] flex gap-[22px]" style={{ borderBottom: `1px solid ${TONE.border}` }}>
-          {(["brain", "audience"] as const).map((t) => {
-            const on = t === tab;
-            // Honest locked affordance: a text sim has no brain, and a withheld/absent run has no
-            // audience. Dimming says "this tab has nothing behind it" before the tap, not after.
-            const dim = (t === "brain" && !brainAvailable) || (t === "audience" && !population);
-            return (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setTab(t)}
-                className="relative pb-2.5 text-[14px]"
-                style={{ color: on ? TONE.cream : TONE.faint, opacity: dim && !on ? 0.5 : 1 }}
-              >
-                {t === "brain" ? "The brain" : "The audience"}
-                {on ? (
-                  <span className="absolute inset-x-0 -bottom-px h-0.5 rounded-full" style={{ background: TONE.cream }} />
-                ) : null}
-              </button>
-            );
-          })}
         </div>
       </div>
 
-      {/* body — the hero figure leads (frame renders hero + chip → unlock → detail) */}
-      <div className="min-h-0 flex-1 overflow-y-auto px-[22px] pb-[26px]">
+      <div ref={bodyRef} className="min-h-0 flex-1 overflow-y-auto px-[22px] pb-[30px]">
+        {identity ? <Identity identity={identity} thumbLabel={appliedState?.thumbLabel ?? identity.thumbLabel} /> : null}
+
+        {/* Sticky INSIDE the scroll — it needs an opaque rail fill so content slides under it. */}
+        <div className="sticky top-0 z-[6] pt-3" style={{ background: "#181817" }}>
+          <div className="flex rounded-[10px] p-[3px]" style={{ background: SURFACE.chip }}>
+            {TAB_ORDER.map((t) => {
+              const on = t === tab;
+              // Honest locked affordance: a text sim has no brain, a template with no engagement
+              // material has no middle page, and a withheld/absent run has no audience. Dimming says
+              // "nothing behind this" BEFORE the tap, not after.
+              const dim =
+                (t === "brain" && !brainAvailable) ||
+                (t === "engagement" && !engagementAvailable) ||
+                (t === "audience" && !population);
+              return (
+                <button
+                  key={t}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => goTab(t)}
+                  className="flex-1 rounded-lg py-[7px] text-[13px] font-medium"
+                  style={{
+                    // Active is cream on a lighter fill — never coral. The system reserves the
+                    // accent for loss; an interactive state that borrows it flattens the hierarchy.
+                    background: on ? SURFACE.chipOn : "transparent",
+                    color: on ? TONE.cream : TONE.faint,
+                    opacity: dim && !on ? 0.5 : 1,
+                  }}
+                >
+                  {TAB_LABEL[t]}
+                </button>
+              );
+            })}
+          </div>
+          <div className="mt-3 h-px" style={{ background: TONE.border }} />
+        </div>
+
         {tab === "brain" ? (
           brainAvailable && brain ? (
-            <BrainFrame brain={brain} verdict={verdict} unlock={unlock} reducedMotion={reducedMotion} flashMoment={flashMoment} />
+            <BrainFrame
+              brain={brain}
+              verdict={verdict}
+              answer={answer}
+              unlock={unlock}
+              applied={appliedState}
+              onApplyFix={() => {
+                setApplied(true);
+                if (fix) onApplyFix?.(fix.label);
+              }}
+              onUndoFix={() => setApplied(false)}
+              // Only when there is evidence to see. A domain whose answer points at a page it never
+              // authored (pricing) gets no control at all — the same rule as the back button that
+              // goes nowhere.
+              onSeeEvidence={
+                answer?.evidence === "reasons" || !engagementAvailable ? undefined : () => goTab("engagement")
+              }
+              reducedMotion={reducedMotion}
+              flashMoment={flashMoment}
+              method={method}
+              methodOpen={methodOpen}
+              onToggleMethod={() => setMethodOpen((v) => !v)}
+              simline={simline}
+            />
           ) : (
-            <div
-              className="flex h-full flex-col items-center justify-center gap-2 py-16 text-center"
-              style={{ color: TONE.faint }}
-            >
-              <span className="text-[13px]" style={{ color: TONE.dim }}>
-                The brain — a video read
-              </span>
-              <span className="max-w-[280px] text-[12px] leading-[1.5]">
-                {brainNote ?? "The brain decomposition reads a video's frames. This was a text concept sim — no attention timeline to show."}
-              </span>
-              {noteAction}
-            </div>
+            <Absence note={brainNote ?? "The brain decomposition reads a video's frames. This was a text concept sim — no attention timeline to show."} title="The brain — a video read" action={noteAction} />
+          )
+        ) : tab === "engagement" ? (
+          engagementAvailable && engagementData ? (
+            <EngagementFrame
+              data={engagementData}
+              actionIntent={population?.actionIntent}
+              applied={appliedState}
+              method={method}
+              methodOpen={methodOpen}
+              onToggleMethod={() => setMethodOpen((v) => !v)}
+              simline={simline}
+              onInterview={onInterview}
+            />
+          ) : (
+            <Absence note="No run yet — engagement is what the room did with the clip second by second." action={noteAction} />
           )
         ) : population ? (
           <PopulationFrame
             population={population}
             verdict={verdict}
             reducedMotion={reducedMotion}
+            onInterview={onInterview}
+            method={method}
+            methodOpen={methodOpen}
+            onToggleMethod={() => setMethodOpen((v) => !v)}
+            simline={simline}
             onJumpToBrain={(moment) => {
               // Only cross to the brain when it exists (a video read); otherwise stay on the audience.
               if (!brainAvailable) return;
               setFlashMoment(moment);
-              setTab("brain");
+              goTab("brain");
             }}
           />
         ) : (
-          <div
-            className="flex h-full flex-col items-center justify-center py-16 text-center text-[13px]"
-            style={{ color: TONE.faint }}
-          >
-            <span className="max-w-[280px] leading-[1.5]">
-              {populationNote ?? "The audience — no run yet."}
-            </span>
-            {noteAction}
-          </div>
+          <Absence note={populationNote ?? "The audience — no run yet."} action={noteAction} />
         )}
       </div>
+    </div>
+  );
+}
+
+function Step({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="px-1 text-[13px] font-normal leading-none transition-colors"
+      style={{ color: TONE.faint }}
+      onMouseEnter={(e) => (e.currentTarget.style.color = TONE.cream)}
+      onMouseLeave={(e) => (e.currentTarget.style.color = TONE.faint)}
+    >
+      {children}
+    </button>
+  );
+}
+
+/** An honest-absence state. NEVER a fabricated figure: what is locked or missing is genuinely not in
+ *  the rendered template, so there is nothing on screen to "reveal". */
+function Absence({ note, title, action }: { note: string; title?: string; action?: React.ReactNode }) {
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-2 py-16 text-center" style={{ color: TONE.faint }}>
+      {title ? (
+        <span className="text-[13px]" style={{ color: TONE.dim }}>
+          {title}
+        </span>
+      ) : null}
+      <span className="max-w-[280px] text-[12px] leading-[1.5]">{note}</span>
+      {action}
     </div>
   );
 }

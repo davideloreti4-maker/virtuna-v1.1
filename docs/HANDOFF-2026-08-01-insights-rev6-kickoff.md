@@ -1127,6 +1127,77 @@ Audience = hero + 5 cards. Deleted from the codebase: `.actionbar` + `syncBar()`
 Engagement (1 `.rank`, 3 `.rrow`), 5 on Audience, plus all standing probes. Green. Shots
 `rev12-*.png` (8). Same artifact url.
 
+## 20. Rev 12 — IMPLEMENTED in React (2026-08-02)
+
+§19's kickoff is DONE. The rail on `/ambient-v2` is the reviewed design, not an approximation of it.
+Shots of the built surface: `docs/mockups/reference-2026-08-01/impl-*.png` (8) — diff those against
+`rev12-*.png`, which stay the design reference.
+
+### What shipped
+
+| | |
+|---|---|
+| §3.2 — the blocker | `curveBreak()` + `curveUnlock()` in `ambient-v2-brain.ts`. A video fold codes **no reasons by design**, so passing fake ones was the wrong repair: the lever now comes off the measured curve (steepest run → the second the collapse finishes → `Trim 0:00–0:0X`), and `modeledUnlock(...) ?? curveUnlock(...)` keeps the reason-derived lever wherever reasons exist. Four regression tests, incl. the real mount's exact input (no `reasons` at all) and the two honest-absence paths. |
+| The third tab | `Tab = "brain" \| "engagement" \| "audience"`, segmented control, sticky inside the scroll, identity once above it, nav row only pinned. `dim` covers all three absences. |
+| The pages | `BrainTab.tsx` rebuilt · **`EngagementTab.tsx` new** · `AudienceTab.tsx` rebuilt · **`rail-kit.tsx` new** (the shared card grammar). |
+| The fix ACTS | `DrillFix.applied` carries the whole re-simulated state, so before → after is ONE swap and `Undo` is one flip. Verified live: curve redraws with the original as a coral ghost, chips 58/33/27 → 92/75/59, tiles → 16.4s/9.8%, clip 0:28 → 0:25, transcript slices, reach ×2.64, cortex repaints from the new curve. `onApplyFix` is the seam for a host that can genuinely re-run. |
+| Contract | `domain-template.ts` gains `identity` · `answer` (+`fix`) · `engagement` · `pools` · `distribution` · `heroVerdict` · `heroFigread` · `simline` · `method` · `signalMovers`/`signalScale`/`networkScale` — **all optional**, so pricing and the sealed/walkthrough templates render unchanged. |
+| Adapters | `ambient-v2-drill.ts` (new) derives the rev-12 blocks from real persisted output for BOTH kinds. |
+| Deleted | `BrainDepth.tsx` · `AudienceDepth.tsx` and the r4 chrome in `AmbientDetail` (`Kick`/`SecHead`/`HowToRead`/`Unlock`) — last callers gone. Two renderers for one dataset is how this repo's drift traps start. |
+
+### Bugs the build found that the design could not
+
+1. **The wall leaked.** `sealTemplate`/`templateIsSealed` stripped `unlock`/`population`/`whyThisSecond`
+   but not `answer` or `engagement` — which are the verdict, the lever and the retention instrument,
+   i.e. exactly what the $1 buys. Both now strip them and both `isSealed` guards assert it.
+2. **The applied fix leaked across stimuli.** `setTab` must not reset it (walking to the evidence and
+   back is one reading) but a NEW stimulus must — and the hosts swap `template` in place rather than
+   remounting. Reset on a stable identity string, adjusted during render; keying on the template
+   OBJECT would clear it every render, because the adapters build a fresh one each time.
+3. **A coral run that lied.** `curvePath(curve.slice(0, break+1), …)` re-scaled four points across the
+   whole card: the figure claimed the room left over 28 seconds when it left over three. `curvePath`
+   now takes a `span`.
+4. **A pull reason led a card about leaving.** The dominant-reason tally is mixed by construction, so
+   sorting by count put "Strong hook" at the top of "Why they scrolled". Friction sorts first; the
+   pull rows stay, at their true weight, below.
+
+### §15's Open list — closed
+
+- **"Strong hook" in the coral half** — `codedReasons` took `loss` from the *exemplar persona's*
+  verdict while its own comment said we do not claim the persona uttered the label. Polarity now comes
+  from `REASON_POLARITY`, the semantic map.
+- **Reused quotes** — `pool[i % pool.length]` indexed by ROW, so 2 scrollers + 2 stoppers over 4
+  reasons handed rows 0/2 and 1/3 the same voice. Each pool walks its own cursor.
+- **The `WHO SPREADS ITMODELED REACH` kicker collision** — gone with `Kick`; the card head owns its
+  right-meta.
+- **The banned verb** — `modeledDecisionStates` said `Stopped`/`Almost`/`Not for them`, `modeledSwing`
+  said `+N% would stop`, and the terrain chip said `would stop`. All replaced; a probe asserts
+  `/\bstop/i` is absent from every page of every template.
+- **The cortex after the trim** — repaints from the re-simulated curve (the mockup's one honest gap).
+
+### Verified
+
+`npx tsc --noEmit` clean · **4905 vitest passing**, incl. all three named gates · lint clean on every
+new/changed file. Live at `:3002` on all four templates × three tabs × applied: **0 shadow, 0 gradient,
+0 backdrop-filter, ≤1 coral zone per page, no banned verb, 0 JS errors.** Mounts checked before and
+after: `/ambient-v2` ✅ · `/go` (hero-product-window) ✅ · `/dev-shots` (shot-stages, 2 mounts) ✅ ·
+`offer/ambient-panel` + `offer/walkthrough` — in-tree with **no consumer**, typecheck + tests only.
+⚠️ **`/dev/cards` renders NO gallery content in this worktree** (0 `<section>`, signed in) — confirmed
+identical on the pre-change tree, so it is pre-existing, not this work. It mounts
+`CREATOR_LIVE_TEMPLATE` + `CREATOR_LIVE_TEXT_TEMPLATE`, both verified live on `/ambient-v2`.
+
+### Still open (unchanged by this pass)
+
+- **Text-sim dead rows** — VISUAL/AUDIO/FACE render flat with one honest note. Whether they should
+  render at all is still the owner's call.
+- **No producer exists** for reach/views/likes/follows, the creator's own median post, the last-41
+  catalogue, or the reaction timeline. The AUTHORED fixture carries all four (it is the design's demo
+  clip, tagged `projected`); the adapters OMIT each one rather than draw a band nobody produced. The
+  live Engagement page is therefore Retention + two watch tiles until those producers land.
+- The rev-12 mockup is unchanged and still the design SSOT; the artifact URL still points at it.
+
+---
+
 ## 19. IMPLEMENTATION KICKOFF — paste this into a fresh context
 
 > Implement the insight-drill rework (rev 12) in React.

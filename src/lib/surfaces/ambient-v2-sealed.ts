@@ -57,6 +57,10 @@ export function buildSealedVideoDomainTemplate(
 export function templateIsSealed(template: DomainTemplate): boolean {
   return (
     template.unlock === undefined &&
+    // The answer block carries the verdict AND the lever; the engagement frame is the retention
+    // instrument. Both are what the dollar buys, so a sealed template must not carry either.
+    template.answer === undefined &&
+    template.engagement === undefined &&
     template.brain?.whyThisSecond === undefined &&
     template.population === null
   );

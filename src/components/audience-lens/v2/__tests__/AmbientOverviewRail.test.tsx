@@ -176,19 +176,22 @@ describe("AmbientOverviewRail", () => {
     // tapping the SEALED row opens the depth drill (not Simulate) — it has a real population
     fireEvent.click(screen.getByRole("button", { name: /I quit my 9-5 with \$400/ }));
     expect(screen.getByTestId("ambient-detail")).toBeTruthy();
-    // opens BRAIN-first (owner call 2026-07-24: text sim = full video Brain parity). The text brain is
-    // the SAME attention-scrubber the video draws (modeled retention curve + real transcript), headed by
-    // the REAL top-reason synthesis — the friction (loss) reason, humanized + coral. This REVERSED the
-    // old reason-bars stance, so "What carried the stop" must NOT render; and it is NEVER the "text
-    // concept sim — unavailable" paused state. (textContent matcher tolerates the synthesis' spans.)
+    // Opens BRAIN-first, and the text brain is its OWN instrument (§3.3): video has the timeline
+    // and no voices, text has the voices and no timeline. The 2026-07-24 parity pass handed text a
+    // MODELED retention curve so both kinds drew the same figure; rev 12 takes it back out, because
+    // a modeled timeline is precisely what a text concept does not have. Its driver is the REAL
+    // coded-reason tally — the one measured thing on the page — under an answer that names the leak.
     const bodyHas = (re: RegExp) =>
       screen.getAllByText((_content, el) => !!el && re.test(el.textContent ?? "")).length > 0;
-    expect(bodyHas(/Most who stalled did so on/i)).toBe(true); // the real "why they stopped" synthesis
-    expect(bodyHas(/too slow/i)).toBe(true); // the friction (loss) reason leads it (520 vs 120: loss wins)
-    expect(screen.queryByText(/What carried the stop/i)).toBeNull(); // the reversed-away reason-bars header
+    expect(screen.getByText("Why they scrolled")).toBeTruthy(); // the reason bars ARE the text driver
+    expect(bodyHas(/Too slow/)).toBe(true); // the friction (loss) reason renders as its own row
+    expect(bodyHas(/Too slow is what leaks/i)).toBe(true); // …and the answer headline names it
+    // The banned verb: the live rail meant "would stop" as the GOOD outcome (stopped scrolling)
+    // while every creator reads it as the loss. One verb, two polarities — so it is gone.
+    expect(screen.queryByText(/would stop/i)).toBeNull();
     expect(screen.queryByText(/text concept sim/i)).toBeNull(); // never the unavailable fallback
     // the Population tab is still reachable — the same sim's REAL districts render there
-    fireEvent.click(screen.getByRole("button", { name: /The audience/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Audience" }));
     expect(screen.getAllByText(/builders/).length).toBeGreaterThan(0);
   });
 
@@ -273,7 +276,7 @@ describe("AmbientOverviewRail", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: /Here is the money truth/ })); // reveal
     fireEvent.click(screen.getByRole("button", { name: /Here is the money truth/ })); // drill
-    fireEvent.click(screen.getByRole("button", { name: /The audience/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Audience" }));
 
     // the fold's REAL archetypes are the districts — the room, named, not a placeholder
     // (display names, so this also proves the slugs go through `archetypeDisplayName`)
@@ -333,17 +336,15 @@ describe("AmbientOverviewRail", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: /Here is the money truth/ })); // reveal
     fireEvent.click(screen.getByRole("button", { name: /Here is the money truth/ })); // drill
-    fireEvent.click(screen.getByRole("button", { name: /The audience/ }));
+    // The action profile answers ENGAGEMENT's question — what they did with it — so rev 12 renders
+    // it there, in the tile grammar, rather than beside the audience census where it used to sit.
+    fireEvent.click(screen.getByRole("button", { name: "Engagement" }));
 
-    expect(screen.getByText(/what they’d do with it/i)).toBeInTheDocument();
-    // the four verbs, and the real headcount off the real cast (3 of 5 carry any intent)
-    expect(screen.getByText("rewatch")).toBeInTheDocument();
-    expect(screen.getByText(/3 of 5/)).toBeInTheDocument();
-    // the read GROUPS the head — save tops comment by 3 points, which is sort order, not a finding
-    expect(screen.getByText(/run together \(38–48\); rewatch is the floor at 21\./)).toBeInTheDocument();
-    // and the denominator is stated: these are not rates
-    expect(screen.getByText(/not a room average/)).toBeInTheDocument();
-    // the section it sits beside stays absent — intent is not a reach claim
+    expect(screen.getByText("Projected reaction")).toBeInTheDocument();
+    // the verbs, and the real headcount off the real cast (3 of 5 carry any intent)
+    expect(screen.getByText("Rewatch")).toBeInTheDocument();
+    expect(screen.getByText(/3 of 5 would act/)).toBeInTheDocument();
+    // still a reach-free claim: no multiplier, no cascade, no carrier ranking anywhere near it
     expect(screen.queryByText(/who spreads it/i)).toBeNull();
   });
 
@@ -519,7 +520,7 @@ describe("AmbientOverviewRail — the funnel wall (sealed wire seals, §0b②)",
       />,
     );
     fireEvent.click(screen.getByRole("button", { name: /Tested video/ }));
-    fireEvent.click(screen.getByRole("button", { name: "The brain" }));
+    fireEvent.click(screen.getByRole("button", { name: "Brain" }));
     expect(screen.getByText(/unlocks with the simulation verdict/i)).toBeTruthy();
   });
 

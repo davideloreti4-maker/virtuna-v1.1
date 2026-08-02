@@ -214,16 +214,19 @@ export const FEATURED_VIDEO = {
     ],
     unlock: {
       lever: "Open on the question",
-      gain: "+14% would stop",
+      // "would stop" is banned on the rail — it meant stopped SCROLLING here and the loss everywhere else.
+      gain: "+14% of the room",
       insight:
         "The answer is the strong part — the room that hears it stays. It is the twenty seconds before the question that costs the other four fifths.",
     },
     /** Cluster lit-ratios track the verdict: only the operators cluster holds. */
+    /** ONE taxonomy across the rail — relationship to the creator, TikTok's own vocabulary. The
+     *  archetype namespace (operators / scrollers / skeptics / drop-ins) is owner-RETIRED. */
     clusters: {
-      operators: 0.68,
-      scrollers: 0.19,
-      skeptics: 0.08,
-      "drop-ins": 0.22,
+      followers: 0.68,
+      returning: 0.34,
+      new: 0.12,
+      "outside niche": 0.06,
     } as Record<string, number>,
   },
 } as const;
