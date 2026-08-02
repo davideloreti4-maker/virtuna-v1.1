@@ -1,7 +1,10 @@
-# Handoff — Discover rework: BUILT, awaiting owner verification + merge
+# Handoff — Discover rework: BUILT + refined, awaiting owner verification + merge
 
 **Date:** 2026-08-02 · **Worktree:** `~/virtuna-slot-c` · **Branch:** `task/discover-rework`
-**HEAD:** `4230b7e2` (pushed, 0 commits behind `origin/main`) · **NOT MERGED**
+**HEAD:** see `git rev-parse HEAD` (pushed, 0 commits behind `origin/main`) · **NOT MERGED**
+
+> **Session 2 (2026-08-02, later)** closed §5.1, §5.2, §5.3 and the §3.4 loose end, and did the
+> empty-account pass §5.4 asked for. Jump to **§6** for what changed and what is still open.
 
 > ⚠️ **Merging to `main` IS deploying** — production builds ~3s after the merge, there are no
 > preview URLs, and a green Vercel check is not a build (`ignoreCommand` skips and posts success).
@@ -200,6 +203,10 @@ resolves §5.1 at the same time.
   Watchlist tab most users see is the invitation, and it has only been seen with 6 sources present.
   Worth one pass signed in as a fresh account.
 
+> ⚠️ **§5.1–§5.3 and the §3.4 loose end are CLOSED — see §6.** §5.4's empty-state bullet is done
+> too. The rest of §5.4 is still open. The two corrections §6 makes to the text above are marked
+> there; the descriptions in §5.1/§5.2 were each wrong in one detail.
+
 ### 5.5 Explicitly settled — do not reopen without the owner
 - Three tabs, named **Outliers · Collections · Watchlist** (owner named Watchlist; "Sources" was
   rejected).
@@ -207,3 +214,163 @@ resolves §5.1 at the same time.
 - The ≥100× exclusion from the feed pool, and the three-state multiplier chip.
 - Collections sort by views, not by multiplier.
 - `/competitors` renders the board; the tab merge is a READ merge only.
+
+---
+
+## 6. Session 2 — the two defects, the detail view, and the empty account
+
+Everything here is shipped in `src/` and verified signed-in. Nothing is deployed.
+
+### 6.1 §5.2 — a failed corpus read no longer takes the page down
+
+`/feed` settles its two reads with `Promise.allSettled`. Each degrades to its own empty shape and
+the hub receives a `failures` flag beside it, so a tab whose read failed says *"We couldn't load
+the outlier library just now"* with a Retry, while the other tabs keep working.
+
+> 🔑 **Correction to §5.2: `/feed` DOES have an error boundary** — `src/app/(app)/error.tsx`
+> covers the whole route group. The defect was real but the mechanism was not "unhandled throw";
+> it was that the boundary is page-wide, so a corpus failure swapped the entire hub for the
+> generic error screen and took Watchlist — which reads two other tables through a different
+> client — down with it. The fix is per-read degradation, NOT another boundary.
+
+A failed read arrives as an empty corpus, and empty is indistinguishable from "nothing there" —
+so the flag travels separately and the surface **omits** counts rather than printing `0`. The
+header restates itself too; it never claims "0 proven outliers · 0 collections" about a library
+it could not open.
+
+**Verified against the real failure**, not a mock: a dev server booted with a bogus
+`SUPABASE_SERVICE_ROLE_KEY` makes the corpus read genuinely throw. Outliers and Collections each
+showed their own banner, both counts vanished from the tab bar, and Watchlist still rendered its
+sources and both add-doors. `.scratch/shots/corpus-fail-*.png`.
+
+### 6.2 §5.1 + §5.3 — the card opens a teardown detail, and that is where Remix lives
+
+`components/discover/teardown-detail.tsx` — a dialog opened from an outlier card **and** from a
+collection row (the hub owns the open id; one instance over one `corpus.teardowns` map). It shows
+cover · kicker (`archetype · niche`) · spoken hook · receipt chip · **why it works, in full** ·
+the reusable template · the taxonomy · a plain always-visible **Remix → Read**.
+
+> 🔑 **Correction to §5.1: it was worse than "unreachable".** The `opacity-0` Remix still occupied
+> its slot and still took the tap, so on a touch device a thumb landing on the lower third of a
+> card fired a remix nobody could see and got dropped on `/home`. Not a missing affordance — a
+> mis-firing invisible one. The button now carries `pointer-events-none` until
+> `group-hover`, is `aria-hidden` + `tabIndex={-1}` (a duplicate of an action the detail offers
+> accessibly), and the card gets a stretched overlay button that is its single tab stop.
+>
+> **Proven on a real touch context**: tapping the exact pixel the invisible button occupied
+> opens the detail, the URL stays `/feed`, and **zero POSTs fire**.
+
+### 6.3 §3.4 — `whyExcerpt` is gone, and the detail reads one row instead
+
+The loose end said "render it or drop it". Both, in the right places. `why_it_works` is a **p50 of
+578 characters** across all 524 rows (min 234, max 760), so the 220-char excerpt broke mid-sentence
+on ~95% of them — there is no excerpt that is both cheap and whole.
+
+| `whyExcerpt` in the corpus read | raw | gzip |
+|---|---|---|
+| dropped | 324KB | **75KB** |
+| 220 chars (what shipped) | 436KB | **113KB** |
+| full essay | 620KB | **173KB** |
+
+> ⚠️ **What that table is, precisely:** `JSON.stringify` + gzip of the 524 `CorpusVideo` objects
+> as the read builds them, from the live service-key dump (`.scratch/corpus.json`). It is the
+> corpus half of the page payload — the part this change moves — **not** a measured
+> before/after of the whole RSC response, which was never A/B'd. Treat the ~38KB gzip saving as
+> "the corpus data got that much smaller", not as a page-weight benchmark. The decision does not
+> hinge on the exact figure: the ratio is what matters, and shipping 524 essays to render one is
+> wrong at any of these numbers.
+
+So the corpus read dropped the column and `app/actions/discover/teardown.ts` fetches one row on
+open — which **also** unlocked `format` / `visual_hook` / `editing_style`, populated on all 524
+rows and never selected before. The analysis is finally rendered whole. The server action is auth-checked (it is a public POST endpoint) and
+reads through `getCorpusClient()`, because `outlier_teardowns` still has RLS on with no policies.
+
+⚠️ A guard in `feed/__tests__/read-degradation.test.ts` fails if those columns reappear in the
+hub's `.select()` — that is the payload coming back.
+
+### 6.4 The empty account (§5.4's last bullet)
+
+44 of 45 accounts track nothing, and that Watchlist rendered as **two stacked dashed boxes**: a
+bare "You're not watching anyone yet." carrying no action, and separately the block that held the
+invitation and both doors. Now one block — icon, headline, the two-kinds sentence, both doors, and
+a line out to the library (*"230 proven outliers are already in the library"*, which switches tabs).
+A filter miss keeps its own thin line; it is a different state.
+
+> ⚠️ **What this does NOT prove.** No fresh account was created — dev and prod share one Supabase
+> project and that would have written a real user row. The empty state was forced with a temporary
+> one-line env guard in `getWatchlistData`, screenshotted, and the file restored from a checksummed
+> copy (verified: no probe code in `src/`). So the **rendering** is confirmed with real eyes;
+> a fresh account's RLS path is not. `.scratch/shots/empty-acct-v2-watchlist.png`.
+
+### 6.5 Three defects this session's own verification caught
+
+- **`link-name` — the detail's cover was a nameless link.** Its only content is a decorative
+  cover image, so a screen reader announced a bare URL; the mobile thumbnail had no text at all.
+  The desktop one *looked* named only because its "Watch original" overlay text sits in the DOM
+  at `opacity-0` — text that appears on hover is not an accessible name. Found by adding `axe`
+  to the new components, not by review. Both covers now carry an explicit `aria-label`, and the
+  axe assertions are permanent (`teardown-detail.test.tsx` → "a11y").
+- **The dialog's mobile layout was wrong on the first build.** The desktop cover column ran 437px
+  of a 664px viewport, so "Why it works" — the reason the dialog exists — opened below the fold.
+  The cover is now a thumbnail beside the title under `sm`, the full column above it.
+- **`truncate` on the Kicker does nothing.** It is an inline `<span>`, and overflow does not apply
+  to inline boxes, so at phone width the kicker ran *under* the close button instead of
+  ellipsizing. It needs a block wrapper. **This is the same root cause as §5.4's kicker-truncation
+  item** — worth checking there when that one is picked up.
+
+### 6.5b Verified by mutation, not by assertion
+
+The new tests were run against the PRE-change code (`git stash push -- src/`, which leaves the
+untracked new files in place). **11 of 16 failed**, including `read-degradation` failing with the
+raw `Error: PGRST — corpus unavailable` escaping the page — the defect itself, reproduced.
+
+The 5 that passed are expected and worth knowing so nobody "fixes" them: 4 cover
+`TeardownDetailDialog`, a new untracked file that survives the stash, so they cannot fail against
+a past in which it did not exist; the 5th is the filter-miss guard, which deliberately protects
+behaviour this pass PRESERVED rather than added.
+
+### 6.6 Gates — and a correction to how §2 reported them
+
+`tsc --noEmit` clean · `next build` compiled · signed-in visual pass at 1440px and on an iPhone 13
+touch context, 0 console errors · **0 test failures attributable to this branch** (the discover +
+feed scope runs 76/76; the new files 13/13).
+
+> 🔑 **`vitest run` EXITS 1 in this worktree, before and after this branch. §2's "0 fail" was read
+> through a pipe.** `node …/vitest.mjs run 2>&1 | tail -8` reports **`tail`'s** exit code, which is
+> always 0 — the same wrapper-swallowing trap the repo already documents for `npx`. Unpiped, the
+> real state of `~/virtuna-slot-c` is:
+>
+> 1. **3 unhandled rejections** in `composer.test.tsx` (`Cannot read properties of undefined
+>    (reading 'catch')`, `composer.tsx:2011`). Vitest exits non-zero on unhandled errors **even
+>    with 0 failed tests**. Reproduces running that file alone.
+> 2. **2 reproducible failures** — `composer-fold-on-close` and `composer-stop-disc`, both
+>    `Test timed out in 5000ms`. **They fail identically with this branch's changes stashed**
+>    (same worktree, same `node_modules`), and they PASS in `~/virtuna-v1.1`. The difference is
+>    the worktree's own dependency tree: **slot-c has vitest 4.1.10, trunk has 4.0.18**. Both test
+>    files and `composer.tsx` are byte-identical to `origin/main`, and composer has no import path
+>    to anything under `discover/`.
+> 3. **Intermittent 5s timeouts under machine load** — seen in `reading.*`,
+>    `remix-core-grounding`, `api/tools/chat`; count varied 2 → 7 across back-to-back runs on a
+>    loaded machine. No `testTimeout` is configured, so the default 5000ms applies suite-wide.
+>
+> ⚠️ So **do not treat a non-zero `vitest` exit here as a signal about Discover.** Diff the failing
+> file against `origin/main` first, and re-run it in isolation. Worth fixing separately: aligning
+> the slot worktrees' vitest version with trunk's, and raising `testTimeout` in `vitest.config.ts`.
+
+The pass counts quoted above and in §2 (4,958 / 4,970 / 4,974 / 4,976) are all real — the suite
+genuinely reaches 0 failures on a quiet machine — but the **exit code was never 0**.
+
+New tests: `feed/__tests__/read-degradation.test.ts` (the read split + the payload guard),
+`discover/__tests__/teardown-detail.test.tsx` (touch reachability + the detail),
+`discover/__tests__/watchlist-empty.test.tsx` (one dashed box, not two).
+
+### 6.7 Still open from §5.4
+
+Kicker truncation on collection cards (see 6.5 — likely the same inline-span cause) · no cross-tab
+search hint ("12 in Collections") · the Watchlist "latest" strip clips its last card at the
+container edge · Pull live still navigates away to `/feed/discover`, because its results carry no
+covers. Plus everything in §3.2/§3.3/§3.5, untouched.
+
+**One known polish gap:** closing the detail unmounts it immediately, so Radix's exit animation
+never plays. The open animation does. Left as-is deliberately — fixing it means holding the last
+video in state purely to animate it out.
