@@ -1,11 +1,9 @@
 # HANDOFF — Skill cards, LIVE-renderer refinement (the sketch track is dead)
 
 **Branch:** `lane/skill-cards-cleanup` · **Worktree:** `~/virtuna-slot-a` · **Dev port:** 3001
-**Tip:** `c0278044` + this doc commit (pushed) · **Base:** `origin/main` @ `96ccff5b`
-**Status:** twelve commits across two owner-review rounds (2026-08-02). Not merged.
-**NEXT WORK: §H — the header contract.** The owner flagged non-uniform card headers and asked
-for a fresh-context session to implement it. §H is the decided spec; do not re-litigate it, but
-show the two flagged duplication trades in the preview before committing them.
+**Status:** MERGED to `main` 2026-08-02 — the lane is CLOSED and LIVE in production.
+**§H — the header contract — SHIPPED** (`a70ada67`, the last build of the lane). Both flagged
+duplication trades were screenshotted, reviewed and KEPT; see §H.4 for the reasoning that stands.
 ⚠️ **Merging to `main` IS deploying** (no preview URLs, prod builds ~3s after merge). Verify first.
 
 ---
@@ -36,6 +34,7 @@ uppercase micro-label chrome, no text-only "document" columns, no portrait-media
 | `54ec7236` | the audience band leads with **Made for** (locked §7.6 wording; guard re-pinned) |
 | `52ad551e` | remix source strip → the family's full-width bordered tone-zone |
 | `c0278044` | disclosure rows say what they hold: `Seed line & delivery` (hidden when empty) · `Opening line` · `How the original is built` |
+| `a70ada67` | **§H — the header contract.** `CardHero` + `CopyAffordance` added to `card-primitives.tsx`; all five active cards refit to one opening row |
 
 ### 1.1 The core change — why the 8/10 had to go
 
@@ -119,7 +118,21 @@ Playwright notes that matter here: `waitUntil:'domcontentloaded'` (networkidle n
 
 **Before merging:** `rm -rf src/app/zz-preview scripts/zz-shoot.js zz-shots public/zz-v94-cards.html`.
 
-## H. THE HEADER CONTRACT — the next session's build (owner-flagged 2026-08-02, round 3)
+## H. THE HEADER CONTRACT — ✅ SHIPPED `a70ada67` (owner-flagged 2026-08-02, round 3)
+
+> **What actually happened.** Built as specced below, with two corrections to the plan's
+> expectations. (1) **No guard needed re-pinning.** §H.5 predicted the remix map + script head
+> pins would trip; no test pins them — grep the suite before budgeting for a re-pin. The one that
+> could have (`Talking-head · Creator growth`) survives because the demoted meta line keeps that
+> exact substring. (2) **Both duplication trades were KEPT** after owner review of the
+> screenshots. The script fallback in §H.4 (strip the HOOK beat's content line) was NOT taken: it
+> would make HOOK the only beat in the timeline without a content line, trading a cosmetic repeat
+> for a structural inconsistency. Video-test needed no change — it was already on `px-4 pt-4`.
+> Verified: tsc clean · thread 360/360 · adjacent 812 pass · `npm run build` compiled.
+>
+> ⚠️ **Running vitest while `npm run build` runs produces phantom failures.** Seven API-route
+> tests "failed" at 5s timeouts purely from CPU starvation; isolated they pass 43/43 in 4.35s.
+> Never diagnose a red suite that shared a core with a build.
 
 The owner's screenshots: the hook's head (`#1 · serif line · Copy`) beside the idea's (a bare
 serif title) — *"headers are not uniform across all cards."* Today the five actively-generating
@@ -172,9 +185,11 @@ re-pin in `54ec7236` — read the guard's premise first, then re-pin to the new 
 
 ## 5. What is NOT done — the next session's menu
 
-1. **§H — the header contract.** The owner's directed next build. Everything above it is shipped.
-2. **Merge decision.** Nothing blocks it; it needs the throwaway deletion above and the owner's go.
-   Merge = deploy.
+1. ~~§H — the header contract~~ **DONE** (`a70ada67`) — see the box at the top of §H.
+2. ~~Merge decision~~ **DONE 2026-08-02.** The lane is merged and live. The throwaway harness
+   (§4) was never tracked, so it did not need deleting to merge — it stays on disk in
+   `~/virtuna-slot-a` for the next card session. Confirm with `git status` that it is still
+   untracked before staging anything there.
 3. ~~SIM-1 Flash tags~~ **DONE on the active cards** (`84a89509`): brought + read say
    `Simulated · N reactions`. `reaction-distribution` + `prediction-gauge` still carry the tag
    **deliberately** — both are HORIZONTAL verbs behind `HORIZONTAL_ENABLED=false`
