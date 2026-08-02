@@ -16,6 +16,14 @@
  *
  * ⚠️ Collections come from `teardown_collections` (the curated table), never derived from
  * the teardown taxonomy columns — deriving produced a worse, different set once already.
+ *
+ * ⚠️ This read deliberately does NOT select `why_it_works` or the three taxonomy columns
+ * (`format`, `visual_hook`, `editing_style`). They are DETAIL fields: one open dialog reads
+ * one row's worth, and shipping all 524 to every visitor cost 38KB gzip for text nothing
+ * rendered (measured 2026-08-02: 113KB gzip with a 220-char excerpt, 173KB with the full
+ * essay — which is what it takes to show it whole, since `why_it_works` is a p50 of 578
+ * chars, so any excerpt short enough to be cheap breaks mid-sentence). The detail fetches
+ * one row by id instead — `app/actions/discover/teardown.ts`.
  */
 
 import { getCorpusClient } from "@/lib/grounding/corpus";
@@ -23,9 +31,6 @@ import { hasKnownBaseline, isProofGrade } from "@/lib/grounding/retrieve";
 
 /** Above this, a real ratio stops being a signal a card may present as proof. */
 export const EXTREME_MULTIPLIER = 100;
-
-/** Truncation for the inline why-it-works excerpt (full text lives in the DB). */
-const WHY_EXCERPT_LENGTH = 220;
 
 export type CollectionCategory =
   | "formats"
@@ -51,7 +56,6 @@ export interface CorpusVideo {
   /** Honest multiplier — null when the row has no baseline (no basis, no number). */
   multiplier: number | null;
   baselineLabel: string | null;
-  whyExcerpt: string | null;
   /** Baselined AND ≥3× (isProofGrade). */
   proven: boolean;
   /** Baselined but past the thin-baseline bar — shown flagged, never as proof. */
@@ -88,6 +92,25 @@ export interface DiscoverCorpus {
   };
 }
 
+/**
+ * The shape a FAILED corpus read degrades to.
+ *
+ * `getDiscoverCorpus` throws on a Supabase error — the grounding layer's own convention
+ * ("RPC failures throw; the caller wraps in try/catch + graceful degradation"). Until
+ * 2026-08-02 the caller did neither, so one bad corpus read replaced the whole of
+ * Discover with the (app) error screen — taking out Watchlist, which does not read this
+ * table at all. `/feed` now catches per-read and falls back to this. It is deliberately
+ * empty rather than partial: the surface says it couldn't read, and never renders a
+ * confident "0 outliers" that would be indistinguishable from an empty library.
+ */
+export const EMPTY_CORPUS: DiscoverCorpus = {
+  teardowns: {},
+  feedIds: [],
+  collections: [],
+  niches: [],
+  totals: { videos: 0, proven: 0, collections: 0, creators: 0 },
+};
+
 /** Durable covers only for mosaics: rehosted to our storage or ytimg. Signed TikTok CDN
  *  urls expire and 403 — cards handle those with an onError poster, mosaics never get them. */
 const isDurableCover = (url: string | null): url is string =>
@@ -106,7 +129,6 @@ interface TeardownRow {
   posted_at: string | null;
   outlier_multiplier: number | string | null;
   baseline_label: string | null;
-  why_it_works: string | null;
 }
 
 interface MembershipRow {
@@ -145,7 +167,6 @@ function toCorpusVideo(row: TeardownRow): CorpusVideo {
     postedAt: row.posted_at,
     multiplier,
     baselineLabel: row.baseline_label,
-    whyExcerpt: row.why_it_works ? row.why_it_works.slice(0, WHY_EXCERPT_LENGTH) : null,
     proven: isProofGrade(receiptRow),
     extreme: multiplier !== null && multiplier >= EXTREME_MULTIPLIER,
   };
@@ -159,7 +180,7 @@ export async function getDiscoverCorpus(): Promise<DiscoverCorpus> {
     client
       .from("outlier_teardowns")
       .select(
-        "id, video_url, cover_url, creator_handle, spoken_hook, hook_template, hook_archetype, niche, views, posted_at, outlier_multiplier, baseline_label, why_it_works",
+        "id, video_url, cover_url, creator_handle, spoken_hook, hook_template, hook_archetype, niche, views, posted_at, outlier_multiplier, baseline_label",
       )
       .eq("status", "extracted")
       .limit(1000),

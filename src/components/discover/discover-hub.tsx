@@ -22,10 +22,12 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MagnifyingGlass, Lightning } from "@phosphor-icons/react";
 import { PageShell, SurfaceHeader } from "@/components/surfaces/surface-header";
+import { SurfaceErrorState } from "@/components/ui/surface-error-state";
 import { DiscoverTabBar, type DiscoverTab } from "@/components/discover/discover-tab-bar";
 import { OutliersPanel } from "@/components/discover/outliers-panel";
 import { CollectionsPanel } from "@/components/discover/collections-panel";
 import { WatchlistPanel } from "@/components/discover/watchlist-panel";
+import { TeardownDetailDialog } from "@/components/discover/teardown-detail";
 import { classifyDiscoverInput } from "@/lib/discover/classify-input";
 import type { DiscoverCorpus } from "@/lib/discover/corpus-reads";
 import type { WatchlistData } from "@/lib/discover/watchlist-reads";
@@ -37,15 +39,23 @@ export function DiscoverHub({
   watchlist,
   initialTab,
   refreshedLabel,
+  failures = { corpus: false, watchlist: false },
 }: {
   corpus: DiscoverCorpus;
   watchlist: WatchlistData;
   initialTab: DiscoverTab;
   refreshedLabel: string;
+  /** Which of the page's two independent reads REJECTED. A failed read arrives here as an
+   *  empty shape, and empty is indistinguishable from "nothing there" — this is what lets
+   *  the tab say it couldn't read instead of confidently reporting zero. */
+  failures?: { corpus: boolean; watchlist: boolean };
 }) {
   const router = useRouter();
   const [tab, setTab] = useState<DiscoverTab>(initialTab);
   const [query, setQuery] = useState("");
+  /** The open teardown detail. Lifted to the hub because both Outliers and Collections open
+   *  the same dialog over the same `corpus.teardowns` map — one instance, one source. */
+  const [openId, setOpenId] = useState<string | null>(null);
 
   const select = (next: DiscoverTab) => {
     setTab(next);
@@ -63,6 +73,16 @@ export function DiscoverHub({
     [corpus],
   );
 
+  // The header states what is actually known. With a failed corpus read the totals are all
+  // zero, and "0 proven outliers · 0 collections" is a confident claim about a library we
+  // could not open.
+  const subtitle =
+    failures.corpus && failures.watchlist
+      ? "Discover can't reach its data right now."
+      : failures.corpus
+        ? `The outlier library is unavailable right now — your ${watchlist.sources.length} watched source${watchlist.sources.length === 1 ? "" : "s"} still load.`
+        : `${corpus.totals.proven} proven outliers · ${corpus.totals.collections} collections · ${corpus.totals.creators} creators`;
+
   // Pull is offered only for something we could actually go and fetch — a handle or a URL,
   // and only when the library has nothing under that name already.
   const trimmed = query.trim();
@@ -76,10 +96,7 @@ export function DiscoverHub({
   return (
     <div className="relative min-h-full text-foreground">
       <PageShell>
-        <SurfaceHeader
-          title="Discover"
-          subtitle={`${corpus.totals.proven} proven outliers · ${corpus.totals.collections} collections · ${corpus.totals.creators} creators`}
-        />
+        <SurfaceHeader title="Discover" subtitle={subtitle} />
 
         <div className="mt-4 flex gap-2">
           <div className="flex h-10 flex-1 items-center gap-2.5 rounded-lg border border-border bg-surface-sunken px-3">
@@ -111,39 +128,75 @@ export function DiscoverHub({
           <DiscoverTabBar
             active={tab}
             onSelect={select}
+            // A count is omitted, never zeroed, for a tab whose read failed — the same
+            // reason the subtitle changes shape above.
             counts={{
-              outliers: corpus.totals.proven,
-              collections: corpus.totals.collections,
-              watchlist: watchlist.sources.length,
+              outliers: failures.corpus ? undefined : corpus.totals.proven,
+              collections: failures.corpus ? undefined : corpus.totals.collections,
+              watchlist: failures.watchlist ? undefined : watchlist.sources.length,
             }}
           />
         </div>
 
         <div key={tab} className="rv-in mt-5">
           {tab === "outliers" ? (
-            <OutliersPanel
-              videos={feedVideos}
-              niches={corpus.niches}
-              query={query}
-              refreshedLabel={refreshedLabel}
-            />
+            failures.corpus ? (
+              <ReadFailed what="the outlier library" onRetry={() => router.refresh()} />
+            ) : (
+              <OutliersPanel
+                videos={feedVideos}
+                niches={corpus.niches}
+                query={query}
+                refreshedLabel={refreshedLabel}
+                onOpen={setOpenId}
+              />
+            )
           ) : null}
           {tab === "collections" ? (
-            <CollectionsPanel
-              collections={corpus.collections}
-              teardowns={corpus.teardowns}
-              query={query}
-            />
+            failures.corpus ? (
+              <ReadFailed what="the collections" onRetry={() => router.refresh()} />
+            ) : (
+              <CollectionsPanel
+                collections={corpus.collections}
+                teardowns={corpus.teardowns}
+                query={query}
+                onOpen={setOpenId}
+              />
+            )
           ) : null}
           {tab === "watchlist" ? (
-            <WatchlistPanel
-              sources={watchlist.sources}
-              latest={watchlist.latest}
-              query={query}
-            />
+            failures.watchlist ? (
+              <ReadFailed what="your watchlist" onRetry={() => router.refresh()} />
+            ) : (
+              <WatchlistPanel
+                sources={watchlist.sources}
+                latest={watchlist.latest}
+                query={query}
+                libraryCount={corpus.totals.proven}
+                onBrowseOutliers={() => select("outliers")}
+              />
+            )
           ) : null}
         </div>
       </PageShell>
+
+      <TeardownDetailDialog
+        video={openId ? corpus.teardowns[openId] ?? null : null}
+        onClose={() => setOpenId(null)}
+      />
     </div>
+  );
+}
+
+/** One tab's read failed. The others are untouched, so this replaces the panel and nothing
+ *  else — the whole point of settling the two reads separately. */
+function ReadFailed({ what, onRetry }: { what: string; onRetry: () => void }) {
+  return (
+    <SurfaceErrorState
+      stacked
+      message={`We couldn't load ${what} just now.`}
+      onRetry={onRetry}
+      retryLabel="Try again"
+    />
   );
 }

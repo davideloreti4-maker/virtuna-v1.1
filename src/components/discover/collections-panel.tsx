@@ -39,10 +39,13 @@ export function CollectionsPanel({
   collections,
   teardowns,
   query,
+  onOpen,
 }: {
   collections: CollectionSummary[];
   teardowns: Record<string, CorpusVideo>;
   query: string;
+  /** Opens the teardown detail, which the hub owns. */
+  onOpen: (id: string) => void;
 }) {
   const [openSlug, setOpenSlug] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<CollectionCategory | null>(null);
@@ -66,6 +69,7 @@ export function CollectionsPanel({
         collection={open}
         teardowns={teardowns}
         onBack={() => setOpenSlug(null)}
+        onOpen={onOpen}
       />
     );
   }
@@ -155,10 +159,12 @@ function CollectionDetail({
   collection,
   teardowns,
   onBack,
+  onOpen,
 }: {
   collection: CollectionSummary;
   teardowns: Record<string, CorpusVideo>;
   onBack: () => void;
+  onOpen: (id: string) => void;
 }) {
   const { remix, pendingId } = useRemixLaunch();
   const items = collection.itemIds
@@ -198,7 +204,7 @@ function CollectionDetail({
         {items.map((v) => (
           <article
             key={v.id}
-            className="flex items-center gap-3.5 rounded-xl border border-border bg-surface-elevated p-2.5 transition-colors hover:border-border-hover"
+            className="relative flex items-center gap-3.5 rounded-xl border border-border bg-surface-elevated p-2.5 transition-colors hover:border-border-hover"
           >
             <div className="relative h-[74px] w-[56px] shrink-0 overflow-hidden rounded-lg bg-surface-sunken">
               <CoverFill coverUrl={v.coverUrl} playSize={14} />
@@ -220,12 +226,20 @@ function CollectionDetail({
                 type="button"
                 onClick={() => void remix(v.id, v.videoUrl)}
                 disabled={pendingId === v.id}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-[color:var(--color-action)] px-3 py-1.5 text-label font-semibold text-[color:var(--color-action-foreground)] transition-opacity hover:opacity-90 disabled:opacity-60"
+                className="relative z-20 inline-flex items-center gap-1.5 rounded-lg bg-[color:var(--color-action)] px-3 py-1.5 text-label font-semibold text-[color:var(--color-action-foreground)] transition-opacity hover:opacity-90 disabled:opacity-60"
               >
                 {pendingId === v.id ? "Starting…" : "Remix"}
                 {pendingId === v.id ? null : <ArrowRight size={12} weight="bold" />}
               </button>
             </div>
+            {/* The row opens the same teardown detail an outlier card does — this is where the
+                template shown above comes from, and the analysis behind it lives only there. */}
+            <button
+              type="button"
+              onClick={() => onOpen(v.id)}
+              aria-label={`Open teardown: ${v.template || v.spokenHook || "untitled"}`}
+              className="absolute inset-0 z-10 rounded-xl"
+            />
           </article>
         ))}
       </div>

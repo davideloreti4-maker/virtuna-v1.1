@@ -13,7 +13,7 @@
  */
 
 import Link from "next/link";
-import { CaretRight, Plus } from "@phosphor-icons/react";
+import { ArrowRight, CaretRight, Plus, UsersThree } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import { CoverFill } from "@/components/primitives/CoverFill";
 import { formatCount } from "@/lib/competitors-utils";
@@ -24,15 +24,70 @@ export function WatchlistPanel({
   sources,
   latest,
   query,
+  libraryCount,
+  onBrowseOutliers,
 }: {
   sources: WatchlistSource[];
   latest: LatestSourcePost[];
   query: string;
+  /** Proven outliers already in the library — the empty state's way out. */
+  libraryCount: number;
+  onBrowseOutliers: () => void;
 }) {
   const q = query.trim().toLowerCase();
   const list = sources.filter(
     (s) => !q || s.handle.toLowerCase().includes(q) || s.name.toLowerCase().includes(q),
   );
+
+  // 44 of 45 accounts track nothing, so this — not the populated list — is the Watchlist
+  // most people meet. It used to render as TWO stacked dashed boxes: a bare "You're not
+  // watching anyone yet." with no action, and separately the invitation that had the doors.
+  // One box, one message, and a way out to the half of Discover that is already full.
+  if (sources.length === 0 && !q) {
+    return (
+      <div className="rounded-xl border border-dashed border-border px-5 py-8 text-center">
+        <UsersThree
+          size={24}
+          className="mx-auto text-foreground-muted"
+          aria-hidden="true"
+        />
+        <p className="mt-2.5 text-body font-semibold text-foreground">
+          Nothing on your watchlist yet
+        </p>
+        <p className="mx-auto mt-1.5 max-w-md text-label text-foreground-muted">
+          Track a creator and their outliers join the feed. Track a competitor to also capture
+          follower history and head-to-head comparisons.
+        </p>
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+          <Link
+            href="/feed/channels"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-[color:var(--color-action)] px-3.5 py-2 text-label font-semibold text-[color:var(--color-action-foreground)] transition-opacity hover:opacity-90"
+          >
+            <Plus size={13} weight="bold" /> Add a creator
+          </Link>
+          <Link
+            href="/competitors"
+            className="rounded-lg border border-border px-3.5 py-2 text-label font-semibold text-foreground-secondary transition-colors hover:border-border-hover hover:text-foreground"
+          >
+            Track a competitor
+          </Link>
+        </div>
+        {libraryCount > 0 ? (
+          <p className="mt-5 border-t border-border pt-4 text-caption text-foreground-muted">
+            Nothing to watch yet doesn&apos;t mean nothing to work with —{" "}
+            <button
+              type="button"
+              onClick={onBrowseOutliers}
+              className="inline-flex items-center gap-1 font-medium text-foreground-secondary underline-offset-2 transition-colors hover:text-foreground hover:underline"
+            >
+              {libraryCount} proven outliers are already in the library
+              <ArrowRight size={11} weight="bold" />
+            </button>
+          </p>
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -72,9 +127,10 @@ export function WatchlistPanel({
         ))}
       </div>
 
+      {/* Only a FILTER miss can land here — a genuinely empty watchlist returned above. */}
       {list.length === 0 ? (
         <p className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-label text-foreground-muted">
-          {q ? "No source matches that." : "You're not watching anyone yet."}
+          No source matches that.
         </p>
       ) : null}
 

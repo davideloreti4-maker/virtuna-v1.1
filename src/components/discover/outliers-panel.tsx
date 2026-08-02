@@ -43,6 +43,7 @@ export function OutliersPanel({
   niches,
   query,
   refreshedLabel,
+  onOpen,
 }: {
   /** The feed pool, already filtered to proven + non-extreme and sorted newest-first. */
   videos: CorpusVideo[];
@@ -50,6 +51,8 @@ export function OutliersPanel({
   /** The hub's search box — filters here rather than opening a second search. */
   query: string;
   refreshedLabel: string;
+  /** Opens the teardown detail, which the hub owns. */
+  onOpen: (id: string) => void;
 }) {
   const [niche, setNiche] = useState<string | null>(null);
   const [sort, setSort] = useState<Sort>("recent");
@@ -139,6 +142,7 @@ export function OutliersPanel({
                 video={v}
                 pending={pendingId === v.id}
                 onRemix={() => void remix(v.id, v.videoUrl)}
+                onOpen={() => onOpen(v.id)}
               />
             ))}
           </div>
@@ -193,14 +197,17 @@ function OutlierCard({
   video,
   pending,
   onRemix,
+  onOpen,
 }: {
   video: CorpusVideo;
   pending: boolean;
   onRemix: () => void;
+  onOpen: () => void;
 }) {
   const age = fmtAge(video.postedAt);
+  const hook = video.spokenHook || video.template || "Untitled teardown";
   return (
-    <article className="group overflow-hidden rounded-xl border border-border bg-surface-elevated transition-colors hover:border-border-hover">
+    <article className="group relative overflow-hidden rounded-xl border border-border bg-surface-elevated transition-colors hover:border-border-hover">
       <div className="relative aspect-[3/4] overflow-hidden bg-surface-sunken">
         <CoverFill coverUrl={video.coverUrl} playSize={20} />
         {video.multiplier !== null ? (
@@ -208,22 +215,29 @@ function OutlierCard({
             ▲ {fmtMultiplier(video.multiplier)}
           </span>
         ) : null}
-        {/* The action stays out of the way until the card is addressed — a Remix button on
-            every tile at rest turns a browsable grid into a wall of CTAs. */}
+        {/* A MOUSE ACCELERATOR, and nothing more. The real Remix is the plain visible button
+            inside the teardown detail this card opens — which is what makes the action
+            reachable by touch and by keyboard at all.
+            ⚠️ `pointer-events-none` while hidden is load-bearing, not tidiness: an opacity-0
+            button still occupies its slot and still takes the tap, so on a touch device a
+            thumb landing on the lower third of a card fired a remix nobody could see and got
+            dropped on /home. Hidden from AT (`aria-hidden` + `tabIndex={-1}`) because it is a
+            duplicate of an action already reachable, and a focusable invisible control is its
+            own defect. */}
         <button
           type="button"
           onClick={onRemix}
           disabled={pending}
-          className="absolute inset-x-2 bottom-2 flex items-center justify-center gap-1.5 rounded-lg bg-[color:var(--color-action)] px-3 py-1.5 text-label font-semibold text-[color:var(--color-action-foreground)] opacity-0 transition-opacity focus-visible:opacity-100 disabled:opacity-60 group-hover:opacity-100"
+          tabIndex={-1}
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-2 bottom-2 z-20 flex items-center justify-center gap-1.5 rounded-lg bg-[color:var(--color-action)] px-3 py-1.5 text-label font-semibold text-[color:var(--color-action-foreground)] opacity-0 transition-opacity disabled:opacity-60 group-hover:pointer-events-auto group-hover:opacity-100"
         >
           {pending ? "Starting…" : "Remix"}
           {pending ? null : <ArrowRight size={13} weight="bold" />}
         </button>
       </div>
       <div className="p-2.5">
-        <p className="line-clamp-2 min-h-[2.6em] text-label text-foreground">
-          {video.spokenHook || video.template || "—"}
-        </p>
+        <p className="line-clamp-2 min-h-[2.6em] text-label text-foreground">{hook}</p>
         <div className="mt-2 flex items-center justify-between gap-2 text-caption text-foreground-muted">
           <span className="truncate">@{video.handle ?? "unknown"}</span>
           <span className="shrink-0 tabular-nums">
@@ -232,6 +246,15 @@ function OutlierCard({
           </span>
         </div>
       </div>
+      {/* The whole card is the target — one tab stop, one tap, no hover required. Rendered
+          last and stretched over the card rather than wrapped around it: a button cannot
+          nest inside a button, and clamping text inside a stretched link is fragile. */}
+      <button
+        type="button"
+        onClick={onOpen}
+        aria-label={`Open teardown: ${hook}`}
+        className="absolute inset-0 z-10 rounded-xl"
+      />
     </article>
   );
 }

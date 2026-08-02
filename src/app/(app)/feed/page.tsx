@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
-import { getDiscoverCorpus } from "@/lib/discover/corpus-reads";
-import { getWatchlistData } from "@/lib/discover/watchlist-reads";
+import { EMPTY_CORPUS, getDiscoverCorpus } from "@/lib/discover/corpus-reads";
+import { getWatchlistData, type WatchlistData } from "@/lib/discover/watchlist-reads";
 import { DiscoverHub, type DiscoverTab } from "@/components/discover/discover-hub";
 
 export const metadata: Metadata = {
@@ -23,6 +23,13 @@ const TAB_SET = new Set<DiscoverTab>(["outliers", "collections", "watchlist"]);
  * No `revalidate` here on purpose: the auth check reads cookies, so this page is dynamic and
  * a route-level revalidate would be inert — a comment promising an hour of caching that
  * never happens. The two reads are a single round trip each.
+ *
+ * ⚠️ The two reads are settled INDEPENDENTLY (2026-08-02). They hit different tables through
+ * different clients — the corpus via the grounding service client, the watchlist via the
+ * caller's RLS-scoped one — and neither tab needs the other's data. Awaiting them together
+ * meant either failure threw out of the page and the (app) error boundary replaced the whole
+ * hub, so a corpus hiccup took down a Watchlist that never touched the corpus. Each side now
+ * degrades to its own honest empty and the surface says which half is missing.
  */
 
 /** The corpus is frozen until an ingest runs, and the surface says so rather than implying
@@ -53,10 +60,21 @@ export default async function DiscoverRoute({
     ? (tab as DiscoverTab)
     : "outliers";
 
-  const [corpus, watchlist] = await Promise.all([
+  const [corpusRes, watchlistRes] = await Promise.allSettled([
     getDiscoverCorpus(),
     getWatchlistData(supabase),
   ]);
+
+  if (corpusRes.status === "rejected") {
+    console.error("[discover] corpus read failed", corpusRes.reason);
+  }
+  if (watchlistRes.status === "rejected") {
+    console.error("[discover] watchlist read failed", watchlistRes.reason);
+  }
+
+  const corpus = corpusRes.status === "fulfilled" ? corpusRes.value : EMPTY_CORPUS;
+  const watchlist: WatchlistData =
+    watchlistRes.status === "fulfilled" ? watchlistRes.value : { sources: [], latest: [] };
 
   const newest = corpus.feedIds
     .map((id) => corpus.teardowns[id]?.postedAt)
@@ -68,6 +86,10 @@ export default async function DiscoverRoute({
       watchlist={watchlist}
       initialTab={initialTab}
       refreshedLabel={refreshedLabel(newest ?? null)}
+      failures={{
+        corpus: corpusRes.status === "rejected",
+        watchlist: watchlistRes.status === "rejected",
+      }}
     />
   );
 }
