@@ -75,6 +75,7 @@ const FREE_ROUTES = ["test/card/route.ts"];
  */
 const PAID_ROUTES_OUTSIDE_TOOLS: Record<string, keyof typeof CREDIT_COSTS> = {
   "account-read/route.ts": "account",
+  "discover/route.ts": "discover",
 };
 
 /** Every paid route, wherever it lives: [absolute path, action, display name]. */
@@ -170,6 +171,20 @@ describe("every paid tool route gates and bills", () => {
     const gate = src.indexOf("creditGate(");
     expect(wall, "react/route.ts must wall the anonymous visitor").toBeGreaterThan(-1);
     expect(gate, "react/route.ts must gate").toBeGreaterThan(-1);
+    expect(wall, "THE WALL must run before the credit gate").toBeLessThan(gate);
+  });
+
+  it("the discover route walls the anonymous visitor BEFORE it gates them", () => {
+    // Same load-bearing ordering as react above, and it matters MORE here: /api/discover is
+    // reachable by an anonymous session today (middleware passes all /api/ through, and an
+    // anonymous visitor is a real auth.users row), so without THE WALL running first the
+    // credit gate would 402 the /go funnel flag-independently — `discover` is not the
+    // DEMO_ACTION.
+    const src = readFileSync(join(API_ROOT, "discover/route.ts"), "utf8");
+    const wall = src.indexOf("isSealedVisitor(user)");
+    const gate = src.indexOf("creditGate(");
+    expect(wall, "discover/route.ts must wall the anonymous visitor").toBeGreaterThan(-1);
+    expect(gate, "discover/route.ts must gate").toBeGreaterThan(-1);
     expect(wall, "THE WALL must run before the credit gate").toBeLessThan(gate);
   });
 
