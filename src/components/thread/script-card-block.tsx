@@ -125,15 +125,11 @@ export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRend
             ) : (
               <>
                 <Copy size={13} aria-hidden="true" />
-                Copy script
+                Copy
               </>
             )}
           </button>
         </div>
-
-        {/* Proof receipt (§11f fan-out) — the real outlier this script's structure was drawn from,
-            when the run was grounded (honesty spine). */}
-        {proof ? <ProofReceipt proof={proof} /> : grounded ? <NoSourceNote /> : null}
       </div>
 
       {/* BEATS — the SCRIPT CARD'S SIGNATURE: a TIMELINE. A left timing column + a connecting rail
@@ -175,21 +171,22 @@ export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRend
 
                 <p className="mt-1 text-reading leading-relaxed text-foreground-secondary">{beat.content}</p>
 
-                {/* Filming cue — HOW to shoot this beat (camera/framing · b-roll or on-screen
-                    text · delivery). Visible by default: this is the value the owner asked for —
-                    the script now tells you what to say AND how to film it (owner 2026-07-22).
-                    The `retentionMarker` (why it holds) stays on the caret below. */}
-                {beat.filming && (
-                  <p className="mt-1.5 flex gap-1.5 text-label leading-relaxed text-foreground-muted">
-                    <VideoCamera size={13} weight="fill" className="mt-px shrink-0 opacity-70" aria-hidden="true" />
-                    <span>{beat.filming}</span>
-                  </p>
-                )}
-
+                {/* On expand: the filming cue (HOW to shoot this beat) + the retention reasoning
+                    (why it holds). The cue used to be always-visible, which printed a third line
+                    on every beat AND restated the "How to film" foot block — the timeline now
+                    reads clean (what to say), and the caret holds the how/why pair. */}
                 {isExpanded && (
-                  <p className="mt-1.5 text-label leading-relaxed text-foreground-muted">
-                    ↳ {beat.retentionMarker}
-                  </p>
+                  <>
+                    {beat.filming && (
+                      <p className="mt-1.5 flex gap-1.5 text-label leading-relaxed text-foreground-muted">
+                        <VideoCamera size={13} weight="fill" className="mt-px shrink-0 opacity-70" aria-hidden="true" />
+                        <span>{beat.filming}</span>
+                      </p>
+                    )}
+                    <p className="mt-1.5 text-label leading-relaxed text-foreground-muted">
+                      ↳ {beat.retentionMarker}
+                    </p>
+                  </>
                 )}
               </div>
             </div>
@@ -197,9 +194,18 @@ export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRend
         })}
       </div>
 
-      {/* HOW TO FILM — the consolidated production summary (owner chose BOTH per-beat cues AND
-          this foot summary). A quiet tone-zone: shot list, on-screen text, setup, edit — the
-          creator's shoot checklist once they've read the beats. Absent → nothing (honesty). */}
+      {/* Proof receipt (§11f fan-out) — the real outlier this script's structure was drawn from,
+          when the run was grounded (honesty spine). Below the beats: the script's own content
+          leads the card; the receipt is its supporting evidence, not its headline. */}
+      {(proof || grounded) && (
+        <div className="border-t border-white/[0.06] px-4 py-3">
+          {proof ? <ProofReceipt proof={proof} /> : <NoSourceNote />}
+        </div>
+      )}
+
+      {/* HOW TO FILM — the consolidated production summary: shot list, on-screen text, setup,
+          edit — the creator's shoot checklist once they've read the beats. The per-beat cues
+          live on each beat's caret now, so this is stated once. Absent → nothing (honesty). */}
       {production && (
         <div className="border-t border-white/[0.06] px-4 py-3">
           <div className="flex items-center gap-1.5">
