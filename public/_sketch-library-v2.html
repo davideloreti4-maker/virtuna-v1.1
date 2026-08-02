@@ -3,17 +3,20 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Library v2 — sketch rev 2</title>
+<title>Library v2 — sketch rev 3</title>
 <style>
   /* ============================================================
-     Library v2 — rev 2 (UX audit applied)
-     Tokens copied EXACTLY from src/app/globals.css @theme (SSOT), verified 2026-08-02:
-       charcoal-app #1f1f1e (page) · composer #1a1a19 (CARDS — darker than page)
-       chip #2c2c2b (controls/elevated — lighter) · thread #252524
-       cream #ece7de / secondary #c2bdb4 / muted #8a857c
-       accent #FF6363 — LIVENESS + interactive state only, never decoration
-       band tones = --color-success/warning/error (the only data color)
-     Borders 6%, hover 10%. Radius: cards 12, inputs/buttons 8, chips 6. Inter only.
+     Library v2 — rev 3 · readability pass
+     Tokens copied exactly from src/app/globals.css @theme (verified 2026-08-02):
+       app #1f1f1e (page) · composer #1a1a19 (cards, DARKER than page)
+       chip #2c2c2b (controls) · thread #252524 (nested/hover)
+       cream #ece7de · secondary #c2bdb4 · muted #8a857c
+       accent #FF6363 (liveness + interactive state only)
+       band = --color-success / warning / error (the only data color)
+
+     Rev 3 changes the layout primitive: ROWS, not a card grid. Most saved output is
+     one line of text; a 420px card box made every line wrap and buried it under chrome.
+     Type scale widened, and --muted is now restricted to timestamps and counts.
      ============================================================ */
   *{margin:0;padding:0;box-sizing:border-box}
   :root{
@@ -24,209 +27,189 @@
     --bd:rgba(255,255,255,.06); --bdh:rgba(255,255,255,.10);
   }
   body{background:var(--app);color:var(--cream);
-    font:14px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,sans-serif;
-    -webkit-font-smoothing:antialiased;padding:56px 24px 120px}
-  .board{max-width:1040px;margin:0 auto}
-  .kicker{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
-  .board h1.top{font-size:19px;font-weight:600;margin:6px 0 10px}
-  .board-sub{color:var(--sec);font-size:13.5px;max-width:680px;line-height:1.65}
+    font:15px/1.6 Inter,ui-sans-serif,system-ui,-apple-system,sans-serif;
+    -webkit-font-smoothing:antialiased;padding:64px 24px 140px}
+  .board{max-width:1000px;margin:0 auto}
 
-  /* ---- audit table ---- */
-  .audit{border:1px solid var(--bd);border-radius:12px;background:var(--card);padding:20px 22px;margin:28px 0 8px}
-  .audit h2{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:500;margin-bottom:14px}
-  .audit table{width:100%;border-collapse:collapse;font-size:12.5px}
-  .audit td{padding:7px 10px 7px 0;vertical-align:top;border-top:1px solid var(--bd);line-height:1.55}
-  .audit tr:first-child td{border-top:none}
-  .audit .f{color:var(--sec);width:46%}
-  .audit .r{color:var(--muted)}
-  .audit .tag{font-size:10px;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--bd);
-    border-radius:5px;padding:1px 6px;color:var(--muted);white-space:nowrap;margin-right:8px}
-  .audit .tag.mine{color:var(--accent);border-color:rgba(255,99,99,.3)}
+  /* ---------- document chrome (distinct from the mockup) ---------- */
+  .doc-kicker{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+  .board h1.top{font-size:28px;font-weight:600;letter-spacing:-.02em;margin:10px 0 14px}
+  .lede{color:var(--sec);font-size:15px;max-width:660px;line-height:1.7}
+  .lede b{color:var(--cream);font-weight:500}
 
-  .screen-label{display:flex;align-items:baseline;gap:10px;margin:64px 0 12px}
-  .screen-label .no{font-size:12px;color:var(--accent);letter-spacing:.08em}
-  .screen-label .name{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--sec)}
-  .frame{border:1px solid var(--bd);border-radius:16px;padding:36px 0 44px;overflow:hidden}
-  .page{max-width:880px;margin:0 auto;padding:0 24px}
-  .note{color:var(--muted);font-size:12.5px;line-height:1.7;margin-top:14px;max-width:780px}
-  .note b{color:var(--sec);font-weight:500}
+  .screen-label{display:flex;align-items:center;gap:12px;margin:76px 0 16px}
+  .screen-label .no{font-size:12px;color:var(--accent);letter-spacing:.1em;font-weight:600}
+  .screen-label .name{font-size:15px;font-weight:600;color:var(--cream)}
+  .screen-label .line{flex:1;height:1px;background:var(--bd)}
+  .frame{border:1px solid var(--bd);border-radius:18px;padding:44px 0 52px;background:var(--app);
+    box-shadow:0 1px 0 rgba(255,255,255,.03) inset}
+  .page{max-width:880px;margin:0 auto;padding:0 28px}
+  .note{color:var(--sec);font-size:14px;line-height:1.75;margin-top:20px;max-width:720px}
+  .note b{color:var(--cream);font-weight:500}
 
-  /* ---- surface chrome ---- */
-  .sh{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:22px}
-  .sh h1{font-size:21px;font-weight:600;letter-spacing:-.01em;display:flex;align-items:center;gap:10px}
-  .pill{font-size:11.5px;color:var(--muted);border:1px solid var(--bd);border-radius:999px;padding:2px 9px}
-  .pill b{color:var(--sec);font-weight:600}
+  /* ---------- surface header ---------- */
+  .sh{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:28px}
+  .sh h1{font-size:24px;font-weight:600;letter-spacing:-.015em;display:flex;align-items:baseline;gap:12px}
+  .sh h1 .cnt{font-size:14px;font-weight:400;color:var(--muted)}
   .tools{display:flex;gap:8px;align-items:center}
-  .input{display:flex;align-items:center;gap:7px;background:var(--chip);border:1px solid var(--bd);
-    border-radius:8px;padding:7px 11px;color:var(--muted);font-size:13px;min-width:210px}
-  .sel{background:var(--chip);border:1px solid var(--bd);border-radius:8px;padding:7px 11px;font-size:13px;color:var(--sec)}
+  .input{display:flex;align-items:center;gap:8px;background:var(--chip);border:1px solid var(--bd);
+    border-radius:8px;padding:8px 12px;color:var(--muted);font-size:14px;min-width:230px}
+  .sel{background:var(--chip);border:1px solid var(--bd);border-radius:8px;padding:8px 12px;
+    font-size:14px;color:var(--sec)}
 
-  .sect{display:flex;align-items:center;gap:9px;margin:26px 0 10px}
-  .sect .t{font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:500}
-  .sect .n{font-size:11.5px;color:var(--muted);opacity:.7}
+  /* ---------- section headers — secondary, not muted ---------- */
+  .sect{display:flex;align-items:center;gap:10px;margin:38px 0 12px}
+  .sect .t{font-size:13px;letter-spacing:.06em;color:var(--sec);font-weight:600}
+  .sect .n{font-size:13px;color:var(--muted)}
   .sect .line{flex:1;height:1px;background:var(--bd)}
+  .sect .act{font-size:13.5px;color:var(--sec)}
 
-  /* ---- projects: full-width compact rows ---- */
+  /* ---------- projects ---------- */
   .plist{border:1px solid var(--bd);border-radius:12px;overflow:hidden;background:var(--card)}
-  .prow{display:flex;align-items:center;gap:14px;padding:13px 16px;border-top:1px solid var(--bd)}
+  .prow{display:flex;align-items:center;gap:16px;padding:16px 18px;border-top:1px solid var(--bd)}
   .prow:first-child{border-top:none}
-  .prow:hover{background:var(--thread)}
-  .prow .pname{font-size:14px;font-weight:600;min-width:150px}
-  .pmix{display:flex;gap:5px;flex:1;flex-wrap:wrap}
-  .tchip{font-size:10.5px;letter-spacing:.05em;color:var(--muted);border:1px solid var(--bd);border-radius:6px;padding:1.5px 7px}
-  .pmeta{font-size:12px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
-  .prow .chev{color:var(--muted);font-size:12px}
-  .prow.ghost{color:var(--muted);font-size:13px;gap:8px}
+  .prow.hov{background:var(--thread)}
+  .pname{font-size:15.5px;font-weight:600;min-width:170px;letter-spacing:-.005em}
+  .pmix{flex:1;font-size:13.5px;color:var(--sec)}
+  .pmeta{font-size:13px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+  .chev{color:var(--muted);font-size:14px}
+  .prow.ghost{color:var(--sec);font-size:14px;gap:9px}
 
-  /* ---- item grid: ROW-MAJOR (not multicol) ---- */
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}
-  .card{border:1px solid var(--bd);border-radius:12px;background:var(--card);padding:14px 15px;
-    display:flex;flex-direction:column;gap:9px;position:relative}
-  .card:hover{border-color:var(--bdh)}
-  .c-top{display:flex;align-items:center;gap:8px;min-height:18px}
-  .c-kick{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:500}
-  .c-seg{font-size:11.5px;color:var(--muted);margin-left:auto}
-  .hero{font-size:14.5px;line-height:1.45;color:var(--cream)}
-  .why{font-size:12.5px;color:var(--sec);line-height:1.5}
-  .proof{display:flex;flex-direction:column;gap:6px;background:var(--thread);border-radius:8px;padding:9px 10px}
-  .proof .pl{font-size:12.5px;color:var(--cream);display:flex;align-items:center;gap:7px}
-  .dot{width:7px;height:7px;border-radius:99px;background:var(--success);flex:none}
-  .quote{font-size:12px;color:var(--muted);line-height:1.5}
-  .cover{height:104px;border-radius:8px;border:1px solid var(--bd);position:relative;
-    background:linear-gradient(165deg,#463629 0%,#241f1d 72%)}
-  .cover .mult{position:absolute;left:8px;bottom:8px;font-size:11px;font-weight:600;
-    background:rgba(26,26,25,.9);border:1px solid var(--bdh);border-radius:6px;padding:2px 7px}
-  .c-foot{display:flex;align-items:center;gap:10px;border-top:1px solid var(--bd);padding-top:9px;margin-top:1px}
-  .fwd{font-size:12.5px;color:var(--cream);white-space:nowrap}
-  .prov{font-size:11.5px;color:var(--muted);margin-left:auto;overflow:hidden;text-overflow:ellipsis;
-    white-space:nowrap;max-width:52%}
-  /* hover affordances — absolutely positioned, ZERO layout shift */
-  .cbox{position:absolute;top:12px;left:13px;width:15px;height:15px;border:1px solid var(--bdh);
-    border-radius:4px;background:var(--app)}
-  .cbox.on{background:var(--accent);border-color:var(--accent);color:#2a1212;font-size:10px;
-    display:grid;place-items:center;font-weight:700}
-  .dots{position:absolute;top:11px;right:13px;color:var(--muted);font-size:14px;letter-spacing:1px}
-  .card.hovered{border-color:var(--bdh)}
-  .card.hovered .c-kick{padding-left:22px}
-  .card.sel{border-color:var(--bdh);background:var(--thread)}
-  .card.sel .c-kick{padding-left:22px}
+  /* ---------- THE ROW — the shelf primitive ---------- */
+  .rows{border:1px solid var(--bd);border-radius:12px;overflow:hidden;background:var(--card)}
+  .row{display:flex;align-items:flex-start;gap:14px;padding:16px 18px;border-top:1px solid var(--bd);
+    position:relative}
+  .row:first-child{border-top:none}
+  .row.hov{background:var(--thread)}
+  .box{width:16px;height:16px;border-radius:4px;border:1px solid var(--bdh);background:var(--app);
+    flex:none;margin-top:3px}
+  .box.on{background:var(--accent);border-color:var(--accent);color:#2a1212;font-size:11px;
+    font-weight:700;display:grid;place-items:center}
+  /* reserved but invisible until the row is hovered — space held, so nothing shifts */
+  .box.gh{opacity:0}
+  .thumb{width:38px;height:52px;border-radius:6px;border:1px solid var(--bd);flex:none;
+    background:linear-gradient(165deg,#4a3829 0%,#241f1d 74%)}
+  .body{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
+  /* the content line — the only thing at full weight */
+  .line1{font-size:15.5px;line-height:1.45;color:var(--cream);letter-spacing:-.004em}
+  .line1.quiet{color:var(--sec)}
+  /* proof sits between content and meta, and carries the only data color */
+  .proof{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--sec)}
+  .dot{width:7px;height:7px;border-radius:99px;flex:none;background:var(--success)}
+  .proof .q{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  /* meta — muted lives HERE and almost nowhere else */
+  .meta{font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+  .meta .type{color:var(--sec);font-weight:500;letter-spacing:.03em}
+  .meta .sep{opacity:.45}
+  /* the source thread is a link, but underlining it on every row striped the meta line */
+  .meta .src{color:var(--sec)}
+  .meta .src:hover{text-decoration:underline;text-underline-offset:3px}
+  .metric{font-size:14px;font-weight:600;color:var(--cream);white-space:nowrap;
+    font-variant-numeric:tabular-nums;margin-top:1px}
+  /* right rail — reserved width, so hover reveals without shifting */
+  .rail{display:flex;align-items:center;gap:12px;flex:none;min-width:150px;justify-content:flex-end;
+    padding-top:1px}
+  .fwd{font-size:13.5px;color:var(--cream);white-space:nowrap}
+  .fwd.dim{color:transparent}
+  .dots{color:var(--muted);font-size:15px;letter-spacing:1px}
+  .dots.dim{color:transparent}
 
-  /* ---- selection bar ---- */
-  .selbar{display:flex;align-items:center;gap:10px;background:var(--chip);border:1px solid var(--bdh);
-    border-radius:10px;padding:9px 12px;font-size:13px}
-  .selbar .cnt{font-weight:600}
-  .selbar .sp{flex:1}
-  .btn{font-size:12.5px;border:1px solid var(--bd);border-radius:8px;padding:5px 11px;color:var(--sec);background:var(--card)}
-  .btn.on{color:var(--cream);border-color:var(--bdh)}
-
-  /* ---- facets ---- */
-  .facets{display:inline-flex;gap:2px;background:var(--chip);border-radius:8px;padding:3px;margin-bottom:14px}
-  .facet{font-size:12.5px;color:var(--muted);padding:5px 11px;border-radius:6px;display:flex;gap:5px;align-items:center}
-  .facet .n{font-size:11px;opacity:.75}
+  /* ---------- facets ---------- */
+  .facets{display:inline-flex;gap:2px;background:var(--chip);border-radius:9px;padding:3px;margin-bottom:16px}
+  .facet{font-size:13.5px;color:var(--sec);padding:6px 13px;border-radius:6px;display:flex;gap:6px;align-items:center}
+  .facet .n{font-size:12px;color:var(--muted)}
   .facet.active{color:var(--cream);background:var(--card);box-shadow:inset 0 1px 0 rgba(255,255,255,.05);font-weight:500}
 
-  /* ---- breadcrumb ---- */
-  .crumb{display:flex;align-items:center;gap:9px}
-  .crumb .root{color:var(--muted);font-size:14px}
-  .crumb .sep{color:var(--muted);opacity:.6}
-  .crumb h1{font-size:21px;font-weight:600}
-  .crumb .pen{color:var(--muted);font-size:12px}
+  /* ---------- selection bar ---------- */
+  .selbar{display:flex;align-items:center;gap:12px;background:var(--chip);border:1px solid var(--bdh);
+    border-radius:10px;padding:11px 14px;font-size:14px}
+  .selbar .cnt{font-weight:600}
+  .selbar .sp{flex:1}
+  .btn{font-size:13.5px;border:1px solid var(--bd);border-radius:8px;padding:6px 13px;color:var(--sec);background:var(--card)}
+  .btn.on{color:var(--cream);border-color:var(--bdh)}
 
-  /* ---- save flow ---- */
-  .flow{display:flex;gap:44px;align-items:flex-start;justify-content:center;padding:0 24px}
-  .tcard{width:330px;border:1px solid var(--bd);border-radius:12px;background:var(--thread);padding:15px;
-    display:flex;flex-direction:column;gap:9px;position:relative}
-  .bm{position:absolute;top:13px;right:14px;color:var(--accent);font-size:13px}
-  .pop{width:280px;border:1px solid var(--bdh);border-radius:12px;background:var(--chip);padding:6px;font-size:13.5px}
-  .pop .ph{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:8px 10px 6px}
-  .prow2{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;color:var(--cream)}
+  /* ---------- breadcrumb ---------- */
+  .crumb{display:flex;align-items:baseline;gap:10px}
+  .crumb .root{color:var(--muted);font-size:15px}
+  .crumb .sep{color:var(--muted);opacity:.5}
+  .crumb h1{font-size:24px;font-weight:600;letter-spacing:-.015em}
+  .crumb .pen{color:var(--muted);font-size:13px}
+  .crumb .cnt{font-size:14px;color:var(--muted)}
+
+  /* ---------- save flow ---------- */
+  .flow{display:flex;gap:52px;align-items:flex-start;justify-content:center;padding:0 28px;flex-wrap:wrap}
+  .tcard{width:340px;border:1px solid var(--bd);border-radius:12px;background:var(--thread);
+    padding:17px;display:flex;flex-direction:column;gap:8px;position:relative}
+  .bm{position:absolute;top:15px;right:16px;color:var(--accent);font-size:14px}
+  .pop{width:290px;border:1px solid var(--bdh);border-radius:12px;background:var(--chip);padding:7px}
+  .pop .ph{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:9px 11px 7px}
+  .prow2{display:flex;align-items:center;gap:9px;padding:10px 11px;border-radius:8px;color:var(--cream);font-size:14px}
   .prow2.here{background:rgba(255,255,255,.05)}
-  .prow2 .badge{font-size:10px;letter-spacing:.05em;color:var(--muted);border:1px solid var(--bd);
-    border-radius:5px;padding:1px 6px}
-  .prow2 .n{color:var(--muted);font-size:12px;margin-left:auto}
-  .prow2 .ck{color:var(--accent);margin-left:auto;font-size:12px}
-  .pdiv{height:1px;background:var(--bd);margin:5px 8px}
-  .pinput{flex:1;background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:5px 9px;color:var(--muted);font-size:13px}
-  .toast{margin-top:16px;display:inline-flex;gap:8px;align-items:center;font-size:12.5px;color:var(--sec);
-    background:var(--chip);border:1px solid var(--bd);border-radius:8px;padding:8px 12px}
+  .badge{font-size:11px;color:var(--sec);border:1px solid var(--bd);border-radius:5px;padding:2px 7px}
+  .prow2 .n{color:var(--muted);font-size:13px;margin-left:auto}
+  .prow2 .ck{color:var(--accent);margin-left:auto;font-size:13px}
+  .pdiv{height:1px;background:var(--bd);margin:6px 9px}
+  .pinput{flex:1;background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:7px 10px;
+    color:var(--muted);font-size:14px}
+  .toast{margin-top:18px;display:inline-flex;gap:10px;align-items:center;font-size:13.5px;color:var(--sec);
+    background:var(--chip);border:1px solid var(--bd);border-radius:9px;padding:10px 14px}
+  .toast b{color:var(--cream);font-weight:500}
   .toast .ok{color:var(--accent)}
-  .toast .chg{color:var(--cream);border-left:1px solid var(--bd);padding-left:10px;margin-left:2px}
+  .toast .chg{color:var(--cream);border-left:1px solid var(--bd);padding-left:12px}
 
-  /* ---- empty ---- */
-  .empty{border:1px dashed var(--bd);border-radius:12px;padding:34px;text-align:center}
-  .empty .const{color:var(--muted);letter-spacing:5px;font-size:13px;margin-bottom:14px}
-  .empty h3{font-size:15px;font-weight:600;margin-bottom:6px}
-  .empty p{font-size:13px;color:var(--muted);max-width:400px;margin:0 auto 16px;line-height:1.6}
-  .cta{display:inline-block;font-size:13px;background:var(--cream);color:#1a1a19;border-radius:8px;padding:7px 14px;font-weight:500}
+  /* ---------- empty ---------- */
+  .empty{border:1px dashed var(--bd);border-radius:12px;padding:44px 34px;text-align:center}
+  .empty .const{color:var(--muted);letter-spacing:6px;font-size:14px;margin-bottom:18px}
+  .empty h3{font-size:17px;font-weight:600;margin-bottom:8px}
+  .empty p{font-size:14px;color:var(--sec);max-width:430px;margin:0 auto 20px;line-height:1.65}
+  .cta{display:inline-block;font-size:14px;background:var(--cream);color:#1a1a19;border-radius:8px;
+    padding:9px 17px;font-weight:500}
 
-  .res{display:flex;flex-direction:column;gap:0;border:1px solid var(--bd);border-radius:12px;background:var(--card);overflow:hidden}
-  .rrow{display:flex;align-items:center;gap:12px;padding:12px 15px;border-top:1px solid var(--bd)}
-  .rrow:first-child{border-top:none}
-  .rrow .rk{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);width:56px;flex:none}
-  .rrow .rt{font-size:13.5px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .rrow .rin{font-size:11.5px;color:var(--muted);border:1px solid var(--bd);border-radius:6px;padding:1.5px 7px;white-space:nowrap}
+  /* ---------- audit (moved to the end) ---------- */
+  .audit{border:1px solid var(--bd);border-radius:14px;background:var(--card);padding:26px 28px;margin-top:28px}
+  .audit h2{font-size:15px;font-weight:600;margin-bottom:6px}
+  .audit .sub{font-size:13.5px;color:var(--muted);margin-bottom:20px}
+  .aitem{border-top:1px solid var(--bd);padding:15px 0;display:flex;gap:18px}
+  .aitem:first-of-type{border-top:none}
+  .aitem .f{flex:1;font-size:14px;color:var(--cream);line-height:1.6}
+  .aitem .f .why{display:block;color:var(--sec);font-size:13.5px;margin-top:3px;font-weight:400}
+  .aitem .r{flex:1;font-size:13.5px;color:var(--sec);line-height:1.65}
+  .tag{font-size:11px;letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--bd);
+    border-radius:5px;padding:2px 7px;color:var(--muted);white-space:nowrap;flex:none;height:fit-content;margin-top:2px}
+  .tag.r3{color:var(--accent);border-color:rgba(255,99,99,.3)}
 </style>
 </head>
 <body>
 <div class="board">
-  <div class="kicker">Library v2 · rev 2 · lane/library-rework · 2026-08-02</div>
-  <h1 class="top">UX audit applied</h1>
-  <p class="board-sub">
-    Projects over a repaired save loop. Rev 2 fixes what the audit found — including three places
-    rev 1 contradicted the shipped design system, and four defects inherited from the current shelf.
-    Tokens below are copied exactly from <b>globals.css</b>; cards are <b>darker</b> than the page
-    (#1a1a19 on #1f1f1e), controls lighter (#2c2c2b).
+  <div class="doc-kicker">Library v2 · rev 3 · lane/library-rework</div>
+  <h1 class="top">Rows, not cards</h1>
+  <p class="lede">
+    Rev 2 was hard to read for a structural reason, not a styling one: a two-column card grid at
+    880px gives each item a <b>420px box</b>, but most saved output is <b>one line of text</b> — so
+    every hook wrapped mid-sentence and sat under three layers of chrome. Rev 3 makes the row the
+    primitive. Full width for the content, one quiet meta line beneath it, and
+    <b>--muted restricted to timestamps and counts</b> instead of doing six jobs at 10px.
   </p>
 
-  <div class="audit">
-    <h2>Audit — findings and resolutions</h2>
-    <table>
-      <tr><td class="f"><span class="tag mine">rev 1</span><b>Accent bookmark on every shelf card.</b> Everything on the shelf is saved by definition, so it carried no information — and it spent the accent, which globals.css reserves for liveness, on decoration.</td>
-          <td class="r">Dropped from shelf cards. Remove lives in the ⋯ menu (already built: DotsThree + AlertDialog). The bookmark stays in-thread, where it means something.</td></tr>
-      <tr><td class="f"><span class="tag mine">rev 1</span><b>Generic “Use in thread” primary button</b> — a regression. The shipped card already has type-specific forward actions.</td>
-          <td class="r">Restored the real labels from saved-item-card.tsx:46 — “Write script →” (hook), “Develop into hooks →” (idea), “Test full script →” (script).</td></tr>
-      <tr><td class="f"><span class="tag mine">rev 1</span><b>Wrong surface direction + invented band green.</b> Rev 1 drew cards lighter than the page and used #8fbf7f.</td>
-          <td class="r">Cards #1a1a19 (darker), controls #2c2c2b (lighter), active facet darker with an inset top highlight. Band = --color-success/warning/error.</td></tr>
-      <tr><td class="f"><span class="tag">inherited</span><b>Masonry breaks reading order.</b> CSS multicol fills top→bottom per column, so under “Recent” the 2nd newest sits <i>below</i> the newest, not beside it. The sort control silently doesn’t do what it appears to. Worse at xl:columns-4.</td>
-          <td class="r">Row-major CSS grid. Ragged bottom edges are the honest trade for order that matches the sort. 2 columns at 880px (~420px cards) instead of 3–4 (~200px, too narrow for a script).</td></tr>
-      <tr><td class="f"><span class="tag">inherited</span><b>No bulk selection.</b> The whole premise is “too much output to organize”; filing 60 items one at a time through a popover fails that premise.</td>
-          <td class="r">Screen 02: click-to-select, shift-range, a selection bar with Move to ▾ / Remove. This is the core interaction of the rework.</td></tr>
-      <tr><td class="f"><span class="tag mine">rev 1</span><b>Hover actions grew the card</b> inside a multicol flow — the card under the cursor would shift as the column reflowed.</td>
-          <td class="r">Checkbox and ⋯ are absolutely positioned; the kicker indents to make room. Zero height change on hover.</td></tr>
-      <tr><td class="f"><span class="tag mine">rev 1</span><b>Search and sort had undefined scope</b> — one header control sitting above two sections.</td>
-          <td class="r">Screen 05: typing switches to a global results mode; every result is badged with its project or “Unfiled”.</td></tr>
-      <tr><td class="f"><span class="tag mine">rev 1</span><b>Projects grid ate the fold</b> — 3-up cards with fake video thumbnails. At 8 projects you’d see no output at all, and most projects contain no video.</td>
-          <td class="r">Full-width compact rows: name · type mix · count · updated. Scales to 20 projects, no fake art, one “＋ New project” affordance (the duplicate is gone).</td></tr>
-      <tr><td class="f"><span class="tag mine">rev 1</span><b>“Last-used destination”</b> would silently file a hook from an unrelated thread into a project you touched weeks ago.</td>
-          <td class="r">Thread-aware default: if this thread already feeds a project, that one wins (badged “this thread”), else Unfiled. Uses the thread_id the loop fix now writes.</td></tr>
-      <tr><td class="f"><span class="tag mine">rev 1</span><b>No empty states</b> — yet zero projects and ~10 items is where every existing user starts.</td>
-          <td class="r">Screen 04. The Projects section never renders as an empty grid; it degrades to one quiet inline row.</td></tr>
-      <tr><td class="f"><span class="tag mine">rev 1</span><b>Provenance footer was two lines of chrome</b> competing with the content it describes.</td>
-          <td class="r">One muted line, relative time, whole line is the link, truncates: “from Hook ideas · 4d”.</td></tr>
-      <tr><td class="f"><span class="tag mine">rev 1</span><b>Type chip repeated under a single-type facet</b>, and project detail needed facets at all.</td>
-          <td class="r">Project detail groups by type instead (screen 03) — the grouping replaces the filter, and matches how a video gets built: hooks → scripts → the read.</td></tr>
-    </table>
-  </div>
-
   <!-- ========== 01 ========== -->
-  <div class="screen-label"><span class="no">01</span><span class="name">Library home</span></div>
+  <div class="screen-label"><span class="no">01</span><span class="name">Library home</span><span class="line"></span></div>
   <div class="frame"><div class="page">
     <div class="sh">
-      <h1>Library <span class="pill"><b>14</b> saved</span></h1>
+      <h1>Library <span class="cnt">14 saved</span></h1>
       <div class="tools"><div class="input">⌕&nbsp; Search your library…</div><div class="sel">Recent ▾</div></div>
     </div>
 
     <div class="sect"><span class="t">Projects</span><span class="n">2</span><span class="line"></span></div>
     <div class="plist">
-      <div class="prow">
+      <div class="prow hov">
         <span class="pname">Launch video #3</span>
-        <span class="pmix"><span class="tchip">3 hooks</span><span class="tchip">2 scripts</span><span class="tchip">2 ideas</span><span class="tchip">1 read</span></span>
-        <span class="pmeta">8 · 2d ago</span><span class="chev">›</span>
+        <span class="pmix">3 hooks · 2 scripts · 2 ideas · 1 read</span>
+        <span class="pmeta">2d ago</span><span class="chev">›</span>
       </div>
       <div class="prow">
         <span class="pname">Q3 cooking niche</span>
-        <span class="pmix"><span class="tchip">2 reads</span><span class="tchip">2 hooks</span><span class="tchip">1 outlier</span></span>
-        <span class="pmeta">5 · 5d ago</span><span class="chev">›</span>
+        <span class="pmix">2 reads · 2 hooks · 1 outlier</span>
+        <span class="pmeta">5d ago</span><span class="chev">›</span>
       </div>
       <div class="prow ghost">＋&nbsp; New project</div>
     </div>
@@ -240,158 +223,215 @@
       <span class="facet">Outliers <span class="n">1</span></span>
     </div>
 
-    <div class="grid">
-      <div class="card hovered">
-        <span class="cbox"></span><span class="dots">⋯</span>
-        <div class="c-top"><span class="c-kick">Hook</span><span class="c-seg">Contrarian · #2 of 6</span></div>
-        <div class="hero">“Nobody tells you the first 10k followers are the easy part.”</div>
-        <div class="why">Names the reward the audience already expects, then withdraws it.</div>
-        <div class="c-foot"><span class="fwd">Write script →</span><span class="prov">from Hook ideas for Q3 · 4d</span></div>
+    <div class="rows">
+      <div class="row hov">
+        <span class="box"></span>
+        <span class="body">
+          <span class="line1">“Nobody tells you the first 10k followers are the easy part.”</span>
+          <span class="meta"><span class="type">Hook</span><span class="sep">·</span>Contrarian, ranked 2 of 6
+            <span class="sep">·</span><span class="src">Hook ideas for Q3</span><span class="sep">·</span>4d</span>
+        </span>
+        <span class="rail"><span class="fwd">Write script →</span><span class="dots">⋯</span></span>
       </div>
-      <div class="card">
-        <div class="c-top"><span class="c-kick">Read</span><span class="c-seg">Kitchen POV cut</span></div>
-        <div class="hero">Lever → pace in the first two seconds</div>
-        <div class="proof">
-          <div class="pl"><span class="dot"></span>Strong · 7/10 stopped scrolling</div>
-          <div class="quote">“The pace held me — I wanted to see the payoff.”</div>
-        </div>
-        <div class="c-foot"><span class="fwd">Open the full read →</span><span class="prov">from Test — kitchen cut · 1d</span></div>
+
+      <div class="row">
+        <span class="box gh"></span>
+        <span class="body">
+          <span class="line1">Lever → pace in the first two seconds</span>
+          <span class="proof"><span class="dot"></span>Strong · 7 of 10 stopped scrolling
+            <span class="q">“The pace held me — I wanted the payoff.”</span></span>
+          <span class="meta"><span class="type">Read</span><span class="sep">·</span>Kitchen POV cut
+            <span class="sep">·</span><span class="src">Test — kitchen cut</span><span class="sep">·</span>1d</span>
+        </span>
+        <span class="rail"><span class="fwd dim">Open the full read →</span><span class="dots dim">⋯</span></span>
       </div>
-      <div class="card">
-        <div class="c-top"><span class="c-kick">Outlier</span><span class="c-seg">measured</span></div>
-        <div class="cover"><span class="mult">14× baseline</span></div>
-        <div class="why">60s pantry restock, no voiceover</div>
-        <div class="c-foot"><span class="fwd">Tear it down →</span><span class="prov">from Discover · Jul 26</span></div>
+
+      <div class="row">
+        <span class="box gh"></span>
+        <span class="body">
+          <span class="line1 quiet">60s pantry restock, no voiceover</span>
+          <span class="meta"><span class="type">Outlier</span><span class="sep">·</span>measured
+            <span class="sep">·</span><span class="src">Discover</span><span class="sep">·</span>Jul 26</span>
+        </span>
+        <span class="metric">14× baseline</span>
+        <span class="thumb"></span>
+        <span class="rail" style="min-width:110px"><span class="fwd dim">Tear it down →</span><span class="dots dim">⋯</span></span>
       </div>
-      <div class="card">
-        <div class="c-top"><span class="c-kick">Idea</span><span class="c-seg">Series</span></div>
-        <div class="hero">Week of $10 dinners — one episode per night</div>
-        <div class="why">Low prep cost, and the format carries its own cliffhanger.</div>
-        <div class="c-foot"><span class="fwd">Develop into hooks →</span><span class="prov">from Ideas — budget series · 5d</span></div>
+
+      <div class="row">
+        <span class="box gh"></span>
+        <span class="body">
+          <span class="line1">Week of $10 dinners — one episode per night</span>
+          <span class="meta"><span class="type">Idea</span><span class="sep">·</span>Series
+            <span class="sep">·</span><span class="src">Ideas — budget series</span><span class="sep">·</span>5d</span>
+        </span>
+        <span class="rail"><span class="fwd dim">Develop into hooks →</span><span class="dots dim">⋯</span></span>
+      </div>
+
+      <div class="row">
+        <span class="box gh"></span>
+        <span class="body">
+          <span class="line1">Pantry restock ASMR — v2</span>
+          <span class="meta"><span class="type">Script</span><span class="sep">·</span>5 beats, ~42s
+            <span class="sep">·</span><span class="src">Script from hook #2</span><span class="sep">·</span>4d</span>
+        </span>
+        <span class="rail"><span class="fwd dim">Test full script →</span><span class="dots dim">⋯</span></span>
       </div>
     </div>
   </div></div>
   <p class="note">
-    <b>First card shows hover:</b> checkbox and ⋯ sit over the card, the kicker indents — nothing moves.
-    Projects are compact rows that stay scannable at 20 projects; the type mix is the real preview, so
-    no invented thumbnails. Unfiled is today’s flat shelf, unchanged in spirit — nothing is ever forced
-    into a folder. Every card ends with its <b>shipped</b> forward action and one quiet provenance line
-    that is itself the link back to the source thread.
+    <b>One line carries the value; everything else steps down.</b> The content sits at 15.5px cream at
+    full width — a hook reads as a sentence, not as wrapped card text. Beneath it, one meta line in a
+    single colour holds type, detail, source thread and age, so the eye can skip it entirely when
+    scanning. The first row shows hover: checkbox, forward action and ⋯ occupy reserved space, so
+    revealing them moves nothing. Only the read spends colour, on its band dot — the one sanctioned
+    data tone. Media and measurements sit on the <b>right</b>: a thumbnail on the left would push the
+    outlier's title out of line with every other row, and that shared left edge is what makes a list
+    scannable.
   </p>
 
   <!-- ========== 02 ========== -->
-  <div class="screen-label"><span class="no">02</span><span class="name">Selection — bulk filing</span></div>
+  <div class="screen-label"><span class="no">02</span><span class="name">Selection — the filing interaction</span><span class="line"></span></div>
   <div class="frame"><div class="page">
-    <div class="sh"><h1>Library <span class="pill"><b>14</b> saved</span></h1></div>
+    <div class="sh"><h1>Library <span class="cnt">14 saved</span></h1></div>
     <div class="selbar">
-      <span class="cnt">3 selected</span>
-      <span class="sp"></span>
+      <span class="cnt">3 selected</span><span class="sp"></span>
       <span class="btn on">Move to ▾</span><span class="btn">Remove</span><span class="btn">Cancel</span>
     </div>
     <div class="sect"><span class="t">Unfiled</span><span class="n">6</span><span class="line"></span></div>
-    <div class="grid">
-      <div class="card sel">
-        <span class="cbox on">✓</span><span class="dots">⋯</span>
-        <div class="c-top"><span class="c-kick">Hook</span><span class="c-seg">Contrarian · #2 of 6</span></div>
-        <div class="hero">“Nobody tells you the first 10k followers are the easy part.”</div>
-        <div class="c-foot"><span class="fwd">Write script →</span><span class="prov">from Hook ideas for Q3 · 4d</span></div>
+    <div class="rows">
+      <div class="row hov">
+        <span class="box on">✓</span>
+        <span class="body">
+          <span class="line1">“Nobody tells you the first 10k followers are the easy part.”</span>
+          <span class="meta"><span class="type">Hook</span><span class="sep">·</span>Contrarian, ranked 2 of 6
+            <span class="sep">·</span><span class="src">Hook ideas for Q3</span><span class="sep">·</span>4d</span>
+        </span>
+        <span class="rail"><span class="fwd dim">Write script →</span><span class="dots">⋯</span></span>
       </div>
-      <div class="card sel">
-        <span class="cbox on">✓</span><span class="dots">⋯</span>
-        <div class="c-top"><span class="c-kick">Hook</span><span class="c-seg">Effort-proof · #3 of 6</span></div>
-        <div class="hero">“This took 31 takes. Here’s take 31.”</div>
-        <div class="c-foot"><span class="fwd">Write script →</span><span class="prov">from Hook ideas for Q3 · 4d</span></div>
+      <div class="row hov">
+        <span class="box on">✓</span>
+        <span class="body">
+          <span class="line1">“This took 31 takes. Here’s take 31.”</span>
+          <span class="meta"><span class="type">Hook</span><span class="sep">·</span>Effort-proof, ranked 3 of 6
+            <span class="sep">·</span><span class="src">Hook ideas for Q3</span><span class="sep">·</span>4d</span>
+        </span>
+        <span class="rail"><span class="fwd dim">Write script →</span><span class="dots">⋯</span></span>
       </div>
-      <div class="card sel">
-        <span class="cbox on">✓</span><span class="dots">⋯</span>
-        <div class="c-top"><span class="c-kick">Idea</span><span class="c-seg">Series</span></div>
-        <div class="hero">Week of $10 dinners — one episode per night</div>
-        <div class="c-foot"><span class="fwd">Develop into hooks →</span><span class="prov">from Ideas — budget series · 5d</span></div>
+      <div class="row hov">
+        <span class="box on">✓</span>
+        <span class="body">
+          <span class="line1">Week of $10 dinners — one episode per night</span>
+          <span class="meta"><span class="type">Idea</span><span class="sep">·</span>Series
+            <span class="sep">·</span><span class="src">Ideas — budget series</span><span class="sep">·</span>5d</span>
+        </span>
+        <span class="rail"><span class="fwd dim">Develop into hooks →</span><span class="dots">⋯</span></span>
       </div>
-      <div class="card">
-        <div class="c-top"><span class="c-kick">Read</span><span class="c-seg">Kitchen POV cut</span></div>
-        <div class="hero">Lever → pace in the first two seconds</div>
-        <div class="c-foot"><span class="fwd">Open the full read →</span><span class="prov">from Test — kitchen cut · 1d</span></div>
+      <div class="row">
+        <span class="box gh"></span>
+        <span class="body">
+          <span class="line1">Lever → pace in the first two seconds</span>
+          <span class="meta"><span class="type">Read</span><span class="sep">·</span>Kitchen POV cut
+            <span class="sep">·</span><span class="src">Test — kitchen cut</span><span class="sep">·</span>1d</span>
+        </span>
+        <span class="rail"><span class="fwd dim">Open the full read →</span><span class="dots dim">⋯</span></span>
       </div>
     </div>
   </div></div>
   <p class="note">
-    <b>The interaction the rework exists for.</b> Click a card’s checkbox to enter selection, shift-click
-    for a range, ⌘A selects the visible set (respects the active facet — “select all my hooks, file them”).
-    The bar replaces the toolbar so nothing shifts. Move&nbsp;to ▾ opens the same picker as screen 04.
-    Remove asks once and offers undo. Escape exits. The checked box is the one place accent is spent
-    here — an interactive state, not decoration.
+    <b>Rows make filing cheap, which is the point of the rework.</b> Click a checkbox to enter
+    selection, shift-click for a range, ⌘A takes the visible set — so “select all my hooks, file them”
+    is three actions and not thirty. The bar replaces the toolbar in place. Move&nbsp;to ▾ opens the
+    same picker as screen 04; Remove asks once and offers undo; Escape exits. The checked box is the
+    only accent on the screen: an interactive state, never decoration.
   </p>
 
   <!-- ========== 03 ========== -->
-  <div class="screen-label"><span class="no">03</span><span class="name">Project detail — grouped by type</span></div>
+  <div class="screen-label"><span class="no">03</span><span class="name">Project detail</span><span class="line"></span></div>
   <div class="frame"><div class="page">
     <div class="sh">
       <div class="crumb"><span class="root">Library</span><span class="sep">›</span><h1>Launch video #3</h1>
-        <span class="pen">✎</span><span class="pill"><b>8</b> items · 3 threads</span></div>
+        <span class="pen">✎</span><span class="cnt">8 items · 3 threads</span></div>
       <div class="tools"><span class="btn">⋯</span></div>
     </div>
 
     <div class="sect"><span class="t">Hooks</span><span class="n">3</span><span class="line"></span></div>
-    <div class="grid">
-      <div class="card">
-        <div class="c-top"><span class="c-kick">Hook</span><span class="c-seg">Effort-proof · #1 of 6</span></div>
-        <div class="hero">“I filmed the same recipe 4 times so you don’t have to.”</div>
-        <div class="c-foot"><span class="fwd">Write script →</span><span class="prov">from Hook ideas for Q3 · 4d</span></div>
+    <div class="rows">
+      <div class="row">
+        <span class="box gh"></span>
+        <span class="body">
+          <span class="line1">“I filmed the same recipe 4 times so you don’t have to.”</span>
+          <span class="meta"><span class="type">Hook</span><span class="sep">·</span>Effort-proof, ranked 1 of 6
+            <span class="sep">·</span><span class="src">Hook ideas for Q3</span><span class="sep">·</span>4d</span>
+        </span>
+        <span class="rail"><span class="fwd dim">Write script →</span><span class="dots dim">⋯</span></span>
       </div>
-      <div class="card">
-        <div class="c-top"><span class="c-kick">Hook</span><span class="c-seg">Effort-proof · #3 of 6</span></div>
-        <div class="hero">“This took 31 takes. Here’s take 31.”</div>
-        <div class="c-foot"><span class="fwd">Write script →</span><span class="prov">from Hook ideas for Q3 · 4d</span></div>
+      <div class="row">
+        <span class="box gh"></span>
+        <span class="body">
+          <span class="line1">“This took 31 takes. Here’s take 31.”</span>
+          <span class="meta"><span class="type">Hook</span><span class="sep">·</span>Effort-proof, ranked 3 of 6
+            <span class="sep">·</span><span class="src">Hook ideas for Q3</span><span class="sep">·</span>4d</span>
+        </span>
+        <span class="rail"><span class="fwd dim">Write script →</span><span class="dots dim">⋯</span></span>
       </div>
     </div>
 
     <div class="sect"><span class="t">Scripts</span><span class="n">2</span><span class="line"></span></div>
-    <div class="grid">
-      <div class="card">
-        <div class="c-top"><span class="c-kick">Script</span><span class="c-seg">4 beats · ~28s</span></div>
-        <div class="hero">Launch teaser — hard cut open</div>
-        <div class="why">Built from hook #1. Beat 2 carries the reveal.</div>
-        <div class="c-foot"><span class="fwd">Test full script →</span><span class="prov">from Script from hook #1 · 3d</span></div>
+    <div class="rows">
+      <div class="row">
+        <span class="box gh"></span>
+        <span class="body">
+          <span class="line1">Launch teaser — hard cut open</span>
+          <span class="meta"><span class="type">Script</span><span class="sep">·</span>4 beats, ~28s, built from hook 1
+            <span class="sep">·</span><span class="src">Script from hook #1</span><span class="sep">·</span>3d</span>
+        </span>
+        <span class="rail"><span class="fwd dim">Test full script →</span><span class="dots dim">⋯</span></span>
       </div>
-      <div class="card">
-        <div class="c-top"><span class="c-kick">Script</span><span class="c-seg">5 beats · ~42s</span></div>
-        <div class="hero">Pantry restock ASMR — v2</div>
-        <div class="c-foot"><span class="fwd">Test full script →</span><span class="prov">from Script from hook #2 · 4d</span></div>
+      <div class="row">
+        <span class="box gh"></span>
+        <span class="body">
+          <span class="line1">Pantry restock ASMR — v2</span>
+          <span class="meta"><span class="type">Script</span><span class="sep">·</span>5 beats, ~42s
+            <span class="sep">·</span><span class="src">Script from hook #2</span><span class="sep">·</span>4d</span>
+        </span>
+        <span class="rail"><span class="fwd dim">Test full script →</span><span class="dots dim">⋯</span></span>
       </div>
     </div>
 
     <div class="sect"><span class="t">Reads</span><span class="n">1</span><span class="line"></span></div>
-    <div class="grid">
-      <div class="card">
-        <div class="c-top"><span class="c-kick">Read</span><span class="c-seg">Teaser rough cut</span></div>
-        <div class="hero">Lever → the title card’s promise</div>
-        <div class="proof">
-          <div class="pl"><span class="dot"></span>Strong · 8/10 watched to the end</div>
-          <div class="quote">“It promised a payoff and the pacing kept it honest.”</div>
-        </div>
-        <div class="c-foot"><span class="fwd">Open the full read →</span><span class="prov">from Test — teaser cut · 1d</span></div>
+    <div class="rows">
+      <div class="row">
+        <span class="box gh"></span>
+        <span class="body">
+          <span class="line1">Lever → the title card’s promise</span>
+          <span class="proof"><span class="dot"></span>Strong · 8 of 10 watched to the end
+            <span class="q">“It promised a payoff and the pacing kept it honest.”</span></span>
+          <span class="meta"><span class="type">Read</span><span class="sep">·</span>Teaser rough cut
+            <span class="sep">·</span><span class="src">Test — teaser cut</span><span class="sep">·</span>1d</span>
+        </span>
+        <span class="rail"><span class="fwd dim">Open the full read →</span><span class="dots dim">⋯</span></span>
       </div>
     </div>
   </div></div>
   <p class="note">
-    <b>Grouping by type replaces the filter</b> — with 8 items, sections are faster than chips and they
-    read in working order: hooks you wrote, scripts you built from them, the read that judged the cut.
-    The header counts items <b>and</b> source threads, since a project legitimately spans several.
-    Title renames inline (same interaction as thread rename). ⋯ = Rename · Archive; archiving returns
-    items to Unfiled, never deletes them.
+    <b>Grouping by type replaces the filter chips</b> — with eight items, sections are faster than
+    chips, and they read in working order: the hooks you wrote, the scripts built from them, the read
+    that judged the cut. The header counts items <b>and</b> source threads, because a project
+    legitimately spans several. The title renames inline, matching thread rename. ⋯ is Rename ·
+    Archive, and archiving returns items to Unfiled rather than deleting them.
   </p>
 
   <!-- ========== 04 ========== -->
-  <div class="screen-label"><span class="no">04</span><span class="name">Save flow + first run</span></div>
+  <div class="screen-label"><span class="no">04</span><span class="name">Saving, and the two first-run states</span><span class="line"></span></div>
   <div class="frame">
     <div class="flow">
       <div>
         <div class="tcard">
           <span class="bm">▮</span>
-          <div class="c-top"><span class="c-kick">Hook</span></div>
-          <div class="hero">“Nobody tells you the first 10k followers are the easy part.”</div>
-          <div class="why">Contrarian · ranked #2 of 6</div>
+          <span class="meta" style="margin-bottom:2px"><span class="type">Hook</span></span>
+          <span class="line1">“Nobody tells you the first 10k followers are the easy part.”</span>
+          <span class="meta">Contrarian, ranked 2 of 6</span>
         </div>
         <div class="toast"><span class="ok">▮</span> Saved to <b>Launch video #3</b><span class="chg">Change</span></div>
       </div>
@@ -405,10 +445,12 @@
         <div class="prow2"><span class="pinput">New project…</span><span class="btn on">Create</span></div>
       </div>
     </div>
-    <div class="page" style="margin-top:44px">
-      <div class="sect"><span class="t">First run — items, no projects yet</span><span class="line"></span></div>
+
+    <div class="page" style="margin-top:52px">
+      <div class="sect"><span class="t">First run — saves, but no projects yet</span><span class="line"></span></div>
       <div class="plist"><div class="prow ghost">＋&nbsp; Group your saves into a project</div></div>
-      <div class="sect" style="margin-top:26px"><span class="t">Nothing saved yet</span><span class="line"></span></div>
+
+      <div class="sect" style="margin-top:34px"><span class="t">First run — nothing saved at all</span><span class="line"></span></div>
       <div class="empty">
         <div class="const">· ·  ·   ·  · ·</div>
         <h3>Nothing in your Library yet</h3>
@@ -418,50 +460,117 @@
     </div>
   </div>
   <p class="note">
-    <b>One click saves; the default is inferred, not remembered.</b> Because saves now carry thread_id,
-    the picker can default to the project this thread already feeds — badged so the choice is visible
-    rather than silent. No prior project for the thread → Unfiled. Clicking a filled bookmark un-saves.
-    Saved state is read from the store, so a card that is already saved renders filled on mount, everywhere.
+    <b>The default destination is inferred, not remembered.</b> Because saves now carry thread_id, the
+    picker defaults to the project this thread already feeds, badged so the choice is visible rather
+    than silent — “last used” would have quietly filed a hook into a project you touched weeks ago.
+    No prior project for the thread means Unfiled. Clicking a filled bookmark un-saves, and saved state
+    is read from the store, so an already-saved card renders filled on mount everywhere it appears.
     <br><br>
-    <b>The two first-run states</b> are the ones every current user is actually in. With items but no
-    projects, the section is a single quiet row — never an empty grid shouting for setup. With nothing
-    saved at all, the shipped Constellation empty state stays exactly as it is.
+    <b>Both first-run states matter more than the mature one</b> — every current user has zero projects,
+    and several have nothing saved. With saves but no projects, the section degrades to a single quiet
+    row instead of an empty grid demanding setup. With nothing at all, the shipped Constellation empty
+    state stays exactly as it is.
   </p>
 
   <!-- ========== 05 ========== -->
-  <div class="screen-label"><span class="no">05</span><span class="name">Search — global results mode</span></div>
+  <div class="screen-label"><span class="no">05</span><span class="name">Search — global results</span><span class="line"></span></div>
   <div class="frame"><div class="page">
     <div class="sh">
       <h1>Library</h1>
       <div class="tools"><div class="input" style="color:var(--cream);border-color:var(--bdh)">⌕&nbsp; pantry</div></div>
     </div>
-    <div class="sect"><span class="t">5 results for “pantry”</span><span class="line"></span><span class="btn">Clear</span></div>
-    <div class="res">
-      <div class="rrow"><span class="rk">Script</span><span class="rt">Pantry restock ASMR — v2</span><span class="rin">Launch video #3</span></div>
-      <div class="rrow"><span class="rk">Outlier</span><span class="rt">60s pantry restock, no voiceover · 14× baseline</span><span class="rin">Unfiled</span></div>
-      <div class="rrow"><span class="rk">Hook</span><span class="rt">“My pantry costs less than your coffee habit.”</span><span class="rin">Q3 cooking niche</span></div>
-      <div class="rrow"><span class="rk">Idea</span><span class="rt">Pantry-only week — no shopping trips</span><span class="rin">Unfiled</span></div>
-      <div class="rrow"><span class="rk">Read</span><span class="rt">Lever → the pantry reveal at 0:04</span><span class="rin">Launch video #3</span></div>
+    <div class="sect"><span class="t">5 results for “pantry”</span><span class="line"></span><span class="act">Clear</span></div>
+    <div class="rows">
+      <div class="row">
+        <span class="body"><span class="line1">Pantry restock ASMR — v2</span>
+          <span class="meta"><span class="type">Script</span><span class="sep">·</span>in Launch video #3</span></span>
+      </div>
+      <div class="row">
+        <span class="body"><span class="line1 quiet">60s pantry restock, no voiceover</span>
+          <span class="meta"><span class="type">Outlier</span><span class="sep">·</span>Unfiled</span></span>
+        <span class="metric">14× baseline</span>
+      </div>
+      <div class="row">
+        <span class="body"><span class="line1">“My pantry costs less than your coffee habit.”</span>
+          <span class="meta"><span class="type">Hook</span><span class="sep">·</span>in Q3 cooking niche</span></span>
+      </div>
+      <div class="row">
+        <span class="body"><span class="line1">Pantry-only week — no shopping trips</span>
+          <span class="meta"><span class="type">Idea</span><span class="sep">·</span>Unfiled</span></span>
+      </div>
+      <div class="row">
+        <span class="body"><span class="line1">Lever → the pantry reveal at 0:04</span>
+          <span class="meta"><span class="type">Read</span><span class="sep">·</span>in Launch video #3</span></span>
+      </div>
     </div>
   </div></div>
   <p class="note">
-    <b>Search is global and answers “where is it”.</b> Typing collapses the sectioned view into one
-    ranked list — projects and Unfiled together — and each result carries the project it lives in, so
-    the result tells you both what you found and where it sits. Rows, not cards: at this moment you are
-    locating, not browsing. Clear returns to the sectioned view. Sort applies to whatever list is showing.
+    <b>Search answers “where is it”, so every result names its place.</b> Typing collapses the
+    sectioned view into one ranked list spanning projects and Unfiled together, and each row carries
+    the project it lives in. Same row primitive as the shelf — nothing new to learn — with the meta
+    line switched from provenance to location, because at this moment you are locating, not browsing.
   </p>
 
-  <div class="audit" style="margin-top:64px">
-    <h2>Phase 1 plumbing contracts (before any of this UI)</h2>
-    <table>
-      <tr><td class="f"><b>Provenance on every save</b></td><td class="r">thread_id + ref_id = messages.id from all 11 renderers — the finest stable id, since block sub-items have no persisted ids (card ids are minted at render as <code>${kind.id}-${idx}</code>).</td></tr>
-      <tr><td class="f"><b>No silent duplicates</b></td><td class="r">UNIQUE (user_id, item_type, ref_id) once ref_id is real; the 10 existing rows backfilled or grandfathered.</td></tr>
-      <tr><td class="f"><b>Saved state reads the store</b></td><td class="r">Not save.isSuccess — so filled-on-mount and un-save from source both work.</td></tr>
-      <tr><td class="f"><b>Type fixes</b></td><td class="r">remix saves as remix (new item_type, not hook); format either gets a writer or leaves the enum and the filter.</td></tr>
-      <tr><td class="f"><b>Back-link</b></td><td class="r">The provenance line deep-links /home?thread=… from thread_id. Forward actions keep their 402 credit-wall handling.</td></tr>
-      <tr><td class="f"><b>New projects table</b></td><td class="r">saved_items RLS idiom, nullable project_id on saved_items. The dead 20260526 projects table stays untouched.</td></tr>
-      <tr><td class="f"><b>Not yet designed</b></td><td class="r">Mobile (one column, selection via long-press), ⌘K reach into saved items, and drag-a-card-onto-a-project — all deliberately deferred past phase 1.</td></tr>
-    </table>
+  <!-- ========== audit ========== -->
+  <div class="screen-label"><span class="no">✦</span><span class="name">What changed, and why</span><span class="line"></span></div>
+  <div class="audit">
+    <h2>Rev 3 — readability</h2>
+    <p class="sub">The complaint was legibility; the cause was structural.</p>
+    <div class="aitem"><span class="tag r3">rev 3</span>
+      <span class="f">The card grid was the wrong primitive.<span class="why">Two columns at 880px gave each item a 420px box, so a one-sentence hook wrapped across three lines and sat beneath a kicker, a segment tag and a footer.</span></span>
+      <span class="r">Rows. Content gets the full width and reads as a sentence; a single meta line holds everything else. Cards survive only where they earn it — the in-thread save card.</span></div>
+    <div class="aitem"><span class="tag r3">rev 3</span>
+      <span class="f">--muted was doing six jobs.<span class="why">Kickers, segments, provenance, counts, section headers and chips were all #8a857c at 10.5–12.5px — most of the page was dim grey with no entry point.</span></span>
+      <span class="r">Muted now means timestamps, counts and the meta line only. Section headers and supporting text moved up to secondary; content is full cream.</span></div>
+    <div class="aitem"><span class="tag r3">rev 3</span>
+      <span class="f">The type scale spanned 4px.<span class="why">Hero 14.5, why 12.5, kicker 10.5 — technically a hierarchy, visually a single texture.</span></span>
+      <span class="r">Content 15.5px, support 13.5px, meta 12.5px, with weight and colour reinforcing each step rather than size alone.</span></div>
+    <div class="aitem"><span class="tag r3">rev 3</span>
+      <span class="f">The audit table opened the document.<span class="why">The first thing on screen was a wall of 12.5px grey documentation, which set the tone for everything under it.</span></span>
+      <span class="r">Moved here, to the end, and set in readable type. The screens now lead.</span></div>
+  </div>
+
+  <div class="audit">
+    <h2>Carried forward from rev 2</h2>
+    <p class="sub">Verified against globals.css and saved-item-card.tsx, not recalled.</p>
+    <div class="aitem"><span class="tag">system</span>
+      <span class="f">Accent is liveness, not decoration.</span>
+      <span class="r">The bookmark on every shelf item carried no information — everything on the shelf is saved. Dropped; Remove lives in the ⋯ menu the card already builds. Accent now appears only on the checked box and the in-thread bookmark.</span></div>
+    <div class="aitem"><span class="tag">system</span>
+      <span class="f">Forward actions already exist and are type-specific.</span>
+      <span class="r">“Write script →”, “Develop into hooks →”, “Test full script →” — from saved-item-card.tsx:46. An earlier draft replaced these with a generic button, which was a regression.</span></div>
+    <div class="aitem"><span class="tag">system</span>
+      <span class="f">Cards are darker than the page, controls lighter.</span>
+      <span class="r">#1a1a19 on #1f1f1e, controls #2c2c2b. Band tones are --color-success / warning / error.</span></div>
+    <div class="aitem"><span class="tag">shelf</span>
+      <span class="f">Masonry silently broke the sort.</span>
+      <span class="r">CSS multicol fills column-by-column, so under “Recent” the second-newest sat below the newest, not beside it. Rows are ordered by construction.</span></div>
+    <div class="aitem"><span class="tag">shelf</span>
+      <span class="f">No bulk selection.</span>
+      <span class="r">The premise is “too much output to organize”; filing one item at a time fails it. Screen 02.</span></div>
+    <div class="aitem"><span class="tag">shelf</span>
+      <span class="f">Search and sort had no defined scope.</span>
+      <span class="r">Screen 05 — global results, each badged with its project.</span></div>
+  </div>
+
+  <div class="audit">
+    <h2>Phase 1 — plumbing, before any of this UI</h2>
+    <p class="sub">Every one of these is a defect in the shipped save loop.</p>
+    <div class="aitem"><span class="tag">data</span>
+      <span class="f">Provenance on every save.</span>
+      <span class="r">thread_id + ref_id = messages.id from all 11 renderers. Today ref_id is written by none and thread_id by one, so all 10 live rows are orphans.</span></div>
+    <div class="aitem"><span class="tag">data</span>
+      <span class="f">No silent duplicates.</span>
+      <span class="r">UNIQUE (user_id, item_type, ref_id) once ref_id is real. Saved state reads the store rather than mutation state, so a second click un-saves instead of writing a second row.</span></div>
+    <div class="aitem"><span class="tag">data</span>
+      <span class="f">Type fixes.</span>
+      <span class="r">remix saves as remix, not hook. format either gets a writer or leaves the enum and the filter.</span></div>
+    <div class="aitem"><span class="tag">data</span>
+      <span class="f">New projects table.</span>
+      <span class="r">saved_items RLS idiom, nullable project_id. The dead 20260526 projects table stays untouched.</span></div>
+    <div class="aitem"><span class="tag">later</span>
+      <span class="f">Deferred past phase 1.</span>
+      <span class="r">Mobile (one column, long-press to select), ⌘K reach into saved items, drag a row onto a project, and manual ordering inside a project.</span></div>
   </div>
 </div>
 </body>
