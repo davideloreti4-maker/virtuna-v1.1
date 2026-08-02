@@ -57,15 +57,20 @@ const CAST_SHOWN = 4;
 
 // ── shared honesty helpers ─────────────────────────────────────────────────────
 
-/** Parse the projection fraction ("8/10 stop") → the 0–10 persona-stop count. Missing/malformed → 0
- *  (Weak = last), mirroring the runner's `coercePersonaStops`. */
-export function parsePersonaStops(fraction: string): number {
-  const m = /(\d+)\s*\/\s*(\d+)/.exec(fraction ?? "");
-  if (!m) return 0;
-  const n = Number(m[1]);
-  if (!Number.isFinite(n)) return 0;
-  return Math.max(0, Math.min(10, Math.round(n)));
-}
+/**
+ * THE 0/10 RANK IS DEAD (owner call, 2026-08-02).
+ *
+ * `parsePersonaStops` lived here and turned a descriptor's `fraction` ("8/10 stop") into the
+ * number the board printed beside every un-run row, bar and all. The persona SIM that once
+ * produced that fraction is GONE from the generation path — what survives is the generating
+ * model's own SELF-ESTIMATE (see the `bandFromStops` call sites in the hooks / ideas / script /
+ * remix runners), so the board was ranking, bar-charting and ordering un-run work by a number
+ * the engine no longer measures. A queued row now carries no score and no bar at all.
+ *
+ * ⚠️ The PRODUCERS are untouched on purpose: `fraction` / `band` / `personaStops` still exist in
+ * the runner schemas and the routes still parse them. This is a rendering decision. Deleting a
+ * field the routes read is a different, larger change with no design ask behind it.
+ */
 
 const RANK_KINDS: ReadonlySet<string> = new Set([
   "hook",
@@ -111,18 +116,15 @@ export interface OverviewInput {
   watching?: WatchingRun | null;
 }
 
-/** The queued-group sort key. Concepts rank by their persona-stop count (0–10); a video has no
- *  personas, so it ranks by its viral score normalized to the same 0–10 scale — an honest heuristic
- *  (its only pre-sim signal), never a fabricated persona count. */
-function queuedRankKey(r: RankedStimulus): number {
-  if (r.kind === "video") return (r.viralScore ?? 0) / 10;
-  return r.personaStops ?? 0;
-}
-
 /** Build the Overview view-model. Ranked order: sealed rows first (by measured stopPct desc), then
- *  queued rows (by the queued key desc) — so a run always outranks a projection, and the top is the
- *  win. Tested videos rank in by the same rule (revealed ⇒ sealed by %, else queued by viral score).
- *  Stable tie-break on generation order (the descriptor sequence, then the video sequence). */
+ *  queued rows in LEDGER ORDER — the descriptor sequence, then the video sequence, exactly as they
+ *  were generated. A run always outranks a projection, and the top of the board is the win.
+ *
+ *  Queued rows used to sort by `queuedRankKey` (personaStops, or a video's viral score scaled onto
+ *  the same 0–10 axis). With the 0/10 rank dead there is no measured signal left to order un-run
+ *  work by, and inventing one — recency dressed as quality, a craft score standing in for
+ *  attention — would be the same fabrication in the SORT that the row itself just stopped
+ *  printing. Ledger order claims only what is true: this is the order you made them in. */
 export function buildOverviewData({
   audience,
   descriptors,
@@ -142,7 +144,6 @@ export function buildOverviewData({
       id: d.id,
       stimulus: d.conceptText,
       stopPct: sealed ? m : 0,
-      personaStops: parsePersonaStops(d.fraction),
       kind: rankKindOf(d.kind),
       state: sealed ? "simulated" : "queued",
       ...(sliceLabel ? { sliceLabel } : {}),
@@ -165,12 +166,18 @@ export function buildOverviewData({
     const bSealed = b.state === "simulated";
     if (aSealed !== bSealed) return aSealed ? -1 : 1;
     if (aSealed) return b.stopPct - a.stopPct;
-    return queuedRankKey(b) - queuedRankKey(a);
+    // Queued: hold the input order. `Array#sort` is stable (spec-required since ES2019), so
+    // returning 0 IS the ledger order — concepts in descriptor sequence, then the videos.
+    return 0;
   });
 
   return {
     audienceName: audience.name,
     provenance: audience.calibrationBadge,
+    // The room's header states its own facts now (N minds · calibration · where they read), so the
+    // SCENE has to reach the Overview instead of stopping at Simulate. It is the same chosen scene
+    // ⑤ arms a run with — one fact, one source.
+    scene: audience.scene,
     tier: audience.tier,
     watching: watching ?? null,
     ranked,
@@ -179,7 +186,13 @@ export function buildOverviewData({
   };
 }
 
-/** On-call avatars — initials of the calibrated room's named slices (real segments, never invented). */
+/** On-call avatars — initials of the calibrated room's named slices (real segments, never invented).
+ *
+ *  ⚠️ NOTHING RENDERS THIS as of 2026-08-02: the rev-B+ board folded the room's identity into the
+ *  header facts line and deleted both the micro-avatar cluster and the "on call" footer. The
+ *  derivation stays because whether the cast returns somewhere is an OPEN question the owner has
+ *  not ruled on (handoff §8) — and it is real, cheap and pure. If the answer comes back "no", this
+ *  and `CastMember` go together. */
 function deriveCast(audience: AudienceMeta): CastMember[] {
   return audience.segments.slice(0, CAST_SHOWN).map((s, i) => ({
     id: s.label.toLowerCase().replace(/[^a-z0-9]+/g, "-") || `seg-${i}`,
@@ -245,26 +258,35 @@ export function buildStartData({ name, audience }: StartInput): StartData {
 /** The behavioral funnel — each lens is a decision the room makes, in funnel order (owner call
  *  2026-07-21: observable ACTIONS, not internal states). The Brain tab decomposes want/believe/feel;
  *  the population only reads what it can DO. */
+/**
+ * `stage` used to lead with the funnel's own vocabulary ("Attention — the thumb-stop in the first
+ * 2 seconds", "Retention — …", "Conversion — …") and rendered on its own second line under the
+ * question. Rev B+ folds it into ONE line — "Would they stop scrolling? — the first 2 seconds" —
+ * so the stage keeps only the half that tells a creator something they didn't already read in the
+ * question above it. The funnel words were naming our model, not their video.
+ */
 export const BEHAVIORAL_LENSES: SimLens[] = [
-  { key: "stop", label: "Stop", gloss: "stop scrolling", stage: "Attention — the thumb-stop in the first 2 seconds" },
-  { key: "finish", label: "Finish", gloss: "watch it through", stage: "Retention — do they stay to the end" },
-  { key: "share", label: "Share", gloss: "send it to someone", stage: "Spread — worth passing on" },
-  { key: "follow", label: "Follow", gloss: "follow you", stage: "Growth — worth coming back for" },
-  { key: "buy", label: "Buy", gloss: "act on the CTA", stage: "Conversion — click, buy, or sign up" },
+  { key: "stop", label: "Stop", gloss: "stop scrolling", stage: "the first 2 seconds" },
+  { key: "finish", label: "Finish", gloss: "watch it through", stage: "do they stay to the end" },
+  { key: "share", label: "Share", gloss: "send it to someone", stage: "worth passing on" },
+  { key: "follow", label: "Follow", gloss: "follow you", stage: "worth coming back for" },
+  { key: "buy", label: "Buy", gloss: "act on the CTA", stage: "click, buy, or sign up" },
 ];
 
 /** The cold-start intake doors. SCREEN is live; COMPARE (A/B) + QUERY (ask/survey) are deferred
  *  ("soon") — they need their own read-templates (the per-domain-bundle work). */
 export const INTAKE_DOORS: IntakeOption[] = [
-  { kind: "video", label: "Test a real video", sub: "upload or paste a link — the full read", family: "screen", status: "active", stimulusKind: "video" },
-  { kind: "draft", label: "Screen a draft", sub: "a hook, script, or caption you're weighing", family: "screen", status: "active", stimulusKind: "draft" },
-  { kind: "ab", label: "Compare two (A/B)", sub: "run both variants, see who wins", family: "compare", status: "soon" },
-  { kind: "ask", label: "Ask the room", sub: "put a question to your audience", family: "query", status: "soon" },
-  { kind: "survey", label: "Run a survey", sub: "structured answers across the room", family: "query", status: "soon" },
+  { kind: "video", label: "Test a real video", sub: "Upload or paste a link — the full read", family: "screen", status: "active", stimulusKind: "video" },
+  { kind: "draft", label: "Screen a draft", sub: "A hook, script, or caption you're weighing", family: "screen", status: "active", stimulusKind: "draft" },
+  // "Compare two (A/B)" — the parenthetical was the only place in the product that made a creator
+  // read a piece of our jargon to understand a door. The sub-line already says what it does.
+  { kind: "ab", label: "Compare two", sub: "Run both versions, see who wins", family: "compare", status: "soon" },
+  { kind: "ask", label: "Ask the room", sub: "Put a question to your audience", family: "query", status: "soon" },
+  { kind: "survey", label: "Run a survey", sub: "Structured answers across the room", family: "query", status: "soon" },
 ];
 
 /**
- * Every artifact the platform offers, grouped by WHAT YOU'RE WORKING ON (Content · Intel) rather
+ * Every artifact the platform offers, grouped by WHAT YOU CAME TO DO (Create · Research) rather
  * than by verb (the old Make/Analyze/Discover). The verb axis made every new capability its own
  * tile — it grows as `verbs × artifacts` and explodes the moment the product goes horizontal. The
  * artifact axis grows one tile per artifact and lets the verbs ride the sentence (chat-agent-loop
@@ -280,9 +302,12 @@ export const INTAKE_DOORS: IntakeOption[] = [
  */
 export const START_SKILL_GROUPS: SkillGroup[] = [
   {
-    // 2 tracks, 2 inner columns — Content carries ~2× Intel's artifacts, so it gets 2× the width
+    // 2 tracks, 2 inner columns — Create carries ~2× Research's artifacts, so it gets 2× the width
     // and both sides bottom out level.
-    label: "Content",
+    // CREATE / RESEARCH, not Content / Intel (2026-08-02). The old pair named the OUTPUT CLASS —
+    // which is the shelf a librarian wants, not the verb a creator arrives with — and "Intel" was
+    // the last piece of operator-speak on the surface.
+    label: "Create",
     span: 2,
     skills: [
       // `idea`, SINGULAR — these ids are consumed as composer ToolIds (onSkill → pickStartSkill,
@@ -290,9 +315,12 @@ export const START_SKILL_GROUPS: SkillGroup[] = [
       // display key, a DIFFERENT namespace; using it here armed a tool no branch matched, and
       // handleSubmit's final else is the paid video Test — so the Ideas tile ran a SIM-1 Max
       // video Test off a pasted URL (F-017). The two namespaces differ in exactly this one id.
-      { id: "idea", label: "Ideas", lens: "Concepts worth making", icon: "bulb" },
+      // Each `lens` says what you GET BACK. These two said what the thing IS ("Concepts worth
+      // making" / "A full short-form script") — which the label already said — so they were the
+      // two tiles a creator learned nothing from.
+      { id: "idea", label: "Ideas", lens: "Ranked before you film", icon: "bulb" },
       { id: "hooks", label: "Hooks", lens: "Openers that stop them", icon: "firstline" },
-      { id: "script", label: "Script", lens: "A full short-form script", icon: "page" },
+      { id: "script", label: "Script", lens: "Written to hold attention", icon: "page" },
       { id: "remix", label: "Remix", lens: "Rebuild what worked", icon: "repeat" },
       { id: "test", label: "Video test", lens: "Frame by frame, one fix", icon: "filmstrip" },
       // Named, not wired: there is no `ad` runner in SKILL_TOOLS / SKILL_RUN_META yet, so the tile
@@ -302,7 +330,7 @@ export const START_SKILL_GROUPS: SkillGroup[] = [
     ],
   },
   {
-    label: "Intel",
+    label: "Research",
     skills: [
       { id: "explore", label: "Explore", lens: "What's breaking out", icon: "compass" },
       { id: "account", label: "Account teardown", lens: "Yours, or a rival's", icon: "at" },

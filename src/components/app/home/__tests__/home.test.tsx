@@ -224,7 +224,9 @@ describe('Home — empty home under AMBIENT_V2_ENABLED (the shipped path)', () =
     expect(screen.queryByRole('button', { name: 'Write scroll-stopping hooks' })).toBeNull();
     // …replaced by the artifact-axis grid (the real START_SKILL_GROUPS tiles + their lens lines)
     expect(screen.getByText('Ideas')).toBeInTheDocument();
-    expect(screen.getByText('Concepts worth making')).toBeInTheDocument();
+    // the lens line — what you GET BACK. "Concepts worth making" restated the tile's own label;
+    // this is the one a creator learns something from (copy pass, 2026-08-02).
+    expect(screen.getByText('Ranked before you film')).toBeInTheDocument();
     expect(screen.getByText('Video test')).toBeInTheDocument();
   });
 

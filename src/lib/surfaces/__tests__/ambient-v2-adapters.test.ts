@@ -2,9 +2,13 @@
  * Ambient Audience v2 surface adapters — pure view-model derivation, honesty spine.
  *
  * The load-bearing guarantees:
- *  - a projected card ranks by its personaStops and reads `queued` (measured % withheld = 0) until a
- *    real sim seals it — never a fabricated measurement;
+ *  - a projected card reads `queued` (measured % withheld = 0) until a real sim seals it — never a
+ *    fabricated measurement;
  *  - a sealed row outranks every queued row (a run beats a projection);
+ *  - queued rows hold LEDGER ORDER. They used to sort by `personaStops` (and a video by its viral
+ *    score scaled onto the same axis). That rank is dead — the engine stopped measuring it — so
+ *    there is no signal left to order un-run work by, and a sort is as capable of fabricating a
+ *    ranking as a printed number is;
  *  - every displayed fact is REAL (audience/projection) or STATIC config — nothing invented here.
  */
 
@@ -13,7 +17,6 @@ import {
   buildOverviewData,
   buildSimulateData,
   buildStartData,
-  parsePersonaStops,
   rankKindOf,
   type AudienceMeta,
 } from "../ambient-v2-adapters";
@@ -44,16 +47,6 @@ function desc(over: Partial<AmbientCardDescriptor> & { id: string }): AmbientCar
   };
 }
 
-describe("parsePersonaStops", () => {
-  it("reads the numerator, clamps 0–10, degrades malformed to 0", () => {
-    expect(parsePersonaStops("8/10 stop")).toBe(8);
-    expect(parsePersonaStops("0/10 stop")).toBe(0);
-    expect(parsePersonaStops("13/10")).toBe(10); // clamp
-    expect(parsePersonaStops("no fraction")).toBe(0);
-    expect(parsePersonaStops("")).toBe(0);
-  });
-});
-
 describe("rankKindOf", () => {
   it("passes known kinds, falls back unknown/absent to concept", () => {
     expect(rankKindOf("hook")).toBe("hook");
@@ -70,12 +63,18 @@ describe("buildOverviewData", () => {
     desc({ id: "script-2", conceptText: "mid", fraction: "6/10 stop", kind: "script" }),
   ];
 
-  it("with no fired sim: every row is queued, its % withheld, ranked by personaStops desc", () => {
+  it("with no fired sim: every row is queued, its % withheld, and the order is the LEDGER's", () => {
     const vm = buildOverviewData({ audience, descriptors });
-    expect(vm.ranked.map((r) => r.id)).toEqual(["idea-1", "script-2", "hook-0"]);
+    // Descriptor order, untouched. The dead persona rank produced ["idea-1", "script-2", "hook-0"]
+    // from these same three fractions (9 → 6 → 3), so a re-introduced personaStops sort fails here
+    // immediately rather than quietly re-ordering the board.
+    expect(vm.ranked.map((r) => r.id)).toEqual(["hook-0", "idea-1", "script-2"]);
     expect(vm.ranked.every((r) => r.state === "queued")).toBe(true);
     expect(vm.ranked.every((r) => r.stopPct === 0)).toBe(true); // sealed-verdict law: withheld until run
-    expect(vm.ranked[0]).toMatchObject({ personaStops: 9, kind: "idea" });
+    expect(vm.ranked[0]).toMatchObject({ id: "hook-0", kind: "hook" });
+    // No row carries a score of its own. `personaStops` is off the type; this catches it coming
+    // back through an `as never` or a widened object literal.
+    for (const r of vm.ranked) expect(r).not.toHaveProperty("personaStops");
   });
 
   it("a fired sim seals its row, outranks every queued row, and sorts sealed by measured stopPct", () => {
@@ -109,6 +108,14 @@ describe("buildOverviewData", () => {
     expect(vm.provenance).toBe("calibrated · 3d");
   });
 
+  it("carries the SCENE so the board can state where the room reads", () => {
+    // The header facts line ("1,000 minds · calibrated · reads on TikTok") needs the scene, and it
+    // must be the SAME chosen scene ⑤ arms a run with — one fact, one source, never a second
+    // hardcoded default drifting beside the first.
+    const vm = buildOverviewData({ audience, descriptors });
+    expect(vm.scene).toBe(audience.scene);
+  });
+
   it("an UNREVEALED tested video ranks queued (viral score shown, attention % withheld)", () => {
     const vm = buildOverviewData({
       audience,
@@ -117,8 +124,11 @@ describe("buildOverviewData", () => {
     });
     const row = vm.ranked.find((r) => r.id === "vid-a")!;
     expect(row).toMatchObject({ kind: "video", state: "queued", viralScore: 84, stopPct: 0 });
-    // ranks among the queued by viral/10 (8.4) — below the 9/10 idea, above the 6 and 3 concepts
-    expect(vm.ranked.map((r) => r.id)).toEqual(["idea-1", "vid-a", "script-2", "hook-0"]);
+    // Ledger order: the concepts as generated, then the videos. The viral score is SHOWN on the
+    // row (it is a real reading of the file) but it does not rank anything — it used to be scaled
+    // to /10 and interleaved with the persona estimates, which ranked a craft score against an
+    // attention projection as if they measured the same thing.
+    expect(vm.ranked.map((r) => r.id)).toEqual(["hook-0", "idea-1", "script-2", "vid-a"]);
   });
 
   it("a REVEALED tested video seals by its measured attention %, ranked among the sealed rows", () => {
@@ -139,7 +149,7 @@ describe("buildSimulateData", () => {
     const vm = buildSimulateData({
       audience,
       stimulus: { text: "Nobody tells you…", kind: "hook" },
-      develop: { band: "Strong", value: "8/10", lensLabel: "stopped" },
+      develop: { sourceLabel: "Hooks run" },
     });
     expect(vm.room).toBe("Your audience");
     expect(vm.provenance).toBe("TikTok"); // calibratedFrom, NOT the recency badge
@@ -152,7 +162,9 @@ describe("buildSimulateData", () => {
     expect(vm.segments).toHaveLength(audience.segments.length + 1);
     expect(vm.lenses.map((l) => l.key)).toEqual(["stop", "finish", "share", "follow", "buy"]);
     expect(vm.intake.some((i) => i.family === "screen" && i.status === "active")).toBe(true);
-    expect(vm.develop).toMatchObject({ value: "8/10" });
+    // The tie-back names its SOURCE. It carried a band + an "8/10" until 2026-08-02 — a score the
+    // engine no longer produces, rendered directly above the spend button.
+    expect(vm.develop).toEqual({ sourceLabel: "Hooks run" });
   });
 
   it("omits develop on a cold entry", () => {
@@ -171,8 +183,9 @@ describe("buildStartData", () => {
     const ids = vm.skillGroups.flatMap((g) => g.skills.map((s) => s.id));
     expect(ids).toContain("hooks");
     expect(ids).toContain("explore");
-    // Artifact axis, not the verb axis — grouped by what you're working on.
-    expect(vm.skillGroups.map((g) => g.label)).toEqual(["Content", "Intel"]);
+    // Grouped by what you came to DO. "Content · Intel" named the output class and shipped a piece
+    // of operator-speak ("Intel") on the first screen a creator sees.
+    expect(vm.skillGroups.map((g) => g.label)).toEqual(["Create", "Research"]);
   });
 
   it("gives every tile a lens line, and marks unwired artifacts `soon`", () => {

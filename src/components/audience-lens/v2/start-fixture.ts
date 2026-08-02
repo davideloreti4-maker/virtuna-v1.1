@@ -24,19 +24,19 @@ export const START_R4: StartData = {
   // Mirrors START_SKILL_GROUPS in ambient-v2-adapters.ts — keep the two in step.
   skillGroups: [
     {
-      label: "Content",
+      label: "Create",
       span: 2,
       skills: [
-        { id: "idea", label: "Ideas", lens: "Concepts worth making", icon: "bulb" },
+        { id: "idea", label: "Ideas", lens: "Ranked before you film", icon: "bulb" },
         { id: "hooks", label: "Hooks", lens: "Openers that stop them", icon: "firstline" },
-        { id: "script", label: "Script", lens: "A full short-form script", icon: "page" },
+        { id: "script", label: "Script", lens: "Written to hold attention", icon: "page" },
         { id: "remix", label: "Remix", lens: "Rebuild what worked", icon: "repeat" },
         { id: "test", label: "Video test", lens: "Frame by frame, one fix", icon: "filmstrip" },
         { id: "ad", label: "Ad creative", lens: "Test before you spend", icon: "mega", status: "soon" },
       ],
     },
     {
-      label: "Intel",
+      label: "Research",
       skills: [
         { id: "explore", label: "Explore", lens: "What's breaking out", icon: "compass" },
         { id: "account", label: "Account teardown", lens: "Yours, or a rival's", icon: "at" },

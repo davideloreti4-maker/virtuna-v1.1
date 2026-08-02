@@ -95,7 +95,7 @@ describe("the Start card's SIMULATE DOOR", () => {
       />,
     );
     const door = screen.getByTestId("ambient-start-sim-door");
-    expect(door.textContent).toContain("Test something against your audience");
+    expect(door.textContent).toContain("Test something of your own");
     fireEvent.click(door);
     expect(onSimDoor).toHaveBeenCalledTimes(1);
   });
@@ -115,7 +115,7 @@ describe("the cold ARM's config", () => {
     render(<AmbientSimulate data={SIMULATE_R4} mode="cold" onSimulate={onSimulate} />);
     fireEvent.click(screen.getByText("Screen a draft"));
     fireEvent.change(screen.getByLabelText("Paste the draft to screen"), { target: { value: text } });
-    fireEvent.click(screen.getByText("Arm the run →"));
+    fireEvent.click(screen.getByText("Continue →"));
     fireEvent.click(screen.getByText("Simulate"));
     expect(onSimulate).toHaveBeenCalledTimes(1);
     return onSimulate.mock.calls[0]![0] as SimulateConfig;
@@ -149,21 +149,26 @@ describe("a brought VIDEO arms honestly", () => {
     fireEvent.change(screen.getByLabelText("Upload video file"), {
       target: { files: [new File(["x"], "my-clip.mp4", { type: "video/mp4" })] },
     });
-    fireEvent.click(screen.getByText("Arm the run →"));
+    fireEvent.click(screen.getByText("Continue →"));
   }
 
-  it("locks the three dials /api/analyze cannot honour, each with its reason", () => {
+  it("locks every dial /api/analyze cannot honour, and gives ONE reason for all of them", () => {
     armVideo();
-    const reasons = screen
-      .getAllByTestId("sim-locked")
-      .map((el) => el.parentElement?.textContent ?? "");
-    // lens · slice · scene — three locks, not a silently-inert dropdown among them.
-    expect(reasons).toHaveLength(3);
-    expect(reasons.join(" | ")).toContain("every behaviour at once");
-    expect(reasons.join(" | ")).toContain("whole room");
-    expect(reasons.join(" | ")).toContain("isn’t a dial here");
-    // No live control for any of them.
-    expect(screen.queryByText("or ask your own question…")).toBeNull();
+    const panel = screen.getByTestId("ambient-simulate");
+    // Audience · Platform · Model — three locked settings rows, not a silently-inert dropdown
+    // among them. (Model keeps its own testid because the TEXT path locks it too.)
+    expect(screen.getAllByTestId("sim-locked")).toHaveLength(2);
+    expect(screen.getByTestId("sim-fidelity-locked")).toBeTruthy();
+    expect(panel.textContent).toContain("The whole room");
+    expect(panel.textContent).toContain("SIM-1 Max");
+    // ONE reason line, in the product's words. It was three — a sentence of our routing per dial,
+    // stacked down the right edge of the spend screen ("slices are read off a text projection").
+    expect(panel.textContent).toContain("A full video read locks its dials");
+    expect(panel.textContent).not.toContain("text projection");
+    expect(panel.textContent).not.toContain("isn’t a dial here");
+    // No live control for any of them, and no question to set.
+    expect(screen.queryByText("or ask your own question")).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Stop$/ })).toBeNull();
   });
 
   it("states TEN reactors — the fold's real N, not the text projection's 10,000", () => {
@@ -178,11 +183,23 @@ describe("a brought VIDEO arms honestly", () => {
     render(<AmbientSimulate data={SIMULATE_R4} mode="cold" onSimulate={vi.fn()} />);
     fireEvent.click(screen.getByText("Screen a draft"));
     fireEvent.change(screen.getByLabelText("Paste the draft to screen"), { target: { value: "a draft" } });
-    fireEvent.click(screen.getByText("Arm the run →"));
-    // Only the fidelity chip is locked on the text path (Phase 1: text→Max has no live caller).
+    fireEvent.click(screen.getByText("Continue →"));
+    // Only the Model row is locked on the text path (Phase 1: text→Max has no live caller) — and
+    // it ships WITHOUT a reason line: "Max for text isn't wired yet" is our roadmap, in our words,
+    // at the spend moment.
     expect(screen.queryAllByTestId("sim-locked")).toHaveLength(0);
     expect(screen.getByTestId("sim-fidelity-locked")).toBeTruthy();
-    expect(screen.getByPlaceholderText("or ask your own question…")).toBeTruthy();
+    expect(screen.getByTestId("ambient-simulate").textContent).not.toContain("wired yet");
+    // The custom question is one tap away rather than a standing input competing with the control
+    // that already answers it — but it is still reachable, and still compiles visibly.
+    expect(screen.queryByPlaceholderText("Type it — we score the nearest behaviour")).toBeNull();
+    fireEvent.click(screen.getByText("or ask your own question"));
+    const ask = screen.getByPlaceholderText("Type it — we score the nearest behaviour");
+    // NB "would they send it to a friend" does NOT compile to share: `compileToLens` matches
+    // substrings, and "friend" contains "end", which is a `finish` keyword that is tested first.
+    // Pre-existing, out of scope here — but it is why this input avoids the funnel's own words.
+    fireEvent.change(ask, { target: { value: "would they repost this" } });
+    expect(screen.getByTestId("ambient-simulate").textContent).toContain("would share");
   });
 });
 
@@ -203,34 +220,37 @@ describe("the ARM screen's budget", () => {
     render(<AmbientSimulate data={SIMULATE_R4} mode="cold" onSimulate={vi.fn()} />);
     fireEvent.click(screen.getByText("Screen a draft"));
     fireEvent.change(screen.getByLabelText("Paste the draft to screen"), { target: { value: "a draft" } });
-    fireEvent.click(screen.getByText("Arm the run →"));
+    fireEvent.click(screen.getByText("Continue →"));
     return screen.getByTestId("ambient-simulate");
   }
   const occurrences = (haystack: string, needle: string) => haystack.split(needle).length - 1;
 
-  it("names the room ONCE — three registers for one set reads as three different things", () => {
+  it("names the room AT MOST ONCE — three registers for one set reads as three different things", () => {
     const panel = armText();
-    // "Your audience" (the fixture's room) belongs to the conditions line and nowhere else.
-    expect(occurrences(panel.textContent ?? "", SIMULATE_R4.room)).toBe(1);
-    // And the two paraphrases that used to stand in for it are gone: the slice chip already
-    // says "Everyone", so the caption must not also say "the whole room".
-    expect(panel.textContent).not.toContain("the whole room");
+    // The room was named three ways on this one screen: "Everyone" (the slice chip), "the whole
+    // room" (the headcount caption) and "General" (the conditions line, and again in the footer
+    // receipt). Rev B+ removed the conditions line entirely — the board a creator opens ⑤ FROM now
+    // carries the room's name and facts in its header — so the count is 0 here and must never
+    // climb back toward 3.
+    expect(occurrences(panel.textContent ?? "", SIMULATE_R4.room)).toBeLessThanOrEqual(1);
+    expect(panel.textContent).not.toContain("the whole room"); // the text path has a live picker
   });
 
-  it("does not echo the slice chip's own label back at it in the caption", () => {
+  it("states a picked slice ONCE, with its real headcount, in the control itself", () => {
     render(<AmbientSimulate data={SIMULATE_R4} mode="cold" onSimulate={vi.fn()} />);
     fireEvent.click(screen.getByText("Screen a draft"));
     fireEvent.change(screen.getByLabelText("Paste the draft to screen"), { target: { value: "a draft" } });
-    fireEvent.click(screen.getByText("Arm the run →"));
-    fireEvent.click(screen.getByText("Everyone")); // open the slice dropdown
+    fireEvent.click(screen.getByText("Continue →"));
+    fireEvent.click(screen.getByText(/^Everyone · /)); // open the slice dropdown
     fireEvent.click(screen.getByText("Builders")); // a real signature slice, share 0.41
     const panel = screen.getByTestId("ambient-simulate");
-    // The chip states the slice; the caption states the arithmetic. Exactly one of them names it.
-    // CASE-INSENSITIVELY: the caption echoed the label LOWERCASED ("the builders slice · 41%…"),
-    // so a case-sensitive count of "Builders" stays at 1 with the echo fully restored — this guard
-    // passed against its own mutation until 2026-07-29.
+    // The pill states the slice AND its arithmetic. It used to state the slice, and then a 15px
+    // headcount on its own line under a "Who are we asking?" question, and then a caption echoing
+    // the label back LOWERCASED ("the builders slice · 41% of the room") — which is why this
+    // counts case-insensitively: a case-sensitive count stayed at 1 with the echo fully restored,
+    // and the guard passed against its own mutation until 2026-07-29.
     expect(occurrences((panel.textContent ?? "").toLowerCase(), "builders")).toBe(1);
-    expect(panel.textContent).toContain("41% of the room");
+    expect(panel.textContent).toContain("410 minds"); // 0.41 × 1,000, the real Flash headcount
   });
 
   it("spends the footer on the WAIT, not on restating the form above it", () => {
@@ -246,7 +266,7 @@ describe("the ARM screen's budget", () => {
     fireEvent.change(screen.getByLabelText("Upload video file"), {
       target: { files: [new File(["x"], "my-clip.mp4", { type: "video/mp4" })] },
     });
-    fireEvent.click(screen.getByText("Arm the run →"));
+    fireEvent.click(screen.getByText("Continue →"));
     expect(screen.getByTestId("ambient-simulate").textContent).toContain("1–3 minutes");
   });
 
@@ -255,7 +275,7 @@ describe("the ARM screen's budget", () => {
     render(<AmbientSimulate data={SIMULATE_R4} mode="cold" onSimulate={vi.fn()} />);
     fireEvent.click(screen.getByText("Screen a draft"));
     fireEvent.change(screen.getByLabelText("Paste the draft to screen"), { target: { value: long } });
-    fireEvent.click(screen.getByText("Arm the run →"));
+    fireEvent.click(screen.getByText("Continue →"));
     const echo = screen.getByTestId("sim-stimulus");
     // Clamped VISUALLY — the whole draft stays in the DOM, so nothing about it is hidden from
     // anything that reads the text; only its height is bounded.
@@ -308,7 +328,7 @@ describe("the sealed wait", () => {
     fireEvent.change(screen.getByLabelText("Paste the draft to screen"), {
       target: { value: "a draft of my own" },
     });
-    fireEvent.click(screen.getByText("Arm the run →"));
+    fireEvent.click(screen.getByText("Continue →"));
     fireEvent.click(screen.getByText("Simulate"));
 
     await waitFor(() => expect(screen.getByTestId("sim-door-reading")).toBeTruthy());
@@ -335,7 +355,7 @@ describe("SimulateDoorHost routing", () => {
   function bringDraft(text = "a hook I wrote myself") {
     fireEvent.click(screen.getByText("Screen a draft"));
     fireEvent.change(screen.getByLabelText("Paste the draft to screen"), { target: { value: text } });
-    fireEvent.click(screen.getByText("Arm the run →"));
+    fireEvent.click(screen.getByText("Continue →"));
     fireEvent.click(screen.getByText("Simulate"));
   }
 
@@ -380,7 +400,7 @@ describe("SimulateDoorHost routing", () => {
     fireEvent.change(screen.getByLabelText("Paste a TikTok link"), {
       target: { value: "https://tiktok.com/@me/video/123" },
     });
-    fireEvent.click(screen.getByText("Arm the run →"));
+    fireEvent.click(screen.getByText("Continue →"));
     fireEvent.click(screen.getByText("Simulate"));
 
     await waitFor(() => expect(props.onVideo).toHaveBeenCalledTimes(1));
