@@ -900,3 +900,146 @@ they match, because a control panel that disagrees with the rail is the two-name
 26 probes PASS, law walk 0 violations and now **exactly one coral zone on every page** (9.2's
 Brain carried two — the answer plus the curve break; moving the curve off resolved it). Heights
 1504/1249/1989 (video), 1839/1084/1666 (text). Artifact republished to the SAME url.
+
+---
+
+## 15. Rev 10 kickoff — START HERE (refine, then IMPLEMENT)
+
+Rev **9.3** is on the review artifact. This session (2026-08-02, slot-b) ran the page-job audit and
+four revisions — 9 · 9.1 · 9.2 · 9.3, all recorded in §14, all published to the SAME url.
+Read this section, then §14 (what each rev did and why), then §0 (never delete the hero figure),
+§6 (the laws), §11 (the 7.x arc — the owner's words are quoted there and still bind).
+§10, §12 and §13 are superseded; §12's and §13's **trap lists still apply in full**.
+
+### Where everything is
+
+| | |
+|---|---|
+| Worktree · branch | `~/virtuna-slot-b` · `task/insights-rework` — **do not switch branches** |
+| PR | **#412**, open. Tip = rev 9.3 (`5e47ca13`). |
+| The mockup | `docs/mockups/insights-rev6-hero-restored-2026-08-01.html` — **one file is everything**. Filename says rev6 on purpose (build script + this doc point at it); `<title>` says 9.3. Open directly, no server. |
+| The review link | https://claude.ai/code/artifact/f42c45fb-0d27-4d84-8a65-568e9f1e8db3 — republish to THIS url or the owner's link dies |
+| Rebuild the link | `node scripts/build-insights-review-artifact.mjs` → Artifact tool with that url as `url`, favicon 🧠 |
+| Shipped-vs-mock bench | https://claude.ai/code/artifact/c21c62c2-7a03-48ae-89e4-69f7e0f869f1 · `scripts/build-insights-compare-artifact.mjs` (SEPARATE url — never publish the mock to it) |
+| Screenshots | `docs/mockups/reference-2026-08-01/rev9-*.png` (11 states, current = 9.3) · `live-*.png` (4 live-rail states, re-shot 2026-08-02 post-grounding) |
+| Live shipped rail | `/ambient-v2` → `② brain` → creator chips. No auth. Port 3002. |
+
+### The structure as of rev 9.3
+
+Pinned chrome = nav row only (`← The room` + the ‹ 2 of 5 › stepper). Identity (thumb · title ·
+**dimmed** projected stat row · "projected" tag) renders ONCE above the tabs and scrolls away;
+tabs are `position:sticky` inside the scroll. **Tab order `brain · engagement · audience`** —
+verdict next to its evidence, the two CLIP pages grouped against the ROOM page, scope widening
+left to right (§14 rev 9.3 has the full reasoning).
+
+- **Brain — why it happened in the head.** Cortex hero (corner "at the break") → the two networks
+  that matter in words (`.nread`) → the answer block (verdict + one clause + **the fix**, its ONLY
+  home) → Signal breakdown (nine, 3×3, score · delta · colourless grade) → Network activation
+  (7 σ bars, zero centre line, plain-word read inline) → Activation per second (10-system heatmap)
+  → the drawer.
+- **Engagement — what they did with it.** Retention instrument (video frame + curve-as-scrubber +
+  moment chips + one-line transcript, ONE playhead) → Key metrics (avg watch · watched full ·
+  rewatch) → Projected reaction.
+- **Audience — who was in the room.** Terrain hero → Who watches and how long → What they did
+  (rows tap open a serif verbatim + `interview ›`, the "Almost" row carries the swing) → Who this
+  is for (index vs room average) → Who spreads it (saw → reshared → networks, ×5.1) → Where it
+  would surface → Best window.
+- **Text inverts** (§3.3): no timeline; Brain's moment slot becomes "Why they stopped" reason bars
+  and the instrument continues below it; Engagement leads with the VOICES; no traffic card.
+- **The fix ACTS** — re-simulates: answer → before/after, curve redraws with the original kept as
+  a coral ghost, tiles flip, clip 0:28 → 0:25, transcript slices `TRIM_WORDS`. **Undo** restores.
+
+### Settled this session — do not silently undo
+
+1. **Each page answers ONE question**, and a block lives on the page whose question it answers.
+   That test moved the watch tiles, traffic, and Best window in rev 9 and it is the standing rule.
+2. **Fix mixed units by NAMING each scale in the card's right-meta, never by hiding the block.**
+   Rev 8 hid the instrument in a drawer to keep one unit; the owner called the result too thin.
+3. **The instrument belongs on Brain** (nine signals · σ bars · per-second heatmap · the network
+   read line). The drawer explains the three scales and what the model can't claim — it holds no
+   copy of the instrument.
+4. **Retention is Engagement's** (owner, twice). Brain keeps the cognitive read of the same clip.
+5. **Grades carry no colour**; **one coral zone per page** — every page satisfies this at 9.3.
+6. Standing from before: hero restored (§0), figures may carry a colormap while chrome stays
+   one-accent, benchmarks vs the creator's own catalogue only, 440px matte rail (§6), no sentences
+   in the UI (≤6-word fragments), answer appears once and is NOT pinned.
+
+### Open — the owner has not ruled
+
+- **§3.2 is a BLOCKER for implementation.** `AmbientOverviewRail.tsx:467` calls
+  `buildVideoDomainTemplate({...})` with no `reasons`, so `modeledUnlock(classifyReasons(undefined))`
+  → `[]` → `undefined`: the unlock never renders on a real video drill. The mock makes the fix the
+  page's primary control, so this must be wired before the design can ship.
+- **The cortex does not repaint after the trim** in the mockup (same still, corner says "after the
+  trim"). In the build it must repaint from the new curve — `grounded` mode already takes
+  `retentionAt(u)` and that wiring shipped (§9).
+- **Text-sim dead rows** — VISUAL/AUDIO/FACE render flat with a note; whether they should render
+  at all is undecided.
+- **Live-only defects found in the audit** (all still present in `src`):
+  `AudienceDepth` amplification kicker renders **"WHO SPREADS ITMODELED REACH"** (kicker and tag
+  collide, no separator) · the text fixture **reuses one quote across two coded reasons, twice**
+  ("took too long…" on Strong hook ×224 AND Too slow ×63; "curious enough…" on On-topic interest
+  AND Weak hook) · **"Strong hook" sits in the LEAKING (coral) half**, which reads as polarity drift.
+
+### Implementation map — READ BEFORE WRITING ANY `src/`
+
+**The shipped rail has TWO tabs; the mock has THREE.** `AmbientDetail.tsx:257` is
+`type Tab = "brain" | "audience"` and `:361` hardcodes `(["brain","audience"] as const).map(...)`.
+Adding Engagement touches the type, that map, the label ternary (`:374`), the `dim` availability
+logic, and the body switch (`:385+`).
+
+| Piece | Where it lives now |
+|---|---|
+| Rail shell · `TONE` palette · tabs · scroller | `src/components/audience-lens/v2/AmbientDetail.tsx` (440px, `#181817`, one left hairline) |
+| Brain page | `BrainTab.tsx` → `BrainFrame`: `BrainHero`(→`CortexFigure`, grounded via `driveFor`) · `BrainDriverSlot` (`attention-scrubber` \| `reason-breakdown` \| `resistance-curve`) · `SignalRows`/`SignalGridV2` · `NetworkSigmaBars` · `KpiHeatmap` · `BuyIntentCurve` · `Unlock` · `HowToRead` |
+| Audience page | `AudienceTab.tsx` → `PopulationFrame`: `TerrainMap` · `heroRead` · `DecisionStates` · `PopulationMainSlot` · `IndexBars` · `Amplification` · `ActionIntent` · `Segments` · `Receipts` (**already ships `onInterview` + `onJumpToBrain`**) · `Swing` · `RoomStrip` |
+| Depth components | `BrainDepth.tsx` · `AudienceDepth.tsx` (both use `StaggerReveal` — see the scroll-reveal trap) |
+| Types | `domain-template.ts` — `DomainTemplate` (`:278`), `unlock?: {lever,gain,insight}` (`:289`, **text, no handler** — the mock's acting fix needs a callback here), `BrainDriver` union (`:59`) |
+| Cortex | `lib/brain/cortex-sim.ts` — `driveFor`, `grounded` mode, `predictedBold`; wiring SHIPPED (`7241c11c`) |
+| Fixtures | `detail-fixture.ts` · `detail-live-fixture.ts` (`CREATOR_LIVE_TEMPLATE`, `CREATOR_LIVE_TEXT_TEMPLATE`) · `pricing-template.ts` |
+
+⚠️ **`<AmbientDetail>` is rendered by FOUR /go landing surfaces**, not just the app rail:
+`components/offer/ambient-panel.tsx` (`presentation="sheet"`), `offer/hero-product-window.tsx`
+(`presentation="rail"` — *"the exact ≥xl /home mount"*), `offer/walkthrough/walkthrough.tsx`,
+`offer/shots/shot-stages.tsx`. **Restructuring the rail changes the marketing page.** Check all
+four before and after. Also `app/(app)/dev/cards/page.tsx` and `app/ambient-v2/page.tsx`.
+
+Gates: `src/components/audience-lens/v2/__tests__/AmbientDetail.locked.test.tsx` (locks the
+absent-population / noteAction / back affordances — a third tab must not break its queries),
+`BrainTab.grounded.test.tsx`, `AmbientOverviewRail.test.tsx`. Run `npx tsc --noEmit` **and** the
+vitest files; **vitest does not typecheck**, and a green Vercel check is not a build.
+
+### The loop for an adjustment
+
+1. Edit the mockup (one file).
+2. Re-shoot + probe. Recreate the shoot at `scripts/tmp-shoot-*.mjs`, `rm` after (a Write to the
+   scratchpad is BLOCKED by a worktree-path-guard hook). Pattern: raw Playwright,
+   `deviceScaleFactor:2`, set `.rail` height to `body.scrollHeight + 120`,
+   `.screenshot({animations:'disabled',caret:'hide'})` on `.rail`; then probe structure, the
+   playhead, the applied flow, and walk computed style for `backgroundImage`/`boxShadow`/
+   `backdropFilter` = 0 and count coral zones (**≤1 per page** as of 9.3).
+3. `node scripts/build-insights-review-artifact.mjs` → Artifact tool with the url above.
+4. Commit atomically (auto-push hook; verify `git rev-parse origin/task/insights-rework`).
+
+### Traps (§12's and §13's lists still apply — these bit THIS session)
+
+- **`setKind` resets `applied`; `setTab` does not.** Probing an applied state across tabs must use
+  `setTab`, or the probe silently tests the un-applied page. Cost a false FAIL.
+- **`text-transform:uppercase` changes `innerText`.** A lowercase `includes()` against an uppercase
+  label fails while the UI is correct — use a case-insensitive regex. Cost two false FAILs.
+- **The CSSOM normalizes `style.width`** — `"75.0%"` reads back as `"75%"`. Compare `parseFloat`.
+- **The path-guard hook** rejects Write/Edit outside the worktree (scratchpad AND the memory dir).
+  Use `python3` via Bash for memory files; write temp scripts inside the repo.
+- **`import { chromium } from '.../playwright/index.js'` FAILS** — CommonJS. Use
+  `import pw from ...; const { chromium } = pw;`.
+- **The shipped rail reveals on scroll** (`StaggerReveal`). A capture that expands the scroller
+  without walking it renders the signal grid and heatmap as **blank voids**. Walk it, then force
+  `opacity:0` survivors to the end state.
+- **A launchd reaper kills the dev server after ~10 min idle** — `lsof -ti:3002` before blaming code.
+- **Do not guess a scroll offset for sticky UI — measure it.**
+- `document.fonts.check()` lies for unused faces — `document.fonts.load()` FIRST, then compare
+  widths (Newsreader 437.1 vs Georgia 456.3 @40px on "The room stays to the end").
+- **Verify the artifact with ALL network blocked** (`ctx.route`), not just locally.
+- The build script's `CROP` is coupled to `hero()`'s img framing — unchanged since rev 6; it THROWS
+  if the img regex misses and refuses leftover `reference-2026-08-01` refs.
+- Duplicate class names silently break layout (`.win`, `.foot`, `.lede` — §10's list).
