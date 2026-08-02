@@ -127,7 +127,7 @@ describe('IdeaCardRenderer — KCQ-09 made-for-you rationale (Task 1)', () => {
 describe('IdeaCardRenderer — flop branch removed (lane/polish §2)', () => {
   it('renders NO flop affordance when predictedFailureMode is null', () => {
     renderWithClient(<IdeaCardRenderer block={makeBlock({ predictedFailureMode: null })} />);
-    fireEvent.click(screen.getByRole('button', { name: /expand idea details/i }));
+    fireEvent.click(screen.getByRole('button', { name: /expand the opening line/i }));
     expect(screen.queryByRole('button', { name: /reveal why this idea might miss/i })).toBeNull();
     expect(screen.queryByText(/if this could flop/i)).toBeNull();
   });
@@ -136,7 +136,7 @@ describe('IdeaCardRenderer — flop branch removed (lane/polish §2)', () => {
     const block = makeBlock();
     delete (block.props as { predictedFailureMode?: string | null }).predictedFailureMode;
     renderWithClient(<IdeaCardRenderer block={block} />);
-    fireEvent.click(screen.getByRole('button', { name: /expand idea details/i }));
+    fireEvent.click(screen.getByRole('button', { name: /expand the opening line/i }));
     expect(screen.queryByText(/if this could flop/i)).toBeNull();
   });
 
@@ -144,7 +144,7 @@ describe('IdeaCardRenderer — flop branch removed (lane/polish §2)', () => {
     renderWithClient(<IdeaCardRenderer block={makeBlock({ predictedFailureMode: FLOP_REASON })} />);
     // The branch was removed entirely (§2) — expanding the disclosure never surfaces it,
     // and the stale value is never rendered anywhere on the card.
-    fireEvent.click(screen.getByRole('button', { name: /expand idea details/i }));
+    fireEvent.click(screen.getByRole('button', { name: /expand the opening line/i }));
     expect(screen.queryByText(/if this could flop/i)).toBeNull();
     expect(screen.queryByRole('button', { name: /reveal why this idea might miss/i })).toBeNull();
     expect(screen.queryByText(FLOP_REASON)).toBeNull();

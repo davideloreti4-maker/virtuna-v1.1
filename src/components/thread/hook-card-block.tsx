@@ -74,6 +74,10 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
 
   const [expanded, setExpanded] = useState(false);
 
+  // What the expand drawer actually holds — the toggle names it, and vanishes when it is empty.
+  const hasSeed = seedHook !== hookLine;
+  const hasDelivery = Boolean(channel);
+
   // Copy — a hook is a line you USE, so the card offers the one-tap copy that text-on-a-card
   // never did (owner 2026-07-22). Clipboard is guarded (absent in the happy-dom test env).
   const [copied, setCopied] = useState(false);
@@ -170,30 +174,33 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
           <p className="text-reading leading-relaxed text-foreground-secondary">{mechanism}</p>
         </div>
 
-        {/* Expand toggle — clearer affordance. The provenance tag ("· projected" / "· SIM-1
-            Flash") is gone with the on-face verdict: the door below states the honest status. */}
-        <button
-          type="button"
-          onClick={() => setExpanded((v) => !v)}
-          className="flex items-center gap-1.5 self-start text-label text-foreground-muted transition-colors hover:text-foreground-secondary"
-          aria-expanded={expanded}
-          aria-label={expanded ? 'Collapse hook details' : 'Expand hook details'}
-        >
-          <CaretToggle open={expanded} />
-          {expanded ? 'Hide details' : 'Why & details'}
-        </button>
+        {/* Expand toggle — named for what it actually reveals (the old "Why & details" promised
+            the mechanism, which already leads the face). Hidden entirely when there is nothing
+            behind it: a toggle over an empty drawer is chrome. */}
+        {(hasSeed || hasDelivery) && (
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="flex items-center gap-1.5 self-start text-label text-foreground-muted transition-colors hover:text-foreground-secondary"
+            aria-expanded={expanded}
+            aria-label={expanded ? 'Collapse hook details' : 'Expand hook details'}
+          >
+            <CaretToggle open={expanded} />
+            {hasSeed && hasDelivery ? 'Seed line & delivery' : hasSeed ? 'Seed line' : 'Delivery'}
+          </button>
+        )}
       </div>
 
       {/* EXPAND — seed + delivery (the mechanism already leads the face). */}
-      {expanded && (
+      {expanded && (hasSeed || hasDelivery) && (
         <div className="flex flex-col gap-3 border-t border-white/[0.06] px-4 py-3">
-          {seedHook !== hookLine && (
+          {hasSeed && (
             <div>
-              <p className={`mb-1 ${SECTION_LABEL}`}>Seed hook</p>
+              <p className={`mb-1 ${SECTION_LABEL}`}>Seed line</p>
               <p className="text-reading leading-relaxed text-foreground-secondary">{seedHook}</p>
             </div>
           )}
-          {channel && (
+          {hasDelivery && (
             <div>
               <p className={`mb-1 ${SECTION_LABEL}`}>Delivery</p>
               <p className="text-reading capitalize leading-relaxed text-foreground-secondary">{channel}</p>

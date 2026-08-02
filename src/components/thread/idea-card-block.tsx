@@ -165,25 +165,25 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
             receipt-shaped hole beside a sibling that has one (2026-07-14). */}
         {proof ? <ProofReceipt proof={proof} /> : grounded ? <NoSourceNote /> : null}
 
-        {/* Expand — the seed hook (the line this idea would open with). The provenance tag is
-            gone with the on-face verdict: the door below states the honest status. */}
+        {/* Expand — the line this idea would open with, named for the value it holds ("Seed
+            hook" was the engine's word for it; "Opening line" is the creator's). */}
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
           className="flex items-center gap-1.5 self-start text-label text-foreground-muted transition-colors hover:text-foreground-secondary"
           aria-expanded={expanded}
-          aria-label={expanded ? 'Collapse idea details' : 'Expand idea details'}
+          aria-label={expanded ? 'Collapse the opening line' : 'Expand the opening line'}
         >
           <CaretToggle open={expanded} />
-          {expanded ? 'Hide seed hook' : 'Seed hook'}
+          Opening line
         </button>
       </div>
 
-      {/* EXPAND — the seed hook (mechanism + recipe now live on the face). */}
+      {/* EXPAND — the opening line (mechanism + recipe now live on the face). */}
       {expanded && (
         <div className="flex flex-col gap-3 border-t border-white/[0.06] px-4 py-3">
           <div>
-            <p className={`mb-1 ${SECTION_LABEL}`}>Seed hook</p>
+            <p className={`mb-1 ${SECTION_LABEL}`}>Opening line</p>
             <p className="text-reading leading-relaxed text-foreground-secondary">{seedHook}</p>
           </div>
         </div>
