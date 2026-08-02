@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Insights rev 11 — prose becomes chrome</title>
+<title>Insights rev 12 — the rail quiets down</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400&display=swap" rel="stylesheet">
@@ -138,20 +138,28 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
   scrollbar-color:rgba(236,231,222,.14) transparent}
 .body::-webkit-scrollbar{width:6px}
 .body::-webkit-scrollbar-thumb{background:rgba(236,231,222,.14);border-radius:3px}
-.body.hasbar{padding-bottom:78px}
 
-/* rev 8: the action follows you. The drill used to dead-end — Audience and Engagement carry no
-   fix control at all, so the only thing left at the bottom of those pages was the back arrow.
-   The rule is one line and self-describing: show this when no .fix is reachable on screen. It
-   carries the SAME button, never a second one — measured, not guessed at a scroll offset (at an
-   812px rail the answer never scrolls out of Brain, so an offset rule fired never). */
-.actionbar{position:absolute;left:0;right:0;bottom:0;background:var(--rail);
-  border-top:1px solid var(--border);padding:11px 22px;display:flex;align-items:center;gap:10px;
-  transform:translateY(100%);transition:transform .2s ease;z-index:8}
-.actionbar.on{transform:translateY(0)}
-.actionbar .lab{font-size:11px;color:var(--faint);min-width:0;flex:1;display:flex;
-  align-items:baseline;gap:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.actionbar .lab b{font:500 13px/1 Inter;color:var(--dim);font-variant-numeric:tabular-nums}
+/* rev 12: Engagement fills out — the rank strip (this clip among your last 41) and the
+   per-second reaction rows, both in the heatmap's visual grammar. Data, not prose. */
+.rank{position:relative;height:22px;margin-top:14px}
+.rank .tk{position:absolute;left:0;right:0;top:9px;height:4px;border-radius:2px;
+  background:rgba(236,231,222,.06)}
+.rank .dt{position:absolute;top:11px;width:3px;height:3px;border-radius:99px;
+  background:rgba(236,231,222,.22);transform:translateX(-50%)}
+.rank .md{position:absolute;top:5px;width:1px;height:12px;background:rgba(236,231,222,.3);
+  transform:translateX(-50%)}
+.rank .me{position:absolute;top:7px;width:8px;height:8px;border-radius:99px;
+  background:var(--cream);transform:translateX(-50%)}
+.rrow{display:flex;align-items:center;gap:8px;padding:5px 0}
+.rrow .nm{width:74px;flex:none;font-size:12.5px;color:var(--dim)}
+.rrow .cells{flex:1;display:flex;gap:1px}
+.rrow .cells s{flex:1;height:14px;border-radius:1px;text-decoration:none}
+.rrow .n{width:36px;flex:none;text-align:right;font:500 13.5px Inter;color:var(--cream);
+  font-variant-numeric:tabular-nums}
+
+/* rev 12: the pinned action bar is DELETED (owner: "i dont like this sitting at the bottom").
+   The fix lives in the answer block on Brain, once — the other pages carry no fix control, and
+   that is now the design, not a gap the bar papered over. */
 
 /* ── the heroes — full bleed, 270, the figure IS the wow ─────────────────── */
 .hero{position:relative;height:270px;border-radius:14px;overflow:hidden;background:var(--figure);
@@ -301,9 +309,8 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 .tstrip s.cur{color:var(--cream)}
 .tstrip s.brk{border-bottom:2px solid var(--coral);padding-bottom:1px;color:var(--cream)}
 
-/* mix bar + legend rows */
-.mix{display:flex;gap:3px;margin-top:13px;height:8px}
-.mix s{text-decoration:none;border-radius:2px}
+/* legend rows (rev 12: the segmented .mix composition strips are DELETED — owner call; the
+   percentages already live in the rows beneath them) */
 .lg{display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--border)}
 .lg:last-child{border-bottom:0;padding-bottom:2px}
 .lg s{width:7px;height:7px;border-radius:99px;text-decoration:none;flex:none}
@@ -453,10 +460,11 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 <aside class="ctl">
   <div class="brandline"></div>
   <h1>Ambient Audience · insight drill</h1>
-  <p class="lede">Revision 11 — prose becomes chrome. The card feet, the page-answer lines and the
-    floating network read are deleted; the answer’s evidence and the action bar are stat rows
-    (number + label), not clauses; Where-it-surfaces and Best-window merge into one card. The one
-    sentence left on the surface is the verdict headline. Rev 10’s taxonomy and encodings hold.</p>
+  <p class="lede">Revision 12 — the rail quiets down. The two segmented composition strips on
+    Audience and the pinned action bar are deleted (the fix lives once, in the answer). Engagement
+    fills out to match the other pages: the last-41 benchmark is drawn as a rank strip inside Key
+    metrics, and a per-second reaction timeline shows when saves, shares and comments fire. Rev
+    10’s taxonomy and rev 11’s no-prose rule hold.</p>
 
   <h2>Stimulus</h2>
   <div class="grp">
@@ -542,8 +550,6 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
     </div>
     <div id="content"></div>
   </div>
-
-  <div class="actionbar" id="abar"></div>
 </div>
 </div>
 
@@ -581,8 +587,7 @@ const script=()=>applied&&kind==="video"?SCRIPT.slice(TRIM_WORDS):SCRIPT;
 /* rev 10: the identity row carries views only — four more projected counts up here were the
    loudest data on the page, and every one of them re-renders as a counted tile on Engagement.
    The verb "stop" is BANNED surface-wide: the live rail uses "would stop" as the GOOD outcome
-   (stopped scrolling) while TikTok and this mock used it as the loss — one verb, two polarities.
-   barLab is the pinned action bar's label: a short tabular fact that can never truncate. */
+   (stopped scrolling) while TikTok and this mock used it as the loss — one verb, two polarities. */
 const D={
   video:{
     pager:"clip 2 of 5", thumb:"0:28",
@@ -592,7 +597,6 @@ const D={
     /* rev 11: the answer's evidence is a STAT ROW (number + label pairs), not a clause */
     astat:[["62%","leave by 0:03","loss"],["3.2K","vs usual 8.1K"]],
     fixB:"Trim 0:00–0:03", fixG:"→ 8.4K",
-    barLab:["62%","leave by 0:03"],
     /* the re-simulated result — in the build this is onRewrite()'s returned count */
     doneHead:"The trim holds the room.",
     doneAstat:[["8.4K","projected · usual 8.1K"]],
@@ -606,7 +610,6 @@ const D={
     head:"The idea works. The phrasing is what leaks.",
     astat:[["41%","scroll past","loss"],["218 of 590","had heard it"]],
     fixB:"Put a number in the first clause", fixG:"→ 26%",
-    barLab:["41%","scroll past"],
     doneHead:"The number does the work.",
     doneAstat:[["14%","recognition · was 37%"]],
     was:["41%","scroll past"], now:["26%","scroll past"],
@@ -684,6 +687,19 @@ const TILES={
     {n:"Follows",  v:"15",  d:"0.3% of readers ↓"},
   ],
 };
+/* rev 12: Engagement fills out. RANK41 = avg-watch seconds of the creator's last 41 videos
+   (the Key metrics benchmark, drawn instead of implied); this clip = 9.7s, median 11.2s,
+   trimmed 16.4s. REACT = per-second reaction intensity (0..1) on the clip's own 28s axis —
+   where saves, shares and comments fire; counts match the Projected reaction tiles. */
+const RANK41=[3.1,4.2,4.8,5.5,6.1,6.6,7.0,7.4,7.9,8.3,8.6,9.0,9.3,9.9,10.2,10.5,10.8,11.0,11.2,
+  11.5,11.8,12.1,12.4,12.8,13.1,13.5,13.9,14.4,14.9,15.4,16.0,16.7,17.5,18.4,19.4,20.5,21.7,
+  23.0,24.4,25.9,27.4];
+const RANK_MED=11.2;
+const REACT=[
+  ["Saves",  102,[.1,.06,.03,0,0,0,0,0,0,0,0,0,.04,.05,.06,.08,.1,.13,.16,.2,.26,.34,.45,.58,.74,.88,1,.62]],
+  ["Shares", 45, [.05,.03,0,0,0,0,0,0,0,0,0,0,0,.03,.04,.05,.07,.09,.12,.16,.22,.3,.42,.56,.72,.9,1,.7]],
+  ["Comments",16,[.5,.35,.2,.1,.06,.05,.05,.06,.07,.08,.1,.12,.14,.15,.16,.17,.18,.2,.22,.25,.29,.34,.4,.48,.58,.7,.84,1]],
+];
 
 const REASONS=[
   {n:"Already heard it", v:37, lead:1},{n:"No proof shown", v:24, lead:0},
@@ -987,7 +1003,6 @@ function audience(){
   + `<div class="card">${kind==="video"
       ? ch('Who watches — and how long')
       : ch('Who this reaches')}
-      <div class="mix">${POOLS.map((p,i)=>`<s style="flex:${p.pct};background:${c[i]}"></s>`).join('')}</div>
       ${kind==="video"
         ? `<div style="margin-top:4px">${POOLS.map(p=>`
             <div class="prow ${p.loss?'loss':''}">
@@ -1059,10 +1074,6 @@ function spreadCard(){
    has no surface mix (§3.3: no traffic card), so it keeps only the window. */
 function distCard(){
   const surface=kind==="video"?`
-      <div class="mix">
-        <s style="flex:53;background:rgba(236,231,222,.88)"></s>
-        <s style="flex:33;background:rgba(236,231,222,.46)"></s>
-        <s style="flex:14;background:rgba(236,231,222,.24)"></s></div>
       <div style="margin-top:5px;margin-bottom:14px">${lgRows([
         {n:"For You",c:"rgba(236,231,222,.88)",v:"53%"},
         {n:"Sound",c:"rgba(236,231,222,.46)",v:"33%"},
@@ -1078,13 +1089,36 @@ function distCard(){
 /* Engagement = how they engaged: the video+curve instrument LEADS (it is this page's hero);
    voices lead on Text. Reactions and the post window follow. */
 /* rev 11: the page opens straight on its instrument — the plede line was one more sentence, and
-   the tiles it summarized sit one card below it. Cards end on their data; no feet. */
+   the tiles it summarized sit one card below it. Cards end on their data; no feet.
+   rev 12: the benchmark is DRAWN — the rank strip puts this clip among the last 41 the meta was
+   citing — and the reaction timeline shows WHEN the room reacts on the clip's own 28s axis. */
+const rankStrip=()=>{
+  const me=applied?16.4:9.7, MAX=28;
+  return `<div class="rank"><span class="tk"></span>${RANK41.map(v=>
+      `<span class="dt" style="left:${(v/MAX*100).toFixed(1)}%"></span>`).join('')}
+    <span class="md" style="left:${(RANK_MED/MAX*100).toFixed(1)}%"></span>
+    <span class="me" style="left:${(me/MAX*100).toFixed(1)}%"></span></div>
+  <div class="hax" style="margin-left:0"><span>0s</span><span>this clip · ${me}s</span><span>${MAX}s</span></div>`;
+};
+const reactCard=()=>{
+  const scale=applied?2.64:1;
+  return `<div class="card">${ch('When they react','modeled · per second')}
+    <div style="margin-top:12px">${REACT.map(([n,c,ks])=>`
+      <div class="rrow"><span class="nm">${n}</span><span class="cells">${ks.map(k=>
+        `<s style="background:rgba(236,231,222,${(0.05+k*0.75).toFixed(2)})"></s>`).join('')}</span>
+        <span class="n">${Math.round(c*scale)}</span></div>`).join('')}</div>
+    <div class="hax" style="margin-left:82px"><span>0s</span><span>28s</span></div>
+  </div>`;
+};
 function engagement(){
   const v=kind==="video";
   return (v?retentionCard()
     +`<div class="card">${ch('Key metrics','vs your last 41 videos')}
       ${tiles(TILES[applied?'videoWatchDone':'videoWatch'],'t3')}
-    </div>`:`<div class="card">${ch('If you posted this')}
+      ${rankStrip()}
+    </div>`
+    +reactCard()
+    :`<div class="card">${ch('If you posted this')}
       <div>${VOICES.map(x=>`<div class="voice ${x.loss?'loss':''}">
         <div class="vhead"><span class="av">${x.w[0]}</span><b>${x.w}</b><span class="vtag">${x.t}</span
           ><button class="ivw">interview ›</button></div>
@@ -1142,33 +1176,13 @@ const foot=()=>`<button class="foot" aria-expanded="${method}">
   <div class="simline">1,000 simulated · your 4.2K followers · confidence&nbsp;0.82</div>`;
 
 /* ── render ─────────────────────────────────────────────────────────────── */
-/* One rule, measured every scroll and every repaint: if the fix is not reachable on screen and
-   has not been applied, the rail carries it at the foot. On Brain at a tall rail the answer
-   never leaves the viewport, so this stays silent there; on Audience and Engagement — which hold
-   no fix control at all — it is always there. */
-function syncBar(){
-  if(applied){ abar.classList.remove("on"); body.classList.remove("hasbar"); return; }
-  const bt=body.getBoundingClientRect(), inView=[...content.querySelectorAll(".fix")].some(f=>{
-    const r=f.getBoundingClientRect();
-    return r.bottom>bt.top+4 && r.top<bt.bottom-4;
-  });
-  abar.classList.toggle("on",!inView);
-  body.classList.toggle("hasbar",!inView);
-}
-/* rev 10: the bar's label is a short tabular FACT, not the verdict sentence — a pinned line that
-   truncates mid-sentence reads broken. */
-function actionBar(){
-  const d=D[kind];
-  return `<span class="lab"><b>${d.barLab[0]}</b>${d.barLab[1]}</span>${fixBtn()}`;
-}
+/* rev 12: the pinned action bar is gone — the fix exists once, in the answer block on Brain. */
 function paint(){
   pgTxt.textContent=D[kind].pager;
   identSlot.innerHTML=identBlock();
   content.innerHTML=tab==="brain"?brainTab():tab==="audience"?audience():engagement();
-  abar.innerHTML=actionBar();
   body.scrollTop=0;
   if(tab==="engagement"&&kind==="video"){bindScrub();syncPlayhead();}
-  syncBar();
 }
 function setKind(k){
   kind=k; applied=false; method=false; openSeg=null; ph=BREAK_S/CLIP;
@@ -1201,7 +1215,6 @@ document.addEventListener("click",e=>{
   const seg=e.target.closest(".dm");
   if(seg){ const w=seg.dataset.seg; openSeg=openSeg===w?null:w; paint(); return; }
 });
-body.addEventListener("scroll",syncBar);
 pgPrev.addEventListener("click",()=>setKind(kind==="video"?"text":"video"));
 pgNext.addEventListener("click",()=>setKind(kind==="video"?"text":"video"));
 function syncPlayhead(){

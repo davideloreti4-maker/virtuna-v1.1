@@ -1104,3 +1104,70 @@ The surface's ONE sentence is the verdict headline. Serif voice quotes are conte
 and stay. Probes (temp script deleted per the loop; §15 pattern): `.plede/.insight/.nread`
 count == 0 per page, 1 `.astat` on Brain, 5 cards on Audience, plus all rev-10 probes. Green.
 Shots `rev11-*.png` (8). Same artifact url.
+
+## 18. Rev 12 — the rail quiets down (2026-08-02)
+
+Owner, with crops: the two segmented `.mix` composition strips on Audience → **removed
+completely** (the percentages live in the rows beneath); the pinned action bar → **removed
+completely** ("i dont like this sitting at the bottom") — the fix now exists ONCE, in the Brain
+answer block, and Engagement/Audience carrying no fix control is the design, not a gap. Third
+ask: Engagement felt empty next to the other pages. It fills out with DATA, not prose:
+
+- **Rank strip** inside Key metrics (`rankStrip()`, `.rank`): the "vs your last 41 videos" meta
+  is now drawn — 41 dim dots on a 0–28s track (`RANK41`), a median tick (11.2s), this clip as
+  the cream marker (9.7s → 16.4s when the trim is applied).
+- **When they react** card (`reactCard()`, `.rrow`): per-second intensity rows for Saves /
+  Shares / Comments on the clip's own 28s axis (`REACT`), heatmap grammar, counts matching the
+  Projected reaction tiles (102/45/16, ×2.64 applied). Video kind only (§3.3: text has no
+  timeline).
+
+Video Engagement = Retention · Key metrics+rank · When they react · Projected reaction (4 cards).
+Audience = hero + 5 cards. Deleted from the codebase: `.actionbar` + `syncBar()` + `actionBar()`
++ `hasbar`, `.mix`, `barLab`. Probes: deleted-class count == 0 per page, 4 cards on video
+Engagement (1 `.rank`, 3 `.rrow`), 5 on Audience, plus all standing probes. Green. Shots
+`rev12-*.png` (8). Same artifact url.
+
+## 19. IMPLEMENTATION KICKOFF — paste this into a fresh context
+
+> Implement the insight-drill rework (rev 12) in React.
+>
+> Worktree `~/virtuna-slot-b` · branch `task/insights-rework` (PR #412). Do not switch branches.
+> SSOT: `docs/HANDOFF-2026-08-01-insights-rev6-kickoff.md` — read **§15** (implementation map,
+> gates, traps), then **§16–§18** (revs 10–12 — what the design IS now; §10/§12/§13 are
+> superseded). Target = `docs/mockups/insights-rev6-hero-restored-2026-08-01.html` (open
+> directly, no server; filename says rev6 on purpose, `<title>` says rev 12) and the shots
+> `docs/mockups/reference-2026-08-01/rev12-*.png`. Review artifact (owner's link):
+> https://claude.ai/code/artifact/f42c45fb-0d27-4d84-8a65-568e9f1e8db3
+>
+> Build order:
+> 1. **Fix §3.2 first** — `AmbientOverviewRail.tsx:467` calls `buildVideoDomainTemplate` with no
+>    `reasons`, so the unlock never renders on a real video drill. The design makes the fix the
+>    page's primary control; wire this before any UI.
+> 2. **Third tab** — `AmbientDetail.tsx:257` `type Tab = "brain"|"audience"` → add
+>    `"engagement"`; touch the `:361` tabs map, `:374` label ternary, the `dim` logic, and the
+>    `:385+` body switch. Order: brain · engagement · audience.
+> 3. **Rebuild the three pages to rev 12**: one audience taxonomy (Followers / Returning / New
+>    viewers / Outside niche — archetype names are owner-REJECTED), decision states Watched /
+>    Almost stayed / Wrong audience / Scrolled past, verb "stop" banned everywhere, NO card
+>    feet / pledes / read lines (the verdict headline is the surface's one sentence), answer
+>    evidence as a stat row, signals as 3 movers + 6-cell grid (all nine visible), networks
+>    named by function (anatomy in the drawer), diverging fit bars with a zero line, reaction
+>    tiles as counts of projected reach, rank strip + When-they-react on Engagement, Where &
+>    when merged card on Audience, simline on every page, no action bar, no mix strips.
+> 4. **The fix must ACT** — `domain-template.ts:289` types `unlock` as `{lever,gain,insight}`
+>    text with no handler; the re-simulate maps to the v1 room's `onRewrite`. Before → after
+>    delta, curve ghost, tiles flip, Undo restores.
+>
+> ⚠️ `<AmbientDetail>` renders on FOUR /go landing surfaces (`offer/ambient-panel.tsx`,
+> `offer/hero-product-window.tsx`, `offer/walkthrough/walkthrough.tsx`,
+> `offer/shots/shot-stages.tsx`) plus `dev/cards` and `/ambient-v2` — check all before/after.
+> Gates: `AmbientDetail.locked.test.tsx` · `BrainTab.grounded.test.tsx` ·
+> `AmbientOverviewRail.test.tsx` · `npx tsc --noEmit` (vitest does NOT typecheck; a green
+> Vercel check is NOT a build — merging to main DEPLOYS numenmachines.com, verify BEFORE merge).
+>
+> Laws that survived 12 revisions — do not relitigate: never shrink the 270px cortex hero; the
+> instrument stays on Brain's surface (no drawers); retention stays on Engagement; every scale
+> named in its card's right-meta; ≤1 coral zone per page; grades colourless; benchmarks vs the
+> creator's own catalogue only; live rail defects to fix while in there: the
+> "WHO SPREADS ITMODELED REACH" kicker collision, the reused fixture quotes, "Strong hook" in
+> the coral half (§15 "Open" list).
