@@ -29,7 +29,6 @@ import { PlatformContext } from '@/lib/platform-context';
 import { cardScrollQuoteReactions } from '@/components/audience-lens/flat-card-reactions';
 import { buildCardRewrite } from '@/components/audience-lens/card-rewrite';
 import { SimDoor } from './sim-door';
-import { ProofReceipt } from './proof-receipt';
 import { CoverFill } from '@/components/primitives/CoverFill';
 import { SaveAffordance } from '@/components/thread/save-affordance';
 import { CardPrimaryAction, CardActionBar, SECTION_LABEL } from './card-primitives';
@@ -89,14 +88,16 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
 
   return (
     <div
-      className="elev-rest overflow-hidden rounded-xl border border-white/[0.06] bg-surface-sunken"
+      className="elev-rest @container overflow-hidden rounded-xl border border-white/[0.06] bg-surface-sunken"
       aria-label={`Remix: ${adaptedHook.slice(0, 60)}`}
     >
       <div className="flex flex-col gap-3 px-4 pb-3 pt-4">
-        {/* Source strip — the post this remix adapts, ATTRIBUTED (the same receipt the grounded
-            cards use). Compact: it's the reference, not the hero. */}
+        {/* Source strip — the post this remix adapts, ATTRIBUTED. A flat one-line row, not the
+            boxed compact receipt: the box hugged its content and left the rest of the head band
+            empty (the near-empty-strip pattern the owner keeps flagging). The reference reads as
+            a quiet attribution line; the map below is the hero. */}
         {proof ? (
-          <ProofReceipt proof={proof} eyebrow="The post you're remixing" compact />
+          <SourceStrip proof={proof} />
         ) : coverUrl ? (
           <div
             className="flex items-center gap-2.5 self-start"
@@ -110,67 +111,65 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
           </div>
         ) : null}
 
-        {/* DECODE → ADAPT MAP — the card's hero and its D-05 moat, made legible. A two-column
-            matrix: each row maps an element of the ORIGINAL (why it worked, muted-left) to YOUR
-            VERSION (the deliverable, foreground-right). Reads as learn-from-it → make-yours.
-            Stacks to one column on narrow widths (sm breakpoint). */}
-        <div className="grid grid-cols-1 overflow-hidden rounded-lg border border-white/[0.06] sm:grid-cols-2">
-          {/* Column headers — the sub-captions ("why it worked" / "ready to film") are gone
-              (label-chrome diet 2026-08-02): the cell labels below already carry the reading. */}
-          <div className="border-b border-white/[0.06] bg-white/[0.02] px-3.5 py-2">
-            <p className={SECTION_LABEL}>The original</p>
-          </div>
-          <div className="border-b border-l-0 border-white/[0.06] bg-white/[0.02] px-3.5 py-2 sm:border-l">
-            <p className={SECTION_LABEL}>Your version</p>
-          </div>
-
+        {/* DECODE → ADAPT MAP — the card's hero and its D-05 moat, made legible. Each ROW maps
+            one element of the ORIGINAL (why it worked, muted) to YOUR VERSION (the deliverable,
+            foreground). Sized by the CARD via container query (@min), never the viewport: a
+            342px card can sit in a wide viewport, where an `sm:` grid split it into starved
+            columns — and worse, the single-column order interleaved the old column headers so
+            "Your version" captioned the original's cell. Pairs now stack together. */}
+        <div className="overflow-hidden rounded-lg border border-white/[0.06]">
           {/* Row 1 — Hook: pattern → your adapted hook (the serif deliverable + Copy) */}
-          <MapCell side="left" label="Hook">
-            <p className="text-body leading-relaxed text-foreground-muted">{sourceDecode.hookPattern}</p>
-          </MapCell>
-          <MapCell side="right" label="Your hook">
-            <div className="flex items-start justify-between gap-2">
-              <p className="font-serif text-subhead font-medium leading-[1.3] tracking-[-0.005em] text-foreground">
-                {adaptedHook}
-              </p>
-              <button
-                type="button"
-                onClick={handleCopy}
-                aria-label="Copy adapted hook to clipboard"
-                className="mt-0.5 inline-flex shrink-0 items-center gap-1 text-label font-medium text-foreground-muted transition-colors hover:text-foreground-secondary"
-              >
-                {copied ? (
-                  <>
-                    <Check size={13} weight="bold" aria-hidden="true" />
-                    Copied
-                  </>
-                ) : (
-                  <>
-                    <Copy size={13} aria-hidden="true" />
-                    Copy
-                  </>
-                )}
-              </button>
-            </div>
-          </MapCell>
+          <MapRow
+            leftLabel="Their hook"
+            left={<p className="text-body leading-relaxed text-foreground-muted">{sourceDecode.hookPattern}</p>}
+            rightLabel="Your hook"
+            right={
+              <div className="flex items-start justify-between gap-2">
+                <p className="font-serif text-subhead font-medium leading-[1.3] tracking-[-0.005em] text-foreground">
+                  {adaptedHook}
+                </p>
+                <button
+                  type="button"
+                  onClick={handleCopy}
+                  aria-label="Copy adapted hook to clipboard"
+                  className="mt-0.5 inline-flex shrink-0 items-center gap-1 text-label font-medium text-foreground-muted transition-colors hover:text-foreground-secondary"
+                >
+                  {copied ? (
+                    <>
+                      <Check size={13} weight="bold" aria-hidden="true" />
+                      Copied
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={13} aria-hidden="true" />
+                      Copy
+                    </>
+                  )}
+                </button>
+              </div>
+            }
+          />
 
           {/* Row 2 — The turn: original reversal → your angle */}
-          <MapCell side="left" label="The turn">
-            <p className="text-body leading-relaxed text-foreground-muted">{sourceDecode.theTurn}</p>
-          </MapCell>
-          <MapCell side="right" label="Your angle">
-            <p className="text-body leading-relaxed text-foreground-secondary">{angle}</p>
-          </MapCell>
+          <MapRow
+            leftLabel="Their turn"
+            left={<p className="text-body leading-relaxed text-foreground-muted">{sourceDecode.theTurn}</p>}
+            rightLabel="Your angle"
+            right={<p className="text-body leading-relaxed text-foreground-secondary">{angle}</p>}
+          />
 
           {/* Row 3 — Format: borrowed pattern → your shots */}
-          <MapCell side="left" label="Format" last>
-            <p className="text-body leading-relaxed text-foreground-muted">{formatBorrowed}</p>
-          </MapCell>
-          <MapCell side="right" label="Your shots" last>
-            <p className="text-body leading-relaxed text-foreground-secondary">
-              {production ? production.shots : `Recreate the ${formatBorrowed.toLowerCase()} for your angle.`}
-            </p>
-          </MapCell>
+          <MapRow
+            last
+            leftLabel="Their format"
+            left={<p className="text-body leading-relaxed text-foreground-muted">{formatBorrowed}</p>}
+            rightLabel="Your shots"
+            right={
+              <p className="text-body leading-relaxed text-foreground-secondary">
+                {production ? production.shots : `Recreate the ${formatBorrowed.toLowerCase()} for your angle.`}
+              </p>
+            }
+          />
         </div>
 
         {/* Expand toggle — the rest of the decode anatomy (structure + emotional beat). The
@@ -273,29 +272,78 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
   );
 }
 
-/** One cell of the decode→adapt matrix. Right cells get the vertical divider (sm+) and both
- *  sides get the row separator, so the grid reads as an aligned map of original ↔ yours. */
-function MapCell({
-  side,
-  label,
+/** One row of the decode→adapt map: the original's element beside (wide card) or above (narrow
+ *  card) your version. The split keys on the CARD's width via container query — a media query
+ *  cannot see the constraint that matters (a 342px card inside an arbitrary viewport). */
+function MapRow({
+  leftLabel,
+  left,
+  rightLabel,
+  right,
   last,
-  children,
 }: {
-  side: 'left' | 'right';
-  label: string;
+  leftLabel: string;
+  left: React.ReactNode;
+  rightLabel: string;
+  right: React.ReactNode;
   last?: boolean;
-  children: React.ReactNode;
 }) {
   return (
     <div
-      className={[
-        'px-3.5 py-3',
-        side === 'right' ? 'border-white/[0.06] sm:border-l' : 'border-white/[0.06]',
-        last ? '' : 'border-b',
-      ].join(' ')}
+      className={`grid grid-cols-1 @min-[480px]:grid-cols-2 ${last ? '' : 'border-b border-white/[0.06]'}`}
     >
-      <p className={`mb-1 ${SECTION_LABEL}`}>{label}</p>
-      {children}
+      <div className="px-3.5 py-3">
+        <p className={`mb-1 ${SECTION_LABEL}`}>{leftLabel}</p>
+        {left}
+      </div>
+      <div className="border-t border-white/[0.06] px-3.5 py-3 @min-[480px]:border-l @min-[480px]:border-t-0">
+        <p className={`mb-1 ${SECTION_LABEL}`}>{rightLabel}</p>
+        {right}
+      </div>
+    </div>
+  );
+}
+
+/** The flat source-attribution strip: cover thumb + "Remixing @handle · views". Links out to the
+ *  original when the proof carries a URL; otherwise a plain row. */
+function SourceStrip({ proof }: { proof: NonNullable<RemixCardBlock['props']['proof']> }) {
+  const views =
+    proof.views != null
+      ? new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(proof.views)
+      : null;
+
+  const body = (
+    <>
+      <span className="relative block aspect-[9/16] w-7 shrink-0 overflow-hidden rounded-sm border border-white/[0.06]">
+        <CoverFill coverUrl={proof.coverUrl} playSize={10} />
+      </span>
+      <span className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+        <span className={SECTION_LABEL}>Remixing</span>
+        <span className="text-body font-medium text-foreground-secondary">@{proof.handle}</span>
+        {views && <span className="text-label text-foreground-muted">· {views} views</span>}
+      </span>
+    </>
+  );
+
+  const rowClass = 'flex items-center gap-2.5 self-start';
+
+  if (proof.videoUrl) {
+    return (
+      <a
+        href={proof.videoUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={`${rowClass} transition-opacity hover:opacity-80`}
+        title="Open the post you're remixing"
+        aria-label={`The post you're remixing: @${proof.handle}`}
+      >
+        {body}
+      </a>
+    );
+  }
+  return (
+    <div className={rowClass} aria-label={`The post you're remixing: @${proof.handle}`}>
+      {body}
     </div>
   );
 }
