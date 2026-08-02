@@ -100,14 +100,14 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
           <SourceStrip proof={proof} />
         ) : coverUrl ? (
           <div
-            className="flex items-center gap-2.5 self-start"
+            className="flex w-full items-center gap-3 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3.5 py-2.5"
             aria-label="The original post this remix borrows from"
             title="Remixing this post"
           >
             <span className="relative block aspect-[9/16] w-10 shrink-0 overflow-hidden rounded-sm border border-white/[0.06]">
               <CoverFill coverUrl={coverUrl} playSize={12} />
             </span>
-            <span className={SECTION_LABEL}>Remixing this post</span>
+            <span className={SECTION_LABEL}>The post you&rsquo;re remixing</span>
           </div>
         ) : null}
 
@@ -172,17 +172,17 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
           />
         </div>
 
-        {/* Expand toggle — the rest of the decode anatomy (structure + emotional beat). The
-            provenance tag is gone with the on-face verdict: the door states the honest status. */}
+        {/* Expand toggle — the rest of the decode anatomy, named for the value it reveals:
+            how the original is built (structure) and the feeling it lands (emotional beat). */}
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
           className="flex items-center gap-1.5 self-start text-label text-foreground-muted transition-colors hover:text-foreground-secondary"
           aria-expanded={expanded}
-          aria-label={expanded ? 'Collapse decode anatomy' : 'Expand decode anatomy'}
+          aria-label={expanded ? 'Collapse how the original is built' : 'Expand how the original is built'}
         >
           <CaretToggle open={expanded} />
-          Structure & the emotional beat
+          How the original is built
         </button>
 
       </div>
@@ -304,8 +304,9 @@ function MapRow({
   );
 }
 
-/** The flat source-attribution strip: cover thumb + "Remixing @handle · views". Links out to the
- *  original when the proof carries a URL; otherwise a plain row. */
+/** The source-attribution zone: the post this remix adapts, in the same full-width bordered
+ *  tone-zone the card family uses (the hook's Visual box, the receipt). Cover tower + label +
+ *  handle + views; links out to the original when the proof carries a URL. */
 function SourceStrip({ proof }: { proof: NonNullable<RemixCardBlock['props']['proof']> }) {
   const views =
     proof.views != null
@@ -314,18 +315,21 @@ function SourceStrip({ proof }: { proof: NonNullable<RemixCardBlock['props']['pr
 
   const body = (
     <>
-      <span className="relative block aspect-[9/16] w-7 shrink-0 overflow-hidden rounded-sm border border-white/[0.06]">
-        <CoverFill coverUrl={proof.coverUrl} playSize={10} />
+      <span className="relative block aspect-[9/16] w-10 shrink-0 overflow-hidden rounded-sm border border-white/[0.06]">
+        <CoverFill coverUrl={proof.coverUrl} playSize={12} />
       </span>
-      <span className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
-        <span className={SECTION_LABEL}>Remixing</span>
-        <span className="text-body font-medium text-foreground-secondary">@{proof.handle}</span>
-        {views && <span className="text-label text-foreground-muted">· {views} views</span>}
+      <span className="flex min-w-0 flex-col gap-0.5">
+        <span className={SECTION_LABEL}>The post you&rsquo;re remixing</span>
+        <span className="text-body leading-snug">
+          <span className="font-medium text-foreground-secondary">@{proof.handle}</span>
+          {views && <span className="text-foreground-muted"> · {views} views</span>}
+        </span>
       </span>
     </>
   );
 
-  const rowClass = 'flex items-center gap-2.5 self-start';
+  const zoneClass =
+    'flex w-full items-center gap-3 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3.5 py-2.5';
 
   if (proof.videoUrl) {
     return (
@@ -333,7 +337,7 @@ function SourceStrip({ proof }: { proof: NonNullable<RemixCardBlock['props']['pr
         href={proof.videoUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className={`${rowClass} transition-opacity hover:opacity-80`}
+        className={`${zoneClass} transition-colors hover:border-white/[0.10]`}
         title="Open the post you're remixing"
         aria-label={`The post you're remixing: @${proof.handle}`}
       >
@@ -342,7 +346,7 @@ function SourceStrip({ proof }: { proof: NonNullable<RemixCardBlock['props']['pr
     );
   }
   return (
-    <div className={rowClass} aria-label={`The post you're remixing: @${proof.handle}`}>
+    <div className={zoneClass} aria-label={`The post you're remixing: @${proof.handle}`}>
       {body}
     </div>
   );
