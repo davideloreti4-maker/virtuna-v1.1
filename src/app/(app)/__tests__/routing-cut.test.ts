@@ -47,7 +47,6 @@ describe('Discover subtree — reactivated 2026-07-29, every entry point resolve
   // nav item that bounces to /home — which is exactly what the launch cut left behind.
   it.each([
     'feed/page.tsx',
-    'feed/hooks/page.tsx',
     'feed/channels/page.tsx',
     'feed/discover/page.tsx',
     'competitors/[handle]/page.tsx',
@@ -59,9 +58,15 @@ describe('Discover subtree — reactivated 2026-07-29, every entry point resolve
     expect(src).toMatch(/export default (async )?function/);
   });
 
-  it('/competitors deep-links the hub tab (its target is live again, so the 2-hop is gone)', () => {
+  it('/competitors RENDERS the board again — the tab it redirected to no longer exists', () => {
+    // Until 2026-08-02 this deep-linked `/feed?tab=competitors`. The rework merged Channels
+    // and Competitors into one Watchlist tab, so that target is gone; a redirect left pointing
+    // at it would drop the visitor on Outliers, a different surface — the same dead-hop defect
+    // this file was written for. The board is where you ADD a competitor and reach /compare,
+    // so it has to resolve to something real.
     const src = read('competitors/page.tsx');
-    expect(src).toMatch(/redirect\(\s*['"]\/feed\?tab=competitors['"]\s*\)/);
+    expect(src).not.toMatch(/redirect\(/);
+    expect(src).toMatch(/export default (async )?function/);
   });
 
   it('/saved and /discover redirect to their live targets in ONE hop', () => {
@@ -73,22 +78,26 @@ describe('Discover subtree — reactivated 2026-07-29, every entry point resolve
     expect(read('discover/page.tsx')).toMatch(/redirect\(\s*['"]\/feed\/discover['"]\s*\)/);
   });
 
-  it('every DiscoverTabBar tab points at a route that renders', () => {
-    // The bar IS the hub's nav. A tab whose href is a redirect stub is a nav item that
-    // bounces — the exact defect the launch cut left behind. Read the hrefs from the bar
-    // itself rather than restating them, so a new tab can't be added without a live page.
+  it('the DiscoverTabBar navigates NOWHERE — every tab switches in place', () => {
+    // Inverted by the 2026-08-02 rework, and the inversion is the point. This test used to
+    // assert each tab's href resolved to a live page, because three of six tabs were separate
+    // PAGES that each re-rendered the bar — which is exactly how the bar came to sit at 62px
+    // on one tab and 78px on another, under an h1 that changed identity mid-nav. Outliers,
+    // Collections and Watchlist are one client component's state, so a tab cannot bounce, jump
+    // or go stale. An `href` reappearing here means the page split came back.
     const bar = readFileSync(
       join(process.cwd(), 'src/components/discover/discover-tab-bar.tsx'),
       'utf8',
     );
-    const hrefs = [...bar.matchAll(/href:\s*"(\/feed[^"?]*)"/g)]
-      .map((m) => m[1])
-      .filter((h): h is string => Boolean(h));
-    expect(hrefs).toEqual(expect.arrayContaining(['/feed/channels', '/feed/hooks', '/feed/discover']));
-    for (const href of new Set(hrefs)) {
-      const src = read(`${href.replace(/^\//, '')}/page.tsx`);
-      expect(src, `${href} must render, not redirect`).not.toMatch(/redirect\(/);
-    }
+    expect(bar).not.toMatch(/href:/);
+    expect(bar).not.toMatch(/from "next\/link"/);
+  });
+
+  it('/feed/hooks redirects to Collections, which replaced it', () => {
+    // The Hooks tab rendered 12 hardcoded templates whose numbers were static illustration,
+    // in the same green pill as the measured multipliers two tabs over. Collections carries
+    // the same idea over the real corpus; the redirect keeps old links alive.
+    expect(read('feed/hooks/page.tsx')).toMatch(/redirect\(\s*['"]\/feed\?tab=collections['"]\s*\)/);
   });
 });
 

@@ -1,33 +1,41 @@
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
-import { getCompetitorsData } from "@/lib/competitors/competitors-data";
+import { getDiscoverCorpus } from "@/lib/discover/corpus-reads";
+import { getWatchlistData } from "@/lib/discover/watchlist-reads";
 import { DiscoverHub, type DiscoverTab } from "@/components/discover/discover-hub";
 
 export const metadata: Metadata = {
   title: "Discover | Maven",
   description:
-    "Outliers from the channels you watch, what's trending, and your competitors — Remix any winner into a Read.",
+    "Proven outliers, curated collections, and the creators you watch — Remix any winner into a Read.",
 };
 
-const TAB_SET = new Set<DiscoverTab>(["watching", "trending", "competitors"]);
+const TAB_SET = new Set<DiscoverTab>(["outliers", "collections", "watchlist"]);
 
 /**
- * /feed — the DISCOVER hub (Surfaces IA rationalization). Folds the old /feed and
- * /competitors surfaces into one tabbed destination: Watching · Trending · Competitors.
- * Auth-gated, inside (app) so it inherits AppShell + ToastProvider. `?tab=` deep-links a
- * tab (the /competitors redirect sets ?tab=competitors); default is Watching.
+ * /feed — the DISCOVER hub, reworked 2026-08-02 from six tabs to three.
  *
- * Watching/Trending are client-fetched by FeedClient (GET /api/feed). Competitors data is
- * read server-side here (getCompetitorsData) and handed to the Competitors tab, so switching
- * to it is instant — mirrors the GROW hub fetching every tab's data upfront.
+ * Both reads happen here, server-side, so every tab is instant on arrival: the corpus is
+ * global curated content (~520 rows, read through the grounding service client because
+ * `outlier_teardowns` has RLS on with no policies), and the watchlist is RLS-scoped to the
+ * caller. `?tab=` deep-links a tab; default is Outliers.
  *
- * Hidden for the MVP launch cut (lane/launch-prep, 2026-07-15) — the page was a bare redirect
- * to /home for two weeks, which also made /discover and /competitors dead two-hop chains.
- * REACTIVATED 2026-07-29 at the owner's request; DiscoverHub + GET /api/feed were left
- * untouched throughout, so this is a straight restore of the pre-cut page. This is the surface
- * the sidebar's "Discover" item points at — the standalone outlier grid at /discover is a
- * SEPARATE, also-live surface.
+ * No `revalidate` here on purpose: the auth check reads cookies, so this page is dynamic and
+ * a route-level revalidate would be inert — a comment promising an hour of caching that
+ * never happens. The two reads are a single round trip each.
  */
+
+/** The corpus is frozen until an ingest runs, and the surface says so rather than implying
+ *  a live feed. Both dates are facts about the data, not decoration. */
+function refreshedLabel(newestPostAt: string | null): string {
+  if (!newestPostAt) return "Nothing auto-refreshes yet — Pull live brings in fresh material on demand.";
+  const newest = new Date(newestPostAt).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+  return `Newest video in the library: ${newest}. Nothing auto-refreshes yet — Pull live brings in fresh material on demand.`;
+}
+
 export default async function DiscoverRoute({
   searchParams,
 }: {
@@ -43,16 +51,23 @@ export default async function DiscoverRoute({
   const { tab } = await searchParams;
   const initialTab: DiscoverTab = TAB_SET.has(tab as DiscoverTab)
     ? (tab as DiscoverTab)
-    : "watching";
+    : "outliers";
 
-  const { competitors, snapshotMap, videosMap } = await getCompetitorsData(supabase);
+  const [corpus, watchlist] = await Promise.all([
+    getDiscoverCorpus(),
+    getWatchlistData(supabase),
+  ]);
+
+  const newest = corpus.feedIds
+    .map((id) => corpus.teardowns[id]?.postedAt)
+    .find((d): d is string => Boolean(d));
 
   return (
     <DiscoverHub
+      corpus={corpus}
+      watchlist={watchlist}
       initialTab={initialTab}
-      competitors={competitors}
-      snapshotMap={snapshotMap}
-      videosMap={videosMap}
+      refreshedLabel={refreshedLabel(newest ?? null)}
     />
   );
 }

@@ -14,9 +14,10 @@
  * Mirrors the competitors page/client RSC-split pattern. NO save/watchlist/shelf
  * affordance — saving is P10; Discover is read-only + chain-launch.
  *
- * Moved from /discover to /feed/discover on 2026-07-29 and given the hub's chrome
- * (PageShell + SurfaceHeader + DiscoverTabBar), so it presents as the "Pull" tool tab
- * rather than a surface sitting beside the hub. /discover redirects here.
+ * Moved from /discover to /feed/discover on 2026-07-29. It was the hub's "Pull" TAB until
+ * the 2026-08-02 rework; Pull is an action, not a peer of the corpus tabs, so the hub now
+ * links here from its search field (with ?input=) and this page carries a way back.
+ * /discover redirects here. The pull is priced at 5 credits (see /api/discover).
  */
 
 import { useCallback, useState } from "react";
@@ -24,8 +25,8 @@ import { useRouter } from "next/navigation";
 import { DottedGrid } from "@/components/app/dotted-grid";
 import { DiscoverEntry } from "@/components/discover/discover-entry";
 import { DiscoverGrid, type DiscoverGridState } from "@/components/discover/discover-grid";
-import { PageShell, SurfaceHeader } from "@/components/surfaces/surface-header";
-import { DiscoverTabBar } from "@/components/discover/discover-tab-bar";
+import { PageShell } from "@/components/surfaces/surface-header";
+import { DiscoverSubpageHeader } from "@/components/discover/discover-subpage-header";
 import type { OutlierTileData } from "@/components/discover/outlier-tile";
 import { classifyDiscoverInput } from "@/lib/discover/classify-input";
 import { handoffsFor } from "@/lib/tools/chain-handoff";
@@ -147,19 +148,13 @@ export function DiscoverClient() {
   );
 
   return (
-    // Container + header mirror the hub's other tool tabs (title → mono subtitle → tabs) so the
-    // tab bar doesn't move when you switch between Channels, Hooks and Pull.
+    // Reached from the hub's "Pull live" button, so it carries a way BACK rather than a copy
+    // of the hub's nav.
     <PageShell>
-      <div className="mb-4">
-        <SurfaceHeader title="Pull" />
-        <p className="mt-0.5 font-mono text-micro text-foreground-muted">
-          pull outliers from any @handle or niche — ranked against their own baseline
-        </p>
-
-        <div className="mt-3">
-          <DiscoverTabBar active="pull" />
-        </div>
-      </div>
+      <DiscoverSubpageHeader
+        title="Pull live"
+        subtitle="Pull outliers from any @handle or niche — ranked against their own baseline. Costs 5 credits."
+      />
 
       <div className="mb-6">
         <DiscoverEntry onSubmit={runPull} disabled={state === "loading"} />

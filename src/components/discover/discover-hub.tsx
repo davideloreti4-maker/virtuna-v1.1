@@ -1,74 +1,147 @@
 "use client";
 
 /**
- * DiscoverHub — the DISCOVER hub shell (Surfaces IA rationalization): one destination that
- * folds the old /feed and /competitors surfaces into three tabs (Watching · Trending ·
- * Competitors). Owns the radial backdrop, page header, and segmented tab bar; each tab is a
- * shell-less body (FeedClient / CompetitorsClient).
+ * DiscoverHub — the Discover surface: Outliers · Collections · Watchlist.
  *
- * Watching + Trending share ONE FeedClient instance — they are the same feed with a
- * different corpus, so only the `tab` prop flips (no remount → loaded pages + scroll
- * survive the switch). The rv-in fade-up replays only when the BODY changes (feed ⇄
- * competitors), not on watching ⇄ trending.
+ * The rework's premise, from the audit: five of the old six tabs rendered a corpus that was
+ * empty, stale or hardcoded (`scraped_videos` carried a multiplier on 49 of 7,438 rows, a
+ * cover on 104, and nothing had been ingested since 2026-07-13), while the corpus that is
+ * complete — 524 extracted teardowns, every one with a cover, a date and a taxonomy, grouped
+ * into 105 curated collections — reached the model and no user. So the tabs now name what the
+ * product actually holds:
  *
- * /competitors redirects here with ?tab=competitors (deep-link preservation, mirrors
- * /analytics → /grow). URL is kept in sync client-side via history.replaceState (no refetch).
+ *   Outliers    — proven videos (baselined, ≥3×, thin-baseline extremes excluded)
+ *   Collections — the 105 curated groupings, and the videos inside one
+ *   Watchlist   — tracked creators and competitors, merged into one list
+ *
+ * One search field serves all three: it filters the library instantly and free, and offers
+ * the live Pull (5 credits, priced 2026-08-02) only for a handle we don't already hold.
  */
 
-import { useState } from "react";
-import type { FeedTab } from "@/lib/feed/feed-query";
-import type { CompetitorsData } from "@/lib/competitors/competitors-data";
-import { FeedClient } from "@/app/(app)/feed/feed-client";
-import { CompetitorsClient } from "@/app/(app)/competitors/competitors-client";
-import { DiscoverTabBar } from "@/components/discover/discover-tab-bar";
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { MagnifyingGlass, Lightning } from "@phosphor-icons/react";
 import { PageShell, SurfaceHeader } from "@/components/surfaces/surface-header";
+import { DiscoverTabBar, type DiscoverTab } from "@/components/discover/discover-tab-bar";
+import { OutliersPanel } from "@/components/discover/outliers-panel";
+import { CollectionsPanel } from "@/components/discover/collections-panel";
+import { WatchlistPanel } from "@/components/discover/watchlist-panel";
+import { classifyDiscoverInput } from "@/lib/discover/classify-input";
+import type { DiscoverCorpus } from "@/lib/discover/corpus-reads";
+import type { WatchlistData } from "@/lib/discover/watchlist-reads";
 
-export type DiscoverTab = "watching" | "trending" | "competitors";
+export type { DiscoverTab };
 
 export function DiscoverHub({
+  corpus,
+  watchlist,
   initialTab,
-  competitors,
-  snapshotMap,
-  videosMap,
+  refreshedLabel,
 }: {
+  corpus: DiscoverCorpus;
+  watchlist: WatchlistData;
   initialTab: DiscoverTab;
-} & CompetitorsData) {
+  refreshedLabel: string;
+}) {
+  const router = useRouter();
   const [tab, setTab] = useState<DiscoverTab>(initialTab);
+  const [query, setQuery] = useState("");
 
-  const select = (t: DiscoverTab) => {
-    setTab(t);
-    // Keep the URL shareable/deep-linkable without a navigation (no server refetch).
+  const select = (next: DiscoverTab) => {
+    setTab(next);
+    // Shareable without a navigation — no server refetch, no scroll reset.
     if (typeof window !== "undefined") {
-      window.history.replaceState(null, "", t === "watching" ? "/feed" : `/feed?tab=${t}`);
+      window.history.replaceState(null, "", next === "outliers" ? "/feed" : `/feed?tab=${next}`);
     }
   };
 
-  // Watching/Trending map onto the feed's two corpora.
-  const feedTab: FeedTab = tab === "trending" ? "trending" : "watched";
+  const feedVideos = useMemo(
+    () =>
+      corpus.feedIds
+        .map((id) => corpus.teardowns[id])
+        .filter((v): v is NonNullable<typeof v> => Boolean(v)),
+    [corpus],
+  );
+
+  // Pull is offered only for something we could actually go and fetch — a handle or a URL,
+  // and only when the library has nothing under that name already.
+  const trimmed = query.trim();
+  const pullable =
+    trimmed.length > 2 &&
+    classifyDiscoverInput(trimmed).mode === "profile" &&
+    !watchlist.sources.some((s) =>
+      s.handle.toLowerCase().includes(trimmed.replace(/^@/, "").toLowerCase()),
+    );
 
   return (
     <div className="relative min-h-full text-foreground">
       <PageShell>
-        <div className="mb-4">
-          <SurfaceHeader title="Discover" />
+        <SurfaceHeader
+          title="Discover"
+          subtitle={`${corpus.totals.proven} proven outliers · ${corpus.totals.collections} collections · ${corpus.totals.creators} creators`}
+        />
 
-          <div className="mt-3">
-            <DiscoverTabBar active={tab} onSelectContent={select} />
+        <div className="mt-4 flex gap-2">
+          <div className="flex h-10 flex-1 items-center gap-2.5 rounded-lg border border-border bg-surface-sunken px-3">
+            <MagnifyingGlass size={15} className="shrink-0 text-foreground-muted" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search outliers, collections, creators — or paste a @handle"
+              aria-label="Search Discover"
+              className="min-w-0 flex-1 bg-transparent text-body text-foreground outline-none placeholder:text-foreground-muted"
+            />
           </div>
+          {pullable ? (
+            <button
+              type="button"
+              onClick={() => router.push(`/feed/discover?input=${encodeURIComponent(trimmed)}`)}
+              className="flex h-10 shrink-0 items-center gap-2 rounded-lg border border-border bg-surface-elevated px-3.5 text-label font-semibold text-foreground-secondary transition-colors hover:border-border-hover hover:text-foreground"
+            >
+              <Lightning size={14} weight="fill" />
+              Pull live
+              <span className="rounded-md bg-white/[0.06] px-1.5 py-0.5 text-micro font-medium text-foreground-muted">
+                5 credits
+              </span>
+            </button>
+          ) : null}
         </div>
 
-        {/* Key on the BODY (feed vs competitors), not the tab: watching↔trending keep the
-            same FeedClient so its loaded pages survive; feed↔competitors replays rv-in. */}
-        <div key={tab === "competitors" ? "competitors" : "feed"} className="rv-in">
-          {tab === "competitors" ? (
-            <CompetitorsClient
-              competitors={competitors}
-              snapshotMap={snapshotMap}
-              videosMap={videosMap}
+        <div className="mt-4">
+          <DiscoverTabBar
+            active={tab}
+            onSelect={select}
+            counts={{
+              outliers: corpus.totals.proven,
+              collections: corpus.totals.collections,
+              watchlist: watchlist.sources.length,
+            }}
+          />
+        </div>
+
+        <div key={tab} className="rv-in mt-5">
+          {tab === "outliers" ? (
+            <OutliersPanel
+              videos={feedVideos}
+              niches={corpus.niches}
+              query={query}
+              refreshedLabel={refreshedLabel}
             />
-          ) : (
-            <FeedClient tab={feedTab} />
-          )}
+          ) : null}
+          {tab === "collections" ? (
+            <CollectionsPanel
+              collections={corpus.collections}
+              teardowns={corpus.teardowns}
+              query={query}
+            />
+          ) : null}
+          {tab === "watchlist" ? (
+            <WatchlistPanel
+              sources={watchlist.sources}
+              latest={watchlist.latest}
+              query={query}
+            />
+          ) : null}
         </div>
       </PageShell>
     </div>

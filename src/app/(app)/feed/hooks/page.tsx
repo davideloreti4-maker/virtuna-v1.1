@@ -1,27 +1,19 @@
-import type { Metadata } from "next";
-import { createClient } from "@/lib/supabase/server";
-import { HooksClient } from "./hooks-client";
-
-export const metadata: Metadata = {
-  title: "Hooks | Maven",
-  description: "Your vault of viral hook templates — adapt any one into a script for your audience.",
-};
+import { redirect } from "next/navigation";
 
 /**
- * Server component for /feed/hooks (Discover Feed UI-refinement).
+ * /feed/hooks — RETIRED 2026-08-02, redirects to the Collections tab.
  *
- * Auth-gated (defense-in-depth alongside the (app) layout guard, mirrors /feed +
- * /feed/channels). The searchable/sortable hook vault is owned by the client component;
- * v1 is seed-backed (default-hooks) — the "from your analyzed videos" section fills once
- * the Phase-3 analyze pipeline lands.
+ * The Hooks tab was a vault of 12 hooks hardcoded in `lib/hooks/default-hooks.ts`, whose
+ * multipliers and view counts were — per that file's own comment — "static illustration",
+ * rendered in the same green multiplier pill as the measured numbers two tabs over, sorted
+ * by "Biggest outlier", with a working CSV export. It promised a corpus and shipped a
+ * placeholder.
+ *
+ * Collections is what it should have been: the same idea (reusable hook patterns, grouped)
+ * over the 105 curated collections of the real teardown corpus, where every row is a video
+ * we tore down and every number is measured against that creator's own baseline. The
+ * redirect keeps old links and bookmarks alive.
  */
-export default async function HooksPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return null;
-
-  return <HooksClient />;
+export default function HooksRedirect() {
+  redirect("/feed?tab=collections");
 }

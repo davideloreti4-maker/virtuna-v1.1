@@ -229,7 +229,7 @@ export function isFreshTeardown(
  *
  * A row with no label has no basis, so it cannot make a claim — see receipt(): no basis, no number.
  */
-export function hasKnownBaseline(row: SharedMatchRow): boolean {
+export function hasKnownBaseline(row: Pick<SharedMatchRow, "baseline_label">): boolean {
   return typeof row.baseline_label === "string" && row.baseline_label.trim().length > 0;
 }
 
@@ -241,7 +241,9 @@ export function hasKnownBaseline(row: SharedMatchRow): boolean {
  * number. Rows failing this are still admitted and still teach; they are cited as curated exemplars
  * with no performance claim attached.
  */
-export function isProofGrade(row: SharedMatchRow): boolean {
+export function isProofGrade(
+  row: Pick<SharedMatchRow, "baseline_label" | "outlier_multiplier">,
+): boolean {
   if (!hasKnownBaseline(row)) return false;
   const m = row.outlier_multiplier;
   return typeof m === "number" && Number.isFinite(m) && m >= MIN_OUTLIER_MULTIPLIER;
