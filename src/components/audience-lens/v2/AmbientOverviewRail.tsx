@@ -37,7 +37,6 @@ import { AmbientDetail } from "./AmbientDetail";
 import {
   buildOverviewData,
   buildSimulateData,
-  parsePersonaStops,
   type OverviewVideoRow,
 } from "@/lib/surfaces/ambient-v2-adapters";
 import {
@@ -91,11 +90,31 @@ function stimulusKindOf(kind?: string): StimulusKind {
   }
 }
 
-/** A rough band word for the develop tie-back, from the projection's /10 (shares the 6/3 bands). */
-function bandFromStops(stops: number): string {
-  if (stops >= 6) return "Strong";
-  if (stops >= 3) return "Fair";
-  return "Weak";
+/**
+ * The develop tie-back's SOURCE — which skill's run this card came out of.
+ *
+ * This slot used to hold `Strong 8/10`, built from `bandFromStops(parsePersonaStops(d.fraction))`.
+ * Both are gone with the 0/10 rank (owner, 2026-08-02): the tie-back was quoting a score the
+ * engine no longer measures, printed as a chip right above the spend button. What a creator
+ * genuinely needs there is provenance — where this thing came from — so the line names the run
+ * instead of scoring it.
+ *
+ * `null` for a kind we cannot name, and the tie-back is then OMITTED. Naming an unknown source
+ * ("your last run") would be the same fabrication in words that the band was in numbers.
+ */
+function sourceLabelOf(kind?: string): string | null {
+  switch (kind) {
+    case "hook":
+      return "Hooks run";
+    case "idea":
+      return "Ideas run";
+    case "script":
+      return "Script run";
+    case "remix":
+      return "Remix run";
+    default:
+      return null;
+  }
 }
 
 /** The Flash reaction framing the react route accepts — a card's would-stop read is "hook"
@@ -496,11 +515,11 @@ export function AmbientOverviewRail({
 
   if (developId !== null) {
     const d = descriptors.find((x) => x.id === developId);
-    const stops = d ? parsePersonaStops(d.fraction) : 0;
+    const sourceLabel = sourceLabelOf(d?.kind);
     const simData = buildSimulateData({
       audience: meta,
       stimulus: { text: d?.conceptText ?? "", kind: stimulusKindOf(d?.kind) },
-      develop: { band: bandFromStops(stops), value: `${stops}/10`, lensLabel: "would stop" },
+      ...(sourceLabel ? { develop: { sourceLabel } } : {}),
     });
     const armedId = developId;
     return (

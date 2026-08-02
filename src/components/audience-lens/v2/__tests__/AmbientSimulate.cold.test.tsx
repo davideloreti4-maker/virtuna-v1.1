@@ -46,7 +46,7 @@ describe("cold intake — the stimulus is the one the creator brought", () => {
     openDoor("Screen a draft");
     const box = screen.getByLabelText("Paste the draft to screen");
     fireEvent.change(box, { target: { value: "  My own hook, typed here.  " } });
-    fireEvent.click(screen.getByText("Arm the run →"));
+    fireEvent.click(screen.getByText("Continue →"));
 
     expect(screen.getByTestId("ambient-simulate").dataset.phase).toBe("arm");
     expect(screen.getByText("My own hook, typed here.")).toBeTruthy(); // trimmed
@@ -55,12 +55,12 @@ describe("cold intake — the stimulus is the one the creator brought", () => {
 
   it("will not arm an empty draft", () => {
     openDoor("Screen a draft");
-    fireEvent.click(screen.getByText("Arm the run →"));
+    fireEvent.click(screen.getByText("Continue →"));
     expect(screen.getByTestId("ambient-simulate").dataset.phase).toBe("collect");
 
     // Whitespace is not a stimulus either.
     fireEvent.change(screen.getByLabelText("Paste the draft to screen"), { target: { value: "   " } });
-    fireEvent.click(screen.getByText("Arm the run →"));
+    fireEvent.click(screen.getByText("Continue →"));
     expect(screen.getByTestId("ambient-simulate").dataset.phase).toBe("collect");
   });
 
@@ -70,12 +70,12 @@ describe("cold intake — the stimulus is the one the creator brought", () => {
 
     // Same regex as the /api/analyze trust boundary — a URL this step accepts, the server accepts.
     fireEvent.change(url, { target: { value: "https://youtube.com/watch?v=1" } });
-    fireEvent.click(screen.getByText("Arm the run →"));
+    fireEvent.click(screen.getByText("Continue →"));
     expect(screen.getByTestId("ambient-simulate").dataset.phase).toBe("collect");
     expect(screen.getByText(/doesn't look like a TikTok video URL/)).toBeTruthy();
 
     fireEvent.change(url, { target: { value: "https://tiktok.com/@me/video/123" } });
-    fireEvent.click(screen.getByText("Arm the run →"));
+    fireEvent.click(screen.getByText("Continue →"));
     expect(screen.getByTestId("ambient-simulate").dataset.phase).toBe("arm");
     expect(screen.getByText("https://tiktok.com/@me/video/123")).toBeTruthy();
     expect(screen.queryByText(CALLER_TEXT)).toBeNull();
@@ -99,7 +99,7 @@ describe("cold intake — the stimulus is the one the creator brought", () => {
     // The link field is gone with the file selected — nothing left to disagree with.
     expect(screen.queryByLabelText("Paste a TikTok link")).toBeNull();
 
-    fireEvent.click(screen.getByText("Arm the run →"));
+    fireEvent.click(screen.getByText("Continue →"));
     expect(screen.getByTestId("ambient-simulate").dataset.phase).toBe("arm");
     // A video's stimulus text is its NAME — the filename, never the link it replaced.
     expect(screen.getByText("my-clip.mp4")).toBeTruthy();
@@ -109,7 +109,7 @@ describe("cold intake — the stimulus is the one the creator brought", () => {
   it("going back to the doors drops what was collected under the old one", () => {
     openDoor("Screen a draft");
     fireEvent.change(screen.getByLabelText("Paste the draft to screen"), { target: { value: "draft text" } });
-    fireEvent.click(screen.getByText("‹ What are you testing?"));
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
 
     // Re-entering the VIDEO door must not carry the draft across — they are different stimuli.
     fireEvent.click(screen.getByText("Test a real video"));
@@ -120,8 +120,8 @@ describe("cold intake — the stimulus is the one the creator brought", () => {
   it("back from the arm card returns to collect, keeping the door", () => {
     openDoor("Screen a draft");
     fireEvent.change(screen.getByLabelText("Paste the draft to screen"), { target: { value: "typo herr" } });
-    fireEvent.click(screen.getByText("Arm the run →"));
-    fireEvent.click(screen.getByText("‹ Arm a simulation"));
+    fireEvent.click(screen.getByText("Continue →"));
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
 
     const panel = screen.getByTestId("ambient-simulate");
     expect(panel.dataset.phase).toBe("collect");
@@ -130,7 +130,7 @@ describe("cold intake — the stimulus is the one the creator brought", () => {
 
   it("a deferred door does not open — it has no arm or output yet", () => {
     render(<AmbientSimulate data={SIMULATE_R4} mode="cold" />);
-    fireEvent.click(screen.getByText("Compare two (A/B)"));
+    fireEvent.click(screen.getByText("Compare two"));
     expect(screen.getByTestId("ambient-simulate").dataset.phase).toBe("intake");
   });
 });

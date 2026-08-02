@@ -157,6 +157,10 @@ export default function AmbientV2DevPage() {
             }}
             onSkill={() => openSim("develop")}
             onSubmit={() => openSim("develop")}
+            // Start's door renders only when a host can run what comes through it — and this page
+            // never passed a handler, so the door was absent from every review shot of ④ while the
+            // board's ＋ (below) had one. Same act, same cold intake, both surfaces.
+            onSimDoor={() => openSim("cold")}
             audiences={DEV_AUDIENCES}
             selectedAudienceId={audienceId}
             onSelectAudience={(a) => setAudienceId(a.is_general ? null : a.id)}

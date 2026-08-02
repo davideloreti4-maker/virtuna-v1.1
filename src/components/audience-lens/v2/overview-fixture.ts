@@ -17,6 +17,7 @@ import type { OverviewData } from "./AmbientOverview";
 export const OVERVIEW_R4: OverviewData = {
   audienceName: "Your audience",
   provenance: "calibrated",
+  scene: "TikTok",
   tier: "flash",
   watching: {
     stimulus: "Nobody tells you the first 10k is the hardest…",
@@ -30,14 +31,14 @@ export const OVERVIEW_R4: OverviewData = {
     { id: "h3", stimulus: "The cold-plunge cut, tested frame by frame…", stopPct: 29.5, viralScore: 91, kind: "video" },
     { id: "h4", stimulus: "Everyone tells you to post consistently to…", stopPct: 21.0, kind: "hook" },
     { id: "h5", stimulus: "Your video didn't flop because the algorithm…", stopPct: 12.4, kind: "script" },
-    // Variants on the board but not yet run past the AUDIENCE — they still carry the personas'
-    // N-of-10-would-stop rank from generation (their own bar), and a quick-simulate door. The
-    // measured would-stop % is withheld (0) until the audience actually runs (design law).
-    // A tested video, UNREVEALED: its VIRAL score stands in for the concept's N/10 — the attention %
-    // stays withheld until Simulate (which reveals the already-measured read, no re-run).
+    // On the board but not yet run past the AUDIENCE. They carry NO score of their own: the
+    // generation-time N-of-10 they used to show (and rank and bar-chart by) is dead — the engine
+    // stopped measuring it (owner, 2026-08-02). A tested video keeps its VIRAL score, which is a
+    // real reading of the file; its attention % stays withheld until Simulate reveals the
+    // already-measured read (no re-run).
     { id: "h8", stimulus: "The morning-routine cut, 42s, one take…", stopPct: 0, viralScore: 84, kind: "video", state: "queued" },
-    { id: "h6", stimulus: "The 3 edits that saved my worst video…", stopPct: 0, personaStops: 8, kind: "remix", state: "queued" },
-    { id: "h7", stimulus: "I stopped chasing trends for 30 days…", stopPct: 0, personaStops: 6, kind: "idea", state: "queued" },
+    { id: "h6", stimulus: "The 3 edits that saved my worst video…", stopPct: 0, kind: "remix", state: "queued" },
+    { id: "h7", stimulus: "I stopped chasing trends for 30 days…", stopPct: 0, kind: "idea", state: "queued" },
   ],
   cast: [
     { id: "m", initial: "M" },

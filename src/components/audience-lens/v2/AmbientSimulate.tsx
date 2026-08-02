@@ -32,7 +32,7 @@ import { useEffect, useRef, useState } from "react";
 import { TONE } from "./AmbientDetail";
 import type { BehaviorLens } from "@/lib/engine/flash/flash-prompts";
 import type { AmbientPresentation, SimTier } from "./AmbientOverview";
-import { CloseButton, CollectStep, IntakeStep, Kick, SHEET_STYLE } from "./SimulateIntake";
+import { CloseButton, CollectStep, IntakeStep, SHEET_STYLE } from "./SimulateIntake";
 
 // ── view-model ───────────────────────────────────────────────────────────────
 
@@ -76,11 +76,18 @@ export interface BroughtStimulus {
   url?: string;
 }
 
-/** The rank a `develop` entry is deepening — the tie-back (sim refines this, never contradicts it). */
+/**
+ * The run a `develop` entry came out of — the tie-back (the sim DEEPENS that read, never
+ * contradicts it).
+ *
+ * This was `{ band, value, lensLabel }` — "Strong 8/10 · deepening your rank" — until 2026-08-02.
+ * The 0/10 it quoted is dead (the engine stopped measuring it, owner call), and it was being
+ * printed as a scored chip directly above the spend button, which is the worst place in the
+ * product to show a number nothing stands behind. What remains is the honest half: WHERE this
+ * came from.
+ */
 export interface DevelopContext {
-  band: string; // "Strong"
-  value: string; // "8/10"
-  lensLabel: string; // "stopped" — what the rank measured
+  sourceLabel: string; // "Hooks run" — the skill run this card came out of
 }
 
 export interface SimLens {
@@ -145,28 +152,46 @@ export interface SimulateConfig {
 const TIER_N: Record<SimTier, number> = { flash: 1000, max: 10000 };
 const TIER_LABEL: Record<SimTier, string> = { flash: "Flash", max: "Max" };
 
-/** The v1 fidelity lock, per stimulus — the tier that actually has a live path, and why. */
-const FIDELITY_LOCK: Record<"text" | "video", { tier: SimTier; reason: string }> = {
-  text: { tier: "flash", reason: "text reads run Flash — Max for text isn’t wired yet" },
-  video: { tier: "max", reason: "video reads run Max — there is no Flash video path" },
-};
+/** Section headers on this surface: sentence case, 13/500 — the same grammar the board uses.
+ *  (No mono, no uppercase, no tracking: see AmbientOverview's `SectionHead` for the why.) */
+const HEAD = "rgba(236,231,222,.92)";
+/** The stimulus card's ground and the segmented track's — a step above the sheet, below the well. */
+const FILL = "#212120";
+/** The settings card's ground — the same tone the board's one live card uses. */
+const CARD = "#1d1d1c";
 
 /**
- * THE VIDEO LOCKS — measured against the route, not chosen (2026-07-28, Phase 4).
+ * The v1 fidelity lock, per stimulus — the tier that actually has a live path, and which way it
+ * locks is MEASURED, not chosen:
+ *   video → Max    there is no Flash video path at all (the react route is text-only), and the
+ *                  rail already hardcodes tier "max" for video seals.
+ *   text  → Flash  text→Max has no live caller anywhere in the product (only a test fixture, the
+ *                  eval-runner and the unmounted legacy content-form), so offering it would ship
+ *                  an unexercised engine path. The develop entry locks here too: `fireSim` has
+ *                  only ever POSTed the Flash react route, so no variant has ever run Max.
+ *
+ * It renders as the Model ROW of the settings card, grouped with the dials it belongs beside
+ * instead of floating in the footer. The reason line that used to hang under it — "text reads run
+ * Flash — Max for text isn't wired yet" — does NOT ship: that is our roadmap, in our words, at the
+ * spend moment. A locked row with a lock glyph already says everything a creator can act on.
+ */
+const FIDELITY_LOCK: Record<"text" | "video", SimTier> = { text: "flash", video: "max" };
+
+/**
+ * THE VIDEO LOCK — one line, once, under the settings card (2026-08-02).
  *
  * A brought VIDEO runs `/api/analyze` (`input_mode: video_upload | tiktok_url`), and that route
  * accepts NO lens, NO segment and NO scene: it resolves the audience server-side off the thread pin
- * and reads the whole fold. So on the video variant those three dials cannot reach the engine at
- * all — and a live dropdown that changes nothing is exactly the defect this lane exists to remove
- * (⑤ collected five dials and discarded all five until Phase 1). They render LOCKED with the
- * reason, the same treatment fidelity already gets. The text variant is untouched: every one of
- * these IS honoured by `/api/tools/react`.
+ * and reads the whole fold. Those dials cannot reach the engine, so they render LOCKED rather than
+ * as live controls that change nothing (the defect this lane exists to remove — ⑤ collected five
+ * dials and discarded all five until Phase 1).
+ *
+ * They used to carry a reason EACH: three sentences of our plumbing stacked down the right edge of
+ * the spend screen ("slices are read off a text projection"…). One line replaces all three, and it
+ * spends its words on what the creator gets rather than on why our routes are shaped this way.
+ * "ten reactors" is `VIDEO_PANEL_N` spelled out — the only place the video arm states its N.
  */
-const VIDEO_LOCK = {
-  lens: "a full video read scores every behaviour at once — the whole curve, not one dial",
-  slice: "a video read is scored by the whole room; slices are read off a text projection",
-  scene: "a video is read in the feed it was made for — the scene isn’t a dial here",
-} as const;
+const VIDEO_LOCKNOTE = "A full video read locks its dials — ten reactors watch it end to end.";
 
 /**
  * How many minds a VIDEO read really screens: ten.
@@ -235,7 +260,7 @@ function Dropdown({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[14px] transition-colors"
+        className="flex items-center gap-1.5 rounded-[9px] px-[11px] py-1.5 text-[13px] transition-colors"
         style={{ border: `1px solid ${TONE.hair}`, background: TONE.well, color: TONE.cream }}
         onMouseEnter={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,.14)")}
         onMouseLeave={(e) => (e.currentTarget.style.borderColor = TONE.hair)}
@@ -313,12 +338,14 @@ function StimulusEcho({ kind, text }: { kind: StimulusKind; text: string }) {
 
   return (
     <div
-      className="mt-3.5 flex items-start gap-3 rounded-[12px] p-3.5"
-      style={{ background: TONE.well, border: `1px solid ${TONE.border}` }}
+      className="mt-4 flex items-start gap-[11px] rounded-[12px] px-3.5 py-[13px]"
+      style={{ background: FILL, border: `1px solid ${TONE.border}` }}
     >
+      {/* an OBJECT tag — one of the two things still allowed a chip fill on these surfaces (the
+          other is an action). It names what the thing under test is. */}
       <span
-        className="mt-[1px] flex-none rounded-md px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.06em]"
-        style={{ background: "rgba(255,255,255,.06)", color: TONE.faint }}
+        className="mt-px flex-none rounded-md px-[7px] py-1 text-[10px] leading-none"
+        style={{ background: "#2b2a28", color: TONE.dim }}
       >
         {kind}
       </span>
@@ -344,7 +371,7 @@ function StimulusEcho({ kind, text }: { kind: StimulusKind; text: string }) {
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
-            className="mt-1.5 font-mono text-[11px] uppercase tracking-[0.06em] transition-colors"
+            className="mt-1.5 text-[12px] transition-colors"
             style={{ color: TONE.faint }}
             onMouseEnter={(e) => (e.currentTarget.style.color = TONE.cream)}
             onMouseLeave={(e) => (e.currentTarget.style.color = TONE.faint)}
@@ -357,26 +384,60 @@ function StimulusEcho({ kind, text }: { kind: StimulusKind; text: string }) {
   );
 }
 
-/** A dial that cannot reach the engine, rendered as the fact it is: the value, then WHY it is fixed.
- *  Same treatment the fidelity chip already gets — a control that silently does nothing, or one that
- *  quietly disappears between variants, both read as bugs. */
-function Locked({ value, reason }: { value: string; reason: string }) {
+function LockGlyph() {
   return (
-    <div className="flex flex-col items-end gap-1">
-      <span
-        data-testid="sim-locked"
-        className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[14px]"
-        style={{ border: `1px solid ${TONE.hair}`, background: TONE.well, color: TONE.dim }}
-      >
-        {value}
-        <svg width="10" height="10" viewBox="0 0 12 12" aria-hidden style={{ color: TONE.faint }}>
-          <rect x="2.5" y="5.5" width="7" height="5" rx="1.2" fill="none" stroke="currentColor" strokeWidth="1.2" />
-          <path d="M4.25 5.5V4a1.75 1.75 0 0 1 3.5 0v1.5" fill="none" stroke="currentColor" strokeWidth="1.2" />
-        </svg>
+    <svg width="10" height="10" viewBox="0 0 12 12" aria-hidden style={{ color: TONE.faint }}>
+      <rect x="2.5" y="5.5" width="7" height="5" rx="1.2" fill="none" stroke="currentColor" strokeWidth="1.2" />
+      <path d="M4.25 5.5V4a1.75 1.75 0 0 1 3.5 0v1.5" fill="none" stroke="currentColor" strokeWidth="1.2" />
+    </svg>
+  );
+}
+
+/**
+ * A dial that cannot reach the engine, rendered as the fact it is.
+ *
+ * Still a ROW in the same card as the live dials, still carrying the lock glyph — a control that
+ * silently does nothing, or one that quietly disappears between variants, both read as bugs. What
+ * it no longer carries is its own reason: those collapsed into ONE line under the card
+ * (`VIDEO_LOCKNOTE`), because three of them stacked was the screen explaining our routing.
+ *
+ * No pill, no border: an unfixable value is not a control, and dressing it as one is what made the
+ * old locked chips look tappable.
+ */
+function LockedValue({
+  value,
+  testId = "sim-locked",
+  tier,
+}: {
+  value: string;
+  testId?: string;
+  tier?: SimTier;
+}) {
+  return (
+    <span
+      data-testid={testId}
+      data-tier={tier}
+      className="inline-flex flex-none items-center gap-1.5 py-1.5 text-[13px]"
+      style={{ color: TONE.dim }}
+    >
+      {value}
+      <LockGlyph />
+    </span>
+  );
+}
+
+/** One row of the settings card — label left, control right, hairline between. The Model row is one
+ *  of these too: the locked tier belongs beside the dials it constrains, not adrift in the footer. */
+function SettingRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div
+      className="flex items-center justify-between gap-3 px-3.5 py-[11px] first:border-t-0"
+      style={{ borderTop: `1px solid ${TONE.border}` }}
+    >
+      <span className="flex-none text-[13px]" style={{ color: TONE.dim }}>
+        {label}
       </span>
-      <span className="max-w-[260px] text-right text-[11px]" style={{ color: TONE.faint }}>
-        {reason}
-      </span>
+      {children}
     </div>
   );
 }
@@ -414,25 +475,19 @@ export function ArmCard({
   /** With `connected`: `rail` (own ground + left hairline + 440 cap) vs `sheet` (host owns them). */
   presentation?: AmbientPresentation;
 }) {
-  const { room, provenance, lenses, segments } = data;
+  const { provenance, lenses, segments } = data;
   const inSheet = connected && presentation === "sheet";
   const [lensIdx, setLensIdx] = useState(data.defaultLens);
   const [custom, setCustom] = useState("");
+  // The custom question is ONE TAP away, not a permanent full-width input. It was a standing box
+  // under the segmented control — a second, competing way to answer a question the control above
+  // it had already answered, on the screen that spends the credit.
+  const [askOpen, setAskOpen] = useState(false);
   const [segIdx, setSegIdx] = useState(0);
   const [scene, setScene] = useState(data.scene);
 
-  // FIDELITY IS LOCKED IN v1, and which way it locks is measured, not chosen:
-  //   video → Max   there is no Flash video path at all (the react route is text-only), and the
-  //                 rail already hardcodes tier "max" for video seals.
-  //   text  → Flash text→Max has no live caller anywhere in the product (only a test fixture,
-  //                 eval-runner, and the unmounted legacy content-form), so offering it would
-  //                 ship an unexercised engine path. The develop entry locks here too: `fireSim`
-  //                 has only ever POSTed the Flash react route, so no variant has ever run Max.
-  // Rendered as a locked chip WITH its reason — a dial that silently does nothing, or one that
-  // quietly disappears between variants, both read as bugs.
   const isVideo = stimulus.kind === "video";
-  const lock = FIDELITY_LOCK[isVideo ? "video" : "text"];
-  const fidelity = lock.tier;
+  const fidelity = FIDELITY_LOCK[isVideo ? "video" : "text"];
 
   // custom text overrides the chip selection, compiling to the nearest lens (shown to the user)
   const compiledIdx = custom.trim() ? compileToLens(custom, lenses) : lensIdx;
@@ -469,149 +524,161 @@ export function ArmCard({
             : SHEET_STYLE
       }
     >
-      {/* header + the stimulus under test */}
-      <div className="px-[26px] pt-[24px]">
-        <div className="flex items-start justify-between">
-          {onBack ? (
-            <button
-              type="button"
-              onClick={onBack}
-              className="-ml-1 flex items-center gap-1 text-[12px] font-mono uppercase tracking-[0.08em] transition-colors"
-              style={{ color: TONE.faint }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = TONE.cream)}
-              onMouseLeave={(e) => (e.currentTarget.style.color = TONE.faint)}
-            >
-              ‹ Arm a simulation
-            </button>
-          ) : (
-            <Kick>Arm a simulation</Kick>
-          )}
-          <CloseButton onClose={onClose} />
-        </div>
-
-        {/* develop tie-back — the rank this sim is deepening (refines, never contradicts) */}
-        {develop ? (
-          <div
-            className="mt-3.5 inline-flex items-center gap-2 rounded-full py-1 pl-1.5 pr-3 text-[12px]"
-            style={{ background: "rgba(255,255,255,.03)", border: `1px solid ${TONE.hair}`, color: TONE.faint }}
+      {/* THE HEADER — one act, named once. "Arm a simulation" was our word for it; this is the
+          creator's. The back arrow is a bare ‹ with a label for anything that reads the DOM: the
+          text it used to carry ("‹ Arm a simulation") repeated the title beside it. */}
+      <div className="flex items-center gap-2 px-[26px] pt-[22px]">
+        {onBack ? (
+          <button
+            type="button"
+            onClick={onBack}
+            aria-label="Back"
+            className="-ml-1 flex-none pr-1 text-[14px] leading-none transition-colors"
+            style={{ color: TONE.faint }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = TONE.cream)}
+            onMouseLeave={(e) => (e.currentTarget.style.color = TONE.faint)}
           >
-            <span
-              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.05em]"
-              style={{ background: TONE.well, color: TONE.dim }}
-            >
-              {develop.band} {develop.value}
-            </span>
-            <span>
-              deepening your rank — refines it, never overturns it
-            </span>
-          </div>
+            ‹
+          </button>
         ) : null}
+        <span className="min-w-0 flex-1 truncate text-[15px] font-semibold tracking-[-0.01em]">
+          Test against your audience
+        </span>
+        <CloseButton onClose={onClose} />
+      </div>
 
-        {/* the stimulus under test — content, so it reads at full strength (but bounded) */}
+      {/* WHAT — the stimulus under test: content, so it reads at full strength (but bounded) */}
+      <div className="px-[26px]">
         <StimulusEcho kind={stimulus.kind} text={stimulus.text} />
       </div>
 
-      {/* THE LENS — the one loud dial: the single behaviour we score the room for.
-          On a VIDEO it is not a dial at all (the Max fold measures every behaviour and the route
-          takes no lens), so the band stays — same layout, same place — carrying the locked fact
-          instead of a control that would change nothing. */}
+      {/* The tie-back: WHERE this came from. It was a scored chip — "Strong 8/10 · deepening your
+          rank" — and the score behind it is dead (see DevelopContext). One faint line of real
+          provenance, directly under the thing it describes. */}
+      {develop ? (
+        <div className="mt-[9px] px-[26px] text-[12px]" style={{ color: TONE.faint }}>
+          From your {develop.sourceLabel} — this deepens that read
+        </div>
+      ) : null}
+
+      {/* THE QUESTION — the one loud dial: the single behaviour we score the room for.
+          Called "The lens" until 2026-08-02, which is the name of our mechanism; "The question" is
+          what the creator is actually setting. On a VIDEO it is not a dial at all (the Max fold
+          measures every behaviour and the route takes no lens), so the section states that fact in
+          one line rather than rendering a control that would change nothing. */}
       <div className="mt-7 px-[26px]">
-        <div className="flex items-baseline justify-between">
-          <Kick>The lens</Kick>
-          <span className="text-[12px]" style={{ color: TONE.faint }}>
-            the behaviour we score
-          </span>
+        <div className="text-[13px] font-medium" style={{ color: HEAD }}>
+          The question
         </div>
 
         {isVideo ? (
-          <div className="mt-3 flex items-start justify-between gap-4">
-            <span className="text-[15px] font-medium" style={{ color: TONE.cream }}>
-              Every behaviour
-            </span>
-            <Locked value="Whole curve" reason={VIDEO_LOCK.lens} />
+          <div className="mt-3 text-[13px]" style={{ color: TONE.cream }}>
+            Every behaviour, scored at once{" "}
+            <span style={{ color: TONE.faint }}>— the whole curve, not one dial</span>
           </div>
         ) : (
           <>
-        {/* the behavioural funnel as a segmented control (Stop → Finish → Share → Follow → Buy) */}
-        <div
-          className="mt-3 flex gap-1 rounded-[11px] p-1"
-          style={{ border: `1px solid ${TONE.border}`, background: TONE.well }}
-        >
-          {lenses.map((l, i) => {
-            const on = i === compiledIdx;
-            return (
+            {/* the behavioural funnel as a segmented control (Stop → Finish → Share → Follow → Buy) */}
+            <div
+              className="mt-3 flex gap-[3px] rounded-[11px] p-[3px]"
+              style={{ border: `1px solid ${TONE.border}`, background: FILL }}
+            >
+              {lenses.map((l, i) => {
+                const on = i === compiledIdx;
+                return (
+                  <button
+                    key={l.key}
+                    type="button"
+                    onClick={() => {
+                      setCustom("");
+                      setLensIdx(i);
+                    }}
+                    className="flex-1 rounded-[8px] py-[7px] text-[13px] transition-colors"
+                    style={{
+                      background: on ? TONE.cream : "transparent",
+                      color: on ? "#1c1b19" : TONE.dim,
+                      fontWeight: on ? 600 : 400,
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!on) e.currentTarget.style.color = TONE.cream;
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!on) e.currentTarget.style.color = TONE.dim;
+                    }}
+                  >
+                    {l.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* ONE line: the question, then what it looks at. It was two — the question at 15px and
+                the funnel stage under it ("Attention — the thumb-stop in the first 2 seconds"),
+                which spent a whole row naming our model of their video. */}
+            <div className="mt-[13px] text-[13px]" style={{ color: TONE.cream }}>
+              Would they {activeLens.gloss}?{" "}
+              <span style={{ color: TONE.faint }}>— {activeLens.stage}</span>
+            </div>
+
+            {/* the custom question — one tap away, and it still compiles VISIBLY to the nearest
+                behaviour (the creator is never scored against something they can't see) */}
+            {askOpen ? (
+              <>
+                <input
+                  value={custom}
+                  onChange={(e) => setCustom(e.target.value)}
+                  autoFocus
+                  aria-label="Ask your own question"
+                  placeholder="Type it — we score the nearest behaviour"
+                  className="mt-2.5 w-full rounded-[10px] px-[13px] py-2.5 text-[13px] outline-none transition-colors placeholder:text-[rgba(236,231,222,0.38)]"
+                  style={{ border: `1px solid ${TONE.border}`, background: "#1a1a19", color: TONE.cream }}
+                  onFocus={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,.14)")}
+                  onBlur={(e) => (e.currentTarget.style.borderColor = TONE.border)}
+                />
+                {custom.trim() ? (
+                  <div className="mt-2 text-[12px]" style={{ color: TONE.faint }}>
+                    ↳ scored as the nearest behaviour ·{" "}
+                    <span style={{ color: TONE.dim }}>would {activeLens.label.toLowerCase()}</span>
+                  </div>
+                ) : null}
+              </>
+            ) : (
               <button
-                key={l.key}
                 type="button"
-                onClick={() => {
-                  setCustom("");
-                  setLensIdx(i);
-                }}
-                className="flex-1 rounded-[8px] py-1.5 text-[13px] transition-colors"
-                style={{
-                  background: on ? TONE.cream : "transparent",
-                  color: on ? "#1c1b19" : TONE.dim,
-                  fontWeight: on ? 600 : 400,
-                }}
-                onMouseEnter={(e) => {
-                  if (!on) e.currentTarget.style.color = TONE.cream;
-                }}
-                onMouseLeave={(e) => {
-                  if (!on) e.currentTarget.style.color = TONE.dim;
-                }}
+                onClick={() => setAskOpen(true)}
+                className="mt-[9px] block text-[12px] transition-colors"
+                style={{ color: TONE.faint }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = TONE.cream)}
+                onMouseLeave={(e) => (e.currentTarget.style.color = TONE.faint)}
               >
-                {l.label}
+                or ask your own question
               </button>
-            );
-          })}
-        </div>
-
-        {/* the active lens, spelled out — the measured question + its funnel stage */}
-        <div className="mt-3.5">
-          <div className="text-[15px] font-medium" style={{ color: TONE.cream }}>
-            Would they {activeLens.gloss}?
-          </div>
-          <div className="mt-1 text-[12px]" style={{ color: TONE.faint }}>
-            {activeLens.stage}
-          </div>
-        </div>
-
-        {/* custom question — compiles VISIBLY to the nearest behavioural lens */}
-        <input
-          value={custom}
-          onChange={(e) => setCustom(e.target.value)}
-          placeholder="or ask your own question…"
-          className="mt-3.5 w-full rounded-[10px] px-3.5 py-2.5 text-[14px] outline-none transition-colors placeholder:text-[rgba(236,231,222,0.38)]"
-          style={{ border: `1px solid ${TONE.border}`, background: "#1a1a19", color: TONE.cream }}
-          onFocus={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,.14)")}
-          onBlur={(e) => (e.currentTarget.style.borderColor = TONE.border)}
-        />
-        {custom.trim() ? (
-          <div className="mt-2 font-mono text-[12px]" style={{ color: TONE.faint }}>
-            ↳ scored as the nearest lens · <span style={{ color: TONE.dim }}>would {activeLens.label.toLowerCase()}</span>
-          </div>
-        ) : null}
+            )}
           </>
         )}
       </div>
 
-      {/* THE SLICE — who in the room we screen, and how many minds that is */}
-      <div className="mt-7 px-[26px]">
-        <div className="flex items-baseline justify-between">
-          <Kick>The slice</Kick>
-          <span className="text-[12px]" style={{ color: TONE.faint }}>
-            who we put it in front of
-          </span>
-        </div>
-        <div className="mt-3 flex items-start justify-between gap-4">
-          <span className="text-[15px] font-medium" style={{ color: TONE.cream }}>
-            Who are we asking?
-          </span>
+      {/* THE SETTINGS — every dial the run uses, in one card, locked ones included.
+          These were three separate full-width bands ("The slice" with its own headcount + share
+          bar, an "in {room} · as" conditions line, and the fidelity chip stranded in the footer
+          beside the spend button). Three bands for three dropdowns is a form pretending to be a
+          dashboard; one card with a row each is the same information in a quarter of the height,
+          and it puts the LOCKED tier where a creator looks for it — beside the dials it
+          constrains, not floating under the button. */}
+      <div
+        className="mx-[26px] mt-[26px] overflow-hidden rounded-[12px]"
+        style={{ background: CARD, border: `1px solid ${TONE.border}` }}
+      >
+        <SettingRow label="Audience">
           {isVideo ? (
-            <Locked value="The whole room" reason={VIDEO_LOCK.slice} />
+            <LockedValue value="The whole room" />
           ) : (
             <Dropdown
-              label={seg.label}
+              // The slice AND its headcount, in the control itself. The arithmetic used to be a
+              // 15px number on its own line under a "Who are we asking?" question that the label
+              // above it had already asked.
+              label={`${seg.label} · ${withCommas(n)} minds`}
+              align="right"
               options={segments.map((s, i) => ({
                 key: String(i),
                 label: (
@@ -624,51 +691,15 @@ export function ArmCard({
               onSelect={(k) => setSegIdx(Number(k))}
             />
           )}
-        </div>
-        {/* headcount + how much of the room it is, with a slim share bar */}
-        <div className="mt-3 flex items-baseline gap-2 text-[13px]" style={{ color: TONE.faint }}>
-          <span className="tabular-nums text-[15px] font-medium" style={{ color: TONE.cream }}>
-            {withCommas(n)}
-          </span>
-          {/* THE ROOM IS NAMED ONCE, and this is not where. Until 2026-07-29 the same audience was
-              named three ways on one screen — "Everyone" (the slice chip) · "the whole room" (this
-              caption) · "General" (the conditions line, and again in the footer receipt) — three
-              registers for one set, which reads as three different things. The conditions line
-              keeps the name because that is the inherited-context receipt; this caption now states
-              only the arithmetic, and it no longer echoes the chip's label back at it either. */}
-          <span>
-            {isVideo ? (
-              // Ten REACTORS, not ten "minds out of a thousand": the video fold is a 10-archetype
-              // panel watching it end to end. Saying so is the whole point of VIDEO_PANEL_N.
-              <>reactors · watching it end to end</>
-            ) : seg.share < 1 ? (
-              `minds · ${Math.round(seg.share * 100)}% of the room`
-            ) : (
-              "minds · all of them"
-            )}
-          </span>
-        </div>
-        <div className="relative mt-2.5 h-[3px] overflow-hidden rounded-full" style={{ background: TONE.ghost }}>
-          <span
-            className="absolute inset-0 block origin-left rounded-full transition-transform"
-            style={{ transform: `scaleX(${seg.share})`, background: "rgba(236,231,222,.5)" }}
-          />
-        </div>
-      </div>
+        </SettingRow>
 
-      {/* inherited thread context — quiet receipt, tap-to-override scene; projection tag if it drifts */}
-      <div className="mt-7 px-[26px]">
-        <div className="flex items-center justify-between border-t pt-4" style={{ borderColor: TONE.border }}>
-          <span className="text-[13px]" style={{ color: TONE.faint }}>
-            in <span style={{ color: TONE.dim }}>{room}</span> · as
-          </span>
+        <SettingRow label="Platform">
           {/* Only scenes the engine can actually simulate (data.sceneOptions). This used to splice
               in a hardcoded "Instagram" plus the audience's provenance — neither of which has a
               reaction frame behind it, so picking either ran the TikTok simulation under a
-              different name. Provenance is still shown, as the FACT it is, by the mismatch tag.
-              A VIDEO run reaches `/api/analyze`, which takes no scene at all — locked, with why. */}
+              different name. A VIDEO run reaches `/api/analyze`, which takes no scene at all. */}
           {isVideo ? (
-            <Locked value={scene} reason={VIDEO_LOCK.scene} />
+            <LockedValue value={scene} />
           ) : (
             <Dropdown
               label={scene}
@@ -677,71 +708,64 @@ export function ArmCard({
               onSelect={setScene}
             />
           )}
-        </div>
-        {mismatch ? (
-          <div className="mt-2 font-mono text-[11px] uppercase tracking-[0.06em]" style={{ color: TONE.faint }}>
-            modeled · {scene} scene, {provenance}-calibrated
-          </div>
-        ) : null}
+        </SettingRow>
+
+        <SettingRow label="Model">
+          <LockedValue value={`SIM-1 ${TIER_LABEL[fidelity]}`} testId="sim-fidelity-locked" tier={fidelity} />
+        </SettingRow>
       </div>
 
-      {/* footer — the spend moment: the assembling receipt + arm + fidelity override */}
-      <div className="mt-7 border-t px-[26px] py-[18px]" style={{ borderColor: TONE.border }}>
-        {/* THE WAIT — the one fact at the spend moment that is not already on the screen.
-            This line used to be the "assembling receipt": "Screening 1,000 of General for
-            'would they stop' · on TikTok · SIM-1 Flash". Measured 2026-07-29: all FIVE of those
-            facts appear above it — the headcount in the slice band, the room in the conditions
-            line, the behaviour in the lens band, the scene in the conditions dial, and the tier
-            on the locked chip six pixels to the right of this very line. A receipt that repeats
-            the form it sits under is 145–161px (16–20% of the card) spent restating. How long the
-            creator is about to wait is the thing the screen never said, and it is what actually
-            differs between the two paths a Simulate ↑ can start. */}
-        <div className="text-[12px] leading-[1.6]" style={{ color: TONE.faint }}>
+      {/* AT MOST ONE line under the card. A video says why its dials are fixed; a text run says
+          nothing unless the scene it will be read in differs from the room's calibration — which
+          is a real fact about the answer, so it survives, in words instead of a mono tag. */}
+      {isVideo ? (
+        <div className="mt-[9px] px-[26px] text-[12px] leading-[1.5]" style={{ color: TONE.faint }}>
+          {VIDEO_LOCKNOTE}
+        </div>
+      ) : mismatch ? (
+        <div className="mt-[9px] px-[26px] text-[12px] leading-[1.5]" style={{ color: TONE.faint }}>
+          Modeled on {scene} — your audience is {provenance}-calibrated.
+        </div>
+      ) : null}
+
+      {/* GO — the spend moment: the wait, then the one button.
+          THE WAIT is the one fact here that is not already on the screen. This line used to be an
+          "assembling receipt" ("Screening 1,000 of General for 'would they stop' · on TikTok ·
+          SIM-1 Flash"): measured 2026-07-29, all five of those facts appear above it, and the
+          receipt cost 145–161px — 16–20% of the card — restating the form it sat under. How long
+          the creator is about to wait is what the screen never said, and it is the thing that
+          actually differs between the two paths a Simulate ↑ can start.
+
+          The button is FULL WIDTH now. It shared a row with the locked fidelity chip, which put a
+          disabled-looking control beside the only action on the screen and made the primary act
+          look like one of two choices. The tier moved into the settings card where it belongs. */}
+      <div className="mt-6 border-t px-[26px] pb-5 pt-[15px]" style={{ borderColor: TONE.border }}>
+        <div className="text-[12px] leading-[1.5]" style={{ color: TONE.faint }}>
           {isVideo
-            ? "The full read takes 1–3 minutes — it lands on your board when it’s done."
+            ? "Takes 1–3 minutes — it lands on your board when it’s done."
             : "Reads in a few seconds."}
         </div>
-        <div className="mt-3.5 flex items-center justify-between">
-          <button
-            type="button"
-            onClick={() =>
-              onSimulate?.({
-                lensKey: activeLens.key,
-                custom: custom.trim() || undefined,
-                segment: seg.archetype,
-                segmentLabel: seg.label,
-                n,
-                scene,
-                fidelity,
-                // The brought stimulus rides the config — this is the field that turns the ＋ door
-                // from a door into a run. Absent on `develop` (the caller resolves that from the id).
-                ...(brought ? { stimulus: brought } : {}),
-              })
-            }
-            className="flex items-center gap-2 rounded-full px-5 py-2.5 text-[14px] font-medium transition-transform hover:scale-[1.02]"
-            style={{ background: TONE.cream, color: "#1c1b19" }}
-          >
-            Simulate <span aria-hidden>↑</span>
-          </button>
-          {/* LOCKED, not hidden — the reason rides with it (see FIDELITY_LOCK). */}
-          <div className="flex flex-col items-end gap-1">
-            <span
-              data-testid="sim-fidelity-locked"
-              data-tier={fidelity}
-              className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[14px]"
-              style={{ border: `1px solid ${TONE.hair}`, background: TONE.well, color: TONE.dim }}
-            >
-              SIM-1 {TIER_LABEL[fidelity]}
-              <svg width="10" height="10" viewBox="0 0 12 12" aria-hidden style={{ color: TONE.faint }}>
-                <rect x="2.5" y="5.5" width="7" height="5" rx="1.2" fill="none" stroke="currentColor" strokeWidth="1.2" />
-                <path d="M4.25 5.5V4a1.75 1.75 0 0 1 3.5 0v1.5" fill="none" stroke="currentColor" strokeWidth="1.2" />
-              </svg>
-            </span>
-            <span className="text-right text-[11px]" style={{ color: TONE.faint }}>
-              {lock.reason}
-            </span>
-          </div>
-        </div>
+        <button
+          type="button"
+          onClick={() =>
+            onSimulate?.({
+              lensKey: activeLens.key,
+              custom: custom.trim() || undefined,
+              segment: seg.archetype,
+              segmentLabel: seg.label,
+              n,
+              scene,
+              fidelity,
+              // The brought stimulus rides the config — this is the field that turns the ＋ door
+              // from a door into a run. Absent on `develop` (the caller resolves that from the id).
+              ...(brought ? { stimulus: brought } : {}),
+            })
+          }
+          className="mt-[11px] w-full rounded-[10px] py-3 text-[14px] font-semibold transition-opacity hover:opacity-90"
+          style={{ background: TONE.cream, color: "#1c1b19" }}
+        >
+          Simulate <span aria-hidden>↑</span>
+        </button>
       </div>
     </div>
   );

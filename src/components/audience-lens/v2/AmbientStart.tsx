@@ -179,8 +179,20 @@ function Icon({ kind }: { kind: ActionIcon }) {
 
 // ── conditions strip (loud-at-birth here; the same control pins thin in-thread) ────────────────
 
-/** Lightweight de-boxed picker — the scene / fidelity dials. Closes on outside click / Esc. */
-function Pick({ value, options, onSelect }: { value: string; options: string[]; onSelect: (v: string) => void }) {
+/** Lightweight de-boxed picker — the scene / fidelity dials. Closes on outside click / Esc.
+ *  `prefix` is the tiny word that makes the pill a phrase ("on TikTok") now that the dials sit
+ *  side by side with no label column of their own. */
+function Pick({
+  value,
+  options,
+  onSelect,
+  prefix,
+}: {
+  value: string;
+  options: string[];
+  onSelect: (v: string) => void;
+  prefix?: string;
+}) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -201,15 +213,19 @@ function Pick({ value, options, onSelect }: { value: string; options: string[]; 
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        // The CELLS are the even pair (an equal grid track each); the pill inside hugs its value —
-        // stretched to the full track it read as an empty input box on a 640px desktop card.
-        className="flex w-fit max-w-full items-center gap-2 rounded-full px-3.5 py-2 text-[14px] transition-colors"
+        // The pill hugs its value — stretched to a full grid track it read as an empty input box.
+        className="flex w-fit max-w-full items-center gap-2 rounded-full px-3.5 py-2 text-[13px] transition-colors"
         // #242422 — the SKILL TILE fill. The dials are controls, not text, and the card ground went
         // darker beneath them; sharing the tiles' tone makes every tappable thing on Start one family.
         style={{ border: `1px solid ${TONE.hair}`, background: "#242422", color: TONE.cream }}
         onMouseEnter={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,.14)")}
         onMouseLeave={(e) => (e.currentTarget.style.borderColor = TONE.hair)}
       >
+        {prefix ? (
+          <span className="flex-none text-[11px]" style={{ color: TONE.faint }}>
+            {prefix}
+          </span>
+        ) : null}
         <span className="min-w-0 truncate">{value}</span>
         <svg width="9" height="9" viewBox="0 0 12 12" aria-hidden style={{ color: TONE.faint }}>
           <path d="M2.5 4.5L6 8l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
@@ -317,9 +333,8 @@ function AudiencePick({
         aria-expanded={open}
         aria-label={`Audience: ${label}. Switch audience`}
         onClick={() => setOpen((o) => !o)}
-        // The CELLS are the even pair (an equal grid track each); the pill inside hugs its value —
-        // stretched to the full track it read as an empty input box on a 640px desktop card.
-        className="flex w-fit max-w-full items-center gap-2 rounded-full px-3.5 py-2 text-[14px] transition-colors"
+        // The pill hugs its value — stretched to a full grid track it read as an empty input box.
+        className="flex w-fit max-w-full items-center gap-2 rounded-full px-3.5 py-2 text-[13px] transition-colors"
         // #242422 — the SKILL TILE fill. The dials are controls, not text, and the card ground went
         // darker beneath them; sharing the tiles' tone makes every tappable thing on Start one family.
         style={{ border: `1px solid ${TONE.hair}`, background: "#242422", color: TONE.cream }}
@@ -327,7 +342,7 @@ function AudiencePick({
         onMouseLeave={(e) => (e.currentTarget.style.borderColor = TONE.hair)}
       >
         {/* the room is live — accent as a LIVENESS signal only (the locked dosage rule: a live dot
-            is on the allow-list; this is the one accent mark on the whole Start surface) */}
+            is on the allow-list, and this is the ONE accent mark across all three room surfaces) */}
         <span
           aria-hidden
           className="h-[5px] w-[5px] flex-none rounded-full"
@@ -347,7 +362,7 @@ function AudiencePick({
         >
           {socials.length > 0 ? (
             <>
-              <p className="px-3 pb-1 pt-1.5 font-mono text-[10px] uppercase tracking-[0.09em]" style={{ color: TONE.faint }}>
+              <p className="px-3 pb-1 pt-1.5 text-[11px]" style={{ color: TONE.faint }}>
                 Socials
               </p>
               {socials.map((a) => (
@@ -357,7 +372,7 @@ function AudiencePick({
           ) : null}
           {general.length > 0 ? (
             <>
-              <p className="mt-1 px-3 pb-1 pt-1.5 font-mono text-[10px] uppercase tracking-[0.09em]" style={{ color: TONE.faint }}>
+              <p className="mt-1 px-3 pb-1 pt-1.5 text-[11px]" style={{ color: TONE.faint }}>
                 General
               </p>
               {general.map((a) => (
@@ -367,18 +382,6 @@ function AudiencePick({
           ) : null}
         </div>
       ) : null}
-    </div>
-  );
-}
-
-/** A conditions ROW — its mono label on the left, its dial on the right. Two of these stack. */
-function ConditionRow({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex min-w-0 items-center justify-between gap-4">
-      <span className="font-mono text-[10px] uppercase tracking-[0.1em]" style={{ color: TONE.faint }}>
-        {label}
-      </span>
-      {children}
     </div>
   );
 }
@@ -401,55 +404,53 @@ function ConditionsStrip({
   const [scene, setScene] = useState(conditions.scene);
   const audienceSelectable = !!onSelectAudience && !!audiences;
   return (
-    <div className="mt-7">
-      <div className="font-mono text-[11px] uppercase tracking-[0.09em]" style={{ color: TONE.faint }}>
-        Testing against
+    <div className="mt-[22px]">
+      {/* "Your audience", not "Testing against" — the block names the thing, and the pills under it
+          are that thing's settings. "Testing against" was a verb phrase left dangling: it needed
+          the pill to complete the sentence, which is exactly what broke when the row wrapped. */}
+      <div className="text-[11px]" style={{ color: TONE.faint }}>
+        Your audience
       </div>
-      {/* TWO ROWS, stacked — one per dial (owner call 2026-07-24, corrected from the side-by-side
-          first pass: two columns still read as a single row). Each row names its dial on the left
-          and carries it on the right, so the pair reads as a short config list rather than a
-          sentence. The old inline "General as TikTok · SIM-1 Flash" run had no per-control labels
-          (the reader inferred what each pill WAS from its value) and at 390px it wrapped
-          mid-sentence, breaking "as" away from what it joined. The SIM fidelity dial is gone from
-          Start entirely: the model is a per-run choice and it lives on the composer, where the run
-          is actually fired. */}
-      <div className="mt-3 flex flex-col gap-2.5 text-[14px]">
-        <ConditionRow label="Audience">
-          {audienceSelectable ? (
-            // Pre-thread Start: pick the audience here (no thread yet to lock to).
-            <AudiencePick
-              label={conditions.audience}
-              audiences={audiences!}
-              selectedAudienceId={selectedAudienceId ?? null}
-              onSelectAudience={onSelectAudience!}
-            />
-          ) : (
-            // In-thread reuse: audience is locked for the thread (L1) — no ▾, dimmer, non-interactive.
-            <span
-              className="flex w-full cursor-default items-center gap-2 rounded-full px-3.5 py-2"
-              style={{ border: `1px solid ${TONE.border}`, background: "transparent", color: TONE.dim }}
-              title="Locked for this thread — a new audience means a new thread"
-            >
-              <span
-                aria-hidden
-                className="h-[5px] w-[5px] flex-none rounded-full"
-                style={{ background: "var(--color-accent)", boxShadow: "0 0 0 3px var(--color-accent-soft)" }}
-              />
-              <span className="min-w-0 flex-1 truncate">{conditions.audience}</span>
-              <span aria-hidden style={{ color: TONE.ghost, fontSize: 11 }}>⤫</span>
-            </span>
-          )}
-        </ConditionRow>
-        <ConditionRow label="Scene">
-          <Pick
-            value={scene}
-            options={conditions.sceneOptions}
-            onSelect={(v) => {
-              setScene(v);
-              onScene?.(v);
-            }}
+      {/* ONE ROW, two ADJACENT pills. This was two stacked label/dial rows — "Audience" hard left,
+          its pill hard right, and a void of dead card between them at 760px, twice over. The
+          labels were carrying nothing the values didn't already say ("TikTok" is evidently the
+          scene), so they are gone and the pills sit together as the phrase they are: General, on
+          TikTok. The SIM fidelity dial stays off Start entirely — the model is a per-run choice
+          and it lives on the arm sheet, where the run is fired. */}
+      <div className="mt-2.5 flex flex-wrap items-center gap-2">
+        {audienceSelectable ? (
+          // Pre-thread Start: pick the audience here (no thread yet to lock to).
+          <AudiencePick
+            label={conditions.audience}
+            audiences={audiences!}
+            selectedAudienceId={selectedAudienceId ?? null}
+            onSelectAudience={onSelectAudience!}
           />
-        </ConditionRow>
+        ) : (
+          // In-thread reuse: audience is locked for the thread (L1) — no ▾, dimmer, non-interactive.
+          <span
+            className="flex w-fit max-w-full cursor-default items-center gap-2 rounded-full px-3.5 py-2 text-[13px]"
+            style={{ border: `1px solid ${TONE.border}`, background: "transparent", color: TONE.dim }}
+            title="Locked for this thread — a new audience means a new thread"
+          >
+            <span
+              aria-hidden
+              className="h-[5px] w-[5px] flex-none rounded-full"
+              style={{ background: "var(--color-accent)", boxShadow: "0 0 0 3px var(--color-accent-soft)" }}
+            />
+            <span className="min-w-0 truncate">{conditions.audience}</span>
+            <span aria-hidden style={{ color: TONE.ghost, fontSize: 11 }}>⤫</span>
+          </span>
+        )}
+        <Pick
+          value={scene}
+          prefix="on"
+          options={conditions.sceneOptions}
+          onSelect={(v) => {
+            setScene(v);
+            onScene?.(v);
+          }}
+        />
       </div>
     </div>
   );
@@ -547,7 +548,7 @@ export function AmbientStart({
         <div className="mt-6 grid grid-cols-1 items-start gap-x-6 gap-y-6 sm:grid-cols-3">
           {skillGroups.map((group) => (
             <div key={group.label} className={group.span === 2 ? "sm:col-span-2" : undefined}>
-              <div className="font-mono text-[11px] uppercase tracking-[0.1em]" style={{ color: TONE.faint }}>
+              <div className="text-[11px]" style={{ color: TONE.faint }}>
                 {group.label}
               </div>
               <div
@@ -598,11 +599,14 @@ export function AmbientStart({
                 <Icon kind="target" />
               </span>
               <span className="min-w-0 flex-1">
+                {/* ONE NAME FOR BOTH DOORS. The board's ＋ said "Test something of your own" and
+                    this one said "Test something against your audience" — the same act, named two
+                    ways, on two surfaces a creator moves between. */}
                 <span className="block text-[14px] font-medium leading-[1.2]" style={{ color: TONE.cream }}>
-                  Test something against your audience
+                  Test something of your own
                 </span>
                 <span className="mt-0.5 block truncate text-[12px] leading-[1.3]" style={{ color: TONE.faint }}>
-                  A draft, a video, or a link — brought by you
+                  A draft, a video, or a link — read by your audience
                 </span>
               </span>
               <span
@@ -661,8 +665,13 @@ function SkillTile({
         >
           {skill.label}
           {soon ? (
-            <span className="font-mono text-[10px] uppercase tracking-[0.09em]" style={{ color: TONE.faint }}>
-              Soon
+            // an object tag — the same chip a dimmed intake door carries, so "not yet" reads the
+            // same wherever a creator meets it
+            <span
+              className="flex-none rounded-md px-[7px] py-1 text-[10px] font-normal leading-none"
+              style={{ background: "#2b2a28", color: TONE.dim }}
+            >
+              soon
             </span>
           ) : null}
         </span>

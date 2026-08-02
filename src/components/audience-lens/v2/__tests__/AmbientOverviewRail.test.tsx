@@ -66,18 +66,27 @@ describe("AmbientOverviewRail", () => {
   });
 
   /**
-   * The "on call" cast footer is derived from the room's NAMED SLICES (`audience.personas` →
-   * `segments` → `deriveCast`). General carries none, and General is the default for every new
-   * creator — so the footer used to render as a bare "on call" label under a border rule, with
-   * zero avatars, as the first thing a new user sees in the rail (caught live 2026-07-24).
-   * No cast ⇒ no footer. We never invent slices to fill it.
+   * The header states the room's FACTS; the avatars are gone (rev B+, 2026-08-02).
+   *
+   * The board used to wear a bordered `CALIBRATED` pill beside the name and an "on call" avatar
+   * footer pinned to the bottom — and between them they told a creator one word about their room.
+   * How many minds, how it was calibrated, and where they read were on no surface at all. The
+   * facts line says all three; the pill and the footer are deleted.
+   *
+   * The footer had a second, worse mode: it derives from the room's NAMED SLICES, General carries
+   * none, and General is every new creator's default — so the first thing a new user saw in the
+   * rail was a bare "on call" label under a rule with zero avatars beside it (caught live
+   * 2026-07-24). It cannot regress now, in either room, and both are asserted.
    */
-  it("hides the on-call footer entirely for the General baseline room (no named slices)", () => {
+  it("states the room's real facts in the header — minds · calibration · where they read", () => {
     render(<AmbientOverviewRail audience={audience} descriptors={descriptors} reducedMotion />);
-    expect(screen.queryByText("on call")).toBeNull();
+    const board = screen.getByTestId("ambient-overview").textContent ?? "";
+    expect(board).toContain("1,000 minds"); // TIER_N.flash, the real headcount of a Flash read
+    expect(board).toContain("baseline"); // General ⇒ the honest badge, not "calibrated"
+    expect(board).toContain("reads on TikTok"); // the scene, from the same source ⑤ arms with
   });
 
-  it("shows the on-call footer with real initials once the room HAS named slices", () => {
+  it("renders NO cast footer and NO calibration pill — in the General room or a calibrated one", () => {
     const calibrated: Audience = {
       ...audience,
       is_general: false,
@@ -86,11 +95,39 @@ describe("AmbientOverviewRail", () => {
         { archetype: "fyp", label: "Drive-by scrollers", share: 0.4 },
       ] as Audience["personas"],
     };
-    render(<AmbientOverviewRail audience={calibrated} descriptors={descriptors} reducedMotion />);
-    expect(screen.getByText("on call")).toBeTruthy();
-    // initials of the REAL slice labels — never invented
-    expect(screen.getByText("G")).toBeTruthy();
-    expect(screen.getByText("D")).toBeTruthy();
+    const { rerender } = render(
+      <AmbientOverviewRail audience={audience} descriptors={descriptors} reducedMotion />,
+    );
+    expect(screen.queryByText("on call")).toBeNull();
+
+    // The calibrated room is the one that USED to render avatars — two named slices, so `deriveCast`
+    // returns two members. It still does (the derivation is kept, handoff §8); nothing draws them.
+    rerender(<AmbientOverviewRail audience={calibrated} descriptors={descriptors} reducedMotion />);
+    expect(screen.queryByText("on call")).toBeNull();
+    expect(screen.queryByText("G")).toBeNull();
+    expect(screen.queryByText("D")).toBeNull();
+    // …and this room's facts line reports ITS calibration, not the baseline's.
+    expect(screen.getByTestId("ambient-overview").textContent).toContain("calibrated");
+  });
+
+  /**
+   * THE 0/10 RANK IS DEAD (owner, 2026-08-02) — and this is the surface it was printed on.
+   * Both descriptors carry a `fraction` ("3/10 stop" / "9/10 stop"), so if any of it comes back —
+   * the number, a bar, or a sort keyed to it — it comes back here first.
+   */
+  it("prints no /10 on a queued row, and offers the Simulate door instead", () => {
+    render(<AmbientOverviewRail audience={audience} descriptors={descriptors} reducedMotion />);
+    const board = screen.getByTestId("ambient-overview").textContent ?? "";
+    expect(board).not.toMatch(/\d+\s*\/\s*10/);
+    expect(board).not.toContain("Strong");
+    expect(board).not.toContain("Weak");
+    // The row's one affordance is the run it hasn't had. Two queued descriptors ⇒ two doors.
+    expect(screen.getAllByText(/Simulate\s*→/)).toHaveLength(2);
+    // Ledger order, not the 9/10-first order the dead rank produced.
+    const rows = screen.getAllByRole("button").map((b) => b.textContent ?? "");
+    const hook = rows.findIndex((t) => t.includes("Nobody tells you the first 10k"));
+    const idea = rows.findIndex((t) => t.includes("I quit my 9-5"));
+    expect(hook).toBeLessThan(idea);
   });
 
   it("re-seals a row from persistedSeals on mount — no fire needed (survives reload, Phase D)", () => {
@@ -187,7 +224,7 @@ describe("AmbientOverviewRail", () => {
     // tap 1 → reveal the already-measured attention % (no network — the Test analysis produced it)
     fireEvent.click(row);
     expect(screen.getByText(/62\.0%/)).toBeTruthy();
-    expect(screen.getByText(/84 viral/)).toBeTruthy(); // native score stays in view
+    expect(screen.getByText(/viral 84/)).toBeTruthy(); // native score stays in view
 
     // tap 2 → drill into the real Brain depth (brain-first for a video)
     fireEvent.click(screen.getByRole("button", { name: /Here is the money truth/ }));

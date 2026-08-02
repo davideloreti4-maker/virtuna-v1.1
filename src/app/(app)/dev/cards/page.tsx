@@ -1317,7 +1317,7 @@ const SIM_DEV_DATA = buildSimulateData({
   audience: audienceToMeta(ROOM_V2_AUDIENCE),
   // The develop entry's pre-filled stimulus: a card already on the board, plus the rank it deepens.
   stimulus: { text: "Stop editing your videos. Do this instead.", kind: "hook" },
-  develop: { band: "Mixed", value: "5/10", lensLabel: "would stop" },
+  develop: { sourceLabel: "Hooks run" },
 });
 
 /** The cold doors, as the intake itself classifies them — picked out by kind, never re-declared. */
