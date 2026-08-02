@@ -147,3 +147,84 @@ npm run dev -- --port 3001                               # /dev/cards is auth-ga
 Memory SSOT: `skill-cards-hierarchy-not-deletion` (+ `skill-card-target-line-is-dead`,
 `proof-unit-is-shared-do-not-edit`). ⚠️ dev server is reaped after ~10 min idle; `.env.local`
 credentials are a REAL prod account — browse, never generate.
+
+---
+
+## 9. Audit + v9.4 (added 2026-08-01, session 2) — READ BEFORE ACTING ON §5
+
+Owner's direction: *"the current version isn't refined yet, or something Perplexity/Claude/ChatGPT
+would release"* + *"clean and premium, easy to read, desktop AND mobile fit."* Two new artifacts,
+both mockups only — **`src/` is still untouched on this branch** (`git diff origin/main...HEAD -- src/`
+is empty).
+
+- **Audit of v9.2b vs the REAL renderers** — `.planning/sketches/skill-cards-v9-3-audit.html`
+  (source) / `-artifact.html` (fonts + screenshots inlined) ·
+  https://claude.ai/code/artifact/2410dc7f-d151-4a5f-a6a3-c38a4fba6a65
+- **v9.4, the integrated recommendation** — `.planning/sketches/skill-cards-v9-4-recommended.html`
+  / `-artifact.html` · https://claude.ai/code/artifact/854123bb-4aae-4d75-8dea-c3ab434ad389
+
+### 9.1 What the audit found (evidence in the artifact)
+
+1. **At 728 no band uses the right half.** Hero capped at 44ch, dek at 58ch; the source row's stat
+   ends ~288px before its own chevron. The layout was designed at 342 and stretched.
+2. **The open brief is v8's typed cells + v6's bold lead-ins** — both already rejected. The one
+   structured grid that survived review is the remix decode map.
+3. **The set of five lost every signal you would pick on** (rank, band, fraction, quote, mechanism).
+   Comparing five hooks now means opening five 670px briefs.
+4. **§1's "NOTHING real from shipped is lost" is false.** Seven fields are absent, not staged:
+   `rank`, `topic`, `format`, `proof.archetype`, `proof.fitLabel`, `proof.baselineLabel`, `channel`.
+5. **§5's "90.7× their usual reach" states a ratio nothing computes.** `proof-schema.ts`:
+   `multiplier` is views ÷ followers, and `baselineLabel` carries that basis. The wording lock is
+   itself the defect → recommend `90.7× vs followers`.
+6. **One brief cell has no data.** "Made for N% of your audience" needs `reaction_frame`, a deferred
+   engine follow-up; all three runners also pass `personas: []`. Ship today ⇒ four cells + a heading.
+7. Smaller: door has only one state (Simulate is a one-way trip); `display:none` on the brief's
+   contents at 342 is the last special-case; script timeline rules cut its own rail; Save lost its
+   label; chevron promises a drill-in and delivers a new tab.
+
+### 9.2 v9.4 — the seven moves
+
+**The core one:** an 8-word hook at 22px cannot fill a 688px column. Don't narrow the card — **set
+the hero at 32px (21px at 342)**. Then: rank + one taxonomy chip per card (`visualHook.technique` /
+`format`, both already populated — no engine work) · brief becomes a 2-col map (1-col at 342, sixth
+cell folds under 480px) · every right edge named (`Open on TikTok ↗`) · door gets three states
+(untested / testing / `8 of 10 stopped · See your audience →`, which also settles the legacy-door
+question in §7) · honest multiplier + fit glyph back · footer groups [primary + Save] · [door].
+
+### 9.3 Measured — ALL numbers re-verified two ways
+
+⚠️ **Trap that cost real accuracy here:** the sketches animate `.stage{transition:width .18s}`. A
+measure routine that flips `data-w` and reads `getBoundingClientRect` **in the same frame** reads the
+stage mid-transition and **understates every 342 number** (script read 958 when it is 1359). Both
+artifacts now add a `.measuring` class that kills the transition, force a reflow, and were
+cross-checked headlessly with a 600ms settle — the two methods agree exactly.
+
+| Card | Shipped 728/342 | v9.2b | v9.4 |
+|---|---|---|---|
+| Hook | 569 / 697 | 371 / 436 | 424 / 465 |
+| Hook, brief open | — | 670 / 843 | 649 / 866 |
+| Idea | 606 / 752 | 371 / 433 | 445 / 486 |
+| Hook, no source | — | 254 / 319 | 306 / 347 |
+| Script | 958 / 1420 | 830 / 1308 | 852 / 1359 |
+| Remix | 763 / 1054 | 708 / 1159 | 686 / **1110** |
+
+**v9.4 buys legibility with height** — it is taller than v9.2b nearly everywhere (+29…+74), and far
+shorter than shipped on the choice cards (−232 / −266 at 342). **Remix @342 still sits 56px above
+shipped**; neither v9.2b nor v9.4 closes that. Levers if mobile height binds: the map's cell count
+and the script's per-beat retention line.
+
+### 9.4 Still the owner's call
+
+- Which width theory (v9.4's big hero is the recommendation; the audit's B/C/D are the alternatives —
+  **C, the fact rail, costs +137px on mobile and brushes the v7 genealogy**).
+- Does the "Made for" cell ship gated behind `reaction_frame`, or degrade to four cells?
+- Is `vs followers` the wording users should read, or `90.7× this creator's follower count`?
+
+### 9.5 ⚠️ Throwaway files currently on disk — DELETE BEFORE ANY COMMIT
+
+Both are untracked and exist only to compare shipped vs mock:
+`src/app/zz-preview/page.tsx` (real renderers beside the v9.4 mock, width toggle, iframes self-report
+their height via `postMessage`) and `public/zz-v94-cards.html` (the v9.4 cards, `?card=&w=`).
+Run with `npm run dev -- --port 3001` → http://localhost:3001/zz-preview. **`rm -rf
+src/app/zz-preview public/zz-v94-cards.html` before committing** — the zero-`src/`-changes lock in
+§Status depends on it.
