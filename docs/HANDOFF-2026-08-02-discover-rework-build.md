@@ -157,3 +157,53 @@ socket never settles; use `domcontentloaded` + an explicit selector wait.
 524 extracted teardowns · 100% covers · 396 baselined · 288 at ≥3× (230 once extremes are excluded) ·
 105 collections / 592 memberships, zero orphans · newest post 2026-06-10 · 45 users, of whom **1**
 tracks channels and 2 have competitors.
+
+---
+
+## 5. Refinement backlog — observed this session, NOT acted on
+
+Ordered by whether they are defects or taste. The first two are real.
+
+### 5.1 🔴 Remix is unreachable without a mouse
+`OutlierCard`'s Remix button is `opacity-0 … group-hover:opacity-100` (plus `focus-visible`). On a
+touch device there is no hover, so **the feed's only action cannot be reached at all** on mobile.
+`focus-visible` saves the keyboard path, not the touch one. Options: always-visible on `< lg`, a
+tap-to-reveal, or make the whole card open a detail view that carries the action (which pairs with
+§3.4 below). Decide with the detail-view question, not separately.
+
+### 5.2 🔴 A corpus read failure 500s the whole page
+`getDiscoverCorpus()` throws on a Supabase error and `/feed` has no error boundary, so one bad read
+takes out Discover entirely — including Watchlist and Collections, which don't depend on it. The
+grounding layer's own convention (`lib/grounding/corpus.ts` header) is *"RPC failures throw; the
+caller wraps in try/catch + graceful degradation"* — this caller doesn't. Wrap per-read and let a
+failed corpus render an honest empty state while the other tabs still work.
+
+### 5.3 The teardown detail view (the §3.4 loose end, restated as design)
+`why_it_works` is read into every card and rendered nowhere. The corpus also holds `hook_template`
+(the reusable pattern) separately from `spoken_hook` (what the video actually says) — the card shows
+the spoken line, and the template currently only appears in collection rows. A card → detail with
+cover · spoken hook · **why it works** · template · Remix is the natural next increment, and it
+resolves §5.1 at the same time.
+
+### 5.4 Taste / polish
+- **Kicker truncation** — `PATTERN INTERRUPT // VISUAL SWITCHING` clips to `PATTERN INTERRUPT // VISUAL S…`
+  on collection cards. Either shorten the subcategory labels for display or drop to the category.
+- **Search is per-tab** — typing filters only the active tab; there is no "12 in Collections" hint
+  that results exist elsewhere. Cheap to add, and it is the main thing that would make the three
+  tabs feel like one surface.
+- **Watchlist "latest" strip** clips its last card at the container edge (it is a horizontal
+  scroller, so this is honest, but a right-edge fade would read better).
+- **Pull live navigates away** to `/feed/discover`. Deliberate — its results have no covers
+  (`VideoData` carries none), so they would look broken in the premium grid. If Pull should feel
+  inline, the cover gap is the thing to fix first, not the layout.
+- **Empty states are untested against a real empty account** — 44 of 45 users track nothing, so the
+  Watchlist tab most users see is the invitation, and it has only been seen with 6 sources present.
+  Worth one pass signed in as a fresh account.
+
+### 5.5 Explicitly settled — do not reopen without the owner
+- Three tabs, named **Outliers · Collections · Watchlist** (owner named Watchlist; "Sources" was
+  rejected).
+- Tabs switch in place; the bar carries no `href` (pinned by `routing-cut.test.ts`).
+- The ≥100× exclusion from the feed pool, and the three-state multiplier chip.
+- Collections sort by views, not by multiplier.
+- `/competitors` renders the board; the tab merge is a READ merge only.
