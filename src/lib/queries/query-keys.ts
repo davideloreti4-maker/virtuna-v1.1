@@ -35,6 +35,13 @@ export const queryKeys = {
     // Flat filter, NOT a folder: `type` is an optional client-side item_type filter.
     list: (type?: string) => ["saved", "list", type ?? "all"] as const,
   },
+  // Library projects — manual folders over saved items. Deliberately a FLAT list key with no
+  // per-project variants: the shelf derives every count from the saved-items list it already
+  // holds, so there is nothing else to key on.
+  libraryProjects: {
+    all: ["library-projects"] as const,
+    list: () => ["library-projects", "list"] as const,
+  },
   recalibration: {
     all: ["recalibration"] as const,
     // Pending recalibration proposal for one audience (null below the gate).

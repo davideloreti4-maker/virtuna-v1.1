@@ -72,6 +72,7 @@ export function PersistedThreadStream({
           <ThreadTurn
             userTurn={turn.userTurn}
             blocks={turn.blocks}
+            blockOrigins={turn.blockOrigins}
             ambientBaseIndex={
               ambientBaseIndex === undefined ? undefined : ambientBaseIndex + turnBaseIndex(i)
             }

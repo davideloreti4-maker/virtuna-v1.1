@@ -14,13 +14,25 @@ import { z } from "zod";
 
 // ─── Domain shapes ───────────────────────────────────────────────────────────
 
+/**
+ * The typed shelf's item types.
+ *
+ * `remix` was added 2026-08-02: remix-card-block saved its output as `hook` because no remix
+ * type existed, so the shelf labelled a remix "Hook" and offered it the hook forward action.
+ *
+ * `format` was REMOVED the same day. It was in the CHECK, this union, the zod enum, the filter
+ * bar and the label map — but no renderer has ever emitted one, and the live table holds 0 of
+ * them, so the Formats tab was permanently empty. It stays in the DB CHECK (narrowing a
+ * constraint buys nothing and would reject a legacy write); it is only gone from the client
+ * contract. The card and icon maps keep their `??` fallbacks so a legacy row still renders.
+ */
 export type SavedItemType =
   | "read"
   | "idea"
   | "hook"
   | "script"
   | "outlier"
-  | "format";
+  | "remix";
 
 /** A persisted saved_items row, in domain form. */
 export interface SavedItem {
@@ -29,6 +41,8 @@ export interface SavedItem {
   item_type: SavedItemType;
   ref_id: string | null;
   thread_id: string | null;
+  /** Owning library project, or null for Unfiled. */
+  project_id: string | null;
   title: string | null;
   snapshot: Record<string, unknown>;
   created_at: string;
@@ -39,6 +53,7 @@ export interface SavedItemInput {
   item_type: SavedItemType;
   ref_id?: string | null;
   thread_id?: string | null;
+  project_id?: string | null;
   title?: string | null;
   snapshot: Record<string, unknown>;
 }
@@ -46,9 +61,10 @@ export interface SavedItemInput {
 // ─── Zod validation ──────────────────────────────────────────────────────────
 
 const SavedItemInputSchema = z.object({
-  item_type: z.enum(["read", "idea", "hook", "script", "outlier", "format"]),
+  item_type: z.enum(["read", "idea", "hook", "script", "outlier", "remix"]),
   ref_id: z.string().nullable().optional(),
   thread_id: z.string().uuid().nullable().optional(),
+  project_id: z.string().uuid().nullable().optional(),
   title: z.string().max(200).nullable().optional(),
   snapshot: z.record(z.string(), z.unknown()),
 });
@@ -110,10 +126,71 @@ export async function createSavedItem(
     .single();
 
   if (error) {
+    // 23505 = the partial unique index on (user_id, item_type, ref_id). Saving something
+    // already saved is IDEMPOTENT, not an error: two clicks, a double-submit or a racing
+    // remount should all converge on the one row rather than 500. Return the existing row so
+    // the caller's cache reconciles to the truth.
+    if (error.code === "23505" && parsed.data.ref_id) {
+      const { data: existing } = await supabase
+        .from("saved_items")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("item_type", parsed.data.item_type)
+        .eq("ref_id", parsed.data.ref_id)
+        .maybeSingle();
+      if (existing) return existing as SavedItem;
+    }
     throw new Error(`saved_items create failed: ${error.message}`);
   }
 
   return data as SavedItem;
+}
+
+/**
+ * File (or unfile) saved items in bulk — the selection bar's "Move to project".
+ *
+ * `projectId === null` unfiles. RLS scopes the update to the owner, and the project_id is
+ * verified to belong to the caller before it is written: without that check a crafted request
+ * could file the caller's own items into a stranger's project id, which would then leak their
+ * titles into that project's counts.
+ *
+ * Returns the number of rows actually updated, so a caller can tell a no-op from a success.
+ */
+export async function setSavedItemsProject(
+  supabase: SupabaseClient,
+  ids: string[],
+  projectId: string | null,
+): Promise<number> {
+  if (ids.length === 0) return 0;
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("unauthenticated");
+
+  if (projectId !== null) {
+    const { data: owned, error: ownErr } = await supabase
+      .from("library_projects")
+      .select("id")
+      .eq("id", projectId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (ownErr) throw new Error(`project lookup failed: ${ownErr.message}`);
+    if (!owned) throw new Error("invalid saved item input: unknown project");
+  }
+
+  const { data, error } = await supabase
+    .from("saved_items")
+    .update({ project_id: projectId })
+    .in("id", ids)
+    .eq("user_id", user.id)
+    .select("id");
+
+  if (error) {
+    throw new Error(`saved_items file failed: ${error.message}`);
+  }
+
+  return (data ?? []).length;
 }
 
 /**

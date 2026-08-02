@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Library v2 — sketch rev 4</title>
+<style>
+  /* ============================================================
+     Library v2 — rev 4 · craft pass
+     Tokens from src/app/globals.css @theme (verified 2026-08-02):
+       app #1f1f1e · composer #1a1a19 · chip #2c2c2b · thread #252524
+       cream #ece7de · secondary #c2bdb4 · muted #8a857c
+       accent #FF6363 (liveness + interactive state only)
+       band = --color-success / warning / error
+
+     Rev 3 was legible but read as an admin table: dividers on every row,
+     middot-chained metadata, one visual weight throughout. Rev 4 removes the
+     table — borderless rows separated by space, an icon anchor per type, and
+     a real typographic hierarchy. Monochrome by system rule; the craft has to
+     come from spacing and type, not colour.
+     ============================================================ */
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{
+    --app:#1f1f1e; --card:#1a1a19; --chip:#2c2c2b; --thread:#252524;
+    --cream:#ece7de; --sec:#c2bdb4; --muted:#8a857c;
+    --accent:#FF6363;
+    --success:oklch(0.68 0.17 145);
+    --bd:rgba(255,255,255,.06); --bdh:rgba(255,255,255,.10);
+  }
+  body{background:var(--app);color:var(--cream);
+    font:15px/1.6 Inter,ui-sans-serif,system-ui,-apple-system,sans-serif;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+    padding:72px 24px 160px}
+  .board{max-width:1000px;margin:0 auto}
+  svg{display:block}
+
+  /* ---------- document chrome ---------- */
+  .doc-kicker{font-size:11.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+  h1.top{font-size:32px;font-weight:600;letter-spacing:-.028em;margin:12px 0 16px;line-height:1.15}
+  .lede{color:var(--sec);font-size:15.5px;max-width:640px;line-height:1.72}
+  .lede b{color:var(--cream);font-weight:500}
+
+  .screen-label{display:flex;align-items:center;gap:13px;margin:88px 0 18px}
+  .screen-label .no{font-size:11.5px;color:var(--muted);letter-spacing:.12em;font-weight:600}
+  .screen-label .name{font-size:15px;font-weight:600;letter-spacing:-.01em}
+  .frame{border:1px solid var(--bd);border-radius:20px;padding:52px 0 60px;background:var(--card)}
+  .page{max-width:820px;margin:0 auto;padding:0 34px}
+  .note{color:var(--sec);font-size:14.5px;line-height:1.78;margin-top:24px;max-width:700px}
+  .note b{color:var(--cream);font-weight:500}
+  .note + .note{margin-top:14px}
+
+  /* ---------- surface header ---------- */
+  .sh{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:44px}
+  .sh .title{font-size:27px;font-weight:600;letter-spacing:-.025em;line-height:1.2}
+  .sh .sub{font-size:14px;color:var(--muted);margin-top:5px}
+  .tools{display:flex;gap:10px;align-items:center;padding-bottom:3px}
+  /* a 3-line header (breadcrumb/title/sub) would drop the ⋯ to the subtitle's baseline */
+  .sh.tall{align-items:flex-start}
+  .sh.tall .tools{padding-top:22px;padding-bottom:0}
+  .search{display:flex;align-items:center;gap:9px;background:var(--app);border:1px solid var(--bd);
+    border-radius:9px;padding:9px 13px;color:var(--muted);font-size:14px;min-width:220px}
+  .sortbtn{display:flex;align-items:center;gap:7px;color:var(--sec);font-size:14px;padding:9px 4px}
+
+  /* ---------- section label — no rules, just space ---------- */
+  .sect{display:flex;align-items:baseline;gap:11px;margin:0 0 14px}
+  .sect .t{font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600}
+  .sect .act{margin-left:auto;font-size:13.5px;color:var(--sec)}
+  .group{margin-top:46px}
+
+  /* ---------- the row: borderless, space-separated, hover-lifted ---------- */
+  .list{display:flex;flex-direction:column;gap:2px;margin:0 -12px}
+  .item{display:flex;align-items:flex-start;gap:15px;padding:15px 12px;border-radius:11px;position:relative}
+  .item.hov{background:var(--thread)}
+  /* icon anchor — carries type identity without spending colour */
+  .ico{width:34px;height:34px;border-radius:9px;background:var(--app);border:1px solid var(--bd);
+    display:grid;place-items:center;color:var(--sec);flex:none;margin-top:1px}
+  .item.hov .ico{background:var(--chip);border-color:var(--bdh)}
+  .body{flex:1;min-width:0;padding-top:2px}
+  .line{font-size:16.5px;line-height:1.45;letter-spacing:-.011em;color:var(--cream);
+    max-width:56ch;font-weight:400}
+  .line.q{color:var(--sec)}
+  .sub{font-size:13px;color:var(--muted);margin-top:7px;letter-spacing:.002em}
+  .sub .src{color:var(--sec)}
+  .sub .dot-sep{opacity:.4;padding:0 5px}
+  /* the read's proof — the only colour on the shelf */
+  .proof{display:flex;align-items:baseline;gap:9px;margin-top:9px;font-size:14px;color:var(--sec)}
+  .bdot{width:6px;height:6px;border-radius:99px;background:var(--success);flex:none;
+    position:relative;top:-3px}
+  .proof .qt{color:var(--muted);font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  /* right side */
+  .right{display:flex;align-items:center;gap:15px;flex:none;padding-top:5px}
+  .metric{font-size:14px;font-weight:600;color:var(--cream);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+  .act{font-size:13.5px;color:var(--sec);white-space:nowrap;opacity:0}
+  .item.hov .act{opacity:1}
+  .more{color:var(--muted);opacity:0}
+  .item.hov .more{opacity:1}
+  /* kept small: a taller poster made the outlier row overshoot every sibling's height */
+  .thumb{width:34px;height:44px;border-radius:6px;border:1px solid var(--bd);flex:none;
+    background:linear-gradient(160deg,#4d3a2a 0%,#241f1d 76%)}
+  .check{width:18px;height:18px;border-radius:5px;border:1.5px solid var(--bdh);background:var(--app);
+    flex:none;margin-top:9px}
+  .check.on{background:var(--accent);border-color:var(--accent);display:grid;place-items:center}
+
+  /* ---------- projects ---------- */
+  .proj{display:flex;align-items:center;gap:15px;padding:15px 12px;border-radius:11px}
+  .proj.hov{background:var(--thread)}
+  .proj .pn{font-size:16px;font-weight:550;letter-spacing:-.012em}
+  .proj .pd{font-size:13px;color:var(--muted);margin-top:4px}
+  .proj .pr{margin-left:auto;display:flex;align-items:center;gap:14px;color:var(--muted);font-size:13px}
+  .proj.new{color:var(--muted);font-size:14.5px}
+  .proj.new .ico{border-style:dashed}
+
+  /* ---------- facets ---------- */
+  .facets{display:flex;gap:22px;margin:0 0 18px;padding:0 12px}
+  .facet{font-size:13.5px;color:var(--muted);padding-bottom:9px;border-bottom:1.5px solid transparent}
+  .facet.on{color:var(--cream);border-bottom-color:var(--cream);font-weight:500}
+  .facet .n{font-size:12px;opacity:.6;margin-left:5px}
+
+  /* ---------- selection ---------- */
+  .selbar{display:flex;align-items:center;gap:14px;padding:13px 16px;background:var(--chip);
+    border-radius:11px;margin-bottom:26px;font-size:14px}
+  .selbar .c{font-weight:600}
+  .selbar .sp{flex:1}
+  .btn{font-size:13.5px;color:var(--sec);padding:6px 12px;border-radius:8px;border:1px solid var(--bd)}
+  .btn.on{color:var(--cream);background:var(--app);border-color:var(--bdh)}
+  .btn.plain{border-color:transparent}
+
+  /* ---------- breadcrumb ---------- */
+  .bc{display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--muted);margin-bottom:10px}
+  .bc .sep{opacity:.5}
+
+  /* ---------- save flow ---------- */
+  .flow{display:flex;gap:56px;align-items:flex-start;justify-content:center;flex-wrap:wrap;padding:0 34px}
+  .tcard{width:352px;border:1px solid var(--bd);border-radius:14px;background:var(--thread);padding:20px;
+    position:relative}
+  .tcard .line{font-size:16px;max-width:none}
+  .bmk{position:absolute;top:18px;right:19px;color:var(--accent)}
+  .pop{width:296px;border:1px solid var(--bdh);border-radius:14px;background:var(--chip);padding:8px;
+    box-shadow:0 12px 32px rgba(0,0,0,.4)}
+  .pop .ph{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);padding:10px 12px 8px}
+  .pi{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:9px;font-size:14.5px}
+  .pi.on{background:rgba(255,255,255,.055)}
+  .pi .bg{font-size:11px;color:var(--muted);border:1px solid var(--bd);border-radius:5px;padding:2px 7px}
+  .pi .n{margin-left:auto;color:var(--muted);font-size:13px}
+  .pi .ck{margin-left:auto;color:var(--accent)}
+  .pdiv{height:1px;background:var(--bd);margin:7px 10px}
+  .pin{flex:1;background:var(--app);border:1px solid var(--bd);border-radius:8px;padding:8px 11px;
+    color:var(--muted);font-size:14px}
+  .toast{margin-top:22px;display:inline-flex;gap:11px;align-items:center;font-size:14px;color:var(--sec);
+    background:var(--chip);border-radius:10px;padding:12px 16px}
+  .toast b{color:var(--cream);font-weight:500}
+  .toast .ch{color:var(--cream);opacity:.85}
+
+  /* ---------- empty ---------- */
+  .empty{padding:64px 34px;text-align:center}
+  .empty .cst{color:var(--muted);letter-spacing:7px;font-size:13px;margin-bottom:22px;opacity:.7}
+  .empty h3{font-size:19px;font-weight:600;letter-spacing:-.018em;margin-bottom:10px}
+  .empty p{font-size:14.5px;color:var(--muted);max-width:400px;margin:0 auto 24px;line-height:1.65}
+  .cta{display:inline-block;font-size:14px;background:var(--cream);color:#1a1a19;border-radius:9px;
+    padding:10px 18px;font-weight:550;letter-spacing:-.005em}
+
+  /* ---------- notes / audit ---------- */
+  .why{margin-top:96px;border-top:1px solid var(--bd);padding-top:44px}
+  .why h2{font-size:19px;font-weight:600;letter-spacing:-.018em;margin-bottom:8px}
+  .why .lead{font-size:14.5px;color:var(--muted);margin-bottom:34px;max-width:620px;line-height:1.7}
+  .wi{display:flex;gap:26px;padding:20px 0;border-top:1px solid var(--bd);max-width:900px}
+  .wi h3{font-size:14.5px;font-weight:550;color:var(--cream);flex:0 0 240px;line-height:1.5;letter-spacing:-.008em}
+  .wi p{font-size:14px;color:var(--sec);line-height:1.7;flex:1}
+</style>
+</head>
+<body>
+<div class="board">
+  <div class="doc-kicker">Library v2 · rev 4 · lane/library-rework</div>
+  <h1 class="top">A collection, not an inventory</h1>
+  <p class="lede">
+    Rev 3 was readable but it read as an <b>admin table</b> — a divider under every row, four facts
+    middot-chained into one grey string, everything at a single weight. This is a tool for writing,
+    so rev 4 gives the writing room: borderless rows separated by space, an icon anchor carrying type
+    identity, and metadata cut to the two facts that matter. The palette is unchanged and deliberately
+    monochrome — the craft has to come from spacing and type.
+  </p>
+
+  <!-- ================= 01 ================= -->
+  <div class="screen-label"><span class="no">01</span><span class="name">Library</span></div>
+  <div class="frame"><div class="page">
+    <div class="sh">
+      <div><div class="title">Library</div><div class="sub">14 saved · 2 projects</div></div>
+      <div class="tools">
+        <div class="search">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14" stroke-linecap="round"/></svg>
+          Search your library
+        </div>
+        <div class="sortbtn">Recent
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+            <path d="M4 6.5 8 10.5l4-4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="sect"><span class="t">Projects</span></div>
+    <div class="list">
+      <div class="proj hov">
+        <span class="ico">
+          <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M2.5 5.5A1.5 1.5 0 0 1 4 4h3.4a1.5 1.5 0 0 1 1.2.6l.8 1.1h6.6A1.5 1.5 0 0 1 17.5 7v7.5a1.5 1.5 0 0 1-1.5 1.5H4a1.5 1.5 0 0 1-1.5-1.5v-9Z" stroke-linejoin="round"/></svg>
+        </span>
+        <span><span class="pn">Launch video #3</span><div class="pd">3 hooks · 2 scripts · 2 ideas · 1 read</div></span>
+        <span class="pr">2 days ago
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+            <path d="M6 3.5 10.5 8 6 12.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      </div>
+      <div class="proj">
+        <span class="ico">
+          <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M2.5 5.5A1.5 1.5 0 0 1 4 4h3.4a1.5 1.5 0 0 1 1.2.6l.8 1.1h6.6A1.5 1.5 0 0 1 17.5 7v7.5a1.5 1.5 0 0 1-1.5 1.5H4a1.5 1.5 0 0 1-1.5-1.5v-9Z" stroke-linejoin="round"/></svg>
+        </span>
+        <span><span class="pn">Q3 cooking niche</span><div class="pd">2 reads · 2 hooks · 1 outlier</div></span>
+        <span class="pr">5 days ago
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+            <path d="M6 3.5 10.5 8 6 12.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      </div>
+      <div class="proj new">
+        <span class="ico">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+            <path d="M8 3.5v9M3.5 8h9" stroke-linecap="round"/></svg>
+        </span>
+        New project
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="sect"><span class="t">Unfiled</span></div>
+      <div class="facets">
+        <span class="facet on">All <span class="n">6</span></span>
+        <span class="facet">Hooks <span class="n">2</span></span>
+        <span class="facet">Ideas <span class="n">2</span></span>
+        <span class="facet">Reads <span class="n">1</span></span>
+        <span class="facet">Outliers <span class="n">1</span></span>
+      </div>
+
+      <div class="list">
+        <div class="item hov">
+          <span class="ico">
+            <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M11 2.5 4.5 11h4l-.5 6.5L15.5 9h-4l-.5-6.5Z" stroke-linejoin="round"/></svg>
+          </span>
+          <span class="body">
+            <div class="line">“Nobody tells you the first 10k followers are the easy part.”</div>
+            <div class="sub"><span class="src">Hook ideas for Q3</span><span class="dot-sep">·</span>4 days ago</div>
+          </span>
+          <span class="right">
+            <span class="act">Write script →</span>
+            <span class="more"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <circle cx="3" cy="8" r="1.3"/><circle cx="8" cy="8" r="1.3"/><circle cx="13" cy="8" r="1.3"/></svg></span>
+          </span>
+        </div>
+
+        <div class="item">
+          <span class="ico">
+            <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M3 4.5h5a2.5 2.5 0 0 1 2 1 2.5 2.5 0 0 1 2-1h5v10h-5a2.5 2.5 0 0 0-2 1 2.5 2.5 0 0 0-2-1H3v-10Z" stroke-linejoin="round"/><path d="M10 5.5v10"/></svg>
+          </span>
+          <span class="body">
+            <div class="line">Lever → pace in the first two seconds</div>
+            <div class="proof"><span class="bdot"></span>Strong · 7 of 10 stopped scrolling
+              <span class="qt">“The pace held me — I wanted the payoff.”</span></div>
+            <div class="sub"><span class="src">Test — kitchen POV cut</span><span class="dot-sep">·</span>yesterday</div>
+          </span>
+          <span class="right"><span class="act">Open the read →</span>
+            <span class="more"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <circle cx="3" cy="8" r="1.3"/><circle cx="8" cy="8" r="1.3"/><circle cx="13" cy="8" r="1.3"/></svg></span></span>
+        </div>
+
+        <div class="item">
+          <span class="ico">
+            <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M3 13.5 7.5 9l3 3L17 5.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M13 5.5h4v4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </span>
+          <span class="body">
+            <div class="line q">60s pantry restock, no voiceover</div>
+            <div class="sub"><span class="src">Discover</span><span class="dot-sep">·</span>Jul 26</div>
+          </span>
+          <span class="right"><span class="metric">14× baseline</span><span class="thumb"></span></span>
+        </div>
+
+        <div class="item">
+          <span class="ico">
+            <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M7.5 15.5h5M8 13c-2-1.2-3.2-3-3.2-5A5.2 5.2 0 0 1 10 2.8 5.2 5.2 0 0 1 15.2 8c0 2-1.2 3.8-3.2 5v1.2H8V13Z" stroke-linejoin="round"/></svg>
+          </span>
+          <span class="body">
+            <div class="line">Week of $10 dinners — one episode per night</div>
+            <div class="sub"><span class="src">Ideas — budget series</span><span class="dot-sep">·</span>5 days ago</div>
+          </span>
+          <span class="right"><span class="act">Develop into hooks →</span>
+            <span class="more"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <circle cx="3" cy="8" r="1.3"/><circle cx="8" cy="8" r="1.3"/><circle cx="13" cy="8" r="1.3"/></svg></span></span>
+        </div>
+
+        <div class="item">
+          <span class="ico">
+            <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+              <rect x="2.5" y="5.5" width="15" height="11" rx="1.5"/><path d="M2.5 8.5h15M6 5.5 8 2.8M11 5.5 13 2.8"/></svg>
+          </span>
+          <span class="body">
+            <div class="line">Pantry restock ASMR — v2</div>
+            <div class="sub"><span class="src">Script from hook #2</span><span class="dot-sep">·</span>4 days ago</div>
+          </span>
+          <span class="right"><span class="act">Test full script →</span>
+            <span class="more"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <circle cx="3" cy="8" r="1.3"/><circle cx="8" cy="8" r="1.3"/><circle cx="13" cy="8" r="1.3"/></svg></span></span>
+        </div>
+      </div>
+    </div>
+  </div></div>
+  <p class="note">
+    <b>The sentence is the interface.</b> Content sits at 16.5px with a 56-character measure, so a hook
+    reads the way it will read on screen. Beneath it, two facts only — where it came from and when —
+    because rank and archetype are detail for the detail view, not for scanning. Rows have no dividers;
+    space separates them and hover lifts the one under the cursor, which is what makes a list feel
+    handled rather than tabulated.
+  </p>
+  <p class="note">
+    The icon tile does the work a coloured type-chip would have done, without spending colour the system
+    reserves for liveness. The single exception is the read: its band dot is the one sanctioned data
+    tone, and it earns the only green on the page. Actions and the ⋯ menu fade in on hover in
+    already-reserved space, so nothing moves.
+  </p>
+
+  <!-- ================= 02 ================= -->
+  <div class="screen-label"><span class="no">02</span><span class="name">Filing — selection</span></div>
+  <div class="frame"><div class="page">
+    <div class="sh"><div><div class="title">Library</div><div class="sub">14 saved · 2 projects</div></div></div>
+    <div class="selbar">
+      <span class="c">3 selected</span><span class="sp"></span>
+      <span class="btn on">Move to project</span><span class="btn">Remove</span><span class="btn plain">Cancel</span>
+    </div>
+    <div class="list">
+      <div class="item hov">
+        <span class="check on"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="#2a1212" stroke-width="2.4">
+          <path d="M3.5 8.5 6.5 11.5 12.5 4.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        <span class="body">
+          <div class="line">“Nobody tells you the first 10k followers are the easy part.”</div>
+          <div class="sub"><span class="src">Hook ideas for Q3</span><span class="dot-sep">·</span>4 days ago</div>
+        </span>
+      </div>
+      <div class="item hov">
+        <span class="check on"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="#2a1212" stroke-width="2.4">
+          <path d="M3.5 8.5 6.5 11.5 12.5 4.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        <span class="body">
+          <div class="line">“This took 31 takes. Here’s take 31.”</div>
+          <div class="sub"><span class="src">Hook ideas for Q3</span><span class="dot-sep">·</span>4 days ago</div>
+        </span>
+      </div>
+      <div class="item hov">
+        <span class="check on"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="#2a1212" stroke-width="2.4">
+          <path d="M3.5 8.5 6.5 11.5 12.5 4.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        <span class="body">
+          <div class="line">Week of $10 dinners — one episode per night</div>
+          <div class="sub"><span class="src">Ideas — budget series</span><span class="dot-sep">·</span>5 days ago</div>
+        </span>
+      </div>
+      <div class="item">
+        <span class="check"></span>
+        <span class="body">
+          <div class="line">Lever → pace in the first two seconds</div>
+          <div class="sub"><span class="src">Test — kitchen POV cut</span><span class="dot-sep">·</span>yesterday</div>
+        </span>
+      </div>
+    </div>
+  </div></div>
+  <p class="note">
+    <b>Filing is the reason this rework exists</b>, so it gets a real mode rather than a per-item menu.
+    The icon tile becomes the checkbox in place — same position, same footprint, no reflow — and the
+    proof and action lines drop away, because while you are filing you are sorting, not reading.
+    Shift-click takes a range, ⌘A takes the visible set, so “file all my hooks” is three actions.
+  </p>
+
+  <!-- ================= 03 ================= -->
+  <div class="screen-label"><span class="no">03</span><span class="name">Inside a project</span></div>
+  <div class="frame"><div class="page">
+    <div class="sh tall">
+      <div>
+        <div class="bc">Library <span class="sep">›</span> Project</div>
+        <div class="title">Launch video #3</div>
+        <div class="sub">8 items from 3 threads · updated 2 days ago</div>
+      </div>
+      <div class="tools"><span class="btn plain">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style="display:inline-block;vertical-align:-3px">
+        <circle cx="3" cy="8" r="1.3"/><circle cx="8" cy="8" r="1.3"/><circle cx="13" cy="8" r="1.3"/></svg></span></div>
+    </div>
+
+    <div class="sect"><span class="t">Hooks</span></div>
+    <div class="list">
+      <div class="item">
+        <span class="ico"><svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M11 2.5 4.5 11h4l-.5 6.5L15.5 9h-4l-.5-6.5Z" stroke-linejoin="round"/></svg></span>
+        <span class="body">
+          <div class="line">“I filmed the same recipe 4 times so you don’t have to.”</div>
+          <div class="sub"><span class="src">Hook ideas for Q3</span><span class="dot-sep">·</span>4 days ago</div>
+        </span>
+      </div>
+      <div class="item">
+        <span class="ico"><svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M11 2.5 4.5 11h4l-.5 6.5L15.5 9h-4l-.5-6.5Z" stroke-linejoin="round"/></svg></span>
+        <span class="body">
+          <div class="line">“This took 31 takes. Here’s take 31.”</div>
+          <div class="sub"><span class="src">Hook ideas for Q3</span><span class="dot-sep">·</span>4 days ago</div>
+        </span>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="sect"><span class="t">Scripts</span></div>
+      <div class="list">
+        <div class="item">
+          <span class="ico"><svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="2.5" y="5.5" width="15" height="11" rx="1.5"/><path d="M2.5 8.5h15M6 5.5 8 2.8M11 5.5 13 2.8"/></svg></span>
+          <span class="body">
+            <div class="line">Launch teaser — hard cut open</div>
+            <div class="sub">4 beats, ~28s<span class="dot-sep">·</span><span class="src">Script from hook #1</span></div>
+          </span>
+        </div>
+        <div class="item">
+          <span class="ico"><svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="2.5" y="5.5" width="15" height="11" rx="1.5"/><path d="M2.5 8.5h15M6 5.5 8 2.8M11 5.5 13 2.8"/></svg></span>
+          <span class="body">
+            <div class="line">Pantry restock ASMR — v2</div>
+            <div class="sub">5 beats, ~42s<span class="dot-sep">·</span><span class="src">Script from hook #2</span></div>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="sect"><span class="t">Read</span></div>
+      <div class="list">
+        <div class="item">
+          <span class="ico"><svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M3 4.5h5a2.5 2.5 0 0 1 2 1 2.5 2.5 0 0 1 2-1h5v10h-5a2.5 2.5 0 0 0-2 1 2.5 2.5 0 0 0-2-1H3v-10Z" stroke-linejoin="round"/><path d="M10 5.5v10"/></svg></span>
+          <span class="body">
+            <div class="line">Lever → the title card’s promise</div>
+            <div class="proof"><span class="bdot"></span>Strong · 8 of 10 watched to the end
+              <span class="qt">“It promised a payoff and the pacing kept it honest.”</span></div>
+            <div class="sub"><span class="src">Test — teaser rough cut</span><span class="dot-sep">·</span>yesterday</div>
+          </span>
+        </div>
+      </div>
+    </div>
+  </div></div>
+  <p class="note">
+    <b>A project reads in working order</b> — the hooks you wrote, the scripts built from them, the read
+    that judged the cut. Grouping by type replaces the filter row entirely, and at eight items that is
+    both fewer controls and a truer picture. The subtitle counts threads as well as items, because a
+    project legitimately spans several and that is the fact a filter would hide.
+  </p>
+
+  <!-- ================= 04 ================= -->
+  <div class="screen-label"><span class="no">04</span><span class="name">Saving</span></div>
+  <div class="frame">
+    <div class="flow">
+      <div>
+        <div class="tcard">
+          <span class="bmk"><svg width="15" height="17" viewBox="0 0 16 18" fill="currentColor">
+            <path d="M3 2h10v14l-5-3.4L3 16V2Z"/></svg></span>
+          <div class="line">“Nobody tells you the first 10k followers are the easy part.”</div>
+          <div class="sub">Contrarian · ranked 2 of 6</div>
+        </div>
+        <div class="toast">
+          <svg width="13" height="15" viewBox="0 0 16 18" fill="var(--accent)"><path d="M3 2h10v14l-5-3.4L3 16V2Z"/></svg>
+          Saved to <b>Launch video #3</b><span class="ch">Change</span>
+        </div>
+      </div>
+      <div class="pop">
+        <div class="ph">Save to</div>
+        <div class="pi on">Launch video #3 <span class="bg">this thread</span>
+          <span class="ck"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3.5 8.5 6.5 11.5 12.5 4.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+        <div class="pi">Q3 cooking niche <span class="n">5</span></div>
+        <div class="pdiv"></div>
+        <div class="pi">Library — unfiled <span class="n">6</span></div>
+        <div class="pdiv"></div>
+        <div class="pi"><span class="pin">New project…</span><span class="btn on">Create</span></div>
+      </div>
+    </div>
+
+    <div class="page" style="margin-top:64px">
+      <div class="sect"><span class="t">First run — saves, no projects yet</span></div>
+      <div class="list"><div class="proj new">
+        <span class="ico"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+          <path d="M8 3.5v9M3.5 8h9" stroke-linecap="round"/></svg></span>
+        Group your saves into a project</div></div>
+      <div class="empty">
+        <div class="cst">· ·  ·   ·  · ·</div>
+        <h3>Nothing in your Library yet</h3>
+        <p>Save a read, idea, hook or outlier from any thread and it lands here — ready to pull back in.</p>
+        <span class="cta">Start a simulation</span>
+      </div>
+    </div>
+  </div>
+  <p class="note">
+    <b>The default destination is inferred, not remembered.</b> Saves now carry their thread id, so the
+    picker can default to the project this thread already feeds and badge it — visible, not silent.
+    “Last used” would have quietly filed a hook into a project you touched weeks ago. Clicking a filled
+    bookmark un-saves, and saved state is read from the store, so an already-saved card renders filled
+    on mount everywhere it appears.
+  </p>
+
+  <!-- ================= why ================= -->
+  <div class="why">
+    <h2>What changed in rev 4</h2>
+    <p class="lead">The complaint was that rev 3 didn’t feel like a shipped product. It didn’t —
+      it had the shape of an internal tool. These are the specific causes.</p>
+
+    <div class="wi"><h3>Dividers on every row made it a table</h3>
+      <p>A hairline under each item reads as data, and data reads as work. Rows are now separated by
+        space and grouped by a rounded hover surface — the item under the cursor lifts, nothing else
+        draws a line.</p></div>
+    <div class="wi"><h3>Four facts middot-chained into one grey string</h3>
+      <p>“Hook · Contrarian, ranked 2 of 6 · Hook ideas for Q3 · 4d” is debug output. The subtitle is
+        now source and time only; rank and archetype belong to the detail view, and the type is carried
+        by the icon rather than repeated in words.</p></div>
+    <div class="wi"><h3>No type identity</h3>
+      <p>Every row looked the same, so the eye had nothing to anchor to. A 34px icon tile per type gives
+        each row a fixed left anchor and makes a mixed list legible at a glance — without spending the
+        accent, which stays reserved for liveness.</p></div>
+    <div class="wi"><h3>Too tight, and one weight throughout</h3>
+      <p>Content moved to 16.5px on a 56-character measure with negative tracking; padding and section
+        spacing roughly doubled. Fewer items are visible per screen, and that is the point.</p></div>
+  </div>
+
+  <div class="why">
+    <h2>Decisions carried forward</h2>
+    <p class="lead">Verified against globals.css and saved-item-card.tsx rather than recalled.</p>
+    <div class="wi"><h3>Accent is liveness, never decoration</h3>
+      <p>A bookmark on every shelf row carried no information — everything on the shelf is saved.
+        Accent now appears only on the checked box, the in-thread bookmark, and the save confirmation.</p></div>
+    <div class="wi"><h3>Forward actions already exist per type</h3>
+      <p>“Write script →”, “Develop into hooks →”, “Test full script →” ship today in
+        saved-item-card.tsx:46. An earlier draft replaced them with one generic button, which was a
+        regression.</p></div>
+    <div class="wi"><h3>The card grid broke its own sort</h3>
+      <p>CSS multicol fills column by column, so under “Recent” the second-newest sat below the newest,
+        not beside it. Rows are ordered by construction.</p></div>
+    <div class="wi"><h3>Provenance is the point of phase 1</h3>
+      <p>Today ref_id is written by none of the eleven renderers and thread_id by one, so all ten live
+        saved rows are orphans with no way back to the thread that made them. Every “from …” line in
+        this sketch depends on fixing that first.</p></div>
+  </div>
+</div>
+</body>
+</html>

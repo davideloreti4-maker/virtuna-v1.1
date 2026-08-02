@@ -14,20 +14,24 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
+import { csrfGuard } from "@/lib/http/csrf-guard";
 import {
   listSavedItems,
   createSavedItem,
   deleteSavedItem,
+  setSavedItemsProject,
   type SavedItemType,
 } from "@/lib/shelf/shelf-repo";
+import { touchProject } from "@/lib/shelf/projects-repo";
 
+// `remix` added / `format` dropped 2026-08-02 — see the SavedItemType docblock in shelf-repo.
 const ITEM_TYPES: readonly SavedItemType[] = [
   "read",
   "idea",
   "hook",
   "script",
   "outlier",
-  "format",
+  "remix",
 ];
 
 function isItemType(value: string | null): value is SavedItemType {
@@ -97,6 +101,58 @@ export async function POST(request: Request) {
     }
     console.error("[saved] POST error:", error);
     return Response.json({ error: "Failed to save item" }, { status: 500 });
+  }
+}
+
+/**
+ * PATCH /api/saved — file items into a project, or unfile them.
+ *
+ * Body: { ids: string[], project_id: string | null }  (null unfiles)
+ *
+ * Bulk by design: this is what the shelf's selection mode drives, so "file all my hooks" is one
+ * request rather than one per row. projects-repo verifies the target project belongs to the
+ * caller before writing; RLS scopes the update itself.
+ */
+export async function PATCH(request: Request) {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const guard = csrfGuard(request);
+    if (guard) return guard;
+
+    const body = (await request.json().catch(() => null)) as
+      | { ids?: unknown; project_id?: unknown }
+      | null;
+
+    if (!body || !Array.isArray(body.ids) || body.ids.some((id) => typeof id !== "string")) {
+      return Response.json({ error: "ids must be an array of strings" }, { status: 400 });
+    }
+    if (body.project_id !== null && typeof body.project_id !== "string") {
+      return Response.json({ error: "project_id must be a string or null" }, { status: 400 });
+    }
+
+    const projectId = body.project_id as string | null;
+    const updated = await setSavedItemsProject(supabase, body.ids as string[], projectId);
+
+    // Filing activity is what "updated 2 days ago" reports, so touch the destination. Best
+    // effort inside the repo: the filing already landed and must not be reported as failed.
+    if (projectId && updated > 0) await touchProject(supabase, projectId);
+
+    return Response.json({ updated });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "unknown";
+    if (message.startsWith("invalid saved item input")) {
+      return Response.json({ error: message }, { status: 400 });
+    }
+    console.error("[saved] PATCH error:", error);
+    return Response.json({ error: "Failed to file saved items" }, { status: 500 });
   }
 }
 
