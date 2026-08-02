@@ -27,7 +27,7 @@ import { buildCardRewrite } from '@/components/audience-lens/card-rewrite';
 import { SimDoor } from './sim-door';
 import { ProofReceipt, NoSourceNote } from './proof-receipt';
 import { SaveAffordance } from '@/components/thread/save-affordance';
-import { CardPrimaryAction, CardActionBar, SECTION_LABEL } from './card-primitives';
+import { CardPrimaryAction, CardActionBar, CardHero, SECTION_LABEL } from './card-primitives';
 import { CaretToggle } from './caret-toggle';
 
 export interface IdeaCardRendererProps {
@@ -110,10 +110,13 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
           "they all should have their value, atm they kinda look the same"). No Copy affordance —
           an idea is a brief you develop, not a line you lift (that's the Hook card). */}
       <div className="flex flex-col gap-3 px-4 pb-3 pt-4">
-        {/* Title — the hero, alone on its row like the hook card's hero line. The old amber
-            "YOUR TAKE" pill competed with the title in uppercase chrome; the your-take signal
-            moved onto the Take cell below, where the take it qualifies actually lives. */}
-        <h3 className="font-serif text-heading font-medium leading-[1.3] tracking-[-0.005em] text-foreground">{title}</h3>
+        {/* Title — the hero, on the shared <CardHero> row (the header contract, 2026-08-02). The
+            right slot is deliberately EMPTY: an idea is a brief you develop, not a line you lift,
+            so there is nothing here to copy — the affordance would be chrome pretending to be a
+            deliverable. `h3` because this hero is a genuine title, unlike the quoted lines the
+            other cards hero. The old amber "YOUR TAKE" pill competed with it in uppercase chrome;
+            that signal moved onto the Take cell below, where the take it qualifies actually lives. */}
+        <CardHero as="h3">{title}</CardHero>
 
         {/* Angle — the concept's premise + the muted "fits because" clause (whyItFits folded in).
             Joined by the system's `·`, never an em dash (locked wording, handoff §7.6). */}

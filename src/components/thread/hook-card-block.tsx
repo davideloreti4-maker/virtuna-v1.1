@@ -21,7 +21,6 @@
  */
 
 import { useState } from 'react';
-import { Copy, Check } from '@phosphor-icons/react';
 import type { HookCardBlock } from '@/lib/tools/blocks';
 import { useOnWriteScriptHook } from '@/lib/hook-test-context';
 import { cardScrollQuoteReactions } from '@/components/audience-lens/flat-card-reactions';
@@ -29,7 +28,7 @@ import { buildCardRewrite } from '@/components/audience-lens/card-rewrite';
 import { SimDoor } from './sim-door';
 import { ProofReceipt, NoSourceNote } from './proof-receipt';
 import { SaveAffordance } from '@/components/thread/save-affordance';
-import { CardPrimaryAction, CardActionBar, SECTION_LABEL } from './card-primitives';
+import { CardPrimaryAction, CardActionBar, CardHero, CopyAffordance, SECTION_LABEL } from './card-primitives';
 import { CaretToggle } from './caret-toggle';
 
 export interface HookCardRendererProps {
@@ -78,20 +77,6 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
   const hasSeed = seedHook !== hookLine;
   const hasDelivery = Boolean(channel);
 
-  // Copy — a hook is a line you USE, so the card offers the one-tap copy that text-on-a-card
-  // never did (owner 2026-07-22). Clipboard is guarded (absent in the happy-dom test env).
-  const [copied, setCopied] = useState(false);
-  function handleCopy() {
-    if (typeof navigator === 'undefined' || !navigator.clipboard) return;
-    navigator.clipboard.writeText(hookLine).then(
-      () => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1600);
-      },
-      () => {},
-    );
-  }
-
   return (
     <div
       className="elev-rest overflow-hidden rounded-xl border border-white/[0.06] bg-surface-sunken"
@@ -99,44 +84,18 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
     >
       {/* FACE — always visible (D-11) */}
       <div className="flex flex-col gap-3 px-4 pb-3 pt-4">
-        {/* HERO ROW — rank gutter · the hook · Copy. The rank and Copy used to sit alone in a
-            header band above the hook, which rendered as an almost-empty strip across the top of
-            every card (owner-flagged 2026-08-02). They are meta ABOUT the hook, so they now ride
-            the hook's own row: a quiet numeral in the left gutter, Copy pinned right, one row
-            instead of two. The archetype/rank EYEBROW stays retired (2026-07-21).
-
-            Hook line — the hero deliverable, set in the EDITORIAL SERIF (Newsreader, the brand's
-            voice-moment face) at 21px. The serif + size gives the card a crafted focal point
-            instead of another block of Inter — the fix for "still looks bland" (owner 2026-07-22).
-            This is a genuine hero/voice-moment, the one place the design system sanctions serif. */}
-        <div className="flex items-baseline gap-3">
-          {typeof rank === 'number' && rank > 0 && (
-            <span className="shrink-0 text-label font-semibold tabular-nums text-foreground-muted">
-              #{rank}
-            </span>
-          )}
-          <p className="min-w-0 flex-1 font-serif text-heading font-medium leading-[1.3] tracking-[-0.005em] text-foreground">
-            {hookLine}
-          </p>
-          <button
-            type="button"
-            onClick={handleCopy}
-            aria-label="Copy hook to clipboard"
-            className="inline-flex shrink-0 items-center gap-1 text-label font-medium text-foreground-muted transition-colors hover:text-foreground-secondary"
-          >
-            {copied ? (
-              <>
-                <Check size={13} weight="bold" aria-hidden="true" />
-                Copied
-              </>
-            ) : (
-              <>
-                <Copy size={13} aria-hidden="true" />
-                Copy
-              </>
-            )}
-          </button>
-        </div>
+        {/* HERO ROW — rank gutter · the hook · Copy. This row IS the header contract's reference
+            shape: the other four cards were refitted to it, and it now comes from <CardHero>
+            rather than being hand-rolled here (2026-08-02). Rank and Copy used to sit alone in a
+            header band above the hook — an almost-empty strip across the top of every card
+            (owner-flagged). They are meta ABOUT the hook, so they ride the hook's own row. The
+            archetype/rank EYEBROW stays retired (2026-07-21). */}
+        <CardHero
+          gutter={typeof rank === 'number' && rank > 0 ? `#${rank}` : undefined}
+          affordance={<CopyAffordance text={hookLine} aria-label="Copy hook to clipboard" />}
+        >
+          {hookLine}
+        </CardHero>
 
         {/* Visual hook — the FIRST-FRAME technique that opens the video: the *execution* of the
             spoken line above, not a second hook. The technique name is a real first-frame

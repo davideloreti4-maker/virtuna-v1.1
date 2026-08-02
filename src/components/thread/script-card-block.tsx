@@ -17,7 +17,7 @@
  */
 
 import { useState } from 'react';
-import { Copy, Check, VideoCamera } from '@phosphor-icons/react';
+import { VideoCamera } from '@phosphor-icons/react';
 import type { ScriptCardBlock } from '@/lib/tools/blocks';
 import { useOnTestScript } from '@/lib/script-test-context';
 import { cardScrollQuoteReactions } from '@/components/audience-lens/flat-card-reactions';
@@ -25,7 +25,7 @@ import { buildCardRewrite } from '@/components/audience-lens/card-rewrite';
 import { SimDoor } from './sim-door';
 import { ProofReceipt, NoSourceNote } from './proof-receipt';
 import { SaveAffordance } from '@/components/thread/save-affordance';
-import { CardPrimaryAction, CardActionBar, SECTION_LABEL } from './card-primitives';
+import { CardPrimaryAction, CardActionBar, CardHero, CopyAffordance, SECTION_LABEL } from './card-primitives';
 import { CaretToggle } from './caret-toggle';
 
 export interface ScriptCardRendererProps {
@@ -44,8 +44,18 @@ export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRend
   // "See the room →" fires the real opener reaction. Absent provenance ⇒ legacy MEASURED (back-compat).
   const projected = provenance === 'projected';
 
-  // The topic·format meta line (a script realizes a topic in a format). Either may be absent.
+  // The opener — what the creator says at 0s, and this card's authored hero line (header
+  // contract). Same expression the door and the Test handoff resolve, so all three agree.
+  const opener = openingBeatSeed || (beats[0]?.content ?? '');
+
+  // The quiet meta line under the hero: beat count · format · topic (a script realizes a topic in
+  // a format — owner 2026-07-22). Each part omitted when absent (honesty).
   const metaBits = [format, topic].filter((s): s is string => typeof s === 'string' && s.length > 0);
+  const metaLine = [`${beats.length} ${beats.length === 1 ? 'beat' : 'beats'}`, ...metaBits].join(' · ');
+
+  // Copy takes the WHOLE beat sheet — a script is the one Make output you want to lift in full
+  // (the Hook card copies a single line).
+  const scriptText = beats.map((b) => `[${b.label} · ${b.timing}]\n${b.content}`).join('\n\n');
 
   // Read ScriptTestContext — enables ScriptThreadView to provide the handler without
   // prop-drilling through MessageBlocks (mirrors HookCardRenderer + HookTestContext).
@@ -54,9 +64,8 @@ export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRend
   // Resolve: explicit prop > context > null (stub)
   const onTest = onTestProp ?? (onTestCtx
     ? () => {
-        const openerLine = openingBeatSeed || (beats[0]?.content ?? '');
         const brief = beats.map((b) => `[${b.label}] ${b.content}`).join(' / ').slice(0, 400);
-        onTestCtx(openerLine, brief);
+        onTestCtx(opener, brief);
       }
     : undefined);
 
@@ -71,65 +80,32 @@ export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRend
     });
   }
 
-  // Copy the WHOLE beat sheet — a script is the one Make output you want to lift in full (the
-  // Hook card copies a single line; here Copy grabs every beat). Clipboard guarded for happy-dom.
-  const [copied, setCopied] = useState(false);
-  function handleCopyScript() {
-    if (typeof navigator === 'undefined' || !navigator.clipboard) return;
-    const scriptText = beats
-      .map((b) => `[${b.label} · ${b.timing}]\n${b.content}`)
-      .join('\n\n');
-    navigator.clipboard.writeText(scriptText).then(
-      () => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1600);
-      },
-      () => {},
-    );
-  }
-
   return (
     <div
       className="elev-rest overflow-hidden rounded-xl border border-white/[0.06] bg-surface-sunken"
       aria-label="Script card"
     >
-      {/* HEADER — a script IS a beat sheet, so the card names it and offers Copy-the-whole-thing
-          (owner 2026-07-22: each Make card should lead with its own value; the script's value is
-          the beat STRUCTURE). Grounding receipt sits under it when the run was sourced. */}
-      <div className="flex flex-col gap-3 px-4 pt-4">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-2">
-            <p className={SECTION_LABEL}>
-              {beats.length} {beats.length === 1 ? 'beat' : 'beats'}
-            </p>
-            {/* Topic · Format — a script realizes a topic in a format (owner 2026-07-22). Muted
-                meta beside the beat count; each half omitted when absent (honesty). */}
-            {metaBits.length > 0 && (
-              <>
-                <span className="text-foreground-muted/50" aria-hidden="true">·</span>
-                <p className="truncate text-label text-foreground-muted">{metaBits.join(' · ')}</p>
-              </>
-            )}
-          </div>
-          <button
-            type="button"
-            onClick={handleCopyScript}
-            aria-label="Copy the full script to clipboard"
-            className="inline-flex shrink-0 items-center gap-1 text-label font-medium text-foreground-muted transition-colors hover:text-foreground-secondary"
-          >
-            {copied ? (
-              <>
-                <Check size={13} weight="bold" aria-hidden="true" />
-                Copied
-              </>
-            ) : (
-              <>
-                <Copy size={13} aria-hidden="true" />
-                Copy
-              </>
-            )}
-          </button>
-        </div>
+      {/* HEADER — the shared <CardHero> row (the header contract, 2026-08-02). The card used to
+          open with an uppercase meta strip (`5 BEATS · Talking-head · Creator growth`), which
+          made it the one Make card whose head was chrome rather than content. The OPENER is what
+          the creator actually says at 0s, so it heroes; the meta demotes to a quiet line beneath
+          it, and Copy-the-whole-beat-sheet rides the hero row (a script is the one Make output
+          you lift in full).
+
+          ⚠️ The opener now appears TWICE — here, and as the HOOK beat in the timeline below.
+          Accepted by design: the beat row carries the timing, the filming cue and the retention
+          reasoning the hero cannot. Flagged for owner review. */}
+      <div className="flex flex-col gap-1.5 px-4 pt-4">
+        <CardHero
+          affordance={
+            <CopyAffordance text={scriptText} aria-label="Copy the full script to clipboard" />
+          }
+        >
+          {opener}
+        </CardHero>
+        {/* Beat count · format · topic — a script realizes a topic in a format (owner 2026-07-22).
+            Each half omitted when absent (honesty). */}
+        <p className="truncate text-label text-foreground-muted">{metaLine}</p>
       </div>
 
       {/* BEATS — the SCRIPT CARD'S SIGNATURE: a TIMELINE. A left timing column + a connecting rail
@@ -238,13 +214,13 @@ export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRend
         fraction={fraction}
         suffix="opener only"
         flatPersonas={cardScrollQuoteReactions(fraction, scrollQuote)}
-        conceptText={openingBeatSeed || (beats[0]?.content ?? '')}
+        conceptText={opener}
         population={population}
         rewrite={buildCardRewrite({
           skill: 'script',
           fraction,
           scrollQuote,
-          conceptText: openingBeatSeed || (beats[0]?.content ?? ''),
+          conceptText: opener,
           platform: 'tiktok',
         })}
         label={projected ? 'Simulate this opener with your audience' : 'See how your audience reacted to this opener'}

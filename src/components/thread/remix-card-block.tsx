@@ -11,8 +11,10 @@
  * learn-from-it → make-yours pipeline, not a wall of teardown.
  *
  *  - Flat matte, warm-cream, band color used once (the ProofUnit dot), sage/soft-coral palette.
- *  - Row map: Hook (hookPattern → adaptedHook serif + Copy) · The turn (theTurn → angle) ·
- *    Format (formatBorrowed → your shots). Structure + Emotional beat stay on the expand.
+ *  - Hero: adaptedHook (serif + Copy) — the header contract, 2026-08-02. It used to live in the
+ *    right cell of map row 1, so the card opened on someone else's post.
+ *  - Row map: Their hook (hookPattern, full width now its pair is the hero) · The turn (theTurn →
+ *    angle) · Format (formatBorrowed → your shots). Structure + Emotional beat stay on the expand.
  *  - "How to film your version" foot block (production) mirrors the Script card.
  *  - ONE shared <SimDoor> (2026-08-02: replaces the on-face ProofUnit — a projected card
  *    carries no verdict apparatus; a legacy measured card keeps its "adapted hook" fraction).
@@ -22,7 +24,7 @@
  */
 
 import { useContext, useState } from 'react';
-import { Copy, Check, VideoCamera } from '@phosphor-icons/react';
+import { VideoCamera } from '@phosphor-icons/react';
 import type { RemixCardBlock } from '@/lib/tools/blocks';
 import { useOnDevelopRemix } from '@/lib/remix-develop-context';
 import { PlatformContext } from '@/lib/platform-context';
@@ -31,7 +33,7 @@ import { buildCardRewrite } from '@/components/audience-lens/card-rewrite';
 import { SimDoor } from './sim-door';
 import { CoverFill } from '@/components/primitives/CoverFill';
 import { SaveAffordance } from '@/components/thread/save-affordance';
-import { CardPrimaryAction, CardActionBar, SECTION_LABEL } from './card-primitives';
+import { CardPrimaryAction, CardActionBar, CardHero, CopyAffordance, SECTION_LABEL } from './card-primitives';
 import { CaretToggle } from './caret-toggle';
 
 export interface RemixCardRendererProps {
@@ -73,25 +75,26 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
 
   const [expanded, setExpanded] = useState(false);
 
-  // Copy the adapted hook — the remix's deliverable IS a line. Clipboard guarded for happy-dom.
-  const [copied, setCopied] = useState(false);
-  function handleCopy() {
-    if (typeof navigator === 'undefined' || !navigator.clipboard) return;
-    navigator.clipboard.writeText(adaptedHook).then(
-      () => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1600);
-      },
-      () => {},
-    );
-  }
-
   return (
     <div
       className="elev-rest @container overflow-hidden rounded-xl border border-white/[0.06] bg-surface-sunken"
       aria-label={`Remix: ${adaptedHook.slice(0, 60)}`}
     >
       <div className="flex flex-col gap-3 px-4 pb-3 pt-4">
+        {/* HERO — the adapted hook, on the shared <CardHero> row (the header contract, 2026-08-02).
+            It used to be buried in the right cell of map row 1, which meant the card opened on its
+            SOURCE (someone else's post) and the creator's own deliverable came third. The remix's
+            output is a line you lift, exactly like the hook card's, so it leads and carries Copy.
+            The map keeps the decode; row 1 is now a full-width "Their hook" so the adapted line is
+            not printed twice. */}
+        <CardHero
+          affordance={
+            <CopyAffordance text={adaptedHook} aria-label="Copy adapted hook to clipboard" />
+          }
+        >
+          {adaptedHook}
+        </CardHero>
+
         {/* Source strip — the post this remix adapts, ATTRIBUTED. A flat one-line row, not the
             boxed compact receipt: the box hugged its content and left the rest of the head band
             empty (the near-empty-strip pattern the owner keeps flagging). The reference reads as
@@ -118,36 +121,13 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
             columns — and worse, the single-column order interleaved the old column headers so
             "Your version" captioned the original's cell. Pairs now stack together. */}
         <div className="overflow-hidden rounded-lg border border-white/[0.06]">
-          {/* Row 1 — Hook: pattern → your adapted hook (the serif deliverable + Copy) */}
+          {/* Row 1 — Their hook, FULL WIDTH. The paired "Your hook" cell is gone: its content
+              (adaptedHook + Copy) is the card's hero now, and printing the deliverable twice on
+              one card is the repeat the owner keeps flagging. What survives is the decode this
+              row exists for — the PATTERN the original ran, which the hero is the answer to. */}
           <MapRow
             leftLabel="Their hook"
             left={<p className="text-body leading-relaxed text-foreground-muted">{sourceDecode.hookPattern}</p>}
-            rightLabel="Your hook"
-            right={
-              <div className="flex items-start justify-between gap-2">
-                <p className="font-serif text-subhead font-medium leading-[1.3] tracking-[-0.005em] text-foreground">
-                  {adaptedHook}
-                </p>
-                <button
-                  type="button"
-                  onClick={handleCopy}
-                  aria-label="Copy adapted hook to clipboard"
-                  className="mt-0.5 inline-flex shrink-0 items-center gap-1 text-label font-medium text-foreground-muted transition-colors hover:text-foreground-secondary"
-                >
-                  {copied ? (
-                    <>
-                      <Check size={13} weight="bold" aria-hidden="true" />
-                      Copied
-                    </>
-                  ) : (
-                    <>
-                      <Copy size={13} aria-hidden="true" />
-                      Copy
-                    </>
-                  )}
-                </button>
-              </div>
-            }
           />
 
           {/* Row 2 — The turn: original reversal → your angle */}
@@ -274,7 +254,10 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
 
 /** One row of the decode→adapt map: the original's element beside (wide card) or above (narrow
  *  card) your version. The split keys on the CARD's width via container query — a media query
- *  cannot see the constraint that matters (a 342px card inside an arbitrary viewport). */
+ *  cannot see the constraint that matters (a 342px card inside an arbitrary viewport).
+ *
+ *  Omit `right`/`rightLabel` for a FULL-WIDTH single cell (row 1 "Their hook", whose paired
+ *  deliverable moved to the card hero) — a half-empty pair cell reads as missing data. */
 function MapRow({
   leftLabel,
   left,
@@ -284,14 +267,23 @@ function MapRow({
 }: {
   leftLabel: string;
   left: React.ReactNode;
-  rightLabel: string;
-  right: React.ReactNode;
+  rightLabel?: string;
+  right?: React.ReactNode;
   last?: boolean;
 }) {
+  const divider = last ? '' : 'border-b border-white/[0.06]';
+
+  if (right == null) {
+    return (
+      <div className={`px-3.5 py-3 ${divider}`}>
+        <p className={`mb-1 ${SECTION_LABEL}`}>{leftLabel}</p>
+        {left}
+      </div>
+    );
+  }
+
   return (
-    <div
-      className={`grid grid-cols-1 @min-[480px]:grid-cols-2 ${last ? '' : 'border-b border-white/[0.06]'}`}
-    >
+    <div className={`grid grid-cols-1 @min-[480px]:grid-cols-2 ${divider}`}>
       <div className="px-3.5 py-3">
         <p className={`mb-1 ${SECTION_LABEL}`}>{leftLabel}</p>
         {left}

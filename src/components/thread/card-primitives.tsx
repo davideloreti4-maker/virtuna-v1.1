@@ -9,6 +9,8 @@
  *
  * These are the shapes the cards now import instead of re-declaring:
  *   - <CardEyebrow>       §0.5.1 — the quiet kicker row (dot + uppercase label + right meta)
+ *   - <CardHero>          THE HEADER CONTRACT — the one opening row every card wears
+ *   - <CopyAffordance>    the one-tap copy button (was hand-rolled three times)
  *   - <CardPrimaryAction> §0.5.7 — the ONE cream forward-chain button (was 7 copies of a
  *                         200-char class string, each drifting by a `transition-*` / `disabled:*`)
  *   - <CardActionBar>     §0.5.7 — the footer row: primary first, Save as an ml-auto icon
@@ -17,7 +19,8 @@
  * Guarded by section-label-scale.test.ts (the label idiom) + radius-scale.test.ts (corners).
  */
 
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
+import { Copy, Check } from '@phosphor-icons/react';
 import Link from 'next/link';
 
 /**
@@ -63,6 +66,114 @@ export function CardEyebrow({
       </span>
       {meta != null && <span className="shrink-0">{meta}</span>}
     </div>
+  );
+}
+
+/**
+ * CardHero — THE HEADER CONTRACT (2026-08-02). Every actively-generating card opens with the
+ * SAME row, so a thread of mixed cards reads as one system.
+ *
+ * The owner flagged five cards opening five different ways: the hook led with `#N · serif line ·
+ * Copy`, the idea with a bare serif title, the script with an uppercase meta strip, the remix
+ * with its source zone (its own serif deliverable buried mid-map), the Test card with a label
+ * strip. The fix is a PRIMITIVE, not five hand-rolled rows — the same move that stopped the FEET
+ * drifting (<CardActionBar>).
+ *
+ * The row: an optional left gutter meta (the hook's rank), the SERIF hero — the card's authored
+ * deliverable, set in Newsreader, the brand's voice-moment face, at 21px — and an optional right
+ * affordance (usually <CopyAffordance>). Baseline-aligned so the gutter numeral and the Copy
+ * label sit on the hero's first-line baseline.
+ *
+ * The serif is deliberate and load-bearing: it is the one place the design system sanctions a
+ * voice-moment face, and it is what marks "this line is the thing you take away" versus the
+ * Inter chrome around it. A card with no authored line has NOTHING to hero — it must keep its
+ * eyebrow rather than fabricate a voice (the video Test card is that sanctioned exception).
+ */
+export function CardHero({
+  gutter,
+  children,
+  affordance,
+  as: Tag = 'p',
+  className,
+}: {
+  /** Optional left-gutter meta — the hook's `#N` rank. Omit ⇒ the hero starts at the edge. */
+  gutter?: ReactNode;
+  /** The hero line itself (the authored deliverable). */
+  children: ReactNode;
+  /** Optional right-pinned affordance — <CopyAffordance> on every card that ships a liftable line. */
+  affordance?: ReactNode;
+  /** `h3` for a card whose hero is a genuine TITLE (the idea brief); `p` for a quoted line. */
+  as?: 'p' | 'h3';
+  className?: string;
+}) {
+  return (
+    <div className={`flex items-baseline gap-3${className ? ` ${className}` : ''}`}>
+      {gutter != null && (
+        <span className="shrink-0 text-label font-semibold tabular-nums text-foreground-muted">
+          {gutter}
+        </span>
+      )}
+      <Tag className="min-w-0 flex-1 font-serif text-heading font-medium leading-[1.3] tracking-[-0.005em] text-foreground">
+        {children}
+      </Tag>
+      {affordance != null && <span className="shrink-0">{affordance}</span>}
+    </div>
+  );
+}
+
+/**
+ * CopyAffordance — the one-tap copy button. A card's hero is a line the creator came here to
+ * USE, so it ships with copy; this was hand-rolled three times (hook line, script beat sheet,
+ * remix adapted hook) and each copy was free to drift.
+ *
+ * The visible label stays "Copy" everywhere — the header row is uniform by design; WHAT gets
+ * copied is carried by `aria-label`, not by five different button words. Flips to `Check +
+ * Copied` for 1600ms. The clipboard call is guarded: `navigator.clipboard` is absent in the
+ * happy-dom test env, and an unguarded read throws there.
+ */
+export function CopyAffordance({
+  text,
+  'aria-label': ariaLabel,
+  className,
+}: {
+  /** The exact string written to the clipboard. */
+  text: string;
+  /** Names what is copied ("Copy the full script to clipboard") — the visible label is just "Copy". */
+  'aria-label': string;
+  className?: string;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  function handleCopy() {
+    if (typeof navigator === 'undefined' || !navigator.clipboard) return;
+    navigator.clipboard.writeText(text).then(
+      () => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1600);
+      },
+      () => {},
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      aria-label={ariaLabel}
+      className={`inline-flex shrink-0 items-center gap-1 text-label font-medium text-foreground-muted transition-colors hover:text-foreground-secondary${className ? ` ${className}` : ''}`}
+    >
+      {copied ? (
+        <>
+          <Check size={13} weight="bold" aria-hidden="true" />
+          Copied
+        </>
+      ) : (
+        <>
+          <Copy size={13} aria-hidden="true" />
+          Copy
+        </>
+      )}
+    </button>
   );
 }
 
