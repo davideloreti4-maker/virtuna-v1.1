@@ -764,3 +764,49 @@ see the trap list below).
    walk computed style for `backgroundImage`/`boxShadow`/`backdropFilter` = 0 and count coral zones.
 3. `node scripts/build-insights-review-artifact.mjs` → Artifact tool with the URL above.
 4. Commit atomically (auto-push hook runs; verify `git rev-parse origin/task/insights-rework`).
+
+---
+
+## 14. Rev 9 — each page answers its own question (2026-08-02)
+
+**The owner's brief** (verbatim intent): review what renders live on the brain + population pages
+and audit the sketch's three pages — "we have a lot of metrics which maybe should be on another
+page better, and we have some stuff that's missing on the brain page"; refine for UI/UX/user
+value/flow.
+
+**The audit confirmed the diagnosis exactly.** The page the owner renamed *Brain* contained no
+brain: its two content cards were watch metrics (readings of Engagement's retention instrument)
+and traffic sources (a who/where fact). The live brain tab's actual brain material — the
+plain-word network reads, the moment-anchored synthesis — existed in the mock only as raw σ bars
+inside the drawer. Fresh live captures (post-grounding): `live-*.png`, re-shot 2026-08-02.
+
+**What moved (all in the one mockup file):**
+- **Key metrics → Engagement**, under the Retention instrument, 3-up (`.tiles.t3`). "Watched past
+  0:03" DIED in the move — the curve's anno + hero figread already state it; one fact, once.
+  Its insight ("Only the hook is broken") became Brain's third beat.
+- **Where it would surface → Audience** (video only) · **Best window → Audience** (both kinds —
+  TikTok keeps best-time-to-post under Followers).
+- **NEW "What the brain saw" on Brain** (video only — text's brain read stays the reason bars,
+  §3.3 inversion): three time-anchored beats (`BEATS`), no numbers (every % it could show already
+  lives in figread/answer), break beat reads by weight, not coral. Sourced from the live rail's
+  material: visual +0.35σ open, dorsal −0.73σ at the break, the flat tail of CURVE.
+- **The swing restored** as a `.swline` riding the Almost segment's voice ("Win these 201:
+  stopped 38% → 47%" — the live rail's numbers). "tap to hear them" meta → "1,000 simulated"
+  (right-meta only where the label IS data, the 7.2 rule).
+- **The drawer names its calibration** — "your 4.2k followers · confidence 0.82" (the shipped
+  trust strip the mock had dropped).
+
+Verified: 11 states re-shot (`rev9-*.png`), 28 probes PASS (structure, scrub sync, applied-state
+flips incl. watch tiles via `setTab` — NOTE: probing applied-state across tabs must use `setTab`,
+`setKind` resets `applied`), law walk 0 violations, ≤1 coral zone per page, artifact re-verified
+under full network block. Republished to the SAME review URL.
+
+**Live-only bugs found during the audit** (for the implementation session):
+- `AudienceDepth` amplification kicker renders "WHO SPREADS ITMODELED REACH" — kicker and tag
+  collide, no separator.
+- The text fixture reuses one quote across two coded reasons twice over ("took too long…" on both
+  Strong hook ×224 AND Too slow ×63; "curious enough…" on both On-topic interest AND Weak hook) —
+  and "Strong hook" sits in the LEAKING (coral) half, which reads as polarity drift.
+- Still open from §13: §3.2 (reasons absent on real video drills — blocker), cortex repaint after
+  trim, text-sim dead rows, the seven shipped-only blocks awaiting the owner's ruling (amplification
+  ×5.1 and audience-fit index bars are the two with real user value not yet in the mock).

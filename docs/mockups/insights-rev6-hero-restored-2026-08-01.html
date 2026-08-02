@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Insights rev 8 — the fix acts, the evidence folds</title>
+<title>Insights rev 9 — each page answers its own question</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400&display=swap" rel="stylesheet">
@@ -217,6 +217,20 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 .tile em{font-style:normal;display:block;font-size:11px;color:var(--dim);
   font-variant-numeric:tabular-nums;margin-top:3px}
 .tile.lead{background:var(--chip-on)}
+.tiles.t3{grid-template-columns:repeat(3,1fr)}
+
+/* what the brain saw — the model's read of the clip, one beat per row. No numbers: every % this
+   page could show already lives in the figread or the answer, and the raw scales live in the
+   drawer. The break beat reads by weight (cream), never by a second coral. */
+.beat{display:flex;align-items:center;gap:11px;padding:9px 0;border-bottom:1px solid var(--border)}
+.beat:last-child{border-bottom:0;padding-bottom:2px}
+.beat i{font-style:normal;width:40px;flex:none;font:500 11.5px Inter;color:var(--faint);
+  font-variant-numeric:tabular-nums}
+.beat .nm{flex:1;min-width:0;font-size:12.5px;color:var(--dim)}
+.beat.key .nm{color:var(--cream);font-weight:500}
+.beat .ar{flex:none;font-size:11px;color:var(--faint)}
+/* the swing — folded into the segment it names, not a section of its own */
+.swline{margin-top:8px;font:500 11.5px Inter;color:var(--dim);font-variant-numeric:tabular-nums}
 
 /* retention figure — the read is annotated ON the figure, not written under it */
 .curvewrap{margin-top:12px;cursor:ew-resize;touch-action:none;position:relative}
@@ -372,9 +386,10 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 <aside class="ctl">
   <div class="brandline"></div>
   <h1>Ambient Audience · insight drill</h1>
-  <p class="lede">Revision 8 — the fix stops being a sentence and becomes a control. One unit on the
-    surface, the instrument folded one tap down, coral spent exactly once per screen, and the
-    action follows you to the bottom of the page.</p>
+  <p class="lede">Revision 9 — every block moved to the page whose question it answers. The Brain
+    page finally reads like the brain: the watch metrics joined the retention instrument on
+    Engagement, discovery and the posting window joined the room on Audience, and in their place
+    Brain gained the model’s own read of the clip.</p>
 
   <h2>Stimulus</h2>
   <div class="grp">
@@ -391,28 +406,27 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 
   <h2>Try this first</h2>
   <ol class="steps">
-    <li><b>Press “Trim 0:00–0:03”</b> on Brain. It re-simulates: the answer becomes a
-      before → after, the cortex repaints, the tiles move, and Engagement’s curve redraws against
-      the old one. <b>Undo</b> puts it back.</li>
-    <li><b>Switch to Audience or Engagement.</b> Those pages carry no fix of their own, so the same
-      button rides at the foot of the rail — and goes quiet the moment the fix is applied. The
-      drill no longer dead-ends in an explainer.</li>
-    <li><b>Open “How these numbers are made”</b> at the bottom. The nine signals, the σ bars and
-      the per-second grid live there now — demoted, not deleted.</li>
-    <li><b>Tap a row in “What they did”</b> on Audience to hear that segment speak.</li>
+    <li><b>Read Brain top to bottom.</b> Cortex → the answer with the fix → “What the brain saw”,
+      the model’s read of the clip in three beats. No watch metrics, no traffic — brain only.</li>
+    <li><b>Press “Trim 0:00–0:03”.</b> It re-simulates: the answer becomes a before → after, the
+      beats flip, and on Engagement the watch tiles and the curve redraw. <b>Undo</b> puts it back.</li>
+    <li><b>Switch to Engagement.</b> The retention instrument now keeps its own readings — Avg
+      watch, Watched full, Rewatch sit directly under it.</li>
+    <li><b>On Audience, tap “Almost”.</b> The segment speaks, and the swing rides with it: win
+      these 201 and stopped goes 38% → 47%. Discovery and Best window live here now too.</li>
   </ol>
 
   <h2>Calls you may want to reverse</h2>
   <ul class="calls">
-    <li><b>The hero now states the loss, not the keep.</b> It read <code>38% · would stop</code>
-      over an answer saying “62% leave” — but <code>CURVE[3]=.38</code> is who <em>stays</em>, and
-      the room row means <em>stopped scrolling</em>. It now reads <code>62% · leave by 0:03</code>.</li>
-    <li><b>Coral once per screen.</b> The tiles, the insights and the dot rows gave it up; the
-      answer block keeps it. Loss reads by position and weight instead.</li>
-    <li><b>The stat row is dimmed</b> to 11.5px faint — projections for an unposted video should
-      not be the loudest data on the page.</li>
-    <li><b>The primary button is cream-filled.</b> The system says active is cream on a lighter
-      fill, never coral — so the one action is the brightest object on the surface.</li>
+    <li><b>The watch tiles left Brain for Engagement.</b> They are readings of the retention
+      instrument. “Watched past 0:03” died in the move — the curve’s annotation and the hero
+      already state it, and a page must not say one fact twice.</li>
+    <li><b>Traffic and Best window left for Audience.</b> Both are who/where facts; TikTok itself
+      keeps best-time-to-post under Followers. Brain was the TL;DR page holding reach data.</li>
+    <li><b>“What the brain saw” is new.</b> Three time-anchored beats, no numbers — every % it
+      could show already lives in the figread or the answer. The raw scales stay in the drawer.</li>
+    <li><b>The drawer now names its calibration</b> — “your 4.2k followers · confidence 0.82”,
+      the trust line the shipped rail carries and the mock had dropped.</li>
   </ul>
 
   <p class="note-foot">Mockup only. The cortex and terrain heroes are stills cropped from the
@@ -532,17 +546,18 @@ const ROOM=[
 /* key-metric tiles — label · value · delta vs the creator's own median. `lead` = the metric the
    answer is about; it reads first by position and by a lighter fill, never by colour. */
 const TILES={
-  videoBrain:[
-    {n:"Watched past 0:03", v:"38%",  d:"↓20 pts vs median", lead:1},
-    {n:"Avg watch",         v:"9.7s", d:"↓1.5s · of 0:28"},
-    {n:"Watched full",      v:"3.1%", d:"↓6.3 pts"},
-    {n:"Rewatch",           v:"1.19×",d:"↑0.15 · top fifth"},
+  /* rev 9: the watch metrics moved to Engagement, where the retention instrument is — they are
+     readings OF that instrument. "Watched past 0:03" died in the move: the curve's anno and the
+     hero figread already state it, and a page must not say one fact twice. */
+  videoWatch:[
+    {n:"Avg watch",    v:"9.7s", d:"↓1.5s · of 0:28"},
+    {n:"Watched full", v:"3.1%", d:"↓6.3 pts"},
+    {n:"Rewatch",      v:"1.19×",d:"↑0.15 · top fifth"},
   ],
-  videoBrainDone:[
-    {n:"Watched past 0:03", v:"89%",  d:"↑31 pts vs median", lead:1},
-    {n:"Avg watch",         v:"16.4s",d:"↑5.2s · of 0:25"},
-    {n:"Watched full",      v:"9.8%", d:"↑0.4 pts"},
-    {n:"Rewatch",           v:"1.19×",d:"↑0.15 · top fifth"},
+  videoWatchDone:[
+    {n:"Avg watch",    v:"16.4s",d:"↑5.2s · of 0:25"},
+    {n:"Watched full", v:"9.8%", d:"↑0.4 pts"},
+    {n:"Rewatch",      v:"1.19×",d:"↑0.15 · top fifth"},
   ],
   textBrain:[
     {n:"Novel to them",v:"63%",  d:"↓14 pts", lead:1},
@@ -566,6 +581,23 @@ const TILES={
   ],
 };
 
+/* What the brain saw — the model's read of the clip in three beats (video only: a text sim has
+   no timeline, its brain read IS the reason bars). Sourced from the live rail's material: visual
+   +0.35σ / 68 strong at the open, dorsal attention −0.73σ at the break (the unlock's "too slow"),
+   and the near-flat tail of CURVE (.38 → .21 over 25s). */
+const BEATS={
+  video:[
+    {t:"0:00", r:"Visual pull opens strong",       d:"up"},
+    {t:"0:03", r:"Focus snaps — payoff too far",   d:"down", key:1},
+    {t:"after",r:"The tail barely leaks",          d:"up"},
+  ],
+  videoDone:[
+    {t:"0:00", r:"The number opens a loop",        d:"up"},
+    {t:"0:03", r:"The old break holds",            d:"up", key:1},
+    {t:"after",r:"Payoff lands with the room",     d:"up"},
+  ],
+};
+
 const REASONS=[
   {n:"Already heard it", v:37, lead:1},{n:"No proof shown", v:24, lead:0},
   {n:"Genuinely useful", v:21, lead:0},{n:"Too abstract",   v:11, lead:0},
@@ -580,7 +612,9 @@ const VOICES=[
 /* what each room segment says — the AudienceTab already ships onInterview(who) */
 const SEGV={
   "builders":[{w:"Maya",t:"builder",q:"finally someone said the quiet part",n:412}],
-  "learners":[{w:"Ana",t:"learner",q:"saving this — what counts as a format though?",n:174}],
+  /* the swing rides with the segment it names (live rail: "win them and the room moves 38% → 47%") */
+  "learners":[{w:"Ana",t:"learner",q:"saving this — what counts as a format though?",n:174,
+    sw:"Win these 201: stopped 38% → 47%"}],
   "skeptics":[{w:"Dev",t:"skeptic",q:"sounds like everyone else on here",n:218}],
   "drive-by":[{w:"Sam",t:"tough crowd",q:"easy to say when the reach is already there",n:96}],
 };
@@ -609,7 +643,7 @@ const ico=(k,sz=14,st="#ece7de")=>`<svg width="${sz}" height="${sz}" viewBox="0 
    right-meta survives only where it carries data, not description. */
 const ch=(t,r='')=>`<div class="chead"><div class="l"><h3>${t}</h3></div>
   ${r?`<span class="r">${r}</span>`:''}</div>`;
-const tiles=rs=>`<div class="tiles">${rs.map(t=>
+const tiles=(rs,cls='')=>`<div class="tiles${cls?' '+cls:''}">${rs.map(t=>
   `<div class="tile ${t.lead?'lead':''}"><i>${t.n}</i><b>${t.v}</b><em>${t.d}</em></div>`).join('')}</div>`;
 const insight=t=>`<div class="insight"><span>${t}</span></div>`;
 const lgRows=rs=>rs.map(r=>`<div class="lg"><s style="background:${r.c}"></s>
@@ -760,15 +794,23 @@ function brainTab(){
     </div>`
   + foot();
 
+  /* rev 9: the Brain page carries the BRAIN. The watch tiles moved to Engagement (readings of the
+     retention instrument) and traffic moved to Audience (a who/where fact) — what was missing here
+     was the model's own read, which only existed as raw σ bars in the drawer. */
   return hero("cortex","Predicted cortex",applied?"after the trim":"at the break",v[0],v[1],
       applied?d.figreadDone:d.figread)
   + answerBlock()
-  + `<div class="card">${ch('Key metrics','vs your last 41')}
-      ${tiles(TILES[applied?'videoBrainDone':'videoBrain'])}
-      ${insight(applied?`The room reaches the payoff.`:`Only the hook is broken.`)}
-    </div>`
-  + surfaceCard()
+  + beatsCard()
   + foot();
+}
+
+/* the brain's read — time · beat · direction. The break beat reads by weight, not colour. */
+function beatsCard(){
+  return `<div class="card">${ch('What the brain saw')}
+    <div style="margin-top:4px">${(applied?BEATS.videoDone:BEATS.video).map(b=>`
+      <div class="beat${b.key?' key':''}"><i>${b.t}</i><span class="nm">${b.r}</span>
+        <span class="ar">${b.d==="down"?"↓":"↑"}</span></div>`).join('')}</div>
+  </div>`;
 }
 
 function audience(){
@@ -791,7 +833,7 @@ function audience(){
           ${insight(`Followers hold. For You is gone by 0:02.`)}`
         : `<div style="margin-top:5px">${lgRows(POOLS.map((p,i)=>({n:p.n,v:p.pct+"%",c:c[i]})))}</div>`}
     </div>`
-  + `<div class="card">${ch('What they did','tap to hear them')}
+  + `<div class="card">${ch('What they did','1,000 simulated')}
       <div style="margin-top:2px">${ROOM.map(([n,v,who])=>{
         const lit=Math.round(v/1000*18);let d='';
         for(let i=0;i<18;i++)d+=`<s${i<lit?` style="background:rgba(236,231,222,.78)"`:''}></s>`;
@@ -805,13 +847,19 @@ function audience(){
             <p class="vq">${x.q}</p>
             <div class="vecho"><i>${x.n} would echo this</i>
               <span class="t"><s style="width:${(x.n/412*100).toFixed(0)}%"></s></span></div>
+            ${x.sw?`<div class="swline">${x.sw}</div>`:''}
           </div>`).join('')}</div>`:''}`;}).join('')}</div>
       ${insight(`The 201 “almost” are the winnable ones.`)}
     </div>`
+  /* rev 9: discovery + the posting window are WHO facts — they live with the room now.
+     TikTok itself keeps best-time-to-post under Followers. */
+  + (kind==="video"?surfaceCard():'')
+  + windowCard()
   + foot();
 }
 
-/* Traffic sources live on Brain (page 1), where TikTok has them */
+/* Traffic sources — a who/where fact, so it lives with the room (rev 9; it sat on Brain before,
+   which left the Brain page carrying reach data and no brain). */
 function surfaceCard(){
   return `<div class="card">${ch('Where it would surface')}
       <div class="mix">
@@ -838,19 +886,26 @@ function engagement(){
           <span class="t"><s style="width:${(x.n/412*100).toFixed(0)}%"></s></span></div>
       </div>`).join('')}</div>
     </div>`)
+  /* rev 9: the watch tiles arrive from Brain — they are readings of THIS page's instrument.
+     No insight line: their fact ("only the hook is broken") is Brain's third beat now. */
+  + (v?`<div class="card">${ch('Key metrics','vs your last 41')}
+      ${tiles(TILES[applied?'videoWatchDone':'videoWatch'],'t3')}
+    </div>`:'')
   + `<div class="card">${ch('Projected reaction','per reach')}
       ${tiles(TILES[v?'videoEngage':'textEngage'])}
       ${insight(v
         ? `Everyone who stays converts.`
         : `Argues well, travels badly.`)}
     </div>`
-  + `<div class="card">${ch('Best window','followers online')}
+  + foot();
+}
+
+/* Best window — followers-online, a WHO fact: rendered by Audience (rev 9). */
+const windowCard=()=>`<div class="card">${ch('Best window','followers online')}
       <div class="pw">${["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map((d,i)=>
         `<div class="${i===1?'best':''}">${i===1?'<u class="hr">7–9pm</u>':''}<s style="height:${
           [17,38,24,29,20,32,11][i]}px"></s><i>${d}</i></div>`).join('')}</div>
-    </div>`
-  + foot();
-}
+    </div>`;
 
 /* ── the method drawer ──────────────────────────────────────────────────── */
 /* Deterministic, so a screenshot of this page is reproducible. Retention carries most of the
@@ -894,7 +949,8 @@ function methodPanel(){
     ${isText?`<p class="mdead">Visual, Audio and Face carry no signal — a text concept has no video
       substrate. They are shown flat rather than hidden so the grid stays the same instrument
       across both.</p>`:''}
-    <p class="mnote">Modeled from your audience’s real retention · not a brain measurement.</p>
+    <p class="mnote">Modeled from your audience’s real retention · calibrated on your 4.2k
+      followers · confidence 0.82 · not a brain measurement.</p>
   </div>`;
 }
 const foot=()=>`<button class="foot" aria-expanded="${method}">
