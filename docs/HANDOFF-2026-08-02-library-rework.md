@@ -1,8 +1,12 @@
 # Library rework — handoff, 2026-08-02
 
 **Lane:** `lane/library-rework` · worktree `~/virtuna-library-rework` · cut from `origin/main` `96ccff5b`
-**State:** design converged (owner sign-off), phase 1a shipped and verified on the lane. Nothing merged to `main`.
-**Sketch:** `public/_sketch-library-v2.html` — open it directly with `open`, it is self-contained.
+**State:** **phase 1 and phase 2 both COMPLETE on the lane** — rev 5 design, the repaired save loop,
+projects, the project detail route. tsc clean · **4996 tests pass, 0 fail** · verified live signed in.
+Nothing merged to `main`. ⚠️ The four DDL changes are ALREADY APPLIED to the shared prod database
+(see §11) — they are additive and backward-compatible with what `main` currently serves.
+**Sketch:** `public/_sketch-library-v5.html` is the build target. Rev 4 (`_sketch-library-v2.html`)
+is kept for comparison; §10 lists the eleven things rev 5 changed and how each was found.
 
 | Commit | What |
 |---|---|
@@ -11,6 +15,7 @@
 | `d88fd316` | sketch rev 3 — rows, not cards |
 | `628d873a` | sketch rev 4 — craft pass ← **owner signed off on this one** |
 | `a5327d72` | **phase 1a — a save records the thread and block it came from** |
+| this session | **rev 5 + phase 1 remaining + phase 2** — §9–§11 |
 
 ---
 
@@ -106,11 +111,20 @@ for; **thread-aware save default** (if this thread already feeds a project, that
 "this thread" — "last used" would silently misfile); **grouping by type inside a project**, replacing
 filter chips; **global search results mode** badging each hit with its project.
 
-Open questions the owner has not ruled on:
-- Does grouping-by-type in project detail beat keeping filter chips there?
-- Should a project support **manual ordering**? For a launch video, hook → script → read is a
-  sequence, not a set.
-- Should the Unfiled shelf collapse behind a toggle once projects exist?
+Open questions — **all three RULED ON this session** (owner: "go for your recommendation"):
+- **Grouping-by-type wins** in project detail; the filter row is gone there. Order is the pipeline
+  (§R5-7). Chips stay on the Unfiled shelf, where the list is mixed and unordered.
+- **No manual ordering.** The pipeline already tells the sequence story a hand-sorted list would,
+  and it needs no `position` column, no drag library, and no reordering-under-optimistic-updates
+  reconciliation. Revisit only if the fixed order proves wrong in use.
+- **Unfiled stays visible.** It is the inbox you are meant to clear; collapsing it hides the work
+  the rework exists to make easy. Its *label* is omitted when no projects exist — "Unfiled" means
+  nothing when nothing is filed.
+
+A fourth decision the sketch never posed: **clicking a row expands it in place** (§R5-4). Rev 4
+justified its two-fact subtitle by moving rank and archetype "to the detail view" and then never
+drew one. Expanding beats navigating because filing is the point — a click that leaves the shelf
+costs you your place and your selection.
 
 ## 5. Phase 1a — SHIPPED (`a5327d72`)
 
@@ -147,7 +161,10 @@ The new tests assert the **mutation payload, not the DOM** — a card that rende
 posts a null ref is the exact bug being fixed, and it is invisible to any test that only checks the
 button exists.
 
-## 6. Phase 1 — REMAINING
+## 6. Phase 1 — remaining items, ALL SHIPPED this session
+
+Every numbered item below is done. Kept as written so the original scope is auditable; §9 records
+what each turned into, including the two that were **wrong as specified**.
 
 1. **UNIQUE `(user_id, item_type, ref_id)`** + decide backfill vs grandfather for the 10 existing
    rows (all have `ref_id = null`, so a partial index `WHERE ref_id IS NOT NULL` is the clean move).
@@ -188,3 +205,122 @@ Then **phase 2**: the `projects` table (new, `saved_items` RLS idiom, nullable `
 `main` deploys on merge — production builds ~3s later and there are no preview URLs. A green Vercel
 check on a PR is **not** a build (`ignoreCommand` skips and posts success), so run `tsc` yourself;
 vitest does not typecheck.
+
+---
+
+## 9. What shipped this session
+
+**Two items in §6 were wrong as specified.** Both were found by checking the codebase instead of
+implementing the instruction:
+
+- **§6.5 "resolve `thread_id` to `/home?thread=…`" — that route does not exist.** Nothing in the app
+  reads a thread search param (`grep -rn searchParams src/app/(app)/home/` is empty). Linking there
+  would have opened whichever thread was already active and looked like a working deep link. The
+  real contract is a four-step client handshake, which only `Sidebar.handleOpenThread` implemented:
+  `setActiveThreadCookie(id)` → `setActiveThreadId(id)` → `switchThread()` → `router.push('/home')`.
+  Extracted to **`src/hooks/useOpenThread.ts`** so the Library and the sidebar cannot drift; a
+  hand-rolled second copy that forgets `switchThread()` opens the thread server-side while the
+  composer keeps rendering the previous one. Deliberately does NOT POST `/activate` — re-opening a
+  thread must not bump `updated_at` and jump it to the top of history.
+- **§6.4 `format`** — dropped from the TS union, the zod enum and the filter bar, but **left in the
+  DB CHECK**. Narrowing a constraint buys nothing and would reject a legacy write. 0 rows exist.
+
+The rest, as specified:
+
+| § | What landed |
+|---|---|
+| 6.1 | Partial `UNIQUE (user_id, item_type, ref_id) WHERE ref_id IS NOT NULL`. The 10 pre-provenance rows are **grandfathered, not backfilled** — their origin is genuinely unknown and a full index would have collapsed them into one row per (user, type), silently deleting saves. `createSavedItem` now treats a 23505 as **idempotent**: it returns the existing row, so a double-click converges instead of 500ing. |
+| 6.2 | `useSavedItemByRef(item_type, ref_id)` derives saved state from the store, so a card renders filled **on mount**, a second click un-saves, and no duplicate is written. An identity-less block (a live run, `/dev/cards`) keeps the old per-mount flag and does not offer un-save — it has no row id. |
+| 6.3 | `remix` is a real type end to end: DB CHECK, union, zod, label, icon, plural, pipeline slot, and its own forward step ("Write hooks for this"). `remix-card-block` stopped saving as `hook`. |
+| 6.6 | `library/loading.tsx` now renders the **same `PageShell` + `ShelfSkeleton`** the page renders. It was wrong twice over — `max-w-5xl` (1024px) against an 880px page, and a masonry-card shape — while its own comment claimed it matched "verbatim". Correct by construction now, not by assertion. |
+
+**Phase 2** — `library_projects` (new table, `saved_items` RLS idiom), nullable
+`saved_items.project_id`, `/api/projects` + `/api/projects/[id]`, `PATCH /api/saved` for bulk
+filing, the rev-5 shelf, `/library/[projectId]`, and the destination picker. The dead
+`public.projects` table is untouched (still 2 seeded `'My Boards'` rows on `#FF7F50`).
+
+**Deleting a project never deletes work.** `project_id` is `ON DELETE SET NULL`, so its items unfile
+and reappear under Unfiled. Verified live: deleted a project holding 3 filed items → 10 saved rows
+still present, 0 filed. The toast says so, because deleting a folder otherwise reads like deleting
+what is in it.
+
+### Verified live, signed in, on the real 10 rows — not just asserted
+
+| Claim | Measured |
+|---|---|
+| the rail's numbers form a column | all 10 metric right edges at **1056px**, identical |
+| entering selection does not move content (§R5-2) | content left **463px** selected *and* unselected |
+| selected ≠ hovered (§R5-1) | `rgba(255,99,99,0.055)` + inset accent ring vs `#252524` |
+| the expansion aligns with its row | **0px** on both edges; detail text indent **0px** vs row content |
+| the unused poster column was waste | dropping it took content **440px → 486px** |
+| type is on-scale | header **22px**, content line **16px**, zero half-pixel sizes |
+| the sort is fixed | 10 stamps strictly descending; no `columns-*` in the DOM |
+| the projects loop works | created a project, ⇧-range-selected 3, filed them (Unfiled 10→7), project read "2 hooks · 1 read", detail grouped **Hooks → Reads** |
+
+## 10. Rev 5 — the eleven changes to a signed-off design
+
+Rev 4 was signed off, so nothing in rev 5 is taste. Each item was measured. Full annotated list is
+in the sketch's own audit section; the three that matter most to a reader:
+
+- **§R5-3 the band is not read-only data.** Rev 4 called the band dot "the read's proof — the only
+  colour on the shelf". The live store says **8 of 10 rows carry a band**: hook, idea and script
+  snapshots all persist `band`/`fraction`/`scrollQuote`. Rendered rev 4's way that is colour on
+  almost every row; dropped, it discards the product's core signal. It moved to the **right rail**
+  as one string with the tone on one word, sharing the column with the outlier's measured
+  multiplier. **Found by querying the database, not by reading the sketch.**
+- **§R5-2 selection reflowed 16px** while rev 4's own note claimed "same position, same footprint,
+  no reflow" — an 18px checkbox replacing a 34px tile moved the body 173px→157px. The checkbox now
+  centres inside a fixed 34px slot.
+- **§R5-10 the rail was ragged.** As a flex row, a wider hover action ("Develop into hooks →" vs
+  "Write script →") pushed the metric leftward, so tabular numbers never formed a column. It is a
+  grid with fixed columns, reserved **per surface** — a column no row on the page uses is not
+  reserved at all.
+
+Two bugs in rev 5's own first pass, both caught the same way:
+- the expansion panel rendered **12px wider than its own row** on each side (a second `-12px`
+  margin on top of the list's);
+- rev 4's in-thread bookmark overlapped the hook text by **10px of actual glyphs** (my first
+  measurement said 14px — that was the box edge, not the text; a `Range` over the text node is what
+  answers this).
+
+## 11. ⚠️ Read this before merging: the DDL is already applied
+
+Four schema changes are **live on the shared prod database** (`qyxvxleheckijapurisj`), applied via
+`execute_sql` — the SQL-editor equivalent, per the house rule. **`supabase db push` was NOT used**
+and must not be: 48 local-only / 41 remote-only migrations mean it would try to recreate `threads`.
+`apply_migration` was also avoided, because it writes to an already badly-drifted remote ledger.
+
+So the migration files exist for the record and are **already applied**:
+`20260802120000_library_projects.sql` · `20260802120100_saved_items_integrity.sql`.
+
+They are safe against the code `main` currently serves: a new table it does not know about, a
+nullable column it ignores, a **widened** CHECK, and a partial unique index that never applies to
+prod's writes because `main` lacks phase 1a and writes `ref_id` as NULL every time.
+
+Verified after applying: `library_projects` has RLS on with `library_projects_all_own`;
+`saved_items.project_id` is nullable uuid; the CHECK includes `remix`;
+`saved_items_user_type_ref_uniq` exists; 10 saved rows and the dead `projects` table both untouched.
+
+## 12. New traps found this session
+
+- **`.rv-in` creates a STACKING CONTEXT** (it animates a transform), and the surface's sections are
+  `.rv-in` siblings. A popover positioned `absolute … z-30` inside the first section can never
+  render above the second — **no z-index value fixes this**, because z-index only orders within a
+  context. Playwright found it as *"a `<span>5 days ago</span>` … intercepts pointer events"* on the
+  Create button: the project picker was literally unclickable. Portal out of the tree
+  (`ProjectPickerPopover`), do not raise the z-index.
+- **A `selectMode`-gated checkbox is unreachable.** Rendering it only `if (selectMode)` is a
+  chicken-and-egg: `selectMode` is true only once something is selected, and nothing can be selected
+  without a checkbox. Both the tile and the checkbox render; CSS swaps them on hover/focus.
+- **`text-[16.5px]` fails a repo guard.** `src/components/__tests__/type-scale.test.ts` bans
+  half-pixel font sizes **everywhere** under `src/`, and arbitrary px sizes inside
+  `app/home`, `app/settings`, `audience`, `sidebar`, `thread`. The sketch is written in half-pixels;
+  the app has **nine named type roles** (`text-micro`…`text-stat`) and they are the translation.
+  Adopting a role is a rename, not a resize.
+- **A test that asserts `fetch.mock.calls[0]` is asserting call ORDER by accident.**
+  `account-read-write-strengths.test.tsx` broke because SaveAffordance now GETs `/api/saved` on
+  mount, which lands before the Ideas POST. Find the call by URL.
+- **The dev server is reaped after ~10 min idle** — a vanished server logs a clean exit, not a
+  crash. Check the log before debugging.
+- Measuring a **box** cannot detect **text** overlap: `padding-right` shrinks the text area while
+  the box's right edge stays put. Use a `Range` over the text node and compare glyph rects.
