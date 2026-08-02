@@ -6,8 +6,8 @@
  * lane/polish refined language (docs/subsystems/ui-skill-cards.md §1–§2):
  *  - Flat matte, warm-cream, band color used once.
  *  - Eyebrow kicker "Opener stops the scroll" + beat-count meta.
- *  - ONE shared <ProofUnit> labelled "opener only" (honesty spine — the fraction describes
- *    the opening beat's scroll-stop, NOT full-watch retention).
+ *  - ONE shared <SimDoor> (2026-08-02: replaces the on-face ProofUnit — a projected card
+ *    carries no verdict apparatus; a legacy measured card keeps its "opener only" fraction).
  *  - Beats = quiet bordered rows; retention reasoning inline on expand (no per-beat color).
  *  - ONE cream primary = the chain's terminal step "Test full script →" (§1.7) — deep-tests
  *    the WHOLE script on SIM-1 Max vs the opener-only Flash read shown above; Save = icon.
@@ -22,7 +22,7 @@ import type { ScriptCardBlock } from '@/lib/tools/blocks';
 import { useOnTestScript } from '@/lib/script-test-context';
 import { cardScrollQuoteReactions } from '@/components/audience-lens/flat-card-reactions';
 import { buildCardRewrite } from '@/components/audience-lens/card-rewrite';
-import { ProofUnit } from './proof-unit';
+import { SimDoor } from './sim-door';
 import { ProofReceipt, NoSourceNote } from './proof-receipt';
 import { SaveAffordance } from '@/components/thread/save-affordance';
 import { CardPrimaryAction, CardActionBar, SECTION_LABEL } from './card-primitives';
@@ -222,16 +222,15 @@ export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRend
         </div>
       )}
 
-      {/* Proof unit — the quiet room through-line, opener-only (the fraction is scoped to the
-          opening beat, Pitfall 5). Sits BELOW the timeline now: the beats are the hero. */}
+      {/* The simulation door — replaces the verdict apparatus (2026-08-02). A legacy measured
+          card keeps its real opener-only fraction (Pitfall 5); a projected card shows only the
+          way to measure it. Sits BELOW the timeline: the beats are the hero. */}
       <div className="border-t border-white/[0.06] px-4 py-3">
-        <ProofUnit
+        <SimDoor
+          projected={projected}
           band={band}
           fraction={fraction}
-          quote={scrollQuote}
           suffix="opener only"
-          projected={projected}
-          framed={false}
           flatPersonas={cardScrollQuoteReactions(fraction, scrollQuote)}
           conceptText={openingBeatSeed || (beats[0]?.content ?? '')}
           population={population}
@@ -242,7 +241,7 @@ export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRend
             conceptText: openingBeatSeed || (beats[0]?.content ?? ''),
             platform: 'tiktok',
           })}
-          label={projected ? 'See how the room would react to this opener' : 'See how the room reacted to this opener'}
+          label={projected ? 'Simulate this opener with your audience' : 'See how your audience reacted to this opener'}
         />
       </div>
 

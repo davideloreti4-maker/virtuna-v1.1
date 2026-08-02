@@ -33,23 +33,24 @@ export function TargetReaction({ target }: { target: CardTarget }) {
   const stopped = verdict === 'stop';
   const displayName = label ?? archetypeDisplayName(archetype);
 
+  // De-boxed 2026-08-02: was its own bordered box stacked among four other boxes on the card
+  // face, all carrying the same visual weight. The aim is one quiet line; the (still honest,
+  // still shown-when-present) reaction receipt rides the same line. "Made for", never
+  // "Written for" (owner wording table).
   return (
-    <div className="flex flex-col gap-1 rounded-md border border-white/[0.06] px-3 py-2">
-      <p className="text-label leading-snug text-foreground-secondary">
-        <span className="text-foreground-muted">Written for </span>
-        <span className="font-medium text-foreground">{displayName}</span>
-        <span className="text-foreground-muted"> · {Math.round(share * 100)}% of your audience</span>
-      </p>
-
-      {/* The receipt. No verdict in the panel → state the aim, claim nothing about the reaction. */}
+    <p className="text-label leading-snug text-foreground-muted">
+      Made for <span className="font-medium text-foreground-secondary">{displayName}</span>
+      {' · '}
+      {Math.round(share * 100)}% of your audience
       {verdict && (
-        <p className="text-label leading-relaxed text-foreground-secondary">
-          <span className={stopped ? 'font-medium text-foreground' : 'text-foreground-muted'}>
-            {stopped ? 'They stopped' : 'They scrolled past'}
+        <>
+          {' — '}
+          <span className={stopped ? 'text-foreground-secondary' : undefined}>
+            {stopped ? 'they stopped' : 'they scrolled past'}
           </span>
-          {quote && <span className="text-foreground-muted"> — “{quote}”</span>}
-        </p>
+          {quote && <span> · “{quote}”</span>}
+        </>
       )}
-    </div>
+    </p>
   );
 }

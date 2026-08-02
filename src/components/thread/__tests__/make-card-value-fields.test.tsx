@@ -125,38 +125,41 @@ describe('HookCardRenderer — visual hook', () => {
     );
     expect(screen.getByText('crash-zoom')).toBeTruthy();
     expect(screen.getByText(/Hard cut to your face/i)).toBeTruthy();
-    // The "Visual" label marks the row.
-    expect(screen.getByText('Visual')).toBeTruthy();
+    // De-boxed 2026-08-02 (label-chrome diet): the "Visual" label is gone; chip + line self-read.
+    expect(screen.queryByText('Visual')).toBeNull();
   });
 
   it('renders nothing visual-hook-shaped when the field is absent (honesty spine)', () => {
     renderWithClient(<HookCardRenderer block={makeHook()} />);
-    expect(screen.queryByText('Visual')).toBeNull();
+    expect(screen.queryByText('crash-zoom')).toBeNull();
   });
 });
 
-describe('HookCardRenderer — projected vs measured provenance (honesty spine)', () => {
-  // New Qwen call system (2026-07-22): a generation-time card's /10 is the WRITER'S estimate, no
-  // persona SIM ran. It MUST NOT claim a measured room reaction — no past-tense "stopped", no
-  // "SIM-1 Flash" badge. "would stop" + "· projected" is the honest read; "See the room →" measures.
-  it('a projected card reads in the conditional and never claims a measurement', () => {
+describe('HookCardRenderer — the simulation door (2026-08-02, replaces the verdict apparatus)', () => {
+  // A projected card's band/fraction/quote are the WRITER'S generation-time estimate — no persona
+  // SIM ran. The card must not wear a scoreboard for a game never played: NO fraction, NO band
+  // word, NO estimate quote, NO provenance jargon. The door is the only reaction affordance.
+  it('a projected card shows NO verdict — only the untested door', () => {
     const { container } = renderWithClient(
       <HookCardRenderer block={makeHook({ provenance: 'projected', fraction: '8/10 stop' })} />,
     );
     const text = container.textContent ?? '';
-    expect(text).toContain('would stop'); // conditional, not past tense
-    expect(text).toContain('projected'); // the honest provenance tag
-    expect(text).not.toContain('SIM-1 Flash'); // must not wear the measured-panel badge
-    expect(text).not.toContain('stopped'); // must not claim a completed reaction
+    expect(text).toContain('Not tested yet');
+    expect(text).toContain('Simulate with your audience');
+    expect(text).not.toContain('8/10'); // the writer's estimate never renders
+    expect(text).not.toContain('would stop');
+    expect(text).not.toContain('projected'); // the jargon tag died with the apparatus
+    expect(text).not.toContain('SIM-1 Flash');
+    expect(text).not.toContain('Fast and to the point'); // the estimate's quote is gone too
   });
 
-  it('a card WITHOUT provenance is a legacy MEASURED card — unchanged wording (back-compat)', () => {
+  it('a card WITHOUT provenance is legacy MEASURED — the real fraction stays, compact', () => {
     const { container } = renderWithClient(<HookCardRenderer block={makeHook({ fraction: '8/10 stop' })} />);
     const text = container.textContent ?? '';
-    expect(text).toContain('stopped'); // measured past tense
-    expect(text).toContain('SIM-1 Flash'); // the measured-panel provenance
-    expect(text).not.toContain('would stop');
-    expect(text).not.toContain('projected');
+    expect(text).toMatch(/8\/10 stopped/); // a real room reacted; the number is honest
+    expect(text).toContain('See your audience');
+    expect(text).not.toContain('Not tested yet');
+    expect(text).not.toContain('SIM-1 Flash'); // provenance jargon is gone either way
   });
 });
 
@@ -195,71 +198,80 @@ describe('ScriptCardRenderer — filming instructions', () => {
   });
 });
 
-// New Qwen call system (2026-07-22) — the projected/measured honesty seam, fanned out to the other
-// Make cards. A generation-time card's /10 is the WRITER'S estimate (no persona SIM ran), so it MUST
-// read in the conditional ("would stop") and MUST NOT wear a measurement badge ("SIM-1 Flash") or
-// past-tense ("stopped"). Absent provenance ⇒ legacy MEASURED (back-compat).
+// The simulation door (2026-08-02), fanned out to the other Make cards. A projected card's /10 is
+// the WRITER'S estimate (no persona SIM ran) — the card shows NO verdict, only the untested door.
+// Absent provenance ⇒ legacy MEASURED (back-compat): the real fraction stays, compact, beside the
+// door. The provenance jargon tags ("· projected" / "· SIM-1 Flash") are gone from every face.
 
-describe('IdeaCardRenderer — projected vs measured provenance (honesty spine)', () => {
-  it('a projected card reads in the conditional and never claims a measurement', () => {
+describe('IdeaCardRenderer — the simulation door (projected vs measured)', () => {
+  it('a projected card shows NO verdict — only the untested door', () => {
     const { container } = renderWithClient(
       <IdeaCardRenderer block={makeIdea({ provenance: 'projected' })} />,
     );
     const text = container.textContent ?? '';
-    expect(text).toContain('would stop');
-    expect(text).toContain('projected');
-    expect(text).not.toContain('SIM-1 Flash');
-    expect(text).not.toContain('stopped');
-  });
-
-  it('a card WITHOUT provenance is a legacy MEASURED card — unchanged wording (back-compat)', () => {
-    const { container } = renderWithClient(<IdeaCardRenderer block={makeIdea()} />);
-    const text = container.textContent ?? '';
-    expect(text).toContain('stopped');
-    expect(text).toContain('SIM-1 Flash');
+    expect(text).toContain('Not tested yet');
+    expect(text).toContain('Simulate with your audience');
+    expect(text).not.toContain('8/10');
     expect(text).not.toContain('would stop');
     expect(text).not.toContain('projected');
+    expect(text).not.toContain('SIM-1 Flash');
+  });
+
+  it('a card WITHOUT provenance is legacy MEASURED — the real fraction stays, compact', () => {
+    const { container } = renderWithClient(<IdeaCardRenderer block={makeIdea()} />);
+    const text = container.textContent ?? '';
+    expect(text).toMatch(/8\/10 stopped/);
+    expect(text).toContain('See your audience');
+    expect(text).not.toContain('Not tested yet');
+    expect(text).not.toContain('SIM-1 Flash');
   });
 });
 
-describe('ScriptCardRenderer — projected vs measured provenance (honesty spine)', () => {
-  // NOTE: assert on the fraction-verb of the ProofUnit ("7/10 would stop" / "7/10 stopped"), not a
-  // bare "stopped" — the beat CONTENT ("I stopped editing…") also contains the word.
-  it('a projected card reads the opener count in the conditional, never past tense', () => {
+describe('ScriptCardRenderer — the simulation door (projected vs measured)', () => {
+  // NOTE: assert on the fraction-verb ("7/10 stopped"), not a bare "stopped" — the beat CONTENT
+  // ("I stopped editing…") also contains the word.
+  it('a projected card shows NO opener count — only the untested door', () => {
     const { container } = renderWithClient(
       <ScriptCardRenderer block={makeScript({ provenance: 'projected' })} />,
     );
     const text = container.textContent ?? '';
-    expect(text).toMatch(/\d+\/10 would stop/);
-    expect(text).not.toMatch(/\d+\/10 stopped/);
+    expect(text).toContain('Not tested yet');
+    expect(text).toContain('Simulate with your audience');
+    expect(text).not.toMatch(/\d+\/10/);
+    expect(text).not.toMatch(/opener only/); // the honesty suffix rides the count, which is gone
   });
 
-  it('a card WITHOUT provenance keeps the measured past tense (back-compat)', () => {
+  it('a card WITHOUT provenance keeps the measured opener count + its honesty suffix', () => {
     const { container } = renderWithClient(<ScriptCardRenderer block={makeScript()} />);
     const text = container.textContent ?? '';
     expect(text).toMatch(/\d+\/10 stopped/);
-    expect(text).not.toMatch(/\d+\/10 would stop/);
+    expect(text).toContain('opener only');
+    expect(text).toContain('See your audience');
+    expect(text).not.toContain('Not tested yet');
   });
 });
 
-describe('RemixCardRenderer — projected vs measured provenance (honesty spine)', () => {
-  it('a projected card reads in the conditional and never claims a measurement', () => {
+describe('RemixCardRenderer — the simulation door (projected vs measured)', () => {
+  it('a projected card shows NO verdict — only the untested door', () => {
     const { container } = renderWithClient(
       <RemixCardRenderer block={makeRemix({ provenance: 'projected' })} />,
     );
     const text = container.textContent ?? '';
-    expect(text).toContain('would stop');
-    expect(text).toContain('projected');
-    expect(text).not.toContain('SIM-1 Flash');
-    expect(text).not.toContain('stopped');
-  });
-
-  it('a card WITHOUT provenance is a legacy MEASURED card — unchanged wording (back-compat)', () => {
-    const { container } = renderWithClient(<RemixCardRenderer block={makeRemix()} />);
-    const text = container.textContent ?? '';
-    expect(text).toContain('stopped');
-    expect(text).toContain('SIM-1 Flash');
+    expect(text).toContain('Not tested yet');
+    expect(text).toContain('Simulate with your audience');
+    expect(text).not.toContain('8/10');
     expect(text).not.toContain('would stop');
     expect(text).not.toContain('projected');
+    expect(text).not.toContain('SIM-1 Flash');
+  });
+
+  it('a card WITHOUT provenance is legacy MEASURED — the real fraction stays, compact', () => {
+    const { container } = renderWithClient(<RemixCardRenderer block={makeRemix()} />);
+    const text = container.textContent ?? '';
+    expect(text).toMatch(/8\/10 stopped/);
+    expect(text).toContain('adapted hook'); // the honesty suffix survives on the measured row
+    expect(text).toContain('See your audience');
+    expect(text).not.toContain('Not tested yet');
+    expect(text).not.toContain('SIM-1 Flash');
   });
 });

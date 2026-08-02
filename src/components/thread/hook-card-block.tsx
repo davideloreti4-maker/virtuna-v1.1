@@ -7,7 +7,8 @@
  *  - Flat matte (no inset shine), warm-cream tokens, band color used once.
  *  - Eyebrow archetype kicker (band-colored dot) ABOVE the hero hook → hook reads first.
  *  - Why-teaser (mechanism) surfaced on the face; seed + delivery on expand.
- *  - ONE shared <ProofUnit> = the visible AudienceLens entry ("See the room →").
+ *  - ONE shared <SimDoor> = the visible AudienceLens entry (2026-08-02: replaces the on-face
+ *    ProofUnit — a projected card carries no verdict apparatus, only the door to measure it).
  *  - ONE forward action = the cream primary "Write script →" (§1.7) + Save icon. There is NO
  *    "Test full →" here (removed 2026-06-27): a hook is only an opener, and its handoff sent
  *    the same lone line already Flash-read — "full" referred to nothing. Deep-testing the
@@ -25,7 +26,7 @@ import type { HookCardBlock } from '@/lib/tools/blocks';
 import { useOnWriteScriptHook } from '@/lib/hook-test-context';
 import { cardScrollQuoteReactions } from '@/components/audience-lens/flat-card-reactions';
 import { buildCardRewrite } from '@/components/audience-lens/card-rewrite';
-import { ProofUnit } from './proof-unit';
+import { SimDoor } from './sim-door';
 import { ProofReceipt, NoSourceNote } from './proof-receipt';
 import { SaveAffordance } from '@/components/thread/save-affordance';
 import { CardPrimaryAction, CardActionBar, SECTION_LABEL } from './card-primitives';
@@ -49,7 +50,6 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
     visualHook,
     band,
     fraction,
-    scored,
     scrollQuote,
     channel,
     proof,
@@ -135,23 +135,19 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
         </p>
 
         {/* Visual hook — the FIRST-FRAME technique that opens the video: the *execution* of the
-            spoken line above, not a second hook. The technique name is a real first-frame
-            technique (grounded taxonomy); the sub-line is what's literally on screen at 0s. A
-            hook is spoken AND shot — the card now carries both channels (owner 2026-07-22).
-            Absent → nothing renders (honesty spine; no fabricated shot). */}
+            spoken line above, not a second hook. De-boxed 2026-08-02: the technique chip + the
+            on-screen line self-read, so the bordered "Visual"-labelled box is gone (label-chrome
+            diet — one visual object fewer, same facts). Absent → nothing (honesty spine). */}
         {visualHook && (
-          <div className="flex flex-col gap-1.5 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3.5 py-3">
-            <div className="flex items-center gap-2">
-              <p className={SECTION_LABEL}>Visual</p>
-              <span
-                className="rounded-full border border-white/[0.06] bg-white/[0.03] px-2 py-0.5 text-caption font-medium text-foreground-secondary"
-                title="First-frame technique"
-              >
-                {visualHook.technique}
-              </span>
-            </div>
-            <p className="text-body leading-relaxed text-foreground-secondary">{visualHook.onScreen}</p>
-          </div>
+          <p className="text-body leading-relaxed text-foreground-secondary">
+            <span
+              className="mr-2 inline-flex translate-y-[-1px] items-center rounded-full border border-white/[0.06] bg-white/[0.03] px-2 py-0.5 text-caption font-medium text-foreground-secondary"
+              title="First-frame technique"
+            >
+              {visualHook.technique}
+            </span>
+            {visualHook.onScreen}
+          </p>
         )}
 
         {/* Per-persona generation: the aim + the aimed-at reader's own verdict (the receipt).
@@ -173,14 +169,26 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
           <p className="text-reading leading-relaxed text-foreground-secondary">{mechanism}</p>
         </div>
 
-        {/* Proof unit — the single audience-reaction block + visible Lens entry. */}
-        <ProofUnit
-          framed={false}
+        {/* Expand toggle — clearer affordance. The provenance tag ("· projected" / "· SIM-1
+            Flash") is gone with the on-face verdict: the door below states the honest status. */}
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="flex items-center gap-1.5 self-start text-label text-foreground-muted transition-colors hover:text-foreground-secondary"
+          aria-expanded={expanded}
+          aria-label={expanded ? 'Collapse hook details' : 'Expand hook details'}
+        >
+          <CaretToggle open={expanded} />
+          {expanded ? 'Hide details' : 'Why & details'}
+        </button>
+
+        {/* The simulation door — replaces the verdict apparatus (2026-08-02). A projected card
+            shows no numbers, only the way to earn them; a legacy measured card keeps its real
+            fraction, compact. */}
+        <SimDoor
+          projected={projected}
           band={band}
           fraction={fraction}
-          scored={scored ?? true}
-          projected={projected}
-          quote={scrollQuote}
           flatPersonas={cardScrollQuoteReactions(fraction, scrollQuote)}
           conceptText={hookLine}
           population={population}
@@ -191,24 +199,8 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
             conceptText: hookLine,
             platform: 'tiktok',
           })}
-          label={projected ? 'See how the room would react to this hook' : 'See how the room reacted to this hook'}
+          label={projected ? 'Simulate this hook with your audience' : 'See how your audience reacted to this hook'}
         />
-
-        {/* Expand toggle — clearer affordance, with the provenance demoted onto this line. */}
-        <button
-          type="button"
-          onClick={() => setExpanded((v) => !v)}
-          className="flex items-center gap-1.5 self-start text-label text-foreground-muted transition-colors hover:text-foreground-secondary"
-          aria-expanded={expanded}
-          aria-label={expanded ? 'Collapse hook details' : 'Expand hook details'}
-        >
-          <CaretToggle open={expanded} />
-          {expanded ? 'Hide details' : 'Why & details'}
-          {/* Provenance — honest about whether the /10 was MEASURED (SIM-1 Flash panel) or is a
-              generation-time PROJECTION. A projected card has run no persona SIM, so it must not
-              wear the SIM-1 Flash badge (a measurement claim). */}
-          <span className="text-foreground-muted/70">{projected ? '· projected' : '· SIM-1 Flash'}</span>
-        </button>
       </div>
 
       {/* EXPAND — seed + delivery (the mechanism already leads the face). */}

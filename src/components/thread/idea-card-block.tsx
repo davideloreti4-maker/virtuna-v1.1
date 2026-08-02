@@ -8,7 +8,8 @@
  *  - Eyebrow kicker "Made for your audience" (band-colored dot) + amber "your take" badge
  *    (amber = data status, not brand accent). Title reads first.
  *  - whyItFits folded into the why-line (angle + the muted fit clause).
- *  - ONE shared <ProofUnit> = the visible AudienceLens entry.
+ *  - ONE shared <SimDoor> = the visible AudienceLens entry (2026-08-02: replaces the on-face
+ *    ProofUnit — a projected card carries no verdict apparatus, only the door to measure it).
  *  - ONE cream primary = the forward chain step "Develop into hooks →" (§1.7); Save = icon.
  *  - The dead "If this could flop →" branch is GONE (predictedFailureMode is always null).
  *
@@ -23,7 +24,7 @@ import type { IdeaCardBlock } from '@/lib/tools/blocks';
 import { usePlatform } from '@/lib/platform-context';
 import { cardScrollQuoteReactions } from '@/components/audience-lens/flat-card-reactions';
 import { buildCardRewrite } from '@/components/audience-lens/card-rewrite';
-import { ProofUnit } from './proof-unit';
+import { SimDoor } from './sim-door';
 import { ProofReceipt, NoSourceNote } from './proof-receipt';
 import { SaveAffordance } from '@/components/thread/save-affordance';
 import { CardPrimaryAction, CardActionBar, SECTION_LABEL } from './card-primitives';
@@ -47,7 +48,6 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
     format,
     band,
     fraction,
-    scored,
     scrollQuote,
     proof,
     grounded,
@@ -137,10 +137,9 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
         </div>
 
         {/* Recipe — Topic · Take · Format as a visible formula (this idea card's SIGNATURE; was
-            buried in the expand). A labeled, horizontally-divided strip reads as the "make-it-from"
-            recipe. The Format cell is omitted when absent — honest, never an empty cell. */}
-        <div>
-        <p className={`mb-1 ${SECTION_LABEL}`}>Make it from</p>
+            buried in the expand). The outer "Make it from" label is gone (label-chrome diet,
+            2026-08-02): the cell titles already name the formula. The Format cell is omitted
+            when absent — honest, never an empty cell. */}
         <div className="flex overflow-hidden rounded-lg border border-white/[0.06] bg-white/[0.02]">
           {[
             { label: 'Topic', value: topic },
@@ -156,7 +155,6 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
             </div>
           ))}
         </div>
-        </div>
 
         {/* Per-persona generation: the aim + the aimed-at reader's own verdict (the receipt).
             Absent on General/uncalibrated runs, and on a calibrated run whose writer named nobody
@@ -169,35 +167,8 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
             receipt-shaped hole beside a sibling that has one (2026-07-14). */}
         {proof ? <ProofReceipt proof={proof} /> : grounded ? <NoSourceNote /> : null}
 
-        {/* Proof unit — the quiet room through-line (the single audience-reaction block + Lens). */}
-        <ProofUnit
-          framed={false}
-          band={band}
-          fraction={fraction}
-          scored={scored ?? true}
-          projected={projected}
-          quote={scrollQuote}
-          flatPersonas={cardScrollQuoteReactions(fraction, scrollQuote)}
-          /* The room LOOKS this card up by conceptText (openRoomForCard → the ledger's
-             `.find(x => x.conceptText === …)`), and the ledger keys an idea on its title alone
-             (ambient-descriptors.ts `hookLine ?? title ?? …`). It must be the bare title, not
-             `title\n\nangle`, or "See the room →" never matches and the tap is a silent no-op —
-             the one fact / two sources trap. The rewrite anchor below deliberately keeps the
-             angle: it's a generation input, not a lookup key. */
-          conceptText={title}
-          population={population}
-          platform={platform}
-          rewrite={buildCardRewrite({
-            skill: 'idea',
-            fraction,
-            scrollQuote,
-            conceptText: `${title}\n\n${angle}`,
-            platform,
-          })}
-          label={projected ? 'See how the room would react to this idea' : 'See how the room reacted to this idea'}
-        />
-
-        {/* Expand — the seed hook (the line this idea would open with) + provenance. */}
+        {/* Expand — the seed hook (the line this idea would open with). The provenance tag is
+            gone with the on-face verdict: the door below states the honest status. */}
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
@@ -207,11 +178,32 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
         >
           <CaretToggle open={expanded} />
           {expanded ? 'Hide seed hook' : 'Seed hook'}
-          {/* Provenance — honest about whether the /10 was MEASURED (SIM-1 Flash panel) or is a
-              generation-time PROJECTION. A projected card ran no persona SIM, so it must not wear
-              the SIM-1 Flash badge (a measurement claim). */}
-          <span className="text-foreground-muted/70">{projected ? '· projected' : '· SIM-1 Flash'}</span>
         </button>
+
+        {/* The simulation door — replaces the verdict apparatus (2026-08-02). */}
+        <SimDoor
+          projected={projected}
+          band={band}
+          fraction={fraction}
+          /* The room LOOKS this card up by conceptText (openRoomForCard → the ledger's
+             `.find(x => x.conceptText === …)`), and the ledger keys an idea on its title alone
+             (ambient-descriptors.ts `hookLine ?? title ?? …`). It must be the bare title, not
+             `title\n\nangle`, or the door never matches and the tap is a silent no-op —
+             the one fact / two sources trap. The rewrite anchor below deliberately keeps the
+             angle: it's a generation input, not a lookup key. */
+          conceptText={title}
+          flatPersonas={cardScrollQuoteReactions(fraction, scrollQuote)}
+          population={population}
+          platform={platform}
+          rewrite={buildCardRewrite({
+            skill: 'idea',
+            fraction,
+            scrollQuote,
+            conceptText: `${title}\n\n${angle}`,
+            platform,
+          })}
+          label={projected ? 'Simulate this idea with your audience' : 'See how your audience reacted to this idea'}
+        />
       </div>
 
       {/* EXPAND — the seed hook (mechanism + recipe now live on the face). */}

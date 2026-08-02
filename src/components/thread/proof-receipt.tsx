@@ -207,14 +207,13 @@ export function ProofReceipt({
  * Deliberately NOT rendered on ungrounded runs (`grounded: false`): with retrieval off there is
  * no absence to explain, and the note would sit on 100% of cards forever as pure noise.
  *
- * Dashed border + no thumbnail: same slot, same radius token, lighter state. It must not weigh
- * as much as a real receipt — the card that HAS a source should still win the glance.
+ * De-boxed 2026-08-02 (was a dashed bordered box): a stated absence should read as a footnote,
+ * not as another object competing with the real receipt beside it. One muted caption line —
+ * the card that HAS a source should still win the glance.
  */
 export function NoSourceNote({ className }: { className?: string }) {
   return (
-    <p
-      className={`rounded-lg border border-dashed border-white/[0.06] bg-white/[0.01] px-2.5 py-2 text-label leading-snug text-foreground-muted${className ? ` ${className}` : ''}`}
-    >
+    <p className={`text-label leading-snug text-foreground-muted${className ? ` ${className}` : ''}`}>
       Original — not drawn from a retrieved video.
     </p>
   );

@@ -14,8 +14,8 @@
  *  - Row map: Hook (hookPattern → adaptedHook serif + Copy) · The turn (theTurn → angle) ·
  *    Format (formatBorrowed → your shots). Structure + Emotional beat stay on the expand.
  *  - "How to film your version" foot block (production) mirrors the Script card.
- *  - ONE shared <ProofUnit> labelled "adapted hook" (honesty spine — the fraction is the
- *    adapted hook's scroll-stop, NOT the original video's score).
+ *  - ONE shared <SimDoor> (2026-08-02: replaces the on-face ProofUnit — a projected card
+ *    carries no verdict apparatus; a legacy measured card keeps its "adapted hook" fraction).
  *  - ONE cream primary = the forward chain step "Write hooks for this →"; Save = icon.
  *
  * THREAD-04: the model emits validated RemixCardBlock props only; THIS component owns layout.
@@ -28,7 +28,7 @@ import { useOnDevelopRemix } from '@/lib/remix-develop-context';
 import { PlatformContext } from '@/lib/platform-context';
 import { cardScrollQuoteReactions } from '@/components/audience-lens/flat-card-reactions';
 import { buildCardRewrite } from '@/components/audience-lens/card-rewrite';
-import { ProofUnit } from './proof-unit';
+import { SimDoor } from './sim-door';
 import { ProofReceipt } from './proof-receipt';
 import { CoverFill } from '@/components/primitives/CoverFill';
 import { SaveAffordance } from '@/components/thread/save-affordance';
@@ -115,14 +115,13 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
             VERSION (the deliverable, foreground-right). Reads as learn-from-it → make-yours.
             Stacks to one column on narrow widths (sm breakpoint). */}
         <div className="grid grid-cols-1 overflow-hidden rounded-lg border border-white/[0.06] sm:grid-cols-2">
-          {/* Column headers */}
+          {/* Column headers — the sub-captions ("why it worked" / "ready to film") are gone
+              (label-chrome diet 2026-08-02): the cell labels below already carry the reading. */}
           <div className="border-b border-white/[0.06] bg-white/[0.02] px-3.5 py-2">
             <p className={SECTION_LABEL}>The original</p>
-            <p className="mt-0.5 text-caption text-foreground-muted">why it worked</p>
           </div>
           <div className="border-b border-l-0 border-white/[0.06] bg-white/[0.02] px-3.5 py-2 sm:border-l">
             <p className={SECTION_LABEL}>Your version</p>
-            <p className="mt-0.5 text-caption text-foreground-muted">ready to film</p>
           </div>
 
           {/* Row 1 — Hook: pattern → your adapted hook (the serif deliverable + Copy) */}
@@ -174,19 +173,33 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
           </MapCell>
         </div>
 
-        {/* Built-for line — who your version lands on (whoItsFor), a quiet caption under the map. */}
+        {/* Made-for line — who your version lands on (whoItsFor), a quiet caption under the map.
+            "Made for", never "Written for"/"Built for" (owner wording table). */}
         <p className="text-label text-foreground-muted">
-          Built for <span className="text-foreground-secondary">{whoItsFor}</span>
+          Made for <span className="text-foreground-secondary">{whoItsFor}</span>
         </p>
 
-        {/* Proof unit — the quiet room through-line, adapted-hook scroll-stop (honesty-scoped). */}
-        <ProofUnit
-          framed={false}
+        {/* Expand toggle — the rest of the decode anatomy (structure + emotional beat). The
+            provenance tag is gone with the on-face verdict: the door states the honest status. */}
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="flex items-center gap-1.5 self-start text-label text-foreground-muted transition-colors hover:text-foreground-secondary"
+          aria-expanded={expanded}
+          aria-label={expanded ? 'Collapse decode anatomy' : 'Expand decode anatomy'}
+        >
+          <CaretToggle open={expanded} />
+          Structure & the emotional beat
+        </button>
+
+        {/* The simulation door — replaces the verdict apparatus (2026-08-02). A legacy measured
+            card keeps its real adapted-hook fraction (honesty-scoped); a projected card shows
+            only the way to measure it. */}
+        <SimDoor
+          projected={projected}
           band={band}
           fraction={fraction}
-          quote={scrollQuote}
           suffix="adapted hook"
-          projected={projected}
           flatPersonas={cardScrollQuoteReactions(fraction, scrollQuote)}
           conceptText={adaptedHook}
           population={population}
@@ -199,24 +212,8 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
             platform,
             leverRidesAnchor: true,
           })}
-          label={projected ? 'See how the room would react to this adapted hook' : 'See how the room reacted to this adapted hook'}
+          label={projected ? 'Simulate this adapted hook with your audience' : 'See how your audience reacted to this adapted hook'}
         />
-
-        {/* Expand toggle — the rest of the decode anatomy (structure + emotional beat) + provenance. */}
-        <button
-          type="button"
-          onClick={() => setExpanded((v) => !v)}
-          className="flex items-center gap-1.5 self-start text-label text-foreground-muted transition-colors hover:text-foreground-secondary"
-          aria-expanded={expanded}
-          aria-label={expanded ? 'Collapse decode anatomy' : 'Expand decode anatomy'}
-        >
-          <CaretToggle open={expanded} />
-          Structure & the emotional beat
-          {/* Provenance — honest about whether the /10 was MEASURED (SIM-1 Flash panel) or is a
-              generation-time PROJECTION. A projected card ran no persona SIM, so it must not wear
-              the SIM-1 Flash badge (a measurement claim). */}
-          <span className="text-foreground-muted/70">{projected ? '· projected' : '· SIM-1 Flash'}</span>
-        </button>
       </div>
 
       {/* HOW TO FILM YOUR VERSION — the ready-to-film payoff (owner 2026-07-22). Mirrors the
