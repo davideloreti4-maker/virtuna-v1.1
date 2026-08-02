@@ -1081,3 +1081,26 @@ Probes (were in `scripts/tmp-shoot-rev10.mjs`, deleted per the loop; recreate fr
 pattern): banned-vocab regexes per page, ≤1 coral zone, no shadow/backdrop/gradient, diverging-
 bar geometry, mover/grid counts (3+6), action-bar no-truncate, tab-order parity, drawer keeps
 the anatomical mapping. All green at commit time.
+
+## 17. Rev 11 — prose becomes chrome (2026-08-02)
+
+Owner feedback on rev 10, with crops of the nread line, the action-bar label, and BOTH pledes:
+"alot of sentences or plain text… still a bit overloaded and not that clean, especially audience."
+The rev-10 pledes and metric-anchored feet were themselves read as prose. Rev 11 deletes the
+text layer instead of improving it — **"or nothing" won**:
+
+1. **All `.insight` card feet deleted** (video and text). Cards end on their data.
+2. **The `.plede` page-answer lines deleted** (they lasted one revision — do not reintroduce).
+3. **The floating network read (`.nread`) deleted** — flagged in both audits; its facts live in
+   the Network activation rows. The answer now sits directly under the cortex.
+4. **The answer's evidence is a stat row** (`.astat`: number+label pairs — coral 62% · leave by
+   0:03 · 3.2K · vs usual 8.1K), not a clause. Applied state: delta row + one stat pair.
+5. **Action bar label is a stat** (`barLab` is now a [value,label] pair, value 13px/500).
+6. **Audience decluttered**: Where-it-surfaces + Best-window merged into ONE "Where & when"
+   card (`distCard()`; text kind keeps only the window). Page = hero + 5 cards, zero prose.
+7. Simline shortened to "1,000 simulated · your 4.2K followers · confidence 0.82".
+
+The surface's ONE sentence is the verdict headline. Serif voice quotes are content, not chrome,
+and stay. Probes (temp script deleted per the loop; §15 pattern): `.plede/.insight/.nread`
+count == 0 per page, 1 `.astat` on Brain, 5 cards on Audience, plus all rev-10 probes. Green.
+Shots `rev11-*.png` (8). Same artifact url.
