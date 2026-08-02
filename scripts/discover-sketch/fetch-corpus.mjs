@@ -32,7 +32,16 @@ const watched = await q(
   '&outlier_multiplier=not.is.null&archived_at=is.null&order=outlier_multiplier.desc&limit=60',
 );
 
-fs.writeFileSync(path.join(ROOT, '.scratch/corpus.json'), JSON.stringify({ teardowns, memberships, watched }));
+// Sources zone: tracked accounts + competitor profiles (tiny tables, select *)
+// and competitor videos (96 rows, 66 covers, newest 2026-07-10).
+const tracked = await q('tracked_accounts', 'select=*&limit=50');
+const competitors = await q('competitor_profiles', 'select=*&limit=50');
+const competitorVideos = await q('competitor_videos', 'select=*&order=posted_at.desc&limit=120');
+
+fs.writeFileSync(path.join(ROOT, '.scratch/corpus.json'), JSON.stringify({
+  teardowns, memberships, watched, tracked, competitors, competitorVideos,
+}));
 console.log('teardowns:', teardowns.length, '| memberships:', memberships.length, '| watched:', watched.length);
+console.log('tracked:', tracked.length, '| competitors:', competitors.length, '| competitorVideos:', competitorVideos.length);
 console.log('collections:', new Set(memberships.map((m) => m.category + '/' + m.name)).size);
 console.log('watched w/ cover:', watched.filter((w) => w.metadata?.cover_url).length);
