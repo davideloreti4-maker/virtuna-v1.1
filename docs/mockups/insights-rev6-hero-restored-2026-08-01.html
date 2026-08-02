@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Insights rev 9.1 — the audience page gets its full read</title>
+<title>Insights rev 9.2 — Brain is the instrument again</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400&display=swap" rel="stylesheet">
@@ -219,18 +219,38 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 .tile.lead{background:var(--chip-on)}
 .tiles.t3{grid-template-columns:repeat(3,1fr)}
 
-/* what the brain saw — the model's read of the clip, one beat per row. No numbers: every % this
-   page could show already lives in the figread or the answer, and the raw scales live in the
-   drawer. The break beat reads by weight (cream), never by a second coral. */
-.beat{display:flex;align-items:center;gap:11px;padding:9px 0;border-bottom:1px solid var(--border)}
-.beat:last-child{border-bottom:0;padding-bottom:2px}
-.beat i{font-style:normal;width:40px;flex:none;font:500 11.5px Inter;color:var(--faint);
-  font-variant-numeric:tabular-nums}
-.beat .nm{flex:1;min-width:0;font-size:12.5px;color:var(--dim)}
-.beat.key .nm{color:var(--cream);font-weight:500}
-.beat .ar{flex:none;font-size:11px;color:var(--faint)}
 /* the swing — folded into the segment it names, not a section of its own */
 .swline{margin-top:8px;font:500 11.5px Inter;color:var(--dim);font-variant-numeric:tabular-nums}
+
+/* ── the instrument, back on the surface (rev 9.2) ───────────────────────── */
+/* the shipped read under the cortex — the two networks that matter, in words */
+.nread{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:11px;font-size:12.5px;color:var(--dim)}
+.nread span{white-space:nowrap}
+.nread b{font-weight:500;color:var(--cream)}
+.nread u{text-decoration:none;color:var(--faint)}
+
+/* nine breakdown signals — the 3×3 the shipped rail leads its decomposition with. Score, its
+   delta vs the creator's baseline, the label, and the grade word. No colour on the grade. */
+.sg{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);
+  border-radius:10px;overflow:hidden;margin-top:12px}
+.sg div{background:var(--chip);padding:10px 10px 11px}
+.sg .v{display:flex;align-items:baseline;gap:4px}
+.sg b{font:400 19px/1 Inter;color:var(--cream);font-variant-numeric:tabular-nums;
+  letter-spacing:-.01em}
+.sg .d{font:500 10.5px Inter;color:var(--faint);font-variant-numeric:tabular-nums}
+.sg i{font-style:normal;display:block;font-size:10.5px;color:var(--dim);margin-top:6px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sg u{text-decoration:none;display:block;font-size:9.5px;color:var(--faint);margin-top:3px;
+  letter-spacing:.04em;text-transform:uppercase}
+.sg .none b,.sg .none i,.sg .none u{color:var(--ghost)}
+.sg .strong u{color:var(--dim)}
+
+/* per-second activation — the heatmap, with its axis and its legend */
+.hlg{display:flex;align-items:center;gap:8px;margin-top:9px;font-size:9.5px;color:var(--faint);
+  letter-spacing:.04em;text-transform:uppercase}
+.hlg .ramp{width:56px;height:6px;border-radius:3px;
+  background:linear-gradient(90deg,rgba(236,231,222,.08),rgba(236,231,222,.85))}
+.hlg .rt{margin-left:auto}
 
 /* retention figure — the read is annotated ON the figure, not written under it */
 .curvewrap{margin-top:12px;cursor:ew-resize;touch-action:none;position:relative}
@@ -386,8 +406,12 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
   text-decoration:none}
 .zr .tk s{position:absolute;top:4px;height:6px;border-radius:2px;text-decoration:none;
   background:rgba(236,231,222,.5)}
-.zr .vl{width:44px;flex:none;text-align:right;font:400 11px Inter;color:var(--dim);
+.zr .vl{width:82px;flex:none;text-align:right;font:400 11px Inter;color:var(--dim);
   font-variant-numeric:tabular-nums;white-space:nowrap}
+/* the plain-word read rides WITH its σ — a bare z-score tells a creator nothing, and on its own
+   line it doubled the card's height for no gain */
+.zr .vl u{text-decoration:none;display:block;font-size:10px;color:var(--faint);margin-top:2px;
+  font-variant-numeric:normal}
 .heat{display:flex;flex-direction:column;gap:2px}
 .hrow{display:flex;align-items:center;gap:8px}
 .hrow .nm{width:58px;flex:none;font-size:9.5px;color:var(--faint);letter-spacing:.04em;
@@ -405,10 +429,10 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 <aside class="ctl">
   <div class="brandline"></div>
   <h1>Ambient Audience · insight drill</h1>
-  <p class="lede">Revision 9.1 — rev 9 moved every block to the page whose question it answers;
-    this pass restores the shipped rail’s highest-value reads the mock had dropped. Audience now
-    tells the who-story whole: who’s here, how long they stay, what they did, who it’s for, who
-    spreads it, where it surfaces, when to post.</p>
+  <p class="lede">Revision 9.2 — the shipped brain tab’s instrument is back on Brain, and it runs
+    off the cortex and the retention curve on one playhead. Each page now owns one question:
+    Brain <em>why it happened in the head</em>, Audience <em>who was in the room</em>,
+    Engagement <em>what they’d do with it</em>.</p>
 
   <h2>Stimulus</h2>
   <div class="grp">
@@ -425,33 +449,31 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 
   <h2>Try this first</h2>
   <ol class="steps">
-    <li><b>Read Brain top to bottom.</b> Cortex → the answer with the fix → “What the brain saw”,
-      the model’s read of the clip in three beats. No watch metrics, no traffic — brain only.</li>
-    <li><b>Press “Trim 0:00–0:03”.</b> It re-simulates: the answer becomes a before → after, the
-      beats flip, and on Engagement the watch tiles and the curve redraw. <b>Undo</b> puts it back.</li>
-    <li><b>Switch to Engagement.</b> The retention instrument now keeps its own readings — Avg
-      watch, Watched full, Rewatch sit directly under it.</li>
-    <li><b>On Audience, read down.</b> After “What they did”: <b>Who this is for</b> — each
-      segment indexed vs the room average, the targeting read no platform reports — and
-      <b>Who spreads it</b> — saw → reshared → their networks, ×5.1, and who multiplies it.
-      Tap “Almost” and the segment speaks, the swing riding with it (38% → 47%).</li>
+    <li><b>Drag the curve on Brain.</b> One playhead moves the cortex clock, the figure’s read,
+      the curve, the moment chips and the transcript together — and the video frame on Engagement
+      is already parked at the same second when you get there.</li>
+    <li><b>Read Brain to the bottom.</b> Cortex + the two networks that matter in words → the
+      answer with the fix → the moment → the nine-signal breakdown → the network bars with their
+      plain-word reads → per-second activation. The shipped tab’s instrument, in card grammar.</li>
+    <li><b>Press “Trim 0:00–0:03”,</b> then <b>Undo</b>. The answer becomes a before → after, the
+      curve redraws with the original kept as a coral ghost, and Engagement’s watch tiles move.</li>
+    <li><b>Open “How to read these numbers”.</b> The drawer no longer hides the instrument — it
+      now names the three scales on the page and what the model can’t claim.</li>
   </ol>
 
   <h2>Calls you may want to reverse</h2>
   <ul class="calls">
-    <li><b>Two shipped blocks return</b> (rev 9.1): the fit index and the amplification read,
-      restyled from the live rail’s mono-uppercase into the card grammar. Their numbers are
-      deliberately NOT the surface’s one % unit — an index (+116%) and a multiplier (×3.2),
-      distinct notations for different quantities.</li>
-    <li><b>Every voice now carries “interview ›”</b> — the shipped PersonaChatDrawer affordance
-      the mock never showed. Talking to a simulated viewer is the product’s most differentiated
-      move; it deserved a handle on the surface.</li>
-    <li><b>Left out on purpose:</b> the live tri-state row (its 38/62 is the hero + answer,
-      one fact once) and the unlock’s explainer prose (its facts are the answer and the second
-      beat). The fix’s <em>why</em> lives in “What the brain saw”.</li>
-    <li><b>The text room reads 1,000 now</b> — figread said “590 simulated readers” while the
-      room, the reasons and the live rail all code from 1,000; 590 is who read past the hook
-      (the answer’s “218 of 590” denominator).</li>
+    <li><b>The instrument left the drawer for the surface.</b> Rev 8 folded it away so the page
+      spoke one unit; the cost was a Brain tab thinner than the shipped one. It’s back, with each
+      card’s right-meta <em>naming its scale</em> — that was the real fix for the unit problem.</li>
+    <li><b>The curve moved from Engagement to Brain.</b> Where attention broke is a cognition
+      question, and it belongs beside the cortex it drives. Engagement keeps the video frame and
+      what the room would DO — each figure still appears exactly once.</li>
+    <li><b>Grades carry no colour.</b> The shipped rail paints WEAKNESS coral; that file calls the
+      bands “a cutoff on a MODELED signal, not a benchmark against real outcomes”. An
+      unbenchmarked judgement shouldn’t shout — and Brain’s one coral belongs to the loss.</li>
+    <li><b>“See the evidence” now scrolls instead of switching tabs</b> — the evidence for the
+      verdict is the moment directly below it.</li>
   </ul>
 
   <p class="note-foot">Mockup only. The cortex and terrain heroes are stills cropped from the
@@ -602,14 +624,6 @@ const TILES={
     {n:"Watched full", v:"9.8%", d:"↑0.4 pts"},
     {n:"Rewatch",      v:"1.19×",d:"↑0.15 · top fifth"},
   ],
-  textBrain:[
-    {n:"Novel to them",v:"63%",  d:"↓14 pts", lead:1},
-    {n:"Would finish", v:"55%",  d:"↑3 pts"},
-  ],
-  textBrainDone:[
-    {n:"Novel to them",v:"78%",  d:"↑1 pt", lead:1},
-    {n:"Would finish", v:"64%",  d:"↑12 pts"},
-  ],
   videoEngage:[
     {n:"Saves",    v:"3.2%", d:"↑1.3 pts"},
     {n:"Shares",   v:"1.4%", d:"↑0.5 pts"},
@@ -621,23 +635,6 @@ const TILES={
     {n:"Saves",    v:"2.8%", d:"↑0.9 pts"},
     {n:"Shares",   v:"0.7%", d:"↓0.2 pts"},
     {n:"Follows",  v:"0.3%", d:"↓0.2 pts"},
-  ],
-};
-
-/* What the brain saw — the model's read of the clip in three beats (video only: a text sim has
-   no timeline, its brain read IS the reason bars). Sourced from the live rail's material: visual
-   +0.35σ / 68 strong at the open, dorsal attention −0.73σ at the break (the unlock's "too slow"),
-   and the near-flat tail of CURVE (.38 → .21 over 25s). */
-const BEATS={
-  video:[
-    {t:"0:00", r:"Visual pull opens strong",       d:"up"},
-    {t:"0:03", r:"Focus snaps — payoff too far",   d:"down", key:1},
-    {t:"after",r:"The tail barely leaks",          d:"up"},
-  ],
-  videoDone:[
-    {t:"0:00", r:"The number opens a loop",        d:"up"},
-    {t:"0:03", r:"The old break holds",            d:"up", key:1},
-    {t:"after",r:"Payoff lands with the room",     d:"up"},
   ],
 };
 
@@ -662,12 +659,38 @@ const SEGV={
   "drive-by":[{w:"Sam",t:"tough crowd",q:"easy to say when the reach is already there",n:96}],
 };
 
-/* ── the instrument, as it lives in the drawer ──────────────────────────── */
-const SIGNALS=[["Visual pull",68],["Voice impact",37],["Cognitive grip",50],
-               ["Emotional hit",57],["Memorability",32],["Attention",34],
-               ["Buy signal",35],["Hesitation",58],["Mental effort",50]];
-const SIGMAS=[["Visual",.35],["Somatomotor",.07],["Dorsal attention",-.73],["Ventral attention",-.01],
-              ["Limbic",-.72],["Frontoparietal",-.43],["Default mode",-.52]];
+/* ── the instrument — ON the Brain page again (rev 9.2) ───────────────────
+   Rev 8 folded all of this into the drawer because the surface had to speak one unit. The owner's
+   call reverses that: the live brain page IS this instrument, and a Brain tab without it was the
+   thinnest page in the drill. It returns in card grammar (not the shipped mono-uppercase), with
+   the scales NAMED in each card's right-meta so the one-unit surface stays honest — a 0–100
+   score and a % of the room are different quantities and now say so.
+   Grades stay colourless: brain-signals.ts calls them "a cutoff on a MODELED signal, NOT a
+   benchmark against real outcomes", and an unbenchmarked judgement must not shout. */
+const SIGNALS={
+  video:[["Visual pull",68,5,"strong"],["Voice impact",37,2,"weak"],["Cognitive grip",50,-1,"okay"],
+         ["Emotional hit",57,6,"okay"],["Memorability",32,2,"weak"],["Attention",34,6,"weak"],
+         ["Buy signal",35,4,"weak"],["Hesitation",58,5,"weak"],["Mental effort",50,0,"okay"]],
+  text: [["Visual pull",null,null,"none"],["Voice impact",70,-1,"strong"],["Cognitive grip",28,12,"weak"],
+         ["Emotional hit",60,-4,"okay"],["Memorability",78,5,"strong"],["Attention",43,8,"weak"],
+         ["Buy signal",40,18,"weak"],["Hesitation",68,-10,"weak"],["Mental effort",39,8,"okay"]],
+};
+/* z-scores carry the shipped plain-word read — a σ figure alone tells a creator nothing */
+const SIGMAS={
+  video:[["Visual",.35,"slightly above"],["Somatomotor",.07,"about normal"],
+         ["Dorsal attention",-.73,"slightly below",1],["Ventral attention",-.01,"about normal"],
+         ["Limbic",-.72,"slightly below"],["Frontoparietal",-.43,"slightly below"],
+         ["Default mode",-.52,"slightly below"]],
+  text: [["Visual",-.57,"slightly below"],["Somatomotor",-.45,"slightly below"],
+         ["Dorsal attention",-.83,"slightly below",1],["Ventral attention",-.53,"slightly below"],
+         ["Limbic",.28,"about normal"],["Frontoparietal",-.66,"slightly below"],
+         ["Default mode",.02,"about normal"]],
+};
+/* the two networks that matter, in words — the shipped line under the cortex */
+const NREAD={
+  video:[["Focus","running slightly below","down"],["Visual","a mild lift","up"]],
+  text: [["Focus","scattered — won’t lock on","down"],["Emotion","about normal","up"]],
+};
 const SYSTEMS=["Visual","Audio","Face","Text","Language","Effort","Reward","Affect","Story","Surprise"];
 const TEXT_DEAD=new Set(["Visual","Audio","Face"]);
 
@@ -725,7 +748,7 @@ function hero(fig,l,r,vv,vl,read){
   return `<div class="hero"><div class="fig">${src}</div>${labels}
     <span class="corner l">${l}</span><span class="corner r">${r}</span>
     <div class="verdict"><b>${vv}</b><span>${vl}</span></div>
-    ${read?`<span class="figread">${read}</span>`:''}</div>`;
+    ${read?`<span class="figread" id="figread">${read}</span>`:''}</div>`;
 }
 
 /* identity: ONCE above the tabs. answer: ONCE, on Brain (page 1). */
@@ -778,8 +801,12 @@ const vmini=()=>`<div class="vmini">
   <s class="vprog" id="vprog"></s>
 </div>`;
 
-/* ── retention card (the scrubber) ──────────────────────────────────────── */
-function retentionCard(){
+/* ── the moment (Brain's instrument) ─────────────────────────────────────
+   Rev 9.2 moves the curve, the moment chips and the transcript to Brain, next to the cortex —
+   WHERE attention broke is a cognition question, and one playhead now drives the cortex clock,
+   the curve, the transcript and (across the tab) the video frame. Engagement keeps the video and
+   what the room would DO with it: one figure per page, each page dedicated to its own question. */
+function momentCard(){
   const W=366,H=108,P=6;
   const C=live();
   const me=path(C,W,H,P), md=path(MEDIAN,W,H,P);
@@ -791,8 +818,7 @@ function retentionCard(){
   const ghost=applied?`<path d="${path(CURVE,W,H,P)}" fill="none" stroke="rgba(255,99,99,.32)"
       stroke-width="1.4" stroke-dasharray="3 3"/>`:'';
   return `<div class="card">
-    ${ch('Retention',`<span id="retro">${mmss(ph*CLIP)} · ${Math.round(retAt(ph)*100)}%</span>`)}
-    ${vmini()}
+    ${ch('The moment',`<span id="retro">${mmss(ph*CLIP)} · ${Math.round(retAt(ph)*100)}%</span>`)}
     <div class="curvewrap" id="scrub">
       <svg viewBox="0 0 ${W} ${H}" style="display:block;width:100%;height:auto">
         <path d="${me} L${W-P},${H-P} L${P},${H-P} Z" fill="rgba(236,231,222,.045)"/>
@@ -814,6 +840,46 @@ function retentionCard(){
       `<button class="mo" data-t="${t}"${i===0?' aria-pressed="true"':''}
         ><i>${mmss(t)}</i><b>${v}%</b></button>`).join('')}</div>
     <div class="tstrip"><span class="tin" id="tin"></span></div>
+    ${insight(applied?`The room reaches the payoff.`:`Only the hook is broken.`)}
+  </div>`;
+}
+
+/* the decomposition — nine signals, score · delta vs your baseline · grade. Colourless grades. */
+function signalsCard(){
+  return `<div class="card">${ch('Signal breakdown','0–100 · vs your baseline')}
+    <div class="sg">${SIGNALS[kind].map(([n,v,d,g])=>
+      `<div class="${g==="none"?"none":g==="strong"?"strong":""}">
+        <span class="v"><b>${v==null?"—":v}</b>${d==null?'':`<span class="d">${d>0?'+':''}${d}</span>`}</span>
+        <i>${n}</i><u>${g==="none"?"no signal":g}</u></div>`).join('')}</div>
+  </div>`;
+}
+
+/* the substrate — raw networks, z-scored, each with the plain-word read the σ alone can't give */
+function networksCard(){
+  return `<div class="card">${ch('Network activation','z-scored · at the playhead')}
+    <div style="margin-top:8px">${SIGMAS[kind].map(([n,z,r])=>{
+      const w=Math.min(48,Math.abs(z)/1.2*50);
+      return `<div class="zr"><span class="nm">${n}</span>
+        <span class="tk"><u></u><s style="${z<0?`right:50%;`:`left:50%;`}width:${w.toFixed(1)}%"></s></span>
+        <span class="vl">${z>0?'+':''}${z.toFixed(2)}σ<u>${r}</u></span></div>`;}).join('')}
+  </div>`;
+}
+
+/* per-second activation — where in the clip each system fires */
+function heatCard(){
+  const isText=kind==="text";
+  return `<div class="card">${ch('Activation per second',`${CLIP}s · 10 systems`)}
+    <div class="heat" style="margin-top:12px">${SYSTEMS.map((s,r)=>{
+      const dead=isText&&TEXT_DEAD.has(s);
+      return `<div class="hrow"><span class="nm">${s}</span><span class="cells">${
+        Array.from({length:CLIP},(_,c)=>
+          `<s style="background:rgba(236,231,222,${(dead?.03:heatAt(r,c)).toFixed(2)})"></s>`).join('')
+      }</span></div>`;}).join('')}</div>
+    <div class="hax"><span>0s</span><span>${CLIP}s</span></div>
+    <div class="hlg"><span class="ramp"></span><span>weak → strong</span>
+      <span class="rt">each cell = 1s</span></div>
+    ${isText?`<p class="mdead">Visual, Audio and Face carry no signal — a text concept has no video
+      substrate.</p>`:''}
   </div>`;
 }
 
@@ -821,39 +887,40 @@ function retentionCard(){
 function brainTab(){
   const d=D[kind];
   const v=applied?d.verdictDone:d.verdict;
+  const nread=`<div class="nread">${NREAD[kind].map(([a,b,dir])=>
+    `<span><b>${a}</b> <u>${b}</u> ${dir==="down"?"↓":"↑"}</span>`).join('')}</div>`;
+
+  /* A text concept has no timeline (§3.3) — its "when" is a WHY, so the reason bars take the
+     moment's slot and the instrument continues underneath, identical in both kinds. */
   if(kind==="text") return hero("cortex","Predicted cortex","simulated",v[0],v[1],
       applied?d.figreadDone:d.figread)
+  + nread
   + answerBlock()
-  + `<div class="card">${ch('Key metrics','vs your last 41 hooks')}
-      ${tiles(TILES[applied?'textBrainDone':'textBrain'])}
-      ${insight(applied?`Specific beats familiar.`:`The wording is the commodity.`)}
-    </div>`
-  + `<div class="card" id="reasons">${ch('Why they stopped')}
+  + `<div class="card" id="reasons">${ch('Why they stopped','coded from 1,000')}
       <div style="margin-top:10px">${REASONS.map(r=>`
         <div class="rb ${r.lead?'lead':''}"><span class="nm">${r.n}</span>
           <span class="tr"><s style="width:${(r.v/37*100).toFixed(0)}%"></s></span>
           <span class="vl">${r.v}%</span></div>`).join('')}</div>
       ${insight(`Recognition, not disagreement.`)}
     </div>`
+  + signalsCard()
+  + networksCard()
+  + heatCard()
   + foot();
 
-  /* rev 9: the Brain page carries the BRAIN. The watch tiles moved to Engagement (readings of the
-     retention instrument) and traffic moved to Audience (a who/where fact) — what was missing here
-     was the model's own read, which only existed as raw σ bars in the drawer. */
-  return hero("cortex","Predicted cortex",applied?"after the trim":"at the break",v[0],v[1],
+  /* rev 9.2: Brain runs off the cortex AND the retention curve, as the shipped tab does. Depth
+     runs headline → when → what → substrate; nothing on this page is a reach, watch or reaction
+     metric, because those are the other two pages' jobs. */
+  return hero("cortex","Predicted cortex",
+      applied?"after the trim":`t = <span id="ctxT">${mmss(ph*CLIP)}</span>`,v[0],v[1],
       applied?d.figreadDone:d.figread)
+  + nread
   + answerBlock()
-  + beatsCard()
+  + momentCard()
+  + signalsCard()
+  + networksCard()
+  + heatCard()
   + foot();
-}
-
-/* the brain's read — time · beat · direction. The break beat reads by weight, not colour. */
-function beatsCard(){
-  return `<div class="card">${ch('What the brain saw')}
-    <div style="margin-top:4px">${(applied?BEATS.videoDone:BEATS.video).map(b=>`
-      <div class="beat${b.key?' key':''}"><i>${b.t}</i><span class="nm">${b.r}</span>
-        <span class="ar">${b.d==="down"?"↓":"↑"}</span></div>`).join('')}</div>
-  </div>`;
 }
 
 function audience(){
@@ -953,7 +1020,12 @@ function surfaceCard(){
    voices lead on Text. Reactions and the post window follow. */
 function engagement(){
   const v=kind==="video";
-  return (v?retentionCard():`<div class="card">${ch('If you posted this')}
+  return (v?`<div class="card">${ch('What they watched',
+      `<span id="retro">${mmss(ph*CLIP)} · ${Math.round(retAt(ph)*100)}%</span>`)}
+      ${vmini()}
+      ${tiles(TILES[applied?'videoWatchDone':'videoWatch'],'t3')}
+      ${insight(applied?`They stay for the payoff.`:`Nobody reaches the payoff.`)}
+    </div>`:`<div class="card">${ch('If you posted this')}
       <div>${VOICES.map(x=>`<div class="voice ${x.loss?'loss':''}">
         <div class="vhead"><span class="av">${x.w[0]}</span><b>${x.w}</b><span class="vtag">${x.t}</span
           ><button class="ivw">interview ›</button></div>
@@ -962,11 +1034,6 @@ function engagement(){
           <span class="t"><s style="width:${(x.n/412*100).toFixed(0)}%"></s></span></div>
       </div>`).join('')}</div>
     </div>`)
-  /* rev 9: the watch tiles arrive from Brain — they are readings of THIS page's instrument.
-     No insight line: their fact ("only the hook is broken") is Brain's third beat now. */
-  + (v?`<div class="card">${ch('Key metrics','vs your last 41')}
-      ${tiles(TILES[applied?'videoWatchDone':'videoWatch'],'t3')}
-    </div>`:'')
   + `<div class="card">${ch('Projected reaction','per reach')}
       ${tiles(TILES[v?'videoEngage':'textEngage'])}
       ${insight(v
@@ -992,46 +1059,31 @@ const heatAt=(r,c)=>{
   const phase=Math.abs(Math.sin(c*0.7+r*1.9));
   return Math.max(.05,Math.min(.88,base*0.72+base*phase*0.34));
 };
+/* The instrument itself moved back onto the surface (rev 9.2), so the drawer stops being a
+   second copy of it and becomes what its label always promised: how to read what is up there —
+   which scale each block is on, and what the model can and cannot claim. */
 function methodPanel(){
-  const isText=kind==="text";
-  const cells=SYSTEMS.map((s,r)=>{
-    const dead=isText&&TEXT_DEAD.has(s);
-    return `<div class="hrow"><span class="nm">${s}</span><span class="cells">${
-      Array.from({length:CLIP},(_,c)=>{
-        const a=dead?.03:heatAt(r,c);
-        return `<s style="background:rgba(236,231,222,${a.toFixed(2)})"></s>`;}).join('')
-    }</span></div>`;}).join('');
   return `<div class="method">
-    <p class="mnote">Every number above is one unit — the share of the room still watching.
-      Below is the instrument those numbers come out of, on its own scales.</p>
+    <div class="mhead">The three scales on this page</div>
+    <p class="mnote"><b style="color:var(--dim);font-weight:500">Share of the room</b> — the
+      verdict, the curve, the moment chips and the watch metrics. One unit, one meaning: how many
+      of the 1,000 are still with you.</p>
+    <p class="mnote"><b style="color:var(--dim);font-weight:500">0–100 signal scores</b> — the
+      breakdown. Nine signals derived from seven networks; two are composites. The grade words are
+      a cutoff on a modeled signal, <b style="color:var(--dim);font-weight:500">not</b> a benchmark
+      against real outcomes — which is why they carry no colour.</p>
+    <p class="mnote"><b style="color:var(--dim);font-weight:500">z-scores</b> — the network bars,
+      against this clip’s own baseline at the playhead second. Zero is the centre line, so a bar
+      left of it is below this clip’s own normal, not below yours.</p>
 
-    <div class="mhead">Nine breakdown signals · 0–100</div>
-    <div class="sig">${SIGNALS.map(([n,v])=>`<div><b>${v}</b><i>${n}</i></div>`).join('')}</div>
-    <p class="mnote">Nine signals derived from seven networks — two are composites. The bands are a
-      cutoff on a modeled signal, not a benchmark against real outcomes.</p>
-
-    <div class="mhead">Raw network activation · z-scored</div>
-    ${SIGMAS.map(([n,z])=>{
-      const w=Math.min(48,Math.abs(z)/1.2*50);
-      return `<div class="zr"><span class="nm">${n}</span>
-        <span class="tk"><u></u><s style="${z<0?`right:50%;`:`left:50%;`}width:${w.toFixed(1)}%"></s></span>
-        <span class="vl">${z>0?'+':''}${z.toFixed(2)}σ</span></div>`;}).join('')}
-    <p class="mnote">Against this clip’s own baseline, at the playhead second. Zero is the centre
-      line.</p>
-
-    <div class="mhead">Activation per second · ${CLIP}s · 10 systems</div>
-    <div class="heat">${cells}</div>
-    <div class="hax"><span>0s</span><span>${CLIP}s</span></div>
-    ${isText?`<p class="mdead">Visual, Audio and Face carry no signal — a text concept has no video
-      substrate. They are shown flat rather than hidden so the grid stays the same instrument
-      across both.</p>`:''}
+    <div class="mhead">What this is not</div>
     <p class="mnote">Modeled from your audience’s real retention · calibrated on your 4.2k
-      followers · confidence 0.82 · calibrated for engagement, not purchase · not a brain
-      measurement.</p>
+      followers · confidence 0.82 · calibrated for engagement, not purchase · a cortical proxy,
+      never a brain measurement.</p>
   </div>`;
 }
 const foot=()=>`<button class="foot" aria-expanded="${method}">
-    <span>How these numbers are made</span><span class="cv">›</span></button>
+    <span>How to read these numbers</span><span class="cv">›</span></button>
   ${method?methodPanel():''}`;
 
 /* ── render ─────────────────────────────────────────────────────────────── */
@@ -1058,7 +1110,9 @@ function paint(){
   content.innerHTML=tab==="brain"?brainTab():tab==="audience"?audience():engagement();
   abar.innerHTML=actionBar();
   body.scrollTop=0;
-  if(tab==="engagement"&&kind==="video"){bindScrub();syncPlayhead();}
+  /* one playhead, two pages: it is DRIVEN on Brain (the curve is the scrubber) and READ on
+     Engagement (the video frame's progress line answers it). */
+  if(kind==="video"){ if(tab==="brain")bindScrub(); syncPlayhead(); }
   syncBar();
 }
 function setKind(k){
@@ -1073,8 +1127,15 @@ function setTab(t){
 }
 /* the fix RE-SIMULATES. "See the evidence" keeps rev 7.5's routing as a separate, quieter move. */
 function applyFix(){ applied=true; ph=BREAK_S/CLIP; paint(); }
+/* the evidence for a video verdict is the moment BELOW it, not another tab — the fix's proof and
+   its control now share a page, so this scrolls instead of routing (rev 9.2). */
 function seeEvidence(){
-  if(kind==="video"){ ph=BREAK_S/CLIP; setTab("engagement"); }
+  if(kind==="video"){
+    ph=BREAK_S/CLIP; syncPlayhead();
+    const el=document.getElementById("scrub");
+    if(el)body.scrollTo({top:el.getBoundingClientRect().top-body.getBoundingClientRect().top
+      +body.scrollTop-96,behavior:"smooth"});
+  }
   else{
     const el=document.getElementById("reasons");
     if(el)body.scrollTo({top:el.getBoundingClientRect().top-body.getBoundingClientRect().top
@@ -1100,6 +1161,12 @@ function syncPlayhead(){
   if(dot){dot.setAttribute("cx",x);dot.setAttribute("cy",y);}
   const ro=document.getElementById("retro");
   if(ro)ro.textContent=`${mmss(ph*CLIP)} · ${Math.round(retAt(ph)*100)}%`;
+  /* the cortex clock rides the same playhead — the figure and the curve are one instrument */
+  const ct=document.getElementById("ctxT");
+  if(ct)ct.textContent=mmss(ph*CLIP);
+  const fr=document.getElementById("figread");
+  if(fr&&!applied&&kind==="video")
+    fr.textContent=`${mmss(ph*CLIP)} · ${Math.round(retAt(ph)*100)}% still watching`;
   const vp=document.getElementById("vprog");
   if(vp)vp.style.width=(ph*100).toFixed(1)+"%";
   /* one-line transcript: light words up to the playhead, keep the current word centred */
