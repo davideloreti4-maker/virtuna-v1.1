@@ -1043,3 +1043,41 @@ vitest files; **vitest does not typecheck**, and a green Vercel check is not a b
 - The build script's `CROP` is coupled to `hero()`'s img framing — unchanged since rev 6; it THROWS
   if the img regex misses and refuses leftover `reference-2026-08-01` refs.
 - Duplicate class names silently break layout (`.win`, `.foot`, `.lede` — §10's list).
+
+## 16. Rev 10 — the social-media pass (2026-08-02)
+
+The owner's audit call: "optimize for social media… I don't like the naming (lurkers, sceptics)
+at all… just random sentences or confusing metrics… something Claude, Perplexity or ChatGPT
+would release." Rev 10 implements that audit. On the SAME artifact url; shots `rev10-*.png` (9).
+
+1. **One audience taxonomy.** builders/learners/skeptics/drive-by RETIRED (owner rejection —
+   never re-propose). The room splits by relationship: **Followers · Returning · New viewers ·
+   Outside niche** — TikTok's own analytics vocabulary — across terrain districts, watch-time
+   pools, fit index and spread. Decision states are plain behaviour: Watched · Almost stayed ·
+   Wrong audience · Scrolled past. Voices carry human descriptors ("small creator"), keyed by
+   decision row; echo counts now fit inside their rows (296 ≤ 380).
+2. **The verb "stop" is BANNED.** The live rail uses "would stop" as GOOD, TikTok/mock as BAD.
+   Now: kept watching / scrolled past / leave by. Probe asserts /\bstop/i absent per page.
+3. **Feet are metric-anchored.** "Everyone who stays converts." (contradicted by its own ↓ tiles)
+   → "Saves lead — follows lag." Every foot cites a number visible in its card.
+4. **Answer-first**: Engagement and Audience open with a one-line `.plede` page-answer (Brain's
+   answer block already is one). The Audience plede interprets ("Mostly strangers") because the
+   hero chip below it already states the 90%.
+5. **Counts, not rates**: Projected reaction tiles are counts of projected reach ("102 saves"),
+   rate in the delta line, denominator in the card meta ("of 3.2K reached"); applied swaps to
+   the 8.4K set.
+6. **Encoding fixes**: fit index bars are diverging with a zero line (−68% no longer draws longer
+   than +5%); Signal breakdown leads with 3 full-width MOVERS rows (from `MOVERS`), other six
+   keep the 3×3→3×2 grid — all nine visible, rank replaces the rev-8 drawer; networks renamed by
+   function (Focus/Body/Mind-wandering…), anatomy moved to the drawer; two signals translated
+   (Cognitive grip → Easy to follow, Voice impact → Delivery).
+7. **Chrome**: identity row = views only + projected tag (the other four counts live as
+   Engagement tiles); pager labelled ("clip 2 of 5" / "draft 4 of 5"); action bar label is a
+   short tabular fact (`barLab`) that cannot truncate; hero corner says "at 0:03, the drop";
+   the hero figread polarity-duplicate ("38% still watching" under "62% leave") is deleted;
+   `.simline` sim disclosure (1,000 · 4.2K · confidence 0.82) is the last line of EVERY page.
+
+Probes (were in `scripts/tmp-shoot-rev10.mjs`, deleted per the loop; recreate from §15's
+pattern): banned-vocab regexes per page, ≤1 coral zone, no shadow/backdrop/gradient, diverging-
+bar geometry, mover/grid counts (3+6), action-bar no-truncate, tab-order parity, drawer keeps
+the anatomical mapping. All green at commit time.
