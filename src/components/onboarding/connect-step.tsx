@@ -36,23 +36,32 @@ import { nameFromDescription } from "@/components/audience/audience-create";
 import { useOnboardingStore } from "@/stores/onboarding-store";
 import { cn } from "@/lib/utils";
 
+export type Door = "personal" | "target";
+
 interface ConnectStepProps {
   /**
-   * Hand the created draft up to the page, which mounts CalibrationFlow against it.
+   * Hand the draft up to the page, which mounts CalibrationFlow against it.
    * `handle` / `description` prefill that flow so it never re-asks what we just collected.
    */
   onDraftReady: (
     draft: Audience,
     prefill: { handle?: string; description?: string }
   ) => void;
+  /** Which door to open on. Set when recovering from a failed run on the OTHER door. */
+  initialDoor?: Door;
+  /**
+   * A draft this user already created on a previous attempt. Present only on the recovery path
+   * (calibration failed → they chose the other door). PATCHing it keeps one audience row per
+   * onboarding instead of stranding a personal draft every time a new creator's account turns out
+   * to be too thin to read — which, per `isThin`, is the common case rather than the edge one.
+   */
+  existingDraft?: Audience | null;
 }
 
-type Door = "personal" | "target";
-
-export function ConnectStep({ onDraftReady }: ConnectStepProps) {
+export function ConnectStep({ onDraftReady, initialDoor, existingDraft }: ConnectStepProps) {
   const { tiktokHandle, setTiktokHandle } = useOnboardingStore();
 
-  const [door, setDoor] = useState<Door>("personal");
+  const [door, setDoor] = useState<Door>(initialDoor ?? "personal");
   const [handle, setHandle] = useState(tiktokHandle);
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -101,11 +110,18 @@ export function ConnectStep({ onDraftReady }: ConnectStepProps) {
           };
 
     try {
-      const res = await fetch("/api/audiences", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+      // Recovery reuses the row the first attempt created; a first attempt makes one.
+      const res = existingDraft
+        ? await fetch(`/api/audiences/${existingDraft.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          })
+        : await fetch("/api/audiences", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
       if (!res.ok) {
         setError("Couldn't start. Try again.");
         setSubmitting(false);

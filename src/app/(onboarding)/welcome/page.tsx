@@ -26,7 +26,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { Audience } from "@/lib/audience/audience-types";
 import { useOnboardingStore } from "@/stores/onboarding-store";
-import { ConnectStep } from "@/components/onboarding/connect-step";
+import { ConnectStep, type Door } from "@/components/onboarding/connect-step";
 import { CalibrationFlow } from "@/components/audience/calibration-flow";
 import { cn } from "@/lib/utils";
 
@@ -43,6 +43,7 @@ export default function WelcomePage() {
   const [stage, setStage] = useState<Stage>("connect");
   const [draft, setDraft] = useState<Audience | null>(null);
   const [prefill, setPrefill] = useState<{ handle?: string; description?: string }>({});
+  const [door, setDoor] = useState<Door>("personal");
 
   // Hydrate store on mount
   useEffect(() => {
@@ -120,6 +121,40 @@ export default function WelcomePage() {
       if (profile.tiktok_handle && !store.tiktokHandle) {
         store.setTiktokHandle(profile.tiktok_handle);
       }
+
+      // ── Adopt whatever a previous, interrupted attempt already produced ──────────────
+      //
+      // Leaving /welcome mid-calibration does NOT stop the run. The calibrate route does all
+      // of its work and all of its writes inside the SSE stream's start(), nothing cancels it,
+      // and `send` simply swallows frames once the client is gone — so a user who reloads at
+      // t=60s of a ~128s scrape still gets their audience written at t=128s.
+      //
+      // Without this check the page would then ask for the handle again and spend a SECOND
+      // Apify scrape (on a $5/mo capped account) to rebuild an audience that already exists,
+      // leaving a duplicate row behind it. Onboarding's job is done the moment a calibrated
+      // audience exists; finding one is a reason to finish, not to start over.
+      try {
+        const res = await fetch("/api/audiences");
+        if (unmounted || !res.ok) return;
+        const { audiences } = (await res.json()) as { audiences?: Audience[] };
+        if (unmounted || !audiences?.length) return;
+
+        // `personas.length` is the app's own calibrated test (select-persona-targets.ts:111).
+        const calibrated = audiences.find(
+          (a) => !a.is_general && (a.personas?.length ?? 0) > 0,
+        );
+        if (calibrated) {
+          await store.completeOnboarding(); // → the redirect effect lands them on /home
+          return;
+        }
+
+        // Only a DRAFT survived (created, never calibrated). Adopt it so a retry PATCHes that
+        // row instead of minting a fresh one on every interrupted attempt.
+        const pending = audiences.find((a) => !a.is_general);
+        if (pending && !unmounted) setDraft(pending);
+      } catch {
+        /* best-effort — a failed lookup just means the normal first-run path */
+      }
     }
 
     void initOnboarding();
@@ -147,6 +182,27 @@ export default function WelcomePage() {
   async function finishOnboarding() {
     await store.completeOnboarding();
   }
+
+  /**
+   * The recovery: a run that produced no audience sends them to the OTHER door rather than into
+   * General. Without it the most likely first-run outcome — a new creator whose account is too
+   * thin to read — ends onboarding in exactly the uncalibrated state this flow exists to prevent.
+   *
+   * The draft row travels with them and gets PATCHed, so switching doors does not strand one
+   * audience row per attempt.
+   */
+  function switchDoor() {
+    setDoor(prefill.handle ? "target" : "personal");
+    setPrefill({});
+    setStage("connect");
+  }
+
+  const recoveryAction = {
+    label: prefill.handle
+      ? "Describe your audience instead"
+      : "Use my TikTok handle instead",
+    onClick: switchDoor,
+  };
 
   const isCalibrating = stage === "calibrate" && draft !== null;
 
@@ -207,9 +263,12 @@ export default function WelcomePage() {
             prefillPlatform={draft.platform}
             onDone={() => void finishOnboarding()}
             onSkip={() => void finishOnboarding()}
+            secondaryAction={recoveryAction}
           />
         ) : (
           <ConnectStep
+            initialDoor={door}
+            existingDraft={draft}
             onDraftReady={(created, p) => {
               setDraft(created);
               setPrefill(p);

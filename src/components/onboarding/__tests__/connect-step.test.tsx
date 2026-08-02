@@ -142,6 +142,39 @@ describe("ConnectStep — the describe door (the skip path)", () => {
   });
 });
 
+describe("ConnectStep — recovering onto the other door", () => {
+  it("PATCHes the existing draft instead of stranding a second audience row", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ audience: { ...DRAFT, type: "target" } }));
+    const onDraftReady = vi.fn();
+
+    // What /welcome passes after a failed personal run: the draft travels with the user.
+    render(
+      <ConnectStep onDraftReady={onDraftReady} initialDoor="target" existingDraft={DRAFT} />,
+    );
+
+    fireEvent.change(screen.getByLabelText(/who are you making for/i), {
+      target: { value: "Indie game developers shipping their first title" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /continue/i }));
+
+    await waitFor(() => expect(onDraftReady).toHaveBeenCalledTimes(1));
+
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(url).toBe("/api/audiences/aud-1");
+    expect((init as RequestInit).method).toBe("PATCH");
+    // The row is converted in place — personal/tiktok becomes target/custom.
+    expect(JSON.parse((init as RequestInit).body as string)).toMatchObject({
+      type: "target",
+      platform: "custom",
+    });
+  });
+
+  it("opens on the door it was sent to", () => {
+    render(<ConnectStep onDraftReady={vi.fn()} initialDoor="target" existingDraft={DRAFT} />);
+    expect(screen.getByLabelText(/who are you making for/i)).toBeTruthy();
+  });
+});
+
 // ─── Step 2: the handoff ──────────────────────────────────────────────────────
 
 describe("CalibrationFlow — autoStart", () => {
@@ -171,6 +204,46 @@ describe("CalibrationFlow — autoStart", () => {
       handle: "zachking",
       audienceId: "aud-1",
     });
+  });
+
+  it("offers the recovery door when a run falls back to General, and makes it the primary", async () => {
+    // The thin-data fallback is the LIKELY first-run outcome (isThin = no follower tier and
+    // <10 videos — a new creator). Ending it at "Continue with General" hands them the
+    // uncalibrated product onboarding exists to prevent.
+    const stream = new ReadableStream<Uint8Array>({
+      start(c) {
+        c.enqueue(
+          new TextEncoder().encode(
+            'event: fallback\ndata: {"reason":"thin","message":"Not enough public activity."}\n\n',
+          ),
+        );
+        c.close();
+      },
+    });
+    fetchMock.mockResolvedValue({ ok: true, body: stream } as unknown as Response);
+    const onSecondary = vi.fn();
+
+    await act(async () => {
+      render(
+        <CalibrationFlow
+          audience={DRAFT}
+          autoStart
+          prefillHandle="zachking"
+          onDone={vi.fn()}
+          onSkip={vi.fn()}
+          secondaryAction={{ label: "Describe your audience instead", onClick: onSecondary }}
+        />,
+      );
+    });
+
+    const recover = await screen.findByRole("button", {
+      name: /describe your audience instead/i,
+    });
+    fireEvent.click(recover);
+    expect(onSecondary).toHaveBeenCalledTimes(1);
+
+    // General is still reachable, but it is no longer the recommended ending.
+    expect(screen.getByRole("button", { name: /continue with general/i })).toBeTruthy();
   });
 
   it("does not fire without the flag (existing callers keep their idle form)", async () => {

@@ -47,6 +47,23 @@ interface CalibrationFlowProps {
    * prefilled) and every exit still runs through onDone/onSkip.
    */
   autoStart?: boolean;
+  /**
+   * A second way out of a run that produced no audience, offered next to General.
+   *
+   * "Continue with General" is a fine ending for someone who already has a working product and
+   * was topping it up. It is a bad ending for a NEW account, because General is precisely the
+   * uncalibrated state where every card renders "Not tested yet" — the failure path quietly
+   * delivers the inert product that onboarding exists to prevent.
+   *
+   * And the most likely first-run failure is the one with an obvious remedy: `isThin` is
+   * "no follower tier AND fewer than 10 videos" (calibration.ts:204), which is a description of a
+   * brand-new creator. Their account cannot be read yet, but they can absolutely describe who
+   * they are making for — so the other door is offered rather than withheld.
+   *
+   * When present it takes the PRIMARY slot and General steps down to secondary: recovering is
+   * the better outcome, and the buttons should say so.
+   */
+  secondaryAction?: { label: string; onClick: () => void };
   className?: string;
 }
 
@@ -57,7 +74,7 @@ type Phase =
   | "error"
   | "done";
 
-export function CalibrationFlow({ audience, onDone, onSkip, prefillHandle, prefillDescription, prefillPlatform, autoStart, className }: CalibrationFlowProps) {
+export function CalibrationFlow({ audience, onDone, onSkip, prefillHandle, prefillDescription, prefillPlatform, autoStart, secondaryAction, className }: CalibrationFlowProps) {
   const isPersonal = audience.type === "personal";
 
   // This component sends a handle on the personal path and a description on the target one — so
@@ -397,10 +414,19 @@ export function CalibrationFlow({ audience, onDone, onSkip, prefillHandle, prefi
             </p>
           </div>
         </div>
-        <div className="flex justify-end">
-          <Button type="button" variant="primary" onClick={onSkip}>
+        <div className="flex gap-3 justify-end">
+          <Button
+            type="button"
+            variant={secondaryAction ? "secondary" : "primary"}
+            onClick={onSkip}
+          >
             Continue with General
           </Button>
+          {secondaryAction && (
+            <Button type="button" variant="primary" onClick={secondaryAction.onClick}>
+              {secondaryAction.label}
+            </Button>
+          )}
         </div>
       </div>
     );
@@ -416,10 +442,15 @@ export function CalibrationFlow({ audience, onDone, onSkip, prefillHandle, prefi
             {errorMsg}
           </p>
         </div>
-        <div className="flex gap-3 justify-end">
+        <div className="flex flex-wrap gap-3 justify-end">
           <Button type="button" variant="secondary" onClick={onSkip}>
             Use General instead
           </Button>
+          {secondaryAction && (
+            <Button type="button" variant="secondary" onClick={secondaryAction.onClick}>
+              {secondaryAction.label}
+            </Button>
+          )}
           <Button
             type="button"
             variant="primary"

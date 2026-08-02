@@ -100,27 +100,41 @@ export const useOnboardingStore = create<OnboardingState>((set, get) => ({
     persistToSupabase({ tiktok_handle: tiktokHandle });
   },
 
+  /**
+   * ⚠️ The DB write happens BEFORE the step flips, and the order is load-bearing.
+   *
+   * Flipping first is the optimistic-update instinct, and here it causes a bounce: the welcome
+   * page redirects to /home the moment `step` becomes "completed", and middleware.ts:173 gates
+   * /home on `onboarding_completed_at` being present in the DATABASE. Redirect and write were
+   * racing, so a creator who had just sat through a ~128s calibration could be thrown straight
+   * back to the welcome form. Caught live on the resume path (2026-08-02), where it reproduced
+   * every time; the write itself was always landing.
+   *
+   * A failed persist still flips the step — persistToSupabase swallows its own errors, so
+   * awaiting it only sequences the two. That leaves the pre-existing behaviour intact for the
+   * offline case rather than trapping the user on /welcome with no way forward.
+   */
   completeOnboarding: async () => {
     const state = get();
     const step = "completed" as OnboardingStep;
-    saveToStorage({ step, tiktokHandle: state.tiktokHandle });
-    set({ step });
     await persistToSupabase({
       onboarding_step: "completed",
       onboarding_completed_at: new Date().toISOString(),
       tiktok_handle: state.tiktokHandle || null,
     });
+    saveToStorage({ step, tiktokHandle: state.tiktokHandle });
+    set({ step });
   },
 
   skipOnboarding: async () => {
     const state = get();
     const step = "completed" as OnboardingStep;
-    saveToStorage({ step, tiktokHandle: state.tiktokHandle });
-    set({ step });
     await persistToSupabase({
       onboarding_step: "completed",
       onboarding_completed_at: new Date().toISOString(),
     });
+    saveToStorage({ step, tiktokHandle: state.tiktokHandle });
+    set({ step });
   },
 
   reset: () => {
