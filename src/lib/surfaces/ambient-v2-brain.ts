@@ -42,6 +42,17 @@ import {
   modeledUnlock,
   type ModeledBrainInput,
 } from "./ambient-v2-modeled";
+import {
+  drillIdentity,
+  engagementOf,
+  heroVerdictOf,
+  methodOf,
+  poolsFromWeights,
+  retentionOf,
+  simlineOf,
+  videoAnswer,
+  watchTilesOf,
+} from "./ambient-v2-drill";
 
 const clamp = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v));
 
@@ -147,6 +158,68 @@ function timeTokenToSec(t: string): number {
   return (m ?? 0) * 60 + (s ?? 0);
 }
 
+// ── the break — where the measured curve collapses (the fact the video unlock is about) ────────────
+
+/** The end of the opening collapse, read off the REAL curve.
+ *
+ *  Not the single steepest step: a curve can fall hard over two or three seconds and the steepest
+ *  one of them is an arbitrary pick inside one event. We take the LAST second whose fall is still
+ *  at least half the steepest fall — the second the collapse finishes — because that is the point
+ *  the room has finished leaving, and therefore the point a trim has to reach.
+ *
+ *  Returns null when nothing meaningful falls (a flat curve has no break, so no lever, so no unlock —
+ *  the honest absence, never a fabricated one). */
+export function curveBreak(
+  heatmap: HeatmapPayload,
+): { index: number; atSec: number; heldPct: number; lostPct: number } | null {
+  const curve = (heatmap.weighted_curve ?? []).map((v) => clamp(v, 0, 1));
+  if (curve.length < 3) return null;
+  const drops = curve.map((v, i) => (i === 0 ? 0 : curve[i - 1]! - v));
+  const steepest = Math.max(...drops);
+  // A curve that never gives up more than 8 points in a second did not break; it drifted.
+  if (steepest < 0.08) return null;
+  let index = 0;
+  drops.forEach((d, i) => {
+    if (d >= steepest * 0.5) index = i;
+  });
+  const held = curve[index]!;
+  return {
+    index,
+    atSec: Math.max(0, Math.round(heatmap.segments?.[index]?.t_start ?? index)),
+    heldPct: Math.round(held * 100),
+    lostPct: Math.round((1 - held) * 100),
+  };
+}
+
+/**
+ * The VIDEO unlock — §3.2's real fix.
+ *
+ * `modeledUnlock` needs a friction reason AND a pull reason, and a video fold emits **no coded
+ * reasons at all** (`reasons: []` by design — §3.3), so every real video drill resolved to
+ * `undefined` and the one actionable element on the page never rendered in prod. Passing fake
+ * `reasons` would have been the wrong repair; a video's lever lives in the thing a video actually
+ * measures, which is the curve. Every number below is read off `weighted_curve`.
+ */
+export function curveUnlock(
+  input: BrainSnapshotInput,
+  swing?: { gainLabel: string } | null,
+): DomainTemplate["unlock"] | undefined {
+  const brk = curveBreak(input.heatmap);
+  if (!brk || brk.atSec <= 0) return undefined;
+  const curve = input.heatmap.weighted_curve.map((v) => clamp(v, 0, 1));
+  const tail = curve.slice(brk.index);
+  // What the room does AFTER the break — the half of the story the verdict never tells. Measured as
+  // the share of the survivors still there at the end, so "the rest of the clip holds" is a fact.
+  const staysToEnd = tail.length > 1 ? Math.round((tail[tail.length - 1]! / Math.max(0.01, tail[0]!)) * 100) : 0;
+  return {
+    lever: `Trim 0:00–${fmtTime(brk.atSec)}`,
+    ...(swing?.gainLabel ? { gain: swing.gainLabel } : {}),
+    insight: `The clip holds once it starts — ${staysToEnd}% of the room still watching at ${fmtTime(
+      brk.atSec,
+    )} stays to the end. It is the first ${brk.atSec} seconds that lose the other ${brk.lostPct}%, not the rest of it.`,
+  };
+}
+
 /**
  * The "why this second" synthesis — the plain read of the MEASURED decisive moment. Only emitted when
  * the curve actually dips (min meaningfully below peak); the copy states WHERE the attention bottoms
@@ -186,6 +259,17 @@ function bandOf(score: number): SignalRow["band"] {
   return "weak";
 }
 
+/** The three signals that lead the breakdown: the biggest movers off the baseline, weakest first on
+ *  a tie. A muted cell (no substrate to measure) can never be a mover — it has nothing to report. */
+function topMovers(cells: { key: string; score: number; delta?: number; muted?: boolean }[]): string[] {
+  return cells
+    .filter((c) => !c.muted && c.delta != null)
+    .slice()
+    .sort((a, b) => Math.abs(b.delta!) - Math.abs(a.delta!) || a.score - b.score)
+    .slice(0, 3)
+    .map((c) => c.key);
+}
+
 /** Map the four real `GeminiVideoSignals` craft dims → the lean signal rows. Absent signals → []
  *  (SignalRows renders its header + nothing — honest "no craft read"). `vsBase` is OMITTED: there is
  *  no per-creator last-N baseline yet, so SignalRows shows the absolute score greyed (its null path). */
@@ -213,6 +297,7 @@ export function buildBrainFrameData(input: BrainSnapshotInput): BrainFrameData {
     reasons: null, // reasons are a population read; the brain layer couples to the curve + craft only
   };
   const networkBars = modeledNetworkBars(modeledInput);
+  const signalGrid = modeledSignalGrid(modeledInput);
   return {
     cortexSeedKey: input.stimulusKey,
     clipSeconds: clipSecondsOf(input.heatmap),
@@ -225,7 +310,13 @@ export function buildBrainFrameData(input: BrainSnapshotInput): BrainFrameData {
     signals: signalRows(input.videoSignals),
     whyThisSecond: whyThisSecond(input),
     // ── modeled-depth parity (Phase-C ②) — the fuller read; MODELED, carried by the one calibration line ──
-    signalGrid: modeledSignalGrid(modeledInput),
+    signalGrid,
+    // The movers ARE the signals that moved: ranked by the size of the delta vs the baseline, ties
+    // to the weaker score. All nine stay on the surface — these three simply lead it, so the card
+    // has a hierarchy without any of them being hidden (the rev-8 drawer mistake).
+    signalMovers: topMovers(signalGrid),
+    signalScale: "0–100 · vs your baseline",
+    networkScale: "z-scored · at the break",
     networkBars,
     networks: modeledNetworks(networkBars),
     kpiHeatmap: modeledKpiHeatmap(modeledInput),
@@ -252,14 +343,36 @@ export interface VideoDomainTemplateInput extends BrainSnapshotInput {
  */
 export function buildVideoDomainTemplate(input: VideoDomainTemplateInput): DomainTemplate {
   const population = input.population ?? null;
+  const clipSeconds = clipSecondsOf(input.heatmap);
+  const brk = curveBreak(input.heatmap);
+  const transcript = transcriptOf(input.heatmap, input.verbatim);
+  const curve = input.heatmap.weighted_curve.map((v) => clamp(v, 0, 1));
+  const retention = retentionOf(input.heatmap, clipSeconds, transcript, brk);
+  const pools = poolsFromWeights(input.heatmap.weights, curve);
   return {
     id: "creator",
     label: "Creator · content",
-    backLabel: "Overview",
+    // "Overview" collided with the tab of the same name; the drill goes back to the room.
+    backLabel: "The room",
     pager: input.conceptLabel ?? "video",
     verdict: { value: `${Math.round(input.stopPct)}%`, label: "would stop" },
-    unlock: modeledUnlock(classifyReasons(input.reasons), population?.swing),
+    identity: drillIdentity(input.verbatim?.hook?.spoken_words ?? transcript.split(" ").slice(0, 12).join(" "), clipSeconds),
+    // Only when the curve actually breaks: no break ⇒ no trim to offer, so the answer block falls
+    // back to the unlock rather than inventing a lever (the §3.2 discipline, one layer up).
+    ...(brk && brk.atSec > 0 ? { answer: videoAnswer(input.heatmap, brk, clipSeconds, transcript) } : {}),
+    engagement: engagementOf(retention, watchTilesOf(input.heatmap, clipSeconds)),
+    ...(simlineOf(population?.room) ? { simline: simlineOf(population?.room)! } : {}),
+    method: methodOf({ hasSignals: true, hasNetworks: true, note: population?.room?.note }),
+    // Reason-derived when reasons exist (the text path, and any caller that has them); otherwise the
+    // curve-derived video lever. Before this fell back, `AmbientOverviewRail` — which cannot supply
+    // reasons, because a video fold does not code any — rendered no unlock at all (§3.2).
+    unlock: modeledUnlock(classifyReasons(input.reasons), population?.swing) ?? curveUnlock(input, population?.swing),
     brain: buildBrainFrameData(input),
-    population,
+    // The pool split rides the fold's REAL audience weights — the one taxonomy the whole page uses.
+    // Passed through untouched when there are no weights to read, so a caller's population object
+    // survives identical rather than being silently re-wrapped.
+    population: population
+      ? { ...population, ...(pools ? { pools } : {}), heroVerdict: heroVerdictOf(input.heatmap.weights, input.stopPct) }
+      : null,
   };
 }

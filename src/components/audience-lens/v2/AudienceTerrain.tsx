@@ -103,17 +103,28 @@ export function TerrainMap({
   verdict,
   reducedMotion = false,
   highlightCluster = null,
+  cornerLeft = "The room",
+  cornerRight = "1 node ≈ 10 people",
+  figread,
+  labelled = true,
 }: {
   terrain: TerrainSpec;
   verdict?: DomainTemplate["verdict"];
   reducedMotion?: boolean;
   /** Ledger → map link: the district row under the pointer; spotlights that cluster with a soft hull. */
   highlightCluster?: number | null;
+  cornerLeft?: string;
+  cornerRight?: string;
+  /** The line that tells you what the district rates MEAN ("% = kept watching"). Without it the
+   *  numbers on the map are unlabelled and the figure is decoration with a caption underneath. */
+  figread?: string;
+  /** The districts self-read — name + the share of that district that kept watching. */
+  labelled?: boolean;
 }) {
   const { nodes, clusters, centers, lossClusterIndex, rank } = useTerrain(terrain);
   return (
     <div
-      className="relative overflow-hidden rounded-[14px]"
+      className="relative mt-3.5 overflow-hidden rounded-[14px]"
       style={{ height: 270, border: `1px solid ${TONE.border}`, background: "#131210" }}
     >
       <svg viewBox={`0 0 ${TVW} ${TVH}`} preserveAspectRatio="xMidYMid slice" className="absolute inset-0 h-full w-full">
@@ -211,8 +222,48 @@ export function TerrainMap({
             </circle>
           );
         })}
+        {/* the districts self-read — name + the share of that district that kept watching. The map
+            used to need a ledger under it to say who was who; now it says so itself. */}
+        {labelled
+          ? clusters.map((c, ci) => (
+              <text
+                key={`lab-${c.name}`}
+                x={centers[ci]!.x}
+                y={centers[ci]!.y}
+                textAnchor="middle"
+                fontSize={9}
+                fontWeight={500}
+                fill="rgba(236,231,222,.82)"
+              >
+                {c.name}
+                <tspan dx={4} fill="rgba(236,231,222,.5)">
+                  {Math.round(c.lit * 100)}%
+                </tspan>
+              </text>
+            ))
+          : null}
       </svg>
+      <span
+        className="absolute left-[9px] top-[9px] rounded-[7px] px-2 py-1 text-[11px] font-medium"
+        style={{ background: "rgba(20,20,19,.78)", color: "rgba(236,231,222,.85)" }}
+      >
+        {cornerLeft}
+      </span>
+      <span
+        className="absolute right-[9px] top-[9px] rounded-[7px] px-2 py-1 text-[11px] font-medium tabular-nums"
+        style={{ background: "rgba(20,20,19,.78)", color: TONE.faint }}
+      >
+        {cornerRight}
+      </span>
       {verdict ? <VerdictChip verdict={verdict} animate /> : null}
+      {figread ? (
+        <span
+          className="absolute bottom-2.5 right-2.5 rounded-lg px-2.5 py-[5px] text-[11px] font-medium tabular-nums"
+          style={{ background: "rgba(20,20,19,.82)", color: "rgba(236,231,222,.72)" }}
+        >
+          {figread}
+        </span>
+      ) : null}
     </div>
   );
 }

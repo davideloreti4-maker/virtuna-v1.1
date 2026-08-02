@@ -193,9 +193,67 @@ describe("buildVideoDomainTemplate", () => {
     expect(t.verdict).toEqual({ value: "38%", label: "would stop" });
     expect(t.pager).toBe("hook");
   });
-  it("passes a supplied population read through", () => {
+  it("passes a supplied population read through, plus the pool split off the fold's own weights", () => {
     const pop = { main: { kind: "tri-state" } } as never;
     const t = buildVideoDomainTemplate({ ...base, population: pop });
-    expect(t.population).toBe(pop);
+    expect(t.population).toMatchObject({ main: { kind: "tri-state" } });
+    // The one taxonomy — relationship to the creator, from `heatmap.weights`. Nothing is invented:
+    // a heatmap with no weights leaves the caller's object untouched (the next case).
+    expect(t.population!.pools!.rows.map((r) => r.label)).toEqual([
+      "New viewers",
+      "Returning",
+      "Followers",
+      "Outside niche",
+    ]);
+  });
+
+  it("adds no pool split when there are no weights to read — the absence is the honest answer", () => {
+    const pop = { main: { kind: "tri-state" } } as never;
+    const t = buildVideoDomainTemplate({ ...base, heatmap: { ...HEATMAP, weights: undefined as never }, population: pop });
+    expect(t.population!.pools).toBeUndefined();
+    expect(t.population).toMatchObject({ main: { kind: "tri-state" } });
+    // With no follower split to read, the Audience hero falls back to the room's own hold rate —
+    // and never to "would stop", which meant the GOOD outcome here and the loss everywhere else.
+    expect(t.population!.heroVerdict).toEqual({ value: "38%", label: "kept watching" });
+  });
+});
+
+// ── §3.2 — the unlock was structurally absent on EVERY real video drill ──────────────────────────
+// `AmbientOverviewRail` cannot pass `reasons`: a video fold codes none by design. `modeledUnlock`
+// needs one friction AND one pull reason, so it returned undefined and the page's only actionable
+// element never rendered in production. The suite was green throughout, because every test that
+// exercised the unlock handed it reasons the real mount never has.
+describe("buildVideoDomainTemplate — the unlock a VIDEO drill actually gets (§3.2)", () => {
+  it("emits an unlock with NO reasons at all — the real mount's exact input", () => {
+    const t = buildVideoDomainTemplate(base);
+    expect(t.unlock).toBeDefined();
+    // the lever names the span to cut, read off the measured collapse (seg 2 starts at 0:06)
+    expect(t.unlock!.lever).toBe("Trim 0:00–0:06");
+    // and the insight is arithmetic on the same curve, not a template sentence
+    expect(t.unlock!.insight).toMatch(/75%/);
+  });
+
+  it("still prefers the reason-derived lever when reasons DO exist", () => {
+    const t = buildVideoDomainTemplate({
+      ...base,
+      reasons: [
+        { reason: "too-slow", count: 253 },
+        { reason: "strong-hook", count: 190 },
+      ],
+    });
+    expect(t.unlock!.lever).toBe("Fix too slow");
+  });
+
+  it("omits the unlock on a curve that never breaks — an honest absence, not a fabricated lever", () => {
+    const flat = { ...HEATMAP, weighted_curve: [0.6, 0.59, 0.58, 0.57] };
+    expect(buildVideoDomainTemplate({ ...base, heatmap: flat }).unlock).toBeUndefined();
+  });
+
+  it("omits it when the break is at 0:00 — there is nothing before the start to trim", () => {
+    const early = {
+      ...HEATMAP,
+      weighted_curve: [0.25, 0.24, 0.23, 0.22],
+    };
+    expect(buildVideoDomainTemplate({ ...base, heatmap: early }).unlock).toBeUndefined();
   });
 });
