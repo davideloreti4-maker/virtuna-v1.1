@@ -36,7 +36,7 @@ export interface ScriptCardRendererProps {
 }
 
 export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRendererProps) {
-  const { beats, openingBeatSeed, topic, format, production, band, fraction, scrollQuote, proof, grounded, population, provenance } = block.props;
+  const { beats, openingBeatSeed, topic, format, production, band, fraction, scrollQuote, proof, grounded, target, population, provenance } = block.props;
 
   // New Qwen call system (2026-07-22): a "projected" card's opener band/fraction/quote are the
   // WRITER'S generation-time estimate — no opener SIM ran. It must NOT claim a measured reaction: the
@@ -222,28 +222,27 @@ export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRend
         </div>
       )}
 
-      {/* The simulation door — replaces the verdict apparatus (2026-08-02). A legacy measured
-          card keeps its real opener-only fraction (Pitfall 5); a projected card shows only the
-          way to measure it. Sits BELOW the timeline: the beats are the hero. */}
-      <div className="border-t border-white/[0.06] px-4 py-3">
-        <SimDoor
-          projected={projected}
-          band={band}
-          fraction={fraction}
-          suffix="opener only"
-          flatPersonas={cardScrollQuoteReactions(fraction, scrollQuote)}
-          conceptText={openingBeatSeed || (beats[0]?.content ?? '')}
-          population={population}
-          rewrite={buildCardRewrite({
-            skill: 'script',
-            fraction,
-            scrollQuote,
-            conceptText: openingBeatSeed || (beats[0]?.content ?? ''),
-            platform: 'tiktok',
-          })}
-          label={projected ? 'Simulate this opener with your audience' : 'See how your audience reacted to this opener'}
-        />
-      </div>
+      {/* AUDIENCE BAND — who this script was written for and the door that measures it. A legacy
+          measured card keeps its real opener-only fraction (Pitfall 5); a projected card states
+          the aim only. Sits BELOW the timeline: the beats are the hero. */}
+      <SimDoor
+        projected={projected}
+        target={target}
+        band={band}
+        fraction={fraction}
+        suffix="opener only"
+        flatPersonas={cardScrollQuoteReactions(fraction, scrollQuote)}
+        conceptText={openingBeatSeed || (beats[0]?.content ?? '')}
+        population={population}
+        rewrite={buildCardRewrite({
+          skill: 'script',
+          fraction,
+          scrollQuote,
+          conceptText: openingBeatSeed || (beats[0]?.content ?? ''),
+          platform: 'tiktok',
+        })}
+        label={projected ? 'Simulate this opener with your audience' : 'See how your audience reacted to this opener'}
+      />
 
       {/* Actions — one cream primary (forward chain "Test full →") + Save icon (§0.5.7). */}
       <CardActionBar>

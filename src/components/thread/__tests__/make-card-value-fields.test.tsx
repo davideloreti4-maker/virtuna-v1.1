@@ -125,13 +125,65 @@ describe('HookCardRenderer — visual hook', () => {
     );
     expect(screen.getByText('crash-zoom')).toBeTruthy();
     expect(screen.getByText(/Hard cut to your face/i)).toBeTruthy();
-    // De-boxed 2026-08-02 (label-chrome diet): the "Visual" label is gone; chip + line self-read.
-    expect(screen.queryByText('Visual')).toBeNull();
+    // The "Visual" label marks the row (owner-restored 2026-08-02 — the shot is a second
+    // deliverable and the box is what separates it from the spoken line).
+    expect(screen.getByText('Visual')).toBeTruthy();
   });
 
   it('renders nothing visual-hook-shaped when the field is absent (honesty spine)', () => {
     renderWithClient(<HookCardRenderer block={makeHook()} />);
-    expect(screen.queryByText('crash-zoom')).toBeNull();
+    expect(screen.queryByText('Visual')).toBeNull();
+  });
+});
+
+describe('the audience band states the aim it can prove, never a reaction it did not run', () => {
+  // The bound persona is REAL on a calibrated run — a structural output-contract assignment
+  // (runners/target-assignment.ts), with that persona's true share of the creator's audience.
+  // The reaction half (verdict/quote) is null on the generation path and must stay silent.
+  const TARGET = { archetype: 'time_poor_creator', share: 0.34, verdict: null, quote: null } as const;
+
+  it('shows the persona + their real share of the audience, and no reaction claim', () => {
+    const { container } = renderWithClient(
+      <HookCardRenderer block={makeHook({ provenance: 'projected', target: { ...TARGET } })} />,
+    );
+    const text = container.textContent ?? '';
+    expect(text).toContain('Time Poor Creator');
+    expect(text).toContain('34% of your audience');
+    expect(text).toContain('Simulate with your audience');
+    // The retired framing, and any claim about how that persona reacted.
+    expect(text).not.toContain('Written for');
+    expect(text).not.toContain('Made for');
+    expect(text).not.toMatch(/stopped|scrolled past/);
+  });
+
+  it('falls back to "Not tested yet" when the run bound nobody (General / uncalibrated)', () => {
+    const { container } = renderWithClient(
+      <HookCardRenderer block={makeHook({ provenance: 'projected' })} />,
+    );
+    const text = container.textContent ?? '';
+    expect(text).toContain('Not tested yet');
+    expect(text).not.toContain('% of your audience'); // never a share nobody computed
+  });
+
+  it('a MEASURED card carries the aimed-at persona’s own verdict beside the room fraction', () => {
+    const { container } = renderWithClient(
+      <HookCardRenderer
+        block={makeHook({ target: { ...TARGET, verdict: 'stop', quote: 'this is my whole week' } })}
+      />,
+    );
+    const text = container.textContent ?? '';
+    expect(text).toMatch(/7\/10 stopped/); // the room's own number leads
+    expect(text).toContain('Time Poor Creator stopped'); // the receipt the aim earned
+  });
+
+  it('remix has no bound persona — its descriptive whoItsFor rides the band instead', () => {
+    const { container } = renderWithClient(
+      <RemixCardRenderer block={makeRemix({ provenance: 'projected' })} />,
+    );
+    const text = container.textContent ?? '';
+    expect(text).toContain('Beginner fitness creators');
+    expect(text).not.toContain('Made for'); // the loose caption is gone from the face
+    expect(text).not.toContain('% of your audience'); // free text carries no share
   });
 });
 
@@ -252,12 +304,13 @@ describe('ScriptCardRenderer — the simulation door (projected vs measured)', (
 });
 
 describe('RemixCardRenderer — the simulation door (projected vs measured)', () => {
-  it('a projected card shows NO verdict — only the untested door', () => {
+  it('a projected card shows NO verdict — only the aim and the door', () => {
     const { container } = renderWithClient(
       <RemixCardRenderer block={makeRemix({ provenance: 'projected' })} />,
     );
     const text = container.textContent ?? '';
-    expect(text).toContain('Not tested yet');
+    // Remix's band leads with its own `whoItsFor` (see the audience-band suite above), so the
+    // "Not tested yet" fallback is correctly absent here — the door still states the action.
     expect(text).toContain('Simulate with your audience');
     expect(text).not.toContain('8/10');
     expect(text).not.toContain('would stop');

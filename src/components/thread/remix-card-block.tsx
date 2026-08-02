@@ -173,12 +173,6 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
           </MapCell>
         </div>
 
-        {/* Made-for line — who your version lands on (whoItsFor), a quiet caption under the map.
-            "Made for", never "Written for"/"Built for" (owner wording table). */}
-        <p className="text-label text-foreground-muted">
-          Made for <span className="text-foreground-secondary">{whoItsFor}</span>
-        </p>
-
         {/* Expand toggle — the rest of the decode anatomy (structure + emotional beat). The
             provenance tag is gone with the on-face verdict: the door states the honest status. */}
         <button
@@ -192,28 +186,6 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
           Structure & the emotional beat
         </button>
 
-        {/* The simulation door — replaces the verdict apparatus (2026-08-02). A legacy measured
-            card keeps its real adapted-hook fraction (honesty-scoped); a projected card shows
-            only the way to measure it. */}
-        <SimDoor
-          projected={projected}
-          band={band}
-          fraction={fraction}
-          suffix="adapted hook"
-          flatPersonas={cardScrollQuoteReactions(fraction, scrollQuote)}
-          conceptText={adaptedHook}
-          population={population}
-          platform={platform}
-          rewrite={buildCardRewrite({
-            skill: 'remix',
-            fraction,
-            scrollQuote,
-            conceptText: adaptedHook,
-            platform,
-            leverRidesAnchor: true,
-          })}
-          label={projected ? 'Simulate this adapted hook with your audience' : 'See how your audience reacted to this adapted hook'}
-        />
       </div>
 
       {/* HOW TO FILM YOUR VERSION — the ready-to-film payoff (owner 2026-07-22). Mirrors the
@@ -255,6 +227,30 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
           </div>
         </div>
       )}
+
+      {/* AUDIENCE BAND — who your version lands on (whoItsFor, folded out of its loose caption)
+          and the door that measures it. A legacy measured card keeps its real adapted-hook
+          fraction (honesty-scoped); a projected card states the aim only. */}
+      <SimDoor
+        projected={projected}
+        aimText={whoItsFor}
+        band={band}
+        fraction={fraction}
+        suffix="adapted hook"
+        flatPersonas={cardScrollQuoteReactions(fraction, scrollQuote)}
+        conceptText={adaptedHook}
+        population={population}
+        platform={platform}
+        rewrite={buildCardRewrite({
+          skill: 'remix',
+          fraction,
+          scrollQuote,
+          conceptText: adaptedHook,
+          platform,
+          leverRidesAnchor: true,
+        })}
+        label={projected ? 'Simulate this adapted hook with your audience' : 'See how your audience reacted to this adapted hook'}
+      />
 
       {/* Actions — one cream primary (forward chain "Write hooks for this →") + Save icon. */}
       <CardActionBar>

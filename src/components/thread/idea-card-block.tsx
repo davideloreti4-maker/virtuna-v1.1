@@ -29,7 +29,6 @@ import { ProofReceipt, NoSourceNote } from './proof-receipt';
 import { SaveAffordance } from '@/components/thread/save-affordance';
 import { CardPrimaryAction, CardActionBar, SECTION_LABEL } from './card-primitives';
 import { CaretToggle } from './caret-toggle';
-import { TargetReaction } from './target-reaction';
 
 export interface IdeaCardRendererProps {
   block: IdeaCardBlock;
@@ -156,11 +155,6 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
           ))}
         </div>
 
-        {/* Per-persona generation: the aim + the aimed-at reader's own verdict (the receipt).
-            Absent on General/uncalibrated runs, and on a calibrated run whose writer named nobody
-            we assigned — an honest silence, never a personalised label over a generic idea. */}
-        {target && <TargetReaction target={target} />}
-
         {/* Proof receipt (§11f fan-out) — the real outlier this idea's structure was drawn from.
             Only present on grounded runs where a real source was attributed (honesty spine).
             When the run HAD sources and this idea cited none, say so rather than leaving a
@@ -179,31 +173,6 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
           <CaretToggle open={expanded} />
           {expanded ? 'Hide seed hook' : 'Seed hook'}
         </button>
-
-        {/* The simulation door — replaces the verdict apparatus (2026-08-02). */}
-        <SimDoor
-          projected={projected}
-          band={band}
-          fraction={fraction}
-          /* The room LOOKS this card up by conceptText (openRoomForCard → the ledger's
-             `.find(x => x.conceptText === …)`), and the ledger keys an idea on its title alone
-             (ambient-descriptors.ts `hookLine ?? title ?? …`). It must be the bare title, not
-             `title\n\nangle`, or the door never matches and the tap is a silent no-op —
-             the one fact / two sources trap. The rewrite anchor below deliberately keeps the
-             angle: it's a generation input, not a lookup key. */
-          conceptText={title}
-          flatPersonas={cardScrollQuoteReactions(fraction, scrollQuote)}
-          population={population}
-          platform={platform}
-          rewrite={buildCardRewrite({
-            skill: 'idea',
-            fraction,
-            scrollQuote,
-            conceptText: `${title}\n\n${angle}`,
-            platform,
-          })}
-          label={projected ? 'Simulate this idea with your audience' : 'See how your audience reacted to this idea'}
-        />
       </div>
 
       {/* EXPAND — the seed hook (mechanism + recipe now live on the face). */}
@@ -215,6 +184,33 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
           </div>
         </div>
       )}
+
+      {/* AUDIENCE BAND — who this idea was written for (a real slice of the calibrated audience)
+          and the door that turns the aim into a measured reaction. Its own hairline zone. */}
+      <SimDoor
+        projected={projected}
+        target={target}
+        band={band}
+        fraction={fraction}
+        /* The room LOOKS this card up by conceptText (openRoomForCard → the ledger's
+           `.find(x => x.conceptText === …)`), and the ledger keys an idea on its title alone
+           (ambient-descriptors.ts `hookLine ?? title ?? …`). It must be the bare title, not
+           `title\n\nangle`, or the door never matches and the tap is a silent no-op —
+           the one fact / two sources trap. The rewrite anchor below deliberately keeps the
+           angle: it's a generation input, not a lookup key. */
+        conceptText={title}
+        flatPersonas={cardScrollQuoteReactions(fraction, scrollQuote)}
+        population={population}
+        platform={platform}
+        rewrite={buildCardRewrite({
+          skill: 'idea',
+          fraction,
+          scrollQuote,
+          conceptText: `${title}\n\n${angle}`,
+          platform,
+        })}
+        label={projected ? 'Simulate this idea with your audience' : 'See how your audience reacted to this idea'}
+      />
 
       {/* Actions — one cream primary (forward chain "Develop into hooks →") + Save icon (§0.5.7). */}
       <CardActionBar>
