@@ -145,7 +145,7 @@ export function CardActionBar({
 }) {
   return (
     <div
-      className={`flex items-center gap-3.5 border-t border-white/[0.06] px-4 py-3${className ? ` ${className}` : ''}`}
+      className={`flex items-center gap-3.5 border-t border-white/[0.06] px-4 py-2.5${className ? ` ${className}` : ''}`}
     >
       {children}
     </div>

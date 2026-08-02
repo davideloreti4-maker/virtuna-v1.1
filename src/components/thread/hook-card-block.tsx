@@ -105,9 +105,9 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
             voice-moment face) at 21px. The serif + size gives the card a crafted focal point
             instead of another block of Inter — the fix for "still looks bland" (owner 2026-07-22).
             This is a genuine hero/voice-moment, the one place the design system sanctions serif. */}
-        <div className="flex items-start gap-3">
+        <div className="flex items-baseline gap-3">
           {typeof rank === 'number' && rank > 0 && (
-            <span className="mt-[7px] shrink-0 text-label font-semibold tabular-nums text-foreground-muted">
+            <span className="shrink-0 text-label font-semibold tabular-nums text-foreground-muted">
               #{rank}
             </span>
           )}
@@ -118,7 +118,7 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
             type="button"
             onClick={handleCopy}
             aria-label="Copy hook to clipboard"
-            className="mt-[5px] inline-flex shrink-0 items-center gap-1 text-label font-medium text-foreground-muted transition-colors hover:text-foreground-secondary"
+            className="inline-flex shrink-0 items-center gap-1 text-label font-medium text-foreground-muted transition-colors hover:text-foreground-secondary"
           >
             {copied ? (
               <>

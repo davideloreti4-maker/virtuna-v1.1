@@ -211,7 +211,7 @@ export function SimDoor({
   // foot reads as two rows with distinct jobs — audience, then actions — instead of three loose
   // half-empty lines. Full-bleed to the card edges; the inset hover is the click feedback.
   const rowClass =
-    'flex items-center border-t border-white/[0.06] px-4 py-3 transition-colors hover:bg-white/[0.03]';
+    'flex items-center border-t border-white/[0.06] px-4 py-2.5 transition-colors hover:bg-white/[0.03]';
 
   // Home-composer path: open the docked current-audience room anchored on this card.
   if (openRoomForCard && flatPersonas.length > 0) {
