@@ -61,15 +61,13 @@ export function BroughtCardRenderer({ block }: BroughtCardRendererProps) {
       aria-label={`You brought: ${stimulus.slice(0, 60)}`}
     >
       <div className="flex flex-col gap-3 px-4 pb-4 pt-4">
+        {/* Meta = the kind alone. The scene ("scrolling the FYP") used to ride here too, which
+            crowded the row into a two-line wrap at card width; it now rides the provenance line
+            below, next to the read it describes. */}
         <CardEyebrow
           kicker="You brought this"
           dotColor={BAND_COLOR[band]}
-          meta={
-            <span className={SECTION_LABEL}>
-              {KIND_LABEL[kind]}
-              {scene ? ` · ${scene}` : ''}
-            </span>
-          }
+          meta={<span className={SECTION_LABEL}>{KIND_LABEL[kind]}</span>}
         />
 
         {/* The stimulus — content under test, so it reads at full strength. Sans, not serif: this
@@ -101,26 +99,27 @@ export function BroughtCardRenderer({ block }: BroughtCardRendererProps) {
             NOT be answered the card says that, instead of letting the room's number pass for it. */}
         {slice ? (
           <p className="text-label text-foreground-muted" data-testid="brought-card-slice">
-            Asked about <span className="text-foreground-secondary">{slice.label}</span> —{' '}
+            Asked about <span className="text-foreground-secondary">{slice.label}</span>:{' '}
             {slice.honored ? (
               <>
                 <span className="tabular-nums text-foreground-secondary">{slice.stopPct}%</span> of
                 that <span className="tabular-nums">{(slice.total ?? 0).toLocaleString('en-US')}</span>
-                -strong slice. The fraction above is the whole room.
+                -strong slice. The fraction above is your whole audience.
               </>
             ) : (
               <>
                 not read: {slice.reason ?? 'this audience cannot be projected into slices yet'}. The
-                fraction above is the whole room, which is a different question.
+                fraction above is your whole audience, which is a different question.
               </>
             )}
           </p>
         ) : null}
 
-        {/* Provenance, demoted to one quiet line. `personas` presence is what the Lens opens on;
+        {/* Provenance, demoted to one quiet line — plain words, not the model's internal name
+            (the same jargon the Make faces shed). `personas` presence is what the Lens opens on;
             it is never claimed here beyond the count already stated. */}
         <p className="text-label text-foreground-muted/70">
-          SIM-1 Flash · {personas?.length ?? 0} reactors
+          Simulated · {personas?.length ?? 0} reactions{scene ? ` · ${scene}` : ''}
         </p>
       </div>
     </div>

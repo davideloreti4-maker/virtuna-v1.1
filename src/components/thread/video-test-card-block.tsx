@@ -114,15 +114,14 @@ export function VideoTestCardRenderer({ block }: VideoTestCardRendererProps) {
 
   return (
     <div
-      className="overflow-hidden rounded-xl border border-white/[0.06] bg-surface-sunken"
+      className="@container overflow-hidden rounded-xl border border-white/[0.06] bg-surface-sunken"
       aria-label={`Video craft test for ${audienceName}`}
     >
       {/* ── HEADER — craft ring + driver bars ── */}
       <div className="px-4 pt-4 pb-4">
+        {/* One label, not two chained by a dot (label-chrome diet 2026-08-02). */}
         <div className="mb-4 flex items-center gap-2">
-          <span className={SECTION_LABEL}>Test</span>
-          <span className="h-1 w-1 rounded-full bg-foreground-muted" aria-hidden="true" />
-          <span className={SECTION_LABEL}>frame-by-frame read</span>
+          <span className={SECTION_LABEL}>Test · frame-by-frame read</span>
           <span className="ml-auto">
             <TrustBadge tier={tier} />
           </span>
@@ -225,34 +224,34 @@ export function VideoTestCardRenderer({ block }: VideoTestCardRendererProps) {
       {/* ── WORKING / NOT-WORKING ledger ── */}
       {(working.length > 0 || notWorking.length > 0) && (
         <div className="border-t border-white/[0.06] px-4 py-4">
-          <div className="grid grid-cols-1 gap-4 min-[440px]:grid-cols-2 min-[440px]:gap-0">
-            <div className="min-[440px]:pr-4.5">
+          {/* Split keyed on the CARD's width (@container), not the viewport: a 342px card can sit
+              in a wide viewport where `min-[440px]:` would wrongly split it into starved columns. */}
+          <div className="grid grid-cols-1 gap-4 @min-[440px]:grid-cols-2 @min-[440px]:gap-0">
+            <div className="@min-[440px]:pr-4.5">
               <div className="mb-2.5 flex items-center gap-1.5 text-caption font-semibold uppercase tracking-[0.05em] text-[var(--color-positive)]">
                 <span aria-hidden="true">✓</span> Working
               </div>
+              {/* The column header already carries the ✓ — repeating it per row doubled the
+                  mark on every line (glyph diet 2026-08-02). */}
               <ul className="flex flex-col gap-2">
                 {working.map((w, i) => (
-                  <li key={i} className="flex gap-1.5 text-label leading-snug text-foreground-secondary">
-                    <span className="mt-px shrink-0 text-[var(--color-positive)]" aria-hidden="true">✓</span>
-                    <span>{w}</span>
+                  <li key={i} className="text-label leading-snug text-foreground-secondary">
+                    {w}
                   </li>
                 ))}
               </ul>
             </div>
-            <div className="border-t border-white/[0.06] pt-3.5 min-[440px]:border-l min-[440px]:border-t-0 min-[440px]:pl-4.5 min-[440px]:pt-0">
+            <div className="border-t border-white/[0.06] pt-3.5 @min-[440px]:border-l @min-[440px]:border-t-0 @min-[440px]:pl-4.5 @min-[440px]:pt-0">
               <div className="mb-2.5 flex items-center gap-1.5 text-caption font-semibold uppercase tracking-[0.05em] text-[var(--color-accent-text)]">
                 <span aria-hidden="true">!</span> Not working
               </div>
               <ul className="flex flex-col gap-2">
                 {notWorking.map((n, i) => (
-                  <li key={i} className="flex gap-1.5 text-label leading-snug text-foreground-secondary">
-                    <span className="mt-px shrink-0 text-[var(--color-accent-text)]" aria-hidden="true">✕</span>
-                    <span>
-                      {n.text}
-                      {n.atMs != null && (
-                        <span className="ml-1 tabular-nums text-foreground-muted">@{fmtClock(n.atMs / 1000)}</span>
-                      )}
-                    </span>
+                  <li key={i} className="text-label leading-snug text-foreground-secondary">
+                    {n.text}
+                    {n.atMs != null && (
+                      <span className="ml-1 tabular-nums text-foreground-muted">@{fmtClock(n.atMs / 1000)}</span>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -291,13 +290,13 @@ export function VideoTestCardRenderer({ block }: VideoTestCardRendererProps) {
                 <p className="text-body leading-relaxed text-foreground-secondary">{fix.diagnosis}</p>
               </div>
 
+              {/* De-boxed 2026-08-02: was a bordered box-in-a-box-in-the-card with an uppercase
+                  "WHY" chip. The mechanism reads as one quiet line now. */}
               {fix.why && (
-                <div className="mb-3 flex gap-2.5 rounded-lg border border-white/[0.06] bg-white/[0.022] px-3 py-2.5">
-                  <span className="mt-px shrink-0 text-caption font-bold uppercase tracking-[0.05em] text-foreground-muted">
-                    Why
-                  </span>
-                  <p className="text-label leading-relaxed text-foreground-secondary">{fix.why}</p>
-                </div>
+                <p className="mb-3 text-label leading-relaxed text-foreground-muted">
+                  <span className="font-medium text-foreground-secondary">Why · </span>
+                  {fix.why}
+                </p>
               )}
 
               {fix.move && (
@@ -313,11 +312,9 @@ export function VideoTestCardRenderer({ block }: VideoTestCardRendererProps) {
         </div>
       )}
 
-      {/* ── SEAM — the one door out (Simulation owns reception) ── */}
-      <p className="px-4 pt-3 text-center text-label leading-relaxed text-foreground-muted">
-        The craft is here. How your audience actually reacts — the crowd, the drop-off, the reach —
-        lives in the simulation.
-      </p>
+      {/* ── SEAM — the one door out (Simulation owns reception). The centered explainer
+          paragraph is gone (2026-08-02): the header already draws the craft/reception line,
+          and the CTA says where reception lives. ── */}
       <CardActionBar>
         {openRoom ? (
           <CardPrimaryAction onClick={openRoom}>Simulate with your audience →</CardPrimaryAction>

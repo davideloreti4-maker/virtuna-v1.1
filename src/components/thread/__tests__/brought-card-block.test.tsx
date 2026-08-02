@@ -45,7 +45,10 @@ describe("BroughtCardRenderer", () => {
     expect(container.textContent).toContain("Three years of footage");
     expect(container.textContent).toContain("Mixed");
     expect(container.textContent).toContain("4"); // the real fraction, once
-    expect(container.textContent).toContain("SIM-1 Flash");
+    // Provenance in plain words — the model's internal name ("SIM-1 Flash") is jargon the
+    // cards shed 2026-08-02; the line states that a simulation ran and how many reacted.
+    expect(container.textContent).toContain("Simulated");
+    expect(container.textContent).not.toContain("SIM-1 Flash");
     // No rank, no mechanism: nobody generated this, so there is nothing to claim on either.
     expect(container.textContent).not.toContain("Why it works");
     expect(container.textContent).not.toContain("#1");
@@ -74,7 +77,7 @@ describe("BroughtCardRenderer", () => {
     expect(line).toContain("Craft nerds");
     expect(line).toContain("71%");
     expect(line).toContain("410");
-    expect(line).toContain("whole room"); // the fraction above is a DIFFERENT denominator
+    expect(line).toContain("whole audience"); // the fraction above is a DIFFERENT denominator
   });
 
   it("says a slice went UNANSWERED instead of showing the room's number under its name", () => {

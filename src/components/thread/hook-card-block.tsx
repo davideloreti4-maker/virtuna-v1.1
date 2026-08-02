@@ -5,9 +5,10 @@
  *
  * lane/polish refined language (docs/subsystems/ui-skill-cards.md §1–§2):
  *  - Flat matte (no inset shine), warm-cream tokens, band color used once.
- *  - Eyebrow archetype kicker (band-colored dot) ABOVE the hero hook → hook reads first.
+ *  - Rank + Copy ride the hero row (2026-08-02); the old header band was near-empty chrome.
  *  - Why-teaser (mechanism) surfaced on the face; seed + delivery on expand.
- *  - ONE shared <ProofUnit> = the visible AudienceLens entry ("See the room →").
+ *  - ONE shared <SimDoor> = the visible AudienceLens entry (2026-08-02: replaces the on-face
+ *    ProofUnit — a projected card carries no verdict apparatus, only the door to measure it).
  *  - ONE forward action = the cream primary "Write script →" (§1.7) + Save icon. There is NO
  *    "Test full →" here (removed 2026-06-27): a hook is only an opener, and its handoff sent
  *    the same lone line already Flash-read — "full" referred to nothing. Deep-testing the
@@ -20,17 +21,15 @@
  */
 
 import { useState } from 'react';
-import { Copy, Check } from '@phosphor-icons/react';
 import type { HookCardBlock } from '@/lib/tools/blocks';
 import { useOnWriteScriptHook } from '@/lib/hook-test-context';
 import { cardScrollQuoteReactions } from '@/components/audience-lens/flat-card-reactions';
 import { buildCardRewrite } from '@/components/audience-lens/card-rewrite';
-import { ProofUnit } from './proof-unit';
+import { SimDoor } from './sim-door';
 import { ProofReceipt, NoSourceNote } from './proof-receipt';
 import { SaveAffordance } from '@/components/thread/save-affordance';
-import { CardPrimaryAction, CardActionBar, SECTION_LABEL } from './card-primitives';
+import { CardPrimaryAction, CardActionBar, CardHero, CopyAffordance, SECTION_LABEL } from './card-primitives';
 import { CaretToggle } from './caret-toggle';
-import { TargetReaction } from './target-reaction';
 
 export interface HookCardRendererProps {
   block: HookCardBlock;
@@ -49,7 +48,6 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
     visualHook,
     band,
     fraction,
-    scored,
     scrollQuote,
     channel,
     proof,
@@ -75,19 +73,9 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
 
   const [expanded, setExpanded] = useState(false);
 
-  // Copy — a hook is a line you USE, so the card offers the one-tap copy that text-on-a-card
-  // never did (owner 2026-07-22). Clipboard is guarded (absent in the happy-dom test env).
-  const [copied, setCopied] = useState(false);
-  function handleCopy() {
-    if (typeof navigator === 'undefined' || !navigator.clipboard) return;
-    navigator.clipboard.writeText(hookLine).then(
-      () => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1600);
-      },
-      () => {},
-    );
-  }
+  // What the expand drawer actually holds — the toggle names it, and vanishes when it is empty.
+  const hasSeed = seedHook !== hookLine;
+  const hasDelivery = Boolean(channel);
 
   return (
     <div
@@ -96,48 +84,25 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
     >
       {/* FACE — always visible (D-11) */}
       <div className="flex flex-col gap-3 px-4 pb-3 pt-4">
-        {/* Asset header — the rank (scannability at a glance) on the left, a Copy affordance on
-            the right. The hook reads as a deliverable you can lift, not generic text-on-a-card
-            (owner 2026-07-22 — the four Make cards looked the same + buried each skill's value).
-            The archetype/rank EYEBROW stays retired (2026-07-21); this is a lean asset header. */}
-        <div className="flex items-center justify-between gap-3">
-          {typeof rank === 'number' && rank > 0 ? (
-            <span className="text-label font-semibold tabular-nums text-foreground-muted">#{rank}</span>
-          ) : (
-            <span aria-hidden="true" />
-          )}
-          <button
-            type="button"
-            onClick={handleCopy}
-            aria-label="Copy hook to clipboard"
-            className="inline-flex shrink-0 items-center gap-1 text-label font-medium text-foreground-muted transition-colors hover:text-foreground-secondary"
-          >
-            {copied ? (
-              <>
-                <Check size={13} weight="bold" aria-hidden="true" />
-                Copied
-              </>
-            ) : (
-              <>
-                <Copy size={13} aria-hidden="true" />
-                Copy
-              </>
-            )}
-          </button>
-        </div>
-
-        {/* Hook line — the hero deliverable, set in the EDITORIAL SERIF (Newsreader, the brand's
-            voice-moment face) at 21px. The serif + size gives the card a crafted focal point
-            instead of another block of Inter — the fix for "still looks bland" (owner 2026-07-22).
-            This is a genuine hero/voice-moment, the one place the design system sanctions serif. */}
-        <p className="font-serif text-heading font-medium leading-[1.3] tracking-[-0.005em] text-foreground">
+        {/* HERO ROW — rank gutter · the hook · Copy. This row IS the header contract's reference
+            shape: the other four cards were refitted to it, and it now comes from <CardHero>
+            rather than being hand-rolled here (2026-08-02). Rank and Copy used to sit alone in a
+            header band above the hook — an almost-empty strip across the top of every card
+            (owner-flagged). They are meta ABOUT the hook, so they ride the hook's own row. The
+            archetype/rank EYEBROW stays retired (2026-07-21). */}
+        <CardHero
+          gutter={typeof rank === 'number' && rank > 0 ? `#${rank}` : undefined}
+          affordance={<CopyAffordance text={hookLine} aria-label="Copy hook to clipboard" />}
+        >
           {hookLine}
-        </p>
+        </CardHero>
 
         {/* Visual hook — the FIRST-FRAME technique that opens the video: the *execution* of the
             spoken line above, not a second hook. The technique name is a real first-frame
             technique (grounded taxonomy); the sub-line is what's literally on screen at 0s. A
-            hook is spoken AND shot — the card now carries both channels (owner 2026-07-22).
+            hook is spoken AND shot — the card carries both channels (owner 2026-07-22). The box
+            is deliberate and owner-restored (2026-08-02): the shot is a SECOND deliverable, and
+            the container is what separates it from the spoken line above.
             Absent → nothing renders (honesty spine; no fabricated shot). */}
         {visualHook && (
           <div className="flex flex-col gap-1.5 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3.5 py-3">
@@ -154,11 +119,6 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
           </div>
         )}
 
-        {/* Per-persona generation: the aim + the aimed-at reader's own verdict (the receipt).
-            Absent on General/uncalibrated runs, and on a calibrated run whose writer named nobody
-            we assigned — an honest silence, never a personalised label over a generic hook. */}
-        {target && <TargetReaction target={target} />}
-
         {/* Proof receipt (§11f) — the real outlier this hook's structure was drawn from. Only
             present on grounded runs where a real source was attributed (honesty spine). When the
             run HAD sources and this hook cited none, say so rather than leaving a receipt-shaped
@@ -173,54 +133,33 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
           <p className="text-reading leading-relaxed text-foreground-secondary">{mechanism}</p>
         </div>
 
-        {/* Proof unit — the single audience-reaction block + visible Lens entry. */}
-        <ProofUnit
-          framed={false}
-          band={band}
-          fraction={fraction}
-          scored={scored ?? true}
-          projected={projected}
-          quote={scrollQuote}
-          flatPersonas={cardScrollQuoteReactions(fraction, scrollQuote)}
-          conceptText={hookLine}
-          population={population}
-          rewrite={buildCardRewrite({
-            skill: 'hooks',
-            fraction,
-            scrollQuote,
-            conceptText: hookLine,
-            platform: 'tiktok',
-          })}
-          label={projected ? 'See how the room would react to this hook' : 'See how the room reacted to this hook'}
-        />
-
-        {/* Expand toggle — clearer affordance, with the provenance demoted onto this line. */}
-        <button
-          type="button"
-          onClick={() => setExpanded((v) => !v)}
-          className="flex items-center gap-1.5 self-start text-label text-foreground-muted transition-colors hover:text-foreground-secondary"
-          aria-expanded={expanded}
-          aria-label={expanded ? 'Collapse hook details' : 'Expand hook details'}
-        >
-          <CaretToggle open={expanded} />
-          {expanded ? 'Hide details' : 'Why & details'}
-          {/* Provenance — honest about whether the /10 was MEASURED (SIM-1 Flash panel) or is a
-              generation-time PROJECTION. A projected card has run no persona SIM, so it must not
-              wear the SIM-1 Flash badge (a measurement claim). */}
-          <span className="text-foreground-muted/70">{projected ? '· projected' : '· SIM-1 Flash'}</span>
-        </button>
+        {/* Expand toggle — named for what it actually reveals (the old "Why & details" promised
+            the mechanism, which already leads the face). Hidden entirely when there is nothing
+            behind it: a toggle over an empty drawer is chrome. */}
+        {(hasSeed || hasDelivery) && (
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="flex items-center gap-1.5 self-start text-label text-foreground-muted transition-colors hover:text-foreground-secondary"
+            aria-expanded={expanded}
+            aria-label={expanded ? 'Collapse hook details' : 'Expand hook details'}
+          >
+            <CaretToggle open={expanded} />
+            {hasSeed && hasDelivery ? 'Seed line & delivery' : hasSeed ? 'Seed line' : 'Delivery'}
+          </button>
+        )}
       </div>
 
       {/* EXPAND — seed + delivery (the mechanism already leads the face). */}
-      {expanded && (
+      {expanded && (hasSeed || hasDelivery) && (
         <div className="flex flex-col gap-3 border-t border-white/[0.06] px-4 py-3">
-          {seedHook !== hookLine && (
+          {hasSeed && (
             <div>
-              <p className={`mb-1 ${SECTION_LABEL}`}>Seed hook</p>
+              <p className={`mb-1 ${SECTION_LABEL}`}>Seed line</p>
               <p className="text-reading leading-relaxed text-foreground-secondary">{seedHook}</p>
             </div>
           )}
-          {channel && (
+          {hasDelivery && (
             <div>
               <p className={`mb-1 ${SECTION_LABEL}`}>Delivery</p>
               <p className="text-reading capitalize leading-relaxed text-foreground-secondary">{channel}</p>
@@ -228,6 +167,27 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
           )}
         </div>
       )}
+
+      {/* AUDIENCE BAND — who this hook was written for (a real slice of the calibrated audience)
+          and the door that turns the aim into a measured reaction. Its own hairline zone: the
+          foot now reads as audience-then-actions instead of three loose half-empty lines. */}
+      <SimDoor
+        projected={projected}
+        target={target}
+        band={band}
+        fraction={fraction}
+        flatPersonas={cardScrollQuoteReactions(fraction, scrollQuote)}
+        conceptText={hookLine}
+        population={population}
+        rewrite={buildCardRewrite({
+          skill: 'hooks',
+          fraction,
+          scrollQuote,
+          conceptText: hookLine,
+          platform: 'tiktok',
+        })}
+        label={projected ? 'Simulate this hook with your audience' : 'See how your audience reacted to this hook'}
+      />
 
       {/* Actions — one cream primary (forward chain) + Save icon (§0.5.7, via the primitives). */}
       <CardActionBar>
