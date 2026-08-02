@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Insights rev 9.2 — Brain is the instrument again</title>
+<title>Insights rev 9.3 — verdict, evidence, room</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400&display=swap" rel="stylesheet">
@@ -429,10 +429,10 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 <aside class="ctl">
   <div class="brandline"></div>
   <h1>Ambient Audience · insight drill</h1>
-  <p class="lede">Revision 9.2 — the shipped brain tab’s instrument is back on Brain, and it runs
-    off the cortex and the retention curve on one playhead. Each page now owns one question:
-    Brain <em>why it happened in the head</em>, Audience <em>who was in the room</em>,
-    Engagement <em>what they’d do with it</em>.</p>
+  <p class="lede">Revision 9.3 — retention returns to Engagement, and the tabs are reordered to
+    the reading you actually do: <b>Brain</b> the verdict and why, <b>Engagement</b> the evidence
+    over time and what they’d do, <b>Audience</b> the room it all came from. Verdict sits next to
+    its evidence; scope widens left to right.</p>
 
   <h2>Stimulus</h2>
   <div class="grp">
@@ -443,37 +443,37 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
   <h2>Tab</h2>
   <div class="grp">
     <button data-tab="brain" aria-pressed="true">Brain</button>
-    <button data-tab="audience" aria-pressed="false">Audience</button>
     <button data-tab="engagement" aria-pressed="false">Engagement</button>
+    <button data-tab="audience" aria-pressed="false">Audience</button>
   </div>
 
   <h2>Try this first</h2>
   <ol class="steps">
-    <li><b>Drag the curve on Brain.</b> One playhead moves the cortex clock, the figure’s read,
-      the curve, the moment chips and the transcript together — and the video frame on Engagement
-      is already parked at the same second when you get there.</li>
+    <li><b>Press “See the evidence →”</b> on Brain. It steps ONE tab right, to the retention curve
+      parked on the break — verdict and its proof are now neighbours, not two tabs apart.</li>
+    <li><b>Drag the curve on Engagement.</b> One playhead moves the video frame’s progress line,
+      the readout, the moment chips and the transcript together.</li>
     <li><b>Read Brain to the bottom.</b> Cortex + the two networks that matter in words → the
-      answer with the fix → the moment → the nine-signal breakdown → the network bars with their
-      plain-word reads → per-second activation. The shipped tab’s instrument, in card grammar.</li>
+      answer with the fix → the nine-signal breakdown → the network bars with their plain-word
+      reads → per-second activation. The shipped tab’s instrument, in card grammar.</li>
     <li><b>Press “Trim 0:00–0:03”,</b> then <b>Undo</b>. The answer becomes a before → after, the
-      curve redraws with the original kept as a coral ghost, and Engagement’s watch tiles move.</li>
-    <li><b>Open “How to read these numbers”.</b> The drawer no longer hides the instrument — it
-      now names the three scales on the page and what the model can’t claim.</li>
+      curve redraws with the original kept as a coral ghost, and the watch tiles move.</li>
   </ol>
 
   <h2>Calls you may want to reverse</h2>
   <ul class="calls">
+    <li><b>Tab order is Brain · Engagement · Audience.</b> The answer’s evidence is the retention
+      curve, so they sit adjacent. Brain and Engagement are both about the CLIP; Audience is about
+      the ROOM — scope widens left to right instead of interleaving the two subjects.</li>
+    <li><b>Retention is Engagement’s again</b> (your call, and it holds): it’s what the room DID
+      with the clip second by second, so it belongs with the video that produced it and the
+      outcomes it explains. Brain keeps the cognitive read of the same clip.</li>
     <li><b>The instrument left the drawer for the surface.</b> Rev 8 folded it away so the page
       spoke one unit; the cost was a Brain tab thinner than the shipped one. It’s back, with each
       card’s right-meta <em>naming its scale</em> — that was the real fix for the unit problem.</li>
-    <li><b>The curve moved from Engagement to Brain.</b> Where attention broke is a cognition
-      question, and it belongs beside the cortex it drives. Engagement keeps the video frame and
-      what the room would DO — each figure still appears exactly once.</li>
     <li><b>Grades carry no colour.</b> The shipped rail paints WEAKNESS coral; that file calls the
       bands “a cutoff on a MODELED signal, not a benchmark against real outcomes”. An
       unbenchmarked judgement shouldn’t shout — and Brain’s one coral belongs to the loss.</li>
-    <li><b>“See the evidence” now scrolls instead of switching tabs</b> — the evidence for the
-      verdict is the moment directly below it.</li>
   </ul>
 
   <p class="note-foot">Mockup only. The cortex and terrain heroes are stills cropped from the
@@ -498,10 +498,13 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
   <div class="body" id="body">
     <div id="identSlot"></div>
     <div class="tabbar">
+      <!-- order (rev 9.3): the verdict, then the evidence for it, then the people it came from.
+           Brain and Engagement are both about the CLIP; Audience is about the ROOM, so scope
+           widens left to right instead of interleaving the two subjects. -->
       <div class="seg">
         <button data-tab="brain" aria-pressed="true">Brain</button>
-        <button data-tab="audience" aria-pressed="false">Audience</button>
         <button data-tab="engagement" aria-pressed="false">Engagement</button>
+        <button data-tab="audience" aria-pressed="false">Audience</button>
       </div>
       <div class="headrule"></div>
     </div>
@@ -801,12 +804,13 @@ const vmini=()=>`<div class="vmini">
   <s class="vprog" id="vprog"></s>
 </div>`;
 
-/* ── the moment (Brain's instrument) ─────────────────────────────────────
-   Rev 9.2 moves the curve, the moment chips and the transcript to Brain, next to the cortex —
-   WHERE attention broke is a cognition question, and one playhead now drives the cortex clock,
-   the curve, the transcript and (across the tab) the video frame. Engagement keeps the video and
-   what the room would DO with it: one figure per page, each page dedicated to its own question. */
-function momentCard(){
+/* ── retention — Engagement's instrument (rev 9.3 returns it here) ────────
+   The owner's call, and it holds up: retention is what the room DID with the clip second by
+   second, and it belongs with the video that produced it and the outcomes it explains. Brain
+   keeps the cognitive read of the same clip — the two pages answer different questions about
+   one artefact. One playhead still runs the video frame, the curve, the chips and the
+   transcript together. */
+function retentionCard(){
   const W=366,H=108,P=6;
   const C=live();
   const me=path(C,W,H,P), md=path(MEDIAN,W,H,P);
@@ -818,7 +822,8 @@ function momentCard(){
   const ghost=applied?`<path d="${path(CURVE,W,H,P)}" fill="none" stroke="rgba(255,99,99,.32)"
       stroke-width="1.4" stroke-dasharray="3 3"/>`:'';
   return `<div class="card">
-    ${ch('The moment',`<span id="retro">${mmss(ph*CLIP)} · ${Math.round(retAt(ph)*100)}%</span>`)}
+    ${ch('Retention',`<span id="retro">${mmss(ph*CLIP)} · ${Math.round(retAt(ph)*100)}%</span>`)}
+    ${vmini()}
     <div class="curvewrap" id="scrub">
       <svg viewBox="0 0 ${W} ${H}" style="display:block;width:100%;height:auto">
         <path d="${me} L${W-P},${H-P} L${P},${H-P} Z" fill="rgba(236,231,222,.045)"/>
@@ -911,12 +916,10 @@ function brainTab(){
   /* rev 9.2: Brain runs off the cortex AND the retention curve, as the shipped tab does. Depth
      runs headline → when → what → substrate; nothing on this page is a reach, watch or reaction
      metric, because those are the other two pages' jobs. */
-  return hero("cortex","Predicted cortex",
-      applied?"after the trim":`t = <span id="ctxT">${mmss(ph*CLIP)}</span>`,v[0],v[1],
+  return hero("cortex","Predicted cortex",applied?"after the trim":"at the break",v[0],v[1],
       applied?d.figreadDone:d.figread)
   + nread
   + answerBlock()
-  + momentCard()
   + signalsCard()
   + networksCard()
   + heatCard()
@@ -1020,11 +1023,10 @@ function surfaceCard(){
    voices lead on Text. Reactions and the post window follow. */
 function engagement(){
   const v=kind==="video";
-  return (v?`<div class="card">${ch('What they watched',
-      `<span id="retro">${mmss(ph*CLIP)} · ${Math.round(retAt(ph)*100)}%</span>`)}
-      ${vmini()}
+  /* the instrument leads, then its readings, then what the room would do */
+  return (v?retentionCard()
+    +`<div class="card">${ch('Key metrics','vs your last 41')}
       ${tiles(TILES[applied?'videoWatchDone':'videoWatch'],'t3')}
-      ${insight(applied?`They stay for the payoff.`:`Nobody reaches the payoff.`)}
     </div>`:`<div class="card">${ch('If you posted this')}
       <div>${VOICES.map(x=>`<div class="voice ${x.loss?'loss':''}">
         <div class="vhead"><span class="av">${x.w[0]}</span><b>${x.w}</b><span class="vtag">${x.t}</span
@@ -1110,9 +1112,7 @@ function paint(){
   content.innerHTML=tab==="brain"?brainTab():tab==="audience"?audience():engagement();
   abar.innerHTML=actionBar();
   body.scrollTop=0;
-  /* one playhead, two pages: it is DRIVEN on Brain (the curve is the scrubber) and READ on
-     Engagement (the video frame's progress line answers it). */
-  if(kind==="video"){ if(tab==="brain")bindScrub(); syncPlayhead(); }
+  if(tab==="engagement"&&kind==="video"){bindScrub();syncPlayhead();}
   syncBar();
 }
 function setKind(k){
@@ -1127,15 +1127,10 @@ function setTab(t){
 }
 /* the fix RE-SIMULATES. "See the evidence" keeps rev 7.5's routing as a separate, quieter move. */
 function applyFix(){ applied=true; ph=BREAK_S/CLIP; paint(); }
-/* the evidence for a video verdict is the moment BELOW it, not another tab — the fix's proof and
-   its control now share a page, so this scrolls instead of routing (rev 9.2). */
+/* the evidence for a video verdict is the retention curve — one tab right, parked on the break.
+   That adjacency is why Engagement sits between Brain and Audience (rev 9.3). */
 function seeEvidence(){
-  if(kind==="video"){
-    ph=BREAK_S/CLIP; syncPlayhead();
-    const el=document.getElementById("scrub");
-    if(el)body.scrollTo({top:el.getBoundingClientRect().top-body.getBoundingClientRect().top
-      +body.scrollTop-96,behavior:"smooth"});
-  }
+  if(kind==="video"){ ph=BREAK_S/CLIP; setTab("engagement"); }
   else{
     const el=document.getElementById("reasons");
     if(el)body.scrollTo({top:el.getBoundingClientRect().top-body.getBoundingClientRect().top
@@ -1161,12 +1156,6 @@ function syncPlayhead(){
   if(dot){dot.setAttribute("cx",x);dot.setAttribute("cy",y);}
   const ro=document.getElementById("retro");
   if(ro)ro.textContent=`${mmss(ph*CLIP)} · ${Math.round(retAt(ph)*100)}%`;
-  /* the cortex clock rides the same playhead — the figure and the curve are one instrument */
-  const ct=document.getElementById("ctxT");
-  if(ct)ct.textContent=mmss(ph*CLIP);
-  const fr=document.getElementById("figread");
-  if(fr&&!applied&&kind==="video")
-    fr.textContent=`${mmss(ph*CLIP)} · ${Math.round(retAt(ph)*100)}% still watching`;
   const vp=document.getElementById("vprog");
   if(vp)vp.style.width=(ph*100).toFixed(1)+"%";
   /* one-line transcript: light words up to the playhead, keep the current word centred */

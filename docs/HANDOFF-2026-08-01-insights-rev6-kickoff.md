@@ -874,3 +874,29 @@ transcript) → **Signal breakdown** (the nine, 3×3, score · delta · grade) �
 27 probes PASS, law walk 0 violations (Brain carries 2 coral zones — the answer and the curve
 break, which are one claim said once and located once), no JS errors, artifact re-verified
 offline. Page heights 1801/1989/996 (video), 1839/1666/1084 (text).
+
+### Rev 9.3 (2026-08-02) — retention back to Engagement, and the tab order settled
+
+Owner: *"lets move retention again into engagement tab. and how do we want to order the tabs
+best?"*
+
+**Retention returned to Engagement** (reverting 9.2's move, keeping everything else 9.2 added).
+It is what the room DID with the clip second by second, so it belongs with the video that produced
+it and the outcomes it explains; Brain keeps the cognitive read of the same clip. Engagement =
+Retention instrument (video frame + curve + chips + transcript) → Key metrics (the 3 watch tiles)
+→ Projected reaction. Brain's cortex corner is `at the break` again (no scrubber on that page —
+rev 7.5's fix for a clock that reads as stuck), and `seeEvidence()` routes to Engagement again.
+
+**Tab order is now `Brain · Engagement · Audience`** — proposed and applied this session, easy to
+flip. The reasoning, so it doesn't get re-litigated blind:
+1. **The answer's evidence is the retention curve**, so verdict and proof are adjacent — "See the
+   evidence →" steps ONE tab right instead of skipping over Audience.
+2. **Brain and Engagement are both about the CLIP; Audience is about the ROOM.** Grouping the two
+   content pages beats interleaving content · people · content.
+3. **Scope widens left to right** — the clip → the clip over time → the room around it.
+⚠️ Both the rail `.seg` and the review-panel `.ctl [data-tab]` carry the order; a probe asserts
+they match, because a control panel that disagrees with the rail is the two-namespace trap again.
+
+26 probes PASS, law walk 0 violations and now **exactly one coral zone on every page** (9.2's
+Brain carried two — the answer plus the curve break; moving the curve off resolved it). Heights
+1504/1249/1989 (video), 1839/1084/1666 (text). Artifact republished to the SAME url.
