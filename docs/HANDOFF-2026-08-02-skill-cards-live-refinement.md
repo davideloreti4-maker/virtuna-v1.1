@@ -119,3 +119,53 @@ Playwright notes that matter here: `waitUntil:'domcontentloaded'` (networkidle n
    panel, `text-2xl` band word as a hero (Predict), nested bordered drills. Recommended as its own
    pass, not folded into a merge.
 4. **The `reaction_frame` engine follow-up** (from the old lane) stays deferred; nothing here needs it.
+
+---
+
+## 6. Card inventory — every renderer that draws in the thread
+
+Registry: `src/components/thread/message-blocks.tsx` maps `BlockType` → renderer. Schemas live in
+`src/lib/tools/blocks.ts` (+ `profile-blocks.ts` for the profile/test family). All paths below are
+`src/components/thread/`.
+
+| Card | File | Touched this lane | State / what is still open |
+|---|---|---|---|
+| Hook | `hook-card-block.tsx` | ✅ | Face: hero row (rank·hook·Copy) · Visual box · target-less · receipt · Why it works · disclosure. Then audience band → actions. |
+| Idea | `idea-card-block.tsx` | ✅ | Face: title + `your take` · angle+fit · Why it lands · Topic/Take/Format cells · receipt · disclosure → band → actions. Cells still carry 3 uppercase labels — deliberate (they name the formula). |
+| Script | `script-card-block.tsx` | ✅ | Header (beats·format·topic + Copy) · receipt · beat timeline · How to film → band → actions. **Per-beat `filming` cue and the foot "How to film" block overlap** — candidate for a merge pass. |
+| Remix | `remix-card-block.tsx` | ✅ | Source strip · decode→adapt map · disclosure · How to film → band (carries `whoItsFor`) → actions. ⚠️ map uses `sm:grid-cols-2` — a viewport query on a card-width problem. |
+| Video Test | `video-test-card-block.tsx` | ✅ | Craft ring + drivers · filmstrip · working/not-working · director's fixes · "Simulate with your audience →". Already had its door. |
+| Brought (＋door) | `brought-card-block.tsx` | ❌ | MEASURED — real `aggregateFlash` numbers, keeps `ProofUnit`. Still prints `SIM-1 Flash · N reactors`. |
+| Read | `multi-audience-read-block.tsx` (+ `verbatim-wall.tsx`) | ❌ | MEASURED. Carries the label/density debt: uppercase headers, nested bordered drill, `· SIM-1 Flash` in the footer. **Top polish candidate.** |
+| Simulate | `reaction-distribution-block.tsx` | ❌ | MEASURED and the ONE card with real per-persona reactions — keeps `ProofUnit` (correctly). Person vs panel branches. |
+| Predict | `prediction-gauge-block.tsx` | ❌ | MEASURED. `text-2xl` band word as hero, boxed Assumptions panel, feathered gauge (deliberate, F-01/F-02 — do not turn it into a pointer). |
+| Explore grid | `outlier-grid-block.tsx` → `SkillResultCard` | ❌ | Wraps `DiscoverGrid`; chrome lives in `discover/`. |
+| Account read | `account-read-block.tsx` | ❌ | Own accordion system (`reading/`). Large, separate idiom. |
+| Corpus refs | `corpus-references-block.tsx` | ❌ | Reuses `ProofReceipt` (which this lane de-boxed `NoSourceNote` in). |
+| Shared | `proof-unit.tsx` ⛔ · `proof-receipt.tsx` · `card-primitives.tsx` · `sim-door.tsx` · `band-block.tsx` | partly | ⛔ = shared with Simulate + ＋door dial, never edit; change callers. `target-reaction.tsx` was DELETED this lane. |
+
+## 7. Decisions locked this session (owner's words in quotes)
+
+1. *"we'll just move forward by refining whats currently being used"* — the sketch track is over.
+2. *"the one out of ten ranking section on all the cards needs to be replaced with something else,
+   which leads the users to the simulation"* — the origin of `SimDoor`.
+3. *"add the visual hook box back in"* — the de-boxing was wrong; the box stays.
+4. *"find something else for made for / written for that delivers real user value and shows the user
+   audience proof"* — became the audience band (persona + real share), not a deletion.
+5. Two owner screenshots flagged the near-empty head strip and the three-loose-lines foot. Both
+   rebuilt; the rule that came out of it: **a band must earn its height with something true.**
+6. Wording that stands: `Simulate with your audience →` · `See your audience →` · `Not tested yet` ·
+   "Made for" never "Written for"/"Built for" · no em dashes · room→audience.
+
+## 8. Kickoff for the fresh session
+
+```bash
+cd ~/virtuna-slot-a && git switch lane/skill-cards-cleanup
+git rev-parse HEAD                      # expect 06849fec (or later)
+npm run dev -- --port 3001              # reaped after ~10 min idle
+open http://localhost:3001/zz-preview   # all 9 cards, width toggle 728/342
+open zz-shots/index.html                # the approved before/after
+```
+Verify with: `npx tsc --noEmit` · `npx vitest run src/components/thread` · `npm run build` (the gate).
+Commit style: `type(cards): …`, atomic, stage by NAME (never `git add -A` — untracked throwaways live
+in the tree). Auto-push hook is on.
