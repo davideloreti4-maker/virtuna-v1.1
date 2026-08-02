@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Insights rev 9 — each page answers its own question</title>
+<title>Insights rev 9.1 — the audience page gets its full read</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400&display=swap" rel="stylesheet">
@@ -321,6 +321,25 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 .rb.lead .nm{color:var(--cream)}
 .rb.lead .tr s{background:rgba(236,231,222,.85)}
 
+/* fit + spread rows — the reason-bar grammar with a wider value gutter. A negative index or a
+   sub-1× multiplier is LOW, not a loss — it reads faint, never coral (the page's one coral
+   stays on For You's drop). */
+.fx{display:flex;align-items:center;gap:11px;padding:8px 0}
+.fx .nm{width:88px;flex:none;font-size:12.5px;color:var(--dim)}
+.fx .tr{flex:1;height:7px;border-radius:4px;background:rgba(236,231,222,.07);position:relative}
+.fx .tr s{position:absolute;inset:0 auto 0 0;border-radius:4px;background:rgba(236,231,222,.5);
+  text-decoration:none}
+.fx .vl{width:48px;flex:none;text-align:right;font:500 12.5px Inter;color:var(--cream);
+  font-variant-numeric:tabular-nums}
+.fx.lead .nm{color:var(--cream)}
+.fx.lead .tr s{background:rgba(236,231,222,.85)}
+.fx.low .vl{color:var(--faint)}
+.fx.low .tr s{background:rgba(236,231,222,.22)}
+/* the interview affordance — PersonaChatDrawer ships; the mock finally says so */
+.ivw{background:0;border:0;font:400 11px Inter;color:var(--faint);cursor:pointer;padding:0;
+  margin-left:auto;flex:none}
+.ivw:hover{color:var(--dim)}
+
 /* post window strip */
 .pw{display:flex;gap:4px;margin-top:12px;align-items:flex-end}
 .pw div{flex:1;text-align:center}
@@ -386,10 +405,10 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 <aside class="ctl">
   <div class="brandline"></div>
   <h1>Ambient Audience · insight drill</h1>
-  <p class="lede">Revision 9 — every block moved to the page whose question it answers. The Brain
-    page finally reads like the brain: the watch metrics joined the retention instrument on
-    Engagement, discovery and the posting window joined the room on Audience, and in their place
-    Brain gained the model’s own read of the clip.</p>
+  <p class="lede">Revision 9.1 — rev 9 moved every block to the page whose question it answers;
+    this pass restores the shipped rail’s highest-value reads the mock had dropped. Audience now
+    tells the who-story whole: who’s here, how long they stay, what they did, who it’s for, who
+    spreads it, where it surfaces, when to post.</p>
 
   <h2>Stimulus</h2>
   <div class="grp">
@@ -412,21 +431,27 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
       beats flip, and on Engagement the watch tiles and the curve redraw. <b>Undo</b> puts it back.</li>
     <li><b>Switch to Engagement.</b> The retention instrument now keeps its own readings — Avg
       watch, Watched full, Rewatch sit directly under it.</li>
-    <li><b>On Audience, tap “Almost”.</b> The segment speaks, and the swing rides with it: win
-      these 201 and stopped goes 38% → 47%. Discovery and Best window live here now too.</li>
+    <li><b>On Audience, read down.</b> After “What they did”: <b>Who this is for</b> — each
+      segment indexed vs the room average, the targeting read no platform reports — and
+      <b>Who spreads it</b> — saw → reshared → their networks, ×5.1, and who multiplies it.
+      Tap “Almost” and the segment speaks, the swing riding with it (38% → 47%).</li>
   </ol>
 
   <h2>Calls you may want to reverse</h2>
   <ul class="calls">
-    <li><b>The watch tiles left Brain for Engagement.</b> They are readings of the retention
-      instrument. “Watched past 0:03” died in the move — the curve’s annotation and the hero
-      already state it, and a page must not say one fact twice.</li>
-    <li><b>Traffic and Best window left for Audience.</b> Both are who/where facts; TikTok itself
-      keeps best-time-to-post under Followers. Brain was the TL;DR page holding reach data.</li>
-    <li><b>“What the brain saw” is new.</b> Three time-anchored beats, no numbers — every % it
-      could show already lives in the figread or the answer. The raw scales stay in the drawer.</li>
-    <li><b>The drawer now names its calibration</b> — “your 4.2k followers · confidence 0.82”,
-      the trust line the shipped rail carries and the mock had dropped.</li>
+    <li><b>Two shipped blocks return</b> (rev 9.1): the fit index and the amplification read,
+      restyled from the live rail’s mono-uppercase into the card grammar. Their numbers are
+      deliberately NOT the surface’s one % unit — an index (+116%) and a multiplier (×3.2),
+      distinct notations for different quantities.</li>
+    <li><b>Every voice now carries “interview ›”</b> — the shipped PersonaChatDrawer affordance
+      the mock never showed. Talking to a simulated viewer is the product’s most differentiated
+      move; it deserved a handle on the surface.</li>
+    <li><b>Left out on purpose:</b> the live tri-state row (its 38/62 is the hero + answer,
+      one fact once) and the unlock’s explainer prose (its facts are the answer and the second
+      beat). The fix’s <em>why</em> lives in “What the brain saw”.</li>
+    <li><b>The text room reads 1,000 now</b> — figread said “590 simulated readers” while the
+      room, the reasons and the live rail all code from 1,000; 590 is who read past the hook
+      (the answer’s “218 of 590” denominator).</li>
   </ul>
 
   <p class="note-foot">Mockup only. The cortex and terrain heroes are stills cropped from the
@@ -524,7 +549,9 @@ const D={
     doneBody:[["26% would stop reading",2],[" — recognition drops to 14%.",0]],
     was:["41%","would stop"], now:["26%","would stop"],
     verdict:["41%","stop reading"], verdictDone:["26%","stop reading"],
-    figread:"590 simulated readers", figreadDone:"590 · re-simulated",
+    /* the room is 1,000 for both kinds (the live rail codes text from 1,000 too);
+       590 is who read past the hook — the answer's "218 of 590" denominator, not the room */
+    figread:"1,000 simulated readers", figreadDone:"1,000 · re-simulated",
   }
 };
 
@@ -534,6 +561,22 @@ const POOLS=[
   {n:"Followers",   s:"10% of room", pct:10, drop:"0:21", loss:0, k:[1,.97,.93,.89,.86,.84,.82,.805,.79,.777,.765,.753,.74,.728,.715,.703,.69,.677,.663,.648,.632,.614,.594,.57,.542,.508,.466,.412,.34]},
   {n:"Cross-niche", s:"5% of room",  pct:5,  drop:"0:03", loss:0, k:[1,.88,.62,.41,.33,.29,.27,.258,.248,.24,.233,.226,.22,.213,.207,.2,.194,.187,.181,.174,.168,.161,.154,.146,.137,.127,.115,.1,.08]},
 ];
+/* Who this is for (live IndexBars) + Who spreads it (live Amplification) — restored rev 9.1 on
+   the owner's "add everything good". Names use the room's own segment namespace (learners /
+   drive-by, not the live fixture's scrollers / drop-ins — one namespace per surface). The index
+   is "vs the room average", the multiplier is "×" — both notations distinct from the surface's
+   one % unit on purpose. */
+const AUDFIT={
+  video:[{n:"builders",v:116,lead:1},{n:"learners",v:34},{n:"drive-by",v:5},{n:"skeptics",v:-68,low:1}],
+  text: [{n:"builders",v:82, lead:1},{n:"learners",v:0},{n:"drive-by",v:-9,low:1},{n:"skeptics",v:-64,low:1}],
+};
+const AMP={
+  video:{saw:"1,000",re:"193",net:"5,100",x:"×5.1",
+    rows:[{n:"builders",v:3.2,lead:1},{n:"drive-by",v:1.4},{n:"learners",v:0.7,low:1},{n:"skeptics",v:0.3,low:1}]},
+  text: {saw:"1,000",re:"198",net:"5,200",x:"×5.2",
+    rows:[{n:"builders",v:3.2,lead:1},{n:"drive-by",v:1.4},{n:"learners",v:0.7,low:1},{n:"skeptics",v:0.3,low:1}]},
+};
+
 /* "Stopped to watch" means stopped SCROLLING — the good outcome. rev 7.5 renamed the row for
    exactly that reason; rev 8 finishes the job by never pairing it with a loss colour. */
 const ROOM=[
@@ -843,7 +886,7 @@ function audience(){
             <span class="n">${v}</span><span class="cv">›</span></button>
           ${on?`<div class="segv">${(SEGV[who]||[]).map(x=>`<div class="voice">
             <div class="vhead"><span class="av">${x.w[0]}</span><b>${x.w}</b>
-              <span class="vtag">${x.t}</span></div>
+              <span class="vtag">${x.t}</span><button class="ivw">interview ›</button></div>
             <p class="vq">${x.q}</p>
             <div class="vecho"><i>${x.n} would echo this</i>
               <span class="t"><s style="width:${(x.n/412*100).toFixed(0)}%"></s></span></div>
@@ -851,11 +894,43 @@ function audience(){
           </div>`).join('')}</div>`:''}`;}).join('')}</div>
       ${insight(`The 201 “almost” are the winnable ones.`)}
     </div>`
-  /* rev 9: discovery + the posting window are WHO facts — they live with the room now.
-     TikTok itself keeps best-time-to-post under Followers. */
+  /* rev 9.1: the page tells the who-story whole — who's here → how long they stay → what they
+     did → who it's FOR → who SPREADS it → where it surfaces → when to post. */
+  + fitCard()
+  + spreadCard()
   + (kind==="video"?surfaceCard():'')
   + windowCard()
   + foot();
+}
+
+/* Who this is for — the targeting read no platform reports: each segment indexed vs the room
+   average. The lead reads by weight; a negative index is faint, never coral. */
+function fitCard(){
+  const rs=AUDFIT[kind], mx=Math.max(...rs.map(r=>Math.abs(r.v)))||1;
+  return `<div class="card">${ch('Who this is for','vs the room average')}
+    <div style="margin-top:6px">${rs.map(r=>`
+      <div class="fx${r.lead?' lead':''}${r.low?' low':''}"><span class="nm">${r.n}</span>
+        <span class="tr"><s style="width:${(Math.abs(r.v)/mx*100).toFixed(0)}%"></s></span>
+        <span class="vl">${r.v>0?'+':''}${r.v}%</span></div>`).join('')}</div>
+    ${insight(kind==="video"?`Narrower, higher-intent than broad reach.`:`Builders lean in. Skeptics sit out.`)}
+  </div>`;
+}
+
+/* Who spreads it — the second ring: saw → reshared → their networks, then who multiplies it. */
+function spreadCard(){
+  const a=AMP[kind], mx=Math.max(...a.rows.map(r=>r.v));
+  return `<div class="card">${ch('Who spreads it','modeled reach')}
+    <div class="delta" style="background:var(--chip)">
+      <div class="col"><i>saw it</i><b>${a.saw}</b></div><span class="arw">→</span>
+      <div class="col"><i>reshared</i><b>${a.re}</b></div><span class="arw">→</span>
+      <div class="col"><i>their networks</i><b>${a.net}</b></div>
+      <span class="tag">${a.x}</span></div>
+    <div style="margin-top:8px">${a.rows.map(r=>`
+      <div class="fx${r.lead?' lead':''}${r.low?' low':''}"><span class="nm">${r.n}</span>
+        <span class="tr"><s style="width:${(r.v/mx*100).toFixed(0)}%"></s></span>
+        <span class="vl">×${r.v.toFixed(1)}</span></div>`).join('')}</div>
+    ${insight(`Reach rides on builders resharing.`)}
+  </div>`;
 }
 
 /* Traffic sources — a who/where fact, so it lives with the room (rev 9; it sat on Brain before,
@@ -880,7 +955,8 @@ function engagement(){
   const v=kind==="video";
   return (v?retentionCard():`<div class="card">${ch('If you posted this')}
       <div>${VOICES.map(x=>`<div class="voice ${x.loss?'loss':''}">
-        <div class="vhead"><span class="av">${x.w[0]}</span><b>${x.w}</b><span class="vtag">${x.t}</span></div>
+        <div class="vhead"><span class="av">${x.w[0]}</span><b>${x.w}</b><span class="vtag">${x.t}</span
+          ><button class="ivw">interview ›</button></div>
         <p class="vq">${x.q}</p>
         <div class="vecho"><i>${x.n} would echo this</i>
           <span class="t"><s style="width:${(x.n/412*100).toFixed(0)}%"></s></span></div>
@@ -950,7 +1026,8 @@ function methodPanel(){
       substrate. They are shown flat rather than hidden so the grid stays the same instrument
       across both.</p>`:''}
     <p class="mnote">Modeled from your audience’s real retention · calibrated on your 4.2k
-      followers · confidence 0.82 · not a brain measurement.</p>
+      followers · confidence 0.82 · calibrated for engagement, not purchase · not a brain
+      measurement.</p>
   </div>`;
 }
 const foot=()=>`<button class="foot" aria-expanded="${method}">

@@ -810,3 +810,28 @@ under full network block. Republished to the SAME review URL.
 - Still open from §13: §3.2 (reasons absent on real video drills — blocker), cortex repaint after
   trim, text-sim dead rows, the seven shipped-only blocks awaiting the owner's ruling (amplification
   ×5.1 and audience-fit index bars are the two with real user value not yet in the mock).
+
+### Rev 9.1 (2026-08-02) — the shipped rail's value blocks return
+
+Owner: *"improve the sketch with everything we can add from what's currently rendering in the
+rail… add everything which you think is good… as high user value as possible."* This settles the
+§14 open question on the shipped-only blocks:
+
+- **Who this is for** (live `IndexBars`) and **Who spreads it** (live `Amplification`) join
+  Audience, restyled from mono-uppercase into the card grammar (`.fx` rows; the ×5.1 flow reuses
+  `.delta` on a chip fill). Segment names use the ROOM namespace (learners/drive-by — the live
+  fixture's scrollers/drop-ins would be a second namespace). Negative index / sub-1× = `.low`
+  (faint), never coral — Audience keeps its one coral (For You's 0:02).
+- **Audience page order** = the who-story: who's here → how long → what they did → who it's for →
+  who spreads it → where it surfaces → when to post.
+- **Every voice carries "interview ›"** (`.ivw`) — the shipped PersonaChatDrawer/onInterview
+  affordance the mock never surfaced.
+- **Drawer honesty** gains "calibrated for engagement, not purchase" (the live RoomStrip clause).
+- **Unit fix:** text figread said "590 simulated readers"; the room codes from 1,000 everywhere
+  (590 = who read past the hook, the "218 of 590" denominator). Now "1,000 simulated readers".
+- **Left out on purpose:** the tri-state row (38/62 = hero + answer, one fact once) and the
+  unlock explainer prose (covered by the answer + beat 2). Both listed as reversible calls on
+  the artifact.
+
+16 probes PASS (incl. fit/spread order, low≠coral, interview counts, applied-flow intact), law
+walk 0 violations, artifact re-verified offline, republished to the SAME url.
