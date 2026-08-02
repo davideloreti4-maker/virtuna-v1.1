@@ -104,6 +104,7 @@ import { useActiveRun } from "@/components/app/home/use-active-run";
 import type { ChatTurnKind } from "@/lib/tools/chat-followups";
 import { useOutlierGridActions } from "@/components/app/home/use-outlier-grid-actions";
 import { isChatAgentThread, orderedAssistantBlocks, orderedTurns } from "@/components/app/home/rehydrate-thread";
+import { ThreadIdContext } from "@/lib/save-provenance-context";
 import type { RehydrateTurn } from "@/components/app/home/rehydrate-thread";
 import { useScriptStream } from "@/hooks/queries/use-script-stream";
 import { useRemixStream } from "@/hooks/queries/use-remix-stream";
@@ -2825,11 +2826,16 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           `activeTool ===` gates, which is what made a finished run live OUTSIDE the thread until
           the creator switched skills. Nothing here reads activeTool; there is no second surface to
           race with. */}
-      <PersistedThreadStream
-        persistedTurns={persistedStreamTurns}
-        liveTurn={liveTurn}
-        ambientBaseIndex={0}
-      />
+      {/* Which thread these blocks belong to. Read by <SaveAffordance> so a save records its own
+          origin — `saved_items.thread_id` has existed since P10 but only one of eleven renderers
+          ever passed it, leaving every saved row orphaned from the thread that produced it. */}
+      <ThreadIdContext.Provider value={openThreadId}>
+        <PersistedThreadStream
+          persistedTurns={persistedStreamTurns}
+          liveTurn={liveTurn}
+          ambientBaseIndex={0}
+        />
+      </ThreadIdContext.Provider>
             </OutlierGridActionsContext.Provider>
            </RemixDevelopContext.Provider>
           </ScriptTestContext.Provider>

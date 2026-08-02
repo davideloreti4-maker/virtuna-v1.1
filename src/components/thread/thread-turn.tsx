@@ -56,6 +56,7 @@ import { ChatTypingIndicator } from '@/components/thread/thread-loading';
 import type { RunEvidence } from '@/lib/tools/evidence';
 import { classifyTurn, followupsForKind, type ChatTurnKind } from '@/lib/tools/chat-followups';
 import { useOnWriteScriptHook } from '@/lib/hook-test-context';
+import type { BlockOrigin } from '@/components/app/home/rehydrate-thread';
 
 /** The four skills that have an authored intro line (conversational-frame `introLine`). */
 const SKILLS_WITH_INTRO: readonly string[] = ['hooks', 'ideas', 'script', 'remix'];
@@ -121,6 +122,12 @@ export interface ThreadTurnProps {
   live?: LiveRun | null;
   /** This turn's offset into the ambient room's flat ledger (positional card ids). */
   ambientBaseIndex?: number;
+  /**
+   * Per-block provenance aligned with `blocks` — passed straight through to MessageBlocks so a
+   * save can record the message row it came from. Optional; absent on live turns, whose blocks are
+   * not persisted yet.
+   */
+  blockOrigins?: BlockOrigin[];
 }
 
 /** Read the persisted run stamp off the turn, if it has one. */
@@ -176,7 +183,13 @@ function topCard(blocks: unknown[]): { type: string; props: Record<string, unkno
   return null;
 }
 
-export function ThreadTurn({ userTurn, blocks, live, ambientBaseIndex }: ThreadTurnProps) {
+export function ThreadTurn({
+  userTurn,
+  blocks,
+  live,
+  ambientBaseIndex,
+  blockOrigins,
+}: ThreadTurnProps) {
   const onWriteScript = useOnWriteScriptHook();
 
   const header = readRunHeader(blocks);
@@ -257,6 +270,21 @@ export function ThreadTurn({ userTurn, blocks, live, ambientBaseIndex }: ThreadT
     ? body.filter((b) => (b as { type?: string } | null)?.type === 'markdown')
     : body;
 
+  // Provenance has to survive the SAME two transforms the body just went through, or every saved
+  // ref shifts: splitTrailingOutro drops the trailing block, and the live filter drops every
+  // non-markdown one. Tracked as INDICES into the original `blocks` rather than by slicing a
+  // parallel array, so the two can never drift apart. The outro split only ever removes the last
+  // element, which is what makes `slice(0, body.length)` an exact inverse of it.
+  const visibleOrigins = blockOrigins
+    ? (runLive
+        ? blocks
+            .map((_, i) => i)
+            .slice(0, body.length)
+            .filter((i) => (blocks[i] as { type?: string } | null)?.type === 'markdown')
+        : blocks.map((_, i) => i).slice(0, body.length)
+      ).map((i) => blockOrigins[i] ?? null)
+    : undefined;
+
   // A skill was involved when the run names one (the chat agent's `dispatch` frame does) or stages
   // arrived (legacy streams carry no dispatch frame and must NOT be labeled with a guess).
   const skillInvolved = (!!live && skill !== 'chat') || stages.length > 0;
@@ -331,7 +359,11 @@ export function ThreadTurn({ userTurn, blocks, live, ambientBaseIndex }: ThreadT
               aria-live={runLive ? 'polite' : undefined}
               aria-atomic={runLive ? false : undefined}
             >
-              <MessageBlocks body={visible} ambientBaseIndex={ambientBaseIndex} />
+              <MessageBlocks
+                body={visible}
+                ambientBaseIndex={ambientBaseIndex}
+                blockOrigins={visibleOrigins}
+              />
             </div>
           )}
 

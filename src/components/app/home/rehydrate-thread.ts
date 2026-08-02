@@ -20,8 +20,39 @@ export interface RehydrateBlock {
 
 /** A persisted message row: role + its blocks. */
 export interface RehydrateMessage {
+  /**
+   * The `messages.id` row. Already on the wire — loadMessages selects it and GET /api/threads/open
+   * returns it verbatim — it was simply not declared here, so every consumer dropped it. It is the
+   * finest STABLE id a saved output can point at: block sub-items (an individual idea, hook or
+   * script beat) have no persisted id of their own.
+   */
+  id?: string;
   role?: string;
   blocks?: RehydrateBlock[];
+}
+
+/** Where a rendered block came from — the seam that lets a save name its own origin. */
+export interface BlockOrigin {
+  /** The `messages.id` this block was persisted in. Null while a run is still streaming. */
+  messageId: string | null;
+  /**
+   * The block's index within ITS OWN message body — NOT its position in the merged turn. A turn
+   * merges consecutive assistant messages, so the two diverge as soon as a turn spans more than one
+   * message, and using the merged position would attribute a save to the wrong row.
+   */
+  index: number;
+}
+
+/**
+ * The stable save ref for a block: `${messageId}:${index}`.
+ *
+ * Message bodies are immutable once written, so this survives reload — unlike the render-time card
+ * ids (`idea-0`, `hook-3`) minted from array position in ambient-descriptors.ts. Null when the block
+ * is not yet persisted, in which case a save simply carries no ref (today's behaviour).
+ */
+export function blockRefId(origin: BlockOrigin | null | undefined): string | null {
+  if (!origin?.messageId) return null;
+  return `${origin.messageId}:${origin.index}`;
 }
 
 const CHAT_AGENT_ORIGIN = "chat-agent";
@@ -68,6 +99,16 @@ export interface RehydrateTurn {
   userTurn: string | null;
   /** Assistant/tool blocks produced in this turn, in message order (cards + co-pilot line interleaved). */
   blocks: RehydrateBlock[];
+  /**
+   * Per-block provenance, aligned index-for-index with `blocks`. Additive: `blocks` keeps its exact
+   * shape and length, so the ambient ledger's positional card ids stay aligned and every existing
+   * consumer is untouched.
+   *
+   * Optional because a turn assembled by hand — a test fixture, the /dev/cards gallery — genuinely
+   * has no origin to report, and inventing one would be worse than omitting it. `orderedTurns`
+   * always populates it.
+   */
+  blockOrigins?: BlockOrigin[];
 }
 
 /**
@@ -78,23 +119,34 @@ export interface RehydrateTurn {
  * `orderedAssistantBlocks` produces (which the chat view rendered under one question — the reload bug).
  */
 export function orderedTurns(messages: RehydrateMessage[]): RehydrateTurn[] {
-  const turns: RehydrateTurn[] = [];
-  let current: RehydrateTurn | null = null;
+  // Origins are optional on the public type but ALWAYS built here, so the local shape requires them.
+  type BuildingTurn = RehydrateTurn & { blockOrigins: BlockOrigin[] };
+  const turns: BuildingTurn[] = [];
+  let current: BuildingTurn | null = null;
   for (const m of messages) {
     if (m.role === "user") {
       const props = (m.blocks ?? []).find((b) => b.type === "markdown")?.props as
         | { text?: string }
         | undefined;
-      current = { userTurn: typeof props?.text === "string" ? props.text : null, blocks: [] };
+      current = {
+        userTurn: typeof props?.text === "string" ? props.text : null,
+        blocks: [],
+        blockOrigins: [],
+      };
       turns.push(current);
     } else {
       if (!current) {
         // A leading assistant block with no preceding user message — open an anonymous turn so its
         // blocks are not dropped (the view renders no user bubble for a null userTurn).
-        current = { userTurn: null, blocks: [] };
+        current = { userTurn: null, blocks: [], blockOrigins: [] };
         turns.push(current);
       }
-      current.blocks.push(...(m.blocks ?? []));
+      const blocks = m.blocks ?? [];
+      current.blocks.push(...blocks);
+      // Index is per-MESSAGE, so it restarts at 0 for each merged message — see BlockOrigin.
+      current.blockOrigins.push(
+        ...blocks.map((_, index) => ({ messageId: m.id ?? null, index })),
+      );
     }
   }
   return turns;

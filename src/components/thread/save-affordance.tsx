@@ -19,14 +19,19 @@
 
 import { BookmarkSimple, Check } from "@phosphor-icons/react";
 import { useSaveItem } from "@/hooks/queries/use-saved-items";
+import { useSaveProvenance } from "@/lib/save-provenance-context";
 import type { SavedItemInput, SavedItemType } from "@/lib/shelf/shelf-repo";
 import { cn } from "@/lib/utils";
 
 export interface SaveAffordanceProps {
   item_type: SavedItemType;
-  /** Optional external ref (e.g. a persisted card/thread row id). */
+  /**
+   * Optional external ref. Normally LEFT UNSET: it falls back to the rendering block's
+   * `${messageId}:${index}` from SaveProvenanceContext. Pass it only where a truer id exists —
+   * e.g. an outlier tile's `platformVideoId`, which identifies the video across threads.
+   */
   ref_id?: string | null;
-  /** The thread this output belongs to (for "Use in thread →" provenance). */
+  /** The thread this output belongs to. Falls back to the thread being rendered. */
   thread_id?: string | null;
   /** Human-readable title shown on the shelf card. */
   title?: string | null;
@@ -48,13 +53,16 @@ export function SaveAffordance({
 }: SaveAffordanceProps) {
   const save = useSaveItem();
   const saved = save.isSuccess;
+  // Provenance the renderers cannot pass — they are all invoked as `<Component block={block} />`.
+  // An explicit prop always wins; context only fills what the caller left unset.
+  const provenance = useSaveProvenance();
 
   const handleSave = () => {
     if (saved || save.isPending) return;
     const input: SavedItemInput = {
       item_type,
-      ref_id: ref_id ?? null,
-      thread_id: thread_id ?? null,
+      ref_id: ref_id ?? provenance.refId,
+      thread_id: thread_id ?? provenance.threadId,
       title: title ?? null,
       snapshot,
     };
