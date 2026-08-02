@@ -114,7 +114,7 @@ export function VideoTestCardRenderer({ block }: VideoTestCardRendererProps) {
 
   return (
     <div
-      className="overflow-hidden rounded-xl border border-white/[0.06] bg-surface-sunken"
+      className="@container overflow-hidden rounded-xl border border-white/[0.06] bg-surface-sunken"
       aria-label={`Video craft test for ${audienceName}`}
     >
       {/* ── HEADER — craft ring + driver bars ── */}
@@ -224,8 +224,10 @@ export function VideoTestCardRenderer({ block }: VideoTestCardRendererProps) {
       {/* ── WORKING / NOT-WORKING ledger ── */}
       {(working.length > 0 || notWorking.length > 0) && (
         <div className="border-t border-white/[0.06] px-4 py-4">
-          <div className="grid grid-cols-1 gap-4 min-[440px]:grid-cols-2 min-[440px]:gap-0">
-            <div className="min-[440px]:pr-4.5">
+          {/* Split keyed on the CARD's width (@container), not the viewport: a 342px card can sit
+              in a wide viewport where `min-[440px]:` would wrongly split it into starved columns. */}
+          <div className="grid grid-cols-1 gap-4 @min-[440px]:grid-cols-2 @min-[440px]:gap-0">
+            <div className="@min-[440px]:pr-4.5">
               <div className="mb-2.5 flex items-center gap-1.5 text-caption font-semibold uppercase tracking-[0.05em] text-[var(--color-positive)]">
                 <span aria-hidden="true">✓</span> Working
               </div>
@@ -239,7 +241,7 @@ export function VideoTestCardRenderer({ block }: VideoTestCardRendererProps) {
                 ))}
               </ul>
             </div>
-            <div className="border-t border-white/[0.06] pt-3.5 min-[440px]:border-l min-[440px]:border-t-0 min-[440px]:pl-4.5 min-[440px]:pt-0">
+            <div className="border-t border-white/[0.06] pt-3.5 @min-[440px]:border-l @min-[440px]:border-t-0 @min-[440px]:pl-4.5 @min-[440px]:pt-0">
               <div className="mb-2.5 flex items-center gap-1.5 text-caption font-semibold uppercase tracking-[0.05em] text-[var(--color-accent-text)]">
                 <span aria-hidden="true">!</span> Not working
               </div>
