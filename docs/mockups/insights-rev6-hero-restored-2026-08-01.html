@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Insights rev 9.3 — verdict, evidence, room</title>
+<title>Insights rev 10 — one taxonomy, anchored reads</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400&display=swap" rel="stylesheet">
@@ -200,10 +200,37 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 .chead .r{font-size:11.5px;color:var(--faint);font-variant-numeric:tabular-nums;white-space:nowrap}
 
 /* ONE takeaway FRAGMENT per card (≤6 words) or nothing — never a sentence with clauses.
-   rev 8 drops the coral span: the answer block is the page's only coral, so a second red
-   phrase down here was a second claim competing with it. */
+   rev 10: every fragment is METRIC-ANCHORED — it must cite a number visible in its own card.
+   "Everyone who stays converts." died for contradicting its own tiles. */
 .insight{margin-top:13px;padding-top:11px;border-top:1px solid var(--border);
   font:500 12.5px/1.5 Inter;letter-spacing:-.005em;color:var(--cream)}
+
+/* rev 10: the page-answer — Engagement and Audience open with one line that answers the page's
+   own question (Brain's answer block already does this job there). Not pinned, not coral. */
+.plede{margin-top:13px;font:400 13px/1.5 Inter;color:var(--dim)}
+.plede b{font-weight:500;color:var(--cream)}
+
+/* rev 10: the movers — the two/three signals the nread is about, full-width above the grid.
+   All nine stay on the surface (the rev-8 drawer mistake is not repeated); rank replaces weight. */
+.smvs{margin-top:6px}
+.smv{display:flex;align-items:baseline;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)}
+.smv b{font:400 21px/1 Inter;color:var(--cream);font-variant-numeric:tabular-nums;
+  letter-spacing:-.012em;min-width:30px}
+.smv .d{font:500 10.5px Inter;color:var(--faint);font-variant-numeric:tabular-nums}
+.smv i{font-style:normal;flex:1;min-width:0;font-size:12.5px;color:var(--dim)}
+.smv u{text-decoration:none;font-size:9.5px;color:var(--faint);letter-spacing:.04em;
+  text-transform:uppercase}
+.smv.strong u{color:var(--dim)}
+
+/* rev 10: "Who this is for" is a DIVERGING scale — an over/under index needs a zero line, or
+   −68% draws longer than +5% and the bar lies about direction. */
+.fx.div .tr u{position:absolute;top:0;bottom:0;left:50%;width:1px;
+  background:rgba(236,231,222,.22);text-decoration:none}
+.fx.div .tr s{inset:auto;top:0;bottom:0}
+
+/* rev 10: the sim disclosure gets ONE home on EVERY page — last line, same words. */
+.simline{margin-top:14px;font-size:10.5px;line-height:1.5;color:var(--faint);
+  font-variant-numeric:tabular-nums}
 
 /* key-metric tiles. rev 8: no coral. The dominant loss is named once, in the answer; a tile that
    also shouted it in red made four red things on one screen and flattened the hierarchy.
@@ -429,10 +456,11 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 <aside class="ctl">
   <div class="brandline"></div>
   <h1>Ambient Audience · insight drill</h1>
-  <p class="lede">Revision 9.3 — retention returns to Engagement, and the tabs are reordered to
-    the reading you actually do: <b>Brain</b> the verdict and why, <b>Engagement</b> the evidence
-    over time and what they’d do, <b>Audience</b> the room it all came from. Verdict sits next to
-    its evidence; scope widens left to right.</p>
+  <p class="lede">Revision 10 — the social-media pass. One audience taxonomy (followers · returning
+    · new · outside — the archetype names are gone), every card-foot anchored to a number visible
+    in its own card, the verb “stop” banned for flipping polarity between surfaces, Engagement and
+    Audience each open with their page-answer, reactions read as counts of projected reach, and the
+    over/under index gets its zero line.</p>
 
   <h2>Stimulus</h2>
   <div class="grp">
@@ -462,6 +490,13 @@ body{background:#131312;color:var(--cream);font-family:Inter,system-ui,sans-seri
 
   <h2>Calls you may want to reverse</h2>
   <ul class="calls">
+    <li><b>The archetypes are gone.</b> builders / learners / skeptics / drive-by named attitudes;
+      the room now splits by relationship to you — <b>followers · returning · new viewers ·
+      outside your niche</b> — TikTok’s own vocabulary, one taxonomy across terrain, watch-time,
+      fit and spread. The people are individuals again: each voice carries a human descriptor
+      (“small creator”), not a caste.</li>
+    <li><b>Every foot cites its own card.</b> “Everyone who stays converts.” sat over two falling
+      tiles. A read that can’t point at its number doesn’t render.</li>
     <li><b>Tab order is Brain · Engagement · Audience.</b> The answer’s evidence is the retention
       curve, so they sit adjacent. Brain and Engagement are both about the CLIP; Audience is about
       the ROOM — scope widens left to right instead of interleaving the two subjects.</li>
@@ -546,69 +581,73 @@ const BREAK_WORD=9;
 const TRIM_WORDS=4;
 const script=()=>applied&&kind==="video"?SCRIPT.slice(TRIM_WORDS):SCRIPT;
 
+/* rev 10: the identity row carries views only — four more projected counts up here were the
+   loudest data on the page, and every one of them re-renders as a counted tile on Engagement.
+   The verb "stop" is BANNED surface-wide: the live rail uses "would stop" as the GOOD outcome
+   (stopped scrolling) while TikTok and this mock used it as the loss — one verb, two polarities.
+   barLab is the pinned action bar's label: a short tabular fact that can never truncate. */
 const D={
   video:{
-    pager:"2 of 5", thumb:"0:28",
+    pager:"clip 2 of 5", thumb:"0:28",
     title:"“I spent four hundred dollars testing every viral hook format…”",
-    stats:[["play","3.2K"],["heart","130"],["msg","17"],["share","22"],["save","48"]],
+    stats:[["play","3.2K"]],
     head:"The first three seconds cap your reach.",
     body:[["62% leave before the payoff",1],
           [" — ",0],["3.2K views",2],[" against your usual 8.1K.",0]],
     fixB:"Trim 0:00–0:03", fixG:"→ 8.4K",
-    /* the re-simulated result — in the build this is onRewrite()'s returned stop count */
+    barLab:"62% leave by 0:03",
+    /* the re-simulated result — in the build this is onRewrite()'s returned count */
     doneHead:"The trim holds the room.",
     doneBody:[["11% leave by 0:03",2],[" — 8.4K projected, past your usual 8.1K.",0]],
     was:["62%","leave by 0:03"], now:["11%","leave by 0:03"],
     verdict:["62%","leave by 0:03"], verdictDone:["11%","leave by 0:03"],
-    figread:"0:03 · 38% still watching", figreadDone:"0:03 · 89% still watching",
   },
   text:{
-    pager:"4 of 5", thumb:"HOOK",
+    pager:"draft 4 of 5", thumb:"HOOK",
     title:"“You don’t need a niche. You need one repeatable format.”",
-    stats:[["play","4.9K"],["heart","210"],["msg","41"],["share","36"],["save","96"]],
+    stats:[["play","4.9K"]],
     head:"The idea works. The phrasing is what leaks.",
-    body:[["41% would stop reading",1],[" — but ",0],
+    body:[["41% would scroll past",1],[" — but ",0],
           ["218 of 590 had already heard it",2],[".",0]],
     fixB:"Put a number in the first clause", fixG:"→ 26%",
+    barLab:"41% scroll past",
     doneHead:"The number does the work.",
-    doneBody:[["26% would stop reading",2],[" — recognition drops to 14%.",0]],
-    was:["41%","would stop"], now:["26%","would stop"],
-    verdict:["41%","stop reading"], verdictDone:["26%","stop reading"],
-    /* the room is 1,000 for both kinds (the live rail codes text from 1,000 too);
-       590 is who read past the hook — the answer's "218 of 590" denominator, not the room */
-    figread:"1,000 simulated readers", figreadDone:"1,000 · re-simulated",
+    doneBody:[["26% would scroll past",2],[" — recognition drops to 14%.",0]],
+    was:["41%","scroll past"], now:["26%","scroll past"],
+    verdict:["41%","scroll past"], verdictDone:["26%","scroll past"],
   }
 };
 
+/* rev 10: ONE audience taxonomy — relationship to the creator, TikTok's own vocabulary
+   (its analytics splits viewers exactly this way: followers / returning / new). The same four
+   names run the terrain districts, these watch-time rows, the fit index and the spread
+   multipliers. The archetype namespace (builders / learners / skeptics / drive-by) is retired. */
 const POOLS=[
-  {n:"For You",     s:"65% of room", pct:65, drop:"0:02", loss:1, k:[1,.82,.44,.22,.17,.15,.14,.135,.13,.128,.125,.123,.12,.118,.115,.113,.11,.108,.105,.103,.1,.098,.095,.092,.089,.085,.08,.074,.066]},
-  {n:"Niche",       s:"20% of room", pct:20, drop:"0:11", loss:0, k:[1,.94,.86,.74,.68,.64,.61,.59,.57,.555,.54,.525,.51,.495,.48,.468,.455,.443,.43,.418,.405,.393,.38,.366,.35,.333,.313,.29,.26]},
+  {n:"New viewers", s:"65% of room", pct:65, drop:"0:02", loss:1, k:[1,.82,.44,.22,.17,.15,.14,.135,.13,.128,.125,.123,.12,.118,.115,.113,.11,.108,.105,.103,.1,.098,.095,.092,.089,.085,.08,.074,.066]},
+  {n:"Returning",   s:"20% of room", pct:20, drop:"0:11", loss:0, k:[1,.94,.86,.74,.68,.64,.61,.59,.57,.555,.54,.525,.51,.495,.48,.468,.455,.443,.43,.418,.405,.393,.38,.366,.35,.333,.313,.29,.26]},
   {n:"Followers",   s:"10% of room", pct:10, drop:"0:21", loss:0, k:[1,.97,.93,.89,.86,.84,.82,.805,.79,.777,.765,.753,.74,.728,.715,.703,.69,.677,.663,.648,.632,.614,.594,.57,.542,.508,.466,.412,.34]},
-  {n:"Cross-niche", s:"5% of room",  pct:5,  drop:"0:03", loss:0, k:[1,.88,.62,.41,.33,.29,.27,.258,.248,.24,.233,.226,.22,.213,.207,.2,.194,.187,.181,.174,.168,.161,.154,.146,.137,.127,.115,.1,.08]},
+  {n:"Outside niche",s:"5% of room", pct:5,  drop:"0:03", loss:0, k:[1,.88,.62,.41,.33,.29,.27,.258,.248,.24,.233,.226,.22,.213,.207,.2,.194,.187,.181,.174,.168,.161,.154,.146,.137,.127,.115,.1,.08]},
 ];
-/* Who this is for (live IndexBars) + Who spreads it (live Amplification) — restored rev 9.1 on
-   the owner's "add everything good". Names use the room's own segment namespace (learners /
-   drive-by, not the live fixture's scrollers / drop-ins — one namespace per surface). The index
-   is "vs the room average", the multiplier is "×" — both notations distinct from the surface's
-   one % unit on purpose. */
+/* The index is "vs the room average", the multiplier is "×" — both notations distinct from the
+   surface's one % unit on purpose. */
 const AUDFIT={
-  video:[{n:"builders",v:116,lead:1},{n:"learners",v:34},{n:"drive-by",v:5},{n:"skeptics",v:-68,low:1}],
-  text: [{n:"builders",v:82, lead:1},{n:"learners",v:0},{n:"drive-by",v:-9,low:1},{n:"skeptics",v:-64,low:1}],
+  video:[{n:"Returning",v:116,lead:1},{n:"Followers",v:34},{n:"New viewers",v:5},{n:"Outside niche",v:-68,low:1}],
+  text: [{n:"Returning",v:82, lead:1},{n:"Followers",v:0},{n:"New viewers",v:-9,low:1},{n:"Outside niche",v:-64,low:1}],
 };
 const AMP={
   video:{saw:"1,000",re:"193",net:"5,100",x:"×5.1",
-    rows:[{n:"builders",v:3.2,lead:1},{n:"drive-by",v:1.4},{n:"learners",v:0.7,low:1},{n:"skeptics",v:0.3,low:1}]},
+    rows:[{n:"Returning",v:3.2,lead:1},{n:"Followers",v:1.4},{n:"New viewers",v:0.7,low:1},{n:"Outside niche",v:0.3,low:1}]},
   text: {saw:"1,000",re:"198",net:"5,200",x:"×5.2",
-    rows:[{n:"builders",v:3.2,lead:1},{n:"drive-by",v:1.4},{n:"learners",v:0.7,low:1},{n:"skeptics",v:0.3,low:1}]},
+    rows:[{n:"Returning",v:3.2,lead:1},{n:"Followers",v:1.4},{n:"New viewers",v:0.7,low:1},{n:"Outside niche",v:0.3,low:1}]},
 };
 
-/* "Stopped to watch" means stopped SCROLLING — the good outcome. rev 7.5 renamed the row for
-   exactly that reason; rev 8 finishes the job by never pairing it with a loss colour. */
+/* rev 10: decision states in plain behaviour — no "stopped" (banned verb), no "for them"
+   (attitude). "Almost stayed" is the product's best concept and now says what it means. */
 const ROOM=[
-  ["Stopped to watch",380,"builders",0],
-  ["Almost",201,"learners",0],
-  ["Not for them",176,"skeptics",0],
-  ["Scrolled past",243,"drive-by",1],
+  ["Watched",380,"watched",0],
+  ["Almost stayed",201,"almost",0],
+  ["Wrong audience",176,"wrong",0],
+  ["Scrolled past",243,"scrolled",1],
 ];
 
 /* key-metric tiles — label · value · delta vs the creator's own median. `lead` = the metric the
@@ -620,24 +659,33 @@ const TILES={
   videoWatch:[
     {n:"Avg watch",    v:"9.7s", d:"↓1.5s · of 0:28"},
     {n:"Watched full", v:"3.1%", d:"↓6.3 pts"},
-    {n:"Rewatch",      v:"1.19×",d:"↑0.15 · top fifth"},
+    {n:"Rewatch",      v:"1.19×",d:"↑0.15 · top 20%"},
   ],
   videoWatchDone:[
     {n:"Avg watch",    v:"16.4s",d:"↑5.2s · of 0:25"},
     {n:"Watched full", v:"9.8%", d:"↑0.4 pts"},
-    {n:"Rewatch",      v:"1.19×",d:"↑0.15 · top fifth"},
+    {n:"Rewatch",      v:"1.19×",d:"↑0.15 · top 20%"},
   ],
+  /* rev 10: reactions read as COUNTS of the projected reach — creators think in saves, not in
+     percentage points of modeled viewers. The rate rides in the delta line; the card's
+     right-meta names the denominator. */
   videoEngage:[
-    {n:"Saves",    v:"3.2%", d:"↑1.3 pts"},
-    {n:"Shares",   v:"1.4%", d:"↑0.5 pts"},
-    {n:"Comments", v:"0.5%", d:"↓0.1 pts"},
-    {n:"Follows",  v:"0.4%", d:"↓0.1 pts"},
+    {n:"Saves",    v:"102", d:"3.2% of viewers ↑"},
+    {n:"Shares",   v:"45",  d:"1.4% of viewers ↑"},
+    {n:"Comments", v:"16",  d:"0.5% of viewers ↓"},
+    {n:"Follows",  v:"13",  d:"0.4% of viewers ↓"},
+  ],
+  videoEngageDone:[
+    {n:"Saves",    v:"269", d:"3.2% of viewers ↑"},
+    {n:"Shares",   v:"118", d:"1.4% of viewers ↑"},
+    {n:"Comments", v:"42",  d:"0.5% of viewers ↓"},
+    {n:"Follows",  v:"34",  d:"0.4% of viewers ↓"},
   ],
   textEngage:[
-    {n:"Comments", v:"1.1%", d:"↑0.5 pts"},
-    {n:"Saves",    v:"2.8%", d:"↑0.9 pts"},
-    {n:"Shares",   v:"0.7%", d:"↓0.2 pts"},
-    {n:"Follows",  v:"0.3%", d:"↓0.2 pts"},
+    {n:"Comments", v:"54",  d:"1.1% of readers ↑"},
+    {n:"Saves",    v:"137", d:"2.8% of readers ↑"},
+    {n:"Shares",   v:"34",  d:"0.7% of readers ↓"},
+    {n:"Follows",  v:"15",  d:"0.3% of readers ↓"},
   ],
 };
 
@@ -646,20 +694,23 @@ const REASONS=[
   {n:"Genuinely useful", v:21, lead:0},{n:"Too abstract",   v:11, lead:0},
   {n:"Wrong for me",     v:7,  lead:0},
 ];
+/* rev 10: voices are PEOPLE, not castes — the tag is a human descriptor (what Artificial
+   Societies does with real-network personas), and each echo count sits INSIDE the row count it
+   belongs to (Maya's 296 ≤ the 380 who watched; 9.3 had 412 echoing a 380-person row). */
 const VOICES=[
-  {w:"Maya",t:"builder",q:"ok this is the first time someone’s said the quiet part. the niche advice has been killing me for two years",n:412,loss:0},
-  {w:"Dev",t:"skeptic",q:"sounds like everyone else. every account on here says pick a format now",n:218,loss:1},
-  {w:"Ana",t:"learner",q:"saving this. what counts as a format though — a series, or a shot type?",n:174,loss:0},
-  {w:"Sam",t:"tough crowd",q:"easy to say with 40k followers. format is all you need when the reach is already there",n:96,loss:0},
+  {w:"Maya",t:"small creator",q:"ok this is the first time someone’s said the quiet part. the niche advice has been killing me for two years",n:296,loss:0},
+  {w:"Dev",t:"seen every hook video",q:"sounds like everyone else. every account on here says pick a format now",n:218,loss:1},
+  {w:"Ana",t:"found you today",q:"saving this. what counts as a format though — a series, or a shot type?",n:174,loss:0},
+  {w:"Sam",t:"bigger account",q:"easy to say with 40k followers. format is all you need when the reach is already there",n:96,loss:0},
 ];
-/* what each room segment says — the AudienceTab already ships onInterview(who) */
+/* what each decision row says — the AudienceTab already ships onInterview(who) */
 const SEGV={
-  "builders":[{w:"Maya",t:"builder",q:"finally someone said the quiet part",n:412}],
-  /* the swing rides with the segment it names (live rail: "win them and the room moves 38% → 47%") */
-  "learners":[{w:"Ana",t:"learner",q:"saving this — what counts as a format though?",n:174,
-    sw:"Win these 201: stopped 38% → 47%"}],
-  "skeptics":[{w:"Dev",t:"skeptic",q:"sounds like everyone else on here",n:218}],
-  "drive-by":[{w:"Sam",t:"tough crowd",q:"easy to say when the reach is already there",n:96}],
+  "watched":[{w:"Maya",t:"small creator",q:"finally someone said the quiet part",n:296}],
+  /* the swing rides with the row it names (live rail: "win them and the room moves 38% → 47%") */
+  "almost":[{w:"Ana",t:"found you today",q:"saving this — what counts as a format though?",n:174,
+    sw:"Win these 201: watched 38% → 47%"}],
+  "wrong":[{w:"Sam",t:"bigger account",q:"easy to say when the reach is already there",n:96}],
+  "scrolled":[{w:"Dev",t:"seen every hook video",q:"sounds like everyone else on here",n:218}],
 };
 
 /* ── the instrument — ON the Brain page again (rev 9.2) ───────────────────
@@ -670,24 +721,33 @@ const SEGV={
    score and a % of the room are different quantities and now say so.
    Grades stay colourless: brain-signals.ts calls them "a cutoff on a MODELED signal, NOT a
    benchmark against real outcomes", and an unbenchmarked judgement must not shout. */
+/* rev 10: two labels translated to creator language ("Cognitive grip" → "Easy to follow",
+   "Voice impact" → "Delivery"); the neuro terms live in the method drawer. MOVERS names the
+   signals the nread line is about — they render full-width above the grid, ranked, so the page
+   has a hierarchy without hiding any of the nine. */
 const SIGNALS={
-  video:[["Visual pull",68,5,"strong"],["Voice impact",37,2,"weak"],["Cognitive grip",50,-1,"okay"],
+  video:[["Visual pull",68,5,"strong"],["Delivery",37,2,"weak"],["Easy to follow",50,-1,"okay"],
          ["Emotional hit",57,6,"okay"],["Memorability",32,2,"weak"],["Attention",34,6,"weak"],
          ["Buy signal",35,4,"weak"],["Hesitation",58,5,"weak"],["Mental effort",50,0,"okay"]],
-  text: [["Visual pull",null,null,"none"],["Voice impact",70,-1,"strong"],["Cognitive grip",28,12,"weak"],
+  text: [["Visual pull",null,null,"none"],["Delivery",70,-1,"strong"],["Easy to follow",28,12,"weak"],
          ["Emotional hit",60,-4,"okay"],["Memorability",78,5,"strong"],["Attention",43,8,"weak"],
          ["Buy signal",40,18,"weak"],["Hesitation",68,-10,"weak"],["Mental effort",39,8,"okay"]],
 };
-/* z-scores carry the shipped plain-word read — a σ figure alone tells a creator nothing */
+const MOVERS={
+  video:["Attention","Visual pull","Delivery"],
+  text: ["Easy to follow","Memorability","Buy signal"],
+};
+/* rev 10: networks named by FUNCTION — the words the nread line already speaks. The anatomical
+   names (dorsal attention, default mode…) moved to the method drawer, where σ is explained. */
 const SIGMAS={
-  video:[["Visual",.35,"slightly above"],["Somatomotor",.07,"about normal"],
-         ["Dorsal attention",-.73,"slightly below",1],["Ventral attention",-.01,"about normal"],
-         ["Limbic",-.72,"slightly below"],["Frontoparietal",-.43,"slightly below"],
-         ["Default mode",-.52,"slightly below"]],
-  text: [["Visual",-.57,"slightly below"],["Somatomotor",-.45,"slightly below"],
-         ["Dorsal attention",-.83,"slightly below",1],["Ventral attention",-.53,"slightly below"],
-         ["Limbic",.28,"about normal"],["Frontoparietal",-.66,"slightly below"],
-         ["Default mode",.02,"about normal"]],
+  video:[["Visual",.35,"slightly above"],["Body",.07,"about normal"],
+         ["Focus",-.73,"slightly below",1],["Alertness",-.01,"about normal"],
+         ["Emotion",-.72,"slightly below"],["Effort",-.43,"slightly below"],
+         ["Mind-wandering",-.52,"slightly below"]],
+  text: [["Visual",-.57,"slightly below"],["Body",-.45,"slightly below"],
+         ["Focus",-.83,"slightly below",1],["Alertness",-.53,"slightly below"],
+         ["Emotion",.28,"about normal"],["Effort",-.66,"slightly below"],
+         ["Mind-wandering",.02,"about normal"]],
 };
 /* the two networks that matter, in words — the shipped line under the cortex */
 const NREAD={
@@ -730,9 +790,9 @@ let kind="video", tab="brain", ph=BREAK_S/CLIP, applied=false, method=false, ope
 /* ── heroes — three figures, one verdict grammar ────────────────────────── */
 /* The districts the terrain already carries — name + the share of that district that stayed. */
 const DISTRICTS=[
-  {n:"builders", v:"82%", x:30,  y:64},
-  {n:"learners", v:"44%", x:236, y:122},
-  {n:"skeptics", v:"12%", x:132, y:198},
+  {n:"followers", v:"82%", x:30,  y:64},
+  {n:"returning", v:"44%", x:236, y:122},
+  {n:"new",       v:"12%", x:132, y:198},
 ];
 /* Cortex framing reproduces the shipped hero exactly (source y 112→375 at 1x, scale 1.0266), so the
    brain sits in the upper four fifths and the verdict chip has clear dark ground beneath it — the
@@ -845,14 +905,23 @@ function retentionCard(){
       `<button class="mo" data-t="${t}"${i===0?' aria-pressed="true"':''}
         ><i>${mmss(t)}</i><b>${v}%</b></button>`).join('')}</div>
     <div class="tstrip"><span class="tin" id="tin"></span></div>
-    ${insight(applied?`The room reaches the payoff.`:`Only the hook is broken.`)}
+    ${insight(applied?`89% now clear 0:03.`:`After 0:03 you beat your median.`)}
   </div>`;
 }
 
-/* the decomposition — nine signals, score · delta vs your baseline · grade. Colourless grades. */
+/* the decomposition — nine signals, score · delta vs your baseline · grade. Colourless grades.
+   rev 10: the movers lead full-width (the signals the nread names), the other six keep the grid.
+   All nine stay on the surface — rank replaces the rev-8 drawer. */
 function signalsCard(){
+  const all=SIGNALS[kind], mv=MOVERS[kind];
+  const lead=mv.map(m=>all.find(s=>s[0]===m));
+  const rest=all.filter(s=>!mv.includes(s[0]));
   return `<div class="card">${ch('Signal breakdown','0–100 · vs your baseline')}
-    <div class="sg">${SIGNALS[kind].map(([n,v,d,g])=>
+    <div class="smvs">${lead.map(([n,v,d,g])=>
+      `<div class="smv${g==="strong"?" strong":""}">
+        <b>${v==null?"—":v}</b>${d==null?'':`<span class="d">${d>0?'+':''}${d}</span>`}
+        <i>${n}</i><u>${g==="none"?"no signal":g}</u></div>`).join('')}</div>
+    <div class="sg">${rest.map(([n,v,d,g])=>
       `<div class="${g==="none"?"none":g==="strong"?"strong":""}">
         <span class="v"><b>${v==null?"—":v}</b>${d==null?'':`<span class="d">${d>0?'+':''}${d}</span>`}</span>
         <i>${n}</i><u>${g==="none"?"no signal":g}</u></div>`).join('')}</div>
@@ -897,16 +966,15 @@ function brainTab(){
 
   /* A text concept has no timeline (§3.3) — its "when" is a WHY, so the reason bars take the
      moment's slot and the instrument continues underneath, identical in both kinds. */
-  if(kind==="text") return hero("cortex","Predicted cortex","simulated",v[0],v[1],
-      applied?d.figreadDone:d.figread)
+  if(kind==="text") return hero("cortex","Predicted cortex","simulated",v[0],v[1])
   + nread
   + answerBlock()
-  + `<div class="card" id="reasons">${ch('Why they stopped','coded from 1,000')}
+  + `<div class="card" id="reasons">${ch('Why they scrolled','coded from 1,000')}
       <div style="margin-top:10px">${REASONS.map(r=>`
         <div class="rb ${r.lead?'lead':''}"><span class="nm">${r.n}</span>
           <span class="tr"><s style="width:${(r.v/37*100).toFixed(0)}%"></s></span>
           <span class="vl">${r.v}%</span></div>`).join('')}</div>
-      ${insight(`Recognition, not disagreement.`)}
+      ${insight(`37% had heard it before.`)}
     </div>`
   + signalsCard()
   + networksCard()
@@ -916,8 +984,7 @@ function brainTab(){
   /* rev 9.2: Brain runs off the cortex AND the retention curve, as the shipped tab does. Depth
      runs headline → when → what → substrate; nothing on this page is a reach, watch or reaction
      metric, because those are the other two pages' jobs. */
-  return hero("cortex","Predicted cortex",applied?"after the trim":"at the break",v[0],v[1],
-      applied?d.figreadDone:d.figread)
+  return hero("cortex","Predicted cortex",applied?"after the trim":"at 0:03, the drop",v[0],v[1])
   + nread
   + answerBlock()
   + signalsCard()
@@ -928,7 +995,10 @@ function brainTab(){
 
 function audience(){
   const c=["rgba(236,231,222,.88)","rgba(236,231,222,.52)","rgba(236,231,222,.32)","rgba(236,231,222,.18)"];
-  return hero("terrain","The room","1 node ≈ 10 people","90%","non-followers")
+  /* the plede interprets; the number itself is the hero chip directly beneath — the page must
+     not say "90% non-followers" twice on one screen */
+  return `<div class="plede"><b>Mostly strangers</b> — returning stay, new viewers scroll on.</div>`
+  + hero("terrain","The room","1 node ≈ 10 people","90%","non-followers","% = kept watching")
   + `<div class="card">${kind==="video"
       ? ch('Who watches — and how long')
       : ch('Who this reaches')}
@@ -943,10 +1013,10 @@ function audience(){
                   stroke="${p.loss?'#FF6363':'rgba(236,231,222,.62)'}" stroke-width="1.4"/>
               </svg><span class="dr">${p.drop}</span>
             </div>`).join('')}</div>
-          ${insight(`Followers hold. For You is gone by 0:02.`)}`
+          ${insight(`Followers stay to 0:21 — new viewers 0:02.`)}`
         : `<div style="margin-top:5px">${lgRows(POOLS.map((p,i)=>({n:p.n,v:p.pct+"%",c:c[i]})))}</div>`}
     </div>`
-  + `<div class="card">${ch('What they did','1,000 simulated')}
+  + `<div class="card">${ch('How they decided','1,000 simulated')}
       <div style="margin-top:2px">${ROOM.map(([n,v,who])=>{
         const lit=Math.round(v/1000*18);let d='';
         for(let i=0;i<18;i++)d+=`<s${i<lit?` style="background:rgba(236,231,222,.78)"`:''}></s>`;
@@ -959,10 +1029,10 @@ function audience(){
               <span class="vtag">${x.t}</span><button class="ivw">interview ›</button></div>
             <p class="vq">${x.q}</p>
             <div class="vecho"><i>${x.n} would echo this</i>
-              <span class="t"><s style="width:${(x.n/412*100).toFixed(0)}%"></s></span></div>
+              <span class="t"><s style="width:${(x.n/296*100).toFixed(0)}%"></s></span></div>
             ${x.sw?`<div class="swline">${x.sw}</div>`:''}
           </div>`).join('')}</div>`:''}`;}).join('')}</div>
-      ${insight(`The 201 “almost” are the winnable ones.`)}
+      ${insight(`The 201 are one fix away.`)}
     </div>`
   /* rev 9.1: the page tells the who-story whole — who's here → how long they stay → what they
      did → who it's FOR → who SPREADS it → where it surfaces → when to post. */
@@ -978,11 +1048,13 @@ function audience(){
 function fitCard(){
   const rs=AUDFIT[kind], mx=Math.max(...rs.map(r=>Math.abs(r.v)))||1;
   return `<div class="card">${ch('Who this is for','vs the room average')}
-    <div style="margin-top:6px">${rs.map(r=>`
-      <div class="fx${r.lead?' lead':''}${r.low?' low':''}"><span class="nm">${r.n}</span>
-        <span class="tr"><s style="width:${(Math.abs(r.v)/mx*100).toFixed(0)}%"></s></span>
-        <span class="vl">${r.v>0?'+':''}${r.v}%</span></div>`).join('')}</div>
-    ${insight(kind==="video"?`Narrower, higher-intent than broad reach.`:`Builders lean in. Skeptics sit out.`)}
+    <div style="margin-top:6px">${rs.map(r=>{
+      const w=(Math.abs(r.v)/mx*48).toFixed(0);
+      return `<div class="fx div${r.lead?' lead':''}${r.low?' low':''}"><span class="nm">${r.n}</span>
+        <span class="tr"><u></u><s style="${r.v<0?'right:50%;':'left:50%;'}width:${w}%"></s></span>
+        <span class="vl">${r.v>0?'+':''}${r.v}%</span></div>`;}).join('')}</div>
+    ${insight(kind==="video"?`Returning +116% — made for people who know you.`
+      :`Returning +82% — outside your niche sits out.`)}
   </div>`;
 }
 
@@ -999,7 +1071,7 @@ function spreadCard(){
       <div class="fx${r.lead?' lead':''}${r.low?' low':''}"><span class="nm">${r.n}</span>
         <span class="tr"><s style="width:${(r.v/mx*100).toFixed(0)}%"></s></span>
         <span class="vl">×${r.v.toFixed(1)}</span></div>`).join('')}</div>
-    ${insight(`Reach rides on builders resharing.`)}
+    ${insight(`${AMP[kind].re} reshares carry it ${AMP[kind].x}.`)}
   </div>`;
 }
 
@@ -1015,7 +1087,7 @@ function surfaceCard(){
         {n:"For You",c:"rgba(236,231,222,.88)",v:"53%"},
         {n:"Sound",c:"rgba(236,231,222,.46)",v:"33%"},
         {n:"Search",c:"rgba(236,231,222,.24)",v:"14%"}])}</div>
-      ${insight(`Sound reach expires — search compounds.`)}
+      ${insight(`53% rides For You — algo-dependent.`)}
     </div>`;
 }
 
@@ -1023,9 +1095,14 @@ function surfaceCard(){
    voices lead on Text. Reactions and the post window follow. */
 function engagement(){
   const v=kind==="video";
-  /* the instrument leads, then its readings, then what the room would do */
-  return (v?retentionCard()
-    +`<div class="card">${ch('Key metrics','vs your last 41')}
+  /* the page-answer leads, then the instrument, then its readings, then what the room would do */
+  const lede=v
+    ? (applied?`<div class="plede"><b>16.4s avg watch</b> — the trim holds the room.</div>`
+             :`<div class="plede"><b>9.7s avg watch</b> — the loss is all before 0:03.</div>`)
+    : `<div class="plede"><b>54 comments projected</b> — it starts arguments.</div>`;
+  return lede
+  + (v?retentionCard()
+    +`<div class="card">${ch('Key metrics','vs your last 41 videos')}
       ${tiles(TILES[applied?'videoWatchDone':'videoWatch'],'t3')}
     </div>`:`<div class="card">${ch('If you posted this')}
       <div>${VOICES.map(x=>`<div class="voice ${x.loss?'loss':''}">
@@ -1033,14 +1110,14 @@ function engagement(){
           ><button class="ivw">interview ›</button></div>
         <p class="vq">${x.q}</p>
         <div class="vecho"><i>${x.n} would echo this</i>
-          <span class="t"><s style="width:${(x.n/412*100).toFixed(0)}%"></s></span></div>
+          <span class="t"><s style="width:${(x.n/296*100).toFixed(0)}%"></s></span></div>
       </div>`).join('')}</div>
     </div>`)
-  + `<div class="card">${ch('Projected reaction','per reach')}
-      ${tiles(TILES[v?'videoEngage':'textEngage'])}
+  + `<div class="card">${ch('Projected reaction',v?(applied?'of 8.4K reached':'of 3.2K reached'):'of 4.9K reached')}
+      ${tiles(TILES[v?(applied?'videoEngageDone':'videoEngage'):'textEngage'])}
       ${insight(v
-        ? `Everyone who stays converts.`
-        : `Argues well, travels badly.`)}
+        ? `Saves lead — follows lag.`
+        : `54 comments, 34 shares — argues, doesn’t travel.`)}
     </div>`
   + foot();
 }
@@ -1077,6 +1154,9 @@ function methodPanel(){
     <p class="mnote"><b style="color:var(--dim);font-weight:500">z-scores</b> — the network bars,
       against this clip’s own baseline at the playhead second. Zero is the centre line, so a bar
       left of it is below this clip’s own normal, not below yours.</p>
+    <p class="mnote">The seven networks are shown by function. Anatomically: Visual, Body =
+      somatomotor, Focus = dorsal attention, Alertness = ventral attention, Emotion = limbic,
+      Effort = frontoparietal, Mind-wandering = default mode.</p>
 
     <div class="mhead">What this is not</div>
     <p class="mnote">Modeled from your audience’s real retention · calibrated on your 4.2k
@@ -1084,9 +1164,13 @@ function methodPanel(){
       never a brain measurement.</p>
   </div>`;
 }
+/* rev 10: the sim disclosure has ONE home — the last line of every page, same words. The drawer
+   above it keeps the long form. */
 const foot=()=>`<button class="foot" aria-expanded="${method}">
     <span>How to read these numbers</span><span class="cv">›</span></button>
-  ${method?methodPanel():''}`;
+  ${method?methodPanel():''}
+  <div class="simline">Modeled on 1,000 ${kind==="video"?"viewers":"readers"} · calibrated on your
+    4.2K followers · confidence&nbsp;0.82</div>`;
 
 /* ── render ─────────────────────────────────────────────────────────────── */
 /* One rule, measured every scroll and every repaint: if the fix is not reachable on screen and
@@ -1102,9 +1186,11 @@ function syncBar(){
   abar.classList.toggle("on",!inView);
   body.classList.toggle("hasbar",!inView);
 }
+/* rev 10: the bar's label is a short tabular FACT, not the verdict sentence — a pinned line that
+   truncates mid-sentence reads broken. */
 function actionBar(){
   const d=D[kind];
-  return `<span class="lab">${d.head}</span>${fixBtn()}`;
+  return `<span class="lab">${d.barLab}</span>${fixBtn()}`;
 }
 function paint(){
   pgTxt.textContent=D[kind].pager;
