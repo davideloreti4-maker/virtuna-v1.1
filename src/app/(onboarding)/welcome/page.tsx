@@ -1,17 +1,48 @@
 "use client";
 
-import { useEffect } from "react";
+/**
+ * /welcome — the first authenticated screen a new account sees.
+ *
+ * TWO steps, and the second one is the point:
+ *
+ *   1. connect    — ConnectStep collects EITHER an @handle or a written description,
+ *                   and creates the draft audience row.
+ *   2. calibrate  — CalibrationFlow runs the real pipeline against that draft, inline.
+ *
+ * Why the wait lives here, blocking, instead of in the background (owner call, 2026-08-02):
+ * calibration is a measured ~128s, but it is not a blank one. The spine draws calibration's three
+ * real phases and, seconds in, the creator's own avatar, follower count and video covers — their
+ * material, on screen, roughly two minutes before the audience it produces. Deferring it would buy
+ * an instant entry and hand them a product whose every card reads "Not tested yet", which is
+ * exactly the disconnect this flow exists to close.
+ *
+ * ⚠️ The calibrate stage is LOCAL state, deliberately not persisted to `creator_profiles.
+ * onboarding_step`. Restoring into it on reload would remount CalibrationFlow with autoStart and
+ * fire a SECOND Apify scrape against a metered account. A reload mid-run returns to step 1.
+ */
+
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import type { Audience } from "@/lib/audience/audience-types";
 import { useOnboardingStore } from "@/stores/onboarding-store";
 import { ConnectStep } from "@/components/onboarding/connect-step";
+import { CalibrationFlow } from "@/components/audience/calibration-flow";
+import { cn } from "@/lib/utils";
 
-const STEPS = ["connect"] as const;
+/** The two real steps. The indicator counts these — it is progress, not decoration. */
+const STEPS = ["connect", "calibrate"] as const;
+type Stage = (typeof STEPS)[number];
 
 export default function WelcomePage() {
   const router = useRouter();
   const store = useOnboardingStore();
   const { step, _isHydrated, _hydrate } = store;
+
+  // Local — see the header note on why this is not persisted.
+  const [stage, setStage] = useState<Stage>("connect");
+  const [draft, setDraft] = useState<Audience | null>(null);
+  const [prefill, setPrefill] = useState<{ handle?: string; description?: string }>({});
 
   // Hydrate store on mount
   useEffect(() => {
@@ -57,7 +88,7 @@ export default function WelcomePage() {
       if (unmounted) return;
 
       if (profile?.onboarding_completed_at) {
-        router.replace("/dashboard");
+        router.replace("/home");
         return;
       }
 
@@ -97,21 +128,33 @@ export default function WelcomePage() {
     };
   }, [_isHydrated]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Redirect to dashboard when onboarding completes
+  // Redirect into the app when onboarding completes. /dashboard was sunset (D-25) and
+  // middleware 308s it to /home — going there directly saves every new account a pointless
+  // extra hop on its first navigation.
   useEffect(() => {
     if (_isHydrated && step === "completed") {
-      router.replace("/dashboard");
+      router.replace("/home");
     }
   }, [step, _isHydrated, router]);
+
+  /**
+   * Every exit from calibration ends onboarding — success, thin-data fallback, or a failed
+   * scrape. Completing on failure is deliberate: middleware bounces any authenticated user
+   * without `onboarding_completed_at` back to /welcome, so NOT stamping it here would trap a
+   * user whose account is private or whose scrape failed in a loop they cannot leave.
+   * `completeOnboarding` also persists the handle we collected in step 1.
+   */
+  async function finishOnboarding() {
+    await store.completeOnboarding();
+  }
+
+  const isCalibrating = stage === "calibrate" && draft !== null;
 
   if (!_isHydrated || step === "completed") {
     return (
       <div
         className="w-full max-w-[400px] rounded-[12px] border border-white/[0.06] px-8 py-10"
-        style={{
-          backgroundColor: "var(--color-charcoal-chip)",
-          boxShadow: "rgba(255,255,255,0.05) 0 1px 0 0 inset",
-        }}
+        style={{ backgroundColor: "var(--color-charcoal-chip)" }}
       >
         <div className="flex items-center justify-center gap-2 mb-8">
           {STEPS.map((s) => (
@@ -130,24 +173,50 @@ export default function WelcomePage() {
 
   return (
     <div
-      className="w-full max-w-[400px] rounded-[12px] border border-white/[0.06] px-8 py-10"
-      style={{
-        backgroundColor: "var(--color-charcoal-chip)",
-        boxShadow: "rgba(255,255,255,0.05) 0 1px 0 0 inset",
-      }}
+      className={cn(
+        "w-full rounded-[12px] border border-white/[0.06] px-8 py-10 transition-[max-width] duration-300",
+        // The calibration stage carries an avatar row, a three-row spine and a cover grid —
+        // it needs more room than a single input does.
+        isCalibrating ? "max-w-[560px]" : "max-w-[400px]"
+      )}
+      style={{ backgroundColor: "var(--color-charcoal-chip)" }}
     >
-      {/* Step indicator (single-step now, kept for visual symmetry with prior flow) */}
+      {/* Step indicator — two REAL steps now, so it measures something. */}
       <div className="mb-8 flex items-center justify-center gap-2">
-        {STEPS.map((s) => (
-          <div
-            key={s}
-            className="h-1.5 w-8 rounded-full bg-action transition-colors"
-          />
-        ))}
+        {STEPS.map((s, i) => {
+          const reached = i <= STEPS.indexOf(stage);
+          return (
+            <div
+              key={s}
+              className={cn(
+                "h-1.5 w-8 rounded-full transition-colors",
+                reached ? "bg-action" : "bg-white/[0.1]"
+              )}
+            />
+          );
+        })}
       </div>
 
       <div className="min-h-[320px]">
-        {step === "connect" && <ConnectStep />}
+        {isCalibrating && draft ? (
+          <CalibrationFlow
+            audience={draft}
+            autoStart
+            prefillHandle={prefill.handle}
+            prefillDescription={prefill.description}
+            prefillPlatform={draft.platform}
+            onDone={() => void finishOnboarding()}
+            onSkip={() => void finishOnboarding()}
+          />
+        ) : (
+          <ConnectStep
+            onDraftReady={(created, p) => {
+              setDraft(created);
+              setPrefill(p);
+              setStage("calibrate");
+            }}
+          />
+        )}
       </div>
     </div>
   );

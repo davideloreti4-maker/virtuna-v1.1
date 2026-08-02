@@ -10,7 +10,7 @@
  * On done → calls onDone(audience).
  */
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import type { Audience } from "@/lib/audience/audience-types";
 import type { RevealData, CalibrationEvidence } from "@/lib/audience/calibration";
 import { formatCount } from "@/lib/account-metrics/account-metrics";
@@ -22,7 +22,7 @@ import {
   ProgressChecklist,
   type StageState,
 } from "@/components/thread/progress-checklist";
-import { CALIBRATION_PLAN } from "@/lib/audience/calibration-stages";
+import { calibrationVocabulary } from "@/lib/audience/calibration-stages";
 import { READING_CARD } from "@/components/reading/reading-section";
 import { cn } from "@/lib/utils";
 import { WarningCircle } from "@phosphor-icons/react";
@@ -34,8 +34,19 @@ interface CalibrationFlowProps {
   onSkip: () => void;
   /** Prefill the @handle (from the "Calibrate from" source picker / connect deep-link). */
   prefillHandle?: string;
+  /** Prefill the target-path description (onboarding's describe door). */
+  prefillDescription?: string;
   /** Platform to calibrate against, overriding the audience's (source-picker selection). */
   prefillPlatform?: Audience["platform"];
+  /**
+   * Skip the idle form and calibrate on mount. For callers that ALREADY asked for the handle or
+   * the description and must not ask twice — /welcome, where this component is the second step of
+   * onboarding rather than a form in its own right. The caller owns the input; we own the wait.
+   *
+   * Terminal states are unaffected: error still offers Retry (which drops to the idle form, now
+   * prefilled) and every exit still runs through onDone/onSkip.
+   */
+  autoStart?: boolean;
   className?: string;
 }
 
@@ -46,11 +57,15 @@ type Phase =
   | "error"
   | "done";
 
-export function CalibrationFlow({ audience, onDone, onSkip, prefillHandle, prefillPlatform, className }: CalibrationFlowProps) {
+export function CalibrationFlow({ audience, onDone, onSkip, prefillHandle, prefillDescription, prefillPlatform, autoStart, className }: CalibrationFlowProps) {
   const isPersonal = audience.type === "personal";
 
+  // This component sends a handle on the personal path and a description on the target one — so
+  // `isPersonal` IS "has a handle" here, and the plan it draws matches the names the route emits.
+  const { plan: calibrationPlan } = calibrationVocabulary(isPersonal);
+
   const [handle, setHandle] = useState(prefillHandle ?? "");
-  const [description, setDescription] = useState("");
+  const [description, setDescription] = useState(prefillDescription ?? "");
   const [phase, setPhase] = useState<Phase>("idle");
   const [statusMsg, setStatusMsg] = useState("");
   const [fallbackMsg, setFallbackMsg] = useState("");
@@ -61,6 +76,21 @@ export function CalibrationFlow({ audience, onDone, onSkip, prefillHandle, prefi
   const [stages, setStages] = useState<StageState[]>([]);
   const [avatarFailed, setAvatarFailed] = useState(false);
   const readerRef = useRef<ReadableStreamDefaultReader<string> | null>(null);
+  const autoStartedRef = useRef(false);
+
+  // autoStart: fire the run once, on mount, for a caller that already collected the input.
+  //
+  // ⚠️ The ref guard is not defensive tidiness — calibration is a REAL Apify scrape on a metered
+  // account, and dev StrictMode invokes this effect twice. The ref survives that double-invoke
+  // (same component instance, same ref object), so the second pass is a no-op. Without it every
+  // dev visit to /welcome would spend two scrapes instead of one.
+  useEffect(() => {
+    if (!autoStart || autoStartedRef.current) return;
+    autoStartedRef.current = true;
+    void startCalibration();
+    // Mount-only by design: re-running on a prop change would start a second scrape.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function startCalibration() {
     setPhase("streaming");
@@ -284,7 +314,7 @@ export function CalibrationFlow({ audience, onDone, onSkip, prefillHandle, prefi
               more than the one line that used to stand here for the first ~126s. */}
           {stages.length > 0 ? (
             <div className="w-full max-w-[320px]">
-              <ProgressChecklist stages={stages} plan={CALIBRATION_PLAN} />
+              <ProgressChecklist stages={stages} plan={calibrationPlan} />
             </div>
           ) : (
             <p className="text-sm text-foreground-secondary text-center max-w-xs">{statusMsg}</p>
@@ -325,7 +355,7 @@ export function CalibrationFlow({ audience, onDone, onSkip, prefillHandle, prefi
             the fallback so a stream that somehow sends no `stage` frame still says something. */}
         {stages.length > 0 ? (
           <div data-testid="calibration-status">
-            <ProgressChecklist stages={stages} plan={CALIBRATION_PLAN} />
+            <ProgressChecklist stages={stages} plan={calibrationPlan} />
           </div>
         ) : (
           <p className="text-sm text-foreground-secondary" data-testid="calibration-status">

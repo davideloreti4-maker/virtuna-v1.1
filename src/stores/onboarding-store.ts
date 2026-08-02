@@ -4,8 +4,14 @@ import type { Database } from "@/types/database.types";
 
 /**
  * Welcome-flow state machine. D-03 / INT-04 trimmed the union to two members:
- * the user lands on "connect", supplies their TikTok handle, and the store
- * transitions to "completed" (the welcome page then redirects to /dashboard).
+ * the user lands on "connect", supplies their TikTok handle (or a description),
+ * and the store transitions to "completed" — at which point the welcome page
+ * redirects to /home (D-23; /dashboard was sunset by D-25 and only 308s there).
+ *
+ * ⚠️ The union stays TWO members even though /welcome now has two visible steps.
+ * The second step (calibrate) is local page state on purpose: persisting it would
+ * restore a reloading user straight back into an auto-starting calibration, and
+ * that is a real Apify scrape on a metered account. See the welcome page header.
  *
  * The creator-goal capture is delegated exclusively to Card 3 of the
  * post-upload interview modal (Plan 02-04) — duplicating it here would

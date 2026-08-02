@@ -374,6 +374,61 @@ describe("POST /api/audiences/calibrate — target path (SIMULATED, no account)"
     expect(mockUpsertPosts).not.toHaveBeenCalled();
     expect(mockCluster).not.toHaveBeenCalled();
   });
+
+  it("names the phases for the NICHE SEARCH when no handle was supplied", async () => {
+    // A described audience has no account behind it: calibrateFromScrape takes its `else` branch
+    // and runs scrapeNiche over the description, then builds a SYNTHETIC profile. Emitting
+    // "Reading your followers" / "Pulling the account and its posts" there described work that
+    // was not happening — caught on the live /welcome run once onboarding put this path in front
+    // of every new account that skips the handle.
+    mockCalibrate.mockImplementation(async (_input, deps) => {
+      deps?.onStage?.("scraping");
+      deps?.onStage?.("watching");
+      deps?.onStage?.("synthesizing");
+      return SUCCESS_RESULT;
+    });
+
+    const frames = await readSse(
+      await callPOST({
+        ...PERSONAL_BODY,
+        type: "target",
+        platform: "custom",
+        handle: undefined,
+        description: "Small business owners who want to grow on TikTok",
+      }),
+    );
+
+    const stageNames = frames
+      .filter((f) => f.event === "stage")
+      .map((f) => f.data.name as string);
+    expect([...new Set(stageNames)]).toEqual([
+      "Finding videos in that niche",
+      "Watching what performs there",
+      "Building your audience profile",
+    ]);
+
+    // The status line has to move with them, or the spine and the line under it disagree.
+    const statuses = frames.filter((f) => f.event === "status").map((f) => f.data.message);
+    expect(statuses).toContain("Searching for videos in that niche…");
+    expect(statuses.join(" ")).not.toContain("followers");
+  });
+
+  it("keeps the ACCOUNT vocabulary for a target audience built from a real handle", async () => {
+    // /audience/new's "From a handle" door: type=target, but a real account IS being read.
+    // The discriminator is the handle, never the type.
+    mockCalibrate.mockImplementation(async (_input, deps) => {
+      deps?.onStage?.("scraping");
+      return SUCCESS_RESULT;
+    });
+
+    const frames = await readSse(
+      await callPOST({ ...PERSONAL_BODY, type: "target", handle: "someoneelse" }),
+    );
+
+    expect(frames.filter((f) => f.event === "stage").map((f) => f.data.name)).toContain(
+      "Reading your followers",
+    );
+  });
 });
 
 describe("POST /api/audiences/calibrate — failure shapes", () => {
