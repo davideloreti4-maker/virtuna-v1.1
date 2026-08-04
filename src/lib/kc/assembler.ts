@@ -81,6 +81,13 @@ const modeSchema = z.enum(["idea", "hooks", "chat", "script", "remix"]);
  *               structure, grounding/orchestrator.ts). FENCED. Optional-additive: undefined
  *               is a byte-identical no-op (preserves the warm-cache prefix + regression gates).
  *               ONE field grounds idea/hooks/script (§11f).
+ *   modeLabel — Optional override for the WORD printed in the bundle header, and nothing else.
+ *               `mode` stays the role selector; this only changes what the model is TOLD it is
+ *               doing. Exists because the header leaks into the user message, where the bare
+ *               word "chat" collides with the chat slice's stance ("chat mode is conversational,
+ *               not a generation surface") and talked the agent loop out of dispatching a skill
+ *               it had bound and been told to call — measured 0/4 dispatches with "chat" vs 4/4
+ *               with any other label, same seeds. Omitted → byte-identical to before.
  */
 export const assemblerInputSchema = z.object({
   ask: z.string().min(1, "ask must not be empty"),
@@ -89,6 +96,7 @@ export const assemblerInputSchema = z.object({
   overrides: z.string().optional(),
   anchor: z.string().optional(),
   corpus: z.string().optional(),
+  modeLabel: z.string().min(1).optional(),
 });
 
 export type AssemblerInput = z.infer<typeof assemblerInputSchema>;
@@ -225,7 +233,7 @@ export function assembleBundle(
   if (!parsed.success) {
     throw new Error(`assembleBundle: invalid input — ${parsed.error.message}`);
   }
-  const { ask, platform, mode, overrides, anchor, corpus } = parsed.data;
+  const { ask, platform, mode, overrides, anchor, corpus, modeLabel } = parsed.data;
 
   const roles = MODE_ROLES[mode];
   const thin = isProfileThin(profileRow);
@@ -276,7 +284,9 @@ export function assembleBundle(
   //        with `ask` allocated budget first. A final substring on the assembled result
   //        (the old behaviour) is never used: it could chop a closing sentinel and void
   //        the injection fence (CR-01/CR-02).
-  const header = `## Live Grounding Bundle\nMode: ${mode} | Platform: ${platform}\n\n`;
+  // The header is part of the USER message, so this word is an instruction to the model, not a
+  // log line — see `modeLabel` on the input schema for why callers may need to override it.
+  const header = `## Live Grounding Bundle\nMode: ${modeLabel ?? mode} | Platform: ${platform}\n\n`;
   const profileHeader = `### Creator Profile\n`;
   const JOIN = "\n\n";
 

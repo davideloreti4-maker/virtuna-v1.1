@@ -598,6 +598,35 @@ describe("POST /api/tools/chat (SSE route)", () => {
     expect(deps?.skills).toBeUndefined();
   });
 
+  it("Test 6d: the agent turn's bundle is NOT labelled 'chat' — the label talks the model out of dispatching", async () => {
+    // REGRESSION. assembleBundle prints its `mode` into a header that lands in the USER message, and
+    // the chat slice defines chat mode as conversational, NOT a generation surface (over-generating is
+    // a named failure mode there). Right for the pure-chat path; on the agent path it overrode the
+    // loop's dispatch-eagerly directive, so "give me hooks for X" was answered in prose with
+    // generate_hooks bound and unused — measured 0/4 dispatches with "chat", 4/4 with any other label.
+    // `mode` must STAY "chat" (it selects MODE_ROLES, i.e. the grounding content); only the label moves.
+    process.env.CHAT_AGENT_DISPATCH = "true";
+    await primeDispatchHarness();
+    const { runChatAgentStream } = await import("@/lib/tools/chat-agent-loop");
+    (runChatAgentStream as ReturnType<typeof vi.fn>).mockImplementation(
+      async (input: { onToken: (d: string) => void }) => {
+        input.onToken("ok");
+        return { text: "ok", skillRuns: [], uiBlocks: [], toolCalls: [] };
+      }
+    );
+
+    const { POST } = await import("@/app/api/tools/chat/route");
+    await readSSE(await POST(makeChatRequest({ ask: "give me 5 hooks", platform: "tiktok" })));
+
+    const { assembleBundle } = await import("@/lib/kc/assembler");
+    const [bundleInput] = (assembleBundle as ReturnType<typeof vi.fn>).mock.calls.at(-1) as [
+      { mode?: string; modeLabel?: string },
+    ];
+    expect(bundleInput.mode, "mode drives MODE_ROLES — the grounding must not change").toBe("chat");
+    expect(bundleInput.modeLabel, "the agent path must override the header label").toBeDefined();
+    expect(bundleInput.modeLabel).not.toBe("chat");
+  });
+
   it("Test 7: agent loop pure chat (no skill) → streams the answer directly, NO runChatPipeline fallback, plain markdown", async () => {
     process.env.CHAT_AGENT_DISPATCH = "true";
     const { threadId } = await primeDispatchHarness();

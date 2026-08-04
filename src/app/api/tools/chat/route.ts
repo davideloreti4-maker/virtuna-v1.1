@@ -427,7 +427,19 @@ export async function POST(request: Request): Promise<Response> {
           // Grounding (niche/audience/platform) rides the fenced user message, exactly as
           // runChatPipeline builds it (assembleBundle → <<<USER_CONTENT>>>). Prior turns go to the loop
           // as real role messages (natural turn structure for the agent), not folded into the anchor.
-          const userMessage = assembleBundle({ ask: rawAsk, platform, mode: "chat" }, profileRow);
+          //
+          // modeLabel — NOT cosmetic. The bundle header lands in the USER message, and the bare word
+          // "chat" reads to the model as the chat slice's own stance ("chat mode is conversational,
+          // NOT a generation surface", with over-generating named as a failure mode). That sentence is
+          // right for the pure-chat path below and exactly wrong here, where the generators are bound
+          // and the loop's directive says to dispatch eagerly: the model read the label, obeyed it, and
+          // answered "give me hooks for X" in prose while holding generate_hooks unused. Measured on the
+          // shipped prompts, 4 seeds: 0/4 dispatches with "chat", 4/4 with any other label. `mode` stays
+          // "chat" — it is the MODE_ROLES selector, so the grounding content is unchanged.
+          const userMessage = assembleBundle(
+            { ask: rawAsk, platform, mode: "chat", modeLabel: "copilot" },
+            profileRow,
+          );
           const agentResult = await runChatAgentStream(
             {
               ask: userMessage,

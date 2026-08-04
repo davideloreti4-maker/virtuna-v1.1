@@ -343,6 +343,60 @@ describe("runChatAgentStream [tools]", () => {
     expect(res.toolCalls[0]!.note).toBe("unknown skill");
   });
 
+  it("names ONLY the generators actually bound — an unbound skill is never advertised", async () => {
+    // REGRESSION (the free-content leak). An anonymous /go visitor is bound `skills: FREE_SKILL_TOOLS`,
+    // which is EMPTY because every generator is billable — but the directive advertised all three
+    // regardless. The model called generate_hooks, got "unknown skill", and wrote the hooks out in prose:
+    // the paid product delivered free through the one door that is free by design. Same rule the corpus
+    // tool already follows — never name a tool that is not bound.
+    const capture: Array<Record<string, unknown>> = [];
+    const spy = (stream: ReturnType<typeof mockStream>) =>
+      (async (params: Record<string, unknown>) => {
+        capture.push(params);
+        return stream(params as never);
+      }) as never;
+
+    // Only ideas is bound → hooks/script must not be named.
+    await runChatAgentStream(
+      baseInput(),
+      DEPS(spy(mockStream([[textChunk("ok")]])), { skills: [mkSkill("generate_ideas")] }),
+    );
+    const partial = (capture[0]!.messages as Array<{ role: string; content: string }>)[0]!.content;
+    expect(partial).toContain("generate_ideas");
+    expect(partial, "an unbound skill must never be advertised").not.toContain("generate_hooks");
+    expect(partial).not.toContain("write_script");
+
+    // Nothing bound (the anonymous case) → no generator named, and an explicit ban on writing it in prose.
+    capture.length = 0;
+    await runChatAgentStream(baseInput(), DEPS(spy(mockStream([[textChunk("ok")]])), { skills: [] }));
+    const none = (capture[0]!.messages as Array<{ role: string; content: string }>)[0]!.content;
+    expect(none).not.toContain("generate_ideas");
+    expect(none).not.toContain("generate_hooks");
+    expect(none).toContain("NO content-generation tools");
+  });
+
+  it("an unavailable skill tells the model NOT to answer in prose instead", async () => {
+    // The unknown-skill branch used to hand back a bare {"error":"unknown skill"} — the only refusal
+    // path with no do-not-fake instruction, which is what the model read as licence to write the pack.
+    const inner = mockStream([
+      [toolName(0, "c1", "generate_hooks"), toolArgs(0, '{"topic": "x"}')],
+      [textChunk("ok")],
+    ]);
+    const seen: Array<Record<string, unknown>> = [];
+    const stream = ((params: Record<string, unknown>) => {
+      seen.push(params);
+      return (inner as (p: never) => unknown)(params as never);
+    }) as unknown as StreamingChatComplete;
+    const res = await runChatAgentStream(baseInput(), DEPS(stream, { skills: [] }));
+
+    expect(res.toolCalls[0]!.note).toBe("unknown skill");
+    expect(res.skillRuns).toHaveLength(0);
+    const toolResult = seen.at(-1) as unknown as { messages: Array<{ role: string; content?: string }> };
+    const relayed = toolResult.messages.filter((m) => m.role === "tool").map((m) => m.content).join(" ");
+    expect(relayed).toContain("not available on this account");
+    expect(relayed, "the model must be told not to substitute prose").toContain("do NOT write");
+  });
+
   it("enforces the paid-engine LEASH — a second paid run in one turn is refused", async () => {
     const ideas = mkSkill("generate_ideas");
     const hooks = mkSkill("generate_hooks");

@@ -254,24 +254,49 @@ const DEFAULT_MAX_SKILL_RUNS = 2;
 /** Source cards rendered per search — a citation, not a search-results page. */
 const MAX_REFERENCE_CARDS = 4;
 
+/** Every generator in the registry — the default when a caller binds the full skill set. */
+const GENERATOR_TOOL_NAMES: readonly string[] = SKILL_TOOLS.map((s) => s.name);
+
 /**
  * The tool-use directive the loop appends to the caller's system prompt. The loop OWNS this because it
  * owns the tools — the caller's prompt (e.g. KC_CHAT_SYSTEM_PROMPT) grounds voice/chat but says nothing
  * about the bound tools, so without this the model just writes the content inline instead of calling a
  * skill (observed live). The corpus line is added only when grounding is on (the tool is otherwise not
- * bound — naming an unbound tool invites a call that can't be serviced).
+ * bound — naming an unbound tool invites a call that can't be serviced), and `generators` carries the
+ * SAME rule for the skills: it lists what this caller actually bound, never the registry.
  */
-function toolUseDirective(grounding: boolean): string {
+function toolUseDirective(grounding: boolean, generators: readonly string[] = GENERATOR_TOOL_NAMES): string {
+  // NAME ONLY WHAT IS BOUND. An anonymous /go visitor gets `skills: FREE_SKILL_TOOLS`, which is EMPTY
+  // (every generator is billable), yet this directive used to advertise all three regardless. The model
+  // duly called generate_hooks, the loop answered "unknown skill", and the model then wrote the hooks
+  // out in prose — handing over the paid product for free through the one door that is free by design.
+  // Same rule the corpus tool already follows two lines down: never name a tool that is not bound.
+  const makeLine =
+    generators.length > 0
+      ? "You also have TOOLS that produce rich scored cards shown to the creator. To MAKE content call " +
+        `${generators.join(" / ")} (pass the \`topic\`; pass an optional \`anchor\` for a ` +
+        "chosen idea/hook to build on). " +
+        "DISPATCH EAGERLY: when the ask is a clear request to make that content and you have a " +
+        "workable subject, CALL the matching tool THIS turn — do NOT ask whether they want 'a card vs an " +
+        "opinion', do NOT offer to run it, and do NOT write the content yourself first. Just call it. Stay " +
+        "conversational only when the creator is genuinely just talking or thinking out loud, OR when the ask " +
+        "is too vague or too generic to produce something non-obvious — then push back ONCE for a sharper " +
+        "angle, and the moment you have a workable subject, call the tool. "
+      : // Nothing generative is bound (an anonymous visitor). Say so honestly instead of silently
+        // becoming the generator yourself — writing the pack in prose IS delivering the paid product.
+        // The wording is deliberately concrete: "offer the thinking instead" ALONE was read as licence to
+        // ship the same pack relabelled as thinking (measured: a refusal opener followed by three finished,
+        // quoted hook lines). What is banned is the ARTEFACT, not the topic.
+        "You have NO content-generation tools on this account. When the creator wants content MADE, say " +
+        "plainly that making it needs an account with credits. " +
+        "HARD LIMIT — you may NOT produce the artefact yourself, in any wrapper: no hook lines, no opening " +
+        "lines, no idea/concept list, no script or outline, not even ONE as an example, an illustration, a " +
+        "demo, or 'the thinking'. A refusal sentence followed by the content is still delivering the " +
+        "content. Never write a quoted candidate line they could paste into a video. " +
+        "What you MAY do: name the mechanism in the abstract, ask what would sharpen the angle, and " +
+        "critique lines THEY write. If they push, hold the limit and point at the account. ";
   const base =
-    "You also have TOOLS that produce rich scored cards shown to the creator. To MAKE content call " +
-    "generate_ideas / generate_hooks / write_script (pass the `topic`; pass an optional `anchor` for a " +
-    "chosen idea/hook to build on). " +
-    "DISPATCH EAGERLY: when the ask is a clear request to make ideas, hooks, or a script and you have a " +
-    "workable subject, CALL the matching tool THIS turn — do NOT ask whether they want 'a card vs an " +
-    "opinion', do NOT offer to run it, and do NOT write the content yourself first. Just call it. Stay " +
-    "conversational only when the creator is genuinely just talking or thinking out loud, OR when the ask " +
-    "is too vague or too generic to produce something non-obvious — then push back ONCE for a sharper " +
-    "angle, and the moment you have a workable subject, call the tool. " +
+    makeLine +
     "CRITICAL — NEVER tell the creator a card is 'on screen', 'generated', or 'ready', and never describe " +
     "its contents, UNLESS you actually called the tool THIS turn. If you did not call a tool, do not claim " +
     "a card exists. " +
@@ -353,7 +378,8 @@ export async function runChatAgentStream(
   ];
 
   // The caller's prompt grounds voice/chat; the loop appends the tool-use directive (it owns the tools).
-  const systemContent = `${input.systemPrompt}\n\n${toolUseDirective(!!input.grounding)}`;
+  // The directive is told what THIS caller bound, so it can never advertise a skill the model cannot call.
+  const systemContent = `${input.systemPrompt}\n\n${toolUseDirective(!!input.grounding, skills.map((s) => s.name))}`;
   const messages: Array<Record<string, unknown>> = [
     { role: "system", content: systemContent },
     ...(input.priorTurns ?? []).map((t) => ({ role: t.role, content: t.text })),
@@ -544,7 +570,18 @@ export async function runChatAgentStream(
       const skill = byName.get(call.name);
       if (!skill) {
         toolCalls.push({ name: call.name, ran: false, note: "unknown skill" });
-        messages.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify({ error: "unknown skill" }) });
+        // Every other refusal below tells the model not to answer the request in prose; this one used to
+        // hand back a bare error, and the model read "the tool is unavailable" as licence to write the
+        // pack itself. That is the free-content leak, so the same instruction rides here too.
+        messages.push({
+          role: "tool",
+          tool_call_id: call.id,
+          content: JSON.stringify({
+            error: "this skill is not available on this account",
+            tell_the_creator: "Making that needs an account with credits.",
+            note: "do NOT write the ideas/hooks/script yourself in prose as a substitute — offer the thinking instead",
+          }),
+        });
         continue;
       }
       const args = parseSkillArgs(call.args);
