@@ -193,6 +193,12 @@ not loop calibration in testing.**
   swallows output; prefer `node node_modules/<bin>`, trust `$?`, never the summary line.
 - **Never run vitest while `npm run build` is running.** Seven API-route tests "fail" on 5s timeouts
   purely from CPU starvation; isolated they pass in ~4s.
+  **It does not take a concurrent build.** On 2026-08-04 the full flag-OFF suite failed 2 tests on
+  run 1, 2 *different* tests on run 2 (`composer-fold-on-close` + `composer-stop-disc`, at 5523ms
+  and 5501ms — the 5s default timeout), and **zero** on run 3, with nothing else running. Those two
+  files pass in **3.51s together** in isolation, and the flag-ON pass of the same suite was clean
+  throughout. **A wandering failure set at ~5.5s is the machine, not the code** — reproduce in
+  isolation before you debug it, and never report it as a regression without that check.
 - **Run UI tests BOTH flag ways.** Under `NEXT_PUBLIC_AMBIENT_V2` the thread region only renders
   once `hasConversationContent` is true, so a flags-OFF-only test can pass by matching an *absence*.
   This is not hypothetical here — it is exactly how the `startEngaged` gate in §3 slipped through.
@@ -219,6 +225,10 @@ the gate routes `/home` → `/welcome`, `boxShadow` computes to `none`, both ste
 progress, step 2 auto-starts the spine without re-asking, no console errors — and on `/home` the
 intro renders beneath the composer reading *"6 people, built from your description…"*, correctly
 offering Ideas rather than the account read for that target audience.
+
+**Re-verified 2026-08-04 at the rebased tip** (`3c97f8a4` + this lane): `tsc --noEmit` 0 errors ·
+vitest flag-ON 5043 passed / 0 failed (456 files) · flag-OFF 5042 passed / 0 failed on a quiet
+machine (see the timeout trap in §5 before trusting a failing run) · `npm run build` clean.
 
 Re-run the gate before opening the PR — `main` moves:
 `node node_modules/typescript/bin/tsc --noEmit` · `node ./node_modules/vitest/vitest.mjs run`
