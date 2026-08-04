@@ -1,7 +1,11 @@
 # HANDOFF — New-user onboarding: the product a fresh account actually meets
 
 **Branch:** `lane/new-user-onboarding` · **Worktree:** `~/virtuna-slot-a` · **Dev port:** 3001
-**Base:** rebased onto `origin/main` @ `3c97f8a4` (2026-08-04) · **Status: BUILT, unmerged, no PR yet.**
+**Base:** rebased onto `origin/main` @ `3c97f8a4` (2026-08-04) · **Status: MERGED AND LIVE.**
+**Merged 2026-08-04 via PR #420** (`38882b24`, the four lane commits + the doc rewrite) **and PR
+#421** (`8539e5e6`, the verification note). `main` is `8539e5e6`; the #420 production deploy
+(`dpl_5Yc3ZC…`) is READY and serving, the #421 one built behind it. Production probes 200 on
+`/`, `/go`, `/welcome`, `/home`; zero runtime errors in the window.
 **Owner ask (verbatim):** *"adding a good onboarding for new users to the platform … we want to
 properly onboard new users."*
 ⚠️ **Merging to `main` IS deploying** (no preview URLs, prod builds ~3s after merge). Verify first.
@@ -237,7 +241,11 @@ breaks the prod build while tsc stays clean).
 
 ## 7. Still open
 
-1. **The PR.** Nothing blocks it but the gate re-run. ⚠️ Merging deploys.
+1. ~~The PR.~~ **Merged and deployed 2026-08-04** — see the header. Both PRs merged within seconds
+   of being opened (#420 in 7s, #421 in 28s), by the owner's account, with repo auto-merge OFF and
+   zero GitHub Actions in this repo. So the near-instant merge was a person or another session
+   holding the same token, **not** an automation this lane introduced. Worth knowing if you assume
+   a PR on this repo will sit and wait for review: on 2026-08-04 it did not.
 2. **Feature discovery — a separate lane.** This lane closes the *setup* gap, not the *teaching*
    one. There is no tour, walkthrough, coachmark or checklist anywhere in `src/` — grepped every
    variant, zero hits, no library. The one first-run affordance that pre-existed
