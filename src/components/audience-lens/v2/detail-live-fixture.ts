@@ -35,8 +35,25 @@ const LIVE_BRAIN_INPUT: BrainSnapshotInput = {
       { idx: 4, t_start: 8, t_end: 10, label: "the proof", is_hook_zone: false, keyframe_uri: null },
       { idx: 5, t_start: 10, t_end: 12, label: "the close", is_hook_zone: false, keyframe_uri: null },
     ],
-    personas: [],
-    weighted_curve: [0.82, 0.9, 0.34, 0.52, 0.61, 0.55],
+    // The cast, with the swipe times a real fold emits. This was `personas: []` — which is not a shape
+    // `/api/analyze` can write (the curve is COMPUTED from the personas), and it is why the live
+    // Engagement page had to read the ATTENTION curve as retention: with no swipe data there was
+    // nothing else to read. Every persona carries the same attentions, so the weighted mean still
+    // reproduces `weighted_curve` exactly; the swipe times add the read it was missing.
+    // Retention implied: 100% · 85% · 42% · 27% · 27% · 22% — the stall at 0:04 is where the room goes.
+    personas: [
+      { id: "lp1", slot_type: "fyp", attentions: [0.82, 0.9, 0.34, 0.52, 0.61, 0.55], swipe_predicted_at: 2, segment_reasons: {} },
+      { id: "lp2", slot_type: "fyp", attentions: [0.82, 0.9, 0.34, 0.52, 0.61, 0.55], swipe_predicted_at: 4, segment_reasons: {} },
+      { id: "lp3", slot_type: "fyp", attentions: [0.82, 0.9, 0.34, 0.52, 0.61, 0.55], swipe_predicted_at: 4, segment_reasons: {} },
+      { id: "lp4", slot_type: "fyp", attentions: [0.82, 0.9, 0.34, 0.52, 0.61, 0.55], swipe_predicted_at: 4, segment_reasons: {} },
+      { id: "lp5", slot_type: "fyp", attentions: [0.82, 0.9, 0.34, 0.52, 0.61, 0.55], swipe_predicted_at: 6, segment_reasons: {} },
+      { id: "lp6", slot_type: "fyp", attentions: [0.82, 0.9, 0.34, 0.52, 0.61, 0.55], swipe_predicted_at: null, segment_reasons: {} },
+      { id: "lp7", slot_type: "niche", attentions: [0.82, 0.9, 0.34, 0.52, 0.61, 0.55], swipe_predicted_at: null, segment_reasons: {} },
+      { id: "lp8", slot_type: "niche", attentions: [0.82, 0.9, 0.34, 0.52, 0.61, 0.55], swipe_predicted_at: 10, segment_reasons: {} },
+      { id: "lp9", slot_type: "loyalist", attentions: [0.82, 0.9, 0.34, 0.52, 0.61, 0.55], swipe_predicted_at: null, segment_reasons: {} },
+      { id: "lp10", slot_type: "cross_niche", attentions: [0.82, 0.9, 0.34, 0.52, 0.61, 0.55], swipe_predicted_at: null, segment_reasons: {} },
+    ],
+    weighted_curve: [0.82, 0.9, 0.34, 0.52, 0.61, 0.55], // ATTENTION — it RISES twice, and should
     weights: { fyp: 0.65, niche: 0.2, loyalist: 0.1, cross_niche: 0.05 },
     weights_source: "default",
     weighted_completion_pct: 0.58,

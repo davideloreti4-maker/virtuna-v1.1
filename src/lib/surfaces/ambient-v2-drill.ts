@@ -19,6 +19,7 @@
  * transcript. No DB, no time, no randomness.
  */
 
+import { getPersonaWeight, normalizeOverSurvivors } from "@/lib/engine/wave3/weighted-aggregator-client";
 import type { HeatmapPayload } from "@/lib/engine/types";
 import type {
   DrillAnswer,
@@ -44,6 +45,83 @@ export interface CurveBreak {
   atSec: number;
   heldPct: number;
   lostPct: number;
+}
+
+// ── retention: the share still watching, which is NOT the attention curve ─────
+
+/**
+ * The REAL retention curve — the weighted share of the room still watching at each segment.
+ *
+ * **`weighted_curve` is not this.** `engine/types.ts` calls that field "weighted aggregate ATTENTION
+ * per segment", and attention is an intensity: it legitimately RISES when a clip re-grips the room.
+ * Retention cannot rise. Drawing attention under the title "Retention" is what made the live page
+ * contradict itself — the headline read "66% gone by 0:04" above chips reading
+ * `0:04 34% · 0:05 34% · 0:07 52%`, a curve recovering under a claim that people had left.
+ *
+ * The honest curve was one field away the whole time. The fold emits `swipe_predicted` beside
+ * attention and its own prompt pins the semantics: it "becomes true at the scroll-away moment and
+ * stays true for all subsequent segments" — monotonic by construction, i.e. exactly a retention
+ * signal. `swipe_predicted_at` persists the second it flipped.
+ *
+ * Weighted with the aggregator's OWN helpers, so this curve and the attention curve share a
+ * denominator and can be read against each other.
+ *
+ * Returns null when no persona carries the field at all (a pre-fix row): a flat 1.0 line is
+ * indistinguishable from "nobody left", and this module omits what it cannot derive rather than draw
+ * a figure nobody produced. A null value with the key PRESENT is a real "watched to the end".
+ */
+export function retentionCurveOf(heatmap: HeatmapPayload): number[] | null {
+  const segs = heatmap.segments ?? [];
+  const people = heatmap.personas ?? [];
+  if (segs.length < 2 || !people.length || !heatmap.weights) return null;
+  if (!people.some((p) => "swipe_predicted_at" in p)) return null;
+
+  const w = normalizeOverSurvivors(people, heatmap.weights);
+  const total = people.reduce((a, p) => a + getPersonaWeight(p.slot_type, w), 0);
+  if (total <= 0) return null;
+
+  return segs.map((s) => {
+    const held = people.reduce(
+      (a, p) => a + (p.swipe_predicted_at == null || p.swipe_predicted_at > s.t_start ? getPersonaWeight(p.slot_type, w) : 0),
+      0,
+    );
+    return clamp(held / total, 0, 1);
+  });
+}
+
+/**
+ * Avg watch and watched-full, from the swipe times rather than from attention.
+ *
+ * Both tiles used to be arithmetic on `weighted_curve`: avg watch was `mean(attention) × clipSeconds`
+ * and watched-full was `weighted_completion_pct`, whose own producer comment calls it the
+ * "weight-normalized mean of per-persona timeline mean" — mean ATTENTION, under a name with `completion`
+ * in it. Neither was the metric its label promised; a room at 0.5 attention throughout has never
+ * watched "half the clip", and its completion rate is not 50%.
+ *
+ * A persona's watch time is the second they swiped, or the whole clip if they never did. Watched-full
+ * is the weighted share that never swiped. Both are counts of a thing the fold actually emits.
+ */
+export function watchStatsOf(
+  heatmap: HeatmapPayload,
+  clipSeconds: number,
+): { avgWatchS: number; completedShare: number } | null {
+  const people = heatmap.personas ?? [];
+  if (!people.length || !heatmap.weights) return null;
+  if (!people.some((p) => "swipe_predicted_at" in p)) return null;
+
+  const w = normalizeOverSurvivors(people, heatmap.weights);
+  const total = people.reduce((a, p) => a + getPersonaWeight(p.slot_type, w), 0);
+  if (total <= 0) return null;
+
+  let watched = 0;
+  let completed = 0;
+  for (const p of people) {
+    const pw = getPersonaWeight(p.slot_type, w);
+    const left = p.swipe_predicted_at;
+    watched += pw * (left == null ? clipSeconds : clamp(left, 0, clipSeconds));
+    if (left == null) completed += pw;
+  }
+  return { avgWatchS: watched / total, completedShare: clamp(completed / total, 0, 1) };
 }
 
 // ── the identity strip ───────────────────────────────────────────────────────
@@ -81,13 +159,18 @@ export function videoAnswer(
   brk: CurveBreak,
   clipSeconds: number,
   transcript: string,
-): DrillAnswer {
-  const curve = heatmap.weighted_curve.map((v) => clamp(v, 0, 1));
+): DrillAnswer | null {
+  // Every figure below is a "share of the room" claim — "leave by", "watch to the end" — so all of
+  // them read the RETENTION curve. They used to read `weighted_curve`, which is attention, and
+  // `weighted_completion_pct`, which is mean attention despite its name.
+  const curve = retentionCurveOf(heatmap);
+  if (!curve) return null;
   const at = fmtTime(brk.atSec);
   const after = trimmedCurve(curve, brk.index);
   // The same window, measured on the new curve — an honest like-for-like, not a different question.
   const afterLost = 100 - pct(after[Math.min(brk.index, after.length - 1)] ?? 1);
-  const completion = pct(heatmap.weighted_completion_pct ?? curve[curve.length - 1] ?? 0);
+  const stats = watchStatsOf(heatmap, clipSeconds);
+  const completion = stats ? pct(stats.completedShare) : pct(curve[curve.length - 1] ?? 0);
   const newClip = Math.max(1, clipSeconds - brk.atSec);
   const words = transcript.split(/\s+/).filter(Boolean).length;
 
@@ -147,8 +230,11 @@ export function retentionOf(
   transcript: string,
   brk: CurveBreak | null,
   coverSrc?: string | null,
-): RetentionInstrument {
-  const curve = heatmap.weighted_curve.map((v) => clamp(v, 0, 1));
+): RetentionInstrument | null {
+  // The share still watching — NOT `weighted_curve`, which is attention. No swipe data ⇒ no honest
+  // retention read, so the card omits itself rather than draw an intensity under a retention title.
+  const curve = retentionCurveOf(heatmap);
+  if (!curve) return null;
   const breakAt = brk?.atSec ?? 0;
   const words = transcript.split(/\s+/).filter(Boolean).length;
   return {
@@ -164,25 +250,30 @@ export function retentionOf(
   };
 }
 
-/** Avg watch and watched-full, both arithmetic on the measured curve. Rewatch/loop has no producer
- *  in this snapshot, so there is no third tile rather than a third tile carrying a guess. */
+/** Avg watch and watched-full, off the swipe times (`watchStatsOf`). Rewatch/loop has no producer in
+ *  this snapshot, so there is no third tile rather than a third tile carrying a guess. */
 export function watchTilesOf(heatmap: HeatmapPayload, clipSeconds: number): MetricTile[] {
-  const curve = heatmap.weighted_curve.map((v) => clamp(v, 0, 1));
-  if (!curve.length) return [];
-  const mean = curve.reduce((a, b) => a + b, 0) / curve.length;
+  const stats = watchStatsOf(heatmap, clipSeconds);
+  if (!stats) return [];
   return [
-    { label: "Avg watch", value: `${(mean * clipSeconds).toFixed(1)}s`, delta: `of ${fmtTime(clipSeconds)}`, lead: true },
-    { label: "Watched full", value: `${pct(heatmap.weighted_completion_pct ?? curve[curve.length - 1] ?? 0)}%` },
+    { label: "Avg watch", value: `${stats.avgWatchS.toFixed(1)}s`, delta: `of ${fmtTime(clipSeconds)}`, lead: true },
+    { label: "Watched full", value: `${pct(stats.completedShare)}%`, delta: "of the room" },
   ];
 }
 
 export function engagementOf(
-  retention: RetentionInstrument | undefined,
+  retention: RetentionInstrument | null | undefined,
   watchTiles: MetricTile[],
 ): EngagementFrameData {
   return {
     ...(retention ? { retention } : {}),
-    ...(watchTiles.length ? { watch: { title: "Key metrics", tiles: watchTiles } } : {}),
+    // The scale, NAMED. The authored card says "vs your last 41 videos" because the design demo holds
+    // a catalogue; live holds none (§5.3 — no producer), and the card said nothing at all rather than
+    // say so. Naming a scale is not inventing a benchmark: this states what the numbers ARE measured
+    // against, and that the comparison band the rank strip would draw does not exist yet.
+    ...(watchTiles.length
+      ? { watch: { title: "Key metrics", meta: "this clip · no baseline yet", tiles: watchTiles } }
+      : {}),
   };
 }
 
