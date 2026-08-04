@@ -25,11 +25,11 @@ import { Chip, Kicker, MultiplierChip, fmtAge, fmtViews } from "./discover-primi
 
 /** Shelf order is value order — formats first: the biggest set and the most legible to a
  *  creator deciding what to make. */
-const CATEGORIES: { id: CollectionCategory; label: string; blurb: string }[] = [
-  { id: "formats", label: "Formats", blurb: "The shape of the whole video." },
-  { id: "visual_hooks", label: "Visual hooks", blurb: "What the first frame does to stop the scroll." },
-  { id: "editing_styles", label: "Editing styles", blurb: "How the cut carries the story." },
-  { id: "signature_series", label: "Signature series", blurb: "Repeatable formats a creator owns." },
+const CATEGORIES: { id: CollectionCategory; label: string }[] = [
+  { id: "formats", label: "Formats" },
+  { id: "visual_hooks", label: "Visual hooks" },
+  { id: "editing_styles", label: "Editing styles" },
+  { id: "signature_series", label: "Signature series" },
 ];
 
 /** One full grid row at the widest breakpoint — a 6-of-4 preview left a ragged half row. */
@@ -85,9 +85,11 @@ export function CollectionsPanel({
         const shown = isOpen ? list : list.slice(0, PREVIEW_PER_SHELF);
         return (
           <section key={cat.id}>
+            {/* No blurb beside the heading (owner, 2026-08-04). "Formats — the shape of the
+                whole video" explained a word the covers underneath explain better, and it
+                was truncating at narrow widths anyway. */}
             <div className="mb-3 flex items-baseline gap-3">
               <h3 className="text-body font-semibold text-foreground">{cat.label}</h3>
-              <p className="min-w-0 truncate text-caption text-foreground-muted">{cat.blurb}</p>
               {list.length > PREVIEW_PER_SHELF && !q ? (
                 <button
                   type="button"

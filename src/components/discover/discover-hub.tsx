@@ -73,15 +73,22 @@ export function DiscoverHub({
     [corpus],
   );
 
-  // The header states what is actually known. With a failed corpus read the totals are all
-  // zero, and "0 proven outliers · 0 collections" is a confident claim about a library we
-  // could not open.
+  // There is NO subtitle in the healthy state (owner, 2026-08-04). It counted the library
+  // first ("230 proven outliers · 105 collections · 408 creators"), then described it — and
+  // the description was cut too: the title, the search field and the three tabs already say
+  // what this surface is, so a prose line under the h1 was one more thing to read before
+  // reaching the only control that matters.
+  //
+  // The FAILURE strings stay. They are the only way the surface can say it could not read
+  // its data: a failed read arrives as an EMPTY corpus, which is indistinguishable from an
+  // empty library once the panels render. That is why this line was conditional originally,
+  // and it is the half worth keeping.
   const subtitle =
     failures.corpus && failures.watchlist
       ? "Discover can't reach its data right now."
       : failures.corpus
-        ? `The outlier library is unavailable right now — your ${watchlist.sources.length} watched source${watchlist.sources.length === 1 ? "" : "s"} still load.`
-        : `${corpus.totals.proven} proven outliers · ${corpus.totals.collections} collections · ${corpus.totals.creators} creators`;
+        ? "The outlier library is unavailable right now — your watched sources still load."
+        : undefined;
 
   // Pull is offered only for something we could actually go and fetch — a handle or a URL,
   // and only when the library has nothing under that name already.
@@ -95,10 +102,23 @@ export function DiscoverHub({
 
   return (
     <div className="relative min-h-full text-foreground">
-      <PageShell>
+      {/* Wider than the 880px default. Discover is the one browse surface here that carries a
+          filter rail BESIDE its grid: at 880px the rail took 240 of it and left four columns
+          about 135px wide, which truncated every creator handle to "@f…". The override is
+          scoped to this surface — PageShell is shared, and the reading surfaces want 880. */}
+      <PageShell className="max-w-[1200px]">
         <SurfaceHeader title="Discover" subtitle={subtitle} />
 
-        <div className="mt-4 flex gap-2">
+        {/* TABS FIRST, then the search field (owner, 2026-08-04). The search is scoped to the
+            ACTIVE tab — it filters outliers, collections or watchlist, never all three — so
+            putting it above the tabs implied a global search over the whole surface and read
+            as the page's primary control. Below them it reads as what it is: a filter on the
+            list you have just chosen. */}
+        <div className="mt-4">
+          <DiscoverTabBar active={tab} onSelect={select} />
+        </div>
+
+        <div className="mt-3 flex gap-2">
           <div className="flex h-10 flex-1 items-center gap-2.5 rounded-lg border border-border bg-surface-sunken px-3">
             <MagnifyingGlass size={15} className="shrink-0 text-foreground-muted" />
             <input
@@ -124,20 +144,6 @@ export function DiscoverHub({
           ) : null}
         </div>
 
-        <div className="mt-4">
-          <DiscoverTabBar
-            active={tab}
-            onSelect={select}
-            // A count is omitted, never zeroed, for a tab whose read failed — the same
-            // reason the subtitle changes shape above.
-            counts={{
-              outliers: failures.corpus ? undefined : corpus.totals.proven,
-              collections: failures.corpus ? undefined : corpus.totals.collections,
-              watchlist: failures.watchlist ? undefined : watchlist.sources.length,
-            }}
-          />
-        </div>
-
         <div key={tab} className="rv-in mt-5">
           {tab === "outliers" ? (
             failures.corpus ? (
@@ -145,7 +151,6 @@ export function DiscoverHub({
             ) : (
               <OutliersPanel
                 videos={feedVideos}
-                niches={corpus.niches}
                 query={query}
                 refreshedLabel={refreshedLabel}
                 onOpen={setOpenId}

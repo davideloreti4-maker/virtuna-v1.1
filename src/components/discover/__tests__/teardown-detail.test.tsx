@@ -45,6 +45,8 @@ const VIDEO: CorpusVideo = {
   archetype: 'question',
   niche: 'content-creation',
   views: 1_240_000,
+  platform: 'tiktok',
+  engagement: 0.041,
   postedAt: '2026-06-01T00:00:00Z',
   multiplier: 11.5,
   baselineLabel: 'vs own',
@@ -70,7 +72,6 @@ function renderPanel(onOpen = vi.fn()) {
   render(
     <OutliersPanel
       videos={[VIDEO]}
-      niches={[{ id: 'content-creation', count: 1 }]}
       query=""
       refreshedLabel="Newest video in the library: Jun 10."
       onOpen={onOpen}
@@ -177,7 +178,6 @@ describe('a11y — the two patterns this pass introduced', () => {
     const { container } = render(
       <OutliersPanel
         videos={[VIDEO]}
-        niches={[{ id: 'content-creation', count: 1 }]}
         query=""
         refreshedLabel="Newest video in the library: Jun 10."
         onOpen={vi.fn()}
