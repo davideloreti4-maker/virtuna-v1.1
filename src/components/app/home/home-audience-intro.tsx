@@ -157,7 +157,14 @@ export function HomeAudienceIntro({
     <div
       ref={introRef}
       className={cn(
-        "mx-auto flex max-w-[560px] flex-col items-center gap-3 border-t border-white/[0.06] pt-4 text-center",
+        // A CONTAINED panel, not a rule-and-some-text. It sits below the floating composer dock
+        // (deliberately — STARTER CONTRACT rule 2 forbids a prose lede above the grid), and as
+        // bare text under a floating element it read as an orphaned footnote rather than as the
+        // product introducing itself. House treatment: matte elevated fill, 6% border, 12px
+        // radius. `reading-reveal` so it ARRIVES — this is a first-run moment, and it was the
+        // only thing on the screen with no entrance at all.
+        "reading-reveal mx-auto flex max-w-[560px] flex-col items-center gap-3 rounded-[12px]",
+        "border border-white/[0.06] bg-background-elevated px-5 py-4 text-center",
         className,
       )}
       data-testid="home-audience-intro"

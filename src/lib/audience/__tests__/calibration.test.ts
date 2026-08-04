@@ -153,7 +153,7 @@ describe("calibrateFromScrape — success path (real signature)", () => {
   it("calls scrapeBundle (1-scrape collapse), not the legacy parallel pair", async () => {
     const deps = makeDeps();
     await calibrateFromScrape(BASE_INPUT, deps);
-    expect(deps.scrapeBundle).toHaveBeenCalledWith("testcreator");
+    expect(deps.scrapeBundle).toHaveBeenCalledWith("testcreator", undefined, undefined);
     expect(deps.enrich).toHaveBeenCalledTimes(1);
   });
 });
@@ -208,7 +208,7 @@ describe("calibrateFromScrape — target path", () => {
       { ...BASE_INPUT, type: "target", handle: "refcreator", description: "productivity founders" },
       deps,
     );
-    expect(deps.scrapeBundle).toHaveBeenCalledWith("refcreator");
+    expect(deps.scrapeBundle).toHaveBeenCalledWith("refcreator", undefined, undefined);
   });
 
   it("target with no handle runs a niche search from the description", async () => {
@@ -300,7 +300,7 @@ describe("calibrateFromScrape — platform guard", () => {
     const deps = makeDeps();
     const result = await calibrateFromScrape({ ...BASE_INPUT, platform: "tiktok" }, deps);
     expect("audience" in result).toBe(true);
-    expect(deps.scrapeBundle).toHaveBeenCalledWith("testcreator");
+    expect(deps.scrapeBundle).toHaveBeenCalledWith("testcreator", undefined, undefined);
   });
 
   it("still allows `custom` — the DESCRIBED path claims no platform provenance", async () => {

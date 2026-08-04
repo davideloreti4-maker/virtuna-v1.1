@@ -3457,7 +3457,11 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
               // v2 Start (④) rides the SCROLL region — the artifact grid sits where the first
               // message would, with the composer docked below it. Picking a skill sets
               // startEngaged, this drops out, and you land on an empty chat.
-              <div className="flex min-h-full flex-col justify-end pt-6">
+              // pb-40 clears the floating dock. The dock is `absolute bottom-0` over this same
+              // scroll region, so with `justify-end` the grid's last row sat directly under it
+              // and "Test something of your own" rendered half-hidden behind the composer at
+              // 1512×982 — the last starter card, sliced, on the first screen a new account sees.
+              <div className="flex min-h-full flex-col justify-end pt-6 pb-40">
                 <AmbientStartHome
                   audience={effectiveAudience}
                   onSkill={pickStartSkill}

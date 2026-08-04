@@ -96,6 +96,56 @@ export function AudienceReveal({ audience, reveal, onUse, className }: AudienceR
         </div>
       )}
 
+      {/* ── THE TEN PEOPLE — the hero ───────────────────────────────────────────────────────
+          They used to be the LAST thing on this screen and the smallest: ten grey pills under a
+          paragraph, below a six-box grid of plays/save/share. The one thing that makes this
+          product different from a prompt box was rendered as the least important item on its own
+          payoff screen, after a ~135s wait spent building exactly this.
+
+          Now they lead, one row each, with the share and the reaction frame that is the actual
+          product — "what this person does when your video comes up". `reading-reveal` staggers
+          them in so the room assembles rather than appearing as a block; the stagger is capped
+          so a 10-person audience finishes in well under a second. */}
+      {sig && sig.audience.personas.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <h3 className="text-base font-semibold text-foreground">
+            Here&apos;s your audience — {sig.audience.personas.length} people
+          </h3>
+          {sig.summary && (
+            <p className="mb-1 text-sm leading-relaxed text-foreground-secondary">{sig.summary}</p>
+          )}
+          <div className="flex flex-col gap-1.5">
+            {sig.audience.personas.map((p, i) => (
+              <div
+                key={p.archetype}
+                className={cn(
+                  READING_CARD,
+                  "reading-reveal flex items-start gap-3 px-3.5 py-2.5",
+                )}
+                style={{ animationDelay: `${Math.min(i, 10) * 0.05}s` }}
+              >
+                <span className="mt-[3px] h-1.5 w-1.5 shrink-0 rounded-full bg-action" aria-hidden />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="truncate text-sm font-medium text-foreground">
+                      {getPersonaDisplayName(p)}
+                    </span>
+                    <span className="shrink-0 text-xs tabular-nums text-foreground-muted">
+                      {Math.round(p.share * 100)}%
+                    </span>
+                  </div>
+                  {p.reaction_frame && (
+                    <p className="mt-0.5 text-xs leading-relaxed text-foreground-secondary">
+                      {p.reaction_frame}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {posts.length > 0 && (
         <div>
           <p className="mb-2 text-micro font-medium uppercase tracking-[0.14em] text-foreground-muted">
@@ -114,11 +164,10 @@ export function AudienceReveal({ audience, reveal, onUse, className }: AudienceR
         </div>
       )}
 
+      {/* Supporting detail — what the room cares about. Below the people themselves, because
+          this is a description OF them and used to sit above them. */}
       {sig && (
         <div className="flex flex-col gap-3">
-          <h3 className="text-base font-semibold text-foreground">Here&apos;s your audience</h3>
-          {sig.summary && <p className="text-sm text-foreground-secondary">{sig.summary}</p>}
-
           {sig.audience.interest_tags.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
               {/* Humanized, not raw. `interest_tags` is model output and arrives as slugs —
@@ -144,17 +193,9 @@ export function AudienceReveal({ audience, reveal, onUse, className }: AudienceR
             </p>
           )}
 
-          <div className="flex flex-wrap gap-1.5">
-            {sig.audience.personas.map((p) => (
-              <span
-                key={p.archetype}
-                title={p.reaction_frame}
-                className="rounded-md border border-white/[0.06] bg-white/[0.02] px-2 py-0.5 text-xs text-foreground-secondary"
-              >
-                {getPersonaDisplayName(p)} · {Math.round(p.share * 100)}%
-              </span>
-            ))}
-          </div>
+          {/* The persona pills that used to live here are GONE — they are the hero block above
+              now. Rendering both would say the same ten names twice on one screen, and the pill
+              version hid the reaction frame in a `title` attribute no touch device can open. */}
         </div>
       )}
 
