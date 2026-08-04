@@ -48,6 +48,7 @@ import {
   heroVerdictOf,
   methodOf,
   poolsFromWeights,
+  rankOf,
   retentionCurveOf,
   retentionOf,
   simlineOf,
@@ -342,6 +343,10 @@ export interface VideoDomainTemplateInput extends BrainSnapshotInput {
   /** The projection's raw dominant-reason tally (`aggregate.reasons`) — classified by SEMANTICS for the
    *  unlock lever (top friction) + insight (top pull). Absent → no unlock (omit, never fabricate). */
   reasons?: { reason: string; count: number }[] | null;
+  /** The creator's own past runs, already reduced to watched-full percentages by `watchCatalogueOf`.
+   *  Absent (or too thin) → Key metrics keeps saying it has no baseline. A caller with no history to
+   *  hand simply omits it; nothing downstream invents one. */
+  catalogue?: number[];
 }
 
 /**
@@ -371,7 +376,17 @@ export function buildVideoDomainTemplate(input: VideoDomainTemplateInput): Domai
     // Only when the curve actually breaks: no break ⇒ no trim to offer, so the answer block falls
     // back to the unlock rather than inventing a lever (the §3.2 discipline, one layer up).
     ...(answer ? { answer } : {}),
-    engagement: engagementOf(retention, watchTilesOf(input.heatmap, clipSeconds)),
+    engagement: (() => {
+      const tiles = watchTilesOf(input.heatmap, clipSeconds);
+      // The strip ranks the "Watched full" tile, so it reads its value from that tile rather than
+      // recomputing the share — one derivation, one number, no chance of the marker and the tile
+      // disagreeing. No tile ⇒ nothing to rank.
+      const full = tiles.find((t) => t.label === "Watched full");
+      const value = full ? Number.parseInt(full.value, 10) : NaN;
+      const rank =
+        input.catalogue && Number.isFinite(value) ? rankOf(input.catalogue, value) : undefined;
+      return engagementOf(retention, tiles, rank);
+    })(),
     ...(simlineOf(population?.room) ? { simline: simlineOf(population?.room)! } : {}),
     method: methodOf({
       hasSignals: true,

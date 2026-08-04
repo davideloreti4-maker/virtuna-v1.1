@@ -10,9 +10,10 @@
  *   · views · reach · likes · follows — the identity stat row is EMPTY on a real drill. The authored
  *     fixture carries projected counts because it is a design artefact and says `projected`; an
  *     adapter inventing them would be fabricating proof.
- *   · the creator's own median post, and the last-N catalogue behind the rank strip. Both figures
- *     omit themselves rather than draw against a made-up band — benchmarks are the creator's own
- *     catalogue or they are nothing.
+ *   · the creator's own median POST. Still nothing: a post is a measured outcome and the engine
+ *     holds none. (The last-N catalogue behind the rank strip is no longer on this list — it is
+ *     built here now, off the creator's own past SIMULATIONS. See `watchCatalogueOf`. The
+ *     distinction between the two is the whole reason the strip says "simulations".)
  *   · the per-second reaction timeline: we hold reaction INTENT, never its timing.
  *
  * Everything that IS produced is arithmetic on the measured curve, the sealed counts, or the real
@@ -27,6 +28,7 @@ import type {
   EngagementFrameData,
   MetricTile,
   PopulationFrameData,
+  RankStripData,
   RetentionInstrument,
   RoomTrustData,
   SwingData,
@@ -261,18 +263,108 @@ export function watchTilesOf(heatmap: HeatmapPayload, clipSeconds: number): Metr
   ];
 }
 
+/** One past run, as `/api/analysis/history` returns it — the only fields the catalogue reads. */
+export interface CatalogueRow {
+  heatmap?: HeatmapPayload | null;
+  engine_version?: string | null;
+}
+
+/**
+ * The engine floor for a catalogue row, and it is load-bearing rather than defensive.
+ *
+ * `watchStatsOf` counts a finisher as `swipe_predicted_at === null` — the sentinel for "never
+ * scrolled away". Measured across all 21 sealed rows on prod (2026-08-04): every row written by
+ * engine 3.0.0 / 3.2.0 EXCEPT one has zero personas carrying that sentinel, while all 14 rows from
+ * 3.8.0 onward have some. Those old rows are not videos nobody finished — several report a
+ * `completion_pct` of 77–83 in the same breath. Their engines simply never emitted the null.
+ *
+ * Admitting them would put six fabricated 0% entries into the creator's own baseline, drag the
+ * median down, and make every new clip rank flatteringly well against a defect. That is the
+ * fabrication line this file exists to hold, one layer down from the adapters — so the floor is a
+ * VERSION test, aimed at the actual cause, and not a "drop rows that read zero" filter, which would
+ * silently delete the genuinely bad videos a baseline most needs.
+ */
+const MIN_CATALOGUE_ENGINE = [3, 8, 0];
+
+function meetsEngineFloor(version: string | null | undefined): boolean {
+  if (!version) return false; // a row that will not say what produced it does not join a baseline
+  const parts = version.split(".").map((p) => Number.parseInt(p, 10));
+  if (parts.length < 3 || parts.some((n) => !Number.isFinite(n))) return false;
+  for (let i = 0; i < 3; i += 1) {
+    if (parts[i]! !== MIN_CATALOGUE_ENGINE[i]!) return parts[i]! > MIN_CATALOGUE_ENGINE[i]!;
+  }
+  return true;
+}
+
+/**
+ * The creator's own last-N catalogue, in the SAME unit and from the SAME producer as the "Watched
+ * full" tile it will be ranked against — `watchStatsOf`, so the strip's marker is by construction
+ * the number printed above it rather than a second, differently-derived figure that happens to sit
+ * nearby. (The page has already been burned once by two watch-depth numbers disagreeing.)
+ *
+ * Percent, never seconds: the authored demo plots a 0–28s track because every clip in it is one
+ * clip, but a real catalogue mixes durations and 9.7s means opposite things on a 12s and a 60s clip.
+ */
+export function watchCatalogueOf(rows: readonly CatalogueRow[]): number[] {
+  const values: number[] = [];
+  for (const row of rows) {
+    if (!row.heatmap || !meetsEngineFloor(row.engine_version)) continue;
+    const segs = row.heatmap.segments ?? [];
+    const lastEnd = segs.length ? segs[segs.length - 1]!.t_end : 0;
+    const clipSeconds = Math.max(1, Math.round(lastEnd || row.heatmap.weighted_curve?.length || 0));
+    const stats = watchStatsOf(row.heatmap, clipSeconds);
+    if (stats) values.push(pct(stats.completedShare));
+  }
+  return values;
+}
+
+/**
+ * Below this, a "median" is a word for the middle of a handful. Four past runs cannot say where a
+ * clip sits in a creator's work, and a strip drawn over them would look exactly as authoritative as
+ * one drawn over forty — which is the whole problem with thin baselines. Under the floor the card
+ * keeps saying it has none.
+ */
+const MIN_CATALOGUE_N = 5;
+
+/** The rank strip, or nothing. `value` is this clip's own tile figure, so the two cannot drift. */
+export function rankOf(catalogue: number[], value: number): RankStripData | undefined {
+  if (catalogue.length < MIN_CATALOGUE_N) return undefined;
+  const sorted = [...catalogue].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  const median =
+    sorted.length % 2 === 0 ? Math.round((sorted[mid - 1]! + sorted[mid]!) / 2) : sorted[mid]!;
+  return {
+    values: catalogue,
+    median,
+    // A share of the room has a real ceiling, so the axis is the full 0–100 rather than the
+    // catalogue's own best. Scaling to the best would silently re-stretch the track every time the
+    // creator posts, and a clip that had not moved would appear to slide.
+    max: 100,
+    value,
+    unit: "%",
+  };
+}
+
 export function engagementOf(
   retention: RetentionInstrument | null | undefined,
   watchTiles: MetricTile[],
+  rank?: RankStripData,
 ): EngagementFrameData {
   return {
     ...(retention ? { retention } : {}),
-    // The scale, NAMED. The authored card says "vs your last 41 videos" because the design demo holds
-    // a catalogue; live holds none (§5.3 — no producer), and the card said nothing at all rather than
-    // say so. Naming a scale is not inventing a benchmark: this states what the numbers ARE measured
-    // against, and that the comparison band the rank strip would draw does not exist yet.
+    // The scale, NAMED. With a catalogue the card ranks this clip against the creator's own past
+    // runs; without one it says so rather than draw against a made-up band. "Simulations", never
+    // "videos" — these are modeled runs of the creator's own drafts, not measured posts, and the
+    // authored demo's "vs your last 41 videos" would be a reach claim the engine cannot make.
     ...(watchTiles.length
-      ? { watch: { title: "Key metrics", meta: "this clip · no baseline yet", tiles: watchTiles } }
+      ? {
+          watch: {
+            title: "Key metrics",
+            meta: rank ? `vs your last ${rank.values.length} simulations` : "this clip · no baseline yet",
+            tiles: watchTiles,
+            ...(rank ? { rank } : {}),
+          },
+        }
       : {}),
   };
 }

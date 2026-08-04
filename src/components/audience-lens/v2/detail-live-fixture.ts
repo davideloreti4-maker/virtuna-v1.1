@@ -183,9 +183,27 @@ const LIVE_PERSONAS = [
   { archetype: "builder", verdict: "stop" as const, quote: "the honesty hooked me, i wanted the numbers" },
 ];
 
+/**
+ * The creator's last-N catalogue — fixture INPUT, exactly like `LIVE_BEHAVIORAL` above: this is what
+ * `watchCatalogueOf` EMITS after reading `/api/analysis/history`, not something the page derives.
+ * Reproducing the producer here would mean authoring fourteen more full heatmaps for a dev page.
+ *
+ * The shape is measured, not invented. Queried against prod 2026-08-04: one creator holds 23 sealed
+ * runs, 21 with a full 10-persona cast, of which 14 clear the engine floor in `watchCatalogueOf`.
+ * These are that cohort's watched-full shares. (They are the UNWEIGHTED shares — the real producer
+ * applies slot weights, so live values will differ by a few points. The distribution, the count and
+ * the spread are the real ones, which is what this page is here to review.)
+ *
+ * This clip lands at 22% against a median of 40%: it ranks BADLY, and that is the honest reading of
+ * a clip that loses 58% of the room by 0:04. A fixture that flattered it would be the exact defect
+ * §24.1 caught the last time this page disagreed with the mount.
+ */
+const LIVE_CATALOGUE = [80, 70, 60, 50, 50, 50, 40, 40, 40, 40, 40, 40, 40, 40];
+
 /** The Detail template built entirely by the real adapters over the realistic input above. */
 export const CREATOR_LIVE_TEMPLATE: DomainTemplate = buildVideoDomainTemplate({
   ...LIVE_BRAIN_INPUT,
+  catalogue: LIVE_CATALOGUE,
   // the raw pStop dominant-reason tally (tokens, as the projection emits) → the unlock's lever + insight
   reasons: [
     { reason: "too-slow", count: 253 },
