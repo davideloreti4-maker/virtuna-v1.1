@@ -107,6 +107,11 @@ export interface NetworkBar {
 /** ③ KPI activation per second — every decoded system, one row of 0..100 intensities per second. */
 export interface KpiHeatmapData {
   seconds: number; // clip length in whole seconds (columns)
+  /** TEXT has no clock (§3.3). Its `seconds` is a nominal proxy the population adapter picks — the
+   *  same reasoning that took the modeled retention curve OFF the text driver — so the card must not
+   *  print "6s", "0s → 6s" and "each cell = 1s" over a duration the concept does not have. Set here,
+   *  the grid keeps every row (the owner's parity call) and drops only the fabricated time axis. */
+  untimed?: boolean;
   rows: { label: string; values: number[]; muted?: boolean }[]; // each values[i] = 0..100 at second i;
   //   `muted` = a sensory row (Visual/Audio/Face) on a TEXT sim — greyed (no video/audio to measure)
 }

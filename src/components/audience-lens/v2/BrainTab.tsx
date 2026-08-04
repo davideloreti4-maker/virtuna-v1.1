@@ -440,9 +440,17 @@ function NetworksCard({ rows, scale }: { rows: NetworkBar[]; scale?: string }) {
  *  honest note — a text concept has no video substrate to measure. */
 function ActivationCard({ data }: { data: KpiHeatmapData }) {
   const dead = data.rows.filter((r) => r.muted).map((r) => r.label);
+  // A text concept has no clock, so it gets no clock: same rows, same order, an axis that reads
+  // start → end instead of 0s → 6s. The 6 was a nominal proxy the adapter picked for the cortex loop
+  // and it was reaching the surface as a measured duration, three lines under a comment explaining
+  // that a modeled timeline is the one thing text does not have.
+  const untimed = !!data.untimed;
   return (
     <Card>
-      <CardHead title="Activation per second" meta={`${data.seconds}s · ${data.rows.length} systems`} />
+      <CardHead
+        title={untimed ? "Where each system fires" : "Activation per second"}
+        meta={untimed ? `${data.rows.length} systems` : `${data.seconds}s · ${data.rows.length} systems`}
+      />
       <div className="mt-3 flex flex-col gap-0.5">
         {data.rows.map((r) => (
           <div key={r.label} className="flex items-center gap-2">
@@ -453,7 +461,7 @@ function ActivationCard({ data }: { data: KpiHeatmapData }) {
           </div>
         ))}
       </div>
-      <Axis left="0s" right={`${data.seconds}s`} indent={66} />
+      <Axis left={untimed ? "start" : "0s"} right={untimed ? "end" : `${data.seconds}s`} indent={66} />
       {/* The key is drawn in the grid's OWN cells, not a ramp. `HeatCells` renders discrete steps at
           the exact alphas a real row uses, so the legend is a sample of the figure rather than a
           second encoding of it — and the surface keeps its no-gradient law, which the soft ramp that
@@ -463,7 +471,7 @@ function ActivationCard({ data }: { data: KpiHeatmapData }) {
           <HeatCells values={[0.05, 0.25, 0.45, 0.65, 0.88]} height={6} />
         </span>
         <span>weak → strong</span>
-        <span className="ml-auto">each cell = 1s</span>
+        {untimed ? null : <span className="ml-auto">each cell = 1s</span>}
       </div>
       {dead.length ? (
         <p className="mt-2.5 text-[11px] leading-[1.5]" style={{ color: TONE.faint }}>

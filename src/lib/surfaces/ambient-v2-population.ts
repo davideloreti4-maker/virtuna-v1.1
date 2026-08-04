@@ -387,7 +387,10 @@ export function buildReasonBrainFrameData(input: {
     networkScale: "z-scored · modeled",
     networkBars,
     networks: modeledNetworks(networkBars),
-    kpiHeatmap: modeledKpiHeatmap(modeledInput),
+    // Same grid as video (the parity call), minus the clock. `clipSeconds: 6` above is a nominal
+    // proxy for the cortex loop — a text concept has no duration — and it was surfacing on this card
+    // as "6s · 10 systems / 0s → 6s / each cell = 1s", i.e. as a measurement. §3.3 again.
+    kpiHeatmap: { ...modeledKpiHeatmap(modeledInput), untimed: true },
     // buyIntent omitted — a commerce figure, not a text/creator one (matches the authored template)
     calibrationNote: "Modeled cognitive proxy from a text sim · the reasons are real, the retention curve + depth read are modeled — not measured attention",
   };

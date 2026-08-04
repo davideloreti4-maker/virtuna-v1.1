@@ -227,6 +227,17 @@ describe("buildReasonBrainFrameData (the text brain — owner call 2026-07-24)",
     expect(b.whyThisSecond).toBeDefined(); // the real reason, in the video's measured-dip slot
   });
 
+  it("the activation grid keeps every row but NOT the clock (§3.3 — a text concept has no seconds)", () => {
+    const b = buildReasonBrainFrameData({ aggregate: AGG_REASONS, stopPct: 62, stimulusKey: "k1" });
+    // parity survives — same ten systems as video
+    expect(b.kpiHeatmap!.rows).toHaveLength(10);
+    // ...but `clipSeconds: 6` is a nominal proxy for the cortex loop, and it was reaching the card as
+    // "6s · 10 systems / 0s → 6s / each cell = 1s". The renderer drops the axis on this flag.
+    expect(b.kpiHeatmap!.untimed).toBe(true);
+    // the same adapter already refuses a modeled TIMELINE for text; the two now agree
+    expect(b.driver.kind).toBe("reason-breakdown");
+  });
+
   it("the visual-only reads are GREYED on a text sim (no video substrate to measure)", () => {
     const b = buildReasonBrainFrameData({ aggregate: AGG_REASONS, stopPct: 62, stimulusKey: "k1" });
     // the Visual Pull signal cell is muted; the rest are not
