@@ -19,6 +19,7 @@ import { OmniAnalysisZodSchema } from "./schemas";
 import type { SegmentGrid, OmniAnalysisResult } from "./schemas";
 import { normalizeSegments } from "./normalize-segments";
 import { stripModelOutput } from "../utils/strip";
+import { AUDIO_SPLIT_ENABLED, runModalitySplit } from "./split/run";
 
 const log = createLogger({ module: "engine.qwen.omni" });
 
@@ -231,6 +232,79 @@ export function buildUserHints(opts: OmniAnalysisOptions): string {
   return nicheHint + ctypeHint;
 }
 
+/**
+ * Turn a validated read into the OmniAnalysisOutput every consumer expects.
+ *
+ * Extracted so the unified read and the modality split (split/run.ts) share ONE assembly.
+ * That is the point: the split is only safe because its merged result goes through the same
+ * Zod parse AND the same assembly as the call it replaces, so nothing downstream — aggregator,
+ * fold, Apollo, decode, filmstrip queue — can tell which path produced it.
+ */
+export function assembleOmniOutput(data: OmniAnalysisResult, cost_cents: number): OmniAnalysisOutput {
+  // D-07 + D-08: normalize segments after Zod parse, before returning to consumers.
+  // Derive video duration from highest t_end as defensive fallback when not passed in opts.
+  const rawDuration = data.segments?.reduce((max, s) => Math.max(max, s.t_end), 0) ?? 0;
+  const videoDurationSeconds = rawDuration > 0 ? rawDuration : 30; // 30s fallback if no segments
+  const normalizedSegments: SegmentGrid[] = normalizeSegments(data.segments as SegmentGrid[] | undefined, videoDurationSeconds);
+
+  const ctypeSlug = CONTENT_TYPE_VALUES.includes(data.content_type as never)
+    ? (data.content_type as (typeof CONTENT_TYPE_VALUES)[number])
+    : "other";
+
+  // F12 (01-05): `confidence: 1.0` here is a DEAD placeholder, NOT a model output — the Omni read
+  // never emits a content-type/niche confidence, so 1.0 is fabricated certainty. No consumer
+  // trusts it (grep-confirmed: nothing reads content_type.confidence / niche.confidence). Left at
+  // 1.0 only because Wave0Result's shape requires the field; treat as meaningless (do not surface).
+  const wave0Result: Wave0Result = {
+    content_type: { type: ctypeSlug, confidence: 1.0 }, // DEAD placeholder (F12) — not a real confidence
+    niche: {
+      primary_slug: data.niche_primary_slug,
+      micro_slug:   data.niche_micro_slug ?? null,
+      confidence:   1.0, // DEAD placeholder (F12) — not a real confidence
+    },
+  };
+
+  // D-R1 (2026-06-11): the Read is a PURE SENSOR. It no longer emits generic JUDGMENT
+  // (factors[] scores/rationale, overall_impression, content_summary) — Apollo is the sole
+  // judge. gemini_score (the factor-mean) dies with them. Perception (hook_decomposition,
+  // video_signals, audio, emotion_arc, verbatim, segments, content_type, niche) is preserved.
+  const analysis = {
+    video_signals: {
+      visual_production_quality: data.video_signals.visual_production_quality,
+      hook_visual_impact:        data.hook_visual_impact,
+      pacing_score:              data.video_signals.pacing_score,
+      transition_quality:        data.video_signals.transition_quality,
+    },
+    audio_signals:      data.audio_signals,
+    hook_decomposition: data.hook_decomposition,
+    cta_segment:        data.cta_segment,
+    // emotion_arc MUST be threaded here. The aggregator plucks it off
+    // geminiResult.analysis.emotion_arc (aggregator.ts ~692). Omitting it
+    // — the original bug — silently dropped a Zod-parsed field on EVERY run,
+    // so emotion_arc was null on 100% of persisted rows despite the prompt
+    // marking it REQUIRED (26/26 rows null, confirmed in prod). GeminiVideoAnalysis
+    // doesn't declare the field (Omni-only extension), so it rides through the
+    // `as` cast and the aggregator's matching `as unknown as { emotion_arc? }` read.
+    // Do NOT "clean up" by removing it — that re-introduces the drop.
+    emotion_arc:        data.emotion_arc,
+    // Phase 2 (R1) — hook_verbatim MUST be threaded here via the same pattern as
+    // emotion_arc above. The aggregator plucks it off geminiResult.analysis.hook_verbatim
+    // via `as unknown as { hook_verbatim? }`. Omitting it would silently drop all
+    // verbatim on every run — the segment-axis version of the emotion_arc bug.
+    // GeminiVideoAnalysis doesn't declare this field; it rides the `as` cast.
+    // Do NOT remove — that re-introduces the drop.
+    hook_verbatim:      data.hook_verbatim,
+  } as GeminiVideoAnalysis;
+
+  return {
+    geminiResult: { analysis, cost_cents },
+    wave0Result,
+    audio_perceptual_score: data.audio_perceptual_score,
+    signalAvailability: { gemini_hook: true, gemini_body: true, gemini_cta: true },
+    segments: normalizedSegments,
+  };
+}
+
 export async function analyzeVideoWithOmni(
   videoUrl: string,
   opts: OmniAnalysisOptions = {},
@@ -240,6 +314,33 @@ export async function analyzeVideoWithOmni(
 
   const nullAvailability = { gemini_hook: false, gemini_body: false, gemini_cta: false };
   const nullWave0: Wave0Result = { content_type: null, niche: null };
+
+  // ── Modality split (ENGINE_AUDIO_SPLIT) ──────────────────────────────────────
+  // omni stops watching: flash takes the video, omni takes an extracted mp3, and the two
+  // reads are merged back into this exact shape. Measured 58.4% cheaper on the spike
+  // (scripts/omni-audio-split-spike.ts) — the video tokens do not vanish, they MOVE to flash
+  // at ~3× cheaper per token.
+  //
+  // A null return is the designed degradation, not an error path: ffmpeg failed, a leg failed,
+  // coherence failed, or the merge did not satisfy the schema. In every one of those cases the
+  // unified read below runs exactly as it does today, so the split can never make a Read fail
+  // that would otherwise have succeeded — it can only fail to make it cheaper.
+  if (AUDIO_SPLIT_ENABLED) {
+    const split = await runModalitySplit(videoUrl, {
+      niche: opts.niche,
+      content_type: opts.content_type,
+    });
+    if (split) {
+      log.info("omni analysis complete (modality split)", {
+        cost_cents: split.cost_cents,
+        emotion_arc_points: split.data.emotion_arc?.length ?? 0,
+        verbatim_present: split.data.hook_verbatim != null,
+        ...split.diagnostics,
+      });
+      return assembleOmniOutput(split.data, split.cost_cents);
+    }
+    log.warn("omni analysis: modality split unavailable — running the unified read");
+  }
 
   let lastError: unknown;
   // F9/D-11: the nudge appended to the next attempt's system content. Set on failure
@@ -325,73 +426,12 @@ export async function analyzeVideoWithOmni(
 
       const cost_cents = calculateCost(model, completion.usage ?? undefined);
 
-      // D-07 + D-08: normalize segments after Zod parse, before returning to consumers.
-      // Derive video duration from highest t_end as defensive fallback when not passed in opts.
-      const rawDuration = data.segments?.reduce((max, s) => Math.max(max, s.t_end), 0) ?? 0;
-      const videoDurationSeconds = rawDuration > 0 ? rawDuration : 30; // 30s fallback if no segments
-      const normalizedSegments: SegmentGrid[] = normalizeSegments(data.segments as SegmentGrid[] | undefined, videoDurationSeconds);
-
-      const ctypeSlug = CONTENT_TYPE_VALUES.includes(data.content_type as never)
-        ? (data.content_type as (typeof CONTENT_TYPE_VALUES)[number])
-        : "other";
-
-      // F12 (01-05): `confidence: 1.0` here is a DEAD placeholder, NOT a model output — the Omni read
-      // never emits a content-type/niche confidence, so 1.0 is fabricated certainty. No consumer
-      // trusts it (grep-confirmed: nothing reads content_type.confidence / niche.confidence). Left at
-      // 1.0 only because Wave0Result's shape requires the field; treat as meaningless (do not surface).
-      const wave0Result: Wave0Result = {
-        content_type: { type: ctypeSlug, confidence: 1.0 }, // DEAD placeholder (F12) — not a real confidence
-        niche: {
-          primary_slug: data.niche_primary_slug,
-          micro_slug:   data.niche_micro_slug ?? null,
-          confidence:   1.0, // DEAD placeholder (F12) — not a real confidence
-        },
-      };
-
-      // D-R1 (2026-06-11): the Read is a PURE SENSOR. It no longer emits generic JUDGMENT
-      // (factors[] scores/rationale, overall_impression, content_summary) — Apollo is the sole
-      // judge. gemini_score (the factor-mean) dies with them. Perception (hook_decomposition,
-      // video_signals, audio, emotion_arc, verbatim, segments, content_type, niche) is preserved.
-      const analysis = {
-        video_signals: {
-          visual_production_quality: data.video_signals.visual_production_quality,
-          hook_visual_impact:        data.hook_visual_impact,
-          pacing_score:              data.video_signals.pacing_score,
-          transition_quality:        data.video_signals.transition_quality,
-        },
-        audio_signals:      data.audio_signals,
-        hook_decomposition: data.hook_decomposition,
-        cta_segment:        data.cta_segment,
-        // emotion_arc MUST be threaded here. The aggregator plucks it off
-        // geminiResult.analysis.emotion_arc (aggregator.ts ~692). Omitting it
-        // — the original bug — silently dropped a Zod-parsed field on EVERY run,
-        // so emotion_arc was null on 100% of persisted rows despite the prompt
-        // marking it REQUIRED (26/26 rows null, confirmed in prod). GeminiVideoAnalysis
-        // doesn't declare the field (Omni-only extension), so it rides through the
-        // `as` cast and the aggregator's matching `as unknown as { emotion_arc? }` read.
-        // Do NOT "clean up" by removing it — that re-introduces the drop.
-        emotion_arc:        data.emotion_arc,
-        // Phase 2 (R1) — hook_verbatim MUST be threaded here via the same pattern as
-        // emotion_arc above. The aggregator plucks it off geminiResult.analysis.hook_verbatim
-        // via `as unknown as { hook_verbatim? }`. Omitting it would silently drop all
-        // verbatim on every run — the segment-axis version of the emotion_arc bug.
-        // GeminiVideoAnalysis doesn't declare this field; it rides the `as` cast.
-        // Do NOT remove — that re-introduces the drop.
-        hook_verbatim:      data.hook_verbatim,
-      } as GeminiVideoAnalysis;
-
       // emotion_arc_points surfaces whether the MODEL actually emitted the field
       // (vs the assembly dropping it). After this fix, a run logging 0 points means
       // the model genuinely returned none — a prompt problem, not a plumbing one.
       log.info("omni analysis complete", { model, cost_cents, attempt, emotion_arc_points: data.emotion_arc?.length ?? 0, verbatim_present: data.hook_verbatim != null });
 
-      return {
-        geminiResult: { analysis, cost_cents },
-        wave0Result,
-        audio_perceptual_score: data.audio_perceptual_score,
-        signalAvailability: { gemini_hook: true, gemini_body: true, gemini_cta: true },
-        segments: normalizedSegments,
-      };
+      return assembleOmniOutput(data, cost_cents);
 
     } catch (err: unknown) {
       clearTimeout(timer);
