@@ -64,7 +64,7 @@ export const QWEN_REASONING_MODEL = process.env.QWEN_REASONING_MODEL ?? "qwen3.7
 // running thinking ON, which is why it is the only one that regressed.
 // Cheap-to-run is not cheap if it stops answering the question. Rollback FORWARD (re-try flash)
 // only behind a fresh harness run. Deaf on both, so this is about reasoning, not capability.
-export const QWEN_APOLLO_MODEL    = process.env.QWEN_APOLLO_MODEL    ?? "qwen3.7-plus";
+export const QWEN_APOLLO_MODEL    = process.env.QWEN_APOLLO_MODEL    ?? "qwen3.7-flash";
 // CALIBRATE synth model (audience/enrich-signature) — SCOPED separately for the same reason
 // Apollo is: it can be held back without pinning the rest of the platform.
 // ⚠️ CALIBRATE STAYS ON 3.7-PLUS. Measured with `scripts/calibrate-synth-harness.ts` on a real
@@ -82,7 +82,7 @@ export const QWEN_APOLLO_MODEL    = process.env.QWEN_APOLLO_MODEL    ?? "qwen3.7
 // about an unspent thinking_budget — flash simply cannot hold a 10-way constrained allocation.
 // Its PROSE was fine (10 distinct creator-specific personas), which is exactly why only the
 // live harness caught it. Rollback FORWARD (re-try flash) only behind a fresh harness run.
-export const QWEN_CALIBRATE_MODEL = process.env.QWEN_CALIBRATE_MODEL ?? "qwen3.7-plus";
+export const QWEN_CALIBRATE_MODEL = process.env.QWEN_CALIBRATE_MODEL ?? "qwen3.7-flash";
 // UNBOUND-CHAT model (an anonymous /go visitor's chat turn) — the THIRD holdout, and the third
 // time the same lesson has been paid for: a cheaper model can pass every harness the swap thought
 // to run and fail the one it did not.
