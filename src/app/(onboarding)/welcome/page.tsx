@@ -25,6 +25,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { Audience } from "@/lib/audience/audience-types";
+import { SENTINEL_IDS } from "@/lib/audience/audience-repo";
 import { useOnboardingStore } from "@/stores/onboarding-store";
 import { ConnectStep, type Door } from "@/components/onboarding/connect-step";
 import { CalibrationFlow } from "@/components/audience/calibration-flow";
@@ -139,18 +140,37 @@ export default function WelcomePage() {
         const { audiences } = (await res.json()) as { audiences?: Audience[] };
         if (unmounted || !audiences?.length) return;
 
-        // `personas.length` is the app's own calibrated test (select-persona-targets.ts:111).
-        const calibrated = audiences.find(
+        // ⚠️ OWNERSHIP FIRST, then calibration. `/api/audiences` does not return only the
+        // user's rows: it also serves the virtual constants — GENERAL_AUDIENCE, the two
+        // PRESET_AUDIENCES and the two GENERAL_TEMPLATES — which never touch the DB and carry
+        // `user_id: "__virtual__"`. Two of those templates ship a runnable persona panel by
+        // design, and they are `is_general: false`.
+        //
+        // So `!is_general && personas.length > 0` matched "Analyst Panel" for an account that
+        // owned nothing at all, and EVERY new signup was stamped onboarded ~9s after creating
+        // its account and dropped on /home uncalibrated — the exact state this flow exists to
+        // prevent. Found live on numenmachines.com 2026-08-04; the account never saw the form.
+        //
+        // `personas.length` IS the app's calibrated test (select-persona-targets.ts:111) — it
+        // is just not an OWNERSHIP test, and this branch needs both. SENTINEL_IDS is the
+        // repo's own answer to "is this a real row", already used by four other call sites.
+        const owned = audiences.filter((a) => !SENTINEL_IDS.has(a.id));
+
+        const calibrated = owned.find(
           (a) => !a.is_general && (a.personas?.length ?? 0) > 0,
         );
         if (calibrated) {
+          // Adopting an interrupted attempt has to select it too, for the same reason the
+          // normal exit does — this path is how a user who reloaded mid-scrape finishes, and
+          // landing them on General would waste the scrape they already paid for.
+          await selectAudience(calibrated);
           await store.completeOnboarding(); // → the redirect effect lands them on /home
           return;
         }
 
         // Only a DRAFT survived (created, never calibrated). Adopt it so a retry PATCHes that
         // row instead of minting a fresh one on every interrupted attempt.
-        const pending = audiences.find((a) => !a.is_general);
+        const pending = owned.find((a) => !a.is_general);
         if (pending && !unmounted) setDraft(pending);
       } catch {
         /* best-effort — a failed lookup just means the normal first-run path */
@@ -178,8 +198,39 @@ export default function WelcomePage() {
    * without `onboarding_completed_at` back to /welcome, so NOT stamping it here would trap a
    * user whose account is private or whose scrape failed in a loop they cannot leave.
    * `completeOnboarding` also persists the handle we collected in step 1.
+   *
+   * ⚠️ SELECTING the audience is part of finishing, not a separate concern.
+   *
+   * Building the row was never the point — being TESTED against it is. `/home` seeds the
+   * composer from `user_settings.last_audience_id` (via resolveUserAudience) and falls back to
+   * General when that is unset, and until 2026-08-04 nothing in onboarding ever wrote it: the
+   * four callers of PUT /api/settings/last-audience are all in-app surfaces the new user has
+   * not reached yet. `CalibrationFlow` hands the calibrated audience to `onDone` and the call
+   * site threw the argument away, so an account that had just sat through a ~176s scrape
+   * landed on /home reading "Your audience — General", with its own audience sitting
+   * unselected one screen away. Audited live on a production build; `user_settings` was empty.
+   *
+   * A skip passes nothing and stays General on purpose — a skip means there IS no calibrated
+   * audience to select.
    */
-  async function finishOnboarding() {
+  async function selectAudience(audience: Audience | null | undefined) {
+    // The route takes a REAL uuid or null; virtual ids are not uuids and cannot satisfy the
+    // audiences FK, so a sentinel must never reach it (see its own header).
+    if (!audience || SENTINEL_IDS.has(audience.id)) return;
+    try {
+      await fetch("/api/settings/last-audience", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ audienceId: audience.id }),
+      });
+    } catch {
+      // Best-effort: a failed selection must not trap the user on /welcome. They land on
+      // General and can switch, which is strictly better than not completing.
+    }
+  }
+
+  async function finishOnboarding(calibrated?: Audience) {
+    await selectAudience(calibrated);
     await store.completeOnboarding();
   }
 
@@ -261,7 +312,7 @@ export default function WelcomePage() {
             prefillHandle={prefill.handle}
             prefillDescription={prefill.description}
             prefillPlatform={draft.platform}
-            onDone={() => void finishOnboarding()}
+            onDone={(calibrated) => void finishOnboarding(calibrated)}
             onSkip={() => void finishOnboarding()}
             secondaryAction={recoveryAction}
           />
