@@ -167,6 +167,15 @@ ourselves. No screen can be skipped into an empty state.
 
 ## 1. What exists today (traced, `main@99c494d1`)
 
+> ⚠️ **THIS SECTION IS STALE — re-trace before quoting it (checked 2026-08-04, `main@8896bac7`).**
+> The owner calls in §0a/§0b above still stand; this *traced snapshot* does not. Four of the nine
+> rows below are now dead: the email-confirm dead-end is **fixed** (PR #423), `/welcome` is **two
+> real steps** ending in a calibrated audience rather than one inert text field, `/api/audiences/
+> calibrate` **is** in the funnel (measured 110–176s live), and "Skip for now" is gone.
+> The current traced state, the two-funnel split, and the structural question about what happens
+> to a paying `/go` visitor when they stop being anonymous are all in
+> **`docs/HANDOFF-2026-08-04-onboarding-activation.md` §2**.
+
 ```
 /go or /  →  /signup  →  [email-confirm wall]  →  /login  →  /welcome  →  /home
 ```

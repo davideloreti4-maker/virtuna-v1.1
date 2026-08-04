@@ -1337,6 +1337,33 @@ export type Database = {
         }
         Relationships: []
       }
+      funnel_events: {
+        Row: {
+          created_at: string
+          event: string
+          id: number
+          payload: Json
+          session_id: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event: string
+          id?: number
+          payload?: Json
+          session_id: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event?: string
+          id?: number
+          payload?: Json
+          session_id?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           body: Json

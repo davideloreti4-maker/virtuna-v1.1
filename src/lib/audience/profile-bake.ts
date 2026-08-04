@@ -33,6 +33,12 @@ import { stripModelOutput } from "@/lib/engine/utils/strip";
 import { createServiceClient } from "@/lib/supabase/service";
 import { ARCHETYPES } from "@/lib/engine/wave3/persona-registry";
 import { TEMPERATURE_DISPOSITION } from "./temperature-disposition";
+import {
+  isRenormalisable,
+  normalizeShares,
+  normalizeWeights,
+  WEIGHT_KEYS,
+} from "./normalize-shares";
 import type { AudienceSignature, SignaturePersona } from "./audience-types";
 
 // ─── Tunables ──────────────────────────────────────────────────────────────────
@@ -147,9 +153,12 @@ const ProfileSynthSchema = z.object({
         loyalist: z.number().min(0).max(1),
         cross_niche: z.number().min(0).max(1),
       })
-      .refine((w) => Math.abs(w.fyp + w.niche + w.loyalist + w.cross_niche - 1) < 0.02, {
-        message: "persona_weights must sum to 1.0 (±0.02)",
-      }),
+      // Repaired, not rejected — see lib/audience/normalize-shares.ts. Same schema shape as
+      // enrich-signature's, and the same defect: a near-miss sum binned a completed run.
+      .refine((w) => isRenormalisable(w.fyp + w.niche + w.loyalist + w.cross_niche), {
+        message: "persona_weights must be a distribution (sum within 0.5–1.5)",
+      })
+      .transform((w) => normalizeWeights(w, WEIGHT_KEYS)),
     personas: z
       .array(ProfilePersonaSchema)
       .min(1, "must have at least one reactor")
@@ -160,9 +169,10 @@ const ProfileSynthSchema = z.object({
       .refine((ps) => new Set(ps.map((p) => p.archetype)).size === ps.length, {
         message: "personas must not repeat an archetype slug",
       })
-      .refine((ps) => Math.abs(ps.reduce((s, p) => s + p.share, 0) - 1) < 0.02, {
-        message: "persona shares must sum to 1.0 (±0.02)",
-      }),
+      .refine((ps) => isRenormalisable(ps.reduce((s, p) => s + p.share, 0)), {
+        message: "persona shares must be a distribution (sum within 0.5–1.5)",
+      })
+      .transform((ps) => normalizeShares(ps)),
   }),
   summary: z.string().default(""),
 });

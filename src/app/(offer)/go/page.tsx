@@ -16,6 +16,7 @@ import { Faq } from "@/components/offer/sections/faq";
 import { FinalCta } from "@/components/offer/sections/final-cta";
 import { OfferFooter } from "@/components/offer/sections/footer";
 import { GRAIN_URL } from "@/components/offer/atmosphere";
+import { FunnelView } from "@/components/analytics/funnel-view";
 
 export const metadata: Metadata = {
   title: "Maven — Know if your video will pop before you post",
@@ -32,6 +33,9 @@ export const metadata: Metadata = {
 export default function OfferPage() {
   return (
     <main>
+      {/* The top of the funnel (DESIGN §8) — the denominator of demo_view → checkout_paid. */}
+      <FunnelView event="demo_view" />
+
       {/* floating premium brand island — centered, detached, scroll-aware */}
       <FloatingNav />
 

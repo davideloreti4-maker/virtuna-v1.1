@@ -153,7 +153,7 @@ describe("calibrateFromScrape — success path (real signature)", () => {
   it("calls scrapeBundle (1-scrape collapse), not the legacy parallel pair", async () => {
     const deps = makeDeps();
     await calibrateFromScrape(BASE_INPUT, deps);
-    expect(deps.scrapeBundle).toHaveBeenCalledWith("testcreator");
+    expect(deps.scrapeBundle).toHaveBeenCalledWith("testcreator", undefined, undefined);
     expect(deps.enrich).toHaveBeenCalledTimes(1);
   });
 });
@@ -166,10 +166,15 @@ describe("calibrateFromScrape — scrape_failed (distinct from thin)", () => {
     expect(result).not.toHaveProperty("audience");
   });
 
-  it("returns { error:'scrape_failed' } when enrichment throws", async () => {
+  it("returns { error:'synthesis_failed' } when enrichment throws — NOT scrape_failed", async () => {
+    // The scrape SUCCEEDED here; only our own model step broke. Conflating the two produced
+    // "Calibration failed. Check the handle and try again." for a public handle we had just
+    // read (observed live 2026-08-04, twice in five runs), which sends the creator to re-enter
+    // a correct handle and pay for the Apify scrape a second time to act on the advice.
     const deps = makeDeps({ enrich: vi.fn(async () => { throw new Error("synthesis validation failed"); }) });
     const result = await calibrateFromScrape(BASE_INPUT, deps);
-    expect(result).toHaveProperty("error", "scrape_failed");
+    expect(result).toHaveProperty("error", "synthesis_failed");
+    expect(result).not.toHaveProperty("audience");
   });
 });
 
@@ -203,7 +208,7 @@ describe("calibrateFromScrape — target path", () => {
       { ...BASE_INPUT, type: "target", handle: "refcreator", description: "productivity founders" },
       deps,
     );
-    expect(deps.scrapeBundle).toHaveBeenCalledWith("refcreator");
+    expect(deps.scrapeBundle).toHaveBeenCalledWith("refcreator", undefined, undefined);
   });
 
   it("target with no handle runs a niche search from the description", async () => {
@@ -295,7 +300,7 @@ describe("calibrateFromScrape — platform guard", () => {
     const deps = makeDeps();
     const result = await calibrateFromScrape({ ...BASE_INPUT, platform: "tiktok" }, deps);
     expect("audience" in result).toBe(true);
-    expect(deps.scrapeBundle).toHaveBeenCalledWith("testcreator");
+    expect(deps.scrapeBundle).toHaveBeenCalledWith("testcreator", undefined, undefined);
   });
 
   it("still allows `custom` — the DESCRIBED path claims no platform provenance", async () => {

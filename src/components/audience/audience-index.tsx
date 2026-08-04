@@ -34,6 +34,7 @@ import {
   GENERAL_SEGMENT_TEMPS,
   type CompositionSegment,
 } from "./audience-display";
+import { humanizeSlugs } from "@/lib/text/humanize-slug";
 import { cn } from "@/lib/utils";
 
 /** Slim connected-account view the index renders (client-serializable). */
@@ -110,7 +111,9 @@ function audienceInsight(audience: Audience): string | null {
   const sig = audience.signature?.audience;
   if (!sig) return null;
   if (sig.interest_tags && sig.interest_tags.length > 0) {
-    return sig.interest_tags.slice(0, 3).join(" · ");
+    // Same raw-slug leak as the reveal — the /audience list rendered
+    // "financial_discipline · anti_consumerism · mindset_shift" as the card's insight line.
+    return humanizeSlugs(sig.interest_tags).slice(0, 3).join(" · ");
   }
   const resonates = sig.what_resonates?.trim();
   return resonates ? resonates : null;
