@@ -519,6 +519,98 @@ function replayPriorTurn(
   return out;
 }
 
+// ─── The unbound-session artefact guard ──────────────────────────────────────
+/**
+ * REDACT paste-ready lines from a session that binds NO generators.
+ *
+ * The directive already forbids this in the strongest words available ("not even ONE as an example,
+ * an illustration, a demo, or 'the thinking'"). Measured live against a real anonymous `/go` visitor
+ * it still leaks in roughly 1 of 6 asks — always the same shape, a quoted candidate line smuggled in
+ * as an illustration of the mechanism:
+ *
+ *     …a specific, relatable cost ("the $47 I lost every month without noticing"), not just "save money."
+ *
+ * That is the paid artefact. Prompt text has been pushed to its ceiling here (the wording above was
+ * itself the third attempt), and ground rule #1 of this lane applies: structure beats prompt text.
+ * So the leak is closed by construction instead — the one thing a prompt cannot promise.
+ *
+ * SCOPE: only when zero generators are bound, i.e. an anonymous visitor. A signed-in creator's
+ * stream is byte-for-byte untouched, because for them a quoted line is not a leak.
+ *
+ * MECHANISM: text inside a quotation is withheld until the quote closes. A short quote (a term of
+ * art, "save money", a platform name) is released verbatim; a long one — the length of an actual
+ * hook — is replaced with a neutral marker. Withholding rather than post-filtering is what makes it
+ * work at all: a token already streamed cannot be recalled.
+ */
+const LEAK_MIN_QUOTE_LENGTH = 25;
+const LEAK_REDACTION = "[a line like that needs an account with credits]";
+const QUOTE_OPENERS = new Set(['"', "“", "«"]);
+const QUOTE_CLOSERS = new Set(['"', "”", "»"]);
+
+interface ArtefactGuard {
+  /** Feed a streamed delta; emits whatever is now safe to show. */
+  push: (delta: string) => void;
+  /** Close the stream, releasing anything still held. Returns the full guarded text. */
+  flush: () => string;
+}
+
+function createArtefactGuard(onToken: (delta: string) => void): ArtefactGuard {
+  let open = false; // inside a quotation
+  let span = ""; // the withheld quotation, including its opening mark
+  let full = ""; // everything emitted, for persistence
+
+  const emit = (s: string) => {
+    if (!s) return;
+    full += s;
+    onToken(s);
+  };
+
+  const closeSpan = (closer: string) => {
+    // `span` holds the opening mark + the body; the body is what decides.
+    const body = span.slice(1);
+    emit(body.length >= LEAK_MIN_QUOTE_LENGTH ? LEAK_REDACTION : span + closer);
+    span = "";
+    open = false;
+  };
+
+  return {
+    push(delta) {
+      for (const ch of delta) {
+        if (!open) {
+          if (QUOTE_OPENERS.has(ch)) {
+            open = true;
+            span = ch;
+          } else {
+            emit(ch);
+          }
+          continue;
+        }
+        // A newline means the quote never closed — almost certainly punctuation, not a quotation.
+        // Release it verbatim rather than swallowing the rest of the answer.
+        if (ch === "\n") {
+          emit(span + ch);
+          span = "";
+          open = false;
+          continue;
+        }
+        if (QUOTE_CLOSERS.has(ch)) {
+          closeSpan(ch);
+          continue;
+        }
+        span += ch;
+      }
+    },
+    flush() {
+      // An unterminated quotation at end-of-stream: release it, since we cannot judge a quote that
+      // never closed and silently eating the tail would be worse than the leak this guards.
+      if (open && span) emit(span);
+      span = "";
+      open = false;
+      return full;
+    },
+  };
+}
+
 /** Parse the model's tool args into the shape the skills read (topic + optional anchor). */
 function parseSkillArgs(raw: string): SkillToolArgs {
   try {
@@ -551,12 +643,16 @@ export async function runChatAgentStream(
   const retrieve = deps.retrieve ?? retrieveCachedExamples;
   const maxRounds = deps.maxRounds ?? DEFAULT_MAX_ROUNDS;
   const maxSkillRuns = deps.maxSkillRuns ?? DEFAULT_MAX_SKILL_RUNS;
+  // No generators bound ⇒ an anonymous visitor, whose job this turn is to REFUSE and hold the line.
+  // That path has its own model (see QWEN_UNBOUND_CHAT_MODEL): flash leaked the pack in prose 5/6.
+  const unbound = splitSkills(skills).generators.length === 0;
+
   let model = deps.model;
   let seed = deps.seed;
   if (model === undefined || seed === undefined) {
     /* eslint-disable-next-line @typescript-eslint/no-require-imports */
     const client = require("@/lib/engine/qwen/client");
-    model = model ?? client.QWEN_REASONING_MODEL;
+    model = model ?? (unbound ? client.QWEN_UNBOUND_CHAT_MODEL : client.QWEN_REASONING_MODEL);
     seed = seed ?? client.QWEN_SEED;
   }
 
@@ -592,6 +688,16 @@ export async function runChatAgentStream(
   let paidRuns = 0;
   let fullText = "";
 
+  // Defence in depth under the model choice above: guard the unbound stream against a paste-ready
+  // line smuggled in as an "illustration" (see createArtefactGuard). Everyone else gets the
+  // identity function, so the signed-in stream is byte-for-byte untouched.
+  const guard: ArtefactGuard = unbound
+    ? createArtefactGuard(input.onToken)
+    : {
+        push: input.onToken,
+        flush: () => "",
+      };
+
   for (let round = 1; round <= maxRounds; round++) {
     const stream = await streamComplete({
       model,
@@ -617,7 +723,7 @@ export async function runChatAgentStream(
       if (!delta) continue;
       if (delta.content) {
         roundText += delta.content;
-        input.onToken(delta.content);
+        guard.push(delta.content);
       }
       if (delta.tool_calls) {
         for (const tc of delta.tool_calls) {
@@ -881,5 +987,8 @@ export async function runChatAgentStream(
     }
   }
 
-  return { text: fullText, skillRuns, uiBlocks, toolCalls };
+  // The guarded text is what the creator SAW, so it is also what gets persisted — otherwise the
+  // redaction would hold for one turn and the raw line would reappear on reload, and land in the
+  // next turn's replayed transcript as precedent.
+  return { text: unbound ? guard.flush() : fullText, skillRuns, uiBlocks, toolCalls };
 }
