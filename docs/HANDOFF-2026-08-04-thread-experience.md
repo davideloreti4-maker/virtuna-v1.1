@@ -186,12 +186,24 @@ reasoning model is now itself called flash. **Read the CONSTANT, never the word.
 > conversation was never the problem (3/3 live recall). Every skill block now carries a one-line
 > context record. See `chat-reachability.test.ts`, which closes all three loops so this cannot rot.
 >
-> **⚠️ OPEN OPERATIONAL ISSUE — the #426 merge did not deploy.** No Vercel deployment row was created
-> for `73448823` at all (not a failed one — none), 13+ minutes after merge, while branch pushes 14
-> minutes earlier *did* create rows. Per [[vercel-git-disconnected]] the tell for "no rows at all" is
-> **the integration, not the build**. This handoff's "prod builds ~3s after the merge" did not hold.
-> **The model swap is on `main` but was NOT live at the time of writing — verify before assuming
-> prod runs flash.**
+> **✅ DEPLOYED — flash is LIVE.** Production deployment `dpl_AZy6xhYq8diofvwfRFJkVCRbHNMX`, **READY**,
+> `target: production`, ref `main`, sha **`e175e95d`** — the #425 merge, which builds main HEAD and
+> therefore carries #426. Verified against Vercel's own deployment record.
+>
+> ⚠️ **But this handoff's "prod builds ~3s after the merge" is WRONG, and it cost a false alarm.**
+> The real latency here is **~4 minutes**. For 13 minutes after the #426 merge there was no
+> production row anywhere, and two independent reads agreed there was none — which matches
+> [[vercel-git-disconnected]]'s tell for "the integration is down" and produced a confident,
+> incorrect "the merge did not deploy".
+>
+> 🔑 Two things to know before repeating that mistake:
+> 1. **GitHub's `repos/.../deployments` API LAGS Vercel and is not the source of truth.** It still
+>    listed `558df8f5` as newest while a production build for `e175e95d` was already READY. Read
+>    Vercel's own `list_deployments` / project `latestDeployment` instead.
+> 2. **A queued production build is invisible until it resolves.** A poll window that starts after
+>    the merge can return zero rows while the build is genuinely in flight. Poll for several minutes
+>    before concluding anything — "no rows at all" only means the integration is down if it *stays*
+>    that way.
 
 ### P0 — Decide #426 (the flash swap)
 Everything is measured: rebased, tsc clean, suite green, Apollo re-verified, dispatch unchanged, fold
