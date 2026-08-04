@@ -24,15 +24,19 @@ const TABS: { id: DiscoverTab; label: string }[] = [
   { id: "watchlist", label: "Watchlist" },
 ];
 
+/**
+ * ⚠️ No counts. The bar used to render one beside every label, and the header a
+ * "230 proven outliers · 105 collections · 408 creators" line above it — the owner's call
+ * (2026-08-04) is that the tally is noise on arrival, not information: it prices the library
+ * before you have asked it anything, and it made three numbers compete with the one control
+ * that matters, the search field. What is behind a tab is shown by opening it.
+ */
 export function DiscoverTabBar({
   active,
   onSelect,
-  counts,
 }: {
   active: DiscoverTab;
   onSelect: (id: DiscoverTab) => void;
-  /** Per-tab count rendered beside the label — the surface says how much is behind each tab. */
-  counts?: Partial<Record<DiscoverTab, number>>;
 }) {
   return (
     <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -43,7 +47,6 @@ export function DiscoverTabBar({
       >
         {TABS.map((t) => {
           const isActive = active === t.id;
-          const count = counts?.[t.id];
           return (
             <button
               key={t.id}
@@ -59,9 +62,6 @@ export function DiscoverTabBar({
               )}
             >
               {t.label}
-              {typeof count === "number" ? (
-                <span className="ml-1.5 tabular-nums opacity-55">{count}</span>
-              ) : null}
             </button>
           );
         })}

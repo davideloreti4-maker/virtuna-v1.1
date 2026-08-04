@@ -48,6 +48,8 @@ const CORPUS: DiscoverCorpus = {
       archetype: 'question',
       niche: 'fitness',
       views: 1000,
+      platform: 'tiktok',
+      engagement: 0.03,
       postedAt: '2026-06-10T00:00:00Z',
       multiplier: 4,
       baselineLabel: 'vs own',
@@ -57,7 +59,6 @@ const CORPUS: DiscoverCorpus = {
   },
   feedIds: ['a'],
   collections: [],
-  niches: [{ id: 'fitness', count: 1 }],
   totals: { videos: 1, proven: 1, collections: 0, creators: 1 },
 };
 

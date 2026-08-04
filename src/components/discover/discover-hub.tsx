@@ -73,15 +73,21 @@ export function DiscoverHub({
     [corpus],
   );
 
-  // The header states what is actually known. With a failed corpus read the totals are all
-  // zero, and "0 proven outliers · 0 collections" is a confident claim about a library we
-  // could not open.
+  // The subtitle no longer counts the library (owner, 2026-08-04). It read
+  // "230 proven outliers · 105 collections · 408 creators" — three tallies that answered a
+  // question nobody had yet, directly above the search field that answers the one they do.
+  // It says what the surface IS instead.
+  //
+  // The FAILURE strings keep their shape and stay numberless: a failed read arrives as an
+  // empty corpus, so a count rendered from it would be a confident zero about a library we
+  // could not open. That was the reason this line was conditional in the first place, and it
+  // outlives the counts.
   const subtitle =
     failures.corpus && failures.watchlist
       ? "Discover can't reach its data right now."
       : failures.corpus
-        ? `The outlier library is unavailable right now — your ${watchlist.sources.length} watched source${watchlist.sources.length === 1 ? "" : "s"} still load.`
-        : `${corpus.totals.proven} proven outliers · ${corpus.totals.collections} collections · ${corpus.totals.creators} creators`;
+        ? "The outlier library is unavailable right now — your watched sources still load."
+        : "Proven outliers, curated collections, and the creators you follow.";
 
   // Pull is offered only for something we could actually go and fetch — a handle or a URL,
   // and only when the library has nothing under that name already.
@@ -95,7 +101,11 @@ export function DiscoverHub({
 
   return (
     <div className="relative min-h-full text-foreground">
-      <PageShell>
+      {/* Wider than the 880px default. Discover is the one browse surface here that carries a
+          filter rail BESIDE its grid: at 880px the rail took 240 of it and left four columns
+          about 135px wide, which truncated every creator handle to "@f…". The override is
+          scoped to this surface — PageShell is shared, and the reading surfaces want 880. */}
+      <PageShell className="max-w-[1200px]">
         <SurfaceHeader title="Discover" subtitle={subtitle} />
 
         <div className="mt-4 flex gap-2">
@@ -125,17 +135,7 @@ export function DiscoverHub({
         </div>
 
         <div className="mt-4">
-          <DiscoverTabBar
-            active={tab}
-            onSelect={select}
-            // A count is omitted, never zeroed, for a tab whose read failed — the same
-            // reason the subtitle changes shape above.
-            counts={{
-              outliers: failures.corpus ? undefined : corpus.totals.proven,
-              collections: failures.corpus ? undefined : corpus.totals.collections,
-              watchlist: failures.watchlist ? undefined : watchlist.sources.length,
-            }}
-          />
+          <DiscoverTabBar active={tab} onSelect={select} />
         </div>
 
         <div key={tab} className="rv-in mt-5">
@@ -145,7 +145,6 @@ export function DiscoverHub({
             ) : (
               <OutliersPanel
                 videos={feedVideos}
-                niches={corpus.niches}
                 query={query}
                 refreshedLabel={refreshedLabel}
                 onOpen={setOpenId}

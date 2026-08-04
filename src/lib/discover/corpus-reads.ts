@@ -52,6 +52,11 @@ export interface CorpusVideo {
   archetype: string | null;
   niche: string | null;
   views: number;
+  /** `instagram` | `tiktok` | `youtube` — all three are real in the corpus (63/33/4%). */
+  platform: string | null;
+  /** Fraction, not percent: 0.024 is 2.4%. Present on 531 of 532 rows, max 0.24 —
+   *  so a 0-100% range control would leave three quarters of its track dead. */
+  engagement: number | null;
   postedAt: string | null;
   /** Honest multiplier — null when the row has no baseline (no basis, no number). */
   multiplier: number | null;
@@ -82,8 +87,10 @@ export interface DiscoverCorpus {
   feedIds: string[];
   /** All curated collections, grouped/ordered by the UI. */
   collections: CollectionSummary[];
-  /** Niche → count over the feed pool (filter chips). */
-  niches: { id: string; count: number }[];
+  // `niches` (niche → count over the feed pool) was removed 2026-08-04 with the counted chip
+  // row it fed. The filter panel derives its niche options from the pool it is filtering, so
+  // a select can never offer a value that yields nothing — and this file's own rule is that
+  // the payload carries only what something renders.
   totals: {
     videos: number;
     proven: number;
@@ -107,7 +114,6 @@ export const EMPTY_CORPUS: DiscoverCorpus = {
   teardowns: {},
   feedIds: [],
   collections: [],
-  niches: [],
   totals: { videos: 0, proven: 0, collections: 0, creators: 0 },
 };
 
@@ -126,10 +132,18 @@ interface TeardownRow {
   hook_archetype: string | null;
   niche: string | null;
   views: number | null;
+  platform: string | null;
+  engagement_rate: number | string | null;
   posted_at: string | null;
   outlier_multiplier: number | string | null;
   baseline_label: string | null;
 }
+
+/** PostgREST hands `numeric` back as a string. Every numeric column here needs this. */
+const num = (v: number | string | null): number | null => {
+  const n = typeof v === "string" ? parseFloat(v) : v;
+  return typeof n === "number" && Number.isFinite(n) ? n : null;
+};
 
 interface MembershipRow {
   teardown_id: string;
@@ -141,13 +155,9 @@ interface MembershipRow {
 
 function toCorpusVideo(row: TeardownRow): CorpusVideo {
   // numeric columns can arrive as strings through PostgREST — normalize before judging.
-  const raw =
-    typeof row.outlier_multiplier === "string"
-      ? parseFloat(row.outlier_multiplier)
-      : row.outlier_multiplier;
   const receiptRow = {
     baseline_label: row.baseline_label,
-    outlier_multiplier: typeof raw === "number" && Number.isFinite(raw) ? raw : null,
+    outlier_multiplier: num(row.outlier_multiplier),
   };
   const baselined = hasKnownBaseline(receiptRow);
   const multiplier =
@@ -164,6 +174,8 @@ function toCorpusVideo(row: TeardownRow): CorpusVideo {
     archetype: row.hook_archetype,
     niche: row.niche,
     views: row.views ?? 0,
+    platform: row.platform,
+    engagement: num(row.engagement_rate),
     postedAt: row.posted_at,
     multiplier,
     baselineLabel: row.baseline_label,
@@ -180,7 +192,7 @@ export async function getDiscoverCorpus(): Promise<DiscoverCorpus> {
     client
       .from("outlier_teardowns")
       .select(
-        "id, video_url, cover_url, creator_handle, spoken_hook, hook_template, hook_archetype, niche, views, posted_at, outlier_multiplier, baseline_label",
+        "id, video_url, cover_url, creator_handle, spoken_hook, hook_template, hook_archetype, niche, views, platform, engagement_rate, posted_at, outlier_multiplier, baseline_label",
       )
       .eq("status", "extracted")
       .limit(1000),
@@ -203,12 +215,6 @@ export async function getDiscoverCorpus(): Promise<DiscoverCorpus> {
     .filter((t) => t.proven && !t.extreme)
     .sort((a, b) => (Date.parse(b.postedAt ?? "") || 0) - (Date.parse(a.postedAt ?? "") || 0))
     .map((t) => t.id);
-
-  const nicheCounts = new Map<string, number>();
-  for (const id of feedIds) {
-    const niche = teardowns[id]?.niche;
-    if (niche) nicheCounts.set(niche, (nicheCounts.get(niche) ?? 0) + 1);
-  }
 
   // Group memberships into collections. Key on category+name: `slug` is unique per
   // collection except one reuse across categories, so the pair is the safe identity.
@@ -245,9 +251,6 @@ export async function getDiscoverCorpus(): Promise<DiscoverCorpus> {
     teardowns,
     feedIds,
     collections,
-    niches: [...nicheCounts.entries()]
-      .map(([id, count]) => ({ id, count }))
-      .sort((a, b) => b.count - a.count),
     totals: {
       videos: rows.length,
       proven: feedIds.length,
