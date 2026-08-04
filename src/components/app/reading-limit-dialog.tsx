@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { CheckoutModal } from "@/components/app/checkout-modal";
 import { useSubscription } from "@/hooks/use-subscription";
@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/dialog";
 import type { CreditQuotaExceeded } from "@/lib/billing/quota-error";
 import { PLANS, TRIAL, getPlan, isPaidPlanId, creditsLabel, type PaidPlanId } from "@/lib/pricing";
+import { useCalibratedAudience } from "@/hooks/use-calibrated-audience";
+import { track } from "@/lib/analytics/funnel-events";
 
 /**
  * THE WALL — what a customer sees when their credits are spent.
@@ -33,11 +35,32 @@ import { PLANS, TRIAL, getPlan, isPaidPlanId, creditsLabel, type PaidPlanId } fr
  *     and the verdict on the run they are looking at is what it opens.
  *   · NEEDS THE TRIAL (/go, anonymous) — they tapped a skill the demo never included. Their
  *     free Test may still be untouched, so this wall must not claim they spent it.
+ *   · JUST ACTIVATED — they finished onboarding, spent the one free card the activation
+ *     entitlement gives, and are standing at the wall holding a calibrated audience. See below.
  *   · NO PLAN — the $1 trial is the only door in. Offer it.
  *   · PLAN SPENT — offer the next plan up, and say when the current one resets, because
  *     "wait until the 16th" is a perfectly good answer that costs them nothing.
  *   · FAIR-USE (Studio) — there is nothing above them to sell. The answer is a time
  *     (midnight UTC), full stop.
+ *
+ * ── Why JUST ACTIVATED is its own wall ──────────────────────────────────────────────────────
+ * It is the highest-intent moment the product has, and it was being served the most generic
+ * copy in the file. A creator who has just spent ~135 seconds watching us read their account,
+ * seen ten personas built from it, and read one card written for one of those people, was told:
+ * "You don't have a plan yet." That sentence is about US. Everything they have done for the
+ * last three minutes is about THEM.
+ *
+ * Subscription-app paywall research is unusually consistent on this point: surfacing the user's
+ * own stated goal in the paywall headline converts meaningfully better than a generic benefits
+ * list, and the onboarding paywall — reached at peak motivation, right after setup — carries
+ * roughly half of all trial starts. This product has something better than a stated goal: it
+ * has ten personas it derived from their real account. So the wall quotes those back.
+ *
+ * Identified WITHOUT a new reason code, deliberately. The activation entitlement falls through
+ * to the ordinary free-tier allowance once spent (lib/billing/quota.ts), which is the right
+ * behaviour — an entitlement that no longer applies should be invisible, not a second refusal
+ * vocabulary. So the wall recognises the PERSON instead: free tier, no trial history, and a
+ * calibrated audience on file. Nobody else can be in that state.
  */
 
 interface ReadingLimitDialogProps {
@@ -62,12 +85,16 @@ function formatDate(value: string): string {
 
 export function ReadingLimitDialog({ quota, open, onClose, renewsAt }: ReadingLimitDialogProps) {
   const [checkoutPlan, setCheckoutPlan] = useState<PaidPlanId | null>(null);
+  const walled = useRef(false);
   // The NO PLAN wall is reached by two different people: someone who never subscribed, and
   // someone who trialled, converted and cancelled (cancellation returns tier `free` but
   // `trial_used_at` survives it, by design). Only the first is still owed a dollar.
   // This component is dynamically imported and rendered only once a 402 has landed, so the
   // fetch costs nothing until a customer is actually standing at the wall.
   const { trialUsed } = useSubscription();
+  // Only read for the personalised branch below; the dialog is dynamically imported and mounts
+  // only after a 402, so this fetch costs nothing until someone is actually at the wall.
+  const { audience: calibrated } = useCalibratedAudience();
 
   const plan = isPaidPlanId(quota.tier) ? getPlan(quota.tier) : null;
   const fairUse = quota.reason === "fair_use";
@@ -86,6 +113,24 @@ export function ReadingLimitDialog({ quota, open, onClose, renewsAt }: ReadingLi
   const upgrade = quota.inTrial || fairUse ? null : nextPlanUp(quota.tier);
   const noPlan = !plan;
 
+  // JUST ACTIVATED — the creator who finished onboarding and spent their one free card. Nobody
+  // else can be in this state: a calibrated audience they own, no plan, and no trial history.
+  // Anonymous /go visitors are excluded by construction (they reach the `demo`/`trialRequired`
+  // walls above, and have no calibrated audience at all).
+  const justActivated = noPlan && !trialUsed && !quota.inTrial && !fairUse && Boolean(calibrated);
+  const personaCount = calibrated?.personas?.length ?? 0;
+  const audienceName = calibrated?.name ?? null;
+
+  // §8's `activation_wall_shown` — the beat between the free card and `checkout_paid`. Fired
+  // once per mount and only for the personalised branch, so the ratio it feeds
+  // (first_card_shown → activation_wall_shown → checkout_paid) measures this wall specifically
+  // rather than every 402 in the product.
+  useEffect(() => {
+    if (!open || !justActivated || walled.current) return;
+    walled.current = true;
+    track("activation_wall_shown", { personaCount });
+  }, [open, justActivated, personaCount]);
+
   // The title states the SITUATION; the server's message states the ACTION. Keep them distinct —
   // the no-plan title used to be the server's sentence verbatim, so the dialog said
   // "Start a plan to run a Reading" twice, as its own heading and its own body.
@@ -97,9 +142,17 @@ export function ReadingLimitDialog({ quota, open, onClose, renewsAt }: ReadingLi
         ? "That one needs the trial"
         : demo
           ? "That's your free test used"
-          : noPlan
-            ? "You don't have a plan yet"
-            : "You're out of credits";
+          : justActivated
+            ? // Their audience, their numbers. "9 more people" is literally true — the card
+              // they just read was written for one of the ten, and the other nine are sitting
+              // there uncalibrated-for. It also answers "what do I get" with something they
+              // have already seen working, rather than with a feature list.
+              personaCount > 1
+              ? `${personaCount - 1} more people to write for`
+              : "Your audience is ready"
+            : noPlan
+              ? "You don't have a plan yet"
+              : "You're out of credits";
 
   return (
     <>
@@ -107,8 +160,21 @@ export function ReadingLimitDialog({ quota, open, onClose, renewsAt }: ReadingLi
         <DialogContent size="sm">
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
-            {/* The server writes this copy, where the tier and the window are known. */}
-            <DialogDescription>{quota.message}</DialogDescription>
+            {/* The server writes this copy, where the tier and the window are known — EXCEPT on
+                the activation wall, where the server knows the quota but not the audience, and
+                the audience is the whole point. The server's sentence there is the generic
+                "start a plan" line, which is what this wall exists to stop saying. */}
+            <DialogDescription>
+              {justActivated ? (
+                <>
+                  That card was written for one of the {personaCount || "ten"} people
+                  {audienceName ? ` in ${audienceName}’s room` : " in your room"}. The trial opens
+                  the rest — every skill, tested against all of them.
+                </>
+              ) : (
+                quota.message
+              )}
+            </DialogDescription>
           </DialogHeader>
 
           {/* px-6 to sit on DialogHeader's own p-6 gutter — without it these lines run to the
@@ -149,7 +215,11 @@ export function ReadingLimitDialog({ quota, open, onClose, renewsAt }: ReadingLi
               <Button variant="primary" onClick={() => setCheckoutPlan("starter")}>
                 {trialUsed
                   ? `Upgrade · ${getPlan("starter").price}/month`
-                  : `Start for ${TRIAL.price}`}
+                  : justActivated
+                    ? // Benefit-led, not mechanism-led. "Start for $1" names what they pay;
+                      // this names what they get, which is the thing they just watched work.
+                      `Write for all ${personaCount || 10} — ${TRIAL.price}`
+                    : `Start for ${TRIAL.price}`}
               </Button>
             )}
 

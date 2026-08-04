@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { SIGNUP_URL } from "@/lib/routes";
+import { MARKETING_CTA_URL } from "@/lib/routes";
 
 interface HeroProps {
   className?: string;
@@ -20,7 +20,7 @@ interface HeroProps {
  *  1. serif voice H1 — "Know if it'll pop before you post" (verbatim D-09),
  *     Newsreader serif (D-10), the landing's ONE reserved serif slot.
  *  2. Inter mechanism subcopy naming the Simulation + the real outputs (D-11).
- *  3. CTA cluster — dominant coral "Try it free" → SIGNUP_URL (HERO-02) +
+ *  3. CTA cluster — dominant coral "Try it free" → MARKETING_CTA_URL (HERO-02) +
  *     a quieter "See how it works ↓" scroll-cue → #how-it-works (D-12).
  *  4. the product-shot SHOWCASE (HERO-03/04): a flat-warm desktop browser
  *     window (the Maven Simulation = the OUTPUT) with a phone in front (the
@@ -73,7 +73,7 @@ export function Hero({ className }: HeroProps) {
           scroll-cue. The cue must NOT compete with the primary. */}
       <div className="flex flex-col items-center gap-3 sm:flex-row sm:gap-4">
         <Button variant="primary" size="lg" asChild>
-          <Link href={SIGNUP_URL}>Try it free</Link>
+          <Link href={MARKETING_CTA_URL}>Try it free</Link>
         </Button>
 
         <a

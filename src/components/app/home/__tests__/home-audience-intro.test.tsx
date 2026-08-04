@@ -6,9 +6,11 @@
  *  - it only speaks when a real calibration landed. General, a bare draft row (no personas) and
  *    "no audience" all render NOTHING — announcing the uncalibrated default as an achievement
  *    would be the same fabrication the audience band is careful to avoid.
- *  - the action matches what the creator actually has. Onboarding's describe door leaves NO
- *    connected account, so offering "Read my recent posts" there is a first action that cannot
- *    work. Keyed on `source_account_id`, which is what calibration sets when it connects one.
+ *  - BOTH doors get the same, free action. This used to branch on `source_account_id` and offer
+ *    "Read my recent posts" to anyone with a connected account — which walked into a 402 on
+ *    every new signup (`account` costs 5 credits, free tier's allowance is 0, enforcement on in
+ *    prod). The describe door's creator and the handle door's creator now get one action that
+ *    works for both and costs no Apify call.
  *  - show-once survives a remount, and Dismiss consumes it without running anything.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -36,9 +38,7 @@ beforeEach(() => {
 
 describe("HomeAudienceIntro — only speaks when there is something true to say", () => {
   it("names the audience and where it came from", () => {
-    render(
-      <HomeAudienceIntro audience={audience()} onReadAccount={vi.fn()} onArmIdeas={vi.fn()} />,
-    );
+    render(<HomeAudienceIntro audience={audience()} onFirstCard={vi.fn()} />);
     expect(screen.getByTestId("home-audience-intro").textContent).toContain("3 people");
     expect(screen.getByTestId("home-audience-intro").textContent).toContain("built from @zachking");
   });
@@ -49,34 +49,23 @@ describe("HomeAudienceIntro — only speaks when there is something true to say"
     ["a draft with no personas", audience({ personas: [] })],
   ])("renders nothing for %s", (_label, aud) => {
     const { container } = render(
-      <HomeAudienceIntro
-        audience={aud as Audience | null}
-        onReadAccount={vi.fn()}
-        onArmIdeas={vi.fn()}
-      />,
+      <HomeAudienceIntro audience={aud as Audience | null} onFirstCard={vi.fn()} />,
     );
     expect(container.textContent).toBe("");
   });
 });
 
-describe("HomeAudienceIntro — the action matches what they have", () => {
-  it("offers the account read when calibration connected an account", () => {
-    const onReadAccount = vi.fn();
-    render(
-      <HomeAudienceIntro
-        audience={audience()}
-        onReadAccount={onReadAccount}
-        onArmIdeas={vi.fn()}
-      />,
-    );
+describe("HomeAudienceIntro — one free action, both doors", () => {
+  it("offers the first card to a creator who connected an account", () => {
+    const onFirstCard = vi.fn();
+    render(<HomeAudienceIntro audience={audience()} onFirstCard={onFirstCard} />);
 
-    fireEvent.click(screen.getByRole("button", { name: /read my recent posts/i }));
-    expect(onReadAccount).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole("button", { name: /write me something to post/i }));
+    expect(onFirstCard).toHaveBeenCalledTimes(1);
   });
 
-  it("offers Ideas instead when there is no account to read (the describe door)", () => {
-    const onReadAccount = vi.fn();
-    const onArmIdeas = vi.fn();
+  it("offers the SAME action on the describe door, which has no account to read", () => {
+    const onFirstCard = vi.fn();
     render(
       <HomeAudienceIntro
         audience={audience({
@@ -85,55 +74,49 @@ describe("HomeAudienceIntro — the action matches what they have", () => {
           name: "Small business owners",
           source_account_id: null,
         })}
-        onReadAccount={onReadAccount}
-        onArmIdeas={onArmIdeas}
+        onFirstCard={onFirstCard}
       />,
     );
 
-    // The account read must not even be on offer — it would fail for this creator.
-    expect(screen.queryByRole("button", { name: /read my recent posts/i })).toBeNull();
     expect(screen.getByTestId("home-audience-intro").textContent).toContain(
       "built from your description",
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /get content ideas/i }));
-    expect(onArmIdeas).toHaveBeenCalledTimes(1);
-    expect(onReadAccount).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: /write me something to post/i }));
+    expect(onFirstCard).toHaveBeenCalledTimes(1);
+  });
+
+  it("never offers the account read — it 402s for exactly this user", () => {
+    // The regression that closed this lane's headline defect. `account` is 5 credits against a
+    // free-tier allowance of 0, so the one CTA in the one sentence of onboarding opened a
+    // paywall. If this label ever comes back, so does that.
+    render(<HomeAudienceIntro audience={audience()} onFirstCard={vi.fn()} />);
+    expect(screen.queryByRole("button", { name: /read my recent posts/i })).toBeNull();
   });
 });
 
 describe("HomeAudienceIntro — show-once", () => {
   it("stays gone after Dismiss, across a remount, without running anything", () => {
-    const onReadAccount = vi.fn();
+    const onFirstCard = vi.fn();
     const first = render(
-      <HomeAudienceIntro
-        audience={audience()}
-        onReadAccount={onReadAccount}
-        onArmIdeas={vi.fn()}
-      />,
+      <HomeAudienceIntro audience={audience()} onFirstCard={onFirstCard} />,
     );
 
     fireEvent.click(screen.getByRole("button", { name: /dismiss/i }));
     expect(first.container.textContent).toBe("");
-    expect(onReadAccount).not.toHaveBeenCalled();
+    expect(onFirstCard).not.toHaveBeenCalled();
 
     first.unmount();
-    const second = render(
-      <HomeAudienceIntro audience={audience()} onReadAccount={vi.fn()} onArmIdeas={vi.fn()} />,
-    );
+    const second = render(<HomeAudienceIntro audience={audience()} onFirstCard={vi.fn()} />);
     expect(second.container.textContent).toBe("");
   });
 
   it("is consumed by taking the action too, not only by dismissing", () => {
-    const first = render(
-      <HomeAudienceIntro audience={audience()} onReadAccount={vi.fn()} onArmIdeas={vi.fn()} />,
-    );
-    fireEvent.click(screen.getByRole("button", { name: /read my recent posts/i }));
+    const first = render(<HomeAudienceIntro audience={audience()} onFirstCard={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: /write me something to post/i }));
     first.unmount();
 
-    const second = render(
-      <HomeAudienceIntro audience={audience()} onReadAccount={vi.fn()} onArmIdeas={vi.fn()} />,
-    );
+    const second = render(<HomeAudienceIntro audience={audience()} onFirstCard={vi.fn()} />);
     expect(second.container.textContent).toBe("");
   });
 });

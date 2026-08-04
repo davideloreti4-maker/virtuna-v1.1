@@ -52,6 +52,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
+  ACTIVATION_ACTION,
+  ACTIVATION_CREDITS,
+  ACTIVATION_RUNS,
   creditAllowanceFor,
   creditCost,
   CREDITS_PER_READING,
@@ -318,6 +321,25 @@ export async function checkCreditQuota(
   // The demo is an entitlement (one run), not an allowance (a balance) — its own path.
   if (isDemo) return demoVerdict(supabase, userId, action, base);
 
+  // ── ACTIVATION: one free card for a creator who just calibrated ────────────────────────────
+  // Same entitlement shape as the demo, a different person at a different point in the funnel.
+  // Checked BEFORE the allowance below, because the free tier's allowance is 0 and enforcement
+  // is on in production — so falling through to it is exactly the 402 this exists to prevent.
+  //
+  // Order matters against the demo too: an anonymous visitor never reaches here (isDemo returned
+  // above), so the two entitlements can never be spent by the same session.
+  if (
+    !isAnonymous &&
+    !inTrial &&
+    tier === "free" &&
+    action === ACTIVATION_ACTION
+  ) {
+    const verdict = await activationVerdict(supabase, userId, base);
+    // `null` = not entitled (never calibrated, or already used it). Fall through to the normal
+    // allowance so the refusal is the ordinary one, in the ordinary units.
+    if (verdict) return verdict;
+  }
+
   const limit = creditAllowanceFor(tier, { inTrial });
 
   // Unlimited (Studio, outside a trial): no monthly wall, but the fair-use daily ceiling.
@@ -379,6 +401,63 @@ type VerdictBase = Omit<QuotaVerdict, "allowed" | "used" | "limit" | "reason">;
  * `limit`/`used` are reported in credits (one Test's price) purely so the 402 body stays in the
  * same units as every other wall. The decision is the run count.
  */
+/**
+ * THE ACTIVATION ENTITLEMENT — one free `ideas` pack for a creator who has just calibrated.
+ * See the long note in `lib/pricing.ts` for why it exists and what it must not be keyed on.
+ *
+ * Returns `null` for "not entitled", so the caller falls through to the ordinary allowance and
+ * the user gets the ordinary refusal. That is deliberate: an entitlement that does not apply
+ * should be invisible, not a second kind of wall with its own vocabulary.
+ *
+ * ── The calibration test ───────────────────────────────────────────────────────────────────
+ * A row in `audiences` with a non-null `signature`, not general and not a preset. `signature`
+ * is what the calibration pipeline writes (it carries `provenance.videos_analyzed`), so its
+ * presence means a real scrape actually completed for this user.
+ *
+ * ⚠️ This queries the audiences TABLE, never `/api/audiences`. That endpoint composes DB rows
+ * with five VIRTUAL constants, and any predicate over its output needs `SENTINEL_IDS` too —
+ * mistaking a virtual template for the user's own audience is precisely what made onboarding
+ * unreachable for every account until PR #423. A table read has no sentinels in it.
+ *
+ * ── Failure direction ──────────────────────────────────────────────────────────────────────
+ * Fails CLOSED (returns null → the normal wall), matching the demo. The asymmetry is the same:
+ * failing open would hand a free engine run to anyone whose audience query happened to error,
+ * and the cost of failing closed is one conversion, recoverable by retry.
+ */
+async function activationVerdict(
+  supabase: SupabaseClient,
+  userId: string,
+  base: VerdictBase
+): Promise<QuotaVerdict | null> {
+  try {
+    const { data: calibrated, error: audienceError } = await supabase
+      .from("audiences")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("is_general", false)
+      .eq("is_preset", false)
+      .not("signature", "is", null)
+      .limit(1)
+      .maybeSingle();
+
+    if (audienceError || !calibrated) return null;
+
+    const priorRuns = await countActionRuns(supabase, userId, ACTIVATION_ACTION);
+    if (priorRuns >= ACTIVATION_RUNS) return null;
+
+    return {
+      ...base,
+      allowed: true,
+      used: 0,
+      limit: ACTIVATION_CREDITS,
+      reason: null,
+    };
+  } catch (error) {
+    console.error("[quota] activation check failed — falling through to the wall", error);
+    return null;
+  }
+}
+
 async function demoVerdict(
   supabase: SupabaseClient,
   userId: string,

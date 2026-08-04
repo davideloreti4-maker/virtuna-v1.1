@@ -16,18 +16,29 @@
  * would break all four. This sits BESIDE it, in the same quiet footer slot HomeFirstRunDemo
  * occupies — beneath the composer, never a gate, dismissible, show-once.
  *
- * ── Why the action is conditional ───────────────────────────────────────────────────────────
- * Onboarding has two doors. The handle door calibrates from a real scrape and leaves a
- * connected account behind (`source_account_id`); the describe door does not, because there is
- * no account to connect. Offering "Read my recent posts" to a describing creator would hand
- * them a first action that cannot work — the exact species of dishonesty the rest of this
- * surface is careful about. So the account read is offered only when an account actually
- * exists, and everyone else is pointed at a skill that needs nothing but the composer.
+ * ── Why there is now ONE action, not a conditional pair ─────────────────────────────────────
+ * This offered "Read my recent posts" when a connected account existed and "Get content ideas"
+ * otherwise. Walking a real signup on a production build (2026-08-04) showed the first branch
+ * returns 402: `account` costs 5 credits, the free tier's allowance is 0, and
+ * BILLING_ENFORCE_QUOTA is on in production. So the ONE action in the ONE sentence of in-app
+ * onboarding opened a paywall — after the creator had waited ~135s for calibration.
+ *
+ * Both doors now get the same action, and it is the cheap one: an ideas pack drafted against
+ * the personas calibration just produced. It is covered by the activation entitlement
+ * (lib/pricing.ts), needs no connected account, and makes no Apify call — so it works
+ * identically for the handle door and the describe door, which is what the old conditional was
+ * trying and failing to achieve.
+ *
+ * ── Why it is not below the fold any more ───────────────────────────────────────────────────
+ * Measured at 390×844: this sat at y=998, entirely below the fold. DESIGN §2a says traffic is
+ * organic social and mobile is the default rather than the adaptation — so the product's whole
+ * spoken introduction was invisible to its primary audience. It now scrolls itself into view on
+ * mount, which is content-length independent (the starter grid above it is nine tiles and grows).
  *
  * Show-once is localStorage, single-device — the same D-04 tradeoff HomeFirstRunDemo accepts.
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Audience } from "@/lib/audience/audience-types";
 import { cn } from "@/lib/utils";
 
@@ -55,17 +66,14 @@ function markSeen(): void {
 export interface HomeAudienceIntroProps {
   /** The resolved audience, or null for General. General is not an achievement — no intro. */
   audience: Audience | null;
-  /** Runs the Account read (arms AND sends — it takes no input). */
-  onReadAccount: () => void;
-  /** Arms the Ideas skill for creators with no connected account to read. */
-  onArmIdeas: () => void;
+  /** Runs the free activation card (arms AND sends — Auto mode takes no input). */
+  onFirstCard: () => void;
   className?: string;
 }
 
 export function HomeAudienceIntro({
   audience,
-  onReadAccount,
-  onArmIdeas,
+  onFirstCard,
   className,
 }: HomeAudienceIntroProps) {
   // Mounted gate so the server render and the first client render agree — localStorage is
@@ -92,16 +100,44 @@ export function HomeAudienceIntro({
     [],
   );
 
+  // ── Make sure it is actually SEEN ───────────────────────────────────────────────────────────
+  // Measured at 390×844: this rendered at y=998 — wholly below the fold — so the product's one
+  // spoken introduction was invisible on the viewport §2a calls the default. Scrolling it into
+  // view is the content-length-independent fix: the starter grid above is nine tiles and will
+  // keep changing, so any hard-coded placement goes stale.
+  //
+  // `block: "nearest"` so a viewport that ALREADY shows it does not jump — on desktop it is in
+  // view at 1512×982 and must stay still. Honours prefers-reduced-motion via `behavior: auto`
+  // for those users; a surprise smooth scroll is exactly what that setting is asking us not to do.
+  const introRef = useRef<HTMLDivElement | null>(null);
+  const scrolled = useRef(false);
+
+  useEffect(() => {
+    if (!mounted || seen || scrolled.current) return;
+    const el = introRef.current;
+    if (!el) return;
+    scrolled.current = true;
+
+    const reduced =
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+    el.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "nearest" });
+  }, [mounted, seen]);
+
   const personaCount = audience?.personas?.length ?? 0;
 
   // Nothing to introduce unless a real calibration actually landed. `personas.length` is the
   // app's own calibrated test (select-persona-targets.ts:111) — a bare draft row is not an
   // audience, and General is the uncalibrated default rather than something to announce.
+  //
+  // Written as an early return rather than a `show` boolean so `audience` stays NARROWED for
+  // the render below — the effect above reads only `mounted`/`seen`, which are declared before
+  // any of this, so hook order is unaffected.
   if (!mounted || seen || !audience || audience.is_general || personaCount === 0) {
     return null;
   }
 
-  const hasAccount = Boolean(audience.source_account_id);
   const source =
     audience.type === "personal" && audience.name
       ? `built from ${audience.name}`
@@ -109,6 +145,7 @@ export function HomeAudienceIntro({
 
   return (
     <div
+      ref={introRef}
       className={cn(
         "mx-auto flex max-w-[560px] flex-col items-center gap-3 border-t border-white/[0.06] pt-4 text-center",
         className,
@@ -127,12 +164,15 @@ export function HomeAudienceIntro({
       </p>
 
       <div className="flex items-center gap-3">
+        {/* One action, both doors, and it is FREE for a creator who just calibrated (the
+            activation entitlement). The label names what they get, not the skill that makes
+            it — "Ideas" is the product's word, "something to post" is theirs. */}
         <button
           type="button"
-          onClick={() => run(hasAccount ? onReadAccount : onArmIdeas)}
+          onClick={() => run(onFirstCard)}
           className="rounded-lg bg-action px-3 py-2 text-body font-medium text-action-foreground transition-colors hover:bg-action/90"
         >
-          {hasAccount ? "Read my recent posts" : "Get content ideas"}
+          Write me something to post
         </button>
         <button
           type="button"

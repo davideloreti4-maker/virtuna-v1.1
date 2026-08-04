@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { SIGNUP_URL } from "@/lib/routes";
+import { MARKETING_CTA_URL } from "@/lib/routes";
 import { TRIAL } from "@/lib/pricing";
 import { AudienceCloudSkeleton } from "@/components/marketing/story/skeletons";
 
@@ -27,7 +27,7 @@ interface FinalCtaBandProps {
  *    muted, caption off; the close-line names the audience, so the close shows
  *    the audience (and the gauge stops repeating a fifth time page-wide).
  *  - Newsreader-serif close-line (data-testid="cta-close-line").
- *  - One dominant coral CTA → SIGNUP_URL via Button asChild + Link.
+ *  - One dominant coral CTA → MARKETING_CTA_URL via Button asChild + Link.
  *  - D-20 risk-reducer microcopy.
  *
  * Pure RSC — no "use client". Coral confined to the CTA; no glass/blur/glow.
@@ -82,11 +82,11 @@ export function FinalCtaBand({ className }: FinalCtaBandProps) {
           Your audience already knows. Find out before you post.
         </h2>
 
-        {/* One dominant coral CTA (Button asChild → Link → SIGNUP_URL).
+        {/* One dominant coral CTA (Button asChild → Link → MARKETING_CTA_URL).
             Coral is the lone accent on this surface — confined to the CTA. */}
         <div className="flex flex-col items-center gap-3">
           <Button asChild variant="primary" size="lg">
-            <Link href={SIGNUP_URL}>Start for {TRIAL.price}</Link>
+            <Link href={MARKETING_CTA_URL}>Start for {TRIAL.price}</Link>
           </Button>
 
           {/* D-20 risk-reducer microcopy — sits under the CTA, cream-muted, zero visual
