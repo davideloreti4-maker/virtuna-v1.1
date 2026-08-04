@@ -128,6 +128,7 @@ import { BuildChooser } from "./build-chooser";
 import { HomeStarter, HomeFirstRunDemo } from "./home-starter";
 import { HomeAudienceIntro } from "./home-audience-intro";
 import { useAmbientFocus, type AmbientCardDescriptor } from "./use-ambient-focus";
+import { useThreadAutoscroll } from "./use-thread-autoscroll";
 import { buildAmbientDescriptors, resolveFocusDescriptor } from "./ambient-descriptors";
 import { detectRefineIntent } from "@/lib/tools/refine";
 // TikTok-only client check (D-21, WR-01). The pattern is the SHARED trust-
@@ -1449,6 +1450,10 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // about this effect — it is what stops a late frame refilling an emptied stream and re-claiming
   // the tail (the duplicate-turn defect measured live on 2026-07-28). It stays load-bearing.
 
+  // Keep the newest turn in view. Keyed on the open thread so switching threads always lands on
+  // the latest turn rather than inheriting a pin the creator released in the previous one.
+  const { registerScrollRegion, scrollThreadToBottom } = useThreadAutoscroll(openThreadId);
+
   // ── Chat follow-up chips (chat-followups.ts) ───────────────────────────────
   // A tapped follow-up continues the conversation in THIS chat thread: it echoes the prompt as the
   // optimistic user bubble (lastUserTurn) and re-enters the SSE loop (chat.start). No tool-switch,
@@ -1465,11 +1470,16 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     (prompt: string, skill?: string) => {
       const t = prompt.trim();
       if (!t) return;
+      // The answer appends at the BOTTOM, but the chip that started it can be thousands of pixels
+      // up — every completed turn keeps its row, so tapping one from an earlier turn is normal.
+      // Measured signed-in: tapping a chip 7,000px up ran the skill and streamed cards the creator
+      // never saw. An explicit tap is consent to be taken to its result.
+      scrollThreadToBottom();
       setLastUserTurn(t);
       chat.reset();
       void chat.start(t, platform, skill);
     },
-    [chat, platform],
+    [chat, platform, scrollThreadToBottom],
   );
 
   // Stage a dropped/selected evidence file. Unsupported types (.docx/.pdf — D-09)
@@ -1683,6 +1693,12 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // say what it means — it cannot silently become a different, cheaper, wrong run.
   const handleSubmit = useCallback(async (toolOverride?: ToolId) => {
     const tool = toolOverride ?? activeTool;
+
+    // Sending is consent to be shown the result. Re-pin BEFORE any branch runs — including the
+    // ones that bail (the audience gate, an expired session, a bad URL), because those render
+    // their notice at the bottom of the thread too, and a creator who had scrolled up to re-read
+    // a card would otherwise get silence back from a send.
+    scrollThreadToBottom();
 
     // THE ONE-SHOT (Lane 2 step 5). Called at the exact point a branch DISPATCHES a run —
     // never at the top, because a branch that bails (the General-verb audience gate, an
@@ -2050,7 +2066,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       setSubmitting(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTool, file, isValidTikTok, trimmedUrl, stream, ideas, hooks, chat, script, remix, explore, platform, intent, persistedHookBlocks, persistedIdeaBlocks, hooksBlocks, ideasBlocks, selectedAudience, router, reloadProfileThread, queryClient, setActiveThreadId]);
+  }, [activeTool, file, isValidTikTok, trimmedUrl, stream, ideas, hooks, chat, script, remix, explore, platform, intent, persistedHookBlocks, persistedIdeaBlocks, hooksBlocks, ideasBlocks, selectedAudience, router, reloadProfileThread, queryClient, setActiveThreadId, scrollThreadToBottom]);
 
   // ── Seam 4 — the launch-seed inlet (THE-CONTRACT.md §3) ────────────────────────
   // A surface (the start page's embedded composer) hands a composed intent off as a
@@ -2252,6 +2268,17 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     focusByThought,
     registerThreadRegion,
   } = useAmbientFocus(ambientDescriptors);
+
+  // The thread region carries TWO independent concerns: the ambient scroll-spy (which card is in
+  // focus) and the autoscroll (does the view follow the stream). One element, one ref slot, so
+  // they compose here rather than either hook knowing about the other.
+  const registerThreadRegionRef = useCallback(
+    (el: HTMLDivElement | null) => {
+      registerThreadRegion(el);
+      registerScrollRegion(el);
+    },
+    [registerThreadRegion, registerScrollRegion],
+  );
 
   // A card's "See the room →" opens the docked CURRENT-audience Room anchored on that card
   // (via OpenRoomContext → ProofUnit), NOT the standalone per-card Lens (placeholder viewers).
@@ -3414,7 +3441,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
             (Pattern 5). It observes the `[data-ambient-card]` anchors that the REAL cards carry
             (message-blocks.tsx), so the spotlight tracks the ledger as it actually scrolls (D-01). */}
         <div
-          ref={registerThreadRegion}
+          ref={registerThreadRegionRef}
           data-testid="composer-thread-region"
           // THE BAND IS TRANSPARENT ON THE THREAD (2026-07-31, owner call). AppShell pads `main`
           // down by MOBILE_NAV_BAND so no page renders under the fixed burger — rent the audience
