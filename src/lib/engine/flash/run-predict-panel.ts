@@ -46,7 +46,7 @@ import type OpenAI from "openai";
 
 // ─── Model resolution (FLASH_MODEL env seam — mirrors run-flash-text-mode) ────────
 // "sim1-flash" is the PRODUCT label (a text-only call), NOT the model id. The model is
-// the deaf-but-sighted reasoning model (qwen3.7-plus) — the audio Wave-0 sensor model
+// the deaf-but-sighted reasoning model (qwen3.7-flash) — the audio Wave-0 sensor model
 // is NEVER routed here (Pitfall 1: an analyst panel reasons over text, it has no audio).
 const FLASH_MODEL = process.env.FLASH_MODEL ?? QWEN_REASONING_MODEL;
 

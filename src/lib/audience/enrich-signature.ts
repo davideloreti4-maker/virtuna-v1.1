@@ -27,7 +27,7 @@ import { createLogger } from "@/lib/logger";
 import {
   getQwenClient,
   QWEN_OMNI_MODEL,
-  QWEN_REASONING_MODEL,
+  QWEN_CALIBRATE_MODEL,
   QWEN_SEED,
 } from "@/lib/engine/qwen/client";
 import { calculateCost } from "@/lib/engine/qwen/cost";
@@ -51,7 +51,7 @@ const MIN_WATCH = 3;
 /** Max transcripts to fold into synthesis (the watched set; writing sample = the top one). */
 const MAX_TRANSCRIPTS = 5;
 const OMNI_TIMEOUT_MS = 60_000;
-// Synth (qwen-3.7-plus, greedy temp:0, thinking-mode OFF per D-01) empirically ran ~60-90s with
+// Synth (qwen3.7-plus, greedy temp:0, thinking-mode OFF per D-01) empirically ran ~60-90s with
 // thinking ON; the old 60s ceiling aborted it systematically (spike 02-02 — the second bake
 // reliably timed out at ~60s with "Request was aborted"). 120s keeps ample headroom now that
 // thinking-mode is dropped (the call is strictly faster without the staging budget).
@@ -379,7 +379,7 @@ async function defaultSynthesize(payload: SynthPayload): Promise<z.infer<typeof 
   try {
     const completion = await ai.chat.completions.create(
       {
-        model: QWEN_REASONING_MODEL, // CALIBRATE: bake-once — D-01: greedy temp:0, thinking-mode OFF
+        model: QWEN_CALIBRATE_MODEL, // CALIBRATE: bake-once — D-01: greedy temp:0, thinking-mode OFF
         messages: [
           { role: "system", content: SYNTH_SYSTEM },
           { role: "user", content: JSON.stringify(payload) },

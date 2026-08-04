@@ -21,7 +21,8 @@ import { stripModelOutput } from "./utils/strip";
 // "deepseek" / "deepseek_reasoning" stage names.
 const log = createLogger({ module: "deepseek" });
 
-// Legacy constant name — resolves to QWEN_APOLLO_MODEL (qwen3.7-plus, scoped to Apollo).
+// Legacy constant name — resolves to QWEN_APOLLO_MODEL (qwen3.7-plus — Apollo held back from the
+// 2026-08-04 flash move on live A/B evidence; see qwen/client.ts).
 const DEEPSEEK_MODEL = QWEN_APOLLO_MODEL;
 const MAX_RETRIES = 2; // 3 total attempts
 const TIMEOUT_MS = 120_000; // 120s — bounded-thinking Apollo call on the full KNOWLEDGE_CORE prefix; headroom under the 300s pipeline cap
