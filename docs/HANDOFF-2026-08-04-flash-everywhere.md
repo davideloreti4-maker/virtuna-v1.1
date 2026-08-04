@@ -105,6 +105,13 @@ Lesson, consistent with the existing memory: gate before the **push**, not befor
 
 ## 6. NEXT LANE — omni stops watching (feasibility PROVEN, rework NOT built)
 
+> ✅ **SUPERSEDED 2026-08-04 — this rework IS BUILT.** All four blockers below are closed and the
+> split is ON by default, measured live on four clips (53.1% cheaper, latency unchanged within
+> noise). It is **PR #433**, branch `lane/omni-modality-split`, off `main` — deliberately NOT on
+> this branch, so the Apollo/CALIBRATE decision in §4 and the split decision stay independent.
+> **SSOT for it: `docs/HANDOFF-2026-08-04-omni-modality-split.md`.** Everything below is retained
+> as the spike record that justified it.
+
 The ask: omni is the only audio-capable model, so it should ingest **audio only**; flash is sighted
 and should take the video. `scripts/omni-audio-split-spike.ts` (lands with #431, evidence-only)
 measured it on a 27s clip:
