@@ -19,6 +19,15 @@
  * request_input tool's enum (chat-agent-loop.ts) both derive from these keys, so they can't drift.
  */
 
+import { HORIZONTAL_ENABLED } from "@/lib/flags/horizontal";
+
+/**
+ * The GSI ("horizontal") skills — live routes, runners and blocks, but switched off at every
+ * composer door by HORIZONTAL_ENABLED. Chat must respect the same flag or it becomes a back door
+ * into a surface the product has deliberately closed.
+ */
+const HORIZONTAL_ONLY_ACTIONS = new Set<SkillInputAction>(["predict", "profile"]);
+
 /** The shape of the inline field the loop surfaces. `none` = no field, just a confirm-to-run button.
  *  `upload` = a video the creator has on hand (a file drop, or a video URL) — the heaviest input. */
 export type SkillInputKind = "link" | "text" | "none" | "upload";
@@ -127,8 +136,34 @@ export const SKILL_CAPABILITIES: Record<SkillInputAction, SkillCapability> = {
   },
 };
 
-/** All chat-routable input actions — the SSOT the block schema + the request_input tool enum derive from. */
+/**
+ * Every action this module can DESCRIBE — the SSOT the block schema and the renderer derive from.
+ *
+ * Deliberately the full set, including actions the product currently has switched off: a persisted
+ * `input-request` block must keep validating and rendering for as long as it exists in a thread.
+ * What the MODEL may ask for is a strictly smaller list — see SKILL_REQUESTABLE_ACTIONS.
+ */
 export const SKILL_INPUT_ACTIONS = Object.keys(SKILL_CAPABILITIES) as SkillInputAction[];
+
+/**
+ * Actions the model may actually REQUEST — the enum on the `request_input` tool.
+ *
+ * ⚠️ NOT the same as the list above, and the difference is load-bearing. `profile`, `simulate` and
+ * `predict` are `enabled: HORIZONTAL_ENABLED` in the composer's SKILLS registry, and that flag is
+ * FALSE (owner call 2026-07-13 — the product commits to the creator vertical for MVP). That single
+ * flag closes the pill menu, the `/` slash menu and Enter-to-select all at once.
+ *
+ * Adding them here anyway made chat the ONE door still open to skills the product had deliberately
+ * shut — the agent would offer a creator a field for a surface that exists nowhere else in the app.
+ * "A field that cannot submit is worse than no field" was already the rule; this is its sibling —
+ * a field for a skill the product does not currently offer is worse still, because it submits fine
+ * and delivers a surface the rest of the UI denies.
+ *
+ * Flip HORIZONTAL_ENABLED and they return here automatically, with no second list to remember.
+ */
+export const SKILL_REQUESTABLE_ACTIONS: SkillInputAction[] = SKILL_INPUT_ACTIONS.filter(
+  (a) => !HORIZONTAL_ONLY_ACTIONS.has(a) || HORIZONTAL_ENABLED,
+);
 
 /** Type guard: is `x` a known input action? (Used at the loop's tool-arg boundary.) */
 export function isSkillInputAction(x: unknown): x is SkillInputAction {

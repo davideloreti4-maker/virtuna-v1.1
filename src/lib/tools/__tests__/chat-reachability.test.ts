@@ -23,7 +23,12 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { SKILL_TOOLS } from "@/lib/tools/skill-dispatch";
-import { SKILL_CAPABILITIES, SKILL_INPUT_ACTIONS } from "@/lib/tools/skill-capabilities";
+import {
+  SKILL_CAPABILITIES,
+  SKILL_INPUT_ACTIONS,
+  SKILL_REQUESTABLE_ACTIONS,
+} from "@/lib/tools/skill-capabilities";
+import { HORIZONTAL_ENABLED } from "@/lib/flags/horizontal";
 import { RECORDED_BLOCKS, NON_RECORD_BLOCKS } from "@/lib/threads/chat-prior-turns";
 import { BLOCK_REGISTRY } from "@/lib/tools/block-registry";
 import { SKILL_RUN_META } from "@/components/thread/run-capsule";
@@ -43,6 +48,12 @@ const NO_AGENT_PATH: Record<string, string> = {
   refine:
     "CARD-scoped: needs a cardRef + the card's content as anchor and returns ONE card. A turn-level " +
     "chip has no card in hand, and the composer's detectRefineIntent is its live door. DECIDED — do not bind.",
+  // Not a decision about chat at all — a decision about the PRODUCT. These are
+  // `enabled: HORIZONTAL_ENABLED` in the composer SKILLS registry and the flag is off, so they are
+  // closed at the pill menu, the `/` slash menu and Enter-to-select alike. Chat follows the flag
+  // rather than overriding it; flip HORIZONTAL_ENABLED and they become brokered automatically.
+  predict: "enabled: HORIZONTAL_ENABLED — the product ships the creator vertical only (owner, 2026-07-13)",
+  profile: "enabled: HORIZONTAL_ENABLED — the product ships the creator vertical only (owner, 2026-07-13)",
 };
 
 /** Every turn kind the classifier can produce — the universe reachability is measured against. */
@@ -62,7 +73,10 @@ const ALL_TURN_KINDS: ChatTurnKind[] = [
 
 describe("chat reachability — every skill is bound, brokered, or knowingly excluded", () => {
   const bound = new Set(SKILL_TOOLS.map((s) => s.skillKey));
-  const brokered = new Set<string>(SKILL_INPUT_ACTIONS);
+  // REQUESTABLE, not merely described. `predict`/`profile`/`simulate` are enabled:HORIZONTAL_ENABLED
+  // in the composer SKILLS registry, and that flag is false — so the product has closed them at every
+  // door. Counting them as "reachable from chat" is what made chat a back door into a disabled surface.
+  const brokered = new Set<string>(SKILL_REQUESTABLE_ACTIONS);
 
   it.each(ALL_TURN_KINDS)("%s is reachable from a conversation (or explicitly is not)", (kind) => {
     const reachable = bound.has(kind) || brokered.has(kind) || kind in NO_AGENT_PATH;
@@ -76,10 +90,12 @@ describe("chat reachability — every skill is bound, brokered, or knowingly exc
 
   it("holds the coverage line — regressions are visible as a number, not a document", () => {
     const reachable = ALL_TURN_KINDS.filter((k) => k !== "chat" && (bound.has(k) || brokered.has(k)));
-    // 10 of the 10 non-chat kinds minus the two with a stated no-agent-path decision.
-    expect(reachable.sort()).toEqual(
-      ["account", "explore", "hooks", "ideas", "predict", "profile", "read", "remix", "script", "test"].sort(),
-    );
+    // The honest number, tied to the flag rather than to a document. With HORIZONTAL off the
+    // product ships the creator vertical only, so chat reaches eight of those; flipping the flag
+    // brings predict/profile back automatically and this expectation follows it.
+    const expected = ["account", "explore", "hooks", "ideas", "read", "remix", "script", "test"];
+    if (HORIZONTAL_ENABLED) expected.push("predict", "profile");
+    expect(reachable.sort()).toEqual(expected.sort());
   });
 
   it("binds `read` as a tool — the audience SIM, verified to touch no Apify path", () => {
@@ -146,7 +162,7 @@ describe("chat memory — every persisted block is represented in the anchor", (
 });
 
 describe("chat wiring — a surfaced field can actually run", () => {
-  it.each(SKILL_INPUT_ACTIONS)("%s has run-capsule copy", (action) => {
+  it.each(SKILL_REQUESTABLE_ACTIONS)("%s has run-capsule copy", (action) => {
     expect(
       SKILL_RUN_META[action],
       `SKILL_CAPABILITIES has "${action}" but SKILL_RUN_META does not — its field would render an ` +
@@ -154,7 +170,7 @@ describe("chat wiring — a surfaced field can actually run", () => {
     ).toBeDefined();
   });
 
-  it.each(SKILL_INPUT_ACTIONS)("%s has a renderer branch", (action) => {
+  it.each(SKILL_REQUESTABLE_ACTIONS)("%s has a renderer branch", (action) => {
     // Source-level on purpose: the switch is the thing that drifts, and mounting the renderer
     // needs providers this guard should not depend on. A missing branch renders `null` — the
     // model announces a field and the creator sees empty space.
@@ -175,6 +191,28 @@ describe("chat wiring — a surfaced field can actually run", () => {
   it("tells the model when to ask for each field", () => {
     for (const action of SKILL_INPUT_ACTIONS) {
       expect(SKILL_CAPABILITIES[action].when.length, `${action} needs a \`when\` line`).toBeGreaterThan(20);
+    }
+  });
+});
+
+describe("chat does not become a back door into a disabled surface", () => {
+  it("never offers a horizontal skill while HORIZONTAL_ENABLED is off", () => {
+    // profile / simulate / predict are `enabled: HORIZONTAL_ENABLED` in the composer SKILLS
+    // registry (owner call 2026-07-13 — the product commits to the creator vertical for MVP). That
+    // one flag closes the pill menu, the `/` slash menu and Enter-to-select together. Chat offering
+    // them anyway would leave the agent as the only door into a surface the app otherwise denies.
+    if (HORIZONTAL_ENABLED) return;
+    for (const a of ["predict", "profile"]) {
+      expect(SKILL_REQUESTABLE_ACTIONS).not.toContain(a);
+    }
+  });
+
+  it("still DESCRIBES them, so an already-persisted field keeps rendering", () => {
+    // The block schema and the renderer derive from the full list on purpose: a thread that already
+    // holds one of these fields must keep validating and rendering it for as long as it exists.
+    for (const a of ["predict", "profile"]) {
+      expect(SKILL_INPUT_ACTIONS).toContain(a);
+      expect(SKILL_CAPABILITIES[a as keyof typeof SKILL_CAPABILITIES]).toBeDefined();
     }
   });
 });

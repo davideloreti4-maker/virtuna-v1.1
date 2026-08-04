@@ -33,7 +33,7 @@ import { SEARCH_CORPUS_TOOL, executeCorpusSearch } from "@/lib/grounding/corpus-
 import { retrieveCachedExamples } from "@/lib/grounding/retrieve";
 import {
   SKILL_CAPABILITIES,
-  SKILL_INPUT_ACTIONS,
+  SKILL_REQUESTABLE_ACTIONS,
   isSkillInputAction,
   type SkillCapability,
 } from "@/lib/tools/skill-capabilities";
@@ -48,7 +48,7 @@ import type { NumenTier } from "@/lib/whop/config";
 // its OWN dedicated route on submit. Kind/label/placeholder come from SKILL_CAPABILITIES, set HERE,
 // never by the model (no model-generated UI): the model only chooses WHICH action to request, and may
 // pass an optional `value` to pre-fill a text field with something the creator already stated.
-const REQUEST_INPUT_ACTION_LINES = SKILL_INPUT_ACTIONS.map(
+const REQUEST_INPUT_ACTION_LINES = SKILL_REQUESTABLE_ACTIONS.map(
   (a) => `- "${a}": when ${SKILL_CAPABILITIES[a].when}.`,
 ).join("\n");
 
@@ -69,7 +69,7 @@ export const REQUEST_INPUT_TOOL = {
       properties: {
         action: {
           type: "string",
-          enum: [...SKILL_INPUT_ACTIONS],
+          enum: [...SKILL_REQUESTABLE_ACTIONS],
           description: "Which skill to run once the creator submits the field (or taps the button).",
         },
         value: {
@@ -836,7 +836,9 @@ export async function runChatAgentStream(
         } catch {
           /* handled by the guard below */
         }
-        if (!isSkillInputAction(action)) {
+        // Requestable, not merely known: a disabled-surface action must be refused even if the
+        // model names it, so the flag cannot be bypassed by a hallucinated enum value.
+        if (!isSkillInputAction(action) || !SKILL_REQUESTABLE_ACTIONS.includes(action)) {
           toolCalls.push({ name: "request_input", ran: false, note: "unknown action" });
           messages.push({
             role: "tool",
