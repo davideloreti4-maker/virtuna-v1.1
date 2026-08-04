@@ -73,21 +73,22 @@ export function DiscoverHub({
     [corpus],
   );
 
-  // The subtitle no longer counts the library (owner, 2026-08-04). It read
-  // "230 proven outliers · 105 collections · 408 creators" — three tallies that answered a
-  // question nobody had yet, directly above the search field that answers the one they do.
-  // It says what the surface IS instead.
+  // There is NO subtitle in the healthy state (owner, 2026-08-04). It counted the library
+  // first ("230 proven outliers · 105 collections · 408 creators"), then described it — and
+  // the description was cut too: the title, the search field and the three tabs already say
+  // what this surface is, so a prose line under the h1 was one more thing to read before
+  // reaching the only control that matters.
   //
-  // The FAILURE strings keep their shape and stay numberless: a failed read arrives as an
-  // empty corpus, so a count rendered from it would be a confident zero about a library we
-  // could not open. That was the reason this line was conditional in the first place, and it
-  // outlives the counts.
+  // The FAILURE strings stay. They are the only way the surface can say it could not read
+  // its data: a failed read arrives as an EMPTY corpus, which is indistinguishable from an
+  // empty library once the panels render. That is why this line was conditional originally,
+  // and it is the half worth keeping.
   const subtitle =
     failures.corpus && failures.watchlist
       ? "Discover can't reach its data right now."
       : failures.corpus
         ? "The outlier library is unavailable right now — your watched sources still load."
-        : "Proven outliers, curated collections, and the creators you follow.";
+        : undefined;
 
   // Pull is offered only for something we could actually go and fetch — a handle or a URL,
   // and only when the library has nothing under that name already.

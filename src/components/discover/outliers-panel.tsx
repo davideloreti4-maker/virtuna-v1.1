@@ -24,7 +24,13 @@
  */
 
 import { useMemo, useState } from "react";
-import { ArrowRight, FunnelSimple } from "@phosphor-icons/react";
+import {
+  ArrowRight,
+  FunnelSimple,
+  InstagramLogo,
+  TiktokLogo,
+  YoutubeLogo,
+} from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import { CoverFill } from "@/components/primitives/CoverFill";
 import type { CorpusVideo } from "@/lib/discover/corpus-reads";
@@ -137,9 +143,12 @@ export function OutliersPanel({
         {/* The panel is a permanent column from `lg` up and a toggled block below it. Not a
             fixed overlay: this grid is the page's only scroll context, and an overlay panel
             would trap the scroll behind it on exactly the widths where the list is longest. */}
+        {/* Sticky from `lg` up. The cards got large enough that the grid is many screens
+            tall while the panel is one — without this the filters scroll away after the
+            first row and every adjustment means scrolling back to the top. */}
         <div
           className={cn(
-            "mb-4 lg:mb-0 lg:block lg:w-60 lg:shrink-0",
+            "mb-4 lg:sticky lg:top-6 lg:mb-0 lg:block lg:w-60 lg:shrink-0",
             panelOpen ? "block" : "hidden",
           )}
         >
@@ -205,7 +214,12 @@ export function OutliersPanel({
             </p>
           ) : (
             <>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-3 2xl:grid-cols-4">
+              {/* Deliberately one column fewer at every step than a dense index would use
+                  (owner, 2026-08-04: "make them bigger"). The cover IS the content on this
+                  surface — a hook you cannot read off the first frame is not a browsable
+                  result — so at a 1440 laptop this is two ~460px cards rather than three
+                  ~290px ones, and only the widest screens go to three. */}
+              <div className="grid grid-cols-2 gap-4 lg:grid-cols-2 2xl:grid-cols-3">
                 {visible.slice(0, limit).map((v) => (
                   <OutlierCard
                     key={v.id}
@@ -237,6 +251,15 @@ export function OutliersPanel({
   );
 }
 
+/** The corpus carries three platforms and the reference badges each cover with its own.
+ *  Unknown/absent → no badge at all rather than a fallback glyph that would assert a
+ *  platform we do not actually know. */
+const PLATFORM_ICON: Record<string, typeof TiktokLogo> = {
+  tiktok: TiktokLogo,
+  instagram: InstagramLogo,
+  youtube: YoutubeLogo,
+};
+
 function OutlierCard({
   video,
   pending,
@@ -250,14 +273,34 @@ function OutlierCard({
 }) {
   const age = fmtAge(video.postedAt);
   const hook = video.spokenHook || video.template || "Untitled teardown";
+  const PlatformIcon = video.platform ? PLATFORM_ICON[video.platform] : undefined;
   return (
-    <article className="group relative overflow-hidden rounded-xl border border-border bg-surface-elevated transition-colors hover:border-border-hover">
+    <article className="group relative overflow-hidden rounded-xl border border-border bg-surface-elevated transition-all hover:border-border-hover hover:bg-white/[0.02]">
       <div className="relative aspect-[3/4] overflow-hidden bg-surface-sunken">
-        <CoverFill coverUrl={video.coverUrl} playSize={20} />
+        <CoverFill
+          coverUrl={video.coverUrl}
+          playSize={26}
+          className="transition-transform duration-500 group-hover:scale-[1.03]"
+        />
+        {/* A scrim, not a solid pill behind each badge. Covers here are arbitrary frames —
+            white kitchens, blown-out skies — and a badge with its own dark chip read as two
+            stuck-on stickers. One gradient carries both and lets the frame stay the object. */}
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/55 to-transparent"
+          aria-hidden="true"
+        />
         {video.multiplier !== null ? (
-          <span className="absolute left-2 top-2 rounded-md bg-black/70 px-1.5 py-0.5 text-micro font-semibold tabular-nums text-[color:var(--color-positive)]">
+          <span className="absolute left-2.5 top-2.5 text-label font-semibold tabular-nums text-[color:var(--color-positive)] [text-shadow:0_1px_3px_rgba(0,0,0,0.6)]">
             ▲ {fmtMultiplier(video.multiplier)}
           </span>
+        ) : null}
+        {PlatformIcon ? (
+          <PlatformIcon
+            size={17}
+            weight="fill"
+            aria-label={video.platform ?? undefined}
+            className="absolute right-2.5 top-2.5 text-white/85 [filter:drop-shadow(0_1px_3px_rgba(0,0,0,0.6))]"
+          />
         ) : null}
         {/* A MOUSE ACCELERATOR, and nothing more. The real Remix is the plain visible button
             inside the teardown detail this card opens — which is what makes the action
@@ -280,14 +323,25 @@ function OutlierCard({
           {pending ? null : <ArrowRight size={13} weight="bold" />}
         </button>
       </div>
-      <div className="p-2.5">
-        <p className="line-clamp-2 min-h-[2.6em] text-label text-foreground">{hook}</p>
-        <div className="mt-2 flex items-center justify-between gap-2 text-caption text-foreground-muted">
-          <span className="truncate">@{video.handle ?? "unknown"}</span>
-          <span className="shrink-0 tabular-nums">
-            {fmtViews(video.views)}
-            {age ? ` · ${age}` : ""}
-          </span>
+      {/* The hook leads at body size — it is the thing being browsed, and at text-label it
+          sat at the same weight as the handle beneath it, so the card had no first read.
+          `min-h` reserves both lines so a one-line hook does not shorten its card and ragged
+          the row. */}
+      <div className="p-3.5">
+        <p className="line-clamp-2 min-h-[2.75em] text-body leading-snug text-foreground">
+          {hook}
+        </p>
+        <div className="mt-2.5 flex items-center gap-2 text-caption text-foreground-muted">
+          <span className="min-w-0 flex-1 truncate">@{video.handle ?? "unknown"}</span>
+          <span className="shrink-0 tabular-nums">{fmtViews(video.views)}</span>
+          {age ? (
+            <>
+              <span aria-hidden="true" className="shrink-0 opacity-40">
+                ·
+              </span>
+              <span className="shrink-0 tabular-nums">{age}</span>
+            </>
+          ) : null}
         </div>
       </div>
       {/* The whole card is the target — one tab stop, one tap, no hover required. Rendered
