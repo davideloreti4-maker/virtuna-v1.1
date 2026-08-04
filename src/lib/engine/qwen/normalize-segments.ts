@@ -88,7 +88,7 @@ export function normalizeSegments(
  *   - both present, equal  → one copy (never "X X")
  *   - both present, differ → "earlier later"
  */
-function joinVerbatim(
+export function joinVerbatim(
   earlier: string | null | undefined,
   later: string | null | undefined,
 ): string | null {
