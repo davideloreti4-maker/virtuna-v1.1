@@ -48,6 +48,7 @@ import {
   heroVerdictOf,
   methodOf,
   poolsFromWeights,
+  retentionCurveOf,
   retentionOf,
   simlineOf,
   videoAnswer,
@@ -172,8 +173,12 @@ function timeTokenToSec(t: string): number {
 export function curveBreak(
   heatmap: HeatmapPayload,
 ): { index: number; atSec: number; heldPct: number; lostPct: number } | null {
-  const curve = (heatmap.weighted_curve ?? []).map((v) => clamp(v, 0, 1));
-  if (curve.length < 3) return null;
+  // The break is a claim about people LEAVING ("62% gone by 0:03"), so it is read off the retention
+  // curve. Read off `weighted_curve` it was reporting the steepest ATTENTION dip and calling the
+  // remaining intensity "the share still watching" — which is how the page came to say 66% were gone
+  // at a second where the curve then climbed. `heldPct`/`lostPct` are now shares of the room.
+  const curve = retentionCurveOf(heatmap);
+  if (!curve || curve.length < 3) return null;
   const drops = curve.map((v, i) => (i === 0 ? 0 : curve[i - 1]! - v));
   const steepest = Math.max(...drops);
   // A curve that never gives up more than 8 points in a second did not break; it drifted.
@@ -198,7 +203,9 @@ export function curveBreak(
  * reasons at all** (`reasons: []` by design — §3.3), so every real video drill resolved to
  * `undefined` and the one actionable element on the page never rendered in prod. Passing fake
  * `reasons` would have been the wrong repair; a video's lever lives in the thing a video actually
- * measures, which is the curve. Every number below is read off `weighted_curve`.
+ * measures, which is the curve. Every number below is read off the RETENTION curve — the sentence
+ * counts people ("the share of the room still watching … stays to the end"), and `weighted_curve`
+ * counts attention.
  */
 export function curveUnlock(
   input: BrainSnapshotInput,
@@ -206,7 +213,8 @@ export function curveUnlock(
 ): DomainTemplate["unlock"] | undefined {
   const brk = curveBreak(input.heatmap);
   if (!brk || brk.atSec <= 0) return undefined;
-  const curve = input.heatmap.weighted_curve.map((v) => clamp(v, 0, 1));
+  const curve = retentionCurveOf(input.heatmap);
+  if (!curve) return undefined;
   const tail = curve.slice(brk.index);
   // What the room does AFTER the break — the half of the story the verdict never tells. Measured as
   // the share of the survivors still there at the end, so "the rest of the clip holds" is a fact.
@@ -348,6 +356,9 @@ export function buildVideoDomainTemplate(input: VideoDomainTemplateInput): Domai
   const transcript = transcriptOf(input.heatmap, input.verbatim);
   const curve = input.heatmap.weighted_curve.map((v) => clamp(v, 0, 1));
   const retention = retentionOf(input.heatmap, clipSeconds, transcript, brk);
+  // Both are null when the row carries no swipe times — the retention producer's honest absence, not
+  // a branch to paper over. `unlock` below already falls back on its own.
+  const answer = brk && brk.atSec > 0 ? videoAnswer(input.heatmap, brk, clipSeconds, transcript) : null;
   const pools = poolsFromWeights(input.heatmap.weights, curve);
   return {
     id: "creator",
@@ -359,7 +370,7 @@ export function buildVideoDomainTemplate(input: VideoDomainTemplateInput): Domai
     identity: drillIdentity(input.verbatim?.hook?.spoken_words ?? transcript.split(" ").slice(0, 12).join(" "), clipSeconds),
     // Only when the curve actually breaks: no break ⇒ no trim to offer, so the answer block falls
     // back to the unlock rather than inventing a lever (the §3.2 discipline, one layer up).
-    ...(brk && brk.atSec > 0 ? { answer: videoAnswer(input.heatmap, brk, clipSeconds, transcript) } : {}),
+    ...(answer ? { answer } : {}),
     engagement: engagementOf(retention, watchTilesOf(input.heatmap, clipSeconds)),
     ...(simlineOf(population?.room) ? { simline: simlineOf(population?.room)! } : {}),
     method: methodOf({ hasSignals: true, hasNetworks: true, note: population?.room?.note }),
