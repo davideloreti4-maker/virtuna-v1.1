@@ -83,3 +83,28 @@ export const QWEN_APOLLO_MODEL    = process.env.QWEN_APOLLO_MODEL    ?? "qwen3.7
 // Its PROSE was fine (10 distinct creator-specific personas), which is exactly why only the
 // live harness caught it. Rollback FORWARD (re-try flash) only behind a fresh harness run.
 export const QWEN_CALIBRATE_MODEL = process.env.QWEN_CALIBRATE_MODEL ?? "qwen3.7-plus";
+// UNBOUND-CHAT model (an anonymous /go visitor's chat turn) — the THIRD holdout, and the third
+// time the same lesson has been paid for: a cheaper model can pass every harness the swap thought
+// to run and fail the one it did not.
+//
+// ⚠️ THE UNBOUND CHAT PATH STAYS ON 3.7-PLUS. `FREE_SKILL_TOOLS` is empty, so an anonymous visitor
+// binds NO generators and the agent must refuse to produce the artefact. Measured live through the
+// real `/api/tools/chat` route with `scripts/live-chat-anon.mjs`, same build, same guard, same six
+// asks — the ONLY variable is this model:
+//     plus : 6/6 refused · 0/6 leaked
+//     flash: 6/6 "refused" · 5/6 LEAKED — "Here are 5 hooks for your student budgeting app…"
+// Flash opens with a correct refusal sentence and then writes the pack anyway, as a numbered list
+// of ideas/angles. That is the paid product handed to an anonymous visitor through the one door
+// that is free by design, which makes it a revenue leak, not a tone regression.
+//
+// #426 measured chat dispatch on flash and found it identical to plus — but only on the SIGNED-IN
+// path, where the generators ARE bound and the model's job is to call one. The unbound path is a
+// different job (refuse, and hold the line under pressure) and was never harnessed.
+//
+// Deliberately scoped to the UNBOUND path only, not to chat as a whole: signed-in chat is the
+// volume, it stays on flash, and the cost win survives almost intact. Scope the exception rather
+// than abandon the change — the same move that let Apollo and CALIBRATE be held without pinning
+// the platform. `createArtefactGuard` still runs underneath as defence in depth; it redacts QUOTED
+// candidate lines, which is why flash's unquoted numbered lists walked straight past it.
+// Rollback FORWARD (re-try flash) only behind a fresh `live-chat-anon.mjs` run.
+export const QWEN_UNBOUND_CHAT_MODEL = process.env.QWEN_UNBOUND_CHAT_MODEL ?? "qwen3.7-plus";

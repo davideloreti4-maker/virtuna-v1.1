@@ -24,7 +24,16 @@ export interface MarkdownBlockProps {
 
 export function MarkdownBlockRenderer({ block }: MarkdownBlockProps) {
   return (
-    <div className="md">
+    // MEASURE + LEADING, which this block had neither of. `.md` sizes everything in `em` so the
+    // host owns the scale — but the composer's chat turn set no measure at all, so a model answer
+    // ran the full width of a desktop thread (well past 100 characters per line) at default
+    // leading. That is the "it just outputs text" feeling: the markup was styled correctly and the
+    // paragraph was still a slab. 68ch is the same measure `reading-chat.tsx` already uses for the
+    // identical content, so the two chat surfaces stop disagreeing.
+    //
+    // `max-w` only ever CAPS: inside a 342px skill card this is a no-op, so card follow-ups and the
+    // Ask payload keep rendering exactly as they did.
+    <div className="md max-w-[68ch] leading-relaxed">
       <ReactMarkdown rehypePlugins={[rehypeSanitize]}>
         {block.props.text}
       </ReactMarkdown>
