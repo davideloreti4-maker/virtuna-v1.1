@@ -50,8 +50,17 @@ export const QWEN_REASONING_MODEL = process.env.QWEN_REASONING_MODEL ?? "qwen3.7
 // sensor) + QWEN_REASONING_MODEL (everything else — text and video). See docs/MODEL-POLICY.md.
 // Apollo reasoner model (the score-mode judge in deepseek.ts) — SCOPED separately from
 // QWEN_REASONING_MODEL so Apollo can move independently of chat/decode/adapt/text-mode.
-// Moved to 3.7-flash 2026-08-04 with the shared constant. ⚠️ Apollo is the ONE call that runs
-// thinking ON with a `thinking_budget` (the reasoning moat); if 3.7-flash rejects or ignores
-// those DashScope extensions, this is the constant to roll back, and it can move alone:
-// QWEN_APOLLO_MODEL=qwen3.7-plus. Deaf on both, so no capability is lost either way.
-export const QWEN_APOLLO_MODEL    = process.env.QWEN_APOLLO_MODEL    ?? "qwen3.7-flash";
+// ⚠️ Apollo STAYS ON 3.7-PLUS. It moved to flash with the shared constant on 2026-08-04 and was
+// moved straight back the same hour, on evidence: `scripts/apollo-cite-harness.ts`, same video,
+// same prompt, the two models back to back —
+//     plus : composite 81 · cites [§2.1 §2.2 §2.3 §2.5] · 59.7s · 2.07¢
+//     flash: composite 53 · cites NONE                  · 17.1s · 0.50¢
+// Flash emits no §-cites at all: every lever comes back as generic prose ("contrast / curiosity
+// gap") where plus grounds it in the knowledge core ("§2.1 rapid context + specificity"). That
+// citation IS the product here — MODEL-POLICY calls Apollo "cited, framework-grounded expert
+// judgment (the video moat)" — and the headline composite swings 28 points on one clip. The 3×
+// speedup is the tell that the `thinking_budget` is not being spent. Apollo is the only call
+// running thinking ON, which is why it is the only one that regressed.
+// Cheap-to-run is not cheap if it stops answering the question. Rollback FORWARD (re-try flash)
+// only behind a fresh harness run. Deaf on both, so this is about reasoning, not capability.
+export const QWEN_APOLLO_MODEL    = process.env.QWEN_APOLLO_MODEL    ?? "qwen3.7-plus";

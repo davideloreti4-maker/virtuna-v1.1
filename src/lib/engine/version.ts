@@ -147,13 +147,19 @@
  * on a cache hit ("cache_hit — silent replay"), and the fix would never reach the rows that have
  * the bug.
  *
- * 3.21.0 → 3.22.0 (2026-08-04, owner call — the reasoning model moves plus → FLASH): both
- * QWEN_REASONING_MODEL and QWEN_APOLLO_MODEL flip qwen3.7-plus → qwen3.7-flash, which is every
- * scoring call on the platform except the omni audio sensor. Same generation, still sighted,
- * still deaf, so no capability moves and the audio boundary is untouched — but a different model
- * scores differently, and Apollo composite / SIM verdicts / fold personas all cross a model
- * boundary at once. The two-model shape is unchanged: omni ingests audio, 3.7-flash does text
- * and video.
+ * 3.21.0 → 3.22.0 (2026-08-04, owner call — the reasoning model moves plus → FLASH):
+ * QWEN_REASONING_MODEL flips qwen3.7-plus → qwen3.7-flash, which is every scoring call on the
+ * platform except the omni audio sensor and Apollo. Same generation, still sighted, still deaf,
+ * so no capability moves and the audio boundary is untouched — but a different model scores
+ * differently, so SIM verdicts and fold personas cross a model boundary here.
+ *
+ * ⚠️ APOLLO DID NOT MOVE. It was flipped with the shared constant and reverted the same hour on
+ * live evidence (`scripts/apollo-cite-harness.ts`, one video, both models back to back): flash
+ * returned composite 53 with ZERO §-cites against plus's 81 with [§2.1 §2.2 §2.3 §2.5]. Apollo
+ * is the only call running thinking ON, and it is the only one that regressed. Fold, by
+ * contrast, PASSED live on flash (`scripts/fold-validate-r1.ts`): diversity 0.28 inside the
+ * healthy 0.27–0.41 band, 13.7s against a 90s ceiling, clean first-attempt parse, no retry.
+ * The version still bumps: the fold and every generation/chat call did change model.
  *
  * D-23 cache invariant: this bump is REQUIRED. Every prior model flip bumped it for the same
  * reason (3.14→3.15 Apollo, 3.15→3.16 fold) — without it, rows scored by 3.7-plus keep replaying

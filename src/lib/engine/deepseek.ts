@@ -16,12 +16,13 @@ import { calculateCost } from "./qwen/cost";
 import { stripModelOutput } from "./utils/strip";
 
 // NOTE: "deepseek" is a LEGACY module/stage name — this stage actually runs Qwen
-// (QWEN_APOLLO_MODEL = qwen3.7-flash) via DashScope, not DeepSeek. The pipeline
+// (QWEN_APOLLO_MODEL = qwen3.7-plus) via DashScope, not DeepSeek. The pipeline
 // is Qwen-only. The string is kept because log dashboards + tests key off the
 // "deepseek" / "deepseek_reasoning" stage names.
 const log = createLogger({ module: "deepseek" });
 
-// Legacy constant name — resolves to QWEN_APOLLO_MODEL (qwen3.7-flash, scoped to Apollo).
+// Legacy constant name — resolves to QWEN_APOLLO_MODEL (qwen3.7-plus — Apollo held back from the
+// 2026-08-04 flash move on live A/B evidence; see qwen/client.ts).
 const DEEPSEEK_MODEL = QWEN_APOLLO_MODEL;
 const MAX_RETRIES = 2; // 3 total attempts
 const TIMEOUT_MS = 120_000; // 120s — bounded-thinking Apollo call on the full KNOWLEDGE_CORE prefix; headroom under the 300s pipeline cap

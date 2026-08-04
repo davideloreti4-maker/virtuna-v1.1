@@ -13,7 +13,11 @@ The Qwen engine runs on **exactly two models**, split by ONE capability line —
   video audio must be ingested (Wave 0 read + the audience bake watch). Audio is distilled once here
   into text (`audio_event`, transcript, emotion arc); everything downstream reasons over that.
 - **`qwen3.7-flash`** — **everything else**, text AND video (sighted, deaf). Generation, SIM scoring,
-  the fold, chat, decode/adapt, audience synth, Apollo.
+  the fold, chat, decode/adapt, audience synth.
+
+…with **one scoped exception**: **Apollo stays on `qwen3.7-plus`** (see the A/B below). So the honest
+count is two models plus one deliberate holdout, not three tiers — `QWEN_APOLLO_MODEL` exists exactly
+so this can be true without dragging the rest of the platform back.
 
 **The reasoning model moved `qwen3.7-plus` → `qwen3.7-flash` on 2026-08-04** (owner call). Same
 generation, still sighted, still deaf — so no call site changed capability and the audio boundary is
@@ -21,16 +25,53 @@ exactly where it was. Cost falls roughly 10×: **$0.03/$0.13** per M at ≤32K i
 $0.40/$1.60 (flash is priced in context BANDS — $0.10/$0.40 through 256K, $0.20/$0.80 through 1M —
 which `qwen/cost.ts` now models; a flat rate would have understated every video call). `ENGINE_VERSION`
 bumped 3.21.0 → **3.22.0**: the prediction cache keys on it, so without the bump every row scored by
-plus would keep replaying. Rollback is env-only, and Apollo can move alone
-(`QWEN_APOLLO_MODEL=qwen3.7-plus`).
+plus would keep replaying. Rollback is env-only (`QWEN_REASONING_MODEL=qwen3.7-plus`) — but note that
+rolling the model back does NOT roll the version back, so plus rows re-score once under 3.22.0.
 
-> ⚠️ **What to watch.** `qwen3.6-flash` was retired in 2026-06-25 for a specific reason: with thinking
-> OFF the plus/flash latency gap was small, while plus held **multi-output reactions** (SIM candidates,
-> fold personas) far more distinct. That was a previous generation and the finding does not transfer
-> automatically — but output diversity is still the first thing to check on this move. The tripwire
-> already exists: the fold's diversity-collapse retry (`FOLD_DIVERSITY_RETRY_TEMP`). The second thing
-> to check is **Apollo**, the one call running thinking ON with a `thinking_budget` — verify flash
-> accepts and honours those DashScope extensions.
+### The 2026-08-04 A/B — both risks were real questions; one of them bit
+
+Two things were flagged as unverifiable from source. Both were then measured live, and they came back
+opposite ways. **This is why the swap was validated before merging, not after.**
+
+**① Output diversity on the fold — PASSED.** `qwen3.6-flash` was retired in 2026-06-25 because plus
+held multi-output reactions (SIM candidates, fold personas) far more distinct. That did NOT transfer
+to the new generation. `scripts/fold-validate-r1.ts`, live, 8-segment video:
+
+| | result | gate |
+|---|---|---|
+| diversity (`avgCurveRange`) | **0.28** | floor 0.10, healthy 0.27–0.41 ✅ |
+| latency | **13.7s** | 90s ceiling ✅ |
+| parse | clean first attempt, **no diversity retry** | ✅ |
+| cost | 0.547¢ | — |
+
+The cast spread is visible in the personas themselves: `tough_crowd` watch 25% / share 2 against
+`sharer` watch 85% / share 80. Not a collapsed fold.
+
+**② Apollo's thinking budget — FAILED, and Apollo was reverted.** `scripts/apollo-cite-harness.ts`,
+same video, both models back to back:
+
+| | `qwen3.7-plus` | `qwen3.7-flash` |
+|---|---|---|
+| composite | **81** | **53** |
+| §-cites | `§2.1 §2.2 §2.3 §2.5` | **none** |
+| hook lever | `§2.1 rapid context + specificity` | `contrast / curiosity gap` |
+| latency | 59.7s | 17.1s |
+| cost | 2.07¢ | 0.50¢ |
+
+Flash emits **no framework citations at all** — every lever degrades to generic prose. That citation
+is the product: this doc's own line for Apollo is *"cited, framework-grounded expert judgment (the
+video moat)"*. The headline composite also swings 28 points on one clip. The 3× speedup is the tell
+that `thinking_budget` is not being spent, and Apollo is the only call running thinking ON — which is
+exactly why it is the only one that regressed.
+
+> 🔑 **The lesson to keep: a cheaper model is not cheaper if it stops answering the question.** Flash
+> is ~4× cheaper on this call and returns something that *looks* like an Apollo result — valid schema,
+> plausible prose, sensible dimensions. Nothing in the type system, the tests, or the build would have
+> caught it. Only running the real harness and reading the output did.
+
+**Still unvalidated on flash:** the CALIBRATE synth (`enrich-signature`) is the OTHER thinking-ON call
+site and has not been harnessed. If audience personas start reading generic after a bake, this is the
+first thing to check.
 
 > ⚠️ **The `Basis` column below predates this move.** Every measured latency, cost and diversity figure
 > in the policy table was taken on `3.7-plus` (or earlier). The `max_tokens` rails are output-size
@@ -85,7 +126,7 @@ Unused headroom is free (you pay actual output, not the cap).
 | **CALIBRATE** synth | `audience/enrich-signature` (synth call) | `qwen3.7-flash` | **ON** | 6000 | 2000 | persona output (~2.5k) + thinking |
 | **SENSOR** read | `qwen/omni-analysis` (Wave 0) | `qwen3.5-omni-flash` | OFF | 8000 | — | audio in; sensor dump |
 | **SENSOR** bake-watch | `enrich-signature` (watch call) | `qwen3.5-omni-flash` | OFF | 600 | — | per-video watch notes |
-| **APOLLO** video insight | `engine/deepseek` | `qwen3.7-flash` (video, deaf) | **ON** | 3000 | 1500 | the reasoning moat (A/B-tuned) |
+| **APOLLO** video insight | `engine/deepseek` | **`qwen3.7-plus`** (video, deaf) | **ON** | 3000 | 1500 | the reasoning moat (A/B-tuned). ⛔ **Did NOT move to flash** — live A/B 2026-08-04 below |
 
 ### Notes
 - All scoring/generation calls keep `temperature: 0` + `seed: QWEN_SEED` (determinism). The **fold**
@@ -93,7 +134,7 @@ Unused headroom is free (you pay actual output, not the cap).
   diversity-collapse retry — the old retry re-ran the identical deterministic call (a no-op).
   Reproducibility is no longer a HARD requirement (2026-06-25): `FOLD_TEMPERATURE` env can raise the base.
 - Model env seams: `QWEN_OMNI_MODEL`=omni-flash (sensor), `QWEN_REASONING_MODEL`=3.7-flash (everything),
-  `QWEN_APOLLO_MODEL`=3.7-flash (scoped so Apollo can move independently). `QWEN_FAST_MODEL` removed.
+  `QWEN_APOLLO_MODEL`=3.7-PLUS (scoped so Apollo can stay put — see the A/B above). `QWEN_FAST_MODEL` removed.
 - `enable_thinking: false` is a DashScope extension (apply via the `@ts-expect-error` pattern).
 - Estimated `max_tokens` are rails with headroom — verify against one real output per site; bump if any truncates.
 
