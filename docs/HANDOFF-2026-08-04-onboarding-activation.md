@@ -1,5 +1,16 @@
 # HANDOFF — a real onboarding experience, landing page → arriving in the app
 
+> ⚠️ **THIS IS THE KICKOFF BRIEF, AND IT HAS BEEN ANSWERED.** The lane was built on 2026-08-04 —
+> see **`docs/HANDOFF-2026-08-04-onboarding-activation-SHIPPED.md`** for what exists now, the one
+> defect still open, and the traps that cost real time.
+>
+> Specifically stale below: **§5's five questions are all answered** (owner calls taken; do not
+> re-ask them). **§2's "structural question nobody has answered"** is answered — the two funnels
+> already converge on `/home`, and `claim-account.ts` stamps a funnel-B payer as onboarded with no
+> audience rather than trapping them in calibration. **§7's six UI defects** are fixed except the
+> profile-card clip, which is now tracked as §4 of the SHIPPED doc. The framing in §1, §4, §8, §9
+> and §11 all still stands and is still worth reading.
+
 **Branch to cut:** `task/onboarding-activation` off `origin/main` · **Worktree:** a free slot · **Port:** 3003
 **Owner ask (verbatim, 2026-08-04):** *"the one line sentence is bad. im talking about a real
 onboarding flow and experience for new users from landing page to arriving in the new app. … we
