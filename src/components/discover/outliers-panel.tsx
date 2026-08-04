@@ -21,6 +21,13 @@
  *   · filtering moved from that single axis to a real panel (DiscoverFilters): creator,
  *     niche, platform, views, outlier score, engagement, age.
  *   · sort moved out of a three-button segmented control into the toolbar beside Filters.
+ *
+ * CARD REFINED 2026-08-04 (owner, second pass on the same reference): the measured facts
+ * left the cover and became a chip row under the attribution — MultiplierChip + views +
+ * engagement, from `discover-primitives`. The card had been hand-rolling its own green ▲
+ * overlay while the shared MultiplierChip that encodes the honesty rules sat unused two
+ * files away, which is precisely how one object ended up with two badge meanings the last
+ * time. The cover now carries nothing but the platform mark.
  */
 
 import { useMemo, useState } from "react";
@@ -35,7 +42,7 @@ import { cn } from "@/lib/utils";
 import { CoverFill } from "@/components/primitives/CoverFill";
 import type { CorpusVideo } from "@/lib/discover/corpus-reads";
 import { useRemixLaunch } from "./use-remix-launch";
-import { fmtAge, fmtMultiplier, fmtViews } from "./discover-primitives";
+import { MetricChips, fmtAge } from "./discover-primitives";
 import {
   DiscoverFilters,
   EMPTY_FILTERS,
@@ -282,18 +289,16 @@ function OutlierCard({
           playSize={26}
           className="transition-transform duration-500 group-hover:scale-[1.03]"
         />
-        {/* A scrim, not a solid pill behind each badge. Covers here are arbitrary frames —
-            white kitchens, blown-out skies — and a badge with its own dark chip read as two
-            stuck-on stickers. One gradient carries both and lets the frame stay the object. */}
+        {/* A scrim, not a solid pill behind the badge. Covers here are arbitrary frames —
+            white kitchens, blown-out skies — and a badge with its own dark chip read as a
+            stuck-on sticker. One gradient carries it and lets the frame stay the object.
+            Half the height it was: it used to carry the multiplier too, and now that the
+            multiplier is a chip in the meta row this only has to keep one 17px glyph
+            legible against a blown-out sky. */}
         <div
-          className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/55 to-transparent"
+          className="pointer-events-none absolute inset-x-0 top-0 h-9 bg-gradient-to-b from-black/45 to-transparent"
           aria-hidden="true"
         />
-        {video.multiplier !== null ? (
-          <span className="absolute left-2.5 top-2.5 text-label font-semibold tabular-nums text-[color:var(--color-positive)] [text-shadow:0_1px_3px_rgba(0,0,0,0.6)]">
-            ▲ {fmtMultiplier(video.multiplier)}
-          </span>
-        ) : null}
         {PlatformIcon ? (
           <PlatformIcon
             size={17}
@@ -323,17 +328,28 @@ function OutlierCard({
           {pending ? null : <ArrowRight size={13} weight="bold" />}
         </button>
       </div>
-      {/* The hook leads at body size — it is the thing being browsed, and at text-label it
-          sat at the same weight as the handle beneath it, so the card had no first read.
-          `min-h` reserves both lines so a one-line hook does not shorten its card and ragged
-          the row. */}
-      <div className="p-3.5">
-        <p className="line-clamp-2 min-h-[2.75em] text-body leading-snug text-foreground">
+      {/* Three bands, in the order they are read: what it says, who said it and when, what
+          it did. Before this pass all of that after the hook was one grey concatenated line
+          — `@fitxfearless   61K · 2mo ago` — where the attribution and the numbers were the
+          same colour, the same size and the same weight, so the card's whole lower half was
+          a single undifferentiated grey run and the one measured claim sat overlaid on the
+          cover instead, as a sticker. */}
+      <div className="p-3 lg:p-4">
+        {/* The hook leads at body size — it is the thing being browsed, and at text-label it
+            sat at the same weight as the handle beneath it, so the card had no first read.
+            `min-h` reserves both lines so a one-line hook does not shorten its card and
+            ragged the row.
+            ⚠️ TWO lines, not the reference's one. These are TRANSCRIBED first seconds of
+            speech, not written captions: measured over all 532 rows the median hook is 68
+            characters and p90 is 118 (2026-08-04). A one-line clamp at this width cuts ~69%
+            of them mid-sentence, which costs the browse the very thing it is scanning for. */}
+        <p className="line-clamp-2 min-h-[2.75em] text-body leading-snug text-foreground lg:text-title">
           {hook}
         </p>
-        <div className="mt-2.5 flex items-center gap-2 text-caption text-foreground-muted">
-          <span className="min-w-0 flex-1 truncate">@{video.handle ?? "unknown"}</span>
-          <span className="shrink-0 tabular-nums">{fmtViews(video.views)}</span>
+        {/* Attribution recedes: its own row, one step down the scale, muted. It is context
+            for the numbers below it, not a peer of them. */}
+        <div className="mt-2 flex items-center gap-1.5 text-caption text-foreground-muted lg:mt-2.5 lg:text-label">
+          <span className="min-w-0 truncate">@{video.handle ?? "unknown"}</span>
           {age ? (
             <>
               <span aria-hidden="true" className="shrink-0 opacity-40">
@@ -342,6 +358,9 @@ function OutlierCard({
               <span className="shrink-0 tabular-nums">{age}</span>
             </>
           ) : null}
+        </div>
+        <div className="mt-2.5 lg:mt-3">
+          <MetricChips video={video} scale="card" />
         </div>
       </div>
       {/* The whole card is the target — one tab stop, one tap, no hover required. Rendered
