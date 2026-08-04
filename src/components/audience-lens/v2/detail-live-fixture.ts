@@ -8,7 +8,9 @@
  * page (2026-07-24): a real attention-scrubber (the curve IS the fold's weighted_curve), real craft
  * signals (the four GeminiVideoSignals dims), a measured-dip "why this second", PLUS the modeled-depth
  * sections (signalGrid / networkBars / kpiHeatmap) via `ambient-v2-modeled.ts` — labeled by the single
- * calibration line. buyIntent is omitted (a commerce figure the creator template doesn't carry).
+ * calibration line, PLUS the fold's action intents via `buildVideoPopulation` (2026-08-04), which is
+ * what the real mount passes and this page used to omit. buyIntent stays out (a commerce figure the
+ * creator template doesn't carry).
  * The `/ambient-v2` dev page toggles authored / LIVE-video / TEXT-sim so the owner reviews them side by
  * side — the "review LIVE, refine in code" loop.
  *
@@ -16,13 +18,15 @@
  */
 
 import type { PopulationAggregate } from "@/lib/audience/population";
+import type { PersonaBehavioralAggregate, PersonaSimulationResult } from "@/lib/engine/types";
 import { buildDomainTemplate, buildPopulationFrameData } from "@/lib/surfaces/ambient-v2-population";
 import { buildVideoDomainTemplate, type BrainSnapshotInput } from "@/lib/surfaces/ambient-v2-brain";
+import { buildVideoPopulation } from "@/lib/surfaces/ambient-v2-video-population";
 import type { DomainTemplate } from "./domain-template";
 
 // A realistic persisted heatmap: 6 segments over a 12s clip, a real attention curve that peaks on the
 // $400 stake (seg 0) and bottoms out at the stall (seg 2) — the shape a real fold emits.
-const LIVE_BRAIN_INPUT: BrainSnapshotInput = {
+export const LIVE_BRAIN_INPUT: BrainSnapshotInput = {
   stopPct: 38,
   stimulusKey: "live-analysis-demo",
   conceptLabel: "hook",
@@ -96,6 +100,81 @@ const LIVE_POP: PopulationAggregate = {
   ],
 };
 
+// ── the fold reception panel — what production seals beside the heatmap ────────────────────────────
+// The dev page was rendering a THINNER instrument than the real mount: `AmbientOverviewRail:485`
+// reads `v.intents` off the seal and passes it into `buildPopulationFrameData`, which is what puts
+// "Projected reaction" on a real video's Engagement tab. This fixture passed no `actionIntent`, so
+// the review surface hid a card production ships. These ten are `analysis_results.personas` — the
+// SAME cast as `heatmap.personas` above, one archetype per slot (6 fyp · 2 niche · loyalist ·
+// cross-niche, exactly `ARCHETYPE_SLOT`), with each `scroll_past_second` matching that persona's
+// `swipe_predicted_at` so the fold cast and the retention curve describe one room, not two.
+// `watch_through_pct` is the bail second over the 12s clip (a stayer watched it through).
+const foldPersona = (
+  persona_id: string,
+  archetype: PersonaSimulationResult["archetype"],
+  slot_type: PersonaSimulationResult["slot_type"],
+  scroll_past_second: number,
+  watch_through_pct: number,
+  [share_intent, save_intent, comment_intent, rewatch_intent]: [number, number, number, number],
+  reasoning: string,
+): PersonaSimulationResult => ({
+  persona_id,
+  archetype,
+  slot_type,
+  niche: "general",
+  scroll_past_second,
+  watch_through_pct,
+  share_intent,
+  save_intent,
+  comment_intent,
+  rewatch_intent,
+  reasoning,
+});
+
+export const LIVE_FOLD_CAST: PersonaSimulationResult[] = [
+  foldPersona("lp1", "tough_crowd", "fyp", 2, 17, [0, 0, 0, 0], "heard the claim, did not buy it"),
+  foldPersona("lp2", "lurker", "fyp", 4, 33, [0, 0, 0, 0], "watches, never acts — and the stall lost it"),
+  foldPersona("lp3", "sharer", "fyp", 4, 33, [0, 0, 0, 0], "nothing to pass on once the pace dropped"),
+  foldPersona("lp4", "purposeful_viewer", "fyp", 4, 33, [0, 0, 0, 0], "came for the number, left before it landed"),
+  foldPersona("lp5", "saver", "fyp", 6, 50, [5, 45, 0, 0], "worth keeping for the month-one breakdown"),
+  foldPersona("lp6", "high_engager", "fyp", 0, 100, [55, 60, 50, 35], "stayed for the whole arc, wants the follow-up"),
+  foldPersona("lp7", "niche_deep_scout", "niche_deep", 0, 100, [25, 55, 20, 15], "filing this against the other $400 starts"),
+  foldPersona("lp8", "niche_deep_buyer", "niche_deep", 10, 83, [15, 40, 10, 0], "left at the close, kept the numbers"),
+  foldPersona("lp9", "loyalist", "loyalist", 0, 100, [40, 50, 45, 30], "already follows — this is the honest one"),
+  foldPersona("lp10", "cross_niche_curiosity", "cross_niche", 0, 100, [10, 15, 5, 0], "stayed out of curiosity, not intent"),
+];
+
+/**
+ * `analysis_results.persona_behavioral_aggregate` — persisted ENGINE output, so it is fixture INPUT
+ * here exactly like the heatmap is. Every value is what `aggregatePersonaResults` (wave3/aggregator)
+ * emits for `LIVE_FOLD_CAST` under its own documented rules, recomputed rather than invented:
+ * `completion_pct` is the flat mean of watch_through (64.9); the four intents are top-3-enthusiast
+ * weighted (0.6 × mean of the three keenest + 0.4 × mean of the other seven). The aggregator itself
+ * is not imported — it pulls `persona-registry` → the whole niche taxonomy → into a client bundle for
+ * a dev page. The numbers are asserted against the real producer in the fixture's test instead.
+ */
+export const LIVE_BEHAVIORAL: PersonaBehavioralAggregate = {
+  completion_pct: 64.9,
+  share_pct: 25.714285714285715,
+  save_pct: 38.714285714285715,
+  comment_pct: 23.857142857142858,
+  loop_pct: 16,
+};
+
+/**
+ * The fold reception panel through the SHIPPED adapter — the same call `/api/tools/test/card`
+ * makes at seal time. Only `intents` is consumed: those are dimensionless (a 0–100 index plus
+ * headcounts off this cast), so they compose with any aggregate. `skimmedPct` is deliberately NOT
+ * taken — it is a percentage of the 10-persona fold, while the population below is the 1,000-person
+ * Stage-2 projection, and crossing those denominators would push the tri-state's stopped band to
+ * zero (`buildPopulationFrameData` clamps the skim band inside `stopPct`, which is 38 here).
+ */
+const LIVE_FOLD = buildVideoPopulation({
+  personas: LIVE_FOLD_CAST,
+  heatmap: LIVE_BRAIN_INPUT.heatmap,
+  aggregate: LIVE_BEHAVIORAL,
+});
+
 const LIVE_PERSONAS = [
   { archetype: "skeptic", verdict: "scroll" as const, quote: "i'd be gone before the point lands" },
   { archetype: "builder", verdict: "stop" as const, quote: "the $400 detail made me stay" },
@@ -118,6 +197,8 @@ export const CREATOR_LIVE_TEMPLATE: DomainTemplate = buildVideoDomainTemplate({
     personas: LIVE_PERSONAS,
     calibratedFrom: "your 4.2k followers",
     tier: "max",
+    // what the room would DO with it — the seal's own intents, as the real mount passes them
+    ...(LIVE_FOLD?.intents ? { actionIntent: LIVE_FOLD.intents } : {}),
   }),
 });
 
