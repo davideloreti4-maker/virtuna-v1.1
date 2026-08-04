@@ -12,7 +12,7 @@
  * reliably filled by a later omni WATCH pass (finding #1, token-appended mp4); the
  * text tier emits them only when the caption/transcript makes them evident, else null.
  *
- * Model: QWEN_REASONING_MODEL (qwen3.7-plus), thinking-off, temp 0 + seed → deterministic
+ * Model: QWEN_REASONING_MODEL (qwen3.7-flash), thinking-off, temp 0 + seed → deterministic
  * (matches the spike + MODEL-POLICY). DashScope compatible-mode via the shared qwen client.
  * No gemini, no embeddings — pure text-in / JSON-out.
  */

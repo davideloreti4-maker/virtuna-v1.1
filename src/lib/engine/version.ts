@@ -146,5 +146,19 @@
  * cosmetic — without it every already-cached fold-failed row keeps replaying its old HIGH badge
  * on a cache hit ("cache_hit — silent replay"), and the fix would never reach the rows that have
  * the bug.
+ *
+ * 3.21.0 → 3.22.0 (2026-08-04, owner call — the reasoning model moves plus → FLASH): both
+ * QWEN_REASONING_MODEL and QWEN_APOLLO_MODEL flip qwen3.7-plus → qwen3.7-flash, which is every
+ * scoring call on the platform except the omni audio sensor. Same generation, still sighted,
+ * still deaf, so no capability moves and the audio boundary is untouched — but a different model
+ * scores differently, and Apollo composite / SIM verdicts / fold personas all cross a model
+ * boundary at once. The two-model shape is unchanged: omni ingests audio, 3.7-flash does text
+ * and video.
+ *
+ * D-23 cache invariant: this bump is REQUIRED. Every prior model flip bumped it for the same
+ * reason (3.14→3.15 Apollo, 3.15→3.16 fold) — without it, rows scored by 3.7-plus keep replaying
+ * on cache hits and the new model's numbers never reach the board. Rollback is env-only
+ * (QWEN_REASONING_MODEL / QWEN_APOLLO_MODEL back to qwen3.7-plus), but note that rolling the
+ * model back does NOT roll this version back, so 3.7-plus rows re-score once under 3.22.0.
  */
-export const ENGINE_VERSION = "3.21.0";
+export const ENGINE_VERSION = "3.22.0";

@@ -1,29 +1,50 @@
 # Engine Model & Latency Policy
 
 > Source-of-truth for **which model + thinking mode + token budget** every engine LLM call uses.
-> Updated **2026-06-25** (R1′ model consolidation). Goal: **Numen feels snappy while keeping quality.**
+> Updated **2026-08-04** (reasoning model plus → flash). Goal: **Numen feels snappy while keeping quality.**
 > Tune `max_tokens` from logged `usage` after real traffic — values below are measured where noted,
 > else generous headroom rails.
 
 ## Two models, platform-wide
 
-The Qwen engine runs on **exactly two models**:
+The Qwen engine runs on **exactly two models**, split by ONE capability line — **audio**:
 
-- **`qwen3.5-omni-flash`** — the **sensor**. The only audio-capable model; used ONLY where raw video
-  audio must be ingested (Wave 0 read + the audience bake watch). Audio is distilled once here into
-  text (`audio_event`, transcript, emotion arc); everything downstream reasons over that.
-- **`qwen3.7-plus`** — **everything else** (sighted/deaf: watches video, no audio). Generation,
-  SIM scoring, the fold, chat, decode/adapt, audience synth, Apollo.
+- **`qwen3.5-omni-flash`** — the **sensor**, and the only audio-capable model. Used ONLY where raw
+  video audio must be ingested (Wave 0 read + the audience bake watch). Audio is distilled once here
+  into text (`audio_event`, transcript, emotion arc); everything downstream reasons over that.
+- **`qwen3.7-flash`** — **everything else**, text AND video (sighted, deaf). Generation, SIM scoring,
+  the fold, chat, decode/adapt, audience synth, Apollo.
 
-**`qwen3.6-flash` is RETIRED** (2026-06-25). With thinking OFF the plus/flash latency gap is small,
-while `3.7-plus` keeps multi-output reactions (SIM candidates, fold personas) far more distinct.
-`QWEN_FAST_MODEL` is removed. (Note: the legacy competitor-intelligence files `src/lib/ai/deepseek.ts`
-+ `gemini.ts` — despite their names — now both resolve to `QWEN_REASONING_MODEL` (`qwen3.7-plus`) via
-DashScope, and have no live (non-test) importers. The old `deepseek-chat` + `gemini-2.5-flash-lite`
-providers are gone; the dead files are a deletion candidate.)
+**The reasoning model moved `qwen3.7-plus` → `qwen3.7-flash` on 2026-08-04** (owner call). Same
+generation, still sighted, still deaf — so no call site changed capability and the audio boundary is
+exactly where it was. Cost falls roughly 10×: **$0.03/$0.13** per M at ≤32K input against plus's
+$0.40/$1.60 (flash is priced in context BANDS — $0.10/$0.40 through 256K, $0.20/$0.80 through 1M —
+which `qwen/cost.ts` now models; a flat rate would have understated every video call). `ENGINE_VERSION`
+bumped 3.21.0 → **3.22.0**: the prediction cache keys on it, so without the bump every row scored by
+plus would keep replaying. Rollback is env-only, and Apollo can move alone
+(`QWEN_APOLLO_MODEL=qwen3.7-plus`).
+
+> ⚠️ **What to watch.** `qwen3.6-flash` was retired in 2026-06-25 for a specific reason: with thinking
+> OFF the plus/flash latency gap was small, while plus held **multi-output reactions** (SIM candidates,
+> fold personas) far more distinct. That was a previous generation and the finding does not transfer
+> automatically — but output diversity is still the first thing to check on this move. The tripwire
+> already exists: the fold's diversity-collapse retry (`FOLD_DIVERSITY_RETRY_TEMP`). The second thing
+> to check is **Apollo**, the one call running thinking ON with a `thinking_budget` — verify flash
+> accepts and honours those DashScope extensions.
+
+> ⚠️ **The `Basis` column below predates this move.** Every measured latency, cost and diversity figure
+> in the policy table was taken on `3.7-plus` (or earlier). The `max_tokens` rails are output-size
+> budgets and carry over as safety rails, but the *measurements* have not been re-run on flash. They
+> are kept as written because they record what was observed, not what runs now.
+
+(Note: the legacy competitor-intelligence files `src/lib/ai/deepseek.ts` + `gemini.ts` — despite their
+names — both resolve to `QWEN_REASONING_MODEL` via DashScope and have no live (non-test) importers.
+The old `deepseek-chat` + `gemini-2.5-flash-lite` providers are gone; the dead files are a deletion
+candidate.) `QWEN_FAST_MODEL` is removed.
 
 > Card badges are PRODUCT labels, not model ids: **`SIM-1 Flash` = text-only call**, **`SIM-1 Max` =
-> with-video call**. The underlying model is `3.7-plus` either way.
+> with-video call**. The underlying model is `3.7-flash` either way — and note the third collision in
+> this area: `SIM-1 Flash` (tier) ≠ `omni-flash` (sensor model) ≠ `3.7-flash` (reasoning model).
 
 ## The thinking principle
 
@@ -51,28 +72,28 @@ Unused headroom is free (you pay actual output, not the cap).
 
 | Role | Call sites | Model | Thinking | max_tokens | thinking_budget | Basis |
 |------|-----------|-------|----------|-----------|-----------------|-------|
-| **SIMULATE** N=1 | `run-flash-text-mode` (react/script opener) | `qwen3.7-plus` | OFF | 1000 | — | measured ~400–500, ×2 rail |
-| **SIMULATE** batch | `run-flash-text-mode` (hooks/ideas/remix, N≤5) | `qwen3.7-plus` | OFF | 3500 | — | measured ~1.9k @ N=5, ×~1.8 rail |
-| **GENERATE** hooks | `hooks-runner` | `qwen3.7-plus` | OFF | 1500 | — | measured 587/791, ×~2 rail |
-| **GENERATE** ideas | `ideas-runner` | `qwen3.7-plus` | OFF | 2000 | — | est. (richer × 4) |
-| **GENERATE** script | `script-runner` | `qwen3.7-plus` | OFF | 2000 | — | est. (beats) |
-| **ADAPT** | `remix/adapt` | `qwen3.7-plus` | OFF | 1200 | — | rail |
-| **DECODE** | `remix/decode` | `qwen3.7-plus` | OFF | 1200 | — | rail |
-| **CONVERSE** chat | `chat-runner`, `analyze/[id]/chat`, 4 tool-route follow-ups | `qwen3.7-plus` | OFF | 2000 | — | bound runaway; streamed |
-| **TEXT-ANALYZE** (no-video path) | `pipeline.ts` gemini_analysis | `qwen3.7-plus` | OFF | 2000 | — | fixed 2026-06-25 (was unbounded + thinking-unset) |
-| **FOLD** (Read audience sim) | `wave3/fold` | `qwen3.7-plus` (video, deaf) | OFF | 8000 | — | 10 personas × N segments; independence directive is the diversity lever. ✅ **validated live 2026-06-26** (5-seg video: 40.9s/90s, diversity 0.31 first-attempt no-retry, 0.56¢; `scripts/fold-validate-r1.ts`) |
-| **CALIBRATE** synth | `audience/enrich-signature` (synth call) | `qwen3.7-plus` | **ON** | 6000 | 2000 | persona output (~2.5k) + thinking |
+| **SIMULATE** N=1 | `run-flash-text-mode` (react/script opener) | `qwen3.7-flash` | OFF | 1000 | — | measured ~400–500, ×2 rail |
+| **SIMULATE** batch | `run-flash-text-mode` (hooks/ideas/remix, N≤5) | `qwen3.7-flash` | OFF | 3500 | — | measured ~1.9k @ N=5, ×~1.8 rail |
+| **GENERATE** hooks | `hooks-runner` | `qwen3.7-flash` | OFF | 1500 | — | measured 587/791, ×~2 rail |
+| **GENERATE** ideas | `ideas-runner` | `qwen3.7-flash` | OFF | 2000 | — | est. (richer × 4) |
+| **GENERATE** script | `script-runner` | `qwen3.7-flash` | OFF | 2000 | — | est. (beats) |
+| **ADAPT** | `remix/adapt` | `qwen3.7-flash` | OFF | 1200 | — | rail |
+| **DECODE** | `remix/decode` | `qwen3.7-flash` | OFF | 1200 | — | rail |
+| **CONVERSE** chat | `chat-runner`, `analyze/[id]/chat`, 4 tool-route follow-ups | `qwen3.7-flash` | OFF | 2000 | — | bound runaway; streamed |
+| **TEXT-ANALYZE** (no-video path) | `pipeline.ts` gemini_analysis | `qwen3.7-flash` | OFF | 2000 | — | fixed 2026-06-25 (was unbounded + thinking-unset) |
+| **FOLD** (Read audience sim) | `wave3/fold` | `qwen3.7-flash` (video, deaf) | OFF | 8000 | — | 10 personas × N segments; independence directive is the diversity lever. ✅ **validated live 2026-06-26** (5-seg video: 40.9s/90s, diversity 0.31 first-attempt no-retry, 0.56¢; `scripts/fold-validate-r1.ts`) |
+| **CALIBRATE** synth | `audience/enrich-signature` (synth call) | `qwen3.7-flash` | **ON** | 6000 | 2000 | persona output (~2.5k) + thinking |
 | **SENSOR** read | `qwen/omni-analysis` (Wave 0) | `qwen3.5-omni-flash` | OFF | 8000 | — | audio in; sensor dump |
 | **SENSOR** bake-watch | `enrich-signature` (watch call) | `qwen3.5-omni-flash` | OFF | 600 | — | per-video watch notes |
-| **APOLLO** video insight | `engine/deepseek` | `qwen3.7-plus` (video, deaf) | **ON** | 3000 | 1500 | the reasoning moat (A/B-tuned) |
+| **APOLLO** video insight | `engine/deepseek` | `qwen3.7-flash` (video, deaf) | **ON** | 3000 | 1500 | the reasoning moat (A/B-tuned) |
 
 ### Notes
 - All scoring/generation calls keep `temperature: 0` + `seed: QWEN_SEED` (determinism). The **fold**
   baseline is `temperature: 0` too, but auto-perturbs to `FOLD_DIVERSITY_RETRY_TEMP` (0.7) on a
   diversity-collapse retry — the old retry re-ran the identical deterministic call (a no-op).
   Reproducibility is no longer a HARD requirement (2026-06-25): `FOLD_TEMPERATURE` env can raise the base.
-- Model env seams: `QWEN_OMNI_MODEL`=omni-flash (sensor), `QWEN_REASONING_MODEL`=3.7-plus (everything),
-  `QWEN_APOLLO_MODEL`=3.7-plus (scoped so Apollo can move independently). `QWEN_FAST_MODEL` removed.
+- Model env seams: `QWEN_OMNI_MODEL`=omni-flash (sensor), `QWEN_REASONING_MODEL`=3.7-flash (everything),
+  `QWEN_APOLLO_MODEL`=3.7-flash (scoped so Apollo can move independently). `QWEN_FAST_MODEL` removed.
 - `enable_thinking: false` is a DashScope extension (apply via the `@ts-expect-error` pattern).
 - Estimated `max_tokens` are rails with headroom — verify against one real output per site; bump if any truncates.
 

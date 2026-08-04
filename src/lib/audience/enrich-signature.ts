@@ -5,7 +5,7 @@
  *   (a) select the top ~3-5 videos by engagement (save+share weighted),
  *   (b) `qwen3.5-omni-flash` WATCHES each (video+audio) → content/format/voice notes
  *       (universal — works for talkers AND silent visual creators, the Khaby class, P.13),
- *   (c) ONE `qwen3.7-plus` synthesis (CALIBRATE: greedy temp:0, thinking-mode OFF per D-01) fuses stats + engagement + native subs + watchNotes
+ *   (c) ONE `qwen3.7-flash` synthesis (CALIBRATE: greedy temp:0, thinking-mode OFF per D-01) fuses stats + engagement + native subs + watchNotes
  *       → the AudienceSignature (creator persona + 10 reactors + derived weights + summary).
  *
  * Determinism (P.7): every LLM call runs `temperature:0, seed:QWEN_SEED`, system prompts
@@ -51,7 +51,7 @@ const MIN_WATCH = 3;
 /** Max transcripts to fold into synthesis (the watched set; writing sample = the top one). */
 const MAX_TRANSCRIPTS = 5;
 const OMNI_TIMEOUT_MS = 60_000;
-// Synth (qwen-3.7-plus, greedy temp:0, thinking-mode OFF per D-01) empirically ran ~60-90s with
+// Synth (qwen3.7-flash, greedy temp:0, thinking-mode OFF per D-01) empirically ran ~60-90s with
 // thinking ON; the old 60s ceiling aborted it systematically (spike 02-02 — the second bake
 // reliably timed out at ~60s with "Request was aborted"). 120s keeps ample headroom now that
 // thinking-mode is dropped (the call is strictly faster without the staging budget).

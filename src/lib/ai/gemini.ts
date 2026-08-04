@@ -1,7 +1,7 @@
 /**
  * Qwen AI client for viral video explanation and hashtag gap analysis.
  * Replaces the former Gemini client — same public API, same return types.
- * Model: QWEN_REASONING_MODEL (qwen3.7-plus) via DashScope International (OpenAI-compatible).
+ * Model: QWEN_REASONING_MODEL (qwen3.7-flash) via DashScope International (OpenAI-compatible).
  */
 
 import OpenAI from "openai";
@@ -19,7 +19,7 @@ import { QWEN_REASONING_MODEL } from "../engine/qwen/client";
 
 const DASHSCOPE_ENDPOINT = "https://dashscope-intl.aliyuncs.com/compatible-mode/v1";
 // Single source of truth — was a divergent `?? "qwen3.6-plus"` literal that drifted
-// from the central QWEN_REASONING_MODEL (qwen3.7-plus). Import the constant so it can't.
+// from the central QWEN_REASONING_MODEL (qwen3.7-flash). Import the constant so it can't.
 const MODEL = QWEN_REASONING_MODEL;
 
 let client: OpenAI | null = null;

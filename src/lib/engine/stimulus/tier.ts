@@ -3,12 +3,14 @@
  *
  * The SIM-1 tier is COMPUTED from the stimulus kind, never chosen by the user: an
  * audio-bearing person-video routes to Max (the omni audio sensor); everything else
- * (text / file_text / image) routes to Flash (qwen3.7-plus, deaf but vision-capable).
+ * (text / file_text / image) routes to Flash (qwen3.7-flash, deaf but vision-capable).
  *
- * ⚠️ NAMING-COLLISION WARNING (Pitfall 1): omni-**flash** (the MODEL name,
- * `qwen3.5-omni-flash`) is NOT SIM-1-**Flash** (the TIER). The mapping is inverted:
- *     SIM-1 Max   → QWEN_OMNI_MODEL      (qwen3.5-omni-flash, audio sensor)
- *     SIM-1 Flash → QWEN_REASONING_MODEL (qwen3.7-plus, deaf, vision-capable)
+ * ⚠️ NAMING-COLLISION WARNING (Pitfall 1) — and as of 2026-08-04 there are THREE "flash"es
+ * in this one mapping, none of which mean the same thing:
+ *     SIM-1 Max   → QWEN_OMNI_MODEL      (qwen3.5-omni-FLASH — the audio sensor)
+ *     SIM-1 FLASH → QWEN_REASONING_MODEL (qwen3.7-FLASH — deaf, vision-capable)
+ * The tier named Flash does NOT get the model named omni-flash; the mapping is inverted, and
+ * the reasoning model is now itself called flash. Read the CONSTANT, never the word.
  * Never route an image/text/file stimulus to QWEN_OMNI_MODEL.
  *
  * The tier→model mapping is encoded ONCE here (`SIM1_MODEL_BY_TIER`) so no model id

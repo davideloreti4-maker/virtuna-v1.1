@@ -7,7 +7,7 @@
  *   Never interpolates Date.now() / Math.random() / request IDs.
  * - `buildFoldUserContent(slots, segments, verbatim, emotionArc, videoUrl)` — OpenAI content array:
  *   the video (when present) + a text block (verbatim + segment grid + emotion arc + slot niche).
- *   The fold runs on qwen3.7-plus — SIGHTED (watches the video) but DEAF; audio arrives as text via
+ *   The fold runs on qwen3.7-flash — SIGHTED (watches the video) but DEAF; audio arrives as text via
  *   each segment's `audio_event` (omni runs only as the Wave 0 sensor). 2026-06-25.
  * - `FoldResponseSchema` — Zod validates the 20→1 fold output at the model boundary:
  *   exactly 10 archetypes (.length(10), D-01), attention clamped [0,1]. Per-segment
@@ -141,7 +141,7 @@ TYPE RULES (STRICT — a wrong type breaks parsing and discards the whole result
 // =====================================================
 // Volatile per-request user content builder.
 // Returns OpenAI content array: an optional video item + one text block. The fold runs on
-// qwen3.7-plus and WATCHES the video (sighted; deaf — audio is in the text block's audio_event).
+// qwen3.7-flash and WATCHES the video (sighted; deaf — audio is in the text block's audio_event).
 // The text block (verbatim + segments + emotion arc) is the shared skeleton from the Wave 0
 // read that keeps the fold's curves aligned to the canonical timeline.
 // =====================================================

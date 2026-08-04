@@ -8,6 +8,11 @@
  * calls the tool unprompted, self-corrects when a query whiffs (topical 0 rows → structural retry), and
  * grounds its answer in real cited sources. This module is that loop, made reusable + testable.
  *
+ * ⚠️ That spike ran on qwen3.7-PLUS; the platform moved to qwen3.7-flash 2026-08-04. The claim above
+ * is kept as written because it is a record of what was measured, not a statement about what runs —
+ * but tool-calling initiative is exactly the behaviour a smaller model can drop, and nothing has
+ * re-validated it on flash. Re-run the spike before trusting this path's unprompted-pull claim.
+ *
  * GATE-FREE: reference mode hands the model real evidence, it does not claim to beat a baseline, so the
  * open view-outcome gate (which blocks the GENERATE path) does not apply here.
  *
