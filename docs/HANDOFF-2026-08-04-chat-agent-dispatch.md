@@ -1,12 +1,15 @@
-# Handoff — chat agent → skill dispatch (2026-08-04)
+# Handoff — chat agent → skill dispatch (2026-08-04) — ✅ CLOSED, MERGED
 
-**Branch:** `fix/chat-agent-dispatch-mode-label` — **rebased onto `origin/main` @ `8896bac7`** (PR #423)
-on 2026-08-04. Read that ref with `git rev-parse` — `git log --format` here elided the merge and
-reported main as `d3b5afb8`, the squashed commit *below* its own tip.
+> **This lane is DONE.** PR **#424 merged 2026-08-04** as `6d48efab`; `fix/chat-agent-dispatch-mode-label`
+> tip was `063fbfea`. Everything below is the RECORD of five fixes and how they were measured — keep it
+> for the mechanisms and the traps, not as a to-do list.
+>
+> 👉 **The live lane continues in `docs/HANDOFF-2026-08-04-thread-experience.md`** — thread experience,
+> production readiness, and the skill-coverage gap this lane exposed.
+
 **Worktree:** `~/virtuna-slot-a`
-**Status:** five fixes landed on the branch and measured — §2, §3 (mitigation), §4, §5, §6b. §4 and §5
-are verified **live**. **PR #424 is open, unmerged** — the merge is held on one product decision, the
-chip pricing note in §5.
+**Status:** five fixes landed and measured — §2, §3 (mitigation), §4, §5, §6b. §4 and §5 verified **live**.
+⚠️ One item did NOT close: **§3 has only ever been measured offline.** See the next handoff.
 
 ---
 
