@@ -203,12 +203,18 @@ export async function POST(request: Request): Promise<Response> {
             });
             return;
           }
-          // Scrape/network failure — distinct from thin fallback (UI-SPEC copy)
-          log.warn("calibration returned scrape_failed", {
+          // Scrape/network failure — distinct from thin fallback (UI-SPEC copy) AND from a
+          // synthesis failure, where the account was read fine and our own model step is what
+          // broke. Asking for the handle there is a false accusation that costs the creator
+          // another paid scrape to act on.
+          const synthesisFailed = calibrationResult.error === "synthesis_failed";
+          log.warn(`calibration returned ${calibrationResult.error}`, {
             detail: calibrationResult.message ?? null,
           });
           send("error", {
-            message: "Calibration failed. Check the handle and try again.",
+            message: synthesisFailed
+              ? `We read @${handle ?? name} fine — building the audience from it is what failed. Nothing is wrong with the handle; try again.`
+              : "Calibration failed. Check the handle and try again.",
             retry: true,
           });
           return;

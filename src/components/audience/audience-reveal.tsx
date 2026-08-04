@@ -41,7 +41,24 @@ export function AudienceReveal({ audience, reveal, onUse, className }: AudienceR
   const handle = sig?.provenance.handle ?? audience.calibration?.handle ?? audience.name;
 
   return (
-    <div className={cn("flex flex-col gap-6", className)}>
+    <div className={cn("flex flex-col gap-4", className)}>
+      {/* ── The showcase body, bounded ───────────────────────────────────────────────────────
+          Everything above the action scrolls INSIDE the card, so the card itself always fits
+          the viewport and the action below is always on screen.
+
+          A first attempt used `position: sticky` on the action and did nothing, for a reason
+          worth recording: the onboarding layout is `flex min-h-screen items-center
+          justify-center`, so this card is a centred flex item whose height is exactly its
+          content. Sticky needs a containing block TALLER than the sticky element to have any
+          range to move in — here there is none, and the whole card simply scrolled off the
+          page with the button on it. Measured after that change: y=978, bottom=1022, viewport
+          982. Still below the fold.
+
+          The subtraction is the layout's fixed chrome — logo block (~60px), the card's py-10
+          (80px), the step indicator (~38px) and the action row below (~70px). Generous rather
+          than exact: overshooting costs a little scroll inside the body, undershooting puts
+          the button back under the fold, and only one of those is a defect. */}
+      <div className="flex max-h-[calc(100vh-260px)] flex-col gap-6 overflow-y-auto pr-1">
       <p className="text-sm text-foreground-secondary">
         ✓ We read{" "}
         <span className="font-medium text-foreground">@{handle}</span>
@@ -147,24 +164,19 @@ export function AudienceReveal({ audience, reveal, onUse, className }: AudienceR
           subtitles {sig.provenance.sub_coverage}
         </p>
       )}
-      {/* ── The terminal action, pinned ────────────────────────────────────────────────────
-          Measured 2026-08-04 at 1512×982: this button sat at y=989 with the page unscrolled
-          — SEVEN pixels below the fold, on a flat dark page with no scroll affordance. An
-          automated walk sat on this screen for 272s without ever reaching it. It is the last
-          step of onboarding, after a ~2 minute wait, and it was invisible.
+      </div>
 
-          Sticky rather than "moved up", because the column's height is CONTENT-DEPENDENT: the
-          post grid, the interest tags and the persona chips all vary with what the scrape
-          returned, so a layout tuned against one account goes back below the fold for the
-          next one. Sticky is correct for every content length.
+      {/* ── The terminal action ─────────────────────────────────────────────────────────────
+          Measured 2026-08-04 at 1512×982: this button sat at y=989 with the page unscrolled —
+          SEVEN pixels below the fold, on a flat dark page with no scroll affordance. It is the
+          last step of onboarding, after a ~2 minute wait, and an automated walk sat on this
+          screen for 272s without ever reaching it.
 
-          Solid `--color-charcoal-chip` (the card's own fill), never a translucent tint: this
-          bar floats over scrolling content, and an overlay tint would let the post grid show
-          through it. Same trap as `--color-hover` in the composer dock. */}
-      <div
-        className="sticky bottom-0 -mb-2 flex justify-end border-t border-white/[0.06] pt-4 pb-2"
-        style={{ backgroundColor: "var(--color-charcoal-chip)" }}
-      >
+          It is OUTSIDE the scrolling body above, so its position no longer depends on how much
+          the scrape returned — the post grid, the interest tags and the persona chips all vary
+          per account, and a layout tuned against one of them goes back under the fold for the
+          next. */}
+      <div className="flex justify-end border-t border-white/[0.06] pt-4">
         <Button type="button" variant="primary" onClick={onUse}>
           Use this audience
         </Button>

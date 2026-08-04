@@ -162,11 +162,14 @@ export interface CalibrationFallback {
 export interface CalibrationError {
   /**
    * `scrape_failed`        — Apify/network failure. The handle may be wrong; retry is sensible.
+   * `synthesis_failed`     — the scrape SUCCEEDED and the model step did not. The handle is fine
+   *                          and re-entering it changes nothing, so the copy must not ask for it
+   *                          — every retry re-runs a paid Apify scrape we already paid for once.
    * `platform_unsupported` — the requested platform CANNOT be calibrated (see PLATFORM guard in
    *                          calibrateFromScrape). Retrying changes nothing; the copy must not
    *                          tell the user to "check the handle" — the handle is fine.
    */
-  error: "scrape_failed" | "platform_unsupported";
+  error: "scrape_failed" | "synthesis_failed" | "platform_unsupported";
   message?: string;
 }
 /**
@@ -373,8 +376,13 @@ export async function calibrateFromScrape(
       { onStage },
     );
   } catch (err) {
+    // NOT `scrape_failed`. Everything above this line succeeded — the account was read and the
+    // posts are in hand; what failed is our own model step. Reporting it as a scrape failure
+    // produced "Calibration failed. Check the handle and try again." for a public handle we had
+    // just finished reading (observed live 2026-08-04, twice in five runs), which sends the
+    // creator to re-enter a correct handle and pay for the scrape a second time.
     return {
-      error: "scrape_failed",
+      error: "synthesis_failed",
       message: err instanceof Error ? err.message : "enrichment failed",
     };
   }

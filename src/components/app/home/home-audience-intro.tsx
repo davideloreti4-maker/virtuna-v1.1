@@ -100,11 +100,24 @@ export function HomeAudienceIntro({
     [],
   );
 
+  const personaCount = audience?.personas?.length ?? 0;
+
+  // Whether there is anything true to say. Computed BEFORE the effect below because the effect
+  // depends on it — see the note there.
+  const visible =
+    mounted && !seen && Boolean(audience) && !audience?.is_general && personaCount > 0;
+
   // ── Make sure it is actually SEEN ───────────────────────────────────────────────────────────
   // Measured at 390×844: this rendered at y=998 — wholly below the fold — so the product's one
   // spoken introduction was invisible on the viewport §2a calls the default. Scrolling it into
   // view is the content-length-independent fix: the starter grid above is nine tiles and will
   // keep changing, so any hard-coded placement goes stale.
+  //
+  // ⚠️ `visible` is in the deps, and that is the whole fix. A first attempt depended on
+  // [mounted, seen] alone and did nothing: the audience is FETCHED, so at the moment `mounted`
+  // flips true this component still renders null and `introRef.current` is null. The effect ran
+  // once against nothing, and never re-ran when the audience arrived. Re-measured after that
+  // version: still y=998.
   //
   // `block: "nearest"` so a viewport that ALREADY shows it does not jump — on desktop it is in
   // view at 1512×982 and must stay still. Honours prefers-reduced-motion via `behavior: auto`
@@ -113,7 +126,7 @@ export function HomeAudienceIntro({
   const scrolled = useRef(false);
 
   useEffect(() => {
-    if (!mounted || seen || scrolled.current) return;
+    if (!visible || scrolled.current) return;
     const el = introRef.current;
     if (!el) return;
     scrolled.current = true;
@@ -123,17 +136,14 @@ export function HomeAudienceIntro({
       window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
     el.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "nearest" });
-  }, [mounted, seen]);
-
-  const personaCount = audience?.personas?.length ?? 0;
+  }, [visible]);
 
   // Nothing to introduce unless a real calibration actually landed. `personas.length` is the
   // app's own calibrated test (select-persona-targets.ts:111) — a bare draft row is not an
   // audience, and General is the uncalibrated default rather than something to announce.
   //
-  // Written as an early return rather than a `show` boolean so `audience` stays NARROWED for
-  // the render below — the effect above reads only `mounted`/`seen`, which are declared before
-  // any of this, so hook order is unaffected.
+  // Repeats `visible`'s conditions rather than testing it, so `audience` stays NARROWED for the
+  // render below.
   if (!mounted || seen || !audience || audience.is_general || personaCount === 0) {
     return null;
   }

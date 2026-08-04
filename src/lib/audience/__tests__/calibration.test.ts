@@ -166,10 +166,15 @@ describe("calibrateFromScrape — scrape_failed (distinct from thin)", () => {
     expect(result).not.toHaveProperty("audience");
   });
 
-  it("returns { error:'scrape_failed' } when enrichment throws", async () => {
+  it("returns { error:'synthesis_failed' } when enrichment throws — NOT scrape_failed", async () => {
+    // The scrape SUCCEEDED here; only our own model step broke. Conflating the two produced
+    // "Calibration failed. Check the handle and try again." for a public handle we had just
+    // read (observed live 2026-08-04, twice in five runs), which sends the creator to re-enter
+    // a correct handle and pay for the Apify scrape a second time to act on the advice.
     const deps = makeDeps({ enrich: vi.fn(async () => { throw new Error("synthesis validation failed"); }) });
     const result = await calibrateFromScrape(BASE_INPUT, deps);
-    expect(result).toHaveProperty("error", "scrape_failed");
+    expect(result).toHaveProperty("error", "synthesis_failed");
+    expect(result).not.toHaveProperty("audience");
   });
 });
 
