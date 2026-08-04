@@ -310,10 +310,12 @@ function actionTiles(data: ActionIntentData): { tiles: MetricTile[]; meta: strin
     tiles: data.rows.slice(0, 4).map((r, i) => ({
       label: r.label.replace(/^\w/, (c) => c.toUpperCase()),
       value: String(Math.round(r.value)),
-      delta: `${Math.round(data.watchThroughPct)}% watch-through`,
       lead: i === 0,
     })),
-    meta: `${data.actors} of ${data.total} would act`,
+    // The SCALE, not a watch figure. These four values are a 0–100 index and nothing on the tile said
+    // so — beside authored's "Saves 102", a bare "Save 39" reads as a headcount. `data.note` carries
+    // the weighting in full; the drawer takes that (`methodOf`), the head takes the unit.
+    meta: `${data.actors} of ${data.total} would act · intent index 0–100`,
   };
 }
 

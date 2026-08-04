@@ -357,8 +357,20 @@ export interface AmplificationData {
 export interface ActionIntentData {
   /** The action verbs, strongest first. `value` is a 0–100 intent INDEX, not a rate — see `note`. */
   rows: { label: string; value: number }[];
-  /** The real population rate (flat mean of watch-through). A DIFFERENT kind of number from `rows`,
-   *  so it rides the header as its own figure and never joins the bar set. */
+  /** The aggregate's flat mean of watch-through. Carried because it is real sealed engine output —
+   *  but deliberately NOT rendered on the Engagement page, and this is the reason:
+   *
+   *  Key metrics already answers watch depth twice ("Avg watch 6.1s of 0:12" — the room's
+   *  audience-WEIGHTED mean off the swipe times — and "Watched full 22%" — the share of people who
+   *  reached the end). This field is a THIRD answer to the same question: 65% on the same ten
+   *  people, differing only in that it is unweighted. It was printed as the delta under all four
+   *  verbs, so the page read 51% · 22% · 65% ×4 and the three looked like a contradiction.
+   *
+   *  Renaming it cannot fix that — the collision is between the NUMBERS, not the words. This module's
+   *  own producer note (`ambient-v2-video-population.ts:262`) already draws the line: a second,
+   *  differently-weighted figure for the same run "would put two contradictory answers on screen".
+   *  So Key metrics owns watch depth, and Projected reaction owns intent. A consumer with no Key
+   *  metrics card may still read this. */
   watchThroughPct: number;
   total: number; // the real cast
   actors: number; // …with any action intent above zero

@@ -346,6 +346,15 @@ describe("AmbientOverviewRail", () => {
     expect(screen.getByText(/3 of 5 would act/)).toBeInTheDocument();
     // still a reach-free claim: no multiplier, no cascade, no carrier ranking anywhere near it
     expect(screen.queryByText(/who spreads it/i)).toBeNull();
+
+    // The tiles carry the SCALE, never a watch figure. `watchThroughPct` used to print as the delta
+    // under all four verbs, which put a third watch-depth answer (65%) on a page whose Key metrics
+    // card already answers it twice — audience-weighted seconds, and the share who reached the end.
+    // Renaming could not fix that: the collision is between the numbers, not the words.
+    expect(screen.getByText(/intent index 0–100/)).toBeInTheDocument();
+    expect(screen.queryByText(/watch-through/i)).toBeNull();
+    // …and one fact is stated once: the four verbs no longer repeat a single global figure.
+    expect(screen.queryAllByText(/% watch/i)).toHaveLength(0);
   });
 
   it("a focusVideo request opens that video's depth directly — the Test card's door", () => {

@@ -373,7 +373,12 @@ export function buildVideoDomainTemplate(input: VideoDomainTemplateInput): Domai
     ...(answer ? { answer } : {}),
     engagement: engagementOf(retention, watchTilesOf(input.heatmap, clipSeconds)),
     ...(simlineOf(population?.room) ? { simline: simlineOf(population?.room)! } : {}),
-    method: methodOf({ hasSignals: true, hasNetworks: true, note: population?.room?.note }),
+    method: methodOf({
+      hasSignals: true,
+      hasNetworks: true,
+      hasIntents: !!population?.actionIntent,
+      note: population?.room?.note,
+    }),
     // Reason-derived when reasons exist (the text path, and any caller that has them); otherwise the
     // curve-derived video lever. Before this fell back, `AmbientOverviewRail` — which cannot supply
     // reasons, because a video fold does not code any — rendered no unlock at all (§3.2).

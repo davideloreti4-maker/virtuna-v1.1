@@ -379,13 +379,25 @@ export function simlineOf(room: RoomTrustData | undefined): string | undefined {
 
 /** The drawer EXPLAINS the instrument: which scale each block is on, and what the model cannot
  *  claim. It carries no coral and no second copy of anything on the surface. */
-export function methodOf(opts: { hasSignals?: boolean; hasNetworks?: boolean; note?: string }) {
+export function methodOf(opts: {
+  hasSignals?: boolean;
+  hasNetworks?: boolean;
+  hasIntents?: boolean;
+  note?: string;
+}) {
   const scales: string[] = [
     "Share of the room — the verdict, the curve, the moment chips and the watch metrics. One unit, one meaning: how many of the room are still with you.",
   ];
   if (opts.hasSignals) {
     scales.push(
       "0–100 signal scores — the breakdown. Nine signals derived from seven networks; two are composites. The grade words are a cutoff on a modeled signal, NOT a benchmark against real outcomes — which is why they carry no colour.",
+    );
+  }
+  if (opts.hasIntents) {
+    // The card head names the unit; the weighting is too long for a 440px `whitespace-nowrap` meta,
+    // and without it four bare numbers beside authored's "Saves 102" read as headcounts.
+    scales.push(
+      "0–100 intent index — Projected reaction. Weighted toward the three keenest viewers, not a room average, so it is what the room WOULD do, never a count of what it did. There is no reach figure on a live run to turn it into one.",
     );
   }
   if (opts.hasNetworks) {
