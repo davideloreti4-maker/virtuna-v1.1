@@ -225,9 +225,15 @@ export function Axis({ left, right, mid, indent = 0 }: { left: string; right: st
  *  catalogue, never an industry band. */
 export function RankStrip({ data }: { data: RankStripData }) {
   const at = (v: number) => `${((v / data.max) * 100).toFixed(1)}%`;
+  // The benchmark has to SAY it is the benchmark. Unlabelled, the strip read as a dashed line with two
+  // indistinguishable marks on it — the axis named "this clip" but nothing named the tick you are meant
+  // to compare it against, which is the whole point of drawing the catalogue. The caption flips to the
+  // tick's left in the last third so it can never run off the card.
+  const medPct = (data.median / data.max) * 100;
+  const flip = medPct > 66;
   return (
     <>
-      <div className="relative mt-3.5 h-[22px]">
+      <div className="relative mt-3.5 h-[35px]">
         <span className="absolute inset-x-0 top-[9px] h-1 rounded-sm" style={{ background: "rgba(236,231,222,.06)" }} />
         {data.values.map((v, i) => (
           <span
@@ -236,11 +242,21 @@ export function RankStrip({ data }: { data: RankStripData }) {
             style={{ left: at(v), background: "rgba(236,231,222,.22)" }}
           />
         ))}
-        <span className="absolute top-[5px] h-3 w-px -translate-x-1/2" style={{ left: at(data.median), background: "rgba(236,231,222,.3)" }} />
+        <span className="absolute top-[5px] h-3 w-px -translate-x-1/2" style={{ left: at(data.median), background: "rgba(236,231,222,.42)" }} />
         <span
           className="absolute top-[7px] h-2 w-2 -translate-x-1/2 rounded-full"
           style={{ left: at(data.value), background: TONE.cream }}
         />
+        <span
+          className="absolute top-[21px] whitespace-nowrap text-[10px] tabular-nums"
+          style={{
+            color: TONE.faint,
+            ...(flip ? { right: `${(100 - medPct).toFixed(1)}%`, marginRight: 5 } : { left: at(data.median), marginLeft: 5 }),
+          }}
+        >
+          median {data.median}
+          {data.unit}
+        </span>
       </div>
       <Axis left={`0${data.unit}`} mid={`this clip · ${data.value}${data.unit}`} right={`${data.max}${data.unit}`} />
     </>

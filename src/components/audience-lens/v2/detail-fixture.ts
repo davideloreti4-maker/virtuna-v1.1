@@ -96,8 +96,8 @@ const SIGNALS: SignalCell[] = [
   { key: "memory", label: "Memorability", score: 32, word: "Weakness", tone: "weak", delta: 2, whyScore: "The number sticks; the arc around it is familiar." },
   { key: "attention", label: "Attention", score: 34, word: "Weakness", tone: "weak", delta: 6, whyScore: "Collapses by 0:03 and never recovers the room it lost." },
   { key: "buy", label: "Buy Signal", score: 35, word: "Weakness", tone: "weak", delta: 4, whyScore: "Interest is real, but it arrives after most have gone." },
-  { key: "risk", label: "Hesitation / Risk", score: 58, word: "Weakness", tone: "weak", delta: 5, whyScore: "Resistance fires early — a claim before any proof." },
-  { key: "effort", label: "Mental Effort", score: 50, word: "Okay", tone: "okay", delta: 0, whyScore: "No load spike; the cost is patience, not comprehension." },
+  { key: "risk", label: "Hesitation / Risk", score: 58, word: "Weakness", tone: "weak", delta: 5, whyScore: "Resistance fires early — a claim before any proof.", lowerIsBetter: true },
+  { key: "effort", label: "Mental Effort", score: 50, word: "Okay", tone: "okay", delta: 0, whyScore: "No load spike; the cost is patience, not comprehension.", lowerIsBetter: true },
 ];
 
 /** The seven networks, z-scored at the break. Rendered by FUNCTION (the anatomy lives in the
