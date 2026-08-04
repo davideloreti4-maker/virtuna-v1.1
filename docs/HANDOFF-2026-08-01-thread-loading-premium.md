@@ -1,14 +1,18 @@
 # HANDOFF — premium thread loading (session 3 close)
 
-> Date: **2026-08-01** · Branch `task/thread-loading-premium` · **PR #411 — MERGED**
-> Worktree: `~/virtuna-slot-c` (slot pool), port **3003**. Base: `origin/main` `fb0a5a00`.
-> HEAD at merge: **`a053c4ae`** · 17 commits ahead of main · pushed (post-commit hook auto-pushes).
+> Date: **2026-08-01** · Worktree `~/virtuna-slot-c` (slot pool), port **3003**.
+> **PR #411 — MERGED** (`ceff470e`) · **PR #413 — MERGED** (`96ccff5b`).
+> `origin/main` = **`96ccff5b`**, **live on numenmachines.com**
+> (`dpl_BCSHpMxJZ3u3wJ6Ty4ALgtsFsCjd`). Design SoT: `src/app/globals.css` + `docs/DESIGN-SYSTEM.md`.
+> Sketch target: `.planning/sketches/premium-thread.html` (v3.2) — its loading spec is BUILT.
 >
-> ⚠️ **#411 was merged WITHOUT the live billed run its own §5 named as the merge gate.**
-> The gate could not be run — see §7. Read that section before assuming the paid
-> account-read path has been exercised against real Apify. It has not.
-> Design SoT: `src/app/globals.css` + `docs/DESIGN-SYSTEM.md`.
-> Sketch target: `.planning/sketches/premium-thread.html` (v3.2) — its loading spec is now BUILT.
+> ✅ **The merge gate is CLOSED.** #411 shipped without it (Apify was capped); the key was replaced
+> mid-session and **two live billed runs** then exercised the paid path end to end. **They found a
+> real defect**, which #413 fixes. Full account in **§7** — read it before touching the account read.
+>
+> 🔑 **MERGING TO `main` DEPLOYS TO PRODUCTION**, ~3s after the merge, with no preview URL
+> (`vercel-git-disconnected` memory, "trade-off accepted"). **The merge IS the ship. Verify first.**
+> This was mis-stated as "prod is behind main" early in this session and cost a wrong assumption.
 
 ---
 
@@ -19,8 +23,18 @@ scrape waits.** The owner's verdict on session 1 was *"the dot + line … needs 
 premium, something ChatGPT/Perplexity/Claude would release, and it's missing loading states when
 scrapes happen."* Both of those are addressed.
 
-**Recommendation on the table, owner has not decided:** ship #411 now rather than growing it, and do
-4b/4c/4e in a fresh lane off main afterwards. Reasoning in §5.
+**Session 3 shipped it, and then fixed what shipping revealed.** #411 merged; the Apify key was
+replaced mid-session; the merge gate finally ran and **caught a real defect**; #413 fixed it. Both
+are live.
+
+> 📖 **If you are picking this up cold, read §7 → §8 → §10 and skip the rest.** §1–§6 are the
+> session-2 record, and §5/§6 are explicitly superseded.
+
+**The three things most likely to bite you next**, all learned the expensive way this session:
+1. **Merging to `main` deploys to production.** No previews. Verify before you merge.
+2. **A mock provider has no concurrency to get wrong.** The account-read race was green in 4948
+   tests for as long as it existed. §8.
+3. **A capped Apify account looks exactly like a bad handle.** Check the account, not the app. §7.
 
 ---
 
@@ -171,7 +185,7 @@ Verified: `--project=setup` passes in **2.3s** against the prod build and writes
 
 ---
 
-## 5. What is LEFT
+## 5. What was left at #411 — ⚠️ SUPERSEDED by §10, kept for the reasoning
 
 ### ✅ DECIDED (session 3) — shipped
 
@@ -193,7 +207,7 @@ The merge gate below could not be run. See **§7** — it is the one thing this 
   active→done, so a cache MISS parks the spine then flashes. Ranked tiles carry `coverUrl`.
 - **4e — competitors.** Still not surveyed. `src/components/competitors/*-skeleton.tsx`,
   `api/cron/refresh-account-snapshots`.
-- **A live billed run** — ⚠️ STILL NOT DONE, and now merged around. See **§7**.
+- ~~**A live billed run**~~ — ✅ **DONE**, twice. See **§7**.
 
 ### Two open calls the owner left as-is (do not "fix" without asking)
 
@@ -203,7 +217,7 @@ The merge gate below could not be run. See **§7** — it is the one thing this 
 
 ---
 
-## 6. Verification state at handoff
+## 6. Verification state at #411's merge — ⚠️ SUPERSEDED by §9 (kept for the `npx` trap below)
 
 `npx tsc --noEmit` clean · `npx vitest run` **4948/0** · `npx next build` **exit 0** (the
 "1 routes / ~460ms" line is the output formatter, not the build — check `$?`) · eslint clean on
@@ -233,50 +247,141 @@ is even in vitest's or tsc's scope.
 
 ---
 
-## 7. ⚠️ The merge gate was NOT closed — Apify is at its hard limit
+## 7. ✅ The merge gate — closed, and it caught a real defect
 
-**#411 merged without the live billed account-read run.** Do not read the merge as evidence that
-the paid path works end-to-end; it is not.
-
-**Why it could not run.** The Apify account (`rousing_saxophone`, **FREE** plan) has spent
-**$5.06 against a $5.00 `maxMonthlyUsageUsd` cap**. Every actor run is refused:
+**#411 shipped without it.** The Apify account then in use (`rousing_saxophone`, FREE) had spent
+**$5.06 against a $5.00 `maxMonthlyUsageUsd` cap**, so every actor run was refused:
 
 ```
-HTTP 403  {"error":{"type":"platform-feature-disabled",
-           "message":"Monthly usage hard limit exceeded"}}
+HTTP 403  {"error":{"type":"platform-feature-disabled","message":"Monthly usage hard limit exceeded"}}
 ```
 
-The billing cycle runs **2026-07-11 → 2026-08-10**, so the cap lifts on **2026-08-10** unless the
-plan is upgraded. Corroboration that this is environmental and not a code fault: Apify's own run
-history shows the **last actor run was 2026-07-19** — today's attempt never created a run at all.
+🔑 **The tell was Apify's own run history: the newest run was 2026-07-19 — the attempt never
+created a run at all.** If your call did not produce a run, the failure is UPSTREAM of the scrape,
+and no amount of reading app code will explain it. The routes disguise this: `/api/account-read`
+catches the throw and streams *"Couldn't read your account. Check your handle is public and try
+again."*, so a hard billing stop is indistinguishable from a bad handle. Check the account, not the
+app — see the memory `apify-free-plan-hard-limit`.
 
-**What the attempt DID prove** (it reached the real route, signed in, on the real 5-credit path):
+**Even the failed attempt proved things**, because it reached the real route on the real 5-credit
+path: the credit gate admitted, the stream opened, the new 4a `stage` frame fired at 1.3s, the
+error copy stayed generic without echoing the handle (T-10-13), and **`reading_events` stayed at 56
+— the creator was NOT billed for a scrape that failed**, verified against the production table
+rather than a mock.
 
-| | |
+### The owner supplied a fresh key, and the gate ran
+
+New account **`arcuate_azurite`** (FREE, $1.56/$5.00, cycle to **2026-08-20**). Replaced in the
+`.env.local` of **all 14 worktrees** and in **Vercel Production**, then prod was **redeployed** —
+a Vercel env change does nothing until a deployment picks it up.
+
+**Run 1 (pre-fix), `@zachking`, 37.6s — DELIVERED, `reading_events` 56 → 57:**
+
+```
+ 1.2s  Finding your profile       -> active
+19.1s  evidence "Reading 8 of your posts"     <- the POSTS landed first
+37.2s  Finding your profile       -> done
+37.2s  Reading your last 30 posts -> active
+37.2s  Reading your last 30 posts -> done     <- active and done in ONE tick
+```
+
+The paid path worked. **But the spine was wrong**, and only a live run could show it — see §8.
+
+**Run 2 (post-fix), same account, 21.0s — DELIVERED, `reading_events` 57 → 58:**
+
+```
+ 1.0s  Finding your profile       -> active
+ 1.0s  Reading your last 30 posts -> active
+11.5s  Reading your last 30 posts -> done   + covers, step-tagged
+20.7s  Finding your profile       -> done   + avatar, step-tagged
+21.0s  done
+```
+
+**How to run it again** (the driver prints every SSE frame with elapsed timestamps): sign in by
+POSTing the Supabase password grant and writing the chunked cookie (§4), then
+`POST /api/account-read` with it. The precondition is already MET — the E2E account carries a
+personal audience calibrated to `@zachking`, so the route scrapes rather than exiting thin.
+⚠️ Each run costs **5 credits + real Apify usage**, against a $5/month cap.
+
+---
+
+## 8. The defect the live run found — shipped as PR #413 (`96ccff5b`)
+
+The account read fires **two independent Apify runs**, and both of row 2's transitions were chained
+to the **profile** promise. That encoded an assumption the code stated out loud in
+`account-read-stages.ts` — *"the profile typically lands first, the 30-post pull after it"* — and
+**both live runs disproved it: the posts came back first, by 18s and by 9s.**
+
+Consequences, all visible only on a real run:
+- Row 2 went active and done in the same tick, so the row whose work actually took the time never
+  rendered as in-progress.
+- The post covers were drawn under *"Finding your profile"* — a step still running — because the
+  evidence rail hangs off whichever row is active.
+- The avatar the phase exists to surface was on screen for 0.4s before the card replaced it.
+
+🔑 **Why the suite was green throughout: the account-read tests mock the provider, so both promises
+settle instantly and in declaration order. A mock with no concurrency has no race to get wrong.**
+This is the `green-test-is-the-accomplice` pattern with a new face — and the same face as session
+2's *"the account read is one scrape call (no stages)"*: **the code's own comment was the bug.**
+
+### The three commits
+
+| sha | what |
 |---|---|
-| auth + credit gate | passed — HTTP 200, `text/event-stream` opened |
-| `status` frame | emitted at 1.1s |
-| **`stage` frame** | **`Finding your profile → active` at 1.3s** — the new 4a plumbing fires on the real route |
-| failure path | generic copy, `retry:true`, **handle never echoed** (T-10-13 held) |
-| **billing** | **`reading_events` 56 → 56 — NOT charged.** The bill-on-delivery rule held on a real failure |
+| `3638133c` | Each row reports **its own** promise. Two rows are live at once because two scrapes are. `RunEvidence` gains an optional **`step`** naming its row; the checklist prefers it; `parseRunEvidence` carries it across the wire. Additive — absent ⇒ the old active-row fallback, so every other emitter is byte-identical. |
+| `5f8b5058` | The rail said *"Reading 8 of your posts"* while the card replacing it reported 30 analyzed — `MAX_EVIDENCE_ITEMS` leaking into a sentence about the work. The strip still shows 8; the sentence counts the read. |
+| `7d0f6fa7` | **One row narrated.** See below. |
 
-That last row is worth keeping: a creator whose scrape failed was not billed, verified against the
-production table rather than a mock.
+### ⚠️ The correct data model was still a visual regression
 
-**What remains unproven** — the success half: `buildProfileFrame` and `buildAccountPostFrames`
-against real Apify shapes, `ACCOUNT_READ_PLAN[0] → done` / `[1] → active`, the filmstrip, and the
-`done` frame.
+Giving each row its own promise was right, and it silently undid the session-2 craft pass. Measured
+on the **compiled DOM** at the real 728px width, with two rows live:
 
-**Why merging anyway was defensible** (owner's call, made on this reasoning): the defect class the
-gate targets was made *structurally impossible* by `1d9ad727`. Both evidence emissions sit inside
-`emitEvidenceSafely` (`account-read.ts:424,429`), whose `catch` swallows everything, and `onStage`
-routes to the route's `send()`, which wraps `enqueue` in its own try/catch (`route.ts:117-125`).
-**The split chain can therefore only reject if the provider itself rejects — the pre-existing
-behaviour, unchanged by this PR.**
+| | accent-painted elements | running per-row clocks | height |
+|---|---|---|---|
+| one live row (reference) | 1 | 1 | 55px |
+| both live, before `7d0f6fa7` | **2** | **2** | 59px |
+| both live, after | **1** | **1** | 55px |
 
-**➡️ Owed, first session after 2026-08-10 (or immediately if the plan is topped up):** one
-`POST /api/account-read` signed in as the E2E user. The precondition is already MET — the account
-carries a personal audience calibrated to **`@zachking`**, so the route will scrape rather than
-exit on the thin fallback. Confirm the four success-path items above, and that `reading_events`
-increments by exactly one. The driver script is in the session scratchpad
-(`live-account-read.mjs`) — it prints every SSE frame with elapsed timestamps.
+…for `1.0s → 11.5s` of a 21s read — **about half the wait**. The craft pass had taken accent-filled
+elements 4 → 1 and in-flight per-row clocks 1 → 0; this gave most of that back, on the exact
+surface the lane exists to improve. Two coral nodes also stop answering *"where am I"*.
+
+**Resolution:** the FIRST live row **leads** — accent node, running clock, rotating sub-detail,
+travelling rail pulse. Any other live row stays honestly live and goes **quiet**: a brighter
+*breathing outline* against pending's still faint one, at the same text weight as a finished row.
+Fill vs outline is how this spine already separates states, so a second live row reads as running
+without spending the accent. `isLead` defaults true and `ProgressChecklist` marks the first active
+row, so **sequential pipelines are byte-identical**. The clock still RUNS for a quiet row (that is
+what reports the true duration on freeze); only its display is suppressed. A finished row keeps its
+frozen stamp — a receipt, not a second running clock.
+
+🔑 **The lesson worth carrying: a correct data model can still be a visual regression. Measuring
+the SSE frames is not measuring the surface — measure the DOM too.**
+
+---
+
+## 9. Verification state at close
+
+`tsc --noEmit` clean · `vitest run` **4956 passed / 42 skipped** · `next build` **exit 0** ·
+eslint clean on every touched path · **two live billed runs** against real Apify · production
+healthy (`numenmachines.com` + `/login` both 200).
+
+Pre-existing and unrelated: vitest prints 3 "Unhandled Rejection" lines from `composer.test.tsx`;
+the suite still exits 0.
+
+## 10. What is LEFT (nothing is blocked)
+
+- **4b — the paid "Find new outliers" Apify run (~25s)**, `src/lib/grounding/orchestrator.ts`
+  `gatherAndExtract`. The only EXPLICITLY PURCHASED wait in the product. Copy the
+  `emitEvidenceSafely` guard, and **tag its evidence with `step`** — that seam now exists.
+- **4c — explore pull**, `src/lib/tools/runners/explore-runner.ts:105`. A cache MISS parks the
+  spine then flashes.
+- **4e — competitors**, still unsurveyed.
+- ⚠️ **Branch these off `main`**, which now carries both the evidence machinery and the `step`
+  routing. Do NOT stack on the merged lanes.
+- ⚠️ **Apify has ~$3.40 of $5.00 left, resetting 2026-08-20.** Live-scrape verification is possible
+  but finite. Check the account before planning work that needs it.
+- **One gap, stated plainly:** the final quiet-row treatment was verified as static rendered states
+  (compiled DOM, real component, real plan) and the ordering was verified on a live run — but no
+  live run was watched rendering the final visual treatment end to end.
