@@ -1,7 +1,7 @@
 # HANDOFF — onboarding activation: what got built, what is still open
 
-**Branch:** `task/onboarding-activation` @ **`e65bb570`** · 6 commits · **UNPUSHED, UNMERGED**
-**Base:** rebased onto `origin/main` @ `558df8f5` — **0 behind** at time of writing
+**Branch:** `task/onboarding-activation` @ **`05201486`** · 9 commits · **UNPUSHED, UNMERGED**
+**Base:** rebased onto `origin/main` @ `b5f99214` — **0 behind** at time of writing (main moved 13 commits mid-session; the qwen-flash lane #426 landed in them)
 **Worktree:** `~/virtuna-slot-c` · **Port 3003**
 **Supersedes:** `docs/HANDOFF-2026-08-04-onboarding-activation.md` (the kickoff brief — its §2 and §5
 questions are ANSWERED below; do not re-ask them)
@@ -21,10 +21,15 @@ questions are ANSWERED below; do not re-ask them)
 | Calibration reliability | **FIXED** — a defect that failed 2 of 5 live runs |
 | The craft pass | **BUILT** — wait shows the account 54s earlier; reveal leads with the people |
 | Marketing CTAs → `/go` | **DONE** |
-| **Open** | **one visual defect (§4), plus §5's list** |
+| The profile-card clip | **FIXED** (`05201486`) — it was flex shrink, not scroll; see §4 |
+| **Open** | **nothing blocking — §5's list only, and §5's cover claim is now settled** |
 
-**Gates at `e65bb570`:** tsc clean · **469 files / 5184 tests / 0 failures** · `npm run build` exit 0.
+**Gates at `05201486`:** tsc clean · **472 files / 5251 tests / 0 failures** (post-rebase onto `b5f99214`) · `npm run build` exit 0
+· verified live on a production build against a real signup + real scrape.
 Baseline before the lane was 459 / 5071 / 0.
+
+⚠️ The suite prints **3 unhandled errors** here — all `ECONNREFUSED :3000`, from a test expecting a
+dev server on port 3000. Pre-existing environment noise in this worktree, zero test failures.
 
 ---
 
@@ -60,38 +65,58 @@ Baseline before the lane was 459 / 5071 / 0.
 - **`checkout_paid` had never been emitted, once, ever.** The §8 spine existed but buffered in memory
   with no sink, and its only call sites were in `components/offer/walkthrough/` — which §0b RETIRED.
 
-## 4. 🔴 THE ONE OPEN DEFECT — start here
+## 4. ✅ CLOSED 2026-08-04 — the profile-card clip (`05201486`)
 
-**The reveal's profile card is clipped at the top.** "GaryVee ✓" is sliced through horizontally.
-Reproduces at BOTH 1512×982 and 390×844, in every screenshot taken after the reveal was restructured.
+**It was flex shrink, not scrolling.** The suspect recorded here — the bounded scroll container
+being scrolled ~22px at render — was **wrong**: `scrollTop` measured **0** on every run, at both
+sizes, before and after. The container is innocent.
 
-- **It is real** — not a Playwright `animations:"disabled"` artifact. `READING_CARD` carries no
-  entrance animation and `reading-reveal` only translates 6px, nowhere near enough.
-- **It was NOT diagnosed.** Two guesses were made and both were wrong; a third guess is not worth
-  making. It needs a live DOM measurement.
-- **The suspect** is the bounded scroll container added to `audience-reveal.tsx`
-  (`max-h-[calc(100vh-260px)] overflow-y-auto`) being scrolled by ~22px at render.
+What the measurement actually showed, on a live @garyvee calibration:
 
-**How to close it, cheaply:** you need a calibrated account sitting ON the reveal, which normally costs
-an Apify run. Measure, don't guess:
+| child of the bounded column | `overflow` | `min-height:auto` resolves to | height lost |
+|---|---|---|---|
+| `✓ We read @garyvee` | visible | content | 0 |
+| **profile card (`READING_CARD`)** | **hidden** | **0** | **22px @1512 · 27px @390** |
+| personas / posts / tags / provenance | visible | content | 0 |
+
+A flex item's automatic minimum size resolves to its CONTENT height — which is what protected the
+column's five other children — but the spec zeroes that minimum for any item whose `overflow` is not
+`visible`. `READING_CARD` leads with `overflow-hidden` and is the only such child, so when the
+column's content (1484px) exceeded its `max-h` (722px) this card was the single item the algorithm
+could shrink, and it absorbed the whole overage alone: 56→34px at 1512, 61→34px at 390. Its own
+`overflow-hidden` then clipped the 48px avatar and the name line — the visible slice.
+
+**Fix:** `shrink-0` on that card. Verified on a production build against a real signup + real scrape
+(@mrbeast, a heavier account than the one the defect was found on): card **96px @1512 / 112px @390**,
+**0** clipped cards, avatar fully inside, CTA unmoved at 939.5/982 and 801.5/844, 0 console errors.
+
+⚠️ **Any future `READING_CARD` added as a DIRECT child of that column inherits this trap.** The
+persona rows and post grid are safe only because they sit inside `overflow: visible` wrappers.
+`reveal-profile-card.test.tsx` guards the class — it cannot guard the geometry, because happy-dom has
+no layout engine and `offsetHeight` is 0 there. The real gate is a browser measurement.
+
+🔑 **The reusable lesson:** a "clipped at the top" symptom reads like a scroll-position bug and is
+not one. Two guesses died on that assumption. `scrollHeight - offsetHeight` over every child of the
+suspect container names the culprit in one pass:
 
 ```js
-const box = document.querySelector('[data-testid="calibration-evidence"]')?.parentElement;
-// the scroll container is the reveal's first child div
 const sc = document.querySelector('.overflow-y-auto');
-console.log({ scrollTop: sc?.scrollTop, clientH: sc?.clientHeight, scrollH: sc?.scrollHeight });
+[...sc.children].map(el => ({ cls: el.className.slice(0,40), lost: el.scrollHeight - el.offsetHeight,
+  minH: getComputedStyle(el).minHeight, ovf: getComputedStyle(el).overflowY }));
 ```
-If `scrollTop > 0`, the container is scrolled and the fix is to pin it to 0 on mount. If it is 0, the
-clip is a box-model problem in the profile card itself and the scroll container is innocent.
 
 ## 5. Also open, none blocking
 
 - **Personas cannot "assemble one by one" from the engine.** They come back in ONE model response.
   What shipped is a staggered client-side ENTRANCE (`reading-reveal`, 0.05s steps). Honest, but do not
   let anyone believe the engine streams them.
-- **Covers all landed in one poll** (12 at t=24s). The dataset polling works, but this actor appears to
-  write its items in a batch rather than trickling. Worth re-measuring on a slower/bigger account before
-  claiming "they appear as they are read".
+- **Covers all land in one poll — RE-MEASURED 2026-08-04 on a bigger account, claim NOT supported.**
+  @mrbeast (131.2M followers) behaved exactly like @garyvee: the cover count went **0 → 12 with images
+  in a single poll at t=9s**, and stayed 12 until the reveal at t=155s. Polled every 1.5s, so a trickle
+  would have been visible. The dataset polling is real and it is what puts the account on screen early
+  (t=9s here, earlier than the recorded t=24s) — but **this actor writes its items as a batch**, so
+  "covers appear as they are read" is a framing the evidence does not support. Do not ship that copy.
+  `runWithPartials` still earns its place: it is what makes the account appear at t=9s instead of ~78s.
 - **`/login` does not navigate on password submit** in this build. Cost ~20 minutes; the workaround is
   to sign up fresh rather than log in. Unrelated to this lane, but it will bite the next verification.
 - **Four scrape waits are still blind** (the pre-existing `scrape-waits-are-blind` item) — the
@@ -185,11 +210,34 @@ console errors, every screen           0
 Apify                                  $2.48 / $5.00, cycle resets 2026-08-20
 ```
 
+### Second pass, 2026-08-04 — the §4 fix, two more live runs
+
+```
+calibration (@garyvee)                 209s       ← NOT 132–135s; the wait is not stable
+calibration (@mrbeast)                 155s
+  · account on screen                  t=9s       (dataset poll; earlier than the recorded t=24s)
+  · 12 covers, with images             t=9s, in ONE poll — batch, not a trickle (see §5)
+profile card @1512                     96px, 0px lost, avatar inside   (was 34px, 22px lost)
+profile card @390                      112px, 0px lost, avatar inside  (was 34px, 27px lost)
+clipped cards in the column            0, both sizes                   (was 1, both sizes)
+reveal CTA @1512 / @390                bottom 939.5/982 · 801.5/844    (unmoved by the fix)
+console errors                         0
+Apify                                  2 runs spent here; ~$2.38 / $5.00 left
+```
+
+⚠️ **The ~135s wait figure is not reliable** — the same handle took **209s** on this pass. Anything
+that quotes a duration to the user (or any test that asserts one) has to tolerate ~3.5 minutes.
+
 ## 10. Next session — suggested order
 
-1. **Close §4** (the profile-card clip). One measurement, then a real fix.
-2. **Decide push/merge.** The branch is 6 commits, rebased, gates green, unpushed.
-3. **Re-measure §5's cover-streaming claim** on a slower account before trusting the "as they are read"
-   framing.
+1. ~~Close §4~~ — **DONE** (`05201486`), measured not guessed; see §4 for the real cause.
+2. ~~Re-measure §5's cover-streaming claim~~ — **DONE**, on a bigger account. It is a batch. Do not
+   ship "covers appear as they are read".
+3. **Decide push/merge.** ⚠️ **Merging IS deploying** — re-read the banner at the top of this file
+   and re-measure `origin/main` before acting; it moves constantly.
 4. Then, if the owner wants to keep going on activation: the second-session hook and lifecycle mail are
    still entirely unbuilt — the KEEP half beyond the first session has no artifacts at all.
+
+**One cosmetic defect found while verifying, NOT fixed (out of scope, owner's call):**
+`compactNumber` in `audience-reveal.tsx` has no billions branch, so @mrbeast's like count renders as
+**"1300.0M likes"** on the reveal. Three lines to fix; it only bites accounts over 1B.
