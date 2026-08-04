@@ -801,6 +801,88 @@ describe("runChatAgentStream [billing]", () => {
     expect(messages[5]).toEqual({ role: "user", content: "x" }); // then this turn's ask
   });
 
+  it("replays the card LINES so the model can discuss what it made", async () => {
+    // REGRESSION (live). With only a count in the tool result, "Which of these hooks is strongest?"
+    // — a shipped chip — answered "I don't have the specific hook lines in front of me. Paste the
+    // 2–3 options you're debating", about cards the app had just rendered.
+    const stream = mockStream([[textChunk("ok")]]);
+    const hooks = mkSkill("generate_hooks", { skillKey: "hooks" });
+
+    await runChatAgentStream(
+      baseInput({
+        priorTurns: [
+          {
+            role: "assistant",
+            text: "Two hooks are on screen.",
+            toolRuns: [{ name: "generate_hooks", cards: 2, lines: ["Everyone lied about 5am", "Your £4 coffee"] }],
+          },
+        ],
+      }),
+      DEPS(stream, { skills: [hooks] }),
+    );
+
+    const { messages } = (stream as unknown as ReturnType<typeof vi.fn>).mock.calls[0]![0] as {
+      messages: Array<Record<string, unknown>>;
+    };
+    const result = JSON.parse((messages[2] as { content: string }).content);
+    expect(result.cards_on_screen).toEqual(["Everyone lied about 5am", "Your £4 coffee"]);
+    expect(result.produced).toBe("2 card(s)");
+    // …and told NOT to re-list them, or the answer becomes a second copy of the pack in prose.
+    expect(result.note).toMatch(/never re-list/i);
+  });
+
+  it("a run with no lines keeps the ORIGINAL tool-result shape", async () => {
+    // Pre-existing threads carry no extractable lines. They must replay exactly as before rather
+    // than announcing an empty card list, which would read as "the pack has no contents".
+    const stream = mockStream([[textChunk("ok")]]);
+
+    await runChatAgentStream(
+      baseInput({
+        priorTurns: [
+          { role: "assistant", text: "Five hooks are on screen.", toolRuns: [{ name: "generate_hooks", cards: 5 }] },
+        ],
+      }),
+      DEPS(stream, { skills: [mkSkill("generate_hooks", { skillKey: "hooks" })] }),
+    );
+
+    const { messages } = (stream as unknown as ReturnType<typeof vi.fn>).mock.calls[0]![0] as {
+      messages: Array<Record<string, unknown>>;
+    };
+    const result = JSON.parse((messages[2] as { content: string }).content);
+    expect(result).toEqual({
+      ran: "generate_hooks",
+      produced: "5 card(s)",
+      note: "cards are shown to the creator",
+    });
+  });
+
+  it("an ANONYMOUS visitor never receives the lines of a pack they did not pay for", async () => {
+    // The unbound-run fallback below already drops the whole run to plain text. This pins the
+    // consequence that matters for money: the hook lines must not ride along in the transcript of
+    // a session that binds no generators — that would hand over the paid artefact for free, which
+    // is the same leak the tool-use directive exists to close.
+    const stream = mockStream([[textChunk("ok")]]);
+
+    await runChatAgentStream(
+      baseInput({
+        priorTurns: [
+          {
+            role: "assistant",
+            text: "Five hooks are on screen.",
+            toolRuns: [{ name: "generate_hooks", cards: 5, lines: ["Everyone lied about 5am"] }],
+          },
+        ],
+      }),
+      DEPS(stream, { skills: [] }),
+    );
+
+    const { messages } = (stream as unknown as ReturnType<typeof vi.fn>).mock.calls[0]![0] as {
+      messages: Array<Record<string, unknown>>;
+    };
+    expect(JSON.stringify(messages)).not.toContain("Everyone lied about 5am");
+    expect(JSON.stringify(messages)).not.toContain("cards_on_screen");
+  });
+
   it("a prior run whose tool is NOT bound replays as plain text — never a dangling tool name", async () => {
     // An anonymous visitor binds no generators. Naming one in the replayed transcript would advertise
     // a tool the model cannot call — the same rule the tool-use directive follows.

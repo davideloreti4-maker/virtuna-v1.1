@@ -140,6 +140,90 @@ describe("openChatPriorTurns", () => {
     expect(turns.at(-1)).toEqual({ role: "assistant", text: "the second — it names a number" });
   });
 
+  // ── The card LINES: the model has to be able to talk about its own output ────────────────────
+  //
+  // REGRESSION (live 2026-08-04). The replay carried a COUNT and nothing else, which proved a tool
+  // ran but left the model blind to what it made. Asked the shipped chip "Which of these hooks is
+  // strongest for my audience, and why?" it answered "I don't have the specific hook lines you're
+  // referring to in front of me. Paste the 2–3 options you're debating" — about cards the app had
+  // just rendered.
+  const titled = (type: string, key: string, values: string[]) =>
+    values.map((v) => ({ type, props: { [key]: v } }));
+
+  it("carries each card's identifying line, in order", () => {
+    const turns = openChatPriorTurns([
+      msg("user", [text("hooks for my budgeting app")]),
+      msg("assistant", titled("hook-card", "hookLine", ["Everyone lied about 5am", "Your £4 coffee is a £1,400 habit"])),
+      msg("assistant", [text("Two hooks are on screen.", "chat-agent")]),
+    ]);
+    expect(turns.at(-1)!.toolRuns).toEqual([
+      {
+        name: "generate_hooks",
+        cards: 2,
+        topic: "hooks for my budgeting app",
+        lines: ["Everyone lied about 5am", "Your £4 coffee is a £1,400 habit"],
+      },
+    ]);
+  });
+
+  it("reads the right prop per card type — hookLine for hooks, title for ideas and scripts", () => {
+    const ideas = openChatPriorTurns([
+      msg("user", [text("ideas")]),
+      msg("assistant", titled("idea-card", "title", ["The 5am myth"])),
+      msg("assistant", [text("One idea is on screen.", "chat-agent")]),
+    ]);
+    expect(ideas.at(-1)!.toolRuns![0]!.lines).toEqual(["The 5am myth"]);
+
+    const script = openChatPriorTurns([
+      msg("user", [text("script it")]),
+      msg("assistant", titled("script-card", "title", ["The 5am myth — script"])),
+      msg("assistant", [text("Script is on screen.", "chat-agent")]),
+    ]);
+    expect(script.at(-1)!.toolRuns![0]!.lines).toEqual(["The 5am myth — script"]);
+  });
+
+  it("OMITS lines entirely when none are extractable — never an empty list", () => {
+    // A pre-existing thread, or a card shape whose prop differs, must degrade to exactly the tool
+    // result this replay always produced. An empty `cards_on_screen` would tell the model the pack
+    // has no contents, which is worse than telling it nothing.
+    const turns = openChatPriorTurns([
+      msg("user", [text("hooks")]),
+      msg("assistant", cards("hook-card", 3)), // props `{i}` — no hookLine
+      msg("assistant", [text("Three hooks are on screen.", "chat-agent")]),
+    ]);
+    expect(turns.at(-1)!.toolRuns).toEqual([{ name: "generate_hooks", cards: 3, topic: "hooks" }]);
+    expect(turns.at(-1)!.toolRuns![0]).not.toHaveProperty("lines");
+  });
+
+  it("caps the line COUNT and each line's LENGTH — a reference, not the whole pack", () => {
+    // Every later turn in the thread pays for these tokens, and the cards are on screen anyway.
+    const turns = openChatPriorTurns([
+      msg("user", [text("lots of hooks")]),
+      msg("assistant", titled("hook-card", "hookLine", Array.from({ length: 12 }, (_, i) => `hook ${i} ${"x".repeat(400)}`))),
+      msg("assistant", [text("Twelve hooks are on screen.", "chat-agent")]),
+    ]);
+    const run = turns.at(-1)!.toolRuns![0]!;
+    expect(run.cards).toBe(12); // the COUNT is still honest…
+    expect(run.lines).toHaveLength(6); // …while the quoted lines are bounded
+    for (const l of run.lines!) expect(l.length).toBeLessThanOrEqual(200);
+  });
+
+  it("drops a blank or non-string line without leaving a placeholder", () => {
+    // "undefined" quoted back at the model reads as a card whose text is literally that.
+    const turns = openChatPriorTurns([
+      msg("user", [text("hooks")]),
+      msg("assistant", [
+        { type: "hook-card", props: { hookLine: "a real line" } },
+        { type: "hook-card", props: { hookLine: "   " } },
+        { type: "hook-card", props: { hookLine: 42 } },
+      ]),
+      msg("assistant", [text("Three hooks are on screen.", "chat-agent")]),
+    ]);
+    const run = turns.at(-1)!.toolRuns![0]!;
+    expect(run.cards).toBe(3);
+    expect(run.lines).toEqual(["a real line"]);
+  });
+
   it("caps at MAX_PRIOR_TURNS, keeping the newest", () => {
     const many = Array.from({ length: MAX_PRIOR_TURNS + 6 }, (_, i) =>
       msg(i % 2 === 0 ? "user" : "assistant", [text(`turn ${i}`)]),

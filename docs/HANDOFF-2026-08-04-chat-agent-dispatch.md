@@ -4,8 +4,9 @@
 on 2026-08-04. Read that ref with `git rev-parse` — `git log --format` here elided the merge and
 reported main as `d3b5afb8`, the squashed commit *below* its own tip.
 **Worktree:** `~/virtuna-slot-a`
-**Status:** four fixes landed on the branch and measured — §2, §3 (mitigation), §4, §5. §4 is verified
-**live**; §5 is measured on the real thread offline **and live**. Branch unmerged.
+**Status:** five fixes landed on the branch and measured — §2, §3 (mitigation), §4, §5, §6b. §4 and §5
+are verified **live**. **PR #424 is open, unmerged** — the merge is held on one product decision, the
+chip pricing note in §5.
 
 ---
 
@@ -25,10 +26,17 @@ hooks" and "Punch them up" dispatched 0/3 because a chip's sentence, read alone,
 the loop's own "too vague → push back" clause fired on a command the creator had already issued by
 tapping. Fixed structurally again — the chip now DECLARES its generator and the loop pins the first
 `tool_choice` to it (§5). The much-discussed "refine gap" turned out to be a mis-framing: refine is
-card-scoped and already has a live door, so nothing about it changes. Three recurring lessons hold
-across all four: **precedent and structure beat prompt text**, **measure the thing that actually
-failed**, and **a change that only dispatches MORE is not a fix** — every control here is preserved by
-construction rather than by the model's good judgement.
+card-scoped and already has a live door, so nothing about it changes.
+
+A fifth was then caught by §5's own no-dispatch **control**, which is exactly why a control earns its
+keep: it passed the thing under test and failed at its real job. "Which is strongest?" replied *"I
+don't have the specific hook lines in front of me"* — because §4 replays a run as a COUNT and never
+the card text. The replayed result now carries the lines (§6b), and the chip answers.
+
+Four recurring lessons hold across all of it: **precedent and structure beat prompt text**, **measure
+the thing that actually failed**, **a change that only dispatches MORE is not a fix** — every control
+here is preserved by construction rather than by the model's good judgement — and **read what your
+controls SAY, not just whether they passed.**
 
 ---
 
@@ -348,17 +356,17 @@ still the right door for "make hook 2 punchier". See the mis-framing note above 
 
 ## 6. State of the branch
 
-Nine files:
+Sixteen files:
 
 | file | change |
 |---|---|
-| `src/lib/threads/chat-prior-turns.ts` **(new)** | `openChatPriorTurns` — the anchor, with each past skill run attached to the turn that announced it (§4) |
-| `src/lib/threads/__tests__/chat-prior-turns.test.ts` **(new)** | 9 guards for the above |
+| `src/lib/threads/chat-prior-turns.ts` **(new)** | `openChatPriorTurns` — the anchor, with each past skill run attached to the turn that announced it (§4); each run now also carries its cards' identifying **lines** (§6b) |
+| `src/lib/threads/__tests__/chat-prior-turns.test.ts` **(new)** | 9 guards for §4 + **4 for the lines** (§6b) |
 | `src/lib/kc/assembler.ts` | optional `modeLabel`; header prints `modeLabel ?? mode` |
-| `src/app/api/tools/chat/route.ts` | agent path passes `modeLabel: "copilot"`; the open-chat anchor now comes from `openChatPriorTurns` |
-| `src/lib/tools/chat-agent-loop.ts` | directive names only bound generators; unknown-skill refusal carries the do-not-fake instruction; **`ChatAgentPriorTurn` + `replayPriorTurn`** (§4) |
-| `src/app/api/tools/chat/__tests__/route.test.ts` | guards 6d + **6e** |
-| `src/lib/tools/__tests__/chat-agent-loop.test.ts` | two guards + **three prior-turn replay guards** |
+| `src/app/api/tools/chat/route.ts` | agent path passes `modeLabel: "copilot"`; the open-chat anchor now comes from `openChatPriorTurns`; forwards a tapped chip's `body.skill` as `forceSkill` (§5) |
+| `src/lib/tools/chat-agent-loop.ts` | directive names only bound generators; unknown-skill refusal carries the do-not-fake instruction; **`ChatAgentPriorTurn` + `replayPriorTurn`** (§4); **`forceSkill` pins round 1's `tool_choice`** (§5); the replayed result carries `cards_on_screen` (§6b) |
+| `src/app/api/tools/chat/__tests__/route.test.ts` | guards 6d + **6e** + **6f** (§5) |
+| `src/lib/tools/__tests__/chat-agent-loop.test.ts` | two guards + three prior-turn replay guards + **6 for `forceSkill`** (§5) + **3 for the replayed lines** (§6b) |
 | `scripts/probe-chat-dispatch.ts` **(new)** | the offline probe of §1 — replays a real thread; three variants: prose-only / runs-replayed / **+ chip pin** (§5) |
 | `scripts/live-chat-turn.mjs` **(new)** | the live probe of §1 — mints a session, drives the SSE route. 4th arg sends a turn **as a chip** (§5) |
 | `src/lib/tools/chat-followups.ts` | `ChatFollowup.skill` — the generator a chip declares (§5) |
@@ -366,9 +374,9 @@ Nine files:
 | `src/hooks/queries/use-chat-stream.ts` · `src/lib/followup-context.ts` · `src/components/thread/followup-row.tsx` · `src/components/app/home/composer.tsx` | carry the tapped chip's `skill` into the POST body (§5) |
 | `src/components/thread/__tests__/chat-turn.test.tsx` | the chip-tap guard now pins the declared skill too, + a conversational-chip control |
 
-**Gate (re-run 2026-08-04 after the rebase + §5):** `tsc --noEmit` → **0 errors** (run it separately;
-vitest does not typecheck). Suite **460 files / 5098 tests, 0 failures**, 42 skipped. The 3 reported
-"Errors" are the pre-existing unhandled rejections in `composer.test.tsx` (`composer.tsx:2019`).
+**Gate (re-run 2026-08-04 after the rebase + §5 + §6b):** `tsc --noEmit` → **0 errors** (run it
+separately; vitest does not typecheck). Suite **460 files / 5106 tests, 0 failures**, 42 skipped. The
+3 reported "Errors" are the pre-existing unhandled rejections in `composer.test.tsx` (`composer.tsx:2019`).
 `EXIT=1` with zero failures is this worktree's known vitest drift, not a failure.
 
 ⚠️ **Do not read the suite through `| tail -n`.** The first §5 run reported "3 failed" and the tail had
@@ -379,6 +387,21 @@ so `EXIT=0` after a pipe means nothing at all.
 ⚠️ Of those first 3 failures, **2 were load flakes and 1 was real** (`chat-turn.test.tsx` — the chip
 handler gained a second argument). Re-run before you believe a failure; and do not let the flakes
 camouflage the one that is yours.
+
+🔑 **`composer-*.test.tsx` fails on a COLD vitest cache and passes on the next run — and bisecting it
+with `git stash` will lie to you.** The failure is `Error: Test timed out in 5000ms` at
+`await import('../composer')`: a module-TRANSFORM cost, not behaviour. Every `git stash push` / `pop`
+rewrites the files it touches, which invalidates that cache — so the very act of bisecting changes
+the variable you are measuring. During §6b this produced a clean, entirely false result: "passes
+without the change, fails with it", reproduced twice.
+
+What settles it: **stash EVERYTHING back to the committed HEAD and run the file twice.** At HEAD, with
+none of the new code present, run 1 failed and run 2 passed. That is the whole story.
+- A `5000ms` timeout on an `import()` line is a cache symptom, never a logic bug — read the failure
+  message before reaching for `git stash`.
+- ⚠️ `git stash push -u` sweeps UNTRACKED files too. This worktree is shared with another session
+  whose `zz-*` files are untracked; they were stashed and restored intact here, but a `stash drop`
+  would have destroyed someone else's work. Prefer stashing by explicit path, without `-u`.
 
 ⚠️ **Run the suite on an otherwise idle machine.** A run sharing the box with a dev server + a live
 probe reported 4 failures — two 5s timeouts in `composer-*.test.tsx` and two in
@@ -394,10 +417,10 @@ the only ref that tells the truth here.
 
 ---
 
-## 6b. NEW, found while verifying §5 — "Which is strongest?" cannot answer
+## 6b. FIXED — "Which is strongest?" could not see the cards it was asked about
 
-Not caused by this lane, and deliberately **not fixed here** — it is a different defect and the brief
-was the two 0/3 chips. Recording it because the live control turn above exposed it plainly:
+Found by the §5 live **control** turn, which is the whole reason a no-dispatch control earns its keep:
+it passed the thing being measured (no dispatch, no cards) while failing at its actual job.
 
 ```
 ask  : "Which of these hooks is strongest for my audience, and why?"   (the shipped chip prompt)
@@ -405,33 +428,60 @@ reply: "I don't have the specific hook lines you're referring to in front of me.
         options you're debating, and I'll give you a direct read…"
 ```
 
-**The model never sees the hook lines.** §4 replays a past run as `{ran, produced: "5 card(s)"}` —
-a COUNT, not content — and `chat-prior-turns.ts` carries `{name, cards, topic}` with no card text.
-That was the right call for §4 (it only needed to prove a tool ran), but it means the one chip whose
-whole job is *judging the cards* is structurally unable to do it. It asks the creator to paste back
-lines the app itself put on screen.
+**The model never saw the hook lines.** §4 replayed a past run as `{ran, produced: "5 card(s)"}` — a
+COUNT, not content. That was right for §4, which only had to prove a tool ran; but it left the one
+chip whose whole job is *judging the cards* structurally unable to do it, asking the creator to paste
+back lines the app itself had put on screen.
 
-This is the mirror image of §5: that chip fails because the model won't act on what it can see; this
-one fails because it genuinely cannot see it. Fix shape: carry the card's identifying line (hookLine /
-title) into the replayed tool result, capped and fenced. Cheap, and it would also let the model
-reference specific cards in ordinary conversation. Nobody has measured it.
+The mirror image of §5: there the model would not act on what it could see; here it genuinely could
+not see it.
+
+**Fix.** The replayed tool result now carries `cards_on_screen` — each card's identifying line, in
+order (`hookLine` for hooks, `title` for ideas/scripts), extracted in `chat-prior-turns.ts` and capped
+at **6 lines × 200 chars** per run. The `note` tells the model to refer to them and **never re-list
+them**, because a chip that answers by reprinting the pack is just the pack again.
+
+Three decisions worth keeping:
+- **Omitted, never empty.** A run with no extractable line replays byte-identically to before. An
+  empty `cards_on_screen` would tell the model the pack has no contents — worse than telling it
+  nothing. Pre-existing threads therefore degrade cleanly.
+- **The count stays honest.** `cards: 12` with 6 quoted lines; the cap bounds the quoting, not the truth.
+- **An anonymous visitor never receives the lines.** Unbound runs already replay as plain text, so the
+  hook lines cannot ride into a session that binds no generators — that would be the §3 leak through
+  a new door. Pinned by its own test.
+
+**Measured**, same probe, same thread, 3 seeds — the answer, not the dispatch:
+
+| | reply |
+|---|---|
+| before | *"I don't see any hook options in our conversation to compare. Did you mean to paste a list…"* (3/3 seeds) |
+| after | *"**Hook #2** wins because it weaponizes the 'prediction error' mechanism by linking a physical cue (form) to an unrelated, high-stakes domain (bank account)…"* (3/3 seeds name a specific card and quote its real text) |
+
+**It stayed a no-dispatch control at 0/3**, and it compares rather than re-lists — the two ways this
+change could have gone wrong. Every §5 row is unchanged.
+
+**Guards** — 5, each verified failing with the fix neutered: `chat-prior-turns.test.ts` (+4: the lines
+and their order, the per-type prop, the two caps, blank/non-string dropped without a placeholder, and
+omission when none are extractable) · `chat-agent-loop.test.ts` (+3: the replayed result carries them
+with the do-not-re-list note, a line-less run keeps the original shape, and the anonymous visitor
+never receives them).
 
 ---
 
 ## 7. Recommended next session
 
-§2, §4 and §5 are closed and measured. The refine question is **decided, not deferred** (§5: refine
-stays card-scoped; the chips route to the bound generators). What is left:
+§2, §4, §5 and §6b are closed and measured. The refine question is **decided, not deferred** (§5:
+refine stays card-scoped; the chips route to the bound generators). What is left:
 
 1. **Drive a real anonymous `/go` session** through the route to confirm §3 outside the harness —
    still the only claim in this document measured offline only. Highest value of what remains,
-   because it is the free door into the paid engine.
-2. **Give the model the card lines** so "Which is strongest?" can answer — see §6b. Small, and it
-   fixes a chip that is on screen today and cannot do its job.
-3. **Look at the chips in a browser.** Every claim about them here is measured at the wire or in the
+   because it is the free door into the paid engine. Now doubly worth doing: §6b puts real card text
+   into the replayed transcript, and the guard that keeps it away from an unbound session is a unit
+   test, not a live observation.
+2. **Look at the chips in a browser.** Every claim about them here is measured at the wire or in the
    loop; nobody has watched a creator tap one. The Playwright caveat in `CLAUDE.md` applies (the
    ambient animations never settle — use `animations: 'disabled'` + a tight clip).
-4. **Consider whether a pinned chip should show its price before it runs.** A chip now reliably
+3. **Consider whether a pinned chip should show its price before it runs.** A chip now reliably
    spends a credit where it used to degrade to free prose (§5). That is the intended behaviour, but
    it was previously free-by-accident, so the affordance may deserve a beat of UI.
 

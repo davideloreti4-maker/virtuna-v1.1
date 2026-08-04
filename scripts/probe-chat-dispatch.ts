@@ -120,7 +120,9 @@ async function runOne(
   return {
     dispatched: res.toolCalls.some((c) => c.name.startsWith("generate_") || c.name === "write_script"),
     calls: res.toolCalls.map((c) => `${c.name}${c.note ? `(${c.note})` : ""}`).join(", ") || "-",
-    text: text.replace(/\s+/g, " ").trim().slice(0, 140),
+    // Wide enough to judge an ANSWER, not just a dispatch: the "Which is strongest?" row is read for
+    // whether the model can name the hook lines or asks the creator to paste them back (§6b).
+    text: text.replace(/\s+/g, " ").trim().slice(0, 260),
   };
 }
 

@@ -663,8 +663,11 @@ describe("POST /api/tools/chat (SSE route)", () => {
     expect(loopInput.priorTurns).toHaveLength(2); // the card row is not a turn of its own
     const announcing = loopInput.priorTurns!.at(-1)!;
     expect(announcing.text).toBe("Two hooks are on screen.");
+    // …carrying the run that caused it AND the lines of the cards it produced. The lines are §6b:
+    // with only a count, "Which of these hooks is strongest?" answered "I don't have the specific
+    // hook lines in front of me" about cards the app had just rendered.
     expect(announcing.toolRuns, "the closing line must arrive with the run that caused it").toEqual([
-      { name: "generate_hooks", cards: 2, topic: "hooks for my budgeting app" },
+      { name: "generate_hooks", cards: 2, topic: "hooks for my budgeting app", lines: ["a", "b"] },
     ]);
   });
 

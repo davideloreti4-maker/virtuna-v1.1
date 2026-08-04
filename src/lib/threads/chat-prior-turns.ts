@@ -41,6 +41,30 @@ const CARD_BLOCK_TOOL: Record<string, string> = {
 };
 
 /**
+ * The one line that IDENTIFIES each card, per type — what the creator is looking at on screen.
+ *
+ * Carrying the count alone ("5 card(s)") was right for the replay's original job: proving a tool ran.
+ * But it left the model unable to talk about its own output. Asked "Which of these hooks is strongest
+ * for my audience, and why?" — a shipped follow-up chip — it answered *"I don't have the specific
+ * hook lines you're referring to in front of me. Paste the 2–3 options you're debating"*, about cards
+ * the app itself had just rendered (confirmed live 2026-08-04). The chip is on screen and structurally
+ * unable to do its job.
+ *
+ * Deliberately ONE line per card, not the card: the model needs to reference and compare them, not
+ * re-render them. Score bands, personas, proof and mechanism stay out — they are on screen already,
+ * and every extra field is tokens on every later turn in the thread.
+ */
+const CARD_LINE: Record<string, (props: Record<string, unknown>) => unknown> = {
+  "idea-card": (p) => p.title,
+  "hook-card": (p) => p.hookLine,
+  "script-card": (p) => p.title,
+};
+
+/** Per-run caps on the replayed lines — a reference, never a transcript of the whole pack. */
+const MAX_LINES_PER_RUN = 6;
+const MAX_LINE_LENGTH = 200;
+
+/**
  * Hydrated thread messages → the prior turns the chat agent replays, oldest→newest.
  *
  * Cards land in their own assistant row(s) immediately BEFORE the text row that announces them, so
@@ -56,7 +80,7 @@ const CARD_BLOCK_TOOL: Record<string, string> = {
 export function openChatPriorTurns(hydratedMessages: HydratedMessage[]): ChatAgentPriorTurn[] {
   const turns: ChatAgentPriorTurn[] = [];
   // Cards seen since the last text turn — the runs the NEXT assistant text turn is announcing.
-  let pendingRuns: Array<{ name: string; cards: number }> = [];
+  let pendingRuns: Array<{ name: string; cards: number; lines: string[] }> = [];
   // The creator's last ask, replayed as the reconstructed tool arguments (the real args were never
   // persisted; this is what the run was actually about).
   let lastUserText = "";
@@ -67,8 +91,17 @@ export function openChatPriorTurns(hydratedMessages: HydratedMessage[]): ChatAge
       if (tool && msg.role === "assistant") {
         // Cards persist one block per card, in run order — collapse a consecutive same-tool run.
         const open = pendingRuns[pendingRuns.length - 1];
-        if (open && open.name === tool) open.cards++;
-        else pendingRuns.push({ name: tool, cards: 1 });
+        const run = open && open.name === tool ? open : null;
+        if (run) run.cards++;
+        else pendingRuns.push({ name: tool, cards: 1, lines: [] });
+        const current = run ?? pendingRuns[pendingRuns.length - 1]!;
+        // The identifying line, capped in count and length. A card whose line is missing or not a
+        // string is simply counted and not quoted — never a placeholder, which would read to the
+        // model as a card whose text is literally "undefined".
+        const raw = CARD_LINE[block.type]?.(block.props as Record<string, unknown>);
+        if (typeof raw === "string" && raw.trim() && current.lines.length < MAX_LINES_PER_RUN) {
+          current.lines.push(raw.trim().slice(0, MAX_LINE_LENGTH));
+        }
         continue;
       }
       if (block.type !== "markdown") continue;
@@ -79,7 +112,19 @@ export function openChatPriorTurns(hydratedMessages: HydratedMessage[]): ChatAge
       turns.push({
         role,
         text: props.text,
-        ...(dispatched ? { toolRuns: pendingRuns.map((r) => ({ ...r, topic: lastUserText })) } : {}),
+        // `lines` is OMITTED when nothing was extractable, rather than sent as an empty array: the
+        // loop then replays the byte-identical tool result it always did, so a card type with no
+        // identifying line (or a pre-existing thread whose props differ) degrades to the old shape
+        // instead of announcing an empty card list.
+        ...(dispatched
+          ? {
+              toolRuns: pendingRuns.map(({ lines, ...r }) => ({
+                ...r,
+                topic: lastUserText,
+                ...(lines.length > 0 ? { lines } : {}),
+              })),
+            }
+          : {}),
       });
       pendingRuns = [];
       if (role === "user") lastUserText = props.text;

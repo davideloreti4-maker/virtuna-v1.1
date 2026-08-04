@@ -175,6 +175,19 @@ export interface ChatAgentPriorTurn {
     cards: number;
     /** The subject it ran on, for the replayed arguments. Falls back to the turn's own text. */
     topic?: string;
+    /**
+     * The identifying line of each card, in order — what the creator is actually looking at.
+     *
+     * The count alone proved a tool RAN, which was all the prior-turn fix needed. It left the model
+     * unable to discuss its own output: asked "Which of these hooks is strongest?" — a shipped
+     * follow-up chip — it replied "I don't have the specific hook lines you're referring to in front
+     * of me. Paste the 2–3 options you're debating", about cards the app had just rendered.
+     *
+     * Capped by the caller (chat-prior-turns.ts). Omitted entirely for an UNBOUND tool, because
+     * `replayPriorTurn` drops those runs to plain text — so an anonymous visitor, who binds no
+     * generators, never receives the lines of a pack they did not pay for.
+     */
+    lines?: string[];
   }>;
 }
 
@@ -421,11 +434,22 @@ function replayPriorTurn(
       role: "tool",
       tool_call_id: id,
       // The same result shape a live run pushes below, so the replayed round is indistinguishable
-      // from one this loop just executed.
+      // from one this loop just executed — plus the lines themselves, so the model can DISCUSS the
+      // cards it made. Without them it can prove a pack exists and say nothing about its contents,
+      // which is why the "Which is strongest?" chip asked the creator to paste back lines the app
+      // had just put on screen.
       content: JSON.stringify({
         ran: run.name,
         produced: `${run.cards} card(s)`,
-        note: "cards are shown to the creator",
+        ...(run.lines && run.lines.length > 0
+          ? {
+              cards_on_screen: run.lines,
+              note:
+                "these are the cards the creator can see, in order — refer to them by their text " +
+                "when they ask about them. They are ALREADY on screen: never re-list them, and " +
+                "never present them as something you are producing now.",
+            }
+          : { note: "cards are shown to the creator" }),
       }),
     });
   });
