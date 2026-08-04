@@ -1127,7 +1127,97 @@ Audience = hero + 5 cards. Deleted from the codebase: `.actionbar` + `syncBar()`
 Engagement (1 `.rank`, 3 `.rrow`), 5 on Audience, plus all standing probes. Green. Shots
 `rev12-*.png` (8). Same artifact url.
 
+## 22. The visual audit, and the eight defects it closed (2026-08-04)
+
+§21's loop, run against the BUILD rather than the mockup: all 14 states (4 templates × 3 tabs + 2
+applied) shot full-height and read. **Every design law held** — 270px cortex hero, instrument on
+Brain, retention on Engagement, ≤1 coral zone per page, colourless grades, no banned verb 14/14,
+diverging zero-line bars correct, card counts, simline last. 0 shadow · 0 backdrop-filter · 0 console
+errors. Twelve defects were found underneath the laws; **eight are closed here**, four are below.
+
+> 🔑 **A law-shaped probe passes a page that is unreadable.** Every one of these sat under a green
+> gate. The audit that found them shot the surface and *looked*; the gate that missed them counted
+> elements. Two of the twelve were also **misstated by the audit itself** and only the code settled
+> them (§ "what the code corrected", below) — a visual read is necessary and still not sufficient.
+
+| # | Defect | Fix |
+|---|---|---|
+| 1 | **A soft gradient shipped on a matte surface** — `BrainTab`'s WEAK→STRONG legend was a true `linear-gradient(90deg, .08 → .85)`, added by `dfed0727` under a verification that recorded "0 gradient". | The key is drawn in the grid's OWN `HeatCells` at the alphas a real row uses — a sample of the figure, not a second encoding of it. |
+| 6 | **Same number, opposite grade, one named scale** — `68 Visual pull STRONG` beside `68 Hesitation WEAK` under "0–100 · vs your baseline". | `SignalCell.lowerIsBetter`, set from `GRID_DIMS[].invert`. The banding was always right (`100 − score`); the CARD never said the direction. Marked cell + one legend line. |
+| 5 | **A sort order carrying meaning nothing encoded** — friction sorted first, but "Strong hook 51%" still drew the longest bar on a card titled *Why they scrolled*. | Named group captions at the break: **Why they left** / **What held the rest**. Suppressed when the tally is single-polarity. |
+| 7 | **The worst legibility defect** — district labels sat bare on the densest part of the node cloud; "new 62%" was partly occluded. | A knock-out casing in the figure's own `#131210`, painted under the glyphs (`paint-order`). The corner chips' scrim, shaped to the letters. |
+| 9 | **The transcript read broken, not windowed** — and its FIRST WORD was invisible at rest. | The fade ramp finished inside one word (10%); now `TRACK_PAD` px, with matching track padding so a terminal word always clears it. **Measured at both extremes: exactly 26px clear at each end.** |
+| 10 | **Three reaction rows at one density** — each row's intensity was normalised WITHIN itself, so 16 comments drew as heavy as 102 saves. | Weighted against the heaviest row, square-rooted so the lightest stays legible. Peaks now **0.80 / 0.54 / 0.34**. |
+| 11 | **The benchmark did not say it was the benchmark** — an unlabelled median tick on a strip drawn to hold one. | `median 11.2s` captioned at the tick, flipping side past 66% so it cannot run off the card. |
+| 12 | **The applied state's only control was dim plain text.** | A chip with an undo glyph. Not cream-filled: the primary action is spent, and undo is a way back. |
+
+### What the CODE corrected in the audit
+
+Two findings were wrong as written, and acting on them verbatim would have made the surface worse:
+
+- **"The transcript has no fade"** — it had one (`maskImage`, 10%). The defect was WIDTH, plus a
+  first-word bug the audit could not see because it only ever shot the strip at one playhead position.
+- **"Hesitation is inverted and nothing says so"** — the inversion was implemented and tested
+  (`brain-signals.ts`, `ambient-v2-modeled.ts:162`). Only the DISCLOSURE was missing. Reading it as a
+  logic bug would have "fixed" a correct grade into a wrong one.
+
+> ⚠️ **`↓` and `↑` were already taken.** The direction mark started as `↓` and the probe caught it:
+> the watch and reaction tiles one tab over use those glyphs for went-down/went-up ("↓1.5s",
+> "0.5% of viewers ↓"). Shipping `↓` for *lower is better* would have put two meanings on one mark
+> inside a single instrument — the very defect #6 exists to close, one level down. The mark is `*`,
+> which appears nowhere else on the surface. **Before adding a glyph, grep the surface for it.**
+
+### Verified
+
+`npx tsc --noEmit` clean · **4905 vitest passing** (same count as `dfed0727`; the 3 unhandled
+rejections are pre-existing in `composer.test.tsx`, a different surface) · eslint clean on all 7
+changed files — it caught a component declared during render, now hoisted to `ReasonGroup`.
+Re-shot all 14 states: **0 shadow · 0 backdrop-filter · 0 soft gradient · 0 console errors · no
+banned verb · every terrain label cased 4/4 · no page carrying both `*` and arrow glyphs.**
+Shots refreshed at `docs/mockups/reference-2026-08-01/audit-*.png` (14, committed).
+
+> The shoot script needed two repairs worth keeping: expanding the scroller **mutates every ancestor
+> and those mutations accumulate**, so later template chips become unclickable — each state must start
+> from a fresh load. And a fixed `waitForTimeout` after `domcontentloaded` is not hydration; on a cold
+> dev route it silently produces "button not found". Wait on the element.
+
+### Still open — the four this pass did NOT touch
+
+Three are honesty-spine calls, one is the owner's:
+
+1. **The live retention curve contradicts its own headline** — "66% gone by 0:04" (⇒34% remain) over
+   chips reading `0:04 34% · 0:05 34% · 0:07 52%`. Retention cannot rise unless it is
+   concurrent-viewers-with-rewatch, which nothing on the card says.
+2. **The live Engagement "Key metrics" names no scale** — the authored card says "vs your last 41
+   videos"; live has no right-meta at all, and `Watched full 58%` carries no denominator. Naming a
+   scale is not fabricating a benchmark; this one is safe to fix and was deferred only for scope.
+3. **"Activation per second" draws a 6s timeline on the TEXT template** — while §3.3's "text has no
+   timeline" is exactly why "When they react" is video-only.
+4. **The applied fix moves retention + cortex and nothing else** (`detail-fixture.ts:170` carries
+   `retention`/`tiles`/`rank`/`reaction` only). Signal breakdown, Network activation and Activation
+   per second are byte-identical before and after, so the cortex visibly repaints while the three
+   cards describing that same brain sit still. **Not fixable by inventing deltas** — same sin as a
+   fabricated benchmark. It is a decision: leave it, mark those cards "measured before the fix", or
+   hide them in the applied state. **Owner's call.**
+
+Also unresolved, and NOT a finding: "Who spreads it" renders per-segment multipliers sorted
+descending (Returning ×3.2 → Outside niche ×0.3). That is a carrier ranking, and this repo carries a
+*never a carrier ranking* law — but the rev-12 test only asserts its absence from **Engagement**, so
+it may be intended on Audience. Settle it before treating it as a bug.
+
+### Scope this pass did not cover
+
+The systematic **build-vs-design diff** (`impl-*.png` vs `rev12-*.png`, page by page) is still undone.
+This audit measured the build against the LAWS, which is a different question and structurally cannot
+find drift from the drawing.
+
+---
+
 ## 21. NEXT SESSION — START HERE (the build exists; review it, then land it)
+
+> 📌 **Read §22 FIRST** (2026-08-04) — the visual audit of the built rail and the eight defects it
+> closed. It supersedes §20's "Verified" line, carries the four items still open, and names the one
+> scope §21 never covered. Everything below still stands.
 
 Read **§20** (what shipped, and the four leaks it found), then §6 (the laws) and §16–§18 (what the
 design IS). §10 · §12 · §13 · §19 are all superseded — §19 was the implementation kickoff and it is
@@ -1245,8 +1335,10 @@ Shots of the built surface: `docs/mockups/reference-2026-08-01/impl-*.png` (8) �
 ### Verified
 
 `npx tsc --noEmit` clean · **4905 vitest passing**, incl. all three named gates · lint clean on every
-new/changed file. Live at `:3002` on all four templates × three tabs × applied: **0 shadow, 0 gradient,
-0 backdrop-filter, ≤1 coral zone per page, no banned verb, 0 JS errors.** Mounts checked before and
+new/changed file. Live at `:3002` on all four templates × three tabs × applied: **0 shadow, ~~0 gradient~~,
+0 backdrop-filter, ≤1 coral zone per page, no banned verb, 0 JS errors.**
+⚠️ **"0 gradient" was WRONG** — this very commit added one (`BrainTab.tsx`, the WEAK→STRONG legend ramp).
+The probe behind the claim tested the wrong thing; see §22, finding 1. Fixed there. Mounts checked before and
 after: `/ambient-v2` ✅ · `/go` (hero-product-window) ✅ · `/dev-shots` (shot-stages, 2 mounts) ✅ ·
 `offer/ambient-panel` + `offer/walkthrough` — in-tree with **no consumer**, typecheck + tests only.
 ⚠️ **`/dev/cards` renders NO gallery content in this worktree** (0 `<section>`, signed in) — confirmed
