@@ -64,8 +64,30 @@ export function AudienceReveal({ audience, reveal, onUse, className }: AudienceR
         <span className="font-medium text-foreground">@{handle}</span>
       </p>
 
+      {/* ── `shrink-0` is load-bearing, and the reason is not obvious ────────────────────────
+          This card was rendering SLICED: "GaryVee ✓" cut through horizontally, at 1512 and at
+          390, on every screenshot after the reveal was restructured. Measured on a live
+          calibration: the card's box was 34px tall while the 48px avatar inside it ran from
+          y=177.5 to y=225.5 — content taller than its own box, and `READING_CARD` leads with
+          `overflow-hidden`, so the card was clipping itself.
+
+          The cause is the bounded column above, not scrolling — `scrollTop` was 0 on every
+          measurement, so the "container is scrolled at render" theory is wrong. A flex item's
+          automatic minimum size (`min-height: auto`) normally resolves to its CONTENT height,
+          which is what stops the other five children of that column from being compressed. But
+          the spec zeroes that minimum for any item whose `overflow` is not `visible` — and
+          `READING_CARD` is the only child here that carries `overflow-hidden`. So when the
+          column's content (1484px) exceeded its `max-h` (722px), this card was the single item
+          the flex algorithm was free to shrink, and it absorbed the whole overage alone: 56→34px
+          at 1512, 61→34px at 390.
+
+          Measured with the fix: 0px lost, at both sizes.
+
+          Any future `READING_CARD` added as a DIRECT child of that column inherits this trap.
+          The persona rows and the post grid are safe only because they sit inside plain
+          `overflow: visible` wrappers, which keep their content-based minimum. */}
       {profile && (
-        <div className={cn(READING_CARD, "flex items-center gap-4 px-5 py-4")}>
+        <div className={cn(READING_CARD, "flex shrink-0 items-center gap-4 px-5 py-4")}>
           {profile.avatarUrl ? (
             <Image
               src={profile.avatarUrl}
