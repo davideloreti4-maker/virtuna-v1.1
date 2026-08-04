@@ -1127,7 +1127,147 @@ Audience = hero + 5 cards. Deleted from the codebase: `.actionbar` + `syncBar()`
 Engagement (1 `.rank`, 3 `.rrow`), 5 on Audience, plus all standing probes. Green. Shots
 `rev12-*.png` (8). Same artifact url.
 
-## 23. NEXT SESSION — START HERE. Parity: the owner reviewed the build (2026-08-04)
+## 24. NEXT SESSION — START HERE. The fixture is fixed, the method is decided, the build is next (2026-08-04)
+
+§23 is now HISTORY — its step 1 and step 3 are done. Read this section, then §23's ② / ③ lists (still
+the honest inventory of what has no producer), then §6 (laws) and §16–§18 (what the design is).
+
+### Where everything stands
+
+| | ref | state |
+|---|---|---|
+| `task/insights-rework` | **`4c564579`** == origin | the parity lane. tsc clean · **5073 vitest** · prod build compiles · lint clean |
+| `lane/qwen-flash-swap` | **`83d880eb`**, off `main` `e8d2fb7c` | ⚠️ **a SEPARATE lane, unmerged, no PR** — see §24.4 |
+| `backup/insights-pre-model-split-2026-08-04` | `fc2d77e7` | safety ref (the insights branch before the model commits were split off) |
+| PR **#412** | open | the insights lane. `origin/main` moved to `e8d2fb7c` this session — **rebase before merging** |
+
+### 24.1 What shipped: the dev fixture was a card thinner than the mount (`4c564579`)
+
+§23's step 1, done. `/ambient-v2`'s LIVE template passed no `actionIntent` to
+`buildPopulationFrameData`, so the review page hid **Projected reaction** — a card the real mount
+renders on every sealed video (`AmbientOverviewRail:485` reads `v.intents` off the seal). **Every
+judgement made from that page, including the owner's parity review, was made against a rail missing a
+card production ships.** Measured: LIVE Engagement **2 cards → 3**.
+
+The intents are DERIVED, never authored: ten `analysis_results.personas` whose `scroll_past_second`
+matches this fixture's own `swipe_predicted_at` — one room, not two — run through the shipped
+`buildVideoPopulation`. The behavioral aggregate is fixture INPUT (persisted engine output, exactly
+like the heatmap beside it) and its five values are what `aggregatePersonaResults` emits for that
+cast. A test asserts that against the real aggregator, because the fixture cannot import it without
+dragging the niche taxonomy into a client bundle.
+
+> 🔑 **That guard earned itself inside a minute** — it caught `loop_pct` hand-carried as 16.7 when the
+> aggregator says 16 (the other seven personas still take 40% of the weight). Hand-arithmetic against
+> a documented rule is not the rule.
+
+`skimmedPct` is deliberately NOT taken from the same call: it is a share of the 10-persona fold while
+the population is the 1,000-person Stage-2 projection, and crossing those denominators drives the
+tri-state's stopped band to zero.
+
+### 24.2 The re-measured matrix — this is the real gap
+
+Card heads, live on `:3002`, all 12 states, 0 console errors:
+
+| | authored | live adapter | text sim |
+|---|---|---|---|
+| **Brain** | 3 | 3 | 4 |
+| **Engagement** | 4 | **3** *(was 2)* | 1 |
+| **Audience** | 5 | 4 | 4 |
+
+**Every remaining gap is now category ② (no producer) or ③ (by design). None of it is wiring.**
+
+1. **When they react** (live) — reaction TIMING. The fold emits intent, never *when*.
+2. **The rank strip** inside Key metrics (live) — needs the creator's last-N catalogue. Live says
+   `this clip · no baseline yet`. ✅ **A data source EXISTS**: `GET /api/analysis/history` already
+   returns the user's last 50 `analysis_results` rows. Honest label is "vs your last N **simulations**",
+   not "videos" — those are modeled runs, not measured posts.
+3. **Where & when** (live + text) — `distribution`. No `src/lib/surfaces/*` sets it at all.
+4. **Projected reaction speaks a different language on live**: authored shows COUNTS of projected
+   reach ("102 saves", meta "of 3.2K reached"); live shows a 0–100 INTENT INDEX (meta "6 of 10 would
+   act"). Live cannot claim reach — it holds no views figure. The live version is the honest one.
+5. Text Engagement = 1 card — **correct by design**, do not "fix" (§3.3).
+
+### 24.3 Owner decisions taken this session — do not re-ask
+
+- **Method: BUILD ALL THREE PRODUCERS.** Not "state the absence". Reaction timing is the hard one
+  (the fold holds intent only, so this is new engine output, and it may not be derivable from what
+  Wave 3 emits today — check before promising it). Start with the rank strip: it is the one with a
+  real data source already shipped.
+- **The watch-depth collision: RELABEL the intent delta.** Live Engagement currently prints
+  `Watched full 22%` and, three lines below, `65% watch-through` ×4. Both are honest and they read as
+  a contradiction: 22% is the share who reached the end (swipe-derived); 65% is
+  `persona_behavioral_aggregate.completion_pct`, the flat mean of the cast's watch-through. **This is a
+  PRODUCTION defect the fixture fix exposed, not a fixture artifact** — every sealed video carrying
+  intents has it. Rename the delta so the two stop colliding. (Second, smaller: that same line repeats
+  identically under all four verbs — four copies of one fact.)
+- **The applied state: SAY IT IS A PROJECTION.** ⚠️ Understand what was actually asked here. The fix
+  button fires **no model call at all** — `AmbientDetail.tsx:335` is `applied && fix ? fix.applied : null`,
+  a `useState` flip that swaps in an authored blob (`detail-fixture.ts:170`). That is *why* Signal
+  breakdown / Network activation / Activation per second sit byte-identical while the cortex repaints:
+  **no fold ran, so there is no delta to show.** Keep all cards; the applied state names itself a
+  PROJECTION of the trim. An honest re-run would mean re-encoding the trimmed clip and firing a fresh
+  billed fold — real work, explicitly NOT what was chosen.
+
+### 24.4 ⚠️ A second lane exists — the engine model swap (`lane/qwen-flash-swap`, `83d880eb`)
+
+Owner asked mid-session to move the platform 3.7-plus → 3.7-flash, keeping omni as the audio sensor.
+That work is **NOT on this branch** — it was split onto its own lane off `main` so it can merge or roll
+back independently. It has **no PR** (merges on this repo have landed within seconds of a push; opening
+one is the owner's call). Its own SSOT is `docs/MODEL-POLICY.md` **on that lane**.
+
+Verified before splitting: tsc clean · 5080 vitest · prod build · **and two LIVE harness runs**:
+
+- **Fold PASSED on flash** (`scripts/fold-validate-r1.ts`): diversity **0.28** (healthy 0.27–0.41,
+  floor 0.10), 13.7s vs a 90s ceiling, clean first-attempt parse, no retry, 0.547¢.
+- **Apollo FAILED and was reverted to plus** (`scripts/apollo-cite-harness.ts`, same video, both
+  models back to back): plus → composite **81**, cites `[§2.1 §2.2 §2.3 §2.5]`, 59.7s, 2.07¢.
+  flash → composite **53**, **cites NONE**, 17.1s, 0.50¢. Flash returns every lever as generic prose
+  ("contrast / curiosity gap") where plus grounds it in the core ("§2.1 rapid context + specificity").
+
+> 🔑 **A cheaper model is not cheaper if it stops answering the question.** Flash returned something
+> that LOOKED like an Apollo result — valid schema, plausible prose, sensible dimensions, 4× cheaper —
+> and tsc, 5080 tests and the prod build were ALL GREEN on it. Only running the real harness and
+> reading the output caught it. `QWEN_APOLLO_MODEL` is scoped separately for exactly this.
+
+Also on that lane: `cost.ts` gained BANDED pricing (DashScope prices 3.7-flash by context length;
+flat-rating it would have sent the platform's own default model down the unknown-model path and rated
+it as 3.6-flash, 8× the true base rate, behind a warning nobody reads). `ENGINE_VERSION` 3.21.0 →
+**3.22.0** — the prediction cache keys on it.
+
+**Still unvalidated on flash:** the **CALIBRATE synth** (`enrich-signature`) is the OTHER thinking-ON
+call site and has no harness. If baked audience personas start reading generic, look there first.
+
+### 24.5 The road to production-ready, in order
+
+1. **Rebase `task/insights-rework` on `origin/main`** (`e8d2fb7c`) — it moved this session.
+2. **Relabel the watch-depth delta** (24.3) — smallest, and it is a live production defect.
+3. **The applied state says "projection"** (24.3) — copy-only, no engine work.
+4. **Build the rank strip** off `/api/analysis/history`, labelled "vs your last N simulations".
+5. **Scope reaction TIMING honestly before building it** — read what Wave 3 actually emits. If the
+   timing is not in the fold's output, say so rather than deriving it from intent. §20/§22's line.
+6. **`distribution` / Where & when** — no producer at all; the largest of the three.
+7. Then the two §22 leftovers: the systematic build-vs-design diff (`impl-*.png` vs `rev12-*.png`),
+   and settling whether "Who spreads it" may rank carriers on Audience (the rev-12 test only bans it
+   on Engagement).
+
+### 24.6 Loop + traps (unchanged, and they all cost time this session)
+
+- `npx tsc --noEmit` **AND** `node node_modules/vitest/vitest.mjs run` (vitest does NOT typecheck;
+  npx swallows output). Then `npm run build` — the prod build is the real gate.
+- Live: dev server **:3002**, `/ambient-v2` → `② brain` → four template chips → three tabs.
+  Playwright script at `scripts/tmp-*.mjs`, `rm` after (a Write to the scratchpad is path-guard blocked).
+  ⚠️ `import pw from ".../playwright/index.js"` then destructure — it is CommonJS, a named import throws.
+- ⚠️ Expanding the scroller mutates every ancestor and mutations ACCUMULATE across states — **one fresh
+  page load per state**. A fixed `waitForTimeout` after `domcontentloaded` is not hydration; wait on the element.
+- **Never let an adapter synthesise a missing figure so the pages match** (§20/§22). This branch's own
+  `4a2868ff` is the cautionary case: five consumers read an ATTENTION curve as retention and shipped
+  "66% gone by 0:04" over a curve that then climbed.
+- ⚠️ **Merging to `main` IS deploying** — prod builds ~3s after the merge, there are no preview URLs,
+  and the rail also ships on `/go`. Verify BEFORE.
+
+---
+
+## 23. Parity: the owner reviewed the build (2026-08-04) — SUPERSEDED by §24, keep ② and ③
 
 **Owner verdict, reviewing `/ambient-v2` live:** *"authored is looking good but nothing is implemented
 on live adapter and text sim — we want the same integration everywhere."*
