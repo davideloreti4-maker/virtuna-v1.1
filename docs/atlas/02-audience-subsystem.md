@@ -35,15 +35,20 @@ to nudge. That's the whole moat: cheap, deterministic, no per-call LLM.
       ▼                                       ▼  send("status","Reading your followers…")
  createAudience(supabase, body)          calibrateFromScrape(input)   calibration.ts:172
  audience-repo.ts:288                          │
-      │ user_id ← session (CR-01)              ├─ type==="personal" ──────────────┐
-      │ WritableAudienceSchema                 │   Apify scrapeProfile + scrape-   │
-      │ audienceToRow → flat fyp/niche/…       │   Videos(30) in Promise.all (:194)│
-      ▼                                        │   THIN GATE (:211):               │
+      │ user_id ← session (CR-01)              ├─ handle given ───────────────────┐
+      │ WritableAudienceSchema                 │   Apify scrapeProfileBundle(h)    │
+      │ audienceToRow → flat fyp/niche/…       │   ONE call, profile+videos (:295) │
+      ▼                                        │   THIN GATE isThin (:297):        │
  INSERT audiences row ──────────┐              │   tier===null && videos<10        │
- (RLS audiences_all_own)        │              │     → { fallback:'general' }  ────┼─► send("fallback")
+ (RLS audiences_all_own)        │              │     → niche fallback: a SECOND    │
+                                │              │       Apify call, scrapeNiche     │
+                                │              │       (:301). Still <10 videos    │
+                                │              │       → { fallback:'general' } ───┼─► send("fallback")
                                 │              │       NEVER fabricates personas   │   → UI uses General
-                                │              └─ type==="target" → zeroed mock    │
-                                │                 ProfileData (:218)               │
+                                │              └─ no handle → nicheQuery from the  │
+                                │                 description → scrapeNiche (:344) │
+                                │                 ⚠ ALSO an Apify call — the       │
+                                │                 described door is not free       │
                                 │                       ▼                          │
                                 │                 deriveAudienceProfile (:66)      │
                                 │                 = temperature_mix + top_3        │
@@ -141,20 +146,41 @@ lower-level write both share.
 
 **Core** `src/lib/audience/calibration.ts:172-262` — *never throws; all outcomes are typed returns.*
 
-### 3a. Personal path (scrape) — `:185-215`
-1. `handle` required else `{error:"scrape_failed"}` (`:186`).
-2. `new ApifyScrapingProvider()` (injectable for tests, `:190`).
-3. **Parallel scrape**: `Promise.all([scrapeProfile(handle), scrapeVideos(handle, 30)])` (`:194`).
-   Any throw → `{error:"scrape_failed", message}` (`:200`) — **distinct from thin** (UI shows
-   "calibration failed" vs "couldn't read enough").
-4. **THIN-DATA GATE** (`:210-214`, the honesty spine): `tier = getFollowerTier(profile.followerCount)`;
-   if `tier === null && videos.length < THIN_MIN_VIDEOS` (`THIN_MIN_VIDEOS = 10`, `:48`) →
-   `{fallback:"general", reason:"thin"}`. **NEVER fabricates personas.** Both conditions must
-   hold (zero/missing followers AND <10 videos), so a big account with few videos still calibrates.
+> ⚠️ **§3a/§3b below were rewritten 2026-08-04.** They described the pre-`34dc98d4` (2026-07-14)
+> shape and had been wrong for three weeks — chiefly the claim that the Target path makes **no
+> Apify call**, which is the kind of error that gets repeated as a costing decision. The branch is
+> now on **`handle` presence, not `type`**, and *every* path hits Apify. Line refs are the lane
+> worktree (`~/virtuna-slot-a`), not this doc's stated 2026-06 base.
 
-### 3b. Target path (no scrape) — `:218-230`
-- `profile` stays `null`; a **zeroed mock `ProfileData`** is synthesized (`followerCount:0`, etc.)
-  with `handle/displayName/bio` from `name`/`description`. No Apify call.
+Before either branch: the **platform guard** (`:277`) — anything but `tiktok` or `custom` returns
+`{error:"platform_unsupported"}`. Both scrape actors are TikTok-only and neither takes a platform,
+so calibrating "Instagram" used to build a stranger's audience and label it correctly-wrongly.
+`custom` stays allowed: it is the described door, which claims no platform provenance.
+
+### 3a. Handle given (Personal always; Target with a reference handle) — `:295-335`
+1. `scrapeBundle(handle)` (`:296`) → `ApifyScrapingProvider().scrapeProfileBundle` — **ONE** call
+   returning profile **and** videos together (it was two parallel calls before `34dc98d4`).
+   Any throw → `{error:"scrape_failed", message}` (`:353`) — **distinct from thin** (UI shows
+   "calibration failed" vs "couldn't read enough").
+2. **THIN-DATA GATE** `isThin` (`:297`, the honesty spine): `tier === null && videos.length <
+   THIN_MIN_VIDEOS` (10). Both conditions must hold, so a big account with few videos still
+   calibrates.
+3. **Thin no longer dead-ends to General.** It falls back to `nicheQuery(...)` → `scrapeNiche`
+   (`:301`) — a **SECOND Apify call**. Only if *that* returns <10 videos does it return
+   `{fallback:"general", reason:"thin"}`. **NEVER fabricates personas.**
+   ⚠️ `isThin` describes a brand-new creator exactly, so for the onboarding audience this is the
+   COMMON path, not the edge — budget two Apify calls, not one.
+4. Not thin → the real bundle. `onEvidence` emits the avatar/follower count/covers ~2 min ahead of
+   the audience they produce (real-scrape branch only — the synthetic profile is not "the account
+   we read"), and `onBundle` hands the raw bundle up so persistence (`account_posts`, snapshots)
+   reuses that ONE scrape instead of running another.
+
+### 3b. No handle — the DESCRIBED door — `:337-351`
+- `nicheQuery` from the description → `scrapeNiche(query)` (`:344`), then `syntheticProfile(name,
+  undefined, description, nicheVideos)`; `source = "niche"`, `subCoverage = "0/0"`.
+- **This is an Apify call.** "No account needed" is the honest claim for this door; "no cost" is
+  not. Under 10 niche videos → `{fallback:"general", reason:"thin"}`.
+- The synthesized profile is not the old zeroed mock: it is built **from the scraped niche videos**.
 
 ### 3c. Shared derivation — `:232-261`
 - `deriveAudienceProfile(scrapeProfile, videos)` (`:66-106`) → `AudienceProfile`:

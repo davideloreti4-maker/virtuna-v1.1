@@ -1,149 +1,187 @@
 # HANDOFF — New-user onboarding: the product a fresh account actually meets
 
 **Branch:** `lane/new-user-onboarding` · **Worktree:** `~/virtuna-slot-a` · **Dev port:** 3001
-**Base:** `origin/main` @ `a7ff97f6` · **Status:** survey only, zero code written. This doc IS the lane.
+**Base:** rebased onto `origin/main` @ `3c97f8a4` (2026-08-04) · **Status: BUILT, unmerged, no PR yet.**
 **Owner ask (verbatim):** *"adding a good onboarding for new users to the platform … we want to
 properly onboard new users."*
-⚠️ **Merging to `main` IS deploying** (no preview URLs, prod builds ~2 min after merge). Verify first.
+⚠️ **Merging to `main` IS deploying** (no preview URLs, prod builds ~3s after merge). Verify first.
+
+> **Rewritten 2026-08-04.** The first version of this doc was a survey that ended in an open
+> decision and a sketch. Both are now settled and built — three code commits — and the doc had gone
+> stale in exactly the way it warned about. §3 records the decision that was made rather than
+> asking for one; §4 records what shipped rather than proposing it.
 
 ---
 
-## 0. Read this first — the survey found something that changes the brief
+## 0. State in one screen
 
-**Do not start by designing a tour or a checklist.** The post-signup onboarding is not thin, it is
-*disconnected*: it collects one fact and throws it away, and the thing it fails to set up is the
-one the whole product is built on.
+| | |
+|---|---|
+| Commits | `a1f28575` survey · `3c08ee01` /welcome rebuild · `f55ecb97` three ways out of the inert product · `5c695b73` the audience intro |
+| Merge surface | **Zero file overlap** with everything `main` gained since the fork (all Discover). Rebase was clean. |
+| Gates | See §6 — re-run before the PR, `main` moves. |
+| Open | The PR itself. Feature discovery (§7) is a separate lane. |
 
-Everything in §1 was read out of the code on 2026-08-02, with line numbers. Verify before building
-on it anyway — this repo's own standing lesson is that a backlog item can be resolved in the
-opposite direction and still read as open (see `e2e-audit-lane`, F-014).
+**The survey's finding, which still frames everything:** post-signup onboarding was not thin, it
+was *disconnected*. It collected a TikTok handle, wrote it to `creator_profiles.tiktok_handle`,
+and nothing read that string except `/competitors`. No connected account, no calibrated audience.
+Since every card in this product is audience-relative, a fresh account's first card could only
+ever render **"Not tested yet"** and the simulation door opened an empty room. The step promised a
+connection and delivered a string.
 
-**One decision must be settled with the owner before any build — §3.** It changes the whole shape.
+## 1. What a new account meets now
 
-## 1. What exists today (verified)
+```
+signup → middleware.ts:173 gate → /welcome
+   step 1  ConnectStep     @handle  ── or ──  a written description   → draft audience row
+   step 2  CalibrationFlow  autoStart, inline, ~128s, spine-drawn
+                            → calibrated audience persisted
+   → /home  (empty)         HomeAudienceIntro names it, offers ONE first action
+```
 
-### 1.1 The whole post-signup onboarding is one text field
+Both doors end in a calibrated audience. There is no longer a path through onboarding that leaves
+the product inert.
 
-`src/app/(onboarding)/welcome/page.tsx` — `STEPS = ["connect"]`, a single step.
-`src/components/onboarding/connect-step.tsx` — one `InputField` ("TikTok Handle"), a **Continue**
-button, and a **"Skip for now"** link. That is the entirety of it.
+### 1.1 `/welcome` — two real steps (`3c08ee01`)
 
-`src/stores/onboarding-store.ts:97` `completeOnboarding()` writes `onboarding_step: "completed"`,
-`onboarding_completed_at`, and `tiktok_handle`. `:109` `skipOnboarding()` writes the same completion
-stamp and **no handle**.
+`STEPS = ["connect", "calibrate"]`. The step indicator now counts something; it used to render a
+single dot admitted in a comment to be "kept for visual symmetry with prior flow."
 
-### 1.2 The handle it collects is inert
+- **`connect-step.tsx`** opens one of two doors and creates only the **draft row**. "Skip for now"
+  is gone — it completed onboarding with nothing set up. In its place is the describe door, which
+  leads somewhere.
+- **`calibration-flow.tsx`** gained `autoStart` + `prefillDescription` so step 2 never re-asks what
+  step 1 just collected. **Reuse, not a third calibration UI** — there were already two entry
+  points and the survey's §7 forbade a third. ⚠️ Its ref guard is load-bearing: calibration is a
+  real Apify scrape on a metered account and StrictMode double-invokes mount effects.
+- The calibrate stage is **local state, deliberately not persisted** to `onboarding_step`.
+  Restoring into it on reload would remount `CalibrationFlow` with `autoStart` and fire a second
+  scrape. A reload mid-run returns to step 1 — see §2.2 for what happens to the run it left behind.
 
-`grep tiktok_handle` across `src/` returns exactly two kinds of reader:
+### 1.2 The wait is the product, not a spinner
 
-- the `/competitors/*` pages (`competitors/[handle]/page.tsx:97`, `compare/page.tsx:137`)
-- `welcome/page.tsx:89`, rehydrating its own form
+**Owner call, 2026-08-02: calibrate INLINE and BLOCKING** rather than deferring it. The measured
+wait is ~128s, but it is not a blank one: the spine (`59ae73ee`) draws calibration's three real
+phases and, seconds in, the creator's own avatar, follower count and video covers — their own
+material, on screen, roughly two minutes before the audience it produces.
 
-It does **not**:
+Deferring would have bought an instant entry and handed them a product whose every card reads
+"Not tested yet" — the exact disconnect this lane exists to close.
 
-- create a `connected_accounts` row — that is a separate route, `POST /api/connected-accounts/connect`,
-  which scrapes the profile and seeds `account_snapshots`
-- calibrate an audience — that is `POST /api/audiences/calibrate` (SSE)
-- trigger an account read, or influence `/home` in any way
+`src/lib/audience/calibration-stages.ts` is the new pure module both sides import (a client
+component importing the route drags server code into the bundle; the route importing a
+`'use client'` component is the same mistake mirrored).
 
-So a brand-new user finishes onboarding with **no connected account and no calibrated audience.**
+### 1.3 The described path got its own vocabulary
 
-### 1.3 Why that is the real problem
+Found on the live run: the describe door was emitting the **account** vocabulary — "Reading your
+followers", "Pulling the account and its posts" — to users who supplied only a description and
+have no account, while it was really searching a niche.
 
-The product is audience-relative. The skill cards that just shipped (`06f2b210`) render an audience
-band whose honest states are, in order: a measured room fraction → a bound persona plus their real
-share (`Made for Time Poor Creator · 34% of your audience`) → and, when nothing is calibrated,
-**`Not tested yet`**.
+Split into `calibrationVocabulary(hasHandle)`, keyed off **the handle, not the type** — because
+`/audience/new`'s "From a handle" door builds a `type: "target"` audience from a *real account*,
+and that run genuinely is reading one. The handle is what `calibrateFromScrape` itself branches on.
 
-A new user has nothing calibrated. So every card they generate shows the fallback, the simulation
-door leads to a room with no audience in it, and the differentiator — *"we simulate your actual
-audience"* — is invisible on first use. **The onboarding's job is to make the audience band say
-something true, and today it does not even try.**
-
-### 1.4 The gate that routes people there
+### 1.4 The gate that routes people there — unchanged, do not touch
 
 `src/lib/supabase/middleware.ts:173` — an authenticated, **non-anonymous** user with no
-`onboarding_completed_at` hitting a protected path is redirected to `/welcome`. The `!is_anonymous`
-narrowing is load-bearing and was itself a fix: an anon funnel visitor can never satisfy the gate
-(no `creator_profiles` row is ever written for them), so without it the acquisition funnel **looped**.
-Do not widen that condition.
+`onboarding_completed_at` hitting a protected path is redirected to `/welcome`. The
+`!is_anonymous` narrowing is load-bearing and was itself a fix: an anon funnel visitor can never
+satisfy the gate (no `creator_profiles` row is ever written for them), so without it the
+acquisition funnel **looped**. Do not widen that condition.
 
-### 1.5 The acquisition funnel is a DIFFERENT thing, and it is already built
+### 1.5 The acquisition funnel is a DIFFERENT thing, and it is done
 
 `/go` → anonymous session → one free video Test → the sealed verdict wall → $1 / 3-day trial →
-account claim. Ten sessions of work, merged. `~/virtuna-onboarding` (`milestone/onboarding`) has
-only **2 unique commits**, both `/go-v2` landing work.
+account claim. That funnel converts a stranger into an account. **This lane starts where it
+stops.** Do not re-litigate it, and do not touch the seal / wall / claim path — it is the money path.
 
-That funnel converts a stranger into an account. **This lane starts where it stops.** Do not
-re-litigate it, and do not touch the seal / wall / claim path — it is the money path.
+## 2. The three ways out of the inert product (`f55ecb97`)
 
-## 2. Two real defects found in `/welcome` while surveying
+All three would have landed a new account back exactly where the lane started: signed in,
+uncalibrated, every card reading "Not tested yet".
 
-Small, but they are in the first authenticated screen every new user sees.
+**2.1 The likely failure had no way out.** `isThin` is "no follower tier AND fewer than 10 videos"
+— a description of a brand-new creator, i.e. *the person onboarding exists for*. Their run falls
+back, and the only button was "Continue with General", which IS the uncalibrated state. Their
+account cannot be read yet but they can describe who they are making for, so the fallback and
+error states now offer the other door and make it **primary**; General steps down to secondary but
+stays reachable.
 
-1. **It redirects to a sunset route.** `welcome/page.tsx:60` and `:103` both
-   `router.replace("/dashboard")`. There is no `src/app/(app)/dashboard/` — but this is **NOT a
-   404**: `middleware.ts:76` 308-redirects `/dashboard` → `/home` (the D-25 sunset). The cost is a
-   pointless extra hop on the first navigation of every new account, plus a stale name in the code.
-   *I nearly reported this as a broken funnel; check the middleware before you "fix" it.*
-2. **It violates the matte design system.** The card carries
-   `boxShadow: "rgba(255,255,255,0.05) 0 1px 0 0 inset"` (`:113`, `:135`) — inset shine, explicitly
-   retired ("no glass, no glow, no inset-shine"). `--color-charcoal-chip` itself is fine, still a
-   live token (`globals.css:58`). Before restyling, read `reading/__tests__/reskin-matte.test.ts` —
-   check whether its file list covers `(onboarding)` or stops at `reading/`.
+**2.2 A reload mid-calibration spent a second scrape.** Leaving `/welcome` does not stop the run:
+the calibrate route does all its work and all its writes inside the SSE stream's `start()`, nothing
+cancels it, and `send` swallows frames once the client is gone. So a user who reloaded at t=60s of
+a ~128s scrape got their audience at t=128s — and was then asked for their handle again, burning a
+second Apify call on a **$5/mo capped account** and stranding a duplicate row. `/welcome` now
+adopts what a previous attempt produced: a calibrated audience finishes onboarding outright, a bare
+draft is reused so the retry PATCHes it. Verified live — an un-onboarded user holding a calibrated
+audience goes `/welcome` → `/home` with **zero** calibrate requests.
 
-Also vestigial: the step indicator renders a **single dot**, with a comment admitting it is "kept
-for visual symmetry with prior flow." A one-step progress bar is chrome that measures nothing.
+**2.3 Completion raced its own precondition.** The store flipped `step` to `"completed"` and *then*
+wrote the database. The page redirects to `/home` the moment that step changes, and
+`middleware.ts:173` gates `/home` on `onboarding_completed_at` being present **in the database** —
+so the redirect raced the write that authorises it, and a creator who had just sat through ~128s of
+calibration could be thrown straight back to the welcome form. The write now lands first; a failed
+persist still flips the step, so offline behaviour is unchanged rather than trapping anyone.
 
-## 3. 🔴 THE DECISION — settle this with the owner before building
+> Found by instrumenting the real navigation on a production build rather than reasoning about it:
+> the log showed `307 /home` arriving **before** `/api/audiences`. The fix is mutation-tested —
+> restore the old sequence and `onboarding-store-completion-order` fails while every "does it
+> complete" assertion stays green, which is why the race survived this long.
 
-**How does a new user get a calibrated audience?** Calibration is a measured **~126 second** scrape
-(`/api/audiences/calibrate`). That single fact forces the shape of the whole onboarding.
+## 3. The audience intro (`5c695b73`)
 
-| | What it buys | What it costs |
+Onboarding now ends with a calibrated audience and nothing then said so. A new account arrived on
+an empty home holding the one thing that separates this from a prompt box, and the surface never
+mentioned it.
+
+`home-audience-intro.tsx` — a show-once, dismissible strip **beneath the composer** that names the
+audience's size and origin, states what it is FOR, and offers ONE first action.
+
+- **Not a seventh starter card.** THE STARTER CONTRACT (`home-starter.tsx`) is explicit: the six
+  are constant furniture, one card anatomy, no prose, the grid must not redraw itself. An
+  affordance inside the grid breaks all four. This sits *beside* it, in the quiet footer slot
+  `HomeFirstRunDemo` already occupies. It is **not** placed above the grid either — rule 2 forbids
+  a prose lede there outright.
+- **The action is conditional**, because onboarding has two doors. The handle door leaves a
+  connected account behind (`source_account_id`); the describe door cannot. Offering "Read my
+  recent posts" to a describing creator hands them a first action that *cannot work*, so they get
+  Ideas instead — which needs nothing but the composer.
+- **Silent unless there is something true to say.** General, a bare draft with no personas, and
+  "no audience" all render nothing. `personas.length` is the app's own calibrated test
+  (`select-persona-targets.ts:111`).
+
+Two things only the live run corrected, both invisible from the code:
+
+- the first gate used `startEngaged`, which hid the strip on **precisely the screen a new account
+  lands on** — under ambient v2 the empty home opens on the Start surface and the starter grid is
+  still behind that gate;
+- the copy opened *"Your audience:"*, which the Start surface already says a few hundred pixels
+  above with the picker chip. Two labels for one thing on one screen read as two things.
+
+The layout classes ride on the component, not a wrapper div — it returns `null` for anyone
+uncalibrated or dismissed, and a wrapper would survive that and leave a dead 12px gap under the
+composer for every one of them.
+
+## 4. 💰 What onboarding costs — BOTH doors are paid
+
+**No path through calibration is free.** The branch is on **`handle` presence, not `type`**:
+
+| Door | Apify calls | Notes |
 |---|---|---|
-| **A. Calibrate inline, blocking** | The product WORKS on first use — the first card they ever generate has a real persona and a real share | A brand-new user stares at a 2-minute wait before seeing anything. Highest-abandon moment in the funnel |
-| **B. Defer entirely** | Instant entry | Every card is degraded until they calibrate, and **nothing currently nags them to**. This is today's behaviour, minus the illusion |
-| **C. Hybrid — start it in the background, let them explore** | Instant entry AND a working product a couple of minutes in | Needs the wait to be legible, and needs a state for "cards generated before calibration finished" |
+| Handle, healthy account | **1** — `scrapeProfileBundle` (profile + videos in one) | `onBundle` hands the raw bundle up so persistence reuses that ONE scrape |
+| Handle, **thin** account | **2** — the bundle, then `scrapeNiche` fallback (`calibration.ts:301`) | ⚠️ `isThin` describes a brand-new creator exactly, so for onboarding this is the **common** path |
+| Described (no handle) | **1** — `nicheQuery` → `scrapeNiche` (`calibration.ts:344`) | "No account needed" is honest. **"No cost" is not.** |
 
-**My recommendation: C**, and the machinery for it already exists on `main`.
+⚠️ This corrects a claim that was wrong in two places for three weeks: `docs/atlas/
+02-audience-subsystem.md` §3b said the target path made *"No Apify call"*, and
+`docs/subsystems/audience.md` §H carried it as hypothesis H4. Both described the pre-`34dc98d4`
+(2026-07-14) shape. **Both are fixed as of 2026-08-04** — the atlas §3a/§3b rewritten, H3/H4 marked
+refuted. If you are costing this flow, read the code, not a doc older than July 14.
 
-- The thread loading **spine** landed in #411 and can draw the engine's own material under the
-  active step via an `evidence` SSE frame.
-- Calibration **already has three real stages with honest copy** (`CalibrationStage` in
-  `src/lib/audience/calibration.ts`). Its only defect is that the route emits them via
-  `send("status", {message})` instead of `send("stage", …)`, so the longest wait in the product
-  renders as one plain line. Fixing that is the cheapest high-value change on the board and it is
-  *already* on the backlog independently — see `scrape-waits-are-blind`.
-
-So C is mostly **wiring what exists**, not new invention. But it is the owner's call, not yours.
-
-Second question for the same conversation: **is the TikTok handle required or skippable?** Today
-"Skip for now" leads to a permanently inert product. If calibration is the point of onboarding,
-skipping needs either a real second path (describe your target audience — `audience-create.tsx`
-already supports a *target* path with a textarea, not just a personal @handle) or an honest
-consequence the user is told about.
-
-## 4. The build, once §3 is answered
-
-Sketch only — do not treat as approved scope.
-
-1. **Make `/welcome` do the connect it promises.** The handle should create the
-   `connected_accounts` row via the existing `/api/connected-accounts/connect`, not just write a
-   string to `creator_profiles`.
-2. **Hand off into calibration** per the §3 decision, reusing `calibration-flow.tsx` rather than
-   building a third calibration UI (there are already two entry points: `calibration-flow.tsx` and
-   `audience-create.tsx`).
-3. **Fix the two §2 defects** in passing — they are three-line changes.
-4. **Give `/home` a first-run state that knows the user is new.** `home-starter.tsx` is
-   **THE STARTER CONTRACT** — read its header comment in full before touching it. The six starter
-   cards are deliberately **constant furniture**; they do not change with the armed skill, and that
-   is a decision the file argues for at length. Adding a seventh card, or making the grid
-   conditional, fights an explicit rule. If a first-run affordance is needed, it likely belongs
-   *beside* the grid, not inside it.
-5. ⚠️ **Never flip `hasThread` to render an idle view.** `composer.tsx` — doing so tears the page
-   into a half-thread layout (greeting pinned top, composer pinned bottom, dead gap between). This
-   is documented in `home-starter.tsx`'s header as an already-paid-for bug.
+Apify is on rotating **FREE** accounts with a **$5/mo hard cap** (~$3.40 left, resets 2026-08-20).
+A cap-out is disguised as *"check your handle is public"* — check the ACCOUNT, not the app. **Do
+not loop calibration in testing.**
 
 ## 5. Traps that will cost you time
 
@@ -154,14 +192,14 @@ Sketch only — do not treat as approved scope.
 - **`npm test` is fake here** — use `node ./node_modules/vitest/vitest.mjs run`. And `npx` wraps and
   swallows output; prefer `node node_modules/<bin>`, trust `$?`, never the summary line.
 - **Never run vitest while `npm run build` is running.** Seven API-route tests "fail" on 5s timeouts
-  purely from CPU starvation; isolated they pass in ~4s. Cost me a false diagnosis this session.
+  purely from CPU starvation; isolated they pass in ~4s.
 - **Run UI tests BOTH flag ways.** Under `NEXT_PUBLIC_AMBIENT_V2` the thread region only renders
   once `hasConversationContent` is true, so a flags-OFF-only test can pass by matching an *absence*.
-- **Verify RLS, not just the query.** A policy gap turns a count into a silent 0 — that is how the
-  demo entitlement nearly shipped unlimited free Tests.
-- **Apify is on rotating FREE accounts with a $5/mo hard cap**, ~$3.40 left, resets 2026-08-20.
-  Calibration is a real scrape. A cap-out is disguised as "check your handle is public" — check the
-  ACCOUNT, not the app. Budget your live runs; do not loop calibration in testing.
+  This is not hypothetical here — it is exactly how the `startEngaged` gate in §3 slipped through.
+- **The test account has threads**, so `/home` restores the last conversation and
+  `hasConversationContent` is legitimately true. Verifying anything on the *empty* home needs a new
+  thread. This cost three attempts.
+- **Verify RLS, not just the query.** A policy gap turns a count into a silent 0.
 - **A green Vercel check on a PR is NOT a build** (`ignoreCommand` skips and posts success). Run
   `npm run build` yourself; vitest does not typecheck.
 
@@ -170,34 +208,60 @@ Sketch only — do not treat as approved scope.
 Signed-in verification **works** — `e2e/auth.setup.ts` was fixed 2026-08-01 and passes in ~2.3s.
 The test-user credentials are a **REAL PROD account**; dev and prod share one Supabase project, so
 anything you write is real. To test a *new* user you need a genuinely fresh account, and every one
-you make persists — clean up after yourself.
+you make persists — clean up after yourself (this lane restored the test account afterwards).
 
-Gate: `npx tsc --noEmit` · `node ./node_modules/vitest/vitest.mjs run` (both flag ways) ·
-`npm run build` (**the** gate — a `src/lib/surfaces/*` import into an API route breaks the prod
-build while tsc stays clean).
+Each commit was gated at its own tip: tsc 0 errors · vitest both flag ways, 0 failures ·
+`npm run build` clean. Both `3c08ee01`'s new guards and `f55ecb97`'s ordering fix are
+**mutation-tested** — each fails when its fix is reverted.
 
-## 7. Do NOT
+Live, on a production build, signed in as an un-onboarded user (account restored afterwards):
+the gate routes `/home` → `/welcome`, `boxShadow` computes to `none`, both step dots track
+progress, step 2 auto-starts the spine without re-asking, no console errors — and on `/home` the
+intro renders beneath the composer reading *"6 people, built from your description…"*, correctly
+offering Ideas rather than the account read for that target audience.
 
-- Touch the seal / wall / claim path — money path, and it is verified working.
+Re-run the gate before opening the PR — `main` moves:
+`node node_modules/typescript/bin/tsc --noEmit` · `node ./node_modules/vitest/vitest.mjs run`
+(both flag ways) · `npm run build` (**the** gate — a `src/lib/surfaces/*` import into an API route
+breaks the prod build while tsc stays clean).
+
+## 7. Still open
+
+1. **The PR.** Nothing blocks it but the gate re-run. ⚠️ Merging deploys.
+2. **Feature discovery — a separate lane.** This lane closes the *setup* gap, not the *teaching*
+   one. There is no tour, walkthrough, coachmark or checklist anywhere in `src/` — grepped every
+   variant, zero hits, no library. The one first-run affordance that pre-existed
+   (`HomeFirstRunDemo`) is gated on `HORIZONTAL_ENABLED = false` and never appears. Everything off
+   the Start grid — Discover, Library, Audience, Settings, Referrals — a new user finds or does
+   not. Introducing them needs a coachmark pattern that does not exist here: **net-new machinery,
+   not wiring.** Worth its own lane and its own decision.
+
+## 8. Do NOT
+
+- Touch the seal / wall / claim path — money path, verified working.
 - Widen the `!user.is_anonymous` condition in `middleware.ts:173`.
-- Rebuild `/go`. It is done, and three worktrees have historically served it on different ports —
-  check the PORT before believing any review of it.
-- Add a second calibration UI. There are already two.
+- Persist the `calibrate` stage to `onboarding_step` (§1.1 — it re-fires a metered scrape).
+- Add a second calibration UI. There are already two, and this lane deliberately reused one.
+- Flip `hasThread` to render an idle view — it tears the page into a half-thread layout (greeting
+  pinned top, composer pinned bottom, dead gap between). Documented in `home-starter.tsx`'s header
+  as an already-paid-for bug.
 - Stage the untracked leftovers in this worktree: `src/app/zz-preview/`, `scripts/zz-shoot.js`,
   `zz-shots/`, `public/zz-v94-cards.html`, `.planning/sketches/*`. They are the merged card lane's
   throwaway harness. **Stage by name, never `git add -A`.**
 
-## 8. Kickoff
+## 9. Kickoff
 
 ```bash
 cd ~/virtuna-slot-a && git switch lane/new-user-onboarding
-git rev-parse HEAD                       # expect a7ff97f6 + this doc commit
+git rev-parse HEAD                       # must match origin/lane/new-user-onboarding
+git rev-list --count HEAD..origin/main   # 0, or rebase before the PR
 git status --short                       # untracked zz-* are EXPECTED — never stage them
 npm run dev -- --port 3001               # a launchd reaper kills it after ~10 min idle
 ```
 
 Read in this order: this doc → `src/app/(onboarding)/welcome/page.tsx` →
-`src/components/onboarding/connect-step.tsx` → `src/components/app/home/home-starter.tsx`
-(its header comment is a design contract, not commentary) → `src/lib/supabase/middleware.ts:150-190`.
-
-**Settle §3 with the owner before writing code.**
+`src/components/onboarding/connect-step.tsx` → `src/lib/audience/calibration-stages.ts` →
+`src/components/app/home/home-audience-intro.tsx` → `src/components/app/home/home-starter.tsx`
+(its header comment is a design contract, not commentary).
+Every one of those files carries a header comment that argues its own decisions — read them before
+changing the code beneath.
