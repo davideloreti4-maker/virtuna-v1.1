@@ -756,4 +756,92 @@ describe("runChatAgentStream [billing]", () => {
     expect(billing.bill).not.toHaveBeenCalled();
     expect(res.skillRuns).toHaveLength(0);
   });
+  // ── Prior turns: a thread must not poison its own later turns ──────────────
+  //
+  // REGRESSION. A dispatching turn persists as cards + a closing line ("Five hooks are on screen.");
+  // only the line crosses into the anchor. With no trace of the tool call anywhere in the transcript,
+  // the model asked for hooks again reproduced the sentence and called NOTHING — zero cards under a
+  // UI insisting five existed (confirmed live 2026-08-04; a replay of the real thread measured 0/3
+  // shipped → 3/3 with the runs replayed). A prompt clause was tried first and failed.
+
+  it("replays a prior tool-producing turn as the tool-call exchange it actually was", async () => {
+    const stream = mockStream([[textChunk("ok")]]);
+    const ideas = mkSkill("generate_ideas");
+
+    await runChatAgentStream(
+      baseInput({
+        priorTurns: [
+          { role: "user", text: "hooks for my budgeting app" },
+          {
+            role: "assistant",
+            text: "Five hooks are on screen.",
+            toolRuns: [{ name: "generate_ideas", cards: 5, topic: "hooks for my budgeting app" }],
+          },
+        ],
+      }),
+      DEPS(stream, { skills: [ideas] }),
+    );
+
+    const { messages } = (stream as unknown as ReturnType<typeof vi.fn>).mock.calls[0]![0] as {
+      messages: Array<Record<string, unknown>>;
+    };
+    // system, user, [assistant+tool_calls, tool, assistant], user-ask. NB the loop pushes its own
+    // round message onto this same array afterwards, so assert POSITIONS, never the length.
+    expect(messages[1]).toEqual({ role: "user", content: "hooks for my budgeting app" });
+    const call = messages[2] as { role: string; content: unknown; tool_calls?: Array<{ id: string; function: { name: string; arguments: string } }> };
+    expect(call.role).toBe("assistant");
+    expect(call.tool_calls?.[0]?.function.name).toBe("generate_ideas");
+    expect(JSON.parse(call.tool_calls![0]!.function.arguments)).toEqual({ topic: "hooks for my budgeting app" });
+    const result = messages[3] as { role: string; tool_call_id: string; content: string };
+    expect(result.role).toBe("tool");
+    expect(result.tool_call_id).toBe(call.tool_calls![0]!.id);
+    expect(JSON.parse(result.content)).toMatchObject({ ran: "generate_ideas", produced: "5 card(s)" });
+    // …and only THEN the sentence, so it reads as what follows a tool call, not as a template.
+    expect(messages[4]).toEqual({ role: "assistant", content: "Five hooks are on screen." });
+    expect(messages[5]).toEqual({ role: "user", content: "x" }); // then this turn's ask
+  });
+
+  it("a prior run whose tool is NOT bound replays as plain text — never a dangling tool name", async () => {
+    // An anonymous visitor binds no generators. Naming one in the replayed transcript would advertise
+    // a tool the model cannot call — the same rule the tool-use directive follows.
+    const stream = mockStream([[textChunk("ok")]]);
+
+    await runChatAgentStream(
+      baseInput({
+        priorTurns: [
+          { role: "assistant", text: "Five hooks are on screen.", toolRuns: [{ name: "generate_hooks", cards: 5 }] },
+        ],
+      }),
+      DEPS(stream, { skills: [] }),
+    );
+
+    const { messages } = (stream as unknown as ReturnType<typeof vi.fn>).mock.calls[0]![0] as {
+      messages: Array<Record<string, unknown>>;
+    };
+    expect(messages[1]).toEqual({ role: "assistant", content: "Five hooks are on screen." });
+    expect(messages[2]).toEqual({ role: "user", content: "x" }); // the ask follows immediately
+    expect(JSON.stringify(messages)).not.toContain("tool_calls");
+  });
+
+  it("a prior turn with no runs is one plain message, exactly as before", async () => {
+    const stream = mockStream([[textChunk("ok")]]);
+
+    await runChatAgentStream(
+      baseInput({
+        priorTurns: [
+          { role: "user", text: "why do my videos flop?" },
+          { role: "assistant", text: "no stakes in the first beat" },
+        ],
+      }),
+      DEPS(stream, { skills: [mkSkill("generate_ideas")] }),
+    );
+
+    const { messages } = (stream as unknown as ReturnType<typeof vi.fn>).mock.calls[0]![0] as {
+      messages: Array<Record<string, unknown>>;
+    };
+    expect(messages.slice(1, 3)).toEqual([
+      { role: "user", content: "why do my videos flop?" },
+      { role: "assistant", content: "no stakes in the first beat" },
+    ]);
+  });
 });

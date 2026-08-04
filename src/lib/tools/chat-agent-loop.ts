@@ -143,6 +143,41 @@ const defaultStreamComplete: StreamingChatComplete = async (params) => {
 
 // ─── Public types ────────────────────────────────────────────────────────────
 
+/**
+ * One prior conversation turn, as the loop replays it to the model.
+ *
+ * `toolRuns` is the fix for a thread that poisons its own later turns. A turn that dispatched a
+ * skill persists TWO things: the cards (their own message row) and the model's closing line ("Five
+ * hooks are on screen."). The route can only replay the second — card blocks are filtered out of the
+ * anchor — so the transcript used to show a bare assistant sentence claiming five hooks exist, with
+ * nothing anywhere saying a tool produced them. Asked for hooks again, the model did the only thing
+ * that transcript supports: it reproduced the sentence and called nothing. Zero cards, and the UI
+ * insisting five were on screen (confirmed live, 3/3 offline).
+ *
+ * A prompt clause could not fix this — the precedent IS the transcript. So the transcript now tells
+ * the truth: a turn carrying `toolRuns` is replayed as the tool-call exchange it actually was
+ * (assistant → tool_calls, tool result, then the closing line), which is byte-for-byte the shape
+ * this loop builds for a live turn. The sentence stops reading as a template a model can type and
+ * starts reading as what follows a tool call.
+ */
+export interface ChatAgentPriorTurn {
+  role: "user" | "assistant";
+  text: string;
+  /**
+   * Skills this assistant turn actually ran, in run order — reconstructed by the caller from the
+   * card blocks it persisted. Ignored on a user turn, and ignored for any tool not currently BOUND
+   * (an unbound name in the replayed transcript would advertise a tool the model cannot call).
+   */
+  toolRuns?: Array<{
+    /** The tool name as bound here (`SkillTool.name`, e.g. "generate_hooks"). */
+    name: string;
+    /** How many cards it produced — the same count the live tool result reports. */
+    cards: number;
+    /** The subject it ran on, for the replayed arguments. Falls back to the turn's own text. */
+    topic?: string;
+  }>;
+}
+
 export interface ChatAgentStreamInput {
   /** The creator's message this turn — as sent to the model (may be the grounding-assembled bundle). */
   ask: string;
@@ -151,7 +186,7 @@ export interface ChatAgentStreamInput {
   /** The fully-built system prompt (KC chat prompt + cheap assembleBundle grounding), built by the route. */
   systemPrompt: string;
   /** Prior conversation turns (role + text), oldest→newest. */
-  priorTurns?: Array<{ role: "user" | "assistant"; text: string }>;
+  priorTurns?: ChatAgentPriorTurn[];
   /** Bind the corpus search tool (grounding-as-a-tool). Gated by GROUNDING_CHAT_TOOL at the route. */
   grounding?: boolean;
   /** Streamed answer tokens, in order. */
@@ -327,6 +362,56 @@ function toolUseDirective(grounding: boolean, generators: readonly string[] = GE
   return base + groundLine;
 }
 
+/**
+ * Replay ONE prior turn as the messages the model sees.
+ *
+ * A plain turn is one message, exactly as before. A turn that ran skills becomes the exchange that
+ * actually happened — assistant/tool_calls → tool result(s) → the assistant's closing line — so the
+ * closing line has its cause attached to it. `boundNames` is the loop's live tool set: a run whose
+ * tool is not bound this turn replays as plain text rather than naming a tool the model cannot call
+ * (an anonymous visitor binds no generators, and a dangling name would invite exactly the call that
+ * cannot be serviced).
+ */
+function replayPriorTurn(
+  turn: ChatAgentPriorTurn,
+  index: number,
+  boundNames: Set<string>,
+): Array<Record<string, unknown>> {
+  const runs = turn.role === "assistant" ? (turn.toolRuns ?? []).filter((r) => boundNames.has(r.name)) : [];
+  if (runs.length === 0) return [{ role: turn.role, content: turn.text }];
+
+  const out: Array<Record<string, unknown>> = [];
+  runs.forEach((run, i) => {
+    const id = `prior_${index}_${i}`;
+    out.push({
+      role: "assistant",
+      content: null,
+      tool_calls: [
+        {
+          id,
+          type: "function",
+          // The topic is a reconstruction (the args were never persisted) — the creator's own ask
+          // from that turn. It matters only as a well-formed precedent for HOW the tool is called.
+          function: { name: run.name, arguments: JSON.stringify({ topic: run.topic || turn.text }) },
+        },
+      ],
+    });
+    out.push({
+      role: "tool",
+      tool_call_id: id,
+      // The same result shape a live run pushes below, so the replayed round is indistinguishable
+      // from one this loop just executed.
+      content: JSON.stringify({
+        ran: run.name,
+        produced: `${run.cards} card(s)`,
+        note: "cards are shown to the creator",
+      }),
+    });
+  });
+  out.push({ role: "assistant", content: turn.text });
+  return out;
+}
+
 /** Parse the model's tool args into the shape the skills read (topic + optional anchor). */
 function parseSkillArgs(raw: string): SkillToolArgs {
   try {
@@ -380,9 +465,10 @@ export async function runChatAgentStream(
   // The caller's prompt grounds voice/chat; the loop appends the tool-use directive (it owns the tools).
   // The directive is told what THIS caller bound, so it can never advertise a skill the model cannot call.
   const systemContent = `${input.systemPrompt}\n\n${toolUseDirective(!!input.grounding, skills.map((s) => s.name))}`;
+  const boundNames = new Set(tools.map((t) => (t as { function?: { name?: string } }).function?.name ?? ""));
   const messages: Array<Record<string, unknown>> = [
     { role: "system", content: systemContent },
-    ...(input.priorTurns ?? []).map((t) => ({ role: t.role, content: t.text })),
+    ...(input.priorTurns ?? []).flatMap((t, i) => replayPriorTurn(t, i, boundNames)),
     { role: "user", content: input.ask },
   ];
 

@@ -32,6 +32,7 @@ import { createClient } from "@/lib/supabase/server";
 import { maybeMockSkillRun } from "@/lib/tools/mock/mock-sse";
 import { createOpenThreadLazy, getOpenThread, setThreadTitleIfEmpty } from "@/lib/threads/threads";
 import { insertMessage, loadMessages } from "@/lib/threads/messages";
+import { openChatPriorTurns, MAX_PRIOR_TURNS } from "@/lib/threads/chat-prior-turns";
 import { runChatPipeline, isColdStart } from "@/lib/tools/runners/chat-runner";
 import { runChatAgentStream, type SkillBilling } from "@/lib/tools/chat-agent-loop";
 import { FREE_SKILL_TOOLS } from "@/lib/tools/skill-dispatch";
@@ -190,13 +191,6 @@ function parseClientPriorTurns(raw: unknown): Array<{ role: "user" | "assistant"
   }
   return out;
 }
-
-/**
- * Max prior turns to carry as context anchor.
- * D-01a soft context cap: full running context is the default; this bounds the
- * anchor size to avoid excessive token spend on very long threads.
- */
-const MAX_PRIOR_TURNS = 20;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -361,27 +355,9 @@ export async function POST(request: Request): Promise<Response> {
       : // Meet-ephemeral (no thread): the drawer carries its own in-session transcript so the
         // persona keeps context across turns — validated + capped, same fenced anchor as DB turns.
         parseClientPriorTurns(body.priorTurns)
-    : // WR-05 INVARIANT: the open-chat anchor assumes EXACTLY ONE `markdown` block per message
-      // row. Role is attributed from `msg.role` (per-message), so a conversational "turn" === a
-      // message; the `.slice(-MAX_PRIOR_TURNS)` cap below counts blocks, which equals turns ONLY
-      // while this invariant holds (open-chat persistence writes a single markdown block per turn
-      // — see the POST persistence path: one `{ type: "markdown" }` block per insertMessage). If
-      // multi-block markdown messages are ever introduced, attribute role per BLOCK (carry it on
-      // the block) before relying on this anchor — otherwise the cap miscounts and every block in
-      // a message inherits the parent message role.
-      hydratedMessages
-        .flatMap((msg) =>
-          msg.blocks
-            .filter(
-              (b): b is { type: "markdown"; props: { text: string } } =>
-                b.type === "markdown" && typeof (b as { props: { text?: unknown } }).props.text === "string",
-            )
-            .map((b) => ({
-              role: msg.role as "user" | "assistant",
-              text: (b as { type: "markdown"; props: { text: string } }).props.text,
-            })),
-        )
-        .slice(-MAX_PRIOR_TURNS);
+    : // Open chat — markdown turns, each dispatching turn carrying the runs it announced (see
+      // openChatPriorTurns for why the runs travel with it).
+      openChatPriorTurns(hydratedMessages);
 
   // ── (7) Persist the USER turn first (mirrors grounded-chat route ordering) ──
   // Persona-grounded → persist as a `persona-chat-turn` block (the sub-thread, D-03);

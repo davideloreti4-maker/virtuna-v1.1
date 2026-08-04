@@ -2,7 +2,8 @@
 
 **Branch:** `fix/chat-agent-dispatch-mode-label` (off `origin/main` @ `8539e5e6`)
 **Worktree:** `~/virtuna-slot-a`
-**Status:** two fixes landed on the branch and measured; **one severe bug confirmed live and NOT fixed** (§4).
+**Status:** three fixes landed on the branch and measured. §4 — the severe one — is now **FIXED and
+verified live** (2026-08-04, later session).
 
 ---
 
@@ -13,8 +14,9 @@ stamps `Mode: chat` into the **user** message, and the chat slice defines chat m
 NOT a generation surface", so the model refused to call generators it had bound and been told to call.
 Fixed by relabelling that header for the agent path only (§2). While verifying, two further bugs
 surfaced: an anonymous visitor could get the paid pack written out in prose (fixed, §3), and — the
-serious one — **once a thread contains the line "Five hooks are on screen.", later generation asks in
-that same thread copy the sentence and dispatch nothing** (confirmed live, §4).
+serious one — **once a thread contained the line "Five hooks are on screen.", later generation asks in
+that same thread copied the sentence and dispatched nothing**. That one is now fixed too, structurally,
+by replaying a past turn's skill runs as the tool-call exchange they actually were (§4).
 
 ---
 
@@ -106,12 +108,10 @@ the instruction), both verified failing without the fix.
 
 ---
 
-## 4. ⚠️ OPEN, CONFIRMED LIVE — a thread poisons its own later turns
+## 4. FIXED — a thread no longer poisons its own later turns
 
-**The bug.** After a skill run persists its closing line *"Five hooks are on screen."*, a later
-generation ask **in the same thread** makes the model reproduce that sentence and call nothing.
-
-Confirmed live on a plain, explicit ask — no follow-up chip involved:
+**The bug.** After a skill run persisted its closing line *"Five hooks are on screen."*, a later
+generation ask **in the same thread** made the model reproduce that sentence and call nothing:
 
 ```
 ask      : "give me hooks for my student budgeting app that stops food delivery overspending"
@@ -120,31 +120,70 @@ cards    : 0
 text     : "Five hooks are on screen. The strongest ones leverage the prediction error mechanism…"
 ```
 
-Zero cards, and the UI states five are on screen. Earlier in the same session the *same route, same
-account, same ask shape* dispatched correctly — the only difference is that the thread now contains
-that closing line. Offline harness reproduces it 3/3 with that prior text.
+Zero cards, and the UI stating five were on screen.
 
-**Mechanism.** Prior turns carry **markdown only** — card blocks are filtered out at
-`src/app/api/tools/chat/route.ts:372-378` — so the model cannot see the earlier hook lines and
-*cannot* legitimately continue the set. What it can see is its own closing sentence, which reads as a
-template. Nothing marks that turn's cards as tool-produced.
+**Mechanism.** A dispatching turn persists as two rows — the cards, then the model's closing line
+stamped `origin:"chat-agent"`. Only `markdown` crossed into the prior-turn anchor (the filter at
+`route.ts`), so the transcript the model saw of its own best turn was a bare sentence claiming five
+hooks exist, with **no trace of a tool call anywhere**. Asked for hooks again it did the only thing
+that transcript supports: it reproduced the sentence. The sentence was the sole precedent it had, and
+precedent beats instruction — which is exactly why the prompt attempt failed (1/3, and it
+destabilised sibling chips).
 
-**Scope correction.** §2's fix is necessary but **not sufficient**: it makes the *first* generation
-turn in a thread work. Later ones still fail. Any claim that dispatch is "verified live" applies to the
-first turn only.
+**Fix — the transcript now tells the truth.** Two halves:
 
-**No revenue leak** — no dispatch means no bill. This is a broken-UX and truth-telling bug.
+| file | change |
+|---|---|
+| `src/lib/threads/chat-prior-turns.ts` *(new)* | `openChatPriorTurns` — walks the thread in order and hands each announcing turn back **with the runs that produced its cards** (`toolRuns: [{name, cards, topic}]`). Cards land in their own row immediately before the text row, so attribution needs no join. `origin:"chat-agent"` is the *confirmation*, never the signal: an `input-request` or `corpus-references` turn carries the same stamp and must not replay as a generator run. |
+| `src/lib/tools/chat-agent-loop.ts` | `replayPriorTurn` — a turn carrying `toolRuns` is replayed as `assistant/tool_calls → tool result → the closing line`, byte-identical to the shape this loop builds for a live turn. A run whose tool is **not bound** (anonymous visitor) falls back to plain text, so no dangling tool name is ever advertised. |
 
-**Do NOT fix this with a prompt.** Tried: a continuation clause reached 1/3 on the target and
-destabilised sibling chips ("Punch them up" collapsed to `request_input` 3/3). Reverted.
+The route now calls `openChatPriorTurns` instead of the inline markdown filter. Extraction lives in
+`lib/` because a Next.js `route.ts` may only export HTTP methods — and because it is the piece worth
+testing directly.
 
-Proposed fixes, best first:
-1. **Mark tool-produced turns in the prior-turn context.** The route already persists
-   `origin:"chat-agent"`; if prior turns carried "these cards came from a tool call" instead of bare
-   prose, the sentence could not read as a template.
-2. **Let the route own the closing line**, not the model — the route knows what actually ran.
-3. Have continuation chips invoke the skill directly instead of round-tripping through the model.
-   Subset of the same problem, but it also covers the dead chips in §5.
+**Measured offline** by replaying the REAL persisted thread that failed (`f5bdbadb…`), rebuilding the
+anchor exactly as the route does at the moment of the failing ask. Real KC prompt, real bundle, real
+profile row, `billing` omitted so billable skills fail closed and nothing is charged — the DECISION
+is what is measured, not the run. 3 seeds, grounding ON (the live default):
+
+| ask | expect | shipped | fixed |
+|---|---|---|---|
+| the failing ask | dispatch | **0–1/3** | **3/3** |
+| "Give me a few more hook options." | dispatch | 0/3 | 0/3 — unchanged, see §5 |
+| "Which is strongest?" | no dispatch | 0/3 | 0/3 |
+| "why do my videos flop after the first 3 seconds?" | no dispatch | 0/3 | 0/3 |
+| "Punch them up" | — | 0/3 | 0/3 — unchanged, see §5 |
+
+The shipped row moved between runs (0/3 then 1/3) — the DashScope `seed` is not fully deterministic,
+so treat these as rates, not fingerprints. **The two no-dispatch controls stayed 0/3**: the fix buys
+dispatches on the ask that should dispatch without making the model dispatch-happy elsewhere.
+
+**Verified LIVE** against a real signed-in session on the SSE route (3 hooks runs, real credits):
+
+| turn | thread | result |
+|---|---|---|
+| 1 — seed | fresh | `dispatch hooks` @4.9s → 3 stages → evidence → **5 hook-cards**, 29.9s |
+| 2 — the target ask | **same thread** | `dispatch hooks` @2.2s → **5 hook-cards**, 25.7s |
+| 3 — a third hooks ask | same thread | `dispatch hooks` @2.8s → **5 hook-cards**, 27.4s |
+| 4 — the target ask | **the original poisoned thread** `f5bdbadb…` | `dispatch hooks` @2.4s → **5 hook-cards**, 26.7s |
+
+Turn 4 is the strongest evidence: that thread still contains **two** bare "Five hooks are on screen."
+lines with no cards behind them — the buggy turns themselves, which no fix can retroactively repair
+because they carry no run to replay. One truthful replayed run was enough to outweigh two false
+templates. Its closing sentence is now *true*.
+
+**Scope, corrected.** §2 + §4 together mean agent routing works on the first turn in a thread **and
+on later ones**. Nothing about §3 changes (still an offline-only mitigation).
+
+**Guards** — all verified failing with the fix neutered (7 tests red, then green on restore):
+`chat-prior-turns.test.ts` (9 tests: the fix, per-generator mapping, two runs in one turn, a
+`run-header` alongside the cards, `input-request`/`corpus-references` never fabricating a run, no
+forward leak onto later turns, the cap) · `chat-agent-loop.test.ts` (+3: the replay shape, unbound
+fallback, plain turns unchanged) · route **Test 6e** (the route actually hands `toolRuns` over).
+
+⚠️ One thing the probe surfaces but does not change: under the artificial fail-closed condition the
+model sometimes writes hooks in prose after the tool error, despite the do-not-substitute instruction.
+That is the §3 ceiling, not a new defect — live, the billing seam is wired and the tool runs.
 
 ---
 
@@ -167,30 +206,45 @@ Which is strongest? / Punch them up*. Routing, measured offline with realistic p
 | ideas: More ideas · Script the best one · Sharper angles | ✅ 3/3 each |
 | script: Hooks for this | ✅ 3/3 |
 | chat: Give me ideas · Write hooks · Draft a script | ✅ |
-| hooks: More hooks · Punch them up | ⚠️ erratic — see §4 |
+| hooks: More hooks | ❌ 0/3 — the model pushes back for a sharper angle instead (see below) |
+| hooks: Punch them up | ❌ 0/3 — no refine skill is bound (same gap as the script chips) |
 | script: Make it punchier · Different angle | ❌ never dispatch — **no refine skill is bound to the loop** |
 
 `src/app/api/tools/refine/route.ts` exists but the agent loop only binds ideas/hooks/script. A
 "rewrite/punch up" ask therefore has no tool to reach and degrades to prose.
 
+**"More hooks" is a separate, still-open defect** — measured 0/3 both before and after the §4 fix, so
+it is NOT the same bug. "Give me a few more hook options." carries no subject, and the directive's
+"too vague or too generic → push back ONCE for a sharper angle" clause fires: the model answers *"I
+need the specific story or angle you're working with"*. Reasonable for a typed message; wrong for a
+CHIP the creator pressed under cards that already name the subject. Fix shape is §4 option 3 — have
+continuation chips carry the topic (or invoke the skill directly) rather than round-tripping a
+subject-less sentence through the model.
+
 ---
 
 ## 6. State of the branch
 
-Five files:
+Seven files:
 
 | file | change |
 |---|---|
+| `src/lib/threads/chat-prior-turns.ts` **(new)** | `openChatPriorTurns` — the anchor, with each past skill run attached to the turn that announced it (§4) |
+| `src/lib/threads/__tests__/chat-prior-turns.test.ts` **(new)** | 9 guards for the above |
 | `src/lib/kc/assembler.ts` | optional `modeLabel`; header prints `modeLabel ?? mode` |
-| `src/app/api/tools/chat/route.ts` | agent path passes `modeLabel: "copilot"` |
-| `src/lib/tools/chat-agent-loop.ts` | directive names only bound generators; unknown-skill refusal carries the do-not-fake instruction |
-| `src/app/api/tools/chat/__tests__/route.test.ts` | guard 6d |
-| `src/lib/tools/__tests__/chat-agent-loop.test.ts` | two guards |
+| `src/app/api/tools/chat/route.ts` | agent path passes `modeLabel: "copilot"`; the open-chat anchor now comes from `openChatPriorTurns` |
+| `src/lib/tools/chat-agent-loop.ts` | directive names only bound generators; unknown-skill refusal carries the do-not-fake instruction; **`ChatAgentPriorTurn` + `replayPriorTurn`** (§4) |
+| `src/app/api/tools/chat/__tests__/route.test.ts` | guards 6d + **6e** |
+| `src/lib/tools/__tests__/chat-agent-loop.test.ts` | two guards + **three prior-turn replay guards** |
 
 **Gate:** `tsc --noEmit` → **0 errors** (run it separately; vitest does not typecheck).
-Suite **456 files / 5045 tests, 0 failures**, run twice. The 3 reported "Errors" are pre-existing in
-`composer.test.tsx` — confirmed by re-running with these changes stashed. `EXIT=1` with zero failures
-is this worktree's known vitest drift, not a failure.
+Suite **459 files / 5070 tests, 0 failures**. The 3 reported "Errors" are pre-existing in
+`composer.test.tsx`. `EXIT=1` with zero failures is this worktree's known vitest drift, not a failure.
+
+⚠️ **Run the suite on an otherwise idle machine.** A run sharing the box with a dev server + a live
+probe reported 4 failures — two 5s timeouts in `composer-*.test.tsx` and two in
+`resolve-video.test.ts` (which passes alone and fails only alongside the composer files). All four
+were load flakes: 3/3 clean on re-run, and the clean full suite is 0 failures. Don't chase them.
 
 ⚠️ Merging to `main` **is** deploying — production builds ~3s later, there are no preview URLs.
 Gate before the push, not after.
@@ -199,8 +253,13 @@ Gate before the push, not after.
 
 ## 7. Recommended next session
 
-1. Fix §4 structurally (option 1 or 2). It is the highest-value item and it is on the primary path.
-2. Re-measure §4 with the live sequence in §1: seed a hooks run, then ask for hooks again in the
-   same thread. Success = `dispatch` frame + card blocks on the **second** ask.
-3. Decide the §5 refine gap — bind `refine`, or retire "Make it punchier" / "Different angle".
-4. Drive a real anonymous `/go` session through the route to confirm §3 outside the harness.
+§4 is closed. What is left, highest value first:
+
+1. **The continuation chips.** "More hooks" and "Punch them up" both dispatch 0/3 — measured, and
+   NOT the §4 bug (unchanged by its fix). Two distinct causes: a chip whose sentence carries no
+   subject trips the vagueness pushback, and no refine skill is bound at all. Both point at §4
+   option 3: have chips carry the topic, or invoke the skill directly. See §5.
+2. **Decide the refine gap** — bind `src/app/api/tools/refine/route.ts` to the loop, or retire
+   "Make it punchier" / "Different angle" / "Punch them up".
+3. **Drive a real anonymous `/go` session** through the route to confirm §3 outside the harness —
+   still the only claim here measured offline only.
