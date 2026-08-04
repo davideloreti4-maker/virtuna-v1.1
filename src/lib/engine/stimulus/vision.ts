@@ -4,7 +4,7 @@
  *
  * `readImageWithVision` validates a screenshot `File`, base64-encodes it into an
  * in-memory `data:image/...;base64,` URL, and reads it into text with
- * `QWEN_REASONING_MODEL` (qwen3.7-plus — vision-capable). It is a pure ASSEMBLY of
+ * `QWEN_REASONING_MODEL` (qwen3.7-flash — vision-capable). It is a pure ASSEMBLY of
  * three patterns already live in the engine — NO new dependency, NO new client
  * wrapper:
  *   1. the `{type:"image_url", image_url:{url}}` content item + trailing
@@ -100,7 +100,7 @@ function validateImage(file: File): void {
 }
 
 /**
- * Read a screenshot `File` into text via `qwen3.7-plus` vision (IN-03 / D-04).
+ * Read a screenshot `File` into text via `qwen3.7-flash` vision (IN-03 / D-04).
  *
  * Validates the image (caps before encode), frames it as an in-memory base64
  * `data:` URL, sends it as the first item of a USER content array (image_url +
@@ -144,7 +144,7 @@ export async function readImageWithVision(file: File): Promise<string> {
   };
   // @ts-expect-error — DashScope extension not in OpenAI types
   params.seed = QWEN_SEED;
-  // @ts-expect-error — DashScope extension: thinking-off (latency; 3.7-plus defaults ON)
+  // @ts-expect-error — DashScope extension: thinking-off (latency; 3.7-flash defaults ON)
   params.enable_thinking = false;
 
   // 4. Call + strip → parse → Zod (Pattern 3). Failures are logged to Sentry and
