@@ -13,11 +13,13 @@ The Qwen engine runs on **exactly two models**, split by ONE capability line —
   video audio must be ingested (Wave 0 read + the audience bake watch). Audio is distilled once here
   into text (`audio_event`, transcript, emotion arc); everything downstream reasons over that.
 - **`qwen3.7-flash`** — **everything else**, text AND video (sighted, deaf). Generation, SIM scoring,
-  the fold, chat, decode/adapt, audience synth.
+  the fold, chat, decode/adapt.
 
-…with **one scoped exception**: **Apollo stays on `qwen3.7-plus`** (see the A/B below). So the honest
-count is two models plus one deliberate holdout, not three tiers — `QWEN_APOLLO_MODEL` exists exactly
-so this can be true without dragging the rest of the platform back.
+…with **two scoped exceptions**, both held on `qwen3.7-plus` on live evidence (see the A/B below):
+**Apollo** (`QWEN_APOLLO_MODEL` — flash stopped citing the framework) and the **CALIBRATE synth**
+(`QWEN_CALIBRATE_MODEL` — flash cannot make the persona shares sum to 1.0, so every bake throws).
+So the honest count is two models plus two deliberate holdouts, not three tiers — those two env seams
+exist exactly so this can be true without dragging the rest of the platform back.
 
 **The reasoning model moved `qwen3.7-plus` → `qwen3.7-flash` on 2026-08-04** (owner call). Same
 generation, still sighted, still deaf — so no call site changed capability and the audio boundary is
@@ -69,9 +71,35 @@ exactly why it is the only one that regressed.
 > plausible prose, sensible dimensions. Nothing in the type system, the tests, or the build would have
 > caught it. Only running the real harness and reading the output did.
 
-**Still unvalidated on flash:** the CALIBRATE synth (`enrich-signature`) is the OTHER thinking-ON call
-site and has not been harnessed. If audience personas start reading generic after a bake, this is the
-first thing to check.
+**③ The CALIBRATE synth — FAILED, and CALIBRATE was held on plus too.**
+`scripts/calibrate-synth-harness.ts` drives the real exported `enrichSignature()` on a REAL 32-post
+@zachking payload (`account_posts` + the 2026-07-17 `account_snapshots` profile — the same scrape
+generation as the shipped audience row), byte-identical for both models:
+
+| | `qwen3.7-plus` | `qwen3.7-flash` |
+|---|---|---|
+| runs passing | **3 / 3** | **0 / 7** |
+| Σ persona shares | 1.00 every run | **0.75 – 0.85, never 1.0** |
+| shape | nested correctly 3/3 | **flattened in 2 of 7** (`personas`/`persona_weights` at top level) |
+| latency | 52.6–56.5s | ~20s |
+| cost | ~0.63¢ | ~0.053¢ |
+
+Flash breaks the two **hard** invariants in `SynthSchema` while satisfying every soft one. Its prose
+was good — 10 distinct, creator-specific personas with real axis spread, no diversity collapse — so
+the qwen3.6-flash failure this swap was watching for did **not** recur. What it cannot do is hold a
+10-way constrained allocation: the shares simply do not add up.
+
+That is not a quality regression, it is an **outage**. `defaultSynthesize` has no retry, so the zod
+throw propagates to `calibration.ts:375` and every bake returns `{ error: "scrape_failed" }` — *after*
+the Apify scrape is paid for, and blaming the scrape for a synthesis failure.
+
+> ⚠️ **Correction — CALIBRATE is NOT a thinking-ON call site.** This document said it was, in this
+> section, in *The thinking principle* below, and in the policy table (`Thinking: ON`, `max_tokens
+> 6000`, `thinking_budget 2000`). The code has set `enable_thinking: false` at
+> `enrich-signature.ts:391` (D-01) with `max_tokens: 8000` and no budget. **Apollo is the only
+> thinking-ON call in the codebase** — `engine/deepseek.ts:554` holds the sole `enable_thinking: true`
+> in non-test source; every other live call site sets it to `false`. So Apollo's failure mode (an
+> unspent `thinking_budget`) never applied here, and the two calls failed for unrelated reasons.
 
 > ⚠️ **The `Basis` column below predates this move.** Every measured latency, cost and diversity figure
 > in the policy table was taken on `3.7-plus` (or earlier). The `max_tokens` rails are output-size
@@ -94,10 +122,13 @@ prompts, audience repaint, grounding lines, omni sensor dumps), so CoT is usuall
 latency isn't worth it. Live-proven on the SIM: thinking-off held identical verdict bands + better
 persona voice at **~3–4× lower latency** (~55s → ~15s batched).
 
-**Thinking is ON in exactly two places** — both judgment-heavy *and* off the snappy per-request path:
+**Thinking is ON in exactly ONE place** — judgment-heavy *and* off the snappy per-request path:
 - **APOLLO video insight** — cited, framework-grounded expert judgment (the video moat). Budget A/B-tuned
   (`deepseek.ts:28`): depth held identically 3000→1000; 1500 chosen. Video reads are heavy + infrequent.
-- **CALIBRATE synth** — bake-once frozen audience signature (not per-Reading) → can spend latency for persona quality.
+
+> Verified 2026-08-04 by grepping every `chat.completions.create` call site: `engine/deepseek.ts:554`
+> is the only `enable_thinking: true` in non-test source. This section previously listed **CALIBRATE**
+> as a second thinking-ON call; that was wrong — see the ⚠️ correction above.
 
 ## `max_tokens` semantics (DashScope)
 
@@ -123,7 +154,7 @@ Unused headroom is free (you pay actual output, not the cap).
 | **CONVERSE** chat | `chat-runner`, `analyze/[id]/chat`, 4 tool-route follow-ups | `qwen3.7-flash` | OFF | 2000 | — | bound runaway; streamed |
 | **TEXT-ANALYZE** (no-video path) | `pipeline.ts` gemini_analysis | `qwen3.7-flash` | OFF | 2000 | — | fixed 2026-06-25 (was unbounded + thinking-unset) |
 | **FOLD** (Read audience sim) | `wave3/fold` | `qwen3.7-flash` (video, deaf) | OFF | 8000 | — | 10 personas × N segments; independence directive is the diversity lever. ✅ **validated live 2026-06-26** (5-seg video: 40.9s/90s, diversity 0.31 first-attempt no-retry, 0.56¢; `scripts/fold-validate-r1.ts`) |
-| **CALIBRATE** synth | `audience/enrich-signature` (synth call) | `qwen3.7-flash` | **ON** | 6000 | 2000 | persona output (~2.5k) + thinking |
+| **CALIBRATE** synth | `audience/enrich-signature` (synth call) | **`qwen3.7-plus`** | OFF | 8000 | — | v2 persona output (~3.5k) + headroom. ⛔ **Did NOT move to flash** — live harness 2026-08-04 above: flash 0/7, persona shares sum 0.75–0.85 → every bake throws. Scoped as `QWEN_CALIBRATE_MODEL` |
 | **SENSOR** read | `qwen/omni-analysis` (Wave 0) | `qwen3.5-omni-flash` | OFF | 8000 | — | audio in; sensor dump |
 | **SENSOR** bake-watch | `enrich-signature` (watch call) | `qwen3.5-omni-flash` | OFF | 600 | — | per-video watch notes |
 | **APOLLO** video insight | `engine/deepseek` | **`qwen3.7-plus`** (video, deaf) | **ON** | 3000 | 1500 | the reasoning moat (A/B-tuned). ⛔ **Did NOT move to flash** — live A/B 2026-08-04 below |
@@ -134,7 +165,8 @@ Unused headroom is free (you pay actual output, not the cap).
   diversity-collapse retry — the old retry re-ran the identical deterministic call (a no-op).
   Reproducibility is no longer a HARD requirement (2026-06-25): `FOLD_TEMPERATURE` env can raise the base.
 - Model env seams: `QWEN_OMNI_MODEL`=omni-flash (sensor), `QWEN_REASONING_MODEL`=3.7-flash (everything),
-  `QWEN_APOLLO_MODEL`=3.7-PLUS (scoped so Apollo can stay put — see the A/B above). `QWEN_FAST_MODEL` removed.
+  `QWEN_APOLLO_MODEL`=3.7-PLUS and `QWEN_CALIBRATE_MODEL`=3.7-PLUS (both scoped so they can stay put —
+  see the A/B above). `QWEN_FAST_MODEL` removed.
 - `enable_thinking: false` is a DashScope extension (apply via the `@ts-expect-error` pattern).
 - Estimated `max_tokens` are rails with headroom — verify against one real output per site; bump if any truncates.
 

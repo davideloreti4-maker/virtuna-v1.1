@@ -46,7 +46,8 @@ export const QWEN_OMNI_MODEL      = process.env.QWEN_OMNI_MODEL      ?? "qwen3.5
 // newer model, but it is the thing to watch — the fold's diversity-collapse retry
 // (FOLD_DIVERSITY_RETRY_TEMP) is the tripwire. Rollback: QWEN_REASONING_MODEL=qwen3.7-plus.
 export const QWEN_REASONING_MODEL = process.env.QWEN_REASONING_MODEL ?? "qwen3.7-flash";
-// The platform runs on two models only: QWEN_OMNI_MODEL (the Wave 0 / audience-bake AUDIO
+// The platform runs on two models plus TWO scoped holdouts (QWEN_APOLLO_MODEL and
+// QWEN_CALIBRATE_MODEL below, both on 3.7-plus on live evidence): QWEN_OMNI_MODEL (the Wave 0 / audience-bake AUDIO
 // sensor) + QWEN_REASONING_MODEL (everything else — text and video). See docs/MODEL-POLICY.md.
 // Apollo reasoner model (the score-mode judge in deepseek.ts) — SCOPED separately from
 // QWEN_REASONING_MODEL so Apollo can move independently of chat/decode/adapt/text-mode.
@@ -64,3 +65,21 @@ export const QWEN_REASONING_MODEL = process.env.QWEN_REASONING_MODEL ?? "qwen3.7
 // Cheap-to-run is not cheap if it stops answering the question. Rollback FORWARD (re-try flash)
 // only behind a fresh harness run. Deaf on both, so this is about reasoning, not capability.
 export const QWEN_APOLLO_MODEL    = process.env.QWEN_APOLLO_MODEL    ?? "qwen3.7-plus";
+// CALIBRATE synth model (audience/enrich-signature) — SCOPED separately for the same reason
+// Apollo is: it can be held back without pinning the rest of the platform.
+// ⚠️ CALIBRATE STAYS ON 3.7-PLUS. Measured with `scripts/calibrate-synth-harness.ts` on a real
+// 32-post @zachking payload, the byte-identical input to both models:
+//     plus : 3/3 PASS · 52.6-56.5s · ~0.63¢ · Σshares 1.00 every run
+//     flash: 0/7 PASS · ~20s · ~0.053¢ · Σshares 0.75-0.85, NEVER 1.0
+// Flash breaks the two HARD invariants in SynthSchema, not the soft ones:
+//   1. persona shares must sum to 1.0 (±0.02) — it emitted 0.75-0.85 in all 7 runs;
+//   2. in 2 of 7 runs it also FLATTENED the shape, putting `personas`/`persona_weights` at the
+//      top level instead of under `audience`.
+// Both make `SynthSchema.safeParse` throw, and `defaultSynthesize` has NO retry — so
+// calibration.ts:375 turns every bake into `{ error: "scrape_failed" }` AFTER the Apify scrape
+// is already paid for, blaming the scrape for a synthesis failure. Note this is NOT the Apollo
+// failure mode: CALIBRATE runs thinking OFF (enrich-signature.ts:391, D-01), so nothing here is
+// about an unspent thinking_budget — flash simply cannot hold a 10-way constrained allocation.
+// Its PROSE was fine (10 distinct creator-specific personas), which is exactly why only the
+// live harness caught it. Rollback FORWARD (re-try flash) only behind a fresh harness run.
+export const QWEN_CALIBRATE_MODEL = process.env.QWEN_CALIBRATE_MODEL ?? "qwen3.7-plus";
