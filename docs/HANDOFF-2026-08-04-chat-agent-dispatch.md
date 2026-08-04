@@ -1,6 +1,9 @@
 # Handoff — chat agent → skill dispatch (2026-08-04)
 
-**Branch:** `fix/chat-agent-dispatch-mode-label` (off `origin/main` @ `8539e5e6`)
+**Branch:** `fix/chat-agent-dispatch-mode-label` — cut off `origin/main` @ `8539e5e6`, tip `4cf8ac58`, pushed.
+⚠️ **`main` has since moved to `8896bac7`** (PR #423, onboarding-unreachable): the branch is **3 ahead,
+2 behind**. Rebase before opening a PR. Read that ref with `git rev-parse` — `git log --format` here
+elided the merge and reported main as `d3b5afb8`, the squashed commit *below* its own tip.
 **Worktree:** `~/virtuna-slot-a`
 **Status:** three fixes landed on the branch and measured. §4 — the severe one — is now **FIXED and
 verified live** (`afd35113`). Branch is pushed, **2 ahead of `main`, unmerged**.
@@ -261,6 +264,10 @@ were load flakes: 3/3 clean on re-run, and the clean full suite is 0 failures. D
 
 ⚠️ Merging to `main` **is** deploying — production builds ~3s later, there are no preview URLs.
 Gate before the push, not after.
+
+⚠️ **Rebase first.** `main` moved to `8896bac7` (PR #423) while this branch was being built — 2
+commits, one of them a merge that `git log --format` does not print. `git rev-parse origin/main` is
+the only ref that tells the truth here.
 
 ---
 
