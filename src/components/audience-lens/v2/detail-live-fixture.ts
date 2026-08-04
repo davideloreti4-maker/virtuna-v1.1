@@ -188,17 +188,20 @@ const LIVE_PERSONAS = [
  * `watchCatalogueOf` EMITS after reading `/api/analysis/history`, not something the page derives.
  * Reproducing the producer here would mean authoring fourteen more full heatmaps for a dev page.
  *
- * The shape is measured, not invented. Queried against prod 2026-08-04: one creator holds 23 sealed
- * runs, 21 with a full 10-persona cast, of which 14 clear the engine floor in `watchCatalogueOf`.
- * These are that cohort's watched-full shares. (They are the UNWEIGHTED shares — the real producer
- * applies slot weights, so live values will differ by a few points. The distribution, the count and
- * the spread are the real ones, which is what this page is here to review.)
+ * ⚠️ These are not estimates. Captured 2026-08-04 by signing in as the real E2E account, calling the
+ * real `/api/analysis/history` (200, 50 rows) and running the real `watchCatalogueOf` over the rows
+ * it returned. Of those 50: 27 carry no heatmap, 9 fall below the engine floor, and exactly **14**
+ * are admitted — these fourteen. Median 46%.
  *
- * This clip lands at 22% against a median of 40%: it ranks BADLY, and that is the honest reading of
- * a clip that loses 58% of the room by 0:04. A fixture that flattered it would be the exact defect
- * §24.1 caught the last time this page disagreed with the mount.
+ * Keeping the measured values matters more here than anywhere else on the page: the last time this
+ * fixture drifted from what the mount really renders, it cost an entire owner review (§24.1). An
+ * earlier draft of this line held a hand-estimated spread whose median was 40 — close enough to look
+ * right, wrong enough to review against.
+ *
+ * This clip lands at 22% against that median: it ranks BADLY, which is the honest reading of a clip
+ * that loses 58% of the room by 0:04.
  */
-const LIVE_CATALOGUE = [80, 70, 60, 50, 50, 50, 40, 40, 40, 40, 40, 40, 40, 40];
+const LIVE_CATALOGUE = [77, 46, 46, 48, 47, 46, 46, 46, 47, 28, 71, 46, 46, 62];
 
 /** The Detail template built entirely by the real adapters over the realistic input above. */
 export const CREATOR_LIVE_TEMPLATE: DomainTemplate = buildVideoDomainTemplate({

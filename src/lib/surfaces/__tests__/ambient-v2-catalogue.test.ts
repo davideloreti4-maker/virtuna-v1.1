@@ -62,6 +62,13 @@ describe("watchCatalogueOf — which past runs are allowed into a baseline", () 
     expect(watchCatalogueOf([{ heatmap: heatmapWith(4) }])).toEqual([]);
   });
 
+  it("refuses the non-numeric versions production actually stores", () => {
+    // Not hypothetical: a live pull of `/api/analysis/history` on 2026-08-04 returned 50 rows of
+    // which TEN carried `engine_version: "pending"`. A floor that only reasoned about "3.x.y" would
+    // have had to decide what to do with those at runtime; parsing to NaN and refusing is the answer.
+    expect(watchCatalogueOf([row("pending"), row("unknown"), row("3.x"), row("v3.21.0")])).toEqual([]);
+  });
+
   it("refuses a row with no heatmap at all rather than scoring it zero", () => {
     expect(watchCatalogueOf([{ heatmap: null, engine_version: "3.21.0" }])).toEqual([]);
   });
@@ -102,10 +109,11 @@ describe("rankOf — a middle needs enough runs to have one", () => {
   });
 
   it("does not flatter the clip — a below-median clip stays below the median", () => {
-    // The dev fixture's own catalogue. Eight of the fourteen sit at 40, so both middles are 40 and
-    // the median is 40 — not the 45 a glance at the spread suggests.
-    const rank = rankOf([80, 70, 60, 50, 50, 50, 40, 40, 40, 40, 40, 40, 40, 40], 22)!;
-    expect(rank.median).toBe(40);
+    // The REAL catalogue, captured from prod 2026-08-04 through the real producer (see
+    // `detail-live-fixture.ts`). It clusters tightly at 46–48 with two outliers up and one down —
+    // nothing like the evenly-stepped spread a hand-written fixture reaches for.
+    const rank = rankOf([77, 46, 46, 48, 47, 46, 46, 46, 47, 28, 71, 46, 46, 62], 22)!;
+    expect(rank.median).toBe(46);
     expect(rank.value).toBeLessThan(rank.median);
   });
 });
