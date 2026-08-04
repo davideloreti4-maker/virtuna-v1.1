@@ -231,14 +231,25 @@ const STAGE_COPY_ROTATION: Record<string, string[]> = {
     'Pulling your latest posts',
     'Finding what recurs across them',
   ],
-  // Audience calibration (api/audiences/calibrate). The longest wait in the product — ~126s of it
+  // Audience calibration (api/audiences/calibrate). The longest wait in the product — ~94s of it
   // is the scrape alone — and until 2026-08-01 the whole thing sat under one plain status line.
+  //
+  // These three carry MORE phrases than the other stages on purpose. Measured live 2026-08-04:
+  // scraping ran 94s, and with two phrases on a wrapping 2.6s timer the line read
+  // "Pulling the account and its posts" → "Reading who actually engages" → back again, thirty-six
+  // times. A visitor watching that sees a loop, and a loop reads as HUNG — the opposite of the
+  // labor illusion the wait depends on. The rotation is monotonic now (see ROTATION_CADENCE_MS),
+  // so a stage needs enough real sub-phases to keep moving for as long as it actually runs.
   'Reading your followers': [
     'Pulling the account and its posts',
+    'Collecting the last 30 posts',
     'Reading who actually engages',
+    'Sorting the ones that overperformed',
+    'Separating fans from passers-by',
   ],
   'Watching your top videos': [
     'Watching them the way your audience would',
+    'Reading the subtitles for what lands',
     'Finding what your best posts have in common',
   ],
   'Building your audience profile': [
@@ -246,6 +257,25 @@ const STAGE_COPY_ROTATION: Record<string, string[]> = {
     'Settling their reactions to your work',
   ],
 };
+
+/**
+ * How long each phrase in a stage's rotation holds, in ms.
+ *
+ * Default 2.6s suits the ~30–50s skill stages this rotation was built for. Calibration's scrape is
+ * a different order of magnitude — 94s measured — and pacing five phrases at 2.6s would exhaust
+ * the list in 13 seconds and then sit static for eighty. The cadences below spread each stage's
+ * phrases across the duration it really takes, so the line is still advancing when the stage ends.
+ *
+ * Durations are measured, not guessed (live run, @garyvee, 2026-08-04): scraping 94s → 5 phrases
+ * at 18s; watching ~40s → 3 at 12s; synthesizing ~20s → 2 at 9s.
+ */
+const ROTATION_CADENCE_MS: Record<string, number> = {
+  'Reading your followers': 18_000,
+  'Watching your top videos': 12_000,
+  'Building your audience profile': 9_000,
+};
+
+const DEFAULT_ROTATION_CADENCE_MS = 2_600;
 
 export function ProgressChecklist({
   stages,
@@ -402,11 +432,20 @@ function StageRow({
     // Rotate only while active with >1 phase. Each row mounts once (keyed by name) and starts at
     // subIdx 0 while pending, so no reset is needed on state change.
     if (!isLeadActive || rotation.length <= 1) return;
+
+    const cadence = ROTATION_CADENCE_MS[name] ?? DEFAULT_ROTATION_CADENCE_MS;
+
     const id = setInterval(() => {
-      setSubIdx((i) => (i + 1) % rotation.length);
-    }, 2600);
+      // MONOTONIC — advance and clamp, never wrap. The wrapping `(i + 1) % length` this replaces
+      // made a 94s stage alternate between two phrases for a minute and a half; measured live
+      // 2026-08-04, the line went A → B → A → B and read as a stuck loop rather than progress.
+      // Sub-phases describe real work in the order it happens, so going back to phrase one after
+      // phrase two is also a small lie about what the engine is doing. Holding on the last phrase
+      // is honest: that IS the part still running.
+      setSubIdx((i) => (i + 1 < rotation.length ? i + 1 : i));
+    }, cadence);
     return () => clearInterval(id);
-  }, [isLeadActive, rotation.length]);
+  }, [isLeadActive, rotation.length, name]);
 
   const elapsedMs = useStageClock(
     status,

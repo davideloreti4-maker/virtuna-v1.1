@@ -33,18 +33,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CoverFill } from "@/components/primitives/CoverFill";
 import { getTeardownDetail, type TeardownDetail } from "@/app/actions/discover/teardown";
 import { cn } from "@/lib/utils";
+import { humanizeSlug } from "@/lib/text/humanize-slug";
 import type { CorpusVideo } from "@/lib/discover/corpus-reads";
 import { useRemixLaunch } from "./use-remix-launch";
 import { Chip, Kicker, MultiplierChip, fmtAge, fmtViews } from "./discover-primitives";
-
-/** `full-screen-hybrid` → `Full screen hybrid`. Sentence case, not title case: these are
- *  slugs with connectives in them (`a-vs-b-comparison`), and Title Casing Every Word reads
- *  like a headline for what is really a tag. */
-function humanizeSlug(slug: string | null): string | null {
-  if (!slug) return null;
-  const words = slug.replace(/[-_]/g, " ").trim();
-  return words ? words.charAt(0).toUpperCase() + words.slice(1) : null;
-}
 
 /** The cover slot — a link to the original when we have a URL, an inert tile when we don't. */
 function Cover({

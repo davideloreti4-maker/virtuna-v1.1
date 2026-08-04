@@ -16,6 +16,7 @@ import type { RevealData } from "@/lib/audience/calibration";
 import { READING_CARD } from "@/components/reading/reading-section";
 import { getPersonaDisplayName } from "@/components/audience/audience-display";
 import { Button } from "@/components/ui/button";
+import { humanizeSlug } from "@/lib/text/humanize-slug";
 import { cn } from "@/lib/utils";
 
 interface AudienceRevealProps {
@@ -103,12 +104,17 @@ export function AudienceReveal({ audience, reveal, onUse, className }: AudienceR
 
           {sig.audience.interest_tags.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
+              {/* Humanized, not raw. `interest_tags` is model output and arrives as slugs —
+                  a live run on @garyvee returned `financial_discipline`, `anti_consumerism`,
+                  `ego_death`, `judgment_free_zone`. Rendering those verbatim on the payoff
+                  screen of a two-minute wait shows the creator our database instead of their
+                  audience. Keyed on the raw slug, which stays unique after formatting. */}
               {sig.audience.interest_tags.map((tag) => (
                 <span
                   key={tag}
                   className="rounded-md border border-white/[0.06] bg-white/[0.02] px-2 py-0.5 text-xs text-foreground-secondary"
                 >
-                  {tag}
+                  {humanizeSlug(tag) ?? tag}
                 </span>
               ))}
             </div>
@@ -141,7 +147,24 @@ export function AudienceReveal({ audience, reveal, onUse, className }: AudienceR
           subtitles {sig.provenance.sub_coverage}
         </p>
       )}
-      <div className="flex justify-end">
+      {/* ── The terminal action, pinned ────────────────────────────────────────────────────
+          Measured 2026-08-04 at 1512×982: this button sat at y=989 with the page unscrolled
+          — SEVEN pixels below the fold, on a flat dark page with no scroll affordance. An
+          automated walk sat on this screen for 272s without ever reaching it. It is the last
+          step of onboarding, after a ~2 minute wait, and it was invisible.
+
+          Sticky rather than "moved up", because the column's height is CONTENT-DEPENDENT: the
+          post grid, the interest tags and the persona chips all vary with what the scrape
+          returned, so a layout tuned against one account goes back below the fold for the
+          next one. Sticky is correct for every content length.
+
+          Solid `--color-charcoal-chip` (the card's own fill), never a translucent tint: this
+          bar floats over scrolling content, and an overlay tint would let the post grid show
+          through it. Same trap as `--color-hover` in the composer dock. */}
+      <div
+        className="sticky bottom-0 -mb-2 flex justify-end border-t border-white/[0.06] pt-4 pb-2"
+        style={{ backgroundColor: "var(--color-charcoal-chip)" }}
+      >
         <Button type="button" variant="primary" onClick={onUse}>
           Use this audience
         </Button>
