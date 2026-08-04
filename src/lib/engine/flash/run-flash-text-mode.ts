@@ -15,7 +15,7 @@
  * Call envelope mirrors runFold (wave3/fold.ts):
  *   getQwenClient + AbortController + temperature:0 + seed:QWEN_SEED +
  *   response_format:json_object + stripModelOutput → coerceFlashResponse → safeParse.
- * Model is resolved behind FLASH_MODEL env, defaulting to QWEN_REASONING_MODEL (qwen3.7-plus).
+ * Model is resolved behind FLASH_MODEL env, defaulting to QWEN_REASONING_MODEL (qwen3.7-flash).
  */
 
 import { getQwenClient, QWEN_SEED, QWEN_REASONING_MODEL } from "../qwen/client";
@@ -44,7 +44,7 @@ export type { ContentTypeSlug };
 
 // ─── Model resolution (FLASH_MODEL env seam — Open Q1 / A2) ──────────────────
 // FLASH_MODEL env lets the operator substitute a different model for testing.
-// Defaults to QWEN_REASONING_MODEL (qwen3.7-plus). 3.6-flash was retired platform-wide
+// Defaults to QWEN_REASONING_MODEL (qwen3.7-flash). 3.6-flash was retired platform-wide
 // (2026-06-25): with thinking OFF the plus/flash latency gap is small while plus holds
 // persona reactions far more distinct. The SIM badge "sim1-flash" stays a PRODUCT label
 // (flash = text-only call; max = with-video) — it is NOT the underlying model id (D-09/D-10).

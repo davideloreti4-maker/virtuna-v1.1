@@ -676,7 +676,7 @@ export async function runPredictionPipeline(
         const ai    = getQwenClient();
         const model = QWEN_REASONING_MODEL;
         // Text-only analysis (no-video path). Reviewed 2026-06-25 (model policy): pin
-        // determinism (temperature:0 + seed) + thinking OFF (3.7-plus defaults thinking ON →
+        // determinism (temperature:0 + seed) + thinking OFF (3.7-flash defaults thinking ON →
         // latency) + a max_tokens rail (was unbounded → runaway risk). 5 factors + summaries
         // measure ~600-900 output → 2000 is ~2× headroom (rail, not lever).
         const geminiParams = {
@@ -868,7 +868,7 @@ export async function runPredictionPipeline(
         omniSegments,
         verbatimText,
         emotionArc,
-        signedVideoUrl, // sighted/deaf fold: qwen3.7-plus watches the video; audio via Wave 0 audio_event
+        signedVideoUrl, // sighted/deaf fold: qwen3.7-flash watches the video; audio via Wave 0 audio_event
         onStageEvent,
         foldAudienceRepaint,
       );

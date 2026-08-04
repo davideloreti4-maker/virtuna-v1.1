@@ -54,7 +54,7 @@ const PER_CALL_TIMEOUT_MS = 90_000;
 // truncation → Zod fail → silent audience-half drop on long videos. Unused max_tokens isn't
 // billed (rail, not lever) — a tight cap is the only real risk. Override via env.
 const FOLD_MAX_TOKENS = Number(process.env.FOLD_MAX_TOKENS) || 8000;
-// Model (2026-06-25): qwen3.7-plus — SIGHTED (watches the video) but DEAF; audio arrives as
+// Model (2026-06-25): qwen3.7-flash — SIGHTED (watches the video) but DEAF; audio arrives as
 // text via Wave 0's per-segment `audio_event`. omni-flash retired from the fold — omni now runs
 // ONLY as the Wave 0 sensor (the one place audio is ingested). plus is smart enough to keep the
 // 10 personas DISTINCT: the old diversity collapse was a small-model + greedy + single-call
@@ -275,7 +275,7 @@ export function adaptFoldToPass2Results(
 // =====================================================
 
 /**
- * Fire ONE bounded qwen3.7-plus call (sighted, deaf, thinking OFF) to produce behavioral
+ * Fire ONE bounded qwen3.7-flash call (sighted, deaf, thinking OFF) to produce behavioral
  * intents + segment reactions for all 10 archetypes simultaneously (the 20→1 fold).
  *
  * The call pattern mirrors pass2.ts:134-300 with these deltas:
