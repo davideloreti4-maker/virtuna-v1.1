@@ -109,7 +109,16 @@ export function DiscoverHub({
       <PageShell className="max-w-[1200px]">
         <SurfaceHeader title="Discover" subtitle={subtitle} />
 
-        <div className="mt-4 flex gap-2">
+        {/* TABS FIRST, then the search field (owner, 2026-08-04). The search is scoped to the
+            ACTIVE tab — it filters outliers, collections or watchlist, never all three — so
+            putting it above the tabs implied a global search over the whole surface and read
+            as the page's primary control. Below them it reads as what it is: a filter on the
+            list you have just chosen. */}
+        <div className="mt-4">
+          <DiscoverTabBar active={tab} onSelect={select} />
+        </div>
+
+        <div className="mt-3 flex gap-2">
           <div className="flex h-10 flex-1 items-center gap-2.5 rounded-lg border border-border bg-surface-sunken px-3">
             <MagnifyingGlass size={15} className="shrink-0 text-foreground-muted" />
             <input
@@ -133,10 +142,6 @@ export function DiscoverHub({
               </span>
             </button>
           ) : null}
-        </div>
-
-        <div className="mt-4">
-          <DiscoverTabBar active={tab} onSelect={select} />
         </div>
 
         <div key={tab} className="rv-in mt-5">
