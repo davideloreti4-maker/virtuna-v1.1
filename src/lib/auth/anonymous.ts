@@ -26,7 +26,40 @@ export type AnonymousSessionResult =
   | { ok: true; userId: string; created: boolean }
   | { ok: false; error: string };
 
+/**
+ * ⚠️ THE DOUBLE-MINT RACE (measured 2026-08-04, fixed here).
+ *
+ * "Idempotent either way" above was true only once the prewarm had RESOLVED.
+ * `free-entry-cta.tsx` fires `prewarm()` un-awaited on pointerenter/focus and
+ * then the click AWAITS its own call — so both ran `getSession()`, both saw no
+ * session, and both minted. Measured on a production build: one click on "Test
+ * a video free" produced two `POST /auth/v1/signup` calls and two `auth.users`
+ * rows 14µs apart. On mobile it fires essentially always, because a tap
+ * dispatches pointerenter and click together — and §2a says mobile IS the
+ * traffic. 37 anonymous rows existed for roughly half that many real visits.
+ *
+ * `prewarmedRef` never guarded this: it prevents a second PREWARM, not the
+ * prewarm-vs-click overlap. The fix is a module-level in-flight promise, so
+ * concurrent callers await the same sign-in instead of racing to start two.
+ * Cleared on settle so a later caller can still mint if the session is gone.
+ *
+ * This also protected the funnel's own arithmetic: every doubled row inflates
+ * the `demo_view → checkout_paid` denominator, so the sink wired the same day
+ * would have reported half the true conversion rate.
+ */
+let inFlight: Promise<AnonymousSessionResult> | null = null;
+
 export async function ensureAnonymousSession(): Promise<AnonymousSessionResult> {
+  if (inFlight) return inFlight;
+
+  inFlight = mintOrReuse().finally(() => {
+    inFlight = null;
+  });
+
+  return inFlight;
+}
+
+async function mintOrReuse(): Promise<AnonymousSessionResult> {
   const supabase = createClient();
 
   const {

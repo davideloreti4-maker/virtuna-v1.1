@@ -32,6 +32,12 @@ import {
 } from "@/lib/engine/qwen/client";
 import { calculateCost } from "@/lib/engine/qwen/cost";
 import { stripModelOutput } from "@/lib/engine/utils/strip";
+import {
+  isRenormalisable,
+  normalizeShares,
+  normalizeWeights,
+  WEIGHT_KEYS,
+} from "@/lib/audience/normalize-shares";
 import { ARCHETYPES } from "@/lib/engine/wave3/persona-registry";
 import { TEMPERATURE_DISPOSITION } from "./temperature-disposition";
 import type { ProfileData, VideoData } from "@/lib/scraping/types";
@@ -153,9 +159,12 @@ const SynthSchema = z.object({
         loyalist: z.number().min(0).max(1),
         cross_niche: z.number().min(0).max(1),
       })
-      .refine((w) => Math.abs(w.fyp + w.niche + w.loyalist + w.cross_niche - 1) < 0.02, {
-        message: "persona_weights must sum to 1.0 (±0.02)",
-      }),
+      // Repaired, not rejected — see lib/audience/normalize-shares.ts. A sum of 0.97 used to
+      // fail the whole calibration after the scrape had already succeeded and 135s had passed.
+      .refine((w) => isRenormalisable(w.fyp + w.niche + w.loyalist + w.cross_niche), {
+        message: "persona_weights must be a distribution (sum within 0.5–1.5)",
+      })
+      .transform((w) => normalizeWeights(w, WEIGHT_KEYS)),
     personas: z
       .array(RawPersonaSchema)
       .length(10, "must be exactly 10 reactors")
@@ -165,9 +174,10 @@ const SynthSchema = z.object({
           new Set(ps.map((p) => p.archetype)).size === 10,
         { message: "personas must cover the 10 fixed archetype slugs exactly once" },
       )
-      .refine((ps) => Math.abs(ps.reduce((s, p) => s + p.share, 0) - 1) < 0.02, {
-        message: "persona shares must sum to 1.0 (±0.02)",
-      }),
+      .refine((ps) => isRenormalisable(ps.reduce((s, p) => s + p.share, 0)), {
+        message: "persona shares must be a distribution (sum within 0.5–1.5)",
+      })
+      .transform((ps) => normalizeShares(ps)),
   }),
   summary: z.string().default(""),
 });

@@ -15,7 +15,7 @@ import { PricingCard } from "./pricing-card";
  * Cards render the PUBLIC plan name (`plan.name`), never the persisted tier id — the id
  * `starter` is sold as "Creator" (see pricing.ts).
  *
- * Pure RSC — no "use client". Every CTA routes to /signup (D-10).
+ * Pure RSC — no "use client". Every CTA routes to MARKETING_CTA_URL, /go (D-10; retargeted 2026-08-04).
  * CONVERT-01 Nyquist gate target.
  */
 export function PricingTeaser({ className }: { className?: string }) {

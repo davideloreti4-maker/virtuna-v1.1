@@ -120,6 +120,16 @@ export function FeedResults({
   }
 
   // ── Watched tab, no channels yet → CTA to Channels ──────────────────────────────
+  //
+  // This is the FIRST thing a new creator sees on Discover, and for most of them it is the only
+  // thing: three of the four sidebar destinations are never introduced anywhere in the product,
+  // so the empty state IS the introduction. It said "Watch creators to fill your Videos feed",
+  // which explains the mechanic and not the point — a creator who has never used Discover does
+  // not yet know why they would want a feed of other people's videos.
+  //
+  // Lead with what the surface is FOR, then how to fill it. /library's empty state already sets
+  // this standard ("Save a Read, idea, hook or outlier from any thread and it lands here"), and
+  // it is the one surface a new user does not leave confused.
   if (watchedEmpty) {
     return (
       <SurfaceEmptyState
@@ -128,14 +138,15 @@ export function FeedResults({
             <FilmStrip size={32} weight="thin" />
           </EmptyStateIcon>
         }
+        title="See what's working in your niche"
         action={
           <Button asChild variant="primary" size="sm">
             <Link href="/feed/channels">Add channels</Link>
           </Button>
         }
       >
-        Watch creators to fill your Videos feed. Add a few channels and their outliers show up
-        here.
+        Discover tracks creators you choose and surfaces their outliers — the posts that beat
+        their own baseline. Add a few channels and the ones worth stealing from show up here.
       </SurfaceEmptyState>
     );
   }

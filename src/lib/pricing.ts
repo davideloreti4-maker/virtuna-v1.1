@@ -176,6 +176,47 @@ export const DEMO_RUNS = 1;
  */
 export const DEMO_CREDITS = CREDIT_COSTS[DEMO_ACTION];
 
+/**
+ * THE ACTIVATION ENTITLEMENT — one free card for a creator who just calibrated.
+ *
+ * Owner call, 2026-08-04, after the funnel was walked end to end on a production build:
+ * fund the first card with an entitlement rather than a credit grant.
+ *
+ * The defect it closes: a new signup spent ~135 seconds and ~$0.05 of Apify watching us read
+ * their account, arrived on /home, and the ONE action the product offered them — "Read my
+ * recent posts", the single CTA in the single sentence of in-app onboarding — returned 402
+ * "You don't have a plan yet". The entire activation path dead-ended on a paywall the instant
+ * it was touched. `BILLING_ENFORCE_QUOTA` is true in production and the free tier is
+ * `limit: 0`, so this was not an edge case; it was every new user, every time.
+ *
+ * ── Why `ideas` and not `account` ──────────────────────────────────────────────────────────
+ * The card has to be about THEM or it teaches nothing, and it has to be nearly free or it
+ * cannot be given away per signup. `ideas` is both: it runs against the personas already in
+ * hand from calibration, so it is ONE model call and ZERO Apify calls. `account` (the CTA
+ * that was 402ing) is the opposite — two Apify scrapes at 5 credits, against a budget with
+ * ~$2 left in the cycle. Same teaching moment, two orders of magnitude apart in cost.
+ *
+ * ── What keys it, and what must NEVER key it ───────────────────────────────────────────────
+ * It is keyed on HAVING CALIBRATED — a real personal audience on file — plus the free tier
+ * and no trial. Deliberately NOT keyed on:
+ *   · `is_anonymous` — that is the /go demo's key (DEMO_ACTION above); a funnel-B visitor is a
+ *     different person at a different point in the funnel and already has their own free run;
+ *   · tier `free` ALONE — every existing user is tier free, so that would hand a free pack to
+ *     the entire user base. This exact confusion is what made onboarding unreachable in #423.
+ *
+ * ── Entitlement, not wallet ────────────────────────────────────────────────────────────────
+ * Counted as DELIVERED RUNS of `ACTIVATION_ACTION`, exactly like the demo, and for the reason
+ * recorded above it: a credit-shaped check lets any other 1-credit action consume the
+ * entitlement and then refuse the user the thing they were promised, using words that are not
+ * true. Spend and entitlement are different questions.
+ */
+/** The one action activation entitles: an ideas pack against the audience just calibrated. */
+export const ACTIVATION_ACTION = "ideas" as const;
+/** How many. One — this is a teaching moment, not a free tier. */
+export const ACTIVATION_RUNS = 1;
+/** Credit-equivalent, for the 402 body's units only. Never a spendable balance. */
+export const ACTIVATION_CREDITS = CREDIT_COSTS[ACTIVATION_ACTION];
+
 /** The $1 trial, offered on every plan. */
 export const TRIAL = {
   /** What the card is charged today. */

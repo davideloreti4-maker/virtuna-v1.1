@@ -31,6 +31,14 @@ export const FUNNEL_EVENTS = [
   "start_landed",
   "handle_submit",
   "calibrate_done",
+  // The activation beats (2026-08-04). §8 stopped at `calibrate_done` because
+  // when it was written the funnel ended there — the user arrived on /home and
+  // the product said one sentence. These two are the beats that replaced it:
+  // the free first card, and the wall that follows it. `checkout_paid` is still
+  // the scoreboard; `first_card_shown → activation_wall_shown → checkout_paid`
+  // is how you tell a wall that converts from one that just interrupts.
+  "first_card_shown",
+  "activation_wall_shown",
   "video_submit",
   "gap_shown",
   "intention_set",

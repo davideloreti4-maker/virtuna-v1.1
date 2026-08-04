@@ -48,10 +48,10 @@ describe("<PricingTeaser /> — CONVERT-01", () => {
     expect(screen.getAllByText(/best value/i)).toHaveLength(1);
   });
 
-  it("routes every CTA to /signup", () => {
+  it("routes every CTA to /go", () => {
     const { container } = render(<PricingTeaser />);
     const signupLinks = Array.from(container.querySelectorAll("a")).filter(
-      (a) => a.getAttribute("href") === "/signup"
+      (a) => a.getAttribute("href") === "/go"
     );
     expect(signupLinks.length).toBe(PLANS.length);
   });

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { SIGNUP_URL } from "@/lib/routes";
+import { MARKETING_CTA_URL } from "@/lib/routes";
 
 export interface PricingCardProps {
   /** Tier name, e.g. "Starter" or "Pro" */
@@ -32,7 +32,7 @@ export interface PricingCardProps {
 /**
  * Bespoke flat-warm pricing tier card.
  *
- * Pure RSC — no "use client". All CTAs route to SIGNUP_URL (/signup) via Link.
+ * Pure RSC — no "use client". All CTAs route to MARKETING_CTA_URL (/go) via Link.
  * Coral is confined to the primary CTA and the "Most popular" badge (CONVERT-01).
  * No Supabase, Whop, CheckoutModal, or useSubscription imports (D-10).
  */
@@ -110,7 +110,7 @@ export function PricingCard({
           takes the quiet secondary so ONE CTA dominates the section. */}
       <div className="mt-auto flex flex-col gap-3 pt-8">
         <Button asChild variant={highlighted ? "primary" : "secondary"} size="lg">
-          <Link href={SIGNUP_URL}>{ctaLabel}</Link>
+          <Link href={MARKETING_CTA_URL}>{ctaLabel}</Link>
         </Button>
         {microcopy && (
           <p className="text-center text-xs text-foreground-muted">

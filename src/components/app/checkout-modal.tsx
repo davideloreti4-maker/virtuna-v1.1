@@ -10,6 +10,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { getPlan, TRIAL, type PaidPlanId } from "@/lib/pricing";
+import { track } from "@/lib/analytics/funnel-events";
 
 interface CheckoutModalProps {
   open: boolean;
@@ -106,7 +107,19 @@ export function CheckoutModal({
     }
   };
 
+  // ── The scoreboard (DESIGN §8) ─────────────────────────────────────────────
+  // `checkout_paid` is the one number the whole funnel is judged on, and until
+  // 2026-08-04 it had never been emitted: the spine existed, but its only call
+  // sites were in the walkthrough §0b retired. It is recorded HERE, at the one
+  // component every purchase passes through, rather than at each of the callers
+  // — a caller that forgets is a conversion that never happened, as far as the
+  // funnel can tell.
+  useEffect(() => {
+    if (open) track("checkout_open", { planId, trial });
+  }, [open, planId, trial]);
+
   const handleComplete = () => {
+    track("checkout_paid", { planId, trial: trialApplied, funnel });
     onComplete?.();
     onClose();
   };

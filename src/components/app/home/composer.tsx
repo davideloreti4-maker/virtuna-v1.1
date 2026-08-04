@@ -136,6 +136,7 @@ import { detectRefineIntent } from "@/lib/tools/refine";
 // server check. ContentForm's SOCIAL_URL_PATTERN ALSO allows Instagram — the
 // slim composer must NOT (TikTok-only for v1).
 import { TIKTOK_URL_PATTERN } from "@/lib/tiktok-url";
+import { track } from "@/lib/analytics/funnel-events";
 import { consumePendingUpload } from "@/lib/onboarding/pending-upload";
 import type { Verb } from "@/lib/room-contract/types";
 import { LAUNCH_PARAM } from "@/lib/room-contract/thread-launch";
@@ -665,6 +666,31 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     setShowUpload(false);
     void account.start();
   }, [account]);
+
+  /**
+   * THE ACTIVATION CARD — the first-run action, and the one the intro now offers.
+   *
+   * Arms AND runs in one tap (same shape as the account run above), because the point is that
+   * the creator SEES a card written for one of their own personas without having to work out
+   * what to type. `ideas.start("")` is the skill's Auto mode: no ask, drafted against the
+   * audience that was just calibrated.
+   *
+   * It replaced "Read my recent posts", which was the only CTA in the only sentence of in-app
+   * onboarding and returned 402 on every new account — `account` costs 5 credits, the free
+   * tier's allowance is 0, and BILLING_ENFORCE_QUOTA is on in production. This one is covered
+   * by the activation entitlement in lib/pricing.ts, and unlike the account read it makes no
+   * Apify call at all.
+   *
+   * `first_card_shown` is emitted here rather than on the card's render: this is the moment the
+   * user asked for it, and a render-time event would also fire for every later ideas run.
+   */
+  const handleActivationCardRun = useCallback(() => {
+    track("first_card_shown", { source: "audience-intro" });
+    noteRun("idea");
+    setActiveTool(DEFAULT_TOOL);
+    setShowUpload(false);
+    void ideas.start("", platform, intent);
+  }, [ideas, platform, intent]);
 
 
   // ── Thread-presence signal (UX-pin fix, post-UAT) ─────────────────────────
@@ -3345,8 +3371,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   const homeAudienceIntro = !hasConversationContent ? (
     <HomeAudienceIntro
       audience={selectedAudience}
-      onReadAccount={handleStarterAccountRun}
-      onArmIdeas={() => handleUserSelectTool("idea")}
+      onFirstCard={handleActivationCardRun}
       className="pointer-events-auto mt-3"
     />
   ) : null;
@@ -3432,7 +3457,11 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
               // v2 Start (④) rides the SCROLL region — the artifact grid sits where the first
               // message would, with the composer docked below it. Picking a skill sets
               // startEngaged, this drops out, and you land on an empty chat.
-              <div className="flex min-h-full flex-col justify-end pt-6">
+              // pb-40 clears the floating dock. The dock is `absolute bottom-0` over this same
+              // scroll region, so with `justify-end` the grid's last row sat directly under it
+              // and "Test something of your own" rendered half-hidden behind the composer at
+              // 1512×982 — the last starter card, sliced, on the first screen a new account sees.
+              <div className="flex min-h-full flex-col justify-end pt-6 pb-40">
                 <AmbientStartHome
                   audience={effectiveAudience}
                   onSkill={pickStartSkill}
