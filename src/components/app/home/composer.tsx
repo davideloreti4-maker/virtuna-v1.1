@@ -126,6 +126,7 @@ import type { BroughtStimulus } from "@/components/audience-lens/v2/AmbientSimul
 import { GENERAL_AUDIENCE } from "@/lib/audience/audience-repo";
 import { BuildChooser } from "./build-chooser";
 import { HomeStarter, HomeFirstRunDemo } from "./home-starter";
+import { HomeAudienceIntro } from "./home-audience-intro";
 import { useAmbientFocus, type AmbientCardDescriptor } from "./use-ambient-focus";
 import { buildAmbientDescriptors, resolveFocusDescriptor } from "./ambient-descriptors";
 import { detectRefineIntent } from "@/lib/tools/refine";
@@ -3327,6 +3328,23 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       />
     ) : null;
 
+  // The first-run moment. Onboarding now hands every new account a calibrated audience and then
+  // said nothing about it — this names it once and offers ONE first action. It renders itself
+  // only when a real calibration landed and only until dismissed, so for everyone else it is
+  // already null; the guard here is just the same empty-home condition its siblings use, because
+  // it is a footer for the idle home rather than chrome that follows you into a thread.
+  // The layout classes ride ON the component rather than on a wrapper here, deliberately: it
+  // returns null for anyone uncalibrated or already dismissed, and a wrapper div would survive
+  // that and leave a dead 12px gap under the composer for every one of them.
+  const homeAudienceIntro = !hasConversationContent ? (
+    <HomeAudienceIntro
+      audience={selectedAudience}
+      onReadAccount={handleStarterAccountRun}
+      onArmIdeas={() => handleUserSelectTool("idea")}
+      className="pointer-events-auto mt-3"
+    />
+  ) : null;
+
   // ── Layout branches ────────────────────────────────────────────────────────
   //
   // Branch A — Home thread mode (hasThread && !hasSimulation):
@@ -3446,6 +3464,13 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
               <div className="pointer-events-auto mb-3">{homeStarter}</div>
             ) : null}
             {composerDock}
+            {/* BENEATH the field, deliberately. Above it would be a prose lede over the grid,
+                which STARTER CONTRACT rule 2 forbids outright — and the dock is bottom-anchored,
+                so content added here grows downward from the composer rather than displacing it.
+                NOT gated on startEngaged: under ambient v2 the empty home opens on the Start
+                surface with the grid still behind that gate, so gating here would hide the intro
+                on precisely the screen a new account actually lands on. */}
+            {homeAudienceIntro}
           </div>
         </div>
       </div>
@@ -3490,6 +3515,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           }}
         />
         {composerDock}
+        {homeAudienceIntro}
         </>
       ) : (
         // Post-pick (option B, owner call 2026-07-23): drop straight into the fresh-chat start —
@@ -3499,6 +3525,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           {composerDock}
           {homeStarter}
           {homeFirstRunDemo}
+          {homeAudienceIntro}
         </>
       )}
     </div>

@@ -526,8 +526,16 @@ path — keep `ENGINE_VERSION` untouched; gate the new signature behind non-gene
 **Create / calibrate**
 - [ ] H1 — `POST /api/audiences` (manual create) and `POST /api/audiences/calibrate` (SSE) are two paths sharing `createAudience`. `route.ts:81`, `calibrate/route.ts:58`
 - [ ] H2 — calibrate emits SSE `status → fallback|error → done`; `maxDuration=300`
-- [ ] H3 — personal path: parallel Apify `scrapeProfile + scrapeVideos(30)`; THIN gate (`tier===null && videos<10`) → `fallback:general`, never fabricates personas. `calibration.ts:210`
-- [ ] H4 — target path: zeroed mock ProfileData, no scrape
+- [❌] H3 — ~~personal path: parallel Apify `scrapeProfile + scrapeVideos(30)`~~ — **REFUTED
+  2026-08-04** (code changed under the hypothesis in `34dc98d4`, 2026-07-14): it is now ONE call,
+  `scrapeProfileBundle`. The THIN gate survives but no longer dead-ends — thin falls back to a
+  **second** Apify call (`scrapeNiche`) and only reaches `fallback:general` if that is also thin.
+  Still never fabricates personas. `calibration.ts:295-311`
+- [❌] H4 — ~~target path: zeroed mock ProfileData, no scrape~~ — **REFUTED 2026-08-04.** The
+  branch is on **`handle` presence, not `type`**, and the no-handle path runs `nicheQuery` →
+  `scrapeNiche` — **an Apify call** (`calibration.ts:344`), then synthesizes a profile *from the
+  scraped videos*. No path through calibration is free. See `docs/atlas/02-audience-subsystem.md`
+  §3a/§3b, rewritten the same day.
 - [ ] H5 — `persona_weights` baked ONCE via `biasForGoalIntent` at calibrate time. `goal-intent.ts:46`
 - [ ] H6 — `repaintPersonas` is deterministic, NO LLM (static base+suffix maps). `persona-repaint.ts:144`
 - [ ] H7 — `user_id` forced from session in repo, never from body (CR-01). `audience-repo.ts:206`
