@@ -64,22 +64,17 @@ export const QWEN_REASONING_MODEL = process.env.QWEN_REASONING_MODEL ?? "qwen3.7
 // running thinking ON, which is why it is the only one that regressed.
 // Cheap-to-run is not cheap if it stops answering the question. Rollback FORWARD (re-try flash)
 // only behind a fresh harness run. Deaf on both, so this is about reasoning, not capability.
-export const QWEN_APOLLO_MODEL    = process.env.QWEN_APOLLO_MODEL    ?? "qwen3.7-plus";
-// CALIBRATE synth model (audience/enrich-signature) — SCOPED separately for the same reason
-// Apollo is: it can be held back without pinning the rest of the platform.
-// ⚠️ CALIBRATE STAYS ON 3.7-PLUS. Measured with `scripts/calibrate-synth-harness.ts` on a real
-// 32-post @zachking payload, the byte-identical input to both models:
-//     plus : 3/3 PASS · 52.6-56.5s · ~0.63¢ · Σshares 1.00 every run
-//     flash: 0/7 PASS · ~20s · ~0.053¢ · Σshares 0.75-0.85, NEVER 1.0
-// Flash breaks the two HARD invariants in SynthSchema, not the soft ones:
-//   1. persona shares must sum to 1.0 (±0.02) — it emitted 0.75-0.85 in all 7 runs;
-//   2. in 2 of 7 runs it also FLATTENED the shape, putting `personas`/`persona_weights` at the
-//      top level instead of under `audience`.
-// Both make `SynthSchema.safeParse` throw, and `defaultSynthesize` has NO retry — so
-// calibration.ts:375 turns every bake into `{ error: "scrape_failed" }` AFTER the Apify scrape
-// is already paid for, blaming the scrape for a synthesis failure. Note this is NOT the Apollo
-// failure mode: CALIBRATE runs thinking OFF (enrich-signature.ts:391, D-01), so nothing here is
-// about an unspent thinking_budget — flash simply cannot hold a 10-way constrained allocation.
-// Its PROSE was fine (10 distinct creator-specific personas), which is exactly why only the
-// live harness caught it. Rollback FORWARD (re-try flash) only behind a fresh harness run.
-export const QWEN_CALIBRATE_MODEL = process.env.QWEN_CALIBRATE_MODEL ?? "qwen3.7-plus";
+export const QWEN_APOLLO_MODEL    = process.env.QWEN_APOLLO_MODEL    ?? "qwen3.7-flash";
+// CALIBRATE synth model (audience/enrich-signature) — scoped so it can move independently.
+// ✅ ON 3.7-FLASH. It did NOT work out of the box: measured with
+// `scripts/calibrate-synth-harness.ts` on a real 32-post @zachking payload, raw flash was
+// 0/7 — persona shares summed to 0.75-0.85 (never 1.0) in every run, and 2 of 7 also
+// FLATTENED the shape (`personas`/`persona_weights` at the top level). Both trip HARD
+// SynthSchema invariants. Its PROSE was never the problem: 10 distinct creator-specific
+// personas with real axis spread on every run, no diversity collapse.
+// So the call was made robust rather than the model held back — `repairSynthShape()` lifts
+// flattened keys and renormalizes the proportion vectors inside a guard band (ratios
+// preserved, nothing invented), plus one retry carrying an arithmetic nudge. Both fixes are
+// no-ops on a clean response and also close a real single-shot fragility that plus had.
+// Rollback: QWEN_CALIBRATE_MODEL=qwen3.7-plus.
+export const QWEN_CALIBRATE_MODEL = process.env.QWEN_CALIBRATE_MODEL ?? "qwen3.7-flash";

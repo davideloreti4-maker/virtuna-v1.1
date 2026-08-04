@@ -25,6 +25,14 @@ const log = createLogger({ module: "deepseek" });
 // 2026-08-04 flash move on live A/B evidence; see qwen/client.ts).
 const DEEPSEEK_MODEL = QWEN_APOLLO_MODEL;
 const MAX_RETRIES = 2; // 3 total attempts
+/** A literal Knowledge Core section token, e.g. "§2.1" / "§2.0a". */
+const CITE_RE = /§\s*\d+(?:\.\d+)?[a-z]?/;
+/**
+ * How many of the 6 dimensions must carry a §-cite in their `lever` before the read counts as
+ * framework-grounded. 6/6 is what plus does unprompted; the floor sits at 4 so one prose slip
+ * does not burn a retry, while a wholesale drop to plain prose (flash's failure) always does.
+ */
+const MIN_CITED_DIMENSIONS = 4;
 const TIMEOUT_MS = 120_000; // 120s — bounded-thinking Apollo call on the full KNOWLEDGE_CORE prefix; headroom under the 300s pipeline cap
 // Apollo thinking budget. Default 1500 (was 3000) — A/B-validated 2026-06-05
 // (quick/20260605-engine-latency-quality-spine-ab): a budget sweep on identical omni
@@ -443,17 +451,17 @@ ${behavioralPredictionsBlock}  "component_scores": {                  // your 0-
   ],
   "confidence": "high"|"medium"|"low",   // overall assessment confidence
   "dimensions": [                        // EXACTLY 6, one per name below, in this order. "score" is REQUIRED and MUST use the fixed band anchors: strong→85, mid→50, weak→20 (do NOT deviate — this fixed mapping is what makes the composite deterministic, §4).
-    { "name": "hook",        "band": "strong"|"mid"|"weak", "score": 85|50|20, "lever": "<§2 lever that fired/failed>", "evidence": "<quoted sensor signal>" },
-    { "name": "retention",   "band": "strong"|"mid"|"weak", "score": 85|50|20, "lever": "<§2 lever>", "evidence": "<quoted sensor signal>" },
-    { "name": "clarity",     "band": "strong"|"mid"|"weak", "score": 85|50|20, "lever": "<§2 lever>", "evidence": "<quoted sensor signal>" },
-    { "name": "share_pull",  "band": "strong"|"mid"|"weak", "score": 85|50|20, "lever": "<§2 lever>", "evidence": "<quoted sensor signal>" },
-    { "name": "substance",   "band": "strong"|"mid"|"weak", "score": 85|50|20, "lever": "<§2 lever>", "evidence": "<quoted sensor signal>" },
-    { "name": "credibility", "band": "strong"|"mid"|"weak", "score": 85|50|20, "lever": "<§2 lever>", "evidence": "<quoted sensor signal>" }
+    { "name": "hook",        "band": "strong"|"mid"|"weak", "score": 85|50|20, "lever": "§<n.n> <lever named in words — the § token is REQUIRED>", "evidence": "<quoted sensor signal>" },
+    { "name": "retention",   "band": "strong"|"mid"|"weak", "score": 85|50|20, "lever": "§<n.n> <lever, § REQUIRED>", "evidence": "<quoted sensor signal>" },
+    { "name": "clarity",     "band": "strong"|"mid"|"weak", "score": 85|50|20, "lever": "§<n.n> <lever, § REQUIRED>", "evidence": "<quoted sensor signal>" },
+    { "name": "share_pull",  "band": "strong"|"mid"|"weak", "score": 85|50|20, "lever": "§<n.n> <lever, § REQUIRED>", "evidence": "<quoted sensor signal>" },
+    { "name": "substance",   "band": "strong"|"mid"|"weak", "score": 85|50|20, "lever": "§<n.n> <lever, § REQUIRED>", "evidence": "<quoted sensor signal>" },
+    { "name": "credibility", "band": "strong"|"mid"|"weak", "score": 85|50|20, "lever": "§<n.n> <lever, § REQUIRED>", "evidence": "<quoted sensor signal>" }
   ],
   "ceiling_capper": "<one sentence naming the single thing capping the score; note any §3 anti-pattern present>",
   "confidence_scope": "<which §2 signals the sensor could NOT provide, lowering confidence>",
   "rewrites": [                          // 2-3 directional hook variants
-    { "original": "<the verbatim hook line above, copied EXACTLY>", "variant": "<rewritten hook>", "lever_fixed": "<the §2 lever this variant fixes — a DIFFERENT lever per rewrite>" }
+    { "original": "<the verbatim hook line above, copied EXACTLY>", "variant": "<rewritten hook>", "lever_fixed": "§<n.n> <the lever this variant fixes, § REQUIRED — a DIFFERENT lever per rewrite>" }
   ],
   "platform_note": "<optional: watermark/cross-post warning, or omit>"
 }
@@ -510,6 +518,9 @@ export async function reasonWithDeepSeek(
   const startTime = performance.now();
   const ai = getQwenClient();
   let lastError: Error | null = null;
+  // Nudge appended to the NEXT attempt's user message (the system prefix stays byte-stable, so
+  // the DashScope prefix-cache still hits). Set on whichever failure actually occurred.
+  let retryHint = "Your previous response was not valid JSON. Return ONLY the JSON object with no extra text.";
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     const controller = new AbortController();
@@ -518,10 +529,7 @@ export async function reasonWithDeepSeek(
       // Retry-nudge on the USER message only (Pattern 3) — keeps the byte-stable
       // system prefix intact across retries (preserves DashScope prefix-cache hit).
       const baseUserMessage = buildDeepSeekUserMessage(context);
-      const userMessage =
-        attempt === 0
-          ? baseUserMessage
-          : `Your previous response was not valid JSON. Return ONLY the JSON object with no extra text.\n\n${baseUserMessage}`;
+      const userMessage = attempt === 0 ? baseUserMessage : `${retryHint}\n\n${baseUserMessage}`;
 
       // Apollo call: byte-stable system prefix (APOLLO_SYSTEM_PROMPT) + volatile user message.
       // temp:0 + seed for determinism (D-10). json_object for structured output.
@@ -563,6 +571,38 @@ export async function reasonWithDeepSeek(
       const text = stripModelOutput(raw);
       // Post-parse backstop: assert dims===6, clamp composite 0-100, R2 original check
       const reasoning = parseDeepSeekResponse(text, context.verbatim);
+
+      // ── Cite-coverage gate (2026-08-04) ────────────────────────────────────────────
+      // The §-cite in each dimension's `lever` IS Apollo's product — MODEL-POLICY calls this
+      // call "cited, framework-grounded expert judgment (the video moat)". A model that grades
+      // well but cites nothing returns something that LOOKS like an Apollo result and silently
+      // isn't: valid schema, plausible prose, sensible bands. qwen3.7-flash did exactly that on
+      // every dimension until the contract demanded the token explicitly. Nothing downstream
+      // could detect it, so the check lives here, at the only place that sees the raw grades.
+      const cited = reasoning.dimensions.filter((d) => CITE_RE.test(d.lever ?? "")).length;
+      if (cited < MIN_CITED_DIMENSIONS && attempt < MAX_RETRIES) {
+        retryHint =
+          `Your previous response cited a Knowledge Core section in only ${cited} of ` +
+          `${reasoning.dimensions.length} dimensions. EVERY dimension's "lever" must BEGIN with a ` +
+          `literal section token (e.g. "§2.1 rapid context + specificity"), and so must every ` +
+          `rewrite's "lever_fixed". Re-answer with the § tokens present.`;
+        log.warn("Apollo cite coverage below floor — retrying", {
+          model: DEEPSEEK_MODEL, attempt, cited, floor: MIN_CITED_DIMENSIONS,
+        });
+        throw new Error(`apollo cite coverage ${cited}/${reasoning.dimensions.length}`);
+      }
+      if (cited < MIN_CITED_DIMENSIONS) {
+        // Retries exhausted. Ship the grades — they are still useful — but say so loudly
+        // rather than pass an uncited read off as the framework-grounded product.
+        log.error("Apollo returned an UNCITED read after retries", {
+          model: DEEPSEEK_MODEL, cited, floor: MIN_CITED_DIMENSIONS,
+        });
+        Sentry.captureMessage("Apollo cite coverage below floor after retries", {
+          level: "warning",
+          tags: { stage: "deepseek_reasoning", model: DEEPSEEK_MODEL },
+          extra: { cited, floor: MIN_CITED_DIMENSIONS },
+        });
+      }
 
       recordSuccess();
 
