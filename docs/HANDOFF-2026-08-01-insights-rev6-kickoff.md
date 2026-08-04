@@ -1127,6 +1127,83 @@ Audience = hero + 5 cards. Deleted from the codebase: `.actionbar` + `syncBar()`
 Engagement (1 `.rank`, 3 `.rrow`), 5 on Audience, plus all standing probes. Green. Shots
 `rev12-*.png` (8). Same artifact url.
 
+## 23. NEXT SESSION — START HERE. Parity: the owner reviewed the build (2026-08-04)
+
+**Owner verdict, reviewing `/ambient-v2` live:** *"authored is looking good but nothing is implemented
+on live adapter and text sim — we want the same integration everywhere."*
+
+Direction is settled: **parity across all three templates.** What follows is the measured gap, because
+"nothing is implemented" is not quite what is on screen, and the difference changes the work.
+
+### The parity matrix — MEASURED, not remembered
+
+Card heads in document order, read off the live page 2026-08-04 (after `3e2d4523`):
+
+| | authored | live adapter | text sim |
+|---|---|---|---|
+| **Brain** | cortex · answer · fix · **3 cards** | cortex · answer · fix · **3 cards** | cortex · answer · fix · **4 cards** |
+| | Signal breakdown · Network activation · Activation per second | *identical* | *+ Why they scrolled* |
+| **Engagement** | **4 cards** — Retention · Key metrics *(+rank strip)* · When they react · Projected reaction | **2 cards** — Retention · Key metrics | **1 card** — If you posted this |
+| **Audience** | **5 cards** | **4 cards** | **4 cards** |
+| | Who watches · How they decided · Who this is for · Who spreads it · **Where & when** | *same, minus Where & when* | Who this reaches · How they decided · Who this is for · Who spreads it |
+
+**Brain is already at full parity** (text carries one card MORE). **Audience is at parity minus one
+card.** The gap is almost entirely **Engagement**, and it is 3 cards + 1 strip wide.
+
+### The gap splits three ways, and only one kind is "build a producer"
+
+**① A DEV-FIXTURE ARTIFACT — the review page understates production.** ⚠️ Read this before planning
+anything. "Projected reaction" is **already built and already wired**: `EngagementTab` carries an
+`actionTiles(actionIntent)` fallback, `buildVideoPopulation()` computes `intents`,
+`/api/tools/test/card/route.ts:201` persists them on the seal, and `AmbientOverviewRail:476-500`
+passes them to the drill. **The real app renders that card.** `/ambient-v2`'s LIVE template does not —
+because `detail-live-fixture.ts:116` builds its population with `buildPopulationFrameData(...)` and
+never passes `actionIntent`. The dev page uses a different, thinner builder than the mount it stands
+for. **Fixing the fixture may close part of this gap without shipping a line of product code — do that
+FIRST, then re-measure, because the rest of the list may shrink.**
+
+**② GENUINELY NO PRODUCER** (§5.3's ledger — the honesty spine, still standing):
+- **When they react** — a per-second reaction timeline. We hold reaction **intent**, never its timing.
+- **The rank strip** under Key metrics — needs the creator's last-N catalogue. No producer.
+- **Where & when** (`distribution`) — no `src/lib/surfaces/*` sets this field at all; authored-only.
+- reach/views/likes/follows on the identity strip, and the creator's median post.
+
+**③ CORRECT BY DESIGN — do not "fix" these:**
+- Text has **no Retention card, no rank strip, no reaction timeline** (§3.3: video has the timeline and
+  no voices, text has the voices and no timeline). Text is meant to be an INVERSE instrument, not a
+  video screen with empty slots. Its thinness is partly the design working.
+- Text's activation grid is `untimed` as of `d4680365` — a text concept has no seconds.
+
+### The decision this needs before any code
+
+Parity can mean two very different things, and §5.3 has refused one of them for twelve revisions:
+
+- **(a) Build the missing producers.** Real work — a reaction-timing model, a per-creator catalogue
+  for the rank strip, a surface/timing read for Where & when. Honest, slow, and some of it may not be
+  derivable from what the engine holds today.
+- **(b) Accept an asymmetry the surface STATES.** Each absent card names why it is absent rather than
+  vanishing silently, so live/text read as deliberate instruments rather than broken copies.
+
+⚠️ **What is NOT on the table:** having the adapters synthesise the missing figures so the pages
+match. §20, §22 and this file's own header all draw that line — *"an adapter inventing a benchmark
+band is fabricated proof"*. Today's `4a2868ff` is the cautionary case: five consumers read an
+ATTENTION curve as retention, and the page shipped "66% gone by 0:04" over a curve that then climbed.
+
+**Ask the owner which, before building.** The parity request is unambiguous; the method is not.
+
+### The work, in the order it is worth doing
+
+1. **Fix the dev fixture so `/ambient-v2` shows what production shows** (① above). Cheapest, and it
+   re-baselines every judgement made from that page — possibly including the owner's.
+2. **Re-measure the matrix** after step 1. The remaining gap is the real one.
+3. **Take the (a)/(b) decision to the owner** with that corrected matrix in hand.
+4. Then build. Engagement first — it is the whole gap.
+5. Still unresolved from §22, and independent of all this: **the applied fix repaints the cortex while
+   Signal breakdown / Network activation / Activation per second sit byte-identical.** Owner's call —
+   leave, label "measured before the fix", or hide in the applied state.
+
+---
+
 ## 22. The visual audit, and the eight defects it closed (2026-08-04)
 
 §21's loop, run against the BUILD rather than the mockup: all 14 states (4 templates × 3 tabs + 2
@@ -1244,9 +1321,9 @@ find drift from the drawing.
 
 ## 21. NEXT SESSION — START HERE (the build exists; review it, then land it)
 
-> 📌 **Read §22 FIRST** (2026-08-04) — the visual audit of the built rail and the eight defects it
-> closed. It supersedes §20's "Verified" line, carries the four items still open, and names the one
-> scope §21 never covered. Everything below still stands.
+> 📌 **Read §23 FIRST, then §22** (both 2026-08-04). §23 is the live parity brief after the owner's
+> review of the build — the current direction. §22 is the visual audit and the eight defects it closed;
+> it supersedes §20's "Verified" line. Everything below still stands.
 
 Read **§20** (what shipped, and the four leaks it found), then §6 (the laws) and §16–§18 (what the
 design IS). §10 · §12 · §13 · §19 are all superseded — §19 was the implementation kickoff and it is
