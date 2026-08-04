@@ -15,11 +15,32 @@ The Qwen engine runs on **exactly two models**, split by ONE capability line —
 - **`qwen3.7-flash`** — **everything else**, text AND video (sighted, deaf). Generation, SIM scoring,
   the fold, chat, decode/adapt.
 
-…with **two scoped exceptions**, both held on `qwen3.7-plus` on live evidence (see the A/B below):
-**Apollo** (`QWEN_APOLLO_MODEL` — flash stopped citing the framework) and the **CALIBRATE synth**
-(`QWEN_CALIBRATE_MODEL` — flash cannot make the persona shares sum to 1.0, so every bake throws).
-So the honest count is two models plus two deliberate holdouts, not three tiers — those two env seams
-exist exactly so this can be true without dragging the rest of the platform back.
+…with **ONE scoped exception**, held on `qwen3.7-plus` on live evidence:
+
+- 🛑 **UNBOUND CHAT** (`QWEN_UNBOUND_CHAT_MODEL`) — the only genuine holdout left, and the only one
+  that is not fixable by tightening a contract. Flash produces a correct refusal sentence and then
+  writes the paid pack anyway (5/6 leaked). That is a **revenue leak**, not a quality regression, so
+  it stays on plus until a harness proves otherwise. Do not flip this one for cost.
+
+**Apollo and the CALIBRATE synth are no longer holdouts (2026-08-04).** Both failed on flash first
+and both were **fixed rather than held back** — in each case the defect was in our own prompt/parse
+layer, not in the model's ability to do the job:
+
+- **Apollo** cited nothing because the contract never *required* the token. It said "name the §2
+  lever" and "cite ONLY inside the auditable fields" — a restriction on *where* cites may go, which
+  plus read as a mandate and flash read as permission not to. The § token is now demanded explicitly
+  and enforced by a cite-coverage retry. Result: 6/6 dimensions cited, the identical cite set, and
+  flash is the *deterministic* one (plus swings 52→80 on its own seed).
+- **CALIBRATE** could not make 10 shares sum to 1.0 (Σ 0.75–0.85, all 7 runs) and flattened the shape
+  in 2 of 7. `normalize-shares.ts` already repaired the arithmetic inside `SynthSchema`;
+  `liftFlattenedAudience()` now repairs the nesting, and the call gained the retry it never had.
+  Result: 3/3 on flash on this branch, ~12× cheaper and ~2× faster, persona quality unchanged.
+
+> ⚠️ **One accepted behaviour change, not a bug: Apollo grades HARSHER on flash.** Same prompt, same
+> clips, flash lands the hook band one step below plus, and hook carries ~80% of the composite
+> (§2.0a) — so the headline score moves ~30 points on the videos measured (49 vs 80, 53 vs 82). The
+> reasoning is sound and the citations are identical; flash is stricter, not wrong. This is a product
+> judgment, and it is the thing to watch after the swap, because it moves a number users see.
 
 **The reasoning model moved `qwen3.7-plus` → `qwen3.7-flash` on 2026-08-04** (owner call). Same
 generation, still sighted, still deaf — so no call site changed capability and the audio boundary is
@@ -154,10 +175,10 @@ Unused headroom is free (you pay actual output, not the cap).
 | **CONVERSE** chat | `chat-runner`, `analyze/[id]/chat`, 4 tool-route follow-ups | `qwen3.7-flash` | OFF | 2000 | — | bound runaway; streamed |
 | **TEXT-ANALYZE** (no-video path) | `pipeline.ts` gemini_analysis | `qwen3.7-flash` | OFF | 2000 | — | fixed 2026-06-25 (was unbounded + thinking-unset) |
 | **FOLD** (Read audience sim) | `wave3/fold` | `qwen3.7-flash` (video, deaf) | OFF | 8000 | — | 10 personas × N segments; independence directive is the diversity lever. ✅ **validated live 2026-06-26** (5-seg video: 40.9s/90s, diversity 0.31 first-attempt no-retry, 0.56¢; `scripts/fold-validate-r1.ts`) |
-| **CALIBRATE** synth | `audience/enrich-signature` (synth call) | **`qwen3.7-plus`** | OFF | 8000 | — | v2 persona output (~3.5k) + headroom. ⛔ **Did NOT move to flash** — live harness 2026-08-04 above: flash 0/7, persona shares sum 0.75–0.85 → every bake throws. Scoped as `QWEN_CALIBRATE_MODEL` |
+| **CALIBRATE** synth | `audience/enrich-signature` (synth call) | `qwen3.7-flash` | OFF | 8000 | — | v2 persona output (~3.5k) + headroom. ✅ **on flash** — raw flash was 0/7 (Σshares 0.75–0.85); normalize-shares + `liftFlattenedAudience()` + 1 retry → 3/3, ~12× cheaper, ~2× faster. Seam: `QWEN_CALIBRATE_MODEL` |
 | **SENSOR** read | `qwen/omni-analysis` (Wave 0) | `qwen3.5-omni-flash` | OFF | 8000 | — | audio in; sensor dump |
 | **SENSOR** bake-watch | `enrich-signature` (watch call) | `qwen3.5-omni-flash` | OFF | 600 | — | per-video watch notes |
-| **APOLLO** video insight | `engine/deepseek` | **`qwen3.7-plus`** (video, deaf) | **ON** | 3000 | 1500 | the reasoning moat (A/B-tuned). ⛔ **Did NOT move to flash** — live A/B 2026-08-04 below |
+| **APOLLO** video insight | `engine/deepseek` | `qwen3.7-flash` (video, deaf) | **ON** | 3000 | 1500 | the reasoning moat (A/B-tuned). ✅ **on flash** — cited nothing until the contract REQUIRED the § token; now 6/6 dims cited, identical cite set, deterministic. ⚠️ grades ~30 composite points harsher. Seam: `QWEN_APOLLO_MODEL` |
 
 ### Notes
 - All scoring/generation calls keep `temperature: 0` + `seed: QWEN_SEED` (determinism). The **fold**

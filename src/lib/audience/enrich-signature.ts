@@ -62,6 +62,8 @@ const OMNI_TIMEOUT_MS = 60_000;
 // reliably timed out at ~60s with "Request was aborted"). 120s keeps ample headroom now that
 // thinking-mode is dropped (the call is strictly faster without the staging budget).
 const SYNTH_TIMEOUT_MS = 120_000;
+/** Retries for the synth call (1 → 2 attempts total). Bake-once, so a retry is cheap insurance. */
+const SYNTH_MAX_RETRIES = 1;
 const SYNTH_MAX_TOKENS = 8000; // v2 personas add display_name/blurb/axes (~+1k) → persona output ~3.5k + headroom
 const SUBTITLE_FETCH_TIMEOUT_MS = 8_000;
 const SUBTITLE_MAX_CHARS = 2_000;
@@ -382,35 +384,94 @@ async function defaultFetchSubtitle(url: string): Promise<string | null> {
   }
 }
 
+/** Keys that belong under `audience` but which a model may emit at the top level. */
+const AUDIENCE_KEYS = [
+  "follower_tier", "maturity", "temperature_mix", "interest_tags", "topic_vocab",
+  "what_resonates", "what_falls_flat", "persona_weights", "personas",
+] as const;
+
+/**
+ * Lift a FLATTENED response back into shape before Zod sees it.
+ *
+ * Measured on qwen3.7-flash (`scripts/calibrate-synth-harness.ts`, 7 runs): in 2 of 7 it emitted
+ * `personas`/`persona_weights` at the TOP LEVEL instead of under `audience`. The content was
+ * complete and correct — only the nesting was wrong — but `SynthSchema` saw `undefined` for both
+ * and threw, which `calibration.ts` then reports as `scrape_failed` after the Apify scrape is
+ * already paid for. Pure transport; lifting loses nothing and is a no-op on a correct response.
+ *
+ * The ARITHMETIC half of this problem (shares/weights not summing to 1.0) is NOT handled here —
+ * `normalize-shares.ts` already owns it inside SynthSchema's own refine+transform.
+ */
+export function liftFlattenedAudience(input: unknown): { value: unknown; lifted: string[] } {
+  const lifted: string[] = [];
+  if (!input || typeof input !== "object") return { value: input, lifted };
+  const o = { ...(input as Record<string, unknown>) };
+  const audience = { ...((o.audience as Record<string, unknown>) ?? {}) };
+  for (const k of AUDIENCE_KEYS) {
+    if (audience[k] === undefined && o[k] !== undefined) {
+      audience[k] = o[k];
+      delete o[k];
+      lifted.push(k);
+    }
+  }
+  o.audience = audience;
+  return { value: o, lifted };
+}
+
+/** Appended to the RETRY user message only — the system prefix stays byte-stable (D-17 cache). */
+const SYNTH_RETRY_NUDGE =
+  "\n\nYour previous response was rejected. Return ONLY the JSON object, and check the arithmetic " +
+  "BEFORE answering: `audience.personas` must hold EXACTLY 10 entries whose `share` values sum to " +
+  "EXACTLY 1.0, and `audience.persona_weights` + `audience.temperature_mix` must each sum to " +
+  "EXACTLY 1.0. `personas` and `persona_weights` go INSIDE the `audience` object, never at the top level.";
+
 async function defaultSynthesize(payload: SynthPayload): Promise<z.infer<typeof SynthSchema>> {
   const ai = getQwenClient();
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), SYNTH_TIMEOUT_MS);
-  try {
-    const completion = await ai.chat.completions.create(
-      {
-        model: QWEN_CALIBRATE_MODEL, // CALIBRATE: bake-once — D-01: greedy temp:0, thinking-mode OFF
-        messages: [
-          { role: "system", content: SYNTH_SYSTEM },
-          { role: "user", content: JSON.stringify(payload) },
-        ],
-        response_format: { type: "json_object" },
-        temperature: 0,
-        seed: QWEN_SEED,
-        max_tokens: SYNTH_MAX_TOKENS, // 8000: v2 persona output (~3.5k) + headroom (thinking budget dropped per D-01)
-        enable_thinking: false,       // D-01: greedy temp:0 is the determinism lever; thinking-mode staging was the Pitfall-3 residual-jitter source (spike 02-02 NON-DETERMINISTIC)
-      } as never,
-      { signal: controller.signal },
-    );
-    const raw = completion.choices[0]?.message?.content ?? "";
-    const parsed = SynthSchema.safeParse(JSON.parse(stripModelOutput(raw)));
-    if (!parsed.success) {
-      throw new Error(`signature synthesis validation failed: ${parsed.error.message}`);
+  // One retry (2 attempts). Before this the call was single-shot: any malformed response — an
+  // arithmetic slip, a truncation, a flattened key — threw straight through to calibration.ts,
+  // which reports it as `scrape_failed` AFTER the scrape is paid for. That was a real fragility
+  // on plus too; it just bites far more often on a cheaper model.
+  let lastError = "";
+  for (let attempt = 0; attempt <= SYNTH_MAX_RETRIES; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), SYNTH_TIMEOUT_MS);
+    try {
+      const completion = await ai.chat.completions.create(
+        {
+          model: QWEN_CALIBRATE_MODEL, // CALIBRATE: bake-once — D-01: greedy temp:0, thinking-mode OFF
+          messages: [
+            { role: "system", content: SYNTH_SYSTEM }, // byte-stable prefix (D-17 cache)
+            {
+              role: "user",
+              content: attempt === 0 ? JSON.stringify(payload) : JSON.stringify(payload) + SYNTH_RETRY_NUDGE,
+            },
+          ],
+          response_format: { type: "json_object" },
+          temperature: 0,
+          seed: QWEN_SEED,
+          max_tokens: SYNTH_MAX_TOKENS, // 8000: v2 persona output (~3.5k) + headroom (thinking budget dropped per D-01)
+          enable_thinking: false,       // D-01: greedy temp:0 is the determinism lever; thinking-mode staging was the Pitfall-3 residual-jitter source (spike 02-02 NON-DETERMINISTIC)
+        } as never,
+        { signal: controller.signal },
+      );
+      const raw = completion.choices[0]?.message?.content ?? "";
+      const { value, lifted } = liftFlattenedAudience(JSON.parse(stripModelOutput(raw)));
+      const parsed = SynthSchema.safeParse(value);
+      if (parsed.success) {
+        if (lifted.length) log.warn("synth output was flattened — lifted", { model: QWEN_CALIBRATE_MODEL, attempt, lifted });
+        return parsed.data;
+      }
+      lastError = parsed.error.message;
+      log.warn("synth zod failed", { model: QWEN_CALIBRATE_MODEL, attempt, lifted, error: lastError.slice(0, 300) });
+    } catch (err) {
+      // A network/abort/JSON error is retryable on the same terms as a Zod miss.
+      lastError = err instanceof Error ? err.message : String(err);
+      log.warn("synth attempt threw", { model: QWEN_CALIBRATE_MODEL, attempt, error: lastError.slice(0, 300) });
+    } finally {
+      clearTimeout(timer);
     }
-    return parsed.data;
-  } finally {
-    clearTimeout(timer);
   }
+  throw new Error(`signature synthesis validation failed: ${lastError}`);
 }
 
 // ─── Orchestrator ────────────────────────────────────────────────────────────────
