@@ -151,6 +151,60 @@ reasoning model is now itself called flash. **Read the CONSTANT, never the word.
 
 ## 2. The work, ranked
 
+> ## ✅ CLOSED 2026-08-04 (later session) — P0, P1 and P2 are all DONE
+>
+> **P0 — #426 MERGED.** `origin/main` `73448823`. A third holdout landed on the lane before the
+> merge: **CALIBRATE is now scoped to `QWEN_CALIBRATE_MODEL` and held on plus** — flash scored
+> **0/7** on `scripts/calibrate-synth-harness.ts`, unable to make a 10-way allocation sum to 1. That
+> is not a quality regression, it is an OUTAGE: `defaultSynthesize` has no retry, so every audience
+> bake would return `{error:"scrape_failed"}` *after* paying for the Apify scrape, on the onboarding
+> path. The stack is now **four** constants — omni-flash / reasoning-flash / **Apollo-plus** /
+> **CALIBRATE-plus**. §1b's "two models, one holdout" is superseded; the §1b warning against
+> collapsing them is now doubly load-bearing.
+> Gated on the real merge result in a clean worktree, not on either side: tsc 0, suite 5163 passed /
+> 0 failures, and main's 47 intervening commits touch **zero** files the lane touches.
+>
+> **P1 — DONE, and the leak is REAL.** ⚠️ The framing here was wrong: `/api/tools/chat` **401s** an
+> unauthenticated request, so "a real unauthenticated session" proves nothing. The `/go` visitor is a
+> Supabase **anonymous** user (`is_anonymous` claim — what `isSealedVisitor` reads). Driven live via
+> `scripts/live-chat-anon.mjs`: **6/6 refused, 0 dispatches, 0 cards**. But the residual leak
+> reproduced **live** at ~1–2 in 6 — a paste-ready line delivered as an illustration
+> (`"the $47 I lost every month without noticing"`), which the directive explicitly bans. Still open;
+> the candidate fix is structural (buffer-and-redact quoted spans on the unbound path only), not more
+> prompt text.
+>
+> **P2 — DONE, 8/12 → 10/12.** `read` bound (tier 1), `predict`/`profile` brokered (tier 2).
+> The Apify question is **settled: `read` touches no Apify path at runtime** —
+> `runTwoAudienceRead` awaits exactly one thing, `runFlashTextMode`; the only edge in its whole
+> import graph is `resolve-tier → socials-calibration`, whose `domain-pack` import is `import type`
+> (erased at compile), and both modules were extracted as leaves precisely to keep
+> `runPredictionPipeline → apify-client` out.
+>
+> **Also found and fixed — the owner-reported memory gap.** `openChatPriorTurns` kept only `markdown`
+> plus the three generator cards, so **107 of 982 persisted blocks (11%)** — every non-generator
+> skill — were invisible to the agent, and a skill run from the *pill* left no turn at all. Pure
+> conversation was never the problem (3/3 live recall). Every skill block now carries a one-line
+> context record. See `chat-reachability.test.ts`, which closes all three loops so this cannot rot.
+>
+> **✅ DEPLOYED — flash is LIVE.** Production deployment `dpl_AZy6xhYq8diofvwfRFJkVCRbHNMX`, **READY**,
+> `target: production`, ref `main`, sha **`e175e95d`** — the #425 merge, which builds main HEAD and
+> therefore carries #426. Verified against Vercel's own deployment record.
+>
+> ⚠️ **But this handoff's "prod builds ~3s after the merge" is WRONG, and it cost a false alarm.**
+> The real latency here is **~4 minutes**. For 13 minutes after the #426 merge there was no
+> production row anywhere, and two independent reads agreed there was none — which matches
+> [[vercel-git-disconnected]]'s tell for "the integration is down" and produced a confident,
+> incorrect "the merge did not deploy".
+>
+> 🔑 Two things to know before repeating that mistake:
+> 1. **GitHub's `repos/.../deployments` API LAGS Vercel and is not the source of truth.** It still
+>    listed `558df8f5` as newest while a production build for `e175e95d` was already READY. Read
+>    Vercel's own `list_deployments` / project `latestDeployment` instead.
+> 2. **A queued production build is invisible until it resolves.** A poll window that starts after
+>    the merge can return zero rows while the build is genuinely in flight. Poll for several minutes
+>    before concluding anything — "no rows at all" only means the integration is down if it *stays*
+>    that way.
+
 ### P0 — Decide #426 (the flash swap)
 Everything is measured: rebased, tsc clean, suite green, Apollo re-verified, dispatch unchanged, fold
 diversity healthy. It is a **~10× cost reduction on every text and video call**, the single biggest

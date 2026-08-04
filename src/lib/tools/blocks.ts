@@ -15,6 +15,7 @@
 
 import { z } from "zod";
 import { HookProofSchema, type HookProof } from "./proof-schema";
+import { SKILL_INPUT_ACTIONS } from "./skill-capabilities";
 import {
   ProfileReadBlockSchema,
   ReactionDistributionBlockSchema,
@@ -860,7 +861,12 @@ export const InputRequestBlockSchema = z.object({
     // or an upload (a video file drop, with a URL alternative — the heaviest input, /test).
     kind: z.enum(["link", "text", "none", "upload"]),
     // The skill the submitted value (or button tap) runs, in-thread on its own route.
-    action: z.enum(["remix", "account", "explore", "read", "test"]),
+    //
+    // DERIVED from SKILL_CAPABILITIES, not restated. skill-capabilities.ts has always documented
+    // this enum as deriving from its keys ("so they can't drift") — it did not, it was a hand-kept
+    // copy, and adding a capability there left blocks that the write boundary rejected. The import
+    // is safe: skill-capabilities.ts is pure data with no imports and no React.
+    action: z.enum(SKILL_INPUT_ACTIONS as [string, ...string[]]),
     // Field label / confirm-card prompt + placeholder (deterministic copy, set by the loop — never model text).
     label: z.string().min(1),
     placeholder: z.string().optional(),

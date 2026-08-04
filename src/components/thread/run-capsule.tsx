@@ -59,6 +59,9 @@ export const SKILL_RUN_META: Record<string, SkillRunMeta> = {
   // the in-thread Test wait speaks the identical language as the full-page one.
   read: { running: 'Reading it past your audience', done: 'Read by your audience', took: 'Read in', plan: [] },
   account: { running: 'Reading your account', done: 'Read your account', took: 'Read your account in', plan: [] },
+  // Also single JSON POSTs with no stage events → a one-row capsule, same as read/account.
+  predict: { running: 'Predicting the outcome', done: 'Predicted by your panel', took: 'Predicted in', plan: [] },
+  profile: { running: 'Reading the evidence', done: 'Read the evidence', took: 'Read in', plan: [] },
   test: {
     running: 'Testing your video',
     done: 'Tested against your audience',

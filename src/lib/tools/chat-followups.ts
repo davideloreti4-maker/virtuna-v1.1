@@ -68,7 +68,11 @@ export type ChatTurnKind =
   | "account"
   | "test"
   | "predict"
-  | "profile";
+  | "profile"
+  // A concept Read (`multi-audience-read`). It was missing from this union while the block type
+  // already existed, so every Read turn classified as plain "chat" and drew the generic
+  // "Give me ideas / Write hooks / Draft a script" chips under an audience verdict.
+  | "read";
 
 // ─── Classifier ────────────────────────────────────────────────────────────────
 
@@ -86,6 +90,7 @@ export function classifyTurn(blockTypes: readonly string[]): ChatTurnKind {
   if (has("outlier-grid")) return "explore";
   if (has("reaction-distribution") || has("prediction-gauge")) return "predict";
   if (has("profile-read")) return "profile";
+  if (has("multi-audience-read")) return "read";
   if (has("script-card")) return "script";
   if (has("hook-card")) return "hooks";
   if (has("idea-card")) return "ideas";
@@ -175,6 +180,18 @@ const FOLLOWUPS: Record<ChatTurnKind, ChatFollowup[]> = {
     { label: "Draft a message", prompt: "Draft a message to this person that would actually land." },
     { label: "What do they want?", prompt: "What does this person care about most right now?" },
     { label: "Test another", prompt: "Let me test a different message on them." },
+  ],
+  // Concept Read ran (the audience's verdict on something the creator wrote) → the next moves are
+  // understanding the verdict, acting on it, and running the next thing past them.
+  //
+  // "Read another" carries NO `skill` deliberately. A pinned chip forces the tool on round 1, and a
+  // Read cannot run without the text to read — a subject-less pin would force the call, trip the
+  // loop's "no draft" guard and spend the turn on an error. Left unpinned, the agent surfaces the
+  // read FIELD instead, which is the door that actually collects it.
+  read: [
+    { label: "Why that reaction?", prompt: "Why did my audience react to this the way they did?" },
+    { label: "Make it land better", prompt: "Rewrite this so it lands better with my audience.", skill: "hooks" },
+    { label: "Read another", prompt: "Let me run something else past my audience." },
   ],
 };
 

@@ -121,6 +121,7 @@ describe("followupsForTurn — never empty, always tappable", () => {
 describe("ChatFollowup.skill — the declared generator", () => {
   const ALL_KINDS: ChatTurnKind[] = [
     "chat", "ideas", "hooks", "script", "remix", "explore", "account", "test", "predict", "profile",
+    "read",
   ];
   const everyChip = ALL_KINDS.flatMap((k) => followupsForKind(k));
 
@@ -131,7 +132,10 @@ describe("ChatFollowup.skill — the declared generator", () => {
     // rather than discovered live. (The two namespaces differ in exactly one id; that is how F-017
     // shipped, and no cast between them can fail at compile time.)
     const bound = new Set(SKILL_TOOLS.map((s) => s.skillKey));
-    expect(bound).toEqual(new Set(["ideas", "hooks", "script"]));
+    // A deliberate snapshot of the registry, so growing it is a decision someone writes down.
+    // `read` joined the three generators on 2026-08-04: the first non-generator bound to the loop,
+    // and the only one of its neighbours that touches no Apify path (verified, not assumed).
+    expect(bound).toEqual(new Set(["ideas", "hooks", "script", "read"]));
     for (const chip of everyChip) {
       if (chip.skill) expect(bound.has(chip.skill)).toBe(true);
     }
@@ -167,6 +171,12 @@ describe("ChatFollowup.skill — the declared generator", () => {
       "More like this", // explore — no bound tool
       "Find more",
       "Remix the best one",
+      // A Read turn's own chips. "Read another" is unpinned DELIBERATELY even though `read` is now
+      // bound: a pin forces the tool on round 1, and a Read cannot run without the text to read —
+      // so a subject-less pin would spend the turn tripping the loop's "no draft" guard. Unpinned,
+      // the agent surfaces the read FIELD, which is the door that collects it.
+      "Read another",
+      "Why that reaction?",
     ]) {
       expect(byLabel.has(label)).toBe(true); // the label still exists (catches a silent rename)
       expect(byLabel.get(label)).toBeUndefined();
