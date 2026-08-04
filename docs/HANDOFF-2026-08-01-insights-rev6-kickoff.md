@@ -1181,24 +1181,53 @@ Shots refreshed at `docs/mockups/reference-2026-08-01/audit-*.png` (14, committe
 > from a fresh load. And a fixed `waitForTimeout` after `domcontentloaded` is not hydration; on a cold
 > dev route it silently produces "button not found". Wait on the element.
 
-### Still open — the four this pass did NOT touch
+### The three honesty-spine items — CLOSED (2026-08-04, `4a2868ff` + `d4680365`)
 
-Three are honesty-spine calls, one is the owner's:
+**1. The live retention curve contradicted its own headline.** "66% gone by 0:04" (⇒34% remain) over
+chips reading `0:04 34% · 0:05 34% · 0:07 52%`. The cause was one field read as another, by five
+consumers. `weighted_curve` is — in `engine/types.ts`'s own words — "weighted aggregate **ATTENTION**
+per segment", an intensity that legitimately rises when a clip re-grips the room. It was drawn under
+the title "Retention", annotated "N% gone by", banded by `curveBreak` into "the share still watching",
+divided into "Avg watch", and a fifth consumer read `weighted_completion_pct` as "Watched full" —
+though its producer comment calls it the "weight-normalized mean of per-persona timeline mean", i.e.
+mean attention under a name containing `completion`.
 
-1. **The live retention curve contradicts its own headline** — "66% gone by 0:04" (⇒34% remain) over
-   chips reading `0:04 34% · 0:05 34% · 0:07 52%`. Retention cannot rise unless it is
-   concurrent-viewers-with-rewatch, which nothing on the card says.
-2. **The live Engagement "Key metrics" names no scale** — the authored card says "vs your last 41
-   videos"; live has no right-meta at all, and `Watched full 58%` carries no denominator. Naming a
-   scale is not fabricating a benchmark; this one is safe to fix and was deferred only for scope.
-3. **"Activation per second" draws a 6s timeline on the TEXT template** — while §3.3's "text has no
-   timeline" is exactly why "When they react" is video-only.
-4. **The applied fix moves retention + cortex and nothing else** (`detail-fixture.ts:170` carries
-   `retention`/`tiles`/`rank`/`reaction` only). Signal breakdown, Network activation and Activation
-   per second are byte-identical before and after, so the cortex visibly repaints while the three
-   cards describing that same brain sit still. **Not fixable by inventing deltas** — same sin as a
-   fabricated benchmark. It is a decision: leave it, mark those cards "measured before the fix", or
-   hide them in the applied state. **Owner's call.**
+> 🔑 **The honest curve was one field away the whole time.** The fold emits `swipe_predicted` beside
+> attention and its own prompt pins the semantics — it "becomes true at the scroll-away moment and
+> stays true for all subsequent segments", i.e. **monotonic by construction**. `swipe_predicted_at`
+> persists the second it flipped and `HeatmapPayload` has always carried it. `retentionCurveOf()` and
+> `watchStatsOf()` derive the real share still watching, the real avg watch and a real completion
+> rate from it, using the aggregator's own weighting helpers so both curves share a denominator.
+> Nothing was invented, and nothing had to be hidden.
+
+Live now: **"58% gone by 0:04" over chips 42% · 42% · 27%** — monotonic, nothing above 100%.
+
+> ⚠️ **Both fixtures carried `personas: []` beside a populated `weighted_curve`** — a shape production
+> cannot emit, since the curve is COMPUTED from the personas. *That* is what let this survive: with no
+> swipe data there was nothing to contradict the attention reading. Both now carry a real cast, and
+> the live one finally matches its own docstring ("the exact shape `/api/analyze` Max writes").
+> The tell was in the unlock sentence, which no test asserted on: reading a ratio of two attention
+> values as a share, it rendered **"200% of the room still watching at 0:06 stays to the end."** A new
+> guard fails any percentage above 100 in that sentence.
+
+**2. The live "Key metrics" now names its scale** — `this clip · no baseline yet`. The authored card
+says "vs your last 41 videos" because the design demo holds a catalogue; live holds none, so it says
+so. Naming a scale is not inventing a benchmark.
+
+**3. The TEXT activation grid no longer prints seconds it does not have.** `clipSeconds: 6` is a
+nominal proxy for the cortex loop, and it was surfacing as "6s · 10 systems / 0s → 6s / each cell = 1s"
+— three lines under the comment that took the modeled retention curve off the text driver for exactly
+this reason. `KpiHeatmapData.untimed` keeps all ten rows (the owner's parity call stands) and drops
+only the clock: the head reads "Where each system fires", the axis start → end. Video is untouched.
+
+### Still open — ONE item, and it is the owner's
+
+**The applied fix moves retention + cortex and nothing else** (`detail-fixture.ts:170` carries
+`retention`/`tiles`/`rank`/`reaction` only). Signal breakdown, Network activation and Activation per
+second are byte-identical before and after, so the cortex visibly repaints while the three cards
+describing that same brain sit still. **Not fixable by inventing deltas** — same sin as a fabricated
+benchmark. It is a decision: leave it, mark those cards "measured before the fix", or hide them in the
+applied state.
 
 Also unresolved, and NOT a finding: "Who spreads it" renders per-segment multipliers sorted
 descending (Returning ×3.2 → Outside niche ×0.3). That is a carrier ranking, and this repo carries a
