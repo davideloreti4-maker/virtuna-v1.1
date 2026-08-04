@@ -618,6 +618,17 @@ export function BrainFrame({
           onSeeEvidence={onSeeEvidence}
         />
       ) : null}
+      {/* Applying the fix fires NO model call — it swaps in the projected state, so the evidence below
+          is still the read of the clip as posted. That is why Signal breakdown, Network activation and
+          Activation per second sit byte-identical while the hero repaints: no fold ran, so there is no
+          delta to draw. Naming it costs one line; leaving it unsaid makes a working surface look broken,
+          and the alternative — hiding the cards — would hide the only measured thing on the page.
+          Simline grammar (10px, faint, dot-separated), because this is a disclosure, not prose. */}
+      {applied ? (
+        <div className="mt-4 text-[10px] leading-[1.5]" style={{ color: TONE.faint }}>
+          Everything below is measured on the clip as posted · the trim is projected, not re-simulated
+        </div>
+      ) : null}
       {/* ◇ the driver axis. The attention scrubber is NOT here: retention is what the room DID with
           the clip, so it belongs on Engagement with the video that produced it (owner, twice). */}
       {driver.kind === "reason-breakdown" ? <ReasonsCard data={driver.data} /> : null}
