@@ -1127,7 +1127,123 @@ Audience = hero + 5 cards. Deleted from the codebase: `.actionbar` + `syncBar()`
 Engagement (1 `.rank`, 3 `.rrow`), 5 on Audience, plus all standing probes. Green. Shots
 `rev12-*.png` (8). Same artifact url.
 
-## 24. NEXT SESSION — START HERE. The fixture is fixed, the method is decided, the build is next (2026-08-04)
+## 25. NEXT SESSION — START HERE. Four of six done; the last two are engine projects, not cards (2026-08-04)
+
+§24 is now HISTORY — its steps 1–4 are done. Read this section, then §6 (laws) and §16–§18 (the design).
+§10 · §12 · §13 · §19 · §21 · §23 · §24 are superseded.
+
+### Where everything stands
+
+| | ref | state |
+|---|---|---|
+| `task/insights-rework` | **`01b461aa`** == origin | rebased onto `origin/main` `8896bac7`. tsc clean · **5120 vitest** · prod build · eslint clean on every touched file |
+| PR **#412** | open | ⚠️ `origin/main` had moved TWICE past what §24 recorded — it said `e8d2fb7c`, it was actually `8896bac7`. Re-check before merging; do not trust a recorded sha |
+
+### 25.1 What shipped this session (four commits)
+
+1. **`f0ed6c89` — Key metrics owns watch depth.** Live Engagement was printing THREE answers to one
+   question: `Avg watch 6.1s of 0:12` (51%, audience-weighted off swipe times), `Watched full 22%`
+   (share who reached the end), and `65% watch-through` repeated under all four verbs (the
+   aggregate's flat UNWEIGHTED mean over the same ten people).
+   ⚠️ **§24 asked for a RENAME and a rename cannot work** — the collision is between the NUMBERS,
+   not the words; any third watch-depth percentage competes with the two above it. The module's own
+   producer note (`ambient-v2-video-population.ts:262`) already forbids "a second, differently
+   weighted figure for the same run". So the figure left the card. `watchThroughPct` stays in the
+   type with the full reasoning on it. What replaced it is the disclosure that was missing all
+   along: the four values are a **0–100 intent index** and nothing said so — beside authored's
+   "Saves 102", a bare "Save 39" reads as a headcount. Head carries the unit, drawer carries the
+   weighting (it cannot go in the head: `meta` is `whitespace-nowrap` on a 440px rail).
+2. **`032f4287` — the applied fix names itself a projection.** One line between the answer and the
+   evidence: *"Everything below is measured on the clip as posted · the trim is projected, not
+   re-simulated."* All three cards kept, per the owner. Also the **first test coverage the applied
+   state has ever had** (4 cases through the real mount).
+3. **`01b461aa` — the rank strip, BUILT.** See 25.2.
+4. Plus this section.
+
+### 25.2 The rank strip — built, and what the data forced
+
+Live now draws **"vs your last 14 simulations"**, median 40%, this clip 22%. It plots **Watched full,
+in percent, from `watchStatsOf`** — the same producer as the tile it sits under, so the marker IS the
+number printed above it. Not seconds: the authored demo's 0–28s track works because every clip in it
+is the same clip, and 9.7s means opposite things on a 12s and a 60s clip. Label says **simulations**,
+never "videos" — modeled runs of the creator's drafts, not measured posts.
+
+Two things measured against prod (2026-08-04) changed the design:
+
+- **68 rows, 4 users, 23 with a fold — and exactly ONE user has a catalogue at all.** The empty and
+  thin states are the common path, not the edge case. Below **5** runs the strip omits itself.
+- 🔑 **Six of 21 rows report ZERO finishers while claiming a `completion_pct` of 77–83 in the same
+  row.** All six are engine `3.0.0`/`3.2.0`; all 14 rows from `3.8.0` on have finishers. Those
+  engines never emitted the `swipe_predicted_at === null` sentinel — they are **not** videos nobody
+  finished. Admitted, each would have put a fabricated **0%** into the creator's own baseline,
+  dragged the median down, and made every new clip rank flatteringly well against a defect. Hence an
+  **engine floor**, deliberately a VERSION test aimed at the cause and not a "drop rows reading
+  zero" filter, which would delete the genuinely bad videos a baseline most needs.
+
+### 25.3 ⛔ The last two have NO producer, and neither is a card-wiring job
+
+§24.3 chose "build all three producers". Two of them cannot be built from what the platform holds.
+This is the §24.5 step-5 discipline applied to both — scoped against the real schema and the real
+table, not remembered.
+
+**① Reaction TIMING ("When they react") — the engine is explicitly instructed not to emit it.**
+`PersonaSimulationResultSchema` (`engine/types.ts:794`) is the whole of Wave 3's per-persona output:
+`scroll_past_second` · `watch_through_pct` · four 0–100 intents · `reasoning`. The only timing in it
+is **when a persona LEAVES**. And the fold prompt does not merely omit reaction timing — it forbids
+it: `wave3/fold-prompts.ts:138`, *"Do NOT include timestamps — timing comes from the input grid."*
+A grep for any `*_at` / `reaction_second` field across `src/lib/engine/` returns nothing.
+→ Building it means **new engine output**: a Pass-3 asking each persona when it would act — a new
+billed call, a schema change and an `ENGINE_VERSION` bump. Deriving a per-second curve from intent
+magnitude is the `4a2868ff` fabrication, one axis over. **Live correctly shows no such card today.**
+
+**② `distribution` / "Where & when" — both halves are traps, and the honest half is already on screen.**
+Set by `detail-fixture.ts:341` and nowhere else; no adapter touches it.
+- *Where (`surfaces`)*: nothing in the platform produces a traffic-surface mix. The tempting source
+  is the fold's `slot_type` (`fyp` · `niche_deep` · `loyalist` · `cross_niche`) — but that is the
+  **input sampling frame**, the composition the engine was asked to simulate, not a predicted
+  outcome. Drawing it as "where this will surface" reports the INPUT as a RESULT (`tie-is-not-a-
+  ranking`, one level up). 🔑 **And the honest content is ALREADY on the page** — it is the
+  traffic-pool split on Audience (§16.1's one taxonomy). A "Where & when" card would restate it
+  under a name it cannot support.
+- *When (`week`)*: a producer EXISTS — `computeOptimalPostWindow` — and it is a dead end.
+  ⚠️ **`niche_post_windows` has 0 rows**, so the niche branch has never fired in production once.
+  All **36** rows carrying an `optimal_post_window` hold the byte-identical fallback:
+  `Tue 18:00–21:00 UTC · source:"fallback"` — whose own `reasoning` string reads *"Default
+  recommendation — niche-specific data unavailable"*. One hardcoded constant, same for every user
+  and every video. On an insights rail that is not a read of this clip.
+  → Building it means **new DATA**: populating `niche_post_windows` from real outcome data. That is
+  a pipeline, not a card.
+
+### 25.4 What is actually worth doing next
+
+1. **Take 25.3 to the owner.** The "build all three" decision was taken believing all three were
+   wiring gaps. One was, and it is built; the other two are an engine project and a data pipeline.
+   That is a scope call, not an implementation detail.
+2. The two §22 leftovers, both still open and independent: the systematic build-vs-design diff
+   (`impl-*.png` vs `rev12-*.png`), and whether "Who spreads it" may rank carriers on Audience (the
+   rev-12 test only bans it on Engagement).
+3. ⚠️ **`lane/qwen-flash-swap` (`83d880eb`) is still unmerged and has no PR** — untouched this
+   session. Its SSOT is `docs/MODEL-POLICY.md` **on that lane**. See §24.4.
+
+### 25.5 Loop + traps (all of these cost time again this session)
+
+- `npx tsc --noEmit` **AND** `node node_modules/vitest/vitest.mjs run`, then `npm run build`.
+- ⚠️ **The suite carries 3 pre-existing unhandled errors** (`composer.tsx` + a port-3000 fetch) with
+  0 failures. They are NOT yours — confirm by stashing and re-running before chasing them.
+- ⚠️ **The post-commit hook cannot push a rebased branch** (non-fast-forward, silent no-op). After a
+  rebase, `git push --force-with-lease` by hand and verify with `git rev-parse origin/<branch>`.
+- ⚠️ **Hand-arithmetic keeps being wrong here.** The median of the fixture catalogue "looked like"
+  45 and is 40; the avg-watch figure computed by hand as 7.5s renders as 6.1s. Measure, then write.
+- Live: `/ambient-v2` chips are **UPPERCASE** (`② BRAIN`, `CREATOR · LIVE ADAPTER`) — `getByText`
+  on the lowercase label from §7 times out. Warm the route with one `curl` first: a cold turbopack
+  compile outruns a 30s Playwright timeout. One fresh page load per state.
+- **Never let an adapter synthesise a missing figure so the pages match** (§20/§22, `4a2868ff`).
+- ⚠️ **Merging to `main` IS deploying** — prod builds ~3s after the merge, no preview URLs, and the
+  rail also ships on `/go`. Verify BEFORE.
+
+---
+
+## 24. Rev 12→parity: the fixture fix, the matrix, the method — SUPERSEDED by §25 (2026-08-04)
 
 §23 is now HISTORY — its step 1 and step 3 are done. Read this section, then §23's ② / ③ lists (still
 the honest inventory of what has no producer), then §6 (laws) and §16–§18 (what the design is).
