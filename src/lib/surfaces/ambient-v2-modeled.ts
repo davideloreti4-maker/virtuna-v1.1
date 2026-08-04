@@ -177,6 +177,9 @@ export function modeledSignalGrid(input: ModeledBrainInput): SignalCell[] {
         ? "No visual substrate — a text concept has no opening frame to read."
         : `${toneLead} — modeled from ${d.frag} at a ${Math.round(input.stopPct)}% stop rate${anchor}.`,
       ...(muted ? { muted: true as const } : {}),
+      // the grade already bands on `100 − score` for these (line above); tell the CARD so, or the
+      // reader sees the same number graded oppositely under one named scale.
+      ...(d.invert ? { lowerIsBetter: true as const } : {}),
     };
   });
 }
@@ -488,9 +491,12 @@ export function modeledDecisionStates(
   const friction = rs.filter((r) => r.loss).sort((a, b) => b.count - a.count)[0];
 
   const raw: Omit<DecisionStatesData["states"][number], "share">[] = [
-    { key: "sold", label: "Stopped", count: stopped, lever: pull ? `the hook landed — lead with ${pull.label.toLowerCase()}` : "the hook caught them" },
-    { key: "winnable", label: "Almost", count: almost, lever: friction ? `nearly stopped — fix ${friction.label.toLowerCase()}` : "nearly stopped — tighten the open" },
-    { key: "skeptical", label: "Not for them", count: wrongFit, lever: "wrong fit — not their content" },
+    // Plain BEHAVIOUR, and no "stop" anywhere. The verb was the room's good outcome (they stopped
+    // SCROLLING) and every creator's loss, so one word carried two opposite polarities on the same
+    // screen. "Almost stayed" is the product's best concept and now says what it means.
+    { key: "sold", label: "Watched", count: stopped, lever: pull ? `the hook landed — lead with ${pull.label.toLowerCase()}` : "the hook caught them" },
+    { key: "winnable", label: "Almost stayed", count: almost, lever: friction ? `nearly stayed — fix ${friction.label.toLowerCase()}` : "nearly stayed — tighten the open" },
+    { key: "skeptical", label: "Wrong audience", count: wrongFit, lever: "wrong fit — not their content" },
     { key: "gone", label: "Scrolled past", count: scrolled, lever: "never caught — kept scrolling", loss: true },
   ];
   const states = raw.map((s) => ({ ...s, share: total ? Math.round((s.count / total) * 100) : 0 }));
@@ -530,7 +536,10 @@ export function modeledSwing(agg: PopulationAggregate): SwingData | undefined {
     nearMiss,
     fromPct,
     toPct,
-    gainLabel: `+${gain}% would stop`,
+    // The verb "stop" is BANNED on this surface. The live rail meant it as the GOOD outcome
+    // (they stopped SCROLLING); TikTok, the mock and every creator read it as the loss. One verb,
+    // two polarities, so the label states the movement instead of naming an outcome word at all.
+    gainLabel: `+${gain}% of the room`,
     read: `${nearMiss} ${nearMiss === 1 ? "viewer" : "viewers"} stalled right at the line in ${fence.displayName} — not gone, just unconvinced. Win them and the room moves from ${fromPct}% to ${toPct}%.`,
   };
 }

@@ -1,222 +1,366 @@
 /**
- * CREATOR_TEMPLATE — the first DomainTemplate on the platform (creator · content).
+ * CREATOR_TEMPLATE — the first DomainTemplate on the platform (creator · content), authored to the
+ * rev-12 design.
  *
- * Authored from the round-4 design data (`.scratch/panel-v6-round4.html`) into the slot contract
- * (`domain-template.ts`). This is template #1: it fills the invariant Brain/Population role-frames
- * with the CREATOR figures (attention-scrubber · tri-state) and inherits every shared slot (cortex ·
- * terrain · voices · footer · ask-why). A second domain (pricing, A/B, survey) is authored the same
- * way — one template object, new figures into the swap slots — never a fork of the frames.
+ * This is the design artefact: the numbers below are the ones the owner signed off on in
+ * `docs/mockups/insights-rev6-hero-restored-2026-08-01.html`, moved into the slot contract so the
+ * React rail renders the reviewed page rather than an approximation of it. It fills the invariant
+ * Brain / Engagement / Population role-frames with the CREATOR figures and inherits every shared
+ * slot. A second domain (pricing, A/B, survey) is authored the same way — one template object, new
+ * figures into the swap slots — never a fork of the frames.
  *
- * Values are unchanged from the prior DETAIL_R4 fixture, so the creator view renders identically
- * (the refactor's regression anchor). Brain data is MODELED, not measured (corner chips + `modeled`
- * tags carry that honesty). NOTE: r4's signal labels are the design target; the live signal set
- * names them differently — reconciled when the P2 σ→plain-words rework lands.
+ * Honesty: every count here is PROJECTED for a post that does not exist yet, and the surface says
+ * so — the identity row carries a `projected` tag and is dimmed, the applied state is tagged
+ * `projected`, and the sim disclosure is the last line of every page. The adapters
+ * (`ambient-v2-brain.ts` / `-population.ts` / `-drill.ts`) derive the same blocks from real
+ * persisted output and OMIT what no producer exists for — notably reach, the creator's own median
+ * post, and the last-41 catalogue. Those three appear here because this is the design's demo clip.
+ *
+ * ONE UNIT on the surface: every percentage is "share of the room still watching". Anything on
+ * another scale (the 0–100 signal scores, the z-scores, the per-second grid) says which scale it is
+ * on, in its own card's right-meta. The verb "stop" is BANNED — the live rail meant it as the GOOD
+ * outcome (stopped scrolling) while every creator reads it as the loss.
  */
 
-import type { DomainTemplate } from "./domain-template";
+import type { DomainTemplate, MetricTile, SignalCell } from "./domain-template";
 
-// ── deterministic fixture builders for the Sapient-depth sections ──────────────
-// Seeded (no Math.random) so the heatmap + buy-intent curve are byte-identical on server & client.
-function seededLcg(seed: number) {
-  let s = seed >>> 0;
-  return () => {
-    s = (s * 1664525 + 1013904223) >>> 0;
-    return s / 4294967296;
-  };
-}
+const CLIP = 28;
 
-const HEAT_SECONDS = 12; // matches the clip length (clipSeconds)
-const KPI_LABELS = ["Visual", "Audio", "Face", "Text", "Language", "Effort", "Reward", "Affect", "Story", "Surprise"];
-const KPI_ROWS = KPI_LABELS.map((label, r) => {
-  const rnd = seededLcg(1009 + r * 37);
-  return {
-    label, // single word — the rail stays one line per row (no wrap collisions)
-    values: Array.from({ length: HEAT_SECONDS }, (_, i) => {
-      const wave = 52 + 26 * Math.sin(i * 0.72 + r * 0.9); // a per-row phase → the grid reads as structured, not noise
-      const jit = (rnd() - 0.5) * 34;
-      return Math.max(6, Math.min(100, Math.round(wave + jit)));
-    }),
-  };
-});
+/** `heatmap.weighted_curve` — the share of the room still watching, per second. */
+const CURVE = [
+  1, 0.84, 0.58, 0.38, 0.358, 0.348, 0.342, 0.336, 0.33, 0.325, 0.32, 0.316, 0.311, 0.306, 0.302,
+  0.297, 0.293, 0.288, 0.284, 0.279, 0.274, 0.269, 0.264, 0.258, 0.251, 0.243, 0.234, 0.222, 0.209,
+];
+/** The creator's OWN median post — the only benchmark band we hold (never an industry band). */
+const MEDIAN = [
+  1, 0.92, 0.76, 0.58, 0.5, 0.462, 0.44, 0.425, 0.412, 0.4, 0.389, 0.378, 0.368, 0.358, 0.348,
+  0.339, 0.33, 0.321, 0.312, 0.303, 0.294, 0.284, 0.274, 0.264, 0.253, 0.241, 0.227, 0.21, 0.175,
+];
+/** The re-simulated curve after the trim — the payoff now opens the video. */
+const TRIMMED = [
+  1, 0.96, 0.92, 0.89, 0.86, 0.835, 0.81, 0.79, 0.77, 0.752, 0.735, 0.72, 0.705, 0.69, 0.676, 0.662,
+  0.648, 0.634, 0.62, 0.605, 0.59, 0.574, 0.557, 0.539, 0.52, 0.5, 0.478, 0.454, 0.428,
+];
+
+const SCRIPT =
+  "I spent four hundred dollars testing every viral hook format so you don't have to and the one " +
+  "that won wasn't the one anyone teaches here's what actually happened I ran the same script " +
+  "twelve times and changed only the first three seconds";
+
+/** avg-watch seconds across the creator's last 41 videos — the Key-metrics benchmark, DRAWN. */
+const RANK41 = [
+  3.1, 4.2, 4.8, 5.5, 6.1, 6.6, 7.0, 7.4, 7.9, 8.3, 8.6, 9.0, 9.3, 9.9, 10.2, 10.5, 10.8, 11.0,
+  11.2, 11.5, 11.8, 12.1, 12.4, 12.8, 13.1, 13.5, 13.9, 14.4, 14.9, 15.4, 16.0, 16.7, 17.5, 18.4,
+  19.4, 20.5, 21.7, 23.0, 24.4, 25.9, 27.4,
+];
+
+/** Per-second reaction intensity on the clip's own axis — WHEN saves, shares and comments fire. */
+const REACT = [
+  { label: "Saves", count: 102, intensity: [0.1, 0.06, 0.03, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.04, 0.05, 0.06, 0.08, 0.1, 0.13, 0.16, 0.2, 0.26, 0.34, 0.45, 0.58, 0.74, 0.88, 1, 0.62] },
+  { label: "Shares", count: 45, intensity: [0.05, 0.03, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.03, 0.04, 0.05, 0.07, 0.09, 0.12, 0.16, 0.22, 0.3, 0.42, 0.56, 0.72, 0.9, 1, 0.7] },
+  { label: "Comments", count: 16, intensity: [0.5, 0.35, 0.2, 0.1, 0.06, 0.05, 0.05, 0.06, 0.07, 0.08, 0.1, 0.12, 0.14, 0.15, 0.16, 0.17, 0.18, 0.2, 0.22, 0.25, 0.29, 0.34, 0.4, 0.48, 0.58, 0.7, 0.84, 1] },
+];
+
+const WATCH: MetricTile[] = [
+  { label: "Avg watch", value: "9.7s", delta: "↓1.5s · of 0:28", lead: true },
+  { label: "Watched full", value: "3.1%", delta: "↓6.3 pts" },
+  { label: "Rewatch", value: "1.19×", delta: "↑0.15 · top 20%" },
+];
+const WATCH_DONE: MetricTile[] = [
+  { label: "Avg watch", value: "16.4s", delta: "↑5.2s · of 0:25", lead: true },
+  { label: "Watched full", value: "9.8%", delta: "↑0.4 pts" },
+  { label: "Rewatch", value: "1.19×", delta: "↑0.15 · top 20%" },
+];
+/** Reactions read as COUNTS of the projected reach — creators think in saves, not in percentage
+ *  points of modeled viewers. The rate rides the delta line; the denominator is the card's meta. */
+const REACTIONS: MetricTile[] = [
+  { label: "Saves", value: "102", delta: "3.2% of viewers ↑", lead: true },
+  { label: "Shares", value: "45", delta: "1.4% of viewers ↑" },
+  { label: "Comments", value: "16", delta: "0.5% of viewers ↓" },
+  { label: "Follows", value: "13", delta: "0.4% of viewers ↓" },
+];
+const REACTIONS_DONE: MetricTile[] = [
+  { label: "Saves", value: "269", delta: "3.2% of viewers ↑", lead: true },
+  { label: "Shares", value: "119", delta: "1.4% of viewers ↑" }, // 45 × 2.64 — matches the timeline row exactly
+  { label: "Comments", value: "42", delta: "0.5% of viewers ↓" },
+  { label: "Follows", value: "34", delta: "0.4% of viewers ↓" },
+];
+
+/** The nine, on the 0–100 scale their card names. Grades carry NO colour — they are a cutoff on a
+ *  modeled signal, not a benchmark against real outcomes. */
+const SIGNALS: SignalCell[] = [
+  { key: "visual", label: "Visual Pull", score: 68, word: "Strong", tone: "strong", delta: 5, whyScore: "The opening frame pulls — it is the wait behind it that costs." },
+  { key: "voice", label: "Voice Impact", score: 37, word: "Weakness", tone: "weak", delta: 2, whyScore: "Even cadence; the claim lands without being pushed." },
+  { key: "grip", label: "Cognitive Grip", score: 50, word: "Okay", tone: "okay", delta: -1, whyScore: "Easy enough to follow — nothing here is hard work." },
+  { key: "emotion", label: "Emotional Hit", score: 57, word: "Okay", tone: "okay", delta: 6, whyScore: "$400 of your own money is a real stake." },
+  { key: "memory", label: "Memorability", score: 32, word: "Weakness", tone: "weak", delta: 2, whyScore: "The number sticks; the arc around it is familiar." },
+  { key: "attention", label: "Attention", score: 34, word: "Weakness", tone: "weak", delta: 6, whyScore: "Collapses by 0:03 and never recovers the room it lost." },
+  { key: "buy", label: "Buy Signal", score: 35, word: "Weakness", tone: "weak", delta: 4, whyScore: "Interest is real, but it arrives after most have gone." },
+  { key: "risk", label: "Hesitation / Risk", score: 58, word: "Weakness", tone: "weak", delta: 5, whyScore: "Resistance fires early — a claim before any proof.", lowerIsBetter: true },
+  { key: "effort", label: "Mental Effort", score: 50, word: "Okay", tone: "okay", delta: 0, whyScore: "No load spike; the cost is patience, not comprehension.", lowerIsBetter: true },
+];
+
+/** The seven networks, z-scored at the break. Rendered by FUNCTION (the anatomy lives in the
+ *  drawer): Body = somatomotor, Focus = dorsal attention, Alertness = ventral attention,
+ *  Emotion = limbic, Effort = frontoparietal, Mind-wandering = default mode. */
+const NETWORKS = [
+  { label: "Visual", z: 0.35, band: "slightly above" },
+  { label: "Somatomotor", z: 0.07, band: "about normal" },
+  { label: "Dorsal Attention", z: -0.73, band: "slightly below", loss: true },
+  { label: "Ventral Attention", z: -0.01, band: "about normal" },
+  { label: "Limbic", z: -0.72, band: "slightly below" },
+  { label: "Frontoparietal", z: -0.43, band: "slightly below" },
+  { label: "Default Mode", z: -0.52, band: "slightly below" },
+];
+
+const SYSTEMS = ["Visual", "Audio", "Face", "Text", "Language", "Effort", "Reward", "Affect", "Story", "Surprise"];
+/** Deterministic (no Math.random) so the grid is byte-identical on server and client. Retention
+ *  carries most of the weight and the per-system phase only textures it — the grid has to SHOW the
+ *  collapse after 0:03, not bury it under noise. */
+const KPI_ROWS = SYSTEMS.map((label, r) => ({
+  label,
+  values: Array.from({ length: CLIP }, (_, c) => {
+    const base = CURVE[Math.min(c, CURVE.length - 1)]!;
+    const phase = Math.abs(Math.sin(c * 0.7 + r * 1.9));
+    return Math.round(Math.max(0.05, Math.min(0.88, base * 0.72 + base * phase * 0.34)) * 100);
+  }),
+}));
+
+/** ONE taxonomy — relationship to the creator, TikTok's own analytics vocabulary. It runs the
+ *  terrain districts, these watch-time rows, the fit index and the spread multipliers. The archetype
+ *  namespace (builders / learners / skeptics / drive-by) is owner-RETIRED: never re-propose it. */
+const POOLS = [
+  { label: "New viewers", share: "65% of room", sharePct: 65, dropAt: "0:02", loss: true, curve: [1, 0.82, 0.44, 0.22, 0.17, 0.15, 0.14, 0.135, 0.13, 0.128, 0.125, 0.123, 0.12, 0.118, 0.115, 0.113, 0.11, 0.108, 0.105, 0.103, 0.1, 0.098, 0.095, 0.092, 0.089, 0.085, 0.08, 0.074, 0.066] },
+  { label: "Returning", share: "20% of room", sharePct: 20, dropAt: "0:11", curve: [1, 0.94, 0.86, 0.74, 0.68, 0.64, 0.61, 0.59, 0.57, 0.555, 0.54, 0.525, 0.51, 0.495, 0.48, 0.468, 0.455, 0.443, 0.43, 0.418, 0.405, 0.393, 0.38, 0.366, 0.35, 0.333, 0.313, 0.29, 0.26] },
+  { label: "Followers", share: "10% of room", sharePct: 10, dropAt: "0:21", curve: [1, 0.97, 0.93, 0.89, 0.86, 0.84, 0.82, 0.805, 0.79, 0.777, 0.765, 0.753, 0.74, 0.728, 0.715, 0.703, 0.69, 0.677, 0.663, 0.648, 0.632, 0.614, 0.594, 0.57, 0.542, 0.508, 0.466, 0.412, 0.34] },
+  { label: "Outside niche", share: "5% of room", sharePct: 5, dropAt: "0:03", curve: [1, 0.88, 0.62, 0.41, 0.33, 0.29, 0.27, 0.258, 0.248, 0.24, 0.233, 0.226, 0.22, 0.213, 0.207, 0.2, 0.194, 0.187, 0.181, 0.174, 0.168, 0.161, 0.154, 0.146, 0.137, 0.127, 0.115, 0.1, 0.08] },
+];
 
 export const CREATOR_TEMPLATE: DomainTemplate = {
   id: "creator",
   label: "Creator · content",
-  backLabel: "All 5",
-  pager: "hook 2 of 5",
-  verdict: { value: "38.2%", label: "would stop" },
-  // THE UNLOCK — the cheat code: a specific lever, the modeled gain, and the counterintuitive read
-  // (the opener already works; it's the *timing* that leaks — so the fix is cheap and high-yield).
+  backLabel: "The room",
+  pager: "clip 2 of 5",
+  verdict: { value: "62%", label: "leave by 0:03" },
   unlock: {
-    lever: "Cut to the payoff before 0:03",
-    gain: "+11% would stop",
-    insight: "The $400 opener already works — 190 stayed for it. It's the wait that loses the 253 skeptics, not the claim itself.",
+    lever: "Trim 0:00–0:03",
+    gain: "→ 8.4K",
+    insight: "The clip holds once it starts — 55% of the room still watching at 0:03 stays to the end. It is the first three seconds that lose the other 62%, not the rest of it.",
   },
 
+  identity: {
+    title: "“I spent four hundred dollars testing every viral hook format…”",
+    thumbLabel: "0:28",
+    stats: [{ kind: "play", value: "3.2K" }],
+    projected: true,
+  },
+
+  answer: {
+    head: "The first three seconds cap your reach.",
+    stats: [
+      { value: "62%", label: "leave by 0:03", loss: true },
+      { value: "3.2K", label: "vs usual 8.1K" },
+    ],
+    cortexCorner: "at 0:03, the drop",
+    verdict: { value: "62%", label: "leave by 0:03" },
+    evidence: "engagement",
+    fix: {
+      label: "Trim 0:00–0:03",
+      gain: "→ 8.4K",
+      applied: {
+        head: "The trim holds the room.",
+        stats: [{ value: "8.4K", label: "projected · usual 8.1K" }],
+        was: { value: "62%", label: "leave by 0:03" },
+        now: { value: "11%", label: "after the fix" },
+        verdict: { value: "11%", label: "leave by 0:03" },
+        cortexCorner: "after the trim",
+        thumbLabel: "0:25",
+        retention: {
+          curve: TRIMMED,
+          clipSeconds: 25,
+          anno: "11% gone by 0:03",
+          moments: [{ at: 2, pct: 92 }, { at: 9, pct: 75 }, { at: 21, pct: 59 }],
+          trimWords: 4, // the trim removes 0:00–0:03, so the transcript opens where the video now does
+        },
+        watchTiles: WATCH_DONE,
+        rankValue: 16.4,
+        reactionTiles: REACTIONS_DONE,
+        reactionMeta: "of 8.4K reached",
+        reactionScale: 2.64,
+      },
+    },
+  },
+
+  engagement: {
+    retention: {
+      clipSeconds: CLIP,
+      curve: CURVE,
+      median: MEDIAN,
+      breakAt: 3,
+      anno: "62% gone by 0:03",
+      transcript: SCRIPT,
+      breakWordIndex: 9,
+      moments: [{ at: 2, pct: 58 }, { at: 9, pct: 33 }, { at: 21, pct: 27 }],
+      coverLabel: "0:28",
+    },
+    watch: {
+      title: "Key metrics",
+      meta: "vs your last 41 videos",
+      tiles: WATCH,
+      rank: { values: RANK41, median: 11.2, max: 28, value: 9.7, unit: "s" },
+    },
+    reactionTimeline: { seconds: CLIP, rows: REACT },
+    reactions: { title: "Projected reaction", meta: "of 3.2K reached", tiles: REACTIONS },
+  },
+
+  simline: "1,000 simulated · your 4.2K followers · confidence 0.82",
+  method: [
+    {
+      heading: "The three scales on this page",
+      notes: [
+        "Share of the room — the verdict, the curve, the moment chips and the watch metrics. One unit, one meaning: how many of the 1,000 are still with you.",
+        "0–100 signal scores — the breakdown. Nine signals derived from seven networks; two are composites. The grade words are a cutoff on a modeled signal, NOT a benchmark against real outcomes — which is why they carry no colour.",
+        "z-scores — the network bars, against this clip's own baseline at the break. Zero is the centre line, so a bar left of it is below this clip's own normal, not below yours.",
+        "The seven networks are shown by function. Anatomically: Visual, Body = somatomotor, Focus = dorsal attention, Alertness = ventral attention, Emotion = limbic, Effort = frontoparietal, Mind-wandering = default mode.",
+      ],
+    },
+    {
+      heading: "What this is not",
+      notes: [
+        "Modeled from your audience's real retention · calibrated on your 4.2k followers · confidence 0.82 · calibrated for engagement, not purchase · a cortical proxy, never a brain measurement.",
+      ],
+    },
+  ],
+
   brain: {
-    cortexSeedKey: "hook-2-first-10k", // drifts the cortex parcellation; stable per stimulus
-    clipSeconds: 12, // cortex replay-loop duration
-    stopRatio: 0.382, // from the verdict — drives the cortex bold
-    signalsBaseline: "vs your typical", // #8 the delta referent
-    // the single consolidated honesty line at the tab bottom (replaces the old floating cortexNote)
+    cortexSeedKey: "clip-2-hook-formats",
+    clipSeconds: CLIP,
+    stopRatio: 0.62,
+    // Grounds the cortex on the SAME curve Engagement draws — the figure and the curve under it are
+    // one instrument, not two readings of the same run.
+    retentionCurve: CURVE,
+    signalsBaseline: "vs your baseline",
+    signalScale: "0–100 · vs your baseline",
+    networkScale: "z-scored · at the break",
     calibrationNote: "Modeled from a cortical proxy · not measured attention",
-    // ◇ driver axis — creator = attention over the clip (curve-as-scrubber + synced transcript)
+    // ◇ the driver axis. A VIDEO has the timeline, and it lives on Engagement — retention is what
+    // the room DID with the clip. This slot stays typed for the swap contract; Brain draws no
+    // scrubber (the ReasonsCard / ResistanceCard branches are what fill it for the other kinds).
     driver: {
       kind: "attention-scrubber",
       data: {
         hold: 38,
-        transcript: "I quit my 9-5 with $400 in my account. Here's month one.",
-        peakWordIndex: 5, // "$400" — the held word
-        clipSeconds: 12,
-        points: [66, 72, 69, 52, 28, 34, 46, 54, 52, 50, 48, 46, 44], // 0..80 over the clip
-        moments: [
-          { t: "0:01", v: 72 },
-          { t: "0:04", v: 28, dip: true },
-          { t: "0:07", v: 46 },
-        ],
+        transcript: SCRIPT,
+        peakWordIndex: 9,
+        clipSeconds: CLIP,
+        points: CURVE.map((v) => Math.round(v * 80)),
+        moments: [{ t: "0:02", v: 46 }, { t: "0:09", v: 26, dip: true }, { t: "0:21", v: 22 }],
       },
     },
-    // ◇ signal breakdown (0..100) — the delta vs the user's typical hook (#8) is what differentiates
-    // three near-identical scores: emotion is the strength, visual pull is flat.
-    signals: [
-      { label: "Emotional hit", score: 65, band: "strong", vsBase: 18 },
-      { label: "Credibility", score: 62, band: "okay", vsBase: 4 },
-      { label: "Visual pull", score: 61, band: "okay", vsBase: -2 },
-    ],
-    // ◇ the plain-language read of the decisive second — now sits ON the attention moment (the read
-    //   that explains the move; distinct copy from the move so the two never repeat each other)
-    whyThisSecond: {
-      moment: "0:04 · the drop",
-      segments: [
-        { text: "At 0:04 the room splits — the $400 stake holds half, " },
-        { text: "the rest are already gone as the payoff stalls", loss: true },
-      ],
-    },
-    // ◇ networks at the decisive second — σ is the receipt; the read translates it into plain words
+    signals: [],
+    signalGrid: SIGNALS,
+    // the three the page is about — they lead full-width, the other six keep the grid. All nine stay
+    // on the surface: rank replaces the rev-8 drawer, which left this page thinner than the shipped one.
+    signalMovers: ["attention", "visual", "voice"],
+    networkBars: NETWORKS,
     networks: [
-      { label: "Focus", z: -1.1, read: "scattered — won't lock on", loss: true },
-      { label: "Memory", z: 0.7, read: "holding the $400 stake" },
-      { label: "Emotion", z: 0.4, read: "a mild lift" },
-      { label: "Visual", z: -0.4, read: "flat, nothing to grab" },
+      { label: "Focus", z: -0.73, read: "running slightly below", loss: true },
+      { label: "Visual", z: 0.35, read: "a mild lift" },
     ],
-    // ● ask-why chat — shared slot, deferred (no chat infra in v2 yet)
+    kpiHeatmap: { seconds: CLIP, rows: KPI_ROWS },
     askWhy: { enabled: false, placeholder: "Ask why they reacted this way…" },
-
-    // ── ① nine breakdown signals (Sapient decomposition) — REPLACES the lean 3-row delta above ──
-    signalGrid: [
-      { key: "visual", label: "Visual Pull", score: 38, word: "Weakness", tone: "weak", delta: -2, whyScore: "Flat opener — nothing grabs the eye in the first frame." },
-      { key: "voice", label: "Voice Impact", score: 61, word: "Okay", tone: "okay", delta: 6, whyScore: "Steady delivery; the $400 line lands but the cadence is even." },
-      { key: "grip", label: "Cognitive Grip", score: 47, word: "Okay", tone: "okay", delta: -3, whyScore: "Focus scatters as the payoff stalls past 0:03." },
-      { key: "emotion", label: "Emotional Hit", score: 65, word: "Strong", tone: "strong", delta: 18, whyScore: "The stake reads as real — the strongest lever in the clip." },
-      { key: "memory", label: "Memorability", score: 49, word: "Okay", tone: "okay", delta: 1, whyScore: "The number sticks; the arc is familiar, so recall is average." },
-      { key: "attention", label: "Attention", score: 38, word: "Weakness", tone: "weak", delta: -9, whyScore: "Drops hard at 0:04 — the wait costs the skeptics." },
-      { key: "buy", label: "Buy Signal", score: 47, word: "Okay", tone: "okay", delta: 4, whyScore: "Reward pulls, but hesitation holds it near baseline." },
-      { key: "risk", label: "Hesitation / Risk", score: 28, word: "Strong", tone: "strong", delta: 12, whyScore: "Low resistance — few red flags fire while watching." },
-      { key: "effort", label: "Mental Effort", score: 53, word: "Okay", tone: "okay", delta: 2, whyScore: "Easy to follow; no load spike that would push a scroll." },
-    ],
-    // ── ② raw network activation · z-scored (7 networks at the decisive second) ──
-    networkBars: [
-      { label: "Visual", z: -0.43, band: "slightly below" },
-      { label: "Somatomotor", z: 0.08, band: "about normal" },
-      { label: "Dorsal Attention", z: -1.14, band: "clearly below", loss: true },
-      { label: "Ventral Attention", z: -0.76, band: "clearly below" },
-      { label: "Limbic", z: 0.38, band: "slightly above" },
-      { label: "Frontoparietal", z: -0.08, band: "about normal" },
-      { label: "Default Mode", z: 0.68, band: "slightly above" },
-    ],
-    // ── ③ activation per second · every decoded system (10 KPIs × the clip) ──
-    kpiHeatmap: { seconds: HEAT_SECONDS, rows: KPI_ROWS },
-    // ④ purchase-intent moments — intentionally OMITTED for creator/content: "buy intent" doesn't
-    //    fit a regular hook. The BuyIntentData contract + BuyIntentCurve stay for a commerce domain.
   },
 
   population: {
-    // one-line read under the terrain hero — the non-obvious pattern, not just a labelled map
-    heroRead: "Your believers cluster in builders — 82% stop. Skeptics are your ceiling: only 12%.",
-    // ◇ headline + main figure — creator = the stop/skim/scroll tri-state
-    main: { kind: "tri-state", data: { stopped: 38, skimmed: 41, scrolled: 21 }, percentileLine: "top 18% of your last 41 hooks" },
-    // ● the society — one connected terrain, clusters knit by commuter edges
+    heroVerdict: { value: "90%", label: "non-followers" },
+    heroFigread: "% = kept watching",
+    // ◇ the main figure. The tri-state row is deliberately NOT drawn: its two numbers are the hero
+    // chip and the answer's stat row, and a page must not say one fact twice.
+    main: { kind: "tri-state", data: { stopped: 38, skimmed: 0, scrolled: 62 }, percentileLine: "1,000 simulated" },
     terrain: {
       clusters: [
-        { name: "scrollers", cx: 128, cy: 90, spread: 52, n: 41, lit: 0.51 },
-        { name: "builders", cx: 246, cy: 70, spread: 38, n: 27, lit: 0.82 },
-        { name: "skeptics", cx: 250, cy: 154, spread: 33, n: 20, lit: 0.12 },
-        { name: "drop-ins", cx: 122, cy: 162, spread: 27, n: 12, lit: 0.4 },
+        { name: "followers", cx: 96, cy: 74, spread: 30, n: 14, lit: 0.82 },
+        { name: "returning", cx: 262, cy: 108, spread: 38, n: 22, lit: 0.44 },
+        { name: "new", cx: 150, cy: 168, spread: 54, n: 46, lit: 0.12 },
+        { name: "outside niche", cx: 292, cy: 176, spread: 24, n: 8, lit: 0.08 },
       ],
-      lossClusterIndex: 2, // skeptics = the loudest-no cluster (coral)
+      lossClusterIndex: 3,
     },
-    // segments omitted — the terrain labels now carry each district's stop rate (builders 82% …),
-    // so a separate "who stopped · by segment" bar list would just restate the map. Pricing KEEPS its
-    // segments because willingness-to-pay tiers are a cut the terrain districts don't show.
-    // ● voices — coded reasons + exemplar cast
-    voices: {
-      kicker: "Why · coded from 1,000",
-      total: 1000, // the denominator behind each reason's share bar
-      reasons: [
+    pools: { title: "Who watches — and how long", meta: "no platform reports this", rows: POOLS },
+    decisionStates: {
+      total: 1000,
+      // Plain behaviour, no attitude and no banned verb. "Almost stayed" is the product's best
+      // concept and now says what it means.
+      states: [
         {
-          label: "The payoff comes too late",
-          count: 253,
-          quote: "i'd be gone before the point lands",
-          who: "Maya · skeptic",
-          loss: true,
-          // cross-tab thread — this human reason IS the brain's 0:04 attention drop (same moment)
-          thread: { toMoment: "0:04 · the drop" },
+          key: "sold", label: "Watched", count: 380, share: 38, lever: "small creator",
+          voice: { who: "Maya", tag: "small creator", quote: "ok this is the first time someone's said the quiet part. the niche advice has been killing me for two years", echo: 296, echoOf: 380 },
         },
         {
-          label: "The $400 stake feels real",
-          count: 190,
-          quote: "that detail is what made me stay",
-          who: "Dev · builder",
+          key: "winnable", label: "Almost stayed", count: 201, share: 20, lever: "found you today",
+          voice: { who: "Ana", tag: "found you today", quote: "saving this. what counts as a format though — a series, or a shot type?", echo: 174, echoOf: 201, swing: "Win these 201: watched 38% → 47%" },
         },
         {
-          label: "Heard this story before",
-          count: 118,
-          quote: "every creator has this exact arc",
-          who: "Priya · scroller",
+          key: "skeptical", label: "Wrong audience", count: 176, share: 18, lever: "bigger account",
+          voice: { who: "Sam", tag: "bigger account", quote: "easy to say with 40k followers. format is all you need when the reach is already there", echo: 96, echoOf: 176 },
+        },
+        {
+          key: "gone", label: "Scrolled past", count: 243, share: 24, lever: "seen every hook video", loss: true,
+          voice: { who: "Dev", tag: "seen every hook video", quote: "sounds like everyone else. every account on here says pick a format now", echo: 218, echoOf: 243 },
         },
       ],
     },
-    // ── who this is for · vs your typical (targeting index) ──
+    // A video fold emits no per-viewer objections — the voices ride the decision rows above.
+    voices: { kicker: "Why · coded from 1,000", total: 1000, reasons: [] },
     audienceFit: {
-      baseline: "vs your last 41 hooks",
+      baseline: "vs the room average",
       rows: [
-        { label: "builders", index: 34 },
-        { label: "drop-ins", index: 9 },
-        { label: "scrollers", index: -12, loss: true }, // your biggest audience cools on this one
-        { label: "skeptics", index: -22 },
+        { label: "Returning", index: 116 },
+        { label: "Followers", index: 34 },
+        { label: "New viewers", index: 5 },
+        { label: "Outside niche", index: -68, loss: true },
       ],
-      read: "This hook over-indexes with builders and cools on your scroller base — it's narrowing toward a high-intent niche. Powerful, but a smaller top of funnel.",
+      read: "",
     },
-    // ── who spreads it · how far (reshare cascade + carriers) ──
     amplification: {
-      reachMultiplier: 5.8,
-      reached: 5800,
+      reachMultiplier: 5.1,
+      reached: 5100,
       cascade: [
         { label: "saw it", count: 1000 },
-        { label: "reshared", count: 180 },
-        { label: "their networks", count: 5800 },
+        { label: "reshared", count: 193 },
+        { label: "their networks", count: 5100 },
       ],
       carriers: [
-        { label: "builders", factor: 3.2, lead: true },
-        { label: "drop-ins", factor: 1.4 },
-        { label: "scrollers", factor: 0.7 },
-        { label: "skeptics", factor: 0.3 },
+        { label: "Returning", factor: 3.2, lead: true },
+        { label: "Followers", factor: 1.4 },
+        { label: "New viewers", factor: 0.7 },
+        { label: "Outside niche", factor: 0.3 },
       ],
-      read: "Your reach rides on builders resharing — your smallest lit district. Win one more builder cohort and the second ring nearly doubles.",
+      read: "",
     },
-    // ── the swing · your upside (fence-sitters + the verdict move) ──
-    swing: {
-      nearMiss: 88,
-      fromPct: 38,
-      toPct: 49,
-      gainLabel: "+11% would stop",
-      read: "88 viewers stalled right at 0:04 — not gone, just unconvinced. Cut to the payoff and the room moves from 38% to 49%.",
+    distribution: {
+      title: "Where & when",
+      meta: "surfaces · followers online",
+      surfaces: [
+        { label: "For You", value: "53%", weight: 53 },
+        { label: "Sound", value: "33%", weight: 33 },
+        { label: "Search", value: "14%", weight: 14 },
+      ],
+      week: [
+        { day: "Mon", value: 17 },
+        { day: "Tue", value: 38, best: true, hours: "7–9pm" },
+        { day: "Wed", value: 24 },
+        { day: "Thu", value: 29 },
+        { day: "Fri", value: 20 },
+        { day: "Sat", value: 32 },
+        { day: "Sun", value: 11 },
+      ],
     },
-    // ── the room · trust strip (replaces the plain calibration note) ──
+    swing: { nearMiss: 201, fromPct: 38, toPct: 47, gainLabel: "+9% of the room", read: "" },
     room: {
       simulated: 1000,
-      calibratedOn: "your 4.2k followers",
-      confidence: 0.78,
+      calibratedOn: "your 4.2K followers",
+      confidence: 0.82,
       confidenceLabel: "High",
       note: "A modeled society · calibrated for engagement, not purchase.",
     },

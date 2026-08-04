@@ -45,6 +45,7 @@ import {
   type PopulationPersona,
 } from "@/lib/surfaces/ambient-v2-population";
 import { buildVideoDomainTemplate } from "@/lib/surfaces/ambient-v2-brain";
+import { watchCatalogueOf } from "@/lib/surfaces/ambient-v2-drill";
 import { audienceToMeta, humanizeArchetype } from "@/lib/surfaces/ambient-v2-audience-meta";
 import type { Audience } from "@/lib/audience/audience-types";
 import type { AmbientCardDescriptor } from "@/components/app/home/use-ambient-focus";
@@ -239,6 +240,40 @@ export function AmbientOverviewRail({
   }, []);
 
   const openDevelop = (id: string) => setDevelopId(id);
+
+  // The creator's own last-N catalogue, behind the Key metrics rank strip. Fetched LAZILY — the
+  // first time a video drill actually opens — because the Overview never draws it and the rail
+  // mounts on every thread. Fired once per mount and then cached: the answer changes only when the
+  // creator seals a new run, which remounts this surface anyway.
+  //
+  // Every failure path is silent BY DESIGN: an anonymous visitor gets a 401 here, and the card
+  // already has honest copy for "no baseline yet". A baseline is the one thing on this page that
+  // must never be improvised, so not having one is a state, not an error.
+  const [catalogue, setCatalogue] = useState<number[] | null>(null);
+  const catalogueRef = useRef(false);
+  useEffect(() => {
+    if (catalogueRef.current) return;
+    if (detailId === null || !videoSeals[detailId]) return;
+    catalogueRef.current = true;
+    const ac = new AbortController();
+    void (async () => {
+      try {
+        const res = await fetch("/api/analysis/history", { signal: ac.signal });
+        if (!res?.ok) return;
+        const rows: unknown = await res.json();
+        if (!Array.isArray(rows)) return;
+        // The clip being read is itself a history row by now — it was persisted at Test time. Left
+        // in, it would rank against a catalogue containing itself and drag the median toward its own
+        // value. `detailId` IS the analysisId, so it drops out by id.
+        setCatalogue(watchCatalogueOf(rows.filter((r) => r?.id !== detailId)));
+      } catch {
+        // Every failure lands in the same place on purpose — rejected, aborted, 401, malformed body.
+        // "No baseline" is a state this card already has honest copy for, so there is nothing to
+        // report and nothing to retry: the one thing a benchmark must never do is appear anyway.
+      }
+    })();
+    return () => ac.abort();
+  }, [detailId, videoSeals]);
 
   // Reset the open drill wholesale when the thread's descriptor set changes (thread switch), so a
   // stale positional id can't render a mismatched depth view.
@@ -490,6 +525,7 @@ export function AmbientOverviewRail({
       stopPct: v.stopPct,
       stimulusKey: detailId,
       conceptLabel: "video",
+      ...(catalogue?.length ? { catalogue } : {}),
       population: videoAggregate
         ? buildPopulationFrameData({
             aggregate: videoAggregate,

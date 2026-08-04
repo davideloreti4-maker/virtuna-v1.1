@@ -49,6 +49,7 @@ import {
   type ModeledBrainInput,
   type ModeledReason,
 } from "./ambient-v2-modeled";
+import { attachVoices, drillIdentity, heroVerdictOf, methodOf, simlineOf } from "./ambient-v2-drill";
 
 /** One real per-persona reaction (the exact `FlashPersona` shape react returns) — the exemplar cast. */
 export interface PopulationPersona {
@@ -137,6 +138,12 @@ const VOICE_LIMIT = 4;
 function codedReasons(agg: PopulationAggregate, personas: PopulationPersona[]): CodedReason[] {
   const scrollers = personas.filter((p) => p.verdict === "scroll");
   const stoppers = personas.filter((p) => p.verdict === "stop");
+  // Each pool walks its OWN cursor. `pool[i % pool.length]` used the ROW index, so with two
+  // scrollers, two stoppers and four reasons it handed rows 0 and 2 the same scroller and rows 1
+  // and 3 the same stopper: one quote appearing under two different coded reasons, twice over. A
+  // receipt that repeats is not a second receipt.
+  let si = 0;
+  let ci = 0;
   return agg.reasons.slice(0, VOICE_LIMIT).map((r, i) => {
     // Alternate the exemplar polarity toward the pool that exists, so a quote is always real.
     const preferScroll = i % 2 === 0;
@@ -147,14 +154,20 @@ function codedReasons(agg: PopulationAggregate, personas: PopulationPersona[]): 
       : stoppers.length
         ? stoppers
         : scrollers;
-    const voice = pool.length ? pool[i % pool.length]! : personas[i % Math.max(1, personas.length)];
+    const cursor = pool === scrollers ? ci++ : si++;
+    const voice = pool.length ? pool[cursor % pool.length]! : personas[i % Math.max(1, personas.length)];
     return {
       // humanize the pStop token ("weak-hook" → "Weak hook"); real sentence reasons pass through
       label: humanizeReason(r.reason).label,
       count: r.count,
       quote: voice?.quote ?? "",
       who: voice?.archetype ?? "a viewer",
-      ...(voice?.verdict === "scroll" ? { loss: true as const } : {}),
+      // Polarity is the REASON's, from the semantic token map — never the exemplar's verdict.
+      // It used to ride `voice.verdict`, which put "Strong hook" in the LEAKING (coral) half
+      // whenever its illustrating persona happened to be a scroller: the receipts said a pull
+      // reason was an objection. The comment two lines up already says we do not claim the persona
+      // uttered the coded label; it must not inherit their polarity either.
+      ...(humanizeReason(r.reason).loss ? { loss: true as const } : {}),
     };
   });
 }
@@ -216,6 +229,10 @@ export function buildPopulationFrameData(input: PopulationSnapshotInput): Popula
       percentileLine: `${fmtCount(agg.total)} simulated · engagement-calibrated`,
     },
     terrain: { clusters, lossClusterIndex },
+    // The Audience hero states the ROOM's headline, in the surface's one unit — a text sim has no
+    // follower/non-follower split to read, so it reports how much of the room kept reading.
+    heroVerdict: heroVerdictOf(undefined, agg.stopPct),
+    heroFigread: "% = kept watching",
     voices: {
       kicker: `Why · coded from ${fmtCount(agg.total)}`,
       total: agg.total,
@@ -229,8 +246,27 @@ export function buildPopulationFrameData(input: PopulationSnapshotInput): Popula
     // itself ("nearly stopped — tighten the open"), which is worth less than the archetype district
     // ledger it would replace. A VIDEO fold has no coded reasons by construction, so it keeps the
     // ledger — the named cast IS its stronger read.
+    // Each row SPEAKS: one real persona voice, and the swing folded into the row it names.
     ...(agg.reasons.length > 0
-      ? { decisionStates: modeledDecisionStates(agg, classifyReasons(agg.reasons)) }
+      ? { decisionStates: attachVoices(modeledDecisionStates(agg, classifyReasons(agg.reasons)), personas, modeledSwing(agg)) }
+      : {}),
+    // Who this reaches. These are the projection's OWN audience slices, under their own names — a
+    // video fold's relationship pools come from the fold's weights instead (`poolsFromWeights`).
+    // Renaming a real segment to fit the design's taxonomy would be the fabrication, not the fix.
+    ...(agg.segments.length > 1
+      ? {
+          pools: {
+            title: "Who this reaches",
+            rows: agg.segments
+              .slice()
+              .sort((a, b) => b.share - a.share)
+              .map((s) => ({
+                label: s.displayName,
+                share: `${Math.round(s.share * 100)}% of room`,
+                sharePct: Math.round(s.share * 100),
+              })),
+          },
+        }
       : {}),
     // ── modeled-depth parity (Phase-C ②) — the fuller society read; carried by the one calibration line ──
     audienceFit: modeledAudienceFit(agg),
@@ -321,22 +357,40 @@ export function buildReasonBrainFrameData(input: {
   const attention = modeledAttentionData(modeledInput, transcript);
   const dipTime = attention.moments.find((m) => m.dip)?.t;
   const networkBars = modeledNetworkBars(modeledInput);
+  const signalGrid = modeledSignalGrid(modeledInput);
   return {
     cortexSeedKey: input.stimulusKey,
     // A text concept has no clip; the cortex loops on a nominal proxy duration (animation only, never
     // presented as a measured length). Kept short so the parcellation reads as a brief pulse.
     clipSeconds: 6,
     stopRatio: clamp(input.stopPct / 100, 0, 1),
-    // The retention scrubber — the SAME driver the video uses; the curve is modeled, the words are real.
-    driver: { kind: "attention-scrubber", data: attention },
+    // ◇ VIDEO AND TEXT ARE INVERSE INSTRUMENTS (§3.3). Video has the timeline and no voices; text
+    // has the voices and no timeline. The 2026-07-24 parity pass gave text a MODELED retention
+    // curve so both kinds drew the same figure — and a modeled timeline is exactly the thing a text
+    // concept does not have. Its "when" is a WHY, so the REAL coded reasons take the driver slot and
+    // the instrument (signals · networks · per-second activation) continues underneath, identical in
+    // both kinds. A text sim has to feel like a DIFFERENT instrument, not a video screen with empty
+    // slots — and the reasons are the one thing here that is measured rather than proxied.
+    driver: { kind: "reason-breakdown", data: breakdown },
     signals: [], // the lean row list is superseded by the modeled signalGrid below
-    // the "why they stopped" read heads the scrubber (the video's measured-dip slot) — the REAL top reason
+    // the "why they stopped" read — the REAL top reason, kept on the frame for the cross-page thread
     whyThisSecond: reasonSynthesis(breakdown, input.aggregate.stop, dipTime),
     // ── modeled-depth parity (Phase-C ②) — text renders the SAME fuller read as video; MODELED ──
-    signalGrid: modeledSignalGrid(modeledInput),
+    signalGrid,
+    signalMovers: signalGrid
+      .filter((c) => !c.muted && c.delta != null)
+      .slice()
+      .sort((a, b) => Math.abs(b.delta!) - Math.abs(a.delta!) || a.score - b.score)
+      .slice(0, 3)
+      .map((c) => c.key),
+    signalScale: "0–100 · vs your baseline",
+    networkScale: "z-scored · modeled",
     networkBars,
     networks: modeledNetworks(networkBars),
-    kpiHeatmap: modeledKpiHeatmap(modeledInput),
+    // Same grid as video (the parity call), minus the clock. `clipSeconds: 6` above is a nominal
+    // proxy for the cortex loop — a text concept has no duration — and it was surfacing on this card
+    // as "6s · 10 systems / 0s → 6s / each cell = 1s", i.e. as a measurement. §3.3 again.
+    kpiHeatmap: { ...modeledKpiHeatmap(modeledInput), untimed: true },
     // buyIntent omitted — a commerce figure, not a text/creator one (matches the authored template)
     calibrationNote: "Modeled cognitive proxy from a text sim · the reasons are real, the retention curve + depth read are modeled — not measured attention",
   };
@@ -365,13 +419,68 @@ export function buildDomainTemplate(input: DomainTemplateInput): DomainTemplate 
   const population = buildPopulationFrameData(input);
   // unlock classifies by reason SEMANTICS (the token map), not the voices' cosmetic exemplar verdict
   const reasons: ModeledReason[] = classifyReasons(aggregate.reasons);
+  const unlock = modeledUnlock(reasons, population.swing);
+  const leak = reasons.filter((r) => r.loss).sort((a, b) => b.count - a.count)[0];
+  const scrolled = Math.max(0, 100 - Math.round(pct));
+  const simline = simlineOf(population.room);
   return {
     id: "creator",
     label: "Creator · content",
-    backLabel: "Overview",
+    // "Overview" collided with the tab of the same name; the drill goes back to the room.
+    backLabel: "The room",
     pager: conceptLabel ?? "concept",
     verdict: { value: `${Math.round(pct)}%`, label: "would stop" },
-    unlock: modeledUnlock(reasons, population.swing),
+    unlock,
+    identity: {
+      ...drillIdentity(transcript?.split(" ").slice(0, 14).join(" ") ?? "", 0),
+      thumbLabel: "HOOK",
+    },
+    answer: {
+      // The one sentence on the surface. A text sim's leak is the phrasing, not the timing —
+      // it has the voices and no timeline (§3.3), so its answer names the coded reason.
+      head: leak ? `The idea holds. ${leak.label} is what leaks.` : "The idea holds.",
+      stats: [
+        { value: `${scrolled}%`, label: "scroll past", loss: true },
+        ...(leak ? [{ value: `${leak.count}`, label: `on ${leak.label.toLowerCase()}` }] : []),
+      ],
+      verdict: { value: `${scrolled}%`, label: "scroll past" },
+      evidence: "reasons" as const,
+      // The fix acts off the SWING — a real modeled producer, not a second guess at the same number.
+      ...(unlock && population.swing
+        ? {
+            fix: {
+              label: unlock.lever,
+              ...(unlock.gain ? { gain: unlock.gain } : {}),
+              applied: {
+                head: "The rewrite holds the room.",
+                stats: [{ value: `${population.swing.toPct}%`, label: `read on · was ${population.swing.fromPct}%` }],
+                was: { value: `${scrolled}%`, label: "scroll past" },
+                now: { value: `${Math.max(0, 100 - population.swing.toPct)}%`, label: "after the fix" },
+                verdict: { value: `${Math.max(0, 100 - population.swing.toPct)}%`, label: "scroll past" },
+              },
+            },
+          }
+        : {}),
+    },
+    // A text sim's instrument is the VOICES — the thing it holds and a video does not.
+    engagement: {
+      voices: {
+        title: "If you posted this",
+        // Exactly ONE loss voice: the heaviest friction reason. The law is at most one coral zone
+        // per page, and two coral voice rows are two zones — the second one buys no information the
+        // first has not already spent.
+        rows: population.voices.reasons.map((r) => ({
+          who: r.who.split(" · ")[0] ?? r.who,
+          tag: r.label,
+          quote: r.quote,
+          echo: r.count,
+          echoOf: population.voices.total ?? aggregate.total,
+          ...(r.loss && r.label === leak?.label ? { loss: true as const } : {}),
+        })),
+      },
+    },
+    ...(simline ? { simline } : {}),
+    method: methodOf({ hasSignals: true, hasNetworks: true, note: population.room?.note }),
     brain: buildReasonBrainFrameData({ aggregate, stopPct: pct, stimulusKey, transcript }),
     population,
   };

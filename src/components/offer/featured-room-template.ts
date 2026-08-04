@@ -102,15 +102,21 @@ const population: DomainTemplate["population"] = basePopulation
         ...basePopulation.voices,
         reasons: room.reasons.map((r) => ({ ...r })),
       },
+      heroVerdict: { value: room.stopRate, label: "kept watching" },
       terrain: {
         ...basePopulation.terrain,
-        // "builders" is the other video's cluster name; this room is operators. Lit ratios
-        // track the verdict — one cluster holds, the rest leave before the ask lands.
-        clusters: basePopulation.terrain.clusters.map((c) => {
-          const name = c.name === "builders" ? "operators" : c.name;
-          return { ...c, name, lit: room.clusters[name] ?? c.lit };
-        }),
+        // The districts are the shared taxonomy; only the LIT RATIOS are this clip's — one pool
+        // holds, the rest leave before the ask lands.
+        clusters: basePopulation.terrain.clusters.map((c) => ({ ...c, lit: room.clusters[c.name] ?? c.lit })),
       },
+      // The pool split describes the OTHER clip's second-by-second retention. Dropped rather than
+      // re-shaped: a hand-authored per-pool curve for a fixture clip would be invented evidence on
+      // a commercial page, which is exactly what the walkthrough's honesty gate exists to prevent.
+      pools: undefined,
+      distribution: undefined,
+      // The decision rows quote the $400 clip and carry its counts; the receipts below say the same
+      // thing in this clip's words.
+      decisionStates: undefined,
       // Everything below the fold of the rail narrated the other video too — the fit rows and
       // the carriers were still "builders", the swing still moved 38%→49% off a 0:04 drop, and
       // the room claimed to be calibrated on "your 4.2k followers", which a cold visitor has
@@ -119,19 +125,27 @@ const population: DomainTemplate["population"] = basePopulation
         audienceFit: {
           ...basePopulation.audienceFit,
           baseline: "vs comparable hooks",
-          rows: basePopulation.audienceFit.rows.map((r) =>
-            r.label === "builders" ? { ...r, label: "operators", index: 41 } : { ...r },
-          ),
-          read: "This one narrows hard onto operators and cools on everyone else — the people who came for the answer stay for it, and the rest never reach the question.",
+          // This clip narrows hard onto the people who already follow: they wait for the answer,
+          // and nobody else reaches the question. The index rows say it without a sentence.
+          rows: [
+            { label: "Followers", index: 218 },
+            { label: "Returning", index: 59 },
+            { label: "New viewers", index: -44, loss: true },
+            { label: "Outside niche", index: -72, loss: true },
+          ],
+          read: "",
         },
       }),
       ...(basePopulation.amplification && {
         amplification: {
           ...basePopulation.amplification,
-          carriers: basePopulation.amplification.carriers.map((c) =>
-            c.label === "builders" ? { ...c, label: "operators" } : { ...c },
-          ),
-          read: "Reach rides on operators resharing — the one district that hears the answer. Move the question earlier and the other three get far enough in to carry it.",
+          carriers: [
+            { label: "Followers", factor: 2.9, lead: true },
+            { label: "Returning", factor: 1.1 },
+            { label: "New viewers", factor: 0.4 },
+            { label: "Outside niche", factor: 0.2 },
+          ],
+          read: "",
         },
       }),
       ...(basePopulation.swing && {
@@ -149,15 +163,70 @@ const population: DomainTemplate["population"] = basePopulation
     }
   : basePopulation;
 
+/** The clip's own retention, on the surface's one unit (share of the room still watching). The
+ *  shared fixture's curve is 28 seconds of a different video; this is 53 seconds of THIS one. */
+const CURVE = room.attentionPoints.map((v) => v / 80);
+const AVG_WATCH = (CURVE.reduce((a, b) => a + b, 0) / CURVE.length) * CLIP_SECONDS;
+
 export const FEATURED_ROOM_TEMPLATE: DomainTemplate = {
   ...CREATOR_TEMPLATE,
 
-  // "hook 2 of 5" is app context a cold visitor does not have; inside the marketing window it
+  // "clip 2 of 5" is app context a cold visitor does not have; inside the marketing window it
   // reads as noise.
   pager: "",
 
-  verdict: { value: room.stopRate, label: "would stop" },
+  verdict: { value: room.stopRate, label: "kept watching" },
   unlock: { ...room.unlock },
+
+  identity: {
+    title: `“${room.transcript}”`,
+    thumbLabel: FEATURED_VIDEO.durationLabel,
+    coverSrc: FEATURED_VIDEO.cover,
+    // No stat row: those are projected counts against an account a cold visitor does not have.
+    stats: [],
+  },
+
+  answer: {
+    head: "The question arrives twenty seconds too late.",
+    stats: [
+      { value: `${room.triState.scrolled}%`, label: "leave by 0:12", loss: true },
+      { value: room.stopRate, label: "kept watching" },
+    ],
+    cortexCorner: `at ${room.whyThisSecond.moment.split(" ")[0]}, the stall`,
+    verdict: { value: `${room.triState.scrolled}%`, label: "leave by 0:12" },
+    evidence: "engagement",
+    // No acting fix in the marketing window: the body is `inert` by owner call, and a control that
+    // re-simulates nothing is the dead control the whole rail is careful not to ship.
+  },
+
+  engagement: {
+    retention: {
+      clipSeconds: CLIP_SECONDS,
+      curve: CURVE,
+      breakAt: 5,
+      anno: `${room.triState.scrolled}% gone by 0:12`,
+      transcript: room.transcript,
+      breakWordIndex: room.peakWordIndex,
+      moments: room.attentionMoments.map((m) => ({
+        at: Number(m.t.split(":")[1] ?? 0),
+        pct: Math.round((m.v / 80) * 100),
+      })),
+      coverLabel: FEATURED_VIDEO.durationLabel,
+      coverSrc: FEATURED_VIDEO.cover,
+    },
+    // Arithmetic on the curve above — the same two figures the live adapter derives, and no third
+    // tile carrying a guess. The rank strip is absent: "your last 41" is account history.
+    watch: {
+      title: "Key metrics",
+      tiles: [
+        { label: "Avg watch", value: `${AVG_WATCH.toFixed(1)}s`, delta: `of ${FEATURED_VIDEO.durationLabel}`, lead: true },
+        { label: "Watched full", value: `${Math.round((CURVE[CURVE.length - 1] ?? 0) * 100)}%` },
+      ],
+    },
+  },
+
+  // The shared fixture's disclosure names "your 4.2K followers" — an account a visitor has not got.
+  simline: "1,000 simulated · a modeled operator audience · confidence 0.82",
 
   brain,
   population,

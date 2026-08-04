@@ -89,6 +89,11 @@ export interface SignalCell {
   delta?: number; // vs the user's typical hook
   whyScore: string;
   muted?: boolean; // a visual-only read on a TEXT sim (no video substrate to measure) → rendered greyed
+  /** LOW is good (Hesitation/Risk, Mental Effort). `brain-signals.ts` bands these on `100 − score`,
+   *  which is why a 58 Hesitation earns WEAK while a 58 Visual Pull earns OKAY. The grade was always
+   *  right; the CARD never said the direction, so the two read as the same scale contradicting itself.
+   *  The renderer marks the cell and prints the legend once. */
+  lowerIsBetter?: boolean;
 }
 
 /** ② Raw network activation — a network's z-score at the decisive second + its plain band word. */
@@ -102,6 +107,11 @@ export interface NetworkBar {
 /** ③ KPI activation per second — every decoded system, one row of 0..100 intensities per second. */
 export interface KpiHeatmapData {
   seconds: number; // clip length in whole seconds (columns)
+  /** TEXT has no clock (§3.3). Its `seconds` is a nominal proxy the population adapter picks — the
+   *  same reasoning that took the modeled retention curve OFF the text driver — so the card must not
+   *  print "6s", "0s → 6s" and "each cell = 1s" over a duration the concept does not have. Set here,
+   *  the grid keeps every row (the owner's parity call) and drops only the fabricated time axis. */
+  untimed?: boolean;
   rows: { label: string; values: number[]; muted?: boolean }[]; // each values[i] = 0..100 at second i;
   //   `muted` = a sensory row (Visual/Audio/Face) on a TEXT sim — greyed (no video/audio to measure)
 }
@@ -115,10 +125,164 @@ export interface BuyIntentData {
   caption: string; // the honest "what this is / isn't" one-liner for the section
 }
 
+// ── rev 12 — the shared atoms the three pages are built from ──────────────────
+//
+// Everything below is OPTIONAL. A domain that authors none of it renders exactly what it rendered
+// before (pricing does; the sealed/walkthrough templates do), and the rail's rev-12 blocks omit
+// themselves rather than draw an empty frame. Same discipline as the depth sections above.
+
+/** A number + its label, as the answer block and the tiles state facts. `loss` is the ONE coral
+ *  zone's opt-in — a page carries at most one (design law), so it is set deliberately, never derived. */
+export interface AnswerStat {
+  value: string;
+  label: string;
+  loss?: boolean;
+}
+
+/** A key-metric tile — label · big number · the delta vs the creator's OWN catalogue (never an
+ *  industry band). `lead` = the metric the answer is about; it reads first by position + fill,
+ *  never by colour. */
+export interface MetricTile {
+  label: string;
+  value: string;
+  delta?: string;
+  lead?: boolean;
+}
+
+/** One second on the clip worth a chip: where the playhead parks and what share is still watching. */
+export interface RetentionMoment {
+  at: number; // seconds into the clip
+  pct: number; // 0..100 — share of the room still watching
+}
+
+/** The retention instrument (Engagement's hero on a video). ONE playhead drives the cover's progress
+ *  line, the curve, the chips and the transcript — they are one instrument, not four readings. */
+export interface RetentionInstrument {
+  clipSeconds: number;
+  /** 0..1 per second — share of the room still watching (`heatmap.weighted_curve`). */
+  curve: number[];
+  /** The creator's own median post — the only benchmark band we hold (§5.2). */
+  median?: number[];
+  /** The second the opening collapse finishes; the curve is drawn coral up to it. */
+  breakAt?: number;
+  /** The read, annotated ON the figure ("62% gone by 0:03") rather than written under it. */
+  anno?: string;
+  transcript: string;
+  /** The word under the break — underlined coral in the one-line strip. */
+  breakWordIndex?: number;
+  moments: RetentionMoment[];
+  coverLabel: string; // "0:28" — the duration chip on the mini frame
+  coverSrc?: string | null; // the drill's real cover; absent ⇒ the matte placeholder
+}
+
+/** This clip among the creator's own last N — the benchmark the meta was citing, DRAWN. */
+export interface RankStripData {
+  values: number[]; // the catalogue, in the strip's unit
+  median: number;
+  max: number; // the axis top
+  value: number; // this clip
+  unit: string; // "s"
+}
+
+/** When the room reacts, on the clip's own axis — the heatmap grammar, counts matching the tiles. */
+export interface ReactionTimelineData {
+  seconds: number;
+  rows: { label: string; count: number; intensity: number[] }[]; // intensity 0..1 per second
+}
+
+/** A simulated viewer speaking. The ONLY serif on the surface — content, not chrome. `echo` is how
+ *  many of the room would say the same thing, and it must fit INSIDE the row it belongs to. */
+export interface VoiceRow {
+  who: string;
+  tag: string; // a human descriptor ("small creator"), never an archetype caste
+  quote: string;
+  echo: number;
+  echoOf?: number; // the denominator the echo bar is a share of
+  loss?: boolean;
+  /** The swing, folded into the segment it names ("Win these 201: watched 38% → 47%"). */
+  swing?: string;
+}
+
+/** Engagement — what the room DID with the clip, second by second and in aggregate. */
+export interface EngagementFrameData {
+  retention?: RetentionInstrument; // VIDEO only (§3.3: text has no timeline)
+  watch?: { title: string; meta?: string; tiles: MetricTile[]; rank?: RankStripData };
+  reactionTimeline?: ReactionTimelineData; // VIDEO only — same reason
+  reactions?: { title: string; meta?: string; tiles: MetricTile[] };
+  /** TEXT's instrument: the voices lead, because a text sim has the voices and no timeline. */
+  voices?: { title: string; rows: VoiceRow[] };
+}
+
+/** The re-simulated state a fix produces. Authored/derived as a whole so before → after is one
+ *  swap, and `Undo` is one state flip — never a pile of independently-mutated numbers. */
+export interface DrillFixApplied {
+  head: string;
+  stats: AnswerStat[];
+  was: AnswerStat; // before → after, on one line, in the answer block
+  now: AnswerStat;
+  verdict: { value: string; label: string }; // the hero chip after the fix
+  cortexCorner?: string; // "after the trim" — the cortex repaints from the new curve
+  thumbLabel?: string; // the clip is shorter now
+  retention?: {
+    curve: number[];
+    clipSeconds: number;
+    anno?: string;
+    moments?: RetentionMoment[];
+    /** Words the trim removed from the front of the transcript. */
+    trimWords?: number;
+  };
+  watchTiles?: MetricTile[];
+  rankValue?: number;
+  reactionTiles?: MetricTile[];
+  reactionMeta?: string;
+  /** Scales the reaction timeline's counts with the new reach. */
+  reactionScale?: number;
+}
+
+/** THE FIX, as a control rather than a sentence. `unlock` states one; this one runs. */
+export interface DrillFix {
+  label: string; // "Trim 0:00–0:03"
+  gain?: string; // "→ 8.4K"
+  applied: DrillFixApplied;
+}
+
+/** The answer block — the verdict headline (the surface's ONE sentence), its evidence as a stat row,
+ *  and the fix. Its ONLY home is Brain; it is content, never pinned (owner-reversed 7.2). */
+export interface DrillAnswer {
+  head: string;
+  stats: AnswerStat[];
+  /** The cortex's right corner — what second the figure is showing ("at 0:03, the drop"). */
+  cortexCorner?: string;
+  /** The hero chip on Brain, when the page's headline differs from the template verdict. */
+  verdict?: { value: string; label: string };
+  fix?: DrillFix;
+  /** Where "See the evidence →" goes: one tab right to the curve (video), or down to the reasons. */
+  evidence?: "engagement" | "reasons";
+}
+
+/** The rail's identity strip — thumbnail · one-line title · the projected counts. Rendered ONCE,
+ *  above the tabs, and it scrolls away (the TikTok chrome). */
+export interface DrillIdentity {
+  title: string;
+  thumbLabel: string; // "0:28" | "HOOK"
+  coverSrc?: string | null;
+  stats: { kind: "play" | "heart" | "msg" | "share" | "save"; value: string }[];
+  /** These are projections for a post that does not exist yet — the tag says so, and the row is
+   *  dimmed so it is never the loudest data on the page. */
+  projected?: boolean;
+}
+
 export interface BrainFrameData {
   cortexSeedKey: string; // drifts the cortex parcellation; stable per stimulus
   clipSeconds: number; // cortex replay-loop duration (s)
   stopRatio: number; // 0..1 — drives the cortex bold, from the verdict
+  /** The audience's REAL retention at each second, 0..1 (`heatmap.weighted_curve`). Present ⇒ the
+   *  cortex runs `cortex-sim`'s **grounded** mode: attention tracks who is still watching, salience
+   *  spikes where the curve breaks, and the default-mode network rises with the people who checked
+   *  out. Absent (a text/concept sim has no timeline) ⇒ the honest seeded `simulated` envelope.
+   *  MUST come from the same curve the attention driver renders — the cortex and the visible curve
+   *  are one instrument, not two readings of the same run. */
+  retentionCurve?: number[];
   cortexNote?: string; // #3 — the "what it is NOT" honesty caption ("a modeled proxy, not measured attention")
   driver: BrainDriver; // ◇ swap — the driver axis
   signals: SignalRow[]; // ◇ swap — the decomposition
@@ -133,6 +297,14 @@ export interface BrainFrameData {
   kpiHeatmap?: KpiHeatmapData; // ③ activation per second · every decoded system
   buyIntent?: BuyIntentData; // ④ purchase-intent moments
   calibrationNote?: string; // the single consolidated honesty line at the tab bottom (replaces cortexNote)
+  /** rev 10 — the two or three signals the page is actually about. They render full-width above the
+   *  grid, ranked, so the nine have a hierarchy without any of them being hidden (the rev-8 drawer
+   *  mistake). Values are `SignalCell.key`s; unknown keys are ignored. */
+  signalMovers?: string[];
+  /** The scale, NAMED in the card's right-meta ("0–100 · vs your baseline"). Naming each scale is
+   *  what makes a surface carrying three of them honest — hiding a block was the wrong cure. */
+  signalScale?: string;
+  networkScale?: string; // "z-scored · at the playhead"
 }
 
 // ── Population swap figures ────────────────────────────────────────────────────
@@ -185,8 +357,20 @@ export interface AmplificationData {
 export interface ActionIntentData {
   /** The action verbs, strongest first. `value` is a 0–100 intent INDEX, not a rate — see `note`. */
   rows: { label: string; value: number }[];
-  /** The real population rate (flat mean of watch-through). A DIFFERENT kind of number from `rows`,
-   *  so it rides the header as its own figure and never joins the bar set. */
+  /** The aggregate's flat mean of watch-through. Carried because it is real sealed engine output —
+   *  but deliberately NOT rendered on the Engagement page, and this is the reason:
+   *
+   *  Key metrics already answers watch depth twice ("Avg watch 6.1s of 0:12" — the room's
+   *  audience-WEIGHTED mean off the swipe times — and "Watched full 22%" — the share of people who
+   *  reached the end). This field is a THIRD answer to the same question: 65% on the same ten
+   *  people, differing only in that it is unweighted. It was printed as the delta under all four
+   *  verbs, so the page read 51% · 22% · 65% ×4 and the three looked like a contradiction.
+   *
+   *  Renaming it cannot fix that — the collision is between the NUMBERS, not the words. This module's
+   *  own producer note (`ambient-v2-video-population.ts:262`) already draws the line: a second,
+   *  differently-weighted figure for the same run "would put two contradictory answers on screen".
+   *  So Key metrics owns watch depth, and Projected reaction owns intent. A consumer with no Key
+   *  metrics card may still read this. */
   watchThroughPct: number;
   total: number; // the real cast
   actors: number; // …with any action intent above zero
@@ -215,6 +399,10 @@ export interface DecisionStateRow {
   share: number; // 0..100 of the room
   lever: string; // the one action for this state ("cut the wait", "show the receipts", …)
   loss?: boolean; // the definitive loss (the scrolled-and-gone) → coral
+  /** rev 10 — the row SPEAKS. Tapping it opens one simulated viewer in their own words, plus the
+   *  `interview ›` affordance the drawer already ships. Talking to the room is the most
+   *  differentiated thing in the product; a flat count row never said so. */
+  voice?: VoiceRow;
 }
 export interface DecisionStatesData {
   states: DecisionStateRow[]; // exactly four, sold → gone
@@ -264,6 +452,37 @@ export interface PopulationFrameData {
   actionIntent?: ActionIntentData;
   swing?: SwingData; // the swing · your upside
   room?: RoomTrustData; // the room · trust strip (richer replacement for `calibration.note`)
+  // ── rev 12 ──
+  /** Who watches — and how long. The retention split by traffic pool: the read no platform reports,
+   *  and the product's actual claim (§5.1). ONE taxonomy across terrain, watch-time, fit and spread:
+   *  relationship to the creator (Followers · Returning · New viewers · Outside niche), TikTok's own
+   *  vocabulary. The archetype namespace is owner-RETIRED — never re-propose it. */
+  pools?: {
+    title: string;
+    meta?: string;
+    rows: {
+      label: string;
+      share: string; // "65% of room"
+      sharePct: number;
+      curve?: number[]; // 0..1 — this pool's own retention spark
+      dropAt?: string; // "0:02"
+      loss?: boolean;
+    }[];
+  };
+  /** Where & when — one card since rev 11 (the surface mix and the posting window were two thin
+   *  cards on the page the owner called the most overloaded). Text has no surface mix (§3.3). */
+  distribution?: {
+    title: string;
+    meta?: string;
+    surfaces?: { label: string; value: string; weight: number }[];
+    week?: { day: string; value: number; best?: boolean; hours?: string }[];
+  };
+  /** The line that rides ON the terrain, telling you what its district rates mean. */
+  heroFigread?: string;
+  /** The chip on the terrain. Each page's hero states THAT page's headline — Audience's question is
+   *  who was in the room, so its chip is the room's composition, not the clip's verdict. Falls back
+   *  to the template verdict when a domain has no separate one. */
+  heroVerdict?: { value: string; label: string };
 }
 
 // ── the bundle ─────────────────────────────────────────────────────────────────
@@ -280,6 +499,19 @@ export interface DomainTemplate {
    *  that make an insight feel like an edge: a specific LEVER, a modeled predicted GAIN, and the
    *  counterintuitive INSIGHT (what already works vs what leaks). This is the card's value peak. */
   unlock?: { lever: string; gain?: string; insight: string };
+  // ── rev 12 (all optional — a domain that authors none renders exactly as before) ──
+  /** The identity strip above the tabs. */
+  identity?: DrillIdentity;
+  /** The answer block + the acting fix. Brain's, and only Brain's. */
+  answer?: DrillAnswer;
+  /** The Engagement page. Absent ⇒ the tab dims, exactly like an absent brain/population. */
+  engagement?: EngagementFrameData;
+  /** The sim disclosure — the last line of EVERY page, same words ("1,000 simulated · your 4.2K
+   *  followers · confidence 0.82"). One home, so it stops being repeated in three grammars. */
+  simline?: string;
+  /** "How to read these numbers" — which scale each block is on, and what the model cannot claim.
+   *  The drawer EXPLAINS the instrument; it never holds a second copy of it. */
+  method?: { heading: string; notes: string[] }[];
   /** OPTIONAL — a text/concept sim has no brain read (the brain decomposition is a VIDEO producer:
    *  fold attention + craft dims). When undefined, `AmbientDetail` shows the honest brain-unavailable
    *  state (`brainNote`) and defaults to the audience tab. The authored fixtures always provide it. */

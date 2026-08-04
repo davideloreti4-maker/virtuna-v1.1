@@ -1,0 +1,1237 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Insights — product chrome (rev 5)</title>
+<!--
+  Ambient Audience v2 · detail drill — REV 5, product chrome.
+
+  Owner direction 2026-08-01: "something Claude, ChatGPT or Perplexity would release" →
+  Perplexity component idiom + rethink the structure.
+
+  What changed from rev 4 (which read like a terminal / broadsheet):
+    · Grouping is FILL, not hairline rules. Soft cards at 14px radius on a lifted tone.
+    · Uppercase mono micro-labels are GONE. Card headers are sentence-case 13px medium with an icon.
+    · Numbers are medium weight at a confident size, not hairline-thin at a huge size.
+    · Chips/pills carry every piece of metadata — the Perplexity signature.
+    · A segmented control replaces the underline tabs.
+    · New: a persistent ANSWER block above the tabs. The verdict is never hidden behind a tab.
+
+  Two adaptations, deliberate:
+    · Perplexity spends its accent (cyan) on POSITIVE/interactive states. Virtuna's law is coral =
+      loss only, so active states here are cream + a lighter fill. Coral never marks a good thing.
+    · The rev-3 rejection banned card-in-card. Cards here group by FILL and go exactly ONE level
+      deep: inside a card you get rows, chips and charts — never another card.
+
+  Still matte (CLAUDE.md): no gradient, no shadow, no glow, no backdrop-filter. Verified by
+  computed-style sweep, not by grep.
+-->
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+
+  :root {
+    /* brand tokens — AmbientDetail.tsx TONE + globals.css, unchanged */
+    --page:   #1f1f1e;
+    --rail:   #181817;
+    --card:   #212120;   /* the lifted card fill — grouping device, replaces hairline rules */
+    --chip:   #2b2a28;   /* chips + the active segment */
+    --chip-2: #343330;
+    --cream:  #ece7de;
+    --dim:    rgba(236,231,222,.64);
+    --faint:  rgba(236,231,222,.42);
+    --ghost:  rgba(236,231,222,.20);
+    --trace:  rgba(236,231,222,.10);
+    --coral:  #FF6363;   /* loss only — never an active state, never a positive */
+    --hair:   rgba(255,255,255,.05);
+
+    --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+    --serif: ui-serif, "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+
+    --r-card: 14px;
+    --r-in:   10px;
+  }
+
+  html { color-scheme: dark; background: var(--page); }
+  body {
+    margin: 0; background: var(--page); color: var(--cream);
+    font-family: var(--sans); font-size: 14px; line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── mockup scaffolding (not part of the product surface) ────────────────────────────────── */
+  .page { max-width: 1200px; margin: 0 auto; padding: 40px 28px 72px; }
+  .masthead { max-width: 720px; }
+  .masthead .eyebrow { font-size: 12px; color: var(--faint); letter-spacing: .01em; }
+  .masthead h1 { margin: 10px 0 0; font-size: 25px; font-weight: 500; letter-spacing: -.02em; line-height: 1.25; text-wrap: balance; }
+  .masthead p { margin: 12px 0 0; color: var(--dim); font-size: 14px; line-height: 1.6; max-width: 62ch; }
+  .stage { margin-top: 36px; display: flex; flex-wrap: wrap; gap: 32px; align-items: flex-start; }
+  .slot { margin: 0; display: flex; flex-direction: column; gap: 11px; }
+  .slot > figcaption { display: flex; align-items: baseline; gap: 9px; font-size: 12.5px; color: var(--faint); }
+  .slot > figcaption b { color: var(--dim); font-weight: 500; }
+
+  /* ── the rail ────────────────────────────────────────────────────────────────────────────── */
+  .rail {
+    width: 440px; height: 862px; display: flex; flex-direction: column;
+    background: var(--rail); border-left: 1px solid var(--hair); color: var(--cream);
+  }
+  /* The head is fixed and the body scrolls under it. Cards share the segmented control's fill, so
+     without this divider the two merge the moment content scrolls flush against the control. */
+  .railhead { flex: none; padding: 16px 20px 14px; border-bottom: 1px solid var(--hair); }
+  .railbody { flex: 1; min-height: 0; overflow-y: auto; padding: 0 20px 24px; scrollbar-width: thin; }
+  .railbody::-webkit-scrollbar { width: 6px; }
+  .railbody::-webkit-scrollbar-thumb { background: var(--trace); border-radius: 3px; }
+
+  .navrow { display: flex; align-items: center; justify-content: space-between; }
+  .back {
+    display: inline-flex; align-items: center; gap: 6px; background: none; border: 0; padding: 0;
+    cursor: pointer; font: 400 13px var(--sans); color: var(--faint); transition: color .14s;
+  }
+  .back:hover { color: var(--cream); }
+  .pagerchip {
+    padding: 3px 9px; border-radius: 999px; background: var(--card);
+    font-size: 11.5px; color: var(--faint); font-variant-numeric: tabular-nums;
+  }
+
+  /* stimulus identity */
+  .stim { margin-top: 14px; display: flex; gap: 11px; align-items: center; }
+  .stim-thumb {
+    flex: none; width: 38px; height: 50px; border-radius: 8px; background: var(--card);
+    display: grid; place-items: center; font: 500 9px var(--mono); color: var(--ghost); letter-spacing: .04em;
+  }
+  .stim-text {
+    font-size: 13px; line-height: 1.42; color: var(--dim);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+
+  /* ── the answer block — persistent, never behind a tab ───────────────────────────────────── */
+  .answer { margin-top: 16px; display: flex; gap: 12px; }
+  .answer-bar { flex: none; width: 2px; border-radius: 1px; background: var(--cream); }
+  .answer-bar.loss { background: var(--coral); }
+  .answer h2 { margin: 0; font-size: 15.5px; font-weight: 500; line-height: 1.35; letter-spacing: -.011em; color: var(--cream); text-wrap: balance; }
+  .answer p { margin: 7px 0 0; font-size: 13px; line-height: 1.52; color: var(--dim); }
+  .answer p .loss { color: var(--coral); }
+  .answer p b { color: var(--cream); font-weight: 500; }
+  .fix {
+    margin-top: 11px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+    padding: 7px 12px; border-radius: 999px; background: var(--chip); border: 0;
+    font: 500 12.5px var(--sans); color: var(--cream); transition: background .14s;
+  }
+  .fix:hover { background: var(--chip-2); }
+  .fix svg { color: var(--faint); }
+  .fix em { font-style: normal; color: var(--faint); font-weight: 400; }
+
+  /* ── segmented control ───────────────────────────────────────────────────────────────────── */
+  .seg {
+    margin-top: 16px; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+    gap: 2px; padding: 3px; border-radius: var(--r-in); background: var(--card);
+  }
+  .seg button {
+    border: 0; cursor: pointer; padding: 7px 4px; border-radius: 8px; background: transparent;
+    font: 500 12.5px var(--sans); color: var(--faint); transition: background .16s, color .16s;
+  }
+  .seg button:hover { color: var(--dim); }
+  .seg button[aria-selected="true"] { background: var(--chip-2); color: var(--cream); }
+
+  /* ── the card — the one grouping device. Fill, not border. One level deep. ───────────────── */
+  .cards { display: flex; flex-direction: column; gap: 11px; padding-top: 12px; }
+  .panel[hidden] { display: none; }
+  .card { background: var(--card); border-radius: var(--r-card); padding: 15px 16px 16px; }
+  .card-h { display: flex; align-items: center; gap: 8px; }
+  .card-h svg { flex: none; color: var(--faint); }
+  .card-h h3 { margin: 0; font-size: 13px; font-weight: 500; color: var(--cream); letter-spacing: -.003em; }
+  .card-h .meta {
+    margin-left: auto; font-size: 11.5px; color: var(--faint); font-variant-numeric: tabular-nums;
+  }
+  .card-h .meta.live { font-family: var(--mono); font-size: 11px; color: var(--dim); }
+  .card > .note { margin: 11px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--faint); }
+  .card > .read { margin: 12px 0 0; font-size: 12.5px; line-height: 1.55; color: var(--dim); }
+  .card > .read b { color: var(--cream); font-weight: 500; }
+  .card > .read .loss { color: var(--coral); }
+
+  /* the headline number inside a card */
+  .stat { margin-top: 12px; display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; }
+  .stat b { font-size: 31px; font-weight: 500; letter-spacing: -.025em; line-height: 1; font-variant-numeric: tabular-nums; }
+  .stat span { font-size: 12.5px; color: var(--faint); }
+
+  /* ── chips ───────────────────────────────────────────────────────────────────────────────── */
+  .chips { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px; padding: 4.5px 10px; border-radius: 999px;
+    background: var(--chip); font-size: 11.5px; color: var(--dim); font-variant-numeric: tabular-nums;
+  }
+  .chip b { color: var(--cream); font-weight: 500; }
+  .chip u { width: 6px; height: 6px; border-radius: 50%; background: var(--cream); text-decoration: none; }
+  .chip.loss { background: rgba(255,99,99,.10); color: var(--coral); }
+  .chip.loss b { color: var(--coral); }
+
+  /* ── the bar row ─────────────────────────────────────────────────────────────────────────── */
+  .rows { margin-top: 13px; display: flex; flex-direction: column; gap: 2px; }
+  .row { display: grid; grid-template-columns: 1fr 104px 46px; align-items: center; gap: 11px; padding: 5px 0; }
+  .row-l { font-size: 12.5px; color: var(--dim); }
+  .row-t { position: relative; height: 4px; border-radius: 2px; background: var(--trace); }
+  .row-t i { position: absolute; top: 0; bottom: 0; left: 0; border-radius: 2px; background: rgba(236,231,222,.75); }
+  .row-n { text-align: right; font-size: 12px; font-weight: 500; color: var(--cream); font-variant-numeric: tabular-nums; }
+  .row.loss .row-t i { background: var(--coral); }
+  .row.loss .row-n { color: var(--coral); }
+  /* delta variant — fill runs OUT from the median tick, so a negative reads as a direction */
+  .row-t.delta u { position: absolute; top: -3px; bottom: -3px; width: 1px; background: rgba(236,231,222,.5); text-decoration: none; z-index: 2; }
+  .row-t.delta i { z-index: 1; }
+
+  /* expandable reason row */
+  .rowx {
+    display: grid; grid-template-columns: 1fr 104px 46px; align-items: center; gap: 11px;
+    width: 100%; padding: 5px 0; border: 0; background: none; cursor: pointer; text-align: left;
+  }
+  .rowx .row-l { display: flex; align-items: center; gap: 6px; transition: color .14s; }
+  .rowx .row-l svg { color: var(--ghost); transition: transform .18s, color .14s; }
+  .rowx:hover .row-l, .rowx[aria-expanded="true"] .row-l { color: var(--cream); }
+  .rowx[aria-expanded="true"] .row-l svg { transform: rotate(90deg); color: var(--faint); }
+  .rowx.loss .row-t i { background: var(--coral); }
+  .rowx.loss .row-n { color: var(--coral); }
+  .rowx-body { padding: 4px 0 10px; display: flex; flex-direction: column; gap: 12px; }
+  .rowx-body[hidden] { display: none; }
+
+  /* ── the segmented stack (mix) ───────────────────────────────────────────────────────────── */
+  .stack { margin-top: 13px; display: flex; gap: 2px; height: 10px; }
+  .stack i { display: block; border-radius: 2px; background: var(--cream); }
+
+  /* ── charts ──────────────────────────────────────────────────────────────────────────────── */
+  .curve { position: relative; margin-top: 13px; touch-action: none; cursor: ew-resize; }
+  .curve svg { display: block; width: 100%; height: 124px; }
+  .playhead { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(236,231,222,.5); pointer-events: none; }
+  .legend { margin-top: 11px; display: flex; align-items: center; gap: 14px; font-size: 11.5px; color: var(--faint); }
+  .legend div { display: flex; align-items: center; gap: 6px; }
+  .legend u { width: 12px; height: 1.5px; background: var(--cream); text-decoration: none; border-radius: 1px; }
+  .legend u.after { height: 0; background: none; border-top: 1.5px dashed var(--cream); opacity: .5; }
+  .legend .cortex-slot { margin-left: auto; display: flex; align-items: center; gap: 7px; }
+  /* A quiet texture glyph, not a hero. It annotates the curve — it must never out-shout it. */
+  .cortex { flex: none; width: 54px; height: 35px; }
+
+  .filmstrip { margin-top: 11px; display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
+  .frame {
+    height: 32px; border-radius: 6px; background: var(--chip); display: grid; place-items: center;
+    font: 400 9px var(--mono); color: var(--ghost); font-variant-numeric: tabular-nums;
+    transition: background .14s, color .14s;
+  }
+  .frame.on { background: var(--chip-2); color: var(--dim); }
+  .transcript { margin: 12px 0 0; font-size: 12.5px; line-height: 1.6; color: rgba(236,231,222,.26); min-height: 40px; }
+  .transcript w { transition: color .1s; }
+  .transcript w.near { color: var(--faint); }
+  .transcript w.on { color: var(--cream); }
+
+  /* catalogue strip */
+  .strip { margin-top: 14px; }
+  .strip-plot { position: relative; height: 34px; }
+  .strip-axis { position: absolute; inset-inline: 0; bottom: 0; height: 1px; background: var(--trace); }
+  .strip-tick { position: absolute; bottom: 1px; width: 1px; height: 8px; background: rgba(236,231,222,.14); }
+  .strip-med { position: absolute; bottom: 0; width: 1px; height: 26px; background: rgba(236,231,222,.34); }
+  .strip-mark { position: absolute; bottom: 0; width: 1.5px; height: 34px; border-radius: 1px; background: var(--cream); }
+  .strip-mark.loss { background: var(--coral); }
+  .strip-dot { position: absolute; bottom: 32px; width: 7px; height: 7px; border-radius: 50%; background: var(--cream); transform: translateX(-2.75px); }
+  .strip-dot.loss { background: var(--coral); }
+  .strip-legend { margin-top: 8px; display: flex; justify-content: space-between; font-size: 11px; color: var(--faint); font-variant-numeric: tabular-nums; }
+
+  /* pool sparkline rows */
+  .prow { display: grid; grid-template-columns: 88px 1fr 40px; align-items: center; gap: 11px; padding: 5px 0; }
+  .prow-l { font-size: 12.5px; color: var(--dim); }
+  .prow-l em { font-style: normal; display: block; font-size: 10.5px; color: var(--ghost); }
+  .prow svg { display: block; width: 100%; height: 24px; }
+  .prow-n { text-align: right; font-size: 11.5px; color: var(--faint); font-variant-numeric: tabular-nums; }
+  .prow.loss .prow-n { color: var(--coral); }
+
+  .terrain { margin-top: 12px; }
+  .terrain svg { display: block; width: 100%; height: 196px; }
+
+  /* ── the ledger — plain rows inside the card, never a nested box ─────────────────────────── */
+  .ledger { margin-top: 6px; display: flex; flex-direction: column; }
+  .lrow { display: flex; align-items: baseline; gap: 12px; padding: 10px 0; border-top: 1px solid var(--hair); }
+  .lrow:first-child { border-top: 0; }
+  .lrow .l-main { flex: 1; min-width: 0; }
+  .lrow .l-name { font-size: 12.5px; font-weight: 500; color: var(--cream); }
+  .lrow .l-lever { margin-top: 3px; font-size: 11.5px; line-height: 1.45; color: var(--faint); }
+  .lrow .l-n { font-size: 13px; font-weight: 500; color: var(--cream); font-variant-numeric: tabular-nums; }
+  .lrow.loss .l-name, .lrow.loss .l-n { color: var(--coral); }
+
+  /* ── voices — the Perplexity "sources" component, adapted. Serif = a real voice. ─────────── */
+  .voices { margin-top: 13px; display: flex; flex-direction: column; gap: 15px; }
+  .voice { display: grid; grid-template-columns: 26px 1fr; gap: 10px; }
+  .voice-av {
+    width: 26px; height: 26px; border-radius: 50%; background: var(--chip); display: grid; place-items: center;
+    font-size: 11px; font-weight: 500; color: var(--faint);
+  }
+  .voice-who { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .voice-who b { font-size: 12px; font-weight: 500; color: var(--dim); }
+  .voice-who .tag { padding: 2px 7px; border-radius: 999px; background: var(--chip); font-size: 10.5px; color: var(--faint); }
+  .voice-text { margin: 6px 0 0; font-family: var(--serif); font-size: 14.5px; line-height: 1.48; color: var(--cream); }
+  .voice-w { margin-top: 8px; display: flex; align-items: center; gap: 9px; }
+  .voice-w span { font-size: 11px; color: var(--faint); font-variant-numeric: tabular-nums; }
+  .voice-w i { flex: 1; height: 3px; border-radius: 2px; background: var(--trace); position: relative; }
+  .voice-w i::after { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: var(--w); border-radius: 2px; background: rgba(236,231,222,.42); }
+  .voice.loss .voice-av { background: rgba(255,99,99,.12); color: var(--coral); }
+  .voice.loss .voice-w span { color: var(--coral); }
+  .voice.loss .voice-w i::after { background: var(--coral); }
+
+  /* the single elevated objection */
+  .objection { margin-top: 12px; display: flex; gap: 12px; }
+  .objection .bar { flex: none; width: 2px; border-radius: 1px; background: var(--coral); }
+  .objection q { font-family: var(--serif); font-size: 15px; line-height: 1.45; color: var(--cream); quotes: "\201C" "\201D"; }
+  .objection .src { margin-top: 7px; font-size: 11.5px; color: var(--coral); font-variant-numeric: tabular-nums; }
+
+  /* ── deeper read ─────────────────────────────────────────────────────────────────────────── */
+  .deeper { margin-top: 2px; }
+  .deeper > summary {
+    list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px;
+    padding: 12px 16px; border-radius: var(--r-card); background: var(--card);
+    font-size: 12.5px; font-weight: 500; color: var(--faint); transition: color .14s;
+  }
+  .deeper > summary::-webkit-details-marker { display: none; }
+  .deeper > summary:hover { color: var(--dim); }
+  .deeper > summary svg { transition: transform .18s; }
+  .deeper[open] > summary { border-radius: var(--r-card) var(--r-card) 0 0; color: var(--dim); }
+  .deeper[open] > summary svg { transform: rotate(90deg); }
+  .deeper-body { padding: 2px 16px 16px; border-radius: 0 0 var(--r-card) var(--r-card); background: var(--card); }
+  .grid9 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .g9 { padding: 10px 11px; border-radius: var(--r-in); background: var(--chip); }
+  .g9 b { display: block; font-size: 16px; font-weight: 500; color: var(--cream); font-variant-numeric: tabular-nums; }
+  .g9 span { display: block; margin-top: 3px; font-size: 10.5px; line-height: 1.3; color: var(--faint); }
+  .g9.muted b, .g9.muted span { color: var(--ghost); }
+
+  /* trust footer */
+  .trust { padding: 14px 16px; border-radius: var(--r-card); background: var(--card); }
+  .trust .tr { display: flex; flex-wrap: wrap; gap: 6px; }
+  .trust p { margin: 11px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--faint); }
+
+  /* design notes */
+  .notes { margin-top: 52px; max-width: 800px; }
+  .notes > summary { list-style: none; cursor: pointer; font-size: 12.5px; font-weight: 500; color: var(--faint); }
+  .notes > summary::-webkit-details-marker { display: none; }
+  .notes > summary:hover { color: var(--dim); }
+  .notes h2 { margin: 26px 0 0; font-size: 14px; font-weight: 500; }
+  .notes p, .notes li { color: var(--dim); font-size: 13px; line-height: 1.62; }
+  .notes p { margin: 9px 0 0; }
+  .notes ul { margin: 9px 0 0; padding-left: 18px; }
+  .notes li { margin-top: 5px; }
+  .notes code { font-family: var(--mono); font-size: 12px; color: var(--cream); }
+  .swap { margin-top: 14px; width: 100%; border-collapse: collapse; }
+  .swap th, .swap td { text-align: left; padding: 9px 14px 9px 0; border-top: 1px solid var(--hair); font-size: 12.5px; vertical-align: top; }
+  .swap th { font-size: 11px; color: var(--faint); font-weight: 500; border-top: 0; }
+  .swap td { color: var(--dim); }
+  .swap td:first-child { color: var(--cream); white-space: nowrap; }
+
+  :focus-visible { outline: 2px solid rgba(236,231,222,.55); outline-offset: 2px; border-radius: 6px; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+  @media (max-width: 1020px) { .rail { width: 100%; max-width: 440px; } }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="masthead">
+    <div class="eyebrow">Ambient Audience v2 · detail drill · rev 5</div>
+    <h1>The answer first, then the evidence.</h1>
+    <p>
+      Rebuilt in a product idiom: soft filled cards instead of hairline rules, a segmented control,
+      chips carrying the metadata, and icons on every card header. The verdict now rides a persistent
+      answer block above the tabs, so the thing you paid for is never hidden behind one. Coral still
+      means loss and nothing else — active states are cream.
+    </p>
+  </header>
+
+  <div class="stage">
+
+    <!-- ═══ VIDEO ═══════════════════════════════════════════════════════════════════════════ -->
+    <figure class="slot">
+      <figcaption><b>Video sim</b> a timeline, craft dims, action intents — and no voices</figcaption>
+
+      <div class="rail" data-rail="video">
+        <div class="railhead">
+          <div class="navrow">
+            <button class="back" type="button"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12L6 8l4-4"/></svg>Overview</button>
+            <span class="pagerchip">2 of 5</span>
+          </div>
+
+          <div class="stim">
+            <div class="stim-thumb">0:28</div>
+            <div class="stim-text">&ldquo;I spent four hundred dollars testing every viral hook format so you don&rsquo;t have to&hellip;&rdquo;</div>
+          </div>
+
+          <div class="answer">
+            <div class="answer-bar loss"></div>
+            <div>
+              <h2>Reach is capped by the first four seconds.</h2>
+              <p>
+                Everything after the hook performs above your median &mdash; but
+                <span class="loss">42% leave before the payoff arrives</span>, so distribution never
+                opens up. Projected <b>3.2K views</b> against a median of 8.1K.
+              </p>
+              <button class="fix" type="button">
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 1L3 9h4l-1 6 6-8H8z"/></svg>
+                Cut 0:00&ndash;0:04 <em>&rarr; 11.4K</em>
+              </button>
+            </div>
+          </div>
+
+          <div class="seg" role="tablist">
+            <button role="tab" aria-selected="true"  data-panel="v-over">Overview</button>
+            <button role="tab" aria-selected="false" data-panel="v-aud">Audience</button>
+            <button role="tab" aria-selected="false" data-panel="v-eng">Engagement</button>
+          </div>
+        </div>
+
+        <div class="railbody">
+
+          <!-- VIDEO · OVERVIEW -->
+          <div class="panel" id="v-over" role="tabpanel">
+            <div class="cards">
+
+              <section class="card">
+                <div class="card-h">
+                  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12l3.5-4 3 2.5L14 4"/></svg>
+                  <h3>Projected reach</h3>
+                  <span class="meta">vs your last 41</span>
+                </div>
+                <div class="stat"><b>3.2K</b><span>views</span></div>
+                <div class="chips">
+                  <span class="chip loss"><b>&darr; 60%</b> vs median</span>
+                  <span class="chip">bottom third of your posts</span>
+                </div>
+                <div class="strip">
+                  <div class="strip-plot" data-strip="video"></div>
+                  <div class="strip-legend"><span>420</span><span>median 8.1K</span><span>96K</span></div>
+                </div>
+              </section>
+
+              <section class="card">
+                <div class="card-h">
+                  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 8h3l2-5 3 10 2-5h4"/></svg>
+                  <h3>Retention</h3>
+                  <span class="meta live" data-live="v-scrub">0:04 · 58%</span>
+                </div>
+                <div class="curve" data-curve="video">
+                  <svg viewBox="0 0 372 124" preserveAspectRatio="none" aria-label="Retention across 28 seconds"></svg>
+                  <div class="playhead" style="left:14%"></div>
+                </div>
+                <div class="legend">
+                  <div><u></u>this cut</div>
+                  <div><u class="after"></u>after the fix</div>
+                  <div class="cortex-slot">
+                    <span>cortex</span>
+                    <canvas class="cortex" width="124" height="80" aria-label="Cortex activation at the playhead"></canvas>
+                  </div>
+                </div>
+                <div class="filmstrip" data-film="video"></div>
+                <p class="transcript" data-transcript="video"></p>
+                <p class="read">
+                  <b>The setup runs long.</b> The promise is still loading four seconds in &mdash; and
+                  everything the video is actually about starts at 0:09.
+                </p>
+              </section>
+
+              <section class="card">
+                <div class="card-h">
+                  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h12M2 8h12M2 12h12"/><circle cx="6" cy="4" r="1.6" fill="currentColor" stroke="none"/><circle cx="10" cy="8" r="1.6" fill="currentColor" stroke="none"/><circle cx="5" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg>
+                  <h3>What drove it</h3>
+                  <span class="meta">craft read</span>
+                </div>
+                <div class="rows">
+                  <div class="row"><span class="row-l">Payoff strength</span><span class="row-t"><i style="width:77%"></i></span><span class="row-n">77</span></div>
+                  <div class="row"><span class="row-l">Visual pull</span><span class="row-t"><i style="width:71%"></i></span><span class="row-n">71</span></div>
+                  <div class="row"><span class="row-l">Voice impact</span><span class="row-t"><i style="width:63%"></i></span><span class="row-n">63</span></div>
+                  <div class="row loss"><span class="row-l">Hook clarity</span><span class="row-t"><i style="width:44%"></i></span><span class="row-n">44</span></div>
+                  <div class="row loss"><span class="row-l">Open tension</span><span class="row-t"><i style="width:41%"></i></span><span class="row-n">41</span></div>
+                </div>
+                <p class="read">
+                  The two weakest dimensions are both in the opening. Everything the video does after
+                  it lands is already working.
+                </p>
+              </section>
+
+              <details class="deeper">
+                <summary>
+                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+                  Deeper read — the modeled decomposition
+                </summary>
+                <div class="deeper-body">
+                  <div class="grid9">
+                    <div class="g9"><b>71</b><span>Visual pull</span></div>
+                    <div class="g9"><b>44</b><span>Hook clarity</span></div>
+                    <div class="g9"><b>63</b><span>Voice impact</span></div>
+                    <div class="g9"><b>58</b><span>Pacing</span></div>
+                    <div class="g9"><b>77</b><span>Payoff</span></div>
+                    <div class="g9"><b>52</b><span>Novelty</span></div>
+                    <div class="g9"><b>69</b><span>Face presence</span></div>
+                    <div class="g9"><b>41</b><span>Open tension</span></div>
+                    <div class="g9"><b>66</b><span>Audio hold</span></div>
+                  </div>
+                  <p class="note" style="margin-top:12px;font-size:11.5px;color:rgba(236,231,222,.42)">
+                    A modeled cognitive proxy scored from the clip &mdash; not measured attention.
+                  </p>
+                </div>
+              </details>
+
+            </div>
+          </div>
+
+          <!-- VIDEO · AUDIENCE -->
+          <div class="panel" id="v-aud" role="tabpanel" hidden>
+            <div class="cards">
+
+              <section class="card">
+                <div class="card-h">
+                  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1L1 5l7 4 7-4-7-4z"/><path d="M1 11l7 4 7-4"/></svg>
+                  <h3>Who this reaches</h3>
+                  <span class="meta">room mix</span>
+                </div>
+                <div class="stack">
+                  <i style="flex:65"></i><i style="flex:20;opacity:.6"></i><i style="flex:10;opacity:.36"></i><i style="flex:5;opacity:.2"></i>
+                </div>
+                <div class="chips">
+                  <span class="chip"><u></u>For You <b>65%</b></span>
+                  <span class="chip"><u style="opacity:.6"></u>Niche <b>20%</b></span>
+                  <span class="chip"><u style="opacity:.36"></u>Followers <b>10%</b></span>
+                  <span class="chip"><u style="opacity:.2"></u>Cross-niche <b>5%</b></span>
+                </div>
+              </section>
+
+              <section class="card">
+                <div class="card-h">
+                  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 3v10h14"/><path d="M3 10l3-4 3 2 4-5"/></svg>
+                  <h3>Retention by pool</h3>
+                  <span class="meta">drop-off</span>
+                </div>
+                <div data-pools="video" style="margin-top:8px"></div>
+                <p class="read">
+                  <b>Your followers stay to 0:21.</b> The For You pool &mdash; two thirds of the room
+                  &mdash; <span class="loss">is gone by 0:04</span>. It holds the people who already
+                  know you and loses everyone it needed to convert.
+                </p>
+                <p class="note">No platform reports this. It&rsquo;s the question a creator actually has.</p>
+              </section>
+
+              <section class="card">
+                <div class="card-h">
+                  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4l5-2 5 2 4-2v10l-4 2-5-2-5 2z"/><path d="M6 2v10M11 4v10"/></svg>
+                  <h3>The room</h3>
+                  <span class="meta">1 node ≈ 10 people</span>
+                </div>
+                <div class="terrain"><svg viewBox="0 0 372 196" data-terrain="video" aria-label="Audience terrain by district"></svg></div>
+              </section>
+
+              <section class="card">
+                <div class="card-h">
+                  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.5"/><circle cx="8" cy="8" r="2.5"/></svg>
+                  <h3>By district</h3>
+                  <span class="meta">stayed</span>
+                </div>
+                <div class="ledger">
+                  <div class="lrow"><div class="l-main"><div class="l-name">Long-form watchers</div><div class="l-lever">Already primed — open colder, they&rsquo;ll wait</div></div><span class="l-n">64%</span></div>
+                  <div class="lrow"><div class="l-main"><div class="l-name">Tutorial seekers</div><div class="l-lever">Promise the number, not the process</div></div><span class="l-n">51%</span></div>
+                  <div class="lrow"><div class="l-main"><div class="l-name">Casual browsers</div><div class="l-lever">Needs a visual break inside 2s</div></div><span class="l-n">29%</span></div>
+                  <div class="lrow loss"><div class="l-main"><div class="l-name">Scroll-first feed</div><div class="l-lever">Nothing in frame one stops a thumb</div></div><span class="l-n">11%</span></div>
+                </div>
+              </section>
+
+            </div>
+          </div>
+
+          <!-- VIDEO · ENGAGEMENT -->
+          <div class="panel" id="v-eng" role="tabpanel" hidden>
+            <div class="cards">
+
+              <section class="card">
+                <div class="card-h">
+                  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 14s-6-3.5-6-7.5A3.5 3.5 0 018 4a3.5 3.5 0 016 2.5C14 10.5 8 14 8 14z"/></svg>
+                  <h3>Engagement</h3>
+                  <span class="meta">vs your median</span>
+                </div>
+                <div class="rows">
+                  <div class="row"><span class="row-l">Rewatch</span><span class="row-t delta"><u style="left:45%"></u><i style="left:45%;width:47%"></i></span><span class="row-n">+51%</span></div>
+                  <div class="row"><span class="row-l">Saves</span><span class="row-t delta"><u style="left:45%"></u><i style="left:45%;width:31%"></i></span><span class="row-n">+34%</span></div>
+                  <div class="row"><span class="row-l">Shares</span><span class="row-t delta"><u style="left:45%"></u><i style="left:45%;width:11%"></i></span><span class="row-n">+12%</span></div>
+                  <div class="row loss"><span class="row-l">Comments</span><span class="row-t delta"><u style="left:45%"></u><i style="left:39%;width:6%"></i></span><span class="row-n">&minus;8%</span></div>
+                </div>
+                <p class="read">
+                  Three of four run above your typical post. <b>A good video with a bad opening &mdash;
+                  not a bad video.</b>
+                </p>
+                <p class="note">The tick is your median; fill runs out from it.</p>
+              </section>
+
+              <section class="card">
+                <div class="card-h">
+                  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.5"/><path d="M8 4.5V8l2.5 1.5"/></svg>
+                  <h3>Watch-through</h3>
+                  <span class="meta">of those who stayed</span>
+                </div>
+                <div class="stat"><b>61%</b><span>reached the end</span></div>
+                <p class="read">
+                  And the floor underneath it: <b>3 in 10 watched the whole thing and would still do
+                  nothing</b> — no save, no share, no comment. A finished view is not an intent.
+                </p>
+              </section>
+
+              <section class="card">
+                <div class="card-h">
+                  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 1L3 9h4l-1 6 6-8H8z"/></svg>
+                  <h3>What they&rsquo;d do</h3>
+                  <span class="meta">intent index</span>
+                </div>
+                <div class="rows">
+                  <div class="row"><span class="row-l">Save it</span><span class="row-t"><i style="width:78%"></i></span><span class="row-n">78</span></div>
+                  <div class="row"><span class="row-l">Rewatch</span><span class="row-t"><i style="width:64%"></i></span><span class="row-n">64</span></div>
+                  <div class="row"><span class="row-l">Send to someone</span><span class="row-t"><i style="width:41%"></i></span><span class="row-n">41</span></div>
+                  <div class="row"><span class="row-l">Comment</span><span class="row-t"><i style="width:23%"></i></span><span class="row-n">23</span></div>
+                </div>
+                <p class="note">An index, not a rate — it ranks the verbs against each other, it doesn&rsquo;t predict taps.</p>
+              </section>
+
+              <div class="trust">
+                <div class="tr">
+                  <span class="chip">10 reactors</span>
+                  <span class="chip">calibrated on your 4.2K followers</span>
+                  <span class="chip">confidence <b>medium</b></span>
+                </div>
+                <p>
+                  A modeled society, calibrated for engagement. &ldquo;Hold the hook&rdquo; is weighted
+                  attention at 0:03; the district table counts heads. Two measures, two denominators.
+                </p>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </figure>
+
+    <!-- ═══ TEXT ════════════════════════════════════════════════════════════════════════════ -->
+    <figure class="slot">
+      <figcaption><b>Text sim</b> hook · idea · draft — real reasons, real voices, no timeline</figcaption>
+
+      <div class="rail" data-rail="text">
+        <div class="railhead">
+          <div class="navrow">
+            <button class="back" type="button"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12L6 8l4-4"/></svg>Overview</button>
+            <span class="pagerchip">4 of 5</span>
+          </div>
+
+          <div class="stim">
+            <div class="stim-thumb">HOOK</div>
+            <div class="stim-text">&ldquo;You don&rsquo;t need a niche. You need one repeatable format.&rdquo;</div>
+          </div>
+
+          <div class="answer">
+            <div class="answer-bar"></div>
+            <div>
+              <h2>The idea works. The phrasing is what leaks.</h2>
+              <p>
+                <b>41% would stop</b> &mdash; above your 33% median &mdash; but
+                <span class="loss">218 of 590 coded it as advice they&rsquo;d already heard</span>.
+                They&rsquo;re not rejecting the claim, they&rsquo;re recognising the shape of it.
+              </p>
+              <button class="fix" type="button">
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 1L3 9h4l-1 6 6-8H8z"/></svg>
+                Put a number in the first clause <em>&rarr; 58%</em>
+              </button>
+            </div>
+          </div>
+
+          <div class="seg" role="tablist">
+            <button role="tab" aria-selected="true"  data-panel="t-over">Overview</button>
+            <button role="tab" aria-selected="false" data-panel="t-aud">Audience</button>
+            <button role="tab" aria-selected="false" data-panel="t-eng">Engagement</button>
+          </div>
+        </div>
+
+        <div class="railbody">
+
+          <!-- TEXT · OVERVIEW -->
+          <div class="panel" id="t-over" role="tabpanel">
+            <div class="cards">
+
+              <section class="card">
+                <div class="card-h">
+                  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12l3.5-4 3 2.5L14 4"/></svg>
+                  <h3>Would stop scrolling</h3>
+                  <span class="meta">vs your last 41 hooks</span>
+                </div>
+                <div class="stat"><b>41%</b><span>of 1,000 simulated</span></div>
+                <div class="chips">
+                  <span class="chip"><b>&uarr; 8 pts</b> above median</span>
+                  <span class="chip">top third of your hooks</span>
+                </div>
+                <div class="strip">
+                  <div class="strip-plot" data-strip="text"></div>
+                  <div class="strip-legend"><span>9%</span><span>median 33%</span><span>62%</span></div>
+                </div>
+              </section>
+
+              <section class="card">
+                <div class="card-h">
+                  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9a2 2 0 01-2 2H5l-3 3V4a2 2 0 012-2h8a2 2 0 012 2z"/></svg>
+                  <h3>Why they reacted</h3>
+                  <span class="meta">590 coded</span>
+                </div>
+                <div class="rows" data-reasons="text"></div>
+                <p class="note">Open a reason to hear the people inside it.</p>
+              </section>
+
+              <section class="card">
+                <div class="card-h">
+                  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h12M2 8h12M2 12h12"/><circle cx="6" cy="4" r="1.6" fill="currentColor" stroke="none"/><circle cx="10" cy="8" r="1.6" fill="currentColor" stroke="none"/><circle cx="5" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg>
+                  <h3>What drove it</h3>
+                  <span class="meta">craft read</span>
+                </div>
+                <div class="rows">
+                  <div class="row"><span class="row-l">Payoff promise</span><span class="row-t"><i style="width:81%"></i></span><span class="row-n">81</span></div>
+                  <div class="row"><span class="row-l">Claim strength</span><span class="row-t"><i style="width:74%"></i></span><span class="row-n">74</span></div>
+                  <div class="row"><span class="row-l">Tension</span><span class="row-t"><i style="width:68%"></i></span><span class="row-n">68</span></div>
+                  <div class="row loss"><span class="row-l">Specificity</span><span class="row-t"><i style="width:39%"></i></span><span class="row-n">39</span></div>
+                  <div class="row loss"><span class="row-l">Novelty</span><span class="row-t"><i style="width:36%"></i></span><span class="row-n">36</span></div>
+                </div>
+                <p class="read">
+                  <b>Strong claim, weak specifics.</b> That gap is exactly what &ldquo;sounds like
+                  everyone else&rdquo; is describing.
+                </p>
+              </section>
+
+              <details class="deeper">
+                <summary>
+                  <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>
+                  Deeper read — the modeled decomposition
+                </summary>
+                <div class="deeper-body">
+                  <div class="grid9">
+                    <div class="g9"><b>74</b><span>Claim strength</span></div>
+                    <div class="g9"><b>39</b><span>Specificity</span></div>
+                    <div class="g9"><b>68</b><span>Tension</span></div>
+                    <div class="g9"><b>55</b><span>Rhythm</span></div>
+                    <div class="g9"><b>81</b><span>Payoff promise</span></div>
+                    <div class="g9"><b>36</b><span>Novelty</span></div>
+                    <div class="g9 muted"><b>—</b><span>Visual pull</span></div>
+                    <div class="g9 muted"><b>—</b><span>Face presence</span></div>
+                    <div class="g9 muted"><b>—</b><span>Audio hold</span></div>
+                  </div>
+                  <p class="note" style="margin-top:12px;font-size:11.5px;color:rgba(236,231,222,.42)">
+                    Three are dashed, not dimmed guesses — a hook has no footage to score them against.
+                  </p>
+                </div>
+              </details>
+
+            </div>
+          </div>
+
+          <!-- TEXT · AUDIENCE -->
+          <div class="panel" id="t-aud" role="tabpanel" hidden>
+            <div class="cards">
+
+              <section class="card">
+                <div class="card-h">
+                  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1L1 5l7 4 7-4-7-4z"/><path d="M1 11l7 4 7-4"/></svg>
+                  <h3>Who this reaches</h3>
+                  <span class="meta">room mix</span>
+                </div>
+                <div class="stack">
+                  <i style="flex:31"></i><i style="flex:24;opacity:.66"></i><i style="flex:19;opacity:.46"></i><i style="flex:14;opacity:.3"></i><i style="flex:12;opacity:.2"></i>
+                </div>
+                <div class="chips">
+                  <span class="chip"><u></u>Builders <b>31%</b></span>
+                  <span class="chip"><u style="opacity:.66"></u>Learners <b>24%</b></span>
+                  <span class="chip"><u style="opacity:.46"></u>Operators <b>19%</b></span>
+                  <span class="chip"><u style="opacity:.3"></u>Skeptics <b>14%</b></span>
+                  <span class="chip"><u style="opacity:.2"></u>Lurkers <b>12%</b></span>
+                </div>
+              </section>
+
+              <section class="card">
+                <div class="card-h">
+                  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 3v10h14"/><path d="M3 10l3-4 3 2 4-5"/></svg>
+                  <h3>Who stops</h3>
+                  <span class="meta">by district</span>
+                </div>
+                <div class="rows">
+                  <div class="row"><span class="row-l">Builders</span><span class="row-t"><i style="width:58%"></i></span><span class="row-n">58%</span></div>
+                  <div class="row"><span class="row-l">Learners</span><span class="row-t"><i style="width:47%"></i></span><span class="row-n">47%</span></div>
+                  <div class="row"><span class="row-l">Operators</span><span class="row-t"><i style="width:38%"></i></span><span class="row-n">38%</span></div>
+                  <div class="row"><span class="row-l">Lurkers</span><span class="row-t"><i style="width:26%"></i></span><span class="row-n">26%</span></div>
+                  <div class="row loss"><span class="row-l">Skeptics</span><span class="row-t"><i style="width:19%"></i></span><span class="row-n">19%</span></div>
+                </div>
+                <p class="read">
+                  <b>Builders stop most; skeptics are the ceiling.</b> The people who most need
+                  convincing are the ones who&rsquo;ve heard it before.
+                </p>
+              </section>
+
+              <section class="card">
+                <div class="card-h">
+                  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4l5-2 5 2 4-2v10l-4 2-5-2-5 2z"/><path d="M6 2v10M11 4v10"/></svg>
+                  <h3>The room</h3>
+                  <span class="meta">1 node ≈ 10 people</span>
+                </div>
+                <div class="terrain"><svg viewBox="0 0 372 196" data-terrain="text" aria-label="Audience terrain by district"></svg></div>
+              </section>
+
+              <section class="card">
+                <div class="card-h">
+                  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.5"/><circle cx="8" cy="8" r="2.5"/></svg>
+                  <h3>The playbook</h3>
+                  <span class="meta">the room, by decision</span>
+                </div>
+                <div class="ledger">
+                  <div class="lrow"><div class="l-main"><div class="l-name">Sold</div><div class="l-lever">Nothing to do — ship it for them</div></div><span class="l-n">318</span></div>
+                  <div class="lrow"><div class="l-main"><div class="l-name">Winnable</div><div class="l-lever">Stalled at the line — the number wins them</div></div><span class="l-n">97</span></div>
+                  <div class="lrow"><div class="l-main"><div class="l-name">Skeptical</div><div class="l-lever">Show the receipts, not the claim</div></div><span class="l-n">174</span></div>
+                  <div class="lrow loss"><div class="l-main"><div class="l-name">Gone</div><div class="l-lever">Not this idea, not this week</div></div><span class="l-n">411</span></div>
+                </div>
+                <p class="note">Four states, one partition — they sum to the room, and each names its own lever.</p>
+              </section>
+
+            </div>
+          </div>
+
+          <!-- TEXT · ENGAGEMENT -->
+          <div class="panel" id="t-eng" role="tabpanel" hidden>
+            <div class="cards">
+
+              <section class="card">
+                <div class="card-h">
+                  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9a2 2 0 01-2 2H5l-3 3V4a2 2 0 012-2h8a2 2 0 012 2z"/></svg>
+                  <h3>If you posted this</h3>
+                  <span class="meta">projected comments</span>
+                </div>
+                <div class="voices">
+
+                  <div class="voice">
+                    <div class="voice-av">M</div>
+                    <div>
+                      <div class="voice-who"><b>Maya</b><span class="tag">builder</span></div>
+                      <p class="voice-text">ok this is the first time someone&rsquo;s said the quiet part. the niche advice has been killing me for two years</p>
+                      <div class="voice-w"><span>412 would echo this</span><i style="--w:70%"></i></div>
+                    </div>
+                  </div>
+
+                  <div class="voice loss">
+                    <div class="voice-av">D</div>
+                    <div>
+                      <div class="voice-who"><b>Dev</b><span class="tag">skeptic</span></div>
+                      <p class="voice-text">sounds like everyone else. every account on here says pick a format now</p>
+                      <div class="voice-w"><span>218 would echo this</span><i style="--w:37%"></i></div>
+                    </div>
+                  </div>
+
+                  <div class="voice">
+                    <div class="voice-av">A</div>
+                    <div>
+                      <div class="voice-who"><b>Ana</b><span class="tag">learner</span></div>
+                      <p class="voice-text">saving this. what counts as a format though &mdash; a series, or a shot type?</p>
+                      <div class="voice-w"><span>174 would echo this</span><i style="--w:30%"></i></div>
+                    </div>
+                  </div>
+
+                  <div class="voice loss">
+                    <div class="voice-av">S</div>
+                    <div>
+                      <div class="voice-who"><b>Sam</b><span class="tag">tough crowd</span></div>
+                      <p class="voice-text">easy to say with 40k followers. format is all you need when the reach is already there</p>
+                      <div class="voice-w"><span>96 would echo this</span><i style="--w:16%"></i></div>
+                    </div>
+                  </div>
+
+                  <div class="voice">
+                    <div class="voice-av">J</div>
+                    <div>
+                      <div class="voice-who"><b>Jo</b><span class="tag">operator</span></div>
+                      <p class="voice-text">the second sentence is the whole post. everything before it is warm-up</p>
+                      <div class="voice-w"><span>71 would echo this</span><i style="--w:12%"></i></div>
+                    </div>
+                  </div>
+
+                </div>
+                <p class="note">Sorted by weight, the way a comment section sorts itself.</p>
+              </section>
+
+              <section class="card">
+                <div class="card-h">
+                  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.5"/><circle cx="8" cy="8" r="3"/><circle cx="8" cy="8" r="1" fill="currentColor" stroke="none"/></svg>
+                  <h3>The one you&rsquo;d have to answer</h3>
+                </div>
+                <div class="objection">
+                  <div class="bar"></div>
+                  <div>
+                    <q>sounds like everyone else. every account on here says pick a format now</q>
+                    <div class="src">218 of 590 · the leading objection</div>
+                  </div>
+                </div>
+                <p class="read">
+                  Answer it <b>inside the hook</b> and it never gets typed. The number in the first
+                  clause is the answer.
+                </p>
+              </section>
+
+              <section class="card">
+                <div class="card-h">
+                  <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12L12 4"/><path d="M6 4h6v6"/></svg>
+                  <h3>The swing</h3>
+                  <span class="meta">your upside</span>
+                </div>
+                <div class="stat"><b>97</b><span>stalled right at the line</span></div>
+                <p class="read">
+                  They didn&rsquo;t reject it &mdash; they didn&rsquo;t quite bite. Win them and the room
+                  moves <b>41% &rarr; 58%</b>, the same 17 points the fix projects. Two routes, one
+                  number.
+                </p>
+              </section>
+
+              <div class="trust">
+                <div class="tr">
+                  <span class="chip">1,000 simulated</span>
+                  <span class="chip">calibrated on your 4.2K followers</span>
+                  <span class="chip">confidence <b>medium</b></span>
+                </div>
+                <p>
+                  A modeled society, calibrated for engagement, not purchase. The reasons and counts are
+                  the projection&rsquo;s own output; the comments are its voices, not transcripts.
+                </p>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </figure>
+
+  </div>
+
+  <details class="notes">
+    <summary>Design notes — what changed from rev 4, and why</summary>
+
+    <h2>The idiom</h2>
+    <p>
+      Rev 4 grouped with hairline rules and labelled everything in uppercase mono. That reads
+      terminal, not product. Rev 5 groups with <b>soft filled cards</b> (<code>#212120</code> on a
+      <code>#181817</code> rail, 14px radius, no border) and labels with sentence-case 13px medium
+      plus a line icon. Metadata moved into chips. Tabs became a segmented control. Numbers went from
+      hairline-thin-and-huge to medium-weight-and-confident, which is what every shipped AI product
+      actually does.
+    </p>
+
+    <h2>Two adaptations that were forced</h2>
+    <ul>
+      <li>
+        <b>Perplexity spends its accent on positive states</b> — links, active tabs, icons are all
+        cyan. Virtuna's law is coral = loss only, so active states here are cream on a lighter fill
+        (<code>#343330</code>) and coral never marks a good thing. The palette stays at one accent.
+      </li>
+      <li>
+        <b>The rev-3 ban on card-in-card still holds</b>, but the failure there was borders inside
+        borders. Cards here group by <em>fill</em> and go exactly one level deep — inside a card you
+        get rows, chips and charts, never another card. The only nested fills are chips, which read as
+        objects rather than containers.
+      </li>
+    </ul>
+
+    <h2>The structure</h2>
+    <p>
+      The verdict was previously buried inside a tab. It now rides a persistent <b>answer block</b>
+      above the segmented control: a plain-language sentence, the numbers that support it, and the fix
+      as a tappable chip. Whatever tab you're on, the answer and the action stay on screen. Tabs are
+      then just lenses on the evidence.
+    </p>
+
+    <h2>The figures still swap per kind</h2>
+    <p>
+      This part of rev 4 was never the problem and is preserved: <code>StimulusKind</code> is
+      hook|video|idea|draft, and only video has a timeline. Video and text are inverse instruments,
+      so each tab holds an invariant question and swaps the figure that answers it.
+    </p>
+    <table class="swap">
+      <thead><tr><th>Tab</th><th>Video</th><th>Text</th></tr></thead>
+      <tbody>
+        <tr><td>Overview</td><td>Projection · retention curve · craft dims</td><td>Projection · coded reasons (expand to voices) · craft dims</td></tr>
+        <tr><td>Audience</td><td>Room mix · retention by pool · terrain · districts</td><td>Room mix · stop rate by district · terrain · playbook</td></tr>
+        <tr><td>Engagement</td><td>Rates vs median · watch-through · intents</td><td>Projected comments · the objection to answer · the swing</td></tr>
+      </tbody>
+    </table>
+    <p>
+      Serif appears in exactly one place — a real voice from the room. That's what makes a text sim
+      feel like a different instrument rather than a video screen with empty slots.
+    </p>
+  </details>
+</div>
+
+<script>
+(() => {
+  "use strict";
+  const $  = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+  const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+  const SVGNS = "http://www.w3.org/2000/svg";
+  const el = (n, a) => { const e = document.createElementNS(SVGNS, n); for (const k in a) e.setAttribute(k, a[k]); return e; };
+  const CREAM = "#ece7de", CORAL = "#FF6363";
+  const GOLDEN = 2.399963229728653;
+
+  const CLIP = 28;
+  const CURVE = [100,98,94,72,58,52,49,47,46,45,44,43,42,41,40,40,39,38,38,37,36,36,35,34,34,33,32,31,30];
+  const AFTER = [100,97,93,88,84,80,77,74,72,70,68,66,65,63,62,61,60,59,58,57,56,55,54,53,52,51,50,49,48];
+  const BREAK = [2, 5];
+
+  const POOLS = [
+    { label: "For You", sub: "65% of room", drop: "0:04", loss: true,
+      pts: [100,95,88,52,31,22,17,14,12,11,10,9,9,8,8,7,7,6,6,6,5,5,5,5,4,4,4,4,3] },
+    { label: "Niche", sub: "20%", drop: "0:11",
+      pts: [100,99,96,84,73,66,61,57,54,52,50,48,47,45,44,43,42,41,40,39,38,37,36,35,34,33,32,31,30] },
+    { label: "Followers", sub: "10%", drop: "0:21",
+      pts: [100,100,99,97,94,91,89,87,85,83,81,79,77,75,73,71,69,66,63,60,57,53,49,44,39,34,29,24,19] },
+    { label: "Cross-niche", sub: "5%", drop: "0:05",
+      pts: [100,96,90,60,42,33,28,25,23,21,20,19,18,17,16,16,15,14,14,13,13,12,12,11,11,10,10,9,9] },
+  ];
+
+  const WORDS = ("I spent four hundred dollars testing every viral hook format so you don't have to " +
+    "and the one that won wasn't the one anyone teaches. Here's what actually happened when I ran " +
+    "them side by side.").split(" ");
+
+  const REASONS = [
+    { label: "Names a real cost", count: 187,
+      quotes: [["M","Maya","builder","finally someone put a number on it instead of vibes"],
+               ["J","Jo","operator","the cost framing is why i stopped. that's a real thing i've paid"]] },
+    { label: "Sounds like everyone else", count: 218, loss: true,
+      quotes: [["D","Dev","skeptic","sounds like everyone else. every account on here says pick a format now"],
+               ["S","Sam","tough crowd","read this exact sentence yesterday from someone else"]] },
+    { label: "Contradicts what they know", count: 104,
+      quotes: [["A","Ana","learner","wait, everyone told me to niche down first. which is it"],
+               ["R","Rae","builder","this goes against every piece of advice i've been given"]] },
+    { label: "Too abstract to act on", count: 81, loss: true,
+      quotes: [["A","Ana","learner","what counts as a format though — a series, or a shot type?"],
+               ["K","Kit","lurker","ok but what do i actually do monday morning"]] },
+  ];
+
+  const STRIPS = {
+    video: { vals: [.06,.09,.11,.12,.14,.16,.17,.19,.21,.22,.24,.26,.27,.29,.31,.33,.35,.36,.38,.40,
+                    .42,.44,.46,.48,.50,.53,.55,.58,.60,.63,.66,.69,.72,.75,.78,.81,.85,.88,.92,.96,1],
+             median: .42, mark: .17, loss: true },
+    text:  { vals: [.04,.07,.09,.11,.13,.15,.17,.18,.20,.22,.24,.26,.28,.30,.32,.34,.36,.38,.40,.43,
+                    .45,.47,.50,.52,.55,.57,.60,.62,.65,.68,.70,.73,.76,.79,.82,.86,.89,.92,.95,.98,1],
+             median: .45, mark: .62, loss: false },
+  };
+
+  const DISTRICTS = {
+    video: [
+      { name: "Long-form watchers", n: 16, lit: .64, cx:  88, cy: 50, spread: 26 },
+      { name: "Tutorial seekers",   n: 22, lit: .51, cx: 280, cy: 46, spread: 29 },
+      { name: "Casual browsers",    n: 28, lit: .29, cx: 290, cy: 132, spread: 32 },
+      { name: "Scroll-first feed",  n: 24, lit: .11, cx:  84, cy: 138, spread: 30, loss: true },
+    ],
+    text: [
+      { name: "Builders",  n: 24, lit: .58, cx:  92, cy: 44, spread: 26 },
+      { name: "Learners",  n: 20, lit: .47, cx: 268, cy: 40, spread: 24 },
+      { name: "Operators", n: 16, lit: .38, cx: 312, cy: 116, spread: 21 },
+      { name: "Skeptics",  n: 14, lit: .19, cx: 186, cy: 140, spread: 20, loss: true },
+      { name: "Lurkers",   n: 12, lit: .26, cx:  58, cy: 120, spread: 19 },
+    ],
+  };
+
+  function smoothPath(vals, w, h, pad, lo, hi) {
+    const n = vals.length;
+    const X = i => pad + (i / (n - 1)) * (w - pad * 2);
+    const Y = v => h - pad - ((v - lo) / (hi - lo)) * (h - pad * 2);
+    const p = [`M ${X(0).toFixed(2)} ${Y(vals[0]).toFixed(2)}`];
+    for (let i = 0; i < n - 1; i++) {
+      const x0 = X(Math.max(0, i - 1)), y0 = Y(vals[Math.max(0, i - 1)]);
+      const x1 = X(i), y1 = Y(vals[i]);
+      const x2 = X(i + 1), y2 = Y(vals[i + 1]);
+      const x3 = X(Math.min(n - 1, i + 2)), y3 = Y(vals[Math.min(n - 1, i + 2)]);
+      p.push(`C ${(x1 + (x2 - x0) / 6).toFixed(2)} ${(y1 + (y2 - y0) / 6).toFixed(2)}, ${(x2 - (x3 - x1) / 6).toFixed(2)} ${(y2 - (y3 - y1) / 6).toFixed(2)}, ${x2.toFixed(2)} ${y2.toFixed(2)}`);
+    }
+    return p.join(" ");
+  }
+  const fmtTime = s => `0:${String(Math.round(s)).padStart(2, "0")}`;
+
+  // ── catalogue strip ───────────────────────────────────────────────────────────────────────
+  $$("[data-strip]").forEach(host => {
+    const cfg = STRIPS[host.dataset.strip];
+    const f = document.createDocumentFragment();
+    const ax = document.createElement("div"); ax.className = "strip-axis"; f.appendChild(ax);
+    cfg.vals.forEach(v => { const t = document.createElement("div"); t.className = "strip-tick"; t.style.left = (v * 100) + "%"; f.appendChild(t); });
+    const m = document.createElement("div"); m.className = "strip-med"; m.style.left = (cfg.median * 100) + "%"; f.appendChild(m);
+    const k = document.createElement("div"); k.className = "strip-mark" + (cfg.loss ? " loss" : ""); k.style.left = (cfg.mark * 100) + "%"; f.appendChild(k);
+    const d = document.createElement("div"); d.className = "strip-dot" + (cfg.loss ? " loss" : ""); d.style.left = (cfg.mark * 100) + "%"; f.appendChild(d);
+    host.appendChild(f);
+  });
+
+  // ── the retention instrument ──────────────────────────────────────────────────────────────
+  (function () {
+    const host = $('[data-curve="video"]');
+    if (!host) return;
+    const svg = host.querySelector("svg");
+    const W = 372, H = 124, PAD = 4;
+
+    [0.5, 0.85].forEach(fr => svg.appendChild(el("line", {
+      x1: PAD, x2: W - PAD, y1: (H * fr).toFixed(1), y2: (H * fr).toFixed(1),
+      stroke: "rgba(236,231,222,.07)", "stroke-width": 1,
+    })));
+
+    const d = smoothPath(CURVE, W, H, PAD, 0, 105);
+    svg.appendChild(el("path", { d: `${d} L ${W - PAD} ${H - PAD} L ${PAD} ${H - PAD} Z`, fill: "rgba(236,231,222,.06)", stroke: "none" }));
+    svg.appendChild(el("path", { d: smoothPath(AFTER, W, H, PAD, 0, 105), fill: "none", stroke: CREAM, "stroke-width": 1.2, "stroke-opacity": .34, "stroke-dasharray": "3 3", "stroke-linecap": "round" }));
+    svg.appendChild(el("path", { d, fill: "none", stroke: CREAM, "stroke-width": 1.6, "stroke-linecap": "round" }));
+
+    const bx0 = PAD + (BREAK[0] / (CURVE.length - 1)) * (W - PAD * 2);
+    const g = el("g", { transform: `translate(${(bx0 - PAD).toFixed(2)},0)` });
+    const bx1 = PAD + (BREAK[1] / (CURVE.length - 1)) * (W - PAD * 2);
+    g.appendChild(el("path", { d: smoothPath(CURVE.slice(BREAK[0], BREAK[1] + 1), bx1 - bx0 + PAD * 2, H, PAD, 0, 105), fill: "none", stroke: CORAL, "stroke-width": 1.8, "stroke-linecap": "round" }));
+    svg.appendChild(g);
+
+    const dot = el("circle", { r: 3.2, fill: CREAM, cx: 0, cy: 0 });
+    svg.appendChild(dot);
+
+    const film = $('[data-film="video"]'); const FRAMES = 8;
+    for (let i = 0; i < FRAMES; i++) { const b = document.createElement("div"); b.className = "frame"; b.textContent = fmtTime((i / (FRAMES - 1)) * CLIP); film.appendChild(b); }
+    const frames = $$(".frame", film);
+
+    const tHost = $('[data-transcript="video"]');
+    WORDS.forEach(w => { const s = document.createElement("w"); s.textContent = w + " "; tHost.appendChild(s); });
+    const words = $$("w", tHost);
+
+    // cortex — Voronoi parcellation on canvas; pixel→parcel map computed once
+    const cx = $(".cortex"), cc = cx.getContext("2d");
+    const CW = cx.width, CH = cx.height, MX = CW / 2, MY = CH / 2, RX = CW / 2 - 3, RY = CH / 2 - 3;
+    const N = 15, seeds = [];
+    for (let k = 0; k < N; k++) {
+      const a = k * GOLDEN, rr = Math.sqrt((k + .5) / N);
+      const sx = MX + Math.cos(a) * rr * RX * .9, sy = MY + Math.sin(a) * rr * RY * .9;
+      const fx = clamp((sx - (MX - RX)) / (RX * 2), 0, 1);
+      seeds.push({ x: sx, y: sy, attn: 1 - fx * .85, dmn: fx * .95 });
+    }
+    const owner = new Uint8Array(CW * CH);
+    for (let y = 0; y < CH; y++) for (let x = 0; x < CW; x++) {
+      const i = y * CW + x, nx = (x - MX) / RX, ny = (y - MY) / RY;
+      if (nx * nx + ny * ny > 1) { owner[i] = 255; continue; }
+      let b1 = Infinity, b2 = Infinity, bi = 0;
+      for (let s = 0; s < N; s++) { const dx = x - seeds[s].x, dy = y - seeds[s].y, dd = dx * dx + dy * dy;
+        if (dd < b1) { b2 = b1; b1 = dd; bi = s; } else if (dd < b2) b2 = dd; }
+      owner[i] = (Math.sqrt(b2) - Math.sqrt(b1) < 1.5 || Math.abs(x - MX) < 1.1) ? 255 : bi;
+    }
+    const img = cc.createImageData(CW, CH), BG = [33, 33, 32], FG = [236, 231, 222];
+    function paintCortex(ret) {
+      // Ceiling ~.34: bright enough that the anterior/posterior shift is legible on scrub, dim
+      // enough that the glyph reads as texture beside the curve rather than a lit blob above it.
+      const al = seeds.map(s => clamp(.04 + ret * s.attn * .34 + (1 - ret) * s.dmn * .15, .03, 1));
+      const dd = img.data;
+      for (let i = 0; i < owner.length; i++) {
+        const o = owner[i], p = i * 4, a = o === 255 ? 0 : al[o];
+        dd[p] = BG[0] + (FG[0] - BG[0]) * a; dd[p+1] = BG[1] + (FG[1] - BG[1]) * a;
+        dd[p+2] = BG[2] + (FG[2] - BG[2]) * a; dd[p+3] = o === 255 ? 0 : 255;
+      }
+      cc.putImageData(img, 0, 0);
+    }
+
+    const live = $('[data-live="v-scrub"]'), ph = $(".playhead", host);
+    function render(u) {
+      u = clamp(u, 0, 1);
+      const idx = u * (CURVE.length - 1), i0 = Math.floor(idx), i1 = Math.min(CURVE.length - 1, i0 + 1);
+      const val = CURVE[i0] + (CURVE[i1] - CURVE[i0]) * (idx - i0), secs = u * CLIP;
+      ph.style.left = (PAD / W * 100 + u * ((W - PAD * 2) / W) * 100) + "%";
+      dot.setAttribute("cx", (PAD + u * (W - PAD * 2)).toFixed(2));
+      dot.setAttribute("cy", (H - PAD - (val / 105) * (H - PAD * 2)).toFixed(2));
+      dot.setAttribute("fill", secs >= BREAK[0] && secs <= BREAK[1] ? CORAL : CREAM);
+      live.textContent = `${fmtTime(secs)} · ${Math.round(val)}%`;
+      const fi = Math.round(u * (FRAMES - 1));
+      frames.forEach((f, i) => f.classList.toggle("on", i === fi));
+      const wi = Math.round(u * (words.length - 1));
+      words.forEach((w, i) => { const dd = Math.abs(i - wi); w.className = dd === 0 ? "on" : dd <= 2 ? "near" : ""; });
+      paintCortex(val / 100);
+    }
+    let drag = false;
+    const at = e => (e.clientX - host.getBoundingClientRect().left) / host.getBoundingClientRect().width;
+    host.addEventListener("pointerdown", e => { drag = true; host.setPointerCapture(e.pointerId); render(at(e)); });
+    host.addEventListener("pointermove", e => { if (drag || e.buttons === 0) render(at(e)); });
+    host.addEventListener("pointerup", () => { drag = false; });
+    host.addEventListener("pointerleave", () => { if (!drag) render(4 / CLIP); });
+    render(4 / CLIP);
+  })();
+
+  // ── pool small-multiples ──────────────────────────────────────────────────────────────────
+  (function () {
+    const host = $('[data-pools="video"]');
+    if (!host) return;
+    POOLS.forEach(p => {
+      const row = document.createElement("div");
+      row.className = "prow" + (p.loss ? " loss" : "");
+      row.innerHTML = `<span class="prow-l">${p.label}<em>${p.sub}</em></span><svg viewBox="0 0 200 24" preserveAspectRatio="none"></svg><span class="prow-n">${p.drop}</span>`;
+      const svg = row.querySelector("svg"), d = smoothPath(p.pts, 200, 24, 2, 0, 105);
+      svg.appendChild(el("path", { d: `${d} L 198 22 L 2 22 Z`, fill: "rgba(236,231,222,.06)", stroke: "none" }));
+      svg.appendChild(el("path", { d, fill: "none", stroke: p.loss ? CORAL : CREAM, "stroke-width": 1.3, "stroke-opacity": p.loss ? 1 : .8, "stroke-linecap": "round", "vector-effect": "non-scaling-stroke" }));
+      host.appendChild(row);
+    });
+  })();
+
+  // ── terrain ───────────────────────────────────────────────────────────────────────────────
+  $$("[data-terrain]").forEach(svg => {
+    DISTRICTS[svg.dataset.terrain].forEach(s => {
+      const g = el("g", {});
+      for (let k = 0; k < s.n; k++) {
+        const a = k * GOLDEN, rr = s.spread * Math.sqrt((k + .5) / s.n);
+        const lit = k / s.n < s.lit;
+        g.appendChild(el("circle", {
+          cx: (s.cx + Math.cos(a) * rr).toFixed(1), cy: (s.cy + Math.sin(a) * rr * .78).toFixed(1), r: 2.2,
+          fill: lit ? (s.loss ? CORAL : CREAM) : CREAM, "fill-opacity": lit ? (s.loss ? .88 : .78) : .12,
+        }));
+      }
+      const t = el("text", {
+        x: s.cx.toFixed(1), y: (s.cy + s.spread * .78 + 15).toFixed(1), "text-anchor": "middle",
+        fill: s.loss ? CORAL : "rgba(236,231,222,.6)", "font-size": 10.5,
+        "font-family": "ui-sans-serif, -apple-system, Inter, sans-serif",
+      });
+      t.textContent = `${s.name} · ${Math.round(s.lit * 100)}%`;
+      g.appendChild(t); svg.appendChild(g);
+    });
+  });
+
+  // ── expandable reason rows ────────────────────────────────────────────────────────────────
+  (function () {
+    const host = $('[data-reasons="text"]');
+    if (!host) return;
+    const max = Math.max(...REASONS.map(r => r.count));
+    REASONS.slice().sort((a, b) => b.count - a.count).forEach(r => {
+      const wrap = document.createElement("div");
+      const btn = document.createElement("button");
+      btn.type = "button"; btn.className = "rowx" + (r.loss ? " loss" : ""); btn.setAttribute("aria-expanded", "false");
+      btn.innerHTML = `<span class="row-l"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>${r.label}</span>` +
+        `<span class="row-t"><i style="width:${Math.round((r.count / max) * 100)}%"></i></span><span class="row-n">${r.count}</span>`;
+      const body = document.createElement("div");
+      body.className = "rowx-body"; body.hidden = true;
+      body.innerHTML = r.quotes.map(([ini, who, arch, text]) => `
+        <div class="voice">
+          <div class="voice-av">${ini}</div>
+          <div>
+            <div class="voice-who"><b>${who}</b><span class="tag">${arch}</span></div>
+            <p class="voice-text" style="font-size:13.5px">${text}</p>
+          </div>
+        </div>`).join("");
+      btn.addEventListener("click", () => {
+        const open = btn.getAttribute("aria-expanded") === "true";
+        btn.setAttribute("aria-expanded", String(!open)); body.hidden = open;
+      });
+      wrap.appendChild(btn); wrap.appendChild(body); host.appendChild(wrap);
+    });
+  })();
+
+  // ── segmented control ─────────────────────────────────────────────────────────────────────
+  $$("[data-rail]").forEach(rail => {
+    const tabs = $$(".seg button", rail);
+    tabs.forEach(t => t.addEventListener("click", () => {
+      tabs.forEach(o => {
+        const on = o === t;
+        o.setAttribute("aria-selected", String(on));
+        const p = $("#" + o.dataset.panel, rail); if (p) p.hidden = !on;
+      });
+      $(".railbody", rail).scrollTop = 0;
+    }));
+  });
+})();
+</script>
+</body>
+</html>
