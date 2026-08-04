@@ -24,7 +24,7 @@
 export type SkillInputKind = "link" | "text" | "none" | "upload";
 
 /** The skill a submitted (or button-confirmed) field runs. One key per chat-routable input skill. */
-export type SkillInputAction = "remix" | "account" | "explore" | "read" | "test";
+export type SkillInputAction = "remix" | "account" | "explore" | "read" | "test" | "predict" | "profile";
 
 export interface SkillCapability {
   /** The field shape the renderer draws for this skill. */
@@ -86,8 +86,34 @@ export const SKILL_CAPABILITIES: Record<SkillInputAction, SkillCapability> = {
     label: "What should I run past your audience?",
     placeholder: "Paste a hook, concept, or draft…",
     prefill: "text",
+    // Read is ALSO bound as a tool (`read_concept`, skill-dispatch.ts). The two doors do not
+    // compete, they split on one fact: does the model have the text? With it, run the tool. Without
+    // it, this field is what collects it — which is the case this `when` has to describe, or the
+    // model surfaces a field the creator must fill with words they already typed.
     when:
-      "the creator wants to know how their AUDIENCE would react to a concept, hook, or draft (\"what would my audience think of…\", \"read this idea\", \"would this land\")",
+      "the creator wants their AUDIENCE's reaction to a concept, hook or draft but has NOT given you its actual text (\"read something past my audience\", \"let me test an idea on them\") — if they already pasted the text, call read_concept instead of asking again",
+  },
+  predict: {
+    kind: "text",
+    label: "What outcome should I predict?",
+    placeholder: "e.g. will this launch hit 10k signups by March?",
+    prefill: "text",
+    when:
+      "the creator wants a FORECAST of whether a specific outcome will happen — a scenario judged by their audience panel, not a reaction to a piece of content (\"will this work\", \"what are the odds\", \"predict how this launch goes\", \"is this going to hit\")",
+  },
+  profile: {
+    // TEXT, not upload. /api/tools/profile takes four evidence kinds (text / file_text / image /
+    // video); the FILE kinds already have a shipped door — the composer's evidence drop
+    // (handleProfileSubmit), which stages a clip to storage first. The text kind has no door at
+    // all, and it is the one a CONVERSATION can actually fill: a pasted chat log, an email thread,
+    // a call transcript. Surfacing the upload here would duplicate the staging path to reach an
+    // input the creator already has a place to drop.
+    kind: "text",
+    label: "Paste the evidence and I'll read who they are.",
+    placeholder: "A chat log, email thread, or call transcript…",
+    prefill: "text",
+    when:
+      "the creator wants a READ OF A PERSON from real evidence — who they are, what drives them, how they will react (\"read this person\", \"what kind of buyer is this\", \"what do you make of this exchange\"). It needs the real evidence text, never a description of it; for a video or screenshot, tell them to drop the file in the composer instead",
   },
   test: {
     kind: "upload",

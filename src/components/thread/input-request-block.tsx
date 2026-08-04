@@ -104,9 +104,180 @@ export function InputRequestBlockRenderer({ block }: InputRequestBlockRendererPr
       return <AccountField block={block} />;
     case 'test':
       return <UploadField block={block} />;
+    case 'predict':
+      return <PredictField block={block} />;
+    case 'profile':
+      return <ProfileField block={block} />;
     default:
       return null;
   }
+}
+
+// ── Predict (kind: text, scenario required) ──────────────────────────────────────
+// Like Read, a single JSON POST that persists its card and returns { block }.
+//
+// ⚠️ It also needs an `audienceId`, and NOT any audience: the route 400s unless the row is
+// `mode:"general"` AND not a person-marked SIM. GENERAL_AUDIENCE does NOT qualify — it is
+// `mode:"socials"` (the locked default weight mix, not the domain; see the PITFALL 1 note in
+// audience-repo.ts). `template-analyst` is the Analyst Panel: `mode:"general"`, virtual (resolved
+// with no DB round-trip), and named by the route's own comment as the panel default. Defaulting to
+// anything else here is a 400 the creator would read as "predict is broken".
+
+function PredictField({ block }: InputRequestBlockRendererProps) {
+  const { label, placeholder, prefill } = block.props;
+  const { onComplete } = useInThreadInput();
+
+  const [scenario, setScenario] = useState(prefill ?? '');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+
+  const handleSubmit = useCallback(async () => {
+    const trimmed = scenario.trim();
+    if (!trimmed || submitting) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/tools/predict', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scenario: trimmed, audienceId: 'template-analyst' }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Prediction failed' }));
+        reportCredit402(res.status, err); // wall dialog if it's the credit 402
+        setError(
+          (err as { message?: string; error?: string }).message ??
+            (err as { error?: string }).error ??
+            'Prediction failed',
+        );
+        return;
+      }
+      setDone(true);
+      void onComplete();
+    } catch {
+      setError('Something went wrong — try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  }, [scenario, submitting, onComplete]);
+
+  if (done) return <DoneReceipt text="Predicted — your panel's forecast is in the thread above." />;
+
+  return (
+    <div className={SHELL_CLASS} data-testid="input-request">
+      {!submitting && (
+        <label htmlFor="in-thread-predict" className="text-body font-medium text-foreground-secondary">
+          {label}
+        </label>
+      )}
+      {submitting ? (
+        <SingleStageWait name={SKILL_RUN_META.predict!.running} />
+      ) : (
+        <div className="flex flex-col gap-2">
+          <textarea
+            id="in-thread-predict"
+            rows={3}
+            value={scenario}
+            onChange={(e) => setScenario(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                void handleSubmit();
+              }
+            }}
+            placeholder={placeholder ?? 'Describe the outcome to predict…'}
+            className={`${INPUT_CLASS} resize-none`}
+          />
+          <CardPrimaryAction onClick={() => void handleSubmit()} disabled={!scenario.trim()} className="self-end">
+            Predict it →
+          </CardPrimaryAction>
+        </div>
+      )}
+      {error && <ErrorLine text={error} />}
+    </div>
+  );
+}
+
+// ── Profile (kind: text — pasted evidence) ───────────────────────────────────────
+// The TEXT evidence kind of /api/tools/profile. The file kinds (file_text / image / video) keep
+// their own shipped door in the composer's evidence drop, which stages a clip to storage first;
+// this field deliberately covers only what a creator can paste into a conversation.
+
+function ProfileField({ block }: InputRequestBlockRendererProps) {
+  const { label, placeholder, prefill } = block.props;
+  const { onComplete } = useInThreadInput();
+
+  const [evidence, setEvidence] = useState(prefill ?? '');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+
+  const handleSubmit = useCallback(async () => {
+    const trimmed = evidence.trim();
+    if (!trimmed || submitting) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/tools/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kind: 'text', text: trimmed }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Read failed' }));
+        reportCredit402(res.status, err); // wall dialog if it's the credit 402
+        setError(
+          (err as { message?: string; error?: string }).message ??
+            (err as { error?: string }).error ??
+            'Read failed',
+        );
+        return;
+      }
+      setDone(true);
+      void onComplete();
+    } catch {
+      setError('Something went wrong — try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  }, [evidence, submitting, onComplete]);
+
+  if (done) return <DoneReceipt text="Read — the profile is in the thread above." />;
+
+  return (
+    <div className={SHELL_CLASS} data-testid="input-request">
+      {!submitting && (
+        <label htmlFor="in-thread-profile" className="text-body font-medium text-foreground-secondary">
+          {label}
+        </label>
+      )}
+      {submitting ? (
+        <SingleStageWait name={SKILL_RUN_META.profile!.running} />
+      ) : (
+        <div className="flex flex-col gap-2">
+          <textarea
+            id="in-thread-profile"
+            rows={4}
+            value={evidence}
+            onChange={(e) => setEvidence(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                void handleSubmit();
+              }
+            }}
+            placeholder={placeholder ?? 'Paste the evidence…'}
+            className={`${INPUT_CLASS} resize-none`}
+          />
+          <CardPrimaryAction onClick={() => void handleSubmit()} disabled={!evidence.trim()} className="self-end">
+            Read them →
+          </CardPrimaryAction>
+        </div>
+      )}
+      {error && <ErrorLine text={error} />}
+    </div>
+  );
 }
 
 // ── Remix (kind: link) ───────────────────────────────────────────────────────────

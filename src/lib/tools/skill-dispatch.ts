@@ -30,6 +30,8 @@ import type { BillableAction } from "@/lib/pricing";
 import { runIdeasPipeline } from "@/lib/tools/runners/ideas-runner";
 import { runHooksPipeline } from "@/lib/tools/runners/hooks-runner";
 import { runScriptPipeline } from "@/lib/tools/runners/script-runner";
+import { runTwoAudienceRead } from "@/lib/engine/flash/two-audience-read";
+import { GENERAL_AUDIENCE } from "@/lib/audience/audience-repo";
 import type { RunEvidence } from "@/lib/tools/evidence";
 
 // ─── Shared run context (loaded once by the route; passed to every skill) ────
@@ -181,6 +183,69 @@ export const SKILL_TOOLS: SkillTool[] = [
         onEvidence: ctx.onEvidence,
       });
       return { blocks: r.blocks, warnings: r.warnings };
+    },
+  },
+  /**
+   * READ — the first NON-generator bound to the agent loop, and the reason `primaryArg` exists.
+   *
+   * It does not make content; it runs something the creator ALREADY wrote past their audience and
+   * returns a band + a lever. So its primary input is `draft` (the exact text), never `topic` (a
+   * subject to invent from). A model that "reads" a subject it paraphrased is scoring its own
+   * paraphrase, which is why the arg is the verbatim text and the description says so twice.
+   *
+   * WHY THIS ONE AND NOT ITS NEIGHBOURS. `account-read`, `explore` and `remix` stay behind a
+   * confirm tap because they hit **Apify scrapes** — rotating FREE accounts on a $5/month hard cap
+   * — and an agent that can decide to scrape can burn that cap with nobody tapping anything. Read
+   * is an audience SIM, not a scrape. VERIFIED rather than assumed (the assumption was the whole
+   * blocker): `runTwoAudienceRead` awaits exactly one thing, `runFlashTextMode`. The only Apify
+   * edge anywhere in its import graph is `resolve-tier.ts → socials-calibration.ts`, whose
+   * `domain-pack` import is `import type` (erased at compile) — and both modules were extracted as
+   * leaves precisely to keep `runPredictionPipeline → apify-client` out of the browser bundle.
+   * `resolveTier()` is a pure synchronous read of a static descriptor.
+   *
+   * It keeps its `request_input` capability too, and the two doors do not compete: the tool runs
+   * when the creator HAS given the text, the field collects it when they have not. Both spend the
+   * same credit under the same gate.
+   */
+  {
+    name: "read_concept",
+    skillKey: "read",
+    billable: "read",
+    primaryArg: "draft",
+    schema: {
+      type: "function",
+      function: {
+        name: "read_concept",
+        description:
+          "Run a piece of writing the creator ALREADY HAS past their audience and report how it " +
+          "lands — a band, the fraction who stop, and the one lever to change. Use when they ask " +
+          "how their audience would react to a specific hook, concept, caption or draft AND they " +
+          "have given you its actual text (\"would this land: …\", \"read this past my audience\", " +
+          "\"what would they think of this hook\"). Also use it on a line already on screen — one " +
+          "of the hooks or ideas you made earlier — passing that line verbatim. " +
+          "Do NOT use it to make new content (call a generator), and do NOT call it when you do " +
+          "not have the exact text: ask for it with request_input instead. Never paraphrase or " +
+          "invent the text — a Read of your own paraphrase is a Read of the wrong thing.",
+        parameters: {
+          type: "object",
+          properties: {
+            draft: {
+              type: "string",
+              description:
+                "The VERBATIM text to run past the audience — the creator's own hook/concept/" +
+                "caption/draft, or a line from a card already on screen. Copied exactly, never rewritten.",
+            },
+          },
+          required: ["draft"],
+        },
+      },
+    },
+    run: async (args, ctx) => {
+      // The audience the thread is pinned to (the route resolves it exactly as /api/tools/read
+      // does, from thread.active_audience_id under the session). No pin ⇒ General, the same
+      // default. A single audience, never a forced compare — a compare is explicit only (P3).
+      const block = await runTwoAudienceRead(args.draft ?? "", [ctx.audience ?? GENERAL_AUDIENCE]);
+      return { blocks: [block], warnings: [] };
     },
   },
 ];
