@@ -3,7 +3,7 @@
 **Branch:** `fix/chat-agent-dispatch-mode-label` (off `origin/main` @ `8539e5e6`)
 **Worktree:** `~/virtuna-slot-a`
 **Status:** three fixes landed on the branch and measured. §4 — the severe one — is now **FIXED and
-verified live** (2026-08-04, later session).
+verified live** (`afd35113`). Branch is pushed, **2 ahead of `main`, unmerged**.
 
 ---
 
@@ -22,21 +22,32 @@ by replaying a past turn's skill runs as the tool-call exchange they actually we
 
 ## 1. How to reproduce anything here
 
-No browser needed. The probes drive the real code with real prompts.
+Two committed probes. No browser — the app's ambient animations never settle, and `e2e/auth.setup.ts`
+cannot drive the code-first login page.
 
 ```bash
-# offline: real prompts + real model, call the loop directly. Omitting `billing`
-# makes billable skills FAIL CLOSED, so nothing runs and nothing is charged.
-node --env-file=.env.local node_modules/tsx/dist/cli.mjs --tsconfig ./tsconfig.json <script>.ts
+# OFFLINE — replays a real thread through the real loop, prose-only vs runs-replayed, 5 asks × 3 seeds.
+# COSTS NOTHING: `billing` is omitted, so billable skills FAIL CLOSED and the paid engine never runs.
+# What it measures is the model's DECISION, which is the thing under test.
+node --env-file=.env.local node_modules/tsx/dist/cli.mjs --tsconfig ./tsconfig.json \
+  scripts/probe-chat-dispatch.ts
 
-# live: mint the session, drive the SSE route
-node --env-file=.env.local live-hooks.mjs
+# LIVE — mints a session, drives the SSE route. SPENDS REAL CREDITS (one hooks run per turn).
+npm run dev -- --port 3005
+node --env-file=.env.local scripts/live-chat-turn.mjs                        # the §4 sequence
+node --env-file=.env.local scripts/live-chat-turn.mjs one <threadId> "<ask>" # one turn, existing thread
 ```
 
-Live auth (no Playwright — `e2e/auth.setup.ts` cannot work, the login page is code-first):
-`POST {SUPABASE_URL}/auth/v1/token?grant_type=password` with `apikey` + `Authorization: Bearer <ANON>`
-→ cookie `sb-<ref>-auth-token.0 = 'base64-' + base64url(JSON.stringify(session))`, chunked at 3180.
-Creds are `E2E_USER_EMAIL` / `E2E_USER_PASSWORD` in `.env.local` (a **real prod account**).
+🔑 **Replay the conversation that actually failed — do not write a synthetic one.** A hand-built
+two-turn transcript carrying the same poisoned sentence dispatched **3/3 and proved nothing**; the
+real thread reproduced the bug on the first run. `probe-chat-dispatch.ts` therefore loads the thread
+from the DB and cuts its history at the failing ask, exactly where the route would.
+
+Live auth: `POST {SUPABASE_URL}/auth/v1/token?grant_type=password` with `apikey` +
+`Authorization: Bearer <ANON>` → cookie `sb-<ref>-auth-token.0 = 'base64-' + base64url(JSON(session))`,
+chunked at 3180. Creds are `E2E_USER_EMAIL` / `E2E_USER_PASSWORD` in `.env.local` (a **real prod
+account**). The thread a turn lands in is the `maven_active_thread` cookie — `__new__` forces a fresh
+one; omit it and the newest open thread wins.
 
 ⚠️ `curl` is not installed on this machine — use `node -e` with `fetch`.
 ⚠️ `next dev` buffers stdout when not a TTY: the log file stays 0 bytes while the server serves fine.
@@ -225,7 +236,7 @@ subject-less sentence through the model.
 
 ## 6. State of the branch
 
-Seven files:
+Nine files:
 
 | file | change |
 |---|---|
@@ -236,6 +247,8 @@ Seven files:
 | `src/lib/tools/chat-agent-loop.ts` | directive names only bound generators; unknown-skill refusal carries the do-not-fake instruction; **`ChatAgentPriorTurn` + `replayPriorTurn`** (§4) |
 | `src/app/api/tools/chat/__tests__/route.test.ts` | guards 6d + **6e** |
 | `src/lib/tools/__tests__/chat-agent-loop.test.ts` | two guards + **three prior-turn replay guards** |
+| `scripts/probe-chat-dispatch.ts` **(new)** | the offline probe of §1 — replays a real thread, prose-only vs runs-replayed |
+| `scripts/live-chat-turn.mjs` **(new)** | the live probe of §1 — mints a session, drives the SSE route |
 
 **Gate:** `tsc --noEmit` → **0 errors** (run it separately; vitest does not typecheck).
 Suite **459 files / 5070 tests, 0 failures**. The 3 reported "Errors" are pre-existing in
