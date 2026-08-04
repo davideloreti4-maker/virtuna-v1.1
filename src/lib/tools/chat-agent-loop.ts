@@ -189,6 +189,20 @@ export interface ChatAgentPriorTurn {
      */
     lines?: string[];
   }>;
+  /**
+   * Results of skills the agent did NOT call — a Test, an account read, an Explore, a Read, a
+   * Remix, a Predict — which the creator ran from their own surface into this same thread. One
+   * compact line each (built by chat-prior-turns.ts).
+   *
+   * They are NOT tool runs and must never replay as one: the agent did not call them and for most
+   * it has no tool to call, so naming one would advertise a door that does not exist. But leaving
+   * them out entirely is what made the co-pilot amnesiac about the creator's actual work — 11% of
+   * everything persisted into the shared thread, and precisely the non-generator skills.
+   *
+   * A turn may carry ONLY these (text empty): a skill run from the pill persists its card and no
+   * text row, so the record is the whole turn.
+   */
+  skillRecords?: string[];
 }
 
 export interface ChatAgentStreamInput {
@@ -323,8 +337,21 @@ const DEFAULT_MAX_SKILL_RUNS = 2;
 /** Source cards rendered per search — a citation, not a search-results page. */
 const MAX_REFERENCE_CARDS = 4;
 
-/** Every generator in the registry — the default when a caller binds the full skill set. */
-const GENERATOR_TOOL_NAMES: readonly string[] = SKILL_TOOLS.map((s) => s.name);
+/**
+ * Split the bound skills into the two things the directive has to say different sentences about.
+ *
+ * A GENERATOR makes new content from a subject (`primaryArg` "topic") — that is what "dispatch
+ * eagerly" and the anonymous HARD LIMIT are both about. An ANALYSIS skill scores something the
+ * creator already wrote (`primaryArg` "draft"); telling the model to call it "to MAKE content"
+ * would be wrong, and listing it among the generators is how an unbound-session refusal would
+ * start naming a tool that is not a generator at all.
+ */
+function splitSkills(skills: readonly SkillTool[]): { generators: string[]; analysis: string[] } {
+  const generators: string[] = [];
+  const analysis: string[] = [];
+  for (const s of skills) ((s.primaryArg ?? "topic") === "topic" ? generators : analysis).push(s.name);
+  return { generators, analysis };
+}
 
 /**
  * The tool-use directive the loop appends to the caller's system prompt. The loop OWNS this because it
@@ -334,7 +361,8 @@ const GENERATOR_TOOL_NAMES: readonly string[] = SKILL_TOOLS.map((s) => s.name);
  * bound — naming an unbound tool invites a call that can't be serviced), and `generators` carries the
  * SAME rule for the skills: it lists what this caller actually bound, never the registry.
  */
-function toolUseDirective(grounding: boolean, generators: readonly string[] = GENERATOR_TOOL_NAMES): string {
+function toolUseDirective(grounding: boolean, skills: readonly SkillTool[] = SKILL_TOOLS): string {
+  const { generators, analysis } = splitSkills(skills);
   // NAME ONLY WHAT IS BOUND. An anonymous /go visitor gets `skills: FREE_SKILL_TOOLS`, which is EMPTY
   // (every generator is billable), yet this directive used to advertise all three regardless. The model
   // duly called generate_hooks, the loop answered "unknown skill", and the model then wrote the hooks
@@ -350,7 +378,17 @@ function toolUseDirective(grounding: boolean, generators: readonly string[] = GE
         "opinion', do NOT offer to run it, and do NOT write the content yourself first. Just call it. Stay " +
         "conversational only when the creator is genuinely just talking or thinking out loud, OR when the ask " +
         "is too vague or too generic to produce something non-obvious — then push back ONCE for a sharper " +
-        "angle, and the moment you have a workable subject, call the tool. "
+        "angle, and the moment you have a workable subject, call the tool. " +
+        // The analysis skills score what the creator ALREADY wrote. Stated separately because the
+        // eagerness rule above is about making content: the trigger here is possession of the exact
+        // text, and the failure mode is paraphrasing it rather than being too slow to call.
+        (analysis.length > 0
+          ? `You also have ${analysis.join(" / ")} for judging writing the creator ALREADY has ` +
+            "(pass the `draft` — their exact words, or a line from a card already on screen, copied " +
+            "verbatim). Call it when they ask how something specific would land and you HAVE the " +
+            "text; never paraphrase or invent the text, and when you do not have it, ask for it " +
+            "with request_input instead. "
+          : "")
       : // Nothing generative is bound (an anonymous visitor). Say so honestly instead of silently
         // becoming the generator yourself — writing the pack in prose IS delivering the paid product.
         // The wording is deliberately concrete: "offer the thinking instead" ALONE was read as licence to
@@ -412,9 +450,33 @@ function replayPriorTurn(
   boundNames: Set<string>,
 ): Array<Record<string, unknown>> {
   const runs = turn.role === "assistant" ? (turn.toolRuns ?? []).filter((r) => boundNames.has(r.name)) : [];
-  if (runs.length === 0) return [{ role: turn.role, content: turn.text }];
 
-  const out: Array<Record<string, unknown>> = [];
+  // Skills the creator ran on their own surface, into this thread. Carried as a USER-role context
+  // note rather than an assistant line for one reason: an assistant message is a template the model
+  // can copy, and this thread's whole history of defects is the model copying a sentence instead of
+  // calling a tool ("Five hooks are on screen."). A user-role note is something it has never
+  // written and therefore cannot learn to write. The framing says plainly that it is app state.
+  const records =
+    turn.skillRecords && turn.skillRecords.length > 0
+      ? [
+          {
+            role: "user",
+            content:
+              "[Thread state — results already on the creator's screen in this thread, from skills " +
+              "they ran themselves. This note is from the app, NOT from the creator: do not answer " +
+              "it, do not thank them for it. Refer to these when they ask about them. You did NOT " +
+              "produce them this turn, so never claim you just made them, and never re-render them.]\n" +
+              turn.skillRecords.map((r) => `· ${r}`).join("\n"),
+          },
+        ]
+      : [];
+
+  // A record-only turn (a skill run from the pill leaves no text row) is exactly the note.
+  if (runs.length === 0) {
+    return turn.text ? [...records, { role: turn.role, content: turn.text }] : records;
+  }
+
+  const out: Array<Record<string, unknown>> = [...records];
   runs.forEach((run, i) => {
     const id = `prior_${index}_${i}`;
     out.push({
@@ -509,7 +571,7 @@ export async function runChatAgentStream(
 
   // The caller's prompt grounds voice/chat; the loop appends the tool-use directive (it owns the tools).
   // The directive is told what THIS caller bound, so it can never advertise a skill the model cannot call.
-  const systemContent = `${input.systemPrompt}\n\n${toolUseDirective(!!input.grounding, skills.map((s) => s.name))}`;
+  const systemContent = `${input.systemPrompt}\n\n${toolUseDirective(!!input.grounding, skills)}`;
   const boundNames = new Set(tools.map((t) => (t as { function?: { name?: string } }).function?.name ?? ""));
   const messages: Array<Record<string, unknown>> = [
     { role: "system", content: systemContent },
