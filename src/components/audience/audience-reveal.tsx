@@ -28,7 +28,14 @@ interface AudienceRevealProps {
   className?: string;
 }
 
+/**
+ * The billions branch is not hypothetical: a live @mrbeast calibration rendered
+ * "1300.0M likes" on the reveal (2026-08-04). Every account this screen is meant to impress is
+ * exactly the kind that crosses 1B — and the reveal's whole job is to read back numbers the
+ * creator already knows, so a unit they would never use themselves undercuts it.
+ */
 function compactNumber(n: number): string {
+  if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}B`;
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return String(n);

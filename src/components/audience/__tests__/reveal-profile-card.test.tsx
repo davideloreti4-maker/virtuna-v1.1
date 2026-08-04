@@ -67,6 +67,22 @@ const REVEAL: RevealData = {
 };
 
 describe("AudienceReveal — profile card", () => {
+  it("compacts a billion-scale count as B, not as four digits of M", () => {
+    // Found live: @mrbeast's 1.3B likes rendered "1300.0M likes" on the payoff screen.
+    const { getByText } = render(
+      <AudienceReveal
+        audience={AUDIENCE}
+        reveal={{
+          ...REVEAL,
+          profile: { ...REVEAL.profile, followerCount: 131_200_000, heartCount: 1_300_000_000 },
+        }}
+        onUse={() => {}}
+      />,
+    );
+
+    expect(getByText(/131\.2M followers · 1\.3B likes/)).toBeTruthy();
+  });
+
   it("cannot be shrunk by the bounded column it sits in", () => {
     const { container } = render(
       <AudienceReveal audience={AUDIENCE} reveal={REVEAL} onUse={() => {}} />,
