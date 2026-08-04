@@ -89,6 +89,11 @@ export interface SignalCell {
   delta?: number; // vs the user's typical hook
   whyScore: string;
   muted?: boolean; // a visual-only read on a TEXT sim (no video substrate to measure) → rendered greyed
+  /** LOW is good (Hesitation/Risk, Mental Effort). `brain-signals.ts` bands these on `100 − score`,
+   *  which is why a 58 Hesitation earns WEAK while a 58 Visual Pull earns OKAY. The grade was always
+   *  right; the CARD never said the direction, so the two read as the same scale contradicting itself.
+   *  The renderer marks the cell and prints the legend once. */
+  lowerIsBetter?: boolean;
 }
 
 /** ② Raw network activation — a network's z-score at the decisive second + its plain band word. */

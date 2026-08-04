@@ -44,6 +44,8 @@ import type {
 const W = 366;
 const H = 108;
 const P = 6;
+/** The transcript window's fade width, in px — also the track's end padding, so the two always agree. */
+const TRACK_PAD = 26;
 
 // ── the instrument ───────────────────────────────────────────────────────────
 
@@ -218,14 +220,26 @@ function Transcript({ words, current, breakWord }: { words: string[]; current: n
       ref={stripRef}
       className="relative mt-3 h-[19px] overflow-hidden"
       style={{
-        maskImage: "linear-gradient(90deg,transparent,#000 10%,#000 90%,transparent)",
-        WebkitMaskImage: "linear-gradient(90deg,transparent,#000 10%,#000 90%,transparent)",
+        // A fade wide enough that a WORD dissolves in it. At 10% the ramp finished inside a single
+        // word, so both ends read as a hard cut mid-word ("…every viral hook forma") — broken rather
+        // than windowed. Stated in px so the window is the same at any card width.
+        maskImage: `linear-gradient(90deg,transparent 0,#000 ${TRACK_PAD}px,#000 calc(100% - ${TRACK_PAD}px),transparent 100%)`,
+        WebkitMaskImage: `linear-gradient(90deg,transparent 0,#000 ${TRACK_PAD}px,#000 calc(100% - ${TRACK_PAD}px),transparent 100%)`,
       }}
     >
       <span
         ref={trackRef}
         className="absolute left-0 top-0 whitespace-nowrap text-[13px] leading-[19px]"
-        style={{ color: "rgba(236,231,222,.26)", transform: `translateX(${dx.toFixed(0)}px)`, transition: "transform .09s linear" }}
+        style={{
+          color: "rgba(236,231,222,.26)",
+          // Dead space under the fade at both ends. Without it the clamp parks the track flush at
+          // `dx = 0`, which put the FIRST word directly under the ramp and erased it — the strip
+          // opened on an invisible word every time the playhead sat at 0.
+          paddingLeft: TRACK_PAD,
+          paddingRight: TRACK_PAD,
+          transform: `translateX(${dx.toFixed(0)}px)`,
+          transition: "transform .09s linear",
+        }}
       >
         {words.map((w, i) => (
           <span
@@ -256,21 +270,31 @@ function ReactionTimeline({
   data: { seconds: number; rows: { label: string; count: number; intensity: number[] }[] };
   scale: number;
 }) {
+  // Each row's `intensity` is normalised WITHIN itself, so 16 comments drew at the same density as 102
+  // saves and the three reactions read as one flat block — the counts on the right were carrying the
+  // whole hierarchy alone. Weight every row against the heaviest so the heat means the same thing on
+  // all three. Square-rooted, not linear: at raw share the lightest row falls to ~0.17 alpha and stops
+  // being legible at all, which trades one misread for another. `scale` is uniform across rows and so
+  // cancels — the ratio is taken from the raw counts.
+  const top = Math.max(1, ...data.rows.map((r) => r.count));
   return (
     <Card>
       <CardHead title="When they react" meta="modeled · per second" />
       <div className="mt-3">
-        {data.rows.map((r) => (
-          <div key={r.label} className="flex items-center gap-2 py-[5px]">
-            <span className="w-[74px] flex-none text-[13px]" style={{ color: TONE.dim }}>
-              {r.label}
-            </span>
-            <HeatCells values={r.intensity.map((k) => 0.05 + k * 0.75)} height={14} />
-            <span className="w-9 flex-none text-right text-[14px] font-medium tabular-nums" style={{ color: TONE.cream }}>
-              {Math.round(r.count * scale)}
-            </span>
-          </div>
-        ))}
+        {data.rows.map((r) => {
+          const rel = Math.sqrt(Math.max(0, r.count) / top);
+          return (
+            <div key={r.label} className="flex items-center gap-2 py-[5px]">
+              <span className="w-[74px] flex-none text-[13px]" style={{ color: TONE.dim }}>
+                {r.label}
+              </span>
+              <HeatCells values={r.intensity.map((k) => 0.04 + k * 0.76 * rel)} height={14} />
+              <span className="w-9 flex-none text-right text-[14px] font-medium tabular-nums" style={{ color: TONE.cream }}>
+                {Math.round(r.count * scale)}
+              </span>
+            </div>
+          );
+        })}
       </div>
       <Axis left="0s" right={`${data.seconds}s`} indent={82} />
     </Card>

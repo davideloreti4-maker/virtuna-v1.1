@@ -177,6 +177,9 @@ export function modeledSignalGrid(input: ModeledBrainInput): SignalCell[] {
         ? "No visual substrate — a text concept has no opening frame to read."
         : `${toneLead} — modeled from ${d.frag} at a ${Math.round(input.stopPct)}% stop rate${anchor}.`,
       ...(muted ? { muted: true as const } : {}),
+      // the grade already bands on `100 − score` for these (line above); tell the CARD so, or the
+      // reader sees the same number graded oppositely under one named scale.
+      ...(d.invert ? { lowerIsBetter: true as const } : {}),
     };
   });
 }

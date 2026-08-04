@@ -226,6 +226,12 @@ export function TerrainMap({
             used to need a ledger under it to say who was who; now it says so itself. */}
         {labelled
           ? clusters.map((c, ci) => (
+              // A casing in the figure's own background colour, painted UNDER the glyphs
+              // (`paint-order`), so each label clears itself a hole in the cloud. The labels sit at
+              // the district centres, which is exactly where the nodes are densest — bare cream text
+              // on a lit cluster was the surface's worst legibility defect ("new 62%" was partly
+              // occluded). This is the corner chips' scrim, shaped to the letters instead of a box:
+              // a stroke of the backdrop is a knock-out, never a glow.
               <text
                 key={`lab-${c.name}`}
                 x={centers[ci]!.x}
@@ -234,6 +240,10 @@ export function TerrainMap({
                 fontSize={9}
                 fontWeight={500}
                 fill="rgba(236,231,222,.82)"
+                stroke="#131210"
+                strokeWidth={3}
+                strokeLinejoin="round"
+                style={{ paintOrder: "stroke" }}
               >
                 {c.name}
                 <tspan dx={4} fill="rgba(236,231,222,.5)">

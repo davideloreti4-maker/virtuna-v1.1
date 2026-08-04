@@ -200,14 +200,28 @@ function AnswerBlock({
           </span>
         </div>
         <AStat stats={applied.stats} />
+        {/* The applied state's ONLY control, so it carries a control's affordance. As dim plain text it
+            read as a caption next to the numbers it undoes — "See the evidence →" can stay bare because
+            it sits beside a filled primary; this has nothing to be secondary to. Chip, not cream fill:
+            the primary action is spent, and undo is a way back, not the thing to do. */}
         <button
           type="button"
           onClick={onUndoFix}
-          className="mt-2.5 text-[12px] transition-colors"
-          style={{ color: TONE.faint }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = TONE.dim)}
-          onMouseLeave={(e) => (e.currentTarget.style.color = TONE.faint)}
+          className="mt-3 inline-flex items-center gap-1.5 rounded-[8px] px-2.5 py-[6px] text-[12px] transition-colors"
+          style={{ background: SURFACE.chip, color: TONE.dim }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = SURFACE.chipOn;
+            e.currentTarget.style.color = TONE.cream;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = SURFACE.chip;
+            e.currentTarget.style.color = TONE.dim;
+          }}
         >
+          <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 14 4 9l5-5" />
+            <path d="M4 9h11a5 5 0 0 1 0 10h-3" />
+          </svg>
           Undo the fix
         </button>
       </div>
@@ -264,6 +278,24 @@ function AnswerBlock({
 
 const gradeOf = (c: SignalCell) => (c.muted ? "no signal" : c.tone);
 
+/** The direction mark. Hesitation and Mental Effort band on `100 − score` (`brain-signals.ts`), so a
+ *  58 Hesitation reads WEAK while a 58 Visual Pull reads OKAY — correct, and unreadable while the card
+ *  named one scale and showed two directions on it. The mark rides the label; the legend below prints
+ *  once, in the same chrome the activation card's `weak → strong` key already uses.
+ *
+ *  A footnote mark, NOT an arrow: `↓` and `↑` are already spoken for on this surface — the watch and
+ *  reaction tiles one page over use them for went-down/went-up ("↓1.5s", "0.5% of viewers ↓"). Reusing
+ *  the glyph for "lower is better" would put two meanings on one mark inside a single instrument,
+ *  which is the defect this fix exists to close, one level down. */
+function Dir({ c }: { c: SignalCell }) {
+  if (!c.lowerIsBetter) return null;
+  return (
+    <span aria-label="lower is better" title="lower is better" className="flex-none text-[11px] leading-none" style={{ color: TONE.faint }}>
+      *
+    </span>
+  );
+}
+
 /** Score · its delta vs the creator's baseline · the label · the grade word. Grades carry NO colour:
  *  an unbenchmarked cutoff must not shout, and the page's one coral belongs to the loss. */
 function SignalsCard({ cells, movers, scale }: { cells: SignalCell[]; movers?: string[]; scale?: string }) {
@@ -271,6 +303,7 @@ function SignalsCard({ cells, movers, scale }: { cells: SignalCell[]; movers?: s
   const lead = (movers ?? []).map((k) => cells.find((c) => c.key === k)).filter((c): c is SignalCell => !!c);
   const rest = cells.filter((c) => !keys.has(c.key));
   const label = (c: SignalCell) => SIGNAL_LABEL[c.key] ?? c.label;
+  const anyInverted = cells.some((c) => c.lowerIsBetter);
   return (
     <Card>
       <CardHead title="Signal breakdown" meta={scale} />
@@ -287,8 +320,9 @@ function SignalsCard({ cells, movers, scale }: { cells: SignalCell[]; movers?: s
                   {c.delta}
                 </span>
               ) : null}
-              <span className="min-w-0 flex-1 truncate text-[13px]" style={{ color: TONE.dim }}>
+              <span className="flex min-w-0 flex-1 items-baseline gap-1 truncate text-[13px]" style={{ color: TONE.dim }}>
                 {label(c)}
+                <Dir c={c} />
               </span>
               <span className="text-[10px] uppercase tracking-[0.04em]" style={{ color: c.tone === "strong" ? TONE.dim : TONE.faint }}>
                 {gradeOf(c)}
@@ -311,8 +345,9 @@ function SignalsCard({ cells, movers, scale }: { cells: SignalCell[]; movers?: s
                 </span>
               ) : null}
             </span>
-            <span className="mt-1.5 block truncate text-[11px]" style={{ color: c.muted ? TONE.ghost : TONE.dim }}>
-              {label(c)}
+            <span className="mt-1.5 flex items-baseline gap-1 text-[11px]" style={{ color: c.muted ? TONE.ghost : TONE.dim }}>
+              <span className="min-w-0 truncate">{label(c)}</span>
+              {c.muted ? null : <Dir c={c} />}
             </span>
             <span
               className="mt-1 block text-[10px] uppercase tracking-[0.04em]"
@@ -323,6 +358,11 @@ function SignalsCard({ cells, movers, scale }: { cells: SignalCell[]; movers?: s
           </div>
         ))}
       </div>
+      {anyInverted ? (
+        <div className="mt-2.5 text-[10px] uppercase tracking-[0.04em]" style={{ color: TONE.faint }}>
+          * lower is better
+        </div>
+      ) : null}
     </Card>
   );
 }
@@ -414,11 +454,14 @@ function ActivationCard({ data }: { data: KpiHeatmapData }) {
         ))}
       </div>
       <Axis left="0s" right={`${data.seconds}s`} indent={66} />
+      {/* The key is drawn in the grid's OWN cells, not a ramp. `HeatCells` renders discrete steps at
+          the exact alphas a real row uses, so the legend is a sample of the figure rather than a
+          second encoding of it — and the surface keeps its no-gradient law, which the soft ramp that
+          shipped here quietly broke. */}
       <div className="mt-2 flex items-center gap-2 text-[10px] uppercase tracking-[0.04em]" style={{ color: TONE.faint }}>
-        <span
-          className="h-1.5 w-14 rounded-sm"
-          style={{ background: "linear-gradient(90deg,rgba(236,231,222,.08),rgba(236,231,222,.85))" }}
-        />
+        <span className="flex w-14">
+          <HeatCells values={[0.05, 0.25, 0.45, 0.65, 0.88]} height={6} />
+        </span>
         <span>weak → strong</span>
         <span className="ml-auto">each cell = 1s</span>
       </div>
@@ -433,6 +476,15 @@ function ActivationCard({ data }: { data: KpiHeatmapData }) {
 
 // ── ◇ driver swap slots ──────────────────────────────────────────────────────
 
+/** The group caption on "Why they scrolled" — the break the sort order implies, said out loud. */
+function ReasonGroup({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mb-1 mt-2.5 text-[10px] font-medium uppercase tracking-[0.09em]" style={{ color: TONE.faint }}>
+      {children}
+    </div>
+  );
+}
+
 /** A text concept has no timeline (§3.3) — its "when" is a WHY, so the coded reasons take the
  *  moment's slot and the instrument continues underneath, identical in both kinds. */
 function ReasonsCard({ data }: { data: ReasonBreakdownData }) {
@@ -443,21 +495,30 @@ function ReasonsCard({ data }: { data: ReasonBreakdownData }) {
   // right. The pull reasons stay on the card, below, at their true weight; only the ORDER changes,
   // so the leading row is about leaving and the card means what its title says.
   const rows = [...data.rows].sort((a, b) => Number(!!b.loss) - Number(!!a.loss) || b.count - a.count);
+  // The sort alone was not an encoding. A pull reason can still own the LONGEST bar on a card titled
+  // "Why they scrolled" — "Strong hook 51%" did — and order is the only thing that said otherwise, in
+  // a list with no break in it. The two groups are named where they change, so the reader is told what
+  // the order means instead of having to infer it. One group ⇒ no headings; the card is already that.
+  const split = rows.findIndex((r) => !r.loss);
+  const grouped = split > 0 && split < rows.length;
   return (
     <Card id="reasons">
       <CardHead title="Why they scrolled" meta={`coded from ${data.total}`} />
       <div className="mt-2">
+        {grouped ? <ReasonGroup>Why they left</ReasonGroup> : null}
         {rows.map((r, i) => (
-          <BarRow
-            key={r.label}
-            label={r.label}
-            value={`${Math.round(r.share * 100)}%`}
-            frac={r.count / max}
-            lead={i === 0 && !!r.loss}
-            low={!r.loss}
-            labelWidth={122}
-            valueWidth={36}
-          />
+          <div key={r.label}>
+            {grouped && i === split ? <ReasonGroup>What held the rest</ReasonGroup> : null}
+            <BarRow
+              label={r.label}
+              value={`${Math.round(r.share * 100)}%`}
+              frac={r.count / max}
+              lead={i === 0 && !!r.loss}
+              low={!r.loss}
+              labelWidth={122}
+              valueWidth={36}
+            />
+          </div>
         ))}
       </div>
     </Card>
