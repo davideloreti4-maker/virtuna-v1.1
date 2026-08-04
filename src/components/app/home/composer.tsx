@@ -1429,13 +1429,19 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // no blank re-run — the retired chain-handoff CTA did both and lost the topic. The thread already
   // exists (a completed turn is on screen), and the route persists the user turn server-side, so no
   // ensureThreadForSend / user-turn POST is needed here. Fires ONLY on the user's tap (D-05).
+  //
+  // `skill` is the chip's DECLARED generator (chat-followups.ts). It is forwarded, not re-derived:
+  // the chip's sentence reads as subject-less on its own ("Give me a few more hook options."), so
+  // the agent used to answer it with a request for a sharper angle and run nothing — measured 0/3,
+  // and not fixable by rewording. Carrying the intent as data lets the route pin the first tool
+  // choice. Conversational chips ("Which is strongest?") declare none and are unaffected.
   const sendChatFollowup = useCallback(
-    (prompt: string) => {
+    (prompt: string, skill?: string) => {
       const t = prompt.trim();
       if (!t) return;
       setLastUserTurn(t);
       chat.reset();
-      void chat.start(t, platform);
+      void chat.start(t, platform, skill);
     },
     [chat, platform],
   );

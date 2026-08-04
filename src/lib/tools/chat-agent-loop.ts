@@ -143,6 +143,54 @@ const defaultStreamComplete: StreamingChatComplete = async (params) => {
 
 // ─── Public types ────────────────────────────────────────────────────────────
 
+/**
+ * One prior conversation turn, as the loop replays it to the model.
+ *
+ * `toolRuns` is the fix for a thread that poisons its own later turns. A turn that dispatched a
+ * skill persists TWO things: the cards (their own message row) and the model's closing line ("Five
+ * hooks are on screen."). The route can only replay the second — card blocks are filtered out of the
+ * anchor — so the transcript used to show a bare assistant sentence claiming five hooks exist, with
+ * nothing anywhere saying a tool produced them. Asked for hooks again, the model did the only thing
+ * that transcript supports: it reproduced the sentence and called nothing. Zero cards, and the UI
+ * insisting five were on screen (confirmed live, 3/3 offline).
+ *
+ * A prompt clause could not fix this — the precedent IS the transcript. So the transcript now tells
+ * the truth: a turn carrying `toolRuns` is replayed as the tool-call exchange it actually was
+ * (assistant → tool_calls, tool result, then the closing line), which is byte-for-byte the shape
+ * this loop builds for a live turn. The sentence stops reading as a template a model can type and
+ * starts reading as what follows a tool call.
+ */
+export interface ChatAgentPriorTurn {
+  role: "user" | "assistant";
+  text: string;
+  /**
+   * Skills this assistant turn actually ran, in run order — reconstructed by the caller from the
+   * card blocks it persisted. Ignored on a user turn, and ignored for any tool not currently BOUND
+   * (an unbound name in the replayed transcript would advertise a tool the model cannot call).
+   */
+  toolRuns?: Array<{
+    /** The tool name as bound here (`SkillTool.name`, e.g. "generate_hooks"). */
+    name: string;
+    /** How many cards it produced — the same count the live tool result reports. */
+    cards: number;
+    /** The subject it ran on, for the replayed arguments. Falls back to the turn's own text. */
+    topic?: string;
+    /**
+     * The identifying line of each card, in order — what the creator is actually looking at.
+     *
+     * The count alone proved a tool RAN, which was all the prior-turn fix needed. It left the model
+     * unable to discuss its own output: asked "Which of these hooks is strongest?" — a shipped
+     * follow-up chip — it replied "I don't have the specific hook lines you're referring to in front
+     * of me. Paste the 2–3 options you're debating", about cards the app had just rendered.
+     *
+     * Capped by the caller (chat-prior-turns.ts). Omitted entirely for an UNBOUND tool, because
+     * `replayPriorTurn` drops those runs to plain text — so an anonymous visitor, who binds no
+     * generators, never receives the lines of a pack they did not pay for.
+     */
+    lines?: string[];
+  }>;
+}
+
 export interface ChatAgentStreamInput {
   /** The creator's message this turn — as sent to the model (may be the grounding-assembled bundle). */
   ask: string;
@@ -151,7 +199,28 @@ export interface ChatAgentStreamInput {
   /** The fully-built system prompt (KC chat prompt + cheap assembleBundle grounding), built by the route. */
   systemPrompt: string;
   /** Prior conversation turns (role + text), oldest→newest. */
-  priorTurns?: Array<{ role: "user" | "assistant"; text: string }>;
+  priorTurns?: ChatAgentPriorTurn[];
+  /**
+   * A generator the CREATOR already chose — the `skillKey` of a follow-up chip they tapped
+   * ('ideas' | 'hooks' | 'script'). Pins the FIRST round's `tool_choice` to that tool.
+   *
+   * WHY THIS IS NOT "dispatch more". A tapped chip is a command issued under cards that already fix
+   * the subject; the model's job on that turn is to write the arguments and the closing line, not to
+   * decide whether the creator meant it. Left to `tool_choice: "auto"` it decided wrong every time:
+   * "Give me a few more hook options." reads as subject-less, so the directive's "too vague or too
+   * generic → push back ONCE" clause fired and nothing ran (0/3, unchanged by the §4 fix). The
+   * sentence cannot be re-worded out of that — prompt text was tried and reached 1/3 while
+   * destabilising sibling chips.
+   *
+   * Scope is deliberately narrow, so this cannot leak into ordinary asks:
+   *   · only set when the client names a skill (a TYPED message never does — controls stay untouched);
+   *   · only honoured when that skill is actually BOUND this turn, so an anonymous visitor with
+   *     `skills: []` silently gets the unpinned path rather than a forced paid run;
+   *   · round 1 ONLY — the model must be free to write the closing line once the tool has returned,
+   *     and a pin left in place would make it call the same tool every round.
+   * The gate still runs: a pinned call is admitted, priced and billed exactly like a chosen one.
+   */
+  forceSkill?: string;
   /** Bind the corpus search tool (grounding-as-a-tool). Gated by GROUNDING_CHAT_TOOL at the route. */
   grounding?: boolean;
   /** Streamed answer tokens, in order. */
@@ -254,24 +323,49 @@ const DEFAULT_MAX_SKILL_RUNS = 2;
 /** Source cards rendered per search — a citation, not a search-results page. */
 const MAX_REFERENCE_CARDS = 4;
 
+/** Every generator in the registry — the default when a caller binds the full skill set. */
+const GENERATOR_TOOL_NAMES: readonly string[] = SKILL_TOOLS.map((s) => s.name);
+
 /**
  * The tool-use directive the loop appends to the caller's system prompt. The loop OWNS this because it
  * owns the tools — the caller's prompt (e.g. KC_CHAT_SYSTEM_PROMPT) grounds voice/chat but says nothing
  * about the bound tools, so without this the model just writes the content inline instead of calling a
  * skill (observed live). The corpus line is added only when grounding is on (the tool is otherwise not
- * bound — naming an unbound tool invites a call that can't be serviced).
+ * bound — naming an unbound tool invites a call that can't be serviced), and `generators` carries the
+ * SAME rule for the skills: it lists what this caller actually bound, never the registry.
  */
-function toolUseDirective(grounding: boolean): string {
+function toolUseDirective(grounding: boolean, generators: readonly string[] = GENERATOR_TOOL_NAMES): string {
+  // NAME ONLY WHAT IS BOUND. An anonymous /go visitor gets `skills: FREE_SKILL_TOOLS`, which is EMPTY
+  // (every generator is billable), yet this directive used to advertise all three regardless. The model
+  // duly called generate_hooks, the loop answered "unknown skill", and the model then wrote the hooks
+  // out in prose — handing over the paid product for free through the one door that is free by design.
+  // Same rule the corpus tool already follows two lines down: never name a tool that is not bound.
+  const makeLine =
+    generators.length > 0
+      ? "You also have TOOLS that produce rich scored cards shown to the creator. To MAKE content call " +
+        `${generators.join(" / ")} (pass the \`topic\`; pass an optional \`anchor\` for a ` +
+        "chosen idea/hook to build on). " +
+        "DISPATCH EAGERLY: when the ask is a clear request to make that content and you have a " +
+        "workable subject, CALL the matching tool THIS turn — do NOT ask whether they want 'a card vs an " +
+        "opinion', do NOT offer to run it, and do NOT write the content yourself first. Just call it. Stay " +
+        "conversational only when the creator is genuinely just talking or thinking out loud, OR when the ask " +
+        "is too vague or too generic to produce something non-obvious — then push back ONCE for a sharper " +
+        "angle, and the moment you have a workable subject, call the tool. "
+      : // Nothing generative is bound (an anonymous visitor). Say so honestly instead of silently
+        // becoming the generator yourself — writing the pack in prose IS delivering the paid product.
+        // The wording is deliberately concrete: "offer the thinking instead" ALONE was read as licence to
+        // ship the same pack relabelled as thinking (measured: a refusal opener followed by three finished,
+        // quoted hook lines). What is banned is the ARTEFACT, not the topic.
+        "You have NO content-generation tools on this account. When the creator wants content MADE, say " +
+        "plainly that making it needs an account with credits. " +
+        "HARD LIMIT — you may NOT produce the artefact yourself, in any wrapper: no hook lines, no opening " +
+        "lines, no idea/concept list, no script or outline, not even ONE as an example, an illustration, a " +
+        "demo, or 'the thinking'. A refusal sentence followed by the content is still delivering the " +
+        "content. Never write a quoted candidate line they could paste into a video. " +
+        "What you MAY do: name the mechanism in the abstract, ask what would sharpen the angle, and " +
+        "critique lines THEY write. If they push, hold the limit and point at the account. ";
   const base =
-    "You also have TOOLS that produce rich scored cards shown to the creator. To MAKE content call " +
-    "generate_ideas / generate_hooks / write_script (pass the `topic`; pass an optional `anchor` for a " +
-    "chosen idea/hook to build on). " +
-    "DISPATCH EAGERLY: when the ask is a clear request to make ideas, hooks, or a script and you have a " +
-    "workable subject, CALL the matching tool THIS turn — do NOT ask whether they want 'a card vs an " +
-    "opinion', do NOT offer to run it, and do NOT write the content yourself first. Just call it. Stay " +
-    "conversational only when the creator is genuinely just talking or thinking out loud, OR when the ask " +
-    "is too vague or too generic to produce something non-obvious — then push back ONCE for a sharper " +
-    "angle, and the moment you have a workable subject, call the tool. " +
+    makeLine +
     "CRITICAL — NEVER tell the creator a card is 'on screen', 'generated', or 'ready', and never describe " +
     "its contents, UNLESS you actually called the tool THIS turn. If you did not call a tool, do not claim " +
     "a card exists. " +
@@ -300,6 +394,67 @@ function toolUseDirective(grounding: boolean): string {
       "creators and numbers the tool actually returned."
     : "";
   return base + groundLine;
+}
+
+/**
+ * Replay ONE prior turn as the messages the model sees.
+ *
+ * A plain turn is one message, exactly as before. A turn that ran skills becomes the exchange that
+ * actually happened — assistant/tool_calls → tool result(s) → the assistant's closing line — so the
+ * closing line has its cause attached to it. `boundNames` is the loop's live tool set: a run whose
+ * tool is not bound this turn replays as plain text rather than naming a tool the model cannot call
+ * (an anonymous visitor binds no generators, and a dangling name would invite exactly the call that
+ * cannot be serviced).
+ */
+function replayPriorTurn(
+  turn: ChatAgentPriorTurn,
+  index: number,
+  boundNames: Set<string>,
+): Array<Record<string, unknown>> {
+  const runs = turn.role === "assistant" ? (turn.toolRuns ?? []).filter((r) => boundNames.has(r.name)) : [];
+  if (runs.length === 0) return [{ role: turn.role, content: turn.text }];
+
+  const out: Array<Record<string, unknown>> = [];
+  runs.forEach((run, i) => {
+    const id = `prior_${index}_${i}`;
+    out.push({
+      role: "assistant",
+      content: null,
+      tool_calls: [
+        {
+          id,
+          type: "function",
+          // The topic is a reconstruction (the args were never persisted) — the creator's own ask
+          // from that turn. It matters only as a well-formed precedent for HOW the tool is called.
+          function: { name: run.name, arguments: JSON.stringify({ topic: run.topic || turn.text }) },
+        },
+      ],
+    });
+    out.push({
+      role: "tool",
+      tool_call_id: id,
+      // The same result shape a live run pushes below, so the replayed round is indistinguishable
+      // from one this loop just executed — plus the lines themselves, so the model can DISCUSS the
+      // cards it made. Without them it can prove a pack exists and say nothing about its contents,
+      // which is why the "Which is strongest?" chip asked the creator to paste back lines the app
+      // had just put on screen.
+      content: JSON.stringify({
+        ran: run.name,
+        produced: `${run.cards} card(s)`,
+        ...(run.lines && run.lines.length > 0
+          ? {
+              cards_on_screen: run.lines,
+              note:
+                "these are the cards the creator can see, in order — refer to them by their text " +
+                "when they ask about them. They are ALREADY on screen: never re-list them, and " +
+                "never present them as something you are producing now.",
+            }
+          : { note: "cards are shown to the creator" }),
+      }),
+    });
+  });
+  out.push({ role: "assistant", content: turn.text });
+  return out;
 }
 
 /** Parse the model's tool args into the shape the skills read (topic + optional anchor). */
@@ -353,12 +508,21 @@ export async function runChatAgentStream(
   ];
 
   // The caller's prompt grounds voice/chat; the loop appends the tool-use directive (it owns the tools).
-  const systemContent = `${input.systemPrompt}\n\n${toolUseDirective(!!input.grounding)}`;
+  // The directive is told what THIS caller bound, so it can never advertise a skill the model cannot call.
+  const systemContent = `${input.systemPrompt}\n\n${toolUseDirective(!!input.grounding, skills.map((s) => s.name))}`;
+  const boundNames = new Set(tools.map((t) => (t as { function?: { name?: string } }).function?.name ?? ""));
   const messages: Array<Record<string, unknown>> = [
     { role: "system", content: systemContent },
-    ...(input.priorTurns ?? []).map((t) => ({ role: t.role, content: t.text })),
+    ...(input.priorTurns ?? []).flatMap((t, i) => replayPriorTurn(t, i, boundNames)),
     { role: "user", content: input.ask },
   ];
+
+  // The creator's own choice, resolved against what is actually bound. An unbound or unknown key
+  // resolves to null and the turn runs exactly as it did before — never an error, and never a tool
+  // name in `tool_choice` that is absent from `tools` (which the API would reject).
+  const pinnedTool = input.forceSkill
+    ? (skills.find((s) => s.skillKey === input.forceSkill)?.name ?? null)
+    : null;
 
   const skillRuns: SkillRunOutput[] = [];
   const uiBlocks: unknown[] = [];
@@ -371,7 +535,12 @@ export async function runChatAgentStream(
       model,
       messages,
       tools,
-      tool_choice: "auto",
+      // Round 1 only — see `forceSkill`. After the tool has returned, the model needs `auto` back to
+      // write its closing line instead of calling the same tool again.
+      tool_choice:
+        pinnedTool && round === 1
+          ? { type: "function", function: { name: pinnedTool } }
+          : "auto",
       temperature: 0.3,
       seed,
       max_tokens: 2000,
@@ -544,7 +713,18 @@ export async function runChatAgentStream(
       const skill = byName.get(call.name);
       if (!skill) {
         toolCalls.push({ name: call.name, ran: false, note: "unknown skill" });
-        messages.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify({ error: "unknown skill" }) });
+        // Every other refusal below tells the model not to answer the request in prose; this one used to
+        // hand back a bare error, and the model read "the tool is unavailable" as licence to write the
+        // pack itself. That is the free-content leak, so the same instruction rides here too.
+        messages.push({
+          role: "tool",
+          tool_call_id: call.id,
+          content: JSON.stringify({
+            error: "this skill is not available on this account",
+            tell_the_creator: "Making that needs an account with credits.",
+            note: "do NOT write the ideas/hooks/script yourself in prose as a substitute — offer the thinking instead",
+          }),
+        });
         continue;
       }
       const args = parseSkillArgs(call.args);

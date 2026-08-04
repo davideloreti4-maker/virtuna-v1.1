@@ -32,6 +32,7 @@ import { createClient } from "@/lib/supabase/server";
 import { maybeMockSkillRun } from "@/lib/tools/mock/mock-sse";
 import { createOpenThreadLazy, getOpenThread, setThreadTitleIfEmpty } from "@/lib/threads/threads";
 import { insertMessage, loadMessages } from "@/lib/threads/messages";
+import { openChatPriorTurns, MAX_PRIOR_TURNS } from "@/lib/threads/chat-prior-turns";
 import { runChatPipeline, isColdStart } from "@/lib/tools/runners/chat-runner";
 import { runChatAgentStream, type SkillBilling } from "@/lib/tools/chat-agent-loop";
 import { FREE_SKILL_TOOLS } from "@/lib/tools/skill-dispatch";
@@ -191,13 +192,6 @@ function parseClientPriorTurns(raw: unknown): Array<{ role: "user" | "assistant"
   return out;
 }
 
-/**
- * Max prior turns to carry as context anchor.
- * D-01a soft context cap: full running context is the default; this bounds the
- * anchor size to avoid excessive token spend on very long threads.
- */
-const MAX_PRIOR_TURNS = 20;
-
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function sseHeaders(): HeadersInit {
@@ -278,7 +272,13 @@ export async function POST(request: Request): Promise<Response> {
   if (limited) return limited;
 
   // ── (2) Parse + validate body ─────────────────────────────────────────────
-  let body: { ask?: unknown; platform?: unknown; personaGrounding?: unknown; priorTurns?: unknown } = {};
+  let body: {
+    ask?: unknown;
+    platform?: unknown;
+    personaGrounding?: unknown;
+    priorTurns?: unknown;
+    skill?: unknown;
+  } = {};
   try {
     body = await request.json();
   } catch {
@@ -287,6 +287,18 @@ export async function POST(request: Request): Promise<Response> {
 
   const rawAsk = typeof body.ask === "string" ? body.ask.trim() : "";
   const rawPlatform = typeof body.platform === "string" ? body.platform : "tiktok";
+
+  // ── (2c) The generator a tapped follow-up chip declared (chat-followups.ts `skill`) ──
+  // A chip is a command the creator issued under cards that already fix the subject; its sentence
+  // reads as subject-less on its own, so the agent used to push back for a sharper angle and run
+  // nothing. The chip's intent therefore rides as DATA and pins the loop's first tool_choice.
+  //
+  // Passed through as an opaque key, NOT trusted: the loop resolves it against the skills actually
+  // bound for THIS user and ignores anything it cannot match — so a hand-crafted body naming a paid
+  // skill buys an anonymous visitor nothing (they bind none), and a signed-in caller gets the same
+  // gate, price and ledger row that typing the ask would have. A typed message never sets it, which
+  // is what keeps ordinary conversational asks byte-identical.
+  const rawSkill = typeof body.skill === "string" ? body.skill.slice(0, 32) : undefined;
 
   // ── (2b) Parse optional personaGrounding (P9 / LIVE-03, D-03) ────────────────
   // The "Ask them why →" chat-with-persona drawer POSTs this. Validated + length-capped
@@ -361,27 +373,9 @@ export async function POST(request: Request): Promise<Response> {
       : // Meet-ephemeral (no thread): the drawer carries its own in-session transcript so the
         // persona keeps context across turns — validated + capped, same fenced anchor as DB turns.
         parseClientPriorTurns(body.priorTurns)
-    : // WR-05 INVARIANT: the open-chat anchor assumes EXACTLY ONE `markdown` block per message
-      // row. Role is attributed from `msg.role` (per-message), so a conversational "turn" === a
-      // message; the `.slice(-MAX_PRIOR_TURNS)` cap below counts blocks, which equals turns ONLY
-      // while this invariant holds (open-chat persistence writes a single markdown block per turn
-      // — see the POST persistence path: one `{ type: "markdown" }` block per insertMessage). If
-      // multi-block markdown messages are ever introduced, attribute role per BLOCK (carry it on
-      // the block) before relying on this anchor — otherwise the cap miscounts and every block in
-      // a message inherits the parent message role.
-      hydratedMessages
-        .flatMap((msg) =>
-          msg.blocks
-            .filter(
-              (b): b is { type: "markdown"; props: { text: string } } =>
-                b.type === "markdown" && typeof (b as { props: { text?: unknown } }).props.text === "string",
-            )
-            .map((b) => ({
-              role: msg.role as "user" | "assistant",
-              text: (b as { type: "markdown"; props: { text: string } }).props.text,
-            })),
-        )
-        .slice(-MAX_PRIOR_TURNS);
+    : // Open chat — markdown turns, each dispatching turn carrying the runs it announced (see
+      // openChatPriorTurns for why the runs travel with it).
+      openChatPriorTurns(hydratedMessages);
 
   // ── (7) Persist the USER turn first (mirrors grounded-chat route ordering) ──
   // Persona-grounded → persist as a `persona-chat-turn` block (the sub-thread, D-03);
@@ -427,12 +421,26 @@ export async function POST(request: Request): Promise<Response> {
           // Grounding (niche/audience/platform) rides the fenced user message, exactly as
           // runChatPipeline builds it (assembleBundle → <<<USER_CONTENT>>>). Prior turns go to the loop
           // as real role messages (natural turn structure for the agent), not folded into the anchor.
-          const userMessage = assembleBundle({ ask: rawAsk, platform, mode: "chat" }, profileRow);
+          //
+          // modeLabel — NOT cosmetic. The bundle header lands in the USER message, and the bare word
+          // "chat" reads to the model as the chat slice's own stance ("chat mode is conversational,
+          // NOT a generation surface", with over-generating named as a failure mode). That sentence is
+          // right for the pure-chat path below and exactly wrong here, where the generators are bound
+          // and the loop's directive says to dispatch eagerly: the model read the label, obeyed it, and
+          // answered "give me hooks for X" in prose while holding generate_hooks unused. Measured on the
+          // shipped prompts, 4 seeds: 0/4 dispatches with "chat", 4/4 with any other label. `mode` stays
+          // "chat" — it is the MODE_ROLES selector, so the grounding content is unchanged.
+          const userMessage = assembleBundle(
+            { ask: rawAsk, platform, mode: "chat", modeLabel: "copilot" },
+            profileRow,
+          );
           const agentResult = await runChatAgentStream(
             {
               ask: userMessage,
               systemPrompt: KC_CHAT_SYSTEM_PROMPT,
               priorTurns,
+              // The tapped chip's declared generator (see (2c)); undefined for every typed message.
+              ...(rawSkill ? { forceSkill: rawSkill } : {}),
               grounding: isCorpusChatToolEnabled(),
               context: {
                 platform,

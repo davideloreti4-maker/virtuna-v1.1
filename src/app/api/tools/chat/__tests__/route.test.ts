@@ -494,6 +494,8 @@ describe("POST /api/tools/chat (SSE route)", () => {
     return { threadId };
   }
 
+  const HOOK_BLOCK = (hookLine: string) => ({ type: "hook-card", props: { hookLine } });
+
   const IDEA_BLOCK = (title: string) => ({
     type: "idea-card",
     props: { title, angle: "a", whyItFits: "b", mechanism: "c", seedHook: `h-${title}`, needsTake: false, topic: "t", take: "", format: null, band: "Strong", fraction: "4/5", scored: true, scrollQuote: "q", model: "sim1-flash" },
@@ -596,6 +598,106 @@ describe("POST /api/tools/chat (SSE route)", () => {
     ];
     // No override at all → the loop's own default registry (every skill, paid included).
     expect(deps?.skills).toBeUndefined();
+  });
+
+  it("Test 6d: the agent turn's bundle is NOT labelled 'chat' — the label talks the model out of dispatching", async () => {
+    // REGRESSION. assembleBundle prints its `mode` into a header that lands in the USER message, and
+    // the chat slice defines chat mode as conversational, NOT a generation surface (over-generating is
+    // a named failure mode there). Right for the pure-chat path; on the agent path it overrode the
+    // loop's dispatch-eagerly directive, so "give me hooks for X" was answered in prose with
+    // generate_hooks bound and unused — measured 0/4 dispatches with "chat", 4/4 with any other label.
+    // `mode` must STAY "chat" (it selects MODE_ROLES, i.e. the grounding content); only the label moves.
+    process.env.CHAT_AGENT_DISPATCH = "true";
+    await primeDispatchHarness();
+    const { runChatAgentStream } = await import("@/lib/tools/chat-agent-loop");
+    (runChatAgentStream as ReturnType<typeof vi.fn>).mockImplementation(
+      async (input: { onToken: (d: string) => void }) => {
+        input.onToken("ok");
+        return { text: "ok", skillRuns: [], uiBlocks: [], toolCalls: [] };
+      }
+    );
+
+    const { POST } = await import("@/app/api/tools/chat/route");
+    await readSSE(await POST(makeChatRequest({ ask: "give me 5 hooks", platform: "tiktok" })));
+
+    const { assembleBundle } = await import("@/lib/kc/assembler");
+    const [bundleInput] = (assembleBundle as ReturnType<typeof vi.fn>).mock.calls.at(-1) as [
+      { mode?: string; modeLabel?: string },
+    ];
+    expect(bundleInput.mode, "mode drives MODE_ROLES — the grounding must not change").toBe("chat");
+    expect(bundleInput.modeLabel, "the agent path must override the header label").toBeDefined();
+    expect(bundleInput.modeLabel).not.toBe("chat");
+  });
+
+  it("Test 6e: a thread's OWN past skill run reaches the loop as a run, not as bare prose", async () => {
+    // REGRESSION — the thread that poisoned its own later turns. A dispatching turn persists as two
+    // rows (the cards, then the closing line stamped origin:"chat-agent"), and only markdown crossed
+    // into the anchor. So the model saw "Five hooks are on screen." with no trace of a tool call
+    // anywhere, and asked for hooks again it reproduced the sentence and called NOTHING: zero cards
+    // under a UI insisting five existed (confirmed live 2026-08-04; replaying the real thread
+    // measured 1/3 dispatches shipped vs 3/3 with the runs carried). The loop turns `toolRuns` back
+    // into the tool-call exchange it was — this pins that the route actually hands them over.
+    process.env.CHAT_AGENT_DISPATCH = "true";
+    await primeDispatchHarness();
+    const { loadMessages } = await import("@/lib/threads/messages");
+    (loadMessages as ReturnType<typeof vi.fn>).mockResolvedValue([
+      { id: "m1", thread_id: "t", role: "user", created_at: "1", blocks: [{ type: "markdown", props: { text: "hooks for my budgeting app" } }] },
+      { id: "m2", thread_id: "t", role: "assistant", created_at: "2", blocks: [HOOK_BLOCK("a"), HOOK_BLOCK("b")] },
+      { id: "m3", thread_id: "t", role: "assistant", created_at: "3", blocks: [{ type: "markdown", props: { text: "Two hooks are on screen.", origin: "chat-agent" } }] },
+    ]);
+
+    const { runChatAgentStream } = await import("@/lib/tools/chat-agent-loop");
+    (runChatAgentStream as ReturnType<typeof vi.fn>).mockImplementation(
+      async (input: { onToken: (d: string) => void }) => {
+        input.onToken("ok");
+        return { text: "ok", skillRuns: [], uiBlocks: [], toolCalls: [] };
+      }
+    );
+
+    const { POST } = await import("@/app/api/tools/chat/route");
+    await readSSE(await POST(makeChatRequest({ ask: "more hooks for it", platform: "tiktok" })));
+
+    const [loopInput] = (runChatAgentStream as ReturnType<typeof vi.fn>).mock.calls[0] as [
+      { priorTurns?: Array<{ role: string; text: string; toolRuns?: Array<{ name: string; cards: number }> }> },
+    ];
+    expect(loopInput.priorTurns).toHaveLength(2); // the card row is not a turn of its own
+    const announcing = loopInput.priorTurns!.at(-1)!;
+    expect(announcing.text).toBe("Two hooks are on screen.");
+    // …carrying the run that caused it AND the lines of the cards it produced. The lines are §6b:
+    // with only a count, "Which of these hooks is strongest?" answered "I don't have the specific
+    // hook lines in front of me" about cards the app had just rendered.
+    expect(announcing.toolRuns, "the closing line must arrive with the run that caused it").toEqual([
+      { name: "generate_hooks", cards: 2, topic: "hooks for my budgeting app", lines: ["a", "b"] },
+    ]);
+  });
+
+  it("Test 6f: a tapped chip's declared skill reaches the loop; a typed ask carries none", async () => {
+    // REGRESSION. A follow-up chip's sentence reads as subject-less on its own ("Give me a few more
+    // hook options."), so the loop's directive classed it "too vague" and pushed back instead of
+    // running — 0/3, and unchanged by the 6e fix above. The chip therefore declares its generator
+    // (chat-followups.ts) and the loop pins tool_choice to it. This pins the WIRE: the route must
+    // forward the field, and must NOT invent one for an ordinary typed message — which is the only
+    // thing keeping the conversational asks byte-identical.
+    process.env.CHAT_AGENT_DISPATCH = "true";
+    await primeDispatchHarness();
+    const { runChatAgentStream } = await import("@/lib/tools/chat-agent-loop");
+    (runChatAgentStream as ReturnType<typeof vi.fn>).mockImplementation(
+      async (input: { onToken: (d: string) => void }) => {
+        input.onToken("ok");
+        return { text: "ok", skillRuns: [], uiBlocks: [], toolCalls: [] };
+      }
+    );
+    const { POST } = await import("@/app/api/tools/chat/route");
+
+    await readSSE(
+      await POST(makeChatRequest({ ask: "Give me a few more hook options.", platform: "tiktok", skill: "hooks" })),
+    );
+    await readSSE(await POST(makeChatRequest({ ask: "which is strongest?", platform: "tiktok" })));
+
+    const calls = (runChatAgentStream as ReturnType<typeof vi.fn>).mock.calls as Array<[{ forceSkill?: string }]>;
+    expect(calls[0]![0].forceSkill).toBe("hooks");
+    // THE CONTROL — a typed ask must reach the loop with no pin at all.
+    expect(calls[1]![0].forceSkill).toBeUndefined();
   });
 
   it("Test 7: agent loop pure chat (no skill) → streams the answer directly, NO runChatPipeline fallback, plain markdown", async () => {

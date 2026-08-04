@@ -27,8 +27,11 @@ export function FollowupRow({
   className,
 }: {
   followups: ChatFollowup[];
-  /** Explicit send handler (ChatThreadView passes its own). Falls back to FollowupContext when omitted. */
-  onFollowup?: (prompt: string) => void;
+  /**
+   * Explicit send handler (ChatThreadView passes its own). Falls back to FollowupContext when omitted.
+   * The second argument is the chip's declared generator — see ChatFollowup.skill.
+   */
+  onFollowup?: (prompt: string, skill?: string) => void;
   className?: string;
 }) {
   const ctxHandler = useFollowupHandler();
@@ -40,7 +43,7 @@ export function FollowupRow({
         <button
           key={f.label}
           type="button"
-          onClick={() => handler?.(f.prompt)}
+          onClick={() => handler?.(f.prompt, f.skill)}
           className="inline-flex items-center rounded-full border border-white/[0.08] bg-transparent px-3 py-1.5 text-label font-medium leading-snug text-foreground-secondary transition-colors hover:border-white/[0.14] hover:bg-white/[0.05] hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/15"
           aria-label={`Follow up: ${f.label}`}
         >

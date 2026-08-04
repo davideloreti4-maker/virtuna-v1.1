@@ -343,6 +343,60 @@ describe("runChatAgentStream [tools]", () => {
     expect(res.toolCalls[0]!.note).toBe("unknown skill");
   });
 
+  it("names ONLY the generators actually bound — an unbound skill is never advertised", async () => {
+    // REGRESSION (the free-content leak). An anonymous /go visitor is bound `skills: FREE_SKILL_TOOLS`,
+    // which is EMPTY because every generator is billable — but the directive advertised all three
+    // regardless. The model called generate_hooks, got "unknown skill", and wrote the hooks out in prose:
+    // the paid product delivered free through the one door that is free by design. Same rule the corpus
+    // tool already follows — never name a tool that is not bound.
+    const capture: Array<Record<string, unknown>> = [];
+    const spy = (stream: ReturnType<typeof mockStream>) =>
+      (async (params: Record<string, unknown>) => {
+        capture.push(params);
+        return stream(params as never);
+      }) as never;
+
+    // Only ideas is bound → hooks/script must not be named.
+    await runChatAgentStream(
+      baseInput(),
+      DEPS(spy(mockStream([[textChunk("ok")]])), { skills: [mkSkill("generate_ideas")] }),
+    );
+    const partial = (capture[0]!.messages as Array<{ role: string; content: string }>)[0]!.content;
+    expect(partial).toContain("generate_ideas");
+    expect(partial, "an unbound skill must never be advertised").not.toContain("generate_hooks");
+    expect(partial).not.toContain("write_script");
+
+    // Nothing bound (the anonymous case) → no generator named, and an explicit ban on writing it in prose.
+    capture.length = 0;
+    await runChatAgentStream(baseInput(), DEPS(spy(mockStream([[textChunk("ok")]])), { skills: [] }));
+    const none = (capture[0]!.messages as Array<{ role: string; content: string }>)[0]!.content;
+    expect(none).not.toContain("generate_ideas");
+    expect(none).not.toContain("generate_hooks");
+    expect(none).toContain("NO content-generation tools");
+  });
+
+  it("an unavailable skill tells the model NOT to answer in prose instead", async () => {
+    // The unknown-skill branch used to hand back a bare {"error":"unknown skill"} — the only refusal
+    // path with no do-not-fake instruction, which is what the model read as licence to write the pack.
+    const inner = mockStream([
+      [toolName(0, "c1", "generate_hooks"), toolArgs(0, '{"topic": "x"}')],
+      [textChunk("ok")],
+    ]);
+    const seen: Array<Record<string, unknown>> = [];
+    const stream = ((params: Record<string, unknown>) => {
+      seen.push(params);
+      return (inner as (p: never) => unknown)(params as never);
+    }) as unknown as StreamingChatComplete;
+    const res = await runChatAgentStream(baseInput(), DEPS(stream, { skills: [] }));
+
+    expect(res.toolCalls[0]!.note).toBe("unknown skill");
+    expect(res.skillRuns).toHaveLength(0);
+    const toolResult = seen.at(-1) as unknown as { messages: Array<{ role: string; content?: string }> };
+    const relayed = toolResult.messages.filter((m) => m.role === "tool").map((m) => m.content).join(" ");
+    expect(relayed).toContain("not available on this account");
+    expect(relayed, "the model must be told not to substitute prose").toContain("do NOT write");
+  });
+
   it("enforces the paid-engine LEASH — a second paid run in one turn is refused", async () => {
     const ideas = mkSkill("generate_ideas");
     const hooks = mkSkill("generate_hooks");
@@ -700,6 +754,284 @@ describe("runChatAgentStream [billing]", () => {
 
     expect(billing.gate).toHaveBeenCalledTimes(1);
     expect(billing.bill).not.toHaveBeenCalled();
+    expect(res.skillRuns).toHaveLength(0);
+  });
+  // ── Prior turns: a thread must not poison its own later turns ──────────────
+  //
+  // REGRESSION. A dispatching turn persists as cards + a closing line ("Five hooks are on screen.");
+  // only the line crosses into the anchor. With no trace of the tool call anywhere in the transcript,
+  // the model asked for hooks again reproduced the sentence and called NOTHING — zero cards under a
+  // UI insisting five existed (confirmed live 2026-08-04; a replay of the real thread measured 0/3
+  // shipped → 3/3 with the runs replayed). A prompt clause was tried first and failed.
+
+  it("replays a prior tool-producing turn as the tool-call exchange it actually was", async () => {
+    const stream = mockStream([[textChunk("ok")]]);
+    const ideas = mkSkill("generate_ideas");
+
+    await runChatAgentStream(
+      baseInput({
+        priorTurns: [
+          { role: "user", text: "hooks for my budgeting app" },
+          {
+            role: "assistant",
+            text: "Five hooks are on screen.",
+            toolRuns: [{ name: "generate_ideas", cards: 5, topic: "hooks for my budgeting app" }],
+          },
+        ],
+      }),
+      DEPS(stream, { skills: [ideas] }),
+    );
+
+    const { messages } = (stream as unknown as ReturnType<typeof vi.fn>).mock.calls[0]![0] as {
+      messages: Array<Record<string, unknown>>;
+    };
+    // system, user, [assistant+tool_calls, tool, assistant], user-ask. NB the loop pushes its own
+    // round message onto this same array afterwards, so assert POSITIONS, never the length.
+    expect(messages[1]).toEqual({ role: "user", content: "hooks for my budgeting app" });
+    const call = messages[2] as { role: string; content: unknown; tool_calls?: Array<{ id: string; function: { name: string; arguments: string } }> };
+    expect(call.role).toBe("assistant");
+    expect(call.tool_calls?.[0]?.function.name).toBe("generate_ideas");
+    expect(JSON.parse(call.tool_calls![0]!.function.arguments)).toEqual({ topic: "hooks for my budgeting app" });
+    const result = messages[3] as { role: string; tool_call_id: string; content: string };
+    expect(result.role).toBe("tool");
+    expect(result.tool_call_id).toBe(call.tool_calls![0]!.id);
+    expect(JSON.parse(result.content)).toMatchObject({ ran: "generate_ideas", produced: "5 card(s)" });
+    // …and only THEN the sentence, so it reads as what follows a tool call, not as a template.
+    expect(messages[4]).toEqual({ role: "assistant", content: "Five hooks are on screen." });
+    expect(messages[5]).toEqual({ role: "user", content: "x" }); // then this turn's ask
+  });
+
+  it("replays the card LINES so the model can discuss what it made", async () => {
+    // REGRESSION (live). With only a count in the tool result, "Which of these hooks is strongest?"
+    // — a shipped chip — answered "I don't have the specific hook lines in front of me. Paste the
+    // 2–3 options you're debating", about cards the app had just rendered.
+    const stream = mockStream([[textChunk("ok")]]);
+    const hooks = mkSkill("generate_hooks", { skillKey: "hooks" });
+
+    await runChatAgentStream(
+      baseInput({
+        priorTurns: [
+          {
+            role: "assistant",
+            text: "Two hooks are on screen.",
+            toolRuns: [{ name: "generate_hooks", cards: 2, lines: ["Everyone lied about 5am", "Your £4 coffee"] }],
+          },
+        ],
+      }),
+      DEPS(stream, { skills: [hooks] }),
+    );
+
+    const { messages } = (stream as unknown as ReturnType<typeof vi.fn>).mock.calls[0]![0] as {
+      messages: Array<Record<string, unknown>>;
+    };
+    const result = JSON.parse((messages[2] as { content: string }).content);
+    expect(result.cards_on_screen).toEqual(["Everyone lied about 5am", "Your £4 coffee"]);
+    expect(result.produced).toBe("2 card(s)");
+    // …and told NOT to re-list them, or the answer becomes a second copy of the pack in prose.
+    expect(result.note).toMatch(/never re-list/i);
+  });
+
+  it("a run with no lines keeps the ORIGINAL tool-result shape", async () => {
+    // Pre-existing threads carry no extractable lines. They must replay exactly as before rather
+    // than announcing an empty card list, which would read as "the pack has no contents".
+    const stream = mockStream([[textChunk("ok")]]);
+
+    await runChatAgentStream(
+      baseInput({
+        priorTurns: [
+          { role: "assistant", text: "Five hooks are on screen.", toolRuns: [{ name: "generate_hooks", cards: 5 }] },
+        ],
+      }),
+      DEPS(stream, { skills: [mkSkill("generate_hooks", { skillKey: "hooks" })] }),
+    );
+
+    const { messages } = (stream as unknown as ReturnType<typeof vi.fn>).mock.calls[0]![0] as {
+      messages: Array<Record<string, unknown>>;
+    };
+    const result = JSON.parse((messages[2] as { content: string }).content);
+    expect(result).toEqual({
+      ran: "generate_hooks",
+      produced: "5 card(s)",
+      note: "cards are shown to the creator",
+    });
+  });
+
+  it("an ANONYMOUS visitor never receives the lines of a pack they did not pay for", async () => {
+    // The unbound-run fallback below already drops the whole run to plain text. This pins the
+    // consequence that matters for money: the hook lines must not ride along in the transcript of
+    // a session that binds no generators — that would hand over the paid artefact for free, which
+    // is the same leak the tool-use directive exists to close.
+    const stream = mockStream([[textChunk("ok")]]);
+
+    await runChatAgentStream(
+      baseInput({
+        priorTurns: [
+          {
+            role: "assistant",
+            text: "Five hooks are on screen.",
+            toolRuns: [{ name: "generate_hooks", cards: 5, lines: ["Everyone lied about 5am"] }],
+          },
+        ],
+      }),
+      DEPS(stream, { skills: [] }),
+    );
+
+    const { messages } = (stream as unknown as ReturnType<typeof vi.fn>).mock.calls[0]![0] as {
+      messages: Array<Record<string, unknown>>;
+    };
+    expect(JSON.stringify(messages)).not.toContain("Everyone lied about 5am");
+    expect(JSON.stringify(messages)).not.toContain("cards_on_screen");
+  });
+
+  it("a prior run whose tool is NOT bound replays as plain text — never a dangling tool name", async () => {
+    // An anonymous visitor binds no generators. Naming one in the replayed transcript would advertise
+    // a tool the model cannot call — the same rule the tool-use directive follows.
+    const stream = mockStream([[textChunk("ok")]]);
+
+    await runChatAgentStream(
+      baseInput({
+        priorTurns: [
+          { role: "assistant", text: "Five hooks are on screen.", toolRuns: [{ name: "generate_hooks", cards: 5 }] },
+        ],
+      }),
+      DEPS(stream, { skills: [] }),
+    );
+
+    const { messages } = (stream as unknown as ReturnType<typeof vi.fn>).mock.calls[0]![0] as {
+      messages: Array<Record<string, unknown>>;
+    };
+    expect(messages[1]).toEqual({ role: "assistant", content: "Five hooks are on screen." });
+    expect(messages[2]).toEqual({ role: "user", content: "x" }); // the ask follows immediately
+    expect(JSON.stringify(messages)).not.toContain("tool_calls");
+  });
+
+  it("a prior turn with no runs is one plain message, exactly as before", async () => {
+    const stream = mockStream([[textChunk("ok")]]);
+
+    await runChatAgentStream(
+      baseInput({
+        priorTurns: [
+          { role: "user", text: "why do my videos flop?" },
+          { role: "assistant", text: "no stakes in the first beat" },
+        ],
+      }),
+      DEPS(stream, { skills: [mkSkill("generate_ideas")] }),
+    );
+
+    const { messages } = (stream as unknown as ReturnType<typeof vi.fn>).mock.calls[0]![0] as {
+      messages: Array<Record<string, unknown>>;
+    };
+    expect(messages.slice(1, 3)).toEqual([
+      { role: "user", content: "why do my videos flop?" },
+      { role: "assistant", content: "no stakes in the first beat" },
+    ]);
+  });
+});
+
+// ── forceSkill: the creator already chose, so the model does not get to re-decide ──────────────
+//
+// REGRESSION. A tapped follow-up chip sends a sentence that reads as subject-less on its own
+// ("Give me a few more hook options."), so the loop's own directive classed it "too vague or too
+// generic" and pushed back for a sharper angle instead of running: 0/3, unchanged by the prior-turn
+// fix above, and NOT fixable in prompt text (a continuation clause reached 1/3 and destabilised
+// sibling chips). The chip therefore declares its generator and the loop pins tool_choice to it.
+//
+// Every test here also pins the BLAST RADIUS: the pin is round-1 only, it is dropped when the skill
+// is not bound, and it does not exist for a turn that did not ask for it.
+describe("runChatAgentStream [forceSkill]", () => {
+  /** The `tool_choice` the loop sent on each model round, in order. */
+  const choices = (stream: StreamingChatComplete): unknown[] =>
+    (stream as unknown as ReturnType<typeof vi.fn>).mock.calls.map(
+      (c) => (c[0] as { tool_choice: unknown }).tool_choice,
+    );
+
+  it("pins round 1 to the declared skill, then hands `auto` back for the closing line", async () => {
+    const hooks = mkSkill("generate_hooks", { skillKey: "hooks" });
+    const stream = mockStream([
+      [toolName(0, "c1", "generate_hooks"), toolArgs(0, '{"topic": "budgeting app"}')],
+      [textChunk("Five more hooks are on screen.")],
+    ]);
+
+    const res = await runChatAgentStream(
+      baseInput({ forceSkill: "hooks" }),
+      DEPS(stream, { skills: [hooks] }),
+    );
+
+    expect(choices(stream)).toEqual([
+      { type: "function", function: { name: "generate_hooks" } },
+      // Round 2 MUST be auto — a pin left in place makes the model call the same tool forever
+      // instead of writing the line that tells the creator what it made.
+      "auto",
+    ]);
+    expect(res.skillRuns).toHaveLength(1);
+    expect(res.text).toBe("Five more hooks are on screen.");
+  });
+
+  it("resolves the DISPLAY key, not the tool name — the two namespaces differ", async () => {
+    // The chip speaks ChatTurnKind ('hooks'); the tool is `generate_hooks`. Passing the tool name
+    // through unresolved would silently produce a tool_choice the API rejects.
+    const hooks = mkSkill("generate_hooks", { skillKey: "hooks" });
+    const stream = mockStream([[textChunk("ok")]]);
+
+    await runChatAgentStream(baseInput({ forceSkill: "hooks" }), DEPS(stream, { skills: [hooks] }));
+
+    expect(choices(stream)[0]).toEqual({ type: "function", function: { name: "generate_hooks" } });
+  });
+
+  it("IGNORES a skill that is not bound — an anonymous visitor is never forced into a paid run", async () => {
+    // `skills: []` is what a sealed /go visitor gets (every generator is billable). A pin naming a
+    // tool absent from `tools` would be rejected by the API outright; worse, honouring it would aim
+    // the free door straight at the paid engine. It degrades to the ordinary unpinned turn.
+    const stream = mockStream([[textChunk("Making that needs an account with credits.")]]);
+
+    const res = await runChatAgentStream(baseInput({ forceSkill: "hooks" }), DEPS(stream, { skills: [] }));
+
+    expect(choices(stream)).toEqual(["auto"]);
+    expect(res.skillRuns).toHaveLength(0);
+  });
+
+  it("IGNORES an unknown key rather than failing the turn", async () => {
+    const stream = mockStream([[textChunk("ok")]]);
+
+    await runChatAgentStream(
+      baseInput({ forceSkill: "nonsense" }),
+      DEPS(stream, { skills: [mkSkill("generate_ideas", { skillKey: "ideas" })] }),
+    );
+
+    expect(choices(stream)).toEqual(["auto"]);
+  });
+
+  it("no forceSkill → `auto` on every round, byte-identical to a typed ask", async () => {
+    // THE CONTROL. A typed message never carries a skill, so this change cannot reach it. That is
+    // what makes the fix a targeting change rather than a blanket "dispatch more".
+    const stream = mockStream([
+      [toolName(0, "c1", "generate_ideas"), toolArgs(0, '{"topic": "a"}')],
+      [textChunk("done")],
+    ]);
+
+    await runChatAgentStream(
+      baseInput(),
+      DEPS(stream, { skills: [mkSkill("generate_ideas", { skillKey: "ideas" })] }),
+    );
+
+    expect(choices(stream)).toEqual(["auto", "auto"]);
+  });
+
+  it("a pinned run is still GATED and BILLED — the pin picks the tool, never the price", async () => {
+    const billing = mkBilling({ allowed: false, reason: "You're out of credits." });
+    const hooks = mkSkill("generate_hooks", { skillKey: "hooks" });
+    const stream = mockStream([
+      [toolName(0, "c1", "generate_hooks"), toolArgs(0, '{"topic": "a"}')],
+      [textChunk("You're out of credits.")],
+    ]);
+
+    const res = await runChatAgentStream(
+      baseInput({ forceSkill: "hooks" }),
+      DEPS(stream, { skills: [hooks], billing }),
+    );
+
+    expect(billing.gate).toHaveBeenCalledWith("ideas"); // mkSkill's fixture price
+    expect(hooks.run).not.toHaveBeenCalled();
     expect(res.skillRuns).toHaveLength(0);
   });
 });
