@@ -81,8 +81,12 @@ export interface UseChatStreamReturn {
    * Start the chat stream. Call from the composer chat send.
    * ask: the user's question/message (required — server enforces).
    * platform: current platform selection ("tiktok" | "instagram" | "youtube").
+   * skill: OPTIONAL — the generator a tapped follow-up chip declared (chat-followups.ts `skill`).
+   *   Only a chip sets it; a typed message never does. The server pins the agent's first tool
+   *   choice to it, so a chip the creator pressed under hook cards actually runs instead of being
+   *   re-litigated as a vague ask. Ignored server-side unless that skill is bound for this user.
    */
-  start: (ask: string, platform: string) => Promise<void>;
+  start: (ask: string, platform: string, skill?: string) => Promise<void>;
   /** Abort the in-flight stream. */
   stop: () => void;
   /**
@@ -162,7 +166,7 @@ export function useChatStream(): UseChatStreamReturn {
     }
   }, []);
 
-  const start = useCallback(async (ask: string, platform: string) => {
+  const start = useCallback(async (ask: string, platform: string, skill?: string) => {
     // Abort any prior in-flight stream
     abortRef.current?.abort();
     const controller = new AbortController();
@@ -187,7 +191,8 @@ export function useChatStream(): UseChatStreamReturn {
       const res = await fetch('/api/tools/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ask, platform }),
+        // `skill` is omitted entirely when absent, so a typed send is byte-identical to before.
+        body: JSON.stringify({ ask, platform, ...(skill ? { skill } : {}) }),
         signal: controller.signal,
       });
 

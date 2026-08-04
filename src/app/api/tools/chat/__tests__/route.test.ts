@@ -668,6 +668,35 @@ describe("POST /api/tools/chat (SSE route)", () => {
     ]);
   });
 
+  it("Test 6f: a tapped chip's declared skill reaches the loop; a typed ask carries none", async () => {
+    // REGRESSION. A follow-up chip's sentence reads as subject-less on its own ("Give me a few more
+    // hook options."), so the loop's directive classed it "too vague" and pushed back instead of
+    // running — 0/3, and unchanged by the 6e fix above. The chip therefore declares its generator
+    // (chat-followups.ts) and the loop pins tool_choice to it. This pins the WIRE: the route must
+    // forward the field, and must NOT invent one for an ordinary typed message — which is the only
+    // thing keeping the conversational asks byte-identical.
+    process.env.CHAT_AGENT_DISPATCH = "true";
+    await primeDispatchHarness();
+    const { runChatAgentStream } = await import("@/lib/tools/chat-agent-loop");
+    (runChatAgentStream as ReturnType<typeof vi.fn>).mockImplementation(
+      async (input: { onToken: (d: string) => void }) => {
+        input.onToken("ok");
+        return { text: "ok", skillRuns: [], uiBlocks: [], toolCalls: [] };
+      }
+    );
+    const { POST } = await import("@/app/api/tools/chat/route");
+
+    await readSSE(
+      await POST(makeChatRequest({ ask: "Give me a few more hook options.", platform: "tiktok", skill: "hooks" })),
+    );
+    await readSSE(await POST(makeChatRequest({ ask: "which is strongest?", platform: "tiktok" })));
+
+    const calls = (runChatAgentStream as ReturnType<typeof vi.fn>).mock.calls as Array<[{ forceSkill?: string }]>;
+    expect(calls[0]![0].forceSkill).toBe("hooks");
+    // THE CONTROL — a typed ask must reach the loop with no pin at all.
+    expect(calls[1]![0].forceSkill).toBeUndefined();
+  });
+
   it("Test 7: agent loop pure chat (no skill) → streams the answer directly, NO runChatPipeline fallback, plain markdown", async () => {
     process.env.CHAT_AGENT_DISPATCH = "true";
     const { threadId } = await primeDispatchHarness();

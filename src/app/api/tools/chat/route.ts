@@ -272,7 +272,13 @@ export async function POST(request: Request): Promise<Response> {
   if (limited) return limited;
 
   // ── (2) Parse + validate body ─────────────────────────────────────────────
-  let body: { ask?: unknown; platform?: unknown; personaGrounding?: unknown; priorTurns?: unknown } = {};
+  let body: {
+    ask?: unknown;
+    platform?: unknown;
+    personaGrounding?: unknown;
+    priorTurns?: unknown;
+    skill?: unknown;
+  } = {};
   try {
     body = await request.json();
   } catch {
@@ -281,6 +287,18 @@ export async function POST(request: Request): Promise<Response> {
 
   const rawAsk = typeof body.ask === "string" ? body.ask.trim() : "";
   const rawPlatform = typeof body.platform === "string" ? body.platform : "tiktok";
+
+  // ── (2c) The generator a tapped follow-up chip declared (chat-followups.ts `skill`) ──
+  // A chip is a command the creator issued under cards that already fix the subject; its sentence
+  // reads as subject-less on its own, so the agent used to push back for a sharper angle and run
+  // nothing. The chip's intent therefore rides as DATA and pins the loop's first tool_choice.
+  //
+  // Passed through as an opaque key, NOT trusted: the loop resolves it against the skills actually
+  // bound for THIS user and ignores anything it cannot match — so a hand-crafted body naming a paid
+  // skill buys an anonymous visitor nothing (they bind none), and a signed-in caller gets the same
+  // gate, price and ledger row that typing the ask would have. A typed message never sets it, which
+  // is what keeps ordinary conversational asks byte-identical.
+  const rawSkill = typeof body.skill === "string" ? body.skill.slice(0, 32) : undefined;
 
   // ── (2b) Parse optional personaGrounding (P9 / LIVE-03, D-03) ────────────────
   // The "Ask them why →" chat-with-persona drawer POSTs this. Validated + length-capped
@@ -421,6 +439,8 @@ export async function POST(request: Request): Promise<Response> {
               ask: userMessage,
               systemPrompt: KC_CHAT_SYSTEM_PROMPT,
               priorTurns,
+              // The tapped chip's declared generator (see (2c)); undefined for every typed message.
+              ...(rawSkill ? { forceSkill: rawSkill } : {}),
               grounding: isCorpusChatToolEnabled(),
               context: {
                 platform,

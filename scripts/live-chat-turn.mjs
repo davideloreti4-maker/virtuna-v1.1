@@ -10,6 +10,11 @@
  *
  *   node --env-file=.env.local scripts/live-chat-turn.mjs                        # the §4 sequence
  *   node --env-file=.env.local scripts/live-chat-turn.mjs one <threadId> "<ask>" # one turn, existing thread
+ *   node --env-file=.env.local scripts/live-chat-turn.mjs one <threadId> "<prompt>" hooks   # as a CHIP
+ *
+ * The 4th argument is the generator a tapped follow-up chip DECLARES (chat-followups.ts `skill`) —
+ * exactly what the client sends when the creator presses "More hooks". Omit it to send the message
+ * the way a typed ask arrives, with no pin.
  *
  * Needs a dev server: `npm run dev -- --port 3005` (override with LIVE_BASE).
  * ⚠️ `next dev` buffers stdout when not a TTY — its log stays 0 bytes while it serves fine. Probe it
@@ -49,12 +54,14 @@ function authCookie(session) {
  * pass a thread id to continue that thread, or `__new__` to force a fresh one.
  * Note: no Origin header, so csrfGuard's cross-origin check passes; Content-Type must be exact.
  */
-async function turn(cookie, ask, activeThread) {
+async function turn(cookie, ask, activeThread, skill) {
   const jar = activeThread ? `${cookie}; maven_active_thread=${activeThread}` : cookie;
   const res = await fetch(`${BASE}/api/tools/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Cookie: jar },
-    body: JSON.stringify({ ask, platform: "tiktok" }),
+    // `skill` rides only when a CHIP was tapped — omitted entirely for a typed ask, so this stays
+    // the exact body the route has always received on the conversational path.
+    body: JSON.stringify({ ask, platform: "tiktok", ...(skill ? { skill } : {}) }),
   });
   if (!res.ok) throw new Error(`POST ${res.status}: ${await res.text()}`);
 
@@ -107,15 +114,15 @@ function report(label, r) {
   return { dispatched: !!r.dispatch, cards: cards.length };
 }
 
-async function one(threadId, ask) {
+async function one(threadId, ask, skill) {
   const cookie = authCookie(await signIn());
-  console.log(`── ONE TURN in thread ${threadId} — "${ask}"`);
-  const { dispatched, cards } = report("turn", await turn(cookie, ask, threadId));
+  console.log(`── ONE TURN in thread ${threadId} — "${ask}"${skill ? `  [chip declares ${skill}]` : ""}`);
+  const { dispatched, cards } = report("turn", await turn(cookie, ask, threadId, skill));
   console.log(`\nRESULT: ${dispatched && cards > 0 ? "PASS" : "FAIL"}`);
 }
 
 async function main() {
-  if (process.argv[2] === "one") return one(process.argv[3], process.argv[4]);
+  if (process.argv[2] === "one") return one(process.argv[3], process.argv[4], process.argv[5]);
 
   const session = await signIn();
   const cookie = authCookie(session);

@@ -47,6 +47,23 @@ const IDEA_CARD = {
   },
 };
 
+const HOOK_CARD = {
+  type: 'hook-card',
+  props: {
+    hookLine: 'Everyone lied about 5am',
+    audienceArchetype: 'the sceptic',
+    mechanism: 'pattern-break',
+    seedHook: 'Everyone lied about 5am',
+    rank: 1,
+    band: 'Strong',
+    fraction: '6/10 stop',
+    scrollQuote: 'wait, what?',
+    model: 'sim1-flash',
+    scored: true,
+    channel: null,
+  },
+};
+
 const SCRIPT_CARD = {
   type: 'script-card',
   props: {
@@ -256,8 +273,29 @@ describe('ThreadTurn — chat-as-agent cards', () => {
     // D-05: nothing fired just by rendering.
     expect(onFollowup).not.toHaveBeenCalled();
     fireEvent.click(screen.getByText('Give me ideas'));
-    // The chip sends the full PROMPT (what the agent routes), not the short label.
-    expect(onFollowup).toHaveBeenCalledWith('Give me a few content ideas for what we just talked about.');
+    // The chip sends the full PROMPT (what the agent routes), not the short label — and alongside it
+    // the generator it DECLARES (chat-followups.ts `skill`). The sentence alone reads as subject-less,
+    // so without the second argument the agent pushes back for a sharper angle and runs nothing.
+    expect(onFollowup).toHaveBeenCalledWith(
+      'Give me a few content ideas for what we just talked about.',
+      'ideas',
+    );
+  });
+
+  it('a CONVERSATIONAL chip fires with no declared skill — the control', () => {
+    // "Which is strongest?" asks for judgement, not an artefact. It must reach the handler with the
+    // skill argument UNDEFINED, or the pin would turn a question into a paid run.
+    const onFollowup = vi.fn();
+    renderWithClient(
+      <FollowupContext.Provider value={onFollowup}>
+        <ThreadTurn userTurn="hooks for my app" blocks={[HOOK_CARD]} />
+      </FollowupContext.Provider>,
+    );
+    fireEvent.click(screen.getByText('Which is strongest?'));
+    expect(onFollowup).toHaveBeenCalledWith(
+      'Which of these hooks is strongest for my audience, and why?',
+      undefined,
+    );
   });
 
   it('no chips render while the run is still live (a turn must complete first)', () => {

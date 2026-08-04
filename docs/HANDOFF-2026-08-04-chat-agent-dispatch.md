@@ -1,12 +1,11 @@
 # Handoff — chat agent → skill dispatch (2026-08-04)
 
-**Branch:** `fix/chat-agent-dispatch-mode-label` — cut off `origin/main` @ `8539e5e6`, tip `4cf8ac58`, pushed.
-⚠️ **`main` has since moved to `8896bac7`** (PR #423, onboarding-unreachable): the branch is **3 ahead,
-2 behind**. Rebase before opening a PR. Read that ref with `git rev-parse` — `git log --format` here
-elided the merge and reported main as `d3b5afb8`, the squashed commit *below* its own tip.
+**Branch:** `fix/chat-agent-dispatch-mode-label` — **rebased onto `origin/main` @ `8896bac7`** (PR #423)
+on 2026-08-04. Read that ref with `git rev-parse` — `git log --format` here elided the merge and
+reported main as `d3b5afb8`, the squashed commit *below* its own tip.
 **Worktree:** `~/virtuna-slot-a`
-**Status:** three fixes landed on the branch and measured. §4 — the severe one — is now **FIXED and
-verified live** (`afd35113`). Branch is pushed, **2 ahead of `main`, unmerged**.
+**Status:** four fixes landed on the branch and measured — §2, §3 (mitigation), §4, §5. §4 is verified
+**live**; §5 is measured on the real thread offline **and live**. Branch unmerged.
 
 ---
 
@@ -20,6 +19,16 @@ surfaced: an anonymous visitor could get the paid pack written out in prose (fix
 serious one — **once a thread contained the line "Five hooks are on screen.", later generation asks in
 that same thread copied the sentence and dispatched nothing**. That one is now fixed too, structurally,
 by replaying a past turn's skill runs as the tool-call exchange they actually were (§4).
+
+A fourth followed from the third. With routing working, the **follow-up chips** still did not: "More
+hooks" and "Punch them up" dispatched 0/3 because a chip's sentence, read alone, has no subject, so
+the loop's own "too vague → push back" clause fired on a command the creator had already issued by
+tapping. Fixed structurally again — the chip now DECLARES its generator and the loop pins the first
+`tool_choice` to it (§5). The much-discussed "refine gap" turned out to be a mis-framing: refine is
+card-scoped and already has a live door, so nothing about it changes. Three recurring lessons hold
+across all four: **precedent and structure beat prompt text**, **measure the thing that actually
+failed**, and **a change that only dispatches MORE is not a fix** — every control here is preserved by
+construction rather than by the model's good judgement.
 
 ---
 
@@ -201,7 +210,127 @@ That is the §3 ceiling, not a new defect — live, the billing seam is wired an
 
 ---
 
-## 5. Verified working (and the chips that are not)
+## 5. FIXED — the continuation chips now reach a tool
+
+**Follow-up chips** derive correctly — `classifyTurn(["hook-card"×5])` → `"hooks"` → *More hooks /
+Which is strongest? / Punch them up*. Routing, measured offline with realistic priors:
+
+| chip | routes to |
+|---|---|
+| ideas: More ideas · Script the best one · Sharper angles | ✅ 3/3 each |
+| script: Hooks for this | ✅ 3/3 |
+| chat: Give me ideas · Write hooks · Draft a script | ✅ |
+| hooks: More hooks | ❌ 0/3 → **✅ 3/3 measured** (below) |
+| hooks: Punch them up | ❌ 0/3 → **✅ 3/3 measured** (below) |
+| script: Make it punchier · Different angle | ❌ 0/3 → now declare `script`, **not re-measured** ⚠️ |
+
+⚠️ Be precise about what was measured. The two **hooks** chips were re-measured on the real thread and
+moved 0/3 → 3/3. The two **script** chips were not: they carry the identical defect and the identical
+declaration, so the same mechanism covers them, but nobody has run the numbers. The thread the probe
+replays is a hooks thread — measuring them means seeding a script thread first.
+
+### The bug — one cause, not two
+
+Both failures are the same thing: **a chip's sentence, read alone, has no subject.** "Give me a few
+more hook options." trips the loop directive's *"too vague or too generic → push back ONCE for a
+sharper angle"* clause, and the model answers *"I need the specific story or angle you're working
+with"*. That is right for a typed message and wrong for a chip the creator pressed **under cards that
+already name the subject** — the UI had already resolved the intent, and round-tripping it through
+the model's judgement is where it was lost.
+
+⚠️ The subject was NOT missing from the context. After §4 the transcript carries the original ask and
+the tool call that produced the cards; the model still pushed back. So "it can't see the topic" is the
+wrong diagnosis — it can, it just would not carry it forward. That is why this could not be fixed by
+rewording the chip, and why the prompt attempt reached 1/3 while destabilising siblings.
+
+**The refine gap was a mis-framing.** `/api/tools/refine` is not missing from the loop — it is a
+**card-scoped** re-run (needs `cardRef` + the card's content as `anchor`, returns ONE card) and it
+already has a live door: the composer's `detectRefineIntent` fires on "make hook 2 punchier" and
+routes to `hooks.startRefine`. A TURN-level chip has no card in hand, so binding refine to the agent
+would mean inventing a `cardRef` the creator never named. What "Punch them up" actually promises is a
+fresh SIM-scored hooks run under a tighter brief — which is `generate_hooks`, already bound. **Decision:
+do not bind refine; do not retire the chips.** Nothing about the refine route changes.
+
+### The fix — the chip declares its skill, and the loop pins `tool_choice`
+
+Structural, per §4 option 3, and deliberately NOT prompt text:
+
+| file | change |
+|---|---|
+| `src/lib/tools/chat-followups.ts` | `ChatFollowup.skill?: "ideas" \| "hooks" \| "script"` — the generator a chip MEANS, declared as data. 18 chips carry one; every conversational chip carries none. |
+| `src/lib/tools/chat-agent-loop.ts` | `forceSkill` input → resolves the display key against the BOUND skills and pins **round 1** to `tool_choice: {type:"function", function:{name}}`. Round 2+ returns to `"auto"`. |
+| `src/app/api/tools/chat/route.ts` | reads `body.skill`, forwards it as `forceSkill`. |
+| `use-chat-stream.ts` · `followup-context.ts` · `followup-row.tsx` · `composer.tsx` | carry `skill` from the tapped chip to the POST body. |
+
+The model still writes the arguments (it pulls the subject off the transcript) and still writes the
+closing line. What it no longer gets to do is re-litigate a decision the creator made by tapping.
+
+🔑 **Named `tool_choice` works on DashScope** — verified before building anything, against
+`qwen3.7-plus` on the streaming path. It returned `generate_hooks({"topic": "student budgeting app
+that stops food delivery overspending"})`: the pin picks the tool, the model still resolves the
+subject from the conversation. `"required"` also works, but picks any tool and is not what we want.
+
+**Three things bound the blast radius, by construction rather than by good judgement:**
+- a chip with **no** declared skill sends no field — so the conversational chips and every **typed**
+  message are byte-identical to before, and the no-dispatch controls cannot move;
+- the key is resolved against the skills bound **for this user**, so an anonymous `/go` visitor
+  (`skills: []`) silently gets the unpinned path instead of a forced paid run;
+- the pin is **round 1 only** — left in place the model would call the same tool every round instead
+  of writing the line that tells the creator what it made.
+
+The gate is untouched: a pinned call is admitted, priced and billed exactly like a chosen one.
+
+One nuance worth knowing before you debug something odd: a pinned round 1 means the model cannot open
+the turn with `search_corpus`. That costs nothing real — the generator pipelines ground themselves and
+emit their own `evidence` — and round 2 is `auto`, so it can still search after the cards. But if you
+ever see a chip turn with no agent-level corpus citation where a typed ask has one, this is why.
+
+**Measured** with the committed probe (§1) on the real thread, 3 seeds, grounding ON:
+
+| ask | chip skill | expect | prose-only | runs replayed | **+ chip pin** |
+|---|---|---|---|---|---|
+| the §4 failing ask | — | dispatch | 0/3 | 3/3 | — |
+| "Give me a few more hook options." | hooks | dispatch | 0/3 | **0/3** | **3/3** |
+| "Which is strongest?" | — | no-dispatch | 0/3 | 0/3 | — |
+| "why do my videos flop after the first 3 seconds?" | — | no-dispatch | 0/3 | 0/3 | — |
+| "Rewrite these hooks tighter and more specific." | hooks | dispatch | 0/3 | **0/3** | **3/3** |
+
+The controls declare no skill, so the pin **cannot** reach them — that is the point of the column
+being `—` rather than a number. The §4 row also re-confirms 3/3 after the rebase onto `8896bac7`.
+
+⚠️ The probe previously measured the literal string **"Punch them up"**, which is what the button
+*says* and never what it *sends*. The chip rows now use the real prompt.
+
+**Verified LIVE** against a real signed-in session on the SSE route, in the same poisoned thread §4
+used (`f5bdbadb…`) — one real hooks run:
+
+| turn | sent as | result |
+|---|---|---|
+| "Give me a few more hook options." | **chip**, `skill: "hooks"` | `dispatch hooks` @2.6s → 3 stages → evidence → **5 hook-cards**, 28.4s |
+| "Which of these hooks is strongest…?" | typed, **no skill** | `dispatch NONE`, 0 cards, 2.6s — the control held |
+
+The closing line came back *"Five new hooks are on screen. These lean into the 'comedy storytelling'
+angle by framing **food delivery overspending** as a relatable…"* — so the pin picked the tool and the
+model still resolved the right subject off the transcript, which was the open question about forcing.
+
+> ⚠️ `live-chat-turn.mjs` prints `RESULT: FAIL` for the control row. That is the harness's criterion
+> (`dispatched && cards > 0`), written for dispatch turns; for a no-dispatch control the FAIL label
+> **is** the pass. Read the frames, not the verdict line.
+
+**Guards** — all verified failing with the fix neutered, then green on restore:
+`chat-agent-loop.test.ts` (+6: the round-1 pin and the `auto` handback, display-key resolution,
+unbound-skill drop, unknown-key drop, the no-`forceSkill` control, and that a pinned run is still
+gated) · `chat-followups.test.ts` (+3: declared names must exist in the registry's namespace, the six
+artefact chips declare one, the twelve conversational chips declare none) · route **Test 6f** (the
+field reaches the loop; a typed ask carries none).
+
+💰 **This is a small pricing change, stated plainly:** a chip that used to degrade into free prose now
+reliably runs a metered skill. That is the intent — prose delivery of a paid pack was the §3 leak
+shape — but it means "More hooks" now costs what a hooks run costs, every time.
+
+---
+
+## 5b. Verified working (unchanged by this lane)
 
 **`request_input` — live, free, correct.**
 "can you remix this video for me" → `input-request` `kind:link` `action:remix`;
@@ -212,28 +341,8 @@ That is the §3 ceiling, not a new defect — live, the billing seam is wired an
 `composer.tsx:643` feeds `dispatchedSkill` to the follow-up row). `dispatch` arrives ~22s before the
 cards, which is what lets the capsule label itself and seed the stage plan. **Not checked in a browser.**
 
-**Follow-up chips** derive correctly — `classifyTurn(["hook-card"×5])` → `"hooks"` → *More hooks /
-Which is strongest? / Punch them up*. Routing, measured offline with realistic priors:
-
-| chip | routes to |
-|---|---|
-| ideas: More ideas · Script the best one · Sharper angles | ✅ 3/3 each |
-| script: Hooks for this | ✅ 3/3 |
-| chat: Give me ideas · Write hooks · Draft a script | ✅ |
-| hooks: More hooks | ❌ 0/3 — the model pushes back for a sharper angle instead (see below) |
-| hooks: Punch them up | ❌ 0/3 — no refine skill is bound (same gap as the script chips) |
-| script: Make it punchier · Different angle | ❌ never dispatch — **no refine skill is bound to the loop** |
-
-`src/app/api/tools/refine/route.ts` exists but the agent loop only binds ideas/hooks/script. A
-"rewrite/punch up" ask therefore has no tool to reach and degrades to prose.
-
-**"More hooks" is a separate, still-open defect** — measured 0/3 both before and after the §4 fix, so
-it is NOT the same bug. "Give me a few more hook options." carries no subject, and the directive's
-"too vague or too generic → push back ONCE for a sharper angle" clause fires: the model answers *"I
-need the specific story or angle you're working with"*. Reasonable for a typed message; wrong for a
-CHIP the creator pressed under cards that already name the subject. Fix shape is §4 option 3 — have
-continuation chips carry the topic (or invoke the skill directly) rather than round-tripping a
-subject-less sentence through the model.
+**The card-scoped refine path** (`detectRefineIntent` → `/api/tools/refine`) — untouched here, and
+still the right door for "make hook 2 punchier". See the mis-framing note above before touching it.
 
 ---
 
@@ -250,12 +359,26 @@ Nine files:
 | `src/lib/tools/chat-agent-loop.ts` | directive names only bound generators; unknown-skill refusal carries the do-not-fake instruction; **`ChatAgentPriorTurn` + `replayPriorTurn`** (§4) |
 | `src/app/api/tools/chat/__tests__/route.test.ts` | guards 6d + **6e** |
 | `src/lib/tools/__tests__/chat-agent-loop.test.ts` | two guards + **three prior-turn replay guards** |
-| `scripts/probe-chat-dispatch.ts` **(new)** | the offline probe of §1 — replays a real thread, prose-only vs runs-replayed |
-| `scripts/live-chat-turn.mjs` **(new)** | the live probe of §1 — mints a session, drives the SSE route |
+| `scripts/probe-chat-dispatch.ts` **(new)** | the offline probe of §1 — replays a real thread; three variants: prose-only / runs-replayed / **+ chip pin** (§5) |
+| `scripts/live-chat-turn.mjs` **(new)** | the live probe of §1 — mints a session, drives the SSE route. 4th arg sends a turn **as a chip** (§5) |
+| `src/lib/tools/chat-followups.ts` | `ChatFollowup.skill` — the generator a chip declares (§5) |
+| `src/lib/tools/__tests__/chat-followups.test.ts` | 3 guards for the above |
+| `src/hooks/queries/use-chat-stream.ts` · `src/lib/followup-context.ts` · `src/components/thread/followup-row.tsx` · `src/components/app/home/composer.tsx` | carry the tapped chip's `skill` into the POST body (§5) |
+| `src/components/thread/__tests__/chat-turn.test.tsx` | the chip-tap guard now pins the declared skill too, + a conversational-chip control |
 
-**Gate:** `tsc --noEmit` → **0 errors** (run it separately; vitest does not typecheck).
-Suite **459 files / 5070 tests, 0 failures**. The 3 reported "Errors" are pre-existing in
-`composer.test.tsx`. `EXIT=1` with zero failures is this worktree's known vitest drift, not a failure.
+**Gate (re-run 2026-08-04 after the rebase + §5):** `tsc --noEmit` → **0 errors** (run it separately;
+vitest does not typecheck). Suite **460 files / 5098 tests, 0 failures**, 42 skipped. The 3 reported
+"Errors" are the pre-existing unhandled rejections in `composer.test.tsx` (`composer.tsx:2019`).
+`EXIT=1` with zero failures is this worktree's known vitest drift, not a failure.
+
+⚠️ **Do not read the suite through `| tail -n`.** The first §5 run reported "3 failed" and the tail had
+already discarded the names, costing a whole re-run to identify them. Redirect the full log to a file
+(`> /tmp/suite.log 2>&1`) and grep it — and note that piping also makes `$?` the *pipe's* exit status,
+so `EXIT=0` after a pipe means nothing at all.
+
+⚠️ Of those first 3 failures, **2 were load flakes and 1 was real** (`chat-turn.test.tsx` — the chip
+handler gained a second argument). Re-run before you believe a failure; and do not let the flakes
+camouflage the one that is yours.
 
 ⚠️ **Run the suite on an otherwise idle machine.** A run sharing the box with a dev server + a live
 probe reported 4 failures — two 5s timeouts in `composer-*.test.tsx` and two in
@@ -271,15 +394,46 @@ the only ref that tells the truth here.
 
 ---
 
+## 6b. NEW, found while verifying §5 — "Which is strongest?" cannot answer
+
+Not caused by this lane, and deliberately **not fixed here** — it is a different defect and the brief
+was the two 0/3 chips. Recording it because the live control turn above exposed it plainly:
+
+```
+ask  : "Which of these hooks is strongest for my audience, and why?"   (the shipped chip prompt)
+reply: "I don't have the specific hook lines you're referring to in front of me. Paste the 2–3
+        options you're debating, and I'll give you a direct read…"
+```
+
+**The model never sees the hook lines.** §4 replays a past run as `{ran, produced: "5 card(s)"}` —
+a COUNT, not content — and `chat-prior-turns.ts` carries `{name, cards, topic}` with no card text.
+That was the right call for §4 (it only needed to prove a tool ran), but it means the one chip whose
+whole job is *judging the cards* is structurally unable to do it. It asks the creator to paste back
+lines the app itself put on screen.
+
+This is the mirror image of §5: that chip fails because the model won't act on what it can see; this
+one fails because it genuinely cannot see it. Fix shape: carry the card's identifying line (hookLine /
+title) into the replayed tool result, capped and fenced. Cheap, and it would also let the model
+reference specific cards in ordinary conversation. Nobody has measured it.
+
+---
+
 ## 7. Recommended next session
 
-§4 is closed. What is left, highest value first:
+§2, §4 and §5 are closed and measured. The refine question is **decided, not deferred** (§5: refine
+stays card-scoped; the chips route to the bound generators). What is left:
 
-1. **The continuation chips.** "More hooks" and "Punch them up" both dispatch 0/3 — measured, and
-   NOT the §4 bug (unchanged by its fix). Two distinct causes: a chip whose sentence carries no
-   subject trips the vagueness pushback, and no refine skill is bound at all. Both point at §4
-   option 3: have chips carry the topic, or invoke the skill directly. See §5.
-2. **Decide the refine gap** — bind `src/app/api/tools/refine/route.ts` to the loop, or retire
-   "Make it punchier" / "Different angle" / "Punch them up".
-3. **Drive a real anonymous `/go` session** through the route to confirm §3 outside the harness —
-   still the only claim here measured offline only.
+1. **Drive a real anonymous `/go` session** through the route to confirm §3 outside the harness —
+   still the only claim in this document measured offline only. Highest value of what remains,
+   because it is the free door into the paid engine.
+2. **Give the model the card lines** so "Which is strongest?" can answer — see §6b. Small, and it
+   fixes a chip that is on screen today and cannot do its job.
+3. **Look at the chips in a browser.** Every claim about them here is measured at the wire or in the
+   loop; nobody has watched a creator tap one. The Playwright caveat in `CLAUDE.md` applies (the
+   ambient animations never settle — use `animations: 'disabled'` + a tight clip).
+4. **Consider whether a pinned chip should show its price before it runs.** A chip now reliably
+   spends a credit where it used to degrade to free prose (§5). That is the intended behaviour, but
+   it was previously free-by-accident, so the affordance may deserve a beat of UI.
+
+Not worth doing: binding `/api/tools/refine` to the agent loop. See the mis-framing note in §5 — it
+needs a `cardRef` the agent has no way to name.

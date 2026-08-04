@@ -845,3 +845,111 @@ describe("runChatAgentStream [billing]", () => {
     ]);
   });
 });
+
+// ── forceSkill: the creator already chose, so the model does not get to re-decide ──────────────
+//
+// REGRESSION. A tapped follow-up chip sends a sentence that reads as subject-less on its own
+// ("Give me a few more hook options."), so the loop's own directive classed it "too vague or too
+// generic" and pushed back for a sharper angle instead of running: 0/3, unchanged by the prior-turn
+// fix above, and NOT fixable in prompt text (a continuation clause reached 1/3 and destabilised
+// sibling chips). The chip therefore declares its generator and the loop pins tool_choice to it.
+//
+// Every test here also pins the BLAST RADIUS: the pin is round-1 only, it is dropped when the skill
+// is not bound, and it does not exist for a turn that did not ask for it.
+describe("runChatAgentStream [forceSkill]", () => {
+  /** The `tool_choice` the loop sent on each model round, in order. */
+  const choices = (stream: StreamingChatComplete): unknown[] =>
+    (stream as unknown as ReturnType<typeof vi.fn>).mock.calls.map(
+      (c) => (c[0] as { tool_choice: unknown }).tool_choice,
+    );
+
+  it("pins round 1 to the declared skill, then hands `auto` back for the closing line", async () => {
+    const hooks = mkSkill("generate_hooks", { skillKey: "hooks" });
+    const stream = mockStream([
+      [toolName(0, "c1", "generate_hooks"), toolArgs(0, '{"topic": "budgeting app"}')],
+      [textChunk("Five more hooks are on screen.")],
+    ]);
+
+    const res = await runChatAgentStream(
+      baseInput({ forceSkill: "hooks" }),
+      DEPS(stream, { skills: [hooks] }),
+    );
+
+    expect(choices(stream)).toEqual([
+      { type: "function", function: { name: "generate_hooks" } },
+      // Round 2 MUST be auto — a pin left in place makes the model call the same tool forever
+      // instead of writing the line that tells the creator what it made.
+      "auto",
+    ]);
+    expect(res.skillRuns).toHaveLength(1);
+    expect(res.text).toBe("Five more hooks are on screen.");
+  });
+
+  it("resolves the DISPLAY key, not the tool name — the two namespaces differ", async () => {
+    // The chip speaks ChatTurnKind ('hooks'); the tool is `generate_hooks`. Passing the tool name
+    // through unresolved would silently produce a tool_choice the API rejects.
+    const hooks = mkSkill("generate_hooks", { skillKey: "hooks" });
+    const stream = mockStream([[textChunk("ok")]]);
+
+    await runChatAgentStream(baseInput({ forceSkill: "hooks" }), DEPS(stream, { skills: [hooks] }));
+
+    expect(choices(stream)[0]).toEqual({ type: "function", function: { name: "generate_hooks" } });
+  });
+
+  it("IGNORES a skill that is not bound — an anonymous visitor is never forced into a paid run", async () => {
+    // `skills: []` is what a sealed /go visitor gets (every generator is billable). A pin naming a
+    // tool absent from `tools` would be rejected by the API outright; worse, honouring it would aim
+    // the free door straight at the paid engine. It degrades to the ordinary unpinned turn.
+    const stream = mockStream([[textChunk("Making that needs an account with credits.")]]);
+
+    const res = await runChatAgentStream(baseInput({ forceSkill: "hooks" }), DEPS(stream, { skills: [] }));
+
+    expect(choices(stream)).toEqual(["auto"]);
+    expect(res.skillRuns).toHaveLength(0);
+  });
+
+  it("IGNORES an unknown key rather than failing the turn", async () => {
+    const stream = mockStream([[textChunk("ok")]]);
+
+    await runChatAgentStream(
+      baseInput({ forceSkill: "nonsense" }),
+      DEPS(stream, { skills: [mkSkill("generate_ideas", { skillKey: "ideas" })] }),
+    );
+
+    expect(choices(stream)).toEqual(["auto"]);
+  });
+
+  it("no forceSkill → `auto` on every round, byte-identical to a typed ask", async () => {
+    // THE CONTROL. A typed message never carries a skill, so this change cannot reach it. That is
+    // what makes the fix a targeting change rather than a blanket "dispatch more".
+    const stream = mockStream([
+      [toolName(0, "c1", "generate_ideas"), toolArgs(0, '{"topic": "a"}')],
+      [textChunk("done")],
+    ]);
+
+    await runChatAgentStream(
+      baseInput(),
+      DEPS(stream, { skills: [mkSkill("generate_ideas", { skillKey: "ideas" })] }),
+    );
+
+    expect(choices(stream)).toEqual(["auto", "auto"]);
+  });
+
+  it("a pinned run is still GATED and BILLED — the pin picks the tool, never the price", async () => {
+    const billing = mkBilling({ allowed: false, reason: "You're out of credits." });
+    const hooks = mkSkill("generate_hooks", { skillKey: "hooks" });
+    const stream = mockStream([
+      [toolName(0, "c1", "generate_hooks"), toolArgs(0, '{"topic": "a"}')],
+      [textChunk("You're out of credits.")],
+    ]);
+
+    const res = await runChatAgentStream(
+      baseInput({ forceSkill: "hooks" }),
+      DEPS(stream, { skills: [hooks], billing }),
+    );
+
+    expect(billing.gate).toHaveBeenCalledWith("ideas"); // mkSkill's fixture price
+    expect(hooks.run).not.toHaveBeenCalled();
+    expect(res.skillRuns).toHaveLength(0);
+  });
+});

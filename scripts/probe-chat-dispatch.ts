@@ -41,13 +41,22 @@ const SEEDS = [7, 101, 4242];
 /**
  * The target ask plus its siblings. A fix that only makes the model dispatch MORE is not a fix — the
  * no-dispatch rows are what tell you the change bought precision rather than eagerness.
+ *
+ * `skill` mirrors what the CLIENT sends for that row: a tapped follow-up chip declares its generator
+ * (chat-followups.ts `ChatFollowup.skill`) and the route hands it to the loop as `forceSkill`; a typed
+ * message declares nothing. The rows carrying one are the continuation chips under a hooks turn.
+ * The two no-dispatch controls declare NOTHING on purpose — that is what makes them a real control:
+ * the pin cannot reach them by construction, not merely by the model's good judgement.
+ *
+ * ⚠️ The chip rows use the chip's real PROMPT, not its label. An earlier run of this probe measured
+ * the literal string "Punch them up" — which is what the button says, never what it sends.
  */
-const SWEEP: Array<{ ask: string; expect: "dispatch" | "no-dispatch" | "observe" }> = [
+const SWEEP: Array<{ ask: string; expect: "dispatch" | "no-dispatch" | "observe"; skill?: string }> = [
   { ask: ASK, expect: "dispatch" },
-  { ask: "Give me a few more hook options.", expect: "dispatch" },
+  { ask: "Give me a few more hook options.", expect: "dispatch", skill: "hooks" },
   { ask: "Which is strongest?", expect: "no-dispatch" },
   { ask: "why do my videos flop after the first 3 seconds?", expect: "no-dispatch" },
-  { ask: "Punch them up", expect: "observe" },
+  { ask: "Rewrite these hooks tighter and more specific.", expect: "dispatch", skill: "hooks" },
 ];
 
 async function load(): Promise<{ profileRow: ProfileRow | null; messages: HydratedMessage[] }> {
@@ -84,7 +93,13 @@ function historyBeforeAsk(messages: HydratedMessage[]): HydratedMessage[] {
   return messages.slice(0, idx);
 }
 
-async function runOne(priorTurns: ChatAgentPriorTurn[], seed: number, profileRow: ProfileRow | null, rawAsk: string) {
+async function runOne(
+  priorTurns: ChatAgentPriorTurn[],
+  seed: number,
+  profileRow: ProfileRow | null,
+  rawAsk: string,
+  forceSkill?: string,
+) {
   const ask = assembleBundle({ ask: rawAsk, platform: "tiktok", mode: "chat", modeLabel: "copilot" }, profileRow);
   let text = "";
   const res = await runChatAgentStream(
@@ -93,6 +108,7 @@ async function runOne(priorTurns: ChatAgentPriorTurn[], seed: number, profileRow
       systemPrompt: KC_CHAT_SYSTEM_PROMPT,
       priorTurns,
       grounding: GROUNDING,
+      ...(forceSkill ? { forceSkill } : {}),
       context: { platform: "tiktok", profileRow },
       onToken: (d) => {
         text += d;
@@ -128,25 +144,39 @@ async function main() {
   }
   console.log("");
 
+  // Three variants, each isolating ONE change:
+  //   prose-only     — the pre-§4 anchor (runs stripped back to bare sentences)
+  //   runs-replayed  — §4: the same turns carrying the tool runs that produced their cards
+  //   +chip pin      — §5: runs replayed AND the chip's declared skill pinned as tool_choice.
+  // The pin variant is SKIPPED for a row that declares no skill: there it is the same call as
+  // runs-replayed, and printing "—" is honest where re-running would only pad the table.
   const variants = [
-    { key: "shipped", turns: stripped },
-    { key: "fix    ", turns: withRuns },
+    { key: "prose-only   ", turns: stripped, pin: false },
+    { key: "runs-replayed", turns: withRuns, pin: false },
+    { key: "+chip pin    ", turns: withRuns, pin: true },
   ];
-  const table = ["| ask | expect | prose-only | runs replayed |", "|---|---|---|---|"];
+  const table = ["| ask | chip skill | expect | prose-only | runs replayed | + chip pin |", "|---|---|---|---|---|---|"];
   for (const item of SWEEP) {
-    const counts: Record<string, number> = {};
-    console.log(`== "${item.ask}"  (expect ${item.expect})`);
+    const counts: Record<string, string> = {};
+    console.log(`== "${item.ask}"  (expect ${item.expect}${item.skill ? `, chip declares ${item.skill}` : ""})`);
     for (const v of variants) {
+      if (v.pin && !item.skill) {
+        counts[v.key.trim()] = "—";
+        console.log(`   ${v.key} — no skill declared (a typed ask / a conversational chip); pin cannot apply`);
+        continue;
+      }
       let hits = 0;
       for (const seed of SEEDS) {
-        const r = await runOne(v.turns, seed, profileRow, item.ask);
+        const r = await runOne(v.turns, seed, profileRow, item.ask, v.pin ? item.skill : undefined);
         if (r.dispatched) hits++;
         console.log(`   ${v.key} seed ${String(seed).padStart(4)} ${r.dispatched ? "DISPATCH" : "none    "}  [${r.calls}]`);
-        console.log(`                    "${r.text}"`);
+        console.log(`                          "${r.text}"`);
       }
-      counts[v.key.trim()] = hits;
+      counts[v.key.trim()] = `${hits}/${SEEDS.length}`;
     }
-    table.push(`| ${item.ask.slice(0, 46)} | ${item.expect} | ${counts.shipped}/${SEEDS.length} | ${counts.fix}/${SEEDS.length} |`);
+    table.push(
+      `| ${item.ask.slice(0, 46)} | ${item.skill ?? "—"} | ${item.expect} | ${counts["prose-only"]} | ${counts["runs-replayed"]} | ${counts["+chip pin"]} |`,
+    );
     console.log("");
   }
   // NB the DashScope `seed` is not fully deterministic — read these as rates, not fingerprints.

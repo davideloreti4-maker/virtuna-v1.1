@@ -187,6 +187,27 @@ export interface ChatAgentStreamInput {
   systemPrompt: string;
   /** Prior conversation turns (role + text), oldest→newest. */
   priorTurns?: ChatAgentPriorTurn[];
+  /**
+   * A generator the CREATOR already chose — the `skillKey` of a follow-up chip they tapped
+   * ('ideas' | 'hooks' | 'script'). Pins the FIRST round's `tool_choice` to that tool.
+   *
+   * WHY THIS IS NOT "dispatch more". A tapped chip is a command issued under cards that already fix
+   * the subject; the model's job on that turn is to write the arguments and the closing line, not to
+   * decide whether the creator meant it. Left to `tool_choice: "auto"` it decided wrong every time:
+   * "Give me a few more hook options." reads as subject-less, so the directive's "too vague or too
+   * generic → push back ONCE" clause fired and nothing ran (0/3, unchanged by the §4 fix). The
+   * sentence cannot be re-worded out of that — prompt text was tried and reached 1/3 while
+   * destabilising sibling chips.
+   *
+   * Scope is deliberately narrow, so this cannot leak into ordinary asks:
+   *   · only set when the client names a skill (a TYPED message never does — controls stay untouched);
+   *   · only honoured when that skill is actually BOUND this turn, so an anonymous visitor with
+   *     `skills: []` silently gets the unpinned path rather than a forced paid run;
+   *   · round 1 ONLY — the model must be free to write the closing line once the tool has returned,
+   *     and a pin left in place would make it call the same tool every round.
+   * The gate still runs: a pinned call is admitted, priced and billed exactly like a chosen one.
+   */
+  forceSkill?: string;
   /** Bind the corpus search tool (grounding-as-a-tool). Gated by GROUNDING_CHAT_TOOL at the route. */
   grounding?: boolean;
   /** Streamed answer tokens, in order. */
@@ -472,6 +493,13 @@ export async function runChatAgentStream(
     { role: "user", content: input.ask },
   ];
 
+  // The creator's own choice, resolved against what is actually bound. An unbound or unknown key
+  // resolves to null and the turn runs exactly as it did before — never an error, and never a tool
+  // name in `tool_choice` that is absent from `tools` (which the API would reject).
+  const pinnedTool = input.forceSkill
+    ? (skills.find((s) => s.skillKey === input.forceSkill)?.name ?? null)
+    : null;
+
   const skillRuns: SkillRunOutput[] = [];
   const uiBlocks: unknown[] = [];
   const toolCalls: ChatAgentStreamResult["toolCalls"] = [];
@@ -483,7 +511,12 @@ export async function runChatAgentStream(
       model,
       messages,
       tools,
-      tool_choice: "auto",
+      // Round 1 only — see `forceSkill`. After the tool has returned, the model needs `auto` back to
+      // write its closing line instead of calling the same tool again.
+      tool_choice:
+        pinnedTool && round === 1
+          ? { type: "function", function: { name: pinnedTool } }
+          : "auto",
       temperature: 0.3,
       seed,
       max_tokens: 2000,
