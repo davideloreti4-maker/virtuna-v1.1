@@ -24,7 +24,8 @@ import type { PipelineResult } from "./pipeline";
 import type { StageEventCallback } from "./events";
 import { QWEN_OMNI_MODEL as GEMINI_MODEL } from "./qwen/client";
 // Apollo's persisted model label must reflect the Apollo model (QWEN_APOLLO_MODEL),
-// not the shared reasoning constant — they diverged 2026-06-11 (Apollo → qwen3.7-flash).
+// not the shared reasoning constant — they diverged 2026-06-11, and diverged AGAIN 2026-08-04 when the shared
+// constant moved to qwen3.7-flash and Apollo stayed on qwen3.7-plus.
 import { QWEN_APOLLO_MODEL as DEEPSEEK_MODEL } from "./qwen/client";
 // ml.ts call removed (Plan 02, R9): ml predict + feature-vector-to-ml-input no longer called here.
 // ml.ts moves to _dormant/ in Plan 05. SCORE_WEIGHT_KEYS ml key retained until Plan 04 blend cut.
