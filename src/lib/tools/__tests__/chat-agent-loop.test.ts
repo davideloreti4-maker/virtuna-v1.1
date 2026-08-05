@@ -1127,3 +1127,42 @@ describe("the unbound artefact guard — structure, not just quotation", () => {
     expect(await seenSignedIn(PACK)).toBe(PACK);
   });
 });
+
+/**
+ * The guard's ON switch (2026-08-05).
+ *
+ * It used to arm from `generators.length === 0`, i.e. from the CONSEQUENCE of being anonymous.
+ * That holds only while FREE_SKILL_TOOLS is empty — and it is DERIVED from `billable`, so it is
+ * empty by accident of pricing. One non-billable skill (which is exactly what a free tier is) makes
+ * it non-empty, and the guard would have switched off for every anonymous visitor with nothing
+ * failing. These pin the fact-based switch instead.
+ */
+describe("the artefact guard arms on WHO the visitor is, not on what happens to be bound", () => {
+  const QUOTED = 'Try ("the $47 I lost every month without noticing") as the opener.';
+
+  const streamAs = async (over: Partial<ChatAgentStreamDeps>) => {
+    let out = "";
+    await runChatAgentStream(
+      baseInput({ onToken: (d: string) => { out += d; } }),
+      DEPS(mockStream([[textChunk(QUOTED)]]), over),
+    );
+    return out;
+  };
+
+  it("stays ON for a sealed visitor even when a FREE generator is bound", async () => {
+    // The regression a free tier would have introduced: a non-billable skill lands in
+    // FREE_SKILL_TOOLS, `unbound` goes false, and the old switch disarmed itself.
+    const out = await streamAs({ sealedVisitor: true, skills: [mkSkill("free_thing")] });
+    expect(out).not.toContain("the $47 I lost every month without noticing");
+  });
+
+  it("still arms with nothing bound at all, even if the caller forgets to say so", async () => {
+    const out = await streamAs({ skills: [] });
+    expect(out).not.toContain("the $47 I lost every month without noticing");
+  });
+
+  it("stays OFF for a paying creator — their stream is byte-for-byte their own product", async () => {
+    const out = await streamAs({ sealedVisitor: false, skills: [mkSkill("generate_hooks")] });
+    expect(out).toBe(QUOTED);
+  });
+});
