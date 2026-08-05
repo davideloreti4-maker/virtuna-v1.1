@@ -326,9 +326,15 @@ export function renderAudioSummary(audio: AudioLegResult, maxEvents = 12): strin
       (e.spoken_text ? ` [speech: ${e.spoken_text}]` : ""))
     .join("\n");
   const a = audio.audio_signals;
+  // Same rule as Apollo's prompt: a mix that could not be measured is stated as such, never
+  // rendered as zeroes. The coherence judge reads this text and would otherwise grade a talking
+  // head against "speech 0%".
+  const mix = a.voiceover_ratio != null && a.music_ratio != null && a.silence_ratio != null
+    ? `mix — speech ${(a.voiceover_ratio * 100).toFixed(0)}%, music ${(a.music_ratio * 100).toFixed(0)}%, silence ${(a.silence_ratio * 100).toFixed(0)}%`
+    : "mix — not measured";
   return [
     `audio: ${a.audio_description}`,
-    `mix — speech ${(a.voiceover_ratio * 100).toFixed(0)}%, music ${(a.music_ratio * 100).toFixed(0)}%, silence ${(a.silence_ratio * 100).toFixed(0)}%`,
+    mix,
     audio.hook_spoken_words ? `first words: "${audio.hook_spoken_words}"` : "first words: no speech",
     evs ? `audio timeline:\n${evs}` : "audio timeline: none reported",
   ].join("\n");

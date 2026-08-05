@@ -20,6 +20,7 @@ import type { SegmentGrid, OmniAnalysisResult } from "./schemas";
 import { normalizeSegments } from "./normalize-segments";
 import { stripModelOutput } from "../utils/strip";
 import { AUDIO_SPLIT_ENABLED, runModalitySplit } from "./split/run";
+import { audioMixViolation, blankAudioMix } from "./audio-mix";
 
 const log = createLogger({ module: "engine.qwen.omni" });
 
@@ -115,6 +116,17 @@ function detectCriticalFieldDrift(data: OmniAnalysisResult): string[] {
   const verbatimEmpty = !data.hook_verbatim || data.hook_verbatim.spoken_words == null;
   if (hasSpeech && verbatimEmpty) {
     drift.push("hook_verbatim");
+  }
+
+  // The mix must partition the track AND agree with this same response's transcript. Measured
+  // 2026-08-05 on a 97.6%-speech clip: 2 of 4 unified reads called it 0% voice, and one of those
+  // two summed to exactly 1.00 by putting 95% into music — which is why this is not just a sum
+  // check. See `audio-mix.ts` for the runs.
+  if (audioMixViolation(data.audio_signals, {
+    first_words_speech_score: data.hook_decomposition.first_words_speech_score,
+    spoken_words: data.hook_verbatim?.spoken_words,
+  })) {
+    drift.push("audio_mix");
   }
 
   return drift;
@@ -404,7 +416,7 @@ export async function analyzeVideoWithOmni(
         continue;
       }
 
-      const data       = result.data;
+      let data         = result.data;
 
       // F9/D-11: critical-field drift — the parse succeeded but a perception-critical field is
       // empty on content that should have it. Fire ONE bounded retry (within MAX_RETRIES; re-sends
@@ -415,13 +427,28 @@ export async function analyzeVideoWithOmni(
         log.warn("omni critical-field drift — retrying", { attempt, model, drifted_fields: drift });
         lastError = new Error(`omni critical-field drift: ${drift.join(",")}`);
         retryHint =
-          `\nIMPORTANT: Your previous response omitted required perception fields: ${drift.join(", ")}. ` +
-          "Re-analyze the video and INCLUDE them — emotion_arc: 3-8 points across the timeline for any video with affect; " +
-          "hook_verbatim.spoken_words: the verbatim speech from the first ~3s (null only if there is genuinely no speech).";
+          `\nIMPORTANT: Your previous response omitted or contradicted required perception fields: ${drift.join(", ")}. ` +
+          "Re-analyze the video and CORRECT them — emotion_arc: 3-8 points across the timeline for any video with affect; " +
+          "hook_verbatim.spoken_words: the verbatim speech from the first ~3s (null only if there is genuinely no speech); " +
+          "audio_mix: silence_ratio + voiceover_ratio + music_ratio must sum to 1.0 (±0.1) AND voiceover_ratio must reflect " +
+          "the share of the track that is speech — if you transcribed words, voiceover_ratio cannot be 0.";
         continue;
       }
       if (drift.length > 0) {
         log.warn("read_drift", { attempt, model, drifted_fields: drift });
+      }
+
+      // The retry has had its chance. A mix that STILL contradicts this read's own transcript is
+      // dropped rather than forwarded: Apollo loses its "Mix:" line instead of being told a
+      // dialogue video is 0% voice, and audio-perceptual redistributes the ratio weight. Never a
+      // substitute for the retry above — only what happens after it.
+      const mixFault = audioMixViolation(data.audio_signals, {
+        first_words_speech_score: data.hook_decomposition.first_words_speech_score,
+        spoken_words: data.hook_verbatim?.spoken_words,
+      });
+      if (mixFault) {
+        log.warn("read_drift", { attempt, model, field: "audio_mix", reason: mixFault, action: "blanked" });
+        data = { ...data, audio_signals: blankAudioMix(data.audio_signals) };
       }
 
       const cost_cents = calculateCost(model, completion.usage ?? undefined);

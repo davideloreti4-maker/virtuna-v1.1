@@ -330,7 +330,12 @@ function formatGeminiSignals(analysis: GeminiAnalysis): string {
     sections.push(`- Description: ${a.audio_description}`);
     if (a.voice_clarity_0_10 != null) sections.push(`- Voice clarity: ${a.voice_clarity_0_10}/10`);
     if (a.audio_hook_first_2s_0_10 != null) sections.push(`- Audio hook (first 2s): ${a.audio_hook_first_2s_0_10}/10`);
-    sections.push(`- Mix: ${Math.round(a.voiceover_ratio * 100)}% voice / ${Math.round(a.music_ratio * 100)}% music / ${Math.round(a.silence_ratio * 100)}% silence`);
+    // The mix is OMITTED, not defaulted, when the read could not measure it (audio-mix.ts blanks
+    // a partition that contradicts its own transcript). Apollo judging without a line it never got
+    // is honest; Apollo told "0% voice" about a talking head is a judgment built on a false fact.
+    if (a.voiceover_ratio != null && a.music_ratio != null && a.silence_ratio != null) {
+      sections.push(`- Mix: ${Math.round(a.voiceover_ratio * 100)}% voice / ${Math.round(a.music_ratio * 100)}% music / ${Math.round(a.silence_ratio * 100)}% silence`);
+    }
   }
 
   const arc = (analysis as unknown as { emotion_arc?: { timestamp_ms: number; intensity_0_1: number; label?: string }[] | null }).emotion_arc;

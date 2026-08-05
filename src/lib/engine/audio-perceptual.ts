@@ -117,15 +117,23 @@ export function computeAudioPerceptualScore(
       totalWeight += formula.coefficients.audio_hook;
       subScoresUsed.push("audio_hook");
     }
-    // voiceover_ratio is 0-1, scale to 0-10
-    weightedSum += formula.coefficients.voiceover_ratio * (voiceover_ratio * 10);
-    totalWeight += formula.coefficients.voiceover_ratio;
-    subScoresUsed.push("voiceover_ratio");
+    // voiceover_ratio is 0-1, scale to 0-10. null = the mix was never measured (audio-mix.ts
+    // blanked a self-contradictory partition) — skip it and let totalWeight renormalise, exactly
+    // as the two nullable scores above do. Treating null as 0 would score a talking head as
+    // having no voice at all, which is the failure this whole guard exists to stop.
+    if (voiceover_ratio != null) {
+      weightedSum += formula.coefficients.voiceover_ratio * (voiceover_ratio * 10);
+      totalWeight += formula.coefficients.voiceover_ratio;
+      subScoresUsed.push("voiceover_ratio");
+    }
   } else if (formula.mode === "ambient") {
     const { music_ratio, audio_description } = signals;
-    weightedSum += formula.coefficients.music_ratio * (music_ratio * 10);
-    totalWeight += formula.coefficients.music_ratio;
-    subScoresUsed.push("music_ratio");
+    // null = mix not measured (see the voice branch) — skip and renormalise on description alone.
+    if (music_ratio != null) {
+      weightedSum += formula.coefficients.music_ratio * (music_ratio * 10);
+      totalWeight += formula.coefficients.music_ratio;
+      subScoresUsed.push("music_ratio");
+    }
     weightedSum +=
       formula.coefficients.description_quality * descriptionQualityScore(audio_description);
     totalWeight += formula.coefficients.description_quality;
@@ -141,10 +149,15 @@ export function computeAudioPerceptualScore(
       scores.push(signals.audio_hook_first_2s_0_10);
       subScoresUsed.push("audio_hook");
     }
-    scores.push(signals.voiceover_ratio * 10);
-    subScoresUsed.push("voiceover_ratio");
-    scores.push(signals.music_ratio * 10);
-    subScoresUsed.push("music_ratio");
+    // Both null together when the mix was not measured — the average simply has two fewer terms.
+    if (signals.voiceover_ratio != null) {
+      scores.push(signals.voiceover_ratio * 10);
+      subScoresUsed.push("voiceover_ratio");
+    }
+    if (signals.music_ratio != null) {
+      scores.push(signals.music_ratio * 10);
+      subScoresUsed.push("music_ratio");
+    }
     scores.push(descriptionQualityScore(signals.audio_description));
     subScoresUsed.push("description_quality");
     weightedSum = scores.reduce((a, b) => a + b, 0);

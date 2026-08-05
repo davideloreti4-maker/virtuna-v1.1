@@ -621,9 +621,11 @@ export const GeminiAudioSignalsSchema = z
   .object({
     voice_clarity_0_10: z.number().min(0).max(10).nullable(),
     audio_hook_first_2s_0_10: z.number().min(0).max(10).nullable(),
-    silence_ratio: z.number().min(0).max(1),
-    voiceover_ratio: z.number().min(0).max(1),
-    music_ratio: z.number().min(0).max(1),
+    // Nullable so the BLANKED mix (qwen/audio-mix.ts) round-trips through this shape — the three
+    // are null together and only ever set that way by the adapter, never asked of the model.
+    silence_ratio: z.number().min(0).max(1).nullable(),
+    voiceover_ratio: z.number().min(0).max(1).nullable(),
+    music_ratio: z.number().min(0).max(1).nullable(),
     // min(10): floor matches the smoke-test validation gate (10-300) and rules
     //   out empty/degenerate responses. max(280): aligned with the backfill +
     //   cron truncation cap (slice(0, 280)) — anything longer gets truncated
@@ -633,9 +635,14 @@ export const GeminiAudioSignalsSchema = z
     audio_description: z.string().min(10).max(280),
   })
   .refine(
-    (v) =>
-      Math.abs(v.silence_ratio + v.voiceover_ratio + v.music_ratio - 1.0) < 0.1,
-    { message: "Audio ratios must sum to ~1.0 (±0.1 tolerance)" },
+    (v) => {
+      // All three null = the mix was deliberately dropped as unmeasurable (qwen/audio-mix.ts).
+      // That is an honest state and must round-trip; a PARTIAL triple never is.
+      if (v.silence_ratio === null && v.voiceover_ratio === null && v.music_ratio === null) return true;
+      if (v.silence_ratio === null || v.voiceover_ratio === null || v.music_ratio === null) return false;
+      return Math.abs(v.silence_ratio + v.voiceover_ratio + v.music_ratio - 1.0) < 0.1;
+    },
+    { message: "Audio ratios must sum to ~1.0 (±0.1 tolerance), or all three must be null" },
   );
 
 // Phase 6 — audio_signals is OPTIONAL on the BASE response schema (not just on
@@ -972,12 +979,16 @@ export interface GeminiAudioSignals {
   voice_clarity_0_10: number | null;
   /** 0-10 audio hook score for first 2s (D-H2). null per D-A2 when content_type ∈ {slideshow, b_roll, action}. */
   audio_hook_first_2s_0_10: number | null;
-  /** 0-1, sums to 1.0 with siblings per D-A3. */
-  silence_ratio: number;
-  /** 0-1, sums to 1.0 with siblings per D-A3. */
-  voiceover_ratio: number;
-  /** 0-1, sums to 1.0 with siblings per D-A3. */
-  music_ratio: number;
+  // The three ratios partition the track and sum to 1.0 (D-A3). All three are null TOGETHER when
+  // the read could not produce a usable mix — see `qwen/audio-mix.ts`, which blanks them after a
+  // bounded retry rather than letting a self-contradictory partition reach Apollo. Consumers must
+  // treat null as "not measured" and drop the mix; none may substitute a default.
+  /** 0-1, sums to 1.0 with siblings per D-A3. null = not measured (never 0-as-absent). */
+  silence_ratio: number | null;
+  /** 0-1, sums to 1.0 with siblings per D-A3. null = not measured (never 0-as-absent). */
+  voiceover_ratio: number | null;
+  /** 0-1, sums to 1.0 with siblings per D-A3. null = not measured (never 0-as-absent). */
+  music_ratio: number | null;
   /** 50-150 char description for fingerprint matching per D-F1. */
   audio_description: string;
 }

@@ -34,6 +34,7 @@ import { calculateCost } from "../cost";
 import { OmniAnalysisZodSchema } from "../schemas";
 import type { OmniAnalysisResult } from "../schemas";
 import { stripModelOutput } from "../../utils/strip";
+import { audioMixViolation, blankAudioMix } from "../audio-mix";
 import { extractAudioTrack, parkAudioAndSign, dropParkedAudio } from "./audio-track";
 import {
   AudioLegZodSchema, CoherenceZodSchema, VideoLegZodSchema,
@@ -236,14 +237,25 @@ export function detectAudioLegDrift(video: VideoLegResult, audio: AudioLegResult
     (audio.audio_signals.voiceover_ratio ?? 0) > 0.05;
   if (hasSpeech && audio.hook_spoken_words == null) drift.push("hook_spoken_words");
 
+  // The mix has to partition the track and agree with the leg's own transcript — see audio-mix.ts.
+  // Evidence is read from THIS response's speech fields, never from the ratios being checked.
+  if (audioMixViolation(audio.audio_signals, {
+    first_words_speech_score: audio.first_words_speech_score,
+    spoken_words: audio.hook_spoken_words,
+  })) {
+    drift.push("audio_mix");
+  }
+
   return drift;
 }
 
 const DRIFT_NUDGE =
-  "\nIMPORTANT: Your previous response omitted required perception fields: %FIELDS%. " +
-  "Re-analyse the audio and INCLUDE them — emotion_arc: 3-8 points across the timeline whenever " +
+  "\nIMPORTANT: Your previous response omitted or contradicted required perception fields: %FIELDS%. " +
+  "Re-analyse the audio and CORRECT them — emotion_arc: 3-8 points across the timeline whenever " +
   "there is any audio; hook_spoken_words: the verbatim speech from the first ~3s (null ONLY if " +
-  "there is genuinely no speech).";
+  "there is genuinely no speech); audio_mix: silence_ratio + voiceover_ratio + music_ratio must " +
+  "sum to 1.0 (±0.1) AND voiceover_ratio must reflect the share of the track that is speech — if " +
+  "you transcribed words, voiceover_ratio cannot be 0.";
 
 // ---------------------------------------------------------------------------
 // Entry point
@@ -300,6 +312,19 @@ export async function runModalitySplit(
       } else {
         log.warn("split: audio-leg drift retry failed — keeping the first read");
       }
+    }
+
+    // Last word on the mix: the retry has had its chance. A partition that still contradicts the
+    // leg's own transcript is not passed on — it is DROPPED, so Apollo's prompt loses its "Mix:"
+    // line instead of gaining a false one, and the perceptual formula redistributes the weight.
+    // Blanking happens here, after the retry, and never in place of one.
+    const mixFault = audioMixViolation(audio.audio_signals, {
+      first_words_speech_score: audio.first_words_speech_score,
+      spoken_words: audio.hook_spoken_words,
+    });
+    if (mixFault) {
+      log.warn("read_drift", { source: "split_audio_leg", field: "audio_mix", reason: mixFault, action: "blanked" });
+      audio = { ...audio, audio_signals: blankAudioMix(audio.audio_signals) };
     }
     const legs_ms = Date.now() - tLegs;
 
