@@ -72,10 +72,20 @@ describe('Discover subtree — reactivated 2026-07-29, every entry point resolve
   it('/saved and /discover redirect to their live targets in ONE hop', () => {
     // /saved → /library is deep-link preservation over the SAME saved_items store.
     expect(read('saved/page.tsx')).toMatch(/redirect\(\s*['"]\/library['"]\s*\)/);
-    // /discover → /feed/discover: the pull moved INTO the hub as its "Pull" tool tab. It must
-    // point at the page, never back at /feed — that would drop the visitor on Watching, a
-    // different surface, which is how this route became a dead 2-hop the last two times.
-    expect(read('discover/page.tsx')).toMatch(/redirect\(\s*['"]\/feed\/discover['"]\s*\)/);
+    // /discover → /feed (owner call 2026-08-05). This asserted `/feed/discover` and the reason
+    // it gave was the dead 2-hop: pointing at /feed used to mean bouncing on to somewhere else.
+    // That argument no longer holds — `feed/page.tsx` renders a real page (the it.each above
+    // asserts exactly that), so this is ONE hop onto a live surface.
+    //
+    // What decided it is what the redirect is FOR. This route exists only to honour bookmarks
+    // saved when /discover was the browsable outlier grid: free, read-only. `/feed/discover` is
+    // the on-demand Pull — a 5-credit Apify scrape. Sending an old browse link to a paid tool
+    // answers a request to look with a request to spend. The hub is what those bookmarks meant,
+    // and the Pull is one tab inside it.
+    //
+    // The 2-hop guard itself still stands: the target must be a PAGE, never another redirect.
+    expect(read('discover/page.tsx')).toMatch(/redirect\(\s*['"]\/feed['"]\s*\)/);
+    expect(read('feed/page.tsx')).not.toMatch(/redirect\(/);
   });
 
   it('the DiscoverTabBar navigates NOWHERE — every tab switches in place', () => {
