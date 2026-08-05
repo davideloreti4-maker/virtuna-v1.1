@@ -471,6 +471,13 @@ export async function POST(request: Request): Promise<Response> {
               // the whole fix because `deps.skills` drives both what the model is offered and what the
               // loop will execute.
               ...(isSealedVisitor(user) ? { skills: FREE_SKILL_TOOLS } : {}),
+              // The SAME fact, stated to the loop rather than left to be inferred from the line
+              // above. The artefact guard used to arm itself from "no generators are bound", which
+              // is only true while FREE_SKILL_TOOLS happens to be empty — and it is DERIVED from
+              // `billable`, so one non-billable skill (exactly what a free tier is) would flip it
+              // non-empty and silently switch the guard off for every anonymous visitor. Binding
+              // and guarding now read the same predicate, on adjacent lines, so they cannot drift.
+              sealedVisitor: isSealedVisitor(user),
               // THE TILL, for everyone else. Until this was wired the sentence above ended "…an engine
               // this route would neither gate nor bill" — and that was literally true for every signed-in
               // customer too: an agent-dispatched ideas/hooks/script run hit the paid engine with no

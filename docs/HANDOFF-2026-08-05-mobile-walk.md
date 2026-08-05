@@ -35,6 +35,7 @@ looked. That is what this session did. Mobile is where the product was broken.
 | **7** | The live probe could not open the signed-out half of the app | — (harness) | `probe-surface-live.mjs` |
 | **8** | The artefact guard was blind to an **unquoted** pack — the paid product, free, to anonymous visitors | **high — revenue** | `chat-agent-loop.ts` |
 | **9** | The anon harness reported prose *between* two quotes as a leak, inflating both arms | — (harness) | `live-chat-anon.mjs` |
+| **10** | The guard armed itself by INFERENCE — a free tier would have switched it off silently | **high — revenue** | `chat-agent-loop.ts` |
 
 ---
 
@@ -341,3 +342,66 @@ quotation into the next. Typographic quotes keep the regex; they have distinct o
 > bills you for the privilege, and fails silently the moment someone swaps a constant. When a cheap
 > model "fails" a safety property, check whether it is exposing a gap the expensive one was papering
 > over. Twice now the answer was yes — Apollo's §-cites in #431, and this.
+
+
+---
+
+## 13. The guard's ON switch — a free tier would have disarmed it silently
+
+Found by asking the obvious follow-up to §12: the guard is now what keeps an unpaid visitor safe,
+so **what turns it on?**
+
+It armed from `splitSkills(skills).generators.length === 0` — from the CONSEQUENCE of being
+anonymous, not from the fact. That holds only while `FREE_SKILL_TOOLS` is empty, and that list is
+**derived**:
+
+```js
+export const FREE_SKILL_TOOLS = SKILL_TOOLS.filter((s) => !s.billable);   // empty TODAY
+```
+
+Empty by accident of pricing, not by design. Add **one** non-billable skill whose `primaryArg` is
+`"topic"` (the default) and `generators.length` becomes 1, `unbound` flips to `false`, and the
+artefact guard **switches off for every anonymous visitor**. Nothing fails, nothing logs.
+
+That is not hypothetical. **A free tier is exactly what makes a skill non-billable**, so the planned
+credits→limits move is the most likely thing to arm it — you would ship a free allowance and disable
+a revenue guard in the same PR, with a green suite.
+
+The guard now keys on the **fact** (`sealedVisitor`, the caller's own `isSealedVisitor`), stated on
+the line directly below the one that decides what to bind, so binding and guarding cannot drift.
+`unbound` is kept as a fallback for a caller that binds nothing, and still drives the directive and
+the model choice — those really are about what the model can do this turn.
+
+3 tests pin it, and the first was **confirmed to fail against the old inference** before being kept:
+
+```
+× stays ON for a sealed visitor even when a FREE generator is bound     (old switch)
+✓ stays ON for a sealed visitor even when a FREE generator is bound     (fact switch)
+✓ still arms with nothing bound, even if the caller forgets to say so
+✓ stays OFF for a paying creator — their stream is byte-for-byte their own product
+```
+
+> 🔑 **Arm a safety control on the FACT, never on a side effect of the fact.** The side effect was
+> true when written and stayed true only by coincidence. This is the same shape as the stale model
+> comments in §4: something correct at the time, silently invalidated by a later change, with
+> nothing in the build able to notice.
+
+---
+
+## 14. 🚚 Handing over — the credits→limits migration
+
+**Your billing model is already limit-based.** `pricing.ts` is `{ limit, used }` with `limit: null`
+meaning unlimited; "credits" is the noun printed on top of a counter (`formatBalance` →
+`"X of Y credits left"`). So credits→limits is largely a **re-pricing and a relabel** — the gate,
+the 402, `quota-error.ts` and `credit-wall.ts` all survive. What changes is what increments `used`
+and the copy.
+
+Two things to carry into that lane:
+
+1. **§13 is why it matters.** A free tier makes a skill non-billable, which is the exact trigger
+   that would have disarmed the artefact guard. That is fixed — keep it fixed; do not "simplify"
+   `sealedVisitor` back into an inference from what is bound.
+2. **The credit-wall surface still has ZERO verification history** and could not be triggered here
+   (the test account has credits). The plumbing survives the migration, so verifying it now would be
+   doing the work twice — do it **once, after**, against the new units, and do it in a browser
+   signed in, not at the wire. Every expensive bug in this repo has lived on the money path.

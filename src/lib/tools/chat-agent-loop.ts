@@ -330,6 +330,24 @@ export interface ChatAgentStreamDeps {
    * caller forgot to wire this.
    */
   billing?: SkillBilling;
+  /**
+   * "This turn belongs to a visitor who has not paid" — stated as a FACT by the caller, not
+   * inferred here. Turns the artefact guard on.
+   *
+   * ⚠️ WHY THIS EXISTS, and why inferring it was a latent revenue defect. The guard used to arm
+   * itself purely from `splitSkills(skills).generators.length === 0`, i.e. from the CONSEQUENCE of
+   * being anonymous rather than from the fact. That held only while `FREE_SKILL_TOOLS` was empty —
+   * and it is DERIVED (`SKILL_TOOLS.filter((s) => !s.billable)`), so it is empty by accident of
+   * pricing, not by design. Add ONE non-billable skill whose `primaryArg` is "topic" (the default)
+   * and `generators.length` becomes 1, `unbound` flips to false, and the guard SILENTLY TURNS OFF
+   * for every anonymous visitor. No test fails; nothing logs.
+   *
+   * That is not hypothetical: a free tier is exactly what makes a skill non-billable, so the
+   * planned credits→limits move is the most likely thing to arm it. The guard now keys on the same
+   * fact the route already uses to decide what to bind (`isSealedVisitor`), so the two cannot
+   * drift. `unbound` is still honoured as a belt-and-braces fallback for callers that bind nothing.
+   */
+  sealedVisitor?: boolean;
 }
 
 const DEFAULT_MAX_ROUNDS = 4;
@@ -781,9 +799,17 @@ export async function runChatAgentStream(
   const retrieve = deps.retrieve ?? retrieveCachedExamples;
   const maxRounds = deps.maxRounds ?? DEFAULT_MAX_ROUNDS;
   const maxSkillRuns = deps.maxSkillRuns ?? DEFAULT_MAX_SKILL_RUNS;
-  // No generators bound ⇒ an anonymous visitor, whose job this turn is to REFUSE and hold the line.
-  // That path has its own model (see QWEN_UNBOUND_CHAT_MODEL): flash leaked the pack in prose 5/6.
+  // No generators bound ⇒ nothing can be produced, so this turn's job is to REFUSE and hold the
+  // line. This still drives the DIRECTIVE and the model choice, both of which are about what the
+  // model can actually do this turn.
   const unbound = splitSkills(skills).generators.length === 0;
+  /**
+   * Whether to run the artefact guard. `sealedVisitor` is the FACT (the caller's own
+   * `isSealedVisitor`); `unbound` is kept as a fallback so a caller that binds nothing is still
+   * covered. Inferring this from `unbound` ALONE was the latent defect — see `sealedVisitor` in
+   * ChatAgentStreamDeps for why a free tier would have switched the guard off silently.
+   */
+  const guardArtefacts = (deps.sealedVisitor ?? false) || unbound;
 
   let model = deps.model;
   let seed = deps.seed;
@@ -826,10 +852,12 @@ export async function runChatAgentStream(
   let paidRuns = 0;
   let fullText = "";
 
-  // Defence in depth under the model choice above: guard the unbound stream against a paste-ready
-  // line smuggled in as an "illustration" (see createArtefactGuard). Everyone else gets the
-  // identity function, so the signed-in stream is byte-for-byte untouched.
-  const guard: ArtefactGuard = unbound
+  // The artefact guard (see createArtefactGuard) — no longer "defence in depth under the model
+  // choice", but the thing that OWNS this property: as of 2026-08-05 it is what an unpaid visitor's
+  // safety rests on, which is what allowed the last model holdout to be retired. A PAYING creator
+  // gets the identity function, so their stream stays byte-for-byte untouched — for them a quoted
+  // line or an enumerated pack is the product, not a leak.
+  const guard: ArtefactGuard = guardArtefacts
     ? createArtefactGuard(input.onToken)
     : {
         push: input.onToken,
