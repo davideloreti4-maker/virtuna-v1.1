@@ -353,6 +353,10 @@ export async function gatherCorpusForRun(
       query,
       platform: input.platform,
       niche: input.niche,
+      // Mid-flight view of the ~25s paid pull. `finalize` below emits the FINAL, warrant-stamped
+      // payload over the top of it — same rail, same rows, upgraded from "we're checking these"
+      // to the warrant the cards will actually carry.
+      onEvidence: input.onEvidence,
     });
     // PROVENANCE, not the cache axis: these rows were just extracted, so they carry no similarity
     // (orchestrator.ts sets it null by design). Judging them topically would mark the run the user

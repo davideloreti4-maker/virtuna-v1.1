@@ -32,6 +32,8 @@ import { QWEN_REASONING_MODEL } from "@/lib/engine/qwen/client";
 import { getCorpusClient, upsertOutlierTeardown } from "./corpus";
 import { buildTeardownEmbeddingText, embedTexts } from "./embedder";
 import { selectCandidates, accountMultiplier, passesOutlierGate } from "./outlier-gate";
+import { buildVideoEvidence, evidenceMetric, type RunEvidence } from "@/lib/tools/evidence";
+import { formatCount } from "@/lib/account-metrics/account-metrics";
 import { extractTeardowns, isUsableTeardown, type ExtractionInput } from "./extract";
 import {
   FACET_VOCAB_VERSION,
@@ -132,6 +134,19 @@ export interface GatherInput {
   /** Survivors to profile-scrape + tear down (§11c "take ~8"). */
   topN?: number;
   scrapeCount?: number;
+  /**
+   * Fires once the broad scrape has landed and the survivors are chosen — roughly halfway
+   * through a ~25s call the creator explicitly paid 5 credits for, and which until now showed
+   * one static spine row for its whole duration.
+   *
+   * This is deliberately the SELECTION boundary, not the scrape boundary: the raw scrape is 30
+   * rows of which most are about to be discarded, and showing them would advertise material the
+   * run then drops. The survivors are the posts we are actually going to tear down.
+   *
+   * The caller emits the FINAL, warrant-stamped evidence itself once extraction completes; this
+   * is the mid-flight view and is replaced by it. Absent ⇒ nothing is built.
+   */
+  onEvidence?: (evidence: RunEvidence) => void;
 }
 
 export interface GatherStats {
@@ -173,6 +188,32 @@ export async function gatherAndExtract(
   if (videos.length === 0) return empty(0);
   const survivors = selectCandidates(videos, topN);
   if (survivors.length === 0) return empty(videos.length);
+
+  // Halfway. Put the survivors on the glass before spending the next ~15s profile-scraping them.
+  //
+  // Numberless headline (owner's rule, 2026-08-05): a scrape volume is our plumbing, not the
+  // creator's business. The FINAL payload the caller emits does carry a count — "Borrowing shape
+  // from 5 proven videos" — because that one is a claim about the creative input the cards are
+  // built from, which is the thing they paid for.
+  //
+  // No multiplier here, deliberately: it is not computed until follower counts land, and the
+  // outlier gate has not run. Views are measured now and claim nothing.
+  if (input.onEvidence) {
+    try {
+      const evidence = buildVideoEvidence(
+        () => "Checking these against their accounts",
+        survivors.map((v) => ({
+          handle: handleFromUrl(v.videoUrl),
+          image: v.coverUrl ?? null,
+          metric: evidenceMetric({ views: v.views, formatCount }),
+          href: v.videoUrl ?? null,
+        })),
+      );
+      if (evidence) input.onEvidence(evidence);
+    } catch {
+      // Showing the work must never be able to take the work down. Grounding is an enhancement.
+    }
+  }
 
   // 3. profile-scrape survivors for follower_count (best-effort, parallel — §14 survivors-only).
   const followers = await Promise.all(

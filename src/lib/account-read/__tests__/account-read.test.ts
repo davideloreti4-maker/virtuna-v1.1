@@ -405,20 +405,31 @@ describe("generateAccountRead — the two scrapes race and either can win", () =
     ]);
   });
 
-  it("counts the posts it READ, not the covers it can fit on the strip", async () => {
-    // The rail caps at MAX_EVIDENCE_ITEMS covers. Announcing that cap said "Reading 8 of your
-    // posts" while the card replacing it seconds later reported 30 analyzed — one run making two
+  it("states no count of what it pulled — while still sizing the strip by it", async () => {
+    // This used to assert the headline said "Reading 12 of your posts" (the posts READ) rather
+    // than "Reading 8" (the covers the rail can FIT) — a real bug where one run made two
     // different factual claims about the same work.
-    const seen: string[] = [];
+    //
+    // The owner's rule (2026-08-05) removes the class rather than picking the right number: the
+    // loading UI never reports how many things the pipeline pulled or watched. So neither number
+    // may appear in COPY — while `slots` survives untouched, because it is layout, not a claim:
+    // it makes the filmstrip draw its full width up front and fill in order rather than reflowing
+    // as frames land. It is bounded by MAX_EVIDENCE_ITEMS because it counts TILES DRAWN, which is
+    // exactly the number the old headline was wrong to announce as posts read.
+    const seen: Array<{ headline: string; slots?: number }> = [];
     await generateAccountRead(
       "creator",
       "u1",
-      { ...RICH_DEPS(), onEvidence: (e) => seen.push(e.headline) },
+      { ...RICH_DEPS(), onEvidence: (e) => seen.push({ headline: e.headline, slots: e.slots }) },
       makeRacingProvider(40, 5), // 12 videos, capped to 8 tiles
     );
 
-    expect(seen).toContain("Reading 12 of your posts");
-    expect(seen).not.toContain("Reading 8 of your posts");
+    const headlines = seen.map((e) => e.headline);
+    expect(headlines).toContain("Your recent posts");
+    for (const h of headlines) expect(h).not.toMatch(/\d/);
+
+    const strip = seen.find((e) => typeof e.slots === "number");
+    expect(strip?.slots).toBe(8); // tiles the strip will draw — layout, never spoken
   });
 
   it("tags each payload with the row it belongs to, so the rail cannot draw it under the other one", async () => {
