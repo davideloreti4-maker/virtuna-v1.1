@@ -264,8 +264,8 @@ describe("POST /api/audiences/calibrate — success path (SSE)", () => {
     expect(stages).toEqual([
       { name: "Reading your followers", status: "active" },
       { name: "Reading your followers", status: "done" },
-      { name: "Watching your top videos", status: "active" },
-      { name: "Watching your top videos", status: "done" },
+      { name: "Watching your videos", status: "active" },
+      { name: "Watching your videos", status: "done" },
       { name: "Building your audience profile", status: "active" },
       { name: "Building your audience profile", status: "done" },
     ]);

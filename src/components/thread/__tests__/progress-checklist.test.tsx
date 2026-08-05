@@ -147,19 +147,19 @@ describe('ProgressChecklist — the evidence rail', () => {
     // scrapes and a live run measured the posts landing 18s before the profile — so the posts row
     // is done while the profile row is still going, and "hangs off the active row" would draw the
     // creator's own covers under "Finding your profile".
-    const PLAN = ['Finding your profile', 'Reading your last 30 posts'];
+    const PLAN = ['Finding your profile', 'Reading your recent posts'];
     render(
       <ProgressChecklist
         stages={[
           { name: 'Finding your profile', status: 'active' },
-          { name: 'Reading your last 30 posts', status: 'done' },
+          { name: 'Reading your recent posts', status: 'done' },
         ]}
         plan={PLAN}
-        evidence={{ ...OUTLIERS, step: 'Reading your last 30 posts' }}
+        evidence={{ ...OUTLIERS, step: 'Reading your recent posts' }}
       />,
     );
 
-    const postsRow = screen.getByLabelText('Reading your last 30 posts: done');
+    const postsRow = screen.getByLabelText('Reading your recent posts: done');
     expect(within(postsRow).getByTestId('run-evidence')).toBeInTheDocument();
 
     // The active row must NOT claim artifacts that belong to the other step.
@@ -171,12 +171,12 @@ describe('ProgressChecklist — the evidence rail', () => {
     // A concurrent pipeline (the account read's two Apify scrapes) can have two rows live at once.
     // Letting each wear the full live treatment put two coral nodes and two running clocks on
     // screen for half the wait, undoing the craft pass that took accent-filled elements 4 → 1.
-    const PLAN = ['Finding your profile', 'Reading your last 30 posts'];
+    const PLAN = ['Finding your profile', 'Reading your recent posts'];
     render(
       <ProgressChecklist
         stages={[
           { name: 'Finding your profile', status: 'active' },
-          { name: 'Reading your last 30 posts', status: 'active' },
+          { name: 'Reading your recent posts', status: 'active' },
         ]}
         plan={PLAN}
       />,
@@ -188,7 +188,7 @@ describe('ProgressChecklist — the evidence rail', () => {
     expect(lead.querySelector('.text-shimmer')).not.toBeNull();
 
     // …and the second live row is still LIVE, just quiet: no shimmer, no second clock.
-    const quiet = screen.getByLabelText('Reading your last 30 posts: active');
+    const quiet = screen.getByLabelText('Reading your recent posts: active');
     expect(quiet.querySelector('.text-shimmer')).toBeNull();
     expect(within(quiet).queryByTestId('stage-elapsed')).not.toBeInTheDocument();
   });

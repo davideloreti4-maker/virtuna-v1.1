@@ -17,7 +17,7 @@ import type { CalibrationStage } from './calibration';
 
 export const CALIBRATION_STAGE_NAME: Record<CalibrationStage, string> = {
   scraping: 'Reading your followers',
-  watching: 'Watching your top videos',
+  watching: 'Watching your videos',
   synthesizing: 'Building your audience profile',
 };
 

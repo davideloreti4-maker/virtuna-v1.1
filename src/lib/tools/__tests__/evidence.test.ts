@@ -112,10 +112,10 @@ describe('parseRunEvidence — total on every malformed shape', () => {
     // layer further down where nothing would point at it.
     const parsed = parseRunEvidence({
       headline: 'Reading 8 of your posts',
-      step: 'Reading your last 30 posts',
+      step: 'Reading your recent posts',
       items: [{ kind: 'frame', image: '/f/0.jpg', idx: 0 }],
     });
-    expect(parsed?.step).toBe('Reading your last 30 posts');
+    expect(parsed?.step).toBe('Reading your recent posts');
   });
 
   it('omits a blank or non-string row name rather than routing to ""', () => {
