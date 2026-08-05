@@ -364,7 +364,7 @@ describe("Field run capsules", () => {
     accountState.isStreaming = true;
     accountState.stages = [
       { name: "Finding your profile", status: "done" },
-      { name: "Reading your last 30 posts", status: "active" },
+      { name: "Reading your recent posts", status: "active" },
     ];
     accountState.evidence = {
       headline: "Reading your account",
@@ -380,7 +380,7 @@ describe("Field run capsules", () => {
     renderField(ACCOUNT);
 
     expect(screen.getByLabelText("Finding your profile: done")).toBeTruthy();
-    const running = screen.getByLabelText("Reading your last 30 posts: active");
+    const running = screen.getByLabelText("Reading your recent posts: active");
     // The rail hangs off the step that is RUNNING, and it carries the real handle.
     expect(within(running).getByTestId("run-evidence")).toBeTruthy();
     expect(within(running).getByText("@davide.creates")).toBeTruthy();

@@ -74,3 +74,51 @@ if (typeof globalThis.DOMRect !== "undefined" && !("fromRect" in DOMRect)) {
     return new DOMRect(other?.x ?? 0, other?.y ?? 0, other?.width ?? 0, other?.height ?? 0);
   };
 }
+
+/**
+ * The suite's real network calls — 58 connection attempts to localhost:3000 per clean run.
+ *
+ * happy-dom's default document URL is `http://localhost:3000`, so a RELATIVE asset URL resolves
+ * to a real socket. Traced 2026-08-05 with a fetch trap that recorded the stack of every such
+ * call: they are ONE asset — `/brain/cortex.glb`, the FreeSurfer cortex mesh.
+ *
+ * `CortexCanvas.tsx` ends with `useGLTF.preload('/brain/cortex.glb')` at MODULE scope. That is
+ * correct in a browser (warm the cache before the canvas mounts) and unconditional under vitest:
+ * it fires on IMPORT, before any test body, which is why some of the trapped calls were recorded
+ * "(outside a test)". Every file that transitively imports the canvas pays for it.
+ *
+ * They normally fail fast and are swallowed. Occasionally one lands inside a test with a 5000ms
+ * budget and times it out — a DIFFERENT file each run, which is the flake that has made this
+ * suite's exit code non-deterministic across four handoffs.
+ *
+ * Answered here rather than at the call site because the call site is not wrong: a 3D canvas
+ * preloading its own mesh is the right thing for the product to do. What is wrong is a test
+ * environment that turns a static-asset path into a socket. No test anywhere needs the mesh
+ * bytes — the canvas is never asserted on its geometry — so the request is refused without
+ * opening a connection.
+ *
+ * ⚠️ Scoped to a literal path prefix on purpose. A blanket localhost:3000 stub would mask the
+ * NEXT leak instead of surfacing it, and the whole reason this took four handoffs to find is
+ * that the noise was indistinguishable from signal.
+ */
+const STATIC_ASSET_PREFIX = "http://localhost:3000/brain/";
+const realFetch = globalThis.fetch;
+globalThis.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
+  let url = "";
+  try {
+    url =
+      typeof input === "string"
+        ? input
+        : input instanceof URL
+          ? input.href
+          : (input as Request).url;
+  } catch {
+    /* an exotic input shape is not ours to judge — fall through to the real fetch */
+  }
+  if (url.startsWith(STATIC_ASSET_PREFIX)) {
+    return Promise.resolve(
+      new Response(null, { status: 404, statusText: "asset not served under test" }),
+    );
+  }
+  return realFetch(input as RequestInfo, init);
+}) as typeof fetch;

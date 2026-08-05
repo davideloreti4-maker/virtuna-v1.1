@@ -23,7 +23,10 @@ import { createScrapingProvider } from "@/lib/scraping";
 import { rankOutliers, type RankedOutlier } from "@/lib/discover/outlier-compute";
 import { rankWithAudienceFit } from "@/lib/discover/explore-rank";
 import { OutlierGridBlockSchema, type OutlierGridBlock } from "@/lib/tools/blocks";
+import { buildVideoEvidence, evidenceMetric, type RunEvidence } from "@/lib/tools/evidence";
+import { formatCount } from "@/lib/account-metrics/account-metrics";
 import type { Audience } from "@/lib/audience/audience-types";
+import type { VideoData } from "@/lib/scraping/types";
 
 // Reuse the Discover scrape/tile band (RESEARCH §Don't Hand-Roll: do NOT re-roll the
 // scrape budget or the tile cap — match /api/discover exactly).
@@ -52,6 +55,18 @@ export interface RunExploreInput {
    * normal profile-mode trackability.
    */
   mergeInputs?: string[];
+  /**
+   * Fires as each source's scrape LANDS, with the posts pulled so far.
+   *
+   * The pull is bracketed by a single active→done stage pair, so a cache MISS parked the spine
+   * on one static row for the whole scrape and then flashed everything at once — while the
+   * posts it is about to rank were already in memory. This is the seam that puts them on the
+   * glass at the moment they exist.
+   *
+   * Emits on the REAL boundary (a provider promise resolving), never on a timer. Absent ⇒
+   * nothing is built and the runner is byte-identical to its pre-evidence shape.
+   */
+  onEvidence?: (evidence: RunEvidence) => void;
 }
 
 export interface RunExploreResult {
@@ -101,8 +116,47 @@ export async function runExplorePipeline(opts: RunExploreInput): Promise<RunExpl
   // `searchQueries` (profile mode would treat it as a username → no results). Merged
   // competitors pulls are always handles → profile mode.
   const scrapeMode = opts.mode === "niche" ? "search" : "profile";
+
+  // Show the posts as they land, rather than after the whole pull + rank finishes.
+  //
+  // A merged competitors pull resolves its sources independently and out of order, so the rail
+  // ACCUMULATES: each arrival re-emits the best of everything seen so far, and the payload is
+  // pinned to the "Pulling outliers" row by name (the pull can finish while the spine has
+  // already advanced, and the rail otherwise hangs off whichever row is currently active).
+  //
+  // Only ever built from rows we have: `buildVideoEvidence` drops anything with neither a cover
+  // nor a handle and returns null if that leaves nothing — VideoData carries no author handle
+  // (RESEARCH Q3), so a metadata-only scrape with no covers correctly shows no rail at all
+  // rather than a row of blank tiles under a confident headline.
+  const landed: VideoData[] = [];
+  const emitLanded = opts.onEvidence
+    ? (batch: VideoData[]) => {
+        landed.push(...batch);
+        const best = [...landed].sort((a, b) => b.views - a.views).slice(0, 8);
+        const evidence = buildVideoEvidence(
+          // Numberless on purpose. The grounding rail's "Borrowing shape from 5 proven videos"
+          // keeps its count because that is a claim about the CREATIVE INPUT — what the model is
+          // writing against, which the creator is paying for. A scrape volume is process trivia
+          // about our own plumbing, and the owner's rule (2026-08-05) is that the loading UI
+          // never reports how many things the pipeline pulled or watched.
+          () => "What we pulled",
+          best.map((v) => ({
+            handle: null,
+            image: v.coverUrl ?? null,
+            metric: evidenceMetric({ views: v.views, formatCount }),
+            href: v.videoUrl ?? null,
+          })),
+        );
+        if (evidence) opts.onEvidence!({ ...evidence, step: "Pulling outliers" });
+      }
+    : null;
+
   const scraped = await Promise.all(
-    sources.map((source) => provider.scrapeVideos(source, SCRAPE_LIMIT, scrapeMode)),
+    sources.map(async (source) => {
+      const vids = await provider.scrapeVideos(source, SCRAPE_LIMIT, scrapeMode);
+      emitLanded?.(vids);
+      return vids;
+    }),
   );
   const seen = new Set<string>();
   const videos = scraped.flat().filter((v) => {

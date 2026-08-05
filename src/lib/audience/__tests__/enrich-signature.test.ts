@@ -227,6 +227,63 @@ describe("enrichSignature", () => {
     expect(sig.provenance.videos_analyzed).toBe(12);
   });
 
+  // ── The watcher is SIGHTED BUT DEAF (QWEN_WATCH_MODEL, 2026-08-05) ──────────────
+  //
+  // These pin the ORDERING, which is the part that is easy to break and impossible to see: the
+  // subtitle fetch has to complete BEFORE the watch, or the watch gets no speech at all and the
+  // `audio` field silently becomes guesswork from the picture. Nothing else in the build would
+  // notice — the signature would still be produced, just deafer.
+  it("hands each watch the post's own transcript", async () => {
+    const watch = vi.fn(async () => WATCH_NOTE);
+    const videos = Array.from({ length: 3 }, (_, i) => makeVideo(i, 10_000, i * 80, i * 8));
+    await enrichSignature(
+      makeInput(videos),
+      makeDeps({
+        watchVideo: watch,
+        // Echo the URL back so we can prove each video got ITS OWN subtitles, not a neighbour's.
+        fetchSubtitle: vi.fn(async (url: string) => `transcript for ${url}`),
+      }),
+    );
+
+    expect(watch).toHaveBeenCalledTimes(3);
+    for (const call of watch.mock.calls) {
+      const [mp4, , transcript] = call as unknown as [string, string, string | null];
+      // makeVideo builds subtitleUrl from the same index as the mp4 — so a mismatch here means
+      // transcripts were paired to the wrong posts.
+      const i = mp4.match(/video-(\d+)/)?.[1];
+      expect(i).toBeDefined();
+      expect(transcript).toBe(`transcript for https://www.tiktok.com/subs/${i}.vtt`);
+    }
+  });
+
+  it("watches a post with no published subtitles rather than skipping it", async () => {
+    // Coverage is partial by nature (a live @zachking run recorded 8/12). A post with no subs is
+    // a silent-visual creator's normal case — the Khaby class — and must still be watched.
+    const watch = vi.fn(async () => WATCH_NOTE);
+    const videos: VideoData[] = Array.from({ length: 3 }, (_, i) => {
+      const v = makeVideo(i, 10_000, i * 80, i * 8);
+      return i === 0 ? { ...v, subtitleUrl: undefined } : v;
+    });
+    await enrichSignature(makeInput(videos), makeDeps({ watchVideo: watch }));
+
+    expect(watch).toHaveBeenCalledTimes(3);
+    const transcripts = watch.mock.calls.map((c) => (c as unknown as unknown[])[2]);
+    expect(transcripts).toContain(null); // the sub-less post: watched, with nothing to hear
+    expect(transcripts.filter(Boolean)).toHaveLength(2);
+  });
+
+  it("still watches when the subtitle fetch itself fails", async () => {
+    const watch = vi.fn(async () => WATCH_NOTE);
+    const videos = [makeVideo(0, 10_000, 400, 100)];
+    const sig = await enrichSignature(
+      makeInput(videos),
+      makeDeps({ watchVideo: watch, fetchSubtitle: vi.fn(async () => null) }),
+    );
+    expect(watch).toHaveBeenCalledTimes(1);
+    expect((watch.mock.calls[0] as unknown as unknown[])[2]).toBeNull();
+    expect(sig.provenance.videos_watched).toBe(1);
+  });
+
   it("degrades gracefully when a watch returns null (counts only survivors)", async () => {
     let n = 0;
     const watch = vi.fn(async () => (n++ === 0 ? null : WATCH_NOTE)); // first fails

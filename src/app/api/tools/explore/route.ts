@@ -374,6 +374,10 @@ export async function POST(request: Request): Promise<Response> {
             normalizedInput: normalized,
             serendipity,
             mergeInputs,
+            // The posts reach the glass as the scrape returns them, instead of after the whole
+            // pull + rank finishes. Only the cache-MISS branch takes this path — a hit has no
+            // wait to fill and nothing new to show.
+            onEvidence: (evidence) => send("evidence", evidence),
           });
           block = result.block;
           send("stage", { name: "Pulling outliers", status: "done" });

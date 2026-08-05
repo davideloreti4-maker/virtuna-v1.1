@@ -3,9 +3,13 @@
  *
  * Turns ONE profile-bundle scrape into the frozen `AudienceSignature` via:
  *   (a) select the top ~3-5 videos by engagement (save+share weighted),
- *   (b) `qwen3.5-omni-flash` WATCHES each (video+audio) → content/format/voice notes
- *       (universal — works for talkers AND silent visual creators, the Khaby class, P.13),
- *   (c) ONE `qwen3.7-plus` synthesis (CALIBRATE: greedy temp:0, thinking-mode OFF per D-01) fuses stats + engagement + native subs + watchNotes
+ *   (b) fetch their native subtitles (free, same scrape) — this happens BEFORE the watch,
+ *       because the watcher is deaf and this is the only way speech reaches it,
+ *   (c) `QWEN_WATCH_MODEL` WATCHES each video with its transcript attached → content / format /
+ *       voice notes (universal — works for talkers AND silent visual creators, the Khaby class,
+ *       P.13, which is precisely the class a transcript-only reading would have failed),
+ *   (d) ONE `QWEN_CALIBRATE_MODEL` synthesis (greedy temp:0, thinking-mode OFF per D-01) fuses
+ *       stats + engagement + native subs + watchNotes
  *       → the AudienceSignature (creator persona + 10 reactors + derived weights + summary).
  *
  * Determinism (P.7): every LLM call runs `temperature:0, seed:QWEN_SEED`, system prompts
@@ -17,7 +21,7 @@
  *
  * Cost (P.8): ~$0.05-0.15 per audience, ONE-TIME. Native subs free; AI-transcribe NEVER.
  *
- * Testability: all I/O (mp4 resolve, omni watch, VTT fetch, text synthesis) is injectable
+ * Testability: all I/O (mp4 resolve, watch, VTT fetch, text synthesis) is injectable
  * via `deps` so unit tests run with zero network/LLM. Defaults wire to the real stack.
  */
 
@@ -26,7 +30,7 @@ import * as Sentry from "@sentry/nextjs";
 import { createLogger } from "@/lib/logger";
 import {
   getQwenClient,
-  QWEN_OMNI_MODEL,
+  QWEN_WATCH_MODEL,
   QWEN_CALIBRATE_MODEL,
   QWEN_SEED,
 } from "@/lib/engine/qwen/client";
@@ -51,7 +55,7 @@ const log = createLogger({ module: "audience.enrich" });
 
 // ─── Tunables ──────────────────────────────────────────────────────────────────
 
-/** How many top videos the omni-flash layer watches (P.13: top ~3-5 by engagement). */
+/** How many top videos the watch layer reads (P.13: top ~3-5 by engagement). */
 const MAX_WATCH = 5;
 const MIN_WATCH = 3;
 /** Max transcripts to fold into synthesis (the watched set; writing sample = the top one). */
@@ -82,10 +86,20 @@ const WatchNoteSchema = z.object({
 export type WatchNote = z.infer<typeof WatchNoteSchema>;
 
 // Call A system prompt — BYTE-STABLE (cache prefix, D-17). Mirrors §P.14 Call A.
+//
+// The watcher is SIGHTED BUT DEAF (QWEN_WATCH_MODEL). It used to be told to "LISTEN to the
+// audio", which was true of omni and would now be an instruction to hallucinate: the model has
+// no audio channel, so anything it wrote under `audio` would be inferred from the picture. The
+// spoken words arrive in the user message as native subtitles instead, and `audio` is scoped to
+// what those can actually support. "no speech" was already a legal value; "unknown" is the new
+// one, and it is the honest answer when TikTok published no subtitles for the post.
 const WATCH_SYSTEM = `You analyze ONE TikTok to model the CREATOR's style and WHY their audience rewards it.
-WATCH the visuals AND LISTEN to the audio. Return ONLY JSON, concrete, no preamble:
+WATCH the visuals. You CANNOT hear this video — any speech is supplied to you as a transcript.
+Return ONLY JSON, concrete, no preamble:
 {"content","format","visual_style","audio","hook_type","why_it_works","creator_voice_1liner"}
-("audio" = voice tone / music / sfx, or "no speech".)`;
+("audio" = how they speak, judged ONLY from the supplied transcript: "no speech" if the video
+carries none, "unknown" if no transcript was supplied. NEVER guess music, sound effects or tone
+of voice from the picture.)`;
 
 // ─── Synthesis (Call B) output — LLM returns everything except provenance ────────
 
@@ -252,8 +266,15 @@ export function vttToText(vtt: string): string {
 export type EnrichStage = "watching" | "synthesizing";
 
 export interface EnrichDeps {
-  /** Watch one mp4 with omni-flash → WatchNote (default: real DashScope call). */
-  watchVideo?: (mp4Url: string, ctx: string) => Promise<WatchNote | null>;
+  /**
+   * Watch one mp4 → WatchNote (default: real DashScope call on QWEN_WATCH_MODEL).
+   *
+   * `transcript` is the post's native subtitles when TikTok published any. The watcher is
+   * SIGHTED BUT DEAF, so this is the only route by which anything spoken reaches it — the same
+   * arrangement the fold runs (video item + the words as text). Absent ⇒ the watch is visual
+   * only, which is honest and is the normal case for a silent visual creator.
+   */
+  watchVideo?: (mp4Url: string, ctx: string, transcript?: string | null) => Promise<WatchNote | null>;
   /** Fetch a subtitle URL → plain text (default: real no-auth fetch + VTT strip). */
   fetchSubtitle?: (url: string) => Promise<string | null>;
   /** Synthesize the signature from the payload → validated SynthSchema shape. */
@@ -327,21 +348,30 @@ export function prepareWatchUrl(mediaUrl: string): string | null {
 
 // ─── Real default deps ───────────────────────────────────────────────────────────
 
-async function defaultWatchVideo(mp4Url: string, ctx: string): Promise<WatchNote | null> {
+async function defaultWatchVideo(
+  mp4Url: string,
+  ctx: string,
+  transcript?: string | null,
+): Promise<WatchNote | null> {
   const ai = getQwenClient();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), OMNI_TIMEOUT_MS);
+  // The watcher is deaf, so anything spoken has to arrive as text. Native subtitles come free
+  // with the same bundle scrape that produced this mp4 — no extra call, no transcription.
+  const spoken = transcript?.trim()
+    ? `\nWhat is said (native subtitles): ${transcript.trim()}`
+    : `\nNo subtitles were published for this post — judge "audio" as unknown, not as silence.`;
   try {
     const completion = await ai.chat.completions.create(
       {
-        model: QWEN_OMNI_MODEL,
+        model: QWEN_WATCH_MODEL,
         messages: [
           { role: "system", content: WATCH_SYSTEM },
           {
             role: "user",
             content: [
               { type: "video_url" as never, video_url: { url: mp4Url } } as never,
-              { type: "text", text: `${ctx} Analyze.` },
+              { type: "text", text: `${ctx}${spoken}\nAnalyze.` },
             ],
           },
         ],
@@ -355,13 +385,13 @@ async function defaultWatchVideo(mp4Url: string, ctx: string): Promise<WatchNote
     const raw = completion.choices[0]?.message?.content ?? "";
     const parsed = WatchNoteSchema.safeParse(JSON.parse(stripModelOutput(raw)));
     if (!parsed.success) {
-      log.warn("omni watch zod failed", { error: parsed.error.message });
+      log.warn("bake watch zod failed", { error: parsed.error.message });
       return null;
     }
-    log.info("omni watch ok", { cost_cents: calculateCost(QWEN_OMNI_MODEL, completion.usage ?? undefined) });
+    log.info("bake watch ok", { model: QWEN_WATCH_MODEL, cost_cents: calculateCost(QWEN_WATCH_MODEL, completion.usage ?? undefined) });
     return parsed.data;
   } catch (err) {
-    log.warn("omni watch failed", { error: String(err) });
+    log.warn("bake watch failed", { error: String(err) });
     return null;
   } finally {
     clearTimeout(timer);
@@ -501,8 +531,28 @@ export async function enrichSignature(
 
   const top = selectTopVideos(videos);
 
-  // The omni watch is the long pole here (N video calls, 60s timeout each) — say so.
+  // The watch is the long pole here (N video calls, 60s timeout each) — say so.
   onStage?.("watching");
+
+  // ── Fetch native subtitles for the watched set (free, no-auth tiktokLink) ─────────
+  //
+  // This runs BEFORE the watch, which is the whole reason the watch can be deaf. The watcher is
+  // sighted-but-deaf (QWEN_WATCH_MODEL), so the transcript is the only channel by which anything
+  // spoken reaches it — the same arrangement the fold runs and the Wave 0 split shipped. These
+  // subtitles came free with the bundle scrape that produced the mp4s; they were already being
+  // fetched, just afterwards, for the synthesis payload alone. Moving the fetch costs nothing
+  // and both consumers read the same map.
+  //
+  // Subtitle coverage is partial by nature (a live @zachking run recorded 8/12), so a post with
+  // none is normal, not an error: it is watched visually and its `audio` reads "unknown".
+  const transcriptTargets = top.filter((v) => v.subtitleUrl).slice(0, MAX_TRANSCRIPTS);
+  const transcripts = new Map<string, string>();
+  await Promise.all(
+    transcriptTargets.map(async (v) => {
+      const text = v.subtitleUrl ? await fetchSubtitle(v.subtitleUrl) : null;
+      if (text) transcripts.set(v.platformVideoId, text);
+    }),
+  );
 
   // ── Watch the top videos directly from the bundle mp4 (no rehost), parallel, fail→null ──
   // `mediaUrl` is the downloaded Apify KV record from the single bundle scrape; prepareWatchUrl
@@ -515,7 +565,7 @@ export async function enrichSignature(
           if (!mp4) return null;
           const plays = v.views > 0 ? v.views : 1;
           const ctx = `Engagement: plays=${v.views} saves=${v.saves} shares=${v.shares} (saveRate ${((v.saves / plays) * 100).toFixed(2)}%, shareRate ${((v.shares / plays) * 100).toFixed(2)}%).`;
-          return await watchVideo(mp4, ctx);
+          return await watchVideo(mp4, ctx, transcripts.get(v.platformVideoId) ?? null);
         } catch (err) {
           log.warn("watch pipeline failed for video", { id: v.platformVideoId, error: String(err) });
           return null;
@@ -523,16 +573,6 @@ export async function enrichSignature(
       }),
     )
   ).filter((n): n is WatchNote => n !== null);
-
-  // ── Fetch native subtitles for the watched set (free, no-auth tiktokLink) ─────────
-  const transcriptTargets = top.filter((v) => v.subtitleUrl).slice(0, MAX_TRANSCRIPTS);
-  const transcripts = new Map<string, string>();
-  await Promise.all(
-    transcriptTargets.map(async (v) => {
-      const text = v.subtitleUrl ? await fetchSubtitle(v.subtitleUrl) : null;
-      if (text) transcripts.set(v.platformVideoId, text);
-    }),
-  );
 
   // ── Build the synthesis payload (stats + engagement + subs + notes) ──────────────
   const payload: SynthPayload = {

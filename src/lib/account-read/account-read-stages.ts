@@ -14,7 +14,16 @@
  * other's promise; each reports its own. No invented steps.
  */
 
+/**
+ * ⚠️ These are USER-FACING strings and they carry no counts, deliberately (owner call
+ * 2026-08-05). The read really does pull 30 posts, so "Reading your last 30 posts" was
+ * accurate — but a count in a loading line invites the reader to audit the pipeline
+ * instead of watching their account appear, and the sibling calibration line stated a
+ * count that was simply WRONG ("the last 30 posts" while it pulled 12). The rule is now
+ * uniform: the loading UI names the JOB, the card names the ACCOUNT's own facts, and
+ * nothing tells the user how many things the pipeline touched.
+ */
 export const ACCOUNT_READ_PLAN: string[] = [
   'Finding your profile',
-  'Reading your last 30 posts',
+  'Reading your recent posts',
 ];

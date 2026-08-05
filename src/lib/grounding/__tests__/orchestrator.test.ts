@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { handleFromUrl, toRetrievedExample } from "../orchestrator";
+import { handleFromUrl, toRetrievedExample, gatherAndExtract } from "../orchestrator";
+import type { ScrapingProvider, VideoData } from "@/lib/scraping/types";
+import type { RunEvidence } from "@/lib/tools/evidence";
 import type { RankedOutlier } from "@/lib/discover/outlier-compute";
 import type { Teardown } from "../types";
 
@@ -72,5 +74,94 @@ describe("toRetrievedExample", () => {
     expect(ex.sourcePool).toBe("scraped");
     expect(ex.fromPersonal).toBe(false);
     expect(ex.fitLabel).toBe("adjacent");
+  });
+});
+
+// ─── Mid-flight evidence: the paid pull stops being a blank 25 seconds ──────────────
+
+describe("gatherAndExtract — evidence lands at the SELECTION boundary", () => {
+  /** A scraped row that will survive `selectCandidates` (recent + real view count). */
+  const scraped = (i: number, views: number): VideoData => ({
+    platformVideoId: `v${i}`,
+    videoUrl: `https://www.tiktok.com/@creator${i}/video/${i}`,
+    coverUrl: `https://cdn.tiktok/cover-${i}.jpg`,
+    caption: `high protein breakfast ${i}`,
+    views,
+    likes: Math.round(views * 0.05),
+    comments: 10,
+    shares: 5,
+    saves: 20,
+    hashtags: ["highprotein"],
+    durationSeconds: 20,
+    postedAt: new Date(),
+  });
+
+  /**
+   * Run far enough to pass selection, then let the (un-injectable) extraction stage blow up.
+   *
+   * That is the POINT of the test, not a limitation of it: the whole value of this emit is that
+   * it happens BEFORE the expensive half. A payload that only arrived once teardowns succeeded
+   * would be worthless — the wait it exists to fill would already be over.
+   */
+  async function runToExtraction(onEvidence: (e: RunEvidence) => void) {
+    const provider = {
+      scrapeVideos: async () => [scraped(1, 14_000_000), scraped(2, 9_000_000), scraped(3, 4_000_000)],
+      scrapeProfile: async () => {
+        throw new Error("stop here — profile scrape is past the boundary under test");
+      },
+    } as unknown as ScrapingProvider;
+
+    try {
+      // supabase is resolved eagerly at the top of the function (getCorpusClient throws with no
+      // env), so it must be stubbed or the run dies before the boundary under test.
+      await gatherAndExtract(
+        { query: "high protein breakfast", onEvidence },
+        { provider, supabase: {} as never },
+      );
+    } catch {
+      // expected: the run cannot complete without the LLM/embedding stages
+    }
+  }
+
+  it("emits the survivors before spending the profile scrapes", async () => {
+    const seen: RunEvidence[] = [];
+    await runToExtraction((e) => seen.push(e));
+
+    expect(seen).toHaveLength(1);
+    const [evidence] = seen;
+    expect(evidence!.items.length).toBeGreaterThan(0);
+    expect(evidence!.items.every((i) => i.kind === "video")).toBe(true);
+    // Real covers and real handles, straight off the scrape.
+    expect(evidence!.items[0]!.image).toMatch(/^https:\/\/cdn\.tiktok\/cover-/);
+    expect(evidence!.items[0]!.label).toMatch(/^creator\d$/);
+  });
+
+  it("states no scrape count, and claims no multiplier it has not computed", async () => {
+    const seen: RunEvidence[] = [];
+    await runToExtraction((e) => seen.push(e));
+
+    // Owner's rule: the loading UI never says how many things the pipeline pulled.
+    expect(seen[0]!.headline).not.toMatch(/\d/);
+    // The multiplier needs follower counts, which are fetched AFTER this point, and it has to
+    // clear the outlier gate before it may be spoken at all. Views are measured now.
+    for (const item of seen[0]!.items) {
+      expect(item.metric).not.toMatch(/×/);
+      expect(item.metric).toMatch(/views$/);
+    }
+  });
+
+  it("is inert when no listener is passed (byte-identical to the pre-evidence path)", async () => {
+    const provider = {
+      scrapeVideos: async () => [scraped(1, 14_000_000)],
+      scrapeProfile: async () => {
+        throw new Error("stop");
+      },
+    } as unknown as ScrapingProvider;
+    // No onEvidence, no throw from the emit block.
+    await expect(
+      gatherAndExtract({ query: "q" }, { provider, supabase: {} as never }).catch(
+        () => "reached extraction",
+      ),
+    ).resolves.toBe("reached extraction");
   });
 });

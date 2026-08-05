@@ -242,12 +242,12 @@ const STAGE_COPY_ROTATION: Record<string, string[]> = {
   // so a stage needs enough real sub-phases to keep moving for as long as it actually runs.
   'Reading your followers': [
     'Pulling the account and its posts',
-    'Collecting the last 30 posts',
+    'Collecting your recent posts',
     'Reading who actually engages',
     'Sorting the ones that overperformed',
     'Separating fans from passers-by',
   ],
-  'Watching your top videos': [
+  'Watching your videos': [
     'Watching them the way your audience would',
     'Reading the subtitles for what lands',
     'Finding what your best posts have in common',
@@ -271,7 +271,7 @@ const STAGE_COPY_ROTATION: Record<string, string[]> = {
  */
 const ROTATION_CADENCE_MS: Record<string, number> = {
   'Reading your followers': 18_000,
-  'Watching your top videos': 12_000,
+  'Watching your videos': 12_000,
   'Building your audience profile': 9_000,
 };
 

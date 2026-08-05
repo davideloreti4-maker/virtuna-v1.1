@@ -10,8 +10,9 @@
 The Qwen engine runs on **exactly two models**, split by ONE capability line — **audio**:
 
 - **`qwen3.5-omni-flash`** — the **sensor**, and the only audio-capable model. Used ONLY where raw
-  video audio must be ingested (Wave 0 read + the audience bake watch). Audio is distilled once here
-  into text (`audio_event`, transcript, emotion arc); everything downstream reasons over that.
+  video audio must be ingested — as of 2026-08-05 that is the **Wave 0 read alone**. Audio is
+  distilled once here into text (`audio_event`, transcript, emotion arc); everything downstream
+  reasons over that.
 - **`qwen3.7-flash`** — **everything else**, text AND video (sighted, deaf). Generation, SIM scoring,
   the fold, chat, decode/adapt.
 
@@ -177,7 +178,7 @@ Unused headroom is free (you pay actual output, not the cap).
 | **FOLD** (Read audience sim) | `wave3/fold` | `qwen3.7-flash` (video, deaf) | OFF | 8000 | — | 10 personas × N segments; independence directive is the diversity lever. ✅ **validated live 2026-06-26** (5-seg video: 40.9s/90s, diversity 0.31 first-attempt no-retry, 0.56¢; `scripts/fold-validate-r1.ts`) |
 | **CALIBRATE** synth | `audience/enrich-signature` (synth call) | `qwen3.7-flash` | OFF | 8000 | — | v2 persona output (~3.5k) + headroom. ✅ **on flash** — raw flash was 0/7 (Σshares 0.75–0.85); normalize-shares + `liftFlattenedAudience()` + 1 retry → 3/3, ~12× cheaper, ~2× faster. Seam: `QWEN_CALIBRATE_MODEL` |
 | **SENSOR** read | `qwen/omni-analysis` (Wave 0) | `qwen3.5-omni-flash` | OFF | 8000 | — | audio in; sensor dump |
-| **SENSOR** bake-watch | `enrich-signature` (watch call) | `qwen3.5-omni-flash` | OFF | 600 | — | per-video watch notes |
+| **BAKE-WATCH** | `enrich-signature` (watch call) | `qwen3.7-flash` (video, deaf) | OFF | 600 | — | per-video watch notes. ✅ **moved off omni 2026-08-05** — it was the last video call routed to the audio model, an exception to the rule above rather than an instance of it. Speech now arrives as the post's own native subtitles (free, same bundle scrape, fetched BEFORE the watch), exactly as the fold and the Wave 0 split do it. Non-speech audio character (music/sfx/tone) is genuinely lost and the prompt forbids inventing it. Seam: `QWEN_WATCH_MODEL` |
 | **APOLLO** video insight | `engine/deepseek` | `qwen3.7-flash` (video, deaf) | **ON** | 3000 | 1500 | the reasoning moat (A/B-tuned). ✅ **on flash** — cited nothing until the contract REQUIRED the § token; now 6/6 dims cited, identical cite set, deterministic. ⚠️ grades ~30 composite points harsher. Seam: `QWEN_APOLLO_MODEL` |
 
 ### Notes
@@ -185,9 +186,10 @@ Unused headroom is free (you pay actual output, not the cap).
   baseline is `temperature: 0` too, but auto-perturbs to `FOLD_DIVERSITY_RETRY_TEMP` (0.7) on a
   diversity-collapse retry — the old retry re-ran the identical deterministic call (a no-op).
   Reproducibility is no longer a HARD requirement (2026-06-25): `FOLD_TEMPERATURE` env can raise the base.
-- Model env seams: `QWEN_OMNI_MODEL`=omni-flash (sensor), `QWEN_REASONING_MODEL`=3.7-flash (everything),
-  `QWEN_APOLLO_MODEL`=3.7-PLUS and `QWEN_CALIBRATE_MODEL`=3.7-PLUS (both scoped so they can stay put —
-  see the A/B above). `QWEN_FAST_MODEL` removed.
+- Model env seams: `QWEN_OMNI_MODEL`=omni-flash (the Wave 0 audio sensor — the ONLY audio call left),
+  `QWEN_REASONING_MODEL`=3.7-flash (everything else). Scoped seams, all resolving to 3.7-flash and all
+  kept so their path can be held or released independently: `QWEN_APOLLO_MODEL`, `QWEN_CALIBRATE_MODEL`,
+  `QWEN_UNBOUND_CHAT_MODEL`, `QWEN_WATCH_MODEL`. `QWEN_FAST_MODEL` removed.
 - `enable_thinking: false` is a DashScope extension (apply via the `@ts-expect-error` pattern).
 - Estimated `max_tokens` are rails with headroom — verify against one real output per site; bump if any truncates.
 

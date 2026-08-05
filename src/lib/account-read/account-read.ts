@@ -214,17 +214,19 @@ function withStep(evidence: RunEvidence | null, step: string): RunEvidence | nul
 }
 
 function buildAccountPostFrames(videos: VideoData[]): RunEvidence | null {
-  // The count is a claim about the READ, not about the strip. `buildFrameEvidence` passes back the
-  // number of tiles it will actually draw — capped at MAX_EVIDENCE_ITEMS — so using it announced
-  // "Reading 8 of your posts" on a read that had just analyzed 30, contradicting the card that
-  // replaces it seconds later. The strip stays a sample of the history; the sentence reports the
-  // work, which is also what makes the strip legible as a sample rather than the whole set.
+  // Numberless (owner's rule, 2026-08-05): the loading UI never reports how many things the
+  // pipeline pulled or watched. This said "Reading 30 of your posts", which is precisely that.
+  //
+  // The count here was already subtle enough to have been got wrong once: `buildFrameEvidence`
+  // passes back the number of tiles it will DRAW (capped at MAX_EVIDENCE_ITEMS), so using it
+  // announced "Reading 8 of your posts" on a read that had just analyzed 30 — contradicting the
+  // card that replaces it seconds later. Dropping the number removes the whole class of that bug,
+  // and the strip still reads as what it is: a sample of the history.
+  //
+  // `scraped` stays: it is the SLOT count, which is what makes the filmstrip draw its full width
+  // up front and fill in order instead of reflowing as frames land. That is layout, not copy.
   const scraped = videos.length;
-  return buildFrameEvidence(
-    () => (scraped === 1 ? "Reading 1 of your posts" : `Reading ${scraped} of your posts`),
-    videos.map((v) => v.coverUrl ?? null),
-    scraped,
-  );
+  return buildFrameEvidence(() => "Your recent posts", videos.map((v) => v.coverUrl ?? null), scraped);
 }
 
 /** Minimal scraping surface — injectable for tests (mirrors calibration.ts). */
