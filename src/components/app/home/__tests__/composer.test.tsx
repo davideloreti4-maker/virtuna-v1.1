@@ -17,7 +17,18 @@ import { screen, fireEvent, cleanup, waitFor, within } from '@testing-library/re
 import { renderWithClient } from '@/test/render-with-client';
 
 // ── controllable stream mock ────────────────────────────────────────────
-const start = vi.fn();
+// `mockResolvedValue` is NOT decoration. The real `useAnalysisStream().start` is `async`
+// (use-analysis-stream.ts:629), and composer.tsx chains `.catch()` onto its return at both Test
+// send sites (~2032 and ~2056) so a stream failure is swallowed by the phase machine rather than
+// the caller. A bare `vi.fn()` returns `undefined`, so `.catch` was read off undefined — a
+// TypeError thrown inside an async callback nobody awaits, i.e. an UNHANDLED REJECTION.
+//
+// That was the whole of the "3 pre-existing errors" that ended every suite run with EXIT=1
+// across at least three handoffs. Nothing was wrong with the product: only this mock's return
+// type disagreed with the function it stands in for. Worth stating plainly, because a run that
+// always exits non-zero teaches everyone to stop reading the exit code, which is precisely how a
+// real failure ships unnoticed.
+const start = vi.fn().mockResolvedValue(undefined);
 let analysisId: string | null = null;
 
 vi.mock('@/hooks/queries/use-analysis-stream', () => ({

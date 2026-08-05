@@ -186,8 +186,14 @@ export function ThreadOutro({
 
   return (
     <div className="reading-reveal flex flex-col gap-3">
+      {/* The SAME measure + leading as MarkdownBlockRenderer and reading-chat. This was the
+          second markdown surface and it never got the fix: measured live on /home it rendered at
+          696px with `max-width: none` and 24px leading, directly beneath a chat turn capped at
+          686px/26px — two different measures for the model's prose in one thread, one right under
+          the other. `max-w` only ever CAPS, so inside a narrow skill card this is a no-op and
+          card outros render exactly as before. */}
       {text && (
-        <div className="md" aria-label="Model follow-up">
+        <div className="md max-w-[68ch] leading-relaxed" aria-label="Model follow-up">
           <ReactMarkdown rehypePlugins={[rehypeSanitize]}>{text}</ReactMarkdown>
         </div>
       )}
