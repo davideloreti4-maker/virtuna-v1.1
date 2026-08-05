@@ -80,7 +80,11 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
   return (
     <div
       className="elev-rest overflow-hidden rounded-xl border border-white/[0.06] bg-surface-sunken"
-      aria-label={`Hook #${rank}: ${hookLine.slice(0, 60)}`}
+      // The numeral is dropped here too on a projected card — otherwise a screen reader is told
+      // "Hook #1" while the sighted card shows no rank, which is the same unmeasured claim served
+      // only to the people who cannot see that it was withdrawn. The hook line already identifies
+      // the card, so nothing is lost. (Found in browser verification, not by the suite.)
+      aria-label={projected ? `Hook: ${hookLine.slice(0, 60)}` : `Hook #${rank}: ${hookLine.slice(0, 60)}`}
     >
       {/* FACE — always visible (D-11) */}
       <div className="flex flex-col gap-3 px-4 pb-3 pt-4">
