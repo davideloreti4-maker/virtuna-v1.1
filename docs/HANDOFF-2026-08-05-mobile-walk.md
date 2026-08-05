@@ -16,8 +16,9 @@ looked. That is what this session did. Mobile is where the product was broken.
    had landed. Work was branched off the real tip. Always `git fetch` + `git rev-parse` first.
 2. **"FIVE model constants, three deliberately on qwen3.7-plus" is no longer true, and had not been
    for a day.** #431 moved Apollo and CALIBRATE to **flash** by fixing our own prompt/parse layer.
-   **Only `QWEN_UNBOUND_CHAT_MODEL` is still held on plus.** See §4 — the source comments were the
-   reason the brief said otherwise.
+   `QWEN_UNBOUND_CHAT_MODEL` was the last one held on plus — and **this session retired that too, by
+   fixing the guard it was covering for (§12). The platform now runs ZERO model holdouts.** See §4:
+   stale source comments were the reason the brief said otherwise.
 
 ---
 
@@ -32,6 +33,8 @@ looked. That is what this session did. Mobile is where the product was broken.
 | **5** | The 3 "pre-existing" unhandled rejections — **retired**, suite now reaches EXIT=0 | medium | `composer.test.tsx` |
 | **6** | Model-constant comments stated the opposite of their values | medium | `qwen/client.ts` |
 | **7** | The live probe could not open the signed-out half of the app | — (harness) | `probe-surface-live.mjs` |
+| **8** | The artefact guard was blind to an **unquoted** pack — the paid product, free, to anonymous visitors | **high — revenue** | `chat-agent-loop.ts` |
+| **9** | The anon harness reported prose *between* two quotes as a leak, inflating both arms | — (harness) | `live-chat-anon.mjs` |
 
 ---
 
@@ -115,10 +118,11 @@ is wrong. Corrected — **comment-only, no behaviour change** — keeping the ev
 genuinely valuable) but leading with what is true now, including the accepted ~30-point harsher
 grading and the one-env-var rollback.
 
-**Still true and NOT touched:** `QWEN_UNBOUND_CHAT_MODEL` stays on **plus**. Flash opens with a
-correct refusal and then writes the paid pack anyway. **Re-measured this session at 6/6 leaked
-against plus's 1/6 — see §12, where the flip was explicitly asked for and the evidence refused it.**
-Cost is not a reason to touch it.
+**Then the same thing happened to the third comment.** `QWEN_UNBOUND_CHAT_MODEL`'s block said
+"THE UNBOUND CHAT PATH STAYS ON 3.7-PLUS" — true when written, and **no longer true as of this
+session**: the leak it described was a gap in `createArtefactGuard`, not a property of the model, and
+closing that gap retired the holdout. See **§12** for the measurement. The comment now leads with
+what is true and keeps the history underneath, same as the other two.
 
 ---
 
@@ -244,8 +248,8 @@ second, unrelated flake that survives a clean run about one time in three.
   remaining item.
 - The four blind scrape waits (25–126s each); calibration is the cheapest fix — it HAS real stages,
   it just sends them as `status`.
-- ~~Retry flash on `QWEN_UNBOUND_CHAT_MODEL`~~ — **ASKED FOR AND MEASURED 2026-08-05. IT FAILED.**
-  See §12. Do not re-propose without fixing the guard first.
+- ~~Retry flash on `QWEN_UNBOUND_CHAT_MODEL`~~ — **DONE 2026-08-05.** It failed on first measurement,
+  then passed once the guard gap it was covering was closed. Zero holdouts remain. See §12.
 - Should a pinned chip show its price? Product call.
 - The `/discover` bookmark target (§6).
 - **The suite's 375–485 real connections to `localhost:3000` per run** (§5) — now the only thing
@@ -268,38 +272,72 @@ second, unrelated flake that survives a clean run about one time in three.
 
 ---
 
-## 12. The flash flip on unbound chat was requested, gated, and REFUSED BY THE EVIDENCE
+## 12. The flash flip: refused on the first measurement, then EARNED by fixing the guard
 
-The owner asked for `QWEN_UNBOUND_CHAT_MODEL` to move to flash along with everything else. The
-documented condition for that flip is a fresh `scripts/live-chat-anon.mjs` run. It was run — **both
-arms, back to back, on this build, same six asks, same guard, the model the only variable:**
+The owner asked for `QWEN_UNBOUND_CHAT_MODEL` to move to flash, then pushed back on the answer with
+the right objection: *"there has to be another fix for this, can't just rely on the model."* That
+was correct, and chasing it found the actual defect.
 
-| arm | refused | **leaked** |
+### First pass — the gate failed, so the flip was not made
+
+| arm | refused | leaked |
 |---|---|---|
-| `qwen3.7-plus` | 6/6 | **1/6** |
+| `qwen3.7-plus` | 6/6 | 1/6 |
 | `qwen3.7-flash` | 6/6 | **6/6** |
 
-**The flip was NOT made.** Flash now leaks on *every* ask — worse than the 5/6 on record. It opens
-with a correct refusal (*"I can't write the hook for you because I don't have a content-generation
-tool on this account"*) and then writes the pack anyway, as a numbered list of concepts, mechanisms,
-formats and CTAs.
+### Then: the guard was blind to the shape the pack actually arrives in
 
-> 🔑 **`createArtefactGuard` is firing and it is not enough.** The redaction
-> `[a line like that needs an account with credits]` appears *inside* the leaked list items — so the
-> guard caught the quoted candidate line and let the structure around it through. An anonymous
-> visitor still leaves with a usable content pack. Defence in depth is working exactly as designed
-> and still loses.
+`createArtefactGuard` redacts a **quoted** candidate line. The pack carries **no quotation marks**:
 
-**Two things changed from the record and both matter:**
-1. Flash is **6/6**, not 5/6 — the leak got worse, so this holdout is more load-bearing than when it
-   was written, not less.
-2. Plus is **1/6, not 0/6.** There is a residual leak on BOTH arms: the guard has a real gap that
-   the better model was masking. **That is the actual open bug** — fix the guard so it redacts the
-   *structure*, not just quoted lines, and the flip may become viable on its own merits.
+```
+### 1. The "Subscription Vampire" Audit
+*   **Concept:** A screen-recording walkthrough showing how to find and cancel hidden charges…
+*   **Mechanism:** Utility & Fear of Loss. People hate losing money they didn't know they spent…
+*   **CTA:** Save this for your next bank statement check.
+```
 
-Refusing on 1/6 vs 6/6 is not treating the arms as equal — it is a 6× difference on identical input,
-and the model is the whole of it.
+It arrives as **STRUCTURE** — an enumerated list of content units — and a quote-scoped redactor
+streams straight past it. Plus was not safer; it just hit the gap less often. **The model was the
+last thing standing between a gap in the guard and the customer**, at ~10× the cost of that path.
 
-▶ **Next time this is asked:** fix `createArtefactGuard` first, then re-run both arms. Cost is not a
-reason to touch this path; it is the one door that is free by design, and what leaks through it is
-the paid product.
+The guard now judges an enumerated span the same way it already judged a quoted one: a list item or
+heading whose body reaches `LEAK_MIN_STRUCTURED_LENGTH` (30) is redacted, a contiguous run collapses
+to one marker, and short items are untouched. It **withholds** the line until the newline rather than
+post-filtering — a streamed token cannot be recalled.
+
+### Measured: the model stops being the variable
+
+| arm | guard | leaked |
+|---|---|---|
+| flash | quote-only | **6/6** (every one a real `list-of-N`) |
+| flash | **+ structure** | **0/6 · 0/6 · 0/6** (3 runs) |
+| plus | **+ structure** | **0/6 · 0/6** (2 runs) |
+
+`QWEN_UNBOUND_CHAT_MODEL` is now **`qwen3.7-flash`**, and the platform runs **zero holdouts**. The
+gate that governs the line is unchanged and still binds — move it only behind a fresh
+`live-chat-anon.mjs` at 6/6 refused, 0 leaked. What changed is that flash passes it.
+
+Answer quality was checked, not assumed: the refusals still name the reason, still teach the
+mechanism in prose, and short terms of art (`"save money"`, `"the $5 latte tax"`) survive untouched.
+8 unit tests lock the rule, including that a **signed-in** creator's stream stays byte-for-byte
+identical — they paid for those lines.
+
+### ⚠️ The harness was inflating both arms, and the earlier numbers here were wrong
+
+`live-chat-anon.mjs` detected a quoted leak with `"([^"\n]{25,})"`. A straight `"` is the same
+character opening and closing, so that regex matched from one term's **closing** quote to the next
+term's **opening** quote and reported the ordinary prose between them as a leaked line:
+
+```
+Most students hate "budgeting" because it feels restrictive… By renaming it to "spending plan"
+                              └────────── reported as a leaked hook ──────────┘
+```
+
+That was the **whole** of plus's apparent 1/6 — plus was clean. Straight quotes are now paired by
+**parity** (split on `"`, odd segments are inside a quotation), which cannot cross from one
+quotation into the next. Typographic quotes keep the regex; they have distinct open/close characters.
+
+> 🔑 **A model holdout is a mitigation, not a fix.** It hides a defect behind a more expensive model,
+> bills you for the privilege, and fails silently the moment someone swaps a constant. When a cheap
+> model "fails" a safety property, check whether it is exposing a gap the expensive one was papering
+> over. Twice now the answer was yes — Apollo's §-cites in #431, and this.

@@ -46,10 +46,14 @@ export const QWEN_OMNI_MODEL      = process.env.QWEN_OMNI_MODEL      ?? "qwen3.5
 // newer model, but it is the thing to watch — the fold's diversity-collapse retry
 // (FOLD_DIVERSITY_RETRY_TEMP) is the tripwire. Rollback: QWEN_REASONING_MODEL=qwen3.7-plus.
 export const QWEN_REASONING_MODEL = process.env.QWEN_REASONING_MODEL ?? "qwen3.7-flash";
-// The platform runs on two models plus ONE scoped holdout (QWEN_UNBOUND_CHAT_MODEL, at the foot
-// of this block, on 3.7-plus on live evidence): QWEN_OMNI_MODEL (the Wave 0 / audience-bake AUDIO
-// sensor) + QWEN_REASONING_MODEL (everything else — text and video). See docs/MODEL-POLICY.md.
-// Apollo and CALIBRATE were holdouts too until 2026-08-04 (#431) — see each of them below.
+// The platform runs on TWO models and, as of 2026-08-05, ZERO holdouts: QWEN_OMNI_MODEL (the
+// Wave 0 / audience-bake AUDIO sensor — a different family because 3.7 is deaf) and
+// QWEN_REASONING_MODEL (everything else — text and video). See docs/MODEL-POLICY.md.
+// The three scoped constants below (APOLLO, CALIBRATE, UNBOUND_CHAT) all resolve to flash now.
+// They are KEPT as separate constants, not collapsed: each one is the seam that let its path be
+// held back and released independently, and each was retired by fixing OUR layer — Apollo's cite
+// contract and CALIBRATE's transport in #431, the artefact guard's structure blindness in #438's
+// follow-up. Keeping the seam costs nothing and is what makes the next holdout cheap.
 // Apollo reasoner model (the score-mode judge in deepseek.ts) — SCOPED separately from
 // QWEN_REASONING_MODEL so Apollo can move independently of chat/decode/adapt/text-mode.
 // ✅ Apollo IS ON 3.7-FLASH as of 2026-08-04 (#431) — the holdout was RETIRED by fixing our own
@@ -101,25 +105,33 @@ export const QWEN_CALIBRATE_MODEL = process.env.QWEN_CALIBRATE_MODEL ?? "qwen3.7
 // time the same lesson has been paid for: a cheaper model can pass every harness the swap thought
 // to run and fail the one it did not.
 //
-// ⚠️ THE UNBOUND CHAT PATH STAYS ON 3.7-PLUS. `FREE_SKILL_TOOLS` is empty, so an anonymous visitor
-// binds NO generators and the agent must refuse to produce the artefact. Measured live through the
-// real `/api/tools/chat` route with `scripts/live-chat-anon.mjs`, same build, same guard, same six
-// asks — the ONLY variable is this model.
+// ✅ THE HOLDOUT IS RETIRED (2026-08-05). This path is on flash, and the property it was protecting
+// is now owned by `createArtefactGuard` in chat-agent-loop.ts — by CONSTRUCTION rather than by
+// which model we happen to be paying for. `FREE_SKILL_TOOLS` is empty, so an anonymous visitor
+// binds NO generators and the agent must refuse to produce the artefact.
 //
-// RE-MEASURED 2026-08-05, both arms back to back on this build, when the flip was asked for again:
-//     plus : 6/6 refused · 1/6 leaked
-//     flash: 6/6 refused · 6/6 LEAKED
-// Flash is now leaking on EVERY ask, not 5 of 6 — it opens with a correct refusal sentence
-// ("I can't write the hook for you because I don't have a content-generation tool on this
-// account") and then writes the pack anyway as a numbered list of concepts, mechanisms, formats
-// and CTAs. `createArtefactGuard` is visibly firing inside those lists — the redaction
-// "[a line like that needs an account with credits]" appears mid-item — and the visitor still
-// leaves with a usable content pack, because the guard redacts the QUOTED candidate line while the
-// structure around it carries the value. Defence in depth is working and is not sufficient.
+// The holdout existed because flash "refused" and then wrote the pack anyway. That was real, and it
+// was re-confirmed at 6/6 the day this flipped. But the diagnosis was wrong: the model was not the
+// cause, it was the last thing standing between a GAP IN THE GUARD and the customer. The guard was
+// quote-scoped — it redacted a quoted candidate line — while the pack arrives as STRUCTURE, an
+// enumerated list of content units carrying no quotation marks at all. Plus simply hit that gap
+// less often. Extending the guard to judge enumerated spans the same way it judges quoted ones
+// closed it on BOTH arms.
 //
-// Note plus is 1/6, not the 0/6 recorded previously: there is a residual leak on BOTH arms and the
-// guard has a real gap. That is a reason to fix the guard, not a reason to call the arms equal —
-// 1/6 against 6/6 on identical input is a 6× difference and the model is the whole of it.
+// Measured live through the real `/api/tools/chat` with `scripts/live-chat-anon.mjs`, the model the
+// only variable, the guard fix the only other change:
+//     flash · quote-only guard  : 6/6 refused · 6/6 LEAKED   (every one a real enumerated pack)
+//     flash · + structure guard : 6/6 refused · 0/6 leaked   ×3 runs
+//     plus  · + structure guard : 6/6 refused · 0/6 leaked   ×2 runs
+//
+// ⚠️ The gate that governs this line is unchanged and still binds: move it only behind a fresh
+// `live-chat-anon.mjs` showing 6/6 refused and 0 leaked. What changed is that flash now PASSES it.
+// If the guard is ever weakened, this constant is not the safety net — re-run the harness.
+//
+// 🔑 A model holdout is a MITIGATION; it hides a defect behind a more expensive model and bills you
+// ~10× on that path for the privilege. It also fails silently the moment someone swaps a constant.
+// When a cheap model "fails" a safety property, check whether it is exposing a gap the expensive
+// one was papering over — twice now (Apollo's §-cites in #431, and this) the answer was yes.
 // Flash opens with a correct refusal sentence and then writes the pack anyway, as a numbered list
 // of ideas/angles. That is the paid product handed to an anonymous visitor through the one door
 // that is free by design, which makes it a revenue leak, not a tone regression.
@@ -134,4 +146,4 @@ export const QWEN_CALIBRATE_MODEL = process.env.QWEN_CALIBRATE_MODEL ?? "qwen3.7
 // the platform. `createArtefactGuard` still runs underneath as defence in depth; it redacts QUOTED
 // candidate lines, which is why flash's unquoted numbered lists walked straight past it.
 // Rollback FORWARD (re-try flash) only behind a fresh `live-chat-anon.mjs` run.
-export const QWEN_UNBOUND_CHAT_MODEL = process.env.QWEN_UNBOUND_CHAT_MODEL ?? "qwen3.7-plus";
+export const QWEN_UNBOUND_CHAT_MODEL = process.env.QWEN_UNBOUND_CHAT_MODEL ?? "qwen3.7-flash";

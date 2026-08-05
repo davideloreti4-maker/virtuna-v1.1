@@ -547,6 +547,55 @@ const LEAK_REDACTION = "[a line like that needs an account with credits]";
 const QUOTE_OPENERS = new Set(['"', "“", "«"]);
 const QUOTE_CLOSERS = new Set(['"', "”", "»"]);
 
+/**
+ * ── The STRUCTURE half of the guard (2026-08-05) ──────────────────────────────
+ *
+ * The quote rule above assumes the artefact arrives as a QUOTED candidate line. Re-measured live,
+ * it does not. Both arms leak through the same blind spot, and nothing above sees a character of it:
+ *
+ *     ### 1. The "Subscription Vampire" Audit
+ *     *   **Concept:** A screen-recording walkthrough showing how to find and cancel hidden charges
+ *     *   **Mechanism:** Utility & Fear of Loss. People hate losing money they didn't know…
+ *     *   **CTA:** Save this for your next bank statement check.
+ *
+ * Not one quotation mark. The pack arrives as STRUCTURE — an enumerated list of content units — so
+ * a quote-scoped redactor streams straight past it. Measured 2026-08-05 through the real
+ * `/api/tools/chat` with `scripts/live-chat-anon.mjs`: flash leaked 6/6, plus 1/6. The model was
+ * carrying this, which is why the platform was paying ~10x on this one path for a property the
+ * guard should own. A holdout is a mitigation; this is the fix.
+ *
+ * THE RULE, and why it is safe: in an unbound session there is NO generator bound, so there is no
+ * legitimate reason to emit a long enumerated content unit — the honest register is prose, which is
+ * also what the knowledge core already asks for ("NOT a 5-point breakdown of 'it depends'",
+ * "Direct opinion over enumerated options"). SHORT list items still pass untouched, exactly as a
+ * short quotation does: a label, a feature name, a two-word bullet is not the artefact. What gets
+ * redacted is a list item long enough to BE a hook, an idea or a script beat.
+ *
+ * A contiguous run of redacted items collapses to ONE marker — five stacked markers would read as a
+ * malfunction rather than a wall.
+ */
+/**
+ * 30, not 60. Tuned against the real captured leak rather than guessed: at 60 the pack's `**CTA:**
+ * Save this for your next bank statement check.` (53) and its `### 1. The "Subscription Vampire"
+ * Audit` (35) both walked through — a CTA and a concept name ARE the artefact. The benign items
+ * this must not touch are far shorter ("Hooks" 5, "Scripts" 7, "Audience reads" 14), so the gap is
+ * wide and 30 sits in it.
+ *
+ * The deliberate cost: a genuine 30+ char marketing bullet ("**Hooks** — openers judged against
+ * your audience") is walled too. That is the right side to err on — over-redacting a sales bullet
+ * costs a sentence, under-redacting hands over the paid product — and prose is the intended
+ * register on this path regardless.
+ */
+const LEAK_MIN_STRUCTURED_LENGTH = 30;
+const LEAK_STRUCTURED_REDACTION = "[the pack itself needs an account with credits]";
+/** A markdown list item (`-`, `*`, `+`, `1.`, `1)`) or heading (`#`…`######`) carrying content. */
+const STRUCTURED_LINE = /^[ \t]{0,6}(?:[-*+]|\d{1,2}[.)]|#{1,6})[ \t]+\S/;
+/** The marker alone. Deliberately WITHOUT the trailing `\S` of the detector above, which would
+ *  swallow the body's first character and undercount its length by one. */
+const STRUCTURED_MARKER = /^[ \t]{0,6}(?:[-*+]|\d{1,2}[.)]|#{1,6})[ \t]+/;
+/** Longest prefix needed to decide the regex above — `      ###### x` is 13. */
+const STRUCTURE_PROBE_CHARS = 13;
+
 interface ArtefactGuard {
   /** Feed a streamed delta; emits whatever is now safe to show. */
   push: (delta: string) => void;
@@ -558,6 +607,14 @@ function createArtefactGuard(onToken: (delta: string) => void): ArtefactGuard {
   let open = false; // inside a quotation
   let span = ""; // the withheld quotation, including its opening mark
   let full = ""; // everything emitted, for persistence
+
+  // ── line state, for the structure rule ────────────────────────────────────
+  /** At a line start we do not yet know if this is a list item, so hold a few chars and look. */
+  let probe: string | null = ""; // null once the line is decided as prose
+  /** The withheld structured line, once the probe matched. */
+  let structured: string | null = null;
+  /** Collapses a contiguous run of redacted items into one marker. */
+  let runRedacted = false;
 
   const emit = (s: string) => {
     if (!s) return;
@@ -573,39 +630,120 @@ function createArtefactGuard(onToken: (delta: string) => void): ArtefactGuard {
     open = false;
   };
 
+  /** Feed one char through the QUOTE machine (the original behaviour, unchanged). */
+  const pushQuoted = (ch: string) => {
+    if (!open) {
+      if (QUOTE_OPENERS.has(ch)) {
+        open = true;
+        span = ch;
+      } else {
+        emit(ch);
+      }
+      return;
+    }
+    // A newline means the quote never closed — almost certainly punctuation, not a quotation.
+    // Release it verbatim rather than swallowing the rest of the answer.
+    if (ch === "\n") {
+      emit(span + ch);
+      span = "";
+      open = false;
+      return;
+    }
+    if (QUOTE_CLOSERS.has(ch)) {
+      closeSpan(ch);
+      return;
+    }
+    span += ch;
+  };
+
+  const pushQuotedAll = (s: string) => {
+    for (const ch of s) pushQuoted(ch);
+  };
+
+  /** A held structured line is complete: redact it, or release it through the quote machine. */
+  const settleStructured = (withNewline: boolean) => {
+    const line = structured ?? "";
+    structured = null;
+    // The BODY is what decides — the marker itself ("*   ", "### ") is never the artefact.
+    const body = line.replace(STRUCTURED_MARKER, "").trim();
+    if (body.length >= LEAK_MIN_STRUCTURED_LENGTH) {
+      // One marker for the whole run; subsequent items in the run vanish silently.
+      if (!runRedacted) emit(LEAK_STRUCTURED_REDACTION + (withNewline ? "\n" : ""));
+      runRedacted = true;
+      return;
+    }
+    runRedacted = false;
+    pushQuotedAll(line + (withNewline ? "\n" : ""));
+  };
+
+  /** Start of a line: reset the probe so the next chars are tested for a list marker. */
+  const beginLine = () => {
+    probe = "";
+  };
+
   return {
     push(delta) {
       for (const ch of delta) {
-        if (!open) {
-          if (QUOTE_OPENERS.has(ch)) {
-            open = true;
-            span = ch;
-          } else {
-            emit(ch);
+        // 1. holding a structured line — buffer to the newline, then judge it
+        if (structured !== null) {
+          if (ch === "\n") {
+            settleStructured(true);
+            beginLine(); // the NEXT line must be probed too, or a pack's 2nd item streams as prose
+          } else structured += ch;
+          continue;
+        }
+
+        // 2. probing a fresh line for a list/heading marker
+        if (probe !== null) {
+          if (ch === "\n") {
+            // An empty or marker-less short line. A blank line ends a run of redacted items.
+            const held = probe;
+            probe = null;
+            if (held.trim() === "" && runRedacted) {
+              beginLine();
+              continue; // swallow the blank line INSIDE a redacted run, so it reads as one wall
+            }
+            runRedacted = false;
+            pushQuotedAll(held + "\n");
+            beginLine();
+            continue;
+          }
+          probe += ch;
+          if (STRUCTURED_LINE.test(probe)) {
+            structured = probe;
+            probe = null;
+            continue;
+          }
+          // Enough characters seen to know this line carries no marker — release and stream on.
+          if (probe.length >= STRUCTURE_PROBE_CHARS) {
+            const held = probe;
+            probe = null;
+            runRedacted = false;
+            pushQuotedAll(held);
           }
           continue;
         }
-        // A newline means the quote never closed — almost certainly punctuation, not a quotation.
-        // Release it verbatim rather than swallowing the rest of the answer.
-        if (ch === "\n") {
-          emit(span + ch);
-          span = "";
-          open = false;
-          continue;
-        }
-        if (QUOTE_CLOSERS.has(ch)) {
-          closeSpan(ch);
-          continue;
-        }
-        span += ch;
+
+        // 3. ordinary prose — the original char-level quote machine
+        pushQuoted(ch);
+        if (ch === "\n") beginLine();
       }
     },
     flush() {
+      // A structured line unterminated at end-of-stream still gets judged: end-of-stream is a line
+      // ending. Releasing it unjudged would reopen the leak on the last (and often longest) item.
+      if (structured !== null) settleStructured(false);
+      if (probe !== null) {
+        const held = probe;
+        probe = null;
+        pushQuotedAll(held);
+      }
       // An unterminated quotation at end-of-stream: release it, since we cannot judge a quote that
       // never closed and silently eating the tail would be worse than the leak this guards.
       if (open && span) emit(span);
       span = "";
       open = false;
+      runRedacted = false;
       return full;
     },
   };
