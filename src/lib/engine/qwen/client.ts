@@ -101,6 +101,29 @@ export const QWEN_APOLLO_MODEL    = process.env.QWEN_APOLLO_MODEL    ?? "qwen3.7
 // Note this was never the Apollo failure mode: CALIBRATE runs thinking OFF
 // (enrich-signature.ts:391, D-01). Rollback: QWEN_CALIBRATE_MODEL=qwen3.7-plus.
 export const QWEN_CALIBRATE_MODEL = process.env.QWEN_CALIBRATE_MODEL ?? "qwen3.7-flash";
+// BAKE-WATCH model — the per-video call in the audience bake (enrich-signature's Call A).
+//
+// This was the LAST call in the platform still routing video to omni, and it was an exception to
+// the policy three lines above rather than an instance of it: omni exists because 3.7 is DEAF, so
+// its scope is audio. A sighted-but-deaf call belongs on the reasoning family.
+//
+// It stayed on omni because the bake watch used to be the only place we had audio at all — the
+// system prompt said "WATCH the visuals AND LISTEN to the audio". But the same Apify bundle scrape
+// that returns the mp4 ALSO returns TikTok's native subtitles, free, and this function was already
+// fetching them — just afterwards, for the synthesis payload. Moving that fetch ahead of the watch
+// hands the speech to a deaf model as TEXT, which is exactly the arrangement the fold already runs
+// (`wave3/fold-prompts.ts`: "qwen3.7-flash ... WATCHES the video (sighted; deaf — audio is in the
+// text block)") and the arrangement the Wave 0 split shipped in #433.
+//
+// What is genuinely lost is non-speech audio character — music, sfx, delivery tone — which a
+// transcript cannot carry. The watch schema's `audio` field is now scoped to what the transcript
+// supports and must never invent the rest; "no speech" was already a legal value.
+//
+// SCOPED rather than folded into QWEN_REASONING_MODEL for the reason every constant here is
+// scoped: the bake is a one-time, per-audience, user-visible-quality path, so it should be
+// rollable without moving chat/decode/adapt/fold with it.
+// Rollback: QWEN_WATCH_MODEL=qwen3.5-omni-flash (restores the hearing watch verbatim).
+export const QWEN_WATCH_MODEL     = process.env.QWEN_WATCH_MODEL     ?? "qwen3.7-flash";
 // UNBOUND-CHAT model (an anonymous /go visitor's chat turn) — the THIRD holdout, and the third
 // time the same lesson has been paid for: a cheaper model can pass every harness the swap thought
 // to run and fail the one it did not.
