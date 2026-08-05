@@ -590,6 +590,12 @@ export function AmbientOverviewRail({
         tier: meta.tier,
         conceptLabel: d?.kind ?? "concept",
         stimulusKey: detailId,
+        // The stimulus text the row was fired on. Omitting it was measured live on production
+        // 2026-08-05: every text/hook drill headed itself "Untitled" (drillIdentity's empty-title
+        // fallback) while the concept sat right there on the descriptor — the ARM panel two
+        // branches up already reads the same field. It also starves the Brain tab, whose
+        // attention scrubber falls back to the coded reason labels when the transcript is absent.
+        ...(d?.conceptText?.trim() ? { transcript: d.conceptText.trim() } : {}),
       });
       return (
         <div className={sheet ? SHEET_SHELL : "flex h-full w-full"}>
