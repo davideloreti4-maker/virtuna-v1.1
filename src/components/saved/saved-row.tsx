@@ -212,19 +212,26 @@ export function SavedRow({
           </span>
         </button>
 
-        {/* ── §R5-10 the rail: fixed columns so the numbers form a column ──── */}
+        {/* ── §R5-10 the rail: fixed columns so the numbers form a column ────
+            §R5-13 the ACTION column is reserved only from `sm` up. The rail is `shrink-0`, so
+            every pixel it reserves is taken from the sentence beside it — and measured live at
+            390x844 the reserved 92+152+14+gaps came to 282px of a 358px content width, leaving
+            the title button **12px**. Every hook wrapped to ten one-word lines, one word per
+            row, down the whole shelf. Nothing flagged it because there is no horizontal
+            overflow: the text wraps instead, so `scrollWidth === clientWidth` reads clean, and
+            jsdom has no layout at all. Reserving the column was never right below `sm` anyway —
+            what it holds is hover-only, and a touch pointer has no hover to give it. */}
         <span
-          className="grid shrink-0 items-center gap-3 pt-1.5"
-          style={{
-            gridTemplateColumns: [
-              reserveThumb ? "34px" : null,
-              "92px",
-              reserveAction ? "152px" : null,
-              "14px",
-            ]
-              .filter(Boolean)
-              .join(" "),
-          }}
+          className={cn(
+            "grid shrink-0 items-center gap-3 pt-1.5",
+            reserveThumb
+              ? reserveAction
+                ? "grid-cols-[34px_92px_14px] sm:grid-cols-[34px_92px_152px_14px]"
+                : "grid-cols-[34px_92px_14px]"
+              : reserveAction
+                ? "grid-cols-[92px_14px] sm:grid-cols-[92px_152px_14px]"
+                : "grid-cols-[92px_14px]",
+          )}
         >
           {/* 1. outlier poster */}
           {reserveThumb && (
@@ -259,16 +266,28 @@ export function SavedRow({
             {vm.metric.measured && <span className="text-foreground">{vm.metric.measured}</span>}
           </span>
 
-          {/* 3. the forward action — reserved space, so hover moves nothing */}
+          {/* 3. the forward action — reserved space, so hover moves nothing.
+              Hidden outright below `sm`: it is revealed by hover, and a touch pointer never
+              hovers, so below that width it is a column that can only ever be empty. */}
           {reserveAction && (
-          <span className="text-right">
+          <span className="hidden text-right sm:block">
             {forward && !selectMode && (
               <button
                 type="button"
                 onClick={() => void handleForward()}
                 disabled={launching}
                 className={cn(
+                  // ⚠️ `pointer-events-none` is load-bearing, not tidying. `opacity-0` hides this
+                  // button but leaves it hit-testing, and it is not a benign one: onClick POSTs
+                  // `forward.endpoint`, which RUNS A BILLABLE SKILL. Measured at 390x844 before
+                  // this line, `document.elementFromPoint` at the button's own centre returned the
+                  // button — an invisible 88x20 tap target sitting over the right-hand side of
+                  // every Library row, on a pointer that could never reveal it. Tapping there
+                  // spent the creator's credits on a run they never asked for. The `sm:block`
+                  // above closes it for phones; this closes it for a touch TABLET, which is wide
+                  // enough to render the column and still has no hover to reveal it.
                   "whitespace-nowrap text-body text-foreground-secondary opacity-0 transition-opacity",
+                  "pointer-events-none group-hover:pointer-events-auto focus-visible:pointer-events-auto",
                   "hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none group-hover:opacity-100",
                   "disabled:opacity-60",
                 )}
@@ -287,7 +306,12 @@ export function SavedRow({
                 size={13}
                 className={cn(
                   "text-foreground-muted transition-[opacity,transform]",
-                  expanded ? "rotate-180 opacity-100" : "opacity-0 group-hover:opacity-100",
+                  // Below `sm` the caret is always drawn: it is the ONLY thing on the row that
+                  // says a row opens, and hover — the thing that reveals it everywhere else —
+                  // does not exist on the pointer that reaches this width.
+                  expanded
+                    ? "rotate-180 opacity-100"
+                    : "opacity-100 sm:opacity-0 sm:group-hover:opacity-100",
                 )}
                 aria-hidden="true"
               />

@@ -60,7 +60,18 @@ export function SurfaceHeader({
   className?: string;
 }) {
   return (
-    <header className={cn("flex items-start justify-between gap-3", className)}>
+    // The title and the actions sit on ONE row only once there is room for both. The actions are
+    // `shrink-0` — they have to be, a search field that collapses to nothing is worse than one
+    // that wraps — so on a narrow viewport they take their width off the title instead. Measured
+    // on /library at 390x844: the actions took 330px of a 358px content width and left the h1 a
+    // **16px** box for a 59px word, so "Library" was painted straight through the search field
+    // underneath it. Stacking below `sm` is the whole fix; above it nothing moves.
+    <header
+      className={cn(
+        "flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between",
+        className,
+      )}
+    >
       <div className="min-w-0">
         <h1 className="text-subhead font-semibold text-foreground lg:text-heading">
           {title}
@@ -69,7 +80,9 @@ export function SurfaceHeader({
           <p className="mt-1 max-w-2xl text-label text-foreground-secondary">{subtitle}</p>
         ) : null}
       </div>
-      {actions ? <div className="flex shrink-0 items-center gap-2 sm:gap-3">{actions}</div> : null}
+      {actions ? (
+        <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto sm:gap-3">{actions}</div>
+      ) : null}
     </header>
   );
 }

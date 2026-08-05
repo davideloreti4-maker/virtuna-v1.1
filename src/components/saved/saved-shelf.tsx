@@ -293,7 +293,9 @@ export function SavedShelf() {
           }
           actions={
             <>
-              <div className="relative min-w-[230px]">
+              {/* Stacked under the title below `sm` (see SurfaceHeader), where the row is the
+                  full measure and the field should use it rather than sit at its 230px minimum. */}
+              <div className="relative min-w-0 flex-1 sm:min-w-[230px] sm:flex-none">
                 <MagnifyingGlass
                   size={15}
                   className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-foreground-muted"

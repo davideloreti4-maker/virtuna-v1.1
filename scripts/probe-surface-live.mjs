@@ -175,7 +175,13 @@ for (const route of ROUTES) {
   try {
     await page.goto(`${BASE}${route}`, { waitUntil: 'domcontentloaded', timeout: 90000 });
     // never networkidle — see the header
-    await page.waitForSelector('main, textarea, [data-testid]', { timeout: 120000 });
+    //
+    // `form, h1` are here because the ONBOARDING routes have none of the other three. /login
+    // renders <LoginForm /> straight out of the page with no <main>, no textarea and no
+    // data-testid, so the original selector waited the full 120s and reported "✗ did not load"
+    // on a page that renders fine. A probe that cannot open the signed-OUT half of the product
+    // is a probe that will keep reporting the signed-out half is broken.
+    await page.waitForSelector('main, textarea, [data-testid], form, h1', { timeout: 120000 });
     await page.waitForTimeout(3500);
   } catch (e) {
     console.log(`  ✗ did not load: ${e.message.split('\n')[0]}`);
@@ -184,8 +190,15 @@ for (const route of ROUTES) {
     continue;
   }
 
-  if (page.url().includes('/login')) {
-    console.log('  ✗ redirected to /login — the storage state is stale. Regenerate it (see header).');
+  // Landing on /login means the storage state expired — UNLESS /login is what was asked for, or
+  // the route legitimately bounces anonymous visitors there. Comparing against the REQUESTED
+  // route is the whole fix: the bare `includes('/login')` reported a stale state while probing
+  // /login itself, which is the one route where arriving at /login is a pass.
+  if (page.url().includes('/login') && !route.startsWith('/login')) {
+    console.log(
+      `  ✗ ${route} redirected to /login — either the storage state is stale (regenerate it, see` +
+        ' header) or this route requires auth and the probe is running anonymously.',
+    );
     findings++;
     await page.close();
     continue;
