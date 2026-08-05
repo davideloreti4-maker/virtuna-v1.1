@@ -527,6 +527,15 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // Null before first thread is created (first Ideas/Hooks send creates it).
   const [openThreadId, setOpenThreadId] = useState<string | null>(null);
 
+  // Keep the newest turn in view. Keyed on the open thread so switching threads always lands on
+  // the latest turn rather than inheriting a pin the creator released in the previous one.
+  //
+  // Declared HERE, immediately after `openThreadId` (its only input), rather than beside the
+  // thread render — the in-thread card handoffs below (`handleWriteScript`, `handleDevelopRemix`)
+  // FIRE runs and must re-pin, and a `const` read from a callback defined above its declaration
+  // is a TDZ throw, not a stale closure.
+  const { registerScrollRegion, scrollThreadToBottom } = useThreadAutoscroll(openThreadId);
+
   // ── Active-thread switch signal (multi-thread chat history) ─────────────────
   // Bumped by the sidebar when the user opens a new thread or re-opens a past
   // one. The rehydration effect below watches it to clear the current thread's
@@ -1192,6 +1201,13 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // The hook is the anchor (PINNED: /api/tools/script accepts { ask?, anchor, platform }).
   // CRITICAL: NEVER sets pendingSealRef / calls stream.start — Script never navigates to /analyze.
   const handleWriteScript = useCallback((hookLine: string, _audienceArchetype: string) => {
+    // The script appends at the BOTTOM, but the hook card that started it can be thousands of
+    // pixels up — every completed turn keeps its cards, so pressing "Write the script →" on a
+    // card from an earlier turn is normal. Measured signed-in 2026-08-05: the run streamed a
+    // full script 8,478px below the viewport and the view never moved, so the tap read as the
+    // app doing nothing for 90s. Same rule as a chip: an explicit tap is consent to be taken
+    // to its result (see sendChatFollowup).
+    scrollThreadToBottom();
     // This FIRES a script run (below) rather than arming one, so it names the RUN. Arming the
     // composer here would strand the creator on Script after a card CTA they never aimed at
     // the field — the one-shot's whole point.
@@ -1200,7 +1216,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     script.reset();
     // ask empty — the carried hookLine anchors the script generation.
     void script.start("", platform, hookLine, intent);
-  }, [script, platform, intent]);
+  }, [script, platform, intent, scrollThreadToBottom]);
 
   // ── Script → Test handoff (Plan 06-05 — D-05/D-06, SCRIPT-01) ─────────────
   // Invoked by ScriptCardRenderer via ScriptTestContext when "Test full →" is clicked.
@@ -1220,6 +1236,9 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // CRITICAL: this fires ONLY on explicit tap (D-05 honesty spine).
   // CRITICAL: NEVER arms pendingSealRef / calls stream.start (T-03-13/T-06-20).
   const handleDevelopRemix = useCallback(async (adaptedHook: string, remixPlatform: string) => {
+    // Re-pin for the same reason handleWriteScript does: the developed hook cards land at the
+    // bottom of the thread, and the remix card that was tapped can be far above it.
+    scrollThreadToBottom();
     // POSTs a develop run below — it fires, so it names the RUN, not the composer's arm.
     noteRun("hooks");
     hooks.reset();
@@ -1254,7 +1273,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     } catch {
       // Network error — silent (user can retry)
     }
-  }, [hooks]);
+  }, [hooks, scrollThreadToBottom]);
 
   // ── Explore in-place thread reload (Plan 11-07 — RESEARCH Q2) ──────────────
   // After a tile "Remix → Read" tap, the remix-card persists to the SAME open
@@ -1449,10 +1468,6 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // ⚠️ `hasContent()` in use-active-run.ts must still EXCLUDE `followupText`. That exclusion is not
   // about this effect — it is what stops a late frame refilling an emptied stream and re-claiming
   // the tail (the duplicate-turn defect measured live on 2026-07-28). It stays load-bearing.
-
-  // Keep the newest turn in view. Keyed on the open thread so switching threads always lands on
-  // the latest turn rather than inheriting a pin the creator released in the previous one.
-  const { registerScrollRegion, scrollThreadToBottom } = useThreadAutoscroll(openThreadId);
 
   // ── Chat follow-up chips (chat-followups.ts) ───────────────────────────────
   // A tapped follow-up continues the conversation in THIS chat thread: it echoes the prompt as the
