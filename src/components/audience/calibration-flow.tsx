@@ -13,15 +13,12 @@
 import { useState, useRef, useEffect } from "react";
 import type { Audience } from "@/lib/audience/audience-types";
 import type { RevealData, CalibrationEvidence } from "@/lib/audience/calibration";
-import { formatCount } from "@/lib/account-metrics/account-metrics";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AudienceReveal } from "./audience-reveal";
 import { ConstellationMark } from "@/components/brand/constellation-mark";
-import {
-  ProgressChecklist,
-  type StageState,
-} from "@/components/thread/progress-checklist";
+import { CalibrationProgress } from "./calibration-progress";
+import type { StageState } from "@/components/thread/progress-checklist";
 import { calibrationVocabulary } from "@/lib/audience/calibration-stages";
 import { READING_CARD } from "@/components/reading/reading-section";
 import { cn } from "@/lib/utils";
@@ -91,7 +88,6 @@ export function CalibrationFlow({ audience, onDone, onSkip, prefillHandle, prefi
   const [revealData, setRevealData] = useState<RevealData | null>(null);
   const [evidence, setEvidence] = useState<CalibrationEvidence | null>(null);
   const [stages, setStages] = useState<StageState[]>([]);
-  const [avatarFailed, setAvatarFailed] = useState(false);
   const readerRef = useRef<ReadableStreamDefaultReader<string> | null>(null);
   const autoStartedRef = useRef(false);
 
@@ -323,72 +319,34 @@ export function CalibrationFlow({ audience, onDone, onSkip, prefillHandle, prefi
   // real. So the moment it lands, the wait stops being a spinner and becomes the account itself,
   // with the posts we are about to watch appearing underneath it.
   if (phase === "streaming") {
+    // Before the scrape returns there is no account to draw, so the mark carries the wait
+    // alongside the plan — /welcome is an onboarding screen with nothing else on it, and an
+    // unbranded spine on an empty page reads as a stall.
     if (!evidence) {
       return (
         <div className={cn("flex flex-col items-center gap-5 py-12", className)}>
           <ConstellationMark width={72} className="opacity-80" />
-          {/* Before the scrape returns there is nothing to show but the plan — which is still far
-              more than the one line that used to stand here for the first ~126s. */}
-          {stages.length > 0 ? (
-            <div className="w-full max-w-[320px]">
-              <ProgressChecklist stages={stages} plan={calibrationPlan} />
-            </div>
-          ) : (
-            <p className="text-sm text-foreground-secondary text-center max-w-xs">{statusMsg}</p>
-          )}
+          <div className="w-full max-w-[420px]">
+            <CalibrationProgress
+              evidence={null}
+              stages={stages}
+              plan={calibrationPlan}
+              statusMsg={statusMsg}
+            />
+          </div>
         </div>
       );
     }
 
     return (
       <div className={cn("flex flex-col gap-6 py-8", className)} data-testid="calibration-evidence">
-        {/* The account we actually read. */}
-        <div className={cn(READING_CARD, "flex items-center gap-3 px-4 py-3")}>
-          {evidence.avatarUrl && !avatarFailed ? (
-            // Ephemeral TikTok-CDN avatar — plain <img>, removes itself on error rather than
-            // leaving a broken box. eslint-disable-next-line @next/next/no-img-element
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={evidence.avatarUrl}
-              alt=""
-              className="h-11 w-11 shrink-0 rounded-full border border-white/[0.06] object-cover"
-              onError={() => setAvatarFailed(true)}
-            />
-          ) : (
-            <div className="h-11 w-11 shrink-0 rounded-full border border-white/[0.06] bg-white/[0.03]" />
-          )}
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-reading font-medium text-foreground">
-              {evidence.displayName || `@${evidence.handle}`}
-            </p>
-            <p className="mt-0.5 text-body text-foreground-muted">
-              @{evidence.handle}
-              {evidence.followerCount > 0 && ` · ${formatCount(evidence.followerCount)} followers`}
-            </p>
-          </div>
-        </div>
-
-        {/* The spine replaces the lone status line once phases are arriving. `statusMsg` stays as
-            the fallback so a stream that somehow sends no `stage` frame still says something. */}
-        {stages.length > 0 ? (
-          <div data-testid="calibration-status">
-            <ProgressChecklist stages={stages} plan={calibrationPlan} />
-          </div>
-        ) : (
-          <p className="text-sm text-foreground-secondary" data-testid="calibration-status">
-            {statusMsg}
-          </p>
-        )}
-
-        {/* The posts we are about to watch. Only covers we actually have — a post with no cover
-            keeps its slot and shows nothing, rather than rendering a broken image. */}
-        {evidence.videos.length > 0 && (
-          <div className="grid grid-cols-4 gap-2 sm:grid-cols-6" data-testid="calibration-covers">
-            {evidence.videos.slice(0, 12).map((v, i) => (
-              <CalibrationCover key={i} coverUrl={v.coverUrl} index={i} />
-            ))}
-          </div>
-        )}
+        <CalibrationProgress
+          evidence={evidence}
+          stages={stages}
+          plan={calibrationPlan}
+          statusMsg={statusMsg}
+          platformLabel={(prefillPlatform ?? audience.platform ?? "tiktok").toUpperCase()}
+        />
       </div>
     );
   }
@@ -482,33 +440,6 @@ export function CalibrationFlow({ audience, onDone, onSkip, prefillHandle, prefi
   return null;
 }
 
-/**
- * One scraped post, appearing while we watch it. Staggered so the grid fills in rather than
- * snapping in all at once — the posts really are read in order, and a wall of covers appearing
- * instantly reads as a mock-up, not as work.
- *
- * A post with no cover keeps its slot and shows nothing: we never paint a picture we don't have.
- */
-function CalibrationCover({ coverUrl, index }: { coverUrl: string | null; index: number }) {
-  const [failed, setFailed] = useState(false);
-  const show = coverUrl && !failed;
-
-  return (
-    <div
-      className="reading-reveal aspect-[9/16] overflow-hidden rounded-md border border-white/[0.06] bg-white/[0.02]"
-      style={{ animationDelay: `${index * 0.06}s` }}
-      data-testid="calibration-cover"
-    >
-      {show && (
-        // Ephemeral TikTok-CDN cover — plain <img>, decorative alt.
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={coverUrl}
-          alt=""
-          className="h-full w-full object-cover"
-          onError={() => setFailed(true)}
-        />
-      )}
-    </div>
-  );
-}
+// The account header and the cover grid that stood here are now CalibrationProgress's, shared
+// with /audience/new. This file keeps what is genuinely its own: the idle form, the fallback and
+// error terminals, and the done reveal.

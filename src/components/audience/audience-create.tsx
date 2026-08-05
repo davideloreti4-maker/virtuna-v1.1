@@ -20,7 +20,9 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import type { CalibrationEvidence } from "@/lib/audience/calibration";
 import type { Audience } from "@/lib/audience/audience-types";
-import { formatCount } from "@/lib/account-metrics/account-metrics";
+import { calibrationVocabulary } from "@/lib/audience/calibration-stages";
+import type { StageState } from "@/components/thread/progress-checklist";
+import { CalibrationProgress } from "./calibration-progress";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -86,6 +88,7 @@ export function AudienceCreate({ initialDoor, prefillHandle, className }: Audien
   const [phase, setPhase] = useState<Phase>("form");
   const [statusMsg, setStatusMsg] = useState("");
   const [evidence, setEvidence] = useState<CalibrationEvidence | null>(null);
+  const [stages, setStages] = useState<StageState[]>([]);
   const [errorMsg, setErrorMsg] = useState("");
   const [fallbackMsg, setFallbackMsg] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -138,6 +141,9 @@ export function AudienceCreate({ initialDoor, prefillHandle, className }: Audien
     setSubmitting(true);
     setErrorMsg("");
     setEvidence(null);
+    // A retry must not inherit the previous attempt's spine, or the new run opens with steps
+    // already marked done.
+    setStages([]);
     setPhase("streaming");
     setStatusMsg(door === "describe" ? "Reading your description…" : "Reading the account…");
 
@@ -190,6 +196,8 @@ export function AudienceCreate({ initialDoor, prefillHandle, className }: Audien
           let parsed: {
             message?: string;
             audience?: Audience;
+            name?: string;
+            status?: StageState["status"];
           } & Partial<CalibrationEvidence>;
           try {
             parsed = JSON.parse(raw) as typeof parsed;
@@ -203,6 +211,23 @@ export function AudienceCreate({ initialDoor, prefillHandle, className }: Audien
             case "status":
               setStatusMsg(parsed.message ?? "");
               break;
+            case "stage":
+              // The route has emitted these since 2026-08-02 and this client dropped every one
+              // of them, so /audience/new sat on a pulsing dot for ~2 minutes while /welcome —
+              // the SAME pipeline — drew the progress spine. Last-write-wins per name, order
+              // preserved: a repeated frame cannot duplicate a row, and a `done` cannot be
+              // overwritten by a stale `active`.
+              if (parsed.name && parsed.status) {
+                const { name, status } = parsed;
+                setStages((prev) => {
+                  const i = prev.findIndex((s) => s.name === name);
+                  if (i === -1) return [...prev, { name, status }];
+                  const next = [...prev];
+                  next[i] = { name, status };
+                  return next;
+                });
+              }
+              break;
             case "evidence":
               if (parsed.handle) {
                 setEvidence({
@@ -212,6 +237,7 @@ export function AudienceCreate({ initialDoor, prefillHandle, className }: Audien
                   followerCount: parsed.followerCount ?? 0,
                   heartCount: parsed.heartCount ?? 0,
                   videoCount: parsed.videoCount ?? 0,
+                  verified: parsed.verified,
                   videos: parsed.videos ?? [],
                 });
               }
@@ -280,45 +306,23 @@ export function AudienceCreate({ initialDoor, prefillHandle, className }: Audien
     );
   }
 
-  // ── Streaming: the reveal (evidence the moment it exists, dot while building) ──
+  // ── Streaming: the account itself, with the real pipeline running through it ──
+  //
+  // `hasHandle` is the discriminator calibrationVocabulary documents — NOT the audience type.
+  // The "From a handle" door builds a TARGET audience from a real account, and that run really
+  // is reading an account, so it takes the account vocabulary. Only the describe door has no
+  // handle behind it.
   if (phase === "streaming") {
+    const { plan } = calibrationVocabulary(door !== "describe");
     return (
       <div className={cn("flex flex-col gap-4", className)} data-testid="create-reveal">
-        <div className="rounded-2xl bg-white/[0.02] p-5">
-          {evidence ? (
-            <>
-              <div className="flex items-baseline gap-2.5">
-                <span className="text-subhead font-semibold tracking-[-0.01em] text-foreground">
-                  @{evidence.handle}
-                </span>
-                <span className="font-mono text-micro uppercase tracking-[0.08em] text-foreground-muted">
-                  TikTok
-                </span>
-              </div>
-
-              <div className="mt-5 grid grid-cols-3 gap-3" data-testid="reveal-figures">
-                <RevealFigure n={evidence.videos.length} label="Videos" exact />
-                <RevealFigure n={evidence.followerCount} label="Followers" />
-                <RevealFigure n={evidence.heartCount} label="Likes" />
-              </div>
-
-              {evidence.videos.length > 0 && (
-                <div className="mt-5 grid grid-cols-4 gap-1.5 sm:grid-cols-8" data-testid="reveal-strip">
-                  {evidence.videos.slice(0, 8).map((v, i) => (
-                    <RevealCover key={i} coverUrl={v.coverUrl} index={i} />
-                  ))}
-                </div>
-              )}
-            </>
-          ) : (
-            <p className="text-sm text-foreground-secondary">{statusMsg}</p>
-          )}
-
-          <div className="mt-5 flex items-center gap-2" data-testid="create-building">
-            <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-[color:var(--color-accent)]" />
-            <span className="text-body text-foreground-secondary">Building audience</span>
-          </div>
-        </div>
+        <CalibrationProgress
+          evidence={evidence}
+          stages={stages}
+          plan={plan}
+          statusMsg={statusMsg}
+          testId="create-building"
+        />
       </div>
     );
   }
@@ -465,34 +469,6 @@ export function AudienceCreate({ initialDoor, prefillHandle, className }: Audien
   );
 }
 
-/** One reveal figure — big tabular-nums number, mono small-caps unit. */
-function RevealFigure({ n, label, exact }: { n: number; label: string; exact?: boolean }) {
-  return (
-    <div className="flex flex-col gap-0.5">
-      <span className="text-heading font-semibold tabular-nums tracking-[-0.01em] text-foreground">
-        {exact ? n : formatCount(n)}
-      </span>
-      <span className="font-mono text-micro uppercase tracking-[0.08em] text-foreground-muted">
-        {label}
-      </span>
-    </div>
-  );
-}
-
-/** One scraped cover — keeps its slot blank when TikTok's ephemeral CDN URL dies. */
-function RevealCover({ coverUrl, index }: { coverUrl: string | null; index: number }) {
-  const [failed, setFailed] = useState(false);
-  const show = coverUrl && !failed;
-  return (
-    <div
-      className="reading-reveal aspect-[9/16] overflow-hidden rounded-md border border-white/[0.06] bg-white/[0.02]"
-      style={{ animationDelay: `${index * 0.06}s` }}
-      data-testid="reveal-cover"
-    >
-      {show && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={coverUrl} alt="" className="h-full w-full object-cover" onError={() => setFailed(true)} />
-      )}
-    </div>
-  );
-}
+// RevealFigure / RevealCover lived here and are gone: both are now CalibrationProgress's job,
+// shared with /welcome. RevealFigure is the one that rendered `videos.length` as "Videos" —
+// the scraped window sold as the account's catalogue.

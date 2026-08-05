@@ -164,6 +164,14 @@ export interface CalibrationEvidence {
   heartCount: number;
   /** The account's total posted videos (profile-level, not the scraped window). */
   videoCount: number;
+  /**
+   * The platform's verified badge, straight off the scraped profile.
+   *
+   * Optional because a pre-2026-08-05 payload has no such field, and because the honest
+   * rendering of "we don't know" is identical to the rendering of "not verified" — no tick.
+   * Never inferred from follower count.
+   */
+  verified?: boolean;
   /** The posts we are about to watch, newest-first as the scraper returned them. */
   videos: { coverUrl: string | null; views: number }[];
 }
@@ -330,6 +338,7 @@ export async function calibrateFromScrape(
               followerCount: p.followerCount,
               heartCount: p.heartCount,
               videoCount: p.videoCount,
+              verified: p.verified,
               videos: vs.map((v) => ({ coverUrl: v.coverUrl ?? null, views: v.views })),
             });
           }
@@ -366,6 +375,7 @@ export async function calibrateFromScrape(
           followerCount: bundle.profile.followerCount,
           heartCount: bundle.profile.heartCount,
           videoCount: bundle.profile.videoCount,
+          verified: bundle.profile.verified,
           videos: bundle.videos.map((v) => ({
             coverUrl: v.coverUrl ?? null,
             views: v.views,

@@ -9,13 +9,13 @@
  *  - templates prefill the description (presets reborn as templates)
  *  - Instagram/YouTube on the connect door go to /api/connected-accounts/connect
  *    (analytics only — never the TikTok calibration pipeline)
- *  - the streaming reveal renders the evidence figures + covers + "Building audience"
+ *  - the streaming card renders the ACCOUNT's own totals + covers + the pipeline spine
  *  - done → router.push to the audience detail (the detail page IS the reveal)
  *  - error → the quiet inline line, back on the form
  *  - page wiring: ?door= and the legacy ?source=account deep-link
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, act, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, act, waitFor, within } from "@testing-library/react";
 import type React from "react";
 
 const pushMock = vi.fn();
@@ -228,7 +228,7 @@ describe("AudienceCreate — connect door, non-TikTok platforms", () => {
 // ─── Streaming reveal ─────────────────────────────────────────────────────────
 
 describe("AudienceCreate — streaming reveal", () => {
-  it("shows the evidence figures, at most 8 covers, and the building line", async () => {
+  it("shows the account's OWN totals — the profile count, never the scraped window", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       sseResponse([{ event: "evidence", data: EVIDENCE }], { hang: true }),
     );
@@ -239,12 +239,61 @@ describe("AudienceCreate — streaming reveal", () => {
     await clickContinue();
 
     await waitFor(() => expect(screen.getByTestId("reveal-figures")).toBeInTheDocument());
+    expect(screen.getByText("Zach King")).toBeInTheDocument();
     expect(screen.getByText("@zachking")).toBeInTheDocument();
-    expect(screen.getByText("12")).toBeInTheDocument(); // videos scraped — exact
     expect(screen.getByText("86.1M")).toBeInTheDocument(); // followers
     expect(screen.getByText("1.3B")).toBeInTheDocument(); // likes
-    expect(screen.getAllByTestId("reveal-cover")).toHaveLength(8);
-    expect(screen.getByText("Building audience")).toBeInTheDocument();
+
+    // THE REGRESSION. The fixture carries videoCount 610 and a 12-post scrape window, and this
+    // card used to render the window under a "Videos" label — so an account with 610 posts (or
+    // @mrbeast's few thousand) announced "12". The payload always knew better.
+    const figures = screen.getByTestId("reveal-figures");
+    expect(within(figures).getByText("610")).toBeInTheDocument();
+    expect(within(figures).queryByText("12")).not.toBeInTheDocument();
+
+    expect(screen.getAllByTestId("calibration-cover")).toHaveLength(12);
+  });
+
+  it("draws the pipeline spine from the route's stage frames", async () => {
+    // /audience/new consumed `status` and `evidence` and dropped every `stage` frame the route
+    // sends, so the longest wait in the product rendered as a pulsing dot while /welcome — the
+    // same SSE stream — drew the spine.
+    const fetchMock = vi.fn().mockResolvedValue(
+      sseResponse(
+        [
+          { event: "evidence", data: EVIDENCE },
+          { event: "stage", data: { name: "Reading your followers", status: "done" } },
+          { event: "stage", data: { name: "Watching your videos", status: "active" } },
+        ],
+        { hang: true },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<AudienceCreate />);
+    await typeHandle("zachking", "Your @handle");
+    await clickContinue();
+
+    await waitFor(() =>
+      expect(screen.getByLabelText("Watching your videos: active")).toBeInTheDocument(),
+    );
+    expect(screen.getByLabelText("Reading your followers: done")).toBeInTheDocument();
+    // The plan seeds the whole pipeline, so the step that has not started yet is still drawn.
+    expect(screen.getByLabelText("Building your audience profile: pending")).toBeInTheDocument();
+  });
+
+  it("shows the plan before any account or stage frame has arrived", async () => {
+    // The scrape takes ~126s to return the account. That whole first stretch used to be one
+    // line of text; it is the plan now.
+    const fetchMock = vi.fn().mockResolvedValue(sseResponse([], { hang: true }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<AudienceCreate />);
+    await typeHandle("zachking", "Your @handle");
+    await clickContinue();
+
+    await waitFor(() => expect(screen.getByTestId("calibration-status")).toBeInTheDocument());
+    expect(screen.getByLabelText("Reading your followers: active")).toBeInTheDocument();
   });
 
   it("done navigates to the new audience's detail page", async () => {
