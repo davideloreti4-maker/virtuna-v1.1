@@ -35,6 +35,7 @@ import { billUsage, creditGate } from "@/lib/billing/credit-gate";
 import { createOpenThreadLazy } from "@/lib/threads/threads";
 import { insertMessage } from "@/lib/threads/messages";
 import { kcStamp } from "@/lib/kc/kc-stamp";
+import { createLogger } from "@/lib/logger";
 import { resolveThreadAudience } from "@/lib/audience/resolve-thread-audience";
 import { GENERAL_BASELINE_SIGNATURE } from "@/lib/audience/general-baseline-signature";
 import { goalIntentToLens } from "@/lib/audience/intent-lens";
@@ -56,6 +57,8 @@ import {
 } from "@/lib/audience/population";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
 import type { FlashPersona } from "@/lib/engine/flash/flash-schema";
+
+const log = createLogger({ module: "tools.react" });
 
 // ── Request body schema (CLAUDE.md boundary rule) ──────────────────────────────
 // text: a non-whitespace thought; framing: optional, defaults to "hook" (RESEARCH A1 —
@@ -258,8 +261,33 @@ export async function POST(request: Request): Promise<Response> {
     audience?.signature ?? (audience?.is_general ? GENERAL_BASELINE_SIGNATURE : null);
   const wantPopulation =
     !!populationSignature && signatureHasPopulationAxes(populationSignature);
+  // ⚠️ ANNOUNCE THE SKIP (2026-08-05). A run that cannot project is the single cause of the "dead
+  // drill": the row still seals on the flash fraction, so the Overview looks healthy while Brain /
+  // Engagement / Audience can never open. That failure was previously invisible — no log, no Sentry,
+  // no UI state — and cost two full sessions to find. It is NOT hypothetical: an audience row that
+  // predates the signature pipeline (`signature: null`, `is_general: false`) falls straight through
+  // the fallback above, and so does one whose signature carries no v2 axes (no `topic_vocab`, or no
+  // persona with a `reaction`). Both are legacy shapes the CURRENT calibrate path no longer writes.
+  if (!wantPopulation) {
+    log.warn("population skipped — the depth drill will not open for this run", {
+      audienceId: audience.id,
+      audienceMode: audience.mode,
+      isGeneral: audience.is_general,
+      hasSignature: !!audience.signature,
+      // Distinguishes the two legacy shapes: no signature at all vs. a signature without v2 axes.
+      reason: !populationSignature ? "no_signature_and_not_general" : "signature_has_no_population_axes",
+    });
+  }
   const contentVectorPromise: Promise<ContentVector | null> = wantPopulation
-    ? characterizeContent(text, populationSignature!.audience.topic_vocab ?? []).catch(() => null)
+    ? characterizeContent(text, populationSignature!.audience.topic_vocab ?? []).catch((err) => {
+        // Was `.catch(() => null)` — a bare swallow. The projection is still non-fatal (the reaction
+        // must survive), but a throw here silently kills the drill, so it no longer passes unseen.
+        log.warn("characterizeContent failed — population will be null", {
+          audienceId: audience.id,
+          err: err instanceof Error ? err.message : String(err),
+        });
+        return null;
+      })
     : Promise.resolve(null);
 
   // default framing "hook" (first-2s "do you stop?" — RESEARCH A1). The client shows
@@ -309,8 +337,14 @@ export async function POST(request: Request): Promise<Response> {
   if (contentVector && populationSignature) {
     try {
       population = reactPopulation(populationSignature, contentVector);
-    } catch {
+    } catch (err) {
       population = null; // never let the projection break the reaction
+      // …but never let it fail QUIETLY either: this is the last of the three silences that made a
+      // dead drill undebuggable (the other two are the skip + the characterize catch above).
+      log.warn("reactPopulation threw — population will be null", {
+        audienceId: audience.id,
+        err: err instanceof Error ? err.message : String(err),
+      });
     }
   }
 

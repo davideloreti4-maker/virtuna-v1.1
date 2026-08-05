@@ -89,6 +89,39 @@ describe("buildOverviewData", () => {
     expect(vm.ranked[2]).toMatchObject({ id: "idea-1", state: "queued", stopPct: 0 });
   });
 
+  // ── noDepth — the sealed row that has nothing behind it ────────────────────────
+  // A run's % (flash reaction) and its depth (population projection) fail INDEPENDENTLY, so a row
+  // can carry a perfectly real verdict and still have no drill. That combination used to render as
+  // an ordinary door whose tap hit an empty `else` — no error, no log, no UI state — which is the
+  // defect this flag exists to make impossible.
+  it("marks a sealed row with no population as noDepth, so the board can stop dressing it as a door", () => {
+    const vm = buildOverviewData({
+      audience,
+      descriptors,
+      measured: { "hook-0": 41.9, "script-2": 20.0 },
+      depthless: { "hook-0": true },
+    });
+    expect(vm.ranked.find((r) => r.id === "hook-0")).toMatchObject({
+      state: "simulated",
+      stopPct: 41.9, // the verdict is REAL — it is only the depth that is missing
+      noDepth: true,
+    });
+    // A sealed row that DID project keeps its drill: the flag is per-row, never a board-wide mode.
+    expect(vm.ranked.find((r) => r.id === "script-2")).not.toHaveProperty("noDepth");
+  });
+
+  it("never marks a QUEUED row noDepth — un-run work has no depth yet by definition", () => {
+    // Guards the ordering inside the adapter: `depthless` is consulted only once a row is sealed.
+    // Without the `sealed &&` guard a stale/over-broad map would brand every un-run row a dead end.
+    const vm = buildOverviewData({
+      audience,
+      descriptors,
+      depthless: { "hook-0": true, "idea-1": true },
+    });
+    expect(vm.ranked.every((r) => r.state === "queued")).toBe(true);
+    for (const r of vm.ranked) expect(r).not.toHaveProperty("noDepth");
+  });
+
   it("passes a sim-in-flight through, and defaults watching to null at rest", () => {
     const rest = buildOverviewData({ audience, descriptors });
     expect(rest.watching).toBeNull();

@@ -80,7 +80,11 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
   return (
     <div
       className="elev-rest overflow-hidden rounded-xl border border-white/[0.06] bg-surface-sunken"
-      aria-label={`Hook #${rank}: ${hookLine.slice(0, 60)}`}
+      // The numeral is dropped here too on a projected card — otherwise a screen reader is told
+      // "Hook #1" while the sighted card shows no rank, which is the same unmeasured claim served
+      // only to the people who cannot see that it was withdrawn. The hook line already identifies
+      // the card, so nothing is lost. (Found in browser verification, not by the suite.)
+      aria-label={projected ? `Hook: ${hookLine.slice(0, 60)}` : `Hook #${rank}: ${hookLine.slice(0, 60)}`}
     >
       {/* FACE — always visible (D-11) */}
       <div className="flex flex-col gap-3 px-4 pb-3 pt-4">
@@ -90,8 +94,17 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
             header band above the hook — an almost-empty strip across the top of every card
             (owner-flagged). They are meta ABOUT the hook, so they ride the hook's own row. The
             archetype/rank EYEBROW stays retired (2026-07-21). */}
+        {/* ⚠️ The `#N` is DROPPED on a projected card (2026-08-05, owner call). `rank` is assigned by
+            sorting on `hook.personaStops` — the hook-writing model's estimate of its OWN hooks
+            (hooks-runner.ts:609-625, "the WRITER'S self-estimate, not a measured room reaction").
+            Printing "#1" states a ranking nothing measured, which is the same fabrication the board
+            already stopped committing when it retired the queued row's `N/10`
+            (AmbientOverview.tsx:46-48) and the sim door stopped printing band/fraction on a
+            projected card (sim-door.tsx:118). The cards stay in that order — an order claims only
+            "this is the sequence they came in"; a numeral claims a measurement. A MEASURED card
+            (provenance absent ⇒ legacy/persisted, or a fired run) keeps its numeral. */}
         <CardHero
-          gutter={typeof rank === 'number' && rank > 0 ? `#${rank}` : undefined}
+          gutter={!projected && typeof rank === 'number' && rank > 0 ? `#${rank}` : undefined}
           affordance={<CopyAffordance text={hookLine} aria-label="Copy hook to clipboard" />}
         >
           {hookLine}

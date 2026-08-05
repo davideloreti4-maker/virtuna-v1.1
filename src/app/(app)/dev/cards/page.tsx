@@ -259,6 +259,31 @@ const THREAD_VIEWS: { id: string; label: string; note: string; node: React.React
     ),
   },
   {
+    id: "hooks-projected",
+    label: "Hooks (projected — the shape a real run actually emits)",
+    note: "⚠️ The `Hooks` entry above carries NO `provenance`, so it renders as a MEASURED card — a shape the generation path has not emitted since 2026-07-22. This is the real one. On a projected card the sim door prints no band and no fraction (sim-door.tsx:118 gates both on `!projected`), and since 2026-08-05 there is no `#N` gutter either: `rank` comes from sorting on `hook.personaStops` — the hook-writing model's estimate of its OWN hooks (hooks-runner.ts:669, \"the WRITER'S self-estimate, not a measured room reaction\") — so a numeral asserted a ranking nothing measured. Diff against `Hooks` above, which keeps its `#1` because a measured card earned it. The ORDER is identical in both: an order claims sequence, a numeral claims a measurement.",
+    node: (
+      <HooksThreadView
+        persistedBlocks={[]}
+        streamingBlocks={HOOK_BLOCKS.map((b) => ({
+          ...b,
+          props: { ...(b.props as Record<string, unknown>), provenance: "projected" },
+        })) as typeof HOOK_BLOCKS}
+        statusMessage={null}
+        stages={doneStages(["Generating", "Ranking"])}
+        followupText={FOLLOWUPS.hooks}
+        warnings={[]}
+        isStreaming={false}
+        error={null}
+        platform="tiktok"
+        onTestHook={noop}
+        onWriteScriptHook={noop}
+        userTurn={USER_TURNS.hooks}
+        audienceLabel={AUDIENCE}
+      />
+    ),
+  },
+  {
     id: "hooks-degraded",
     label: "Hooks (degraded run)",
     note: "Same run, with the `warning` SSE event populated — the RunWarnings notice below the cards. Fires on per-persona targeting drift or a grounding fall-back; empty on a clean run.",
@@ -1297,6 +1322,21 @@ const ROOM_V2_SEALS: WireSimSealMap = {
     personas: ROOM_FOCUS.personas,
     scrollQuote: "The hook promises more than the caption delivers.",
   },
+  // A SEALED row that produced NO population — the state that used to be invisible (2026-08-05).
+  // A run's verdict and its depth fail INDEPENDENTLY: `pct` comes from the flash reaction, the
+  // population from the projection, so a row can carry a perfectly real 38% and still have nothing
+  // behind it (an audience whose signature has no v2 axes, or a characterize failure). It used to
+  // render as an ordinary door whose tap hit an empty `else` — no error, no log, nothing — which is
+  // the defect the owner spent two sessions chasing. It now reads `verdict only` and is not a
+  // button. Keep this fixture: it is the ONLY place the state can be seen without breaking an
+  // audience on purpose.
+  "I deleted 40 hours of B-roll.": {
+    pct: 38,
+    band: "Mixed",
+    at: "2026-08-05T09:00:00.000Z",
+    personas: ROOM_FOCUS.personas,
+    scrollQuote: "Nothing here tells me what it costs me.",
+  },
 };
 
 /**
@@ -1363,6 +1403,7 @@ const VARIANT_OF: Record<string, string> = {
   "ideas-outliers": "ideas",
   "hooks-degraded": "hooks",
   "hooks-outliers": "hooks",
+  "hooks-projected": "hooks",
   "script-outliers": "script",
 };
 
