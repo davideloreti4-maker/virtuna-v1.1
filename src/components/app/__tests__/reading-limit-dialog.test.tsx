@@ -1,5 +1,5 @@
 /** @vitest-environment happy-dom */
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 
 import { ReadingLimitDialog } from "@/components/app/reading-limit-dialog";
@@ -16,6 +16,27 @@ vi.mock("@/components/app/checkout-modal", () => ({
     <div data-testid="checkout" data-plan={planId} data-trial={String(!!trial)} />
   ),
 }));
+
+/**
+ * The activation wall reads two hooks. Every test above this leaves them unmocked, so they
+ * degrade to `null` and the personalised branch never fires — which is exactly why the
+ * collision below went uncovered. These give a test control over the one input that decides it.
+ */
+const hooks = vi.hoisted(() => ({
+  calibrated: null as { name: string; personas: unknown[] } | null,
+  trialUsed: false,
+}));
+vi.mock("@/hooks/use-calibrated-audience", () => ({
+  useCalibratedAudience: () => ({ audience: hooks.calibrated, loading: false }),
+}));
+vi.mock("@/hooks/use-subscription", () => ({
+  useSubscription: () => ({ trialUsed: hooks.trialUsed, usage: null }),
+}));
+
+beforeEach(() => {
+  hooks.calibrated = null;
+  hooks.trialUsed = false;
+});
 
 const wall = (over: Partial<CreditQuotaExceeded> = {}): CreditQuotaExceeded => ({
   message: "You've used all 500 credits on your plan this month.",
@@ -184,5 +205,88 @@ describe("the quota wall", () => {
       />
     );
     expect(screen.queryByRole("button", { name: /upgrade/i })).toBeNull();
+  });
+
+  /**
+   * THE COLLISION. An anonymous visitor CAN own a calibrated audience — middleware exempts them
+   * from the /welcome redirect rather than blocking them, and `/api/audiences/calibrate` admits
+   * anyone `getUser()` returns. Tier `free` then makes `noPlan` true, so the activation branch
+   * fired underneath a demo verdict: the heading said "That's your free test used" while the
+   * body described a card written for their room and the button read "Write for all 10 — $1".
+   * The heading already ordered demo above activation; the body and CTA did not.
+   */
+  describe("a demo verdict outranks the activation wall", () => {
+    it("keeps the demo's own copy when the visitor also has an audience", () => {
+      hooks.calibrated = { name: "@zachking", personas: Array.from({ length: 10 }) };
+
+      render(
+        <ReadingLimitDialog
+          open
+          quota={wall({
+            tier: "free",
+            limit: 10,
+            used: 10,
+            cost: 10,
+            reason: "demo_used",
+            message: "That was your free test. $1 unlocks the whole platform for 3 days.",
+          })}
+          onClose={vi.fn()}
+        />
+      );
+
+      expect(screen.getByRole("heading", { name: /free test used/i })).toBeTruthy();
+      expect(screen.getByText(/That was your free test/i)).toBeTruthy();
+      // The activation copy must not appear under a demo heading.
+      expect(screen.queryByText(/written for one of the/i)).toBeNull();
+      expect(screen.queryByRole("button", { name: /write for all/i })).toBeNull();
+      expect(screen.getByRole("button", { name: /start for \$1/i })).toBeTruthy();
+    });
+
+    it("keeps the trial_required copy too", () => {
+      hooks.calibrated = { name: "@zachking", personas: Array.from({ length: 10 }) };
+
+      render(
+        <ReadingLimitDialog
+          open
+          quota={wall({
+            tier: "free",
+            limit: 10,
+            used: 0,
+            cost: 1,
+            reason: "trial_required",
+            message: "$1 unlocks the whole platform for 3 days — every skill, 50 credits.",
+          })}
+          onClose={vi.fn()}
+        />
+      );
+
+      expect(screen.getByRole("heading", { name: /needs the trial/i })).toBeTruthy();
+      expect(screen.queryByText(/written for one of the/i)).toBeNull();
+      expect(screen.queryByRole("button", { name: /write for all/i })).toBeNull();
+    });
+
+    /** The real activation wall still fires — the fix narrows the branch, it does not delete it. */
+    it("still personalises for a calibrated creator who is simply out of allowance", () => {
+      hooks.calibrated = { name: "@zachking", personas: Array.from({ length: 10 }) };
+
+      render(
+        <ReadingLimitDialog
+          open
+          quota={wall({
+            tier: "free",
+            limit: 0,
+            used: 0,
+            cost: 1,
+            reason: "allowance",
+            message: "Start a plan — the $1 trial includes 50 credits.",
+          })}
+          onClose={vi.fn()}
+        />
+      );
+
+      expect(screen.getByRole("heading", { name: /9 more people to write for/i })).toBeTruthy();
+      expect(screen.getByText(/written for one of the 10 people/i)).toBeTruthy();
+      expect(screen.getByRole("button", { name: /write for all 10/i })).toBeTruthy();
+    });
   });
 });

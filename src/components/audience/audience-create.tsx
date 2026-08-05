@@ -93,8 +93,21 @@ export function AudienceCreate({ initialDoor, prefillHandle, className }: Audien
   const [fallbackMsg, setFallbackMsg] = useState("");
   const [submitting, setSubmitting] = useState(false);
   // The done navigation races the unmount — track to avoid setState after leave.
+  //
+  // ⚠️ The mount arm is load-bearing, not decoration. With cleanup-only, React 18 StrictMode's
+  // double-invoke (mount → unmount → mount) fires the cleanup once on the FIRST simulated
+  // unmount and nothing ever sets it back — so `leftRef.current` stayed true for the whole life
+  // of a mounted component and `failBack()` became a silent no-op IN DEV. A failed calibration
+  // sat on the spinning spine forever with no error, which is precisely why the discarded
+  // server message above went unnoticed: the error path was invisible to anyone testing in dev.
+  // Production (no double-invoke) was unaffected — measured on a `next build` + `next start`.
   const leftRef = useRef(false);
-  useEffect(() => () => void (leftRef.current = true), []);
+  useEffect(() => {
+    leftRef.current = false;
+    return () => {
+      leftRef.current = true;
+    };
+  }, []);
 
   const cleanHandle = handle.replace(/^@/, "").trim();
   const canContinue =
@@ -247,7 +260,15 @@ export function AudienceCreate({ initialDoor, prefillHandle, className }: Audien
               setFallbackMsg(parsed.message ?? "");
               return;
             case "error":
-              failBack();
+              // Carry the ROUTE's sentence. It writes three different ones and the difference
+              // is the whole point: `platform_unsupported` and `synthesis_failed` both mean the
+              // handle is FINE, and the route says so in as many words ("We read @x fine —
+              // building the audience from it is what failed"). Substituting the local
+              // "Account not found. Check the handle" here is a false accusation that costs the
+              // creator another paid scrape to act on — which is exactly what the route's own
+              // comment says it must never do. /welcome has always carried it (calibration-flow
+              // .tsx: `parsed.message ?? …`); this client threw it away.
+              failBack(parsed.message);
               return;
             case "done":
               if (parsed.audience) {
@@ -265,14 +286,20 @@ export function AudienceCreate({ initialDoor, prefillHandle, className }: Audien
     }
   }
 
-  function failBack() {
+  /**
+   * `serverMessage` is the `error` frame's own sentence, when there was one. The local copy is
+   * the fallback for the cases where there genuinely is no server sentence to carry — a
+   * transport failure, a non-OK response, a thrown parse.
+   */
+  function failBack(serverMessage?: string) {
     if (leftRef.current) return;
     setPhase("form");
     setSubmitting(false);
     setErrorMsg(
-      door === "describe"
-        ? "Couldn't build from that description. Try again."
-        : "Account not found. Check the handle — private accounts can't be read.",
+      serverMessage?.trim() ||
+        (door === "describe"
+          ? "Couldn't build from that description. Try again."
+          : "Account not found. Check the handle — private accounts can't be read."),
     );
   }
 
