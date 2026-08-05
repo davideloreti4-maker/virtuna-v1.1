@@ -122,7 +122,22 @@ function leakSignals(text) {
   const lines = text.split("\n");
 
   // A quoted sentence of real length — the paste-ready artefact.
-  const quoted = [...text.matchAll(/[""«]([^""»\n]{25,})[""»]|"([^"\n]{25,})"/g)].map((m) => m[1] ?? m[2]);
+  //
+  // ⚠️ A straight `"` is the SAME character opening and closing, so a regex alternation cannot tell
+  // the two apart: the previous `"([^"\n]{25,})"` happily matched from one term's CLOSING quote to
+  // the next term's OPENING quote and reported the ORDINARY PROSE BETWEEN THEM as a leaked line.
+  //     Most students hate "budgeting" because it feels restrictive… By renaming it to "spending plan"
+  //                                    └──────── reported as a leaked hook ────────┘
+  // That inflated BOTH arms on 2026-08-05 — it was the whole of plus's apparent 1/6. Straight
+  // quotes are now paired by PARITY (split on `"`, every odd segment is inside a quotation), which
+  // cannot cross from one quotation into the next. Typographic quotes DO have distinct open/close
+  // characters, so they keep the regex.
+  const typographic = [...text.matchAll(/[“«]([^”»\n]{25,})[”»]/g)].map((m) => m[1]);
+  const straight = text
+    .split('"')
+    .filter((_, i) => i % 2 === 1)
+    .filter((s) => s.length >= 25 && !s.includes("\n"));
+  const quoted = [...typographic, ...straight];
   if (quoted.length > 0) signals.push({ kind: "quoted-line", hits: quoted.slice(0, 5) });
 
   // A labelled specimen: "Hook 1:", "Option 2 —", "Idea:", "Line:".

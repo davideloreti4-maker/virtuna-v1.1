@@ -1035,3 +1035,95 @@ describe("runChatAgentStream [forceSkill]", () => {
     expect(res.skillRuns).toHaveLength(0);
   });
 });
+
+/**
+ * The artefact guard's STRUCTURE rule (2026-08-05).
+ *
+ * The guard was quote-scoped and the pack does not arrive quoted — it arrives as an enumerated list
+ * of content units. Measured live, that gap leaked 6/6 on flash and was being covered by holding
+ * this one path on a ~10x more expensive model. These lock the fix so the holdout stays retired:
+ * the model constant is no longer what makes an anonymous visitor safe, this is.
+ */
+describe("the unbound artefact guard — structure, not just quotation", () => {
+  /** Stream `text` through a fully unbound session (skills: []) and return what the visitor sees. */
+  const seen = async (text: string, chunk = 5) => {
+    const chunks: StreamChunk[] = [];
+    for (let i = 0; i < text.length; i += chunk) chunks.push(textChunk(text.slice(i, i + chunk)));
+    let out = "";
+    await runChatAgentStream(
+      baseInput({ onToken: (d: string) => { out += d; } }),
+      DEPS(mockStream([chunks]), { skills: [] }),
+    );
+    return out;
+  };
+
+  /** The same stream for a SIGNED-IN creator, who has generators bound and is never guarded. */
+  const seenSignedIn = async (text: string, chunk = 5) => {
+    const chunks: StreamChunk[] = [];
+    for (let i = 0; i < text.length; i += chunk) chunks.push(textChunk(text.slice(i, i + chunk)));
+    let out = "";
+    await runChatAgentStream(
+      baseInput({ onToken: (d: string) => { out += d; } }),
+      DEPS(mockStream([chunks]), { skills: [mkSkill("generate_hooks")] }),
+    );
+    return out;
+  };
+
+  const PACK = [
+    "Here are 5 video concepts for a student budgeting app.",
+    "",
+    '### 1. The "Subscription Vampire" Audit',
+    "*   **Concept:** A screen-recording walkthrough showing how to find and cancel hidden charges.",
+    "*   **Mechanism:** Utility & Fear of Loss. People hate losing money they did not know about.",
+    "*   **CTA:** Save this for your next bank statement check.",
+    "",
+    "That is the structure that works.",
+  ].join("\n");
+
+  it("redacts an enumerated pack that carries NO quotation marks — the live 6/6 leak shape", async () => {
+    const out = await seen(PACK);
+    // The bodies are the artefact. None of them may reach an anonymous visitor.
+    expect(out).not.toContain("screen-recording walkthrough");
+    expect(out).not.toContain("Fear of Loss");
+    expect(out).not.toContain("next bank statement check");
+    // The surrounding prose is NOT the artefact and must survive, or the answer stops being one.
+    expect(out).toContain("Here are 5 video concepts");
+    expect(out).toContain("That is the structure that works.");
+  });
+
+  it("collapses a run of redacted items into ONE marker — five stacked reads as a malfunction", async () => {
+    const out = await seen(PACK);
+    expect(out.match(/needs an account with credits/g) ?? []).toHaveLength(1);
+  });
+
+  it("leaves SHORT list items alone — a label is not a pack", async () => {
+    const benign = "What this does:\n- Hooks\n- Scripts\n- Audience reads\n\nSign up to run it.";
+    expect(await seen(benign)).toBe(benign);
+  });
+
+  it("does not mistake **bold** or a --- rule at line start for a list marker", async () => {
+    const prose = "**Bold lead.** Then a sentence that runs on for a good while to be safe.\n---\nMore.";
+    expect(await seen(prose)).toBe(prose);
+  });
+
+  it("judges a structured line left unterminated at end-of-stream, rather than releasing it", async () => {
+    // The last item of a pack often arrives with no trailing newline. Releasing it unjudged would
+    // reopen the leak on exactly the line the model was building toward.
+    const out = await seen("Options:\n*   **Hook:** Everyone lied to you about waking up at 5am daily");
+    expect(out).not.toContain("Everyone lied to you about waking up at 5am");
+  });
+
+  it("keeps the ORIGINAL quote rule — a long quoted line is still redacted", async () => {
+    const out = await seen('Lead with a specific cost ("the $47 I lost every month without noticing").');
+    expect(out).not.toContain("the $47 I lost every month without noticing");
+  });
+
+  it("still releases a SHORT quotation — a term of art is not the artefact", async () => {
+    const s = 'Do not lead with "save money" — it is generic.';
+    expect(await seen(s)).toBe(s);
+  });
+
+  it("a SIGNED-IN creator's stream is byte-for-byte untouched — they paid for the lines", async () => {
+    expect(await seenSignedIn(PACK)).toBe(PACK);
+  });
+});
