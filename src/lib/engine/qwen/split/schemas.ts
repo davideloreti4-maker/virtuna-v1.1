@@ -126,12 +126,14 @@ export const AudioLegZodSchema = z.object({
   audio_hook_quality:       ScoreSchema.nullable(),
   first_words_speech_score: ScoreSchema.nullable(),
 
+  // The three ratios are nullable for the adapter's sake, not the model's — `qwen/audio-mix.ts`
+  // blanks a mix that contradicts itself after a bounded retry. The prompt still demands the sum.
   audio_signals: z.object({
     voice_clarity_0_10:       ScoreSchema.nullable(),
     audio_hook_first_2s_0_10: ScoreSchema.nullable(),
-    silence_ratio:            z.number().min(0).max(1),
-    voiceover_ratio:          z.number().min(0).max(1),
-    music_ratio:              z.number().min(0).max(1),
+    silence_ratio:            z.number().min(0).max(1).nullable(),
+    voiceover_ratio:          z.number().min(0).max(1).nullable(),
+    music_ratio:              z.number().min(0).max(1).nullable(),
     audio_description:        z.string().min(1).max(280),
   }),
 
