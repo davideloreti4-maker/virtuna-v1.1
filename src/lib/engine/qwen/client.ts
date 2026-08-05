@@ -104,9 +104,22 @@ export const QWEN_CALIBRATE_MODEL = process.env.QWEN_CALIBRATE_MODEL ?? "qwen3.7
 // ⚠️ THE UNBOUND CHAT PATH STAYS ON 3.7-PLUS. `FREE_SKILL_TOOLS` is empty, so an anonymous visitor
 // binds NO generators and the agent must refuse to produce the artefact. Measured live through the
 // real `/api/tools/chat` route with `scripts/live-chat-anon.mjs`, same build, same guard, same six
-// asks — the ONLY variable is this model:
-//     plus : 6/6 refused · 0/6 leaked
-//     flash: 6/6 "refused" · 5/6 LEAKED — "Here are 5 hooks for your student budgeting app…"
+// asks — the ONLY variable is this model.
+//
+// RE-MEASURED 2026-08-05, both arms back to back on this build, when the flip was asked for again:
+//     plus : 6/6 refused · 1/6 leaked
+//     flash: 6/6 refused · 6/6 LEAKED
+// Flash is now leaking on EVERY ask, not 5 of 6 — it opens with a correct refusal sentence
+// ("I can't write the hook for you because I don't have a content-generation tool on this
+// account") and then writes the pack anyway as a numbered list of concepts, mechanisms, formats
+// and CTAs. `createArtefactGuard` is visibly firing inside those lists — the redaction
+// "[a line like that needs an account with credits]" appears mid-item — and the visitor still
+// leaves with a usable content pack, because the guard redacts the QUOTED candidate line while the
+// structure around it carries the value. Defence in depth is working and is not sufficient.
+//
+// Note plus is 1/6, not the 0/6 recorded previously: there is a residual leak on BOTH arms and the
+// guard has a real gap. That is a reason to fix the guard, not a reason to call the arms equal —
+// 1/6 against 6/6 on identical input is a 6× difference and the model is the whole of it.
 // Flash opens with a correct refusal sentence and then writes the pack anyway, as a numbered list
 // of ideas/angles. That is the paid product handed to an anonymous visitor through the one door
 // that is free by design, which makes it a revenue leak, not a tone regression.

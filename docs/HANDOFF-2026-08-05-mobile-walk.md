@@ -116,7 +116,9 @@ genuinely valuable) but leading with what is true now, including the accepted ~3
 grading and the one-env-var rollback.
 
 **Still true and NOT touched:** `QWEN_UNBOUND_CHAT_MODEL` stays on **plus**. Flash opens with a
-correct refusal and then writes the paid pack anyway (5/6 leaked). Cost is not a reason to touch it.
+correct refusal and then writes the paid pack anyway. **Re-measured this session at 6/6 leaked
+against plus's 1/6 — see §12, where the flip was explicitly asked for and the evidence refused it.**
+Cost is not a reason to touch it.
 
 ---
 
@@ -242,8 +244,8 @@ second, unrelated flake that survives a clean run about one time in three.
   remaining item.
 - The four blind scrape waits (25–126s each); calibration is the cheapest fix — it HAS real stages,
   it just sends them as `status`.
-- Retry flash on `QWEN_UNBOUND_CHAT_MODEL`, only behind a fresh `live-chat-anon.mjs` showing
-  **6/6 refused, 0 leaked**.
+- ~~Retry flash on `QWEN_UNBOUND_CHAT_MODEL`~~ — **ASKED FOR AND MEASURED 2026-08-05. IT FAILED.**
+  See §12. Do not re-propose without fixing the guard first.
 - Should a pinned chip show its price? Product call.
 - The `/discover` bookmark target (§6).
 - **The suite's 375–485 real connections to `localhost:3000` per run** (§5) — now the only thing
@@ -263,3 +265,41 @@ second, unrelated flake that survives a clean run about one time in three.
    the opposite, and it propagated into the next session's brief as fact.
 5. **A test double must match the signature it stands in for.** Three unhandled rejections across
    three handoffs were one `vi.fn()` that forgot to be async.
+
+---
+
+## 12. The flash flip on unbound chat was requested, gated, and REFUSED BY THE EVIDENCE
+
+The owner asked for `QWEN_UNBOUND_CHAT_MODEL` to move to flash along with everything else. The
+documented condition for that flip is a fresh `scripts/live-chat-anon.mjs` run. It was run — **both
+arms, back to back, on this build, same six asks, same guard, the model the only variable:**
+
+| arm | refused | **leaked** |
+|---|---|---|
+| `qwen3.7-plus` | 6/6 | **1/6** |
+| `qwen3.7-flash` | 6/6 | **6/6** |
+
+**The flip was NOT made.** Flash now leaks on *every* ask — worse than the 5/6 on record. It opens
+with a correct refusal (*"I can't write the hook for you because I don't have a content-generation
+tool on this account"*) and then writes the pack anyway, as a numbered list of concepts, mechanisms,
+formats and CTAs.
+
+> 🔑 **`createArtefactGuard` is firing and it is not enough.** The redaction
+> `[a line like that needs an account with credits]` appears *inside* the leaked list items — so the
+> guard caught the quoted candidate line and let the structure around it through. An anonymous
+> visitor still leaves with a usable content pack. Defence in depth is working exactly as designed
+> and still loses.
+
+**Two things changed from the record and both matter:**
+1. Flash is **6/6**, not 5/6 — the leak got worse, so this holdout is more load-bearing than when it
+   was written, not less.
+2. Plus is **1/6, not 0/6.** There is a residual leak on BOTH arms: the guard has a real gap that
+   the better model was masking. **That is the actual open bug** — fix the guard so it redacts the
+   *structure*, not just quoted lines, and the flip may become viable on its own merits.
+
+Refusing on 1/6 vs 6/6 is not treating the arms as equal — it is a 6× difference on identical input,
+and the model is the whole of it.
+
+▶ **Next time this is asked:** fix `createArtefactGuard` first, then re-run both arms. Cost is not a
+reason to touch this path; it is the one door that is free by design, and what leaks through it is
+the paid product.
