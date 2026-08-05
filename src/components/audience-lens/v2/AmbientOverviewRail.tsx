@@ -611,12 +611,18 @@ export function AmbientOverviewRail({
   // fire wins; else a persisted seal matched by trimmed concept text (survives reload); else queued.
   const measured: Record<string, number> = {};
   const measuredSlice: Record<string, string> = {};
+  const depthless: Record<string, boolean> = {};
   for (const d of descriptors) {
     const snap = snapshotFor(d.id);
     if (typeof snap?.pct === "number") {
       measured[d.id] = snap.pct;
       // Whose percentage it is travels with the percentage itself.
       if (snap.slice) measuredSlice[d.id] = snap.slice.label;
+      // A sealed row with no population has no drill behind it (see `openStimulus`). Marking it
+      // here is what stops the board from rendering an inert door: the SAME predicate the opener
+      // uses, read one layer earlier so the row can be honest before it is tapped rather than
+      // silent after. Keep the two in step — if one learns a new depth source, so must the other.
+      if (!snap.population) depthless[d.id] = true;
     }
   }
   // Tested videos from the seal store → ranked in alongside the concepts. A revealed video ranks by
@@ -640,7 +646,7 @@ export function AmbientOverviewRail({
       revealed: false,
     })),
   ];
-  const overview = buildOverviewData({ audience: meta, descriptors, measured, measuredSlice, videos, watching });
+  const overview = buildOverviewData({ audience: meta, descriptors, measured, measuredSlice, depthless, videos, watching });
   return (
     <div className={sheet ? SHEET_SHELL : "flex h-full w-full"}>
       <AmbientOverview

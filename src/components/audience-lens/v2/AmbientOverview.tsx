@@ -59,6 +59,12 @@ export interface RankedStimulus {
    *  questions, so the label is what keeps "41% of Builders" from being read as "41% of the room".
    *  It is printed on the row, never dropped: an unlabelled sliced verdict is a mislabelled one. */
   sliceLabel?: string;
+  /** Set on a SEALED row whose run produced no population, so there is no depth drill behind it —
+   *  the measured % IS the whole answer. Such a row used to look identical to a drillable one and
+   *  simply do nothing when tapped (`openStimulus`'s empty else), which is the worst of both. The
+   *  house rule is the one already stated on AmbientDetail's tab strip: say "nothing behind this"
+   *  BEFORE the tap, not after. So the row stops pretending to be a door. */
+  noDepth?: boolean;
 }
 
 /** A run in flight. Verdict is SEALED until every agent decides; `verdictPct` reveals then. */
@@ -362,6 +368,12 @@ function SealedRow({
 }) {
   const w = barRef > 0 ? Math.min(1, r.stopPct / barRef) : 0;
   const top = rank === 1;
+  // A run with no population has no drill behind it. Don't dress it as a door: no pointer, no hover
+  // lift, no click handler — and a tag below that names the state. Previously such a row was a
+  // fully-armed button whose tap hit an empty `else`, which reads as a broken app rather than as an
+  // honest limit. (Disabling is deliberate over "open an empty drill": there is genuinely nothing
+  // to show — the aggregate the depth view is built from is the thing that is missing.)
+  const drillable = !r.noDepth;
 
   return (
     <li
@@ -370,10 +382,14 @@ function SealedRow({
     >
       <button
         type="button"
-        onClick={() => onOpen?.(r.id)}
-        className="group block w-full cursor-pointer rounded-[8px] px-0.5 py-[13px] text-left transition-colors"
-        onMouseEnter={(e) => (e.currentTarget.style.background = TONE.hover)}
-        onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+        onClick={drillable ? () => onOpen?.(r.id) : undefined}
+        disabled={!drillable}
+        aria-label={drillable ? undefined : `${r.stimulus} — verdict only, no depth behind this row`}
+        className={`group block w-full rounded-[8px] px-0.5 py-[13px] text-left transition-colors ${
+          drillable ? "cursor-pointer" : "cursor-default"
+        }`}
+        onMouseEnter={drillable ? (e) => (e.currentTarget.style.background = TONE.hover) : undefined}
+        onMouseLeave={drillable ? (e) => (e.currentTarget.style.background = "transparent") : undefined}
       >
         <span className="flex items-baseline gap-2.5">
           <span
@@ -395,6 +411,9 @@ function SealedRow({
           {/* A SLICED verdict says whose it is, right next to the number. Without this the row is
               indistinguishable from a reading of the whole room — same column, same bar. */}
           {r.sliceLabel ? <KindTag>{r.sliceLabel}</KindTag> : null}
+          {/* The run landed a real %, but produced no population — so this row is the end of the
+              road, not a door. Saying so costs one tag and removes an inert click. */}
+          {r.noDepth ? <KindTag>verdict only</KindTag> : null}
           <span className="flex-none tabular-nums text-[14px] font-semibold" style={{ color: TONE.cream }}>
             {r.stopPct.toFixed(1)}%
           </span>

@@ -110,6 +110,12 @@ export interface OverviewInput {
   /** For ids whose measured % is ONE SLICE's rather than the room's: that slice's display name.
    *  Travels beside `measured` because the number alone cannot say what it is a percentage OF. */
   measuredSlice?: Record<string, string>;
+  /** Ids whose sealed run produced NO population ⇒ no depth drill exists behind the row. Travels
+   *  separately from `measured` because a row can hold a perfectly real % and still have nothing
+   *  behind it: the % comes from the flash reaction, the depth from the population projection, and
+   *  the two fail independently. Only consulted for sealed rows — a queued row has no depth yet by
+   *  definition, and is already labelled as such. */
+  depthless?: Record<string, boolean>;
   /** Tested videos from the seal store — ranked in alongside the concepts (see `OverviewVideoRow`). */
   videos?: OverviewVideoRow[];
   /** A sim in flight — sealed until n-of-n decide (`verdictPct` revealed only then). */
@@ -130,6 +136,7 @@ export function buildOverviewData({
   descriptors,
   measured,
   measuredSlice,
+  depthless,
   videos,
   watching,
 }: OverviewInput): OverviewData {
@@ -140,6 +147,8 @@ export function buildOverviewData({
     // to qualify, and labelling a projection with a slice it was never run against is the bug
     // this field exists to prevent.
     const sliceLabel = sealed ? measuredSlice?.[d.id] : undefined;
+    // Same rule as the slice label, same reason: only a SEALED row can be known to have no depth.
+    const noDepth = sealed && depthless?.[d.id] === true;
     return {
       id: d.id,
       stimulus: d.conceptText,
@@ -147,6 +156,7 @@ export function buildOverviewData({
       kind: rankKindOf(d.kind),
       state: sealed ? "simulated" : "queued",
       ...(sliceLabel ? { sliceLabel } : {}),
+      ...(noDepth ? { noDepth: true } : {}),
     };
   });
 
