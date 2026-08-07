@@ -26,6 +26,23 @@
 
 export const SESSION_EXPIRED_EVENT = "maven:session-expired";
 
+/**
+ * THE SENTENCE, for the surfaces that render a string rather than resolving copy by cause.
+ *
+ * The stream hooks never need this — they carry the cause as a sentinel and `run-failure.ts` owns
+ * their wording. But a third of the refusable fetch sites are not hooks: they set a local error
+ * string, and they set it from the response body. On a 401 that body is `{ error: "Unauthorized" }`
+ * (the api/tools route handlers), so the creator reads the slug **Unauthorized** — the same class as
+ * `credit_quota_exceeded` appearing in a failure line, which is what the credit wall was built to
+ * stop.
+ *
+ * Deliberately does NOT say "refresh the page". The composer's older `ERROR_SESSION_EXPIRED` does,
+ * and a refresh unmounts the composer and destroys the unsent draft — the exact loss this lane is
+ * built to avoid.
+ */
+export const SESSION_EXPIRED_MESSAGE =
+  "You’ve been signed out. Sign in again to run this — nothing was charged.";
+
 /** Announce a session already known to be dead. Carries no payload — there is nothing to say. */
 export function raiseSessionExpired(): void {
   if (typeof window === "undefined") return;
@@ -65,7 +82,12 @@ export function reportSession401(status: number): boolean {
  */
 export class SessionExpiredRefusal extends Error {
   readonly sessionExpired = true;
-  constructor(message = "session expired") {
+  /**
+   * Defaults to the readable sentence, not a slug. The hooks discard this message (they resolve
+   * copy from the cause), but the bespoke surfaces render `err.message` straight into the UI —
+   * so the default has to be something a person can read.
+   */
+  constructor(message = SESSION_EXPIRED_MESSAGE) {
     super(message);
     this.name = "SessionExpiredRefusal";
   }

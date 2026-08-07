@@ -38,6 +38,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 // CreditWallRefusal / isCreditWallRefusal went with `askAudience` (step 4) — it was the one
 // caller here that had to distinguish "refused" from "failed" to avoid recording a dead ask.
 import { reportCredit402 } from "@/lib/billing/credit-wall";
+import { reportSession401, SESSION_EXPIRED_MESSAGE } from "@/lib/auth/session-expired";
 import { createPortal } from "react-dom";
 import {
   OpenRoomContext,
@@ -1257,6 +1258,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       });
       if (!res.ok) {
         const err: unknown = await res.json().catch(() => null);
+        reportSession401(res.status); // session dialog if the session died
         reportCredit402(res.status, err); // wall dialog if it's the credit 402
         return;
       }
@@ -1581,8 +1583,15 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       }
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: EVIDENCE_RUN_FAILED }));
+        // 401 first. The staged-clip cleanup below still has to run, so this records the cause
+        // rather than returning early — otherwise the error line reads the `Unauthorized` slug.
+        const deadSession = reportSession401(res.status);
         reportCredit402(res.status, err); // wall dialog if it's the credit 402
-        setEvidenceError((err as { error?: string }).error ?? EVIDENCE_RUN_FAILED);
+        setEvidenceError(
+          deadSession
+            ? SESSION_EXPIRED_MESSAGE
+            : ((err as { error?: string }).error ?? EVIDENCE_RUN_FAILED),
+        );
         // WR-04: the server rejected the read — drop the staged clip so it doesn't orphan.
         if (stagedPath) void supabase.storage.from('videos').remove([stagedPath]).catch(() => {});
         return;
@@ -1991,6 +2000,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
         });
         if (!res.ok) {
           const err: unknown = await res.json().catch(() => null);
+          reportSession401(res.status); // session dialog if the session died
           reportCredit402(res.status, err); // wall dialog if it's the credit 402
           return;
         }

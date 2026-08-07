@@ -27,6 +27,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { reportCredit402, CreditWallRefusal, isCreditWallRefusal } from '@/lib/billing/credit-wall';
+import { reportSession401, SessionExpiredRefusal } from '@/lib/auth/session-expired';
 import { resolveRunError } from '@/lib/net/run-failure';
 import type { HookProof, ScriptCardBlock, PopulationAggregateBlock, ReactionPersona } from '@/lib/tools/blocks';
 import { parseProofProp, parseGroundedProp, parsePopulationProp } from '@/lib/tools/blocks';
@@ -270,6 +271,9 @@ export function useScriptStream(): UseScriptStreamReturn {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Script request failed' }));
+        // 401 first — it is not a 402, and each check then reads only its own status. The
+        // refusal's flag carries the cause to this turn's copy (lib/net/run-failure.ts).
+        if (reportSession401(res.status)) throw new SessionExpiredRefusal();
         if (reportCredit402(res.status, err)) {
           // The wall dialog is up (CreditWallListener) and it IS the UI: unwind without drawing an
           // inline error under it (see CreditWallRefusal — the old throw put a futile retry there).

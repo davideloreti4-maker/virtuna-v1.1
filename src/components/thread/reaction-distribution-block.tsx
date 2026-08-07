@@ -19,6 +19,7 @@
 
 import { useCallback, useState } from 'react';
 import { reportCredit402 } from '@/lib/billing/credit-wall';
+import { reportSession401, SessionExpiredRefusal } from '@/lib/auth/session-expired';
 import type { ReactionDistributionBlock } from '@/lib/tools/blocks';
 import { handoffsFor } from '@/lib/tools/chain-handoff';
 import { TrustBadge } from '@/components/audience/trust-badge';
@@ -93,6 +94,9 @@ export function ReactionDistributionBlockRenderer({
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Predict request failed' }));
+        // 401 first. The catch renders `err.message`, and the refusal's default message is a
+        // readable sentence — without this the creator reads the route's `Unauthorized` slug.
+        if (reportSession401(res.status)) throw new SessionExpiredRefusal();
         if (reportCredit402(res.status, err)) {
           // The wall dialog is up (CreditWallListener); surface the human sentence, not the slug.
           throw new Error(err.message);

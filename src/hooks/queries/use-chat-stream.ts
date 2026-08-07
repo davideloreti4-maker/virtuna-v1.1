@@ -23,6 +23,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { reportCredit402 } from '@/lib/billing/credit-wall';
+import { reportSession401, SessionExpiredRefusal } from '@/lib/auth/session-expired';
 import { resolveRunError } from '@/lib/net/run-failure';
 import type { MarkdownBlock } from '@/lib/tools/blocks';
 import type { StageState } from '@/components/thread/progress-checklist';
@@ -199,6 +200,12 @@ export function useChatStream(): UseChatStreamReturn {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Chat request failed' }));
+        // The odd one out, deliberately. This hook's 402 is not a response status at all — the
+        // route cannot answer 402 mid-stream, so it forwards the refusal as a `credit-wall` SSE
+        // event and `reportCredit402(402, quota)` sits in the read loop against an already-parsed
+        // body. There is nothing there to sit beside. A 401 IS an ordinary HTTP refusal, so it
+        // goes where the real status is still in scope.
+        if (reportSession401(res.status)) throw new SessionExpiredRefusal();
         throw new Error((err as { error?: string }).error ?? 'Chat request failed');
       }
       if (!res.body) throw new Error('No response body');

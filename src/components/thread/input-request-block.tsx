@@ -24,6 +24,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { reportCredit402 } from '@/lib/billing/credit-wall';
+import { reportSession401, SESSION_EXPIRED_MESSAGE } from '@/lib/auth/session-expired';
 import Link from 'next/link';
 import { nanoid } from 'nanoid';
 import type { InputRequestBlock } from '@/lib/tools/blocks';
@@ -145,6 +146,12 @@ function PredictField({ block }: InputRequestBlockRendererProps) {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Prediction failed' }));
+        // 401 first, and it returns: the line below reads the message straight off the response
+        // body, and a 401 body is `{ error: "Unauthorized" }` — a slug, not a sentence.
+        if (reportSession401(res.status)) {
+          setError(SESSION_EXPIRED_MESSAGE);
+          return;
+        }
         reportCredit402(res.status, err); // wall dialog if it's the credit 402
         setError(
           (err as { message?: string; error?: string }).message ??
@@ -226,6 +233,11 @@ function ProfileField({ block }: InputRequestBlockRendererProps) {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Read failed' }));
+        // 401 first, and it returns — see the note on the predict path above.
+        if (reportSession401(res.status)) {
+          setError(SESSION_EXPIRED_MESSAGE);
+          return;
+        }
         reportCredit402(res.status, err); // wall dialog if it's the credit 402
         setError(
           (err as { message?: string; error?: string }).message ??
@@ -453,6 +465,11 @@ function ReadField({ block }: InputRequestBlockRendererProps) {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Read failed' }));
+        // 401 first, and it returns — see the note on the predict path above.
+        if (reportSession401(res.status)) {
+          setError(SESSION_EXPIRED_MESSAGE);
+          return;
+        }
         reportCredit402(res.status, err); // wall dialog if it's the credit 402
         setError((err as { message?: string; error?: string }).message ?? (err as { error?: string }).error ?? 'Read failed');
         return;

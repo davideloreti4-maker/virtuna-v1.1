@@ -13,6 +13,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 
 import {
   SESSION_EXPIRED_EVENT,
+  SESSION_EXPIRED_MESSAGE,
   raiseSessionExpired,
   reportSession401,
   SessionExpiredRefusal,
@@ -79,6 +80,25 @@ describe("SessionExpiredRefusal", () => {
   it("does not accept a merely truthy flag", () => {
     expect(isSessionExpiredRefusal({ sessionExpired: "yes" })).toBe(false);
     expect(isSessionExpiredRefusal({ sessionExpired: 1 })).toBe(false);
+  });
+
+  /**
+   * The bespoke surfaces render `err.message` directly, so the default has to be a sentence.
+   * Left as a slug it reads as "session expired" in a red line — the lowercase-identifier failure
+   * the credit wall already had to remove once.
+   */
+  it("defaults to a readable sentence, not a slug", () => {
+    expect(new SessionExpiredRefusal().message).toBe(SESSION_EXPIRED_MESSAGE);
+    expect(SESSION_EXPIRED_MESSAGE).toMatch(/signed out/i);
+    expect(SESSION_EXPIRED_MESSAGE).toMatch(/nothing was charged/i);
+  });
+
+  /**
+   * ⚠️ It must not tell them to refresh. `composer.tsx`'s older ERROR_SESSION_EXPIRED does, and a
+   * refresh unmounts the composer and destroys the unsent draft that not-navigating exists to save.
+   */
+  it("never tells the user to refresh, which would destroy the draft", () => {
+    expect(SESSION_EXPIRED_MESSAGE).not.toMatch(/refresh|reload/i);
   });
 });
 
