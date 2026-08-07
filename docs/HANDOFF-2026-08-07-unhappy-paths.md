@@ -7,24 +7,53 @@
 
 ## §1 — Where this actually is
 
+### Update 2026-08-07 (session 2) — the session half is BUILT and UNPUSHED
+
+| | |
+|---|---|
+| **PR #454** | **MERGED.** The offline half is live in `main` (`58dbd4c9`). |
+| Session-half branch | `lane/session-expired`, worktree `~/virtuna-unhappy-paths`, tip `db3db144` |
+| vs `origin/main` | **0 behind, 4 ahead** — `58dbd4c9` at last measure |
+| **Not pushed** | **no PR opened** — awaiting the owner's call |
+| Gates at the tip | `tsc` 0 · **5460 passed / 0 failed** · `next build` exit 0 |
+| Browser | **28/28**, prod build, signed in, two native viewports, **zero spend** |
+
+**Done:** Tasks 1–7 (offline, merged) and Tasks 8–11 (expired session, on the branch above).
+**Open:** push + PR, if the owner wants it.
+
+Evidence: `docs/superpowers/plans/2026-08-07-session-expired-walk-evidence.md`
+
+⚠️ **Two more plan errors found in session 2, on top of the eight below.**
+1. **The plan contradicted itself on whether the 401 draws an inline error.** Task 8's docstring
+   said the refusal exists to draw nothing (the CreditWallRefusal trap); Task 10's edits, as
+   written, draw the session copy. The offline half had already shipped `CAUSE_COPY.session` and
+   four tests for it, all unreachable. **Owner chose: dialog AND inline copy**, so that copy is now
+   live. Do not add an `isSessionExpiredRefusal` early-return to a hook catch — it would suppress
+   the very copy the flag exists to trigger.
+2. **"19 uniform sites + 1 special" is wrong — there are three shapes.** Only the 8 stream-hook
+   sites route through `resolveRunError`. `use-chat-stream`'s 402 is an SSE *event*, not a status.
+   The other 11 are bespoke surfaces with their own error UI, and three would have rendered the
+   route's raw `Unauthorized` slug — hence `SESSION_EXPIRED_MESSAGE`.
+
+⚠️ **"The draft survives by NOT navigating" is false as written** — see the evidence doc §4. The
+composer clears optimistically ~150ms after submit, before any response lands. What is true: the
+words move into the thread and stay **on screen** because nothing navigated. The dialog copy was
+corrected after the screenshot showed it promising more than that.
+
+---
+
+### Session 1 state (superseded, kept for the reasoning below)
+
 | | |
 |---|---|
 | Lane tip | `fa34eed9` (pushed) |
-| **PR #454** | **OPEN, NOT MERGED** — the offline half. Owner's call to merge; merging deploys (~4 min). |
-| `origin/main` | `ae1a9eb9` at last check — **re-measure, it moves** |
-| Gates at the tip | `tsc` 0 · **5434 passed / 0 failed** · `next build` exit 0 — all three re-run *after* merging `origin/main` in |
+| **PR #454** | the offline half — **since merged** |
+| Gates at the tip | `tsc` 0 · **5434 passed / 0 failed** · `next build` exit 0 |
 | Browser | **21/21**, prod build, signed in, two native viewports, **zero spend** |
-
-**Done:** Tasks 1–7 (the whole offline feature).
-**Open:** Tasks 8–10 (expired session) + Task 11 (its walk).
 
 Spec: `docs/superpowers/specs/2026-08-07-offline-and-expired-session-design.md`
 Plan: `docs/superpowers/plans/2026-08-07-offline-and-expired-session.md`
 Evidence: `docs/superpowers/plans/2026-08-07-offline-walk-evidence.md`
-
-⚠️ **If #454 is still open, do not start Tasks 8–10 on top of it without deciding first.** Either
-merge it, or branch the session half from `main` and accept a rebase. Stacking unmerged work on
-unmerged work is how this repo got to 204 branches.
 
 ---
 
