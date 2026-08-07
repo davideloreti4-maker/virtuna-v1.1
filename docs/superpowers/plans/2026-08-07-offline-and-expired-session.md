@@ -416,6 +416,8 @@ Proves the whole path end to end on the smallest surface before it is repeated. 
 - Consumes: `classifyRunFailure`, `RUN_FAILURE_SENTINEL`, `runErrorCopy`, `isAbort` from Task 2.
 - Produces: the convention every remaining hook copies in Task 4 — on catch, `setError(RUN_FAILURE_SENTINEL[cause] ?? message)`.
 
+⚠️ **This task needs a test on BOTH sides, and the first draft of this plan only had one.** The glass can resolve copy by cause perfectly while the hook never records a cause, and every run still renders the generic "dropped out" — a gap neither side's own tests can see. As implemented, Task 3 shipped `thread-turn-error-copy.test.tsx` (the glass) **and** `use-ideas-stream-failure-cause.test.ts` (the hook's real catch, with `fetch` stubbed as the I/O boundary). **Every hook converted in Task 4 needs the hook-side assertion too** — the file-level drift guard proves the symbols are imported, not that the catch writes the sentinel.
+
 - [ ] **Step 1: Write the failing test**
 
 ```tsx
@@ -1248,11 +1250,20 @@ npm run start -- --port 3005      # check `lsof -ti:3005` first; one dev server 
 Use raw Playwright with `animations: 'disabled'`, `caret: 'hide'` and a tight `clip` — the project's ambient-room animations never settle, so the standard screenshot helper hangs here. Sign in via the REST endpoint + chunked cookie recipe, then:
 
 ```js
-const client = await context.newCDPSession(page);
-await client.send("Network.emulateNetworkConditions", {
-  offline: true, latency: 0, downloadThroughput: -1, uploadThroughput: -1,
-});
+await context.setOffline(true);   // …and setOffline(false) to restore
 ```
+
+✅ **The mechanism is already verified** (2026-08-07, real Chromium, 6/6). No CDP session is needed — `context.setOffline(true)` was measured to do all of it:
+
+| Checked | Result |
+|---|---|
+| `setOffline(true)` flips `navigator.onLine` | `false` ✓ |
+| `fetch` rejects rather than resolving non-ok | rejects ✓ |
+| the rejection is a real `TypeError` | `instanceof TypeError`, name `TypeError`, message `Failed to fetch` ✓ |
+| `navigator.onLine === false` **inside the catch** | `false` ✓ |
+| the browser fires both `offline` and `online` window events | `["offline","online"]` ✓ |
+
+That fourth row is the one the whole design rests on: `classifyRunFailure` returns `"offline"` only when the `TypeError` and the `false` reading co-occur *at the moment the catch runs*. Every unit test sets `navigator.onLine` by hand, so all of them would have stayed green even if a real browser never satisfied both together — the feature would simply never have fired. It does.
 
 Capture, at a native 1440×900 context and again at a natively-opened 390×844 context (resizing a loaded page does **not** give you the mobile UI):
 
