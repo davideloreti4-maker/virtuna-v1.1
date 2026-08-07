@@ -727,6 +727,15 @@ export function OfflineNotice() {
 }
 ```
 
+⚠️ **`--mobile-nav-band` does not resolve from `providers.tsx`.** It is set inline on an element
+*inside* `AppShell` (`app-shell.tsx:172`), and custom properties inherit downward only — the
+notice mounts as a sibling of `{children}`, outside that subtree, so the var is undefined and
+the `,0px` fallback silently takes over. That fallback is *safe* (the bar renders at the top)
+but *wrong on mobile* (it covers the burger). **Resolve it by mounting `<OfflineNotice />`
+inside `AppShell` rather than in `providers.tsx`**, where the var is in scope — and confirm
+with `getComputedStyle` in Task 11 rather than by eye, because a `var()` that fails to resolve
+looks identical to one that resolved to zero.
+
 ⚠️ **It must not sit at the bottom.** The composer dock is `absolute inset-x-0 bottom-0`
 (`composer.tsx:3535`), so a `bottom-0` bar lands directly on top of the send button whose
 disabled state this notice exists to explain. It goes to the top instead, offset by
