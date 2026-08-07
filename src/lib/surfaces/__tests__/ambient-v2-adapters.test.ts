@@ -204,6 +204,26 @@ describe("buildSimulateData", () => {
     const vm = buildSimulateData({ audience, stimulus: { text: "x", kind: "draft" } });
     expect(vm.develop).toBeUndefined();
   });
+
+  // The two SCREEN doors are resolved by `kind` with a non-null assertion at MODULE scope
+  // (`dev/cards/page.tsx`: `INTAKE_DOORS.find((o) => o.kind === "draft")!`). Rename either kind and
+  // tsc stays perfectly happy while those become `undefined` at import time — which throws the
+  // whole `/dev/cards` page, not just the section that uses them. Nothing held this until now.
+  it("keeps the two SCREEN doors resolvable by kind, active, and carrying a stimulusKind", () => {
+    const vm = buildSimulateData({ audience, stimulus: { text: "x", kind: "draft" } });
+    const draft = vm.intake.find((o) => o.kind === "draft");
+    const video = vm.intake.find((o) => o.kind === "video");
+
+    expect(draft, "the `draft` door is gone from the intake").toBeDefined();
+    expect(video, "the `video` door is gone from the intake").toBeDefined();
+    expect(draft?.status).toBe("active");
+    expect(video?.status).toBe("active");
+    // `SimulateIntake` branches on `opt.stimulusKind === "video"` and otherwise falls back to
+    // `"draft"` (SimulateIntake.tsx:278,299), so a video door that loses its `stimulusKind` does
+    // not fail — it quietly collects a textarea and arms a DRAFT run.
+    expect(draft?.stimulusKind).toBe("draft");
+    expect(video?.stimulusKind).toBe("video");
+  });
 });
 
 describe("buildStartData", () => {
