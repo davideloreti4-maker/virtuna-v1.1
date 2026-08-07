@@ -30,6 +30,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { reportCredit402, CreditWallRefusal, isCreditWallRefusal } from '@/lib/billing/credit-wall';
+import { resolveRunError } from '@/lib/net/run-failure';
 import type { HookProof, IdeaCardBlock, PopulationAggregateBlock, ReactionPersona, CardTarget } from '@/lib/tools/blocks';
 import { parseProofProp, parseGroundedProp, parseTargetProp, parsePopulationProp } from '@/lib/tools/blocks';
 import type { StageState } from '@/components/thread/progress-checklist';
@@ -459,13 +460,13 @@ export function useIdeasStream(): UseIdeasStreamReturn {
         }
       }
     } catch (err) {
-      if ((err as Error).name === 'AbortError') return; // intentional cancel
       // The credit wall is already up and owns this refusal — an inline error under the modal
       // would offer a retry that gets the same 402 (see CreditWallRefusal). `finally` still resets.
       if (isCreditWallRefusal(err)) return;
-      if (isMountedRef.current) {
-        setError(err instanceof Error ? err.message : 'Ideas stream error');
-      }
+      // null ⇒ draw nothing (an abort is the user's own Stop, not a failure).
+      const message = resolveRunError(err, 'Ideas stream error');
+      if (message === null) return;
+      if (isMountedRef.current) setError(message);
     } finally {
       if (isMountedRef.current) {
         setIsStreaming(false);
@@ -657,13 +658,12 @@ export function useIdeasStream(): UseIdeasStreamReturn {
         }
       }
     } catch (err) {
-      if ((err as Error).name === 'AbortError') return;
       // The credit wall is already up and owns this refusal — an inline error under the modal
       // would offer a retry that gets the same 402 (see CreditWallRefusal). `finally` still resets.
       if (isCreditWallRefusal(err)) return;
-      if (isMountedRef.current) {
-        setError(err instanceof Error ? err.message : 'Refine stream error');
-      }
+      const message = resolveRunError(err, 'Refine stream error');
+      if (message === null) return;
+      if (isMountedRef.current) setError(message);
     } finally {
       if (isMountedRef.current) {
         setIsStreaming(false);
