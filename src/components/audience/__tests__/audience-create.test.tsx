@@ -309,11 +309,60 @@ describe("AudienceCreate — streaming reveal", () => {
     await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/audience/aud-7"));
   });
 
-  it("error returns to the form with the quiet inline line", async () => {
+  /**
+   * The route writes THREE different error sentences and the difference is the point:
+   * `platform_unsupported` and `synthesis_failed` both mean the handle is fine. Substituting
+   * the local "Account not found. Check the handle" is a false accusation that costs the
+   * creator another paid scrape — the route's own comment says so in as many words.
+   *
+   * ⚠️ This block previously fed `message: "nope"` and then asserted the HARDCODED sentence —
+   * a fixture carrying a server message next to an assertion demanding it be discarded. It
+   * passed for exactly the reason the bug existed.
+   */
+  it("error carries the ROUTE's own sentence, not the local one", async () => {
+    const serverCopy =
+      "We read @zachking fine — building the audience from it is what failed. Nothing is wrong with the handle; try again.";
     const fetchMock = vi.fn().mockResolvedValue(
-      sseResponse([{ event: "error", data: { message: "nope", retry: true } }]),
+      sseResponse([{ event: "error", data: { message: serverCopy, retry: true } }]),
     );
     vi.stubGlobal("fetch", fetchMock);
+
+    render(<AudienceCreate />);
+    await typeHandle("zachking", "Your @handle");
+    await clickContinue();
+
+    await waitFor(() =>
+      expect(screen.getByTestId("create-error")).toHaveTextContent(serverCopy),
+    );
+    expect(screen.getByTestId("create-error")).not.toHaveTextContent("Account not found");
+    // Back on the form — the doors are visible again.
+    expect(screen.getByText("Connect account")).toBeInTheDocument();
+  });
+
+  it("platform_unsupported keeps the route's wording too", async () => {
+    const serverCopy = "Maven can only build an audience from a TikTok account right now.";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        sseResponse([{ event: "error", data: { message: serverCopy, retry: false } }]),
+      ),
+    );
+
+    render(<AudienceCreate />);
+    await typeHandle("zachking", "Your @handle");
+    await clickContinue();
+
+    await waitFor(() =>
+      expect(screen.getByTestId("create-error")).toHaveTextContent(serverCopy),
+    );
+  });
+
+  /** No server sentence to carry (transport died) — the local copy is the honest fallback. */
+  it("falls back to the local line when the frame carries no message", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(sseResponse([{ event: "error", data: { retry: true } }])),
+    );
 
     render(<AudienceCreate />);
     await typeHandle("zachking", "Your @handle");
@@ -324,7 +373,6 @@ describe("AudienceCreate — streaming reveal", () => {
         "Account not found. Check the handle — private accounts can't be read.",
       ),
     );
-    // Back on the form — the doors are visible again.
     expect(screen.getByText("Connect account")).toBeInTheDocument();
   });
 });

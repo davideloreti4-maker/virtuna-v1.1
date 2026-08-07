@@ -113,11 +113,23 @@ export function ReadingLimitDialog({ quota, open, onClose, renewsAt }: ReadingLi
   const upgrade = quota.inTrial || fairUse ? null : nextPlanUp(quota.tier);
   const noPlan = !plan;
 
-  // JUST ACTIVATED — the creator who finished onboarding and spent their one free card. Nobody
-  // else can be in this state: a calibrated audience they own, no plan, and no trial history.
-  // Anonymous /go visitors are excluded by construction (they reach the `demo`/`trialRequired`
-  // walls above, and have no calibrated audience at all).
-  const justActivated = noPlan && !trialUsed && !quota.inTrial && !fairUse && Boolean(calibrated);
+  // JUST ACTIVATED — the creator who finished onboarding and spent their one free card: a
+  // calibrated audience they own, no plan, and no trial history.
+  //
+  // ⚠️ `!demo && !trialRequired` is load-bearing. The comment here used to claim anonymous /go
+  // visitors were "excluded by construction … and have no calibrated audience at all". They are
+  // not: middleware exempts anonymous users from the /welcome redirect but does not block them,
+  // and both `/welcome` and `/audience/new` render for an anonymous session while
+  // `/api/audiences/calibrate` and `/api/audiences` admit them on a bare `getUser()`. So an
+  // anonymous visitor CAN own a calibrated audience — and then tier `free` made `noPlan` true
+  // and this predicate fired underneath a `demo_used` verdict.
+  //
+  // The title already ordered `demo`/`trialRequired` above this branch; the description and the
+  // CTA did not, so the wall contradicted itself — "That's your free test used" over a body
+  // about a card written for their room, and a "Write for all 10 — $1" button. Measured live.
+  // Ordering the FACT here keeps all three in agreement instead of only the heading.
+  const justActivated =
+    noPlan && !trialUsed && !quota.inTrial && !fairUse && !demo && !trialRequired && Boolean(calibrated);
   const personaCount = calibrated?.personas?.length ?? 0;
   const audienceName = calibrated?.name ?? null;
 
