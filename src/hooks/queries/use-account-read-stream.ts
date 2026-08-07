@@ -15,6 +15,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { reportCredit402, CreditWallRefusal, isCreditWallRefusal } from "@/lib/billing/credit-wall";
+import { reportSession401, SessionExpiredRefusal } from "@/lib/auth/session-expired";
 import { resolveRunError } from '@/lib/net/run-failure';
 import type { AccountReadBlock } from "@/lib/tools/blocks";
 import { parseRunEvidence, type RunEvidence } from "@/lib/tools/evidence";
@@ -118,6 +119,9 @@ export function useAccountReadStream(): UseAccountReadStreamReturn {
         // receive a 402 — it was the only one of the six stream hooks with no wall handling,
         // purely because its route was the only one with no gate. Without this the paywall would
         // arrive as an inline red error string offering a retry that earns the same 402.
+        // 401 first — it is not a 402, and each check then reads only its own status. The
+        // refusal's flag carries the cause to this turn's copy (lib/net/run-failure.ts).
+        if (reportSession401(res.status)) throw new SessionExpiredRefusal();
         if (reportCredit402(res.status, err)) {
           throw new CreditWallRefusal(errObj.message);
         }

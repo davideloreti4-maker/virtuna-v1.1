@@ -41,6 +41,7 @@ import { buildSimulateData } from "@/lib/surfaces/ambient-v2-adapters";
 import { audienceToMeta } from "@/lib/surfaces/ambient-v2-audience-meta";
 import type { Audience } from "@/lib/audience/audience-types";
 import { reportCredit402 } from "@/lib/billing/credit-wall";
+import { reportSession401 } from "@/lib/auth/session-expired";
 import { TONE } from "./AmbientDetail";
 import { SHEET_STYLE } from "./SimulateIntake";
 
@@ -158,7 +159,9 @@ export function SimulateDoorHost({
           // costs 1 credit, so this can come back 402 and the refusal must arrive as the paywall
           // rather than as silence (the composer's `ask` verb learned that the expensive way).
           const err = await res.json().catch(() => null);
-          if (!reportCredit402(res.status, err)) setFailed(true);
+          // 401 first. Either refusal already owns the screen, so `setFailed` would add a second
+          // explanation underneath a dialog that has the better one.
+          if (!reportSession401(res.status) && !reportCredit402(res.status, err)) setFailed(true);
           setReading(null);
           return;
         }

@@ -51,6 +51,7 @@ import type { Audience } from "@/lib/audience/audience-types";
 import type { AmbientCardDescriptor } from "@/components/app/home/use-ambient-focus";
 import type { PopulationAggregate } from "@/lib/audience/population";
 import { reportCredit402 } from "@/lib/billing/credit-wall";
+import { reportSession401 } from "@/lib/auth/session-expired";
 import type { SimSealVideo } from "@/lib/threads/sim-seals";
 import {
   isSealedSimSeal,
@@ -397,6 +398,9 @@ export function AmbientOverviewRail({
           // sentence; the row still drops back to honestly queued below, which is the right
           // resting state — a refused run produced no verdict to show.
           const err = await res.json().catch(() => null);
+          // 401 first. The row still drops back to queued below, which stays the honest resting
+          // state — a refused run produced no verdict either way.
+          reportSession401(res.status);
           reportCredit402(res.status, err);
           throw new Error("reaction_failed");
         }

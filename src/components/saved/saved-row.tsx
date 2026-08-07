@@ -28,6 +28,7 @@
 import { useState } from "react";
 import { CaretDown, Check } from "@phosphor-icons/react";
 import { reportCredit402 } from "@/lib/billing/credit-wall";
+import { reportSession401 } from "@/lib/auth/session-expired";
 import { useToast } from "@/components/ui/toast";
 import type { SavedItem } from "@/lib/shelf/shelf-repo";
 import { cn } from "@/lib/utils";
@@ -112,6 +113,13 @@ export function SavedRow({
       });
       if (!res.ok) {
         const err: unknown = await res.json().catch(() => null);
+        // 401 first, and it returns rather than throwing: the catch below fires a toast reading
+        // "Couldn't launch this into a thread", which is true and useless next to a dialog that
+        // already says the session ended.
+        if (reportSession401(res.status)) {
+          setLaunching(false);
+          return; // the session dialog is up — do not navigate
+        }
         if (reportCredit402(res.status, err)) {
           setLaunching(false);
           return; // the credit wall is up — do not navigate
