@@ -2,168 +2,83 @@
 
 ## Identity
 
-- **Stack:** Next.js 15, TypeScript, Tailwind v4, Supabase
-- **Branding:** Flat-warm charcoal + coral-red accent + cream text + matte (migrated v5.0/v6.0; the old Raycast system is RETIRED)
-- **Design system:** source of truth = `src/app/globals.css` + `docs/DESIGN-SYSTEM.md`. ⚠️ `BRAND-BIBLE.md`, `docs/tokens.md`, `docs/components.md` are STALE (describe the dead Raycast system) — do not trust them
+- **Stack:** Next.js 15, TypeScript, Tailwind v4, Supabase. Deployed on Vercel.
 - **Repo:** https://github.com/davideloreti4-maker/virtuna-v1.1
-- **Deployed:** Vercel
+- **Setup after clone:** `git config core.hooksPath .githooks`
 
-## Phase Numbering
+## Design system — flat-warm charcoal
 
-Phases are milestone-scoped: each milestone numbers its phases 1-N.
-Historical milestones (pre-2026-02-08) used global numbering 1-63.
+**SSOT: `src/app/globals.css` (`@theme`) + `docs/DESIGN-SYSTEM.md`.** This is a summary; when
+it disagrees with `globals.css`, measure and trust the CSS.
+⚠️ `BRAND-BIBLE.md`, `docs/tokens.md`, `docs/components.md` are STALE (dead Raycast system).
+
+- Flat-warm charcoal + cream text + coral-red accent, **matte** — no glass, no glow, no inset-shine
+- bg `#1f1f1e` (`--color-charcoal-app`) · chrome/composer `#1a1a19` · chip+sidebar `#2c2c2b` ·
+  thread card `#252524`
+- text cream `#ece7de` / `#c2bdb4` / `#8a857c` — **never `#fff`**
+- accent coral-red `#FF6363` (`--color-accent`). Never the retired `#FF7F50`, never terracotta
+  `#d97757`. ⚠️ `--color-coral-*` and `--color-signal-*` are **dead primitives** — their inline
+  comments still claim to be the brand accent. They are not. Use `--color-accent`.
+- Borders 6% (`white/[0.06]`), hover 10%. Radius 4/6/8/12/16/20/24 — cards 12, inputs/buttons 8
+- Inter for chrome; Newsreader serif for voice-moments only (greeting/hero)
+
+### 🔒 Accent dosage (LOCKED 2026-06-24) — read this before adding any colour
+
+**Monochrome by default. Default = NO accent.** The UI is cream-on-charcoal; colour is not a
+styling tool. A screen with **zero** accent is the norm, not a failure. Aim for **at most one**
+accent element visible at a time; often zero. This near-zero dosage — not the hue — is what
+separates this product from Claude's terracotta-everywhere look.
+
+Every accent use must be justified by a specific high-meaning reason. If you can't name it, it
+gets none. **Never** on buttons, chrome, charts, or "to make it pop."
+**Primary actions are neutral cream** (`--color-action`), not accent.
+Sanctioned uses only: the single live-presence dot, the lit constellation/SIM node, the brand mark.
+
+### Guards — keep green
+
+- `src/app/__tests__/design-token-drift.test.ts` — asserts every colour row in
+  `docs/DESIGN-SYSTEM.md` matches `globals.css`. **Never hand-edit a token value in the docs**;
+  change the CSS and let the guard tell you which row to update. (Five rows had silently drifted
+  and misled live design sessions twice before this guard existed.)
+- `reading/__tests__/reskin-matte.test.ts` — bans the *legacy* coral + glass/glow. It does not
+  ban the current `#FF6363`.
+
+## Known technical issues
+
+- **Tailwind v4 oklch:** very dark colors (L < 0.15) compile wrong in `@theme`. Use exact hex.
+- **Tailwind v4 `--font-*` is the font-FAMILY namespace — never put weights there.** `--font-medium: 500`
+  generates `.font-medium { font-family: 500 }`, shadowing the built-in weight utility. This flattened
+  every weight in the app to 400 (616 usages / 223 files) until `c22cdf82`. Don't declare weight tokens —
+  the built-in `font-{medium,semibold,bold}` already work.
+- **Lightning CSS strips `backdrop-filter`:** apply via React inline styles, not CSS classes.
+- **`--color-hover` is an overlay tint, not a fill** (`rgba(255,255,255,0.05)`). As `hover:bg-*` on
+  anything floating over scrolling content it replaces the opaque fill and content shows through.
+  Use a solid tone in the composer dock.
+- **CSS changes not appearing:** kill dev server, clear `.next/` + `node_modules/.cache/` + browser cache.
+- **Playwright screenshots hang here:** ambient-room animations never settle. Use raw Playwright with
+  `animations: 'disabled'` + `caret: 'hide'` + a tight `clip`, or assert via `getComputedStyle`.
 
 ## Worktrees
 
-`~/virtuna-v1.1/` IS the repository — every other folder is a worktree hanging
-off its single shared `.git`. Worktrees are not clones: a commit in one is
-instantly visible to all; deleting a worktree folder keeps its branch + commits.
+`~/virtuna-v1.1/` IS the repository; every sibling folder is a worktree on the same `.git`.
+A commit in one is instantly visible to all. Removing a worktree folder keeps its branch + commits.
 
-**Live inventory — re-measured 2026-07-30 (11 worktrees, down from 15).** Counts are `git cherry main <branch>`
-(**patch-id**, so a lane whose work merged reads 0 even when its tip looks ahead). ⚠️ Do NOT use
-`git rev-list --count main..br` for this — it counts rebased/merged commits as unmerged.
-
-| Path | Branch | Role |
-|------|--------|------|
-| `~/virtuna-v1.1/` | `main` | **Trunk / command center.** Stays on `main` (✅ synced to `origin/main` 2026-07-30, tip `a6b8a0e5` — PR #406 priced `/api/account-read` at 5 credits and gated it; PR #407 below it reactivated Discover + Library). tsc 0 errors; prod deployment `dpl_AtNJQ95d` serves this exact sha. Never holds a long-lived branch. |
-| `~/virtuna-onboarding/` | `milestone/onboarding` | 2 unique (2026-07-27). #387/#388 landed the demo entitlement + /go rebuild. ⚠️ **the old "carries ~1.4k uncommitted lines of /go-v2 work" note was TRUE on 2026-07-27 and is now FALSE** — verified clean 2026-07-29. Owns port 3000. |
-| `~/virtuna-audience-sim-v2/` | `feat/audience-sim-v2` | 20 unique (2026-07-17). Audience simulation v2 — verify against the shipped ambient-v2 before reviving. |
-| `~/virtuna-e2e-audit/` | `audit/e2e-walkthrough` | 17 unique, **docs only** (2026-07-26). The 3 code blockers (F-019/F-017/F-021) already landed on `main`. |
-| `~/virtuna-thread-cards/` | `feat/thread-cards` | 12 unique (2026-07-21). |
-| `~/virtuna-explore-b/` | `feat/per-persona-ideas-script` | 3 unique (2026-07-16). |
-| `~/virtuna-grounding-tools/` | `feat/grounding-reference-cards` | 2 unique (2026-07-20). One of a 5-branch grounding cluster; the rest are branch-only, no worktree. |
-| `~/virtuna-polish/` | `polish/cards-next` | 2 unique (2026-06-27). |
-| `~/virtuna-start-composer/` | `design/start-composer-v2` | 2 unique (2026-07-20). |
-| `~/virtuna-ui-opt/` | `milestone/ui-opt` | 2 unique (2026-06-01) — stale, candidate for retirement. |
-| `~/virtuna-prod/` | `docs/handoff-make-card-polish` | 1 unique (2026-07-27, incl. archived p4-live sketches). |
-
-**Retired 2026-07-30** (worktree folder removed, **branch + commits kept** and confirmed on `origin`):
-`feat/price-account-read` (~/virtuna-composer — **PR #406 MERGED `a6b8a0e5`**, lane complete) ·
-`lane/platform-surface` (~/virtuna-platform, #402) · `docs/pillars-handoff` (~/virtuna-the-room) ·
-`docs/handoff-read-family-cards` (~/virtuna-explore-c). All four verified before removal: 0 unique
-by `git cherry`, clean tree, no stashes, tip == `origin/<branch>`. ~7.5 GB reclaimed.
-
-> 🔑 **`comm -13` "branch-only files" do NOT block a retirement.** All four listed
-> `src/app/(app)/discover/discover-client.tsx` + `loading.tsx`, and the two docs lanes listed 14–31
-> more (`components/thread/*-thread-view.tsx`, `lib/billing/record-reading.ts`, …). Every one is a
-> file **`main` deleted** — the branch is simply older. `comm -13` answers "what does the branch
-> still have", never "what has main not got"; only `git cherry` answers the second. Corroborate a
-> surprising list against `git log --diff-filter=D` on `main` before concluding work is stranded.
->
-> ⚠️ `git worktree remove` deletes the **gitignored** files too — `.env.local` above all, which is
-> on no branch and in no backup. Copy it out first. (The four removed here each differed from
-> trunk's: composer + platform carried `NEXT_PUBLIC_AMBIENT_V2=true`, the two docs lanes were
-> missing the three `GROUNDING_*` flags. Backed up to the session scratchpad 2026-07-30.)
-> ✅ **Trunk's `.env.local` now carries `NEXT_PUBLIC_AMBIENT_V2=true` (added 2026-07-30).** It did
-> not, while production has had the flag ON since 2026-07-29 — so trunk dev rendered the LEGACY
-> room against a v2 prod, and the only worktrees holding the flag were the two just retired.
-> `NEXT_PUBLIC_*` inlines at BUILD time: restart the dev server (and clear `.next/`) after touching it.
-> ⚠️ `~/virtuna-platform` failed its `rmdir` and left ~1.8 GB on disk **after** git had already
-> deregistered it — `git worktree list` said gone while the folder was still there. Check the
-> filesystem, not just the list.
-
-**Retired 2026-07-27** (worktree removed, **branch + commits kept** in `.git`): `lane/refine` · `lane/billing-prod` · `lane/launch-prep` · `lane/shell` · `lane/frame` · `lane/cursor-ui` · `lane/maven-offer` · `lane/skill-cards-prod` · `fix/whop-api-drift` · `milestone/numen-gsi` · `milestone/numen-surface` · `milestone/numen-landing` · `milestone/numen-tools` · `milestone/landing` · `milestone/viral-remix` · `milestone/viral-remix-adapt` · `milestone/ambient-room-v2` · `reconcile/reading-pr19` · `verify/main-state` · `final-verify` · 3 spikes · `rework/engine-core` (idle) · 3 superseded audience branches (below).
-
-> ⚠️ **Three audience branches are SUPERSEDED — never merge them.** `feat/audience-brain-panel`
-> (324 behind), `design/ambient-audience-ui` (264 behind), `design/audience-rework` (245 behind,
-> PR #343 **closed** 2026-07-27). Their work shipped via **#339** (ambient audience production
-> pass), **#317** (Audience rebuild) and **#312**; every file existing only on them was *deliberately
-> deleted* from `main`. Merging would resurrect ~51k lines of dead code. Branches retained for history.
->
-> ⚠️ **`lane/door-arm` is SUPERSEDED — never merge it (2026-07-29).** It holds the *duplicate*
-> phases 5+6 of the ＋door lane, built by a second session at the same hour as the version that
-> shipped. `main` took the OTHER implementation (`69414a16`) and then reconciled the difference in
-> PR #403 (`407741a1`), whose own message settles it: *"Everything else that session shipped is
-> better and stands; this is only the delta."* Merging would resurrect the rejected build. Its one
-> branch-only file (`dev/cards/__tests__/room-simulate.test.tsx`) is superseded coverage — `main`
-> tests the same component at `audience-lens/v2/__tests__/sim-door.test.tsx`. Retained for history,
-> and because §0.1 of the ＋door handoff cites it.
->
-> **Also superseded, retained for history:** `lane/composer-chrome` (shipped as `6392ff85`; its
-> branch-only `composer-ask-credit-wall.test.tsx` covers the composer `ask` verb that **#398
-> deleted** — the path no longer exists on `main`), `lane/composer-pill` (shipped as #398
-> `5006f9c3`, zero branch-only files), `verify-main` (docs only).
->
-> **Deleted 2026-07-29** — the only two that were provably lossless (`git cherry` showed every
-> commit already in `main` by patch-id): `fix/thread-stop-double-run` · `docs/lane2-preconditions`.
-> Everything else keeps its branch: the house rule is retire the WORKTREE, keep the commits.
->
-> 🔑 **How to tell if a branch is dead:** `git diff --stat main...br` (three-dot) shows what the branch
-> *added since it forked* — it says NOTHING about whether `main` already has it, and reads as huge
-> pending work when the branch is actually stale. Two-dot `git diff main br` is no better: it reports
-> main's own newer code as giant DELETIONS, so a merged lane looks like it is removing 5k lines.
-> **The sharp tool is `git cherry -v main <branch>`** — patch-id, so `-` means "already in main"
-> regardless of rebase or squash. Corroborate a `+` with `comm -13` of the two `git ls-tree` file
-> lists (what exists ONLY on the branch) and a title grep against `git log main`; a lane that merged
-> via PR reads `+` purely because merging shifted its patch-ids.
->
-> Canonical historical map: `docs/WORKTREE-DEBT-LEDGER.md` (tracked, full branch survey) — note it
-> predates this reconcile and still lists the retired worktrees above.
-
-### How to work (don't repeat the multi-session-same-worktree mess)
-
-**Rule: the trunk worktree never holds a long-lived branch.**
-
-- **Multi-session milestone** (spans days) → its OWN worktree + branch.
-  From `~/virtuna-v1.1/` on `main`: `/gsd-new-milestone` creates the sibling
-  `~/virtuna-<name>/` worktree, branch, and clean scoped `.planning/`. Then
-  `cd` there and work. One tmux tab per milestone worktree.
-- **Incremental lane** (step-by-step fixes/polish on one surface) → sibling
-  worktree + `lane/<surface>` branch off `main`: `git worktree add ~/virtuna-<name>
-  -b lane/<name> main`. Batch atomic commits on the lane, or cut a short branch
-  per discrete fix → PR → merge.
-- **Quick fix** (one sitting) → in `~/virtuna-v1.1/`: `git switch -c fix/<thing>`
-  off `main`, do the work (`/gsd-quick`), then PR + merge + delete the branch
-  the same session. Trunk returns to clean `main`.
-- **Always** run `git worktree list` + check your branch BEFORE launching `cc`.
-- **Read refs with `git rev-parse`, never `git log --oneline`.** In this environment the one-line
-  log **omits merge commits**, so `main` displays as the last squashed commit while HEAD is really
-  the merge above it. §0.1 of the ＋door handoff blames three same-hour collisions on exactly this,
-  and it recurred 2026-07-29 (`main` read as `95aa0d16`; it was the merge `896ba6b9`). It is not a
-  git config — `git show --no-patch --format=%p <sha>` and `git rev-parse` report the truth.
-- **`main` moves while you work.** A branch cut at session start can be dozens of commits stale by
-  the time you commit — 41 on 2026-07-29. Re-check `git rev-list --count HEAD..main` before opening
-  a PR, and rebase; do not assume the base you forked from is still the tip.
-- **A new worktree is not ready to run.** It needs its own `npm install`
-  (~278M) and its own `.env.local` — neither is shared. Copy `.env.local` from
-  trunk, then add whatever flags that lane needs.
-- **One dev server per port.** Concurrent worktrees collide on :3000 — pass
-  `--port 300X` and check with `lsof -ti:3000` first, or you will spend an hour
-  debugging the wrong running app.
-- **Merge milestones promptly** — a milestone PR should land in days, not grow
-  to dozens of commits across weeks.
-- **Prune on merge.** Removing a worktree keeps its branch + commits, so retire
-  the folder the moment its branch lands. Left alone this reached 43 worktrees /
-  ~24 GB, most of them fully merged.
-
-## Known Technical Issues
-
-- **Tailwind v4 oklch inaccuracy:** Very dark colors (L < 0.15) compile incorrectly in `@theme`. Use exact hex values for dark tokens.
-- **Tailwind v4 `--font-*` is the font-FAMILY namespace — never put weights there.** Declaring `--font-medium: 500` in `@theme` generates `.font-medium { font-family: 500 }`, which *shadows* Tailwind's built-in `.font-medium { font-weight: 500 }`. This silently flattened every weight in the app to 400 (616 usages / 223 files) until fixed 2026-07-10 (`c22cdf82`). `--font-serif` → Newsreader works precisely *because* it is a family. Weights belong to `--font-weight-*`, but the built-in `font-{medium,semibold,bold}` utilities already cover them — **just don't declare weight tokens.** Verify with: probe a `<div class="font-medium">` and assert `getComputedStyle(el).fontWeight === '500'`.
-- **Lightning CSS strips backdrop-filter:** Apply via React inline styles (`style={{ backdropFilter: 'blur(Xpx)' }}`), not CSS classes.
-- **`--color-hover` is an overlay tint, not a fill.** It is `rgba(255,255,255,0.05)`. Using it as `hover:bg-*` on an element that floats over scrolling content *replaces* the opaque fill with a translucent one and the content shows through. Use a solid tone for anything in the floating composer dock.
-- **Dev server CSS caching:** Kill dev server + clear `.next/` + `node_modules/.cache/` + browser cache when CSS changes don't appear.
-- **Playwright screenshots hang on this app:** the ambient-room animations never settle, so `browser_take_screenshot` times out on its font/stability wait. Use raw Playwright with `animations: 'disabled'` + `caret: 'hide'` (and a tight `clip`), or verify via `getComputedStyle`/`getBoundingClientRect` instead.
-
-## Setup
-
-After clone: `git config core.hooksPath .githooks` (enables auto-push hook)
-
-## Design System (current — flat-warm charcoal)
-
-⚠️ The old "Raycast Design Language" section here was RETIRED in the v5.0/v6.0 migration.
-**Source of truth: `src/app/globals.css` (`@theme`) + `docs/DESIGN-SYSTEM.md`.** Summary:
-- **System:** flat-warm charcoal + cream text + coral-red accent + **matte** (no glass, no glow, no inset-shine)
-- **Tokens:** bg `#1f1f1e` (`--charcoal-app`), cream text `#ece7de` (never `#fff`), accent **coral-red `#FF6363`** (`--color-accent`, dated 2026-07-07 — never the RETIRED `#FF7F50`, and NOT terracotta `#d97757`)
-  - ⚠️ This line claimed bg `#262624` + terracotta `#d97757` until 2026-07-17. Both were stale and both misled a live design session. Verified against `globals.css:57`/`:120` **and** at runtime: `getComputedStyle(document.documentElement).getPropertyValue('--color-accent')` → `#ff6363`. When in doubt, measure — globals.css is the SSOT, this file is a summary of it.
-- **Borders:** 6% (`white/[0.06]`), hover 10%. **Radius:** 4/6/8/12/16/20/24 (cards 12, inputs/buttons 8)
-- **Type:** Inter for all chrome; Newsreader serif for voice-moments ONLY (greeting/hero)
-- **Guard:** `reading/__tests__/reskin-matte.test.ts` asserts no **legacy** coral (`#FF7F50` / `rgba(255,127,80,…)`) and no glass/glow — keep green. It does NOT ban the current accent `#FF6363`; "no coral" is about the retired Raycast hue only
-- **Dev server cache:** kill dev server + clear `.next/` + restart when CSS changes don't appear
+- **Trunk never holds a long-lived branch.** Multi-session work → its own worktree + branch.
+  Quick fix → `git switch -c fix/<thing>` in trunk, PR + merge + delete the same session.
+- **Check `git worktree list` and your branch before starting.**
+- **Read refs with `git rev-parse`, never `git log --oneline`** — it omits merge commits here, so
+  `main` displays as the last squashed commit while HEAD is really the merge above it.
+- **`main` moves while you work.** Re-check `git rev-list --count HEAD..main` before opening a PR.
+- **Is a branch dead?** `git cherry -v main <branch>` (patch-id; `-` = already in main). Three-dot
+  and two-dot `git diff` both lie about this.
+- **A new worktree needs its own `npm install` and its own `.env.local`** — neither is shared.
+  ⚠️ `git worktree remove` deletes gitignored files, `.env.local` included. Copy it out first.
+- **One dev server per port.** Check `lsof -ti:3000`, pass `--port 300X`.
+- Historical inventory + superseded-branch warnings: `docs/WORKTREE-INVENTORY-ARCHIVE.md` (stale, read the header).
 
 ## Conventions
 
-- Flat-warm design system: see `docs/DESIGN-SYSTEM.md` (6% borders, 12px card radius, Inter chrome)
 - Server components by default, client only when interactive
-- GSD workflow for planning — see `.planning/`
-- Commit format: `type(phase): description`
+- Commit format: `type(scope): description`
+- Merging a PR deploys to production (~4 min). Run tsc + build + tests before pushing, not after.
+- A green Vercel check is not a build — `ignoreCommand` can skip and still post success. Run `tsc` yourself.
