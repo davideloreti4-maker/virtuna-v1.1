@@ -10,6 +10,7 @@ import { describe, it, expect, afterEach } from "vitest";
 import {
   classifyRunFailure,
   isAbort,
+  resolveRunError,
   runErrorCopy,
   RUN_FAILURE_SENTINEL,
 } from "@/lib/net/run-failure";
@@ -86,6 +87,55 @@ describe("classifyRunFailure", () => {
     delete (globalThis as { navigator?: unknown }).navigator;
     expect(() => classifyRunFailure(new TypeError("Failed to fetch"))).not.toThrow();
     expect(classifyRunFailure(new TypeError("Failed to fetch"))).toBeNull();
+  });
+});
+
+/**
+ * `resolveRunError` is the ENTIRE catch policy in one call, because eight stream hooks would
+ * otherwise carry eight copies of it. Proving it once here is what lets the per-hook change be a
+ * one-liner — and what stops the eight from drifting apart, which is invisible by construction:
+ * a hook that quietly stops classifying just renders the generic copy again.
+ */
+describe("resolveRunError — the shared catch policy", () => {
+  it("returns null for an abort, so the caller draws nothing at all", () => {
+    setOnLine(false);
+    const abort = new DOMException("The operation was aborted.", "AbortError");
+    expect(resolveRunError(abort, "Ideas stream error")).toBeNull();
+  });
+
+  it("returns the offline sentinel when the cause is nameable", () => {
+    setOnLine(false);
+    expect(resolveRunError(new TypeError("Failed to fetch"), "Ideas stream error")).toBe(
+      RUN_FAILURE_SENTINEL.offline,
+    );
+  });
+
+  it("returns the session sentinel for a session refusal", () => {
+    setOnLine(true);
+    expect(resolveRunError({ sessionExpired: true }, "Ideas stream error")).toBe(
+      RUN_FAILURE_SENTINEL.session,
+    );
+  });
+
+  it("passes an ordinary Error's own message through untouched", () => {
+    setOnLine(true);
+    expect(resolveRunError(new Error("Refine request failed"), "fallback")).toBe(
+      "Refine request failed",
+    );
+  });
+
+  it("uses the caller's fallback for a non-Error throw", () => {
+    setOnLine(true);
+    expect(resolveRunError("just a string", "Explore stream error")).toBe("Explore stream error");
+  });
+
+  it("prefers the CAUSE over the error's own message — the message is the less specific truth", () => {
+    setOnLine(false);
+    // A real offline fetch rejects with TypeError("Failed to fetch"). Rendering that raw string
+    // is technically honest and useless; the sentinel is what buys the real sentence.
+    expect(resolveRunError(new TypeError("Failed to fetch"), "x")).toBe(
+      RUN_FAILURE_SENTINEL.offline,
+    );
   });
 });
 

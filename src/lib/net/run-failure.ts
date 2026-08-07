@@ -57,6 +57,26 @@ export function classifyRunFailure(err: unknown): RunFailureCause | null {
   return null;
 }
 
+/**
+ * THE WHOLE CATCH POLICY, IN ONE CALL — what a stream hook should put in its `error` state.
+ *
+ * Returns `null` when the failure must draw NOTHING (an abort is the user's own Stop). Otherwise
+ * returns the sentinel when the cause is nameable, and the error's own message when it is not.
+ *
+ * It exists because eight stream hooks would otherwise carry eight copies of the same four lines,
+ * and eight copies drift. That drift is invisible by construction: a hook that quietly stops
+ * classifying does not fail — it just renders the generic "dropped out" again, which is the exact
+ * defect this module was written to remove.
+ */
+export function resolveRunError(err: unknown, fallback: string): string | null {
+  if (isAbort(err)) return null;
+
+  const cause = classifyRunFailure(err);
+  if (cause) return RUN_FAILURE_SENTINEL[cause];
+
+  return err instanceof Error ? err.message : fallback;
+}
+
 type Copy = { headline: string; body: string; retryLabel: string };
 
 /** Cause copy — outranks every skill's copy, because the cause is the more specific truth. */

@@ -30,7 +30,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { reportCredit402, CreditWallRefusal, isCreditWallRefusal } from '@/lib/billing/credit-wall';
-import { classifyRunFailure, isAbort, RUN_FAILURE_SENTINEL } from '@/lib/net/run-failure';
+import { resolveRunError } from '@/lib/net/run-failure';
 import type { HookProof, IdeaCardBlock, PopulationAggregateBlock, ReactionPersona, CardTarget } from '@/lib/tools/blocks';
 import { parseProofProp, parseGroundedProp, parseTargetProp, parsePopulationProp } from '@/lib/tools/blocks';
 import type { StageState } from '@/components/thread/progress-checklist';
@@ -460,22 +460,13 @@ export function useIdeasStream(): UseIdeasStreamReturn {
         }
       }
     } catch (err) {
-      if (isAbort(err)) return; // intentional cancel
       // The credit wall is already up and owns this refusal — an inline error under the modal
       // would offer a retry that gets the same 402 (see CreditWallRefusal). `finally` still resets.
       if (isCreditWallRefusal(err)) return;
-      if (isMountedRef.current) {
-        // A sentinel when we can name the cause, so the glass can outrank the per-skill copy;
-        // the raw message otherwise. Never both — a cause IS the message at that point.
-        const cause = classifyRunFailure(err);
-        setError(
-          cause
-            ? RUN_FAILURE_SENTINEL[cause]
-            : err instanceof Error
-              ? err.message
-              : 'Ideas stream error',
-        );
-      }
+      // null ⇒ draw nothing (an abort is the user's own Stop, not a failure).
+      const message = resolveRunError(err, 'Ideas stream error');
+      if (message === null) return;
+      if (isMountedRef.current) setError(message);
     } finally {
       if (isMountedRef.current) {
         setIsStreaming(false);
@@ -667,20 +658,12 @@ export function useIdeasStream(): UseIdeasStreamReturn {
         }
       }
     } catch (err) {
-      if (isAbort(err)) return;
       // The credit wall is already up and owns this refusal — an inline error under the modal
       // would offer a retry that gets the same 402 (see CreditWallRefusal). `finally` still resets.
       if (isCreditWallRefusal(err)) return;
-      if (isMountedRef.current) {
-        const cause = classifyRunFailure(err);
-        setError(
-          cause
-            ? RUN_FAILURE_SENTINEL[cause]
-            : err instanceof Error
-              ? err.message
-              : 'Refine stream error',
-        );
-      }
+      const message = resolveRunError(err, 'Refine stream error');
+      if (message === null) return;
+      if (isMountedRef.current) setError(message);
     } finally {
       if (isMountedRef.current) {
         setIsStreaming(false);

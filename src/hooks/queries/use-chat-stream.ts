@@ -23,6 +23,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { reportCredit402 } from '@/lib/billing/credit-wall';
+import { resolveRunError } from '@/lib/net/run-failure';
 import type { MarkdownBlock } from '@/lib/tools/blocks';
 import type { StageState } from '@/components/thread/progress-checklist';
 import { parseRunEvidence, type RunEvidence } from '@/lib/tools/evidence';
@@ -315,10 +316,10 @@ export function useChatStream(): UseChatStreamReturn {
         }
       }
     } catch (err) {
-      if ((err as Error).name === 'AbortError') return; // intentional cancel
-      if (isMountedRef.current) {
-        setError(err instanceof Error ? err.message : 'Chat stream error');
-      }
+      // A null result means draw nothing: an abort is the user's own Stop, not a failure.
+      const message = resolveRunError(err, 'Chat stream error');
+      if (message === null) return;
+      if (isMountedRef.current) setError(message);
     } finally {
       if (isMountedRef.current) {
         setIsStreaming(false);

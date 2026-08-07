@@ -26,6 +26,7 @@ import { queryKeys } from "@/lib/queries/query-keys";
 import type { PredictionResult } from "@/lib/engine/types";
 import type { StageEvent } from "@/lib/engine/events";
 import { STREAM_TIMEOUT_ERROR } from "@/lib/engine/stream-errors";
+import { resolveRunError } from "@/lib/net/run-failure";
 import { isCreditQuotaExceeded, type CreditQuotaExceeded } from "@/lib/billing/quota-error";
 import {
   PANEL_IDS,
@@ -415,7 +416,10 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
       if (analysisIdRef.current && phaseRef.current !== "reconnecting") {
         reconnect();
       } else {
-        setError(err.message);
+        // Cause first (lib/net/run-failure.ts): an offline drop must not read as an engine
+        // failure. `?? err.message` because the abort case is already handled above, so a null
+        // here would only mean "nothing to say", and this branch has to say something.
+        setError(resolveRunError(err, "Analysis stream error") ?? err.message);
         setPhase("error");
       }
     },
