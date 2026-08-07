@@ -50,6 +50,7 @@ import {
 } from '@/components/thread/conversational-frame';
 import { SkillProgress, STAGE_PLANS, type StageState } from '@/components/thread/progress-checklist';
 import { SkillRunError, RunWarnings } from '@/components/thread/run-notices';
+import { runErrorCopy } from '@/lib/net/run-failure';
 import { OutliersOffer } from '@/components/thread/outliers-offer';
 import { SKILL_RUN_META } from '@/components/thread/run-capsule';
 import { ChatTypingIndicator } from '@/components/thread/thread-loading';
@@ -62,23 +63,12 @@ import type { BlockOrigin } from '@/components/app/home/rehydrate-thread';
 const SKILLS_WITH_INTRO: readonly string[] = ['hooks', 'ideas', 'script', 'remix'];
 
 /**
- * Per-skill W2 error copy. The generative skills share the default ("the generation or SIM-1 pass
- * dropped out"), which would be a lie for the skills that fail on an EXTERNAL fetch — Explore
- * reaching a source, Account reaching a profile. Those carried their own copy on their old views;
- * keeping it here is what makes the unified renderer 1:1 rather than merely uniform.
+ * Per-skill W2 error copy moved to `lib/net/run-failure.ts` (2026-08-07), because keying it by
+ * SKILL alone was only half the question. Explore's "Check the handle or niche" is right when the
+ * source really was unreachable and a lie when the device was offline — it accuses a handle that
+ * is fine, which is the same defect PR #449 fixed in calibrate. `runErrorCopy` resolves cause
+ * first, skill second, default last. The per-skill strings moved verbatim.
  */
-const ERROR_COPY: Record<string, { headline: string; body: string; retryLabel: string }> = {
-  explore: {
-    headline: 'Couldn’t reach that source.',
-    body: 'Check the handle or niche and try again — nothing was charged.',
-    retryLabel: 'Retry the Explore pull',
-  },
-  account: {
-    headline: 'Couldn’t read that account.',
-    body: 'Check the handle and try again — nothing was charged.',
-    retryLabel: 'Retry the account read',
-  },
-};
 
 /**
  * The in-flight half of a turn. Absent ⇒ this is a settled turn (persisted, or just-completed and
@@ -315,14 +305,20 @@ export function ThreadTurn({
       {userTurn?.trim() ? <ThreadUserTurn text={userTurn.trim()} /> : null}
       {hasAssistantContent && (
         <ThreadAssistantTurn>
-          {hasError && (
-            <SkillRunError
-              onRetry={live?.onRetry}
-              retryLabel={ERROR_COPY[skill]?.retryLabel ?? (meta ? `Retry the ${skill} run` : 'Retry the run')}
-              headline={ERROR_COPY[skill]?.headline}
-              body={ERROR_COPY[skill]?.body}
-            />
-          )}
+          {hasError && (() => {
+            // Cause first, skill second, default last (lib/net/run-failure.ts). The `meta`
+            // fallback survives for skills with no override and no cause: it names the run.
+            const copy = runErrorCopy(live?.error, skill);
+            const isDefaultLabel = copy.retryLabel === 'Retry the run';
+            return (
+              <SkillRunError
+                onRetry={live?.onRetry}
+                retryLabel={isDefaultLabel && meta ? `Retry the ${skill} run` : copy.retryLabel}
+                headline={copy.headline}
+                body={copy.body}
+              />
+            );
+          })()}
 
           {introSkill && (
             <ThreadIntro
