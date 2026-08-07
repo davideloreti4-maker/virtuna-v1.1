@@ -79,6 +79,7 @@ import { useBoardStore } from "@/stores/board-store";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { useToast } from "@/components/ui/toast";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { useOnline } from "@/hooks/use-online";
 import { createClient } from "@/lib/supabase/client";
 import {
   ComposerControls,
@@ -630,6 +631,10 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // the hand-off between the two surfaces is what lost work (`account`/`test` were never folded at
   // all; a mid-stream switch never folded; a failed reload folded nothing and unmounted anyway).
   //
+  // Gates the send disc (not Stop — see the `disabled` prop). Never used to CLAIM a connection:
+  // `true` only means the device reports a network, which a captive portal also does.
+  const online = useOnline();
+
   // ⚠️ `skill` here is the DISPLAY namespace (ChatTurnKind — "ideas" PLURAL), never ToolId
   // ("idea" singular). The two differ in exactly this one id and a cast cannot fail (F-017).
   const { activeRun, isAnyStreaming, stopActive } = useActiveRun([
@@ -3215,7 +3220,11 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
                   // has to say so: a screen-reader user pressing "Simulate" and being charged
                   // for an account scrape is the same bug as a sighted one, just louder.
                   aria-label={isAnyStreaming ? "Stop the run" : evidenceFile ? "Read this evidence" : activeTool === "idea" ? "Generate ideas" : activeTool === "hooks" ? "Generate hooks" : activeTool === "chat" ? "Send message" : activeTool === "script" ? "Generate script" : activeTool === "remix" ? "Remix video" : activeTool === "explore" ? "Run Explore" : activeTool === "account" ? "Read my account" : "Simulate"}
-                  disabled={isAnyStreaming ? false : evidenceFile ? profiling : !canSubmit}
+                  // Offline folds into the NON-streaming arm only. While a run streams this disc
+                  // is Stop, and taking Stop away at the moment the connection drops removes the
+                  // control the user most wants — and the one that prevents a second billed run
+                  // (composer-stop-disc.test.tsx).
+                  disabled={isAnyStreaming ? false : !online || (evidenceFile ? profiling : !canSubmit)}
                   // A spinner would HIDE the stop affordance, so the streaming state wears the
                   // square instead. `loading` is left for the pre-stream waits only.
                   loading={isAnyStreaming ? false : profiling || submitting}
