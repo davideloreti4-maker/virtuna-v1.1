@@ -39,6 +39,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 // caller here that had to distinguish "refused" from "failed" to avoid recording a dead ask.
 import { reportCredit402 } from "@/lib/billing/credit-wall";
 import { reportSession401, SESSION_EXPIRED_MESSAGE } from "@/lib/auth/session-expired";
+import { runErrorCopy, runFailureCauseOf } from "@/lib/net/run-failure";
 import { createPortal } from "react-dom";
 import {
   OpenRoomContext,
@@ -2868,17 +2869,32 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // The polling ceiling is the one error where the pipeline may still be ALIVE server-side, so a
   // "retry" there would start a second billed run on top of it. Offer the truth instead of a button.
   const testRunStillAlive = stream.error === STREAM_TIMEOUT_ERROR;
+  // CAUSE BEATS SKILL (lib/net/run-failure.ts rule 1). This is a bespoke error surface — it writes
+  // its own sentences instead of resolving them through `thread-turn.tsx` — so it did not inherit
+  // that rule, and the skill copy below is an ACCUSATION: it blames a private, deleted or
+  // region-locked post. That is the likeliest truth for a /go visitor and worth keeping, but it is
+  // a lie about a file that is fine when the run actually died on a dead session or a dropped
+  // connection, and it is the sentence the creator acts on — by deleting and re-uploading a video
+  // that was never the problem. So a named cause overrules it; an unnamed failure keeps it.
+  const testRunCause = runFailureCauseOf(stream.error);
+  const testRunCauseCopy = runErrorCopy(stream.error, "test");
   const testFailedTurn = testRunFailed ? (
     <ThreadShell userTurn={lastUserTurn}>
       <ThreadAssistantTurn>
         <SkillRunError
           headline={
-            testRunStillAlive ? "This read is taking longer than usual." : "Couldn’t finish that read."
+            testRunCause
+              ? testRunCauseCopy.headline
+              : testRunStillAlive
+                ? "This read is taking longer than usual."
+                : "Couldn’t finish that read."
           }
           body={
-            testRunStillAlive
-              ? "Your video is still being read — it just outran the live connection. Reload in a minute and the card will be waiting in this thread."
-              : "The run dropped before the read was finished. A private, deleted or region-locked post will do that. Tap to retry — nothing was charged."
+            testRunCause
+              ? testRunCauseCopy.body
+              : testRunStillAlive
+                ? "Your video is still being read — it just outran the live connection. Reload in a minute and the card will be waiting in this thread."
+                : "The run dropped before the read was finished. A private, deleted or region-locked post will do that. Tap to retry — nothing was charged."
           }
           // Billing happens only in /api/analyze's success branch ("BILL THE READING — inside the
           // success branch, on purpose"), so a dead run really did cost them nothing, and a retry
@@ -2886,8 +2902,13 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           // handleSubmit("test") — explicitly, not handleSubmit(). By the time this button
           // exists the one-shot has reverted the arm to chat, so a bare retry would have sent
           // the failed video URL as a CHAT MESSAGE and called it a retry.
+          //
+          // The retry SURVIVES a named cause — the run is still free to repeat, and removing the
+          // button would strand a user whose session or connection comes back a second later. Only
+          // its label changes, to name the precondition ("Retry after signing in") rather than
+          // inviting a tap that earns the same 401 forever.
           onRetry={testRunStillAlive ? undefined : () => void handleSubmit("test")}
-          retryLabel="Retry the video test"
+          retryLabel={testRunCause ? testRunCauseCopy.retryLabel : "Retry the video test"}
         />
       </ThreadAssistantTurn>
     </ThreadShell>
