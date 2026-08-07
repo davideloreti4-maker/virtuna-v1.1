@@ -544,6 +544,13 @@ git commit -m "feat(thread): resolve run-error copy by cause first, skill second
 - `src/hooks/queries/use-remix-stream.ts`
 - `src/hooks/queries/use-chat-stream.ts`
 - `src/hooks/queries/use-account-read-stream.ts`
+- `src/hooks/queries/use-analysis-stream.ts` — ⚠️ **easy to miss.** It is the one stream hook
+  with **zero** `reportCredit402` calls, so it does not appear in the §4 call-site table and
+  is invisible to any list derived from that set. It has a real error path all the same
+  (`error: string | null` + `setError`, `use-analysis-stream.ts:106,149`) and handles the
+  quota inline via `isCreditQuotaExceeded` rather than through the shared reporter. It needs
+  the cause classification like every other hook; it does **not** get a `reportSession401`
+  line in Task 10.
 
 **Interfaces:**
 - Consumes: the Task 3 convention verbatim.
@@ -569,7 +576,10 @@ describe("every stream hook classifies its failures", () => {
   const streams = readdirSync(DIR).filter((f) => /^use-.*-stream\.ts$/.test(f));
 
   it("finds the stream hooks at all — a rename must fail loudly, not vacuously pass", () => {
-    expect(streams.length).toBeGreaterThanOrEqual(7);
+    // 8 today: account-read, analysis, chat, explore, hooks, ideas, remix, script.
+    // `analysis` is the one with no reportCredit402 call, so any list derived from the
+    // credit-wall set silently omits it — which is exactly why this guard reads the directory.
+    expect(streams.length).toBeGreaterThanOrEqual(8);
   });
 
   it.each(streams)("%s classifies its caught errors", (file) => {
@@ -708,7 +718,7 @@ export function OfflineNotice() {
     <div
       role="status"
       aria-live="polite"
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-white/[0.06] px-4 py-2 text-center text-sm"
+      className="fixed inset-x-0 top-[var(--mobile-nav-band,0px)] z-50 border-b border-white/[0.06] px-4 py-2 text-center text-sm"
       style={{ background: "var(--color-chrome)", color: "var(--color-cream-secondary)" }}
     >
       You’re offline. Nothing will send until the connection is back.
@@ -716,6 +726,14 @@ export function OfflineNotice() {
   );
 }
 ```
+
+⚠️ **It must not sit at the bottom.** The composer dock is `absolute inset-x-0 bottom-0`
+(`composer.tsx:3535`), so a `bottom-0` bar lands directly on top of the send button whose
+disabled state this notice exists to explain. It goes to the top instead, offset by
+`--mobile-nav-band` (set on the shell at `app-shell.tsx:172`, derived from
+`MOBILE_NAV_BAND` in `Sidebar.tsx:819`) so it clears the fixed mobile burger rather than
+covering that too. **Both clearances are verified in the browser in Task 11, at both
+viewports** — this is a layout claim, and jsdom cannot see it.
 
 > `--color-chrome` is `#1a1a19`, verified in `globals.css:68`. (There is no `--color-charcoal-chrome`; the near-neighbours are `--color-charcoal-chip` `#2c2c2b` and `--color-charcoal-composer` `#1a1a19`.) `globals.css` is the SSOT — if any of this disagrees with it, measure and trust the CSS.
 
@@ -1278,5 +1296,10 @@ Re-check `git rev-list --count HEAD..origin/main` before opening the PR — main
 1. **`skill` is not a prop on `ThreadTurn`.** It is derived (`thread-turn.tsx:196`) as `live?.skill ?? header?.skill ?? classifyTurn(blockTypes)`. Task 3's harness passed it as a prop and would not have compiled. Fixed to set it through `live`.
 2. **`--color-charcoal-chrome` does not exist.** The real token is `--color-chrome` (`globals.css:68`). An invented token name fails silently — the style simply does not apply, and the notice would have rendered transparent over scrolling content.
 3. **Task 6's mount was a placeholder.** The composer already mounts whole in tests via `renderWithClient(<Composer />)`, and `composer-stop-disc.test.tsx` drives this very button through its streaming state. Replaced the ellipses with the real harness and pointed at the precedent.
+
+**Two further errors caught in a second review pass**, both of which would have surfaced as failures mid-execution:
+
+4. **The guard's file set was larger than the conversion list.** Eight files match `use-*-stream.ts`, not seven — `use-analysis-stream.ts` has zero `reportCredit402` calls, so it is absent from the §4 table and from any list derived from it, while still owning a real error path. Task 4's guard would have failed on a file Task 4 never told the implementer to touch.
+5. **The notice was positioned on top of the composer.** The dock is `absolute inset-x-0 bottom-0` (`composer.tsx:3535`), so a `fixed bottom-0` bar covers the send button whose disabled state the notice exists to explain. Moved to the top with a `--mobile-nav-band` offset so it clears the fixed burger as well, and both clearances are now explicit Task 11 browser checks — jsdom cannot see either.
 
 **Remaining judgement call, stated rather than hidden:** Task 6's third test needs the composer driven into a streaming state, and the mechanism for that lives in `composer-stop-disc.test.tsx`'s setup rather than being reproducible in six lines here. The step names that file as the source to copy. If its approach has drifted, follow the file, not this plan.
