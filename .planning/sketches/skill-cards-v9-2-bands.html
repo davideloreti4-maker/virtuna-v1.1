@@ -1,0 +1,627 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Skill cards v9.2 · four bands — the source becomes a row, one layout at every width</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --charcoal-app:#1f1f1e; --surface-sunken:#1a1a19;
+  --fg:#ece7de; --fg-2:#c2bdb4; --fg-3:#8a857c;
+  --positive:#8ea68a; --warning:oklch(0.75 0.15 85); --accent:#FF6363;
+  --b:rgba(255,255,255,.06); --b-hover:rgba(255,255,255,.10);
+  --t-caption:11px; --t-label:12px; --t-body:13px; --t-reading:14px;
+  --t-title:16px; --t-subhead:18px; --t-heading:22px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--charcoal-app);color:var(--fg);
+  font-family:InterV,Inter,system-ui,-apple-system,sans-serif;font-size:var(--t-body);line-height:1.5;
+  -webkit-font-smoothing:antialiased;padding:0 0 140px}
+.serif{font-family:NewsreaderV,Newsreader,Georgia,serif}
+
+.bar{position:sticky;top:0;z-index:20;display:flex;flex-wrap:wrap;align-items:center;gap:14px;
+  padding:12px 20px;background:#151514;border-bottom:1px solid var(--b)}
+.bar h1{font-size:var(--t-label);font-weight:600;letter-spacing:.02em;margin-right:auto}
+.bar .hint{font-size:var(--t-caption);color:var(--fg-3)}
+.seg{display:flex;border:1px solid var(--b);border-radius:8px;overflow:hidden}
+.seg button{appearance:none;border:0;background:transparent;color:var(--fg-3);font:inherit;
+  font-size:var(--t-label);padding:6px 12px;cursor:pointer}
+.seg button+button{border-left:1px solid var(--b)}
+.seg button[aria-pressed="true"]{background:rgba(255,255,255,.07);color:var(--fg)}
+
+.section{padding:38px 20px 0;max-width:2400px;margin:0 auto}
+.section>h2{font-size:var(--t-title);font-weight:600;letter-spacing:-.01em;margin-bottom:5px}
+.section>p.note{font-size:var(--t-label);color:var(--fg-3);max-width:82ch;margin-bottom:22px;line-height:1.7}
+.rowcols{display:flex;gap:30px;align-items:flex-start;flex-wrap:wrap}
+.col>h3{font-size:var(--t-caption);text-transform:uppercase;letter-spacing:.05em;color:var(--fg-3);margin-bottom:4px}
+.col>h3 em{font-style:normal;color:var(--fg-2)}
+.col>h3 .tag{color:var(--positive)}
+.col>p.sub{font-size:var(--t-caption);color:rgba(138,133,124,.78);margin-bottom:11px;max-width:46ch;line-height:1.6}
+.stage{width:728px;transition:width .18s ease}
+body[data-w="342"] .stage{width:342px}
+.callout{margin-top:11px;max-width:728px;font-size:var(--t-caption);line-height:1.7;color:var(--fg-3);
+  border-left:2px solid rgba(255,255,255,.10);padding-left:11px}
+.callout b{color:var(--fg-2);font-weight:500}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:var(--fg-2);
+  background:rgba(255,255,255,.04);border-radius:3px;padding:1px 4px}
+.prose{max-width:1180px;font-size:var(--t-body);line-height:1.8;color:var(--fg-2)}
+.prose b.cream{color:var(--fg);font-weight:500}
+.prose p+p{margin-top:12px}
+table.mt{width:100%;border-collapse:collapse;font-size:var(--t-label)}
+table.mt th{padding:7px 10px;font-weight:400;color:var(--fg-3);text-align:left}
+table.mt th:first-child{padding-left:0}
+table.mt td{padding:7px 10px;border-top:1px solid var(--b);font-variant-numeric:tabular-nums}
+table.mt td:first-child{padding-left:0}
+.stack{display:flex;flex-direction:column;gap:12px}
+
+/* ══ v9.2 — FOUR BANDS. Face · Source row · Brief row · Footer. Every band is
+   full-width and keeps the same left edge, so the card reads as one structured
+   object at every width and stays complete when a band is absent. ══════════ */
+.n-card{border:1px solid var(--b);border-radius:12px;background:var(--surface-sunken);overflow:hidden}
+.n-face{padding:18px 20px}
+.n-kick{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.n-chip{display:inline-flex;align-items:center;border-radius:999px;background:rgba(255,255,255,.06);
+  padding:2px 9px;font-size:var(--t-caption);font-weight:500;color:var(--fg)}
+.n-kick .copy{margin-left:auto}
+.copy{display:inline-flex;align-items:center;gap:5px;flex-shrink:0;font-size:var(--t-label);
+  font-weight:500;color:var(--fg-3);background:none;border:0;cursor:pointer;font-family:inherit}
+.ico{width:13px;height:13px;flex-shrink:0}
+.n-hero{font-size:var(--t-heading);line-height:1.3;letter-spacing:-.01em;font-weight:500;color:var(--fg);
+  text-wrap:balance;max-width:44ch}
+body[data-w="342"] .n-hero{font-size:19px}
+.n-hero .q{color:rgba(236,231,222,.45)}
+.n-dek{margin-top:9px;font-size:var(--t-body);line-height:1.65;color:var(--fg-2);max-width:58ch}
+.n-dek .own{color:var(--fg)}
+.mult{color:var(--positive);font-weight:500;font-variant-numeric:tabular-nums}
+
+/* the source row — ONE component, all four cards */
+.src-row{display:flex;gap:13px;align-items:center;border-top:1px solid var(--b);
+  padding:12px 20px;text-decoration:none;cursor:pointer}
+.src-row:hover{background:rgba(255,255,255,.03)}
+.src-row .th{position:relative;display:block;width:52px;flex-shrink:0;aspect-ratio:9/16;
+  border-radius:6px;overflow:hidden;border:1px solid rgba(255,255,255,.08)}
+.src-row .th .bg{position:absolute;inset:0}
+.src-row .th .subj{position:absolute;left:50%;bottom:-6%;width:90%;height:52%;transform:translateX(-50%);
+  border-radius:50% 50% 0 0;filter:blur(2px)}
+.src-row .cbody{min-width:0;flex:1}
+.src-row .tt{font-size:var(--t-label);font-weight:500;color:var(--fg-2);line-height:1.5}
+.src-row .st{margin-top:2px;font-size:var(--t-label);line-height:1.5;color:var(--fg-3)}
+.src-row .chev{color:var(--fg-3);font-size:14px;flex-shrink:0}
+
+.n-brief{display:flex;align-items:center;gap:10px;width:100%;border:0;border-top:1px solid var(--b);
+  background:none;font-family:inherit;cursor:pointer;padding:12px 20px;text-align:left}
+.n-brief .t{font-size:var(--t-label);font-weight:500;color:var(--fg-2)}
+.n-brief .items{font-size:var(--t-label);color:var(--fg-3)}
+body[data-w="342"] .n-brief .items{display:none}
+.n-brief .chev{margin-left:auto;color:var(--fg-3);font-size:14px}
+.n-briefbody{padding:2px 20px 14px;display:flex;flex-direction:column}
+.bcell{padding:9px 0}
+.bcell+.bcell{border-top:1px solid var(--b)}
+.bcell .tt{font-size:var(--t-label);font-weight:500;color:var(--fg);line-height:1.5}
+.bcell .sub{margin-top:1px;font-size:var(--t-label);line-height:1.55;color:var(--fg-3)}
+.bcell .sub .on{color:var(--fg-2)}
+.bcell .sub .v{background:rgba(255,255,255,.06);border-radius:2px;padding:1px 4px;color:var(--fg-2);margin:0 1px}
+
+.n-footer{display:flex;align-items:center;gap:16px;flex-wrap:wrap;border-top:1px solid var(--b);padding:13px 20px}
+.primary{display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.08);
+  background:rgba(255,255,255,.05);border-radius:8px;padding:8px 14px;font-size:var(--t-body);
+  font-weight:600;color:var(--fg);font-family:inherit;cursor:pointer}
+.door{display:inline-flex;align-items:center;gap:8px;margin-left:auto;font-size:var(--t-label);
+  color:var(--fg-3);background:none;border:0;font-family:inherit;cursor:pointer;min-height:32px}
+.door .hollow{width:7px;height:7px;border-radius:999px;border:1px solid var(--fg-3);flex-shrink:0}
+.door-cta{color:var(--fg-2);white-space:nowrap}
+.save{color:var(--fg-3);display:inline-flex}
+body[data-w="342"] .n-footer{row-gap:12px}
+body[data-w="342"] .primary{order:1}
+body[data-w="342"] .save{order:2;margin-left:auto}
+body[data-w="342"] .door{order:3;margin-left:0;width:100%;justify-content:space-between}
+
+/* deliverable-card pieces (unchanged from v9.1 except the source row) */
+.d-head{display:flex;align-items:center;gap:10px;padding:14px 20px 12px}
+.d-head .skill{font-size:var(--t-label);font-weight:500;color:var(--fg-2)}
+.d-head .meta{font-size:var(--t-label);color:var(--fg-3)}
+.d-head .copy{margin-left:auto}
+.beats{display:flex;flex-direction:column;padding:4px 20px 0}
+.beat{display:flex;gap:12px;padding:11px 0}
+.beat+.beat{border-top:1px solid var(--b)}
+.timing{width:40px;flex-shrink:0;padding-top:1px;text-align:right;font-size:var(--t-caption);
+  font-weight:600;font-variant-numeric:tabular-nums;color:var(--fg-2)}
+.rail{display:flex;flex-direction:column;align-items:center}
+.rail b{margin-top:4px;height:8px;width:8px;flex-shrink:0;border-radius:999px;background:rgba(255,255,255,.30)}
+.rail i{margin-top:4px;width:1px;flex:1;background:rgba(255,255,255,.10)}
+.beatbody{min-width:0;flex:1;padding-bottom:2px}
+.beatrow{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.beatlabel{font-size:var(--t-label);font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--fg)}
+.beatcaret{color:var(--fg-3);font-size:12px}
+.beattext{margin-top:4px;font-size:var(--t-reading);line-height:1.6;color:var(--fg-2)}
+.film{margin-top:6px;display:flex;gap:6px;font-size:var(--t-label);line-height:1.6;color:var(--fg-3)}
+.retention{margin-top:6px;font-size:var(--t-label);line-height:1.6;color:var(--fg-3)}
+.howto{margin:18px 20px 0}
+.howto>p.h{font-size:var(--t-label);color:var(--fg-3);margin-bottom:8px}
+.howto dl{display:flex;flex-direction:column;gap:6px}
+.prodrow{display:flex;gap:8px;font-size:var(--t-label);line-height:1.6}
+.prodrow dt{width:92px;flex-shrink:0;color:var(--fg-3)}
+.prodrow dd{min-width:0;flex:1;color:var(--fg-2)}
+.pad-b{padding-bottom:16px}
+.map{display:grid;grid-template-columns:1fr 1fr;margin:16px 20px 0}
+body[data-w="342"] .map{grid-template-columns:1fr}
+.maphead{border-bottom:1px solid var(--b);padding:0 14px 8px}
+.maphead p.t{font-size:var(--t-label);color:var(--fg-2);font-weight:500}
+.maphead p.d{margin-top:1px;font-size:var(--t-caption);color:var(--fg-3)}
+.mcell{padding:12px 14px;border-bottom:1px solid var(--b)}
+.mcell.r{border-left:1px solid var(--b)}
+body[data-w="342"] .mcell.r{border-left:0}
+.mcell.last{border-bottom:0}
+body[data-w="342"] .mcell.l-last{border-bottom:1px solid var(--b)}
+.mcell p.lbl{font-size:var(--t-label);color:var(--fg-3);margin-bottom:4px}
+.mcell p.b{font-size:var(--t-body);line-height:1.6;color:var(--fg-2)}
+.mcell p.b.dim{color:var(--fg-3)}
+.built{margin:14px 20px 0;font-size:var(--t-body);line-height:1.6;color:var(--fg-2)}
+.built .cream{color:var(--fg)}
+</style>
+</head>
+<body data-w="728">
+
+<div class="bar">
+  <h1>Skill cards v9.2 · four bands</h1>
+  <span class="hint">face · source row · brief · footer — one layout at every width</span>
+  <div class="seg" role="group" aria-label="Card width">
+    <button data-w="728" aria-pressed="true">728px · in-thread</button>
+    <button data-w="342" aria-pressed="false">342px · mobile</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <h2>Your three notes, and the one fix behind them</h2>
+  <div class="prose">
+    <p><b class="cream">All three complaints share a root cause: a 9:16 portrait panel beside text is
+    the wrong geometry.</b> A 263px-tall image column can never be filled by three lines of text, so
+    the text floats in space (your "empty and unstructured"), the image dominates (your "too big"),
+    and when the reference is absent the scaffold collapses (your "even worse"). Perplexity gets away
+    with side images because theirs are landscape.</p>
+    <p><b class="cream">v9.2 rebuilds the card as four full-width bands:</b> the face (hero and dek,
+    full line length, no compression), the <b class="cream">source row</b> (the case study as a
+    proper component: 52px cover, "Case study · @handle" over the stat line, chevron, tappable),
+    the brief row, the footer. Every band shares the same left edge. Remove the source band and the
+    card is still a complete object. And mobile is now literally the same layout as desktop — the
+    cover special-casing is gone entirely.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     CHOICE CARDS
+     ═══════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <h2>Choice cards</h2>
+  <div class="rowcols">
+    <div class="col">
+      <h3>Hook · <em>two of five</em> <span class="tag">v9.2</span></h3>
+      <div class="stage stack">
+
+        <div class="n-card" id="mB-hook">
+          <div class="n-face">
+            <div class="n-kick">
+              <span class="n-chip">Top pick</span>
+              <button class="copy"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M216 32H88a8 8 0 0 0-8 8v40H40a8 8 0 0 0-8 8v128a8 8 0 0 0 8 8h128a8 8 0 0 0 8-8v-40h40a8 8 0 0 0 8-8V40a8 8 0 0 0-8-8m-56 176H48V96h112Zm48-48h-32V88a8 8 0 0 0-8-8H96V48h112Z"/></svg>Copy</button>
+            </div>
+            <p class="serif n-hero"><span class="q">“</span>Stop editing your videos. Do this instead.<span class="q">”</span></p>
+            <p class="n-dek">A crash-zoom open, caps slamming over your face. It lands as permission: quit the painful task.</p>
+          </div>
+
+          <a class="src-row" href="#">
+            <span class="th">
+              <span class="bg" style="background:
+                radial-gradient(95% 60% at 68% 22%, rgba(214,178,140,.5), transparent 62%),
+                radial-gradient(120% 80% at 15% 85%, rgba(66,88,98,.85), transparent 70%),
+                linear-gradient(165deg, #4a4038 0%, #2e2b28 45%, #181716 100%)"></span>
+              <span class="subj" style="background:radial-gradient(50% 62% at 50% 32%, rgba(28,24,22,.92), rgba(18,16,15,.96) 72%)"></span>
+            </span>
+            <span class="cbody">
+              <span class="tt" style="display:block">Case study · @braedan.health</span>
+              <span class="st" style="display:block"><span class="mult">90.7× their usual reach</span> · 621K views</span>
+            </span>
+            <span class="chev">›</span>
+          </a>
+
+          <button class="n-brief" aria-expanded="false">
+            <span class="t">Full brief</span>
+            <span class="items">Why it works · Structure · Audience · First frame · Your line</span>
+            <span class="chev">›</span>
+          </button>
+          <div class="n-footer">
+            <button class="primary">Write the script →</button>
+            <button class="door"><span class="hollow"></span>Not tested yet<span class="door-cta">Simulate with your audience →</span></button>
+            <span class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg></span>
+          </div>
+        </div>
+
+        <div class="n-card" id="mB-hook2">
+          <div class="n-face">
+            <div class="n-kick">
+              <button class="copy" style="margin-left:auto"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M216 32H88a8 8 0 0 0-8 8v40H40a8 8 0 0 0-8 8v128a8 8 0 0 0 8 8h128a8 8 0 0 0 8-8v-40h40a8 8 0 0 0 8-8V40a8 8 0 0 0-8-8m-56 176H48V96h112Zm48-48h-32V88a8 8 0 0 0-8-8H96V48h112Z"/></svg>Copy</button>
+            </div>
+            <p class="serif n-hero"><span class="q">“</span>Your camera roll is lying to you.<span class="q">”</span></p>
+            <p class="n-dek">Freeze on a photo everyone has, then flip it. An accusation aimed at the viewer's own gallery.</p>
+          </div>
+
+          <a class="src-row" href="#">
+            <span class="th">
+              <span class="bg" style="background:
+                radial-gradient(100% 65% at 30% 18%, rgba(150,180,190,.4), transparent 60%),
+                radial-gradient(120% 90% at 85% 90%, rgba(120,80,70,.7), transparent 72%),
+                linear-gradient(150deg, #3c4448 0%, #2b2a29 50%, #171616 100%)"></span>
+              <span class="subj" style="background:radial-gradient(52% 60% at 50% 30%, rgba(26,23,21,.9), rgba(17,15,14,.95) 70%)"></span>
+            </span>
+            <span class="cbody">
+              <span class="tt" style="display:block">Case study · @firstframe.fx</span>
+              <span class="st" style="display:block"><span class="mult">44× their usual reach</span> · 1.2M views</span>
+            </span>
+            <span class="chev">›</span>
+          </a>
+
+          <button class="n-brief" aria-expanded="false">
+            <span class="t">Full brief</span>
+            <span class="items">Why it works · Structure · Audience · First frame · Your line</span>
+            <span class="chev">›</span>
+          </button>
+          <div class="n-footer">
+            <button class="primary">Write the script →</button>
+            <button class="door"><span class="hollow"></span>Not tested yet<span class="door-cta">Simulate with your audience →</span></button>
+            <span class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg></span>
+          </div>
+        </div>
+
+      </div>
+      <p class="callout">
+        <b>The face is now hero and dek at full line length</b> — nothing floats beside anything.
+        The case study reads as what it is: a receipt you can open, weighted like a component, not
+        a poster. The real TikTok cover fills the 52px thumb in production.
+      </p>
+    </div>
+
+    <!-- IDEA -->
+    <div class="col">
+      <h3>Idea · <em>collapsed, and with no reference</em> <span class="tag">v9.2</span></h3>
+      <div class="stage stack">
+
+        <div class="n-card" id="mB-idea">
+          <div class="n-face">
+            <div class="n-kick">
+              <span class="n-chip">Top pick</span>
+              <span style="margin-left:auto"></span>
+            </div>
+            <h3 class="serif n-hero">The 30-day silence experiment</h3>
+            <p class="n-dek">Go quiet on purpose, then show the receipts. <span class="own">Your take: consistency is overrated; strategic absence compounds attention.</span></p>
+          </div>
+
+          <a class="src-row" href="#">
+            <span class="th">
+              <span class="bg" style="background:
+                radial-gradient(90% 55% at 35% 20%, rgba(190,160,120,.45), transparent 60%),
+                radial-gradient(130% 85% at 80% 88%, rgba(60,78,86,.85), transparent 70%),
+                linear-gradient(160deg, #443e36 0%, #2c2a27 48%, #171615 100%)"></span>
+              <span class="subj" style="background:radial-gradient(52% 60% at 50% 31%, rgba(27,24,22,.92), rgba(17,15,14,.95) 70%)"></span>
+            </span>
+            <span class="cbody">
+              <span class="tt" style="display:block">Case study · @nourish.me.now</span>
+              <span class="st" style="display:block"><span class="mult">277× their usual reach</span> · 4.3M views</span>
+            </span>
+            <span class="chev">›</span>
+          </a>
+
+          <button class="n-brief" aria-expanded="false">
+            <span class="t">Full brief</span>
+            <span class="items">Why it lands · Fits you · Structure · Audience · Opening line</span>
+            <span class="chev">›</span>
+          </button>
+          <div class="n-footer">
+            <button class="primary">Write hooks for this →</button>
+            <button class="door"><span class="hollow"></span>Not tested yet<span class="door-cta">Simulate with your audience →</span></button>
+            <span class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg></span>
+          </div>
+        </div>
+
+        <!-- NO REFERENCE -->
+        <div class="n-card" id="mB-empty">
+          <div class="n-face">
+            <div class="n-kick">
+              <span class="n-chip">Top pick</span>
+              <button class="copy"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M216 32H88a8 8 0 0 0-8 8v40H40a8 8 0 0 0-8 8v128a8 8 0 0 0 8 8h128a8 8 0 0 0 8-8v-40h40a8 8 0 0 0 8-8V40a8 8 0 0 0-8-8m-56 176H48V96h112Zm48-48h-32V88a8 8 0 0 0-8-8H96V48h112Z"/></svg>Copy</button>
+            </div>
+            <p class="serif n-hero"><span class="q">“</span>Stop editing your videos. Do this instead.<span class="q">”</span></p>
+            <p class="n-dek">A crash-zoom open, caps slamming over your face. It lands as permission: quit the painful task.</p>
+          </div>
+          <button class="n-brief" aria-expanded="false">
+            <span class="t">Full brief</span>
+            <span class="items">First frame · Your line</span>
+            <span class="chev">›</span>
+          </button>
+          <div class="n-footer">
+            <button class="primary">Write the script →</button>
+            <button class="door"><span class="hollow"></span>Not tested yet<span class="door-cta">Simulate with your audience →</span></button>
+            <span class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg></span>
+          </div>
+        </div>
+
+      </div>
+      <p class="callout">
+        <b>The second card is the no-reference case</b> — same bands minus the source row, and it
+        now reads as a deliberately smaller card instead of a broken one, because no band that
+        remains was ever shaped around the missing one.
+      </p>
+    </div>
+
+    <!-- IDEA · BRIEF OPEN — the five cells, including the two the value audit restored -->
+    <div class="col">
+      <h3>Idea · <em>brief open, five cells</em></h3>
+      <p class="sub">The value audit caught two facts falling off: the mechanism's full text (hook)
+        and the "fits you" grounding line (idea). Both are now brief cells; the inventory closes.</p>
+      <div class="stage">
+        <div class="n-card" id="mB-ideax">
+          <div class="n-face">
+            <div class="n-kick">
+              <span class="n-chip">Top pick</span>
+              <span style="margin-left:auto"></span>
+            </div>
+            <h3 class="serif n-hero">The 30-day silence experiment</h3>
+            <p class="n-dek">Go quiet on purpose, then show the receipts. <span class="own">Your take: consistency is overrated; strategic absence compounds attention.</span></p>
+          </div>
+
+          <a class="src-row" href="#">
+            <span class="th">
+              <span class="bg" style="background:
+                radial-gradient(90% 55% at 35% 20%, rgba(190,160,120,.45), transparent 60%),
+                radial-gradient(130% 85% at 80% 88%, rgba(60,78,86,.85), transparent 70%),
+                linear-gradient(160deg, #443e36 0%, #2c2a27 48%, #171615 100%)"></span>
+              <span class="subj" style="background:radial-gradient(52% 60% at 50% 31%, rgba(27,24,22,.92), rgba(17,15,14,.95) 70%)"></span>
+            </span>
+            <span class="cbody">
+              <span class="tt" style="display:block">Case study · @nourish.me.now</span>
+              <span class="st" style="display:block"><span class="mult">277× their usual reach</span> · 4.3M views</span>
+            </span>
+            <span class="chev">›</span>
+          </a>
+
+          <button class="n-brief" aria-expanded="true" style="border-bottom:1px solid var(--b)">
+            <span class="t">Full brief</span>
+            <span class="chev" style="transform:rotate(90deg)">›</span>
+          </button>
+          <div class="n-briefbody">
+            <div class="bcell">
+              <p class="tt">Why it lands</p>
+              <p class="sub">A curiosity gap plus an identity threat. Creators fear disappearing.</p>
+            </div>
+            <div class="bcell">
+              <p class="tt">Fits you</p>
+              <p class="sub">Your top 3 posts all lead with a counter-intuitive claim about consistency.</p>
+            </div>
+            <div class="bcell">
+              <p class="tt">Proven structure</p>
+              <p class="sub">I stopped <span class="v">[common habit]</span> for <span class="v">[timeframe]</span>. Here's what happened to my <span class="v">[thing]</span>.</p>
+            </div>
+            <div class="bcell">
+              <p class="tt">Made for 34% of your audience</p>
+              <p class="sub">They judge a video by whether it saves them a mistake.</p>
+            </div>
+            <div class="bcell">
+              <p class="tt">Opening line</p>
+              <p class="sub">“I stopped posting for 30 days. Here's what actually happened to my account.” <span class="on">Talking-head, analytics on screen.</span></p>
+            </div>
+          </div>
+          <div class="n-footer">
+            <button class="primary">Write hooks for this →</button>
+            <button class="door"><span class="hollow"></span>Not tested yet<span class="door-cta">Simulate with your audience →</span></button>
+            <span class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg></span>
+          </div>
+        </div>
+      </div>
+      <p class="callout">
+        <b>The hook's brief gains "Why it works" the same way</b> (full mechanism text, since the dek
+        carries only its condensed form). With these two cells, nothing real from the shipped cards
+        is lost anywhere in the system.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     DELIVERABLE CARDS
+     ═══════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <h2>Deliverable cards</h2>
+  <p class="note">Same source-row component under their headers; timeline and map unchanged from
+    v9.1.</p>
+  <div class="rowcols">
+
+    <!-- SCRIPT -->
+    <div class="col">
+      <h3>Script <span class="tag">v9.2</span></h3>
+      <div class="stage">
+        <div class="n-card" id="mB-script">
+          <div class="d-head">
+            <span class="skill">Script</span>
+            <span class="meta">5 beats · Talking-head · Creator growth</span>
+            <button class="copy"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M216 32H88a8 8 0 0 0-8 8v40H40a8 8 0 0 0-8 8v128a8 8 0 0 0 8 8h128a8 8 0 0 0 8-8v-40h40a8 8 0 0 0 8-8V40a8 8 0 0 0-8-8m-56 176H48V96h112Zm48-48h-32V88a8 8 0 0 0-8-8H96V48h112Z"/></svg>Copy script</button>
+          </div>
+
+          <a class="src-row" href="#">
+            <span class="th">
+              <span class="bg" style="background:
+                radial-gradient(90% 55% at 35% 20%, rgba(190,160,120,.45), transparent 60%),
+                radial-gradient(130% 85% at 80% 88%, rgba(60,78,86,.85), transparent 70%),
+                linear-gradient(160deg, #443e36 0%, #2c2a27 48%, #171615 100%)"></span>
+              <span class="subj" style="background:radial-gradient(52% 60% at 50% 31%, rgba(27,24,22,.92), rgba(17,15,14,.95) 70%)"></span>
+            </span>
+            <span class="cbody">
+              <span class="tt" style="display:block">Case study · @nourish.me.now</span>
+              <span class="st" style="display:block"><span class="mult">277× their usual reach</span> · 4.3M views</span>
+            </span>
+            <span class="chev">›</span>
+          </a>
+
+          <div class="beats">
+            <div class="beat">
+              <span class="timing">0–3s</span>
+              <div class="rail" aria-hidden="true"><b></b><i></i></div>
+              <div class="beatbody">
+                <div class="beatrow"><span class="beatlabel">Hook</span><span class="beatcaret">⌄</span></div>
+                <p class="beattext">I stopped posting for 30 days. Everyone said it would kill my account.</p>
+                <p class="film"><svg class="ico" style="margin-top:2px;opacity:.7" viewBox="0 0 256 256" fill="currentColor"><path d="M251.77 73a8 8 0 0 0-8.21.39L208 97.05V72a16 16 0 0 0-16-16H32a16 16 0 0 0-16 16v112a16 16 0 0 0 16 16h160a16 16 0 0 0 16-16v-25l35.56 23.71A8 8 0 0 0 256 176V80a8 8 0 0 0-4.23-7"/></svg><span>Tight frame, direct to camera, the day counter slams on at 0s.</span></p>
+                <p class="retention">↳ The claim attacks the one rule every viewer believes, so they wait for the receipts.</p>
+              </div>
+            </div>
+            <div class="beat">
+              <span class="timing">3–8s</span>
+              <div class="rail" aria-hidden="true"><b></b><i></i></div>
+              <div class="beatbody">
+                <div class="beatrow"><span class="beatlabel">Setup</span><span class="beatcaret">›</span></div>
+                <p class="beattext">Consistency is the one rule every guru agrees on. So I broke it on purpose.</p>
+                <p class="film"><svg class="ico" style="margin-top:2px;opacity:.7" viewBox="0 0 256 256" fill="currentColor"><path d="M251.77 73a8 8 0 0 0-8.21.39L208 97.05V72a16 16 0 0 0-16-16H32a16 16 0 0 0-16 16v112a16 16 0 0 0 16 16h160a16 16 0 0 0 16-16v-25l35.56 23.71A8 8 0 0 0 256 176V80a8 8 0 0 0-4.23-7"/></svg><span>Cut to a screen recording of the posting calendar going blank.</span></p>
+              </div>
+            </div>
+            <div class="beat">
+              <span class="timing">8–18s</span>
+              <div class="rail" aria-hidden="true"><b></b><i></i></div>
+              <div class="beatbody">
+                <div class="beatrow"><span class="beatlabel">Proof</span><span class="beatcaret">›</span></div>
+                <p class="beattext">Day 30: my next post did four times my average. Here is what the graph looked like.</p>
+                <p class="film"><svg class="ico" style="margin-top:2px;opacity:.7" viewBox="0 0 256 256" fill="currentColor"><path d="M251.77 73a8 8 0 0 0-8.21.39L208 97.05V72a16 16 0 0 0-16-16H32a16 16 0 0 0-16 16v112a16 16 0 0 0 16 16h160a16 16 0 0 0 16-16v-25l35.56 23.71A8 8 0 0 0 256 176V80a8 8 0 0 0-4.23-7"/></svg><span>Analytics on screen, finger traces the spike.</span></p>
+              </div>
+            </div>
+            <div class="beat">
+              <span class="timing">18–24s</span>
+              <div class="rail" aria-hidden="true"><b></b><i></i></div>
+              <div class="beatbody">
+                <div class="beatrow"><span class="beatlabel">Mechanism</span><span class="beatcaret">›</span></div>
+                <p class="beattext">The algorithm does not reward frequency. It rewards how hard people come back.</p>
+              </div>
+            </div>
+            <div class="beat">
+              <span class="timing">24–30s</span>
+              <div class="rail" aria-hidden="true"><b></b></div>
+              <div class="beatbody">
+                <div class="beatrow"><span class="beatlabel">CTA</span><span class="beatcaret">›</span></div>
+                <p class="beattext">Try a planned silence. Two weeks minimum. Film your comeback with this structure.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="howto pad-b">
+            <p class="h">How to film</p>
+            <dl>
+              <div class="prodrow"><dt>Shots</dt><dd>Talking head at desk, two screen recordings, one calendar b-roll.</dd></div>
+              <div class="prodrow"><dt>On-screen text</dt><dd>Day counter top-left, the average-views figure under the spike.</dd></div>
+              <div class="prodrow"><dt>Setup</dt><dd>Phone on tripod, window light, analytics open on a second screen.</dd></div>
+              <div class="prodrow"><dt>Edit</dt><dd>Hard cuts only; hold the graph a full two seconds.</dd></div>
+            </dl>
+          </div>
+
+          <div class="n-footer">
+            <button class="primary">Test this script →</button>
+            <button class="door"><span class="hollow"></span>Not tested yet<span class="door-cta">Simulate with your audience →</span></button>
+            <span class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- REMIX -->
+    <div class="col">
+      <h3>Remix <span class="tag">v9.2</span></h3>
+      <div class="stage">
+        <div class="n-card" id="mB-remix">
+          <div class="d-head">
+            <span class="skill">Remix</span>
+            <button class="copy" style="margin-left:auto"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M216 32H88a8 8 0 0 0-8 8v40H40a8 8 0 0 0-8 8v128a8 8 0 0 0 8 8h128a8 8 0 0 0 8-8v-40h40a8 8 0 0 0 8-8V40a8 8 0 0 0-8-8m-56 176H48V96h112Zm48-48h-32V88a8 8 0 0 0-8-8H96V48h112Z"/></svg>Copy</button>
+          </div>
+
+          <a class="src-row" style="border-top:0;padding-top:2px" href="#">
+            <span class="th">
+              <span class="bg" style="background:
+                radial-gradient(100% 65% at 30% 18%, rgba(150,180,190,.4), transparent 60%),
+                radial-gradient(120% 90% at 85% 90%, rgba(120,80,70,.7), transparent 72%),
+                linear-gradient(150deg, #3c4448 0%, #2b2a29 50%, #171616 100%)"></span>
+              <span class="subj" style="background:radial-gradient(52% 60% at 50% 30%, rgba(26,23,21,.9), rgba(17,15,14,.95) 70%)"></span>
+            </span>
+            <span class="cbody">
+              <span class="tt" style="display:block">The post you're remixing · @calm.desk.tom</span>
+              <span class="st" style="display:block">1.1M views</span>
+            </span>
+            <span class="chev">›</span>
+          </a>
+
+          <div class="map">
+            <div class="maphead"><p class="t">The original</p><p class="d">why it worked</p></div>
+            <div class="maphead"><p class="t">Your version</p><p class="d">ready to film</p></div>
+            <div class="mcell"><p class="lbl">Hook</p><p class="b dim">Confesses quitting a universal habit, then shows the receipts.</p></div>
+            <div class="mcell r"><p class="lbl">Your hook</p>
+              <p class="serif" style="font-size:var(--t-subhead);font-weight:500;line-height:1.3;letter-spacing:-.005em;color:var(--fg)">I deleted every productivity app for 30 days. My output doubled.</p>
+            </div>
+            <div class="mcell"><p class="lbl">The turn</p><p class="b dim">Admits the failure window before the win, so the claim reads honest.</p></div>
+            <div class="mcell r"><p class="lbl">Your angle</p><p class="b">The tools are the procrastination. Deleting them is the productivity.</p></div>
+            <div class="mcell l-last" style="border-bottom:0"><p class="lbl">Format</p><p class="b dim">Day-counter overlay with receipts on screen.</p></div>
+            <div class="mcell r last"><p class="lbl">Your shots</p><p class="b">Screen-record the deletes, then split your calendar before and after.</p></div>
+          </div>
+
+          <p class="built">Built for <span class="cream">overwhelmed solo creators drowning in tools</span>.</p>
+
+          <div class="howto pad-b">
+            <p class="h">How to film your version</p>
+            <dl>
+              <div class="prodrow"><dt>Shots</dt><dd>Screen-record the deletes, then split your calendar before and after.</dd></div>
+              <div class="prodrow"><dt>On-screen text</dt><dd>App count top-right, ticking down as you delete.</dd></div>
+              <div class="prodrow"><dt>Setup</dt><dd>Screen recording plus one desk shot for the talking beats.</dd></div>
+            </dl>
+          </div>
+
+          <div class="n-footer">
+            <button class="primary">Write hooks for this →</button>
+            <button class="door"><span class="hollow"></span>Not tested yet<span class="door-cta">Simulate with your audience →</span></button>
+            <span class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <h2>Measured heights</h2>
+  <p class="note">Real <code>getBoundingClientRect().height</code> off this file, both widths, no
+    horizontal overflow, no JS errors. Shipped numbers from the real renderers.</p>
+  <div class="prose" style="max-width:920px">
+    <table class="mt">
+      <thead>
+        <tr><th>Card</th><th>Shipped (real)</th><th>v9.1</th><th>v9.2 @728</th><th>v9.2 @342</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>hook, collapsed</td><td>591 / 680</td><td>448 / 405</td><td style="color:var(--fg)">371</td><td style="color:var(--fg)">436</td></tr>
+        <tr><td>idea, collapsed</td><td>629 / 756</td><td>448 / 426</td><td style="color:var(--fg)">371</td><td style="color:var(--fg)">433</td></tr>
+        <tr><td>hook, no reference</td><td>—</td><td>259 / 313</td><td>254</td><td>319</td></tr>
+        <tr><td>script</td><td>958 / 1403</td><td>778 / 1274</td><td style="color:var(--fg)">830</td><td style="color:var(--fg)">1308</td></tr>
+        <tr><td>remix</td><td>763 / 1038</td><td>655 / 1106</td><td style="color:var(--fg)">708</td><td style="color:var(--warning)">1159</td></tr>
+      </tbody>
+    </table>
+    <p style="margin-top:14px"><b class="cream">The banded face is the shortest and the most uniform
+    yet:</b> hook and idea land at an identical 371px on desktop (the stack finally reads as a
+    rhythm), the no-reference card is a complete 254px object, and the only number still above
+    shipped is remix on mobile, where the stacked map is the honest cost of its two-column value.
+    The source row costs script and remix ~50px against v9.1's tighter cell and buys the one
+    component language across all four cards.</b></p>
+  </div>
+</section>
+
+<script>
+document.querySelectorAll('.seg').forEach(function (seg) {
+  seg.addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    seg.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+    if (b.dataset.w) document.body.dataset.w = b.dataset.w;
+  });
+});
+</script>
+</body>
+</html>

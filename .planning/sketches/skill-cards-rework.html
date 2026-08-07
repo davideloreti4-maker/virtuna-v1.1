@@ -1,0 +1,1079 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Skill cards — rework sketch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
+<style>
+/* ── tokens: lifted verbatim from src/app/globals.css @theme ───────────────── */
+:root{
+  --charcoal-app:#1f1f1e;
+  --surface-sunken:#1a1a19;
+  --surface-thread:#252524;
+  --chrome:#1a1a19;
+  --fg:#ece7de;
+  --fg-secondary:#c2bdb4;
+  --fg-muted:#8a857c;
+  --accent:#FF6363;
+  --positive:#8ea68a;
+  --warning:oklch(0.75 0.15 85);
+  --border:rgba(255,255,255,0.06);
+  --border-hover:rgba(255,255,255,0.10);
+
+  --r-xs:4px; --r-sm:6px; --r-md:8px; --r-lg:12px; --r-xl:16px; --r-full:9999px;
+
+  --t-micro:10px; --t-caption:11px; --t-label:12px; --t-body:13px;
+  --t-reading:14px; --t-subhead:18px; --t-heading:22px;
+
+  --sans:'Inter',ui-sans-serif,system-ui,sans-serif;
+  --serif:'Newsreader',ui-serif,Georgia,serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--charcoal-app);color:var(--fg);font-family:var(--sans);
+  -webkit-font-smoothing:antialiased;font-size:var(--t-body);line-height:1.5}
+body{padding:0 0 120px}
+
+/* ── page chrome ───────────────────────────────────────────────────────────── */
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+.topbar{position:sticky;top:0;z-index:50;background:rgba(26,26,25,.92);
+  backdrop-filter:blur(12px);border-bottom:1px solid var(--border)}
+.topbar .wrap{display:flex;align-items:center;gap:16px;height:56px}
+.brand{font-size:var(--t-label);font-weight:600;letter-spacing:-0.01em}
+.brand span{color:var(--fg-muted);font-weight:400}
+.seg{margin-left:auto;display:flex;gap:2px;padding:3px;border:1px solid var(--border);
+  border-radius:var(--r-md);background:rgba(255,255,255,.02)}
+.seg button{font:inherit;font-size:var(--t-label);color:var(--fg-muted);background:none;
+  border:0;padding:5px 12px;border-radius:var(--r-sm);cursor:pointer;transition:.14s}
+.seg button:hover{color:var(--fg-secondary)}
+.seg button[aria-pressed="true"]{background:rgba(255,255,255,.07);color:var(--fg)}
+
+h1{font-family:var(--serif);font-size:34px;font-weight:500;letter-spacing:-0.02em;
+  line-height:1.15;margin:56px 0 12px}
+.lede{font-size:var(--t-reading);line-height:1.65;color:var(--fg-secondary);max-width:70ch}
+.lede + .lede{margin-top:12px}
+h2{font-size:var(--t-heading);font-weight:600;letter-spacing:-0.02em;margin:0 0 6px}
+.sec{margin-top:72px;padding-top:32px;border-top:1px solid var(--border)}
+.sec-kick{font-size:var(--t-caption);text-transform:uppercase;letter-spacing:.05em;
+  color:var(--fg-muted);margin-bottom:10px}
+.sec-note{font-size:var(--t-body);line-height:1.65;color:var(--fg-muted);max-width:74ch;margin-top:10px}
+.sec-note b{color:var(--fg-secondary);font-weight:500}
+code{font-family:ui-monospace,SFMono-Regular,'JetBrains Mono',monospace;
+  font-size:var(--t-caption);color:var(--fg-secondary);background:rgba(255,255,255,.05);
+  padding:1px 5px;border-radius:var(--r-xs)}
+
+/* ── before / after grid ───────────────────────────────────────────────────── */
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:28px;align-items:start}
+@media (max-width:900px){.compare{grid-template-columns:1fr}}
+body[data-view="before"] .col-after{display:none}
+body[data-view="before"] .compare{grid-template-columns:minmax(0,460px)}
+body[data-view="after"] .col-before{display:none}
+body[data-view="after"] .compare{grid-template-columns:minmax(0,460px)}
+.col-head{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+.col-tag{font-size:var(--t-micro);text-transform:uppercase;letter-spacing:.08em;
+  padding:3px 7px;border-radius:var(--r-xs);font-weight:600}
+.tag-before{background:rgba(255,99,99,.12);color:#ff8080}
+.tag-after{background:rgba(142,166,138,.14);color:var(--positive)}
+.col-sub{font-size:var(--t-label);color:var(--fg-muted)}
+.stack{display:flex;flex-direction:column;gap:12px}
+
+/* ── THE CARD ──────────────────────────────────────────────────────────────── */
+.card{background:var(--surface-sunken);border:1px solid var(--border);
+  border-radius:var(--r-xl);overflow:hidden}
+.face{display:flex;flex-direction:column;gap:12px;padding:16px 16px 12px}
+.face-tight{gap:10px}
+.metarow{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:18px}
+.lbl{font-size:var(--t-caption);text-transform:uppercase;letter-spacing:.05em;color:var(--fg-muted)}
+.hero{font-family:var(--serif);font-size:var(--t-subhead);font-weight:500;
+  line-height:1.3;letter-spacing:-0.005em;color:var(--fg)}
+.hero-lg{font-size:var(--t-heading);line-height:1.25}
+.why{font-size:var(--t-body);line-height:1.6;color:var(--fg-secondary)}
+.why-muted{color:var(--fg-muted)}
+.ghost-btn{display:inline-flex;align-items:center;gap:5px;font:inherit;font-size:var(--t-label);
+  font-weight:500;color:var(--fg-muted);background:none;border:0;cursor:pointer;transition:.14s}
+.ghost-btn:hover{color:var(--fg-secondary)}
+
+/* action bar */
+.actions{display:flex;align-items:center;gap:14px;padding:12px 16px;border-top:1px solid var(--border)}
+.primary{display:inline-flex;align-items:center;justify-content:center;font:inherit;
+  font-size:var(--t-body);font-weight:600;color:var(--fg);border:1px solid rgba(255,255,255,.08);
+  background:rgba(255,255,255,.05);border-radius:var(--r-md);padding:8px 14px;cursor:pointer;transition:.14s}
+.primary:hover{border-color:rgba(255,255,255,.12);background:rgba(255,255,255,.09)}
+.icon-btn{margin-left:auto;display:inline-flex;align-items:center;justify-content:center;
+  width:28px;height:28px;border-radius:var(--r-sm);color:var(--fg-muted);
+  background:none;border:0;cursor:pointer;transition:.14s}
+.icon-btn:hover{color:var(--fg-secondary);background:rgba(255,255,255,.05)}
+
+/* ── THE DOOR (the new element) ────────────────────────────────────────────── */
+/* border-top ONLY — the next sibling (drawer / action bar) owns its own top hairline.
+   Giving the door a border-bottom too stacked two 1px lines into one heavy 2px rule. */
+.door{display:flex;align-items:center;gap:10px;width:100%;text-align:left;
+  padding:11px 16px;border:0;border-top:1px solid var(--border);
+  background:rgba(255,255,255,.012);font:inherit;cursor:pointer;transition:.16s;min-height:44px}
+.door:hover{background:rgba(255,255,255,.045)}
+.door:hover .door-cta{color:var(--fg)}
+.door:hover .door-arrow{transform:translateX(2px)}
+.dot-hollow{width:7px;height:7px;border-radius:var(--r-full);
+  border:1px solid rgba(236,231,222,.35);flex:0 0 auto}
+.dot-solid{width:7px;height:7px;border-radius:var(--r-full);flex:0 0 auto}
+.door-state{font-size:var(--t-body);color:var(--fg-muted);flex:0 0 auto}
+.door-state b{color:var(--fg);font-weight:600;font-variant-numeric:tabular-nums}
+.door-cta{margin-left:auto;display:inline-flex;align-items:center;gap:5px;
+  font-size:var(--t-label);font-weight:500;color:var(--fg-secondary);
+  white-space:nowrap;transition:.16s}
+.door-arrow{display:inline-block;transition:transform .16s}
+.door-sub{font-size:var(--t-label);color:var(--fg-muted)}
+
+/* ── the one expand ────────────────────────────────────────────────────────── */
+.drawer{border-top:1px solid var(--border);padding:14px 16px 4px;
+  display:flex;flex-direction:column;gap:14px;background:rgba(255,255,255,.012)}
+.drawer[hidden]{display:none}
+.field{display:flex;flex-direction:column;gap:4px}
+.field p{font-size:var(--t-reading);line-height:1.6;color:var(--fg-secondary)}
+.kv{display:flex;gap:10px;font-size:var(--t-label);line-height:1.6}
+.kv dt{flex:0 0 88px;color:var(--fg-muted)}
+.kv dd{flex:1;min-width:0;color:var(--fg-secondary)}
+
+/* ── BEFORE-only chrome (faithful repro of what ships today) ───────────────── */
+.b-box{display:flex;flex-direction:column;gap:6px;border:1px solid var(--border);
+  border-radius:var(--r-lg);background:rgba(255,255,255,.02);padding:12px 14px}
+.b-chip{display:inline-block;border:1px solid var(--border);background:rgba(255,255,255,.03);
+  border-radius:var(--r-full);padding:2px 8px;font-size:var(--t-caption);color:var(--fg-secondary)}
+.b-proof{display:flex;flex-direction:column;gap:10px;border:1px solid var(--border);
+  border-radius:var(--r-md);background:rgba(255,255,255,.02);padding:12px 14px}
+.b-bandrow{display:flex;align-items:center;gap:10px;font-size:var(--t-body)}
+.b-band{display:inline-flex;align-items:center;gap:6px;font-weight:600;color:var(--positive);flex:0 0 auto}
+.b-frac{color:var(--fg-secondary);flex:0 0 auto}
+.b-frac b{color:var(--fg);font-weight:600;font-variant-numeric:tabular-nums}
+.b-ribbon{position:relative;height:3px;flex:1;border-radius:var(--r-full);
+  background:rgba(255,255,255,.08);overflow:hidden}
+.b-ribbon i{position:absolute;inset:0 auto 0 0;border-radius:var(--r-full);background:var(--fg-secondary)}
+.b-quoterow{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.b-quote{border-left:2px solid rgba(255,255,255,.10);padding-left:12px;
+  font-size:var(--t-body);font-style:italic;line-height:1.35;color:rgba(236,231,222,.8)}
+.b-avatars{display:flex;flex:0 0 auto}
+.b-avatars i{width:15px;height:15px;border-radius:var(--r-full);
+  border:1px solid var(--surface-thread);background:rgba(255,255,255,.10)}
+.b-avatars i+i{margin-left:-5px}
+.b-seeroom{display:inline-flex;align-items:center;gap:6px;font-size:var(--t-label);
+  color:var(--fg-secondary);white-space:nowrap;flex:0 0 auto}
+.b-receipt{display:flex;gap:10px;align-items:center;border:1px solid var(--border);
+  border-radius:var(--r-md);background:rgba(255,255,255,.02);padding:10px 12px}
+.b-thumb{width:34px;height:60px;border-radius:var(--r-xs);flex:0 0 auto;
+  background:linear-gradient(135deg,#3a3a37,#262624)}
+.b-rank{font-size:var(--t-label);font-weight:600;color:var(--fg-muted);font-variant-numeric:tabular-nums}
+.b-take{border:1px solid rgba(224,189,114,.25);color:oklch(0.75 0.15 85);border-radius:var(--r-full);
+  padding:2px 8px;font-size:var(--t-caption);text-transform:uppercase;letter-spacing:.05em;flex:0 0 auto}
+
+/* count badge — how many stacked blocks a face carries */
+.countbar{display:flex;align-items:center;gap:8px;margin-top:14px;font-size:var(--t-label);color:var(--fg-muted)}
+.pips{display:flex;gap:3px}
+.pips i{width:16px;height:4px;border-radius:var(--r-full);background:rgba(255,255,255,.14)}
+.pips.hot i{background:rgba(255,99,99,.5)}
+.pips.cool i{background:rgba(142,166,138,.55)}
+
+/* beats timeline */
+.beats{display:flex;flex-direction:column;border-top:1px solid var(--border);padding:4px 16px 0}
+.beat{display:flex;gap:12px;padding:11px 0}
+.beat-t{flex:0 0 40px;text-align:right;font-size:var(--t-caption);font-weight:600;
+  color:var(--fg-secondary);font-variant-numeric:tabular-nums;padding-top:1px}
+.beat-rail{display:flex;flex-direction:column;align-items:center;flex:0 0 auto}
+.beat-rail i{width:8px;height:8px;border-radius:var(--r-full);background:rgba(255,255,255,.3);margin-top:4px}
+.beat-rail u{flex:1;width:1px;background:rgba(255,255,255,.10);margin-top:4px}
+.beat-b{flex:1;min-width:0}
+.beat-l{font-size:var(--t-label);font-weight:600;text-transform:uppercase;
+  letter-spacing:.05em;color:var(--fg)}
+.beat-c{margin-top:3px;font-size:var(--t-reading);line-height:1.6;color:var(--fg-secondary)}
+.beat-f{margin-top:5px;font-size:var(--t-label);line-height:1.6;color:var(--fg-muted)}
+
+/* remix map */
+.map{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--border);
+  border-radius:var(--r-lg);overflow:hidden}
+.map>div{padding:11px 14px;border-bottom:1px solid var(--border)}
+.map>div:nth-child(even){border-left:1px solid var(--border)}
+.map .mh{background:rgba(255,255,255,.02)}
+.map .last{border-bottom:0}
+.map p{font-size:var(--t-body);line-height:1.6;color:var(--fg-secondary)}
+.map p.dim{color:var(--fg-muted)}
+
+/* recipe strip */
+.recipe{display:flex;border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden}
+.recipe>div{flex:1;min-width:0;padding:9px 12px;background:rgba(255,255,255,.02)}
+.recipe>div+div{border-left:1px solid var(--border)}
+.recipe p{margin-top:2px;font-size:var(--t-body);line-height:1.4;color:var(--fg-secondary)}
+
+/* door states gallery */
+.states{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-top:24px}
+.state-lbl{font-size:var(--t-caption);text-transform:uppercase;letter-spacing:.05em;
+  color:var(--fg-muted);margin-bottom:8px}
+.state-note{font-size:var(--t-label);line-height:1.6;color:var(--fg-muted);margin-top:8px}
+.shimmer{background:linear-gradient(90deg,rgba(255,255,255,.05),rgba(255,255,255,.11),rgba(255,255,255,.05));
+  background-size:200% 100%;animation:sh 1.6s linear infinite;border-radius:var(--r-full);height:3px;flex:1}
+@keyframes sh{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* callout */
+.call{border:1px solid var(--border);border-left:2px solid var(--accent);
+  border-radius:var(--r-md);background:rgba(255,255,255,.02);padding:14px 16px;margin-top:22px}
+.call p{font-size:var(--t-body);line-height:1.65;color:var(--fg-secondary)}
+.call p+p{margin-top:8px}
+.call .h{font-size:var(--t-caption);text-transform:uppercase;letter-spacing:.05em;
+  color:var(--fg-muted);margin-bottom:6px}
+.call.q{border-left-color:var(--warning)}
+.call.ok{border-left-color:var(--positive)}
+
+/* spine diagram */
+.spine{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:24px}
+.spine-cell{border:1px solid var(--border);border-radius:var(--r-lg);padding:14px;background:rgba(255,255,255,.015)}
+.spine-cell .n{font-size:var(--t-micro);color:var(--fg-muted);letter-spacing:.08em}
+.spine-cell .t{font-size:var(--t-body);font-weight:600;margin-top:4px}
+.spine-cell .d{font-size:var(--t-label);line-height:1.6;color:var(--fg-muted);margin-top:5px}
+.strike{text-decoration:line-through;color:var(--fg-muted);opacity:.6}
+/* audit findings */
+.findings{display:flex;flex-direction:column;gap:12px;margin-top:26px}
+.find{border:1px solid var(--border);border-radius:var(--r-lg);padding:15px 17px;background:rgba(255,255,255,.015)}
+.find-h{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.find-t{font-size:var(--t-reading);font-weight:600;letter-spacing:-0.01em;color:var(--fg)}
+.sev{font-size:var(--t-micro);text-transform:uppercase;letter-spacing:.08em;font-weight:600;
+  padding:3px 7px;border-radius:var(--r-xs);flex:0 0 auto}
+.sev-hi{background:rgba(255,99,99,.14);color:#ff8080}
+.sev-md{background:rgba(224,189,114,.14);color:oklch(0.75 0.15 85)}
+.sev-lo{background:rgba(255,255,255,.06);color:var(--fg-muted)}
+.find-b{font-size:var(--t-body);line-height:1.7;color:var(--fg-secondary)}
+.find-b b{color:var(--fg);font-weight:600}
+.find-f{font-size:var(--t-body);line-height:1.7;color:var(--fg-muted);margin-top:8px;
+  padding-top:8px;border-top:1px solid var(--border)}
+.find-f b{color:var(--positive);font-weight:600}
+ul.tight{margin:10px 0 0 18px}
+ul.tight li{font-size:var(--t-body);line-height:1.7;color:var(--fg-secondary)}
+ul.tight li b{color:var(--fg);font-weight:600}
+</style>
+</head>
+<body data-view="split">
+
+<div class="topbar"><div class="wrap">
+  <div class="brand">Skill cards — rework <span>· throwaway sketch · task/skill-cards-rework</span></div>
+  <div class="seg" role="group" aria-label="View">
+    <button data-v="before" aria-pressed="false">Before</button>
+    <button data-v="split" aria-pressed="true">Split</button>
+    <button data-v="after" aria-pressed="false">After</button>
+  </div>
+</div></div>
+
+<div class="wrap">
+
+<h1>The card stopped asking the question the simulation answers.</h1>
+<p class="lede">Every Make card ships a verdict today: a band word, an <code>N/10</code> count, a magnitude ribbon, a
+verbatim quote and a <code>#1–#5</code> rank. All five are renderings of <b>one number</b> — <code>personaStops</code> —
+which the writer model emits about its own output, in the same call that wrote it. No simulation runs. Nothing is measured.</p>
+<p class="lede">So the card answers "will this land?" before the creator can ask it, and the tool that would actually
+answer it — the brain, the population — reads as a re-run of something they already have. The fix is to stop
+answering: the card carries the <b>artifact</b>, the simulation carries the <b>verdict</b>, and the empty slot between
+them is the reason to run one.</p>
+
+<!-- ══ SPINE ══════════════════════════════════════════════════════════════ -->
+<section class="sec">
+  <div class="sec-kick">The contract</div>
+  <h2>Five rows, in order. A card may skip one; it may not reorder them.</h2>
+  <div class="spine">
+    <div class="spine-cell"><div class="n">01</div><div class="t">Meta</div>
+      <div class="d">One quiet mark left (Top pick / needs your take), one affordance right (Copy). Never provenance.</div></div>
+    <div class="spine-cell"><div class="n">02</div><div class="t">Hero</div>
+      <div class="d">The deliverable, serif. The thing they came for reads first — a line, a title, an opener.</div></div>
+    <div class="spine-cell"><div class="n">03</div><div class="t">Why — one line</div>
+      <div class="d">The mechanism, two lines max. Not a labelled section; it sits under the hero as prose.</div></div>
+    <div class="spine-cell" style="border-color:rgba(255,99,99,.35)"><div class="n">04</div><div class="t">The door</div>
+      <div class="d">The one slot a verdict may ever occupy. Empty until a real run fills it. This is the new element.</div></div>
+    <div class="spine-cell"><div class="n">05</div><div class="t">Actions</div>
+      <div class="d">Forward chain step · the ONE expand · Save. Everything else in the card lives behind that caret.</div></div>
+  </div>
+  <div class="call">
+    <div class="h">What leaves the face entirely</div>
+    <p><span class="strike">Band word</span> <span class="strike">N/10 fraction</span> <span class="strike">magnitude ribbon</span>
+    <span class="strike">lead "verbatim" quote</span> <span class="strike">room avatars</span> <span class="strike">#1–#5 rank badge</span>
+    <span class="strike">· SIM-1 Flash / · projected tag</span> — six of these are one number wearing six costumes; the seventh
+    is a provenance footnote for a measurement that never happened.</p>
+    <p>Nothing is deleted from the block schema. <code>fraction</code> stays on the props — the ambient ledger keys card→room on it
+    (<code>toAmbientDescriptor</code> returns null without it), so removing the field would silently unhook every card from the room.
+    This is a <b>presentation</b> change on top of unchanged data.</p>
+  </div>
+</section>
+
+<!-- ══ HOOKS ══════════════════════════════════════════════════════════════ -->
+<section class="sec">
+  <div class="sec-kick">Hooks · fans out ×5 · the worst case</div>
+  <h2>A card in a stack is a choice, not a document.</h2>
+  <p class="sec-note">Five hooks arrive at once. Today each one stacks nine blocks and every one of the five states its own
+  verdict five ways, so the creator scans ~45 blocks to pick a line. The face below carries the line, why it works, and the
+  door. Everything else is one caret away.</p>
+
+  <div class="compare">
+    <div class="col-before">
+      <div class="col-head"><span class="col-tag tag-before">Before</span><span class="col-sub">9 blocks · 5 verdict renderings</span></div>
+      <div class="stack">
+
+        <div class="card">
+          <div class="face">
+            <div class="metarow"><span class="b-rank">#1</span><button class="ghost-btn">⧉ Copy</button></div>
+            <p class="hero hero-lg" style="font-weight:500">Stop editing your videos. Do this instead.</p>
+            <div class="b-box">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span class="lbl">Visual</span><span class="b-chip">crash-zoom</span>
+              </div>
+              <p style="font-size:var(--t-body);line-height:1.6;color:var(--fg-secondary)">Hard cut to your face mid-sentence as the words slam on in bold caps.</p>
+            </div>
+            <div class="b-box">
+              <span class="lbl">Written for · The Busy Pro</span>
+              <p style="font-size:var(--t-body);font-style:italic;color:var(--fg-secondary)">"Finally, permission to stop."</p>
+            </div>
+            <div class="b-receipt">
+              <span class="b-thumb"></span>
+              <div style="min-width:0">
+                <div class="lbl">Proven structure · @braedan.health</div>
+                <p style="font-size:var(--t-label);color:var(--fg-secondary);margin-top:3px">144.9× vs followers · ● structural fit</p>
+              </div>
+            </div>
+            <div>
+              <p class="lbl" style="margin-bottom:4px">Why it works</p>
+              <p style="font-size:var(--t-reading);line-height:1.6;color:var(--fg-secondary)">Pattern-interrupt via a permission to quit a painful task.</p>
+            </div>
+            <div class="b-proof">
+              <div class="b-bandrow">
+                <span class="b-band"><i class="dot-solid" style="background:var(--positive)"></i>Strong</span>
+                <span class="b-frac"><b>7/10</b> would stop</span>
+                <span class="b-ribbon"><i style="width:70%"></i></span>
+              </div>
+              <div class="b-quoterow">
+                <blockquote class="b-quote">"Fast and to the point — I'll give it 10 seconds."</blockquote>
+                <span class="b-seeroom"><span class="b-avatars"><i></i><i></i><i></i></span>See the room →</span>
+              </div>
+            </div>
+            <button class="ghost-btn">⌄ Why &amp; details <span style="opacity:.7">· projected</span></button>
+          </div>
+          <div class="actions">
+            <button class="primary">Write the script →</button>
+            <button class="icon-btn">♡</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="face">
+            <div class="metarow"><span class="b-rank">#2</span><button class="ghost-btn">⧉ Copy</button></div>
+            <p class="hero hero-lg" style="font-weight:500">I analyzed 500 viral videos. They all break one rule.</p>
+            <div class="b-box">
+              <span class="lbl">Written for · The Skeptic</span>
+              <p style="font-size:var(--t-body);font-style:italic;color:var(--fg-secondary)">"Prove it."</p>
+            </div>
+            <div>
+              <p class="lbl" style="margin-bottom:4px">Why it works</p>
+              <p style="font-size:var(--t-reading);line-height:1.6;color:var(--fg-secondary)">Authority + curiosity gap (a hidden rule they don't know).</p>
+            </div>
+            <div class="b-proof">
+              <div class="b-bandrow">
+                <span class="b-band"><i class="dot-solid" style="background:var(--positive)"></i>Strong</span>
+                <span class="b-frac"><b>7/10</b> would stop</span>
+                <span class="b-ribbon"><i style="width:70%"></i></span>
+              </div>
+              <div class="b-quoterow">
+                <blockquote class="b-quote">"She always delivers, watching all of it."</blockquote>
+                <span class="b-seeroom"><span class="b-avatars"><i></i><i></i><i></i></span>See the room →</span>
+              </div>
+            </div>
+            <button class="ghost-btn">⌄ Why &amp; details <span style="opacity:.7">· projected</span></button>
+          </div>
+          <div class="actions">
+            <button class="primary">Write the script →</button>
+            <button class="icon-btn">♡</button>
+          </div>
+        </div>
+
+      </div>
+      <div class="countbar"><span>face blocks</span><span class="pips hot"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span><span>9</span></div>
+    </div>
+
+    <div class="col-after">
+      <div class="col-head"><span class="col-tag tag-after">After</span><span class="col-sub">4 rows · 0 verdicts</span></div>
+      <div class="stack">
+
+        <div class="card">
+          <div class="face face-tight">
+            <div class="metarow"><span class="lbl">Top pick</span><button class="ghost-btn">⧉ Copy</button></div>
+            <p class="hero">Stop editing your videos. Do this instead.</p>
+            <p class="why">Pattern-interrupt via a permission to quit a painful task.</p>
+          </div>
+          <button class="door">
+            <span class="dot-hollow"></span>
+            <span class="door-state">Not tested yet</span>
+            <span class="door-cta">Simulate with your audience <span class="door-arrow">→</span></span>
+          </button>
+          <div class="drawer" hidden></div>
+          <div class="actions">
+            <button class="primary">Write the script →</button>
+            <button class="ghost-btn">⌄ Visual, source, details</button>
+            <button class="icon-btn">♡</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="face face-tight">
+            <div class="metarow"><span class="lbl"></span><button class="ghost-btn">⧉ Copy</button></div>
+            <p class="hero">I analyzed 500 viral videos. They all break one rule.</p>
+            <p class="why">Authority + curiosity gap (a hidden rule they don't know).</p>
+          </div>
+          <button class="door">
+            <span class="dot-hollow"></span>
+            <span class="door-state">Not tested yet</span>
+            <span class="door-cta">Simulate with your audience <span class="door-arrow">→</span></span>
+          </button>
+          <div class="actions">
+            <button class="primary">Write the script →</button>
+            <button class="ghost-btn">⌄ Visual, source, details</button>
+            <button class="icon-btn">♡</button>
+          </div>
+        </div>
+
+        <div class="card" data-demo="open">
+          <div class="face face-tight">
+            <div class="metarow"><span class="lbl"></span><button class="ghost-btn">⧉ Copy</button></div>
+            <p class="hero">This is the best video I've ever made. It flopped.</p>
+            <p class="why">Loss-framing + open loop (they fear making the same mistake).</p>
+          </div>
+          <button class="door">
+            <span class="dot-hollow"></span>
+            <span class="door-state">Not tested yet</span>
+            <span class="door-cta">Simulate with your audience <span class="door-arrow">→</span></span>
+          </button>
+          <div class="drawer">
+            <div class="field">
+              <span class="lbl">First frame · crash-zoom</span>
+              <p>Hard cut to your face mid-sentence as the words slam on in bold caps.</p>
+            </div>
+            <div class="field">
+              <span class="lbl">Written for</span>
+              <p>The Busy Pro — the reader this line was aimed at.</p>
+            </div>
+            <div class="field">
+              <span class="lbl">Structure from</span>
+              <p>@braedan.health · 144.9× vs followers · structural fit</p>
+            </div>
+            <dl class="kv"><dt>Seed hook</dt><dd>Stop editing your videos.</dd></dl>
+            <dl class="kv"><dt>Delivery</dt><dd>Spoken</dd></dl>
+          </div>
+          <div class="actions">
+            <button class="primary">Write the script →</button>
+            <button class="ghost-btn">⌃ Hide details</button>
+            <button class="icon-btn">♡</button>
+          </div>
+        </div>
+
+      </div>
+      <div class="countbar"><span>face rows</span><span class="pips cool"><i></i><i></i><i></i><i></i></span><span>4 &nbsp;·&nbsp; third card shown expanded</span></div>
+    </div>
+  </div>
+
+  <div class="call ok">
+    <div class="h">What the rank became</div>
+    <p>The runner still sorts best-first on <code>personaStops</code> — an ordering is a cheap, honest steer and costs the
+    creator nothing. What is gone is the <b>badge</b>: <code>#1 #2 #3 #4 #5</code> read as a scoreboard the room had produced.
+    Only the lead card is marked, once, as <b>Top pick</b> — a suggestion, not a placement.</p>
+  </div>
+</section>
+
+<!-- ══ THE DOOR ═══════════════════════════════════════════════════════════ -->
+<section class="sec">
+  <div class="sec-kick">The door · the one slot a verdict may occupy</div>
+  <h2>An empty slot is the incentive. Filling it is what a simulation is for.</h2>
+  <p class="sec-note">Same row, same geometry, three states. The creator learns the shape of the answer by seeing where it
+  will go — and the only way to put something there is to run the thing.</p>
+
+  <div class="states">
+    <div>
+      <div class="state-lbl">① Untested — the default</div>
+      <div class="card">
+        <div class="face face-tight">
+          <div class="metarow"><span class="lbl">Top pick</span><button class="ghost-btn">⧉ Copy</button></div>
+          <p class="hero">Stop editing your videos. Do this instead.</p>
+        </div>
+        <button class="door">
+          <span class="dot-hollow"></span>
+          <span class="door-state">Not tested yet</span>
+          <span class="door-cta">Simulate with your audience <span class="door-arrow">→</span></span>
+        </button>
+      </div>
+      <p class="state-note">A hollow dot, an honest absence, and a door that names the spend. Taps straight into ⑤ <code>AmbientSimulate</code>
+      in <code>develop</code> mode, pre-filled with this card's stimulus — no stop at the room on the way.</p>
+    </div>
+
+    <div>
+      <div class="state-lbl">② Running</div>
+      <div class="card">
+        <div class="face face-tight">
+          <div class="metarow"><span class="lbl">Top pick</span><button class="ghost-btn">⧉ Copy</button></div>
+          <p class="hero">Stop editing your videos. Do this instead.</p>
+        </div>
+        <div class="door" style="cursor:default">
+          <span class="dot-hollow" style="border-color:rgba(255,99,99,.6)"></span>
+          <span class="door-state">Screening 1,000 people…</span>
+          <span class="shimmer" style="margin-left:6px;max-width:120px"></span>
+        </div>
+      </div>
+      <p class="state-note">The slot fills in place — no navigate-out, no card swap. Same row height, so the stack never reflows.</p>
+    </div>
+
+    <div>
+      <div class="state-lbl">③ Measured — the payoff</div>
+      <div class="card">
+        <div class="face face-tight">
+          <div class="metarow"><span class="lbl">Top pick</span><button class="ghost-btn">⧉ Copy</button></div>
+          <p class="hero">Stop editing your videos. Do this instead.</p>
+        </div>
+        <button class="door" style="background:rgba(142,166,138,.05)">
+          <span class="dot-solid" style="background:var(--positive)"></span>
+          <span class="door-state"><b>341</b> of 1,000 stopped</span>
+          <span class="door-cta">See the full read <span class="door-arrow">→</span></span>
+        </button>
+      </div>
+      <p class="state-note">A real number, from a real run, against a real population — and it is the <b>only</b> number the card
+      ever shows. "The full read" opens the brain + population the run produced.</p>
+    </div>
+  </div>
+
+  <div class="call q">
+    <div class="h">Open question for you</div>
+    <p>State ③ assumes a completed simulation writes its verdict back onto the originating card. Today nothing does that —
+    <code>sim_seals</code> keys seals by trimmed concept text and the composer rehydrates them for the room, not for the card.
+    Wiring the seal back into the card's door is a <b>real change beyond presentation</b> (composer → card, through the
+    ledger). Say the word and I scope it; otherwise I ship ① and ② now, and ③ stays a design the slot is ready for.</p>
+  </div>
+</section>
+
+<!-- ══ IDEAS ══════════════════════════════════════════════════════════════ -->
+<section class="sec">
+  <div class="sec-kick">Ideas · fans out ×4</div>
+  <h2>The recipe was the signature. It is still the signature — one caret down.</h2>
+
+  <div class="compare">
+    <div class="col-before">
+      <div class="col-head"><span class="col-tag tag-before">Before</span><span class="col-sub">9 blocks · 4 CAPS labels</span></div>
+      <div class="card">
+        <div class="face">
+          <div class="metarow" style="align-items:flex-start">
+            <p class="hero hero-lg" style="font-weight:500">The 30-day silence experiment</p>
+            <span class="b-take">your take</span>
+          </div>
+          <p style="font-size:var(--t-body);line-height:1.6;color:var(--fg-secondary)">Absence as a growth lever — what happens when you deliberately go quiet. <span class="why-muted">— Your top 3 posts all lead with a counter-intuitive claim about consistency.</span></p>
+          <div>
+            <p class="lbl" style="margin-bottom:4px">Why it lands</p>
+            <p style="font-size:var(--t-reading);line-height:1.6;color:var(--fg-secondary)">Curiosity gap + identity threat (creators fear disappearing).</p>
+          </div>
+          <div>
+            <p class="lbl" style="margin-bottom:4px">Make it from</p>
+            <div class="recipe">
+              <div><p class="lbl">Topic</p><p>Creator growth</p></div>
+              <div><p class="lbl">Take</p><p>Consistency is overrated; strategic absence compounds.</p></div>
+              <div><p class="lbl">Format</p><p>Talking-head + on-screen data</p></div>
+            </div>
+          </div>
+          <div class="b-receipt">
+            <span class="b-thumb"></span>
+            <div style="min-width:0">
+              <div class="lbl">Proven structure · @braedan.health</div>
+              <p style="font-size:var(--t-label);color:var(--fg-secondary);margin-top:3px">144.9× vs followers · ● structural fit</p>
+            </div>
+          </div>
+          <div class="b-proof">
+            <div class="b-bandrow">
+              <span class="b-band"><i class="dot-solid" style="background:var(--positive)"></i>Strong</span>
+              <span class="b-frac"><b>8/10</b> would stop</span>
+              <span class="b-ribbon"><i style="width:80%"></i></span>
+            </div>
+            <div class="b-quoterow">
+              <blockquote class="b-quote">"Okay that opening line got me, I need to know the rest."</blockquote>
+              <span class="b-seeroom"><span class="b-avatars"><i></i><i></i><i></i></span>See the room →</span>
+            </div>
+          </div>
+          <button class="ghost-btn">⌄ Seed hook <span style="opacity:.7">· projected</span></button>
+        </div>
+        <div class="actions">
+          <button class="primary">Write hooks for this →</button>
+          <button class="icon-btn">♡</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-after">
+      <div class="col-head"><span class="col-tag tag-after">After</span><span class="col-sub">4 rows</span></div>
+      <div class="card">
+        <div class="face face-tight">
+          <div class="metarow"><span class="lbl">Top pick</span><span class="b-take">your take</span></div>
+          <p class="hero">The 30-day silence experiment</p>
+          <p class="why">Absence as a growth lever — what happens when you deliberately go quiet.</p>
+        </div>
+        <button class="door">
+          <span class="dot-hollow"></span>
+          <span class="door-state">Not tested yet</span>
+          <span class="door-cta">Simulate with your audience <span class="door-arrow">→</span></span>
+        </button>
+        <div class="drawer">
+          <div class="field">
+            <span class="lbl">Make it from</span>
+            <div class="recipe" style="margin-top:4px">
+              <div><p class="lbl">Topic</p><p>Creator growth</p></div>
+              <div><p class="lbl">Take</p><p>Consistency is overrated; strategic absence compounds.</p></div>
+              <div><p class="lbl">Format</p><p>Talking-head + on-screen data</p></div>
+            </div>
+          </div>
+          <div class="field">
+            <span class="lbl">Why it lands</span>
+            <p>Curiosity gap + identity threat (creators fear disappearing).</p>
+          </div>
+          <div class="field">
+            <span class="lbl">Fits your audience</span>
+            <p>Your top 3 posts all lead with a counter-intuitive claim about consistency.</p>
+          </div>
+          <div class="field">
+            <span class="lbl">Structure from</span>
+            <p>@braedan.health · 144.9× vs followers · structural fit</p>
+          </div>
+          <dl class="kv"><dt>Seed hook</dt><dd>I stopped posting for 30 days. Here's what actually happened to my account.</dd></dl>
+        </div>
+        <div class="actions">
+          <button class="primary">Write hooks for this →</button>
+          <button class="ghost-btn">⌃ Hide details</button>
+          <button class="icon-btn">♡</button>
+        </div>
+      </div>
+      <p class="state-note">Shown expanded so you can see what moved. Collapsed it is four rows, like the hook.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ SCRIPT ═════════════════════════════════════════════════════════════ -->
+<section class="sec">
+  <div class="sec-kick">Script · emits exactly ONE card</div>
+  <h2>A card that arrives alone is a document. It keeps its body.</h2>
+  <div class="call q">
+    <div class="h">Deliberate deviation — overrule me if you disagree</div>
+    <p>You picked "beats behind the expand". I have kept the <b>beat timeline on the face</b> for Script and the
+    hero deliverable for Remix, because those two runners emit <b>one</b> card, not a stack — there is nothing to scan
+    between, and a script card whose face doesn't show the script is a card that always needs opening.</p>
+    <p>The density complaint is still answered, from the other side: the per-beat filming cue (five permanently-visible
+    extra lines), the four-row "How to film" table, the source receipt and the proof unit all move behind the one caret.
+    Face goes from ~24 lines to ~13.</p>
+  </div>
+
+  <div class="compare">
+    <div class="col-before">
+      <div class="col-head"><span class="col-tag tag-before">Before</span><span class="col-sub">beats + filming + how-to-film + proof</span></div>
+      <div class="card">
+        <div class="face" style="padding-bottom:0">
+          <div class="metarow">
+            <div style="display:flex;gap:8px;min-width:0"><span class="lbl">5 beats</span><span style="color:rgba(138,133,124,.5)">·</span><span style="font-size:var(--t-label);color:var(--fg-muted)" class="">Talking-head + screen-record b-roll · Creator growth</span></div>
+            <button class="ghost-btn">⧉ Copy script</button>
+          </div>
+          <div class="b-receipt">
+            <span class="b-thumb"></span>
+            <div style="min-width:0"><div class="lbl">Proven structure · @polish1990</div>
+            <p style="font-size:var(--t-label);color:var(--fg-secondary);margin-top:3px">144.9× vs followers · ● structural fit</p></div>
+          </div>
+        </div>
+        <div class="beats">
+          <div class="beat"><span class="beat-t">0–3s</span><span class="beat-rail"><i></i><u></u></span>
+            <div class="beat-b"><div class="beat-l">Hook</div>
+              <p class="beat-c">I stopped editing my videos and my views tripled.</p>
+              <p class="beat-f">▣ Close-up, handheld · text slams in on 'tripled' · deadpan delivery, no smile.</p></div></div>
+          <div class="beat"><span class="beat-t">3–10s</span><span class="beat-rail"><i></i><u></u></span>
+            <div class="beat-b"><div class="beat-l">Setup</div>
+              <p class="beat-c">For two years I spent 6 hours per video in CapCut. Cuts, captions, zooms — the works.</p>
+              <p class="beat-f">▣ B-roll of the CapCut timeline scrubbing · VO over the screen-record · frantic pace.</p></div></div>
+          <div class="beat"><span class="beat-t">10–20s</span><span class="beat-rail"><i></i><u></u></span>
+            <div class="beat-b"><div class="beat-l">Turn</div>
+              <p class="beat-c">Then I noticed my raw, one-take clips were outperforming the polished ones 3 to 1.</p>
+              <p class="beat-f">▣ Cut back to face · split-screen the two analytics graphs · let the numbers breathe.</p></div></div>
+          <div class="beat"><span class="beat-t">20–35s</span><span class="beat-rail"><i></i><u></u></span>
+            <div class="beat-b"><div class="beat-l">Payoff</div>
+              <p class="beat-c">Turns out the algorithm rewards watch-time, and over-editing was killing my pacing.</p>
+              <p class="beat-f">▣ Face, medium shot · one bold on-screen text: 'watch-time &gt; polish' · slower, steady.</p></div></div>
+          <div class="beat"><span class="beat-t">35–40s</span><span class="beat-rail"><i></i></span>
+            <div class="beat-b"><div class="beat-l">CTA</div>
+              <p class="beat-c">Try one unedited take this week and tell me your retention. I bet it climbs.</p>
+              <p class="beat-f">▣ Direct to camera · point at the comment area · warm, challenging tone.</p></div></div>
+        </div>
+        <div style="border-top:1px solid var(--border);padding:12px 16px">
+          <p class="lbl">▣ How to film</p>
+          <dl style="margin-top:8px;display:flex;flex-direction:column;gap:6px">
+            <div class="kv"><dt>Shots</dt><dd>1 talking-head (phone, eye level) + 2 b-roll.</dd></div>
+            <div class="kv"><dt>On-screen text</dt><dd>Hook caption on 'tripled'; payoff card.</dd></div>
+            <div class="kv"><dt>Setup</dt><dd>Phone at eye level, window light, lav mic close.</dd></div>
+            <div class="kv"><dt>Edit</dt><dd>Hard cuts only — keep the raw, one-take feel.</dd></div>
+          </dl>
+        </div>
+        <div style="border-top:1px solid var(--border);padding:12px 16px">
+          <div class="b-bandrow">
+            <span class="b-band"><i class="dot-solid" style="background:var(--positive)"></i>Strong</span>
+            <span class="b-frac"><b>7/10</b> would stop <span class="why-muted">· opener only</span></span>
+            <span class="b-ribbon"><i style="width:70%"></i></span>
+          </div>
+          <div class="b-quoterow" style="margin-top:10px">
+            <blockquote class="b-quote">"Fast and to the point — I'll give it 10 seconds."</blockquote>
+            <span class="b-seeroom"><span class="b-avatars"><i></i><i></i><i></i></span>See the room →</span>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="primary">Test this script →</button>
+          <button class="icon-btn">♡</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-after">
+      <div class="col-head"><span class="col-tag tag-after">After</span><span class="col-sub">beats stay · cues + table + proof collapse</span></div>
+      <div class="card">
+        <div class="face face-tight" style="padding-bottom:2px">
+          <div class="metarow">
+            <span class="lbl">5 beats · 0–40s</span>
+            <button class="ghost-btn">⧉ Copy script</button>
+          </div>
+        </div>
+        <!-- No separate serif hero: the opener IS beat 1, so a hero above the timeline printed the
+             same sentence twice. The first beat's content carries the hero type in place instead —
+             one focal point, no duplication, timeline structure stays uniform. -->
+        <div class="beats" style="border-top:0">
+          <div class="beat"><span class="beat-t">0–3s</span><span class="beat-rail"><i></i><u></u></span>
+            <div class="beat-b"><div class="beat-l">Hook</div><p class="beat-c hero" style="margin-top:5px">I stopped editing my videos and my views tripled.</p></div></div>
+          <div class="beat"><span class="beat-t">3–10s</span><span class="beat-rail"><i></i><u></u></span>
+            <div class="beat-b"><div class="beat-l">Setup</div><p class="beat-c">For two years I spent 6 hours per video in CapCut. Cuts, captions, zooms — the works.</p></div></div>
+          <div class="beat"><span class="beat-t">10–20s</span><span class="beat-rail"><i></i><u></u></span>
+            <div class="beat-b"><div class="beat-l">Turn</div><p class="beat-c">Then I noticed my raw, one-take clips were outperforming the polished ones 3 to 1.</p></div></div>
+          <div class="beat"><span class="beat-t">20–35s</span><span class="beat-rail"><i></i><u></u></span>
+            <div class="beat-b"><div class="beat-l">Payoff</div><p class="beat-c">Turns out the algorithm rewards watch-time, and over-editing was killing my pacing.</p></div></div>
+          <div class="beat"><span class="beat-t">35–40s</span><span class="beat-rail"><i></i></span>
+            <div class="beat-b"><div class="beat-l">CTA</div><p class="beat-c">Try one unedited take this week and tell me your retention. I bet it climbs.</p></div></div>
+        </div>
+        <button class="door" style="margin-top:4px">
+          <span class="dot-hollow"></span>
+          <span class="door-state">Not tested yet</span>
+          <span class="door-cta">Simulate with your audience <span class="door-arrow">→</span></span>
+        </button>
+        <div class="actions">
+          <button class="primary">Test this script →</button>
+          <button class="ghost-btn">⌄ Filming, source</button>
+          <button class="icon-btn">♡</button>
+        </div>
+      </div>
+      <p class="state-note">Per-beat filming cues return inside the drawer, grouped under each beat label — one place, not five interruptions.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ REMIX ══════════════════════════════════════════════════════════════ -->
+<section class="sec">
+  <div class="sec-kick">Remix · emits exactly ONE card</div>
+  <h2>The teardown is the reasoning, not the deliverable.</h2>
+  <p class="sec-note">The decode→adapt matrix is six cells and two column headers before the creator reaches the line they
+  came for. The line is the deliverable; the map explains where it came from. Hero first, map behind the caret — and the
+  one row that <b>is</b> the deliverable (borrowed pattern → your hook) is promoted out of the grid entirely.</p>
+
+  <div class="compare">
+    <div class="col-before">
+      <div class="col-head"><span class="col-tag tag-before">Before</span><span class="col-sub">8 cells before the payoff</span></div>
+      <div class="card">
+        <div class="face">
+          <div class="b-receipt">
+            <span class="b-thumb"></span>
+            <div style="min-width:0"><div class="lbl">The post you're remixing · @danielle.builds</div>
+            <p style="font-size:var(--t-label);color:var(--fg-secondary);margin-top:3px">2.1M views</p></div>
+          </div>
+          <div class="map">
+            <div class="mh"><p class="lbl">The original</p><p class="dim" style="margin-top:2px;font-size:var(--t-caption)">why it worked</p></div>
+            <div class="mh"><p class="lbl">Your version</p><p class="dim" style="margin-top:2px;font-size:var(--t-caption)">ready to film</p></div>
+            <div><p class="lbl" style="margin-bottom:4px">Hook</p><p class="dim">Confession framing on a taboo business decision.</p></div>
+            <div><p class="lbl" style="margin-bottom:4px">Your hook</p><p class="hero" style="font-size:var(--t-body)">I fired my whole marketing team and replaced them with 3 prompts.</p></div>
+            <div><p class="lbl" style="margin-bottom:4px">The turn</p><p class="dim">The receipts land before the justification.</p></div>
+            <div><p class="lbl" style="margin-bottom:4px">Your angle</p><p>Shock-firing frame borrowed from a business-teardown viral.</p></div>
+            <div class="last"><p class="lbl" style="margin-bottom:4px">Format</p><p class="dim">Talking-head confession + receipts overlay</p></div>
+            <div class="last"><p class="lbl" style="margin-bottom:4px">Your shots</p><p>1 talking-head + screen-record of the 3 prompts.</p></div>
+          </div>
+          <p style="font-size:var(--t-label);color:var(--fg-muted)">Built for <span style="color:var(--fg-secondary)">Solo founders drowning in growth busywork.</span></p>
+          <div class="b-proof">
+            <div class="b-bandrow">
+              <span class="b-band"><i class="dot-solid" style="background:var(--positive)"></i>Strong</span>
+              <span class="b-frac"><b>8/10</b> would stop <span class="why-muted">· adapted hook</span></span>
+              <span class="b-ribbon"><i style="width:80%"></i></span>
+            </div>
+            <div class="b-quoterow">
+              <blockquote class="b-quote">"Wait, you deleted it? Show me what's left."</blockquote>
+              <span class="b-seeroom"><span class="b-avatars"><i></i><i></i><i></i></span>See the room →</span>
+            </div>
+          </div>
+          <button class="ghost-btn">⌄ Structure &amp; the emotional beat <span style="opacity:.7">· projected</span></button>
+        </div>
+        <div style="border-top:1px solid var(--border);padding:12px 16px">
+          <p class="lbl">▣ How to film your version</p>
+          <dl style="margin-top:8px;display:flex;flex-direction:column;gap:6px">
+            <div class="kv"><dt>Shots</dt><dd>1 talking-head + screen-record of the 3 prompts.</dd></div>
+            <div class="kv"><dt>On-screen text</dt><dd>The three prompt names as cards.</dd></div>
+            <div class="kv"><dt>Setup</dt><dd>Desk, laptop visible, natural light.</dd></div>
+          </dl>
+        </div>
+        <div class="actions">
+          <button class="primary">Write hooks for this →</button>
+          <button class="icon-btn">♡</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-after">
+      <div class="col-head"><span class="col-tag tag-after">After</span><span class="col-sub">deliverable first</span></div>
+      <div class="card">
+        <div class="face face-tight">
+          <div class="metarow">
+            <span class="lbl">Remixing @danielle.builds · 2.1M</span>
+            <button class="ghost-btn">⧉ Copy</button>
+          </div>
+          <p class="hero">I fired my whole marketing team and replaced them with 3 prompts.</p>
+          <p class="why">Borrows a confession framing that lands its receipts before the justification. <span class="why-muted">Built for solo founders drowning in growth busywork.</span></p>
+        </div>
+        <button class="door">
+          <span class="dot-hollow"></span>
+          <span class="door-state">Not tested yet</span>
+          <span class="door-cta">Simulate with your audience <span class="door-arrow">→</span></span>
+        </button>
+        <div class="drawer">
+          <div class="field">
+            <span class="lbl">What you borrowed → what you made</span>
+            <div class="map" style="margin-top:6px">
+              <div><p class="lbl" style="margin-bottom:4px">The turn</p><p class="dim">The receipts land before the justification.</p></div>
+              <div><p class="lbl" style="margin-bottom:4px">Your angle</p><p>Shock-firing frame borrowed from a business-teardown viral.</p></div>
+              <div class="last"><p class="lbl" style="margin-bottom:4px">Format</p><p class="dim">Talking-head confession + receipts overlay</p></div>
+              <div class="last"><p class="lbl" style="margin-bottom:4px">Your shots</p><p>1 talking-head + screen-record of the 3 prompts.</p></div>
+            </div>
+          </div>
+          <div class="field">
+            <span class="lbl">Structure</span>
+            <p>Cold confession → receipts → the justification nobody asked for → the offer.</p>
+          </div>
+          <div class="field">
+            <span class="lbl">Emotional beat</span>
+            <p>Permission to do the thing they have been quietly considering.</p>
+          </div>
+          <dl class="kv"><dt>Shots</dt><dd>1 talking-head + screen-record of the 3 prompts.</dd></dl>
+          <dl class="kv"><dt>On-screen</dt><dd>The three prompt names as cards.</dd></dl>
+          <dl class="kv"><dt>Setup</dt><dd>Desk, laptop visible, natural light.</dd></dl>
+        </div>
+        <div class="actions">
+          <button class="primary">Write hooks for this →</button>
+          <button class="ghost-btn">⌃ Hide details</button>
+          <button class="icon-btn">♡</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ AUDIT ══════════════════════════════════════════════════════════════ -->
+<section class="sec">
+  <div class="sec-kick">Audit · root cause</div>
+  <h2>The generation path stopped measuring. The cards still wear the measurement's clothes.</h2>
+  <p class="sec-note">On 2026-07-22 the four Make runners collapsed onto a single Qwen call. The persona SIM went with it —
+  every runner now says so in as many words: <code>personas + population INTENTIONALLY OMITTED</code>
+  (<code>hooks-runner:667</code> · <code>ideas-runner:626</code> · <code>script-runner:659</code> · <code>remix-runner:361</code>).
+  That was the right call for cost and latency. What did not follow is the <b>presentation</b>: five surfaces still read those
+  fields, and each one now renders its degraded half while keeping the chrome that promised a measured result.</p>
+  <p class="sec-note">Each degrade is individually honest — a null check here, a conditional verb there. Together they add up to a
+  product that <b>presents as measured and measures nothing</b> until the creator pays again. That is the same defect as the
+  ranking, found four more times. It also means the door rework is not a taste preference: it is the repair.</p>
+
+  <div class="findings">
+    <div class="find">
+      <div class="find-h"><span class="sev sev-hi">High</span><span class="find-t">The room behind "See the room →" is empty theatre</span></div>
+      <p class="find-b"><code>audience-presence.tsx:255–259</code> — <code>if (focus.personas?.length) return focus.personas; return cardScrollQuoteReactions(...)</code>.
+      Since the runners omit <code>personas</code>, <b>every freshly generated card takes the fallback</b>: the room fills with
+      <code>viewer_1…viewer_10</code> placeholders expanded from the one self-estimated number, and because none of them is a
+      registry enum, <code>isGroundable</code> fails and <b>"Ask them why →" is gated off</b>. The flagship interaction on all four
+      Make cards currently opens a room of nobody.</p>
+      <p class="find-f"><b>Fixed by the rework, structurally.</b> The door goes to ⑤ Simulate instead of the room, so the only way
+      into a room is a run that populated it.</p>
+    </div>
+
+    <div class="find">
+      <div class="find-h"><span class="sev sev-hi">High</span><span class="find-t">The Library contradicts the thread, and the Library is the one that's wrong</span></div>
+      <p class="find-b"><code>saved/saved-item-card.tsx:254</code> and <code>:408</code> print
+      <code>{fracNM(fraction)} stopped</code> — <b>unconditional past tense, no <code>provenance</code> gate</b>. The thread card
+      goes to real trouble to say "7/10 <i>would</i> stop" on a projected card; save that exact card and the Library states
+      "7/10 stopped". Same props, same number, and the shelf makes the measurement claim the thread refused to make.</p>
+      <p class="find-f"><b>Scope addition.</b> The shelf renders the same card DNA and must move in lockstep, or the rework
+      creates the contradiction instead of inheriting it. Sketched below.</p>
+    </div>
+
+    <div class="find">
+      <div class="find-h"><span class="sev sev-md">Medium</span><span class="find-t"><code>TargetReaction</code> is half-dead — a label wearing a receipt's chrome</span></div>
+      <p class="find-b">Its own header states the payoff: <i>"we aimed this at your skeptics, and here is what your skeptics said."</i>
+      The second half never renders. All three callers pass an empty panel — <code>personas: []</code> at
+      <code>hooks-runner:637</code> · <code>ideas-runner:599</code> · <code>script-runner:638</code> — so <code>verdict</code> is
+      always null and the <code>{verdict && …}</code> branch is dead on the generation path. What ships is
+      "Written for The Busy Pro · 34% of your audience" in a bordered box: an <b>aim</b>, presented with the border and weight of
+      a <b>receipt</b>.</p>
+      <p class="find-f"><b>Demote, don't delete.</b> In the rework it becomes one plain line in the drawer — "Written for …" —
+      with no box. It regains its second half when a sim runs, which is exactly when it becomes true.</p>
+    </div>
+
+    <div class="find">
+      <div class="find-h"><span class="sev sev-md">Medium</span><span class="find-t">The design guards have a directory-shaped hole</span></div>
+      <p class="find-b"><code>radius-scale.test.ts:37</code> — <code>GUARDED_DIRS = ['thread', 'reading']</code>. The Library
+      renders the same cards and is not in that list, so it carries exactly the drift the guard exists to stop:
+      <code>rounded-[10px]</code> at <code>saved-item-card.tsx:246</code> and <code>:527</code> (off the 4/6/8/12/16/20/24 scale
+      entirely), plus <code>rounded-[6px]</code>/<code>rounded-[8px]</code> written as arbitrary literals the tokens-only rule
+      bans on value as well as size, and <code>text-[12px]</code> where the type roles give <code>text-label</code>.</p>
+      <p class="find-f"><b>Add <code>saved</code> to <code>GUARDED_DIRS</code> and fix what it catches.</b> Cheap, and it stops
+      this recurring the moment someone builds the next card surface.</p>
+    </div>
+
+    <div class="find">
+      <div class="find-h"><span class="sev sev-lo">Low</span><span class="find-t">"Use in thread →" cannot return you to the thread</span></div>
+      <p class="find-b"><code>thread_id</code> exists on the shelf schema (<code>shelf-repo.ts:31/41/51</code>) and is documented as
+      "for <i>Use in thread →</i> provenance". <b>No card passes it</b> — hook, idea, script and remix all call
+      <code>&lt;SaveAffordance item_type title snapshot /&gt;</code> and nothing more — and the shelf never reads it:
+      <code>handleForward</code> ends in a bare <code>router.push("/home")</code>. The button re-runs the chain step and drops
+      you on whatever thread happens to be open.</p>
+      <p class="find-f"><b>One prop per call site.</b> Pass <code>thread_id</code>, then route to it. Not required for this
+      rework — noting it because the four Save call sites are already being edited.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ LIBRARY ════════════════════════════════════════════════════════════ -->
+<section class="sec">
+  <div class="sec-kick">Library · the parity the rework forces</div>
+  <h2>The shelf is a card surface. It moves with the cards or it starts lying.</h2>
+
+  <div class="compare">
+    <div class="col-before">
+      <div class="col-head"><span class="col-tag tag-before">Before</span><span class="col-sub">claims a measurement the thread refused</span></div>
+      <div class="card" style="border-radius:var(--r-lg)">
+        <div class="face">
+          <div class="metarow"><span class="lbl">Hook</span><span class="lbl">2 days ago</span></div>
+          <p class="hero">Stop editing your videos. Do this instead.</p>
+          <div class="b-proof" style="border-radius:10px">
+            <div class="b-bandrow">
+              <span class="b-band"><i class="dot-solid" style="background:var(--positive)"></i>Strong</span>
+              <span class="b-frac"><b>7/10</b> stopped</span>
+              <span class="b-ribbon"><i style="width:70%"></i></span>
+            </div>
+            <blockquote class="b-quote">"Fast and to the point — I'll give it 10 seconds."</blockquote>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="primary">Use in thread →</button>
+          <button class="icon-btn">✕</button>
+        </div>
+      </div>
+      <p class="state-note">"stopped", past tense, on a card whose <code>provenance</code> is <code>projected</code> — and a
+      <code>rounded-[10px]</code> proof chip that the thread's own radius guard would fail.</p>
+    </div>
+
+    <div class="col-after">
+      <div class="col-head"><span class="col-tag tag-after">After</span><span class="col-sub">same spine as the thread card</span></div>
+      <div class="card">
+        <div class="face face-tight">
+          <div class="metarow"><span class="lbl">Hook · saved 2 days ago</span><button class="ghost-btn">⧉ Copy</button></div>
+          <p class="hero">Stop editing your videos. Do this instead.</p>
+          <p class="why">Pattern-interrupt via a permission to quit a painful task.</p>
+        </div>
+        <button class="door">
+          <span class="dot-hollow"></span>
+          <span class="door-state">Not tested yet</span>
+          <span class="door-cta">Simulate with your audience <span class="door-arrow">→</span></span>
+        </button>
+        <div class="actions">
+          <button class="primary">Write the script →</button>
+          <button class="ghost-btn">⌄ Details</button>
+          <button class="icon-btn">✕</button>
+        </div>
+      </div>
+      <p class="state-note">One spine, two surfaces. A saved card that was never tested says so on the shelf too — and the door
+      works from here, which makes the Library a place you can act from rather than a graveyard.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ COMPARE ════════════════════════════════════════════════════════════ -->
+<section class="sec">
+  <div class="sec-kick">Opportunity · the question the surface never asks</div>
+  <h2>Five hooks arrive. The creator's real question is "which one?" — and nothing answers it.</h2>
+  <p class="sec-note">Today the numbers answer it, badly (one self-estimate, five costumes). Take them away and the question is
+  bare: five equally-weighted lines and a Top pick. The honest answer is a simulation — but the unit is wrong. Five separate
+  runs to compare five variants is five spends and five surfaces the creator has to hold in their head.</p>
+  <p class="sec-note">The intake already anticipates this. <code>SimulateIntake.tsx:94</code> declares a
+  <code>compare</code> family — <b>"run variants side by side"</b> — sitting beside <code>screen</code> and <code>query</code>,
+  with <code>status: "soon"</code>. The product model has the right shape; nothing routes to it.</p>
+
+  <div class="card" style="max-width:560px;margin-top:24px">
+    <div style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid var(--border)">
+      <span class="dot-hollow"></span>
+      <span class="door-state">5 hooks · none tested</span>
+      <span class="door-cta">Simulate all 5, side by side <span class="door-arrow">→</span></span>
+    </div>
+    <div class="face face-tight" style="opacity:.5">
+      <div class="metarow"><span class="lbl">Top pick</span><button class="ghost-btn">⧉ Copy</button></div>
+      <p class="hero">Stop editing your videos. Do this instead.</p>
+    </div>
+    <div style="border-top:1px solid var(--border);padding:10px 16px;opacity:.32">
+      <p class="hero" style="font-size:var(--t-body)">I analyzed 500 viral videos. They all break one rule.</p>
+    </div>
+    <div style="border-top:1px solid var(--border);padding:10px 16px;opacity:.22">
+      <p class="hero" style="font-size:var(--t-body)">This is the best video I've ever made. It flopped.</p>
+    </div>
+  </div>
+
+  <div class="call q">
+    <div class="h">Honest caveat — this one has no mount point yet</div>
+    <p>Thread-unification made the thread ONE flat ordered stream: <code>MessageBlocks</code> maps blocks to renderers with no
+    per-skill grouping, so there is <b>no container that knows "these five cards are one batch"</b>. A batch header needs either a
+    grouping seam in <code>MessageBlocks</code> or a run-scoped wrapper — real work, and it touches the file the ambient ledger's
+    positional card ids depend on. I have sketched it because it is the highest-value thing the surface is missing, not because
+    it is cheap. Separate decision from the rework.</p>
+  </div>
+</section>
+
+<!-- ══ SCOPE ══════════════════════════════════════════════════════════════ -->
+<section class="sec">
+  <div class="sec-kick">Scope</div>
+  <h2>What this covers, and what it deliberately doesn't yet.</h2>
+  <ul class="tight">
+    <li><b>In this sketch —</b> hook · idea · script · remix. The four that carry the self-estimated verdict, and the four the ranking question is about.</li>
+    <li><b>Pulled in by the audit —</b> <code>saved/saved-item-card.tsx</code>. Not optional: it renders the same card DNA and
+      already states "stopped" where the thread says "would stop", so leaving it behind turns an inherited defect into one this
+      change created. Carries the guard fix (<code>saved</code> → <code>GUARDED_DIRS</code>) with it.</li>
+    <li><b>Deferred by you —</b> door state ③ (seal write-back onto the card). Slot ships ready; nothing writes to it yet.</li>
+    <li><b>Same treatment, no sketch needed —</b> <code>brought-card</code> (the ＋ door's card) carries the same proof unit and inherits the door verbatim.</li>
+    <li><b>Different problem, tell me if you want it in this pass —</b> <code>account-read</code> (six stacked CAPS labels, opens on a name not a payoff), <code>outlier-grid</code> (tiles have no card surface), <code>reaction-distribution</code> and <code>prediction-gauge</code> (both flagged 🔴 STRUCTURAL in the SSOT, and the gauge renders a <code>~35–60%</code> the honesty spine forbids). These are real UI debt but they are not about the ranking, and folding them in roughly doubles the diff.</li>
+    <li><b>Not touched —</b> block schemas, runners, the ranking sort itself. Presentation only, so every persisted card keeps rendering.</li>
+  </ul>
+  <div class="call">
+    <div class="h">Guards this has to keep green</div>
+    <p><code>radius-scale.test.ts</code> (tokens-only radii across <code>thread/**</code>) · <code>section-label-scale.test.ts</code> (the 11px/0.05em label idiom) ·
+    <code>make-card-value-fields.test.tsx</code> (asserts the projected/measured wording — <b>will need rewriting</b>, since the wording it guards is what we are removing) ·
+    <code>idea-card-block.test.tsx</code> (asserts the fraction appears exactly once — becomes zero) · <code>proof-unit-open-room.test.tsx</code> · <code>ambient-card-anchors.test.tsx</code>.</p>
+  </div>
+</section>
+
+</div>
+
+<script>
+document.querySelectorAll('.seg button').forEach(function (b) {
+  b.addEventListener('click', function () {
+    document.body.dataset.view = b.dataset.v;
+    document.querySelectorAll('.seg button').forEach(function (x) {
+      x.setAttribute('aria-pressed', String(x === b));
+    });
+  });
+});
+// the door + caret are inert in the sketch; make that obvious on click
+document.querySelectorAll('.door, .primary, .ghost-btn, .icon-btn').forEach(function (el) {
+  el.addEventListener('click', function (e) { e.preventDefault(); });
+});
+</script>
+</body>
+</html>

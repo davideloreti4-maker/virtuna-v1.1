@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Skill cards v3 · two visual directions</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --charcoal-app:#1f1f1e; --surface-sunken:#1a1a19;
+  --fg:#ece7de; --fg-2:#c2bdb4; --fg-3:#8a857c;
+  --positive:#8ea68a; --warning:oklch(0.75 0.15 85); --accent:#FF6363;
+  --b:rgba(255,255,255,.06); --b-hover:rgba(255,255,255,.10);
+  --t-caption:11px; --t-label:12px; --t-body:13px; --t-reading:14px;
+  --t-title:16px; --t-subhead:18px; --t-heading:22px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--charcoal-app);color:var(--fg);
+  font-family:Inter,system-ui,-apple-system,sans-serif;font-size:var(--t-body);line-height:1.5;
+  -webkit-font-smoothing:antialiased;padding:0 0 120px}
+.serif{font-family:Newsreader,Georgia,serif}
+
+.bar{position:sticky;top:0;z-index:20;display:flex;flex-wrap:wrap;align-items:center;gap:14px;
+  padding:12px 20px;background:#151514;border-bottom:1px solid var(--b)}
+.bar h1{font-size:var(--t-label);font-weight:600;letter-spacing:.02em;margin-right:auto}
+.bar .hint{font-size:var(--t-caption);color:var(--fg-3)}
+.seg{display:flex;border:1px solid var(--b);border-radius:8px;overflow:hidden}
+.seg button{appearance:none;border:0;background:transparent;color:var(--fg-3);font:inherit;
+  font-size:var(--t-label);padding:6px 12px;cursor:pointer}
+.seg button+button{border-left:1px solid var(--b)}
+.seg button[aria-pressed="true"]{background:rgba(255,255,255,.07);color:var(--fg)}
+
+.section{padding:34px 20px 0;max-width:1700px;margin:0 auto}
+.section>h2{font-size:var(--t-title);font-weight:600;letter-spacing:-.01em;margin-bottom:4px}
+.section>p.note{font-size:var(--t-label);color:var(--fg-3);max-width:78ch;margin-bottom:20px}
+.rowcols{display:flex;gap:26px;align-items:flex-start;flex-wrap:wrap}
+.col>h3{font-size:var(--t-caption);text-transform:uppercase;letter-spacing:.05em;color:var(--fg-3);margin-bottom:4px}
+.col>h3 em{font-style:normal;color:var(--fg-2)}
+.col>p.sub{font-size:var(--t-caption);color:rgba(138,133,124,.75);margin-bottom:10px;max-width:44ch;line-height:1.55}
+.stage{width:728px;transition:width .18s ease}
+body[data-w="342"] .stage{width:342px}
+.callout{margin-top:10px;max-width:728px;font-size:var(--t-caption);line-height:1.65;color:var(--fg-3);
+  border-left:2px solid rgba(255,255,255,.10);padding-left:10px}
+.callout b{color:var(--fg-2);font-weight:500}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:var(--fg-2);
+  background:rgba(255,255,255,.04);border-radius:3px;padding:1px 4px}
+
+/* ── shared card shell ─────────────────────────────────────────────────── */
+.card{border:1px solid var(--b);border-radius:12px;background:var(--surface-sunken);overflow:hidden}
+.face{display:flex;flex-direction:column;padding:20px 20px 18px}   /* was 16px */
+.hero{font-size:var(--t-heading);line-height:1.3;letter-spacing:-.005em;font-weight:500;color:var(--fg);
+  text-wrap:balance}
+.lede{font-size:var(--t-reading);line-height:1.6;color:var(--fg)}      /* cream, the promoted tier */
+.body{font-size:var(--t-body);line-height:1.6;color:var(--fg-2)}
+.meta{font-size:var(--t-label);line-height:1.5;color:var(--fg-3)}
+.sec{color:var(--fg-2)} .muted{color:var(--fg-3)} .cream{color:var(--fg)}
+
+.toprow{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:12px}
+.pick{font-size:var(--t-label);color:var(--fg-2)}                 /* sentence case, no caps */
+.copy{display:inline-flex;align-items:center;gap:5px;flex-shrink:0;font-size:var(--t-label);
+  font-weight:500;color:var(--fg-3);background:none;border:0;cursor:pointer;font-family:inherit}
+.copy:hover{color:var(--fg-2)}
+.ico{width:13px;height:13px;flex-shrink:0}
+
+/* generous, deliberate rhythm */
+.g-lede{margin-top:14px}
+.g-note{margin-top:10px}
+.g-break{margin-top:24px}      /* the one real break, was 20 */
+
+/* ── the source receipt, as ONE media object ───────────────────────────── */
+/* align-items:center, not flex-start. A 56px 9:16 cover is ~100px tall against a ~75px
+   text column, so top-aligning leaves a dead wedge under the stats. Centering balances it
+   without cropping the cover to a wrong aspect. */
+.src{display:flex;gap:14px;align-items:center;text-decoration:none;
+  margin:0 -10px;padding:10px;border-radius:10px;border:1px solid transparent}
+.src:hover{background:rgba(255,255,255,.03)}
+.thumb{position:relative;display:block;width:56px;flex-shrink:0;aspect-ratio:9/16;
+  border:1px solid var(--b);border-radius:6px;overflow:hidden;background:#242422}
+.srccol{display:flex;min-width:0;flex:1;flex-direction:column;gap:7px}
+.tpl{font-size:var(--t-reading);line-height:1.45;color:var(--fg-2)}
+.tpl .v{background:rgba(255,255,255,.06);border-radius:2px;padding:1px 4px;color:var(--fg);margin:0 1px}
+.srcstats{font-size:var(--t-label);color:var(--fg-3);display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.mult{color:var(--positive);font-weight:600;font-variant-numeric:tabular-nums}
+.dot-sep{color:rgba(138,133,124,.5)}
+
+/* ── ONE footer row: primary + door. Was two full-width bands. ─────────── */
+.footer{display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+  border-top:1px solid var(--b);padding:14px 20px}
+.primary{display:inline-flex;align-items:center;justify-content:center;
+  border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.05);border-radius:6px;
+  padding:8px 14px;font-size:var(--t-body);font-weight:600;color:var(--fg);font-family:inherit;cursor:pointer}
+.primary:hover{border-color:rgba(255,255,255,.12);background:rgba(255,255,255,.09)}
+.door{display:inline-flex;align-items:center;gap:8px;margin-left:auto;font-size:var(--t-label);
+  color:var(--fg-3);background:none;border:0;font-family:inherit;cursor:pointer;min-height:32px}
+.door:hover .door-cta{color:var(--fg)}
+.door .hollow{width:7px;height:7px;border-radius:999px;border:1px solid var(--fg-3);flex-shrink:0}
+.door-cta{color:var(--fg-2);white-space:nowrap}
+.save{color:var(--fg-3);display:inline-flex}
+body[data-w="342"] .door{margin-left:0;width:100%;justify-content:space-between}
+
+/* ── direction B only: the quiet sentence-case label column ────────────── */
+.dl{display:flex;flex-direction:column;gap:14px}
+.dl>div{display:flex;gap:16px}
+.dl dt{width:92px;flex-shrink:0;font-size:var(--t-label);color:var(--fg-3);line-height:1.6;padding-top:1px}
+.dl dd{min-width:0;flex:1}
+body[data-w="342"] .dl>div{flex-direction:column;gap:3px}
+body[data-w="342"] .dl dt{width:auto}
+
+/* the retired treatment, for the side-by-side */
+.old-label{font-size:var(--t-caption);text-transform:uppercase;letter-spacing:.05em;color:var(--fg-3)}
+.boxed{border:1px solid var(--b);background:rgba(255,255,255,.02);border-radius:8px;padding:12px 14px}
+.pill{display:inline-block;border:1px solid var(--b);background:rgba(255,255,255,.03);border-radius:999px;
+  padding:2px 8px;font-size:var(--t-caption);font-weight:500;color:var(--fg-2)}
+.strike{text-decoration:line-through;text-decoration-color:rgba(224,189,114,.6)}
+.flagbox{border:1px solid rgba(224,189,114,.22);border-radius:8px;padding:14px 16px;max-width:1180px;
+  font-size:var(--t-label);line-height:1.75;color:var(--fg-2)}
+.flagbox h4{font-size:var(--t-body);font-weight:600;color:var(--warning);margin-bottom:6px}
+.flagbox p+p{margin-top:8px}
+</style>
+</head>
+<body data-w="728">
+
+<div class="bar">
+  <h1>Skill cards v3 · two visual directions</h1>
+  <span class="hint">pick a direction, then I fan it out to all four cards</span>
+  <div class="seg" role="group" aria-label="Card width">
+    <button data-w="728" aria-pressed="true">728px · in-thread</button>
+    <button data-w="342" aria-pressed="false">342px · mobile</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <h2>What v2 got wrong</h2>
+  <div style="max-width:1180px;font-size:var(--t-body);line-height:1.8;color:var(--fg-2)">
+    <p>v2 removed the nested boxes but kept the thing underneath them: <b class="cream">every zone still
+    announced itself with an uppercase micro-label.</b> A single hook card carried four
+    (<span class="old-label">top pick</span> <span class="old-label">visual</span>
+    <span class="old-label">proven structure</span> <span class="old-label">why it works</span>) plus a
+    run-on meta line. That is the same labelled-zone pattern that got sketch 2 called AI slop; only the
+    typeface had changed. Both directions below fix it, and both apply four other corrections:</p>
+    <p style="margin-top:10px">
+      <b class="cream">1.</b> The targeting line is <b class="strike">deleted</b>, see the box below.
+      &nbsp;<b class="cream">2.</b> Card padding 16px&nbsp;→&nbsp;20px and the section break 20px&nbsp;→&nbsp;24px.
+      &nbsp;<b class="cream">3.</b> The door and the action bar were two full-width bands with two
+      dividers; they are now <b class="cream">one footer row</b>.
+      &nbsp;<b class="cream">4.</b> The source receipt becomes one media object with a single sage number,
+      not five stacked chips and pills.
+    </p>
+  </div>
+
+  <div class="flagbox" style="margin-top:18px">
+    <h4>Deleted: “Written for The Aspirant · 28% of your audience”</h4>
+    <p>You said it gives the user no value. It is worse than that, and the source agrees. All three
+    callers of <code>bindTarget</code> pass <code>personas: []</code> —
+    <code>hooks-runner.ts:637</code>, <code>ideas-runner.ts:599</code>, <code>script-runner.ts:638</code> —
+    so <code>verdict</code> and <code>quote</code> are <b>structurally always null</b>. The component's
+    receipt branch (<code>target-reaction.tsx:45</code>) has never rendered in production.</p>
+    <p>What shipped is the <em>aim</em> with the <em>receipt</em> permanently missing: an internal
+    archetype slug and a percentage, promising a reaction the card can never show. The runners say so
+    themselves — <code>script-runner.ts:632</code> notes script targeting is dormant so
+    <code>target</code> is null on every route today, and <code>remix-runner</code> never emits it at all.</p>
+    <p><b>So it comes off the face on all four cards.</b> <code>target</code> stays on the block props and
+    <code>TargetReaction</code> stays in the tree — if a fired run ever writes a real verdict back, the
+    line earns its place then, next to a reaction instead of instead of one.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     THE TWO DIRECTIONS · HOOK
+     ═══════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <h2>Hook card</h2>
+  <p class="note">
+    Same nine facts in both. The only difference is whether the supporting lines are labelled at all.
+  </p>
+  <div class="rowcols">
+
+    <!-- ── A ─────────────────────────────────────────────────────────── -->
+    <div class="col">
+      <h3>Direction A · <em>Editorial</em></h3>
+      <p class="sub">No labels anywhere. The hook is a headline and everything under it is a short
+        descending column of prose. Position and weight do all the work.</p>
+      <div class="stage">
+        <div class="card">
+          <div class="face">
+            <div class="toprow">
+              <span class="pick">Top pick</span>
+              <button class="copy"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M216 32H88a8 8 0 0 0-8 8v40H40a8 8 0 0 0-8 8v128a8 8 0 0 0 8 8h128a8 8 0 0 0 8-8v-40h40a8 8 0 0 0 8-8V40a8 8 0 0 0-8-8m-56 176H48V96h112Zm48-48h-32V88a8 8 0 0 0-8-8H96V48h112Z"/></svg>Copy</button>
+            </div>
+
+            <p class="serif hero">Stop editing your videos. Do this instead.</p>
+
+            <p class="lede g-lede">Open on a crash-zoom: hard cut to your face mid-sentence as the words slam on in bold caps.</p>
+
+            <p class="body g-note">It works as a pattern-interrupt. You are giving them permission to quit a painful task.</p>
+
+            <a class="src g-break" href="#">
+              <span class="thumb"><svg viewBox="0 0 90 160" width="100%" height="100%"><rect width="90" height="160" fill="#242422"/><polygon points="38,66 38,94 64,80" fill="#ece7de" opacity=".35"/></svg></span>
+              <span class="srccol">
+                <span class="tpl">Stop <span class="v">[doing the hard thing]</span>. Do <span class="v">[the easier thing]</span> instead.</span>
+                <span class="srcstats">
+                  <span class="mult">90.7× vs followers</span><span class="dot-sep">·</span>
+                  <span>621K views</span><span class="dot-sep">·</span>
+                  <span class="sec">@braedan.health</span>
+                </span>
+                <span class="srcstats" style="color:rgba(138,133,124,.8)">The proven structure this borrows, from an adjacent audience</span>
+              </span>
+            </a>
+
+            <p class="meta g-break">Seeded from “Stop editing your videos.” Written to be spoken.</p>
+          </div>
+
+          <div class="footer">
+            <button class="primary">Write the script →</button>
+            <button class="door"><span class="hollow"></span>Not tested yet<span class="door-cta">Simulate with your audience →</span></button>
+            <span class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg></span>
+          </div>
+        </div>
+      </div>
+      <p class="callout">
+        <b>Zero uppercase on the card.</b> The two supporting lines self-read: “Open on a crash-zoom”
+        is unmistakably a shot, “It works as a pattern-interrupt” is unmistakably the reason.
+        The source block states its own claim in a plain sentence instead of a
+        <span class="old-label">proven structure</span> eyebrow plus a
+        <span class="pill" style="font-weight:400">Trap Mistake</span> pill.
+        <b>Risk:</b> nothing is skimmable by label, so a creator hunting for “the shot” has to read.
+      </p>
+    </div>
+
+    <!-- ── B ─────────────────────────────────────────────────────────── -->
+    <div class="col">
+      <h3>Direction B · <em>Document</em></h3>
+      <p class="sub">Sentence-case labels in a quiet left column, 12px muted. Reads like a well-set
+        spec rather than a SaaS dashboard. Skimmable, but no caps and no boxes.</p>
+      <div class="stage">
+        <div class="card">
+          <div class="face">
+            <div class="toprow">
+              <span class="pick">Top pick</span>
+              <button class="copy"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M216 32H88a8 8 0 0 0-8 8v40H40a8 8 0 0 0-8 8v128a8 8 0 0 0 8 8h128a8 8 0 0 0 8-8v-40h40a8 8 0 0 0 8-8V40a8 8 0 0 0-8-8m-56 176H48V96h112Zm48-48h-32V88a8 8 0 0 0-8-8H96V48h112Z"/></svg>Copy</button>
+            </div>
+
+            <p class="serif hero">Stop editing your videos. Do this instead.</p>
+
+            <dl class="dl g-break">
+              <div>
+                <dt>The shot</dt>
+                <dd><p class="lede">Hard cut to your face mid-sentence as the words slam on in bold caps.</p>
+                    <p class="meta" style="margin-top:4px">Crash-zoom</p></dd>
+              </div>
+              <div>
+                <dt>Why it works</dt>
+                <dd><p class="body">A pattern-interrupt. You are giving them permission to quit a painful task.</p></dd>
+              </div>
+              <div>
+                <dt>Borrowed from</dt>
+                <dd>
+                  <a class="src" href="#" style="margin:0 -10px 0 -10px">
+                    <span class="thumb"><svg viewBox="0 0 90 160" width="100%" height="100%"><rect width="90" height="160" fill="#242422"/><polygon points="38,66 38,94 64,80" fill="#ece7de" opacity=".35"/></svg></span>
+                    <span class="srccol">
+                      <span class="tpl">Stop <span class="v">[doing the hard thing]</span>. Do <span class="v">[the easier thing]</span> instead.</span>
+                      <span class="srcstats">
+                        <span class="mult">90.7× vs followers</span><span class="dot-sep">·</span>
+                        <span>621K views</span><span class="dot-sep">·</span>
+                        <span class="sec">@braedan.health</span>
+                      </span>
+                    </span>
+                  </a>
+                </dd>
+              </div>
+              <div>
+                <dt>Seed</dt>
+                <dd><p class="body">“Stop editing your videos.” Written to be spoken.</p></dd>
+              </div>
+            </dl>
+          </div>
+
+          <div class="footer">
+            <button class="primary">Write the script →</button>
+            <button class="door"><span class="hollow"></span>Not tested yet<span class="door-cta">Simulate with your audience →</span></button>
+            <span class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg></span>
+          </div>
+        </div>
+      </div>
+      <p class="callout">
+        <b>Labels survive but stop shouting:</b> sentence case, 12px, muted, in a fixed left column that
+        stacks at 342px. This is the same definition-list idiom already shipped in the script and remix
+        “How to film” blocks, so it is not a new pattern for the codebase.
+        <b>Note:</b> it steps off the <code>SECTION_LABEL</code> uppercase idiom the rest of the thread uses,
+        so these four cards would read differently from the Read and Account cards until those follow.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     IDEA IN BOTH
+     ═══════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <h2>Idea card, same two directions</h2>
+  <p class="note">The card with the most facts, so it is the real stress test of a label-free layout.</p>
+  <div class="rowcols">
+
+    <div class="col">
+      <h3>Direction A · <em>Editorial</em></h3>
+      <div class="stage">
+        <div class="card">
+          <div class="face">
+            <div class="toprow"><span class="pick">Top pick</span><span></span></div>
+            <h3 class="serif hero">The 30-day silence experiment</h3>
+
+            <p class="lede g-lede">Absence as a growth lever, and what happens when you deliberately go quiet.</p>
+            <p class="body g-note">Your top 3 posts all lead with a counter-intuitive claim about consistency, so this lands in a groove your audience already follows.</p>
+            <p class="body g-note">It works on a curiosity gap plus an identity threat. Creators fear disappearing.</p>
+
+            <p class="body g-break">
+              Build it from <span class="cream">creator growth</span>, on the take that
+              <span class="cream">consistency is overrated and strategic absence compounds attention</span>,
+              as a <span class="cream">talking-head with on-screen data</span>.
+            </p>
+            <p class="meta g-note">Opens with “I stopped posting for 30 days. Here's what actually happened to my account.”</p>
+
+            <a class="src g-break" href="#">
+              <span class="thumb"><svg viewBox="0 0 90 160" width="100%" height="100%"><rect width="90" height="160" fill="#242422"/><polygon points="38,66 38,94 64,80" fill="#ece7de" opacity=".35"/></svg></span>
+              <span class="srccol">
+                <span class="tpl">I stopped <span class="v">[common habit]</span> for <span class="v">[timeframe]</span>. Here's what happened to my <span class="v">[thing]</span>.</span>
+                <span class="srcstats">
+                  <span class="mult">277× vs followers</span><span class="dot-sep">·</span>
+                  <span>4.3M views</span><span class="dot-sep">·</span>
+                  <span class="sec">@nourish.me.now</span>
+                </span>
+                <span class="srcstats" style="color:rgba(138,133,124,.8)">The proven structure this borrows, from an adjacent audience</span>
+              </span>
+            </a>
+
+            <p class="meta g-break" style="color:var(--warning)">Needs your take: this one leans on a perspective only you can supply.</p>
+          </div>
+          <div class="footer">
+            <button class="primary">Write hooks for this →</button>
+            <button class="door"><span class="hollow"></span>Not tested yet<span class="door-cta">Simulate with your audience →</span></button>
+            <span class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg></span>
+          </div>
+        </div>
+      </div>
+      <p class="callout">
+        Topic, take and format stop being three labelled cells and become <b>one readable sentence</b> with
+        the three variables in cream. “Needs your take” becomes a sentence that says what to do, instead of
+        an amber pill that says a status.
+      </p>
+    </div>
+
+    <div class="col">
+      <h3>Direction B · <em>Document</em></h3>
+      <div class="stage">
+        <div class="card">
+          <div class="face">
+            <div class="toprow"><span class="pick">Top pick</span><span></span></div>
+            <h3 class="serif hero">The 30-day silence experiment</h3>
+            <p class="lede g-lede">Absence as a growth lever, and what happens when you deliberately go quiet.</p>
+
+            <dl class="dl g-break">
+              <div><dt>Fits you</dt><dd><p class="body">Your top 3 posts all lead with a counter-intuitive claim about consistency.</p></dd></div>
+              <div><dt>Why it lands</dt><dd><p class="body">A curiosity gap plus an identity threat. Creators fear disappearing.</p></dd></div>
+              <div><dt>Topic</dt><dd><p class="body">Creator growth</p></dd></div>
+              <div><dt>Your take</dt><dd><p class="body">Consistency is overrated; strategic absence compounds attention.</p>
+                <p class="meta" style="margin-top:4px;color:var(--warning)">Only you can supply this one.</p></dd></div>
+              <div><dt>Format</dt><dd><p class="body">Talking-head with on-screen data</p></dd></div>
+              <div><dt>Opens with</dt><dd><p class="body">“I stopped posting for 30 days. Here's what actually happened to my account.”</p></dd></div>
+              <div><dt>Borrowed from</dt><dd>
+                <a class="src" href="#" style="margin:0 -10px">
+                  <span class="thumb"><svg viewBox="0 0 90 160" width="100%" height="100%"><rect width="90" height="160" fill="#242422"/><polygon points="38,66 38,94 64,80" fill="#ece7de" opacity=".35"/></svg></span>
+                  <span class="srccol">
+                    <span class="tpl">I stopped <span class="v">[common habit]</span> for <span class="v">[timeframe]</span>. Here's what happened to my <span class="v">[thing]</span>.</span>
+                    <span class="srcstats">
+                      <span class="mult">277× vs followers</span><span class="dot-sep">·</span>
+                      <span>4.3M views</span><span class="dot-sep">·</span>
+                      <span class="sec">@nourish.me.now</span>
+                    </span>
+                  </span>
+                </a>
+              </dd></div>
+            </dl>
+          </div>
+          <div class="footer">
+            <button class="primary">Write hooks for this →</button>
+            <button class="door"><span class="hollow"></span>Not tested yet<span class="door-cta">Simulate with your audience →</span></button>
+            <span class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg></span>
+          </div>
+        </div>
+      </div>
+      <p class="callout">
+        Seven labelled rows is the honest cost of this direction on the busiest card. It is highly
+        skimmable and nothing is ambiguous, but it is closer to a spec sheet than to an editorial object.
+        <b>This is the trade to judge:</b> A reads better, B scans better.
+      </p>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <h2>Also still open</h2>
+  <div class="flagbox">
+    <p><b class="cream">The door on a legacy card that really did run a panel.</b> You have not picked, and
+    it decides whether the door reads <code>provenance</code> at all. Either it says
+    “Your audience reacted · See your audience →” (honest for data that exists, no number on the face), or
+    every card says “Not tested yet” (simpler, but claims untested about a real measurement).</p>
+    <p><b class="cream">The em dashes the model writes.</b> Still flagged, not fixed, per your call. One
+    line in each of the four runner prompts.</p>
+  </div>
+</section>
+
+<script>
+document.querySelectorAll('.seg').forEach(function (seg) {
+  seg.addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    seg.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+    if (b.dataset.w) document.body.dataset.w = b.dataset.w;
+  });
+});
+</script>
+</body>
+</html>
