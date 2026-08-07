@@ -126,8 +126,19 @@ learned once: `SESSION_EXPIRED_EVENT`, `reportSession401(status, body)`,
 (mounted in providers) renders a dialog that explains what happened and offers "Sign in
 again". AuthGuard remains the sole owner of `router.replace` (§2.1, WR-04).
 
-**The draft survives.** The dialog must not be dismissible into a state where the typed input
-is gone — that is half the reason this path is worth fixing.
+**The draft survives because nothing navigates — no persistence mechanism is required.**
+Every piece of composer state is local `useState` (`composer.tsx:378-488`, `769`), and
+`composer.tsx` contains **zero** `localStorage`/`sessionStorage` writes. That state is
+destroyed by unmount, and the only thing that unmounts it is a route change. So for the case
+this lane adds — a server 401 while the client still believes it is signed in — leaving the
+user where they are *is* the preservation. Adding storage would be building a mechanism to
+solve a problem the design avoids by construction.
+
+⚠️ **The other case still loses the draft, and that is pre-existing and out of scope.** When
+supabase-js itself notices (`SIGNED_OUT`), AuthGuard's `router.replace("/login")` fires,
+the composer unmounts, and the typed input is gone. Changing that means either overriding the
+declared single owner of that redirect (WR-04) or adding draft persistence — both larger than
+this lane, and neither is smuggled in here.
 
 ### §3.3 — Detection, stated honestly
 
@@ -163,6 +174,27 @@ There are **113 raw `/api` fetch sites in client components and no shared fetch 
 other 99 are **not** covered by this work. A 401 from one of them still renders whatever that
 surface renders today. Building a wrapper for all 113 is a separate piece of work and is not
 smuggled into this one.
+
+### §4.1 — The central option, assessed and rejected (so it is not re-derived)
+
+**57 of the 113 sites are react-query hooks under `hooks/queries/`**, and the app already
+mounts a `QueryClientProvider` (`(app)/providers.tsx:22`). A global `QueryCache.onError`
+handler there would, in principle, catch every one of them for about ten lines — strictly
+better than fourteen call-site edits.
+
+**It does not work, because the status is thrown away before the handler could see it.** Every
+one of those hooks discards it at the point of failure:
+
+```ts
+if (!res.ok) throw new Error("Failed to fetch threads");   // use-threads.ts:25
+```
+
+An `onError` handler receives that `Error` and cannot tell a 401 from a 500. Making the central
+handler viable first requires editing all 57 sites to throw a status-carrying error — more work
+than the 14, and a refactor of code this lane has no other reason to touch.
+
+If a shared fetch wrapper is ever built, that is the moment to revisit this: the wrapper makes
+the central handler nearly free, and these 14 call-site edits become redundant.
 
 ---
 
