@@ -220,11 +220,19 @@ and the script's per-beat retention line.
 - Does the "Made for" cell ship gated behind `reaction_frame`, or degrade to four cells?
 - Is `vs followers` the wording users should read, or `90.7× this creator's follower count`?
 
-### 9.5 ⚠️ Throwaway files currently on disk — DELETE BEFORE ANY COMMIT
+### 9.5 ⚠️ The compare harness — PARKED OUTSIDE THE REPO 2026-08-07, never commit it
 
-Both are untracked and exist only to compare shipped vs mock:
 `src/app/zz-preview/page.tsx` (real renderers beside the v9.4 mock, width toggle, iframes self-report
-their height via `postMessage`) and `public/zz-v94-cards.html` (the v9.4 cards, `?card=&w=`).
-Run with `npm run dev -- --port 3001` → http://localhost:3001/zz-preview. **`rm -rf
-src/app/zz-preview public/zz-v94-cards.html` before committing** — the zero-`src/`-changes lock in
-§Status depends on it.
+their height via `postMessage`) and `public/zz-v94-cards.html` (the v9.4 cards, `?card=&w=`) exist
+only to compare shipped vs mock. **Both must stay out of git** — `zz-preview` is a real Next.js route
+(it builds as `○ /zz-preview`) and `public/` is served publicly, so committing either ships a dev
+harness to production. The zero-`src/`-changes lock in §Status also depends on it.
+
+They lived untracked in the `~/virtuna-slot-a` worktree, which was retired 2026-08-07. Copied to
+**`~/virtuna-parked/skill-cards-harness/`** (`zz-preview/`, `zz-v94-cards.html`, `zz-shoot.js`)
+before removal. To use them again: copy back into a worktree, `npm run dev -- --port 3001` →
+http://localhost:3001/zz-preview, then delete them again before you commit anything.
+
+The 12 `.planning/sketches/skill-cards-*.html` referenced above ARE now committed (same retirement)
+— they had been untracked and existed nowhere else, so §9's paths above resolve from git now.
+The ~23MB `zz-shots/` capture output was discarded; nothing referenced it.

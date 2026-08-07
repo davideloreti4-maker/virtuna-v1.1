@@ -1,0 +1,701 @@
+<title>Skill cards v9.4 — the recommendation, desktop and mobile</title>
+<style>
+/*FONTS*/
+
+:root{
+  --app:#1f1f1e; --sunken:#1a1a19;
+  --fg:#ece7de; --fg-2:#c2bdb4; --fg-3:#8a857c; --fg-4:#6a665f;
+  --sage:#8ea68a; --amber:#c8a24a; --coral:#FF6363;
+  --page:#141413; --page-2:#1b1b1a; --rule:rgba(255,255,255,.07);
+  --t-cap:11px; --t-lab:12px; --t-body:13px; --t-read:14px;
+}
+:root[data-theme="light"]{
+  --page:#f2efe9; --page-2:#e9e5dd; --rule:rgba(31,31,30,.10);
+  --fg:#1f1f1e; --fg-2:#3d3b37; --fg-3:#6f6a62; --fg-4:#8b867d;
+  --sage:#4e6b4a; --amber:#7a5c12; --coral:#c93b3b;
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    --page:#f2efe9; --page-2:#e9e5dd; --rule:rgba(31,31,30,.10);
+    --fg:#1f1f1e; --fg-2:#3d3b37; --fg-3:#6f6a62; --fg-4:#8b867d;
+    --sage:#4e6b4a; --amber:#7a5c12; --coral:#c93b3b;
+  }
+}
+/* stages are the product — always its charcoal, never the viewer's theme */
+.stagewrap{--fg:#ece7de;--fg-2:#c2bdb4;--fg-3:#8a857c;--sage:#8ea68a;
+  background:var(--app);color:#ece7de}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--fg);
+  font-family:InterV,Inter,system-ui,-apple-system,sans-serif;
+  font-size:var(--t-body);line-height:1.6;-webkit-font-smoothing:antialiased}
+.serif{font-family:NewsreaderV,Newsreader,Georgia,serif}
+h1,h2,h3,h4,p,ul,ol,figure,table{margin:0}
+
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+.top{border-bottom:1px solid var(--rule);padding:52px 0 30px}
+.eyebrow{font-size:var(--t-cap);text-transform:uppercase;letter-spacing:.09em;color:var(--fg-3);
+  display:flex;gap:12px;flex-wrap:wrap}
+.eyebrow b{font-weight:500;color:var(--fg-2)}
+h1{font-size:clamp(28px,4vw,40px);line-height:1.12;letter-spacing:-.02em;font-weight:500;
+  margin-top:16px;text-wrap:balance;max-width:22ch}
+.standfirst{margin-top:16px;max-width:70ch;font-size:var(--t-read);line-height:1.75;color:var(--fg-2)}
+.standfirst b{color:var(--fg);font-weight:500}
+
+section{padding:44px 0;border-bottom:1px solid var(--rule)}
+.snum{font-size:var(--t-cap);letter-spacing:.09em;text-transform:uppercase;color:var(--fg-4)}
+h2{font-size:23px;line-height:1.2;letter-spacing:-.015em;font-weight:500;margin-top:7px;text-wrap:balance}
+h3{font-size:16px;font-weight:500;letter-spacing:-.01em;margin-top:34px}
+.lede{margin-top:12px;max-width:74ch;color:var(--fg-2);line-height:1.75}
+.lede b{color:var(--fg);font-weight:500}
+.note{font-size:var(--t-lab);color:var(--fg-3);line-height:1.7;max-width:80ch;margin-top:12px}
+.note b{color:var(--fg-2);font-weight:500}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.88em;
+  background:var(--page-2);border-radius:3px;padding:1px 5px;color:var(--fg-2)}
+
+.moves{margin-top:26px;display:flex;flex-direction:column}
+.move{display:grid;grid-template-columns:30px 1fr;gap:18px;padding:18px 0;border-top:1px solid var(--rule)}
+.move:first-child{border-top:0}
+.mn{font-size:var(--t-lab);font-weight:600;color:var(--fg-4);font-variant-numeric:tabular-nums;padding-top:2px}
+.move h4{font-size:var(--t-read);font-weight:500;margin:0 0 6px}
+.move p{color:var(--fg-2);line-height:1.72;max-width:76ch}
+.move p+p{margin-top:6px}
+.move .why{font-size:var(--t-lab);color:var(--fg-3);line-height:1.7;
+  border-left:2px solid var(--rule);padding-left:12px;margin-top:9px}
+.move .why b{color:var(--fg-2);font-weight:500}
+
+.tscroll{overflow-x:auto;margin-top:22px}
+table{width:100%;border-collapse:collapse;font-size:var(--t-lab);min-width:520px}
+th{text-align:left;font-weight:400;color:var(--fg-3);padding:8px 14px 8px 0;
+  border-bottom:1px solid var(--rule);white-space:nowrap;font-size:var(--t-cap);
+  text-transform:uppercase;letter-spacing:.06em}
+td{padding:9px 14px 9px 0;border-bottom:1px solid var(--rule);vertical-align:top;
+  font-variant-numeric:tabular-nums}
+td.n{text-align:right;padding-right:20px}
+.dn{color:var(--sage)} .up{color:var(--amber)} .keep{color:var(--fg-3)}
+
+.stagewrap{border:1px solid var(--rule);border-radius:12px;padding:24px;margin-top:20px;overflow-x:auto}
+@media (min-width:1300px){
+  .stagewrap{position:relative;left:50%;transform:translateX(-50%);
+    width:min(1580px,calc(100vw - 56px))}
+}
+.stagerow{display:flex;gap:26px;align-items:flex-start}
+.slab{font-size:var(--t-cap);text-transform:uppercase;letter-spacing:.07em;color:#8a857c;margin-bottom:9px}
+.slab em{font-style:normal;color:#c2bdb4}
+.stage{width:728px;flex-shrink:0;transition:width .18s ease}
+.measuring .stage{transition:none}
+body[data-w="342"] .stage{width:342px}
+.stage.fixed342{width:342px}
+.seg{display:inline-flex;border:1px solid var(--rule);border-radius:8px;overflow:hidden;margin-top:18px}
+.seg button{appearance:none;border:0;background:transparent;color:var(--fg-3);font:inherit;
+  font-size:var(--t-lab);padding:7px 14px;cursor:pointer}
+.seg button+button{border-left:1px solid var(--rule)}
+.seg button[aria-pressed="true"]{background:var(--page-2);color:var(--fg)}
+.seg button:focus-visible{outline:2px solid var(--fg-3);outline-offset:-2px}
+
+/* ═══════════════ v9.4 — THE CARD ═══════════════════════════════ */
+.c{border:1px solid rgba(255,255,255,.06);border-radius:12px;background:#1a1a19;overflow:hidden}
+
+/* band 1 · face */
+.c-face{padding:18px 20px 20px}
+.c-kick{display:flex;align-items:center;gap:9px;margin-bottom:13px;min-height:19px}
+.rank{font-size:12px;font-weight:600;color:#8a857c;font-variant-numeric:tabular-nums;flex-shrink:0}
+.tag{display:inline-flex;align-items:center;border:1px solid rgba(255,255,255,.09);
+  border-radius:4px;padding:1px 7px;font-size:11px;color:#c2bdb4;background:rgba(255,255,255,.02);
+  white-space:nowrap}
+.copy{display:inline-flex;align-items:center;gap:5px;flex-shrink:0;font-size:12px;font-weight:500;
+  color:#8a857c;background:none;border:0;cursor:pointer;font-family:inherit;margin-left:auto}
+.ico{width:13px;height:13px;flex-shrink:0}
+
+/* THE MOVE: the deliverable is set like a deliverable */
+.hero{font-family:NewsreaderV,Newsreader,Georgia,serif;font-size:32px;line-height:1.2;
+  letter-spacing:-.018em;font-weight:500;color:#ece7de;text-wrap:balance;max-width:22ch}
+body[data-w="342"] .hero,.fixed342 .hero{font-size:21px;line-height:1.25;letter-spacing:-.012em}
+.hero .q{color:rgba(236,231,222,.38)}
+.dek{margin-top:11px;font-size:13px;line-height:1.65;color:#c2bdb4;max-width:70ch}
+.dek .own{color:#ece7de}
+.hero.small{font-size:22px;letter-spacing:-.01em;max-width:44ch}
+
+/* band 2 · source */
+.src{display:flex;gap:13px;align-items:center;border-top:1px solid rgba(255,255,255,.06);
+  padding:12px 20px;text-decoration:none;cursor:pointer;color:inherit}
+.src:hover{background:rgba(255,255,255,.03)}
+.src .th{position:relative;display:block;width:52px;flex-shrink:0;aspect-ratio:9/16;
+  border-radius:6px;overflow:hidden;border:1px solid rgba(255,255,255,.08)}
+.src .th span{position:absolute;inset:0}
+.src .th i{position:absolute;left:50%;bottom:-6%;width:90%;height:52%;transform:translateX(-50%);
+  border-radius:50% 50% 0 0;filter:blur(2px)}
+.src .cb{min-width:0;flex:1}
+.src .tt{font-size:12px;font-weight:500;color:#c2bdb4;line-height:1.5;display:block}
+.src .st{margin-top:2px;font-size:12px;line-height:1.5;color:#8a857c;display:block}
+.fit{color:#8a857c}
+.mult{color:#8ea68a;font-weight:500;font-variant-numeric:tabular-nums}
+.src .go{font-size:12px;color:#8a857c;flex-shrink:0;white-space:nowrap}
+body[data-w="342"] .src .go .long,.fixed342 .src .go .long{display:none}
+/* at 342 the stat line has ~178px: the fit glyph loses its label, so it loses
+   its meaning and goes; "views" is implied by the number and goes with it.
+   One line, no orphan. */
+body[data-w="342"] .src .fit,.fixed342 .src .fit,
+body[data-w="342"] .src .vw,.fixed342 .src .vw{display:none}
+
+/* band 3 · brief */
+.brief{display:flex;align-items:center;gap:10px;width:100%;border:0;
+  border-top:1px solid rgba(255,255,255,.06);background:none;font-family:inherit;cursor:pointer;
+  padding:12px 20px;text-align:left;color:inherit}
+.brief .t{font-size:12px;font-weight:500;color:#c2bdb4;flex-shrink:0}
+.brief .items{font-size:12px;color:#8a857c;min-width:0;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap}
+.brief .act{margin-left:auto;font-size:12px;color:#8a857c;flex-shrink:0;display:inline-flex;
+  gap:6px;align-items:center}
+.brief .act .car{display:inline-block;transition:transform .16s ease}
+.brief[aria-expanded="true"] .act .car{transform:rotate(90deg)}
+@media (prefers-reduced-motion:reduce){.brief .act .car{transition:none}}
+
+/* band 3b · the brief IS a map */
+.map{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid rgba(255,255,255,.06)}
+body[data-w="342"] .map,.fixed342 .map{grid-template-columns:1fr}
+.map .cell{padding:13px 20px;border-bottom:1px solid rgba(255,255,255,.06);min-width:0}
+.map .cell:nth-child(even){border-left:1px solid rgba(255,255,255,.06)}
+body[data-w="342"] .map .cell:nth-child(even),.fixed342 .map .cell:nth-child(even){border-left:0}
+.map .cell.last{border-bottom:0}
+body[data-w="342"] .map .cell.last-m,.fixed342 .map .cell.last-m{border-bottom:1px solid rgba(255,255,255,.06)}
+/* the fold: the sixth cell is the one narrow screens drop, so mobile never
+   pays for the desktop grid's extra capacity */
+body[data-w="342"] .map .cell.fold,.fixed342 .map .cell.fold{display:none}
+.map .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#8a857c;margin-bottom:5px}
+.map .bd{font-size:12px;line-height:1.6;color:#c2bdb4}
+.map .bd .v{background:rgba(255,255,255,.06);border-radius:2px;padding:1px 4px;color:#ece7de;margin:0 1px}
+
+/* band 4 · footer */
+.foot{display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  border-top:1px solid rgba(255,255,255,.06);padding:13px 20px}
+.pri{display:inline-flex;align-items:center;justify-content:center;
+  border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.05);border-radius:8px;
+  padding:8px 14px;font-size:13px;font-weight:600;color:#ece7de;font-family:inherit;cursor:pointer}
+.save{color:#8a857c;display:inline-flex;align-items:center;gap:6px;font-size:12px;
+  background:none;border:0;font-family:inherit;cursor:pointer}
+.door{display:inline-flex;align-items:center;gap:8px;margin-left:auto;font-size:12px;color:#8a857c;
+  background:none;border:0;font-family:inherit;cursor:pointer;min-height:32px}
+.door .d0{width:7px;height:7px;border-radius:9px;border:1px solid #8a857c;flex-shrink:0}
+.door .d1{width:7px;height:7px;border-radius:9px;border:1px solid #c8a24a;border-top-color:transparent;
+  flex-shrink:0;animation:sp 1s linear infinite}
+.door .d2{width:7px;height:7px;border-radius:9px;background:#8ea68a;flex-shrink:0}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.door .d1{animation:none}}
+.door .cta{color:#c2bdb4;white-space:nowrap}
+.door .res{color:#c2bdb4}
+body[data-w="342"] .foot,.fixed342 .foot{row-gap:12px}
+body[data-w="342"] .pri,.fixed342 .pri{order:1}
+body[data-w="342"] .save,.fixed342 .save{order:2;margin-left:auto}
+body[data-w="342"] .door,.fixed342 .door{order:3;margin-left:0;width:100%;
+  justify-content:flex-start;border-top:1px solid rgba(255,255,255,.05);padding-top:11px}
+body[data-w="342"] .door .cta,.fixed342 .door .cta{margin-left:auto}
+
+/* deliverable cards */
+.dhead{display:flex;align-items:center;gap:9px;padding:14px 20px 12px;flex-wrap:wrap}
+.dhead .sk{font-size:12px;font-weight:500;color:#c2bdb4}
+.dhead .mt{font-size:12px;color:#8a857c}
+.beats{display:flex;flex-direction:column;padding:6px 20px 4px}
+.beat{display:flex;gap:12px;padding:10px 0}
+.tm{width:42px;flex-shrink:0;padding-top:2px;text-align:right;font-size:11px;font-weight:600;
+  font-variant-numeric:tabular-nums;color:#c2bdb4}
+.rail{display:flex;flex-direction:column;align-items:center;flex-shrink:0}
+.rail b{margin-top:5px;height:7px;width:7px;border-radius:9px;background:rgba(255,255,255,.32)}
+.rail i{margin-top:5px;width:1px;flex:1;background:rgba(255,255,255,.10)}
+.bb{min-width:0;flex:1}
+.bl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#ece7de}
+.bt{margin-top:4px;font-size:14px;line-height:1.6;color:#c2bdb4;max-width:72ch}
+.bf{margin-top:6px;display:flex;gap:7px;font-size:12px;line-height:1.6;color:#8a857c}
+.howto{margin:14px 20px 16px;border-top:1px solid rgba(255,255,255,.06);padding-top:13px}
+.howto .h{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#8a857c;margin-bottom:9px}
+.howto .g{display:grid;grid-template-columns:1fr 1fr;gap:11px 26px}
+body[data-w="342"] .howto .g,.fixed342 .howto .g{grid-template-columns:1fr}
+.howto .k{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#6a665f;margin-bottom:2px}
+.howto .val{font-size:12px;line-height:1.55;color:#c2bdb4}
+.dmap{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid rgba(255,255,255,.06)}
+body[data-w="342"] .dmap,.fixed342 .dmap{grid-template-columns:1fr}
+.dmap .hd{padding:9px 20px;border-bottom:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.015)}
+.dmap .hd:nth-child(2){border-left:1px solid rgba(255,255,255,.06)}
+body[data-w="342"] .dmap .hd:nth-child(2),.fixed342 .dmap .hd:nth-child(2){border-left:0}
+.dmap .hd p{font-size:12px;color:#c2bdb4;font-weight:500}
+.dmap .hd span{font-size:11px;color:#8a857c}
+.dmap .dc{padding:12px 20px;border-bottom:1px solid rgba(255,255,255,.06);min-width:0}
+.dmap .dc:nth-child(even){border-left:1px solid rgba(255,255,255,.06)}
+body[data-w="342"] .dmap .dc:nth-child(even),.fixed342 .dmap .dc:nth-child(even){border-left:0}
+.dmap .dc.last{border-bottom:0}
+.dmap .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#8a857c;margin-bottom:5px}
+.dmap .bd{font-size:12px;line-height:1.6;color:#c2bdb4}
+.dmap .bd.dim{color:#8a857c}
+.dmap .yours{font-family:NewsreaderV,Newsreader,Georgia,serif;font-size:18px;line-height:1.3;
+  font-weight:500;color:#ece7de;letter-spacing:-.008em}
+.built{padding:12px 20px;border-top:1px solid rgba(255,255,255,.06);font-size:12px;color:#8a857c}
+.built b{color:#c2bdb4;font-weight:500}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:26px;margin-top:20px}
+@media (max-width:900px){.grid2{grid-template-columns:1fr}}
+.verdict{margin-top:28px;border:1px solid var(--rule);border-radius:10px;padding:22px 24px;background:var(--page-2)}
+.verdict h4{font-size:var(--t-read);font-weight:500;margin:0 0 10px}
+.verdict ol{margin:0;padding-left:20px;color:var(--fg-2);line-height:1.85}
+.verdict ol li b{color:var(--fg);font-weight:500}
+footer{padding:38px 0 70px;color:var(--fg-4);font-size:var(--t-lab);line-height:1.8}
+</style>
+
+<div class="wrap">
+
+<header class="top">
+  <p class="eyebrow"><b>Skill cards</b><span>·</span><span>v9.4 — the recommendation</span>
+    <span>·</span><span>1 Aug 2026</span></p>
+  <h1>Set the deliverable like a deliverable.</h1>
+  <p class="standfirst">v9.2b's face is half empty at 728 because <b>an eight-word hook line set at
+  22px cannot fill a 688px column</b> — and the two ways to fill it both failed a constraint: a
+  second column costs 137px on mobile, and narrowing the card only works for cards whose hero is one
+  short line. <b>The third way is to stop shrinking the hero.</b> At 32px the line fills its measure,
+  the card reads as an object with a subject, and nothing changes about the geometry — so mobile is
+  the same layout at 21px. Everything else here is the audit's fixes, integrated: the brief becomes a
+  map, the set gets an axis, the door closes its loop, and the source row tells the truth about its
+  own number.</p>
+</header>
+
+<section>
+  <p class="snum">01 — The seven moves</p>
+  <h2>What changes, and what each one is for</h2>
+
+  <div class="moves">
+    <div class="move"><span class="mn">01</span><div>
+      <h4>The hero scales to the card, not the card to the hero</h4>
+      <p>32px at 728, 21px at 342. The hook line is the product; at 22px it was a caption with a lot
+      of room around it. This is the entire fix for "empty at desktop" and it costs nothing on
+      mobile, because the whole design already narrows rather than re-flows.</p>
+      <p class="why"><b>Reading:</b> the hero holds a 22ch measure, the dek 70ch — both inside the
+      comfortable band. Nothing gets a 100-character line.</p>
+    </div></div>
+
+    <div class="move"><span class="mn">02</span><div>
+      <h4>Rank comes back, and every card wears one differentiator</h4>
+      <p><code>#1</code> through <code>#5</code>, plus the taxonomy the schema already carries —
+      <code>visualHook.technique</code> on hooks, <code>format</code> on ideas. Five cards you can
+      tell apart without opening anything.</p>
+      <p class="why"><b>No engine work.</b> Both fields exist and are populated today; v9.2b simply
+      stopped rendering them.</p>
+    </div></div>
+
+    <div class="move"><span class="mn">03</span><div>
+      <h4>The brief is a map, not a list</h4>
+      <p>Two columns of labelled cells at 728, one at 342 — the same grid language as the remix
+      decode map, which is the one structured surface in the system that survived review. It escapes
+      the typed-cell document idiom, kills the dead right half, and has room for
+      <code>topic</code> and <code>format</code>.</p>
+      <p class="why"><b>Mobile cost handled:</b> below 480px the map drops to five cells — the
+      restored topic/format cell folds into Format — so mobile does not pay for the desktop gain.</p>
+    </div></div>
+
+    <div class="move"><span class="mn">04</span><div>
+      <h4>Every right edge is named</h4>
+      <p><code>Open on TikTok ↗</code> on the source row, <code>Expand ›</code> on the brief. One
+      caret convention, one external glyph. No unexplained gaps, and the chevron stops promising a
+      drill-in and delivering a new tab.</p>
+    </div></div>
+
+    <div class="move"><span class="mn">05</span><div>
+      <h4>The door gets its other two states</h4>
+      <p>Untested → testing → <b>8 of 10 stopped · See your audience →</b>. The verdict left the face
+      on the promise that the door would own measurement; this is that promise kept. Legacy measured
+      cards land in the third state directly, which also settles the open legacy-door question.</p>
+    </div></div>
+
+    <div class="move"><span class="mn">06</span><div>
+      <h4>The source row states the number it actually computed</h4>
+      <p><code>● in your audience · 90.7× vs followers · 621K views</code>. The fit glyph returns,
+      the basis label returns, and the "their usual reach" paraphrase goes — it described a ratio
+      nothing in the pipeline calculates.</p>
+      <p class="why"><b>Row title derives from the data:</b> "Case study" only when a fit label
+      exists; "The post you're remixing" when the user supplied the video and nothing scored it.</p>
+    </div></div>
+
+    <div class="move"><span class="mn">07</span><div>
+      <h4>The footer groups: do it · keep it &nbsp;·&nbsp; test it</h4>
+      <p>Primary and a <em>labelled</em> Save on the left; the door alone on the right. At 342 the
+      door takes its own row under a hairline instead of a bare icon stranded mid-row. One is the
+      chain step, one is a diagnostic — they no longer look like siblings.</p>
+    </div></div>
+  </div>
+</section>
+
+<section>
+  <p class="snum">02 — The move that does the work</p>
+  <h2>22px, and 32px, on the same card</h2>
+  <p class="lede">Same content, same bands, same width. The only change is the hero's size.</p>
+  <div class="stagewrap">
+    <div class="stagerow">
+      <div><p class="slab">v9.2b · <em>22px</em></p>
+        <div class="stage"><div class="c" id="h22">
+          <div class="c-face">
+            <div class="c-kick"><span class="tag">Top pick</span>
+              <button class="copy"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M216 32H88a8 8 0 0 0-8 8v40H40a8 8 0 0 0-8 8v128a8 8 0 0 0 8 8h128a8 8 0 0 0 8-8v-40h40a8 8 0 0 0 8-8V40a8 8 0 0 0-8-8m-56 176H48V96h112Zm48-48h-32V88a8 8 0 0 0-8-8H96V48h112Z"/></svg>Copy</button></div>
+            <p class="hero small"><span class="q">“</span>Stop editing your videos. Do this instead.<span class="q">”</span></p>
+            <p class="dek">A crash-zoom open, caps slamming over your face. It lands as permission: quit the painful task.</p>
+          </div>
+        </div></div>
+      </div>
+      <div><p class="slab">v9.4 · <em>32px</em></p>
+        <div class="stage"><div class="c" id="h32">
+          <div class="c-face">
+            <div class="c-kick"><span class="rank">#1</span><span class="tag">crash-zoom</span>
+              <button class="copy"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M216 32H88a8 8 0 0 0-8 8v40H40a8 8 0 0 0-8 8v128a8 8 0 0 0 8 8h128a8 8 0 0 0 8-8v-40h40a8 8 0 0 0 8-8V40a8 8 0 0 0-8-8m-56 176H48V96h112Zm48-48h-32V88a8 8 0 0 0-8-8H96V48h112Z"/></svg>Copy</button></div>
+            <p class="hero"><span class="q">“</span>Stop editing your videos. Do this instead.<span class="q">”</span></p>
+            <p class="dek">Caps slam over your face as the zoom lands. It reads as permission: quit the task you already resent.</p>
+          </div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <p class="snum">03 — The four cards</p>
+  <h2>v9.4, at both widths</h2>
+  <div class="seg" role="group" aria-label="Card width">
+    <button data-w="728" aria-pressed="true">728 · in-thread</button>
+    <button data-w="342" aria-pressed="false">342 · mobile</button>
+  </div>
+
+  <h3>Hook — collapsed, and the same card with its brief open</h3>
+  <div class="stagewrap">
+    <div class="stagerow">
+      <div><p class="slab">Hook · <em>collapsed</em></p>
+        <div class="stage"><div class="c" id="v4hook">
+          <div class="c-face">
+            <div class="c-kick"><span class="rank">#1</span><span class="tag">crash-zoom</span>
+              <button class="copy"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M216 32H88a8 8 0 0 0-8 8v40H40a8 8 0 0 0-8 8v128a8 8 0 0 0 8 8h128a8 8 0 0 0 8-8v-40h40a8 8 0 0 0 8-8V40a8 8 0 0 0-8-8m-56 176H48V96h112Zm48-48h-32V88a8 8 0 0 0-8-8H96V48h112Z"/></svg>Copy</button></div>
+            <p class="hero"><span class="q">“</span>Stop editing your videos. Do this instead.<span class="q">”</span></p>
+            <p class="dek">Caps slam over your face as the zoom lands. It reads as permission: quit the task you already resent.</p>
+          </div>
+          <a class="src" href="#"><span class="th"><span style="background:radial-gradient(95% 60% at 68% 22%,rgba(214,178,140,.5),transparent 62%),linear-gradient(165deg,#4a4038,#2e2b28 45%,#181716)"></span><i style="background:radial-gradient(50% 62% at 50% 32%,rgba(28,24,22,.92),rgba(18,16,15,.96) 72%)"></i></span>
+            <span class="cb"><span class="tt">Case study · @braedan.health</span>
+              <span class="st"><span class="fit">● in your audience</span> · <span class="mult">90.7× vs followers</span> · 621K<span class="vw"> views</span></span></span>
+            <span class="go">Open<span class="long"> on TikTok</span> ↗</span></a>
+          <button class="brief" aria-expanded="false"><span class="t">Full brief</span>
+            <span class="items">Why it works · Proven structure · Made for · First frame · Your line</span>
+            <span class="act">Expand <span class="car">›</span></span></button>
+          <div class="foot"><button class="pri">Write the script →</button>
+            <button class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg>Save</button>
+            <button class="door"><span class="d0"></span>Not tested yet<span class="cta">Simulate with your audience →</span></button></div>
+        </div></div>
+      </div>
+      <div><p class="slab">Hook · <em>brief open — the map</em></p>
+        <div class="stage"><div class="c" id="v4hookx">
+          <div class="c-face">
+            <div class="c-kick"><span class="rank">#1</span><span class="tag">crash-zoom</span>
+              <button class="copy"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M216 32H88a8 8 0 0 0-8 8v40H40a8 8 0 0 0-8 8v128a8 8 0 0 0 8 8h128a8 8 0 0 0 8-8v-40h40a8 8 0 0 0 8-8V40a8 8 0 0 0-8-8m-56 176H48V96h112Zm48-48h-32V88a8 8 0 0 0-8-8H96V48h112Z"/></svg>Copy</button></div>
+            <p class="hero"><span class="q">“</span>Stop editing your videos. Do this instead.<span class="q">”</span></p>
+            <p class="dek">Caps slam over your face as the zoom lands. It reads as permission: quit the task you already resent.</p>
+          </div>
+          <a class="src" href="#"><span class="th"><span style="background:radial-gradient(95% 60% at 68% 22%,rgba(214,178,140,.5),transparent 62%),linear-gradient(165deg,#4a4038,#2e2b28 45%,#181716)"></span><i style="background:radial-gradient(50% 62% at 50% 32%,rgba(28,24,22,.92),rgba(18,16,15,.96) 72%)"></i></span>
+            <span class="cb"><span class="tt">Case study · @braedan.health</span>
+              <span class="st"><span class="fit">● in your audience</span> · <span class="mult">90.7× vs followers</span> · 621K<span class="vw"> views</span></span></span>
+            <span class="go">Open<span class="long"> on TikTok</span> ↗</span></a>
+          <button class="brief" aria-expanded="true"><span class="t">Full brief</span>
+            <span class="items">Five things this hook is made of</span>
+            <span class="act">Collapse <span class="car">›</span></span></button>
+          <div class="map">
+            <div class="cell"><p class="lbl">Why it works</p><p class="bd">Names the painful task the viewer already resents, then promises release from it inside three seconds.</p></div>
+            <div class="cell"><p class="lbl">Made for</p><p class="bd">34% of your audience — they judge a video by whether it saves them a mistake.</p></div>
+            <div class="cell"><p class="lbl">First frame</p><p class="bd">Crash-zoom onto your face, caps slamming on at 0s.</p></div>
+            <div class="cell fold"><p class="lbl">Delivery</p><p class="bd">Spoken, talking-head. Topic: editing workflow.</p></div>
+            <div class="cell last last-m"><p class="lbl">Proven structure</p><p class="bd">Stop <span class="v">[painful habit]</span>. Do <span class="v">[easier thing]</span> instead.</p></div>
+            <div class="cell last"><p class="lbl">Your line</p><p class="bd">“Stop editing your videos. Do this instead.”</p></div>
+          </div>
+          <div class="foot"><button class="pri">Write the script →</button>
+            <button class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg>Save</button>
+            <button class="door"><span class="d0"></span>Not tested yet<span class="cta">Simulate with your audience →</span></button></div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+
+  <h3>Idea — and the no-source case</h3>
+  <div class="stagewrap">
+    <div class="stagerow">
+      <div><p class="slab">Idea</p>
+        <div class="stage"><div class="c" id="v4idea">
+          <div class="c-face">
+            <div class="c-kick"><span class="rank">#1</span><span class="tag">Talking-head</span></div>
+            <h3 class="hero">The 30-day silence experiment</h3>
+            <p class="dek">Go quiet on purpose, then show the receipts. <span class="own">Your take: consistency is overrated; strategic absence compounds attention.</span></p>
+          </div>
+          <a class="src" href="#"><span class="th"><span style="background:radial-gradient(90% 55% at 35% 20%,rgba(190,160,120,.45),transparent 60%),linear-gradient(160deg,#443e36,#2c2a27 48%,#171615)"></span><i style="background:radial-gradient(52% 60% at 50% 31%,rgba(27,24,22,.92),rgba(17,15,14,.95) 70%)"></i></span>
+            <span class="cb"><span class="tt">Case study · @nourish.me.now</span>
+              <span class="st"><span class="fit">◐ adjacent audience</span> · <span class="mult">277× vs followers</span> · 4.3M<span class="vw"> views</span></span></span>
+            <span class="go">Open<span class="long"> on TikTok</span> ↗</span></a>
+          <button class="brief" aria-expanded="false"><span class="t">Full brief</span>
+            <span class="items">Why it lands · Fits you · Made for · Format · Proven structure · Opening line</span>
+            <span class="act">Expand <span class="car">›</span></span></button>
+          <div class="foot"><button class="pri">Write hooks for this →</button>
+            <button class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg>Save</button>
+            <button class="door"><span class="d0"></span>Not tested yet<span class="cta">Simulate with your audience →</span></button></div>
+        </div></div>
+      </div>
+      <div><p class="slab">Hook · <em>no source — three bands, still a complete object</em></p>
+        <div class="stage"><div class="c" id="v4empty">
+          <div class="c-face">
+            <div class="c-kick"><span class="rank">#3</span><span class="tag">match-cut</span>
+              <button class="copy"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M216 32H88a8 8 0 0 0-8 8v40H40a8 8 0 0 0-8 8v128a8 8 0 0 0 8 8h128a8 8 0 0 0 8-8v-40h40a8 8 0 0 0 8-8V40a8 8 0 0 0-8-8m-56 176H48V96h112Zm48-48h-32V88a8 8 0 0 0-8-8H96V48h112Z"/></svg>Copy</button></div>
+            <p class="hero"><span class="q">“</span>Your camera roll is lying to you.<span class="q">”</span></p>
+            <p class="dek">Freeze on a photo everyone has, then flip it. An accusation aimed at the viewer's own gallery. <span class="own">Original — not drawn from a retrieved video.</span></p>
+          </div>
+          <button class="brief" aria-expanded="false"><span class="t">Full brief</span>
+            <span class="items">Why it works · Made for · First frame · Your line</span>
+            <span class="act">Expand <span class="car">›</span></span></button>
+          <div class="foot"><button class="pri">Write the script →</button>
+            <button class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg>Save</button>
+            <button class="door"><span class="d0"></span>Not tested yet<span class="cta">Simulate with your audience →</span></button></div>
+        </div></div>
+        <p class="note" style="color:#8a857c">The honesty note moves into the dek rather than leaving
+        a dashed placeholder where a band used to be.</p>
+      </div>
+    </div>
+  </div>
+
+  <h3>Script and remix — the same shell, their own middle</h3>
+  <div class="stagewrap">
+    <div class="stagerow">
+      <div><p class="slab">Script</p>
+        <div class="stage"><div class="c" id="v4script">
+          <div class="dhead"><span class="sk">Script</span><span class="mt">5 beats · 30s · Talking-head</span>
+            <button class="copy"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M216 32H88a8 8 0 0 0-8 8v40H40a8 8 0 0 0-8 8v128a8 8 0 0 0 8 8h128a8 8 0 0 0 8-8v-40h40a8 8 0 0 0 8-8V40a8 8 0 0 0-8-8m-56 176H48V96h112Zm48-48h-32V88a8 8 0 0 0-8-8H96V48h112Z"/></svg>Copy script</button></div>
+          <a class="src" href="#"><span class="th"><span style="background:radial-gradient(90% 55% at 35% 20%,rgba(190,160,120,.45),transparent 60%),linear-gradient(160deg,#443e36,#2c2a27 48%,#171615)"></span><i style="background:radial-gradient(52% 60% at 50% 31%,rgba(27,24,22,.92),rgba(17,15,14,.95) 70%)"></i></span>
+            <span class="cb"><span class="tt">Case study · @nourish.me.now</span>
+              <span class="st"><span class="fit">◐ adjacent audience</span> · <span class="mult">277× vs followers</span> · 4.3M<span class="vw"> views</span></span></span>
+            <span class="go">Open<span class="long"> on TikTok</span> ↗</span></a>
+          <div class="beats" style="border-top:1px solid rgba(255,255,255,.06);margin-top:0">
+            <div class="beat"><span class="tm">0–3s</span><div class="rail"><b></b><i></i></div>
+              <div class="bb"><p class="bl">Hook</p>
+                <p class="bt">I stopped posting for 30 days. Everyone said it would kill my account.</p>
+                <p class="bf"><svg class="ico" style="margin-top:3px;opacity:.65" viewBox="0 0 256 256" fill="currentColor"><path d="M251.77 73a8 8 0 0 0-8.21.39L208 97.05V72a16 16 0 0 0-16-16H32a16 16 0 0 0-16 16v112a16 16 0 0 0 16 16h160a16 16 0 0 0 16-16v-25l35.56 23.71A8 8 0 0 0 256 176V80a8 8 0 0 0-4.23-7"/></svg><span>Tight frame, direct to camera, the day counter slams on at 0s.</span></p>
+                <p class="bf" style="color:#6a665f">↳ The claim attacks the one rule every viewer believes, so they wait for the receipts.</p></div></div>
+            <div class="beat"><span class="tm">3–8s</span><div class="rail"><b></b><i></i></div>
+              <div class="bb"><p class="bl">Setup</p>
+                <p class="bt">Consistency is the one rule every guru agrees on. So I broke it on purpose.</p>
+                <p class="bf"><svg class="ico" style="margin-top:3px;opacity:.65" viewBox="0 0 256 256" fill="currentColor"><path d="M251.77 73a8 8 0 0 0-8.21.39L208 97.05V72a16 16 0 0 0-16-16H32a16 16 0 0 0-16 16v112a16 16 0 0 0 16 16h160a16 16 0 0 0 16-16v-25l35.56 23.71A8 8 0 0 0 256 176V80a8 8 0 0 0-4.23-7"/></svg><span>Cut to a screen recording of the posting calendar going blank.</span></p></div></div>
+            <div class="beat"><span class="tm">8–18s</span><div class="rail"><b></b><i></i></div>
+              <div class="bb"><p class="bl">Proof</p>
+                <p class="bt">Day 30: my next post did four times my average. Here is what the graph looked like.</p>
+                <p class="bf"><svg class="ico" style="margin-top:3px;opacity:.65" viewBox="0 0 256 256" fill="currentColor"><path d="M251.77 73a8 8 0 0 0-8.21.39L208 97.05V72a16 16 0 0 0-16-16H32a16 16 0 0 0-16 16v112a16 16 0 0 0 16 16h160a16 16 0 0 0 16-16v-25l35.56 23.71A8 8 0 0 0 256 176V80a8 8 0 0 0-4.23-7"/></svg><span>Analytics on screen, finger traces the spike.</span></p></div></div>
+            <div class="beat"><span class="tm">18–24s</span><div class="rail"><b></b><i></i></div>
+              <div class="bb"><p class="bl">Mechanism</p>
+                <p class="bt">The algorithm does not reward frequency. It rewards how hard people come back.</p></div></div>
+            <div class="beat"><span class="tm">24–30s</span><div class="rail"><b></b></div>
+              <div class="bb"><p class="bl">CTA</p>
+                <p class="bt">Try a planned silence. Two weeks minimum. Film your comeback with this structure.</p></div></div>
+          </div>
+          <div class="howto"><p class="h">How to film</p>
+            <div class="g">
+              <div><p class="k">Shots</p><p class="val">Talking head at desk, two screen recordings, one calendar b-roll.</p></div>
+              <div><p class="k">On-screen text</p><p class="val">Day counter top-left, the average-views figure under the spike.</p></div>
+              <div><p class="k">Setup</p><p class="val">Phone on tripod, window light, analytics on a second screen.</p></div>
+              <div><p class="k">Edit</p><p class="val">Hard cuts only; hold the graph a full two seconds.</p></div>
+            </div></div>
+          <div class="foot"><button class="pri">Test this script →</button>
+            <button class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg>Save</button>
+            <button class="door"><span class="d2"></span><span class="res">8 of 10 stopped</span><span class="cta">See your audience →</span></button></div>
+        </div></div>
+      </div>
+      <div><p class="slab">Remix</p>
+        <div class="stage"><div class="c" id="v4remix">
+          <div class="dhead"><span class="sk">Remix</span><span class="mt">Day-counter overlay</span>
+            <button class="copy"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M216 32H88a8 8 0 0 0-8 8v40H40a8 8 0 0 0-8 8v128a8 8 0 0 0 8 8h128a8 8 0 0 0 8-8v-40h40a8 8 0 0 0 8-8V40a8 8 0 0 0-8-8m-56 176H48V96h112Zm48-48h-32V88a8 8 0 0 0-8-8H96V48h112Z"/></svg>Copy</button></div>
+          <a class="src" href="#"><span class="th"><span style="background:radial-gradient(100% 65% at 30% 18%,rgba(150,180,190,.4),transparent 60%),linear-gradient(150deg,#3c4448,#2b2a29 50%,#171616)"></span><i style="background:radial-gradient(52% 60% at 50% 30%,rgba(26,23,21,.9),rgba(17,15,14,.95) 70%)"></i></span>
+            <span class="cb"><span class="tt">The post you're remixing · @calm.desk.tom</span>
+              <span class="st">1.1M<span class="vw"> views</span></span></span>
+            <span class="go">Open<span class="long"> on TikTok</span> ↗</span></a>
+          <div class="dmap">
+            <div class="hd"><p>The original</p><span>why it worked</span></div>
+            <div class="hd"><p>Your version</p><span>ready to film</span></div>
+            <div class="dc"><p class="lbl">Hook</p><p class="bd dim">Confesses quitting a universal habit, then shows the receipts.</p></div>
+            <div class="dc"><p class="lbl">Your hook</p><p class="yours">I deleted every productivity app for 30 days. My output doubled.</p></div>
+            <div class="dc"><p class="lbl">The turn</p><p class="bd dim">Admits the failure window before the win, so the claim reads honest.</p></div>
+            <div class="dc"><p class="lbl">Your angle</p><p class="bd">The tools are the procrastination. Deleting them is the productivity.</p></div>
+            <div class="dc last"><p class="lbl">Format</p><p class="bd dim">Day-counter overlay with receipts on screen.</p></div>
+            <div class="dc last"><p class="lbl">Your shots</p><p class="bd">Screen-record the deletes, then split your calendar before and after.</p></div>
+          </div>
+          <p class="built">Built for <b>overwhelmed solo creators drowning in tools</b>.</p>
+          <div class="howto" style="border-top:0;margin-top:0"><p class="h">How to film your version</p>
+            <div class="g">
+              <div><p class="k">On-screen text</p><p class="val">App count top-right, ticking down as you delete.</p></div>
+              <div><p class="k">Setup</p><p class="val">Screen recording plus one desk shot for the talking beats.</p></div>
+            </div></div>
+          <div class="foot"><button class="pri">Write hooks for this →</button>
+            <button class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg>Save</button>
+            <button class="door"><span class="d1"></span>Testing with 10 reactors<span class="cta">Watch →</span></button></div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <p class="snum">04 — Mobile</p>
+  <h2>342, pinned — not a toggle</h2>
+  <p class="lede">The same three cards at mobile width, side by side with the desktop set above.
+  Nothing here is a special case: the hero drops to 21px, the two grids become one column, the door
+  takes its own row under a hairline. <b>The brief's contents list stays</b> — it truncates with an
+  ellipsis instead of disappearing.</p>
+  <div class="stagewrap">
+    <div class="stagerow">
+      <div><p class="slab">Hook</p>
+        <div class="stage fixed342"><div class="c" id="m4hook">
+          <div class="c-face">
+            <div class="c-kick"><span class="rank">#1</span><span class="tag">crash-zoom</span>
+              <button class="copy"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M216 32H88a8 8 0 0 0-8 8v40H40a8 8 0 0 0-8 8v128a8 8 0 0 0 8 8h128a8 8 0 0 0 8-8v-40h40a8 8 0 0 0 8-8V40a8 8 0 0 0-8-8m-56 176H48V96h112Zm48-48h-32V88a8 8 0 0 0-8-8H96V48h112Z"/></svg>Copy</button></div>
+            <p class="hero"><span class="q">“</span>Stop editing your videos. Do this instead.<span class="q">”</span></p>
+            <p class="dek">Caps slam over your face as the zoom lands. It reads as permission: quit the task you already resent.</p>
+          </div>
+          <a class="src" href="#"><span class="th"><span style="background:radial-gradient(95% 60% at 68% 22%,rgba(214,178,140,.5),transparent 62%),linear-gradient(165deg,#4a4038,#2e2b28 45%,#181716)"></span><i style="background:radial-gradient(50% 62% at 50% 32%,rgba(28,24,22,.92),rgba(18,16,15,.96) 72%)"></i></span>
+            <span class="cb"><span class="tt">Case study · @braedan.health</span>
+              <span class="st"><span class="fit">● in your audience · </span><span class="mult">90.7× vs followers</span> · 621K<span class="vw"> views</span></span></span>
+            <span class="go">Open<span class="long"> on TikTok</span> ↗</span></a>
+          <button class="brief" aria-expanded="false"><span class="t">Full brief</span>
+            <span class="items">Why it works · Proven structure · Made for…</span>
+            <span class="act"><span class="car">›</span></span></button>
+          <div class="foot"><button class="pri">Write the script →</button>
+            <button class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg>Save</button>
+            <button class="door"><span class="d0"></span>Not tested yet<span class="cta">Simulate →</span></button></div>
+        </div></div>
+      </div>
+      <div><p class="slab">Hook · <em>brief open</em></p>
+        <div class="stage fixed342"><div class="c" id="m4hookx">
+          <button class="brief" aria-expanded="true" style="border-top:0"><span class="t">Full brief</span>
+            <span class="act">Collapse <span class="car">›</span></span></button>
+          <div class="map">
+            <div class="cell"><p class="lbl">Why it works</p><p class="bd">Names the painful task the viewer already resents, then promises release from it inside three seconds.</p></div>
+            <div class="cell"><p class="lbl">Made for</p><p class="bd">34% of your audience — they judge a video by whether it saves them a mistake.</p></div>
+            <div class="cell"><p class="lbl">First frame</p><p class="bd">Crash-zoom onto your face, caps slamming on at 0s.</p></div>
+            <div class="cell"><p class="lbl">Proven structure</p><p class="bd">Stop <span class="v">[painful habit]</span>. Do <span class="v">[easier thing]</span> instead.</p></div>
+            <div class="cell last last-m" style="border-bottom:0"><p class="lbl">Your line</p><p class="bd">“Stop editing your videos. Do this instead.”</p></div>
+          </div>
+        </div></div>
+        <p class="note" style="color:#8a857c">Five cells on mobile, six on desktop: the
+        topic/format cell is the one that folds. <b>Mobile never pays for the desktop grid.</b></p>
+      </div>
+      <div><p class="slab">Door · <em>three states</em></p>
+        <div class="stage fixed342" id="m4door" style="display:flex;flex-direction:column;gap:12px">
+          <div class="c"><div class="foot"><button class="pri">Write the script →</button>
+            <button class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg>Save</button>
+            <button class="door"><span class="d0"></span>Not tested yet<span class="cta">Simulate →</span></button></div></div>
+          <div class="c"><div class="foot"><button class="pri">Write the script →</button>
+            <button class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg>Save</button>
+            <button class="door"><span class="d1"></span>Testing<span class="cta">Watch →</span></button></div></div>
+          <div class="c"><div class="foot"><button class="pri">Write the script →</button>
+            <button class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg>Save</button>
+            <button class="door"><span class="d2"></span><span class="res">8 of 10</span><span class="cta">See your audience →</span></button></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <p class="snum">05 — Measured</p>
+  <h2>Every number, both widths</h2>
+  <div class="tscroll">
+  <table>
+    <thead><tr><th>Card</th><th class="n">Shipped 728</th><th class="n">v9.2b 728</th>
+      <th class="n">v9.4 728</th><th class="n">Shipped 342</th><th class="n">v9.2b 342</th>
+      <th class="n">v9.4 342</th></tr></thead>
+    <tbody>
+      <tr><td>Hook, collapsed</td><td class="n">569</td><td class="n">371</td>
+        <td class="n dn" data-m="v4hook-728">—</td><td class="n">697</td><td class="n">436</td>
+        <td class="n dn" data-m="v4hook-342">—</td></tr>
+      <tr><td>Hook, brief open</td><td class="n">—</td><td class="n">670</td>
+        <td class="n" data-m="v4hookx-728">—</td><td class="n">—</td><td class="n">843</td>
+        <td class="n" data-m="v4hookx-342">—</td></tr>
+      <tr><td>Idea, collapsed</td><td class="n">606</td><td class="n">371</td>
+        <td class="n dn" data-m="v4idea-728">—</td><td class="n">752</td><td class="n">433</td>
+        <td class="n dn" data-m="v4idea-342">—</td></tr>
+      <tr><td>Hook, no source</td><td class="n">—</td><td class="n">254</td>
+        <td class="n" data-m="v4empty-728">—</td><td class="n">—</td><td class="n">319</td>
+        <td class="n" data-m="v4empty-342">—</td></tr>
+      <tr><td>Script</td><td class="n">958</td><td class="n">830</td>
+        <td class="n" data-m="v4script-728">—</td><td class="n">1420</td><td class="n">1308</td>
+        <td class="n" data-m="v4script-342">—</td></tr>
+      <tr><td>Remix</td><td class="n">763</td><td class="n">708</td>
+        <td class="n" data-m="v4remix-728">—</td><td class="n">1054</td><td class="n">1159</td>
+        <td class="n" data-m="v4remix-342">—</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="note">Measured live off this page on load, both widths, no page or card overflow at
+  either, no console errors.</p>
+  <p class="note"><b>Read it honestly — v9.4 buys legibility with height.</b> It is taller than
+  v9.2b almost everywhere: hook +53 at 728 and +29 at 342, idea +74 / +53, script +22 / +51, the
+  open brief +23 at 342. That is the price of a 32px hero and a six-cell map, and against what
+  actually ships today the choice cards are still far shorter — <b>−145 and −161 at 728, −232 and
+  −266 at 342</b>. Remix is the one that improves on v9.2b (−49 at 342) but <b class="up">still sits
+  56px above the shipped card</b>; v9.2b did not close that regression and neither does this. If
+  mobile height is the binding constraint, the two levers are the map's cell count and the script's
+  per-beat retention line.</p>
+  <p class="note"><b>Correction, 1 Aug:</b> the first published version of this page understated
+  every 342 number. Its script switched width and measured in the same frame, so it read the stage
+  mid-transition. Fixed here, and cross-checked headlessly with the animation settled — the two
+  methods now agree exactly. Two deliberate content changes are also baked in and should be judged
+  on their merits: the remix "How to film" no longer repeats the shot list the decode map already
+  states, and the brief's sixth cell folds below 480px.</p>
+</section>
+
+<section style="border-bottom:0">
+  <p class="snum">06 — If you only do three</p>
+  <h2>The order I would build in</h2>
+  <div class="verdict">
+    <ol>
+      <li><b>The hero at 32/21.</b> One line of CSS per choice card. It is the whole "premium at
+      desktop" problem, and it is free on mobile.</li>
+      <li><b>Rank plus one taxonomy chip.</b> Restores the set's scannability with fields that are
+      already populated — no engine change, no schema change.</li>
+      <li><b>The brief as a map.</b> Escapes the idiom that has now been rejected twice, and reuses
+      the one grid that survived.</li>
+    </ol>
+    <p class="note" style="max-width:none;margin-top:16px">The rest — named right edges, the three
+    door states, the honest multiplier, the grouped footer — are small and independent. The two that
+    still need <em>your</em> decision are whether the "Made for" cell ships behind
+    <code>reaction_frame</code> or degrades, and whether "vs followers" is the wording you want
+    users to read.</p>
+  </div>
+</section>
+
+<footer class="wrap">
+  v9.4 · measured 1 Aug 2026 · no <code>src/</code> changes · supersedes the four separate
+  directions in the v9.2b audit.
+</footer>
+</div>
+
+<script>
+(function () {
+  var IDS = ['v4hook','v4hookx','v4idea','v4empty','v4script','v4remix'];
+  document.querySelectorAll('.seg').forEach(function (seg) {
+    seg.addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      seg.querySelectorAll('button').forEach(function (x) {
+        x.setAttribute('aria-pressed', String(x === b));
+      });
+      document.body.dataset.w = b.dataset.w;
+    });
+  });
+  function at(w) {
+    document.body.dataset.w = w;
+    document.body.offsetHeight; // force layout at the new width before reading
+    IDS.forEach(function (id) {
+      var el = document.getElementById(id); if (!el) return;
+      var c = document.querySelector('[data-m="' + id + '-' + w + '"]');
+      if (c) c.textContent = Math.round(el.getBoundingClientRect().height);
+    });
+  }
+  function run() {
+    document.body.classList.add('measuring');
+    at('342'); at('728');
+    document.body.classList.remove('measuring');
+  }
+  document.body.dataset.w = '728';
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(run);
+  else setTimeout(run, 350);
+})();
+</script>

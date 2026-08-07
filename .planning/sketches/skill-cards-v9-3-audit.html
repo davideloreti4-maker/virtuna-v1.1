@@ -1,0 +1,961 @@
+<title>Skill cards v9.2b — audit against the shipped renderers</title>
+<style>
+/*FONTS*/
+
+:root{
+  /* the product's own tokens — the mocks must be measured in them */
+  --app:#1f1f1e; --sunken:#1a1a19; --raise:#232322;
+  --fg:#ece7de; --fg-2:#c2bdb4; --fg-3:#8a857c; --fg-4:#6a665f;
+  --sage:#8ea68a; --amber:#c8a24a; --coral:#FF6363;
+  --b:rgba(255,255,255,.06); --b-2:rgba(255,255,255,.10);
+  --page:#141413; --page-2:#1b1b1a; --rule:rgba(255,255,255,.07);
+  --t-cap:11px; --t-lab:12px; --t-body:13px; --t-read:14px;
+  --t-t:16px; --t-sub:18px; --t-h:22px;
+}
+:root[data-theme="light"]{
+  --page:#f2efe9; --page-2:#e9e5dd; --rule:rgba(31,31,30,.10);
+  --fg:#1f1f1e; --fg-2:#3d3b37; --fg-3:#6f6a62; --fg-4:#8b867d;
+  --sage:#4e6b4a; --amber:#7a5c12; --coral:#c93b3b;
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    --page:#f2efe9; --page-2:#e9e5dd; --rule:rgba(31,31,30,.10);
+    --fg:#1f1f1e; --fg-2:#3d3b37; --fg-3:#6f6a62; --fg-4:#8b867d;
+    --sage:#4e6b4a; --amber:#7a5c12; --coral:#c93b3b;
+  }
+}
+/* the card stages NEVER follow the viewer theme — they are the product,
+   rendered in the product's charcoal, the way a device frame would be. */
+.stagewrap{
+  --fg:#ece7de; --fg-2:#c2bdb4; --fg-3:#8a857c; --fg-4:#6a665f;
+  --sage:#8ea68a; --amber:#c8a24a;
+  background:var(--app); color:#ece7de;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--page); color:var(--fg);
+  font-family:InterV,Inter,system-ui,-apple-system,sans-serif;
+  font-size:var(--t-body); line-height:1.6; -webkit-font-smoothing:antialiased;
+}
+.serif{font-family:NewsreaderV,Newsreader,Georgia,serif}
+h1,h2,h3,h4,p,ul,ol,figure,table{margin:0}
+a{color:inherit}
+
+/* ── page chrome ─────────────────────────────────────────────── */
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px}
+.top{border-bottom:1px solid var(--rule);padding:52px 0 30px;margin-bottom:8px}
+.eyebrow{font-size:var(--t-cap);text-transform:uppercase;letter-spacing:.09em;color:var(--fg-3);
+  display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.eyebrow b{font-weight:500;color:var(--fg-2)}
+h1{font-size:clamp(28px,4vw,40px);line-height:1.12;letter-spacing:-.02em;font-weight:500;
+  margin-top:16px;text-wrap:balance;max-width:20ch}
+.standfirst{margin-top:16px;max-width:70ch;font-size:var(--t-read);line-height:1.75;color:var(--fg-2)}
+.standfirst b{color:var(--fg);font-weight:500}
+
+section{padding:44px 0;border-bottom:1px solid var(--rule)}
+.snum{font-size:var(--t-cap);letter-spacing:.09em;text-transform:uppercase;color:var(--fg-4);
+  font-variant-numeric:tabular-nums}
+h2{font-size:23px;line-height:1.2;letter-spacing:-.015em;font-weight:500;margin-top:7px;text-wrap:balance}
+.lede{margin-top:12px;max-width:74ch;color:var(--fg-2);line-height:1.75}
+.lede b{color:var(--fg);font-weight:500}
+h3{font-size:var(--t-t);font-weight:500;letter-spacing:-.01em;margin-top:34px}
+.note{font-size:var(--t-lab);color:var(--fg-3);line-height:1.7;max-width:78ch}
+
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.88em;
+  background:var(--page-2);border-radius:3px;padding:1px 5px;color:var(--fg-2)}
+
+/* ── findings ────────────────────────────────────────────────── */
+.finds{margin-top:26px;display:flex;flex-direction:column}
+.find{display:grid;grid-template-columns:64px 1fr;gap:20px;padding:20px 0;border-top:1px solid var(--rule)}
+.find:first-child{border-top:0}
+.fid{font-size:var(--t-lab);font-weight:600;letter-spacing:.04em;color:var(--fg-4);
+  font-variant-numeric:tabular-nums;padding-top:2px}
+.fhead{display:flex;align-items:baseline;gap:11px;flex-wrap:wrap}
+.fhead h4{font-size:var(--t-read);font-weight:500;letter-spacing:-.005em;margin:0;color:var(--fg)}
+.sev{font-size:10px;text-transform:uppercase;letter-spacing:.08em;font-weight:600;
+  padding:2px 7px;border-radius:3px;white-space:nowrap;flex-shrink:0}
+.sev.block{color:var(--coral);background:color-mix(in oklab,var(--coral) 14%,transparent)}
+.sev.reg{color:var(--amber);background:color-mix(in oklab,var(--amber) 16%,transparent)}
+.sev.craft{color:var(--fg-3);background:var(--page-2)}
+.fbody{margin-top:8px;color:var(--fg-2);line-height:1.72;max-width:76ch}
+.fbody b{color:var(--fg);font-weight:500}
+.ev{margin-top:9px;font-size:var(--t-lab);color:var(--fg-3);line-height:1.7;
+  border-left:2px solid var(--rule);padding-left:12px;max-width:76ch}
+.ev b{color:var(--fg-2);font-weight:500}
+
+/* ── tables ──────────────────────────────────────────────────── */
+.tscroll{overflow-x:auto;margin-top:22px}
+table{width:100%;border-collapse:collapse;font-size:var(--t-lab);min-width:520px}
+th{text-align:left;font-weight:400;color:var(--fg-3);padding:8px 14px 8px 0;
+  border-bottom:1px solid var(--rule);white-space:nowrap;
+  font-size:var(--t-cap);text-transform:uppercase;letter-spacing:.06em}
+td{padding:9px 14px 9px 0;border-bottom:1px solid var(--rule);vertical-align:top;
+  font-variant-numeric:tabular-nums}
+td.n{text-align:right;padding-right:20px}
+.up{color:var(--amber)} .dn{color:var(--sage)} .gone{color:var(--coral)}
+.keep{color:var(--fg-3)}
+
+/* ── comparison figures ──────────────────────────────────────── */
+.pair{margin-top:26px;display:grid;gap:20px;grid-template-columns:1fr 1fr}
+@media (max-width:860px){.pair{grid-template-columns:1fr}}
+figure{margin:0;min-width:0}
+figcaption{font-size:var(--t-cap);text-transform:uppercase;letter-spacing:.07em;color:var(--fg-3);
+  margin-bottom:9px;display:flex;gap:9px;align-items:center}
+figcaption .dot{width:6px;height:6px;border-radius:9px;flex-shrink:0}
+figure img{width:100%;height:auto;display:block;border:1px solid var(--rule);border-radius:10px}
+.pair.narrow{grid-template-columns:1fr 1fr;max-width:720px}
+
+/* ── live mock stage ─────────────────────────────────────────── */
+.stagewrap{border:1px solid var(--rule);border-radius:12px;padding:24px;margin-top:20px;overflow-x:auto}
+/* two 728 stages side by side need more than the 1180 measure — let the stage
+   blocks break out of the text column when the viewport can afford it. */
+@media (min-width:1300px){
+  .stagewrap{position:relative;left:50%;transform:translateX(-50%);
+    width:min(1580px,calc(100vw - 56px))}
+}
+.stagerow{display:flex;gap:26px;align-items:flex-start}
+.slab{font-size:var(--t-cap);text-transform:uppercase;letter-spacing:.07em;color:#8a857c;margin-bottom:9px}
+.slab em{font-style:normal;color:#c2bdb4}
+.stage{width:728px;flex-shrink:0}
+.measuring .stage{transition:none}
+body[data-w="342"] .stage{width:342px}
+.seg{display:inline-flex;border:1px solid var(--rule);border-radius:8px;overflow:hidden;margin-top:18px}
+.seg button{appearance:none;border:0;background:transparent;color:var(--fg-3);font:inherit;
+  font-size:var(--t-lab);padding:7px 14px;cursor:pointer}
+.seg button+button{border-left:1px solid var(--rule)}
+.seg button[aria-pressed="true"]{background:var(--page-2);color:var(--fg)}
+.seg button:focus-visible{outline:2px solid var(--fg-3);outline-offset:-2px}
+
+/* ══ THE CARD — v9.2b's four bands, verbatim, so variants are comparable ══ */
+.n-card{border:1px solid rgba(255,255,255,.06);border-radius:12px;background:#1a1a19;overflow:hidden}
+.n-face{padding:18px 20px}
+.n-kick{display:flex;align-items:center;gap:10px;margin-bottom:12px;min-height:20px}
+.n-chip{display:inline-flex;align-items:center;border-radius:999px;background:rgba(255,255,255,.06);
+  padding:2px 9px;font-size:11px;font-weight:500;color:#ece7de}
+.n-kick .copy{margin-left:auto}
+.copy{display:inline-flex;align-items:center;gap:5px;flex-shrink:0;font-size:12px;
+  font-weight:500;color:#8a857c;background:none;border:0;cursor:pointer;font-family:inherit}
+.ico{width:13px;height:13px;flex-shrink:0}
+.n-hero{font-size:22px;line-height:1.3;letter-spacing:-.01em;font-weight:500;color:#ece7de;
+  text-wrap:balance;max-width:44ch}
+body[data-w="342"] .n-hero{font-size:19px}
+.n-hero .q{color:rgba(236,231,222,.45)}
+.n-dek{margin-top:9px;font-size:13px;line-height:1.65;color:#c2bdb4;max-width:58ch}
+.n-dek .own{color:#ece7de}
+.mult{color:#8ea68a;font-weight:500;font-variant-numeric:tabular-nums}
+
+.src-row{display:flex;gap:13px;align-items:center;border-top:1px solid rgba(255,255,255,.06);
+  padding:12px 20px;text-decoration:none;cursor:pointer;color:inherit}
+.src-row:hover{background:rgba(255,255,255,.03)}
+.src-row .th{position:relative;display:block;width:52px;flex-shrink:0;aspect-ratio:9/16;
+  border-radius:6px;overflow:hidden;border:1px solid rgba(255,255,255,.08)}
+.src-row .th .bg{position:absolute;inset:0}
+.src-row .th .subj{position:absolute;left:50%;bottom:-6%;width:90%;height:52%;transform:translateX(-50%);
+  border-radius:50% 50% 0 0;filter:blur(2px)}
+.src-row .cbody{min-width:0;flex:1}
+.src-row .tt{font-size:12px;font-weight:500;color:#c2bdb4;line-height:1.5;display:block}
+.src-row .st{margin-top:2px;font-size:12px;line-height:1.5;color:#8a857c;display:block}
+.src-row .chev{color:#8a857c;font-size:14px;flex-shrink:0}
+.src-row .out{font-size:12px;color:#8a857c;flex-shrink:0;display:inline-flex;gap:6px;align-items:center}
+
+.n-brief{display:flex;align-items:center;gap:10px;width:100%;border:0;
+  border-top:1px solid rgba(255,255,255,.06);
+  background:none;font-family:inherit;cursor:pointer;padding:12px 20px;text-align:left;color:inherit}
+.n-brief .t{font-size:12px;font-weight:500;color:#c2bdb4}
+.n-brief .items{font-size:12px;color:#8a857c}
+.n-brief .chev{margin-left:auto;color:#8a857c;font-size:14px}
+.n-briefbody{padding:2px 20px 14px;display:flex;flex-direction:column}
+.bcell{padding:9px 0}
+.bcell+.bcell{border-top:1px solid rgba(255,255,255,.06)}
+.bcell .tt{font-size:12px;font-weight:500;color:#ece7de;line-height:1.5}
+.bcell .sub{margin-top:1px;font-size:12px;line-height:1.55;color:#8a857c}
+.bcell .sub .on{color:#c2bdb4}
+.bcell .sub .v{background:rgba(255,255,255,.06);border-radius:2px;padding:1px 4px;color:#c2bdb4;margin:0 1px}
+
+.n-footer{display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+  border-top:1px solid rgba(255,255,255,.06);padding:13px 20px}
+.primary{display:inline-flex;align-items:center;justify-content:center;
+  border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.05);border-radius:8px;
+  padding:8px 14px;font-size:13px;font-weight:600;color:#ece7de;font-family:inherit;cursor:pointer}
+.door{display:inline-flex;align-items:center;gap:8px;margin-left:auto;font-size:12px;
+  color:#8a857c;background:none;border:0;font-family:inherit;cursor:pointer;min-height:32px}
+.door .hollow{width:7px;height:7px;border-radius:999px;border:1px solid #8a857c;flex-shrink:0}
+.door .solid{width:7px;height:7px;border-radius:999px;background:#8ea68a;flex-shrink:0}
+.door .run{width:7px;height:7px;border-radius:999px;border:1px solid #c8a24a;
+  border-top-color:transparent;flex-shrink:0;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.door .run{animation:none}}
+.door-cta{color:#c2bdb4;white-space:nowrap}
+.save{color:#8a857c;display:inline-flex;align-items:center;gap:6px;font-size:12px}
+body[data-w="342"] .n-footer{row-gap:12px}
+body[data-w="342"] .primary{order:1}
+body[data-w="342"] .save{order:2;margin-left:auto}
+body[data-w="342"] .door{order:3;margin-left:0;width:100%;justify-content:space-between}
+
+/* ══ PROPOSAL-ONLY pieces ══════════════════════════════════════ */
+/* B · the measure card */
+.stage.measure .n-card{max-width:568px}
+body[data-w="342"] .stage.measure .n-card{max-width:none}
+
+/* C · the fact rail */
+.rail-face{display:grid;grid-template-columns:1fr 186px;gap:0}
+.rail-face>.rf-main{padding:18px 20px;min-width:0}
+.rail-face>.rf-rail{border-left:1px solid rgba(255,255,255,.06);padding:18px 18px;
+  display:flex;flex-direction:column;gap:13px}
+.rf-rail .rk{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#6a665f}
+.rf-rail .rv{margin-top:2px;font-size:12px;line-height:1.45;color:#c2bdb4}
+.rf-rail .rv.big{font-size:20px;font-weight:600;color:#ece7de;font-variant-numeric:tabular-nums;
+  letter-spacing:-.01em}
+body[data-w="342"] .rail-face{grid-template-columns:1fr}
+body[data-w="342"] .rail-face>.rf-rail{border-left:0;border-top:1px solid rgba(255,255,255,.06);
+  flex-direction:row;flex-wrap:wrap;gap:18px;padding:12px 20px}
+
+/* D · the labeled gutter (rows earn their right edge) */
+.gut{margin-left:auto;font-size:12px;color:#8a857c;flex-shrink:0;white-space:nowrap}
+
+/* the technique / format chip — the per-card differentiator */
+.tag{display:inline-flex;align-items:center;border:1px solid rgba(255,255,255,.08);
+  border-radius:4px;padding:1px 7px;font-size:11px;color:#c2bdb4;background:rgba(255,255,255,.02)}
+.rank{font-size:12px;font-weight:600;color:#8a857c;font-variant-numeric:tabular-nums}
+
+/* the brief as a MAP (the remix decode grid's language, reused) */
+.bmap{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid rgba(255,255,255,.06)}
+body[data-w="342"] .bmap{grid-template-columns:1fr}
+.bmap .mc{padding:12px 20px;border-bottom:1px solid rgba(255,255,255,.06);min-width:0}
+.bmap .mc:nth-child(even){border-left:1px solid rgba(255,255,255,.06)}
+body[data-w="342"] .bmap .mc:nth-child(even){border-left:0}
+.bmap .mc.wide{grid-column:1 / -1}
+.bmap .mc.last{border-bottom:0}
+.bmap .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#8a857c;margin-bottom:4px}
+.bmap .bd{font-size:12px;line-height:1.6;color:#c2bdb4}
+.bmap .bd .v{background:rgba(255,255,255,.06);border-radius:2px;padding:1px 4px;color:#ece7de;margin:0 1px}
+
+.legend{display:flex;gap:20px;flex-wrap:wrap;margin-top:16px;font-size:var(--t-lab);color:var(--fg-3)}
+.legend span{display:inline-flex;gap:7px;align-items:center}
+.legend i{width:8px;height:8px;border-radius:2px;display:inline-block}
+
+.verdict{margin-top:30px;border:1px solid var(--rule);border-radius:10px;padding:22px 24px;
+  background:var(--page-2)}
+.verdict h4{font-size:var(--t-read);font-weight:500;margin:0 0 10px}
+.verdict ol{margin:0;padding-left:20px;color:var(--fg-2);line-height:1.8}
+.verdict ol li{margin-bottom:5px}
+.verdict ol li b{color:var(--fg);font-weight:500}
+
+footer{padding:38px 0 70px;color:var(--fg-4);font-size:var(--t-lab);line-height:1.8}
+</style>
+
+<div class="wrap">
+
+<header class="top">
+  <p class="eyebrow"><b>Skill cards</b><span>·</span><span>v9.2b audit</span><span>·</span>
+     <span>1 Aug 2026</span><span>·</span><span>task/skill-cards-rework @ cc807d93</span></p>
+  <h1>The card got shorter. The decision got harder.</h1>
+  <p class="standfirst">v9.2b is measured against the <b>real shipped renderers</b>, mounted with
+  matched fixtures — not a reproduction. The four-band geometry is right and the source row is the
+  best component in the system. Three things stop it reading like a finished product surface:
+  <b>at 728 the card is roughly half empty</b>, <b>the open brief is still the typed-cell document
+  the owner has now rejected twice</b>, and <b>the set of five lost every signal you would pick
+  on</b>. Nine fields drop out of the system that the handoff records as retained, and one wording
+  lock states a number the engine does not compute.</p>
+</header>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section>
+  <p class="snum">01 — Method</p>
+  <h2>What was measured, and against what</h2>
+  <p class="lede">Shipped numbers come from <code>HookCardRenderer</code>,
+  <code>IdeaCardRenderer</code>, <code>ScriptCardRenderer</code> and <code>RemixCardRenderer</code>
+  mounted in a throwaway route outside the <code>(app)</code> group, wrapped in
+  <code>QueryClientProvider</code>, with fixtures whose copy matches the v9.2b sketch word for word
+  — so the two columns differ by design only, never by content length. Mock numbers come from
+  <code>skill-cards-v9-2-bands.html</code> over <code>file://</code>. Both measured with
+  <code>getBoundingClientRect</code>, animations disabled, no console errors, no horizontal overflow
+  at either width. The preview route is deleted; <code>src/</code> is untouched.</p>
+
+  <div class="tscroll">
+  <table>
+    <thead><tr><th>Card</th><th class="n">Shipped 728</th><th class="n">v9.2b 728</th>
+      <th class="n">Shipped 342</th><th class="n">v9.2b 342</th><th>Reading</th></tr></thead>
+    <tbody>
+      <tr><td>Hook, collapsed</td><td class="n">569</td><td class="n dn">371</td>
+        <td class="n">697</td><td class="n dn">436</td><td class="keep">−35% / −37%</td></tr>
+      <tr><td>Idea, collapsed</td><td class="n">606</td><td class="n dn">371</td>
+        <td class="n">752</td><td class="n dn">433</td><td class="keep">−39% / −42%</td></tr>
+      <tr><td>Idea, brief open</td><td class="n">—</td><td class="n">670</td>
+        <td class="n">—</td><td class="n">843</td><td class="keep">taller than shipped</td></tr>
+      <tr><td>Hook, no source</td><td class="n">—</td><td class="n">254</td>
+        <td class="n">—</td><td class="n">319</td><td class="keep">complete object</td></tr>
+      <tr><td>Script</td><td class="n">958</td><td class="n dn">830</td>
+        <td class="n">1420</td><td class="n dn">1308</td><td class="keep">−13% / −8%</td></tr>
+      <tr><td>Remix</td><td class="n">763</td><td class="n dn">708</td>
+        <td class="n">1054</td><td class="n up">1159</td><td class="up">+105 on mobile</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="note" style="margin-top:14px">The compression is real and it is the design's clearest
+  win. The open brief is the number to watch: at 342 an opened idea card is <b>843px</b> — taller
+  than the shipped card it replaced (752px). Staging only pays if the brief stays shut, which makes
+  brief open-rate the metric the handoff already names.</p>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section>
+  <p class="snum">02 — Side by side</p>
+  <h2>Shipped, and v9.2b, on identical content</h2>
+  <p class="lede">Left is what renders in the thread today. Right is the candidate.</p>
+
+  <h3>Hook · 728</h3>
+  <div class="pair">
+    <figure><figcaption><span class="dot" style="background:var(--fg-3)"></span>Shipped renderer</figcaption>
+      <img alt="Shipped hook card at 728px" src="IMG:cmp-ship-hook-728"></figure>
+    <figure><figcaption><span class="dot" style="background:var(--sage)"></span>v9.2b</figcaption>
+      <img alt="v9.2b hook card at 728px" src="IMG:cmp-mock-hook-728"></figure>
+  </div>
+
+  <h3>Idea · 728 — shipped face vs the v9.2b brief, open</h3>
+  <div class="pair">
+    <figure><figcaption><span class="dot" style="background:var(--fg-3)"></span>Shipped renderer</figcaption>
+      <img alt="Shipped idea card at 728px" src="IMG:cmp-ship-idea-728"></figure>
+    <figure><figcaption><span class="dot" style="background:var(--sage)"></span>v9.2b, brief open</figcaption>
+      <img alt="v9.2b idea card with the brief open at 728px" src="IMG:cmp-mock-ideax-728"></figure>
+  </div>
+  <p class="note" style="margin-top:14px">The right-hand column is where the "not premium yet"
+  reading comes from. Every cell is a cream title over one muted line, hard against the left edge,
+  five times, with 46% of the card's width carrying nothing. It is the v8 typed-cell idiom the
+  owner rejected — <em>"right idiom, not clean and premium"</em> — with hairlines added.</p>
+
+  <h3>Script · 728</h3>
+  <div class="pair">
+    <figure><figcaption><span class="dot" style="background:var(--fg-3)"></span>Shipped renderer</figcaption>
+      <img alt="Shipped script card at 728px" src="IMG:cmp-ship-script-728"></figure>
+    <figure><figcaption><span class="dot" style="background:var(--sage)"></span>v9.2b</figcaption>
+      <img alt="v9.2b script card at 728px" src="IMG:cmp-mock-script-728"></figure>
+  </div>
+
+  <h3>Hook · 342</h3>
+  <div class="pair narrow">
+    <figure><figcaption><span class="dot" style="background:var(--fg-3)"></span>Shipped</figcaption>
+      <img alt="Shipped hook card at 342px" src="IMG:cmp-ship-hook-342"></figure>
+    <figure><figcaption><span class="dot" style="background:var(--sage)"></span>v9.2b</figcaption>
+      <img alt="v9.2b hook card at 342px" src="IMG:cmp-mock-hook-342"></figure>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section>
+  <p class="snum">03 — Findings</p>
+  <h2>Visual design</h2>
+  <p class="lede">Ordered by how much each one costs the "would Perplexity ship this" test.</p>
+
+  <div class="finds">
+    <div class="find"><span class="fid">V1</span><div>
+      <div class="fhead"><h4>The card is a mobile layout inside a desktop object</h4>
+        <span class="sev block">blocks build</span></div>
+      <p class="fbody">At 728 the hero is capped at <code>44ch</code> and the dek at
+      <code>58ch</code>, so text stops around x=560 of a 688px content box. The source row's stat
+      line ends at x≈420 and the chevron is pinned at 708 — <b>288px of nothing between a fact and
+      its affordance</b>. The brief row does the same. <b>No band uses the right half of the card,
+      and nothing balances it.</b> This single fact is why the card reads unfinished at desktop
+      width while looking correct at 342 — the layout was designed at 342 and stretched.</p>
+      <p class="ev"><b>Fix directions in §4:</b> narrow the object to its measure, give the face a
+      fact rail, or make every row earn its right edge with a labeled affordance. All three fill
+      the gutter without going near portrait-media-beside-text.</p>
+    </div></div>
+
+    <div class="find"><span class="fid">V2</span><div>
+      <div class="fhead"><h4>The open brief re-proposes a treatment already rejected twice</h4>
+        <span class="sev block">blocks build</span></div>
+      <p class="fbody">Five cells, each a cream sentence-case title over one muted line, stacked
+      vertically with hairlines. That is v8's typed cells (rejected: <em>"not clean and
+      premium"</em>) crossed with v6's bold lead-ins (rejected: <em>"reads like a
+      document"</em>). At 728 it is a 670px column of left-aligned text. <b>The one structured grid
+      in the whole system that the owner kept is the remix decode map</b> — two columns, labeled
+      cells, real matrix rules. The brief should speak that language, not this one.</p>
+      <p class="ev"><b>Measured:</b> the whole card with the brief open is 670 @728 / 843 @342 —
+      taller at 342 than the shipped card it replaces. As a two-column map the brief body goes
+      341 → 298 at 728 while carrying one more fact, and the dead right half disappears. See §4.2
+      for the mobile cost.</p>
+    </div></div>
+
+    <div class="find"><span class="fid">V3</span><div>
+      <div class="fhead"><h4>Sibling cards have ragged top edges</h4><span class="sev reg">regression</span></div>
+      <p class="fbody">Hook 1 renders <code>Top pick</code> + Copy; hook 2 renders Copy alone into
+      the same 20px row. In a stack of five, one card has a chip and four have an empty band above
+      the hero. The shipped card puts <code>#1…#5</code> there, so every sibling's top edge carries
+      the same weight and the row is never decorative.</p>
+    </div></div>
+
+    <div class="find"><span class="fid">V4</span><div>
+      <div class="fhead"><h4>The script's timeline rail is cut at every beat</h4><span class="sev reg">regression</span></div>
+      <p class="fbody">v9.2b adds a full-bleed <code>border-top</code> between beats. The rail says
+      "one continuous take"; the rules say "five separate rows". <b>The shipped card has no
+      per-beat rules</b> — the rail alone carries the sequence, which is why it reads as a shot
+      list. Drop the rules or inset them past the rail; do not keep both.</p>
+    </div></div>
+
+    <div class="find"><span class="fid">V5</span><div>
+      <div class="fhead"><h4>Three glyph conventions for one control</h4><span class="sev craft">craft</span></div>
+      <p class="fbody">The brief chevron is <code>›</code> rotated 90° when open; script beat 1 uses
+      a literal <code>⌄</code> while beats 2–5 use <code>›</code>; the source row uses <code>›</code>
+      to mean "leave the app". One caret, one rotation rule, and a distinct glyph for external.</p>
+    </div></div>
+
+    <div class="find"><span class="fid">V6</span><div>
+      <div class="fhead"><h4>Save became an unlabeled glyph at the card's edge</h4><span class="sev craft">craft</span></div>
+      <p class="fbody">Shipped renders a bookmark <em>and</em> the word Save. v9.2b drops the label
+      and pins the icon to the outer padding. At 342 the footer wraps and the bare icon is stranded
+      on the primary's row while the door takes its own — three affordances, three visual weights,
+      no grouping.</p>
+    </div></div>
+  </div>
+
+  <h2 style="margin-top:52px">User experience</h2>
+  <div class="finds">
+    <div class="find"><span class="fid">X1</span><div>
+      <div class="fhead"><h4>The set of five lost everything you would choose on</h4>
+        <span class="sev block">blocks build</span></div>
+      <p class="fbody">A hooks run delivers five cards and asks one question: <b>which one.</b>
+      v9.2b removes rank, band, fraction, quote and mechanism from every face. What remains is
+      identical on all five: a quoted line, the same source row, the same brief row, the same
+      footer. <b>To compare five cards you must open five briefs</b> — 670px each. The design
+      optimised the single card and regressed the unit the user actually operates on.</p>
+      <p class="ev">Cheapest honest fix, no engine work: restore the rank numeral, and put the
+      taxonomy the schema <em>already carries</em> on the face as a chip —
+      <code>visualHook.technique</code> for hooks ("crash-zoom", "match-cut"),
+      <code>format</code> for ideas ("Talking-head"). Both are live fields the mock currently
+      discards. Mocked in §4.4.</p>
+    </div></div>
+
+    <div class="find"><span class="fid">X2</span><div>
+      <div class="fhead"><h4>The door is a one-way trip</h4><span class="sev block">blocks build</span></div>
+      <p class="fbody">The footer has exactly one state: <code>Not tested yet · Simulate with your
+      audience →</code>. Simulate, come back, and the card says "not tested yet" again. The
+      handoff defers the measured state to ③, but <b>without it the door cannot close a loop</b> —
+      and the whole reason the verdict left the face was that the door would own measurement. A
+      door that owns measurement must be able to show one. Three states mocked in §4.3.</p>
+    </div></div>
+
+    <div class="find"><span class="fid">X3</span><div>
+      <div class="fhead"><h4>Two forward CTAs compete in one row</h4><span class="sev reg">regression</span></div>
+      <p class="fbody"><code>Write the script →</code> and <code>Simulate with your audience →</code>
+      are both arrow calls-to-action of similar length. At 342 the door takes a full row and reads
+      louder than the primary. One of them is the chain step; the other is a diagnostic. They
+      should not look like siblings.</p>
+    </div></div>
+
+    <div class="find"><span class="fid">X4</span><div>
+      <div class="fhead"><h4>The brief's contents vanish exactly where staging needs defending</h4>
+        <span class="sev reg">regression</span></div>
+      <p class="fbody"><code>body[data-w="342"] .n-brief .items{display:none}</code> — at mobile
+      width the row is a bare <code>Full brief ›</code>. Staging is a promise that the detail is
+      one tap away and named; on the smaller screen the naming is the part that got cut. It is
+      also the only special-case left in a design whose thesis is "one layout at every width".</p>
+    </div></div>
+
+    <div class="find"><span class="fid">X5</span><div>
+      <div class="fhead"><h4>A chevron promises a drill-in and delivers a new tab</h4><span class="sev craft">craft</span></div>
+      <p class="fbody">The source row is an <code>&lt;a&gt;</code> to TikTok wearing <code>›</code>,
+      the same glyph the brief row uses to expand in place. Two different destinies, one affordance.
+      Use <code>↗</code> and name it (<code>Open on TikTok ↗</code>) — which also gives the row's
+      right edge something true to carry (see V1).</p>
+    </div></div>
+
+    <div class="find"><span class="fid">X6</span><div>
+      <div class="fhead"><h4>Briefs stay open with no way to compare</h4><span class="sev craft">craft</span></div>
+      <p class="fbody">Open card 3, scroll, open card 4 — card 3 stays expanded and the stack grows
+      by 670px per card. There is no "compare" or accordion behaviour. Either the top card arrives
+      open and opening another closes it, or the brief cells need to be scannable enough that
+      opening two is not a scroll event.</p>
+    </div></div>
+  </div>
+
+  <h2 style="margin-top:52px">User value</h2>
+  <p class="lede">The handoff states that with "Fits you" and "Why it works" restored,
+  <b>"NOTHING real from shipped is lost"</b>. Checked field by field against the schemas and the
+  four renderers, that is not the case.</p>
+
+  <div class="tscroll">
+  <table>
+    <thead><tr><th>Field</th><th>Shipped, today</th><th>v9.2b</th><th>Verdict</th></tr></thead>
+    <tbody>
+      <tr><td><code>rank</code></td><td>#1…#5 on the face</td><td>"Top pick" on one card</td>
+        <td class="gone">lost — and it is the set's only ordering</td></tr>
+      <tr><td><code>topic</code></td><td>Make-it-from cell</td><td>absent</td><td class="gone">lost</td></tr>
+      <tr><td><code>format</code></td><td>Make-it-from cell</td><td>absent</td>
+        <td class="gone">lost — and it is the idea set's best differentiator</td></tr>
+      <tr><td><code>proof.archetype</code></td><td>pill: "Secret Reveal Breakdown"</td><td>absent</td>
+        <td class="gone">lost</td></tr>
+      <tr><td><code>proof.fitLabel</code></td><td>● in your audience</td><td>absent</td>
+        <td class="gone">lost — it is the §11c match claim</td></tr>
+      <tr><td><code>proof.baselineLabel</code></td><td>"vs followers"</td><td>reworded</td>
+        <td class="gone">lost, and the rewording is wrong — see N1</td></tr>
+      <tr><td><code>channel</code></td><td>Delivery, on expand</td><td>absent</td><td class="gone">lost</td></tr>
+      <tr><td><code>visualHook.technique</code></td><td>pill: "crash-zoom"</td><td>prose in the dek</td>
+        <td class="up">demoted from a named taxonomy to an adjective</td></tr>
+      <tr><td><code>provenance</code></td><td>"· projected" / "· SIM-1 Flash"</td><td>absent</td>
+        <td class="up">arguably fine — the door now carries it</td></tr>
+      <tr><td><code>mechanism</code></td><td>face, full text</td><td>brief cell</td><td class="keep">staged, fine</td></tr>
+      <tr><td><code>whyItFits</code></td><td>muted clause</td><td>brief "Fits you"</td><td class="keep">staged, fine</td></tr>
+      <tr><td><code>band</code>/<code>fraction</code>/<code>scrollQuote</code></td><td>ProofUnit</td>
+        <td>gone, by design</td><td class="keep">intentional — the door owns it</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="finds" style="margin-top:30px">
+    <div class="find"><span class="fid">N1</span><div>
+      <div class="fhead"><h4>"90.7× their usual reach" is not the number we compute</h4>
+        <span class="sev block">honesty</span></div>
+      <p class="fbody"><code>proof-schema.ts</code> is explicit: <code>multiplier</code> is the
+      <b>durable outlier basis, views ÷ followers</b>, and <code>baselineLabel</code> carries that
+      basis so the card never shows a bare <code>{n}×</code>. "Their usual reach" asserts
+      views ÷ their own median views — <b>a different ratio, which nothing in the pipeline
+      calculates.</b> v9.2b drops the basis label and replaces it with a claim we cannot support.
+      This is locked as final wording in handoff §5, so the lock itself is the defect.</p>
+      <p class="ev"><b>Recommendation:</b> <code>90.7× vs followers · 621K views</code>, or if
+      "vs followers" reads too technical, <code>90.7× this creator's follower count · 621K
+      views</code>. Never the reach paraphrase.</p>
+    </div></div>
+
+    <div class="find"><span class="fid">N2</span><div>
+      <div class="fhead"><h4>One of the five brief cells will render empty in production</h4>
+        <span class="sev block">blocks build</span></div>
+      <p class="fbody">"Made for 34% of your audience" comes from <code>target</code>, and its body
+      line is <code>reaction_frame</code> — a field that <b>does not exist on
+      <code>CardTargetSchema</code> yet</b> (it is one of the two additive engine follow-ups). All
+      three generation runners also pass <code>personas: []</code>, so the existing
+      verdict/quote branch has never rendered either. <b>Ship v9.2b today and the brief is four
+      cells and a title.</b> Either the cell ships behind the engine change, or it degrades to
+      something true.</p>
+    </div></div>
+
+    <div class="find"><span class="fid">N3</span><div>
+      <div class="fhead"><h4>"Case study" is one row title doing two different jobs</h4>
+        <span class="sev reg">regression</span></div>
+      <p class="fbody">On a grounded hook the source was retrieved, scored against the audience and
+      passed an outlier check — "Case study" is fair. On remix the user pasted the video: the
+      schema comment is explicit that <code>multiplier</code>, <code>baselineLabel</code> and
+      <code>fitLabel</code> all stay null <em>because nothing measured it</em>. The mock's remix row
+      correctly says "The post you're remixing", but the shared component must derive the title from
+      the data, never default to the stronger claim.</p>
+    </div></div>
+
+    <div class="find"><span class="fid">N4</span><div>
+      <div class="fhead"><h4>The template lost its status</h4><span class="sev craft">craft</span></div>
+      <p class="fbody">The bracketed <code>hookTemplate</code> — <em>"I stopped [common habit] for
+      [timeframe]…"</em> — is the most directly reusable object on the shipped card, and the one
+      thing there that looks designed rather than written. In v9.2b it is the fourth line of a
+      collapsed brief. If anything earns a place on the face beside the hero, it is this.</p>
+    </div></div>
+  </div>
+
+  <h2 style="margin-top:52px">User flow</h2>
+  <div class="finds">
+    <div class="find"><span class="fid">F1</span><div>
+      <div class="fhead"><h4>The expensive step got harder and the cheap step got easier</h4>
+        <span class="sev reg">regression</span></div>
+      <p class="fbody">The flow is: run hooks → <b>compare five</b> → pick → write the script.
+      Comparing is the expensive step and it is the one v9.2b stripped (X1). Writing the script was
+      already a single button. Net effect on the funnel: the card is 35% shorter and the decision
+      it exists to support is slower.</p>
+    </div></div>
+    <div class="find"><span class="fid">F2</span><div>
+      <div class="fhead"><h4>Simulate has no return path</h4><span class="sev block">blocks build</span></div>
+      <p class="fbody">Same root as X2. The door opens the room; the room reports; the card cannot
+      receive the report. Until it can, "Not tested yet" is the only truthful thing it will ever
+      say, and the verdict's removal from the face is a deletion rather than a relocation.</p>
+    </div></div>
+    <div class="find"><span class="fid">F3</span><div>
+      <div class="fhead"><h4>No-source cards silently become a different product</h4>
+        <span class="sev craft">craft</span></div>
+      <p class="fbody">254px, three bands, no receipt — a clean object, exactly as intended. But at
+      that size the face is a line and a dek, and it is indistinguishable from a chat message. Worth
+      confirming what fraction of production cards land here: if it is common, the "complete
+      object" argument needs the face to carry one more true thing.</p>
+    </div></div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section>
+  <p class="snum">04 — Directions</p>
+  <h2>Four fixes, mocked</h2>
+  <p class="lede">Live at both widths. Nothing here re-proposes a dead treatment: no
+  portrait-media-beside-text, no colon run-ins, no bold lead-ins in a text column, no prose beside
+  a panel. Where a direction touches an existing lock, it says so.</p>
+
+  <div class="seg" role="group" aria-label="Card width">
+    <button data-w="728" aria-pressed="true">728 · in-thread</button>
+    <button data-w="342" aria-pressed="false">342 · mobile</button>
+  </div>
+
+  <h3>4.1 — Three answers to the empty right half <span style="color:var(--fg-3);font-size:var(--t-lab)">(V1)</span></h3>
+  <p class="note">Same content, same bands, three different theories of what a 728px card is.</p>
+
+  <div class="stagewrap">
+    <div class="stagerow">
+      <div>
+        <p class="slab">A · <em>v9.2b as-is</em> — the control</p>
+        <div class="stage"><div class="n-card" id="pA">
+          <div class="n-face">
+            <div class="n-kick"><span class="n-chip">Top pick</span>
+              <button class="copy">Copy</button></div>
+            <p class="serif n-hero"><span class="q">“</span>Stop editing your videos. Do this instead.<span class="q">”</span></p>
+            <p class="n-dek">A crash-zoom open, caps slamming over your face. It lands as permission: quit the painful task.</p>
+          </div>
+          <a class="src-row" href="#"><span class="th"><span class="bg" style="background:radial-gradient(95% 60% at 68% 22%,rgba(214,178,140,.5),transparent 62%),linear-gradient(165deg,#4a4038,#2e2b28 45%,#181716)"></span><span class="subj" style="background:radial-gradient(50% 62% at 50% 32%,rgba(28,24,22,.92),rgba(18,16,15,.96) 72%)"></span></span>
+            <span class="cbody"><span class="tt">Case study · @braedan.health</span>
+              <span class="st"><span class="mult">90.7× their usual reach</span> · 621K views</span></span>
+            <span class="chev">›</span></a>
+          <button class="n-brief"><span class="t">Full brief</span>
+            <span class="items">Why it works · Structure · Audience · First frame · Your line</span>
+            <span class="chev">›</span></button>
+          <div class="n-footer"><button class="primary">Write the script →</button>
+            <button class="door"><span class="hollow"></span>Not tested yet<span class="door-cta">Simulate with your audience →</span></button>
+            <span class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg></span></div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="stagewrap">
+    <div class="stagerow">
+      <div>
+        <p class="slab">B · <em>the measure is the object</em> — the card stops where the text stops</p>
+        <div class="stage measure"><div class="n-card" id="pB">
+          <div class="n-face">
+            <div class="n-kick"><span class="rank">#1</span><span class="tag">crash-zoom</span>
+              <button class="copy" style="margin-left:auto">Copy</button></div>
+            <p class="serif n-hero"><span class="q">“</span>Stop editing your videos. Do this instead.<span class="q">”</span></p>
+            <p class="n-dek">Caps slam over your face as the zoom lands. It reads as permission: quit the task you already resent.</p>
+          </div>
+          <a class="src-row" href="#"><span class="th"><span class="bg" style="background:radial-gradient(95% 60% at 68% 22%,rgba(214,178,140,.5),transparent 62%),linear-gradient(165deg,#4a4038,#2e2b28 45%,#181716)"></span><span class="subj" style="background:radial-gradient(50% 62% at 50% 32%,rgba(28,24,22,.92),rgba(18,16,15,.96) 72%)"></span></span>
+            <span class="cbody"><span class="tt">Case study · @braedan.health</span>
+              <span class="st">● in your audience · <span class="mult">90.7× vs followers</span> · 621K views</span></span>
+            <span class="out">Open ↗</span></a>
+          <button class="n-brief"><span class="t">Full brief</span>
+            <span class="chev" style="margin-left:auto">›</span></button>
+          <div class="n-footer"><button class="primary">Write the script →</button>
+            <span class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg></span>
+            <button class="door"><span class="hollow"></span>Not tested<span class="door-cta">Simulate →</span></button></div>
+        </div></div>
+        <p class="note" style="margin-top:12px;max-width:568px">One container change. The card is an
+        object in a stream rather than a full-bleed panel, so there is no gutter to fill and the
+        thread gets a left rhythm. Costs nothing structurally; the risk is that it looks small
+        beside the wider auxiliary blocks in the same thread.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="stagewrap">
+    <div class="stagerow">
+      <div>
+        <p class="slab">C · <em>the fact rail</em> — the gutter carries what you choose on</p>
+        <div class="stage"><div class="n-card" id="pC">
+          <div class="rail-face">
+            <div class="rf-main">
+              <div class="n-kick"><span class="rank">#1</span>
+                <button class="copy" style="margin-left:auto">Copy</button></div>
+              <p class="serif n-hero"><span class="q">“</span>Stop editing your videos. Do this instead.<span class="q">”</span></p>
+              <p class="n-dek">Caps slam over your face as the zoom lands. It reads as permission: quit the task you already resent.</p>
+            </div>
+            <div class="rf-rail">
+              <div><p class="rk">First frame</p><p class="rv">crash-zoom</p></div>
+              <div><p class="rk">Made for</p><p class="rv">34% of your audience</p></div>
+              <div><p class="rk">Works by</p><p class="rv">Permission</p></div>
+            </div>
+          </div>
+          <a class="src-row" href="#"><span class="th"><span class="bg" style="background:radial-gradient(95% 60% at 68% 22%,rgba(214,178,140,.5),transparent 62%),linear-gradient(165deg,#4a4038,#2e2b28 45%,#181716)"></span><span class="subj" style="background:radial-gradient(50% 62% at 50% 32%,rgba(28,24,22,.92),rgba(18,16,15,.96) 72%)"></span></span>
+            <span class="cbody"><span class="tt">Case study · @braedan.health</span>
+              <span class="st">● in your audience · <span class="mult">90.7× vs followers</span> · 621K views</span></span>
+            <span class="out">Open on TikTok ↗</span></a>
+          <button class="n-brief"><span class="t">Full brief</span>
+            <span class="items">Why it works · Proven structure · Your line</span>
+            <span class="gut">3 more →</span></button>
+          <div class="n-footer"><button class="primary">Write the script →</button>
+            <span class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg>Save</span>
+            <button class="door"><span class="hollow"></span>Not tested yet<span class="door-cta">Simulate with your audience →</span></button></div>
+        </div></div>
+        <p class="note" style="margin-top:12px">⚠️ <b>Touches the genealogy, and costs the most.</b>
+        This is text beside text, the family v7 died in. The defence: no media panel to fill, three
+        short <em>labelled facts</em> rather than prose, and at 342 the rail unstacks into a row.
+        The defence has a price — <b>587px at 342 against the control's 450</b>, because a rail with
+        nowhere to go becomes three more rows. It is the only direction that puts the choosing
+        signals where the eye already is; it is also the only one that makes mobile worse.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="stagewrap">
+    <div class="stagerow">
+      <div>
+        <p class="slab">D · <em>the labelled gutter</em> — every row earns its right edge</p>
+        <div class="stage"><div class="n-card" id="pD">
+          <div class="n-face">
+            <div class="n-kick"><span class="rank">#1</span><span class="tag">crash-zoom</span>
+              <button class="copy" style="margin-left:auto">Copy</button></div>
+            <p class="serif n-hero" style="max-width:none"><span class="q">“</span>Stop editing your videos. Do this instead.<span class="q">”</span></p>
+            <p class="n-dek" style="max-width:none">Caps slam over your face as the zoom lands. It reads as permission: quit the task you already resent.</p>
+          </div>
+          <a class="src-row" href="#"><span class="th"><span class="bg" style="background:radial-gradient(95% 60% at 68% 22%,rgba(214,178,140,.5),transparent 62%),linear-gradient(165deg,#4a4038,#2e2b28 45%,#181716)"></span><span class="subj" style="background:radial-gradient(50% 62% at 50% 32%,rgba(28,24,22,.92),rgba(18,16,15,.96) 72%)"></span></span>
+            <span class="cbody"><span class="tt">Case study · @braedan.health</span>
+              <span class="st">● in your audience · <span class="mult">90.7× vs followers</span> · 621K views</span></span>
+            <span class="out">Open on TikTok ↗</span></a>
+          <button class="n-brief"><span class="t">Full brief</span>
+            <span class="items">Why it works · Proven structure · Audience · First frame · Your line</span>
+            <span class="gut">Expand ›</span></button>
+          <div class="n-footer"><button class="primary">Write the script →</button>
+            <span class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg>Save</span>
+            <button class="door"><span class="hollow"></span>Not tested yet<span class="door-cta">Simulate with your audience →</span></button></div>
+        </div></div>
+        <p class="note" style="margin-top:12px">The minimal intervention: lift the
+        <code>max-width</code> caps, name every affordance at the right edge, restore the fit glyph
+        and the honest baseline. No new geometry, no lock touched. It does not solve the hero's short
+        measure on a long line, but it removes every <em>unexplained</em> gap.</p>
+      </div>
+    </div>
+  </div>
+
+  <h3>4.2 — The brief becomes a map <span style="color:var(--fg-3);font-size:var(--t-lab)">(V2)</span></h3>
+  <p class="note">Reusing the one structured grid the owner kept — the remix decode matrix. Two
+  columns of labelled cells at 728, one column at 342. It carries <b>six</b> facts rather than five
+  (<code>topic</code> and <code>format</code> come back, folded into one cell) and still runs
+  shorter on desktop, because three rows replace five. No dead right half, and the system ends up
+  with one grid language instead of two list idioms.</p>
+
+  <div class="stagewrap">
+    <div class="stagerow">
+      <div style="min-width:0">
+        <p class="slab">Current · <em>five stacked cells</em></p>
+        <div class="stage"><div class="n-card" id="pE">
+          <button class="n-brief" style="border-top:0"><span class="t">Full brief</span>
+            <span class="chev" style="margin-left:auto;transform:rotate(90deg)">›</span></button>
+          <div class="n-briefbody">
+            <div class="bcell"><p class="tt">Why it lands</p><p class="sub">A curiosity gap plus an identity threat. Creators fear disappearing.</p></div>
+            <div class="bcell"><p class="tt">Fits you</p><p class="sub">Your top 3 posts all lead with a counter-intuitive claim about consistency.</p></div>
+            <div class="bcell"><p class="tt">Proven structure</p><p class="sub">I stopped <span class="v">[common habit]</span> for <span class="v">[timeframe]</span>. Here's what happened to my <span class="v">[thing]</span>.</p></div>
+            <div class="bcell"><p class="tt">Made for 34% of your audience</p><p class="sub">They judge a video by whether it saves them a mistake.</p></div>
+            <div class="bcell"><p class="tt">Opening line</p><p class="sub">“I stopped posting for 30 days. Here's what actually happened to my account.” <span class="on">Talking-head, analytics on screen.</span></p></div>
+          </div>
+        </div></div>
+      </div>
+      <div style="min-width:0">
+        <p class="slab">Proposed · <em>the map</em></p>
+        <div class="stage"><div class="n-card" id="pF">
+          <button class="n-brief" style="border-top:0"><span class="t">Full brief</span>
+            <span class="chev" style="margin-left:auto;transform:rotate(90deg)">›</span></button>
+          <div class="bmap">
+            <div class="mc"><p class="lbl">Why it lands</p><p class="bd">A curiosity gap plus an identity threat. Creators fear disappearing.</p></div>
+            <div class="mc"><p class="lbl">Fits you</p><p class="bd">Your top 3 posts all lead with a counter-intuitive claim about consistency.</p></div>
+            <div class="mc"><p class="lbl">Made for</p><p class="bd">34% of your audience — they judge a video by whether it saves them a mistake.</p></div>
+            <div class="mc"><p class="lbl">Format</p><p class="bd">Talking-head, analytics on screen. Topic: posting consistency.</p></div>
+            <div class="mc last"><p class="lbl">Proven structure</p><p class="bd">I stopped <span class="v">[common habit]</span> for <span class="v">[timeframe]</span>. Here's what happened to my <span class="v">[thing]</span>.</p></div>
+            <div class="mc last"><p class="lbl">Opening line</p><p class="bd">“I stopped posting for 30 days. Here's what actually happened to my account.”</p></div>
+          </div>
+        </div></div>
+      </div>
+    </div>
+    <p class="note" style="margin-top:16px;color:#8a857c"><b style="color:#c2bdb4">Measured, brief
+    body only:</b> 341 → <b style="color:#ece7de">298</b> at 728 (−43px, and one more fact), but
+    453 → <b style="color:#c8a24a">552</b> at 342, where two columns collapse to one and the sixth
+    cell has nowhere to hide. <b style="color:#c2bdb4">The map wins on desktop and costs ~100px on
+    mobile.</b> If that trade is wrong, the mobile fallback is five cells, not six — drop the
+    restored topic/format cell below 480px rather than reverting the grid.</p>
+  </div>
+
+  <h3>4.3 — The door gets its other two states <span style="color:var(--fg-3);font-size:var(--t-lab)">(X2 · F2)</span></h3>
+  <p class="note">The verdict left the face on the promise that the door would own measurement.
+  Here is that promise kept: the number returns to the card, in the footer, scoped and quiet — never
+  as a face-level score.</p>
+
+  <div class="stagewrap">
+    <div class="stage" id="pG" style="display:flex;flex-direction:column;gap:12px">
+      <div class="n-card"><div class="n-footer">
+        <button class="primary">Write the script →</button>
+        <span class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg>Save</span>
+        <button class="door"><span class="hollow"></span>Not tested yet<span class="door-cta">Simulate with your audience →</span></button>
+      </div></div>
+      <div class="n-card"><div class="n-footer">
+        <button class="primary">Write the script →</button>
+        <span class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg>Save</span>
+        <button class="door"><span class="run"></span>Testing with 10 reactors<span class="door-cta">Watch →</span></button>
+      </div></div>
+      <div class="n-card"><div class="n-footer">
+        <button class="primary">Write the script →</button>
+        <span class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg>Save</span>
+        <button class="door"><span class="solid"></span><span style="color:#c2bdb4">8 of 10 stopped</span><span class="door-cta">See your audience →</span></button>
+      </div></div>
+    </div>
+    <p class="note" style="margin-top:14px;color:#8a857c">Legacy measured cards (pre 2026-07-22)
+    land in the third state directly, which also answers the open legacy-door question in handoff §7
+    without new wording.</p>
+  </div>
+
+  <h3>4.4 — Give the set an axis <span style="color:var(--fg-3);font-size:var(--t-lab)">(X1 · F1)</span></h3>
+  <p class="note">Three of five, as they stack in the thread. Left: v9.2b — one chip, then two cards
+  with an empty kicker band, nothing to compare on. Right: the rank numeral back, plus the taxonomy
+  the schema already carries (<code>visualHook.technique</code>) as the differentiator. No engine
+  change; both fields exist today.</p>
+
+  <div class="stagewrap">
+    <div class="stagerow">
+      <div style="min-width:0">
+        <p class="slab">Current · <em>five identical objects</em></p>
+        <div class="stage" id="pH" style="display:flex;flex-direction:column;gap:12px">
+          <div class="n-card"><div class="n-face" style="padding-bottom:14px">
+            <div class="n-kick"><span class="n-chip">Top pick</span><button class="copy" style="margin-left:auto">Copy</button></div>
+            <p class="serif n-hero" style="font-size:19px"><span class="q">“</span>Stop editing your videos. Do this instead.<span class="q">”</span></p></div></div>
+          <div class="n-card"><div class="n-face" style="padding-bottom:14px">
+            <div class="n-kick"><button class="copy" style="margin-left:auto">Copy</button></div>
+            <p class="serif n-hero" style="font-size:19px"><span class="q">“</span>Your camera roll is lying to you.<span class="q">”</span></p></div></div>
+          <div class="n-card"><div class="n-face" style="padding-bottom:14px">
+            <div class="n-kick"><button class="copy" style="margin-left:auto">Copy</button></div>
+            <p class="serif n-hero" style="font-size:19px"><span class="q">“</span>I deleted 40 hours of footage on purpose.<span class="q">”</span></p></div></div>
+        </div>
+      </div>
+      <div style="min-width:0">
+        <p class="slab">Proposed · <em>ranked, and each one different</em></p>
+        <div class="stage" id="pI" style="display:flex;flex-direction:column;gap:12px">
+          <div class="n-card"><div class="n-face" style="padding-bottom:14px">
+            <div class="n-kick"><span class="rank">#1</span><span class="tag">crash-zoom</span><button class="copy" style="margin-left:auto">Copy</button></div>
+            <p class="serif n-hero" style="font-size:19px"><span class="q">“</span>Stop editing your videos. Do this instead.<span class="q">”</span></p></div></div>
+          <div class="n-card"><div class="n-face" style="padding-bottom:14px">
+            <div class="n-kick"><span class="rank">#2</span><span class="tag">on-screen text</span><button class="copy" style="margin-left:auto">Copy</button></div>
+            <p class="serif n-hero" style="font-size:19px"><span class="q">“</span>Your camera roll is lying to you.<span class="q">”</span></p></div></div>
+          <div class="n-card"><div class="n-face" style="padding-bottom:14px">
+            <div class="n-kick"><span class="rank">#3</span><span class="tag">match-cut</span><button class="copy" style="margin-left:auto">Copy</button></div>
+            <p class="serif n-hero" style="font-size:19px"><span class="q">“</span>I deleted 40 hours of footage on purpose.<span class="q">”</span></p></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h3>4.5 — Measured</h3>
+  <div class="tscroll">
+  <table>
+    <thead><tr><th>Mock</th><th class="n">728</th><th class="n">342</th><th>Against</th></tr></thead>
+    <tbody id="mtable">
+      <tr><td>A · v9.2b control</td><td class="n" data-m="pA-728">—</td><td class="n" data-m="pA-342">—</td><td class="keep">baseline</td></tr>
+      <tr><td>B · measure card</td><td class="n" data-m="pB-728">—</td><td class="n" data-m="pB-342">—</td><td class="keep">vs A</td></tr>
+      <tr><td>C · fact rail</td><td class="n" data-m="pC-728">—</td><td class="n" data-m="pC-342">—</td><td class="keep">vs A</td></tr>
+      <tr><td>D · labelled gutter</td><td class="n" data-m="pD-728">—</td><td class="n" data-m="pD-342">—</td><td class="keep">vs A</td></tr>
+      <tr><td>Brief · five stacked cells</td><td class="n" data-m="pE-728">—</td><td class="n" data-m="pE-342">—</td><td class="keep">current</td></tr>
+      <tr><td>Brief · the map</td><td class="n" data-m="pF-728">—</td><td class="n" data-m="pF-342">—</td><td class="keep">proposed</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<section>
+  <p class="snum">05 — Locks</p>
+  <h2>Five things the handoff records as settled that measurement contradicts</h2>
+  <p class="lede">Each needs an explicit accept or reject before the build plan in §5 of the handoff
+  can run — they are load-bearing for the components it names.</p>
+  <div class="finds">
+    <div class="find"><span class="fid">L1</span><div>
+      <div class="fhead"><h4>§1 · "with them NOTHING real from shipped is lost"</h4><span class="sev block">false</span></div>
+      <p class="fbody">Seven fields are absent, not staged: <code>rank</code>, <code>topic</code>,
+      <code>format</code>, <code>archetype</code>, <code>fitLabel</code>,
+      <code>baselineLabel</code>, <code>channel</code>. Three of them are the set's only
+      differentiators.</p></div></div>
+    <div class="find"><span class="fid">L2</span><div>
+      <div class="fhead"><h4>§5 · "90.7× their usual reach" never "vs followers"</h4><span class="sev block">unsupported</span></div>
+      <p class="fbody">The engine computes views ÷ followers. The locked wording states a ratio
+      nothing calculates, and drops the basis label the shipped card is required to show.</p></div></div>
+    <div class="find"><span class="fid">L3</span><div>
+      <div class="fhead"><h4>§1 · "mobile is the desktop layout narrowed — no special-casing anywhere"</h4>
+        <span class="sev reg">one exception</span></div>
+      <p class="fbody">The brief row's contents list is <code>display:none</code> at 342.</p></div></div>
+    <div class="find"><span class="fid">L4</span><div>
+      <div class="fhead"><h4>§1 · the brief's five cells, as the value fix</h4><span class="sev block">one cell has no data</span></div>
+      <p class="fbody">"Made for N% of your audience" needs <code>reaction_frame</code>, which is a
+      deferred engine follow-up. Four cells ship; the fifth is a heading.</p></div></div>
+    <div class="find"><span class="fid">L5</span><div>
+      <div class="fhead"><h4>§2.7 · the extracted mechanism keyword is "obsolete"</h4><span class="sev craft">re-open</span></div>
+      <p class="fbody">It was retired because brief cells now have fixed titles — a decision about
+      <em>cells</em>. The set-level differentiator problem (X1) is a different problem, and it is
+      currently unsolved. It can be solved without that field, using
+      <code>visualHook.technique</code> and <code>format</code>, which is what §4.4 does — but the
+      lock should be re-read as "obsolete as a cell title", not "obsolete".</p></div></div>
+  </div>
+</section>
+
+<section style="border-bottom:0">
+  <p class="snum">06 — Recommendation</p>
+  <h2>What I would build, in order</h2>
+  <div class="verdict">
+    <h4>Keep, unchanged</h4>
+    <ol>
+      <li>The <b>four-band geometry</b> and the <b>source row</b>. The row is the strongest
+      component in the system and it survives every direction above.</li>
+      <li><b>Staging over deletion</b>, and the verdict off the face.</li>
+      <li>The <b>no-source card</b> as a complete 254px object.</li>
+    </ol>
+    <h4 style="margin-top:22px">Change before build</h4>
+    <ol>
+      <li><b>Pick a width theory</b> — B, C or D from §4.1. Nothing else in the audit matters as
+      much to the "premium" reading, and the build plan cannot start without it.</li>
+      <li><b>The brief becomes the map</b> (§4.2). It fixes the rejected idiom and the dead right
+      half, reuses a grid the owner already approved, and brings <code>topic</code>/<code>format</code>
+      back. It is 43px shorter at 728 and ~100px taller at 342 — settle that trade before building.</li>
+      <li><b>Restore the rank numeral and one taxonomy chip per card</b> (§4.4). Zero engine work;
+      it is the difference between a stack you can scan and five identical objects.</li>
+      <li><b>Give the door three states</b> (§4.3), or the verdict's removal is a deletion.</li>
+      <li><b>Fix the multiplier wording</b> (N1) and derive the row title from the data (N3).</li>
+      <li><b>Decide the empty brief cell</b> (N2): gate it behind <code>reaction_frame</code>, or
+      ship four cells.</li>
+    </ol>
+    <h4 style="margin-top:22px">Cheap craft, any time</h4>
+    <ol>
+      <li>One caret convention; <code>↗</code> for external (V5, X5).</li>
+      <li>Drop the per-beat rules on the script timeline (V4).</li>
+      <li>Label Save; group the footer as [primary + save] · [door] (V6, X3).</li>
+      <li>Un-hide the brief's contents at 342 (X4, L3).</li>
+    </ol>
+  </div>
+</section>
+
+<footer class="wrap">
+  Measured 1 Aug 2026 · shipped renderers via a throwaway preview route, deleted after ·
+  v9.2b via <code>skill-cards-v9-2-bands.html</code> · no <code>src/</code> changes on the branch.
+</footer>
+</div>
+
+<script>
+(function () {
+  document.querySelectorAll('.seg').forEach(function (seg) {
+    seg.addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      document.querySelectorAll('.seg button').forEach(function (x) {
+        x.setAttribute('aria-pressed', String(x.dataset.w === b.dataset.w));
+      });
+      document.body.dataset.w = b.dataset.w;
+      measure();
+    });
+  });
+  var IDS = ['pA','pB','pC','pD','pE','pF'];
+  function measureAt(w) {
+    document.body.dataset.w = w;
+    document.body.offsetHeight; // force layout at the new width before reading
+    IDS.forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      var cell = document.querySelector('[data-m="' + id + '-' + w + '"]');
+      if (cell) cell.textContent = Math.round(el.getBoundingClientRect().height);
+    });
+  }
+  function measure() {
+    var keep = document.body.dataset.w || '728';
+    document.body.classList.add('measuring');
+    measureAt('342');
+    measureAt('728');
+    document.body.dataset.w = keep;
+    document.body.classList.remove('measuring');
+  }
+  document.body.dataset.w = '728';
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(measure);
+  else setTimeout(measure, 300);
+})();
+</script>
