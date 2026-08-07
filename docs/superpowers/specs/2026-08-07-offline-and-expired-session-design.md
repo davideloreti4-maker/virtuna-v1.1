@@ -27,8 +27,15 @@ starting premises were wrong and are corrected below; a third number was off by 
 | `online` / `offline` event listeners | **0 hits** — true |
 | Client-side `status === 401` checks outside `api/` + `lib/` | **0 hits** — true |
 | "There is no client-side session handling" | ❌ **FALSE** — see §2.1 |
-| "37 `reportCredit402` call sites" | ❌ **14 call sites in 14 files** (the 37 counted comments + the definition) |
+| "37 `reportCredit402` call sites" | ❌ **20 call sites across 14 files** — see note below |
 | A 401 from an API route reaches the client | ✅ true — see §2.2 |
+
+> ⚠️ **That count was wrong twice, in opposite directions.** First 37 — the grep counted the
+> definition file and prose comments. Then 14 — the corrected grep filtered `// ` to drop
+> comment-only lines and silently dropped six *real* call sites carrying a trailing
+> `// wall dialog if it's the credit 402`. The verified figure is **20 call sites in 14 files**,
+> enumerated in §4. **Count call sites by listing them, never by piping a filtered `grep` into
+> `wc -l`** — a filter that removes signal looks identical to a smaller codebase.
 
 ### §2.1 — `AuthGuard` already owns session expiry, and it is the reason not to build a second one
 
@@ -166,9 +173,30 @@ outright would strand a user whose connection returns a second later.
 
 ## §4 — Scope, stated as a limit rather than implied as coverage
 
-`reportSession401` goes at the **14 sites that already call `reportCredit402`**. That set is
-exactly "fetch sites that can be refused" — the paid run paths, where a silent failure costs
-the most.
+`reportSession401` goes at the **20 sites that already call `reportCredit402`, across 14
+files**. That set is exactly "fetch sites that can be refused" — the paid run paths, where a
+silent failure costs the most. Enumerated, so nobody has to re-derive it:
+
+| File | Sites |
+|---|---|
+| `src/components/app/home/composer.tsx` | 3 |
+| `src/components/thread/input-request-block.tsx` | 3 |
+| `src/hooks/queries/use-ideas-stream.ts` | 2 |
+| `src/hooks/queries/use-hooks-stream.ts` | 2 |
+| `src/components/saved/saved-row.tsx` | 1 |
+| `src/components/audience-lens/v2/SimulateDoorHost.tsx` | 1 |
+| `src/components/audience-lens/v2/AmbientOverviewRail.tsx` | 1 |
+| `src/components/thread/idea-card-block.tsx` | 1 |
+| `src/components/thread/reaction-distribution-block.tsx` | 1 |
+| `src/hooks/queries/use-account-read-stream.ts` | 1 |
+| `src/hooks/queries/use-script-stream.ts` | 1 |
+| `src/hooks/queries/use-explore-stream.ts` | 1 |
+| `src/hooks/queries/use-remix-stream.ts` | 1 |
+| `src/hooks/queries/use-chat-stream.ts` | 1 |
+
+⚠️ `use-chat-stream.ts` is the odd one — it calls `reportCredit402(402, quota)` with a
+hardcoded status against an already-parsed quota object, not `(res.status, err)`. It needs a
+different edit from the other 19 and must not be pattern-matched into them.
 
 There are **113 raw `/api` fetch sites in client components and no shared fetch wrapper.** The
 other 99 are **not** covered by this work. A 401 from one of them still renders whatever that
