@@ -55,9 +55,15 @@ export function SessionExpiredListener() {
       <DialogContent size="sm">
         <DialogHeader>
           <DialogTitle>You&rsquo;ve been signed out.</DialogTitle>
+          {/* ⚠️ It does NOT promise the composer still holds what you typed. An earlier draft of
+              this line ended "anything you've typed is still here", which the browser walk showed
+              to be false after a send: the composer clears optimistically ~150ms in, before any
+              response lands, and the words move into the thread. They are still on screen, which
+              is the guarantee not-navigating actually buys — so the sentence claims that and no
+              more. */}
           <DialogDescription>
             Your session ended before that run started, so nothing was charged. Sign in again to
-            pick up where you left off &mdash; anything you&rsquo;ve typed is still here.
+            pick up where you left off.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
