@@ -151,6 +151,15 @@ describe("composer v8 (flag on)", () => {
     expect(screen.getByTestId("audience-sheet")).toBeInTheDocument();
   });
 
+  it("typing / opens the portaled slash menu (the in-place one is clipped invisible)", async () => {
+    renderWithClient(<Composer />);
+    const field = (await screen.findAllByRole("textbox"))[0]!;
+    fireEvent.change(field, { target: { value: "/te" } });
+    const menu = await screen.findByRole("menu", { name: "Skills" });
+    // Portaled to <body>, not nested in the overflow-hidden composer box.
+    expect(menu.parentElement).toBe(document.body);
+  });
+
   it("the arrival is the v8 greeting — the Start grid and starter are gone", async () => {
     renderWithClient(<Composer />);
     expect(await screen.findByTestId("arrival-v8")).toBeInTheDocument();

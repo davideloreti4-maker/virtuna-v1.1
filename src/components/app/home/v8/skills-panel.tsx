@@ -220,16 +220,22 @@ export function SkillsPanel({
 
   if (!isWide) {
     return createPortal(
-      <div data-testid="skills-panel" role="dialog" aria-modal="true" aria-label="Skills">
+      // The dialog role lives on the SHEET itself, not a wrapper — a zero-height
+      // wrapper around fixed children reads as "hidden" to visibility checks.
+      <>
         <div className="fixed inset-0 z-[var(--z-modal)] bg-black/40" onMouseDown={onClose} />
         <div
           ref={panelRef}
+          data-testid="skills-panel"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Skills"
           className="fixed inset-x-0 bottom-0 z-[var(--z-modal)] max-h-[78dvh] overflow-y-auto rounded-t-[22px] border border-b-0 border-white/[0.10] bg-surface-sunken px-3 pb-[max(20px,env(safe-area-inset-bottom))] pt-2"
         >
           <div className="mx-auto mb-2 h-1 w-[34px] rounded-full bg-surface-elevated" />
           {groupedList(true)}
         </div>
-      </div>,
+      </>,
       document.body,
     );
   }

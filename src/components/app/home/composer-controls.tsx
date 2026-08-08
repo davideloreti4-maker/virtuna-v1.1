@@ -273,20 +273,23 @@ export function Ico({
 // NOTE: because it lives outside the controls root, the host's outside-click
 // handler must exclude it via `menuRef` (else the mousedown closes it before a
 // row's click fires).
-function Popover({
+export function UpwardPopover({
   open,
   anchorRef,
   menuRef,
   children,
   className,
   labelledBy,
+  ariaLabel,
 }: {
   open: boolean;
-  anchorRef: React.RefObject<HTMLButtonElement | null>;
+  anchorRef: React.RefObject<HTMLElement | null>;
   menuRef?: React.RefObject<HTMLDivElement | null>;
   children: React.ReactNode;
   className?: string;
   labelledBy?: string;
+  /** Direct name for hosts with no visible trigger label (the v8 slash menu). */
+  ariaLabel?: string;
 }) {
   const [pos, setPos] = useState<{ left: number; bottom: number } | null>(null);
 
@@ -314,6 +317,7 @@ function Popover({
       ref={menuRef}
       role="menu"
       aria-labelledby={labelledBy}
+      aria-label={ariaLabel}
       style={{ left: pos?.left ?? 0, bottom: pos?.bottom ?? 0 }}
       className={cn(
         "fixed z-[60]",
@@ -329,6 +333,11 @@ function Popover({
     document.body,
   );
 }
+
+// Internal alias — exported as UpwardPopover for the v8 slash menu (the composer box's
+// overflow-hidden clips anything absolutely positioned above it; the portal dodges it,
+// which is the whole reason this component exists).
+const Popover = UpwardPopover;
 
 function GroupLabel({ children }: { children: React.ReactNode }) {
   return (

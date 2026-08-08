@@ -86,6 +86,7 @@ import {
   ComposerControls,
   Ico,
   MAX_BILLABLE_BY_TOOL,
+  UpwardPopover,
   SimModelSelector,
   SkillRows,
   SKILLS,
@@ -523,6 +524,8 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   const [skillsPanelOpen, setSkillsPanelOpen] = useState(false);
   const [audienceSheetOpen, setAudienceSheetOpen] = useState(false);
   const skillPillRef = useRef<HTMLButtonElement | null>(null);
+  // Anchors the v8 slash-menu portal to the field block (see the slash-menu mount).
+  const slashAnchorRef = useRef<HTMLDivElement | null>(null);
   const {
     lens: platformLens,
     setLens: setPlatformLens,
@@ -3030,12 +3033,26 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
             <p className="text-sm text-foreground-secondary">{EVIDENCE_DROP_HINT}</p>
           </div>
         )}
-        <div className="relative p-4">
+        <div ref={slashAnchorRef} className="relative p-4">
           {/* `/` slash command menu (UX-01) — opens UPWARD above the composer when
               the field value starts with `/`. Filterable; selecting sets the skill
               and clears the `/`. SkillRows is the same list the pill used to show — this is
               the only place it renders now. */}
-          {slashActive && (
+          {/* v8: PORTALED (UpwardPopover) — the composer box's overflow-hidden clips the
+              in-place absolutely-positioned menu COMPLETELY (measured 2026-08-08: the menu
+              rect ends 9px above the clip box, so the live menu is invisible). The legacy
+              branch below keeps its markup byte-identical. */}
+          {slashActive && CONCEPT_V8_ENABLED && (
+            <UpwardPopover open anchorRef={slashAnchorRef} ariaLabel="Skills" className="w-[320px]">
+              <SkillRows
+                active={activeTool}
+                filter={slashQuery}
+                onSelect={selectSkill}
+                activeMode={selectedAudience?.mode ?? "socials"}
+              />
+            </UpwardPopover>
+          )}
+          {slashActive && !CONCEPT_V8_ENABLED && (
             <div
               role="menu"
               aria-label="Skills"

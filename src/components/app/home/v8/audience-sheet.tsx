@@ -152,9 +152,15 @@ export function AudienceSheetV8({
   );
 
   return createPortal(
-    <div data-testid="audience-sheet" role="dialog" aria-modal="true" aria-label="Creating for">
+    // The dialog role lives on the PANEL itself, not a wrapper — a zero-height
+    // wrapper around fixed children reads as "hidden" to visibility checks.
+    <>
       <div className="fixed inset-0 z-[var(--z-modal)] bg-black/40" onMouseDown={onClose} />
       <div
+        data-testid="audience-sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Creating for"
         className={cn(
           "fixed z-[var(--z-modal)] overflow-y-auto border-white/[0.10] bg-surface-sunken",
           isWide
@@ -165,7 +171,7 @@ export function AudienceSheetV8({
         {!isWide && <div className="mx-auto mb-2 h-1 w-[34px] rounded-full bg-surface-elevated" />}
         {body}
       </div>
-    </div>,
+    </>,
     document.body,
   );
 }
