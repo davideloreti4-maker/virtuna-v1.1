@@ -225,8 +225,10 @@ describe("runRemixPipeline (new call system — generate-and-project)", () => {
 
     for (const b of blocks) {
       expect(b.props.scrollQuote).toMatch(/Stop quote/);
-      expect(b.props.sourceDecode.hookPattern).toBe("A pattern interrupt");
-      expect(b.props.sourceDecode.emotionalBeat).toBe("Hope and resolve");
+      // Runner cards ALWAYS carry the real 4-beat decode (only drop-SEEDED cards omit it).
+      expect(b.props.sourceDecode).toBeDefined();
+      expect(b.props.sourceDecode!.hookPattern).toBe("A pattern interrupt");
+      expect(b.props.sourceDecode!.emotionalBeat).toBe("Hope and resolve");
     }
   });
 
