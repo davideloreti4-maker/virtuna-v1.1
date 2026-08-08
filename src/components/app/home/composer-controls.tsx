@@ -39,6 +39,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import { HORIZONTAL_ENABLED } from "@/lib/flags/horizontal";
+import type { BillableAction } from "@/lib/pricing";
 
 // ─── Skill vocabulary (SSOT) ─────────────────────────────────────────────────
 // The skill id union, including the not-yet-shipped skills: "explore" (P11),
@@ -154,6 +155,13 @@ export const MODEL_LABEL: Record<ToolId, string> = SKILLS.reduce(
   (acc, s) => ({ ...acc, [s.id]: `SIM-1 ${s.model}` }),
   {} as Record<ToolId, string>,
 );
+
+// The billable action a MAX-TIER skill spends — the v8 model chip's price tag reads
+// CREDIT_COSTS through this map (handoff §5: the mock's "12 cr" is fabricated; the
+// pricing table is the only source). Only SHIPPED Max skills appear.
+export const MAX_BILLABLE_BY_TOOL: Partial<Record<ToolId, BillableAction>> = {
+  test: "score",
+};
 
 // ─── Line-icon SVGs (premium, no emoji) — paths from sketch 006 ──────────────
 const ICONS: Record<string, string> = {
@@ -483,9 +491,11 @@ export interface SimModelSelectorProps {
   value: SkillModel;
   onChange: (m: SkillModel) => void;
   className?: string;
+  /** v8: the armed Max skill's credit price ("10 cr") — a price tag, not a model note. */
+  price?: string;
 }
 
-export function SimModelSelector({ value, onChange, className }: SimModelSelectorProps) {
+export function SimModelSelector({ value, onChange, className, price }: SimModelSelectorProps) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -532,6 +542,7 @@ export function SimModelSelector({ value, onChange, className }: SimModelSelecto
       >
         <span className="whitespace-pre text-foreground-secondary">{"SIM-1 "}</span>
         <span className="font-medium text-foreground">{value}</span>
+        {price && <span className="whitespace-pre text-foreground-muted">{` · ${price}`}</span>}
         <Ico name="chev" size={13} className="text-foreground-secondary" />
       </button>
       <Popover open={open} anchorRef={triggerRef} menuRef={menuRef} className="min-w-[260px]">
