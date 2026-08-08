@@ -32,6 +32,10 @@ export function HomePageLayout() {
   // Composer re-renders once the aside mounts and can portal its room in. Only rendered ≥xl in
   // thread mode; null otherwise ⇒ the composer keeps the room in its dock.
   const [railHost, setRailHost] = useState<HTMLDivElement | null>(null);
+  // v8 (Phase 3): a PINNED verdict report docks in the same right column the retiring rail used.
+  // It can be pinned from the ARRIVAL (no thread at all), so the aside mounts for it too — the
+  // composer owns the state, the layout owns the column.
+  const [reportPinned, setReportPinned] = useState(false);
   const reducedMotion = usePrefersReducedMotion();
 
   const handleThreadChange = useCallback((next: boolean) => {
@@ -48,6 +52,10 @@ export function HomePageLayout() {
 
   const handleRehydratingChange = useCallback((next: boolean) => {
     setRehydrating(next);
+  }, []);
+
+  const handleReportPinnedChange = useCallback((next: boolean) => {
+    setReportPinned(next);
   }, []);
 
   // Thread mode owns a full-width scroll surface (composer re-centers content at
@@ -118,9 +126,10 @@ export function HomePageLayout() {
           onConversationChange={handleConversationChange}
           onRehydratingChange={handleRehydratingChange}
           railHost={railHost}
+          onReportPinnedChange={handleReportPinnedChange}
         />
       </div>
-      {threadMode && (
+      {(threadMode || reportPinned) && (
         // The persistent audience rail — desktop (≥xl) only; `hidden` below xl so the composer's
         // dock peek owns it there. The composer portals <AudiencePresence variant='rail'> into this
         // host. shrink-0 fixed width; full height with internal scroll (the rail body scrolls).

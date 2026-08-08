@@ -20,17 +20,29 @@ vi.mock('../composer', () => ({
   Composer: ({
     onThreadChange,
     railHost,
+    onReportPinnedChange,
   }: {
     onThreadChange?: (v: boolean) => void;
     railHost?: HTMLElement | null;
+    onReportPinnedChange?: (v: boolean) => void;
   }) => (
-    <button
-      data-testid="composer-stub"
-      data-has-rail={railHost ? 'yes' : 'no'}
-      onClick={() => onThreadChange?.(true)}
-    >
-      stub
-    </button>
+    <>
+      <button
+        data-testid="composer-stub"
+        data-has-rail={railHost ? 'yes' : 'no'}
+        onClick={() => onThreadChange?.(true)}
+      >
+        stub
+      </button>
+      {/* v8 Phase 3: the composer owns the report's pinned state; the LAYOUT owns the column it
+          docks into, and a report can be pinned from the arrival (no thread). */}
+      <button data-testid="pin-stub" onClick={() => onReportPinnedChange?.(true)}>
+        pin
+      </button>
+      <button data-testid="unpin-stub" onClick={() => onReportPinnedChange?.(false)}>
+        unpin
+      </button>
+    </>
   ),
 }));
 
@@ -75,5 +87,26 @@ describe('HomePageLayout — A2a audience rail wiring', () => {
     // Tailwind `hidden xl:flex` — the base state is display:none until the xl media query.
     expect(aside?.className).toMatch(/(^|\s)hidden(\s|$)/);
     expect(aside?.className).toMatch(/xl:flex/);
+  });
+
+  it('mounts the rail when the REPORT is pinned, even with no thread (v8 Phase 3)', () => {
+    render(<HomePageLayout />);
+    expect(railAside()).toBeNull();
+    act(() => {
+      fireEvent.click(screen.getByTestId('pin-stub'));
+    });
+    expect(railAside()).not.toBeNull();
+    expect(screen.getByTestId('composer-stub').getAttribute('data-has-rail')).toBe('yes');
+  });
+
+  it('unpinning takes the rail away again — the page is clean', () => {
+    render(<HomePageLayout />);
+    act(() => {
+      fireEvent.click(screen.getByTestId('pin-stub'));
+    });
+    act(() => {
+      fireEvent.click(screen.getByTestId('unpin-stub'));
+    });
+    expect(railAside()).toBeNull();
   });
 });

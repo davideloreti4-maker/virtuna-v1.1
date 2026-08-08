@@ -315,9 +315,12 @@ export interface ComposerProps {
    *  in the composer; only the DOM owner changes). Null/absent ⇒ the dock keeps the room (the
    *  <xl header path lands in A2b). Exactly one AmbientRoom mounts either way. */
   railHost?: HTMLElement | null;
+  /** v8: the composer owns the report's pinned state; the LAYOUT owns the column it docks into
+   *  (and must mount that column even on the arrival, where there is no thread). */
+  onReportPinnedChange?: (next: boolean) => void;
 }
 
-export function Composer({ className, onThreadChange, onEngagedChange, onConversationChange, onRehydratingChange, railHost = null }: ComposerProps) {
+export function Composer({ className, onThreadChange, onEngagedChange, onConversationChange, onRehydratingChange, railHost = null, onReportPinnedChange }: ComposerProps) {
   const router = useRouter();
   const { toast } = useToast();
   const reducedMotion = usePrefersReducedMotion();
@@ -559,6 +562,11 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   const { watching: simWatching, snapshots: simSnapshots, fireSim: fireCardSim } = useFireSim();
   // The descriptor id whose fired run should land IN the open report when it seals.
   const pendingSimIdRef = useRef<string | null>(null);
+
+  // The layout mounts the pinned report's column, so it has to know when the pin flips.
+  useEffect(() => {
+    onReportPinnedChange?.(reportPinned);
+  }, [reportPinned, onReportPinnedChange]);
 
   // A drop's meter → its CACHED read. This path never touches the network: the drops are the only
   // pre-scored surface, and opening one's report READS the cache (SSOT §1, fire-on-demand).
@@ -3529,11 +3537,16 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           ≥xl thread → PORTALED to HomePageLayout's right rail (A2a);
           <xl thread → the HEADER above the thread (A2b, rendered in the thread branch — not here);
           empty / permalink → bloom panel only while roomExpanded (no chip affordance on home). */}
-      {useRail && railHost
-        ? createPortal(AMBIENT_V2_ENABLED ? audienceRailV2 : audienceRail, railHost)
-        : CONCEPT_V8_ENABLED || useHeader || !roomExpanded
-          ? null
-          : audiencePresence}
+      {/* v8 (Phase 3): AmbientOverviewRail RETIRES — the persistent rail becomes a CHOICE. The
+          ≥xl column now hosts the PINNED report (VerdictReport portals itself into `railHost`)
+          and nothing at all when it is unpinned. Flag off ⇒ this portal is untouched. */}
+      {CONCEPT_V8_ENABLED
+        ? null
+        : useRail && railHost
+          ? createPortal(AMBIENT_V2_ENABLED ? audienceRailV2 : audienceRail, railHost)
+          : useHeader || !roomExpanded
+            ? null
+            : audiencePresence}
       <div className="relative w-full">
         {/* Opaque page-bg backdrop — thread mode ONLY, where the dock floats over the scroll.
             The card is opaque, but its rounded corners and the 16px strip below it are not, so
