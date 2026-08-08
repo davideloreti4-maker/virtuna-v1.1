@@ -64,7 +64,7 @@ import { HORIZONTAL_ENABLED } from "@/lib/flags/horizontal";
 import { AMBIENT_V2_ENABLED } from "@/lib/flags/ambient-v2";
 import { AmbientOverviewSheet } from "@/components/audience-lens/v2/AmbientOverviewSheet";
 import { MOBILE_NAV_BAND } from "@/components/sidebar/Sidebar";
-import type { WireSimSealMap } from "@/lib/onboarding/verdict-seal";
+import { isSealedSimSeal, type WireSimSealMap } from "@/lib/onboarding/verdict-seal";
 import { queryKeys } from "@/lib/queries/query-keys";
 import {
   setActiveThreadCookie,
@@ -2428,14 +2428,68 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       // matching text alone opened the FIRST of two identical concepts (family of #306).
       const d = resolveFocusDescriptor(ambientDescriptors, conceptText, cardId);
       if (!d) return false;
+
+      if (CONCEPT_V8_ENABLED) {
+        // v8 (Phase 3): a card's door opens THE REPORT. A card simulated this session opens on
+        // its snapshot; a persisted seal re-opens it after a reload; an unsimulated card is the
+        // FIRE-ON-DEMAND path — one deliberate act, one billed run (useFireSim drops re-taps
+        // while a run is in flight, which is the debounce that protects credits).
+        const snap = simSnapshots[d.id];
+        const seal = persistedSimSeals?.[d.conceptText.trim()];
+        const sealed = seal && !isSealedSimSeal(seal) ? seal : null;
+        if (snap) {
+          setReportSubject({
+            id: d.id,
+            title: d.conceptText,
+            personas: snap.personas,
+            population: snap.population,
+            stopPct: snap.stopPct,
+          });
+        } else if (sealed) {
+          setReportSubject({
+            id: d.id,
+            title: d.conceptText,
+            personas: sealed.personas ?? [],
+            population: sealed.population ?? null,
+            stopPct: sealed.pct,
+          });
+        } else {
+          // Nothing measured yet: the report opens on the sealed watcher and the verdict lands
+          // when the run returns (the sealed-verdict law).
+          setReportSubject(null);
+          pendingSimIdRef.current = d.id;
+          void fireCardSim(d.id, d.conceptText, d.kind);
+        }
+        setRoomExpanded(true);
+        return true;
+      }
+
       setRoomDrill(true);
       focusByTap(d.id);
       // Visual expand only (dock/header) — drilling into a card's read never arms the ask verb.
       setRoomExpanded(true);
       return true;
     },
-    [ambientDescriptors, focusByTap],
+    [ambientDescriptors, focusByTap, simSnapshots, persistedSimSeals, fireCardSim],
   );
+
+  // A fired run seals into `simSnapshots`; promote it into the OPEN report. Keyed on the pending
+  // id so the reveal happens exactly once per run (the sealed-verdict beat).
+  useEffect(() => {
+    const id = pendingSimIdRef.current;
+    if (!id) return;
+    const snap = simSnapshots[id];
+    if (!snap) return;
+    pendingSimIdRef.current = null;
+    const d = ambientDescriptors.find((x) => x.id === id);
+    setReportSubject({
+      id,
+      title: d?.conceptText ?? "",
+      personas: snap.personas,
+      population: snap.population,
+      stopPct: snap.stopPct,
+    });
+  }, [simSnapshots, ambientDescriptors]);
 
   // ── The tested-video door (Test card → the room's audience read) ────────────
   // A video Test's RECEPTION was already measured — the analyze run repainted the fold with this
