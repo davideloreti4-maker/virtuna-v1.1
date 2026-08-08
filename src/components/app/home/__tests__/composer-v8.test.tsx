@@ -9,7 +9,7 @@
  * Flag-off behavior is covered by the whole EXISTING suite (default env = both off).
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { screen, fireEvent, cleanup, waitFor } from "@testing-library/react";
+import { screen, fireEvent, cleanup, waitFor, within } from "@testing-library/react";
 import { renderWithClient } from "@/test/render-with-client";
 
 vi.mock("@/lib/flags/ambient-v2", () => ({ AMBIENT_V2_ENABLED: true }));
@@ -77,6 +77,21 @@ const SOCIALS_AUD = {
   source_account_id: "acct-1",
 };
 
+// A drop card as the warm route returns it (Phase 2 — the shelf).
+const DROP_CARD = {
+  contentId: "d1",
+  hook: "Adapted drop hook",
+  coverUrl: "https://x.supabase.co/storage/v1/object/public/covers/c.jpg",
+  videoUrl: "https://tiktok.example/v/1",
+  views: "8.1M",
+  viewsRaw: 8_100_000,
+  handle: "creator",
+  archetype: null,
+  hookTemplate: null,
+  concepts: [],
+  personas: [{ archetype: "a", verdict: "stop", quote: "" }],
+};
+
 function installFetchMock() {
   global.fetch = vi.fn((input: RequestInfo | URL) => {
     const url = String(input);
@@ -85,6 +100,9 @@ function installFetchMock() {
     else if (url.includes("/api/threads/new")) body = { threadId: "t-new" };
     else if (url.includes("/api/threads/open")) body = { threadId: "t1", messages: [] };
     else if (url.includes("/api/tracked-accounts")) body = { accounts: [] };
+    else if (url.includes("/api/surfaces/drops/remix")) body = { threadId: "t-seeded" };
+    else if (url.includes("/api/surfaces/drops"))
+      body = { drops: [DROP_CARD, { ...DROP_CARD, contentId: "d2", hook: "Second drop" }] };
     return Promise.resolve({ ok: true, json: () => Promise.resolve(body) } as Response);
   }) as typeof fetch;
 }
@@ -123,8 +141,10 @@ describe("composer v8 (flag on)", () => {
   it("skill pill opens the skills panel; Use arms the skill as a field tag", async () => {
     renderWithClient(<Composer />);
     fireEvent.click(await screen.findByTestId("composer-skill-pill"));
-    expect(screen.getByTestId("skills-panel")).toBeInTheDocument();
-    fireEvent.click(screen.getByText("Remix"));
+    const panel = screen.getByTestId("skills-panel");
+    expect(panel).toBeInTheDocument();
+    // Scoped: the Phase-2 shelf renders its own "Remix" buttons outside the panel.
+    fireEvent.click(within(panel).getByText("Remix"));
     fireEvent.click(screen.getByRole("button", { name: "Use" }));
     await waitFor(() => {
       expect(screen.getByTestId("composer-armed-skill")).toHaveAttribute("data-skill", "remix");
@@ -165,5 +185,27 @@ describe("composer v8 (flag on)", () => {
     expect(await screen.findByTestId("arrival-v8")).toBeInTheDocument();
     expect(screen.queryByTestId("ambient-start-sim-door")).toBeNull();
     expect(screen.getByTestId("composer-chips-row")).toBeInTheDocument();
+  });
+
+  it("the shelf renders today's drops over the warm route; the greeting flips to the shelf headline", async () => {
+    renderWithClient(<Composer />);
+    expect(await screen.findByTestId("drop-card-d1")).toBeInTheDocument();
+    expect(screen.getByTestId("drop-card-d2")).toBeInTheDocument();
+    expect(screen.getByTestId("arrival-v8").textContent).toContain("Tonight's remixes");
+  });
+
+  it("Remix on a drop seeds the thread: POSTs the seed route, points the cookie at it", async () => {
+    renderWithClient(<Composer />);
+    const cardEl = await screen.findByTestId("drop-card-d1");
+    fireEvent.click(within(cardEl).getByRole("button", { name: /remix/i }));
+    await waitFor(() => {
+      const calls = (global.fetch as ReturnType<typeof vi.fn>).mock.calls;
+      const seed = calls.find(([u]) => String(u).includes("/api/surfaces/drops/remix"));
+      expect(seed).toBeDefined();
+      expect(String((seed![1] as RequestInit).body)).toContain('"contentId":"d1"');
+    });
+    await waitFor(() => {
+      expect(document.cookie).toContain("maven_active_thread=t-seeded");
+    });
   });
 });

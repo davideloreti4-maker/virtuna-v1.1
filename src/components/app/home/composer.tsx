@@ -105,6 +105,10 @@ import { ComposerSubBar, RoomOverlay } from "./v8/sub-bar";
 import { AudienceSheetV8 } from "./v8/audience-sheet";
 import { ChipsRow } from "./v8/chips-row";
 import { ArrivalV8 } from "./v8/arrival";
+// ── Composer v8 Phase 2 (the shelf) ──────────────────────────────────────────
+import { DropShelf } from "./v8/drop-shelf";
+import { useLazyWarm } from "@/lib/surfaces/use-lazy-warm";
+import type { LiveDropCard } from "@/lib/surfaces/live-cards";
 import { usePlatformLens, LENS_LABEL } from "./v8/platform-lens";
 import type { Platform } from "./platform-chip";
 import type { Audience, AudiencePlatform } from "@/lib/audience/audience-types";
@@ -571,6 +575,9 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // the in-memory equivalent of a remount when navigating /home → /home.
   const activeThreadSignal = useBoardStore((s) => s.activeThreadSignal);
   const setActiveThreadId = useBoardStore((s) => s.setActiveThreadId);
+  // v8 Phase 2: the drop-Remix handoff switches to the freshly-seeded thread the
+  // same way the sidebar does (cookie → id → pulse).
+  const switchThread = useBoardStore((s) => s.switchThread);
   const queryClient = useQueryClient();
   const isFirstThreadLoadRef = useRef(true);
 
@@ -862,6 +869,55 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   useEffect(() => {
     onConversationChange?.(hasConversationContent);
   }, [hasConversationContent, onConversationChange]);
+
+  // ── v8 Phase 2 — the shelf: today's drops over the daily-surface cache ──────
+  // First visit of the day warms via POST /api/surfaces/drops (skeletons); a warm
+  // cache returns instantly. The platform lens deliberately does NOT key this
+  // cache (spec: the lens changes generation prompts only). The warm key advances
+  // only AFTER an audience switch's persist settles (use-lazy-warm contract) —
+  // see handleSelectAudience. Flag-off: enabled=false → the hook is inert.
+  const [warmAudienceKey, setWarmAudienceKey] = useState<string>("general");
+  const dropsEnabled =
+    CONCEPT_V8_ENABLED &&
+    AMBIENT_V2_ENABLED &&
+    !hasConversationContent &&
+    !startEngaged &&
+    !rehydrating;
+  const { items: dropCards, status: dropsStatus } = useLazyWarm<LiveDropCard>(
+    null,
+    "/api/surfaces/drops",
+    "drops",
+    dropsEnabled,
+    warmAudienceKey,
+  );
+
+  // Remix a drop: seed the persisted thread from the CACHED card (zero model
+  // calls — fire-on-demand law intact) and switch to it; the normal open-thread
+  // rehydration renders the 3-angle stack.
+  const [remixingDropId, setRemixingDropId] = useState<string | null>(null);
+  const handleRemixDrop = useCallback(
+    async (card: LiveDropCard) => {
+      if (remixingDropId) return; // one seed in flight
+      setRemixingDropId(card.contentId);
+      try {
+        const res = await fetch("/api/surfaces/drops/remix", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contentId: card.contentId }),
+        });
+        if (!res.ok) return; // honest no-op — the card stays tappable, nothing fabricated
+        const { threadId } = (await res.json()) as { threadId: string };
+        setActiveThreadCookie(threadId);
+        setActiveThreadId(threadId);
+        switchThread();
+      } catch {
+        // network failure → no-op (card stays tappable)
+      } finally {
+        setRemixingDropId(null);
+      }
+    },
+    [remixingDropId, setActiveThreadId, switchThread],
+  );
 
   // A1: notify parent of the rehydrate window so HomePageLayout keeps the thread
   // shell mounted + suppresses the welcome hero during a thread switch (the gate is
@@ -1157,11 +1213,15 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     // valid last-used pin — virtual preset ids stay session-local (like the thread pin, below).
     // Fire-and-forget: non-fatal if it fails (the in-memory selection still reflects the pick).
     if (newId === null || UUID_PATTERN.test(newId)) {
-      void fetch("/api/settings/last-audience", {
+      const put = fetch("/api/settings/last-audience", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ audienceId: newId }),
       }).catch(() => {});
+      // v8 Phase 2: advance the shelf's warm key only AFTER the persist settles —
+      // the drops route server-resolves the audience, so a key that leads the PUT
+      // would cache the OLD audience's cards under the NEW key (use-lazy-warm doc).
+      if (CONCEPT_V8_ENABLED) void put.then(() => setWarmAudienceKey(newId ?? "general"));
     }
     // WR-02: reconcile the active skill with the new audience's mode. If the current
     // tool isn't valid in the new mode (e.g. "simulate" lingering after a General →
@@ -3671,9 +3731,17 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
               // 1512×982 — the last starter card, sliced, on the first screen a new account sees.
               <div className="flex min-h-full flex-col justify-end pt-6 pb-40">
                 {CONCEPT_V8_ENABLED ? (
-                  // v8 arrival: the greeting only — the config-and-skills Start surface
-                  // retires (spec §6); the shelf lands here in Phase 2.
-                  <ArrivalV8 />
+                  // v8 arrival (Phase 2): greeting + the shelf — spec §0b restraint:
+                  // greeting · drops · composer, nothing else.
+                  <>
+                    <ArrivalV8 shelfReady={dropCards.length > 0} />
+                    <DropShelf
+                      cards={dropCards}
+                      status={dropsStatus}
+                      onRemix={(c) => void handleRemixDrop(c)}
+                      remixingId={remixingDropId}
+                    />
+                  </>
                 ) : (
                   <AmbientStartHome
                     audience={effectiveAudience}
@@ -3753,8 +3821,16 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
         // still arms the tool and drops into the normal fresh-chat home.
         <>
         {CONCEPT_V8_ENABLED ? (
-          // v8 arrival (see the branch-A mount): greeting only, Start surface retired.
-          <ArrivalV8 />
+          // v8 arrival (see the branch-A mount): greeting + the shelf (Phase 2).
+          <>
+            <ArrivalV8 shelfReady={dropCards.length > 0} />
+            <DropShelf
+              cards={dropCards}
+              status={dropsStatus}
+              onRemix={(c) => void handleRemixDrop(c)}
+              remixingId={remixingDropId}
+            />
+          </>
         ) : (
           <AmbientStartHome
             audience={effectiveAudience}
