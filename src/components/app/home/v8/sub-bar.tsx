@@ -50,7 +50,7 @@ export function ComposerSubBar({
         type="button"
         aria-label="Choose audience and platform"
         onClick={onOpenAudience}
-        className="flex min-w-0 items-center gap-2 rounded-md px-1 py-0.5 text-left text-[12.5px] text-foreground-secondary transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring)]"
+        className="flex min-w-0 items-center gap-2 rounded-md px-1 py-0.5 text-left text-label text-foreground-secondary transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring)]"
       >
         <span className="flex shrink-0 items-center">
           {Array.from({ length: dotCount }, (_, i) => (
@@ -74,7 +74,7 @@ export function ComposerSubBar({
         <span className="truncate">
           {audience.name} · {lensLabel}
         </span>
-        <span aria-hidden className="shrink-0 text-[9px] text-foreground-muted">
+        <span aria-hidden className="shrink-0 text-micro text-foreground-muted">
           ▾
         </span>
       </button>
@@ -82,7 +82,7 @@ export function ComposerSubBar({
         type="button"
         aria-label="Open the simulation room"
         onClick={onOpenSim}
-        className="ml-auto flex shrink-0 items-center gap-1.5 rounded-md px-1 py-0.5 font-mono text-[11px] text-foreground-secondary transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring)]"
+        className="ml-auto flex shrink-0 items-center gap-1.5 rounded-md px-1 py-0.5 font-mono text-caption text-foreground-secondary transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring)]"
       >
         {watching ? (
           "watching…"
