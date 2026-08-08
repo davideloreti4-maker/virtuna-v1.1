@@ -39,6 +39,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import { HORIZONTAL_ENABLED } from "@/lib/flags/horizontal";
+import type { BillableAction } from "@/lib/pricing";
 
 // ─── Skill vocabulary (SSOT) ─────────────────────────────────────────────────
 // The skill id union, including the not-yet-shipped skills: "explore" (P11),
@@ -155,6 +156,13 @@ export const MODEL_LABEL: Record<ToolId, string> = SKILLS.reduce(
   {} as Record<ToolId, string>,
 );
 
+// The billable action a MAX-TIER skill spends — the v8 model chip's price tag reads
+// CREDIT_COSTS through this map (handoff §5: the mock's "12 cr" is fabricated; the
+// pricing table is the only source). Only SHIPPED Max skills appear.
+export const MAX_BILLABLE_BY_TOOL: Partial<Record<ToolId, BillableAction>> = {
+  test: "score",
+};
+
 // ─── Line-icon SVGs (premium, no emoji) — paths from sketch 006 ──────────────
 const ICONS: Record<string, string> = {
   plus: '<path d="M8 3v10M3 8h10"/>',
@@ -265,20 +273,23 @@ export function Ico({
 // NOTE: because it lives outside the controls root, the host's outside-click
 // handler must exclude it via `menuRef` (else the mousedown closes it before a
 // row's click fires).
-function Popover({
+export function UpwardPopover({
   open,
   anchorRef,
   menuRef,
   children,
   className,
   labelledBy,
+  ariaLabel,
 }: {
   open: boolean;
-  anchorRef: React.RefObject<HTMLButtonElement | null>;
+  anchorRef: React.RefObject<HTMLElement | null>;
   menuRef?: React.RefObject<HTMLDivElement | null>;
   children: React.ReactNode;
   className?: string;
   labelledBy?: string;
+  /** Direct name for hosts with no visible trigger label (the v8 slash menu). */
+  ariaLabel?: string;
 }) {
   const [pos, setPos] = useState<{ left: number; bottom: number } | null>(null);
 
@@ -306,6 +317,7 @@ function Popover({
       ref={menuRef}
       role="menu"
       aria-labelledby={labelledBy}
+      aria-label={ariaLabel}
       style={{ left: pos?.left ?? 0, bottom: pos?.bottom ?? 0 }}
       className={cn(
         "fixed z-[60]",
@@ -321,6 +333,11 @@ function Popover({
     document.body,
   );
 }
+
+// Internal alias — exported as UpwardPopover for the v8 slash menu (the composer box's
+// overflow-hidden clips anything absolutely positioned above it; the portal dodges it,
+// which is the whole reason this component exists).
+const Popover = UpwardPopover;
 
 function GroupLabel({ children }: { children: React.ReactNode }) {
   return (
@@ -483,9 +500,11 @@ export interface SimModelSelectorProps {
   value: SkillModel;
   onChange: (m: SkillModel) => void;
   className?: string;
+  /** v8: the armed Max skill's credit price ("10 cr") — a price tag, not a model note. */
+  price?: string;
 }
 
-export function SimModelSelector({ value, onChange, className }: SimModelSelectorProps) {
+export function SimModelSelector({ value, onChange, className, price }: SimModelSelectorProps) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -532,6 +551,7 @@ export function SimModelSelector({ value, onChange, className }: SimModelSelecto
       >
         <span className="whitespace-pre text-foreground-secondary">{"SIM-1 "}</span>
         <span className="font-medium text-foreground">{value}</span>
+        {price && <span className="whitespace-pre text-foreground-muted">{` · ${price}`}</span>}
         <Ico name="chev" size={13} className="text-foreground-secondary" />
       </button>
       <Popover open={open} anchorRef={triggerRef} menuRef={menuRef} className="min-w-[260px]">

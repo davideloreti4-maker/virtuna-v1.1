@@ -56,6 +56,8 @@ const FRACTIONAL_RE = /\btext-\[[0-9]*\.[0-9]+px\]/g;
 const ALLOWLIST: Record<string, string> = {
   'app/home/home-greeting.tsx':
     'the serif voice-moment greeting — a single hero string, deliberately off-scale',
+  'app/home/v8/arrival.tsx':
+    'the same serif voice-moment greeting on the v8 arrival (CONCEPT_V8_ENABLED) — one hero string, same deliberate 26px',
 };
 
 function walk(dir: string, base = ''): string[] {

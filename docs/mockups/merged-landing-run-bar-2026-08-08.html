@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Merged landing + run bar — sketch 2026-08-08</title>
+<style>
+  :root{
+    --app:#1f1f1e; --chrome:#1a1a19; --chip:#2c2c2b; --card:#252524;
+    --cream:#ece7de; --cream2:#c2bdb4; --cream3:#8a857c;
+    --accent:#FF6363;
+    --bd:rgba(255,255,255,.06); --bdh:rgba(255,255,255,.10);
+    --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --serif:Georgia,"Times New Roman",serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--app);color:var(--cream);font-family:var(--sans);
+       font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1080px;margin:0 auto;padding:48px 24px 120px}
+  h1{font-family:var(--serif);font-size:34px;font-weight:400;margin:0 0 8px}
+  h2{font-size:13px;font-weight:600;letter-spacing:.10em;text-transform:uppercase;
+     color:var(--cream3);margin:64px 0 6px;font-family:var(--mono)}
+  h3{font-size:16px;font-weight:600;margin:28px 0 10px;color:var(--cream)}
+  p{color:var(--cream2);margin:0 0 12px;max-width:74ch}
+  .lede{color:var(--cream2);max-width:78ch;margin-bottom:4px}
+  code{font-family:var(--mono);font-size:12.5px;color:var(--cream);
+       background:rgba(255,255,255,.05);padding:1px 5px;border-radius:4px}
+  .rule{height:1px;background:var(--bd);margin:10px 0 26px}
+  .note{border-left:2px solid var(--bd);padding:2px 0 2px 14px;color:var(--cream3);
+        font-size:13px;max-width:74ch;margin:14px 0}
+  .warn{border-left-color:var(--accent)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:820px){.grid2{grid-template-columns:1fr}}
+
+  /* ── product chrome primitives ─────────────────────────── */
+  .frame{background:var(--app);border:1px solid var(--bd);border-radius:12px;overflow:hidden}
+  .frame-label{font-family:var(--mono);font-size:10.5px;letter-spacing:.09em;
+       text-transform:uppercase;color:var(--cream3);padding:9px 14px;border-bottom:1px solid var(--bd);
+       background:var(--chrome)}
+  .pad{padding:26px}
+
+  .composer{background:var(--chrome);border:1px solid var(--bd);border-radius:12px}
+  .runbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+          padding:10px 12px;border-bottom:1px solid var(--bd);font-size:13px;color:var(--cream3)}
+  .sel{display:inline-flex;align-items:center;gap:6px;background:var(--chip);
+       border:1px solid var(--bd);border-radius:8px;padding:4px 9px;color:var(--cream);font-size:13px}
+  .sel .car{color:var(--cream3);font-size:10px}
+  .sel.ghost{background:transparent}
+  .field{padding:16px 14px;color:var(--cream3);font-size:14.5px;min-height:56px}
+  .composer-foot{display:flex;align-items:center;gap:8px;padding:10px 12px;border-top:1px solid var(--bd)}
+  .spacer{flex:1}
+  .send{width:30px;height:30px;border-radius:8px;background:var(--chip);border:1px solid var(--bd);
+        display:grid;place-items:center;color:var(--cream2);font-size:13px}
+  .flag{font-size:12px;color:var(--cream3);font-family:var(--mono)}
+
+  .sixgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}
+  @media(max-width:640px){.sixgrid{grid-template-columns:1fr}}
+  .scard{border:1px solid var(--bd);border-radius:12px;padding:12px 13px}
+  .kick{font-family:var(--mono);font-size:10px;letter-spacing:.10em;text-transform:uppercase;
+        color:var(--cream3);margin-bottom:5px}
+  .stitle{font-size:14px;font-weight:500;color:var(--cream)}
+
+  .band{margin-top:34px}
+  .bandhead{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px}
+  .bandtitle{font-size:15px;font-weight:600}
+  .bandmore{font-size:12.5px;color:var(--cream3)}
+  .tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  @media(max-width:640px){.tiles{grid-template-columns:1fr}}
+  .tile{border:1px solid var(--bd);border-radius:12px;height:118px;background:var(--card);
+        display:grid;place-items:end start;padding:11px;color:var(--cream3);font-size:12px}
+  .loopcard{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px}
+
+  .greet{font-family:var(--serif);font-size:27px;color:var(--cream);margin-bottom:20px}
+
+  /* run stamp in thread */
+  .turn{border:1px solid var(--bd);border-radius:12px;background:var(--card);padding:14px;margin-bottom:10px}
+  .stamp{font-family:var(--mono);font-size:11px;color:var(--cream3);letter-spacing:.03em;
+         margin-bottom:9px;display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+  .stamp b{color:var(--cream2);font-weight:500}
+  .dot{width:3px;height:3px;border-radius:50%;background:var(--cream3);display:inline-block}
+  .body-lines span{display:block;height:7px;border-radius:3px;background:rgba(255,255,255,.06);margin-bottom:7px}
+
+  table{border-collapse:collapse;width:100%;font-size:13.5px;margin-top:8px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--bd);vertical-align:top}
+  th{color:var(--cream3);font-weight:500;font-family:var(--mono);font-size:10.5px;
+     letter-spacing:.09em;text-transform:uppercase}
+  td{color:var(--cream2)}
+  td b{color:var(--cream);font-weight:500}
+  .keep{color:#9ec49a}.cut{color:var(--cream3)}
+
+  ol.q{color:var(--cream2);max-width:74ch;padding-left:20px}
+  ol.q li{margin-bottom:10px}
+  .cap{font-family:var(--mono);font-size:11px;color:var(--cream3);margin-top:9px}
+  .livedot{width:6px;height:6px;border-radius:50%;background:var(--accent);display:inline-block}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Merged landing + the run bar</h1>
+  <p class="lede">Sketch, 2026-08-08 · <code>lane/platform-concept</code>. Covers the run model, the merged
+  landing, the selector row, the skill map, what survives from the old dashboard, and the thread's run stamps.</p>
+  <div class="note">
+    <b>What this is not.</b> Not a visual-design pass — the palette here is just the real tokens so nothing
+    reads as a new direction. Every layout decision below is arguable; the <em>structure</em> is the proposal.
+    Nothing here is built. <code>/start</code> currently renders the restored briefing minus Calendar and Your&nbsp;plan.
+  </div>
+
+  <!-- ─────────────────────────────────────────────────────── -->
+  <h2>§1 · The run model</h2>
+  <div class="rule"></div>
+  <p>A <b>run</b> is the unit of work. It has five inputs. Today they live in five places with four
+  different lifetimes, and the two that define the run — <em>who</em> and <em>where</em> — cannot be set
+  before you start.</p>
+
+  <table>
+    <tr><th>input</th><th>today</th><th>proposed</th></tr>
+    <tr><td><b>audience</b></td><td>rail ≥xl / header &lt;xl — thread only, absent on empty home</td><td>run bar, always visible</td></tr>
+    <tr><td><b>platform</b></td><td>nowhere — derived from the audience row</td><td>run bar, independent axis</td></tr>
+    <tr><td><b>skill</b></td><td>composer chip + 6 starter cards (of 13 skills)</td><td>composer chip — unchanged</td></tr>
+    <tr><td><b>model</b></td><td>defaults from the armed skill, override in the footer</td><td>unchanged, but shown only when it is a real choice</td></tr>
+    <tr><td><b>text</b></td><td>composer field</td><td>unchanged</td></tr>
+  </table>
+
+  <div class="note">
+    <b>Lifetime rule.</b> The selector row is <em>the setting for the next run</em> — not a property of the
+    thread. Changeable at any point, never retroactive. This is safe because
+    <code>runHeaderBlock</code> already stamps every run with its skill, audience and platform, and each card
+    already carries its own read anchored to thread history. The socket is pre-built:
+    <code>RunHeaderInput.platform</code> exists and the routes already pass it — it is meaningless today only
+    because there is no user choice behind it.
+  </div>
+
+  <!-- ─────────────────────────────────────────────────────── -->
+  <h2>§2 · The run bar</h2>
+  <div class="rule"></div>
+  <p>One strip, inside the composer card, above the field. The same component on the landing and inside a
+  thread — not a copy. Grammar reads as language rather than a form: <code>for … on …</code>.</p>
+
+  <h3>Default — audience and platform agree</h3>
+  <div class="composer">
+    <div class="runbar">
+      for <span class="sel">My IG audience <span class="car">▾</span></span>
+      on <span class="sel">Instagram <span class="car">▾</span></span>
+    </div>
+    <div class="field">Get content ideas…</div>
+    <div class="composer-foot">
+      <span class="sel">✦ Ideas <span class="car">▾</span></span>
+      <span class="spacer"></span>
+      <span class="flag">SIM-1 Flash</span>
+      <span class="send">↑</span>
+    </div>
+  </div>
+  <div class="cap">Placeholder is the per-skill instruction (<code>PLACEHOLDER_BY_TOOL</code>, already load-bearing copy).</div>
+
+  <h3>Cross-platform — the run says it is extrapolating</h3>
+  <div class="composer">
+    <div class="runbar">
+      for <span class="sel">My IG audience <span class="car">▾</span></span>
+      on <span class="sel">TikTok <span class="car">▾</span></span>
+      <span class="flag">· calibrated on Instagram</span>
+    </div>
+    <div class="field">Get content ideas…</div>
+    <div class="composer-foot">
+      <span class="sel">✦ Ideas <span class="car">▾</span></span>
+      <span class="spacer"></span>
+      <span class="flag">SIM-1 Flash</span>
+      <span class="send">↑</span>
+    </div>
+  </div>
+  <div class="cap">Never a block. The people are a proxy; we say when we are extrapolating rather than pretending.</div>
+
+  <h3>A Max skill — model stops being ambient and becomes a cost</h3>
+  <div class="composer">
+    <div class="runbar">
+      for <span class="sel">My IG audience <span class="car">▾</span></span>
+      on <span class="sel">Instagram <span class="car">▾</span></span>
+    </div>
+    <div class="field">Paste a video link to Test…</div>
+    <div class="composer-foot">
+      <span class="sel">✦ Test <span class="car">▾</span></span>
+      <span class="spacer"></span>
+      <span class="sel ghost">SIM-1 Max <span class="car">▾</span></span>
+      <span class="send">↑</span>
+    </div>
+  </div>
+  <div class="cap">Model is skill-derived (<code>setSelectedModel(getSkill(activeTool).model)</code>). Render it as a
+  quiet flag when there is no choice; promote it to a control only when the skill genuinely offers both — and
+  show the price there, because Max is the paid path.</div>
+
+  <div class="note warn">
+    <b>Accent dosage.</b> Nothing in the run bar is accented. Under the locked rule the only sanctioned accent
+    on this surface is the single live-presence dot <span class="livedot"></span> in the audience presence.
+    Selected states are a border and a fill step, never colour.
+  </div>
+
+  <!-- ─────────────────────────────────────────────────────── -->
+  <h2>§3 · The merged landing</h2>
+  <div class="rule"></div>
+  <p><b>Merge means: the briefing bands move into <code>/home</code>'s empty state.</b> <code>/home</code>
+  stays the route — it is already the landing, threads already live there, and <code>/start</code> stays a
+  redirect. Nothing has to move; the empty state grows. When a thread is active the bands are gone, because
+  they <em>are</em> the empty state — which is how <code>HomeStarter</code> already works.</p>
+
+  <div class="frame">
+    <div class="frame-label">/home — empty state (desktop)</div>
+    <div class="pad">
+      <div class="greet">Good morning, Davide 👋</div>
+
+      <div class="composer">
+        <div class="runbar">
+          for <span class="sel">My IG audience <span class="car">▾</span></span>
+          on <span class="sel">Instagram <span class="car">▾</span></span>
+        </div>
+        <div class="field">Get content ideas…</div>
+        <div class="composer-foot">
+          <span class="sel">✦ Ideas <span class="car">▾</span></span>
+          <span class="spacer"></span>
+          <span class="flag">SIM-1 Flash</span>
+          <span class="send">↑</span>
+        </div>
+      </div>
+
+      <div class="sixgrid">
+        <div class="scard"><div class="kick">Ideas</div><div class="stitle">Get content ideas</div></div>
+        <div class="scard"><div class="kick">Hooks</div><div class="stitle">Write scroll-stopping hooks</div></div>
+        <div class="scard"><div class="kick">Script</div><div class="stitle">Script a video</div></div>
+        <div class="scard"><div class="kick">Remix</div><div class="stitle">Remix a viral video</div></div>
+        <div class="scard"><div class="kick">Test</div><div class="stitle">Test a video</div></div>
+        <div class="scard"><div class="kick">Read</div><div class="stitle">Read my recent posts</div></div>
+      </div>
+      <div class="cap">THE_SIX, unchanged. Jobs, not skill names. Constant — the map does not redraw when you turn.</div>
+
+      <div class="band">
+        <div class="bandhead"><div class="bandtitle">Today's ideas</div><div class="bandmore">Refresh</div></div>
+        <div class="tiles"><div class="tile">pre-tested</div><div class="tile">pre-tested</div><div class="tile">pre-tested</div></div>
+        <div class="cap">Posted one already? Add the link → the loop measures it.</div>
+      </div>
+
+      <div class="band">
+        <div class="bandhead"><div class="bandtitle">Outliers to remix</div><div class="bandmore">View all ›</div></div>
+        <div class="tiles"><div class="tile">6/10 for your people</div><div class="tile">9/10 for your people</div><div class="tile">4/10 for your people</div></div>
+        <div class="cap">Real competitor videos, simmed against <em>your</em> audience. The most differentiated band on the page — and the one the 2026-07-15 cut removed <em>before</em> the page was judged.</div>
+      </div>
+
+      <div class="band">
+        <div class="loopcard">
+          <div class="bandtitle" style="margin-bottom:6px">The loop · what actually happened</div>
+          <div style="color:var(--cream3);font-size:13px">Renders only when there are receipts. No empty band on a cold account.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────────────────────────────────────────────────────── -->
+  <h2>§4 · What survives from the old dashboard</h2>
+  <div class="rule"></div>
+  <table>
+    <tr><th>section</th><th>call</th><th>why</th></tr>
+    <tr><td><b>Daily ideas</b></td><td class="keep">keep</td><td>The removal note itself named it the one salvageable piece. Real, pre-tested, and the clearest expression of the differentiator.</td></tr>
+    <tr><td><b>Outcome capture</b></td><td class="keep">keep</td><td>One line under Daily ideas. It is the loop's only entry point.</td></tr>
+    <tr><td><b>Outliers</b></td><td class="keep">keep</td><td>Real, audience-simmed, remixable. Cheapest path in the product — a corpus row is already decoded.</td></tr>
+    <tr><td><b>The loop</b></td><td class="keep">keep, gated</td><td>Render only with receipts. "Empty for new users" was a fair complaint about an <em>always-on</em> band.</td></tr>
+    <tr><td><b>Recalibration nudge</b></td><td class="keep">keep</td><td>Already self-gating — invisible below the N≥5 confidence gate.</td></tr>
+    <tr><td><b>Stat row</b></td><td class="cut">cut</td><td>"Duplicates /audience" was true at the cut and is still true. The lane handoff says explicitly not to reinstate it uncritically.</td></tr>
+    <tr><td><b>Quick actions</b></td><td class="cut">cut</td><td>Replaced by THE_SIX, which is the same idea better built — and now on the same page, so keeping both would be the duplication that got /start killed.</td></tr>
+    <tr><td><b>Month calendar · Your plan</b></td><td class="cut">cut</td><td>Owner call, 2026-08-08. Rail widgets for a workspace that is itself still a redirect.</td></tr>
+  </table>
+
+  <!-- ─────────────────────────────────────────────────────── -->
+  <h2>§5 · Skill discoverability — three tiers, not one menu</h2>
+  <div class="rule"></div>
+  <p>I am revising what I proposed earlier. I said the fix was to make the skill picker the complete registry.
+  That is not the fix. The lane handoff has it right: <em>a skill list is a list of verbs, and users think in
+  jobs</em> — a 13-item menu at the front door is a poor answer to "what can this thing do."</p>
+
+  <div class="grid2" style="margin-top:18px">
+    <div class="frame"><div class="frame-label">tier 1 — jobs, on arrival</div><div class="pad">
+      <div class="sixgrid" style="margin:0"><div class="scard"><div class="kick">Ideas</div><div class="stitle">Get content ideas</div></div>
+      <div class="scard"><div class="kick">Remix</div><div class="stitle">Remix a viral video</div></div></div>
+      <div class="cap">THE_SIX. Already built, already phrased as jobs. The map of what the app does.</div>
+    </div></div>
+    <div class="frame"><div class="frame-label">tier 2 — adjacency, in results</div><div class="pad">
+      <div style="display:flex;gap:7px;flex-wrap:wrap">
+        <span class="sel">Turn into a script</span><span class="sel">5 more like this</span><span class="sel">Who said no?</span>
+      </div>
+      <div class="cap">Already exists on every result. <b>Primary mechanism</b> — users learn the graph by walking it.</div>
+    </div></div>
+  </div>
+  <div class="frame" style="margin-top:16px"><div class="frame-label">tier 3 — the complete list, in the skill chip</div><div class="pad">
+    <div style="display:flex;gap:7px;flex-wrap:wrap">
+      <span class="sel">Ideas</span><span class="sel">Hooks</span><span class="sel">Script</span><span class="sel">Remix</span>
+      <span class="sel">Explore</span><span class="sel">Test</span><span class="sel">Read</span><span class="sel">Chat</span>
+      <span class="sel ghost" style="color:var(--cream3)">Offer · soon</span><span class="sel ghost" style="color:var(--cream3)">Ad · soon</span>
+    </div>
+    <div class="cap">Reference for the curious, not the front door. Grouped, with "soon" states honest — a shipped skill
+    behind a greyed door reads as broken rather than honest.</div>
+  </div>
+
+  <div class="note warn">
+    <b>Three partial maps exist today and none is the territory.</b> <code>HomeStarter</code>'s six (live on /home),
+    <code>QuickActions</code>' four (the /start page), and <code>START_SKILL_GROUPS</code> in <code>AmbientStart</code>
+    — which renders only at <code>/ambient-v2</code>, a reference route, not the product. Merging the landing
+    collapses the first two. The third should be stated as reference-only or deleted.
+  </div>
+
+  <!-- ─────────────────────────────────────────────────────── -->
+  <h2>§6 · The thread — run stamps make switching legible</h2>
+  <div class="rule"></div>
+  <p>If the selector can change mid-thread, every past run has to be able to say what it was made for.
+  <code>runHeaderBlock</code> already persists that. What is missing is that the thread never <em>renders</em> it
+  as provenance — it exists today only to rebuild the intro line on reload.</p>
+
+  <div class="frame"><div class="frame-label">thread — after a mid-thread platform switch</div><div class="pad">
+    <div class="turn">
+      <div class="stamp"><b>Ideas</b><span class="dot"></span>for <b>My IG audience</b><span class="dot"></span>on <b>Instagram</b></div>
+      <div class="body-lines"><span style="width:86%"></span><span style="width:71%"></span><span style="width:78%"></span></div>
+    </div>
+    <div class="turn">
+      <div class="stamp"><b>Ideas</b><span class="dot"></span>for <b>My IG audience</b><span class="dot"></span>on <b>TikTok</b><span class="dot"></span>calibrated on Instagram</div>
+      <div class="body-lines"><span style="width:79%"></span><span style="width:88%"></span><span style="width:64%"></span></div>
+    </div>
+    <div class="turn">
+      <div class="stamp"><b>Test</b><span class="dot"></span>for <b>My IG audience</b><span class="dot"></span>on <b>TikTok</b><span class="dot"></span><b>SIM-1 Max</b></div>
+      <div class="body-lines"><span style="width:83%"></span><span style="width:69%"></span></div>
+    </div>
+  </div></div>
+  <div class="cap">Same thread, three different runs, each honest about its own inputs. Switching costs nothing and
+  rewrites nothing.</div>
+
+  <!-- ─────────────────────────────────────────────────────── -->
+  <h2>§7 · Still open</h2>
+  <div class="rule"></div>
+  <ol class="q">
+    <li><b>The platform rulebook is deferred</b> — so on day one, choosing TikTok vs Instagram changes one
+    interpolated word in the prompt and nothing else. The control will be real before the behaviour is.
+    Ship it anyway, or hold the control until the rulebook exists?</li>
+    <li><b>Does the verdict move with platform?</b> Threading platform into <code>buildReactionPanel()</code> is a
+    separate build from the run bar. Until it lands, the score is identical across platforms — and a creator who
+    switches platform and sees the same number will notice.</li>
+    <li><b>Model as a cost control.</b> Showing "SIM-1 Max" without a price is half a warning. The credit figures
+    per skill are not in this sketch because I have not verified the pricing table.</li>
+    <li><b>Greeting + composer + six cards + three bands</b> is a long empty state. It may want the bands
+    collapsed behind one fold, or the six cards demoted once a user has run anything.</li>
+  </ol>
+
+</div>
+</body>
+</html>
