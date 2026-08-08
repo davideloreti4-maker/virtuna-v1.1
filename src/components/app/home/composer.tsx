@@ -101,7 +101,9 @@ import {
 // ── Composer v8 (CONCEPT_V8_ENABLED — platform concept Phase 1) ──────────────
 import { CONCEPT_V8_ENABLED } from "@/lib/flags/concept-v8";
 import { SkillPill, SkillsPanel } from "./v8/skills-panel";
-import { ComposerSubBar, RoomOverlay } from "./v8/sub-bar";
+import { ComposerSubBar } from "./v8/sub-bar";
+import { VerdictReport, type ReportSubject } from "./v8/verdict-report";
+import { useFireSim } from "./v8/use-fire-sim";
 import { AudienceSheetV8 } from "./v8/audience-sheet";
 import { ChipsRow } from "./v8/chips-row";
 import { ArrivalV8 } from "./v8/arrival";
@@ -547,6 +549,23 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   const platform: Platform = CONCEPT_V8_ENABLED
     ? platformLens
     : audienceToPlatform(selectedAudience?.platform);
+
+  // ── v8 report state (Phase 3) ──────────────────────────────────────────────
+  // `roomExpanded` stays the OPEN flag (the sub-bar door and a card's "See the room →" both set
+  // it); the SUBJECT is what the report is a report OF. Null ⇒ the honest empty state, never a
+  // fabricated figure.
+  const [reportSubject, setReportSubject] = useState<ReportSubject | null>(null);
+  const [reportPinned, setReportPinned] = useState(false);
+  const { watching: simWatching, snapshots: simSnapshots, fireSim: fireCardSim } = useFireSim();
+  // The descriptor id whose fired run should land IN the open report when it seals.
+  const pendingSimIdRef = useRef<string | null>(null);
+
+  // A drop's meter → its CACHED read. This path never touches the network: the drops are the only
+  // pre-scored surface, and opening one's report READS the cache (SSOT §1, fire-on-demand).
+  const openReportForDrop = useCallback((card: LiveDropCard) => {
+    setReportSubject({ id: card.contentId, title: card.hook, personas: card.personas });
+    setRoomExpanded(true);
+  }, []);
 
   // Task C (v6): intent is a PROPERTY OF THE AUDIENCE's goal (goal_intent → grow/sell lens),
   // never a per-run composer toggle (the Grow/Sell control retired — THE-ROOM-HANDOFF §3.5).
@@ -2351,7 +2370,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // not the bottom-dock peek — it survives the keyboard (top-anchored). ≥xl the rail (A2a) owns it,
   // so `!isXl` keeps them exclusive. Empty/permalink keep the dock peek (no thread to head).
   // v8: no plate, no top strip — "nothing above the field, ever" (spec §3). The sub-bar
-  // hangs BELOW the foot instead, and the room opens through RoomOverlay.
+  // hangs BELOW the foot instead, and the room opens as the verdict report.
   const useHeader = homeThreadMode && !isXl && !CONCEPT_V8_ENABLED;
 
   // ── Ambient presence focus (Plan 13-04 — AMBIENT-01, D-01/D-02/D-03/D-04) ──
@@ -3561,21 +3580,29 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
         />
       )}
 
-      {/* v8: the room (full-screen overlay — Phase 3 turns this into the three-tab
-          report) + the audience sheet. Both driven from the sub-bar; roomExpanded is
-          also set by a card's "See the room →", which lands here too now that the
-          header bar is retired under v8. */}
+      {/* v8: THE REPORT (Phase 3 — sheet <xl, overlay/pinnable panel ≥xl) + the audience
+          sheet. Both driven from the sub-bar; roomExpanded is also set by a card's
+          "See the room →", which lands here too now that the header bar is retired
+          under v8. */}
       {CONCEPT_V8_ENABLED && (
         <>
-          <RoomOverlay
+          <VerdictReport
             open={roomExpanded}
             onClose={() => handleRoomExpandedChange(false)}
+            subject={reportSubject}
             audience={effectiveAudience}
-            descriptors={ambientDescriptors}
+            variant={isXl ? "panel" : "sheet"}
+            pinned={reportPinned}
+            onPinnedChange={setReportPinned}
+            pinHost={railHost}
+            watching={simWatching}
             reducedMotion={reducedMotion}
-            persistedSeals={persistedSimSeals}
-            focusVideo={focusVideo}
-            onTestVariant={() => setSimDoorOpen(true)}
+            onSteer={(steer) => {
+              // The fix feeds the thread as a STEER: it lands in the field, it does not send.
+              // Fire-on-demand means the creator still presses the button.
+              setUrl(steer);
+              handleRoomExpandedChange(false);
+            }}
           />
           <AudienceSheetV8
             open={audienceSheetOpen}
@@ -3739,6 +3766,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
                       cards={dropCards}
                       status={dropsStatus}
                       onRemix={(c) => void handleRemixDrop(c)}
+                      onOpenReport={openReportForDrop}
                       remixingId={remixingDropId}
                     />
                   </>
@@ -3828,6 +3856,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
               cards={dropCards}
               status={dropsStatus}
               onRemix={(c) => void handleRemixDrop(c)}
+              onOpenReport={openReportForDrop}
               remixingId={remixingDropId}
             />
           </>

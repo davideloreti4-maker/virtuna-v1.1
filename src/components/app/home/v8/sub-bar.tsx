@@ -7,17 +7,12 @@
  *   right · "Simulate ›" (idle) / "watching…" (in flight)      → the room
  * The LIVE DOT is the single sanctioned accent on this surface (spec §8).
  *
- * RoomOverlay is AmbientOverviewSheet's full-screen portal, decoupled from its collapsed
- * bar — the v8 sub-bar replaces that bar, the room itself is untouched (Phase 3 rebuilds
- * it into the three-tab report; sealed-verdict law carries over inside the rail).
+ * The right half's door used to open `RoomOverlay` — AmbientOverviewRail full-screen.
+ * Phase 3 REPLACED that with the three-tab verdict report (`verdict-report.tsx`), which
+ * the composer mounts directly; the overlay is gone rather than wrapped.
  */
-import { useEffect } from "react";
-import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
-import { AmbientOverviewRail } from "@/components/audience-lens/v2/AmbientOverviewRail";
 import type { Audience } from "@/lib/audience/audience-types";
-import type { AmbientCardDescriptor } from "@/components/app/home/use-ambient-focus";
-import type { WireSimSealMap } from "@/lib/onboarding/verdict-seal";
 
 // Neutral matte washes (the mock's stand-in avatar gradients — no brand color, no accent).
 const DOT_WASHES = [
@@ -93,70 +88,5 @@ export function ComposerSubBar({
         )}
       </button>
     </div>
-  );
-}
-
-export function RoomOverlay({
-  open,
-  onClose,
-  audience,
-  descriptors,
-  reducedMotion = false,
-  persistedSeals,
-  focusVideo,
-  onTestVariant,
-}: {
-  open: boolean;
-  onClose: () => void;
-  audience: Audience;
-  descriptors: AmbientCardDescriptor[];
-  reducedMotion?: boolean;
-  persistedSeals?: WireSimSealMap;
-  focusVideo?: { id: string; nonce: number } | null;
-  onTestVariant?: () => void;
-}) {
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prevOverflow;
-    };
-  }, [open, onClose]);
-
-  if (!open || typeof document === "undefined") return null;
-  return createPortal(
-    <div
-      data-testid="v8-room-overlay"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Your audience"
-      className={
-        "fixed inset-0 z-[var(--z-modal)] flex min-h-0 flex-col overflow-hidden " +
-        (reducedMotion ? "" : "ambient-room-in")
-      }
-      style={{
-        background: "#181817",
-        paddingTop: "env(safe-area-inset-top)",
-        paddingBottom: "env(safe-area-inset-bottom)",
-      }}
-    >
-      <AmbientOverviewRail
-        audience={audience}
-        descriptors={descriptors}
-        reducedMotion={reducedMotion}
-        persistedSeals={persistedSeals}
-        presentation="sheet"
-        focusVideo={focusVideo}
-        onTestVariant={onTestVariant}
-        onDismiss={onClose}
-      />
-    </div>,
-    document.body,
   );
 }

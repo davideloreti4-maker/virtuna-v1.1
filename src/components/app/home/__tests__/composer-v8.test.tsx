@@ -89,7 +89,12 @@ const DROP_CARD = {
   archetype: null,
   hookTemplate: null,
   concepts: [],
-  personas: [{ archetype: "a", verdict: "stop", quote: "" }],
+  // Ten REAL personas so the meter carries a real tally and the report has voices to print.
+  personas: Array.from({ length: 10 }, (_, i) => ({
+    archetype: `a${i}`,
+    verdict: i < 8 ? ("stop" as const) : ("scroll" as const),
+    quote: i < 8 ? `stopped ${i}` : `scrolled ${i}`,
+  })),
 };
 
 function installFetchMock() {
@@ -207,5 +212,48 @@ describe("composer v8 (flag on)", () => {
     await waitFor(() => {
       expect(document.cookie).toContain("maven_active_thread=t-seeded");
     });
+  });
+
+  it("the sub-bar's Simulate door opens the report", async () => {
+    renderWithClient(<Composer />);
+    fireEvent.click(await screen.findByRole("button", { name: /open the simulation room/i }));
+    expect(await screen.findByTestId("verdict-report")).toBeInTheDocument();
+  });
+
+  it("with nothing simulated, the report is honestly empty — no figure", async () => {
+    renderWithClient(<Composer />);
+    fireEvent.click(await screen.findByRole("button", { name: /open the simulation room/i }));
+    expect(await screen.findByTestId("verdict-report")).toHaveTextContent(/nothing simulated yet/i);
+    expect(screen.queryByTestId("report-verdict")).toBeNull();
+  });
+
+  it("a drop's meter opens the report on that drop's own cached read", async () => {
+    renderWithClient(<Composer />);
+    // Both fixture drops carry the same tally, so scope to the first card's own meter.
+    fireEvent.click(await screen.findByTestId("drop-meter-d1"));
+    expect(await screen.findByTestId("report-verdict")).toHaveTextContent("8/10");
+  });
+
+  it("opening a drop's report fires NO sim (fire-on-demand law)", async () => {
+    renderWithClient(<Composer />);
+    // Both fixture drops carry the same tally, so scope to the first card's own meter.
+    fireEvent.click(await screen.findByTestId("drop-meter-d1"));
+    await screen.findByTestId("report-verdict");
+    const calls = (global.fetch as ReturnType<typeof vi.fn>).mock.calls.map((c) => String(c[0]));
+    expect(calls.some((u) => u.includes("/api/tools/react"))).toBe(false);
+  });
+
+  it("the v8 room overlay is gone — the report is the room now", async () => {
+    renderWithClient(<Composer />);
+    fireEvent.click(await screen.findByRole("button", { name: /open the simulation room/i }));
+    await screen.findByTestId("verdict-report");
+    expect(screen.queryByTestId("v8-room-overlay")).toBeNull();
+  });
+
+  it("mobile renders the report as a sheet (the harness matchMedia is <xl)", async () => {
+    renderWithClient(<Composer />);
+    // Both fixture drops carry the same tally, so scope to the first card's own meter.
+    fireEvent.click(await screen.findByTestId("drop-meter-d1"));
+    expect((await screen.findByTestId("verdict-report")).dataset.variant).toBe("sheet");
   });
 });
