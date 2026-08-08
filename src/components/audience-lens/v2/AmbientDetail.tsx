@@ -238,10 +238,13 @@ function Identity({ identity, thumbLabel }: { identity: DrillIdentity; thumbLabe
 
 // ── the detail view ──────────────────────────────────────────────────────────
 
-type Tab = "brain" | "engagement" | "audience";
+export type Tab = "brain" | "engagement" | "audience";
 
 /** The order is load-bearing — see the file header. Changing it is a design decision, not a tidy-up. */
 const TAB_ORDER = ["brain", "engagement", "audience"] as const;
+/** The v8 verdict report's order (spec §2 + mock §6). OPT-IN via `tabOrder`; the drill keeps
+ *  TAB_ORDER, which twelve revisions settled and which this constant does not reopen. */
+export const REPORT_TAB_ORDER: readonly Tab[] = ["audience", "brain", "engagement"];
 const TAB_LABEL: Record<Tab, string> = { brain: "Brain", engagement: "Engagement", audience: "Audience" };
 
 export function AmbientDetail({
@@ -259,6 +262,8 @@ export function AmbientDetail({
   onNext,
   onInterview,
   onApplyFix,
+  tabOrder,
+  audienceSlot,
 }: {
   template: DomainTemplate;
   initialTab?: Tab;
@@ -297,6 +302,13 @@ export function AmbientDetail({
    *  pulls the lever, so a host that can genuinely re-run (the v1 room's `onRewrite`) does. The view
    *  shows the projected before → after either way, labelled `projected`, and `Undo` restores. */
   onApplyFix?: (lever: string) => void;
+  /** Tab order override. Omit for the drill's settled `brain · engagement · audience`; the v8
+   *  verdict report passes REPORT_TAB_ORDER (spec §2's Audience-first order). */
+  tabOrder?: readonly Tab[];
+  /** Replaces the Audience page's <PopulationFrame> wholesale. The v8 report's personas-only
+   *  grade has real voices and NO Stage-2 projection, so it supplies its own honest frame rather
+   *  than a synthesized aggregate. Omit ⇒ today's behaviour exactly. */
+  audienceSlot?: React.ReactNode;
 }) {
   const { backLabel, pager, verdict, unlock, brain, population, identity, answer, engagement, simline, method } = template;
   // Brain is a VIDEO producer — absent for a text sim. Honest-unavailable, never faked.
@@ -306,8 +318,16 @@ export function AmbientDetail({
   // the same honest-locked affordance the other two carry, decided before the tap rather than after.
   const engagementData = engagement ?? (population?.actionIntent ? {} : undefined);
   const engagementAvailable = !!engagement || !!population?.actionIntent;
+  // An audience SLOT *is* the audience page: a host that supplies one has something real behind
+  // the tab even when `population` is null.
+  const audienceAvailable = !!audienceSlot || !!population;
+  const order = tabOrder ?? TAB_ORDER;
   const [internalTab, setTab] = useState<Tab>(
-    initialTab ?? (brainAvailable ? "brain" : engagementAvailable ? "engagement" : "audience"),
+    initialTab ??
+      order.find((t) =>
+        t === "brain" ? brainAvailable : t === "engagement" ? engagementAvailable : audienceAvailable,
+      ) ??
+      order[order.length - 1]!,
   );
   const tab = controlledTab ?? internalTab;
 
@@ -391,14 +411,21 @@ export function AmbientDetail({
           ) : (
             <span />
           )}
-          <span
-            className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-[3px] text-[12px] font-medium tabular-nums"
-            style={{ background: SURFACE.chip, color: TONE.faint }}
-          >
-            {onPrev ? <Step onClick={onPrev}>‹</Step> : null}
-            {pager}
-            {onNext ? <Step onClick={onNext}>›</Step> : null}
-          </span>
+          {/* No pager, no chip. The v8 report is not the drill's pager — an empty pill in the
+              nav row reads as a control that lost its label. */}
+          {pager ? (
+            <span
+              data-testid="ambient-detail-pager"
+              className="inline-flex items-center gap-0.5 rounded-full px-1.5 py-[3px] text-[12px] font-medium tabular-nums"
+              style={{ background: SURFACE.chip, color: TONE.faint }}
+            >
+              {onPrev ? <Step onClick={onPrev}>‹</Step> : null}
+              {pager}
+              {onNext ? <Step onClick={onNext}>›</Step> : null}
+            </span>
+          ) : (
+            <span />
+          )}
         </div>
       </div>
 
@@ -408,7 +435,7 @@ export function AmbientDetail({
         {/* Sticky INSIDE the scroll — it needs an opaque rail fill so content slides under it. */}
         <div className="sticky top-0 z-[6] pt-3" style={{ background: "#181817" }}>
           <div className="flex rounded-[10px] p-[3px]" style={{ background: SURFACE.chip }}>
-            {TAB_ORDER.map((t) => {
+            {order.map((t) => {
               const on = t === tab;
               // Honest locked affordance: a text sim has no brain, a template with no engagement
               // material has no middle page, and a withheld/absent run has no audience. Dimming says
@@ -416,7 +443,7 @@ export function AmbientDetail({
               const dim =
                 (t === "brain" && !brainAvailable) ||
                 (t === "engagement" && !engagementAvailable) ||
-                (t === "audience" && !population);
+                (t === "audience" && !audienceAvailable);
               return (
                 <button
                   key={t}
@@ -484,6 +511,8 @@ export function AmbientDetail({
           ) : (
             <Absence note="No run yet — engagement is what the room did with the clip second by second." action={noteAction} />
           )
+        ) : audienceSlot ? (
+          audienceSlot
         ) : population ? (
           <PopulationFrame
             population={population}
