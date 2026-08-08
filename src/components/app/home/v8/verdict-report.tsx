@@ -116,7 +116,7 @@ export function VerdictReport({
     watching && !subject ? (
       // The sealed watcher — the verdict is withheld until the run returns.
       <div className="flex flex-1 items-center justify-center p-8 text-center">
-        <span className="font-mono text-[13px]" style={{ color: TONE.faint }}>
+        <span className="font-mono text-body" style={{ color: TONE.faint }}>
           watching…
         </span>
       </div>
@@ -132,7 +132,7 @@ export function VerdictReport({
       />
     ) : (
       <div className="flex flex-1 items-center justify-center p-8 text-center">
-        <span className="max-w-[240px] text-[12px] leading-[1.5]" style={{ color: TONE.faint }}>
+        <span className="max-w-[240px] text-label leading-[1.5]" style={{ color: TONE.faint }}>
           Nothing simulated yet — open a card and simulate it, and the room&rsquo;s read lands here.
         </span>
       </div>
@@ -163,7 +163,7 @@ export function VerdictReport({
           <span aria-hidden className="mx-auto h-1 w-9 rounded-full bg-white/[0.14]" />
         ) : (
           <>
-            <span className="text-[12.5px] font-semibold" style={{ color: TONE.dim }}>
+            <span className="text-label font-semibold" style={{ color: TONE.dim }}>
               Report
             </span>
             <span className="flex items-center gap-3">
@@ -172,7 +172,7 @@ export function VerdictReport({
                 aria-label={pinned ? "Unpin the report" : "Pin the report"}
                 aria-pressed={pinned}
                 onClick={() => onPinnedChange(!pinned)}
-                className="text-[12px] transition-colors"
+                className="text-label transition-colors"
                 style={{ color: pinned ? TONE.cream : TONE.faint }}
               >
                 {pinned ? "pinned" : "pin"}
@@ -181,7 +181,7 @@ export function VerdictReport({
                 type="button"
                 aria-label="Close the report"
                 onClick={onClose}
-                className="text-[13px] transition-colors"
+                className="text-body transition-colors"
                 style={{ color: TONE.faint }}
               >
                 ✕

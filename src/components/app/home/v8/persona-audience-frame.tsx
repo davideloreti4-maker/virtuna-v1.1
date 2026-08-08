@@ -61,10 +61,10 @@ function VoiceGroup({
         <div className="mt-1">
           {voices.map((v, i) => (
             <div key={`${v.who}-${i}`} className="py-2">
-              <div className="font-serif text-[13.5px] leading-[1.45]" style={{ color: TONE.dim }}>
+              <div className="font-serif text-body leading-[1.45]" style={{ color: TONE.dim }}>
                 “{v.quote}”
               </div>
-              <div className="mt-1 text-[11px]" style={{ color: TONE.faint }}>
+              <div className="mt-1 text-caption" style={{ color: TONE.faint }}>
                 {v.who}
               </div>
             </div>
@@ -90,12 +90,12 @@ export function PersonaAudienceFrame({
         <div className="flex items-baseline gap-1.5">
           <span
             data-testid="report-verdict"
-            className="text-[30px] font-light leading-none tracking-[-0.01em] tabular-nums"
+            className="text-stat font-light leading-none tabular-nums"
             style={{ color: TONE.cream }}
           >
             {read.stop}/{read.total}
           </span>
-          <span className="text-[13px]" style={{ color: TONE.faint }}>
+          <span className="text-body" style={{ color: TONE.faint }}>
             stopped scrolling
           </span>
         </div>
