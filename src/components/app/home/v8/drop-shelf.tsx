@@ -6,7 +6,8 @@
  * the Remix handoff. Face = real rehosted still + real views + adapted hook + the
  * REAL pre-run meter (personasToCardFace — the drops are the ONLY pre-scored
  * surface). ZERO accent (locked); donor niche/handle and multipliers never render
- * here. The meter is display-only until Phase 3 (the report opens it).
+ * here. The meter is THE REPORT'S DOOR (Phase 3): it hands the card's CACHED
+ * personas up and never re-sims — opening a drop's report costs nothing.
  *
  * Card anatomy = mock §2 (layout contract only — its content is fabricated):
  * thumb left (9:16, view-count badge) · serif adapted hook · meter · Remix.
@@ -23,9 +24,12 @@ export interface DropShelfProps {
   onRemix: (card: LiveDropCard) => void;
   /** contentId of the card whose Remix seed is in flight — disables its button only. */
   remixingId?: string | null;
+  /** The meter's door — opens the verdict report on this card's CACHED personas.
+   *  ⚠️ Reads the cache; never re-sims (fire-on-demand law, SSOT §1). */
+  onOpenReport: (card: LiveDropCard) => void;
 }
 
-export function DropShelf({ cards, status, onRemix, remixingId }: DropShelfProps) {
+export function DropShelf({ cards, status, onRemix, remixingId, onOpenReport }: DropShelfProps) {
   // Honest empty: no cards and nothing warming → no shelf, no promise (the arrival
   // stays greeting-only, exactly the Phase-1 surface).
   if (status === "ready" && cards.length === 0) return null;
@@ -46,6 +50,7 @@ export function DropShelf({ cards, status, onRemix, remixingId }: DropShelfProps
                 key={card.contentId}
                 card={card}
                 onRemix={onRemix}
+                onOpenReport={onOpenReport}
                 remixing={remixingId === card.contentId}
               />
             ))}
@@ -57,10 +62,12 @@ export function DropShelf({ cards, status, onRemix, remixingId }: DropShelfProps
 function DropCard({
   card,
   onRemix,
+  onOpenReport,
   remixing,
 }: {
   card: LiveDropCard;
   onRemix: (card: LiveDropCard) => void;
+  onOpenReport: (card: LiveDropCard) => void;
   remixing: boolean;
 }) {
   const face = personasToCardFace(card.personas);
@@ -106,12 +113,15 @@ function DropCard({
         <p className="font-serif text-title leading-snug text-foreground">{card.hook}</p>
 
         <div className="flex items-center justify-between gap-2">
-          {/* The meter — the audience's REAL pre-run vote, ten cream segments
-              (zero accent, locked). Display-only until Phase 3's report. */}
-          <span
+          {/* The meter — the audience's REAL pre-run vote, ten cream segments (zero
+              accent, locked) — and the door to the report. Tapping it READS the
+              cached personas; it never fires a sim (SSOT §1). */}
+          <button
+            type="button"
             data-testid={`drop-meter-${card.contentId}`}
-            aria-label={`${face.stop} of 10 stopped`}
-            className="inline-flex items-center gap-1.5"
+            aria-label={`${face.stop} of 10 stopped — open the report`}
+            onClick={() => onOpenReport(card)}
+            className="inline-flex items-center gap-1.5 rounded-md px-1 py-0.5 transition-colors hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring)]"
           >
             <span className="inline-flex items-center gap-[3px]" aria-hidden="true">
               {Array.from({ length: 10 }, (_, i) => (
@@ -127,7 +137,7 @@ function DropCard({
               {face.stop}
               <span className="font-normal text-foreground-muted">/10</span>
             </b>
-          </span>
+          </button>
 
           {/* The one action (spec §1). Neutral cream — primary actions never accent. */}
           <button
