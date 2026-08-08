@@ -75,7 +75,7 @@ import { VideoUpload } from "@/components/app/video-upload";
 import { useAnalysisStream } from "@/hooks/queries/use-analysis-stream";
 import { STREAM_TIMEOUT_ERROR } from "@/lib/engine/stream-errors";
 import { useSubscription } from "@/hooks/use-subscription";
-import { isPaidPlanId, creditsRemainingLabel } from "@/lib/pricing";
+import { isPaidPlanId, creditsRemainingLabel, creditCost } from "@/lib/pricing";
 import { useBoardStore } from "@/stores/board-store";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { useToast } from "@/components/ui/toast";
@@ -85,6 +85,7 @@ import { createClient } from "@/lib/supabase/client";
 import {
   ComposerControls,
   Ico,
+  MAX_BILLABLE_BY_TOOL,
   SimModelSelector,
   SkillRows,
   SKILLS,
@@ -95,6 +96,14 @@ import {
   type Intent,
   type SkillModel,
 } from "./composer-controls";
+// ── Composer v8 (CONCEPT_V8_ENABLED — platform concept Phase 1) ──────────────
+import { CONCEPT_V8_ENABLED } from "@/lib/flags/concept-v8";
+import { SkillPill, SkillsPanel } from "./v8/skills-panel";
+import { ComposerSubBar, RoomOverlay } from "./v8/sub-bar";
+import { AudienceSheetV8 } from "./v8/audience-sheet";
+import { ChipsRow } from "./v8/chips-row";
+import { ArrivalV8 } from "./v8/arrival";
+import { usePlatformLens, LENS_LABEL } from "./v8/platform-lens";
 import type { Platform } from "./platform-chip";
 import type { Audience, AudiencePlatform } from "@/lib/audience/audience-types";
 import { goalIntentToLens } from "@/lib/audience/intent-lens";
@@ -510,13 +519,26 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   }, []);
 
   const selectedAudience = audiences.find((a) => a.id === selectedAudienceId) ?? null;
+  // ── v8 composer state (CONCEPT_V8_ENABLED) ─────────────────────────────────
+  const [skillsPanelOpen, setSkillsPanelOpen] = useState(false);
+  const [audienceSheetOpen, setAudienceSheetOpen] = useState(false);
+  const skillPillRef = useRef<HTMLButtonElement | null>(null);
+  const {
+    lens: platformLens,
+    setLens: setPlatformLens,
+    note: lensNote,
+  } = usePlatformLens(selectedAudience);
   // The RESOLVED audience: `selectedAudienceId === null` means the General default (a virtual
   // constant absent from the `audiences` rows), so `selectedAudience` is null there. Fall back to
   // GENERAL_AUDIENCE so surfaces that need a concrete audience (the Ambient v2 Start/Overview) always
   // have one — mirrors how AudiencePresence treats a null audience as General internally.
   const effectiveAudience = selectedAudience ?? GENERAL_AUDIENCE;
-  // Sent as the first-class platform param to the skill routes (derived, not picked).
-  const platform: Platform = audienceToPlatform(selectedAudience?.platform);
+  // Sent as the first-class platform param to the skill routes.
+  // v8: platform is a RUN LENS (next-run-only — read at submit time), decoupled from the
+  // audience (audiences.platform = provenance). Legacy: derived from the audience (D-07).
+  const platform: Platform = CONCEPT_V8_ENABLED
+    ? platformLens
+    : audienceToPlatform(selectedAudience?.platform);
 
   // Task C (v6): intent is a PROPERTY OF THE AUDIENCE's goal (goal_intent → grow/sell lens),
   // never a per-run composer toggle (the Grow/Sell control retired — THE-ROOM-HANDOFF §3.5).
@@ -2264,7 +2286,9 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // P2 (A2b): <xl thread mode, the room is a 68px HEADER above the thread (variant='header'),
   // not the bottom-dock peek — it survives the keyboard (top-anchored). ≥xl the rail (A2a) owns it,
   // so `!isXl` keeps them exclusive. Empty/permalink keep the dock peek (no thread to head).
-  const useHeader = homeThreadMode && !isXl;
+  // v8: no plate, no top strip — "nothing above the field, ever" (spec §3). The sub-bar
+  // hangs BELOW the foot instead, and the room opens through RoomOverlay.
+  const useHeader = homeThreadMode && !isXl && !CONCEPT_V8_ENABLED;
 
   // ── Ambient presence focus (Plan 13-04 — AMBIENT-01, D-01/D-02/D-03/D-04) ──
   // The room's card ledger + the batch's kind label for the anchored-focus stepper
@@ -3032,6 +3056,22 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
             </div>
           )}
 
+          {/* v8: the skills panel — the pill's target (and More ▸'s). Discovery only;
+              Use arms via handleUserSelectTool, the same door every picker uses. */}
+          {CONCEPT_V8_ENABLED && (
+            <SkillsPanel
+              open={skillsPanelOpen}
+              onClose={() => setSkillsPanelOpen(false)}
+              active={activeTool}
+              activeMode={selectedAudience?.mode ?? "socials"}
+              onUse={(id) => {
+                handleUserSelectTool(id);
+                setSkillsPanelOpen(false);
+              }}
+              anchorRef={skillPillRef}
+            />
+          )}
+
           {/* Test brief banner (Task 2 — D-05/D-06 handoff).
               Shown when "Test full →" was clicked on a hook card; surfaces the
               chosen hook as the anchored brief. Reminds the creator to shoot + upload
@@ -3111,6 +3151,11 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
               replaces the old single cramped bar. Banners + the Test upload zone stack ABOVE.
               Tool selection is NEVER a submit (Pitfall #5 / WR-05). */}
           <div className="flex flex-col gap-3.5">
+            {/* v8: the armed skill is a dismissible tag IN the field (spec §3) — the foot
+                slot empties (the pill lives there instead). */}
+            {CONCEPT_V8_ENABLED && armedIndicator ? (
+              <div className="flex">{armedIndicator}</div>
+            ) : null}
             {/* Row 1 — the field. textarea (auto-multiline); Enter submits, Shift+Enter
                 newlines (onFieldKeyDown). Test/Remix carry a URL; `/` opens the skill menu. */}
             <textarea
@@ -3181,7 +3226,15 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
                   <Plus className="h-[18px] w-[18px]" strokeWidth={1.75} />
                 </button>
 
-                {armedIndicator}
+                {CONCEPT_V8_ENABLED ? (
+                  <SkillPill
+                    open={skillsPanelOpen}
+                    onClick={() => setSkillsPanelOpen((v) => !v)}
+                    anchorRef={skillPillRef}
+                  />
+                ) : (
+                  armedIndicator
+                )}
 
                 <ComposerControls
                   activeTool={activeTool}
@@ -3194,7 +3247,14 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
                 <SimModelSelector
                   value={selectedModel}
                   onChange={setSelectedModel}
-                  className="hidden sm:inline-flex"
+                  // v8: always visible (owner decision 11); carries the armed Max skill's
+                  // real price from CREDIT_COSTS — never a typed figure.
+                  className={CONCEPT_V8_ENABLED ? undefined : "hidden sm:inline-flex"}
+                  price={
+                    CONCEPT_V8_ENABLED && MAX_BILLABLE_BY_TOOL[activeTool]
+                      ? `${creditCost(MAX_BILLABLE_BY_TOOL[activeTool]!)} cr`
+                      : undefined
+                  }
                 />
 
                 {/* Submit — the cream disc — which becomes STOP while a run streams.
@@ -3300,7 +3360,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           empty / permalink → bloom panel only while roomExpanded (no chip affordance on home). */}
       {useRail && railHost
         ? createPortal(AMBIENT_V2_ENABLED ? audienceRailV2 : audienceRail, railHost)
-        : useHeader || !roomExpanded
+        : CONCEPT_V8_ENABLED || useHeader || !roomExpanded
           ? null
           : audiencePresence}
       <div className="relative w-full">
@@ -3359,6 +3419,17 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
             )}
           >
             {composerForm}
+            {/* v8: the attached SUB-BAR — one hairline strip under the foot (owner
+                decision 13). Left half → the audience sheet; right half → the room. */}
+            {CONCEPT_V8_ENABLED && (
+              <ComposerSubBar
+                audience={effectiveAudience}
+                watching={audienceReacting}
+                lensLabel={LENS_LABEL[platform]}
+                onOpenAudience={() => setAudienceSheetOpen(true)}
+                onOpenSim={() => setRoomExpanded(true)}
+              />
+            )}
             {buildChooser}
           </div>
         </div>
@@ -3391,6 +3462,42 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           ensureThread={ensureThreadForSend}
         />
       )}
+
+      {/* v8: the room (full-screen overlay — Phase 3 turns this into the three-tab
+          report) + the audience sheet. Both driven from the sub-bar; roomExpanded is
+          also set by a card's "See the room →", which lands here too now that the
+          header bar is retired under v8. */}
+      {CONCEPT_V8_ENABLED && (
+        <>
+          <RoomOverlay
+            open={roomExpanded}
+            onClose={() => handleRoomExpandedChange(false)}
+            audience={effectiveAudience}
+            descriptors={ambientDescriptors}
+            reducedMotion={reducedMotion}
+            persistedSeals={persistedSimSeals}
+            focusVideo={focusVideo}
+            onTestVariant={() => setSimDoorOpen(true)}
+          />
+          <AudienceSheetV8
+            open={audienceSheetOpen}
+            onClose={() => setAudienceSheetOpen(false)}
+            audiences={audiences}
+            selectedAudienceId={selectedAudienceId}
+            onSelect={(a) => {
+              // Same reground as every other switcher: a typed-thought read was
+              // produced against the PREVIOUS audience — clear the focus.
+              focusByThought(null);
+              void handleSelectAudience(a);
+              setAudienceSheetOpen(false);
+            }}
+            lens={platformLens}
+            onLensChange={setPlatformLens}
+            note={lensNote}
+            onNewAudience={() => router.push("/audience/new")}
+          />
+        </>
+      )}
     </div>
   );
 
@@ -3402,7 +3509,9 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   //
   // It no longer needs to follow the creator into thread mode: that was only ever to keep
   // Account reachable, and Account now rides the send button like every other skill.
-  const homeStarter = !hasConversationContent ? (
+  // v8 retires the starter grid outright — the drops (Phase 2) replace it as arrival
+  // content; skill discovery is the pill + panel + chips (spec §6, "what dies").
+  const homeStarter = !hasConversationContent && !CONCEPT_V8_ENABLED ? (
     <HomeStarter
       onSelectTool={handleUserSelectTool}
       onAccountRun={handleStarterAccountRun}
@@ -3523,21 +3632,27 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
               // and "Test something of your own" rendered half-hidden behind the composer at
               // 1512×982 — the last starter card, sliced, on the first screen a new account sees.
               <div className="flex min-h-full flex-col justify-end pt-6 pb-40">
-                <AmbientStartHome
-                  audience={effectiveAudience}
-                  onSkill={pickStartSkill}
-                  onSubmit={seedAndRun}
-                  // The SIMULATE DOOR — a creator holding a script should not have to run a skill
-                  // first to get it in front of the room. Same host as the board's ＋.
-                  onSimDoor={() => setSimDoorOpen(true)}
-                  activeSkillId={activeTool}
-                  audiences={audiences}
-                  selectedAudienceId={selectedAudienceId}
-                  onSelectAudience={(a) => {
-                    focusByThought(null);
-                                  void handleSelectAudience(a);
-                  }}
-                />
+                {CONCEPT_V8_ENABLED ? (
+                  // v8 arrival: the greeting only — the config-and-skills Start surface
+                  // retires (spec §6); the shelf lands here in Phase 2.
+                  <ArrivalV8 />
+                ) : (
+                  <AmbientStartHome
+                    audience={effectiveAudience}
+                    onSkill={pickStartSkill}
+                    onSubmit={seedAndRun}
+                    // The SIMULATE DOOR — a creator holding a script should not have to run a skill
+                    // first to get it in front of the room. Same host as the board's ＋.
+                    onSimDoor={() => setSimDoorOpen(true)}
+                    activeSkillId={activeTool}
+                    audiences={audiences}
+                    selectedAudienceId={selectedAudienceId}
+                    onSelectAudience={(a) => {
+                      focusByThought(null);
+                      void handleSelectAudience(a);
+                    }}
+                  />
+                )}
               </div>
             ) : (
               threadContent
@@ -3560,6 +3675,15 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
               <div className="pointer-events-auto mb-3">{homeStarter}</div>
             ) : null}
             {composerDock}
+            {/* v8: example chips + More ▸ — under the composer, fresh home only. */}
+            {CONCEPT_V8_ENABLED && !hasConversationContent ? (
+              <div className="pointer-events-auto">
+                <ChipsRow
+                  onArm={handleUserSelectTool}
+                  onMore={() => setSkillsPanelOpen(true)}
+                />
+              </div>
+            ) : null}
             {/* BENEATH the field, deliberately. Above it would be a prose lede over the grid,
                 which STARTER CONTRACT rule 2 forbids outright — and the dock is bottom-anchored,
                 so content added here grows downward from the composer rather than displacing it.
@@ -3590,27 +3714,35 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
         // empty home read as the start of a chat that happens to offer shortcuts. Picking a skill
         // still arms the tool and drops into the normal fresh-chat home.
         <>
-        <AmbientStartHome
-          audience={effectiveAudience}
-          // The Start grid ids are ToolIds — NOT SKILL_RUN_META keys, which this comment used to
-          // claim were "all valid ToolIds". They are not: SKILL_RUN_META spells Ideas `ideas`
-          // (F-017). pickStartSkill validates against SKILLS, so an unknown id is now inert.
-          onSkill={pickStartSkill}
-          onSubmit={seedAndRun}
-          // The SIMULATE DOOR (see the branch-A mount) — the second verb, its own act.
-          onSimDoor={() => setSimDoorOpen(true)}
-          activeSkillId={activeTool}
-          // Pre-thread audience choice: the "Testing against" chip is a real picker here (no thread
-          // to lock to yet). Same reground as the presence's onSelectAudience — a switched audience
-          // must not carry a stale thought read / ask ledger.
-          audiences={audiences}
-          selectedAudienceId={selectedAudienceId}
-          onSelectAudience={(a) => {
-            focusByThought(null);
-                  void handleSelectAudience(a);
-          }}
-        />
+        {CONCEPT_V8_ENABLED ? (
+          // v8 arrival (see the branch-A mount): greeting only, Start surface retired.
+          <ArrivalV8 />
+        ) : (
+          <AmbientStartHome
+            audience={effectiveAudience}
+            // The Start grid ids are ToolIds — NOT SKILL_RUN_META keys, which this comment used to
+            // claim were "all valid ToolIds". They are not: SKILL_RUN_META spells Ideas `ideas`
+            // (F-017). pickStartSkill validates against SKILLS, so an unknown id is now inert.
+            onSkill={pickStartSkill}
+            onSubmit={seedAndRun}
+            // The SIMULATE DOOR (see the branch-A mount) — the second verb, its own act.
+            onSimDoor={() => setSimDoorOpen(true)}
+            activeSkillId={activeTool}
+            // Pre-thread audience choice: the "Testing against" chip is a real picker here (no thread
+            // to lock to yet). Same reground as the presence's onSelectAudience — a switched audience
+            // must not carry a stale thought read / ask ledger.
+            audiences={audiences}
+            selectedAudienceId={selectedAudienceId}
+            onSelectAudience={(a) => {
+              focusByThought(null);
+              void handleSelectAudience(a);
+            }}
+          />
+        )}
         {composerDock}
+        {CONCEPT_V8_ENABLED && !hasConversationContent ? (
+          <ChipsRow onArm={handleUserSelectTool} onMore={() => setSkillsPanelOpen(true)} />
+        ) : null}
         {homeAudienceIntro}
         </>
       ) : (
@@ -3619,6 +3751,9 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
         // bespoke bare-field state, no back-to-grid chrome; picking a skill just enters the chat.
         <>
           {composerDock}
+          {CONCEPT_V8_ENABLED && !hasConversationContent ? (
+            <ChipsRow onArm={handleUserSelectTool} onMore={() => setSkillsPanelOpen(true)} />
+          ) : null}
           {homeStarter}
           {homeFirstRunDemo}
           {homeAudienceIntro}
