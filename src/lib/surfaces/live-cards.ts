@@ -15,6 +15,17 @@
 
 import type { ReactionPersona, HookProof } from "@/lib/tools/blocks";
 import type { Tone } from "@/lib/room-contract/types";
+import type { AdaptConcept } from "@/lib/engine/remix/decode-types";
+
+/** 118000 → "118K", 1_200_000 → "1.2M" (honest compaction; real scraped views).
+ *  Moved here from outlier-reactions.ts (2026-08-08) so the v8 drop cards share it —
+ *  pure + client-safe, same contract. */
+export function compactViews(n: number): string {
+  if (!Number.isFinite(n) || n <= 0) return "0";
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
+  if (n >= 1_000) return `${Math.round(n / 1_000)}K`;
+  return String(Math.round(n));
+}
 
 /**
  * A real outlier card for /start — a competitor/feed video simmed against the user's audience.
@@ -46,6 +57,29 @@ export interface LiveIdeaCard {
    * source). The glance card shows a compact <ProofLine>; the opened Room shows the full receipt.
    */
   proof?: HookProof | null;
+}
+
+/**
+ * A v8 drop card (Phase 2 — the shelf): ONE proven corpus outlier, its hook already
+ * adapted into the user's niche (the real adapt.ts 3-concept output, rank-1 leading)
+ * and pre-scored by the user's audience (real Flash personas — the drops are the ONLY
+ * pre-scored surface). Video fields are real outlier_teardowns data with a DURABLE
+ * rehosted cover (isDropReady gates the rest out). `handle`/`hookTemplate`/`archetype`
+ * feed the seeded thread's receipt ONLY — the card face shows thumb + views + hook +
+ * meter and nothing else (no donor niche, no multiplier — locked).
+ */
+export interface LiveDropCard {
+  contentId: string;
+  hook: string;
+  coverUrl: string;
+  videoUrl: string | null;
+  views: string;
+  viewsRaw: number;
+  handle: string;
+  archetype: string | null;
+  hookTemplate: string | null;
+  concepts: AdaptConcept[];
+  personas: ReactionPersona[];
 }
 
 /** The glance-tier face a card shows inline — derived from the real personas. */

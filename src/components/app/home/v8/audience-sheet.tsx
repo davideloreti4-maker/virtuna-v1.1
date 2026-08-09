@@ -162,7 +162,7 @@ export function AudienceSheetV8({
         aria-modal="true"
         aria-label="Creating for"
         className={cn(
-          "fixed z-[var(--z-modal)] overflow-y-auto border-white/[0.10] bg-surface-sunken",
+          "ambient-room-in fixed z-[var(--z-modal)] overflow-y-auto border-white/[0.10] bg-surface-sunken",
           isWide
             ? "bottom-6 left-1/2 max-h-[70vh] w-[420px] -translate-x-1/2 rounded-[18px] border p-3 shadow-[0_16px_40px_rgba(0,0,0,0.4)]"
             : "inset-x-0 bottom-0 max-h-[78dvh] rounded-t-[22px] border border-b-0 px-3 pb-[max(20px,env(safe-area-inset-bottom))] pt-2",

@@ -23,21 +23,13 @@ import { runFlashTextModeBatch } from "@/lib/engine/flash/run-flash-text-mode";
 import { goalIntentToLens } from "@/lib/audience/intent-lens";
 import { queryFeed, type FeedTile } from "@/lib/feed/feed-query";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
-import type { LiveOutlierCard } from "./live-cards";
+import { compactViews, type LiveOutlierCard } from "./live-cards";
 import { audienceKeyOf, getFreshSurfaceCards, upsertSurfaceCards } from "./surface-reactions-repo";
 
 /** Cards shown on /start (the outlier rail is 3-across on desktop). */
 const OUTLIER_TARGET = 3;
 /** Over-fetch so empty-caption rows + per-candidate sim misses still leave TARGET cards. */
 const OUTLIER_FETCH = 6;
-
-/** 118000 → "118K", 1_200_000 → "1.2M" (honest compaction; real scraped views). */
-function compactViews(n: number): string {
-  if (!Number.isFinite(n) || n <= 0) return "0";
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`;
-  if (n >= 1_000) return `${Math.round(n / 1_000)}K`;
-  return String(Math.round(n));
-}
 
 /** 1.83 → "1.8x". */
 function fmtMult(m: number): string {

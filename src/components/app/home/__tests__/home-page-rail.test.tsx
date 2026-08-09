@@ -76,4 +76,13 @@ describe('HomePageLayout — A2a audience rail wiring', () => {
     expect(aside?.className).toMatch(/(^|\s)hidden(\s|$)/);
     expect(aside?.className).toMatch(/xl:flex/);
   });
+
+  it('offers the composer NO pin channel — nothing but thread mode can mount the column (2026-08-09 rail ruling)', () => {
+    // The v8 Phase-3 pinned report died with the owner ruling: the report is an event
+    // (sheet/overlay), never page furniture. The layout must expose no way to dock it —
+    // outside thread mode the aside simply does not exist.
+    render(<HomePageLayout />);
+    expect(railAside()).toBeNull();
+    expect(screen.queryByTestId('pin-stub')).toBeNull();
+  });
 });

@@ -517,4 +517,24 @@ export interface DomainTemplate {
    *  state (`brainNote`) and defaults to the audience tab. The authored fixtures always provide it. */
   brain?: BrainFrameData;
   population: PopulationFrameData | null; // null until a run exists
+  /** The PERSONAS-ONLY grade of the audience page (v8 report — a drop's cached read, or a fired
+   *  Flash run whose Stage-2 projection came back null). Real tallies + real quotes from the ten;
+   *  nothing else exists at this grade, so `PopulationFrame` draws nothing else (no terrain, no
+   *  pools, no projection strip — the honest reduced state, never a synthesized aggregate).
+   *  Ignored when `population` is present: a full projection renders the full frame. */
+  personaRead?: PersonaReadData | null;
+}
+
+/** One simulated viewer speaking, in their own words (the personas-only grade's evidence unit). */
+export interface PersonaVoice {
+  who: string;
+  quote: string;
+}
+
+/** The whole evidence base of a personas-only read: the tally and the voices, nothing more. */
+export interface PersonaReadData {
+  stop: number;
+  total: number;
+  stopped: PersonaVoice[];
+  scrolled: PersonaVoice[];
 }

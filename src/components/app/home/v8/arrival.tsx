@@ -16,7 +16,7 @@ function timeGreeting(): string {
   return "Good evening";
 }
 
-export function ArrivalV8() {
+export function ArrivalV8({ shelfReady = false }: { shelfReady?: boolean }) {
   const { data: profile } = useProfile();
   const name = profile?.name?.trim().split(/\s+/)[0] || "";
   // Client-only greeting — the SSR pass has no local hour (same dodge as AmbientStart).
@@ -24,12 +24,21 @@ export function ArrivalV8() {
   useEffect(() => {
     setGreeting(timeGreeting());
   }, []);
+  // v8 copy — owner reviews before launch (handoff §5). The shelf headline only ever
+  // shows over REAL cards (shelfReady) — an empty arrival keeps the honest time
+  // greeting rather than promising content that isn't there.
+  const headline = shelfReady ? "Tonight's remixes" : greeting;
   return (
     <div data-testid="arrival-v8" className="w-full px-1 pb-3">
       <h1 className="font-serif text-[26px] font-normal leading-tight tracking-[-0.01em] text-foreground">
-        {greeting}
+        {headline}
         {name ? `, ${name}` : ""}.
       </h1>
+      {shelfReady ? (
+        <p className="mt-1.5 text-caption text-foreground-muted">
+          Proven videos · rebuilt for your niche
+        </p>
+      ) : null}
     </div>
   );
 }

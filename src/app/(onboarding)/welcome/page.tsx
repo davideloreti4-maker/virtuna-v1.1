@@ -29,6 +29,10 @@ import { SENTINEL_IDS } from "@/lib/audience/audience-repo";
 import { useOnboardingStore } from "@/stores/onboarding-store";
 import { ConnectStep, type Door } from "@/components/onboarding/connect-step";
 import { CalibrationFlow } from "@/components/audience/calibration-flow";
+import { CONCEPT_V8_ENABLED } from "@/lib/flags/concept-v8";
+import { LaneQuestion } from "@/components/onboarding/lane-question";
+import { LaneReveal } from "@/components/onboarding/lane-reveal";
+import type { LaneShelf } from "@/lib/surfaces/lane-drops";
 import { cn } from "@/lib/utils";
 
 /** The two real steps. The indicator counts these — it is progress, not decoration. */
@@ -45,6 +49,14 @@ export default function WelcomePage() {
   const [draft, setDraft] = useState<Audience | null>(null);
   const [prefill, setPrefill] = useState<{ handle?: string; description?: string }>({});
   const [door, setDoor] = useState<Door>("personal");
+
+  // ── The day-0 lanes branch (v8 Phase 5) — flag-gated, describe-door only ─────────
+  // Local, for the same reason `stage` is: restoring into it on reload would re-enter a
+  // branch whose submit costs adapt + Flash calls. A reload returns to step 1.
+  const [lanesOpen, setLanesOpen] = useState(false);
+  const [shelves, setShelves] = useState<LaneShelf[] | null>(null);
+  const [lanesBusy, setLanesBusy] = useState(false);
+  const [lanesError, setLanesError] = useState<string | null>(null);
 
   // Hydrate store on mount
   useEffect(() => {
@@ -255,6 +267,45 @@ export default function WelcomePage() {
     onClick: switchDoor,
   };
 
+  /**
+   * Fire the lanes pipe (spec §4.2). ONE run at a time — the busy guard IS the debounce
+   * (fire-on-demand law, SSOT §1). Nothing but this submit reaches the route; navigation
+   * never does. A failure hands them back to the describe door rather than stranding them.
+   */
+  async function findLanes(answer: string) {
+    if (lanesBusy) return;
+    setLanesBusy(true);
+    setLanesError(null);
+    try {
+      const res = await fetch("/api/surfaces/lanes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ answer }),
+      });
+      if (!res.ok) throw new Error("lanes failed");
+      const { shelves: got } = (await res.json()) as { shelves: LaneShelf[] };
+      if (got.length === 0) throw new Error("no lanes");
+      setShelves(got);
+    } catch {
+      setLanesError("Couldn't find your lanes. Describe your audience instead.");
+    } finally {
+      setLanesBusy(false);
+    }
+  }
+
+  /**
+   * Picking a lane re-enters the EXISTING describe flow with the lane's own line as the
+   * description, so onboarding still ends in a calibrated audience. The lane never
+   * bypasses calibration and no second onboarding contract is created — which is the
+   * whole reason this branch is additive rather than a fork.
+   */
+  function pickLane(shelf: LaneShelf) {
+    setLanesOpen(false);
+    setShelves(null);
+    setPrefill({ description: shelf.lane.who });
+    setDoor("target");
+  }
+
   const isCalibrating = stage === "calibrate" && draft !== null;
 
   if (!_isHydrated || step === "completed") {
@@ -316,10 +367,19 @@ export default function WelcomePage() {
             onSkip={() => void finishOnboarding()}
             secondaryAction={recoveryAction}
           />
+        ) : lanesOpen && shelves ? (
+          <LaneReveal shelves={shelves} onPick={pickLane} />
+        ) : lanesOpen ? (
+          <LaneQuestion
+            onSubmit={(answer) => void findLanes(answer)}
+            submitting={lanesBusy}
+            error={lanesError}
+          />
         ) : (
           <ConnectStep
             initialDoor={door}
             existingDraft={draft}
+            {...(CONCEPT_V8_ENABLED ? { onNotSure: () => setLanesOpen(true) } : {})}
             onDraftReady={(created, p) => {
               setDraft(created);
               setPrefill(p);

@@ -78,7 +78,9 @@ export function SkillPill({
       aria-expanded={open}
       onClick={onClick}
       className={cn(
-        "inline-flex h-[34px] shrink-0 items-center gap-1.5 rounded-full border border-white/[0.06] px-3",
+        // The ROOMY pill — an explicit owner call (v8 decision 10: cramped chip rejected,
+        // bare glyph rejected). Mock §3 `.skillpill`: 13px side padding, 10% edge.
+        "inline-flex h-[34px] shrink-0 items-center gap-1.5 rounded-full border border-white/[0.10] px-[13px]",
         "text-foreground-secondary transition-colors hover:bg-white/[0.06] hover:text-foreground",
         "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring)]",
         "pointer-coarse:h-11",
@@ -97,6 +99,7 @@ export function SkillsPanel({
   activeMode,
   onUse,
   anchorRef,
+  placeAboveRef,
 }: {
   open: boolean;
   onClose: () => void;
@@ -104,6 +107,10 @@ export function SkillsPanel({
   activeMode: SkillMode;
   onUse: (id: ToolId) => void;
   anchorRef: React.RefObject<HTMLButtonElement | null>;
+  /** Element the desktop popover sits ABOVE (the composer's field region). Anchoring to the
+   *  pill alone dropped the panel's bottom edge INTO the box, covering the field it serves —
+   *  measured 2026-08-09. Falls back to `anchorRef`. */
+  placeAboveRef?: React.RefObject<HTMLElement | null>;
 }) {
   const isWide = useMediaQuery("(min-width: 640px)");
   const [previewId, setPreviewId] = useState<ToolId>(active);
@@ -134,14 +141,15 @@ export function SkillsPanel({
     };
   }, [open, onClose, anchorRef]);
 
-  // Desktop anchoring — bottom-left of the trigger, growing upward (composer-controls
-  // Popover math: portaled to <body> so the dock's overflow clip can't cut it).
+  // Desktop anchoring — the panel sits ABOVE the whole composer box (never over the field),
+  // left-aligned with it, growing upward. Portaled to <body> so the dock's overflow clip
+  // can't cut it.
   useEffect(() => {
     if (!open || !isWide) return;
     const place = () => {
-      const r = anchorRef.current?.getBoundingClientRect();
+      const r = (placeAboveRef?.current ?? anchorRef.current)?.getBoundingClientRect();
       if (!r) return;
-      setPos({ left: Math.max(12, r.left - 8), bottom: window.innerHeight - r.top + 12 });
+      setPos({ left: Math.max(12, r.left), bottom: window.innerHeight - r.top + 10 });
     };
     place();
     window.addEventListener("scroll", place, true);
@@ -150,7 +158,7 @@ export function SkillsPanel({
       window.removeEventListener("scroll", place, true);
       window.removeEventListener("resize", place);
     };
-  }, [open, isWide, anchorRef]);
+  }, [open, isWide, anchorRef, placeAboveRef]);
 
   if (!open || typeof document === "undefined") return null;
 
@@ -211,11 +219,15 @@ export function SkillsPanel({
           {general.map((s) => listRow(s, direct))}
         </div>
       )}
-      {/* v8 copy — owner reviews before launch (handoff §5). */}
-      <p className="px-2.5 pb-1 pt-3 text-center text-label text-foreground-muted">
-        Or just type — Maven routes it.
-      </p>
     </>
+  );
+
+  // v8 copy — owner reviews before launch (handoff §5). Rendered OUTSIDE the scroll so the
+  // routing promise is always visible, never clipped mid-sentence at the panel's edge.
+  const routeLine = (
+    <p className="border-t border-white/[0.06] px-2.5 py-2.5 text-center text-label text-foreground-muted">
+      Or just type — Maven routes it.
+    </p>
   );
 
   if (!isWide) {
@@ -230,10 +242,11 @@ export function SkillsPanel({
           role="dialog"
           aria-modal="true"
           aria-label="Skills"
-          className="fixed inset-x-0 bottom-0 z-[var(--z-modal)] max-h-[78dvh] overflow-y-auto rounded-t-[22px] border border-b-0 border-white/[0.10] bg-surface-sunken px-3 pb-[max(20px,env(safe-area-inset-bottom))] pt-2"
+          className="ambient-room-in fixed inset-x-0 bottom-0 z-[var(--z-modal)] flex max-h-[78dvh] flex-col rounded-t-[22px] border border-b-0 border-white/[0.10] bg-surface-sunken px-3 pb-[max(20px,env(safe-area-inset-bottom))] pt-2"
         >
-          <div className="mx-auto mb-2 h-1 w-[34px] rounded-full bg-surface-elevated" />
-          {groupedList(true)}
+          <div className="mx-auto mb-2 h-1 w-[34px] shrink-0 rounded-full bg-surface-elevated" />
+          <div className="min-h-0 flex-1 overflow-y-auto">{groupedList(true)}</div>
+          {routeLine}
         </div>
       </>,
       document.body,
@@ -249,17 +262,23 @@ export function SkillsPanel({
       aria-label="Skills"
       style={{ left: pos?.left ?? 0, bottom: pos?.bottom ?? 0 }}
       className={cn(
-        "fixed z-[var(--z-modal)] flex w-[560px] max-w-[calc(100vw-28px)] overflow-hidden",
+        "ambient-room-in fixed z-[var(--z-modal)] flex w-[560px] max-w-[calc(100vw-28px)] overflow-hidden",
         "rounded-2xl border border-white/[0.10] bg-surface-elevated",
         "shadow-[0_16px_40px_rgba(0,0,0,0.4)]",
       )}
     >
-      <div className="max-h-[420px] w-[46%] overflow-y-auto border-r border-white/[0.06] p-2">
-        {groupedList(false)}
+      <div className="flex max-h-[420px] w-[46%] flex-col border-r border-white/[0.06]">
+        <div className="min-h-0 flex-1 overflow-y-auto p-2">{groupedList(false)}</div>
+        {routeLine}
       </div>
+      {/* The preview pane (mock §3): visual · name · one-paragraph promise · Use. The tile
+          stands in for the mock's illustration slot — the skill's own mark at figure scale,
+          never a fabricated screenshot. */}
       <div className="flex min-h-[300px] flex-1 flex-col p-5">
-        <div className="flex items-center gap-2 text-reading font-semibold text-foreground">
-          <Ico name={SKILL_ICON[preview.id]} size={15} className="text-foreground-secondary" />
+        <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl border border-white/[0.06] bg-white/[0.04]">
+          <Ico name={SKILL_ICON[preview.id]} size={20} className="text-foreground-secondary" />
+        </div>
+        <div className="mt-3.5 flex items-center gap-2 text-title font-medium text-foreground">
           {preview.label}
           {preview.model === "Max" && (
             <span className="rounded-[4px] border border-white/[0.09] bg-white/[0.03] px-[5px] py-px text-micro font-semibold uppercase leading-none tracking-[0.06em] text-foreground-muted">
@@ -267,10 +286,13 @@ export function SkillsPanel({
             </span>
           )}
         </div>
-        <p className="mt-2.5 text-sm leading-relaxed text-foreground-secondary">
+        <p className="mt-2 text-body leading-relaxed text-foreground-secondary">
           {PROMISE_BY_TOOL[preview.id]}
         </p>
-        <div className="mt-auto self-end pt-4">
+        <div className="mt-auto flex items-center justify-between gap-3 pt-5">
+          <span className="text-caption text-foreground-muted">
+            Runs on SIM-1 {preview.model ?? "Flash"}
+          </span>
           <Button variant="primary" size="sm" onClick={() => onUse(preview.id)}>
             Use
           </Button>
