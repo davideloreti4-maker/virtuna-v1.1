@@ -64,6 +64,8 @@ export interface SkillToolArgs {
   anchor?: string;
   /** Alternate primary input for a non-generator skill: a specific drafted message/scenario. */
   draft?: string;
+  /** How many the creator asked for (Stage A, N-4 — hooks only today). Runner-clamped. */
+  count?: number;
 }
 
 /** One skill, exposed to the chat model as a tool. Adding a skill = adding one of these. */
@@ -95,7 +97,12 @@ export interface SkillTool {
   run: (args: SkillToolArgs, ctx: SkillRunContext) => Promise<{ blocks: unknown[]; warnings: string[] }>;
 }
 
-function skillSchema(name: string, description: string, withAnchor: boolean): Record<string, unknown> {
+function skillSchema(
+  name: string,
+  description: string,
+  withAnchor: boolean,
+  withCount = false,
+): Record<string, unknown> {
   const properties: Record<string, unknown> = {
     topic: {
       type: "string",
@@ -106,6 +113,16 @@ function skillSchema(name: string, description: string, withAnchor: boolean): Re
     properties.anchor = {
       type: "string",
       description: "Optional: a specific chosen idea or hook line from earlier in the thread to build on.",
+    };
+  }
+  if (withCount) {
+    // N-4: the router rewrites the ask into `topic`, which is exactly where "3 hooks for…"
+    // used to lose its 3 — the count must ride its own slot to survive the rewrite.
+    properties.count = {
+      type: "number",
+      description:
+        "Optional: how many the creator EXPLICITLY asked for (e.g. 3 in '3 hooks for…'). " +
+        "Omit when they named no number.",
     };
   }
   return {
@@ -148,11 +165,13 @@ export const SKILL_TOOLS: SkillTool[] = [
       "Generate scroll-stopping HOOK lines (opening lines) for a topic or a chosen idea. Use when the " +
         "creator asks for hooks, openers, or opening lines. Produces ranked hook cards shown in the thread.",
       true,
+      true,
     ),
     run: async (args, ctx) => {
       const r = await runHooksPipeline({
         ask: args.topic ?? "",
         anchor: args.anchor,
+        count: args.count,
         platform: ctx.platform,
         profileRow: ctx.profileRow,
         audience: ctx.audience,
@@ -295,6 +314,12 @@ const defaultComplete: ChatComplete = async (params) => {
 
 export interface SkillRunOutput {
   name: string;
+  /**
+   * The skill's DISPLAY key ('ideas' | 'hooks' | 'script' | …) — what the chat route
+   * stamps the persisted turn's run-header with (Stage A, F-3). Optional: the legacy
+   * runSkillDispatch path predates it.
+   */
+  skillKey?: string;
   blocks: unknown[];
   warnings: string[];
 }

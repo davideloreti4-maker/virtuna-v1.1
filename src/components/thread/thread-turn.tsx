@@ -217,7 +217,11 @@ export function ThreadTurn({
   // The intro orients the turn from its INPUTS (copy floor §2) — it never cites a result, so it is
   // honest at submit time AND on reload. Only the four authored skills have one.
   const introSkill = SKILLS_WITH_INTRO.includes(skill) ? (skill as ThreadSkill) : null;
-  const audienceLabel = live?.audienceLabel ?? header?.audienceLabel ?? 'General';
+  // 'your audience', never 'General' (Stage A, F-3): "General" is the NAME of a real
+  // audience, so guessing it here was indistinguishable from knowing it — a chat-routed
+  // @mrbeast run flashed "General" until the stamp hydrated. A turn with no stamp gets
+  // the honest neutral, not a specific audience it may not have run against.
+  const audienceLabel = live?.audienceLabel ?? header?.audienceLabel ?? 'your audience';
   const platform = live?.platform ?? header?.platform ?? 'tiktok';
   const hookLine = live?.hookLine ?? header?.hookLine ?? null;
 

@@ -160,3 +160,51 @@ describe("assembleBundle corpus field", () => {
     expect(plain).not.toContain("Grounded examples");
   });
 });
+
+// ─── anchor contract (Stage A, N-7) — the fence label states the anchor's ROLE ──
+
+describe("assembleBundle anchor contract", () => {
+  const HOOK = "Stop trying to wake up at 5 AM.";
+
+  it("script mode names the anchor's contract (MUST open from this hook)", () => {
+    const bundle = assembleBundle(
+      { ask: "Write a script for this hook", platform: "tiktok", mode: "script", anchor: HOOK },
+      FULL_PROFILE,
+    );
+    expect(bundle).toContain("Anchor hook — REQUIRED: the script MUST open from this exact hook");
+    expect(bundle).toContain(HOOK);
+  });
+
+  it("hooks mode names the anchor as the idea the hooks develop", () => {
+    const bundle = assembleBundle(
+      { ask: "hooks please", platform: "tiktok", mode: "hooks", anchor: "meal-prep for night shifts" },
+      FULL_PROFILE,
+    );
+    expect(bundle).toContain("Chain anchor — the chosen idea these hooks develop");
+  });
+
+  it("chat mode keeps the bare label (recent-turns context, no generation contract)", () => {
+    const bundle = assembleBundle(
+      { ask: "what should I post", platform: "tiktok", mode: "chat", anchor: "prior turns here" },
+      FULL_PROFILE,
+    );
+    expect(bundle).toContain("Chain anchor:");
+    expect(bundle).not.toContain("MUST open from");
+  });
+
+  it("the contract label survives the 4b overflow rebuild (fence intact, label intact)", () => {
+    // A huge ANCHOR forces the 4b rebuild; the ask keeps its budget, the anchor section is
+    // truncated INSIDE the fence — but its contract label must survive with it.
+    const bundle = assembleBundle(
+      {
+        ask: "Write a script for this hook",
+        platform: "tiktok",
+        mode: "script",
+        anchor: `${HOOK} ${"z".repeat(5000)}`,
+      },
+      FULL_PROFILE,
+    );
+    expect(bundle.length).toBeLessThanOrEqual(BUNDLE_CHAR_CAP);
+    expect(bundle).toContain("Anchor hook — REQUIRED");
+  });
+});

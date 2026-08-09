@@ -352,6 +352,14 @@ export interface ChatAgentStreamDeps {
 
 const DEFAULT_MAX_ROUNDS = 4;
 const DEFAULT_MAX_SKILL_RUNS = 2;
+/**
+ * F-1 containment (Stage A): cap on the text a round may stream AFTER a skill has
+ * delivered cards. The directive asks for ONE short closing line, but ~1 run in 3 the
+ * model re-answered the whole pack in markdown under the cards (measured 4,625 chars —
+ * 10 hooks in two formats for a 5-hook run). 600 chars is a generous 3–4 sentences;
+ * a re-answer cannot fit. Pre-tool rounds are uncapped — refusals and plain chat need prose.
+ */
+const POST_TOOL_TEXT_CAP = 600;
 /** Source cards rendered per search — a citation, not a search-results page. */
 const MAX_REFERENCE_CARDS = 4;
 
@@ -767,14 +775,27 @@ function createArtefactGuard(onToken: (delta: string) => void): ArtefactGuard {
   };
 }
 
+/**
+ * Server-side caps on the model-written skill args (Stage A citation-integrity pair). The
+ * dedicated routes cap ask/anchor at 2000/5000; this path had NO cap, so an over-long
+ * router-written topic/anchor could blow the bundle budget and silently evict the corpus
+ * the sourceIndex mapping was built against. Mirrors MAX_MESSAGE_LENGTH / MAX_ANCHOR_LENGTH.
+ */
+const TOPIC_CAP = 2000;
+const ANCHOR_CAP = 5000;
+
 /** Parse the model's tool args into the shape the skills read (topic + optional anchor). */
 function parseSkillArgs(raw: string): SkillToolArgs {
   try {
     const p = JSON.parse(raw || "{}");
+    const count = typeof p.count === "number" && Number.isFinite(p.count) ? p.count : undefined;
     return {
-      topic: p.topic != null ? String(p.topic).trim() : undefined,
-      anchor: p.anchor,
-      draft: p.draft != null ? String(p.draft).trim() : undefined,
+      topic: p.topic != null ? String(p.topic).trim().slice(0, TOPIC_CAP) : undefined,
+      // typeof, not String(): a non-string anchor coerced to "[object Object]" would RUN
+      // with a junk anchor; dropped, the skill runs honestly unanchored instead.
+      anchor: typeof p.anchor === "string" ? p.anchor.slice(0, ANCHOR_CAP) : undefined,
+      draft: p.draft != null ? String(p.draft).trim().slice(0, ANCHOR_CAP) : undefined,
+      ...(count !== undefined ? { count } : {}),
     };
   } catch {
     return {};
@@ -882,14 +903,19 @@ export async function runChatAgentStream(
     });
 
     // Accumulate the round: text streams straight through; tool-call fragments accumulate by index.
+    // Once cards have been delivered this turn, the round's text budget drops to the closing-line
+    // cap (F-1): tokens beyond it are neither streamed nor persisted.
+    const textCap = skillRuns.some((r) => r.blocks.length > 0) ? POST_TOOL_TEXT_CAP : Infinity;
     let roundText = "";
     const toolAcc = new Map<number, { id?: string; name?: string; args: string }>();
     for await (const chunk of stream) {
       const delta = chunk.choices?.[0]?.delta;
       if (!delta) continue;
-      if (delta.content) {
-        roundText += delta.content;
-        guard.push(delta.content);
+      if (delta.content && roundText.length < textCap) {
+        const room = textCap - roundText.length;
+        const slice = delta.content.length > room ? delta.content.slice(0, room) : delta.content;
+        roundText += slice;
+        guard.push(slice);
       }
       if (delta.tool_calls) {
         for (const tc of delta.tool_calls) {
@@ -1127,7 +1153,7 @@ export async function runChatAgentStream(
         // Announce the dispatch BEFORE the run: the client's capsule labels itself + seeds the
         // skill's stage plan off this, ahead of the first onStage event (~seconds later).
         input.onDispatch?.(skill.skillKey);
-        const { blocks } = await skill.run(args, input.context);
+        const { blocks, warnings } = await skill.run(args, input.context);
         if (skill.billable) {
           paidRuns++;
           // BILL ON DELIVERY — the cards are about to stream to the creator and nothing after this
@@ -1137,12 +1163,22 @@ export async function runChatAgentStream(
           await deps.billing!.bill(skill.billable, admission?.tier);
         }
         for (const block of blocks) input.onBlock(block);
-        skillRuns.push({ name: skill.name, blocks, warnings: [] });
+        // The runner's REAL warnings (Stage A): this used to hardcode `[]`, so a degraded
+        // run — grounding failed, a card dropped by validation, an anchor not honored —
+        // looked identical to a clean one through the chat door. skillKey rides along so
+        // the route can stamp the persisted turn (run-header) with what actually ran.
+        skillRuns.push({ name: skill.name, skillKey: skill.skillKey, blocks, warnings });
         toolCalls.push({ name: skill.name, ran: true });
         messages.push({
           role: "tool",
           tool_call_id: call.id,
-          content: JSON.stringify({ ran: skill.name, produced: `${blocks.length} card(s)`, note: "cards are shown to the creator" }),
+          content: JSON.stringify({
+            ran: skill.name,
+            produced: `${blocks.length} card(s)`,
+            note:
+              "cards are shown to the creator; reply with ONE short closing line and do NOT " +
+              "restate or rewrite the cards' content in prose",
+          }),
         });
       } catch (err) {
         toolCalls.push({ name: skill.name, ran: false, note: "error" });

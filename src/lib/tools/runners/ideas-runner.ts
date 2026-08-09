@@ -73,6 +73,7 @@ import type { RunnerPinContext } from "./predicted-pin";
 import { gatherCorpusForRun } from "@/lib/grounding/gather-for-run";
 import type { RunEvidence } from "@/lib/tools/evidence";
 import { buildProofFromSource, coerceSourceIndex } from "./build-proof";
+import { trimExamplesToBundle } from "./output-guards";
 import { buildAdaptProfile } from "./adapt-profile";
 import { selectPersonaTargets, type PersonaTarget } from "@/lib/audience/select-persona-targets";
 import {
@@ -594,11 +595,17 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
 
   // ── BUILD: assemble idea-card blocks in ranked order ────────────────────────
   const blocks: IdeaCardBlock[] = [];
+  // CITATION INTEGRITY (Stage A): resolve sourceIndex against the examples that SURVIVED
+  // bundle assembly — the assembler's overflow path can truncate the corpus AFTER the
+  // mapping array was fixed, so the model could cite an example it was never shown.
+  const shownExamples = trimExamplesToBundle(userMessage, corpus, groundingExamples);
   for (const candidate of ranked) {
     // §11f receipts-on-cards: attach the frozen receipt for the outlier this idea adapted.
     // null (no source / ungrounded run) → the field is omitted so the block shape stays
     // byte-identical to the pre-grounding card (regression gate + honesty spine).
-    const proof = buildProofFromSource(candidate.idea.sourceIndex, groundingExamples);
+    // (No template-instantiation check here: an idea borrows a TENSION, not a madlib —
+    // there is no mechanical skeleton to verify. N-1's measured offenders were hooks+script.)
+    const proof = buildProofFromSource(candidate.idea.sourceIndex, shownExamples);
 
     // WHO this idea was written for. The reaction half (verdict/quote) is NULL now — no SIM ran on
     // this path — so bindTarget receives an EMPTY panel and returns the assignment WITHOUT a

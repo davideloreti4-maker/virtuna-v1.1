@@ -62,6 +62,7 @@ import { gatherCorpusForRun } from "@/lib/grounding/gather-for-run";
 import type { RunEvidence } from "@/lib/tools/evidence";
 import { buildProofFromSource, coerceSourceIndex } from "./build-proof";
 import { buildAdaptProfile } from "./adapt-profile";
+import { anchorHonored, templateInstantiated, trimExamplesToBundle } from "./output-guards";
 import { resolveSingleTarget, type PersonaTarget } from "@/lib/audience/select-persona-targets";
 import {
   buildTargetAssignments,
@@ -613,6 +614,33 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
     allWarnings.push(`Script generation failed: ${msg}`);
     return { blocks: [], warnings: allWarnings, scrapeAvailable };
   }
+
+  // ── ANCHOR CONTRACT (Stage A, N-7): the opening beat must honor the anchor ──
+  // The measured failure: a "Write a script from #1" chip produced a script about a
+  // DIFFERENT topic while the intro claimed anchoring. The assembler now states the
+  // contract (anchorLabel); this verifies the model kept it — one retry with the
+  // rejection stated in the prompt (generation is temp-0/seeded, so an UNCHANGED
+  // prompt would reproduce the failure byte-for-byte), then a visible warning.
+  if (script && anchor && !anchorHonored(anchor, script.openingBeatSeed)) {
+    const retryMessage =
+      `${userMessage}\n\nREJECTED — your previous script ignored the Anchor hook and wrote about a ` +
+      `different topic. Rewrite the ENTIRE script so the opening beat adapts the Anchor hook: same ` +
+      `subject, same promise.`;
+    try {
+      const retried = await generateScriptStructured(retryMessage, Boolean(corpus), Boolean(target));
+      if (retried && retried.beats.length > 0 && anchorHonored(anchor, retried.openingBeatSeed)) {
+        script = retried;
+      } else {
+        allWarnings.push(
+          "This script may not follow the hook it was anchored on — check it against the hook you chose.",
+        );
+      }
+    } catch {
+      allWarnings.push(
+        "This script may not follow the hook it was anchored on — check it against the hook you chose.",
+      );
+    }
+  }
   input.onStage?.("Generating", "done");
 
   // ── SELF-JUDGE: bounded gate — drop sub-floor generation (no regen — cost) ───
@@ -636,7 +664,17 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
   // §11f receipts-on-cards: attach the frozen receipt for the outlier this script adapted.
   // null (no source / ungrounded run) → the field is omitted so the block shape stays
   // byte-identical to the pre-grounding card (regression gate + honesty spine).
-  const proof = buildProofFromSource(script.sourceIndex, groundingExamples);
+  //
+  // CITATION INTEGRITY (Stage A): resolve sourceIndex against the examples that SURVIVED
+  // bundle assembly (the assembler's overflow path can truncate the corpus AFTER the
+  // mapping array was fixed), and drop a citation whose madlib the opening demonstrably
+  // does not instantiate (N-1) — an honest "Original" beats a decorative receipt.
+  const shownExamples = trimExamplesToBundle(userMessage, corpus, groundingExamples);
+  const rawProof = buildProofFromSource(script.sourceIndex, shownExamples);
+  const proof =
+    rawProof && templateInstantiated(rawProof.hookTemplate, script.openingBeatSeed)
+      ? rawProof
+      : null;
 
   // WHO this script was written for. The reaction half (verdict/quote) is NULL now — no opener SIM
   // ran on this path — so bindTarget receives an EMPTY panel and returns the assignment WITHOUT a

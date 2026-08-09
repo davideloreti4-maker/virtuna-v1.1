@@ -116,6 +116,7 @@ export async function POST(request: Request): Promise<Response> {
     anchor?: unknown;
     intent?: unknown;
     allowScrape?: unknown;
+    count?: unknown;
   } = {};
   try {
     body = await request.json();
@@ -126,6 +127,10 @@ export async function POST(request: Request): Promise<Response> {
   const rawAsk = typeof body.ask === "string" ? body.ask : "";
   const rawPlatform = typeof body.platform === "string" ? body.platform : "tiktok";
   const rawAnchor = typeof body.anchor === "string" ? body.anchor : undefined;
+  // Stage A (N-4): how many hooks the creator asked for. Runner-clamped 1..HOOK_COUNT;
+  // absent → the runner parses the ask, else defaults.
+  const rawCount =
+    typeof body.count === "number" && Number.isFinite(body.count) ? Math.trunc(body.count) : undefined;
   // EXPLICIT-ONLY SPEND: the only field that can authorize a live Apify scrape. Default false —
   // a normal run never bills. Set true solely by the "Find new outliers" affordance the user taps
   // (see gather-for-run `allowScrape`). Coerced strictly to boolean; anything non-`true` is false.
@@ -188,6 +193,23 @@ export async function POST(request: Request): Promise<Response> {
   // The runner gates this to undefined for General/no-audience (no-op, regression gate).
   const effectiveIntent = parseIntentLens(body.intent) ?? goalIntentToLens(activeAudience.goal_intent);
 
+  // ── (5c) Persist the USER turn (Stage A, N-8) ─────────────────────────────
+  // A pill/chip-launched one-shot used to persist ONLY its assistant message; on reload
+  // the turn grouping folded those cards into the PREVIOUS turn and the causal step
+  // vanished from history (the measured turn-merge). The action is now a real user row,
+  // exactly as the chat route persists a typed ask.
+  const userAction =
+    rawAsk.trim() ||
+    (rawAnchor
+      ? `Write hooks from "${rawAnchor.length > 80 ? `${rawAnchor.slice(0, 80).trimEnd()}…` : rawAnchor}"`
+      : "Generate hooks");
+  await insertMessage(
+    openThread.id,
+    "user",
+    [{ type: "markdown", props: { text: userAction } }],
+    kcStamp().kcGenVersion,
+  );
+
   // ── (6) SSE stream: run pipeline + emit events ────────────────────────────
   const encoder = new TextEncoder();
 
@@ -215,6 +237,7 @@ export async function POST(request: Request): Promise<Response> {
           platform,
           profileRow: profileRow ?? null,
           anchor: rawAnchor,
+          count: rawCount,
           audience: activeAudience,
           intent: effectiveIntent,
           allowScrape,

@@ -32,6 +32,7 @@ import { createClient } from "@/lib/supabase/server";
 import { maybeMockSkillRun } from "@/lib/tools/mock/mock-sse";
 import { createOpenThreadLazy, getOpenThread, setThreadTitleIfEmpty } from "@/lib/threads/threads";
 import { insertMessage, loadMessages } from "@/lib/threads/messages";
+import { runHeaderBlock } from "@/lib/tools/run-header";
 import { openChatPriorTurns, MAX_PRIOR_TURNS } from "@/lib/threads/chat-prior-turns";
 import { runChatPipeline, isColdStart } from "@/lib/tools/runners/chat-runner";
 import { runChatAgentStream, type SkillBilling } from "@/lib/tools/chat-agent-loop";
@@ -488,6 +489,15 @@ export async function POST(request: Request): Promise<Response> {
             }
           );
 
+          // The runners' REAL warnings (Stage A) — the loop used to hardcode `[]`, so a
+          // degraded chat-dispatched run (grounding failed, a card dropped, an anchor not
+          // honored) was indistinguishable from a clean one. Same SSE event the dedicated
+          // routes emit; live-only, like theirs.
+          const runWarnings = agentResult.skillRuns.flatMap((run) => run.warnings);
+          if (runWarnings.length > 0) {
+            send("warning", { warnings: runWarnings });
+          }
+
           // Persist: each skill's card-blocks first (in run order), then the assistant text. A turn that
           // ran a skill marks the text origin:"chat-agent" so the thread reloads as ONE ordered stream in
           // the chat view (rehydrate-thread.ts); a pure-chat turn persists plain markdown → byte-identical
@@ -495,7 +505,20 @@ export async function POST(request: Request): Promise<Response> {
           if (openThread) {
             for (const run of agentResult.skillRuns) {
               if (run.blocks.length > 0) {
-                await insertMessage(openThread.id, "assistant", run.blocks, kcStamp().kcGenVersion);
+                // Stage A (F-3): stamp the run like every dedicated skill route does. The
+                // chat door was the one unstamped path — a reloaded turn lost its skill +
+                // audience and the intro fell back to the renderer's literal 'General'.
+                const stamped = run.skillKey
+                  ? [
+                      runHeaderBlock({
+                        skill: run.skillKey,
+                        audienceLabel: activeAudience?.name,
+                        platform,
+                      }),
+                      ...run.blocks,
+                    ]
+                  : run.blocks;
+                await insertMessage(openThread.id, "assistant", stamped, kcStamp().kcGenVersion);
               }
             }
             // UI affordance blocks (an input-request field from request_link) — persisted so the field

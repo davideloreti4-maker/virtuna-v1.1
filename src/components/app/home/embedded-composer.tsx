@@ -27,7 +27,9 @@ import type { Verb } from "@/lib/room-contract/types";
 // The verb menu — the three-verb collapse (THE-CONTRACT.md §2). Copy mirrors the thread's
 // verb-appropriate framing so /start reads the same as the room.
 const VERB_MENU: { verb: Verb; title: string; sub: string }[] = [
-  { verb: "Make", title: "Hooks · scripts · ideas", sub: "ranked, pre-tested on your people" },
+  // "pre-tested" retired (Stage A, N-3): generation projects, it does not test — the
+  // measured reaction only exists once the creator fires the room.
+  { verb: "Make", title: "Hooks · scripts · ideas", sub: "ranked, written for your people" },
   { verb: "Test", title: "A real video", sub: "the full Read before you post" },
   { verb: "Ask", title: "The room", sub: "a raw thought, react instantly" },
 ];

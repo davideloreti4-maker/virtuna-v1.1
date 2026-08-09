@@ -712,7 +712,10 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       isStreaming: chat.isStreaming,
       // Cards ABOVE the co-pilot line: a dispatched skill's real cards, then the closing prose.
       blocks: [...chat.streamingBlocks, ...chatBlocks],
-      stages: chat.stages, evidence: chat.evidence, error: chat.error, stop: chat.stop, reset: chat.reset },
+      // The dispatched runners' REAL warnings (Stage A) — the chat door used to be the one
+      // stream that swallowed them.
+      stages: chat.stages, evidence: chat.evidence, warnings: chat.warnings,
+      error: chat.error, stop: chat.stop, reset: chat.reset },
     // Account emits no stages and no card stream — one block, delivered on done.
     { skill: "account", isStreaming: account.isStreaming,
       blocks: account.block ? [account.block] : [], error: account.error,

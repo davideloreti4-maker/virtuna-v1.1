@@ -1166,3 +1166,103 @@ describe("the artefact guard arms on WHO the visitor is, not on what happens to 
     expect(out).toBe(QUOTED);
   });
 });
+
+// ─── Stage A (2026-08-10): warnings, arg caps, post-tool text containment ─────────
+
+describe("runChatAgentStream [Stage A guards]", () => {
+  it("passes the runner's REAL warnings + skillKey through (the [] hardcode is gone)", async () => {
+    const skill = mkSkill("generate_hooks", {
+      run: vi.fn(async () => ({
+        blocks: [{ type: "hook-card", props: {} }],
+        warnings: ["grounding failed (degraded to ungrounded): boom"],
+      })),
+    });
+    const stream = mockStream([
+      [toolName(0, "c1", "generate_hooks"), toolArgs(0, '{"topic":"coffee"}')],
+      [textChunk("Done.")],
+    ]);
+
+    const res = await runChatAgentStream(baseInput(), DEPS(stream, { skills: [skill] }));
+
+    expect(res.skillRuns[0]!.warnings).toEqual(["grounding failed (degraded to ungrounded): boom"]);
+    expect(res.skillRuns[0]!.skillKey).toBe("hooks");
+  });
+
+  it("caps the model-written topic (2000) and anchor (5000) like the dedicated routes", async () => {
+    const run = vi.fn(async (_args: import("@/lib/tools/skill-dispatch").SkillToolArgs) => ({ blocks: [], warnings: [] }));
+    const skill = mkSkill("generate_hooks", { run });
+    const bigTopic = "t".repeat(3000);
+    const bigAnchor = "a".repeat(6000);
+    const stream = mockStream([
+      [
+        toolName(0, "c1", "generate_hooks"),
+        toolArgs(0, JSON.stringify({ topic: bigTopic, anchor: bigAnchor })),
+      ],
+      [textChunk("ok")],
+    ]);
+
+    await runChatAgentStream(baseInput(), DEPS(stream, { skills: [skill] }));
+
+    const args = run.mock.calls[0]![0]!;
+    expect(args.topic!.length).toBe(2000);
+    expect(args.anchor!.length).toBe(5000);
+  });
+
+  it("drops a non-string anchor instead of coercing it to '[object Object]'", async () => {
+    const run = vi.fn(async (_args: import("@/lib/tools/skill-dispatch").SkillToolArgs) => ({ blocks: [], warnings: [] }));
+    const skill = mkSkill("generate_hooks", { run });
+    const stream = mockStream([
+      [toolName(0, "c1", "generate_hooks"), toolArgs(0, '{"topic":"x","anchor":{"a":1}}')],
+      [textChunk("ok")],
+    ]);
+
+    await runChatAgentStream(baseInput(), DEPS(stream, { skills: [skill] }));
+    expect(run.mock.calls[0]![0]!.anchor).toBeUndefined();
+  });
+
+  it("carries a numeric count through to the skill (N-4 — '3 hooks' survives the router rewrite)", async () => {
+    const run = vi.fn(async (_args: import("@/lib/tools/skill-dispatch").SkillToolArgs) => ({ blocks: [], warnings: [] }));
+    const skill = mkSkill("generate_hooks", { run });
+    const stream = mockStream([
+      [toolName(0, "c1", "generate_hooks"), toolArgs(0, '{"topic":"sugar-free month","count":3}')],
+      [textChunk("ok")],
+    ]);
+
+    await runChatAgentStream(baseInput(), DEPS(stream, { skills: [skill] }));
+    expect(run.mock.calls[0]![0]!.count).toBe(3);
+  });
+
+  it("F-1 containment: post-tool text is capped, pre-tool text is not", async () => {
+    const skill = mkSkill("generate_hooks", {
+      run: vi.fn(async () => ({ blocks: [{ type: "hook-card", props: {} }], warnings: [] })),
+    });
+    const reAnswer = "All ten hooks again in markdown! ".repeat(60); // ~1,900 chars
+    let streamed = "";
+    const stream = mockStream([
+      [toolName(0, "c1", "generate_hooks"), toolArgs(0, '{"topic":"coffee"}')],
+      [textChunk(reAnswer)],
+    ]);
+
+    const res = await runChatAgentStream(
+      baseInput({ onToken: (d: string) => { streamed += d; } }),
+      DEPS(stream, { skills: [skill] }),
+    );
+
+    expect(res.text.length).toBeLessThanOrEqual(600);
+    expect(streamed.length).toBeLessThanOrEqual(600);
+  });
+
+  it("a turn whose skill produced NO cards keeps its prose uncapped (refusals need words)", async () => {
+    const skill = mkSkill("generate_hooks", {
+      run: vi.fn(async () => ({ blocks: [], warnings: ["sub-floored"] })),
+    });
+    const longExplain = "Here is why that could not be generated and what to try. ".repeat(20);
+    const stream = mockStream([
+      [toolName(0, "c1", "generate_hooks"), toolArgs(0, '{"topic":"x"}')],
+      [textChunk(longExplain)],
+    ]);
+
+    const res = await runChatAgentStream(baseInput(), DEPS(stream, { skills: [skill] }));
+    expect(res.text.length).toBeGreaterThan(600);
+  });
+});

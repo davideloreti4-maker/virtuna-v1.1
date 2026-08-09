@@ -62,6 +62,13 @@ export interface UseChatStreamReturn {
    * a turn runs two skills.
    */
   dispatchedSkill: string | null;
+  /**
+   * The dispatched runners' REAL warnings (event: warning — Stage A). A degraded
+   * chat-dispatched run (grounding failed, a card dropped by validation, an anchor not
+   * honored) used to stream nothing here while the dedicated routes warned; RunWarnings
+   * renders these under the turn. Empty on a clean or plain-chat turn.
+   */
+  warnings: string[];
   /** True while the SSE stream is active. */
   isStreaming: boolean;
   /** Error string if the stream or route failed. Null when no error. */
@@ -118,6 +125,7 @@ export function useChatStream(): UseChatStreamReturn {
    * start of every run so a new send can never inherit the last one's sources.
    */
   const [evidence, setEvidence] = useState<RunEvidence | null>(null);
+  const [warnings, setWarnings] = useState<string[]>([]);
   const [dispatchedSkill, setDispatchedSkill] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -151,6 +159,7 @@ export function useChatStream(): UseChatStreamReturn {
     setStreamingBlocks([]);
     setStages([]);
     setEvidence(null);
+    setWarnings([]);
     setDispatchedSkill(null);
     setIsStreaming(false);
     setError(null);
@@ -179,6 +188,7 @@ export function useChatStream(): UseChatStreamReturn {
     setStreamingBlocks([]);
     setStages([]);
     setEvidence(null);
+    setWarnings([]);
     setDispatchedSkill(null);
     setError(null);
     setIsDone(false);
@@ -288,6 +298,14 @@ export function useChatStream(): UseChatStreamReturn {
               setDispatchedSkill(skill);
             }
 
+          } else if (eventType === 'warning') {
+            // The dispatched runners' real warnings (Stage A) — same event shape the
+            // dedicated skill routes emit ({ warnings: string[] }).
+            const w = (data as { warnings?: unknown }).warnings;
+            if (Array.isArray(w) && isMountedRef.current) {
+              setWarnings(w.filter((x): x is string => typeof x === 'string'));
+            }
+
           } else if (eventType === 'evidence') {
             // Real artifacts, mid-run. parseRunEvidence is total (null on anything malformed)
             // because a throw inside this read loop would kill the whole stream — cards, receipt
@@ -353,6 +371,7 @@ export function useChatStream(): UseChatStreamReturn {
     streamingBlocks,
     stages,
     evidence,
+    warnings,
     dispatchedSkill,
     isStreaming,
     error,

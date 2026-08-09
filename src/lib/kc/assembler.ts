@@ -135,6 +135,34 @@ export const MODE_ROLES: Record<AssemblerInput["mode"], Role[]> = {
   remix: ["niche", "audience", "voice", "wins", "flops", "platform"],
 };
 
+// ─── Anchor contract (Stage A, N-7) ──────────────────────────────────────────
+
+/**
+ * The label the anchor fence is emitted under — per mode, because the anchor MEANS a
+ * different thing per mode and the label is the only instruction the model gets about it.
+ *
+ * N-7 (2026-08-09 live run): a "Write a script from #1" chip shipped the chosen hook in a
+ * fence labeled just "Chain anchor", next to a topic-free ask — no prompt text anywhere
+ * said what a chain anchor IS or that the script must open from it. The model freestyled
+ * an audience-flavored topic (a dance-challenge script from a morning-routine hook) while
+ * retrieval keyed correctly off the anchor. The contract has to live HERE, beside the
+ * content, because the system prompts are byte-stable compiled slices this per-request
+ * data must not invalidate.
+ */
+function anchorLabel(mode: AssemblerInput["mode"]): string {
+  switch (mode) {
+    case "script":
+      return (
+        "Anchor hook — REQUIRED: the script MUST open from this exact hook. " +
+        "Keep its subject and its promise; adapt the wording, never the topic"
+      );
+    case "hooks":
+      return "Chain anchor — the chosen idea these hooks develop; every hook must be about THIS subject";
+    default:
+      return "Chain anchor";
+  }
+}
+
 // ─── Injection fence helpers ──────────────────────────────────────────────────
 
 /**
@@ -273,7 +301,7 @@ export function assembleBundle(
   const fencedSections: string[] = [];
   fencedSections.push(fenceUserContent("Creator ask", ask));
   if (overrides) fencedSections.push(fenceUserContent("Per-request overrides", overrides));
-  if (anchor) fencedSections.push(fenceUserContent("Chain anchor", anchor));
+  if (anchor) fencedSections.push(fenceUserContent(anchorLabel(mode), anchor));
   if (corpus) fencedSections.push(fenceUserContent("Grounded examples", corpus));
 
   // 4. Enforce BUNDLE_CHAR_CAP — WITHOUT ever structurally breaking a fence.
@@ -319,7 +347,7 @@ export function assembleBundle(
       { label: "Creator ask", content: ask },
     ];
     if (overrides) rawSections.push({ label: "Per-request overrides", content: overrides });
-    if (anchor) rawSections.push({ label: "Chain anchor", content: anchor });
+    if (anchor) rawSections.push({ label: anchorLabel(mode), content: anchor });
     if (corpus) rawSections.push({ label: "Grounded examples", content: corpus });
     result = buildResult(profileSection, fenceSectionsWithinBudget(rawSections, fencedBudget));
   }

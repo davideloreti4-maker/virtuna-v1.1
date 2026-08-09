@@ -74,6 +74,13 @@ import type { RunEvidence } from "@/lib/tools/evidence";
 import { buildProofFromSource, coerceSourceIndex } from "./build-proof";
 import { buildAdaptProfile } from "./adapt-profile";
 import type { RetrievedExample } from "@/lib/grounding/types";
+import {
+  plausibleSeedHook,
+  requestedCount,
+  templateInstantiated,
+  trimExamplesToBundle,
+  createSourceDiversityCap,
+} from "./output-guards";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -149,13 +156,18 @@ const VISUAL_HOOK_RULE = ` "visualHook" is the FIRST-FRAME visual that opens the
 const PROJECTION_FIELD = `, "personaStops": number, "stopQuote": string`;
 const PROJECTION_RULE = ` "personaStops" is YOUR honest estimate, as the writer, of how many out of 10 typical target viewers would STOP scrolling on this hook in the first 2 seconds — an integer 0–10. Be discriminating, never generous: a generic hook with no real mechanism stops 0–2; a genuinely strong, niche-true hook stops 7–8; reserve 9–10 for the rare undeniable one. "stopQuote" is ONE short first-person line of what a viewer who stops thinks in that instant (e.g. "Okay that opening line got me"). Both are a PROJECTION you are making — the creator sees them as your estimate and can then measure the hook against their real audience; never phrase them as a finished measurement.`;
 
-const HOOKS_OUTPUT_CONTRACT = `
+/**
+ * COUNT IS A PARAMETER now (Stage A, N-4): "3 hooks for my video" used to get 5 — the
+ * contract hardcoded HOOK_COUNT. `count` defaults to HOOK_COUNT, so an uncounted ask
+ * keeps the byte-identical contract (warm-cache prefix + regression gate).
+ */
+const hooksOutputContract = (count: number) => `
 
 ---
 
 OUTPUT FORMAT: Respond with a single JSON object — no markdown, no code fences, no prose.
 Shape: { "hooks": [ { "hookLine": string, "mechanism": string, "seedHook": string, "channel": string | null, "needsTake": boolean${PROJECTION_FIELD}${VISUAL_HOOK_FIELD} } ] }
-Return a "hooks" array of exactly ${HOOK_COUNT} STRONG, DISTINCT-mechanism objects — each must earn its place (these are all shown to the creator, not filtered). Every field is required; "hookLine" and "seedHook" must be non-empty. "mechanism" is plain-prose reasoning — never a bracket-tag. "channel" is the delivery channel (spoken/visual/caption/edit/audio) or null.${PROJECTION_RULE}${VISUAL_HOOK_RULE}`;
+Return a "hooks" array of exactly ${count} STRONG, DISTINCT-mechanism objects — each must earn its place (these are all shown to the creator, not filtered). Every field is required; "hookLine" and "seedHook" must be non-empty. "mechanism" is plain-prose reasoning — never a bracket-tag. "channel" is the delivery channel (spoken/visual/caption/edit/audio) or null.${PROJECTION_RULE}${VISUAL_HOOK_RULE}`;
 
 /**
  * Grounded output contract (§11f receipts-on-cards). Used ONLY when a corpus grounding block
@@ -165,13 +177,13 @@ Return a "hooks" array of exactly ${HOOK_COUNT} STRONG, DISTINCT-mechanism objec
  * RetrievedExample → proof). The ungrounded contract above is kept byte-identical so flag-OFF
  * runs preserve their warm-cache prefix + regression gate.
  */
-const HOOKS_OUTPUT_CONTRACT_GROUNDED = `
+const hooksOutputContractGrounded = (count: number) => `
 
 ---
 
 OUTPUT FORMAT: Respond with a single JSON object — no markdown, no code fences, no prose.
 Shape: { "hooks": [ { "hookLine": string, "mechanism": string, "seedHook": string, "channel": string | null, "needsTake": boolean, "sourceIndex": number${PROJECTION_FIELD}${VISUAL_HOOK_FIELD} } ] }
-Return a "hooks" array of exactly ${HOOK_COUNT} STRONG, DISTINCT-mechanism objects — each must earn its place (these are all shown to the creator, not filtered). Every field is required; "hookLine" and "seedHook" must be non-empty. "mechanism" is plain-prose reasoning — never a bracket-tag. "channel" is the delivery channel (spoken/visual/caption/edit/audio) or null. "sourceIndex" is the 1-based number of the GROUNDING example (from the numbered GROUNDING list in the prompt) whose proven STRUCTURE this hook adapts, or 0 if the hook adapts no specific example — never cite a source you did not actually use (honesty).${PROJECTION_RULE}${VISUAL_HOOK_RULE}`;
+Return a "hooks" array of exactly ${count} STRONG, DISTINCT-mechanism objects — each must earn its place (these are all shown to the creator, not filtered). Every field is required; "hookLine" and "seedHook" must be non-empty. "mechanism" is plain-prose reasoning — never a bracket-tag. "channel" is the delivery channel (spoken/visual/caption/edit/audio) or null. "sourceIndex" is the 1-based number of the GROUNDING example (from the numbered GROUNDING list in the prompt) whose proven STRUCTURE this hook adapts, or 0 if the hook adapts no specific example — never cite a source you did not actually use (honesty).${PROJECTION_RULE}${VISUAL_HOOK_RULE}`;
 
 /**
  * PER-PERSONA GENERATION — the craft half of the ASSIGNMENT block.
@@ -192,7 +204,7 @@ any of them has failed its assignment. Do not hedge toward the middle.`,
 };
 
 /** Output contract for a targeted (calibrated) run — adds the one field that carries the binding. */
-function targetedOutputContract(grounded: boolean): string {
+function targetedOutputContract(grounded: boolean, count: number): string {
   const groundedField = grounded
     ? `, "sourceIndex": number`
     : "";
@@ -206,7 +218,7 @@ function targetedOutputContract(grounded: boolean): string {
 
 OUTPUT FORMAT: Respond with a single JSON object — no markdown, no code fences, no prose.
 Shape: { "hooks": [ { "hookLine": string, "mechanism": string, "seedHook": string, "channel": string | null, "needsTake": boolean, "targetArchetype": string${groundedField}${PROJECTION_FIELD}${VISUAL_HOOK_FIELD} } ] }
-Return a "hooks" array of exactly ${HOOK_COUNT} STRONG, DISTINCT-mechanism objects, in assignment order — hook N targets person N from the list above. Every field is required; "hookLine" and "seedHook" must be non-empty. "mechanism" is plain-prose reasoning — never a bracket-tag. "channel" is the delivery channel (spoken/visual/caption/edit/audio) or null. "targetArchetype" is the exact bracketed slug of the person this hook was written for. For "personaStops", estimate the stop-count specifically for THAT assigned person's segment.${groundedRule}${PROJECTION_RULE}${VISUAL_HOOK_RULE}`;
+Return a "hooks" array of exactly ${count} STRONG, DISTINCT-mechanism objects, in assignment order — hook N targets person N from the list above. Every field is required; "hookLine" and "seedHook" must be non-empty. "mechanism" is plain-prose reasoning — never a bracket-tag. "channel" is the delivery channel (spoken/visual/caption/edit/audio) or null. "targetArchetype" is the exact bracketed slug of the person this hook was written for. For "personaStops", estimate the stop-count specifically for THAT assigned person's segment.${groundedRule}${PROJECTION_RULE}${VISUAL_HOOK_RULE}`;
 }
 
 /**
@@ -227,6 +239,12 @@ export interface HooksPipelineInput {
   profileRow: ProfileRow | null;
   /** Upstream idea anchor (the "what to make" concept this Hooks run develops). */
   anchor?: string;
+  /**
+   * How many hooks the creator asked for (Stage A, N-4). Clamped 1..HOOK_COUNT; absent →
+   * parsed from the ask ("3 hooks for…"), else HOOK_COUNT. The old behavior — 5 no
+   * matter what was asked — shipped "3 hooks" asks 5 cards.
+   */
+  count?: number;
   /**
    * Active audience for this run (08-04 — steer closure, AUD-STEER; mirrors 07-04 ideas-runner).
    * null or is_general → falls back to profile-based grounding + DEFAULT weights
@@ -378,6 +396,7 @@ async function generateHooksStructured(
   userMessage: string,
   grounded: boolean,
   targets: PersonaTarget[],
+  count: number,
 ): Promise<StructuredHook[]> {
   const ai = getQwenClient();
 
@@ -390,10 +409,10 @@ async function generateHooksStructured(
   // regression gate): no audience, no real people, no cast — the honest degrade.
   const outputContract =
     targets.length > 0
-      ? targetedOutputContract(grounded)
+      ? targetedOutputContract(grounded, count)
       : grounded
-        ? HOOKS_OUTPUT_CONTRACT_GROUNDED
-        : HOOKS_OUTPUT_CONTRACT;
+        ? hooksOutputContractGrounded(count)
+        : hooksOutputContract(count);
 
   let raw: string;
   try {
@@ -456,7 +475,11 @@ async function generateHooksStructured(
     hooks.push({
       hookLine: r.hookLine,
       mechanism: typeof r.mechanism === "string" ? r.mechanism : "",
-      seedHook: r.seedHook,
+      // N-2 (Stage A): the model has emitted the adjacent sourceIndex DIGITS here ("0",
+      // "1", "3") and `typeof === "string" && truthy` shipped them as the SEED LINE. A
+      // seed that is not plausibly a spoken line degrades to the hookLine — which IS the
+      // spoken opening — never to junk.
+      seedHook: plausibleSeedHook(r.seedHook) ? r.seedHook : r.hookLine,
       channel:
         typeof r.channel === "string" && r.channel.trim().length > 0 ? r.channel : null,
       needsTake: typeof r.needsTake === "boolean" ? r.needsTake : false,
@@ -475,7 +498,7 @@ async function generateHooksStructured(
       // assignments below, because a slug we never assigned is not a person we can name.
       targetArchetype: normalizeTargetArchetype(r.targetArchetype),
     });
-    if (hooks.length >= HOOK_COUNT) break;
+    if (hooks.length >= count) break;
   }
 
   return hooks;
@@ -502,6 +525,13 @@ async function generateHooksStructured(
 export async function runHooksPipeline(input: HooksPipelineInput): Promise<HooksPipelineResult> {
   const { ask, platform, profileRow, anchor, audience = null } = input;
   const allWarnings: string[] = [];
+
+  // ── COUNT (Stage A, N-4): honor the asked-for count ──────────────────────────
+  // Caller-supplied (clamped) → parsed from the ask ("3 hooks for…") → the default.
+  const count =
+    input.count && Number.isFinite(input.count)
+      ? Math.max(1, Math.min(HOOK_COUNT, Math.trunc(input.count)))
+      : (requestedCount(ask) ?? HOOK_COUNT);
   // NOTE: `input.intent` (the sell/grow reaction lens) only ever reframed the persona-SIM verdict.
   // With the SIM removed from generation it is unused on this path for now; it re-attaches to the
   // user-fired simulation (which owns the reaction) when that wiring lands. Kept on the interface so
@@ -524,7 +554,7 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
   // Deterministic, no LLM — top-N by share, forced to span the four persona_weights slots
   // (see select-persona-targets.ts). Empty for General / uncalibrated / no bindable persona: there
   // are no real people behind those, so we name none and the run is byte-identical to today's.
-  const targets = selectPersonaTargets(audience, HOOK_COUNT);
+  const targets = selectPersonaTargets(audience, count);
   const targetAssignments =
     targets.length > 0 ? buildTargetAssignments(targets, HOOK_UNIT) : undefined;
   // The slugs we are willing to have named back at us. A hook claiming anything outside this set
@@ -591,11 +621,11 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
     generationIndex: number; // preserves generation order for the rank tie-break
   }
 
-  // Generate exactly HOOK_COUNT hooks (no over-gen buffer — all are shown). ONE Qwen call now
+  // Generate exactly `count` hooks (no over-gen buffer — all are shown). ONE Qwen call now
   // carries the whole pipeline: the candidates AND their /10 projection AND the ranking signal.
   // ── STAGE: Generating (real boundary — the single LLM call) ──
   input.onStage?.("Generating", "active");
-  const firstBatch = await generateHooksStructured(userMessage, Boolean(corpus), targets);
+  const firstBatch = await generateHooksStructured(userMessage, Boolean(corpus), targets, count);
   input.onStage?.("Generating", "done");
   if (firstBatch.length === 0) {
     return { blocks: [], warnings: allWarnings, seedHookPath, scrapeAvailable };
@@ -624,10 +654,19 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
     return a.generationIndex - b.generationIndex; // preserve generation order
   });
 
-  const ranked = rated.slice(0, HOOK_COUNT);
+  const ranked = rated.slice(0, count);
 
   // ── BUILD: assemble hook-card blocks with rank ──────────────────────────────
   const blocks: HookCardBlock[] = [];
+
+  // CITATION INTEGRITY (Stage A): resolve sourceIndex against the examples that SURVIVED
+  // bundle assembly — the assembler's overflow path can truncate the corpus AFTER the
+  // mapping array was fixed, so the model could cite an example it was never shown.
+  const shownExamples = trimExamplesToBundle(userMessage, corpus, groundingExamples);
+  // F-7: the same reel shipped as the receipt on 3 of 5 cards. Cap per-source citations
+  // (rank order — the strongest cards keep their receipts); beyond the cap a card renders
+  // honestly without one.
+  const diversity = createSourceDiversityCap();
 
   for (let rank = 1; rank <= ranked.length; rank++) {
     const candidate = ranked[rank - 1];
@@ -636,7 +675,15 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
     // §11f receipts-on-cards: attach the frozen receipt for the outlier this hook adapted.
     // null (no source / ungrounded run) → the field is omitted so the block shape stays
     // byte-identical to the pre-grounding card (regression gate + honesty spine).
-    const proof = buildHookProof(candidate.hook.sourceIndex, groundingExamples);
+    // Stage A honesty pair: a receipt whose madlib the hook does not instantiate is
+    // decorative (N-1) → dropped to "Original"; an over-cited source is capped (F-7).
+    const rawProof = buildHookProof(candidate.hook.sourceIndex, shownExamples);
+    const proof =
+      rawProof &&
+      templateInstantiated(rawProof.hookTemplate, candidate.hook.hookLine) &&
+      diversity.admit(rawProof.videoUrl ?? rawProof.handle)
+        ? rawProof
+        : null;
 
     // WHO this hook was written for. The reaction half (verdict/quote) is NULL now — no SIM ran on
     // this path — so bindTarget receives an EMPTY panel and returns the assignment WITHOUT a
