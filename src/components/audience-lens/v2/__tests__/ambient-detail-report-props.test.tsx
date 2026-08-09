@@ -75,4 +75,14 @@ describe("AmbientDetail — report props", () => {
     render(<AmbientDetail template={template({ pager: "hook 2 of 5" })} presentation="sheet" />);
     expect(screen.getByTestId("ambient-detail-pager")).toHaveTextContent("hook 2 of 5");
   });
+
+  it("skips the nav strip entirely when there is neither a back button nor a pager", () => {
+    render(<AmbientDetail template={template()} presentation="sheet" />);
+    expect(screen.queryByTestId("ambient-detail-nav")).toBeNull();
+  });
+
+  it("keeps the nav strip for a drill template that has a pager", () => {
+    render(<AmbientDetail template={template({ pager: "hook 2 of 5" })} presentation="sheet" />);
+    expect(screen.getByTestId("ambient-detail-nav")).toBeInTheDocument();
+  });
 });

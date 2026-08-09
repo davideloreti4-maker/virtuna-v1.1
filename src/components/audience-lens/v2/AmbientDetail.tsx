@@ -394,8 +394,12 @@ export function AmbientDetail({
       }}
     >
       {/* The pinned strip is the NAV ROW ONLY (owner, 7.2: "I don't like this fixed header at all").
-          Identity and the tabs live inside the scroll, TikTok Studio's exact chrome. */}
-      <div className="px-[22px] pt-5">
+          Identity and the tabs live inside the scroll, TikTok Studio's exact chrome.
+          Skipped entirely when it would be EMPTY — the v8 report has neither a back button nor a
+          pager, and the strip left ~110px of dead space above its tabs (measured at 393×852 and
+          1440×900). Every drill template carries a pager, so their strip is unchanged. */}
+      {onBack || pager ? (
+      <div data-testid="ambient-detail-nav" className="px-[22px] pt-5">
         <div className="flex h-5 items-center justify-between">
           {onBack ? (
             <button
@@ -428,6 +432,7 @@ export function AmbientDetail({
           )}
         </div>
       </div>
+      ) : null}
 
       <div ref={bodyRef} className="min-h-0 flex-1 overflow-y-auto px-[22px] pb-[30px]">
         {identity ? <Identity identity={identity} thumbLabel={appliedState?.thumbLabel ?? identity.thumbLabel} /> : null}

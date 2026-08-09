@@ -65,6 +65,11 @@ export function HomePageLayout() {
   // True on the fresh empty home (no thread, nothing streamed). Drives the
   // greeting + the vertical-centering of the greeting→actions→composer group.
   const emptyHome = !hasConversation && !rehydrating;
+  // The right column exists whenever something docks in it: a thread's rail, or a PINNED v8
+  // report. The pinned case can happen on the ARRIVAL, which is otherwise a centered COLUMN —
+  // so the direction has to flip for it too, or the panel stacks under the composer instead of
+  // sitting beside it (measured at 1440×900 before this line existed).
+  const railMounted = threadMode || reportPinned;
 
   return (
     // P2 (A2a): the audience is a property of the THREAD, so ≥xl in thread mode it gets its own
@@ -86,8 +91,16 @@ export function HomePageLayout() {
         // Thread mode: the work column FLEXES to fill (it self-centers its content at 760 via its own
         // mx-auto), so the rail is pushed flush to the page's right edge (owner call — the rail
         // connects to the right side completely). Not justify-center, which left a symmetric gap.
-        threadMode ? "h-full flex-row" : "min-h-full flex-col items-center",
-        emptyHome && "justify-center",
+        // A pinned report keeps `min-h-full` (the arrival's hero must still be able to grow past
+        // the viewport) but takes the ROW direction, so the panel is a column beside the work,
+        // not a block under it.
+        threadMode
+          ? "h-full flex-row"
+          : railMounted
+            ? "min-h-full flex-row"
+            : "min-h-full flex-col items-center",
+        // justify-center would centre the PAIR and leave the panel off the right edge.
+        emptyHome && !railMounted && "justify-center",
       )}
     >
       {emptyHome && !AMBIENT_V2_ENABLED && (
@@ -116,7 +129,7 @@ export function HomePageLayout() {
           // NO horizontal padding in either mode: the Composer's own columns own the page gutter, and
           // a gutter here too DOUBLED it — on the empty Start that was 32px of dead edge per side on a
           // 390px phone (found measuring the owner's tighten-the-margins ask, 2026-07-24).
-          threadMode ? "min-w-0 flex-1 min-h-0" : "max-w-[760px]",
+          railMounted ? "min-w-0 flex-1 min-h-0" : "max-w-[760px]",
         )}
       >
         <Composer
@@ -129,7 +142,7 @@ export function HomePageLayout() {
           onReportPinnedChange={handleReportPinnedChange}
         />
       </div>
-      {(threadMode || reportPinned) && (
+      {railMounted && (
         // The persistent audience rail — desktop (≥xl) only; `hidden` below xl so the composer's
         // dock peek owns it there. The composer portals <AudiencePresence variant='rail'> into this
         // host. shrink-0 fixed width; full height with internal scroll (the rail body scrolls).
@@ -137,7 +150,14 @@ export function HomePageLayout() {
           aria-label="Your audience"
           // A CONNECTED rail — part of the thread page, full height, flush (no floating gaps). The
           // panel fills the column top-to-bottom; its own left hairline divides it from the thread.
-          className="hidden h-full min-h-0 w-[400px] shrink-0 flex-col xl:flex"
+          className={cn(
+            "hidden min-h-0 w-[400px] shrink-0 flex-col xl:flex",
+            // Thread mode's row is already viewport-height, so the column fills it.
+            // The ARRIVAL's row is `min-h-full` and grows with the shelf, so a plain h-full
+            // column scrolls away with the page — measured at 1440×900: the pinned panel's top
+            // sat 173px above the fold. Stick it to the viewport instead; "pin" means it stays.
+            threadMode ? "h-full" : "sticky top-0 h-dvh self-start",
+          )}
         >
           <div ref={setRailHost} className="flex min-h-0 w-full flex-1" />
         </aside>
