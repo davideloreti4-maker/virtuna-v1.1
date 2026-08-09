@@ -64,6 +64,13 @@ describe("synthesizeLanes", () => {
     expect(second.messages[1]!.content).toContain("ONLY the raw JSON");
   });
 
+  it("treats an empty lanes array as a valid decline — null, no repair retry", async () => {
+    const { fn, client } = fakeClient([JSON.stringify({ lanes: [] }), THREE]);
+    expect(await synthesizeLanes("asdf lol nothing really", { client })).toBeNull();
+    // One call only: [] is the model's legal "no subject", not a malformed response.
+    expect(fn).toHaveBeenCalledTimes(1);
+  });
+
   it("rejects a response with fewer than LANE_MIN lanes", async () => {
     const one = JSON.stringify({ lanes: [{ name: "A", who: "b", niche: "c" }] });
     const { client } = fakeClient([one, one]);
