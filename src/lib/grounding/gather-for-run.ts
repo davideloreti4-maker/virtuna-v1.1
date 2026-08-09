@@ -142,6 +142,15 @@ export interface GatherCorpusResult {
   warrant: Warrant;
   /** Convenience mirror of `warrant !== "none"` — what the card's `grounded` flag is set from. */
   grounded: boolean;
+  /**
+   * Did the adapt BRIEF ship as `corpus` (true), or the raw per-skill slice (false — including
+   * every adapt fallback)? The runners' citation-honesty guard keys off this: the madlib-
+   * instantiation check (output-guards.ts templateInstantiated) verifies the slice contract —
+   * "instructed to instantiate what it was shown" — and demonstrably strips honest brief-path
+   * citations (measured 23/28 on the 07-15 A/B output), because under the brief the model never
+   * saw the madlib. The lexical guard therefore binds ONLY when `adapted` is false.
+   */
+  adapted: boolean;
 }
 
 /** Injectable pipeline fns (tests swap these; prod uses the real modules). */
@@ -224,6 +233,7 @@ export async function gatherCorpusForRun(
     scrapeAvailable: false,
     warrant: "none",
     grounded: false,
+    adapted: false,
   };
   if (!input.enabled || !READABLE_PLATFORMS.has(input.platform)) return none;
 
@@ -261,15 +271,22 @@ export async function gatherCorpusForRun(
   ): Promise<GatherCorpusResult> => {
     // Assessed on the rows the model is actually SHOWN (`used`), never on the wider input list —
     // a row we retrieved and then dropped cannot warrant anything the model could not read.
-    const settle = (corpus: string | undefined, used: RetrievedExample[]): GatherCorpusResult => {
+    const settle = (
+      corpus: string | undefined,
+      used: RetrievedExample[],
+      adapted: boolean,
+    ): GatherCorpusResult => {
       const { warrant, grounded } = assessWarrant(axis, used);
       // The loading rail gets the SAME rows the model got, described by the SAME warrant the cards
       // will be stamped with — so the wait can never advertise evidence the output then disclaims.
       if (grounded) emitEvidence(input.onEvidence, warrant, used);
-      return { corpus, examples: used, scrapeAvailable, warrant, grounded };
+      return { corpus, examples: used, scrapeAvailable, warrant, grounded, adapted };
     };
     if (input.adapt && ADAPT_SKILLS.has(input.skill) && input.adaptProfile && examples.length > 0) {
-      const { corpus, used } = await adapt({
+      // `adapted` comes from the adapt stage itself, NOT from this branch having run: the briefer
+      // falls back internally (LLM failure, kept-0 sweep) and its fallback IS the raw slice — a
+      // corpus the citation guard must still verify under the slice contract.
+      const { corpus, used, adapted } = await adapt({
         skill: input.skill,
         ask: query,
         niche: input.niche,
@@ -277,10 +294,10 @@ export async function gatherCorpusForRun(
         profile: input.adaptProfile,
         examples,
       });
-      return settle(corpus, used);
+      return settle(corpus, used, adapted);
     }
     const { corpus, used } = buildCorpusBlock(examples, input.skill);
-    return settle(corpus, used);
+    return settle(corpus, used, false);
   };
 
   input.onStage?.(GROUNDING_STAGE_NAME, "active");

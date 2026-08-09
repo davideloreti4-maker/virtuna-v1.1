@@ -574,6 +574,7 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
     examples: groundingExamples,
     scrapeAvailable,
     grounded: corpusGrounded,
+    adapted: corpusAdapted,
   } = await gatherCorpusForRun({
     enabled: isGroundingEnabled(),
     skill: "hooks", // → the madlib slice: the reusable skeleton a proven hook ran on
@@ -677,10 +678,13 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
     // byte-identical to the pre-grounding card (regression gate + honesty spine).
     // Stage A honesty pair: a receipt whose madlib the hook does not instantiate is
     // decorative (N-1) → dropped to "Original"; an over-cited source is capped (F-7).
+    // The madlib check binds to the RAW-SLICE corpus only: under the adapt brief the model
+    // consumed the FITTED line, not the madlib, and re-voicing is the design — the lexical
+    // check strips 23/28 honest brief citations (measured, 07-15 A/B raw output).
     const rawProof = buildHookProof(candidate.hook.sourceIndex, shownExamples);
     const proof =
       rawProof &&
-      templateInstantiated(rawProof.hookTemplate, candidate.hook.hookLine) &&
+      (corpusAdapted || templateInstantiated(rawProof.hookTemplate, candidate.hook.hookLine)) &&
       diversity.admit(rawProof.videoUrl ?? rawProof.handle)
         ? rawProof
         : null;

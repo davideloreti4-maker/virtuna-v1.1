@@ -199,4 +199,23 @@ describe("trimExamplesToBundle", () => {
     const kept = trimExamplesToBundle(bundleWithCorpus(cut), CORPUS, examples);
     expect(kept.map((e) => e.handle)).toEqual(["a", "b"]);
   });
+
+  it("parses the ADAPT BRIEF's numbering too — C0 flips the flag onto this format", () => {
+    // adapt.ts renders "N. [dosage] fitted line" blocks joined by "\n\n" — the same
+    // "\n\nN. " boundary this trim resolves. If the brief format ever changes shape,
+    // this pins the contract: unresolvable numbering must DROP the tail, never keep it.
+    const brief = [
+      "GROUNDING — proven structures, ALREADY FITTED to your ask.",
+      `1. [swap] Stop overpaying for your own time.\n   why it fits: pricing fits\n   proven by @a · 6.2× vs their usual views · 171K views`,
+      `2. [angle] The 3 levels of freelance pricing.\n   why it fits: tiering maps\n   proven by @b · 5.1× vs their usual views · 92K views`,
+    ].join("\n\n");
+    const two = [fakeExample("a"), fakeExample("b")];
+
+    // Intact brief → both survive.
+    expect(trimExamplesToBundle(bundleWithCorpus(brief), brief, two)).toHaveLength(2);
+    // Truncated mid-entry-2 → entry 2 drops, entry 1 survives.
+    const cut = brief.slice(0, brief.indexOf("2. [angle]") + 12);
+    const kept = trimExamplesToBundle(bundleWithCorpus(cut), brief, two);
+    expect(kept.map((e) => e.handle)).toEqual(["a"]);
+  });
 });

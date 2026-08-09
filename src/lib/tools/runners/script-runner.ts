@@ -574,6 +574,7 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
     examples: groundingExamples,
     scrapeAvailable,
     grounded: corpusGrounded,
+    adapted: corpusAdapted,
   } = await gatherCorpusForRun({
     enabled: isGroundingEnabled(),
     skill: "script", // → the timed-beats slice: the pacing a proven outlier actually ran
@@ -671,8 +672,12 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
   // does not instantiate (N-1) — an honest "Original" beats a decorative receipt.
   const shownExamples = trimExamplesToBundle(userMessage, corpus, groundingExamples);
   const rawProof = buildProofFromSource(script.sourceIndex, shownExamples);
+  // The madlib check binds to the RAW-SLICE corpus only: under the adapt brief the model
+  // consumed the FITTED beat arc, not the madlib, and re-voicing is the design (see
+  // hooks-runner — same guard, same measured 23/28 honest-citation strip).
   const proof =
-    rawProof && templateInstantiated(rawProof.hookTemplate, script.openingBeatSeed)
+    rawProof &&
+    (corpusAdapted || templateInstantiated(rawProof.hookTemplate, script.openingBeatSeed))
       ? rawProof
       : null;
 

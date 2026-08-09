@@ -363,10 +363,15 @@ async function defaultComplete(system: string, user: string): Promise<string> {
 // ─── The stage ─────────────────────────────────────────────────────────────────
 
 /**
- * Route retrieved exemplars through the decode→adapt briefer. Returns the same `CorpusBlock`
- * shape `buildCorpusBlock` does — `{ corpus, used }` — so the caller (gather-for-run) and the
+ * Route retrieved exemplars through the decode→adapt briefer. Returns the `CorpusBlock` shape
+ * `buildCorpusBlock` does — `{ corpus, used }` — so the caller (gather-for-run) and the
  * downstream sourceIndex→receipt mapping are untouched. `used` is the kept exemplars in brief order;
  * the writer's `sourceIndex` resolves positionally against it.
+ *
+ * `adapted` marks WHICH corpus actually shipped: true only when the fitted brief rendered; false on
+ * every fallback. The runners' citation-honesty guard keys off it — the madlib-instantiation check
+ * (output-guards.ts) verifies the raw-slice contract and strips honest brief-path citations (the
+ * model never saw the madlib), so it must know which contract the corpus string was written under.
  *
  * Degrades to the raw-slice path on ANY failure or when every structure is judged 'none': grounding
  * falls back to today's proven behavior rather than crashing or silently dropping to ungrounded on
@@ -375,12 +380,12 @@ async function defaultComplete(system: string, user: string): Promise<string> {
 export async function adaptCorpusBlock(
   input: AdaptCorpusInput,
   deps: AdaptDeps = {},
-): Promise<CorpusBlock> {
+): Promise<CorpusBlock & { adapted: boolean }> {
   const { examples, skill } = input;
-  if (examples.length === 0) return { corpus: undefined, used: [] };
+  if (examples.length === 0) return { corpus: undefined, used: [], adapted: false };
 
   const complete = deps.complete ?? defaultComplete;
-  const fallback = () => buildCorpusBlock(examples, skill);
+  const fallback = () => ({ ...buildCorpusBlock(examples, skill), adapted: false });
 
   let structures: AdaptedStructure[];
   try {
@@ -426,5 +431,5 @@ export async function adaptCorpusBlock(
     return fallback();
   }
 
-  return { corpus: `${header}\n\n${rendered.join("\n\n")}`, used };
+  return { corpus: `${header}\n\n${rendered.join("\n\n")}`, used, adapted: true };
 }
