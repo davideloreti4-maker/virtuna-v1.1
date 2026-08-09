@@ -112,7 +112,22 @@ into a page. I don't know which one is better. What do you think?"*
 left half is a **setting** (who you're creating for → a sheet), its right half is a **destination**
 (`Simulate ›` → a full surface). That mismatch is what makes the strip read as furniture.
 
-### Recommended direction (design call — owner confirms before building)
+### 🔒 OWNER RULING — the rail is BINARY (2026-08-09)
+
+**Verbatim:** *"the rail doesn't make any sense — we either go rail, which we already had, or no
+rail. But the content inside we already had, not this new shit."*
+
+This supersedes the "pinned report reborn as a choice" framing. **The pinned panel is a THIRD
+option and it is rejected.** There are exactly two acceptable outcomes, and the owner picks:
+
+- **(a) the rail** — the `AmbientOverviewRail` that already existed, or
+- **(b) no rail** — the sim opens on demand and nothing is permanently resident.
+
+**In BOTH cases the content inside is the content that already existed** (`AmbientDetail`'s three
+pages + the overview). Never `PersonaAudienceFrame`. §2 above is the deletion; this is the rule it
+serves. Do not invent a fourth shape.
+
+### Recommended direction if the owner picks (b) — no rail
 
 1. **The strip below stays, for CONTEXT ONLY** — audience · platform · model. That is the Cowork
    idiom used correctly, and it reads premium precisely because it is only doing that one job.
