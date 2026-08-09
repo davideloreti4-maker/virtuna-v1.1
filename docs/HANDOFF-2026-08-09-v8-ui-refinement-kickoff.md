@@ -80,25 +80,86 @@ the fix belongs *inside* `PopulationFrame` as an honest reduced state, not in a 
 3. Keep `tabOrder` (Audience-first in the report) — that one is a real spec requirement, not a fork.
 4. **Do not touch the drill's own settled order** (`brain · engagement · audience`).
 
-## 3. 🟠 CONCEPT — the sim opens from the composer. There is no rail.
+## 3. 🔴 CONCEPT — the pinned report IS a rail, and the sim's door is in the wrong place
 
-**The owner's words:** *"the simulation should open up from the composer was the thought. Right?
-No more rail. same as mobile before."*
+**The owner's words:** *"in the screenshots you showed me there is like a rail, a new one
+implemented"* … *"the simulation should open up from the composer was the thought. Right? No more
+rail."*
 
-This is the intended model and it is *partly* built: `AmbientOverviewRail` retires under the flag,
-and the sub-bar's right half opens the report. But combined with §1 (the surviving header) and §2
-(the duplicate Audience page), the surface reads as if the rail's furniture never left.
+**They are right.** Phase 3 retired `AmbientOverviewRail` and then built a pinned panel that occupies
+the same column and reads identically. The spec's phrase was *"the old rail reborn as a choice"* —
+but a choice that looks like the thing you deliberately killed is still that thing. If the first
+impression of the product is a docked side panel, the rail shipped again under a new name.
 
-**The target:** one door — the composer's sub-bar — opening the sim. The desktop pin is a *choice*
-the user makes, never a default. **The mobile sim dock the product already shipped is the reference
-shape**, refined and unified across sizes; that is exactly what SSOT decision 13 says. Nothing about
-the sim should be permanently resident on the page.
+### The above-vs-below question the owner raised
 
-## 4. 🟠 CRAFT — the composer's panels don't represent the sketch
+**The owner's words:** *"the Claude and Perplexity way is not something that opens up into a page
+when it sits below the composer. Right? [We] wanted to set [it] above the composer, so it opens up
+into a page. I don't know which one is better. What do you think?"*
 
-**The owner's words:** *"the UI design inside the composer and opening up the settings and stuff
-isn't really that nice, and representing the sketch even worse. I had references from Perplexity
-and Claude."*
+**The answer is neither, and half of it is already settled in this repo.**
+
+- **Above is dead, on the record.** Spec §6, *What dies*: *"The 2026-08-08 run-bar-above-the-field
+  idea (violates the nothing-above-the-field anatomy)."* Putting the sim door above the field
+  re-opens a closed decision and repeats §1's mistake in the other direction.
+- **But the owner's instinct about "below" is correct, and sharper than the spec was.** A hairline
+  strip under the input is a **status-and-settings idiom** — that is precisely what Claude Cowork's
+  `Project · Manual · usage` strip is, and what Perplexity's foot row is. **Both open popovers.
+  Neither opens a page.** Hanging a destination off that strip reads like putting "Open Dashboard"
+  in a status bar.
+
+**The actual flaw is that the sub-bar crams two different classes of action into one strip:** its
+left half is a **setting** (who you're creating for → a sheet), its right half is a **destination**
+(`Simulate ›` → a full surface). That mismatch is what makes the strip read as furniture.
+
+### Recommended direction (design call — owner confirms before building)
+
+1. **The strip below stays, for CONTEXT ONLY** — audience · platform · model. That is the Cowork
+   idiom used correctly, and it reads premium precisely because it is only doing that one job.
+2. **The sim's door is the CARD'S METER**, which is already built and verified: tapping a meter
+   opens the report on cached personas with zero re-sim. Spec §2 already says the verdict is
+   *"an event, not furniture … the reveal plays on the result card where the user is looking."*
+   That is the correct door and it already works.
+3. **Delete the sub-bar's `Simulate ›` half.** It is a second, weaker door whose only unique job is
+   opening the sim when nothing has been simulated — which is a near-empty surface anyway.
+4. **Pin becomes genuinely opt-in and OFF by default, or it goes.** Nothing about the sim may be
+   permanently resident on the page.
+
+Net effect: nothing above the field, nothing permanently resident, one honest door. The
+already-shipped mobile sim dock stays the reference shape (SSOT decision 13).
+
+## 4. 🔴 CRAFT — the composer itself is not premium, and that is the headline complaint
+
+**The owner's words, twice:** *"the UI design inside the composer and opening up the settings and
+stuff isn't really that nice, and representing the sketch even worse. I had references from
+Perplexity and Claude."* … *"the complete design of the composer field looks ugly and shit and not
+premium and clean and smooth like Claude and Perplexity."*
+
+**Treat the composer as the primary deliverable of the refinement session, not a polish pass.** It
+is the one object on every screen (spec §3: *"same component on home and in thread"*), so it sets
+the perceived quality of the entire product. The current build is functional and passes every token
+guard while still reading as unfinished — that combination is the whole problem.
+
+Where to look, concretely — the composer box is `composer.tsx` around `:3583-3602`, and it carries
+accumulated compromises visible in its own comments: a `rounded-[24px]` outer with `p-[4px] pt-0`
+wrapping a `rounded-[20px]` inner *only when the header is present* (the header that §1 deletes, so
+that whole nested-radius branch should collapse to one clean box); a hand-tuned
+`shadow-[0_6px_16px_rgba(0,0,0,0.18)]` that replaced `--shadow-float` because the previous blur
+"pooled visibly"; and `rounded-t-none border-t-0` overrides for the expanded dock. **Once the header
+is gone, re-derive the composer's box from scratch** — one radius, one border, one shadow, one fill
+— instead of keeping the branchy remains.
+
+Specific things to get right, measured against the references rather than approximated:
+- **The field's own proportions**: padding, line-height, placeholder colour and the vertical rhythm
+  between field and foot. Claude and Perplexity both give the input generous internal space and a
+  very quiet border; the current box reads tight and busy.
+- **The foot row's weight**: `⊕`, the skill pill, the model selector and send should sit on one
+  optical baseline with consistent hit targets. Right now they are visually unequal.
+- **The send button** and the model selector are adjacent and both compete; decide which leads.
+- **Motion**: focus, expand and dock transitions should be smooth and slight. Respect
+  `prefers-reduced-motion`.
+
+### The panels it opens
 
 The built skills panel and audience sheet are functional but generic. The references are named in
 the spec and must be pulled up and matched, not approximated:
@@ -217,12 +278,28 @@ are structural, not taste — fix those before any visual work:
    page's <PopulationFrame> wholesale" and injects a second frame. Teach PopulationFrame an
    honest personas-only grade instead, then delete v8/persona-audience-frame.tsx and the
    audienceSlot prop. Keep tabOrder. Do not touch the drill's own brain·engagement·audience order.
-3. 🟠 The sim opens from the composer's sub-bar. No rail, ever; the desktop pin is a user choice,
-   never a default. The already-shipped mobile sim dock is the reference shape.
-4. 🟠 Craft: the skills panel and audience sheet don't represent the sketch — pull up mock §3/§4
-   and the Perplexity/Claude references in spec §2 (two-pane list+preview with a Use button,
-   `/` inline autocomplete, armed skill as a dismissible box IN the field). And the arrival cards
-   need real hierarchy: the serif hook is the content, the meter and Remix are chrome.
+3. 🔴 The pinned report IS a rail — same column, same read as the AmbientOverviewRail it retired.
+   The owner also asked whether the sim door belongs above or below the composer. The answer is
+   NEITHER, and half of it is already settled: "above" is listed under What dies in spec §6
+   (the run-bar-above-the-field idea). But a strip BELOW the input is a status/settings idiom —
+   Claude Cowork and Perplexity both open POPOVERS from it, never a page. The real flaw is that
+   the sub-bar mixes a setting (left: who you're creating for) with a destination (right:
+   Simulate ›). Recommended, owner to confirm: the strip stays for CONTEXT ONLY (audience ·
+   platform · model); the sim's door becomes the CARD'S METER, which is already built and
+   verified and is what spec §2 already describes ("the verdict is an event, not furniture — the
+   reveal plays on the result card where the user is looking"); delete the sub-bar's Simulate ›
+   half; make pin genuinely opt-in and OFF by default, or drop it. See brief §3.
+
+4. 🔴 THE COMPOSER ITSELF IS THE HEADLINE COMPLAINT — "the complete design of the composer field
+   looks ugly and shit and not premium and clean and smooth like Claude and Perplexity." Treat it
+   as the session's primary deliverable, not a polish pass: it is the one object on every screen,
+   so it sets the perceived quality of the whole product. Once defect #1 removes the header, the
+   nested-radius branch at composer.tsx:3583-3602 collapses — re-derive the box from scratch (one
+   radius, one border, one shadow, one fill) rather than keeping the branchy remains and the
+   hand-tuned shadow. Then the panels: mock §3/§4 and the Perplexity/Claude references in spec §2
+   (two-pane list+preview with a Use button, `/` inline autocomplete, armed skill as a dismissible
+   box IN the field). And the arrival cards need real hierarchy — the serif hook is the content,
+   the meter and Remix are chrome. See brief §4 and §5.
 
 ⚠️ STANDING OWNER INSTRUCTION: the mock contains surfaces the product ALREADY HAS (the audience
 page, the sim pages). AUDIT EACH MOCK SECTION AGAINST THE LIVE PRODUCT BEFORE BUILDING IT.
