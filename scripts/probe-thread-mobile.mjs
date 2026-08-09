@@ -10,7 +10,8 @@
  *
  * WHAT IT MEASURES, and why each one caught something:
  *  - composer rect before/after typing → the composer is a fixed 48px and CLIPS your own text (F-16)
- *  - `aside` rect                      → the audience rail is 0×0 on mobile, no ranked results (F-17)
+ *  - `aside` rect                      → the DESKTOP rail is 0×0 on mobile. ⚠️ Says NOTHING about the
+ *                                        mobile audience sheet (strip-tap opens it) — see F-17 correction.
  *  - sub-40px interactive elements     → 84 of them; thread-row actions are 22×22 (F-19)
  *  - documentElement horizontal overflow → the honest overflow check; per-element right>innerWidth
  *    reports 200+ FALSE POSITIVES because the off-canvas drawer legitimately sits at x=-220.
@@ -146,7 +147,10 @@ console.log(JSON.stringify({
   device: DEVICE,
   viewport: `${home.vw}x${home.vh}`,
   docOverflowX: home.docOverflowX,
-  asideHidden: thread.aside?.w === 0,
+  // NOTE: `aside` is the DESKTOP rail element — 0×0 here proves nothing about the mobile
+  // audience sheet (which opens via the composer strip). Kept as desktopAsideHidden so it
+  // can't be read as "no mobile ranked view" again (that misread produced audit F-17).
+  desktopAsideHidden: thread.aside?.w === 0,
   composerBefore: thread.composer,
   composerAfterTyping: typed.composer,
   composerGrew: thread.composer?.h !== typed.composer?.h,

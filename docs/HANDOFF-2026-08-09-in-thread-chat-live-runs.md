@@ -148,6 +148,48 @@ node scripts/probe-thread-mobile.mjs        # green: composerGrew:false · small
 
 Screenshots: `.playwright-mcp/shots2/` (gitignored, ephemeral — the numbers above are the durable copy).
 
+## 3b. Addendum — residue from the session-1 (Opus) author, on direct ask
+
+Messaged the original audit session; its unrecorded observations, verbatim-condensed:
+
+- **F-17 method was wrong, not just the conclusion** — it measured the DESKTOP `aside` on mobile.
+  `probe-thread-mobile.mjs` has been patched (field renamed `desktopAsideHidden` + warning).
+- **F-3 timing evidence:** `/api/threads/open` refetches at t+26.4s — AFTER the run settles. The
+  post-run refetch swaps the in-memory turn (correct label) for the persisted one (no label). Matches
+  the run-header root cause exactly.
+- **The ~5s "Thinking" is the ROUTER's latency** — `/api/tools/chat` opens its stream in ~0.7s; the
+  ~4.8s is the agent model deciding which tool to call, before the earliest `dispatch` SSE event.
+  Fix = faster router or honest pre-dispatch copy, not a spinner.
+- **The word-by-word reveal primitive exists** (summary line renders one span per word) but is spent
+  on the summary; cards — the deliverable — appear in one paint.
+- **Owner intent:** benchmark set is **Claude + Perplexity, explicitly NOT ChatGPT.**
+- **Persona percentages sum to 57%** (10+15+10+10+12) — ~43% of the modelled audience is never
+  written for. Unknown if intended.
+- F-1 hunch (n=2): over-answering in markdown correlated with cards declining `sourceIndex` — the
+  model may compensate in prose when it declines attribution. Cheap to test.
+- Smaller: archetype pill inside the proof receipt reads as labelling the generated hook; ranked rail
+  once showed a suspiciously round 50.0% from a 1,000-mind sim; rail auto-sims card 1 only, 4 stay
+  queued; unexplained mid-session sidebar collapse (probably coincident with a timed-out probe click);
+  "Good morning" greeting at 00:20; `Ad creative` / `Compare A/B` sit as `soon` badges in the primary
+  discovery grid.
+- Methodology: `page.evaluate('() => {…}')` with a STRING silently returns undefined here — pass a
+  real function (four measurement passes were lost to this in session 1).
+
+## 3c. Addendum — the corpus is far richer than what reaches prompts (owner's "we have all the videos data")
+
+Measured in Supabase (2026-08-09):
+
+- `outlier_teardowns` (532): beyond the fields retrieval uses, EVERY row carries `teardown.summary`,
+  `teardown.narrative_structure` (**timestamped beat sections** — `structure_sections[].end_second`),
+  `hook_alignment`, `format_category/flavor`, `visual_layout_category`, `outlier_score`, plus
+  `spoken_hook` / `visual_hook` / `editing_style` / `why_it_works` (~578 chars avg) / `idea{seed,angle,…}`
+  on 524/532. "Borrow the proven structure" could hand the model the actual beat map, not a one-line
+  template — this converts N-1 (decorative attribution) from a relabeling problem into a real capability.
+- `scraped_videos` (**7,439 rows**, 7,389 with embeddings, 7,420 with views): a large un-torn-down
+  pool. Only 50 have multipliers, 0 have `follower_tier` — so it does NOT solve F-6's receipt basis
+  by itself, but it is raw material for corpus growth/refresh.
+- `teardown_collections` (592) unpacks a taxonomy already.
+
 ## 4. Suggested attack order (owner input wanted on 3/4)
 
 1. **Contract the anchor** (N-7) — prompt instruction + output validation. Small, server-only, kills
