@@ -64,7 +64,8 @@ export function personasToReportRead(personas: ReactionPersona[]): ReportRead {
  * The personas-only `DomainTemplate`. `population` is NULL and `brain`/`engagement` are absent
  * on purpose: a pre-run Flash read has no Stage-2 projection, no attention timeline and no
  * retention curve, so `AmbientDetail` dims those tabs and states the absence. The Audience tab
- * is supplied by the host as `audienceSlot` (`PersonaAudienceFrame`).
+ * is the EXISTING `PopulationFrame` at its reduced grade, fed by `personaRead` — never a
+ * second frame (owner ruling 2026-08-09: the content is the content we already had).
  */
 export function buildPersonaReportTemplate(input: {
   read: ReportRead;
@@ -83,5 +84,6 @@ export function buildPersonaReportTemplate(input: {
     verdict: { value: `${read.stop}/${read.total}`, label: "stopped scrolling" },
     simline: `${read.total} simulated · calibrated on ${calibratedFrom}`,
     population: null,
+    personaRead: { stop: read.stop, total: read.total, stopped: read.stopped, scrolled: read.scrolled },
   };
 }

@@ -112,6 +112,14 @@ into a page. I don't know which one is better. What do you think?"*
 left half is a **setting** (who you're creating for → a sheet), its right half is a **destination**
 (`Simulate ›` → a full surface). That mismatch is what makes the strip read as furniture.
 
+### ✅ RESOLVED 2026-08-09 (same day, refinement session): the owner picked **(b) no rail**
+
+The owner confirmed the recommendation ("Okay. Let's go"): nothing sim-related is permanently
+resident. Implemented: pin + the docked column deleted (`VerdictReport` is sheet/overlay only),
+the sub-bar is CONTEXT ONLY (its `Simulate ›` half deleted; the card's meter is the sim's one
+door), and the report's audience page is the existing `PopulationFrame` at a new personas-only
+grade (`PersonaAudienceFrame` deleted). §1's regression test added; §2 and §3 fixed as specced.
+
 ### 🔒 OWNER RULING — the rail is BINARY (2026-08-09)
 
 **Verbatim:** *"the rail doesn't make any sense — we either go rail, which we already had, or no

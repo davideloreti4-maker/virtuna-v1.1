@@ -2,14 +2,19 @@
 
 /**
  * The composer's attached SUB-BAR (v8 — owner decision 13, the Claude-Cowork pattern;
- * structurally the shipped mobile sim dock, refined). One hairline strip under the foot:
- *   left  · persona dots + live dot + "{audience} · {lens} ▾"  → the audience sheet
- *   right · "Simulate ›" (idle) / "watching…" (in flight)      → the room
- * The LIVE DOT is the single sanctioned accent on this surface (spec §8).
+ * structurally the shipped mobile sim dock, refined). One hairline strip under the foot,
+ * and it is CONTEXT ONLY (the 2026-08-09 rail ruling): persona dots + live dot +
+ * "{audience} · {lens} ▾" → the audience sheet. A strip under an input is a
+ * status-and-settings idiom — Cowork's `Project · Manual · usage`, Perplexity's foot row —
+ * and settings open sheets, never pages.
  *
- * The right half's door used to open `RoomOverlay` — AmbientOverviewRail full-screen.
- * Phase 3 REPLACED that with the three-tab verdict report (`verdict-report.tsx`), which
- * the composer mounts directly; the overlay is gone rather than wrapped.
+ * The old right half ("Simulate ›" → the report) died with the ruling: the sim's door is
+ * the METER on the card that was simmed (spec §2 — "the verdict is an event, not
+ * furniture"), and a second, weaker door earned its keep only when nothing had been
+ * simmed, which is a near-empty surface anyway. While a run is in flight the live dot
+ * breathes — the strip signals, it does not navigate.
+ *
+ * The LIVE DOT is the single sanctioned accent on this surface (spec §8).
  */
 import { cn } from "@/lib/utils";
 import type { Audience } from "@/lib/audience/audience-types";
@@ -26,20 +31,18 @@ export function ComposerSubBar({
   watching,
   lensLabel,
   onOpenAudience,
-  onOpenSim,
 }: {
   audience: Audience;
   watching: boolean;
   lensLabel: string;
   onOpenAudience: () => void;
-  onOpenSim: () => void;
 }) {
   const dotCount = Math.min(Math.max(audience.personas?.length ?? 0, 2), 3);
   return (
     <div
       data-testid="composer-sub-bar"
       data-watching={watching || undefined}
-      className="flex w-full items-center gap-2 border-t border-white/[0.06] px-3.5 py-[8px]"
+      className="flex w-full items-center border-t border-white/[0.06] px-[18px] py-[8px]"
     >
       <button
         type="button"
@@ -72,20 +75,6 @@ export function ComposerSubBar({
         <span aria-hidden className="shrink-0 text-micro text-foreground-muted">
           ▾
         </span>
-      </button>
-      <button
-        type="button"
-        aria-label="Open the simulation room"
-        onClick={onOpenSim}
-        className="ml-auto flex shrink-0 items-center gap-1.5 rounded-md px-1 py-0.5 font-mono text-caption text-foreground-secondary transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring)]"
-      >
-        {watching ? (
-          "watching…"
-        ) : (
-          <>
-            Simulate <span className="text-foreground-muted">›</span>
-          </>
-        )}
       </button>
     </div>
   );

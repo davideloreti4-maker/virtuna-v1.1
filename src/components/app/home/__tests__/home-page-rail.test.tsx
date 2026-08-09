@@ -20,29 +20,17 @@ vi.mock('../composer', () => ({
   Composer: ({
     onThreadChange,
     railHost,
-    onReportPinnedChange,
   }: {
     onThreadChange?: (v: boolean) => void;
     railHost?: HTMLElement | null;
-    onReportPinnedChange?: (v: boolean) => void;
   }) => (
-    <>
-      <button
-        data-testid="composer-stub"
-        data-has-rail={railHost ? 'yes' : 'no'}
-        onClick={() => onThreadChange?.(true)}
-      >
-        stub
-      </button>
-      {/* v8 Phase 3: the composer owns the report's pinned state; the LAYOUT owns the column it
-          docks into, and a report can be pinned from the arrival (no thread). */}
-      <button data-testid="pin-stub" onClick={() => onReportPinnedChange?.(true)}>
-        pin
-      </button>
-      <button data-testid="unpin-stub" onClick={() => onReportPinnedChange?.(false)}>
-        unpin
-      </button>
-    </>
+    <button
+      data-testid="composer-stub"
+      data-has-rail={railHost ? 'yes' : 'no'}
+      onClick={() => onThreadChange?.(true)}
+    >
+      stub
+    </button>
   ),
 }));
 
@@ -89,24 +77,12 @@ describe('HomePageLayout — A2a audience rail wiring', () => {
     expect(aside?.className).toMatch(/xl:flex/);
   });
 
-  it('mounts the rail when the REPORT is pinned, even with no thread (v8 Phase 3)', () => {
+  it('offers the composer NO pin channel — nothing but thread mode can mount the column (2026-08-09 rail ruling)', () => {
+    // The v8 Phase-3 pinned report died with the owner ruling: the report is an event
+    // (sheet/overlay), never page furniture. The layout must expose no way to dock it —
+    // outside thread mode the aside simply does not exist.
     render(<HomePageLayout />);
     expect(railAside()).toBeNull();
-    act(() => {
-      fireEvent.click(screen.getByTestId('pin-stub'));
-    });
-    expect(railAside()).not.toBeNull();
-    expect(screen.getByTestId('composer-stub').getAttribute('data-has-rail')).toBe('yes');
-  });
-
-  it('unpinning takes the rail away again — the page is clean', () => {
-    render(<HomePageLayout />);
-    act(() => {
-      fireEvent.click(screen.getByTestId('pin-stub'));
-    });
-    act(() => {
-      fireEvent.click(screen.getByTestId('unpin-stub'));
-    });
-    expect(railAside()).toBeNull();
+    expect(screen.queryByTestId('pin-stub')).toBeNull();
   });
 });

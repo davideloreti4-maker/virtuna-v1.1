@@ -205,6 +205,16 @@ describe("composer v8 (flag on)", () => {
     });
   });
 
+  it("nothing above the field, ever — the pre-v8 audience header slot is absent flag-on (spec §3)", async () => {
+    renderWithClient(<Composer />);
+    // The replacement is mounted (the attached sub-bar under the foot)…
+    await screen.findByTestId("composer-sub-bar");
+    // …and the retired header is NOT. Flag-off, `useHeader` renders this slot ABOVE the field
+    // (<xl thread mode — exactly this harness's viewport); flag-on it must never mount. This is
+    // the anatomy regression a token audit cannot see (2026-08-09 brief §1).
+    expect(screen.queryByTestId("audience-header-slot")).toBeNull();
+  });
+
   it("sub-bar present; left half opens the audience sheet", async () => {
     renderWithClient(<Composer />);
     fireEvent.click(
@@ -251,17 +261,11 @@ describe("composer v8 (flag on)", () => {
     });
   });
 
-  it("the sub-bar's Simulate door opens the report", async () => {
+  it("the sub-bar is CONTEXT ONLY — no Simulate door; the card's meter is the sim's one door (2026-08-09 rail ruling)", async () => {
     renderWithClient(<Composer />);
-    fireEvent.click(await screen.findByRole("button", { name: /open the simulation room/i }));
-    expect(await screen.findByTestId("verdict-report")).toBeInTheDocument();
-  });
-
-  it("with nothing simulated, the report is honestly empty — no figure", async () => {
-    renderWithClient(<Composer />);
-    fireEvent.click(await screen.findByRole("button", { name: /open the simulation room/i }));
-    expect(await screen.findByTestId("verdict-report")).toHaveTextContent(/nothing simulated yet/i);
-    expect(screen.queryByTestId("report-verdict")).toBeNull();
+    await screen.findByTestId("composer-sub-bar");
+    expect(screen.queryByRole("button", { name: /open the simulation room/i })).toBeNull();
+    expect(screen.queryByText(/simulate\s*›/i)).toBeNull();
   });
 
   it("a drop's meter opens the report on that drop's own cached read", async () => {
@@ -282,7 +286,7 @@ describe("composer v8 (flag on)", () => {
 
   it("the v8 room overlay is gone — the report is the room now", async () => {
     renderWithClient(<Composer />);
-    fireEvent.click(await screen.findByRole("button", { name: /open the simulation room/i }));
+    fireEvent.click(await screen.findByTestId("drop-meter-d1"));
     await screen.findByTestId("verdict-report");
     expect(screen.queryByTestId("v8-room-overlay")).toBeNull();
   });

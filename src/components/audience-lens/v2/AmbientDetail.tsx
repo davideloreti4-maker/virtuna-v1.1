@@ -263,7 +263,7 @@ export function AmbientDetail({
   onInterview,
   onApplyFix,
   tabOrder,
-  audienceSlot,
+  onSteer,
 }: {
   template: DomainTemplate;
   initialTab?: Tab;
@@ -305,12 +305,11 @@ export function AmbientDetail({
   /** Tab order override. Omit for the drill's settled `brain · engagement · audience`; the v8
    *  verdict report passes REPORT_TAB_ORDER (spec §2's Audience-first order). */
   tabOrder?: readonly Tab[];
-  /** Replaces the Audience page's <PopulationFrame> wholesale. The v8 report's personas-only
-   *  grade has real voices and NO Stage-2 projection, so it supplies its own honest frame rather
-   *  than a synthesized aggregate. Omit ⇒ today's behaviour exactly. */
-  audienceSlot?: React.ReactNode;
+  /** The personas-only fix action — `PopulationFrame`'s reduced grade feeds the thread as a
+   *  steer (spec §2). Read only when the template carries `personaRead` and no `population`. */
+  onSteer?: (steer: string) => void;
 }) {
-  const { backLabel, pager, verdict, unlock, brain, population, identity, answer, engagement, simline, method } = template;
+  const { backLabel, pager, verdict, unlock, brain, population, personaRead, identity, answer, engagement, simline, method } = template;
   // Brain is a VIDEO producer — absent for a text sim. Honest-unavailable, never faked.
   const brainAvailable = !!brain && !brainNote;
   // Engagement is what the room DID with the clip: the retention instrument, the watch metrics and
@@ -318,9 +317,9 @@ export function AmbientDetail({
   // the same honest-locked affordance the other two carry, decided before the tap rather than after.
   const engagementData = engagement ?? (population?.actionIntent ? {} : undefined);
   const engagementAvailable = !!engagement || !!population?.actionIntent;
-  // An audience SLOT *is* the audience page: a host that supplies one has something real behind
-  // the tab even when `population` is null.
-  const audienceAvailable = !!audienceSlot || !!population;
+  // A personas-only read *is* an audience page: real tallies + real voices are something real
+  // behind the tab even when the Stage-2 `population` is null (the v8 report's drop grade).
+  const audienceAvailable = !!population || !!personaRead;
   const order = tabOrder ?? TAB_ORDER;
   const [internalTab, setTab] = useState<Tab>(
     initialTab ??
@@ -516,11 +515,10 @@ export function AmbientDetail({
           ) : (
             <Absence note="No run yet — engagement is what the room did with the clip second by second." action={noteAction} />
           )
-        ) : audienceSlot ? (
-          audienceSlot
-        ) : population ? (
+        ) : population || personaRead ? (
           <PopulationFrame
             population={population}
+            personaRead={personaRead}
             verdict={verdict}
             reducedMotion={reducedMotion}
             onInterview={onInterview}
@@ -528,6 +526,7 @@ export function AmbientDetail({
             methodOpen={methodOpen}
             onToggleMethod={() => setMethodOpen((v) => !v)}
             simline={simline}
+            onSteer={onSteer}
             onJumpToBrain={(moment) => {
               // Only cross to the brain when it exists (a video read); otherwise stay on the audience.
               if (!brainAvailable) return;

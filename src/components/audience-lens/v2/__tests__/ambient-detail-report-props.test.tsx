@@ -1,9 +1,10 @@
 /** @vitest-environment happy-dom */
 /**
- * The two OPT-IN props Phase 3 adds to the drill so the v8 verdict report can reuse it:
- * `tabOrder` (the spec's Audience-first order) and `audienceSlot` (the personas-only frame).
- * Both default off — the assertions below pin that the drill's own settled behaviour is
- * unchanged when neither is passed.
+ * The OPT-IN surface the v8 verdict report uses to reuse the drill: `tabOrder` (the spec's
+ * Audience-first order) and the template's `personaRead` (the personas-only grade of the
+ * EXISTING PopulationFrame — the deleted `audienceSlot` fork's replacement, 2026-08-09
+ * ruling). Both default off — the assertions below pin that the drill's own settled
+ * behaviour is unchanged when neither is present.
  */
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
@@ -40,26 +41,34 @@ describe("AmbientDetail — report props", () => {
     expect(tabLabels()).toEqual(["Audience", "Brain", "Engagement"]);
   });
 
-  it("renders audienceSlot instead of the population frame, and opens on it", () => {
+  it("a personaRead template renders the EXISTING PopulationFrame at its reduced grade, and opens on it", () => {
     render(
       <AmbientDetail
-        template={template()}
+        template={template({
+          personaRead: {
+            stop: 7,
+            total: 10,
+            stopped: [{ who: "a viewer", quote: "ok that's me" }],
+            scrolled: [{ who: "another", quote: "seen it" }],
+          },
+        })}
         presentation="sheet"
         tabOrder={REPORT_TAB_ORDER}
-        audienceSlot={<div data-testid="slot">the personas read</div>}
       />,
     );
-    expect(screen.getByTestId("slot")).toBeInTheDocument();
+    expect(screen.getByTestId("report-verdict")).toHaveTextContent("7/10");
+    expect(screen.getAllByTestId(/^report-face-/)).toHaveLength(10);
     expect(screen.queryByText(/no run yet/i)).toBeNull();
   });
 
-  it("an audienceSlot un-dims the Audience tab (there IS something behind it)", () => {
+  it("a personaRead un-dims the Audience tab (there IS something behind it)", () => {
     render(
       <AmbientDetail
-        template={template()}
+        template={template({
+          personaRead: { stop: 7, total: 10, stopped: [], scrolled: [] },
+        })}
         presentation="sheet"
         tabOrder={REPORT_TAB_ORDER}
-        audienceSlot={<div data-testid="slot" />}
       />,
     );
     const audience = screen.getAllByRole("button").find((b) => b.textContent === "Audience")!;

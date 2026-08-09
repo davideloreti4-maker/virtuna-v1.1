@@ -32,10 +32,6 @@ export function HomePageLayout() {
   // Composer re-renders once the aside mounts and can portal its room in. Only rendered ≥xl in
   // thread mode; null otherwise ⇒ the composer keeps the room in its dock.
   const [railHost, setRailHost] = useState<HTMLDivElement | null>(null);
-  // v8 (Phase 3): a PINNED verdict report docks in the same right column the retiring rail used.
-  // It can be pinned from the ARRIVAL (no thread at all), so the aside mounts for it too — the
-  // composer owns the state, the layout owns the column.
-  const [reportPinned, setReportPinned] = useState(false);
   const reducedMotion = usePrefersReducedMotion();
 
   const handleThreadChange = useCallback((next: boolean) => {
@@ -54,10 +50,6 @@ export function HomePageLayout() {
     setRehydrating(next);
   }, []);
 
-  const handleReportPinnedChange = useCallback((next: boolean) => {
-    setReportPinned(next);
-  }, []);
-
   // Thread mode owns a full-width scroll surface (composer re-centers content at
   // 760px internally) so the conversation scrolls page-wide like a real chat.
   // Empty home stays a centered 760px column (greeting above, composer pinned below).
@@ -65,11 +57,10 @@ export function HomePageLayout() {
   // True on the fresh empty home (no thread, nothing streamed). Drives the
   // greeting + the vertical-centering of the greeting→actions→composer group.
   const emptyHome = !hasConversation && !rehydrating;
-  // The right column exists whenever something docks in it: a thread's rail, or a PINNED v8
-  // report. The pinned case can happen on the ARRIVAL, which is otherwise a centered COLUMN —
-  // so the direction has to flip for it too, or the panel stacks under the composer instead of
-  // sitting beside it (measured at 1440×900 before this line existed).
-  const railMounted = threadMode || reportPinned;
+  // The right column exists only in thread mode (the flag-off rail portal). The v8 report is an
+  // EVENT — sheet or overlay, never docked — so nothing else ever mounts this column
+  // (2026-08-09 rail ruling: the pinned report was a rejected third shape).
+  const railMounted = threadMode;
 
   return (
     // P2 (A2a): the audience is a property of the THREAD, so ≥xl in thread mode it gets its own
@@ -91,15 +82,7 @@ export function HomePageLayout() {
         // Thread mode: the work column FLEXES to fill (it self-centers its content at 760 via its own
         // mx-auto), so the rail is pushed flush to the page's right edge (owner call — the rail
         // connects to the right side completely). Not justify-center, which left a symmetric gap.
-        // A pinned report keeps `min-h-full` (the arrival's hero must still be able to grow past
-        // the viewport) but takes the ROW direction, so the panel is a column beside the work,
-        // not a block under it.
-        threadMode
-          ? "h-full flex-row"
-          : railMounted
-            ? "min-h-full flex-row"
-            : "min-h-full flex-col items-center",
-        // justify-center would centre the PAIR and leave the panel off the right edge.
+        threadMode ? "h-full flex-row" : "min-h-full flex-col items-center",
         emptyHome && !railMounted && "justify-center",
       )}
     >
@@ -139,7 +122,6 @@ export function HomePageLayout() {
           onConversationChange={handleConversationChange}
           onRehydratingChange={handleRehydratingChange}
           railHost={railHost}
-          onReportPinnedChange={handleReportPinnedChange}
         />
       </div>
       {railMounted && (
@@ -150,14 +132,7 @@ export function HomePageLayout() {
           aria-label="Your audience"
           // A CONNECTED rail — part of the thread page, full height, flush (no floating gaps). The
           // panel fills the column top-to-bottom; its own left hairline divides it from the thread.
-          className={cn(
-            "hidden min-h-0 w-[400px] shrink-0 flex-col xl:flex",
-            // Thread mode's row is already viewport-height, so the column fills it.
-            // The ARRIVAL's row is `min-h-full` and grows with the shelf, so a plain h-full
-            // column scrolls away with the page — measured at 1440×900: the pinned panel's top
-            // sat 173px above the fold. Stick it to the viewport instead; "pin" means it stays.
-            threadMode ? "h-full" : "sticky top-0 h-dvh self-start",
-          )}
+          className="hidden h-full min-h-0 w-[400px] shrink-0 flex-col xl:flex"
         >
           <div ref={setRailHost} className="flex min-h-0 w-full flex-1" />
         </aside>

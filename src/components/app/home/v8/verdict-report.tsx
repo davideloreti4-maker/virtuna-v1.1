@@ -3,17 +3,18 @@
 /**
  * VerdictReport — the v8 three-tab verdict report (Phase 3; spec §2 + mock §6/§10).
  *
- * One shell, three presentations:
- *   sheet          — mobile bottom sheet over a scrim
- *   panel          — desktop right overlay over a scrim
- *   panel + pinned — the same panel portaled into the layout's rail host; no scrim, the page
- *                    flows beside it. "The old always-on rail, reborn as a choice."
+ * One shell, two presentations — an EVENT, never furniture (the 2026-08-09 rail ruling:
+ * rail or no rail, and the owner picked no rail; the pinned panel was a rejected third
+ * shape). Nothing about the sim is permanently resident:
+ *   sheet — mobile bottom sheet over a scrim
+ *   panel — desktop right overlay over a scrim; close it and it is gone
  *
- * TWO DATA GRADES, one shell. A subject carrying a Stage-2 `population` renders the shipped
- * drill (`buildDomainTemplate` → PopulationFrame + the reason-breakdown Brain). A subject with
- * only its ten cached personas — every DROP, by law: opening a drop's report READS its cache and
- * NEVER re-sims — renders the personas-only template plus <PersonaAudienceFrame>, with Brain and
- * Engagement honestly dimmed. Nothing is synthesized to fill an empty slot.
+ * TWO DATA GRADES, one shell — and ONE audience page either way (owner ruling 2026-08-09: the
+ * content is the content we already had). A subject carrying a Stage-2 `population` renders the
+ * shipped drill (`buildDomainTemplate` → PopulationFrame + the reason-breakdown Brain). A subject
+ * with only its ten cached personas — every DROP, by law: opening a drop's report READS its cache
+ * and NEVER re-sims — renders the same PopulationFrame at its reduced grade (`personaRead`), with
+ * Brain and Engagement honestly dimmed. Nothing is synthesized to fill an empty slot.
  *
  * The sealed-verdict law carries over: while a run is in flight the report shows the watcher and
  * withholds the number until it returns.
@@ -25,7 +26,6 @@ import { AmbientDetail, REPORT_TAB_ORDER, TONE } from "@/components/audience-len
 import { buildDomainTemplate } from "@/lib/surfaces/ambient-v2-population";
 import { audienceToMeta } from "@/lib/surfaces/ambient-v2-audience-meta";
 import { personasToReportRead, buildPersonaReportTemplate } from "@/lib/surfaces/v8-report";
-import { PersonaAudienceFrame } from "./persona-audience-frame";
 import type { Audience } from "@/lib/audience/audience-types";
 import type { ReactionPersona } from "@/lib/tools/blocks";
 import type { PopulationAggregate } from "@/lib/audience/population";
@@ -47,9 +47,6 @@ export function VerdictReport({
   subject,
   audience,
   variant,
-  pinned,
-  onPinnedChange,
-  pinHost,
   watching = false,
   reducedMotion = false,
   onSteer,
@@ -59,31 +56,25 @@ export function VerdictReport({
   subject: ReportSubject | null;
   audience: Audience;
   variant: "sheet" | "panel";
-  pinned: boolean;
-  onPinnedChange: (next: boolean) => void;
-  /** Where a PINNED panel docks (the layout's rail host). Null ⇒ the panel stays an overlay. */
-  pinHost?: HTMLElement | null;
   watching?: boolean;
   reducedMotion?: boolean;
   /** A tab's fix action feeds the thread as a steer (spec §2). */
   onSteer?: (steer: string) => void;
 }) {
-  const docked = variant === "panel" && pinned && !!pinHost;
-
   useEffect(() => {
-    if (!open || docked) return;
+    if (!open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
     document.addEventListener("keydown", onKey);
     const prevOverflow = document.body.style.overflow;
-    // A pinned panel is page furniture; only the overlay grades lock the body behind them.
+    // Only the sheet locks the body behind it; the desktop panel leaves the page scrollable.
     if (variant === "sheet") document.body.style.overflow = "hidden";
     return () => {
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = prevOverflow;
     };
-  }, [open, docked, variant, onClose]);
+  }, [open, variant, onClose]);
 
   if (!open || typeof document === "undefined") return null;
 
@@ -126,9 +117,7 @@ export function VerdictReport({
         presentation="sheet"
         tabOrder={REPORT_TAB_ORDER}
         reducedMotion={reducedMotion}
-        {...(subject && !subject.population && read
-          ? { audienceSlot: <PersonaAudienceFrame read={read} onSteer={onSteer} /> }
-          : {})}
+        onSteer={onSteer}
       />
     ) : (
       <div className="flex flex-1 items-center justify-center p-8 text-center">
@@ -142,20 +131,19 @@ export function VerdictReport({
     <div
       data-testid="verdict-report"
       data-variant={variant}
-      data-pinned={pinned || undefined}
       role="dialog"
-      aria-modal={docked ? undefined : "true"}
+      aria-modal="true"
       aria-label="The verdict report"
       className={
-        docked
-          ? "flex min-h-0 w-full flex-1 flex-col"
-          : variant === "sheet"
-            ? "fixed inset-x-0 bottom-0 z-[var(--z-modal)] flex max-h-[88vh] min-h-0 flex-col overflow-hidden rounded-t-[20px] border-t border-white/[0.06]"
-            : "fixed right-0 top-0 z-[var(--z-modal)] flex h-full min-h-0 w-[400px] flex-col overflow-hidden border-l border-white/[0.06]"
+        // `ambient-room-in`: the house entrance for overlays that MOUNT already-open — a
+        // short rise, snapped to rest under prefers-reduced-motion (globals.css).
+        variant === "sheet"
+          ? "ambient-room-in fixed inset-x-0 bottom-0 z-[var(--z-modal)] flex max-h-[88vh] min-h-0 flex-col overflow-hidden rounded-t-[20px] border-t border-white/[0.06]"
+          : "ambient-room-in fixed right-0 top-0 z-[var(--z-modal)] flex h-full min-h-0 w-[400px] flex-col overflow-hidden border-l border-white/[0.06]"
       }
       style={{
         background: "#181817",
-        ...(variant === "sheet" && !docked ? { paddingBottom: "env(safe-area-inset-bottom)" } : {}),
+        ...(variant === "sheet" ? { paddingBottom: "env(safe-area-inset-bottom)" } : {}),
       }}
     >
       <div className="flex items-center justify-between px-[22px] pt-3">
@@ -166,35 +154,21 @@ export function VerdictReport({
             <span className="text-label font-semibold" style={{ color: TONE.dim }}>
               Report
             </span>
-            <span className="flex items-center gap-3">
-              <button
-                type="button"
-                aria-label={pinned ? "Unpin the report" : "Pin the report"}
-                aria-pressed={pinned}
-                onClick={() => onPinnedChange(!pinned)}
-                className="text-label transition-colors"
-                style={{ color: pinned ? TONE.cream : TONE.faint }}
-              >
-                {pinned ? "pinned" : "pin"}
-              </button>
-              <button
-                type="button"
-                aria-label="Close the report"
-                onClick={onClose}
-                className="text-body transition-colors"
-                style={{ color: TONE.faint }}
-              >
-                ✕
-              </button>
-            </span>
+            <button
+              type="button"
+              aria-label="Close the report"
+              onClick={onClose}
+              className="text-body transition-colors"
+              style={{ color: TONE.faint }}
+            >
+              ✕
+            </button>
           </>
         )}
       </div>
       {body}
     </div>
   );
-
-  if (docked) return createPortal(chrome, pinHost!);
 
   return createPortal(
     <>

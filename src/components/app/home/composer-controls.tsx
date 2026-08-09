@@ -502,9 +502,13 @@ export interface SimModelSelectorProps {
   className?: string;
   /** v8: the armed Max skill's credit price ("10 cr") — a price tag, not a model note. */
   price?: string;
+  /** `boxed` (default) — the legacy dark chip. `quiet` (v8) — bare muted text + caret, the
+   *  Claude/mock idiom: the model note must not compete with the send disc, so it wears no
+   *  fill and no border and brightens only on hover. */
+  variant?: "boxed" | "quiet";
 }
 
-export function SimModelSelector({ value, onChange, className, price }: SimModelSelectorProps) {
+export function SimModelSelector({ value, onChange, className, price, variant = "boxed" }: SimModelSelectorProps) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -545,14 +549,29 @@ export function SimModelSelector({ value, onChange, className, price }: SimModel
         // control at a glance. Hover is a SOLID step up, never a white overlay: the chip sits on
         // the opaque composer floor and a translucent tint would just wash it (CLAUDE.md).
         className={cn(
-          "inline-flex h-[38px] items-center gap-1 rounded-lg border border-white/[0.06] bg-surface-sunken px-2.5 text-label transition-colors",
-          "hover:border-white/[0.10] hover:bg-[#232322] focus:outline-none focus-visible:ring-1 focus-visible:ring-white/20 pointer-coarse:h-11",
+          variant === "quiet"
+            ? [
+                // v8 — the mock's `.modelflag`: bare muted text, no fill, no border. The foot's
+                // one bright element is the cream send disc; this note only says what answers.
+                "inline-flex h-[34px] items-center gap-1 rounded-md px-1.5 text-label text-foreground-muted transition-colors",
+                "hover:text-foreground focus:outline-none focus-visible:ring-1 focus-visible:ring-white/20 pointer-coarse:h-11",
+              ]
+            : [
+                "inline-flex h-[38px] items-center gap-1 rounded-lg border border-white/[0.06] bg-surface-sunken px-2.5 text-label transition-colors",
+                "hover:border-white/[0.10] hover:bg-[#232322] focus:outline-none focus-visible:ring-1 focus-visible:ring-white/20 pointer-coarse:h-11",
+              ],
         )}
       >
-        <span className="whitespace-pre text-foreground-secondary">{"SIM-1 "}</span>
-        <span className="font-medium text-foreground">{value}</span>
+        {variant === "quiet" ? (
+          <span className="whitespace-pre">{`SIM-1 ${value}`}</span>
+        ) : (
+          <>
+            <span className="whitespace-pre text-foreground-secondary">{"SIM-1 "}</span>
+            <span className="font-medium text-foreground">{value}</span>
+          </>
+        )}
         {price && <span className="whitespace-pre text-foreground-muted">{` · ${price}`}</span>}
-        <Ico name="chev" size={13} className="text-foreground-secondary" />
+        <Ico name="chev" size={13} className={variant === "quiet" ? undefined : "text-foreground-secondary"} />
       </button>
       <Popover open={open} anchorRef={triggerRef} menuRef={menuRef} className="min-w-[260px]">
         {SIM_MODELS.map((tier) => {

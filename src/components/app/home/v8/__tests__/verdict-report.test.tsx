@@ -36,8 +36,6 @@ function base(over: Partial<Props> = {}): Props {
     subject,
     audience,
     variant: "sheet",
-    pinned: false,
-    onPinnedChange: vi.fn(),
     reducedMotion: true,
     ...over,
   };
@@ -79,26 +77,19 @@ describe("VerdictReport", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it("mobile offers no pin — a bottom sheet has no column to dock into", () => {
-    render(<VerdictReport {...base()} />);
-    expect(screen.queryByRole("button", { name: /pin the report/i })).toBeNull();
-  });
-
-  it("desktop's pin reports the flip up to the host", () => {
-    const onPinnedChange = vi.fn();
-    render(<VerdictReport {...base({ variant: "panel", onPinnedChange })} />);
-    fireEvent.click(screen.getByRole("button", { name: /pin the report/i }));
-    expect(onPinnedChange).toHaveBeenCalledWith(true);
-  });
-
-  it("pinned: no scrim, and it renders into the pin host", () => {
-    const host = document.createElement("div");
-    document.body.appendChild(host);
-    render(<VerdictReport {...base({ variant: "panel", pinned: true, pinHost: host })} />);
-    expect(screen.queryByTestId("verdict-report-scrim")).toBeNull();
-    expect(host.querySelector('[data-testid="verdict-report"]')).not.toBeNull();
+  it("offers NO pin anywhere — the report is an event, never furniture (2026-08-09 rail ruling)", () => {
+    render(<VerdictReport {...base({ variant: "panel" })} />);
+    expect(screen.queryByRole("button", { name: /pin/i })).toBeNull();
     cleanup();
-    host.remove();
+    render(<VerdictReport {...base()} />);
+    expect(screen.queryByRole("button", { name: /pin/i })).toBeNull();
+  });
+
+  it("the desktop panel is an overlay over a scrim — nothing docks into the page", () => {
+    render(<VerdictReport {...base({ variant: "panel" })} />);
+    expect(screen.getByTestId("verdict-report-scrim")).toBeInTheDocument();
+    // Portaled to <body>, not into any layout column.
+    expect(screen.getByTestId("verdict-report").parentElement).toBe(document.body);
   });
 
   it("withholds the verdict while a run is in flight (the sealed-verdict law)", () => {
