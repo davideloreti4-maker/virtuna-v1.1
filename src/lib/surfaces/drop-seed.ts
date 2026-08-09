@@ -12,6 +12,9 @@
  * The angles arrive UNSCORED (v8 rule): band/fraction are the adapt call's own
  * projection (provenance "projected"), personas/population never ride along.
  * Schema-invalid concepts drop via safeParse — mirror the runner, never pad.
+ * A missing stopQuote is NOT schema-invalid: it maps to scrollQuote "" (legal,
+ * renders quote-less) — an optional field the adapt model omitted must never
+ * delete a whole angle from the seeded stack.
  */
 
 import { bandFromStops } from "@/lib/engine/flash/flash-aggregate";
