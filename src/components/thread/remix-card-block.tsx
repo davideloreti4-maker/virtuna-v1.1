@@ -125,18 +125,30 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
               (adaptedHook + Copy) is the card's hero now, and printing the deliverable twice on
               one card is the repeat the owner keeps flagging. What survives is the decode this
               row exists for — the PATTERN the original ran, which the hero is the answer to. */}
-          <MapRow
-            leftLabel="Their hook"
-            left={<p className="text-body leading-relaxed text-foreground-muted">{sourceDecode.hookPattern}</p>}
-          />
+          {sourceDecode && (
+            <MapRow
+              leftLabel="Their hook"
+              left={<p className="text-body leading-relaxed text-foreground-muted">{sourceDecode.hookPattern}</p>}
+            />
+          )}
 
-          {/* Row 2 — The turn: original reversal → your angle */}
-          <MapRow
-            leftLabel="Their turn"
-            left={<p className="text-body leading-relaxed text-foreground-muted">{sourceDecode.theTurn}</p>}
-            rightLabel="Your angle"
-            right={<p className="text-body leading-relaxed text-foreground-secondary">{angle}</p>}
-          />
+          {/* Row 2 — The turn: original reversal → your angle. A drop-seeded card has no
+              decode (sourceDecode absent — the corpus row's pattern lives on the receipt's
+              madlib line instead), so the row keeps only YOUR half rather than fabricating
+              a "Their turn" cell. */}
+          {sourceDecode ? (
+            <MapRow
+              leftLabel="Their turn"
+              left={<p className="text-body leading-relaxed text-foreground-muted">{sourceDecode.theTurn}</p>}
+              rightLabel="Your angle"
+              right={<p className="text-body leading-relaxed text-foreground-secondary">{angle}</p>}
+            />
+          ) : (
+            <MapRow
+              leftLabel="Your angle"
+              left={<p className="text-body leading-relaxed text-foreground-secondary">{angle}</p>}
+            />
+          )}
 
           {/* Row 3 — Format: borrowed pattern → your shots */}
           <MapRow
@@ -153,17 +165,20 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
         </div>
 
         {/* Expand toggle — the rest of the decode anatomy, named for the value it reveals:
-            how the original is built (structure) and the feeling it lands (emotional beat). */}
-        <button
-          type="button"
-          onClick={() => setExpanded((v) => !v)}
-          className="flex items-center gap-1.5 self-start text-label text-foreground-muted transition-colors hover:text-foreground-secondary"
-          aria-expanded={expanded}
-          aria-label={expanded ? 'Collapse how the original is built' : 'Expand how the original is built'}
-        >
-          <CaretToggle open={expanded} />
-          How the original is built
-        </button>
+            how the original is built (structure) and the feeling it lands (emotional beat).
+            No decode (drop-seeded card) → no door to nothing. */}
+        {sourceDecode && (
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="flex items-center gap-1.5 self-start text-label text-foreground-muted transition-colors hover:text-foreground-secondary"
+            aria-expanded={expanded}
+            aria-label={expanded ? 'Collapse how the original is built' : 'Expand how the original is built'}
+          >
+            <CaretToggle open={expanded} />
+            How the original is built
+          </button>
+        )}
 
       </div>
 
@@ -194,7 +209,7 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
       )}
 
       {/* EXPAND — the rest of the decode anatomy (hook pattern + the turn already lead the map). */}
-      {expanded && (
+      {expanded && sourceDecode && (
         <div className="flex flex-col gap-4 border-t border-white/[0.06] px-4 py-3">
           <div>
             <p className={`mb-1 ${SECTION_LABEL}`}>Structure</p>

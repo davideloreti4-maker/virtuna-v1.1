@@ -32,6 +32,7 @@ import type { PopulationAggregate } from '@/lib/audience/population';
 import { LensTrigger } from '@/components/audience-lens/LensTrigger';
 import type { LensRewrite } from '@/components/audience-lens/AudienceLens';
 import { useOpenRoomForCard, useAmbientCardId } from '@/lib/hook-test-context';
+import { CONCEPT_V8_ENABLED } from '@/lib/flags/concept-v8';
 import type { CardTarget } from '@/lib/tools/blocks';
 import { archetypeDisplayName } from '@/lib/audience/archetype-names';
 import { BAND_COLOR } from './band-block';
@@ -214,7 +215,13 @@ export function SimDoor({
     'flex items-center border-t border-white/[0.06] px-4 py-2.5 transition-colors hover:bg-white/[0.03]';
 
   // Home-composer path: open the docked current-audience room anchored on this card.
-  if (openRoomForCard && flatPersonas.length > 0) {
+  //
+  // v8 (Phase 3): an UNTESTED card has no personas by construction — that is precisely the
+  // fire-on-demand case, and the `flatPersonas.length > 0` guard (written when the room could
+  // only DISPLAY existing reactions) sent it to the standalone Lens instead of to the host that
+  // can actually run the sim. Under the flag the projected card routes to the host too; with the
+  // flag off the condition is unchanged, so every legacy card behaves exactly as before.
+  if (openRoomForCard && (flatPersonas.length > 0 || (CONCEPT_V8_ENABLED && projected))) {
     return (
       <div
         role="button"

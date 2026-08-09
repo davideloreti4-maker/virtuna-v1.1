@@ -56,9 +56,21 @@ interface ConnectStepProps {
    * to be too thin to read — which, per `isThin`, is the common case rather than the edge one.
    */
   existingDraft?: Audience | null;
+  /**
+   * The day-0 lanes door (v8 Phase 5, spec §4.1). Present ONLY when CONCEPT_V8_ENABLED —
+   * its ABSENCE is what makes flag-off byte-identical, so never default it to a no-op.
+   * Rendered on the describe side only: a creator who typed a handle has already answered
+   * "who am I", and the lanes exist for the one who cannot.
+   */
+  onNotSure?: () => void;
 }
 
-export function ConnectStep({ onDraftReady, initialDoor, existingDraft }: ConnectStepProps) {
+export function ConnectStep({
+  onDraftReady,
+  initialDoor,
+  existingDraft,
+  onNotSure,
+}: ConnectStepProps) {
   const { tiktokHandle, setTiktokHandle } = useOnboardingStore();
 
   const [door, setDoor] = useState<Door>(initialDoor ?? "personal");
@@ -228,6 +240,19 @@ export function ConnectStep({ onDraftReady, initialDoor, existingDraft }: Connec
             ? "Describe who you're making for instead"
             : "Use my TikTok handle instead"}
         </button>
+
+        {/* The lanes door — for the creator who cannot yet name who they're making for.
+            Absent flag-off (no onNotSure), and never on the handle side. */}
+        {onNotSure && door === "target" && (
+          <button
+            type="button"
+            disabled={submitting}
+            onClick={onNotSure}
+            className="block w-full text-center text-label text-foreground-muted transition-colors hover:text-foreground-secondary disabled:opacity-50"
+          >
+            Not sure yet? Let&apos;s find your lane
+          </button>
+        )}
       </div>
     </div>
   );

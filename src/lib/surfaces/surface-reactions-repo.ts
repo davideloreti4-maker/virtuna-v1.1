@@ -14,7 +14,7 @@ import type { Audience } from "@/lib/audience/audience-types";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type UntypedClient = { from: (t: string) => any };
 
-export type SurfaceKind = "outlier" | "idea";
+export type SurfaceKind = "outlier" | "idea" | "drop";
 
 /**
  * Cache freshness window. Owner cadence (2026-07-05) = lazy on the first visit of the day:
