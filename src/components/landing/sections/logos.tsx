@@ -28,11 +28,13 @@ export function Logos() {
           <div className="mt-8 flex flex-wrap items-center justify-center gap-x-11 gap-y-6">
             {MARK_WIDTHS.map((w, i) => (
               <span key={i} aria-hidden className="flex shrink-0 items-center gap-2.5">
+                {/* three mark silhouettes cycling — real logo rows never repeat
+                    one glyph shape six times */}
                 <span
                   className={
-                    i % 2
-                      ? "h-5 w-5 rounded-full"
-                      : "h-5 w-5 rounded-md"
+                    ["h-5 w-5 rounded-md", "h-5 w-5 rounded-full", "h-4 w-4 rotate-45 rounded-[5px]"][
+                      i % 3
+                    ]
                   }
                   style={{ background: "rgba(236,231,222,0.13)" }}
                 />

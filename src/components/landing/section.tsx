@@ -33,6 +33,12 @@ interface SectionProps {
   wide?: boolean;
   /** Suppress the top hairline (for a section that follows a full-bleed band). */
   flush?: boolean;
+  /**
+   * Vertical breath. "compact" is for the quick sections — the problem jab,
+   * the founder note — so the page's rhythm varies instead of every section
+   * exhaling at the same rate.
+   */
+  density?: "default" | "compact";
   className?: string;
 }
 
@@ -46,6 +52,7 @@ export function Section({
   align = "left",
   wide,
   flush,
+  density = "default",
   className,
 }: SectionProps) {
   const hasHeading = Boolean(eyebrow || title || lead);
@@ -59,7 +66,12 @@ export function Section({
         tone === "alt" && "lp-band-alt",
         className,
       )}
-      style={{ paddingBlock: "var(--lp-section-y)" }}
+      style={{
+        paddingBlock:
+          density === "compact"
+            ? "var(--lp-section-y-compact)"
+            : "var(--lp-section-y)",
+      }}
     >
       <div className={wide ? "lp-measure-wide" : "lp-measure"}>
         {hasHeading && (
@@ -109,8 +121,9 @@ export function Card({
     <div
       className={cn(
         "rounded-2xl border border-[color:var(--lp-line)] bg-[color:var(--lp-card)]",
+        // Hover = tone + a one-pixel lift. Matte: the card raises, nothing glows.
         interactive &&
-          "transition-colors duration-200 hover:border-[color:var(--lp-line-strong)] hover:bg-[color:var(--lp-card-lift)]",
+          "transition-[transform,background-color,border-color] duration-200 hover:-translate-y-px hover:border-[color:var(--lp-line-strong)] hover:bg-[color:var(--lp-card-lift)]",
         className,
       )}
     >

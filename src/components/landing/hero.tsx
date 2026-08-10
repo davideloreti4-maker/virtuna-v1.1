@@ -135,7 +135,7 @@ export function Hero() {
             The floats are the same artifact grammar the feature cards use, so
             the hero previews the system rather than inventing one. */}
         <Reveal delay={140}>
-          <div className="lp-measure-wide pb-6 pt-14 md:pt-16">
+          <div className="lp-measure-wide pb-6 pt-10 md:pt-12">
             <div className="relative">
               {/* ambient wash — a neutral lift behind the stage so the frame
                   reads as an object in light, not a rectangle on a wall */}
@@ -150,13 +150,16 @@ export function Hero() {
                     "radial-gradient(58% 55% at 50% 42%, rgba(236,231,222,0.05), transparent 72%)",
                 }}
               />
+              {/* Ratio via classes, not the inline prop: 21/9 is right at
+                  desktop widths but collapses the stage to a letterbox on a
+                  390px phone — there it stands up to a square. */}
               <Slot
                 variant="window"
                 label="Product demo"
                 duration="0:45"
-                ratio="21 / 9"
+                ratio={null}
                 play="lg"
-                className="lp-elevate"
+                className="lp-elevate aspect-square sm:aspect-[16/10] lg:aspect-[21/9]"
               >
                 <PlayerSketch />
               </Slot>
@@ -190,6 +193,26 @@ export function Hero() {
                   </span>
                   <span className="lp-chip">move</span>
                 </div>
+              </div>
+            </div>
+
+            {/* Phones lose the floats (they'd overlap a 390px frame), so the
+                same two artifacts land as a compact strip under the stage —
+                the stage keeps its residue at every size. */}
+            <div className="mt-4 grid grid-cols-2 gap-3 md:hidden">
+              <div className="flex items-center gap-2.5 rounded-xl border border-[color:var(--lp-line)] bg-[color:var(--lp-card-lift)] px-3 py-2.5">
+                <span className="lp-mono text-[17px] leading-none text-[color:var(--lp-fg)]">
+                  87
+                </span>
+                <span className="lp-mono text-[9px] uppercase tracking-[0.12em] text-[color:var(--lp-fg-3)]">
+                  Hook · strong
+                </span>
+              </div>
+              <div className="flex items-center gap-2 rounded-xl border border-[color:var(--lp-line)] bg-[color:var(--lp-card-lift)] px-3 py-2.5">
+                <span className="lp-mono text-[10px] text-[color:var(--lp-fg-3)]">0:04</span>
+                <span className="truncate text-[11px] text-[color:var(--lp-fg-2)]">
+                  Front-load the reveal
+                </span>
               </div>
             </div>
           </div>

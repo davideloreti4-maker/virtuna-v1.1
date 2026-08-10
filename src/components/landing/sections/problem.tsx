@@ -31,6 +31,7 @@ export function Problem() {
   return (
     <Section
       tone="alt"
+      density="compact"
       eyebrow="The problem"
       title={
         <>

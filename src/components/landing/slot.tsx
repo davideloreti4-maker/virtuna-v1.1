@@ -24,8 +24,13 @@ interface SlotProps {
   variant?: SlotVariant;
   /** What belongs here, in the author's words. Shown in mono, uppercased. */
   label?: string;
-  /** CSS aspect-ratio, e.g. "16 / 10". Defaults per variant. */
-  ratio?: string;
+  /**
+   * CSS aspect-ratio, e.g. "16 / 10". Defaults per variant. Pass `null` to
+   * opt out of the inline style entirely and control the ratio from
+   * `className` (the only way to give one slot DIFFERENT ratios per
+   * breakpoint — an inline style would win over every aspect-* utility).
+   */
+  ratio?: string | null;
   className?: string;
   /**
    * Marks the slot as MOTION pending — a demo video or product animation.
@@ -77,7 +82,7 @@ function PlayButton({ size }: { size: "sm" | "lg" }) {
   const px = size === "lg" ? 64 : 44;
   return (
     <span
-      className="absolute left-1/2 top-1/2 z-10 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-[rgba(255,255,255,0.14)]"
+      className="absolute left-1/2 top-1/2 z-10 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-[rgba(255,255,255,0.14)] transition-transform duration-200 group-hover/slot:scale-[1.06]"
       style={{ width: px, height: px, background: "rgba(26,26,25,0.92)" }}
     >
       <svg
@@ -157,7 +162,7 @@ export function Slot({
   children,
 }: SlotProps) {
   const captioned = !MUTE_CAPTION.has(variant) && Boolean(label);
-  const shownRatio = ratio ?? DEFAULT_RATIO[variant];
+  const shownRatio = ratio === null ? null : (ratio ?? DEFAULT_RATIO[variant]);
   const sketched = Boolean(children);
   const caption = duration ? `${label} · ${duration}` : label;
 
@@ -165,13 +170,18 @@ export function Slot({
     <div
       aria-hidden
       className={cn(
-        "relative overflow-hidden",
+        // group/slot: the play disc scales on frame hover — a cursor
+        // affordance for "this will be a video", not an animation.
+        "group/slot relative overflow-hidden",
         !sketched && "flex items-center justify-center",
         "border border-[color:var(--lp-line-strong)] bg-[color:var(--lp-card)]",
         RADIUS[variant],
         className,
       )}
-      style={{ aspectRatio: shownRatio, ...(sketched ? {} : DOT_GRID) }}
+      style={{
+        ...(shownRatio ? { aspectRatio: shownRatio } : {}),
+        ...(sketched ? {} : DOT_GRID),
+      }}
     >
       {/* The window variant gets a chrome rail so it carries the mass of a real
           app screenshot in the composition. No traffic-light dots — that cliché
@@ -201,9 +211,11 @@ export function Slot({
               <span className="lp-mono text-[10px] uppercase tracking-[0.14em] text-[color:var(--lp-fg-3)]">
                 {caption}
               </span>
-              <span className="lp-mono text-[10px] tracking-[0.08em] text-[color:var(--lp-fg-3)]/60">
-                {shownRatio.replace(/\s/g, "")}
-              </span>
+              {shownRatio && (
+                <span className="lp-mono text-[10px] tracking-[0.08em] text-[color:var(--lp-fg-3)]/60">
+                  {shownRatio.replace(/\s/g, "")}
+                </span>
+              )}
             </div>
           )}
         </div>

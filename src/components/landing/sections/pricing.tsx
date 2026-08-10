@@ -79,7 +79,7 @@ export function Pricing() {
             className="lp-elevate relative mx-auto max-w-xl rounded-2xl bg-[color:var(--lp-card)] p-8 md:p-10"
             style={{ border: "1px solid rgba(255,99,99,0.4)" }}
           >
-          <div>
+          <div className="text-center">
             <p className="lp-mono text-[11px] uppercase tracking-[0.14em] text-[color:var(--lp-fg-3)]">
               Everything unlocked
             </p>
@@ -123,11 +123,14 @@ export function Pricing() {
           {PLANS.map((plan) => (
             <div
               key={plan.id}
-              className="rounded-xl border border-[color:var(--lp-line)] px-5 py-4 text-left"
+              className="rounded-xl border border-[color:var(--lp-line)] px-5 py-4 text-left transition-colors duration-200 hover:border-[color:var(--lp-line-strong)]"
             >
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="text-[14px] font-medium text-[color:var(--lp-fg)]">
-                  {plan.name}
+              <div className="flex items-center justify-between gap-2">
+                <span className="flex items-center gap-2">
+                  <span className="text-[14px] font-medium text-[color:var(--lp-fg)]">
+                    {plan.name}
+                  </span>
+                  {plan.badge && <span className="lp-chip">{plan.badge}</span>}
                 </span>
                 <span className="lp-mono text-[13px] text-[color:var(--lp-fg-2)]">
                   {plan.price}
@@ -136,7 +139,6 @@ export function Pricing() {
               </div>
               <p className="mt-1.5 text-[12px] leading-[1.5] text-[color:var(--lp-fg-3)]">
                 {creditsLabel(plan)}
-                {plan.badge ? ` · ${plan.badge}` : ""}
               </p>
             </div>
           ))}

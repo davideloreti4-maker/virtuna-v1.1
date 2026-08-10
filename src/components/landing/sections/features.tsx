@@ -163,7 +163,7 @@ export function Features() {
         <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
           {SMALL.map((cell, i) => (
             <Reveal key={cell.title} delay={60 + i * 60}>
-              <Card className="flex h-full flex-col justify-between gap-6 p-6">
+              <Card interactive className="flex h-full flex-col justify-between gap-6 p-6">
                 <div>
                   <h3 className="lp-card-title">{cell.title}</h3>
                   <p className="lp-card-body mt-1.5 text-[color:var(--lp-fg-3)]">

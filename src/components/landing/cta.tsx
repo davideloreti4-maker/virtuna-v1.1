@@ -45,7 +45,9 @@ const SIZE: Record<Size, string> = {
 const BASE =
   "inline-flex items-center justify-center gap-2 font-medium whitespace-nowrap " +
   "transition-[transform,background-color,border-color] duration-200 " +
-  "active:scale-[0.985] focus-visible:outline-none";
+  // Hover = a one-pixel rise; press = a settle. Matte physicality without a
+  // single shadow or glow — the same grammar the interactive cards use.
+  "hover:-translate-y-px active:translate-y-0 active:scale-[0.985] focus-visible:outline-none";
 
 interface CtaProps {
   href?: string;

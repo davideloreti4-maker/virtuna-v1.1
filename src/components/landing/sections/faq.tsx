@@ -68,7 +68,11 @@ export function Faq() {
                 key={item.q}
                 className="group border-b border-[color:var(--lp-line)] first:border-t"
               >
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-6 py-5 [&::-webkit-details-marker]:hidden">
+                {/* Row hover: a whisper of fill, bleeding past the text column
+                    into the gutter — the references' list rows all answer the
+                    cursor; a bare colour change on 15px text is too quiet to
+                    register as an affordance. */}
+                <summary className="-mx-4 flex cursor-pointer list-none items-center justify-between gap-6 rounded-lg px-4 py-5 transition-colors duration-200 hover:bg-[rgba(236,231,222,0.03)] [&::-webkit-details-marker]:hidden">
                   <span className="text-[15px] font-medium text-[color:var(--lp-fg)]">
                     {item.q}
                   </span>

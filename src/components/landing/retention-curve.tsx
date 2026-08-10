@@ -210,3 +210,40 @@ export function Sparkline({
     </svg>
   );
 }
+
+/**
+ * SparklinePair — both cuts of the same video in ONE panel: the first cut
+ * collapsing (muted), the posted cut holding (cream), drawn over each other so
+ * the gap between them IS the story. Replaces the receipts' side-by-side boxes,
+ * which spent two borders saying what one overlay says better. Same shapes as
+ * Sparkline, rescaled to a wide panel.
+ */
+export function SparklinePair({ className }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 288 84"
+      preserveAspectRatio="none"
+      className={cn("h-full w-full", className)}
+    >
+      <path
+        d="M 0 20 C 28 22, 48 25, 66 34 C 84 44, 94 60, 112 67 C 152 76, 220 79, 288 80"
+        fill="none"
+        stroke="#8a857c"
+        strokeOpacity="0.5"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        vectorEffect="non-scaling-stroke"
+      />
+      <path
+        d="M 0 18 C 48 20, 100 23, 152 27 C 204 31, 252 35, 288 40"
+        fill="none"
+        stroke="#ece7de"
+        strokeOpacity="0.8"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        vectorEffect="non-scaling-stroke"
+      />
+    </svg>
+  );
+}
