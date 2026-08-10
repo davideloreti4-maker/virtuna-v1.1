@@ -90,10 +90,12 @@ export interface LiveDropCard {
   baselineLabel?: string | null;
   concepts: AdaptConcept[];
   /**
-   * Legacy pre-score — ONLY the day-0 lane cards still fill this (their own pass is a
-   * separate owner call). The shelf drops never carry personas any more.
+   * ⚠️ There is deliberately NO `personas` field. A drop card carries no sim — not on the
+   * shelf (2026-08-10) and, since 2026-08-12, not on the day-0 lane reveal either, which
+   * was the last holdout. Cached rows written before those rulings may still have the key
+   * on disk; nothing reads it. If you are about to add it back, you are re-introducing a
+   * pre-score, and the sim is a separate surface.
    */
-  personas?: ReactionPersona[];
 }
 
 /** The glance-tier face a card shows inline — derived from the real personas. */

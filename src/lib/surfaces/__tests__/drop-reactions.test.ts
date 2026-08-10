@@ -117,7 +117,9 @@ describe("buildLiveDrops", () => {
       expect(card.concepts).toHaveLength(3);
       expect(card.concepts[0]!.personaStops).toBe(8);
       // Owner ruling 2026-08-10: no sim runs here — the receipt is the only number.
-      expect(card.personas).toBeUndefined();
+      // Cast: `personas` is no longer ON the type (2026-08-12), and this still asserts the
+      // built object doesn't smuggle one in at runtime.
+      expect((card as unknown as Record<string, unknown>).personas).toBeUndefined();
       expect(card.multiplier).toBe(5);
       expect(card.baselineLabel).toBe("vs their usual views");
       expect(card.coverUrl).toBe(DURABLE);
