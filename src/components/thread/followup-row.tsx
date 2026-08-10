@@ -24,6 +24,7 @@ import { useFollowupHandler } from '@/lib/followup-context';
 export function FollowupRow({
   followups,
   onFollowup,
+  cardLines,
   className,
 }: {
   followups: ChatFollowup[];
@@ -31,7 +32,13 @@ export function FollowupRow({
    * Explicit send handler (ChatThreadView passes its own). Falls back to FollowupContext when omitted.
    * The second argument is the chip's declared generator — see ChatFollowup.skill.
    */
-  onFollowup?: (prompt: string, skill?: string) => void;
+  onFollowup?: (prompt: string, skill?: string, opts?: { cards?: string[] }) => void;
+  /**
+   * Stage B (B2): the card lines of the turn this row sits under (cardLinesOf), sent along by
+   * chips that declare `carryCards` so "rewrite these" can see "these". Optional — a row with
+   * no lines (or a chip without the marker) sends exactly what it always sent.
+   */
+  cardLines?: string[];
   className?: string;
 }) {
   const ctxHandler = useFollowupHandler();
@@ -43,7 +50,14 @@ export function FollowupRow({
         <button
           key={f.label}
           type="button"
-          onClick={() => handler?.(f.prompt, f.skill)}
+          onClick={() => {
+            // A chip with no pack to carry calls the handler with exactly the arity it always did:
+            // Stage B is invisible to every chip that is not a rewrite, and to every rewrite chip
+            // sitting under a turn that produced no cards.
+            const pack = f.carryCards && cardLines?.length ? cardLines : null;
+            if (pack) handler?.(f.prompt, f.skill, { cards: pack });
+            else handler?.(f.prompt, f.skill);
+          }}
           className="inline-flex items-center rounded-full border border-white/[0.08] bg-transparent px-3 py-1.5 text-label font-medium leading-snug text-foreground-secondary transition-colors hover:border-white/[0.14] hover:bg-white/[0.05] hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/15"
           aria-label={`Follow up: ${f.label}`}
         >

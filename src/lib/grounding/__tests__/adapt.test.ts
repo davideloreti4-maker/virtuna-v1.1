@@ -82,9 +82,11 @@ describe("adaptCorpusBlock — the fitted+dosed brief", () => {
       }),
     );
 
-    const { corpus, used } = await adaptCorpusBlock(input([a, b, c]), { complete });
+    const { corpus, used, adapted } = await adaptCorpusBlock(input([a, b, c]), { complete });
 
     expect(complete).toHaveBeenCalledOnce();
+    // The brief shipped — the citation guard must know it is NOT under the slice contract.
+    expect(adapted).toBe(true);
     // c was judged 'none' → dropped. Only a + b survive, in input order.
     expect(used.map((e) => e.teardownId)).toEqual(["a", "b"]);
     expect(corpus).toContain("1. [swap] Stop overpaying for your own time.");
@@ -121,11 +123,13 @@ describe("adaptCorpusBlock — the fitted+dosed brief", () => {
       throw new Error("dashscope 500");
     };
 
-    const { corpus, used } = await adaptCorpusBlock(input([a]), { complete });
+    const { corpus, used, adapted } = await adaptCorpusBlock(input([a]), { complete });
 
     // Raw-slice signature: buildCorpusBlock renders the MADLIB. Grounding degraded, not lost.
     expect(corpus).toContain("MADLIB: Stop buying [product].");
     expect(used.map((e) => e.teardownId)).toEqual(["a"]);
+    // The SLICE shipped — the citation guard must apply the madlib check to this run.
+    expect(adapted).toBe(false);
   });
 
   it("falls back to the raw slice when every structure is judged 'none'", async () => {
@@ -138,10 +142,11 @@ describe("adaptCorpusBlock — the fitted+dosed brief", () => {
       ],
     });
 
-    const { corpus, used } = await adaptCorpusBlock(input([a, b]), { complete });
+    const { corpus, used, adapted } = await adaptCorpusBlock(input([a, b]), { complete });
 
     expect(corpus).toContain("MADLIB:"); // raw slice, not an empty/ungrounded result
     expect(used).toHaveLength(2);
+    expect(adapted).toBe(false); // the slice shipped — slice-contract guard applies
   });
 
   it("ignores out-of-range / malformed sourceIndex without shifting the mapping", async () => {
@@ -165,7 +170,7 @@ describe("adaptCorpusBlock — the fitted+dosed brief", () => {
   it("returns an empty result on empty input (no LLM call)", async () => {
     const complete = vi.fn<AdaptComplete>();
     const result = await adaptCorpusBlock(input([]), { complete });
-    expect(result).toEqual({ corpus: undefined, used: [] });
+    expect(result).toEqual({ corpus: undefined, used: [], adapted: false });
     expect(complete).not.toHaveBeenCalled();
   });
 });

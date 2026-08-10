@@ -1,0 +1,305 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+ * (landing) — page-scoped design tokens for the cold-traffic trial page.
+ *
+ * SCOPED ON PURPOSE. Every token here lives under `.lp` so nothing leaks into
+ * the app's surfaces. The app's `@theme` in globals.css stays the SSOT for the
+ * product; this file is the marketing surface's own type scale and rhythm,
+ * which are deliberately LARGER than app chrome (a 76px display headline has no
+ * business in a token set built for 10–13px dense UI).
+ *
+ * The COLOUR values are not new — they are the same charcoal/cream/coral the
+ * product runs on, restated locally so the marketing page has one place to read
+ * them from. Any disagreement with globals.css is a bug here, not a variant.
+ *
+ * ACCENT BUDGET (marketing latitude, granted 2026-08-10). The app's LOCKED
+ * near-zero dosage is relaxed for this one surface, but not abandoned — coral
+ * has exactly four jobs on this page and nothing else:
+ *   1. primary CTA fills          3. the pricing card's lit border
+ *   2. the retention-curve drop   4. the receipt delta arrows
+ * Stars, icons, links, headings and chrome all stay cream. If you are adding a
+ * fifth job, you are painting, and the answer is no.
+ * ───────────────────────────────────────────────────────────────────────────── */
+
+.lp {
+  /* --- Surfaces (tone steps, never hard colour changes) --- */
+  --lp-bg: #1f1f1e;          /* the page ground */
+  --lp-bg-alt: #1a1a19;      /* alternating band — one step down */
+  --lp-card: #252524;        /* cards, slots */
+  --lp-card-lift: #2c2c2b;   /* hover / lifted card */
+
+  /* --- Line work --- */
+  --lp-line: rgba(255, 255, 255, 0.06);
+  --lp-line-strong: rgba(255, 255, 255, 0.1);
+
+  /* --- Text (cream, never #fff) --- */
+  --lp-fg: #ece7de;
+  --lp-fg-2: #c2bdb4;
+  --lp-fg-3: #8a857c;
+
+  /* --- The one accent --- */
+  --lp-accent: #ff6363;
+  --lp-accent-soft: rgba(255, 99, 99, 0.14);
+  --lp-on-accent: #2a1212;
+
+  /* --- Type roles. Display is Schibsted Grotesk; body Inter; data JetBrains
+   *     Mono; Newsreader italic is reserved for four emphasis phrases total. --- */
+  --lp-font-display: var(--font-schibsted), var(--font-inter), system-ui, sans-serif;
+  --lp-font-body: var(--font-inter), system-ui, sans-serif;
+  --lp-font-mono: var(--font-jetbrains), ui-monospace, SFMono-Regular, monospace;
+  --lp-font-serif: var(--font-newsreader), ui-serif, Georgia, serif;
+
+  /* Fluid display sizes. The clamp floors are set so the H1 never wraps to more
+     than three lines at 360px, which is where IG in-app traffic lands. */
+  --lp-t-display: clamp(2.55rem, 1.4rem + 5.1vw, 4.75rem);
+  --lp-t-h2: clamp(1.85rem, 1.1rem + 2.6vw, 2.9rem);
+  --lp-t-h3: clamp(1.15rem, 1.05rem + 0.4vw, 1.35rem);
+  --lp-t-lead: clamp(1rem, 0.96rem + 0.28vw, 1.12rem);
+  --lp-t-body: 0.965rem;
+  --lp-t-eyebrow: 0.6875rem;
+
+  /* --- Rhythm --- */
+  --lp-measure: 1120px;   /* standard content measure */
+  --lp-measure-wide: 1280px;
+  --lp-gutter: clamp(1.25rem, 0.6rem + 2.6vw, 2.5rem);
+  --lp-section-y: clamp(4.5rem, 2.5rem + 6vw, 8rem);
+  /* Compact rhythm for the page's QUICK sections (the problem jab, the founder
+     note): uniform breath was the audit's finding — every section exhaling at
+     the same rate reads as templated. References vary density; so do we. */
+  --lp-section-y-compact: clamp(3rem, 1.9rem + 3.4vw, 4.75rem);
+
+  background: var(--lp-bg);
+  color: var(--lp-fg);
+  font-family: var(--lp-font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Type primitives ──────────────────────────────────────────────────────── */
+
+.lp-display {
+  font-family: var(--lp-font-display);
+  font-size: var(--lp-t-display);
+  font-weight: 500;
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+  color: var(--lp-fg);
+  text-wrap: balance;
+}
+
+.lp-h2 {
+  font-family: var(--lp-font-display);
+  font-size: var(--lp-t-h2);
+  font-weight: 500;
+  line-height: 1.08;
+  letter-spacing: -0.026em;
+  color: var(--lp-fg);
+  text-wrap: balance;
+}
+
+.lp-h3 {
+  font-family: var(--lp-font-display);
+  font-size: var(--lp-t-h3);
+  font-weight: 500;
+  line-height: 1.25;
+  letter-spacing: -0.014em;
+  color: var(--lp-fg);
+}
+
+/* The scarce serif. FOUR uses on the whole page — hero, one mid-page H2, the
+   guarantee, the final CTA. Scarcity is what makes it read as a signature
+   rather than a tic; if you are reaching for a fifth, use the grotesque. */
+.lp-em {
+  font-family: var(--lp-font-serif);
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+.lp-lead {
+  font-size: var(--lp-t-lead);
+  line-height: 1.6;
+  color: var(--lp-fg-2);
+  letter-spacing: -0.005em;
+}
+
+.lp-body {
+  font-size: var(--lp-t-body);
+  line-height: 1.62;
+  color: var(--lp-fg-2);
+}
+
+/* Card-scale type. Premium pages live on hierarchy CONTRAST: display type is
+   large, product/data text is small and dense, and almost nothing sits in
+   between. Cards use these two — never lp-lead/lp-body, which are for section
+   leads only. */
+.lp-card-title {
+  font-family: var(--lp-font-display);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  color: var(--lp-fg);
+}
+
+.lp-card-body {
+  font-size: 13px;
+  line-height: 1.58;
+  color: var(--lp-fg-2);
+}
+
+/* Elevation for the page's FOCAL objects only — the demo stage, the floating
+   artifact cards, the feature window, the pricing card. Directional matte
+   shadow (an object casting onto the page), never an outer glow: glow is the
+   texture this brand rules out, and it is also just how AI pages look. If
+   every card gets this, none of them are focal — keep it to the four. */
+.lp-elevate {
+  box-shadow:
+    0 32px 64px -28px rgba(0, 0, 0, 0.6),
+    0 8px 20px -10px rgba(0, 0, 0, 0.45);
+}
+
+/* Data chip — hairline pill for small product residue (persona traits, edit
+   actions). Mono, quiet, never accent. */
+.lp-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--lp-line);
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-family: var(--lp-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--lp-fg-3);
+  white-space: nowrap;
+}
+
+/* Mono eyebrow — ties the page's labelling to the instrument theme (the product
+   is a measuring device; its marketing page labels things like one). */
+.lp-eyebrow {
+  font-family: var(--lp-font-mono);
+  font-size: var(--lp-t-eyebrow);
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--lp-fg-3);
+}
+
+.lp-mono {
+  font-family: var(--lp-font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* ── Layout ───────────────────────────────────────────────────────────────── */
+
+.lp-measure {
+  width: 100%;
+  max-width: var(--lp-measure);
+  margin-inline: auto;
+  padding-inline: var(--lp-gutter);
+}
+
+.lp-measure-wide {
+  width: 100%;
+  max-width: var(--lp-measure-wide);
+  margin-inline: auto;
+  padding-inline: var(--lp-gutter);
+}
+
+/* Full-bleed hairline between acts. The rule spans the viewport while the
+   content inside it sits on the measure — the device that makes the page read
+   as architected rather than as a stack of centred blocks. */
+.lp-rule {
+  border-top: 1px solid var(--lp-line);
+}
+
+.lp-band-alt {
+  background: var(--lp-bg-alt);
+}
+
+/* ── Motion ───────────────────────────────────────────────────────────────── */
+
+/* Scroll reveal. The SERVER HTML IS VISIBLE — hiding only happens once the
+   client observer has taken ownership (`data-reveal="armed"`). A reveal that
+   ships `opacity: 0` in the markup is a blank page whenever JS fails, and this
+   is a route we pay for traffic to. The noscript net in layout.tsx is the
+   second line of defence, not the first. */
+.lp-reveal[data-reveal="armed"] {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.lp-reveal[data-reveal="in"] {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 620ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 620ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* The hero curve draws itself once, on load. */
+@keyframes lp-draw {
+  from {
+    stroke-dashoffset: var(--lp-draw-length);
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes lp-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.lp-curve-path {
+  stroke-dasharray: var(--lp-draw-length);
+  animation: lp-draw 1700ms cubic-bezier(0.22, 1, 0.36, 1) 180ms both;
+}
+
+.lp-curve-mark {
+  animation: lp-fade-in 500ms ease-out 1500ms both;
+}
+
+.lp-curve-fill {
+  animation: lp-fade-in 900ms ease-out 900ms both;
+}
+
+/* Reduced motion kills every entrance on the page and leaves the finished
+   state. This is also what the screenshot pass runs under, so an audit sees
+   the page as a reader who has already scrolled it sees it. */
+@media (prefers-reduced-motion: reduce) {
+  .lp-reveal[data-reveal="armed"],
+  .lp-reveal[data-reveal="in"] {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+
+  .lp-curve-path,
+  .lp-curve-mark,
+  .lp-curve-fill {
+    animation: none !important;
+    stroke-dashoffset: 0 !important;
+    opacity: 1 !important;
+  }
+
+  .lp *,
+  .lp *::before,
+  .lp *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* ── Focus ────────────────────────────────────────────────────────────────── */
+
+.lp :focus-visible {
+  outline: 2px solid var(--lp-fg);
+  outline-offset: 3px;
+  border-radius: 4px;
+}

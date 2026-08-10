@@ -175,6 +175,23 @@ export async function POST(request: Request): Promise<Response> {
   // The runner gates this to undefined for General/no-audience (no-op, regression gate).
   const effectiveIntent = parseIntentLens(body.intent) ?? goalIntentToLens(activeAudience.goal_intent);
 
+  // ── (5c) Persist the USER turn (Stage A, N-8) ─────────────────────────────
+  // The "Write a script from #1" chip used to persist ONLY its assistant message; on
+  // reload the grouping folded the script into the PREVIOUS turn — one merged turn, the
+  // script's intro replacing the hooks', the chip click gone from history (the measured
+  // N-8). The action is now a real user row, exactly as the chat route persists an ask.
+  const userAction =
+    rawAsk.trim() ||
+    (rawAnchor
+      ? `Write a script from "${rawAnchor.length > 80 ? `${rawAnchor.slice(0, 80).trimEnd()}…` : rawAnchor}"`
+      : "Write a script");
+  await insertMessage(
+    openThread.id,
+    "user",
+    [{ type: "markdown", props: { text: userAction } }],
+    kcStamp().kcGenVersion,
+  );
+
   // ── (6) SSE stream: run pipeline + emit events ────────────────────────────
   const encoder = new TextEncoder();
 

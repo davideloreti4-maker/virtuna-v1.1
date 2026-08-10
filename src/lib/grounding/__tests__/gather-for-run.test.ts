@@ -236,6 +236,7 @@ describe("gatherCorpusForRun — read-back first", () => {
       scrapeAvailable: false,
       warrant: "none",
       grounded: false,
+      adapted: false,
     };
 
     expect(
@@ -333,7 +334,7 @@ type Adapt = typeof adaptCorpusBlock;
 
 /** A fake adapt stage: proves the corpus was routed through it, and returns its own `used`. */
 function fakeAdapt(): ReturnType<typeof vi.fn<Adapt>> {
-  return vi.fn<Adapt>(async () => ({ corpus: "ADAPTED-BRIEF", used: [example("z")] }));
+  return vi.fn<Adapt>(async () => ({ corpus: "ADAPTED-BRIEF", used: [example("z")], adapted: true }));
 }
 
 describe("gatherCorpusForRun — adapt routing", () => {
@@ -351,6 +352,8 @@ describe("gatherCorpusForRun — adapt routing", () => {
     // raw retrieved list — and the corpus is the fitted brief, not the raw slice.
     expect(result.corpus).toBe("ADAPTED-BRIEF");
     expect(result.examples.map((e) => e.teardownId)).toEqual(["z"]);
+    // The brief's kind reaches the runner — its citation guard binds the madlib check to slices only.
+    expect(result.adapted).toBe(true);
     // adapt was handed the resolved ask + the retrieved exemplars.
     expect(adapt).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -385,6 +388,7 @@ describe("gatherCorpusForRun — adapt routing", () => {
 
     expect(adapt).not.toHaveBeenCalled();
     expect(result.corpus).toContain("Stop buying");
+    expect(result.adapted).toBe(false);
   });
 
   it("does NOT adapt when the flag is off (default byte-identical path)", async () => {
@@ -396,6 +400,25 @@ describe("gatherCorpusForRun — adapt routing", () => {
 
     expect(adapt).not.toHaveBeenCalled();
     expect(result.corpus).toContain("Stop buying");
+    expect(result.adapted).toBe(false);
+  });
+
+  it("reports adapted:false when the briefer itself FELL BACK to the raw slice", async () => {
+    // The adapt stage degrades internally (LLM failure / kept-0 sweep) and returns the slice —
+    // the runner's citation guard must still verify THAT corpus under the slice contract.
+    const adapt = vi.fn<Adapt>(async () => ({
+      corpus: "RAW-SLICE-FALLBACK",
+      used: [example("a")],
+      adapted: false,
+    }));
+    const result = await gatherCorpusForRun(
+      { ...baseInput(), adapt: true, adaptProfile: profile },
+      { retrieve: hit, gather: vi.fn<Gather>(), adapt },
+    );
+
+    expect(adapt).toHaveBeenCalledOnce();
+    expect(result.corpus).toBe("RAW-SLICE-FALLBACK");
+    expect(result.adapted).toBe(false);
   });
 });
 
