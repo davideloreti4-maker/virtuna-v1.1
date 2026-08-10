@@ -510,10 +510,82 @@ scored 0/10 for every arm and "proved" the corpus buys nothing.
 4f3748e5  docs(chat): the digest/corpus trade is avoidable — cardsOnScreen is the fault
 1d33d1fd  docs(chat): correct §12.2 — dropping cardsOnScreen is flag-confined, not unflagged
 8e27709a  feat(chat): drop cardsOnScreen — it reproduced the cards it forbade
+c6346f9e  docs(chat): §12.2 implemented in 8e27709a — mutation results, gates, live proof
+355e0a89  fix(kc): budget the conversation BLOCK, not the turn text      ← the review's catch (§14)
 ```
 
-The first four are the record; `8e27709a` is the only source change, and it is confined to the
-dark-shipped `ENGINE_GEN_CONVERSATION` path (§12.2).
+`8e27709a` and `355e0a89` are the source changes. `8e27709a` is confined to the dark-shipped
+`ENGINE_GEN_CONVERSATION` path (§12.2); `355e0a89` also touches the assembler's budget accounting,
+which is on the unflagged path — but with the flag off no `conversation` is ever passed, so no
+bundle changes. **Read §14 before trusting §12 alone.**
+
+## 14. 🔴 The review caught the fix half-done — and it was the same bug again
+
+An `xhigh` multi-agent review of `8e27709a` found 14 issues. The lead one is the important one, and
+I verified it independently before accepting it:
+
+**`CONVERSATION_CHAR_BUDGET` was charged against raw turn TEXT, while `BUNDLE_CHAR_CAP` pays for the
+emitted BLOCK.** 640 chars of text — comfortably legal against 700 — emitted a ~960-char block.
+Measured on the worst realistic bundle (corpus 2800 + overrides + anchor + 5 cards):
+
+```
+worst realistic, no digest .................. 5058 / 6000   corpus KEPT ✓
+worst realistic + a budget-LEGAL digest .....              corpus SHED ⚠️
+```
+
+So §12 removed `cardsOnScreen` and the corpus was **still** being evicted, by the half nobody
+re-measured. Worse: `8e27709a`'s own comment said *"budget the BLOCK, not one field of it"* while
+the code it shipped kept charging one field of it. Writing the warning is not the same as applying
+it.
+
+**Fixed in `355e0a89`.** The assembler exports `CONVERSATION_BLOCK_OVERHEAD`, **derived** from the
+preamble and fence strings rather than written down, so editing the preamble cannot silently widen
+the block; the builder charges it up front plus per-line numbering. After: block **626 ≤ 700**,
+worst realistic bundle **5,684 / 6,000 with the corpus KEPT**. The 4-turn digest that produced the
+arm-C result still carries 4/4 turns, so §12's measurement stands.
+
+**Why the suite never saw it.** Every cap test used a 3-short-turn fixture emitting ~430 chars — an
+extra ~500 chars of slack that no real thread has. They now build the fixture from
+`buildConversationDigest` itself, so it cannot drift from the builder's own rules. Mutation-tested:
+restoring the text-only charge fails 3 tests, including the pre-existing worst-case one.
+
+### 14.1 Also fixed from the review
+
+Four documentation/test defects, all in what this session touched: a test titled `REJECTS…` that
+proved a **silent strip** (zod strips unknown keys, it does not throw — renamed and stated plainly);
+a **vacuous** test whose fixture could not populate the block it asserted absent; a serialisation
+test subsumed by the `toEqual` above it; design rule 3 still citing the **retracted** prefix-cache
+argument; and the superseded mutual-exclusion paragraph in the session-7 handoff, now bannered.
+
+### 14.2 Reported, deliberately NOT fixed
+
+Each is real and each is scope beyond a correction to this commit:
+
+- **The digest omits the creator's CURRENT turn.** `route.ts` loads prior turns at step (6) and
+  persists the new one at step (7), so "…but keep them under 30s" never reaches the generator, and
+  on a thread's first generating turn the flag is a total no-op. This is the largest of the four
+  and it partially undercuts what the digest is for.
+- **The `ctx.conversation` → runner hand-off has zero test coverage** at all six sites. Deleting it
+  from `generate_ideas` leaves tsc clean and every test green.
+- **The digest shape is hand-mirrored in five unlinked places**, so a field added to four of them
+  type-checks and is then silently stripped by non-strict zod.
+- **`replayPriorTurn` keeps the exact construct this session removed** — prior card lines replayed
+  into the transcript — unflagged, on the default path. Not confirmed as harmful there: it serves
+  the opposite purpose (proving a tool ran), and removing it would re-open the defect
+  `chat-prior-turns.ts` exists to fix. Needs its own measurement.
+
+Plus three plausible-not-confirmed: no per-string cap at the assembler boundary; a stated
+*rejection* in `turns` can contradict a `cards` rewrite pack the way `cardsOnScreen` did; and the
+same-topic repeat ask (§12.4) is still unmeasured with nothing dedupeing output against the screen.
+
+### 14.3 A process note
+
+The review's finder agents left a scratch test file (`src/lib/kc/__tests__/zz-measure.test.ts`) in
+the working tree. It broke `tsc` and was **untracked**, so it would have travelled with the worktree
+and confused the next session. Moved to the scratchpad, not deleted. Check `git status` after any
+multi-agent review.
+
+---
 
 ## 13. Where this leaves the two flags
 
