@@ -28,6 +28,9 @@
  */
 
 import { useEffect, useRef, useState } from "react";
+// The room's headcount moved OUT of this file (2026-08-13): the phone arrival's audience line
+// states the same number, and the owner-ruled copy is only true while both read one definition.
+import { TIER_VIEWERS } from "@/lib/surfaces/ambient-v2-audience-meta";
 
 // ── view-model ───────────────────────────────────────────────────────────────
 
@@ -138,7 +141,6 @@ export type AmbientPresentation = "rail" | "sheet";
 /** Horizontal gutter per presentation — 26px reads generous in a 400px rail, cramped at 390 - 52. */
 export const ambientGutter = (p: AmbientPresentation) => (p === "sheet" ? "px-[18px]" : "px-[26px]");
 
-const TIER_N: Record<SimTier, number> = { flash: 1000, max: 10000 };
 const TIER_LABEL: Record<SimTier, string> = { flash: "SIM-1 Flash", max: "SIM-1 Max" };
 
 /** Deterministic thousands separator — `toLocaleString()` is locale-dependent (SSR/client drift). */
@@ -251,7 +253,7 @@ function WatchingCard({
   tier: SimTier;
   reducedMotion: boolean;
 }) {
-  const n = TIER_N[tier];
+  const n = TIER_VIEWERS[tier];
   const fieldRef = useRef<HTMLDivElement>(null);
   // Lazy-init avoids setState-in-effect; live motion's only setState is inside the rAF callback.
   const [decided, setDecided] = useState(() => (reducedMotion ? Math.round(REST_FRAME * n) : 0));
@@ -708,7 +710,7 @@ export function AmbientOverview({
             The room is a modelled audience for a platform — say which, in the product's verb. */}
         <div className="mt-[7px] text-[12px] tabular-nums" style={{ color: TONE.faint }}>
           <span className="font-medium" style={{ color: TONE.dim }}>
-            {withCommas(TIER_N[tier])} viewers
+            {withCommas(TIER_VIEWERS[tier])} viewers
           </span>
           {" · "}
           {provenance}

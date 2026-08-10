@@ -3769,6 +3769,14 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       />
     ) : null;
 
+  // The v8 example chips are the ONLY thing that makes the dock taller than the scroll
+  // region's reserve, so the two have to be decided by the same boolean — see the
+  // `pb-[240px]` note on the thread region below. Hoisted rather than repeated: a copy
+  // that drifts re-opens the overlap silently, because nothing about a padding value
+  // announces which element it was measured against.
+  const showV8Chips =
+    CONCEPT_V8_ENABLED && !hasConversationContent && !roomExpanded;
+
   // ── Layout branches ────────────────────────────────────────────────────────
   //
   // Branch A — Home thread mode (hasThread && !hasSimulation):
@@ -3827,7 +3835,30 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           //
           // Same 768px boundary as AppShell's `md:pt-0` and the burger's `md:hidden`; custom
           // properties rather than inline values so the `md:` resets can outrank them.
-          className="flex-1 min-h-0 overflow-y-auto mt-[var(--nav-mt)] pt-[var(--nav-pt)] pb-[184px] md:mt-0 md:pt-0"
+          //
+          // ⚠️ THE RESERVE IS PER-SURFACE, because the dock's height is (2026-08-13, MEASURED
+          // in-browser at both native viewports, at true max scroll):
+          //
+          //   chat thread  393×852 → band 184px   ← reserve is exact
+          //   chat thread 1440×900 → band 133px   ← reserve is already 51px generous
+          //   v8 arrival   393×852 → band 238px   ← reserve was 54px SHORT
+          //   v8 arrival  1440×900 → band 187px   ← moot, that surface never scrolls
+          //
+          // The 54px is entirely the chips row (mt-2.5 + 34px + mb-2.5), which renders only
+          // where `showV8Chips` does — never in a chat thread. So the reserve moves with it
+          // and every thread keeps the 184 it was measured against. Bumping 184 statically
+          // would have paid for the chips on surfaces that do not have them: the desktop
+          // thread would rest its last message 107px above the composer.
+          //
+          // Symptom it fixes: at max scroll on the mobile arrival the sixth drop card ran 30px
+          // under the band and the chips row bisected its Remix button. The band is transparent
+          // above the composer box (the opaque backdrop is on the box, not the wrapper), so the
+          // card showed THROUGH the chips rather than behind them — and the chips wrapper is
+          // `pointer-events-auto`, so it ate the tap as well.
+          className={cn(
+            "flex-1 min-h-0 overflow-y-auto mt-[var(--nav-mt)] pt-[var(--nav-pt)] md:mt-0 md:pt-0",
+            showV8Chips ? "pb-[240px]" : "pb-[184px]",
+          )}
           style={
             {
               "--nav-mt": `-${MOBILE_NAV_BAND}px`,
@@ -3878,7 +3909,13 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
                   // v8 arrival (Phase 2): greeting + the shelf — spec §0b restraint:
                   // greeting · drops · composer, nothing else.
                   <>
-                    <ArrivalV8 />
+                    {/* The room line is <xl only and opens the SAME sheet the dock's plate does —
+                        `handleRoomExpandedChange`, not a second surface. Under xl the rail already
+                        states these facts, and the line hides itself there. */}
+                    <ArrivalV8
+                      audience={effectiveAudience}
+                      onOpenRoom={() => handleRoomExpandedChange(true)}
+                    />
                     <DropShelf
                       cards={dropCards}
                       status={dropsStatus}
@@ -3927,8 +3964,10 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
             {/* v8: example chips + More ▸ — ABOVE the composer (owner call 2026-08-10:
                 below the field they read as results of a chat that hasn't happened).
                 Hidden while the room is open: this dock is bottom-anchored, so anything
-                blooming off the composer's top edge would shove the chips over the shelf. */}
-            {CONCEPT_V8_ENABLED && !hasConversationContent && !roomExpanded ? (
+                blooming off the composer's top edge would shove the chips over the shelf.
+                ⚠️ `showV8Chips`, not the expression inline — the scroll region above reserves
+                its bottom pad off the same boolean, and the two must never disagree. */}
+            {showV8Chips ? (
               <div className="pointer-events-auto mb-2.5">
                 <ChipsRow
                   onArm={handleUserSelectTool}
@@ -3970,7 +4009,10 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
         {CONCEPT_V8_ENABLED ? (
           // v8 arrival (see the branch-A mount): greeting + the shelf (Phase 2).
           <>
-            <ArrivalV8 />
+            <ArrivalV8
+              audience={effectiveAudience}
+              onOpenRoom={() => handleRoomExpandedChange(true)}
+            />
             <DropShelf
               cards={dropCards}
               status={dropsStatus}
