@@ -102,13 +102,24 @@ function hookCutIndex(segments: Segment[]): number {
   const after = segments.findIndex((s) => s.t_start >= HOOK_ZONE_END_S);
   if (after <= 0) return -1;
   const exact = segments[after]!.t_start === HOOK_ZONE_END_S;
-  const idx = exact ? after : after - 1;
-  return idx > 0 ? idx : -1;
+  if (exact) return after;
+  // No boundary lands on 3s. Cut at the one before, so the opening beat is SHORTER than the
+  // hook zone rather than longer. When that would be index 0 the first cell is itself wider
+  // than the zone and no cut can fix it — isolate that cell anyway (cut at 1). Returning -1
+  // here used to drop the hook cut entirely and let the even spread merge MORE cells into
+  // beat 0: on a 5s-cell grid that produced a 0-20s beat labelled "hook".
+  return after - 1 > 0 ? after - 1 : 1;
 }
 
 /**
- * Pick the cut nearest `target`, snapping to a real scene boundary when one is available.
- * Returns null when nothing in range is still free.
+ * Pick the cut nearest `target`, snapping to a real scene boundary only when one is within
+ * `maxDistance`. Returns null when nothing in range is still free.
+ *
+ * The cap is what makes this "prefer a real cut" rather than "chase the nearest cut anywhere".
+ * Uncapped, a cluster of boundaries drags every spread target into it and reproduces exactly the
+ * collapse this function was written to fix: 40 cells with boundaries only from cell 30 on — an
+ * ordinary talking-head-then-montage shape — put 70% of the video in one beat while the beats
+ * inside the cluster were 1.5s each.
  */
 function nearestCut(
   target: number,
@@ -116,6 +127,7 @@ function nearestCut(
   lo: number,
   hi: number,
   taken: Set<number>,
+  maxDistance: number,
 ): number | null {
   const free = (i: number) => i > lo && i < hi && !taken.has(i);
   let best: number | null = null;
@@ -123,7 +135,7 @@ function nearestCut(
   for (const p of preferred) {
     if (!free(p)) continue;
     const d = Math.abs(p - target);
-    if (d < bestDist) {
+    if (d <= maxDistance && d < bestDist) {
       bestDist = d;
       best = p;
     }
@@ -164,9 +176,13 @@ function groupSegments(segments: Segment[]): Segment[][] {
 
   const wanted = MAX_BEATS - cuts.size - 1;
   const span = segments.length - bodyStart;
+  const step = span / (wanted + 1);
+  // Half a step: far enough to honour a nearby real boundary, near enough that a beat can never
+  // grow past ~1.5x its even share.
+  const snapRadius = step / 2;
   for (let k = 1; k <= wanted; k++) {
-    const target = bodyStart + Math.round((k * span) / (wanted + 1));
-    const cut = nearestCut(target, preferred, bodyStart, segments.length, cuts);
+    const target = bodyStart + Math.round(k * step);
+    const cut = nearestCut(target, preferred, bodyStart, segments.length, cuts, snapRadius);
     if (cut !== null) cuts.add(cut);
   }
 
@@ -233,7 +249,14 @@ function assignRoles(beats: Omit<BlueprintBeat, "role">[], peaksDesc: number[]):
         break;
       }
     }
-    if (turnIdx === -1) turnIdx = roles.findIndex((r) => r === null);
+    // Fall back to the first free beat AT OR AFTER the midpoint, not the first free beat
+    // overall — that was always beat 1, which left a turn at 3-11s of a 60s video with five
+    // payoffs after it and not one setup beat. A turn is a mid-video pivot by definition.
+    if (turnIdx === -1) {
+      const mid = Math.floor(beats.length / 2);
+      turnIdx = roles.findIndex((r, i) => r === null && i >= mid);
+      if (turnIdx === -1) turnIdx = roles.findIndex((r) => r === null);
+    }
     if (turnIdx >= 0) roles[turnIdx] = "turn";
   }
 
@@ -287,21 +310,36 @@ export function buildBlueprint(structural: OmniStructuralInput): SourceBlueprint
   const beats: BlueprintBeat[] = partial.map((b, i) => ({ ...b, role: roles[i]! }));
 
   // Attach each weak factor to the beat its name actually describes, then to the longest beat
-  // still free. Both halves were broken: the old test used the name "pacing", which the model
-  // cannot emit, and that is what let the dead branch survive.
+  // still free. The old regex here matched none of the five names the schema can emit, and the
+  // old test used the name "pacing", which the model cannot emit — which is what let the dead
+  // branch survive review.
+  //
+  // TWO passes, and the order is load-bearing: a single pass let an earlier factor's *fallback*
+  // claim take a beat that a later factor had an exact-role claim on. In the schema's own
+  // emission order that is the common case, not a corner — Emotional Charge is emitted LAST, so
+  // Share Trigger's fallback took the turn beat and displaced the one near-tautological mapping
+  // (the turn IS the emotion-peak beat).
   const weak = structural.factors.filter((f) => f.score < WEAK_FACTOR_SCORE);
+  const attach = (b: BlueprintBeat, f: (typeof weak)[number]) => {
+    b.weakness = { factor: f.name, score: f.score, tip: f.improvement_tip ?? f.rationale };
+  };
+
+  const unplaced: typeof weak = [];
   for (const f of weak) {
     const wantedRole = FACTOR_TARGET_ROLE[f.name.trim().toLowerCase()];
-    const candidates = [
-      ...(wantedRole ? beats.filter((b) => b.role === wantedRole) : []),
-      // Fallback: the longest beat still free. A factor is never dropped — `factors` is exactly
-      // 5 and several legitimately compete for the same role.
-      ...[...beats].sort((a, b) => b.duration_s - a.duration_s),
-    ];
-    const target = candidates.find((b) => b.weakness === null);
-    if (target) {
-      target.weakness = { factor: f.name, score: f.score, tip: f.improvement_tip ?? f.rationale };
-    }
+    const target = wantedRole
+      ? beats.find((b) => b.role === wantedRole && b.weakness === null)
+      : undefined;
+    if (target) attach(target, f);
+    else unplaced.push(f);
+  }
+
+  // Pass 2 — everything that could not have the role it wanted goes to the longest free beat.
+  // A factor is never dropped: `factors` is exactly 5 and several legitimately compete.
+  const byDuration = [...beats].sort((a, b) => b.duration_s - a.duration_s);
+  for (const f of unplaced) {
+    const target = byDuration.find((b) => b.weakness === null);
+    if (target) attach(target, f);
   }
 
   const totalWords = beats.reduce((n, b) => n + wordCount(b.spoken), 0);

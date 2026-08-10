@@ -109,6 +109,41 @@ describe("buildBlueprint", () => {
     expect(bp.beats.length).toBeLessThanOrEqual(MAX_BEATS);
   });
 
+  it("isolates the first cell when that cell is itself wider than the hook zone", () => {
+    // 5s cells. No boundary at 3s AND the first cell already overruns the zone, so no cut can
+    // make the opening beat 3s. Isolating cell 0 (0-5s) is the floor; merging four cells into
+    // a 0-20s beat still labelled "hook" is the defect.
+    const segments = Array.from({ length: 30 }, (_, i) => seg(i * 5, i * 5 + 5));
+    const bp = buildBlueprint(structural({ segments }));
+    expect(bp.beats[0]!.t_end).toBe(5);
+    expect(bp.beats[0]!.duration_s).toBe(5);
+  });
+
+  it("does not snap to a distant boundary cluster — late cluster (talking head then montage)", () => {
+    // 40 x 1.5s cells, real boundaries only from cell 30 on. Snapping every spread target to the
+    // globally nearest boundary dragged all six cuts into the cluster: beat 1 spanned 3-45s.
+    const segments = Array.from({ length: 40 }, (_, i) =>
+      seg(i * 1.5, i * 1.5 + 1.5, i >= 30 ? { scene_boundary_reason: "shot change" } : {}),
+    );
+    const bp = buildBlueprint(structural({ segments }));
+    const longest = Math.max(...bp.beats.map((b) => b.duration_s));
+    expect(longest).toBeLessThanOrEqual(bp.duration_s * 0.4);
+    for (let i = 1; i < bp.beats.length; i++) {
+      expect(bp.beats[i]!.t_start).toBe(bp.beats[i - 1]!.t_end);
+    }
+  });
+
+  it("does not snap to a distant boundary cluster — tight mid-video cluster", () => {
+    // 30 x 2s cells, boundaries only at cells 20-22. Produced a 2-36s beat (57% of the video).
+    const segments = Array.from({ length: 30 }, (_, i) =>
+      seg(i * 2, i * 2 + 2, i >= 20 && i <= 22 ? { scene_boundary_reason: "cut" } : {}),
+    );
+    const bp = buildBlueprint(structural({ segments }));
+    const longest = Math.max(...bp.beats.map((b) => b.duration_s));
+    expect(longest).toBeLessThanOrEqual(bp.duration_s * 0.4);
+    expect(bp.beats.reduce((n, b) => n + b.cuts, 0)).toBe(segments.length);
+  });
+
   // ---------------------------------------------------------------------------
   // Roles
   // ---------------------------------------------------------------------------
@@ -139,6 +174,25 @@ describe("buildBlueprint", () => {
     expect(roles).toContain("payoff");
     expect(roles).toContain("close");
     expect(bp.beats[0]!.role).toBe("hook");
+  });
+
+  it("puts the fallback turn mid-video, keeping setup beats before it", () => {
+    // Peak inside the hook zone, so the turn cannot sit on its own peak and must fall back.
+    // Taking the FIRST free beat put the turn at 3-11s of a 60s video with five payoffs after
+    // it and no setup at all.
+    const segments = buildFixedBuckets(60);
+    const bp = buildBlueprint(structural({
+      segments,
+      emotion_arc: [{ timestamp_ms: 1000, intensity_0_1: 0.9 }],
+    }));
+    const roles = bp.beats.map((b) => b.role);
+    expect(roles).toContain("setup");
+    expect(roles).toContain("turn");
+    expect(roles).toContain("payoff");
+    const turnIdx = bp.beats.findIndex((b) => b.role === "turn");
+    expect(turnIdx).toBeGreaterThanOrEqual(Math.floor(bp.beats.length / 2));
+    // and it is genuinely past the opening of the video
+    expect(bp.beats[turnIdx]!.t_start).toBeGreaterThan(bp.duration_s * 0.25);
   });
 
   it("still yields a close when the emotion peak lands in the final beat", () => {
@@ -253,6 +307,34 @@ describe("buildBlueprint", () => {
     expect(attached).toHaveLength(2);
     const names = attached.map((b) => b.weakness!.factor).sort();
     expect(names).toEqual(["Rewatch Potential", "Share Trigger"]);
+  });
+
+  it("gives every factor the ROLE it asked for, in the schema's own emission order", () => {
+    // The order HookFactorSchema emits. Emotional Charge is LAST, so a single-pass placement
+    // lets an earlier factor's *fallback* claim take the turn beat out from under it.
+    const segments = buildFixedBuckets(60);
+    const bp = buildBlueprint(structural({
+      segments,
+      emotion_arc: [{ timestamp_ms: 30_000, intensity_0_1: 0.95 }],
+      factors: [
+        { name: "Scroll-Stop Power", score: 2, rationale: "a" },
+        { name: "Completion Pull", score: 3, rationale: "b" },
+        { name: "Rewatch Potential", score: 4, rationale: "c" },
+        { name: "Share Trigger", score: 1, rationale: "d" },
+        { name: "Emotional Charge", score: 4, rationale: "e" },
+      ],
+    }));
+
+    const roleOf = (factor: string) =>
+      bp.beats.find((b) => b.weakness?.factor === factor)?.role;
+
+    expect(roleOf("Scroll-Stop Power")).toBe("hook");
+    expect(roleOf("Completion Pull")).toBe("setup");
+    expect(roleOf("Emotional Charge")).toBe("turn");
+    expect(roleOf("Rewatch Potential")).toBe("close");
+    // Share Trigger also wants close; only one can have it, so it takes a fallback beat.
+    expect(roleOf("Share Trigger")).toBeDefined();
+    expect(bp.beats.filter((b) => b.weakness !== null)).toHaveLength(5);
   });
 
   it("places all five weak factors on distinct beats", () => {
