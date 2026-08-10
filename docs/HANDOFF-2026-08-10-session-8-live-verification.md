@@ -444,7 +444,16 @@ block, which drops it in practice). That single change:
 - deletes the `cards`/`cardsOnScreen` mutual-exclusion contract that is currently enforced in two
   places, along with the reason it existed.
 
-Still an owner call — it is unflagged assembler behaviour and it removes a shipped design.
+**Correction to an earlier draft of this doc, which called this "unflagged assembler behaviour".**
+It is not. `cardsOnScreen` has exactly one producer — `buildConversationDigest`, reached only from
+`skillContextFor`, which returns `input.context` unchanged when `ENGINE_GEN_CONVERSATION` is off.
+Every other mention in `src/` is a type declaration or the assembler consuming a field that can
+only arrive down that path. **With the flag off the change is byte-identical**; it is confined to
+the dark-shipped digest. The cap and the shed order are the unflagged parts, and this touches
+neither — a turns-only digest measures 5,210/6,000 (§1), so the cap conflict simply disappears.
+
+Still an owner call, but for one reason only: it deletes a shipped design, and that is not mine to
+delete on a measurement I ran twice.
 
 ### 12.3 A trap in the measurement, worth keeping
 
