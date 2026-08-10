@@ -170,6 +170,18 @@ export async function POST(request: Request): Promise<Response> {
   // The runner gates this to undefined for General/no-audience (no-op, regression gate).
   const effectiveIntent = parseIntentLens(body.intent) ?? goalIntentToLens(activeAudience.goal_intent);
 
+  // ── (5c) Persist the USER turn (Stage A, N-8) ─────────────────────────────
+  // A pill-launched one-shot used to persist ONLY its assistant message; on reload the
+  // turn grouping folded those cards into the PREVIOUS turn and the causal step vanished
+  // from history. The action is now a real user row, as the chat route persists an ask.
+  const userAction = rawAsk.trim() || "Generate video ideas";
+  await insertMessage(
+    openThread.id,
+    "user",
+    [{ type: "markdown", props: { text: userAction } }],
+    kcStamp().kcGenVersion,
+  );
+
   // ── (6) SSE stream: run pipeline + emit events ────────────────────────────
   const encoder = new TextEncoder();
 

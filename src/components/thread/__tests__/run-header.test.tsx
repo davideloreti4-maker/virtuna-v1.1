@@ -162,9 +162,11 @@ describe('run-header — a RELOADED turn renders like the live one', () => {
   it('a LEGACY turn (no stamp) still gets its intro + receipt, inferred from block types', () => {
     // Pre-existing threads carry no stamp. Inference is what makes this change need no backfill
     // migration — the audience falls back, but the turn is not a bare card dump.
+    // Stage A: the fallback is the honest neutral 'your audience', never 'General' — that is
+    // the NAME of a real audience, so guessing it was indistinguishable from knowing it (F-3).
     expect(classifyTurn(['hook-card'])).toBe('hooks');
     renderWithClient(<ThreadTurn userTurn="give me hooks" blocks={[HOOK_CARD]} />);
     expect(screen.getByText('Ran your audience')).toBeTruthy();
-    expect(screen.getByLabelText(/Pulled hooks for General/)).toBeTruthy();
+    expect(screen.getByLabelText(/Pulled hooks for your audience/)).toBeTruthy();
   });
 });

@@ -32,10 +32,12 @@ import { createClient } from "@/lib/supabase/server";
 import { maybeMockSkillRun } from "@/lib/tools/mock/mock-sse";
 import { createOpenThreadLazy, getOpenThread, setThreadTitleIfEmpty } from "@/lib/threads/threads";
 import { insertMessage, loadMessages } from "@/lib/threads/messages";
+import { runHeaderBlock } from "@/lib/tools/run-header";
 import { openChatPriorTurns, MAX_PRIOR_TURNS } from "@/lib/threads/chat-prior-turns";
 import { runChatPipeline, isColdStart } from "@/lib/tools/runners/chat-runner";
-import { runChatAgentStream, type SkillBilling } from "@/lib/tools/chat-agent-loop";
+import { runChatAgentStream, sanitizeCards, type SkillBilling } from "@/lib/tools/chat-agent-loop";
 import { FREE_SKILL_TOOLS } from "@/lib/tools/skill-dispatch";
+import { guessSkill } from "@/lib/tools/pre-router";
 import { billUsage, creditGate, quotaRefusalBody, quotaRefusalMessage } from "@/lib/billing/credit-gate";
 import { creditCost, type BillableAction } from "@/lib/pricing";
 import type { QuotaUser } from "@/lib/billing/quota";
@@ -169,6 +171,18 @@ function isCorpusChatToolEnabled(): boolean {
   return process.env.GROUNDING_CHAT_TOOL !== "false";
 }
 
+/**
+ * Stage B "one brain" flag (default OFF — ships dark, lane convention). ONE lever for the stage:
+ * B1 (card CTAs through this route with a pinned skill + a data-carried anchor), B2 (the `cards`
+ * slot on the generator schemas + chip-carried packs), B3 (the `predispatch` frame). NEXT_PUBLIC_
+ * on purpose: the client half (CTA routing in composer.tsx) reads the same variable, inlined at
+ * build time — so flipping it in an env needs a REDEPLOY to reach the client, which env changes
+ * need here anyway (memory: env vars are write-only + need a redeploy).
+ */
+function isOneBrainEnabled(): boolean {
+  return process.env.NEXT_PUBLIC_ENGINE_ONE_BRAIN === "true";
+}
+
 /** Cap on client-carried prior turns (meet-mode ephemeral context — see POST). */
 const MAX_CLIENT_PRIOR_TURNS = 20;
 
@@ -278,6 +292,8 @@ export async function POST(request: Request): Promise<Response> {
     personaGrounding?: unknown;
     priorTurns?: unknown;
     skill?: unknown;
+    anchor?: unknown;
+    cards?: unknown;
   } = {};
   try {
     body = await request.json();
@@ -299,6 +315,19 @@ export async function POST(request: Request): Promise<Response> {
   // gate, price and ledger row that typing the ask would have. A typed message never sets it, which
   // is what keeps ordinary conversational asks byte-identical.
   const rawSkill = typeof body.skill === "string" ? body.skill.slice(0, 32) : undefined;
+
+  // ── (2d) Stage B data riders — honored ONLY beside a declared skill, flag on ──
+  // `anchor` is the exact line a card CTA was pressed on (B1); `cards` is the pack a tapped
+  // chip refers to (B2). Both are DATA the client can see and the model would otherwise have
+  // to reconstruct; both are server-capped here (mirroring the dedicated routes' anchor cap)
+  // and injected by the loop into the round-1 pinned call only. Without `skill` there is no
+  // pinned call to inject into, so they are dropped — a hand-crafted body gains nothing.
+  const ONE_BRAIN = isOneBrainEnabled();
+  const rawAnchor =
+    ONE_BRAIN && rawSkill && typeof body.anchor === "string"
+      ? body.anchor.slice(0, 5000)
+      : undefined;
+  const rawCards = ONE_BRAIN && rawSkill ? sanitizeCards(body.cards) : undefined;
 
   // ── (2b) Parse optional personaGrounding (P9 / LIVE-03, D-03) ────────────────
   // The "Ask them why →" chat-with-persona drawer POSTs this. Validated + length-capped
@@ -418,6 +447,23 @@ export async function POST(request: Request): Promise<Response> {
         let dispatched = false;
         if (isChatAgentDispatchEnabled() && personaGrounding == null) {
           dispatched = true;
+
+          // ── (8a-0) Stage B (B3): the predispatch frame — fills the router's ~4.8s dead zone ──
+          // Emitted BEFORE the loop starts, from what is already known:
+          //   · a declared skill (chip/CTA) is CERTAIN — the creator pressed it and round 1 is
+          //     pinned to it, so the client seeds the full capsule immediately;
+          //   · a typed ask gets the cheap heuristic guess, streamed as a HINT (certain:false) the
+          //     client renders next to the thinking dots — the real `dispatch` frame, which still
+          //     fires only after the gate admits the run, confirms or replaces it.
+          // Sealed visitors bind no generators, so neither claim would be honest — no frame.
+          if (ONE_BRAIN && !isSealedVisitor(user)) {
+            if (rawSkill && ["ideas", "hooks", "script"].includes(rawSkill)) {
+              send("predispatch", { skill: rawSkill, certain: true });
+            } else if (!rawSkill) {
+              const guess = guessSkill(rawAsk);
+              if (guess) send("predispatch", { skill: guess, certain: false });
+            }
+          }
           // Grounding (niche/audience/platform) rides the fenced user message, exactly as
           // runChatPipeline builds it (assembleBundle → <<<USER_CONTENT>>>). Prior turns go to the loop
           // as real role messages (natural turn structure for the agent), not folded into the anchor.
@@ -441,6 +487,11 @@ export async function POST(request: Request): Promise<Response> {
               priorTurns,
               // The tapped chip's declared generator (see (2c)); undefined for every typed message.
               ...(rawSkill ? { forceSkill: rawSkill } : {}),
+              // Stage B data riders (see (2d)) — round-1 pinned call only, inside the loop.
+              ...(rawAnchor ? { forceAnchor: rawAnchor } : {}),
+              ...(rawCards ? { forceCards: rawCards } : {}),
+              // Stage B (B2): bind the `cards` slot on the generator schemas (flag-gated).
+              cardsSlot: ONE_BRAIN,
               grounding: isCorpusChatToolEnabled(),
               context: {
                 platform,
@@ -488,6 +539,15 @@ export async function POST(request: Request): Promise<Response> {
             }
           );
 
+          // The runners' REAL warnings (Stage A) — the loop used to hardcode `[]`, so a
+          // degraded chat-dispatched run (grounding failed, a card dropped, an anchor not
+          // honored) was indistinguishable from a clean one. Same SSE event the dedicated
+          // routes emit; live-only, like theirs.
+          const runWarnings = agentResult.skillRuns.flatMap((run) => run.warnings);
+          if (runWarnings.length > 0) {
+            send("warning", { warnings: runWarnings });
+          }
+
           // Persist: each skill's card-blocks first (in run order), then the assistant text. A turn that
           // ran a skill marks the text origin:"chat-agent" so the thread reloads as ONE ordered stream in
           // the chat view (rehydrate-thread.ts); a pure-chat turn persists plain markdown → byte-identical
@@ -495,7 +555,20 @@ export async function POST(request: Request): Promise<Response> {
           if (openThread) {
             for (const run of agentResult.skillRuns) {
               if (run.blocks.length > 0) {
-                await insertMessage(openThread.id, "assistant", run.blocks, kcStamp().kcGenVersion);
+                // Stage A (F-3): stamp the run like every dedicated skill route does. The
+                // chat door was the one unstamped path — a reloaded turn lost its skill +
+                // audience and the intro fell back to the renderer's literal 'General'.
+                const stamped = run.skillKey
+                  ? [
+                      runHeaderBlock({
+                        skill: run.skillKey,
+                        audienceLabel: activeAudience?.name,
+                        platform,
+                      }),
+                      ...run.blocks,
+                    ]
+                  : run.blocks;
+                await insertMessage(openThread.id, "assistant", stamped, kcStamp().kcGenVersion);
               }
             }
             // UI affordance blocks (an input-request field from request_link) — persisted so the field

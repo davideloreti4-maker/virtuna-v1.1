@@ -24,6 +24,7 @@
 
 import {
   SKILL_TOOLS,
+  withCardsSlot,
   type SkillTool,
   type SkillToolArgs,
   type SkillRunContext,
@@ -235,6 +236,24 @@ export interface ChatAgentStreamInput {
    * The gate still runs: a pinned call is admitted, priced and billed exactly like a chosen one.
    */
   forceSkill?: string;
+  /**
+   * Stage B (B1): the exact line a card CTA was pressed on — the clicked hook a script must
+   * open from, the idea a hooks run develops. Rides as DATA next to `forceSkill` (same scope:
+   * honored only on the round-1 pinned call) and OVERRIDES whatever anchor the model wrote,
+   * because the creator's click names a specific line and a paraphrase of it is a different
+   * anchor. Without a pinned skill it is ignored — a typed message never sets it.
+   */
+  forceAnchor?: string;
+  /**
+   * Stage B (B2): the pack a tapped chip refers to ("Punch them up" under 5 hooks), carried
+   * as DATA by the client that can see the cards. Same scope + override rule as forceAnchor.
+   */
+  forceCards?: string[];
+  /**
+   * Stage B (B2): bind the `cards` slot on the generator tool schemas so a typed "rewrite
+   * these" can carry the pack. Route-gated (one-brain flag); off ⇒ schemas byte-identical.
+   */
+  cardsSlot?: boolean;
   /** Bind the corpus search tool (grounding-as-a-tool). Gated by GROUNDING_CHAT_TOOL at the route. */
   grounding?: boolean;
   /** Streamed answer tokens, in order. */
@@ -352,6 +371,14 @@ export interface ChatAgentStreamDeps {
 
 const DEFAULT_MAX_ROUNDS = 4;
 const DEFAULT_MAX_SKILL_RUNS = 2;
+/**
+ * F-1 containment (Stage A): cap on the text a round may stream AFTER a skill has
+ * delivered cards. The directive asks for ONE short closing line, but ~1 run in 3 the
+ * model re-answered the whole pack in markdown under the cards (measured 4,625 chars —
+ * 10 hooks in two formats for a 5-hook run). 600 chars is a generous 3–4 sentences;
+ * a re-answer cannot fit. Pre-tool rounds are uncapped — refusals and plain chat need prose.
+ */
+const POST_TOOL_TEXT_CAP = 600;
 /** Source cards rendered per search — a citation, not a search-results page. */
 const MAX_REFERENCE_CARDS = 4;
 
@@ -379,7 +406,11 @@ function splitSkills(skills: readonly SkillTool[]): { generators: string[]; anal
  * bound — naming an unbound tool invites a call that can't be serviced), and `generators` carries the
  * SAME rule for the skills: it lists what this caller actually bound, never the registry.
  */
-function toolUseDirective(grounding: boolean, skills: readonly SkillTool[] = SKILL_TOOLS): string {
+function toolUseDirective(
+  grounding: boolean,
+  skills: readonly SkillTool[] = SKILL_TOOLS,
+  cardsSlot = false,
+): string {
   const { generators, analysis } = splitSkills(skills);
   // NAME ONLY WHAT IS BOUND. An anonymous /go visitor gets `skills: FREE_SKILL_TOOLS`, which is EMPTY
   // (every generator is billable), yet this directive used to advertise all three regardless. The model
@@ -397,6 +428,13 @@ function toolUseDirective(grounding: boolean, skills: readonly SkillTool[] = SKI
         "conversational only when the creator is genuinely just talking or thinking out loud, OR when the ask " +
         "is too vague or too generic to produce something non-obvious — then push back ONCE for a sharper " +
         "angle, and the moment you have a workable subject, call the tool. " +
+        // Stage B (B2): only stated when the schemas actually carry the slot — naming a parameter
+        // the tool does not declare invites malformed calls (same rule as unbound tool names).
+        (cardsSlot
+          ? "When they ask you to REWRITE or tighten cards already on screen ('rewrite these', " +
+            "'punch them up'), pass those exact lines in the tool's `cards` argument, copied " +
+            "verbatim from cards_on_screen — never run a fresh generation that ignores them. "
+          : "") +
         // The analysis skills score what the creator ALREADY wrote. Stated separately because the
         // eagerness rule above is about making content: the trigger here is possession of the exact
         // text, and the failure mode is paraphrasing it rather than being too slow to call.
@@ -767,14 +805,47 @@ function createArtefactGuard(onToken: (delta: string) => void): ArtefactGuard {
   };
 }
 
+/**
+ * Server-side caps on the model-written skill args (Stage A citation-integrity pair). The
+ * dedicated routes cap ask/anchor at 2000/5000; this path had NO cap, so an over-long
+ * router-written topic/anchor could blow the bundle budget and silently evict the corpus
+ * the sourceIndex mapping was built against. Mirrors MAX_MESSAGE_LENGTH / MAX_ANCHOR_LENGTH.
+ */
+const TOPIC_CAP = 2000;
+const ANCHOR_CAP = 5000;
+/** Stage B (B2): caps on the rewrite pack — mirrors the assembler's max of 6 fenced lines. */
+const MAX_CARDS = 6;
+const CARD_LINE_CAP = 500;
+
+/**
+ * Normalize a rewrite pack (model-written or route-forced): strings only, trimmed, capped in
+ * count and length; anything else dropped. Undefined when nothing survives — a junk pack must
+ * degrade to an ordinary un-packed run, never crash the dispatch.
+ */
+export function sanitizeCards(raw: unknown): string[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const cards = raw
+    .filter((c): c is string => typeof c === "string")
+    .map((c) => c.trim().slice(0, CARD_LINE_CAP))
+    .filter((c) => c.length > 0)
+    .slice(0, MAX_CARDS);
+  return cards.length > 0 ? cards : undefined;
+}
+
 /** Parse the model's tool args into the shape the skills read (topic + optional anchor). */
 function parseSkillArgs(raw: string): SkillToolArgs {
   try {
     const p = JSON.parse(raw || "{}");
+    const count = typeof p.count === "number" && Number.isFinite(p.count) ? p.count : undefined;
+    const cards = sanitizeCards(p.cards);
     return {
-      topic: p.topic != null ? String(p.topic).trim() : undefined,
-      anchor: p.anchor,
-      draft: p.draft != null ? String(p.draft).trim() : undefined,
+      topic: p.topic != null ? String(p.topic).trim().slice(0, TOPIC_CAP) : undefined,
+      // typeof, not String(): a non-string anchor coerced to "[object Object]" would RUN
+      // with a junk anchor; dropped, the skill runs honestly unanchored instead.
+      anchor: typeof p.anchor === "string" ? p.anchor.slice(0, ANCHOR_CAP) : undefined,
+      draft: p.draft != null ? String(p.draft).trim().slice(0, ANCHOR_CAP) : undefined,
+      ...(count !== undefined ? { count } : {}),
+      ...(cards !== undefined ? { cards } : {}),
     };
   } catch {
     return {};
@@ -823,15 +894,19 @@ export async function runChatAgentStream(
   const byName = new Map(skills.map((s) => [s.name, s]));
   // request_input is always bound (free — it just shows an inline field); the corpus tool only when
   // grounding is on (naming an unbound tool invites a call that can't be serviced).
+  // Stage B (B2): with the cards slot on, each GENERATOR schema gains the `cards` parameter so a
+  // "rewrite these" can carry the pack — analysis skills (draft-primary) are untouched.
   const tools = [
-    ...skills.map((s) => s.schema),
+    ...skills.map((s) =>
+      input.cardsSlot && (s.primaryArg ?? "topic") === "topic" ? withCardsSlot(s.schema) : s.schema,
+    ),
     REQUEST_INPUT_TOOL,
     ...(input.grounding ? [SEARCH_CORPUS_TOOL] : []),
   ];
 
   // The caller's prompt grounds voice/chat; the loop appends the tool-use directive (it owns the tools).
   // The directive is told what THIS caller bound, so it can never advertise a skill the model cannot call.
-  const systemContent = `${input.systemPrompt}\n\n${toolUseDirective(!!input.grounding, skills)}`;
+  const systemContent = `${input.systemPrompt}\n\n${toolUseDirective(!!input.grounding, skills, !!input.cardsSlot)}`;
   const boundNames = new Set(tools.map((t) => (t as { function?: { name?: string } }).function?.name ?? ""));
   const messages: Array<Record<string, unknown>> = [
     { role: "system", content: systemContent },
@@ -882,14 +957,19 @@ export async function runChatAgentStream(
     });
 
     // Accumulate the round: text streams straight through; tool-call fragments accumulate by index.
+    // Once cards have been delivered this turn, the round's text budget drops to the closing-line
+    // cap (F-1): tokens beyond it are neither streamed nor persisted.
+    const textCap = skillRuns.some((r) => r.blocks.length > 0) ? POST_TOOL_TEXT_CAP : Infinity;
     let roundText = "";
     const toolAcc = new Map<number, { id?: string; name?: string; args: string }>();
     for await (const chunk of stream) {
       const delta = chunk.choices?.[0]?.delta;
       if (!delta) continue;
-      if (delta.content) {
-        roundText += delta.content;
-        guard.push(delta.content);
+      if (delta.content && roundText.length < textCap) {
+        const room = textCap - roundText.length;
+        const slice = delta.content.length > room ? delta.content.slice(0, room) : delta.content;
+        roundText += slice;
+        guard.push(slice);
       }
       if (delta.tool_calls) {
         for (const tc of delta.tool_calls) {
@@ -1064,6 +1144,21 @@ export async function runChatAgentStream(
         continue;
       }
       const args = parseSkillArgs(call.args);
+      // Stage B (B1/B2): on the round-1 PINNED call, the client-carried anchor/pack override
+      // whatever the model wrote. The creator's click names an exact line ("Write the script
+      // from #1") and a tapped chip names an exact pack; a model paraphrase of either is a
+      // different input. Same narrow scope as the pin itself — round 1, the pinned tool only —
+      // so a typed message (no pin) and every later round are byte-identical to before.
+      if (round === 1 && pinnedTool && call.name === pinnedTool) {
+        if (input.forceAnchor) {
+          args.anchor = input.forceAnchor.slice(0, ANCHOR_CAP);
+          // A pinned CTA run must not die on the "no topic" refusal when the model fails to
+          // write one — the clicked line IS the subject, so it stands in honestly.
+          if (!args.topic) args.topic = input.forceAnchor.slice(0, TOPIC_CAP);
+        }
+        const forced = sanitizeCards(input.forceCards);
+        if (forced) args.cards = forced;
+      }
       const primary = skill.primaryArg ?? "topic";
       if (!args[primary]) {
         toolCalls.push({ name: skill.name, ran: false, note: `no ${primary}` });
@@ -1127,7 +1222,7 @@ export async function runChatAgentStream(
         // Announce the dispatch BEFORE the run: the client's capsule labels itself + seeds the
         // skill's stage plan off this, ahead of the first onStage event (~seconds later).
         input.onDispatch?.(skill.skillKey);
-        const { blocks } = await skill.run(args, input.context);
+        const { blocks, warnings } = await skill.run(args, input.context);
         if (skill.billable) {
           paidRuns++;
           // BILL ON DELIVERY — the cards are about to stream to the creator and nothing after this
@@ -1137,12 +1232,22 @@ export async function runChatAgentStream(
           await deps.billing!.bill(skill.billable, admission?.tier);
         }
         for (const block of blocks) input.onBlock(block);
-        skillRuns.push({ name: skill.name, blocks, warnings: [] });
+        // The runner's REAL warnings (Stage A): this used to hardcode `[]`, so a degraded
+        // run — grounding failed, a card dropped by validation, an anchor not honored —
+        // looked identical to a clean one through the chat door. skillKey rides along so
+        // the route can stamp the persisted turn (run-header) with what actually ran.
+        skillRuns.push({ name: skill.name, skillKey: skill.skillKey, blocks, warnings });
         toolCalls.push({ name: skill.name, ran: true });
         messages.push({
           role: "tool",
           tool_call_id: call.id,
-          content: JSON.stringify({ ran: skill.name, produced: `${blocks.length} card(s)`, note: "cards are shown to the creator" }),
+          content: JSON.stringify({
+            ran: skill.name,
+            produced: `${blocks.length} card(s)`,
+            note:
+              "cards are shown to the creator; reply with ONE short closing line and do NOT " +
+              "restate or rewrite the cards' content in prose",
+          }),
         });
       } catch (err) {
         toolCalls.push({ name: skill.name, ran: false, note: "error" });

@@ -235,6 +235,15 @@ export interface TeardownBeat {
   // so a parsed template assigns cleanly. See the schema comment for the 14/300-drop history.
   startSec?: number | null;
   endSec?: number | null;
+  /**
+   * What the source actually SAID in this beat's window (C3 deep anatomy) — from
+   * `teardown.narrative_structure.structure_sections[].transcript_sentences`, NOT from the
+   * template JSONB (TeardownBeatSchema deliberately omits it: no DB row carries it here).
+   * Attached at gather time (gather-for-run enrichment) for the SCRIPT ADAPT BRIEFER's decode
+   * view only — the raw slice and the writer never see source words (the measured verbatim-
+   * transplant drift, AB-GROUNDING-BLIND-2026-07-14).
+   */
+  transcript?: string[];
 }
 
 /** template JSONB — the generalized reusable structure (§13 proposed sub-shape). */

@@ -57,24 +57,30 @@ export function introLine(
 ): string {
   const who = audienceLabel;
   const where = PLATFORM_LABEL[platform] ?? 'TikTok';
+  // ⚠️ PROJECTION HONESTY (Stage A, N-3). No simulation runs on the generation path — the
+  // scoring SIM was removed 2026-07-22; rank/band are the writer's own /10 estimate
+  // (provenance:"projected"), and the audience panel truthfully says "Not simulated yet".
+  // These lines used to claim "reacted with your 10 reactors" — machinery that does not
+  // run — contradicting the panel on the same screen. Intros may name the METHOD
+  // (projection, ranking); they must never claim a reaction that has not happened.
   switch (skill) {
     case 'hooks':
       return settled
-        ? `Pulled hooks for ${who} — reacted with your 10 reactors, strongest first.`
-        : `Pulling hooks for ${who} — I'll react each one with your 10 reactors and rank the strongest first.`;
+        ? `Pulled hooks for ${who} — ranked by projected stop-power, strongest first.`
+        : `Pulling hooks for ${who} — I'll rank them by projected stop-power, strongest first.`;
     case 'ideas':
       return settled
-        ? `Looked for angles ${who} would actually stop on — each scored against your 10 reactors.`
-        : `Looking for angles ${who} would actually stop on — scoring each against your 10 reactors.`;
+        ? `Looked for angles ${who} would actually stop on.`
+        : `Looking for angles ${who} would actually stop on.`;
     case 'script':
       if (settled) {
         return hookLine
-          ? `Wrote a script from "${truncate(hookLine, 60)}" — the open pressure-tested against ${who}.`
-          : `Wrote a script for ${who} — the open pressure-tested with your 10 reactors.`;
+          ? `Wrote a script from "${truncate(hookLine, 60)}" — the opener's band is my projection.`
+          : `Wrote a script for ${who} — the opener's band is my projection.`;
       }
       return hookLine
-        ? `Writing a script from "${truncate(hookLine, 60)}" — then pressure-testing the open against ${who}.`
-        : `Writing a script for ${who} — then pressure-testing the open with your 10 reactors.`;
+        ? `Writing a script from "${truncate(hookLine, 60)}" — then projecting how the opener lands with ${who}.`
+        : `Writing a script for ${who} — then projecting how its opener lands.`;
     case 'remix':
       return settled
         ? `Decoded this video and rewrote it for ${who} on ${where}.`
@@ -168,6 +174,7 @@ export function ThreadOutro({
   text,
   chips,
   followups,
+  cardLines,
 }: {
   /** The engine followupText, or an outroFallback — already resolved by the caller. */
   text: string | null;
@@ -179,6 +186,11 @@ export function ThreadOutro({
    * FollowupContext (composer-provided), so no onFollowup prop threads through the skill views.
    */
   followups?: ChatFollowup[];
+  /**
+   * Stage B (B2): this turn's card lines, for chips that carry their pack (`carryCards`).
+   * Computed by ThreadTurn (the one component that holds the blocks) via cardLinesOf.
+   */
+  cardLines?: string[];
 }) {
   const hasChips = !!chips && chips.length > 0;
   const hasFollowups = !!followups && followups.length > 0;
@@ -222,7 +234,7 @@ export function ThreadOutro({
           )}
         </div>
       )}
-      {hasFollowups && <FollowupRow followups={followups!} />}
+      {hasFollowups && <FollowupRow followups={followups!} cardLines={cardLines} />}
     </div>
   );
 }
