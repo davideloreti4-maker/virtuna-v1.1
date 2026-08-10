@@ -72,7 +72,7 @@ export function Pricing() {
             }}
           />
           {/* Not <Card>: the trial card carries the page's ONE lit border —
-              accent job #3 of 4 — in place of the standard hairline, and two
+              accent job #2 of 3 — in place of the standard hairline, and two
               nested frames read as a mistake. Inline style, not a class: this
               exact border exists nowhere else. */}
           <div
