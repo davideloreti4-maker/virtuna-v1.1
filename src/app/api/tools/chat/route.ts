@@ -38,6 +38,7 @@ import { runChatPipeline, isColdStart } from "@/lib/tools/runners/chat-runner";
 import { runChatAgentStream, sanitizeCards, type SkillBilling } from "@/lib/tools/chat-agent-loop";
 import { FREE_SKILL_TOOLS } from "@/lib/tools/skill-dispatch";
 import { guessSkill } from "@/lib/tools/pre-router";
+import { detectRepeatAsk, isRepeatAskPinEnabled } from "@/lib/tools/repeat-ask";
 import { billUsage, creditGate, quotaRefusalBody, quotaRefusalMessage } from "@/lib/billing/credit-gate";
 import { creditCost, type BillableAction } from "@/lib/pricing";
 import type { QuotaUser } from "@/lib/billing/quota";
@@ -464,6 +465,17 @@ export async function POST(request: Request): Promise<Response> {
               if (guess) send("predispatch", { skill: guess, certain: false });
             }
           }
+          // ── (8a-0b) THE REPEAT-ASK PIN (2026-08-10, flagged OFF) ──────────────────────────
+          // Only for a TYPED ask — a chip already declares its own skill and wins below. See
+          // repeat-ask.ts for why the trigger is three conditions rather than the obvious two:
+          // the pre-router's single measured harmful guess ("Yes, run the simulate tool on that
+          // hook") lives in a thread that necessarily HAS a prior hooks run, so "guessed + ran it
+          // before" would have turned the one known false alarm into a forced billed wrong run.
+          const repeatAskSkill =
+            isRepeatAskPinEnabled() && !rawSkill && !isSealedVisitor(user)
+              ? detectRepeatAsk(rawAsk, priorTurns)
+              : null;
+
           // Grounding (niche/audience/platform) rides the fenced user message, exactly as
           // runChatPipeline builds it (assembleBundle → <<<USER_CONTENT>>>). Prior turns go to the loop
           // as real role messages (natural turn structure for the agent), not folded into the anchor.
@@ -486,7 +498,19 @@ export async function POST(request: Request): Promise<Response> {
               systemPrompt: KC_CHAT_SYSTEM_PROMPT,
               priorTurns,
               // The tapped chip's declared generator (see (2c)); undefined for every typed message.
-              ...(rawSkill ? { forceSkill: rawSkill } : {}),
+              // …OR, failing that, a REPEAT ASK: the creator typing a request this thread has
+              // already run, which is the shape that makes the model claim work it did not do
+              // ("Here are 5 hooks for 'morning focus'…" with no dispatch and no cards, measured
+              // live). `forceSkill` is the right seam because it is already exactly this — a
+              // round-1 tool_choice pin, gated and billed like any other run — and because the
+              // fix has to be structural: the directive already forbids the claim in the
+              // strongest words available and is ignored, since the transcript showing the pack
+              // is stronger precedent than any instruction. Never overrides a real chip.
+              ...(rawSkill
+                ? { forceSkill: rawSkill }
+                : repeatAskSkill
+                  ? { forceSkill: repeatAskSkill }
+                  : {}),
               // Stage B data riders (see (2d)) — round-1 pinned call only, inside the loop.
               ...(rawAnchor ? { forceAnchor: rawAnchor } : {}),
               ...(rawCards ? { forceCards: rawCards } : {}),
