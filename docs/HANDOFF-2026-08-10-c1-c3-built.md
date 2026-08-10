@@ -47,6 +47,23 @@ LLM call feeding generation; any serving-side drift cascades). Consequences:
 - A/B latency comparisons across days stay valid; content comparisons are weaker than the
   docs' framing implies.
 
+## Skill coverage map (owner asked: "are we addressing all active skills?")
+
+Verified against `skill-dispatch.ts` (chat-dispatchable: ideas · hooks · script · read) and
+`src/app/api/tools/*` (one-shots: hooks · ideas · script · ideas/develop · refine · remix/run;
+score/read surfaces: read · react · predict · simulate · profile · explore; chat).
+
+| Skill | A (honesty) | C0 adapt | C1 judge | C3 | Quality fix lane |
+|---|---|---|---|---|---|
+| hooks | ✅ | ✅ measured | ✅ | — | done through C-levers |
+| ideas | ✅ | ✅ measured (HOLD) | ✅ | — | done through C-levers |
+| script | ✅ | ✅ measured (win) | ✅ | ✅ | done through C-levers |
+| develop | ✅ (rows, headers) | n/a | — | — | **Stage B** (standing call) |
+| refine | wired, chips bypass it | n/a | — | — | **Stage B** (B2) |
+| chat | ✅ (warnings, F-1 cap) | n/a | — | — | **Stage B** |
+| remix | — | n/a | **— (unguarded)** | — | no measured defect; decide at B: wire judge cheaply or wait |
+| read/react/predict/simulate/profile/explore | — | n/a | n/a (they score/read, don't generate) | — | out of scope by design |
+
 ## Open owner decisions (updated)
 
 1. **Prod flip** (deployment currently OFF — owner switching Vercel accounts; touch nothing):
@@ -56,9 +73,11 @@ LLM call feeding generation; any serving-side drift cascades). Consequences:
    `GROUNDING_IDEAS_ADAPT` still held (unchanged — craft read owed).
 2. **F-6 multiplier positioning** (backfill / stop printing / relabel) — still bracketed.
 3. **`composer.tsx` split** (with Stage B / surgical only) — still bracketed.
-4. **Next stage:** Stage B (one brain — also the fix lane for develop/refine/chat per the
-   standing call) vs C2 (raise the ceiling) vs C4 (real ranking). Nothing in this session
-   blocks any of them.
+4. **Next stage: Stage B — DECIDED (owner, end of session 5).** One brain: B1 card CTAs
+   through the agent loop (`forceSkill` exists) · B2 `cards` slot + chips→refine · B3 cheap
+   pre-router for the 4.8s dead zone. Also the fix lane for develop/refine/chat. C2/C4 ride
+   after. Recommendation on the composer bracket: split WITH Stage B (the seams are open
+   there anyway) — owner call still pending.
 
 ## Traps (session-5 additions)
 
