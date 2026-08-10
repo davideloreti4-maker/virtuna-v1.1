@@ -41,10 +41,30 @@ export const OVERVIEW_R4: OverviewData = {
     { id: "h7", stimulus: "I stopped chasing trends for 30 days…", stopPct: 0, kind: "idea", state: "queued" },
   ],
   segments: [
-    { archetype: "aspiring_creator", label: "Aspiring creators", sharePct: 34 },
-    { archetype: "casual_scroller", label: "Casual scrollers", sharePct: 27 },
-    { archetype: "skeptic", label: "Skeptics", sharePct: 22 },
-    { archetype: "practitioner", label: "Practitioners", sharePct: 17 },
+    {
+      archetype: "aspiring_creator",
+      label: "Aspiring creators",
+      sharePct: 34,
+      repaint: "Watches for what they could copy tomorrow; skips anything that needs a budget.",
+    },
+    {
+      archetype: "casual_scroller",
+      label: "Casual scrollers",
+      sharePct: 27,
+      repaint: "Passive consumption at speed; stops only for an immediate, visual payoff.",
+    },
+    {
+      archetype: "skeptic",
+      label: "Skeptics",
+      sharePct: 22,
+      repaint: "Judges authenticity and production value; dismisses low-effort posts immediately.",
+    },
+    {
+      archetype: "practitioner",
+      label: "Practitioners",
+      sharePct: 17,
+      repaint: "Reads for technique and business model; ignores motivation with no method behind it.",
+    },
   ],
 };
 

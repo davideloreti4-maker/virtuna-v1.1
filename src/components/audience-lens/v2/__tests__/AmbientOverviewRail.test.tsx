@@ -78,12 +78,13 @@ describe("AmbientOverviewRail", () => {
    * rail was a bare "on call" label under a rule with zero avatars beside it (caught live
    * 2026-07-24). It cannot regress now, in either room, and both are asserted.
    */
-  it("states the room's real facts in the header — minds · calibration · where they read", () => {
+  it("states the room's real facts in the header — viewers · calibration · what it simulates for", () => {
     render(<AmbientOverviewRail audience={audience} descriptors={descriptors} reducedMotion />);
     const board = screen.getByTestId("ambient-overview").textContent ?? "";
-    expect(board).toContain("1,000 minds"); // TIER_N.flash, the real headcount of a Flash read
+    // "viewers" / "simulating for", not "minds" / "reads on" (owner ruling 2026-08-12).
+    expect(board).toContain("1,000 viewers"); // TIER_N.flash, the real headcount of a Flash read
     expect(board).toContain("baseline"); // General ⇒ the honest badge, not "calibrated"
-    expect(board).toContain("reads on TikTok"); // the scene, from the same source ⑤ arms with
+    expect(board).toContain("simulating for TikTok"); // the scene, from the same source ⑤ arms with
   });
 
   it("renders NO cast footer and NO calibration pill — in the General room or a calibrated one", () => {
