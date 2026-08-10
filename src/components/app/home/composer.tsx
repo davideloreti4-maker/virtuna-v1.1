@@ -3810,12 +3810,31 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
               // scroll region, so with `justify-end` the grid's last row sat directly under it
               // and "Test something of your own" rendered half-hidden behind the composer at
               // 1512×982 — the last starter card, sliced, on the first screen a new account sees.
-              <div className="flex min-h-full flex-col justify-end pt-6 pb-40">
+              //
+              // ⚠️ v8 takes pb-8, not pb-40 (owner ruling 2026-08-11 r4: "too much empty space
+              // between the 6 videos and the composer"). MEASURED at 1440×900: this box is
+              // `min-h-full` inside a scroll region that ALREADY reserves `pb-[184px]` for the
+              // dock, so its own bottom edge clears the dock by ~60px with no padding at all —
+              // pb-40's 160px was reserving the same space twice and read as a hole. The
+              // flag-off AmbientStartHome branch KEEPS pb-40: it is a taller grid whose last row
+              // is the sliced-card bug above, and this ruling was not about that surface.
+              // v8 headroom (owner ruling 2026-08-11 r5: "good morning headline is way too close to
+              // the top"). pt-6 was the flag-off grid's clearance, and a grid does not need what a
+              // centered serif hero does. 40 → 64 at sm: on a phone the region already carries
+              // MOBILE_NAV_BAND above this for the burger, so the full 64 would double-space it.
+              // It also pays for itself at the bottom — this box is content-sized (see the pb note),
+              // so every px of top pad pushes the whole block down INTO the slack that §5d left.
+              <div
+                className={cn(
+                  "flex min-h-full flex-col justify-end",
+                  CONCEPT_V8_ENABLED ? "pt-10 pb-2 sm:pt-16" : "pt-6 pb-40",
+                )}
+              >
                 {CONCEPT_V8_ENABLED ? (
                   // v8 arrival (Phase 2): greeting + the shelf — spec §0b restraint:
                   // greeting · drops · composer, nothing else.
                   <>
-                    <ArrivalV8 shelfReady={dropCards.length > 0} />
+                    <ArrivalV8 />
                     <DropShelf
                       cards={dropCards}
                       status={dropsStatus}
@@ -3907,7 +3926,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
         {CONCEPT_V8_ENABLED ? (
           // v8 arrival (see the branch-A mount): greeting + the shelf (Phase 2).
           <>
-            <ArrivalV8 shelfReady={dropCards.length > 0} />
+            <ArrivalV8 />
             <DropShelf
               cards={dropCards}
               status={dropsStatus}

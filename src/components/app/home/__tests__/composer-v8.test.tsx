@@ -239,11 +239,17 @@ describe("composer v8 (flag on)", () => {
     expect(screen.getByTestId("composer-chips-row")).toBeInTheDocument();
   });
 
-  it("the shelf renders today's drops over the warm route; the greeting flips to the shelf headline", async () => {
+  it("the shelf renders today's drops over the warm route, under its OWN label", async () => {
     renderWithClient(<Composer />);
     expect(await screen.findByTestId("drop-card-d1")).toBeInTheDocument();
     expect(screen.getByTestId("drop-card-d2")).toBeInTheDocument();
-    expect(screen.getByTestId("arrival-v8").textContent).toContain("Tonight's remixes");
+    // Owner rulings 2026-08-11 r4 + r5: the shelf carries ONE caption naming the drops'
+    // provenance, and no heading at all — the greeting above is the arrival's only heading. The
+    // greeting used to be REPLACED by a "Tonight's remixes" h1, which left the normal arrival
+    // (drops present) with no welcome whatsoever.
+    expect(screen.getByTestId("drop-shelf").textContent).toContain("Proven videos, rebuilt for your niche");
+    expect(screen.getByTestId("drop-shelf").querySelector("h1, h2, h3")).toBeNull();
+    expect(screen.getByTestId("arrival-v8").textContent).toMatch(/Welcome back|Good (morning|afternoon|evening)/);
   });
 
   it("Remix on a drop seeds the thread: POSTs the seed route, points the cookie at it", async () => {

@@ -53,7 +53,17 @@ export function DropShelf({ cards, status, onRemix, remixingId }: DropShelfProps
   if (status === "ready" && cards.length === 0) return null;
 
   return (
-    <section data-testid="drop-shelf" aria-label="Today's drops" className="w-full pb-4">
+    <section data-testid="drop-shelf" aria-labelledby="drop-shelf-label" className="w-full pb-4">
+      {/* ONE quiet line, and no headline (owner ruling 2026-08-11 r5: "'tonights remixes' doesn't
+          sound good either — different wording or remove it").
+          Removed rather than reworded. "Tonight's remixes" was a title for a section that needs a
+          caption: the cards already say what they are — a still, a real view count, an outlier
+          receipt and a Remix button — so a heading above them only restated the obvious in a
+          bigger face. What a creator does NOT already know is the PROVENANCE, which is what this
+          line carries. The greeting above stays the only heading on the arrival. */}
+      <p id="drop-shelf-label" className="px-1 pb-3 text-caption text-foreground-muted">
+        Proven videos, rebuilt for your niche
+      </p>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         {status === "warming"
           ? Array.from({ length: 6 }, (_, i) => (
