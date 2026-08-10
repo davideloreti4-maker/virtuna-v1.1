@@ -432,7 +432,7 @@ Putting lines in the prompt makes them likelier to be emitted, and a sentence te
 to does not reverse it — exactly what `chat-prior-turns.ts` and `repeat-ask.ts` both document.
 `cardsOnScreen` is a negative-instruction design in a system whose own docs say those do not work.
 
-### 12.2 Recommendation
+### 12.2 Recommendation — ✅ **DONE** (`8e27709a`)
 
 **Ship `ENGINE_GEN_CONVERSATION` with `turns` only; drop `cardsOnScreen`** (or budget the whole
 block, which drops it in practice). That single change:
@@ -452,8 +452,30 @@ only arrive down that path. **With the flag off the change is byte-identical**; 
 the dark-shipped digest. The cap and the shed order are the unflagged parts, and this touches
 neither — a turns-only digest measures 5,210/6,000 (§1), so the cap conflict simply disappears.
 
-Still an owner call, but for one reason only: it deletes a shipped design, and that is not mine to
-delete on a measurement I ran twice.
+**Implemented on request, `8e27709a`.** What landed:
+
+- `buildConversationDigest` no longer collects card lines; `ConversationDigest` is `{ turns? }`.
+- `skillContextFor` no longer takes the call's `args` — the digest cannot depend on them any more.
+- The assembler's `conversationContent` emits one block; the `cards`-strips-`cardsOnScreen` guard
+  is gone with the contradiction it guarded; `CONVERSATION_CHAR_BUDGET`'s doc now says what it
+  actually bounds, and warns that a second sub-block must budget the BLOCK.
+- Tests re-pin the contract by **absence** — value, serialisation, and key set — plus a boundary
+  test that a stray `cardsOnScreen` never reaches the prompt (zod strips unknown keys, so the
+  failure mode is a silent no-op; the test pins the observable consequence instead).
+
+**Mutation-tested, both halves** — the lane rule, and the thing that caught a hole in session 7's
+own cap test:
+
+| mutation | result |
+|---|---|
+| builder re-populates `cardsOnScreen` | **5 tests fail** |
+| assembler re-emits the block from a passed field | **1 test fails** (the boundary test) |
+
+**Gates:** `tsc` clean · **5,857 passed / 0 failed** · prod build clean.
+
+**Live, through `/api/tools/chat` signed-in**, on a pinned repeat ask in the thread that previously
+measured 0/10 proof: **2/5 cards came back carrying a `proof` receipt** — i.e. the corpus reached
+the prompt. That is the outcome-side confirmation, with no instrumentation in the tree.
 
 ### 12.3 A trap in the measurement, worth keeping
 
@@ -483,5 +505,23 @@ scored 0/10 for every arm and "proved" the corpus buys nothing.
 ## 10. Commits
 
 ```
-(this document only — no source changes this session)
+00a5087a  docs(chat): session 7 walked signed-in; the digest evicts grounding
+85a3e6f5  docs(chat): size the honesty defect — the pin catches 0 of 5 historical cases
+4f3748e5  docs(chat): the digest/corpus trade is avoidable — cardsOnScreen is the fault
+1d33d1fd  docs(chat): correct §12.2 — dropping cardsOnScreen is flag-confined, not unflagged
+8e27709a  feat(chat): drop cardsOnScreen — it reproduced the cards it forbade
 ```
+
+The first four are the record; `8e27709a` is the only source change, and it is confined to the
+dark-shipped `ENGINE_GEN_CONVERSATION` path (§12.2).
+
+## 13. Where this leaves the two flags
+
+- **`ENGINE_GEN_CONVERSATION` — ready to flip.** Arrives through the route (§2), works under a
+  calibrated audience (§2.1), no longer evicts grounding (§12.2), beats today's behaviour on
+  constraint obedience. The remaining unknowns are §5's: no route-level control arm for the
+  digest's *benefit*, and the 6-turn / 700-char window is still untuned.
+- **`ENGINE_REPEAT_ASK_PIN` — safe, low value, your call.** 0 false pins in 360 real turns, but
+  catches 0 of the 5 historical honesty defects (§11). Flipping it costs nothing and buys little.
+  The lever that would actually move §11 is an output-side check, which is **not built and not
+  designed** — see §11's "What this implies".
