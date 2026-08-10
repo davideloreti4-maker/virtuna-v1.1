@@ -208,3 +208,102 @@ describe("assembleBundle anchor contract", () => {
     expect(bundle).toContain("Anchor hook — REQUIRED");
   });
 });
+
+// ─── rewrite pack (Stage B, B2) — the cards already on screen ───────────────────
+//
+// "Punch these up" used to reach the pipeline as a bare sentence, so the run generated five
+// strangers instead of sharper versions of the five hooks the creator was looking at. The pack now
+// arrives as data, and the CONTRACT rides in the fence label for the same reason the anchor's does:
+// the compiled system prompts cannot know about per-request content, so a bare list of lines would
+// be read as context to draw on rather than as items owed a rewrite.
+
+describe("assembleBundle rewrite pack (cards)", () => {
+  const HOOKS = ["I quit caffeine for 30 days", "Your 5 AM alarm is the problem"];
+
+  it("fences the pack as a NUMBERED list under a rewrite contract", () => {
+    const bundle = assembleBundle(
+      { ask: "punch these up", platform: "tiktok", mode: "hooks", cards: HOOKS },
+      FULL_PROFILE,
+    );
+    expect(bundle).toContain("Cards to improve");
+    expect(bundle).toContain("REWRITE these exact hooks");
+    expect(bundle).toContain("1. I quit caffeine for 30 days");
+    expect(bundle).toContain("2. Your 5 AM alarm is the problem");
+  });
+
+  it("names the right noun per mode — the contract has to be concrete to be followed", () => {
+    const ideas = assembleBundle(
+      { ask: "sharper angles", platform: "tiktok", mode: "idea", cards: ["morning routines"] },
+      FULL_PROFILE,
+    );
+    const script = assembleBundle(
+      { ask: "punchier", platform: "tiktok", mode: "script", cards: ["Hook: stop scrolling"] },
+      FULL_PROFILE,
+    );
+    expect(ideas).toContain("REWRITE these exact ideas");
+    // A script pack is the BEATS of the one script on screen, and the label has to say so — the
+    // numbered lines are "Hook: …", "Turn: …", not a stack of whole scripts.
+    expect(script).toContain("REWRITE these exact script beats");
+    expect(script).toContain("never replace one with an unrelated new script beat");
+  });
+
+  it("forbids swapping an item for an unrelated new one — the measured defect, stated in the fence", () => {
+    const bundle = assembleBundle(
+      { ask: "punch these up", platform: "tiktok", mode: "hooks", cards: HOOKS },
+      FULL_PROFILE,
+    );
+    expect(bundle).toContain("never replace one with an unrelated new hook");
+  });
+
+  it("rides ALONGSIDE an anchor without inheriting its opening contract", () => {
+    // The distinction is load-bearing: the anchor says "open from this exact line" and is checked
+    // for it downstream; a rewrite pack carries no such promise. Folding the pack into the anchor
+    // slot would make every rewrite trip the anchor-honouring check.
+    const bundle = assembleBundle(
+      {
+        ask: "punchier",
+        platform: "tiktok",
+        mode: "script",
+        anchor: "Stop trying to wake up at 5 AM.",
+        cards: ["Hook: stop scrolling"],
+      },
+      FULL_PROFILE,
+    );
+    expect(bundle).toContain("Anchor hook — REQUIRED");
+    expect(bundle).toContain("Cards to improve");
+  });
+
+  it("is absent entirely from an ordinary run", () => {
+    const bundle = assembleBundle(
+      { ask: "5 hooks about sleep", platform: "tiktok", mode: "hooks" },
+      FULL_PROFILE,
+    );
+    expect(bundle).not.toContain("Cards to improve");
+  });
+
+  it("REJECTS a pack over the fence budget rather than silently truncating it", () => {
+    // The cap is the schema's, not a slice: a 7th card that vanished without a word would leave the
+    // creator looking at a card the run never saw and no sign that it was dropped. The loop caps at
+    // the same 6 before it ever gets here, so this asserts the two agree.
+    expect(() =>
+      assembleBundle(
+        { ask: "punch these up", platform: "tiktok", mode: "hooks", cards: [...Array(7)].map((_, i) => `card ${i}`) },
+        FULL_PROFILE,
+      ),
+    ).toThrow(/invalid input/);
+  });
+
+  it("survives the overflow rebuild with its contract label intact", () => {
+    const bundle = assembleBundle(
+      {
+        ask: "punch these up",
+        platform: "tiktok",
+        mode: "hooks",
+        cards: [`${HOOKS[0]} ${"z".repeat(5000)}`],
+      },
+      FULL_PROFILE,
+    );
+    expect(bundle.length).toBeLessThanOrEqual(BUNDLE_CHAR_CAP);
+    expect(bundle).toContain("Cards to improve");
+  });
+});

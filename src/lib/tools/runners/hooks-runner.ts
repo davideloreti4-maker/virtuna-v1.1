@@ -247,10 +247,17 @@ export interface HooksPipelineInput {
   anchor?: string;
   /**
    * How many hooks the creator asked for (Stage A, N-4). Clamped 1..HOOK_COUNT; absent →
-   * parsed from the ask ("3 hooks for…"), else HOOK_COUNT. The old behavior — 5 no
-   * matter what was asked — shipped "3 hooks" asks 5 cards.
+   * parsed from the ask ("3 hooks for…"), else the rewrite pack's size (see `cards`),
+   * else HOOK_COUNT. The old behavior — 5 no matter what was asked — shipped "3 hooks"
+   * asks 5 cards.
    */
   count?: number;
+  /**
+   * Stage B (B2): the exact lines of hook cards already on screen that this run should
+   * REWRITE ("Punch them up", "rewrite these"). Fenced by the assembler under its own
+   * rewrite contract; also the count default, so a 5-hook pack yields 5 sharper hooks.
+   */
+  cards?: string[];
   /**
    * Active audience for this run (08-04 — steer closure, AUD-STEER; mirrors 07-04 ideas-runner).
    * null or is_general → falls back to profile-based grounding + DEFAULT weights
@@ -535,15 +542,17 @@ async function generateHooksStructured(
  * @param input.anchor      Upstream idea concept (optional; fenced via assembleBundle).
  */
 export async function runHooksPipeline(input: HooksPipelineInput): Promise<HooksPipelineResult> {
-  const { ask, platform, profileRow, anchor, audience = null } = input;
+  const { ask, platform, profileRow, anchor, audience = null, cards } = input;
   const allWarnings: string[] = [];
 
   // ── COUNT (Stage A, N-4): honor the asked-for count ──────────────────────────
-  // Caller-supplied (clamped) → parsed from the ask ("3 hooks for…") → the default.
+  // Caller-supplied (clamped) → parsed from the ask ("3 hooks for…") → the rewrite
+  // pack's own size (a "punch these up" over 5 hooks owes 5 back) → the default.
   const count =
     input.count && Number.isFinite(input.count)
       ? Math.max(1, Math.min(HOOK_COUNT, Math.trunc(input.count)))
-      : (requestedCount(ask) ?? HOOK_COUNT);
+      : (requestedCount(ask) ??
+        (cards && cards.length > 0 ? Math.min(HOOK_COUNT, cards.length) : HOOK_COUNT));
   // NOTE: `input.intent` (the sell/grow reaction lens) only ever reframed the persona-SIM verdict.
   // With the SIM removed from generation it is unused on this path for now; it re-attaches to the
   // user-fired simulation (which owns the reaction) when that wiring lands. Kept on the interface so
@@ -611,6 +620,7 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
       platform,
       mode: "hooks",
       ...(anchor ? { anchor } : {}),
+      ...(cards && cards.length > 0 ? { cards } : {}),
       ...(overrides ? { overrides } : {}),
       ...(corpus ? { corpus } : {}),
     },

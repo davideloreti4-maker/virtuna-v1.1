@@ -66,6 +66,14 @@ export interface SkillToolArgs {
   draft?: string;
   /** How many the creator asked for (Stage A, N-4 — hooks only today). Runner-clamped. */
   count?: number;
+  /**
+   * Stage B (B2): the exact lines of cards ALREADY on screen the creator wants rewritten
+   * ("rewrite these", "punch them up"). Model-filled from the transcript's cards_on_screen,
+   * or forced by the route when a chip carries the pack as data. Loop-capped; the runners
+   * fence it under a rewrite contract so the run improves THESE items instead of generating
+   * unrelated new ones.
+   */
+  cards?: string[];
 }
 
 /** One skill, exposed to the chat model as a tool. Adding a skill = adding one of these. */
@@ -131,6 +139,46 @@ function skillSchema(
   };
 }
 
+/**
+ * Stage B (B2): add the `cards` slot to a generator's tool schema — the pack being discussed.
+ *
+ * "Rewrite these hooks" used to dispatch a fresh generation that could not SEE "these": the tool
+ * schema had no slot for the pack, so the run returned five strangers. The transcript already
+ * shows the model every card's line (`cards_on_screen`, chat-agent-loop replay); this slot is
+ * where it hands them back so the runner can rewrite the real items.
+ *
+ * Applied per-request by the agent loop (flag-gated there), NEVER baked into SKILL_TOOLS — the
+ * registry stays byte-identical when the flag is off. Pure: returns a new schema object.
+ */
+export function withCardsSlot(schema: Record<string, unknown>): Record<string, unknown> {
+  const fn = schema.function as
+    | { parameters?: { properties?: Record<string, unknown> } }
+    | undefined;
+  const properties = fn?.parameters?.properties;
+  if (!fn || !fn.parameters || !properties) return schema;
+  return {
+    ...schema,
+    function: {
+      ...fn,
+      parameters: {
+        ...fn.parameters,
+        properties: {
+          ...properties,
+          cards: {
+            type: "array",
+            items: { type: "string" },
+            description:
+              "ONLY when the creator asks to rewrite/tighten/re-angle cards ALREADY on screen " +
+              "('rewrite these', 'punch them up', 'make it sharper'): the exact lines of those " +
+              "cards, copied VERBATIM from cards_on_screen in this conversation, in order. " +
+              "Omit entirely when they want fresh content.",
+          },
+        },
+      },
+    },
+  };
+}
+
 // ─── The registry — generators (topic shape) ──
 
 export const SKILL_TOOLS: SkillTool[] = [
@@ -147,6 +195,7 @@ export const SKILL_TOOLS: SkillTool[] = [
     run: async (args, ctx) => {
       const r = await runIdeasPipeline({
         ask: args.topic ?? "",
+        cards: args.cards,
         platform: ctx.platform,
         profileRow: ctx.profileRow,
         audience: ctx.audience,
@@ -172,6 +221,7 @@ export const SKILL_TOOLS: SkillTool[] = [
         ask: args.topic ?? "",
         anchor: args.anchor,
         count: args.count,
+        cards: args.cards,
         platform: ctx.platform,
         profileRow: ctx.profileRow,
         audience: ctx.audience,
@@ -195,6 +245,7 @@ export const SKILL_TOOLS: SkillTool[] = [
       const r = await runScriptPipeline({
         ask: args.topic ?? "",
         anchor: args.anchor,
+        cards: args.cards,
         platform: ctx.platform,
         profileRow: ctx.profileRow,
         audience: ctx.audience,

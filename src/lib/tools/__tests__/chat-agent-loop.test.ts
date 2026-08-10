@@ -14,7 +14,7 @@ import {
   type ChatAgentStreamInput,
   type ChatAgentStreamDeps,
 } from "@/lib/tools/chat-agent-loop";
-import type { SkillTool } from "@/lib/tools/skill-dispatch";
+import type { SkillTool, SkillToolArgs } from "@/lib/tools/skill-dispatch";
 
 const CTX = { platform: "tiktok" as const, profileRow: null, audience: null };
 
@@ -1033,6 +1033,239 @@ describe("runChatAgentStream [forceSkill]", () => {
     expect(billing.gate).toHaveBeenCalledWith("ideas"); // mkSkill's fixture price
     expect(hooks.run).not.toHaveBeenCalled();
     expect(res.skillRuns).toHaveLength(0);
+  });
+});
+
+// ── Stage B: the data riders (B1 anchor · B2 cards) and the `cards` schema slot ────────────────
+//
+// `forceSkill` fixed WHICH tool a tapped chip runs. These fix what it runs ON. Two measured gaps:
+//
+//   B1  A card CTA ("Write the script from #1 →") carries an exact line. Routed through the loop,
+//       the model writes the anchor itself from the transcript — so the run opens from a paraphrase
+//       of the hook the creator clicked, which is a different hook.
+//   B2  "Rewrite these hooks tighter" dispatched a fresh run with no way to SEE "these", and
+//       returned five strangers. The pack now rides as data, or through a declared schema slot.
+//
+// Both riders are scoped exactly like the pin that carries them — round 1, the pinned tool, nothing
+// else — so a typed ask and every later round stay byte-identical. That scope is what these lock.
+describe("runChatAgentStream [Stage B riders]", () => {
+  /** The args the skill's `run` actually received (what the pipeline will be handed). */
+  const ranWith = (skill: SkillTool): SkillToolArgs | undefined =>
+    (skill.run as unknown as ReturnType<typeof vi.fn>).mock.calls[0]?.[0];
+
+  it("forceAnchor OVERRIDES the anchor the model wrote — the clicked line, not a paraphrase", async () => {
+    const script = mkSkill("write_script", { skillKey: "script" });
+    const stream = mockStream([
+      // The model paraphrases the hook it saw in the transcript. It is close, and it is wrong.
+      [toolName(0, "c1", "write_script"), toolArgs(0, '{"topic":"budgeting","anchor":"a hook about saving money"}')],
+      [textChunk("Script is on screen.")],
+    ]);
+
+    await runChatAgentStream(
+      baseInput({ forceSkill: "script", forceAnchor: "I saved $4,000 in 6 weeks by cancelling one thing" }),
+      DEPS(stream, { skills: [script] }),
+    );
+
+    expect(ranWith(script)).toMatchObject({
+      topic: "budgeting",
+      anchor: "I saved $4,000 in 6 weeks by cancelling one thing",
+    });
+  });
+
+  it("forceAnchor stands in as the topic when the model wrote none — a CTA must not die on 'no topic'", async () => {
+    // The loop refuses a call whose primary arg is empty. A pinned CTA run has a subject — the line
+    // the creator clicked — so falling back to the refusal would fail a turn the creator explicitly
+    // asked for, on a technicality about which field the model chose to fill.
+    const script = mkSkill("write_script", { skillKey: "script" });
+    const stream = mockStream([
+      [toolName(0, "c1", "write_script"), toolArgs(0, "{}")],
+      [textChunk("done")],
+    ]);
+
+    const res = await runChatAgentStream(
+      baseInput({ forceSkill: "script", forceAnchor: "The 6-week rule that fixed my savings" }),
+      DEPS(stream, { skills: [script] }),
+    );
+
+    expect(res.skillRuns).toHaveLength(1);
+    expect(ranWith(script)).toMatchObject({
+      topic: "The 6-week rule that fixed my savings",
+      anchor: "The 6-week rule that fixed my savings",
+    });
+  });
+
+  it("forceCards OVERRIDES a model-written pack — the chip names the cards, not the transcript", async () => {
+    const hooks = mkSkill("generate_hooks", { skillKey: "hooks" });
+    const stream = mockStream([
+      [toolName(0, "c1", "generate_hooks"), toolArgs(0, '{"topic":"a","cards":["something it half-remembered"]}')],
+      [textChunk("done")],
+    ]);
+
+    await runChatAgentStream(
+      baseInput({ forceSkill: "hooks", forceCards: ["Hook one, verbatim", "Hook two, verbatim"] }),
+      DEPS(stream, { skills: [hooks] }),
+    );
+
+    expect(ranWith(hooks)!.cards).toEqual(["Hook one, verbatim", "Hook two, verbatim"]);
+  });
+
+  it("a JUNK forced pack degrades to an ordinary un-packed run — never a crashed dispatch", async () => {
+    const hooks = mkSkill("generate_hooks", { skillKey: "hooks" });
+    const stream = mockStream([
+      [toolName(0, "c1", "generate_hooks"), toolArgs(0, '{"topic":"a"}')],
+      [textChunk("done")],
+    ]);
+
+    const res = await runChatAgentStream(
+      // Every entry unusable: wrong type, and a blank that trims to nothing.
+      baseInput({ forceSkill: "hooks", forceCards: [42 as unknown as string, "   "] }),
+      DEPS(stream, { skills: [hooks] }),
+    );
+
+    expect(res.skillRuns).toHaveLength(1);
+    expect(ranWith(hooks)!.cards).toBeUndefined();
+  });
+
+  it("IGNORES the riders on a typed ask — no pin, no override", async () => {
+    // THE CONTROL, same shape as forceSkill's. The riders exist to honour a click; a message the
+    // creator typed has no click behind it, so nothing here may reach it.
+    const script = mkSkill("write_script", { skillKey: "script" });
+    const stream = mockStream([
+      [toolName(0, "c1", "write_script"), toolArgs(0, '{"topic":"t","anchor":"the model\'s own anchor"}')],
+      [textChunk("done")],
+    ]);
+
+    await runChatAgentStream(
+      baseInput({ forceAnchor: "a line nobody clicked", forceCards: ["nobody's pack"] }),
+      DEPS(stream, { skills: [script] }),
+    );
+
+    expect(ranWith(script)).toMatchObject({ anchor: "the model's own anchor" });
+    expect(ranWith(script)!.cards).toBeUndefined();
+  });
+
+  it("IGNORES the riders on round 2 — the click is spent on the call it pinned", async () => {
+    // The pin is round-1 only, and so is what it carries. A second call to the same tool later in
+    // the turn is the model's own decision about a new subject; re-forcing the clicked line onto it
+    // would silently rewrite that decision.
+    const script = mkSkill("write_script", { skillKey: "script" });
+    const stream = mockStream([
+      [toolName(0, "c1", "write_script"), toolArgs(0, '{"topic":"first"}')],
+      [toolName(0, "c2", "write_script"), toolArgs(0, '{"topic":"second","anchor":"a second, different hook"}')],
+      [textChunk("done")],
+    ]);
+
+    await runChatAgentStream(
+      baseInput({ forceSkill: "script", forceAnchor: "the clicked line" }),
+      DEPS(stream, { skills: [script] }),
+    );
+
+    const calls = (script.run as unknown as ReturnType<typeof vi.fn>).mock.calls;
+    expect(calls).toHaveLength(2);
+    expect(calls[0]![0]).toMatchObject({ anchor: "the clicked line" });
+    expect(calls[1]![0]).toMatchObject({ anchor: "a second, different hook" });
+  });
+
+  it("a model-written `cards` pack reaches the runner (sanitized) with no rider at all", async () => {
+    // The typed door: "rewrite these" with the slot bound. The model copies the lines out of
+    // cards_on_screen into the argument, and they must survive the parse.
+    const hooks = mkSkill("generate_hooks", { skillKey: "hooks" });
+    const stream = mockStream([
+      [toolName(0, "c1", "generate_hooks"), toolArgs(0, '{"topic":"a","cards":["  Line one  ","","Line two"]}')],
+      [textChunk("done")],
+    ]);
+
+    await runChatAgentStream(baseInput(), DEPS(stream, { skills: [hooks] }));
+
+    expect(ranWith(hooks)!.cards).toEqual(["Line one", "Line two"]);
+  });
+
+  it("caps the pack at 6 lines and each line at 500 chars — the assembler's fence budget", async () => {
+    const hooks = mkSkill("generate_hooks", { skillKey: "hooks" });
+    const many = JSON.stringify({ topic: "a", cards: [...Array(9)].map((_, i) => `card ${i}`.padEnd(700, "x")) });
+    const stream = mockStream([
+      [toolName(0, "c1", "generate_hooks"), toolArgs(0, many)],
+      [textChunk("done")],
+    ]);
+
+    await runChatAgentStream(baseInput(), DEPS(stream, { skills: [hooks] }));
+
+    const cards = ranWith(hooks)!.cards!;
+    expect(cards).toHaveLength(6);
+    expect(cards.every((c) => c.length === 500)).toBe(true);
+  });
+});
+
+// ── Stage B (B2): the `cards` slot on the generator schemas ────────────────────────────────────
+//
+// The slot is bound PER REQUEST by the loop, never baked into the registry, so a dark build sends
+// the schemas it always sent. These lock both halves of that: on, the generators declare it; off,
+// nothing about the request mentions it.
+describe("runChatAgentStream [cardsSlot]", () => {
+  /** The tool schemas the loop actually sent, by tool name. */
+  const sentTools = (stream: StreamingChatComplete) =>
+    new Map(
+      (
+        (stream as unknown as ReturnType<typeof vi.fn>).mock.calls[0]![0] as {
+          tools: Array<{ function: { name: string; parameters?: { properties?: Record<string, unknown> } } }>;
+        }
+      ).tools.map((t) => [t.function.name, t.function.parameters?.properties ?? {}]),
+    );
+
+  const system = (stream: StreamingChatComplete) =>
+    String(
+      (
+        (stream as unknown as ReturnType<typeof vi.fn>).mock.calls[0]![0] as {
+          messages: Array<{ role: string; content: string }>;
+        }
+      ).messages.find((m) => m.role === "system")!.content,
+    );
+
+  it("binds `cards` on the GENERATORS only — an analysis skill scores a draft, it never rewrites a pack", async () => {
+    const hooks = mkSkill("generate_hooks", { skillKey: "hooks" });
+    const read = mkSkill("read_draft", { skillKey: "read", primaryArg: "draft" });
+    const stream = mockStream([[textChunk("ok")]]);
+
+    await runChatAgentStream(baseInput({ cardsSlot: true }), DEPS(stream, { skills: [hooks, read] }));
+
+    expect(sentTools(stream).get("generate_hooks")).toHaveProperty("cards");
+    expect(sentTools(stream).get("read_draft")).not.toHaveProperty("cards");
+  });
+
+  it("off ⇒ no schema carries the slot and the directive never mentions it", async () => {
+    // Naming an argument the tool does not declare invites a malformed call — the same rule that
+    // stops the directive advertising an unbound tool.
+    const hooks = mkSkill("generate_hooks", { skillKey: "hooks" });
+    const stream = mockStream([[textChunk("ok")]]);
+
+    await runChatAgentStream(baseInput(), DEPS(stream, { skills: [hooks] }));
+
+    expect(sentTools(stream).get("generate_hooks")).not.toHaveProperty("cards");
+    expect(system(stream)).not.toContain("cards_on_screen");
+  });
+
+  it("on ⇒ the directive tells the model where the pack goes", async () => {
+    const hooks = mkSkill("generate_hooks", { skillKey: "hooks" });
+    const stream = mockStream([[textChunk("ok")]]);
+
+    await runChatAgentStream(baseInput({ cardsSlot: true }), DEPS(stream, { skills: [hooks] }));
+
+    expect(system(stream)).toContain("cards_on_screen");
+  });
+
+  it("leaves a schema with no `properties` alone rather than inventing one", async () => {
+    // Defensive: withCardsSlot is handed whatever a skill declares. A shape it cannot extend must
+    // pass through untouched — a half-built `parameters` object would break the call for a skill
+    // that was working fine.
+    const odd: SkillTool = { ...mkSkill("odd_tool"), schema: { type: "function", function: { name: "odd_tool" } } };
+    const stream = mockStream([[textChunk("ok")]]);
+
+    await runChatAgentStream(baseInput({ cardsSlot: true }), DEPS(stream, { skills: [odd] }));
+
+    const sent = (
+      (stream as unknown as ReturnType<typeof vi.fn>).mock.calls[0]![0] as { tools: unknown[] }
+    ).tools[0];
+    expect(sent).toEqual({ type: "function", function: { name: "odd_tool" } });
   });
 });
 

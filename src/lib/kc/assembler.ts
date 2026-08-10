@@ -97,6 +97,15 @@ export const assemblerInputSchema = z.object({
   anchor: z.string().optional(),
   corpus: z.string().optional(),
   modeLabel: z.string().min(1).optional(),
+  /**
+   * Stage B (B2): the exact lines of cards ALREADY ON SCREEN that this run is asked to
+   * rewrite/sharpen — "Punch them up" under a 5-hook pack, "rewrite these" in chat. Fenced
+   * as their own numbered section (cardsLabel) so the model improves THESE items instead of
+   * generating unrelated new ones — the measured "rewrite these returns strangers" defect.
+   * Distinct from `anchor` on purpose: the anchor carries the open-from-this contract
+   * (anchorHonored enforces it); a rewrite pack carries no such opening constraint.
+   */
+  cards: z.array(z.string().min(1)).min(1).max(6).optional(),
 });
 
 export type AssemblerInput = z.infer<typeof assemblerInputSchema>;
@@ -161,6 +170,30 @@ function anchorLabel(mode: AssemblerInput["mode"]): string {
     default:
       return "Chain anchor";
   }
+}
+
+/**
+ * The label the rewrite-pack fence (`cards`) is emitted under — the same rule as anchorLabel:
+ * the contract lives beside the content, because the compiled system prompts cannot know about
+ * per-request data. States what the items ARE and what the run owes them: replacements, not
+ * neighbours. Per-mode nouns keep the instruction concrete.
+ */
+function cardsLabel(mode: AssemblerInput["mode"]): string {
+  // "script beats", not "script": a script pack is the BEATS of the one script on screen (each
+  // numbered line is "Hook: …", "Turn: …"), so "REWRITE these exact script" both misreads as a
+  // pack of whole scripts and is the wrong count for what follows it.
+  const noun =
+    mode === "script" ? "script beats" : mode === "idea" ? "ideas" : mode === "hooks" ? "hooks" : "items";
+  return (
+    `Cards to improve — the creator is asking you to REWRITE these exact ${noun}, which are ` +
+    `already on their screen. Deliver a sharper version of EACH numbered item, keeping its ` +
+    `subject and its core promise — never replace one with an unrelated new ${noun === "items" ? "item" : noun.replace(/s$/, "")}`
+  );
+}
+
+/** The rewrite pack as one fenced body: a numbered list, one line per card. */
+function cardsContent(cards: string[]): string {
+  return cards.map((c, i) => `${i + 1}. ${c}`).join("\n");
 }
 
 // ─── Injection fence helpers ──────────────────────────────────────────────────
@@ -261,7 +294,7 @@ export function assembleBundle(
   if (!parsed.success) {
     throw new Error(`assembleBundle: invalid input — ${parsed.error.message}`);
   }
-  const { ask, platform, mode, overrides, anchor, corpus, modeLabel } = parsed.data;
+  const { ask, platform, mode, overrides, anchor, corpus, modeLabel, cards } = parsed.data;
 
   const roles = MODE_ROLES[mode];
   const thin = isProfileThin(profileRow);
@@ -302,6 +335,7 @@ export function assembleBundle(
   fencedSections.push(fenceUserContent("Creator ask", ask));
   if (overrides) fencedSections.push(fenceUserContent("Per-request overrides", overrides));
   if (anchor) fencedSections.push(fenceUserContent(anchorLabel(mode), anchor));
+  if (cards) fencedSections.push(fenceUserContent(cardsLabel(mode), cardsContent(cards)));
   if (corpus) fencedSections.push(fenceUserContent("Grounded examples", corpus));
 
   // 4. Enforce BUNDLE_CHAR_CAP — WITHOUT ever structurally breaking a fence.
@@ -348,6 +382,7 @@ export function assembleBundle(
     ];
     if (overrides) rawSections.push({ label: "Per-request overrides", content: overrides });
     if (anchor) rawSections.push({ label: anchorLabel(mode), content: anchor });
+    if (cards) rawSections.push({ label: cardsLabel(mode), content: cardsContent(cards) });
     if (corpus) rawSections.push({ label: "Grounded examples", content: corpus });
     result = buildResult(profileSection, fenceSectionsWithinBudget(rawSections, fencedBudget));
   }

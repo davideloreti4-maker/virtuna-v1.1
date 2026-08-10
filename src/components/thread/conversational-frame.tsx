@@ -174,6 +174,7 @@ export function ThreadOutro({
   text,
   chips,
   followups,
+  cardLines,
 }: {
   /** The engine followupText, or an outroFallback — already resolved by the caller. */
   text: string | null;
@@ -185,6 +186,11 @@ export function ThreadOutro({
    * FollowupContext (composer-provided), so no onFollowup prop threads through the skill views.
    */
   followups?: ChatFollowup[];
+  /**
+   * Stage B (B2): this turn's card lines, for chips that carry their pack (`carryCards`).
+   * Computed by ThreadTurn (the one component that holds the blocks) via cardLinesOf.
+   */
+  cardLines?: string[];
 }) {
   const hasChips = !!chips && chips.length > 0;
   const hasFollowups = !!followups && followups.length > 0;
@@ -228,7 +234,7 @@ export function ThreadOutro({
           )}
         </div>
       )}
-      {hasFollowups && <FollowupRow followups={followups!} />}
+      {hasFollowups && <FollowupRow followups={followups!} cardLines={cardLines} />}
     </div>
   );
 }

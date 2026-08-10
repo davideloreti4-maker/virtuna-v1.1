@@ -226,6 +226,13 @@ export interface ScriptPipelineInput {
   /** Upstream hook anchor — the chosen hookLine carried from Hooks→Script (optional). */
   anchor?: string;
   /**
+   * Stage B (B2): the beat lines of a script card already on screen that this run should
+   * REWRITE ("Make it punchier", "rewrite this tighter"). Fenced by the assembler under its
+   * own rewrite contract. Distinct from `anchor` — a rewrite pack carries no open-from-this
+   * constraint, so it never trips the anchor-honoring check.
+   */
+  cards?: string[];
+  /**
    * PER-PERSONA GENERATION: the reader this script is written for — normally INHERITED from the
    * hook the creator picked (that hook's `target.archetype`), so the script develops the chosen
    * hook for the same person instead of quietly re-aiming at someone else.
@@ -538,7 +545,7 @@ function coerceProduction(raw: unknown): StructuredProduction | undefined {
  * @param input.anchor      Upstream hook anchor — the chosen hookLine from Hooks→Script.
  */
 export async function runScriptPipeline(input: ScriptPipelineInput): Promise<ScriptPipelineResult> {
-  const { ask, platform, profileRow, anchor, audience = null, targetArchetype } = input;
+  const { ask, platform, profileRow, anchor, audience = null, targetArchetype, cards } = input;
   const allWarnings: string[] = [];
   // NOTE: `input.intent` (the sell/grow reaction lens) only ever reframed the opener-SIM verdict.
   // With the SIM removed from generation it is unused on this path for now; it re-attaches to the
@@ -611,6 +618,7 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
       platform,
       mode: "script",
       ...(anchor ? { anchor } : {}),
+      ...(cards && cards.length > 0 ? { cards } : {}),
       ...(overrides ? { overrides } : {}),
       ...(corpus ? { corpus } : {}),
     },

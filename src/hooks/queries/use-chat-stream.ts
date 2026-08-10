@@ -87,6 +87,14 @@ export interface UseChatStreamReturn {
    */
   nudgeShown: boolean;
   /**
+   * The pre-router's provisional guess (Stage B, B3 — event: predispatch, certain:false), or
+   * null. Rendered as a HINT beside the thinking dots, never as a claim: the real `dispatch`
+   * frame replaces it (dispatchedSkill wins), and a plain answer's first token makes the
+   * thinking row — hint included — disappear. A `certain:true` predispatch (a chip/CTA pinned
+   * the skill) never lands here; it sets `dispatchedSkill` directly, seeding the full capsule.
+   */
+  preGuess: string | null;
+  /**
    * Start the chat stream. Call from the composer chat send.
    * ask: the user's question/message (required — server enforces).
    * platform: current platform selection ("tiktok" | "instagram" | "youtube").
@@ -94,8 +102,16 @@ export interface UseChatStreamReturn {
    *   Only a chip sets it; a typed message never does. The server pins the agent's first tool
    *   choice to it, so a chip the creator pressed under hook cards actually runs instead of being
    *   re-litigated as a vague ask. Ignored server-side unless that skill is bound for this user.
+   * opts: OPTIONAL Stage B data riders (one-brain flag) — `anchor` is the exact line a card CTA
+   *   was pressed on (B1); `cards` is the pack a tapped chip refers to (B2). Only meaningful
+   *   beside `skill`; the server drops them otherwise.
    */
-  start: (ask: string, platform: string, skill?: string) => Promise<void>;
+  start: (
+    ask: string,
+    platform: string,
+    skill?: string,
+    opts?: { anchor?: string; cards?: string[] },
+  ) => Promise<void>;
   /** Abort the in-flight stream. */
   stop: () => void;
   /**
@@ -127,6 +143,7 @@ export function useChatStream(): UseChatStreamReturn {
   const [evidence, setEvidence] = useState<RunEvidence | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [dispatchedSkill, setDispatchedSkill] = useState<string | null>(null);
+  const [preGuess, setPreGuess] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDone, setIsDone] = useState(false);
@@ -161,6 +178,7 @@ export function useChatStream(): UseChatStreamReturn {
     setEvidence(null);
     setWarnings([]);
     setDispatchedSkill(null);
+    setPreGuess(null);
     setIsStreaming(false);
     setError(null);
     setIsDone(false);
@@ -177,7 +195,12 @@ export function useChatStream(): UseChatStreamReturn {
     }
   }, []);
 
-  const start = useCallback(async (ask: string, platform: string, skill?: string) => {
+  const start = useCallback(async (
+    ask: string,
+    platform: string,
+    skill?: string,
+    opts?: { anchor?: string; cards?: string[] },
+  ) => {
     // Abort any prior in-flight stream
     abortRef.current?.abort();
     const controller = new AbortController();
@@ -190,6 +213,7 @@ export function useChatStream(): UseChatStreamReturn {
     setEvidence(null);
     setWarnings([]);
     setDispatchedSkill(null);
+    setPreGuess(null);
     setError(null);
     setIsDone(false);
     setColdStart(false);
@@ -204,7 +228,15 @@ export function useChatStream(): UseChatStreamReturn {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         // `skill` is omitted entirely when absent, so a typed send is byte-identical to before.
-        body: JSON.stringify({ ask, platform, ...(skill ? { skill } : {}) }),
+        // Stage B riders (anchor/cards) travel only when present — and only mean anything to a
+        // one-brain server beside a `skill`.
+        body: JSON.stringify({
+          ask,
+          platform,
+          ...(skill ? { skill } : {}),
+          ...(opts?.anchor ? { anchor: opts.anchor } : {}),
+          ...(opts?.cards && opts.cards.length > 0 ? { cards: opts.cards } : {}),
+        }),
         signal: controller.signal,
       });
 
@@ -286,6 +318,17 @@ export function useChatStream(): UseChatStreamReturn {
             const quota = (data as { quota?: unknown }).quota;
             if (quota !== undefined) reportCredit402(402, quota);
 
+          } else if (eventType === 'predispatch') {
+            // Stage B (B3): the route's pre-router frame, BEFORE the agent loop starts.
+            // certain:true = a chip/CTA pinned the skill and round 1 WILL call it — seed the
+            // full capsule now (same treatment as `dispatch`, which still follows and wins).
+            // certain:false = a heuristic guess on a typed ask — a hint only, never the capsule.
+            const skill = typeof data.skill === 'string' ? data.skill : '';
+            if (skill && isMountedRef.current) {
+              if (data.certain === true) setDispatchedSkill(skill);
+              else setPreGuess(skill);
+            }
+
           } else if (eventType === 'dispatch') {
             // The agent committed to a skill run (the run-capsule seam). Arrives BEFORE the first
             // stage event. A SECOND dispatch in one turn starts a fresh spine: clear the live
@@ -296,6 +339,7 @@ export function useChatStream(): UseChatStreamReturn {
               setStages([]);
               setEvidence(null);
               setDispatchedSkill(skill);
+              setPreGuess(null); // the real commitment replaces the hint
             }
 
           } else if (eventType === 'warning') {
@@ -373,6 +417,7 @@ export function useChatStream(): UseChatStreamReturn {
     evidence,
     warnings,
     dispatchedSkill,
+    preGuess,
     isStreaming,
     error,
     isDone,

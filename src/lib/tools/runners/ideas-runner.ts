@@ -223,6 +223,12 @@ export interface IdeasPipelineInput {
   platform: AssemblerInput["platform"];
   profileRow: ProfileRow | null;
   /**
+   * Stage B (B2): the exact lines of idea cards already on screen that this run should
+   * REWRITE ("Sharper angles", "rewrite these"). Fenced by the assembler under its own
+   * rewrite contract — the run owes sharper versions of THESE, not unrelated new ideas.
+   */
+  cards?: string[];
+  /**
    * Active audience for this run (07-04 — steer + react wiring, AUD-04/AUD-05).
    * null or GENERAL_AUDIENCE.is_general=true → falls back to profile-based grounding
    * (zero behavior change for General — regression gate preserved).
@@ -479,7 +485,7 @@ async function generateIdeasStructured(
  * @param input.profileRow  Creator profile (null = cold-start, never blocks on onboarding).
  */
 export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<IdeasPipelineResult> {
-  const { ask, platform, profileRow, audience = null } = input;
+  const { ask, platform, profileRow, audience = null, cards } = input;
   const allWarnings: string[] = [];
   // NOTE: `input.intent` (the sell/grow reaction lens) only ever reframed the persona-SIM verdict.
   // With the SIM removed from generation it is unused on this path for now; it re-attaches to the
@@ -542,6 +548,7 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
       ask: ask || "Generate ideas from my profile",
       platform,
       mode: "idea",
+      ...(cards && cards.length > 0 ? { cards } : {}),
       ...(overrides ? { overrides } : {}),
       ...(corpus ? { corpus } : {}),
     },

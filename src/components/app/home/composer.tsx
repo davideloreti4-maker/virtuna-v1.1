@@ -150,6 +150,10 @@ import { useAmbientFocus, type AmbientCardDescriptor } from "./use-ambient-focus
 import { useThreadAutoscroll } from "./use-thread-autoscroll";
 import { buildAmbientDescriptors, resolveFocusDescriptor } from "./ambient-descriptors";
 import { detectRefineIntent } from "@/lib/tools/refine";
+// Stage B "one brain" — the client half of the lever (default OFF; see one-brain-flag.ts). It
+// gates the two client behaviours the stage adds: card CTAs entering the agent loop instead of a
+// pinned one-shot (B1), and chips carrying their pack as data (B2).
+import { ONE_BRAIN_ENABLED } from "@/lib/tools/one-brain-flag";
 // TikTok-only client check (D-21, WR-01). The pattern is the SHARED trust-
 // boundary regex (src/lib/tiktok-url.ts) imported by BOTH the composer and the
 // server /api/analyze route, so the fast UX reject can never drift from the
@@ -1313,6 +1317,16 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // the chosen hookLine (streams into ScriptThreadView, mirroring the Script-chip path).
   // The hook is the anchor (PINNED: /api/tools/script accepts { ask?, anchor, platform }).
   // CRITICAL: NEVER sets pendingSealRef / calls stream.start — Script never navigates to /analyze.
+  //
+  // ── Stage B (B1): the SAME CTA, through the one brain ──────────────────────────────────────
+  // With the flag on it stops POSTing the pinned one-shot and sends the click into the chat route
+  // as a pinned skill (`script`) plus the clicked line as the `anchor` rider. Why bother, when the
+  // one-shot works: the one-shot is a second front door with its own memory. It cannot see the
+  // conversation, so the run it produces knows the hook and nothing else the creator has said this
+  // session, and the turn it writes never enters the agent's transcript — the next question about
+  // "that script" starts from nothing. Routing it through the loop gives the CTA the same context
+  // and the same continuity a typed ask already has, while `forceSkill` + `forceAnchor` keep the
+  // guarantee that made it a one-shot: this exact line, that exact skill, no re-litigation.
   const handleWriteScript = useCallback((hookLine: string, _audienceArchetype: string) => {
     // The script appends at the BOTTOM, but the hook card that started it can be thousands of
     // pixels up — every completed turn keeps its cards, so pressing "Write the script →" on a
@@ -1326,10 +1340,21 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     // the field — the one-shot's whole point.
     noteRun("script");
     setScriptAnchorHook(hookLine); // PR-2: cite this input hook in the script intro
+    if (ONE_BRAIN_ENABLED) {
+      // The ask is written out because the chat route persists it as the user turn — so the thread
+      // reads as the creator asking for this, which is exactly what pressing the CTA was. The hook
+      // itself rides as `anchor` (data), never folded into the sentence: the loop pins it onto the
+      // round-1 call verbatim, and a paraphrase would be a different anchor.
+      const ask = "Write the script from this hook.";
+      setLastUserTurn(ask);
+      chat.reset();
+      void chat.start(ask, platform, "script", { anchor: hookLine });
+      return;
+    }
     script.reset();
     // ask empty — the carried hookLine anchors the script generation.
     void script.start("", platform, hookLine, intent);
-  }, [script, platform, intent, scrollThreadToBottom]);
+  }, [script, chat, platform, intent, scrollThreadToBottom]);
 
   // ── Script → Test handoff (Plan 06-05 — D-05/D-06, SCRIPT-01) ─────────────
   // Invoked by ScriptCardRenderer via ScriptTestContext when "Test full →" is clicked.
@@ -1595,8 +1620,15 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // the agent used to answer it with a request for a sharper angle and run nothing — measured 0/3,
   // and not fixable by rewording. Carrying the intent as data lets the route pin the first tool
   // choice. Conversational chips ("Which is strongest?") declare none and are unaffected.
+  //
+  // `opts.cards` (Stage B, B2) is the PACK the chip's sentence points at — the card lines of the
+  // turn it sits under, collected by the one component that can see them (ThreadTurn → cardLinesOf).
+  // "Rewrite these hooks tighter" has the same problem the declared skill fixed, one level down: the
+  // run started, but with no way to see "these" it generated five strangers. Gated on the one-brain
+  // flag so a dark build sends the byte-identical body it always sent (the route drops the field
+  // regardless — this is the client half of the same lever).
   const sendChatFollowup = useCallback(
-    (prompt: string, skill?: string) => {
+    (prompt: string, skill?: string, opts?: { cards?: string[] }) => {
       const t = prompt.trim();
       if (!t) return;
       // The answer appends at the BOTTOM, but the chip that started it can be thousands of pixels
@@ -1606,7 +1638,12 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       scrollThreadToBottom();
       setLastUserTurn(t);
       chat.reset();
-      void chat.start(t, platform, skill);
+      void chat.start(
+        t,
+        platform,
+        skill,
+        ONE_BRAIN_ENABLED && opts?.cards?.length ? { cards: opts.cards } : undefined,
+      );
     },
     [chat, platform, scrollThreadToBottom],
   );
@@ -2955,6 +2992,10 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           // The input hook a script run was built from — the intro cites it honestly ("Writing a
           // script from …"), and only the script chain sets it.
           hookLine: activeRun.skill === "script" ? scriptAnchorHook : null,
+          // Stage B (B3): the pre-router's guess, which only ever labels the THINKING row — so it
+          // is read only while the chat run still owns the tail with no skill named. Once the
+          // `dispatch` frame lands, `activeRun.skill` is that skill and this is null again.
+          preGuess: activeRun.skill === "chat" ? chat.preGuess : null,
           onRetry: retryActiveRun,
           onFindOutliers: activeRun.outliersAvailable ? findOutliersActiveRun : undefined,
         },

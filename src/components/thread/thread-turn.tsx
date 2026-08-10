@@ -55,12 +55,33 @@ import { OutliersOffer } from '@/components/thread/outliers-offer';
 import { SKILL_RUN_META } from '@/components/thread/run-capsule';
 import { ChatTypingIndicator } from '@/components/thread/thread-loading';
 import type { RunEvidence } from '@/lib/tools/evidence';
-import { classifyTurn, followupsForKind, type ChatTurnKind } from '@/lib/tools/chat-followups';
+import {
+  cardLinesOf,
+  classifyTurn,
+  followupsForKind,
+  type ChatTurnKind,
+} from '@/lib/tools/chat-followups';
 import { useOnWriteScriptHook } from '@/lib/hook-test-context';
 import type { BlockOrigin } from '@/components/app/home/rehydrate-thread';
 
 /** The four skills that have an authored intro line (conversational-frame `introLine`). */
 const SKILLS_WITH_INTRO: readonly string[] = ['hooks', 'ideas', 'script', 'remix'];
+
+/**
+ * Stage B (B3): what the thinking dots say while the router is still deciding.
+ *
+ * "Looks like" is the whole copy decision. The pre-router is a keyword heuristic that runs before
+ * the model has committed to anything, so a claim ("Writing hooks…") would be a guess wearing the
+ * intro's voice — and when the agent then answers in prose instead, the creator watched the app
+ * announce a run that never happened. Hedged, it stays true either way, and the real `dispatch`
+ * frame replaces the row within seconds. An unrecognized guess maps to nothing and the label falls
+ * back to "Thinking…" (thread-loading.tsx) rather than naming a skill this table does not know.
+ */
+const PRE_GUESS_LABEL: Record<string, string> = {
+  ideas: 'Looks like an ideas run…',
+  hooks: 'Looks like a hooks run…',
+  script: 'Looks like a script run…',
+};
 
 /**
  * Per-skill W2 error copy moved to `lib/net/run-failure.ts` (2026-08-07), because keying it by
@@ -99,6 +120,13 @@ export interface LiveRun {
   audienceLabel?: string;
   platform?: string;
   hookLine?: string | null;
+  /**
+   * Stage B (B3): the pre-router's PROVISIONAL guess at where a typed ask is heading, streamed
+   * before the agent loop commits (`predispatch`, certain:false). It labels the thinking dots as a
+   * HINT and nothing more — the moment the real `dispatch` frame lands, `skill` becomes that skill
+   * and this row is replaced by the run spine. Absent ⇒ the honest "Thinking…".
+   */
+  preGuess?: string | null;
   onRetry?: () => void;
   onFindOutliers?: () => void;
 }
@@ -336,8 +364,14 @@ export function ThreadTurn({
             />
           )}
 
-          {/* The honest wait for a plain conversational answer — no skill, so no spine to show. */}
-          {thinking && <ChatTypingIndicator />}
+          {/* The honest wait for a plain conversational answer — no skill, so no spine to show.
+              Stage B (B3): while the router is still deciding, the pre-router's guess labels this
+              row as a hint, so the ~4.8s before `dispatch` is no longer a bare, silent wait. */}
+          {thinking && (
+            <ChatTypingIndicator
+              label={live?.preGuess ? PRE_GUESS_LABEL[live.preGuess] : undefined}
+            />
+          )}
 
           {/* The loading state: a live spine while the run is in flight, the collapsed receipt
               after. A reloaded turn shows the same receipt — see settledStages above. */}
@@ -374,7 +408,16 @@ export function ThreadTurn({
           )}
 
           {!runLive && (
-            <ThreadOutro text={outroText} chips={chips} followups={followupsForKind(skill)} />
+            <ThreadOutro
+              text={outroText}
+              chips={chips}
+              followups={followupsForKind(skill)}
+              // Stage B (B2): the cards this turn actually put on screen, so a `carryCards` chip
+              // ("Punch them up") sends THEM rather than a subject-less sentence the next run has
+              // to guess at. Read off `body` — the same list the cards render from, after the
+              // outro split — so a chip can never carry a line that is not above it.
+              cardLines={cardLinesOf(body)}
+            />
           )}
         </ThreadAssistantTurn>
       )}
