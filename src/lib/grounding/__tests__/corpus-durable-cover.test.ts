@@ -27,16 +27,18 @@ const EPHEMERAL =
 const DURABLE =
   "https://qyxvxleheckijapurisj.supabase.co/storage/v1/object/public/covers/corpus/instagram/ABC123.jpg";
 
-/** Captures the row handed to `.upsert(...)` so we can assert on what actually gets persisted. */
+/** Captures the row AND the options handed to `.upsert(...)` — both are load-bearing. */
 function fakeSupabase() {
   const rows: Array<Record<string, unknown>> = [];
-  const upsert = vi.fn((row: Record<string, unknown>) => {
+  const opts: Array<Record<string, unknown> | undefined> = [];
+  const upsert = vi.fn((row: Record<string, unknown>, o?: Record<string, unknown>) => {
     rows.push(row);
+    opts.push(o);
     return {
       select: () => ({ single: async () => ({ data: { id: "row-1" }, error: null }) }),
     };
   });
-  return { supabase: { from: () => ({ upsert }) } as unknown as SupabaseClient, upsert, rows };
+  return { supabase: { from: () => ({ upsert }) } as unknown as SupabaseClient, upsert, rows, opts };
 }
 
 const SHARED = {
@@ -92,5 +94,23 @@ describe("corpus writes rehost the cover before persisting", () => {
 
     expect(rehostCover).not.toHaveBeenCalled();
     expect(rows[0]).toMatchObject({ cover_url: null });
+  });
+});
+
+/**
+ * The ON CONFLICT target, guarded because nothing else asserted it and getting it wrong fails
+ * SILENTLY: `supabase-js` RETURNS errors rather than throwing, so a target that matches no unique
+ * index raises 42P10 ("no unique or exclusion constraint matching the ON CONFLICT specification")
+ * into an `{error}` field that a best-effort caller discards. The table's only unique index is
+ * `(platform, platform_video_id)` — a single-column target silently stores nothing at all.
+ */
+describe("corpus writes upsert on the composite key the unique index is built on", () => {
+  it("targets (platform, platform_video_id), not platform_video_id alone", async () => {
+    rehostCover.mockResolvedValue(DURABLE);
+    const { supabase, opts } = fakeSupabase();
+
+    await upsertOutlierTeardown(supabase, SHARED);
+
+    expect(opts[0]).toMatchObject({ onConflict: "platform,platform_video_id" });
   });
 });
