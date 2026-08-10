@@ -25,7 +25,7 @@ import { useState } from "react";
 import { TONE, type SegmentStop } from "./AmbientDetail";
 import { TerrainMap } from "./AudienceTerrain";
 import { BarRow, Card, CardHead, LegendRows, MethodFoot, SURFACE, Voice, curvePath } from "./rail-kit";
-import type { AmplificationData, AudienceFitData, DecisionStatesData, DemandCurveData, DomainTemplate, PopulationFrameData, PopulationMain } from "./domain-template";
+import type { AmplificationData, AudienceFitData, DecisionStatesData, DemandCurveData, DomainTemplate, PersonaReadData, PersonaVoice, PopulationFrameData, PopulationMain } from "./domain-template";
 
 // ── who watches — and how long ───────────────────────────────────────────────
 
@@ -289,10 +289,125 @@ function MainSlot({ main }: { main: PopulationMain }) {
   return main.kind === "demand-curve" ? <DemandCard data={main.data} /> : null;
 }
 
+// ── the personas-only grade (v8 report — a drop's cached read) ───────────────
+
+/** The ten, as presence — lit = stopped. A tally you can see before you read it. */
+function PersonaFaces({ stop, total }: { stop: number; total: number }) {
+  return (
+    <div className="mt-3.5 flex gap-[6px]">
+      {Array.from({ length: total }, (_, i) => {
+        const lit = i < stop;
+        return (
+          <span
+            key={i}
+            data-testid={`report-face-${i}`}
+            data-lit={lit ? "true" : "false"}
+            aria-hidden
+            className="h-[26px] flex-1 rounded-[6px]"
+            style={{ background: lit ? "rgba(236,231,222,.30)" : "rgba(236,231,222,.07)" }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+function PersonaVoiceGroup({
+  id,
+  title,
+  voices,
+  count,
+}: {
+  id: "stopped" | "scrolled";
+  title: string;
+  voices: PersonaVoice[];
+  count: number;
+}) {
+  // Nobody in this group spoke ⇒ no header. An empty section is a promise of evidence we
+  // cannot keep, and the group's own count is already on the faces above.
+  if (voices.length === 0) return null;
+  return (
+    <Card>
+      <div data-testid={`report-group-${id}`}>
+        <CardHead title={title} meta={`${count} of the room`} />
+        <div className="mt-1">
+          {voices.map((v, i) => (
+            <div key={`${v.who}-${i}`} className="py-2">
+              <div className="font-serif text-body leading-[1.45]" style={{ color: TONE.dim }}>
+                “{v.quote}”
+              </div>
+              <div className="mt-1 text-caption" style={{ color: TONE.faint }}>
+                {v.who}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+/** The audience page at its PERSONAS-ONLY grade: verdict · ten faces · the real voices · the fix.
+ *  The projection strip (terrain, pools, "1,000 simulated") describes a Stage-2 aggregate that
+ *  does not exist here, so it is simply OMITTED — never synthesized to fill the slot. */
+function PersonaReadFrame({
+  read,
+  methodOpen,
+  onToggleMethod,
+  simline,
+  onSteer,
+}: {
+  read: PersonaReadData;
+  methodOpen: boolean;
+  onToggleMethod?: () => void;
+  simline?: string;
+  onSteer?: (steer: string) => void;
+}) {
+  const lost = read.total - read.stop;
+  return (
+    <div data-page="audience" className="pt-4">
+      <div className="rounded-[14px] p-4" style={{ background: SURFACE.figure }}>
+        <div className="flex items-baseline gap-1.5">
+          <span
+            data-testid="report-verdict"
+            className="text-stat font-light leading-none tabular-nums"
+            style={{ color: TONE.cream }}
+          >
+            {read.stop}/{read.total}
+          </span>
+          <span className="text-body" style={{ color: TONE.faint }}>
+            stopped scrolling
+          </span>
+        </div>
+        <PersonaFaces stop={read.stop} total={read.total} />
+      </div>
+
+      <PersonaVoiceGroup id="stopped" title="Why they stopped" voices={read.stopped} count={read.stop} />
+      <PersonaVoiceGroup id="scrolled" title="Why they scrolled" voices={read.scrolled} count={lost} />
+
+      {/* The tab ends in a fix, and the fix feeds the thread as a steer (spec §2). It names the
+          real number it is asking you to win back — never a projected gain, which would be a
+          claim about a run that has not happened. */}
+      {onSteer && lost > 0 ? (
+        <button
+          type="button"
+          onClick={() => onSteer(`Rewrite the hook to win back the ${lost} who scrolled past.`)}
+          className="mt-4 w-full rounded-lg border border-white/[0.06] bg-surface-elevated px-3 py-2.5 text-label font-medium text-foreground transition-colors hover:border-white/[0.10]"
+        >
+          Fix what lost them
+        </button>
+      ) : null}
+
+      <MethodFoot open={methodOpen} onToggle={onToggleMethod ?? (() => {})} simline={simline} />
+    </div>
+  );
+}
+
 // ── the population role-frame ────────────────────────────────────────────────
 
 export function PopulationFrame({
   population,
+  personaRead,
   verdict,
   reducedMotion = false,
   onInterview,
@@ -301,8 +416,12 @@ export function PopulationFrame({
   methodOpen = false,
   onToggleMethod,
   simline,
+  onSteer,
 }: {
-  population: PopulationFrameData;
+  /** The full Stage-2 projection. Absent ⇒ the frame renders its personas-only grade instead. */
+  population?: PopulationFrameData | null;
+  /** The reduced evidence base (v8 report). Read only when `population` is absent. */
+  personaRead?: PersonaReadData | null;
   verdict: DomainTemplate["verdict"];
   reducedMotion?: boolean;
   onInterview?: (who: string) => void;
@@ -311,7 +430,21 @@ export function PopulationFrame({
   methodOpen?: boolean;
   onToggleMethod?: () => void;
   simline?: string;
+  /** The personas-only fix action — feeds the thread as a steer. Unused at the full grade,
+   *  whose fix lives in the Brain answer block. */
+  onSteer?: (steer: string) => void;
 }) {
+  if (!population) {
+    return personaRead ? (
+      <PersonaReadFrame
+        read={personaRead}
+        methodOpen={methodOpen}
+        onToggleMethod={onToggleMethod}
+        simline={simline}
+        onSteer={onSteer}
+      />
+    ) : null;
+  }
   const threaded = population.voices.reasons.find((r) => r.thread);
   return (
     <div data-page="audience">

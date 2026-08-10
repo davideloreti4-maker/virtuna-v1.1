@@ -57,6 +57,10 @@ export function HomePageLayout() {
   // True on the fresh empty home (no thread, nothing streamed). Drives the
   // greeting + the vertical-centering of the greeting→actions→composer group.
   const emptyHome = !hasConversation && !rehydrating;
+  // The right column exists only in thread mode (the flag-off rail portal). The v8 report is an
+  // EVENT — sheet or overlay, never docked — so nothing else ever mounts this column
+  // (2026-08-09 rail ruling: the pinned report was a rejected third shape).
+  const railMounted = threadMode;
 
   return (
     // P2 (A2a): the audience is a property of the THREAD, so ≥xl in thread mode it gets its own
@@ -79,7 +83,7 @@ export function HomePageLayout() {
         // mx-auto), so the rail is pushed flush to the page's right edge (owner call — the rail
         // connects to the right side completely). Not justify-center, which left a symmetric gap.
         threadMode ? "h-full flex-row" : "min-h-full flex-col items-center",
-        emptyHome && "justify-center",
+        emptyHome && !railMounted && "justify-center",
       )}
     >
       {emptyHome && !AMBIENT_V2_ENABLED && (
@@ -108,7 +112,7 @@ export function HomePageLayout() {
           // NO horizontal padding in either mode: the Composer's own columns own the page gutter, and
           // a gutter here too DOUBLED it — on the empty Start that was 32px of dead edge per side on a
           // 390px phone (found measuring the owner's tighten-the-margins ask, 2026-07-24).
-          threadMode ? "min-w-0 flex-1 min-h-0" : "max-w-[760px]",
+          railMounted ? "min-w-0 flex-1 min-h-0" : "max-w-[760px]",
         )}
       >
         <Composer
@@ -120,7 +124,7 @@ export function HomePageLayout() {
           railHost={railHost}
         />
       </div>
-      {threadMode && (
+      {railMounted && (
         // The persistent audience rail — desktop (≥xl) only; `hidden` below xl so the composer's
         // dock peek owns it there. The composer portals <AudiencePresence variant='rail'> into this
         // host. shrink-0 fixed width; full height with internal scroll (the rail body scrolls).

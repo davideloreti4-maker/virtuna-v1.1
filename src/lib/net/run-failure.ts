@@ -117,10 +117,29 @@ const DEFAULT_COPY: Copy = {
   retryLabel: "Retry the run",
 };
 
+/**
+ * Read the cause back OFF a hook's `error` state — the inverse of `resolveRunError`.
+ *
+ * `runErrorCopy` is enough for the surfaces that render nothing but this module's copy. The
+ * BESPOKE surfaces need the question answered separately: the composer's Test turn owns skill copy
+ * good enough to keep ("a private, deleted or region-locked post will do that" is the likeliest
+ * truth for a /go visitor) and must show it whenever no cause was named — but must be overruled
+ * the moment one is, because that same sentence accuses a file that is fine.
+ *
+ * Returns null for an unnamed failure, which is the common case and is not an error.
+ */
+export function runFailureCauseOf(
+  error: string | null | undefined,
+): RunFailureCause | null {
+  for (const cause of Object.keys(RUN_FAILURE_SENTINEL) as RunFailureCause[]) {
+    if (error === RUN_FAILURE_SENTINEL[cause]) return cause;
+  }
+  return null;
+}
+
 /** Cause first, skill second, default last. */
 export function runErrorCopy(error: string | null | undefined, skill: string): Copy {
-  for (const cause of Object.keys(CAUSE_COPY) as RunFailureCause[]) {
-    if (error === RUN_FAILURE_SENTINEL[cause]) return CAUSE_COPY[cause];
-  }
+  const cause = runFailureCauseOf(error);
+  if (cause) return CAUSE_COPY[cause];
   return SKILL_COPY[skill] ?? DEFAULT_COPY;
 }

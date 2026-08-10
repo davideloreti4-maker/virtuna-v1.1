@@ -29,6 +29,7 @@ import {
   SKILLS,
   VERB_BY_TOOL,
   MODEL_LABEL,
+  MAX_BILLABLE_BY_TOOL,
 } from "../composer-controls";
 
 // next/link → plain anchor (no app-router context under happy-dom)
@@ -292,5 +293,22 @@ describe("SimModelSelector — Claude-style tier picker", () => {
     expect(MODEL_LABEL.ad).toBe("SIM-1 Max");
     expect(MODEL_LABEL.offer).toBe("SIM-1 Flash");
     expect(MODEL_LABEL.idea).toBe("SIM-1 Flash");
+  });
+});
+
+describe("SimModelSelector price tag (v8)", () => {
+  it("carries the price when given one", () => {
+    render(<SimModelSelector value="Max" onChange={() => {}} price="10 cr" />);
+    expect(screen.getByTestId("sim-model-selector").textContent).toContain("SIM-1 Max · 10 cr");
+  });
+
+  it("stays quiet without one", () => {
+    render(<SimModelSelector value="Flash" onChange={() => {}} />);
+    expect(screen.getByTestId("sim-model-selector").textContent).not.toContain("·");
+  });
+
+  it("maps only shipped Max skills to a real billable action", () => {
+    expect(MAX_BILLABLE_BY_TOOL.test).toBe("score");
+    expect(Object.keys(MAX_BILLABLE_BY_TOOL)).toEqual(["test"]);
   });
 });

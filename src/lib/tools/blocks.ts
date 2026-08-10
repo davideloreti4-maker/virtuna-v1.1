@@ -535,12 +535,17 @@ export const RemixCardBlockSchema = z.object({
 
     // Source decode anatomy — the REAL structural decode (D-05 moat, NOT a metadata guess)
     // Shown on expand: WHY the original video worked structurally
-    sourceDecode: z.object({
-      hookPattern: z.string().min(1),  // hook_pattern beat body
-      structure: z.string().min(1),    // structure_pacing beat body
-      theTurn: z.string().min(1),      // the_turn beat body
-      emotionalBeat: z.string().min(1),// emotional_beat beat body
-    }),
+    // OPTIONAL (v8 Phase 2): a drop-seeded remix card adapts a pre-torn CORPUS row that
+    // never ran the decode engine — it omits sourceDecode rather than fabricating beats
+    // (honesty spine). Every runner-produced card still carries the real 4-beat decode.
+    sourceDecode: z
+      .object({
+        hookPattern: z.string().min(1),  // hook_pattern beat body
+        structure: z.string().min(1),    // structure_pacing beat body
+        theTurn: z.string().min(1),      // the_turn beat body
+        emotionalBeat: z.string().min(1),// emotional_beat beat body
+      })
+      .optional(),
 
     // Opener-scoped band signal (Pitfall 5 — adapted hook scroll-stop ONLY)
     band: z.enum(["Strong", "Mixed", "Weak"]),

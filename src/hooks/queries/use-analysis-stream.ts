@@ -28,6 +28,7 @@ import type { StageEvent } from "@/lib/engine/events";
 import { STREAM_TIMEOUT_ERROR } from "@/lib/engine/stream-errors";
 import { resolveRunError } from "@/lib/net/run-failure";
 import { isCreditQuotaExceeded, type CreditQuotaExceeded } from "@/lib/billing/quota-error";
+import { reportSession401, SessionExpiredRefusal } from "@/lib/auth/session-expired";
 import {
   PANEL_IDS,
   type PanelId,
@@ -343,6 +344,15 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: "Analysis failed" }));
+
+        // 401 FIRST — the route refuses for a dead session ABOVE its own credit gate
+        // (api/analyze/route.ts:400, before getCreditQuotaVerdict), so nothing was metered and the
+        // 402 payload below cannot exist on this response. Throwing the refusal rather than
+        // returning lets `resolveRunError` in onError classify the cause; without it the run died
+        // into the route's `{ error: "Unauthorized" }` slug and rendered the generic "the
+        // generation or SIM-1 pass dropped out" — a description of a failure that did not happen,
+        // on the priciest action in the product.
+        if (reportSession401(res.status)) throw new SessionExpiredRefusal();
 
         // 402 = the allowance is spent. Not a failure — a paywall. Keep the payload (tier,
         // used, limit, inTrial) so the UI can say which wall was hit and what to do about it;

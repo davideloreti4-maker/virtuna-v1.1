@@ -64,6 +64,25 @@ describe('RemixCardBlockSchema', () => {
     expect(RemixCardBlockSchema.safeParse(bad).success).toBe(false);
   });
 
+  it('accepts a remix-card with NO sourceDecode at all (v8 drop-seeded cards adapt a pre-torn corpus row that never ran the decode engine — omitted, never fabricated)', () => {
+    const seeded = {
+      type: 'remix-card' as const,
+      props: {
+        adaptedHook: 'An adapted hook',
+        angle: 'a',
+        whoItsFor: 'w',
+        formatBorrowed: 'f',
+        band: 'Strong' as const,
+        fraction: '8/10 stop',
+        scrollQuote: 'q',
+        model: 'sim1-flash' as const,
+        provenance: 'projected' as const,
+      },
+    };
+    expect(RemixCardBlockSchema.safeParse(seeded).success).toBe(true);
+    expect(validateBlock(seeded).ok).toBe(true);
+  });
+
   it('rejects a remix-card with missing sourceDecode fields', () => {
     const bad = {
       ...validRemixCard,
