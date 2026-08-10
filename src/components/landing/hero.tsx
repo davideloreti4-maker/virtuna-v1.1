@@ -1,27 +1,27 @@
-import { CtaPair, TRIAL_MICROCOPY } from "./cta";
+import { CtaPair } from "./cta";
 import { Reveal } from "./reveal";
-import { RetentionCurve } from "./retention-curve";
 import { PlayerSketch } from "./sketch";
 import { Slot } from "./slot";
 
 /**
  * The fold.
  *
- * Its thesis is the CURVE, not the screenshot. The most characteristic object in
- * this product's world is the second-by-second line that says exactly when an
- * audience leaves, so the hero states the claim in type and then immediately
- * shows the instrument that backs it — headline, ask, then a full-bleed curve
- * with the moment of departure pinned. The product window comes after, because a
- * screenshot is what the product LOOKS like and the curve is what it KNOWS.
+ * Centred claim over the product stage — say the thing, then show the product
+ * saying it, with the stage cut by the fold so the page visibly continues.
+ * This is the composition the reference set runs (Attio and Sandcastles both
+ * centre; Linear bleeds the product through the fold), and it spends the
+ * viewport on the two things that matter instead of leaving half of it empty
+ * beside a left-aligned block.
  *
- * Left-aligned, against the centred-hero default. It gives the display face room
- * to be an editorial grotesque rather than a poster, and it sets up the one
- * composition on the page that only works this way: a headline block holding the
- * left half while the curve runs the full width underneath it.
+ * The full-bleed retention chart that used to sit between headline and stage
+ * was CUT (owner call, 2026-08-10): a second instrument between the ask and
+ * the product added scroll without adding argument. The curve still lives
+ * where it earns its place — the receipts' sparklines and the final CTA's
+ * backdrop reprise.
  *
  * ⚠️ FOLD BUDGET. The CTA must sit above the fold on a 1512×860 laptop AND a
- * 390×844 phone — the two viewports this page's traffic actually arrives on. The
- * curve is meant to be half-visible at the fold; the CTA never is. Re-measure
+ * 390×844 phone — the two viewports this page's traffic actually arrives on.
+ * The stage is meant to be cut by the fold; the CTA never is. Re-measure
  * after any change to the headline length or the vertical rhythm above it.
  */
 
@@ -44,9 +44,9 @@ export function Hero() {
   return (
     <section className="relative overflow-hidden">
       {/* Atmosphere. A NEUTRAL cream wash and a masked dot grid — no coral bloom.
-          The accent budget is four jobs and none of them is ambience; a warm glow
-          behind the fold would also be the exact "glass and glow" texture the
-          product's system rules out. */}
+          The accent budget has no ambience job; a warm glow behind the fold
+          would also be the exact "glass and glow" texture the product's system
+          rules out. */}
       <div aria-hidden className="pointer-events-none absolute inset-0">
         <div
           className="absolute inset-0"
@@ -70,32 +70,42 @@ export function Hero() {
       </div>
 
       <div className="relative">
-        <div className="lp-measure pb-10 pt-28 md:pb-12 md:pt-32">
-          <Reveal>
-            <p className="lp-eyebrow">For TikTok, Reels &amp; Shorts creators</p>
+        <div className="lp-measure pt-28 md:pt-32">
+          <Reveal className="flex flex-col items-center text-center">
+            {/* Audience chip — a bordered object, not a floating mono line;
+                the same hairline-pill grammar the data chips use. */}
+            <span className="inline-flex items-center gap-2.5 rounded-full border border-[color:var(--lp-line-strong)] py-1.5 pl-3 pr-3.5">
+              <span
+                aria-hidden
+                className="h-1 w-1 rounded-full bg-[color:var(--lp-fg-3)]"
+              />
+              <span className="lp-eyebrow">
+                For TikTok, Reels &amp; Shorts creators
+              </span>
+            </span>
 
-            <h1 className="lp-display mt-6 max-w-[15ch]">
+            <h1 className="lp-display mt-7 max-w-[17ch]">
               Find the second they scroll away.{" "}
               <span className="lp-em text-[color:var(--lp-fg-2)]">
                 Before you post.
               </span>
             </h1>
 
-            <p className="lp-lead mt-7 max-w-[46ch]">
+            <p className="lp-lead mt-6 max-w-[44ch]">
               A thousand simulated viewers watch your draft. You get the frame
               they drop at — and the cut that fixes it.
             </p>
 
-            <CtaPair className="mt-9" />
-
-            <p className="lp-mono mt-5 text-[11px] text-[color:var(--lp-fg-3)]">
-              {TRIAL_MICROCOPY}
-            </p>
+            {/* The trial-mechanics microcopy that used to sit here was CUT
+                (owner call, 2026-08-10): the terms already live on the button
+                itself, the sticky bar, and the pricing card — a fourth
+                repetition above the fold was clutter, not clarity. */}
+            <CtaPair className="mt-10 w-full sm:w-auto sm:justify-center" />
 
             {/* One quiet line of proof. The empty-avatar coin stack died here:
                 placeholder faces at 28px read as broken assets, not pending
                 ones — and the claim carries itself. */}
-            <div className="mt-10 flex items-center gap-2.5">
+            <div className="mt-8 flex items-center gap-2.5">
               <Stars />
               <span className="text-[13px] text-[color:var(--lp-fg-2)]">
                 <span className="lp-mono text-[color:var(--lp-fg)]">4.9</span> from
@@ -105,43 +115,20 @@ export function Hero() {
           </Reveal>
         </div>
 
-        {/* The instrument. Framed by a readout header so it is legible as a
-            MEASUREMENT rather than decoration — the labels are the difference
-            between a chart and a squiggle.
-            ⚠️ The curve sits on the SAME measure as its header. It was full-bleed
-            first, which clipped both axis labels against the viewport edges and
-            left the header floating inset above a line that started off-screen —
-            an instrument whose readout and its scale disagree reads as broken,
-            not bold. */}
-        <Reveal delay={80}>
-          {/* pb: air between the curve's floor rule and the next section's
-              full-bleed hairline — without it the two lines nearly touch. */}
-          <div className="lp-measure-wide pb-14 md:pb-16">
-            <div className="flex items-baseline justify-between border-t border-[color:var(--lp-line)] pb-5 pt-4">
-              <span className="lp-eyebrow">Retention · your video</span>
-              {/* Hidden on phones: both labels wrap at 390px and collide. */}
-              <span className="lp-eyebrow hidden sm:block">
-                Simulated · 1,000 viewers
-              </span>
-            </div>
-            <RetentionCurve />
-          </div>
-        </Reveal>
-
-        {/* The demo stage. A VERDICT frame here once stacked a second retention
-            curve under the signature one — duplication. A demo VIDEO doesn't:
-            the curve says what Maven knows, the stage shows the product moving
-            (Sandcastles' video-first fold, Attio's floating-artifact framing).
-            The floats are the same artifact grammar the feature cards use, so
-            the hero previews the system rather than inventing one. */}
-        <Reveal delay={140}>
-          <div className="lp-measure-wide pb-6 pt-10 md:pt-12">
+        {/* The demo stage — the hero's second act, cut by the fold. A VERDICT
+            frame here once stacked a retention curve under the headline —
+            duplication. A demo VIDEO doesn't: the stage shows the product
+            moving (Sandcastles' video-first fold, Attio's floating-artifact
+            framing). The floats are the same artifact grammar the feature
+            cards use, so the hero previews the system rather than inventing
+            one. */}
+        <Reveal delay={120}>
+          <div className="lp-measure-wide pb-6 pt-12 md:pt-16">
             <div className="relative">
               {/* ambient wash — a neutral lift behind the stage so the frame
-                  reads as an object in light, not a rectangle on a wall */}
-              {/* Vertical outset only. A horizontal outset bled past the
-                  viewport at every breakpoint's edge case — and the radial is
-                  transparent by 72% anyway, so ±40px buys nothing visible. */}
+                  reads as an object in light, not a rectangle on a wall.
+                  Vertical outset only: a horizontal outset bled past the
+                  viewport at every breakpoint's edge case. */}
               <div
                 aria-hidden
                 className="pointer-events-none absolute inset-x-0 -bottom-12 -top-16"

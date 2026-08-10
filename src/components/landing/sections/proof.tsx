@@ -6,10 +6,10 @@ import { SparklinePair } from "../retention-curve";
 /**
  * Proof — the stat bar and the result receipts, opening the trust act.
  *
- * The receipts are the signature's third appearance: the same retention curve,
- * reduced to a pair of sparklines — the first cut collapsing, the posted cut
- * holding. The delta arrow is one of the four sanctioned accent jobs; the
- * sparklines themselves stay cream/muted so the coral only marks the OUTCOME.
+ * The receipts carry the signature curve: the first cut collapsing, the posted
+ * cut holding, overlaid in one panel. The delta arrow is one of the three
+ * sanctioned accent jobs; the sparklines themselves stay cream/muted so the
+ * coral only marks the OUTCOME.
  *
  * (All figures and handles are placeholder — shaped for layout.)
  */
