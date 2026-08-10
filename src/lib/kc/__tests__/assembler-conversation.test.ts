@@ -11,10 +11,10 @@
  *      still cannot evict a creator's profile roles") by reading an OUTPUT LENGTH — which was the
  *      post-eviction length. So these tests assert on WHICH ROLES SURVIVE, never on a length.
  *
- *   2. PLACEMENT. The conversation digest sits ABOVE the `---`, before the volatile ask, because
- *      that is what lets DashScope's implicit prefix cache reach it (see the assembleBundle
- *      header doc). A refactor that moves it below the ask is silently a cache regression, and
- *      nothing else in the suite would catch that.
+ *   2. PLACEMENT. The conversation digest sits ABOVE the `---`, grouped with the trusted
+ *      grounding rather than the per-request user sections — which is also how the shed order
+ *      treats it. (The original reason was a prefix-cache argument; it was measured and did NOT
+ *      hold — see the assembleBundle header doc. The placement stands on the grouping alone.)
  *
  *   3. THE CONTRADICTION GUARD. `cards` ("rewrite each of these") and `conversation.cardsOnScreen`
  *      ("do not reproduce these") are opposite instructions over what is usually the same list.
@@ -222,7 +222,8 @@ describe("conversation placement", () => {
   });
 
   it("is append-only across turns — turn N's bundle prefix survives into turn N+1", () => {
-    // This is the whole cache argument: the shared prefix must extend THROUGH the digest.
+    // Kept after the cache argument was retired: append-only is still the property that makes the
+    // digest STABLE turn to turn, so a creator's earlier words cannot silently re-order under them.
     const turnN = assembleBundle(
       { ask: ASK, platform: "tiktok", mode: "hooks", conversation: { turns: TURNS.slice(0, 2) } },
       PROFILE,

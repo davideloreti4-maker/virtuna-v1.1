@@ -377,15 +377,30 @@ function isProfileThin(profileRow: ProfileRow | null): boolean {
  *   5. Fence ask/overrides/anchor/cards/corpus in <<<USER_CONTENT>>> blocks.
  *   6. Return assembled user message.
  *
- * SECTION ORDER IS A CACHE DECISION, not a cosmetic one. DashScope runs an implicit context
- * cache for Qwen and the hit is on the longest common TOKEN PREFIX of the request. The prefix
- * runs [system prompt][header][profile section][conversation] and dies at `Creator ask`, which
- * is volatile every single turn. So the conversation digest is emitted ABOVE the `---`, before
- * the ask: within a thread it is append-only (turn N+1's digest contains turn N's as a literal
- * prefix) for as long as the window has not slid, which extends the cached prefix through it.
- * Placed below the ask it could never be cached at all, because the prefix is already dead
- * there. When the window does slide this degrades to exactly the old extent — never worse.
- * Fencing above the `---` has precedent: the `voice` role already emits a USER_CONTENT fence.
+ * WHY THE CONVERSATION DIGEST SITS ABOVE THE `---`. It groups with the trusted grounding rather
+ * than with the per-request user sections, which is also how the shed order treats it (it yields
+ * before the profile, after the corpus). Fencing above the `---` has precedent: the `voice` role
+ * already emits a USER_CONTENT fence there.
+ *
+ * ⚠️ THIS PLACEMENT WAS ORIGINALLY CHOSEN FOR A PREFIX-CACHE REASON THAT DID NOT SURVIVE
+ * MEASUREMENT, and the correction is recorded here so nobody re-derives the same argument.
+ *
+ * The argument was: DashScope runs an implicit context cache for Qwen, the hit is on the longest
+ * common TOKEN prefix, the digest is append-only within a thread while the ask below it is
+ * volatile every turn — so placing the digest above the ask should extend the cached prefix
+ * through it. Measured (`.scratch/probe-prefix-cache.ts`), it buys nothing:
+ *
+ *   · The cache is real and works — 8,960 cached tokens on the live hooks system prompt.
+ *   · 8,960 = 35 × 256 exactly, so hits are quantised to 256-token BLOCKS.
+ *   · The shipped digest is CONVERSATION_CHAR_BUDGET = 700 chars ≈ 175 tokens. It is smaller
+ *     than one block, so it cannot move the number no matter where it sits. The arithmetic
+ *     settles this independently of any experiment.
+ *
+ * Two probe designs failed to isolate the effect before that became clear, and both failure modes
+ * are worth knowing: sharing the system prompt between the two arms measures CALL ORDER (whichever
+ * ran second inherited the other's warm prefix — one arm read 8,960 purely for going second), and
+ * giving each arm its own prefix measures nothing at all, because a fresh prefix does not become
+ * cacheable within a 45s window. Do not re-open this without a digest larger than 256 tokens.
  *
  * @param input       Typed assembler input (validated at boundary).
  * @param profileRow  creator_profiles row (null = no profile / cold-start).
