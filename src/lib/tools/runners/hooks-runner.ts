@@ -264,7 +264,7 @@ export interface HooksPipelineInput {
    * fenced by the assembler above the `---`. Absent on every direct /api/tools/<skill> call and
    * whenever ENGINE_GEN_CONVERSATION is off, and undefined is byte-identical.
    */
-  conversation?: { turns?: string[]; cardsOnScreen?: string[] };
+  conversation?: { turns?: string[] };
   /**
    * Active audience for this run (08-04 — steer closure, AUD-STEER; mirrors 07-04 ideas-runner).
    * null or is_general → falls back to profile-based grounding + DEFAULT weights

@@ -234,7 +234,7 @@ export interface IdeasPipelineInput {
    * fenced by the assembler above the `---`. Absent on every direct /api/tools/<skill> call and
    * whenever ENGINE_GEN_CONVERSATION is off, and undefined is byte-identical.
    */
-  conversation?: { turns?: string[]; cardsOnScreen?: string[] };
+  conversation?: { turns?: string[] };
   /**
    * Active audience for this run (07-04 — steer + react wiring, AUD-04/AUD-05).
    * null or GENERAL_AUDIENCE.is_general=true → falls back to profile-based grounding

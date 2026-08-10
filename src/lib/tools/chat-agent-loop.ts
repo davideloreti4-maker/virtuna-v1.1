@@ -933,19 +933,22 @@ export async function runChatAgentStream(
    * insofar as this loop compressed them into the `topic` string it wrote. The loop is the right
    * place to fix that because it is already holding the turns.
    *
-   * Built PER CALL rather than once, because `includeCards` depends on the args of this specific
-   * call: a run carrying a `cards` rewrite pack must not also be told "do not reproduce these" —
-   * they are opposite instructions over the same list. (The assembler enforces the same rule; the
-   * two together mean neither a caller slip nor a future call site can produce the contradiction.)
+   * The digest carries the creator's TURNS only. It used to also carry the last run's card lines
+   * under a "do not reproduce these" instruction, which is why this was once built per-call
+   * (a `cards` rewrite pack and "do not reproduce" are opposite instructions over one list).
+   * That half is gone — it reproduced the cards verbatim and evicted the corpus (measured;
+   * conversation-digest.ts header, handoff §12) — so the digest no longer depends on `args` and
+   * the contradiction it guarded can no longer be constructed.
+   *
+   * Still built per call rather than hoisted: the cost is a few string ops on turns the loop is
+   * already holding, and hoisting it would compute a digest on turns that no tool call uses.
    *
    * Flag off → returns `input.context` ITSELF, not a copy, so the off path is identical by
    * reference and cannot drift.
    */
-  const skillContextFor = (args: SkillToolArgs): SkillRunContext => {
+  const skillContextFor = (): SkillRunContext => {
     if (!isConversationDigestEnabled()) return input.context;
-    const digest = buildConversationDigest(input.priorTurns ?? [], {
-      includeCards: !(args.cards && args.cards.length > 0),
-    });
+    const digest = buildConversationDigest(input.priorTurns ?? []);
     return digest ? { ...input.context, conversation: digest } : input.context;
   };
 
@@ -1250,7 +1253,7 @@ export async function runChatAgentStream(
         // Announce the dispatch BEFORE the run: the client's capsule labels itself + seeds the
         // skill's stage plan off this, ahead of the first onStage event (~seconds later).
         input.onDispatch?.(skill.skillKey);
-        const { blocks, warnings } = await skill.run(args, skillContextFor(args));
+        const { blocks, warnings } = await skill.run(args, skillContextFor());
         if (skill.billable) {
           paidRuns++;
           // BILL ON DELIVERY — the cards are about to stream to the creator and nothing after this

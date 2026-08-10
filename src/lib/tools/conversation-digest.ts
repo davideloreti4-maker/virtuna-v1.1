@@ -33,6 +33,32 @@
  *    it is what makes the block append-only across turns, which is the property the prefix cache
  *    needs (see assembleBundle's header doc for why placement follows from this).
  *
+ * ─── 🔴 WHY THERE IS NO `cardsOnScreen` (removed 2026-08-10, session 8) ──────────────────────
+ *
+ * The digest used to carry the last run's card lines under the instruction *"do NOT reproduce,
+ * rephrase or re-deliver these; make something new that does not overlap them"*. Measured, it
+ * did the opposite:
+ *
+ *   arm            constraint violations   grounded w/ proof   copied a card
+ *   corpus only              5/10                 4/10              0/10
+ *   digest + cardsOnScreen   2/10                 0/10              3/10   ← 1 VERBATIM
+ *   digest, turns only       1/10                 3/10              0/10
+ *
+ * One hook came back word for word off the do-not-reproduce list. This is rule 2 again, from the
+ * other side: putting lines in the prompt makes them likelier to be emitted, and a sentence
+ * telling the model not to does not reverse it. A negative instruction is not a filter.
+ *
+ * It also cost more than it looked. `cardsOnScreen` sat OUTSIDE CONVERSATION_CHAR_BUDGET (6 lines
+ * x 120 chars), so the emitted block reached 1,844 chars against a documented 700 — enough to push
+ * a calibrated-audience bundle over BUNDLE_CHAR_CAP and silently evict the corpus (measured live
+ * through /api/tools/chat: 838 + 2,779 = 6,183 > 6,000). Turns-only measures 5,210/6,000 and
+ * nothing sheds.
+ *
+ * Removing it also retires the `cards`/`cardsOnScreen` mutual-exclusion contract that had to be
+ * enforced in two places, because the contradiction it guarded can no longer be constructed.
+ *
+ * Evidence: `docs/HANDOFF-2026-08-10-session-8-live-verification.md` §12.
+ *
  * Pure, no I/O, no LLM. Deterministic — the same turns always yield the same digest.
  */
 
@@ -59,13 +85,8 @@ export const MAX_DIGEST_TURNS = 6;
 /** Per-line cap. Long enough for a real constraint, short enough that one rant cannot eat the budget. */
 const MAX_TURN_LENGTH = 160;
 
-/** Card lines already on screen — a reference, never a re-render. Mirrors MAX_LINES_PER_RUN. */
-const MAX_CARD_LINES = 6;
-const MAX_CARD_LINE_LENGTH = 120;
-
 export interface ConversationDigest {
   turns?: string[];
-  cardsOnScreen?: string[];
 }
 
 /** Collapse whitespace and clip — a pasted multi-line block must not become six digest lines. */
@@ -78,18 +99,11 @@ function normalise(text: string, max: number): string {
  * Build the digest from the turns the chat agent is already replaying.
  *
  * @param priorTurns  Oldest→newest, as `openChatPriorTurns` produced them.
- * @param opts.includeCards  Pass `false` when the run carries a `cards` REWRITE pack. The two
- *   are contradictory instructions over what is usually the same list ("rewrite each of these"
- *   vs "do not reproduce these"), so they are mutually exclusive by contract. The assembler
- *   enforces it as well — belt and braces, because a caller that forgets is otherwise silent.
  * @returns A digest, or null when there is nothing worth sending (byte-identical no-op).
  */
 export function buildConversationDigest(
   priorTurns: ChatAgentPriorTurn[],
-  opts: { includeCards?: boolean } = {},
 ): ConversationDigest | null {
-  const includeCards = opts.includeCards ?? true;
-
   // ── Creator turns: newest-first while spending the budget, then re-ordered oldest-first ──
   const turns: string[] = [];
   let spent = 0;
@@ -105,26 +119,6 @@ export function buildConversationDigest(
   }
   turns.reverse();
 
-  // ── Cards already on screen: the LAST run's lines only ──
-  // The last run is what "these" means to a creator looking at the thread. Carrying every run's
-  // lines would both blow the budget on a long thread and tell the model to avoid overlapping
-  // with work the creator may well have moved on from.
-  let cardsOnScreen: string[] | undefined;
-  if (includeCards) {
-    for (let i = priorTurns.length - 1; i >= 0 && !cardsOnScreen; i--) {
-      const lines = priorTurns[i]!.toolRuns?.flatMap((r) => r.lines ?? []) ?? [];
-      if (lines.length > 0) {
-        cardsOnScreen = lines
-          .slice(0, MAX_CARD_LINES)
-          .map((l) => normalise(l, MAX_CARD_LINE_LENGTH))
-          .filter(Boolean);
-      }
-    }
-  }
-
-  if (turns.length === 0 && (!cardsOnScreen || cardsOnScreen.length === 0)) return null;
-  return {
-    ...(turns.length > 0 ? { turns } : {}),
-    ...(cardsOnScreen && cardsOnScreen.length > 0 ? { cardsOnScreen } : {}),
-  };
+  if (turns.length === 0) return null;
+  return { turns };
 }

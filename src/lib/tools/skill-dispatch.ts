@@ -62,7 +62,7 @@ export interface SkillRunContext {
    *
    * Absent when ENGINE_GEN_CONVERSATION is off; undefined is byte-identical downstream.
    */
-  conversation?: { turns?: string[]; cardsOnScreen?: string[] };
+  conversation?: { turns?: string[] };
 }
 
 /**

@@ -6,8 +6,8 @@
  *
  *   · assistant prose never enters the digest — chat-prior-turns.ts documents the model learning
  *     to reproduce its own "Five hooks are on screen." instead of calling a tool;
- *   · a rewrite pack and "cards already on screen" are never both present — opposite instructions
- *     over the same list;
+ *   · card LINES never enter the digest either — carrying them under a "do not reproduce these"
+ *     instruction made the model reproduce them, one verbatim (measured, 2026-08-10);
  *   · a record-only turn (a skill run from the pill persists no text row) is not a creator turn.
  */
 
@@ -85,7 +85,7 @@ describe("buildConversationDigest — what gets in", () => {
   });
 });
 
-describe("buildConversationDigest — cards already on screen", () => {
+describe("buildConversationDigest — card lines NEVER enter the digest", () => {
   const thread = [
     user("hooks about morning focus"),
     ranHooks("Five hooks are on screen.", ["hook A", "hook B"]),
@@ -93,20 +93,38 @@ describe("buildConversationDigest — cards already on screen", () => {
     ranHooks("Done.", ["hook C", "hook D"]),
   ];
 
-  it("carries the LAST run's lines, not every run's", () => {
+  /**
+   * The digest carried these until 2026-08-10, under "do NOT reproduce, rephrase or re-deliver
+   * these". Measured through the real hooks pipeline it did the opposite — 3/10 hooks overlapped
+   * the list, one of them word for word — while its unbudgeted size evicted the corpus. See
+   * conversation-digest.ts's header for the three arms.
+   *
+   * These assert the ABSENCE, by value and by serialisation, because a re-added field would
+   * otherwise fail silently: the digest would still typecheck and still look right.
+   */
+  it("does not carry the last run's card lines", () => {
     const digest = buildConversationDigest(thread);
-    expect(digest?.cardsOnScreen).toEqual(["hook C", "hook D"]);
+    expect(digest).toEqual({ turns: ["hooks about morning focus", "now some about evenings"] });
   });
 
-  it("is OMITTED when the run carries a rewrite pack — never both instructions", () => {
-    const digest = buildConversationDigest(thread, { includeCards: false });
-    expect(digest?.cardsOnScreen).toBeUndefined();
-    expect(digest?.turns).toBeDefined();
+  it("leaks no card line into the serialised digest, from any run in the thread", () => {
+    const serialised = JSON.stringify(buildConversationDigest(thread));
+    for (const line of ["hook A", "hook B", "hook C", "hook D"]) {
+      expect(serialised).not.toContain(line);
+    }
   });
 
-  it("is omitted when no run left any lines (an unbound generator replays as plain text)", () => {
-    const digest = buildConversationDigest([user("hi"), assistant("hello")]);
-    expect(digest?.cardsOnScreen).toBeUndefined();
+  it("emits ONLY a `turns` key — a future sub-block must be budgeted deliberately", () => {
+    // CONVERSATION_CHAR_BUDGET bounds `turns`. It silently bounded only HALF the block while
+    // cardsOnScreen existed, which is how 700 became 1,844 on the wire. Any new key here must
+    // come with a re-measured worst case.
+    expect(Object.keys(buildConversationDigest(thread) ?? {})).toEqual(["turns"]);
+  });
+
+  it("returns null for a thread whose only content is card lines", () => {
+    // Previously this returned a cards-only digest. With turns as the whole digest, a thread the
+    // creator has not typed into carries nothing, and null is the byte-identical no-op.
+    expect(buildConversationDigest([ranHooks("Five hooks are on screen.", ["hook A"])])).toBeNull();
   });
 });
 

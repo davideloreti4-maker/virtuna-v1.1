@@ -95,24 +95,38 @@ describe("the loop hands the conversation to a skill", () => {
     expect(ctx.conversation).toBeUndefined();
   });
 
-  it("flag ON → the creator's turns and the cards on screen arrive on the ctx", async () => {
+  it("flag ON → the creator's turns arrive on the ctx, and nothing else", async () => {
     process.env.ENGINE_GEN_CONVERSATION = "true";
     const ctx = await runAndCaptureCtx({ topic: "morning focus" });
-    expect(ctx.conversation?.turns).toEqual([
-      "i make comedy story-times, handheld, no b-roll",
-      "keep it under 30s, i lose people after that",
-    ]);
-    expect(ctx.conversation?.cardsOnScreen).toEqual(["hook A", "hook B"]);
-    // The assistant's own prose is not smuggled in anywhere on the ctx.
-    expect(JSON.stringify(ctx.conversation)).not.toContain("Five hooks are on screen");
+    expect(ctx.conversation).toEqual({
+      turns: [
+        "i make comedy story-times, handheld, no b-roll",
+        "keep it under 30s, i lose people after that",
+      ],
+    });
+    // Neither the assistant's prose NOR its card lines are smuggled in anywhere on the ctx.
+    // The card lines are the 2026-08-10 removal: handed to a generator under "do not reproduce
+    // these", they came back reproduced — one verbatim in 10 hooks.
+    const serialised = JSON.stringify(ctx.conversation);
+    expect(serialised).not.toContain("Five hooks are on screen");
+    expect(serialised).not.toContain("hook A");
+    expect(serialised).not.toContain("hook B");
   });
 
-  it("flag ON + a rewrite pack → cardsOnScreen is withheld, turns still ride", async () => {
-    // "Rewrite each of these" and "do not reproduce these" cannot both be true of one list.
+  it("flag ON + a rewrite pack → the digest is UNCHANGED by the run's args", async () => {
+    // The digest used to depend on `args.cards` (a rewrite pack suppressed cardsOnScreen, since
+    // "rewrite each of these" and "do not reproduce these" cannot both be true of one list). With
+    // card lines gone the digest no longer reads args at all, so a rewrite run and a plain run
+    // must produce the IDENTICAL digest. Asserting equality — not just "no cardsOnScreen" —
+    // is what would catch a re-introduced args dependency.
     process.env.ENGINE_GEN_CONVERSATION = "true";
-    const ctx = await runAndCaptureCtx({ topic: "morning focus", cards: ["hook A", "hook B"] });
-    expect(ctx.conversation?.cardsOnScreen).toBeUndefined();
-    expect(ctx.conversation?.turns).toHaveLength(2);
+    const plain = await runAndCaptureCtx({ topic: "morning focus" });
+    const rewrite = await runAndCaptureCtx({
+      topic: "morning focus",
+      cards: ["hook A", "hook B"],
+    });
+    expect(rewrite.conversation).toEqual(plain.conversation);
+    expect(rewrite.conversation?.turns).toHaveLength(2);
   });
 
   it("flag ON with an empty thread → ctx is still the caller's object, not an empty digest", async () => {

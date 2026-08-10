@@ -80,6 +80,13 @@ export const BUNDLE_CHAR_CAP = 6000;
  * same reason: an unbudgeted section does not merely get truncated at the cap, it competes with
  * the creator's own grounding).
  *
+ * ⚠️ This bounds the digest's `turns` — which, since 2026-08-10, is the whole digest. It did NOT
+ * used to be: `cardsOnScreen` (6 × 120 chars) sat outside this number, so the emitted block
+ * reached 1,844 chars against a documented 700 and evicted the corpus on a calibrated-audience
+ * run. That is the bug this constant's own wording hid, and the reason `cardsOnScreen` was
+ * removed rather than budgeted. If a second sub-block is ever added here, budget the BLOCK, not
+ * one field of it — and re-measure the worst case rather than reasoning about it.
+ *
  * Exported so the builder and the cap reason from one number.
  */
 export const CONVERSATION_CHAR_BUDGET = 700;
@@ -155,16 +162,16 @@ export const assemblerInputSchema = z.object({
    * GENERATOR bundle would import that failure into a second place. The creator's words are also
    * where the durable signal lives — the stated constraints ("under 30s", "not the 5am angle").
    *
-   * `cardsOnScreen` is the assistant's concrete contribution: what the creator is looking at.
-   * MUTUALLY EXCLUSIVE with `cards` by contract (enforced by the caller, asserted by the label
-   * below): `cards` says REWRITE each of these, `cardsOnScreen` says these already exist, do not
-   * repeat them. Emitting both would put two contradictory instructions over one list and corrupt
-   * the rewrite path measured at 7% → 75% subject retention.
+   * There is deliberately NO `cardsOnScreen` companion. It existed until 2026-08-10 and carried
+   * the last run's card lines under "do NOT reproduce, rephrase or re-deliver these" — measured,
+   * it produced one VERBATIM copy and two near-copies in 10 hooks, and its unbudgeted size
+   * evicted the corpus. See conversation-digest.ts's header for the arms and the numbers. Its
+   * removal also retires the `cards`/`cardsOnScreen` mutual-exclusion contract, since the
+   * contradiction (one list under "rewrite each" AND "do not repeat") can no longer be built.
    */
   conversation: z
     .object({
       turns: z.array(z.string().min(1)).max(12).optional(),
-      cardsOnScreen: z.array(z.string().min(1)).max(6).optional(),
     })
     .optional(),
 });
@@ -267,29 +274,14 @@ function cardsContent(cards: string[]): string {
  *
  * Returns null when there is nothing to say, so an empty object is a byte-identical no-op.
  */
-function conversationContent(conversation: {
-  turns?: string[];
-  cardsOnScreen?: string[];
-}): string | null {
-  const parts: string[] = [];
-  if (conversation.turns && conversation.turns.length > 0) {
-    parts.push(
-      "What the creator has said in this conversation, oldest first — their own words. " +
-        "Honour anything they stated as a constraint or a rejection here (length, format, an " +
-        "angle they already ruled out) as if it were part of the request:\n" +
-        conversation.turns.map((t, i) => `${i + 1}. ${t}`).join("\n"),
-    );
-  }
-  if (conversation.cardsOnScreen && conversation.cardsOnScreen.length > 0) {
-    // Deliberately the OPPOSITE instruction to cardsLabel's. See the `conversation` field comment
-    // for why the two can never be emitted together.
-    parts.push(
-      "Already on the creator's screen from earlier in this thread — do NOT reproduce, rephrase " +
-        "or re-deliver these; make something new that does not overlap them:\n" +
-        conversation.cardsOnScreen.map((c) => `· ${c}`).join("\n"),
-    );
-  }
-  return parts.length > 0 ? parts.join("\n\n") : null;
+function conversationContent(conversation: { turns?: string[] }): string | null {
+  if (!conversation.turns || conversation.turns.length === 0) return null;
+  return (
+    "What the creator has said in this conversation, oldest first — their own words. " +
+    "Honour anything they stated as a constraint or a rejection here (length, format, an " +
+    "angle they already ruled out) as if it were part of the request:\n" +
+    conversation.turns.map((t, i) => `${i + 1}. ${t}`).join("\n")
+  );
 }
 
 // ─── Injection fence helpers ──────────────────────────────────────────────────
@@ -462,15 +454,13 @@ export function assembleBundle(
 
   // The conversation digest — its own block, ABOVE the `---` (see the cache note in the header
   // doc). Fenced like every other creator-supplied string, so sentinel-stripping is inherited.
-  // ENFORCED, not merely documented: a rewrite run must never also be told "do not reproduce
-  // these". `cards` and `cardsOnScreen` are usually the SAME lines, under opposite instructions —
-  // "deliver a sharper version of EACH" vs "do not reproduce or rephrase these" — so emitting
-  // both would put the run in direct contradiction over one list and would corrupt the rewrite
-  // path measured at 7% → 75% subject retention. The caller owns the contract; this is the
-  // structure that makes a caller mistake harmless. `turns` is unaffected either way.
-  const conversationBody = conversation
-    ? conversationContent(cards ? { ...conversation, cardsOnScreen: undefined } : conversation)
-    : null;
+  //
+  // This used to strip `cardsOnScreen` whenever a `cards` rewrite pack was present, because the
+  // two carried opposite instructions over one list. `cardsOnScreen` is gone (2026-08-10 — it
+  // reproduced the cards it forbade and evicted the corpus; see conversation-digest.ts), so the
+  // contradiction cannot occur and there is nothing left to enforce. `turns` was never part of
+  // it: the creator's own words are compatible with a rewrite pack.
+  const conversationBody = conversation ? conversationContent(conversation) : null;
   const conversationBlock = conversationBody
     ? fenceUserContent("This conversation so far", conversationBody)
     : null;

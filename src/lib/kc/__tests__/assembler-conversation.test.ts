@@ -16,8 +16,12 @@
  *      treats it. (The original reason was a prefix-cache argument; it was measured and did NOT
  *      hold — see the assembleBundle header doc. The placement stands on the grouping alone.)
  *
- *   3. THE CONTRADICTION GUARD. `cards` ("rewrite each of these") and `conversation.cardsOnScreen`
- *      ("do not reproduce these") are opposite instructions over what is usually the same list.
+ *   3. NO CARD LINES IN THE DIGEST. `conversation.cardsOnScreen` carried the last run's lines
+ *      under "do NOT reproduce these" until 2026-08-10, and needed a guard against `cards`
+ *      ("rewrite each of these") saying the opposite about one list. Measured through the real
+ *      pipeline, the instruction backfired — 3/10 hooks overlapped the list, one verbatim — and
+ *      its unbudgeted size evicted the corpus. The field is gone; these assert it stays gone,
+ *      which is also what retires the guard.
  *
  * Plus the byte-identical proof for raising BUNDLE_CHAR_CAP 4000 → 6000.
  */
@@ -259,34 +263,56 @@ describe("conversation content", () => {
     expect(result.indexOf(TURNS[0]!)).toBeLessThan(result.indexOf(TURNS[2]!));
   });
 
-  it("labels cards already on screen with a DO-NOT-REPRODUCE contract", () => {
+  it("has no DO-NOT-REPRODUCE contract left to emit — the whole sub-block is gone", () => {
+    // A negative instruction over card lines was measured producing the behaviour it forbade
+    // (1 verbatim + 2 near-copies in 10 hooks). The label is gone with the field; asserting on
+    // the LABEL catches a re-introduction even if the field were named something else.
     const result = assembleBundle(
-      {
-        ask: ASK,
-        platform: "tiktok",
-        mode: "hooks",
-        conversation: { cardsOnScreen: ["an existing hook line", "another one"] },
-      },
+      { ask: ASK, platform: "tiktok", mode: "hooks", conversation: { turns: TURNS } },
       PROFILE,
     );
-    expect(result).toContain("do NOT reproduce");
-    expect(result).toContain("· an existing hook line");
+    expect(result).not.toContain("do NOT reproduce");
+    expect(result).toContain("their own words");
   });
 
-  it("DROPS cardsOnScreen when a rewrite pack is present — never both instructions at once", () => {
+  it("a rewrite pack and the digest now COEXIST — there is no contradiction to guard", () => {
+    // This replaces the contradiction guard. `cards` says "rewrite each of these"; the digest
+    // carries only the creator's own words, which are compatible with that. The guard existed
+    // solely because cardsOnScreen said the opposite about the same list.
     const both = assembleBundle(
       {
         ask: "punch these up",
         platform: "tiktok",
         mode: "hooks",
         cards: ["hook one", "hook two"],
-        conversation: { turns: TURNS, cardsOnScreen: ["hook one", "hook two"] },
+        conversation: { turns: TURNS },
       },
       PROFILE,
     );
-    expect(both).toContain("REWRITE these exact hooks"); // the rewrite contract survives…
-    expect(both).not.toContain("do NOT reproduce"); // …and its opposite is gone
-    expect(both).toContain("their own words"); // turns are unaffected
+    expect(both).toContain("REWRITE these exact hooks");
+    expect(both).toContain("their own words");
+    expect(both).not.toContain("do NOT reproduce");
+  });
+
+  it("REJECTS a cardsOnScreen field at the boundary rather than silently ignoring it", () => {
+    // The zod object is strict-by-omission: an unknown key is stripped, so a caller that kept
+    // passing cardsOnScreen would get a quiet no-op rather than an error. Pinning the observable
+    // consequence — the lines never reach the prompt — is what actually protects the finding.
+    const result = assembleBundle(
+      {
+        ask: ASK,
+        platform: "tiktok",
+        mode: "hooks",
+        conversation: {
+          turns: TURNS,
+          cardsOnScreen: ["an existing hook line"],
+        } as unknown as { turns: string[] },
+      },
+      PROFILE,
+    );
+    expect(result).not.toContain("an existing hook line");
+    expect(result).not.toContain("do NOT reproduce");
+    expect(result).toContain("their own words");
   });
 
   it("strips fence sentinels a creator pasted into their own turn", () => {
