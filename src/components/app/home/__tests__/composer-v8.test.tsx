@@ -239,6 +239,42 @@ describe("composer v8 (flag on)", () => {
     expect(screen.getByTestId("composer-chips-row")).toBeInTheDocument();
   });
 
+  /**
+   * The dock reserve (defect + fix, 2026-08-13). MEASURED in-browser at max scroll:
+   *
+   *   chat thread  393×852 → dock band 184px  ← `pb-[184px]` is exact
+   *   chat thread 1440×900 → dock band 133px  ← already 51px generous
+   *   v8 arrival   393×852 → dock band 238px  ← 54px SHORT: the sixth drop card ran under the
+   *                                             band and the chips row bisected its Remix button
+   *
+   * The whole 54px is the chips row (mt-2.5 + 34 + mb-2.5), which renders nowhere else — so the
+   * reserve moves with the chips instead of being bumped for every chat thread in the app. These
+   * two assertions are the same boolean seen from both ends; if they ever disagree the overlap is
+   * back, and no padding value announces which element it was measured against.
+   */
+  it("reserves for the chips row exactly where the chips row is", async () => {
+    renderWithClient(<Composer />);
+    await screen.findByTestId("composer-chips-row");
+    const region = screen.getByTestId("composer-thread-region");
+    expect(region.className).toContain("pb-[240px]");
+    expect(region.className).not.toContain("pb-[184px]");
+  });
+
+  it("the arrival names the room above the fold, and it opens the room", async () => {
+    // Owner ruling 2026-08-13. Before this the phone's first screen said nothing about the
+    // audience — the dock's plate is 1,133px down and states the creator's handle, not the room.
+    renderWithClient(<Composer />);
+    const line = await screen.findByTestId("arrival-room-line");
+    expect(line.textContent).toContain("1,000 viewers");
+    // The SAME sheet the dock's plate opens — not a second surface.
+    fireEvent.click(line);
+    await waitFor(() => {
+      expect(screen.queryByTestId("composer-chips-row")).toBeNull();
+    });
+    // …and with the chips gone the reserve follows them back down.
+    expect(screen.getByTestId("composer-thread-region").className).toContain("pb-[184px]");
+  });
+
   it("the shelf renders today's drops over the warm route, under its OWN label", async () => {
     renderWithClient(<Composer />);
     expect(await screen.findByTestId("drop-card-d1")).toBeInTheDocument();
