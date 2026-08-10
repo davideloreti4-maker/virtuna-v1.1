@@ -48,9 +48,11 @@ export function dropCardToRemixBlocks(
     coverUrl: card.coverUrl,
     hookTemplate: card.hookTemplate,
     archetype: card.archetype,
-    multiplier: null, // LOCKED: no corpus multiplier anywhere (owner call #1)
+    // Owner ruling 2026-08-10: the multiplier PRINTS, basis = the corpus baseline
+    // ("vs their usual views"). Old cached cards predate the field → null (omitted).
+    multiplier: typeof card.multiplier === "number" ? card.multiplier : null,
     views: card.viewsRaw > 0 ? card.viewsRaw : null,
-    baselineLabel: null,
+    baselineLabel: card.baselineLabel ?? null,
     fitLabel: null, // nothing scored this SOURCE against the audience
   };
 
