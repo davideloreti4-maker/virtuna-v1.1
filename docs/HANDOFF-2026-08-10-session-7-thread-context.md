@@ -72,6 +72,41 @@ does not become cacheable within a 45s window.
 **The placement stands on a different, honest reason**: the digest is grounding, so it groups with
 the profile section above the separator, which is also how the shed order treats it.
 
+### 1.4 The creator profile is essentially unfilled — which deflates both open items
+
+Measured at the end of the session, while checking whether `goals` was still captured at all:
+
+```
+profiles                 18
+saw the interview         3
+completed onboarding     10
+has niche / goal / style  2
+has past_wins             0
+has pain_points           0
+```
+
+Nothing was removed — `GoalStagePicker` is card 2 of the interview, still wired, still serialized,
+still in the zod schema and the settings form. **The surface works; almost nobody reaches it.**
+
+Three consequences, all of which change what is worth building:
+
+1. **Adding `goals` to `MODE_ROLES.chat` would be a no-op for 16 of 18 users.** The role formatter
+   returns `null` when `primary_goal` is absent and the role is silently omitted. It would be a
+   live change to the default chat path (`runChatPipeline`, unflagged) buying nothing measurable.
+2. **`wins`/`flops` are not "low information", they are EMPTY** — 0 rows, ever. That settles the
+   question without needing the honesty argument.
+3. **The voice migration (§1.1) is latent, not urgent.** Card 9 is the ninth card of an interview
+   three people have opened, so realistically nobody has typed a voice sample and lost it. It is
+   still a real bug and still cheap to fix; there is no user cost accruing today. *An earlier draft
+   of this handoff called it "active data loss" — that overstated it.*
+
+**The observation worth carrying forward:** the audience path has BETTER coverage than the profile
+path — 6 of 13 audiences carry an auto-derived `creator_persona` voice, against 2 of 18 profiles
+carrying anything at all. Data derived at calibration beats data we ask people to type, by a wide
+margin. So "the co-pilot doesn't know enough about me" is probably not solved by adding roles to
+the bundle; the bundle has nothing to put in them. That is a product question, not a
+prompt-assembly one, and it is the owner's.
+
 ---
 
 ## 2. What was built
@@ -180,13 +215,24 @@ how an order-dependent bug hides.
 ## 6. Still open
 
 **Owner decisions**
-1. **The voice migration** (§1.1). Apply it and widen zod, or leave voice audience-only? Needs a
-   ruling before anyone "fixes" the zod schema and breaks profile saving.
-2. **`goals`/`wins`/`flops` for the chat agent.** The voice half of audit item 3 is decided (Maven,
-   one product voice — `MODE_ROLES.chat` unchanged). This half is not. The chat bundle has ~3,673
-   free chars, so it is nearly free to add.
-3. **The flag flip**, unchanged from session 6, plus the two new flags.
-4. F-6 multiplier positioning; the `composer.tsx` split. Both carried over.
+
+1. **The flag flip**, unchanged from session 6, plus the two new flags
+   (`ENGINE_GEN_CONVERSATION`, `ENGINE_REPEAT_ASK_PIN`).
+2. **Why does nobody reach the profile interview?** (§1.4) — 3 of 18. This is the question
+   underneath both of the items below, and it is a product call, not an engineering one.
+3. F-6 multiplier positioning; the `composer.tsx` split. Both carried over.
+
+**Parked — deliberately, with the reason**
+
+- **`goals`/`wins`/`flops` for the chat agent.** ~~Nearly free to add.~~ **Not worth doing.**
+  `goals` is null for 16 of 18 profiles so the role would be silently omitted; `wins`/`flops` have
+  0 rows ever. The voice half of audit item 3 IS decided (Maven, one product voice —
+  `MODE_ROLES.chat` unchanged). See §1.4.
+- **The voice migration** (§1.1). Still a real bug, still cheap, **no longer urgent** — see §1.4.
+  When it is done, the order is migration → ledger row → zod → verify, and never zod first.
+  Verified this session: profile loads use `select("*")`, so no query changes are needed, and a
+  1000-char sample (the UI's cap) fits the new bundle cap with the corpus and conversation intact
+  (5,609 / 6,000).
 
 **Carried over from the audit brief**
 - **The typed rewrite door still does not work** (audit item 4). Untouched this session.

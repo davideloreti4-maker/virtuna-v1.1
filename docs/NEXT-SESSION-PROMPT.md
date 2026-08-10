@@ -5,50 +5,63 @@ Everything below the line is the prompt. It is written to be pasted as-is into a
 ---
 
 We're picking up the in-thread chat lane in `~/virtuna-in-thread-chat` (branch
-`lane/in-thread-chat`, merged to `main` on 2026-08-10 — nothing is deployed, Vercel is
-disconnected while I switch accounts, so treat this as local-only).
+`lane/in-thread-chat`). Nothing is deployed — Vercel is disconnected while I switch accounts — so
+treat this as local-only. Stages A and B are merged to `main`; session 7's work is committed to the
+lane and unmerged.
 
-**Read these two docs first, in this order, before touching anything:**
+**Read this first, before touching anything:**
 
-1. `docs/CONTEXT-AUDIT-2026-08-10.md` — the brief for this session
-2. `docs/HANDOFF-2026-08-10-session-6-stage-b-merged.md` — what just shipped, what was measured,
-   and the traps (several will bite you: Playwright timeouts that fake a 30s plateau, a CTA whose
-   accessible name is not its visible text, two dev servers fighting over one lock)
+`docs/HANDOFF-2026-08-10-session-7-thread-context.md` — what shipped, what was measured, what was
+NOT verified (§5), and the traps (§7 — several will bite you).
 
-**The topic: what the model actually sees.**
+Two docs it supersedes, so don't be misled by them: `docs/CONTEXT-AUDIT-2026-08-10.md`'s role
+table is **wrong about `voice`**, and my memory file for this lane is thinner than the handoff.
+Trust the handoff.
 
-Three findings from last session are all the same subsystem, and fixing them separately would mean
-three separate live-measurement cycles:
+**The job: verify what session 7 built, through the real app.**
 
-- **The generators have no conversation context.** `runHooksPipeline` / `runIdeasPipeline` /
-  `runScriptPipeline` receive a `topic` string, an anchor, the profile and the audience. Twenty
-  turns of conversation reach them only as whatever the agent compressed into that one string.
-- **Context makes the chat agent claim work it did not do.** Ask for the same thing twice in a
-  thread and it answers "Here are 5 hooks for X…" with no dispatch and no cards. Reproducible.
-- **The chat agent is the only mode with no `voice` role.** It gets niche + audience + platform and
-  nothing else — the front door knows the least about me.
+Session 7 shipped four things. Two are unconditional (`BUNDLE_CHAR_CAP` 4000→6000, and a shed
+order that makes the corpus yield before the creator's profile). Two are behind flags, both OFF:
 
-**Start with brainstorming, not code.** These are architecture and taste decisions, and I don't
-think there's an obvious default:
+- `ENGINE_GEN_CONVERSATION` — the creator's own turns + on-screen card lines now reach the
+  generators as data on `SkillRunContext`, instead of only via the `topic` string
+- `ENGINE_REPEAT_ASK_PIN` — asking for the same thing twice in a thread now dispatches instead of
+  being narrated
 
-- Does the whole conversation go into the generator bundle, a rolling summary, or the last N turns?
-- It competes with voice/wins/flops under `BUNDLE_CHAR_CAP`, which sheds roles from the tail —
-  what gets dropped first, and does that change the role ordering?
-- Should the co-pilot's prose sound like me, or like Maven? That one is my call, so ask me.
-- Does fixing the repeat-ask defect belong in the prompt, in a guard, or in how context is framed?
+Both were measured one layer down — real model, real pipeline — and both moved the number:
+constraint violations 9→1 across two A/B runs, and the repeat-ask defect reproduced and fixed.
+**Neither has been walked through `/api/tools/chat` signed-in.** That is the gap.
 
-Once we've settled the shape, build it behind a flag (this lane's convention — default OFF), and
-hold to the lane's standard before claiming anything works: **tsc + the full suite + a prod build +
-a live measurement**, and write down what you did NOT verify. The last session's A/B harnesses are
-in `.scratch/` and re-runnable; the recipes are in §8 of the handoff.
+What I want from this session:
 
-**Also worth knowing:**
+1. **A signed-in walk of both flags**, on a real thread, in a browser. Does the digest actually
+   arrive at the generator through the route? Does the pin fire on a real repeat ask, get gated
+   and billed once, and produce cards? The recipes are in the handoff §8 and the session-6 handoff
+   §8 (`mint-auth.ts`, `probe-full-turn.mjs`).
+2. **The digest under a calibrated audience.** The A/B ran with `audience: null`, so the
+   interaction between the digest and the audience `overrides` block is untested live.
+3. **Whether the pin over-fires on real traffic.** It is tuned against 151 historical same-skill
+   pairs (threshold 0.7, clear air 0.67–0.75) but has no live sample.
 
-- Commit at every green point, even mid-stage. The post-commit hook auto-pushes. Last session
-  inherited a half-built, uncommitted stage and spent a third of its budget reconstructing it.
-- My memory file for this lane (`in-thread-chat-audit-lane.md`) is STALE — it still says "Stages
-  B/C/D not started". The path guard blocks writing to `~/.claude/...` from this worktree, so it
-  can only be fixed from the trunk worktree. Don't trust it; trust the docs.
-- A smaller, related piece you can fold in if it fits: a typed "rewrite these" never calls a tool —
-  the model rewrites cards as prose, bypassing scoring entirely. The chip path works because the
-  client hands over the pack. Measured both with and without the Stage B flag; identical.
+Then tell me plainly what you could not verify, the way the last handoff does.
+
+**Do NOT do these without asking me:**
+
+- The `writing_voice_sample` migration. The column does not exist in the database and
+  `creatorProfilePatchSchema` strips the field anyway. **Widening the zod schema before the
+  migration lands would send an unknown column to the upsert and break profile saving for
+  everyone.** It's a prod DB write, it's parked on purpose, and it is my call.
+- Adding `goals`/`wins`/`flops` to `MODE_ROLES.chat`. Parked with a measured reason: `goals` is
+  null for 16 of 18 profiles and `wins`/`flops` have 0 rows ever. See handoff §1.4.
+
+**Standing rules for this lane:**
+
+- The standard before claiming anything works: tsc + full suite + prod build + a live measurement,
+  and write down what you did NOT verify. `npm run build` matters — a `src/lib/surfaces/*` import
+  into an API route breaks it while tsc stays clean.
+- **Commit at every green point, even mid-stage.** The post-commit hook auto-pushes.
+- Don't derive prompt-budget headroom from an output length — that mistake is what hid the voice
+  eviction for months. Assert on which roles survive.
+- Mutation-test anything important: break it on purpose and confirm the test fails. That is how
+  session 7 found a hole in its own cap test before it shipped.
+- My memory store cannot be written from this worktree (path guard). The docs are the record.
