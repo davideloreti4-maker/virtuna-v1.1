@@ -222,12 +222,18 @@ export function SkillsPanel({
     </>
   );
 
-  // v8 copy — owner reviews before launch (handoff §5). Rendered OUTSIDE the scroll so the
-  // routing promise is always visible, never clipped mid-sentence at the panel's edge.
-  const routeLine = (
-    <p className="border-t border-white/[0.06] px-2.5 py-2.5 text-center text-label text-foreground-muted">
-      Or just type — Maven routes it.
-    </p>
+  // v8 copy — owner reviews before launch (handoff §5). The routing promise LEADS the
+  // panel (owner 2026-08-10: as a footer whisper, users still asked "do I have to pick
+  // one?"). A HEADER, outside the scroll: the first thing read answers the question.
+  const routeHeader = (
+    <div className="border-b border-white/[0.06] px-3 py-2.5">
+      <p className="text-label text-foreground">
+        You never have to pick — just type, and Maven routes it.
+      </p>
+      <p className="mt-0.5 text-caption text-foreground-muted">
+        This is the map of what it can do. Choosing one just locks it for your next send.
+      </p>
+    </div>
   );
 
   if (!isWide) {
@@ -245,8 +251,8 @@ export function SkillsPanel({
           className="ambient-room-in fixed inset-x-0 bottom-0 z-[var(--z-modal)] flex max-h-[78dvh] flex-col rounded-t-[22px] border border-b-0 border-white/[0.10] bg-surface-sunken px-3 pb-[max(20px,env(safe-area-inset-bottom))] pt-2"
         >
           <div className="mx-auto mb-2 h-1 w-[34px] shrink-0 rounded-full bg-surface-elevated" />
+          {routeHeader}
           <div className="min-h-0 flex-1 overflow-y-auto">{groupedList(true)}</div>
-          {routeLine}
         </div>
       </>,
       document.body,
@@ -262,14 +268,15 @@ export function SkillsPanel({
       aria-label="Skills"
       style={{ left: pos?.left ?? 0, bottom: pos?.bottom ?? 0 }}
       className={cn(
-        "ambient-room-in fixed z-[var(--z-modal)] flex w-[560px] max-w-[calc(100vw-28px)] overflow-hidden",
+        "ambient-room-in fixed z-[var(--z-modal)] flex w-[560px] max-w-[calc(100vw-28px)] flex-col overflow-hidden",
         "rounded-2xl border border-white/[0.10] bg-surface-elevated",
         "shadow-[0_16px_40px_rgba(0,0,0,0.4)]",
       )}
     >
+      {routeHeader}
+      <div className="flex min-h-0">
       <div className="flex max-h-[420px] w-[46%] flex-col border-r border-white/[0.06]">
         <div className="min-h-0 flex-1 overflow-y-auto p-2">{groupedList(false)}</div>
-        {routeLine}
       </div>
       {/* The preview pane (mock §3): visual · name · one-paragraph promise · Use. The tile
           stands in for the mock's illustration slot — the skill's own mark at figure scale,
@@ -297,6 +304,7 @@ export function SkillsPanel({
             Use
           </Button>
         </div>
+      </div>
       </div>
     </div>,
     document.body,

@@ -205,17 +205,17 @@ describe("composer v8 (flag on)", () => {
     });
   });
 
-  it("nothing above the field, ever — the pre-v8 audience header slot is absent flag-on (spec §3)", async () => {
+  it("the composer's TOP bar is the room's door (owner ruling 2026-08-10) — the legacy header slot still never mounts", async () => {
     renderWithClient(<Composer />);
-    // The replacement is mounted (the attached sub-bar under the foot)…
-    await screen.findByTestId("composer-sub-bar");
-    // …and the retired header is NOT. Flag-off, `useHeader` renders this slot ABOVE the field
-    // (<xl thread mode — exactly this harness's viewport); flag-on it must never mount. This is
-    // the anatomy regression a token audit cannot see (2026-08-09 brief §1).
+    // The v8 top bar (the old mobile-dock anatomy) is mounted above the field…
+    await screen.findByTestId("composer-room-bar");
+    // …the retired sub-bar is gone…
+    expect(screen.queryByTestId("composer-sub-bar")).toBeNull();
+    // …and the LEGACY pre-v8 header slot still never mounts flag-on.
     expect(screen.queryByTestId("audience-header-slot")).toBeNull();
   });
 
-  it("sub-bar present; left half opens the audience sheet", async () => {
+  it("the bar's lens zone opens the audience sheet", async () => {
     renderWithClient(<Composer />);
     fireEvent.click(
       await screen.findByRole("button", { name: "Choose audience and platform" }),
@@ -261,41 +261,29 @@ describe("composer v8 (flag on)", () => {
     });
   });
 
-  it("the sub-bar is CONTEXT ONLY — no Simulate door; the card's meter is the sim's one door (2026-08-09 rail ruling)", async () => {
+  it("drop cards are UNSCORED (owner ruling 2026-08-10): no meter, no /10, no report door", async () => {
     renderWithClient(<Composer />);
-    await screen.findByTestId("composer-sub-bar");
-    expect(screen.queryByRole("button", { name: /open the simulation room/i })).toBeNull();
-    expect(screen.queryByText(/simulate\s*›/i)).toBeNull();
+    await screen.findByTestId("drop-card-d1");
+    expect(screen.queryByTestId("drop-meter-d1")).toBeNull();
+    expect(within(screen.getByTestId("drop-shelf")).queryByText(/\/10/)).toBeNull();
   });
 
-  it("a drop's meter opens the report on that drop's own cached read", async () => {
+  it("tapping the bar opens the sim room IN the composer — a card, not a page/overlay", async () => {
     renderWithClient(<Composer />);
-    // Both fixture drops carry the same tally, so scope to the first card's own meter.
-    fireEvent.click(await screen.findByTestId("drop-meter-d1"));
-    expect(await screen.findByTestId("report-verdict")).toHaveTextContent("8/10");
+    fireEvent.click(await screen.findByTestId("composer-room-bar"));
+    const room = await screen.findByTestId("composer-room-card");
+    // In flow inside the composer box (the composer opens up into a card) —
+    // never portaled to <body> like the old full-screen sheet.
+    expect(room.closest('[data-testid="composer-room"]')).not.toBeNull();
+    expect(room.parentElement?.closest("body > [data-testid]")).toBeNull();
   });
 
-  it("opening a drop's report fires NO sim (fire-on-demand law)", async () => {
+  it("opening the room fires NO sim (fire-on-demand law)", async () => {
     renderWithClient(<Composer />);
-    // Both fixture drops carry the same tally, so scope to the first card's own meter.
-    fireEvent.click(await screen.findByTestId("drop-meter-d1"));
-    await screen.findByTestId("report-verdict");
+    fireEvent.click(await screen.findByTestId("composer-room-bar"));
+    await screen.findByTestId("composer-room-card");
     const calls = (global.fetch as ReturnType<typeof vi.fn>).mock.calls.map((c) => String(c[0]));
     expect(calls.some((u) => u.includes("/api/tools/react"))).toBe(false);
-  });
-
-  it("the v8 room overlay is gone — the report is the room now", async () => {
-    renderWithClient(<Composer />);
-    fireEvent.click(await screen.findByTestId("drop-meter-d1"));
-    await screen.findByTestId("verdict-report");
-    expect(screen.queryByTestId("v8-room-overlay")).toBeNull();
-  });
-
-  it("mobile renders the report as a sheet (the harness matchMedia is <xl)", async () => {
-    renderWithClient(<Composer />);
-    // Both fixture drops carry the same tally, so scope to the first card's own meter.
-    fireEvent.click(await screen.findByTestId("drop-meter-d1"));
-    expect((await screen.findByTestId("verdict-report")).dataset.variant).toBe("sheet");
   });
 
   it("an UNSIMULATED card's door fires the sim and shows the sealed watcher", async () => {

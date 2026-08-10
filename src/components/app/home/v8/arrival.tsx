@@ -27,12 +27,13 @@ export function ArrivalV8({ shelfReady = false }: { shelfReady?: boolean }) {
   // v8 copy — owner reviews before launch (handoff §5). The shelf headline only ever
   // shows over REAL cards (shelfReady) — an empty arrival keeps the honest time
   // greeting rather than promising content that isn't there.
-  const headline = shelfReady ? "Tonight's remixes" : greeting;
+  // The name belongs to the GREETING voice-moment only — appended to the shelf
+  // headline it read as "Tonight's remixes, E2E." (owner defect, 2026-08-10).
+  const headline = shelfReady ? "Tonight's remixes" : `${greeting}${name ? `, ${name}` : ""}`;
   return (
-    <div data-testid="arrival-v8" className="w-full px-1 pb-3">
+    <div data-testid="arrival-v8" className="w-full px-1 pb-4">
       <h1 className="font-serif text-[26px] font-normal leading-tight tracking-[-0.01em] text-foreground">
-        {headline}
-        {name ? `, ${name}` : ""}.
+        {headline}.
       </h1>
       {shelfReady ? (
         <p className="mt-1.5 text-caption text-foreground-muted">

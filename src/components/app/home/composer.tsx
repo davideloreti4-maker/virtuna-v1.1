@@ -101,7 +101,7 @@ import {
 // ── Composer v8 (CONCEPT_V8_ENABLED — platform concept Phase 1) ──────────────
 import { CONCEPT_V8_ENABLED } from "@/lib/flags/concept-v8";
 import { SkillPill, SkillsPanel } from "./v8/skills-panel";
-import { ComposerSubBar } from "./v8/sub-bar";
+import { ComposerRoom } from "./v8/composer-room";
 import { VerdictReport, type ReportSubject } from "./v8/verdict-report";
 import { useFireSim } from "./v8/use-fire-sim";
 import { AudienceSheetV8 } from "./v8/audience-sheet";
@@ -555,16 +555,16 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // `roomExpanded` stays the OPEN flag (a card's meter/door sets it); the SUBJECT is what the
   // report is a report OF. Null ⇒ the honest empty state, never a fabricated figure.
   const [reportSubject, setReportSubject] = useState<ReportSubject | null>(null);
+  // v8 (owner ruling 2026-08-10): the composer's top bar opens the sim room IN the box —
+  // its own flag, independent of `roomExpanded` (which still drives the legacy bloom /
+  // the in-thread report host until that follow-up lands the fired sim in the room).
+  const [v8RoomOpen, setV8RoomOpen] = useState(false);
   const { watching: simWatching, snapshots: simSnapshots, fireSim: fireCardSim } = useFireSim();
   // The descriptor id whose fired run should land IN the open report when it seals.
   const pendingSimIdRef = useRef<string | null>(null);
 
-  // A drop's meter → its CACHED read. This path never touches the network: the drops are the only
-  // pre-scored surface, and opening one's report READS the cache (SSOT §1, fire-on-demand).
-  const openReportForDrop = useCallback((card: LiveDropCard) => {
-    setReportSubject({ id: card.contentId, title: card.hook, personas: card.personas });
-    setRoomExpanded(true);
-  }, []);
+  // (The drop-card meter→report door died with the 2026-08-10 ruling — drops arrive
+  //  unscored; reportSubject is now set only by the in-thread card doors below.)
 
   // Task C (v6): intent is a PROPERTY OF THE AUDIENCE's goal (goal_intent → grow/sell lens),
   // never a per-run composer toggle (the Grow/Sell control retired — THE-ROOM-HANDOFF §3.5).
@@ -926,15 +926,20 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
         if (!res.ok) return; // honest no-op — the card stays tappable, nothing fabricated
         const { threadId } = (await res.json()) as { threadId: string };
         setActiveThreadCookie(threadId);
+        // Full parity with ensureThreadForSend (composer.tsx): openThreadId + the
+        // sidebar-list invalidation were missing here, which could leave the view on
+        // the arrival while the seeded thread existed only as a sidebar row.
+        setOpenThreadId(threadId);
         setActiveThreadId(threadId);
         switchThread();
+        void queryClient.invalidateQueries({ queryKey: queryKeys.threads.list() });
       } catch {
         // network failure → no-op (card stays tappable)
       } finally {
         setRemixingDropId(null);
       }
     },
-    [remixingDropId, setActiveThreadId, switchThread],
+    [remixingDropId, setActiveThreadId, switchThread, queryClient],
   );
 
   // A1: notify parent of the rehydrate window so HomePageLayout keeps the thread
@@ -3624,18 +3629,27 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
                   ],
             )}
           >
-            {composerForm}
-            {/* v8: the attached SUB-BAR — one hairline strip under the foot (owner
-                decision 13). CONTEXT ONLY (2026-08-09 rail ruling): who you're creating
-                for → the audience sheet. The sim's door is the card's meter, not a strip. */}
+            {/* v8 (owner ruling 2026-08-10): the attached TOP bar — @audience ·
+                calibration · lens — above the field, the old mobile-dock anatomy.
+                Tapping it opens the SIM ROOM in place: the composer opens up into a
+                card (never a page). This supersedes both the sub-bar and the
+                "nothing above the field" rule. */}
             {CONCEPT_V8_ENABLED && (
-              <ComposerSubBar
+              <ComposerRoom
                 audience={effectiveAudience}
-                watching={audienceReacting || simWatching}
+                descriptors={ambientDescriptors}
+                reducedMotion={reducedMotion}
+                persistedSeals={persistedSimSeals}
+                focusVideo={focusVideo}
+                onTestVariant={() => setSimDoorOpen(true)}
+                open={v8RoomOpen}
+                onOpenChange={setV8RoomOpen}
                 lensLabel={LENS_LABEL[platform]}
                 onOpenAudience={() => setAudienceSheetOpen(true)}
+                watching={audienceReacting || simWatching}
               />
             )}
+            {composerForm}
             {buildChooser}
           </div>
         </div>
@@ -3855,7 +3869,6 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
                       cards={dropCards}
                       status={dropsStatus}
                       onRemix={(c) => void handleRemixDrop(c)}
-                      onOpenReport={openReportForDrop}
                       remixingId={remixingDropId}
                     />
                   </>
@@ -3897,16 +3910,19 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
             {AMBIENT_V2_ENABLED && startEngaged && !hasConversationContent ? (
               <div className="pointer-events-auto mb-3">{homeStarter}</div>
             ) : null}
-            {composerDock}
-            {/* v8: example chips + More ▸ — under the composer, fresh home only. */}
-            {CONCEPT_V8_ENABLED && !hasConversationContent ? (
-              <div className="pointer-events-auto">
+            {/* v8: example chips + More ▸ — ABOVE the composer (owner call 2026-08-10:
+                below the field they read as results of a chat that hasn't happened).
+                Hidden while the room is open: this dock is bottom-anchored, so the
+                grown box would shove the chips over the shelf cards. */}
+            {CONCEPT_V8_ENABLED && !hasConversationContent && !v8RoomOpen ? (
+              <div className="pointer-events-auto mb-2.5">
                 <ChipsRow
                   onArm={handleUserSelectTool}
                   onMore={() => setSkillsPanelOpen(true)}
                 />
               </div>
             ) : null}
+            {composerDock}
             {/* BENEATH the field, deliberately. Above it would be a prose lede over the grid,
                 which STARTER CONTRACT rule 2 forbids outright — and the dock is bottom-anchored,
                 so content added here grows downward from the composer rather than displacing it.
@@ -3945,7 +3961,6 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
               cards={dropCards}
               status={dropsStatus}
               onRemix={(c) => void handleRemixDrop(c)}
-              onOpenReport={openReportForDrop}
               remixingId={remixingDropId}
             />
           </>
@@ -3971,10 +3986,12 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
             }}
           />
         )}
-        {composerDock}
         {CONCEPT_V8_ENABLED && !hasConversationContent ? (
-          <ChipsRow onArm={handleUserSelectTool} onMore={() => setSkillsPanelOpen(true)} />
+          <div className="mb-2.5">
+            <ChipsRow onArm={handleUserSelectTool} onMore={() => setSkillsPanelOpen(true)} />
+          </div>
         ) : null}
+        {composerDock}
         {homeAudienceIntro}
         </>
       ) : (
@@ -3982,10 +3999,12 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
         // the same composer + starter + demo as the legacy home, with the chosen skill armed. No
         // bespoke bare-field state, no back-to-grid chrome; picking a skill just enters the chat.
         <>
-          {composerDock}
           {CONCEPT_V8_ENABLED && !hasConversationContent ? (
-            <ChipsRow onArm={handleUserSelectTool} onMore={() => setSkillsPanelOpen(true)} />
+            <div className="mb-2.5">
+              <ChipsRow onArm={handleUserSelectTool} onMore={() => setSkillsPanelOpen(true)} />
+            </div>
           ) : null}
+          {composerDock}
           {homeStarter}
           {homeFirstRunDemo}
           {homeAudienceIntro}

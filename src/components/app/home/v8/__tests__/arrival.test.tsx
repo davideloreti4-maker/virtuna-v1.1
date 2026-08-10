@@ -15,11 +15,11 @@ describe("ArrivalV8", () => {
     expect(screen.queryByText(/Proven videos/)).toBeNull();
   });
 
-  it("shelfReady → the shelf headline + whisper (only ever over real cards)", () => {
+  it("shelfReady → the shelf headline + whisper — the NAME stays on the greeting only", () => {
     render(<ArrivalV8 shelfReady />);
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(
-      "Tonight's remixes, Lena.",
-    );
+    // "Tonight's remixes, Lena." was an owner-flagged defect (2026-08-10): the name
+    // belongs to the greeting voice-moment, never the shelf headline.
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Tonight's remixes.");
     expect(screen.getByText("Proven videos · rebuilt for your niche")).toBeInTheDocument();
   });
 });
