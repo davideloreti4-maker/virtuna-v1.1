@@ -26,6 +26,14 @@ export interface ChatFollowup {
   /** The message sent into the chat thread on tap; the agent routes it. */
   prompt: string;
   /**
+   * Stage B (B2): this chip's sentence refers to the cards ALREADY ON SCREEN in the turn it sits
+   * under ("Punch them up" = rewrite THESE hooks), so the client must send that pack along as
+   * data (`cardLinesOf` on the turn's blocks → the chat body's `cards`). Without it the pinned
+   * run regenerates fresh strangers — the measured "rewrite these returns unrelated new items"
+   * defect. Absent on chips that want NEW content ("More hooks") or no run at all.
+   */
+  carryCards?: boolean;
+  /**
    * THE GENERATOR THIS CHIP MEANS — declared here, not inferred from the sentence downstream.
    *
    * A chip is a COMMAND the creator pressed under cards that already fix the subject; it is not a
@@ -113,7 +121,7 @@ const FOLLOWUPS: Record<ChatTurnKind, ChatFollowup[]> = {
   ideas: [
     { label: "More ideas", prompt: "Give me a few more ideas along these lines.", skill: "ideas" },
     { label: "Script the best one", prompt: "Turn the strongest idea into a full script.", skill: "script" },
-    { label: "Sharper angles", prompt: "Give me punchier, more specific angles on these ideas.", skill: "ideas" },
+    { label: "Sharper angles", prompt: "Give me punchier, more specific angles on these ideas.", skill: "ideas", carryCards: true },
   ],
   // Hooks ran → each hook card already offers "Write the script →". Chips add "more", a conversational
   // compare (the agent answers in prose — judgement, not just generation), and a punch-up pass.
@@ -121,18 +129,19 @@ const FOLLOWUPS: Record<ChatTurnKind, ChatFollowup[]> = {
   // "Punch them up" is a fresh SIM-scored hooks run under a tighter brief — NOT the card-scoped
   // /api/tools/refine path. Refine rewrites ONE named card ("make hook 2 punchier"), needs its
   // `cardRef` + `anchor`, and already has its own live door through the composer's detectRefineIntent.
-  // A turn-level chip has no card in hand, so pointing it at refine would mean inventing one.
+  // A turn-level chip has no ONE card in hand — what it has is the PACK, and since Stage B it
+  // carries it (`carryCards` → the run rewrites these exact hooks instead of five strangers).
   hooks: [
     { label: "More hooks", prompt: "Give me a few more hook options.", skill: "hooks" },
     { label: "Which is strongest?", prompt: "Which of these hooks is strongest for my audience, and why?" },
-    { label: "Punch them up", prompt: "Rewrite these hooks tighter and more specific.", skill: "hooks" },
+    { label: "Punch them up", prompt: "Rewrite these hooks tighter and more specific.", skill: "hooks", carryCards: true },
   ],
   // Script ran → the card offers "Test this script →". Chips own tightening, re-angling, and stepping
-  // back to hooks for the same script. Same reasoning as "Punch them up" above: a re-write at TURN
-  // level is a fresh scored script run, not a card-scoped refine.
+  // back to hooks for the same script. The two rewrite chips carry the script's beats as the pack
+  // (Stage B); "Hooks for this" wants NEW hooks, so the beats ride only as conversation context.
   script: [
-    { label: "Make it punchier", prompt: "Rewrite the script tighter and punchier.", skill: "script" },
-    { label: "Different angle", prompt: "Give me the same idea as a script from a completely different angle.", skill: "script" },
+    { label: "Make it punchier", prompt: "Rewrite the script tighter and punchier.", skill: "script", carryCards: true },
+    { label: "Different angle", prompt: "Give me the same idea as a script from a completely different angle.", skill: "script", carryCards: true },
     { label: "Hooks for this", prompt: "Write a few hooks for this script.", skill: "hooks" },
   ],
   // Remix ran → the card offers "Write hooks for this →". Chips own finding more to adapt and pushing
@@ -208,6 +217,35 @@ export function followupsForKind(kind: ChatTurnKind): ChatFollowup[] {
  */
 export function followupsForTurn(blockTypes: readonly string[]): ChatFollowup[] {
   return FOLLOWUPS[classifyTurn(blockTypes)];
+}
+
+/**
+ * Stage B (B2): the identifying line of each content card in a turn — the PACK a `carryCards`
+ * chip sends along so "rewrite these" can see "these". Mirrors what the transcript's
+ * cards_on_screen shows the model: hook cards → the hook line, idea cards → title + angle,
+ * a script card → its beats ("Hook: …"). Defensive against loose blocks like blockTypesOf;
+ * capped at 6 lines (the assembler's fence max — the server re-caps regardless).
+ */
+export function cardLinesOf(blocks: readonly unknown[]): string[] {
+  const lines: string[] = [];
+  for (const raw of blocks) {
+    const b = raw as { type?: string; props?: Record<string, unknown> } | null;
+    if (!b?.type || !b.props) continue;
+    if (b.type === "hook-card" && typeof b.props.hookLine === "string" && b.props.hookLine) {
+      lines.push(b.props.hookLine);
+    } else if (b.type === "idea-card" && typeof b.props.title === "string" && b.props.title) {
+      const angle = typeof b.props.angle === "string" && b.props.angle ? ` — ${b.props.angle}` : "";
+      lines.push(`${b.props.title}${angle}`);
+    } else if (b.type === "script-card" && Array.isArray(b.props.beats)) {
+      for (const beat of b.props.beats as Array<{ label?: unknown; content?: unknown }>) {
+        if (typeof beat?.content === "string" && beat.content) {
+          const label = typeof beat.label === "string" && beat.label ? `${beat.label}: ` : "";
+          lines.push(`${label}${beat.content}`);
+        }
+      }
+    }
+  }
+  return lines.slice(0, 6);
 }
 
 /**

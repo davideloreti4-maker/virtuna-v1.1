@@ -182,3 +182,161 @@ describe("useChatStream", () => {
     expect(result.current.streamingText).toBe("");
   });
 });
+
+// ── Stage B (B3): the predispatch frame, and (B1/B2) the riders on the request body ────────────
+//
+// `predispatch` arrives BEFORE the loop starts, and it is two different claims wearing one event
+// name. A chip or card CTA pinned the skill, so round 1 WILL call it — that is knowledge, and it
+// seeds the capsule exactly as `dispatch` does. A typed ask only got a keyword guess — that is a
+// hint, and it must never reach `dispatchedSkill`, because doing so would draw the full run spine
+// for a run that may never start.
+describe("useChatStream — predispatch (Stage B)", () => {
+  it("certain:true seeds dispatchedSkill — the creator pressed it, so the capsule is honest", async () => {
+    global.fetch = vi.fn().mockResolvedValue(
+      mockSSEResponse([
+        encodeSSE("predispatch", { skill: "hooks", certain: true }),
+        encodeSSE("done", {}),
+      ]),
+    );
+
+    const { result } = renderHook(() => useChatStream());
+    await act(async () => {
+      await result.current.start("Give me a few more hook options.", "tiktok", "hooks");
+    });
+    await waitFor(() => expect(result.current.isDone).toBe(true));
+
+    expect(result.current.dispatchedSkill).toBe("hooks");
+    expect(result.current.preGuess).toBeNull();
+  });
+
+  it("certain:false stays a HINT — it never becomes the dispatched skill", async () => {
+    global.fetch = vi.fn().mockResolvedValue(
+      mockSSEResponse([
+        encodeSSE("predispatch", { skill: "hooks", certain: false }),
+        encodeSSE("done", {}),
+      ]),
+    );
+
+    const { result } = renderHook(() => useChatStream());
+    await act(async () => {
+      await result.current.start("write me some hooks", "tiktok");
+    });
+    await waitFor(() => expect(result.current.isDone).toBe(true));
+
+    expect(result.current.preGuess).toBe("hooks");
+    expect(result.current.dispatchedSkill).toBeNull();
+  });
+
+  it("the real dispatch REPLACES the guess — including when the guess was wrong", async () => {
+    // The failure this protects against: the heuristic says hooks, the agent runs ideas, and the
+    // thread shows both claims at once.
+    global.fetch = vi.fn().mockResolvedValue(
+      mockSSEResponse([
+        encodeSSE("predispatch", { skill: "hooks", certain: false }),
+        encodeSSE("dispatch", { skill: "ideas" }),
+        encodeSSE("done", {}),
+      ]),
+    );
+
+    const { result } = renderHook(() => useChatStream());
+    await act(async () => {
+      await result.current.start("write me some hooks", "tiktok");
+    });
+    await waitFor(() => expect(result.current.isDone).toBe(true));
+
+    expect(result.current.dispatchedSkill).toBe("ideas");
+    expect(result.current.preGuess).toBeNull();
+  });
+
+  it("a guess that the agent answers in PROSE simply expires with the turn", async () => {
+    // No dispatch ever arrives. The hint stays on the hook, but the turn now has content, so the
+    // thinking row it labelled is gone from the UI (see chat-turn.test.tsx). reset() clears it.
+    global.fetch = vi.fn().mockResolvedValue(
+      mockSSEResponse([
+        encodeSSE("predispatch", { skill: "script", certain: false }),
+        encodeSSE("token", { delta: "What's the video about?" }),
+        encodeSSE("done", {}),
+      ]),
+    );
+
+    const { result } = renderHook(() => useChatStream());
+    await act(async () => {
+      await result.current.start("write a script", "tiktok");
+    });
+    await waitFor(() => expect(result.current.isDone).toBe(true));
+
+    expect(result.current.dispatchedSkill).toBeNull();
+    act(() => {
+      result.current.reset();
+    });
+    expect(result.current.preGuess).toBeNull();
+  });
+
+  it("ignores a predispatch frame with no skill", async () => {
+    global.fetch = vi.fn().mockResolvedValue(
+      mockSSEResponse([encodeSSE("predispatch", { certain: false }), encodeSSE("done", {})]),
+    );
+
+    const { result } = renderHook(() => useChatStream());
+    await act(async () => {
+      await result.current.start("hi", "tiktok");
+    });
+    await waitFor(() => expect(result.current.isDone).toBe(true));
+
+    expect(result.current.preGuess).toBeNull();
+    expect(result.current.dispatchedSkill).toBeNull();
+  });
+});
+
+describe("useChatStream — the request body (Stage B riders)", () => {
+  /** The JSON the hook actually POSTed. */
+  const sentBody = () =>
+    JSON.parse((global.fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0]![1].body as string);
+
+  beforeEach(() => {
+    global.fetch = vi.fn().mockResolvedValue(mockSSEResponse([encodeSSE("done", {})]));
+  });
+
+  it("a typed send carries ask + platform ONLY — byte-identical to before Stage B", async () => {
+    // THE CONTROL. Every rider is omitted rather than sent as null/undefined, so a dark build's
+    // request is indistinguishable from the one that shipped.
+    const { result } = renderHook(() => useChatStream());
+    await act(async () => {
+      await result.current.start("how often should I post?", "tiktok");
+    });
+    expect(sentBody()).toEqual({ ask: "how often should I post?", platform: "tiktok" });
+  });
+
+  it("carries the anchor a card CTA was pressed on (B1)", async () => {
+    const { result } = renderHook(() => useChatStream());
+    await act(async () => {
+      await result.current.start("Write the script from this hook.", "tiktok", "script", {
+        anchor: "Everyone lied about 5am",
+      });
+    });
+    expect(sentBody()).toEqual({
+      ask: "Write the script from this hook.",
+      platform: "tiktok",
+      skill: "script",
+      anchor: "Everyone lied about 5am",
+    });
+  });
+
+  it("carries the pack a chip is pointing at (B2)", async () => {
+    const { result } = renderHook(() => useChatStream());
+    await act(async () => {
+      await result.current.start("Rewrite these hooks tighter.", "tiktok", "hooks", {
+        cards: ["hook one", "hook two"],
+      });
+    });
+    expect(sentBody().cards).toEqual(["hook one", "hook two"]);
+  });
+
+  it("omits an EMPTY pack rather than sending an empty array", async () => {
+    const { result } = renderHook(() => useChatStream());
+    await act(async () => {
+      await result.current.start("Rewrite these.", "tiktok", "hooks", { cards: [] });
+    });
+    expect(sentBody()).not.toHaveProperty("cards");
+  });
+});

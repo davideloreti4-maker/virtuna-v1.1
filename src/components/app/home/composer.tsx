@@ -101,8 +101,9 @@ import {
 // ── Composer v8 (CONCEPT_V8_ENABLED — platform concept Phase 1) ──────────────
 import { CONCEPT_V8_ENABLED } from "@/lib/flags/concept-v8";
 import { SkillPill, SkillsPanel } from "./v8/skills-panel";
-import { ComposerSubBar } from "./v8/sub-bar";
-import { VerdictReport, type ReportSubject } from "./v8/verdict-report";
+import { AudienceLensChip } from "./v8/audience-lens-chip";
+
+
 import { useFireSim } from "./v8/use-fire-sim";
 import { AudienceSheetV8 } from "./v8/audience-sheet";
 import { ChipsRow } from "./v8/chips-row";
@@ -150,6 +151,10 @@ import { useAmbientFocus, type AmbientCardDescriptor } from "./use-ambient-focus
 import { useThreadAutoscroll } from "./use-thread-autoscroll";
 import { buildAmbientDescriptors, resolveFocusDescriptor } from "./ambient-descriptors";
 import { detectRefineIntent } from "@/lib/tools/refine";
+// Stage B "one brain" — the client half of the lever (default OFF; see one-brain-flag.ts). It
+// gates the two client behaviours the stage adds: card CTAs entering the agent loop instead of a
+// pinned one-shot (B1), and chips carrying their pack as data (B2).
+import { ONE_BRAIN_ENABLED } from "@/lib/tools/one-brain-flag";
 // TikTok-only client check (D-21, WR-01). The pattern is the SHARED trust-
 // boundary regex (src/lib/tiktok-url.ts) imported by BOTH the composer and the
 // server /api/analyze route, so the fast UX reject can never drift from the
@@ -211,6 +216,10 @@ const ERROR_UPLOAD_FAILED =
  * restore) — a new thread lands here, never on whatever the last thread happened to be.
  */
 const DEFAULT_TOOL: ToolId = "chat";
+
+/** Rows the v8 `/` menu omits — the default lane itself. Module-scope so the array identity
+ *  is stable across renders. Legacy passes nothing and its menu is unchanged. */
+const V8_SLASH_HIDDEN: readonly ToolId[] = [DEFAULT_TOOL];
 
 // Placeholder copy per tool.
 //
@@ -550,21 +559,13 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     ? platformLens
     : audienceToPlatform(selectedAudience?.platform);
 
-  // ── v8 report state (Phase 3; pin RETIRED by the 2026-08-09 rail ruling — nothing about
-  // the sim is permanently resident; the report is an event: sheet <xl, overlay panel ≥xl) ──
-  // `roomExpanded` stays the OPEN flag (a card's meter/door sets it); the SUBJECT is what the
-  // report is a report OF. Null ⇒ the honest empty state, never a fabricated figure.
-  const [reportSubject, setReportSubject] = useState<ReportSubject | null>(null);
+  // The v8 report state is GONE (owner ruling 2026-08-11): with the rail restored, `roomExpanded`
+  // is once again the ROOM's one open flag on both flags, and the room renders its own verdicts —
+  // there is no second subject to track and no pending id to promote into a separate surface.
   const { watching: simWatching, snapshots: simSnapshots, fireSim: fireCardSim } = useFireSim();
-  // The descriptor id whose fired run should land IN the open report when it seals.
-  const pendingSimIdRef = useRef<string | null>(null);
 
-  // A drop's meter → its CACHED read. This path never touches the network: the drops are the only
-  // pre-scored surface, and opening one's report READS the cache (SSOT §1, fire-on-demand).
-  const openReportForDrop = useCallback((card: LiveDropCard) => {
-    setReportSubject({ id: card.contentId, title: card.hook, personas: card.personas });
-    setRoomExpanded(true);
-  }, []);
+  // (The drop-card meter→room door died with the 2026-08-10 ruling — drops arrive unscored.
+  //  The in-thread card doors below are the only remaining callers of `openRoomForCard`.)
 
   // Task C (v6): intent is a PROPERTY OF THE AUDIENCE's goal (goal_intent → grow/sell lens),
   // never a per-run composer toggle (the Grow/Sell control retired — THE-ROOM-HANDOFF §3.5).
@@ -712,7 +713,10 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       isStreaming: chat.isStreaming,
       // Cards ABOVE the co-pilot line: a dispatched skill's real cards, then the closing prose.
       blocks: [...chat.streamingBlocks, ...chatBlocks],
-      stages: chat.stages, evidence: chat.evidence, error: chat.error, stop: chat.stop, reset: chat.reset },
+      // The dispatched runners' REAL warnings (Stage A) — the chat door used to be the one
+      // stream that swallowed them.
+      stages: chat.stages, evidence: chat.evidence, warnings: chat.warnings,
+      error: chat.error, stop: chat.stop, reset: chat.reset },
     // Account emits no stages and no card stream — one block, delivered on done.
     { skill: "account", isStreaming: account.isStreaming,
       blocks: account.block ? [account.block] : [], error: account.error,
@@ -926,15 +930,20 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
         if (!res.ok) return; // honest no-op — the card stays tappable, nothing fabricated
         const { threadId } = (await res.json()) as { threadId: string };
         setActiveThreadCookie(threadId);
+        // Full parity with ensureThreadForSend (composer.tsx): openThreadId + the
+        // sidebar-list invalidation were missing here, which could leave the view on
+        // the arrival while the seeded thread existed only as a sidebar row.
+        setOpenThreadId(threadId);
         setActiveThreadId(threadId);
         switchThread();
+        void queryClient.invalidateQueries({ queryKey: queryKeys.threads.list() });
       } catch {
         // network failure → no-op (card stays tappable)
       } finally {
         setRemixingDropId(null);
       }
     },
-    [remixingDropId, setActiveThreadId, switchThread],
+    [remixingDropId, setActiveThreadId, switchThread, queryClient],
   );
 
   // A1: notify parent of the rehydrate window so HomePageLayout keeps the thread
@@ -1310,6 +1319,16 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // the chosen hookLine (streams into ScriptThreadView, mirroring the Script-chip path).
   // The hook is the anchor (PINNED: /api/tools/script accepts { ask?, anchor, platform }).
   // CRITICAL: NEVER sets pendingSealRef / calls stream.start — Script never navigates to /analyze.
+  //
+  // ── Stage B (B1): the SAME CTA, through the one brain ──────────────────────────────────────
+  // With the flag on it stops POSTing the pinned one-shot and sends the click into the chat route
+  // as a pinned skill (`script`) plus the clicked line as the `anchor` rider. Why bother, when the
+  // one-shot works: the one-shot is a second front door with its own memory. It cannot see the
+  // conversation, so the run it produces knows the hook and nothing else the creator has said this
+  // session, and the turn it writes never enters the agent's transcript — the next question about
+  // "that script" starts from nothing. Routing it through the loop gives the CTA the same context
+  // and the same continuity a typed ask already has, while `forceSkill` + `forceAnchor` keep the
+  // guarantee that made it a one-shot: this exact line, that exact skill, no re-litigation.
   const handleWriteScript = useCallback((hookLine: string, _audienceArchetype: string) => {
     // The script appends at the BOTTOM, but the hook card that started it can be thousands of
     // pixels up — every completed turn keeps its cards, so pressing "Write the script →" on a
@@ -1323,10 +1342,21 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     // the field — the one-shot's whole point.
     noteRun("script");
     setScriptAnchorHook(hookLine); // PR-2: cite this input hook in the script intro
+    if (ONE_BRAIN_ENABLED) {
+      // The ask is written out because the chat route persists it as the user turn — so the thread
+      // reads as the creator asking for this, which is exactly what pressing the CTA was. The hook
+      // itself rides as `anchor` (data), never folded into the sentence: the loop pins it onto the
+      // round-1 call verbatim, and a paraphrase would be a different anchor.
+      const ask = "Write the script from this hook.";
+      setLastUserTurn(ask);
+      chat.reset();
+      void chat.start(ask, platform, "script", { anchor: hookLine });
+      return;
+    }
     script.reset();
     // ask empty — the carried hookLine anchors the script generation.
     void script.start("", platform, hookLine, intent);
-  }, [script, platform, intent, scrollThreadToBottom]);
+  }, [script, chat, platform, intent, scrollThreadToBottom]);
 
   // ── Script → Test handoff (Plan 06-05 — D-05/D-06, SCRIPT-01) ─────────────
   // Invoked by ScriptCardRenderer via ScriptTestContext when "Test full →" is clicked.
@@ -1592,8 +1622,15 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // the agent used to answer it with a request for a sharper angle and run nothing — measured 0/3,
   // and not fixable by rewording. Carrying the intent as data lets the route pin the first tool
   // choice. Conversational chips ("Which is strongest?") declare none and are unaffected.
+  //
+  // `opts.cards` (Stage B, B2) is the PACK the chip's sentence points at — the card lines of the
+  // turn it sits under, collected by the one component that can see them (ThreadTurn → cardLinesOf).
+  // "Rewrite these hooks tighter" has the same problem the declared skill fixed, one level down: the
+  // run started, but with no way to see "these" it generated five strangers. Gated on the one-brain
+  // flag so a dark build sends the byte-identical body it always sent (the route drops the field
+  // regardless — this is the client half of the same lever).
   const sendChatFollowup = useCallback(
-    (prompt: string, skill?: string) => {
+    (prompt: string, skill?: string, opts?: { cards?: string[] }) => {
       const t = prompt.trim();
       if (!t) return;
       // The answer appends at the BOTTOM, but the chip that started it can be thousands of pixels
@@ -1603,7 +1640,12 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       scrollThreadToBottom();
       setLastUserTurn(t);
       chat.reset();
-      void chat.start(t, platform, skill);
+      void chat.start(
+        t,
+        platform,
+        skill,
+        ONE_BRAIN_ENABLED && opts?.cards?.length ? { cards: opts.cards } : undefined,
+      );
     },
     [chat, platform, scrollThreadToBottom],
   );
@@ -2372,9 +2414,13 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // P2 (A2b): <xl thread mode, the room is a 68px HEADER above the thread (variant='header'),
   // not the bottom-dock peek — it survives the keyboard (top-anchored). ≥xl the rail (A2a) owns it,
   // so `!isXl` keeps them exclusive. Empty/permalink keep the dock peek (no thread to head).
-  // v8: no plate, no top strip — "nothing above the field, ever" (spec §3). The sub-bar
-  // hangs BELOW the foot instead, and the room opens as the verdict report.
-  const useHeader = homeThreadMode && !isXl && !CONCEPT_V8_ENABLED;
+  //
+  // v8 (owner ruling 2026-08-11): the plate is BACK on both flags. v8 briefly took the room
+  // away from here — first "nothing above the field" (sub-bar below the foot), then the
+  // in-composer ComposerRoom card. The owner reviewed both live and ruled the shipped shape
+  // back: the sim room is the RAIL beside the thread ≥xl, and the dock fused to the composer
+  // <xl — "same ui design as it was before" for both. So the flag no longer gates this.
+  const useHeader = homeThreadMode && !isXl;
 
   // ── Ambient presence focus (Plan 13-04 — AMBIENT-01, D-01/D-02/D-03/D-04) ──
   // The room's card ledger + the batch's kind label for the anchored-focus stepper
@@ -2432,67 +2478,29 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       const d = resolveFocusDescriptor(ambientDescriptors, conceptText, cardId);
       if (!d) return false;
 
+      // A card's door opens THE ROOM, drilled to that card — the same act on both flags again
+      // (owner ruling 2026-08-11). v8 briefly routed this into `VerdictReport` instead; that
+      // surface is deleted, and the room renders the seal itself, so all this owes it is the
+      // focus and — under v8 — the run.
+      //
+      // FIRE-ON-DEMAND (v8): a card nobody has measured yet spends ONE deliberate run and the
+      // verdict lands in the room under the sealed-verdict law. useFireSim drops re-taps while
+      // a run is in flight, which is the debounce that protects credits. A card already
+      // simulated this session, or carrying a revealed seal from a previous one, spends nothing.
       if (CONCEPT_V8_ENABLED) {
-        // v8 (Phase 3): a card's door opens THE REPORT. A card simulated this session opens on
-        // its snapshot; a persisted seal re-opens it after a reload; an unsimulated card is the
-        // FIRE-ON-DEMAND path — one deliberate act, one billed run (useFireSim drops re-taps
-        // while a run is in flight, which is the debounce that protects credits).
-        const snap = simSnapshots[d.id];
         const seal = persistedSimSeals?.[d.conceptText.trim()];
-        const sealed = seal && !isSealedSimSeal(seal) ? seal : null;
-        if (snap) {
-          setReportSubject({
-            id: d.id,
-            title: d.conceptText,
-            personas: snap.personas,
-            population: snap.population,
-            stopPct: snap.stopPct,
-          });
-        } else if (sealed) {
-          setReportSubject({
-            id: d.id,
-            title: d.conceptText,
-            personas: sealed.personas ?? [],
-            population: sealed.population ?? null,
-            stopPct: sealed.pct,
-          });
-        } else {
-          // Nothing measured yet: the report opens on the sealed watcher and the verdict lands
-          // when the run returns (the sealed-verdict law).
-          setReportSubject(null);
-          pendingSimIdRef.current = d.id;
-          void fireCardSim(d.id, d.conceptText, d.kind);
-        }
-        setRoomExpanded(true);
-        return true;
+        const measured = simSnapshots[d.id] != null || (seal != null && !isSealedSimSeal(seal));
+        if (!measured) void fireCardSim(d.id, d.conceptText, d.kind);
       }
 
       setRoomDrill(true);
       focusByTap(d.id);
-      // Visual expand only (dock/header) — drilling into a card's read never arms the ask verb.
+      // Visual expand only (rail/dock) — drilling into a card's read never arms the ask verb.
       setRoomExpanded(true);
       return true;
     },
     [ambientDescriptors, focusByTap, simSnapshots, persistedSimSeals, fireCardSim],
   );
-
-  // A fired run seals into `simSnapshots`; promote it into the OPEN report. Keyed on the pending
-  // id so the reveal happens exactly once per run (the sealed-verdict beat).
-  useEffect(() => {
-    const id = pendingSimIdRef.current;
-    if (!id) return;
-    const snap = simSnapshots[id];
-    if (!snap) return;
-    pendingSimIdRef.current = null;
-    const d = ambientDescriptors.find((x) => x.id === id);
-    setReportSubject({
-      id,
-      title: d?.conceptText ?? "",
-      personas: snap.personas,
-      population: snap.population,
-      stopPct: snap.stopPct,
-    });
-  }, [simSnapshots, ambientDescriptors]);
 
   // ── The tested-video door (Test card → the room's audience read) ────────────
   // A video Test's RECEPTION was already measured — the analyze run repainted the fold with this
@@ -2952,6 +2960,10 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           // The input hook a script run was built from — the intro cites it honestly ("Writing a
           // script from …"), and only the script chain sets it.
           hookLine: activeRun.skill === "script" ? scriptAnchorHook : null,
+          // Stage B (B3): the pre-router's guess, which only ever labels the THINKING row — so it
+          // is read only while the chat run still owns the tail with no skill named. Once the
+          // `dispatch` frame lands, `activeRun.skill` is that skill and this is null again.
+          preGuess: activeRun.skill === "chat" ? chat.preGuess : null,
           onRetry: retryActiveRun,
           onFindOutliers: activeRun.outliersAvailable ? findOutliersActiveRun : undefined,
         },
@@ -3214,6 +3226,10 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
                 filter={slashQuery}
                 onSelect={selectSkill}
                 activeMode={selectedAudience?.mode ?? "socials"}
+                // `/` is a SKILL picker, and chat is not a skill — it is DEFAULT_TOOL, the
+                // lane you are already in (owner 2026-08-11). The skills panel shows it as
+                // AUTO; here it would just be a row that un-picks. Legacy passes nothing.
+                hideIds={V8_SLASH_HIDDEN}
               />
             </UpwardPopover>
           )}
@@ -3426,6 +3442,23 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
                   onRunExplore={(params) => void explore.start(params)}
                   className="shrink-0"
                 />
+
+                {/* The audience + lens door (owner ruling 2026-08-11). The v8 top bar used to
+                    carry these; the rail took identity back, so what's left is the setting —
+                    and a chip in the foot beats a full-width strip for two short words. */}
+                {CONCEPT_V8_ENABLED && (
+                  <AudienceLensChip
+                    audience={effectiveAudience}
+                    lensLabel={LENS_LABEL[platform]}
+                    watching={audienceReacting || simWatching}
+                    // Print the name only when no room surface is already showing it: the
+                    // dock bar sits directly above this chip <xl, and the rail heads its own
+                    // column ≥xl. That leaves the desktop arrival — no bar, no rail — as the
+                    // one place the foot has to say who this is for.
+                    showName={!useHeader && !useRail}
+                    onClick={() => setAudienceSheetOpen(true)}
+                  />
+                )}
               </div>
 
               <div className="flex min-w-0 items-center gap-1.5 sm:gap-2.5">
@@ -3545,16 +3578,16 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           ≥xl thread → PORTALED to HomePageLayout's right rail (A2a);
           <xl thread → the HEADER above the thread (A2b, rendered in the thread branch — not here);
           empty / permalink → bloom panel only while roomExpanded (no chip affordance on home). */}
-      {/* v8: AmbientOverviewRail RETIRES, and nothing replaces it in the column (the 2026-08-09
-          rail ruling — no rail; the report is an event that opens from a card's meter). Flag
-          off ⇒ this portal is untouched. */}
-      {CONCEPT_V8_ENABLED
-        ? null
-        : useRail && railHost
-          ? createPortal(AMBIENT_V2_ENABLED ? audienceRailV2 : audienceRail, railHost)
-          : useHeader || !roomExpanded
-            ? null
-            : audiencePresence}
+      {/* The RAIL is back on both flags (owner ruling 2026-08-11). v8 retired it twice — first
+          for the "report as an event" ruling (2026-08-09), then for the in-composer room card
+          (2026-08-10) — and the owner rejected both on live review: "change back that the
+          audience sim is in a rail next to the thread". This is the pre-v8 chain, restored
+          verbatim; the flag no longer appears in it. */}
+      {useRail && railHost
+        ? createPortal(AMBIENT_V2_ENABLED ? audienceRailV2 : audienceRail, railHost)
+        : useHeader || !roomExpanded
+          ? null
+          : audiencePresence}
       <div className="relative w-full">
         {/* Opaque page-bg backdrop — thread mode ONLY, where the dock floats over the scroll.
             The card is opaque, but its rounded corners and the 16px strip below it are not, so
@@ -3595,47 +3628,31 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           {useHeader ? (
             <div data-testid="audience-header-slot">{audienceHeader}</div>
           ) : null}
+          {/* THE BOX — ONE derivation on both flags (owner ruling 2026-08-11: "turn back the
+              old color for the composer background"). v8 had re-derived this as a chrome-tone
+              slab (#1a1a19 `surface-sunken`, 10% border, inverted shadow) — DARKER than the
+              page. The owner rejected it on live review; the box returns to the shipped fill,
+              `surface-elevated` #2c2c2b, which is also what the restored plate requires: the
+              stack reads page #1f1f1e → plate #1a1a19 → field #2c2c2b, radii nesting 24 = 20 + 4.
+              The v8 branch is gone rather than reverted — with the plate back there is nothing
+              left for it to say that this doesn't. */}
           <div
             className={cn(
-              CONCEPT_V8_ENABLED
-                ? [
-                    // v8 — THE BOX, re-derived from scratch (2026-08-09 brief §4): ONE radius,
-                    // ONE border, ONE fill, ONE shadow, in every state. The fill is the CHROME
-                    // tone (#1a1a19, `surface-sunken`) — DARKER than the page, so the composer
-                    // reads as a quiet inset object rather than a pale slab; the 10% border does
-                    // the lifting (mock §composer: chrome fill · bdh edge · r24 · one soft
-                    // upward shadow that seams it against the scrolling thread).
-                    "relative w-full overflow-hidden rounded-[24px] border border-white/[0.10]",
-                    "bg-surface-sunken shadow-[0_-8px_24px_rgba(0,0,0,0.18)]",
-                  ]
-                : [
-                    "relative w-full border border-white/[0.06] bg-surface-elevated",
-                    useHeader ? "rounded-[20px]" : "rounded-[24px]",
-                    // The dock panel blooms flush with the composer top → flatten the box's top
-                    // edge so the two read as one surface. Driven by the VISUAL expand, never the
-                    // ask verb.
-                    !roomExpanded && "overflow-hidden",
-                    roomExpanded && "rounded-t-none border-t-0",
-                    // Was --shadow-float (0 10px 30px rgba(0,0,0,.35)) — a 30px blur that pooled
-                    // visibly on the surface behind the dock. Halved the blur and the alpha so the
-                    // composer still reads as floating without casting a smudge under it.
-                    layout === "centered" && "shadow-[0_6px_16px_rgba(0,0,0,0.18)]",
-                    !reducedMotion && "transition-shadow duration-200",
-                  ],
+              "relative w-full border border-white/[0.06] bg-surface-elevated",
+              useHeader ? "rounded-[20px]" : "rounded-[24px]",
+              // The dock panel blooms flush with the composer top → flatten the box's top
+              // edge so the two read as one surface. Driven by the VISUAL expand, never the
+              // ask verb.
+              !roomExpanded && "overflow-hidden",
+              roomExpanded && "rounded-t-none border-t-0",
+              // Was --shadow-float (0 10px 30px rgba(0,0,0,.35)) — a 30px blur that pooled
+              // visibly on the surface behind the dock. Halved the blur and the alpha so the
+              // composer still reads as floating without casting a smudge under it.
+              layout === "centered" && "shadow-[0_6px_16px_rgba(0,0,0,0.18)]",
+              !reducedMotion && "transition-shadow duration-200",
             )}
           >
             {composerForm}
-            {/* v8: the attached SUB-BAR — one hairline strip under the foot (owner
-                decision 13). CONTEXT ONLY (2026-08-09 rail ruling): who you're creating
-                for → the audience sheet. The sim's door is the card's meter, not a strip. */}
-            {CONCEPT_V8_ENABLED && (
-              <ComposerSubBar
-                audience={effectiveAudience}
-                watching={audienceReacting || simWatching}
-                lensLabel={LENS_LABEL[platform]}
-                onOpenAudience={() => setAudienceSheetOpen(true)}
-              />
-            )}
             {buildChooser}
           </div>
         </div>
@@ -3669,26 +3686,17 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
         />
       )}
 
-      {/* v8: THE REPORT (sheet <xl, overlay panel ≥xl — an EVENT, never furniture: the pin
-          died with the 2026-08-09 rail ruling) + the audience sheet. The report opens from a
-          card's meter/door; the sheet opens from the sub-bar's context half. */}
+      {/* v8: the audience sheet — who you're creating for + the platform lens. Opened from
+          the composer foot's audience chip.
+
+          THE REPORT IS GONE (owner ruling 2026-08-11). `VerdictReport` was the three-tab
+          surface the owner rejected on sight — "the report page is exactly what we didn't
+          want. we already had the exact simulation room in the rail before" — and with the
+          rail restored it had no job left: it read `roomExpanded`, which is now the ROOM's
+          own open flag, so leaving it mounted opened both surfaces on one tap. The room is
+          the sim's one home again, on every viewport. */}
       {CONCEPT_V8_ENABLED && (
         <>
-          <VerdictReport
-            open={roomExpanded}
-            onClose={() => handleRoomExpandedChange(false)}
-            subject={reportSubject}
-            audience={effectiveAudience}
-            variant={isXl ? "panel" : "sheet"}
-            watching={simWatching}
-            reducedMotion={reducedMotion}
-            onSteer={(steer) => {
-              // The fix feeds the thread as a STEER: it lands in the field, it does not send.
-              // Fire-on-demand means the creator still presses the button.
-              setUrl(steer);
-              handleRoomExpandedChange(false);
-            }}
-          />
           <AudienceSheetV8
             open={audienceSheetOpen}
             onClose={() => setAudienceSheetOpen(false)}
@@ -3705,6 +3713,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
             onLensChange={setPlatformLens}
             note={lensNote}
             onNewAudience={() => router.push("/audience/new")}
+            placeAboveRef={slashAnchorRef}
           />
         </>
       )}
@@ -3845,17 +3854,35 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
               // scroll region, so with `justify-end` the grid's last row sat directly under it
               // and "Test something of your own" rendered half-hidden behind the composer at
               // 1512×982 — the last starter card, sliced, on the first screen a new account sees.
-              <div className="flex min-h-full flex-col justify-end pt-6 pb-40">
+              //
+              // ⚠️ v8 takes pb-8, not pb-40 (owner ruling 2026-08-11 r4: "too much empty space
+              // between the 6 videos and the composer"). MEASURED at 1440×900: this box is
+              // `min-h-full` inside a scroll region that ALREADY reserves `pb-[184px]` for the
+              // dock, so its own bottom edge clears the dock by ~60px with no padding at all —
+              // pb-40's 160px was reserving the same space twice and read as a hole. The
+              // flag-off AmbientStartHome branch KEEPS pb-40: it is a taller grid whose last row
+              // is the sliced-card bug above, and this ruling was not about that surface.
+              // v8 headroom (owner ruling 2026-08-11 r5: "good morning headline is way too close to
+              // the top"). pt-6 was the flag-off grid's clearance, and a grid does not need what a
+              // centered serif hero does. 40 → 64 at sm: on a phone the region already carries
+              // MOBILE_NAV_BAND above this for the burger, so the full 64 would double-space it.
+              // It also pays for itself at the bottom — this box is content-sized (see the pb note),
+              // so every px of top pad pushes the whole block down INTO the slack that §5d left.
+              <div
+                className={cn(
+                  "flex min-h-full flex-col justify-end",
+                  CONCEPT_V8_ENABLED ? "pt-10 pb-2 sm:pt-16" : "pt-6 pb-40",
+                )}
+              >
                 {CONCEPT_V8_ENABLED ? (
                   // v8 arrival (Phase 2): greeting + the shelf — spec §0b restraint:
                   // greeting · drops · composer, nothing else.
                   <>
-                    <ArrivalV8 shelfReady={dropCards.length > 0} />
+                    <ArrivalV8 />
                     <DropShelf
                       cards={dropCards}
                       status={dropsStatus}
                       onRemix={(c) => void handleRemixDrop(c)}
-                      onOpenReport={openReportForDrop}
                       remixingId={remixingDropId}
                     />
                   </>
@@ -3897,16 +3924,19 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
             {AMBIENT_V2_ENABLED && startEngaged && !hasConversationContent ? (
               <div className="pointer-events-auto mb-3">{homeStarter}</div>
             ) : null}
-            {composerDock}
-            {/* v8: example chips + More ▸ — under the composer, fresh home only. */}
-            {CONCEPT_V8_ENABLED && !hasConversationContent ? (
-              <div className="pointer-events-auto">
+            {/* v8: example chips + More ▸ — ABOVE the composer (owner call 2026-08-10:
+                below the field they read as results of a chat that hasn't happened).
+                Hidden while the room is open: this dock is bottom-anchored, so anything
+                blooming off the composer's top edge would shove the chips over the shelf. */}
+            {CONCEPT_V8_ENABLED && !hasConversationContent && !roomExpanded ? (
+              <div className="pointer-events-auto mb-2.5">
                 <ChipsRow
                   onArm={handleUserSelectTool}
                   onMore={() => setSkillsPanelOpen(true)}
                 />
               </div>
             ) : null}
+            {composerDock}
             {/* BENEATH the field, deliberately. Above it would be a prose lede over the grid,
                 which STARTER CONTRACT rule 2 forbids outright — and the dock is bottom-anchored,
                 so content added here grows downward from the composer rather than displacing it.
@@ -3940,12 +3970,11 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
         {CONCEPT_V8_ENABLED ? (
           // v8 arrival (see the branch-A mount): greeting + the shelf (Phase 2).
           <>
-            <ArrivalV8 shelfReady={dropCards.length > 0} />
+            <ArrivalV8 />
             <DropShelf
               cards={dropCards}
               status={dropsStatus}
               onRemix={(c) => void handleRemixDrop(c)}
-              onOpenReport={openReportForDrop}
               remixingId={remixingDropId}
             />
           </>
@@ -3971,10 +4000,12 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
             }}
           />
         )}
-        {composerDock}
         {CONCEPT_V8_ENABLED && !hasConversationContent ? (
-          <ChipsRow onArm={handleUserSelectTool} onMore={() => setSkillsPanelOpen(true)} />
+          <div className="mb-2.5">
+            <ChipsRow onArm={handleUserSelectTool} onMore={() => setSkillsPanelOpen(true)} />
+          </div>
         ) : null}
+        {composerDock}
         {homeAudienceIntro}
         </>
       ) : (
@@ -3982,10 +4013,12 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
         // the same composer + starter + demo as the legacy home, with the chosen skill armed. No
         // bespoke bare-field state, no back-to-grid chrome; picking a skill just enters the chat.
         <>
-          {composerDock}
           {CONCEPT_V8_ENABLED && !hasConversationContent ? (
-            <ChipsRow onArm={handleUserSelectTool} onMore={() => setSkillsPanelOpen(true)} />
+            <div className="mb-2.5">
+              <ChipsRow onArm={handleUserSelectTool} onMore={() => setSkillsPanelOpen(true)} />
+            </div>
           ) : null}
+          {composerDock}
           {homeStarter}
           {homeFirstRunDemo}
           {homeAudienceIntro}

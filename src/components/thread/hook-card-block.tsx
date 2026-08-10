@@ -27,6 +27,7 @@ import { cardScrollQuoteReactions } from '@/components/audience-lens/flat-card-r
 import { buildCardRewrite } from '@/components/audience-lens/card-rewrite';
 import { SimDoor } from './sim-door';
 import { ProofReceipt, NoSourceNote } from './proof-receipt';
+import { plausibleSeedHook } from '@/lib/tools/runners/output-guards';
 import { SaveAffordance } from '@/components/thread/save-affordance';
 import { CardPrimaryAction, CardActionBar, CardHero, CopyAffordance, SECTION_LABEL } from './card-primitives';
 import { CaretToggle } from './caret-toggle';
@@ -74,7 +75,10 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
   const [expanded, setExpanded] = useState(false);
 
   // What the expand drawer actually holds — the toggle names it, and vanishes when it is empty.
-  const hasSeed = seedHook !== hookLine;
+  // N-2 (Stage A): the runner now rejects junk seeds, but persisted pre-fix rows still
+  // carry the literal sourceIndex digits ("0", "1", "3") in this field — suppress any
+  // seed that is not plausibly a spoken line rather than render it under a SEED LINE label.
+  const hasSeed = seedHook !== hookLine && plausibleSeedHook(seedHook);
   const hasDelivery = Boolean(channel);
 
   return (

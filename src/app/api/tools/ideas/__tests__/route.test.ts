@@ -190,10 +190,14 @@ describe("POST /api/tools/ideas (route)", () => {
     expect(rawOutput).toContain("event: content");
     expect(rawOutput).toContain("event: score");
 
+    // Stage A (N-8): the USER-ACTION row persists first — a pill run is a real turn now,
+    // so a reload can never fold it into the previous turn.
+    expect(insertMessage).toHaveBeenCalledTimes(2);
+    const [, userRole] = (insertMessage as ReturnType<typeof vi.fn>).mock.calls[0]!;
+    expect(userRole).toBe("user");
     // KC_GEN_VERSION stamp persisted via insertMessage: blocks array is the 3rd arg
     // (canonical body), kcGenVersion the 4th arg (insertMessage stores the wrapper).
-    expect(insertMessage).toHaveBeenCalledTimes(1);
-    const [threadId, role, blocks, kcGenVersion] = (insertMessage as ReturnType<typeof vi.fn>).mock.calls[0]!;
+    const [threadId, role, blocks, kcGenVersion] = (insertMessage as ReturnType<typeof vi.fn>).mock.calls[1]!;
     expect(threadId).toBe("thread-abc");
     expect(role).toBe("assistant");
     expect(Array.isArray(blocks)).toBe(true);
@@ -346,8 +350,11 @@ describe("POST /api/tools/ideas/develop (chain-anchor route)", () => {
     expect(json.threadId).toBe("thread-hooks");
     expect(json.messageId).toBe("msg-hooks");
 
-    expect(insertMessage).toHaveBeenCalledTimes(1);
-    const [threadId, role, blocks] = (insertMessage as ReturnType<typeof vi.fn>).mock.calls[0]!;
+    // Stage A (N-8): user-action row first, then the assistant hook-cards.
+    expect(insertMessage).toHaveBeenCalledTimes(2);
+    const [, userRole] = (insertMessage as ReturnType<typeof vi.fn>).mock.calls[0]!;
+    expect(userRole).toBe("user");
+    const [threadId, role, blocks] = (insertMessage as ReturnType<typeof vi.fn>).mock.calls[1]!;
     expect(threadId).toBe("thread-hooks");
     expect(role).toBe("assistant");
     expect(Array.isArray(blocks)).toBe(true);

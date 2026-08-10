@@ -199,3 +199,86 @@ describe("runScriptPipeline (new call system — generate-and-project)", () => {
     }
   });
 });
+
+// ─── Anchor contract (Stage A, N-7) ─────────────────────────────────────────────
+
+describe("runScriptPipeline anchor contract", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const ANCHOR = "Stop trying to wake up at 5 AM. It is destroying your dopamine receptors.";
+  /** The N-7 failure shape: a script about a completely different topic. */
+  const offTopic = makeStructuredScriptResponse(8, {
+    beats: [
+      { label: "Hook", content: "You think this dance took me hours? Wrong.", timing: "0–3s", retentionMarker: "Subversion." },
+      { label: "Payoff", content: "The challenge went viral.", timing: "3–15s", retentionMarker: "Delivers." },
+    ],
+    openingBeatSeed: "You think this dance took me hours? Wrong.",
+  });
+  const onTopic = makeStructuredScriptResponse(8, {
+    beats: [
+      { label: "Hook", content: "Your 5 AM alarm is destroying your dopamine receptors.", timing: "0–3s", retentionMarker: "Stake." },
+      { label: "Payoff", content: "Here is what to do instead.", timing: "3–15s", retentionMarker: "Delivers." },
+    ],
+    openingBeatSeed: "Your 5 AM alarm is destroying your dopamine receptors.",
+  });
+
+  it("an anchored run whose opening ignores the anchor is retried ONCE with the rejection in the prompt", async () => {
+    const { getQwenClient } = await import("@/lib/engine/qwen/client");
+    const create = vi
+      .fn()
+      .mockResolvedValueOnce({ choices: [{ message: { content: JSON.stringify(offTopic) } }] })
+      .mockResolvedValueOnce({ choices: [{ message: { content: JSON.stringify(onTopic) } }] });
+    (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue({ chat: { completions: { create } } });
+
+    const { runScriptPipeline } = await import("@/lib/tools/runners/script-runner");
+    const result = await runScriptPipeline({ ask: "", platform: "tiktok", profileRow: null, anchor: ANCHOR });
+
+    expect(create).toHaveBeenCalledTimes(2);
+    // The retry prompt names the rejection (a temp-0/seeded call MUST change the prompt to change the output).
+    const retryUser = create.mock.calls[1]![0].messages.find((m: { role: string }) => m.role === "user");
+    expect(retryUser.content).toContain("REJECTED");
+    // The honored retry ships, with no warning.
+    const card = result.blocks[0] as ScriptCardBlock;
+    expect(card.props.openingBeatSeed).toContain("dopamine");
+    expect(result.warnings).toHaveLength(0);
+  });
+
+  it("a retry that STILL ignores the anchor keeps the original and surfaces a visible warning", async () => {
+    const { getQwenClient } = await import("@/lib/engine/qwen/client");
+    const create = vi.fn().mockResolvedValue({ choices: [{ message: { content: JSON.stringify(offTopic) } }] });
+    (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue({ chat: { completions: { create } } });
+
+    const { runScriptPipeline } = await import("@/lib/tools/runners/script-runner");
+    const result = await runScriptPipeline({ ask: "", platform: "tiktok", profileRow: null, anchor: ANCHOR });
+
+    expect(create).toHaveBeenCalledTimes(2);
+    expect(result.blocks).toHaveLength(1);
+    expect(result.warnings.some((w) => w.includes("anchored"))).toBe(true);
+  });
+
+  it("an anchored run that honors the anchor makes ONE call — no retry, no warning", async () => {
+    const { getQwenClient } = await import("@/lib/engine/qwen/client");
+    const { create, client } = mockQwen(onTopic);
+    (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue(client);
+
+    const { runScriptPipeline } = await import("@/lib/tools/runners/script-runner");
+    const result = await runScriptPipeline({ ask: "", platform: "tiktok", profileRow: null, anchor: ANCHOR });
+
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(result.warnings).toHaveLength(0);
+  });
+
+  it("an unanchored run never triggers the anchor guard (byte-identical single call)", async () => {
+    const { getQwenClient } = await import("@/lib/engine/qwen/client");
+    const { create, client } = mockQwen(offTopic);
+    (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue(client);
+
+    const { runScriptPipeline } = await import("@/lib/tools/runners/script-runner");
+    const result = await runScriptPipeline({ ask: "any ask", platform: "tiktok", profileRow: null });
+
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(result.warnings).toHaveLength(0);
+  });
+});

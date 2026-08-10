@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { HomeGreeting } from "./home-greeting";
 import { AMBIENT_V2_ENABLED } from "@/lib/flags/ambient-v2";
+import { CONCEPT_V8_ENABLED } from "@/lib/flags/concept-v8";
 import { Composer } from "./composer";
 
 export function HomePageLayout() {
@@ -57,10 +58,27 @@ export function HomePageLayout() {
   // True on the fresh empty home (no thread, nothing streamed). Drives the
   // greeting + the vertical-centering of the greeting→actions→composer group.
   const emptyHome = !hasConversation && !rehydrating;
-  // The right column exists only in thread mode (the flag-off rail portal). The v8 report is an
-  // EVENT — sheet or overlay, never docked — so nothing else ever mounts this column
+  /**
+   * The rail also mounts on the DESKTOP ARRIVAL now (owner ruling 2026-08-11 r3).
+   *
+   * WHY: the arrival was a greeting, a shelf and a composer — the shape of every chat app. The one
+   * fact that makes this product a different thing, that a thousand calibrated people read what you
+   * write, was invisible until after the first send; the only thing carrying it was a ~200px chip in
+   * the composer foot. The rail states it before you type.
+   *
+   * It does NOT fire anything to do so — navigation never runs a sim (fire-on-demand, LOCKED). The
+   * board simply renders its RESTING state, which names the room's slices off calibration. See
+   * `OverviewData.segments`.
+   *
+   * ≥xl ONLY, and every class below is `xl:`-gated to match: the <aside> already `hidden`s under xl,
+   * so the phone arrival must keep its centered column exactly as it is (the owner ruled mobile out
+   * of this round). Flag-gated as well — flag-off stays byte-identical.
+   */
+  const arrivalRail = CONCEPT_V8_ENABLED && emptyHome && !threadMode;
+  // The right column, otherwise, exists only in thread mode (the flag-off rail portal). The v8
+  // report is an EVENT — sheet or overlay, never docked — so nothing else ever mounts this column
   // (2026-08-09 rail ruling: the pinned report was a rejected third shape).
-  const railMounted = threadMode;
+  const railMounted = threadMode || arrivalRail;
 
   return (
     // P2 (A2a): the audience is a property of the THREAD, so ≥xl in thread mode it gets its own
@@ -83,7 +101,17 @@ export function HomePageLayout() {
         // mx-auto), so the rail is pushed flush to the page's right edge (owner call — the rail
         // connects to the right side completely). Not justify-center, which left a symmetric gap.
         threadMode ? "h-full flex-row" : "min-h-full flex-col items-center",
+        // Arrival rail (≥xl): become the same row the thread uses, and take a DEFINITE height so
+        // the full-height <aside> has something to fill. Under xl none of this applies and the
+        // arrival keeps `min-h-full flex-col items-center` untouched — a hard height there once
+        // pushed a hero taller than the viewport out the TOP, unreachably (see above).
+        arrivalRail && "xl:h-full xl:min-h-0 xl:flex-row xl:items-stretch",
         emptyHome && !railMounted && "justify-center",
+        // Same centering as the line above, but it has to survive `railMounted` now. Vertical while
+        // the arrival is still a column; at xl the axis flips, where `justify-center` would centre
+        // the pair HORIZONTALLY and pull the rail off the page's right edge. The work column takes
+        // over the vertical centering there.
+        arrivalRail && "justify-center xl:justify-start",
       )}
     >
       {emptyHome && !AMBIENT_V2_ENABLED && (
@@ -112,7 +140,14 @@ export function HomePageLayout() {
           // NO horizontal padding in either mode: the Composer's own columns own the page gutter, and
           // a gutter here too DOUBLED it — on the empty Start that was 32px of dead edge per side on a
           // 390px phone (found measuring the owner's tighten-the-margins ask, 2026-07-24).
-          railMounted ? "min-w-0 flex-1 min-h-0" : "max-w-[760px]",
+          // The arrival keeps its centered 760 column under xl; at xl it flexes beside the rail and
+          // owns the vertical centering the parent gave up. The Composer caps its own content at
+          // 760 with `mx-auto` in this branch too, so it re-centres inside whatever it's given.
+          arrivalRail
+            ? "max-w-[760px] xl:max-w-none xl:min-w-0 xl:min-h-0 xl:flex-1 xl:justify-center"
+            : railMounted
+              ? "min-w-0 flex-1 min-h-0"
+              : "max-w-[760px]",
         )}
       >
         <Composer

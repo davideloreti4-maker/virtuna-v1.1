@@ -11,6 +11,7 @@ import {
   followupsForTurn,
   followupsForKind,
   blockTypesOf,
+  cardLinesOf,
   type ChatTurnKind,
 } from "../chat-followups";
 import { SKILL_TOOLS } from "../skill-dispatch";
@@ -181,6 +182,111 @@ describe("ChatFollowup.skill — the declared generator", () => {
       expect(byLabel.has(label)).toBe(true); // the label still exists (catches a silent rename)
       expect(byLabel.get(label)).toBeUndefined();
     }
+  });
+});
+
+// ── cardLinesOf (Stage B, B2) — what a chip is allowed to say "these" about ────────────────────
+//
+// The pack a `carryCards` chip sends is whatever this returns, so it has exactly one job: name the
+// cards the creator is looking at, in the order they are looking at them. Anything it invents ends
+// up fenced in a prompt as a card "already on their screen" — a lie the model cannot check.
+describe("cardLinesOf — the pack a chip carries", () => {
+  it("takes the hook LINE off each hook card, in order", () => {
+    expect(
+      cardLinesOf([
+        { type: "hook-card", props: { hookLine: "I quit caffeine for 30 days", rank: 1 } },
+        { type: "hook-card", props: { hookLine: "Your 5 AM alarm is the problem", rank: 2 } },
+      ]),
+    ).toEqual(["I quit caffeine for 30 days", "Your 5 AM alarm is the problem"]);
+  });
+
+  it("joins an idea's title and angle — the title alone is not the idea", () => {
+    expect(
+      cardLinesOf([{ type: "idea-card", props: { title: "Night-shift meal prep", angle: "for nurses" } }]),
+    ).toEqual(["Night-shift meal prep — for nurses"]);
+  });
+
+  it("keeps an idea with no angle rather than dropping the card", () => {
+    expect(cardLinesOf([{ type: "idea-card", props: { title: "Night-shift meal prep" } }])).toEqual([
+      "Night-shift meal prep",
+    ]);
+  });
+
+  it("flattens a script card into its LABELLED beats — that is what 'punchier' rewrites", () => {
+    expect(
+      cardLinesOf([
+        {
+          type: "script-card",
+          props: {
+            beats: [
+              { label: "Hook", content: "Stop scrolling." },
+              { label: "Turn", content: "Here is what nobody says." },
+            ],
+          },
+        },
+      ]),
+    ).toEqual(["Hook: Stop scrolling.", "Turn: Here is what nobody says."]);
+  });
+
+  it("ignores blocks that are not content cards", () => {
+    // A turn carries its run-header and its closing prose too. Fencing either as a "card to
+    // improve" would hand the run its own receipt to rewrite.
+    expect(
+      cardLinesOf([
+        { type: "run-header", props: { skill: "hooks" } },
+        { type: "hook-card", props: { hookLine: "The real line" } },
+        { type: "markdown", props: { text: "Five hooks are on screen." } },
+      ]),
+    ).toEqual(["The real line"]);
+  });
+
+  it("is defensive against loose blocks — the same contract as blockTypesOf", () => {
+    expect(
+      cardLinesOf([
+        null,
+        42,
+        { props: {} }, // no type
+        { type: "hook-card" }, // no props
+        { type: "hook-card", props: { hookLine: "" } }, // empty line
+        { type: "hook-card", props: { hookLine: 7 } }, // non-string
+        { type: "script-card", props: { beats: "not an array" } },
+        { type: "hook-card", props: { hookLine: "survivor" } },
+      ]),
+    ).toEqual(["survivor"]);
+  });
+
+  it("caps at 6 lines — the assembler's fence budget", () => {
+    const many = [...Array(9)].map((_, i) => ({ type: "hook-card", props: { hookLine: `hook ${i}` } }));
+    expect(cardLinesOf(many)).toHaveLength(6);
+  });
+
+  it("returns nothing for a turn with no cards", () => {
+    expect(cardLinesOf([{ type: "markdown", props: { text: "Post three times a week." } }])).toEqual([]);
+  });
+});
+
+// ── carryCards: which chips point at the cards above them ─────────────────────────────────────
+describe("carryCards — only the chips whose sentence means 'these'", () => {
+  it("marks every rewrite chip and no 'make me new ones' chip", () => {
+    const rewrite = ["Sharper angles", "Punch them up", "Make it punchier", "Different angle"];
+    const fresh = ["More ideas", "More hooks", "Script the best one", "Hooks for this"];
+    const byLabel = new Map(
+      (["ideas", "hooks", "script"] as const)
+        .flatMap((kind) => followupsForKind(kind))
+        .map((c) => [c.label, c.carryCards ?? false]),
+    );
+
+    for (const label of rewrite) expect(byLabel.get(label)).toBe(true);
+    // A chip that wants NEW content must not carry the pack: the fence would order the run to
+    // rewrite the very cards the creator asked it to move past.
+    for (const label of fresh) expect(byLabel.get(label)).toBe(false);
+  });
+
+  it("never marks a conversational chip — there is no run to hand a pack to", () => {
+    const chips = followupsForTurn(["hook-card"]);
+    const judgement = chips.find((c) => c.label === "Which is strongest?")!;
+    expect(judgement.skill).toBeUndefined();
+    expect(judgement.carryCards).toBeUndefined();
   });
 });
 

@@ -3,15 +3,6 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { DropShelf } from "../drop-shelf";
 import type { LiveDropCard } from "@/lib/surfaces/live-cards";
-import type { ReactionPersona } from "@/lib/tools/blocks";
-
-function personas(stops: number, total = 10): ReactionPersona[] {
-  return Array.from({ length: total }, (_, i) => ({
-    archetype: `a${i}`,
-    verdict: i < stops ? ("stop" as const) : ("scroll" as const),
-    quote: "",
-  }));
-}
 
 function card(over: Partial<LiveDropCard> = {}): LiveDropCard {
   return {
@@ -24,33 +15,54 @@ function card(over: Partial<LiveDropCard> = {}): LiveDropCard {
     handle: "conor_harris_",
     archetype: "trap-mistake",
     hookTemplate: "madlib [x]",
+    multiplier: 17.2,
+    baselineLabel: "vs their usual views",
     concepts: [],
-    personas: personas(8),
     ...over,
   };
 }
 
 describe("DropShelf", () => {
   it("renders six skeletons while warming", () => {
-    render(<DropShelf cards={[]} status="warming" onRemix={() => {}} onOpenReport={() => {}} />);
+    render(<DropShelf cards={[]} status="warming" onRemix={() => {}} />);
     expect(screen.getAllByTestId("drop-skeleton")).toHaveLength(6);
   });
 
   it("renders nothing at all when ready and empty (honest empty — greeting-only arrival)", () => {
-    const { container } = render(<DropShelf cards={[]} status="ready" onRemix={() => {}} onOpenReport={() => {}} />);
+    const { container } = render(<DropShelf cards={[]} status="ready" onRemix={() => {}} />);
     expect(container.firstChild).toBeNull();
   });
 
-  it("renders hook, views, and the meter derived from real personas", () => {
-    render(<DropShelf cards={[card()]} status="ready" onRemix={() => {}} onOpenReport={() => {}} />);
+  it("renders hook, views, and the outlier receipt — never a sim score", () => {
+    render(<DropShelf cards={[card()]} status="ready" onRemix={() => {}} />);
     expect(screen.getByText("An adapted hook line")).toBeInTheDocument();
     expect(screen.getByText("8.1M")).toBeInTheDocument();
-    expect(screen.getByTestId("drop-meter-t1")).toHaveTextContent("8/10");
+    // The receipt (owner ruling 2026-08-10): "17× their usual views", ≥10 rounds.
+    expect(screen.getByTestId("drop-mult-t1")).toHaveTextContent("17×");
+    expect(screen.getByTestId("drop-mult-t1")).toHaveTextContent("their usual views");
+    // The old /10 pre-score is dead — drops arrive unscored.
+    expect(screen.queryByText(/\/10/)).toBeNull();
+  });
+
+  it("formats a sub-10 multiplier with one decimal", () => {
+    render(<DropShelf cards={[card({ multiplier: 3.4 })]} status="ready" onRemix={() => {}} />);
+    expect(screen.getByTestId("drop-mult-t1")).toHaveTextContent("3.4×");
+  });
+
+  it("omits the receipt on a pre-field cached card (never fabricates)", () => {
+    render(
+      <DropShelf
+        cards={[card({ multiplier: undefined, baselineLabel: undefined })]}
+        status="ready"
+        onRemix={() => {}}
+      />,
+    );
+    expect(screen.queryByTestId("drop-mult-t1")).toBeNull();
   });
 
   it("Remix fires onRemix with the card; the thumb links to the original", () => {
     const onRemix = vi.fn();
-    render(<DropShelf cards={[card()]} status="ready" onRemix={onRemix} onOpenReport={() => {}} />);
+    render(<DropShelf cards={[card()]} status="ready" onRemix={onRemix} />);
     fireEvent.click(screen.getByRole("button", { name: /remix/i }));
     expect(onRemix).toHaveBeenCalledTimes(1);
     expect(onRemix.mock.calls[0]![0].contentId).toBe("t1");
@@ -61,17 +73,14 @@ describe("DropShelf", () => {
   });
 
   it("renders a plain (non-link) thumb when the card has no videoUrl", () => {
-    render(<DropShelf cards={[card({ videoUrl: null })]} status="ready" onRemix={() => {}} onOpenReport={() => {}} />);
+    render(<DropShelf cards={[card({ videoUrl: null })]} status="ready" onRemix={() => {}} />);
     expect(screen.queryByRole("link", { name: /watch the original/i })).toBeNull();
   });
 
-  it("never renders accent, donor handle, or a multiplier", () => {
-    const { container } = render(
-      <DropShelf cards={[card()]} status="ready" onRemix={() => {}} onOpenReport={() => {}} />,
-    );
+  it("never renders accent or the donor handle", () => {
+    const { container } = render(<DropShelf cards={[card()]} status="ready" onRemix={() => {}} />);
     expect(container.innerHTML).not.toMatch(/accent|ff6363/i);
     expect(container.textContent).not.toContain("conor_harris_");
-    expect(container.textContent).not.toMatch(/\d+(\.\d+)?x\b/i);
   });
 
   it("disables the Remix button for the in-flight card only", () => {
@@ -79,31 +88,12 @@ describe("DropShelf", () => {
       <DropShelf
         cards={[card(), card({ contentId: "t2", hook: "Second hook" })]}
         status="ready"
-        onRemix={() => {}} onOpenReport={() => {}}
+        onRemix={() => {}}
         remixingId="t1"
       />,
     );
     const buttons = screen.getAllByRole("button", { name: /remix/i });
     expect(buttons[0]).toBeDisabled();
     expect(buttons[1]).not.toBeDisabled();
-  });
-
-  it("the meter is the report's door — it hands over the card's CACHED personas", () => {
-    const onOpenReport = vi.fn();
-    render(
-      <DropShelf cards={[card()]} status="ready" onRemix={() => {}} onOpenReport={onOpenReport} />,
-    );
-    fireEvent.click(screen.getByRole("button", { name: /8 of 10 stopped/i }));
-    expect(onOpenReport).toHaveBeenCalledTimes(1);
-    expect(onOpenReport.mock.calls[0]![0].personas).toHaveLength(10);
-  });
-
-  it("opening the report never fires a network call (drops read the cache, never re-sim)", () => {
-    const fetchMock = vi.fn();
-    vi.stubGlobal("fetch", fetchMock);
-    render(<DropShelf cards={[card()]} status="ready" onRemix={() => {}} onOpenReport={() => {}} />);
-    fireEvent.click(screen.getByRole("button", { name: /8 of 10 stopped/i }));
-    expect(fetchMock).not.toHaveBeenCalled();
-    vi.unstubAllGlobals();
   });
 });

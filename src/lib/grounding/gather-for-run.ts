@@ -42,6 +42,7 @@
 import { gatherAndExtract } from "@/lib/grounding/orchestrator";
 import { buildCorpusBlock, type GroundingSkill } from "@/lib/grounding/prompt";
 import { adaptCorpusBlock, type AdaptProfile } from "@/lib/grounding/adapt";
+import { fetchBeatTranscripts, getCorpusClient } from "@/lib/grounding/corpus";
 import { retrieveCachedExamples, resolveRetrieveConfig } from "@/lib/grounding/retrieve";
 import { assessWarrant, type Warrant, type WarrantAxis } from "@/lib/grounding/warrant";
 import type { RetrievedExample } from "@/lib/grounding/types";
@@ -142,6 +143,15 @@ export interface GatherCorpusResult {
   warrant: Warrant;
   /** Convenience mirror of `warrant !== "none"` — what the card's `grounded` flag is set from. */
   grounded: boolean;
+  /**
+   * Did the adapt BRIEF ship as `corpus` (true), or the raw per-skill slice (false — including
+   * every adapt fallback)? The runners' citation-honesty guard keys off this: the madlib-
+   * instantiation check (output-guards.ts templateInstantiated) verifies the slice contract —
+   * "instructed to instantiate what it was shown" — and demonstrably strips honest brief-path
+   * citations (measured 23/28 on the 07-15 A/B output), because under the brief the model never
+   * saw the madlib. The lexical guard therefore binds ONLY when `adapted` is false.
+   */
+  adapted: boolean;
 }
 
 /** Injectable pipeline fns (tests swap these; prod uses the real modules). */
@@ -149,6 +159,46 @@ export interface GatherCorpusDeps {
   retrieve?: typeof retrieveCachedExamples;
   gather?: typeof gatherAndExtract;
   adapt?: typeof adaptCorpusBlock;
+  /** C3: per-beat transcript read for the script briefer (id → per-section sentences). */
+  transcripts?: (ids: string[]) => Promise<Map<string, string[][]>>;
+}
+
+/**
+ * C3 deep anatomy (script adapt only): attach what each source actually SAID per timed beat to
+ * COPIES of the examples, positionally (the curated import built `template.beats` from these
+ * same sections 1:1). Only the BRIEFER's decode view renders the field — the raw slice and the
+ * writer never see source words (the measured verbatim-transplant drift). Degrade-safe: any
+ * fetch failure or shape mismatch returns the examples unchanged, and the brief ships without.
+ */
+async function enrichWithTranscripts(
+  examples: RetrievedExample[],
+  fetchTranscripts: GatherCorpusDeps["transcripts"],
+): Promise<RetrievedExample[]> {
+  const fetch =
+    fetchTranscripts ?? ((ids: string[]) => fetchBeatTranscripts(getCorpusClient(), ids));
+  try {
+    const map = await fetch(examples.map((ex) => ex.teardownId));
+    if (map.size === 0) return examples;
+    return examples.map((ex) => {
+      const sections = map.get(ex.teardownId);
+      const beats = ex.template?.beats;
+      if (!sections?.length || !beats?.length) return ex;
+      return {
+        ...ex,
+        template: {
+          ...ex.template!,
+          beats: beats.map((b, i) =>
+            sections[i] && sections[i]!.length > 0 ? { ...b, transcript: sections[i]! } : b,
+          ),
+        },
+      };
+    });
+  } catch (err) {
+    console.warn(
+      `[grounding] beat-transcript fetch failed (brief ships without): ${err instanceof Error ? err.message : String(err)}`,
+    );
+    return examples;
+  }
 }
 
 /**
@@ -224,6 +274,7 @@ export async function gatherCorpusForRun(
     scrapeAvailable: false,
     warrant: "none",
     grounded: false,
+    adapted: false,
   };
   if (!input.enabled || !READABLE_PLATFORMS.has(input.platform)) return none;
 
@@ -261,26 +312,39 @@ export async function gatherCorpusForRun(
   ): Promise<GatherCorpusResult> => {
     // Assessed on the rows the model is actually SHOWN (`used`), never on the wider input list —
     // a row we retrieved and then dropped cannot warrant anything the model could not read.
-    const settle = (corpus: string | undefined, used: RetrievedExample[]): GatherCorpusResult => {
+    const settle = (
+      corpus: string | undefined,
+      used: RetrievedExample[],
+      adapted: boolean,
+    ): GatherCorpusResult => {
       const { warrant, grounded } = assessWarrant(axis, used);
       // The loading rail gets the SAME rows the model got, described by the SAME warrant the cards
       // will be stamped with — so the wait can never advertise evidence the output then disclaims.
       if (grounded) emitEvidence(input.onEvidence, warrant, used);
-      return { corpus, examples: used, scrapeAvailable, warrant, grounded };
+      return { corpus, examples: used, scrapeAvailable, warrant, grounded, adapted };
     };
     if (input.adapt && ADAPT_SKILLS.has(input.skill) && input.adaptProfile && examples.length > 0) {
-      const { corpus, used } = await adapt({
+      // C3 deep anatomy (script only): the briefer's decode view additionally gets what each
+      // source SAID per timed beat. Enrichment copies — the original examples stay untouched.
+      const briefed =
+        input.skill === "script"
+          ? await enrichWithTranscripts(examples, deps.transcripts)
+          : examples;
+      // `adapted` comes from the adapt stage itself, NOT from this branch having run: the briefer
+      // falls back internally (LLM failure, kept-0 sweep) and its fallback IS the raw slice — a
+      // corpus the citation guard must still verify under the slice contract.
+      const { corpus, used, adapted } = await adapt({
         skill: input.skill,
         ask: query,
         niche: input.niche,
         platform: input.platform,
         profile: input.adaptProfile,
-        examples,
+        examples: briefed,
       });
-      return settle(corpus, used);
+      return settle(corpus, used, adapted);
     }
     const { corpus, used } = buildCorpusBlock(examples, input.skill);
-    return settle(corpus, used);
+    return settle(corpus, used, false);
   };
 
   input.onStage?.(GROUNDING_STAGE_NAME, "active");

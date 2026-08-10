@@ -205,21 +205,21 @@ describe("composer v8 (flag on)", () => {
     });
   });
 
-  it("nothing above the field, ever — the pre-v8 audience header slot is absent flag-on (spec §3)", async () => {
+  it("the room is the ATTACHED DOCK again <xl (owner ruling 2026-08-11); both retired v8 shapes are gone", async () => {
     renderWithClient(<Composer />);
-    // The replacement is mounted (the attached sub-bar under the foot)…
-    await screen.findByTestId("composer-sub-bar");
-    // …and the retired header is NOT. Flag-off, `useHeader` renders this slot ABOVE the field
-    // (<xl thread mode — exactly this harness's viewport); flag-on it must never mount. This is
-    // the anatomy regression a token audit cannot see (2026-08-09 brief §1).
-    expect(screen.queryByTestId("audience-header-slot")).toBeNull();
+    // The plate and the shipped attached bar are back ON the flag — v8 had taken the room
+    // away twice (the sub-bar, then the in-composer room card) and the owner ruled it back.
+    const slot = await screen.findByTestId("audience-header-slot");
+    expect(within(slot).getByTestId("ambient-overview-sheet")).toBeInTheDocument();
+    // Neither retired shape survives.
+    expect(screen.queryByTestId("composer-sub-bar")).toBeNull();
+    expect(screen.queryByTestId("composer-room-bar")).toBeNull();
   });
 
-  it("sub-bar present; left half opens the audience sheet", async () => {
+  it("the composer foot's audience chip opens the audience sheet", async () => {
     renderWithClient(<Composer />);
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Choose audience and platform" }),
-    );
+    // The lens moved off the deleted top bar and into the foot, beside the model selector.
+    fireEvent.click(await screen.findByTestId("composer-audience-chip"));
     expect(screen.getByTestId("audience-sheet")).toBeInTheDocument();
   });
 
@@ -239,11 +239,17 @@ describe("composer v8 (flag on)", () => {
     expect(screen.getByTestId("composer-chips-row")).toBeInTheDocument();
   });
 
-  it("the shelf renders today's drops over the warm route; the greeting flips to the shelf headline", async () => {
+  it("the shelf renders today's drops over the warm route, under its OWN label", async () => {
     renderWithClient(<Composer />);
     expect(await screen.findByTestId("drop-card-d1")).toBeInTheDocument();
     expect(screen.getByTestId("drop-card-d2")).toBeInTheDocument();
-    expect(screen.getByTestId("arrival-v8").textContent).toContain("Tonight's remixes");
+    // Owner rulings 2026-08-11 r4 + r5: the shelf carries ONE caption naming the drops'
+    // provenance, and no heading at all — the greeting above is the arrival's only heading. The
+    // greeting used to be REPLACED by a "Tonight's remixes" h1, which left the normal arrival
+    // (drops present) with no welcome whatsoever.
+    expect(screen.getByTestId("drop-shelf").textContent).toContain("Proven videos, rebuilt for your niche");
+    expect(screen.getByTestId("drop-shelf").querySelector("h1, h2, h3")).toBeNull();
+    expect(screen.getByTestId("arrival-v8").textContent).toMatch(/Welcome back|Good (morning|afternoon|evening)/);
   });
 
   it("Remix on a drop seeds the thread: POSTs the seed route, points the cookie at it", async () => {
@@ -261,41 +267,29 @@ describe("composer v8 (flag on)", () => {
     });
   });
 
-  it("the sub-bar is CONTEXT ONLY — no Simulate door; the card's meter is the sim's one door (2026-08-09 rail ruling)", async () => {
+  it("drop cards are UNSCORED (owner ruling 2026-08-10): no meter, no /10, no report door", async () => {
     renderWithClient(<Composer />);
-    await screen.findByTestId("composer-sub-bar");
-    expect(screen.queryByRole("button", { name: /open the simulation room/i })).toBeNull();
-    expect(screen.queryByText(/simulate\s*›/i)).toBeNull();
+    await screen.findByTestId("drop-card-d1");
+    expect(screen.queryByTestId("drop-meter-d1")).toBeNull();
+    expect(within(screen.getByTestId("drop-shelf")).queryByText(/\/10/)).toBeNull();
   });
 
-  it("a drop's meter opens the report on that drop's own cached read", async () => {
+  it("tapping the dock bar opens the SHIPPED room sheet — the in-composer room card is gone", async () => {
     renderWithClient(<Composer />);
-    // Both fixture drops carry the same tally, so scope to the first card's own meter.
-    fireEvent.click(await screen.findByTestId("drop-meter-d1"));
-    expect(await screen.findByTestId("report-verdict")).toHaveTextContent("8/10");
+    fireEvent.click(await screen.findByRole("button", { name: "Open your audience" }));
+    // The room is the pre-v8 sheet again: portaled to <body> (a transformed ancestor traps
+    // position:fixed, which is why it was built that way in the first place).
+    const panel = await screen.findByTestId("ambient-sheet-panel");
+    expect(panel.parentElement).toBe(document.body);
+    expect(screen.queryByTestId("composer-room-card")).toBeNull();
   });
 
-  it("opening a drop's report fires NO sim (fire-on-demand law)", async () => {
+  it("opening the room fires NO sim (fire-on-demand law)", async () => {
     renderWithClient(<Composer />);
-    // Both fixture drops carry the same tally, so scope to the first card's own meter.
-    fireEvent.click(await screen.findByTestId("drop-meter-d1"));
-    await screen.findByTestId("report-verdict");
+    fireEvent.click(await screen.findByRole("button", { name: "Open your audience" }));
+    await screen.findByTestId("ambient-sheet-panel");
     const calls = (global.fetch as ReturnType<typeof vi.fn>).mock.calls.map((c) => String(c[0]));
     expect(calls.some((u) => u.includes("/api/tools/react"))).toBe(false);
-  });
-
-  it("the v8 room overlay is gone — the report is the room now", async () => {
-    renderWithClient(<Composer />);
-    fireEvent.click(await screen.findByTestId("drop-meter-d1"));
-    await screen.findByTestId("verdict-report");
-    expect(screen.queryByTestId("v8-room-overlay")).toBeNull();
-  });
-
-  it("mobile renders the report as a sheet (the harness matchMedia is <xl)", async () => {
-    renderWithClient(<Composer />);
-    // Both fixture drops carry the same tally, so scope to the first card's own meter.
-    fireEvent.click(await screen.findByTestId("drop-meter-d1"));
-    expect((await screen.findByTestId("verdict-report")).dataset.variant).toBe("sheet");
   });
 
   it("an UNSIMULATED card's door fires the sim and shows the sealed watcher", async () => {
@@ -323,7 +317,16 @@ describe("composer v8 (flag on)", () => {
     renderWithClient(<Composer />);
     // The row's accessible name is the card's label; the door text is what a creator taps.
     fireEvent.click(await screen.findByText(/simulate with your audience/i));
-    await waitFor(() => expect(screen.getByTestId("report-verdict")).toHaveTextContent("6/10"));
+    // It spends exactly one run and lands in THE ROOM — the three-tab report the owner
+    // rejected ("exactly what we didn't want") is deleted, so there is nowhere else to land.
+    await waitFor(() => {
+      const calls = (global.fetch as ReturnType<typeof vi.fn>).mock.calls.filter((c) =>
+        String(c[0]).includes("/api/tools/react"),
+      );
+      expect(calls).toHaveLength(1);
+    });
+    await screen.findByTestId("ambient-sheet-panel");
+    expect(screen.queryByTestId("verdict-report")).toBeNull();
   });
 
   it("a second tap while watching does NOT fire a second billed call", async () => {
@@ -363,19 +366,20 @@ describe("composer v8 (flag on)", () => {
     });
 
     renderWithClient(<Composer />);
-    fireEvent.click(await screen.findByText(/simulate with your audience/i));
-    await waitFor(() => expect(screen.getByTestId("report-verdict")).toHaveTextContent("6/10"));
     const reactCalls = () =>
       (global.fetch as ReturnType<typeof vi.fn>).mock.calls.filter((c) =>
         String(c[0]).includes("/api/tools/react"),
       ).length;
+    fireEvent.click(await screen.findByText(/simulate with your audience/i));
+    await waitFor(() => expect(reactCalls()).toBe(1));
+    await screen.findByTestId("ambient-sheet-panel");
     const before = reactCalls();
     fireEvent.keyDown(document, { key: "Escape" });
     // Re-opening the SAME card reads the session snapshot. (The door's own wording still says
     // "Simulate…": the seal lives in composer state, while the persisted block keeps
     // provenance:"projected" — a copy gap noted for the PR, not a re-fire.)
     fireEvent.click(screen.getByText(/simulate with your audience/i));
-    await screen.findByTestId("report-verdict");
+    await screen.findByTestId("ambient-sheet-panel");
     expect(reactCalls()).toBe(before);
   });
 });

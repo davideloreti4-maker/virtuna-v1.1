@@ -525,3 +525,73 @@ describe("runHooksPipeline — per-persona generation (binding preserved)", () =
     expect(blocks[0]!.props.target!.label).toBe("The Frame Detectives");
   });
 });
+
+// ─── Stage A (2026-08-10): count honoring (N-4) + seed-line plausibility (N-2) ────
+
+describe("runHooksPipeline Stage A guards", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("honors an explicit count: '3 hooks' asks the contract for 3 and ships at most 3", async () => {
+    const { getQwenClient } = await import("@/lib/engine/qwen/client");
+    const { create, client } = mockQwen(makeStructuredHookResponse(5)); // model over-emits 5
+    (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue(client);
+
+    const { runHooksPipeline } = await import("@/lib/tools/runners/hooks-runner");
+    const result = await runHooksPipeline({
+      ask: "3 hooks for my new video where I didn't eat sugar for 30 days",
+      platform: "tiktok",
+      profileRow: null,
+    });
+
+    expect(result.blocks).toHaveLength(3);
+    const system = create.mock.calls[0]![0].messages.find((m: { role: string }) => m.role === "system");
+    expect(system.content).toContain("exactly 3");
+  });
+
+  it("a caller-supplied count wins over the ask and is clamped to the pipeline max", async () => {
+    const { getQwenClient } = await import("@/lib/engine/qwen/client");
+    const { create, client } = mockQwen(makeStructuredHookResponse(5));
+    (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue(client);
+
+    const { runHooksPipeline } = await import("@/lib/tools/runners/hooks-runner");
+    const result = await runHooksPipeline({
+      ask: "hooks about coffee",
+      count: 12, // over-ask → clamped to 5
+      platform: "tiktok",
+      profileRow: null,
+    });
+
+    expect(result.blocks).toHaveLength(5);
+    const system = create.mock.calls[0]![0].messages.find((m: { role: string }) => m.role === "system");
+    expect(system.content).toContain("exactly 5");
+  });
+
+  it("an uncounted ask keeps the byte-identical default contract (5)", async () => {
+    const { getQwenClient } = await import("@/lib/engine/qwen/client");
+    const { create, client } = mockQwen(makeStructuredHookResponse(5));
+    (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue(client);
+
+    const { runHooksPipeline } = await import("@/lib/tools/runners/hooks-runner");
+    const result = await runHooksPipeline({ ask: "hooks about 30 day challenges", platform: "tiktok", profileRow: null });
+
+    expect(result.blocks).toHaveLength(5);
+    const system = create.mock.calls[0]![0].messages.find((m: { role: string }) => m.role === "system");
+    expect(system.content).toContain("exactly 5");
+  });
+
+  it("N-2: a digits-only seedHook ('0') degrades to the hookLine, never ships as the seed line", async () => {
+    const { getQwenClient } = await import("@/lib/engine/qwen/client");
+    const response = makeStructuredHookResponse(5);
+    (response.hooks[0] as { seedHook: string }).seedHook = "0"; // the measured failure
+    (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue(mockQwen(response).client);
+
+    const { runHooksPipeline } = await import("@/lib/tools/runners/hooks-runner");
+    const { blocks } = await runHooksPipeline({ ask: "hooks", platform: "tiktok", profileRow: null });
+
+    const seeds = (blocks as HookCardBlock[]).map((b) => b.props.seedHook);
+    expect(seeds).not.toContain("0");
+    expect(seeds).toContain("Executable hook line 1 — the verbatim text");
+  });
+});

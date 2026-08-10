@@ -184,9 +184,15 @@ describe("POST /api/tools/script (SSE route)", () => {
       if (done) break;
     }
 
-    // insertMessage must have been called with the blocks + kcGenVersion
-    expect(insertMessage).toHaveBeenCalledTimes(1);
-    const [threadId, role, blocks, kcGenVersion] = (insertMessage as ReturnType<typeof vi.fn>).mock.calls[0]!;
+    // Stage A (N-8): the USER-ACTION row persists first — the chip/pill click is a real
+    // turn now, so a reload can never fold this run into the previous turn.
+    expect(insertMessage).toHaveBeenCalledTimes(2);
+    const [userThreadId, userRole, userBlocks] = (insertMessage as ReturnType<typeof vi.fn>).mock.calls[0]!;
+    expect(userThreadId).toBe("thread-persist-check");
+    expect(userRole).toBe("user");
+    expect((userBlocks as { type: string; props: { text: string } }[])[0]!.props.text).toBe("Write a script");
+    // …then the assistant message with the blocks + kcGenVersion.
+    const [threadId, role, blocks, kcGenVersion] = (insertMessage as ReturnType<typeof vi.fn>).mock.calls[1]!;
     expect(threadId).toBe("thread-persist-check");
     expect(role).toBe("assistant");
     expect(Array.isArray(blocks)).toBe(true);

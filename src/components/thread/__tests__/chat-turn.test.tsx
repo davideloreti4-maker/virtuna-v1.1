@@ -305,3 +305,157 @@ describe('ThreadTurn — chat-as-agent cards', () => {
     expect(screen.queryByTestId('followup-row')).toBeNull();
   });
 });
+
+// ── Stage B (B2): a rewrite chip carries the cards it is pointing at ──────────────────────────
+//
+// "Rewrite these hooks tighter" is subject-less in exactly the way the declared skill fixed one
+// level up — except here the missing subject is the CARDS. Dispatched without them the run had no
+// way to see "these" and returned five strangers. ThreadTurn is the only component that holds both
+// the blocks and the chips, so it is where the pack is collected.
+describe('ThreadTurn — the rewrite pack a chip carries', () => {
+  /** A script card shaped like the real block (blocks.ts: beats carry `content`, not `text`). */
+  const REAL_SCRIPT_CARD = {
+    type: 'script-card',
+    props: {
+      beats: [
+        { label: 'Hook', content: 'Everyone lied about 5am', timing: '0–3s', retentionMarker: 'pattern-break' },
+        { label: 'Turn', content: 'Here is what actually works', timing: '3–15s', retentionMarker: 'payoff' },
+      ],
+      openingBeatSeed: 'Everyone lied about 5am',
+      band: 'Strong',
+      fraction: '4/5',
+      scored: true,
+      model: 'sim1-flash',
+    },
+  };
+
+  it('sends the hook LINES with "Punch them up" — the pack, as data', () => {
+    const onFollowup = vi.fn();
+    renderWithClient(
+      <FollowupContext.Provider value={onFollowup}>
+        <ThreadTurn userTurn="hooks for my app" blocks={[HOOK_CARD]} />
+      </FollowupContext.Provider>,
+    );
+    fireEvent.click(screen.getByText('Punch them up'));
+    expect(onFollowup).toHaveBeenCalledWith(
+      'Rewrite these hooks tighter and more specific.',
+      'hooks',
+      { cards: ['Everyone lied about 5am'] },
+    );
+  });
+
+  it('sends the BEATS with "Make it punchier" on a script turn', () => {
+    const onFollowup = vi.fn();
+    renderWithClient(
+      <FollowupContext.Provider value={onFollowup}>
+        <ThreadTurn userTurn="script it" blocks={[REAL_SCRIPT_CARD]} />
+      </FollowupContext.Provider>,
+    );
+    fireEvent.click(screen.getByText('Make it punchier'));
+    expect(onFollowup).toHaveBeenCalledWith('Rewrite the script tighter and punchier.', 'script', {
+      cards: ['Hook: Everyone lied about 5am', 'Turn: Here is what actually works'],
+    });
+  });
+
+  it('a chip that wants NEW content carries nothing — and calls with the old arity', () => {
+    // THE CONTROL. "More hooks" means move past these; handing it the pack would fence the cards
+    // under a rewrite contract and produce sharper versions of what is already on screen.
+    const onFollowup = vi.fn();
+    renderWithClient(
+      <FollowupContext.Provider value={onFollowup}>
+        <ThreadTurn userTurn="hooks for my app" blocks={[HOOK_CARD]} />
+      </FollowupContext.Provider>,
+    );
+    fireEvent.click(screen.getByText('More hooks'));
+    expect(onFollowup).toHaveBeenCalledWith('Give me a few more hook options.', 'hooks');
+  });
+
+  it('a rewrite chip under a turn with no cards carries nothing rather than an empty pack', () => {
+    // The outro renders on any settled turn, including one whose run produced only prose. An empty
+    // `cards: []` would reach the fence as "these cards, of which there are none".
+    const onFollowup = vi.fn();
+    renderWithClient(
+      <FollowupContext.Provider value={onFollowup}>
+        <ThreadTurn
+          userTurn="hooks for my app"
+          blocks={[{ type: 'run-header', props: { skill: 'hooks' } }]}
+        />
+      </FollowupContext.Provider>,
+    );
+    fireEvent.click(screen.getByText('Punch them up'));
+    expect(onFollowup).toHaveBeenCalledWith('Rewrite these hooks tighter and more specific.', 'hooks');
+  });
+
+  it('never carries the turn\'s own closing line as a card', () => {
+    const onFollowup = vi.fn();
+    renderWithClient(
+      <FollowupContext.Provider value={onFollowup}>
+        <ThreadTurn
+          userTurn="hooks for my app"
+          blocks={[HOOK_CARD, { type: 'markdown', props: { text: 'Five hooks are on screen — want a script?' } }]}
+        />
+      </FollowupContext.Provider>,
+    );
+    fireEvent.click(screen.getByText('Punch them up'));
+    expect(onFollowup).toHaveBeenCalledWith(expect.any(String), 'hooks', {
+      cards: ['Everyone lied about 5am'],
+    });
+  });
+});
+
+// ── Stage B (B3): the pre-router's hint fills the router's dead zone ──────────────────────────
+//
+// The agent takes ~4.8s to commit to a skill, and until the `dispatch` frame lands the thread shows
+// bare dots. The hint says what the run LOOKS like — hedged, because it is a keyword guess made
+// before the model has decided anything, and the same row has to stay true when the agent answers
+// in prose instead.
+describe('ThreadTurn — the pre-dispatch hint', () => {
+  it('labels the thinking row with a HEDGED guess, never a claim', () => {
+    renderWithClient(
+      <ThreadTurn
+        userTurn="write me 5 hooks about sleep"
+        blocks={[]}
+        live={liveChat({ isStreaming: true, preGuess: 'hooks' })}
+      />,
+    );
+    const label = screen.getByText(/looks like a hooks run/i);
+    expect(label).toBeTruthy();
+    // "Writing hooks…" is the INTRO's voice — a statement of fact about a run that has started.
+    // Nothing has started yet, so that wording must not appear here.
+    expect(screen.queryByText('Writing hooks…')).toBeNull();
+  });
+
+  it('falls back to "Thinking…" for a guess it does not recognise', () => {
+    // Defensive: the frame is a string off the wire. An unknown value must degrade to the honest
+    // label rather than rendering a bare skill id at the creator.
+    renderWithClient(
+      <ThreadTurn userTurn="q" blocks={[]} live={liveChat({ isStreaming: true, preGuess: 'nonsense' })} />,
+    );
+    expect(screen.getByText('Thinking…')).toBeTruthy();
+  });
+
+  it('is gone the moment the run is real — the spine replaces it', () => {
+    // Once `dispatch` lands, the turn names a skill and renders the run capsule. The hint has no
+    // second life alongside it: two different accounts of what is happening is worse than one.
+    renderWithClient(
+      <ThreadTurn
+        userTurn="write me 5 hooks about sleep"
+        blocks={[]}
+        live={liveChat({ skill: 'hooks', isStreaming: true, preGuess: 'hooks' })}
+      />,
+    );
+    expect(screen.queryByText(/looks like/i)).toBeNull();
+    expect(screen.queryByTestId('chat-typing-indicator')).toBeNull();
+  });
+
+  it('is gone once the answer starts arriving', () => {
+    renderWithClient(
+      <ThreadTurn
+        userTurn="write me 5 hooks about sleep"
+        blocks={[{ type: 'markdown', props: { text: 'Happy to — what is the video about?' } }]}
+        live={liveChat({ isStreaming: true, preGuess: 'hooks' })}
+      />,
+    );
+    expect(screen.queryByText(/looks like/i)).toBeNull();
+  });
+});

@@ -94,17 +94,21 @@ describe("dropCardToRemixBlocks", () => {
     expect(blocks[1]!.props.production).toBeUndefined();
   });
 
-  it("drops a concept whose stopQuote is empty (schema min(1) — mirror the runner, never pad)", () => {
+  it("keeps a concept whose stopQuote is empty or missing — quote-less, never dropped", () => {
+    // stopQuote is OPTIONAL in AdaptConcept by design; a missing quote must not delete the
+    // angle from the seeded stack (the 2026-08-09 handoff's Phase-3 finding, fixed here).
     const withEmpty = {
       ...card,
-      concepts: [concepts[0]!, { ...concepts[1]!, stopQuote: "  " }, concepts[2]!],
+      concepts: [
+        concepts[0]!,
+        { ...concepts[1]!, stopQuote: "  " },
+        { ...concepts[2]!, stopQuote: undefined },
+      ],
     };
     const blocks = dropCardToRemixBlocks(withEmpty, null);
-    expect(blocks).toHaveLength(2);
-    expect(blocks.map((b) => b.props.adaptedHook)).toEqual([
-      "Strong adapted hook",
-      "Weak adapted hook",
-    ]);
+    expect(blocks).toHaveLength(3);
+    expect(blocks[1]!.props.scrollQuote).toBe("");
+    expect(blocks[2]!.props.scrollQuote).toBe("");
   });
 
   it("stamps audienceName only when calibrated", () => {
