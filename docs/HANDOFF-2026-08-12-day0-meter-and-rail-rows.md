@@ -169,7 +169,12 @@ exists to lead with. On desktop the 2-col shelf makes it moot.
 4. **A throwaway fixture under `src/app/` is a REAL ROUTE.** `src/app/zz-lane/page.tsx` was created
    to render `LaneReveal` at its true 400px width without a billed onboarding run — worth doing, but
    it ships if you forget it. Deleted; verify `git status` before committing.
-5. All the 2026-08-11 traps still hold: `NEXT_PUBLIC_CONCEPT_V8` is not in `.env.local` · the
+5. **The surviving `scripts/zz-*.ts` carry a DEAD scratchpad path.** `zz-shot.ts`, `zz-measure.ts`,
+   `zz-mobile.ts` and `zz-devpage.ts` hardcode a `DIR` from the session that wrote them, so they
+   run and write their PNGs into a directory that no longer exists. Update `DIR` to the current
+   session's scratchpad before believing "the screenshot didn't change". The reusable knowledge
+   from this session's throwaways is trap 3 above, not the scripts themselves.
+6. All the 2026-08-11 traps still hold: `NEXT_PUBLIC_CONCEPT_V8` is not in `.env.local` · the
    arrival is a **cookie** state (`maven_active_thread=__new__`) · no named helpers inside
    `page.evaluate()` · the drops route is a real POST, wait ≥6s · the launchd reaper kills idle dev
    servers (it fired three times this session) · `npm run build` clobbers a running dev server's
@@ -193,7 +198,23 @@ files. **Zero flakes in either run.**
   **Explicit `git add` paths only. Never `git add -A`.**
 - `.githooks/post-commit` **AUTO-PUSHES**. Gates before commit, always.
 
-## 8. Still open
+## 8. Start here next session
+
+**1 — The mobile dock under-reserve (§4.1).** The only confirmed defect on the board, fully
+measured, and the fix is arithmetic: `composer-thread-region` reserves `pb-[184px]` for a dock that
+measures **220px** on the arrival. It needs a ruling first because that region hosts **every chat
+thread**, not just the arrival, and the dock's height differs by surface — so measure the dock in a
+live thread as well before picking a number, rather than hardcoding the arrival's 220.
+Verification is 2 surfaces × 2 viewports, then tsc + build + suite twice. Budget for it; the gate
+cycle is the expensive half.
+
+**2 — Whether the phone's first screen should name the audience (§4.2).** A design call, not a bug.
+The facts are in §4; do not re-measure them.
+
+Do **not** reopen: the last 88px composer gap, truncating the ten archetype rows, the rail's
+scrolling (§2), or the day-0 meter. All ruled.
+
+## 9. Still open
 
 - The mobile dock's 36px under-reserve (§4.1) — a real defect, needs a ruling because the fix
   touches the shared thread region.
