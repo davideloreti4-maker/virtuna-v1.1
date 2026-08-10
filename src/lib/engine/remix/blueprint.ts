@@ -111,37 +111,65 @@ function hookCutIndex(segments: Segment[]): number {
   return after - 1 > 0 ? after - 1 : 1;
 }
 
+/** The cell index whose start time sits closest to `t`, restricted to the open range (lo, hi). */
+function indexNearestTime(segments: Segment[], t: number, lo: number, hi: number): number | null {
+  let best: number | null = null;
+  let bestDist = Infinity;
+  for (let i = lo + 1; i < hi; i++) {
+    const d = Math.abs(segments[i]!.t_start - t);
+    if (d < bestDist) {
+      bestDist = d;
+      best = i;
+    }
+  }
+  return best;
+}
+
 /**
- * Pick the cut nearest `target`, snapping to a real scene boundary only when one is within
- * `maxDistance`. Returns null when nothing in range is still free.
+ * Pick the cut for a spread target, snapping to a real scene boundary only when one lies within
+ * `radiusSeconds` OF THE TARGET TIME. Returns null when nothing in range is still free.
  *
  * The cap is what makes this "prefer a real cut" rather than "chase the nearest cut anywhere".
  * Uncapped, a cluster of boundaries drags every spread target into it and reproduces exactly the
  * collapse this function was written to fix: 40 cells with boundaries only from cell 30 on — an
  * ordinary talking-head-then-montage shape — put 70% of the video in one beat while the beats
  * inside the cluster were 1.5s each.
+ *
+ * Half a step is DERIVED, not tuned: it is the unique radius at which a cut cannot cross the
+ * midpoint between two adjacent targets, i.e. cannot enter a neighbour's territory. Anything
+ * larger lets cuts leapfrog and re-cluster, which is the defect above. It bounds a beat at ~2x
+ * its even share — two adjacent cuts can each move half a step in opposite directions — or ~2.3x
+ * when a collision makes this return null and drops a cut, merging two slots.
+ *
+ * The comparison is in SECONDS, matching the domain the targets are spread in. It used to be in
+ * cell-index units, which silently broke the derivation once targets became time-derived: cells
+ * have no maximum width, so evenly-spaced times map to UNEVENLY spaced indices, and an
+ * index-space radius can exceed the actual index gap between adjacent targets. On the 6x20s +
+ * 18x1s shape the gap was ~1 index against a radius of 1.64 — a cut could leapfrog its neighbour.
  */
 function nearestCut(
-  target: number,
+  segments: Segment[],
+  targetTime: number,
+  targetIdx: number,
   preferred: number[],
   lo: number,
   hi: number,
   taken: Set<number>,
-  maxDistance: number,
+  radiusSeconds: number,
 ): number | null {
   const free = (i: number) => i > lo && i < hi && !taken.has(i);
   let best: number | null = null;
   let bestDist = Infinity;
   for (const p of preferred) {
     if (!free(p)) continue;
-    const d = Math.abs(p - target);
-    if (d <= maxDistance && d < bestDist) {
+    const d = Math.abs(segments[p]!.t_start - targetTime);
+    if (d <= radiusSeconds && d < bestDist) {
       bestDist = d;
       best = p;
     }
   }
   if (best !== null) return best;
-  return free(target) ? target : null;
+  return free(targetIdx) ? targetIdx : null;
 }
 
 /**
@@ -175,14 +203,23 @@ function groupSegments(segments: Segment[]): Segment[][] {
   const bodyStart = hookCut > 0 ? hookCut : 0;
 
   const wanted = MAX_BEATS - cuts.size - 1;
-  const span = segments.length - bodyStart;
-  const step = span / (wanted + 1);
-  // Half a step: far enough to honour a nearby real boundary, near enough that a beat can never
-  // grow past ~1.5x its even share.
-  const snapRadius = step / 2;
+
+  // Spread the body cuts by ELAPSED TIME, not by cell index. Cells have a minimum width
+  // (MIN_CELL_WIDTH_S) but NO maximum, so index-spreading gives a 20s cell and a 1s cell equal
+  // weight: a static talking head that cuts to a fast montage (6x20s then 18x1s) put 60s of 138s
+  // — 43% — into one beat while the montage got six beats. Time-spreading is what makes a beat's
+  // share of the budget match its share of the video.
+  const bodyStartTime = segments[bodyStart]!.t_start;
+  const timeSpan = segments[segments.length - 1]!.t_end - bodyStartTime;
+  const timeStep = timeSpan / (wanted + 1);
+  const snapRadius = timeStep / 2; // seconds — same domain as the targets
   for (let k = 1; k <= wanted; k++) {
-    const target = bodyStart + Math.round(k * step);
-    const cut = nearestCut(target, preferred, bodyStart, segments.length, cuts, snapRadius);
+    const targetTime = bodyStartTime + k * timeStep;
+    const targetIdx = indexNearestTime(segments, targetTime, bodyStart, segments.length);
+    if (targetIdx === null) continue;
+    const cut = nearestCut(
+      segments, targetTime, targetIdx, preferred, bodyStart, segments.length, cuts, snapRadius,
+    );
     if (cut !== null) cuts.add(cut);
   }
 

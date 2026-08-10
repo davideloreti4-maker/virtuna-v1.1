@@ -117,6 +117,11 @@ describe("buildBlueprint", () => {
     const bp = buildBlueprint(structural({ segments }));
     expect(bp.beats[0]!.t_end).toBe(5);
     expect(bp.beats[0]!.duration_s).toBe(5);
+    // ACCEPTED RESIDUAL: the beat is 5s and still labelled "hook". No cut can make it 3s —
+    // splitting a cell would fabricate a boundary the perception never reported, and a hookless
+    // blueprint is worse. Pinned here so the trade is a test, not just a comment. Task 6 renders
+    // t_start/t_end beside the role, which is what makes a 0-5s "hook" self-describing.
+    expect(bp.beats[0]!.role).toBe("hook");
   });
 
   it("does not snap to a distant boundary cluster — late cluster (talking head then montage)", () => {
@@ -131,6 +136,27 @@ describe("buildBlueprint", () => {
     for (let i = 1; i < bp.beats.length; i++) {
       expect(bp.beats[i]!.t_start).toBe(bp.beats[i - 1]!.t_end);
     }
+  });
+
+  it("spreads by ELAPSED TIME, not cell count, when cell widths vary wildly", () => {
+    // 6 x 20s then 18 x 1s — a static talking head that cuts to a fast montage. The model path
+    // can emit this: normalizeSegments enforces MIN_CELL_WIDTH_S but no maximum. Spreading by
+    // cell index gives every cell equal weight, so the six wide cells collapse into two beats
+    // (20-80s = 43% of the video) while eighteen 1s cells get six beats between them.
+    // No scene boundaries here — the snap radius is not involved.
+    const segments = [
+      ...Array.from({ length: 6 }, (_, i) => seg(i * 20, i * 20 + 20)),
+      ...Array.from({ length: 18 }, (_, i) => seg(120 + i, 121 + i)),
+    ];
+    const bp = buildBlueprint(structural({ segments }));
+
+    expect(bp.duration_s).toBe(138);
+    const longest = Math.max(...bp.beats.map((b) => b.duration_s));
+    expect(longest).toBeLessThanOrEqual(bp.duration_s * 0.4);
+    for (let i = 1; i < bp.beats.length; i++) {
+      expect(bp.beats[i]!.t_start).toBe(bp.beats[i - 1]!.t_end);
+    }
+    expect(bp.beats.reduce((n, b) => n + b.cuts, 0)).toBe(segments.length);
   });
 
   it("does not snap to a distant boundary cluster — tight mid-video cluster", () => {
