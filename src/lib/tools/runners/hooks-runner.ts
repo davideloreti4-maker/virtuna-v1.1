@@ -81,6 +81,12 @@ import {
   trimExamplesToBundle,
   createSourceDiversityCap,
 } from "./output-guards";
+import {
+  buildRevisePrompt,
+  findSlotLeaks,
+  isJudgeEnabled,
+  judgeThesisInversion,
+} from "./checkable-judge";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -304,6 +310,12 @@ export interface HooksPipelineResult {
    * the "Find new outliers" affordance. False on a clean grounded run or when a scrape can't help.
    */
   scrapeAvailable: boolean;
+  /**
+   * C1 checkable-judge trace (ENGINE_JUDGE_HOOKS runs only, and only when a check fired) —
+   * which checks failed and whether the revise cleared them. Diagnostic/harness surface;
+   * routes ignore it and it never reaches the UI.
+   */
+  judgeTrace?: string[];
 }
 
 // ─── Structured hook type ─────────────────────────────────────────────────────
@@ -632,17 +644,103 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
     return { blocks: [], warnings: allWarnings, seedHookPath, scrapeAvailable };
   }
 
+  // ── C1 CHECKABLE-JUDGE (gated, ENGINE_JUDGE_HOOKS): slot leaks · thesis inversion · count ──
+  // Checks are mechanical or binary — never taste (the S5 rubric-critic constraint). ONE
+  // consolidated revise with every rejection stated (temp-0: the prompt must change), then the
+  // honest degrade: hooks are atomic units, so a unit still failing after the revise is DROPPED
+  // with a visible warning — never shipped as junk. The revised batch is adopted only when it
+  // has strictly MORE clean units than the original (a revise that didn't help keeps the
+  // deterministic original). The thesis judge costs one flash call per check pass and is
+  // skipped when the run has no real ask. `generationIndex` survives the drop filter so the
+  // per-persona positional binding (hook N ↔ person N) stays aligned.
+  const judgeTrace: string[] = [];
+  let batch = firstBatch.map((hook, i) => ({ hook, generationIndex: i }));
+  if (isJudgeEnabled("hooks")) {
+    const realAsk = ask.trim();
+    const checkBatch = async (hooks: StructuredHook[]) => {
+      const failing = new Set<number>();
+      const rejections: string[] = [];
+      hooks.forEach((h, i) => {
+        const segments = [...findSlotLeaks(h.hookLine), ...findSlotLeaks(h.seedHook)];
+        if (segments.length > 0) {
+          failing.add(i);
+          judgeTrace.push(`check:slot-leak:hook-${i + 1}`);
+          rejections.push(
+            `Hook ${i + 1} contains unfilled template placeholder text (${segments.join(" · ")}) — replace every [bracketed] placeholder with concrete, specific content.`,
+          );
+        }
+      });
+      if (realAsk) {
+        const verdicts = await judgeThesisInversion(
+          realAsk,
+          hooks.map((h) => h.hookLine),
+        );
+        if (verdicts === null) judgeTrace.push("judge:unavailable");
+        else
+          verdicts.forEach((inverted, i) => {
+            if (inverted) {
+              failing.add(i);
+              judgeTrace.push(`check:thesis-inverted:hook-${i + 1}`);
+              rejections.push(
+                `Hook ${i + 1} argues the OPPOSITE of the ask's thesis — argue what the ask requested.`,
+              );
+            }
+          });
+      }
+      if (hooks.length < count) {
+        judgeTrace.push(`check:count:${hooks.length}/${count}`);
+        rejections.push(`You returned ${hooks.length} hooks; return exactly ${count}.`);
+      }
+      return { failing, rejections, clean: hooks.length - failing.size };
+    };
+
+    const first = await checkBatch(firstBatch);
+    let selected = { hooks: firstBatch, failing: first.failing };
+    if (first.rejections.length > 0) {
+      try {
+        const revised = await generateHooksStructured(
+          buildRevisePrompt(userMessage, first.rejections),
+          Boolean(corpus),
+          targets,
+          count,
+        );
+        const second = revised.length > 0 ? await checkBatch(revised) : null;
+        if (second && second.clean > first.clean) {
+          selected = { hooks: revised, failing: second.failing };
+          judgeTrace.push("revise:accepted");
+        } else {
+          judgeTrace.push("revise:rejected");
+        }
+      } catch {
+        judgeTrace.push("revise:rejected");
+      }
+    }
+    const kept = selected.hooks
+      .map((hook, i) => ({ hook, generationIndex: i }))
+      .filter((c) => !selected.failing.has(c.generationIndex));
+    const dropped = selected.hooks.length - kept.length;
+    if (dropped > 0) {
+      allWarnings.push(
+        `${dropped} hook${dropped > 1 ? "s" : ""} failed output checks (template placeholder text or inverted thesis) and ${dropped > 1 ? "were" : "was"} dropped.`,
+      );
+    }
+    if (kept.length > 0 && kept.length < count) {
+      allWarnings.push(`Delivered ${kept.length} of the ${count} hooks asked for.`);
+    }
+    batch = kept;
+  }
+
   // ── STAGE: Ranking (real boundary — a pure map + sort; NO second call) ──
   input.onStage?.("Ranking", "active");
 
   // Rate each hook straight off its self-estimated /10 — band via bandFromStops (shares the SIM's
   // 6/3 calibration SSOT), fraction as the honest "N/10 stop" count, lead quote = the stopQuote.
-  const rated: RatedCandidate[] = firstBatch.map((hook, i) => ({
+  const rated: RatedCandidate[] = batch.map(({ hook, generationIndex }) => ({
     hook,
     band: bandFromStops(hook.personaStops),
     fraction: `${hook.personaStops}/10 stop`,
     scrollQuote: hook.stopQuote,
-    generationIndex: i,
+    generationIndex,
   }));
 
   // ── RANK: best → worst by the projected /10 stop-count (owner: "ranking is based off the /10
@@ -761,5 +859,11 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
   // the user-fired simulation (the run that actually produces a reaction). `input.pin` is accepted
   // but unused on this path (kept so the route call site is unchanged).
 
-  return { blocks, warnings: allWarnings, seedHookPath, scrapeAvailable };
+  return {
+    blocks,
+    warnings: allWarnings,
+    seedHookPath,
+    scrapeAvailable,
+    ...(judgeTrace.length ? { judgeTrace } : {}),
+  };
 }

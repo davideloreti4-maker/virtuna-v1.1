@@ -63,6 +63,12 @@ import type { RunEvidence } from "@/lib/tools/evidence";
 import { buildProofFromSource, coerceSourceIndex } from "./build-proof";
 import { buildAdaptProfile } from "./adapt-profile";
 import { anchorHonored, templateInstantiated, trimExamplesToBundle } from "./output-guards";
+import {
+  buildRevisePrompt,
+  findSlotLeaks,
+  isJudgeEnabled,
+  judgeThesisInversion,
+} from "./checkable-judge";
 import { resolveSingleTarget, type PersonaTarget } from "@/lib/audience/select-persona-targets";
 import {
   buildTargetAssignments,
@@ -283,6 +289,12 @@ export interface ScriptPipelineResult {
    * affordance. Mirrors hooks-runner.
    */
   scrapeAvailable: boolean;
+  /**
+   * C1 checkable-judge trace (ENGINE_JUDGE_SCRIPT runs only, and only when a check fired) —
+   * which checks failed and whether the revise cleared them. Diagnostic/harness surface;
+   * routes ignore it and it never reaches the UI.
+   */
+  judgeTrace?: string[];
 }
 
 // ─── Structured script type ───────────────────────────────────────────────────
@@ -642,6 +654,83 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
       );
     }
   }
+
+  // ── C1 CHECKABLE-JUDGE (gated, ENGINE_JUDGE_SCRIPT): slot leaks · thesis inversion ──
+  // The measured failure class (case 1, AB-ADAPT-IDEAS-SCRIPT-2026-08-10-script): a Turn beat
+  // shipped compiled.ts's Gold-Standard beat template VERBATIM with unfilled [slots], and the
+  // same script argued the OPPOSITE of the ask ("post daily" → "posting daily is ruining your
+  // brand"). Checks are mechanical or binary — never taste (the S5 rubric-critic constraint).
+  // ONE consolidated revise with every rejection stated, then the honest degrade: ship the
+  // ORIGINAL with a visible warning. The revision is accepted only when it clears EVERY check
+  // INCLUDING anchor fidelity — a fix must not regress N-7. The thesis judge costs one flash
+  // call per check pass and is skipped when the run has no real ask (chip runs stay free).
+  const judgeTrace: string[] = [];
+  if (script && isJudgeEnabled("script")) {
+    const realAsk = ask.trim();
+    const checkScript = async (s: StructuredScript) => {
+      const leaks = s.beats
+        .map((b) => ({ label: b.label, segments: findSlotLeaks(b.content) }))
+        .filter((l) => l.segments.length > 0);
+      let inverted = false;
+      if (realAsk) {
+        const verdicts = await judgeThesisInversion(realAsk, [
+          s.beats.map((b) => `${b.label}: ${b.content}`).join("\n"),
+        ]);
+        if (verdicts === null) judgeTrace.push("judge:unavailable");
+        inverted = verdicts?.[0] ?? false;
+      }
+      const anchorOk = !anchor || anchorHonored(anchor, s.openingBeatSeed);
+      return { leaks, inverted, anchorOk, failed: leaks.length > 0 || inverted };
+    };
+
+    const first = await checkScript(script);
+    first.leaks.forEach((l) => judgeTrace.push(`check:slot-leak:${l.label}`));
+    if (first.inverted) judgeTrace.push("check:thesis-inverted");
+
+    if (first.failed) {
+      const revisePrompt = buildRevisePrompt(
+        userMessage,
+        [
+          ...first.leaks.map(
+            (l) =>
+              `The "${l.label}" beat contains unfilled template placeholder text (${l.segments.join(" · ")}) — replace every [bracketed] placeholder with concrete, specific content.`,
+          ),
+          ...(first.inverted
+            ? ["The script argues the OPPOSITE of the ask's thesis — argue what the ask requested."]
+            : []),
+        ],
+        anchor
+          ? "The script must still open by adapting the Anchor hook: same subject, same promise."
+          : undefined,
+      );
+      let accepted = false;
+      try {
+        const revised = await generateScriptStructured(revisePrompt, Boolean(corpus), Boolean(target));
+        if (revised && revised.beats.length > 0) {
+          const second = await checkScript(revised);
+          if (!second.failed && second.anchorOk) {
+            script = revised;
+            accepted = true;
+          }
+        }
+      } catch {
+        // fall through — the honest degrade below ships the original, warned
+      }
+      judgeTrace.push(accepted ? "revise:accepted" : "revise:rejected");
+      if (!accepted) {
+        for (const l of first.leaks) {
+          allWarnings.push(
+            `The "${l.label}" beat contains template placeholder text — replace the [bracketed] parts before filming.`,
+          );
+        }
+        if (first.inverted) {
+          allWarnings.push(
+            "This script may argue the opposite of your ask — double-check it against what you asked for.",
+          );
+        }
+      }
+    }
+  }
   input.onStage?.("Generating", "done");
 
   // ── SELF-JUDGE: bounded gate — drop sub-floor generation (no regen — cost) ───
@@ -736,8 +825,18 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
     allWarnings.push(
       `script-card block validation failed — dropped: ${validated.error.message}`,
     );
-    return { blocks: [], warnings: allWarnings, scrapeAvailable };
+    return {
+      blocks: [],
+      warnings: allWarnings,
+      scrapeAvailable,
+      ...(judgeTrace.length ? { judgeTrace } : {}),
+    };
   }
 
-  return { blocks: [validated.data as ScriptCardBlock], warnings: allWarnings, scrapeAvailable };
+  return {
+    blocks: [validated.data as ScriptCardBlock],
+    warnings: allWarnings,
+    scrapeAvailable,
+    ...(judgeTrace.length ? { judgeTrace } : {}),
+  };
 }
