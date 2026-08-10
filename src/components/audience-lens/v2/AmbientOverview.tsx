@@ -89,6 +89,9 @@ export interface RoomSegment {
   /** Integer percent of the room. The adapter apportions these by largest remainder so a column
    *  of them adds up; see `deriveSegments`. */
   sharePct: number;
+  /** The calibration-stored reaction frame, VERBATIM — the only per-segment string the Flash sim
+   *  is briefed with. Printed as the row's second line. Empty ⇒ the row prints its name alone. */
+  repaint: string;
 }
 
 export interface OverviewData {
@@ -514,7 +517,7 @@ function QueuedRow({
 }
 
 /**
- * One row of the resting board: a slice of the room, and how much of it it is.
+ * One row of the resting board: a slice of the room, how much of it it is, and what it judges by.
  *
  * Deliberately NOT a button. Every other row on this surface is a door (open the drill, fire the
  * sim), and there is nothing behind a segment — the house rule already stated on the ＋ door and
@@ -523,6 +526,23 @@ function QueuedRow({
  *
  * Share sits right in tabular-nums, matching the audience sheet's name-left / value-right grammar
  * (2026-08-11 r2) so the right edge of a column of them stays straight.
+ *
+ * ── The name and the frame (owner ruling 2026-08-12) ──────────────────────────────────
+ *
+ * The name/share pair alone was the two facts the algorithm does not use — the label never reaches
+ * the model (F7) and the share is documented as not the prediction dial. The frame beneath it IS
+ * the brief the sim runs on, so the row now states what these people judge by, in the words the
+ * model was actually given. Ten rows of 15/12/12/10/10/10/8/8/8/7 also stop reading as a flat
+ * distribution once each one says something different — which is why truncating the list was the
+ * wrong fix for that complaint.
+ *
+ * ⚠️ THE BOARD SCROLLS AT 900px, AND THAT IS THE RULING (owner, 2026-08-12). Measured: ten rows at
+ * 76px overrun the 825px scroll region by ~155px, so the last row, the rest line and the ＋ door
+ * are one scroll down on the desktop arrival. The alternative was clamping each frame to one line,
+ * which fits exactly — and truncates every row precisely where its payload is ("dismisses low-…").
+ * The frames are the reason this row exists; a complete one that scrolls beats a cropped one that
+ * doesn't. Do not "fix" this back with a line-clamp. Row padding is `py-[10px]` rather than the
+ * board's usual 13 for the same reason: it buys 60px of that overrun back at no cost to the text.
  */
 function SegmentRow({ s, index }: { s: RoomSegment; index: number }) {
   return (
@@ -530,16 +550,28 @@ function SegmentRow({ s, index }: { s: RoomSegment; index: number }) {
       className="ambient-row-in last:border-b-0"
       style={{ animationDelay: `${0.04 + index * 0.05}s`, borderBottom: `1px solid ${TONE.border}` }}
     >
-      <div className="flex w-full items-center gap-2.5 px-0.5 py-[13px]">
-        <span
-          className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[14px]"
-          style={{ color: "rgba(236,231,222,.66)" }}
-        >
-          {s.label}
-        </span>
-        <span className="flex-none text-[12px] tabular-nums" style={{ color: TONE.faint }}>
-          {s.sharePct}%
-        </span>
+      {/* py-[10px], not the board's usual 13: a two-line row needs less padding than a one-line one
+          to keep the same rhythm, and those 6px × 10 rows are what keeps the ＋ door — the only
+          control this board has — above the fold at a 900px viewport. */}
+      <div className="w-full px-0.5 py-[10px]">
+        <div className="flex items-center gap-2.5">
+          <span
+            className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[14px]"
+            style={{ color: "rgba(236,231,222,.66)" }}
+          >
+            {s.label}
+          </span>
+          <span className="flex-none text-[12px] tabular-nums" style={{ color: TONE.faint }}>
+            {s.sharePct}%
+          </span>
+        </div>
+        {/* Never invented: a segment stored before the field existed carries no frame and prints
+            none, rather than a plausible sentence nobody briefed the model with. */}
+        {s.repaint ? (
+          <p className="mt-[3px] text-[12px] leading-[1.45]" style={{ color: TONE.faint }}>
+            {s.repaint}
+          </p>
+        ) : null}
       </div>
     </li>
   );
@@ -578,7 +610,7 @@ export function AmbientOverview({
   onOpenStimulus?: (id: string) => void;
   onQuickSimulate?: (id: string) => void;
   /**
-   * The ＋ door — "Test something of your own". Opens the cold intake, which is the ONLY way to put
+   * The ＋ door — "Show them your own work". Opens the cold intake, which is the ONLY way to put
    * a stimulus the creator brought in front of the room.
    *
    * ⚠️ Absent ⇒ the row is NOT RENDERED, deliberately. It used to render unconditionally with
@@ -672,13 +704,15 @@ export function AmbientOverview({
             </svg>
           </button>
         </div>
+        {/* "viewers", not "minds", and "simulating for", not "reads on" (owner, 2026-08-12).
+            The room is a modelled audience for a platform — say which, in the product's verb. */}
         <div className="mt-[7px] text-[12px] tabular-nums" style={{ color: TONE.faint }}>
           <span className="font-medium" style={{ color: TONE.dim }}>
-            {withCommas(TIER_N[tier])} minds
+            {withCommas(TIER_N[tier])} viewers
           </span>
           {" · "}
           {provenance}
-          {" · reads on "}
+          {" · simulating for "}
           {scene}
         </div>
       </div>
@@ -717,7 +751,12 @@ export function AmbientOverview({
                 className={`${segments.length > 0 ? "mt-[18px]" : "mt-1"} text-[12px] leading-[1.5]`}
                 style={{ color: TONE.faint }}
               >
-                Nothing simulated yet. Results land here, ranked.
+                {/* NOT "results land here, ranked" (owner, 2026-08-12). Ranking is a comparison
+                    ACROSS sealed runs — one send produces a verdict, not a rank — and nothing is
+                    sent automatically: the creator makes something in the thread and then chooses
+                    to put it in front of the room. The line has to leave the send in their hands. */}
+                Nothing simulated yet. Send anything you make to the room and their verdict lands
+                here.
               </p>
             </>
           ) : (
@@ -773,8 +812,13 @@ export function AmbientOverview({
               <span aria-hidden className="flex-none text-[15px] leading-none" style={{ color: TONE.faint }}>
                 ＋
               </span>
+              {/* NOT "Test something of your own" (owner, 2026-08-12): the composer's chip row a
+                  few hundred px away already says "Test a draft", so two different doors were
+                  wearing the same verb. Kept to ~24 chars — "Put your own work in front of them"
+                  was the ruling's wording but it wraps to two lines in a 400px rail and collides
+                  with the hint on its right. */}
               <span className="text-[13px]" style={{ color: TONE.dim }}>
-                Test something of your own
+                Show them your own work
               </span>
               <span className="ml-auto flex-none text-[11px]" style={{ color: TONE.faint }}>
                 a draft, a video, or a link

@@ -39,6 +39,11 @@ export function audienceToMeta(audience: Audience): AudienceMeta {
       archetype: p.archetype,
       label: p.label ?? humanizeArchetype(p.archetype),
       share: p.share,
+      // The calibration-stored reaction frame — the ONLY per-segment string the sim is briefed
+      // with. The resting board prints it verbatim (see `deriveSegments`); nothing else reads it
+      // from here. Absent on rows written before the field existed → the row prints no frame
+      // rather than a fabricated one.
+      repaint: p.repaint ?? "",
     }));
   return {
     name: audience.name,
