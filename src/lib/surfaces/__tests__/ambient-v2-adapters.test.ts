@@ -133,12 +133,56 @@ describe("buildOverviewData", () => {
     expect(live.watching).toEqual({ stimulus: "x", verdictPct: 31.7 });
   });
 
-  it("derives cast + overflow from the real signature segments", () => {
+  it("derives the room's segments from the real signature, biggest slice first", () => {
     const vm = buildOverviewData({ audience, descriptors });
-    expect(vm.cast.map((c) => c.initial)).toEqual(["B", "S", "D", "S"]);
-    expect(vm.castOverflow).toBe(1); // 5 segments − 4 shown
+    expect(vm.segments).toEqual([
+      { archetype: "niche_buyer", label: "Builders", sharePct: 41 },
+      { archetype: "casual_scroller", label: "Scrollers", sharePct: 26 },
+      { archetype: "cross_niche_curiosity", label: "Drop-ins", sharePct: 14 },
+      { archetype: "tough_crowd", label: "Skeptics", sharePct: 12 },
+      { archetype: "lurker", label: "Lurkers", sharePct: 8 },
+    ]);
     expect(vm.audienceName).toBe("Your audience");
     expect(vm.provenance).toBe("calibrated · 3d");
+  });
+
+  it("apportions segment percentages so the printed column adds up", () => {
+    // Three equal thirds. Rounded independently each is 33 and the column reads 99 — the kind of
+    // detail that makes a real number look invented. Largest remainder hands the spare point out.
+    const vm = buildOverviewData({
+      audience: {
+        ...audience,
+        segments: [
+          { archetype: "a", label: "A", share: 1 / 3 },
+          { archetype: "b", label: "B", share: 1 / 3 },
+          { archetype: "c", label: "C", share: 1 / 3 },
+        ],
+      },
+      descriptors,
+    });
+    expect(vm.segments.map((s) => s.sharePct)).toEqual([34, 33, 33]);
+    expect(vm.segments.reduce((sum, s) => sum + s.sharePct, 0)).toBe(100);
+  });
+
+  it("never invents the points a partial signature is missing", () => {
+    // Shares summing to 0.9 print 90, not 100 — the apportionment targets the REAL sum. Inflating
+    // to a full room would be the adapter fabricating coverage the calibration never claimed.
+    const vm = buildOverviewData({
+      audience: {
+        ...audience,
+        segments: [
+          { archetype: "a", label: "A", share: 0.55 },
+          { archetype: "b", label: "B", share: 0.35 },
+        ],
+      },
+      descriptors,
+    });
+    expect(vm.segments.reduce((sum, s) => sum + s.sharePct, 0)).toBe(90);
+  });
+
+  it("survives an audience with no named slices (General / uncalibrated)", () => {
+    const vm = buildOverviewData({ audience: { ...audience, segments: [] }, descriptors });
+    expect(vm.segments).toEqual([]);
   });
 
   it("carries the SCENE so the board can state where the room reads", () => {

@@ -47,7 +47,9 @@ export function LaneReveal({
               <span className="text-label text-foreground-muted">{shelf.lane.who}</span>
             </div>
             {shelf.cards.map((card) => {
-              const face = personasToCardFace(card.personas);
+              // Lane cards still carry their own pre-score (day-0 pass is a separate
+              // owner call); the shelf drops no longer do, hence the optional type.
+              const face = personasToCardFace(card.personas ?? []);
               return (
                 <button
                   key={card.contentId}

@@ -1,9 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { buildLiveDrops, DROP_TARGET, type BuildDropsDeps } from "../drop-reactions";
+import { buildLiveDrops, DROP_TARGET, DROP_SPARES, type BuildDropsDeps } from "../drop-reactions";
 import type { SharedMatchRow } from "@/lib/grounding/corpus";
 import type { Audience } from "@/lib/audience/audience-types";
 import type { AdaptConcept } from "@/lib/engine/remix/decode-types";
-import type { ReactionPersona } from "@/lib/tools/blocks";
 
 const DURABLE =
   "https://x.supabase.co/storage/v1/object/public/covers/corpus/tiktok/1.jpg";
@@ -23,7 +22,7 @@ function corpusRow(over: Partial<SharedMatchRow> = {}): SharedMatchRow {
     views: 5_300_000,
     follower_count: null,
     outlier_multiplier: 5,
-    baseline_label: null,
+    baseline_label: "vs their usual views",
     engagement_rate: null,
     posted_at: null,
     proof_captured_at: null,
@@ -43,7 +42,7 @@ function corpusRow(over: Partial<SharedMatchRow> = {}): SharedMatchRow {
   } as SharedMatchRow;
 }
 
-/** 20-row drop-ready pool across distinct archetypes. */
+/** 20-row drop-ready pool across distinct archetypes (all > 3× multiplier). */
 function pool(): SharedMatchRow[] {
   return Array.from({ length: 20 }, () => corpusRow());
 }
@@ -57,10 +56,6 @@ function concepts(prefix: string): AdaptConcept[] {
     { hook: `${prefix} weak`, angle: "a3", who_its_for: "w3", format_borrowed: "f3", personaStops: 2, stopQuote: "q3" },
   ];
 }
-
-const personas: ReactionPersona[] = [
-  { archetype: "a", verdict: "stop", quote: "real quote" },
-];
 
 /** Chainable supabase fake: surface_reactions read returns `surfaceRow`; upserts recorded. */
 function fakeSupabase(surfaceRow: unknown = null) {
@@ -87,9 +82,9 @@ function fakeSupabase(surfaceRow: unknown = null) {
   return client as any;
 }
 
-/** Deps with call recording. `adaptFor` lets a test fail specific rows. */
+/** Deps with call recording. Override `adapt` to fail specific rows. */
 function fakeDeps(over: Partial<BuildDropsDeps> = {}) {
-  const calls = { embed: 0, match: 0, adapt: 0, flash: 0 };
+  const calls = { embed: 0, match: 0, adapt: 0 };
   const deps: BuildDropsDeps = {
     resolveAudience: async () => generalAudience,
     embed: async () => {
@@ -104,13 +99,6 @@ function fakeDeps(over: Partial<BuildDropsDeps> = {}) {
       calls.adapt++;
       return concepts(input.niche);
     },
-    flashBatch: (async (candidates: Array<{ id: string; text: string }>) => {
-      calls.flash++;
-      return {
-        results: new Map(candidates.map((c) => [c.id, { personas }])),
-      };
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    }) as any,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     corpusClient: (() => ({})) as any,
     ...over,
@@ -119,7 +107,7 @@ function fakeDeps(over: Partial<BuildDropsDeps> = {}) {
 }
 
 describe("buildLiveDrops", () => {
-  it("builds ≤6 cards: rank-1 concept leads, real personas attached, cache upserted under kind 'drop'", async () => {
+  it("builds 6 UNSCORED cards: rank-1 leads, receipt attached, no personas, cache under kind 'drop'", async () => {
     const supabase = fakeSupabase();
     const { deps, calls } = fakeDeps();
     const cards = await buildLiveDrops(supabase, "u1", deps);
@@ -128,19 +116,22 @@ describe("buildLiveDrops", () => {
       expect(card.hook).toMatch(/ strong$/); // personaStops 8 ranks first
       expect(card.concepts).toHaveLength(3);
       expect(card.concepts[0]!.personaStops).toBe(8);
-      expect(card.personas).toEqual(personas);
+      // Owner ruling 2026-08-10: no sim runs here — the receipt is the only number.
+      expect(card.personas).toBeUndefined();
+      expect(card.multiplier).toBe(5);
+      expect(card.baselineLabel).toBe("vs their usual views");
       expect(card.coverUrl).toBe(DURABLE);
       expect(card.views).toBe("5.3M");
       expect(card.viewsRaw).toBe(5_300_000);
       expect(card.handle).toBe("creatorhandle");
     }
+    // No failures → spares are never adapted (they cost real model calls).
     expect(calls.adapt).toBe(DROP_TARGET);
-    expect(calls.flash).toBe(1); // ONE batched sim
     expect(supabase.upserts).toHaveLength(1);
     expect(supabase.upserts[0].row.kind).toBe("drop");
   });
 
-  it("returns the cached batch untouched on a fresh cache hit (no adapt/sim calls)", async () => {
+  it("returns the cached batch untouched on a fresh cache hit (no adapt calls)", async () => {
     const cached = [{ contentId: "c1", hook: "cached" }];
     const supabase = fakeSupabase({ cards: cached, updated_at: new Date().toISOString() });
     const { deps, calls } = fakeDeps();
@@ -148,37 +139,40 @@ describe("buildLiveDrops", () => {
     expect(cards).toEqual(cached);
     expect(calls.embed).toBe(0);
     expect(calls.adapt).toBe(0);
-    expect(calls.flash).toBe(0);
   });
 
-  it("drops a row whose adapt returned null and ships the survivors", async () => {
+  it("refills a failed adapt from the spare picks — the shelf stays at 6 (the 5/6 defect)", async () => {
     let n = 0;
     const { deps } = fakeDeps({
       adapt: async (input) => (++n === 2 ? null : concepts(input.niche)),
     });
     const cards = await buildLiveDrops(fakeSupabase(), "u1", deps);
-    expect(cards).toHaveLength(DROP_TARGET - 1);
+    expect(cards).toHaveLength(DROP_TARGET);
+    // 6 first-wave + exactly 1 spare for the 1 failure.
+    expect(n).toBe(DROP_TARGET + 1);
   });
 
-  it("drops a row missing from the flash result map (per-candidate salvage)", async () => {
+  it("ships the survivors when failures exhaust the spares (never pads, never fabricates)", async () => {
+    let n = 0;
     const { deps } = fakeDeps({
-      flashBatch: (async (candidates: Array<{ id: string; text: string }>) => ({
-        results: new Map(candidates.slice(1).map((c) => [c.id, { personas }])),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      })) as any,
+      // Fail every odd call: first wave loses 3, spares lose more — refill is partial.
+      adapt: async (input) => (++n % 2 === 1 ? null : concepts(input.niche)),
     });
     const cards = await buildLiveDrops(fakeSupabase(), "u1", deps);
-    expect(cards).toHaveLength(DROP_TARGET - 1);
+    expect(cards.length).toBeGreaterThan(0);
+    expect(cards.length).toBeLessThan(DROP_TARGET);
   });
 
-  it("returns [] when the batched sim throws (honest empty — never a fabricated meter)", async () => {
+  it("never adapts more than target + spares rows", async () => {
+    let n = 0;
     const { deps } = fakeDeps({
-      flashBatch: (async () => {
-        throw new Error("flash down");
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      }) as any,
+      adapt: async () => {
+        n++;
+        return null;
+      },
     });
     expect(await buildLiveDrops(fakeSupabase(), "u1", deps)).toEqual([]);
+    expect(n).toBeLessThanOrEqual(DROP_TARGET + DROP_SPARES);
   });
 
   it("returns [] when embedding fails", async () => {

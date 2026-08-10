@@ -1,13 +1,17 @@
 /**
  * drop-reactions.ts — the DROPS producer (v8 Phase 2, the shelf).
  *
- * The proactive pipe: six proven corpus outliers (structural round-robin, daily
- * rotation) → each adapted into the user's niche by the REAL adapt.ts call (3
- * concepts, rank-1 leads the card) → ONE batched Flash sim of the six lead hooks
- * (the drops are the ONLY pre-scored surface). Cached in surface_reactions
+ * The proactive pipe: six proven corpus outliers (multiplier > 3× only, structural
+ * round-robin, daily rotation) → each adapted into the user's niche by the REAL
+ * adapt.ts call (3 concepts, rank-1 leads the card). Cached in surface_reactions
  * (kind 'drop') once/day/audience — same TTL + lazy re-warm as /start's sections.
  *
- * Cost per warm: 1 embedding + ≤6 adapt calls + 1 batched Flash call.
+ * ⚠️ NO SIM RUNS HERE (owner ruling 2026-08-10): drops arrive UNSCORED — the sim is
+ * a completely separate surface. The card's number is the source's receipt (views +
+ * "N× their usual views"), not a prediction. The old batched Flash pre-score and the
+ * "drops are the only pre-scored surface" law are dead.
+ *
+ * Cost per warm: 1 embedding + ≤9 adapt calls (6 + up to 3 salvage spares).
  * ⚠️ Drop economics is OWNER CALL #3 — no billing/quota wiring here; the route
  * above this is 404 unless CONCEPT_V8_ENABLED. Do not ship past the flag.
  *
@@ -18,9 +22,6 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { resolveUserAudience } from "@/lib/audience/resolve-user-audience";
-import { buildReactionPanel } from "@/lib/engine/flash/build-reaction-panel";
-import { runFlashTextModeBatch } from "@/lib/engine/flash/run-flash-text-mode";
-import { goalIntentToLens } from "@/lib/audience/intent-lens";
 import { embedQueryText } from "@/lib/grounding/embedder";
 import {
   getCorpusClient,
@@ -38,13 +39,15 @@ import { audienceKeyOf, getFreshSurfaceCards, upsertSurfaceCards } from "./surfa
 /** Six cards on the shelf (spec §1 — owner call: six, not three). */
 export const DROP_TARGET = 6;
 
+/** Extra picks adapted only when a first-wave row fails (5/6-shelf salvage). */
+export const DROP_SPARES = 3;
+
 /** Injectable I/O boundaries (tests swap these; prod uses the real modules). */
 export interface BuildDropsDeps {
   resolveAudience?: typeof resolveUserAudience;
   embed?: typeof embedQueryText;
   match?: typeof matchSharedTeardowns;
   adapt?: typeof generateAdaptConcepts;
-  flashBatch?: typeof runFlashTextModeBatch;
   corpusClient?: () => SupabaseClient;
 }
 
@@ -67,7 +70,6 @@ export async function buildLiveDrops(
   const embed = deps.embed ?? embedQueryText;
   const match = deps.match ?? matchSharedTeardowns;
   const adapt = deps.adapt ?? generateAdaptConcepts;
-  const flashBatch = deps.flashBatch ?? runFlashTextModeBatch;
   const corpusClient = deps.corpusClient ?? getCorpusClient;
 
   // (1) Audience + cache-first (mirrors outlier-reactions 1/1a): a fresh batch for
@@ -106,53 +108,42 @@ export async function buildLiveDrops(
     return [];
   }
 
-  // (4) Today's six (drop-ready gate + daily rotation).
-  const picks = selectDailyDrops(rows, DROP_TARGET, utcDayIndex());
+  // (4) Today's picks: six + spares (drop-ready gate incl. >3× multiplier + daily
+  //     rotation). Spares are adapted ONLY when a first-wave row fails — so a bad
+  //     adapt no longer costs the shelf a card (the 5/6-shelf defect, 2026-08-10).
+  const window = selectDailyDrops(rows, DROP_TARGET + DROP_SPARES, utcDayIndex());
+  const picks = window.slice(0, DROP_TARGET);
+  const spares = window.slice(DROP_TARGET);
   if (picks.length === 0) return [];
 
-  // (5) Adapt each pick (parallel; a null adapt drops its row — per-row salvage).
+  // (5) Adapt (parallel; a null adapt drops its row, spares refill up to target).
   //     Concepts rank by the adapt call's own /10 projection so the strongest
   //     adapted hook leads the card (mirrors remix-runner's keep-all rank).
-  const adapted = (
-    await Promise.all(
-      picks.map(async (row) => {
-        const input = corpusRowToAdaptInput(row, audienceNiche);
-        if (!input) return null;
-        const concepts = await adapt(input).catch(() => null);
-        if (!concepts || concepts.length === 0) return null;
-        const ranked = [...concepts].sort(
-          (a, b) => clampStops(b.personaStops) - clampStops(a.personaStops),
-        );
-        return { row, ranked };
-      }),
-    )
-  ).filter((x): x is { row: SharedMatchRow; ranked: AdaptConcept[] } => x !== null);
+  const adaptRow = async (row: SharedMatchRow) => {
+    const input = corpusRowToAdaptInput(row, audienceNiche);
+    if (!input) return null;
+    const concepts = await adapt(input).catch(() => null);
+    if (!concepts || concepts.length === 0) return null;
+    const ranked = [...concepts].sort(
+      (a, b) => clampStops(b.personaStops) - clampStops(a.personaStops),
+    );
+    return { row, ranked };
+  };
+  const isAdapted = (x: unknown): x is { row: SharedMatchRow; ranked: AdaptConcept[] } =>
+    x !== null;
+
+  const adapted = (await Promise.all(picks.map(adaptRow))).filter(isAdapted);
+  const missing = DROP_TARGET - adapted.length;
+  if (missing > 0 && spares.length > 0) {
+    const refill = (await Promise.all(spares.slice(0, missing).map(adaptRow))).filter(isAdapted);
+    adapted.push(...refill);
+  }
   if (adapted.length === 0) return [];
 
-  // (6) ONE batched Flash sim of the lead adapted hooks — the pre-score (the drops
-  //     are the ONLY pre-scored surface; this is the sanctioned proactive pipe).
-  const { panel, audienceRepaint } = buildReactionPanel(profileRow, audience);
-  const intent =
-    isCalibrated && audience ? goalIntentToLens(audience.goal_intent) : undefined;
-  let results: Awaited<ReturnType<typeof runFlashTextModeBatch>>["results"];
-  try {
-    ({ results } = await flashBatch(
-      adapted.map(({ row, ranked }) => ({ id: row.id, text: ranked[0]!.hook })),
-      "hook",
-      panel,
-      audienceRepaint,
-      intent,
-    ));
-  } catch {
-    return [];
-  }
-
-  // (7) Assemble — a row without a sim result drops itself (no meter, no card).
+  // (6) Assemble — UNSCORED (no sim ran; the receipt is the only number).
   //     Donor niche/prose stay behind: only the receipt-safe fields cross over.
   const cards: LiveDropCard[] = [];
   for (const { row, ranked } of adapted) {
-    const sim = results.get(row.id);
-    if (!sim) continue;
     cards.push({
       contentId: row.id,
       hook: ranked[0]!.hook,
@@ -163,8 +154,9 @@ export async function buildLiveDrops(
       handle: row.creator_handle!.trim(),
       archetype: row.hook_archetype,
       hookTemplate: row.hook_template,
+      multiplier: row.outlier_multiplier!,
+      baselineLabel: row.baseline_label,
       concepts: ranked,
-      personas: sim.personas,
     });
     if (cards.length >= DROP_TARGET) break;
   }

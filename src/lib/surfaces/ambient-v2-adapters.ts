@@ -15,7 +15,7 @@
  */
 
 import type {
-  CastMember,
+  RoomSegment,
   OverviewData,
   RankKind,
   RankedStimulus,
@@ -53,7 +53,6 @@ export interface AudienceMeta {
 
 const TIER_LABEL: Record<SimTier, string> = { flash: "SIM-1 Flash", max: "SIM-1 Max" };
 const FIDELITY_OPTIONS = ["SIM-1 Flash", "SIM-1 Max"];
-const CAST_SHOWN = 4;
 
 // ── shared honesty helpers ─────────────────────────────────────────────────────
 
@@ -191,23 +190,42 @@ export function buildOverviewData({
     tier: audience.tier,
     watching: watching ?? null,
     ranked,
-    cast: deriveCast(audience),
-    castOverflow: Math.max(0, audience.segments.length - CAST_SHOWN),
+    segments: deriveSegments(audience),
   };
 }
 
-/** On-call avatars — initials of the calibrated room's named slices (real segments, never invented).
+/**
+ * The room's makeup, biggest slice first — what the RESTING board states in place of an empty
+ * ranked list (2026-08-11 r3: the rail mounts on the desktop arrival, where no work exists yet).
  *
- *  ⚠️ NOTHING RENDERS THIS as of 2026-08-02: the rev-B+ board folded the room's identity into the
- *  header facts line and deleted both the micro-avatar cluster and the "on call" footer. The
- *  derivation stays because whether the cast returns somewhere is an OPEN question the owner has
- *  not ruled on (handoff §8) — and it is real, cheap and pure. If the answer comes back "no", this
- *  and `CastMember` go together. */
-function deriveCast(audience: AudienceMeta): CastMember[] {
-  return audience.segments.slice(0, CAST_SHOWN).map((s, i) => ({
-    id: s.label.toLowerCase().replace(/[^a-z0-9]+/g, "-") || `seg-${i}`,
-    initial: (s.label.trim()[0] ?? "•").toUpperCase(),
-  }));
+ * This replaced `deriveCast`, which returned initials for an avatar cluster that had rendered
+ * nowhere since rev B+ and was parked as an open question. The answer is: the cast comes back with
+ * NAMES and SHARES. Initials were tried in the audience sheet on 2026-08-11 and cut the same day —
+ * they carry no information and collide ("General" and "Growth Audience" both render a grey "G").
+ *
+ * Percentages are apportioned by LARGEST REMAINDER, not rounded independently: independent rounding
+ * of 4–8 shares lands the column on 98–102, and a column of real numbers that doesn't add up is
+ * exactly what makes a real number look fabricated. The target is `round(sum)`, NOT a hardcoded
+ * 100 — if a signature's shares genuinely sum to 0.98, this prints 98 rather than inventing the
+ * missing two points.
+ */
+function deriveSegments(audience: AudienceMeta): RoomSegment[] {
+  const rows = [...audience.segments]
+    .sort((a, b) => b.share - a.share)
+    .map((s) => {
+      const exact = s.share * 100;
+      const floor = Math.floor(exact);
+      return { archetype: s.archetype, label: s.label, sharePct: floor, frac: exact - floor };
+    });
+  const target = Math.round(audience.segments.reduce((sum, s) => sum + s.share * 100, 0));
+  let left = Math.max(0, target - rows.reduce((sum, r) => sum + r.sharePct, 0));
+  // Hand the leftover points to the largest fractional parts first — the standard apportionment.
+  for (const row of [...rows].sort((a, b) => b.frac - a.frac)) {
+    if (left <= 0) break;
+    row.sharePct += 1;
+    left -= 1;
+  }
+  return rows.map(({ archetype, label, sharePct }) => ({ archetype, label, sharePct }));
 }
 
 // ── ⑤ Simulate ─────────────────────────────────────────────────────────────────

@@ -550,7 +550,12 @@ export const RemixCardBlockSchema = z.object({
     // Opener-scoped band signal (Pitfall 5 — adapted hook scroll-stop ONLY)
     band: z.enum(["Strong", "Mixed", "Weak"]),
     fraction: z.string().min(1),       // e.g. "7/10 stop" — adapted hook audience fraction only
-    scrollQuote: z.string().min(1),    // lead per-persona scroll quote for the adapted hook
+    // Lead per-persona scroll quote for the adapted hook. "" is LEGAL (matches the other card
+    // schemas): AdaptConcept.stopQuote is optional BY DESIGN (adapt.ts — a partial model response
+    // still validates so the 3-concept contract holds), and a min(1) here silently deleted any
+    // quote-less concept downstream (drop-seed + the runner's D-14 gate), breaking that contract
+    // one layer up. Empty renders quote-less — the state flat-card-reactions already models.
+    scrollQuote: z.string(),
     model: z.literal("sim1-flash"),    // provenance tag — always Flash for remix cards (D-10)
     // PROVENANCE (new Qwen call system, 2026-07-22): the adapted-hook band/fraction is a generation-
     // time PROJECTION (the single adapt call self-estimated each concept's `personaStops` /10 — no
