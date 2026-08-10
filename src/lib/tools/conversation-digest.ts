@@ -29,9 +29,14 @@
  *
  * 3. NEWEST WINS, BUT ORDER IS OLDEST-FIRST. The budget is spent from the most recent turn
  *    backwards (recency is what a creator means by "this conversation"), and what survives is
- *    then emitted in chronological order — both because a transcript reads that way and because
- *    it is what makes the block append-only across turns, which is the property the prefix cache
- *    needs (see assembleBundle's header doc for why placement follows from this).
+ *    then emitted in chronological order, because a transcript reads that way.
+ *
+ *    ⚠️ An earlier version of this comment also justified the ordering as "the property the prefix
+ *    cache needs". That argument was measured and does NOT hold — cache hits here are quantised to
+ *    256-token blocks and the whole digest is smaller than one block, so its placement and ordering
+ *    cannot move the number wherever they sit (session 7 §1.3; assembleBundle's header records the
+ *    retraction and the two probe designs that failed before it was clear). Chronology stands on
+ *    readability alone. Do not re-derive a caching argument from it.
  *
  * ─── 🔴 WHY THERE IS NO `cardsOnScreen` (removed 2026-08-10, session 8) ──────────────────────
  *
@@ -62,7 +67,7 @@
  * Pure, no I/O, no LLM. Deterministic — the same turns always yield the same digest.
  */
 
-import { CONVERSATION_CHAR_BUDGET } from "@/lib/kc/assembler";
+import { CONVERSATION_CHAR_BUDGET, CONVERSATION_BLOCK_OVERHEAD } from "@/lib/kc/assembler";
 import type { ChatAgentPriorTurn } from "@/lib/tools/chat-agent-loop";
 
 /**
@@ -105,16 +110,25 @@ export function buildConversationDigest(
   priorTurns: ChatAgentPriorTurn[],
 ): ConversationDigest | null {
   // ── Creator turns: newest-first while spending the budget, then re-ordered oldest-first ──
+  //
+  // The budget is on the emitted BLOCK, not on the raw turn text, so the fixed cost of the block
+  // is charged UP FRONT and each line is charged with its numbering. Spending it on text alone was
+  // the 2026-08-10 defect: 640 chars of text — comfortably "legal" against 700 — emitted a
+  // ~960-char block, and that difference was enough to push the worst realistic bundle over
+  // BUNDLE_CHAR_CAP and shed the entire corpus. Exactly the failure removing `cardsOnScreen` was
+  // meant to end, surviving in the half nobody re-measured.
   const turns: string[] = [];
-  let spent = 0;
+  let spent = CONVERSATION_BLOCK_OVERHEAD;
   for (let i = priorTurns.length - 1; i >= 0 && turns.length < MAX_DIGEST_TURNS; i--) {
     const turn = priorTurns[i]!;
     if (turn.role !== "user") continue;
     const line = normalise(turn.text, MAX_TURN_LENGTH);
     // An empty-text turn is real: `openChatPriorTurns` emits one to carry `skillRecords`.
     if (!line) continue;
-    if (spent + line.length > CONVERSATION_CHAR_BUDGET) break;
-    spent += line.length;
+    // `${n}. ${line}\n` — the numbering the assembler adds. Two digits + ". " + the join newline.
+    const cost = line.length + 5;
+    if (spent + cost > CONVERSATION_CHAR_BUDGET) break;
+    spent += cost;
     turns.push(line);
   }
   turns.reverse();

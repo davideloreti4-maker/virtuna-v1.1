@@ -80,12 +80,19 @@ export const BUNDLE_CHAR_CAP = 6000;
  * same reason: an unbudgeted section does not merely get truncated at the cap, it competes with
  * the creator's own grounding).
  *
- * ⚠️ This bounds the digest's `turns` — which, since 2026-08-10, is the whole digest. It did NOT
- * used to be: `cardsOnScreen` (6 × 120 chars) sat outside this number, so the emitted block
- * reached 1,844 chars against a documented 700 and evicted the corpus on a calibrated-audience
- * run. That is the bug this constant's own wording hid, and the reason `cardsOnScreen` was
- * removed rather than budgeted. If a second sub-block is ever added here, budget the BLOCK, not
- * one field of it — and re-measure the worst case rather than reasoning about it.
+ * ⚠️ This is a budget on the emitted BLOCK — preamble, numbering and fence included, not just the
+ * creator's words. It has been wrong twice, in the same direction, and both times the symptom was
+ * a silently ungrounded generation rather than anything visible:
+ *
+ *   1. `cardsOnScreen` (6 × 120 chars) sat outside the number entirely → block reached 1,844.
+ *   2. With that removed, the builder still charged only raw turn TEXT → 640 "legal" chars
+ *      emitted a ~960-char block, and the worst realistic bundle still shed the whole corpus.
+ *
+ * The builder now charges `CONVERSATION_BLOCK_OVERHEAD` up front and per-line numbering per turn,
+ * so what is spent is what lands. Two guards keep it honest: the overhead is DERIVED from the
+ * preamble/fence strings rather than written down, and a test assembles a budget-max digest and
+ * asserts the real emitted block against this number. If a sub-block is ever added here, add its
+ * cost to the overhead — and re-measure the worst case rather than reasoning about it.
  *
  * Exported so the builder and the cap reason from one number.
  */
@@ -274,12 +281,33 @@ function cardsContent(cards: string[]): string {
  *
  * Returns null when there is nothing to say, so an empty object is a byte-identical no-op.
  */
+const CONVERSATION_PREAMBLE =
+  "What the creator has said in this conversation, oldest first — their own words. " +
+  "Honour anything they stated as a constraint or a rejection here (length, format, an " +
+  "angle they already ruled out) as if it were part of the request:\n";
+
+/** The fence label this block is emitted under (see assembleBundle step 3). */
+const CONVERSATION_LABEL = "This conversation so far";
+
+/**
+ * What the emitted BLOCK costs beyond the creator's own words — the preamble, the fence label and
+ * the two sentinels. DERIVED from the very strings above rather than written down, so editing the
+ * preamble can never silently widen the block past its budget.
+ *
+ * Exported because `CONVERSATION_CHAR_BUDGET` is a budget on the BLOCK, and the builder (which
+ * spends it) is the only place that can enforce that. Charging turn TEXT alone was the 2026-08-10
+ * defect: 640 legal chars of text emitted a ~960-char block, and the difference was enough to push
+ * the worst realistic bundle over BUNDLE_CHAR_CAP and shed the entire corpus. Per-line numbering
+ * ("12. " + newline) is charged by the builder per turn, not here.
+ */
+export const CONVERSATION_BLOCK_OVERHEAD =
+  CONVERSATION_PREAMBLE.length +
+  fenceUserContent(CONVERSATION_LABEL, "").length;
+
 function conversationContent(conversation: { turns?: string[] }): string | null {
   if (!conversation.turns || conversation.turns.length === 0) return null;
   return (
-    "What the creator has said in this conversation, oldest first — their own words. " +
-    "Honour anything they stated as a constraint or a rejection here (length, format, an " +
-    "angle they already ruled out) as if it were part of the request:\n" +
+    CONVERSATION_PREAMBLE +
     conversation.turns.map((t, i) => `${i + 1}. ${t}`).join("\n")
   );
 }
@@ -462,7 +490,7 @@ export function assembleBundle(
   // it: the creator's own words are compatible with a rewrite pack.
   const conversationBody = conversation ? conversationContent(conversation) : null;
   const conversationBlock = conversationBody
-    ? fenceUserContent("This conversation so far", conversationBody)
+    ? fenceUserContent(CONVERSATION_LABEL, conversationBody)
     : null;
 
   // 4. Enforce BUNDLE_CHAR_CAP — WITHOUT ever structurally breaking a fence.

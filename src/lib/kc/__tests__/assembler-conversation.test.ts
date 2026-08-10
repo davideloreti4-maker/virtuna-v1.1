@@ -28,6 +28,7 @@
 
 import { describe, it, expect } from "vitest";
 import { assembleBundle, BUNDLE_CHAR_CAP, CONVERSATION_CHAR_BUDGET } from "../assembler";
+import { buildConversationDigest } from "@/lib/tools/conversation-digest";
 import type { ProfileRow } from "../profile-role-map";
 
 /**
@@ -67,6 +68,22 @@ const TURNS = [
   "keep it under 30s, i lose people after that",
   "not the 5am angle, everyone does that",
 ];
+
+/**
+ * The digest the BUILDER can legally produce at its budget — not this file's 3 short lines.
+ *
+ * Sizing a cap test with a comfortable fixture is how the last two grounding evictions stayed
+ * green: the 3-line TURNS above emit a ~430-char block, so every cap assertion below passed with
+ * ~500 chars of slack that real threads do not have. `buildConversationDigest` is the authority on
+ * what is legal, so this asks IT rather than hand-rolling a fixture that can drift from the
+ * builder's rules (a hardcoded fixture sized against a constant is a landmine — session 7 §7).
+ */
+const BUDGET_MAX_TURNS = buildConversationDigest(
+  Array.from({ length: 12 }, (_, i) => ({
+    role: "user" as const,
+    text: `${i} `.padEnd(160, "constraint word ").slice(0, 160),
+  })),
+)!.turns!;
 
 const has = (bundle: string, role: "voice" | "wins" | "flops" | "platform") =>
   ({
@@ -115,7 +132,7 @@ describe("shed order — the corpus yields before the creator", () => {
           "Your morning routine is fine. Your evening is what's broken.",
           "Stop optimising your mornings until you fix this one thing",
         ],
-        conversation: { turns: TURNS },
+        conversation: { turns: BUDGET_MAX_TURNS },
       },
       PROFILE,
     );
@@ -124,6 +141,47 @@ describe("shed order — the corpus yields before the creator", () => {
     expect(result).toContain("Grounded examples");
     expect(result).toContain("This conversation so far");
     expect(result.length).toBeLessThanOrEqual(BUNDLE_CHAR_CAP);
+  });
+
+  it("the BLOCK — not the turn text — stays inside CONVERSATION_CHAR_BUDGET", () => {
+    // The budget's whole job is to bound what the CAP pays for. Charging raw turn text instead
+    // let 640 legal chars emit a ~960-char block, which shed the corpus in the test above while
+    // every assertion stayed green. Measures the real delta: bundle with the digest minus the
+    // identical bundle without it.
+    const base = { ask: ASK, platform: "tiktok" as const, mode: "hooks" as const };
+    const withDigest = assembleBundle({ ...base, conversation: { turns: BUDGET_MAX_TURNS } }, PROFILE);
+    const without = assembleBundle(base, PROFILE);
+    const block = withDigest.length - without.length;
+
+    expect(block).toBeGreaterThan(0);
+    expect(block).toBeLessThanOrEqual(CONVERSATION_CHAR_BUDGET);
+  });
+
+  it("a budget-max digest does not evict the corpus from the worst realistic bundle", () => {
+    // The regression the review caught, stated directly: a thread the creator has actually typed
+    // into must not silently turn grounding off. Asserts the SECTION, never a length.
+    const result = assembleBundle(
+      {
+        ask: ASK,
+        platform: "tiktok",
+        mode: "hooks",
+        corpus: "C".repeat(2800),
+        overrides: OVERRIDES,
+        anchor: "The 5am myth is costing you your best creative hours",
+        cards: [
+          "Everyone told me to wake at 5am. Here's what 90 days of it did to my brain.",
+          "The productivity advice that made me worse at my job",
+          "I tracked my focus for 30 days. The winner wasn't caffeine.",
+          "Your morning routine is fine. Your evening is what's broken.",
+          "Stop optimising your mornings until you fix this one thing",
+        ],
+        conversation: { turns: BUDGET_MAX_TURNS },
+      },
+      PROFILE,
+    );
+    expect(result).toContain("Grounded examples");
+    expect(result).toContain("This conversation so far");
+    expect(has(result, "voice")).toBe(true);
   });
 
   it("when something MUST go, the corpus goes first and the profile survives", () => {
@@ -263,18 +321,6 @@ describe("conversation content", () => {
     expect(result.indexOf(TURNS[0]!)).toBeLessThan(result.indexOf(TURNS[2]!));
   });
 
-  it("has no DO-NOT-REPRODUCE contract left to emit — the whole sub-block is gone", () => {
-    // A negative instruction over card lines was measured producing the behaviour it forbade
-    // (1 verbatim + 2 near-copies in 10 hooks). The label is gone with the field; asserting on
-    // the LABEL catches a re-introduction even if the field were named something else.
-    const result = assembleBundle(
-      { ask: ASK, platform: "tiktok", mode: "hooks", conversation: { turns: TURNS } },
-      PROFILE,
-    );
-    expect(result).not.toContain("do NOT reproduce");
-    expect(result).toContain("their own words");
-  });
-
   it("a rewrite pack and the digest now COEXIST — there is no contradiction to guard", () => {
     // This replaces the contradiction guard. `cards` says "rewrite each of these"; the digest
     // carries only the creator's own words, which are compatible with that. The guard existed
@@ -294,10 +340,11 @@ describe("conversation content", () => {
     expect(both).not.toContain("do NOT reproduce");
   });
 
-  it("REJECTS a cardsOnScreen field at the boundary rather than silently ignoring it", () => {
-    // The zod object is strict-by-omission: an unknown key is stripped, so a caller that kept
-    // passing cardsOnScreen would get a quiet no-op rather than an error. Pinning the observable
-    // consequence — the lines never reach the prompt — is what actually protects the finding.
+  it("STRIPS a stray cardsOnScreen so its lines never reach the prompt", () => {
+    // Named for what it proves. zod's default object STRIPS unknown keys rather than throwing, so
+    // a caller still passing cardsOnScreen gets a silent no-op — not an error. That is weaker than
+    // rejecting, and worth knowing; what protects the finding is the observable consequence
+    // asserted here: the lines, and the instruction that made the model copy them, never land.
     const result = assembleBundle(
       {
         ask: ASK,

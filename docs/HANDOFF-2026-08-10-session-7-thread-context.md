@@ -130,6 +130,12 @@ loop builds the digest from turns it is already replaying and injects it on `Ski
 **Assistant prose is excluded on purpose.** Replaying it into a generator would import the exact
 defect `chat-prior-turns.ts` exists to fix.
 
+> ⚠️ **SUPERSEDED 2026-08-10 (session 8, `8e27709a`).** `cardsOnScreen` is **gone** — measured, it
+> reproduced the cards it told the model not to reproduce (one verbatim in 10 hooks) and its
+> unbudgeted size evicted the corpus. Both enforcement sites named below are removed with it. The
+> paragraph is kept as the record of what was built. See
+> `docs/HANDOFF-2026-08-10-session-8-live-verification.md` §12.
+
 **`cardsOnScreen` and a `cards` rewrite pack are mutually exclusive** — "rewrite each of these" and
 "do not reproduce these" cannot both be true of one list. Enforced in **two** places (the loop's
 `includeCards`, and the assembler), so neither a caller slip nor a future call site can produce it.

@@ -107,13 +107,6 @@ describe("buildConversationDigest — card lines NEVER enter the digest", () => 
     expect(digest).toEqual({ turns: ["hooks about morning focus", "now some about evenings"] });
   });
 
-  it("leaks no card line into the serialised digest, from any run in the thread", () => {
-    const serialised = JSON.stringify(buildConversationDigest(thread));
-    for (const line of ["hook A", "hook B", "hook C", "hook D"]) {
-      expect(serialised).not.toContain(line);
-    }
-  });
-
   it("emits ONLY a `turns` key — a future sub-block must be budgeted deliberately", () => {
     // CONVERSATION_CHAR_BUDGET bounds `turns`. It silently bounded only HALF the block while
     // cardsOnScreen existed, which is how 700 became 1,844 on the wire. Any new key here must
