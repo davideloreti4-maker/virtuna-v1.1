@@ -3,11 +3,14 @@ import { Reveal } from "../reveal";
 import { Slot } from "../slot";
 
 /**
- * Testimonial wall — nine voices, two of them video.
+ * Testimonial wall — one pull-quote on a stage, then eight voices, two of
+ * them video.
  *
  * CSS columns, not grid: quotes at natural height pack like a wall of notes,
- * which reads as collected rather than commissioned. The two video slots break
- * the text rhythm at positions 2 and 6 so neither column becomes all-text.
+ * which reads as collected rather than commissioned. The two video slots
+ * break the text rhythm so neither column becomes all-text. The strongest
+ * quote is PROMOTED above the wall in display type — a wall where every
+ * voice is the same size has no headline moment.
  * (All quotes, names and counts are placeholder — shaped for layout.)
  */
 
@@ -48,12 +51,6 @@ const WALL: ReadonlyArray<Quote | Video> = [
     name: "Placeholder Name",
     meta: "Placeholder Agency · 40 accounts",
   },
-  {
-    kind: "quote",
-    text: "My last three posts all held above 60% at the three-second mark. That has never happened in two years of posting.",
-    name: "Placeholder Name",
-    meta: "@placeholder · 56k followers",
-  },
   { kind: "video", label: "Video testimonial · creator" },
   {
     kind: "quote",
@@ -77,13 +74,38 @@ export function Testimonials() {
       title="Loved by people who post every day"
       wide
     >
+      {/* The pull-quote — ONE voice promoted above the wall, in display type.
+          A wall of same-size cards has no headline moment; every reference
+          page gives its strongest quote a stage. Grotesque, not serif: the
+          serif budget is spent. */}
+      <Reveal>
+        <figure className="mx-auto mb-14 max-w-3xl text-center md:mb-16">
+          <blockquote
+            className="text-[24px] font-medium leading-[1.3] tracking-[-0.015em] text-[color:var(--lp-fg)] md:text-[30px]"
+            style={{ fontFamily: "var(--lp-font-display)" }}
+          >
+            &ldquo;My last three posts all held above 60% at the three-second
+            mark. That has never happened in two years of posting.&rdquo;
+          </blockquote>
+          <figcaption className="mt-6 flex items-center justify-center gap-3">
+            <Slot variant="avatar" className="h-9 w-9 shrink-0" />
+            <span className="text-[13px] font-medium text-[color:var(--lp-fg)]">
+              Placeholder Name
+            </span>
+            <span className="lp-mono text-[11px] text-[color:var(--lp-fg-3)]">
+              @placeholder · 56k followers
+            </span>
+          </figcaption>
+        </figure>
+      </Reveal>
+
       <div className="columns-1 gap-5 sm:columns-2 lg:columns-3">
         {WALL.map((item, i) => (
           <Reveal key={i} delay={(i % 3) * 60} className="mb-5 break-inside-avoid">
             {item.kind === "video" ? (
-              <Slot variant="video" ratio="4 / 5" label={item.label} play="sm" />
+              <Slot variant="video" ratio="3 / 4" label={item.label} play="sm" />
             ) : (
-              <Card className="p-6">
+              <Card interactive className="p-6">
                 <p className="text-[15px] leading-[1.6] text-[color:var(--lp-fg-2)]">
                   &ldquo;{item.text}&rdquo;
                 </p>

@@ -46,23 +46,30 @@ export function HowItWorks() {
       <div className="grid gap-x-5 gap-y-12 md:grid-cols-3">
         {STEPS.map((step, i) => (
           <Reveal key={step.n} delay={i * 70}>
-            <Slot
-              variant="image"
-              ratio="4 / 3"
-              label={step.slotLabel}
-              play={"play" in step ? step.play : undefined}
-            >
-              {step.sketch}
-            </Slot>
-            <div className="mt-6 flex items-baseline gap-3">
-              <span className="lp-mono text-[12px] text-[color:var(--lp-fg-3)]">
-                {step.n}
-              </span>
-              <h3 className="lp-h3">{step.title}</h3>
+            {/* group: hovering anywhere on a step lifts its frame's tone — the
+                step is one object, and it answers the cursor as one. */}
+            <div className="group">
+              <Slot
+                variant="image"
+                ratio="4 / 3"
+                label={step.slotLabel}
+                play={"play" in step ? step.play : undefined}
+                className="transition-colors duration-200 group-hover:bg-[color:var(--lp-card-lift)]"
+              >
+                {step.sketch}
+                {/* the step's index, stamped on the frame like the caption chip
+                    it mirrors — the sequence lives on the surfaces themselves */}
+                <span className="absolute left-3 top-3 rounded-md border border-[color:var(--lp-line)] bg-[color:var(--lp-bg-alt)] px-2 py-1">
+                  <span className="lp-mono text-[10px] tracking-[0.12em] text-[color:var(--lp-fg-2)]">
+                    {step.n}
+                  </span>
+                </span>
+              </Slot>
+              <h3 className="lp-h3 mt-6">{step.title}</h3>
+              <p className="lp-card-body mt-2 text-[color:var(--lp-fg-3)] md:pr-4">
+                {step.body}
+              </p>
             </div>
-            <p className="lp-card-body mt-2 text-[color:var(--lp-fg-3)] md:pr-4">
-              {step.body}
-            </p>
           </Reveal>
         ))}
       </div>

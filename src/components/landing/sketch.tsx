@@ -92,11 +92,13 @@ export function VerdictSketch() {
   );
 }
 
-/** The composer: one centred input bar with a chip row under it. */
+/** The composer: an input bar over a row of waiting drafts. The extra layer —
+ *  three vertical thumbs with progress ticks — is what makes it read as "drop
+ *  a draft in HERE" rather than an empty search box. */
 export function ComposerSketch() {
   return (
-    <div className="flex h-full w-full flex-col items-center justify-center gap-4 p-6">
-      <div className="flex h-11 w-[82%] items-center gap-3 rounded-lg border border-[color:var(--lp-line)] px-4"
+    <div className="flex h-full w-full flex-col items-center justify-center gap-5 p-6">
+      <div className="flex h-11 w-[86%] items-center gap-3 rounded-lg border border-[color:var(--lp-line)] px-4"
         style={{ background: "rgba(236,231,222,0.03)" }}
       >
         <Line w="38%" o={0.1} />
@@ -109,28 +111,54 @@ export function ComposerSketch() {
         <Line w="64px" o={0.05} h={18} />
         <Line w="46px" o={0.05} h={18} />
       </div>
+      {/* the queue: drafts already dropped in, one mid-upload */}
+      <div className="flex w-[86%] items-center justify-center gap-3">
+        {[0.05, 0.08, 0.04].map((o, i) => (
+          <div
+            key={i}
+            className="flex h-14 w-10 flex-col justify-end rounded-md border border-[color:var(--lp-line)] p-1.5"
+            style={{ background: `rgba(236,231,222,${o})` }}
+          >
+            <Line w={i === 1 ? "70%" : "100%"} h={3} o={i === 1 ? 0.18 : 0.07} />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
 
-/** The room: a grid of persona dots, a few of them reacting. */
+/** The room: a grid of persona dots — a few RINGED mid-reaction — over a live
+ *  attention meter. The ring is the sketch grammar for "this one just
+ *  reacted"; the meter is the second-by-second scoring, forming. */
 export function RoomSketch() {
   // Deterministic variation — no Math.random in render.
   const dots = Array.from({ length: 24 }, (_, i) => (i * 7) % 5);
+  const ringed = new Set([3, 9, 14, 20]);
   return (
-    <div className="flex h-full w-full flex-col justify-center gap-4 p-6">
+    <div className="flex h-full w-full flex-col justify-center gap-5 p-6">
       <div className="grid grid-cols-8 gap-2.5">
         {dots.map((v, i) => (
           <div
             key={i}
             className="aspect-square rounded-full"
-            style={{ background: `rgba(236,231,222,${0.05 + v * 0.02})` }}
+            style={{
+              background: `rgba(236,231,222,${0.05 + v * 0.02})`,
+              ...(ringed.has(i)
+                ? { boxShadow: "0 0 0 1px rgba(236,231,222,0.22)" }
+                : {}),
+            }}
           />
         ))}
       </div>
-      <div className="flex items-center gap-2">
-        <Line w="30%" o={0.1} />
-        <Line w="18%" o={0.05} />
+      {/* the reading, forming second by second */}
+      <div className="flex w-full flex-col gap-2">
+        <div className="h-1 w-full overflow-hidden rounded-full" style={{ background: "rgba(236,231,222,0.06)" }}>
+          <div className="h-full w-[58%] rounded-full" style={{ background: "rgba(236,231,222,0.28)" }} />
+        </div>
+        <div className="flex items-center justify-between">
+          <Line w="26%" o={0.1} h={5} />
+          <Line w="14%" o={0.06} h={5} />
+        </div>
       </div>
     </div>
   );
@@ -151,6 +179,11 @@ export function PlayerSketch() {
             <Line w="85%" />
             <Line w="70%" />
             <Line w="78%" />
+            <Line w="62%" />
+          </div>
+          <div className="mt-auto flex flex-col gap-1.5">
+            <Line w="72%" o={0.05} />
+            <Line w="48%" o={0.05} />
           </div>
         </div>
         {/* the creator's vertical video, docked in the workspace */}
@@ -184,7 +217,8 @@ export function PlayerSketch() {
                   <Line w="32%" o={0.08} h={5} />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <Line w="55%" o={0.09} h={5} />
+                  <Line w="72%" o={0.09} h={5} />
+                  <Line w="55%" o={0.07} h={5} />
                   <Line w="38%" o={0.05} h={5} />
                 </div>
               </div>
@@ -213,21 +247,37 @@ export function PlayerSketch() {
   );
 }
 
-/** The verdict summary: a score tile + reason rows. */
+/** The verdict summary: a score tile beside FINDING rows — each one a
+ *  timestamp stub, a reason line, a fix chip — separated by hairlines. The
+ *  structure mirrors the step's promise: the drop moment, the reason, the
+ *  fix. */
 export function ScoreSketch() {
   return (
-    <div className="flex h-full w-full items-center gap-4 p-6">
+    <div className="flex h-full w-full items-center gap-5 p-6">
       <div
-        className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl border border-[color:var(--lp-line)]"
+        className="flex h-20 w-20 shrink-0 flex-col items-center justify-center gap-2 rounded-xl border border-[color:var(--lp-line)]"
         style={{ background: "rgba(236,231,222,0.05)" }}
       >
         <Line w="34px" h={12} o={0.16} />
+        <Line w="24px" h={4} o={0.07} />
       </div>
-      <div className="flex min-w-0 flex-1 flex-col gap-2.5">
-        <Line w="72%" o={0.1} />
-        <Line w="58%" />
-        <Line w="64%" />
-        <Line w="40%" o={0.05} />
+      <div className="flex min-w-0 flex-1 flex-col">
+        {[
+          { stamp: "26px", reason: "58%", chip: "30px" },
+          { stamp: "26px", reason: "44%", chip: "22px" },
+          { stamp: "26px", reason: "52%", chip: "26px" },
+        ].map((row, i) => (
+          <div
+            key={i}
+            className="flex items-center gap-2.5 border-t border-[color:var(--lp-line)] py-2.5 first:border-t-0"
+          >
+            <Line w={row.stamp} o={0.14} h={5} />
+            <Line w={row.reason} o={0.08} h={5} />
+            <div className="ml-auto">
+              <Line w={row.chip} o={0.05} h={12} />
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

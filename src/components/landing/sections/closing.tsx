@@ -16,7 +16,7 @@ import { CtaPair, TRIAL_MICROCOPY } from "../cta";
 
 export function FounderNote() {
   return (
-    <Section>
+    <Section density="compact">
       <Reveal className="mx-auto flex max-w-2xl flex-col items-start gap-8 sm:flex-row sm:gap-10">
         <Slot variant="portrait" label="Founder" className="w-32 shrink-0 sm:w-36" />
         <div>
@@ -53,7 +53,7 @@ export function FinalCta() {
             d="M 0 40 C 210 46, 290 60, 350 92 C 410 124, 520 152, 700 166 C 900 178, 1080 182, 1200 184"
             fill="none"
             stroke="#ece7de"
-            strokeOpacity="0.04"
+            strokeOpacity="0.055"
             strokeWidth="1.25"
             vectorEffect="non-scaling-stroke"
           />
@@ -62,7 +62,7 @@ export function FinalCta() {
             d="M 0 36 C 260 40, 560 48, 820 58 C 1000 65, 1120 70, 1200 74"
             fill="none"
             stroke="#ece7de"
-            strokeOpacity="0.09"
+            strokeOpacity="0.12"
             strokeWidth="1.5"
             vectorEffect="non-scaling-stroke"
           />
