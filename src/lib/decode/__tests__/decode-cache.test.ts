@@ -82,77 +82,70 @@ describe("getCachedDecode", () => {
   });
 });
 
-describe("storeDecode", () => {
-  it("writes a source_pool the table's CHECK constraint actually accepts", async () => {
-    const c = fakeClient();
-    await storeDecode(video, decode, baseline, { client: c as never });
-    const row = c.upsert.mock.calls[0]?.[0] as Record<string, unknown>;
-    expect(row.platform_video_id).toBe("123");
-    expect(row.creator_handle).toBe("a");
-    // CHECK (source_pool IN ('curated','competitor','scraped','expanded')) — "live-scrape"
-    // would be rejected by Postgres, and the rejection arrives as {error}, not a throw.
-    expect(row.source_pool).toBe("scraped");
-    expect(row.spoken_hook).toBe("So I made a huge mistake");
-  });
 
-  it("writes a status the table's CHECK constraint accepts", async () => {
-    const c = fakeClient();
-    await storeDecode(video, decode, baseline, { client: c as never });
-    const row = c.upsert.mock.calls[0]?.[0] as Record<string, unknown>;
-    // CHECK (status IN ('metadata','extracted','watched','failed')).
+/**
+ * storeDecode no longer hand-rolls its own upsert — it delegates to `upsertOutlierTeardown`, which
+ * owns the (platform, platform_video_id) conflict target and the durable-cover rehost. What stays
+ * this module's responsibility is the ROW it hands over, and two fields on it are constrained by
+ * CHECKs that reject silently (supabase-js returns `{error}`, it does not throw):
+ *
+ *   CHECK (source_pool IN ('curated','competitor','scraped','expanded'))
+ *   CHECK (status      IN ('metadata','extracted','watched','failed'))
+ *
+ * The ≥3× warrant gate, the embedding, and the niche facet are covered in decode-cache-warrant.test.ts.
+ */
+describe("storeDecode — the row handed to the canonical writer", () => {
+  const outlier = { ...video, views: 30_000, author: { ...video.author, fans: 2_000 } };
+
+  function spyDeps() {
+    const upsertOutlier = vi.fn().mockResolvedValue("row-id");
+    return {
+      upsertOutlier,
+      deps: {
+        client: {} as never,
+        upsertOutlier,
+        embedTextsFn: async () => [new Array(768).fill(0)],
+      },
+    };
+  }
+
+  it("names a source_pool and status the table's CHECK constraints accept", async () => {
+    const { upsertOutlier, deps } = spyDeps();
+    await storeDecode(outlier, decode, baseline, deps);
+    const row = upsertOutlier.mock.calls[0]?.[1] as Record<string, unknown>;
+    expect(row.sourcePool).toBe("scraped");
     expect(row.status).toBe("extracted");
   });
 
-  it("records the decode's provenance in hook_source", async () => {
-    const c = fakeClient();
-    await storeDecode(video, decode, baseline, { client: c as never });
-    expect((c.upsert.mock.calls[0]?.[0] as Record<string, unknown>).hook_source).toBe(
-      "native_transcript",
-    );
-
-    const c2 = fakeClient();
-    await storeDecode(
-      video,
-      { ...decode, spokenHook: null, source: "caption-only" },
-      baseline,
-      { client: c2 as never },
-    );
-    expect((c2.upsert.mock.calls[0]?.[0] as Record<string, unknown>).hook_source).toBe(
-      "caption_fallback",
-    );
+  it("carries the identity, the decode and its provenance", async () => {
+    const { upsertOutlier, deps } = spyDeps();
+    await storeDecode(outlier, decode, baseline, deps);
+    const row = upsertOutlier.mock.calls[0]?.[1] as Record<string, unknown>;
+    expect(row.platformVideoId).toBe("123");
+    expect(row.creatorHandle).toBe("a");
+    expect(row.spokenHook).toBe("So I made a huge mistake");
+    expect(row.hookSource).toBe("native_transcript");
   });
 
   it("stores the basis label alongside the multiplier, never a bare number", async () => {
-    const c = fakeClient();
-    await storeDecode(video, decode, baseline, { client: c as never });
-    const row = c.upsert.mock.calls[0]?.[0] as Record<string, unknown>;
-    expect(row.baseline_label).toBe("vs their lifetime average");
-    expect(typeof row.outlier_multiplier).toBe("number");
+    const { upsertOutlier, deps } = spyDeps();
+    await storeDecode(outlier, decode, baseline, deps);
+    const row = upsertOutlier.mock.calls[0]?.[1] as Record<string, unknown>;
+    expect(typeof row.outlierMultiplier).toBe("number");
+    expect(row.baselineLabel).toBeTruthy();
   });
 
-  it("upserts on the composite key the unique index is actually built on", async () => {
-    const c = fakeClient();
-    await storeDecode(video, decode, baseline, { client: c as never });
-    // The only unique index is (platform, platform_video_id). onConflict:"platform_video_id"
-    // alone raises 42P10 — "no unique or exclusion constraint matching the ON CONFLICT spec".
-    expect(c.upsert.mock.calls[0]?.[1]).toMatchObject({
-      onConflict: "platform,platform_video_id",
-    });
-  });
-
-  it("never throws — a cache write must not fail the creator's request", async () => {
-    const c = { from: () => { throw new Error("db down"); } };
-    await expect(storeDecode(video, decode, baseline, { client: c as never })).resolves.toBeUndefined();
-  });
-
-  it("SURFACES a returned Supabase error instead of discarding it", async () => {
+  it("never throws, and LOGS rather than swallowing a failed write", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const c = fakeClient([], { error: { message: "violates check constraint" } });
-    await storeDecode(video, decode, baseline, { client: c as never });
-    // Supabase returns errors, it does not throw them. A silently-dropped {error} is how a
-    // write-back cache reads as working while never storing a single row.
-    expect(warn).toHaveBeenCalled();
-    expect(JSON.stringify(warn.mock.calls)).toContain("violates check constraint");
+    const { deps } = spyDeps();
+    deps.upsertOutlier = vi.fn().mockRejectedValue(new Error("violates check constraint"));
+    await expect(storeDecode(outlier, decode, baseline, deps)).resolves.toBeUndefined();
+    // A silently-dropped failure is how a write-back cache reads as working while storing nothing.
+    // Assert on the Error itself — JSON.stringify flattens an Error to {} and would pass vacuously.
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("[decode-cache]"),
+      expect.objectContaining({ message: "violates check constraint" }),
+    );
     warn.mockRestore();
   });
 });

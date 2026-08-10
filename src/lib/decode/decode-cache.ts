@@ -19,6 +19,8 @@
 import type { LiveDecode } from "./live-decode";
 import type { AuthorBaseline } from "@/lib/discover/author-baseline";
 import { multiplierFor } from "@/lib/discover/author-baseline";
+import { accountMultiplier, passesOutlierGate } from "@/lib/grounding/outlier-gate";
+import { buildTeardownEmbeddingText } from "@/lib/grounding/embedder";
 
 /** `outlier_teardowns.hook_source` CHECK: native_transcript | caption_fallback | omni. */
 const HOOK_SOURCE: Record<LiveDecode["source"], string> = {
@@ -40,6 +42,16 @@ interface SupabaseLike {
 
 interface CacheDeps {
   client?: SupabaseLike;
+  /** The canonical corpus writer. Injected for tests; defaults to upsertOutlierTeardown. */
+  upsertOutlier?: (client: unknown, row: Record<string, unknown>) => Promise<string>;
+  /** Batch embedder. Injected for tests; defaults to embedTexts. */
+  embedTextsFn?: (texts: string[]) => Promise<number[][]>;
+  /**
+   * Which niche query sourced this video, when the caller knows. Optional and nullable by the
+   * pool's existing convention — the scrape path has no niche CLASSIFICATION (that is a
+   * corpus-side backfill), so this is the query facet, not a derived label.
+   */
+  niche?: string | null;
 }
 
 function getClient(deps: CacheDeps): SupabaseLike {
@@ -49,6 +61,18 @@ function getClient(deps: CacheDeps): SupabaseLike {
   /* eslint-disable-next-line @typescript-eslint/no-require-imports */
   const { createServiceClient } = require("@/lib/supabase/service");
   return createServiceClient() as SupabaseLike;
+}
+
+function loadUpsertOutlier() {
+  /* eslint-disable-next-line @typescript-eslint/no-require-imports */
+  const { upsertOutlierTeardown } = require("@/lib/grounding/corpus");
+  return upsertOutlierTeardown as (c: unknown, row: Record<string, unknown>) => Promise<string>;
+}
+
+function loadEmbedTexts() {
+  /* eslint-disable-next-line @typescript-eslint/no-require-imports */
+  const { embedTexts } = require("@/lib/grounding/embedder");
+  return embedTexts as (texts: string[]) => Promise<number[][]>;
 }
 
 export async function getCachedDecode(
@@ -103,6 +127,8 @@ export async function storeDecode(
     caption: string;
     views: number;
     likes: number;
+    hashtags?: string[];
+    postedAt?: Date;
     coverUrl?: string;
     author?: { handle: string; fans: number; heart: number; videoCount: number };
   },
@@ -111,44 +137,78 @@ export async function storeDecode(
   deps: CacheDeps = {},
 ): Promise<void> {
   try {
-    const res = (await getClient(deps)
-      .from("outlier_teardowns")
-      .upsert(
-        {
-          platform: "tiktok",
-          platform_video_id: video.platformVideoId,
-          video_url: video.videoUrl,
-          cover_url: video.coverUrl ?? null,
-          creator_handle: video.author?.handle ?? null,
-          // Distinguishes accumulated rows from the original curated corpus (spec assumption 3).
-          source_pool: "scraped",
-          views: video.views,
-          follower_count: video.author?.fans ?? null,
-          outlier_multiplier: multiplierFor(video, baseline),
-          // The basis ALWAYS travels with the number (Global Constraints).
-          baseline_label: baseline.label,
-          caption: video.caption,
-          spoken_hook: decode.spokenHook,
-          hook_source: HOOK_SOURCE[decode.source],
-          hook_template: decode.hookPattern,
-          teardown: {
-            structure: decode.structure,
-            theTurn: decode.theTurn,
-            emotionalBeat: decode.emotionalBeat,
-          },
-          status: "extracted",
-        },
-        // The ONLY unique index on this table is (platform, platform_video_id). Naming just
-        // platform_video_id raises 42P10 and the row is never written.
-        { onConflict: "platform,platform_video_id" },
-      )) as { error?: unknown } | null;
+    // ── THE WARRANT ─────────────────────────────────────────────────────────
+    // A scraped row has no human vouching for it, so the metric is the only thing that earns it
+    // a place (retrieve.ts §warrant). The bar is applied on the DURABLE receipt — views ÷
+    // followers — which Phase 1 made computable inline for the first time: `authorMeta.fans`
+    // rides on every scraped item, so the per-survivor profile scrape §14 required is no longer
+    // needed. An absent follower count admits the row (nothing is computable), exactly as the
+    // orchestrator's `!g.durable || passesOutlierGate(...)` does.
+    const durable = accountMultiplier(video.views, video.author?.fans);
+    if (durable && !passesOutlierGate(durable.multiplier)) return;
 
-    // Supabase RETURNS errors rather than throwing them. Dropping this is how a write-back
-    // cache reads as working while storing nothing — log it, but never fail the request.
-    if (res && typeof res === "object" && "error" in res && res.error) {
-      console.warn("[decode-cache] write-back failed:", res.error);
+    // The pool's basis when we have it, the live tile's basis when we do not. The label ALWAYS
+    // travels with the number, and the two are never interchanged.
+    const receipt = durable
+      ? { multiplier: durable.multiplier, label: durable.baselineLabel }
+      : { multiplier: multiplierFor(video, baseline), label: baseline.label };
+
+    // ── REACHABILITY ────────────────────────────────────────────────────────
+    // Retrieval is cosine over this vector. Without it the row is findable only by exact
+    // platform_video_id — which is the one key nobody has when asking about a niche, so an
+    // unembedded write-back fills a bucket nothing reads. Degrade-safe: an embed failure writes
+    // NULL rather than losing the row (mirrors the orchestrator).
+    const embedText = buildTeardownEmbeddingText({
+      caption: video.caption,
+      hashtags: video.hashtags ?? null,
+      spokenHook: decode.spokenHook,
+    });
+    let embedding: number[] | null = null;
+    if (embedText) {
+      try {
+        const embedFn = deps.embedTextsFn ?? loadEmbedTexts();
+        embedding = (await embedFn([embedText]))[0] ?? null;
+      } catch (e) {
+        console.warn("[decode-cache] embed failed, writing NULL embedding:", e);
+      }
     }
-  } catch {
-    /* best-effort by contract — a ledger hiccup never costs the answer */
+
+    // Delegate to the CANONICAL writer rather than hand-rolling a second upsert: it owns the
+    // (platform, platform_video_id) conflict target and durableCover(), which rehosts the
+    // ephemeral signed TikTok cover. Persisting that URL directly — as the first cut did —
+    // stores a reference that expires.
+    const upsert = deps.upsertOutlier ?? loadUpsertOutlier();
+    await upsert(getClient(deps), {
+      platform: "tiktok",
+      platformVideoId: video.platformVideoId,
+      videoUrl: video.videoUrl,
+      coverUrl: video.coverUrl ?? null,
+      creatorHandle: video.author?.handle ?? null,
+      // Distinguishes accumulated rows from the original curated corpus (spec assumption 3).
+      sourcePool: "scraped",
+      views: video.views,
+      followerCount: video.author?.fans ?? null,
+      outlierMultiplier: receipt.multiplier,
+      baselineLabel: receipt.label,
+      postedAt: video.postedAt ? video.postedAt.toISOString() : null,
+      niche: deps.niche ?? null,
+      caption: video.caption,
+      hashtags: video.hashtags ?? null,
+      spokenHook: decode.spokenHook,
+      hookSource: HOOK_SOURCE[decode.source],
+      hookTemplate: decode.hookPattern,
+      teardown: {
+        structure: decode.structure,
+        theTurn: decode.theTurn,
+        emotionalBeat: decode.emotionalBeat,
+      },
+      embedding,
+      status: "extracted",
+    });
+  } catch (e) {
+    // Best-effort by contract — a ledger hiccup never costs the answer. Logged, not swallowed:
+    // upsertOutlierTeardown THROWS on a returned Supabase error, and a silent catch here is how
+    // a write-back cache reads as working while storing nothing.
+    console.warn("[decode-cache] write-back failed:", e);
   }
 }

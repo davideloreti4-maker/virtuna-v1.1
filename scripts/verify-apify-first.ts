@@ -114,18 +114,41 @@ async function main() {
   if (!decode) throw new Error("decode returned null on a real video");
 
   // ── WRITE-BACK + CACHE READ ─────────────────────────────────────────────
-  await storeDecode(withSub, decode, baseline);
+  // The write-back is GATED: a scraped row has no human vouching for it, so it must clear
+  // views ÷ followers ≥ 3× to enter the shared corpus. A refusal here is the gate working,
+  // not a failure — so report which outcome we expect BEFORE asking for it.
+  const fans = withSub.author?.fans ?? 0;
+  const durable = fans > 0 ? withSub.views / fans : null;
+  const shouldWrite = durable === null || durable >= 3;
+  console.log(
+    `WARRANT — ${durable === null ? "no follower count (admits)" : `${durable.toFixed(2)}× vs followers`}` +
+      ` → ${shouldWrite ? "should WRITE" : "should be REFUSED"}`,
+  );
+
+  await storeDecode(withSub, decode, baseline, { niche: null });
   const cached = await getCachedDecode(withSub.platformVideoId);
-  console.log("CACHE READ-BACK —", cached ? JSON.stringify(cached, null, 2) : "MISS");
-  if (!cached) throw new Error("write-back did not land — the corpus is not self-filling");
+  console.log("CACHE READ-BACK —", cached ? JSON.stringify(cached, null, 2) : "MISS (refused)");
+  if (shouldWrite && !cached) throw new Error("write-back did not land — the corpus is not self-filling");
+  if (!shouldWrite && cached) throw new Error("the ≥3× warrant gate did not bite");
 
   const client = createServiceClient();
   const { data } = await client
     .from("outlier_teardowns")
-    .select("creator_handle, source_pool, status, hook_source, baseline_label, outlier_multiplier, hook_template")
+    .select(
+      "creator_handle, source_pool, status, hook_source, baseline_label, outlier_multiplier, hook_template, niche, embedding",
+    )
     .eq("platform_video_id", withSub.platformVideoId)
     .maybeSingle();
-  console.log("ROW —", JSON.stringify(data, null, 2));
+  if (data) {
+    const row = data as Record<string, unknown>;
+    const raw = row.embedding;
+    const vec = typeof raw === "string" ? JSON.parse(raw) : raw;
+    // An unembedded row is findable only by exact video id — i.e. unreachable in practice.
+    console.log("ROW —", JSON.stringify({ ...row, embedding: undefined }, null, 2));
+    console.log(`  embedding: ${Array.isArray(vec) ? `${vec.length} dims` : "NULL — row is unreachable"}`);
+  } else {
+    console.log("ROW — none (refused by the warrant gate, as expected)");
+  }
 
   if (!KEEP) {
     await client
