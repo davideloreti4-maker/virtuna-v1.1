@@ -181,6 +181,9 @@ non-firing pair the detector can actually reach scores **0.44**.
 > suggested. The threshold could be anywhere in that range and behave identically here. 0.7 is safe
 > with a very wide margin.
 
+> ⚠️ **§4 was written before §11 and its conclusion is wrong.** The 0.44 pair is not clear air —
+> it is an instance of the defect the pin exists to prevent, i.e. a **false negative**. Read §11.
+
 Three things worth carrying:
 
 1. **2 of the 4 firings are this session's own walks.** Historically it is **2 fires in 358 turns**.
@@ -220,11 +223,12 @@ Three things worth carrying:
 
 ## 6. Recommendation on the flag flip
 
-Mine, not a decision:
+Mine, not a decision. **Superseded in part by §11 — read that first.**
 
-- **`ENGINE_REPEAT_ASK_PIN` — ship it.** The defect is real on the route, reproducible, and visible
-  in the product; the pin corrects it 5/5; it bills exactly like any other run; and it fires 4 times
-  in 360 real turns, all on verbatim repeats. The downside is bounded and measured.
+- **`ENGINE_REPEAT_ASK_PIN` — safe, but it buys much less than §3 suggests.** The defect is real on
+  the route, reproducible, and visible in the product; the pin corrects it 5/5; it bills exactly
+  like any other run; it never false-pins on real traffic. But §11 measures its *coverage* and the
+  answer is **0 of 5 historical instances**. It is a correct fix for a shape that barely occurs.
 - **`ENGINE_GEN_CONVERSATION` — hold until §1 is decided.** It works and it arrives, but as it
   stands, switching it on switches grounding off on repeat runs, silently. That trade may well be
   right — it is just not one anyone has chosen yet, and it should not be made by a character count.
@@ -311,6 +315,80 @@ bear on it:
 If it were mine to call I would not try to raise interview completion; I would ask what else can be
 derived at calibration, since that path already out-covers the typed one 6/13 vs 2/18. But that is a
 product call and it is yours.
+
+---
+
+## 11. 🔴 How big is the defect, and how much of it does the pin cover?
+
+Asked because §4 measured the pin's *fire rate* and nothing measured its *coverage*. A pin that
+never misfires is not the same as a pin that helps.
+
+`.scratch/probe-honesty-defect.ts` walks every assistant text turn in every open thread and flags
+the ones whose prose claims a delivered artefact while **zero result blocks** were persisted beside
+them. It works off the raw rows, not `openChatPriorTurns`' `toolRuns` — that field only attaches
+when `origin === "chat-agent"`, so the old chat path would have scored as one long lie.
+
+```
+assistant text turns .................... 414
+…claiming a delivered artefact .......... 39
+   · with cards actually persisted ...... 26   honest
+   · with ZERO cards .................... 13   ← screened as the defect
+…an honest credit refusal / guard ....... 71   not a defect
+…answering a STRATEGY ask (no such tool)  245  not a defect
+```
+
+**Hand-judged, the 13 are ~9 real** (4 are pushbacks that *quote* generic ideas in order to reject
+them — "The obvious list would be: batch cook on Sunday…" — which the screen cannot tell from a
+delivery). **4 of the 9 are my own induced runs from this session.**
+
+> **Of the 5 historical instances, the pin catches 0.**
+
+Three distinct shapes, none of them reachable:
+
+1. **First-ask narration.** `377c0c52` is a two-row thread: the creator's first ever message,
+   `"3 hooks for my new format day in the life of a 1b $ company ceo"`, answered with *"Here are
+   three hooks for the…"* and no cards. `detectRepeatAsk` requires a prior run **of that skill** in
+   the thread. On a first ask there is none, so the pin is structurally unable to fire — and this is
+   the worst case for the creator, who has seen the product do nothing correct yet.
+2. **A same-topic re-ask below threshold.** In `f5bdbadb`, `"i launched a budgeting app for
+   students. give me hooks for it"` produced 5 real cards. Four turns later, `"give me hooks for my
+   student budgeting app that stops food delivery overspending"` produced *"Five hooks are on
+   screen."* and **zero cards** — the exact sentence `chat-prior-turns.ts` exists to fix. Similarity:
+   **0.444, against a 0.7 threshold. Misses by 0.26.**
+   This is the same pair §4 reported as the top of the clear air. It is not clear air. `repeat-ask.ts`
+   already calls it *"arguably the SAME request, so 0.7 is the conservative reading"* — measured
+   against outcomes rather than intuition, that conservatism costs the catch.
+3. **`"Give me a few more hook options."`** — scores 0.14–0.20, never pins. In `f5bdbadb` it produced
+   no cards twice and real cards once. Stochastic, and the commonest phrasing of a re-ask.
+
+### What this implies
+
+The pin keys on **the shape of the ask**. Every miss above is a case where the ask looked different
+but the *output* was the same lie. The one thing all 9 share is observable at the other end: **the
+turn ended with no tool call and prose claiming an artefact.**
+
+That seam already exists — the loop inspects streamed text for the artefact guard — and it has the
+property the threshold does not: **a check on the output costs nothing when it is wrong.** The pin
+must be conservative because a false pin spends a credit; a post-hoc "you claimed cards and called
+nothing" check spends nothing and can be applied to every turn. It also keys on the defect itself
+rather than a proxy, which is the principle `repeat-ask.ts`'s own header argues for.
+
+**Not built, not designed — this is an architecture call and it is yours.** Flagging it because it
+is a materially better lever than tuning 0.7 downward, and because lowering the threshold to catch
+the 0.44 case would put it 0.03 above `"write me 5 hooks about cold brew coffee"` vs
+`"…about sourdough baking"` (0.29) — i.e. the margin stops being comfortable.
+
+### Caveats on these numbers
+
+- **The corpus is small and partly synthetic.** 414 assistant turns, 180 threads, several of them
+  seeded probe threads (five identical `"Test how my audience would react to this hook"` threads).
+  Treat the *shapes* as the finding and the *rate* as indicative.
+- **The 4 pushback false-positives are a screen limitation, not a measurement of the model.** A
+  regex cannot separate "here are the ideas" from "the ideas anyone would produce are, and they are
+  bad". Every one was read by hand.
+- **I did not judge the 26 "honest" claims.** They had cards beside them; I did not check the prose
+  matched the cards. Walk B turn 1 this session produced an enumerated prose pack that did **not**
+  match its own cards, so that class is not clean either — just not measured.
 
 ---
 
