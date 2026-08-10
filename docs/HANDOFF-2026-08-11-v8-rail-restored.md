@@ -247,15 +247,28 @@ vitest **5639 passed / 1** = the `routing-cut` baseline, no flakes.
    was not worth the blast radius unprompted.
 3. Copy review + drop economics (`docs/OWNER-REVIEW-2026-08-10-v8-copy-and-economics.md`).
    Add to it: `AUTO_LABEL` / `AUTO_DESC` and the rewritten `PROMISE_BY_TOOL.chat`.
-4. `pickLane` prefills the audience description with `lane.who`; real output says `lane.niche`
-   reads as the description. One-line change, owner call.
+4. ~~`pickLane` prefills the audience description with `lane.who`~~ — **FIXED** (`welcome/page.tsx`).
+   `who` is a posture shorthand capped at six lowercase words ("receipts, not vibes"); `niche` is
+   defined by the schema as "the creator niche this lane writes for". Calibration was being handed a
+   fragment that names no subject.
 5. ~~The desktop arrival has no rail~~ — **RULED AND BUILT, see §5c.** What replaces it as the
    open question: the resting board lists **all ten** archetypes (15/12/12/10/10/10/8/8/8/7). It is
    complete and it fills the column, but ten near-even rows read as a flat distribution with nobody
    standing out. Truncating needs an overflow affordance, and the owner cut one of those in §5b —
    so it stays whole until the owner says otherwise.
-6. The **mobile** arrival still states the audience nowhere until you tap (the owner scoped §5c to
-   desktop). The <xl equivalent would be the attached plate on arrival.
+6. ~~The mobile arrival states the audience nowhere~~ — **WRONG, it already does.** Measured at
+   393×852: `audience-header-slot` is mounted on the phone arrival, 45px, reading
+   "@mrbeast · calibrated". The reason is that the arrival renders INSIDE the `homeThreadMode`
+   branch, so `useHeader = homeThreadMode && !isXl` is already true there. Nothing to build. ⚠️ Do
+   not reason about `useHeader` from the branch name — check which branch the arrival actually
+   renders in; it is not the centered one.
+7. **NEW — the mobile arrival's composer is 225px BELOW THE FOLD.** Measured at 393×852: the field
+   sits at y=1138 in an 852px viewport, `scrollY` 0. The single-column shelf is 875px tall, so the
+   dock is not pinned on this surface — you scroll past six cards to reach the thing you type into.
+   Pre-existing and untouched by §5d (that added 16px at mobile, not 225). It may be intended
+   ("content-first arrival" is in the concept SSOT) or it may be a real defect; **owner call.**
+   ⚠️ `window.scrollTo(0, body.scrollHeight)` does NOT move this surface — the scroll lives in an
+   inner `overflow-y-auto` region, so a body-scroll probe reports the arrival as unscrollable.
 
 ## 7. Rules still binding
 
