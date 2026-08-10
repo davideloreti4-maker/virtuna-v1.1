@@ -1121,7 +1121,9 @@ describe("remix runner blueprint seam", () => {
 - [ ] **Step 2: Run it and confirm it passes already**
 
 Run: `npm test -- src/lib/tools/runners/__tests__/remix-runner.test.ts`
-Expected: PASS. This test pins the seam Task 1 built; the wiring below is what makes it reachable from the real pipeline.
+Expected: PASS.
+
+**This test is a seam pin, not a TDD red step, and that is deliberate** (owner ruling, 2026-08-10). It cannot go red — Task 1 already built `buildBlueprint` and proved it with 11 tests. What it pins is that the function stays correct and importable *from the runner's path*, so a later refactor that breaks the seam fails here rather than in a live run. The wiring's own coverage is Step 6.
 
 - [ ] **Step 3: Add `blueprintId` to the block schema**
 
@@ -1253,7 +1255,142 @@ Add `blueprintId` to the `send("content", ...)` props map, so the beats render o
 
 ⚠️ This last line matters. `proof`, `production` and `provenance` were each shipped persisted-but-absent from the SSE face, and each one produced a card that only became correct after a reload. Do not repeat it.
 
-- [ ] **Step 6: Typecheck and run the affected suites**
+- [ ] **Step 6: Cover the wiring with route tests**
+
+⚠️ The first assertion below is the one that matters most. `proof`, `production` and `provenance` were each shipped persisted-but-absent from this exact `send("content")` face, and each produced a card that only became correct after a reload. This test is what stops `blueprintId` becoming the fourth.
+
+**Append** to the existing `src/app/api/tools/remix/run/__tests__/route.test.ts` — do not create a new file. That file already mocks `@/lib/supabase/server`, `@/lib/threads/messages`, `@/lib/threads/threads`, `@/lib/tools/runners/remix-runner`, `@/lib/kc/kc-stamp` and `nanoid`, and provides `makeRemixCard()` and `makeRemixRequest()`. Add one mock alongside the existing `vi.mock` calls at the top of the file:
+
+```ts
+vi.mock("@/lib/remix/blueprint-repo", () => ({
+  insertBlueprint: vi.fn(),
+}));
+```
+
+Then append this block inside the existing top-level `describe`:
+
+```ts
+  // ── Blueprint wiring (phase 1) ──────────────────────────────────────────────
+  describe("blueprint persistence", () => {
+    const BLUEPRINT_RESULT = {
+      id: "bp1234567890",
+      payload: { duration_s: 14, words_per_second: 3.2, has_speech: true, beats: [
+        { index: 0, t_start: 0, t_end: 1.8, duration_s: 1.8, role: "hook" as const,
+          spoken: "source line", on_screen_text: null, visual_event: "tight crop",
+          audio_event: "voice", cuts: 1, weakness: null },
+      ] },
+      script: [[{ index: 0, spoken: "your line", on_screen_text: "", shot: "waist-up" }]],
+      sourceVideoId: "https://www.tiktok.com/@creator/video/123",
+    };
+
+    /** Signs in a user, stubs the thread, and returns the mocked pipeline. */
+    async function arrange(blueprint: unknown) {
+      const { createClient } = await import("@/lib/supabase/server");
+      const { runRemixPipeline } = await import("@/lib/tools/runners/remix-runner");
+      const { createOpenThreadLazy } = await import("@/lib/threads/threads");
+
+      (createClient as ReturnType<typeof vi.fn>).mockResolvedValue({
+        auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: "user-123" } } }) },
+        from: vi.fn().mockReturnThis(),
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+      });
+      (createOpenThreadLazy as ReturnType<typeof vi.fn>).mockResolvedValue({
+        id: "thread-remix-abc", user_id: "user-123",
+      });
+
+      const card = makeRemixCard();
+      (card.props as { blueprintId?: string }).blueprintId = "bp1234567890";
+      (runRemixPipeline as ReturnType<typeof vi.fn>).mockResolvedValue({
+        blocks: [card], warnings: [], blueprint,
+      });
+      return card;
+    }
+
+    async function drain(res: Response): Promise<string> {
+      const reader = res.body!.getReader();
+      const decoder = new TextDecoder();
+      let out = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        out += decoder.decode(value, { stream: true });
+      }
+      return out;
+    }
+
+    it("puts blueprintId on the SSE content face, not only in the persisted block", async () => {
+      await arrange(BLUEPRINT_RESULT);
+      const { POST } = await import("@/app/api/tools/remix/run/route");
+      const res = await POST(makeRemixRequest({
+        url: "https://www.tiktok.com/@creator/video/123", platform: "tiktok",
+      }));
+      const raw = await drain(res);
+
+      const contentLine = raw
+        .split("\n")
+        .find((l) => l.startsWith("data:") && l.includes("adaptedHook"));
+      expect(contentLine).toBeDefined();
+      expect(contentLine).toContain("bp1234567890");
+    });
+
+    it("writes the blueprint row before the thread message", async () => {
+      await arrange(BLUEPRINT_RESULT);
+      const { insertBlueprint } = await import("@/lib/remix/blueprint-repo");
+      const { insertMessage } = await import("@/lib/threads/messages");
+      const order: string[] = [];
+      (insertBlueprint as ReturnType<typeof vi.fn>).mockImplementation(async () => {
+        order.push("blueprint");
+      });
+      (insertMessage as ReturnType<typeof vi.fn>).mockImplementation(async () => {
+        order.push("message");
+      });
+
+      const { POST } = await import("@/app/api/tools/remix/run/route");
+      const res = await POST(makeRemixRequest({
+        url: "https://www.tiktok.com/@creator/video/123", platform: "tiktok",
+      }));
+      await drain(res);
+
+      expect(order).toEqual(["blueprint", "message"]);
+    });
+
+    it("strips blueprintId and still delivers the cards when the insert fails", async () => {
+      const card = await arrange(BLUEPRINT_RESULT);
+      const { insertBlueprint } = await import("@/lib/remix/blueprint-repo");
+      const { insertMessage } = await import("@/lib/threads/messages");
+      (insertBlueprint as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("insert failed"));
+
+      const { POST } = await import("@/app/api/tools/remix/run/route");
+      const res = await POST(makeRemixRequest({
+        url: "https://www.tiktok.com/@creator/video/123", platform: "tiktok",
+      }));
+      const raw = await drain(res);
+
+      // The run must not die with the row: the cards are the product.
+      expect(raw).toContain("event: done");
+      expect(insertMessage).toHaveBeenCalled();
+      expect((card.props as { blueprintId?: string }).blueprintId).toBeUndefined();
+    });
+
+    it("does not call insertBlueprint when the runner produced no blueprint", async () => {
+      await arrange(null);
+      const { insertBlueprint } = await import("@/lib/remix/blueprint-repo");
+      const { POST } = await import("@/app/api/tools/remix/run/route");
+      const res = await POST(makeRemixRequest({
+        url: "https://www.tiktok.com/@creator/video/123", platform: "tiktok",
+      }));
+      await drain(res);
+      expect(insertBlueprint).not.toHaveBeenCalled();
+    });
+  });
+```
+
+Run: `npm test -- src/app/api/tools/remix/run`
+Expected: PASS — the 4 new tests plus every pre-existing test in the file.
+
+- [ ] **Step 7: Typecheck and run the affected suites**
 
 Run: `npx tsc --noEmit && npm test -- src/lib/tools src/app/api/tools/remix`
 Expected: PASS, no type errors.
