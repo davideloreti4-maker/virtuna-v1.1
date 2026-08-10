@@ -43,7 +43,6 @@ const card: LiveDropCard = {
   archetype: "trap-mistake",
   hookTemplate: "If you have [problem], don't just [fix].",
   concepts,
-  personas: [{ archetype: "a", verdict: "stop", quote: "real" }],
 };
 
 describe("dropCardToRemixBlocks", () => {

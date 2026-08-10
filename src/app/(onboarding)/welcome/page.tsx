@@ -302,7 +302,13 @@ export default function WelcomePage() {
   function pickLane(shelf: LaneShelf) {
     setLanesOpen(false);
     setShelves(null);
-    setPrefill({ description: shelf.lane.who });
+    // `niche`, not `who` (owner call, carried since 2026-08-10). Both are real fields on the
+    // synthesized lane, but only one is a DESCRIPTION: the schema defines `niche` as "the creator
+    // niche this lane writes for" (<=12 words, and already what steers format adaptation), while
+    // `who` is a posture shorthand capped at six lowercase words — "receipts, not vibes". Seeding
+    // the audience description with the posture handed calibration a fragment that names no
+    // subject, which is the one input this flow cannot do without.
+    setPrefill({ description: shelf.lane.niche });
     setDoor("target");
   }
 
