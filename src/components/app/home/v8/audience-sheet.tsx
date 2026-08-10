@@ -12,9 +12,10 @@
  *  · It floated at the BOTTOM CENTRE of the screen, unattached to anything the user
  *    clicked. It now rises from the composer's top edge, left-aligned — the same
  *    geometry as the skills panel, so the composer has one popover behaviour, not two.
- *  · Every row was pure left-aligned text, so eight rows read as one grey block with no
- *    scanning anchor. Each carries its initial tile now, on the same 26px column the
- *    "+ New audience" door already used.
+ *  · Rows were two-line blocks behind pseudo-avatar tiles — tiles that carried no real
+ *    information and collided ("General" and "Growth Audience" were both a grey "G"), and
+ *    a stack of eight of them read as a contact list rather than a setting. Rows are ONE
+ *    line now: name left, provenance right, tiles gone. Half the height, nothing lost.
  *  · The tones were fighting: the sheet, the segmented track and the selected segment
  *    were three near-identical charcoals, so the control had no visible container. The
  *    sheet is `surface-elevated` (matching the skills panel and the restored composer)
@@ -38,12 +39,6 @@ function provenanceLine(a: Audience): string {
   if (a.is_general) return "baseline";
   if (a.is_preset) return "preset";
   return "described by you";
-}
-
-/** The row's scanning anchor. "@mrbeast" → M; a described audience → its first letter. */
-function initialOf(name: string): string {
-  const ch = name.replace(/[^\p{L}\p{N}]/gu, "").charAt(0);
-  return ch ? ch.toUpperCase() : "•";
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -129,32 +124,19 @@ export function AudienceSheetV8({
           aria-selected={selected}
           onClick={() => onSelect(a)}
           className={cn(
-            "flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-left transition-colors",
+            "flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-left transition-colors",
             selected ? "bg-white/[0.07]" : "hover:bg-white/[0.035]",
           )}
         >
-          <span
-            aria-hidden
-            className={cn(
-              "grid h-[26px] w-[26px] shrink-0 place-items-center rounded-lg border text-caption font-medium",
-              selected
-                ? "border-white/[0.12] bg-white/[0.07] text-foreground"
-                : "border-white/[0.06] bg-white/[0.03] text-foreground-muted",
-            )}
-          >
-            {initialOf(a.name)}
+          <span className="min-w-0 flex-1 truncate text-reading font-medium text-foreground">
+            {a.name}
           </span>
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-reading font-medium text-foreground">
-              {a.name}
-            </span>
-            <span className="mt-[2px] block text-label text-foreground-muted">
-              {provenanceLine(a)}
-            </span>
+          <span className="shrink-0 text-label text-foreground-muted">{provenanceLine(a)}</span>
+          {/* The check keeps a reserved slot on every row, so the provenance column stays
+              straight instead of jumping 14px on whichever row happens to be selected. */}
+          <span className="grid w-3.5 shrink-0 place-items-center">
+            {selected && <Ico name="check" size={13} className="text-foreground-secondary" />}
           </span>
-          {selected && (
-            <Ico name="check" size={14} className="shrink-0 text-foreground-secondary" />
-          )}
         </button>
       );
     });
@@ -174,19 +156,14 @@ export function AudienceSheetV8({
       <button
         type="button"
         onClick={onNewAudience}
-        className="flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-left transition-colors hover:bg-white/[0.035]"
+        className="flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-left transition-colors hover:bg-white/[0.035]"
       >
-        <span
-          aria-hidden
-          className="grid h-[26px] w-[26px] shrink-0 place-items-center rounded-lg border border-dashed border-white/[0.12] text-foreground-muted"
-        >
-          <Ico name="plus" size={12} />
+        <span className="min-w-0 flex-1 truncate text-reading font-medium text-foreground">
+          New audience
         </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-reading font-medium text-foreground">New audience</span>
-          <span className="mt-[2px] block text-label text-foreground-muted">
-            connect an account, or describe them
-          </span>
+        <span className="shrink-0 text-label text-foreground-muted">connect or describe</span>
+        <span className="grid w-3.5 shrink-0 place-items-center text-foreground-muted">
+          <Ico name="plus" size={12} />
         </span>
       </button>
 
@@ -195,7 +172,7 @@ export function AudienceSheetV8({
       <div
         role="radiogroup"
         aria-label="Platform lens"
-        className="mx-1 flex gap-1 rounded-[12px] border border-white/[0.05] bg-black/25 p-1"
+        className="mx-1 flex gap-1 rounded-lg border border-white/[0.05] bg-black/25 p-1"
       >
         {LENS_OPTIONS.map((p) => (
           <button
@@ -206,7 +183,7 @@ export function AudienceSheetV8({
             aria-label={LENS_LABEL[p]}
             onClick={() => onLensChange(p)}
             className={cn(
-              "flex-1 rounded-[9px] py-1.5 text-center text-label transition-colors",
+              "flex-1 rounded-md py-1.5 text-center text-label transition-colors",
               lens === p
                 ? "bg-white/[0.10] font-medium text-foreground"
                 : "text-foreground-muted hover:text-foreground-secondary",
@@ -236,13 +213,13 @@ export function AudienceSheetV8({
           "ambient-room-in fixed z-[var(--z-modal)] overflow-y-auto border-white/[0.10] bg-surface-elevated",
           isWide
             ? cn(
-                "max-h-[min(560px,70vh)] w-[380px] max-w-[calc(100vw-28px)] rounded-2xl border p-2",
+                "max-h-[min(560px,70vh)] w-[380px] max-w-[calc(100vw-28px)] rounded-lg border p-2",
                 "shadow-[0_16px_40px_rgba(0,0,0,0.4)]",
                 // No anchor measured yet ⇒ the old bottom-centre placement, so the sheet is
                 // never rendered at 0,0 in the corner on its first paint.
                 !pos && "bottom-6 left-1/2 -translate-x-1/2",
               )
-            : "inset-x-0 bottom-0 max-h-[78dvh] rounded-t-[22px] border border-b-0 px-2.5 pb-[max(20px,env(safe-area-inset-bottom))] pt-2",
+            : "inset-x-0 bottom-0 max-h-[78dvh] rounded-t-2xl border border-b-0 px-2.5 pb-[max(20px,env(safe-area-inset-bottom))] pt-2",
         )}
       >
         {!isWide && <div className="mx-auto mb-1.5 h-1 w-[34px] rounded-full bg-white/[0.14]" />}

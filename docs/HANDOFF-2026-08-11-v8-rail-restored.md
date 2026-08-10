@@ -96,6 +96,36 @@ segmented track visible ✓.
 *intermittently under full-suite load only* and pass isolated — timeout flakes, not
 regressions. Don't chase them; re-run isolated before believing them.
 
+## 5b. Second craft round, same day (`ba3b2229` → this commit)
+
+The owner reviewed the above and sent three more. **The two "it looks AI-made" complaints were
+design-system DRIFT, not taste** — `docs/DESIGN-SYSTEM.md` already had both answers, and the v8
+surfaces had quietly ignored them. Worth remembering: when the owner says a surface looks
+generic, check the system before redesigning anything.
+
+1. **The Auto row** — renamed **"Auto routing"**, its subline deleted, and the check replaced by
+   a real **switch** (`role="switch"`, `aria-checked`). It acts on click on BOTH viewports
+   (arming the default lane *is* disarming), because a visible switch that did nothing until you
+   pressed "Use" would be a lie.
+2. **The audience sheet** — the pseudo-avatar initial tiles are gone (they carried no information
+   and collided: "General" and "Growth Audience" were both a grey "G") and rows are ONE line,
+   name left / provenance right, with a reserved check column so the right edge stays straight.
+   **488px → 368px tall, nothing lost.**
+3. **The drop cards** — both complaints were system violations:
+   - Radius scale is `cards 12, inputs/buttons 8`. Cards were 16 and the Remix button was a full
+     pill. ⚠️ **The Tailwind radius tokens here are shifted one step from the class names**:
+     `rounded-lg` = 12, `rounded-md` = 8 (`rounded-xl` is 16). I got this wrong on the first pass
+     and only caught it by measuring `getComputedStyle` in the browser — do not assume.
+   - Serif is **voice-moments only (greeting/hero), never body/chrome**. The hook was `font-serif`,
+     which put a display face on six stacked chrome rows and made a third family fight the mono
+     receipt and the sans button. Hook is now Inter on the `title` role; the receipt dropped mono
+     and its `↗`. One family carries the card. "Tonight's remixes." above it stays the voice moment.
+   - The same radius correction was applied to both panels (rows 8, popovers 12, sheets 20).
+
+Re-verified in-browser at both viewports: card 12px / button 8px / hook `Inter 16px` measured,
+switch reads `aria-checked=true` with nothing armed, no h-scroll at 393. Gates: tsc clean, build
+clean, vitest **5636 passed / 1** (the routing-cut baseline).
+
 ## 6. Open follow-ups
 
 1. **Day-0 lane cards still carry the old pre-score meter** (`lane-reveal.tsx`,

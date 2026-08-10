@@ -59,24 +59,29 @@ describe("SkillsPanel", () => {
   // `chat` IS `DEFAULT_TOOL` — the lane you are in until you pick, and the one arming it
   // returns you to. It leads the panel as AUTO instead of sitting under Ask as a peer.
 
-  it("chat is not a skill: it leads as AUTO and the empty Ask group is gone", () => {
+  it("chat is not a skill: it leads as AUTO ROUTING and the empty Ask group is gone", () => {
     renderPanel();
     // Twice, correctly: the pinned row, and the preview pane it seeds (active="chat").
-    expect(screen.getAllByText("Auto").length).toBe(2);
+    expect(screen.getAllByText("Auto routing").length).toBe(2);
     expect(screen.queryByText("Chat")).toBeNull();
     // Ask had exactly one member; with it promoted the verb has nothing left to name.
     expect(screen.queryByText("Ask")).toBeNull();
   });
 
-  it("AUTO carries the check while nothing is armed — the routing promise, shown not stated", () => {
+  it("AUTO ROUTING is a switch, on while nothing is armed, with no subline", () => {
     renderPanel();
-    const autoRow = document.querySelector("[data-auto-row]");
-    expect(autoRow).not.toBeNull();
-    expect(autoRow!.textContent).toContain("Maven picks the skill");
-    // active="chat" ⇒ nothing armed ⇒ the default lane reads as a choice already made.
-    expect(autoRow!.querySelector("svg[aria-hidden]")).not.toBeNull();
-    // The disclaimer paragraph it replaced must not come back.
+    const row = screen.getByRole("switch", { name: /auto routing/i });
+    // active="chat" ⇒ nothing armed ⇒ routing reads ON.
+    expect(row).toHaveAttribute("aria-checked", "true");
+    // The subline and the disclaimer paragraph it replaced are both gone.
+    expect(row.textContent).not.toMatch(/Maven picks the skill/);
     expect(screen.queryByText(/You never have to pick/i)).toBeNull();
+  });
+
+  it("the routing switch acts on click — it arms the default lane, on either viewport", () => {
+    const onUse = renderPanel();
+    fireEvent.click(screen.getByRole("switch", { name: /auto routing/i }));
+    expect(onUse).toHaveBeenCalledWith("chat");
   });
 
   it("the selected skill prints its slash command — how `/` gets taught", () => {

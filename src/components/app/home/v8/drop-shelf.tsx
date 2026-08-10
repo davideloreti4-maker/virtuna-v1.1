@@ -5,17 +5,30 @@
  * (spec §1). Presentational: the composer owns the warm (useLazyWarm) and the Remix
  * handoff. Face = real rehosted still (tap → the original post) + real views + the
  * outlier RECEIPT ("N× their usual views" — owner ruling 2026-08-10, basis settled)
- * + the adapted serif hook. Drops arrive UNSCORED: no meter, no report door, no
+ * + the adapted hook. Drops arrive UNSCORED: no meter, no report door, no
  * personas — the sim is a completely separate surface (same ruling; the old
  * pre-scored-drops law and the card-meter-as-door pattern are both dead).
  * ZERO accent (locked); the donor's niche and handle never render here — the
  * thumb's link is the attribution door.
  *
  * Card anatomy: a COMPACT row — full-bleed thumb column left (96px, cropped, view
- * badge, hover "Watch" reveal) · serif adapted hook · quiet foot (receipt · Remix).
+ * badge, hover "Watch" reveal) · adapted hook · quiet foot (receipt · Remix).
  * The card's height is the HOOK's height (min 122px), never the still's.
  * bg-charcoal-thread (#252524): CONTENT cards, distinct from the darker chrome
  * composer below them.
+ *
+ * ── Craft pass 2026-08-11 (owner: "corners way to rounded … all the text seems off
+ * putting … still seems like ai created") ────────────────────────────────────────
+ * Both complaints were DESIGN-SYSTEM DRIFT, not taste, and the system already had the
+ * answers (docs/DESIGN-SYSTEM.md):
+ *  · Radius scale says **cards 12, buttons 8**. The card was r16 (`rounded-2xl`) and the
+ *    Remix button was a full pill — the two roundest things on the page, stacked.
+ *  · Serif is **voice-moments ONLY (greeting line, hero) — never body/chrome**. The hook
+ *    was `font-serif`, which put a literary display face on 6 stacked chrome rows and
+ *    made a third type family fight the mono receipt and the sans button. "Tonight's
+ *    remixes." above the shelf IS the voice moment; the cards are chrome and read Inter.
+ *  · Mono is for dense meta, not prose — the receipt now sets in Inter and keeps only its
+ *    figure emphasised, so ONE family carries the whole card.
  */
 
 import { CoverFill } from "@/components/primitives/CoverFill";
@@ -47,7 +60,7 @@ export function DropShelf({ cards, status, onRemix, remixingId }: DropShelfProps
               <div
                 key={i}
                 data-testid="drop-skeleton"
-                className="h-[122px] animate-pulse rounded-2xl border border-white/[0.06] bg-white/[0.03]"
+                className="h-[122px] animate-pulse rounded-lg border border-white/[0.06] bg-white/[0.03]"
               />
             ))
           : cards.map((card) => (
@@ -76,7 +89,7 @@ function DropCard({
     <>
       <CoverFill coverUrl={card.coverUrl} playSize={14} />
       {/* Real reach, on the still where it belongs. */}
-      <span className="absolute bottom-1.5 left-1.5 inline-flex items-center gap-1 rounded-[5px] bg-black/55 px-1.5 py-0.5 font-mono text-micro font-medium text-foreground-secondary">
+      <span className="absolute bottom-1.5 left-1.5 inline-flex items-center gap-1 rounded-[4px] bg-black/60 px-1.5 py-0.5 text-micro font-medium text-foreground-secondary">
         <span aria-hidden="true">▶</span>
         {card.views}
       </span>
@@ -86,7 +99,7 @@ function DropCard({
         aria-hidden="true"
         className="absolute inset-0 flex items-center justify-center bg-black/45 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100"
       >
-        <span className="rounded-full bg-black/60 px-2.5 py-1 font-mono text-micro font-medium uppercase tracking-[0.08em] text-foreground">
+        <span className="rounded-md bg-black/60 px-2.5 py-1 text-micro font-medium uppercase tracking-[0.08em] text-foreground">
           Watch ↗
         </span>
       </span>
@@ -101,7 +114,7 @@ function DropCard({
     <article
       data-testid={`drop-card-${card.contentId}`}
       aria-label={`Drop: ${card.hook.slice(0, 60)}`}
-      className="flex min-h-[122px] overflow-hidden rounded-2xl border border-white/[0.06] bg-charcoal-thread transition-colors hover:border-white/[0.10]"
+      className="flex min-h-[122px] overflow-hidden rounded-lg border border-white/[0.06] bg-charcoal-thread transition-colors hover:border-white/[0.10]"
     >
       {/* Tap the thumb → the original (the video is the proof). The donor's handle
           stays off the face — the link IS the attribution door. */}
@@ -120,11 +133,9 @@ function DropCard({
       )}
 
       <div className="flex min-w-0 flex-1 flex-col px-4 py-3">
-        {/* The adapted hook — serif because it's content, not chrome (spec §8). It owns
-            the card: everything under it is chrome and stays quiet. */}
-        <p className="font-serif text-title leading-[1.34] tracking-[-0.005em] text-foreground">
-          {card.hook}
-        </p>
+        {/* The adapted hook, on the `title` role — it owns the card, and everything
+            under it stays quiet. Inter: see the serif note in the file header. */}
+        <p className="text-title font-medium text-foreground">{card.hook}</p>
 
         <div className="mt-auto flex items-center justify-between gap-3 pt-2.5">
           {/* The receipt (owner ruling 2026-08-10): the source's real outlier factor,
@@ -134,7 +145,7 @@ function DropCard({
               data-testid={`drop-mult-${card.contentId}`}
               className="inline-flex items-baseline gap-1 whitespace-nowrap text-caption"
             >
-              <b className="font-mono font-medium text-foreground">↗ {fmtMult(card.multiplier)}</b>
+              <b className="font-medium text-foreground-secondary">{fmtMult(card.multiplier)}</b>
               <span className="text-foreground-muted">their usual views</span>
             </span>
           ) : (
@@ -147,7 +158,7 @@ function DropCard({
             disabled={remixing}
             aria-busy={remixing}
             onClick={() => onRemix(card)}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/[0.08] bg-surface-elevated px-3.5 py-1.5 text-label font-medium text-foreground transition-colors hover:border-white/[0.14] hover:bg-white/[0.08] disabled:opacity-60"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-white/[0.08] bg-surface-elevated px-3 py-1.5 text-label font-medium text-foreground transition-colors hover:border-white/[0.14] hover:bg-white/[0.08] disabled:opacity-60"
           >
             {remixing ? "Remixing…" : "Remix"}
           </button>

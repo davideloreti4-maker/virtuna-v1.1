@@ -15,9 +15,9 @@
  * that "not a clean solution", and it was: a disclaimer is what you write when the
  * interface won't say it for you. Both facts are structural now.
  *
- *  1. "You don't have to pick — it routes for you."  →  AUTO is the first row, above
- *     the groups, carrying the check whenever nothing is armed. The default state is
- *     visibly a *choice that is already made*, not an absence.
+ *  1. "You don't have to pick — it routes for you."  →  AUTO ROUTING is the first row,
+ *     above the groups, and it is a SWITCH that reads on whenever nothing is armed. The
+ *     default state is visibly a setting that is already on, not an absence.
  *  2. "You can pick with /."  →  every skill prints its own command. The previewed row
  *     shows it in the list and the preview pane sets it beside the name, so the command
  *     is on screen the whole time you are browsing. Nobody has to be told.
@@ -75,8 +75,10 @@ export const PROMISE_BY_TOOL: Record<ToolId, string> = {
  * menu also reads, and flag-off must stay byte-identical — so this renaming lives here.
  */
 const AUTO_ID: ToolId = "chat";
-const AUTO_LABEL = "Auto";
-const AUTO_DESC = "Maven picks the skill — just type";
+// "Auto routing", not "Auto" (owner 2026-08-11) — the noun says what is automatic. Its
+// subline is gone with it: a switch labelled "Auto routing" does not need a sentence under
+// it, and the preview pane still carries the full promise for anyone who wants it.
+const AUTO_LABEL = "Auto routing";
 
 // `Ask` is gone from the group list along with it: chat was its only member, so the verb
 // now has nothing to name. Make / Test carry every skill a creator can actually arm.
@@ -91,9 +93,33 @@ function visibleSkills(mode: SkillMode): SkillMeta[] {
 }
 
 const labelOf = (s: SkillMeta) => (s.id === AUTO_ID ? AUTO_LABEL : s.label);
-const descOf = (s: SkillMeta) => (s.id === AUTO_ID ? AUTO_DESC : s.desc);
 /** Auto has no command — you reach it by disarming, not by typing a word for it. */
 const commandOf = (s: SkillMeta) => (s.id === AUTO_ID ? null : s.command);
+
+/**
+ * The routing switch. A switch, not a check (owner 2026-08-11): routing is a STATE the
+ * product is in, not one more row you happened to select — and "on" is a truer reading of
+ * the default than a tick that looks like a selection among peers.
+ * Neutral cream throughout; a switch is exactly the kind of chrome the accent lock forbids.
+ */
+function RoutingSwitch({ on }: { on: boolean }) {
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "relative inline-flex h-[18px] w-[30px] shrink-0 items-center rounded-full transition-colors",
+        on ? "bg-white/[0.22]" : "bg-white/[0.07]",
+      )}
+    >
+      <span
+        className={cn(
+          "absolute h-[13px] w-[13px] rounded-full transition-transform duration-150",
+          on ? "translate-x-[14px] bg-foreground" : "translate-x-[3px] bg-foreground-muted",
+        )}
+      />
+    </span>
+  );
+}
 
 function MaxBadge() {
   return (
@@ -226,7 +252,7 @@ export function SkillsPanel({
         data-skill={s.id}
         onClick={() => (direct ? onUse(s.id) : setPreviewId(s.id))}
         className={cn(
-          "group flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-left transition-colors",
+          "group flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors",
           selected ? "bg-white/[0.07]" : "hover:bg-white/[0.035]",
         )}
       >
@@ -244,7 +270,7 @@ export function SkillsPanel({
           </span>
           {direct && (
             <span className="mt-[2px] block text-label leading-snug text-foreground-muted">
-              {descOf(s)}
+              {s.desc}
             </span>
           )}
         </span>
@@ -260,48 +286,45 @@ export function SkillsPanel({
     );
   };
 
-  /** AUTO — pinned above the groups, and the panel's answer to "do I have to pick one?". */
-  const autoRow = (direct: boolean) =>
+  /**
+   * AUTO ROUTING — pinned above the groups, and the panel's answer to "do I have to pick
+   * one?". It is a real switch: clicking it turns routing back on, which is exactly
+   * `onUse(chat)` — arming the default lane IS disarming whatever was armed. So unlike the
+   * skill rows it acts on both viewports rather than only seeding the desktop preview; a
+   * visible switch that did nothing until you pressed "Use" would be a lie.
+   */
+  const autoOn = active === AUTO_ID;
+  const autoRow = () =>
     auto && (
       <div className="border-b border-white/[0.06] pb-1.5">
         <button
           type="button"
+          role="switch"
+          aria-checked={autoOn}
           data-skill={auto.id}
           data-auto-row=""
-          onClick={() => (direct ? onUse(auto.id) : setPreviewId(auto.id))}
+          onClick={() => onUse(auto.id)}
           className={cn(
-            "flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-left transition-colors",
-            !direct && preview.id === auto.id ? "bg-white/[0.07]" : "hover:bg-white/[0.035]",
+            "flex w-full items-center gap-2.5 rounded-md px-2.5 py-2.5 text-left transition-colors",
+            "hover:bg-white/[0.035]",
           )}
         >
           <Ico
             name="spark"
             size={15}
-            className={cn(
-              "shrink-0",
-              active === auto.id ? "text-foreground" : "text-foreground-muted",
-            )}
+            className={cn("shrink-0", autoOn ? "text-foreground" : "text-foreground-muted")}
           />
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-reading font-medium text-foreground">
-              {AUTO_LABEL}
-            </span>
-            <span className="mt-[2px] block text-label leading-snug text-foreground-muted">
-              {AUTO_DESC}
-            </span>
+          <span className="min-w-0 flex-1 truncate text-reading font-medium text-foreground">
+            {AUTO_LABEL}
           </span>
-          {/* The check is the whole teaching move: with nothing armed, the default lane reads
-              as a choice already made rather than as an empty picker. */}
-          {active === auto.id && (
-            <Ico name="check" size={14} className="shrink-0 text-foreground-secondary" />
-          )}
+          <RoutingSwitch on={autoOn} />
         </button>
       </div>
     );
 
   const groupedList = (direct: boolean) => (
     <>
-      {autoRow(direct)}
+      {autoRow()}
       {GROUPS.map(({ label, verb }) => {
         const rows = socials.filter((s) => VERB_BY_TOOL[s.id] === verb);
         if (rows.length === 0) return null;
@@ -337,7 +360,7 @@ export function SkillsPanel({
           role="dialog"
           aria-modal="true"
           aria-label="Skills"
-          className="ambient-room-in fixed inset-x-0 bottom-0 z-[var(--z-modal)] flex max-h-[78dvh] flex-col rounded-t-[22px] border border-b-0 border-white/[0.10] bg-surface-elevated px-2.5 pb-[max(20px,env(safe-area-inset-bottom))] pt-2"
+          className="ambient-room-in fixed inset-x-0 bottom-0 z-[var(--z-modal)] flex max-h-[78dvh] flex-col rounded-t-2xl border border-b-0 border-white/[0.10] bg-surface-elevated px-2.5 pb-[max(20px,env(safe-area-inset-bottom))] pt-2"
         >
           <div className="mx-auto mb-1.5 h-1 w-[34px] shrink-0 rounded-full bg-white/[0.14]" />
           <div className="min-h-0 flex-1 overflow-y-auto pb-1">{groupedList(true)}</div>
@@ -359,7 +382,7 @@ export function SkillsPanel({
       style={{ left: pos?.left ?? 0, bottom: pos?.bottom ?? 0 }}
       className={cn(
         "ambient-room-in fixed z-[var(--z-modal)] flex w-[600px] max-w-[calc(100vw-28px)] flex-col overflow-hidden",
-        "rounded-2xl border border-white/[0.10] bg-surface-elevated",
+        "rounded-lg border border-white/[0.10] bg-surface-elevated",
         "shadow-[0_16px_40px_rgba(0,0,0,0.4)]",
       )}
     >
@@ -371,7 +394,7 @@ export function SkillsPanel({
             The tile stands in for the mock's illustration slot — the skill's own mark at
             figure scale, never a fabricated screenshot. */}
         <div className="flex min-h-[320px] flex-1 flex-col p-5">
-          <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl border border-white/[0.06] bg-white/[0.04]">
+          <div className="grid h-12 w-12 shrink-0 place-items-center rounded-lg border border-white/[0.06] bg-white/[0.04]">
             <Ico
               name={preview.id === AUTO_ID ? "spark" : SKILL_ICON[preview.id]}
               size={20}
