@@ -48,8 +48,10 @@ if (process.env.GROUNDING_HOOKS_RANK === "topical") {
 }
 
 const PRIOR = process.env.AB_PRIOR ?? resolve(__dirname, "../../ab-grounding-3arm-raw.json");
-const OUT_MD = resolve(__dirname, "../docs/AB-GROUNDING-BRIEFER-2026-07-15.md");
-const OUT_JSON = resolve(__dirname, "../../ab-grounding-briefer-raw.json");
+// 2026-08-10 (C0): re-run THROUGH the Stage A output guards — new dated artifacts so the
+// 07-15 promotion evidence stays intact for comparison.
+const OUT_MD = resolve(__dirname, "../docs/AB-GROUNDING-BRIEFER-2026-08-10-stage-a.md");
+const OUT_JSON = resolve(__dirname, "../../ab-grounding-briefer-stage-a-raw.json");
 const PLATFORM = "tiktok";
 /** HOOKS-only norm: a hook is one line, so length is the fit constraint. Ideas/script measure fit
  *  differently (tension-completeness / beat-arc) — see adapt.ts. */
