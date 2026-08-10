@@ -69,15 +69,58 @@ the hint row renders as "Looks like a hooks run…" beside the accent dot, the c
 "Thinking…", and "Punch them up" reaches the handler carrying exactly the two hook lines on screen
 while "More hooks" carries nothing. Zero pageerrors. Screenshot: `.scratch/stage-b.png`.
 
-## What is NOT verified
+## The signed-in walk — all seven open items, closed
 
-- **The composer → route glue has not been exercised signed-in.** `sendChatFollowup`'s pack
-  forwarding and `handleWriteScript`'s one-brain branch are covered by types, unit tests and the
-  component-level browser check, but no live signed-in run has gone through `/api/tools/chat` with
-  the flag on. That needs the e2e prod account and spends real credits.
-- **The route's own Stage B code** (predispatch emission, rider capping, sealed-visitor guard) has
-  no route-level test — the lane has no chat-route test harness. Covered by reading + the loop
-  tests underneath it.
+Done on `e2e-test@virtuna.local` against a local dev server with the flag on. 7 real runs
+(5 hooks · 2 script), ~9 credits.
+
+| # | question | verdict |
+|---|---|---|
+| 1 | does it work end to end? | ✅ typed ask → hint at 0.0s → dispatch at 2.9s → 5 hook cards. The dead zone is real and the hint fills it. |
+| 2 | does a TYPED "rewrite these" fill the `cards` slot? | ❌ **NO — see below.** |
+| 3 | does the route's bouncer bounce? | ✅ typed generation ask → `{certain:false}`; question → no frame; chip → `{certain:true}`; unknown skill → no frame. |
+| 4 | billing | ✅ hooks 1 credit ×5, script 2 credits ×2, each **billed once**. Same price as the old one-shot; no double-charge. |
+| 5 | the thread after reload | ✅ identical before/after; the CTA's user turn reads naturally. |
+| 6 | the pre-router on REAL asks | ✅ 82 real asks from `messages`: **93% correct, 0 wrong-skill, 1 false alarm.** |
+| 7 | hint timing | ✅ frame at 0.0s server-side; capsule seeds at 0.9s for a declared skill. |
+
+**B1 wire, verified by network capture** — the CTA now POSTs `/api/tools/chat` with
+`{ask:"Write the script from this hook.", skill:"script", anchor:"<the clicked line verbatim>"}`
+and makes **no** POST to `/api/tools/script`.
+
+### 🔴 The finding that matters: B2's TYPED door does not work
+
+A typed *"rewrite these tighter and more specific"* under a fresh hooks pack produced **no
+dispatch at all** — the model rewrote the five hooks *as prose* in the chat answer, bypassing the
+pipeline (no scoring, no cards, no save). Run again with the flag **OFF**, the behaviour was
+identical. So:
+
+- **Stage B did not break it — it was already broken this way**, and
+- **the `cards` schema slot + directive currently earn nothing.** The model never reaches for them.
+
+B2's measured value (7% → 75%) comes **entirely from the chip path**, where the CLIENT supplies
+the pack as data. The likely fix is to treat a typed rewrite the way a chip is treated — detect
+the intent and pin skill + pack — rather than asking the model to copy lines into an argument.
+
+Note the code comment in `skill-dispatch.ts` describing the old defect ("the run returned five
+strangers") no longer matches today's behaviour: today it does not run at all.
+
+### Pre-router, improved by the real-ask data
+
+The 10 misses over 82 real asks shared one shape — asks that OPEN with the artefact and skip the
+verb ("3 hooks for gym myths", "ideas for a video about…", "/hooks for my app"). Added
+`LEADING_REQUEST` (anchored to the start, which is what makes it safe without a verb): **87% → 93%
+correct, still 0 wrong-skill.** The single false alarm is *"Yes, run the simulate tool on that
+hook — I want the reaction card."* → guesses `hooks`; left alone deliberately (n=1, the copy is
+hedged, and the obvious exclusion would silence real asks).
+
+## What is STILL not verified
+
+- **Rider capping at the route** (anchor sliced to 5000, `sanitizeCards` on the body, riders
+  dropped without a `skill`). Not observable from outside without a paid run per case; unit-tested
+  one layer down, in the loop.
+- **The sealed-visitor guard** on the predispatch frame — needs an anonymous `/go` session.
+- **Production.** Everything above is a local dev server against the shared prod database.
 
 ## Open owner decisions (carried forward, updated)
 
@@ -111,6 +154,15 @@ in the working tree only. `git status` at write time:
     docs/AB-JUDGE-2026-08-10-script.md)
 ```
 
+## Next session: the context question
+
+The owner's next topic — thread context and what the model knows about the creator — is answered
+in **`docs/CONTEXT-AUDIT-2026-08-10.md`**, written this session. Headline: the chat agent HAS
+thread context (20 turns, replayed as real messages with `cards_on_screen`), the **generators have
+none** (they see one `topic` string), and the chat agent is the only mode with no `voice` role.
+The walk above also caught the honesty defect that context causes: a repeat ask made the agent
+claim "Here are 5 hooks" and run nothing.
+
 ## Traps (session-6 additions)
 
 - **A stale `.next/dev/types/validator.ts` fails `tsc` after you delete a page the dev server saw.**
@@ -125,6 +177,22 @@ in the working tree only. `git status` at write time:
   schema-accurate fixture; the old one is only ever rendered, never extracted from.
 - The `.claude` memory store is outside this worktree's git root — the path guard blocks Write from
   here (07-15 precedent). THIS DOC is the durable record.
+- **A card CTA's accessible name is its `aria-label`, not its visible text.** The hook card's
+  button reads "Write the script →" but announces "Write a full script from this hook", so
+  `getByRole('button', {name:/Write the script/})` finds NOTHING. Use a text locator.
+- **Playwright's `.textContent()` on a locator that has vanished blocks for the full 30s timeout**,
+  so a poll loop that samples a disappearing element reports a 30s plateau that never happened. It
+  made a 0.9s capsule seed look like 33s of "Thinking…" until the sampling was fixed. Sample with
+  `$$eval` over a list (length 0 when absent) instead of `.first().textContent()`.
+- **Two `next dev` servers cannot run from one worktree** — they fight over `.next/dev/lock`. To
+  A/B a server-read env flag, restart the same server rather than starting a second one.
+- **The first request to a dev route returns nothing for >12s** while Turbopack compiles it. A
+  probe with a timeout will record an empty result that looks exactly like a broken feature. Warm
+  the route, then measure.
+- **`public.messages` is not the only `messages` table** — `information_schema` without
+  `table_schema='public'` returns Realtime's internal one (topic/extension/payload) and the query
+  silently describes the wrong table. The app's user text lives at
+  `body->'blocks'->0->'props'->>'text'`.
 
 ## Resume recipe
 

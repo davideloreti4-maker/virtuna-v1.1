@@ -88,6 +88,30 @@ describe("guessSkill — the FIRST artefact named is the one being asked for", (
   });
 });
 
+describe("guessSkill — an ask that OPENS with the artefact needs no verb", () => {
+  // Measured against the app's own message history: creators routinely name the thing and the
+  // count and skip the verb. This shape was 6 of the 10 asks the verb rule alone missed over 82
+  // real messages.
+  it.each([
+    ["3 hooks for gym myths", "hooks"],
+    ["ideas for a video about why most side projects die before launch", "ideas"],
+    ["hooks for my audience that have high viral potential", "hooks"],
+    ["/hooks for my creator tool startup app", "hooks"],
+    ["3 ideas for documenting my startup journey", "ideas"],
+    ["a few hooks for my budgeting app", "hooks"],
+    ["script for a tiktok about saving money at uni", "script"],
+  ] as const)("%s → %s", (ask, expected) => {
+    expect(guessSkill(ask)).toBe(expected);
+  });
+
+  it("only fires at the START — the same noun mid-sentence is discussion", () => {
+    // This is what makes the rule safe without a verb: "what are these hooks grounded on?" names
+    // the artefact too, and must stay quiet.
+    expect(guessSkill("what are these hooks grounded on?")).toBeNull();
+    expect(guessSkill("one quick hook tip")).toBeNull();
+  });
+});
+
 describe("guessSkill — word boundaries, so a substring cannot mint a run", () => {
   it("does not fire on words that merely contain an artefact noun", () => {
     // "hooked", "idealistic", "scripture" are not asks for hooks, ideas or scripts.

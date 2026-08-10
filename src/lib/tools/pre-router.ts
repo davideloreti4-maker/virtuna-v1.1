@@ -54,6 +54,18 @@ const ARTIFACT_NOUNS: Array<{ pattern: RegExp; skill: PreRouteGuess }> = [
   { pattern: /\b(ideas?|angles?|concepts?)\b/i, skill: "ideas" },
 ];
 
+/**
+ * An ask that OPENS with the artefact — "3 hooks for gym myths", "ideas for a video about…",
+ * "/hooks for my startup". Measured against the app's own message history, this shape was the
+ * single largest class the verb rule missed (6 of 10 misses over 82 real asks): creators very
+ * often name the thing and the count and skip the verb entirely.
+ *
+ * Safe to treat as a request precisely because it is anchored to the START: a sentence that opens
+ * with "hooks" is asking for hooks, whereas the same word mid-sentence ("what are these hooks
+ * grounded on?") is discussing them — and that sentence opens with a question word instead.
+ */
+const LEADING_REQUEST = /^\s*\/?\s*(?:\d+|a few|some|couple of)?\s*(scripts?|outlines?|hooks?|openers?|ideas?|angles?|concepts?)\b/i;
+
 /** The earliest artefact noun in a stretch of text, or null when it names none. */
 function firstArtefact(text: string): PreRouteGuess | null {
   let best: { skill: PreRouteGuess; index: number } | null = null;
@@ -72,7 +84,9 @@ function firstArtefact(text: string): PreRouteGuess | null {
  */
 export function guessSkill(ask: string): PreRouteGuess | null {
   if (QUESTION_OPENER.test(ask)) return null;
-  if (!GENERATION_VERB.test(ask)) return null;
+  // A verb OR the leading-artefact shape. Both are required to be a REQUEST; neither on its own
+  // being present is what keeps "what are these hooks grounded on?" quiet.
+  if (!GENERATION_VERB.test(ask) && !LEADING_REQUEST.test(ask)) return null;
   // "X into Y" names a DESTINATION, and the destination is what gets made — so the plain
   // first-by-position rule reads "turn the best idea into a script" as an ideas run, which is the
   // one thing the creator did not ask for (the idea already exists; that is why it is being
