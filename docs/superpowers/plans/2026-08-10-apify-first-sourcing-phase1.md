@@ -50,7 +50,7 @@ Fixes the live defect in spec §2.7. Pure functions, no I/O, no network.
   - `multiplierFor(video: { views: number; likes: number }, baseline: AuthorBaseline): number`
   - `formatMultiplier(m: number): string`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 // src/lib/discover/__tests__/author-baseline.test.ts
@@ -117,12 +117,12 @@ describe("formatMultiplier", () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `node node_modules/vitest/vitest.mjs run src/lib/discover/__tests__/author-baseline.test.ts`
 Expected: FAIL — cannot resolve `@/lib/discover/author-baseline`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 ```ts
 // src/lib/discover/author-baseline.ts
@@ -192,12 +192,12 @@ export function formatMultiplier(m: number): string {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `node node_modules/vitest/vitest.mjs run src/lib/discover/__tests__/author-baseline.test.ts`
 Expected: PASS (10 tests).
 
-- [ ] **Step 5: Typecheck and commit**
+- [x] **Step 5: Typecheck and commit**
 
 ```bash
 npx tsc --noEmit
@@ -220,7 +220,7 @@ git commit -m "feat(discover): per-author outlier baseline, replacing the within
 - Consumes: `AuthorBaseline` shape from Task 1 (field names `heart`, `videoCount`).
 - Produces: `VideoData.author?: { handle: string; fans: number; heart: number; videoCount: number }`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 // src/lib/scraping/__tests__/author-aggregates.test.ts
@@ -267,12 +267,12 @@ describe("remapClockworksVideo — author aggregates", () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `node node_modules/vitest/vitest.mjs run src/lib/scraping/__tests__/author-aggregates.test.ts`
 Expected: FAIL — `v.author` is `undefined` in the first test.
 
-- [ ] **Step 3: Add the field to `VideoData`**
+- [x] **Step 3: Add the field to `VideoData`**
 
 In `src/lib/scraping/types.ts`, inside `interface VideoData`, after `coverUrl`:
 
@@ -292,7 +292,7 @@ In `src/lib/scraping/types.ts`, inside `interface VideoData`, after `coverUrl`:
   };
 ```
 
-- [ ] **Step 4: Populate it in the remap**
+- [x] **Step 4: Populate it in the remap**
 
 In `src/lib/scraping/apify-provider.ts`, inside `remapClockworksVideo`'s returned object, after the
 `coverUrl` spread:
@@ -315,17 +315,17 @@ In `src/lib/scraping/apify-provider.ts`, inside `remapClockworksVideo`'s returne
 If `apifyVideoSchema` strips `authorMeta`, widen it to accept an optional
 `authorMeta: z.object({ name: z.string().optional(), fans: z.number().optional(), heart: z.number().optional(), video: z.number().optional() }).optional()`.
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `node node_modules/vitest/vitest.mjs run src/lib/scraping/__tests__/author-aggregates.test.ts`
 Expected: PASS (3 tests).
 
-- [ ] **Step 6: Run the existing scraping suite (no regressions)**
+- [x] **Step 6: Run the existing scraping suite (no regressions)**
 
 Run: `node node_modules/vitest/vitest.mjs run src/lib/scraping`
 Expected: PASS, including `apidojo-remap.test.ts` and `multiplatform-remap.test.ts`.
 
-- [ ] **Step 7: Typecheck and commit**
+- [x] **Step 7: Typecheck and commit**
 
 ```bash
 npx tsc --noEmit
@@ -349,7 +349,7 @@ Measured coverage: 71% of real videos, 12/12 parsed (spec §2.6). This turns a s
   - `parseVtt(raw: string): string`
   - `fetchTranscript(url: string, deps?: { fetchFn?: typeof fetch }): Promise<string | null>`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 // src/lib/decode/__tests__/vtt.test.ts
@@ -408,12 +408,12 @@ describe("fetchTranscript", () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `node node_modules/vitest/vitest.mjs run src/lib/decode/__tests__/vtt.test.ts`
 Expected: FAIL — cannot resolve `@/lib/decode/vtt`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 ```ts
 // src/lib/decode/vtt.ts
@@ -464,12 +464,12 @@ export async function fetchTranscript(
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `node node_modules/vitest/vitest.mjs run src/lib/decode/__tests__/vtt.test.ts`
 Expected: PASS (8 tests).
 
-- [ ] **Step 5: Typecheck and commit**
+- [x] **Step 5: Typecheck and commit**
 
 ```bash
 npx tsc --noEmit
@@ -493,7 +493,7 @@ Spec D12. A keyword video-search matches caption text, not people: the Phase 0 r
 - Consumes: nothing from earlier tasks.
 - Produces: `searchCreators(query: string, limit?: number): Promise<string[]>` — handles, no `@`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 // src/lib/scraping/__tests__/search-creators.test.ts
@@ -569,12 +569,12 @@ describe("searchCreators (stage 1 of D12)", () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `node node_modules/vitest/vitest.mjs run src/lib/scraping/__tests__/search-creators.test.ts`
 Expected: FAIL — `searchCreators` is not a function.
 
-- [ ] **Step 3: Add the method to the interface**
+- [x] **Step 3: Add the method to the interface**
 
 In `src/lib/scraping/types.ts`, inside `interface ScrapingProvider`:
 
@@ -588,7 +588,7 @@ In `src/lib/scraping/types.ts`, inside `interface ScrapingProvider`:
   searchCreators(query: string, limit?: number): Promise<string[]>;
 ```
 
-- [ ] **Step 4: Implement it, and turn subtitles on for the post scrape**
+- [x] **Step 4: Implement it, and turn subtitles on for the post scrape**
 
 In `src/lib/scraping/apify-provider.ts`, add to `ApifyScrapingProvider`:
 
@@ -628,12 +628,12 @@ subtitle option and exclude pinned posts so engagement ratios are not skewed:
           }
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `node node_modules/vitest/vitest.mjs run src/lib/scraping/__tests__/search-creators.test.ts`
 Expected: PASS (4 tests).
 
-- [ ] **Step 6: Update the mock provider so the interface stays satisfied**
+- [x] **Step 6: Update the mock provider so the interface stays satisfied**
 
 Any object implementing `ScrapingProvider` (search `src/lib/tools/mock/` and test fixtures) now
 needs `searchCreators`. Add `async searchCreators() { return []; }` to each.
@@ -641,7 +641,7 @@ needs `searchCreators`. Add `async searchCreators() { return []; }` to each.
 Run: `npx tsc --noEmit`
 Expected: no errors. Fix any implementer the compiler names.
 
-- [ ] **Step 7: Run the scraping suite and commit**
+- [x] **Step 7: Run the scraping suite and commit**
 
 ```bash
 node node_modules/vitest/vitest.mjs run src/lib/scraping
@@ -664,7 +664,7 @@ git commit -m "feat(scraping): two-stage creator search + free subtitles on the 
   - `interface LiveDecode { hookPattern: string; structure: string; theTurn: string; emotionalBeat: string; spokenHook: string | null; source: "transcript" | "caption-only" }`
   - `decodeVideo(input, deps?): Promise<LiveDecode | null>`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 // src/lib/decode/__tests__/live-decode.test.ts
@@ -731,12 +731,12 @@ describe("decodeVideo", () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `node node_modules/vitest/vitest.mjs run src/lib/decode/__tests__/live-decode.test.ts`
 Expected: FAIL — cannot resolve `@/lib/decode/live-decode`.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 ```ts
 // src/lib/decode/live-decode.ts
@@ -852,12 +852,12 @@ export async function decodeVideo(
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `node node_modules/vitest/vitest.mjs run src/lib/decode/__tests__/live-decode.test.ts`
 Expected: PASS (5 tests).
 
-- [ ] **Step 5: Typecheck and commit**
+- [x] **Step 5: Typecheck and commit**
 
 ```bash
 npx tsc --noEmit
@@ -881,7 +881,7 @@ Spec D2. A decoded video is decoded once, ever. This is what bounds the cost.
   - `getCachedDecode(platformVideoId, deps?): Promise<LiveDecode | null>`
   - `storeDecode(video, decode, baseline, deps?): Promise<void>`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 // src/lib/decode/__tests__/decode-cache.test.ts
@@ -975,12 +975,12 @@ describe("storeDecode", () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `node node_modules/vitest/vitest.mjs run src/lib/decode/__tests__/decode-cache.test.ts`
 Expected: FAIL — cannot resolve `@/lib/decode/decode-cache`.
 
-- [ ] **Step 3: Confirm the unique constraint exists before writing the upsert**
+- [x] **Step 3: Confirm the unique constraint exists before writing the upsert**
 
 `storeDecode` upserts on `platform_video_id`. Verify a unique index exists:
 
@@ -997,7 +997,7 @@ create unique index if not exists outlier_teardowns_platform_video_id_key
   on public.outlier_teardowns (platform_video_id);
 ```
 
-- [ ] **Step 4: Write minimal implementation**
+- [x] **Step 4: Write minimal implementation**
 
 ```ts
 // src/lib/decode/decode-cache.ts
@@ -1114,12 +1114,12 @@ export async function storeDecode(
 }
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `node node_modules/vitest/vitest.mjs run src/lib/decode/__tests__/decode-cache.test.ts`
 Expected: PASS (6 tests).
 
-- [ ] **Step 6: Run the full suite, typecheck, commit**
+- [x] **Step 6: Run the full suite, typecheck, commit**
 
 ```bash
 node node_modules/vitest/vitest.mjs run
@@ -1141,7 +1141,7 @@ Wire-level tests cannot see a real Apify payload. This runs the whole Phase 1 ch
 - Consumes: everything from Tasks 1–6.
 - Produces: a printed report. No production code depends on it.
 
-- [ ] **Step 1: Check the Apify account BEFORE spending**
+- [x] **Step 1: Check the Apify account BEFORE spending**
 
 ```bash
 node -e 'require("dotenv").config({path:".env.local"});
@@ -1152,7 +1152,7 @@ fetch(`https://api.apify.com/v2/users/me/limits?token=${process.env.APIFY_TOKEN}
 Expected: usage below the cap with room for ~2 runs (~$0.13). **If it is at the cap, STOP** — a
 403 here reads as a bad handle and will waste an hour (see memory `apify-free-plan-hard-limit`).
 
-- [ ] **Step 2: Write the verification script**
+- [x] **Step 2: Write the verification script**
 
 ```ts
 // scripts/verify-apify-first.ts
@@ -1201,7 +1201,7 @@ async function main() {
 main().catch((e) => { console.error("FAILED:", e.message); process.exit(1); });
 ```
 
-- [ ] **Step 3: Run it**
+- [x] **Step 3: Run it**
 
 Run: `node node_modules/tsx/dist/cli.mjs scripts/verify-apify-first.ts`
 
@@ -1210,7 +1210,7 @@ coverage; the baseline prints `basis: "own-median-views"` with label `"vs their 
 posts ARE available on a profile scrape); the decode prints four non-empty structural fields and a
 `spokenHook` copied from the transcript.
 
-- [ ] **Step 4: Confirm the write-back landed**
+- [x] **Step 4: Confirm the write-back landed**
 
 ```sql
 select creator_handle, source_pool, baseline_label, outlier_multiplier, hook_template
@@ -1221,7 +1221,7 @@ order by created_at desc limit 5;
 Expected: at least one row, `source_pool = 'live-scrape'`, a non-null `hook_template`, and
 `baseline_label` matching the basis actually used.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add scripts/verify-apify-first.ts
@@ -1257,3 +1257,77 @@ consistently in Tasks 2, 1, 6, 7. `searchCreators` has the same signature in Tas
 
 **Placeholder scan:** no TBDs; every code step carries real code; every test step carries real
 assertions.
+
+---
+
+## Execution record — 2026-08-10
+
+All 7 tasks executed on `feat/apify-first-sourcing`. 5,852 tests green, `tsc` clean.
+Commits: `e2a99db3` `67b5300b` `e4845178` `27b47c91` `c07712f6` `51d71336` `5e8746a2`.
+
+**The code deviates from this plan in seven places.** The plan text above is left as written; where
+it disagrees with the code, the code is right and the reason is here.
+
+### Corrections found by reading the live schema (before writing any code)
+
+Three of these would have failed **silently** — `supabase-js` RETURNS `{error}` rather than
+throwing, and `storeDecode`'s contract is "never throw", so a rejected write left no trace.
+
+| plan said | reality | shipped |
+|---|---|---|
+| `source_pool: "live-scrape"` | `CHECK (source_pool IN ('curated','competitor','scraped','expanded'))` | `"scraped"` — 0 rows before this, so it still separates accumulated from the curated 532 |
+| `status: "active"` | `CHECK (status IN ('metadata','extracted','watched','failed'))` | `"extracted"` |
+| `onConflict: "platform_video_id"` + **Task 6 Step 3 migration** | the only unique index is `(platform, platform_video_id)`; the single-column form raises 42P10 | `onConflict: "platform,platform_video_id"`. **No migration was needed or applied** — Step 3 is void, and a single-column index would have been semantically wrong (the table is keyed per platform) |
+
+Two additions in the same area: `hook_source` is written from `decode.source`
+(`native_transcript` / `caption_fallback` — the column's CHECK already encoded exactly this
+distinction), and a returned Supabase `{error}` is now logged. `storeDecode` still never throws.
+
+`apifyVideoSchema.authorMeta` did strip the aggregates, as Task 2 Step 4 anticipated; widened with
+`fans`/`heart`/`video` left **optional and un-defaulted**, so a missing aggregate stays absent
+rather than becoming a zero denominator.
+
+### Corrections found by the live run (Task 7) — and only by it
+
+Four real Apify runs, **$0.106 total**. Every one of these was invisible to the mocked suite.
+
+1. **`searchCreators` returned candidates in the actor's dataset order.** A caller taking
+   `handles[0]` got an 18-follower account (median 11 views) while the only relevant creator
+   (`@startupfounderceo`, 2,306 fans) sat third. Now ordered by `authorMeta.fans`, which rides on
+   every stage-1 item for free. **D12 as specified is half a fix:** `searchSection: "/user"`
+   answers *a person rather than a caption*; it does not answer *which person*.
+2. **`tiktokLink` serves two wire formats.** Some videos return WEBVTT, others return
+   `{"utterances":[{text,start_time,text_color,…}]}`. The line filter had no opinion about JSON, so
+   13,472 chars of styling metadata reached the model as "Transcript:". Sniffing the shape:
+   13,472 → 2,785 chars, **5,401 → 664 prompt tokens** on the same video.
+3. **`qwen3.7-flash` returns `structure` as a LIST** — an array of strings on one run, an array of
+   `{step, description}` objects on the next. Correct content, wrong container, whole decode
+   discarded. `SYSTEM` now shows the required shape by example; `asBeat()` repairs the two
+   containers actually observed and rejects anything else.
+4. **A silent `null` is undebuggable.** `decodeVideo` returned null with no reason; finding #3 took
+   a hand-written raw model call to see. It now logs *why* it failed, and still never throws.
+
+⚠️ **Methodology trap, recorded in the source:** the first shape example in `SYSTEM` was written
+from the test video itself, and flash returned it back **verbatim**. A copied answer is
+indistinguishable from a decoded one when the subjects match. The example is now from an unrelated
+domain (knife sharpening) so copying is detectable.
+
+### Still open after Phase 1
+
+- **`own-median-views` is not N-invariant.** Task 1 kills the *cross-creator* result-set median,
+  but the own-median basis is still a median over the posts we happened to fetch: measured on
+  `@thefounderadvisor`, **5.2× at N=3 vs 3.0× at N=6**. Far better than the old 1.4×→28.4×, but the
+  denominator still moves with scrape size. A fixed baseline N would close it.
+- **Nothing wires Phase 1 into a request path.** `decodeVideo` / `storeDecode` / `searchCreators`
+  have no production caller; `/api/discover` and `/api/tools/explore` still render `rankOutliers`'
+  within-set multiplier. Switching those call sites is Phase 2, as stated above — **the live defect
+  in §2.7 is therefore FIXED IN THE LIBRARY BUT STILL SHIPPING IN THE UI.**
+- **No outlier threshold exists.** The final run wrote a `0.298×` video (it underperformed its
+  creator's median) into `outlier_teardowns`. Which videos qualify as outliers is a selection
+  decision the plan explicitly defers.
+- **Stage 2 changes four existing live callers.** `excludePinnedPosts: true` and
+  `profileSorting: "latest"` now apply to every profile-mode `scrapeVideos` — competitors/add,
+  refresh-account-snapshots, explore-runner profile mode, account-read. Deliberate (it matches
+  `scrapeProfileBundle`), but it was not called out in the plan.
+- **Apify: $3.06 / $5.00** used after this work; cycle resets 2026-08-20. A paid plan still gates
+  SHIPPING, not building.
