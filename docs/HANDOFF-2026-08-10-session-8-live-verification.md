@@ -2,11 +2,47 @@
 
 **Lane:** `lane/in-thread-chat` · worktree `~/virtuna-in-thread-chat`
 **Brief:** verify session 7 through the real app · **Predecessor:** `docs/HANDOFF-2026-08-10-session-7-thread-context.md`
-**Outcome:** both flags walked signed-in through `/api/tools/chat`, raw frames + real browser.
-**No source changes.** Nothing merged, nothing deployed (Vercel disconnected).
+**Outcome:** both flags walked signed-in; two real defects found and fixed in the digest.
+**Nothing merged, nothing deployed** (Vercel disconnected).
 
-Gates on the unchanged lane HEAD: `tsc` clean · prod build clean · **5,855 passed / 0 failed**.
-Spend: **13 hooks runs / 13 credits** on the e2e account.
+Final gates: `tsc` clean · prod build clean · **5,857 passed / 0 failed**.
+Spend: **13 credits** (route walks) + 6 unbilled pipeline runs (A/B).
+
+---
+
+## 0. ▶️ START HERE — the next session in one screen
+
+**What changed on disk this session:** two commits, `8e27709a` + `355e0a89`. Everything else is
+documentation. The lane still ships dark.
+
+**What is now known that was not:**
+
+| | |
+|---|---|
+| The digest reaches the generator through the real route | ✅ §2 |
+| …and works under a calibrated audience | ✅ §2.1 |
+| The repeat-ask defect is real, on screen, in the product | ✅ §3.2, §3.4 |
+| The pin fixes it, bills correctly, never false-fires | ✅ §3, §4 |
+| **…but the pin catches 0 of the 5 historical failures** | 🔴 §11 |
+| **The digest was silently switching grounding OFF** | 🔴 §1 → fixed §12, §14 |
+
+**Do these next, in this order:**
+
+1. 🔴 **The digest does not include the creator's CURRENT turn.** `route.ts` loads prior turns at
+   step (6) and persists the new one at step (7), so *"give me hooks, but keep them under 30s"* —
+   the "under 30s" never reaches the generator. On a thread's first generating turn the flag is a
+   total no-op. Small, well-defined, and it is a hole in what was just shipped. **§14.2.**
+2. **Then design the output-side honesty check** — the lever that would actually move §11's 3%.
+   Needs a design conversation first (what happens to a half-streamed answer? does the turn re-run?
+   what about the free tier?), not a green light. **§11.**
+3. **Skip tuning the pin's 0.7 threshold.** If (2) lands, the pin stops mattering. §11 explains why.
+
+**Owner decisions still open:** the two flag flips (§13); why 3 of 18 ever open the profile
+interview (§9). Both unchanged from session 7.
+
+⚠️ **The `.scratch/` harnesses are gitignored and exist ONLY in this worktree.** §8 lists them and
+they are what make every number here reproducible. `git worktree remove` deletes them — copy them
+out first. (The memory store cannot be written from this worktree; these docs are the record.)
 
 ---
 
