@@ -205,21 +205,21 @@ describe("composer v8 (flag on)", () => {
     });
   });
 
-  it("the composer's TOP bar is the room's door (owner ruling 2026-08-10) — the legacy header slot still never mounts", async () => {
+  it("the room is the ATTACHED DOCK again <xl (owner ruling 2026-08-11); both retired v8 shapes are gone", async () => {
     renderWithClient(<Composer />);
-    // The v8 top bar (the old mobile-dock anatomy) is mounted above the field…
-    await screen.findByTestId("composer-room-bar");
-    // …the retired sub-bar is gone…
+    // The plate and the shipped attached bar are back ON the flag — v8 had taken the room
+    // away twice (the sub-bar, then the in-composer room card) and the owner ruled it back.
+    const slot = await screen.findByTestId("audience-header-slot");
+    expect(within(slot).getByTestId("ambient-overview-sheet")).toBeInTheDocument();
+    // Neither retired shape survives.
     expect(screen.queryByTestId("composer-sub-bar")).toBeNull();
-    // …and the LEGACY pre-v8 header slot still never mounts flag-on.
-    expect(screen.queryByTestId("audience-header-slot")).toBeNull();
+    expect(screen.queryByTestId("composer-room-bar")).toBeNull();
   });
 
-  it("the bar's lens zone opens the audience sheet", async () => {
+  it("the composer foot's audience chip opens the audience sheet", async () => {
     renderWithClient(<Composer />);
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Choose audience and platform" }),
-    );
+    // The lens moved off the deleted top bar and into the foot, beside the model selector.
+    fireEvent.click(await screen.findByTestId("composer-audience-chip"));
     expect(screen.getByTestId("audience-sheet")).toBeInTheDocument();
   });
 
@@ -268,20 +268,20 @@ describe("composer v8 (flag on)", () => {
     expect(within(screen.getByTestId("drop-shelf")).queryByText(/\/10/)).toBeNull();
   });
 
-  it("tapping the bar opens the sim room IN the composer — a card, not a page/overlay", async () => {
+  it("tapping the dock bar opens the SHIPPED room sheet — the in-composer room card is gone", async () => {
     renderWithClient(<Composer />);
-    fireEvent.click(await screen.findByTestId("composer-room-bar"));
-    const room = await screen.findByTestId("composer-room-card");
-    // In flow inside the composer box (the composer opens up into a card) —
-    // never portaled to <body> like the old full-screen sheet.
-    expect(room.closest('[data-testid="composer-room"]')).not.toBeNull();
-    expect(room.parentElement?.closest("body > [data-testid]")).toBeNull();
+    fireEvent.click(await screen.findByRole("button", { name: "Open your audience" }));
+    // The room is the pre-v8 sheet again: portaled to <body> (a transformed ancestor traps
+    // position:fixed, which is why it was built that way in the first place).
+    const panel = await screen.findByTestId("ambient-sheet-panel");
+    expect(panel.parentElement).toBe(document.body);
+    expect(screen.queryByTestId("composer-room-card")).toBeNull();
   });
 
   it("opening the room fires NO sim (fire-on-demand law)", async () => {
     renderWithClient(<Composer />);
-    fireEvent.click(await screen.findByTestId("composer-room-bar"));
-    await screen.findByTestId("composer-room-card");
+    fireEvent.click(await screen.findByRole("button", { name: "Open your audience" }));
+    await screen.findByTestId("ambient-sheet-panel");
     const calls = (global.fetch as ReturnType<typeof vi.fn>).mock.calls.map((c) => String(c[0]));
     expect(calls.some((u) => u.includes("/api/tools/react"))).toBe(false);
   });
@@ -311,7 +311,16 @@ describe("composer v8 (flag on)", () => {
     renderWithClient(<Composer />);
     // The row's accessible name is the card's label; the door text is what a creator taps.
     fireEvent.click(await screen.findByText(/simulate with your audience/i));
-    await waitFor(() => expect(screen.getByTestId("report-verdict")).toHaveTextContent("6/10"));
+    // It spends exactly one run and lands in THE ROOM — the three-tab report the owner
+    // rejected ("exactly what we didn't want") is deleted, so there is nowhere else to land.
+    await waitFor(() => {
+      const calls = (global.fetch as ReturnType<typeof vi.fn>).mock.calls.filter((c) =>
+        String(c[0]).includes("/api/tools/react"),
+      );
+      expect(calls).toHaveLength(1);
+    });
+    await screen.findByTestId("ambient-sheet-panel");
+    expect(screen.queryByTestId("verdict-report")).toBeNull();
   });
 
   it("a second tap while watching does NOT fire a second billed call", async () => {
@@ -351,19 +360,20 @@ describe("composer v8 (flag on)", () => {
     });
 
     renderWithClient(<Composer />);
-    fireEvent.click(await screen.findByText(/simulate with your audience/i));
-    await waitFor(() => expect(screen.getByTestId("report-verdict")).toHaveTextContent("6/10"));
     const reactCalls = () =>
       (global.fetch as ReturnType<typeof vi.fn>).mock.calls.filter((c) =>
         String(c[0]).includes("/api/tools/react"),
       ).length;
+    fireEvent.click(await screen.findByText(/simulate with your audience/i));
+    await waitFor(() => expect(reactCalls()).toBe(1));
+    await screen.findByTestId("ambient-sheet-panel");
     const before = reactCalls();
     fireEvent.keyDown(document, { key: "Escape" });
     // Re-opening the SAME card reads the session snapshot. (The door's own wording still says
     // "Simulate…": the seal lives in composer state, while the persisted block keeps
     // provenance:"projected" — a copy gap noted for the PR, not a re-fire.)
     fireEvent.click(screen.getByText(/simulate with your audience/i));
-    await screen.findByTestId("report-verdict");
+    await screen.findByTestId("ambient-sheet-panel");
     expect(reactCalls()).toBe(before);
   });
 });

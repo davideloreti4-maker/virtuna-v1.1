@@ -193,6 +193,14 @@ const ICONS: Record<string, string> = {
   // The verb-chip mark (v6 Room prototype `.vi` ✦) — a 4-point sparkle, the composer's
   // ONE accent glyph (terracotta). Line-icon form (stroked) to stay on the no-emoji system.
   spark: '<path d="M8 3c.6 3.4 1.6 4.4 5 5-3.4.6-4.4 1.6-5 5-.6-3.4-1.6-4.4-5-5 3.4-.6 4.4-1.6 5-5z"/>',
+  // The skills pill's mark (owner 2026-08-11: "find a better icon"). A 2×2 set — the panel it
+  // opens is a CATALOGUE, and that is the one thing the glyph has to say. A `/` keycap was
+  // tried first and measured at its real 15px size against this: the keycap's rect and its
+  // diagonal collide into an ambiguous blob that reads closer to a cancel mark, while the four
+  // squares stay crisp. `/` gets taught by the panel's per-skill commands instead.
+  grid: '<rect x="2.4" y="2.4" width="4.8" height="4.8" rx="1.3"/><rect x="8.8" y="2.4" width="4.8" height="4.8" rx="1.3"/><rect x="2.4" y="8.8" width="4.8" height="4.8" rx="1.3"/><rect x="8.8" y="8.8" width="4.8" height="4.8" rx="1.3"/>',
+  // One input, two outputs — the router. The AUTO row's mark: what happens when you just type.
+  auto: '<path d="M1.8 8h4.4M6.2 8L9.2 4.4h3.1M6.2 8l3 3.6h3.1"/><path d="M10.9 3.1l1.6 1.3-1.6 1.3M10.9 10.3l1.6 1.3-1.6 1.3"/>',
 };
 
 /** Map each skill id → its line-icon key. Exported for the composer's armed indicator. */
@@ -353,6 +361,7 @@ export function SkillRows({
   filter,
   onSelect,
   activeMode = "socials",
+  hideIds,
 }: {
   active: ToolId;
   filter?: string;
@@ -360,6 +369,11 @@ export function SkillRows({
   /** Active Audience mode (UX-02 / D-01). Gates the list BEFORE the Make/Test/Ask verb
    *  partition (socials) vs the General group. Defaults to "socials". */
   activeMode?: SkillMode;
+  /** Ids to omit. v8 passes `["chat"]` (owner 2026-08-11: "chat shouldn't be a skill right?" —
+   *  it is `DEFAULT_TOOL`, the state you return to, so it is not something to pick off a
+   *  picker; the skills panel presents it as AUTO instead). Undefined ⇒ nothing is hidden,
+   *  which is what the legacy menu passes: flag-off must stay byte-identical. */
+  hideIds?: readonly ToolId[];
 }) {
   // Scroll the ARMED row into view when the menu opens.
   //
@@ -375,7 +389,8 @@ export function SkillRows({
 
   const q = (filter ?? "").trim().toLowerCase();
   const match = (s: SkillMeta) =>
-    !q || s.label.toLowerCase().includes(q) || s.command.includes(q);
+    (!hideIds || !hideIds.includes(s.id)) &&
+    (!q || s.label.toLowerCase().includes(q) || s.command.includes(q));
   const mode = activeMode ?? "socials";
   // Phase 3 (v6 IA): the Socials skills collapse under three INTENT verbs — Make
   // (create net-new) · Test (judge something real) · Ask (converse). VERB_BY_TOOL is

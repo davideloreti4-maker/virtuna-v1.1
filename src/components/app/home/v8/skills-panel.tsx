@@ -4,11 +4,23 @@
  * The v8 skills panel — discovery, never obligation (spec §2 v7 revision).
  * Built from the REAL registry (SKILLS + VERB_BY_TOOL); the mock's row list is a
  * sketch (handoff §5) and its Make/Test/Research grouping is NOT used — the shipped
- * verbs are Make/Test/Ask (+General). Taxonomy naming is an open owner call (§7.6).
+ * verbs are Make/Test (+General), with the default lane pinned above them.
  *
  * Desktop: two-pane popover (Perplexity reference) — list left, preview right, Use
  * arms the skill (tag in field + instruction placeholder).
  * Mobile: the same content as a bottom sheet; a row tap arms directly.
+ *
+ * ── The two things this panel has to teach (owner ruling 2026-08-11) ──────────────
+ * It used to teach them with a two-line paragraph across the top. The owner called
+ * that "not a clean solution", and it was: a disclaimer is what you write when the
+ * interface won't say it for you. Both facts are structural now.
+ *
+ *  1. "You don't have to pick — it routes for you."  →  AUTO is the first row, above
+ *     the groups, carrying the check whenever nothing is armed. The default state is
+ *     visibly a *choice that is already made*, not an absence.
+ *  2. "You can pick with /."  →  every skill prints its own command. The previewed row
+ *     shows it in the list and the preview pane sets it beside the name, so the command
+ *     is on screen the whole time you are browsing. Nobody has to be told.
  */
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -41,7 +53,10 @@ export const PROMISE_BY_TOOL: Record<ToolId, string> = {
   explore: "See what's breaking out — in your niche, or any competitor's.",
   test: "Upload a real video or paste a link. SIM-1 Max watches it the way your audience would and hands back the full read.",
   account: "A read on your own posts — what's landing, what isn't, and why.",
-  chat: "Ask anything in your context — your niche, your audience, an idea you're weighing.",
+  // The default lane's promise, rewritten for its AUTO identity. Honest about the seam:
+  // the chat agent calls ideas / hooks / scripts as real tools (skill-dispatch.ts), and
+  // answers in its own voice when the ask isn't one of them.
+  chat: "Where you already are. Type in plain words and I'll run whatever the ask needs — ideas, hooks, a script — or just answer, when it needs none of them.",
   offer: "Test a product, a price, a positioning — before you build the funnel.",
   ad: "Pre-flight an ad concept, ROAS-framed, before you spend.",
   profile: "Build a SIM of anyone from a chat export or screenshot.",
@@ -49,6 +64,22 @@ export const PROMISE_BY_TOOL: Record<ToolId, string> = {
   predict: "Put a scenario in front of the analyst panel and read the spread.",
 };
 
+/**
+ * The default lane. `chat` is the registry id for "no skill armed" — it is literally
+ * `DEFAULT_TOOL` in composer.tsx, and `armedSkill` is null while it is active — so listing
+ * it as a peer under "Ask" was a taxonomy claim the router does not back (owner 2026-08-11:
+ * "chat shouldn't be a skill right?"). It leads the panel as AUTO instead, which is what it
+ * has always been: the state you are in until you pick, and the state you return to.
+ *
+ * The registry itself is untouched. `SKILLS` / `VERB_BY_TOOL` are the SSOT the legacy `/`
+ * menu also reads, and flag-off must stay byte-identical — so this renaming lives here.
+ */
+const AUTO_ID: ToolId = "chat";
+const AUTO_LABEL = "Auto";
+const AUTO_DESC = "Maven picks the skill — just type";
+
+// `Ask` is gone from the group list along with it: chat was its only member, so the verb
+// now has nothing to name. Make / Test carry every skill a creator can actually arm.
 const GROUPS: { label: string; verb: "Make" | "Test" | "Ask" }[] = [
   { label: "Make", verb: "Make" },
   { label: "Test", verb: "Test" },
@@ -57,6 +88,19 @@ const GROUPS: { label: string; verb: "Make" | "Test" | "Ask" }[] = [
 
 function visibleSkills(mode: SkillMode): SkillMeta[] {
   return SKILLS.filter((s) => s.enabled && isSkillVisible(s, mode));
+}
+
+const labelOf = (s: SkillMeta) => (s.id === AUTO_ID ? AUTO_LABEL : s.label);
+const descOf = (s: SkillMeta) => (s.id === AUTO_ID ? AUTO_DESC : s.desc);
+/** Auto has no command — you reach it by disarming, not by typing a word for it. */
+const commandOf = (s: SkillMeta) => (s.id === AUTO_ID ? null : s.command);
+
+function MaxBadge() {
+  return (
+    <span className="shrink-0 rounded-[4px] border border-white/[0.09] bg-white/[0.03] px-[5px] py-px text-micro font-semibold uppercase leading-none tracking-[0.06em] text-foreground-muted">
+      MAX
+    </span>
+  );
 }
 
 export function SkillPill({
@@ -86,7 +130,11 @@ export function SkillPill({
         "pointer-coarse:h-11",
       )}
     >
-      <Ico name="spark" size={15} />
+      {/* A catalogue mark, not a sparkle (owner 2026-08-11: "find a better icon"). The old ✦
+          was decoration — it said "AI", which the user already knows, and its own source
+          comment still called it the composer's terracotta accent glyph from a retired
+          palette. This says what the pill actually opens: the set of everything available. */}
+      <Ico name="grid" size={15} />
       <Ico name="chev" size={12} className="text-foreground-muted" />
     </button>
   );
@@ -163,48 +211,103 @@ export function SkillsPanel({
   if (!open || typeof document === "undefined") return null;
 
   const skills = visibleSkills(activeMode);
-  const general = skills.filter((s) => s.modes.includes("general"));
-  const socials = skills.filter((s) => !s.modes.includes("general"));
-  const preview = SKILLS.find((s) => s.id === previewId) ?? skills[0]!;
+  const auto = skills.find((s) => s.id === AUTO_ID) ?? null;
+  const general = skills.filter((s) => s.id !== AUTO_ID && s.modes.includes("general"));
+  const socials = skills.filter((s) => s.id !== AUTO_ID && !s.modes.includes("general"));
+  const preview = SKILLS.find((s) => s.id === previewId) ?? auto ?? skills[0]!;
 
-  const listRow = (s: SkillMeta, direct: boolean) => (
-    <button
-      key={s.id}
-      type="button"
-      data-skill={s.id}
-      onClick={() => (direct ? onUse(s.id) : setPreviewId(s.id))}
-      className={cn(
-        "flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-left transition-colors",
-        !direct && s.id === preview.id
-          ? "bg-white/[0.10] ring-1 ring-inset ring-white/[0.10]"
-          : "hover:bg-white/[0.035]",
-      )}
-    >
-      <Ico name={SKILL_ICON[s.id]} size={15} className="shrink-0 text-foreground-secondary" />
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-reading font-medium text-foreground">{s.label}</span>
-        {direct && (
-          <span className="mt-[2px] block text-label leading-snug text-foreground-muted">
-            {s.desc}
-          </span>
+  const listRow = (s: SkillMeta, direct: boolean) => {
+    const selected = !direct && s.id === preview.id;
+    const cmd = commandOf(s);
+    return (
+      <button
+        key={s.id}
+        type="button"
+        data-skill={s.id}
+        onClick={() => (direct ? onUse(s.id) : setPreviewId(s.id))}
+        className={cn(
+          "group flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-left transition-colors",
+          selected ? "bg-white/[0.07]" : "hover:bg-white/[0.035]",
         )}
-      </span>
-      {s.model === "Max" && (
-        <span className="shrink-0 rounded-[4px] border border-white/[0.09] bg-white/[0.03] px-[5px] py-px text-micro font-semibold uppercase leading-none tracking-[0.06em] text-foreground-muted">
-          MAX
+      >
+        <Ico
+          name={SKILL_ICON[s.id]}
+          size={15}
+          className={cn(
+            "shrink-0 transition-colors",
+            selected ? "text-foreground" : "text-foreground-muted",
+          )}
+        />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-reading font-medium text-foreground">
+            {labelOf(s)}
+          </span>
+          {direct && (
+            <span className="mt-[2px] block text-label leading-snug text-foreground-muted">
+              {descOf(s)}
+            </span>
+          )}
         </span>
-      )}
-    </button>
-  );
+        {s.model === "Max" && <MaxBadge />}
+        {/* Every row carries its command on mobile, where the sheet is full-width. On desktop
+            only the SELECTED row does — eight commands stacked in a 270px column would be a
+            second list competing with the first, but one, moving with the selection, teaches
+            the same thing without the noise. */}
+        {(direct || selected) && cmd && (
+          <span className="shrink-0 font-mono text-micro text-foreground-muted">{cmd}</span>
+        )}
+      </button>
+    );
+  };
+
+  /** AUTO — pinned above the groups, and the panel's answer to "do I have to pick one?". */
+  const autoRow = (direct: boolean) =>
+    auto && (
+      <div className="border-b border-white/[0.06] pb-1.5">
+        <button
+          type="button"
+          data-skill={auto.id}
+          data-auto-row=""
+          onClick={() => (direct ? onUse(auto.id) : setPreviewId(auto.id))}
+          className={cn(
+            "flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-left transition-colors",
+            !direct && preview.id === auto.id ? "bg-white/[0.07]" : "hover:bg-white/[0.035]",
+          )}
+        >
+          <Ico
+            name="spark"
+            size={15}
+            className={cn(
+              "shrink-0",
+              active === auto.id ? "text-foreground" : "text-foreground-muted",
+            )}
+          />
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-reading font-medium text-foreground">
+              {AUTO_LABEL}
+            </span>
+            <span className="mt-[2px] block text-label leading-snug text-foreground-muted">
+              {AUTO_DESC}
+            </span>
+          </span>
+          {/* The check is the whole teaching move: with nothing armed, the default lane reads
+              as a choice already made rather than as an empty picker. */}
+          {active === auto.id && (
+            <Ico name="check" size={14} className="shrink-0 text-foreground-secondary" />
+          )}
+        </button>
+      </div>
+    );
 
   const groupedList = (direct: boolean) => (
     <>
+      {autoRow(direct)}
       {GROUPS.map(({ label, verb }) => {
         const rows = socials.filter((s) => VERB_BY_TOOL[s.id] === verb);
         if (rows.length === 0) return null;
         return (
           <div key={verb}>
-            <div className="px-2.5 pb-1 pt-2.5 text-micro font-semibold uppercase tracking-[0.1em] text-foreground-muted/60">
+            <div className="px-2.5 pb-1 pt-3 text-micro font-semibold uppercase tracking-[0.1em] text-foreground-muted/70">
               {label}
             </div>
             {rows.map((s) => listRow(s, direct))}
@@ -213,27 +316,13 @@ export function SkillsPanel({
       })}
       {general.length > 0 && (
         <div>
-          <div className="px-2.5 pb-1 pt-2.5 text-micro font-semibold uppercase tracking-[0.1em] text-foreground-muted/60">
+          <div className="px-2.5 pb-1 pt-3 text-micro font-semibold uppercase tracking-[0.1em] text-foreground-muted/70">
             General
           </div>
           {general.map((s) => listRow(s, direct))}
         </div>
       )}
     </>
-  );
-
-  // v8 copy — owner reviews before launch (handoff §5). The routing promise LEADS the
-  // panel (owner 2026-08-10: as a footer whisper, users still asked "do I have to pick
-  // one?"). A HEADER, outside the scroll: the first thing read answers the question.
-  const routeHeader = (
-    <div className="border-b border-white/[0.06] px-3 py-2.5">
-      <p className="text-label text-foreground">
-        You never have to pick — just type, and Maven routes it.
-      </p>
-      <p className="mt-0.5 text-caption text-foreground-muted">
-        This is the map of what it can do. Choosing one just locks it for your next send.
-      </p>
-    </div>
   );
 
   if (!isWide) {
@@ -248,16 +337,17 @@ export function SkillsPanel({
           role="dialog"
           aria-modal="true"
           aria-label="Skills"
-          className="ambient-room-in fixed inset-x-0 bottom-0 z-[var(--z-modal)] flex max-h-[78dvh] flex-col rounded-t-[22px] border border-b-0 border-white/[0.10] bg-surface-sunken px-3 pb-[max(20px,env(safe-area-inset-bottom))] pt-2"
+          className="ambient-room-in fixed inset-x-0 bottom-0 z-[var(--z-modal)] flex max-h-[78dvh] flex-col rounded-t-[22px] border border-b-0 border-white/[0.10] bg-surface-elevated px-2.5 pb-[max(20px,env(safe-area-inset-bottom))] pt-2"
         >
-          <div className="mx-auto mb-2 h-1 w-[34px] shrink-0 rounded-full bg-surface-elevated" />
-          {routeHeader}
-          <div className="min-h-0 flex-1 overflow-y-auto">{groupedList(true)}</div>
+          <div className="mx-auto mb-1.5 h-1 w-[34px] shrink-0 rounded-full bg-white/[0.14]" />
+          <div className="min-h-0 flex-1 overflow-y-auto pb-1">{groupedList(true)}</div>
         </div>
       </>,
       document.body,
     );
   }
+
+  const previewCmd = commandOf(preview);
 
   return createPortal(
     <div
@@ -268,43 +358,49 @@ export function SkillsPanel({
       aria-label="Skills"
       style={{ left: pos?.left ?? 0, bottom: pos?.bottom ?? 0 }}
       className={cn(
-        "ambient-room-in fixed z-[var(--z-modal)] flex w-[560px] max-w-[calc(100vw-28px)] flex-col overflow-hidden",
+        "ambient-room-in fixed z-[var(--z-modal)] flex w-[600px] max-w-[calc(100vw-28px)] flex-col overflow-hidden",
         "rounded-2xl border border-white/[0.10] bg-surface-elevated",
         "shadow-[0_16px_40px_rgba(0,0,0,0.4)]",
       )}
     >
-      {routeHeader}
       <div className="flex min-h-0">
-      <div className="flex max-h-[420px] w-[46%] flex-col border-r border-white/[0.06]">
-        <div className="min-h-0 flex-1 overflow-y-auto p-2">{groupedList(false)}</div>
-      </div>
-      {/* The preview pane (mock §3): visual · name · one-paragraph promise · Use. The tile
-          stands in for the mock's illustration slot — the skill's own mark at figure scale,
-          never a fabricated screenshot. */}
-      <div className="flex min-h-[300px] flex-1 flex-col p-5">
-        <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl border border-white/[0.06] bg-white/[0.04]">
-          <Ico name={SKILL_ICON[preview.id]} size={20} className="text-foreground-secondary" />
+        <div className="flex max-h-[430px] w-[47%] flex-col border-r border-white/[0.06]">
+          <div className="min-h-0 flex-1 overflow-y-auto p-2">{groupedList(false)}</div>
         </div>
-        <div className="mt-3.5 flex items-center gap-2 text-title font-medium text-foreground">
-          {preview.label}
-          {preview.model === "Max" && (
-            <span className="rounded-[4px] border border-white/[0.09] bg-white/[0.03] px-[5px] py-px text-micro font-semibold uppercase leading-none tracking-[0.06em] text-foreground-muted">
-              MAX
+        {/* The preview pane (mock §3): visual · name · command · one-paragraph promise · Use.
+            The tile stands in for the mock's illustration slot — the skill's own mark at
+            figure scale, never a fabricated screenshot. */}
+        <div className="flex min-h-[320px] flex-1 flex-col p-5">
+          <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl border border-white/[0.06] bg-white/[0.04]">
+            <Ico
+              name={preview.id === AUTO_ID ? "spark" : SKILL_ICON[preview.id]}
+              size={20}
+              className="text-foreground-secondary"
+            />
+          </div>
+          <div className="mt-3.5 flex flex-wrap items-center gap-x-2.5 gap-y-1">
+            <span className="text-title font-medium text-foreground">{labelOf(preview)}</span>
+            {preview.model === "Max" && <MaxBadge />}
+            {/* Half of the owner's ask, said by the interface instead of about it: every
+                skill wears the command that arms it from the keyboard. */}
+            {previewCmd && (
+              <span className="rounded-[5px] bg-white/[0.05] px-1.5 py-px font-mono text-caption text-foreground-secondary">
+                {previewCmd}
+              </span>
+            )}
+          </div>
+          <p className="mt-2.5 text-body leading-relaxed text-foreground-secondary">
+            {PROMISE_BY_TOOL[preview.id]}
+          </p>
+          <div className="mt-auto flex items-center justify-between gap-3 pt-5">
+            <span className="text-caption text-foreground-muted">
+              Runs on SIM-1 {preview.model ?? "Flash"}
             </span>
-          )}
+            <Button variant="primary" size="sm" onClick={() => onUse(preview.id)}>
+              Use
+            </Button>
+          </div>
         </div>
-        <p className="mt-2 text-body leading-relaxed text-foreground-secondary">
-          {PROMISE_BY_TOOL[preview.id]}
-        </p>
-        <div className="mt-auto flex items-center justify-between gap-3 pt-5">
-          <span className="text-caption text-foreground-muted">
-            Runs on SIM-1 {preview.model ?? "Flash"}
-          </span>
-          <Button variant="primary" size="sm" onClick={() => onUse(preview.id)}>
-            Use
-          </Button>
-        </div>
-      </div>
       </div>
     </div>,
     document.body,
