@@ -19,8 +19,12 @@ const MARK_WIDTHS = [96, 122, 84, 134, 102, 90] as const;
 
 export function Logos() {
   return (
-    <section className="lp-rule">
-      <div className="lp-measure py-12 md:py-14">
+    /* NO top hairline: the strip belongs to the hero's act. A rule cutting
+       right under the floating stage read as an arbitrary line (owner call,
+       2026-08-10) — the first full-bleed rule now lands where the argument
+       actually turns, at the problem statement. */
+    <section>
+      <div className="lp-measure pb-12 pt-14 md:pb-14 md:pt-16">
         <Reveal>
           <p className="lp-eyebrow text-center">
             Used by creators &amp; teams featured on

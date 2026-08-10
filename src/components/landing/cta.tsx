@@ -57,7 +57,7 @@ interface CtaProps {
   className?: string;
 }
 
-/** Solid accent. One of the four sanctioned accent jobs on this page. */
+/** Solid accent. One of the three sanctioned accent jobs on this page. */
 export function PrimaryCta({
   href = PRIMARY_CTA.href,
   children = PRIMARY_CTA.label,

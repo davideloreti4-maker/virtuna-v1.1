@@ -5,11 +5,12 @@ import { cn } from "@/lib/utils";
  *
  * Maven's whole claim is that it can name the exact second an audience leaves.
  * The retention curve is the instrument that says so, and it is the one object
- * in this product's world that belongs to no other landing page — which is
- * precisely why it, and not a numbered section gutter or a gradient blob, is
- * what this page is built around. It appears three times, each smaller than the
- * last: full-bleed under the hero headline, then as before/after sparklines in
- * the result receipts. Nowhere else.
+ * in this product's world that belongs to no other landing page. On the page it
+ * appears as the receipts' before/after sparklines and as the final CTA's
+ * backdrop reprise. The full-size RetentionCurve below is currently UNMOUNTED —
+ * it drew full-bleed under the hero headline until the owner cut that band
+ * (2026-08-10, "doesn't add value"); it stays exported for a return with real
+ * per-video data.
  *
  * ── Geometry ───────────────────────────────────────────────────────────────
  * The path is a sequence of named cubic segments so the DROP can be redrawn on
