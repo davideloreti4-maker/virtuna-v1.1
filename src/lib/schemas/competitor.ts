@@ -98,10 +98,19 @@ export const apifyVideoSchema = z.object({
    * calls, which never look at it, are unaffected. Read by resolveVideoUrl so a resolved
    * video can name its creator: the Remix card's receipt attributes the source post to a
    * real @handle instead of showing an anonymous thumbnail.
+   *
+   * `fans`/`heart`/`video` are the AUTHOR-LEVEL AGGREGATES. They ride on every video item for
+   * free, and `heart / video` is the only per-creator denominator obtainable without a second
+   * scrape — see `@/lib/discover/author-baseline`. They are left OPTIONAL and NOT defaulted to
+   * 0: a zero-filled aggregate would silently produce a baseline of 0 (or divide by it), so
+   * absence must stay visible to `remapClockworksVideo`, which then omits `author` entirely.
    */
   authorMeta: z
     .object({
       name: z.string().optional(),
+      fans: z.coerce.number().int().nonnegative().optional(),
+      heart: z.coerce.number().int().nonnegative().optional(),
+      video: z.coerce.number().int().nonnegative().optional(),
     })
     .optional(),
   /** Pinned/ad flags — pinned skews engagement ratios (§P.10b excludePinnedPosts). */

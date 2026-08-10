@@ -213,6 +213,21 @@ export function remapClockworksVideo(item: unknown): VideoData | null {
     ...(v.isPinned !== undefined ? { isPinned: v.isPinned } : {}),
     ...(v.mediaUrls?.[0] ? { mediaUrl: v.mediaUrls[0] } : {}),
     ...(v.videoMeta?.coverUrl ? { coverUrl: v.videoMeta.coverUrl } : {}),
+    // Author aggregates for the per-author outlier denominator (author-baseline.ts). Spread
+    // only when the actor gave us BOTH lifetime totals — an absent aggregate must stay absent,
+    // because a zero-filled one reads as a real (and catastrophically wrong) baseline.
+    ...(v.authorMeta?.name &&
+    typeof v.authorMeta.heart === "number" &&
+    typeof v.authorMeta.video === "number"
+      ? {
+          author: {
+            handle: v.authorMeta.name,
+            fans: v.authorMeta.fans ?? 0,
+            heart: v.authorMeta.heart,
+            videoCount: v.authorMeta.video,
+          },
+        }
+      : {}),
   };
 }
 

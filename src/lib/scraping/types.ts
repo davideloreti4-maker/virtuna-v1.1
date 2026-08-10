@@ -57,6 +57,19 @@ export interface VideoData {
    * absent on metadata-only paths that don't surface a thumbnail.
    */
   coverUrl?: string;
+  /**
+   * Author-level aggregates from clockworks `authorMeta`. The ONLY stable denominator available
+   * without a second scrape — `heart / videoCount` is that creator's lifetime average likes per
+   * post, which (unlike a result-set median) does not move with `resultsPerPage`.
+   * Optional/additive: absent when the actor returns no authorMeta, and absent rather than
+   * zero-filled when the aggregates are missing, so a baseline is never derived from nothing.
+   */
+  author?: {
+    handle: string;
+    fans: number;
+    heart: number;
+    videoCount: number;
+  };
 }
 
 /**
