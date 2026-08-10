@@ -542,8 +542,16 @@ export class ApifyScrapingProvider implements ScrapingProvider {
    * the same actor for PEOPLE instead, and their handles then feed a profile scrape (stage 2),
    * which is where the real posts, the free subtitles and the true own-median denominator live.
    *
-   * Returns bare, de-duplicated handles. An empty array when nobody matches: the caller must
-   * degrade visibly rather than silently fall through to a keyword search.
+   * Returns bare, de-duplicated handles ORDERED BY AUDIENCE SIZE, largest first. The ordering is
+   * not cosmetic: measured 2026-08-10 on "startup founder", the actor's own dataset order put an
+   * 18-follower account (median 11 views) first and the only relevant creator — @startupfounderceo,
+   * 2,306 fans, 28.3k views on the sampled post — third. A caller taking `handles[0]` therefore
+   * decoded a near-zero-traffic account. `authorMeta.fans` rides on every stage-1 item at zero
+   * extra cost, so "which person" is answerable for free; `searchSection` alone only answers
+   * "a person rather than a caption".
+   *
+   * An empty array when nobody matches: the caller must degrade visibly rather than silently
+   * fall through to a keyword search.
    */
   async searchCreators(query: string, limit = 10): Promise<string[]> {
     const run = await this.client.actor(DISCOVER_VIDEO_ACTOR).call(
@@ -558,13 +566,16 @@ export class ApifyScrapingProvider implements ScrapingProvider {
     if (!run?.defaultDatasetId) return [];
 
     const { items } = await this.client.dataset(run.defaultDatasetId).listItems();
-    const seen = new Set<string>();
+    // Keep the LARGEST fan count seen per handle: one creator can appear on several items.
+    const fansByHandle = new Map<string, number>();
     for (const it of items as Array<Record<string, unknown>>) {
-      const meta = it.authorMeta as { name?: unknown } | undefined;
+      const meta = it.authorMeta as { name?: unknown; fans?: unknown } | undefined;
       const name = typeof meta?.name === "string" ? meta.name.replace(/^@/, "").trim() : "";
-      if (name) seen.add(name);
+      if (!name) continue;
+      const fans = typeof meta?.fans === "number" ? meta.fans : 0;
+      fansByHandle.set(name, Math.max(fansByHandle.get(name) ?? 0, fans));
     }
-    return [...seen];
+    return [...fansByHandle.entries()].sort((a, b) => b[1] - a[1]).map(([name]) => name);
   }
 
   /**

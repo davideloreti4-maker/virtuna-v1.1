@@ -45,13 +45,47 @@ describe("searchCreators (stage 1 of D12)", () => {
   it("returns de-duplicated bare handles", async () => {
     mockState.listItemsResult = {
       items: [
-        { authorMeta: { name: "founderone" } },
-        { authorMeta: { name: "founderone" } },
-        { authorMeta: { name: "foundertwo" } },
+        { authorMeta: { name: "founderone", fans: 900 } },
+        { authorMeta: { name: "founderone", fans: 900 } },
+        { authorMeta: { name: "foundertwo", fans: 100 } },
       ],
     };
     const out = await new ApifyScrapingProvider("test-token").searchCreators("startup founder");
     expect(out).toEqual(["founderone", "foundertwo"]);
+  });
+
+  it("orders by audience size, NOT the actor's dataset order", async () => {
+    // The real 2026-08-10 "startup founder" payload, in the order Apify returned it.
+    mockState.listItemsResult = {
+      items: [
+        { authorMeta: { name: "jessicaelawson.__", fans: 18 } },
+        { authorMeta: { name: "hani.anis2", fans: 336 } },
+        { authorMeta: { name: "startupfounderceo", fans: 2306 } },
+      ],
+    };
+    const out = await new ApifyScrapingProvider("test-token").searchCreators("startup founder", 3);
+    // A caller taking handles[0] must get the real creator, not the 18-follower account.
+    expect(out).toEqual(["startupfounderceo", "hani.anis2", "jessicaelawson.__"]);
+  });
+
+  it("keeps the largest fan count when one creator appears on several items", async () => {
+    mockState.listItemsResult = {
+      items: [
+        { authorMeta: { name: "big", fans: 0 } },
+        { authorMeta: { name: "small", fans: 50 } },
+        { authorMeta: { name: "big", fans: 9000 } },
+      ],
+    };
+    const out = await new ApifyScrapingProvider("test-token").searchCreators("q");
+    expect(out).toEqual(["big", "small"]);
+  });
+
+  it("still returns a handle whose item carries no fan count", async () => {
+    mockState.listItemsResult = {
+      items: [{ authorMeta: { name: "known", fans: 5 } }, { authorMeta: { name: "unknown" } }],
+    };
+    const out = await new ApifyScrapingProvider("test-token").searchCreators("q");
+    expect(out).toEqual(["known", "unknown"]);
   });
 
   it("returns an empty array when the search finds nobody (caller degrades visibly)", async () => {

@@ -26,6 +26,43 @@ describe("parseVtt", () => {
   });
 });
 
+describe("parseVtt — TikTok's JSON utterance format", () => {
+  // Measured 2026-08-10 on @thefounderadvisor: `tiktokLink` served THIS, not WEBVTT. The old
+  // line filter kept every line (no WEBVTT header, no '-->', no cue numbers), so 13,472 chars
+  // of raw JSON went to the model as "Transcript:" — 5,401 prompt tokens of structured noise.
+  const JSON_SUBS = JSON.stringify({
+    utterances: [
+      {
+        text: "if you're a founder and you plan on raising capital",
+        start_time: 400,
+        end_time: 3400,
+        words: null,
+        text_size: 28,
+        text_color: "#FFFFFFFF",
+      },
+      { text: "you will have a board of directors", start_time: 3400, end_time: 5200 },
+    ],
+  });
+
+  it("extracts the spoken text and drops the styling metadata", () => {
+    expect(parseVtt(JSON_SUBS)).toBe(
+      "if you're a founder and you plan on raising capital you will have a board of directors",
+    );
+  });
+
+  it("collapses to a fraction of the raw payload", () => {
+    expect(parseVtt(JSON_SUBS).length).toBeLessThan(JSON_SUBS.length / 2);
+  });
+
+  it("returns an empty string for a JSON payload with no utterances", () => {
+    expect(parseVtt(JSON.stringify({ utterances: [] }))).toBe("");
+  });
+
+  it("still parses WEBVTT — the two formats coexist across videos", () => {
+    expect(parseVtt(SAMPLE)).toBe("So I made a huge mistake the last few months as a founder");
+  });
+});
+
 describe("fetchTranscript", () => {
   it("returns parsed text on a 200", async () => {
     const fetchFn = vi.fn().mockResolvedValue({ ok: true, text: async () => SAMPLE });
