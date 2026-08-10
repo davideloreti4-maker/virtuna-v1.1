@@ -30,6 +30,10 @@ import {
   type SkillRunContext,
   type SkillRunOutput,
 } from "@/lib/tools/skill-dispatch";
+import {
+  buildConversationDigest,
+  isConversationDigestEnabled,
+} from "@/lib/tools/conversation-digest";
 import { SEARCH_CORPUS_TOOL, executeCorpusSearch } from "@/lib/grounding/corpus-tool";
 import { retrieveCachedExamples } from "@/lib/grounding/retrieve";
 import {
@@ -921,6 +925,30 @@ export async function runChatAgentStream(
     ? (skills.find((s) => s.skillKey === input.forceSkill)?.name ?? null)
     : null;
 
+  /**
+   * THE CONVERSATION, handed DOWN to a skill (2026-08-10).
+   *
+   * The generators were the one place in this system with no conversation at all — they see
+   * `topic`, `anchor`, `cards`, the profile and the audience, so twenty turns reached them only
+   * insofar as this loop compressed them into the `topic` string it wrote. The loop is the right
+   * place to fix that because it is already holding the turns.
+   *
+   * Built PER CALL rather than once, because `includeCards` depends on the args of this specific
+   * call: a run carrying a `cards` rewrite pack must not also be told "do not reproduce these" —
+   * they are opposite instructions over the same list. (The assembler enforces the same rule; the
+   * two together mean neither a caller slip nor a future call site can produce the contradiction.)
+   *
+   * Flag off → returns `input.context` ITSELF, not a copy, so the off path is identical by
+   * reference and cannot drift.
+   */
+  const skillContextFor = (args: SkillToolArgs): SkillRunContext => {
+    if (!isConversationDigestEnabled()) return input.context;
+    const digest = buildConversationDigest(input.priorTurns ?? [], {
+      includeCards: !(args.cards && args.cards.length > 0),
+    });
+    return digest ? { ...input.context, conversation: digest } : input.context;
+  };
+
   const skillRuns: SkillRunOutput[] = [];
   const uiBlocks: unknown[] = [];
   const toolCalls: ChatAgentStreamResult["toolCalls"] = [];
@@ -1222,7 +1250,7 @@ export async function runChatAgentStream(
         // Announce the dispatch BEFORE the run: the client's capsule labels itself + seeds the
         // skill's stage plan off this, ahead of the first onStage event (~seconds later).
         input.onDispatch?.(skill.skillKey);
-        const { blocks, warnings } = await skill.run(args, input.context);
+        const { blocks, warnings } = await skill.run(args, skillContextFor(args));
         if (skill.billable) {
           paidRuns++;
           // BILL ON DELIVERY — the cards are about to stream to the creator and nothing after this

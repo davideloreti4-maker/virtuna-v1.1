@@ -49,6 +49,20 @@ export interface SkillRunContext {
    * into the engine would be the one wait that stayed blind.
    */
   onEvidence?: (evidence: RunEvidence) => void;
+  /**
+   * THE CONVERSATION (2026-08-10) — what the creator has said in this thread.
+   *
+   * On the CONTEXT, not on SkillToolArgs, and that is the whole point. The generators were the
+   * one place in the system with no conversation at all: twenty turns reached them only insofar
+   * as the agent compressed them into the `topic` string. The obvious fix — a `context` slot on
+   * the tool schema for the model to fill — is the one session 6 already measured failing: the
+   * `cards` slot built exactly that way earns nothing, because the model never reaches for it.
+   * So the LOOP builds this from the turns it is already replaying and injects it, the same way
+   * platform/profileRow/audience arrive. See conversation-digest.ts.
+   *
+   * Absent when ENGINE_GEN_CONVERSATION is off; undefined is byte-identical downstream.
+   */
+  conversation?: { turns?: string[]; cardsOnScreen?: string[] };
 }
 
 /**
@@ -196,6 +210,7 @@ export const SKILL_TOOLS: SkillTool[] = [
       const r = await runIdeasPipeline({
         ask: args.topic ?? "",
         cards: args.cards,
+        conversation: ctx.conversation,
         platform: ctx.platform,
         profileRow: ctx.profileRow,
         audience: ctx.audience,
@@ -222,6 +237,7 @@ export const SKILL_TOOLS: SkillTool[] = [
         anchor: args.anchor,
         count: args.count,
         cards: args.cards,
+        conversation: ctx.conversation,
         platform: ctx.platform,
         profileRow: ctx.profileRow,
         audience: ctx.audience,
@@ -246,6 +262,7 @@ export const SKILL_TOOLS: SkillTool[] = [
         ask: args.topic ?? "",
         anchor: args.anchor,
         cards: args.cards,
+        conversation: ctx.conversation,
         platform: ctx.platform,
         profileRow: ctx.profileRow,
         audience: ctx.audience,

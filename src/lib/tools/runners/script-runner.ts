@@ -243,6 +243,13 @@ export interface ScriptPipelineInput {
    */
   targetArchetype?: string;
   /**
+   * THE CONVERSATION (2026-08-10) — what the creator has said in this thread, as data.
+   * Built by the agent loop from the turns it is already replaying (conversation-digest.ts) and
+   * fenced by the assembler above the `---`. Absent on every direct /api/tools/<skill> call and
+   * whenever ENGINE_GEN_CONVERSATION is off, and undefined is byte-identical.
+   */
+  conversation?: { turns?: string[]; cardsOnScreen?: string[] };
+  /**
    * Active audience for this run (08-04 — steer closure, AUD-STEER; mirrors 07-04 ideas-runner).
    * null or is_general → profile-based grounding + DEFAULT weights (byte-identical no-op).
    */
@@ -621,6 +628,9 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
       ...(cards && cards.length > 0 ? { cards } : {}),
       ...(overrides ? { overrides } : {}),
       ...(corpus ? { corpus } : {}),
+      // The thread, when the agent loop supplied one. Undefined on a direct route call and
+      // whenever ENGINE_GEN_CONVERSATION is off, and undefined is byte-identical.
+      ...(input.conversation ? { conversation: input.conversation } : {}),
     },
     genProfileRow,
   );
