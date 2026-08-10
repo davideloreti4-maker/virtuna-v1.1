@@ -110,6 +110,9 @@ interface AdaptedStructure {
 
 // ─── Full-anatomy DECODE view (what the adapt stage reasons over) ──────────────
 
+/** Per-beat cap on the verbatim "said" excerpt — a whole chatty section must not flood the view. */
+const MAX_SAID_PER_BEAT = 220;
+
 /**
  * Render ONE exemplar's FULL anatomy — no clipping. This is the whole point: the raw slice showed
  * the writer ~1% of this, so it could not judge fit. The adapt stage sees everything, once, in its
@@ -130,8 +133,30 @@ function renderExemplar(ex: RetrievedExample, n: number): string {
   if (ex.template?.guidance) L.push(`    WHEN TO USE THIS: ${ex.template.guidance}`);
   if (ex.template?.skeleton?.length) L.push(`    beat order: ${ex.template.skeleton.join(" → ")}`);
   if (ex.template?.beats?.length) {
-    const beats = ex.template.beats.map((b) => `${b.name} — ${b.description}`).join("  |  ");
+    // C3: the seconds ARE the anatomy — the brief header promises "the timed rhythm", so the
+    // decode view must show it (it rendered name+description only until 2026-08-10).
+    const beats = ex.template.beats
+      .map((b) => {
+        const timing =
+          b.startSec != null && b.endSec != null ? ` (${b.startSec}–${b.endSec}s)` : "";
+        return `${b.name}${timing} — ${b.description}`;
+      })
+      .join("  |  ");
     L.push(`    beats: ${beats}`);
+    // C3 deep anatomy (script enrichment): what the source actually SAID per beat — pacing and
+    // content-density evidence for the BRIEFER only. The briefer re-voices by design, so showing
+    // it here is provenance-by-chain; the raw slice and the writer never see source words (the
+    // measured verbatim-transplant drift, AB-GROUNDING-BLIND-2026-07-14). Clipped per beat so
+    // one chatty section cannot flood the decode view.
+    const said = ex.template.beats.filter((b) => b.transcript && b.transcript.length > 0);
+    if (said.length > 0) {
+      const lines = said
+        .map((b) => `${b.name}: "${clip(b.transcript!.join(" "), MAX_SAID_PER_BEAT)}"`)
+        .join("  |  ");
+      L.push(
+        `    said (verbatim, per beat — study the pacing and content density; never copy these words): ${lines}`,
+      );
+    }
   }
   if (ex.idea?.belief && ex.idea?.reality) {
     L.push(`    tension: audience believes "${ex.idea.belief}" → reality "${ex.idea.reality}"`);
@@ -203,6 +228,8 @@ OUTPUT: strict JSON, no prose, no fences:
 You do NOT write the final script — you prepare the raw material the writer will build from.
 
 A script's engine is its BEAT ARC: how it opens, sets up, turns, pays off, and closes — the RHYTHM that holds attention. The reference is that arc and its pacing — never the source's content. Map the proven rhythm onto the creator's own story.
+
+Some structures include "said" lines — the words the source actually spoke in each timed beat. Study them for PACING and CONTENT DENSITY only: how much gets said per window, where the sentences shorten, how the turn actually lands. NEVER copy their words, topics, or examples into the fitted arc — the arc must be entirely about this creator's subject.
 
 For each proven structure, decide how hard the writer should borrow its arc. This is a dial, not a switch:
 
