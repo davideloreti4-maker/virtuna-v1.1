@@ -69,8 +69,10 @@ Whether a digest is worth more than a corpus on a repeat ask is a real question 
 
 **Fix options, unimplemented (your call):** budget the whole digest rather than `turns` alone; or
 raise the cap ~500; or drop `cardsOnScreen` to 3 lines. The first is closest to what the constant
-already claims to do. I did not touch it — it is a live change to unflagged assembler behaviour and
-the trade-off above is undecided.
+already claims to do. I did not touch it — it is a live change to unflagged assembler behaviour.
+
+> ✅ **§12 settles this.** The trade-off is avoidable: dropping `cardsOnScreen` keeps the corpus AND
+> beats both other arms on constraints — and removes a verbatim-reproduction defect. Read §12.
 
 ---
 
@@ -229,9 +231,10 @@ Mine, not a decision. **Superseded in part by §11 — read that first.**
   the route, reproducible, and visible in the product; the pin corrects it 5/5; it bills exactly
   like any other run; it never false-pins on real traffic. But §11 measures its *coverage* and the
   answer is **0 of 5 historical instances**. It is a correct fix for a shape that barely occurs.
-- **`ENGINE_GEN_CONVERSATION` — hold until §1 is decided.** It works and it arrives, but as it
-  stands, switching it on switches grounding off on repeat runs, silently. That trade may well be
-  right — it is just not one anyone has chosen yet, and it should not be made by a character count.
+- **`ENGINE_GEN_CONVERSATION` — ship it, but with `turns` only.** Superseded by §12: as it stands
+  (with `cardsOnScreen`) it switches grounding off silently *and* reproduces the cards it is told
+  not to. With `cardsOnScreen` dropped it beats today's behaviour on constraints, keeps grounding,
+  and makes the documented budget true. Flipping the flag as-is is the one option I would not take.
 
 The two interact: **the pin makes the digest's worst case the common case**, because a pinned run is
 by definition a second run in a thread, which is exactly when `cardsOnScreen` is populated.
@@ -389,6 +392,82 @@ the 0.44 case would put it 0.03 above `"write me 5 hooks about cold brew coffee"
 - **I did not judge the 26 "honest" claims.** They had cards beside them; I did not check the prose
   matched the cards. Walk B turn 1 this session produced an enumerated prose pack that did **not**
   match its own cards, so that class is not clean either — just not measured.
+
+---
+
+## 12. 🔴 The digest-vs-corpus trade-off is AVOIDABLE — and `cardsOnScreen` is the problem
+
+§1 left the trade undecided. Measured now (`.scratch/probe-digest-vs-corpus.ts`, 3 arms × 2 runs,
+real prod profile + the real calibrated `@mrbeast` audience, so the corpus genuinely competes):
+
+| arm | violations | with proof | copies a card |
+|---|---|---|---|
+| **A** · corpus only, digest off — *today* | **5/10** | 4/10 | 0/10 |
+| **B** · digest **+ `cardsOnScreen`**, corpus evicted — *what the flag does today* | 2/10 | **0/10** | **3/10** |
+| **C** · digest, **`turns` only**, corpus survives — *the fix* | **1/10** | 3/10 | 0/10 |
+
+**Arm C wins on both axes.** It gets the digest's constraint obedience (1 violation vs A's 5) *and*
+keeps grounding (3/10 proof vs B's 0/10). There is no trade to make: the conflict is caused entirely
+by the half of the digest that sits outside `CONVERSATION_CHAR_BUDGET`.
+
+### 12.1 `cardsOnScreen` produces the exact behaviour it forbids
+
+Its contract says *"do NOT reproduce, rephrase or re-deliver these; make something new that does not
+overlap them."* Measured against the six lines it was given (`analyse-arm-b-reproduction.ts`, free,
+using the lane's own `askSimilarity`):
+
+```
+A · corpus only ............ 0/10 overlapping
+B · digest + cardsOnScreen . 3/10 overlapping — 1 VERBATIM, 2 near-copies
+C · digest, turns only ..... 0/10 overlapping
+```
+
+> 🔴 `"This is the most painful thing I have ever done on camera."` — **returned verbatim**, as a
+> hook, from the list captioned *do not reproduce*.
+> `"I spent four hours learning this dance"` → `"I spent three hours learning this dance"` (0.75).
+> `"Watch me try to look cool for three seconds"` → `"Stop trying to look cool for three seconds"` (0.50).
+
+This is the same finding the lane keeps making in a new place: **precedent beats instruction.**
+Putting lines in the prompt makes them likelier to be emitted, and a sentence telling the model not
+to does not reverse it — exactly what `chat-prior-turns.ts` and `repeat-ask.ts` both document.
+`cardsOnScreen` is a negative-instruction design in a system whose own docs say those do not work.
+
+### 12.2 Recommendation
+
+**Ship `ENGINE_GEN_CONVERSATION` with `turns` only; drop `cardsOnScreen`** (or budget the whole
+block, which drops it in practice). That single change:
+
+- removes the cap conflict — the corpus stops being evicted (§1);
+- improves constraint obedience over both other arms;
+- removes a verbatim-reproduction defect;
+- makes `CONVERSATION_CHAR_BUDGET = 700` true again, since `turns` is what it bounds;
+- deletes the `cards`/`cardsOnScreen` mutual-exclusion contract that is currently enforced in two
+  places, along with the reason it existed.
+
+Still an owner call — it is unflagged assembler behaviour and it removes a shipped design.
+
+### 12.3 A trap in the measurement, worth keeping
+
+**`grounded: true` on a hook card does NOT mean the corpus reached the prompt.** It is set from
+`corpusGrounded` at *retrieval* time, before `assembleBundle` ever runs, so it read **10/10 in every
+arm — including the arm where the corpus was shed.** The prop that actually tracks the prompt is
+`proof` (0/10 in B, 3–4/10 in A and C), because a proof receipt requires the model to have adapted a
+retrieved example it could only have seen in the bundle.
+
+An earlier draft of this probe read `sourceIndex`, which is not on the block at all — that would have
+scored 0/10 for every arm and "proved" the corpus buys nothing.
+
+### 12.4 What this does NOT establish
+
+- **n = 2 runs per arm, 10 hooks per arm, one topic, one profile, one audience.** The direction is
+  consistent and the verbatim copy is categorical, but these are not tight intervals.
+- **The card pack was off-topic** (dance lines, against a morning-focus ask) — realistic for a thread
+  that has drifted, and the case where "don't overlap" matters least. A **same-topic** pack might
+  reproduce more, or the instruction might bite better. Unmeasured, and it is the case
+  `cardsOnScreen` was actually designed for.
+- **Arm C still violated the 5am rule once.** The digest reduces violations; it does not eliminate them.
+- **Nothing here re-tests the shed ORDER.** If a bundle still overflows, corpus-before-conversation
+  remains untested as a ranking — arm C simply stops it overflowing.
 
 ---
 
