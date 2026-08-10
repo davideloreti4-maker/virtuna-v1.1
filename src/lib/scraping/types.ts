@@ -174,6 +174,14 @@ export interface ScrapingProvider {
   scrapeProfileBundle?(handle: string, limit?: number): Promise<ProfileBundle>;
 
   /**
+   * STAGE 1 of the two-stage pull (spec D12): find CREATORS in a niche, not videos whose caption
+   * matches. `searchSection: "/user"` is what makes the difference — a keyword video-search
+   * returned a 99-view post and an unrelated clip in the Phase 0 measurement. Returns bare handles
+   * (no '@'), de-duplicated. Empty array when nobody matches — the caller degrades visibly.
+   */
+  searchCreators(query: string, limit?: number): Promise<string[]>;
+
+  /**
    * Scrape a result set for Discover/Explore. `query` is a handle (profile mode) or a
    * niche/search phrase (search mode); `mode` selects the clockworks input field
    * (profiles vs searchQueries). Returns validated videos (invalid items skipped).

@@ -536,6 +536,38 @@ export class ApifyScrapingProvider implements ScrapingProvider {
   }
 
   /**
+   * STAGE 1 of the two-stage niche pull (spec D12). A keyword VIDEO search matches caption text,
+   * which is why the Phase 0 measurement came back with a 99-view post and a clip transcribing as
+   * "okay bye bye love you" — those captions did contain the words. `searchSection: "/user"` asks
+   * the same actor for PEOPLE instead, and their handles then feed a profile scrape (stage 2),
+   * which is where the real posts, the free subtitles and the true own-median denominator live.
+   *
+   * Returns bare, de-duplicated handles. An empty array when nobody matches: the caller must
+   * degrade visibly rather than silently fall through to a keyword search.
+   */
+  async searchCreators(query: string, limit = 10): Promise<string[]> {
+    const run = await this.client.actor(DISCOVER_VIDEO_ACTOR).call(
+      {
+        searchQueries: [query],
+        // THE point of stage 1 — people, not caption matches (spec D12).
+        searchSection: "/user",
+        maxProfilesPerQuery: limit,
+      },
+      { waitSecs: 240 },
+    );
+    if (!run?.defaultDatasetId) return [];
+
+    const { items } = await this.client.dataset(run.defaultDatasetId).listItems();
+    const seen = new Set<string>();
+    for (const it of items as Array<Record<string, unknown>>) {
+      const meta = it.authorMeta as { name?: unknown } | undefined;
+      const name = typeof meta?.name === "string" ? meta.name.replace(/^@/, "").trim() : "";
+      if (name) seen.add(name);
+    }
+    return [...seen];
+  }
+
+  /**
    * Pull a result set for Discover/Explore.
    * @param query a handle (profile mode) OR a niche/search phrase (search mode).
    * @param limit resultsPerPage cap.
@@ -551,7 +583,18 @@ export class ApifyScrapingProvider implements ScrapingProvider {
     const input =
       mode === "search"
         ? { searchQueries: [query], resultsPerPage: limit }
-        : { profiles: [query], resultsPerPage: limit };
+        : {
+            profiles: [query],
+            resultsPerPage: limit,
+            // STAGE 2 of D12. `excludePinnedPosts` keeps a pinned evergreen from skewing the
+            // creator's own median; `profileSorting:"latest"` is the FREE recency filter (the
+            // charged `videoSearchSorting`/`videoSearchDateFilter` are not used).
+            excludePinnedPosts: true,
+            profileSorting: "latest",
+            // FREE native track only. `DOWNLOAD_AND_TRANSCRIBE_*` and `TRANSCRIBE_ALL_VIDEOS`
+            // are AI-charged and must never appear here (§P.4). Measured 71% coverage.
+            downloadSubtitlesOptions: "DOWNLOAD_SUBTITLES",
+          };
 
     const run = await this.client
       .actor(DISCOVER_VIDEO_ACTOR)
