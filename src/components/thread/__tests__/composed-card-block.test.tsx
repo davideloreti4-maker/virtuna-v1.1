@@ -28,8 +28,10 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { ComposedCardRenderer } from '@/components/thread/composed-card-block';
+import { MessageBlocks } from '@/components/thread/message-blocks';
 import type { ComposedCardBlock } from '@/lib/tools/composed-card-schema';
 import { parseComposedCard } from '@/lib/tools/composed-card-schema';
+import { validateBlock } from '@/lib/tools/block-registry';
 import { SKILL_CAPABILITIES, SKILL_REQUESTABLE_ACTIONS } from '@/lib/tools/skill-capabilities';
 import type { HookProof } from '@/lib/tools/proof-schema';
 
@@ -110,11 +112,10 @@ describe('ComposedCardRenderer', () => {
       props: {
         ...block.props,
         body: [...block.props.body, { kind: 'proof_strip', receiptRefs: ['row-1'] }],
+        receipts: { 'row-1': PROOF },
       },
     };
-    const { container } = render(
-      <ComposedCardRenderer block={withProof} receipts={new Map([['row-1', PROOF]])} />,
-    );
+    const { container } = render(<ComposedCardRenderer block={withProof} />);
     const text = textOf(container);
     expect(text).toContain('corporate.bro');
     expect(text.indexOf('corporate.bro')).toBeLessThan(
@@ -129,12 +130,98 @@ describe('ComposedCardRenderer', () => {
         ...block.props,
         receiptRef: 'row-1',
         body: [...block.props.body, { kind: 'proof_strip', receiptRefs: ['row-1'] }],
+        receipts: { 'row-1': PROOF },
       },
     };
-    const { container } = render(
-      <ComposedCardRenderer block={withBoth} receipts={new Map([['row-1', PROOF]])} />,
-    );
+    const { container } = render(<ComposedCardRenderer block={withBoth} />);
     expect(container.textContent?.match(/corporate\.bro/g)?.length).toBe(1);
+  });
+
+  it('carries a server-attached receipt through emit → persist → rehydrate → render', () => {
+    // THE test for Task 5b, and the shape of it is the point. Every hop the real receipt makes is
+    // here, because the defect this closes lived in a hop, not in a component:
+    //
+    //   1. parseComposedCard — the model-facing door. It STRIPS receipts (D7), so the card that
+    //      leaves here has none, exactly as a real emit does.
+    //   2. the server attaches materializeReceipts' output (Task 7's job, hand-done here).
+    //   3. JSON round-trip — `messages.body` is JSON. A `Map` dies at this line, as `{}`.
+    //   4. validateBlock — re-run ON RENDER (message-blocks.tsx:122). This is a zod object parse
+    //      and zod strips undeclared keys; before `props.receipts` was declared it deleted the
+    //      receipt here, silently, and a `teardown` rendered asserting proof it never showed.
+    //
+    // Handing the renderer a receipt directly would pass while all of that stayed broken — which is
+    // precisely how the defect got past the previous task's own suite.
+    const fromModel = {
+      type: 'composed-card',
+      props: {
+        recipe: 'teardown',
+        deliverable: { kind: 'claim', text: 'Film the failure.' },
+        body: [
+          { kind: 'proof_strip', receiptRefs: ['row-1'] },
+          { kind: 'beats', items: [{ label: 'Open', text: 'a' }, { label: 'Turn', text: 'b' }] },
+        ],
+      },
+    };
+
+    const emitted = parseComposedCard(fromModel);
+    expect(emitted.ok).toBe(true);
+    if (!emitted.ok) return;
+    expect(emitted.block.props.receipts).toBeUndefined();
+
+    const persisted: unknown = JSON.parse(
+      JSON.stringify({
+        ...emitted.block,
+        props: { ...emitted.block.props, receipts: { 'row-1': PROOF } },
+      }),
+    );
+
+    const validated = validateBlock(persisted);
+    expect(validated.ok).toBe(true);
+    if (!validated.ok) return;
+
+    render(<ComposedCardRenderer block={validated.block as ComposedCardBlock} />);
+    expect(screen.getByText(/corporate\.bro/)).toBeTruthy();
+  });
+
+  it('shows the receipt through <MessageBlocks> — the real call site, not a reconstruction', () => {
+    // The test above rebuilds the chain by hand, which means it also rebuilds my ASSUMPTION about
+    // what the thread does. This one hands the persisted body to the component the thread actually
+    // mounts and lets it call validateBlock itself. If `<Component block={block} />` ever stops
+    // being enough to carry a receipt, this fails and the hand-built chain would not.
+    const persisted = JSON.parse(
+      JSON.stringify({
+        type: 'composed-card',
+        props: {
+          recipe: 'teardown',
+          deliverable: { kind: 'claim', text: 'Film the failure.' },
+          body: [
+            { kind: 'proof_strip', receiptRefs: ['row-1'] },
+            { kind: 'beats', items: [{ label: 'Open', text: 'a' }, { label: 'Turn', text: 'b' }] },
+          ],
+          receipts: { 'row-1': PROOF },
+        },
+      }),
+    );
+
+    const { container } = render(<MessageBlocks body={[persisted]} />);
+    expect(textOf(container)).toContain('corporate.bro');
+    // And it is the card, not the "we could not render this" placeholder.
+    expect(textOf(container)).toContain('Film the failure.');
+  });
+
+  it('renders no receipt when the server attached none — never a placeholder', () => {
+    // The other half of D7: an id the corpus could not resolve yields no entry, and the card must
+    // print nothing rather than an empty tile that reads as a proof.
+    const unresolved: ComposedCardBlock = {
+      ...block,
+      props: {
+        ...block.props,
+        body: [...block.props.body, { kind: 'proof_strip', receiptRefs: ['ghost-id'] }],
+        receipts: {},
+      },
+    };
+    const { container } = render(<ComposedCardRenderer block={unresolved} />);
+    expect(textOf(container)).not.toContain('ghost-id');
   });
 
   it('renders exactly one action bar', () => {

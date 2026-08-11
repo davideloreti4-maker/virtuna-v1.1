@@ -59,10 +59,11 @@ const BLOCK_COMPONENTS: Record<BlockType, React.ComponentType<{ block: any }>> =
   "input-request": InputRequestBlockRenderer,
   "corpus-references": CorpusReferencesBlockRenderer,
   "brought-card": BroughtCardRenderer,
-  // The composer's one card. Invoked as `<Component block={block} />` like every other renderer, so
-  // its optional `receipts` / `onAction` seams arrive undefined here — see the header of
-  // composed-card-block.tsx. Neither can be filled from this call site: `props` is whatever survived
-  // validateBlock, and a receipt is not yet a declared field on the schema.
+  // The composer's one card. Invoked as `<Component block={block} />` like every other renderer, and
+  // it needs nothing else: its server-materialized receipts ride in `props.receipts`, a DECLARED
+  // schema field, so they survive the validateBlock re-parse two screens down instead of being
+  // stripped as an undeclared key. Its `onAction` seam still arrives undefined — see the header of
+  // composed-card-block.tsx; the bar renders disabled until something routes the forward step.
   "composed-card": ComposedCardRenderer,
   "profile-read": ProfileReadBlockRenderer,
   "reaction-distribution": ReactionDistributionBlockRenderer,

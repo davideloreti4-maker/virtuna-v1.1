@@ -15,6 +15,7 @@ import {
   isSkillInputAction,
   type SkillInputAction,
 } from "@/lib/tools/skill-capabilities";
+import { HookProofSchema } from "@/lib/tools/proof-schema";
 
 /**
  * CLOSED ENUM (spec §4.2, B3). Nothing that spends a credit is model-authored — the model may only
@@ -96,6 +97,29 @@ export const ComposedCardBlockSchema = z.object({
     /** The contract's ONE disclosure (§0.5 row 6). */
     disclosure: z.array(SlotSchema).max(4).optional(),
     actions: z.array(ActionIdSchema).min(1).max(3).optional(),
+    /**
+     * Server-materialized receipts, keyed by the teardown row id the model named in `receiptRef` or
+     * in a `proof_strip`. Written ONLY by the emit boundary, from `materializeReceipts` (D7).
+     *
+     * ⚠️ DECLARED HERE FOR A REASON THAT IS EASY TO UNDO. `message-blocks.tsx` re-runs
+     * `validateBlock` on every render (D-14), and that is a zod object parse — zod STRIPS undeclared
+     * keys. A receipt attached to `props` after validation therefore did not survive the first
+     * rehydration: it was silently deleted, and a `teardown` — the one recipe that REQUIRES a
+     * `proof_strip` — rendered asserting evidence it never displayed. Removing this field restores
+     * that bug, and restores it *silently*, which is why the round-trip is pinned by a test that
+     * goes through `validateBlock` rather than straight into the renderer.
+     *
+     * A `Record`, never a `Map`: block props are persisted to `messages.body` as JSON and a `Map`
+     * serializes to `{}`.
+     *
+     * ⚠️ A DECLARED FIELD IS A FIELD THE MODEL CAN FILL. This schema is also the REHYDRATION
+     * validator, so it must accept a receipt — meaning it cannot be the thing that keeps the model
+     * out. `parseComposedCard` is the model-facing door and it deletes this unconditionally. Any
+     * future path that takes model output MUST go through `parseComposedCard`; validating model
+     * output with `ComposedCardBlockSchema` alone hands the model exactly the receipt-authoring
+     * power D7 exists to remove.
+     */
+    receipts: z.record(z.string(), HookProofSchema).optional(),
   }),
 });
 export type ComposedCardBlock = z.infer<typeof ComposedCardBlockSchema>;
@@ -162,19 +186,31 @@ export function parseComposedCard(
   raw: unknown,
 ): { ok: true; block: ComposedCardBlock } | { ok: false; reason: string } {
   const asRecord = raw as { props?: Record<string, unknown> } | null;
-  const repaired =
-    asRecord && typeof asRecord === "object" && asRecord.props
-      ? {
-          ...asRecord,
-          props: {
-            ...asRecord.props,
-            body: repairArrayField(asRecord.props.body),
-            disclosure: repairArrayField(asRecord.props.disclosure),
-          },
-        }
-      : raw;
 
-  const parsed = ComposedCardBlockSchema.safeParse(repaired);
+  let candidate: unknown = raw;
+  if (asRecord && typeof asRecord === "object" && asRecord.props) {
+    // A FRESH props object. Never reach into the caller's argument: the emit boundary still holds
+    // the raw tool args and may log them, and a log that disagrees with what the model actually
+    // sent is worse than no log.
+    const props: Record<string, unknown> = { ...asRecord.props };
+    props.body = repairArrayField(props.body);
+    props.disclosure = repairArrayField(props.disclosure);
+
+    // D7 — THE MODEL MAY NEVER AUTHOR A RECEIPT. `props.receipts` exists for the SERVER to fill
+    // after validation, so whatever the model put there is discarded unconditionally, before the
+    // parse and without inspecting it: a hallucinated receipt that happens to be well-formed is the
+    // dangerous one, and nothing in the payload distinguishes it from a real row. Provenance is the
+    // only usable test, so the answer cannot depend on the value.
+    //
+    // Dropped, not rejected: a fabricated receipt should cost the model a retry, not cost the
+    // creator the card — the rest of which is still what they asked for. The card then renders with
+    // no proof, which is the honest outcome, and the emit boundary attaches the real receipts next.
+    delete props.receipts;
+
+    candidate = { ...asRecord, props };
+  }
+
+  const parsed = ComposedCardBlockSchema.safeParse(candidate);
   if (!parsed.success) return { ok: false, reason: parsed.error.issues[0]?.message ?? "invalid shape" };
 
   const block = parsed.data;

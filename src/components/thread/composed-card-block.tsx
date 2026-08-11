@@ -32,18 +32,30 @@
  * The dosage is LOCKED (CLAUDE.md): monochrome by default, primary actions neutral via
  * <CardPrimaryAction>. There is no sanctioned accent use on this card, so it has none.
  *
- * ─── TWO SEAMS THIS FILE DOES NOT OWN ───────────────────────────────────────────────────────────
- * 1. **`receipts` arrives as a prop, and nothing in the thread passes it yet.** `message-blocks.tsx`
- *    invokes every renderer as `<Component block={block} />`, and `validateBlock` re-parses the block
- *    on render — a zod object, which STRIPS undeclared keys. So a receipt attached to `props` at emit
- *    time would not survive to here unless `ComposedCardBlockSchema` DECLARES a field for it, which
- *    today it does not (it has `receiptRef`, a row id, and nothing to resolve it into). Until it
- *    does, a composed card renders no receipt in a real thread. Kept as an explicit prop rather than
- *    faked: the renderer stays a pure function of its inputs and the gap stays visible.
- * 2. **`onAction` is unwired.** Nothing yet routes a card's forward step to the skill it names. The
- *    bar renders with `disabled` until a handler is supplied — the shape `hook-card-block.tsx` uses
- *    for its own unwired handoff (`disabled={!onWriteScript}`), so an unwired control LOOKS unwired
- *    instead of silently swallowing a tap.
+ * ─── WHERE THE RECEIPTS COME FROM ───────────────────────────────────────────────────────────────
+ * `block.props.receipts` — a `Record<teardownRowId, HookProof>` the SERVER wrote at emit time from
+ * `materializeReceipts` (D7). This renderer resolves ids against it and never fetches: it stays a
+ * pure function of its block, the shape every other card renderer has, and the shape it must have
+ * because `message-blocks.tsx` invokes all of them as `<Component block={block} />` with nothing
+ * else to pass.
+ *
+ * It rides ON PROPS rather than beside them for a reason worth not undoing: `validateBlock` re-parses
+ * the block on every render (D-14), and a zod object STRIPS undeclared keys. A receipt handed in any
+ * other way — or carried in a field the schema does not declare — is deleted on the first
+ * rehydration, silently, leaving a `teardown` (the one recipe that REQUIRES a proof_strip) asserting
+ * evidence it never displays. A `Record` and not a `Map` for the matching reason: props are persisted
+ * to `messages.body` as JSON, where a `Map` becomes `{}`. See the field's note in
+ * composed-card-schema.ts, and the emit → persist → rehydrate → render test beside this file.
+ *
+ * An id with no entry resolves to nothing and renders nothing — never a placeholder tile. That is
+ * what makes a fabricated handle unreachable: the model supplies ids, and only the server's map can
+ * turn one into a name and a number.
+ *
+ * ─── ONE SEAM THIS FILE DOES NOT OWN ────────────────────────────────────────────────────────────
+ * **`onAction` is unwired.** Nothing yet routes a card's forward step to the skill it names. The bar
+ * renders with `disabled` until a handler is supplied — the shape `hook-card-block.tsx` uses for its
+ * own unwired handoff (`disabled={!onWriteScript}`), so an unwired control LOOKS unwired instead of
+ * silently swallowing a tap.
  *
  * ─── NO <SaveAffordance> (a deliberate omission from §0.5 row 7) ────────────────────────────────
  * Save writes `saved_items.item_type`, whose CHECK constraint is
@@ -54,7 +66,7 @@
  * stores nothing and does not complain. Save returns when it has a type of its own.
  */
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { ComposedCardBlock, Slot, SlotKind, ActionId } from '@/lib/tools/composed-card-schema';
 import type { HookProof } from '@/lib/tools/proof-schema';
 import { SKILL_CAPABILITIES } from '@/lib/tools/skill-capabilities';
@@ -122,23 +134,22 @@ function partitionSpine(slots: Slot[]): { receipts: Slot[]; body: Slot[] } {
 export interface ComposedCardRendererProps {
   block: ComposedCardBlock;
   /**
-   * Server-materialized receipts, keyed by teardown row id (D7). The model supplies ids; only this
-   * map can turn one into a handle and a number, which is what makes a fabricated handle
-   * unreachable. Absent ⇒ no receipts render. See seam 1 in the header — nothing wires this yet.
-   */
-  receipts?: Map<string, HookProof>;
-  /**
    * The forward-chain handler. Given an action key the model named, run it. Absent ⇒ the bar renders
-   * disabled. See seam 2 in the header.
+   * disabled. The one seam this file does not own — see the header.
    */
   onAction?: (action: ActionId) => void;
 }
 
-export function ComposedCardRenderer({ block, receipts, onAction }: ComposedCardRendererProps) {
-  const { eyebrow, deliverable, receiptRef, why, body, disclosure, actions } = block.props;
+export function ComposedCardRenderer({ block, onAction }: ComposedCardRendererProps) {
+  const { eyebrow, deliverable, receiptRef, why, body, disclosure, actions, receipts } = block.props;
   const [expanded, setExpanded] = useState(false);
 
-  const resolved = receipts ?? new Map<string, HookProof>();
+  // The persisted record → the lookup the slot renderers take. Memoised on the record's identity so
+  // a re-render does not hand <SlotRenderer> a fresh Map and defeat its own reconciliation.
+  const resolved = useMemo(
+    () => new Map<string, HookProof>(Object.entries(receipts ?? {})),
+    [receipts],
+  );
   const { receipts: receiptSlots, body: spineBody } = partitionSpine(body);
 
   // §0.5 row 3, assembled from BOTH inputs the card can carry a receipt through: the card-level

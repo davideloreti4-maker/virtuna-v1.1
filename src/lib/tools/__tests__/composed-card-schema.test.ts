@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { parseComposedCard, RECIPES } from "@/lib/tools/composed-card-schema";
+import { parseComposedCard, RECIPES, ComposedCardBlockSchema } from "@/lib/tools/composed-card-schema";
+import type { HookProof } from "@/lib/tools/proof-schema";
 
 const validFormatSet = {
   type: "composed-card",
@@ -152,5 +153,144 @@ describe("disclosure slot legality (G2)", () => {
       },
     });
     expect(r.ok).toBe(true);
+  });
+});
+
+/**
+ * `props.receipts` — the one field on this schema the MODEL may never fill.
+ *
+ * It has to be DECLARED, because `validateBlock` re-parses every block on render and a zod object
+ * strips undeclared keys: a receipt attached after validation would vanish on the first rehydration,
+ * leaving a `teardown` — the one recipe that REQUIRES a proof_strip — asserting evidence it never
+ * shows. And it has to be STRIPPED at the model-facing door, because a declared field is a field the
+ * model can fill, and D7 exists to make an authored handle unreachable rather than merely unlikely.
+ * Both halves are load-bearing; either alone is a bug.
+ */
+const REAL_PROOF: HookProof = {
+  handle: "corporate.bro",
+  videoUrl: null,
+  coverUrl: null,
+  hookTemplate: null,
+  archetype: null,
+  multiplier: 5.7,
+  views: 1_400_000,
+  baselineLabel: "vs their usual views",
+  fitLabel: null,
+};
+
+describe("props.receipts (D7)", () => {
+  it("discards a model-supplied receipts map — D7 survives the field existing", () => {
+    const r = parseComposedCard({
+      type: "composed-card",
+      props: {
+        recipe: "brief",
+        deliverable: { kind: "claim", text: "Ship it ugly." },
+        body: [{ kind: "bullets", items: ["Post before it is ready."] }],
+        receipts: {
+          "row-1": { ...REAL_PROOF, handle: "fabricated", multiplier: 999, baselineLabel: "vs followers" },
+        },
+      },
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.block.props.receipts).toBeUndefined();
+  });
+
+  it("discards a WELL-FORMED model receipt too — the shape is not what makes it illegitimate", () => {
+    // A hallucinated receipt that happens to validate is the dangerous case: it renders as proof.
+    // Nothing about the payload can distinguish it from a real one, so provenance is the only test
+    // and the answer is unconditional.
+    const r = parseComposedCard({
+      type: "composed-card",
+      props: {
+        recipe: "brief",
+        deliverable: { kind: "claim", text: "Ship it ugly." },
+        body: [{ kind: "bullets", items: ["Post before it is ready."] }],
+        receipts: { "row-1": REAL_PROOF },
+      },
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.block.props.receipts).toBeUndefined();
+  });
+
+  it("drops the receipt rather than rejecting the card", () => {
+    // Deliberate: a hallucinated receipt should cost the model a retry, not cost the creator the
+    // card. The rest of the card is still exactly what they asked for.
+    const r = parseComposedCard({
+      type: "composed-card",
+      props: {
+        recipe: "brief",
+        deliverable: { kind: "claim", text: "Ship it ugly." },
+        body: [{ kind: "bullets", items: ["Post before it is ready."] }],
+        receipts: { "row-1": REAL_PROOF },
+      },
+    });
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.block.props.body).toHaveLength(1);
+  });
+
+  it("does not mutate the caller's arguments while stripping them", () => {
+    // The emit boundary holds the raw tool args and may log them after parsing. Reaching into the
+    // caller's object to delete a key would make the log disagree with what the model actually sent.
+    const raw = {
+      type: "composed-card",
+      props: {
+        recipe: "brief",
+        deliverable: { kind: "claim", text: "Ship it ugly." },
+        body: [{ kind: "bullets", items: ["Post before it is ready."] }],
+        receipts: { "row-1": REAL_PROOF },
+      },
+    };
+    parseComposedCard(raw);
+    expect(raw.props.receipts).toBeDefined();
+  });
+
+  it("accepts server-attached receipts on an already-parsed block", () => {
+    // The persisted shape must round-trip through the SCHEMA, or validateBlock strips it on render.
+    const parsed = ComposedCardBlockSchema.safeParse({
+      type: "composed-card",
+      props: {
+        recipe: "brief",
+        deliverable: { kind: "claim", text: "x" },
+        body: [{ kind: "bullets", items: ["y"] }],
+        receipts: { "row-1": REAL_PROOF },
+      },
+    });
+    expect(parsed.success).toBe(true);
+  });
+
+  it("survives JSON — a Map would have serialized to {}", () => {
+    // Constraint 1: block props are persisted to `messages.body` as JSON. This assertion is the
+    // reason the field is a Record and not the Map the renderer used before it existed.
+    const attached = {
+      type: "composed-card",
+      props: {
+        recipe: "brief",
+        deliverable: { kind: "claim", text: "x" },
+        body: [{ kind: "bullets", items: ["y"] }],
+        receipts: { "row-1": REAL_PROOF },
+      },
+    };
+    const persisted: unknown = JSON.parse(JSON.stringify(attached));
+    const parsed = ComposedCardBlockSchema.safeParse(persisted);
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.props.receipts?.["row-1"]?.handle).toBe("corporate.bro");
+      expect(parsed.data.props.receipts?.["row-1"]?.multiplier).toBe(5.7);
+    }
+  });
+
+  it("rejects a malformed receipt rather than rendering half a proof", () => {
+    // A row with no handle is not a receipt (§0.5b). materializeReceipts already refuses to emit
+    // one; the schema refuses to carry one.
+    const parsed = ComposedCardBlockSchema.safeParse({
+      type: "composed-card",
+      props: {
+        recipe: "brief",
+        deliverable: { kind: "claim", text: "x" },
+        body: [{ kind: "bullets", items: ["y"] }],
+        receipts: { "row-1": { multiplier: 5.7 } },
+      },
+    });
+    expect(parsed.success).toBe(false);
   });
 });
