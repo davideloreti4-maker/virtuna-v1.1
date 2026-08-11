@@ -21,7 +21,7 @@
  * detect if luck item text leaks into the adapt prompt.
  */
 
-import type { AdaptInput, DecodeResult, RepeatableItem } from './decode-types';
+import type { AdaptWireDecode, DecodeResult, RepeatableItem } from './decode-types';
 
 /** Real persisted decode payload shape (Phase 3 output) — drives the adapter seam. */
 export const DECODE_RESULT_FIXTURE: DecodeResult = {
@@ -42,8 +42,14 @@ export const DECODE_RESULT_FIXTURE: DecodeResult = {
   ],
 };
 
-/** Pre-adapted wire shape (AdaptInput minus niche, plus a luck lane for exclusion tests). */
-export const DECODE_FIXTURE: Omit<AdaptInput, 'niche'> & { luck: RepeatableItem[] } = {
+/**
+ * Pre-adapted wire shape (`AdaptWireDecode`, plus a luck lane for exclusion tests).
+ *
+ * Typed as the WIRE shape, not as AdaptInput-minus-niche: `blueprint` and `target` are supplied
+ * server-side and never travel in the request body, so a fixture carrying them would misdescribe
+ * what the route accepts.
+ */
+export const DECODE_FIXTURE: AdaptWireDecode & { luck: RepeatableItem[] } = {
   hook_pattern: 'Open with a provocative question, delay the answer',
   structure: 'Hook (0-3s) → tension build (3-12s) → reveal (12-22s) → CTA (22-30s)',
   the_turn: 'Pivot from problem statement to counter-intuitive solution at 15s',

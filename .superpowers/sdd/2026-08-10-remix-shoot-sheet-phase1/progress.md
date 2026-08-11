@@ -166,3 +166,68 @@ Task 2: note: result order follows argument `a`'s token order, which is what mak
    `toEqual(["creatine"])` assertions stable. Any future dedup/sort would break those two
    tests — that is the guard doing its job, not a flake.
 TASK 2: CLOSED.
+
+Task 3 (2026-08-11): the adapt contract carries the timed beat map. 78 -> 88 tests, remix
+   suite green (5 files), tsc clean, eslint clean, `npm run build` clean, whole suite 5908
+   passing. Red-first: 7 of the 9 new tests failed, incl. "expected 'VIRAL VIDEO STRUCTURAL
+   ANATOMY:\nHook...' to contain 'HOOK'" and "expected undefined to be null" on `target`.
+
+⚠️ Task 3: THE BRIEF IS WRONG ABOUT THE ROUTE, and its own back-compat guarantee did not
+   hold. It states `/api/remix/adapt` "builds AdaptInput via decodeResultToAdaptInput(decode,
+   niche)", so keeping that adapter two-arg was said to be sufficient. The route does NOT use
+   the adapter — it builds the object literally at route.ts:139 from its zod-validated body.
+   Making `blueprint`/`target` required therefore broke the route, and `npm run build` is what
+   would have caught it. FOUR construction sites needed the two new fields, not one:
+   route.ts:139, drop-adapt-input.ts:55 (the drops pipe), decodeResultToAdaptInput, and the
+   test's makeAdaptInput.
+Task 3: kept `blueprint` REQUIRED rather than optional, and that is the load-bearing choice.
+   Optional would have let Task 5 wire the runner, forget the blueprint, and ship the old
+   concept-only prompt with every test still green. The three callers that genuinely have no
+   video now say so: `emptyBlueprint()` (blueprint.ts), a FACTORY not a shared const — `beats`
+   is mutable and one instance across three AdaptInputs is a corruption waiting to happen.
+Task 3: new `AdaptWireDecode = Omit<AdaptInput, "niche"|"blueprint"|"target">` names the wire
+   body, replacing two hand-written `Omit<AdaptInput,'niche'>` (use-adapt-concepts.ts,
+   decode.fixture.ts) that would each have had to be widened by hand. `blueprint` is
+   SERVER-SUPPLIED on purpose: it reaches the prompt as verbatim text, so accepting a
+   client-declared one is a prompt-injection lane straight past the D-01 wire guard (T-04-04).
+Task 3: DEVIATION — `max_tokens` was 1200 and is now `beats.length > 0 ? 3000 : 1200`. Three
+   concepts x MAX_BEATS(8) script entries x ~65 tokens is ~1560 tokens ON TOP of the ~600 the
+   concepts already cost; at 1200 every real video truncates mid-JSON, fails the parse, and
+   retries into the same truncation — adapt_failed on the whole feature. The concept-only
+   callers keep their exact existing budget. TASK 7 WATCH ITEM: this trades truncation for
+   latency against the 90s TIMEOUT_MS. If live runs abort, the timeout is the next dial, not
+   the token cap.
+Task 3: DEVIATION — added `stripInvalidScript`, the `stripPartialProduction` treatment for the
+   new field. A script is up to 8 entries of 4 required fields each, so the fumble the
+   production block cost us live (adapt.ts:100-107, two shelf rows) is strictly likelier here,
+   and failing the response would trade 3 valid concepts for a garnish. All-or-nothing per
+   concept: half a sheet reads as a bug, a missing one reads as a missing feature. It shares
+   `ScriptZodSchema` with the parse so the two cannot drift.
+Task 3: the "drops a malformed script" test is the ONE test here not written red-first — it was
+   written after its implementation. Red was proven by mutation instead: removing the
+   `stripInvalidScript` call makes it fail with "Target cannot be null or undefined" (the whole
+   response goes null). Stated rather than omitted.
+Task 3: HAZARD 1 (silent narrowing of the local `Segment` widening in blueprint.ts:83) DID NOT
+   ARISE — the canonical `OmniStructuralInput["segments"]` was not touched. `spoken_text` /
+   `on_screen_text` still have exactly one declaration, the local one. Anyone later adding them
+   to decode-types.ts must delete that local widening in the same change: adding them
+   NON-nullable intersects to a silent narrowing, with no compile and no test failure.
+Task 3: HAZARD 2 (nullable args to `sharedContentTokens`) is NOT Task 3's — grep says the only
+   planned call site is task-7-brief.md:32. Left the signature alone. TASK 7 NEEDS: `spoken` is
+   `string | null` on `BlueprintBeat` but plain `string` on `AdaptedBeat`, so the call is
+   `sharedContentTokens(sourceBeat.spoken ?? "", adaptedBeat.spoken)` — coalesce the SOURCE side
+   only.
+Task 3: fixture honesty — the brief's `weakness.factor: "pacing"` is a name HookFactorSchema
+   cannot emit (the same defect that hid a dead branch in Task 1). Used "Completion Pull",
+   which FACTOR_TARGET_ROLE maps to the `setup` beat the fixture puts it on.
+Task 3: note: two of the nine tests ("falls back to niche when target is null", "omits the beat
+   map entirely") passed BEFORE the implementation — they assert the pre-D2 behaviour still
+   holds, so a trivial pass is what they are for. They are regression pins, not drivers.
+Task 3: note: `decode-types.ts` now imports a VALUE (`emptyBlueprint`) from `blueprint.ts`,
+   which imports back from `decode-types.ts` — but `import type` only, so it erases and there is
+   no runtime cycle. Keep it that way: a real value import back into blueprint.ts closes the
+   loop.
+TASK 4 MUST KNOW: what you persist is `SourceBlueprint` (blueprint.ts) — `duration_s`,
+   `words_per_second`, `has_speech`, `beats[]`. The adapt side of the round trip is
+   `AdaptedBeat[]` on `AdaptConcept.script`, OPTIONAL, so a stored row must survive a concept
+   that has no script at all. `emptyBlueprint()` is the honest "no video" row, not NULL.

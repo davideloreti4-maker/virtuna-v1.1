@@ -14,6 +14,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DECODE_FIXTURE, DECODE_RESULT_FIXTURE } from '../decode.fixture';
 import { decodeResultToAdaptInput } from '../decode-types';
 import type { AdaptInput } from '../decode-types';
+import { emptyBlueprint } from '../blueprint';
+import type { SourceBlueprint } from '../blueprint';
 // import type { AdaptConcept } from '../decode-types'; // used in Wave 1+ assertions
 
 // =====================================================
@@ -78,9 +80,13 @@ function makeValidConceptsResponse(): string {
 }
 
 function makeAdaptInput(): AdaptInput {
-  // Build AdaptInput from DECODE_FIXTURE — omits luck[] and any caption (D-01)
+  // Build AdaptInput from DECODE_FIXTURE — omits luck[] and any caption (D-01).
+  // Empty blueprint + null target: DECODE_FIXTURE is the WIRE shape, and the wire carries neither.
   const { hook_pattern, structure, the_turn, emotional_beat, repeatable } = DECODE_FIXTURE;
-  return { hook_pattern, structure, the_turn, emotional_beat, repeatable, niche: 'fitness' };
+  return {
+    hook_pattern, structure, the_turn, emotional_beat, repeatable, niche: 'fitness',
+    blueprint: emptyBlueprint(), target: null,
+  };
 }
 
 function makeQwenResponse(content: string) {
@@ -275,5 +281,168 @@ describe('decodeResultToAdaptInput (Decode→Adapt seam)', () => {
     for (const move of DECODE_RESULT_FIXTURE.repeatable) {
       expect(prompt).toContain(move);
     }
+  });
+});
+
+// =====================================================
+// D-01 REVERSAL (D2/D3, 2026-08-10) — the timed beat map reaches the adapt call
+//
+// `weakness.factor` is a name HookFactorSchema (qwen/schemas.ts) can actually emit —
+// "Completion Pull", which FACTOR_TARGET_ROLE maps to a `setup` beat. The brief's own
+// fixture said "pacing"; the model cannot emit that, and an unrealistic factor name of
+// exactly that shape is what let a dead branch survive review in Task 1.
+// =====================================================
+
+const BLUEPRINT: SourceBlueprint = {
+  duration_s: 14,
+  words_per_second: 3.2,
+  has_speech: true,
+  beats: [
+    {
+      index: 0, t_start: 0, t_end: 1.8, duration_s: 1.8, role: 'hook',
+      spoken: 'Your protein shake is making you fatter', on_screen_text: 'STOP',
+      visual_event: 'tight crop, hard cut in', audio_event: 'voice starts',
+      cuts: 1, weakness: null,
+    },
+    {
+      index: 1, t_start: 1.8, t_end: 5.4, duration_s: 3.6, role: 'setup',
+      spoken: 'I tracked 400 clients for six months', on_screen_text: null,
+      visual_event: 'b-roll of shaker', audio_event: 'music under',
+      cuts: 2,
+      weakness: { factor: 'Completion Pull', score: 4, tip: 'cut 1.2s earlier' },
+    },
+  ],
+};
+
+/** The 4 structural fields + repeatable lane, so each test states only what it varies. */
+const ANATOMY = {
+  hook_pattern: 'h', structure: 's', the_turn: 't', emotional_beat: 'e',
+  repeatable: [] as AdaptInput['repeatable'],
+  niche: 'fitness',
+};
+
+describe('adapt input widening (D-01 reversal)', () => {
+  it('puts every beat, its duration and its role into the user content', async () => {
+    const { buildAdaptUserContent } = await import('../adapt');
+    const content = buildAdaptUserContent({
+      ...ANATOMY,
+      repeatable: [{ label: 'cold open', why_repeatable: '' }],
+      blueprint: BLUEPRINT, target: null,
+    });
+    expect(content).toContain('HOOK');
+    expect(content).toContain('1.8s');
+    expect(content).toContain('Your protein shake is making you fatter');
+    expect(content).toContain('tight crop, hard cut in');
+  });
+
+  it('names the weakness so the model repairs rather than replicates it', async () => {
+    const { buildAdaptUserContent } = await import('../adapt');
+    const content = buildAdaptUserContent({ ...ANATOMY, blueprint: BLUEPRINT, target: null });
+    expect(content).toContain('cut 1.2s earlier');
+  });
+
+  it('uses target as the adaptation target when present, not niche', async () => {
+    const { buildAdaptUserContent } = await import('../adapt');
+    const content = buildAdaptUserContent({
+      ...ANATOMY, blueprint: BLUEPRINT, target: 'SaaS onboarding',
+    });
+    expect(content).toContain('SaaS onboarding');
+    expect(content).not.toContain('CREATOR NICHE: fitness');
+  });
+
+  it('falls back to niche when target is null', async () => {
+    const { buildAdaptUserContent } = await import('../adapt');
+    const content = buildAdaptUserContent({ ...ANATOMY, blueprint: BLUEPRINT, target: null });
+    expect(content).toContain('fitness');
+  });
+
+  it('tells the model to match DURATION, and never mentions matching word count', async () => {
+    const { ADAPT_SYSTEM_PROMPT } = await import('../adapt');
+    expect(ADAPT_SYSTEM_PROMPT).toMatch(/duration/i);
+    expect(ADAPT_SYSTEM_PROMPT).not.toMatch(/match.{0,20}word count/i);
+  });
+
+  it('switches to on-screen text when the source has no speech', async () => {
+    const { buildAdaptUserContent } = await import('../adapt');
+    const silent: SourceBlueprint = {
+      ...BLUEPRINT, has_speech: false, words_per_second: 0,
+      beats: BLUEPRINT.beats.map((b) => ({ ...b, spoken: null })),
+    };
+    const content = buildAdaptUserContent({ ...ANATOMY, blueprint: silent, target: null });
+    expect(content).toMatch(/no speech|on-screen text only/i);
+  });
+
+  // Back-compat: /api/remix/adapt and the drops pipe have no video, so they hand adapt an
+  // EMPTY blueprint. The beat-map block must vanish entirely — a "TIMED BEAT MAP (0s, 0 beats)"
+  // header with no rows would tell the model to emit a script for beats that do not exist.
+  it('omits the beat map entirely when the blueprint has no beats', async () => {
+    const { buildAdaptUserContent } = await import('../adapt');
+    const content = buildAdaptUserContent(decodeResultToAdaptInput(DECODE_RESULT_FIXTURE, 'fitness'));
+    expect(content).not.toMatch(/TIMED BEAT MAP/);
+    expect(content).toContain('CREATOR NICHE: fitness');
+  });
+
+  it('keeps decodeResultToAdaptInput a two-arg call for /api/remix/adapt', () => {
+    const input = decodeResultToAdaptInput(
+      {
+        beats: [
+          { id: 'hook_pattern', body: 'h', verdict: 'present' },
+          { id: 'structure_pacing', body: 's', verdict: 'present' },
+          { id: 'the_turn', body: 't', verdict: 'present' },
+          { id: 'emotional_beat', body: 'e', verdict: 'present' },
+        ],
+        repeatable: ['cold open'],
+        luck: [{ category: 'algorithmic_outlier', note: 'n' }],
+      },
+      'fitness',
+    );
+    expect(input.niche).toBe('fitness');
+    expect(input.target).toBeNull();
+    expect(input.blueprint.beats).toEqual([]);
+  });
+
+  // Zod strips unknown keys, so a `script` the schema does not declare is dropped SILENTLY —
+  // three valid concepts, no script, no error anywhere. Only a round-trip catches that.
+  it('carries a returned script through Zod instead of stripping it', async () => {
+    const { generateAdaptConcepts } = await import('../adapt');
+    const withScript = JSON.parse(makeValidConceptsResponse()) as {
+      concepts: Record<string, unknown>[];
+    };
+    withScript.concepts[0]!.script = [
+      { index: 0, spoken: 'Your first coffee is costing you sleep', on_screen_text: 'STOP', shot: 'tight crop' },
+      { index: 1, spoken: 'I logged 400 mornings', on_screen_text: '', shot: 'b-roll of mug', repair: 'lands 1.2s sooner' },
+    ];
+    mockCreate.mockReset();
+    mockCreate.mockResolvedValueOnce(makeQwenResponse(JSON.stringify(withScript)));
+
+    const result = await generateAdaptConcepts(makeAdaptInput());
+
+    expect(result).not.toBeNull();
+    expect(result![0]!.script).toHaveLength(2);
+    expect(result![0]!.script![1]).toMatchObject({ index: 1, repair: 'lands 1.2s sooner' });
+    // A concept that omits `script` still validates — same contract as `production`.
+    expect(result![1]!.script).toBeUndefined();
+  });
+
+  // The `production` lesson (adapt.ts:100-107 — a missing sub-field cost two live shelf rows),
+  // sharper: a script is up to 8 entries of 4 required fields, so a fumble is likelier. Failing
+  // the response would trade 3 valid concepts for a garnish, and the retry repeats the omission.
+  it('drops a malformed script rather than failing the whole response', async () => {
+    const { generateAdaptConcepts } = await import('../adapt');
+    const badScript = JSON.parse(makeValidConceptsResponse()) as {
+      concepts: Record<string, unknown>[];
+    };
+    badScript.concepts[0]!.script = [
+      { index: 0, spoken: 'a line', on_screen_text: '' }, // no `shot` — required
+    ];
+    mockCreate.mockReset();
+    mockCreate.mockResolvedValueOnce(makeQwenResponse(JSON.stringify(badScript)));
+
+    const result = await generateAdaptConcepts(makeAdaptInput());
+
+    expect(result).toHaveLength(3);
+    expect(result![0]!.script).toBeUndefined();
+    expect(result![0]!.hook).toBe('Format-hook headline one for the niche');
+    expect(mockCreate).toHaveBeenCalledTimes(1); // no repair round-trip
   });
 });

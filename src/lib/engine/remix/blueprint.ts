@@ -75,6 +75,21 @@ export interface SourceBlueprint {
 }
 
 /**
+ * The blueprint of a source we hold no timed perception for.
+ *
+ * Three callers need one: `/api/remix/adapt` (decodes from a stored `DecodeResult` — no video),
+ * the drops pipe (corpus teardowns — no video), and `buildBlueprint` itself on a segment-less
+ * source. An empty `beats` is what makes `buildAdaptUserContent` fall through to the
+ * concept-only path, so this is the back-compat shape, not a null object.
+ *
+ * A FACTORY, not a shared const: `beats` is a mutable array, and one exported instance handed
+ * to three AdaptInputs would let any of them corrupt the others.
+ */
+export function emptyBlueprint(): SourceBlueprint {
+  return { duration_s: 0, words_per_second: 0, has_speech: false, beats: [] };
+}
+
+/**
  * `OmniStructuralInput["segments"]` does not declare the verbatim-speech fields, but the real
  * `SegmentGrid` (qwen/schemas.ts) does carry `spoken_text` / `on_screen_text` and
  * `normalizeSegments` passes them straight through. Widened locally — decode-types.ts is
@@ -316,7 +331,7 @@ export function buildBlueprint(structural: OmniStructuralInput): SourceBlueprint
   const segments: Segment[] = structural.segments ?? [];
 
   if (segments.length === 0) {
-    return { duration_s: 0, words_per_second: 0, has_speech: false, beats: [] };
+    return emptyBlueprint();
   }
 
   const groups = groupSegments([...segments].sort((a, b) => a.t_start - b.t_start));

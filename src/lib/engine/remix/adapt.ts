@@ -6,9 +6,10 @@
  * usage_tracking, or DAILY_LIMITS (D-04 lightweight path).
  *
  * Input structural guard (D-01, Pitfall 1):
- * `buildAdaptUserContent` accepts only `AdaptInput` (4 structural beats + repeatable
- * lane + niche, produced by `decodeResultToAdaptInput`), making it a compile-time
- * error to pass `luck[]` or any caption field.
+ * `buildAdaptUserContent` accepts only `AdaptInput`, making it a compile-time error to pass
+ * `luck[]` or any caption field. It no longer keeps the source's WORDS out — `input.blueprint`
+ * carries verbatim `spoken` text by design (D2, 2026-08-10); echo-guard.ts measures the topical
+ * echo that guarantee used to prevent.
  */
 
 import * as Sentry from "@sentry/nextjs";
@@ -17,6 +18,7 @@ import { getQwenClient, QWEN_REASONING_MODEL, QWEN_SEED } from "@/lib/engine/qwe
 import { stripModelOutput } from "@/lib/engine/utils/strip";
 import { z } from "zod";
 import { KNOWLEDGE_CORE } from "@/lib/engine/apollo-core";
+import { MAX_BEATS } from "./blueprint";
 import type { AdaptInput, AdaptConcept } from "./decode-types";
 
 const log = createLogger({ module: "engine.remix.adapt" });
@@ -63,11 +65,44 @@ OUTPUT: Return strict JSON with this exact shape and nothing else:
     }
   ]
 }
-The "concepts" array MUST contain exactly 3 items. "personaStops" is a PROJECTION you are making about the ADAPTED HOOK only (not the full video) — be discriminating, never generous: a generic hook with no real mechanism stops 0–2, a genuinely strong niche-true hook stops 7–8, reserve 9–10 for the rare undeniable one; the creator sees it as your estimate and can then measure it against their real audience, so never phrase it as a finished measurement. "production" is the READY-TO-FILM shoot plan for the creator's OWN adapted version — how to execute the borrowed format for this angle, grounded in what the concept actually needs. Never invent gear or shots the concept does not call for.`;
+The "concepts" array MUST contain exactly 3 items. "personaStops" is a PROJECTION you are making about the ADAPTED HOOK only (not the full video) — be discriminating, never generous: a generic hook with no real mechanism stops 0–2, a genuinely strong niche-true hook stops 7–8, reserve 9–10 for the rare undeniable one; the creator sees it as your estimate and can then measure it against their real audience, so never phrase it as a finished measurement. "production" is the READY-TO-FILM shoot plan for the creator's OWN adapted version — how to execute the borrowed format for this angle, grounded in what the concept actually needs. Never invent gear or shots the concept does not call for.
+
+When — and only when — a TIMED BEAT MAP is supplied below, every concept MUST carry one more key, "script": an array with EXACTLY one entry per beat in the map, in the same order:
+  "script": [
+    {
+      "index": <the beat's index, copied from the map>,
+      "spoken": "<what the creator SAYS in this beat — empty string when the source has no speech>",
+      "on_screen_text": "<overlay text for this beat — empty string when there is none>",
+      "shot": "<how to shoot this beat: framing, camera position, movement>",
+      "repair": "<ONLY when the beat is marked WEAK: how your version fixes it>"
+    }
+  ]
+
+SCRIPT RULES:
+- Match each beat's DURATION, not its word count. The source's speech rate is given; write a line that takes about as long to SAY as the original beat lasted. A creator who speaks slower than the source needs fewer words, not the same number.
+- Keep the same beat count and the same cut rhythm. Do not add beats, merge beats, or reorder them.
+- Borrow the SHAPE of each line — its cadence, its sentence structure, where it lands its emphasis. Never borrow its subject. The adapted line must share no topic words with the source line.
+- Where a beat is marked WEAK, REPAIR it rather than replicating it, and say what you changed in "repair".
+- When the source has NO SPEECH, leave "spoken" as an empty string and carry the beat in "on_screen_text".`;
 
 // =========================================================
 // Zod schemas
 // =========================================================
+
+const AdaptedBeatZodSchema = z.object({
+  index:          z.number().int().min(0),
+  spoken:         z.string().max(600),
+  on_screen_text: z.string().max(300),
+  shot:           z.string().min(1).max(600),
+  repair:         z.string().max(400).optional(),
+});
+
+/**
+ * Capped at MAX_BEATS so a runaway response cannot blow the card open, and `.min(1)` because an
+ * empty script is noise, not a sheet. Named because `stripInvalidScript` validates against the
+ * SAME schema the response is parsed with — two copies would drift.
+ */
+const ScriptZodSchema = z.array(AdaptedBeatZodSchema).min(1).max(MAX_BEATS);
 
 const AdaptConceptZodSchema = z.object({
   hook:            z.string().min(1).max(200),
@@ -91,6 +126,9 @@ const AdaptConceptZodSchema = z.object({
       edit:         z.string().min(1).max(400).optional(),
     })
     .optional(),
+  // Beat-by-beat script (D2). OPTIONAL for the same reason as production — a model that omits
+  // it must not fail the exactly-3 contract, and the concept-only path never asks for one.
+  script: ScriptZodSchema.optional(),
 });
 
 const AdaptConceptsZodSchema = z.object({
@@ -124,6 +162,31 @@ function stripPartialProduction(parsed: unknown): unknown {
   return parsed;
 }
 
+/**
+ * Same trade as `stripPartialProduction`, and a sharper version of the same risk: the script is
+ * up to MAX_BEATS entries of four required fields EACH, so the chance the model fumbles one entry
+ * is far higher than for the single `production` block. Failing the whole response over it would
+ * cost the creator three valid concepts to save a garnish, and the retry usually repeats the
+ * omission. Dropping the script degrades to the card we ship today.
+ *
+ * All-or-nothing per concept, not per entry: the sheet's contract is one line per source beat,
+ * and half a sheet reads as a bug rather than as a missing feature.
+ */
+function stripInvalidScript(parsed: unknown): unknown {
+  const concepts = (parsed as { concepts?: unknown } | null)?.concepts;
+  if (!Array.isArray(concepts)) return parsed;
+  for (const c of concepts) {
+    if (!c || typeof c !== "object") continue;
+    const script = (c as { script?: unknown }).script;
+    if (script === undefined) continue;
+    if (!ScriptZodSchema.safeParse(script).success) {
+      log.warn("adapt returned an unusable script — dropping it, keeping the concept");
+      delete (c as { script?: unknown }).script;
+    }
+  }
+  return parsed;
+}
+
 // =========================================================
 // Input builder — accepts AdaptInput only (D-01 structural guard)
 // =========================================================
@@ -131,8 +194,13 @@ function stripPartialProduction(parsed: unknown): unknown {
 /**
  * Build the Qwen user-turn content from the adapt input.
  *
- * Parameter type is `AdaptInput` (4 structural fields + repeatable lane + niche).
- * Passing `luck[]`, `content_summary`, or a raw caption is a compile-time error (Pitfall 1 guard).
+ * Parameter type is `AdaptInput`. Passing `luck[]`, `content_summary`, or a raw caption is a
+ * compile-time error (Pitfall 1 guard).
+ *
+ * The TIMED BEAT MAP block is emitted only when the blueprint HAS beats. The three callers with
+ * no video hand over `emptyBlueprint()` and get back exactly the concept-only prompt this
+ * function produced before D2 — a "0s, 0 beats" header would instruct the model to script beats
+ * that do not exist.
  */
 export function buildAdaptUserContent(input: AdaptInput): string {
   const repeatableList = input.repeatable
@@ -143,6 +211,43 @@ export function buildAdaptUserContent(input: AdaptInput): string {
     )
     .join("\n");
 
+  // D3: the brief IS the target when present; niche is the fallback, never both. Two targets in
+  // one prompt is how you get three concepts that belong to neither.
+  const targetLine = input.target
+    ? `MAKE IT ABOUT: ${input.target}`
+    : `CREATOR NICHE: ${input.niche}`;
+
+  const bp = input.blueprint;
+  let beatMap = "";
+  if (bp.beats.length > 0) {
+    const speechNote = bp.has_speech
+      ? `Source speech rate: ${bp.words_per_second} words/second.`
+      : `This source has NO SPEECH — carry every beat in on-screen text only.`;
+
+    const rows = bp.beats
+      .map((b) => {
+        const parts = [
+          `  [${b.index}] ${b.t_start.toFixed(1)}–${b.t_end.toFixed(1)}s (${b.duration_s}s) · ${b.role.toUpperCase()}`,
+          `      they show: ${b.visual_event}`,
+        ];
+        if (b.spoken) parts.push(`      they say: "${b.spoken}"`);
+        if (b.on_screen_text) parts.push(`      on screen: "${b.on_screen_text}"`);
+        if (b.cuts > 1) parts.push(`      cuts inside this beat: ${b.cuts}`);
+        if (b.weakness) {
+          parts.push(`      ⚠ WEAK (${b.weakness.factor} ${b.weakness.score}/10) — ${b.weakness.tip}`);
+        }
+        return parts.join("\n");
+      })
+      .join("\n");
+
+    beatMap = `
+
+TIMED BEAT MAP (${bp.duration_s}s, ${bp.beats.length} beats). ${speechNote}
+${rows}
+
+Write a "script" entry for EVERY beat above, in order.`;
+  }
+
   return `VIRAL VIDEO STRUCTURAL ANATOMY:
 Hook Pattern: ${input.hook_pattern}
 Structure: ${input.structure}
@@ -152,9 +257,9 @@ Emotional Beat: ${input.emotional_beat}
 Repeatable Format Items (adapt these, not the content):
 ${repeatableList}
 
-CREATOR NICHE: ${input.niche}
+${targetLine}${beatMap}
 
-Generate exactly 3 distinct niche-adapted concepts using the format patterns above.`;
+Generate exactly 3 distinct adapted concepts using the format patterns above.`;
 }
 
 // =========================================================
@@ -197,7 +302,14 @@ export async function generateAdaptConcepts(input: AdaptInput): Promise<AdaptCon
           // (Plan 03-03), so without these the reasoning model emits unbounded CoT and
           // times out (>90s) — the same failure fixed for deepseek.ts at the 03-04
           // checkpoint. Mirrors decode.ts (1200); 3 concepts fit comfortably.
-          max_tokens: 1200,
+          //
+          // A SHOOT SHEET DOES NOT. 3 concepts x MAX_BEATS(8) entries x ~65 tokens per entry is
+          // ~1560 tokens of script ON TOP of the ~600 the concepts already take — 1200 truncates
+          // the JSON mid-object, which fails the parse, and the retry truncates identically.
+          // Widened only on the path that asks for a script, so the concept-only callers
+          // (/api/remix/adapt, the drops pipe) keep the exact budget they run on today.
+          // max_tokens is a CEILING, not a spend floor: an unused ceiling costs nothing.
+          max_tokens: input.blueprint.beats.length > 0 ? 3000 : 1200,
           // @ts-expect-error — DashScope extensions not in OpenAI SDK types
           enable_thinking: false,
         },
@@ -207,7 +319,9 @@ export async function generateAdaptConcepts(input: AdaptInput): Promise<AdaptCon
       const raw     = completion.choices[0]?.message?.content ?? "";
       const cleaned = stripModelOutput(raw); // strips <think>...</think> + fences
       const parsed  = JSON.parse(cleaned) as unknown;
-      const result  = AdaptConceptsZodSchema.safeParse(stripPartialProduction(parsed));
+      const result  = AdaptConceptsZodSchema.safeParse(
+        stripInvalidScript(stripPartialProduction(parsed)),
+      );
 
       if (!result.success) {
         log.warn("adapt Zod validation failed", { attempt, error: result.error.message });
