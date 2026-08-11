@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { insertBlueprint, getBlueprint, BLUEPRINT_COLUMNS } from "../blueprint-repo";
 import type { BlueprintRow } from "../blueprint-repo";
+import { emptyBlueprint } from "@/lib/engine/remix/blueprint";
 
 /**
  * Minimal supabase-js double — the I/O boundary we cannot run in a unit test.
@@ -77,6 +78,25 @@ describe("blueprint-repo", () => {
       await insertBlueprint(c.client, SAMPLE_ROW);
       expect(c.from).toHaveBeenCalledWith("remix_blueprints");
       expect(c.insert).toHaveBeenCalledWith(SAMPLE_ROW);
+    });
+
+    /**
+     * A REGRESSION PIN, not a driver — it passes against a pass-through repo and always would.
+     * `AdaptConcept.script` is optional, so the runner maps a scriptless concept to `[]` and a
+     * three-card run where adapt returned no script at all is `[[], [], []]`. Nothing may reject
+     * that: it is the empty-blueprint / no-video path, which must still store a row. Pinned
+     * because the obvious future "tidy-up" is a non-empty guard here, and that would turn the
+     * quietest legitimate case into a thrown insert.
+     */
+    it("stores a row whose concepts produced no script at all", async () => {
+      const c = clientReturning({ data: null, error: null });
+      const scriptless: BlueprintRow = {
+        ...SAMPLE_ROW,
+        blueprint: emptyBlueprint(),
+        script: [[], [], []],
+      };
+      await insertBlueprint(c.client, scriptless);
+      expect(c.insert).toHaveBeenCalledWith(scriptless);
     });
   });
 

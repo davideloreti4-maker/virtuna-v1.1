@@ -300,3 +300,15 @@ TASK 7 MUST KNOW: if the migration was never applied, the symptom is NOT an erro
    sees. The run succeeds, the cards render, and the sheet is absent; the only evidence is one
    `log.warn` + Sentry event from the route's catch. Before blaming the renderer, check the
    table exists.
+Task 4: addendum — the formal task assignment named a case the first commit had no test for
+   ("a stored row must survive a concept with no script"). Added as a REGRESSION PIN, stated as
+   such: it passes against a pass-through repo and always would. `script: [[], [], []]` on an
+   `emptyBlueprint()` is the no-video path and nothing may reject it; the obvious future tidy-up
+   is a non-empty guard, which would throw on the quietest legitimate case. 97 -> 98.
+Task 4: the assignment's line "RLS on with no policy reads as empty and writes fail silently"
+   is NOT true of this table and should not be carried forward — it is the brief's claim, and
+   both phase-1 call sites use the service client, which bypasses RLS. See the DEVIATION note
+   above. The table does NOT constrain beats to MAX_BEATS=8 either, and must not: the cap is
+   buildBlueprint's, and a CHECK would break the day D10 is retuned. `blueprint jsonb NOT NULL`
+   is what forces emptyBlueprint() rather than NULL for a no-video row. Nothing enforces
+   AdaptedBeat.index -> BlueprintBeat.index; that join is the renderer's (Task 6).
