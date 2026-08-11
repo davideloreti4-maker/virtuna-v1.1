@@ -520,3 +520,9 @@ Task 5.5: NOTE for anyone editing blueprint.test.ts — the `seg()` fixture's `o
    the property does not exist, and a TYPO IN THAT KEY would compile clean and silently produce
    a boundary-less segment. Two existing tests (:127, :162) depend on that key. Not fixed here;
    flagged because it is the same class of silent-drift this task exists to close.
+
+CONTROLLER FIX (2026-08-11): the `from_fixed_buckets` doc comment cited the invented-duration
+   code as `assembleOmniOutput (remix/decode.ts:242)`. Wrong file — `assembleOmniOutput` lives at
+   qwen/omni-analysis.ts:255 and the `rawDuration > 0 ? rawDuration : 30` fallback is at :259.
+   The CLAIM is true and it is the sharpest one in this lane; only the citation was wrong, and a
+   wrong file:line in a comment this load-bearing costs the next reader real time. Corrected.

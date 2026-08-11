@@ -101,9 +101,10 @@ export interface SourceBlueprint {
    * would pass on entirely synthetic data with nothing to distinguish it from a real read.
    *
    * Worse, the duration itself is invented in the commonest case: `assembleOmniOutput`
-   * (remix/decode.ts:242) derives `videoDurationSeconds` from the highest raw `t_end` and falls
-   * back to a hard-coded 30 when there are no raw segments — which is exactly the branch that
-   * then fabricates the grid. So a "30s" fabricated blueprint may describe a video of any length.
+   * (qwen/omni-analysis.ts:255-260) derives `videoDurationSeconds` from the highest raw `t_end`
+   * and falls back to a hard-coded 30 when there are no raw segments — which is exactly the
+   * branch that then fabricates the grid. So a "30s" fabricated blueprint may describe a video
+   * of any length.
    *
    * This flag is the only thing that says so. Consumers must treat a true here as "we hold no
    * timed perception of this video" — the same epistemic position as `emptyBlueprint()`, which
