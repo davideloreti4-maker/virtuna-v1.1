@@ -20,7 +20,7 @@ import {
   type StreamingChatComplete,
 } from "@/lib/tools/chat-agent-loop";
 import type { SkillTool } from "@/lib/tools/skill-dispatch";
-import { MAX_LINES_PER_RUN } from "@/lib/tools/card-lines";
+import { MAX_LINES_PER_RUN } from "@/lib/tools/on-screen";
 
 const CTX = { platform: "tiktok" as const, profileRow: null, audience: null };
 
@@ -94,9 +94,9 @@ afterEach(() => {
   else process.env.ENGINE_CHAT_CARDS_ON_SCREEN = original;
 });
 
-describe("the LIVE tool result", () => {
-  it("flag OFF → the count only, byte-identical to what shipped before", async () => {
-    delete process.env.ENGINE_CHAT_CARDS_ON_SCREEN;
+describe("a GENERATOR run — the pack", () => {
+  it("kill-switch OFF → the count only, byte-identical to what shipped before", async () => {
+    process.env.ENGINE_CHAT_CARDS_ON_SCREEN = "false";
     const result = await runAndCaptureToolResult(hookBlocks(HOOKS));
     expect(result).toEqual({
       ran: "generate_hooks",
@@ -105,27 +105,29 @@ describe("the LIVE tool result", () => {
         "cards are shown to the creator; reply with ONE short closing line and do NOT " +
         "restate or rewrite the cards' content in prose",
     });
-    // The absence is the point: with the flag off the model cannot see its own pack.
+    // The absence is the point: switched off, the model cannot see its own pack.
     expect(result.cards_on_screen).toBeUndefined();
   });
 
-  it("flag ON → the model is handed the lines it just produced, in card order", async () => {
-    process.env.ENGINE_CHAT_CARDS_ON_SCREEN = "true";
+  it("DEFAULT (env unset) → on. The lines ship; the flag is a kill-switch, not an opt-in", async () => {
+    delete process.env.ENGINE_CHAT_CARDS_ON_SCREEN;
+    const result = await runAndCaptureToolResult(hookBlocks(HOOKS));
+    expect(result.cards_on_screen).toEqual(HOOKS);
+  });
+
+  it("hands over the lines it just produced, in card order", async () => {
     const result = await runAndCaptureToolResult(hookBlocks(HOOKS));
     expect(result.cards_on_screen).toEqual(HOOKS);
     expect(result.produced).toBe("3 card(s)");
   });
 
-  it("flag ON → the note tells it to REFER to them, not to re-list them", async () => {
-    process.env.ENGINE_CHAT_CARDS_ON_SCREEN = "true";
-    const result = await runAndCaptureToolResult(hookBlocks(HOOKS));
-    const note = String(result.note);
+  it("the note tells it to REFER to them, not to re-list them", async () => {
+    const note = String((await runAndCaptureToolResult(hookBlocks(HOOKS))).note);
     expect(note).toContain("NOW SEE");
     expect(note).toContain("never re-list them");
   });
 
-  it("flag ON → the pack is capped, so a big run cannot become a transcript", async () => {
-    process.env.ENGINE_CHAT_CARDS_ON_SCREEN = "true";
+  it("the pack is capped, so a big run cannot become a transcript", async () => {
     const many = Array.from({ length: MAX_LINES_PER_RUN + 4 }, (_, i) => `hook number ${i}`);
     const result = await runAndCaptureToolResult(hookBlocks(many));
     expect(result.cards_on_screen).toHaveLength(MAX_LINES_PER_RUN);
@@ -133,15 +135,72 @@ describe("the LIVE tool result", () => {
     expect(result.produced).toBe(`${many.length} card(s)`);
   });
 
-  it("flag ON but nothing extractable → falls back to the old shape, never an empty list", async () => {
+  it("nothing extractable → falls back to the old shape, never an empty list", async () => {
     // A card type that predates its line prop must degrade to "counted, not quoted". Sending
     // `cards_on_screen: []` would tell the model a pack exists with no lines in it.
-    process.env.ENGINE_CHAT_CARDS_ON_SCREEN = "true";
     const result = await runAndCaptureToolResult([
       { type: "hook-card", props: {} },
       { type: "corpus-references", props: { query: "x" } },
     ]);
     expect(result.cards_on_screen).toBeUndefined();
+    expect(result.result_on_screen).toBeUndefined();
     expect(result.note).toContain("do NOT");
+  });
+});
+
+describe("a NON-GENERATOR run — the result", () => {
+  /**
+   * `read_concept` is bound to the agent and returns a `multi-audience-read`, not a card. Handing
+   * back generator lines alone left it exactly as blind as before: the agent could run a creator's
+   * draft past their audience and then narrate the verdict without being able to read it. The
+   * failure mode there is not duplication but CONTRADICTION, which is worse.
+   */
+  const readBlock = [
+    {
+      type: "multi-audience-read",
+      props: {
+        audiences: [
+          { name: "Gen Z students", band: "Most keep watching", fraction: "6 in 10", lever: "cut the setup" },
+        ],
+      },
+    },
+  ];
+
+  it("hands over the RESULT line, under its own key", async () => {
+    const result = await runAndCaptureToolResult(readBlock);
+    expect(result.result_on_screen).toEqual([
+      "Audience Read — Gen Z students: Most keep watching (6 in 10) — lever: cut the setup",
+    ]);
+    // Not a pack — the creator is reading one verdict, not choosing between options.
+    expect(result.cards_on_screen).toBeUndefined();
+  });
+
+  it("its note guards CONTRADICTION, which is the failure a verdict invites", async () => {
+    const note = String((await runAndCaptureToolResult(readBlock)).note);
+    expect(note).toContain("contradicts");
+    expect(note).toContain("NOW SEE");
+  });
+
+  it("kill-switch OFF → the count only, for results too", async () => {
+    process.env.ENGINE_CHAT_CARDS_ON_SCREEN = "false";
+    const result = await runAndCaptureToolResult(readBlock);
+    expect(result.result_on_screen).toBeUndefined();
+    expect(result.cards_on_screen).toBeUndefined();
+  });
+
+  it("a describer that THROWS degrades the result, never the turn", async () => {
+    // The describers read nested props whose shapes have changed over time. By the time this runs
+    // the creator has been billed and the cards are on their screen, so a throw must not surface.
+    const result = await runAndCaptureToolResult([
+      { type: "multi-audience-read", get props(): unknown { throw new Error("shape drift"); } },
+    ]);
+    expect(result.result_on_screen).toBeUndefined();
+    expect(result.ran).toBe("generate_hooks");
+  });
+
+  it("cards WIN a mixed run — a pack is what the creator is looking at", async () => {
+    const result = await runAndCaptureToolResult([...readBlock, ...hookBlocks(HOOKS)]);
+    expect(result.cards_on_screen).toEqual(HOOKS);
+    expect(result.result_on_screen).toBeUndefined();
   });
 });

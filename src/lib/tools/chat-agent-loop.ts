@@ -34,7 +34,7 @@ import {
   buildConversationDigest,
   isConversationDigestEnabled,
 } from "@/lib/tools/conversation-digest";
-import { extractCardLines, isChatCardsOnScreenEnabled } from "@/lib/tools/card-lines";
+import { describeRunOutput, isChatCardsOnScreenEnabled } from "@/lib/tools/on-screen";
 import { SEARCH_CORPUS_TOOL, executeCorpusSearch } from "@/lib/grounding/corpus-tool";
 import { retrieveCachedExamples } from "@/lib/grounding/retrieve";
 import {
@@ -1299,29 +1299,44 @@ export async function runChatAgentStream(
         // Not a prompt fix. The model had no way to be faithful: you cannot reference what you
         // cannot see. See card-lines.ts for why this is safe HERE and was not safe in the
         // generator's bundle (§12.1) — narrator vs generator, opposite jobs.
-        const cardsOnScreen = isChatCardsOnScreenEnabled() ? extractCardLines(blocks) : [];
+        const onScreen = isChatCardsOnScreenEnabled() ? describeRunOutput(blocks) : null;
         messages.push({
           role: "tool",
           tool_call_id: call.id,
           content: JSON.stringify({
             ran: skill.name,
             produced: `${blocks.length} card(s)`,
-            // Omitted, never `[]`: an empty card list is a claim, and the wrong one. With nothing
-            // extractable the result is byte-identical to what shipped before.
-            ...(cardsOnScreen.length > 0
+            // Omitted, never `[]`: an empty list is a claim, and the wrong one. With nothing
+            // describable the result is byte-identical to what shipped before.
+            //
+            // The two kinds get different instructions because the creator is doing a different
+            // thing with them. A generator PACK is a set they are choosing between, so the useful
+            // reply compares and names one. A RESULT is a verdict they are reading, so the useful
+            // reply builds on it — and the failure to guard against is not duplication but
+            // CONTRADICTION, which is what narrating an unread verdict produces.
+            ...(onScreen?.kind === "cards"
               ? {
-                  cards_on_screen: cardsOnScreen,
+                  cards_on_screen: onScreen.lines,
                   note:
                     "these are the cards the creator can NOW SEE, in order. Reply with ONE short " +
                     "closing line that refers to them by their text — name the strongest and why, " +
                     "or point at the next step. They are ALREADY on screen: never re-list them, " +
                     "and never present them as something you are producing now.",
                 }
-              : {
-                  note:
-                    "cards are shown to the creator; reply with ONE short closing line and do NOT " +
-                    "restate or rewrite the cards' content in prose",
-                }),
+              : onScreen?.kind === "results"
+                ? {
+                    result_on_screen: onScreen.lines,
+                    note:
+                      "this is the RESULT the creator can NOW SEE, already rendered. Reply with ONE " +
+                      "short closing line that builds on it — what it means for them, or the next " +
+                      "step. Never restate it in full, never re-render the numbers, and never say " +
+                      "anything that contradicts it.",
+                  }
+                : {
+                    note:
+                      "cards are shown to the creator; reply with ONE short closing line and do NOT " +
+                      "restate or rewrite the cards' content in prose",
+                  }),
           }),
         });
       } catch (err) {

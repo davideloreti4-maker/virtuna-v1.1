@@ -10,10 +10,13 @@ import { describe, it, expect } from "vitest";
 import {
   cardLineOf,
   extractCardLines,
+  describeRunOutput,
+  isRecordedBlock,
   isChatCardsOnScreenEnabled,
+  RECORDED_BLOCKS,
   MAX_LINES_PER_RUN,
   MAX_LINE_LENGTH,
-} from "../card-lines";
+} from "../on-screen";
 
 const hook = (hookLine: unknown) => ({ type: "hook-card", props: { hookLine } });
 
@@ -89,16 +92,79 @@ describe("extractCardLines — a run's pack", () => {
   });
 });
 
-describe("the flag", () => {
-  it("is OFF unless the env var is exactly 'true'", () => {
+describe("describeRunOutput — any skill, not just the three generators", () => {
+  const read = {
+    type: "multi-audience-read",
+    props: {
+      audiences: [{ name: "Gen Z students", band: "Most keep watching", fraction: "6 in 10" }],
+    },
+  };
+  const test = { type: "video-test-card", props: { craftScore: 61, dropLabel: "0:04" } };
+
+  it("a generator pack comes back as `cards`", () => {
+    expect(describeRunOutput([hook("first"), hook("second")])).toEqual({
+      kind: "cards",
+      lines: ["first", "second"],
+    });
+  });
+
+  it("a Read comes back as `results` — the same line the replay path records", () => {
+    const out = describeRunOutput([read]);
+    expect(out?.kind).toBe("results");
+    expect(out?.lines[0]).toContain("Audience Read — Gen Z students");
+  });
+
+  it("covers the other skills' result blocks too", () => {
+    const out = describeRunOutput([test]);
+    expect(out?.kind).toBe("results");
+    expect(out?.lines[0]).toContain("Video Test — craft 61/100");
+  });
+
+  it("cards WIN a mixed run", () => {
+    expect(describeRunOutput([read, hook("a card")])).toEqual({ kind: "cards", lines: ["a card"] });
+  });
+
+  it("null when nothing is describable — chrome and citations are not results", () => {
+    expect(describeRunOutput([])).toBeNull();
+    expect(
+      describeRunOutput([
+        { type: "run-header", props: { skill: "hooks" } },
+        { type: "corpus-references", props: { query: "x" } },
+        { type: "input-request", props: { action: "test" } },
+      ]),
+    ).toBeNull();
+  });
+
+  it("a describer that THROWS yields null, not an exception", () => {
+    // Live, this runs AFTER the creator has been billed and the cards are on their screen.
+    expect(
+      describeRunOutput([
+        { type: "video-test-card", get props(): unknown { throw new Error("shape drift"); } },
+      ]),
+    ).toBeNull();
+  });
+
+  it("every RECORDED_BLOCKS type is reachable through describeRunOutput", () => {
+    // The set is the reachability test's SSOT. This asserts the LIVE path can see all of it —
+    // the split that let the model narrate a verdict it had never read.
+    for (const type of RECORDED_BLOCKS) {
+      expect(isRecordedBlock(type), `${type} must be describable live`).toBe(true);
+    }
+  });
+});
+
+describe("the kill-switch", () => {
+  it("is ON by default and only 'false' disables it", () => {
     const original = process.env.ENGINE_CHAT_CARDS_ON_SCREEN;
     try {
       delete process.env.ENGINE_CHAT_CARDS_ON_SCREEN;
-      expect(isChatCardsOnScreenEnabled()).toBe(false);
-      process.env.ENGINE_CHAT_CARDS_ON_SCREEN = "1";
-      expect(isChatCardsOnScreenEnabled()).toBe(false);
+      expect(isChatCardsOnScreenEnabled()).toBe(true);
       process.env.ENGINE_CHAT_CARDS_ON_SCREEN = "true";
       expect(isChatCardsOnScreenEnabled()).toBe(true);
+      process.env.ENGINE_CHAT_CARDS_ON_SCREEN = "1";
+      expect(isChatCardsOnScreenEnabled()).toBe(true);
+      process.env.ENGINE_CHAT_CARDS_ON_SCREEN = "false";
+      expect(isChatCardsOnScreenEnabled()).toBe(false);
     } finally {
       if (original === undefined) delete process.env.ENGINE_CHAT_CARDS_ON_SCREEN;
       else process.env.ENGINE_CHAT_CARDS_ON_SCREEN = original;
