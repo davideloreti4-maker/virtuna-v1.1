@@ -69,3 +69,45 @@ describe('OutlierTile — standard conformance', () => {
     expect(dot.style.backgroundColor).toContain('positive');
   });
 });
+
+/**
+ * The badge is a PAIR (D-05) — a multiplier never renders without the basis it was measured
+ * against, and an unbaselined row renders neither. `outlier-receipt.ts` nulls both together
+ * for a row with no author aggregates, a zero-follower account, or too few of the creator's
+ * own posts in the pull; before Phase 2 the tile assumed a number was always present.
+ */
+describe('OutlierTile — the multiplier badge is all-or-nothing', () => {
+  const labelled = { ...TILE, multiplier: 18.2, baselineLabel: 'vs followers' };
+  const unbaselined = { ...TILE, multiplier: null, baselineLabel: null };
+
+  it.each(['grid', 'thread'] as const)('renders the number WITH its basis (%s variant)', (variant) => {
+    renderWithClient(<OutlierTile tile={labelled} onRemix={vi.fn()} variant={variant} />);
+    expect(screen.getByText('18×')).toBeTruthy();
+    expect(screen.getByText('vs followers')).toBeTruthy();
+  });
+
+  it.each(['grid', 'thread'] as const)(
+    'renders NO badge at all when the row has no honest denominator (%s variant)',
+    (variant) => {
+      renderWithClient(<OutlierTile tile={unbaselined} onRemix={vi.fn()} variant={variant} />);
+      // No bare number, and no orphaned label.
+      expect(screen.queryByText(/^\d+(\.\d+)?×$/)).toBeNull();
+      expect(screen.queryByText(/^vs /)).toBeNull();
+      expect(screen.queryByText('—')).toBeNull();
+    },
+  );
+
+  it('still renders the rest of the tile — the missing badge is not a broken card', () => {
+    renderWithClient(<OutlierTile tile={unbaselined} onRemix={vi.fn()} />);
+    expect(screen.getByText('Remix →')).toBeTruthy();
+    expect(screen.getByText(TILE.source)).toBeTruthy();
+  });
+
+  it('keeps the source tag right-aligned when the badge is absent (grid variant)', () => {
+    // The badge and the source tag share a `justify-between` row; dropping the badge without
+    // a placeholder would pull the source tag to the left edge.
+    const { container } = renderWithClient(<OutlierTile tile={unbaselined} onRemix={vi.fn()} />);
+    const row = container.querySelector('.justify-between') as HTMLElement;
+    expect(row.children.length).toBe(2);
+  });
+});

@@ -16,7 +16,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { createScrapingProvider } from "@/lib/scraping";
 import { classifyDiscoverInput, UNSUPPORTED_INPUT_REASON } from "@/lib/discover/classify-input";
-import { rankOutliers, type RankedOutlier } from "@/lib/discover/outlier-compute";
+import { rankOutliers } from "@/lib/discover/outlier-compute";
+import { attachOutlierReceipt, type ReceiptedOutlier } from "@/lib/discover/outlier-receipt";
 import {
   getCachedDiscover,
   setCachedDiscover,
@@ -35,12 +36,18 @@ const MAX_TILES = 30;
 // Scrape budget per pull (over-pull a little so the 90d window + ranking has material).
 const SCRAPE_LIMIT = 30;
 
-/** Tile shape returned to the client — ranked outlier + source/mode tags (D-15). */
-interface DiscoverResponseTile extends RankedOutlier {
+/**
+ * Tile shape returned to the client — ranked outlier + source/mode tags (D-15).
+ *
+ * `ReceiptedOutlier`: the multiplier a creator SEES is the per-author receipt, not the
+ * within-set median that drives the ranking (outlier-receipt.ts). Both it and its label are
+ * nullable — an unbaselined row shows no badge rather than an invented one.
+ */
+type DiscoverResponseTile = ReceiptedOutlier & {
   mode: "profile" | "niche";
   /** D-15: profile pulls tag own-vs-competitor; niche pulls tag the niche query. */
   source: string;
-}
+};
 
 export async function POST(request: Request): Promise<Response> {
   const supabase = await createClient();
@@ -133,7 +140,8 @@ export async function POST(request: Request): Promise<Response> {
       mode === "niche" ? "search" : "profile",
     );
 
-    const ranked = rankOutliers(videos, mode).slice(0, MAX_TILES);
+    // Rank on the within-set signal (selection), then print the per-author receipt (§2.7).
+    const ranked = attachOutlierReceipt(rankOutliers(videos, mode).slice(0, MAX_TILES), mode);
 
     const tiles: DiscoverResponseTile[] = ranked.map((tile) => ({
       ...tile,
