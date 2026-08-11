@@ -46,8 +46,15 @@ prompt-only failure in this lane; treat wording as a dead lever on this surface.
 
 **Do next — §7 has the recommendation:**
 
-1. 🔴 **The pinned retry (§7.2).** Blocked on ONE owner call about streaming UX (§7.3) — and the
-   call is real, not a formality: buffering cannot be scoped to the failing runs.
+1. 🔴 **Pin round 1 when `guessSkill` fires — option C, §11.3.** ⚠️ This SUPERSEDES §7.2/§7.3, which
+   recommended the retry (A) and framed the blocker as a streaming-UX trade. §11 measured
+   `guessSkill` on the app's own history and found **A is not the safer option**: its trigger is
+   "guessed AND the model called no tool", and a false positive is by definition an ask the model
+   is right to decline — so that condition *selects* for false positives instead of filtering them.
+   Identical exposure (~3.4% of fires, the same two asks), and A additionally costs ~2–3s of
+   unscopable buffering plus new machinery. Read §7.2/§7.3 for the retry's mechanics, §11 for why
+   it is not the recommendation. **The owner's call is now one number: is a ~3.4% wrong-run rate on
+   fires acceptable to take the core action from 23% to ~100%?**
 2. ✅ **The honesty defect is re-measured (§7.4)** — session 9's queue item 2, done free on this
    session's own corpus. It has NOT evaporated (~7 of 98 no-tool turns hand over a full prose pack),
    but it is **a different shape than §4 was designed for**: the model never falsely claims a card
@@ -56,7 +63,7 @@ prompt-only failure in this lane; treat wording as a dead lever on this surface.
    instead of 3.
 3. **Left for next:** the verdict-narration design call (§12.4 of session 9). Untouched.
 
-⚠️ `.scratch/` is gitignored and now holds **83 files** — every number here is reproducible from
+⚠️ `.scratch/` is gitignored and now holds **84 files** — every number here is reproducible from
 them, and they are the only copy. Copy them out before any `git worktree remove`.
 
 ---
@@ -304,7 +311,7 @@ there is nothing to gate. They must be run by whoever ships an actual fix.
 on wording — four attempts, four failures, and this one was aimed at a belief the model states in so
 many words.
 
-### 7.2 Pin on OBSERVED failure
+### 7.2 Pin on OBSERVED failure — ⚠️ SUPERSEDED by §11.3, kept for its mechanics
 
 At `chat-agent-loop.ts:1054` — `if (calls.length === 0) break;` — when `guessSkill(ask)` is non-null
 and no skill has run this turn, discard round 1 and re-run it pinned to the guess.
@@ -322,7 +329,7 @@ and no skill has run this turn, discard round 1 and re-run it pinned to the gues
 `ENGINE_REPEAT_ASK_PIN`'s three conditions, and the pre-router's one measured harmful guess
 (*"Yes, run the simulate tool on that hook"*) would become a forced billed wrong run.
 
-### 7.3 🔴 The owner call the retry needs first
+### 7.3 The owner call the retry needs first — ⚠️ SUPERSEDED by §11.2; the trade it describes is real but C avoids it entirely
 
 **Round-1 text is already streamed to the creator by the time we know there was no tool call.** Left
 alone, the retry appends five hooks under *"I need to know the angle first"* — self-contradiction,
