@@ -47,21 +47,17 @@ Live, flag on, the exact ask that failed before now answers:
 *"The strongest is "My bank account is a horror movie" — it opens a curiosity gap with zero
 friction… Want me to write a script around that one?"*
 
-**Do next, in this order:**
+**Do next — start at §15. The recommended order changed at the end of session 9:**
 
-1. **A design call on verdict-shaped results.** Two cheap fixes for the residual lever gap were
-   built, measured and REVERTED — handing the model the audience's own scroll reasons did not
-   change its narration, and neither did instructing it to use them (**§12.4**). That leaves two
-   structural options: fix the card's `lever` field at source (it is an upsell on a Strong Read —
-   user-visible copy, so yours), or stop letting the model narrate a verdict freely and derive the
-   closing line from the card. A templated line cannot lie, and unlike a PACK a VERDICT needs no
-   judgement. I would argue for the second.
-2. **A separate reliability problem the A/B surfaced:** 3 of 12 unpinned runs on a plain ask never
-   dispatched, one of them incoherently (*"I need the actual text of the hooks you want me to
-   generate for"*). No tool ran, so nothing here reaches it — this is dispatch reliability, and on
-   a plain "give me hooks for X" it is arguably the worse experience. **§10.4.**
-3. **The honesty-check design conversation** — still owed, and now narrowed to one shape: prose
-   claiming an artefact when NO tool ran. §4 has the decisions; §11 has what the A/B changed.
+1. 🔴 **DISPATCH RELIABILITY, not narration.** 3 of 12 unpinned runs on *"give me hooks for my
+   student budgeting app"* produced **no cards at all**, one incoherently. That is 25% failure on
+   the product's core action, and it is the same population the honesty defect draws from — fix it
+   and §11 shrinks from *the* lever to a backstop. **The experiment to run first is in §15**, it is
+   free, and the harness already exists.
+2. **Then re-measure the honesty defect** (§11). It may have largely evaporated; measuring before
+   designing is the point.
+3. **Then the verdict-narration design call** (§12.4). Real, but one skill, and the failure is a
+   wrong *sentence* beside a correct card. Doing it first would be polishing the quieter bug.
 
 **Still parked, do not touch without the owner:** the `writing_voice_sample` migration; adding
 goals/wins/flops to `MODE_ROLES.chat`; building the honesty check ahead of the conversation.
@@ -578,3 +574,63 @@ Unchanged from session 8 §13, with one improvement: **`ENGINE_GEN_CONVERSATION`
 than it was.** Before this commit it did nothing at all on a thread's first generating turn and
 silently dropped the constraint on every turn that stated one. `ENGINE_REPEAT_ASK_PIN` is untouched.
 Both flips are still the owner's call.
+
+---
+
+## 15. 🔴 THE RECOMMENDATION FOR SESSION 10 — fix dispatch, not narration
+
+Session 9 spent itself on what the model *says* about a run. The measurement that closed the session
+says the bigger defect is whether the run **happens at all**.
+
+### 15.1 Why this outranks everything else open
+
+| | |
+|---|---|
+| narration bug | the cards were correct; the prose above them was wrong. Embarrassing, now largely fixed (§10, §12) |
+| **dispatch bug** | the creator types a clear generation ask and gets **nothing**. **3 of 12** measured (§10.4) |
+
+One of the three replied *"I need the actual text of the hooks you want me to generate for"* — about
+hooks it was being asked to write.
+
+**And it is the honesty defect from the other end.** When the model does not call the tool it either
+pushes back (honest, annoying) or narrates a pack that does not exist — the ~9 historical §11 cases.
+Fix dispatch and the honesty check stops being the primary lever. It is also the answer to §4's
+"re-run or refuse": the honest response to *"claimed a pack, ran nothing"* is **run it**.
+
+**The machinery already exists.** `forceSkill` pinning produced **12/12 dispatch with good output**.
+`guessSkill` already computes a guess every turn and already shows it to the creator as the
+predispatch hint — it just never acts. `ENGINE_REPEAT_ASK_PIN` already uses this exact seam and
+never false-fired in 360 real turns (session 8 §4).
+
+### 15.2 The experiment to run FIRST — free, harness exists
+
+**2 of the 3 non-dispatches were sanctioned behaviour**: the tool-use directive deliberately says to
+push back ONCE when an ask is too vague. A blanket retry would destroy something intentional, so the
+trigger is the whole question.
+
+The tell: **pinned, the same ask produced 5 good on-brief hooks every time.** The pushback is not
+protecting quality — the pipeline handles the ask fine.
+
+> **Run:** for asks the model pushed back on, pin and compare OUTPUT QUALITY against the pushback.
+> **Decide:** if pinned output is as good, the pushback is pure friction and should be narrowed hard.
+
+`.scratch/probe-cards-on-screen.ts` already has pinned/unpinned arms and a stub till — extend it
+rather than starting over. No credits.
+
+⚠️ **Reproduce the failure in the control arm before believing any fix** (§10.3). The unpinned/plain
+cell is where the 3/12 lives; the constrained ask did not reproduce it.
+
+### 15.3 The fix I would argue for, if the experiment confirms
+
+**Pin on observed failure, not on a guess.** Let round 1 run free; only if it produced NO tool call
+on a clear generation ask, retry round 1 pinned.
+
+- Acts on the model's own behaviour rather than predicting the ask — the property that makes it
+  safer than lowering the repeat-ask threshold (§11 explains why 0.7 cannot come down).
+- Costs one cheap completion on the retry path. **No credits** — the generation never happened, so
+  this is a retry of a ROUTING decision, not a re-run of a paid one.
+- The free tier composes untouched: a sealed visitor binds no generators, so there is nothing to
+  pin and `createArtefactGuard` still owns that path.
+
+**Not built. Not designed past this paragraph.** The owner asked for a design conversation before
+the honesty check and this is adjacent to it.
