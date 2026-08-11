@@ -1,0 +1,347 @@
+# Review package: 660ff616..73635843
+
+## Commits
+73635843 fix(remix): cap boundary snapping, place factors in two passes, mid-video turn fallback
+
+## Files changed
+ src/lib/engine/remix/__tests__/blueprint.test.ts | 82 ++++++++++++++++++++++++
+ src/lib/engine/remix/blueprint.ts                | 78 ++++++++++++++++------
+ 2 files changed, 140 insertions(+), 20 deletions(-)
+
+## Diff
+diff --git a/src/lib/engine/remix/__tests__/blueprint.test.ts b/src/lib/engine/remix/__tests__/blueprint.test.ts
+index 8d312825..afb1ee9c 100644
+--- a/src/lib/engine/remix/__tests__/blueprint.test.ts
++++ b/src/lib/engine/remix/__tests__/blueprint.test.ts
+@@ -102,20 +102,55 @@ describe("buildBlueprint", () => {
+   it("never lets the hook beat run past 3s when no cell boundary lands on 3s", () => {
+     // 2s cells: boundaries at 0,2,4,... — nothing at 3s. An even spread put the first cut at
+     // cell 4, i.e. an 8s beat labelled "hook".
+     const segments = Array.from({ length: 30 }, (_, i) => seg(i * 2, i * 2 + 2));
+     const bp = buildBlueprint(structural({ segments }));
+     expect(bp.beats[0]!.role).toBe("hook");
+     expect(bp.beats[0]!.t_end).toBeLessThanOrEqual(3);
+     expect(bp.beats.length).toBeLessThanOrEqual(MAX_BEATS);
+   });
+ 
++  it("isolates the first cell when that cell is itself wider than the hook zone", () => {
++    // 5s cells. No boundary at 3s AND the first cell already overruns the zone, so no cut can
++    // make the opening beat 3s. Isolating cell 0 (0-5s) is the floor; merging four cells into
++    // a 0-20s beat still labelled "hook" is the defect.
++    const segments = Array.from({ length: 30 }, (_, i) => seg(i * 5, i * 5 + 5));
++    const bp = buildBlueprint(structural({ segments }));
++    expect(bp.beats[0]!.t_end).toBe(5);
++    expect(bp.beats[0]!.duration_s).toBe(5);
++  });
++
++  it("does not snap to a distant boundary cluster — late cluster (talking head then montage)", () => {
++    // 40 x 1.5s cells, real boundaries only from cell 30 on. Snapping every spread target to the
++    // globally nearest boundary dragged all six cuts into the cluster: beat 1 spanned 3-45s.
++    const segments = Array.from({ length: 40 }, (_, i) =>
++      seg(i * 1.5, i * 1.5 + 1.5, i >= 30 ? { scene_boundary_reason: "shot change" } : {}),
++    );
++    const bp = buildBlueprint(structural({ segments }));
++    const longest = Math.max(...bp.beats.map((b) => b.duration_s));
++    expect(longest).toBeLessThanOrEqual(bp.duration_s * 0.4);
++    for (let i = 1; i < bp.beats.length; i++) {
++      expect(bp.beats[i]!.t_start).toBe(bp.beats[i - 1]!.t_end);
++    }
++  });
++
++  it("does not snap to a distant boundary cluster — tight mid-video cluster", () => {
++    // 30 x 2s cells, boundaries only at cells 20-22. Produced a 2-36s beat (57% of the video).
++    const segments = Array.from({ length: 30 }, (_, i) =>
++      seg(i * 2, i * 2 + 2, i >= 20 && i <= 22 ? { scene_boundary_reason: "cut" } : {}),
++    );
++    const bp = buildBlueprint(structural({ segments }));
++    const longest = Math.max(...bp.beats.map((b) => b.duration_s));
++    expect(longest).toBeLessThanOrEqual(bp.duration_s * 0.4);
++    expect(bp.beats.reduce((n, b) => n + b.cuts, 0)).toBe(segments.length);
++  });
++
+   // ---------------------------------------------------------------------------
+   // Roles
+   // ---------------------------------------------------------------------------
+ 
+   it("tags the first-3s beat as hook EVEN WHEN the emotion peak also falls inside it", () => {
+     const segments = [seg(0, 2), seg(2, 6), seg(6, 10)];
+     const bp = buildBlueprint(structural({
+       segments,
+       emotion_arc: [
+         { timestamp_ms: 1000, intensity_0_1: 0.9 }, // peak inside the hook zone
+@@ -134,20 +169,39 @@ describe("buildBlueprint", () => {
+       segments,
+       emotion_arc: [{ timestamp_ms: 1000, intensity_0_1: 0.9 }],
+     }));
+     const roles = bp.beats.map((b) => b.role);
+     expect(roles).toContain("turn");
+     expect(roles).toContain("payoff");
+     expect(roles).toContain("close");
+     expect(bp.beats[0]!.role).toBe("hook");
+   });
+ 
++  it("puts the fallback turn mid-video, keeping setup beats before it", () => {
++    // Peak inside the hook zone, so the turn cannot sit on its own peak and must fall back.
++    // Taking the FIRST free beat put the turn at 3-11s of a 60s video with five payoffs after
++    // it and no setup at all.
++    const segments = buildFixedBuckets(60);
++    const bp = buildBlueprint(structural({
++      segments,
++      emotion_arc: [{ timestamp_ms: 1000, intensity_0_1: 0.9 }],
++    }));
++    const roles = bp.beats.map((b) => b.role);
++    expect(roles).toContain("setup");
++    expect(roles).toContain("turn");
++    expect(roles).toContain("payoff");
++    const turnIdx = bp.beats.findIndex((b) => b.role === "turn");
++    expect(turnIdx).toBeGreaterThanOrEqual(Math.floor(bp.beats.length / 2));
++    // and it is genuinely past the opening of the video
++    expect(bp.beats[turnIdx]!.t_start).toBeGreaterThan(bp.duration_s * 0.25);
++  });
++
+   it("still yields a close when the emotion peak lands in the final beat", () => {
+     const segments = [seg(0, 2), seg(2, 6), seg(6, 10), seg(10, 14)];
+     const bp = buildBlueprint(structural({
+       segments,
+       emotion_arc: [{ timestamp_ms: 12000, intensity_0_1: 0.95 }],
+     }));
+     expect(bp.beats[bp.beats.length - 1]!.role).toBe("close");
+     expect(bp.beats.some((b) => b.role === "turn")).toBe(true);
+   });
+ 
+@@ -248,20 +302,48 @@ describe("buildBlueprint", () => {
+         { name: "Share Trigger", score: 2, rationale: "no reason to send it" },
+         { name: "Rewatch Potential", score: 3, rationale: "nothing to catch second time" },
+       ],
+     }));
+     const attached = bp.beats.filter((b) => b.weakness !== null);
+     expect(attached).toHaveLength(2);
+     const names = attached.map((b) => b.weakness!.factor).sort();
+     expect(names).toEqual(["Rewatch Potential", "Share Trigger"]);
+   });
+ 
++  it("gives every factor the ROLE it asked for, in the schema's own emission order", () => {
++    // The order HookFactorSchema emits. Emotional Charge is LAST, so a single-pass placement
++    // lets an earlier factor's *fallback* claim take the turn beat out from under it.
++    const segments = buildFixedBuckets(60);
++    const bp = buildBlueprint(structural({
++      segments,
++      emotion_arc: [{ timestamp_ms: 30_000, intensity_0_1: 0.95 }],
++      factors: [
++        { name: "Scroll-Stop Power", score: 2, rationale: "a" },
++        { name: "Completion Pull", score: 3, rationale: "b" },
++        { name: "Rewatch Potential", score: 4, rationale: "c" },
++        { name: "Share Trigger", score: 1, rationale: "d" },
++        { name: "Emotional Charge", score: 4, rationale: "e" },
++      ],
++    }));
++
++    const roleOf = (factor: string) =>
++      bp.beats.find((b) => b.weakness?.factor === factor)?.role;
++
++    expect(roleOf("Scroll-Stop Power")).toBe("hook");
++    expect(roleOf("Completion Pull")).toBe("setup");
++    expect(roleOf("Emotional Charge")).toBe("turn");
++    expect(roleOf("Rewatch Potential")).toBe("close");
++    // Share Trigger also wants close; only one can have it, so it takes a fallback beat.
++    expect(roleOf("Share Trigger")).toBeDefined();
++    expect(bp.beats.filter((b) => b.weakness !== null)).toHaveLength(5);
++  });
++
+   it("places all five weak factors on distinct beats", () => {
+     const segments = [seg(0, 2), seg(2, 6), seg(6, 10), seg(10, 14), seg(14, 18)];
+     const bp = buildBlueprint(structural({
+       segments,
+       emotion_arc: [{ timestamp_ms: 7000, intensity_0_1: 0.95 }],
+       factors: [
+         { name: "Scroll-Stop Power", score: 2, rationale: "a" },
+         { name: "Completion Pull", score: 3, rationale: "b" },
+         { name: "Rewatch Potential", score: 4, rationale: "c" },
+         { name: "Share Trigger", score: 1, rationale: "d" },
+diff --git a/src/lib/engine/remix/blueprint.ts b/src/lib/engine/remix/blueprint.ts
+index 5a36e013..f6867187 100644
+--- a/src/lib/engine/remix/blueprint.ts
++++ b/src/lib/engine/remix/blueprint.ts
+@@ -95,42 +95,54 @@ function wordCount(s: string | null | undefined): number {
+  * renders it.
+  *
+  * We cut at the boundary landing exactly on 3s. When a grid has no such boundary (never true of
+  * normalized input, but cheap to survive) we take the boundary BEFORE it, so the opening beat is
+  * never longer than the hook zone it claims to be.
+  */
+ function hookCutIndex(segments: Segment[]): number {
+   const after = segments.findIndex((s) => s.t_start >= HOOK_ZONE_END_S);
+   if (after <= 0) return -1;
+   const exact = segments[after]!.t_start === HOOK_ZONE_END_S;
+-  const idx = exact ? after : after - 1;
+-  return idx > 0 ? idx : -1;
++  if (exact) return after;
++  // No boundary lands on 3s. Cut at the one before, so the opening beat is SHORTER than the
++  // hook zone rather than longer. When that would be index 0 the first cell is itself wider
++  // than the zone and no cut can fix it — isolate that cell anyway (cut at 1). Returning -1
++  // here used to drop the hook cut entirely and let the even spread merge MORE cells into
++  // beat 0: on a 5s-cell grid that produced a 0-20s beat labelled "hook".
++  return after - 1 > 0 ? after - 1 : 1;
+ }
+ 
+ /**
+- * Pick the cut nearest `target`, snapping to a real scene boundary when one is available.
+- * Returns null when nothing in range is still free.
++ * Pick the cut nearest `target`, snapping to a real scene boundary only when one is within
++ * `maxDistance`. Returns null when nothing in range is still free.
++ *
++ * The cap is what makes this "prefer a real cut" rather than "chase the nearest cut anywhere".
++ * Uncapped, a cluster of boundaries drags every spread target into it and reproduces exactly the
++ * collapse this function was written to fix: 40 cells with boundaries only from cell 30 on — an
++ * ordinary talking-head-then-montage shape — put 70% of the video in one beat while the beats
++ * inside the cluster were 1.5s each.
+  */
+ function nearestCut(
+   target: number,
+   preferred: number[],
+   lo: number,
+   hi: number,
+   taken: Set<number>,
++  maxDistance: number,
+ ): number | null {
+   const free = (i: number) => i > lo && i < hi && !taken.has(i);
+   let best: number | null = null;
+   let bestDist = Infinity;
+   for (const p of preferred) {
+     if (!free(p)) continue;
+     const d = Math.abs(p - target);
+-    if (d < bestDist) {
++    if (d <= maxDistance && d < bestDist) {
+       bestDist = d;
+       best = p;
+     }
+   }
+   if (best !== null) return best;
+   return free(target) ? target : null;
+ }
+ 
+ /**
+  * Merge raw cells into at most MAX_BEATS groups of contiguous segments.
+@@ -157,23 +169,27 @@ function groupSegments(segments: Segment[]): Segment[][] {
+ 
+   const cuts = new Set<number>();
+ 
+   // The hook beat takes one of the MAX_BEATS; the body gets the remainder.
+   const hookCut = hookCutIndex(segments);
+   if (hookCut > 0) cuts.add(hookCut);
+   const bodyStart = hookCut > 0 ? hookCut : 0;
+ 
+   const wanted = MAX_BEATS - cuts.size - 1;
+   const span = segments.length - bodyStart;
++  const step = span / (wanted + 1);
++  // Half a step: far enough to honour a nearby real boundary, near enough that a beat can never
++  // grow past ~1.5x its even share.
++  const snapRadius = step / 2;
+   for (let k = 1; k <= wanted; k++) {
+-    const target = bodyStart + Math.round((k * span) / (wanted + 1));
+-    const cut = nearestCut(target, preferred, bodyStart, segments.length, cuts);
++    const target = bodyStart + Math.round(k * step);
++    const cut = nearestCut(target, preferred, bodyStart, segments.length, cuts, snapRadius);
+     if (cut !== null) cuts.add(cut);
+   }
+ 
+   const cutPoints = [...cuts].sort((a, b) => a - b);
+ 
+   const groups: Segment[][] = [];
+   let start = 0;
+   for (const cut of cutPoints) {
+     groups.push(segments.slice(start, cut));
+     start = cut;
+@@ -226,21 +242,28 @@ function assignRoles(beats: Omit<BlueprintBeat, "role">[], peaksDesc: number[]):
+   // a video with no arc at all would be fabrication, not a fallback.
+   if (peaksDesc.length > 0) {
+     let turnIdx = -1;
+     for (const p of peaksDesc) {
+       const i = beats.findIndex((b) => p >= b.t_start && p < b.t_end);
+       if (i >= 0 && roles[i] === null) {
+         turnIdx = i;
+         break;
+       }
+     }
+-    if (turnIdx === -1) turnIdx = roles.findIndex((r) => r === null);
++    // Fall back to the first free beat AT OR AFTER the midpoint, not the first free beat
++    // overall — that was always beat 1, which left a turn at 3-11s of a 60s video with five
++    // payoffs after it and not one setup beat. A turn is a mid-video pivot by definition.
++    if (turnIdx === -1) {
++      const mid = Math.floor(beats.length / 2);
++      turnIdx = roles.findIndex((r, i) => r === null && i >= mid);
++      if (turnIdx === -1) turnIdx = roles.findIndex((r) => r === null);
++    }
+     if (turnIdx >= 0) roles[turnIdx] = "turn";
+   }
+ 
+   // 4. setup before the turn, payoff after it
+   const turnAt = roles.indexOf("turn");
+   roles.forEach((r, i) => {
+     if (r !== null) return;
+     roles[i] = turnAt >= 0 && i < turnAt ? "setup" : turnAt >= 0 ? "payoff" : "setup";
+   });
+ 
+@@ -280,35 +303,50 @@ export function buildBlueprint(structural: OmniStructuralInput): SourceBlueprint
+   const arc = structural.emotion_arc ?? [];
+   const peaksDesc = [...arc]
+     .sort((a, b) => b.intensity_0_1 - a.intensity_0_1)
+     .map((p) => p.timestamp_ms / 1000);
+ 
+   const roles = assignRoles(partial, peaksDesc);
+ 
+   const beats: BlueprintBeat[] = partial.map((b, i) => ({ ...b, role: roles[i]! }));
+ 
+   // Attach each weak factor to the beat its name actually describes, then to the longest beat
+-  // still free. Both halves were broken: the old test used the name "pacing", which the model
+-  // cannot emit, and that is what let the dead branch survive.
++  // still free. The old regex here matched none of the five names the schema can emit, and the
++  // old test used the name "pacing", which the model cannot emit — which is what let the dead
++  // branch survive review.
++  //
++  // TWO passes, and the order is load-bearing: a single pass let an earlier factor's *fallback*
++  // claim take a beat that a later factor had an exact-role claim on. In the schema's own
++  // emission order that is the common case, not a corner — Emotional Charge is emitted LAST, so
++  // Share Trigger's fallback took the turn beat and displaced the one near-tautological mapping
++  // (the turn IS the emotion-peak beat).
+   const weak = structural.factors.filter((f) => f.score < WEAK_FACTOR_SCORE);
++  const attach = (b: BlueprintBeat, f: (typeof weak)[number]) => {
++    b.weakness = { factor: f.name, score: f.score, tip: f.improvement_tip ?? f.rationale };
++  };
++
++  const unplaced: typeof weak = [];
+   for (const f of weak) {
+     const wantedRole = FACTOR_TARGET_ROLE[f.name.trim().toLowerCase()];
+-    const candidates = [
+-      ...(wantedRole ? beats.filter((b) => b.role === wantedRole) : []),
+-      // Fallback: the longest beat still free. A factor is never dropped — `factors` is exactly
+-      // 5 and several legitimately compete for the same role.
+-      ...[...beats].sort((a, b) => b.duration_s - a.duration_s),
+-    ];
+-    const target = candidates.find((b) => b.weakness === null);
+-    if (target) {
+-      target.weakness = { factor: f.name, score: f.score, tip: f.improvement_tip ?? f.rationale };
+-    }
++    const target = wantedRole
++      ? beats.find((b) => b.role === wantedRole && b.weakness === null)
++      : undefined;
++    if (target) attach(target, f);
++    else unplaced.push(f);
++  }
++
++  // Pass 2 — everything that could not have the role it wanted goes to the longest free beat.
++  // A factor is never dropped: `factors` is exactly 5 and several legitimately compete.
++  const byDuration = [...beats].sort((a, b) => b.duration_s - a.duration_s);
++  for (const f of unplaced) {
++    const target = byDuration.find((b) => b.weakness === null);
++    if (target) attach(target, f);
+   }
+ 
+   const totalWords = beats.reduce((n, b) => n + wordCount(b.spoken), 0);
+   const duration_s = Number((beats[beats.length - 1]!.t_end - beats[0]!.t_start).toFixed(2));
+ 
+   return {
+     duration_s,
+     words_per_second: duration_s > 0 ? Number((totalWords / duration_s).toFixed(2)) : 0,
+     has_speech: totalWords > 0,
+     beats,

@@ -1,0 +1,441 @@
+# Review package: 73635843..2836f36f
+
+## Commits
+2836f36f fix(remix): spread merge targets by elapsed time, snap radius in the same domain
+925fbcb6 docs(remix): session handoff — shoot-sheet lane, task 1 of 7, two open owner calls
+
+## Files changed
+ docs/HANDOFF-2026-08-10-remix-shoot-sheet.md     | 219 +++++++++++++++++++++++
+ src/lib/engine/remix/__tests__/blueprint.test.ts |  26 +++
+ src/lib/engine/remix/blueprint.ts                |  65 +++++--
+ 3 files changed, 296 insertions(+), 14 deletions(-)
+
+## Diff
+diff --git a/docs/HANDOFF-2026-08-10-remix-shoot-sheet.md b/docs/HANDOFF-2026-08-10-remix-shoot-sheet.md
+new file mode 100644
+index 00000000..973c9b37
+--- /dev/null
++++ b/docs/HANDOFF-2026-08-10-remix-shoot-sheet.md
+@@ -0,0 +1,219 @@
++# HANDOFF — Remix Shoot Sheet lane (2026-08-10)
++
++**Worktree:** `~/virtuna-remix-shoot-sheet` · **Branch:** `lane/remix-shoot-sheet`
++**Pushed to origin** (`.githooks/post-commit` auto-pushes). 6 ahead of `origin/main`, 5 behind.
++**Base:** branched from `feat/apify-first-sourcing`, merged up to `origin/main` `a8ccfbf4`.
++
++> ⚠️ **`git status -sb` shows no upstream and that is NOT evidence the branch is unpushed.**
++> `git push origin HEAD` does not set a tracking ref. Verify with
++> `git ls-remote origin lane/remix-shoot-sheet`. This cost a wrong claim twice in session.
++
++---
++
++## Why this lane exists
++
++Owner's framing: the highest-value workflow in Maven is **find an outlier → remix it
++faithfully → post**. Investigation found that path is **already built end to end** —
++`/feed` → outlier tile's coral "Remix → Read" CTA → `useRemixLaunch` → `/api/tools/remix/run`
++→ remix-card in the thread. Nothing about the path needs building.
++
++The problem is the artifact at the end of it: three free-floating text concepts, not a
++reproducible copy.
++
++### The finding the whole lane rests on
++
++`analyzeVideoWithOmni` **already returns** everything needed for a faithful copy, on every
++remix run, already paid for — and it is all discarded before adapt sees it.
++
++Per segment (`omni-analysis.ts:197-207`): `t_start`, `t_end`, `visual_event`, `audio_event`,
++`scene_boundary_reason`, `spoken_text`, `on_screen_text`. Plus `hook_verbatim`, `emotion_arc[]`,
++and `factors[]` with `improvement_tip`.
++
++It dies at two collapse points: `runDecode` → 4 prose beats, then
++`decodeResultToAdaptInput` → 6 strings. **Fidelity is a contract widening, not new
++infrastructure, and it costs zero additional model spend.**
++
++---
++
++## Documents (read in this order)
++
++1. `docs/superpowers/specs/2026-08-10-remix-shoot-sheet-design.md` — the design. 10 owner
++   decisions, 2 deliberate policy reversals.
++2. `docs/superpowers/plans/2026-08-10-remix-shoot-sheet-phase1.md` — phase 1, 7 tasks, TDD.
++3. `.superpowers/sdd/2026-08-10-remix-shoot-sheet-phase1/progress.md` — **the live ledger.
++   Trust this and `git log` over any summary, including this file.**
++
++---
++
++## Owner decisions (locked)
++
++| # | Decision |
++|---|---|
++| D1 | Fix the artifact, move no surfaces. `/feed`, `/home`, `/start` untouched. |
++| D2 | Fidelity covers structure, wording, style AND recording. A narrower structure-only option was offered and rejected. |
++| D3 | Pre-brief: one optional free-text line. When present it **replaces** the profile niche as the adaptation target. |
++| D4 | Simulation ranks, never gives an absolute verdict. |
++| D5 | In-chat editing must not re-run the pipeline. |
++| D6 | Shoot sheet carries frames AND 2–4s muted clips per beat. |
++| D7 | `derive-and-drop` is amended to permit those clips. |
++| D8 | D-01's content-leak guard is reversed for the wording lane. |
++| D9 | Blueprints persist in their own table, not inline on the block. |
++| D10 | Raw segments merge to **at most 8 beats**. |
++| — | Mandatory cut at t=3s; **`MAX_BEATS` stays 8** (hook consumes one of the eight). |
++| — | Task 5 gains 4 route tests; its step-2 seam pin is deliberate, not broken TDD. |
++
++### Two prior owner decisions this lane deliberately overrules
++
++- **`D-01`** (`decode-types.ts:155`) kept the source's content out of `AdaptInput` at compile
++  time. D2 requires adapt to see `spoken_text`. Replaced by the echo guard (Task 2).
++- **`derive-and-drop` / `T-03-02`** (`resolve-and-rehost.ts:66`, "source media is not owned")
++  — enforced across 3 test files. Phase 4 amends it for ≤4s muted fragments.
++
++### Consistent with
++
++`docs/DECISION-outlier-corpus-2026-08-07.md` — curated shared corpus, not per-user scraping.
++This lane touches no sourcing.
++
++---
++
++## Where execution actually is
++
++**Task 1 of 7. Nothing else has started.** Briefs for all 7 are staged in the workspace.
++
++| Task | State |
++|---|---|
++| 1 Blueprint assembly | implemented; fix round 2 of 5 done, re-review in flight |
++| 2 Echo guard | brief staged |
++| 3 Widen adapt contract | brief staged |
++| 4 `remix_blueprints` + repo | brief staged |
++| 5 Runner + route integration | brief staged |
++| 6 Read route + beat renderer | brief staged |
++| 7 Live verification | brief staged |
++
++### Commits
++
++```
++73635843 fix round 2 — snap radius, two-pass factors, hookCutIndex, midpoint turn
++660ff616 fix round 1 — merge collapse, real factor names, turn+close always assigned
++1d25c6e1 feat — timed blueprint
++19adecfe docs — pre-flight rulings
++be0bb6cd docs — phase 1 plan
++eb2dfaa4 docs — spec review applied
++ba39917c docs — design spec
++```
++
++Only file built so far: `src/lib/engine/remix/blueprint.ts` + its 25 tests.
++
++---
++
++## What review caught (the reason task 1 took 2 fix rounds)
++
++The plan's own code carried two bugs into the implementation:
++- it read `spoken_text` / `on_screen_text` off `OmniStructuralInput["segments"]`, which
++  **does not declare them** — would not compile. Fields exist at runtime
++  (`decode.ts:256` passes by reference); the TYPE is narrower than the data.
++- its `t_start < 3` hook rule failed the plan's **own** test 6.
++
++Then, across two review rounds:
++- the merge collapsed **75%** of a 60s video into one beat on the `buildFixedBuckets`
++  fallback path (which stamps `scene_boundary_reason` on *every* cell);
++- the fix fixed that path and **reintroduced the same collapse** on clustered boundaries
++  (70% in one beat on an ordinary talking-head-then-montage shape);
++- `/hook|open|first/i` could never match — `HookFactorSchema.name` is a **closed 5-value
++  enum**, so a 2/10 Scroll-Stop Power landed on a setup beat;
++- factor placement was order-dependent, displacing `Emotional Charge` off `turn`;
++- `hookCutIndex` no-opped exactly where overrun was worst — beat 0 = 0–20s labelled `hook`;
++- the turn fallback took beat 1, erasing `setup` entirely.
++
++**Lesson worth carrying:** each round's tests only prove the shapes they test. The hook bug
++was caught because a test exercised it; the merge bug survived because no test set
++`scene_boundary_reason`.
++
++---
++
++## OPEN — needs the owner
++
++**1. `FACTOR_TARGET_ROLE` mapping.** Now unblocked (it did not hold at runtime until round 2).
++Real output, 60s fallback grid, peak at 30s, all five factors weak:
++
++```
++beat 0   0-3 s  hook    Scroll-Stop Power
++beat 1   3-11s  setup   Completion Pull
++beat 2  11-19s  setup   Share Trigger      <- fallback, wanted close
++beat 3  19-27s  setup   -
++beat 4  27-37s  turn    Emotional Charge
++beat 5  37-45s  payoff  -
++beat 6  45-53s  payoff  -
++beat 7  53-60s  close   Rewatch Potential
++```
++
++4 of 5 land where intended. `Share Trigger` wants `close`, loses it to `Rewatch Potential`,
++and ends up reporting a share problem against a setup beat at 11–19s.
++
++**Proposed (one line, gives 5/5):** unmap `Rewatch Potential` — it is a whole-video property
++with no single home — handing `close` to `Share Trigger` and sending Rewatch to longest-free.
++Both the reviewer and the implementer independently reached this. **Needs a ruling.**
++
++**2. Task 4 migration must be applied by hand.** `supabase db push` is unsafe here (ledger
++drift). SQL is in the plan; verification queries for RLS are in Task 4 Step 6. A table with
++RLS on and no policy reads as empty and writes fail silently.
++
++---
++
++## Known residuals carried forward
++
++- **Degenerate shape:** beat 0 can be 5s and still *labelled* `hook` (`opensTheVideo` tags the
++  first beat whenever it opens inside the zone). Fixing the label needs a cell split this
++  module does not own. Deliberate smaller-misstatement choice. **Task 6 renders this label.**
++- **Snap radius is a tuned heuristic** — the two cluster tests pin behaviour, not the number.
++- **Everything so far is synthetic.** No real omni response has touched this code.
++- **Carry to Task 3:** add `spoken_text?: string | null` and `on_screen_text?: string | null`
++  to `OmniStructuralInput["segments"]` and **delete the local widening in `blueprint.ts`**, or
++  the two definitions drift. If Task 3 adds them non-nullable, the intersection silently
++  narrows instead of erroring.
++- **Carry to Task 7:** assert `has_speech === true` on a real talking-head video. If those
++  fields stop arriving, `words_per_second` silently goes 0 and the sheet flips to
++  on-screen-text-driven. No unit test can catch it — the tests supply their own segments.
++
++### Deferred minors (for the final whole-branch review)
++
++`cuts` counts cells while its doc says boundaries (feeds an LLM prompt + UI) · `audio_event`
++keeps only the first cell while `visual_event` joins all · `has_speech: true` with
++`words_per_second: 0` on a zero-duration grid · vacuous `.every()` at the old test:70 ·
++weak assertions (beat count only bounded, payoff never asserted, `on_screen_text` join and
++`improvement_tip ?? rationale` untested, no 8-vs-9 boundary test) · single-beat input gets
++`hook` and no `close` · `payoff` unreachable when `emotion_arc` is absent (slideshow/b_roll) ·
++`weakness.factor` stores raw casing/whitespace · budget under-use when spread targets collide
++(n=9 → 7 beats) · test file now imports `qwen/normalize-segments`, a new cross-package
++test dependency.
++
++---
++
++## THE GATE — Task 7
++
++Phase 1 exists to answer one question: **does a duration-matched, beat-mapped remix actually
++read as a faithful copy?**
++
++Stop conditions, both hard:
++1. `spoken_text` arrives null on a real talking-head video → the core input assumption is
++   wrong, phase 1 does not work, **do not proceed to phase 2**.
++2. Echo check shows >1 shared content token per beat between source and adapted line → the
++   D-01 reversal has failed and the model is paraphrasing the source's topic.
++
++Phases 2–5 (pre-brief + the two bug fixes, frames, clips + the policy amendment,
++`revise_remix`) are **not started and not planned in detail**. Phase 4 is the only one
++carrying the `derive-and-drop` reversal — if phase 1 doesn't feel like a cheatcode, that cost
++is never paid.
++
++---
++
++## Two bugs found in passing, still unfixed (phase 2 scope)
++
++- `/api/discover` + `/api/tools/explore` still call `rankOutliers`, whose baseline is the
++  median of the returned set — the same video prints 1.4× or 28.4× purely from
++  `resultsPerPage`. `src/lib/discover/author-baseline.ts` has the fix; the call sites were
++  never switched. **The label must change with the basis**: `"vs their lifetime average"`,
++  never `"vs their usual views"`.
++- `use-remix-launch.ts:33` never checks `res.ok`, and `fetch` does not throw on HTTP status.
++  A 402 credit refusal or 401 navigates to `/home` with no card and no message. `pendingId`
++  also never clears on success.
+diff --git a/src/lib/engine/remix/__tests__/blueprint.test.ts b/src/lib/engine/remix/__tests__/blueprint.test.ts
+index afb1ee9c..4cb1c8cf 100644
+--- a/src/lib/engine/remix/__tests__/blueprint.test.ts
++++ b/src/lib/engine/remix/__tests__/blueprint.test.ts
+@@ -110,36 +110,62 @@ describe("buildBlueprint", () => {
+   });
+ 
+   it("isolates the first cell when that cell is itself wider than the hook zone", () => {
+     // 5s cells. No boundary at 3s AND the first cell already overruns the zone, so no cut can
+     // make the opening beat 3s. Isolating cell 0 (0-5s) is the floor; merging four cells into
+     // a 0-20s beat still labelled "hook" is the defect.
+     const segments = Array.from({ length: 30 }, (_, i) => seg(i * 5, i * 5 + 5));
+     const bp = buildBlueprint(structural({ segments }));
+     expect(bp.beats[0]!.t_end).toBe(5);
+     expect(bp.beats[0]!.duration_s).toBe(5);
++    // ACCEPTED RESIDUAL: the beat is 5s and still labelled "hook". No cut can make it 3s —
++    // splitting a cell would fabricate a boundary the perception never reported, and a hookless
++    // blueprint is worse. Pinned here so the trade is a test, not just a comment. Task 6 renders
++    // t_start/t_end beside the role, which is what makes a 0-5s "hook" self-describing.
++    expect(bp.beats[0]!.role).toBe("hook");
+   });
+ 
+   it("does not snap to a distant boundary cluster — late cluster (talking head then montage)", () => {
+     // 40 x 1.5s cells, real boundaries only from cell 30 on. Snapping every spread target to the
+     // globally nearest boundary dragged all six cuts into the cluster: beat 1 spanned 3-45s.
+     const segments = Array.from({ length: 40 }, (_, i) =>
+       seg(i * 1.5, i * 1.5 + 1.5, i >= 30 ? { scene_boundary_reason: "shot change" } : {}),
+     );
+     const bp = buildBlueprint(structural({ segments }));
+     const longest = Math.max(...bp.beats.map((b) => b.duration_s));
+     expect(longest).toBeLessThanOrEqual(bp.duration_s * 0.4);
+     for (let i = 1; i < bp.beats.length; i++) {
+       expect(bp.beats[i]!.t_start).toBe(bp.beats[i - 1]!.t_end);
+     }
+   });
+ 
++  it("spreads by ELAPSED TIME, not cell count, when cell widths vary wildly", () => {
++    // 6 x 20s then 18 x 1s — a static talking head that cuts to a fast montage. The model path
++    // can emit this: normalizeSegments enforces MIN_CELL_WIDTH_S but no maximum. Spreading by
++    // cell index gives every cell equal weight, so the six wide cells collapse into two beats
++    // (20-80s = 43% of the video) while eighteen 1s cells get six beats between them.
++    // No scene boundaries here — the snap radius is not involved.
++    const segments = [
++      ...Array.from({ length: 6 }, (_, i) => seg(i * 20, i * 20 + 20)),
++      ...Array.from({ length: 18 }, (_, i) => seg(120 + i, 121 + i)),
++    ];
++    const bp = buildBlueprint(structural({ segments }));
++
++    expect(bp.duration_s).toBe(138);
++    const longest = Math.max(...bp.beats.map((b) => b.duration_s));
++    expect(longest).toBeLessThanOrEqual(bp.duration_s * 0.4);
++    for (let i = 1; i < bp.beats.length; i++) {
++      expect(bp.beats[i]!.t_start).toBe(bp.beats[i - 1]!.t_end);
++    }
++    expect(bp.beats.reduce((n, b) => n + b.cuts, 0)).toBe(segments.length);
++  });
++
+   it("does not snap to a distant boundary cluster — tight mid-video cluster", () => {
+     // 30 x 2s cells, boundaries only at cells 20-22. Produced a 2-36s beat (57% of the video).
+     const segments = Array.from({ length: 30 }, (_, i) =>
+       seg(i * 2, i * 2 + 2, i >= 20 && i <= 22 ? { scene_boundary_reason: "cut" } : {}),
+     );
+     const bp = buildBlueprint(structural({ segments }));
+     const longest = Math.max(...bp.beats.map((b) => b.duration_s));
+     expect(longest).toBeLessThanOrEqual(bp.duration_s * 0.4);
+     expect(bp.beats.reduce((n, b) => n + b.cuts, 0)).toBe(segments.length);
+   });
+diff --git a/src/lib/engine/remix/blueprint.ts b/src/lib/engine/remix/blueprint.ts
+index f6867187..c6e27d1f 100644
+--- a/src/lib/engine/remix/blueprint.ts
++++ b/src/lib/engine/remix/blueprint.ts
+@@ -104,51 +104,79 @@ function hookCutIndex(segments: Segment[]): number {
+   const exact = segments[after]!.t_start === HOOK_ZONE_END_S;
+   if (exact) return after;
+   // No boundary lands on 3s. Cut at the one before, so the opening beat is SHORTER than the
+   // hook zone rather than longer. When that would be index 0 the first cell is itself wider
+   // than the zone and no cut can fix it — isolate that cell anyway (cut at 1). Returning -1
+   // here used to drop the hook cut entirely and let the even spread merge MORE cells into
+   // beat 0: on a 5s-cell grid that produced a 0-20s beat labelled "hook".
+   return after - 1 > 0 ? after - 1 : 1;
+ }
+ 
++/** The cell index whose start time sits closest to `t`, restricted to the open range (lo, hi). */
++function indexNearestTime(segments: Segment[], t: number, lo: number, hi: number): number | null {
++  let best: number | null = null;
++  let bestDist = Infinity;
++  for (let i = lo + 1; i < hi; i++) {
++    const d = Math.abs(segments[i]!.t_start - t);
++    if (d < bestDist) {
++      bestDist = d;
++      best = i;
++    }
++  }
++  return best;
++}
++
+ /**
+- * Pick the cut nearest `target`, snapping to a real scene boundary only when one is within
+- * `maxDistance`. Returns null when nothing in range is still free.
++ * Pick the cut for a spread target, snapping to a real scene boundary only when one lies within
++ * `radiusSeconds` OF THE TARGET TIME. Returns null when nothing in range is still free.
+  *
+  * The cap is what makes this "prefer a real cut" rather than "chase the nearest cut anywhere".
+  * Uncapped, a cluster of boundaries drags every spread target into it and reproduces exactly the
+  * collapse this function was written to fix: 40 cells with boundaries only from cell 30 on — an
+  * ordinary talking-head-then-montage shape — put 70% of the video in one beat while the beats
+  * inside the cluster were 1.5s each.
++ *
++ * Half a step is DERIVED, not tuned: it is the unique radius at which a cut cannot cross the
++ * midpoint between two adjacent targets, i.e. cannot enter a neighbour's territory. Anything
++ * larger lets cuts leapfrog and re-cluster, which is the defect above. It bounds a beat at ~2x
++ * its even share — two adjacent cuts can each move half a step in opposite directions — or ~2.3x
++ * when a collision makes this return null and drops a cut, merging two slots.
++ *
++ * The comparison is in SECONDS, matching the domain the targets are spread in. It used to be in
++ * cell-index units, which silently broke the derivation once targets became time-derived: cells
++ * have no maximum width, so evenly-spaced times map to UNEVENLY spaced indices, and an
++ * index-space radius can exceed the actual index gap between adjacent targets. On the 6x20s +
++ * 18x1s shape the gap was ~1 index against a radius of 1.64 — a cut could leapfrog its neighbour.
+  */
+ function nearestCut(
+-  target: number,
++  segments: Segment[],
++  targetTime: number,
++  targetIdx: number,
+   preferred: number[],
+   lo: number,
+   hi: number,
+   taken: Set<number>,
+-  maxDistance: number,
++  radiusSeconds: number,
+ ): number | null {
+   const free = (i: number) => i > lo && i < hi && !taken.has(i);
+   let best: number | null = null;
+   let bestDist = Infinity;
+   for (const p of preferred) {
+     if (!free(p)) continue;
+-    const d = Math.abs(p - target);
+-    if (d <= maxDistance && d < bestDist) {
++    const d = Math.abs(segments[p]!.t_start - targetTime);
++    if (d <= radiusSeconds && d < bestDist) {
+       bestDist = d;
+       best = p;
+     }
+   }
+   if (best !== null) return best;
+-  return free(target) ? target : null;
++  return free(targetIdx) ? targetIdx : null;
+ }
+ 
+ /**
+  * Merge raw cells into at most MAX_BEATS groups of contiguous segments.
+  *
+  * The budget is spent as: one beat for the hook (cut fixed at 3s) + the rest spread evenly across
+  * the body, each spread target snapped to the nearest real `scene_boundary_reason` when one is in
+  * reach. Cells are never dropped or reordered, so the timeline stays continuous.
+  *
+  * This used to keep the EARLIEST MAX_BEATS-1 preferred boundaries, which degenerates badly:
+@@ -168,28 +196,37 @@ function groupSegments(segments: Segment[]): Segment[][] {
+   });
+ 
+   const cuts = new Set<number>();
+ 
+   // The hook beat takes one of the MAX_BEATS; the body gets the remainder.
+   const hookCut = hookCutIndex(segments);
+   if (hookCut > 0) cuts.add(hookCut);
+   const bodyStart = hookCut > 0 ? hookCut : 0;
+ 
+   const wanted = MAX_BEATS - cuts.size - 1;
+-  const span = segments.length - bodyStart;
+-  const step = span / (wanted + 1);
+-  // Half a step: far enough to honour a nearby real boundary, near enough that a beat can never
+-  // grow past ~1.5x its even share.
+-  const snapRadius = step / 2;
++
++  // Spread the body cuts by ELAPSED TIME, not by cell index. Cells have a minimum width
++  // (MIN_CELL_WIDTH_S) but NO maximum, so index-spreading gives a 20s cell and a 1s cell equal
++  // weight: a static talking head that cuts to a fast montage (6x20s then 18x1s) put 60s of 138s
++  // — 43% — into one beat while the montage got six beats. Time-spreading is what makes a beat's
++  // share of the budget match its share of the video.
++  const bodyStartTime = segments[bodyStart]!.t_start;
++  const timeSpan = segments[segments.length - 1]!.t_end - bodyStartTime;
++  const timeStep = timeSpan / (wanted + 1);
++  const snapRadius = timeStep / 2; // seconds — same domain as the targets
+   for (let k = 1; k <= wanted; k++) {
+-    const target = bodyStart + Math.round(k * step);
+-    const cut = nearestCut(target, preferred, bodyStart, segments.length, cuts, snapRadius);
++    const targetTime = bodyStartTime + k * timeStep;
++    const targetIdx = indexNearestTime(segments, targetTime, bodyStart, segments.length);
++    if (targetIdx === null) continue;
++    const cut = nearestCut(
++      segments, targetTime, targetIdx, preferred, bodyStart, segments.length, cuts, snapRadius,
++    );
+     if (cut !== null) cuts.add(cut);
+   }
+ 
+   const cutPoints = [...cuts].sort((a, b) => a - b);
+ 
+   const groups: Segment[][] = [];
+   let start = 0;
+   for (const cut of cutPoints) {
+     groups.push(segments.slice(start, cut));
+     start = cut;
