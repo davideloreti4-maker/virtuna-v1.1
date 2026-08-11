@@ -91,9 +91,21 @@ export function emptyBlueprint(): SourceBlueprint {
 
 /**
  * `OmniStructuralInput["segments"]` does not declare the verbatim-speech fields, but the real
- * `SegmentGrid` (qwen/schemas.ts) does carry `spoken_text` / `on_screen_text` and
- * `normalizeSegments` passes them straight through. Widened locally — decode-types.ts is
- * owned by another task and is not ours to edit.
+ * `SegmentGrid` (qwen/schemas.ts:127-128) does carry `spoken_text` / `on_screen_text` and
+ * `normalizeSegments` passes them straight through. They survive because decode.ts:256 assigns
+ * the wider producer object into the narrower declared type, which TypeScript permits.
+ *
+ * Widened locally, and DELIBERATELY still local as of Task 3 — the earlier note here claimed
+ * decode-types.ts was "owned by another task and not ours to edit", which is no longer true.
+ * The reason is now a different one: widening the canonical type would NOT buy the safety it
+ * looks like it buys. `SegmentGrid` declares both fields `.nullable().optional()`, so the
+ * canonical copy would be optional too, and a producer that stopped emitting `spoken_text`
+ * would still compile clean, still pass every test (the tests supply their own segments), and
+ * silently flip the sheet to on-screen-text-driven via `has_speech: false`.
+ *
+ * What actually catches that is the Task 7 live assertion on a real talking-head video. The
+ * real type fix is to declare `segments` AS `SegmentGrid[]` so producer changes propagate —
+ * a refactor of the shared omni path, deferred to the whole-branch review, not to this lane.
  */
 type Segment = NonNullable<OmniStructuralInput["segments"]>[number] & {
   spoken_text?: string | null;
