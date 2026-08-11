@@ -7,8 +7,8 @@ conversation about the output-side honesty check.
 record; read its §0 for anything not covered here.
 **Nothing merged, nothing deployed** (Vercel disconnected).
 
-Gates: `tsc` clean · prod build clean · **5,886 passed / 0 failed** (was 5,857; +29 new).
-Spend: **4 credits** — four signed-in route walks. The A/B's 24 generations cost **0** (stub till).
+Gates: `tsc` clean · prod build clean · **5,903 passed / 0 failed** (was 5,857; +46 new).
+Spend: **6 credits** — six signed-in route walks. The 30 probe generations cost **0** (stub till).
 
 ⚠️ Three ledger rows I did not create sit inside today's window: `account` ×2 and `explore_scrape`
 (15 credits, 08:02–08:06Z). Not from anything run here. The e2e account is a REAL prod account
@@ -19,12 +19,14 @@ session's spend.
 
 ## 0. ▶️ START HERE
 
-**Shipped:** two commits.
+**Shipped:** four source/test commits.
 
 | | |
 |---|---|
 | `ef285bb6` | the conversation digest now carries the turn it is answering (§1–§2) |
-| `c6baa49f` | the narrator can SEE the pack it just made — `ENGINE_CHAT_CARDS_ON_SCREEN`, flagged OFF (§3, §10) |
+| `c6baa49f` | the narrator can SEE the pack it just made — flagged OFF (§3, §10) |
+| `8c204865` | generalised to EVERY skill's output, and flipped **ON** as a kill-switch (§12) |
+| `1c4e5739` | the replay path's context records had no coverage at all (§12.2) |
 
 **The defect that started the second commit.** A live tool result told the model the card COUNT and
 not the card LINES, then instructed it in prose not to restate them. Measured live, **2 of 2 turns**:
@@ -47,13 +49,16 @@ friction… Want me to write a script around that one?"*
 
 **Do next, in this order:**
 
-1. **Owner call: flip `ENGINE_CHAT_CARDS_ON_SCREEN`?** The §12.1 objection is answered and the
-   positive change is categorical. The elimination claim is *not* proven — see §10.3.
-2. **The honesty-check design conversation** — still owed, and §10 narrows it. §4 has the four
-   decisions; §11 has what the A/B changed about them.
-3. **A separate reliability problem the A/B surfaced:** 3 of 12 unpinned runs on a plain ask did
-   not dispatch at all, one of them incoherently (*"I need the actual text of the hooks you want me
-   to generate for"*). Unrelated to this fix — no tool ran, so the flag cannot reach it. §10.4.
+1. **The Read card's `lever` field.** For a SINGLE-audience Read it is a meta-nudge
+   (*"Calibrate a second audience…"*), not a craft lever — so the model substitutes a useful
+   sentence for a useless one and the creator reads it as the Read's finding. Fixing the narration
+   without fixing the field would only make the product relay a nudge nobody wants. **§12.3.**
+2. **A separate reliability problem the A/B surfaced:** 3 of 12 unpinned runs on a plain ask never
+   dispatched, one of them incoherently (*"I need the actual text of the hooks you want me to
+   generate for"*). No tool ran, so nothing here reaches it — this is dispatch reliability, and on
+   a plain "give me hooks for X" it is arguably the worse experience. **§10.4.**
+3. **The honesty-check design conversation** — still owed, and now narrowed to one shape: prose
+   claiming an artefact when NO tool ran. §4 has the decisions; §11 has what the A/B changed.
 
 **Still parked, do not touch without the owner:** the `writing_voice_sample` migration; adding
 goals/wins/flops to `MODE_ROLES.chat`; building the honesty check ahead of the conversation.
@@ -250,6 +255,10 @@ node node_modules/tsx/dist/cli.mjs .scratch/measure-current-turn-digest.ts   # �
 node node_modules/tsx/dist/cli.mjs .scratch/count-credits-session9.ts        # today's spend window
 zsh .scratch/mutate-current-turn.sh                                          # §1's six mutations
 zsh .scratch/mutate-cards-on-screen.sh                                       # §10's seven mutations
+zsh .scratch/mutate-on-screen.sh                                             # §12's six mutations
+
+# the Read half — real Flash, stub till, 0 credits
+node node_modules/tsx/dist/cli.mjs .scratch/probe-read-narration.ts 3
 
 # the A/B — real Qwen + real pipeline, STUB till, 0 credits. ~8 min for 24 runs.
 GROUNDING_HOOKS_ENABLED=true ENGINE_GEN_CONVERSATION=true \
@@ -410,6 +419,74 @@ its screen could not classify.
 
 ---
 
+## 12. Generalised past the generators, and flipped ON — `8c204865`
+
+The owner's requirement: *"it needs to work for all sorts of skills and chat."* The §10 fix covered
+three generator card types. That left the one **analysis** skill the agent can call exactly as blind
+as before: `read_concept` returns a `multi-audience-read`, so the agent could run a creator's draft
+past their audience and then narrate the verdict without being able to read it.
+
+### 12.1 What changed
+
+- **Keyed off the BLOCK, not a hardcoded generator list.** `SKILL_BLOCK_RECORD` — the 9-type
+  describer map the replay path has used since 2026-08-04 — moved into `on-screen.ts` (renamed from
+  `card-lines.ts`) and now feeds both seams. A test asserts every `RECORDED_BLOCKS` type is
+  reachable live, so a new skill cannot be added blind. The reachability drift guard keeps its
+  import path via re-export.
+- **Two kinds, two instructions**, because the creator is doing a different thing with each. A
+  `cards_on_screen` PACK is a set they are choosing between → compare and name one. A
+  `result_on_screen` VERDICT is something they are reading → build on it, *never contradict it*.
+- **Flipped ON.** `ENGINE_CHAT_CARDS_ON_SCREEN` is now a kill-switch (`!== "false"`), the shape
+  `CHAT_AGENT_DISPATCH` already ships with.
+- **Hardened.** The guard wraps the whole per-block read, not the describer body. Live, this runs
+  AFTER the creator is billed and their cards are on screen, so no failure is worth propagating.
+  The first version guarded only inside the describer and was defeated by reading `.props`.
+
+**Gates:** `tsc` clean · prod build clean · **5,899 passed / 0 failed** · 6 mutations, all caught.
+
+### 12.2 🔴 A mutation found that the REPLAY path's records had never been tested
+
+Replacing `recordLineOf(...)` with a constant failed **nothing**. `SKILL_BLOCK_RECORD` had shipped
+for a week — the fix for 107 of 982 persisted blocks (11%) being invisible to the agent — with no
+test asserting a record line is produced at all. Closed in `1c4e5739` with four tests; the mutation
+now fails 3.
+
+This is the lane's own thesis landing again: the green suite was the accomplice. And it matters more
+now, because the same describers feed both seams — a silent regression would blind them together.
+
+### 12.3 The results half is a PARTIAL fix — measured, not assumed
+
+`.scratch/probe-read-narration.ts`, 3 runs per arm, real Flash, stub till.
+Card every run: `@mrbeast | Strong | 6/10 stop`, lever *"Strong for @mrbeast. Calibrate a second
+audience to see where it diverges."*
+
+| | arm A · count only | arm B · `result_on_screen` |
+|---|---|---|
+| consistent with the band | 3/3 | 3/3 |
+| **fabricated metrics** | **1/3** | **0/3** |
+| relays the card's lever (`leverSim`) | 0.02–0.03 | 0.02–0.04 |
+| names the audience the card names | 0/3 | 0/3 |
+
+**The win is the fabrication.** Arm A run 2 invented a whole report — *"**Key Metrics:** · **Stop
+Rate:** High · **Fraction Who Engage:** Moderate-to-High"* — numbers the Read never produced and a
+metric it does not even compute, presented as its findings. Arm B produced none.
+
+**The gap is the lever.** Neither arm relays it, and the first live walk showed the same thing: the
+model announced *"the lever to push it higher is specificity"* when the card's lever said something
+else entirely. A creator reads that as the Read's finding. It is not.
+
+> ⚠️ Partly the CARD's fault, and worth its own look: for a SINGLE-audience Read the `lever` field is
+> a meta-nudge (*"Calibrate a second audience…"*), not a craft lever. The model is substituting a
+> useful sentence for a useless one. Fixing the narration without fixing that field would only make
+> the product relay a nudge nobody wants.
+
+Neither arm names `@mrbeast`; both say "your audience". Unmeasured whether that matters.
+
+**n = 3 per arm, one card, one concept.** The fabrication difference is categorical; the rest is not
+a tight interval.
+
+---
+
 ## 11. What the A/B changes about the honesty-check design (§4)
 
 §4's four decisions stand, with one narrowed and one answered:
@@ -435,6 +512,9 @@ its screen could not classify.
 ef285bb6  fix(chat): the digest was missing the turn it was answering
 500efab5  docs(chat): session 9 — the missing turn, and a count-only tool result
 c6baa49f  feat(chat): let the narrator see the pack it just made (flagged)
+75e49593  docs(chat): the A/B — and the control arm that did not fail
+8c204865  feat(chat): every skill's output is visible to the narrator; default ON
+1c4e5739  test(chat): the replay path's context records had NO coverage
 ```
 
 Both source commits are flag-confined. `ENGINE_GEN_CONVERSATION` off → the loop returns
