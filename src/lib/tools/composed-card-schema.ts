@@ -104,22 +104,31 @@ export type RecipeId = ComposedCardBlock["props"]["recipe"];
 export interface Recipe {
   /** What this recipe's payoff must BE. */
   deliverable: "line" | "claim" | "name";
-  /** Slot kinds this recipe may use. */
+  /** Slot kinds this recipe may use — in `body` AND in `disclosure` alike. */
   legalSlots: SlotKind[];
-  /** Slot kinds it MUST have. */
+  /** Slot kinds it MUST have, in the VISIBLE body. A required slot in a drawer is not shown. */
   requiredSlots: SlotKind[];
+  /**
+   * How many cards this recipe emits (spec §4.2: "each declares its … card count").
+   * Enforced at the emit boundary in emit-card-tool.ts — the only place that sees the whole
+   * array — but DECLARED here, because the recipe is the schema.
+   */
+  cardCount: { min: number; max: number };
 }
 
-/** Spec §4.2's registry. Each recipe declares its deliverable kind, legal slots and requirements. */
+/** Spec §4.2's registry. Each recipe declares its deliverable kind, legal slots, requirements and count. */
 export const RECIPES: Record<RecipeId, Recipe> = {
-  "hook-set":   { deliverable: "line",  legalSlots: ["proof_strip", "note", "chips"], requiredSlots: [] },
-  "format-set": { deliverable: "claim", legalSlots: ["proof_strip", "beats", "note", "chips"], requiredSlots: ["beats"] },
-  "angle-set":  { deliverable: "claim", legalSlots: ["beats", "bullets", "note"], requiredSlots: ["beats"] },
-  "idea-set":   { deliverable: "claim", legalSlots: ["beats", "bullets", "note"], requiredSlots: ["beats"] },
-  script:       { deliverable: "claim", legalSlots: ["script_timeline", "note", "label_values"], requiredSlots: ["script_timeline"] },
-  comparison:   { deliverable: "claim", legalSlots: ["comparison", "bullets", "note"], requiredSlots: ["comparison"] },
-  teardown:     { deliverable: "claim", legalSlots: ["proof_strip", "beats", "quote", "note"], requiredSlots: ["proof_strip", "beats"] },
-  brief:        { deliverable: "claim", legalSlots: ["bullets", "label_values", "beats", "stat_row", "quote", "chips", "note"], requiredSlots: [] },
+  "hook-set":   { deliverable: "line",  legalSlots: ["proof_strip", "note", "chips"], requiredSlots: [], cardCount: { min: 3, max: 5 } },
+  "format-set": { deliverable: "claim", legalSlots: ["proof_strip", "beats", "note", "chips"], requiredSlots: ["beats"], cardCount: { min: 1, max: 1 } },
+  "angle-set":  { deliverable: "claim", legalSlots: ["beats", "bullets", "note"], requiredSlots: ["beats"], cardCount: { min: 1, max: 1 } },
+  "idea-set":   { deliverable: "claim", legalSlots: ["beats", "bullets", "note"], requiredSlots: ["beats"], cardCount: { min: 1, max: 1 } },
+  script:       { deliverable: "claim", legalSlots: ["script_timeline", "note", "label_values"], requiredSlots: ["script_timeline"], cardCount: { min: 1, max: 1 } },
+  // G3, considered and left alone: §4.2's shape column reads "comparison + bullets", the code
+  // requires only `comparison`. Requiring both would reject a legitimate two-column comparison
+  // that carries no extra points. Deliberate, not an oversight.
+  comparison:   { deliverable: "claim", legalSlots: ["comparison", "bullets", "note"], requiredSlots: ["comparison"], cardCount: { min: 1, max: 1 } },
+  teardown:     { deliverable: "claim", legalSlots: ["proof_strip", "beats", "quote", "note"], requiredSlots: ["proof_strip", "beats"], cardCount: { min: 1, max: 1 } },
+  brief:        { deliverable: "claim", legalSlots: ["bullets", "label_values", "beats", "stat_row", "quote", "chips", "note"], requiredSlots: [], cardCount: { min: 1, max: 1 } },
 };
 
 /**
@@ -165,13 +174,19 @@ export function parseComposedCard(
     };
   }
 
+  // Required slots must be in the VISIBLE body — satisfying `proof_strip` from inside a collapsed
+  // drawer would let a card claim proof the reader never sees.
   const kinds = new Set(block.props.body.map((s) => s.kind));
   for (const required of recipe.requiredSlots) {
     if (!kinds.has(required)) {
       return { ok: false, reason: `recipe "${block.props.recipe}" requires a ${required} slot` };
     }
   }
-  for (const slot of block.props.body) {
+  // Legality covers `disclosure` too (G2). The contract's §0.5 row 6 says *where* a second labelled
+  // section goes — into the drawer — not that it escapes the recipe's vocabulary. A drawer that may
+  // hold any slot is the unconstrained card the composer exists to prevent; if a recipe genuinely
+  // needs a kind in its disclosure, widen its legalSlots here, where the decision is reviewable.
+  for (const slot of [...block.props.body, ...(block.props.disclosure ?? [])]) {
     if (!recipe.legalSlots.includes(slot.kind)) {
       return { ok: false, reason: `recipe "${block.props.recipe}" does not allow a ${slot.kind} slot` };
     }
