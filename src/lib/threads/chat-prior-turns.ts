@@ -20,6 +20,7 @@
 
 import type { HydratedMessage } from "@/lib/threads/messages";
 import type { ChatAgentPriorTurn } from "@/lib/tools/chat-agent-loop";
+import { cardLineOf, MAX_LINES_PER_RUN } from "@/lib/tools/card-lines";
 
 /**
  * Max prior turns to carry as context anchor.
@@ -41,28 +42,13 @@ const CARD_BLOCK_TOOL: Record<string, string> = {
 };
 
 /**
- * The one line that IDENTIFIES each card, per type — what the creator is looking at on screen.
+ * The identifying line per card, the caps, and the reason both exist now live in `card-lines.ts`
+ * (imported at the top of this file as `cardLineOf` / `MAX_LINES_PER_RUN`).
  *
- * Carrying the count alone ("5 card(s)") was right for the replay's original job: proving a tool ran.
- * But it left the model unable to talk about its own output. Asked "Which of these hooks is strongest
- * for my audience, and why?" — a shipped follow-up chip — it answered *"I don't have the specific
- * hook lines you're referring to in front of me. Paste the 2–3 options you're debating"*, about cards
- * the app itself had just rendered (confirmed live 2026-08-04). The chip is on screen and structurally
- * unable to do its job.
- *
- * Deliberately ONE line per card, not the card: the model needs to reference and compare them, not
- * re-render them. Score bands, personas, proof and mechanism stay out — they are on screen already,
- * and every extra field is tokens on every later turn in the thread.
+ * Moved there 2026-08-11 because the LIVE tool result (`chat-agent-loop.ts`) needed the identical
+ * extraction and had been shipping without it — so the model could discuss a pack it made last
+ * turn but not the one it had just made. Two copies of this map is exactly how that happens again.
  */
-const CARD_LINE: Record<string, (props: Record<string, unknown>) => unknown> = {
-  "idea-card": (p) => p.title,
-  "hook-card": (p) => p.hookLine,
-  "script-card": (p) => p.title,
-};
-
-/** Per-run caps on the replayed lines — a reference, never a transcript of the whole pack. */
-const MAX_LINES_PER_RUN = 6;
-const MAX_LINE_LENGTH = 200;
 
 // ─── The rest of the thread — every OTHER skill's output ─────────────────────
 /**
@@ -293,11 +279,11 @@ export function openChatPriorTurns(hydratedMessages: HydratedMessage[]): ChatAge
         const current = run ?? pendingRuns[pendingRuns.length - 1]!;
         // The identifying line, capped in count and length. A card whose line is missing or not a
         // string is simply counted and not quoted — never a placeholder, which would read to the
-        // model as a card whose text is literally "undefined".
-        const raw = CARD_LINE[block.type]?.(block.props as Record<string, unknown>);
-        if (typeof raw === "string" && raw.trim() && current.lines.length < MAX_LINES_PER_RUN) {
-          current.lines.push(raw.trim().slice(0, MAX_LINE_LENGTH));
-        }
+        // model as a card whose text is literally "undefined". `cardLineOf` owns that rule for
+        // both this path and the live one.
+        const line =
+          current.lines.length < MAX_LINES_PER_RUN ? cardLineOf(block.type, block.props) : null;
+        if (line) current.lines.push(line);
         continue;
       }
       if (block.type !== "markdown") continue;

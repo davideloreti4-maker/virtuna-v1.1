@@ -34,6 +34,7 @@ import {
   buildConversationDigest,
   isConversationDigestEnabled,
 } from "@/lib/tools/conversation-digest";
+import { extractCardLines, isChatCardsOnScreenEnabled } from "@/lib/tools/card-lines";
 import { SEARCH_CORPUS_TOOL, executeCorpusSearch } from "@/lib/grounding/corpus-tool";
 import { retrieveCachedExamples } from "@/lib/grounding/retrieve";
 import {
@@ -1288,15 +1289,39 @@ export async function runChatAgentStream(
         // the route can stamp the persisted turn (run-header) with what actually ran.
         skillRuns.push({ name: skill.name, skillKey: skill.skillKey, blocks, warnings });
         toolCalls.push({ name: skill.name, ran: true });
+        // ── THE CARDS THE CREATOR IS NOW LOOKING AT (flagged, 2026-08-11) ──────────────────
+        // Until this, a live run reported a COUNT and nothing else, while `replayPriorTurn`
+        // handed the model the lines of every PAST run. So the model could discuss the pack it
+        // made last turn and not the one it had just made — and, asked for hooks, holding a
+        // "5 card(s)" receipt it could not read, it wrote a fresh pack in prose. Measured 2/2
+        // walks: 10 then 5 enumerated hooks with ZERO overlap with the rendered cards.
+        //
+        // Not a prompt fix. The model had no way to be faithful: you cannot reference what you
+        // cannot see. See card-lines.ts for why this is safe HERE and was not safe in the
+        // generator's bundle (§12.1) — narrator vs generator, opposite jobs.
+        const cardsOnScreen = isChatCardsOnScreenEnabled() ? extractCardLines(blocks) : [];
         messages.push({
           role: "tool",
           tool_call_id: call.id,
           content: JSON.stringify({
             ran: skill.name,
             produced: `${blocks.length} card(s)`,
-            note:
-              "cards are shown to the creator; reply with ONE short closing line and do NOT " +
-              "restate or rewrite the cards' content in prose",
+            // Omitted, never `[]`: an empty card list is a claim, and the wrong one. With nothing
+            // extractable the result is byte-identical to what shipped before.
+            ...(cardsOnScreen.length > 0
+              ? {
+                  cards_on_screen: cardsOnScreen,
+                  note:
+                    "these are the cards the creator can NOW SEE, in order. Reply with ONE short " +
+                    "closing line that refers to them by their text — name the strongest and why, " +
+                    "or point at the next step. They are ALREADY on screen: never re-list them, " +
+                    "and never present them as something you are producing now.",
+                }
+              : {
+                  note:
+                    "cards are shown to the creator; reply with ONE short closing line and do NOT " +
+                    "restate or rewrite the cards' content in prose",
+                }),
           }),
         });
       } catch (err) {
