@@ -49,6 +49,22 @@ vi.mock("nanoid", () => ({
   nanoid: vi.fn(() => "mock-request-id-abc"),
 }));
 
+vi.mock("@/lib/remix/blueprint-repo", () => ({
+  insertBlueprint: vi.fn(),
+}));
+
+/**
+ * `createServiceClient()` reads NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY and THROWS
+ * ("supabaseUrl is required.") when they are absent — and they are absent under vitest, verified
+ * by probe. Unmocked, the route's blueprint write would take its non-fatal catch on every run in
+ * this file, so the tests below would silently assert the FAILURE path while reading as if they
+ * covered the happy one. (`billUsage` builds its own service client too and swallows everything,
+ * so the stub returned here is inert for it.)
+ */
+vi.mock("@/lib/supabase/service", () => ({
+  createServiceClient: vi.fn(() => ({})),
+}));
+
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
 function makeRemixCard(): RemixCardBlock {
@@ -423,5 +439,163 @@ describe("POST /api/tools/remix/run (SSE route)", () => {
   it("maxDuration = 300 is exported from the route module", async () => {
     const routeModule = await import("@/app/api/tools/remix/run/route");
     expect((routeModule as Record<string, unknown>).maxDuration).toBe(300);
+  });
+
+  // ── Blueprint wiring (phase 1) ──────────────────────────────────────────────
+  describe("blueprint persistence", () => {
+    const BLUEPRINT_RESULT = {
+      id: "bp1234567890",
+      payload: {
+        duration_s: 14,
+        words_per_second: 3.2,
+        has_speech: true,
+        beats: [
+          {
+            index: 0, t_start: 0, t_end: 1.8, duration_s: 1.8, role: "hook" as const,
+            spoken: "source line", on_screen_text: null, visual_event: "tight crop",
+            audio_event: "voice", cuts: 1, weakness: null,
+          },
+        ],
+      },
+      script: [[{ index: 0, spoken: "your line", on_screen_text: "", shot: "waist-up" }]],
+      sourceVideoId: "https://www.tiktok.com/@creator/video/123",
+    };
+
+    /** Signs in a user, stubs the thread, and hands back the card the pipeline "produced". */
+    async function arrange(blueprint: unknown): Promise<RemixCardBlock> {
+      const { createClient } = await import("@/lib/supabase/server");
+      const { runRemixPipeline } = await import("@/lib/tools/runners/remix-runner");
+      const { createOpenThreadLazy } = await import("@/lib/threads/threads");
+      const { insertMessage } = await import("@/lib/threads/messages");
+      const { insertBlueprint } = await import("@/lib/remix/blueprint-repo");
+
+      (createClient as ReturnType<typeof vi.fn>).mockResolvedValue({
+        auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: "user-123" } } }) },
+        from: vi.fn().mockReturnThis(),
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+      });
+      (createOpenThreadLazy as ReturnType<typeof vi.fn>).mockResolvedValue({
+        id: "thread-remix-abc", user_id: "user-123",
+      });
+      // Set explicitly rather than inherited: vi.clearAllMocks() clears CALLS, not
+      // implementations, so a rejection configured by one test would leak into the next.
+      (insertBlueprint as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+      (insertMessage as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "msg-bp" });
+
+      const card = makeRemixCard();
+      (card.props as { blueprintId?: string }).blueprintId = "bp1234567890";
+      (card.props as { blueprintVariant?: number }).blueprintVariant = 2;
+      (runRemixPipeline as ReturnType<typeof vi.fn>).mockResolvedValue({
+        blocks: [card], warnings: [], blueprint,
+      });
+      return card;
+    }
+
+    async function drain(res: Response): Promise<string> {
+      const reader = res.body!.getReader();
+      const decoder = new TextDecoder();
+      let out = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        out += decoder.decode(value, { stream: true });
+      }
+      return out;
+    }
+
+    const post = async () => {
+      const { POST } = await import("@/app/api/tools/remix/run/route");
+      return POST(makeRemixRequest({
+        url: "https://www.tiktok.com/@creator/video/123", platform: "tiktok",
+      }));
+    };
+
+    it("puts blueprintId on the SSE content face, not only in the persisted block", async () => {
+      // THE ASSERTION THAT MATTERS. `proof`, `production` and `provenance` were each shipped
+      // persisted-but-absent from this exact face, and each produced a card that only became
+      // correct after a reload. This is what stops blueprintId becoming the fourth.
+      await arrange(BLUEPRINT_RESULT);
+      const raw = await drain(await post());
+
+      const contentLine = raw
+        .split("\n")
+        .find((l) => l.startsWith("data:") && l.includes("adaptedHook"));
+      expect(contentLine).toBeDefined();
+
+      // PARSED, not substring-matched: a `toContain` on the whole frame passes if the id shows
+      // up anywhere at all, including in a field nobody reads. This asserts the props map the
+      // client actually destructures.
+      const payload = JSON.parse(contentLine!.slice("data:".length)) as {
+        blocks: Array<{ props: { blueprintId?: string; blueprintVariant?: number } }>;
+      };
+      expect(payload.blocks[0]!.props.blueprintId).toBe("bp1234567890");
+      // The variant rides the face too — without it every card renders the rank-1 sheet.
+      expect(payload.blocks[0]!.props.blueprintVariant).toBe(2);
+    });
+
+    it("writes the blueprint row before the thread message", async () => {
+      await arrange(BLUEPRINT_RESULT);
+      const { insertBlueprint } = await import("@/lib/remix/blueprint-repo");
+      const { insertMessage } = await import("@/lib/threads/messages");
+      const order: string[] = [];
+      (insertBlueprint as ReturnType<typeof vi.fn>).mockImplementation(async () => {
+        order.push("blueprint");
+      });
+      (insertMessage as ReturnType<typeof vi.fn>).mockImplementation(async () => {
+        order.push("message");
+      });
+
+      await drain(await post());
+
+      expect(order).toEqual(["blueprint", "message"]);
+    });
+
+    it("passes the runner's payload straight through to the row", async () => {
+      await arrange(BLUEPRINT_RESULT);
+      const { insertBlueprint } = await import("@/lib/remix/blueprint-repo");
+
+      await drain(await post());
+
+      expect(insertBlueprint).toHaveBeenCalledTimes(1);
+      const [, row] = (insertBlueprint as ReturnType<typeof vi.fn>).mock.calls[0] as [
+        unknown,
+        Record<string, unknown>,
+      ];
+      expect(row.id).toBe("bp1234567890");
+      // user_id comes from the SESSION, never the body (CR-01); thread_id is a REAL FK now.
+      expect(row.user_id).toBe("user-123");
+      expect(row.thread_id).toBe("thread-remix-abc");
+      expect(row.source_video_id).toBe("https://www.tiktok.com/@creator/video/123");
+      expect(row.blueprint).toEqual(BLUEPRINT_RESULT.payload);
+      expect(row.script).toEqual(BLUEPRINT_RESULT.script);
+    });
+
+    it("strips blueprintId — from the FACE as well as the block — and still delivers the cards when the insert fails", async () => {
+      const card = await arrange(BLUEPRINT_RESULT);
+      const { insertBlueprint } = await import("@/lib/remix/blueprint-repo");
+      const { insertMessage } = await import("@/lib/threads/messages");
+      (insertBlueprint as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("insert failed"));
+      (insertMessage as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "msg-bp" });
+
+      const raw = await drain(await post());
+
+      // The run must not die with the row: the cards are the product.
+      expect(raw).toContain("event: done");
+      expect(insertMessage).toHaveBeenCalled();
+      expect((card.props as { blueprintId?: string }).blueprintId).toBeUndefined();
+      // …and the LIVE card must not carry an id whose row does not exist. The persist has to
+      // happen before the content frame for this to hold — emitting the face first and writing
+      // the row afterwards leaves a dangling id on screen until a reload.
+      expect(raw).not.toContain("bp1234567890");
+    });
+
+    it("does not call insertBlueprint when the runner produced no blueprint", async () => {
+      await arrange(null);
+      const { insertBlueprint } = await import("@/lib/remix/blueprint-repo");
+      await drain(await post());
+      expect(insertBlueprint).not.toHaveBeenCalled();
+    });
   });
 });

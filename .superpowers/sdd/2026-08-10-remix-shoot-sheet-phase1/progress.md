@@ -328,3 +328,85 @@ TASK 4: MIGRATION APPLIED (2026-08-11), project virtuna-v1.1 / qyxvxleheckijapur
    NOTE for anyone re-reading the file: dev and prod share ONE Supabase project here, so this
    table is live in production from now on. It is additive DDL — no existing table was touched.
 TASK 4: CLOSED.
+
+Task 5 (2026-08-11): runner assembles + stamps, route persists + emits. 98 -> 111 tests
+   (700 across the four gate paths), tsc clean, eslint clean, `npm run build` clean
+   ("Compiled successfully", /api/tools/remix/run present in the route table). Red was real:
+   9 failures across the two files before the implementation — 5 runner (`Cannot read
+   properties of undefined (reading 'beats')`, `…(reading 'id')`, `expected undefined to be
+   +0`, `expected undefined to be null` x2) and 4 route (the SSE face missing the id, the
+   write order `['message']` vs `['blueprint','message']`, insertBlueprint called 0 times,
+   the strip leaving `'bp1234567890'` in place). The seam pin passed on the first run, which
+   is what it is for.
+Task 5: DEVIATION — the blueprint write moved ABOVE `send("content", …)`. The brief put it
+   immediately before `insertMessage`, and its own comment says why that is wrong: "a card
+   carrying a blueprintId whose row does not exist would render a permanent skeleton". The id
+   leaves this process on the CONTENT frame, not on the persisted message, so the brief's
+   placement writes the row AFTER the live card is already on the wire carrying it. The
+   failure it describes is exactly what the brief's ordering ships — the creator watches a
+   sheet that can never resolve, and only a reload fixes it. Proved by mutation: moving the
+   block back to the brief's position turns the strip test red with the id still in the frame
+   (`"blueprintId":"bp1234567890"` inside `event: content`). The ordering test the brief asked
+   for (`['blueprint','message']`) passes either way — it could not have caught this.
+Task 5: DEVIATION — new `blueprintVariant` on the block, the runner and the SSE face. ONE row
+   serves ALL of a run's ranked cards (one video, one skeleton, N scripts), so the id alone
+   does not identify a script. Task 6's brief hard-codes `variantIndex={0}` on every card and
+   justifies it with "the runner writes one script array per card in rank order" — which is
+   the reason it CANNOT be 0 for cards 2 and 3. Left alone, all three cards render the rank-1
+   shoot sheet: a plausible sheet, not a visible bug. TASK 6: read
+   `props.blueprintVariant ?? 0`, do not hard-code.
+Task 5: DEVIATION — `script[]` is pushed IN LOCKSTEP with `blocks`, not mapped from `rated`
+   afterwards as the brief had it. The D-14 gate can `continue` past a card, and a mapped
+   array would then be one longer than `blocks` with every later index shifted — each card
+   silently rendering its neighbour's sheet. Same class of defect as the variant above.
+Task 5: DEVIATION — the decode guard is SPLIT (`if (!structural)` then `if (!decode)`) instead
+   of the existing `structural ? await runDecode(structural) : null`. The brief's Step 4 wrote
+   an inline `{ duration_s: 0, … }` literal for the no-structural case; the dispatch corrected
+   that to `emptyBlueprint()`. Neither is needed: `buildBlueprint` already returns
+   `emptyBlueprint()` on a segment-less source, and the only OTHER caller of that branch is a
+   null `structural`, which cannot reach it — a null structural returns decode_failed. Folded,
+   TypeScript still demands the dead branch (it cannot narrow `structural` from `decode`);
+   split, it does not. So the runner imports neither the literal nor the factory, and there is
+   no unreachable code pretending to be a fallback. Same two error discriminants, one extra
+   warning string.
+Task 5: DEVIATION — the route test mocks `@/lib/supabase/service` as well as the repo. Probed,
+   not assumed: `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are BOTH undefined
+   under vitest and `createServiceClient()` throws "supabaseUrl is required." Without the mock
+   the route's write takes its non-fatal catch on every run in that file, so all four new tests
+   would have asserted the FAILURE path while reading as coverage of the happy one — the
+   brief's Step 6 mock list is one module short. (`billUsage` builds its own service client and
+   swallows everything, so the stub is inert for it; the pre-existing `[quota] count failed —
+   failing open` stderr is unchanged.)
+Task 5: DEVIATION — the SSE-face test PARSES the content frame and asserts
+   `payload.blocks[0].props.blueprintId`, rather than the brief's `toContain("bp1234567890")`
+   on the raw line. A substring match on a frame that also carries the id in some field nobody
+   reads is a false pass, and this is the one assertion the lane cannot afford to have lying.
+   Load-bearing, proved by mutation: deleting the two face lines from route.ts turns it red
+   with `expected undefined to be 'bp1234567890'`.
+Task 5: the brief's Step 1 fixture does not compile as written — it annotates an inline literal
+   whose `segments` carry `spoken_text`/`on_screen_text`, which `OmniStructuralInput` does not
+   declare (blueprint.ts widens them locally), so excess-property checking rejects it. Built
+   through a `seg()` helper instead, the way Task 1's own fixture does. vitest would never have
+   told us; tsc does.
+Task 5: note — `makeStructuralInput()` in the pre-existing runner test carries NO `segments`,
+   so every one of the 13 tests that existed before today runs the no-video shape and none of
+   them could ever have seen a real blueprint reach adapt. `makeStructuralInputWithSegments()`
+   is what covers the normal path; the segment-less case is now asserted deliberately rather
+   than by accident.
+TASK 6 MUST KNOW: the card carries TWO fields, not one — `blueprintId` AND `blueprintVariant`.
+   Render `<RemixBeats blueprintId={…} variantIndex={props.blueprintVariant ?? 0} />`. Both
+   ride the SSE content face and both are stripped together when the write fails, so a card
+   that has one always has the other. `getBlueprint` CAN THROW (Task 4) — that note still holds.
+TASK 7 MUST KNOW: `brief` is now accepted on `POST /api/tools/remix/run` (`z.string().max(200)
+   .optional()`) and becomes `AdaptInput.target`. NOTHING IN THE UI SENDS IT — the composer has
+   no brief field. A live run therefore exercises `target: null` and the niche fallback unless
+   you post the body by hand. Worth one hand-posted run with a brief, because the D3 path has
+   never executed against a real model.
+Task 5: RESIDUAL, stated rather than omitted — a `remix_blueprints` row is written on every
+   successful remix run from now on and NOTHING deletes it. There is no retention story and no
+   cascade from `threads` (Task 4 chose SET NULL on purpose). Rows accumulate. Phase 1 does not
+   need a policy; someone eventually does.
+Task 5: RESIDUAL — the runner is proved against MOCKED omni/decode/adapt. Whether a real
+   `analyzeVideoWithOmni` response yields non-empty `segments` at all is unverified here, and
+   if it does not, every live card ships with no blueprintId and the feature looks unbuilt with
+   nothing red anywhere. That is Task 7's assertion, and it is the one that matters most.
