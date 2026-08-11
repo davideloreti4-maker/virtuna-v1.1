@@ -600,6 +600,42 @@ describe("POST /api/tools/chat (SSE route)", () => {
     expect(deps?.skills).toBeUndefined();
   });
 
+  it("Test 6c2: the loop is handed the creator's RAW message, not just the prior turns", async () => {
+    // The digest is built from `priorTurns`, which this route loads at step (6) — BEFORE it
+    // persists the message being answered at step (7). So the turn holding the constraint
+    // ("…but keep them under 30s") was structurally absent from the digest, and on a thread's
+    // first generating turn the digest was empty. `currentAsk` is the only channel for it:
+    // `ask` is assembleBundle's output, not the creator's words. Handoff §14.2.
+    process.env.CHAT_AGENT_DISPATCH = "true";
+    await primeDispatchHarness();
+    const { runChatAgentStream } = await import("@/lib/tools/chat-agent-loop");
+    (runChatAgentStream as ReturnType<typeof vi.fn>).mockImplementation(
+      async (input: { onToken: (d: string) => void }) => {
+        input.onToken("ok");
+        return { text: "ok", skillRuns: [], uiBlocks: [], toolCalls: [] };
+      }
+    );
+    // The file-level assembleBundle mock is the identity, which would make `ask` and `currentAsk`
+    // coincide and the last assertion vacuous. One call, one distinguishable bundle.
+    const { assembleBundle } = await import("@/lib/kc/assembler");
+    (assembleBundle as ReturnType<typeof vi.fn>).mockImplementationOnce(
+      () => "GROUNDED BUNDLE — not the creator's words",
+    );
+
+    const ask = "give me hooks, but keep them under 30s";
+    const { POST } = await import("@/app/api/tools/chat/route");
+    await readSSE(await POST(makeChatRequest({ ask, platform: "tiktok" })));
+
+    const [input] = (runChatAgentStream as ReturnType<typeof vi.fn>).mock.calls[0] as [
+      { currentAsk?: string; ask?: string; priorTurns?: Array<{ text: string }> },
+    ];
+    expect(input.currentAsk).toBe(ask);
+    // …and it is genuinely not reachable any other way: the prior turns predate this message,
+    // and `ask` is the assembled bundle.
+    expect((input.priorTurns ?? []).some((t) => t.text === ask)).toBe(false);
+    expect(input.ask).toBe("GROUNDED BUNDLE — not the creator's words");
+  });
+
   it("Test 6d: the agent turn's bundle is NOT labelled 'chat' — the label talks the model out of dispatching", async () => {
     // REGRESSION. assembleBundle prints its `mode` into a header that lands in the USER message, and
     // the chat slice defines chat mode as conversational, NOT a generation surface (over-generating is

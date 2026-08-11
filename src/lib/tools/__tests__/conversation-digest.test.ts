@@ -17,7 +17,11 @@ import {
   isConversationDigestEnabled,
   MAX_DIGEST_TURNS,
 } from "../conversation-digest";
-import { CONVERSATION_CHAR_BUDGET } from "@/lib/kc/assembler";
+import {
+  CONVERSATION_CHAR_BUDGET,
+  CONVERSATION_BLOCK_OVERHEAD,
+  assembleBundle,
+} from "@/lib/kc/assembler";
 import type { ChatAgentPriorTurn } from "../chat-agent-loop";
 
 const user = (text: string): ChatAgentPriorTurn => ({ role: "user", text });
@@ -118,6 +122,102 @@ describe("buildConversationDigest — card lines NEVER enter the digest", () => 
     // Previously this returned a cards-only digest. With turns as the whole digest, a thread the
     // creator has not typed into carries nothing, and null is the byte-identical no-op.
     expect(buildConversationDigest([ranHooks("Five hooks are on screen.", ["hook A"])])).toBeNull();
+  });
+});
+
+describe("the creator's CURRENT turn — the one that is not in priorTurns", () => {
+  /**
+   * `/api/tools/chat` loads prior turns at step (6) and persists the message being answered at
+   * step (7). Built from `priorTurns` alone the digest was therefore always one turn behind: the
+   * constraint a creator states while asking ("…but keep them under 30s") reached the generator
+   * only if the chat agent chose to fold it into `topic`, and a thread's first generating turn
+   * produced no digest at all. Handoff §14.2, fixed 2026-08-11.
+   */
+  const thread: ChatAgentPriorTurn[] = [
+    user("i make comedy story-times, handheld, no b-roll"),
+    assistant("Got it — what's the subject?"),
+    user("morning focus, for founders"),
+  ];
+
+  it("carries it as the NEWEST line", () => {
+    const digest = buildConversationDigest(thread, "give me hooks, but keep them under 30s");
+    expect(digest?.turns).toEqual([
+      "i make comedy story-times, handheld, no b-roll",
+      "morning focus, for founders",
+      "give me hooks, but keep them under 30s",
+    ]);
+  });
+
+  it("makes a thread's FIRST generating turn carry something — it used to be a total no-op", () => {
+    expect(buildConversationDigest([])).toBeNull();
+    expect(buildConversationDigest([], "hooks for my app, none of them questions")).toEqual({
+      turns: ["hooks for my app, none of them questions"],
+    });
+  });
+
+  it("is bought FIRST from the budget, so a long thread can never evict it", () => {
+    // Budget is spent newest-first; the current turn is the newest. Every older turn here is
+    // budget-max, so all of them but one are evicted — and the survivor must be this one.
+    const fat = Array.from({ length: MAX_DIGEST_TURNS }, (_, i) => user(`old ${i} `.padEnd(400, "z")));
+    const digest = buildConversationDigest(fat, "under 30s, not the 5am angle");
+    expect(digest?.turns?.at(-1)).toBe("under 30s, not the 5am angle");
+  });
+
+  it("counts against MAX_DIGEST_TURNS — it is a turn, not an extra slot", () => {
+    const turns = Array.from({ length: MAX_DIGEST_TURNS + 4 }, (_, i) => user(`turn ${i}`));
+    const digest = buildConversationDigest(turns, "and now this");
+    expect(digest?.turns).toHaveLength(MAX_DIGEST_TURNS);
+    expect(digest?.turns?.at(-1)).toBe("and now this");
+  });
+
+  it("is normalised and clipped like any other turn", () => {
+    const digest = buildConversationDigest([], "line one\n\n  line two");
+    expect(digest?.turns).toEqual(["line one line two"]);
+  });
+
+  it("an absent or blank ask changes nothing", () => {
+    const base = buildConversationDigest(thread);
+    expect(buildConversationDigest(thread, undefined)).toEqual(base);
+    expect(buildConversationDigest(thread, "   \n ")).toEqual(base);
+    expect(buildConversationDigest([], "   ")).toBeNull();
+  });
+
+  it("is not doubled if the caller ALREADY put it in priorTurns", () => {
+    // Order-independence against the route: today (6) loads before (7) persists, so this cannot
+    // happen — but it is one line's difference from happening, and the cost would be paid at the
+    // newest, most valuable end of the budget.
+    const withIt = [...thread, user("give me hooks, but keep them under 30s")];
+    expect(buildConversationDigest(withIt, "give me hooks, but keep them under 30s")).toEqual(
+      buildConversationDigest(withIt),
+    );
+  });
+
+  it("…but a genuine repeat, with a turn in between, is carried twice", () => {
+    // The creator saying the same thing again IS signal — the dedupe above is about the caller
+    // handing over the same turn twice, not about a creator repeating themselves.
+    const digest = buildConversationDigest(
+      [user("give me a few more hook options"), assistant("Five hooks are on screen.")],
+      "give me a few more hook options",
+    );
+    expect(digest?.turns).toEqual([
+      "give me a few more hook options",
+      "give me a few more hook options",
+    ]);
+  });
+
+  it("the emitted BLOCK still fits the budget at the worst case", () => {
+    // The §14 defect, from the new direction: an extra turn must be charged against the BLOCK,
+    // not the text. Measures what the assembler actually emits, exactly as the cap will pay for it.
+    const fat = Array.from({ length: MAX_DIGEST_TURNS }, () => user("z".repeat(400)));
+    const digest = buildConversationDigest(fat, "w".repeat(400));
+    const withDigest = assembleBundle(
+      { ask: "X", platform: "tiktok", mode: "hooks", conversation: digest! },
+      null,
+    );
+    const without = assembleBundle({ ask: "X", platform: "tiktok", mode: "hooks" }, null);
+    expect(withDigest.length - without.length).toBeLessThanOrEqual(CONVERSATION_CHAR_BUDGET);
+    // …and the overhead is genuinely being charged: a text-only budget would fit strictly more.
+    expect(CONVERSATION_BLOCK_OVERHEAD).toBeGreaterThan(0);
   });
 });
 

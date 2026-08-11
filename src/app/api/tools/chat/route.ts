@@ -497,6 +497,12 @@ export async function POST(request: Request): Promise<Response> {
               ask: userMessage,
               systemPrompt: KC_CHAT_SYSTEM_PROMPT,
               priorTurns,
+              // The creator's own words this turn, for the conversation digest ONLY. `priorTurns`
+              // is loaded at (6) and this message is persisted at (7), so the digest handed to a
+              // generator was missing the turn being answered — "…but keep them under 30s" never
+              // reached it, and on a thread's first generating turn the digest was empty. `ask`
+              // above cannot serve: it is the assembled bundle, not the message.
+              currentAsk: rawAsk,
               // The tapped chip's declared generator (see (2c)); undefined for every typed message.
               // …OR, failing that, a REPEAT ASK: the creator typing a request this thread has
               // already run, which is the shape that makes the model claim work it did not do

@@ -101,14 +101,52 @@ function normalise(text: string, max: number): string {
 }
 
 /**
- * Build the digest from the turns the chat agent is already replaying.
+ * 🔴 THE CURRENT TURN IS NOT IN `priorTurns` (fixed 2026-08-11, session 9).
  *
- * @param priorTurns  Oldest→newest, as `openChatPriorTurns` produced them.
+ * `/api/tools/chat` loads the thread's prior turns at step (6) and persists the message being
+ * answered at step (7), so the turns the loop replays are strictly the ones BEFORE this one. Built
+ * from those alone the digest had the two failure modes this whole module exists to prevent:
+ *
+ *   · *"give me hooks, but keep them under 30s"* — the constraint is in the current turn, so it
+ *     reached the generator only insofar as the chat agent chose to fold it into `topic`. That is
+ *     precisely the compression the digest was built to stop relying on;
+ *   · on a thread's FIRST generating turn there are no prior turns at all, so the builder returned
+ *     null and the flag was a total no-op — the case where the creator has seen the product do
+ *     nothing yet.
+ *
+ * The turn is appended as the NEWEST creator turn, which also means the budget (spent newest-first)
+ * buys it before anything older. Its content is the creator's raw message — never the assembled
+ * bundle the loop sends as `ask`.
+ */
+function withCurrentTurn(
+  priorTurns: ChatAgentPriorTurn[],
+  currentAsk: string | undefined,
+): ChatAgentPriorTurn[] {
+  const text = currentAsk?.trim();
+  if (!text) return priorTurns;
+  // Order-independence, not a courtesy to a creator who repeats themselves. If a caller ever does
+  // hand over a `priorTurns` that ALREADY ends with this turn — the route persisting before it
+  // loads, which is one line's difference from today — carrying it twice would spend the newest,
+  // most valuable end of the budget printing one sentence to the model twice.
+  const newest = priorTurns[priorTurns.length - 1];
+  if (newest?.role === "user" && newest.text.trim() === text) return priorTurns;
+  return [...priorTurns, { role: "user", text }];
+}
+
+/**
+ * Build the digest from the turns the chat agent is already replaying, plus the one it is not.
+ *
+ * @param priorTurns  Oldest→newest, as `openChatPriorTurns` produced them — the turns BEFORE this
+ *                    one. The message being answered is not among them; see `withCurrentTurn`.
+ * @param currentAsk  The creator's RAW message this turn. ⚠️ Not the loop's `ask`, which is the
+ *                    assembled bundle — passing that would clip the bundle header into the digest.
  * @returns A digest, or null when there is nothing worth sending (byte-identical no-op).
  */
 export function buildConversationDigest(
   priorTurns: ChatAgentPriorTurn[],
+  currentAsk?: string,
 ): ConversationDigest | null {
+  const sourceTurns = withCurrentTurn(priorTurns, currentAsk);
   // ── Creator turns: newest-first while spending the budget, then re-ordered oldest-first ──
   //
   // The budget is on the emitted BLOCK, not on the raw turn text, so the fixed cost of the block
@@ -119,8 +157,8 @@ export function buildConversationDigest(
   // meant to end, surviving in the half nobody re-measured.
   const turns: string[] = [];
   let spent = CONVERSATION_BLOCK_OVERHEAD;
-  for (let i = priorTurns.length - 1; i >= 0 && turns.length < MAX_DIGEST_TURNS; i--) {
-    const turn = priorTurns[i]!;
+  for (let i = sourceTurns.length - 1; i >= 0 && turns.length < MAX_DIGEST_TURNS; i--) {
+    const turn = sourceTurns[i]!;
     if (turn.role !== "user") continue;
     const line = normalise(turn.text, MAX_TURN_LENGTH);
     // An empty-text turn is real: `openChatPriorTurns` emits one to carry `skillRecords`.

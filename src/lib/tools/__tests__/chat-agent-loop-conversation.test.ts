@@ -52,7 +52,10 @@ const PRIOR: ChatAgentPriorTurn[] = [
 ];
 
 /** Runs one turn in which the model calls `generate_hooks`, and returns the ctx the skill saw. */
-async function runAndCaptureCtx(args: Record<string, unknown>): Promise<SkillRunContext> {
+async function runAndCaptureCtx(
+  args: Record<string, unknown>,
+  currentAsk?: string,
+): Promise<SkillRunContext> {
   let seen: SkillRunContext | null = null;
   const skill: SkillTool = {
     name: "generate_hooks",
@@ -65,7 +68,16 @@ async function runAndCaptureCtx(args: Record<string, unknown>): Promise<SkillRun
     },
   };
   await runChatAgentStream(
-    { ask: "more hooks", context: CTX, systemPrompt: "sys", priorTurns: PRIOR, onToken: vi.fn(), onBlock: vi.fn() },
+    {
+      // `ask` is the assembled bundle, which is why it can never stand in for `currentAsk`.
+      ask: "<<<USER_CONTENT>>> more hooks <<<END_USER_CONTENT>>>",
+      context: CTX,
+      systemPrompt: "sys",
+      priorTurns: PRIOR,
+      ...(currentAsk === undefined ? {} : { currentAsk }),
+      onToken: vi.fn(),
+      onBlock: vi.fn(),
+    },
     {
       streamComplete: mockStream([
         [toolName(0, "c1", "generate_hooks"), toolArgs(0, JSON.stringify(args))],
@@ -129,8 +141,31 @@ describe("the loop hands the conversation to a skill", () => {
     expect(rewrite.conversation?.turns).toHaveLength(2);
   });
 
-  it("flag ON with an empty thread → ctx is still the caller's object, not an empty digest", async () => {
+  it("flag ON → the turn being ANSWERED rides too, as the newest line", async () => {
+    // The route loads `priorTurns` at (6) and persists this message at (7), so the loop is the
+    // only place holding both. Without `currentAsk` the generator never saw "keep them under 30s"
+    // except insofar as the chat agent folded it into `topic` — the exact compression the digest
+    // exists to stop relying on. Handoff §14.2.
     process.env.ENGINE_GEN_CONVERSATION = "true";
+    const ctx = await runAndCaptureCtx(
+      { topic: "morning focus" },
+      "more, but keep them under 30s and drop the 5am angle",
+    );
+    expect(ctx.conversation?.turns?.at(-1)).toBe(
+      "more, but keep them under 30s and drop the 5am angle",
+    );
+  });
+
+  it("flag ON → the digest carries the creator's words, NEVER the assembled bundle", async () => {
+    // `ask` is assembleBundle's output and clips to 160 chars, so passing it here would print the
+    // bundle header into the digest as if the creator had typed it.
+    process.env.ENGINE_GEN_CONVERSATION = "true";
+    const ctx = await runAndCaptureCtx({ topic: "morning focus" }, "just three, punchier");
+    expect(JSON.stringify(ctx.conversation)).not.toContain("USER_CONTENT");
+  });
+
+  /** Same run with no thread behind it — the caller controls whether a `currentAsk` is supplied. */
+  async function runEmptyThread(currentAsk?: string): Promise<SkillRunContext> {
     let seen: SkillRunContext | null = null;
     const skill: SkillTool = {
       name: "generate_hooks",
@@ -143,7 +178,14 @@ describe("the loop hands the conversation to a skill", () => {
       },
     };
     await runChatAgentStream(
-      { ask: "hooks about x", context: CTX, systemPrompt: "sys", onToken: vi.fn(), onBlock: vi.fn() },
+      {
+        ask: "hooks about x",
+        context: CTX,
+        systemPrompt: "sys",
+        ...(currentAsk === undefined ? {} : { currentAsk }),
+        onToken: vi.fn(),
+        onBlock: vi.fn(),
+      },
       {
         streamComplete: mockStream([
           [toolName(0, "c1", "generate_hooks"), toolArgs(0, JSON.stringify({ topic: "x" }))],
@@ -155,6 +197,28 @@ describe("the loop hands the conversation to a skill", () => {
         billing: { gate: vi.fn(async () => ({ allowed: true, tier: "pro" as const })), bill: vi.fn(async () => {}) },
       },
     );
-    expect(seen).toBe(CTX);
+    if (!seen) throw new Error("the skill never ran — the fixture, not the feature, is broken");
+    return seen;
+  }
+
+  it("flag ON, empty thread, no currentAsk → ctx is still the caller's object", async () => {
+    process.env.ENGINE_GEN_CONVERSATION = "true";
+    expect(await runEmptyThread()).toBe(CTX);
+  });
+
+  it("flag ON, empty thread + currentAsk → the FIRST generating turn is no longer a no-op", async () => {
+    // The worst case for the creator: nothing has been generated yet, so there are no prior turns
+    // and the digest was null. Whatever they said while asking is the only conversation there is.
+    process.env.ENGINE_GEN_CONVERSATION = "true";
+    const ctx = await runEmptyThread("hooks for my budgeting app — none of them questions");
+    expect(ctx).not.toBe(CTX);
+    expect(ctx.conversation?.turns).toEqual([
+      "hooks for my budgeting app — none of them questions",
+    ]);
+  });
+
+  it("flag OFF + currentAsk → still the caller's ctx OBJECT, by reference", async () => {
+    delete process.env.ENGINE_GEN_CONVERSATION;
+    expect(await runEmptyThread("hooks for my budgeting app")).toBe(CTX);
   });
 });

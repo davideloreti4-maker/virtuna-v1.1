@@ -220,6 +220,20 @@ export interface ChatAgentStreamInput {
   /** Prior conversation turns (role + text), oldest→newest. */
   priorTurns?: ChatAgentPriorTurn[];
   /**
+   * The creator's RAW message this turn — their own words, not `ask`.
+   *
+   * `ask` is the assembled grounding bundle, and `priorTurns` are strictly the turns BEFORE this
+   * one (the route loads them before it persists this one). So without this field the conversation
+   * digest handed down to a generator was missing the very message being answered: "give me hooks,
+   * but keep them under 30s" reached the generator only as whatever the chat agent folded into
+   * `topic`, and on a thread's first generating turn the digest was empty. See
+   * `buildConversationDigest`.
+   *
+   * Only ever read for the digest — it is not replayed as a message (the loop already sends `ask`
+   * as the live user turn), so leaving it unset changes nothing but the digest.
+   */
+  currentAsk?: string;
+  /**
    * A generator the CREATOR already chose — the `skillKey` of a follow-up chip they tapped
    * ('ideas' | 'hooks' | 'script'). Pins the FIRST round's `tool_choice` to that tool.
    *
@@ -943,12 +957,17 @@ export async function runChatAgentStream(
    * Still built per call rather than hoisted: the cost is a few string ops on turns the loop is
    * already holding, and hoisting it would compute a digest on turns that no tool call uses.
    *
+   * `currentAsk` is the message being answered, which is NOT in `priorTurns` — the route loads the
+   * thread's turns before it persists this one. Without it the digest could not carry the turn
+   * that most often holds the constraint, and was null entirely on a thread's first generating
+   * turn. `input.ask` cannot stand in: it is the assembled bundle, not the creator's words.
+   *
    * Flag off → returns `input.context` ITSELF, not a copy, so the off path is identical by
    * reference and cannot drift.
    */
   const skillContextFor = (): SkillRunContext => {
     if (!isConversationDigestEnabled()) return input.context;
-    const digest = buildConversationDigest(input.priorTurns ?? []);
+    const digest = buildConversationDigest(input.priorTurns ?? [], input.currentAsk);
     return digest ? { ...input.context, conversation: digest } : input.context;
   };
 
