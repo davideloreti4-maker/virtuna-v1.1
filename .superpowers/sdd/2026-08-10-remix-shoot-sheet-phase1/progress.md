@@ -231,3 +231,72 @@ TASK 4 MUST KNOW: what you persist is `SourceBlueprint` (blueprint.ts) — `dura
    `words_per_second`, `has_speech`, `beats[]`. The adapt side of the round trip is
    `AdaptedBeat[]` on `AdaptConcept.script`, OPTIONAL, so a stored row must survive a concept
    that has no script at all. `emptyBlueprint()` is the honest "no video" row, not NULL.
+
+Task 4 (2026-08-11): remix_blueprints migration + blueprint-repo.ts, 9 tests. 88 -> 97 tests
+   (6 files), tsc clean, eslint clean, `npm run build` clean. Red was proven TWICE: first the
+   import ("Cannot find module '../blueprint-repo'"), then BEHAVIOURALLY — the brief's own
+   Step 4 implementation was written verbatim first and 3 tests failed against it.
+
+🔴 TASK 4: THE MIGRATION IS PENDING HUMAN APPLICATION. Nothing in this commit touched the
+   database. `public.remix_blueprints` DOES NOT EXIST until someone pastes
+   supabase/migrations/20260810120000_remix_blueprints.sql into the SQL editor and runs it.
+   The SQL is UNEXECUTED and hand-reviewed only — there is no postgres in this environment, so
+   its syntax has never been parsed by a server. Verified offline instead: 9 statements, quotes
+   balanced outside comments, no trailing fragment.
+Task 4: DEVIATION — `getBlueprint` no longer returns null on ANY error. The brief's
+   `if (error || !data) return null` is wrong in the one way this lane is most exposed to.
+   The migration is applied BY HAND, so an unapplied one is a live possibility on any deploy;
+   PostgREST answers an unknown table with PGRST205 and an ungranted one with 42501, and
+   collapsing either into null gives Task 6 a 404, gives RemixBeats its silent no-render path,
+   and prints a remix card with no shoot sheet and NO ERROR ANYWHERE. The feature would look
+   unbuilt rather than broken. Now: PGRST116 -> null (the only code that means "no row"; the
+   pk makes its >1-row meaning unreachable), everything else throws. Same shape as
+   `getAudience` (audience-repo.ts:441), which the brief had silently departed from.
+Task 4: DEVIATION — the SELECT names its columns instead of `*`, exported as
+   `BLUEPRINT_COLUMNS`. With `*`, a column missing from the table returns `undefined` on a
+   successful read; named, it is a PostgREST error, which now throws. The test derives its
+   expectation from `Object.keys()` of a `BlueprintRow`-typed literal, so adding a required
+   field to the interface fails tsc on the literal and then fails the column test until the
+   SELECT is widened. `clip_uris` and `created_at` are deliberately NOT read.
+Task 4: DEVIATION — `DROP POLICY IF EXISTS` before `CREATE POLICY`. Postgres has no
+   CREATE POLICY IF NOT EXISTS, so the brief's migration ERRORS on a second paste while every
+   other statement in it is idempotent. For a file a human applies by hand that is the wrong
+   half to leave sharp. Matches library_projects.
+Task 4: DEVIATION — `thread_id` gained `REFERENCES public.threads(id) ON DELETE SET NULL`
+   (the saved_items idiom; threads.id is uuid, confirmed at 20260617000000:27). SET NULL, never
+   CASCADE: derive-and-drop deletes the source mp4, so this row is the only surviving record of
+   what that video did and deleting a thread must not destroy it. Residual risk accepted: a
+   thread deleted between createOpenThreadLazy and the insert now fails the write instead of
+   storing a dangling pointer — same-request, effectively impossible, and non-fatal (Task 5
+   catches, strips the id, ships the cards).
+Task 4: DEVIATION — `FOR SELECT TO authenticated` rather than an untargeted policy, and the
+   brief's rationale for the policy is CORRECTED IN THE FILE. Its comment says RLS-with-no-
+   policy makes writes "fail silently" and reads empty — not true for this table: both phase-1
+   call sites use `createServiceClient()`, which bypasses RLS entirely. The policy is defence
+   in depth for a future user-scoped read, not phase-1 access control. What actually enforces
+   ownership today is the repo's `user_id` predicate on the read. Anyone who deletes that
+   predicate believing RLS has their back is wrong, and the module header says so.
+Task 4: column set VERIFIED IN BOTH DIRECTIONS. Insert: every `BlueprintRow` key is a real
+   column, and every NOT NULL column without a default (id, user_id, blueprint) is in the
+   interface — so `insert(row)` is complete. script/clip_uris/created_at all carry defaults, so
+   the row stays insertable as the table grows. Read: `BLUEPRINT_COLUMNS` is exactly
+   Object.keys(BlueprintRow), pinned by a test.
+Task 4: note: the call seam was compile-probed, not assumed — a throwaway file passing
+   `createServiceClient()` (a TYPED `SupabaseClient<Database>`) into these bare-`SupabaseClient`
+   params typechecks clean, and `.from("remix_blueprints")` is fine because the param is
+   untyped. Tasks 5 and 6 will not hit a generics wall. Probe deleted before commit.
+Task 4: note: tsc caught a `noUncheckedIndexedAccess` error in the new TEST that all 9 tests
+   passed straight through — the standing "vitest does not typecheck" trap, live again.
+TASK 5 MUST KNOW: `insertBlueprint` throws on ANY write error, which is what the brief's
+   try/catch already expects — keep it. `thread_id` is now a real FK, so it must be a genuine
+   `threads.id`; a made-up uuid is now a failed insert (loud) rather than a stored orphan.
+   `source_video_id` receives a URL, not a canonical video id — documented on the column.
+TASK 6 MUST KNOW: `getBlueprint` CAN THROW. The brief's route calls it bare
+   (`const row = await getBlueprint(...)`), which is now an unhandled throw -> 500. That is the
+   intended outcome for a missing table, but wrap it: catch, `Sentry.captureException`, return
+   500. Do NOT catch it back into a 404 — that restores exactly the silence this deviation
+   exists to remove. `null` still means 404, and only that.
+TASK 7 MUST KNOW: if the migration was never applied, the symptom is NOT an error the user
+   sees. The run succeeds, the cards render, and the sheet is absent; the only evidence is one
+   `log.warn` + Sentry event from the route's catch. Before blaming the renderer, check the
+   table exists.
