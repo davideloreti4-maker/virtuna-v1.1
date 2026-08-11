@@ -1,5 +1,9 @@
 /**
- * card-lines.ts — the one line that IDENTIFIES each card, and the ONE place that decides it.
+ * on-screen.ts — what a skill run put on the creator's screen, as text the model can reference.
+ *
+ * Two describer maps, one per shape: `CARD_LINE` for a generator PACK (the identifying line of each
+ * card) and `SKILL_BLOCK_RECORD` for every other skill's RESULT (one compact summary line). Both
+ * feed two seams — the live tool result and the replayed context record — and that is the point.
  *
  * ─── WHY THIS IS ITS OWN MODULE ──────────────────────────────────────────────────────────────
  *

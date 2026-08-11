@@ -49,10 +49,13 @@ friction… Want me to write a script around that one?"*
 
 **Do next, in this order:**
 
-1. **The Read card's `lever` field.** For a SINGLE-audience Read it is a meta-nudge
-   (*"Calibrate a second audience…"*), not a craft lever — so the model substitutes a useful
-   sentence for a useless one and the creator reads it as the Read's finding. Fixing the narration
-   without fixing the field would only make the product relay a nudge nobody wants. **§12.3.**
+1. **A design call on verdict-shaped results.** Two cheap fixes for the residual lever gap were
+   built, measured and REVERTED — handing the model the audience's own scroll reasons did not
+   change its narration, and neither did instructing it to use them (**§12.4**). That leaves two
+   structural options: fix the card's `lever` field at source (it is an upsell on a Strong Read —
+   user-visible copy, so yours), or stop letting the model narrate a verdict freely and derive the
+   closing line from the card. A templated line cannot lie, and unlike a PACK a VERDICT needs no
+   judgement. I would argue for the second.
 2. **A separate reliability problem the A/B surfaced:** 3 of 12 unpinned runs on a plain ask never
    dispatched, one of them incoherently (*"I need the actual text of the hooks you want me to
    generate for"*). No tool ran, so nothing here reaches it — this is dispatch reliability, and on
@@ -256,6 +259,7 @@ node node_modules/tsx/dist/cli.mjs .scratch/count-credits-session9.ts        # t
 zsh .scratch/mutate-current-turn.sh                                          # §1's six mutations
 zsh .scratch/mutate-cards-on-screen.sh                                       # §10's seven mutations
 zsh .scratch/mutate-on-screen.sh                                             # §12's six mutations
+node node_modules/tsx/dist/cli.mjs .scratch/check-detail-clause.ts           # §12.4, free — did it REACH the model?
 
 # the Read half — real Flash, stub till, 0 credits
 node node_modules/tsx/dist/cli.mjs .scratch/probe-read-narration.ts 3
@@ -484,6 +488,51 @@ Neither arm names `@mrbeast`; both say "your audience". Unmeasured whether that 
 
 **n = 3 per arm, one card, one concept.** The fabrication difference is categorical; the rest is not
 a tight interval.
+
+### 12.4 🔴 Two attempts to close the lever gap, both measured, both REVERTED
+
+The obvious reading of §12.3 is "the model does not have the audience's reasons, so give them to it."
+The card holds them: four personas scrolled and three gave the same reason (*"No actionable tips
+here, just a vague metaphor"* · *"Where's the solution?"* · *"Generic hook"*). Neither attempt worked.
+
+**Attempt 1 — hand the narrator the scroll reason.** A `detail` clause on the live seam only (the
+context record rides on every later turn and stays compact), carrying `whoNotFor` plus ONE verbatim
+scroll quote labelled *"one voice, not the whole audience"*. **Verified it reached the model** —
+324 chars, under the cap, checked with `.scratch/check-detail-clause.ts` rather than assumed.
+
+**Attempt 2 — tell it to use them.** A POSITIVE, specific instruction (not a prohibition, which this
+lane keeps measuring as useless): *"If you say what to change, it must be what THIS result actually
+found: use the reason the audience gave, in their words, and say who it came from."*
+
+| | arm A | arm B + detail | arm B + detail + instruction |
+|---|---|---|---|
+| quotes a scroll reason | 0/3 | 0/3 | **0/3** |
+| `scrollSim` (best overlap with any scroll quote) | 0.03 | 0.03–0.07 | 0.02–0.07 |
+
+The model reliably substitutes its own craft advice (*"the lever is a concrete jump-scare moment in
+the first three seconds"*) — plausible, consistent with the data, and **not what the Read said**.
+
+**Both reverted.** They did not move the metric, and shipping unmeasured complexity into the paid
+default path is the thing this lane's docs exist to prevent. The negative result is the deliverable:
+**for a verdict-shaped result, neither more data nor better wording changes the narration.** That
+rules out the two cheap fixes and leaves only structural ones.
+
+> ⚠️ Also worth noting from the same runs: the SHIPPED `result_on_screen` fix keeps earning its
+> place. Arm A again produced invented analysis presented as the Read (*"The mechanism is
+> **prediction error**…"*), long enough to be truncated by `POST_TOOL_TEXT_CAP`. Every arm-B run
+> was short, clean and band-consistent. §12.4 is about the residual gap, not about §12.3's win.
+
+**The two structural options, neither built — this is a design call:**
+
+1. **Fix the `lever` at source.** On a Strong single-audience socials Read it is
+   `Strong for X. Calibrate a second audience to see where it diverges.` — an upsell occupying the
+   field named "lever", exactly when the creator most wants to know what would push it further.
+   Weak and Mixed at least point at a craft action. User-visible copy, so it is the owner's.
+2. **Do not let the model narrate a verdict freely at all.** For a Read the useful closing line is
+   *derivable* from the card (band, fraction, who scrolled, their reason) — and a templated line
+   cannot lie. This is the "one author per turn" principle followed to its conclusion for
+   verdict-shaped results, and it is the one I would argue for. A PACK genuinely needs judgement
+   ("which is strongest and why"); a VERDICT does not.
 
 ---
 

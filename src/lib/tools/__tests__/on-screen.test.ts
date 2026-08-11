@@ -1,5 +1,5 @@
 /**
- * card-lines.test.ts — the identifying line of a card, and the caps on quoting a pack.
+ * on-screen.test.ts — what a run put on the creator's screen, for a pack AND for a result.
  *
  * The assertions worth keeping are the DEGRADATIONS. A card whose line is missing must be counted
  * and not quoted; the alternative — a placeholder — reads to the model as a card whose text is
