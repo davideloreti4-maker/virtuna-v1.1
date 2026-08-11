@@ -36,6 +36,7 @@ import {
   PredictionGaugeBlockSchema,
   VideoTestCardBlockSchema,
 } from "./profile-blocks";
+import { ComposedCardBlockSchema } from "./composed-card-schema";
 
 // ─── Registry ─────────────────────────────────────────────────────────────────
 
@@ -57,6 +58,12 @@ export const BLOCK_REGISTRY = {
   // The ＋ door's own card — a stimulus the creator brought, and the room's measured read of it.
   // It exists so a brought text HAS a descriptor: without one its seal is orphaned (see blocks.ts).
   "brought-card": { schema: BroughtCardBlockSchema as z.ZodType },
+  // The composer's one block type — its slot tree is validated by a RECIPE, not by a bespoke schema
+  // per card (spec §4.2). Validation HERE is shape-only, deliberately: recipe legality is enforced
+  // once, at the emit boundary (parseComposedCard). A card persisted under today's recipes must keep
+  // rendering after a recipe's legalSlots is later narrowed — re-validating legality on every render
+  // would turn a rule change into retroactive data loss in threads people already have.
+  "composed-card": { schema: ComposedCardBlockSchema as z.ZodType },
   "profile-read": { schema: ProfileReadBlockSchema as z.ZodType },
   "reaction-distribution": { schema: ReactionDistributionBlockSchema as z.ZodType },
   "prediction-gauge": { schema: PredictionGaugeBlockSchema as z.ZodType },

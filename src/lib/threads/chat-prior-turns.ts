@@ -183,6 +183,24 @@ const SKILL_BLOCK_RECORD: Record<string, (props: Record<string, unknown>) => str
       (firstPattern ? `; pattern: ${firstPattern.slice(0, 120)}` : "")
     );
   },
+  /**
+   * The composer's card. RECORDED, not excluded, and it is the type this map matters most for: the
+   * composed card exists to answer OPEN-ENDED asks, so the follow-up is always about the card
+   * itself — "make the second one sharper", "why does that format work". A hole here is the exact
+   * amnesia the map above was built to close, on the one card whose whole job is being referred back
+   * to. It is not a `CARD_BLOCK_TOOL` replay either: `emit_card` is not a generator run.
+   *
+   * One line, per this module's rule: the recipe (what KIND of answer it is) and the deliverable
+   * (the payoff itself, which is a typed required field, so it is always the right string to quote —
+   * D6 exists so this never has to guess between a label and the answer). Slots stay out: they are
+   * on screen, and every field costs tokens on every later turn.
+   */
+  "composed-card": (p) => {
+    const deliverable = obj(p.deliverable);
+    const text = deliverable ? str(deliverable.text) : null;
+    if (!text) return null;
+    return `${str(p.recipe) ?? "card"} — "${text.slice(0, 140)}"`;
+  },
   "brought-card": (p) => {
     const band = str(p.band);
     const frac = str(p.fraction);

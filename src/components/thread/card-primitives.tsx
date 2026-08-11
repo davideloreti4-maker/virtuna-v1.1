@@ -250,12 +250,16 @@ export function CardPrimaryAction({
 export function CardActionBar({
   children,
   className,
+  'data-testid': dataTestid,
 }: {
   children: ReactNode;
   className?: string;
+  /** Names the bar for a test that has to COUNT it — §0.5 row 7 allows exactly one per card. */
+  'data-testid'?: string;
 }) {
   return (
     <div
+      data-testid={dataTestid}
       className={`flex items-center gap-3.5 border-t border-white/[0.06] px-4 py-2.5${className ? ` ${className}` : ''}`}
     >
       {children}

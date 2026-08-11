@@ -35,6 +35,7 @@ import { PredictionGaugeBlockRenderer } from '@/components/thread/prediction-gau
 import { VideoTestCardRenderer } from '@/components/thread/video-test-card-block';
 import { CorpusReferencesBlockRenderer } from '@/components/thread/corpus-references-block';
 import { BroughtCardRenderer } from '@/components/thread/brought-card-block';
+import { ComposedCardRenderer } from '@/components/thread/composed-card-block';
 import { UnsupportedBlock } from './unsupported-block';
 
 // Component map: same keys as BLOCK_REGISTRY (TypeScript enforces completeness).
@@ -58,6 +59,11 @@ const BLOCK_COMPONENTS: Record<BlockType, React.ComponentType<{ block: any }>> =
   "input-request": InputRequestBlockRenderer,
   "corpus-references": CorpusReferencesBlockRenderer,
   "brought-card": BroughtCardRenderer,
+  // The composer's one card. Invoked as `<Component block={block} />` like every other renderer, so
+  // its optional `receipts` / `onAction` seams arrive undefined here — see the header of
+  // composed-card-block.tsx. Neither can be filled from this call site: `props` is whatever survived
+  // validateBlock, and a receipt is not yet a declared field on the schema.
+  "composed-card": ComposedCardRenderer,
   "profile-read": ProfileReadBlockRenderer,
   "reaction-distribution": ReactionDistributionBlockRenderer,
   "prediction-gauge": PredictionGaugeBlockRenderer,
