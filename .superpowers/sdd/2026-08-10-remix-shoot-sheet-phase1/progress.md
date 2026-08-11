@@ -312,3 +312,19 @@ Task 4: the assignment's line "RLS on with no policy reads as empty and writes f
    buildBlueprint's, and a CHECK would break the day D10 is retuned. `blueprint jsonb NOT NULL`
    is what forces emptyBlueprint() rather than NULL for a no-video row. Nothing enforces
    AdaptedBeat.index -> BlueprintBeat.index; that join is the renderer's (Task 6).
+
+TASK 4: MIGRATION APPLIED (2026-08-11), project virtuna-v1.1 / qyxvxleheckijapurisj.
+   Applied with the Supabase MCP `execute_sql`, NOT `apply_migration` and NOT `supabase db push`.
+   Deliberate: execute_sql is the SQL-editor equivalent and leaves the migration ledger
+   untouched, which is the whole point of this project's hand-apply rule. apply_migration would
+   have written a remote ledger row into a ledger already known to be drifted.
+   Project identity confirmed by CONTENT before writing (threads present at 240 rows,
+   remix_blueprints absent) — the .env.local read was denied, so identity was established from
+   the table list rather than assumed.
+   Verified after, not assumed:
+     row_count 0 · rls_enabled t · policy_count 1 (remix_blueprints_select_own:SELECT)
+     foreign keys BOTH present — thread_id -> threads, user_id -> auth.users
+     index_count 4 (the 3 explicit + the PK)
+   NOTE for anyone re-reading the file: dev and prod share ONE Supabase project here, so this
+   table is live in production from now on. It is additive DDL — no existing table was touched.
+TASK 4: CLOSED.
