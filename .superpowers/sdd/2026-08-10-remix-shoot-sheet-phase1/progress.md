@@ -661,3 +661,38 @@ Task 6: RESIDUAL — the route has no cache headers beyond `dynamic = "force-dyn
    component refetches on every mount. A thread with three remix cards makes three requests for
    the SAME row. Correct and cheap at phase-1 volume; it is the obvious thing to fold into a
    shared fetch when phase 3 collapses the three cards into one ranked sheet.
+
+TASK 7 — FIRST LIVE RUN (2026-08-11). Source: tiktok @elsaspeak/7386776370245815560, 16s,
+   corpus-confirmed speech. e2e test user. Cost: $0.0063 Apify + ~$0.0009 model = ~$0.007/run.
+
+RUN 1 — decode_failed, zero cards. NOT this lane's doing.
+   D-R1 (2026-06-11) made the Read a PURE SENSOR: it stopped emitting factors[],
+   overall_impression, content_summary (Apollo is sole judge, omni-analysis.ts:279-282).
+   `omniOutputToStructuralInput` still required `a.factors` and returned null on every real omni
+   output from that day on. REMIX HAS BEEN DEAD AT DECODE IN PRODUCTION FOR TWO MONTHS. `main`
+   carries the identical guard. The guard's own file has not changed since 2026-06-26.
+   Why 5964 tests missed it: every test in the tree hand-builds an OmniStructuralInput, and
+   omni-to-structural.test.ts's fixture STILL CARRIES the three pre-D-R1 fields. The suite
+   mirrored the producer instead of tracking it — the exact failure this ledger keeps recording,
+   one level upstream of where anyone was looking. There was no test of the mapper at all against
+   a real-shaped output.
+   FIX (red-first, live-reproduced): perception required, judgment optional —
+   `if (!a.hook_decomposition || !a.video_signals) return null` + `factors: a.factors ?? []`.
+   `?? []` not undefined: blueprint.ts:461 filters it unguarded. Cost: shoot sheets carry no
+   weakness annotations until factors are re-sourced from Apollo.
+
+RUN 2 — pipeline completes: 3 cards, 8 beats, 3 script variants, row persisted. AND THE SHEET
+   IS SYNTHETIC, which we know ONLY because of Task 5.5:
+     from_fixed_buckets TRUE · has_speech false · words_per_second 0 · beats_with_speech 0/8
+   Cause, from the logs: omni returned 3 video segments for a 16s video (verbatim_present true).
+   `normalizeSegments` requires >= MIN_BOUNDARY_COUNT (4) after normalization, so it DISCARDED
+   the 3 real segments — the ones carrying the real spoken_text — and returned 8 fabricated
+   fixed buckets. blueprint.ts then warned exactly as designed.
+   ⚠️ So Task 1's input assumption is NOT satisfied on this video, and NOT for the reason the
+   brief predicted. omni does carry perception; MIN_BOUNDARY_COUNT throws it away. On a short
+   video 3 coarse segments is a perfectly reasonable read — the corpus teardown for this very
+   video describes 6 sections. The threshold is discarding good data.
+   THE GATE IS NOT PASSED. The echo check could not run: there is no source speech to compare.
+   OPEN FOR THE OWNER: MIN_BOUNDARY_COUNT is an ENGINE-WIDE constant on the Read path, not a
+   remix one. Lowering it, or preferring few-real-cells over many-fabricated-ones, changes every
+   consumer of normalizeSegments. Needs a ruling before Task 7 can be re-run.
