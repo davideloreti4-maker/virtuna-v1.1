@@ -297,6 +297,10 @@ const BLUEPRINT: SourceBlueprint = {
   duration_s: 14,
   words_per_second: 3.2,
   has_speech: true,
+  // Real perception. `buildAdaptUserContent` deliberately does not branch on this — a fabricated
+  // grid carries no spoken_text, so `has_speech: false` already routes it to the on-screen-text
+  // prompt. The flag is for the human reading the sheet, not for the model writing it.
+  from_fixed_buckets: false,
   beats: [
     {
       index: 0, t_start: 0, t_end: 1.8, duration_s: 1.8, role: 'hook',

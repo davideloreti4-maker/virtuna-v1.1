@@ -11,10 +11,24 @@
  * timeout — truncated JSON, failed Zod parse, graceful adapt_failed on most real videos.
  * 8 beats is also closer to how a creator thinks about a shoot than 20 one-second cells.
  */
+import { createLogger } from "@/lib/logger";
 import type { OmniStructuralInput } from "./decode-types";
+
+const log = createLogger({ module: "engine.remix.blueprint" });
 
 /** D10 — the cap that keeps the adapt response inside its existing 90s budget. */
 export const MAX_BEATS = 8;
+
+/**
+ * The stamp `buildFixedBuckets` puts on every cell it emits — and the discriminator for a
+ * blueprint assembled from a grid that describes no video at all. See `from_fixed_buckets`.
+ *
+ * A PREFIX, not an equality: the fallback emits three distinct literals across its two branches
+ * (`fixed_bucket_hook_zone` + `fixed_bucket` for >= 8s, `fixed_bucket_short` throughout for < 8s,
+ * normalize-segments.ts:227,240,256). Matching one of them would leave the short-video branch —
+ * a whole class of fabricated sheet — unflagged.
+ */
+const FIXED_BUCKET_REASON_PREFIX = "fixed_bucket";
 
 /** Below this factor score a beat is flagged for repair rather than replication. */
 const WEAK_FACTOR_SCORE = 5;
@@ -72,6 +86,30 @@ export interface SourceBlueprint {
   /** false on slideshow / silent sources: the sheet goes on-screen-text-driven. */
   has_speech: boolean;
   beats: BlueprintBeat[];
+  /**
+   * True when this sheet was assembled from the DETERMINISTIC FALLBACK GRID, not from perception.
+   *
+   * `normalizeSegments` (qwen/normalize-segments.ts:37) can never return empty. On undefined or
+   * empty input, on malformed timestamps, or when normalization leaves fewer than
+   * MIN_BOUNDARY_COUNT cells, it returns `buildFixedBuckets(duration)` — a complete grid of
+   * evenly-spaced cells whose every `visual_event` and `audio_event` is the string
+   * `"segment 12s"`, with no `spoken_text` and no `on_screen_text` anywhere.
+   *
+   * `buildBlueprint` consumes that happily, and the result is the dangerous shape: a full set of
+   * beats with real-looking times and roles, every one of them reading "they show: segment 12s",
+   * `has_speech: false`, persisted, carried on the card, and RED NOWHERE. A live verification run
+   * would pass on entirely synthetic data with nothing to distinguish it from a real read.
+   *
+   * Worse, the duration itself is invented in the commonest case: `assembleOmniOutput`
+   * (remix/decode.ts:242) derives `videoDurationSeconds` from the highest raw `t_end` and falls
+   * back to a hard-coded 30 when there are no raw segments — which is exactly the branch that
+   * then fabricates the grid. So a "30s" fabricated blueprint may describe a video of any length.
+   *
+   * This flag is the only thing that says so. Consumers must treat a true here as "we hold no
+   * timed perception of this video" — the same epistemic position as `emptyBlueprint()`, which
+   * reports false because it fabricates nothing.
+   */
+  from_fixed_buckets: boolean;
 }
 
 /**
@@ -86,7 +124,10 @@ export interface SourceBlueprint {
  * to three AdaptInputs would let any of them corrupt the others.
  */
 export function emptyBlueprint(): SourceBlueprint {
-  return { duration_s: 0, words_per_second: 0, has_speech: false, beats: [] };
+  // `from_fixed_buckets: false` is a claim, not a default. An empty blueprint fabricates NOTHING
+  // — it says "no timed perception", and its zero beats make that self-evident downstream. The
+  // fabricated grid says the opposite with a full set of beats, which is why only it is flagged.
+  return { duration_s: 0, words_per_second: 0, has_speech: false, beats: [], from_fixed_buckets: false };
 }
 
 /**
@@ -267,6 +308,34 @@ function groupSegments(segments: Segment[]): Segment[][] {
   return groups.filter((g) => g.length > 0);
 }
 
+/**
+ * Did this grid come out of `buildFixedBuckets`, i.e. is the perception fabricated?
+ *
+ * EVERY cell, not some. `buildFixedBuckets` stamps its prefix on all of them and is the sole
+ * producer of that prefix, so "all" is exactly the condition and "some" would be a slander on a
+ * real grid the moment a model wrote the token itself.
+ *
+ * Sound in the other direction too — a genuine grid cannot reach here all-`fixed_bucket`:
+ *  - `scene_boundary_reason` is `.optional()` on SegmentSchema and the omni prompt asks for it as
+ *    free prose ("<why this is a scene boundary, optional>"), so real cells carry either nothing
+ *    or a sentence.
+ *  - `enforceHookZoneBoundary` stamps `hook_zone_split` / `hook_zone_split_continuation`, and
+ *    `mergeSubMinSegments` only ever preserves what was already there.
+ *  - There is exactly ONE `normalizeSegments` call site (`assembleOmniOutput`, omni-analysis.ts:260),
+ *    downstream of the modality-split merge, so a grid is wholly fabricated or wholly real —
+ *    it can never be a mix of fabricated and perceived chunks.
+ */
+function isFixedBucketGrid(segments: Segment[]): boolean {
+  // UNREACHABLE from buildBlueprint today — it returns emptyBlueprint() on an empty grid long
+  // before this runs. Kept anyway, and this is not the lane's usual "no unreachable fallbacks"
+  // case: `[].every()` is vacuously TRUE, so without the guard a future caller handing over an
+  // empty grid gets `from_fixed_buckets: true` — a fabrication warning about nothing at all.
+  if (segments.length === 0) return false;
+  return segments.every(
+    (s) => s.scene_boundary_reason?.startsWith(FIXED_BUCKET_REASON_PREFIX) === true,
+  );
+}
+
 function joinText(values: Array<string | null | undefined>): string | null {
   const parts = values.map((v) => v?.trim()).filter((v): v is string => !!v);
   return parts.length ? parts.join(" ") : null;
@@ -414,10 +483,25 @@ export function buildBlueprint(structural: OmniStructuralInput): SourceBlueprint
   const totalWords = beats.reduce((n, b) => n + wordCount(b.spoken), 0);
   const duration_s = Number((beats[beats.length - 1]!.t_end - beats[0]!.t_start).toFixed(2));
 
+  const from_fixed_buckets = isFixedBucketGrid(segments);
+  if (from_fixed_buckets) {
+    // Warn HERE, at assembly, not at the fallback. normalizeSegments already logs the fallback,
+    // but that line is one of thousands in an analyze run and says nothing about a shoot sheet.
+    // This one names the artefact that reached the creator: a sheet of N beats over D seconds
+    // with no source speech in it, which is what makes a synthetic Task 7 run visible.
+    log.warn("blueprint assembled from FABRICATED fixed-bucket segments — not real perception", {
+      duration_s,
+      beats: beats.length,
+      cells: segments.length,
+      has_speech: totalWords > 0,
+    });
+  }
+
   return {
     duration_s,
     words_per_second: duration_s > 0 ? Number((totalWords / duration_s).toFixed(2)) : 0,
     has_speech: totalWords > 0,
     beats,
+    from_fixed_buckets,
   };
 }

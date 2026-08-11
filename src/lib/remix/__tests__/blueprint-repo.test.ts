@@ -47,6 +47,10 @@ const SAMPLE_ROW: BlueprintRow = {
     duration_s: 14,
     words_per_second: 3.2,
     has_speech: true,
+    // A REAL read, which is the row shape phase 1 is meant to store. The fabricated-grid case
+    // reports true here and is covered where it is decided (engine/remix/blueprint.test.ts);
+    // this literal exists so the repo's column list and the type stay coupled.
+    from_fixed_buckets: false,
     beats: [
       {
         index: 0,

@@ -410,3 +410,113 @@ Task 5: RESIDUAL — the runner is proved against MOCKED omni/decode/adapt. Whet
    `analyzeVideoWithOmni` response yields non-empty `segments` at all is unverified here, and
    if it does not, every live card ships with no blueprintId and the feature looks unbuilt with
    nothing red anywhere. That is Task 7's assertion, and it is the one that matters most.
+
+Task 5.5 (2026-08-11): CONTROLLER-INITIATED, NOT IN THE 7-TASK PLAN. Sits between Task 5 and
+   Task 6. `SourceBlueprint` gains `from_fixed_buckets: boolean`; `buildBlueprint` sets it and
+   `log.warn`s once at assembly. 700 -> 710 tests across the four gate paths (41 files), tsc
+   clean, eslint clean, `npm run build` clean ("Compiled successfully in 49s",
+   /api/tools/remix/run still in the route table). Red was real: 9 failures, 8 of them
+   `expected undefined to be true/false` and one `expected "vi.fn()" to be called 1 times, but
+   got 0 times`.
+Task 5.5: WHY. `normalizeSegments` (qwen/normalize-segments.ts:37) can never return empty — on
+   undefined input, malformed timestamps, or a post-normalization count below
+   MIN_BOUNDARY_COUNT it returns `buildFixedBuckets(duration)`, a COMPLETE fabricated grid whose
+   every visual_event and audio_event is the string "segment 12s" and which carries no
+   spoken_text and no on_screen_text at all. `buildBlueprint` consumed that happily: a full set
+   of beats with real-looking times and roles, `has_speech: false`, row persisted, card stamped
+   with a blueprintId, and NOTHING red anywhere. Task 7 would have passed on entirely synthetic
+   data and we could not have told.
+Task 5.5: the discriminator is `scene_boundary_reason` starting with `fixed_bucket` on EVERY
+   cell. VERIFIED SOUND, not assumed, against four things:
+     (1) `buildFixedBuckets` is the sole producer of that prefix — three literals, at
+         normalize-segments.ts:227 (`fixed_bucket_hook_zone`), :240 (`fixed_bucket`), :256
+         (`fixed_bucket_short`). A PREFIX and not an equality because the < 8s branch emits only
+         `fixed_bucket_short`; matching one literal would leave that whole class unflagged.
+         Proved by mutation — `=== FIXED_BUCKET_REASON_PREFIX` turns 4 tests red.
+     (2) the real path stamps `hook_zone_split` / `hook_zone_split_continuation`
+         (enforceHookZoneBoundary, :127/:132) and `mergeSubMinSegments` only ever PRESERVES an
+         existing reason — it never writes one. Pinned by a test that runs a raw grid through the
+         actual `normalizeSegments` and asserts the result cannot be mistaken for the fallback.
+     (3) `scene_boundary_reason` is `z.string().max(300).optional()` (schemas.ts:117) and both
+         prompts ask for it as free prose ("<why this is a scene boundary, optional>",
+         omni-analysis.ts:203, split/prompts.ts:79). It is NOT an enum, so a model emitting the
+         literal token is type-possible — which is why the predicate is EVERY, not SOME. A
+         genuine grid would need the model to write `fixed_bucket*` on all >= 4 cells.
+         `some` turns the mixed-grid test red.
+     (4) NO MIXED GRIDS ARE POSSIBLE. There is exactly ONE `normalizeSegments` call site —
+         `assembleOmniOutput` (omni-analysis.ts:260) — and it is DOWNSTREAM of
+         `mergeModalityLegs` (split/run.ts:47), so the modality split's chunks are merged before
+         normalization. A grid is wholly fabricated or wholly real; it can never be part-real,
+         part-fallback, which would have been the one false-negative this predicate could not
+         survive. `omniOutputToStructuralInput` (decode-types.ts:87) passes `omni.segments`
+         straight through without rewriting the field.
+Task 5.5: NEW FINDING, worse than the one this task was given. On the empty/undefined-input
+   fallback the DURATION IS FABRICATED TOO. `assembleOmniOutput` derives `videoDurationSeconds`
+   from the highest raw `t_end` and falls back to a HARD-CODED 30 when there are no raw segments
+   (remix decode path, omni-analysis.ts:242-244) — which is exactly the branch that then
+   fabricates the grid. So the commonest fabricated blueprint claims to be a 30-second video
+   regardless of the real length, and `duration_s: 30` is the single most confident-looking
+   number on the sheet. This is why the warn logs `duration_s` — it is the field most likely to
+   be believed and least likely to be true.
+Task 5.5: EXISTING LANE TESTS ASSERTING FALLBACK BEHAVIOUR WHILE READING AS REAL — four, all in
+   blueprint.test.ts, all still passing and none of them wrong, but the titles mislead:
+     - "keeps the hook beat inside the first 3s on a long merged video" (:85) — the input is
+       `buildFixedBuckets(60)`. "a long merged video" is a fabricated grid. Harmless only
+       because the very next test (:95) makes the same assertion on a uniform real-shaped grid.
+     - "puts the fallback turn mid-video, keeping setup beats before it" (:205) — "fallback"
+       here means the fallback TURN ASSIGNMENT, not the fallback grid, but the input is
+       `buildFixedBuckets(60)`. Two different fallbacks in one sentence.
+     - "gives every factor the ROLE it asked for, in the schema's own emission order" (:338) and
+       "gives close to Share Trigger" (:367) — both read as pure role/weakness logic over an
+       ordinary 60s video. Both run on `buildFixedBuckets(60)`, so both have always executed
+       with `has_speech: false` and every `spoken` null. The role and weakness logic reads
+       neither field, so the coverage is genuine; what is NOT covered anywhere is
+       role+weakness placement over a >MAX_BEATS grid THAT HAS SPEECH. Left as-is deliberately
+       (retitling five green tests is not this task), but recorded so the next reader does not
+       mistake them for real-video coverage.
+Task 5.5: the flag is REQUIRED on the interface, not optional. tsc caught three literals that
+   710 GREEN TESTS SAILED STRAIGHT THROUGH — adapt.test.ts:296, blueprint-repo.test.ts:46, and
+   one of my own new tests reading a property off a fixture type that does not declare it. The
+   lane rule held again: vitest does not typecheck.
+Task 5.5: proved by MUTATION where the specified test could not go red by construction —
+   (a) `if (true)` on the warn turns "stays silent on a real grid" red (1 failure);
+   (b) `every` -> `some` turns the mixed-grid test red;
+   (c) `startsWith` -> `===` turns 4 tests red.
+   "stays silent on a segment-less source" does NOT go red under (a) and is labelled a
+   STRUCTURAL PIN in the file rather than left to read as behavioural coverage: it can only
+   catch the flag being moved above buildBlueprint's early return, which would start warning
+   "fabricated" at the two no-video callers (/api/remix/adapt, the drops pipe).
+TASK 6 MUST KNOW: a fabricated sheet must SAY SO ON THE CARD, not just in a log line the
+   creator never sees. Read `blueprint.from_fixed_buckets` off the row and, when true, render
+   the sheet as unavailable rather than rendering beats — every beat's `visual_event` is the
+   literal string "segment 12s" ("hook zone" on beat 0), `spoken` is null on all of them and
+   `on_screen_text` is null on all of them, so the beat rows are three empty columns and one
+   piece of nonsense. `duration_s` is very likely the hard-coded 30 and must not be printed as
+   a fact. This is a NEW third state beside the two the brief has: no row -> 404 -> render
+   nothing; a row with `beats: []` (emptyBlueprint) -> render nothing; a row with
+   `from_fixed_buckets: true` -> render "we could not read this video's timing", because here
+   there ARE beats and the default path would print all of them.
+TASK 7 MUST KNOW: this is the assertion that decides whether the live run proved anything.
+   On a real talking-head video assert `from_fixed_buckets === false` AND `has_speech === true`
+   on the stored row — those two together are what separate a real read from the fallback, and
+   either alone can be satisfied by the wrong thing. A run that comes back
+   `from_fixed_buckets: true` means the omni read returned no usable `segments` and the whole
+   feature is shipping synthetic sheets; that is a RESULT, not a test failure to work around.
+   Grep the run's stderr for "blueprint assembled from FABRICATED fixed-bucket segments".
+Task 5.5: RESIDUAL — nothing CONSUMES the flag yet. It is written to the jsonb and logged; the
+   renderer that acts on it is Task 6's. Until then a fabricated sheet is detectable but still
+   rendered as if real.
+Task 5.5: RESIDUAL — `getBlueprint` casts the jsonb through `as unknown as BlueprintRow` with no
+   zod parse, so a row written BEFORE this change would read back with `from_fixed_buckets`
+   undefined while typed `boolean`. There are zero such rows (Task 4 verified row_count 0 and
+   Task 5's writes all post-date this), so this is theoretical today — but Task 6 should test
+   `=== true`, never `!blueprint.from_fixed_buckets`, so an undefined can never read as "real".
+Task 5.5: RESIDUAL — `adapt` does not branch on the flag and deliberately so. A fabricated grid
+   carries no speech, so `has_speech: false` already routes it to the on-screen-text prompt.
+   Telling the model "this timing is fabricated" is a separate design question, not a bug.
+Task 5.5: NOTE for anyone editing blueprint.test.ts — the `seg()` fixture's `over` parameter is
+   `Record<string, unknown>`, and TypeScript ERASES it from the inferred return type. So
+   `seg(0, 3, { scene_boundary_reason: "..." })` sets the field at runtime while the type says
+   the property does not exist, and a TYPO IN THAT KEY would compile clean and silently produce
+   a boundary-less segment. Two existing tests (:127, :162) depend on that key. Not fixed here;
+   flagged because it is the same class of silent-drift this task exists to close.

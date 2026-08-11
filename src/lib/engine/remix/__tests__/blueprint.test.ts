@@ -1,6 +1,18 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+
+/**
+ * One STABLE logger object, not the usual `vi.fn(() => ({...}))` — `blueprint.ts` calls
+ * createLogger once at module scope, so a fresh mock per call would leave the test holding a
+ * different object than the module does and every `toHaveBeenCalled` would read zero.
+ */
+const { mockLog } = vi.hoisted(() => ({
+  mockLog: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}));
+vi.mock("@/lib/logger", () => ({ createLogger: () => mockLog }));
+
 import { buildBlueprint, MAX_BEATS } from "../blueprint";
-import { buildFixedBuckets } from "../../qwen/normalize-segments";
+import { buildFixedBuckets, normalizeSegments } from "../../qwen/normalize-segments";
+import type { SegmentGrid } from "../../qwen/schemas";
 import type { OmniStructuralInput } from "../decode-types";
 
 /** Minimal valid structural input; override per test. */
@@ -422,5 +434,166 @@ describe("buildBlueprint", () => {
     expect(bp.beats).toEqual([]);
     expect(bp.has_speech).toBe(false);
     expect(bp.duration_s).toBe(0);
+    // An honest "we have no timed perception" — NOT the fabricated grid. A renderer must be
+    // able to tell those two apart, and `emptyBlueprint()` is the one that renders nothing.
+    expect(bp.from_fixed_buckets).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// from_fixed_buckets — is this sheet describing the video, or the fallback grid?
+//
+// normalizeSegments (qwen/normalize-segments.ts:37) can NEVER return empty: on undefined
+// input, malformed timestamps, or a post-normalization count below MIN_BOUNDARY_COUNT it
+// returns buildFixedBuckets(duration), which fabricates a COMPLETE grid — every cell's
+// visual_event and audio_event is the string "segment 12s", every spoken_text and
+// on_screen_text absent. buildBlueprint consumes that happily and emits a confident,
+// fully-populated shoot sheet built from nothing. Nothing anywhere goes red.
+//
+// The discriminator is scene_boundary_reason starting with "fixed_bucket" on EVERY cell.
+// buildFixedBuckets is its only producer (three literals, normalize-segments.ts:227,240,256);
+// the real path stamps "hook_zone_split"/"hook_zone_split_continuation" or passes the model's
+// own free-text reason through, and the field is `.optional()` so most real cells carry none.
+// ---------------------------------------------------------------------------
+
+describe("buildBlueprint — from_fixed_buckets", () => {
+  beforeEach(() => {
+    mockLog.warn.mockClear();
+  });
+
+  it("flags a long fabricated grid, built by the REAL producer", () => {
+    const segments = buildFixedBuckets(60);
+    // Guard the premise rather than trusting it: this must be the shape the fallback emits.
+    expect(segments.every((s) => s.scene_boundary_reason?.startsWith("fixed_bucket"))).toBe(true);
+
+    const bp = buildBlueprint(structural({ segments }));
+
+    expect(bp.from_fixed_buckets).toBe(true);
+    // and this is what the flag is protecting against: a complete-looking sheet made of nothing
+    expect(bp.has_speech).toBe(false);
+    expect(bp.beats.every((b) => b.spoken === null)).toBe(true);
+    expect(bp.beats.length).toBeGreaterThan(0);
+  });
+
+  it("flags the SHORT-video fallback too — a different literal, same fabrication", () => {
+    // < SHORT_VIDEO_THRESHOLD_S takes the 1s-bucket branch, which stamps "fixed_bucket_short"
+    // on every cell and never emits "fixed_bucket_hook_zone". An equality check on one literal
+    // would miss this whole branch.
+    const segments = buildFixedBuckets(5);
+    expect(segments.every((s) => s.scene_boundary_reason === "fixed_bucket_short")).toBe(true);
+
+    const bp = buildBlueprint(structural({ segments }));
+    expect(bp.from_fixed_buckets).toBe(true);
+  });
+
+  it("survives the merge down to MAX_BEATS — the beat itself keeps no boundary reason", () => {
+    const segments = buildFixedBuckets(60);
+    expect(segments.length).toBeGreaterThan(MAX_BEATS);
+
+    const bp = buildBlueprint(structural({ segments }));
+
+    expect(bp.beats.length).toBe(MAX_BEATS);
+    expect(bp.from_fixed_buckets).toBe(true);
+    // groupSegments drops scene_boundary_reason entirely — a BlueprintBeat has no such field —
+    // so after the merge this flag is the ONLY surviving trace of where the grid came from.
+    expect(bp.beats[0]).not.toHaveProperty("scene_boundary_reason");
+  });
+
+  it("does NOT flag a grid that came through the real normalizer", () => {
+    // The strongest form of the claim: run raw model-shaped segments through the ACTUAL
+    // normalizeSegments and assert the result cannot be mistaken for the fallback. The first
+    // cell straddles 3s, so enforceHookZoneBoundary fires and stamps its own reasons.
+    const raw: SegmentGrid[] = [
+      { t_start: 0,  t_end: 5,  visual_event: "wide shot",   audio_event: "voice", spoken_text: "you are doing this wrong" },
+      { t_start: 5,  t_end: 10, visual_event: "close-up",    audio_event: "voice", spoken_text: "here is why" },
+      { t_start: 10, t_end: 15, visual_event: "b-roll",      audio_event: "music", spoken_text: "watch this" },
+      { t_start: 15, t_end: 20, visual_event: "back to cam", audio_event: "voice", spoken_text: "so do it this way" },
+      { t_start: 20, t_end: 25, visual_event: "end card",    audio_event: "voice", spoken_text: "follow for more" },
+    ];
+    const segments = normalizeSegments(raw, 25);
+
+    // premise: the real path took the normalization route, not the fallback route
+    expect(segments.some((s) => s.scene_boundary_reason === "hook_zone_split")).toBe(true);
+    expect(segments.every((s) => !s.scene_boundary_reason?.startsWith("fixed_bucket"))).toBe(true);
+
+    const bp = buildBlueprint(structural({ segments }));
+    expect(bp.from_fixed_buckets).toBe(false);
+    expect(bp.has_speech).toBe(true);
+  });
+
+  it("does NOT flag a realistic omni grid — free-text boundary reasons and real speech", () => {
+    const segments = [
+      seg(0, 3,   { scene_boundary_reason: "opens on the finished result", spoken_text: "everyone gets this wrong" }),
+      seg(3, 9,   { scene_boundary_reason: "cut to close-up on hands",     spoken_text: "here is the part they skip" }),
+      seg(9, 16,  { scene_boundary_reason: "hard cut to overhead",         spoken_text: "watch what happens next" }),
+      seg(16, 24, { scene_boundary_reason: "returns to talking head",      spoken_text: "that is the whole trick" }),
+    ];
+    const bp = buildBlueprint(structural({ segments }));
+    expect(bp.from_fixed_buckets).toBe(false);
+    expect(bp.has_speech).toBe(true);
+  });
+
+  it("does NOT flag a grid whose cells declare no boundary reason at all", () => {
+    // scene_boundary_reason is `.optional()` on SegmentSchema (qwen/schemas.ts:117) and the omni
+    // prompt asks for it "optional", so an absent reason is the ordinary case, not a defect.
+    const segments = Array.from({ length: 20 }, (_, i) => seg(i, i + 1));
+    // `in`, not `=== undefined`: seg() omits the key entirely and tsc will not even let the
+    // property be read off this fixture's inferred type, so the absent case is the real one.
+    expect(segments.every((s) => !("scene_boundary_reason" in s))).toBe(true);
+
+    const bp = buildBlueprint(structural({ segments }));
+    expect(bp.from_fixed_buckets).toBe(false);
+  });
+
+  it("does NOT flag a grid where only SOME cells are fixed_bucket-shaped", () => {
+    // EVERY, not SOME. A model that happens to answer "fixed_bucket" once must not condemn a
+    // grid whose other cells are genuine perception.
+    const segments = [
+      seg(0, 3,   { scene_boundary_reason: "fixed_bucket_hook_zone", spoken_text: null }),
+      seg(3, 9,   { scene_boundary_reason: "fixed_bucket",           spoken_text: null }),
+      seg(9, 16,  { scene_boundary_reason: "hard cut to overhead",   spoken_text: "watch this" }),
+      seg(16, 24, { scene_boundary_reason: "fixed_bucket",           spoken_text: null }),
+    ];
+    const bp = buildBlueprint(structural({ segments }));
+    expect(bp.from_fixed_buckets).toBe(false);
+  });
+
+  // -------------------------------------------------------------------------
+  // The warning. Without it the flag is only visible to whoever thinks to look
+  // at the stored jsonb — a live run (Task 7) would pass on synthetic data in
+  // total silence.
+  // -------------------------------------------------------------------------
+
+  it("warns ONCE on assembly, naming the duration and the beat count", () => {
+    const bp = buildBlueprint(structural({ segments: buildFixedBuckets(60) }));
+
+    expect(mockLog.warn).toHaveBeenCalledTimes(1);
+    const [msg, data] = mockLog.warn.mock.calls[0]! as [string, Record<string, unknown>];
+    expect(msg).toMatch(/fixed.?bucket|fabricat/i);
+    expect(data).toMatchObject({ duration_s: bp.duration_s, beats: bp.beats.length });
+    expect(bp.beats.length).toBe(MAX_BEATS);
+    expect(bp.duration_s).toBe(60);
+  });
+
+  it("stays silent on a real grid", () => {
+    buildBlueprint(structural({
+      segments: [
+        seg(0, 3,  { scene_boundary_reason: "opens on the result" }),
+        seg(3, 9,  { scene_boundary_reason: "cut to close-up" }),
+        seg(9, 16, { scene_boundary_reason: "hard cut to overhead" }),
+      ],
+    }));
+    expect(mockLog.warn).not.toHaveBeenCalled();
+  });
+
+  // A STRUCTURAL PIN, stated as such: buildBlueprint returns emptyBlueprint() before it ever
+  // reaches the flag, so making the warn unconditional does NOT turn this red (it turns "stays
+  // silent on a real grid" red — proved by that mutation). What this can catch is the flag or
+  // the warn being moved ABOVE the early return, which would start warning "fabricated" at every
+  // no-video caller: /api/remix/adapt and the drops pipe, neither of which has a video to
+  // fabricate from.
+  it("stays silent on a segment-less source — nothing was fabricated", () => {
+    buildBlueprint(structural({ segments: undefined }));
+    expect(mockLog.warn).not.toHaveBeenCalled();
   });
 });
