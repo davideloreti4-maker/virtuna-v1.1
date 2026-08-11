@@ -298,6 +298,125 @@ describe("runExplorePipeline", () => {
     expect(dupCount).toBe(1);
   });
 
+  // ── The printed multiplier is the per-author RECEIPT, not the within-set median ──────
+  //
+  // Phase 2 of the Apify-first lane. `rankOutliers`' baseline is the median of the RETURNED
+  // set, so the same video printed 12.1x at N=20 and 1.3x at N=10 on a live pull. These tests
+  // pin the tile's number to something a request parameter cannot move. Nothing above asserts
+  // on `multiplier` at all, which is exactly how the defect stayed shipped through a green
+  // suite (memory: multiplier-depends-on-scrape-size).
+  describe("the outlier receipt (§2.7)", () => {
+    const AUTHOR = { handle: "creator", fans: 5_370, heart: 19_500, videoCount: 31 };
+
+    it("prints views ÷ followers on a niche pull, labelled honestly", async () => {
+      mockScrapeVideos.mockResolvedValue([
+        makeVideo({ platformVideoId: "big", views: 97_700, author: AUTHOR }),
+        makeVideo({ platformVideoId: "mid", views: 48_100, author: AUTHOR }),
+        makeVideo({ platformVideoId: "small", views: 1_200, author: AUTHOR }),
+      ]);
+
+      const { block } = await runExplorePipeline({
+        audience: makeGeneralAudience(),
+        mode: "niche",
+        normalizedInput: "startup founder",
+        serendipity: 0,
+      });
+
+      const big = block.props.tiles.find((t) => t.platformVideoId === "big")!;
+      expect(big.baselineLabel).toBe("vs followers");
+      expect(big.multiplier).toBeCloseTo(97_700 / 5_370, 4);
+    });
+
+    it("THE REGRESSION: the same video prints the same number whatever the pull size", async () => {
+      const target = makeVideo({ platformVideoId: "target", views: 97_700, author: AUTHOR });
+      const filler = (id: string, views: number) =>
+        makeVideo({ platformVideoId: id, views, author: AUTHOR });
+
+      mockScrapeVideos.mockResolvedValue([target, filler("f1", 500), filler("f2", 900)]);
+      const small = await runExplorePipeline({
+        audience: makeGeneralAudience(),
+        mode: "niche",
+        normalizedInput: "startup founder",
+        serendipity: 0,
+      });
+
+      mockScrapeVideos.mockResolvedValue([
+        target,
+        ...Array.from({ length: 12 }, (_, i) => filler(`g${i}`, 200_000 + i * 1_000)),
+      ]);
+      const large = await runExplorePipeline({
+        audience: makeGeneralAudience(),
+        mode: "niche",
+        normalizedInput: "startup founder",
+        serendipity: 0,
+      });
+
+      const from = (r: typeof small) =>
+        r.block.props.tiles.find((t) => t.platformVideoId === "target")!.multiplier;
+      expect(from(small)).toBe(from(large));
+
+      // And the SELECTION signal still moves — proving the two are genuinely separate and
+      // that this test would fail if the tile ever went back to reading the ranker's figure.
+      const selection = (r: typeof small) =>
+        r.ranked.find((t) => t.platformVideoId === "target")!.multiplier;
+      expect(selection(small)).not.toBeCloseTo(selection(large), 1);
+    });
+
+    it("shows NO badge — and still validates — when the scrape carries no author aggregates", async () => {
+      mockScrapeVideos.mockResolvedValue([makeVideo({ platformVideoId: "anon", views: 90_000 })]);
+
+      const { block } = await runExplorePipeline({
+        audience: makeGeneralAudience(),
+        mode: "niche",
+        normalizedInput: "startup founder",
+        serendipity: 0,
+      });
+
+      const anon = block.props.tiles.find((t) => t.platformVideoId === "anon")!;
+      expect(anon.multiplier).toBeNull();
+      expect(anon.baselineLabel).toBeNull();
+      expect(OutlierGridBlockSchema.safeParse(block).success).toBe(true);
+    });
+
+    it("keeps each creator on their own denominator in a merged competitors pull", async () => {
+      // CR-02 mergeInputs is mode:"profile" across SEVERAL handles — a single median over all
+      // of them is the cross-creator bug this change exists to kill.
+      const alice = { handle: "alice", fans: 1_000, heart: 5_000, videoCount: 20 };
+      const bob = { handle: "bob", fans: 90_000, heart: 900_000, videoCount: 300 };
+      mockScrapeVideos.mockImplementation((source: string) =>
+        Promise.resolve(
+          source === "alice"
+            ? [
+                makeVideo({ platformVideoId: "a1", views: 5_000, author: alice }),
+                makeVideo({ platformVideoId: "a2", views: 10_000, author: alice }),
+                makeVideo({ platformVideoId: "a3", views: 60_000, author: alice }),
+              ]
+            : [
+                makeVideo({ platformVideoId: "b1", views: 400_000, author: bob }),
+                makeVideo({ platformVideoId: "b2", views: 800_000, author: bob }),
+                makeVideo({ platformVideoId: "b3", views: 1_600_000, author: bob }),
+              ],
+        ),
+      );
+
+      const { block } = await runExplorePipeline({
+        audience: makeGeneralAudience(),
+        mode: "profile",
+        normalizedInput: "alice",
+        serendipity: 0,
+        mergeInputs: ["alice", "bob"],
+      });
+
+      const a3 = block.props.tiles.find((t) => t.platformVideoId === "a3")!;
+      expect(a3.baselineLabel).toBe("vs their usual views");
+      // Alice's own median (10_000) — NOT the merged median, which bob's numbers dominate.
+      expect(a3.multiplier).toBeCloseTo(60_000 / 10_000, 4);
+
+      const b3 = block.props.tiles.find((t) => t.platformVideoId === "b3")!;
+      expect(b3.multiplier).toBeCloseTo(1_600_000 / 800_000, 4);
+    });
+  });
+
   it("does not import or call any engine SIM/Flash scoring (D-02/D-03 — pure grid)", async () => {
     // Statically assert the runner source carries no engine-scoring imports/calls.
     // (Belt-and-suspenders alongside the verification grep; keeps the honesty spine
