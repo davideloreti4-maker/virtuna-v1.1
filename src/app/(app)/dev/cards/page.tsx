@@ -62,6 +62,8 @@ import {
   EXPLORE_BLOCKS,
   ACCOUNT_BLOCK,
   BLOCK_SECTIONS,
+  COMPOSED_CARD_FIXTURES,
+  COMPOSED_CARD_SECTIONS,
   SINGLE_AUDIENCE_READ_BLOCK,
   USER_TURNS,
   FOLLOWUPS,
@@ -1382,7 +1384,13 @@ const SIM_BROUGHT_VIDEO = { kind: "video" as const, text: "cold-open-v3.mp4" };
 //   Legacy   — 0 live producers; the standalone block exists only as a prop inside cards,
 //              registry-kept for persisted history. (band, personas.)
 // ─────────────────────────────────────────────────────────────────────────────
-type Status = "live" | "flag-off" | "legacy";
+// "unwired" is NOT a synonym for the other three, and the difference is the whole point of this
+// page carrying a status at all. A `flag-off` renderer has a live producer behind a switch; a
+// `legacy` one had one and lost it. A composed card has never had one: the block type is registered
+// and renders, but nothing emits it until the `emit_card` tool is wired into the agent loop. Filed
+// as "live" it would present a shape no thread can currently produce as the product — the exact
+// drift the RoomFlagBanner below exists to stop, which this page shipped for weeks.
+type Status = "live" | "flag-off" | "legacy" | "unwired";
 
 // The Room has TWO implementations and they are mutually exclusive, decided at BUILD time by
 // AMBIENT_V2_ENABLED. Deriving both statuses from the real flag is what stops this page drifting
@@ -1394,6 +1402,7 @@ const STATUS_META: Record<Status, { label: string; dot: string; tone: string }> 
   live: { label: "Live", dot: "bg-[var(--color-accent)]", tone: "text-foreground-secondary" },
   "flag-off": { label: "Flag off", dot: "ring-1 ring-inset ring-white/30", tone: "text-foreground-muted" },
   legacy: { label: "Legacy", dot: "bg-white/25", tone: "text-foreground-muted/80" },
+  unwired: { label: "Not wired", dot: "bg-white/10 ring-1 ring-inset ring-white/40", tone: "text-foreground-muted" },
 };
 
 // Skills, in thread order. Their outlier / degraded run-states NEST under the base skill
@@ -1439,6 +1448,7 @@ const TABS: Tab[] = [
   { id: "reading", label: "Reading", blurb: "The Test skill's full /analyze surface — every state, not just the happy path. Each option mounts the REAL component." },
   { id: "room", label: "The Room", blurb: "The audience surface beside the thread. The Ambient v2 surfaces the composer mounts today — the ≥xl rail, the <xl header sheet, the depth drill a sealed row opens, and ⑤ the ＋ door's arm screen — plus the legacy pre-v2 room, which still ships wherever the flag is off." },
   { id: "blocks", label: "Blocks", blurb: "The live in-thread blocks rendered through the SAME MessageBlocks dispatch the thread uses." },
+  { id: "composer", label: "Composer", blurb: "The composed card — ONE block type whose slot tree a RECIPE validates, one entry per recipe. Not wired: the type is registered and renders, but nothing emits it until emit_card lands, so read these as the contract, not as something a thread produces today. Every card here sorts its slots into the §0.5 spine itself — the model composes a set of slots, never a layout." },
   { id: "hidden", label: "Hidden & legacy", blurb: "Renderers kept alive but NOT shippable today: the horizontal verbs behind HORIZONTAL_ENABLED (flag off) + the standalone primitives no live skill emits (legacy)." },
 ];
 
@@ -1483,6 +1493,7 @@ export default function DevCardsPage() {
     room: 6, // 4 v2 surfaces (rail · sheet · depth · ⑤ arm) + the 2 legacy ones, kept while the flag can flip
 
     blocks: liveBlocks.length,
+    composer: COMPOSED_CARD_FIXTURES.length,
     hidden: hiddenBlocks.length,
   };
 
@@ -1578,6 +1589,17 @@ export default function DevCardsPage() {
               status="live"
               onOpen={() => goTo("blocks")}
               chips={liveBlocks.map((s) => ({ id: s.type, label: s.label, status: "live" as Status, onClick: () => goTo("blocks", s.type) }))}
+            />
+            <OverviewGroup
+              title="Composed cards (one per recipe)"
+              status="unwired"
+              onOpen={() => goTo("composer")}
+              chips={COMPOSED_CARD_FIXTURES.map((f) => ({
+                id: `composed-card--${f.props.recipe}`,
+                label: COMPOSED_CARD_SECTIONS[f.props.recipe].label,
+                status: "unwired" as Status,
+                onClick: () => goTo("composer", `composed-card--${f.props.recipe}`),
+              }))}
             />
             <OverviewGroup
               title="Hidden & legacy"
@@ -1933,6 +1955,30 @@ export default function DevCardsPage() {
           </div>
         )}
 
+        {/* ── COMPOSER (composed cards, one per recipe) ────────────────────── */}
+        {tab === "composer" && (
+          <div className="flex flex-col gap-6 pt-6">
+            {COMPOSED_CARD_FIXTURES.map((f) => {
+              const meta = COMPOSED_CARD_SECTIONS[f.props.recipe];
+              return (
+                <section key={f.props.recipe} id={`composed-card--${f.props.recipe}`} className="scroll-mt-32">
+                  <SectionHead label={meta.label} code={`composed-card · ${f.props.recipe}`} note={meta.note} status="unwired" />
+                  <div className="rounded-[var(--radius-lg)] border border-white/[0.06] bg-background p-4">
+                    <div className="mx-auto max-w-[760px]">
+                      {/* The SAME dispatch the thread uses, so the gallery cannot drift from
+                          production — and deliberately WITHOUT `ambientBaseIndex` / `blockOrigins`.
+                          Both are positional ledger seams: this body is not part of any thread's
+                          ledger, so passing them would mint a colliding card id and hand the
+                          ambient room another card's reaction (message-blocks.tsx). */}
+                      <MessageBlocks body={[f]} />
+                    </div>
+                  </div>
+                </section>
+              );
+            })}
+          </div>
+        )}
+
         {/* ── HIDDEN & LEGACY ──────────────────────────────────────────────── */}
         {tab === "hidden" && (
           <div className="flex flex-col gap-6 pt-6">
@@ -1995,6 +2041,7 @@ function StatusLegend() {
       <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-[var(--color-accent)]" /> Live — a skill emits it today</span>
       <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full ring-1 ring-inset ring-white/30" /> Flag off — a flag hides it in this build</span>
       <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-white/25" /> Legacy — no live producer</span>
+      <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-white/10 ring-1 ring-inset ring-white/40" /> Not wired — renders, but nothing emits it yet</span>
     </div>
   );
 }
