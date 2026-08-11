@@ -48,10 +48,15 @@ prompt-only failure in this lane; treat wording as a dead lever on this surface.
 
 1. 🔴 **The pinned retry (§7.2).** Blocked on ONE owner call about streaming UX (§7.3) — and the
    call is real, not a formality: buffering cannot be scoped to the failing runs.
-2. **Then** session 9's remaining queue: re-measure the honesty defect (§11 there), then the
-   verdict-narration design call (§12.4 there). Both untouched this session.
+2. ✅ **The honesty defect is re-measured (§7.4)** — session 9's queue item 2, done free on this
+   session's own corpus. It has NOT evaporated (~7 of 98 no-tool turns hand over a full prose pack),
+   but it is **a different shape than §4 was designed for**: the model never falsely claims a card
+   exists (0/98), it just does the tool's job itself. A claim-detector would find nothing. And every
+   case is a non-dispatch, so **the dispatch fix subsumes it** — §15.1's prediction, now on 98 turns
+   instead of 3.
+3. **Left for next:** the verdict-narration design call (§12.4 of session 9). Untouched.
 
-⚠️ `.scratch/` is gitignored and now holds **81 files** — every number here is reproducible from
+⚠️ `.scratch/` is gitignored and now holds **83 files** — every number here is reproducible from
 them, and they are the only copy. Copy them out before any `git worktree remove`.
 
 ---
@@ -69,8 +74,7 @@ through the real pipeline. The probe window was **10:04:56–10:35:57Z**; the ne
 ⚠️ Those 9 rows are not mine and are the same warning session 9 recorded: the e2e account is a REAL
 prod account shared with whatever else touches it. Never read a day's total as one session's spend.
 
-The Apify part
-is structural and worth writing down, because two of these arms used brand-new topics that miss the
+The Apify part is structural and worth writing down, because two of these arms used brand-new topics that miss the
 grounding cache: `gather-for-run.ts` is **explicit-only** (`allowScrape`, owner call 2026-07-17) and
 the chat-agent path never sets it, so a cache miss degrades to a partial or to ungrounded — it never
 reaches for a paid pull. A new topic is free here. Verified in the logs: every run either logged a
@@ -82,9 +86,10 @@ cache HIT or degraded.
 | `.scratch/dispatch-lib.ts` | the ONE runner everything after run 1 shares (§8 on why) |
 | `.scratch/probe-dispatch-power.ts` | run 2 — 14 fresh seeds on the three cells run 1 left underpowered |
 | `.scratch/probe-dispatch-2x2.ts` | run 3 — the 2×2 that separated subject shape from niche fit |
-| `.scratch/probe-dispatch-prompt.ts` | run 4 — the two prompt arms (§5) |
 | `.scratch/analyse-dispatch.ts` | scoring, separate from collection, so it can change after the fact |
-| `.scratch/dispatch-runs.jsonl` | every run, appended before the next starts — a crash loses nothing |
+| `.scratch/probe-dispatch-prompt.ts` + `.scratch/dispatch-prompt.patch` | run 4 — the prompt arms, plus the reverted directive patch they require |
+| `.scratch/score-honesty-defect.ts` & `.scratch/score-prose-packs.ts` | §7.4 — the two §11 screens, both mis-calibrated then read |
+| `.scratch/dispatch-runs.jsonl` | all 183 runs, appended before the next starts — a crash loses nothing |
 
 ---
 
@@ -337,6 +342,63 @@ narrow it hard — but it is a product call, not a code one.
 
 ---
 
+## 7.4 §11 RE-MEASURED — it has not evaporated, and it is a different shape than §11 described
+
+Session 9's queue item 2. Free: the dispatch experiment produced **98 turns where no tool ran**,
+through the real loop on real generation asks — precisely §11's population, and 11× the ~9 historical
+cases. Scored with `.scratch/score-honesty-defect.ts` then `.scratch/score-prose-packs.ts`; every hit
+was read, because §10.4's enumerated-line detector false-positives on angle menus and a count alone
+would be worthless here.
+
+**Three findings, and the middle one changes §4's design.**
+
+**1. The false CLAIM does not happen. 0 of 98.** The first screen flagged 25 turns for "says a card
+is generated / ready / on screen". All 25 are false positives on reading — the model writes *"Here
+are three **angles**"*, which is true. The directive's strongest prohibition (*"CRITICAL — NEVER tell
+the creator a card is 'on screen', 'generated', or 'ready' … UNLESS you actually called the tool THIS
+turn"*) is the one instruction in this lane that is actually being obeyed.
+
+**2. 🔴 What DOES happen is an honest prose pack — ~7 of 98 (7%).** The model delivers the paid
+artefact itself, with no claim to lie about:
+
+> *"Here are 10 hook angles built for your specific voice and audience:"*
+> 1. *"I spent $40 on avocados in college and my bank account looked like a crime scene."*
+> 2. *"My bank balance hit -$12.50 and I had to ask my mom for gas money…"*
+> …9 more, grouped under three archetype headings, each with a mechanism note.
+
+That is `P-control/2002`, and it is a **better-presented version of the hooks product than the cards
+are** — sectioned by archetype, with mechanism commentary the real cards do not carry. Six more like
+it (`P-control/2005, 2009, 2011`, `P-slot-off/2012`, `V2/app/4006`, `V1+V2/app/4007`), one borderline.
+
+> **Why this matters for §4.** The honesty check was scoped to detect *a claim about an artefact that
+> does not exist*. **That shape does not occur.** A detector keyed on false claims would find nothing
+> and pass. The real defect needs no dishonesty: the model substitutes itself for the tool and
+> describes what it did accurately. What the creator loses is not the truth — it is the product: no
+> cards, nothing in the library, no outlier grounding, no scoring, no evidence rail, and nothing a
+> CTA can build a script from. The closing line even says *"Pick one of these and I can write the
+> full script"* — a pack the product cannot act on.
+
+**3. And it confirms §15.1's prediction exactly: this defect lives entirely inside the non-dispatch
+population.** All 7 cases are no-tool turns, and all 7 are on the product-shaped subject that fails
+to dispatch. **Fix dispatch and the honesty defect goes with it** — there is nothing left for a
+detector to be the primary lever on. §15.1 argued this from 3 cases; it now holds on 98.
+
+### 7.5 Free bonus: session 9's shipped fix independently confirmed at n=80
+
+The same corpus contains 80 turns that DID dispatch, with `ENGINE_CHAT_CARDS_ON_SCREEN` at its
+shipped default (on). Session 9's A/B for it ran at n=12 per arm:
+
+| | session 9 (n=12) | here (n=80) |
+|---|---|---|
+| INVENTED — prose pack ≠ the cards (the §3 defect) | 0/12 | **1/80 · 1.25%** |
+| RELISTED — prose repeats the cards (the §12.1 backfire risk) | 0/12 | **0/80** |
+| names a real card by its text | 9/12 · 75% | **50/80 · 63%** |
+
+Same band, 6× the sample, and the backfire risk still does not materialise. `8c204865` is earning its
+default-ON. Not a new measurement I set out to make — the corpus was already there.
+
+---
+
 ## 8. Traps and notes worth keeping
 
 - **A probe's control arm must fail before its treatment arm is believed** (session 9 §10.3). Here
@@ -373,4 +435,15 @@ narrow it hard — but it is a product call, not a code one.
 - **The `count` argument was never varied** ("give me 5 hooks for my app" may behave differently from
   "give me hooks for my app" — a count is evidence the creator wants a run).
 - **No tsc / suite / build** — `src/` is unchanged (§6).
-- **The prompt arms' results** were not in when this was written (§5).
+- **The §7.4 honesty numbers are a READING, not a regex.** Both screens were badly calibrated in
+  opposite directions (25/98 claims → all false; 92/98 artefacts → uselessly broad), and the 7 came
+  from reading 14 flagged turns and rejecting 6 plus 1 borderline. Someone re-scoring with a different
+  threshold will get a different number; the *shapes* are the finding. The near-miss bucket (44 turns
+  with 1–2 lines) was printed but only sampled, not read exhaustively — a stricter reader would find
+  more than 7.
+- **§7.4 is a FIRST-TURN measurement, like everything else here.** The historical §11 cases came from
+  real threads where a pack had already been claimed. A thread with prior turns is the population
+  where "the transcript showing the pack is stronger precedent than any instruction" applies, and it
+  was not measured.
+- **§7.5's 1/80 INVENTED was not investigated.** It is one turn; worth a look before anyone claims
+  the §3 defect is at zero.
