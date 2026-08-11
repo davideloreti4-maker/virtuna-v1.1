@@ -7,29 +7,53 @@ conversation about the output-side honesty check.
 record; read its §0 for anything not covered here.
 **Nothing merged, nothing deployed** (Vercel disconnected).
 
-Gates: `tsc` clean · prod build clean · **5,871 passed / 0 failed** (was 5,857; +14 new).
-Spend: **2 credits** (two signed-in route walks).
+Gates: `tsc` clean · prod build clean · **5,886 passed / 0 failed** (was 5,857; +29 new).
+Spend: **4 credits** — four signed-in route walks. The A/B's 24 generations cost **0** (stub till).
+
+⚠️ Three ledger rows I did not create sit inside today's window: `account` ×2 and `explore_scrape`
+(15 credits, 08:02–08:06Z). Not from anything run here. The e2e account is a REAL prod account
+shared with whatever else touches it — do not read `count-credits-session9.ts`'s total as one
+session's spend.
 
 ---
 
 ## 0. ▶️ START HERE
 
-**Shipped:** one commit, `ef285bb6` — the conversation digest now carries the turn it is answering.
-Mutation-tested six ways, verified live through `/api/tools/chat` signed-in.
+**Shipped:** two commits.
 
-**Found, not fixed — and it is the more interesting one:**
+| | |
+|---|---|
+| `ef285bb6` | the conversation digest now carries the turn it is answering (§1–§2) |
+| `c6baa49f` | the narrator can SEE the pack it just made — `ENGINE_CHAT_CARDS_ON_SCREEN`, flagged OFF (§3, §10) |
 
-> 🔴 **A live tool result tells the model the card COUNT and not the card LINES**, then instructs it
-> in prose not to restate them. Measured this session, **2 of 2 turns**: the model narrated a pack
-> of 10 and then 5 hooks that had **zero overlap with the cards actually rendered**. The replayed
-> prior-turn path already passes `cards_on_screen`; the live path does not. §3.
+**The defect that started the second commit.** A live tool result told the model the card COUNT and
+not the card LINES, then instructed it in prose not to restate them. Measured live, **2 of 2 turns**:
+it narrated a pack of 10 and then 5 hooks with **zero overlap with the cards rendered beside them**.
+The replayed prior-turn path had passed `cards_on_screen` since 2026-08-04; the live path never did.
+So the model could discuss the pack it made *last* turn and not the one it had *just* made. §3.
+
+**What the A/B says** (24 offline runs + 2 live walks, §10):
+
+| | arm A · count only | arm B · `cards_on_screen` |
+|---|---|---|
+| re-lists the real cards (the §12.1 risk) | 0/12 | **0/12** — the risk did not materialise |
+| invents a different pack | 1/12 | 0/12 — *too few to call* |
+| **names a real card by its text** | **0/12** | **9/12** |
+
+Arm A *cannot* do the last row — with no lines it can only say "here are 5 hooks, pick one."
+Live, flag on, the exact ask that failed before now answers:
+*"The strongest is "My bank account is a horror movie" — it opens a curiosity gap with zero
+friction… Want me to write a script around that one?"*
 
 **Do next, in this order:**
 
-1. **The honesty-check design conversation** (owner asked for this before any building). §4 lays out
-   the four decisions and what §3 changes about them — §3 is a *cause*, the honesty check is a
-   *detector*, and the cheap one may be enough.
-2. Nothing else is queued. §5 lists what this session did not verify.
+1. **Owner call: flip `ENGINE_CHAT_CARDS_ON_SCREEN`?** The §12.1 objection is answered and the
+   positive change is categorical. The elimination claim is *not* proven — see §10.3.
+2. **The honesty-check design conversation** — still owed, and §10 narrows it. §4 has the four
+   decisions; §11 has what the A/B changed about them.
+3. **A separate reliability problem the A/B surfaced:** 3 of 12 unpinned runs on a plain ask did
+   not dispatch at all, one of them incoherently (*"I need the actual text of the hooks you want me
+   to generate for"*). Unrelated to this fix — no tool ran, so the flag cannot reach it. §10.4.
 
 **Still parked, do not touch without the owner:** the `writing_voice_sample` migration; adding
 goals/wins/flops to `MODE_ROLES.chat`; building the honesty check ahead of the conversation.
@@ -224,7 +248,19 @@ it is not safe (the 0.44 miss sits 0.03 above an unrelated-topic pair).
 ```bash
 node node_modules/tsx/dist/cli.mjs .scratch/measure-current-turn-digest.ts   # §1, free, deterministic
 node node_modules/tsx/dist/cli.mjs .scratch/count-credits-session9.ts        # today's spend window
-zsh .scratch/mutate-current-turn.sh                                          # the six mutations
+zsh .scratch/mutate-current-turn.sh                                          # §1's six mutations
+zsh .scratch/mutate-cards-on-screen.sh                                       # §10's seven mutations
+
+# the A/B — real Qwen + real pipeline, STUB till, 0 credits. ~8 min for 24 runs.
+GROUNDING_HOOKS_ENABLED=true ENGINE_GEN_CONVERSATION=true \
+  node node_modules/tsx/dist/cli.mjs .scratch/probe-cards-on-screen.ts 3
+```
+
+Dev server for the live arm-B walk:
+```bash
+ENGINE_GEN_CONVERSATION=true ENGINE_CHAT_CARDS_ON_SCREEN=true \
+NEXT_PUBLIC_ENGINE_ONE_BRAIN=true \
+node node_modules/next/dist/bin/next dev --turbopack --port 3011
 ```
 
 Session 8's list (§8 there) is unchanged and still current.
@@ -233,6 +269,11 @@ Session 8's list (§8 there) is unchanged and still current.
 
 ## 7. Traps learned this session
 
+- 🔴 **A control arm that does not FAIL proves nothing about the treatment arm.** The first A/B
+  scored arm A at 0/4 on the defect and would have been read as "the fix works" while never having
+  reproduced the defect at all. Same class as the `grounded: true` trap (§12.3) and the same logic as
+  the lane's mutation rule, applied to probes: **verify the control reproduces the failure first.**
+  Two plausible hypotheses about the trigger died against this (§10.3).
 - 🔴 **A mutation harness that runs `git checkout -- src/` destroys UNCOMMITTED work.** Mine reverted
   the entire fix along with the first mutation — every edit, source and test, gone in one line, with
   the tree reading clean afterwards so nothing looked wrong. **Commit before mutating.** The harness
@@ -250,14 +291,157 @@ Session 8's list (§8 there) is unchanged and still current.
 
 ---
 
+## 10. The fix for §3, and the A/B that tested it — `c6baa49f`
+
+### 10.1 What landed
+
+`card-lines.ts` is new and owns the card→line extraction for **both** seams. That is the point of
+it: two copies of that map is exactly how the live path came to be blind while the replay path was
+not. `chat-prior-turns.ts` now imports it and its behaviour is unchanged.
+
+The live tool result gains `cards_on_screen` behind **`ENGINE_CHAT_CARDS_ON_SCREEN`** (off), with a
+note that tells the model to *refer* to the cards — name the strongest and why — rather than the old
+bare prohibition. Nothing extractable → the field is **omitted**, never `[]`, and the result is
+byte-identical to what shipped before: an empty card list is a claim, and the wrong one.
+
+**Why the three defences in place could not have caught this:**
+
+- `POST_TOOL_TEXT_CAP = 600` — length. Its comment says *"a re-answer cannot fit"*. Measured false:
+  the live re-answer was **476 chars**. And it cannot work in principle — a hook is one short
+  sentence, so ten hooks and "3–4 sentences of commentary" are **the same size**. The 600 was tuned
+  against a 4,625-char re-answer (10 hooks in two formats) and only ever excluded the verbose shape.
+- *"never re-write the card content in prose"* — a negative instruction. Three measured failures in
+  this lane already (`cardsOnScreen`, the anonymous refusal, the artefact guard's own origin).
+- `ENGINE_REPEAT_ASK_PIN` — keys on the shape of the **ask**; catches 0 of 5.
+
+**Mutation-tested, seven ways** (`.scratch/mutate-cards-on-screen.sh`):
+
+| mutation | result |
+|---|---|
+| lines never attached | **3 fail** |
+| flag ignored (attached when OFF) | **1 fails** |
+| empty pack sent as `[]` instead of omitted | **2 fail** |
+| per-run line cap removed | **2 fail** |
+| a missing line becomes the string `"undefined"` | **9 fail** |
+| card order reversed | **2 fail** |
+| replay path stops sharing the extraction | **3 fail** |
+
+**Gates:** `tsc` clean · prod build clean · **5,886 passed / 0 failed** (was 5,871).
+
+### 10.2 The A/B — `.scratch/probe-cards-on-screen.ts`
+
+Runs the REAL loop against the REAL Qwen and the REAL hooks pipeline, real prod profile + the
+calibrated `@mrbeast` audience, with a **stub billing seam** (gate allows, bill is a no-op).
+24 generations, **0 credits** — confirmed against the ledger, which has no rows in that window.
+
+2 arms × 2 ask shapes × {pinned, unpinned} × 3 runs. Scored as a **trichotomy**, because there are
+two opposite ways to fail: INVENTED (a pack in prose that is *not* the cards — the defect) vs
+RELISTED (a pack in prose that *is* the cards — the §12.1 risk, which would mean B is no fix).
+
+```
+pin        ask          arm  CLEAN  INVENTED  RELISTED  NO-DISP   quotes-a-card
+unpinned   plain        A     2/3     0/3        0/3       1/3       0/3
+unpinned   plain        B     1/3     0/3        0/3       2/3       1/3
+unpinned   constrained  A     3/3     0/3        0/3       0/3       0/3
+unpinned   constrained  B     3/3     0/3        0/3       0/3       3/3
+pinned     plain        A     3/3     0/3        0/3       0/3       0/3
+pinned     plain        B     3/3     0/3        0/3       0/3       2/3
+pinned     constrained  A     2/3     1/3        0/3       0/3       0/3   ← the reproduction
+pinned     constrained  B     3/3     0/3        0/3       0/3       3/3
+```
+
+**Live, through the route, flag ON**, thread `f854ac70-96be-42c9-a519-bcec4fa36cda`, the same two
+asks that produced the 2/2 failure earlier in this session:
+
+| turn | before (arm A, §3) | after (arm B) |
+|---|---|---|
+| 1 | *"Here are 10 hooks under 8 words…"* + 10 invented lines, 476 ch | *"The strongest is **"My bank account is a horror movie"** — it opens a curiosity gap with zero friction… Want me to write a script around that one?"* 194 ch |
+| 2 | *"Here are 5 new hooks…"* + 5 invented lines | *"**"I spent three hours on one spreadsheet"** wins — it opens a curiosity gap about what went wrong…"* |
+
+Both quote a card that is actually on screen.
+
+### 10.3 🔴 What this does NOT establish — and a probe trap worth more than the result
+
+**The elimination claim is not proven.** Arm A reproduced the defect **1 time in 12**; arm B, 0 in
+12. That difference is not significant. What the numbers do support, and it is a different claim:
+
+- the **§12.1 risk did not materialise** — 0/12 re-listing, which was the one measured reason to
+  expect this fix to backfire;
+- the positive change is **categorical, not marginal** — 0/12 → 9/12 runs that name a real card by
+  its text. Arm A is structurally incapable of it.
+
+> ⚠️ **The first version of this probe scored arm A at 0/4 INVENTED and would have "proved" the fix
+> worked without ever reproducing the defect.** A probe that does not exhibit the failure in its
+> control arm measures nothing about that failure — it measures commentary quality and gets read as
+> a fix. This is the same class as §12.3's `grounded: true` trap and the lane's mutation rule:
+> **check the control arm FAILS before believing the treatment arm passed.**
+
+Two hypotheses died on the way, both recorded because they are plausible and wrong:
+
+1. *"The trigger is an ask carrying output constraints"* — the model demonstrating compliance it
+   cannot verify. Reasonable (the live prose opened *"Here are 10 hooks under 8 words, no
+   questions:"*), and **wrong**: 0/6 in arm A across both ask shapes.
+2. *"The prose is round-1 text, emitted alongside the tool call, where no tool result exists and the
+   cap does not apply"* — structurally alarming if true, since the fix could not reach it. **Wrong**:
+   the one reproduction had `preCard 0ch`, i.e. it was round-2, post-tool text. Round-1 text does
+   occur (3 of 24 runs) but only on non-dispatching pushbacks.
+
+Also unestablished: the offline rate (1/12) is far below the live rate (2/2), so something about the
+route — real thread, real persistence, real prior turns — makes it likelier, and the probe does not
+capture it. Treat the shapes as the finding and the rates as indicative.
+
+### 10.4 A separate reliability problem, surfaced not fixed
+
+**3 of 12 unpinned runs on the plain ask never dispatched.** Two were legitimate pushbacks for a
+sharper angle (the directive sanctions one). The third was not:
+
+> *"I need the actual text of the hooks you want me to generate for. You mentioned 'student
+> budgeting app' — is that the topic?"*
+
+The flag cannot reach these — no tool ran, so there is no tool result. This is dispatch reliability,
+and on a plain "give me hooks for X" it is arguably a worse experience than the narration bug.
+Unmeasured beyond this; noted so it is not rediscovered as part of the same defect.
+
+Also worth keeping: **the enumerated-line detector has false positives on legitimate option lists.**
+One arm-B pushback offered three numbered *angles* ("1. The Delusion… 2. The App as the Villain…")
+and scored 3 "invented" lines. It was correctly bucketed as NO-DISPATCH, but a shape-based honesty
+check (§11) would need to tell those apart — which is exactly §11's own caveat about the 4 pushbacks
+its screen could not classify.
+
+---
+
+## 11. What the A/B changes about the honesty-check design (§4)
+
+§4's four decisions stand, with one narrowed and one answered:
+
+- **Answered — "does giving it the lines backfire?"** No, on 12 runs. That was the blocking unknown.
+- **Narrowed — what the detector is FOR.** The commonest shape (post-tool narration of a phantom
+  pack) now has a *cause* fix. What remains for a detector is the harder shape: prose claiming an
+  artefact when **no tool ran at all** (§11 of the session-8 handoff, ~9 historical). `cards_on_screen`
+  cannot touch that one by construction.
+- **Unchanged and now better evidenced — the retry framing.** For the no-tool shape the honest
+  outcome is not a refusal but the pack the creator asked for: the model has already asserted intent,
+  so pinning `tool_choice` and re-running round 1 honours its own decision rather than overriding a
+  guess. Nothing expensive has happened at that point — the generation never ran — so "re-run vs
+  refuse" was the wrong frame. §10.4's 3/12 non-dispatch rate is the population this would act on.
+- **Unchanged — the free tier.** A sealed visitor binds no generators, so there is nothing to pin and
+  `createArtefactGuard` continues to own that path untouched.
+
+---
+
 ## 8. Commits
 
 ```
 ef285bb6  fix(chat): the digest was missing the turn it was answering
+500efab5  docs(chat): session 9 — the missing turn, and a count-only tool result
+c6baa49f  feat(chat): let the narrator see the pack it just made (flagged)
 ```
 
-Flag-confined: with `ENGINE_GEN_CONVERSATION` off the loop returns `input.context` by reference and
-no digest is built, so the change is byte-identical on the default path.
+Both source commits are flag-confined. `ENGINE_GEN_CONVERSATION` off → the loop returns
+`input.context` by reference and no digest is built. `ENGINE_CHAT_CARDS_ON_SCREEN` off → the live
+tool result is byte-identical to what shipped before (pinned by a test). `c6baa49f` also moves the
+card-line map out of `chat-prior-turns.ts` into `card-lines.ts`; that refactor is behaviour-neutral
+and mutation-tested (M7).
 
 ## 9. Where this leaves the two flags
 
