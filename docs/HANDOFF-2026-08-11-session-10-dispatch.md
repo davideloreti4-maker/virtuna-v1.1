@@ -447,3 +447,87 @@ default-ON. Not a new measurement I set out to make — the corpus was already t
   was not measured.
 - **§7.5's 1/80 INVENTED was not investigated.** It is one turn; worth a look before anyone claims
   the §3 defect is at zero.
+
+---
+
+## 11. 🔴 The A-vs-C decision, measured — and A is NOT the safer option
+
+§7.3 framed the blocking call as "pay ~2–3s of buffered first token to enable the retry (A)". That
+framing was wrong in two ways, and `.scratch/probe-guess-precision.ts` (free, DB reads only, no
+model calls) is what showed it.
+
+### 11.1 `guessSkill` on the app's own history
+
+241 threads · 185 with messages · 384 user turns · **147 unique asks** after dedup.
+
+⚠️ **The raw per-turn numbers are not organic traffic.** This lane's own walks repeat a handful of
+asks ~15× each, so a per-turn rate mostly measures how often the probes ran. 147 unique asks is the
+honest denominator, and it is small enough that everything below is indicative, not established.
+Chip turns are also indistinguishable from typed ones in the persisted transcript (session 8 hit the
+same limit), so fires are an upper bound.
+
+```
+unique asks                 147
+guessSkill fires             58   (39%)
+  …ran somewhere             36
+  …NEVER produced cards      22   ← read all 22
+```
+
+Of the 22: **20 are genuine generation asks that never ran** — i.e. the dispatch defect, in
+production, on real threads. Two are true false positives:
+
+| ask | guessed | what it wanted |
+|---|---|---|
+| *"Yes, run the simulate tool on that hook — I want the reaction card."* | `hooks` | the SIM, a different tool |
+| *"Three rules for anything we make in this thread: every hook stays under 12 words, never the 5am wake-up angle, and no hooks phrased as questions."* | `hooks` | nothing run — it sets standing constraints |
+
+**≈2 of 58 fires · 3.4%.**
+
+> ⚠️ Correction to session 10's own earlier reading: the first of these is the pre-router's
+> documented harmful guess, and I claimed in-session that it returns `null` today. **It does not.**
+> `"want"` is in `GENERATION_VERB` and `"hook"` is an artefact noun, so it fires `hooks`. Verified
+> directly. The documented risk is live, not stale.
+
+### 11.2 The finding that decides it: A's narrower blast radius is an illusion
+
+A fires when **`guessSkill` fired AND round 1 produced no tool call**. That second condition does not
+filter false positives — **it selects for them.**
+
+On *"Three rules for anything we make in this thread…"* the model correctly declines to run
+anything. That is exactly A's trigger. So A retries it pinned and forces the same wrong billed run C
+would have forced. The same holds for the simulate case.
+
+**A and C have identical false-positive exposure**, because a false positive is by definition an ask
+the model is right to decline, and "the model declined" is A's whole signal. A treats the model's
+correct judgement as evidence to override it.
+
+What actually differs:
+
+| | A · retry on observed failure | C · pin on the guess |
+|---|---|---|
+| wrong-run exposure | ~3.4% of fires | ~3.4% of fires — **the same asks** |
+| turns where the model already dispatched | untouched | pinned too, so round-1 prose is suppressed |
+| first-token latency on generation asks | **+2–3s**, unscopable (5 of 7 successful runs also wrote prose) | none |
+| machinery | new buffer + new retry + a changed streaming contract | the existing `forceSkill` seam |
+
+### 11.3 Recommendation: C
+
+Pin round 1 when `guessSkill` fires. It reuses the seam chip taps and `ENGINE_REPEAT_ASK_PIN`
+already use (12/12 in session 9, 6/6 here), costs no latency, adds no machinery, and carries the
+same false-positive exposure as the alternative that costs both.
+
+The one real loss is round-1 framing prose on turns that already worked — measured at 0 chars under
+a pin, 6/6. Reading it, it is preamble (*"You're a comedy storyteller, not a fintech explainer"*);
+the sentence that earns its place is the closing line, and round 2 stays unpinned so it survives.
+
+**Two cheap narrowings worth considering with it, neither measured:**
+
+1. **Do not pin when the ask names a different tool** (`simulate`, `read`, `predict`, `remix`). Kills
+   false positive #1 with a regex, and it is the same "the creator named something else" logic the
+   chip path already respects.
+2. Nothing cheap kills #2 — a constraint-setting message that mentions "hook" reads as a hooks ask on
+   any surface-level rule. It is 1 of 58.
+
+**The owner's call is now a single number, not a UX trade: is a ~3.4% wrong-run rate on fires
+acceptable to take the core action from 23% to ~100%?** A wrong run costs one credit and a confusing
+card. Both fixes carry it; only C is free of the latency and the new machinery.
