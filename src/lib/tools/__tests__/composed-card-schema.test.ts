@@ -90,7 +90,7 @@ describe("parseComposedCard", () => {
   });
 });
 
-describe("recipe card counts (G1)", () => {
+describe("recipe card counts (G1, corrected in Task 1c)", () => {
   it("every recipe declares a card count", () => {
     for (const [id, recipe] of Object.entries(RECIPES)) {
       expect(recipe.cardCount, id).toBeDefined();
@@ -99,12 +99,27 @@ describe("recipe card counts (G1)", () => {
     }
   });
 
-  it("hook-set asks for 3-5 cards, per the spec table", () => {
-    expect(RECIPES["hook-set"].cardCount).toEqual({ min: 3, max: 5 });
+  it("every recipe accepts a single card — measured: creators really do ask for one", () => {
+    // "just one example hook, doesn't have to be good" appears 14x in prod messages.
+    for (const [id, recipe] of Object.entries(RECIPES)) {
+      expect(recipe.cardCount.min, id).toBe(1);
+    }
   });
 
-  it("a single-card recipe declares exactly one", () => {
-    expect(RECIPES.script.cardCount).toEqual({ min: 1, max: 1 });
+  it("hook-set tops out at 5, the spec's stated shape", () => {
+    expect(RECIPES["hook-set"].cardCount).toEqual({ min: 1, max: 5 });
+  });
+
+  it("the -set recipes can emit a real set — the spec's own '3 viral formats' example", () => {
+    for (const id of ["format-set", "angle-set", "idea-set"] as const) {
+      expect(RECIPES[id].cardCount.max, id).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it("a single-deliverable recipe stays at one card", () => {
+    for (const id of ["script", "comparison", "teardown", "brief"] as const) {
+      expect(RECIPES[id].cardCount, id).toEqual({ min: 1, max: 1 });
+    }
   });
 });
 

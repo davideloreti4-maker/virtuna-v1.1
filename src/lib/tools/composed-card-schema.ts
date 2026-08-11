@@ -112,16 +112,29 @@ export interface Recipe {
    * How many cards this recipe emits (spec §4.2: "each declares its … card count").
    * Enforced at the emit boundary in emit-card-tool.ts — the only place that sees the whole
    * array — but DECLARED here, because the recipe is the schema.
+   *
+   * ⚠️ `max` is a CEILING; `min` is 1 everywhere and must stay 1. The failure worth stopping is a
+   * model emitting twenty cards, never one. A floor only rejects asks creators really make: prod
+   * `messages` holds "just one example hook, doesn't have to be good" 14 times, alongside "give me
+   * 3 good hooks" and "one quick hook tip". §4.2's "3–5 cards" describes the TYPICAL shape of a
+   * hook-set — read as a floor it makes the product refuse the single-hook ask outright.
+   * Do not restore a floor on a re-reading of the §4.2 table.
    */
   cardCount: { min: number; max: number };
 }
 
 /** Spec §4.2's registry. Each recipe declares its deliverable kind, legal slots, requirements and count. */
 export const RECIPES: Record<RecipeId, Recipe> = {
-  "hook-set":   { deliverable: "line",  legalSlots: ["proof_strip", "note", "chips"], requiredSlots: [], cardCount: { min: 3, max: 5 } },
-  "format-set": { deliverable: "claim", legalSlots: ["proof_strip", "beats", "note", "chips"], requiredSlots: ["beats"], cardCount: { min: 1, max: 1 } },
-  "angle-set":  { deliverable: "claim", legalSlots: ["beats", "bullets", "note"], requiredSlots: ["beats"], cardCount: { min: 1, max: 1 } },
-  "idea-set":   { deliverable: "claim", legalSlots: ["beats", "bullets", "note"], requiredSlots: ["beats"], cardCount: { min: 1, max: 1 } },
+  // Ceilings: 5 is §4.2's own stated shape for hook-set. The `-set` recipes carry the spike's
+  // measured ceiling (`cards: 1..6`, spike-slot-composer.ts:117) because a set is the point —
+  // §1 goal 2's motivating ask is literally "3 viral formats for young startup founders".
+  "hook-set":   { deliverable: "line",  legalSlots: ["proof_strip", "note", "chips"], requiredSlots: [], cardCount: { min: 1, max: 5 } },
+  "format-set": { deliverable: "claim", legalSlots: ["proof_strip", "beats", "note", "chips"], requiredSlots: ["beats"], cardCount: { min: 1, max: 6 } },
+  "angle-set":  { deliverable: "claim", legalSlots: ["beats", "bullets", "note"], requiredSlots: ["beats"], cardCount: { min: 1, max: 6 } },
+  "idea-set":   { deliverable: "claim", legalSlots: ["beats", "bullets", "note"], requiredSlots: ["beats"], cardCount: { min: 1, max: 6 } },
+  // The single-deliverable recipes stay at exactly one card — the spike's own case list says so
+  // ("one card with a script_timeline" / "one card with a comparison slot" / "one card,
+  // proof_strip + beats"), and `comparison` carries its multiplicity in COLUMNS, not in cards.
   script:       { deliverable: "claim", legalSlots: ["script_timeline", "note", "label_values"], requiredSlots: ["script_timeline"], cardCount: { min: 1, max: 1 } },
   // G3, considered and left alone: §4.2's shape column reads "comparison + bullets", the code
   // requires only `comparison`. Requiring both would reject a legitimate two-column comparison
