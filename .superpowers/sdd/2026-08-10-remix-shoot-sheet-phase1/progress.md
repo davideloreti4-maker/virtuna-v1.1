@@ -526,3 +526,138 @@ CONTROLLER FIX (2026-08-11): the `from_fixed_buckets` doc comment cited the inve
    qwen/omni-analysis.ts:255 and the `rawDuration > 0 ? rawDuration : 30` fallback is at :259.
    The CLAIM is true and it is the sharpest one in this lane; only the citation was wrong, and a
    wrong file:line in a comment this load-bearing costs the next reader real time. Corrected.
+
+Task 6 (2026-08-11): read route + beat renderer. GET /api/remix/blueprint/[id] + RemixBeats,
+   mounted on the card. Gate paths 1104 -> 1123 tests (72 -> 73 files), tsc clean, eslint clean,
+   `npm run build` clean ("Compiled successfully in 14.7s", /api/remix/blueprint/[id] present in
+   the route table). The route's own 6 tests run OUTSIDE the five gate paths — the gate command
+   covers `src/app/api/tools/remix`, and this route is `src/app/api/remix` — so they need
+   `vitest run src/app/api/remix/blueprint` as a sixth path. 6/6 green.
+Task 6: the +19 on the gate paths is +17 (this task's component tests) +2 — radius-scale and
+   section-label-scale both walk `src/components/thread/**` with `it.each`, so a new file in that
+   directory adds one test to each guard. Both pass on remix-beats.tsx; the count was reconciled
+   against a stashed baseline run rather than assumed.
+Task 6: RED WAS BEHAVIOURAL, not just the import. The brief's Step 3/4/5 code was written
+   VERBATIM first and run against the tests (the Task 4 method). 6 failed:
+     - "counts the cuts INSIDE a beat" — `Unable to find an element with the text: 1.8–5.4s ·
+       SETUP · 2 cuts` (the brief prints `3 cuts`)
+     - "names a beat the model wrote no line for" — `Unable to find an element with the text:
+       /1\.8–5\.4s · SETUP/` (the brief's `if (!line) return null` deleted the row)
+     - "says the timing could not be read instead of printing a fabricated sheet" — `Unable to
+       find an element with the text: /couldn’t read this video’s timing/i`
+     - "hands the sheet the card's OWN variant" — `expected 'The real reason 90% of lifters
+       waste …' to contain 'Rank three opens somewhere else again.'`
+     - route "500s and reports when the read THROWS — never 404" — the throw escaped the handler
+       entirely: `Error: remix_blueprints read failed: relation does not exist`
+     - one FALSE failure of my own making, see the SaveAffordance note below.
+Task 6: RECONCILED #1 — `variantIndex={props.blueprintVariant ?? 0}`, never 0. The brief's Step 5
+   argues for the hard-code explicitly and its premise ("the runner writes one script array per
+   card") is the very thing Task 5 disproved. Proved load-bearing by the verbatim run above: the
+   rank-3 card rendered the rank-1 sheet, and NO test that renders a single card in isolation can
+   see it — the fixture needs three distinct variants and a card carrying variant 2.
+Task 6: RECONCILED #2 — `getBlueprint` is wrapped: catch -> `Sentry.captureException` +
+   `log.error` -> 500. Not caught back into a 404. The verbatim probe showed the bare call is an
+   unhandled rejection, not a 500, so the brief shipped neither of the two acceptable outcomes.
+Task 6: RECONCILED #3 — `from_fixed_buckets === true` renders "We couldn't read this video's
+   timing, so there's no beat sheet for this one." and NO beats. DECISION + WHY: rendering
+   nothing at all was the alternative and it is worse, because it is INDISTINGUISHABLE on screen
+   from the three absences that already render nothing (no row / 404 / read failed / `beats: []`).
+   A fabricated sheet is the one absence with a cause worth naming, and Task 7 will be looking at
+   a card trying to tell those cases apart. Printing the beats was never an option: adapt writes
+   plausible lines against the fabricated grid, so the default path prints a confident, timed
+   read of a video nobody watched, with the invented 30s duration behind every timecode. The
+   notice gets NO accent — it is `SECTION_LABEL` + one muted 12px line, the same tone as the rows
+   it replaces. A warning is exactly the kind of thing that invites a colour; the dosage rule is
+   locked and the card already spends its one on the Borrowed chip.
+Task 6: the predicate is `=== true`, and the ledger's stated rationale for that does not survive
+   reading — `!blueprint.from_fixed_buckets` as "is real" and `=== true` as "is fabricated" put
+   an `undefined` on the SAME side (renders the sheet). What `=== true` actually buys is that a
+   non-boolean truthy value cannot suppress a real sheet. The instruction was followed and the
+   absent-field case is pinned by its own test; the reasoning is corrected here rather than
+   copied forward.
+Task 6: RECONCILED #4 — `weakness.factor` is "Completion Pull", one of HookFactorSchema's five.
+   The brief's "pacing" is the same unrealistic fixture that hid a dead branch in Task 1.
+Task 6: A FIFTH STALE POINT the dispatch did not name — the brief's own test #2
+   (`getByText("Your creatine is doing nothing.")`) CANNOT PASS against the brief's own
+   implementation. The renderer wraps the line in curly quotes, and RTL's default exact string
+   match compares the element's whole normalized textContent, which is `“…”`. Every spoken-line
+   assertion here is a regex for that reason.
+Task 6: A SIXTH — the brief hand-rolls the block heading as `text-label uppercase tracking-wide
+   text-foreground-muted`. That is 12px where the card contract's label is 11px, and it re-declares
+   a className `SECTION_LABEL` exists to stop being re-declared. It slips past section-label-scale
+   (which bans arbitrary trackings, and `tracking-wide` is a named utility) — so the guard would
+   NOT have caught it. Uses `SECTION_LABEL`.
+Task 6: DEVIATION — `cuts` prints as `cells - 1`. `BlueprintBeat.cuts` is `group.length`, the
+   count of merged source cells, and Task 1 already logged the mismatch as a deferred minor that
+   "feeds an LLM prompt + UI". N cells have N-1 cuts between them, which is the number a creator
+   matching the original's pacing needs; the brief printed `cuts` verbatim and overstated every
+   merged beat by one. Singular at 1.
+Task 6: DEVIATION — a beat with no matching script line renders "No line was written for this
+   beat." instead of the brief's `if (!line) return null`. Task 4 handed this join to the
+   renderer and nothing enforces it: `AdaptedBeatZodSchema.index` is `z.number().int().min(0)`
+   and `ScriptZodSchema` is `.min(1).max(MAX_BEATS)`, so a short or index-shifted script
+   validates fine. Dropping the row leaves a silent hole in the timeline — the creator shoots a
+   video with a missing middle and nothing says why. An off-by-one on every index now renders as
+   a sheet of "no line" rows: loud and diagnosable, where the brief's version renders a heading
+   over an empty list.
+Task 6: the "asks for nothing on a card with no blueprint" test was MINE and it was wrong —
+   `expect(fetch).not.toHaveBeenCalled()` fails on a CORRECT card, because `SaveAffordance` calls
+   `/api/saved` on every remix card. Narrowed to "no call whose URL starts with
+   /api/remix/blueprint/". Recorded because a blanket not-called assertion on a shared global is
+   a false-failure generator, and the next person to add one here will hit the same thing.
+Task 6: tsc caught what 23 GREEN TESTS sailed through, again — `delete legacy.from_fixed_buckets`
+   on a `SourceBlueprint & { from_fixed_buckets?: boolean }` is TS2790 (the intersection keeps the
+   field required). The lane rule holds: vitest does not typecheck.
+Task 6: proved by MUTATION where a test could pass by construction —
+   (a) `=== true` -> `!== false` turns "renders the sheet when the fabricated flag is absent" red;
+   (b) adding `text-accent` to the heading turns the accent guard red (its positive control — a
+       static read of the source, because happy-dom has no stylesheet to compute a colour from).
+   The variant and 500-vs-404 tests needed no mutation: the brief-verbatim run WAS the mutation.
+Task 6: VISUALLY VERIFIED, in a real browser, and here is exactly what that covers. A throwaway
+   client page mounted `<RemixBeats>` inside a real card container against a stubbed
+   `window.fetch` (dev server on :3007, Chromium via MCP), screenshotted both states, then
+   measured `getComputedStyle` on the live nodes:
+     heading 11px / letter-spacing 0.55px (= 0.05em x 11) / rgb(138,133,124) #8a857c / uppercase
+     meta + shot + repair rows 12px #8a857c · spoken line 13px rgb(194,189,180) #c2bdb4
+     zone border-top white @ 0.06 · card scrollWidth 418 === clientWidth 418
+     ACCENT AUDIT: zero elements under [data-beats] resolve to rgb(255,99,99) on color,
+     background-color or any border side.
+   Both screenshots read correctly: the sheet (three beats, one of them the "no line" row) and
+   the fabricated notice. The probe page was DELETED before commit and `git status` confirms no
+   source trace.
+   ⚠️ It also left a stale `.next/dev/types/validator.ts` importing the deleted page, which made
+   tsc fail with TS2307 AFTER the source was clean. `rm -rf .next/dev` fixes it. tsc reads
+   generated Next types — a deleted route can fail the typecheck from a build artifact alone.
+Task 6: WHAT I DID NOT VERIFY, stated plainly. No live remix run, no signed-in card, no real row
+   read through the route — the route was exercised unauthenticated only (`curl` on :3007
+   returned `{"error":"Unauthorized"}` HTTP 401, which proves the file is wired into the real
+   Next router and nothing more). The rendered sheet was fed a STUBBED fetch, so the payload
+   shape it rendered is the shape I wrote, not one PostgREST produced. And I did not open a
+   native mobile browser context — the component carries no breakpoint-dependent classes at all
+   and was measured at a 418px card, but "measured narrow" is not "opened at 390px".
+TASK 7 MUST ASSERT (in addition to what Tasks 4/5/5.5 already logged):
+   1. The sheet appears on ALL THREE cards of a run and the three are DIFFERENT. Identical text
+      across the cards means `blueprintVariant` is not riding the face — the exact bug the brief
+      would have shipped, and it looks completely fine on one card.
+   2. `GET /api/remix/blueprint/<id>` returns 200 signed-in with a REAL row. A 500 there means the
+      read threw (check the table exists before blaming the renderer); a 404 means the row is
+      genuinely absent or belongs to another user.
+   3. The rows carry real timecodes and NOT the fabricated notice. The notice on a live run is
+      the `from_fixed_buckets: true` result Task 5.5 predicts — a RESULT, not a UI bug.
+   4. Whether any beat renders "No line was written for this beat." If it does, adapt is emitting
+      fewer script entries than the blueprint has beats, or its indices are shifted. That is a
+      generator finding, not a renderer one.
+Task 6: RESIDUAL — there is NO loading state. The card renders, then the sheet appears when the
+   fetch lands. Deliberate: a skeleton for a row that may not exist is the "permanent skeleton"
+   Task 5 moved the write to avoid. On a slow connection the card visibly grows. Not measured
+   against a real network.
+Task 6: RESIDUAL — a script entry whose `index` matches NO beat is dropped silently. The reverse
+   case (a beat with no line) is now named on the card; this one has nowhere to render, since a
+   line with no beat has no timecode. Nothing counts or reports it.
+Task 6: RESIDUAL — `weakness.factor` is still not rendered anywhere, so Task 1's deferred minor
+   (it stores raw casing/whitespace) remains deferred and untouched. The card shows the ADAPTED
+   beat's `repair` note instead, which is the creator-facing half of the same fact.
+Task 6: RESIDUAL — the route has no cache headers beyond `dynamic = "force-dynamic"`, and the
+   component refetches on every mount. A thread with three remix cards makes three requests for
+   the SAME row. Correct and cheap at phase-1 volume; it is the obvious thing to fold into a
+   shared fetch when phase 3 collapses the three cards into one ranked sheet.
