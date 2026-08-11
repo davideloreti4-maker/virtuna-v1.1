@@ -538,3 +538,48 @@ the sentence that earns its place is the closing line, and round 2 stays unpinne
 **The owner's call is now a single number, not a UX trade: is a ~3.4% wrong-run rate on fires
 acceptable to take the core action from 23% to ~100%?** A wrong run costs one credit and a confusing
 card. Both fixes carry it; only C is free of the latency and the new machinery.
+
+---
+
+## 12. Input for the §12.4 design call — the `lever` field carries NO information from the read
+
+Session 9 §12.4 is the last open item and it is an owner design call, so this is input for it, not a
+decision. A code read only (`src/lib/engine/flash/two-audience-read.ts`), free, no runs.
+
+§12.4 diagnosed the Strong single-audience lever as *"an upsell occupying the field named lever"*
+and noted that *"Weak and Mixed at least point at a craft action"*, concluding the model is
+**"substituting a useful sentence for a useless one."** Reading the producer, that framing is too
+generous to the field:
+
+**Every lever this feature can emit is a templated constant.** Nine strings in total:
+
+| path | keyed on | strings |
+|---|---|---|
+| single audience (`:253`) | `mode` × `band` | 6 — 3 general, 3 socials |
+| explicit compare (`buildDelta`, `:146`) | which side ranks higher | 3 |
+
+**None of them reads a single persona reaction.** Not the Strong upsell, and not the Weak and Mixed
+ones §12.4 credited with pointing at a craft action: *"Sharpen the hook, then re-read"* is emitted
+for every Weak socials read regardless of **why** the audience bounced — whether they said *"No
+actionable tips here, just a vague metaphor"* or *"Where's the solution?"* or something unrelated.
+
+So the model is not substituting its own advice for a useful sentence. It is filling a field that has
+never carried any content from the read, with something more specific. That reframes both options:
+
+1. **"Fix the `lever` at source" is bigger than the Strong case.** Rewriting the upsell string leaves
+   five other constants that are equally blind. The real fix is to derive the lever from the read at
+   all — which is option 2 in different clothes.
+2. **"Template the closing line from the card" has real material to work with.** `readForAudience`
+   already computes and returns everything a derived lever would need, per audience:
+   `band` · `fraction` (the honest raw count) · `whoNotFor` (the scrolls-past segment, derived with
+   no model call) · `personas: [{ archetype, verdict, quote }]` — the actual reactions, including the
+   quotes §12.4 tried and failed to get the model to relay.
+
+That last point is the one worth carrying into the design conversation: **§12.4's two failed attempts
+tried to get the MODEL to relay data that the CARD's own lever field already had access to and
+ignored.** A derived lever needs no model call, cannot fabricate, and cannot drift from the card —
+which is the "one author per turn" principle §12.4 argued for, applied at the seam that already holds
+the data.
+
+**Not designed past this paragraph, and deliberately so** — the copy is user-visible and the call is
+the owner's.
