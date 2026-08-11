@@ -357,10 +357,37 @@ describe("buildBlueprint", () => {
     expect(roleOf("Scroll-Stop Power")).toBe("hook");
     expect(roleOf("Completion Pull")).toBe("setup");
     expect(roleOf("Emotional Charge")).toBe("turn");
-    expect(roleOf("Rewatch Potential")).toBe("close");
-    // Share Trigger also wants close; only one can have it, so it takes a fallback beat.
-    expect(roleOf("Share Trigger")).toBeDefined();
+    expect(roleOf("Share Trigger")).toBe("close");
+    // Rewatch Potential asks for no role at all, so it takes the longest-free fallback and
+    // nothing it could have displaced is displaced. All four mapped factors get what they want.
+    expect(roleOf("Rewatch Potential")).toBeDefined();
     expect(bp.beats.filter((b) => b.weakness !== null)).toHaveLength(5);
+  });
+
+  it("gives close to Share Trigger — Rewatch Potential claims no role of its own", () => {
+    // Rewatch Potential is a whole-video property with no single home. While it was mapped to
+    // `close` it won the beat on emission order and pushed Share Trigger onto a fallback, which
+    // then reported a share problem against a setup beat in the middle of the video.
+    const segments = buildFixedBuckets(60);
+    const bp = buildBlueprint(structural({
+      segments,
+      emotion_arc: [{ timestamp_ms: 30_000, intensity_0_1: 0.95 }],
+      factors: [
+        { name: "Scroll-Stop Power", score: 2, rationale: "a" },
+        { name: "Completion Pull", score: 3, rationale: "b" },
+        { name: "Rewatch Potential", score: 4, rationale: "c" },
+        { name: "Share Trigger", score: 1, rationale: "d" },
+        { name: "Emotional Charge", score: 4, rationale: "e" },
+      ],
+    }));
+
+    const roleOf = (factor: string) =>
+      bp.beats.find((b) => b.weakness?.factor === factor)?.role;
+
+    expect(roleOf("Share Trigger")).toBe("close");
+    // Still placed — a factor is never dropped — but by the longest-free fallback, not a claim.
+    expect(roleOf("Rewatch Potential")).toBeDefined();
+    expect(roleOf("Rewatch Potential")).not.toBe("close");
   });
 
   it("places all five weak factors on distinct beats", () => {

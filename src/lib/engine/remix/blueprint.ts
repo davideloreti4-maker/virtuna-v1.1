@@ -28,6 +28,12 @@ const WEAK_FACTOR_SCORE = 5;
  * a 2/10 Scroll-Stop Power — which IS the hook factor — landed on a body beat while the hook
  * beat reported no weakness at all.
  *
+ * "Rewatch Potential" is deliberately ABSENT. It is a whole-video property with no single home,
+ * and mapping it to `close` made it race Share Trigger — which genuinely IS about the ending —
+ * for the same beat. The emission order handed close to Rewatch and pushed Share Trigger onto
+ * the longest-free fallback, where it reported a share problem against a mid-video setup beat.
+ * Unmapped, it takes the fallback itself and every other factor lands on the role it asked for.
+ *
  * Lower-cased keys because omniOutputToStructuralInput (decode.ts:238) casts `factors` through
  * `as unknown` without re-validating, so casing is not actually guaranteed at this boundary.
  */
@@ -36,7 +42,6 @@ const FACTOR_TARGET_ROLE: Record<string, BeatRole> = {
   "completion pull": "setup",
   "emotional charge": "turn",
   "share trigger": "close",
-  "rewatch potential": "close",
 };
 
 /** Mirrors HOOK_ZONE_END_S in qwen/normalize-segments.ts — the first-3s window. */
