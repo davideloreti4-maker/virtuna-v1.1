@@ -62,7 +62,7 @@ friction… Want me to write a script around that one?"*
 **Still parked, do not touch without the owner:** the `writing_voice_sample` migration; adding
 goals/wins/flops to `MODE_ROLES.chat`; building the honesty check ahead of the conversation.
 
-⚠️ `.scratch/` is gitignored and now holds **56 files**, the only copy of every harness cited here
+⚠️ `.scratch/` is gitignored and now holds **69 files**, the only copy of every harness cited here
 and in session 8. Copy it out before any `git worktree remove`.
 
 ---
