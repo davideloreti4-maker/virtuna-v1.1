@@ -105,16 +105,33 @@ retains virality, on every run.
 
 | # | Item | Severity |
 |---|---|---|
-| 1 | `angle` over its 300-char cap kills the whole card | 🔴 blocks shipping |
-| 2 | Does `spoken_span_s`'s prompt line raise the script-omission rate? | unresolved |
-| 3 | Audit the tree for other D-04 determinism assumptions | unknown |
+| 1 | ~~`angle` over its 300-char cap kills the whole card~~ | ✅ **FIXED 2026-08-12** |
+| 2 | Does `spoken_span_s`'s prompt line raise the script-omission rate? | partly answered — ~33%, not 5/5 |
+| 3 | Audit the tree for other D-04 determinism assumptions | unknown — **still not done** |
 | 4 | 2 composer tests are RED on `main` — not this lane | 🔴 main is red |
 
-**1 — `angle` overrun.** Model returned `angle` > 300 chars, then four concepts on the retry;
-whole card lost (`adapt_failed`, error state, nothing rendered). **Pre-existing** — reproduced with
-this lane's changes suppressed. `angle` is a one-line muted sub-row in the UI (D-09), so a cosmetic
-overrun is being treated as fatal, where `stripInvalidScript` and `stripPartialProduction` already
-prefer a degraded card over no card. Observed once; rate unknown.
+**1 — `angle` overrun. FIXED.** The root cause was not `angle`: the response has **one
+all-or-nothing gate**, and both degrade passes in front of it are scoped to OPTIONAL sub-objects,
+so nothing degraded the concept's own required prose. Writing the failing test first surfaced a
+**third field with the identical defect that was never reported** — `stripPartialProduction` tests
+each `production` sub-field for PRESENCE, never for validity, so an over-long `shots` also killed
+the card.
+
+Two new sibling passes, `clampOverCapProse` (trims the 4 concept + 4 production prose fields to
+their caps, word boundary, ellipsis counted in) and `dropSurplusConcepts` (on >3 concepts keeps the
+first 3 that individually validate — **fewer** than 3 still goes to the repair attempt). Caps now
+live in one place read by both the schema and the clamp, so validated-cap and trimmed-cap cannot
+drift. `script` is deliberately not clamped — its caps are semantic, and `stripInvalidScript`
+already covers it.
+
+> **Measured:** 4 unit tests watched returning `null` against the recorded live shape, passing
+> after. 6 live runs: **0 `adapt_failed`, 0 over-cap warns** — so the live runs did NOT exercise
+> the fix, and are reported as a rate (<1-in-6 on this input), not as verification of it.
+
+⚠️ Found in passing, **not fixed**: `clip()` in `grounding/prompt.ts` returns `max + 1` characters
+when the text has no word boundary — the ellipsis is appended after slicing to `max`. Harmless in
+prompt building, fatal if ever reused for a schema cap. `trimToCap` in `adapt.ts` is local for that
+reason and slices to `cap - 1`.
 
 **2 — the span line.** First-attempt omission looked higher after it landed (5/5 live) than before
 (~3/8). Suppressed it and re-ran: 1 of 2 comparable runs still omitted. **Not concluded.** The
@@ -124,10 +141,46 @@ it, but it may cost an extra ~15s call on most runs. **Watch the
 `"no script[] despite a beat map — retrying"` warn rate in production** — that log line is the
 measurement.
 
-**4 — main is red.** `composer-fold-on-close.test.tsx` and `composer-stop-disc.test.tsx` fail in
-isolation. `composer.tsx` and both test files are byte-identical to `origin/main`; this lane does
-not touch them. Introduced by `05acdb6e` ("fix(composer): the dock reserve moves with the chips"),
-which changed `composer.tsx` and updated only `composer-v8.test.tsx`.
+> **Update — 6 more runs with the line in place: 2/6 omitted (33%).** That sits with the pre-span
+> ~3/8 and against the 5/5 that raised the question; 5/5 now reads as small-n noise. The retry
+> rescued both, 3/3 concepts scripted in all 6 final outputs. Not a controlled comparison, but the
+> alarming number no longer reproduces. Hook density in the same runs: **18/18 sayable**, 3.0–4.7
+> w/s — the `spoken_span_s` fix is holding well past its 1/15 measurement.
+
+**3 — the D-04 audit. Scoped, and it has one load-bearing finding.**
+
+Most `D-04` hits in the tree are a different D-04 (the per-thread audience pin) and most
+"deterministic" comments describe genuinely deterministic non-model code — the rulebook maths,
+`subjectKind` resolution, fixtures. Those are fine. The determinism premise lives in exactly one
+place, and everything else inherits it:
+
+> `qwen/client.ts:20-28` (`QWEN_SEED`) — *"Together these make the engine reproducible: the same
+> input yields the same score run-to-run. This is the precondition for a trustworthy
+> eval/weight-fit number — you cannot separate model error from run-to-run sampling jitter if the
+> scorer drifts between runs."*
+
+Two things make that more than a stale comment:
+
+1. **It is scoped to "all scoring-critical LLM calls"**, and it names what depends on it: the eval
+   and weight-fit numbers (`scripts/eval.ts` → `src/lib/engine/corpus/eval-harness`). If the
+   scorer drifts, an eval delta smaller than the jitter is not a result.
+2. **`pipeline.ts:677` scores with the SAME constant the adapt call uses** —
+   `QWEN_REASONING_MODEL`, temperature 0, same seed, thinking off. The 9-run, 9-output measurement
+   is on that model, not on a cousin of it.
+
+⚠️ **What is NOT established:** the measurement is on the adapt *call*, and locally
+`QWEN_REASONING_MODEL` is unset → **`qwen3.7-flash`** (not the `qwen3.6-plus` that ~9 comments
+across the tree still name — stale since 2026-06-06; corrected in `adapt.ts` only, the rest left).
+Production may override the env var. So: **the scorer's own jitter is unmeasured**, and the cheap
+way to measure it is a probe shaped exactly like `probe-adapt-determinism.ts` pointed at the
+pipeline call. Until someone runs it, treat eval deltas on that path as unbounded below.
+
+**4 — main is red. DOES NOT REPRODUCE — reclassify as a load flake.**
+`composer-fold-on-close.test.tsx` and `composer-stop-disc.test.tsx` now pass **4 runs out of 4** —
+three in isolation, once inside a full-suite run — on code still byte-identical to `origin/main`
+(re-verified with `git diff --stat origin/main`). Nothing was changed to make that happen. Read it
+against this doc's own note that full-suite numbers on a loaded box are unreliable here: the red
+was the load, not `05acdb6e`. Not "fixed" — **unreproducible**, which is a different claim.
 
 ---
 
@@ -176,6 +229,17 @@ order by created_at desc limit 15;
 
 ## State
 
-- Branch `lane/remix-shoot-sheet`, merged up to `origin/main` (`89e84daf`).
-- `npx tsc --noEmit` clean. Full suite 6030 passed / 2 failed — both failures are item 4 above.
-- The lane is materially closer to shippable. **It is not shippable while `angle` can kill a card.**
+- Branch `lane/remix-shoot-sheet`, last merged up to `origin/main` (`89e84daf`) — **`main` has
+  moved 65 commits since; re-merge and re-measure before opening a PR.**
+- `tsc --noEmit` clean. **Full suite 6040 passed / 0 failed / 42 skipped** (533 files, 149s).
+- `angle` can no longer kill a card. The two blockers this doc opened with are closed; what is
+  left is measurement, not repair.
+
+### Next
+
+1. Merge `origin/main` (65 commits) into the lane, re-run tsc + suite, PR.
+2. **Measure the scorer's jitter** — item 3's open half. A `probe-adapt-determinism`-shaped probe
+   pointed at `pipeline.ts:677`. Until then, eval deltas on that path have no floor.
+3. Watch `"no script[] despite a beat map — retrying"` and the new
+   `"adapt returned over-cap prose — trimming it"` warn rates in production. Both log lines ARE
+   their metrics; neither has a prod sample yet, because nothing here is deployed.
