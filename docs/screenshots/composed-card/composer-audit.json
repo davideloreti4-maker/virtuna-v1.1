@@ -1,0 +1,150 @@
+[
+  {
+    "recipe": "hook-set",
+    "accents": [],
+    "uppercaseCount": 2,
+    "uppercase": [
+      "Hook · faceless, screen-reco",
+      "Proven structure"
+    ],
+    "actionBars": 1,
+    "disclosures": 0,
+    "unsupported": 0,
+    "width": 760,
+    "height": 423,
+    "overflowsX": false,
+    "text": "Hook · faceless, screen-recordWe lost 40% of our signups the week we shipped the new onboarding — this is the screen that did it.CopyProven structureSecret Reveal BreakdownThe [thing] nobody tells you about [topic]@corporate.bro5.7×vs their usual views1.4MThe cost lands before the topic, so the scroll stops on a number the viewer has to explain.Founder POVScreen recording30–45sUse your own real nu"
+  },
+  {
+    "recipe": "format-set",
+    "accents": [],
+    "uppercaseCount": 5,
+    "uppercase": [
+      "Format · repeatable weekly",
+      "Open",
+      "Artefact",
+      "Fix",
+      "Close"
+    ],
+    "actionBars": 1,
+    "disclosures": 0,
+    "unsupported": 0,
+    "width": 760,
+    "height": 445,
+    "overflowsX": false,
+    "text": "Format · repeatable weeklyFilm the post-mortem, not the launch — the week something broke is the week you have footage nobody else has.CopyA launch asks the viewer to be pleased for you; a post-mortem asks what they would have done instead.OpenSay what it cost in the first four seconds — the number, not the story.ArtefactCut to the thing itself: the dashboard, the churn graph, the Slack message.Fi"
+  },
+  {
+    "recipe": "angle-set",
+    "accents": [],
+    "uppercaseCount": 3,
+    "uppercase": [
+      "Angle · unclaimed in your ni",
+      "The gap",
+      "Your version"
+    ],
+    "actionBars": 1,
+    "disclosures": 0,
+    "unsupported": 0,
+    "width": 760,
+    "height": 393,
+    "overflowsX": false,
+    "text": "Angle · unclaimed in your nicheEvery productivity account teaches the system. None of them films the week the system fell apart.CopyThe gap is not a topic nobody covers — it is the state nobody admits to being in.The gapThe niche is wall-to-wall instruction. Nobody in it posts from inside the mess.Your versionRun the system you teach, then film the fortnight you stopped following it.·Keep the fail"
+  },
+  {
+    "recipe": "idea-set",
+    "accents": [],
+    "uppercaseCount": 4,
+    "uppercase": [
+      "Idea · shoots in an afternoo",
+      "Shoot",
+      "Cut",
+      "Caption"
+    ],
+    "actionBars": 1,
+    "disclosures": 0,
+    "unsupported": 0,
+    "width": 760,
+    "height": 412,
+    "overflowsX": false,
+    "text": "Idea · shoots in an afternoonRebuild your worst-performing video and post both cuts in the same frame.CopyThe old cut is the control, so the viewer sees the change instead of taking your word for it.ShootRe-record the first eight seconds only. Everything after them stays.CutSplit-screen the two openings, old on the left, captions on neither.CaptionOne line: same video, one change. Let them find it"
+  },
+  {
+    "recipe": "script",
+    "accents": [],
+    "uppercaseCount": 5,
+    "uppercase": [
+      "Script · 42s, one take",
+      "Runtime",
+      "Shots",
+      "Aspect",
+      "Voice"
+    ],
+    "actionBars": 1,
+    "disclosures": 1,
+    "unsupported": 0,
+    "width": 760,
+    "height": 555,
+    "overflowsX": false,
+    "text": "Script · 42s, one takeOpen on the cost, then hand over the fix — the advice only lands once they know what it saved.CopyEvery second before the number is a second the viewer is deciding whether you are worth it.0:00We spent six thousand dollars on a landing page that converted worse than the one I built in a night.0:06Screen: the two pages side by side, conversion rates visible, no annotation yet."
+  },
+  {
+    "recipe": "comparison",
+    "accents": [],
+    "uppercaseCount": 3,
+    "uppercase": [
+      "Comparison · which cut to sh",
+      "Talking head",
+      "Screen record"
+    ],
+    "actionBars": 0,
+    "disclosures": 0,
+    "unsupported": 0,
+    "width": 760,
+    "height": 295,
+    "overflowsX": false,
+    "text": "Comparison · which cut to shootFor a teardown, the screen recording wins — your face is the least interesting thing on screen when there is a number to look at.CopyTalking headFastest to shootCarries a personal storyLoses people the moment you say a number they cannot seeScreen recordThe evidence is on screenHolds through the middleNeeds a voiceover pass, so it is a two-step shoot·Cut the first tw"
+  },
+  {
+    "recipe": "teardown",
+    "accents": [],
+    "uppercaseCount": 7,
+    "uppercase": [
+      "Teardown · why it broke out",
+      "Proven structure",
+      "Proven structure",
+      "Proven structure",
+      "0–2s",
+      "2–7s",
+      "7s+"
+    ],
+    "actionBars": 1,
+    "disclosures": 0,
+    "unsupported": 0,
+    "width": 760,
+    "height": 871,
+    "overflowsX": false,
+    "text": "Teardown · why it broke outIt works because the receipt arrives before the claim — you have seen the number by the time he tells you what it means.CopyProven structureSecret Reveal BreakdownThe [thing] nobody tells you about [topic]@corporate.bro5.7×vs their usual views1.4MProven structureCost RevealWe lost [number] in [timeframe] — here's the [artefact]@founder.diaries3.2×vs their usual views612K"
+  },
+  {
+    "recipe": "brief",
+    "accents": [],
+    "uppercaseCount": 7,
+    "uppercase": [
+      "Brief · week of 17 August",
+      "Posts",
+      "Median runtime",
+      "Post days",
+      "Format",
+      "Aspect",
+      "Hook"
+    ],
+    "actionBars": 1,
+    "disclosures": 0,
+    "unsupported": 0,
+    "width": 760,
+    "height": 439,
+    "overflowsX": false,
+    "text": "Brief · week of 17 AugustThree teardowns and one failure story this week. Nothing else.CopyTeardowns are the only shape that has cleared your usual views twice running, and the failure story is the one you already have footage for.4Posts42sMedian runtimeTue / ThuPost days·Shoot all four on Sunday. Editing on the day is where the week falls over.·Make one teardown about a video that is not yours — "
+  }
+]

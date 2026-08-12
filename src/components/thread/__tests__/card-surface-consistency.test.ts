@@ -36,6 +36,12 @@ const CARD_FILES = [
   'script-card-block.tsx',
   'idea-card-block.tsx',
   'video-test-card-block.tsx',
+  // The composer's one card, guarded the day it lands. Its plan specified the RETIRED #252524 tone
+  // by hex — the exact shade this guard was written to stop (skill-result-card "looked like a
+  // different card"). A hex literal is invisible to the class-name grep below, so the card is listed
+  // here instead: the guard now asserts it carries the shared fill, not merely that it avoids a
+  // banned class name.
+  'composed-card-block.tsx',
 ] as const;
 
 /**
