@@ -567,9 +567,11 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
   const audienceOverride = isCalibrated ? `Write for this audience — ${groundingLine}` : undefined;
 
   // ── §P step-7: creator voice (fallback) + steer from the per-audience creator_persona ──
-  // genProfileRow may carry a voice backfilled from creator_persona.writing_style_sample;
-  // creatorSteer folds who's writing into overrides. General/no-audience → inputs unchanged.
-  const { profileRow: genProfileRow, creatorSteer } = applyCreatorPersona(profileRow, audience);
+  // creatorSteer folds who's writing into overrides. General/no-audience → undefined, which is
+  // byte-identical. It no longer returns a profile row: the voice backfill it used to perform was
+  // the exemplar-copying defect (43% of cards took their SUBJECT from one video caption), so the
+  // creator's own `profileRow` is what generation uses. See apply-creator-persona.ts.
+  const { creatorSteer } = applyCreatorPersona(profileRow, audience);
 
   // ── TARGET (per-persona generation, fan-out from hooks #299): WHO this script is for ──────
   // ONE card ⇒ ONE reader (D-02). Normally the person the CHOSEN HOOK was written for, carried in
@@ -605,8 +607,8 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
     enabled: isGroundingEnabled(),
     skill: "script", // → the timed-beats slice: the pacing a proven outlier actually ran
     platform,
-    queryCandidates: [ask, anchor, genProfileRow?.niche_primary],
-    niche: genProfileRow?.niche_primary ?? null,
+    queryCandidates: [ask, anchor, profileRow?.niche_primary],
+    niche: profileRow?.niche_primary ?? null,
     // Explicit-only spend: the user's "Find new outliers" tap is the ONLY thing that sets this.
     allowScrape: input.allowScrape,
     onStage: input.onStage,
@@ -615,7 +617,7 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
     // Grounding-as-remix: when ON, the corpus is a fitted+dosed beat-arc brief, not the raw slice.
     // The briefer maps proven rhythms onto THIS creator's subject, so hand it their profile.
     adapt: isGroundingAdaptEnabled(),
-    adaptProfile: buildAdaptProfile(genProfileRow),
+    adaptProfile: buildAdaptProfile(profileRow),
   });
 
   // ── GENERATE: assemble bundle → Qwen json_object generation ──────────────────
@@ -632,7 +634,7 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
       // whenever ENGINE_GEN_CONVERSATION is off, and undefined is byte-identical.
       ...(input.conversation ? { conversation: input.conversation } : {}),
     },
-    genProfileRow,
+    profileRow,
   );
 
   let script: StructuredScript | null;

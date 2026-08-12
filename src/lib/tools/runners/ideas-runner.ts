@@ -500,9 +500,11 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
   // the route call site is unchanged. Same for `input.pin` (the FLYWHEEL pin — see below).
 
   // ── §P step-7: creator voice (fallback) + steer from the per-audience creator_persona ──
-  // genProfileRow may carry a voice backfilled from creator_persona.writing_style_sample;
-  // creatorSteer folds who's writing into overrides. General/no-audience → inputs unchanged.
-  const { profileRow: genProfileRow, creatorSteer } = applyCreatorPersona(profileRow, audience);
+  // creatorSteer folds who's writing into overrides. General/no-audience → undefined, which is
+  // byte-identical. It no longer returns a profile row: the voice backfill it used to perform was
+  // the exemplar-copying defect (43% of cards took their SUBJECT from one video caption), so the
+  // creator's own `profileRow` is what generation uses. See apply-creator-persona.ts.
+  const { creatorSteer } = applyCreatorPersona(profileRow, audience);
 
   // ── TARGET (per-persona generation, fan-out from hooks #299): WHO each idea is written for ──
   // Deterministic, no LLM — top-N by share, forced to span the four persona_weights slots (see
@@ -536,8 +538,8 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
     enabled: isGroundingEnabled(),
     skill: "ideas", // → the belief↔reality slice: the tension that made the video travel
     platform,
-    queryCandidates: [ask, genProfileRow?.niche_primary],
-    niche: genProfileRow?.niche_primary ?? null,
+    queryCandidates: [ask, profileRow?.niche_primary],
+    niche: profileRow?.niche_primary ?? null,
     // Explicit-only spend: the user's "Find new outliers" tap is the ONLY thing that sets this.
     allowScrape: input.allowScrape,
     onStage: input.onStage,
@@ -546,7 +548,7 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
     // Grounding-as-remix: when ON, the corpus is a fitted+dosed belief↔reality brief, not the raw
     // slice. The briefer re-points proven tensions at THIS creator, so hand it their profile.
     adapt: isGroundingAdaptEnabled(),
-    adaptProfile: buildAdaptProfile(genProfileRow),
+    adaptProfile: buildAdaptProfile(profileRow),
   });
 
   // ── GENERATE: assemble bundle → Qwen json_object generation ──────────────────
@@ -562,7 +564,7 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
       // whenever ENGINE_GEN_CONVERSATION is off, and undefined is byte-identical.
       ...(input.conversation ? { conversation: input.conversation } : {}),
     },
-    genProfileRow,
+    profileRow,
   );
 
   // Record which path shipped (Open Q1 resolved decision)
