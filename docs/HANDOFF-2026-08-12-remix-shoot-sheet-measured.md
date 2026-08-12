@@ -195,11 +195,60 @@ unstable; only Scroll-Stop Power held. `aggregator.ts:101` defines
 `gemini_score = round(avg(factors) * 10)`, and the mean spans 7.00–7.60 — so **`gemini_score`
 ranges 70–76 on byte-identical input.**
 
-⚠️ **Not traced, and it is the link that decides how much this matters:** whether that reaches
-`overall_score`, which is what `bucketFromScore` (cuts 70/30) actually consumes.
-`aggregator.ts:301` says Apollo's `composite_score` *replaces* `geminiScore` in the current path,
-so the drift may be damped, superseded, or compounded downstream. **Trace that before quoting a
-bucket-flip rate** — the factor jitter is measured, the bucket consequence is not.
+#### ⚠️ CORRECTION — that drift does NOT reach the score. Traced 2026-08-12.
+
+The reading above is right about the read and wrong about the consequence. Tracing the arithmetic:
+
+```
+aggregator.ts:88   SCORE_WEIGHT_KEYS = ["behavioral", "apollo"]   ← `gemini` is a DEAD key
+aggregator.ts:868  gemini_score = round(avg(factors)*10)          ← computed, then NOT blended
+aggregator.ts:920  raw_overall_score = f(apollo_score, behavioral_score, fold_audience_score)
+```
+
+**`gemini_score` is not a term in `overall_score`.** It is kept for legacy/text back-compat
+(its own comment says so) and never reaches what `bucketFromScore` reads. The 70–76 swing moves a
+sub-signal.
+
+It is not inert, though: `pipeline.ts:790` passes `gemini_analysis` INTO Apollo, so the read's
+drift perturbs Apollo's prompt. A second-order path, not an arithmetic one.
+
+#### What the eval score is actually made of — and it drifts less
+
+In eval's text mode there is no fold, so `aggregator.ts:928` gives
+
+```
+overall_score    = behavioral_score·w.behavioral + apollo_score·w.apollo
+behavioral_score = round(avg(7 Apollo component_scores)*10)     (aggregator.ts:846-859)
+apollo_score     = Apollo composite_score                        (aggregator.ts:879)
+```
+
+**Both terms come from ONE Apollo call**, so its jitter is the entire jitter of the eval score.
+`scripts/probe-apollo-determinism.ts` calls the real exported `reasonWithDeepSeek` — no mirrored
+parameters — with a frozen caption AND a frozen read, so only Apollo can vary.
+
+**36 runs (batches of 12 and 24), 1.44¢ for the 24 · 0.06¢ per run:**
+
+| | Range | Δ |
+|---|---|---|
+| `composite_score` | 81–84 | **3** |
+| `behavioral_score` | 70–74 | **4** |
+| worst component | `comment_provocation` 5–7, `trend_alignment` 7–9 | 2 |
+
+`save_worthiness` and `shareability` never moved. **Both batches produced identical spans** —
+a max−min only grows with n, so a span that holds from 12 to 24 runs is a stable estimate rather
+than one still opening up.
+
+**So: an eval delta under ~4 points on the 0-100 scale is sampling jitter, not signal**, and with
+cuts at 70/30 a row whose true score sits within ~4 points of a cut can change bucket between
+identical runs. That is materially better than the read's behaviour, and it is very likely by
+design: F26 (`deepseek.ts:229`) makes `composite_score` a post-parse rubric-sum rather than a
+model-emitted number, and the dimensions are quantized to fixed band anchors — strong→85, mid→50,
+weak→20 (`deepseek.ts:458`). **A quantized score has to flip a whole band to move; a free-form
+0-10 factor only has to waver.** That design is the difference between the two probes.
+
+⚠️ Still not measured: the **video** path (`0.5·apollo + 0.5·fold_audience`, `aggregator.ts:926`).
+The fold is a 10-archetype sim and nothing here says how it behaves. Eval is text-mode only, so
+this does not touch eval numbers — but it is what production scores on.
 
 The probe refuses to run if `pipeline.ts` stops matching the parameters it mirrors
 (`assertMirrorIsCurrent`), so it cannot silently report a rate for a call production no longer
