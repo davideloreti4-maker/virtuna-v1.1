@@ -31,10 +31,34 @@
 > unpinned. Scenario subjects: **0%**. The grounding cache returns the right topic; the generator is
 > copying the examples' surface rather than their structure.
 >
-> **⚠️ Findings 1 and 3 may be the same defect.** If the voice role is empty for every uncalibrated
-> run, the corpus examples are the strongest style signal left in the bundle — so the model anchors
-> style on them because there is nothing else to anchor it to. Not tested. It is cheap to test
-> (backfill a voice into `profileRow` and re-measure the bleed) and it is the next thing to run.
+> **🔴 4. TESTED — and the answer is worse than the hypothesis.** Findings 1 and 3 ARE the same
+> defect, but "add a voice" is not the fix. 16 pinned runs, `.scratch/probe-voice-vs-bleed.ts`,
+> identical profile except a `writing_voice_sample` backfilled onto the object:
+>
+> | arm | corpus surface | **voice sample echoed VERBATIM** | genuinely original |
+> |---|---|---|---|
+> | no voice (prod today) | **18/40 · 45%** | 0 | 22/40 |
+> | voice backfilled | **0/40 · 0%** | **13/40 · 33%** | 27/40 |
+>
+> The bleed metric reads as a total fix — 45% → 0% — and it is measuring the wrong thing. The voice
+> arm hands the creator **their own sample back as hooks**, verbatim, about twice per pack
+> (2,2,2,1,2,2,0,2 across eight runs):
+>
+> > *"I have a very specific talent for making my own life worse in ways that are technically legal."*
+> > *"Last week I told my landlord I'd 'circle back' about the rent. I do not own a calendar."*
+>
+> **The real defect is that the generator reproduces whatever exemplar dominates the bundle instead
+> of emulating it.** Corpus examples and voice samples are the same failure wearing different
+> clothes; removing one source just promotes the next. Genuinely original cards barely move (22/40 →
+> 27/40), which is the honest measure of what a voice buys.
+>
+> ⚠️ This is the same class of bug the live-decode path already records — a few-shot example drawn
+> from the test video echoed back verbatim, reading as a perfect decode. Assume any exemplar added
+> to a bundle here will be copied, and design the fence for that.
+>
+> **Consequence for the missing migration:** shipping `writing_voice_sample` would NOT be a clean
+> quality win. It would trade dance hooks for parroted hooks, which is more embarrassing because the
+> creator recognises their own sentences. The fence around the voice role needs fixing first.
 >
 > **4. First mid-thread observation.** Everything in this lane is a thread's FIRST turn. An
 > accidental mid-thread run showed the model declining differently there: it critiques its **own
