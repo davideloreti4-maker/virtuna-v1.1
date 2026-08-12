@@ -107,8 +107,10 @@ describe("recipe card counts (G1, corrected in Task 1c)", () => {
     }
   });
 
-  it("hook-set tops out at 5, the spec's stated shape", () => {
-    expect(RECIPES["hook-set"].cardCount).toEqual({ min: 1, max: 5 });
+  it("hook-set tops out at 6 — an overview card PLUS five hooks is what a '5 hooks' ask produces", () => {
+    // Was 5, read off §4.2's "3–5 hooks". Measured 2026-08-12: that phrase counts the hooks, not
+    // the cards, and the ceiling rejected a correct answer. Same mistake as the floor, other end.
+    expect(RECIPES["hook-set"].cardCount).toEqual({ min: 1, max: 6 });
   });
 
   it("the -set recipes can emit a real set — the spec's own '3 viral formats' example", () => {
@@ -292,5 +294,36 @@ describe("props.receipts (D7)", () => {
       },
     });
     expect(parsed.success).toBe(false);
+  });
+});
+
+/**
+ * proof_strip belongs to EVERY recipe.
+ *
+ * Measured 2026-08-12, across both models and both harnesses: the model repeatedly tried to attach
+ * evidence to a recipe that forbade it and lost the whole card for it —
+ *   · `comparison` does not allow a proof_strip  (live loop, 1 of 3 runs)
+ *   · `script` does not allow a proof_strip      (spike, plus, twice, never recovered)
+ *
+ * There is no honesty argument for the restriction: the card contract's spine already has a receipt
+ * row for every card, and D7 means the model supplies a row id while the SERVER materializes the
+ * numbers — an id that does not resolve renders nothing at all. Forbidding proof on a comparison or
+ * a script only stops a grounded answer showing what grounded it, which is the product's whole
+ * thesis. The recipe constrains SHAPE; evidence is not a shape.
+ */
+describe("every recipe may carry its proof", () => {
+  it("allows proof_strip in all eight recipes", () => {
+    for (const [id, recipe] of Object.entries(RECIPES)) {
+      expect(recipe.legalSlots, id).toContain("proof_strip");
+    }
+  });
+
+  it("does NOT widen stat_row with it — those numbers are model-authored", () => {
+    // proof_strip carries a row id the server resolves; stat_row carries {value,label} strings the
+    // model writes itself. Widening both together would have handed back exactly the fabrication
+    // D7 exists to remove. The model asked for stat_row in `comparison` and was refused on purpose.
+    expect(RECIPES.comparison.legalSlots).not.toContain("stat_row");
+    const allowed = Object.entries(RECIPES).filter(([, r]) => r.legalSlots.includes("stat_row"));
+    expect(allowed.map(([id]) => id)).toEqual(["brief"]);
   });
 });

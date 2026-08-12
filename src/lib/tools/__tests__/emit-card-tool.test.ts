@@ -103,11 +103,26 @@ describe("handleEmitCard", () => {
     const one = { recipe: "hook-set", deliverable: { kind: "line", text: "A line." },
                   body: [{ kind: "note", text: "x" }] };
     const r = await handleEmitCard(
-      { cards: Array.from({ length: 6 }, () => one) },   // hook-set tops out at 5
+      { cards: Array.from({ length: 7 }, () => one) },   // hook-set tops out at 6
       { materialize: noReceipts },
     );
     expect(r.blocks.length).toBe(0);
-    expect(r.error).toMatch(/5/);
+    expect(r.error).toMatch(/6/);
+  });
+
+  it("accepts an overview card plus five hooks — the shape a '5 hooks' ask really produces", async () => {
+    // Measured 2026-08-12: asked for five hooks, flash sent an intro card AND the five. The old
+    // ceiling of 5 rejected it, which is the cardCount floor mistake repeated at the other end.
+    const overview = { recipe: "hook-set", deliverable: { kind: "line", text: "Five ways to open the price-rise video." },
+                       body: [{ kind: "chips", items: ["contrarian", "secret-reveal"] }] };
+    const hook = { recipe: "hook-set", deliverable: { kind: "line", text: "I raised my prices 40% and nobody left." },
+                   body: [{ kind: "note", text: "x" }] };
+    const r = await handleEmitCard(
+      { cards: [overview, ...Array.from({ length: 5 }, () => hook)] },
+      { materialize: noReceipts },
+    );
+    expect(r.error).toBeUndefined();
+    expect(r.blocks.length).toBe(6);
   });
 
   it("rejects a call whose cards do not share one recipe", async () => {
@@ -134,6 +149,26 @@ describe("handleEmitCard", () => {
     const r = await handleEmitCard({}, { materialize: noReceipts });
     expect(r.blocks.length).toBe(0);
     expect(r.error).toBeTruthy();
+  });
+
+  it("names the double-encode when `cards` is an unparseable string — the top live failure", async () => {
+    // Measured 2026-08-12 through the real loop: flash sends `cards` as a JSON STRING whose inner
+    // JSON is malformed, and this was the single most common way a turn lost its card. The old
+    // message ("needs a non-empty `cards` array") described a MISSING argument, so the model's
+    // retry was a guess. It has to be told what it actually did.
+    const r = await handleEmitCard(
+      { cards: '[{"recipe": "brief", "deliverable": {"kind": "t": "claim"}}]' },
+      { materialize: noReceipts },
+    );
+    expect(r.blocks.length).toBe(0);
+    expect(r.error).toMatch(/string/i);
+    expect(r.error).toMatch(/array/i);
+  });
+
+  it("still reports a plainly missing `cards` as missing, not as a double-encode", async () => {
+    const r = await handleEmitCard({ cards: [] }, { materialize: noReceipts });
+    expect(r.error).toMatch(/non-empty/i);
+    expect(r.error).not.toMatch(/string/i);
   });
 
   it("never lets a model-authored handle into a block", async () => {

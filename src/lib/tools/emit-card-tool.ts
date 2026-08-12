@@ -93,6 +93,8 @@ export const EMIT_CARD_TOOL = {
       " Put a second labelled section in `disclosure` (the drawer) — it obeys the same recipe " +
       "vocabulary. Never write a number, a view count or a multiplier yourself: name the row and the " +
       "server fills in the real figures. " +
+      "`cards` must be a real JSON ARRAY, never a string containing JSON — a quoted, escaped array " +
+      "is the single commonest way this call is lost. " +
       "Use `proof_strip` ONLY with teardown row ids that search_corpus actually returned — never " +
       "invent one, and never write a creator handle yourself.",
     parameters: {
@@ -262,8 +264,22 @@ export async function handleEmitCard(
 ): Promise<EmitCardResult> {
   const materialize = deps.materialize ?? materializeReceipts;
 
-  const cards = repairCardsArray((rawArgs as { cards?: unknown } | null | undefined)?.cards);
+  const raw = (rawArgs as { cards?: unknown } | null | undefined)?.cards;
+  const cards = repairCardsArray(raw);
   if (!Array.isArray(cards) || cards.length === 0) {
+    // A double-encode that the repair could not parse is by far the commonest live failure
+    // (measured 2026-08-12), and it is NOT the same problem as a missing argument. Saying
+    // "needs a non-empty array" left the model guessing at a retry; naming what it actually sent
+    // is what makes its one repair attempt worth having.
+    if (typeof raw === "string") {
+      return {
+        blocks: [],
+        error:
+          "your `cards` argument arrived as a STRING containing JSON, and that JSON could not be " +
+          "parsed. Send `cards` as a real JSON array of card objects — not as a quoted string, and " +
+          "not escaped. Keep each card short enough to write out correctly.",
+      };
+    }
     return { blocks: [], error: "emit_card needs a non-empty `cards` array" };
   }
 

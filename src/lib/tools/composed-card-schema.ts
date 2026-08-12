@@ -152,21 +152,42 @@ export const RECIPES: Record<RecipeId, Recipe> = {
   // Ceilings: 5 is §4.2's own stated shape for hook-set. The `-set` recipes carry the spike's
   // measured ceiling (`cards: 1..6`, spike-slot-composer.ts:117) because a set is the point —
   // §1 goal 2's motivating ask is literally "3 viral formats for young startup founders".
-  "hook-set":   { deliverable: "line",  legalSlots: ["proof_strip", "note", "chips"], requiredSlots: [], cardCount: { min: 1, max: 5 } },
+  // 5 → 6, MEASURED 2026-08-12. §4.2's "3–5 hooks" describes the hooks, not the cards: asked for
+  // "5 hooks", flash composed an overview card plus the five, and the ceiling rejected an answer
+  // that was exactly right. This is the same mistake as the cardCount FLOOR (see below) — a bound
+  // read off spec prose that real output does not respect. 6 also aligns hook-set with the other
+  // three `-set` recipes and with the v0 spike's own `cards: 1..6`.
+  "hook-set":   { deliverable: "line",  legalSlots: ["proof_strip", "note", "chips"], requiredSlots: [], cardCount: { min: 1, max: 6 } },
   "format-set": { deliverable: "claim", legalSlots: ["proof_strip", "beats", "note", "chips"], requiredSlots: ["beats"], cardCount: { min: 1, max: 6 } },
-  "angle-set":  { deliverable: "claim", legalSlots: ["beats", "bullets", "note"], requiredSlots: ["beats"], cardCount: { min: 1, max: 6 } },
-  "idea-set":   { deliverable: "claim", legalSlots: ["beats", "bullets", "note"], requiredSlots: ["beats"], cardCount: { min: 1, max: 6 } },
+  "angle-set":  { deliverable: "claim", legalSlots: ["proof_strip", "beats", "bullets", "note"], requiredSlots: ["beats"], cardCount: { min: 1, max: 6 } },
+  "idea-set":   { deliverable: "claim", legalSlots: ["proof_strip", "beats", "bullets", "note"], requiredSlots: ["beats"], cardCount: { min: 1, max: 6 } },
   // The single-deliverable recipes stay at exactly one card — the spike's own case list says so
   // ("one card with a script_timeline" / "one card with a comparison slot" / "one card,
   // proof_strip + beats"), and `comparison` carries its multiplicity in COLUMNS, not in cards.
-  script:       { deliverable: "claim", legalSlots: ["script_timeline", "note", "label_values"], requiredSlots: ["script_timeline"], cardCount: { min: 1, max: 1 } },
+  script:       { deliverable: "claim", legalSlots: ["proof_strip", "script_timeline", "note", "label_values"], requiredSlots: ["script_timeline"], cardCount: { min: 1, max: 1 } },
   // G3, considered and left alone: §4.2's shape column reads "comparison + bullets", the code
   // requires only `comparison`. Requiring both would reject a legitimate two-column comparison
   // that carries no extra points. Deliberate, not an oversight.
-  comparison:   { deliverable: "claim", legalSlots: ["comparison", "bullets", "note"], requiredSlots: ["comparison"], cardCount: { min: 1, max: 1 } },
+  comparison:   { deliverable: "claim", legalSlots: ["proof_strip", "comparison", "bullets", "note"], requiredSlots: ["comparison"], cardCount: { min: 1, max: 1 } },
   teardown:     { deliverable: "claim", legalSlots: ["proof_strip", "beats", "quote", "note"], requiredSlots: ["proof_strip", "beats"], cardCount: { min: 1, max: 1 } },
-  brief:        { deliverable: "claim", legalSlots: ["bullets", "label_values", "beats", "stat_row", "quote", "chips", "note"], requiredSlots: [], cardCount: { min: 1, max: 1 } },
+  brief:        { deliverable: "claim", legalSlots: ["proof_strip", "bullets", "label_values", "beats", "stat_row", "quote", "chips", "note"], requiredSlots: [], cardCount: { min: 1, max: 1 } },
 };
+
+/**
+ * ⚠️ `proof_strip` is legal in EVERY recipe — widened 2026-08-12, on measurement.
+ *
+ * Both models, in both harnesses, kept attaching evidence to recipes that forbade it and losing the
+ * whole card: `comparison` refused a proof_strip on the live loop, `script` refused one twice in the
+ * spike and never recovered. There was never an honesty argument for the restriction — the card
+ * contract's spine already carries a receipt row, and D7 means the model names a ROW ID while the
+ * server materializes the numbers, so an id that does not resolve renders nothing. The recipe
+ * constrains SHAPE; evidence is not a shape, and a grounded answer that may not show what grounded
+ * it is the product arguing with itself.
+ *
+ * `stat_row` was deliberately NOT widened with it. It carries `{value,label}` strings the MODEL
+ * writes, so spreading it is spreading model-authored numbers — the exact thing D7/D9 remove. The
+ * model asked for `stat_row` in `comparison` and is still refused.
+ */
 
 /**
  * Arg repair (§4.2): a `body`/`disclosure` arriving as a JSON string is re-parsed ONCE. The spike

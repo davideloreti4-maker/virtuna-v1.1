@@ -1647,3 +1647,241 @@ describe("runChatAgentStream [composedCards]", () => {
     expect(toolResults(stream, 2).join(" ")).toMatch(/do not call emit_card again/i);
   });
 });
+
+// ── The search budget ──────────────────────────────────────────────────────────────────────────
+//
+// Measured, not supposed (2026-08-12 spike re-run): qwen3.7-flash — the shipped chat model — spent
+// every round of a turn inside search_corpus and returned NOTHING. Identical query four times on
+// one ask; six rephrasings on another. Production allows 4 rounds, so that turn ends empty.
+describe("runChatAgentStream [search budget]", () => {
+  const mkCorpus = () =>
+    vi.fn(async (..._args: unknown[]) => ({
+      content: JSON.stringify({ count: 1, results: [{ creator: "@x" }] }),
+      examples: [],
+      record: { round: 1, query: "budgeting", axis: "topical" as const, rows: 1 },
+    }));
+
+  const search = (index: number, id: string, query: string) => [
+    toolName(index, id, "search_corpus"),
+    toolArgs(index, JSON.stringify({ query })),
+  ];
+
+  const toolResults = (stream: StreamingChatComplete, round: number) =>
+    (
+      (stream as unknown as ReturnType<typeof vi.fn>).mock.calls[round]![0] as {
+        messages: Array<{ role: string; content: string }>;
+      }
+    ).messages
+      .filter((m) => m.role === "tool")
+      .map((m) => String(m.content))
+      .join(" ");
+
+  const sentToolNames = (stream: StreamingChatComplete, round: number) =>
+    (
+      (stream as unknown as ReturnType<typeof vi.fn>).mock.calls[round]![0] as {
+        tools: Array<{ function: { name: string } }>;
+      }
+    ).tools.map((t) => t.function.name);
+
+  it("runs the IDENTICAL query once and tells the model it already has the rows", async () => {
+    const executeCorpus = mkCorpus();
+    const stream = mockStream([
+      [...search(0, "s1", "raising SaaS prices")],
+      [...search(0, "s2", "  Raising   SaaS Prices ")], // same question, retyped
+      [textChunk("Here's what I found.")],
+    ]);
+
+    await runChatAgentStream(
+      baseInput({ grounding: true }),
+      DEPS(stream, { skills: [mkSkill("generate_ideas")], executeCorpus: executeCorpus as never }),
+    );
+
+    expect(executeCorpus).toHaveBeenCalledTimes(1);
+    expect(toolResults(stream, 2)).toMatch(/already/i);
+  });
+
+  it("withdraws search_corpus once the budget is spent, so the model stops being offered the loop", async () => {
+    const executeCorpus = mkCorpus();
+    const stream = mockStream([
+      [...search(0, "s1", "a"), ...search(1, "s2", "b"), ...search(2, "s3", "c")],
+      [textChunk("done")],
+    ]);
+
+    await runChatAgentStream(
+      baseInput({ grounding: true }),
+      DEPS(stream, { skills: [mkSkill("generate_ideas")], executeCorpus: executeCorpus as never }),
+    );
+
+    expect(executeCorpus).toHaveBeenCalledTimes(3);
+    expect(sentToolNames(stream, 0)).toContain("search_corpus");
+    expect(sentToolNames(stream, 1)).not.toContain("search_corpus");
+  });
+
+  it("refuses a search past the budget with an instruction it can act on", async () => {
+    const executeCorpus = mkCorpus();
+    const stream = mockStream([
+      [...search(0, "s1", "a"), ...search(1, "s2", "b"), ...search(2, "s3", "c")],
+      [...search(0, "s4", "d")], // asks anyway
+      [textChunk("ok")],
+    ]);
+
+    await runChatAgentStream(
+      baseInput({ grounding: true }),
+      DEPS(stream, { skills: [mkSkill("generate_ideas")], executeCorpus: executeCorpus as never }),
+    );
+
+    expect(executeCorpus).toHaveBeenCalledTimes(3);
+    expect(toolResults(stream, 2)).toMatch(/answer now/i);
+  });
+
+  it("withdraws search_corpus on the LAST round — a refused search still burns the round", async () => {
+    // Measured 2026-08-12 at production's 4-round cap: flash searched every round, the governor
+    // refused the repeats, and the turn still died with no answer — because asking costs a round
+    // whether or not the search runs. The final round has to be reserved for composing.
+    const executeCorpus = mkCorpus();
+    const stream = mockStream([
+      [...search(0, "s1", "a")],
+      [...search(0, "s2", "b")],
+      [textChunk("done")],
+    ]);
+
+    await runChatAgentStream(
+      baseInput({ grounding: true }),
+      DEPS(stream, { skills: [mkSkill("generate_ideas")], executeCorpus: executeCorpus as never, maxRounds: 3 }),
+    );
+
+    expect(sentToolNames(stream, 0)).toContain("search_corpus");
+    expect(sentToolNames(stream, 1)).toContain("search_corpus");
+    expect(sentToolNames(stream, 2)).not.toContain("search_corpus"); // round 3 of 3 — answer now
+  });
+
+  it("leaves a turn that searches normally completely untouched", async () => {
+    const executeCorpus = mkCorpus();
+    const stream = mockStream([[...search(0, "s1", "a")], [...search(0, "s2", "b")], [textChunk("ok")]]);
+
+    const res = await runChatAgentStream(
+      baseInput({ grounding: true }),
+      DEPS(stream, { skills: [mkSkill("generate_ideas")], executeCorpus: executeCorpus as never }),
+    );
+
+    expect(executeCorpus).toHaveBeenCalledTimes(2);
+    expect(res.toolCalls.filter((t) => t.name === "search_corpus" && t.ran)).toHaveLength(2);
+    expect(res.text).toBe("ok");
+  });
+});
+
+// ── Model config for composed cards ────────────────────────────────────────────────────────────
+//
+// Measured 2026-08-12. flash composing against the shipped contract, 6 asks:
+//   baseline (no governor, no thinking, 6 rounds)  2/6, 3/6, 4/6
+//   governor + thinking, 6 rounds                  6/6, 5/6   ← plus's own range (5/6, 6/6, 5/6)
+//   governor + thinking, 4 rounds (today's cap)    4/6
+// Reasoning is what closes the gap, and on flash it is cheap: $0.13/M output against plus's $1.60.
+// The round cap has to move with it — searching costs rounds, so 4 leaves nothing to compose in.
+describe("runChatAgentStream [composed-card model config]", () => {
+  const params = (stream: StreamingChatComplete, round = 0) =>
+    (stream as unknown as ReturnType<typeof vi.fn>).mock.calls[round]![0] as Record<string, unknown>;
+
+  it("turns reasoning ON and widens the token budget for a composed-card turn", async () => {
+    const stream = mockStream([[textChunk("ok")]]);
+    await runChatAgentStream(baseInput({ composedCards: true }), DEPS(stream, { skills: [mkSkill("generate_ideas")] }));
+
+    expect(params(stream).enable_thinking).toBe(true);
+    // Reasoning tokens are drawn from the SAME output budget, so leaving max_tokens where it was
+    // buys the thinking by truncating the answer.
+    expect(params(stream).max_tokens as number).toBeGreaterThan(2000);
+  });
+
+  it("leaves an ordinary chat turn exactly as it ships today", async () => {
+    const stream = mockStream([[textChunk("ok")]]);
+    await runChatAgentStream(baseInput(), DEPS(stream, { skills: [mkSkill("generate_ideas")] }));
+
+    expect(params(stream).enable_thinking).toBe(false);
+    expect(params(stream).max_tokens).toBe(2000);
+  });
+
+  it("gives a composed-card turn the rounds it needs to search AND compose", async () => {
+    // Four rounds is enough to answer in prose and not enough to search then compose: at that cap
+    // flash finished 4 of 6, and two of the misses were the round cap itself.
+    const calls: number[] = [];
+    const stream = vi.fn(async () => {
+      calls.push(1);
+      return (async function* () {
+        yield toolName(0, `s${calls.length}`, "search_corpus");
+        yield toolArgs(0, JSON.stringify({ query: `q${calls.length}` }));
+      })();
+    }) as unknown as StreamingChatComplete;
+    const executeCorpus = vi.fn(async (..._a: unknown[]) => ({
+      content: "{}",
+      examples: [],
+      record: { round: 1, query: "q", axis: "topical" as const, rows: 0 },
+    }));
+
+    await runChatAgentStream(
+      baseInput({ grounding: true, composedCards: true }),
+      DEPS(stream, { skills: [mkSkill("generate_ideas")], executeCorpus: executeCorpus as never }),
+    );
+
+    expect(calls.length).toBe(6);
+  });
+
+  it("an explicit maxRounds from the caller still wins", async () => {
+    const stream = mockStream([[textChunk("ok")]]);
+    await runChatAgentStream(
+      baseInput({ composedCards: true }),
+      DEPS(stream, { skills: [mkSkill("generate_ideas")], maxRounds: 2 }),
+    );
+    expect((stream as unknown as ReturnType<typeof vi.fn>).mock.calls.length).toBe(1);
+  });
+});
+
+// ── The directive has to name emit_card, or the model writes markdown instead ──────────────────
+//
+// Measured live 2026-08-12 (scripts/probe-thinking-stream.ts): with emit_card bound but unmentioned
+// in the directive, the loop answered "greenscreen vs talking head" with 2,438 characters of
+// markdown prose — `##` headings and all — and never called the tool. The spike composed a
+// comparison card for the identical ask, because the spike's own system prompt tells it to. A tool
+// the directive does not name is a tool the model does not reach for.
+describe("runChatAgentStream [composed-card directive]", () => {
+  const system = (stream: StreamingChatComplete) =>
+    String(
+      (
+        (stream as unknown as ReturnType<typeof vi.fn>).mock.calls[0]![0] as {
+          messages: Array<{ role: string; content: string }>;
+        }
+      ).messages.find((m) => m.role === "system")!.content,
+    );
+
+  it("tells the model to compose a card rather than write the structure out in prose", async () => {
+    const stream = mockStream([[textChunk("ok")]]);
+    await runChatAgentStream(baseInput({ composedCards: true }), DEPS(stream, { skills: [mkSkill("generate_ideas")] }));
+
+    const directive = system(stream);
+    expect(directive).toContain("emit_card");
+    // The observed failure was markdown, specifically — naming it is the point.
+    expect(directive).toMatch(/markdown|heading|bullet/i);
+  });
+
+  it("says nothing about emit_card when composed cards are off", async () => {
+    // Same rule the directive already follows for unbound skills and the corpus tool: never name a
+    // tool the loop will not service.
+    const stream = mockStream([[textChunk("ok")]]);
+    await runChatAgentStream(baseInput(), DEPS(stream, { skills: [mkSkill("generate_ideas")] }));
+
+    expect(system(stream)).not.toContain("emit_card");
+  });
+
+  it("keeps the paid generators ahead of emit_card — composing must not undercut a skill", async () => {
+    // emit_card is free and renders; the generators are the product. If the directive let a card
+    // stand in for `generate_hooks`, this would be the free-content leak with extra steps.
+    const stream = mockStream([[textChunk("ok")]]);
+    await runChatAgentStream(baseInput({ composedCards: true }), DEPS(stream, { skills: [mkSkill("generate_hooks")] }));
+
+    const directive = system(stream);
+    const generatorRule = directive.indexOf("DISPATCH EAGERLY");
+    const cardRule = directive.indexOf("emit_card");
+    expect(generatorRule).toBeGreaterThanOrEqual(0);
+    expect(cardRule).toBeGreaterThan(generatorRule);
+    expect(directive).toMatch(/emit_card[\s\S]*?(?:instead of|rather than)[\s\S]*?(?:prose|markdown)/i);
+  });
+});

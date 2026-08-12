@@ -54,9 +54,21 @@ const { retrieveCachedExamples } = require("@/lib/grounding/retrieve");
 const { SEARCH_CORPUS_TOOL, executeCorpusSearch } = require("@/lib/grounding/corpus-tool");
 const { EMIT_CARD_TOOL, handleEmitCard } = require("@/lib/tools/emit-card-tool");
 const { RECIPES } = require("@/lib/tools/composed-card-schema");
+const { createSearchGovernor } = require("@/lib/grounding/search-budget");
 
 const PLATFORM = "tiktok";
-const MAX_ROUNDS = 6;
+// 6 keeps continuity with the v0 and 2026-08-12 baseline runs. Production allows FOUR
+// (`DEFAULT_MAX_ROUNDS` in chat-agent-loop.ts), so a contract that only works at 6 does not work —
+// set SPIKE_MAX_ROUNDS=4 to measure the shipped budget.
+const MAX_ROUNDS = Number(process.env.SPIKE_MAX_ROUNDS) || 6;
+
+/**
+ * `enable_thinking` is hardcoded FALSE on the shipped chat loop. Composing a validated slot tree
+ * after multi-step retrieval is exactly the shape that reasoning helps, and on flash the tokens are
+ * cheap ($0.13/M output against plus's $1.60), so this is the knob to try before paying for a tier.
+ * SPIKE_THINKING=1 turns it on for the run.
+ */
+const THINKING = process.env.SPIKE_THINKING === "1";
 const MODELS = ["qwen3.7-flash", "qwen3.7-plus"] as const;
 
 const OUT_DIR = resolve(__dirname, "../.spike-out");
@@ -162,6 +174,8 @@ interface CaseResult {
   /** Belt and braces on D7: a `handle` key anywhere in the model's raw args. */
   modelWroteAHandle: boolean;
   badActions: string[];
+  /** Searches the governor refused — a repeat, or past the per-turn budget. */
+  searchesRefused: number;
   /** `length` here means the model was CUT OFF, not that it composed badly. */
   finishReasons: string[];
   proseChars: number;
@@ -229,6 +243,10 @@ async function runCase(model: string, c: (typeof CASES)[number]): Promise<CaseRe
     { role: "user", content: c.ask },
   ];
 
+  // The SHIPPED rule, not a copy of it — a harness that reimplements the guard eventually
+  // measures something production does not do.
+  const governor = createSearchGovernor();
+
   const res: CaseResult = {
     model,
     caseId: c.id,
@@ -256,6 +274,7 @@ async function runCase(model: string, c: (typeof CASES)[number]): Promise<CaseRe
     receiptsWithNumber: 0,
     modelWroteAHandle: false,
     badActions: [],
+    searchesRefused: 0,
     finishReasons: [],
     proseChars: 0,
     cards: null,
@@ -264,15 +283,19 @@ async function runCase(model: string, c: (typeof CASES)[number]): Promise<CaseRe
   try {
     for (let round = 1; round <= MAX_ROUNDS; round++) {
       res.rounds = round;
+      // Budget spent OR the last round — the final round is reserved for composing, because a
+      // refused search still costs the round that asked for it. Mirrors chat-agent-loop.ts.
+      const roundTools =
+        governor.exhausted() || round === MAX_ROUNDS ? [EMIT_CARD_TOOL] : [SEARCH_CORPUS_TOOL, EMIT_CARD_TOOL];
       const completion = await client.chat.completions.create({
         model,
         messages,
-        tools: [SEARCH_CORPUS_TOOL, EMIT_CARD_TOOL],
+        tools: roundTools,
         tool_choice: "auto",
         temperature: 0.3,
         seed: QWEN_SEED,
         max_tokens: 3000,
-        enable_thinking: false,
+        enable_thinking: THINKING,
       });
 
       const finish = completion.choices?.[0]?.finish_reason;
@@ -299,6 +322,14 @@ async function runCase(model: string, c: (typeof CASES)[number]): Promise<CaseRe
             /* an empty query is recorded below */
           }
           res.searchQueries.push(String(parsedArgs.query ?? ""));
+
+          const verdict = governor.check(parsedArgs);
+          if (!verdict.allow) {
+            res.searchesRefused++;
+            messages.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify(verdict.refusal) });
+            continue;
+          }
+
           // The SHIPPED seam, with ids on — that is the only configuration in which a proof_strip
           // has anything to point at.
           const out = await executeCorpusSearch(parsedArgs, PLATFORM, round, retrieveCachedExamples, {
@@ -427,7 +458,9 @@ async function main() {
       const verdict = r.error
         ? `ERROR ${r.error}`
         : !r.emitted
-          ? "NO CARD (prose only)"
+          ? r.rounds >= MAX_ROUNDS
+            ? `NO CARD (hit the ${MAX_ROUNDS}-round cap after ${r.searchCalls} searches)`
+            : `NO CARD (answered in prose, ${r.proseChars} chars)`
           : `${r.cardCount} card(s) · ${r.valid ? "VALID" : "INVALID"} · ${r.recipesUsed[0] ?? "—"}` +
             ` · ${r.distinctSlotKinds} slot kinds · ${r.searchCalls} search` +
             (r.emitAttempts > 1 ? ` · ${r.emitAttempts} attempts${r.repaired ? " (REPAIRED)" : ""}` : "") +
@@ -465,7 +498,9 @@ async function main() {
         `${rs.reduce((a, r) => a + r.receiptsWithNumber, 0)} carrying a number)`,
       `  FABRICATED row ids    ${fabricated.length}/${rs.length}  ${fabricated.length ? "⚠️" : "✓"}`,
       `  model wrote a handle  ${rs.filter((r) => r.modelWroteAHandle).length}/${rs.length}  ${rs.some((r) => r.modelWroteAHandle) ? "⚠️ (stripped, but it tried)" : "✓"}`,
-      `  searched corpus       ${rs.filter((r) => r.searchCalls > 0).length}/${rs.length}`,
+      `  searched corpus       ${rs.filter((r) => r.searchCalls > 0).length}/${rs.length}` +
+        `  (${rs.reduce((a, r) => a + r.searchCalls, 0)} calls, ${rs.reduce((a, r) => a + r.searchesRefused, 0)} refused by the budget)`,
+      `  hit the round cap     ${rs.filter((r) => !r.emitted && r.rounds >= MAX_ROUNDS).length}/${rs.length}`,
       `  slot kinds used       ${[...kinds].sort().join(", ") || "(none)"}`,
       `  avg prose chars       ${Math.round(rs.reduce((a, r) => a + r.proseChars, 0) / rs.length)}`,
       "",
