@@ -168,12 +168,42 @@ Two things make that more than a stale comment:
    `QWEN_REASONING_MODEL`, temperature 0, same seed, thinking off. The 9-run, 9-output measurement
    is on that model, not on a cousin of it.
 
-⚠️ **What is NOT established:** the measurement is on the adapt *call*, and locally
-`QWEN_REASONING_MODEL` is unset → **`qwen3.7-flash`** (not the `qwen3.6-plus` that ~9 comments
-across the tree still name — stale since 2026-06-06; corrected in `adapt.ts` only, the rest left).
-Production may override the env var. So: **the scorer's own jitter is unmeasured**, and the cheap
-way to measure it is a probe shaped exactly like `probe-adapt-determinism.ts` pointed at the
-pipeline call. Until someone runs it, treat eval deltas on that path as unbounded below.
+⚠️ Locally `QWEN_REASONING_MODEL` is unset → **`qwen3.7-flash`** (not the `qwen3.6-plus` that ~9
+comments across the tree still name — stale since 2026-06-06; corrected in `adapt.ts` only, the
+rest left). Production may override the env var.
+
+#### MEASURED 2026-08-12 — the scorer drifts too
+
+`scripts/probe-scorer-determinism.ts`. **24 runs, one frozen caption, 0.245¢ total** — this probe
+is ~100× cheaper than the adapt one, so there is no excuse for a small n here ever again.
+
+The chain is exact, not analogical: `scripts/eval.ts` → `eval-harness` → `eval-runner:125` →
+`resolvePack("socials").run` = `runPredictionPipeline`, called with `input_mode: "text"`
+(`eval-runner.ts:116-123`), which lands on `pipeline.ts:675-715` — the call that emits
+`factors[].score`. **Every eval row goes through it.**
+
+| Factor | Range over 24 runs | Δ |
+|---|---|---|
+| Scroll-Stop Power | 8–8 | 0 |
+| Completion Pull | 7–9 | **2** |
+| Rewatch Potential | 6–7 | 1 |
+| Share Trigger | 6–9 | **3** |
+| Emotional Charge | 5–7 | **2** |
+
+**6 distinct score vectors; the modal one appears 12/24 (50%).** Three of the five factors are
+unstable; only Scroll-Stop Power held. `aggregator.ts:101` defines
+`gemini_score = round(avg(factors) * 10)`, and the mean spans 7.00–7.60 — so **`gemini_score`
+ranges 70–76 on byte-identical input.**
+
+⚠️ **Not traced, and it is the link that decides how much this matters:** whether that reaches
+`overall_score`, which is what `bucketFromScore` (cuts 70/30) actually consumes.
+`aggregator.ts:301` says Apollo's `composite_score` *replaces* `geminiScore` in the current path,
+so the drift may be damped, superseded, or compounded downstream. **Trace that before quoting a
+bucket-flip rate** — the factor jitter is measured, the bucket consequence is not.
+
+The probe refuses to run if `pipeline.ts` stops matching the parameters it mirrors
+(`assertMirrorIsCurrent`), so it cannot silently report a rate for a call production no longer
+makes.
 
 **4 — main is red. DOES NOT REPRODUCE — reclassify as a load flake.**
 `composer-fold-on-close.test.tsx` and `composer-stop-disc.test.tsx` now pass **4 runs out of 4** —
