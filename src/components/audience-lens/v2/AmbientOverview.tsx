@@ -28,6 +28,9 @@
  */
 
 import { useEffect, useRef, useState } from "react";
+// The room's headcount moved OUT of this file (2026-08-13): the phone arrival's audience line
+// states the same number, and the owner-ruled copy is only true while both read one definition.
+import { TIER_VIEWERS } from "@/lib/surfaces/ambient-v2-audience-meta";
 
 // ── view-model ───────────────────────────────────────────────────────────────
 
@@ -73,9 +76,25 @@ export interface WatchingRun {
   verdictPct?: number;
 }
 
-export interface CastMember {
-  id: string;
-  initial: string;
+/**
+ * One named slice of the calibrated signature — who is actually in the room, and how much of it
+ * they are.
+ *
+ * REAL without a run: `audience.personas` carries archetype + label + share off calibration, so
+ * this is knowable the moment the rail mounts. That is the whole reason the resting board can say
+ * something true (see `OverviewData.segments`).
+ */
+export interface RoomSegment {
+  /** The ENGINE key. Carried but never displayed — a segment is identified by what the projection
+   *  reads, never by `label`, which is creator-editable display text. */
+  archetype: string;
+  label: string;
+  /** Integer percent of the room. The adapter apportions these by largest remainder so a column
+   *  of them adds up; see `deriveSegments`. */
+  sharePct: number;
+  /** The calibration-stored reaction frame, VERBATIM — the only per-segment string the Flash sim
+   *  is briefed with. Printed as the row's second line. Empty ⇒ the row prints its name alone. */
+  repaint: string;
 }
 
 export interface OverviewData {
@@ -86,11 +105,21 @@ export interface OverviewData {
   tier: SimTier;
   watching?: WatchingRun | null; // null ⇒ rest state (no run)
   ranked: RankedStimulus[];
-  /** ⚠️ Derived and carried, rendered NOWHERE since rev B+ — the room's identity moved into the
-   *  header facts line and both the avatar cluster and the "on call" footer were deleted. Whether
-   *  the cast returns somewhere is an open question the owner has not ruled on (handoff §8). */
-  cast: CastMember[];
-  castOverflow?: number;
+  /**
+   * The room's makeup — rendered on the RESTING board (nothing sealed, nothing queued, nothing in
+   * flight). This resolves the cast question parked at handoff §8, which sat open because the
+   * board only ever mounted beside a thread, where it always had rows.
+   *
+   * It mounts on the desktop ARRIVAL now (owner ruling 2026-08-11 r3), and there it has none: the
+   * ranked list is built from the open thread's descriptor ledger. A board that is only a
+   * "0 sealed" header over empty space reads as a panel that failed to load — worse than the foot
+   * chip it replaced. So the resting state answers the question it CAN answer without firing
+   * anything: who is in this room.
+   *
+   * Names and shares, NOT initials. Initials were tried in the audience sheet and cut the same day:
+   * they carry no information and collide (two segments starting "G" render the same grey tile).
+   */
+  segments: RoomSegment[];
 }
 
 /** Shared fixed height across all three v2 surfaces (build handoff §4 — "same fixed height"). */
@@ -112,7 +141,6 @@ export type AmbientPresentation = "rail" | "sheet";
 /** Horizontal gutter per presentation — 26px reads generous in a 400px rail, cramped at 390 - 52. */
 export const ambientGutter = (p: AmbientPresentation) => (p === "sheet" ? "px-[18px]" : "px-[26px]");
 
-const TIER_N: Record<SimTier, number> = { flash: 1000, max: 10000 };
 const TIER_LABEL: Record<SimTier, string> = { flash: "SIM-1 Flash", max: "SIM-1 Max" };
 
 /** Deterministic thousands separator — `toLocaleString()` is locale-dependent (SSR/client drift). */
@@ -225,7 +253,7 @@ function WatchingCard({
   tier: SimTier;
   reducedMotion: boolean;
 }) {
-  const n = TIER_N[tier];
+  const n = TIER_VIEWERS[tier];
   const fieldRef = useRef<HTMLDivElement>(null);
   // Lazy-init avoids setState-in-effect; live motion's only setState is inside the rAF callback.
   const [decided, setDecided] = useState(() => (reducedMotion ? Math.round(REST_FRAME * n) : 0));
@@ -490,6 +518,67 @@ function QueuedRow({
   );
 }
 
+/**
+ * One row of the resting board: a slice of the room, how much of it it is, and what it judges by.
+ *
+ * Deliberately NOT a button. Every other row on this surface is a door (open the drill, fire the
+ * sim), and there is nothing behind a segment — the house rule already stated on the ＋ door and
+ * on `noDepth` rows is that a control with nothing behind it is worse than no control. So this
+ * borrows the row's metrics and its hairline, and none of its affordance: no hover fill, no chip.
+ *
+ * Share sits right in tabular-nums, matching the audience sheet's name-left / value-right grammar
+ * (2026-08-11 r2) so the right edge of a column of them stays straight.
+ *
+ * ── The name and the frame (owner ruling 2026-08-12) ──────────────────────────────────
+ *
+ * The name/share pair alone was the two facts the algorithm does not use — the label never reaches
+ * the model (F7) and the share is documented as not the prediction dial. The frame beneath it IS
+ * the brief the sim runs on, so the row now states what these people judge by, in the words the
+ * model was actually given. Ten rows of 15/12/12/10/10/10/8/8/8/7 also stop reading as a flat
+ * distribution once each one says something different — which is why truncating the list was the
+ * wrong fix for that complaint.
+ *
+ * ⚠️ THE BOARD SCROLLS AT 900px, AND THAT IS THE RULING (owner, 2026-08-12). Measured: ten rows at
+ * 76px overrun the 825px scroll region by ~155px, so the last row, the rest line and the ＋ door
+ * are one scroll down on the desktop arrival. The alternative was clamping each frame to one line,
+ * which fits exactly — and truncates every row precisely where its payload is ("dismisses low-…").
+ * The frames are the reason this row exists; a complete one that scrolls beats a cropped one that
+ * doesn't. Do not "fix" this back with a line-clamp. Row padding is `py-[10px]` rather than the
+ * board's usual 13 for the same reason: it buys 60px of that overrun back at no cost to the text.
+ */
+function SegmentRow({ s, index }: { s: RoomSegment; index: number }) {
+  return (
+    <li
+      className="ambient-row-in last:border-b-0"
+      style={{ animationDelay: `${0.04 + index * 0.05}s`, borderBottom: `1px solid ${TONE.border}` }}
+    >
+      {/* py-[10px], not the board's usual 13: a two-line row needs less padding than a one-line one
+          to keep the same rhythm, and those 6px × 10 rows are what keeps the ＋ door — the only
+          control this board has — above the fold at a 900px viewport. */}
+      <div className="w-full px-0.5 py-[10px]">
+        <div className="flex items-center gap-2.5">
+          <span
+            className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[14px]"
+            style={{ color: "rgba(236,231,222,.66)" }}
+          >
+            {s.label}
+          </span>
+          <span className="flex-none text-[12px] tabular-nums" style={{ color: TONE.faint }}>
+            {s.sharePct}%
+          </span>
+        </div>
+        {/* Never invented: a segment stored before the field existed carries no frame and prints
+            none, rather than a plausible sentence nobody briefed the model with. */}
+        {s.repaint ? (
+          <p className="mt-[3px] text-[12px] leading-[1.45]" style={{ color: TONE.faint }}>
+            {s.repaint}
+          </p>
+        ) : null}
+      </div>
+    </li>
+  );
+}
+
 // ── room header glyph — a calm audience cluster (people, not a sparkline) ─────
 // A small crowd of cream nodes at varied depth (opacity), no connecting lines — the old
 // constellation's lines read as a stock chart. Static: the only live motion on the surface belongs
@@ -523,7 +612,7 @@ export function AmbientOverview({
   onOpenStimulus?: (id: string) => void;
   onQuickSimulate?: (id: string) => void;
   /**
-   * The ＋ door — "Test something of your own". Opens the cold intake, which is the ONLY way to put
+   * The ＋ door — "Show them your own work". Opens the cold intake, which is the ONLY way to put
    * a stimulus the creator brought in front of the room.
    *
    * ⚠️ Absent ⇒ the row is NOT RENDERED, deliberately. It used to render unconditionally with
@@ -541,7 +630,7 @@ export function AmbientOverview({
   presentation?: AmbientPresentation;
   className?: string;
 }) {
-  const { audienceName, provenance, scene, tier, watching, ranked } = data;
+  const { audienceName, provenance, scene, tier, watching, ranked, segments } = data;
   const sheet = presentation === "sheet";
   const gutter = ambientGutter(presentation);
 
@@ -550,6 +639,9 @@ export function AmbientOverview({
   const sealed = ranked.filter((r) => r.state !== "queued").sort((a, b) => b.stopPct - a.stopPct);
   const queued = ranked.filter((r) => r.state === "queued");
   const barRef = sealed[0]?.stopPct ?? 0;
+  // NOTHING to rank — the arrival rail, before any work exists. Not the same as "0 sealed": a
+  // board with queued rows is a waiting room and already says so. This is the room at rest.
+  const atRest = !watching && sealed.length === 0 && queued.length === 0;
 
   return (
     <div
@@ -614,13 +706,15 @@ export function AmbientOverview({
             </svg>
           </button>
         </div>
+        {/* "viewers", not "minds", and "simulating for", not "reads on" (owner, 2026-08-12).
+            The room is a modelled audience for a platform — say which, in the product's verb. */}
         <div className="mt-[7px] text-[12px] tabular-nums" style={{ color: TONE.faint }}>
           <span className="font-medium" style={{ color: TONE.dim }}>
-            {withCommas(TIER_N[tier])} minds
+            {withCommas(TIER_VIEWERS[tier])} viewers
           </span>
           {" · "}
           {provenance}
-          {" · reads on "}
+          {" · simulating for "}
           {scene}
         </div>
       </div>
@@ -637,24 +731,66 @@ export function AmbientOverview({
         ) : null}
 
         <div className="mt-7">
-          <SectionHead meta={`% who would stop · ${sealed.length} sealed`}>Ranked</SectionHead>
-          <ul className="mt-1">
-            {sealed.map((r, i) => (
-              <SealedRow key={r.id} rank={i + 1} r={r} index={i} barRef={barRef} onOpen={onOpenStimulus} />
-            ))}
-          </ul>
+          {/* AT REST — the arrival board. It states the room's makeup instead of an empty "Ranked",
+              because the makeup is the one thing that is true before any work exists, and stating
+              it costs no run (fire-on-demand: navigation never fires a sim). See
+              `OverviewData.segments`. A General/uncalibrated audience has no slices, so the list is
+              conditional and the line carries the state alone. */}
+          {atRest ? (
+            <>
+              {segments.length > 0 ? (
+                <>
+                  <SectionHead meta={`${segments.length} groups`}>In the room</SectionHead>
+                  <ul className="mt-1">
+                    {segments.map((s, i) => (
+                      <SegmentRow key={s.archetype} s={s} index={i} />
+                    ))}
+                  </ul>
+                </>
+              ) : null}
+              <p
+                data-testid="ambient-overview-rest"
+                className={`${segments.length > 0 ? "mt-[18px]" : "mt-1"} text-[12px] leading-[1.5]`}
+                style={{ color: TONE.faint }}
+              >
+                {/* NOT "results land here, ranked" (owner, 2026-08-12). Ranking is a comparison
+                    ACROSS sealed runs — one send produces a verdict, not a rank — and nothing is
+                    sent automatically: the creator makes something in the thread and then chooses
+                    to put it in front of the room. The line has to leave the send in their hands. */}
+                Nothing simulated yet. Send anything you make to the room and their verdict lands
+                here.
+              </p>
+            </>
+          ) : (
+            <>
+              {/* Nothing sealed ⇒ no Ranked section AT ALL. It used to render its head unconditionally,
+                  so a board carrying only queued work opened on "Ranked · 0 sealed" over a void and
+                  then the real content — the same failed-to-load read the resting state above exists
+                  to avoid, one state over. A section with no rows is not a section. */}
+              {sealed.length > 0 ? (
+                <>
+                  <SectionHead meta={`% who would stop · ${sealed.length} sealed`}>Ranked</SectionHead>
+                  <ul className="mt-1">
+                    {sealed.map((r, i) => (
+                      <SealedRow key={r.id} rank={i + 1} r={r} index={i} barRef={barRef} onOpen={onOpenStimulus} />
+                    ))}
+                  </ul>
+                </>
+              ) : null}
 
-          {/* the un-run group — an honest waiting room with a quick-simulate door, and no score */}
-          {queued.length > 0 ? (
-            <div className="mt-[26px]">
-              <SectionHead meta={`${queued.length} queued`}>Not simulated yet</SectionHead>
-              <ul className="mt-1">
-                {queued.map((r, i) => (
-                  <QueuedRow key={r.id} r={r} index={sealed.length + i} onSimulate={onQuickSimulate} />
-                ))}
-              </ul>
-            </div>
-          ) : null}
+              {/* the un-run group — an honest waiting room with a quick-simulate door, and no score */}
+              {queued.length > 0 ? (
+                <div className={sealed.length > 0 ? "mt-[26px]" : undefined}>
+                  <SectionHead meta={`${queued.length} queued`}>Not simulated yet</SectionHead>
+                  <ul className="mt-1">
+                    {queued.map((r, i) => (
+                      <QueuedRow key={r.id} r={r} index={sealed.length + i} onSimulate={onQuickSimulate} />
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </>
+          )}
 
           {/* The ＋ door. Rendered only when a host can actually run what comes through it (see the
               prop doc). It carries the SAME name as Start's door — one act, one name, wherever a
@@ -678,8 +814,13 @@ export function AmbientOverview({
               <span aria-hidden className="flex-none text-[15px] leading-none" style={{ color: TONE.faint }}>
                 ＋
               </span>
+              {/* NOT "Test something of your own" (owner, 2026-08-12): the composer's chip row a
+                  few hundred px away already says "Test a draft", so two different doors were
+                  wearing the same verb. Kept to ~24 chars — "Put your own work in front of them"
+                  was the ruling's wording but it wraps to two lines in a 400px rail and collides
+                  with the hint on its right. */}
               <span className="text-[13px]" style={{ color: TONE.dim }}>
-                Test something of your own
+                Show them your own work
               </span>
               <span className="ml-auto flex-none text-[11px]" style={{ color: TONE.faint }}>
                 a draft, a video, or a link

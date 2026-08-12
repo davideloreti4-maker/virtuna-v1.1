@@ -30,11 +30,16 @@ const audience: AudienceMeta = {
   scene: "TikTok",
   sceneOptions: ["TikTok", "No feed"],
   segments: [
-    { archetype: "niche_buyer", label: "Builders", share: 0.41 },
-    { archetype: "casual_scroller", label: "Scrollers", share: 0.26 },
-    { archetype: "cross_niche_curiosity", label: "Drop-ins", share: 0.14 },
-    { archetype: "tough_crowd", label: "Skeptics", share: 0.12 },
-    { archetype: "lurker", label: "Lurkers", share: 0.08 },
+    { archetype: "niche_buyer", label: "Builders", share: 0.41, repaint: "buys the deep stuff" },
+    { archetype: "casual_scroller", label: "Scrollers", share: 0.26, repaint: "skims at speed" },
+    {
+      archetype: "cross_niche_curiosity",
+      label: "Drop-ins",
+      share: 0.14,
+      repaint: "arrives from the FYP",
+    },
+    { archetype: "tough_crowd", label: "Skeptics", share: 0.12, repaint: "dismisses low effort" },
+    { archetype: "lurker", label: "Lurkers", share: 0.08, repaint: "" },
   ],
 };
 
@@ -133,12 +138,85 @@ describe("buildOverviewData", () => {
     expect(live.watching).toEqual({ stimulus: "x", verdictPct: 31.7 });
   });
 
-  it("derives cast + overflow from the real signature segments", () => {
+  it("derives the room's segments from the real signature, biggest slice first", () => {
     const vm = buildOverviewData({ audience, descriptors });
-    expect(vm.cast.map((c) => c.initial)).toEqual(["B", "S", "D", "S"]);
-    expect(vm.castOverflow).toBe(1); // 5 segments − 4 shown
+    expect(vm.segments.map((s) => [s.archetype, s.sharePct])).toEqual([
+      ["niche_buyer", 41],
+      ["casual_scroller", 26],
+      ["cross_niche_curiosity", 14],
+      ["tough_crowd", 12],
+      ["lurker", 8],
+    ]);
     expect(vm.audienceName).toBe("Your audience");
     expect(vm.provenance).toBe("calibrated · 3d");
+  });
+
+  it("names rows from the CURATED table, not the stored label (owner ruling 2026-08-12)", () => {
+    // `label` was printing calibration's own output ("The Algorithm Feeder"), which names a
+    // mechanism rather than a person. `archetypeDisplayName` is the hand-written table that exists
+    // for exactly this. An archetype OUTSIDE the 10-slug vocabulary has no curated name and falls
+    // back to a title-cased slug — deliberately, so bad data stays visible instead of throwing.
+    const vm = buildOverviewData({ audience, descriptors });
+    const byArchetype = new Map(vm.segments.map((s) => [s.archetype, s.label]));
+    expect(byArchetype.get("cross_niche_curiosity")).toBe("Passers-by");
+    expect(byArchetype.get("tough_crowd")).toBe("Tough Crowd");
+    expect(byArchetype.get("lurker")).toBe("Quiet Watchers");
+    // Never the stored label, even though every row carries one.
+    expect(vm.segments.map((s) => s.label)).not.toContain("Skeptics");
+    expect(vm.segments.map((s) => s.label)).not.toContain("Drop-ins");
+  });
+
+  it("carries each segment's repaint VERBATIM — the string the sim is actually briefed with", () => {
+    const vm = buildOverviewData({ audience, descriptors });
+    const byArchetype = new Map(vm.segments.map((s) => [s.archetype, s.repaint]));
+    expect(byArchetype.get("tough_crowd")).toBe("dismisses low effort");
+    expect(byArchetype.get("cross_niche_curiosity")).toBe("arrives from the FYP");
+    // A segment stored before the field existed carries none, and none is invented for it.
+    expect(byArchetype.get("lurker")).toBe("");
+  });
+
+  it("leaves Simulate's segment picker on the stored label — the ruling is scoped to the board", () => {
+    const vm = buildSimulateData({ audience, stimulus: { text: "x", kind: "idea" } });
+    expect(vm.segments.map((s) => s.label)).toContain("Skeptics");
+  });
+
+  it("apportions segment percentages so the printed column adds up", () => {
+    // Three equal thirds. Rounded independently each is 33 and the column reads 99 — the kind of
+    // detail that makes a real number look invented. Largest remainder hands the spare point out.
+    const vm = buildOverviewData({
+      audience: {
+        ...audience,
+        segments: [
+          { archetype: "a", label: "A", share: 1 / 3, repaint: "" },
+          { archetype: "b", label: "B", share: 1 / 3, repaint: "" },
+          { archetype: "c", label: "C", share: 1 / 3, repaint: "" },
+        ],
+      },
+      descriptors,
+    });
+    expect(vm.segments.map((s) => s.sharePct)).toEqual([34, 33, 33]);
+    expect(vm.segments.reduce((sum, s) => sum + s.sharePct, 0)).toBe(100);
+  });
+
+  it("never invents the points a partial signature is missing", () => {
+    // Shares summing to 0.9 print 90, not 100 — the apportionment targets the REAL sum. Inflating
+    // to a full room would be the adapter fabricating coverage the calibration never claimed.
+    const vm = buildOverviewData({
+      audience: {
+        ...audience,
+        segments: [
+          { archetype: "a", label: "A", share: 0.55, repaint: "" },
+          { archetype: "b", label: "B", share: 0.35, repaint: "" },
+        ],
+      },
+      descriptors,
+    });
+    expect(vm.segments.reduce((sum, s) => sum + s.sharePct, 0)).toBe(90);
+  });
+
+  it("survives an audience with no named slices (General / uncalibrated)", () => {
+    const vm = buildOverviewData({ audience: { ...audience, segments: [] }, descriptors });
+    expect(vm.segments).toEqual([]);
   });
 
   it("carries the SCENE so the board can state where the room reads", () => {

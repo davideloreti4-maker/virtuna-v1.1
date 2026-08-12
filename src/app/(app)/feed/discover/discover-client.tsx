@@ -46,8 +46,17 @@ interface DiscoverApiTile {
   saves: number;
   durationSeconds: number;
   postedAt: string;
-  multiplier: number;
-  baselineLabel: "vs own" | "vs niche";
+  /**
+   * The per-author RECEIPT from `outlier-receipt.ts` — "vs their usual views" on a profile
+   * pull, "vs followers" on a niche one. NOT the within-set median that ranks the pull.
+   *
+   * Nullable together: a row with no honest denominator arrives with both null and the tile
+   * renders no badge. ⚠️ This interface is a hand-written mirror of the route's response, so
+   * tsc cannot catch drift against the server — narrowing the label back to a fixed union
+   * would compile cleanly and be wrong at runtime.
+   */
+  multiplier: number | null;
+  baselineLabel: string | null;
   mode: "profile" | "niche";
   source: string;
 }

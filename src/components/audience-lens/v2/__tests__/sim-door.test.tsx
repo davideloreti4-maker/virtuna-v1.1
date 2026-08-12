@@ -71,7 +71,10 @@ describe("the board's ＋ door", () => {
 
   it("says what it does — it takes something the creator brings, not a variant of a row", () => {
     render(<AmbientOverviewRail audience={audience} descriptors={descriptors} onTestVariant={vi.fn()} />);
-    expect(screen.getByTestId("ambient-sim-door").textContent).toContain("Test something of your own");
+    // NOT "Test something of your own" — the composer chip row already owns that verb
+    // (owner ruling 2026-08-12). Two doors wearing one verb read as one action.
+    expect(screen.getByTestId("ambient-sim-door").textContent).toContain("Show them your own work");
+    expect(screen.getByTestId("ambient-sim-door").textContent).not.toContain("Test something");
   });
 
   it("renders NO ＋ when the host cannot run what comes through it", () => {

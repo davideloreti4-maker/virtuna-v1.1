@@ -213,6 +213,21 @@ export function remapClockworksVideo(item: unknown): VideoData | null {
     ...(v.isPinned !== undefined ? { isPinned: v.isPinned } : {}),
     ...(v.mediaUrls?.[0] ? { mediaUrl: v.mediaUrls[0] } : {}),
     ...(v.videoMeta?.coverUrl ? { coverUrl: v.videoMeta.coverUrl } : {}),
+    // Author aggregates for the per-author outlier denominator (author-baseline.ts). Spread
+    // only when the actor gave us BOTH lifetime totals — an absent aggregate must stay absent,
+    // because a zero-filled one reads as a real (and catastrophically wrong) baseline.
+    ...(v.authorMeta?.name &&
+    typeof v.authorMeta.heart === "number" &&
+    typeof v.authorMeta.video === "number"
+      ? {
+          author: {
+            handle: v.authorMeta.name,
+            fans: v.authorMeta.fans ?? 0,
+            heart: v.authorMeta.heart,
+            videoCount: v.authorMeta.video,
+          },
+        }
+      : {}),
   };
 }
 
@@ -521,6 +536,49 @@ export class ApifyScrapingProvider implements ScrapingProvider {
   }
 
   /**
+   * STAGE 1 of the two-stage niche pull (spec D12). A keyword VIDEO search matches caption text,
+   * which is why the Phase 0 measurement came back with a 99-view post and a clip transcribing as
+   * "okay bye bye love you" — those captions did contain the words. `searchSection: "/user"` asks
+   * the same actor for PEOPLE instead, and their handles then feed a profile scrape (stage 2),
+   * which is where the real posts, the free subtitles and the true own-median denominator live.
+   *
+   * Returns bare, de-duplicated handles ORDERED BY AUDIENCE SIZE, largest first. The ordering is
+   * not cosmetic: measured 2026-08-10 on "startup founder", the actor's own dataset order put an
+   * 18-follower account (median 11 views) first and the only relevant creator — @startupfounderceo,
+   * 2,306 fans, 28.3k views on the sampled post — third. A caller taking `handles[0]` therefore
+   * decoded a near-zero-traffic account. `authorMeta.fans` rides on every stage-1 item at zero
+   * extra cost, so "which person" is answerable for free; `searchSection` alone only answers
+   * "a person rather than a caption".
+   *
+   * An empty array when nobody matches: the caller must degrade visibly rather than silently
+   * fall through to a keyword search.
+   */
+  async searchCreators(query: string, limit = 10): Promise<string[]> {
+    const run = await this.client.actor(DISCOVER_VIDEO_ACTOR).call(
+      {
+        searchQueries: [query],
+        // THE point of stage 1 — people, not caption matches (spec D12).
+        searchSection: "/user",
+        maxProfilesPerQuery: limit,
+      },
+      { waitSecs: 240 },
+    );
+    if (!run?.defaultDatasetId) return [];
+
+    const { items } = await this.client.dataset(run.defaultDatasetId).listItems();
+    // Keep the LARGEST fan count seen per handle: one creator can appear on several items.
+    const fansByHandle = new Map<string, number>();
+    for (const it of items as Array<Record<string, unknown>>) {
+      const meta = it.authorMeta as { name?: unknown; fans?: unknown } | undefined;
+      const name = typeof meta?.name === "string" ? meta.name.replace(/^@/, "").trim() : "";
+      if (!name) continue;
+      const fans = typeof meta?.fans === "number" ? meta.fans : 0;
+      fansByHandle.set(name, Math.max(fansByHandle.get(name) ?? 0, fans));
+    }
+    return [...fansByHandle.entries()].sort((a, b) => b[1] - a[1]).map(([name]) => name);
+  }
+
+  /**
    * Pull a result set for Discover/Explore.
    * @param query a handle (profile mode) OR a niche/search phrase (search mode).
    * @param limit resultsPerPage cap.
@@ -536,7 +594,18 @@ export class ApifyScrapingProvider implements ScrapingProvider {
     const input =
       mode === "search"
         ? { searchQueries: [query], resultsPerPage: limit }
-        : { profiles: [query], resultsPerPage: limit };
+        : {
+            profiles: [query],
+            resultsPerPage: limit,
+            // STAGE 2 of D12. `excludePinnedPosts` keeps a pinned evergreen from skewing the
+            // creator's own median; `profileSorting:"latest"` is the FREE recency filter (the
+            // charged `videoSearchSorting`/`videoSearchDateFilter` are not used).
+            excludePinnedPosts: true,
+            profileSorting: "latest",
+            // FREE native track only. `DOWNLOAD_AND_TRANSCRIBE_*` and `TRANSCRIBE_ALL_VIDEOS`
+            // are AI-charged and must never appear here (§P.4). Measured 71% coverage.
+            downloadSubtitlesOptions: "DOWNLOAD_SUBTITLES",
+          };
 
     const run = await this.client
       .actor(DISCOVER_VIDEO_ACTOR)

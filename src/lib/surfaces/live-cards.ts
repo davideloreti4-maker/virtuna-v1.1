@@ -60,13 +60,15 @@ export interface LiveIdeaCard {
 }
 
 /**
- * A v8 drop card (Phase 2 — the shelf): ONE proven corpus outlier, its hook already
- * adapted into the user's niche (the real adapt.ts 3-concept output, rank-1 leading)
- * and pre-scored by the user's audience (real Flash personas — the drops are the ONLY
- * pre-scored surface). Video fields are real outlier_teardowns data with a DURABLE
- * rehosted cover (isDropReady gates the rest out). `handle`/`hookTemplate`/`archetype`
- * feed the seeded thread's receipt ONLY — the card face shows thumb + views + hook +
- * meter and nothing else (no donor niche, no multiplier — locked).
+ * A v8 drop card (Phase 2 — the shelf): ONE proven corpus outlier (multiplier > 3×
+ * only — owner ruling 2026-08-10), its hook already adapted into the user's niche
+ * (the real adapt.ts 3-concept output, rank-1 leading). Drops arrive UNSCORED: no
+ * sim runs for remixes — the sim is a completely separate surface (same ruling; the
+ * old "drops are the only pre-scored surface" law is dead). The card's number is the
+ * RECEIPT: the source's real views + its outlier multiplier ("N× their usual views" —
+ * the owner settled the basis 2026-08-10; follower baselines don't exist in the data).
+ * Video fields are real outlier_teardowns data with a DURABLE rehosted cover
+ * (isDropReady gates the rest out). No donor niche ever crosses over.
  */
 export interface LiveDropCard {
   contentId: string;
@@ -78,8 +80,22 @@ export interface LiveDropCard {
   handle: string;
   archetype: string | null;
   hookTemplate: string | null;
+  /**
+   * The receipt: outlier multiplier vs the creator's own usual views (> 3 by
+   * selection). Optional ONLY for back-compat — cache rows and lane cards written
+   * before 2026-08-10 predate the field; the shelf guards its render.
+   */
+  multiplier?: number;
+  /** Honest basis for the multiplier (corpus `baseline_label`; "vs their usual views"). */
+  baselineLabel?: string | null;
   concepts: AdaptConcept[];
-  personas: ReactionPersona[];
+  /**
+   * ⚠️ There is deliberately NO `personas` field. A drop card carries no sim — not on the
+   * shelf (2026-08-10) and, since 2026-08-12, not on the day-0 lane reveal either, which
+   * was the last holdout. Cached rows written before those rulings may still have the key
+   * on disk; nothing reads it. If you are about to add it back, you are re-introducing a
+   * pre-score, and the sim is a separate surface.
+   */
 }
 
 /** The glance-tier face a card shows inline — derived from the real personas. */

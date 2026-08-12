@@ -14,13 +14,21 @@ import { hasHookStructure, selectStructuralExamples } from "@/lib/grounding/rank
 /** rehostCover writes public storage objects — the durable-cover marker. */
 const DURABLE_COVER = "/storage/v1/object/public/";
 
-/** Can a drop card honestly render this row? (Face: still + views. Receipt: handle.) */
+/**
+ * The shelf's proof bar (owner ruling 2026-08-10): only rows whose outlier
+ * multiplier is ABOVE this print — the card's receipt is "N× their usual views".
+ */
+export const DROP_MIN_MULTIPLIER = 3;
+
+/** Can a drop card honestly render this row? (Face: still + views + >3× receipt. Receipt: handle.) */
 export function isDropReady(row: SharedMatchRow): boolean {
   return (
     typeof row.cover_url === "string" &&
     row.cover_url.includes(DURABLE_COVER) &&
     typeof row.views === "number" &&
     row.views > 0 &&
+    typeof row.outlier_multiplier === "number" &&
+    row.outlier_multiplier > DROP_MIN_MULTIPLIER &&
     Boolean(row.creator_handle?.trim()) &&
     hasHookStructure(row)
   );

@@ -40,17 +40,45 @@ export const OVERVIEW_R4: OverviewData = {
     { id: "h6", stimulus: "The 3 edits that saved my worst video…", stopPct: 0, kind: "remix", state: "queued" },
     { id: "h7", stimulus: "I stopped chasing trends for 30 days…", stopPct: 0, kind: "idea", state: "queued" },
   ],
-  cast: [
-    { id: "m", initial: "M" },
-    { id: "d", initial: "D" },
-    { id: "p", initial: "P" },
-    { id: "t", initial: "T" },
+  segments: [
+    {
+      archetype: "aspiring_creator",
+      label: "Aspiring creators",
+      sharePct: 34,
+      repaint: "Watches for what they could copy tomorrow; skips anything that needs a budget.",
+    },
+    {
+      archetype: "casual_scroller",
+      label: "Casual scrollers",
+      sharePct: 27,
+      repaint: "Passive consumption at speed; stops only for an immediate, visual payoff.",
+    },
+    {
+      archetype: "skeptic",
+      label: "Skeptics",
+      sharePct: 22,
+      repaint: "Judges authenticity and production value; dismisses low-effort posts immediately.",
+    },
+    {
+      archetype: "practitioner",
+      label: "Practitioners",
+      sharePct: 17,
+      repaint: "Reads for technique and business model; ignores motivation with no method behind it.",
+    },
   ],
-  castOverflow: 8,
 };
 
 /** The same room at rest — no run in flight (the P1 "rest header" state). */
 export const OVERVIEW_R4_REST: OverviewData = {
   ...OVERVIEW_R4,
   watching: null,
+};
+
+/** The ARRIVAL board (2026-08-11 r3): the rail before any work exists. Nothing in flight, nothing
+ *  ranked, nothing queued — so it states the room's makeup instead of an empty "Ranked". This is
+ *  the state a creator meets FIRST on desktop, which is why it has its own fixture. */
+export const OVERVIEW_R4_ARRIVAL: OverviewData = {
+  ...OVERVIEW_R4,
+  watching: null,
+  ranked: [],
 };

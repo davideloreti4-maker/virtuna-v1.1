@@ -13,11 +13,12 @@
  *
  * ACCENT BUDGET (marketing latitude, granted 2026-08-10). The app's LOCKED
  * near-zero dosage is relaxed for this one surface, but not abandoned — coral
- * has exactly four jobs on this page and nothing else:
- *   1. primary CTA fills          3. the pricing card's lit border
- *   2. the retention-curve drop   4. the receipt delta arrows
- * Stars, icons, links, headings and chrome all stay cream. If you are adding a
- * fifth job, you are painting, and the answer is no.
+ * has exactly three jobs on this page and nothing else:
+ *   1. primary CTA fills                 3. the receipt delta arrows
+ *   2. the pricing card's lit border
+ * (A fourth — the hero curve's drop segment — retired 2026-08-10 with the
+ * hero chart itself, owner call.) Stars, icons, links, headings and chrome
+ * all stay cream. If you are adding a job, you are painting; the answer is no.
  * ───────────────────────────────────────────────────────────────────────────── */
 
 .lp {

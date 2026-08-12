@@ -12,6 +12,9 @@
  * The angles arrive UNSCORED (v8 rule): band/fraction are the adapt call's own
  * projection (provenance "projected"), personas/population never ride along.
  * Schema-invalid concepts drop via safeParse — mirror the runner, never pad.
+ * A missing stopQuote is NOT schema-invalid: it maps to scrollQuote "" (legal,
+ * renders quote-less) — an optional field the adapt model omitted must never
+ * delete a whole angle from the seeded stack.
  */
 
 import { bandFromStops } from "@/lib/engine/flash/flash-aggregate";
@@ -45,9 +48,11 @@ export function dropCardToRemixBlocks(
     coverUrl: card.coverUrl,
     hookTemplate: card.hookTemplate,
     archetype: card.archetype,
-    multiplier: null, // LOCKED: no corpus multiplier anywhere (owner call #1)
+    // Owner ruling 2026-08-10: the multiplier PRINTS, basis = the corpus baseline
+    // ("vs their usual views"). Old cached cards predate the field → null (omitted).
+    multiplier: typeof card.multiplier === "number" ? card.multiplier : null,
     views: card.viewsRaw > 0 ? card.viewsRaw : null,
-    baselineLabel: null,
+    baselineLabel: card.baselineLabel ?? null,
     fitLabel: null, // nothing scored this SOURCE against the audience
   };
 

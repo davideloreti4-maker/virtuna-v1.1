@@ -38,9 +38,9 @@ export function FounderNote() {
 export function FinalCta() {
   return (
     /* Bespoke, not <Section>: the close is the signature's bookend and needs
-       its own full-bleed backdrop. The hero's curve DROPPED at 2.4s; this one
+       its own full-bleed backdrop. The receipts' first cuts DROP; this curve
        HOLDS — the page's whole argument, drawn once more behind the last ask.
-       Whisper-quiet (≤7% cream) so the headline owns the moment. */
+       Whisper-quiet (≤12% cream) so the headline owns the moment. */
     <section className="lp-rule lp-band-alt relative overflow-hidden">
       <div aria-hidden className="pointer-events-none absolute inset-0">
         <svg

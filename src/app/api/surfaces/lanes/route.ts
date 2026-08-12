@@ -2,11 +2,12 @@
  * POST /api/surfaces/lanes — the day-0 lane reveal (v8 Phase 5, spec §4.2).
  *
  * The creator's 20-minute answer → 2-3 candidate lanes (synthesizeLanes) → one proven
- * format adapted into each and pre-scored (buildLaneDrops). Fires ONLY on an explicit
- * submit — never on navigation (fire-on-demand law, SSOT §1).
+ * format adapted into each (buildLaneDrops). Fires ONLY on an explicit submit — never on
+ * navigation (fire-on-demand law, SSOT §1). Nothing here is simmed: the lane cards' old
+ * GENERAL_AUDIENCE pre-score was killed 2026-08-12 (owner ruling — see lane-drops.ts).
  *
  * Gate order is the spend contract: flag → auth → CSRF → body. A blank answer never
- * reaches a model, and a failed synthesis never reaches the adapt/Flash calls.
+ * reaches a model, and a failed synthesis never reaches the adapt calls.
  *
  * ⚠️ 404 unless CONCEPT_V8_ENABLED: flag-off must stay byte-identical INCLUDING no new
  * spend surface (drop economics = owner call #3 — this route must not be reachable in
@@ -21,7 +22,7 @@ import { synthesizeLanes } from "@/lib/engine/lanes/synthesize-lanes";
 import { buildLaneDrops } from "@/lib/surfaces/lane-drops";
 
 export const runtime = "nodejs";
-// One synthesis call + <= 3 adapt calls (90s cap each, parallel) + one batched Flash.
+// One synthesis call + <= 3 adapt calls (90s cap each, parallel).
 export const maxDuration = 300;
 
 const BodySchema = z.object({ answer: z.string().trim().min(1).max(500) });
@@ -63,10 +64,10 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   try {
-    const shelves = await buildLaneDrops(supabase, user.id, lanes);
+    const shelves = await buildLaneDrops(lanes);
     return Response.json({ shelves });
   } catch {
-    // The corpus read / adapt / sim failed — honest 502; the client offers the describe door.
+    // The corpus read / adapt failed — honest 502; the client offers the describe door.
     return Response.json({ error: "lanes_failed" }, { status: 502 });
   }
 }
