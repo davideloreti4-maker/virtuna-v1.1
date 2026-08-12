@@ -71,6 +71,16 @@ export interface BlueprintBeat {
   role: BeatRole;
   /** Verbatim source speech, joined across merged segments. null on a silent beat. */
   spoken: string | null;
+  /**
+   * How long `spoken` actually took to say, when that is NOT this beat's duration. null means
+   * the beat's own length is the answer.
+   *
+   * Non-null is the hook beat's normal condition, not an edge case: `enforceHookZoneBoundary`
+   * cuts any cell straddling 3s and CR-01 keeps the whole quote on the left child, so a 0-8s
+   * talking cell leaves eight seconds of words on a three-second beat. Handing that to a writer
+   * as "3 seconds" produced 23-word hook lines at 7.7 w/s — unsayable (spec §11).
+   */
+  spoken_span_s: number | null;
   on_screen_text: string | null;
   visual_event: string;
   audio_event: string;
@@ -152,6 +162,7 @@ export function emptyBlueprint(): SourceBlueprint {
 type Segment = NonNullable<OmniStructuralInput["segments"]>[number] & {
   spoken_text?: string | null;
   on_screen_text?: string | null;
+  spoken_span_s?: number;
 };
 
 function wordCount(s: string | null | undefined): number {
@@ -410,7 +421,19 @@ function assignRoles(beats: Omit<BlueprintBeat, "role">[], peaksDesc: number[]):
 }
 
 export function buildBlueprint(structural: OmniStructuralInput): SourceBlueprint {
-  const segments: Segment[] = structural.segments ?? [];
+  // Prefer the PERCEIVED cells over the normalized grid.
+  //
+  // They differ in exactly one case: normalizeSegments' Rule 3 count gate fired, discarding a
+  // real read of fewer than MIN_BOUNDARY_COUNT cells and substituting fabricated fixed buckets.
+  // The gate serves the filmstrip, which needs a cell floor and does not read cell contents.
+  // A shoot sheet is the opposite consumer — it merges to MAX_BEATS regardless of how many cells
+  // it started from, so cell count is irrelevant here and content is everything. Three real
+  // beats carrying transcribed speech beat ten saying "segment 12s".
+  //
+  // Non-empty is the condition, not presence: an empty array is not perception, and taking it
+  // would suppress the from_fixed_buckets warning on a genuinely fabricated sheet.
+  const perceived = structural.perceived_segments ?? [];
+  const segments: Segment[] = perceived.length > 0 ? perceived : (structural.segments ?? []);
 
   if (segments.length === 0) {
     return emptyBlueprint();
@@ -423,11 +446,23 @@ export function buildBlueprint(structural: OmniStructuralInput): SourceBlueprint
     const last = group[group.length - 1]!;
     const t_start = first.t_start;
     const t_end = last.t_end;
+    const duration_s = Number((t_end - t_start).toFixed(2));
+    // Only the cells that actually SPEAK contribute to the span — a silent cell merged into a
+    // talking one adds beat length, not talking time.
+    const span = Number(
+      group
+        .filter((s) => !!s.spoken_text)
+        .reduce((n, s) => n + (s.spoken_span_s ?? s.t_end - s.t_start), 0)
+        .toFixed(2),
+    );
     return {
       index,
       t_start,
       t_end,
-      duration_s: Number((t_end - t_start).toFixed(2)),
+      duration_s,
+      // null when the beat's own duration already tells the truth — the ordinary case, and the
+      // shape every consumer written before this field can keep assuming.
+      spoken_span_s: span > 0 && span !== duration_s ? span : null,
       spoken: joinText(group.map((s) => s.spoken_text)),
       on_screen_text: joinText(group.map((s) => s.on_screen_text)),
       visual_event: group.map((s) => s.visual_event).filter(Boolean).join(" → "),
@@ -484,6 +519,15 @@ export function buildBlueprint(structural: OmniStructuralInput): SourceBlueprint
   const totalWords = beats.reduce((n, b) => n + wordCount(b.spoken), 0);
   const duration_s = Number((beats[beats.length - 1]!.t_end - beats[0]!.t_start).toFixed(2));
 
+  // Rate the words against SPEAKING time, not wall-clock. Dividing by the video's length folds
+  // every silent beat into the denominator and reports a delivery nobody used: a 12-word line
+  // spoken over 8 seconds of a 20-second video is 1.5 w/s, not 0.6. The adapt prompt calls this
+  // "the source's speech rate" and writes lines against it, so the distinction is load-bearing.
+  const speakingSeconds = beats.reduce(
+    (n, b) => (b.spoken ? n + (b.spoken_span_s ?? b.duration_s) : n),
+    0,
+  );
+
   const from_fixed_buckets = isFixedBucketGrid(segments);
   if (from_fixed_buckets) {
     // Warn HERE, at assembly, not at the fallback. normalizeSegments already logs the fallback,
@@ -500,7 +544,7 @@ export function buildBlueprint(structural: OmniStructuralInput): SourceBlueprint
 
   return {
     duration_s,
-    words_per_second: duration_s > 0 ? Number((totalWords / duration_s).toFixed(2)) : 0,
+    words_per_second: speakingSeconds > 0 ? Number((totalWords / speakingSeconds).toFixed(2)) : 0,
     has_speech: totalWords > 0,
     beats,
     from_fixed_buckets,

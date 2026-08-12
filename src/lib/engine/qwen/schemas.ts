@@ -126,6 +126,20 @@ export const SegmentSchema = z.object({
    *  SegmentSchema for transport. */
   spoken_text:    z.string().max(500).nullable().optional(),
   on_screen_text: z.string().max(500).nullable().optional(),
+  /**
+   * How many seconds the quoted `spoken_text` actually took to say, when that is NOT this
+   * cell's own duration.
+   *
+   * Set by normalize-segments, never by the model. Two rules move speech off the cell that
+   * produced it: `enforceHookZoneBoundary` splits a straddling cell and CR-01 keeps the whole
+   * quote on the left child; `mergeSubMinSegments` joins two cells' speech onto one. In both
+   * cases `t_end - t_start` stops being the speech's real window.
+   *
+   * Undefined means "the cell's own duration is the span" — the ordinary case. Consumers that
+   * rate speech (words-per-second, duration matching) MUST prefer this when present, or they
+   * rate eight seconds of talking against a three-second cell (spec §11).
+   */
+  spoken_span_s: z.number().min(0).optional(),
 });
 export type SegmentGrid = z.infer<typeof SegmentSchema>;
 

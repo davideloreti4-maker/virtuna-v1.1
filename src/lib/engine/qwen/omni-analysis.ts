@@ -17,7 +17,7 @@ import { getQwenClient, QWEN_OMNI_MODEL, QWEN_SEED } from "./client";
 import { calculateCost } from "./cost";
 import { OmniAnalysisZodSchema } from "./schemas";
 import type { SegmentGrid, OmniAnalysisResult } from "./schemas";
-import { normalizeSegments } from "./normalize-segments";
+import { normalizeSegmentsDetailed } from "./normalize-segments";
 import { stripModelOutput } from "../utils/strip";
 import { AUDIO_SPLIT_ENABLED, runModalitySplit } from "./split/run";
 import { audioMixViolation, blankAudioMix } from "./audio-mix";
@@ -54,6 +54,10 @@ export interface OmniAnalysisOutput {
    *  segments or normalizer falls back gracefully (normalizer always returns non-empty
    *  after normalization; undefined only when the full omni call failed). */
   segments?: SegmentGrid[];
+  /** The cells actually perceived — see NormalizedSegments.perceived. Differs from `segments`
+   *  only when Rule 3's count gate replaced a short real read with fabricated fixed buckets;
+   *  undefined when nothing was perceived or the read's timestamps were malformed. */
+  perceived_segments?: SegmentGrid[];
 }
 
 const CONTENT_TYPE_VALUES = [
@@ -257,7 +261,10 @@ export function assembleOmniOutput(data: OmniAnalysisResult, cost_cents: number)
   // Derive video duration from highest t_end as defensive fallback when not passed in opts.
   const rawDuration = data.segments?.reduce((max, s) => Math.max(max, s.t_end), 0) ?? 0;
   const videoDurationSeconds = rawDuration > 0 ? rawDuration : 30; // 30s fallback if no segments
-  const normalizedSegments: SegmentGrid[] = normalizeSegments(data.segments as SegmentGrid[] | undefined, videoDurationSeconds);
+  const { segments: normalizedSegments, perceived: perceivedSegments } = normalizeSegmentsDetailed(
+    data.segments as SegmentGrid[] | undefined,
+    videoDurationSeconds,
+  );
 
   const ctypeSlug = CONTENT_TYPE_VALUES.includes(data.content_type as never)
     ? (data.content_type as (typeof CONTENT_TYPE_VALUES)[number])
@@ -314,6 +321,9 @@ export function assembleOmniOutput(data: OmniAnalysisResult, cost_cents: number)
     audio_perceptual_score: data.audio_perceptual_score,
     signalAvailability: { gemini_hook: true, gemini_body: true, gemini_cta: true },
     segments: normalizedSegments,
+    // `?? undefined` — the field is optional on the interface, and null is not a shape any
+    // consumer of an optional field expects to read.
+    perceived_segments: perceivedSegments ?? undefined,
   };
 }
 

@@ -303,13 +303,13 @@ const BLUEPRINT: SourceBlueprint = {
   from_fixed_buckets: false,
   beats: [
     {
-      index: 0, t_start: 0, t_end: 1.8, duration_s: 1.8, role: 'hook',
+      index: 0, t_start: 0, t_end: 1.8, duration_s: 1.8, spoken_span_s: null, role: 'hook',
       spoken: 'Your protein shake is making you fatter', on_screen_text: 'STOP',
       visual_event: 'tight crop, hard cut in', audio_event: 'voice starts',
       cuts: 1, weakness: null,
     },
     {
-      index: 1, t_start: 1.8, t_end: 5.4, duration_s: 3.6, role: 'setup',
+      index: 1, t_start: 1.8, t_end: 5.4, duration_s: 3.6, spoken_span_s: null, role: 'setup',
       spoken: 'I tracked 400 clients for six months', on_screen_text: null,
       visual_event: 'b-roll of shaker', audio_event: 'music under',
       cuts: 2,
@@ -448,5 +448,71 @@ describe('adapt input widening (D-01 reversal)', () => {
     expect(result![0]!.script).toBeUndefined();
     expect(result![0]!.hook).toBe('Format-hook headline one for the niche');
     expect(mockCreate).toHaveBeenCalledTimes(1); // no repair round-trip
+  });
+
+  // -------------------------------------------------------------------------
+  // The sheet silently not existing.
+  //
+  // MEASURED 2026-08-12 (spec §11): a live run returned three concepts with NO
+  // `script` key at all. No error, exit 0, `adapt concepts generated {count:3}`
+  // in the log, and the creator gets the pre-lane artefact — three text concepts,
+  // no beats — with nothing anywhere saying the shoot sheet is missing. Seen in
+  // roughly 3 of 8 live runs. NOT stripInvalidScript: its warning never fired.
+  //
+  // This REVERSES half of the decision above, whose two premises no longer hold:
+  //   1. "trade 3 valid concepts for a garnish" — under the owner's 1:1 ruling
+  //      (2026-08-12) the script IS the deliverable, not a garnish.
+  //   2. "the retry repeats the omission" — measured false. The adapt call is
+  //      non-deterministic (3 byte-identical inputs → 3 distinct outputs), so a
+  //      second sample is a genuinely new draw.
+  //
+  // Narrow on purpose: only when the model NEVER emitted a script and a beat map
+  // WAS supplied. A malformed script still drops silently, exactly as above.
+  // -------------------------------------------------------------------------
+  describe('missing script[] when a beat map was supplied', () => {
+    const withBeats = () => ({ ...makeAdaptInput(), blueprint: BLUEPRINT });
+
+    it('retries once when every concept comes back without a script', async () => {
+      const { generateAdaptConcepts } = await import('../adapt');
+      const withScript = JSON.parse(makeValidConceptsResponse()) as {
+        concepts: Record<string, unknown>[];
+      };
+      withScript.concepts[0]!.script = [
+        { index: 0, spoken: 'a line', on_screen_text: 'TEXT', shot: 'tight crop' },
+      ];
+
+      mockCreate.mockReset();
+      mockCreate.mockResolvedValueOnce(makeQwenResponse(makeValidConceptsResponse())); // bare
+      mockCreate.mockResolvedValueOnce(makeQwenResponse(JSON.stringify(withScript)));  // has one
+
+      const result = await generateAdaptConcepts(withBeats());
+
+      expect(mockCreate).toHaveBeenCalledTimes(2);
+      expect(result![0]!.script).toHaveLength(1);
+    });
+
+    it('returns the concepts anyway when the retry is also bare — never nothing', async () => {
+      const { generateAdaptConcepts } = await import('../adapt');
+      mockCreate.mockReset();
+      mockCreate.mockResolvedValueOnce(makeQwenResponse(makeValidConceptsResponse()));
+      mockCreate.mockResolvedValueOnce(makeQwenResponse(makeValidConceptsResponse()));
+
+      const result = await generateAdaptConcepts(withBeats());
+
+      expect(mockCreate).toHaveBeenCalledTimes(2);
+      expect(result).toHaveLength(3);        // graceful — 3 concepts beat zero
+      expect(result![0]!.script).toBeUndefined();
+    });
+
+    it('does NOT retry when no beat map was supplied — a bare response is correct there', async () => {
+      const { generateAdaptConcepts } = await import('../adapt');
+      mockCreate.mockReset();
+      mockCreate.mockResolvedValueOnce(makeQwenResponse(makeValidConceptsResponse()));
+
+      const result = await generateAdaptConcepts(makeAdaptInput()); // emptyBlueprint()
+
+      expect(mockCreate).toHaveBeenCalledTimes(1);
+      expect(result).toHaveLength(3);
+    });
   });
 });

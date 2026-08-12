@@ -230,7 +230,21 @@ export function buildAdaptUserContent(input: AdaptInput): string {
           `  [${b.index}] ${b.t_start.toFixed(1)}–${b.t_end.toFixed(1)}s (${b.duration_s}s) · ${b.role.toUpperCase()}`,
           `      they show: ${b.visual_event}`,
         ];
-        if (b.spoken) parts.push(`      they say: "${b.spoken}"`);
+        if (b.spoken) {
+          parts.push(`      they say: "${b.spoken}"`);
+          // The quote can outlive the beat holding it: enforceHookZoneBoundary cuts any cell
+          // straddling 3s and keeps the whole quote on the left child, so a 0-8s talking cell
+          // leaves eight seconds of words on a three-second hook beat. Unstated, the model reads
+          // "3s beat" beside a 20-word line and writes 20 words for 3 seconds — measured at
+          // 7.7 w/s, which cannot be said aloud (spec §11). Say how long the line really took
+          // and what this beat's share of it is.
+          if (b.spoken_span_s !== null && b.spoken_span_s > b.duration_s) {
+            parts.push(
+              `      ⏱ that line takes ${b.spoken_span_s}s to say and runs PAST this beat — ` +
+              `this beat is only ${b.duration_s}s of it. Write ~${b.duration_s}s of speech, not the whole line.`,
+            );
+          }
+        }
         if (b.on_screen_text) parts.push(`      on screen: "${b.on_screen_text}"`);
         if (b.cuts > 1) parts.push(`      cuts inside this beat: ${b.cuts}`);
         if (b.weakness) {
@@ -276,6 +290,18 @@ export async function generateAdaptConcepts(input: AdaptInput): Promise<AdaptCon
   const ai = getQwenClient();
   let lastError: unknown;
 
+  // A beat map was supplied, so ADAPT_SYSTEM_PROMPT told the model every concept MUST carry a
+  // `script`. When one comes back without it the SHEET DOES NOT EXIST — and the response is
+  // otherwise perfectly valid, so nothing downstream notices (measured: ~3 of 8 live runs
+  // returned three bare concepts, exit 0, "adapt concepts generated {count:3}" in the log, the
+  // creator handed the pre-lane artefact with no indication anything was missing — spec §11).
+  const beatMapSupplied = input.blueprint.beats.length > 0;
+
+  // Why the retry nudge is not one string: the two failures need opposite instructions, and
+  // sending "your previous response was not valid JSON" after a perfectly-parsed bare response
+  // aims the repair at the wrong defect.
+  let missingScriptRetry = false;
+
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
@@ -284,7 +310,9 @@ export async function generateAdaptConcepts(input: AdaptInput): Promise<AdaptCon
       // Retry nudge goes on the USER message (not system) to preserve the byte-stable
       // ADAPT_SYSTEM_PROMPT prefix for DashScope cache hits on retries (T-03-08).
       // Aligns with decode.ts:67 and deepseek.ts:471 patterns.
-      const extraInstruction = attempt > 0
+      const extraInstruction = missingScriptRetry
+        ? "\nIMPORTANT: Your previous response omitted the \"script\" array. A TIMED BEAT MAP was supplied, so EVERY concept MUST include \"script\" with exactly one entry per beat, in order. Return the full JSON object with it."
+        : attempt > 0
         ? "\nIMPORTANT: Your previous response was not valid JSON. Return ONLY the raw JSON object, no explanation."
         : "";
 
@@ -332,6 +360,33 @@ export async function generateAdaptConcepts(input: AdaptInput): Promise<AdaptCon
       // Belt-and-suspenders count guard (mirrors pass2.ts:197-200)
       if (result.data.concepts.length !== 3) {
         throw new Error(`concept count mismatch: ${result.data.concepts.length}`);
+      }
+
+      // Read the RAW response, not the validated one. `stripInvalidScript` deletes a malformed
+      // script deliberately (see its docstring — a fumbled garnish must not cost three good
+      // concepts), and that decision stands. What is being caught here is narrower and
+      // different: the model never emitted a script AT ALL.
+      const rawConcepts = (parsed as { concepts?: Array<{ script?: unknown }> } | null)?.concepts;
+      const noneEmittedScript =
+        Array.isArray(rawConcepts) && rawConcepts.every((c) => c?.script === undefined);
+
+      if (beatMapSupplied && noneEmittedScript) {
+        if (attempt < MAX_RETRIES) {
+          // Worth a second draw. The old rationale for not retrying assumed "the retry repeats
+          // the omission" — measured FALSE: this call is non-deterministic (three byte-identical
+          // inputs produced three distinct outputs at temperature 0 with a fixed seed), so a
+          // retry is a genuinely new sample, not a replay.
+          log.warn("adapt returned no script[] despite a beat map — retrying", { attempt });
+          missingScriptRetry = true;
+          continue;
+        }
+        // Out of attempts. Return the concepts — three of them still beat nothing, and failing
+        // here would turn a degraded card into no card. But say so at ERROR: this is the shoot
+        // sheet silently not existing, and it was invisible until someone went looking.
+        log.error("adapt returned no script[] after retry — the shoot sheet is MISSING", {
+          beats: input.blueprint.beats.length,
+          concepts: result.data.concepts.length,
+        });
       }
 
       log.info("adapt concepts generated", { attempt, count: result.data.concepts.length });

@@ -68,6 +68,22 @@ export interface DecodeResult {
   luck: { category: LuckCategory; note: string }[];
 }
 
+/**
+ * One cell of a timed grid. Named because TWO fields carry one now (`segments` and
+ * `perceived_segments`) and a duplicated inline literal would let them drift apart.
+ *
+ * Still a structural subset of the real `SegmentGrid` (qwen/schemas.ts), not that type —
+ * see the note on `Segment` in blueprint.ts for why widening it here buys less than it looks.
+ */
+export interface OmniStructuralSegment {
+  t_start: number;
+  t_end: number;
+  visual_event: string;
+  audio_event: string;
+  scene_boundary_reason?: string;
+  is_hook_zone?: boolean;
+}
+
 /** Subset of OmniAnalysisOutput fields consumed by the decode engine */
 export interface OmniStructuralInput {
   hook_decomposition: {
@@ -85,14 +101,16 @@ export interface OmniStructuralInput {
     rationale: string;
     improvement_tip?: string;
   }>;
-  segments?: Array<{
-    t_start: number;
-    t_end: number;
-    visual_event: string;
-    audio_event: string;
-    scene_boundary_reason?: string;
-    is_hook_zone?: boolean;
-  }>;
+  segments?: OmniStructuralSegment[];
+  /**
+   * The cells omni actually perceived, when they differ from `segments`.
+   *
+   * `segments` is the grid AFTER normalizeSegments' Rule 3, which replaces a short read with
+   * fabricated fixed buckets rather than padding it (qwen/normalize-segments.ts). That trade is
+   * right for the filmstrip and wrong for a beat-merging consumer, so both grids travel.
+   * Undefined when nothing was perceived or the read's timestamps were broken.
+   */
+  perceived_segments?: OmniStructuralSegment[];
   video_signals: {
     visual_production_quality: number;
     pacing_score: number;

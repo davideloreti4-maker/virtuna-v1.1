@@ -597,3 +597,119 @@ describe("buildBlueprint — from_fixed_buckets", () => {
     expect(mockLog.warn).not.toHaveBeenCalled();
   });
 });
+
+// ---------------------------------------------------------------------------
+// perceived_segments — the grid Rule 3 discarded.
+//
+// normalizeSegments' count gate (MIN_BOUNDARY_COUNT = 4) does not pad a short read
+// to four cells; it REPLACES it with buildFixedBuckets. A 3-cell talking-head read
+// carrying real transcribed speech therefore reaches buildBlueprint as `"segment 12s"`
+// with `spoken_text` nowhere — and the sheet is fabricated for a reason that has
+// nothing to do with what the model perceived.
+//
+// The constant is not this lane's to move (it serves the filmstrip, which genuinely
+// needs a cell floor). buildBlueprint reads the perceived cells instead when they
+// exist, and merges to <= MAX_BEATS as always.
+// ---------------------------------------------------------------------------
+
+describe("buildBlueprint — perceived_segments", () => {
+  beforeEach(() => {
+    mockLog.warn.mockClear();
+  });
+
+  it("builds from the perceived cells when `segments` is the fabricated fallback", () => {
+    const bp = buildBlueprint(structural({
+      segments: buildFixedBuckets(20),
+      perceived_segments: [seg(0, 3), seg(3, 10), seg(10, 20)],
+    }));
+    expect(bp.beats.map((b) => b.spoken)).toEqual([
+      "words at 0", "words at 3", "words at 10",
+    ]);
+    expect(bp.has_speech).toBe(true);
+  });
+
+  it("reports from_fixed_buckets false — the sheet describes the video, not the grid", () => {
+    const bp = buildBlueprint(structural({
+      segments: buildFixedBuckets(20),
+      perceived_segments: [seg(0, 3), seg(3, 10), seg(10, 20)],
+    }));
+    expect(bp.from_fixed_buckets).toBe(false);
+    expect(mockLog.warn).not.toHaveBeenCalled();
+  });
+
+  it("takes the real times from the perceived cells, not the fabricated grid", () => {
+    // buildFixedBuckets(20) spans 0-20 in 2s cells; the perceived read ends at 16.
+    const bp = buildBlueprint(structural({
+      segments: buildFixedBuckets(20),
+      perceived_segments: [seg(0, 3), seg(3, 9), seg(9, 16)],
+    }));
+    expect(bp.beats[bp.beats.length - 1]!.t_end).toBe(16);
+    expect(bp.duration_s).toBe(16);
+  });
+
+  it("still flags the fabrication when there are no perceived cells to fall back to", () => {
+    const bp = buildBlueprint(structural({ segments: buildFixedBuckets(20) }));
+    expect(bp.from_fixed_buckets).toBe(true);
+    expect(bp.has_speech).toBe(false);
+    expect(mockLog.warn).toHaveBeenCalled();
+  });
+
+  it("ignores an EMPTY perceived array — it is not perception, and the flag must stand", () => {
+    const bp = buildBlueprint(structural({
+      segments: buildFixedBuckets(20),
+      perceived_segments: [],
+    }));
+    expect(bp.from_fixed_buckets).toBe(true);
+    expect(bp.beats.length).toBeGreaterThan(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// spoken_span_s on a beat — the quote's real window, not the beat's.
+//
+// MEASURED (spec §11): the hook beat is 0-3s but carries a quote spoken across 0-8s,
+// because enforceHookZoneBoundary split the cell and CR-01 kept the whole quote on the
+// left child. The adapt call was told "3 second beat" next to eight seconds of words and
+// faithfully wrote 23 words for it — 7.7 w/s, which cannot be said out loud.
+//
+// The words stay where they are. What the sheet gains is the span, so a consumer rating
+// speech has the true denominator.
+// ---------------------------------------------------------------------------
+
+describe("buildBlueprint — spoken_span_s", () => {
+  /** A 0-8s talking cell that straddles the 3s line, then three quiet cells. */
+  const straddling = () => normalizeSegments([
+    { t_start: 0,  t_end: 8,  visual_event: "talking head", audio_event: "speech",
+      spoken_text: "one two three four five six seven eight nine ten eleven twelve" },
+    { t_start: 8,  t_end: 12, visual_event: "b roll", audio_event: "music" },
+    { t_start: 12, t_end: 16, visual_event: "b roll", audio_event: "music" },
+    { t_start: 16, t_end: 20, visual_event: "outro",  audio_event: "music" },
+  ] as SegmentGrid[], 20);
+
+  it("carries the quote's span onto the beat that holds it", () => {
+    const bp = buildBlueprint(structural({ segments: straddling() }));
+    const hook = bp.beats[0]!;
+    expect(hook.t_end).toBe(3);
+    expect(hook.spoken).toContain("twelve");
+    expect(hook.spoken_span_s).toBe(8); // the beat is 3s; the words took 8
+  });
+
+  it("leaves spoken_span_s null when the beat's own duration IS the span", () => {
+    const bp = buildBlueprint(structural({
+      segments: normalizeSegments([
+        { t_start: 0, t_end: 3,  visual_event: "a", audio_event: "a", spoken_text: "inside the zone" },
+        { t_start: 3, t_end: 9,  visual_event: "b", audio_event: "b", spoken_text: "after it" },
+        { t_start: 9, t_end: 13, visual_event: "c", audio_event: "c" },
+        { t_start: 13, t_end: 18, visual_event: "d", audio_event: "d" },
+      ] as SegmentGrid[], 18),
+    }));
+    expect(bp.beats[0]!.spoken_span_s).toBeNull();
+  });
+
+  it("rates words against SPEAKING time, not wall-clock", () => {
+    const bp = buildBlueprint(structural({ segments: straddling() }));
+    // 12 words spoken over an 8s window. Dividing by the 20s video says 0.6 w/s and
+    // describes nobody's delivery.
+    expect(bp.words_per_second).toBeCloseTo(1.5, 5);
+  });
+});

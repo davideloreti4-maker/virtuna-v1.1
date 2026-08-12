@@ -267,6 +267,9 @@ export function omniOutputToStructuralInput(
     // weakness annotations until factors are re-sourced from Apollo; undefined would throw.
     factors: a.factors ?? [],
     segments: omni.segments,
+    // Both grids travel. buildBlueprint prefers the perceived one; every other consumer of
+    // this input reads `segments` and is unaffected.
+    perceived_segments: omni.perceived_segments,
     video_signals: {
       visual_production_quality: a.video_signals.visual_production_quality,
       pacing_score: a.video_signals.pacing_score,

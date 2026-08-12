@@ -56,7 +56,7 @@ const SAMPLE_ROW: BlueprintRow = {
         index: 0,
         t_start: 0,
         t_end: 1.8,
-        duration_s: 1.8,
+        duration_s: 1.8, spoken_span_s: null,
         role: "hook",
         spoken: "source line",
         on_screen_text: null,
