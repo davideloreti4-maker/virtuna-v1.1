@@ -234,18 +234,84 @@ session considered: **retry pinned when round 1 emitted a prose tool call.** Unl
 "guessed AND no tool call", this trigger cannot select for false positives — the model has asserted
 the specific call, by name, with args. It is the model's own machine-readable statement of intent.
 
-⚠️ **Not built, not measured, and 26 runs is a small corpus.** The app cell was not run with an
-injected count (its typed-count arm is 15/16). Treat §7 as the strongest available lead, not a
-result — and note the pushback elimination is the claim resting on the fewest runs (20).
+### 7.4 CONFIRMED on the second cell — and the pushback goes to ZERO across both
+
+`.scratch/probe-count-app-cell.ts`, 16 more runs, product subject, injected count, unpinned.
+
+```
+app cell        control 2/6      injected count 9/10
+```
+
+Pooled with §7's format cell — **both subject shapes, 32 unpinned runs:**
+
+| | dispatched | **pushback** | prose tool-call | generator error |
+|---|---|---|---|---|
+| the creator's words, unchanged | **2/12 · 17%** | **9** | 1 | 0 |
+| **the route injects the count** | **16/20 · 80%** | **0** | 3 | 1 |
+
+**Nine pushbacks to zero.** The defect this lane has spent four sessions on — the model arguing that
+a named product or format *"is the product, not the hook"* — does not occur once in 20 counted runs,
+across both subject shapes. Every residual failure is something else.
+
+⚠️ And the one generator error is **§7.4 of session 10 reappearing**: the run errored and the model
+delivered the pack itself in prose — *"Here are 5 hooks that actually work for this specific combo"*,
+five numbered hooks, no cards. Session 10 found that defect only on non-dispatch turns; it also
+lives downstream of a **failed tool call**, which no detector scoped to non-dispatch would see.
+
+### 7.5 The retry trigger is precise — but must NOT pin to the name the model emitted
+
+`.scratch/analyse-prose-tool-call.ts`, over all **107** recorded runs, free.
+
+```
+trigger fires                    8
+  …on a run that DISPATCHED      0     ← never fires where a retry would be wrong
+  …on a non-dispatch             8
+recall within the counted arms   6 of 7 residual failures
+overlap with C                   8/8 would also have been pinned by C
+```
+
+**Precision is perfect on this corpus** — it never fires on a turn that produced cards, and there is
+no "I could run `generate_hooks(...)` if you like" discussion shape anywhere in 107 runs. A false
+positive requires the model to write a tool call it did not mean.
+
+🔴 **But §7.3's proposal was wrong in one detail, and it matters: do not pin to the tool the model
+named.** In **3 of the 8** fires the model emitted `generate_ideas(...)` for an ask that says
+*hooks* — the model that failed to express the call also picked the wrong tool. Pinning to its
+emitted name would produce the wrong artefact 38% of the time. Pin to **`guessSkill`'s guess**,
+which is correct in all 8. The emitted call is the *trigger*; the guess is the *target*.
+
+Since 8/8 of these would also have been pinned by C, the trigger buys **precision, not coverage** —
+it is C with the false-positive exposure removed, at the cost of covering only the failures where
+the model announced itself.
+
+### 7.6 What this composes to
+
+| | dispatch | wrong-run exposure | machinery |
+|---|---|---|---|
+| today | 17% | — | — |
+| **C alone** (built, flagged) | ~100% | ~3.4% of fires | one branch, shipped |
+| injected count alone | 80% | **none** — forces nothing | a bundle change |
+| count + prose-call retry → guess | ~95% (6 of 7 residual) | ~0 observed in 107 runs | bundle change + retry |
+
+⚠️ **The retry half is not built and not measured end-to-end**, and 32 runs is a small corpus. The
+count's own numbers are solid across two subject shapes; everything about the retry rests on 8 fires.
 
 ---
 
 ## 8. Do next
 
-0. 🔴 **Confirm §7 before flipping C on.** The count is free of billing risk and C is not, so if the
-   composition in §7.3 holds it is strictly better than either alone. Two cheap runs decide it: the
-   injected count on the **app** cell, and whether a prose-tool-call retry closes the residual 30%.
-1. **Set `ENGINE_GUESS_PIN=true` on a live route run** and re-measure the two cells there before
+0. 🔴 **Build the injected count first — it is the cheapest, safest thing in this lane.** §7.4:
+   pushbacks 9 → 0 across both subject shapes, dispatch 17% → 80%, and it forces nothing, so it
+   carries **no wrong-run exposure at all**. It is a route-side change to the assembled bundle
+   (`assembleBundle({ ask })`, with `currentAsk` keeping the creator's words). Flag it, TDD it, and
+   the owner's copy call is whether a count the creator did not type may ride in the bundle — noting
+   every dispatching run returned exactly 5 cards either way.
+1. **Then the prose-call retry (§7.5), pinned to `guessSkill` and NOT to the emitted tool name.**
+   That closes 6 of the 7 residual failures with no measured false positives. Together with the
+   count this reaches ~95% at ~0 exposure, which is a better trade than C's ~100% at 3.4%.
+2. **Keep `ENGINE_GUESS_PIN` dark until 0 and 1 are measured.** C is built, gated and ready; it is
+   the fallback if the composition does not hold live, not the thing to flip first.
+3. **Set `ENGINE_GUESS_PIN=true` on a live route run** and re-measure the two cells there before
    arguing default-ON. That is the last gap between this and a shipping default.
 2. **Then the profile cell** — a creator with no niche set. Every pushback *cites* the niche while
    doing something else, so a null-niche profile is where the explanation and the mechanism can
