@@ -229,6 +229,13 @@ export interface IdeasPipelineInput {
    */
   cards?: string[];
   /**
+   * THE CONVERSATION (2026-08-10) — what the creator has said in this thread, as data.
+   * Built by the agent loop from the turns it is already replaying (conversation-digest.ts) and
+   * fenced by the assembler above the `---`. Absent on every direct /api/tools/<skill> call and
+   * whenever ENGINE_GEN_CONVERSATION is off, and undefined is byte-identical.
+   */
+  conversation?: { turns?: string[] };
+  /**
    * Active audience for this run (07-04 — steer + react wiring, AUD-04/AUD-05).
    * null or GENERAL_AUDIENCE.is_general=true → falls back to profile-based grounding
    * (zero behavior change for General — regression gate preserved).
@@ -551,6 +558,9 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
       ...(cards && cards.length > 0 ? { cards } : {}),
       ...(overrides ? { overrides } : {}),
       ...(corpus ? { corpus } : {}),
+      // The thread, when the agent loop supplied one. Undefined on a direct route call and
+      // whenever ENGINE_GEN_CONVERSATION is off, and undefined is byte-identical.
+      ...(input.conversation ? { conversation: input.conversation } : {}),
     },
     genProfileRow,
   );

@@ -86,3 +86,8 @@ tests/fixtures/audio-smoke/smoke-test-results.json
 
 # Spike harness output (scripts/spike-*.ts)
 .spike-out/
+
+# E2E audit rig output (screenshots, JSON, dev logs)
+# Redundant with `.scratch/` above; kept explicit so the rig's output path is
+# discoverable from this file alone.
+.scratch/audit/

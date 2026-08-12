@@ -41,16 +41,62 @@ import { PROFILE_ROLE_MAP, type Role, type ProfileRow } from "./profile-role-map
 /**
  * Hard character cap on the assembled live bundle.
  *
- * TUNED POST-AUTHORING: this value is a placeholder sized conservatively for v1.
- * After Plan 03 authors BASE + Ideas slice, resize so the live tier (this bundle)
- * stays the cheap-varying part vs the warm cached system-prompt prefix (D-03).
- * Rule: live bundle << system prompt size (the warm cache must be the dominant tier).
+ * Rule this value serves: live bundle << system prompt size (the warm cache must be the
+ * dominant tier, D-03/D-05).
  *
- * At this cap, lowest-priority roles are dropped (not truncated mid-field) until
- * the bundle fits. The ask/overrides/anchor sections are always included (they
- * represent the user's request and are never dropped).
+ * RESIZED 4000 → 6000 (2026-08-10), because 4000 was silently de-personalising the very runs
+ * grounding exists to improve. Measured through this function with the real prod profile shape:
+ *
+ *   hooks · corpus 2800, no overrides           3818 / 4000   all roles kept
+ *   hooks · corpus 2800 + calibrated overrides  3602 / 4000   voice + wins + flops + platform ALL DROPPED
+ *
+ * A calibrated audience is simultaneously the only thing that PRODUCES a voice (it is backfilled
+ * from creator_persona.writing_style_sample — see apply-creator-persona.ts, and note that
+ * creator_profiles.writing_voice_sample does not exist in the database) and the thing whose
+ * `overrides` block evicts it. The drop loop pops whole roles, so it shed 675 chars to save 256.
+ *
+ * The old comment on grounding/prompt.ts's SKILL_CHAR_BUDGET reasoned from the same number and
+ * drew the opposite conclusion — "the assembled bundle lands ~3.6k … so the corpus still cannot
+ * evict a creator's profile roles". 3.6k IS the post-eviction length. Do not re-derive headroom
+ * from an output length; assert on which roles survive.
+ *
+ * Why 6000 and not more: the rule above still has to hold. Measured system-prompt sizes are
+ * 46,485 (hooks) / 35,664 (ideas) / 33,953 (script) / 25,268 (chat) chars, so 6000 is 12.9%–23.7%
+ * of the tier it must stay small against — comfortably the minor tier, where 4000 was 8.6%–15.8%.
+ * Cost is not the constraint at either value (qwen3.7-flash: $0.03/M input at ≤32K). 6000 also
+ * clears the worst realistic bundle (~5,585 = corpus 2800 + overrides + anchor + 5 cards + a full
+ * profile + the conversation digest + labels), so on real traffic nothing sheds at all and the
+ * shed ORDER below is a tiebreak rather than a routine event.
+ *
+ * At this cap, sections are shed by declared priority (see the shed order in assembleBundle step
+ * 4) — never truncated mid-field. The ask/overrides/anchor/cards sections are always included
+ * (they represent the user's request and are never dropped).
  */
-export const BUNDLE_CHAR_CAP = 4000;
+export const BUNDLE_CHAR_CAP = 6000;
+
+/**
+ * Character budget for the conversation digest, applied by the BUILDER before the section ever
+ * reaches this module (same contract as CORPUS_CHAR_BUDGET in grounding/prompt.ts, and for the
+ * same reason: an unbudgeted section does not merely get truncated at the cap, it competes with
+ * the creator's own grounding).
+ *
+ * ⚠️ This is a budget on the emitted BLOCK — preamble, numbering and fence included, not just the
+ * creator's words. It has been wrong twice, in the same direction, and both times the symptom was
+ * a silently ungrounded generation rather than anything visible:
+ *
+ *   1. `cardsOnScreen` (6 × 120 chars) sat outside the number entirely → block reached 1,844.
+ *   2. With that removed, the builder still charged only raw turn TEXT → 640 "legal" chars
+ *      emitted a ~960-char block, and the worst realistic bundle still shed the whole corpus.
+ *
+ * The builder now charges `CONVERSATION_BLOCK_OVERHEAD` up front and per-line numbering per turn,
+ * so what is spent is what lands. Two guards keep it honest: the overhead is DERIVED from the
+ * preamble/fence strings rather than written down, and a test assembles a budget-max digest and
+ * asserts the real emitted block against this number. If a sub-block is ever added here, add its
+ * cost to the overhead — and re-measure the worst case rather than reasoning about it.
+ *
+ * Exported so the builder and the cap reason from one number.
+ */
+export const CONVERSATION_CHAR_BUDGET = 700;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -106,6 +152,35 @@ export const assemblerInputSchema = z.object({
    * (anchorHonored enforces it); a rewrite pack carries no such opening constraint.
    */
   cards: z.array(z.string().min(1)).min(1).max(6).optional(),
+  /**
+   * THE CONVERSATION (2026-08-10). What the creator has said in this thread, as data.
+   *
+   * Until now a generator pipeline received `ask`, `anchor`, `cards`, the profile and the
+   * audience — and NO conversation. Twenty turns reached the generating model only insofar as the
+   * chat agent compressed them into the one `topic` string it wrote into the tool call. That is
+   * why "given everything I've told you, what angle should I lead with?" works (the chat agent has
+   * the turns as real role messages) while the hooks it then generates can feel like they forgot
+   * the conversation (the generator never saw them).
+   *
+   * `turns` is the creator's OWN words only — never the assistant's prose. That exclusion is
+   * load-bearing, not tidiness: chat-prior-turns.ts documents the defect this subsystem exists to
+   * fix, where the model saw its own sentence "Five hooks are on screen." with no visible cause
+   * and, asked again, reproduced the sentence and called nothing. Feeding assistant prose into a
+   * GENERATOR bundle would import that failure into a second place. The creator's words are also
+   * where the durable signal lives — the stated constraints ("under 30s", "not the 5am angle").
+   *
+   * There is deliberately NO `cardsOnScreen` companion. It existed until 2026-08-10 and carried
+   * the last run's card lines under "do NOT reproduce, rephrase or re-deliver these" — measured,
+   * it produced one VERBATIM copy and two near-copies in 10 hooks, and its unbudgeted size
+   * evicted the corpus. See conversation-digest.ts's header for the arms and the numbers. Its
+   * removal also retires the `cards`/`cardsOnScreen` mutual-exclusion contract, since the
+   * contradiction (one list under "rewrite each" AND "do not repeat") can no longer be built.
+   */
+  conversation: z
+    .object({
+      turns: z.array(z.string().min(1)).max(12).optional(),
+    })
+    .optional(),
 });
 
 export type AssemblerInput = z.infer<typeof assemblerInputSchema>;
@@ -196,6 +271,47 @@ function cardsContent(cards: string[]): string {
   return cards.map((c, i) => `${i + 1}. ${c}`).join("\n");
 }
 
+/**
+ * The conversation digest as ONE fenced block, emitted above the `---` (see assembleBundle).
+ *
+ * Same rule as anchorLabel/cardsLabel: the contract lives beside the content, because the system
+ * prompts are byte-stable compiled slices that per-request data must not invalidate. Each
+ * sub-block states plainly what it IS and what the run owes it — a generator that is handed a
+ * transcript with no contract will read it as more topic.
+ *
+ * Returns null when there is nothing to say, so an empty object is a byte-identical no-op.
+ */
+const CONVERSATION_PREAMBLE =
+  "What the creator has said in this conversation, oldest first — their own words. " +
+  "Honour anything they stated as a constraint or a rejection here (length, format, an " +
+  "angle they already ruled out) as if it were part of the request:\n";
+
+/** The fence label this block is emitted under (see assembleBundle step 3). */
+const CONVERSATION_LABEL = "This conversation so far";
+
+/**
+ * What the emitted BLOCK costs beyond the creator's own words — the preamble, the fence label and
+ * the two sentinels. DERIVED from the very strings above rather than written down, so editing the
+ * preamble can never silently widen the block past its budget.
+ *
+ * Exported because `CONVERSATION_CHAR_BUDGET` is a budget on the BLOCK, and the builder (which
+ * spends it) is the only place that can enforce that. Charging turn TEXT alone was the 2026-08-10
+ * defect: 640 legal chars of text emitted a ~960-char block, and the difference was enough to push
+ * the worst realistic bundle over BUNDLE_CHAR_CAP and shed the entire corpus. Per-line numbering
+ * ("12. " + newline) is charged by the builder per turn, not here.
+ */
+export const CONVERSATION_BLOCK_OVERHEAD =
+  CONVERSATION_PREAMBLE.length +
+  fenceUserContent(CONVERSATION_LABEL, "").length;
+
+function conversationContent(conversation: { turns?: string[] }): string | null {
+  if (!conversation.turns || conversation.turns.length === 0) return null;
+  return (
+    CONVERSATION_PREAMBLE +
+    conversation.turns.map((t, i) => `${i + 1}. ${t}`).join("\n")
+  );
+}
+
 // ─── Injection fence helpers ──────────────────────────────────────────────────
 
 /**
@@ -277,9 +393,34 @@ function isProfileThin(profileRow: ProfileRow | null): boolean {
  *   1. Validate input with zod (input validation at system boundary per CLAUDE.md).
  *   2. Determine profile tier: full / thin → honest cold-start flag.
  *   3. Pull only MODE_ROLES[mode] from the profile via PROFILE_ROLE_MAP.
- *   4. Enforce BUNDLE_CHAR_CAP: drop lowest-priority roles (tail of MODE_ROLES) first.
- *   5. Fence ask/overrides/anchor in <<<USER_CONTENT>>> blocks.
+ *   4. Enforce BUNDLE_CHAR_CAP by SHED ORDER (see step 4) — never truncated mid-field.
+ *   5. Fence ask/overrides/anchor/cards/corpus in <<<USER_CONTENT>>> blocks.
  *   6. Return assembled user message.
+ *
+ * WHY THE CONVERSATION DIGEST SITS ABOVE THE `---`. It groups with the trusted grounding rather
+ * than with the per-request user sections, which is also how the shed order treats it (it yields
+ * before the profile, after the corpus). Fencing above the `---` has precedent: the `voice` role
+ * already emits a USER_CONTENT fence there.
+ *
+ * ⚠️ THIS PLACEMENT WAS ORIGINALLY CHOSEN FOR A PREFIX-CACHE REASON THAT DID NOT SURVIVE
+ * MEASUREMENT, and the correction is recorded here so nobody re-derives the same argument.
+ *
+ * The argument was: DashScope runs an implicit context cache for Qwen, the hit is on the longest
+ * common TOKEN prefix, the digest is append-only within a thread while the ask below it is
+ * volatile every turn — so placing the digest above the ask should extend the cached prefix
+ * through it. Measured (`.scratch/probe-prefix-cache.ts`), it buys nothing:
+ *
+ *   · The cache is real and works — 8,960 cached tokens on the live hooks system prompt.
+ *   · 8,960 = 35 × 256 exactly, so hits are quantised to 256-token BLOCKS.
+ *   · The shipped digest is CONVERSATION_CHAR_BUDGET = 700 chars ≈ 175 tokens. It is smaller
+ *     than one block, so it cannot move the number no matter where it sits. The arithmetic
+ *     settles this independently of any experiment.
+ *
+ * Two probe designs failed to isolate the effect before that became clear, and both failure modes
+ * are worth knowing: sharing the system prompt between the two arms measures CALL ORDER (whichever
+ * ran second inherited the other's warm prefix — one arm read 8,960 purely for going second), and
+ * giving each arm its own prefix measures nothing at all, because a fresh prefix does not become
+ * cacheable within a 45s window. Do not re-open this without a digest larger than 256 tokens.
  *
  * @param input       Typed assembler input (validated at boundary).
  * @param profileRow  creator_profiles row (null = no profile / cold-start).
@@ -294,7 +435,8 @@ export function assembleBundle(
   if (!parsed.success) {
     throw new Error(`assembleBundle: invalid input — ${parsed.error.message}`);
   }
-  const { ask, platform, mode, overrides, anchor, corpus, modeLabel, cards } = parsed.data;
+  const { ask, platform, mode, overrides, anchor, corpus, modeLabel, cards, conversation } =
+    parsed.data;
 
   const roles = MODE_ROLES[mode];
   const thin = isProfileThin(profileRow);
@@ -331,51 +473,111 @@ export function assembleBundle(
   }
 
   // 3. Build fenced user-input sections (always included — user request is the primary signal).
-  const fencedSections: string[] = [];
-  fencedSections.push(fenceUserContent("Creator ask", ask));
-  if (overrides) fencedSections.push(fenceUserContent("Per-request overrides", overrides));
-  if (anchor) fencedSections.push(fenceUserContent(anchorLabel(mode), anchor));
-  if (cards) fencedSections.push(fenceUserContent(cardsLabel(mode), cardsContent(cards)));
-  if (corpus) fencedSections.push(fenceUserContent("Grounded examples", corpus));
+  //    `corpus` is listed separately below because it is the FIRST thing shed (step 4a).
+  const userSections: string[] = [];
+  userSections.push(fenceUserContent("Creator ask", ask));
+  if (overrides) userSections.push(fenceUserContent("Per-request overrides", overrides));
+  if (anchor) userSections.push(fenceUserContent(anchorLabel(mode), anchor));
+  if (cards) userSections.push(fenceUserContent(cardsLabel(mode), cardsContent(cards)));
+
+  // The conversation digest — its own block, ABOVE the `---` (see the cache note in the header
+  // doc). Fenced like every other creator-supplied string, so sentinel-stripping is inherited.
+  //
+  // This used to strip `cardsOnScreen` whenever a `cards` rewrite pack was present, because the
+  // two carried opposite instructions over one list. `cardsOnScreen` is gone (2026-08-10 — it
+  // reproduced the cards it forbade and evicted the corpus; see conversation-digest.ts), so the
+  // contradiction cannot occur and there is nothing left to enforce. `turns` was never part of
+  // it: the creator's own words are compatible with a rewrite pack.
+  const conversationBody = conversation ? conversationContent(conversation) : null;
+  const conversationBlock = conversationBody
+    ? fenceUserContent(CONVERSATION_LABEL, conversationBody)
+    : null;
 
   // 4. Enforce BUNDLE_CHAR_CAP — WITHOUT ever structurally breaking a fence.
-  //    Precedence: the fenced user request is primary; profile grounding yields first.
-  //    (a) Drop whole profile roles from the tail (never mid-field) until the bundle fits.
-  //    (b) If the fenced content alone still overflows, rebuild the fenced sections within
-  //        the remaining budget — truncating INNER text only, sentinels always intact —
-  //        with `ask` allocated budget first. A final substring on the assembled result
-  //        (the old behaviour) is never used: it could chop a closing sentinel and void
-  //        the injection fence (CR-01/CR-02).
+  //
+  //    SHED ORDER (2026-08-10). The old order popped PROFILE ROLES first and never touched a
+  //    fenced section until the 4b overflow path, which is exactly backwards: it made someone
+  //    else's proven video outrank the creator's own voice. Measured consequence, and the reason
+  //    this changed — see the BUNDLE_CHAR_CAP note. New order, lowest priority first:
+  //
+  //      (a) corpus        — the REDUNDANT tier. grounding/prompt.ts says it best: "six proven
+  //                          sources still teach with four". There is only one creator.
+  //      (b) conversation  — the session transcript. Ranks ABOVE corpus because it carries the
+  //                          creator's EXPLICIT stated constraints ("under 30s", "not the 5am
+  //                          angle"), and violating a stated instruction is a worse failure than
+  //                          having one fewer example.
+  //      (c) profile roles — from the tail of MODE_ROLES (platform → flops → wins → voice).
+  //      (d) never         — niche, audience, ask, overrides, anchor, cards.
+  //
+  //    Whole sections only, never mid-field. At the current cap this is a TIEBREAK, not a routine
+  //    event: the worst realistic bundle measures ~5,585 against a 6,000 cap.
+  //
+  //    (e) If the fenced content alone still overflows, rebuild the fenced sections within the
+  //        remaining budget — truncating INNER text only, sentinels always intact — with `ask`
+  //        allocated budget first. A final substring on the assembled result (the old behaviour)
+  //        is never used: it could chop a closing sentinel and void the fence (CR-01/CR-02).
+  //
   // The header is part of the USER message, so this word is an instruction to the model, not a
   // log line — see `modeLabel` on the input schema for why callers may need to override it.
   const header = `## Live Grounding Bundle\nMode: ${modeLabel ?? mode} | Platform: ${platform}\n\n`;
   const profileHeader = `### Creator Profile\n`;
   const JOIN = "\n\n";
 
-  const buildResult = (profileBody: string, fenced: string[]): string => {
+  const buildResult = (
+    profileBody: string,
+    conversationPart: string | null,
+    fenced: string[],
+  ): string => {
     const blocks: string[] = [header];
     if (profileBody.length > 0) blocks.push(profileHeader + profileBody);
+    if (conversationPart) blocks.push(conversationPart);
     blocks.push("---", fenced.join(JOIN));
     return blocks.join(JOIN);
   };
 
-  // 4a. Drop lowest-priority profile roles from the tail until the bundle fits
+  const fullProfile = profileLines.join("\n");
+  const withCorpus = (c?: string) =>
+    c ? [...userSections, fenceUserContent("Grounded examples", c)] : userSections;
+
+  // 4a. Shed the corpus, then the conversation — before a single profile role is touched.
+  let keptCorpus = corpus;
+  let keptConversation = conversationBlock;
+  if (
+    keptCorpus &&
+    buildResult(fullProfile, keptConversation, withCorpus(keptCorpus)).length > BUNDLE_CHAR_CAP
+  ) {
+    keptCorpus = undefined;
+  }
+  if (
+    keptConversation &&
+    buildResult(fullProfile, keptConversation, withCorpus(keptCorpus)).length > BUNDLE_CHAR_CAP
+  ) {
+    keptConversation = null;
+  }
+
+  let fencedSections = withCorpus(keptCorpus);
+
+  // 4b. Only now drop lowest-priority profile roles from the tail until the bundle fits
   //     (down to an empty profile section). Whole-line drops only — never mid-field.
   const keptProfile = [...profileLines];
   while (
     keptProfile.length > 0 &&
-    buildResult(keptProfile.join("\n"), fencedSections).length > BUNDLE_CHAR_CAP
+    buildResult(keptProfile.join("\n"), keptConversation, fencedSections).length > BUNDLE_CHAR_CAP
   ) {
     keptProfile.pop();
   }
   let profileSection = keptProfile.join("\n");
 
-  // 4b. If the fenced user content alone still overflows (even with no profile),
+  // 4c. If the fenced user content alone still overflows (even with no profile),
   //     rebuild the fenced sections within the remaining budget. `ask` first.
-  let result = buildResult(profileSection, fencedSections);
+  let result = buildResult(profileSection, keptConversation, fencedSections);
   if (result.length > BUNDLE_CHAR_CAP) {
     profileSection = ""; // user request takes precedence over grounding
-    const shell = buildResult(profileSection, []); // structure with an empty fenced block
+    // Reaching here means the bundle overflowed even with the FULL profile, so 4a already shed
+    // both `corpus` and `conversation`. Rebuild from what SURVIVED (keptCorpus / keptConversation),
+    // never from the originals — resurrecting a section the shed order just dropped would invert
+    // the whole precedence this step exists to enforce.
+    const shell = buildResult(profileSection, keptConversation, []); // structure, empty fenced block
     const fencedBudget = Math.max(0, BUNDLE_CHAR_CAP - shell.length);
     const rawSections: { label: string; content: string }[] = [
       { label: "Creator ask", content: ask },
@@ -383,8 +585,12 @@ export function assembleBundle(
     if (overrides) rawSections.push({ label: "Per-request overrides", content: overrides });
     if (anchor) rawSections.push({ label: anchorLabel(mode), content: anchor });
     if (cards) rawSections.push({ label: cardsLabel(mode), content: cardsContent(cards) });
-    if (corpus) rawSections.push({ label: "Grounded examples", content: corpus });
-    result = buildResult(profileSection, fenceSectionsWithinBudget(rawSections, fencedBudget));
+    if (keptCorpus) rawSections.push({ label: "Grounded examples", content: keptCorpus });
+    result = buildResult(
+      profileSection,
+      keptConversation,
+      fenceSectionsWithinBudget(rawSections, fencedBudget),
+    );
   }
 
   return result;

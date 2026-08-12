@@ -17,7 +17,9 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { buildBlueprint } from "@/lib/engine/remix/blueprint";
 import type { RemixCardBlock } from "@/lib/tools/blocks";
+import type { OmniStructuralInput } from "@/lib/engine/remix/decode-types";
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
@@ -90,6 +92,34 @@ function makeStructuralInput() {
   };
 }
 
+/**
+ * One raw omni segment. Built by a FUNCTION, not an inline literal, for the same reason Task 1's
+ * fixture is: `OmniStructuralInput["segments"]` does not declare `spoken_text`/`on_screen_text`
+ * (blueprint.ts widens them locally), so a fresh literal annotated as that type trips excess-
+ * property checking. A returned value does not.
+ */
+function seg(t_start: number, t_end: number, over: Record<string, unknown> = {}) {
+  return {
+    t_start,
+    t_end,
+    visual_event: `visual ${t_start}`,
+    audio_event: `audio ${t_start}`,
+    is_hook_zone: t_start < 3,
+    spoken_text: `source words at ${t_start}`,
+    on_screen_text: null,
+    ...over,
+  };
+}
+
+/**
+ * A source omni ACTUALLY yielded timed perception for — the normal path. The default
+ * `makeStructuralInput()` carries no `segments` at all, so every pre-existing test in this file
+ * runs the no-video shape and could never have seen a real blueprint reach adapt.
+ */
+function makeStructuralInputWithSegments() {
+  return { ...makeStructuralInput(), segments: [seg(0, 3), seg(3, 8), seg(8, 14)] };
+}
+
 function makeDecodeResult() {
   return {
     beats: [
@@ -113,7 +143,17 @@ function makeAdaptConcepts(stopsPerConcept: number[] = [8, 8, 8]) {
     { hook: "What no nutrition coach tells you about sustainable eating", angle: "Authority-challenge structure reframed for niche", who_its_for: "Nutrition-focused audience", format_borrowed: "authority-challenge opener" },
     { hook: "This workout mistake is costing you 2 hours a week", angle: "Loss-aversion hook for time-conscious creators", who_its_for: "Busy professionals in fitness niche", format_borrowed: "loss-aversion hook" },
   ];
-  return base.map((c, i) => ({ ...c, personaStops: stopsPerConcept[i] ?? 8, stopQuote: `Stop quote ${i + 1}` }));
+  // Each concept's beat script names ITS OWN hook, so a card wired to the wrong script entry is
+  // visible in the assertion rather than plausible-looking.
+  return base.map((c, i) => ({
+    ...c,
+    personaStops: stopsPerConcept[i] ?? 8,
+    stopQuote: `Stop quote ${i + 1}`,
+    script: [
+      { index: 0, spoken: `script for ${c.hook}`, on_screen_text: "", shot: "waist-up" },
+      { index: 1, spoken: `beat two for ${c.hook}`, on_screen_text: "", shot: "wide" },
+    ],
+  }));
 }
 
 function makeProfileRow() {
@@ -298,5 +338,143 @@ describe("runRemixPipeline (new call system — generate-and-project)", () => {
     const result = await runRemixPipeline({ ...baseInput, profileRow: makeProfileRow() });
     expect(result.error).toBe("resolve_failed");
     await expectNoSim();
+  });
+});
+
+// ─── Blueprint wiring (phase 1, 2026-08-10) ───────────────────────────────────
+
+/**
+ * SEAM PIN — deliberately NOT a red-first step (owner ruling, 2026-08-10).
+ *
+ * `buildBlueprint` was built and proved by Task 1's own 11 tests; this cannot go red today.
+ * What it pins is that the function stays correct AND importable FROM THE RUNNER'S PATH, so a
+ * refactor that breaks the seam fails here instead of in a live run. The wiring's own coverage
+ * is the suite below, which was red-first.
+ */
+describe("remix runner blueprint seam", () => {
+  it("produces a blueprint the adapt input can carry", () => {
+    const structural: OmniStructuralInput = {
+      hook_decomposition: {
+        visual_stop_power: 5, audio_hook_quality: 5, text_overlay_score: 5,
+        first_words_speech_score: 5, weakest_modality: "audio_hook_quality",
+        visual_audio_coherence: 5, cognitive_load: 5,
+      },
+      factors: [],
+      video_signals: { visual_production_quality: 5, pacing_score: 5, transition_quality: 5 },
+      segments: [seg(0, 2, { spoken_text: "one two" }), seg(2, 6, { spoken_text: "three four" })],
+      content_summary: "", overall_impression: "",
+      content_type: "talking_head", niche_primary_slug: "fitness",
+    };
+
+    const bp = buildBlueprint(structural);
+    expect(bp.beats.length).toBe(2);
+    expect(bp.beats[0]!.role).toBe("hook");
+    expect(bp.has_speech).toBe(true);
+  });
+});
+
+describe("runRemixPipeline — blueprint assembly + stamping", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockCleanup.mockResolvedValue(undefined);
+  });
+
+  it("hands adapt the ASSEMBLED blueprint and the creator's brief as the target", async () => {
+    setupHappyPath();
+    mockOmniOutputToStructuralInput.mockReturnValue(makeStructuralInputWithSegments());
+
+    const { runRemixPipeline } = await import("@/lib/tools/runners/remix-runner");
+    await runRemixPipeline({
+      ...baseInput,
+      profileRow: makeProfileRow(),
+      brief: "SaaS onboarding for solo founders",
+    });
+
+    const adaptInput = mockGenerateAdaptConcepts.mock.calls[0]![0] as {
+      blueprint: { beats: unknown[]; has_speech: boolean };
+      target: string | null;
+    };
+    // The whole point of Task 3 making `blueprint` REQUIRED: an empty one here means the runner
+    // silently shipped the old concept-only prompt.
+    expect(adaptInput.blueprint.beats.length).toBe(3);
+    expect(adaptInput.blueprint.has_speech).toBe(true);
+    expect(adaptInput.target).toBe("SaaS onboarding for solo founders");
+  });
+
+  it("stamps one blueprintId on every card and returns the payload the ROUTE persists", async () => {
+    setupHappyPath();
+    mockOmniOutputToStructuralInput.mockReturnValue(makeStructuralInputWithSegments());
+
+    const { runRemixPipeline } = await import("@/lib/tools/runners/remix-runner");
+    const result = await runRemixPipeline({ ...baseInput, profileRow: makeProfileRow() });
+
+    expect(result.blueprint).not.toBeNull();
+    const bp = result.blueprint!;
+    expect(bp.id).toMatch(/^[A-Za-z0-9_-]{12}$/u);
+    expect(bp.payload.beats.length).toBe(3);
+    // The URL the resolve step actually returned — not the pasted one, when they differ.
+    expect(bp.sourceVideoId).toBe("https://tiktok.com/@creator_handle/video/123");
+    expect(bp.script.length).toBe(result.blocks.length);
+    expect(result.blocks.length).toBe(3);
+    for (const b of result.blocks) expect(b.props.blueprintId).toBe(bp.id);
+  });
+
+  it("each card's blueprintVariant indexes ITS OWN script entry, in rank order", async () => {
+    setupHappyPath([5, 8, 2]); // generation order 5,8,2 → rank order 8,5,2
+    mockOmniOutputToStructuralInput.mockReturnValue(makeStructuralInputWithSegments());
+
+    const { runRemixPipeline } = await import("@/lib/tools/runners/remix-runner");
+    const result = await runRemixPipeline({ ...baseInput, profileRow: makeProfileRow() });
+    const bp = result.blueprint!;
+
+    result.blocks.forEach((block, i) => {
+      expect(block.props.blueprintVariant).toBe(i);
+      const mine = bp.script[block.props.blueprintVariant!]!;
+      expect(mine[0]!.spoken).toBe(`script for ${block.props.adaptedHook}`);
+    });
+  });
+
+  it("a segment-less source stamps nothing, persists nothing, and still DECLARES an empty blueprint to adapt", async () => {
+    setupHappyPath(); // makeStructuralInput() carries no `segments`
+    const { runRemixPipeline } = await import("@/lib/tools/runners/remix-runner");
+    const result = await runRemixPipeline({ ...baseInput, profileRow: makeProfileRow() });
+
+    expect(result.blueprint).toBeNull();
+    expect(result.blocks.length).toBe(3);
+    for (const b of result.blocks) {
+      expect(b.props.blueprintId).toBeUndefined();
+      expect(b.props.blueprintVariant).toBeUndefined();
+    }
+    const adaptInput = mockGenerateAdaptConcepts.mock.calls[0]![0] as {
+      blueprint: { beats: unknown[] };
+      target: string | null;
+    };
+    expect(adaptInput.blueprint.beats).toEqual([]);
+    expect(adaptInput.target).toBeNull();
+  });
+
+  it("every early failure returns blueprint: null, so the shape is total", async () => {
+    const { runRemixPipeline } = await import("@/lib/tools/runners/remix-runner");
+    const run = () => runRemixPipeline({ ...baseInput, profileRow: null });
+
+    setupHappyPath();
+    mockResolveAndRehost.mockRejectedValue(new Error("resolve boom"));
+    expect((await run()).blueprint).toBeNull(); // resolve_failed
+
+    setupHappyPath();
+    mockOmniOutputToStructuralInput.mockReturnValue(null);
+    expect((await run()).blueprint).toBeNull(); // decode_failed (no structural input)
+
+    setupHappyPath();
+    mockRunDecode.mockResolvedValue(null);
+    expect((await run()).blueprint).toBeNull(); // decode_failed (decode returned null)
+
+    setupHappyPath();
+    mockGenerateAdaptConcepts.mockResolvedValue(null);
+    expect((await run()).blueprint).toBeNull(); // adapt_failed (empty)
+
+    setupHappyPath();
+    mockGenerateAdaptConcepts.mockRejectedValue(new Error("adapt boom"));
+    expect((await run()).blueprint).toBeNull(); // adapt_failed (threw)
   });
 });

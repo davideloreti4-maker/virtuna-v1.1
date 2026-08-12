@@ -34,12 +34,16 @@
  * Do NOT touch ENGINE_VERSION (no version bump from decode/adapt usage — 06-SCOUT.md D-05a GREEN).
  */
 
+import { nanoid } from "nanoid";
 import { resolveAndRehost } from "@/lib/engine/remix/resolve-and-rehost";
 import { buildVideoEvidence, evidenceMetric, type RunEvidence } from "@/lib/tools/evidence";
 import { formatCount } from "@/lib/account-metrics/account-metrics";
 import { analyzeVideoWithOmni } from "@/lib/engine/qwen/omni-analysis";
 import { omniOutputToStructuralInput, runDecode } from "@/lib/engine/remix/decode";
 import { decodeResultToAdaptInput } from "@/lib/engine/remix/decode-types";
+import type { AdaptedBeat } from "@/lib/engine/remix/decode-types";
+import { buildBlueprint } from "@/lib/engine/remix/blueprint";
+import type { SourceBlueprint } from "@/lib/engine/remix/blueprint";
 import { generateAdaptConcepts } from "@/lib/engine/remix/adapt";
 // New Qwen call system (2026-07-22): the persona SIM is GONE from the remix path (fan-out from
 // hooks-runner). The ADAPT call is the generation call — it now self-estimates each adapted hook's
@@ -83,6 +87,12 @@ export interface RemixPipelineInput {
    */
   intent?: IntentLens;
   /**
+   * The creator's brief (D3) — what THEY want out of this source. When present it becomes the
+   * adapt call's `target` and the profile/audience niche is only the fallback, so a fitness
+   * source can be remixed into SaaS onboarding. Absent/null → niche, exactly as before.
+   */
+  brief?: string | null;
+  /**
    * FLYWHEEL-02: when present, pin the run's predicted disposition vector (the
    * adapted hook's personas) + audience_id post-SIM. Non-fatal — never blocks the card.
    */
@@ -111,6 +121,26 @@ export interface RemixPipelineResult {
   blocks: RemixCardBlock[];
   /** Warnings from any stage. */
   warnings: string[];
+  /**
+   * The shoot sheet this run assembled, for the ROUTE to write (phase 1, 2026-08-10).
+   *
+   * The runner mints the id and stamps it on the cards, but does not persist: every DB write on
+   * this path stays in the route, where the authenticated client already lives, and the runner
+   * stays pure enough to test without a database.
+   *
+   * REQUIRED, not optional, and for the same reason `AdaptInput.blueprint` is: an optional field
+   * lets a new early-return forget it and ship a card pointing at nothing, with tsc silent. null
+   * is the honest "this source had no timed segments" — a real statement, not an omission.
+   */
+  blueprint: {
+    /** nanoid(12) — the id already stamped on every block's `props.blueprintId`. */
+    id: string;
+    payload: SourceBlueprint;
+    /** One entry per emitted card, in the SAME (ranked) order as `blocks`. */
+    script: AdaptedBeat[][];
+    /** The resolved source post URL — a URL, not a canonical platform video id. */
+    sourceVideoId: string;
+  } | null;
   /**
    * Error discriminant:
    *   "resolve_failed"  — URL could not be resolved / re-hosted (Apify failure)
@@ -203,7 +233,7 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     allWarnings.push(`Resolve failed: ${msg}`);
-    return { blocks: [], warnings: allWarnings, error: "resolve_failed" };
+    return { blocks: [], warnings: allWarnings, blueprint: null, error: "resolve_failed" };
   }
   input.onStage?.("Resolving", "done");
 
@@ -242,14 +272,30 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
     // ── STEP 3: DECODE ───────────────────────────────────────────────────────────
     // omniOutputToStructuralInput: maps Omni output → flat OmniStructuralInput | null
     // runDecode: decodes structural input → DecodeResult | null (Pitfall 6 graceful)
+    // The two null branches are SPLIT rather than folded into one ternary. Folded, `structural`
+    // stays `T | null` past the guard for TypeScript (it cannot narrow one variable from another
+    // being non-null), which forces a second, unreachable `emptyBlueprint()` branch below purely
+    // to satisfy the compiler. Split, `structural` is narrowed and the blueprint has exactly one
+    // source. Same two error discriminants, same graceful degrade (Pitfall 6).
     const structural = omniOutputToStructuralInput(omni);
-    const decode = structural ? await runDecode(structural) : null;
+    if (!structural) {
+      allWarnings.push("omniOutputToStructuralInput returned null — decode_failed graceful (Pitfall 6).");
+      return { blocks: [], warnings: allWarnings, blueprint: null, error: "decode_failed" };
+    }
 
+    const decode = await runDecode(structural);
     if (!decode) {
       allWarnings.push("Decode returned null — decode_failed graceful (Pitfall 6).");
-      return { blocks: [], warnings: allWarnings, error: "decode_failed" };
+      return { blocks: [], warnings: allWarnings, blueprint: null, error: "decode_failed" };
     }
     input.onStage?.("Decoding", "done");
+
+    // The timed skeleton — assembled from the SAME omni response runDecode just collapsed into
+    // four prose sentences. Deterministic, no model call, no extra spend. `buildBlueprint`
+    // returns `emptyBlueprint()` itself on a segment-less source, so the no-video shape is
+    // already covered here and nothing needs to construct one.
+    const blueprint = buildBlueprint(structural);
+    const hasBeats = blueprint.beats.length > 0;
 
     // ── STEP 4: ADAPT ────────────────────────────────────────────────────────────
     // decodeResultToAdaptInput: bridges DecodeResult → AdaptInput (luck NEVER mapped — D-01)
@@ -261,7 +307,15 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
       isCalibrated && audience
         ? `${profileNiche} · ${audience.name}${audience.goal_label ? ` (${audience.goal_label})` : ""}`
         : profileNiche;
-    const adaptInput = decodeResultToAdaptInput(decode, audienceNiche);
+    // D2/D3: the decoded anatomy PLUS the timed skeleton to write against, PLUS the creator's
+    // own brief when they gave one. `decodeResultToAdaptInput` fills `blueprint` with
+    // `emptyBlueprint()` and `target` with null — it starts from a STORED DecodeResult and has
+    // no video in reach — so both are overridden here, where the video actually is.
+    const adaptInput = {
+      ...decodeResultToAdaptInput(decode, audienceNiche),
+      blueprint,
+      target: input.brief ?? null,
+    };
 
     // ── STAGE: Adapting (real boundary — rewrite the concepts for your audience) ──
     input.onStage?.("Adapting", "active");
@@ -271,12 +325,12 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
     } catch (adaptErr) {
       const msg = adaptErr instanceof Error ? adaptErr.message : String(adaptErr);
       allWarnings.push(`Adapt generation threw: ${msg}`);
-      return { blocks: [], warnings: allWarnings, error: "adapt_failed" };
+      return { blocks: [], warnings: allWarnings, blueprint: null, error: "adapt_failed" };
     }
 
     if (!concepts || concepts.length === 0) {
       allWarnings.push("generateAdaptConcepts returned null/empty — adapt_failed graceful.");
-      return { blocks: [], warnings: allWarnings, error: "adapt_failed" };
+      return { blocks: [], warnings: allWarnings, blueprint: null, error: "adapt_failed" };
     }
     input.onStage?.("Adapting", "done");
 
@@ -356,7 +410,16 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
         }
       : null;
 
+    // Minted here so the id can ride the cards this loop builds; the ROUTE writes the row (it
+    // owns the authenticated client). nanoid(12), matching analysis ids — never a uuid.
+    const blueprintId = nanoid(12);
+
     const blocks: RemixCardBlock[] = [];
+    // Each surviving card's own beat script, pushed IN LOCKSTEP with `blocks` — never mapped
+    // from `rated` afterwards. A card dropped by the D-14 gate below would shift every later
+    // index by one, and a card silently rendering its neighbour's shoot sheet is not a visible
+    // failure: it looks like a sheet.
+    const scripts: AdaptedBeat[][] = [];
     for (const r of rated) {
       const blockData = {
         type: "remix-card" as const,
@@ -366,6 +429,11 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
           angle: r.concept.angle,
           whoItsFor: r.concept.who_its_for,
           formatBorrowed: r.concept.format_borrowed,
+
+          // The shoot sheet's address: which row, and which script inside it. Stamped only when
+          // the source actually yielded beats — a card pointing at a beat-less row is a sheet
+          // that can never render, and Task 4's table stores `emptyBlueprint()` happily.
+          ...(hasBeats ? { blueprintId, blueprintVariant: blocks.length } : {}),
 
           // READY TO FILM (owner 2026-07-22) — the shoot plan for YOUR adapted version. Omitted
           // when the adapt model returned none, so a pre-wiring remix card stays byte-identical.
@@ -409,9 +477,25 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
         continue;
       }
       blocks.push(validated.data as RemixCardBlock);
+      scripts.push(r.concept.script ?? []);
     }
 
-    return { blocks, warnings: allWarnings };
+    return {
+      blocks,
+      warnings: allWarnings,
+      // Null on a segment-less source (nothing to write a sheet against) and on a run whose
+      // every card failed validation (a row no card points at is landfill).
+      blueprint:
+        hasBeats && blocks.length > 0
+          ? {
+              id: blueprintId,
+              payload: blueprint,
+              script: scripts,
+              // The URL the resolve step returned, falling back to the one the creator pasted.
+              sourceVideoId: sourcePostUrl ?? url,
+            }
+          : null,
+    };
 
   } finally {
     // T-03-02: cleanup() MUST run unconditionally — temp mp4 removed regardless of outcome

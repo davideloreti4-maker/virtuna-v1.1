@@ -600,6 +600,42 @@ describe("POST /api/tools/chat (SSE route)", () => {
     expect(deps?.skills).toBeUndefined();
   });
 
+  it("Test 6c2: the loop is handed the creator's RAW message, not just the prior turns", async () => {
+    // The digest is built from `priorTurns`, which this route loads at step (6) — BEFORE it
+    // persists the message being answered at step (7). So the turn holding the constraint
+    // ("…but keep them under 30s") was structurally absent from the digest, and on a thread's
+    // first generating turn the digest was empty. `currentAsk` is the only channel for it:
+    // `ask` is assembleBundle's output, not the creator's words. Handoff §14.2.
+    process.env.CHAT_AGENT_DISPATCH = "true";
+    await primeDispatchHarness();
+    const { runChatAgentStream } = await import("@/lib/tools/chat-agent-loop");
+    (runChatAgentStream as ReturnType<typeof vi.fn>).mockImplementation(
+      async (input: { onToken: (d: string) => void }) => {
+        input.onToken("ok");
+        return { text: "ok", skillRuns: [], uiBlocks: [], toolCalls: [] };
+      }
+    );
+    // The file-level assembleBundle mock is the identity, which would make `ask` and `currentAsk`
+    // coincide and the last assertion vacuous. One call, one distinguishable bundle.
+    const { assembleBundle } = await import("@/lib/kc/assembler");
+    (assembleBundle as ReturnType<typeof vi.fn>).mockImplementationOnce(
+      () => "GROUNDED BUNDLE — not the creator's words",
+    );
+
+    const ask = "give me hooks, but keep them under 30s";
+    const { POST } = await import("@/app/api/tools/chat/route");
+    await readSSE(await POST(makeChatRequest({ ask, platform: "tiktok" })));
+
+    const [input] = (runChatAgentStream as ReturnType<typeof vi.fn>).mock.calls[0] as [
+      { currentAsk?: string; ask?: string; priorTurns?: Array<{ text: string }> },
+    ];
+    expect(input.currentAsk).toBe(ask);
+    // …and it is genuinely not reachable any other way: the prior turns predate this message,
+    // and `ask` is the assembled bundle.
+    expect((input.priorTurns ?? []).some((t) => t.text === ask)).toBe(false);
+    expect(input.ask).toBe("GROUNDED BUNDLE — not the creator's words");
+  });
+
   it("Test 6d: the agent turn's bundle is NOT labelled 'chat' — the label talks the model out of dispatching", async () => {
     // REGRESSION. assembleBundle prints its `mode` into a header that lands in the USER message, and
     // the chat slice defines chat mode as conversational, NOT a generation surface (over-generating is
@@ -698,6 +734,115 @@ describe("POST /api/tools/chat (SSE route)", () => {
     expect(calls[0]![0].forceSkill).toBe("hooks");
     // THE CONTROL — a typed ask must reach the loop with no pin at all.
     expect(calls[1]![0].forceSkill).toBeUndefined();
+  });
+
+  it("Test 6g: ENGINE_GUESS_PIN pins a typed generation ask to the guessed generator", async () => {
+    // THE DISPATCH DEFECT, measured over 183 real generations: an ask whose SUBJECT is a product
+    // or format dispatches 7/31 (23%), against 30/30 for a scenario subject (p = 5.4e-11). Four
+    // prompt-only fixes failed to move it. This pins the WIRE for the structural one — the route
+    // must forward `forceSkill` from the pre-router's guess when the flag is on, and must still
+    // forward nothing when it is off, which is what keeps the shipped path byte-identical.
+    process.env.CHAT_AGENT_DISPATCH = "true";
+    await primeDispatchHarness();
+    const { runChatAgentStream } = await import("@/lib/tools/chat-agent-loop");
+    (runChatAgentStream as ReturnType<typeof vi.fn>).mockImplementation(
+      async (input: { onToken: (d: string) => void }) => {
+        input.onToken("ok");
+        return { text: "ok", skillRuns: [], uiBlocks: [], toolCalls: [] };
+      }
+    );
+    const { POST } = await import("@/app/api/tools/chat/route");
+    const ask = "give me 5 hooks for my student budgeting app";
+
+    // THE CONTROL FIRST — flag off, the ask reaches the loop unpinned, exactly as it does today.
+    delete process.env.ENGINE_GUESS_PIN;
+    await readSSE(await POST(makeChatRequest({ ask, platform: "tiktok" })));
+
+    process.env.ENGINE_GUESS_PIN = "true";
+    await readSSE(await POST(makeChatRequest({ ask, platform: "tiktok" })));
+    // …and the one measured false positive stays unpinned even with the flag on: it names the SIM
+    // as the action, and pinning hooks would force a wrong BILLED run on an ask that works today.
+    await readSSE(
+      await POST(
+        makeChatRequest({
+          ask: "Yes, run the simulate tool on that hook — I want the reaction card.",
+          platform: "tiktok",
+        }),
+      ),
+    );
+
+    const calls = (runChatAgentStream as ReturnType<typeof vi.fn>).mock.calls as Array<[{ forceSkill?: string }]>;
+    expect(calls[0]![0].forceSkill, "flag OFF must change nothing").toBeUndefined();
+    expect(calls[1]![0].forceSkill, "flag ON pins the guessed generator").toBe("hooks");
+    expect(calls[2]![0].forceSkill, "the narrowing must survive the wire").toBeUndefined();
+    delete process.env.ENGINE_GUESS_PIN;
+  });
+
+  it("Test 6h: the guess pin never overrides a tapped chip, and never fires for a sealed visitor", async () => {
+    // A chip DECLARES its generator, so it must win over any guess — and a sealed /go visitor binds
+    // no generators at all, so a pin would name a tool the loop cannot call.
+    process.env.CHAT_AGENT_DISPATCH = "true";
+    process.env.ENGINE_GUESS_PIN = "true";
+    const { runChatAgentStream } = await import("@/lib/tools/chat-agent-loop");
+    (runChatAgentStream as ReturnType<typeof vi.fn>).mockImplementation(
+      async (input: { onToken: (d: string) => void }) => {
+        input.onToken("ok");
+        return { text: "ok", skillRuns: [], uiBlocks: [], toolCalls: [] };
+      }
+    );
+    const { POST } = await import("@/app/api/tools/chat/route");
+
+    // The chip says `script`; the guess would say `hooks`. The chip wins.
+    await primeDispatchHarness();
+    await readSSE(
+      await POST(makeChatRequest({ ask: "give me 5 hooks for my budgeting app", platform: "tiktok", skill: "script" })),
+    );
+
+    await primeDispatchHarness("user-anon", "thread-anon", true);
+    await readSSE(await POST(makeChatRequest({ ask: "give me 5 hooks for my budgeting app", platform: "tiktok" })));
+
+    const calls = (runChatAgentStream as ReturnType<typeof vi.fn>).mock.calls as Array<[{ forceSkill?: string }]>;
+    expect(calls[0]![0].forceSkill, "a declared chip outranks the guess").toBe("script");
+    expect(calls[1]![0].forceSkill, "a sealed visitor binds no generators to pin").toBeUndefined();
+    delete process.env.ENGINE_GUESS_PIN;
+  });
+
+  it("Test 6i: ENGINE_COUNT_HINT reaches the BUNDLE only — the creator's words are untouched", async () => {
+    // Measured over 32 unpinned runs on both failing subject shapes: a count in the ask takes
+    // dispatch 2/12 → 16/20 and PUSHBACKS 9 → 0. It forces nothing, so unlike the pin it carries no
+    // wrong-run exposure. What this pins is the boundary that makes it honest: the count may only
+    // ever change what the MODEL reads. `currentAsk` feeds the conversation digest and is the
+    // creator's real message — if the hint leaks into it, the app has started quoting words the
+    // creator never typed back at them.
+    process.env.CHAT_AGENT_DISPATCH = "true";
+    await primeDispatchHarness();
+    const { runChatAgentStream } = await import("@/lib/tools/chat-agent-loop");
+    (runChatAgentStream as ReturnType<typeof vi.fn>).mockImplementation(
+      async (input: { onToken: (d: string) => void }) => {
+        input.onToken("ok");
+        return { text: "ok", skillRuns: [], uiBlocks: [], toolCalls: [] };
+      }
+    );
+    const { assembleBundle } = await import("@/lib/kc/assembler");
+    const { POST } = await import("@/app/api/tools/chat/route");
+    const ask = "give me hooks for my student budgeting app";
+
+    // CONTROL FIRST — flag off, the bundle carries the creator's words verbatim.
+    delete process.env.ENGINE_COUNT_HINT;
+    await readSSE(await POST(makeChatRequest({ ask, platform: "tiktok" })));
+
+    process.env.ENGINE_COUNT_HINT = "true";
+    await readSSE(await POST(makeChatRequest({ ask, platform: "tiktok" })));
+
+    const bundleCalls = (assembleBundle as ReturnType<typeof vi.fn>).mock.calls as Array<[{ ask: string }]>;
+    expect(bundleCalls[0]![0].ask, "flag OFF must change nothing").toBe(ask);
+    expect(bundleCalls[1]![0].ask, "flag ON gives the model the count").toBe(
+      "give me 5 hooks for my student budgeting app",
+    );
+
+    const loopCalls = (runChatAgentStream as ReturnType<typeof vi.fn>).mock.calls as Array<[{ currentAsk?: string }]>;
+    expect(loopCalls[1]![0].currentAsk, "the creator's own words must never carry the hint").toBe(ask);
+    delete process.env.ENGINE_COUNT_HINT;
   });
 
   it("Test 7: agent loop pure chat (no skill) → streams the answer directly, NO runChatPipeline fallback, plain markdown", async () => {

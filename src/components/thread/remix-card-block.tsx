@@ -31,6 +31,7 @@ import { PlatformContext } from '@/lib/platform-context';
 import { cardScrollQuoteReactions } from '@/components/audience-lens/flat-card-reactions';
 import { buildCardRewrite } from '@/components/audience-lens/card-rewrite';
 import { SimDoor } from './sim-door';
+import { RemixBeats } from './remix-beats';
 import { CoverFill } from '@/components/primitives/CoverFill';
 import { SaveAffordance } from '@/components/thread/save-affordance';
 import { CardPrimaryAction, CardActionBar, CardHero, CopyAffordance, SECTION_LABEL } from './card-primitives';
@@ -49,6 +50,8 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
     angle,
     whoItsFor,
     formatBorrowed,
+    blueprintId,
+    blueprintVariant,
     sourceDecode,
     band,
     fraction,
@@ -206,6 +209,16 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
             ))}
           </dl>
         </div>
+      )}
+
+      {/* THE SHOOT SHEET — the beat-by-beat rows, fetched (phase 1, 2026-08-10).
+          `blueprintVariant`, NOT 0. ONE remix_blueprints row serves ALL of a run's ranked cards
+          — one source video, one skeleton, N adapted scripts — so the id alone does not say which
+          script is this card's. Hard-coded, cards 2 and 3 print the rank-1 sheet: a plausible
+          sheet, not a visible bug, and no test that renders one card in isolation can see it.
+          Absent ⇒ 0, which is right for the single-card case and for every pre-lane block. */}
+      {blueprintId && (
+        <RemixBeats blueprintId={blueprintId} variantIndex={blueprintVariant ?? 0} />
       )}
 
       {/* EXPAND — the rest of the decode anatomy (hook pattern + the turn already lead the map). */}
