@@ -40,6 +40,7 @@ import { FREE_SKILL_TOOLS } from "@/lib/tools/skill-dispatch";
 import { guessSkill } from "@/lib/tools/pre-router";
 import { detectRepeatAsk, isRepeatAskPinEnabled } from "@/lib/tools/repeat-ask";
 import { detectGuessPin, isGuessPinEnabled } from "@/lib/tools/guess-pin";
+import { addCountHint, isCountHintEnabled } from "@/lib/tools/count-hint";
 import { billUsage, creditGate, quotaRefusalBody, quotaRefusalMessage } from "@/lib/billing/credit-gate";
 import { creditCost, type BillableAction } from "@/lib/pricing";
 import type { QuotaUser } from "@/lib/billing/quota";
@@ -499,8 +500,16 @@ export async function POST(request: Request): Promise<Response> {
           // answered "give me hooks for X" in prose while holding generate_hooks unused. Measured on the
           // shipped prompts, 4 seeds: 0/4 dispatches with "chat", 4/4 with any other label. `mode` stays
           // "chat" — it is the MODE_ROLES selector, so the grounding content is unchanged.
+          // ── (8a-0d) THE COUNT HINT (2026-08-12, flagged OFF) ──────────────────────────────
+          // Measured over 32 unpinned runs on both failing subject shapes: a count in the ask takes
+          // dispatch 2/12 → 16/20 and PUSHBACKS 9 → 0. It forces nothing — the model still decides —
+          // so unlike the pin above it carries no wrong-run exposure at all. BUNDLE ONLY:
+          // `currentAsk` below stays the creator's real message, because it feeds the conversation
+          // digest and the app must never quote back words the creator did not type.
+          const bundleAsk = isCountHintEnabled() && !isSealedVisitor(user) ? addCountHint(rawAsk) : rawAsk;
+
           const userMessage = assembleBundle(
-            { ask: rawAsk, platform, mode: "chat", modeLabel: "copilot" },
+            { ask: bundleAsk, platform, mode: "chat", modeLabel: "copilot" },
             profileRow,
           );
           const agentResult = await runChatAgentStream(

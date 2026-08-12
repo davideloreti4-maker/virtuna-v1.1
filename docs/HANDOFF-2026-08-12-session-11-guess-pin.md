@@ -44,9 +44,19 @@ untouched populations (a second profile, mid-thread turns, the real route).
 | file | what |
 |---|---|
 | `src/lib/tools/guess-pin.ts` | new. `isGuessPinEnabled()` + `detectGuessPin(rawAsk)` |
-| `src/app/api/tools/chat/route.ts` | (8a-0c), 11 lines: the third `forceSkill` branch |
+| `src/lib/tools/count-hint.ts` | new. `isCountHintEnabled()` + `addCountHint(rawAsk)` — §7 |
+| `src/app/api/tools/chat/route.ts` | (8a-0c) the third `forceSkill` branch; (8a-0d) the bundle ask |
 | `src/lib/tools/__tests__/guess-pin.test.ts` | new, 12 tests |
-| `src/app/api/tools/chat/__tests__/route.test.ts` | Tests 6g + 6h — the wire and its two guards |
+| `src/lib/tools/__tests__/count-hint.test.ts` | new, 12 tests |
+| `src/app/api/tools/chat/__tests__/route.test.ts` | Tests 6g + 6h (the pin), 6i (the count's boundary) |
+
+**Two flags, both dark, and they are independent.** `ENGINE_GUESS_PIN` pins `tool_choice`;
+`ENGINE_COUNT_HINT` changes only the assembled bundle and forces nothing. §7.6 is why the count is
+the one to turn on first.
+
+⚠️ `addCountHint`'s output is **byte-identical to the stimulus §7 measured** for both cells — the
+unit tests assert the exact strings rather than the shape, so the shipped code is the thing that was
+measured, not a re-implementation of it.
 
 The seam is the one chip taps and `ENGINE_REPEAT_ASK_PIN` already use. Scoping is identical to the
 repeat-ask pin — typed asks only, never a sealed visitor — and C is strictly **broader** than it
@@ -300,13 +310,12 @@ count's own numbers are solid across two subject shapes; everything about the re
 
 ## 8. Do next
 
-0. 🔴 **Build the injected count first — it is the cheapest, safest thing in this lane.** §7.4:
-   pushbacks 9 → 0 across both subject shapes, dispatch 17% → 80%, and it forces nothing, so it
-   carries **no wrong-run exposure at all**. It is a route-side change to the assembled bundle
-   (`assembleBundle({ ask })`, with `currentAsk` keeping the creator's words). Flag it, TDD it, and
-   the owner's copy call is whether a count the creator did not type may ride in the bundle — noting
-   every dispatching run returned exactly 5 cards either way.
-1. **Then the prose-call retry (§7.5), pinned to `guessSkill` and NOT to the emitted tool name.**
+0. ✅ **The count hint is BUILT** (`ENGINE_COUNT_HINT`, dark) — TDD'd, 7 mutations, 7 caught, gates
+   green. ⚠️ Mutation 3 **survived the first pass**: the "count the destination, not the input" test
+   used *"the best **idea**"*, which the plural-only regex never matches, so it passed against a
+   first-match implementation too. The test now uses *"the best **ideas**"*. A test that cannot fail
+   is the lane's most expensive recurring bug and it got in again here — run the battery.
+1. **Next: the prose-call retry (§7.5), pinned to `guessSkill` and NOT to the emitted tool name.**
    That closes 6 of the 7 residual failures with no measured false positives. Together with the
    count this reaches ~95% at ~0 exposure, which is a better trade than C's ~100% at 3.4%.
 2. **Keep `ENGINE_GUESS_PIN` dark until 0 and 1 are measured.** C is built, gated and ready; it is

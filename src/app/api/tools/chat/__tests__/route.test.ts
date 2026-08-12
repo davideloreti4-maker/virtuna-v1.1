@@ -807,6 +807,44 @@ describe("POST /api/tools/chat (SSE route)", () => {
     delete process.env.ENGINE_GUESS_PIN;
   });
 
+  it("Test 6i: ENGINE_COUNT_HINT reaches the BUNDLE only — the creator's words are untouched", async () => {
+    // Measured over 32 unpinned runs on both failing subject shapes: a count in the ask takes
+    // dispatch 2/12 → 16/20 and PUSHBACKS 9 → 0. It forces nothing, so unlike the pin it carries no
+    // wrong-run exposure. What this pins is the boundary that makes it honest: the count may only
+    // ever change what the MODEL reads. `currentAsk` feeds the conversation digest and is the
+    // creator's real message — if the hint leaks into it, the app has started quoting words the
+    // creator never typed back at them.
+    process.env.CHAT_AGENT_DISPATCH = "true";
+    await primeDispatchHarness();
+    const { runChatAgentStream } = await import("@/lib/tools/chat-agent-loop");
+    (runChatAgentStream as ReturnType<typeof vi.fn>).mockImplementation(
+      async (input: { onToken: (d: string) => void }) => {
+        input.onToken("ok");
+        return { text: "ok", skillRuns: [], uiBlocks: [], toolCalls: [] };
+      }
+    );
+    const { assembleBundle } = await import("@/lib/kc/assembler");
+    const { POST } = await import("@/app/api/tools/chat/route");
+    const ask = "give me hooks for my student budgeting app";
+
+    // CONTROL FIRST — flag off, the bundle carries the creator's words verbatim.
+    delete process.env.ENGINE_COUNT_HINT;
+    await readSSE(await POST(makeChatRequest({ ask, platform: "tiktok" })));
+
+    process.env.ENGINE_COUNT_HINT = "true";
+    await readSSE(await POST(makeChatRequest({ ask, platform: "tiktok" })));
+
+    const bundleCalls = (assembleBundle as ReturnType<typeof vi.fn>).mock.calls as Array<[{ ask: string }]>;
+    expect(bundleCalls[0]![0].ask, "flag OFF must change nothing").toBe(ask);
+    expect(bundleCalls[1]![0].ask, "flag ON gives the model the count").toBe(
+      "give me 5 hooks for my student budgeting app",
+    );
+
+    const loopCalls = (runChatAgentStream as ReturnType<typeof vi.fn>).mock.calls as Array<[{ currentAsk?: string }]>;
+    expect(loopCalls[1]![0].currentAsk, "the creator's own words must never carry the hint").toBe(ask);
+    delete process.env.ENGINE_COUNT_HINT;
+  });
+
   it("Test 7: agent loop pure chat (no skill) → streams the answer directly, NO runChatPipeline fallback, plain markdown", async () => {
     process.env.CHAT_AGENT_DISPATCH = "true";
     const { threadId } = await primeDispatchHarness();
