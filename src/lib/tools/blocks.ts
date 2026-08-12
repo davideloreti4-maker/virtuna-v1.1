@@ -513,6 +513,27 @@ export const RemixCardBlockSchema = z.object({
     angle: z.string().min(1),          // structural angle borrowed (muted sub-row)
     whoItsFor: z.string().min(1),      // target audience in niche (muted sub-row)
     formatBorrowed: z.string().min(1), // format pattern chip — prefixed "Borrowed:" in UI
+
+    /**
+     * The remix_blueprints row this card's beat-by-beat script lives in (phase 1, 2026-08-10).
+     * OPTIONAL and additive: every card persisted before this lane has none and renders exactly
+     * as it did. The script is NOT inlined here on purpose — phase 5's revise_remix rewrites the
+     * row, and a copy frozen inside a thread message would drift from it silently.
+     *
+     * nanoid(12) shape, matching analysis ids — never a uuid.
+     */
+    blueprintId: z.string().min(8).max(64).regex(/^[A-Za-z0-9_-]+$/u).optional(),
+    /**
+     * WHICH entry of that row's `script[]` is this card's own version.
+     *
+     * One blueprint row serves all of a run's ranked cards — one source video, one skeleton, N
+     * adapted scripts — so the id alone does not identify a script. Without this, every card in
+     * a run renders the rank-1 card's shoot sheet, which reads as a plausible sheet rather than
+     * as a bug. Absent ⇒ 0, which is correct for the single-card case and for every pre-lane
+     * block (they have no blueprintId either, so nothing reads it).
+     */
+    blueprintVariant: z.number().int().min(0).optional(),
+
     // Source video cover thumbnail (resolveVideoUrl → resolveAndRehost surfaces it) — an
     // ephemeral CDN image, display-only. OPTIONAL/additive (back-compat): absent → the card
     // renders with no source thumbnail. SUPERSEDED for display by `proof` below, which carries

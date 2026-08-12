@@ -28,6 +28,21 @@ import type { VideoData } from "@/lib/scraping/types";
 export const MIN_OUTLIER_MULTIPLIER = 3;
 
 /**
+ * The band's CEILING (owner ruling 2026-08-11). Above this a real ratio stops reading as a
+ * signal — a thin baseline turns 20154× into arithmetic, not proof — so the printed number
+ * clamps here instead of the row being dropped.
+ *
+ * Floor and ceiling live in ONE module on purpose. `discover/corpus-reads.ts` and
+ * `tools/composed-card-receipt.ts` both import this; two literals that happen to agree is the
+ * drift this constant exists to prevent.
+ *
+ * ⚠️ Clamping the DISPLAY does not make a thin baseline trustworthy. The honesty flag
+ * (`CorpusVideo.extreme`, MultiplierChip's ⚠ + non-proven tone) is a separate decision and
+ * stays as it is: the row is shown, flagged, and still never rendered in proven green.
+ */
+export const MAX_PRINTABLE_MULTIPLIER = 100;
+
+/**
  * SELECTION ranking (cheap, jitter-OK): rank a niche pull by the shipped recency-decayed
  * result-set-median multiplier and take the top N candidates to profile-scrape + tear down.
  * This is NOT the receipt — see accountMultiplier for the durable number.

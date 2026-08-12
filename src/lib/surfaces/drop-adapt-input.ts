@@ -11,6 +11,7 @@
 import type { SharedMatchRow } from "@/lib/grounding/corpus";
 import { parseIdeaFacet, parseTeardownTemplate } from "@/lib/grounding/types";
 import { hasHookStructure } from "@/lib/grounding/rank";
+import { emptyBlueprint } from "@/lib/engine/remix/blueprint";
 import type { AdaptInput, RepeatableItem } from "@/lib/engine/remix/decode-types";
 
 /** Honest absent line (D-02 mirror) — never an empty string, never invented content. */
@@ -59,5 +60,10 @@ export function corpusRowToAdaptInput(row: SharedMatchRow, niche: string): Adapt
     emotional_beat: emotionalBeat,
     repeatable,
     niche,
+    // A corpus row is a pre-torn teardown, not a video: there are no timed segments to blueprint
+    // from and no creator brief on this path. The empty blueprint keeps the drops pipe on the
+    // concept-only prompt — the drop card has no shoot-sheet surface to render one into.
+    blueprint: emptyBlueprint(),
+    target: null,
   };
 }

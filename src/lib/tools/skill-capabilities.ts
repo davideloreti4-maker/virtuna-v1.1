@@ -43,6 +43,20 @@ export interface SkillCapability {
    * confirm card. Deterministic copy, set here (never model text) so the field can't be spoofed.
    */
   label: string;
+  /**
+   * The forward-chain BUTTON copy when this action is offered from a card's action bar
+   * (THE CARD CONTRACT §0.5 row 7 — "Write the script →", "Simulate with your audience →").
+   *
+   * A separate field from `label`, and it has to be: `label` is a field PROMPT — a whole sentence
+   * ("Paste the video link and I'll adapt it for your audience.") sized for the line above an
+   * input. Set on a <CardPrimaryAction> it would put a paragraph in a card footer, and up to three
+   * of them, which is the opposite of §0.5's one quiet forward step.
+   *
+   * It lives HERE for the reason the header states: the model picks WHICH action, never the words.
+   * A composed card names an action key and reads its copy from this registry, so a card cannot
+   * spoof a control — the same rule `request_input` follows.
+   */
+  cardAction: string;
   /** Placeholder for text/link fields (ignored for `none`). */
   placeholder?: string;
   /**
@@ -68,6 +82,7 @@ export const SKILL_CAPABILITIES: Record<SkillInputAction, SkillCapability> = {
   remix: {
     kind: "link",
     label: "Paste the video link and I'll adapt it for your audience.",
+    cardAction: "Adapt a video →",
     placeholder: "https://…",
     // A creator who PASTED a link and asked to remix it should not have to paste it again — the
     // field opens holding the URL they already gave, one tap from running.
@@ -79,12 +94,14 @@ export const SKILL_CAPABILITIES: Record<SkillInputAction, SkillCapability> = {
   account: {
     kind: "none",
     label: "I'll read your latest posts and pull the patterns.",
+    cardAction: "Read my account →",
     when:
       "the creator wants a read of THEIR OWN account or recent posts (\"read my account\", \"how am I doing\", \"look at my last videos\")",
   },
   explore: {
     kind: "text",
     label: "Name a niche or a competitor to scan — or leave it blank to pull your niche.",
+    cardAction: "Scan the niche →",
     placeholder: "e.g. fitness coaches, @creator…",
     prefill: "text",
     when:
@@ -93,6 +110,7 @@ export const SKILL_CAPABILITIES: Record<SkillInputAction, SkillCapability> = {
   read: {
     kind: "text",
     label: "What should I run past your audience?",
+    cardAction: "Run this past my audience →",
     placeholder: "Paste a hook, concept, or draft…",
     prefill: "text",
     // Read is ALSO bound as a tool (`read_concept`, skill-dispatch.ts). The two doors do not
@@ -105,6 +123,7 @@ export const SKILL_CAPABILITIES: Record<SkillInputAction, SkillCapability> = {
   predict: {
     kind: "text",
     label: "What outcome should I predict?",
+    cardAction: "Predict an outcome →",
     placeholder: "e.g. will this launch hit 10k signups by March?",
     prefill: "text",
     when:
@@ -119,6 +138,7 @@ export const SKILL_CAPABILITIES: Record<SkillInputAction, SkillCapability> = {
     // input the creator already has a place to drop.
     kind: "text",
     label: "Paste the evidence and I'll read who they are.",
+    cardAction: "Read a person →",
     placeholder: "A chat log, email thread, or call transcript…",
     prefill: "text",
     when:
@@ -127,6 +147,7 @@ export const SKILL_CAPABILITIES: Record<SkillInputAction, SkillCapability> = {
   test: {
     kind: "upload",
     label: "Drop the video (or paste its link) and I'll test it against your audience.",
+    cardAction: "Test a video →",
     placeholder: "https://tiktok.com/…",
     // A pasted TikTok link is the ONE thing this field can be seeded with — a file drop obviously
     // cannot be. Anything that is not a TikTok URL is dropped, because the field itself rejects it.

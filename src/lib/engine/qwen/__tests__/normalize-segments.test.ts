@@ -17,6 +17,7 @@ import {
   buildFixedBuckets,
   HOOK_ZONE_END_S,
   MIN_BOUNDARY_COUNT,
+  normalizeSegmentsDetailed,
 } from "@/lib/engine/qwen/normalize-segments";
 import type { SegmentGrid } from "@/lib/engine/qwen/schemas";
 
@@ -263,5 +264,114 @@ describe("CR-01: verbatim survives merge and is not duplicated across a hook-zon
     // on_screen_text (a visual caption) legitimately spans the split — retained on both.
     expect(left!.on_screen_text).toBe("overlay");
     expect(right!.on_screen_text).toBe("overlay");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// normalizeSegmentsDetailed — Rule 3 is DESTRUCTIVE, and this is the escape hatch.
+//
+// Rule 3 exists for the filmstrip and the heatmap, which need a minimum number of
+// cells or the strip renders broken. It does not pad the grid to four — it REPLACES
+// the perceived cells with fabricated ones, so a 3-cell real read reaches every
+// downstream consumer as `"segment 12s"` with no speech in it.
+//
+// `segments` keeps that behaviour exactly (the filmstrip's requirement is real).
+// `perceived` carries the cells the gate discarded, for consumers that need content
+// rather than a cell count — buildBlueprint merges to <= 8 beats anyway and does not
+// care how many cells it started from.
+// ---------------------------------------------------------------------------
+
+describe("normalizeSegmentsDetailed", () => {
+  it("carries the real cells in `perceived` when the count gate falls back", () => {
+    const input: SegmentGrid[] = [
+      seg(0, 3,   { spoken_text: "first words" }),
+      seg(3, 10,  { spoken_text: "the middle" }),
+      seg(10, 20, { spoken_text: "the close" }),
+    ];
+    expect(input.length).toBeLessThan(MIN_BOUNDARY_COUNT); // premise: the gate fires
+
+    const { segments, perceived } = normalizeSegmentsDetailed(input, 20);
+
+    // `segments` is unchanged — still the fabricated grid the filmstrip needs.
+    expect(segments.every((s) => s.scene_boundary_reason?.startsWith("fixed_bucket"))).toBe(true);
+    // `perceived` is the read that actually happened.
+    expect(perceived).not.toBeNull();
+    expect(perceived!.map((s) => s.spoken_text)).toEqual(["first words", "the middle", "the close"]);
+  });
+
+  it("returns null `perceived` on empty input — there is nothing to preserve", () => {
+    expect(normalizeSegmentsDetailed([], 20).perceived).toBeNull();
+    expect(normalizeSegmentsDetailed(undefined, 20).perceived).toBeNull();
+  });
+
+  it("returns null `perceived` on malformed timestamps — a broken read is not perception", () => {
+    const input: SegmentGrid[] = [seg(0, 3), seg(3, 2), seg(10, 20), seg(20, 30)];
+    expect(normalizeSegmentsDetailed(input, 30).perceived).toBeNull();
+  });
+
+  it("`perceived` equals `segments` when no fallback fires", () => {
+    const input: SegmentGrid[] = [seg(0, 3), seg(3, 6), seg(6, 9), seg(9, 12), seg(12, 16)];
+    const { segments, perceived } = normalizeSegmentsDetailed(input, 16);
+    expect(perceived).toEqual(segments);
+  });
+
+  it("`segments` is exactly what normalizeSegments returns — no caller sees a change", () => {
+    const cases: Array<[SegmentGrid[] | undefined, number]> = [
+      [[seg(0, 3, { spoken_text: "a" }), seg(3, 10), seg(10, 20)], 20],   // count gate
+      [[], 20],                                                            // empty
+      [[seg(0, 3), seg(3, 2), seg(10, 20), seg(20, 30)], 30],              // malformed
+      [[seg(0, 3), seg(3, 6), seg(6, 9), seg(9, 12), seg(12, 16)], 16],    // normal path
+      [[seg(0, 3), seg(3, 5), seg(5, 5.4), seg(5.4, 9), seg(9, 12), seg(12, 16)], 16], // sub-1s merge
+    ];
+    for (const [raw, duration] of cases) {
+      expect(normalizeSegmentsDetailed(raw, duration).segments).toEqual(
+        normalizeSegments(raw, duration),
+      );
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// spoken_span_s — how long the quoted speech actually took.
+//
+// MEASURED 2026-08-12 (spec §11): a raw 0-8s cell straddling the 3s line is split by
+// enforceHookZoneBoundary, and CR-01 nulls the continuation child's spoken_text so the
+// same words are not claimed twice. Correct — but it leaves EIGHT seconds of speech
+// pinned to a THREE second cell, with nothing recording the discrepancy.
+//
+// Downstream that produced adapted hook lines of 23 words for a 3s beat (7.7 w/s,
+// unsayable) and inflated words_per_second to 4.25. The words are real and stay where
+// they are; what was missing is the span they cover.
+// ---------------------------------------------------------------------------
+
+describe("spoken_span_s — the window the speech occupies", () => {
+  it("records the ORIGINAL cell duration on the child that keeps the speech", () => {
+    const input: SegmentGrid[] = [seg(0, 8, { spoken_text: "eight seconds worth of words here" })];
+    const result = enforceHookZoneBoundary(input);
+
+    const left = result[0]!, right = result[1]!;
+    expect(left.t_end).toBe(HOOK_ZONE_END_S);
+    expect(left.spoken_text).toBe("eight seconds worth of words here");
+    expect(left.spoken_span_s).toBe(8); // NOT 3 — the words outlive the cell they sit on
+    expect(right.spoken_text).toBeNull();
+  });
+
+  it("leaves spoken_span_s unset when no split happened — duration IS the span", () => {
+    const input: SegmentGrid[] = [seg(0, 3, { spoken_text: "inside the zone" }), seg(3, 9), seg(9, 12), seg(12, 16)];
+    const result = normalizeSegments(input, 16);
+    expect(result[0]!.spoken_span_s).toBeUndefined();
+  });
+
+  it("sums the spans when a sub-1s cell is absorbed", () => {
+    const input: SegmentGrid[] = [
+      seg(3, 5,   { spoken_text: "first" }),
+      seg(5, 5.4, { spoken_text: "second" }),
+      seg(5.4, 9, { spoken_text: "third" }),
+      seg(9, 12), seg(12, 16),
+    ];
+    const merged = mergeSubMinSegments(input);
+    const absorbed = merged.find((s) => s.t_start === 5 && s.t_end === 9);
+    // 0.4s cell absorbed into the 3.6s one — the joined speech covers both.
+    expect(absorbed!.spoken_span_s).toBeCloseTo(4.0, 5);
   });
 });

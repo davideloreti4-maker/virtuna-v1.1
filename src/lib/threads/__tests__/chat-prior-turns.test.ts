@@ -224,6 +224,43 @@ describe("openChatPriorTurns", () => {
     expect(run.lines).toEqual(["a real line"]);
   });
 
+  // ── The composed card's context record ───────────────────────────────────────────────────────
+  //
+  // The composer's card answers OPEN-ENDED asks, so the follow-up is always ABOUT the card
+  // ("make the second one sharper", "why does that format work"). A hole in the anchor here is the
+  // same amnesia this module exists to close, on the one card whose entire job is being referred
+  // back to. `emit_card` is not a generator, so it records rather than replaying as a tool run.
+  it("records a composed card by its recipe and its typed deliverable", () => {
+    const turns = openChatPriorTurns([
+      msg("user", [text("3 viral formats for young startup founders")]),
+      msg("assistant", [
+        {
+          type: "composed-card",
+          props: {
+            recipe: "format-set",
+            deliverable: { kind: "claim", text: "Film the failure, not the win." },
+            body: [{ kind: "note", text: "Under 30 seconds." }],
+          },
+        },
+      ]),
+    ]);
+    const records = turns.flatMap((t) => t.skillRecords ?? []);
+    expect(records).toEqual(['format-set — "Film the failure, not the win."']);
+    // It is a RECORD, never a replayed tool run — naming a tool the agent cannot call advertises a
+    // door that does not exist.
+    expect(turns.filter((t) => t.toolRuns)).toHaveLength(0);
+  });
+
+  it("skips a composed card with no readable deliverable rather than recording a placeholder", () => {
+    // A thread predating a field must not push `undefined` into the transcript as if it were the
+    // creator's work — the same rule the card LINES follow.
+    const turns = openChatPriorTurns([
+      msg("user", [text("give me something")]),
+      msg("assistant", [{ type: "composed-card", props: { recipe: "brief" } }]),
+    ]);
+    expect(turns.flatMap((t) => t.skillRecords ?? [])).toEqual([]);
+  });
+
   it("caps at MAX_PRIOR_TURNS, keeping the newest", () => {
     const many = Array.from({ length: MAX_PRIOR_TURNS + 6 }, (_, i) =>
       msg(i % 2 === 0 ? "user" : "assistant", [text(`turn ${i}`)]),

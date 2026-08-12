@@ -31,6 +31,8 @@ import type {
   ReactionDistributionBlock,
   PredictionGaugeBlock,
 } from "@/lib/tools/profile-blocks";
+import type { ComposedCardBlock, RecipeId } from "@/lib/tools/composed-card-schema";
+import type { HookProof } from "@/lib/tools/proof-schema";
 import type { StageState } from "@/components/thread/progress-checklist";
 
 const IMG = (seed: string, w: number, h: number) =>
@@ -917,6 +919,401 @@ export const BLOCK_SECTIONS: BlockSection[] = [
   },
 ];
 
+// ─── COMPOSED CARDS — one entry per recipe ───────────────────────────────────────────────────────
+/**
+ * The composer's ONE block type, previewed once per recipe in `RECIPES` (8).
+ *
+ * `docs/subsystems/ui-skill-cards.md` §0.7: *"A surface with no cheap way to look at it will drift,
+ * and the drift will be invisible to source-reading review. /dev/cards is why the thread cards
+ * stayed honest. Reading has no equivalent"* — and Reading is the surface that accumulated eleven
+ * label declarations across seven stacks and painted a retired brand colour twice. Eight recipes
+ * sharing one renderer is that failure queued up, so the gallery lands with the renderer, not after.
+ *
+ * Typed `ComposedCardBlock[]`, so a schema change breaks the build here first, and every entry is
+ * additionally run through the REAL `parseComposedCard` by `__tests__/composed-card-fixtures.test.ts`
+ * — a gallery fixture that no longer satisfies its recipe is worse than no fixture, because it shows
+ * a shape the product can no longer emit.
+ */
+
+/**
+ * Receipts as `materializeReceipts` really returns them (D7), which constrains these fixtures more
+ * than it first looks:
+ *
+ *  - `fitLabel` is ALWAYS null. The materializer hard-codes it — nothing measured a corpus row
+ *    against this creator's audience, and the ● / ◐ / ○ glyph is a claim retrieval earns (§0.5b).
+ *    A fixture with a fit glyph would preview a state the composer cannot produce.
+ *  - no `baselineLabel` ⇒ no `multiplier` (D9, "never a bare multiplier"). The third receipt below
+ *    is that degraded row, on purpose: it is the state the corpus actually holds for curated rows,
+ *    and the only way to see that the tile still reads as a receipt without a number.
+ */
+const COMPOSED_PROOF_CORPORATE_BRO: HookProof = {
+  handle: "corporate.bro",
+  videoUrl: "https://www.tiktok.com/@corporate.bro/video/7351209488213",
+  coverUrl: IMG("composed-corporate-bro", 270, 480),
+  hookTemplate: "The [thing] nobody tells you about [topic]",
+  archetype: "secret-reveal-breakdown",
+  multiplier: 5.7,
+  views: 1_400_000,
+  baselineLabel: "vs their usual views",
+  fitLabel: null,
+};
+
+const COMPOSED_PROOF_FOUNDER_DIARIES: HookProof = {
+  handle: "founder.diaries",
+  videoUrl: "https://www.tiktok.com/@founder.diaries/video/7348811902114",
+  coverUrl: IMG("composed-founder-diaries", 270, 480),
+  hookTemplate: "We lost [number] in [timeframe] — here's the [artefact]",
+  archetype: "cost-reveal",
+  multiplier: 3.2,
+  views: 612_000,
+  baselineLabel: "vs their usual views",
+  fitLabel: null,
+};
+
+/** The honest degraded row: a curated source with no measured baseline ⇒ no number at all (D9). */
+const COMPOSED_PROOF_NO_BASIS: HookProof = {
+  handle: "buildinpublic.dev",
+  videoUrl: "https://www.tiktok.com/@buildinpublic.dev/video/7339442100877",
+  coverUrl: IMG("composed-buildinpublic", 270, 480),
+  hookTemplate: null,
+  archetype: null,
+  multiplier: null,
+  views: 288_000,
+  baselineLabel: null,
+  fitLabel: null,
+};
+
+export const COMPOSED_CARD_FIXTURES: ComposedCardBlock[] = [
+  // hook-set — the payoff is a LINE: the hook itself, liftable to the clipboard. Its receipt rides
+  // on the CARD-level `receiptRef`, the other of the two doors a receipt can arrive through.
+  {
+    type: "composed-card",
+    props: {
+      recipe: "hook-set",
+      eyebrow: "Hook · faceless, screen-record",
+      deliverable: {
+        kind: "line",
+        text: "We lost 40% of our signups the week we shipped the new onboarding — this is the screen that did it.",
+      },
+      receiptRef: "td-8f21",
+      why: "The cost lands before the topic, so the scroll stops on a number the viewer has to explain.",
+      body: [
+        { kind: "chips", items: ["Founder POV", "Screen recording", "30–45s"] },
+        {
+          kind: "note",
+          text: "Use your own real number. An invented one gets corrected in the comments, and that comment out-ranks the video.",
+        },
+      ],
+      receipts: { "td-8f21": COMPOSED_PROOF_CORPORATE_BRO },
+      actions: ["test"],
+    },
+  },
+
+  // format-set — a repeatable SHAPE, so its required slot is `beats`. The spec's own motivating ask
+  // ("3 viral formats for young startup founders", §1 goal 2) is this recipe emitting a set.
+  {
+    type: "composed-card",
+    props: {
+      recipe: "format-set",
+      eyebrow: "Format · repeatable weekly",
+      deliverable: {
+        kind: "claim",
+        text: "Film the post-mortem, not the launch — the week something broke is the week you have footage nobody else has.",
+      },
+      why: "A launch asks the viewer to be pleased for you; a post-mortem asks what they would have done instead.",
+      body: [
+        {
+          kind: "beats",
+          items: [
+            { label: "Open", text: "Say what it cost in the first four seconds — the number, not the story." },
+            { label: "Artefact", text: "Cut to the thing itself: the dashboard, the churn graph, the Slack message." },
+            { label: "Fix", text: "Name the one change you actually shipped, not the five you considered." },
+            { label: "Close", text: "Ask what they would have done instead, and do not answer it." },
+          ],
+        },
+        { kind: "chips", items: ["Weekly", "Screen-record + voiceover", "45–60s"] },
+      ],
+      actions: ["explore"],
+    },
+  },
+
+  // angle-set — the same `beats` requirement, a different claim: not a shape to repeat but a
+  // position to take. Carries `bullets`, which format-set may not use.
+  {
+    type: "composed-card",
+    props: {
+      recipe: "angle-set",
+      eyebrow: "Angle · unclaimed in your niche",
+      deliverable: {
+        kind: "claim",
+        text: "Every productivity account teaches the system. None of them films the week the system fell apart.",
+      },
+      why: "The gap is not a topic nobody covers — it is the state nobody admits to being in.",
+      body: [
+        {
+          kind: "beats",
+          items: [
+            { label: "The gap", text: "The niche is wall-to-wall instruction. Nobody in it posts from inside the mess." },
+            { label: "Your version", text: "Run the system you teach, then film the fortnight you stopped following it." },
+          ],
+        },
+        {
+          kind: "bullets",
+          items: [
+            "Keep the failure specific: one week, one habit, one slip you can point at.",
+            "Do not resolve it in the video. The comeback is the second post.",
+          ],
+        },
+        {
+          kind: "note",
+          text: "This only works from an account that has already taught the system. From a new one it reads as an excuse.",
+        },
+      ],
+      actions: ["read"],
+    },
+  },
+
+  // idea-set — one thing to shoot, with the beats it needs to be shootable.
+  {
+    type: "composed-card",
+    props: {
+      recipe: "idea-set",
+      eyebrow: "Idea · shoots in an afternoon",
+      deliverable: {
+        kind: "claim",
+        text: "Rebuild your worst-performing video and post both cuts in the same frame.",
+      },
+      why: "The old cut is the control, so the viewer sees the change instead of taking your word for it.",
+      body: [
+        {
+          kind: "beats",
+          items: [
+            { label: "Shoot", text: "Re-record the first eight seconds only. Everything after them stays." },
+            { label: "Cut", text: "Split-screen the two openings, old on the left, captions on neither." },
+            { label: "Caption", text: "One line: same video, one change. Let them find it." },
+          ],
+        },
+        {
+          kind: "bullets",
+          items: [
+            "Pick a video with real watch-time data, not the one you dislike most.",
+            "Post it on its own, not as a reply — a reply inherits the original's ceiling.",
+          ],
+        },
+      ],
+      actions: ["remix"],
+    },
+  },
+
+  // script — the one recipe whose body is a TIMELINE, and the fixture that carries a `disclosure`:
+  // the shot sheet is reference, so it goes behind the ONE caret rather than adding a second
+  // labelled section to the face (§0.5 row 6).
+  {
+    type: "composed-card",
+    props: {
+      recipe: "script",
+      eyebrow: "Script · 42s, one take",
+      deliverable: {
+        kind: "claim",
+        text: "Open on the cost, then hand over the fix — the advice only lands once they know what it saved.",
+      },
+      why: "Every second before the number is a second the viewer is deciding whether you are worth it.",
+      body: [
+        {
+          kind: "script_timeline",
+          lines: [
+            { t: "0:00", text: "We spent six thousand dollars on a landing page that converted worse than the one I built in a night." },
+            { t: "0:06", text: "Screen: the two pages side by side, conversion rates visible, no annotation yet." },
+            { t: "0:14", text: "The expensive one had a video header. It pushed the pricing below the fold on every phone." },
+            { t: "0:24", text: "Screen: scroll the live page on a phone frame until the pricing finally appears." },
+            { t: "0:33", text: "We deleted the header. Same copy, same offer, conversion back within a week." },
+            { t: "0:38", text: "If your header is taller than your thumb, it is not a header, it is a wall." },
+          ],
+        },
+      ],
+      disclosure: [
+        {
+          kind: "label_values",
+          rows: [
+            { label: "Runtime", value: "42s" },
+            { label: "Shots", value: "3 — desk, screen, desk" },
+            { label: "Aspect", value: "9:16, captions burned in" },
+            { label: "Voice", value: "Flat, no music under the numbers" },
+          ],
+        },
+        {
+          kind: "note",
+          text: "If you run long, take it out of the middle. The open and the last line are load-bearing.",
+        },
+      ],
+      actions: ["test"],
+    },
+  },
+
+  // comparison — the MINIMAL shape on purpose: no disclosure, no action bar. Both rows are supposed
+  // to disappear when the card has nothing for them (§0.5: "may omit a row it has no data for"), and
+  // an empty caret or an empty bar is chrome. This entry is the only place that is visible.
+  {
+    type: "composed-card",
+    props: {
+      recipe: "comparison",
+      eyebrow: "Comparison · which cut to shoot",
+      deliverable: {
+        kind: "claim",
+        text: "For a teardown, the screen recording wins — your face is the least interesting thing on screen when there is a number to look at.",
+      },
+      body: [
+        {
+          kind: "comparison",
+          columns: [
+            {
+              title: "Talking head",
+              points: [
+                "Fastest to shoot",
+                "Carries a personal story",
+                "Loses people the moment you say a number they cannot see",
+              ],
+            },
+            {
+              title: "Screen record",
+              points: [
+                "The evidence is on screen",
+                "Holds through the middle",
+                "Needs a voiceover pass, so it is a two-step shoot",
+              ],
+            },
+          ],
+        },
+        {
+          kind: "bullets",
+          items: ["Cut the first two seconds of the screen recording — the cursor hunting for the tab is where people leave."],
+        },
+      ],
+    },
+  },
+
+  // teardown — the only recipe that REQUIRES a proof_strip, and the reason `props.receipts` is a
+  // declared schema field: a receipt stripped on rehydration leaves this card asserting evidence it
+  // never shows. Four refs, three that resolve — the fourth is deliberately absent from `receipts`,
+  // because an unresolvable id must render nothing at all rather than a placeholder tile (D7).
+  {
+    type: "composed-card",
+    props: {
+      recipe: "teardown",
+      eyebrow: "Teardown · why it broke out",
+      deliverable: {
+        kind: "claim",
+        text: "It works because the receipt arrives before the claim — you have seen the number by the time he tells you what it means.",
+      },
+      why: "The first frame is evidence, so there is nothing to disbelieve yet.",
+      body: [
+        { kind: "proof_strip", receiptRefs: ["td-8f21", "td-4c07", "td-9a55", "td-never-existed"] },
+        {
+          kind: "beats",
+          items: [
+            { label: "0–2s", text: "The dashboard is already on screen. No intro, no name, no greeting." },
+            { label: "2–7s", text: "He reads the number out loud while it is still on screen — audio and picture say the same thing." },
+            { label: "7s+", text: "Only then does the claim arrive, and it is one sentence long." },
+          ],
+        },
+        { kind: "quote", text: "wait, you left the real numbers in?", attribution: "top comment, 4,100 likes" },
+        {
+          kind: "note",
+          text: "Copy the order, not the numbers. Your version needs your own artefact on screen at 0:00.",
+        },
+      ],
+      receipts: {
+        "td-8f21": COMPOSED_PROOF_CORPORATE_BRO,
+        "td-4c07": COMPOSED_PROOF_FOUNDER_DIARIES,
+        "td-9a55": COMPOSED_PROOF_NO_BASIS,
+      },
+      actions: ["remix"],
+    },
+  },
+
+  // brief — the widest vocabulary in the registry (7 legal slot kinds) and therefore the card most
+  // able to become the "stacked ladder of equal-weight ALL-CAPS labels" §0.5 names as THE failure
+  // mode. Five slots here, which is a realistic weekly brief, not a stress test: what the gallery is
+  // for is seeing whether five is already too many.
+  {
+    type: "composed-card",
+    props: {
+      recipe: "brief",
+      eyebrow: "Brief · week of 17 August",
+      deliverable: {
+        kind: "claim",
+        text: "Three teardowns and one failure story this week. Nothing else.",
+      },
+      why: "Teardowns are the only shape that has cleared your usual views twice running, and the failure story is the one you already have footage for.",
+      body: [
+        {
+          kind: "stat_row",
+          stats: [
+            { value: "4", label: "Posts" },
+            { value: "42s", label: "Median runtime" },
+            { value: "Tue / Thu", label: "Post days" },
+          ],
+        },
+        {
+          kind: "bullets",
+          items: [
+            "Shoot all four on Sunday. Editing on the day is where the week falls over.",
+            "Make one teardown about a video that is not yours — it gives you a second account's numbers to point at.",
+          ],
+        },
+        {
+          kind: "label_values",
+          rows: [
+            { label: "Format", value: "Screen record + voiceover" },
+            { label: "Aspect", value: "9:16, captions burned in" },
+            { label: "Hook", value: "Cost first, topic second" },
+          ],
+        },
+        { kind: "chips", items: ["Onboarding", "Churn", "Pricing", "Hiring"] },
+        { kind: "note", text: "If a fifth idea turns up it goes in next week's brief. Four is the point." },
+      ],
+      actions: ["account", "explore"],
+    },
+  },
+];
+
+/** Per-recipe gallery headers. Keyed by `RecipeId`, so a new recipe fails `tsc` here until it is
+ *  given a fixture and a note rather than quietly rendering unlabelled. */
+export const COMPOSED_CARD_SECTIONS: Record<RecipeId, { label: string; note: string }> = {
+  "hook-set": {
+    label: "Hook set",
+    note: "The only recipe whose deliverable is a LINE (D6) — the hero is the hook itself, liftable to the clipboard, never a label like “The Faceless Case Study”. That distinction is the spike's measured hero failure, where both models wrote the name of the hook instead of the hook. Its receipt arrives through the CARD-level `receiptRef` rather than a proof_strip slot: the two doors render the same tile, and the renderer drops the card-level one when a strip already names the same row so a single source cannot print twice as two proofs. Ceiling 5 cards — the floor is 1, because “just one example hook, doesn't have to be good” appears 14 times in prod messages.",
+  },
+  "format-set": {
+    label: "Format set",
+    note: "A repeatable shape, so `beats` is REQUIRED — a format with no beats is an opinion. Legal slots: proof_strip · beats · note · chips. Ceiling 6 cards, which is what the spec's own motivating ask (“3 viral formats for young startup founders”) needs; a one-card cap could not answer it.",
+  },
+  "angle-set": {
+    label: "Angle set",
+    note: "Same `beats` requirement as format-set, different claim: not a shape to repeat but a position nobody in the niche has taken. Swaps proof_strip/chips for `bullets` — the vocabulary is what separates two recipes that share a hero kind.",
+  },
+  "idea-set": {
+    label: "Idea set",
+    note: "One thing to shoot, with the beats that make it shootable. Shares angle-set's vocabulary exactly; what differs is what the hero asserts. Two recipes with identical legalSlots is not duplication — the recipe also decides the copy the emit tool asks the model for.",
+  },
+  script: {
+    label: "Script",
+    note: "The one recipe whose body is a TIMELINE, and the entry that carries a `disclosure`. The shot sheet is reference, not argument, so it sits behind the ONE caret (§0.5 row 6) instead of adding a second labelled section to the face. Disclosure slots are held to the same `legalSlots` as the body (G2) — a drawer that may hold anything is the unconstrained card the composer exists to prevent. Single card by definition.",
+  },
+  comparison: {
+    label: "Comparison",
+    note: "The MINIMAL shape, deliberately: no disclosure, no action bar, no receipt. §0.5 says a card “may omit a row it has no data for”, and an empty caret over an empty drawer or a bar with no action is chrome — this is the only entry where you can see those rows correctly absent. Its multiplicity lives in COLUMNS (2–3), not in cards, which is why its cardCount is 1.",
+  },
+  teardown: {
+    label: "Teardown",
+    note: "The only recipe that REQUIRES a proof_strip, and the reason `props.receipts` is a declared schema field: `message-blocks.tsx` re-runs `validateBlock` on render, zod strips undeclared keys, and a receipt attached any other way was silently deleted on the first rehydration — leaving exactly this card asserting evidence it never displayed. FOUR refs here, THREE that resolve: the fourth (`td-never-existed`) is absent from the receipts map on purpose, because a fabricated or stale id must render nothing at all rather than a placeholder tile (D7). The third tile is the honest degraded row — no measured baseline, therefore no number anywhere on it (D9). No fit glyph on any of them: `materializeReceipts` hard-codes `fitLabel: null`, since nothing scored a corpus row against this creator's audience.",
+  },
+  brief: {
+    label: "Brief",
+    note: "The widest vocabulary in the registry — 7 legal slot kinds — and therefore the card most able to become the “stacked ladder of equal-weight ALL-CAPS labels” §0.5 names as the failure mode. Five slots here (stat_row · bullets · label_values · chips · note), which is a realistic weekly brief rather than a stress test. Note where the stat row sits: below the hero at 18px, never AS the hero — “hero = a number” is the structural drift §0.6 flags on outlier-grid.",
+  },
+};
+
 /** Every raw block across BOTH groups — the drift-guard test validates these against the registry. */
 export const ALL_FIXTURE_BLOCKS: unknown[] = [
   ...IDEA_BLOCKS,
@@ -932,4 +1329,9 @@ export const ALL_FIXTURE_BLOCKS: unknown[] = [
   MULTI_AUDIENCE_READ_BLOCK,
   SINGLE_AUDIENCE_READ_BLOCK,
   ...BLOCK_SECTIONS.flatMap((s) => s.body),
+  // The composed cards render on their own tab, not through BLOCK_SECTIONS, so they are added
+  // explicitly — the drift guard must still see every shape the gallery mounts. `parseComposedCard`
+  // (recipe legality) is checked separately in composed-card-fixtures.test.ts; `validateBlock` here
+  // is the shape-only registry check every other fixture gets.
+  ...COMPOSED_CARD_FIXTURES,
 ];
