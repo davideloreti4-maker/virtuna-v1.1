@@ -736,6 +736,77 @@ describe("POST /api/tools/chat (SSE route)", () => {
     expect(calls[1]![0].forceSkill).toBeUndefined();
   });
 
+  it("Test 6g: ENGINE_GUESS_PIN pins a typed generation ask to the guessed generator", async () => {
+    // THE DISPATCH DEFECT, measured over 183 real generations: an ask whose SUBJECT is a product
+    // or format dispatches 7/31 (23%), against 30/30 for a scenario subject (p = 5.4e-11). Four
+    // prompt-only fixes failed to move it. This pins the WIRE for the structural one — the route
+    // must forward `forceSkill` from the pre-router's guess when the flag is on, and must still
+    // forward nothing when it is off, which is what keeps the shipped path byte-identical.
+    process.env.CHAT_AGENT_DISPATCH = "true";
+    await primeDispatchHarness();
+    const { runChatAgentStream } = await import("@/lib/tools/chat-agent-loop");
+    (runChatAgentStream as ReturnType<typeof vi.fn>).mockImplementation(
+      async (input: { onToken: (d: string) => void }) => {
+        input.onToken("ok");
+        return { text: "ok", skillRuns: [], uiBlocks: [], toolCalls: [] };
+      }
+    );
+    const { POST } = await import("@/app/api/tools/chat/route");
+    const ask = "give me 5 hooks for my student budgeting app";
+
+    // THE CONTROL FIRST — flag off, the ask reaches the loop unpinned, exactly as it does today.
+    delete process.env.ENGINE_GUESS_PIN;
+    await readSSE(await POST(makeChatRequest({ ask, platform: "tiktok" })));
+
+    process.env.ENGINE_GUESS_PIN = "true";
+    await readSSE(await POST(makeChatRequest({ ask, platform: "tiktok" })));
+    // …and the one measured false positive stays unpinned even with the flag on: it names the SIM
+    // as the action, and pinning hooks would force a wrong BILLED run on an ask that works today.
+    await readSSE(
+      await POST(
+        makeChatRequest({
+          ask: "Yes, run the simulate tool on that hook — I want the reaction card.",
+          platform: "tiktok",
+        }),
+      ),
+    );
+
+    const calls = (runChatAgentStream as ReturnType<typeof vi.fn>).mock.calls as Array<[{ forceSkill?: string }]>;
+    expect(calls[0]![0].forceSkill, "flag OFF must change nothing").toBeUndefined();
+    expect(calls[1]![0].forceSkill, "flag ON pins the guessed generator").toBe("hooks");
+    expect(calls[2]![0].forceSkill, "the narrowing must survive the wire").toBeUndefined();
+    delete process.env.ENGINE_GUESS_PIN;
+  });
+
+  it("Test 6h: the guess pin never overrides a tapped chip, and never fires for a sealed visitor", async () => {
+    // A chip DECLARES its generator, so it must win over any guess — and a sealed /go visitor binds
+    // no generators at all, so a pin would name a tool the loop cannot call.
+    process.env.CHAT_AGENT_DISPATCH = "true";
+    process.env.ENGINE_GUESS_PIN = "true";
+    const { runChatAgentStream } = await import("@/lib/tools/chat-agent-loop");
+    (runChatAgentStream as ReturnType<typeof vi.fn>).mockImplementation(
+      async (input: { onToken: (d: string) => void }) => {
+        input.onToken("ok");
+        return { text: "ok", skillRuns: [], uiBlocks: [], toolCalls: [] };
+      }
+    );
+    const { POST } = await import("@/app/api/tools/chat/route");
+
+    // The chip says `script`; the guess would say `hooks`. The chip wins.
+    await primeDispatchHarness();
+    await readSSE(
+      await POST(makeChatRequest({ ask: "give me 5 hooks for my budgeting app", platform: "tiktok", skill: "script" })),
+    );
+
+    await primeDispatchHarness("user-anon", "thread-anon", true);
+    await readSSE(await POST(makeChatRequest({ ask: "give me 5 hooks for my budgeting app", platform: "tiktok" })));
+
+    const calls = (runChatAgentStream as ReturnType<typeof vi.fn>).mock.calls as Array<[{ forceSkill?: string }]>;
+    expect(calls[0]![0].forceSkill, "a declared chip outranks the guess").toBe("script");
+    expect(calls[1]![0].forceSkill, "a sealed visitor binds no generators to pin").toBeUndefined();
+    delete process.env.ENGINE_GUESS_PIN;
+  });
+
   it("Test 7: agent loop pure chat (no skill) → streams the answer directly, NO runChatPipeline fallback, plain markdown", async () => {
     process.env.CHAT_AGENT_DISPATCH = "true";
     const { threadId } = await primeDispatchHarness();

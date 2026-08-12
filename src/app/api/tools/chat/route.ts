@@ -39,6 +39,7 @@ import { runChatAgentStream, sanitizeCards, type SkillBilling } from "@/lib/tool
 import { FREE_SKILL_TOOLS } from "@/lib/tools/skill-dispatch";
 import { guessSkill } from "@/lib/tools/pre-router";
 import { detectRepeatAsk, isRepeatAskPinEnabled } from "@/lib/tools/repeat-ask";
+import { detectGuessPin, isGuessPinEnabled } from "@/lib/tools/guess-pin";
 import { billUsage, creditGate, quotaRefusalBody, quotaRefusalMessage } from "@/lib/billing/credit-gate";
 import { creditCost, type BillableAction } from "@/lib/pricing";
 import type { QuotaUser } from "@/lib/billing/quota";
@@ -476,6 +477,16 @@ export async function POST(request: Request): Promise<Response> {
               ? detectRepeatAsk(rawAsk, priorTurns)
               : null;
 
+          // ── (8a-0c) THE GUESS PIN (2026-08-12, flagged OFF) ───────────────────────────────
+          // The broader structural fix for the same family of defect, measured over 183 real
+          // generations: a product- or format-shaped SUBJECT dispatches 7/31 (23%) against 30/30
+          // for a scenario subject. Same scoping as the repeat-ask pin above (typed asks only,
+          // never a sealed visitor), and strictly broader than it — every repeat ask is also a
+          // guess fire — so the two compose by subsumption rather than by precedence. See
+          // guess-pin.ts for why the trigger is the guess and not the observed non-dispatch.
+          const guessPinSkill =
+            isGuessPinEnabled() && !rawSkill && !isSealedVisitor(user) ? detectGuessPin(rawAsk) : null;
+
           // Grounding (niche/audience/platform) rides the fenced user message, exactly as
           // runChatPipeline builds it (assembleBundle → <<<USER_CONTENT>>>). Prior turns go to the loop
           // as real role messages (natural turn structure for the agent), not folded into the anchor.
@@ -516,7 +527,9 @@ export async function POST(request: Request): Promise<Response> {
                 ? { forceSkill: rawSkill }
                 : repeatAskSkill
                   ? { forceSkill: repeatAskSkill }
-                  : {}),
+                  : guessPinSkill
+                    ? { forceSkill: guessPinSkill }
+                    : {}),
               // Stage B data riders (see (2d)) — round-1 pinned call only, inside the loop.
               ...(rawAnchor ? { forceAnchor: rawAnchor } : {}),
               ...(rawCards ? { forceCards: rawCards } : {}),
