@@ -5,8 +5,9 @@
 **Predecessor:** `docs/HANDOFF-2026-08-11-session-10-dispatch.md`. Everything in it still stands
 except §11.3's narrowing #1, which this session measured and **replaced** (§3).
 
-**Built, flagged OFF, NOT merged, NOT deployed.** Gates all green — `tsc` 0, **6006 tests passed /
-0 failed**, `next build` 0. Spend: **0 credits**, 76 generations through the stub till.
+**Built, flagged OFF, NOT merged, NOT deployed.** Gates all green — `tsc` 0, **6019 tests passed /
+0 failed**, `next build` 0. Spend: **7 credits** — 124 generations through the stub till at zero,
+plus 13 through the real billed route for the live verification in §7.7 (ledger-verified).
 
 `main` was merged in first (50 commits behind; no file C touches was affected).
 
@@ -308,6 +309,57 @@ count's own numbers are solid across two subject shapes; everything about the re
 
 ---
 
+## 7.7 ✅ VERIFIED ON THE LIVE ROUTE — 0/6 → 6/6, and it is STRONGER there than offline
+
+The gap every previous section listed as open. Real `/api/tools/chat` on a dev server, signed in as
+the e2e account, real SSE, real persistence, **real billing**. `.scratch/probe-live-route.ts`.
+
+| arm | live | offline, for comparison |
+|---|---|---|
+| control (`ENGINE_COUNT_HINT` unset) | **0/6** | 2/10 |
+| **count hint ON** | **6/6** | 16/20 |
+
+**p ≈ 0.002.** Every control reply is the defect verbatim — *"'Student budgeting app' is a finance
+topic, but your niche is comedy storytelling"* — and every treated run returned 5 cards.
+
+The live route is **harsher at both ends** than the offline probe: the control fails harder (0/6 vs
+2/10) and the fix works better (6/6 vs 16/20). That is session 9 §10.3's finding holding again —
+offline rates are indicative, not production.
+
+**Spend: 7 credits, ledger-verified** (`reading_events`, 7 rows, all `hooks`), not estimated. The
+flag is read server-side, so each arm needed its own dev-server start.
+
+### 7.7.1 ⚠️ THE TRAP: the first control arm was confounded, and its TALLY looked correct
+
+The first live control returned **1/6 — in band with the offline 17%**, and it was measuring
+something else entirely. The route resolves the account's existing open thread
+(`createOpenThreadLazy` → `getOpenThread`), so six POSTs are **one six-turn conversation**, not six
+first turns. Runs 2–6 answered:
+
+> *"The previous batch was too 'explainer' and not enough 'story.'"*
+
+— a perfectly reasonable mid-thread reply to a pack that already existed. And the thread it landed
+in already held **26 messages from a previous session**, so even run 1 was mid-thread.
+
+**The number agreed with the offline control while measuring the wrong population.** Only reading
+the replies caught it; the tally never would have. That cost 1 credit and would have shipped a false
+confirmation.
+
+**The fix is the product's own mechanism, not a delete:** send `maven_active_thread=__new__`
+(`active-thread-cookie.ts`), whose row is created on first send. Nothing is destroyed, and every run
+is a genuine first turn. Any future live probe in this lane must set that cookie — add it to the
+signed-in verification recipe.
+
+### 7.7.2 And it hands over the first real mid-thread signal
+
+Those confounded runs are not worthless: they are the only mid-thread data this lane has. In a
+thread that already holds a pack, the model **declines and critiques its own previous batch** rather
+than pushing back on the subject. That is a different failure from the one this session fixed, and
+§6 still lists mid-thread as unmeasured — it now has a first observation, n=5, from a run that was
+trying to measure something else.
+
+---
+
 ## 8. Do next
 
 0. ✅ **The count hint is BUILT** (`ENGINE_COUNT_HINT`, dark) — TDD'd, 7 mutations, 7 caught, gates
@@ -315,7 +367,10 @@ count's own numbers are solid across two subject shapes; everything about the re
    used *"the best **idea**"*, which the plural-only regex never matches, so it passed against a
    first-match implementation too. The test now uses *"the best **ideas**"*. A test that cannot fail
    is the lane's most expensive recurring bug and it got in again here — run the battery.
-1. **Next: the prose-call retry (§7.5), pinned to `guessSkill` and NOT to the emitted tool name.**
+1. ✅ **Live-route verification is DONE for the count hint** (§7.7) — 0/6 → 6/6, p ≈ 0.002, stronger
+   than offline. `ENGINE_COUNT_HINT` is the one flag with production evidence behind it, and it
+   carries no wrong-run exposure. **It is ready for the owner's default-ON call.**
+2. **Next: the prose-call retry (§7.5), pinned to `guessSkill` and NOT to the emitted tool name.**
    That closes 6 of the 7 residual failures with no measured false positives. Together with the
    count this reaches ~95% at ~0 exposure, which is a better trade than C's ~100% at 3.4%.
 2. **Keep `ENGINE_GUESS_PIN` dark until 0 and 1 are measured.** C is built, gated and ready; it is
