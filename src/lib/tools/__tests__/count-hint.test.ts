@@ -92,24 +92,29 @@ describe("addCountHint — what it must leave alone", () => {
   });
 });
 
-describe("isCountHintEnabled — ships dark", () => {
+describe("isCountHintEnabled — default-ON since the owner's ruling (2026-08-12)", () => {
   const original = process.env.ENGINE_COUNT_HINT;
   afterEach(() => {
     if (original === undefined) delete process.env.ENGINE_COUNT_HINT;
     else process.env.ENGINE_COUNT_HINT = original;
   });
 
-  it("is OFF when unset", () => {
+  it("is ON when unset — this is the shipped production default", () => {
     delete process.env.ENGINE_COUNT_HINT;
+    expect(isCountHintEnabled()).toBe(true);
+  });
+
+  it("is OFF only for the exact string 'false' — the kill switch", () => {
+    process.env.ENGINE_COUNT_HINT = "false";
     expect(isCountHintEnabled()).toBe(false);
   });
 
-  it("is OFF for any value other than the exact string 'true'", () => {
-    process.env.ENGINE_COUNT_HINT = "1";
-    expect(isCountHintEnabled()).toBe(false);
+  it("stays ON for a half-set flag, so a typo cannot silently disable it", () => {
+    process.env.ENGINE_COUNT_HINT = "0";
+    expect(isCountHintEnabled()).toBe(true);
   });
 
-  it("is ON only for 'true'", () => {
+  it("is ON for an explicit 'true'", () => {
     process.env.ENGINE_COUNT_HINT = "true";
     expect(isCountHintEnabled()).toBe(true);
   });

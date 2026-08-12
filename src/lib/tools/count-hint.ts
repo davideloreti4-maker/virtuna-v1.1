@@ -43,11 +43,18 @@
 import { guessSkill } from "@/lib/tools/pre-router";
 
 /**
- * Server flag — ships dark, like `ENGINE_GUESS_PIN` and `ENGINE_REPEAT_ASK_PIN`. Exact string
- * "true" only, so a half-set flag reads as off.
+ * Server flag — **default-ON**, on the owner's ruling of 2026-08-12, after the live-route
+ * verification in `docs/HANDOFF-2026-08-12-session-11-guess-pin.md` §7.7: 0/6 → 6/6 on the real
+ * `/api/tools/chat`, p ≈ 0.002. Unlike `ENGINE_GUESS_PIN` — still dark, and still carrying ~3.4%
+ * wrong-run exposure — this forces no tool call, so the worst case of a wrong hint is the decline
+ * production already serves today.
+ *
+ * `!== "false"` is the house convention for a shipped default (`on-screen.ts`,
+ * `GROUNDING_CHAT_TOOL`, `CHAT_AGENT_DISPATCH`): the exact string "false" is the kill switch, and a
+ * half-set flag stays ON rather than silently reverting a shipped fix.
  */
 export function isCountHintEnabled(): boolean {
-  return process.env.ENGINE_COUNT_HINT === "true";
+  return process.env.ENGINE_COUNT_HINT !== "false";
 }
 
 /** The count the measurement used. Also what a hooks run produces by default, so nothing changes. */
