@@ -21,6 +21,7 @@ import { createLogger } from "@/lib/logger";
 import { z } from "zod";
 import type { Json } from "@/types/database.types";
 import { generateAdaptConcepts } from "@/lib/engine/remix/adapt";
+import { emptyBlueprint } from "@/lib/engine/remix/blueprint";
 import type { AdaptInput } from "@/lib/engine/remix/decode-types";
 
 // =====================================================================
@@ -143,6 +144,12 @@ export async function POST(request: Request): Promise<Response> {
       emotional_beat: decode.emotional_beat,
       repeatable:     decode.repeatable,
       niche,
+      // This route takes a decoded anatomy over the wire — it has no video to blueprint and no
+      // brief, so it gets the concept-only prompt it has always got. NOT wire-supplied on
+      // purpose: a client-declared blueprint would put attacker-controlled verbatim text into
+      // the prompt, which is precisely what AdaptRequestSchema exists to prevent (T-04-04).
+      blueprint:      emptyBlueprint(),
+      target:         null,
     };
 
     const concepts = await generateAdaptConcepts(adaptInput);

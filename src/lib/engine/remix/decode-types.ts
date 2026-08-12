@@ -16,9 +16,14 @@
  *   D-04: luck array is always length >= 1 (backstop in runDecode)
  *   D-05: luck categories restricted to fixed taxonomy via Zod enum
  *   D-07: body lines are third-person, no advice verbs
- *   D-01: Adapt draws ONLY from the repeatable lane; luck is never mapped into AdaptInput
+ *   D-01: luck is NEVER mapped into AdaptInput.
+ *         ⚠ PARTIALLY REVERSED (D2, owner 2026-08-10): Adapt no longer draws only from the
+ *         repeatable lane — `AdaptInput.blueprint` carries the source's verbatim `spoken` text
+ *         so the shoot sheet can be written beat-for-beat. See AdaptInput's docstring.
  */
 import { z } from "zod";
+import { emptyBlueprint } from "./blueprint";
+import type { SourceBlueprint } from "./blueprint";
 
 // =====================================================
 // Beat IDs — fixed order, must match the model's required output
@@ -63,6 +68,22 @@ export interface DecodeResult {
   luck: { category: LuckCategory; note: string }[];
 }
 
+/**
+ * One cell of a timed grid. Named because TWO fields carry one now (`segments` and
+ * `perceived_segments`) and a duplicated inline literal would let them drift apart.
+ *
+ * Still a structural subset of the real `SegmentGrid` (qwen/schemas.ts), not that type —
+ * see the note on `Segment` in blueprint.ts for why widening it here buys less than it looks.
+ */
+export interface OmniStructuralSegment {
+  t_start: number;
+  t_end: number;
+  visual_event: string;
+  audio_event: string;
+  scene_boundary_reason?: string;
+  is_hook_zone?: boolean;
+}
+
 /** Subset of OmniAnalysisOutput fields consumed by the decode engine */
 export interface OmniStructuralInput {
   hook_decomposition: {
@@ -80,14 +101,16 @@ export interface OmniStructuralInput {
     rationale: string;
     improvement_tip?: string;
   }>;
-  segments?: Array<{
-    t_start: number;
-    t_end: number;
-    visual_event: string;
-    audio_event: string;
-    scene_boundary_reason?: string;
-    is_hook_zone?: boolean;
-  }>;
+  segments?: OmniStructuralSegment[];
+  /**
+   * The cells omni actually perceived, when they differ from `segments`.
+   *
+   * `segments` is the grid AFTER normalizeSegments' Rule 3, which replaces a short read with
+   * fabricated fixed buckets rather than padding it (qwen/normalize-segments.ts). That trade is
+   * right for the filmstrip and wrong for a beat-merging consumer, so both grids travel.
+   * Undefined when nothing was perceived or the read's timestamps were broken.
+   */
+  perceived_segments?: OmniStructuralSegment[];
   video_signals: {
     visual_production_quality: number;
     pacing_score: number;
@@ -149,13 +172,33 @@ export interface RepeatableItem {
   why_repeatable: string;
 }
 
+/** One beat of the creator's own version, written against the source beat at the same index. */
+export interface AdaptedBeat {
+  /** Matches SourceBlueprint.beats[].index — the beat this line replaces. */
+  index: number;
+  /** What the creator says. On a no-speech source this stays empty and on_screen_text carries it. */
+  spoken: string;
+  /** Overlay text for this beat. */
+  on_screen_text: string;
+  /** How to shoot this beat — framing, camera position, movement. */
+  shot: string;
+  /** Present only when the source beat was flagged weak and this beat repairs it. */
+  repair?: string;
+}
+
 /**
  * Input to the Adapt generator.
  *
- * Structural content-leak guard (D-01, Pitfall 1): AdaptInput carries only the four
- * structural beats + the repeatable lane + niche. It has NO `luck` and NO caption/
- * content_summary field, so passing luck or a raw source caption to the adapt prompt
- * is a compile-time error. The `decodeResultToAdaptInput` adapter never maps luck in.
+ * Content-leak guard (D-01, Pitfall 1): AdaptInput has NO `luck` lane and NO caption/
+ * content_summary field, so passing luck or a raw source caption to the adapt prompt is a
+ * compile-time error. The `decodeResultToAdaptInput` adapter never maps luck in.
+ *
+ * ⚠ The rest of D-01 is REVERSED. It also used to guarantee, at compile time, that the source's
+ * own WORDS could not reach the prompt — the four beat bodies are third-person prose ABOUT the
+ * video, never quotes from it. `blueprint` breaks that: it carries verbatim `spoken` text,
+ * because a shoot sheet written against a paraphrase of a beat is not a shoot sheet. The
+ * replacement is mechanical, not structural — `sharedContentTokens` (echo-guard.ts) measures
+ * topical echo between a source line and its adapted line after the fact.
  */
 export interface AdaptInput {
   /** The viral hook pattern (from the `hook_pattern` beat body). */
@@ -166,11 +209,37 @@ export interface AdaptInput {
   the_turn: string;
   /** The dominant emotional arc (from the `emotional_beat` beat body). */
   emotional_beat: string;
-  /** Structural items that can be replicated in any niche — Adapt draws ONLY from this lane (D-01). */
+  /** Structural items that can be replicated in any niche (D-01). */
   repeatable: RepeatableItem[];
-  /** The creator-profile niche slug/label (ADAPT-02). */
+  /** The creator-profile niche slug/label (ADAPT-02). Fallback when `target` is null. */
   niche: string;
+  /**
+   * The source's timed structural skeleton (D2/D10, 2026-08-10). Adapt writes one line per beat.
+   *
+   * REQUIRED, not optional, and deliberately so: a caller that has a blueprint and forgets to
+   * pass it would silently ship the old concept-only prompt with no test able to see it. The
+   * three callers that genuinely have no video pass `emptyBlueprint()`, which is a statement,
+   * not an omission.
+   */
+  blueprint: SourceBlueprint;
+  /**
+   * The creator's brief (D3). When non-empty this IS the adaptation target and `niche` is ignored;
+   * null → fall back to `niche`. Exists so a fitness source can be remixed into SaaS onboarding.
+   */
+  target: string | null;
 }
+
+/**
+ * The part of `AdaptInput` that crosses the wire to `POST /api/remix/adapt` — the decoded
+ * anatomy only. `niche` travels as its own top-level field; `blueprint` and `target` are
+ * SERVER-SUPPLIED and deliberately not accepted from a client: `blueprint` reaches the prompt
+ * as verbatim text, so honouring a client-declared one would hand any caller a prompt-injection
+ * lane past the D-01 guard the request schema exists to enforce (T-04-04).
+ *
+ * Named rather than written out at each consumer so the wire contract has one definition — the
+ * hook's request type and the fixture that stands in for it cannot drift apart.
+ */
+export type AdaptWireDecode = Omit<AdaptInput, "niche" | "blueprint" | "target">;
 
 /**
  * A single niche-adapted concept produced by the Adapt generator (ADAPT-01).
@@ -214,6 +283,12 @@ export interface AdaptConcept {
     setup: string;
     edit?: string;
   };
+  /**
+   * The beat-by-beat version of this concept (D2) — one entry per source blueprint beat, in
+   * order. OPTIONAL for the same reason as `production`: a model that omits it must not fail the
+   * 3-concept contract, and `/api/remix/adapt` never asks (it has no blueprint to ask against).
+   */
+  script?: AdaptedBeat[];
 }
 
 // =====================================================
@@ -242,5 +317,9 @@ export function decodeResultToAdaptInput(decode: DecodeResult, niche: string): A
     emotional_beat: beatBody("emotional_beat"),
     repeatable: decode.repeatable.map((label) => ({ label, why_repeatable: "" })),
     niche,
+    // This seam starts from a STORED DecodeResult — there is no video in reach and no brief on
+    // this path, so the prompt falls through to the concept-only shape it has always had.
+    blueprint: emptyBlueprint(),
+    target: null,
   };
 }

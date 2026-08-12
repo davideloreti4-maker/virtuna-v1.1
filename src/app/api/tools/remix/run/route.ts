@@ -34,6 +34,8 @@
 import * as Sentry from "@sentry/nextjs";
 import { nanoid } from "nanoid";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
+import { insertBlueprint } from "@/lib/remix/blueprint-repo";
 import { maybeMockSkillRun } from "@/lib/tools/mock/mock-sse";
 import { createOpenThreadLazy } from "@/lib/threads/threads";
 import { insertMessage } from "@/lib/threads/messages";
@@ -64,6 +66,11 @@ const RemixRunRequestSchema = z.object({
   platform: z.enum(["tiktok", "instagram", "youtube"]).optional().default("tiktok"),
   // Per-run reaction lens (GAP-C2 / §P.10) — composer override; absent → audience default.
   intent: z.enum(["grow", "sell"]).optional(),
+  // The creator's brief (D3): what THEY want to make from this source. When present it is the
+  // adaptation target and the niche is only a fallback. Absent → today's behaviour, unchanged.
+  // Capped at 200 chars — it reaches the adapt prompt as text, so it is bounded like every other
+  // free-text field on a mutating route.
+  brief: z.string().max(200).optional(),
 });
 
 // ── Rate / cap constants ──────────────────────────────────────────────────────
@@ -123,7 +130,7 @@ export async function POST(request: Request): Promise<Response> {
     );
   }
 
-  const { url: tiktokUrl, platform, intent: bodyIntent } = parsed.data;
+  const { url: tiktokUrl, platform, intent: bodyIntent, brief } = parsed.data;
 
   // ── (5) user_id from session only (CR-01) ────────────────────────────────────
   // Never trust user id from the request body — always from the auth session.
@@ -197,6 +204,7 @@ export async function POST(request: Request): Promise<Response> {
           requestId,
           audience: activeAudience,
           intent: effectiveIntent,
+          brief: brief ?? null,
           onStage: (name, status) => send("stage", { name, status }),
           // EVIDENCE frame — the real artifacts this run touched (the proven outliers it is
           // grounded on / the post it resolved), streamed while the pipeline is still working so
@@ -219,6 +227,40 @@ export async function POST(request: Request): Promise<Response> {
           send("warning", { warnings: result.warnings });
         }
 
+        // ── Persist the shoot sheet BEFORE anything announces it ──────────────────
+        // The row has to exist before the id leaves this process, and the id leaves on the
+        // CONTENT frame — not on the persisted message. The brief placed this next to
+        // insertMessage, which is early enough for a reload and too late for the live card: the
+        // face would already be on the wire carrying an id whose row failed to write, and the
+        // creator would watch a sheet that can never resolve.
+        //
+        // Non-fatal, deliberately: a run that produced three cards must not die because one
+        // side-table write failed. We drop the id and ship the cards — the sheet is absent
+        // rather than broken. `insertBlueprint` throws on ANY write error (Task 4), which is
+        // exactly what this catch is here to absorb; so does `createServiceClient()` when the
+        // service key is missing.
+        if (result.blueprint) {
+          try {
+            await insertBlueprint(createServiceClient(), {
+              id: result.blueprint.id,
+              user_id: user.id,
+              thread_id: openThread.id,
+              source_video_id: result.blueprint.sourceVideoId,
+              blueprint: result.blueprint.payload,
+              script: result.blueprint.script,
+            });
+          } catch (bpErr) {
+            Sentry.captureException(bpErr, { tags: { route: "api.tools.remix.run" } });
+            log.warn("blueprint persist failed — cards will render without beats", {
+              error: bpErr instanceof Error ? bpErr.message : String(bpErr),
+            });
+            for (const b of result.blocks) {
+              delete (b.props as { blueprintId?: string }).blueprintId;
+              delete (b.props as { blueprintVariant?: number }).blueprintVariant;
+            }
+          }
+        }
+
         // ── Content-first: emit the remix-card FACE before the band chip ──────────
         // content event: adaptedHook + formatBorrowed + angle + whoItsFor + scrollQuote
         // band/fraction deferred to score event (content-first — Pitfall 5)
@@ -230,6 +272,13 @@ export async function POST(request: Request): Promise<Response> {
               angle: b.props.angle,
               whoItsFor: b.props.whoItsFor,
               formatBorrowed: b.props.formatBorrowed,
+              // SHOOT SHEET (phase 1, 2026-08-10): the beat script's address. `proof`,
+              // `production` and `provenance` were each shipped persisted-but-absent from this
+              // exact map, and each produced a card that only became correct after a reload.
+              // Both fields ride the face — the variant too, or every card in the run renders
+              // the rank-1 card's sheet.
+              blueprintId: b.props.blueprintId,
+              blueprintVariant: b.props.blueprintVariant,
               production: b.props.production,    // owner 2026-07-22: YOUR-version shoot plan rides the FACE (else reload-only)
               sourceDecode: b.props.sourceDecode,
               scrollQuote: b.props.scrollQuote,

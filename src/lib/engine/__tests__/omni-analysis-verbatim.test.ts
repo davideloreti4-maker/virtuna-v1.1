@@ -19,6 +19,8 @@ import {
   SegmentSchema,
 } from "@/lib/engine/qwen/schemas";
 import { buildSystemPrompt, analyzeVideoWithOmni } from "@/lib/engine/qwen/omni-analysis";
+import { omniOutputToStructuralInput } from "@/lib/engine/remix/decode";
+import { buildBlueprint } from "@/lib/engine/remix/blueprint";
 
 // =====================================================
 // Module mocks (used by the assembly-path tests below)
@@ -50,11 +52,13 @@ process.env.DASHSCOPE_API_KEY = "test-key";
  * @param withVerbatim - include hook_verbatim + per-segment spoken_text/on_screen_text
  * @param silent       - when true and withVerbatim, spoken_words === null (no speech)
  * @param hasUnclearSpeech - when true and withVerbatim, spoken_words contains [inaudible]
+ * @param segmentsOverride - replace the 5-segment grid (used to drop BELOW MIN_BOUNDARY_COUNT)
  */
 function makeOmniResponse(
   withVerbatim: boolean,
   silent?: boolean,
   hasUnclearSpeech?: boolean,
+  segmentsOverride?: Array<Record<string, unknown>>,
 ): string {
   const body: Record<string, unknown> = {
     content_type: "talking_head",
@@ -142,6 +146,8 @@ function makeOmniResponse(
       on_screen_text: silent ? null : "SUBSCRIBE NOW",
     };
   }
+
+  if (segmentsOverride) body.segments = segmentsOverride;
 
   return JSON.stringify(body);
 }
@@ -387,6 +393,80 @@ describe("verbatim — analyzeVideoWithOmni assembly (regression)", () => {
     // Sanity: rest of assembly still succeeded (D-R1: factors no longer assembled — pure sensor)
     expect(out.geminiResult?.analysis.audio_signals).toBeDefined();
   });
+});
+
+// =====================================================
+// Rule 3's count gate vs. the shoot sheet
+//
+// The fixture above carries a comment that IS the bug, stated as a workaround: "5 segments so
+// normalizeSegments does NOT fall back to fixed buckets (MIN_BOUNDARY_COUNT=4; 2-segment fixture
+// triggers fallback, stripping verbatim)". Every test in this file steered around the gate rather
+// than through it, so nothing here ever measured what a real short read produces.
+//
+// A 3-cell read is ordinary — a hook, a body, a close is how a 20s video is actually shot. The
+// gate replaces it with fabricated buckets carrying no speech at all, and that is what reached
+// the shoot sheet. These tests drive the gate deliberately and follow the output through the
+// REAL converter into the REAL builder — the two hops between the fix and the creator.
+// =====================================================
+
+/**
+ * These three drive the whole assembly path (client → Zod → normalize → converter → builder),
+ * not a single function. On a loaded machine the 5s default is not a correctness signal — observed
+ * timing out at load ~12 while passing in isolation. Given a real budget they fail only when
+ * something is actually wrong.
+ */
+const ASSEMBLY_TIMEOUT_MS = 20_000;
+
+describe("perceived segments — a short read survives the Rule 3 count gate", () => {
+  /** Hook / body / close: three cells, below MIN_BOUNDARY_COUNT (4), all carrying speech. */
+  const THREE_CELL_READ = [
+    { t_start: 0,  t_end: 3,  visual_event: "talking head", audio_event: "greeting",
+      spoken_text: "Stop scrolling if you write TypeScript" },
+    { t_start: 3,  t_end: 12, visual_event: "screen share", audio_event: "explanation",
+      spoken_text: "This one config flag halved our build time" },
+    { t_start: 12, t_end: 22, visual_event: "cta card",     audio_event: "sign off",
+      spoken_text: "Follow for more build tips" },
+  ];
+
+  beforeEach(() => {
+    mockCreate.mockReset();
+    mockCreate.mockResolvedValue({
+      choices: [{ message: { content: makeOmniResponse(true, false, false, THREE_CELL_READ) } }],
+      usage: { prompt_tokens: 100, completion_tokens: 150, total_tokens: 250 },
+    });
+  });
+
+  it("still hands the FABRICATED grid to `segments` — the filmstrip's cell floor is untouched", async () => {
+    const out = await analyzeVideoWithOmni("https://example.com/v.mp4");
+    expect(out.segments!.length).toBeGreaterThanOrEqual(4);
+    expect(
+      out.segments!.every((s) => s.scene_boundary_reason?.startsWith("fixed_bucket")),
+    ).toBe(true);
+  }, ASSEMBLY_TIMEOUT_MS);
+
+  it("carries the three real cells on `perceived_segments`, speech intact", async () => {
+    const out = await analyzeVideoWithOmni("https://example.com/v.mp4");
+    expect(out.perceived_segments).toHaveLength(3);
+    expect(out.perceived_segments!.map((s) => s.spoken_text)).toEqual([
+      "Stop scrolling if you write TypeScript",
+      "This one config flag halved our build time",
+      "Follow for more build tips",
+    ]);
+  }, ASSEMBLY_TIMEOUT_MS);
+
+  it("SEAM: the speech reaches buildBlueprint through the real converter", async () => {
+    const out = await analyzeVideoWithOmni("https://example.com/v.mp4");
+    const structural = omniOutputToStructuralInput(out);
+    expect(structural).not.toBeNull();
+
+    const bp = buildBlueprint(structural!);
+
+    expect(bp.has_speech).toBe(true);
+    expect(bp.from_fixed_buckets).toBe(false);
+    expect(bp.beats.map((b) => b.spoken).join(" ")).toContain("halved our build time");
+    // The times are the video's, not the fabricated grid's.
+    expect(bp.beats[bp.beats.length - 1]!.t_end).toBe(22);
+  }, ASSEMBLY_TIMEOUT_MS);
 });
 
 // =====================================================

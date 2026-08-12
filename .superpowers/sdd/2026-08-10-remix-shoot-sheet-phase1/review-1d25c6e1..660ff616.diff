@@ -1,0 +1,577 @@
+# Review package: 1d25c6e1..660ff616
+
+## Commits
+660ff616 fix(remix): merge no longer collapses the timeline; real factor names; turn+close always assigned
+
+## Files changed
+ src/lib/engine/remix/__tests__/blueprint.test.ts | 160 +++++++++++++++++++-
+ src/lib/engine/remix/blueprint.ts                | 177 ++++++++++++++++++-----
+ 2 files changed, 294 insertions(+), 43 deletions(-)
+
+## Diff
+diff --git a/src/lib/engine/remix/__tests__/blueprint.test.ts b/src/lib/engine/remix/__tests__/blueprint.test.ts
+index 45100711..8d312825 100644
+--- a/src/lib/engine/remix/__tests__/blueprint.test.ts
++++ b/src/lib/engine/remix/__tests__/blueprint.test.ts
+@@ -1,12 +1,13 @@
+ import { describe, it, expect } from "vitest";
+ import { buildBlueprint, MAX_BEATS } from "../blueprint";
++import { buildFixedBuckets } from "../../qwen/normalize-segments";
+ import type { OmniStructuralInput } from "../decode-types";
+ 
+ /** Minimal valid structural input; override per test. */
+ function structural(over: Partial<OmniStructuralInput> = {}): OmniStructuralInput {
+   return {
+     hook_decomposition: {
+       visual_stop_power: 5, audio_hook_quality: 5, text_overlay_score: 5,
+       first_words_speech_score: 5, weakest_modality: "audio_hook_quality",
+       visual_audio_coherence: 5, cognitive_load: 5,
+     },
+@@ -48,34 +49,115 @@ describe("buildBlueprint", () => {
+     }
+   });
+ 
+   it("counts absorbed boundaries on each merged beat", () => {
+     const segments = Array.from({ length: 20 }, (_, i) => seg(i, i + 1));
+     const bp = buildBlueprint(structural({ segments }));
+     const totalCuts = bp.beats.reduce((n, b) => n + b.cuts, 0);
+     expect(totalCuts).toBe(20);
+   });
+ 
++  // ---------------------------------------------------------------------------
++  // The scene_boundary_reason branch — the fallback grid, where every cell is a
++  // "real" boundary. Input is the ACTUAL producer (buildFixedBuckets), not a
++  // hand-rolled mirror of it, so this tracks the real fallback shape.
++  // ---------------------------------------------------------------------------
++
++  it("distributes the timeline when EVERY cell declares a scene boundary (fallback grid)", () => {
++    const segments = buildFixedBuckets(60);
++    // Guard the premise: this is the degenerate input, not an ordinary one.
++    expect(segments.length).toBeGreaterThan(MAX_BEATS * 3);
++    expect(segments.every((s) => !!s.scene_boundary_reason)).toBe(true);
++
++    const bp = buildBlueprint(structural({ segments }));
++
++    expect(bp.beats.length).toBe(MAX_BEATS);
++    expect(bp.duration_s).toBe(60);
++    // No beat may swallow the video. Keeping the earliest N boundaries put 75% in the last beat.
++    const longest = Math.max(...bp.beats.map((b) => b.duration_s));
++    expect(longest).toBeLessThanOrEqual(bp.duration_s * 0.4);
++    // and the timeline is still continuous
++    for (let i = 1; i < bp.beats.length; i++) {
++      expect(bp.beats[i]!.t_start).toBe(bp.beats[i - 1]!.t_end);
++    }
++    expect(bp.beats.reduce((n, b) => n + b.cuts, 0)).toBe(segments.length);
++  });
++
++  it("keeps the hook beat inside the first 3s on a long merged video", () => {
++    const segments = buildFixedBuckets(60);
++    const bp = buildBlueprint(structural({ segments }));
++    expect(bp.beats[0]!.role).toBe("hook");
++    expect(bp.beats[0]!.t_end).toBeLessThanOrEqual(3);
++    expect(bp.beats[0]!.duration_s).toBeLessThanOrEqual(3);
++    // the 3s boundary survives the merge as a real cut
++    expect(bp.beats[1]!.t_start).toBe(3);
++  });
++
++  it("keeps the hook beat inside the first 3s on a uniform grid with no scene boundaries", () => {
++    const segments = Array.from({ length: 20 }, (_, i) => seg(i, i + 1));
++    const bp = buildBlueprint(structural({ segments }));
++    expect(bp.beats[0]!.role).toBe("hook");
++    expect(bp.beats[0]!.t_end).toBeLessThanOrEqual(3);
++  });
++
++  it("never lets the hook beat run past 3s when no cell boundary lands on 3s", () => {
++    // 2s cells: boundaries at 0,2,4,... — nothing at 3s. An even spread put the first cut at
++    // cell 4, i.e. an 8s beat labelled "hook".
++    const segments = Array.from({ length: 30 }, (_, i) => seg(i * 2, i * 2 + 2));
++    const bp = buildBlueprint(structural({ segments }));
++    expect(bp.beats[0]!.role).toBe("hook");
++    expect(bp.beats[0]!.t_end).toBeLessThanOrEqual(3);
++    expect(bp.beats.length).toBeLessThanOrEqual(MAX_BEATS);
++  });
++
++  // ---------------------------------------------------------------------------
++  // Roles
++  // ---------------------------------------------------------------------------
++
+   it("tags the first-3s beat as hook EVEN WHEN the emotion peak also falls inside it", () => {
+     const segments = [seg(0, 2), seg(2, 6), seg(6, 10)];
+     const bp = buildBlueprint(structural({
+       segments,
+       emotion_arc: [
+         { timestamp_ms: 1000, intensity_0_1: 0.9 }, // peak inside the hook zone
+         { timestamp_ms: 8000, intensity_0_1: 0.2 },
+       ],
+     }));
+     expect(bp.beats[0]!.role).toBe("hook");
+     // hook wins the overlap, so `turn` is not also assigned to beat 0
++    expect(bp.beats.some((b) => b.role === "turn")).toBe(true);
+     expect(bp.beats.filter((b) => b.role === "turn").every((b) => b.index !== 0)).toBe(true);
+   });
+ 
++  it("still yields a turn AND a payoff when the emotion peak lands in the hook zone", () => {
++    const segments = [seg(0, 2), seg(2, 6), seg(6, 10), seg(10, 14), seg(14, 18)];
++    const bp = buildBlueprint(structural({
++      segments,
++      emotion_arc: [{ timestamp_ms: 1000, intensity_0_1: 0.9 }],
++    }));
++    const roles = bp.beats.map((b) => b.role);
++    expect(roles).toContain("turn");
++    expect(roles).toContain("payoff");
++    expect(roles).toContain("close");
++    expect(bp.beats[0]!.role).toBe("hook");
++  });
++
++  it("still yields a close when the emotion peak lands in the final beat", () => {
++    const segments = [seg(0, 2), seg(2, 6), seg(6, 10), seg(10, 14)];
++    const bp = buildBlueprint(structural({
++      segments,
++      emotion_arc: [{ timestamp_ms: 12000, intensity_0_1: 0.95 }],
++    }));
++    expect(bp.beats[bp.beats.length - 1]!.role).toBe("close");
++    expect(bp.beats.some((b) => b.role === "turn")).toBe(true);
++  });
++
+   it("tags the emotion-peak beat as turn when the peak is outside the hook zone", () => {
+     const segments = [seg(0, 2), seg(2, 6), seg(6, 10), seg(10, 14)];
+     const bp = buildBlueprint(structural({
+       segments,
+       emotion_arc: [
+         { timestamp_ms: 500, intensity_0_1: 0.2 },
+         { timestamp_ms: 7000, intensity_0_1: 0.95 },
+       ],
+     }));
+     const turn = bp.beats.find((b) => b.role === "turn");
+@@ -85,56 +167,124 @@ describe("buildBlueprint", () => {
+   });
+ 
+   it("tags the final beat close, and splits the rest setup/payoff around the turn", () => {
+     const segments = [seg(0, 2), seg(2, 6), seg(6, 10), seg(10, 14), seg(14, 18)];
+     const bp = buildBlueprint(structural({
+       segments,
+       emotion_arc: [{ timestamp_ms: 7000, intensity_0_1: 0.95 }],
+     }));
+     expect(bp.beats[bp.beats.length - 1]!.role).toBe("close");
+     const turnIdx = bp.beats.findIndex((b) => b.role === "turn");
++    expect(turnIdx).toBeGreaterThan(0);
+     expect(bp.beats.slice(1, turnIdx).every((b) => b.role === "setup")).toBe(true);
++    expect(bp.beats.slice(turnIdx + 1, -1).every((b) => b.role === "payoff")).toBe(true);
+   });
+ 
++  // ---------------------------------------------------------------------------
++  // Speech
++  // ---------------------------------------------------------------------------
++
+   it("reports has_speech false and null spoken on a silent source", () => {
+     const segments = [seg(0, 2, { spoken_text: null }), seg(2, 6, { spoken_text: null })];
+     const bp = buildBlueprint(structural({ segments }));
+     expect(bp.has_speech).toBe(false);
+     expect(bp.beats.every((b) => b.spoken === null)).toBe(true);
+     expect(bp.words_per_second).toBe(0);
+   });
+ 
+   it("computes words_per_second from real speech", () => {
+     // 4 words over 2s, then 4 words over 2s => 8 words / 4s = 2.0
+     const segments = [
+       seg(0, 2, { spoken_text: "one two three four" }),
+       seg(2, 4, { spoken_text: "five six seven eight" }),
+     ];
+     const bp = buildBlueprint(structural({ segments }));
+     expect(bp.words_per_second).toBeCloseTo(2.0, 2);
+     expect(bp.has_speech).toBe(true);
+   });
+ 
+-  it("attaches a weakness to the beat a low-scoring factor names", () => {
+-    const segments = [seg(0, 2), seg(2, 6)];
++  // ---------------------------------------------------------------------------
++  // Weakness attachment — factor names are the CLOSED enum from
++  // HookFactorSchema (qwen/schemas.ts). Anything else cannot reach this code.
++  // ---------------------------------------------------------------------------
++
++  it("attaches Scroll-Stop Power to the HOOK beat", () => {
++    const segments = [seg(0, 2), seg(2, 6), seg(6, 10)];
+     const bp = buildBlueprint(structural({
+       segments,
+-      factors: [{ name: "pacing", score: 4, rationale: "drags", improvement_tip: "cut earlier" }],
++      factors: [{
++        name: "Scroll-Stop Power", score: 2,
++        rationale: "nothing stops the scroll", improvement_tip: "open on the result",
++      }],
++    }));
++    const hook = bp.beats.find((b) => b.role === "hook");
++    expect(hook).toBeDefined();
++    expect(hook!.weakness).toEqual({
++      factor: "Scroll-Stop Power", score: 2, tip: "open on the result",
++    });
++    // and it landed there and nowhere else
++    expect(bp.beats.filter((b) => b.weakness !== null)).toHaveLength(1);
++  });
++
++  it("attaches Emotional Charge to the TURN beat", () => {
++    const segments = [seg(0, 2), seg(2, 6), seg(6, 10), seg(10, 14)];
++    const bp = buildBlueprint(structural({
++      segments,
++      emotion_arc: [{ timestamp_ms: 7000, intensity_0_1: 0.95 }],
++      factors: [{ name: "Emotional Charge", score: 3, rationale: "flat throughout" }],
++    }));
++    const turn = bp.beats.find((b) => b.role === "turn");
++    expect(turn!.weakness?.factor).toBe("Emotional Charge");
++    // improvement_tip absent → falls back to rationale
++    expect(turn!.weakness?.tip).toBe("flat throughout");
++  });
++
++  it("keeps EVERY weak factor — a second factor targeting a taken beat falls back", () => {
++    const segments = [seg(0, 2), seg(2, 6), seg(6, 10), seg(10, 14)];
++    const bp = buildBlueprint(structural({
++      segments,
++      emotion_arc: [{ timestamp_ms: 7000, intensity_0_1: 0.95 }],
++      factors: [
++        // both of these target the close beat
++        { name: "Share Trigger", score: 2, rationale: "no reason to send it" },
++        { name: "Rewatch Potential", score: 3, rationale: "nothing to catch second time" },
++      ],
++    }));
++    const attached = bp.beats.filter((b) => b.weakness !== null);
++    expect(attached).toHaveLength(2);
++    const names = attached.map((b) => b.weakness!.factor).sort();
++    expect(names).toEqual(["Rewatch Potential", "Share Trigger"]);
++  });
++
++  it("places all five weak factors on distinct beats", () => {
++    const segments = [seg(0, 2), seg(2, 6), seg(6, 10), seg(10, 14), seg(14, 18)];
++    const bp = buildBlueprint(structural({
++      segments,
++      emotion_arc: [{ timestamp_ms: 7000, intensity_0_1: 0.95 }],
++      factors: [
++        { name: "Scroll-Stop Power", score: 2, rationale: "a" },
++        { name: "Completion Pull", score: 3, rationale: "b" },
++        { name: "Rewatch Potential", score: 4, rationale: "c" },
++        { name: "Share Trigger", score: 1, rationale: "d" },
++        { name: "Emotional Charge", score: 4, rationale: "e" },
++      ],
+     }));
+-    expect(bp.beats.some((b) => b.weakness?.factor === "pacing")).toBe(true);
++    const attached = bp.beats.filter((b) => b.weakness !== null);
++    expect(attached).toHaveLength(5);
++    expect(new Set(attached.map((b) => b.index)).size).toBe(5);
+   });
+ 
+   it("ignores factors that score well", () => {
+     const segments = [seg(0, 2), seg(2, 6)];
+     const bp = buildBlueprint(structural({
+       segments,
+-      factors: [{ name: "pacing", score: 9, rationale: "tight" }],
++      factors: [{ name: "Completion Pull", score: 9, rationale: "tight" }],
+     }));
+     expect(bp.beats.every((b) => b.weakness === null)).toBe(true);
+   });
+ 
+   it("returns an empty-beat blueprint rather than throwing when segments are missing", () => {
+     const bp = buildBlueprint(structural({ segments: undefined }));
+     expect(bp.beats).toEqual([]);
+     expect(bp.has_speech).toBe(false);
+     expect(bp.duration_s).toBe(0);
+   });
+diff --git a/src/lib/engine/remix/blueprint.ts b/src/lib/engine/remix/blueprint.ts
+index 975f7ef8..5a36e013 100644
+--- a/src/lib/engine/remix/blueprint.ts
++++ b/src/lib/engine/remix/blueprint.ts
+@@ -12,20 +12,40 @@
+  * 8 beats is also closer to how a creator thinks about a shoot than 20 one-second cells.
+  */
+ import type { OmniStructuralInput } from "./decode-types";
+ 
+ /** D10 — the cap that keeps the adapt response inside its existing 90s budget. */
+ export const MAX_BEATS = 8;
+ 
+ /** Below this factor score a beat is flagged for repair rather than replication. */
+ const WEAK_FACTOR_SCORE = 5;
+ 
++/**
++ * Which beat a weak factor is really about.
++ *
++ * Keyed by the CLOSED enum in HookFactorSchema (qwen/schemas.ts:63-74) — "Scroll-Stop Power",
++ * "Completion Pull", "Rewatch Potential", "Share Trigger", "Emotional Charge". Nothing else can
++ * reach here. The previous `/hook|open|first/i` test matched none of the five, so it was dead:
++ * a 2/10 Scroll-Stop Power — which IS the hook factor — landed on a body beat while the hook
++ * beat reported no weakness at all.
++ *
++ * Lower-cased keys because omniOutputToStructuralInput (decode.ts:238) casts `factors` through
++ * `as unknown` without re-validating, so casing is not actually guaranteed at this boundary.
++ */
++const FACTOR_TARGET_ROLE: Record<string, BeatRole> = {
++  "scroll-stop power": "hook",
++  "completion pull": "setup",
++  "emotional charge": "turn",
++  "share trigger": "close",
++  "rewatch potential": "close",
++};
++
+ /** Mirrors HOOK_ZONE_END_S in qwen/normalize-segments.ts — the first-3s window. */
+ const HOOK_ZONE_END_S = 3;
+ 
+ export type BeatRole = "hook" | "setup" | "turn" | "payoff" | "close";
+ 
+ export interface BlueprintBeat {
+   index: number;
+   t_start: number;
+   t_end: number;
+   duration_s: number;
+@@ -58,95 +78,172 @@ export interface SourceBlueprint {
+ type Segment = NonNullable<OmniStructuralInput["segments"]>[number] & {
+   spoken_text?: string | null;
+   on_screen_text?: string | null;
+ };
+ 
+ function wordCount(s: string | null | undefined): number {
+   if (!s) return 0;
+   return s.trim().split(/\s+/u).filter(Boolean).length;
+ }
+ 
++/**
++ * The index that closes the opening beat at the 3s line, or -1 when no such cut exists.
++ *
++ * Owner ruling (2026-08-10): the 3s boundary is MANDATORY. normalizeSegments already guarantees
++ * it at cell level via enforceHookZoneBoundary (normalize-segments.ts:119), but the merge used to
++ * throw it away — on a 60s video the opening beat came out ~7.5s long and was still labelled
++ * "hook". For a product built on the first three seconds that is a misstatement, and Task 6
++ * renders it.
++ *
++ * We cut at the boundary landing exactly on 3s. When a grid has no such boundary (never true of
++ * normalized input, but cheap to survive) we take the boundary BEFORE it, so the opening beat is
++ * never longer than the hook zone it claims to be.
++ */
++function hookCutIndex(segments: Segment[]): number {
++  const after = segments.findIndex((s) => s.t_start >= HOOK_ZONE_END_S);
++  if (after <= 0) return -1;
++  const exact = segments[after]!.t_start === HOOK_ZONE_END_S;
++  const idx = exact ? after : after - 1;
++  return idx > 0 ? idx : -1;
++}
++
++/**
++ * Pick the cut nearest `target`, snapping to a real scene boundary when one is available.
++ * Returns null when nothing in range is still free.
++ */
++function nearestCut(
++  target: number,
++  preferred: number[],
++  lo: number,
++  hi: number,
++  taken: Set<number>,
++): number | null {
++  const free = (i: number) => i > lo && i < hi && !taken.has(i);
++  let best: number | null = null;
++  let bestDist = Infinity;
++  for (const p of preferred) {
++    if (!free(p)) continue;
++    const d = Math.abs(p - target);
++    if (d < bestDist) {
++      bestDist = d;
++      best = p;
++    }
++  }
++  if (best !== null) return best;
++  return free(target) ? target : null;
++}
++
+ /**
+  * Merge raw cells into at most MAX_BEATS groups of contiguous segments.
+  *
+- * Boundary preference: a segment that declares a `scene_boundary_reason` is a real cut and is
+- * a better place to split than an arbitrary one. We keep those boundaries first, then fall back
+- * to even distribution — never dropping or reordering a cell, so the timeline stays continuous.
++ * The budget is spent as: one beat for the hook (cut fixed at 3s) + the rest spread evenly across
++ * the body, each spread target snapped to the nearest real `scene_boundary_reason` when one is in
++ * reach. Cells are never dropped or reordered, so the timeline stays continuous.
++ *
++ * This used to keep the EARLIEST MAX_BEATS-1 preferred boundaries, which degenerates badly:
++ * buildFixedBuckets (normalize-segments.ts:227,240,256) stamps `scene_boundary_reason` on EVERY
++ * cell it emits, and it is the deterministic fallback whenever raw segments are absent or
++ * malformed. On a 60s fallback grid (30 cells) the first 7 cuts were consumed by the first 7
++ * cells and beat 7 swallowed 15-60s — 75% of the video in one beat. Snapping an even spread to
++ * real boundaries keeps the "prefer a real cut" intent without letting a dense run of boundaries
++ * at the start eat the whole budget.
+  */
+ function groupSegments(segments: Segment[]): Segment[][] {
+   if (segments.length <= MAX_BEATS) return segments.map((s) => [s]);
+ 
+-  const preferred = new Set<number>();
++  const preferred: number[] = [];
+   segments.forEach((s, i) => {
+-    if (i > 0 && s.scene_boundary_reason) preferred.add(i);
++    if (i > 0 && s.scene_boundary_reason) preferred.push(i);
+   });
+ 
+-  // Start from the preferred cuts; if there are too many, keep the earliest MAX_BEATS-1.
+-  let cutPoints = [...preferred].sort((a, b) => a - b).slice(0, MAX_BEATS - 1);
++  const cuts = new Set<number>();
+ 
+-  // Too few real boundaries — top up with an even spread so we still use the budget.
+-  if (cutPoints.length < MAX_BEATS - 1) {
+-    const step = segments.length / MAX_BEATS;
+-    for (let k = 1; k < MAX_BEATS && cutPoints.length < MAX_BEATS - 1; k++) {
+-      const idx = Math.round(k * step);
+-      if (idx > 0 && idx < segments.length && !cutPoints.includes(idx)) cutPoints.push(idx);
+-    }
+-    cutPoints = cutPoints.sort((a, b) => a - b).slice(0, MAX_BEATS - 1);
++  // The hook beat takes one of the MAX_BEATS; the body gets the remainder.
++  const hookCut = hookCutIndex(segments);
++  if (hookCut > 0) cuts.add(hookCut);
++  const bodyStart = hookCut > 0 ? hookCut : 0;
++
++  const wanted = MAX_BEATS - cuts.size - 1;
++  const span = segments.length - bodyStart;
++  for (let k = 1; k <= wanted; k++) {
++    const target = bodyStart + Math.round((k * span) / (wanted + 1));
++    const cut = nearestCut(target, preferred, bodyStart, segments.length, cuts);
++    if (cut !== null) cuts.add(cut);
+   }
+ 
++  const cutPoints = [...cuts].sort((a, b) => a - b);
++
+   const groups: Segment[][] = [];
+   let start = 0;
+   for (const cut of cutPoints) {
+     groups.push(segments.slice(start, cut));
+     start = cut;
+   }
+   groups.push(segments.slice(start));
+   return groups.filter((g) => g.length > 0);
+ }
+ 
+ function joinText(values: Array<string | null | undefined>): string | null {
+   const parts = values.map((v) => v?.trim()).filter((v): v is string => !!v);
+   return parts.length ? parts.join(" ") : null;
+ }
+ 
+ /**
+  * Assign roles. Order matters and resolves a real overlap: `is_hook_zone` is mechanically
+  * `t_start < 3` (normalize-segments.ts:272), NOT a model judgment, and on a short video the
+  * emotion peak frequently falls inside those same 3 seconds. Hook wins.
+  */
+-function assignRoles(beats: Omit<BlueprintBeat, "role">[], peakSeconds: number | null): BeatRole[] {
++function assignRoles(beats: Omit<BlueprintBeat, "role">[], peaksDesc: number[]): BeatRole[] {
+   const roles: (BeatRole | null)[] = beats.map(() => null);
+ 
+   // 1. hook — the beats lying inside the first 3s.
+   //
+   // NOT plain `t_start < 3`. A MERGED beat can open at 2s and run to 6s, and calling four
+   // seconds of body "the hook" would swallow the setup. In production this never diverges:
+   // enforceHookZoneBoundary (normalize-segments.ts:119) splits any raw segment straddling the
+   // 3s line, so `t_start < 3` and "wholly inside the zone" are the same set. It diverges only
+   // on a merged or un-normalized beat, and there containment is the honest reading.
+   // Beat 0 is always the hook when it opens in the zone, so a source whose first beat spans
+   // the whole window still gets one.
+   beats.forEach((b, i) => {
+     const opensTheVideo = i === 0;
+     const whollyInZone = b.t_end <= HOOK_ZONE_END_S;
+     if (b.t_start < HOOK_ZONE_END_S && (opensTheVideo || whollyInZone)) roles[i] = "hook";
+   });
+ 
+-  // 2. turn — the beat containing the emotion peak, unless it is already the hook
+-  if (peakSeconds !== null) {
+-    const turnIdx = beats.findIndex((b) => peakSeconds >= b.t_start && peakSeconds < b.t_end);
+-    if (turnIdx >= 0 && roles[turnIdx] === null) roles[turnIdx] = "turn";
+-  }
+-
+-  // 3. close — the final beat, unless already tagged
++  // 2. close — the FINAL beat, claimed before the turn.
++  //
++  // Order matters: the turn is a heuristic, the close is structural. Assigning the turn first
++  // let a climax-at-the-end video (a normal shape) consume the last beat and ship a shoot sheet
++  // with no closing beat at all.
+   if (roles.length > 0 && roles[roles.length - 1] === null) roles[roles.length - 1] = "close";
+ 
++  // 3. turn — the strongest emotion peak whose beat is still free.
++  //
++  // A peak landing on the hook or the close is common on short videos (the docstring above says
++  // as much), and abandoning the turn there used to leave turnAt = -1, which made step 4 label
++  // every remaining beat "setup" — no turn AND no payoff. Walk the peaks strongest-first, then
++  // fall back to the first free beat. Only when the source HAS emotion data: inventing a turn on
++  // a video with no arc at all would be fabrication, not a fallback.
++  if (peaksDesc.length > 0) {
++    let turnIdx = -1;
++    for (const p of peaksDesc) {
++      const i = beats.findIndex((b) => p >= b.t_start && p < b.t_end);
++      if (i >= 0 && roles[i] === null) {
++        turnIdx = i;
++        break;
++      }
++    }
++    if (turnIdx === -1) turnIdx = roles.findIndex((r) => r === null);
++    if (turnIdx >= 0) roles[turnIdx] = "turn";
++  }
++
+   // 4. setup before the turn, payoff after it
+   const turnAt = roles.indexOf("turn");
+   roles.forEach((r, i) => {
+     if (r !== null) return;
+     roles[i] = turnAt >= 0 && i < turnAt ? "setup" : turnAt >= 0 ? "payoff" : "setup";
+   });
+ 
+   return roles as BeatRole[];
+ }
+ 
+@@ -171,41 +268,45 @@ export function buildBlueprint(structural: OmniStructuralInput): SourceBlueprint
+       duration_s: Number((t_end - t_start).toFixed(2)),
+       spoken: joinText(group.map((s) => s.spoken_text)),
+       on_screen_text: joinText(group.map((s) => s.on_screen_text)),
+       visual_event: group.map((s) => s.visual_event).filter(Boolean).join(" → "),
+       audio_event: first.audio_event ?? "",
+       cuts: group.length,
+       weakness: null,
+     };
+   });
+ 
+-  // Emotion peak → seconds. emotion_arc is in MILLISECONDS; segments are in seconds.
++  // Emotion peaks → seconds, strongest first. emotion_arc is in MILLISECONDS; segments are in
++  // seconds. Strongest-first because the turn falls back down the list (see assignRoles).
+   const arc = structural.emotion_arc ?? [];
+-  const peak = arc.length
+-    ? arc.reduce((best, p) => (p.intensity_0_1 > best.intensity_0_1 ? p : best), arc[0]!)
+-    : null;
+-  const peakSeconds = peak ? peak.timestamp_ms / 1000 : null;
++  const peaksDesc = [...arc]
++    .sort((a, b) => b.intensity_0_1 - a.intensity_0_1)
++    .map((p) => p.timestamp_ms / 1000);
+ 
+-  const roles = assignRoles(partial, peakSeconds);
++  const roles = assignRoles(partial, peaksDesc);
+ 
+-  // A weak factor is attached to the beat whose role it most plausibly describes. We do not
+-  // invent a mapping we cannot support: hook-named factors land on the hook beat, everything
+-  // else lands on the longest beat, which is where a pacing or structure problem actually lives.
+-  const weak = structural.factors.filter((f) => f.score < WEAK_FACTOR_SCORE);
+   const beats: BlueprintBeat[] = partial.map((b, i) => ({ ...b, role: roles[i]! }));
+ 
++  // Attach each weak factor to the beat its name actually describes, then to the longest beat
++  // still free. Both halves were broken: the old test used the name "pacing", which the model
++  // cannot emit, and that is what let the dead branch survive.
++  const weak = structural.factors.filter((f) => f.score < WEAK_FACTOR_SCORE);
+   for (const f of weak) {
+-    const isHookFactor = /hook|open|first/i.test(f.name);
+-    const target = isHookFactor
+-      ? beats.find((b) => b.role === "hook")
+-      : [...beats].sort((a, b) => b.duration_s - a.duration_s)[0];
+-    if (target && target.weakness === null) {
++    const wantedRole = FACTOR_TARGET_ROLE[f.name.trim().toLowerCase()];
++    const candidates = [
++      ...(wantedRole ? beats.filter((b) => b.role === wantedRole) : []),
++      // Fallback: the longest beat still free. A factor is never dropped — `factors` is exactly
++      // 5 and several legitimately compete for the same role.
++      ...[...beats].sort((a, b) => b.duration_s - a.duration_s),
++    ];
++    const target = candidates.find((b) => b.weakness === null);
++    if (target) {
+       target.weakness = { factor: f.name, score: f.score, tip: f.improvement_tip ?? f.rationale };
+     }
+   }
+ 
+   const totalWords = beats.reduce((n, b) => n + wordCount(b.spoken), 0);
+   const duration_s = Number((beats[beats.length - 1]!.t_end - beats[0]!.t_start).toFixed(2));
+ 
+   return {
+     duration_s,
+     words_per_second: duration_s > 0 ? Number((totalWords / duration_s).toFixed(2)) : 0,

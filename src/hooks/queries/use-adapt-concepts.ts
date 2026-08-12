@@ -2,7 +2,7 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queries/query-keys";
-import type { AdaptConcept, AdaptInput } from "@/lib/engine/remix/decode-types";
+import type { AdaptConcept, AdaptWireDecode } from "@/lib/engine/remix/decode-types";
 
 /**
  * Input shape for the useAdaptConcepts mutation.
@@ -14,7 +14,7 @@ import type { AdaptConcept, AdaptInput } from "@/lib/engine/remix/decode-types";
  */
 export interface AdaptMutationInput {
   analysis_id: string;
-  decode: Omit<AdaptInput, 'niche'>;
+  decode: AdaptWireDecode;
   niche: string;
 }
 
