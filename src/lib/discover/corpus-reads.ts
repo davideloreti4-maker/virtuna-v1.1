@@ -12,7 +12,10 @@
  *   - "proven" = baselined AND ≥ MIN_OUTLIER_MULTIPLIER (isProofGrade);
  *   - above EXTREME_MULTIPLIER the ratio is a thin-baseline artifact (a creator whose
  *     "usual" was ~1k and one post hit millions — the corpus runs to 20,154×). Those rows
- *     stay in their collections, flagged, and are kept OUT of the outliers feed entirely.
+ *     are SHOWN, with the printed number clamped to the top of the band and the ⚠ flag
+ *     kept — they are not dropped (B1, owner ruling 2026-08-11). Clamping the display does
+ *     not make a thin baseline trustworthy, which is why `extreme` and `proven` are both
+ *     still keyed off the RAW multiplier and the row never renders in proven green.
  *
  * ⚠️ Collections come from `teardown_collections` (the curated table), never derived from
  * the teardown taxonomy columns — deriving produced a worse, different set once already.
@@ -28,9 +31,16 @@
 
 import { getCorpusClient } from "@/lib/grounding/corpus";
 import { hasKnownBaseline, isProofGrade } from "@/lib/grounding/retrieve";
+import { MAX_PRINTABLE_MULTIPLIER } from "@/lib/grounding/outlier-gate";
 
-/** Above this, a real ratio stops being a signal a card may present as proof. */
-export const EXTREME_MULTIPLIER = 100;
+/**
+ * Above this, a real ratio stops being a signal a card may present as proof.
+ *
+ * Re-exported from `outlier-gate.ts` so Discover and the composed card cannot disagree about
+ * the band (B1). This file used to declare its own `= 100`; two literals that happen to agree
+ * is exactly the drift the shared constant exists to prevent.
+ */
+export const EXTREME_MULTIPLIER = MAX_PRINTABLE_MULTIPLIER;
 
 export type CollectionCategory =
   | "formats"
@@ -83,7 +93,7 @@ export interface CollectionSummary {
 export interface DiscoverCorpus {
   /** Every extracted teardown, keyed by id. */
   teardowns: Record<string, CorpusVideo>;
-  /** The outliers feed pool: proven, non-extreme, posted_at desc. */
+  /** The outliers feed pool: proven (extremes included, clamped + flagged), posted_at desc. */
   feedIds: string[];
   /** All curated collections, grouped/ordered by the UI. */
   collections: CollectionSummary[];
@@ -153,17 +163,21 @@ interface MembershipRow {
   slug: string;
 }
 
-function toCorpusVideo(row: TeardownRow): CorpusVideo {
+export function toCorpusVideo(row: TeardownRow): CorpusVideo {
   // numeric columns can arrive as strings through PostgREST — normalize before judging.
   const receiptRow = {
     baseline_label: row.baseline_label,
     outlier_multiplier: num(row.outlier_multiplier),
   };
   const baselined = hasKnownBaseline(receiptRow);
-  const multiplier =
+  /** What was MEASURED. Every honesty judgement below reads this, never the clamped display. */
+  const rawMultiplier =
     baselined && receiptRow.outlier_multiplier !== null && receiptRow.outlier_multiplier >= 1
       ? receiptRow.outlier_multiplier
       : null;
+  // Clamp the DISPLAY at the top of the band (B1) — same rule as composed-card-receipt.ts.
+  const multiplier =
+    rawMultiplier !== null && rawMultiplier > EXTREME_MULTIPLIER ? EXTREME_MULTIPLIER : rawMultiplier;
   return {
     id: row.id,
     videoUrl: row.video_url,
@@ -180,8 +194,18 @@ function toCorpusVideo(row: TeardownRow): CorpusVideo {
     multiplier,
     baselineLabel: row.baseline_label,
     proven: isProofGrade(receiptRow),
-    extreme: multiplier !== null && multiplier >= EXTREME_MULTIPLIER,
+    extreme: rawMultiplier !== null && rawMultiplier >= EXTREME_MULTIPLIER,
   };
+}
+
+/**
+ * May this row appear in the outliers feed? Proof-grade is the whole bar (B1).
+ *
+ * An `extreme` row used to be excluded here. It is now admitted with a clamped number and its
+ * ⚠ flag — dropping it and clamping it were the two halves of one band rule disagreeing.
+ */
+export function isFeedEligible(video: CorpusVideo): boolean {
+  return video.proven;
 }
 
 /** The whole Discover corpus in one read — feed pool, collections index, niche counts. */
@@ -212,7 +236,7 @@ export async function getDiscoverCorpus(): Promise<DiscoverCorpus> {
   for (const row of rows) teardowns[row.id] = toCorpusVideo(row);
 
   const feedIds = Object.values(teardowns)
-    .filter((t) => t.proven && !t.extreme)
+    .filter(isFeedEligible)
     .sort((a, b) => (Date.parse(b.postedAt ?? "") || 0) - (Date.parse(a.postedAt ?? "") || 0))
     .map((t) => t.id);
 

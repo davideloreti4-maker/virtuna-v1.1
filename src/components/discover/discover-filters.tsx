@@ -247,7 +247,7 @@ export function DiscoverFilters({
 
         {/* No "only baselined videos" caveat here on purpose. The predicate DOES exclude
             rows with no baseline (see matchesFilters), but the pool this panel filters is
-            already `proven && !extreme` — every row in it carries one — so the note would
+            already `proven` — every row in it carries one — so the note would
             warn about an exclusion that cannot occur in this tab. The rule stays enforced in
             code and covered by test for whenever this panel filters a wider pool. */}
         <Field label="Outlier score">

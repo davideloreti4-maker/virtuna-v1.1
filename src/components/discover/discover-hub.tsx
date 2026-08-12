@@ -10,7 +10,7 @@
  * into 105 curated collections — reached the model and no user. So the tabs now name what the
  * product actually holds:
  *
- *   Outliers    — proven videos (baselined, ≥3×, thin-baseline extremes excluded)
+ *   Outliers    — proven videos (baselined, ≥3×; thin-baseline extremes included but clamped + flagged)
  *   Collections — the 105 curated groupings, and the videos inside one
  *   Watchlist   — tracked creators and competitors, merged into one list
  *
