@@ -33,7 +33,7 @@ export function ContentPillars({
         <h3 className="m-0 mb-2 text-[15px] font-semibold tracking-[-0.01em] text-foreground">
           Content pillars
         </h3>
-        <p className="m-0 text-[11.5px] leading-[1.55] text-foreground-muted">
+        <p className="m-0 text-[12px] leading-[1.55] text-foreground-muted">
           Learning your themes from your recent posts — your pillars show up here once we’ve
           seen enough to spot them.
         </p>
@@ -47,7 +47,7 @@ export function ContentPillars({
         <h3 className="m-0 flex-1 text-[15px] font-semibold tracking-[-0.01em] text-foreground">
           Content pillars
         </h3>
-        <span className="shrink-0 font-mono text-[9.5px] uppercase tracking-[0.08em] text-foreground-muted">
+        <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.08em] text-foreground-muted">
           {pillars.length} active
         </span>
       </div>
@@ -68,9 +68,9 @@ export function ContentPillars({
             />
             <span className="min-w-0 flex-1">
               <span className="flex items-center gap-1.5">
-                <span className="truncate text-[12.5px] text-foreground">{p.name}</span>
+                <span className="truncate text-[12px] text-foreground">{p.name}</span>
                 {p.gap && (
-                  <span className="shrink-0 rounded-[4px] border border-border px-1 py-px font-mono text-[8.5px] uppercase tracking-[0.05em] text-foreground-muted">
+                  <span className="shrink-0 rounded-[4px] border border-border px-1 py-px font-mono text-[8px] uppercase tracking-[0.05em] text-foreground-muted">
                     gap
                   </span>
                 )}
@@ -82,7 +82,7 @@ export function ContentPillars({
                     style={{ width: `${Math.round(p.share * 100)}%`, background: toneBar[p.tone] }}
                   />
                 </span>
-                <span className="shrink-0 font-mono text-[9.5px] tabular-nums text-foreground-muted">
+                <span className="shrink-0 font-mono text-[10px] tabular-nums text-foreground-muted">
                   {Math.round(p.share * 100)}%
                 </span>
               </span>

@@ -93,14 +93,6 @@ function submitButton(): HTMLButtonElement {
   return screen.getByRole('button', { name: /simulate|submit|send/i }) as HTMLButtonElement;
 }
 
-/**
- * The skill chip. Found by aria-label, not by face text: the chip renders the SKILL's own name,
- * so matching text here would couple this guard to skill copy. The aria-label is the stable handle.
- */
-function skillChip(): HTMLButtonElement {
-  return screen.getByRole('button', { name: /skill:/i }) as HTMLButtonElement;
-}
-
 /** Arm a skill through the `/` slash menu (Enter resolves it) — what a real creator does. */
 function selectSkillBySlash(command: string) {
   const field = screen.getByRole('textbox') as HTMLTextAreaElement;
@@ -205,18 +197,31 @@ describe('Composer Test seal guard', () => {
   });
 });
 
-describe('Composer chip-select does NOT arm the seal (Pitfall #5 / Plan 01-04)', () => {
-  it('does NOT seal or navigate after clicking the skill chip (chip is not a submit)', () => {
+/**
+ * Pitfall #5 — ARMING IS NOT SUBMITTING, whatever arms it.
+ *
+ * The gesture under test used to be a click on the skill PILL, deleted on 2026-07-28. The rule
+ * it protects is unchanged and now matters more, not less: with the pill gone, arming happens
+ * through the `/` slash menu and the Start grid, and the one-shot means an arm is a promise
+ * about the NEXT send. If any of those gestures armed `pendingSealRef`, a creator who merely
+ * picked a skill on a permalink would be navigated away from the page they were reading.
+ */
+describe('Composer skill-arming does NOT arm the seal (Pitfall #5 / Plan 01-04)', () => {
+  it('does NOT seal or navigate when a skill is armed (arming is not a submit)', () => {
     // Pinned layout — routeId is set in beforeEach.
     const { rerender } = renderWithClient(<Composer />);
     expect(push).not.toHaveBeenCalled();
 
-    // Click the skill chip — purely opens the picker; it is not a submit (Pitfall #5).
-    fireEvent.click(skillChip());
+    // Arm a skill through the surviving door — purely a pick; it is not a submit (Pitfall #5).
+    selectSkillBySlash('hooks');
     expect(push).not.toHaveBeenCalled();
 
-    // Even if a completed analysisId arrives after the chip click, no seal + no navigation.
-    analysisId = 'hydration-after-chip-click';
+    // …and DISARMING (the armed indicator's ×) is not a submit either.
+    fireEvent.click(screen.getByRole('button', { name: /back to chat/i }));
+    expect(push).not.toHaveBeenCalled();
+
+    // Even if a completed analysisId arrives after the arm, no seal + no navigation.
+    analysisId = 'hydration-after-arming';
     phase = 'complete';
     act(() => {
       rerender(<Composer />);
@@ -228,11 +233,11 @@ describe('Composer chip-select does NOT arm the seal (Pitfall #5 / Plan 01-04)',
     ).toBe(false);
   });
 
-  it('a hydration id does NOT seal even after a chip interaction followed by no submit', () => {
+  it('a hydration id does NOT seal even after an arming interaction followed by no submit', () => {
     const { rerender } = renderWithClient(<Composer />);
 
-    // Click chip — not a submit
-    fireEvent.click(skillChip());
+    // Arm a skill — not a submit
+    selectSkillBySlash('hooks');
 
     // Hydration surfaces a completed analysisId (simulates the URL on mount)
     analysisId = 'permalink-xyz';

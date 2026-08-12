@@ -14,7 +14,12 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { reportCredit402, CreditWallRefusal, isCreditWallRefusal } from "@/lib/billing/credit-wall";
+import { reportSession401, SessionExpiredRefusal } from "@/lib/auth/session-expired";
+import { resolveRunError } from '@/lib/net/run-failure';
 import type { AccountReadBlock } from "@/lib/tools/blocks";
+import { parseRunEvidence, type RunEvidence } from "@/lib/tools/evidence";
+import type { StageState } from "@/components/thread/progress-checklist";
 
 export interface UseAccountReadStreamReturn {
   /** The composed account-read block from the done event (null until it arrives). */
@@ -25,6 +30,13 @@ export interface UseAccountReadStreamReturn {
   error: string | null;
   /** Honest thin-history fallback message (SELF-02) — a calm warning, not an error. */
   fallbackMessage: string | null;
+  /**
+   * The artifacts this read has pulled so far (4a): the profile the moment the profile scrape
+   * lands, then the post covers as a filmstrip. Null until one arrives ⇒ no rail, not an empty one.
+   */
+  evidence: RunEvidence | null;
+  /** The two real scrape phases, for the loading spine. Empty until the first frame (4a). */
+  stages: StageState[];
   /**
    * POST /api/account-read and stream the result. Fire ONLY on explicit tap (D-05/D-07).
    * `persist:true` (the in-thread chat field) tells the route to also write the account-read block to
@@ -43,6 +55,8 @@ export function useAccountReadStream(): UseAccountReadStreamReturn {
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fallbackMessage, setFallbackMessage] = useState<string | null>(null);
+  const [evidence, setEvidence] = useState<RunEvidence | null>(null);
+  const [stages, setStages] = useState<StageState[]>([]);
 
   const abortRef = useRef<AbortController | null>(null);
   const isMountedRef = useRef(true);
@@ -61,6 +75,8 @@ export function useAccountReadStream(): UseAccountReadStreamReturn {
     setIsStreaming(false);
     setError(null);
     setFallbackMessage(null);
+    setEvidence(null);
+    setStages([]);
   }, []);
 
   const stop = useCallback(() => {
@@ -77,6 +93,8 @@ export function useAccountReadStream(): UseAccountReadStreamReturn {
     setBlock(null);
     setError(null);
     setFallbackMessage(null);
+    setEvidence(null);
+    setStages([]);
     setIsStreaming(true);
 
     try {
@@ -97,6 +115,16 @@ export function useAccountReadStream(): UseAccountReadStreamReturn {
           .json()
           .catch(() => ({ error: "Account Read request failed" }));
         const errObj = err as { error?: string; message?: string };
+        // The account Read became a PAID action on 2026-07-29 (5 credits), so this hook can now
+        // receive a 402 — it was the only one of the six stream hooks with no wall handling,
+        // purely because its route was the only one with no gate. Without this the paywall would
+        // arrive as an inline red error string offering a retry that earns the same 402.
+        // 401 first — it is not a 402, and each check then reads only its own status. The
+        // refusal's flag carries the cause to this turn's copy (lib/net/run-failure.ts).
+        if (reportSession401(res.status)) throw new SessionExpiredRefusal();
+        if (reportCredit402(res.status, err)) {
+          throw new CreditWallRefusal(errObj.message);
+        }
         throw new Error(errObj.message ?? errObj.error ?? "Account Read request failed");
       }
       if (!res.body) throw new Error("No response body");
@@ -130,7 +158,28 @@ export function useAccountReadStream(): UseAccountReadStreamReturn {
             continue; // malformed JSON — skip frame
           }
 
-          if (eventType === "fallback") {
+          if (eventType === "stage") {
+            // 4a — the two real scrape phases. Last-write-wins per name so a repeat frame cannot
+            // duplicate a row or let a stale `active` overwrite a `done`.
+            const name = typeof data.name === "string" ? data.name : null;
+            const status = data.status;
+            if (name && (status === "active" || status === "done") && isMountedRef.current) {
+              setStages((prev) => {
+                const i = prev.findIndex((s) => s.name === name);
+                if (i === -1) return [...prev, { name, status }];
+                const next = [...prev];
+                next[i] = { name, status };
+                return next;
+              });
+            }
+
+          } else if (eventType === "evidence") {
+            // parseRunEvidence is TOTAL — it lives in the same read loop as every other frame, so
+            // a malformed payload yields null and the rail simply does not render.
+            const parsedEvidence = parseRunEvidence(data);
+            if (parsedEvidence && isMountedRef.current) setEvidence(parsedEvidence);
+
+          } else if (eventType === "fallback") {
             const msg =
               typeof data.message === "string"
                 ? data.message
@@ -157,14 +206,17 @@ export function useAccountReadStream(): UseAccountReadStreamReturn {
         }
       }
     } catch (err) {
-      if ((err as Error).name === "AbortError") return; // intentional cancel
-      if (isMountedRef.current) {
-        setError(err instanceof Error ? err.message : "Account Read stream error");
-      }
+      // The credit wall is already up (CreditWallListener) and it IS the UI — drawing an inline
+      // error underneath it would offer a retry that gets the same 402. `finally` still runs.
+      if (isCreditWallRefusal(err)) return;
+      // A null result means draw nothing: an abort is the user's own Stop, not a failure.
+      const message = resolveRunError(err, "Account Read stream error");
+      if (message === null) return;
+      if (isMountedRef.current) setError(message);
     } finally {
       if (isMountedRef.current) setIsStreaming(false);
     }
   }, []);
 
-  return { block, isStreaming, error, fallbackMessage, start, stop, reset };
+  return { block, isStreaming, error, fallbackMessage, evidence, stages, start, stop, reset };
 }

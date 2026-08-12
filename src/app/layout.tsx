@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Newsreader } from "next/font/google";
+import { FunnelProvider } from "@/components/analytics/funnel-provider";
 import { DevLocator } from "@/components/dev/locator";
 import "./globals.css";
 
@@ -54,6 +55,8 @@ export default function RootLayout({
     <html lang="en" className={`${inter.variable} ${newsreader.variable}`}>
       <body className="min-h-screen bg-background font-sans antialiased">
         {children}
+        {/* The funnel's event sink (DESIGN §8) — root-level so /go and / are covered. */}
+        <FunnelProvider />
         <DevLocator />
       </body>
     </html>

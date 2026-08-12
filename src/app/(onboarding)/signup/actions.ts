@@ -37,7 +37,7 @@ export async function signup(_prevState: unknown, formData: FormData) {
     h.get("origin") ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -49,6 +49,21 @@ export async function signup(_prevState: unknown, formData: FormData) {
     redirect(`/signup?error=${encodeURIComponent(mapSignupError(error.message))}`);
   }
 
-  // Redirect to login with success message — email confirmation needed first
+  // ⚠️ Ask the RESPONSE whether a confirmation is pending — do not assume it.
+  //
+  // This used to redirect to "check your email" unconditionally. The Supabase project has
+  // email confirmation OFF: it stamps `email_confirmed_at` ~0.09s after creation, sends no
+  // mail, and returns a live session here — which the server client has already written to
+  // the cookie. So a brand-new user was signed in, told to wait for a message that would
+  // never arrive, and dropped on /login, which is code-first (the password field is behind
+  // a toggle). Verified against numenmachines.com 2026-08-04.
+  //
+  // Branching on `data.session` covers BOTH project settings without a flag: confirmation
+  // ON returns `session: null` and the old copy is correct; OFF returns a session and the
+  // user belongs in onboarding, which is where `emailRedirectTo` already points.
+  if (data.session) {
+    redirect("/welcome");
+  }
+
   redirect("/login?message=Check your email to confirm your account");
 }

@@ -71,8 +71,16 @@ import type { IdeaCardBlock } from "@/lib/tools/blocks";
 // accepted-but-unused `pin` input, kept so the route call site is unchanged).
 import type { RunnerPinContext } from "./predicted-pin";
 import { gatherCorpusForRun } from "@/lib/grounding/gather-for-run";
+import type { RunEvidence } from "@/lib/tools/evidence";
 import { buildProofFromSource, coerceSourceIndex } from "./build-proof";
+import { trimExamplesToBundle } from "./output-guards";
 import { buildAdaptProfile } from "./adapt-profile";
+import {
+  buildRevisePrompt,
+  findSlotLeaks,
+  isJudgeEnabled,
+  judgeThesisInversion,
+} from "./checkable-judge";
 import { selectPersonaTargets, type PersonaTarget } from "@/lib/audience/select-persona-targets";
 import {
   buildTargetAssignments,
@@ -215,6 +223,12 @@ export interface IdeasPipelineInput {
   platform: AssemblerInput["platform"];
   profileRow: ProfileRow | null;
   /**
+   * Stage B (B2): the exact lines of idea cards already on screen that this run should
+   * REWRITE ("Sharper angles", "rewrite these"). Fenced by the assembler under its own
+   * rewrite contract — the run owes sharper versions of THESE, not unrelated new ideas.
+   */
+  cards?: string[];
+  /**
    * Active audience for this run (07-04 — steer + react wiring, AUD-04/AUD-05).
    * null or GENERAL_AUDIENCE.is_general=true → falls back to profile-based grounding
    * (zero behavior change for General — regression gate preserved).
@@ -246,6 +260,16 @@ export interface IdeasPipelineInput {
    * absent = unchanged behavior. Honesty spine: fired at true boundaries, never on a fake timer.
    */
   onStage?: (name: string, status: "active" | "done") => void;
+  /**
+   * EVIDENCE callback — fired once with the proven outlier videos this run is grounded on, the
+   * moment retrieval settles (which is well BEFORE the first card exists — grounding precedes
+   * generation). The route wires it to SSE `send("evidence", …)` so the loading spine can show the
+   * creator the real posts their ideas are being drafted against instead of a shimmer.
+   *
+   * Never fires on an ungrounded or degraded run: gather-for-run only emits when rows survived the
+   * warrant, so the wait can never advertise evidence the cards then disclaim.
+   */
+  onEvidence?: (evidence: RunEvidence) => void;
 }
 
 // ─── Output type ─────────────────────────────────────────────────────────────
@@ -264,6 +288,12 @@ export interface IdeasPipelineResult {
    * affordance. Mirrors hooks-runner.
    */
   scrapeAvailable: boolean;
+  /**
+   * C1 checkable-judge trace (ENGINE_JUDGE_IDEAS runs only, and only when a check fired) —
+   * which checks failed and whether the revise cleared them. Diagnostic/harness surface;
+   * routes ignore it and it never reaches the UI.
+   */
+  judgeTrace?: string[];
 }
 
 // ─── Structured idea type ────────────────────────────────────────────────────
@@ -455,7 +485,7 @@ async function generateIdeasStructured(
  * @param input.profileRow  Creator profile (null = cold-start, never blocks on onboarding).
  */
 export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<IdeasPipelineResult> {
-  const { ask, platform, profileRow, audience = null } = input;
+  const { ask, platform, profileRow, audience = null, cards } = input;
   const allWarnings: string[] = [];
   // NOTE: `input.intent` (the sell/grow reaction lens) only ever reframed the persona-SIM verdict.
   // With the SIM removed from generation it is unused on this path for now; it re-attaches to the
@@ -504,6 +534,7 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
     // Explicit-only spend: the user's "Find new outliers" tap is the ONLY thing that sets this.
     allowScrape: input.allowScrape,
     onStage: input.onStage,
+    onEvidence: input.onEvidence,
     warnings: allWarnings,
     // Grounding-as-remix: when ON, the corpus is a fitted+dosed belief↔reality brief, not the raw
     // slice. The briefer re-points proven tensions at THIS creator, so hand it their profile.
@@ -517,6 +548,7 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
       ask: ask || "Generate ideas from my profile",
       platform,
       mode: "idea",
+      ...(cards && cards.length > 0 ? { cards } : {}),
       ...(overrides ? { overrides } : {}),
       ...(corpus ? { corpus } : {}),
     },
@@ -555,17 +587,105 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
     return { blocks: [], warnings: allWarnings, seedHookPath, scrapeAvailable };
   }
 
+  // ── C1 CHECKABLE-JUDGE (gated, ENGINE_JUDGE_IDEAS): slot leaks · thesis inversion · count ──
+  // Checks are mechanical or binary — never taste (the S5 rubric-critic constraint). ONE
+  // consolidated revise with every rejection stated (temp-0: the prompt must change), then the
+  // honest degrade: ideas are atomic units, so a unit still failing after the revise is DROPPED
+  // with a visible warning — never shipped as junk. The revised batch is adopted only when it
+  // has strictly MORE clean units than the original. The thesis judge costs one flash call per
+  // check pass and is skipped when the run has no real ask. `generationIndex` survives the drop
+  // filter so the per-persona positional binding (idea N ↔ person N) stays aligned.
+  const judgeTrace: string[] = [];
+  let batch = firstBatch.map((idea, i) => ({ idea, generationIndex: i }));
+  if (isJudgeEnabled("ideas")) {
+    const realAsk = ask.trim();
+    const checkBatch = async (ideas: StructuredIdea[]) => {
+      const failing = new Set<number>();
+      const rejections: string[] = [];
+      ideas.forEach((idea, i) => {
+        const segments = [
+          ...findSlotLeaks(idea.title),
+          ...findSlotLeaks(idea.angle),
+          ...findSlotLeaks(idea.seedHook),
+        ];
+        if (segments.length > 0) {
+          failing.add(i);
+          judgeTrace.push(`check:slot-leak:idea-${i + 1}`);
+          rejections.push(
+            `Idea ${i + 1} contains unfilled template placeholder text (${segments.join(" · ")}) — replace every [bracketed] placeholder with concrete, specific content.`,
+          );
+        }
+      });
+      if (realAsk) {
+        const verdicts = await judgeThesisInversion(
+          realAsk,
+          ideas.map((idea) => `${idea.title}: ${idea.angle}`),
+        );
+        if (verdicts === null) judgeTrace.push("judge:unavailable");
+        else
+          verdicts.forEach((inverted, i) => {
+            if (inverted) {
+              failing.add(i);
+              judgeTrace.push(`check:thesis-inverted:idea-${i + 1}`);
+              rejections.push(
+                `Idea ${i + 1} argues the OPPOSITE of the ask's thesis — argue what the ask requested.`,
+              );
+            }
+          });
+      }
+      if (ideas.length < IDEA_COUNT) {
+        judgeTrace.push(`check:count:${ideas.length}/${IDEA_COUNT}`);
+        rejections.push(`You returned ${ideas.length} ideas; return exactly ${IDEA_COUNT}.`);
+      }
+      return { failing, rejections, clean: ideas.length - failing.size };
+    };
+
+    const first = await checkBatch(firstBatch);
+    let selected = { ideas: firstBatch, failing: first.failing };
+    if (first.rejections.length > 0) {
+      try {
+        const revised = await generateIdeasStructured(
+          buildRevisePrompt(userMessage, first.rejections),
+          Boolean(corpus),
+          targets,
+        );
+        const second = revised.length > 0 ? await checkBatch(revised) : null;
+        if (second && second.clean > first.clean) {
+          selected = { ideas: revised, failing: second.failing };
+          judgeTrace.push("revise:accepted");
+        } else {
+          judgeTrace.push("revise:rejected");
+        }
+      } catch {
+        judgeTrace.push("revise:rejected");
+      }
+    }
+    const kept = selected.ideas
+      .map((idea, i) => ({ idea, generationIndex: i }))
+      .filter((c) => !selected.failing.has(c.generationIndex));
+    const dropped = selected.ideas.length - kept.length;
+    if (dropped > 0) {
+      allWarnings.push(
+        `${dropped} idea${dropped > 1 ? "s" : ""} failed output checks (template placeholder text or inverted thesis) and ${dropped > 1 ? "were" : "was"} dropped.`,
+      );
+    }
+    if (kept.length > 0 && kept.length < IDEA_COUNT) {
+      allWarnings.push(`Delivered ${kept.length} of the ${IDEA_COUNT} ideas asked for.`);
+    }
+    batch = kept;
+  }
+
   // ── STAGE: Ranking (real boundary — a pure map + sort; NO second call) ──
   input.onStage?.("Ranking", "active");
 
   // Rate each idea straight off its self-estimated /10 — band via bandFromStops (shares the SIM's
   // 6/3 calibration SSOT), fraction as the honest "N/10 stop" count, lead quote = the stopQuote.
-  const rated: RatedIdea[] = firstBatch.map((idea, i) => ({
+  const rated: RatedIdea[] = batch.map(({ idea, generationIndex }) => ({
     idea,
     band: bandFromStops(idea.personaStops),
     fraction: `${idea.personaStops}/10 stop`,
     scrollQuote: idea.stopQuote,
-    generationIndex: i,
+    generationIndex,
   }));
 
   // ── RANK (keep-all): best → worst by the projected /10 stop-count. Tie-break preserves
@@ -582,11 +702,17 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
 
   // ── BUILD: assemble idea-card blocks in ranked order ────────────────────────
   const blocks: IdeaCardBlock[] = [];
+  // CITATION INTEGRITY (Stage A): resolve sourceIndex against the examples that SURVIVED
+  // bundle assembly — the assembler's overflow path can truncate the corpus AFTER the
+  // mapping array was fixed, so the model could cite an example it was never shown.
+  const shownExamples = trimExamplesToBundle(userMessage, corpus, groundingExamples);
   for (const candidate of ranked) {
     // §11f receipts-on-cards: attach the frozen receipt for the outlier this idea adapted.
     // null (no source / ungrounded run) → the field is omitted so the block shape stays
     // byte-identical to the pre-grounding card (regression gate + honesty spine).
-    const proof = buildProofFromSource(candidate.idea.sourceIndex, groundingExamples);
+    // (No template-instantiation check here: an idea borrows a TENSION, not a madlib —
+    // there is no mechanical skeleton to verify. N-1's measured offenders were hooks+script.)
+    const proof = buildProofFromSource(candidate.idea.sourceIndex, shownExamples);
 
     // WHO this idea was written for. The reaction half (verdict/quote) is NULL now — no SIM ran on
     // this path — so bindTarget receives an EMPTY panel and returns the assignment WITHOUT a
@@ -657,5 +783,11 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
   // the user-fired simulation (the run that actually produces a reaction). `input.pin` is accepted
   // but unused on this path (kept so the route call site is unchanged).
 
-  return { blocks, warnings: allWarnings, seedHookPath, scrapeAvailable };
+  return {
+    blocks,
+    warnings: allWarnings,
+    seedHookPath,
+    scrapeAvailable,
+    ...(judgeTrace.length ? { judgeTrace } : {}),
+  };
 }

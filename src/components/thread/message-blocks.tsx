@@ -11,10 +11,13 @@
 
 import { Fragment } from 'react';
 import { AmbientCardIdContext } from '@/lib/hook-test-context';
+import { BlockOriginContext } from '@/lib/save-provenance-context';
+import type { BlockOrigin } from '@/components/app/home/rehydrate-thread';
 import { validateBlock } from '@/lib/tools/block-registry';
 import type { BlockType } from '@/lib/tools/block-registry';
 import { toAmbientDescriptor } from '@/components/app/home/ambient-descriptors';
 import { MarkdownBlockRenderer } from '@/components/thread/markdown-block';
+import { RunHeaderBlockRenderer } from '@/components/thread/run-header-block';
 import { BandBlockRenderer } from '@/components/thread/band-block';
 import { PersonasBlockRenderer } from '@/components/thread/personas-block';
 import { IdeaCardRenderer } from '@/components/thread/idea-card-block';
@@ -31,6 +34,7 @@ import { ReactionDistributionBlockRenderer } from '@/components/thread/reaction-
 import { PredictionGaugeBlockRenderer } from '@/components/thread/prediction-gauge-block';
 import { VideoTestCardRenderer } from '@/components/thread/video-test-card-block';
 import { CorpusReferencesBlockRenderer } from '@/components/thread/corpus-references-block';
+import { BroughtCardRenderer } from '@/components/thread/brought-card-block';
 import { UnsupportedBlock } from './unsupported-block';
 
 // Component map: same keys as BLOCK_REGISTRY (TypeScript enforces completeness).
@@ -38,6 +42,9 @@ import { UnsupportedBlock } from './unsupported-block';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const BLOCK_COMPONENTS: Record<BlockType, React.ComponentType<{ block: any }>> = {
   markdown: MarkdownBlockRenderer,
+  // Metadata, not UI — <ThreadTurn> reads it; this renders null. Kept in the array (never filtered)
+  // so the ambient ledger's positional card ids stay aligned. See run-header-block.tsx.
+  'run-header': RunHeaderBlockRenderer,
   band: BandBlockRenderer,
   personas: PersonasBlockRenderer,
   "idea-card": IdeaCardRenderer,
@@ -50,6 +57,7 @@ const BLOCK_COMPONENTS: Record<BlockType, React.ComponentType<{ block: any }>> =
   "account-read": AccountReadBlockRenderer,
   "input-request": InputRequestBlockRenderer,
   "corpus-references": CorpusReferencesBlockRenderer,
+  "brought-card": BroughtCardRenderer,
   "profile-read": ProfileReadBlockRenderer,
   "reaction-distribution": ReactionDistributionBlockRenderer,
   "prediction-gauge": PredictionGaugeBlockRenderer,
@@ -85,6 +93,16 @@ export interface MessageBlocksProps {
    * Guard: `__tests__/ambient-card-anchors.test.tsx`.
    */
   ambientBaseIndex?: number;
+  /**
+   * Per-block provenance, aligned index-for-index with `body` — the message row each block was
+   * persisted in. Provided down to <SaveAffordance> so a save records where it came from, which the
+   * eleven card renderers cannot do themselves (every one is invoked as `<Component block={block} />`).
+   *
+   * OPT-IN. Omitted → saves carry a null ref, exactly as they do today. A surface that renders
+   * blocks it did not load from a thread (the /dev/cards gallery) must leave it unset rather than
+   * hand a save someone else's id.
+   */
+  blockOrigins?: (BlockOrigin | null)[];
 }
 
 /**
@@ -107,7 +125,12 @@ function inBandConceptText(body: unknown[]): string | undefined {
   return undefined;
 }
 
-export function MessageBlocks({ body, conceptText, ambientBaseIndex }: MessageBlocksProps) {
+export function MessageBlocks({
+  body,
+  conceptText,
+  ambientBaseIndex,
+  blockOrigins,
+}: MessageBlocksProps) {
   // Prefer the explicit concept (threaded by the test/Read view); else derive the
   // in-band concept from a co-located markdown block (LIVE-06 text-Read surface).
   const personaConcept = conceptText ?? inBandConceptText(body);
@@ -132,7 +155,7 @@ export function MessageBlocks({ body, conceptText, ambientBaseIndex }: MessageBl
         // The `personas` (text-Read) renderer additively accepts a `conceptText` so the
         // shared AudienceLens mounts with a concept to ground chat (LIVE-03 (b) / LIVE-06).
         // All other renderers are invoked byte-identically — no behavior change for them.
-        const rendered =
+        const renderedBare =
           block.type === 'personas' && personaConcept ? (
             // block is the validated personas block; props is typed `unknown` on the registry
             // result, so cast to the renderer's expected shape (already schema-validated above).
@@ -143,6 +166,15 @@ export function MessageBlocks({ body, conceptText, ambientBaseIndex }: MessageBl
           ) : (
             <Component block={block} />
           );
+
+        // Tell this block's <SaveAffordance> which message row it came from. A provider emits no
+        // DOM, so the rendered tree stays byte-identical whether or not origins were supplied.
+        const origin = blockOrigins?.[index] ?? null;
+        const rendered = origin ? (
+          <BlockOriginContext.Provider value={origin}>{renderedBare}</BlockOriginContext.Provider>
+        ) : (
+          renderedBare
+        );
 
         // The ambient room's scroll-spy anchor. The id is resolved by `toAmbientDescriptor` — the
         // SAME function `buildAmbientDescriptors` uses to build the ledger — fed the SAME raw block

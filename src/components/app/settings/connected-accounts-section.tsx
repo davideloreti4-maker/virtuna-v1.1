@@ -123,13 +123,13 @@ export function ConnectedAccountsSection({ accounts }: { accounts: ConnectedAcco
                 <div className="flex items-center gap-2">
                   <p className="truncate text-sm font-medium text-foreground">@{a.handle}</p>
                   {a.is_primary && (
-                    <span className="inline-flex items-center gap-1 rounded border border-border-hover px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.06em] text-foreground-secondary">
+                    <span className="inline-flex items-center gap-1 rounded border border-border-hover px-1.5 py-0.5 font-mono text-micro uppercase tracking-[0.06em] text-foreground-secondary">
                       <Star weight="fill" className="h-2.5 w-2.5" />
                       Primary
                     </span>
                   )}
                 </div>
-                <p className="mt-0.5 font-mono text-[11px] text-foreground-muted">
+                <p className="mt-0.5 font-mono text-caption text-foreground-muted">
                   {PLATFORM_LABEL[a.platform]} · {syncedLabel(a.last_synced_at)}
                 </p>
               </div>

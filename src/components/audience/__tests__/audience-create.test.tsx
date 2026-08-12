@@ -9,13 +9,13 @@
  *  - templates prefill the description (presets reborn as templates)
  *  - Instagram/YouTube on the connect door go to /api/connected-accounts/connect
  *    (analytics only — never the TikTok calibration pipeline)
- *  - the streaming reveal renders the evidence figures + covers + "Building audience"
+ *  - the streaming card renders the ACCOUNT's own totals + covers + the pipeline spine
  *  - done → router.push to the audience detail (the detail page IS the reveal)
  *  - error → the quiet inline line, back on the form
  *  - page wiring: ?door= and the legacy ?source=account deep-link
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, act, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, act, waitFor, within } from "@testing-library/react";
 import type React from "react";
 
 const pushMock = vi.fn();
@@ -228,7 +228,7 @@ describe("AudienceCreate — connect door, non-TikTok platforms", () => {
 // ─── Streaming reveal ─────────────────────────────────────────────────────────
 
 describe("AudienceCreate — streaming reveal", () => {
-  it("shows the evidence figures, at most 8 covers, and the building line", async () => {
+  it("shows the account's OWN totals — the profile count, never the scraped window", async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       sseResponse([{ event: "evidence", data: EVIDENCE }], { hang: true }),
     );
@@ -239,12 +239,61 @@ describe("AudienceCreate — streaming reveal", () => {
     await clickContinue();
 
     await waitFor(() => expect(screen.getByTestId("reveal-figures")).toBeInTheDocument());
+    expect(screen.getByText("Zach King")).toBeInTheDocument();
     expect(screen.getByText("@zachking")).toBeInTheDocument();
-    expect(screen.getByText("12")).toBeInTheDocument(); // videos scraped — exact
     expect(screen.getByText("86.1M")).toBeInTheDocument(); // followers
     expect(screen.getByText("1.3B")).toBeInTheDocument(); // likes
-    expect(screen.getAllByTestId("reveal-cover")).toHaveLength(8);
-    expect(screen.getByText("Building audience")).toBeInTheDocument();
+
+    // THE REGRESSION. The fixture carries videoCount 610 and a 12-post scrape window, and this
+    // card used to render the window under a "Videos" label — so an account with 610 posts (or
+    // @mrbeast's few thousand) announced "12". The payload always knew better.
+    const figures = screen.getByTestId("reveal-figures");
+    expect(within(figures).getByText("610")).toBeInTheDocument();
+    expect(within(figures).queryByText("12")).not.toBeInTheDocument();
+
+    expect(screen.getAllByTestId("calibration-cover")).toHaveLength(12);
+  });
+
+  it("draws the pipeline spine from the route's stage frames", async () => {
+    // /audience/new consumed `status` and `evidence` and dropped every `stage` frame the route
+    // sends, so the longest wait in the product rendered as a pulsing dot while /welcome — the
+    // same SSE stream — drew the spine.
+    const fetchMock = vi.fn().mockResolvedValue(
+      sseResponse(
+        [
+          { event: "evidence", data: EVIDENCE },
+          { event: "stage", data: { name: "Reading your followers", status: "done" } },
+          { event: "stage", data: { name: "Watching your videos", status: "active" } },
+        ],
+        { hang: true },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<AudienceCreate />);
+    await typeHandle("zachking", "Your @handle");
+    await clickContinue();
+
+    await waitFor(() =>
+      expect(screen.getByLabelText("Watching your videos: active")).toBeInTheDocument(),
+    );
+    expect(screen.getByLabelText("Reading your followers: done")).toBeInTheDocument();
+    // The plan seeds the whole pipeline, so the step that has not started yet is still drawn.
+    expect(screen.getByLabelText("Building your audience profile: pending")).toBeInTheDocument();
+  });
+
+  it("shows the plan before any account or stage frame has arrived", async () => {
+    // The scrape takes ~126s to return the account. That whole first stretch used to be one
+    // line of text; it is the plan now.
+    const fetchMock = vi.fn().mockResolvedValue(sseResponse([], { hang: true }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<AudienceCreate />);
+    await typeHandle("zachking", "Your @handle");
+    await clickContinue();
+
+    await waitFor(() => expect(screen.getByTestId("calibration-status")).toBeInTheDocument());
+    expect(screen.getByLabelText("Reading your followers: active")).toBeInTheDocument();
   });
 
   it("done navigates to the new audience's detail page", async () => {
@@ -260,11 +309,60 @@ describe("AudienceCreate — streaming reveal", () => {
     await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/audience/aud-7"));
   });
 
-  it("error returns to the form with the quiet inline line", async () => {
+  /**
+   * The route writes THREE different error sentences and the difference is the point:
+   * `platform_unsupported` and `synthesis_failed` both mean the handle is fine. Substituting
+   * the local "Account not found. Check the handle" is a false accusation that costs the
+   * creator another paid scrape — the route's own comment says so in as many words.
+   *
+   * ⚠️ This block previously fed `message: "nope"` and then asserted the HARDCODED sentence —
+   * a fixture carrying a server message next to an assertion demanding it be discarded. It
+   * passed for exactly the reason the bug existed.
+   */
+  it("error carries the ROUTE's own sentence, not the local one", async () => {
+    const serverCopy =
+      "We read @zachking fine — building the audience from it is what failed. Nothing is wrong with the handle; try again.";
     const fetchMock = vi.fn().mockResolvedValue(
-      sseResponse([{ event: "error", data: { message: "nope", retry: true } }]),
+      sseResponse([{ event: "error", data: { message: serverCopy, retry: true } }]),
     );
     vi.stubGlobal("fetch", fetchMock);
+
+    render(<AudienceCreate />);
+    await typeHandle("zachking", "Your @handle");
+    await clickContinue();
+
+    await waitFor(() =>
+      expect(screen.getByTestId("create-error")).toHaveTextContent(serverCopy),
+    );
+    expect(screen.getByTestId("create-error")).not.toHaveTextContent("Account not found");
+    // Back on the form — the doors are visible again.
+    expect(screen.getByText("Connect account")).toBeInTheDocument();
+  });
+
+  it("platform_unsupported keeps the route's wording too", async () => {
+    const serverCopy = "Maven can only build an audience from a TikTok account right now.";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        sseResponse([{ event: "error", data: { message: serverCopy, retry: false } }]),
+      ),
+    );
+
+    render(<AudienceCreate />);
+    await typeHandle("zachking", "Your @handle");
+    await clickContinue();
+
+    await waitFor(() =>
+      expect(screen.getByTestId("create-error")).toHaveTextContent(serverCopy),
+    );
+  });
+
+  /** No server sentence to carry (transport died) — the local copy is the honest fallback. */
+  it("falls back to the local line when the frame carries no message", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(sseResponse([{ event: "error", data: { retry: true } }])),
+    );
 
     render(<AudienceCreate />);
     await typeHandle("zachking", "Your @handle");
@@ -275,7 +373,6 @@ describe("AudienceCreate — streaming reveal", () => {
         "Account not found. Check the handle — private accounts can't be read.",
       ),
     );
-    // Back on the form — the doors are visible again.
     expect(screen.getByText("Connect account")).toBeInTheDocument();
   });
 });

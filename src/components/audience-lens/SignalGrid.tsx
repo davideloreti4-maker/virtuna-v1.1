@@ -24,7 +24,7 @@ function SignalRow({ s }: { s: BrainSignal }) {
   const weak = s.tone === 'weak';
   return (
     <div className="flex items-center gap-2.5 py-[5px]" title={s.whyScore} data-signal-row>
-      <span className="w-[104px] shrink-0 truncate text-[11.5px] leading-none text-[var(--color-foreground-secondary)]">
+      <span className="w-[104px] shrink-0 truncate text-[12px] leading-none text-[var(--color-foreground-secondary)]">
         {s.label}
       </span>
       <span className="relative h-[3px] min-w-0 flex-1 overflow-hidden rounded-full bg-white/[0.06]">
@@ -37,7 +37,7 @@ function SignalRow({ s }: { s: BrainSignal }) {
           }}
         />
       </span>
-      <span className="w-[24px] shrink-0 text-right text-[11.5px] leading-none tabular-nums text-foreground">
+      <span className="w-[24px] shrink-0 text-right text-[12px] leading-none tabular-nums text-foreground">
         {s.score}
       </span>
       {/* The grade word only where it is a signal — weakness flags; strength is just a long bar. */}

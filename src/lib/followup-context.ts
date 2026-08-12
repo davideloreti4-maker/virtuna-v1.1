@@ -14,7 +14,18 @@
 
 import { createContext, useContext } from 'react';
 
-export type FollowupHandler = (prompt: string) => void;
+/**
+ * `skill` carries the chip's DECLARED generator (chat-followups.ts `ChatFollowup.skill`) alongside
+ * its sentence. It is optional and absent on every conversational chip, so a handler that ignores it
+ * behaves exactly as before — but the composer forwards it, and the chat route pins the agent's first
+ * tool choice to it. Without it a chip's subject-less sentence gets re-litigated as a vague ask and
+ * nothing runs.
+ *
+ * `opts.cards` (Stage B, B2) is the PACK a `carryCards` chip refers to — the card lines of the turn
+ * the chip sits under, extracted by the renderer that can see them (`cardLinesOf`). The composer
+ * forwards it as the chat body's `cards` (one-brain flag); handlers that ignore it are unaffected.
+ */
+export type FollowupHandler = (prompt: string, skill?: string, opts?: { cards?: string[] }) => void;
 
 export const FollowupContext = createContext<FollowupHandler | undefined>(undefined);
 

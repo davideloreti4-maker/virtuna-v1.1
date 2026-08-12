@@ -12,6 +12,18 @@ interface SidebarState {
   /** Toggle icon-only collapsed mode (desktop ⌘\ shortcut) */
   toggleCollapsed: () => void;
   setCollapsed: (v: boolean) => void;
+  /**
+   * Whether the ⌘K command palette is open.
+   *
+   * It lives here — with the rest of the app chrome — because the two components
+   * that drive it can't talk to each other directly: the trigger is the sidebar's
+   * Search row, but the palette itself MUST mount outside the <nav>. The nav
+   * animates with `translate-x`, and a transformed ancestor makes `position: fixed`
+   * resolve against that ancestor instead of the viewport, which would trap the
+   * palette inside a 220px column.
+   */
+  commandOpen: boolean;
+  setCommandOpen: (v: boolean) => void;
 }
 
 export const useSidebarStore = create<SidebarState>()(
@@ -24,6 +36,8 @@ export const useSidebarStore = create<SidebarState>()(
       close: () => set({ isOpen: false }),
       toggleCollapsed: () => set((state) => ({ isCollapsed: !state.isCollapsed })),
       setCollapsed: (v: boolean) => set({ isCollapsed: v }),
+      commandOpen: false,
+      setCommandOpen: (v: boolean) => set({ commandOpen: v }),
     }),
     {
       name: 'virtuna-sidebar',

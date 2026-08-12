@@ -32,12 +32,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AmbientOverview, type AmbientPresentation, type WatchingRun } from "./AmbientOverview";
-import { AmbientSimulate, type StimulusKind } from "./AmbientSimulate";
+import { AmbientSimulate, type StimulusKind, type SimulateConfig } from "./AmbientSimulate";
 import { AmbientDetail } from "./AmbientDetail";
 import {
   buildOverviewData,
   buildSimulateData,
-  parsePersonaStops,
   type OverviewVideoRow,
 } from "@/lib/surfaces/ambient-v2-adapters";
 import {
@@ -46,11 +45,25 @@ import {
   type PopulationPersona,
 } from "@/lib/surfaces/ambient-v2-population";
 import { buildVideoDomainTemplate } from "@/lib/surfaces/ambient-v2-brain";
-import { audienceToMeta } from "@/lib/surfaces/ambient-v2-audience-meta";
+import { watchCatalogueOf } from "@/lib/surfaces/ambient-v2-drill";
+import { audienceToMeta, humanizeArchetype } from "@/lib/surfaces/ambient-v2-audience-meta";
 import type { Audience } from "@/lib/audience/audience-types";
 import type { AmbientCardDescriptor } from "@/components/app/home/use-ambient-focus";
 import type { PopulationAggregate } from "@/lib/audience/population";
-import type { SimSealMap, SimSealVideo } from "@/lib/threads/sim-seals";
+import { reportCredit402 } from "@/lib/billing/credit-wall";
+import { reportSession401 } from "@/lib/auth/session-expired";
+import type { SimSealVideo } from "@/lib/threads/sim-seals";
+import {
+  isSealedSimSeal,
+  type SealedSimSeal,
+  type WireSimSealMap,
+} from "@/lib/onboarding/verdict-seal";
+import {
+  buildSealedVideoDomainTemplate,
+  SEALED_BRAIN_NOTE,
+  SEALED_POPULATION_NOTE,
+} from "@/lib/surfaces/ambient-v2-sealed";
+import { SealedWallCta } from "@/components/onboarding/sealed-wall-cta";
 
 /** One fired sim's full result, kept per descriptor id for the Overview seal + the depth drill. */
 interface RailSnapshot {
@@ -58,6 +71,9 @@ interface RailSnapshot {
   population?: PopulationAggregate | null;
   personas?: PopulationPersona[];
   scrollQuote?: string;
+  /** Present ⇒ `pct` is THIS SLICE's stop rate, not the room's. The row prints `label` beside the
+   *  %, because the two land in the same ranked column and only the label distinguishes them. */
+  slice?: { archetype: string; label: string };
 }
 
 /** Sheet-mode shell: the host sheet is the flex column that owns the height cap, so every surface
@@ -76,11 +92,31 @@ function stimulusKindOf(kind?: string): StimulusKind {
   }
 }
 
-/** A rough band word for the develop tie-back, from the projection's /10 (shares the 6/3 bands). */
-function bandFromStops(stops: number): string {
-  if (stops >= 6) return "Strong";
-  if (stops >= 3) return "Fair";
-  return "Weak";
+/**
+ * The develop tie-back's SOURCE — which skill's run this card came out of.
+ *
+ * This slot used to hold `Strong 8/10`, built from `bandFromStops(parsePersonaStops(d.fraction))`.
+ * Both are gone with the 0/10 rank (owner, 2026-08-02): the tie-back was quoting a score the
+ * engine no longer measures, printed as a chip right above the spend button. What a creator
+ * genuinely needs there is provenance — where this thing came from — so the line names the run
+ * instead of scoring it.
+ *
+ * `null` for a kind we cannot name, and the tie-back is then OMITTED. Naming an unknown source
+ * ("your last run") would be the same fabrication in words that the band was in numbers.
+ */
+function sourceLabelOf(kind?: string): string | null {
+  switch (kind) {
+    case "hook":
+      return "Hooks run";
+    case "idea":
+      return "Ideas run";
+    case "script":
+      return "Script run";
+    case "remix":
+      return "Remix run";
+    default:
+      return null;
+  }
 }
 
 /** The Flash reaction framing the react route accepts — a card's would-stop read is "hook"
@@ -119,6 +155,7 @@ export function AmbientOverviewRail({
   presentation = "rail",
   onDismiss,
   focusVideo,
+  onTestVariant,
 }: {
   audience: Audience;
   descriptors: AmbientCardDescriptor[];
@@ -132,8 +169,10 @@ export function AmbientOverviewRail({
   presentation?: AmbientPresentation;
   /** Sealed sims rehydrated from `threads.sim_seals`, keyed by TRIMMED concept text → the full seal
    *  (measured %, + the Phase-C population/personas depth). These re-seal rows AND repopulate the
-   *  depth drill on reload; a fresh in-session fire (below) takes precedence. */
-  persistedSeals?: SimSealMap;
+   *  depth drill on reload; a fresh in-session fire (below) takes precedence.
+   *  An ANONYMOUS session receives the sealed wire form instead (verdict-seal.ts): no %, no
+   *  population, no curve — those rows open the sealed drill (§0b② THE WALL), never a verdict. */
+  persistedSeals?: WireSimSealMap;
   /**
    * A request to open a TESTED VIDEO's depth directly — the Test card's "Simulate with your audience
    * →" door. `id` is the analysisId (the video seal's key); `nonce` makes a repeat tap on the SAME
@@ -145,6 +184,17 @@ export function AmbientOverviewRail({
    * when no video seal matches — the card only routes here when the composer confirms one exists.
    */
   focusVideo?: { id: string; nonce: number } | null;
+  /**
+   * The ＋ door — "Test something of your own". The HOST owns it (the composer), because what comes
+   * through it has to be ROUTED: a draft to `/api/tools/react`, a video file or link to the
+   * `/api/analyze` pipeline the composer already drives. The rail has no access to either seam.
+   *
+   * ⚠️ This replaced `onTestVariant={() => descriptors[0] && openDevelop(descriptors[0].id)}`, which
+   * was dead on an empty rail (`descriptors[0]` undefined ⇒ `&&` short-circuits) and, on a non-empty
+   * one, re-armed the creator's FIRST EXISTING CARD — the opposite of testing something new.
+   * Omitted ⇒ the board renders no ＋ at all, rather than a door onto nothing.
+   */
+  onTestVariant?: () => void;
 }) {
   const meta = audienceToMeta(audience);
   const sheet = presentation === "sheet";
@@ -167,7 +217,18 @@ export function AmbientOverviewRail({
   const videoSeals = useMemo<Record<string, SimSealVideo>>(() => {
     const out: Record<string, SimSealVideo> = {};
     for (const [key, seal] of Object.entries(persistedSeals ?? {})) {
-      if (seal.video) out[key] = seal.video;
+      if (!isSealedSimSeal(seal) && seal.video) out[key] = seal.video;
+    }
+    return out;
+  }, [persistedSeals]);
+
+  // SEALED video seals — the anonymous wire form (§0b② THE WALL). Only the free half arrives
+  // (analysisId + craft score); these rows open the sealed drill and can never reveal a %,
+  // because the % was never transmitted.
+  const sealedVideos = useMemo<Record<string, SealedSimSeal["video"]>>(() => {
+    const out: Record<string, SealedSimSeal["video"]> = {};
+    for (const [key, seal] of Object.entries(persistedSeals ?? {})) {
+      if (isSealedSimSeal(seal)) out[key] = seal.video;
     }
     return out;
   }, [persistedSeals]);
@@ -181,6 +242,40 @@ export function AmbientOverviewRail({
 
   const openDevelop = (id: string) => setDevelopId(id);
 
+  // The creator's own last-N catalogue, behind the Key metrics rank strip. Fetched LAZILY — the
+  // first time a video drill actually opens — because the Overview never draws it and the rail
+  // mounts on every thread. Fired once per mount and then cached: the answer changes only when the
+  // creator seals a new run, which remounts this surface anyway.
+  //
+  // Every failure path is silent BY DESIGN: an anonymous visitor gets a 401 here, and the card
+  // already has honest copy for "no baseline yet". A baseline is the one thing on this page that
+  // must never be improvised, so not having one is a state, not an error.
+  const [catalogue, setCatalogue] = useState<number[] | null>(null);
+  const catalogueRef = useRef(false);
+  useEffect(() => {
+    if (catalogueRef.current) return;
+    if (detailId === null || !videoSeals[detailId]) return;
+    catalogueRef.current = true;
+    const ac = new AbortController();
+    void (async () => {
+      try {
+        const res = await fetch("/api/analysis/history", { signal: ac.signal });
+        if (!res?.ok) return;
+        const rows: unknown = await res.json();
+        if (!Array.isArray(rows)) return;
+        // The clip being read is itself a history row by now — it was persisted at Test time. Left
+        // in, it would rank against a catalogue containing itself and drag the median toward its own
+        // value. `detailId` IS the analysisId, so it drops out by id.
+        setCatalogue(watchCatalogueOf(rows.filter((r) => r?.id !== detailId)));
+      } catch {
+        // Every failure lands in the same place on purpose — rejected, aborted, 401, malformed body.
+        // "No baseline" is a state this card already has honest copy for, so there is nothing to
+        // report and nothing to retry: the one thing a benchmark must never do is appear anyway.
+      }
+    })();
+    return () => ac.abort();
+  }, [detailId, videoSeals]);
+
   // Reset the open drill wholesale when the thread's descriptor set changes (thread switch), so a
   // stale positional id can't render a mismatched depth view.
   useEffect(() => {
@@ -193,11 +288,18 @@ export function AmbientOverviewRail({
   // declaration order) instead of being wiped by the reset it arrived with.
   useEffect(() => {
     const id = focusVideo?.id;
-    if (!id || !videoSeals[id]) return; // no matching sealed video ⇒ ignore, never open an empty drill
+    if (!id) return;
+    if (sealedVideos[id]) {
+      // The wall (§0b②): the door opens the SEALED drill directly — there is no % to reveal.
+      setDevelopId(null);
+      setDetailId(id);
+      return;
+    }
+    if (!videoSeals[id]) return; // no matching sealed video ⇒ ignore, never open an empty drill
     revealVideo(id);
     setDevelopId(null);
     setDetailId(id);
-  }, [focusVideo, videoSeals, revealVideo]);
+  }, [focusVideo, videoSeals, sealedVideos, revealVideo]);
 
   // Resolve a descriptor id → its sealed snapshot: a fresh in-session fire wins; else a persisted seal
   // matched by trimmed concept text (survives reload). Undefined ⇒ the row is still honestly queued.
@@ -206,12 +308,17 @@ export function AmbientOverviewRail({
       if (sessionSeals[id]) return sessionSeals[id];
       const d = descriptors.find((x) => x.id === id);
       const seal = d ? persistedSeals?.[d.conceptText.trim()] : undefined;
-      if (!seal) return undefined;
+      // A sealed wire seal carries no verdict — the row stays honestly queued (§0b②).
+      if (!seal || isSealedSimSeal(seal)) return undefined;
       return {
         pct: seal.pct,
         population: seal.population,
         personas: seal.personas,
         scrollQuote: seal.scrollQuote,
+        // A sliced seal must survive reload still knowing it is a slice — otherwise the row comes
+        // back after a refresh looking like a reading of the whole room. The persisted seal has
+        // only the archetype, so the label falls back to it (humanised at render).
+        ...(seal.slice ? { slice: { archetype: seal.slice.archetype, label: humanizeArchetype(seal.slice.archetype) } } : {}),
       };
     },
     [sessionSeals, persistedSeals, descriptors],
@@ -235,8 +342,14 @@ export function AmbientOverviewRail({
   );
 
   // Fire the REAL sealed sim for one ranked stimulus and seal its row with the measured fraction.
+  //
+  // `config` is what ⑤ ARMED — the lens, the slice, the scene. It used to be dropped on the floor
+  // (`onSimulate={() => fireSim(armedId)}`), so every run was the audience default however the
+  // dials were set. It is OPTIONAL because the quick-simulate door on a queued row fires without
+  // ever opening ⑤, and that path genuinely has no config: absent ⇒ the room, the stop lens, the
+  // inherited scene — which is exactly what it always did.
   const fireSim = useCallback(
-    async (id: string) => {
+    async (id: string, config?: SimulateConfig) => {
       const d = descriptors.find((x) => x.id === id);
       const text = (d?.conceptText ?? "").trim();
       if (text.length === 0) return;
@@ -258,19 +371,57 @@ export function AmbientOverviewRail({
           // A DELIBERATE Overview sim: pin:true captures the predicted vector for the flywheel
           // (relocated `pinPredictedSignature`); persist:true writes the sealed verdict to the
           // thread so the seal survives reload. Type-to-room omits both and stays ephemeral.
-          body: JSON.stringify({ text, pin: true, persist: true, ...(framing ? { framing } : {}) }),
+          //
+          // `framing` and `lens` are DIFFERENT axes and both ride along: framing is what the
+          // stimulus IS (a hook vs an idea, from the descriptor's kind), the lens is what this run
+          // MEASURES (would they stop / finish / share / follow / buy). Conflating them is the
+          // mistake an earlier reading of this screen made.
+          body: JSON.stringify({
+            text,
+            pin: true,
+            persist: true,
+            ...(framing ? { framing } : {}),
+            ...(config
+              ? {
+                  lens: config.lensKey,
+                  scene: config.scene,
+                  ...(config.segment ? { segment: config.segment } : {}),
+                }
+              : {}),
+          }),
           signal: controller.signal,
         });
         if (controller.signal.aborted) return;
-        if (!res.ok) throw new Error("reaction_failed");
+        if (!res.ok) {
+          // THE WALL (2026-07-28): `/api/tools/react` is priced at 1 credit, so this fetch can
+          // now come back 402. Announce it so the ONE paywall dialog renders the server's
+          // sentence; the row still drops back to honestly queued below, which is the right
+          // resting state — a refused run produced no verdict to show.
+          const err = await res.json().catch(() => null);
+          // 401 first. The row still drops back to queued below, which stays the honest resting
+          // state — a refused run produced no verdict either way.
+          reportSession401(res.status);
+          reportCredit402(res.status, err);
+          throw new Error("reaction_failed");
+        }
         const data: {
           fraction?: string;
           scrollQuote?: string;
           personas?: PopulationPersona[];
           population?: PopulationAggregate | null;
+          slice?: { archetype: string; honored: boolean; stopPct?: number; total?: number; reason?: string } | null;
         } = await res.json();
         if (controller.signal.aborted) return;
-        const pct = fractionToStopPct(data.fraction ?? "");
+        // A SLICED run's verdict is the slice's own stop rate, not the room's fraction — asking
+        // about Builders and sealing the room's number would answer a question nobody asked.
+        // An un-honoured slice seals NOTHING (the row stays queued) rather than falling back to
+        // the room, which would be the same lie arriving quietly.
+        const sliced = data.slice ?? null;
+        const pct = sliced
+          ? sliced.honored
+            ? sliced.stopPct ?? null
+            : null
+          : fractionToStopPct(data.fraction ?? "");
         // Seal the row only with a real, parseable fraction (honesty spine — never a fabricated %).
         // Capture the full snapshot (population/personas) too, so the depth drill opens without a re-run.
         if (pct !== null) {
@@ -281,6 +432,9 @@ export function AmbientOverviewRail({
               population: data.population ?? null,
               personas: data.personas,
               scrollQuote: data.scrollQuote,
+              ...(sliced?.honored
+                ? { slice: { archetype: sliced.archetype, label: config?.segmentLabel ?? sliced.archetype } }
+                : {}),
             },
           }));
         }
@@ -302,16 +456,22 @@ export function AmbientOverviewRail({
   // 2026-07-23: the loading-then-config order was backwards).
   const handleQuickSimulate = useCallback(
     (id: string) => {
+      // A sealed video has no % to reveal — the tap opens the sealed drill (the wall).
+      if (sealedVideos[id]) return setDetailId(id);
       if (videoSeals[id]) return revealVideo(id);
       return openDevelop(id);
     },
-    [videoSeals, revealVideo],
+    [sealedVideos, videoSeals, revealVideo],
   );
 
   // A row's body tap. A revealed VIDEO drills into its (real) Brain depth; an unrevealed one reveals
   // first (the % gates the drill). A concept routes to the existing population/develop opener.
   const handleOpenStimulus = useCallback(
     (id: string) => {
+      if (sealedVideos[id]) {
+        setDetailId(id);
+        return;
+      }
       if (videoSeals[id]) {
         if (revealedVideos[id]) setDetailId(id);
         else revealVideo(id);
@@ -319,8 +479,31 @@ export function AmbientOverviewRail({
       }
       openStimulus(id);
     },
-    [videoSeals, revealedVideos, revealVideo, openStimulus],
+    [sealedVideos, videoSeals, revealedVideos, revealVideo, openStimulus],
   );
+
+  // A SEALED video row (anonymous wire seal) → the sealed drill: craft chip, honest withheld
+  // notes, nothing else — the wire never carried the verdict, so this surface cannot leak it
+  // (§0b② THE WALL). Checked before the full-video branch: the maps are disjoint by construction
+  // (one wire seal is either sealed or full), but the sealed drill must win if that ever drifts.
+  if (detailId !== null && sealedVideos[detailId]) {
+    const template = buildSealedVideoDomainTemplate({
+      craftScore: sealedVideos[detailId]!.craftScore,
+    });
+    return (
+      <div className={sheet ? SHEET_SHELL : "flex w-full items-start justify-center"}>
+        <AmbientDetail
+          template={template}
+          brainNote={SEALED_BRAIN_NOTE}
+          populationNote={SEALED_POPULATION_NOTE}
+          noteAction={<SealedWallCta />}
+          reducedMotion={reducedMotion}
+          presentation={presentation}
+          onBack={() => setDetailId(null)}
+        />
+      </div>
+    );
+  }
 
   // A drilled VIDEO row → its real Detail. BOTH tabs are real now: the Brain from the sealed
   // attention read, and the Population from the SAME run's fold reception panel (the analyze route
@@ -331,7 +514,11 @@ export function AmbientOverviewRail({
     // The AUDIENCE tab, from the SAME sealed run — the fold's real archetype reactors, mapped by
     // `buildVideoPopulation` at Test time and persisted on the seal. Absent on a Wave-3-degraded row
     // (and on every seal written before this shipped), which keeps the honest brain-only drill.
-    const videoAggregate = persistedSeals?.[detailId]?.population ?? null;
+    // (This branch only runs for FULL seals — videoSeals excludes the sealed wire form — so the
+    // narrowing here is for the type, not a reachable sealed path.)
+    const fullSeal = persistedSeals?.[detailId];
+    const videoAggregate =
+      fullSeal && !isSealedSimSeal(fullSeal) ? fullSeal.population ?? null : null;
     const skimmedPct = typeof v.skimmedPct === "number" ? v.skimmedPct : undefined;
     // What they'd DO with it — sealed numbers only; the one-line read is derived in the adapter.
     const actionIntent = v.intents;
@@ -342,6 +529,7 @@ export function AmbientOverviewRail({
       stopPct: v.stopPct,
       stimulusKey: detailId,
       conceptLabel: "video",
+      ...(catalogue?.length ? { catalogue } : {}),
       population: videoAggregate
         ? buildPopulationFrameData({
             aggregate: videoAggregate,
@@ -367,11 +555,11 @@ export function AmbientOverviewRail({
 
   if (developId !== null) {
     const d = descriptors.find((x) => x.id === developId);
-    const stops = d ? parsePersonaStops(d.fraction) : 0;
+    const sourceLabel = sourceLabelOf(d?.kind);
     const simData = buildSimulateData({
       audience: meta,
       stimulus: { text: d?.conceptText ?? "", kind: stimulusKindOf(d?.kind) },
-      develop: { band: bandFromStops(stops), value: `${stops}/10`, lensLabel: "would stop" },
+      ...(sourceLabel ? { develop: { sourceLabel } } : {}),
     });
     const armedId = developId;
     return (
@@ -383,7 +571,9 @@ export function AmbientOverviewRail({
           presentation={presentation}
           onClose={() => setDevelopId(null)}
           // Phase D-minimal: fire the real react sim → sealed measured % replaces the projection.
-          onSimulate={() => fireSim(armedId)}
+          // The ARMED config travels with it — until 2026-07-28 this was `() => fireSim(armedId)`
+          // and the five dials ⑤ collects were discarded here, one call short of the engine.
+          onSimulate={(config) => fireSim(armedId, config)}
         />
       </div>
     );
@@ -404,6 +594,12 @@ export function AmbientOverviewRail({
         tier: meta.tier,
         conceptLabel: d?.kind ?? "concept",
         stimulusKey: detailId,
+        // The stimulus text the row was fired on. Omitting it was measured live on production
+        // 2026-08-05: every text/hook drill headed itself "Untitled" (drillIdentity's empty-title
+        // fallback) while the concept sat right there on the descriptor — the ARM panel two
+        // branches up already reads the same field. It also starves the Brain tab, whose
+        // attention scrubber falls back to the coded reason labels when the transcript is absent.
+        ...(d?.conceptText?.trim() ? { transcript: d.conceptText.trim() } : {}),
       });
       return (
         <div className={sheet ? SHEET_SHELL : "flex h-full w-full"}>
@@ -424,20 +620,43 @@ export function AmbientOverviewRail({
   // Merge the seal sources into the per-descriptor-id map buildOverviewData reads: a fresh in-session
   // fire wins; else a persisted seal matched by trimmed concept text (survives reload); else queued.
   const measured: Record<string, number> = {};
+  const measuredSlice: Record<string, string> = {};
+  const depthless: Record<string, boolean> = {};
   for (const d of descriptors) {
-    const pct = snapshotFor(d.id)?.pct;
-    if (typeof pct === "number") measured[d.id] = pct;
+    const snap = snapshotFor(d.id);
+    if (typeof snap?.pct === "number") {
+      measured[d.id] = snap.pct;
+      // Whose percentage it is travels with the percentage itself.
+      if (snap.slice) measuredSlice[d.id] = snap.slice.label;
+      // A sealed row with no population has no drill behind it (see `openStimulus`). Marking it
+      // here is what stops the board from rendering an inert door: the SAME predicate the opener
+      // uses, read one layer earlier so the row can be honest before it is tapped rather than
+      // silent after. Keep the two in step — if one learns a new depth source, so must the other.
+      if (!snap.population) depthless[d.id] = true;
+    }
   }
   // Tested videos from the seal store → ranked in alongside the concepts. A revealed video ranks by
   // its measured attention %; an unrevealed one stays queued (viral score shown, % withheld).
-  const videos: OverviewVideoRow[] = Object.entries(videoSeals).map(([id, v]) => ({
-    id,
-    label: videoLabel(v),
-    viralScore: v.craftScore ?? null,
-    stopPct: v.stopPct,
-    revealed: !!revealedVideos[id],
-  }));
-  const overview = buildOverviewData({ audience: meta, descriptors, measured, videos, watching });
+  const videos: OverviewVideoRow[] = [
+    ...Object.entries(videoSeals).map(([id, v]) => ({
+      id,
+      label: videoLabel(v),
+      viralScore: v.craftScore ?? null,
+      stopPct: v.stopPct,
+      revealed: !!revealedVideos[id],
+    })),
+    // SEALED rows (§0b②): craft score shown, the audience % NEVER — the wire seal carries none.
+    // `revealed` is hardcoded false, so the adapter's withheld-0 sentinel stays inert; the wire
+    // seal has no verbatim, so the label is the honest fallback.
+    ...Object.entries(sealedVideos).map(([id, v]) => ({
+      id,
+      label: "Tested video",
+      viralScore: v.craftScore ?? null,
+      stopPct: 0,
+      revealed: false,
+    })),
+  ];
+  const overview = buildOverviewData({ audience: meta, descriptors, measured, measuredSlice, depthless, videos, watching });
   return (
     <div className={sheet ? SHEET_SHELL : "flex h-full w-full"}>
       <AmbientOverview
@@ -450,7 +669,9 @@ export function AmbientOverviewRail({
         onOpenStimulus={handleOpenStimulus}
         // Quick-sim fires the real sealed sim (concept) or reveals the measured % (video).
         onQuickSimulate={handleQuickSimulate}
-        onTestVariant={() => descriptors[0] && openDevelop(descriptors[0].id)}
+        // The ＋ door, handed straight to the host (see the prop doc for the two defects the old
+        // one-liner here carried). No handler ⇒ no door, never a dead one.
+        onTestVariant={onTestVariant}
       />
     </div>
   );

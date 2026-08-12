@@ -83,8 +83,15 @@ describe('AccountReadBlockRenderer — "Write to my strengths →" forward actio
 
     await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/home'));
 
-    const [url, init] = (global.fetch as Mock).mock.calls[0]!;
-    expect(url).toBe('/api/tools/ideas');
+    // Find the Ideas POST by URL rather than by position. It used to be call [0], but the
+    // SaveAffordance this card mounts now reads its saved state from the store, so it issues a
+    // GET /api/saved on mount and that lands first. The assertion here is about the Ideas
+    // payload, never about which fetch happens to go out first.
+    const ideasCall = (global.fetch as Mock).mock.calls.find(
+      ([url]) => url === '/api/tools/ideas',
+    );
+    expect(ideasCall, 'the Ideas endpoint was never called').toBeDefined();
+    const [, init] = ideasCall!;
     const body = JSON.parse((init as RequestInit).body as string);
     expect(body.platform).toBe('tiktok');
     // The strengths ride the steering `ask` verbatim.

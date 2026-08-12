@@ -85,7 +85,7 @@ export function SignalHeatmap({ timeline, tSec }: { timeline: SignalTimeline; tS
 
       {/* legend + affordance */}
       <div className="mt-2 flex items-center justify-between">
-        <span className="flex items-center gap-1.5 font-mono text-[7.5px] uppercase tracking-[0.1em] text-[var(--color-foreground-muted)]">
+        <span className="flex items-center gap-1.5 font-mono text-[8px] uppercase tracking-[0.1em] text-[var(--color-foreground-muted)]">
           weak
           <span
             className="h-[4px] w-14 rounded-full"
@@ -93,7 +93,7 @@ export function SignalHeatmap({ timeline, tSec }: { timeline: SignalTimeline; tS
           />
           strong
         </span>
-        <span className="font-mono text-[7.5px] uppercase tracking-[0.1em] text-[var(--color-foreground-muted)]">each cell = 1 sec</span>
+        <span className="font-mono text-[8px] uppercase tracking-[0.1em] text-[var(--color-foreground-muted)]">each cell = 1 sec</span>
       </div>
 
       <button

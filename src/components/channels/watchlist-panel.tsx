@@ -10,7 +10,7 @@
 import { X, Television, DownloadSimple } from "@phosphor-icons/react";
 import { PlatformAvatar } from "./platform-avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
+import { cn, FOCUS_RING as focusRing } from "@/lib/utils";
 import { formatCount } from "@/lib/competitors-utils";
 import type { ChannelWatchlistEntry } from "@/hooks/queries/use-channels";
 
@@ -23,9 +23,6 @@ interface WatchlistPanelProps {
   onRemoveAll: () => void;
   onExport: () => void;
 }
-
-const focusRing =
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/10";
 
 function initialsOf(entry: ChannelWatchlistEntry): string {
   const base = entry.displayName ?? entry.handle;

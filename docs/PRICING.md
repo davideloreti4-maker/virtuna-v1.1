@@ -31,10 +31,23 @@ One pool per plan; every paid action draws from it at a public price (`CREDIT_CO
 | Credits | Actions |
 |---|---|
 | **10** | A full **Reading** — score a video/concept, decode a remix source, `/test` in chat |
-| **5** | Explore with a **live outlier scrape** (real Apify spend) |
+| **5** | **Real Apify spend** — Explore with a live outlier scrape · a **Read on your own account** |
 | **2** | A script · a Predict · a Simulate · a Profile read |
-| **1** | A hooks pack · an ideas pack · develop-this-idea · a concept Read · a card refine · a cached Explore |
-| **0 (free)** | Open chat · type-to-room reactions · viewing anything — free on purpose (the glue), guarded by rate limits, not the meter |
+| **1** | A hooks pack · an ideas pack · develop-this-idea · a concept Read · a **room reaction** · a card refine · a cached Explore |
+| **0 (free)** | Open chat · viewing anything · calibrating an audience — free on purpose (the glue and the setup), guarded by rate limits, not the meter |
+
+> Two corrections to this table, both made 2026-07-29 after the code disagreed with it:
+>
+> - **A Read on your own account is 5, not free.** `/api/account-read` had no gate, no bill, and
+>   no `CREDIT_COSTS` key at all while running TWO Apify scrapes per call (1–3 min). That was an
+>   omission, not a decision — it was flagged across six sessions before it got a number.
+> - **A room reaction is 1, not free.** It was priced on 2026-07-28 under its own `react` key; this
+>   table still listed "type-to-room reactions" among the free actions.
+>
+> ⚠️ **Calibration (`/api/audiences/calibrate`) is still free and still unmetered** — it fires one
+> Apify scrape. Owner call 2026-07-29: it is SETUP, sitting in the onboarding path, and a paywall
+> there refuses a creator before they have seen the product work. Recorded as a decision so the
+> next audit does not read it as the same omission.
 
 > ⚠️ **The per-action numbers are DRAFT until a final owner sign-off** (the plan allowances
 > and ratios are locked). Before flipping enforcement on, verify the costs against measured
@@ -71,7 +84,7 @@ One pool per plan; every paid action draws from it at a public price (`CREDIT_CO
 Enforcement is deliberately inert (`BILLING_ENFORCE_QUOTA` unset) until these are done, in
 this order:
 
-### 1. Whop: create 6 plans + 3 secrets (the only blocking step)
+### 1. ✅ Whop: 6 plans + 3 secrets — PROVISIONED 2026-07-26, integration merged `b3b21bd5` 2026-07-27
 
 One full-price plan per tier, plus one **$1 / 3-day trial SKU per tier** that renews into the
 full price:
@@ -87,35 +100,173 @@ full price:
 | `WHOP_API_KEY` | Dashboard → Developer → API key (server-side checkout sessions) |
 | `WHOP_WEBHOOK_SECRET` | Webhook endpoint secret for `https://<domain>/api/webhooks/whop` |
 
-Set them in Vercel (Production). Configure the webhook in Whop to send
-`membership.went_valid`, `membership.went_invalid`, `membership.payment_failed`.
-A missing **trial** id degrades to full price (never undercharge — and the modal now says
-which price was resolved); a missing **plan** id makes checkout 503 rather than silently
-granting access.
+Set them in Vercel (Production). A missing **trial** id degrades to full price (never
+undercharge — and the modal now says which price was resolved); a missing **plan** id makes
+checkout 503 rather than silently granting access.
 
-### 2. Supabase Auth dashboard (15 minutes, one-time)
+**Build each trial SKU as: `Initial fee` $1 + `Free trial` 3 days + subscription price =
+the plan price.** Whop charges an initial fee immediately and only the *subscription* waits
+for the trial to end — which is exactly "$1 now, $49 on day 4". There is no separate
+"paid trial" primitive.
 
-| Setting | Where | Value |
+Subscribe the webhook (`https://<domain>/api/webhooks/whop`) to exactly these three:
+**`membership_went_valid`**, **`membership_went_invalid`**, **`payment_failed`**.
+
+> ⚠️ **The docs and the API disagree. Trust the API.** Whop's published event list advertises
+> `membership.activated` / `membership.deactivated`, and an earlier edit of this file told you
+> to use them. **The webhook endpoint rejects both** — "is not a valid event" — on every
+> `api_version`. Probed live 2026-07-26 against the real account. The only accepted
+> membership/payment events are the three above. `invoice_past_due` is also rejected.
+>
+> The API accepts only the **underscored** spelling, and echoes it back underscored — yet the
+> same created webhook stored `["membership_went_valid", "membership_went_invalid",
+> "payment.failed"]`, mixing both conventions in one array. The handler therefore normalises
+> the first underscore to a dot and reads the name from either `event` or `action`
+> (`normalizeEventName`), so all four spellings land on one case.
+>
+> **Do not "modernise" these names from the docs without re-probing the API.**
+
+**What was actually broken** (audit 2026-07-26 — none of it had ever run against real Whop):
+`/api/v5/checkout_sessions` and `/api/v5/memberships` were **removed** and answered 404, so
+the first purchase would have 500'd; the verifier read `svix-*` headers where Whop sends
+Standard Webhooks `webhook-*`, so every delivery 401'd. Both fixed and **verified live**:
+a real checkout session now returns a `ch_…` id with metadata round-tripping.
+It survived unnoticed because the checkout test stubbed `fetch` wholesale and asserted only
+the request *body* — never the URL. A mocked transport proves a call's shape, not its
+destination.
+
+> **Still unverified** (needs a real purchase): the webhook **payload** — whether the event
+> arrives under `event` or `action`, and how the plan id is nested. The handler reads
+> `plan.id → plan_id → product.id → product_id`, and an unrecognised event or unmatched SKU
+> is logged at WARN/ERROR with the raw spelling and payload keys — never silently swallowed.
+> **The first sandbox event settles it.**
+
+### 2. ✅ Supabase Auth dashboard — DONE 2026-07-27
+
+| Setting | Where | State |
 |---|---|---|
-| Leaked-password protection | Auth → Providers → Email | **ON** (advisor currently flags it off) |
-| Minimum password length | Auth → Providers → Email | **8** (forms already enforce 8 client-side) |
-| Site URL | Auth → URL Configuration | the production domain (currently `https://virtuna-v11.vercel.app`) |
-| Redirect URLs | Auth → URL Configuration | `https://<domain>/auth/callback`, `http://localhost:3000/auth/callback` |
-| Custom SMTP | Auth → SMTP | **Required before launch** — default Supabase SMTP is ~2 emails/hour, which breaks signup confirmations and password resets at any real volume. Resend/Postmark, 10 min setup |
-| Google OAuth | Auth → Providers → Google | confirm prod client id/secret + the prod redirect URL in Google Console |
+| Minimum password length | Auth → Providers → Email | ✅ **8**. ⚠️ This is the *only* enforcement at signup — `signup-form.tsx` has no `minLength` and `signup/actions.ts` passes the password straight to `signUp` with no validation. (`reset-password-form.tsx` does enforce 8 client-side; an earlier revision of this file generalised that to "forms already enforce 8", which was wrong.) |
+| Leaked-password protection | Auth → Providers → Email | ⛔ **Pro-plan only** — cannot be enabled on this plan. Accepted gap; the advisor will keep flagging it. Signup is genuinely password-based (`signUp` + `signInWithPassword`), so if this ever matters, the free alternative is a HIBP k-anonymity check inside `signup/actions.ts` (~20 lines, no key, password never leaves the server). |
+| Site URL | Auth → URL Configuration | ✅ `https://numenmachines.com` |
+| Redirect URLs | Auth → URL Configuration | ✅ `https://numenmachines.com/**`, `https://www.numenmachines.com/**`, `http://localhost:3000/**`. **Wildcards are required, not cosmetic** — the app redirects to `${origin}/auth/callback?next=/welcome` and `?next=/reset-password`; a bare `/auth/callback` entry does not match the query string and the redirect is rejected *after* the user has already clicked the link in their email. |
+| Custom SMTP | Auth → SMTP | ✅ **Resend**, `smtp.resend.com:587`, user `resend`, sender `Maven <noreply@numenmachines.com>`. Verified end to end 2026-07-27: `POST /recover` → 200, mail delivered. ⚠️ Also raise Auth → Rate Limits → *emails per hour* — it stays at **30** even after custom SMTP is attached, so Supabase throttles below whatever the provider allows. |
+| Google OAuth | Auth → Providers → Google | ✅ confirmed |
+
+⚠️ **Deliverability, not configuration:** the first message landed in Gmail **spam**. SPF and
+DKIM both pass and both align (`resend._domainkey.numenmachines.com` signs `d=numenmachines.com`;
+return-path `send.numenmachines.com` → `include:amazonses.com`), so this is reputation on a domain
+whose entire history is a parked page and then a suspended cPanel account — not an auth failure.
+It warms up with volume and engagement. Levers, in order of effect: recipients marking "not spam";
+deploying a real email template (Supabase's stock recovery mail is a near-empty body with one bare
+link — a textbook spam shape, and `supabase/templates/*.html` are **local-dev only**, prod uses
+stock); DMARC `p=none` → `p=quarantine`; Google Postmaster Tools. **Not a launch blocker** — mail
+is delivered and accepted, just filed in the wrong folder.
 
 ### 3. Flip the meter: `BILLING_ENFORCE_QUOTA=true`
 
 Until then the quota is computed, shown and logged but never blocks. Flip AFTER the sandbox
 pass (below).
 
-### 4. Grandfather rule (7 users in prod, 3 active/30d, 0 subscriptions)
+### 4. ✅ Grandfather rule — there is nobody to grandfather
 
-Everyone is tier `free` (allowance 0) — on flip day they stop at zero. Recommendation: comp
-the owner's own account(s) (insert a `user_subscriptions` row at `studio`, or unbilled ledger
-rows), let the handful of others start a $1 trial. Decide which emails get comped.
+This step used to read *"7 users in prod, 3 active/30d"* and ask which emails to comp. Queried
+against `auth.users` on 2026-07-27, those seven are:
 
-### 5. The sandbox pass (with Whop test mode, before real customers)
+| Email | Analyses | What it is |
+|---|---|---|
+| `e2e-test@virtuna.local` | 58 | the E2E suite |
+| `test@virtuna.dev` · `e2e-home-fresh@virtuna.local` · `tester@numen.dev` · `maven-e2e-2026@example.com` | 0–2 | test fixtures |
+| `davide.loreti4@gmail.com` | 7 | the owner |
+| `davide@gmail.com` | 0 | never signed in — a typo account |
+
+**Zero real users, zero subscriptions.** The count was real; the interpretation was not — `.local`
+and `example.com` addresses were being counted as people. So: comp the owner's account, ignore the
+rest, and note that **`BILLING_ENFORCE_QUOTA` has no blast radius** — flipping it strands nobody and
+needs no migration or announcement.
+
+29 *anonymous* users exist (demo pool, all within 24h, minted two at a time — worth checking that
+double-invocation before real traffic). They carry no subscription and are unaffected.
+
+### 5. The sandbox pass — 7 of 7 VERIFIED (4 live 2026-07-27, 3 closed 2026-07-27 later)
+
+Run against production with a real $0 promo purchase (`TEST_MAVEN2`) on
+`davide.loreti88@gmail.com`. `BILLING_ENFORCE_QUOTA=true` since `331888ca`.
+
+**The core money loop is proven end to end: buy → grant → bill → cancel → revoke.**
+
+- [x] **Trial purchase grants tier + stamps the window** — `starter`, `is_trial`,
+      2026-07-27 10:46 → 07-30, `trial_used_at` set. Membership `mem_o3mXSuod9Gxteg`,
+      plan `plan_OTX4xMIHYyDoY`.
+- [x] **A Reading bills 10 credits from the 50-credit trial pool** — confirmed in the
+      `reading_events` ledger (1 row, 10 credits), not just the UI.
+- [x] **A second trial resolves FULL PRICE** — `/pricing` → Pro offered $99, not $1.
+      ✅ **The UI half is fixed** (`d8b0b6fa`): the guard was server-side only and no UI file
+      referenced it, so the card said "Start for $1" to someone who could not have one.
+      `hasUsedTrial` (`lib/billing/trial-eligibility`) is now the single predicate behind both
+      the checkout route and `/api/subscription`, and three signed-in surfaces (`/pricing`,
+      settings → billing, the credit wall) read "Upgrade · $99/month" once `trial_used_at` is
+      set.
+- [x] **Cancel → tier `free`, status `cancelled`** — and this is the first time
+      `membership.deactivated` ever fired. Without the alias fix (`d9c8162a`) a cancellation
+      would have left the customer with full access **forever**. `trial_used_at` correctly
+      survives (history, not state). `is_trial` is left `true`.
+      ⚠️ **Correction — that stale flag is NOT harmless, and the reason given here was wrong.**
+      "Tier `free` has allowance 0" does not hold *inside a trial window*:
+      `creditAllowanceFor` returns `TRIAL.credits` whenever `inTrial`, **regardless of tier**,
+      and `isTrialActive` reads only the dates — never `status`. Measured on production
+      2026-07-27 against the real gate: tier `free`, status `cancelled`, `limit: 50`,
+      `used: 10`, `allowed: true`. A customer who cancels mid-trial keeps the remainder of
+      their 50 credits until `trial_ends_at`. Defensible (they paid $1 for 3 days) — but it is
+      a product decision, not the no-op this line claimed. **Owner call: keep or revoke.**
+- [x] **50-credit wall** — verified 2026-07-27 against production with the REAL gate
+      (`checkCreditQuota` imported, fed the live `user_subscriptions` row), by filling
+      `reading_events` to 50 spent rather than burning 4 more engine runs. At 50/50 the next
+      Reading returns `allowed: false`, `reason: "allowance"`, `inTrial: true`,
+      `renewsAt: 2026-07-30` — i.e. the trial wall, which renders a DATE and no checkout
+      (`reading-limit-dialog`: `upgrade` is null while `inTrial`). Confirmed both flag ways;
+      with enforcement off the verdict is identical but `enforced: false`. **Probe rows
+      deleted — the ledger is back to its real 1 row / 10 credits.**
+- [x] **Conversion (day 4) does NOT re-stamp the window** — closed by unit test rather than
+      waiting for 2026-07-30 (`webhooks/whop/__tests__/trial-stamping.test.ts`). The renewal
+      delivery for the same membership omits the trial columns **entirely** — the assertion is
+      about absent keys, not equal values, because an upsert that names them would overwrite
+      them. Also pinned: a full-price grant clears the window but keeps `trial_used_at`.
+      Mutation-checked (forcing `alreadyStamped = false` fails it).
+- [x] `sync-whop` reconciles a desynced row — covered by
+      `cron/sync-whop/__tests__/route.test.ts`: repairs a drifted row, revokes a cancelled
+      one, KEEPS the tier on `past_due`, and refuses to demote a payer whose SKU matches no
+      configured plan.
+      ⚠️ **The gap is now a pinned test, not a footnote.** It only `select`s rows that already
+      have a `whop_membership_id`, and `update`s them — **no insert path anywhere**. A missed
+      webhook leaves no row, so there is nothing to iterate and nothing to repair, and the
+      cron reports a clean `synced: 0, total: 0` while a paying customer has nothing. **"0
+      errors" from this cron is not evidence that every payer has their tier.** Closing it
+      needs a Whop-side enumeration (list the company's memberships, reconcile INTO Supabase),
+      which is a different cron. Until then, pay-and-get-nothing is caught only by a human.
+- [x] A failed run bills nothing — by construction: `recordUsage` is called only after the
+      result is persisted and the engine succeeded (see its module note; the ledger exists
+      because the old meter counted `analysis_results` rows inserted BEFORE the pipeline ran).
+      `billing/__tests__/route-wiring.test.ts` holds the placement across all 11 paid routes.
+
+#### What four real defects taught us (all found 2026-07-27, all in production)
+
+Every Whop env var was set and the integration was "done" — and the money path was dead. Four
+defects sat behind one another, each invisible until the one in front was cleared:
+
+1. verifier read `svix-*`; Whop sends `webhook-*` → every delivery 401'd
+2. setting the URL in the dashboard **created a second webhook** with its own secret → 401
+3. the secret is **not base64**; `Buffer.from(s,"base64")` silently returned 50 wrong bytes
+   from a 67-char raw string → HMAC computed flawlessly over the wrong key
+4. the v2 payload puts the event under **`type`**, not `event`/`action` → resolved to `""`,
+   fell to `default:`, answered **200 having granted nothing**
+
+Plus: merely OPENING and SAVING the webhook in Whop's dashboard silently rewrote its events
+from `membership_went_valid` to `membership.activated` **and flipped api_version v2 → v1**.
+
+**A 200 from a webhook proves delivery, never effect.** And never encode Whop's current
+vocabulary as a contract — accept every spelling, log anything unrecognised loudly.
+
+### 5b. Original checklist (superseded by 5 above)
 
 - [ ] Trial purchase → webhook grants tier + stamps `trial_started_at`/`trial_used_at`
 - [ ] 50-credit pool enforced: 5 Readings pass, the 6th 402s with trial copy (a DATE, no checkout)

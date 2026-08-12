@@ -10,30 +10,41 @@
 > **`globals.css` + this file are the only current references.**
 
 ## The system in one line
-Flat-warm **charcoal** surfaces + **cream** text + a **terracotta accent used sparingly** +
+Flat-warm **charcoal** surfaces + **cream** text + a **coral-red accent used sparingly** +
 **matte** depth (no glass gradients, no glow, no white inset-shine). Primary actions are
 **neutral cream**, not accent. Inter for all chrome; serif **only** for voice-moments
 (greeting/hero). The old cold-black `#07080a` Raycast glass system is dead. The de-Claude
-break is the **near-zero dosage**, not the hue — so as of **2026-06-24** the accent hue is
-**terracotta `#d97757`** (signal-red `#e23b2d` was trialed and reverted; dosage rule kept). See
+break is the **near-zero dosage**, not the hue — as of **2026-07-07** the accent is
+**coral-red `#FF6363`**. (Hue history: terracotta `#d97757` → signal-red `#e23b2d` trialed and
+reverted → coral-red `#FF6363`. The dosage rule survived every change.) See
 **"Accent dosage (LOCKED)"** below.
+
+⚠️ `--color-coral-*` and `--color-signal-*` are **dead layer-1 primitives** — 1 file each.
+The live accent is `--color-accent` (31 files). Their inline comments still claim to be the
+brand accent; they are not.
 
 ## Tokens (real values — `globals.css`)
 
 ### Color
+> 🔒 **This table is verified against `globals.css` by `src/app/__tests__/design-token-drift.test.ts`.**
+> Do not hand-edit a value here — change `globals.css` and the guard will tell you what to update.
+> (Corrected 2026-08-07: five rows had drifted — bg, sidebar, composer, chip and the accent hue.)
+
 | Role | Token | Value |
 |---|---|---|
-| App background | `--color-background` / `--charcoal-app` | `#262624` (warm charcoal) |
-| Sidebar | `--charcoal-sidebar` | `#1a1a18` |
-| Composer surface | `--charcoal-composer` | `#1e1d1b` |
-| Chip / lifted | `--charcoal-chip` | `#2f2e2b` |
-| Primary text | `--cream-primary` | `#ece7de` (**never `#fff`**) |
-| Secondary text | `--cream-secondary` | `#c2bdb4` |
-| Muted text | `--cream-muted` | `#8a857c` |
-| Accent (solid) | `--coral-500` / `--color-accent` | `#d97757` terracotta/clay — the brand accent (**not legacy `#FF7F50`**) |
-| Accent (text/icon) | `--color-accent-text` / `--coral-400` | terracotta, legible on dark |
-| Accent soft (tint bg) | `--color-accent-soft` | `oklch(0.68 0.13 33 / 0.16)` (terracotta tint) |
-| Accent foreground | `--color-accent-foreground` | `#f6e9e6` (cream glyph on solid accent) |
+| App background | `--color-background` / `--color-charcoal-app` | `#1f1f1e` |
+| Chrome (both rails) | `--color-chrome` | `#1a1a19` |
+| Sidebar | `--color-charcoal-sidebar` | `#2c2c2b` (aliases `--color-charcoal-chip`) |
+| Composer surface | `--color-charcoal-composer` | `#1a1a19` |
+| Chip / lifted | `--color-charcoal-chip` | `#2c2c2b` |
+| In-thread result card | `--color-charcoal-thread` | `#252524` |
+| Primary text | `--color-cream-primary` | `#ece7de` (**never `#fff`**) |
+| Secondary text | `--color-cream-secondary` | `#c2bdb4` |
+| Muted text | `--color-cream-muted` | `#8a857c` |
+| Accent (solid) | `--color-accent` | `#FF6363` coral-red (**not legacy `#FF7F50`, not terracotta `#d97757`**) |
+| Accent (text/icon) | `--color-accent-text` | `#ff8080` — legible on dark |
+| Accent soft (tint bg) | `--color-accent-soft` | `rgba(255, 99, 99, 0.16)` |
+| Accent foreground | `--color-accent-foreground` | `#2a1212` (dark glyph on solid accent) |
 | **Primary action** | `--color-action` | `#ece7de` cream — buttons/send are NEUTRAL, not accent |
 | Action foreground | `--color-action-foreground` | `#1c1b19` (dark glyph on cream) |
 

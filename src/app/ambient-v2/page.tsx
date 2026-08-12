@@ -7,7 +7,11 @@
 
 import { useState } from "react";
 import { AmbientOverview, AMBIENT_PANEL_HEIGHT } from "@/components/audience-lens/v2/AmbientOverview";
-import { OVERVIEW_R4, OVERVIEW_R4_REST } from "@/components/audience-lens/v2/overview-fixture";
+import {
+  OVERVIEW_R4,
+  OVERVIEW_R4_ARRIVAL,
+  OVERVIEW_R4_REST,
+} from "@/components/audience-lens/v2/overview-fixture";
 import { AmbientDetail } from "@/components/audience-lens/v2/AmbientDetail";
 import { CREATOR_TEMPLATE } from "@/components/audience-lens/v2/detail-fixture";
 import { CREATOR_LIVE_TEMPLATE, CREATOR_LIVE_TEXT_TEMPLATE } from "@/components/audience-lens/v2/detail-live-fixture";
@@ -54,14 +58,15 @@ function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; chi
 
 export default function AmbientV2DevPage() {
   const [surface, setSurface] = useState<Surface>("overview");
-  const [mode, setMode] = useState<"simulating" | "rest">("simulating");
+  const [mode, setMode] = useState<"simulating" | "rest" | "arrival">("simulating");
   const [simMode, setSimMode] = useState<"develop" | "cold">("develop");
   const [domain, setDomain] = useState<"creator" | "creator-live" | "creator-text" | "pricing">("creator");
   // Start's audience is a real CHOICE pre-thread (null ⇒ the General baseline, matching the app's
   // `is_general` convention). Passing these three props is what turns the locked chip into a picker.
   const [audienceId, setAudienceId] = useState<string | null>(null);
   const selectedAudience = DEV_AUDIENCES.find((a) => a.id === audienceId) ?? GENERAL_AUDIENCE;
-  const overviewData = mode === "simulating" ? OVERVIEW_R4 : OVERVIEW_R4_REST;
+  const overviewData =
+    mode === "simulating" ? OVERVIEW_R4 : mode === "arrival" ? OVERVIEW_R4_ARRIVAL : OVERVIEW_R4_REST;
   const template =
     domain === "creator"
       ? CREATOR_TEMPLATE
@@ -108,6 +113,11 @@ export default function AmbientV2DevPage() {
                 </Chip>
                 <Chip on={mode === "rest"} onClick={() => setMode("rest")}>
                   at rest
+                </Chip>
+                {/* The DESKTOP ARRIVAL board (2026-08-11 r3) — the rail before any work exists.
+                    Nothing ranked, nothing queued, so it states the room's makeup instead. */}
+                <Chip on={mode === "arrival"} onClick={() => setMode("arrival")}>
+                  arrival
                 </Chip>
               </div>
             </>
@@ -157,6 +167,10 @@ export default function AmbientV2DevPage() {
             }}
             onSkill={() => openSim("develop")}
             onSubmit={() => openSim("develop")}
+            // Start's door renders only when a host can run what comes through it — and this page
+            // never passed a handler, so the door was absent from every review shot of ④ while the
+            // board's ＋ (below) had one. Same act, same cold intake, both surfaces.
+            onSimDoor={() => openSim("cold")}
             audiences={DEV_AUDIENCES}
             selectedAudienceId={audienceId}
             onSelectAudience={(a) => setAudienceId(a.is_general ? null : a.id)}
@@ -173,7 +187,7 @@ export default function AmbientV2DevPage() {
             </p>
             <div className="mt-7 flex items-center justify-end">
               <span
-                className="rounded-lg px-4 py-2 text-[13.5px] font-medium"
+                className="rounded-lg px-4 py-2 text-[14px] font-medium"
                 style={{ background: "#ece7de", color: "#1c1b19" }}
               >
                 ask →

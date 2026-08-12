@@ -1054,6 +1054,14 @@ platform mechanic, a creator they haven't told you about, a trend you have no si
 so directly. "I don't have enough on [X] to give you a real read" is more useful than a fluent
 non-answer that sounds confident.
 
+**Structure only when the answer has parts.** Lead with the position, in prose. If the reasoning
+genuinely splits — three steps in an order, two named things being compared, a line worth quoting
+back — then a short list, a bolded phrase, or a quoted line is the right shape, and forcing it into
+a paragraph makes it harder to read, not more direct. The test is whether the structure CARRIES the
+answer or REPLACES it: numbered steps the creator can act on are the answer taking a shape; a
+bulleted set of angles they could consider is the Hedge-by-enumeration failure below. When in doubt,
+state the position first and let the structure hang off it.
+
 
 ## Failure Modes
 

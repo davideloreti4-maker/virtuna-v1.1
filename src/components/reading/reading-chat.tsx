@@ -157,7 +157,7 @@ export function ReadingChat({ analysisId }: ReadingChatProps) {
             key={p}
             type="button"
             onClick={() => seedPrompt(p)}
-            className="rounded-full border border-[var(--color-border)] bg-white/[0.02] px-3 py-1.5 text-[13px] text-foreground-secondary transition-colors hover:bg-white/[0.05] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/10"
+            className="rounded-full border border-[var(--color-border)] bg-white/[0.02] px-3 py-1.5 text-[13px] text-foreground-secondary transition-colors hover:bg-white/[0.05] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[color:var(--focus-ring)]"
           >
             {p}
           </button>
@@ -202,7 +202,7 @@ export function ReadingChat({ analysisId }: ReadingChatProps) {
                     type="button"
                     onClick={stop}
                     aria-label="Stop"
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/[0.06] bg-white/[0.04] text-foreground-muted transition-colors hover:bg-white/[0.1] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/[0.06] bg-white/[0.04] text-foreground-muted transition-colors hover:bg-white/[0.1] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)]"
                   >
                     <Square className="h-3.5 w-3.5 fill-current" />
                   </button>
@@ -215,7 +215,7 @@ export function ReadingChat({ analysisId }: ReadingChatProps) {
                     className={cn(
                       // Round send disc — the #219 composer grammar (the cream disc
                       // is the one bright thing; /home renders the same 36px circle).
-                      'flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10',
+                      'flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)]',
                       value.trim().length > 0
                         ? 'bg-action text-action-foreground hover:bg-action/90'
                         : 'cursor-not-allowed border border-white/[0.06] bg-white/[0.03] text-foreground-muted/50',

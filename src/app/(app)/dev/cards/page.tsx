@@ -15,18 +15,30 @@
  * (SaveAffordance needs the query client). AppShell owns <main>; this is a plain content div.
  */
 
-import { IdeasThreadView } from "@/components/thread/ideas-thread-view";
-import { HooksThreadView } from "@/components/thread/hooks-thread-view";
-import { ScriptThreadView } from "@/components/thread/script-thread-view";
-import { RemixThreadView } from "@/components/thread/remix-thread-view";
-import { ChatThreadView } from "@/components/thread/chat-thread-view";
-import { ExploreThreadView } from "@/components/thread/explore-thread-view";
-import { AccountReadThreadView } from "@/components/thread/account-read-thread-view";
+import { ThreadTurn, type LiveRun } from "@/components/thread/thread-turn";
+import { ThreadShell } from "@/components/thread/thread-shell";
 import { MessageBlocks } from "@/components/thread/message-blocks";
 import { AmbientRoom } from "@/components/audience-lens/AmbientRoom";
 import { AudiencePresence } from "@/components/audience-lens/audience-presence";
+import { AmbientOverviewRail } from "@/components/audience-lens/v2/AmbientOverviewRail";
+import { AmbientOverviewSheet } from "@/components/audience-lens/v2/AmbientOverviewSheet";
+import { AmbientDetail } from "@/components/audience-lens/v2/AmbientDetail";
+import {
+  CREATOR_LIVE_TEMPLATE,
+  CREATOR_LIVE_TEXT_TEMPLATE,
+} from "@/components/audience-lens/v2/detail-live-fixture";
+import { ArmCard } from "@/components/audience-lens/v2/AmbientSimulate";
+import { SimDoorReading } from "@/components/audience-lens/v2/SimulateDoorHost";
+import { CollectStep, IntakeStep } from "@/components/audience-lens/v2/SimulateIntake";
+import { buildSimulateData } from "@/lib/surfaces/ambient-v2-adapters";
+import { audienceToMeta } from "@/lib/surfaces/ambient-v2-audience-meta";
+import { AMBIENT_V2_ENABLED } from "@/lib/flags/ambient-v2";
+import { GENERAL_AUDIENCE } from "@/lib/audience/audience-repo";
+import type { AmbientCardDescriptor } from "@/components/app/home/use-ambient-focus";
+import type { WireSimSealMap } from "@/lib/onboarding/verdict-seal";
 import { useState, useEffect } from "react";
-import { ProgressChecklist } from "@/components/thread/progress-checklist";
+import { ProgressChecklist, SkillProgress } from "@/components/thread/progress-checklist";
+import type { RunEvidence } from "@/lib/tools/evidence";
 import { SKILL_RUN_META } from "@/components/thread/run-capsule";
 import { Reading } from "@/components/reading/reading";
 import { ReadingSkeleton } from "@/components/reading/reading-skeleton";
@@ -53,11 +65,131 @@ import {
   SINGLE_AUDIENCE_READ_BLOCK,
   USER_TURNS,
   FOLLOWUPS,
+  POPULATION_1K,
   doneStages,
 } from "./fixtures";
 
 const AUDIENCE = "Bootstrapped Founders";
 const noop = () => {};
+
+// ── The per-skill view adapters ──────────────────────────────────────────────────
+//
+// The seven `*-thread-view.tsx` wrappers this gallery used to mount are GONE. They were
+// per-skill LIVE surfaces gated on `activeTool`, and that gating is exactly what made a
+// finished run live outside the thread until the creator switched skills. Production now
+// renders every turn — live or reloaded — through ONE <ThreadTurn>.
+//
+// These adapters keep the gallery's call sites intact while routing them at the real
+// component, so this page stays what its header promises: 1:1 with a real thread. If it
+// re-forked from production it would be worse than useless — a stale reference that reads
+// as authoritative (which has already cost a design session once).
+//
+// A run's `live` half carries what a settled turn cannot re-derive (the stage receipt, the
+// engine's outro text, degrade notices). Passing it with `isStreaming: false` is precisely
+// the just-completed state each entry below wants to show.
+
+type GalleryTurnProps = {
+  userTurn?: string | null;
+  blocks: unknown[];
+  live?: Partial<LiveRun> & { skill: LiveRun["skill"] };
+};
+
+function GalleryTurn({ userTurn, blocks, live }: GalleryTurnProps) {
+  return (
+    <ThreadShell userTurn={undefined}>
+      <ThreadTurn
+        userTurn={userTurn ?? null}
+        blocks={blocks}
+        live={live ? { isStreaming: false, ...live } : null}
+      />
+    </ThreadShell>
+  );
+}
+
+/** Shared shape of the generative skill views (ideas / hooks / script / remix). */
+type SkillViewProps = {
+  streamingBlocks?: unknown[];
+  persistedBlocks?: unknown[];
+  stages?: LiveRun["stages"];
+  followupText?: string | null;
+  warnings?: string[];
+  outliersAvailable?: boolean;
+  onFindOutliers?: () => void;
+  isStreaming?: boolean;
+  error?: string | null;
+  platform?: string;
+  userTurn?: string | null;
+  audienceLabel?: string;
+  inputHookLine?: string | null;
+  // Accepted and ignored: the card CTAs ride context in production, never props.
+  statusMessage?: string | null;
+  onTestHook?: () => void;
+  onWriteScriptHook?: () => void;
+  onTestScript?: () => void;
+  onDevelop?: () => void;
+  onRetry?: () => void;
+  skillLabel?: string;
+};
+
+function skillView(skill: LiveRun["skill"]) {
+  return function SkillView(p: SkillViewProps) {
+    const blocks = [...(p.streamingBlocks ?? []), ...(p.persistedBlocks ?? [])];
+    return (
+      <GalleryTurn
+        userTurn={p.userTurn}
+        blocks={blocks}
+        live={{
+          skill,
+          isStreaming: p.isStreaming ?? false,
+          stages: p.stages ?? [],
+          followupText: p.followupText ?? null,
+          warnings: p.warnings ?? [],
+          error: p.error ?? null,
+          outliersAvailable: p.outliersAvailable ?? false,
+          onFindOutliers: p.onFindOutliers,
+          onRetry: p.onRetry,
+          audienceLabel: p.audienceLabel ?? AUDIENCE,
+          platform: p.platform ?? "tiktok",
+          hookLine: p.inputHookLine ?? null,
+        }}
+      />
+    );
+  };
+}
+
+const IdeasThreadView = skillView("ideas");
+const HooksThreadView = skillView("hooks");
+const ScriptThreadView = skillView("script");
+const RemixThreadView = skillView("remix");
+const ExploreThreadView = skillView("explore");
+
+/** Chat turns carry no run stamp — <ThreadTurn> classifies them from their block types. */
+function ChatThreadView(p: {
+  persistedBlocks?: unknown[];
+  persistedTurns?: { userTurn?: string | null; blocks: unknown[] }[];
+  streamingBlocks?: unknown[];
+  userTurn?: string | null;
+  [k: string]: unknown;
+}) {
+  const turns =
+    p.persistedTurns ??
+    [{ userTurn: p.userTurn ?? null, blocks: [...(p.persistedBlocks ?? []), ...(p.streamingBlocks ?? [])] }];
+  return (
+    <ThreadShell userTurn={undefined}>
+      {turns.map((t, i) => (
+        <ThreadTurn key={i} userTurn={t.userTurn ?? null} blocks={t.blocks} />
+      ))}
+    </ThreadShell>
+  );
+}
+
+function AccountReadThreadView(p: {
+  block?: unknown;
+  userTurn?: string | null;
+  [k: string]: unknown;
+}) {
+  return <GalleryTurn userTurn={p.userTurn} blocks={p.block ? [p.block] : []} live={{ skill: "account" }} />;
+}
 
 // ── Group A: the real skill thread views, in their just-completed state ──────────
 // Each is fed the fresh-run-complete combo (streamingBlocks populated + isStreaming:false +
@@ -114,6 +246,31 @@ const THREAD_VIEWS: { id: string; label: string; note: string; node: React.React
         streamingBlocks={HOOK_BLOCKS}
         statusMessage={null}
         stages={doneStages(["Generating", "Simulating your audience", "Ranking"])}
+        followupText={FOLLOWUPS.hooks}
+        warnings={[]}
+        isStreaming={false}
+        error={null}
+        platform="tiktok"
+        onTestHook={noop}
+        onWriteScriptHook={noop}
+        userTurn={USER_TURNS.hooks}
+        audienceLabel={AUDIENCE}
+      />
+    ),
+  },
+  {
+    id: "hooks-projected",
+    label: "Hooks (projected — the shape a real run actually emits)",
+    note: "⚠️ The `Hooks` entry above carries NO `provenance`, so it renders as a MEASURED card — a shape the generation path has not emitted since 2026-07-22. This is the real one. On a projected card the sim door prints no band and no fraction (sim-door.tsx:118 gates both on `!projected`), and since 2026-08-05 there is no `#N` gutter either: `rank` comes from sorting on `hook.personaStops` — the hook-writing model's estimate of its OWN hooks (hooks-runner.ts:669, \"the WRITER'S self-estimate, not a measured room reaction\") — so a numeral asserted a ranking nothing measured. Diff against `Hooks` above, which keeps its `#1` because a measured card earned it. The ORDER is identical in both: an order claims sequence, a numeral claims a measurement.",
+    node: (
+      <HooksThreadView
+        persistedBlocks={[]}
+        streamingBlocks={HOOK_BLOCKS.map((b) => ({
+          ...b,
+          props: { ...(b.props as Record<string, unknown>), provenance: "projected" },
+        })) as typeof HOOK_BLOCKS}
+        statusMessage={null}
+        stages={doneStages(["Generating", "Ranking"])}
         followupText={FOLLOWUPS.hooks}
         warnings={[]}
         isStreaming={false}
@@ -618,12 +775,116 @@ const THREAD_VIEWS: { id: string; label: string; note: string; node: React.React
   },
 ];
 
+/**
+ * EVIDENCE fixtures for the in-flight previews (2026-07-31).
+ *
+ * The evidence rail is the newest thing on the most-watched surface, and — like every other
+ * in-flight state — it exists ONLY during a live paid run, which is exactly how the loading states
+ * drifted unseen before these previews existed. Declared here (not beside the Reading fixtures
+ * further down) because INFLIGHT_VIEWS builds its JSX at module load: a `const` declared below
+ * would be in the temporal dead zone.
+ *
+ * The images are app screenshots that already ship in /public, so the tiles render REAL pictures
+ * (true crop, aspect and load behaviour) with no network fixture. The numbers are made up because
+ * this is a GALLERY — in a live run every one of them comes off a retrieved corpus row.
+ */
+const EVIDENCE_OUTLIERS: RunEvidence = {
+  headline: "Drafting against 3 proven videos",
+  items: [
+    {
+      kind: "video",
+      image: "/images/landing/hero-read.png",
+      label: "zachking",
+      metric: "44× vs followers",
+      href: "https://www.tiktok.com/@zachking/video/1234567890123",
+    },
+    {
+      kind: "video",
+      image: "/images/landing/feature-audience.png",
+      label: "mkbhd",
+      metric: "2.4M views",
+    },
+    // No cover — the tile falls back to the handle's initial and keeps its footprint, which is
+    // what a real expired TikTok-CDN URL looks like a few hours after a scrape.
+    { kind: "video", label: "cleoabram", metric: "12× vs followers" },
+  ],
+};
+
+const EVIDENCE_REMIX_SOURCE: RunEvidence = {
+  headline: "Reworking this video",
+  items: [
+    {
+      kind: "video",
+      image: "/images/landing/showcase-read.png",
+      label: "danielleaskyoutube",
+      // Views only — the creator pasted this link, so nothing measured it against a baseline and
+      // no multiplier is implied (mirrors the remix card's own receipt, which passes fitLabel null).
+      metric: "890K views",
+      href: "https://www.tiktok.com/@x/video/1",
+    },
+  ],
+};
+
+const EVIDENCE_FILMSTRIP: RunEvidence = {
+  headline: "Reading your footage",
+  slots: 8,
+  items: [
+    { kind: "frame", image: "/images/landing/hero-read.png", idx: 0 },
+    { kind: "frame", image: "/images/landing/feature-audience.png", idx: 1 },
+    { kind: "frame", image: "/images/landing/feature-drivers.png", idx: 2 },
+    { kind: "frame", image: "/images/landing/feature-hook.png", idx: 3 },
+    { kind: "frame", image: "/images/landing/feature-retention.png", idx: 4 },
+  ],
+};
+
+/**
+ * The full run LIFECYCLE on a loop — pending → active → done → the collapsed receipt.
+ *
+ * Every other in-flight preview is a frozen mid-run shape, which cannot show the two things the
+ * 2026-08-01 craft pass actually changed: the CHOREOGRAPHY (node landing, the rail leg filling,
+ * the label shimmer handing off) and the MEASURED receipt ("Generated in 0:32"). The receipt's
+ * total is real client-measured state — there is no prop that fakes it — so the only way to look
+ * at it is to let a run genuinely play out. This runs a compressed one, forever.
+ */
+function RunLifecycleLoop() {
+  const PLAN = SKILL_RUN_META.hooks!.plan;
+  const [step, setStep] = useState(0);
+  useEffect(() => {
+    // One beat past the last step = settled; two more hold the receipt before looping.
+    const id = setInterval(() => setStep((s) => (s + 1) % (PLAN.length + 3)), 1800);
+    return () => clearInterval(id);
+  }, [PLAN.length]);
+
+  const settled = step >= PLAN.length;
+  return (
+    <SkillProgress
+      stages={PLAN.map((name, i) => ({
+        name,
+        status: settled ? 'done' : i < step ? 'done' : i === step ? 'active' : 'pending',
+      }))}
+      plan={PLAN}
+      isStreaming={!settled}
+      summaryLabel={SKILL_RUN_META.hooks!.done}
+      runningLabel={SKILL_RUN_META.hooks!.running}
+      tookLabel={SKILL_RUN_META.hooks!.took}
+      evidence={!settled && step === 1 ? EVIDENCE_OUTLIERS : null}
+    />
+  );
+}
+
 // ── Group A2: the IN-FLIGHT states — the run capsule, previewable at last (2026-07-19) ────────
 // The 07-14 audit's lesson: a surface with no cheap way to LOOK at it will drift. The thread
 // views' completed states preview above, and Reading's skeleton previews below — but the thread's
 // LIVE loading states (the spine mid-run, the chat capsule, the field waits) were reachable only
 // by spending a real paid run. These mount the REAL components in their mid-run shapes.
 const INFLIGHT_VIEWS: { id: string; label: string; note: string; node: React.ReactNode }[] = [
+  {
+    id: "loading-run-lifecycle",
+    label: "In-flight · Full run lifecycle (loops)",
+    note:
+      "The 2026-08-01 craft pass end to end: 7px marks, a hairline rail whose filled leg IS the completion signal (the per-step ✓ is gone — neither Claude nor ChatGPT uses one), finished rows receding to muted, ONE clock in the head, and the collapse to a real measured total. Loops every ~9s; click the receipt to see each step's true duration.",
+    node: <RunLifecycleLoop />,
+  },
   {
     id: "loading-hooks",
     label: "In-flight · Hooks (skill view)",
@@ -708,6 +969,58 @@ const INFLIGHT_VIEWS: { id: string; label: string; note: string; node: React.Rea
             { name: "Simulating your audience", status: "pending" },
           ]}
           plan={SKILL_RUN_META.test!.plan}
+        />
+      </div>
+    ),
+  },
+  {
+    id: "loading-evidence-grounded",
+    label: "In-flight · grounded run (the evidence rail)",
+    note: "A grounded hooks/ideas/script run mid-generation. Retrieval settles ~40s BEFORE the first card exists, so the outliers the model is drafting against are shown under the step that is using them — cover, @handle and the measured multiplier, straight off the corpus rows. The third row has no cover (an expired CDN URL) and falls back to its initial rather than a broken tile. Absent on an ungrounded run: the rail renders nothing rather than an empty frame.",
+    node: (
+      <div className="mx-auto w-full max-w-[760px]">
+        <ProgressChecklist
+          stages={[
+            { name: "Finding proven outliers", status: "done" },
+            { name: "Generating", status: "active" },
+          ]}
+          plan={SKILL_RUN_META.hooks!.plan}
+          evidence={EVIDENCE_OUTLIERS}
+        />
+      </div>
+    ),
+  },
+  {
+    id: "loading-evidence-remix",
+    label: "In-flight · Remix (the post it resolved)",
+    note: "Remix holds its evidence longest: the resolve step returns the cover, @handle and views within seconds, then Decoding + Adapting take ~50s. That whole stretch used to be words about a video the creator couldn't see. No multiplier is shown — they pasted this link, so nothing measured it against a baseline.",
+    node: (
+      <div className="mx-auto w-full max-w-[760px]">
+        <ProgressChecklist
+          stages={[
+            { name: "Resolving", status: "done" },
+            { name: "Decoding", status: "active" },
+          ]}
+          plan={SKILL_RUN_META.remix!.plan}
+          evidence={EVIDENCE_REMIX_SOURCE}
+        />
+      </div>
+    ),
+  },
+  {
+    id: "loading-evidence-filmstrip",
+    label: "In-flight · Test (the filmstrip, in-thread)",
+    note: "The 2-minute Test wait, now showing the creator's OWN keyframes as the extractor cuts them — the same reveal signals the flagship /analyze skeleton uses, in the thread's rail idiom. All 8 planned slots are drawn up front and fill in order (5 of 8 here), so the strip reads as progress and never reflows.",
+    node: (
+      <div className="mx-auto w-full max-w-[760px]">
+        <ProgressChecklist
+          stages={[
+            { name: "Fetching your video", status: "done" },
+            { name: "Watching it frame by frame", status: "active" },
+            { name: "Simulating your audience", status: "pending" },
+          ]}
+          plan={SKILL_RUN_META.test!.plan}
+          evidence={EVIDENCE_FILMSTRIP}
         />
       </div>
     ),
@@ -921,7 +1234,10 @@ const DEV_BRAIN_SOURCE = {
   },
 };
 
-// ── The Room — the ambient audience panel body (The brain ⇄ The people ⇄ Population). ──
+// ── The Room — the LEGACY ambient audience panel body (The brain ⇄ The people ⇄ Population). ──
+// ⚠️ This is the room the app renders ONLY while `AMBIENT_V2_ENABLED` is false. With the flag on
+// (the dev default) the composer mounts the v2 surfaces below instead — see ROOM_V2_* and the
+// "which room this build ships" banner in the Room tab, which reads the real flag.
 // The same <AmbientRoom> the dock blooms open, fed a fixture focus so the three scales are
 // previewable without running a skill. Non-embedded (h-full) → it lives in a fixed-height box
 // that stands in for the panel.
@@ -962,6 +1278,101 @@ const RAIL_SIBLINGS = [
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
+// The Room, v2 (ambient-audience-v2) — what the composer ACTUALLY mounts today.
+//
+// The rail is `<AmbientOverviewRail>` (≥xl right column) and the <xl header is
+// `<AmbientOverviewSheet>`, both behind `AMBIENT_V2_ENABLED`. Everything below feeds them the
+// SAME prop shapes composer.tsx passes — a real `Audience`, the thread's `AmbientCardDescriptor[]`
+// ledger, and the `threads.sim_seals` map — so this previews the real component, not a mock of it.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** The real General constant the app serves a new creator (drives the "not calibrated" chip). */
+const ROOM_V2_AUDIENCE = GENERAL_AUDIENCE;
+
+/** The projected-card ledger `use-ambient-focus` builds from a thread's cards. Same five hooks as
+ *  the legacy fixture above, so the two rooms are diffable on identical input. */
+const ROOM_V2_DESCRIPTORS: AmbientCardDescriptor[] = [
+  { id: "h1", kind: "hook", conceptText: "The edit nobody tells you about.", fraction: "9/10 stop", scrollQuote: "Every editor says this. Prove it in 3 seconds." },
+  { id: "h2", kind: "hook", conceptText: "I deleted 40 hours of B-roll.", fraction: "7/10 stop", scrollQuote: "Nothing here tells me what it costs me." },
+  { id: "h3", kind: "hook", conceptText: "Stop editing your videos. Do this instead.", fraction: "6/10 stop", scrollQuote: "The hook promises more than the caption delivers." },
+  { id: "h4", kind: "hook", conceptText: "Your cuts are why they leave.", fraction: "4/10 stop", scrollQuote: "Feels like last month's advice." },
+  { id: "h5", kind: "idea", conceptText: "Editing is a trap.", fraction: "2/10 stop", scrollQuote: "Too vague to act on." },
+];
+
+/**
+ * One SEALED row, rehydrated the way `/api/threads/open` rehydrates `threads.sim_seals` — keyed by
+ * TRIMMED concept text, carrying the MEASURED verdict plus the Phase-C depth payload.
+ *
+ * Sealing h3 is what makes this gallery worth opening: without a seal every row is honestly queued
+ * and the depth drill is unreachable, because the drill only opens on a row that has a population.
+ * The numbers are deliberately reconciled — `pct: 54` is `POPULATION_1K.stopPct` (54.4) rounded, so
+ * the row's verdict and the page it drills into cannot disagree. It also reads as the real story the
+ * surface exists to tell: the projection said 6/10, the measured sim said 54%.
+ *
+ * Tapping "Simulate →" on a QUEUED row still POSTs the real `/api/tools/react` — there is no thread
+ * here, so it fails and the row falls honestly back to queued (fireSim's catch). That is the real
+ * failure path, not a gallery stub.
+ */
+const ROOM_V2_SEALS: WireSimSealMap = {
+  "Stop editing your videos. Do this instead.": {
+    pct: 54,
+    band: "Mixed",
+    at: "2026-07-28T09:00:00.000Z",
+    population: POPULATION_1K,
+    personas: ROOM_FOCUS.personas,
+    scrollQuote: "The hook promises more than the caption delivers.",
+  },
+  // A SEALED row that produced NO population — the state that used to be invisible (2026-08-05).
+  // A run's verdict and its depth fail INDEPENDENTLY: `pct` comes from the flash reaction, the
+  // population from the projection, so a row can carry a perfectly real 38% and still have nothing
+  // behind it (an audience whose signature has no v2 axes, or a characterize failure). It used to
+  // render as an ordinary door whose tap hit an empty `else` — no error, no log, nothing — which is
+  // the defect the owner spent two sessions chasing. It now reads `verdict only` and is not a
+  // button. Keep this fixture: it is the ONLY place the state can be seen without breaking an
+  // audience on purpose.
+  "I deleted 40 hours of B-roll.": {
+    pct: 38,
+    band: "Mixed",
+    at: "2026-08-05T09:00:00.000Z",
+    personas: ROOM_FOCUS.personas,
+    scrollQuote: "Nothing here tells me what it costs me.",
+  },
+};
+
+/**
+ * ⑤ SIMULATE — the ＋ door's five states, built from the SAME adapter the door uses.
+ *
+ * `buildSimulateData` + `audienceToMeta` are exactly what `SimulateDoorHost` calls, so the dials,
+ * slices and scene options below are the real ones for this audience rather than a hand-written
+ * echo that can drift from them.
+ *
+ * ⚠️ GEOMETRY IS PART OF THE FIXTURE. The three ARM variants do NOT share a container in
+ * production, and rendering them as if they did is how a redesign gets costed against the wrong
+ * budget: ① `develop` is mounted `connected` INSIDE the rail (a 400px column, full panel height,
+ * so it can end in dead space), while ② and ③ come through `SimulateDoorHost`, which mounts them
+ * un-`connected` as a floating 460px sheet that is exactly as tall as its content. Each is boxed
+ * below at the geometry its own host gives it.
+ */
+const SIM_DEV_DATA = buildSimulateData({
+  audience: audienceToMeta(ROOM_V2_AUDIENCE),
+  // The develop entry's pre-filled stimulus: a card already on the board, plus the rank it deepens.
+  stimulus: { text: "Stop editing your videos. Do this instead.", kind: "hook" },
+  develop: { sourceLabel: "Hooks run" },
+});
+
+/** The cold doors, as the intake itself classifies them — picked out by kind, never re-declared. */
+const SIM_DRAFT_DOOR = SIM_DEV_DATA.intake.find((o) => o.kind === "draft")!;
+const SIM_VIDEO_DOOR = SIM_DEV_DATA.intake.find((o) => o.kind === "video")!;
+
+/** What a creator brought through each cold door — the shape `CollectStep` emits. */
+const SIM_BROUGHT_TEXT = {
+  kind: "draft" as const,
+  text: "Three years of footage and nobody watched past the first second.",
+};
+// A video's `text` is its NAME (a filename or the link), never a stimulus to feed a text run.
+const SIM_BROUGHT_VIDEO = { kind: "video" as const, text: "cold-open-v3.mp4" };
+
+// ─────────────────────────────────────────────────────────────────────────────
 // The classification — production status + category for every renderable above.
 // DERIVED, never duplicated: the node JSX stays in the arrays; this only sorts it
 // into tabs and tags each with its real production status, so the page is an honest
@@ -972,6 +1383,12 @@ const RAIL_SIBLINGS = [
 //              registry-kept for persisted history. (band, personas.)
 // ─────────────────────────────────────────────────────────────────────────────
 type Status = "live" | "flag-off" | "legacy";
+
+// The Room has TWO implementations and they are mutually exclusive, decided at BUILD time by
+// AMBIENT_V2_ENABLED. Deriving both statuses from the real flag is what stops this page drifting
+// again: it labels whichever room this build actually ships, in every build.
+const V2_STATUS: Status = AMBIENT_V2_ENABLED ? "live" : "flag-off";
+const LEGACY_ROOM_STATUS: Status = AMBIENT_V2_ENABLED ? "flag-off" : "live";
 
 const STATUS_META: Record<Status, { label: string; dot: string; tone: string }> = {
   live: { label: "Live", dot: "bg-[var(--color-accent)]", tone: "text-foreground-secondary" },
@@ -986,6 +1403,7 @@ const VARIANT_OF: Record<string, string> = {
   "ideas-outliers": "ideas",
   "hooks-degraded": "hooks",
   "hooks-outliers": "hooks",
+  "hooks-projected": "hooks",
   "script-outliers": "script",
 };
 
@@ -1019,7 +1437,7 @@ const TABS: Tab[] = [
   { id: "loading", label: "Loading", blurb: "The in-flight states — the run capsule mid-run. Reachable in production only by spending a real paid run; mounted here in their live mid-run shapes." },
   { id: "inputs", label: "Inputs", blurb: "The agent-surfaced in-thread affordances (request_input fields) + the context-aware chat follow-up chips." },
   { id: "reading", label: "Reading", blurb: "The Test skill's full /analyze surface — every state, not just the happy path. Each option mounts the REAL component." },
-  { id: "room", label: "The Room", blurb: "The ambient audience panel body — what the dock blooms open (brain ⇄ people ⇄ population) + the persistent rail." },
+  { id: "room", label: "The Room", blurb: "The audience surface beside the thread. The Ambient v2 surfaces the composer mounts today — the ≥xl rail, the <xl header sheet, the depth drill a sealed row opens, and ⑤ the ＋ door's arm screen — plus the legacy pre-v2 room, which still ships wherever the flag is off." },
   { id: "blocks", label: "Blocks", blurb: "The live in-thread blocks rendered through the SAME MessageBlocks dispatch the thread uses." },
   { id: "hidden", label: "Hidden & legacy", blurb: "Renderers kept alive but NOT shippable today: the horizontal verbs behind HORIZONTAL_ENABLED (flag off) + the standalone primitives no live skill emits (legacy)." },
 ];
@@ -1028,6 +1446,9 @@ export default function DevCardsPage() {
   const [tab, setTab] = useState("overview");
   const [readingState, setReadingState] = useState("complete");
   const [pendingAnchor, setPendingAnchor] = useState<string | null>(null);
+  // The <xl header sheet is a controlled surface (composer.tsx owns `roomExpanded`); the gallery
+  // owns it here so the collapsed bar AND the full-screen room are both reachable.
+  const [roomSheetOpen, setRoomSheetOpen] = useState(false);
 
   const active = READING_STATES.find((s) => s.id === readingState) ?? READING_STATES[1]!;
 
@@ -1059,7 +1480,8 @@ export default function DevCardsPage() {
     loading: INFLIGHT_VIEWS.length,
     inputs: inputs.length,
     reading: READING_STATES.length,
-    room: 2,
+    room: 6, // 4 v2 surfaces (rail · sheet · depth · ⑤ arm) + the 2 legacy ones, kept while the flag can flip
+
     blocks: liveBlocks.length,
     hidden: hiddenBlocks.length,
   };
@@ -1106,7 +1528,7 @@ export default function DevCardsPage() {
         </div>
 
         {/* Active-tab blurb */}
-        <p className="max-w-2xl pt-5 text-[12.5px] leading-relaxed text-foreground-muted">
+        <p className="max-w-2xl pt-5 text-[12px] leading-relaxed text-foreground-muted">
           {TABS.find((t) => t.id === tab)?.blurb}
         </p>
 
@@ -1140,11 +1562,15 @@ export default function DevCardsPage() {
             />
             <OverviewGroup
               title="The Room"
-              status="live"
+              status={V2_STATUS}
               onOpen={() => goTo("room")}
               chips={[
-                { id: "room-bloom", label: "Bloom (brain ⇄ people ⇄ population)", status: "live", onClick: () => goTo("room", "room-bloom") },
-                { id: "room-rail", label: "Persistent rail", status: "live", onClick: () => goTo("room", "room-rail") },
+                { id: "room-rail", label: "Rail · Ambient v2", status: V2_STATUS, onClick: () => goTo("room", "room-rail") },
+                { id: "room-sheet", label: "Header sheet (<xl)", status: V2_STATUS, onClick: () => goTo("room", "room-sheet") },
+                { id: "room-detail", label: "Depth drill (brain ⇄ audience)", status: V2_STATUS, onClick: () => goTo("room", "room-detail") },
+                { id: "room-simulate", label: "Arm a simulation (the ＋ door)", status: V2_STATUS, onClick: () => goTo("room", "room-simulate") },
+                { id: "room-bloom", label: "Legacy bloom", status: LEGACY_ROOM_STATUS, onClick: () => goTo("room", "room-bloom") },
+                { id: "room-legacy-rail", label: "Legacy rail", status: LEGACY_ROOM_STATUS, onClick: () => goTo("room", "room-legacy-rail") },
               ]}
             />
             <OverviewGroup
@@ -1260,12 +1686,152 @@ export default function DevCardsPage() {
         {/* ── THE ROOM ─────────────────────────────────────────────────────── */}
         {tab === "room" && (
           <div className="flex flex-col gap-8 pt-6">
+            {/* Which room THIS build ships. Read off the real flag, so the page cannot claim a
+                room the composer isn't mounting (it did exactly that until 2026-07-28). */}
+            <RoomFlagBanner />
+
+            {/* ── v2 · the rail the composer mounts at ≥xl ─────────────────── */}
+            <section id="room-rail" className="scroll-mt-32">
+              <SectionHead
+                label="The Room · rail (Ambient v2)"
+                code="AmbientOverviewRail"
+                note="The ≥xl right column, exactly as composer.tsx mounts it: a real Audience, the thread's projected-card ledger, and the sim_seals map. Boxed at the real host geometry (400px wide, full height). Rows h1/h2/h4/h5 are honestly QUEUED; h3 is SEALED from a rehydrated seal — tap it to drill into the real depth. Tapping Simulate → on a QUEUED row spends nothing: it opens the ARM panel (⑤) so a lens and a slice are picked first — config before the run, never a run that back-fills into a config. ⚠️ It is that panel's own 'Simulate ↑' that POSTs the real /api/tools/react, and react has cost 1 CREDIT since 2026-07-28 — the only control on this page that spends money."
+                status={V2_STATUS}
+              />
+              <div className="flex flex-wrap gap-4">
+                <div className="h-[860px] w-[400px] max-w-full overflow-hidden rounded-[var(--radius-lg)] border border-white/[0.06]">
+                  <AmbientOverviewRail
+                    audience={ROOM_V2_AUDIENCE}
+                    descriptors={ROOM_V2_DESCRIPTORS}
+                    persistedSeals={ROOM_V2_SEALS}
+                  />
+                </div>
+                {/* The EMPTY rail — a thread with no projected cards yet. The state a creator
+                    actually opens on, and the one a fixture-only gallery never showed. */}
+                <div className="h-[860px] w-[400px] max-w-full overflow-hidden rounded-[var(--radius-lg)] border border-white/[0.06]">
+                  <AmbientOverviewRail audience={ROOM_V2_AUDIENCE} descriptors={[]} />
+                </div>
+              </div>
+            </section>
+
+            {/* ── v2 · the <xl header sheet ────────────────────────────────── */}
+            <section id="room-sheet" className="scroll-mt-32">
+              <SectionHead
+                label="The Room · header sheet (<xl)"
+                code="AmbientOverviewSheet"
+                note="What a phone gets: a collapsed bar (room glyph · audience · calibration · N ranked · caret) that opens the SAME rail full screen. The box below is a 390px phone width; the open room portals to <body>, so it takes the whole viewport here exactly as it does on a device — Escape closes it."
+                status={V2_STATUS}
+              />
+              <div className="w-[390px] max-w-full rounded-[var(--radius-lg)] border border-white/[0.06] p-2">
+                <AmbientOverviewSheet
+                  audience={ROOM_V2_AUDIENCE}
+                  descriptors={ROOM_V2_DESCRIPTORS}
+                  persistedSeals={ROOM_V2_SEALS}
+                  open={roomSheetOpen}
+                  onOpenChange={setRoomSheetOpen}
+                />
+              </div>
+            </section>
+
+            {/* ── v2 · the depth drill ─────────────────────────────────────── */}
+            <section id="room-detail" className="scroll-mt-32">
+              <SectionHead
+                label="The Room · depth drill (The brain ⇄ The audience)"
+                code="AmbientDetail"
+                note="Where a sealed row opens. Both templates are built by the REAL adapters over realistic persisted input — left is a tested VIDEO (buildVideoDomainTemplate: attention scrubber, craft signals, measured-dip why-this-second), right is a TEXT sim (buildDomainTemplate), whose brain tab is honestly unavailable because a concept has no attention read. onBack omitted on purpose — a back button that goes nowhere is a dead control."
+                status={V2_STATUS}
+              />
+              <div className="flex flex-wrap gap-4">
+                <div id="detail-video" className="h-[800px] w-[400px] max-w-full overflow-hidden rounded-[var(--radius-lg)] border border-white/[0.06]">
+                  <AmbientDetail template={CREATOR_LIVE_TEMPLATE} />
+                </div>
+                <div id="detail-text" className="h-[800px] w-[400px] max-w-full overflow-hidden rounded-[var(--radius-lg)] border border-white/[0.06]">
+                  <AmbientDetail template={CREATOR_LIVE_TEXT_TEMPLATE} />
+                </div>
+              </div>
+            </section>
+
+            {/* ── v2 · ⑤ the ＋ door: intake → collect → arm ─────────────────── */}
+            <section id="room-simulate" className="scroll-mt-32">
+              <SectionHead
+                label="The Room · ⑤ arm a simulation (the ＋ door)"
+                code="AmbientSimulate · SimulateIntake"
+                note="Every state of the spend moment, which in production is reachable only by clicking through a real run. COLD is three steps (pick a door → bring the thing → arm it); DEVELOP skips straight to the arm card pre-filled from a rank. Each state is mounted DIRECTLY rather than advanced into, so the controls that would move between them are inert here — this is a state inspector, and the state each one leads to is the box beside it. NOTE the two geometries, because they are not interchangeable: ① develop mounts CONNECTED inside the rail (400px column, full panel height, so it can end in dead space), ② and ③ come through SimulateDoorHost as a floating 460px sheet sized to its content. There is no ＋ door in this gallery — the door only renders where a host can run what comes through it, and a gallery cannot; the intake is mounted directly instead, which is what /ambient-v2 does."
+                status={V2_STATUS}
+              />
+              <div className="flex flex-wrap items-start gap-4">
+                <div className="w-[460px] max-w-full">
+                  <div className="mb-2 font-mono text-[11px] uppercase tracking-[0.08em] text-foreground-muted">intake · what are you testing?</div>
+                  <IntakeStep data={SIM_DEV_DATA} onPick={() => {}} />
+                </div>
+                <div className="w-[460px] max-w-full">
+                  <div className="mb-2 font-mono text-[11px] uppercase tracking-[0.08em] text-foreground-muted">collect · draft</div>
+                  <CollectStep data={SIM_DEV_DATA} opt={SIM_DRAFT_DOOR} onCollect={() => {}} />
+                </div>
+                <div className="w-[460px] max-w-full">
+                  <div className="mb-2 font-mono text-[11px] uppercase tracking-[0.08em] text-foreground-muted">collect · video (file or link)</div>
+                  <CollectStep data={SIM_DEV_DATA} opt={SIM_VIDEO_DOOR} onCollect={() => {}} />
+                </div>
+                <div className="w-[460px] max-w-full">
+                  <div className="mb-2 font-mono text-[11px] uppercase tracking-[0.08em] text-foreground-muted">
+                    arm ② · cold · text — every dial live
+                  </div>
+                  <ArmCard
+                    data={SIM_DEV_DATA}
+                    stimulus={SIM_BROUGHT_TEXT}
+                    brought={SIM_BROUGHT_TEXT}
+                    onBack={() => {}}
+                  />
+                </div>
+                <div className="w-[460px] max-w-full">
+                  <div className="mb-2 font-mono text-[11px] uppercase tracking-[0.08em] text-foreground-muted">
+                    arm ③ · cold · video — lens/slice/scene LOCKED, ten reactors
+                  </div>
+                  <ArmCard
+                    data={SIM_DEV_DATA}
+                    stimulus={SIM_BROUGHT_VIDEO}
+                    brought={SIM_BROUGHT_VIDEO}
+                    onBack={() => {}}
+                  />
+                </div>
+                <div className="w-[460px] max-w-full">
+                  <div className="mb-2 font-mono text-[11px] uppercase tracking-[0.08em] text-foreground-muted">
+                    the sealed wait — between the POST and its answer
+                  </div>
+                  <SimDoorReading stimulus={SIM_BROUGHT_TEXT.text} audienceName={ROOM_V2_AUDIENCE.name} />
+                  <p className="mt-2 max-w-[460px] text-[11px] leading-relaxed text-foreground-muted">
+                    The one state of ⑤ that is not a step: it exists only while the read is in
+                    flight, so seeing it in production means spending a credit and being quick. NO
+                    NUMBER appears — a verdict withheld until n-of-n decide is the sealed-verdict
+                    law. If the read never comes back, one line joins it below the sheet
+                    (&ldquo;That read didn&rsquo;t come back. Nothing was sealed — try it
+                    again.&rdquo;) and the stimulus stays put.
+                  </p>
+                </div>
+                <div>
+                  <div className="mb-2 font-mono text-[11px] uppercase tracking-[0.08em] text-foreground-muted">
+                    arm ① · develop — the tie-back band, at REAL rail geometry
+                  </div>
+                  <div className="h-[860px] w-[400px] max-w-full overflow-hidden rounded-[var(--radius-lg)] border border-white/[0.06]">
+                    <ArmCard
+                      data={SIM_DEV_DATA}
+                      stimulus={SIM_DEV_DATA.stimulus}
+                      develop={SIM_DEV_DATA.develop}
+                      connected
+                      presentation="rail"
+                    />
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* ── LEGACY · the pre-v2 room ─────────────────────────────────── */}
             <section id="room-bloom" className="scroll-mt-32">
               <SectionHead
-                label="The Room · bloom"
+                label="The Room · bloom (legacy, pre-v2)"
                 code="AmbientRoom.tsx"
-                note="What the audience dock blooms open: The brain (simulated neural read — the landing view) ⇄ The people (named voices) ⇄ The population. Fed a fixture focus; the box stands in for the panel."
-                status="live"
+                note="The room the dock bloomed open BEFORE Ambient v2: The brain (simulated neural read) ⇄ The people (named voices) ⇄ The population. Still the shipped room in any build where AMBIENT_V2_ENABLED is false — which is why it stays here instead of being deleted. Do not diff new work against it."
+                status={LEGACY_ROOM_STATUS}
               />
               <div className="grid gap-4 lg:grid-cols-2">
                 <div className="h-[900px] overflow-hidden rounded-[var(--radius-lg)] border border-white/[0.06] bg-[var(--color-surface-elevated)]">
@@ -1304,13 +1870,13 @@ export default function DevCardsPage() {
               </div>
             </section>
 
-            {/* The PERSISTENT rail presentation (variant='rail') — same body, in-flow, no bloom. */}
-            <section id="room-rail" className="scroll-mt-32">
+            {/* The PERSISTENT legacy rail (variant='rail') — same body, in-flow, no bloom. */}
+            <section id="room-legacy-rail" className="scroll-mt-32">
               <SectionHead
-                label="The Room · persistent rail (P2)"
+                label="The Room · persistent rail (legacy, pre-v2)"
                 code="AudiencePresence variant='rail'"
-                note="variant='rail' — the panel body always shown in-flow inside a fixed-height column: never blooms, never collapses, no overlay. The box below stands in for the rail column (340×720)."
-                status="live"
+                note="variant='rail' — the legacy panel body always shown in-flow inside a fixed-height column: never blooms, never collapses, no overlay. Superseded by AmbientOverviewRail above; it still fills the ≥xl rail whenever AMBIENT_V2_ENABLED is false. The box stands in for the old rail column (340×720)."
+                status={LEGACY_ROOM_STATUS}
               />
               <div className="flex flex-wrap gap-4">
                 {/* Ranked-compare view (a batch → the ranked overview). */}
@@ -1402,12 +1968,32 @@ function StatusPill({ status }: { status: Status }) {
   );
 }
 
+// ── Which room this build ships ──────────────────────────────────────────────
+// `AMBIENT_V2_ENABLED` is a build-time NEXT_PUBLIC constant, so this reads the same value the
+// composer branches on. Printing it here is the whole anti-drift device: the page can no longer
+// present a retired room as the product (it did, from the v2 cutover until 2026-07-28 — long
+// enough that /go was built against the wrong reference).
+function RoomFlagBanner() {
+  return (
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-[var(--radius-md)] border border-white/[0.06] bg-surface-sunken px-3 py-2.5 text-[11px] text-foreground-muted">
+      <code className="rounded bg-white/[0.06] px-1.5 py-0.5 text-[11px] text-foreground-secondary">
+        NEXT_PUBLIC_AMBIENT_V2={String(AMBIENT_V2_ENABLED)}
+      </code>
+      <span>
+        {AMBIENT_V2_ENABLED
+          ? "→ this build mounts the Ambient v2 rail + header sheet. The legacy room below is unreachable here; it is kept only because the flag can be flipped back."
+          : "→ this build still mounts the LEGACY room. The Ambient v2 surfaces below are unreachable here; set the env var and restart the dev server to render them for real."}
+      </span>
+    </div>
+  );
+}
+
 function StatusLegend() {
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-[var(--radius-md)] border border-white/[0.06] bg-surface-sunken px-3 py-2.5 text-[11px] text-foreground-muted">
       <span className="uppercase tracking-[0.06em] text-foreground-muted/60">Legend</span>
       <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-[var(--color-accent)]" /> Live — a skill emits it today</span>
-      <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full ring-1 ring-inset ring-white/30" /> Flag off — behind HORIZONTAL_ENABLED</span>
+      <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full ring-1 ring-inset ring-white/30" /> Flag off — a flag hides it in this build</span>
       <span className="inline-flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-white/25" /> Legacy — no live producer</span>
     </div>
   );
@@ -1475,7 +2061,7 @@ function SectionHead({
         <code className="rounded bg-white/[0.06] px-1.5 py-0.5 text-[11px] text-foreground-muted">{code}</code>
         {status && <StatusPill status={status} />}
       </div>
-      <p className="text-[12.5px] leading-relaxed text-foreground-muted">{note}</p>
+      <p className="text-[12px] leading-relaxed text-foreground-muted">{note}</p>
     </div>
   );
 }

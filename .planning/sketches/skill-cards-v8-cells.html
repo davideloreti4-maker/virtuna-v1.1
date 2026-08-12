@@ -1,0 +1,522 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Skill cards v8 · typed cells — the Perplexity primitive, applied</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --charcoal-app:#1f1f1e; --surface-sunken:#1a1a19;
+  --fg:#ece7de; --fg-2:#c2bdb4; --fg-3:#8a857c;
+  --positive:#8ea68a; --warning:oklch(0.75 0.15 85); --accent:#FF6363;
+  --b:rgba(255,255,255,.06); --b-hover:rgba(255,255,255,.10);
+  --t-caption:11px; --t-label:12px; --t-body:13px; --t-reading:14px;
+  --t-title:16px; --t-subhead:18px; --t-heading:22px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--charcoal-app);color:var(--fg);
+  font-family:InterV,Inter,system-ui,-apple-system,sans-serif;font-size:var(--t-body);line-height:1.5;
+  -webkit-font-smoothing:antialiased;padding:0 0 140px}
+.serif{font-family:NewsreaderV,Newsreader,Georgia,serif}
+
+.bar{position:sticky;top:0;z-index:20;display:flex;flex-wrap:wrap;align-items:center;gap:14px;
+  padding:12px 20px;background:#151514;border-bottom:1px solid var(--b)}
+.bar h1{font-size:var(--t-label);font-weight:600;letter-spacing:.02em;margin-right:auto}
+.bar .hint{font-size:var(--t-caption);color:var(--fg-3)}
+.seg{display:flex;border:1px solid var(--b);border-radius:8px;overflow:hidden}
+.seg button{appearance:none;border:0;background:transparent;color:var(--fg-3);font:inherit;
+  font-size:var(--t-label);padding:6px 12px;cursor:pointer}
+.seg button+button{border-left:1px solid var(--b)}
+.seg button[aria-pressed="true"]{background:rgba(255,255,255,.07);color:var(--fg)}
+
+.section{padding:38px 20px 0;max-width:2400px;margin:0 auto}
+.section>h2{font-size:var(--t-title);font-weight:600;letter-spacing:-.01em;margin-bottom:5px}
+.section>p.note{font-size:var(--t-label);color:var(--fg-3);max-width:82ch;margin-bottom:22px;line-height:1.7}
+.rowcols{display:flex;gap:30px;align-items:flex-start;flex-wrap:wrap}
+.col>h3{font-size:var(--t-caption);text-transform:uppercase;letter-spacing:.05em;color:var(--fg-3);margin-bottom:4px}
+.col>h3 em{font-style:normal;color:var(--fg-2)}
+.col>h3 .tag{color:var(--positive)}
+.col>p.sub{font-size:var(--t-caption);color:rgba(138,133,124,.78);margin-bottom:11px;max-width:46ch;line-height:1.6}
+.stage{width:728px;transition:width .18s ease}
+body[data-w="342"] .stage{width:342px}
+.callout{margin-top:11px;max-width:728px;font-size:var(--t-caption);line-height:1.7;color:var(--fg-3);
+  border-left:2px solid rgba(255,255,255,.10);padding-left:11px}
+.callout b{color:var(--fg-2);font-weight:500}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:var(--fg-2);
+  background:rgba(255,255,255,.04);border-radius:3px;padding:1px 4px}
+.prose{max-width:1180px;font-size:var(--t-body);line-height:1.8;color:var(--fg-2)}
+.prose b.cream{color:var(--fg);font-weight:500}
+.prose p+p{margin-top:12px}
+.flagbox{border:1px solid rgba(224,189,114,.22);border-radius:8px;padding:14px 16px;max-width:1180px;
+  font-size:var(--t-label);line-height:1.75;color:var(--fg-2)}
+.flagbox h4{font-size:var(--t-body);font-weight:600;color:var(--warning);margin-bottom:6px}
+.flagbox p+p{margin-top:8px}
+table.mt{width:100%;border-collapse:collapse;font-size:var(--t-label)}
+table.mt th{padding:7px 10px;font-weight:400;color:var(--fg-3);text-align:left}
+table.mt th:first-child{padding-left:0}
+table.mt td{padding:7px 10px;border-top:1px solid var(--b);font-variant-numeric:tabular-nums}
+table.mt td:first-child{padding-left:0}
+
+/* ── shell ─────────────────────────────────────────────────────────────── */
+.card{border:1px solid var(--b);border-radius:12px;background:var(--surface-sunken);overflow:hidden}
+.ico{width:13px;height:13px;flex-shrink:0}
+.copy{display:inline-flex;align-items:center;gap:5px;flex-shrink:0;font-size:var(--t-label);
+  font-weight:500;color:var(--fg-3);background:none;border:0;cursor:pointer;font-family:inherit}
+.mult{color:var(--positive);font-weight:500;font-variant-numeric:tabular-nums}
+.footer{display:flex;align-items:center;gap:16px;flex-wrap:wrap;border-top:1px solid var(--b);padding:14px 20px}
+.primary{display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.08);
+  background:rgba(255,255,255,.05);border-radius:6px;padding:8px 14px;font-size:var(--t-body);
+  font-weight:600;color:var(--fg);font-family:inherit;cursor:pointer}
+.door{display:inline-flex;align-items:center;gap:8px;margin-left:auto;font-size:var(--t-label);
+  color:var(--fg-3);background:none;border:0;font-family:inherit;cursor:pointer;min-height:32px}
+.door .hollow{width:7px;height:7px;border-radius:999px;border:1px solid var(--fg-3);flex-shrink:0}
+.door-cta{color:var(--fg-2);white-space:nowrap}
+.save{color:var(--fg-3);display:inline-flex}
+body[data-w="342"] .footer{row-gap:12px}
+body[data-w="342"] .primary{order:1}
+body[data-w="342"] .save{order:2;margin-left:auto}
+body[data-w="342"] .door{order:3;margin-left:0;width:100%;justify-content:space-between}
+
+/* ══ v8 — TYPED CELLS. The card is a stack of UI components, not text:
+   a header bar, a hero, then hairline-separated cells of icon + extracted
+   title + one-line subtitle. The title is pulled FROM the content
+   ("Crash-zoom", "Pattern-interrupt"), never a category label. ═════════════ */
+.c-head{display:flex;align-items:center;gap:10px;padding:13px 20px;border-bottom:1px solid var(--b)}
+.c-skill{font-size:var(--t-label);font-weight:500;color:var(--fg-2)}
+.c-chip{display:inline-flex;align-items:center;border-radius:999px;background:rgba(255,255,255,.06);
+  padding:2px 9px;font-size:var(--t-caption);font-weight:500;color:var(--fg)}
+.c-head .copy{margin-left:auto}
+.c-hero{padding:18px 20px 2px;font-size:21px;line-height:1.3;letter-spacing:-.008em;font-weight:500;
+  color:var(--fg);text-wrap:balance}
+body[data-w="342"] .c-hero{font-size:19px}
+.c-hero .q{color:rgba(236,231,222,.45)}
+.c-lede{padding:6px 20px 0;font-size:var(--t-body);line-height:1.55;color:var(--fg-2)}
+
+.c-cols{display:flex;gap:20px;padding:16px 20px 6px;align-items:center}
+.c-media{width:118px;flex-shrink:0;display:block;text-decoration:none}
+.c-main{flex:1;min-width:0}
+.frame{position:relative;display:block;aspect-ratio:9/16;border:1px solid var(--b);border-radius:8px;
+  background:#161615;overflow:hidden;display:flex;align-items:center;padding:12px}
+.frame p{font-weight:800;text-transform:uppercase;font-size:12px;line-height:1.3;
+  letter-spacing:.01em;color:var(--fg)}
+.cover{position:relative;display:block;aspect-ratio:9/16;border:1px solid var(--b);border-radius:8px;
+  background:#242422;overflow:hidden}
+.cover .play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+.cover .badge{position:absolute;left:8px;bottom:8px;border-radius:4px;padding:2px 7px;
+  background:rgba(20,22,19,.85);color:var(--positive);font-size:var(--t-label);font-weight:600;
+  font-variant-numeric:tabular-nums}
+.c-mediameta{margin-top:6px;font-size:var(--t-caption);line-height:1.5;color:var(--fg-3)}
+.c-mediameta .n{color:var(--fg-2)}
+/* mobile: the panel becomes a STRIP CELL — thumb + title/sub, like a source card */
+body[data-w="342"] .c-cols{display:block}
+body[data-w="342"] .c-media{display:flex;width:100%;gap:12px;align-items:center;margin-bottom:6px}
+body[data-w="342"] .c-media .frame,
+body[data-w="342"] .c-media .cover{width:58px;flex-shrink:0;padding:6px}
+body[data-w="342"] .c-media .frame p{font-size:6.5px;line-height:1.3}
+body[data-w="342"] .c-mediameta{margin-top:0;font-size:var(--t-label)}
+
+/* the cell — icon · title · subtitle, hairline-separated */
+.cells{display:flex;flex-direction:column}
+.cell{display:flex;gap:12px;padding:10px 0;align-items:flex-start}
+body[data-w="342"] .cell{padding:8px 0}
+body[data-w="342"] .c-cols{padding-top:12px}
+body[data-w="342"] .c-hero{padding-bottom:0}
+.cell+.cell{border-top:1px solid var(--b)}
+.cell>svg{width:16px;height:16px;flex-shrink:0;margin-top:1px;color:var(--fg-3);opacity:.9}
+.cell .cbody{min-width:0;flex:1}
+.cell .tt{font-size:var(--t-body);font-weight:500;color:var(--fg);line-height:1.45}
+.cell .tt .mult{font-weight:500}
+.cell .sub{margin-top:1px;font-size:var(--t-body);line-height:1.5;color:var(--fg-3)}
+.cell .sub.on{color:var(--fg-2)}
+.cell .meta{margin-top:2px;font-size:var(--t-caption);color:var(--fg-3)}
+.cell .chev{flex-shrink:0;align-self:center;color:var(--fg-3);font-size:14px}
+.cell .mini{position:relative;display:block;width:30px;flex-shrink:0;aspect-ratio:9/16;
+  border:1px solid var(--b);border-radius:4px;overflow:hidden;background:#242422;margin-top:1px}
+.avs{display:flex;flex-shrink:0;width:16px;margin-top:2px}
+.avs i{width:14px;height:14px;border-radius:999px;border:1.5px solid var(--surface-sunken);flex-shrink:0}
+.avs i:nth-child(1){background:rgba(255,255,255,.16)}
+.avs i:nth-child(2){background:rgba(255,255,255,.10);margin-left:-9px}
+.c-below{padding:0 20px}
+.c-below .cell:first-child{border-top:1px solid var(--b)}
+.cell.tap{cursor:pointer;margin:0 -10px;padding-left:10px;padding-right:10px;border-radius:8px}
+.cell.tap:hover{background:rgba(255,255,255,.03)}
+.cell.tap:hover+ .cell{border-top-color:transparent}
+</style>
+</head>
+<body data-w="728">
+
+<div class="bar">
+  <h1>Skill cards v8 · typed cells</h1>
+  <span class="hint">every fact is a component: icon + extracted title + one-line subtitle</span>
+  <div class="seg" role="group" aria-label="Card width">
+    <button data-w="728" aria-pressed="true">728px · in-thread</button>
+    <button data-w="342" aria-pressed="false">342px · mobile</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <h2>How the references actually do it</h2>
+  <div class="prose">
+    <p><b class="cream">None of them typeset facts as prose.</b> Perplexity's answer surface is a
+    stack of typed components: a source-chip row, the answer, then related questions as tappable
+    hairline-separated cells. ChatGPT renders canvases and attachments as cards with an icon tile, a
+    title and a one-line subtitle. Claude shows artifacts the same way: tile, title, metadata line.
+    <b class="cream">The shared primitive is the cell: icon + title + subtitle, separated by
+    hairlines.</b> Text lives inside components; it is never loose on the surface.</p>
+    <p><b class="cream">v8 applies exactly that primitive.</b> The card becomes a header bar, a hero,
+    a media panel, and then cells. The critical difference from every rejected round: <b class="cream">the
+    cell title is extracted from the content</b> — "Crash-zoom", "Pattern-interrupt", "34% of your
+    audience" — never a category label like VISUAL or TOPIC. The subtitle is one line, full stop.
+    On mobile the panel collapses into a strip cell (thumbnail + title, like a Perplexity source
+    card) and the whole card is a clean cell list; nothing floats, nothing wraps around anything.</p>
+    <p><b class="cream">The no-video question has a clean answer:</b> the first-frame panel renders
+    from <code>hookLine</code>, which always exists, so direction A has no empty state. The source
+    cell and the audience cell simply disappear when a run is ungrounded or uncalibrated; the card
+    below shows that state and it still reads designed.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     HOOK — first-frame anchor
+     ═══════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <h2>Hook card · cells + first-frame anchor</h2>
+  <div class="rowcols">
+
+    <div class="col">
+      <h3>v8 · <em>Cells · First frame</em> <span class="tag">new</span></h3>
+      <p class="sub">Header bar, hero, panel beside two craft cells, then the source and audience
+        cells full-width. Toggle to 342: the panel becomes a strip cell.</p>
+      <div class="stage">
+        <div class="card" id="m8f-hook">
+          <div class="c-head">
+            <span class="c-skill">Hook</span>
+            <span class="c-chip">Top pick</span>
+            <button class="copy"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M216 32H88a8 8 0 0 0-8 8v40H40a8 8 0 0 0-8 8v128a8 8 0 0 0 8 8h128a8 8 0 0 0 8-8v-40h40a8 8 0 0 0 8-8V40a8 8 0 0 0-8-8m-56 176H48V96h112Zm48-48h-32V88a8 8 0 0 0-8-8H96V48h112Z"/></svg>Copy</button>
+          </div>
+
+          <p class="serif c-hero"><span class="q">“</span>Stop editing your videos. Do this instead.<span class="q">”</span></p>
+
+          <div class="c-cols">
+            <span class="c-media">
+              <span class="frame"><p>Stop editing your videos. Do this instead.</p></span>
+              <p class="c-mediameta"><span class="n">Your first frame</span> · 0:00</p>
+            </span>
+            <div class="c-main cells">
+              <div class="cell">
+                <svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M251.77 73a8 8 0 0 0-8.21.39L208 97.05V72a16 16 0 0 0-16-16H32a16 16 0 0 0-16 16v112a16 16 0 0 0 16 16h160a16 16 0 0 0 16-16v-25l35.56 23.71A8 8 0 0 0 256 176V80a8 8 0 0 0-4.23-7"/></svg>
+                <div class="cbody">
+                  <p class="tt">Crash-zoom</p>
+                  <p class="sub">Hard cut to your face mid-sentence, caps slam on.</p>
+                </div>
+              </div>
+              <div class="cell">
+                <svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M128 24l22 82 82 22-82 22-22 82-22-82-82-22 82-22z"/></svg>
+                <div class="cbody">
+                  <p class="tt">Pattern-interrupt</p>
+                  <p class="sub">Permission to quit a painful task.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="c-below cells" style="padding-bottom:8px">
+            <div class="cell tap">
+              <span class="mini"><svg viewBox="0 0 90 160" width="100%" height="100%"><rect width="90" height="160" fill="#242422"/><polygon points="38,66 38,94 64,80" fill="#ece7de" opacity=".35"/></svg></span>
+              <div class="cbody">
+                <p class="tt">Proven structure · <span class="mult">90.7× their usual reach</span></p>
+                <p class="sub">Stop [doing the hard thing]. Do [the easier thing] instead.</p>
+                <p class="meta">@braedan.health · 621K views</p>
+              </div>
+              <span class="chev">›</span>
+            </div>
+            <div class="cell">
+              <span class="avs" aria-hidden="true"><i></i><i></i></span>
+              <div class="cbody">
+                <p class="tt">34% of your audience</p>
+                <p class="sub">They judge a video by whether it saves them a mistake.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="footer">
+            <button class="primary">Write the script →</button>
+            <button class="door"><span class="hollow"></span>Not tested yet<span class="door-cta">Simulate with your audience →</span></button>
+            <span class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg></span>
+          </div>
+        </div>
+      </div>
+      <p class="callout">
+        <b>Where the titles come from:</b> "Crash-zoom" is <code>visualHook.technique</code>, already
+        emitted. "Pattern-interrupt" needs the runner to name the mechanism in 2–4 words — one
+        additive prompt field, same shape as the <code>reaction_frame</code> addition. The subtitle
+        is the existing sentence, capped at one line of sense, not clamped mid-word.
+      </p>
+    </div>
+
+    <!-- cover anchor variant -->
+    <div class="col">
+      <h3>v8 · <em>Cells · Case-study anchor</em></h3>
+      <p class="sub">Same system, panel swapped for the source cover with the badge. The source cell
+        disappears because the panel IS the source; the structure moves into a cell.</p>
+      <div class="stage">
+        <div class="card" id="m8c-hook">
+          <div class="c-head">
+            <span class="c-skill">Hook</span>
+            <span class="c-chip">Top pick</span>
+            <button class="copy"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M216 32H88a8 8 0 0 0-8 8v40H40a8 8 0 0 0-8 8v128a8 8 0 0 0 8 8h128a8 8 0 0 0 8-8v-40h40a8 8 0 0 0 8-8V40a8 8 0 0 0-8-8m-56 176H48V96h112Zm48-48h-32V88a8 8 0 0 0-8-8H96V48h112Z"/></svg>Copy</button>
+          </div>
+
+          <p class="serif c-hero"><span class="q">“</span>Stop editing your videos. Do this instead.<span class="q">”</span></p>
+
+          <div class="c-cols">
+            <a class="c-media" href="#" aria-label="Open the case study">
+              <span class="cover">
+                <span class="play"><svg width="30" height="30" viewBox="0 0 34 34"><polygon points="12,9 12,25 26,17" fill="#ece7de" opacity=".45"/></svg></span>
+                <span class="badge">90.7×</span>
+              </span>
+              <p class="c-mediameta"><span class="n">Case study</span> · @braedan.health</p>
+            </a>
+            <div class="c-main cells">
+              <div class="cell">
+                <svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M216 40H40a16 16 0 0 0-16 16v144a16 16 0 0 0 16 16h176a16 16 0 0 0 16-16V56a16 16 0 0 0-16-16m0 160H40V56h176ZM72 96h112a8 8 0 0 0 0-16H72a8 8 0 0 0 0 16m0 40h112a8 8 0 0 0 0-16H72a8 8 0 0 0 0 16m0 40h64a8 8 0 0 0 0-16H72a8 8 0 0 0 0 16"/></svg>
+                <div class="cbody">
+                  <p class="tt">The structure that did it</p>
+                  <p class="sub">Stop [doing the hard thing]. Do [the easier thing] instead.</p>
+                </div>
+              </div>
+              <div class="cell">
+                <svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M251.77 73a8 8 0 0 0-8.21.39L208 97.05V72a16 16 0 0 0-16-16H32a16 16 0 0 0-16 16v112a16 16 0 0 0 16 16h160a16 16 0 0 0 16-16v-25l35.56 23.71A8 8 0 0 0 256 176V80a8 8 0 0 0-4.23-7"/></svg>
+                <div class="cbody">
+                  <p class="tt">Crash-zoom</p>
+                  <p class="sub">Hard cut to your face mid-sentence, caps slam on.</p>
+                </div>
+              </div>
+              <div class="cell">
+                <svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M128 24l22 82 82 22-82 22-22 82-22-82-82-22 82-22z"/></svg>
+                <div class="cbody">
+                  <p class="tt">Pattern-interrupt</p>
+                  <p class="sub">Permission to quit a painful task.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="c-below cells" style="padding-bottom:8px">
+            <div class="cell">
+              <span class="avs" aria-hidden="true"><i></i><i></i></span>
+              <div class="cbody">
+                <p class="tt">34% of your audience</p>
+                <p class="sub">They judge a video by whether it saves them a mistake.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="footer">
+            <button class="primary">Write the script →</button>
+            <button class="door"><span class="hollow"></span>Not tested yet<span class="door-cta">Simulate with your audience →</span></button>
+            <span class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg></span>
+          </div>
+        </div>
+      </div>
+      <p class="callout">
+        <b>Three cells beside the panel is this variant's cost</b> — the structure cell exists
+        because the template has nowhere else honest to live. If the column feels tall, the structure
+        line can move onto the cover as an overlay caption; that is a taste call for you.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     IDEA + EMPTY STATE
+     ═══════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <h2>Idea card, and the empty state</h2>
+  <div class="rowcols">
+
+    <div class="col">
+      <h3>v8 · <em>Cells · First frame</em> <span class="tag">new</span></h3>
+      <div class="stage">
+        <div class="card" id="m8-idea">
+          <div class="c-head">
+            <span class="c-skill">Idea</span>
+            <span class="c-chip">Top pick</span>
+            <span style="margin-left:auto"></span>
+          </div>
+
+          <h3 class="serif c-hero">The 30-day silence experiment</h3>
+          <p class="c-lede">Absence as a growth lever: go quiet on purpose, show the receipts.</p>
+
+          <div class="c-cols">
+            <span class="c-media">
+              <span class="frame"><p>I stopped posting for 30 days</p></span>
+              <p class="c-mediameta"><span class="n">Your first frame</span> · talking-head</p>
+            </span>
+            <div class="c-main cells">
+              <div class="cell">
+                <svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M128 24l22 82 82 22-82 22-22 82-22-82-82-22 82-22z"/></svg>
+                <div class="cbody">
+                  <p class="tt">Curiosity gap</p>
+                  <p class="sub">Creators fear disappearing.</p>
+                </div>
+              </div>
+              <div class="cell">
+                <svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M232 96a16 16 0 0 0-16-16h-27l-15-45a16 16 0 0 0-15-11H97a16 16 0 0 0-15 11L67 80H40a16 16 0 0 0-16 16v112a16 16 0 0 0 16 16h176a16 16 0 0 0 16-16Zm-104 92a44 44 0 1 1 44-44 44 44 0 0 1-44 44"/></svg>
+                <div class="cbody">
+                  <p class="tt">Your proven angle</p>
+                  <p class="sub">Your top 3 posts lead with counter-intuitive claims.</p>
+                </div>
+              </div>
+              <div class="cell">
+                <svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M227.31 73.37 182.63 28.68a16 16 0 0 0-22.63 0L36.69 152A15.86 15.86 0 0 0 32 163.31V208a16 16 0 0 0 16 16h44.69a15.86 15.86 0 0 0 11.31-4.69L227.31 96a16 16 0 0 0 0-22.63M92.69 208H48v-44.69l88-88L180.69 120ZM192 108.68 147.31 64l24-24L216 84.68Z"/></svg>
+                <div class="cbody">
+                  <p class="tt">Your take</p>
+                  <p class="sub on">Consistency is overrated; strategic absence compounds attention.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="c-below cells" style="padding-bottom:8px">
+            <div class="cell tap">
+              <span class="mini"><svg viewBox="0 0 90 160" width="100%" height="100%"><rect width="90" height="160" fill="#242422"/><polygon points="38,66 38,94 64,80" fill="#ece7de" opacity=".35"/></svg></span>
+              <div class="cbody">
+                <p class="tt">Proven structure · <span class="mult">277× their usual reach</span></p>
+                <p class="sub">I stopped [common habit] for [timeframe]. Here's what happened.</p>
+                <p class="meta">@nourish.me.now · 4.3M views</p>
+              </div>
+              <span class="chev">›</span>
+            </div>
+            <div class="cell">
+              <span class="avs" aria-hidden="true"><i></i><i></i></span>
+              <div class="cbody">
+                <p class="tt">34% of your audience</p>
+                <p class="sub">They judge a video by whether it saves them a mistake.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="footer">
+            <button class="primary">Write hooks for this →</button>
+            <button class="door"><span class="hollow"></span>Not tested yet<span class="door-cta">Simulate with your audience →</span></button>
+            <span class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg></span>
+          </div>
+        </div>
+      </div>
+      <p class="callout">
+        <b>The take is the one lit subtitle</b> (secondary instead of muted) because it is the line
+        the creator owns. "Opens with" is gone as text: the frame IS the opening line. "Topic" and
+        "Format" live in the hero block and the frame meta.
+      </p>
+    </div>
+
+    <!-- EMPTY STATE -->
+    <div class="col">
+      <h3>Empty state · <em>ungrounded + uncalibrated run</em></h3>
+      <p class="sub">No source video, no calibrated audience. The source and audience cells are
+        simply absent; the frame cannot be empty because the hook line always exists.</p>
+      <div class="stage">
+        <div class="card" id="m8e-hook">
+          <div class="c-head">
+            <span class="c-skill">Hook</span>
+            <span class="c-chip">Top pick</span>
+            <button class="copy"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M216 32H88a8 8 0 0 0-8 8v40H40a8 8 0 0 0-8 8v128a8 8 0 0 0 8 8h128a8 8 0 0 0 8-8v-40h40a8 8 0 0 0 8-8V40a8 8 0 0 0-8-8m-56 176H48V96h112Zm48-48h-32V88a8 8 0 0 0-8-8H96V48h112Z"/></svg>Copy</button>
+          </div>
+
+          <p class="serif c-hero"><span class="q">“</span>Stop editing your videos. Do this instead.<span class="q">”</span></p>
+
+          <div class="c-cols" style="padding-bottom:12px">
+            <span class="c-media">
+              <span class="frame"><p>Stop editing your videos. Do this instead.</p></span>
+              <p class="c-mediameta"><span class="n">Your first frame</span> · 0:00</p>
+            </span>
+            <div class="c-main cells">
+              <div class="cell">
+                <svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M251.77 73a8 8 0 0 0-8.21.39L208 97.05V72a16 16 0 0 0-16-16H32a16 16 0 0 0-16 16v112a16 16 0 0 0 16 16h160a16 16 0 0 0 16-16v-25l35.56 23.71A8 8 0 0 0 256 176V80a8 8 0 0 0-4.23-7"/></svg>
+                <div class="cbody">
+                  <p class="tt">Crash-zoom</p>
+                  <p class="sub">Hard cut to your face mid-sentence, caps slam on.</p>
+                </div>
+              </div>
+              <div class="cell">
+                <svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M128 24l22 82 82 22-82 22-22 82-22-82-82-22 82-22z"/></svg>
+                <div class="cbody">
+                  <p class="tt">Pattern-interrupt</p>
+                  <p class="sub">Permission to quit a painful task.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="footer">
+            <button class="primary">Write the script →</button>
+            <button class="door"><span class="hollow"></span>Not tested yet<span class="door-cta">Simulate with your audience →</span></button>
+            <span class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg></span>
+          </div>
+        </div>
+      </div>
+      <p class="callout">
+        <b>This is the majority case for a new user</b> (uncalibrated, ungrounded). Under every prior
+        version it degraded to bare text; under cells it is a complete-looking small card, and the
+        door is the whole pitch, exactly where the funnel wants it.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <h2>Measured heights</h2>
+  <p class="note">Real <code>getBoundingClientRect().height</code> off this file, both widths, no
+    horizontal overflow, no JS errors.</p>
+  <div class="prose" style="max-width:920px">
+    <table class="mt">
+      <thead>
+        <tr><th>Card</th><th>Shipped</th><th>v7 best</th><th>v8 · First frame</th><th>v8 · Case study</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>hook @728</td><td>590</td><td>415</td><td style="color:var(--fg)">561</td><td>499</td></tr>
+        <tr><td>hook @342</td><td>694</td><td>509</td><td style="color:var(--fg)">660</td><td>642</td></tr>
+        <tr><td>idea @728</td><td>630</td><td>430</td><td style="color:var(--fg)">604</td><td>—</td></tr>
+        <tr><td>idea @342</td><td>774</td><td>576</td><td style="color:var(--fg)">758</td><td>—</td></tr>
+        <tr><td>empty hook @728</td><td>—</td><td>—</td><td style="color:var(--fg)">420</td><td>—</td></tr>
+      </tbody>
+    </table>
+    <p style="margin-top:14px"><b class="cream">Cells cost height against v7's bare prose and still
+    beat shipped in every cell.</b> The cost buys the structure you asked for: hairlines, icons,
+    titles, tap targets. The empty-state card at 420px is the smallest complete-looking card any
+    version has produced, which matters because ungrounded and uncalibrated is the majority case for
+    a new user.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <h2>Open for you</h2>
+  <div class="flagbox">
+    <h4>The calls</h4>
+    <p><b>1 · Does the cell read as UI to you?</b> If yes, this system carries all four cards
+    (script's beats are already cells; remix's map rows become cells) and the next mock is the full
+    set. If no, say which part still reads as text.</p>
+    <p><b>2 · First frame or Case study panel</b> — still open from v7, both shown above in the
+    cell system.</p>
+    <p><b>3 · Mechanism titles need one runner field:</b> a 2–4 word name for the mechanism
+    ("Pattern-interrupt", "Curiosity gap"). Additive, same shape as the reaction-frame addition.
+    Bless it and the schema note goes into the implementation plan.</p>
+  </div>
+</section>
+
+<script>
+document.querySelectorAll('.seg').forEach(function (seg) {
+  seg.addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    seg.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+    if (b.dataset.w) document.body.dataset.w = b.dataset.w;
+  });
+});
+</script>
+</body>
+</html>

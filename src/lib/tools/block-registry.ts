@@ -15,6 +15,7 @@
 import { type z } from "zod";
 import {
   MarkdownBlockSchema,
+  RunHeaderBlockSchema,
   BandBlockSchema,
   PersonasBlockSchema,
   IdeaCardBlockSchema,
@@ -27,6 +28,7 @@ import {
   AccountReadBlockSchema,
   InputRequestBlockSchema,
   CorpusReferencesBlockSchema,
+  BroughtCardBlockSchema,
 } from "./blocks";
 import {
   ProfileReadBlockSchema,
@@ -39,6 +41,7 @@ import {
 
 export const BLOCK_REGISTRY = {
   markdown: { schema: MarkdownBlockSchema as z.ZodType },
+  "run-header": { schema: RunHeaderBlockSchema as z.ZodType },
   band: { schema: BandBlockSchema as z.ZodType },
   personas: { schema: PersonasBlockSchema as z.ZodType },
   "idea-card": { schema: IdeaCardBlockSchema as z.ZodType },
@@ -51,6 +54,9 @@ export const BLOCK_REGISTRY = {
   "account-read": { schema: AccountReadBlockSchema as z.ZodType },
   "input-request": { schema: InputRequestBlockSchema as z.ZodType },
   "corpus-references": { schema: CorpusReferencesBlockSchema as z.ZodType },
+  // The ＋ door's own card — a stimulus the creator brought, and the room's measured read of it.
+  // It exists so a brought text HAS a descriptor: without one its seal is orphaned (see blocks.ts).
+  "brought-card": { schema: BroughtCardBlockSchema as z.ZodType },
   "profile-read": { schema: ProfileReadBlockSchema as z.ZodType },
   "reaction-distribution": { schema: ReactionDistributionBlockSchema as z.ZodType },
   "prediction-gauge": { schema: PredictionGaugeBlockSchema as z.ZodType },

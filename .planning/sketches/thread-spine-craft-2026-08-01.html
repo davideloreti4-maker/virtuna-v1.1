@@ -1,0 +1,342 @@
+<title>Thread spine — craft pass v2</title>
+<!--
+  v2 — direction C locked (framed run surface), the per-step ✓ dropped.
+  Rebuilt at the REAL thread width: src/components/thread/thread-shell.tsx is
+  `max-w-[760px] … px-4` → 728px of content. v1 judged chips in a 430px column, which is the
+  mistake docs/… "measure content-dependent layouts at several sizes" was written about.
+  Evidence counts are the real ones: grounding retrieves maxExamples:6 (retrieve.ts:102),
+  MAX_EVIDENCE_ITEMS caps at 8 (evidence.ts:65).
+
+  SINGLE-THEME BY CHOICE: these components only ever live on the product's dark charcoal ground;
+  rendering them on a light surface would misrepresent the thing under review. Every colour is read
+  off src/app/globals.css on 2026-08-01.
+-->
+<style>
+  :root{
+    --bg:#1f1f1e;                 /* --color-charcoal-app */
+    --surface-card:#252524;       /* --color-charcoal-thread — what RESULT CARDS use */
+    --cream:#ece7de;              /* --color-cream-primary */
+    --cream-2:#c2bdb4;            /* --color-cream-secondary */
+    --cream-muted:#8a857c;        /* --color-cream-muted */
+    --accent:#FF6363;             /* --color-accent */
+    --border:rgba(255,255,255,.06);
+    --border-hover:rgba(255,255,255,.10);
+    --r-xs:4px; --r-sm:6px; --r-md:8px; --r-lg:12px; --r-full:9999px;
+    --ease:cubic-bezier(.215,.61,.355,1);
+    --t-micro:10px; --t-label:12px; --t-body:13px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--cream);
+    font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    -webkit-font-smoothing:antialiased;line-height:1.5;padding:28px 20px 70px}
+
+  .wrap{max-width:840px;margin:0 auto;display:flex;flex-direction:column;gap:26px}
+  .masthead{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap}
+  .masthead h1{font-size:16px;font-weight:600;letter-spacing:-.01em}
+  .masthead p{font-size:var(--t-body);color:var(--cream-2);max-width:70ch;margin-top:7px;line-height:1.6}
+  .masthead p b{color:var(--cream);font-weight:600}
+  .replay{font-size:var(--t-label);color:var(--cream-2);background:var(--surface-card);
+    border:1px solid var(--border);border-radius:var(--r-md);padding:8px 14px;cursor:pointer;flex:none;
+    transition:border-color .15s,color .15s}
+  .replay:hover{color:var(--cream);border-color:var(--border-hover)}
+  .replay:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  .sec{display:flex;flex-direction:column;gap:11px}
+  .sec > .lab{font-size:var(--t-micro);letter-spacing:.07em;text-transform:uppercase;color:var(--cream-muted)}
+  .sec > .lab em{font-style:normal;color:var(--cream-2);text-transform:none;letter-spacing:0;font-size:var(--t-label)}
+  /* the true thread column — everything inside is at production width */
+  .thread{width:728px;max-width:100%;background:rgba(255,255,255,.012);
+    border:1px dashed rgba(255,255,255,.07);border-radius:var(--r-lg);padding:15px}
+  .thread .caption{font-size:var(--t-label);color:var(--cream-muted);margin-top:11px}
+
+  /* ══════════ the run surface (direction C) ══════════ */
+  .gen{border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;
+    background:rgba(255,255,255,.02);          /* a WHISPER — deliberately NOT the card tone … */
+    transition:background .4s var(--ease)}
+  .gen.as-card{background:var(--surface-card)} /* … the comparison: identical to a result card */
+  .gen-head{display:flex;align-items:center;gap:9px;padding:11px 14px 9px;font-size:var(--t-body)}
+  .gen-head .ttl{color:var(--cream-2);font-weight:500}
+  .gen-head .clk{margin-left:auto;font-size:var(--t-label);color:var(--cream-muted);font-variant-numeric:tabular-nums}
+  .gen-steps{padding:0 14px 12px;overflow:hidden;
+    transition:height .48s var(--ease),opacity .3s var(--ease),padding .48s var(--ease)}
+  .gen.collapsed .gen-steps{height:0!important;opacity:0;padding-top:0;padding-bottom:0}
+
+  .row{display:flex;gap:10px}
+  .rail{width:14px;flex:none;display:flex;flex-direction:column;align-items:center}
+  .node{width:7px;height:7px;border-radius:50%;flex:none;margin-top:5px;background:transparent;
+    box-shadow:inset 0 0 0 1px rgba(236,231,222,.16);
+    transition:background .4s var(--ease),box-shadow .4s var(--ease),transform .4s var(--ease)}
+  .row.active .node{background:var(--accent);box-shadow:none}
+  /* done = a SOLID fill against a hollow ring. Fill-vs-outline survives at 7px; a brightness
+     delta does not. No ✓ — neither Claude nor ChatGPT marks a finished step with one. */
+  .row.done .node{background:rgba(236,231,222,.55);box-shadow:none;animation:popq .34s var(--ease)}
+  @keyframes popq{0%{transform:scale(.5)}62%{transform:scale(1.3)}100%{transform:scale(1)}}
+  .line{position:relative;width:1px;flex:1;min-height:12px;margin:4px 0;background:rgba(255,255,255,.06);overflow:hidden}
+  .line i{position:absolute;inset:0;background:rgba(236,231,222,.40);
+    transform:scaleY(0);transform-origin:top;transition:transform .55s var(--ease)}
+  .row.done .line i{transform:scaleY(1)}
+  .row.last .line{display:none}
+  .body{flex:1;min-width:0;padding-bottom:7px}     /* tight resting rhythm … */
+  .row.active .body{padding-bottom:11px}           /* … only the live row breathes */
+  .lab-row{display:flex;align-items:baseline;gap:8px}
+  .nm{font-size:var(--t-body);font-weight:500;line-height:1.35;color:rgba(138,133,124,.55);
+    transition:color .45s var(--ease)}
+  .row.done .nm{color:var(--cream-muted)}          /* finished work RECEDES */
+  .row.active .nm{color:var(--cream)}
+  /* With the ✓ gone, the shimmer carries liveness — ChatGPT/Claude's actual in-flight cue.
+     Guarded here AND in globals.css (.text-shimmer self-guards prefers-reduced-motion). */
+  .row.active .nm.shim{
+    background:linear-gradient(90deg,var(--cream-muted) 0%,var(--cream-muted) 38%,var(--cream) 50%,
+      var(--cream-muted) 62%,var(--cream-muted) 100%);
+    background-size:200% 100%;-webkit-background-clip:text;background-clip:text;
+    -webkit-text-fill-color:transparent;animation:shim 2.4s linear infinite}
+  @keyframes shim{0%{background-position:100% 0}100%{background-position:-100% 0}}
+  .subwrap{display:grid;grid-template-rows:0fr;transition:grid-template-rows .38s var(--ease)}
+  .row.active .subwrap,.row.show-sub .subwrap{grid-template-rows:1fr}
+  .subwrap > span{overflow:hidden;display:block}
+  .sub{font-size:var(--t-label);color:var(--cream-muted);padding-top:3px}
+  .stamp{font-size:var(--t-micro);color:rgba(138,133,124,.55);font-variant-numeric:tabular-nums;margin-left:auto;flex:none}
+
+  /* ── evidence ── */
+  .ev{margin-top:5px;display:flex;flex-direction:column;gap:7px}
+  .ev .eyebrow{font-size:var(--t-label);color:var(--cream-muted)}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{display:flex;align-items:center;gap:8px;max-width:220px;border:1px solid var(--border);
+    background:rgba(255,255,255,.02);border-radius:var(--r-md);padding:4px 10px 4px 4px;
+    opacity:0;transform:translateY(6px);
+    transition:opacity .45s var(--ease),transform .45s var(--ease)}
+  .chip.in{opacity:1;transform:none}
+  .chip .cov{width:20px;height:34px;border-radius:var(--r-xs);flex:none;border:1px solid var(--border)}
+  .chip > span:last-child{display:flex;flex-direction:column;min-width:0}   /* handle OVER metric */
+  .chip .h{font-size:var(--t-label);font-weight:500;line-height:1.25;color:var(--cream-2);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .chip .m{font-size:var(--t-micro);line-height:1.3;color:var(--cream-muted)}
+  .c1{background:linear-gradient(150deg,#6a4f45,#332a26)} .c2{background:linear-gradient(150deg,#4a5550,#26302c)}
+  .c3{background:linear-gradient(150deg,#5a5064,#2e2a36)} .c4{background:linear-gradient(150deg,#665f4a,#3a3528)}
+  .c5{background:linear-gradient(150deg,#5b574f,#36332e)} .c6{background:linear-gradient(150deg,#6a5147,#3d322c)}
+  .avatar{border-radius:50%!important;width:28px!important;height:28px!important}
+
+  .strip{display:flex;gap:4px}
+  .strip .f{aspect-ratio:9/16;flex:1;min-width:0;max-width:44px;border-radius:var(--r-xs);
+    border:1px solid var(--border);background:rgba(255,255,255,.02);opacity:0;transition:opacity .4s var(--ease)}
+  .strip .f.in{opacity:1}
+
+  /* ── the collapsed receipt: COMPACT, not a full-width bar (Claude's "Thought for 12s") ── */
+  .receipt{display:inline-flex;align-items:center;gap:9px;align-self:flex-start;
+    border:1px solid var(--border);border-radius:var(--r-md);background:rgba(255,255,255,.02);
+    padding:7px 12px;font-size:var(--t-body);color:var(--cream-2);cursor:pointer;
+    font:inherit;font-size:var(--t-body);transition:border-color .15s,color .15s}
+  .receipt:hover{border-color:var(--border-hover);color:var(--cream)}
+  .receipt:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .receipt .d{width:7px;height:7px;border-radius:50%;background:rgba(236,231,222,.55);flex:none}
+  .receipt .chev{font-size:var(--t-micro);color:rgba(138,133,124,.6)}
+
+  .ab{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:800px){.ab{grid-template-columns:1fr}.thread{width:100%}}
+  .ab .cell{display:flex;flex-direction:column;gap:8px}
+  .ab .cell > .t{font-size:var(--t-label);color:var(--cream-2)}
+  .ab .cell > .t b{color:var(--cream);font-weight:600}
+
+  .note{border:1px solid var(--border);border-radius:var(--r-lg);padding:16px 18px;
+    background:var(--surface-card);font-size:var(--t-body);color:var(--cream-2);line-height:1.6;
+    display:flex;flex-direction:column;gap:9px}
+  .note b{color:var(--cream);font-weight:600}
+  .note .k{display:inline-block;min-width:96px;color:var(--cream-muted)}
+  .note code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:var(--cream)}
+  .q{border-left:2px solid var(--accent);padding-left:12px;color:var(--cream-2)}
+  @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="wrap">
+
+  <div class="masthead">
+    <div>
+      <h1>Thread loading spine — craft pass v2</h1>
+      <p><b>Direction C locked</b>, per-step ✓ dropped. Everything below is at the <b>true 728px</b> thread
+        width with the <b>real</b> evidence counts — v1 judged chips in a 430px column, so its wrap
+        behaviour was fiction. The open calls are the two A/B pairs at the bottom.</p>
+    </div>
+    <button class="replay" onclick="runAll()">↻ replay</button>
+  </div>
+
+  <!-- ═══ 1. the live run, real width, 6 chips (grounding's real max) ═══ -->
+  <div class="sec">
+    <div class="lab">1 · Live run <em>— grounding’s real <code>maxExamples: 6</code>, the stress case</em></div>
+    <div class="thread">
+      <div class="gen" id="gen1">
+        <div class="gen-head"><span class="ttl">Writing hooks</span><span class="clk" id="clk1">0:00</span></div>
+        <div class="gen-steps" id="steps1">
+          <div class="row" data-i="0"><div class="rail"><span class="node"></span><span class="line"><i></i></span></div>
+            <div class="body"><div class="lab-row"><p class="nm shim">Finding proven outliers</p></div>
+              <div class="subwrap"><span><p class="sub">Measuring each against its baseline</p></span></div></div></div>
+          <div class="row" data-i="1"><div class="rail"><span class="node"></span><span class="line"><i></i></span></div>
+            <div class="body"><div class="lab-row"><p class="nm shim">Generating</p></div>
+              <div class="subwrap"><span>
+                <div class="ev"><p class="eyebrow">Drafting against 6 proven videos</p>
+                  <div class="chips" id="chips1">
+                    <span class="chip"><span class="cov c1"></span><span><span class="h">@morningproof</span><span class="m">4.2× baseline</span></span></span>
+                    <span class="chip"><span class="cov c2"></span><span><span class="h">@thequietam</span><span class="m">3.1× baseline</span></span></span>
+                    <span class="chip"><span class="cov c3"></span><span><span class="h">@5amlab</span><span class="m">2.8× baseline</span></span></span>
+                    <span class="chip"><span class="cov c4"></span><span><span class="h">@slowmornings</span><span class="m">2.5× baseline</span></span></span>
+                    <span class="chip"><span class="cov c5"></span><span><span class="h">@thedailyreset</span><span class="m">2.2× baseline</span></span></span>
+                    <span class="chip"><span class="cov c6"></span><span><span class="h">@wakeupwithme</span><span class="m">1.9× baseline</span></span></span>
+                  </div></div></span></div></div></div>
+          <div class="row" data-i="2"><div class="rail"><span class="node"></span><span class="line"><i></i></span></div>
+            <div class="body"><div class="lab-row"><p class="nm shim">Simulating your audience</p></div>
+              <div class="subwrap"><span><p class="sub">Reacting with each of your 10 reactors</p></span></div></div></div>
+          <div class="row last" data-i="3"><div class="rail"><span class="node"></span><span class="line"><i></i></span></div>
+            <div class="body"><div class="lab-row"><p class="nm shim">Ranking</p></div>
+              <div class="subwrap"><span><p class="sub">Settling the final order</p></span></div></div></div>
+        </div>
+      </div>
+      <p class="caption"><b style="color:var(--cream-2)">Measured, not guessed:</b> at 728px the rail has
+        642px of usable width, chips come out 109–141px (they size to the handle), and 6 wrap
+        <b style="color:var(--cream-2)">4 + 2</b> — a half-empty second row. That’s the one thing here I’m
+        not sure about: leave it as an honest tag-wrap, or make the chips equal-width so 6 reads 3 + 3?
+        v1 couldn’t show this at all — it judged chips in a 430px column.</p>
+    </div>
+  </div>
+
+  <!-- ═══ 2. profile evidence — the kind:'profile' producer 4a will be ═══ -->
+  <div class="sec">
+    <div class="lab">2 · Account read <em>— the <code>kind:'profile'</code> avatar disc nothing emits yet (JOB 2 · 4a)</em></div>
+    <div class="thread">
+      <div class="gen">
+        <div class="gen-head"><span class="ttl">Reading your account</span><span class="clk">0:18</span></div>
+        <div class="gen-steps">
+          <div class="row done"><div class="rail"><span class="node"></span><span class="line"><i></i></span></div>
+            <div class="body"><div class="lab-row"><p class="nm">Finding your profile</p></div>
+              <div class="subwrap"><span></span></div></div></div>
+          <div class="row active last"><div class="rail"><span class="node"></span><span class="line"><i></i></span></div>
+            <div class="body"><div class="lab-row"><p class="nm shim">Pulling your last 30 posts</p></div>
+              <div class="subwrap"><span>
+                <div class="ev"><p class="eyebrow">Your profile, and the posts as they come back</p>
+                  <div class="chips">
+                    <span class="chip in"><span class="cov c1 avatar"></span><span><span class="h">@davide.creates</span><span class="m">48.2K followers · 214 posts</span></span></span>
+                  </div>
+                  <div class="strip" style="margin-top:3px">
+                    <span class="f in c1"></span><span class="f in c2"></span><span class="f in c3"></span><span class="f in c4"></span>
+                    <span class="f in c5"></span><span class="f in c6"></span><span class="f"></span><span class="f"></span>
+                  </div></div></span></div></div></div>
+        </div>
+      </div>
+      <p class="caption">The avatar disc at 28px beside a 20×34 cover — checked here before 4a fans it out,
+        per the handoff’s “check the disc renders well at 28px” note. The strip shows the post covers
+        landing as the scrape returns them.</p>
+    </div>
+  </div>
+
+  <!-- ═══ 3. collapsed + expanded receipt ═══ -->
+  <div class="sec">
+    <div class="lab">3 · The receipt <em>— compact, like Claude’s “Thought for 12s”, not a full-width bar</em></div>
+    <div class="thread">
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div>
+          <button class="receipt" onclick="toggleR()"><span class="d"></span>Generated in 0:32<span class="chev" id="rchev">▸</span></button>
+        </div>
+        <div id="expanded" style="display:none">
+          <div class="gen">
+            <div class="gen-head"><span class="ttl">Generated in 0:32</span><span class="clk">4 steps</span></div>
+            <div class="gen-steps">
+              <div class="row done"><div class="rail"><span class="node"></span><span class="line"><i></i></span></div>
+                <div class="body"><div class="lab-row"><p class="nm">Finding proven outliers</p><span class="stamp">8.2s</span></div></div></div>
+              <div class="row done"><div class="rail"><span class="node"></span><span class="line"><i></i></span></div>
+                <div class="body"><div class="lab-row"><p class="nm">Generating</p><span class="stamp">21s</span></div></div></div>
+              <div class="row done"><div class="rail"><span class="node"></span><span class="line"><i></i></span></div>
+                <div class="body"><div class="lab-row"><p class="nm">Simulating your audience</p><span class="stamp">9.4s</span></div></div></div>
+              <div class="row done last"><div class="rail"><span class="node"></span><span class="line"><i></i></span></div>
+                <div class="body"><div class="lab-row"><p class="nm">Ranking</p><span class="stamp">2.1s</span></div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="caption">Click it. The per-step durations we already measure live <em>here</em> — where they’re
+        information — instead of shouting down the right edge during the run.</p>
+    </div>
+  </div>
+
+  <!-- ═══ 4. the two open calls ═══ -->
+  <div class="sec">
+    <div class="lab">4 · The two calls I want your eye on</div>
+    <div class="ab">
+      <div class="cell">
+        <p class="t"><b>a.</b> Run surface = a <b>whisper</b> (2% white)</p>
+        <div class="gen">
+          <div class="gen-head"><span class="ttl">Writing hooks</span><span class="clk">0:12</span></div>
+          <div class="gen-steps">
+            <div class="row done"><div class="rail"><span class="node"></span><span class="line"><i></i></span></div>
+              <div class="body"><div class="lab-row"><p class="nm">Finding proven outliers</p></div></div></div>
+            <div class="row active last"><div class="rail"><span class="node"></span><span class="line"><i></i></span></div>
+              <div class="body"><div class="lab-row"><p class="nm shim">Generating</p></div>
+                <div class="subwrap"><span><p class="sub">Drafting angles against your audience</p></span></div></div></div>
+          </div>
+        </div>
+        <p class="t" style="color:var(--cream-muted)">Process reads as subordinate to the output.</p>
+      </div>
+      <div class="cell">
+        <p class="t"><b>b.</b> Run surface = the <b>result-card tone</b> (#252524)</p>
+        <div class="gen as-card">
+          <div class="gen-head"><span class="ttl">Writing hooks</span><span class="clk">0:12</span></div>
+          <div class="gen-steps">
+            <div class="row done"><div class="rail"><span class="node"></span><span class="line"><i></i></span></div>
+              <div class="body"><div class="lab-row"><p class="nm">Finding proven outliers</p></div></div></div>
+            <div class="row active last"><div class="rail"><span class="node"></span><span class="line"><i></i></span></div>
+              <div class="body"><div class="lab-row"><p class="nm shim">Generating</p></div>
+                <div class="subwrap"><span><p class="sub">Drafting angles against your audience</p></span></div></div></div>
+          </div>
+        </div>
+        <p class="t" style="color:var(--cream-muted)">Identical weight to the cards it precedes.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    <div class="q">Your question — <b>what do Claude and ChatGPT actually use?</b> Neither marks a finished
+      step with a check. Both collapse the whole run to one line (“Thought for 12s ▸”) and signal
+      completion two ways only: the step goes <b>quiet</b>, and the block <b>collapses</b>. The in-flight
+      cue is a <b>shimmer sweep on the label</b>, with no coloured dot at all. We keep one coral dot because
+      this product’s spine shows four steps at once and needs a “you are here” — but that is the only
+      place we spend it.</div>
+    <div><span class="k">v2 changes</span> True 728px width · 6-chip stress case · avatar disc checked at 28px ·
+      compact receipt instead of a full-width bar · shimmer restored on the live label (it now carries
+      the liveness the ✓ used to) · head title dropped to <code>cream-secondary</code> while running,
+      since the content isn’t there yet.</div>
+    <div><span class="k">Unchanged</span> Node 7px, rail 1px, done = solid fill vs hollow ring, done rows
+      recede to <code>--color-cream-muted</code>, one clock, evidence headline replaces the duplicate
+      sub-line, accent only on the live node.</div>
+    <div><span class="k">Still to build</span> Nothing here is in components yet — this is the sketch.
+      On your nod I land it in <code>progress-checklist.tsx</code> + <code>run-evidence.tsx</code>.</div>
+  </div>
+</div>
+
+<script>
+  const $=s=>document.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+  let T=[], ck=null;
+  const after=(ms,fn)=>T.push(setTimeout(fn,ms));
+
+  function toggleR(){
+    const e=$('#expanded'), open=e.style.display==='none';
+    e.style.display=open?'':'none';
+    $('#rchev').textContent=open?'▾':'▸';
+  }
+
+  function runAll(){
+    T.forEach(clearTimeout); T=[]; clearInterval(ck);
+    const rows=$$('#steps1 .row');
+    rows.forEach((r,i)=>r.className='row'+(i===3?' last':''));
+    $$('#chips1 .chip').forEach(c=>c.classList.remove('in'));
+    let s=0; const clk=$('#clk1'); clk.textContent='0:00';
+    ck=setInterval(()=>{s+=4;clk.textContent='0:'+String(Math.min(s,32)).padStart(2,'0');},230);
+
+    const MS=[1500,3400,1900,1000];
+    let i=0;
+    (function go(){
+      if(i>0){rows[i-1].classList.remove('active');rows[i-1].classList.add('done');}
+      if(i>=rows.length){clearInterval(ck);return;}
+      rows[i].classList.add('active');
+      if(i===1) after(700,()=>$$('#chips1 .chip').forEach((c,k)=>after(k*80,()=>c.classList.add('in'))));
+      const d=MS[i]; i++; after(d,go);
+    })();
+  }
+  runAll();
+</script>

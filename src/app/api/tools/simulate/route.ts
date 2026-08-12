@@ -30,6 +30,7 @@ import { insertMessage } from "@/lib/threads/messages";
 import { kcStamp } from "@/lib/kc/kc-stamp";
 import { csrfGuard } from "@/lib/http/csrf-guard";
 import { billUsage, creditGate } from "@/lib/billing/credit-gate";
+import { isSealedVisitor } from "@/lib/onboarding/verdict-seal";
 import { rateLimitGuard } from "@/lib/http/rate-limit";
 import { normalizeStimulus } from "@/lib/engine/stimulus/normalize";
 import { getAudience } from "@/lib/audience/audience-repo";
@@ -51,6 +52,13 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // ── (1a) THE WALL (ONBOARDING-FUNNEL-DESIGN.md §0b②) — a Simulate run produces a
+  // reaction verdict and persists it into the thread; for an anonymous /go visitor that
+  // verdict is what the $1 buys. Refused BEFORE any run, credit spend, or thread write.
+  if (isSealedVisitor(user)) {
+    return Response.json({ error: "verdict_sealed" }, { status: 403 });
+  }
+
   // ── Layer 2 mock short-circuit (dev only) — skip (no fixture stream yet), no engine call ──
   const mock = await maybeMockSkillRun("simulate", user.id);
   if (mock) return mock;
@@ -64,7 +72,7 @@ export async function POST(request: Request): Promise<Response> {
   if (limited) return limited;
 
   // ── Credit gate (BILLING) — priced admission BEFORE any engine spend ─────────
-  const { refusal, verdict: creditVerdict } = await creditGate(supabase, user.id, "simulate");
+  const { refusal, verdict: creditVerdict } = await creditGate(supabase, user, "simulate");
   if (refusal) return refusal;
 
   // ── (2) Parse + cap the body ──────────────────────────────────────────────────

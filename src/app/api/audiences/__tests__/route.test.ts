@@ -655,7 +655,7 @@ describe("POST /api/audiences/calibrate", () => {
     // the phase that is ACTUALLY starting, which is the whole point of the fix.
     expect(statusEvents.map((e) => (e.data as { message: string }).message)).toEqual([
       "Reading your followers…",
-      "Watching your top videos…",
+      "Watching your videos…",
       "Building your audience profile…",
     ]);
 

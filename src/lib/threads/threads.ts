@@ -267,6 +267,8 @@ export interface OpenThreadSummary {
   title: string | null;
   created_at: string;
   updated_at: string;
+  /** Timestamp the user pinned this thread; null = unpinned. */
+  pinned_at: string | null;
 }
 
 /**
@@ -283,10 +285,14 @@ export async function listOpenThreads(
 
   const { data, error } = await supabase
     .from("threads")
-    .select("id, title, created_at, updated_at")
+    .select("id, title, created_at, updated_at, pinned_at")
     .eq("user_id", userId)
     .eq("type", "open")
     .is("reading_id", null)
+    // Pinned first (nulls last), then most-recently-touched. Postgres sorts NULLs
+    // FIRST on a DESC order by default, which would float every UNPINNED thread
+    // above the pinned ones — nullsFirst:false is what makes this correct.
+    .order("pinned_at", { ascending: false, nullsFirst: false })
     .order("updated_at", { ascending: false })
     .order("created_at", { ascending: false })
     .limit(limit);
@@ -296,4 +302,63 @@ export async function listOpenThreads(
   }
 
   return (data ?? []) as OpenThreadSummary[];
+}
+
+// ─── renameThread ─────────────────────────────────────────────────────────────
+/**
+ * Rename a thread. Unlike setThreadTitleIfEmpty this DELIBERATELY overwrites: an
+ * explicit rename is the strongest possible signal about what a thread is, so it
+ * outranks the write-once derivation that produced whatever is there now.
+ *
+ * Ownership-scoped by user_id (CR-01). Passing an empty/whitespace title clears
+ * the row back to NULL, which re-opens the automatic derivation — that is the
+ * "reset to automatic" path, not an error.
+ *
+ * Returns true when a row was actually updated (i.e. the thread exists and is
+ * owned by this user).
+ */
+export async function renameThread(
+  userId: string,
+  threadId: string,
+  rawTitle: unknown,
+): Promise<boolean> {
+  // null clears; anything else must survive the same normalisation every other
+  // writer passes through, so a rename cannot smuggle in a filename either.
+  const title = typeof rawTitle === "string" && rawTitle.trim() === ""
+    ? null
+    : cleanThreadTitle(rawTitle);
+
+  const supabase = createServiceClient();
+  const { data, error } = await supabase
+    .from("threads")
+    .update({ title })
+    .eq("id", threadId)
+    .eq("user_id", userId)
+    .select("id")
+    .maybeSingle();
+  return !error && data != null;
+}
+
+// ─── setThreadPinned ──────────────────────────────────────────────────────────
+/**
+ * Pin or unpin a thread. `pinned_at` is a timestamp rather than a boolean so the
+ * pinned set holds a stable order among itself (most recently pinned first)
+ * without needing a second column. Unpinning writes NULL.
+ *
+ * Ownership-scoped by user_id (CR-01). Returns true when a row was updated.
+ */
+export async function setThreadPinned(
+  userId: string,
+  threadId: string,
+  pinned: boolean,
+): Promise<boolean> {
+  const supabase = createServiceClient();
+  const { data, error } = await supabase
+    .from("threads")
+    .update({ pinned_at: pinned ? new Date().toISOString() : null })
+    .eq("id", threadId)
+    .eq("user_id", userId)
+    .select("id")
+    .maybeSingle();
+  return !error && data != null;
 }

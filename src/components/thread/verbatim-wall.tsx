@@ -78,7 +78,7 @@ export function collectQuotes(audiences: Audiences, verdict: 'stop' | 'scroll'):
 }
 
 /** One quote row — reuses the remix-card italic blockquote (2px left border) verbatim. */
-function QuoteRow({ q, isLead }: { q: WallQuote; isLead: boolean }) {
+function QuoteRow({ q, isLead, showAudience }: { q: WallQuote; isLead: boolean; showAudience: boolean }) {
   return (
     <div className="flex flex-col gap-1">
       <blockquote
@@ -90,11 +90,16 @@ function QuoteRow({ q, isLead }: { q: WallQuote; isLead: boolean }) {
       >
         &ldquo;{stripWrappingQuotes(q.quote)}&rdquo;
       </blockquote>
-      {/* Audience + archetype tag — small, muted, never coral. Multiple audiences when the
-          same archetype landed on this exact line in more than one of them (see collectQuotes:
-          merged into ONE row rather than printed twice). */}
-      <p className="pl-3 text-[11px] uppercase tracking-[0.05em] text-foreground-muted">
-        {q.audienceNames.join(' + ')} · {q.archetype.replace(/_/g, ' ')}
+      {/* Who said it — small, muted, sentence case (the old all-caps double tag wrapped into two
+          shouting lines at card width). The audience name only rides along in COMPARE mode, where
+          "which audience said this" is real information; single-audience reads tag the persona
+          alone. Multiple audiences when the same archetype landed on this exact line in more than
+          one of them (see collectQuotes: merged into ONE row rather than printed twice). */}
+      <p className="pl-3 text-caption capitalize text-foreground-muted">
+        {q.archetype.replace(/_/g, ' ')}
+        {showAudience && (
+          <span className="normal-case text-foreground-muted/70"> · {q.audienceNames.join(' + ')}</span>
+        )}
       </p>
     </div>
   );
@@ -106,22 +111,29 @@ function VerdictGroup({
   label,
   dotClass,
   quotes,
+  showAudience,
 }: {
   label: string;
   dotClass: string;
   quotes: WallQuote[];
+  showAudience: boolean;
 }) {
   if (quotes.length === 0) return null;
   return (
     <div className="flex flex-col gap-3">
-      <p className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.05em] text-foreground-muted">
+      <p className="flex items-center gap-1.5 text-caption uppercase tracking-[0.05em] text-foreground-muted">
         <span className={`h-[6px] w-[6px] shrink-0 rounded-full ${dotClass}`} aria-hidden="true" />
         {label}
         <span className="ml-0.5 font-normal text-foreground-muted/60">{quotes.length}</span>
       </p>
       <div className="flex flex-col gap-3">
         {quotes.map((q, i) => (
-          <QuoteRow key={`${q.audienceNames.join('+')}-${q.archetype}-${i}`} q={q} isLead={i === 0} />
+          <QuoteRow
+            key={`${q.audienceNames.join('+')}-${q.archetype}-${i}`}
+            q={q}
+            isLead={i === 0}
+            showAudience={showAudience}
+          />
         ))}
       </div>
     </div>
@@ -145,15 +157,18 @@ export function VerbatimWall({ audiences }: VerbatimWallProps) {
   // Nothing to show (no personas anywhere) → render nothing (no fabricated wall).
   if (stopped.length === 0 && scrolled.length === 0) return null;
 
+  // In compare mode "which audience said this" is real information; single-audience walls
+  // tag the persona alone (the audience name would repeat on every row).
+  const showAudience = audiences.length > 1;
+
   return (
-    /* De-boxed (2026-07-21): the room is a hairline-separated SECTION of the Read card, not a
-       nested bordered box within it (the within-card nesting #327/#329 removed everywhere else). */
+    /* De-boxed (2026-07-21): a hairline-separated SECTION of the Read card, not a nested bordered
+       box within it (the within-card nesting #327/#329 removed everywhere else). The "The room"
+       header is gone (2026-08-02): the verdict groups name themselves, and the app's wording is
+       audience, never room. */
     <div className="flex flex-col gap-5 border-t border-white/[0.06] pt-4">
-      <p className="text-[11px] uppercase tracking-[0.05em] text-foreground-muted">
-        The room
-      </p>
-      <VerdictGroup label="Stopped the scroll" dotClass="bg-success" quotes={stopped} />
-      <VerdictGroup label="Scrolled past" dotClass="bg-foreground-muted" quotes={scrolled} />
+      <VerdictGroup label="Stopped the scroll" dotClass="bg-success" quotes={stopped} showAudience={showAudience} />
+      <VerdictGroup label="Scrolled past" dotClass="bg-foreground-muted" quotes={scrolled} showAudience={showAudience} />
     </div>
   );
 }

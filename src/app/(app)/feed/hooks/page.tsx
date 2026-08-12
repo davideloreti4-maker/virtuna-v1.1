@@ -1,13 +1,19 @@
 import { redirect } from "next/navigation";
 
 /**
- * /feed/hooks — orphaned by the MVP launch cut (2026-07-15). The Discover hub + /feed were hidden
- * (the parent redirects to /home), but this sub-route did not inherit and stayed live, leaking the
- * hidden Hooks vault via direct URL (P3, ambient-room-v2). Redirect to /home to match the parent.
+ * /feed/hooks — RETIRED 2026-08-02, redirects to the Collections tab.
  *
- * The HooksClient + seed-backed vault are LEFT IN PLACE (unreferenced) — restore this route from git
- * to bring the vault back post-launch, exactly like /feed and /start.
+ * The Hooks tab was a vault of 12 hooks hardcoded in `lib/hooks/default-hooks.ts`, whose
+ * multipliers and view counts were — per that file's own comment — "static illustration",
+ * rendered in the same green multiplier pill as the measured numbers two tabs over, sorted
+ * by "Biggest outlier", with a working CSV export. It promised a corpus and shipped a
+ * placeholder.
+ *
+ * Collections is what it should have been: the same idea (reusable hook patterns, grouped)
+ * over the 105 curated collections of the real teardown corpus, where every row is a video
+ * we tore down and every number is measured against that creator's own baseline. The
+ * redirect keeps old links and bookmarks alive.
  */
 export default function HooksRedirect() {
-  redirect("/home");
+  redirect("/feed?tab=collections");
 }

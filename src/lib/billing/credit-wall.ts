@@ -35,3 +35,31 @@ export function reportCredit402(status: number, body: unknown): body is CreditQu
   raiseCreditWall(body);
   return true;
 }
+
+/**
+ * The refusal as a throwable — how a stream hook unwinds without ALSO drawing an error.
+ *
+ * "Stop its own error theatrics" above was a comment, not a mechanism: every skill hook raised
+ * the wall and then threw, so its catch set `error` and the thread drew `SkillRunError` UNDER the
+ * modal — with the generic copy, *"The generation or SIM-1 pass dropped out. Tap to retry —
+ * nothing was charged."* Both halves are wrong for a 402: nothing dropped out (they were
+ * refused), and the retry gets the same 402 forever. Measured on a production build against an
+ * anonymous /go visitor tapping Ideas: paywall on top, futile retry underneath.
+ *
+ * Throw this instead, and skip the error state in the catch (`finally` still resets the stream).
+ * Identified by a FLAG, not `instanceof` — the check has to survive module duplication.
+ */
+export class CreditWallRefusal extends Error {
+  readonly creditWall = true;
+  constructor(message = "credit wall") {
+    super(message);
+    this.name = "CreditWallRefusal";
+  }
+}
+
+/** Was this thrown by a fetch site that already raised the wall? Then the dialog is the UI. */
+export function isCreditWallRefusal(err: unknown): boolean {
+  return (
+    !!err && typeof err === "object" && (err as { creditWall?: unknown }).creditWall === true
+  );
+}

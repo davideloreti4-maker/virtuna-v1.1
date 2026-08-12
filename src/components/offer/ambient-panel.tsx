@@ -2,25 +2,33 @@
 
 /**
  * AmbientPanel — the SECOND surface of the two-surface story: the shipped
- * `<AmbientRoom>` (The brain ⇄ The people ⇄ The population), mounted beside the
- * Test card so the hero shows the full loop — craft (the card) AND reception
- * (the room). It lands on the BRAIN scale, which auto-plays a labeled simulated
- * neural read on mount (no click needed) — the ambient wow.
+ * Ambient v2 depth surface (`<AmbientDetail>` — The brain ⇄ The audience),
+ * mounted beside the Test card so the hero shows the full loop — craft (the
+ * card) AND reception (the read).
  *
- * Non-grounded (personas-only) so there's no gitignored sample-video dependency.
- * Own throwaway QueryClient as insurance for any child hook; `canRewrite` off —
- * the re-run lever is an in-app action, not a landing CTA.
+ * ⚠️ This is a REPRODUCTION of what the CURRENT platform renders in the
+ * composer's ≥xl rail when a card is drilled (`AmbientOverviewRail` →
+ * `AmbientDetail`, behind AMBIENT_V2). Owner correction 2026-07-26: the panel
+ * previously reproduced the LEGACY `AmbientRoom` (three tabs, "6 of 10 would
+ * stop") — a surface the current platform no longer shows. Diff against the
+ * live app rail, not `/dev/cards` (stale, still mounts the legacy room).
+ *
+ * Fidelity choices, each mirroring the real mount:
+ *  • `CREATOR_TEMPLATE` — the authored, seeded-deterministic review fixture
+ *    (byte-identical SSR; modeled-not-measured chips carry the honesty).
+ *  • `onBack` omitted — the component's own contract: a back button that goes
+ *    nowhere is a dead control. Same reason the legacy panel kept
+ *    `canRewrite` off.
+ *  • `presentation="sheet"` — this card owns the ground, painted the rail's
+ *    real `#181817` tone.
+ *
+ * Own throwaway QueryClient as insurance for any child hook.
  */
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
-import { AmbientRoom } from "@/components/audience-lens/AmbientRoom";
-import {
-  ROOM_CONCEPT,
-  ROOM_FRACTION,
-  ROOM_PERSONAS,
-  ROOM_SIBLINGS,
-} from "./room-fixture";
+import { AmbientDetail } from "@/components/audience-lens/v2/AmbientDetail";
+import { FEATURED_ROOM_TEMPLATE } from "@/components/offer/featured-room-template";
 
 export function AmbientPanel({ className = "" }: { className?: string }) {
   const [qc] = useState(
@@ -35,31 +43,14 @@ export function AmbientPanel({ className = "" }: { className?: string }) {
   return (
     <QueryClientProvider client={qc}>
       <div
-        className={`relative flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-surface-sunken shadow-2xl ${className}`}
+        className={`relative flex h-full min-h-0 flex-col overflow-hidden rounded-[12px] border border-border bg-[#181817] ${className}`}
       >
-        {/* header — mirrors the card's browser-window chrome so the pair reads as a set */}
-        <div className="flex items-center gap-2 border-b border-border px-4 py-2.5">
-          <span className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.14em] text-foreground-muted">
-            <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-            The room · live
-          </span>
-          <span className="ml-auto text-[11px] text-foreground-muted">
-            1,000 simulated viewers
-          </span>
-        </div>
-
-        {/* the real ambient room — brain lands first and auto-plays */}
-        <div className="min-h-0 flex-1">
-          <AmbientRoom
-            flatPersonas={ROOM_PERSONAS}
-            conceptText={ROOM_CONCEPT}
-            fraction={ROOM_FRACTION}
-            kindLabel="Hook"
-            canRewrite={false}
-            focusId="h3"
-            initialCompareOpen={false}
-            siblings={ROOM_SIBLINGS}
-          />
+        {/* Bounded flex host — the walkthrough shipped AmbientDetail in an unbounded-height
+            wrapper and it rendered 2,182px instead of 800 (go/page.tsx postmortem). The sheet
+            presentation expects its host to own the cap: flex + overflow-hidden bounds the root,
+            the detail's own min-h-0 internals scroll. */}
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <AmbientDetail template={FEATURED_ROOM_TEMPLATE} presentation="sheet" />
         </div>
       </div>
     </QueryClientProvider>

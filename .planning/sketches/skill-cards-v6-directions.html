@@ -1,0 +1,586 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Skill cards v6 · two anti-document directions, and the wording pass</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --charcoal-app:#1f1f1e; --surface-sunken:#1a1a19;
+  --fg:#ece7de; --fg-2:#c2bdb4; --fg-3:#8a857c;
+  --positive:#8ea68a; --warning:oklch(0.75 0.15 85); --accent:#FF6363;
+  --b:rgba(255,255,255,.06); --b-hover:rgba(255,255,255,.10);
+  --t-caption:11px; --t-label:12px; --t-body:13px; --t-reading:14px;
+  --t-title:16px; --t-subhead:18px; --t-heading:22px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--charcoal-app);color:var(--fg);
+  font-family:InterV,Inter,system-ui,-apple-system,sans-serif;font-size:var(--t-body);line-height:1.5;
+  -webkit-font-smoothing:antialiased;padding:0 0 140px}
+.serif{font-family:NewsreaderV,Newsreader,Georgia,serif}
+
+.bar{position:sticky;top:0;z-index:20;display:flex;flex-wrap:wrap;align-items:center;gap:14px;
+  padding:12px 20px;background:#151514;border-bottom:1px solid var(--b)}
+.bar h1{font-size:var(--t-label);font-weight:600;letter-spacing:.02em;margin-right:auto}
+.bar .hint{font-size:var(--t-caption);color:var(--fg-3)}
+.seg{display:flex;border:1px solid var(--b);border-radius:8px;overflow:hidden}
+.seg button{appearance:none;border:0;background:transparent;color:var(--fg-3);font:inherit;
+  font-size:var(--t-label);padding:6px 12px;cursor:pointer}
+.seg button+button{border-left:1px solid var(--b)}
+.seg button[aria-pressed="true"]{background:rgba(255,255,255,.07);color:var(--fg)}
+
+.section{padding:38px 20px 0;max-width:2400px;margin:0 auto}
+.section>h2{font-size:var(--t-title);font-weight:600;letter-spacing:-.01em;margin-bottom:5px}
+.section>p.note{font-size:var(--t-label);color:var(--fg-3);max-width:82ch;margin-bottom:22px;line-height:1.7}
+.rowcols{display:flex;gap:30px;align-items:flex-start;flex-wrap:wrap}
+.col>h3{font-size:var(--t-caption);text-transform:uppercase;letter-spacing:.05em;color:var(--fg-3);margin-bottom:4px}
+.col>h3 em{font-style:normal;color:var(--fg-2)}
+.col>h3 .tag{color:var(--positive)}
+.col>p.sub{font-size:var(--t-caption);color:rgba(138,133,124,.78);margin-bottom:11px;max-width:46ch;line-height:1.6}
+.stage{width:728px;transition:width .18s ease}
+body[data-w="342"] .stage{width:342px}
+.callout{margin-top:11px;max-width:728px;font-size:var(--t-caption);line-height:1.7;color:var(--fg-3);
+  border-left:2px solid rgba(255,255,255,.10);padding-left:11px}
+.callout b{color:var(--fg-2);font-weight:500}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:var(--fg-2);
+  background:rgba(255,255,255,.04);border-radius:3px;padding:1px 4px}
+.prose{max-width:1180px;font-size:var(--t-body);line-height:1.8;color:var(--fg-2)}
+.prose b.cream{color:var(--fg);font-weight:500}
+.prose p+p{margin-top:12px}
+.flagbox{border:1px solid rgba(224,189,114,.22);border-radius:8px;padding:14px 16px;max-width:1180px;
+  font-size:var(--t-label);line-height:1.75;color:var(--fg-2)}
+.flagbox h4{font-size:var(--t-body);font-weight:600;color:var(--warning);margin-bottom:6px}
+.flagbox p+p{margin-top:8px}
+table.mt{width:100%;border-collapse:collapse;font-size:var(--t-label)}
+table.mt th{padding:7px 10px;font-weight:400;color:var(--fg-3);text-align:left;vertical-align:top}
+table.mt th:first-child{padding-left:0}
+table.mt td{padding:7px 10px;border-top:1px solid var(--b);vertical-align:top;line-height:1.6}
+table.mt td:first-child{padding-left:0}
+table.mt td .old{color:var(--fg-3);text-decoration:line-through;text-decoration-color:rgba(138,133,124,.5)}
+table.mt td .new{color:var(--fg)}
+
+/* ── card shell + v5 reference styles (unchanged from the v5 sketch) ────── */
+.card{border:1px solid var(--b);border-radius:12px;background:var(--surface-sunken);overflow:hidden}
+.body{font-size:var(--t-body);line-height:1.6;color:var(--fg-2)}
+.meta{font-size:var(--t-label);line-height:1.5;color:var(--fg-3)}
+.sec{color:var(--fg-2)} .muted{color:var(--fg-3)} .cream{color:var(--fg)}
+.ico{width:13px;height:13px;flex-shrink:0}
+.pick{font-size:var(--t-label);color:var(--fg-2)}
+.copy{display:inline-flex;align-items:center;gap:5px;flex-shrink:0;font-size:var(--t-label);
+  font-weight:500;color:var(--fg-3);background:none;border:0;cursor:pointer;font-family:inherit}
+.thumb{position:relative;display:block;width:52px;flex-shrink:0;aspect-ratio:9/16;
+  border:1px solid var(--b);border-radius:6px;overflow:hidden;background:#242422}
+.mult{color:var(--positive);font-weight:500;font-variant-numeric:tabular-nums}
+.footer{display:flex;align-items:center;gap:16px;flex-wrap:wrap;border-top:1px solid var(--b);padding:14px 20px}
+.primary{display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.08);
+  background:rgba(255,255,255,.05);border-radius:6px;padding:8px 14px;font-size:var(--t-body);
+  font-weight:600;color:var(--fg);font-family:inherit;cursor:pointer}
+.door{display:inline-flex;align-items:center;gap:8px;margin-left:auto;font-size:var(--t-label);
+  color:var(--fg-3);background:none;border:0;font-family:inherit;cursor:pointer;min-height:32px}
+.door .hollow{width:7px;height:7px;border-radius:999px;border:1px solid var(--fg-3);flex-shrink:0}
+.door-cta{color:var(--fg-2);white-space:nowrap}
+.save{color:var(--fg-3);display:inline-flex}
+body[data-w="342"] .footer{row-gap:12px}
+body[data-w="342"] .primary{order:1}
+body[data-w="342"] .save{order:2;margin-left:auto}
+body[data-w="342"] .door{order:3;margin-left:0;width:100%;justify-content:space-between}
+
+/* v5 reference card (yesterday's Answer treatment, verbatim) */
+.a-face{display:flex;flex-direction:column;padding:20px 20px 18px}
+.a-top{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:14px}
+.a-hero{font-size:var(--t-heading);line-height:1.3;letter-spacing:-.005em;font-weight:500;color:var(--fg);
+  text-wrap:balance}
+.a-lede{margin-top:8px;font-size:var(--t-reading);line-height:1.6;color:var(--fg)}
+.a-fits{margin-top:6px;font-size:var(--t-body);line-height:1.6;color:var(--fg-2)}
+.a-craft{margin-top:22px;display:flex;flex-direction:column;gap:10px}
+.a-craft p{font-size:var(--t-reading);line-height:1.6;color:var(--fg-2)}
+.a-craft p.on{color:var(--fg)}
+.rl{color:var(--fg-3);font-weight:500}
+.a-ledger{margin-top:22px;display:flex;flex-direction:column;gap:7px}
+.a-ledger p{font-size:var(--t-body);line-height:1.55;color:var(--fg-2)}
+.a-ledger p .cream{color:var(--fg)}
+.a-cite{display:flex;gap:14px;align-items:center;text-decoration:none;
+  margin:22px -10px 0;padding:10px;border-radius:10px}
+.a-cite:hover{background:rgba(255,255,255,.03)}
+.a-citecol{display:flex;min-width:0;flex:1;flex-direction:column;gap:6px}
+.a-tpl{font-size:var(--t-body);line-height:1.5;color:var(--fg-2)}
+.a-tpl .v{background:rgba(255,255,255,.06);border-radius:2px;padding:1px 4px;color:var(--fg);margin:0 1px}
+.a-citemeta{font-size:var(--t-label);color:var(--fg-3)}
+.a-aud{margin-top:16px;font-size:var(--t-body);line-height:1.6;color:var(--fg-2)}
+.a-aud .who{color:var(--fg);font-variant-numeric:tabular-nums}
+.a-seed{margin-top:7px;font-size:var(--t-label);line-height:1.55;color:var(--fg-3)}
+
+/* ══ STAGE — the performance. Air, one oversized voice moment, authored prose
+   whose scan anchors are the BOLDED FIRST WORDS of each sentence. No labels,
+   no colons-as-fields, no icons. Chrome only at the frame. ══════════════════ */
+.st-face{display:flex;flex-direction:column;padding:24px 24px 20px}
+.st-top{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:18px}
+.st-hero{font-size:26px;line-height:1.28;letter-spacing:-.012em;font-weight:500;color:var(--fg);
+  text-wrap:balance}
+body[data-w="342"] .st-hero{font-size:23px}
+.st-hero .q{color:rgba(236,231,222,.45)}
+.st-lede{margin-top:10px;font-size:15px;line-height:1.6;color:var(--fg)}
+.st-prose{margin-top:24px;display:flex;flex-direction:column;gap:12px}
+.st-prose p{font-size:var(--t-reading);line-height:1.65;color:var(--fg-2)}
+.st-prose p b{color:var(--fg);font-weight:500}
+.st-prose p .take{color:var(--fg)}
+.st-cite{display:flex;gap:14px;align-items:center;text-decoration:none;
+  margin:24px -10px 0;padding:10px;border-radius:10px}
+.st-cite:hover{background:rgba(255,255,255,.03)}
+.st-cite .eyebrow{font-size:var(--t-label);font-weight:500;color:var(--fg-2)}
+.st-cite .eyebrow .n{color:var(--positive);font-variant-numeric:tabular-nums}
+.st-tpl{font-size:var(--t-body);line-height:1.5;color:var(--fg-2)}
+.st-tpl .v{background:rgba(255,255,255,.06);border-radius:2px;padding:1px 4px;color:var(--fg);margin:0 1px}
+.st-citemeta{font-size:var(--t-label);color:var(--fg-3)}
+.st-citecol{display:flex;min-width:0;flex:1;flex-direction:column;gap:5px}
+.st-aud{margin-top:18px;font-size:var(--t-body);line-height:1.6;color:var(--fg-2)}
+.st-aud b{color:var(--fg);font-weight:500}
+.st-aud .who{color:var(--fg);font-variant-numeric:tabular-nums}
+.st-seed{margin-top:8px;font-size:var(--t-label);line-height:1.55;color:var(--fg-3)}
+
+/* ══ STUDIO — the product object. No text labels anywhere: each fact-group is
+   anchored by a small muted GLYPH, the source is a tappable Case-study object,
+   the take is the one cream line. The Linear / Perplexity idiom. ═══════════ */
+.sd-face{display:flex;flex-direction:column;padding:22px 22px 18px}
+.sd-top{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:14px}
+.sd-hero{font-size:24px;line-height:1.28;letter-spacing:-.01em;font-weight:500;color:var(--fg);
+  text-wrap:balance}
+body[data-w="342"] .sd-hero{font-size:22px}
+.sd-lede{margin-top:8px;font-size:var(--t-reading);line-height:1.6;color:var(--fg)}
+.sd-rows{margin-top:22px;display:flex;flex-direction:column;gap:12px}
+.sd-row{display:flex;gap:11px}
+.sd-row svg{width:14px;height:14px;flex-shrink:0;margin-top:3px;color:var(--fg-3);opacity:.85}
+.sd-row p{font-size:var(--t-reading);line-height:1.6;color:var(--fg-2);min-width:0}
+.sd-row p .take{color:var(--fg)}
+.sd-row p .who{color:var(--fg);font-variant-numeric:tabular-nums}
+.sd-row.q p{font-size:var(--t-body);color:var(--fg-3)}
+.sd-cite{display:flex;gap:14px;align-items:center;text-decoration:none;
+  margin:22px -10px 0;padding:10px;border-radius:10px;border:1px solid transparent}
+.sd-cite:hover{background:rgba(255,255,255,.03);border-color:var(--b)}
+.sd-chip{align-self:flex-start;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--b);
+  background:rgba(255,255,255,.03);border-radius:999px;padding:3px 10px;font-size:var(--t-caption);
+  font-weight:500;color:var(--fg-2)}
+.sd-citecol{display:flex;min-width:0;flex:1;flex-direction:column;gap:6px}
+.sd-tpl{font-size:var(--t-body);line-height:1.5;color:var(--fg-2)}
+.sd-tpl .v{background:rgba(255,255,255,.06);border-radius:2px;padding:1px 4px;color:var(--fg);margin:0 1px}
+.sd-citemeta{font-size:var(--t-label);color:var(--fg-3)}
+</style>
+</head>
+<body data-w="728">
+
+<div class="bar">
+  <h1>Skill cards v6 · Stage vs Studio</h1>
+  <span class="hint">v5 (rejected: reads as a document) beside two anti-document directions</span>
+  <div class="seg" role="group" aria-label="Card width">
+    <button data-w="728" aria-pressed="true">728px · in-thread</button>
+    <button data-w="342" aria-pressed="false">342px · mobile</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <h2>Why v5 read as a document — the visual audit</h2>
+  <div class="prose">
+    <p><b class="cream">1 · The type contrast was too flat.</b> A 22px hero over 14px body is a 1.57×
+    jump, which is the ratio of a magazine page, not a product moment. Nothing on the card performed.
+    <b class="cream">2 · Colon labels are form fields.</b> "Visual:", "Topic:", "Take:" — six of them
+    on the idea card. Sentence-casing did not fix it because the colon-label pattern itself is the
+    memo idiom. <b class="cream">3 · One uniform left-set text column</b> with a single grey thumbnail
+    and zero tonal variation is, literally, a printed page. <b class="cream">4 · The voice was
+    archival.</b> "Borrowed from", "Seed:", "Written for" is a librarian cataloguing sources, not a
+    strategist handing you a move. <b class="cream">5 · Uniform rhythm:</b> every zone had the same
+    leading and the same gaps, so the eye had no landing sequence.</p>
+    <p><b class="cream">The two answers below attack all five, differently.</b> <b class="cream">Stage</b>
+    treats the card as a performance: one oversized voice moment with air around it, then authored
+    prose where the scan anchor is the bolded first words of the sentence ("Open on a crash-zoom…"),
+    which is how ChatGPT and Claude format answers. No labels, no colons, no icons.
+    <b class="cream">Studio</b> treats the card as a product object: no text labels anywhere, each
+    fact-group anchored by a small muted glyph, the source a tappable Case-study object. The Linear
+    and Perplexity idiom. Both carry the full wording pass.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     HOOK
+     ═══════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <h2>Hook card</h2>
+  <p class="note">Left is yesterday's v5, kept for contrast. Middle and right are the two new
+    directions. Same facts in all three.</p>
+  <div class="rowcols">
+
+    <!-- v5 reference -->
+    <div class="col">
+      <h3>v5 · <em>Answer</em> — rejected</h3>
+      <p class="sub">Colon labels, flat scale, archival voice. A tidy memo.</p>
+      <div class="stage">
+        <div class="card" id="mr5-hook">
+          <div class="a-face">
+            <div class="a-top">
+              <span class="pick">Top pick</span>
+              <button class="copy"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M216 32H88a8 8 0 0 0-8 8v40H40a8 8 0 0 0-8 8v128a8 8 0 0 0 8 8h128a8 8 0 0 0 8-8v-40h40a8 8 0 0 0 8-8V40a8 8 0 0 0-8-8m-56 176H48V96h112Zm48-48h-32V88a8 8 0 0 0-8-8H96V48h112Z"/></svg>Copy</button>
+            </div>
+            <p class="serif a-hero">Stop editing your videos. Do this instead.</p>
+            <div class="a-craft">
+              <p class="on"><span class="rl">Visual:</span> crash-zoom. Hard cut to your face mid-sentence as the words slam on in bold caps.</p>
+              <p><span class="rl">Why it works:</span> a pattern-interrupt. You are giving them permission to quit a painful task.</p>
+            </div>
+            <a class="a-cite" href="#">
+              <span class="thumb"><svg viewBox="0 0 90 160" width="100%" height="100%"><rect width="90" height="160" fill="#242422"/><polygon points="38,66 38,94 64,80" fill="#ece7de" opacity=".35"/></svg></span>
+              <span class="a-citecol">
+                <span class="a-tpl">Stop <span class="v">[doing the hard thing]</span>. Do <span class="v">[the easier thing]</span> instead.</span>
+                <span class="a-citemeta">Borrowed from @braedan.health · <span class="mult">90.7× vs followers</span> · 621K views</span>
+              </span>
+            </a>
+            <p class="a-aud">Written for the <span class="who">34% of your audience</span> who judge a video by whether it saves them a mistake they were about to make.</p>
+            <p class="a-seed">Seed: “Stop editing your videos.” Spoken delivery.</p>
+          </div>
+          <div class="footer">
+            <button class="primary">Write the script →</button>
+            <button class="door"><span class="hollow"></span>Not tested yet<span class="door-cta">Simulate with your audience →</span></button>
+            <span class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STAGE -->
+    <div class="col">
+      <h3>Direction 1 · <em>Stage</em> <span class="tag">new</span></h3>
+      <p class="sub">The line performs in quotes at 26px. The craft is two authored sentences whose
+        bolded openings are the scan anchors. Proven structure, not borrowed from.</p>
+      <div class="stage">
+        <div class="card" id="mst-hook">
+          <div class="st-face">
+            <div class="st-top">
+              <span class="pick">Top pick</span>
+              <button class="copy"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M216 32H88a8 8 0 0 0-8 8v40H40a8 8 0 0 0-8 8v128a8 8 0 0 0 8 8h128a8 8 0 0 0 8-8v-40h40a8 8 0 0 0 8-8V40a8 8 0 0 0-8-8m-56 176H48V96h112Zm48-48h-32V88a8 8 0 0 0-8-8H96V48h112Z"/></svg>Copy</button>
+            </div>
+            <p class="serif st-hero"><span class="q">“</span>Stop editing your videos. Do this instead.<span class="q">”</span></p>
+
+            <div class="st-prose">
+              <p><b>Open on</b> a crash-zoom: hard cut to your face mid-sentence as the words slam on in bold caps.</p>
+              <p><b>It works because</b> it is a pattern-interrupt. You are giving them permission to quit a painful task.</p>
+            </div>
+
+            <a class="st-cite" href="#">
+              <span class="thumb"><svg viewBox="0 0 90 160" width="100%" height="100%"><rect width="90" height="160" fill="#242422"/><polygon points="38,66 38,94 64,80" fill="#ece7de" opacity=".35"/></svg></span>
+              <span class="st-citecol">
+                <span class="eyebrow">Proven structure · <span class="n">90.7× their usual reach</span></span>
+                <span class="st-tpl">Stop <span class="v">[doing the hard thing]</span>. Do <span class="v">[the easier thing]</span> instead.</span>
+                <span class="st-citemeta">@braedan.health · 621K views</span>
+              </span>
+            </a>
+
+            <p class="st-aud"><b>Made for</b> the <span class="who">34% of your audience</span> who judge a video by whether it saves them a mistake.</p>
+            <p class="st-seed">From your line “Stop editing your videos.”</p>
+          </div>
+          <div class="footer">
+            <button class="primary">Write the script →</button>
+            <button class="door"><span class="hollow"></span>Not tested yet<span class="door-cta">Simulate with your audience →</span></button>
+            <span class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg></span>
+          </div>
+        </div>
+      </div>
+      <p class="callout">
+        <b>The quotes say "this is your line to say"</b> — only the hook card gets them, because only
+        its deliverable is spoken. The bolded sentence-openings replace every label: "Open on" is the
+        old "Visual:", relaxed with your blessing pending. The eyebrow leads the citation with the
+        payoff number in sage, so the receipt reads as a brag, not a bibliography entry.
+      </p>
+    </div>
+
+    <!-- STUDIO -->
+    <div class="col">
+      <h3>Direction 2 · <em>Studio</em> <span class="tag">new</span></h3>
+      <p class="sub">No text labels anywhere. A camera glyph anchors the shot, a spark the mechanism,
+        a ring the audience. The source is a tappable Case study.</p>
+      <div class="stage">
+        <div class="card" id="msd-hook">
+          <div class="sd-face">
+            <div class="sd-top">
+              <span class="pick">Top pick</span>
+              <button class="copy"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M216 32H88a8 8 0 0 0-8 8v40H40a8 8 0 0 0-8 8v128a8 8 0 0 0 8 8h128a8 8 0 0 0 8-8v-40h40a8 8 0 0 0 8-8V40a8 8 0 0 0-8-8m-56 176H48V96h112Zm48-48h-32V88a8 8 0 0 0-8-8H96V48h112Z"/></svg>Copy</button>
+            </div>
+            <p class="serif sd-hero">Stop editing your videos. Do this instead.</p>
+
+            <div class="sd-rows">
+              <div class="sd-row">
+                <svg viewBox="0 0 256 256" fill="currentColor" aria-label="The shot"><path d="M251.77 73a8 8 0 0 0-8.21.39L208 97.05V72a16 16 0 0 0-16-16H32a16 16 0 0 0-16 16v112a16 16 0 0 0 16 16h160a16 16 0 0 0 16-16v-25l35.56 23.71A8 8 0 0 0 256 176V80a8 8 0 0 0-4.23-7"/></svg>
+                <p>Crash-zoom. Hard cut to your face mid-sentence as the words slam on in bold caps.</p>
+              </div>
+              <div class="sd-row">
+                <svg viewBox="0 0 256 256" fill="currentColor" aria-label="Why it works"><path d="M128 24l22 82 82 22-82 22-22 82-22-82-82-22 82-22z"/></svg>
+                <p>A pattern-interrupt. You are giving them permission to quit a painful task.</p>
+              </div>
+              <div class="sd-row">
+                <svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="18" aria-label="Made for"><circle cx="128" cy="128" r="92"/><circle cx="128" cy="128" r="26" fill="currentColor" stroke="none"/></svg>
+                <p>The <span class="who">34% of your audience</span> who judge a video by whether it saves them a mistake.</p>
+              </div>
+              <div class="sd-row q">
+                <svg viewBox="0 0 256 256" fill="currentColor" aria-label="From your line"><path d="M116 72v88a48 48 0 0 1-48 48 8 8 0 0 1 0-16 32 32 0 0 0 32-32v-8H56a16 16 0 0 1-16-16V72a16 16 0 0 1 16-16h44a16 16 0 0 1 16 16m100-16h-44a16 16 0 0 0-16 16v64a16 16 0 0 0 16 16h44v8a32 32 0 0 1-32 32 8 8 0 0 0 0 16 48 48 0 0 0 48-48V72a16 16 0 0 0-16-16"/></svg>
+                <p>From your line “Stop editing your videos.”</p>
+              </div>
+            </div>
+
+            <a class="sd-cite" href="#">
+              <span class="thumb"><svg viewBox="0 0 90 160" width="100%" height="100%"><rect width="90" height="160" fill="#242422"/><polygon points="38,66 38,94 64,80" fill="#ece7de" opacity=".35"/></svg></span>
+              <span class="sd-citecol">
+                <span class="sd-chip">Case study</span>
+                <span class="sd-tpl">Stop <span class="v">[doing the hard thing]</span>. Do <span class="v">[the easier thing]</span> instead.</span>
+                <span class="sd-citemeta"><span class="mult">90.7× their usual reach</span> · 621K views · @braedan.health</span>
+              </span>
+            </a>
+          </div>
+          <div class="footer">
+            <button class="primary">Write the script →</button>
+            <button class="door"><span class="hollow"></span>Not tested yet<span class="door-cta">Simulate with your audience →</span></button>
+            <span class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg></span>
+          </div>
+        </div>
+      </div>
+      <p class="callout">
+        <b>The glyph column gives the scan rhythm</b> that labels used to give, in 14px of muted ink
+        per row instead of a word. Production would use the app's Phosphor set (VideoCamera, Sparkle,
+        Target, Quotes); these are placeholders drawn to size. <b>Risk to know:</b> icon rows are one
+        step from the feature-list look; the discipline is a hard cap of four rows and no icon ever
+        appearing twice.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     IDEA
+     ═══════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <h2>Idea card</h2>
+  <p class="note">The stress test: ten facts. Stage absorbs "Topic" into the title block and turns the
+    recipe into three directions you could read aloud. Studio gives each group a glyph and keeps the
+    take as the one cream line.</p>
+  <div class="rowcols">
+
+    <!-- v5 reference -->
+    <div class="col">
+      <h3>v5 · <em>Answer</em> — rejected</h3>
+      <div class="stage">
+        <div class="card" id="mr5-idea">
+          <div class="a-face">
+            <div class="a-top"><span class="pick">Top pick</span><span></span></div>
+            <h3 class="serif a-hero">The 30-day silence experiment</h3>
+            <p class="a-lede">Absence as a growth lever, and what happens when you deliberately go quiet.</p>
+            <p class="a-fits"><span class="rl">Fits you:</span> your top 3 posts all lead with a counter-intuitive claim about consistency.</p>
+            <div class="a-craft">
+              <p><span class="rl">Why it lands:</span> a curiosity gap plus an identity threat. Creators fear disappearing.</p>
+            </div>
+            <div class="a-ledger">
+              <p><span class="rl">Topic:</span> creator growth</p>
+              <p><span class="rl">Take:</span> <span class="cream">consistency is overrated; strategic absence compounds attention.</span></p>
+              <p><span class="rl">Format:</span> talking-head with on-screen data</p>
+              <p><span class="rl">Opens with:</span> “I stopped posting for 30 days. Here's what actually happened to my account.”</p>
+            </div>
+            <a class="a-cite" href="#">
+              <span class="thumb"><svg viewBox="0 0 90 160" width="100%" height="100%"><rect width="90" height="160" fill="#242422"/><polygon points="38,66 38,94 64,80" fill="#ece7de" opacity=".35"/></svg></span>
+              <span class="a-citecol">
+                <span class="a-tpl">I stopped <span class="v">[common habit]</span> for <span class="v">[timeframe]</span>. Here's what happened to my <span class="v">[thing]</span>.</span>
+                <span class="a-citemeta">Borrowed from @nourish.me.now · <span class="mult">277× vs followers</span> · 4.3M views</span>
+              </span>
+            </a>
+            <p class="a-aud">Written for the <span class="who">34% of your audience</span> who judge a video by whether it saves them a mistake they were about to make.</p>
+          </div>
+          <div class="footer">
+            <button class="primary">Write hooks for this →</button>
+            <button class="door"><span class="hollow"></span>Not tested yet<span class="door-cta">Simulate with your audience →</span></button>
+            <span class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STAGE -->
+    <div class="col">
+      <h3>Direction 1 · <em>Stage</em> <span class="tag">new</span></h3>
+      <div class="stage">
+        <div class="card" id="mst-idea">
+          <div class="st-face">
+            <div class="st-top"><span class="pick">Top pick</span><span></span></div>
+            <h3 class="serif st-hero">The 30-day silence experiment</h3>
+            <p class="st-lede">Absence as a growth lever: what happens when you deliberately go quiet.</p>
+
+            <div class="st-prose">
+              <p><b>It lands on</b> a curiosity gap plus an identity threat. Creators fear disappearing.</p>
+              <p><b>You have already proven the angle:</b> your top 3 posts lead with a counter-intuitive claim about consistency.</p>
+            </div>
+
+            <div class="st-prose">
+              <p><b>Open with</b> “I stopped posting for 30 days. Here's what actually happened to my account.”</p>
+              <p><b>Film it as</b> a talking-head with your analytics on screen.</p>
+              <p><b>Your take,</b> the one piece only you supply: <span class="take">consistency is overrated; strategic absence compounds attention.</span></p>
+            </div>
+
+            <a class="st-cite" href="#">
+              <span class="thumb"><svg viewBox="0 0 90 160" width="100%" height="100%"><rect width="90" height="160" fill="#242422"/><polygon points="38,66 38,94 64,80" fill="#ece7de" opacity=".35"/></svg></span>
+              <span class="st-citecol">
+                <span class="eyebrow">Proven structure · <span class="n">277× their usual reach</span></span>
+                <span class="st-tpl">I stopped <span class="v">[common habit]</span> for <span class="v">[timeframe]</span>. Here's what happened to my <span class="v">[thing]</span>.</span>
+                <span class="st-citemeta">@nourish.me.now · 4.3M views</span>
+              </span>
+            </a>
+
+            <p class="st-aud"><b>Made for</b> the <span class="who">34% of your audience</span> who judge a video by whether it saves them a mistake.</p>
+          </div>
+          <div class="footer">
+            <button class="primary">Write hooks for this →</button>
+            <button class="door"><span class="hollow"></span>Not tested yet<span class="door-cta">Simulate with your audience →</span></button>
+            <span class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg></span>
+          </div>
+        </div>
+      </div>
+      <p class="callout">
+        <b>The recipe became three directions you could read aloud:</b> open with, film it as, your
+        take. "Topic: creator growth" is gone as a row because the title block already says it; that
+        is the one fact Stage absorbs rather than states, flagged in the wording table below. The
+        take keeps its cream so the card still shows which line is yours to own.
+      </p>
+    </div>
+
+    <!-- STUDIO -->
+    <div class="col">
+      <h3>Direction 2 · <em>Studio</em> <span class="tag">new</span></h3>
+      <div class="stage">
+        <div class="card" id="msd-idea">
+          <div class="sd-face">
+            <div class="sd-top"><span class="pick">Top pick</span><span></span></div>
+            <h3 class="serif sd-hero">The 30-day silence experiment</h3>
+            <p class="sd-lede">Absence as a growth lever: what happens when you deliberately go quiet.</p>
+
+            <div class="sd-rows">
+              <div class="sd-row">
+                <svg viewBox="0 0 256 256" fill="currentColor" aria-label="Why it lands"><path d="M128 24l22 82 82 22-82 22-22 82-22-82-82-22 82-22z"/></svg>
+                <p>A curiosity gap plus an identity threat. Creators fear disappearing. Your top 3 posts already lead with a counter-intuitive claim.</p>
+              </div>
+              <div class="sd-row q">
+                <svg viewBox="0 0 256 256" fill="currentColor" aria-label="Opens with"><path d="M116 72v88a48 48 0 0 1-48 48 8 8 0 0 1 0-16 32 32 0 0 0 32-32v-8H56a16 16 0 0 1-16-16V72a16 16 0 0 1 16-16h44a16 16 0 0 1 16 16m100-16h-44a16 16 0 0 0-16 16v64a16 16 0 0 0 16 16h44v8a32 32 0 0 1-32 32 8 8 0 0 0 0 16 48 48 0 0 0 48-48V72a16 16 0 0 0-16-16"/></svg>
+                <p>“I stopped posting for 30 days. Here's what actually happened to my account.”</p>
+              </div>
+              <div class="sd-row">
+                <svg viewBox="0 0 256 256" fill="currentColor" aria-label="Film it as"><path d="M251.77 73a8 8 0 0 0-8.21.39L208 97.05V72a16 16 0 0 0-16-16H32a16 16 0 0 0-16 16v112a16 16 0 0 0 16 16h160a16 16 0 0 0 16-16v-25l35.56 23.71A8 8 0 0 0 256 176V80a8 8 0 0 0-4.23-7"/></svg>
+                <p>Talking-head with your analytics on screen, on creator growth.</p>
+              </div>
+              <div class="sd-row">
+                <svg viewBox="0 0 256 256" fill="currentColor" aria-label="Your take"><path d="M224 128a96 96 0 1 1-96-96 96 96 0 0 1 96 96m-96-40a12 12 0 1 0 12 12 12 12 0 0 0-12-12m0 32a8 8 0 0 0-8 8v48a8 8 0 0 0 16 0v-48a8 8 0 0 0-8-8"/></svg>
+                <p><span class="take">Your take: consistency is overrated; strategic absence compounds attention.</span></p>
+              </div>
+              <div class="sd-row">
+                <svg viewBox="0 0 256 256" fill="none" stroke="currentColor" stroke-width="18" aria-label="Made for"><circle cx="128" cy="128" r="92"/><circle cx="128" cy="128" r="26" fill="currentColor" stroke="none"/></svg>
+                <p>The <span class="who">34% of your audience</span> who judge a video by whether it saves them a mistake.</p>
+              </div>
+            </div>
+
+            <a class="sd-cite" href="#">
+              <span class="thumb"><svg viewBox="0 0 90 160" width="100%" height="100%"><rect width="90" height="160" fill="#242422"/><polygon points="38,66 38,94 64,80" fill="#ece7de" opacity=".35"/></svg></span>
+              <span class="sd-citecol">
+                <span class="sd-chip">Case study</span>
+                <span class="sd-tpl">I stopped <span class="v">[common habit]</span> for <span class="v">[timeframe]</span>. Here's what happened to my <span class="v">[thing]</span>.</span>
+                <span class="sd-citemeta"><span class="mult">277× their usual reach</span> · 4.3M views · @nourish.me.now</span>
+              </span>
+            </a>
+          </div>
+          <div class="footer">
+            <button class="primary">Write hooks for this →</button>
+            <button class="door"><span class="hollow"></span>Not tested yet<span class="door-cta">Simulate with your audience →</span></button>
+            <span class="save"><svg class="ico" viewBox="0 0 256 256" fill="currentColor"><path d="M184 32H72a16 16 0 0 0-16 16v176a8 8 0 0 0 12.24 6.78L128 193.43l59.76 37.35A8 8 0 0 0 200 224V48a16 16 0 0 0-16-16"/></svg></span>
+          </div>
+        </div>
+      </div>
+      <p class="callout">
+        <b>Five rows is Studio's cap and this card hits it</b> (fits-you folded into the spark row to
+        stay under). The exclamation-ring marks the take, the only cream line. If five glyphs still
+        reads busy at a glance, that is the signal that Stage is the right direction for the idea
+        card and glyphs suit only the sparser hook.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     WORDING
+     ═══════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <h2>The wording pass</h2>
+  <p class="note">Every rendered string that changes, old → new, with the reason. Applies to whichever
+    direction wins.</p>
+  <div class="prose" style="max-width:1100px">
+    <table class="mt">
+      <thead><tr><th style="width:30%">Old</th><th style="width:34%">New</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td><span class="old">Borrowed from @x</span></td><td><span class="new">Proven structure</span> (Stage eyebrow) · <span class="new">Case study</span> (Studio chip)</td><td>Your two suggestions, one per direction so you can hear both. "Borrowed" apologises; these brag.</td></tr>
+        <tr><td><span class="old">90.7× vs followers</span></td><td><span class="new">90.7× their usual reach</span></td><td>"vs followers" is our metric jargon; "their usual reach" is the same fact in creator language.</td></tr>
+        <tr><td><span class="old">Written for the 34%…</span></td><td><span class="new">Made for the 34%…</span></td><td>"Written for" catalogues; "Made for" crafts. One word, warmer aim.</td></tr>
+        <tr><td><span class="old">Seed: “…” Spoken delivery.</span></td><td><span class="new">From your line “…”</span></td><td>"Seed" is pipeline vocabulary. "From your line" credits the creator and drops the redundant delivery note (the shot line already says it is spoken to camera).</td></tr>
+        <tr><td><span class="old">Fits you: your top 3 posts…</span></td><td><span class="new">You have already proven the angle: your top 3 posts…</span></td><td>Form field → coach sentence. The fact becomes an encouragement.</td></tr>
+        <tr><td><span class="old">Why it works: / Why it lands:</span></td><td><span class="new">It works because… / It lands on…</span></td><td>The label becomes the first words of the sentence. Scan anchor kept, form field gone.</td></tr>
+        <tr><td><span class="old">Visual: crash-zoom. Hard cut…</span></td><td><span class="new">Open on a crash-zoom: hard cut…</span></td><td>A direction you could say to a camera operator. This relaxes the locked "Visual" label; needs your blessing.</td></tr>
+        <tr><td><span class="old">Topic: / Format: / Opens with:</span></td><td><span class="new">Open with “…” · Film it as … · Your take, the one piece only you supply: …</span></td><td>Three spec rows become three directions. "Topic" is absorbed by the title block on Stage; Studio keeps it inside the film-it row.</td></tr>
+        <tr><td><span class="old">Not tested yet</span></td><td><span class="new">Not tested yet</span> (unchanged; alt: <span class="new">Untested</span>)</td><td>The honest state earns its place. Flagging the shorter alt in case the footer feels wordy.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     MEASUREMENTS
+     ═══════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <h2>Measured heights</h2>
+  <p class="note">Real <code>getBoundingClientRect().height</code> off this file, both widths, no
+    horizontal overflow, no JS errors. Shipped numbers from the v5 sketch for reference.</p>
+  <div class="prose" style="max-width:920px">
+    <table class="mt">
+      <thead>
+        <tr><th>Card</th><th>Shipped</th><th>v5 · Answer</th><th>Stage</th><th>Studio</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>hook @728</td><td>590</td><td>459</td><td>463</td><td style="color:var(--fg)">451</td></tr>
+        <tr><td>hook @342</td><td>694</td><td>620</td><td>657</td><td style="color:var(--fg)">652</td></tr>
+        <tr><td>idea @728</td><td>630</td><td>581</td><td>633</td><td style="color:var(--fg)">537</td></tr>
+        <tr><td>idea @342</td><td>774</td><td>759</td><td style="color:var(--warning)">887</td><td>795</td></tr>
+      </tbody>
+    </table>
+    <p style="margin-top:14px"><b class="cream">Studio is the most compact treatment yet</b> (idea
+    at 537 against shipped's 630) and beats or matches shipped everywhere except idea mobile (+21).
+    <b class="cream">Stage pays for its 26px hero and full prose sentences on the mobile idea card:</b>
+    887 against shipped's 774. Both hooks beat shipped at both widths. If Stage wins the read but the
+    mobile idea cost stings, the hybrid in "Open for you" resolves it: Stage's voice and prose on
+    hook, Studio's rows on the fact-dense idea.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<section class="section">
+  <h2>Open for you</h2>
+  <div class="flagbox">
+    <h4>The calls</h4>
+    <p><b>1 · Stage or Studio</b> — or Stage's prose with Studio's Case-study object, which compose
+    cleanly if you want the hybrid.</p>
+    <p><b>2 · "Proven structure" or "Case study"</b> for the source object; both are mocked, one per
+    direction.</p>
+    <p><b>3 · The "Visual" label lock.</b> Both directions replace it ("Open on…" / the camera glyph).
+    Bless the relaxation or it goes back as a bold lead-in ("<b style="color:var(--fg)">Visual:</b> crash-zoom…").</p>
+    <p><b>4 · Quotes on the hook hero</b> — Stage only. Say if the marks feel right for a line meant
+    to be spoken.</p>
+  </div>
+</section>
+
+<script>
+document.querySelectorAll('.seg').forEach(function (seg) {
+  seg.addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    seg.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+    if (b.dataset.w) document.body.dataset.w = b.dataset.w;
+  });
+});
+</script>
+</body>
+</html>

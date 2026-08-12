@@ -83,15 +83,14 @@ describe('IdeaCardRenderer — KCQ-09 made-for-you rationale (Task 1)', () => {
     expect(screen.queryByText(new RegExp(WHY_IT_FITS, 'i'))).toBeNull();
   });
 
-  it('leads with the single proof unit — scroll-quote + visible Lens entry, fraction stated once (§1.3/§1.4)', () => {
+  it('ends on the simulation door — measured fraction stated once, no quote apparatus (2026-08-02)', () => {
     const { container } = renderWithClient(<IdeaCardRenderer block={makeBlock()} />);
-    // The scroll-quote renders inside the single proof unit.
-    expect(screen.getByText(new RegExp(SCROLL_QUOTE, 'i'))).toBeTruthy();
-    // The proof unit IS the now-visible AudienceLens entry (§1.4) — "See the room →".
-    expect(screen.getByText(/see the room/i)).toBeTruthy();
-    // The fraction is stated ONCE (§1.3) — the old duplicated band chip is gone. Count on
-    // textContent (the rendered number + "stopped" sit in sibling elements, so the raw
-    // fraction string spans a tag boundary in innerHTML).
+    // No provenance ⇒ legacy MEASURED: the real fraction stays, compact, on the door row.
+    expect(screen.getByText(/see your audience/i)).toBeTruthy();
+    // The estimate-era quote apparatus is gone from the face — the quote lives in the room.
+    expect(screen.queryByText(new RegExp(SCROLL_QUOTE, 'i'))).toBeNull();
+    // The fraction is stated ONCE (§1.3). Count on textContent (the number + "stopped" sit in
+    // sibling elements, so the raw fraction string spans a tag boundary in innerHTML).
     const text = container.textContent ?? '';
     const occurrences = text.split('7/10').length - 1;
     expect(occurrences).toBe(1);
@@ -101,9 +100,9 @@ describe('IdeaCardRenderer — KCQ-09 made-for-you rationale (Task 1)', () => {
   // `descriptors.find(x => x.conceptText === conceptText)`), and the ledger keys an idea on
   // its title ALONE (ambient-descriptors `hookLine ?? title ?? …`). This card once fired
   // `title\n\nangle`, which never equals the title-only key ⇒ the tap was a silent no-op on
-  // idea cards (verified live: click fired, panel never bloomed). This locks the CTA to the
+  // idea cards (verified live: click fired, panel never bloomed). This locks the door to the
   // SSOT the room resolves against — one fact, one source. Fails against the old `title\n\nangle`.
-  it('"See the room →" fires openRoomForCard with the SAME key the ledger keys this idea on', () => {
+  it('the door fires openRoomForCard with the SAME key the ledger keys this idea on', () => {
     const block = makeBlock();
     const calls: string[] = [];
     const spy = (conceptText: string) => {
@@ -116,19 +115,19 @@ describe('IdeaCardRenderer — KCQ-09 made-for-you rationale (Task 1)', () => {
       </OpenRoomContext.Provider>,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /see how the room reacted to this idea/i }));
+    fireEvent.click(screen.getByRole('button', { name: /see how your audience reacted to this idea/i }));
 
     // The key the room will look this card up by — derived from the SAME function the ledger uses.
     const ledgerKey = toAmbientDescriptor(block, 0)!.conceptText;
     expect(ledgerKey).toBe(block.props.title); // guards the ledger's own contract for ideas
-    expect(calls).toEqual([ledgerKey]); // the CTA must fire EXACTLY that key, not title\n\nangle
+    expect(calls).toEqual([ledgerKey]); // the door must fire EXACTLY that key, not title\n\nangle
   });
 });
 
 describe('IdeaCardRenderer — flop branch removed (lane/polish §2)', () => {
   it('renders NO flop affordance when predictedFailureMode is null', () => {
     renderWithClient(<IdeaCardRenderer block={makeBlock({ predictedFailureMode: null })} />);
-    fireEvent.click(screen.getByRole('button', { name: /expand idea details/i }));
+    fireEvent.click(screen.getByRole('button', { name: /expand the opening line/i }));
     expect(screen.queryByRole('button', { name: /reveal why this idea might miss/i })).toBeNull();
     expect(screen.queryByText(/if this could flop/i)).toBeNull();
   });
@@ -137,7 +136,7 @@ describe('IdeaCardRenderer — flop branch removed (lane/polish §2)', () => {
     const block = makeBlock();
     delete (block.props as { predictedFailureMode?: string | null }).predictedFailureMode;
     renderWithClient(<IdeaCardRenderer block={block} />);
-    fireEvent.click(screen.getByRole('button', { name: /expand idea details/i }));
+    fireEvent.click(screen.getByRole('button', { name: /expand the opening line/i }));
     expect(screen.queryByText(/if this could flop/i)).toBeNull();
   });
 
@@ -145,7 +144,7 @@ describe('IdeaCardRenderer — flop branch removed (lane/polish §2)', () => {
     renderWithClient(<IdeaCardRenderer block={makeBlock({ predictedFailureMode: FLOP_REASON })} />);
     // The branch was removed entirely (§2) — expanding the disclosure never surfaces it,
     // and the stale value is never rendered anywhere on the card.
-    fireEvent.click(screen.getByRole('button', { name: /expand idea details/i }));
+    fireEvent.click(screen.getByRole('button', { name: /expand the opening line/i }));
     expect(screen.queryByText(/if this could flop/i)).toBeNull();
     expect(screen.queryByRole('button', { name: /reveal why this idea might miss/i })).toBeNull();
     expect(screen.queryByText(FLOP_REASON)).toBeNull();

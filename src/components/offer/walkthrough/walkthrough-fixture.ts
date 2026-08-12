@@ -157,9 +157,15 @@ export type SealState = "sealed" | "open";
 export function sealTemplate(template: DomainTemplate, state: SealState): DomainTemplate {
   if (state === "open") return template;
 
-  const { unlock: _fix, brain, population: _audience, ...rest } = template;
+  // The answer block IS the verdict plus the lever, and the engagement frame is the retention
+  // instrument — both are things the dollar buys, so both leave the rendered object entirely. The
+  // wall is load-bearing precisely because what is locked is ABSENT, not blurred: there is nothing
+  // on screen to reveal, and no way to read it out of the DOM.
+  const { unlock: _fix, brain, population: _audience, answer: _answer, engagement: _engagement, ...rest } = template;
   void _fix;
   void _audience;
+  void _answer;
+  void _engagement;
 
   return {
     ...rest,
@@ -182,6 +188,8 @@ export function sealTemplate(template: DomainTemplate, state: SealState): Domain
 export function isSealed(template: DomainTemplate): boolean {
   return (
     template.unlock === undefined &&
+    template.answer === undefined &&
+    template.engagement === undefined &&
     template.brain?.whyThisSecond === undefined &&
     template.population === null
   );

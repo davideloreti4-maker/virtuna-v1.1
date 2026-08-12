@@ -59,6 +59,23 @@ export type IntentLens = "grow" | "sell";
 
 export type DomainLens = "socials" | "general";
 
+/** The scenes ⑤'s scene dial may offer — every one has a real frame behind it, below.
+ *
+ *  "Instagram" sat in this list (in the surfaces layer) until 2026-07-28 with nothing behind it:
+ *  the reaction prompt is irreducibly TikTok, so picking it ran the TikTok simulation and labelled
+ *  the result Instagram. The list and the mapping live together HERE, on the engine side, so a
+ *  scene can never be offered without a frame — and so the API route can read them without
+ *  importing the client surfaces module (doing that broke the production build once). */
+export const SIMULABLE_SCENES = ["TikTok", "No feed"] as const;
+
+/** The scene dial → the engine's reaction FRAME. This is what makes the dial a real control
+ *  rather than a label: "No feed" is not a cosmetic variant of TikTok, it selects the merit-judging
+ *  panel and changes what a "stop" verdict MEANS. Anything unrecognised falls back to `socials`,
+ *  the frame the engine runs by default. */
+export function sceneToDomain(scene: string): DomainLens {
+  return scene.trim().toLowerCase() === "no feed" ? "general" : "socials";
+}
+
 // Appended to the user message ONLY when intent === "sell". Verdict tokens stay "stop"/"scroll"
 // (no schema/coercion impact) — the lens only re-aims what they MEAN + what the quote voices.
 const SELL_LENS_DIRECTIVE =
@@ -67,6 +84,83 @@ const SELL_LENS_DIRECTIVE =
   '"stop" = this makes you want to BUY or seriously consider the offer; ' +
   '"scroll" = you would not buy. In your quote, voice the BUYING reaction — desire, ' +
   "the objection holding you back, or your price/value gut-check — not just watch-time.";
+
+// ─── Behaviour lens (⑤'s loud dial) ───────────────────────────────────────────
+// The ONE behaviour a run scores the room for — the ARM screen's LENS, whose own design law is
+// "the LENS is the one loud dial; everything else is quiet". It rides the SAME seam as the sell
+// lens above: appended to the volatile USER message only, so the system-prompt cache prefix (D-17)
+// and ENGINE_VERSION stay untouched. The verdict TOKENS stay "stop"/"scroll" — the lens only
+// re-aims what they MEAN and what the band COUNTS (the identical trick SELL_LENS_DIRECTIVE plays).
+//
+// `stop` is the engine's existing default, so it emits NO directive → byte-identical to the
+// pre-lens message. Same regression posture `grow` holds for intent.
+//
+// Split by domain exactly as FRAMING_QUESTION is: a `mode: 'general'` panel is not watching a
+// feed, so "would they finish" means "would they hear it out", not "would they watch to the end".
+// Without the split the loud dial would go SILENTLY INERT whenever the scene is "No feed" (which
+// resolves to domain `general`) — and a dial that does nothing is the one thing this dial must
+// never be.
+
+export type BehaviorLens = "stop" | "finish" | "share" | "follow" | "buy";
+
+/** Directives per lens. `stop` is absent BY CONSTRUCTION — it is the no-op default. */
+type LensDirectives = Record<Exclude<BehaviorLens, "stop">, string>;
+
+/** The band line each lens appends — the band means something different per lens, and saying so
+ *  is the difference between a re-aimed verdict and a mislabelled one. */
+const lensBand = (what: string) =>
+  `This run's band counts how many of the 10 would ${what}, NOT the first-2s stop rate.`;
+
+const SOCIALS_LENS_DIRECTIVE: LensDirectives = {
+  finish:
+    "## Finish Lens (this run)\n" +
+    "Judge whether you would watch this ALL THE WAY THROUGH — not whether it catches you. " +
+    'Re-aim the same verdict: "stop" = you would watch to the end; "scroll" = you would start it ' +
+    "and bail partway. In your quote, voice what makes you drop off, or what holds you. " +
+    lensBand("finish it"),
+  share:
+    "## Share Lens (this run)\n" +
+    "Judge whether you would SEND THIS TO SOMEONE — a DM, a repost, a tag. " +
+    'Re-aim the same verdict: "stop" = you would share it; "scroll" = you would not, even if you ' +
+    "enjoyed it. In your quote, voice who you would send it to and why — or why it is unshareable. " +
+    lensBand("share it"),
+  follow:
+    "## Follow Lens (this run)\n" +
+    "Judge whether this earns a FOLLOW of the account — not whether you enjoy one video. " +
+    'Re-aim the same verdict: "stop" = you would follow after seeing this; "scroll" = you would ' +
+    "watch and move on. In your quote, voice what would earn the follow, or what is missing. " +
+    lensBand("follow"),
+  // The buy lens IS the buying directive — reused verbatim rather than reworded, so there is
+  // exactly ONE buying prompt in the engine and the sell intent can never drift from it.
+  buy: `${SELL_LENS_DIRECTIVE} ${lensBand("buy")}`,
+};
+
+const GENERAL_LENS_DIRECTIVE: LensDirectives = {
+  finish:
+    "## Finish Lens (this run)\n" +
+    "Judge whether you would HEAR THIS OUT IN FULL — not whether it opens well. " +
+    'Re-aim the same verdict: "stop" = you would read or listen to the end; "scroll" = you would ' +
+    "stop partway. In your quote, voice where you would stop, or what keeps you with it. " +
+    lensBand("hear it out"),
+  share:
+    "## Pass-On Lens (this run)\n" +
+    "Judge whether you would PASS THIS ON to someone whose opinion matters to you. " +
+    'Re-aim the same verdict: "stop" = you would forward it; "scroll" = you would keep it to ' +
+    "yourself, even if it landed. In your quote, voice who you would send it to, or why not. " +
+    lensBand("pass it on"),
+  follow:
+    "## Return Lens (this run)\n" +
+    "Judge whether this makes you want MORE FROM THIS SOURCE — not whether this one lands. " +
+    'Re-aim the same verdict: "stop" = you would seek them out again; "scroll" = you would take ' +
+    "this and move on. In your quote, voice what would bring you back, or what would not. " +
+    lensBand("come back for more"),
+  buy:
+    "## Backing Lens (this run)\n" +
+    "Judge whether you would BACK THIS with money, budget, or your own resources. " +
+    'Re-aim the same verdict: "stop" = you would commit real resources; "scroll" = you would not, ' +
+    "even if you agree with it. In your quote, voice the commitment or the objection holding you back. " +
+    lensBand("back it"),
+};
 
 // ─── Per-framing question text ─────────────────────────────────────────────────
 
@@ -424,12 +518,17 @@ TYPE RULES (STRICT):
  * @param intent   Optional per-run reaction lens (GAP-C2). `sell` appends the buying-lens
  *                 directive; `grow`/undefined → byte-identical to the pre-intent output
  *                 (regression-critical no-op — the General gate exercises this path).
+ * @param lens     Optional per-run BEHAVIOUR lens (⑤'s loud dial) — which single action the room
+ *                 is scored for. `stop`/undefined → byte-identical to the pre-lens output.
+ *                 Orthogonal to `intent`: intent is the audience's GOAL axis (grow|sell, derived
+ *                 from goal_intent), the lens is what THIS run measures.
  */
 export function buildFlashUserContent(
   text: string,
   framing: FlashFraming,
   intent?: IntentLens,
   domain: DomainLens = "socials",
+  lens: BehaviorLens = "stop",
 ): string {
   const lines: string[] = [];
   const isGeneral = domain === "general";
@@ -450,8 +549,18 @@ export function buildFlashUserContent(
   // grow/undefined → this block is omitted → byte-identical to the pre-intent message.
   // The sell lens is a SOCIALS lens (it speaks of viewers and watch-time); the general
   // frame already judges on merit, so the two never stack.
-  if (intent === "sell" && !isGeneral) {
+  //
+  // Nor does it stack with the BUY lens, which already carries this exact directive: pushing
+  // both would instruct the model to adopt a buying frame twice in one message.
+  if (intent === "sell" && !isGeneral && lens !== "buy") {
     lines.push(SELL_LENS_DIRECTIVE);
+    lines.push("");
+  }
+
+  // Behaviour lens: re-aim the verdict toward ONE action. `stop` is the default and emits
+  // nothing → byte-identical to the pre-lens message (the regression gate below depends on it).
+  if (lens !== "stop") {
+    lines.push((isGeneral ? GENERAL_LENS_DIRECTIVE : SOCIALS_LENS_DIRECTIVE)[lens]);
     lines.push("");
   }
 

@@ -22,9 +22,10 @@ import { Reveal } from "@/components/offer/motion/reveal";
  *
  * Two constraints when editing these, both learned the hard way:
  *  • Nothing that restates the hero. It sits ~400px below it.
- *  • NO viewer count. The hero claims "1,000" (Pro-only population depth, still
- *    pending an owner call) while every plan ships a room of ten — putting a
- *    number here makes that contradiction visible in one screen.
+ *  • NO viewer count. The hero was reconciled 2026-07-26 (the subhead sells the
+ *    room, the panel chip says "10 named viewers", "up to 1,000" survives only
+ *    in metadata) — a second number here would just re-open the two-scales
+ *    question that `faq-scale` already answers.
  */
 
 const CHIPS: readonly { label: string; muted?: boolean }[] = [
@@ -50,8 +51,8 @@ export function PlatformBar() {
                 <span
                   className={
                     chip.muted
-                      ? "text-[12.5px] text-foreground-muted/70"
-                      : "text-[12.5px] text-foreground-muted"
+                      ? "text-[12px] text-foreground-muted/70"
+                      : "text-[12px] text-foreground-muted"
                   }
                 >
                   {chip.label}

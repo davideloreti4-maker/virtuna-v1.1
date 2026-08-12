@@ -36,7 +36,7 @@ export function UpNext({
         <button
           type="button"
           onClick={onPlanFirst}
-          className="rounded-[10px] bg-[color:var(--color-action)] px-3.5 py-[9px] text-[12.5px] font-semibold text-[color:var(--color-action-foreground)] transition-opacity hover:opacity-90"
+          className="rounded-[10px] bg-[color:var(--color-action)] px-3.5 py-[9px] text-[12px] font-semibold text-[color:var(--color-action-foreground)] transition-opacity hover:opacity-90"
         >
           Plan your next post →
         </button>
@@ -51,7 +51,7 @@ export function UpNext({
   return (
     <div className="elev-rest flex flex-wrap items-center gap-x-4 gap-y-3 rounded-2xl border border-border bg-surface-elevated p-4">
       <div className="flex shrink-0 flex-col gap-0.5 border-r border-border pr-4">
-        <span className="font-mono text-[8.5px] uppercase tracking-[0.1em] text-[color:var(--color-accent-text)]">
+        <span className="font-mono text-[8px] uppercase tracking-[0.1em] text-[color:var(--color-accent-text)]">
           Up next
         </span>
         <span className="text-[17px] font-semibold tracking-[-0.01em] text-foreground">{md}</span>

@@ -37,6 +37,12 @@
  *   - after it converts → the plan's allowance for the current BILLING period, counted from
  *     the subscription's renewal anchor (not the 1st of the calendar month).
  *
+ * AND THEN THERE IS THE DEMO, which is not an allowance at all. An anonymous `/go` visitor who
+ * has bought nothing is entitled to ONE delivered `DEMO_ACTION` run — a real Test on their own
+ * video — and to nothing else; the rest of the platform is what the $1 trial unlocks. That is a
+ * RUN COUNT, not a credit sum, and it is enforced whether or not `BILLING_ENFORCE_QUOTA` is set.
+ * See `demoVerdict` for why those two facts are the whole point.
+ *
  * UNLIMITED HAS A FLOOR UNDER IT: Studio's `null` allowance is subject to a fair-use
  * ceiling of UNLIMITED_DAILY_CREDIT_CEILING credits per UTC day — "unlimited" prices an
  * honest team month, not a scripted farm. The verdict says which wall was hit (`reason`)
@@ -46,12 +52,35 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
+  ACTIVATION_ACTION,
+  ACTIVATION_CREDITS,
+  ACTIVATION_RUNS,
   creditAllowanceFor,
+  creditCost,
   CREDITS_PER_READING,
+  DEMO_ACTION,
   DEMO_CREDITS,
+  DEMO_RUNS,
   UNLIMITED_DAILY_CREDIT_CEILING,
+  type BillableAction,
 } from "@/lib/pricing";
 import type { NumenTier } from "@/lib/whop/config";
+
+/**
+ * WHO the meter is measuring — and `is_anonymous` is part of that identity, not an option
+ * beside it.
+ *
+ * It used to be an optional 6th argument (`opts.isAnonymous`) on `creditGate`, and eleven of
+ * the twelve paid routes simply never passed it: an anonymous visitor read as a real customer,
+ * enforcement fell back to `BILLING_ENFORCE_QUOTA` (off in production), and every skill but
+ * the Test ran free and unmetered for strangers. Taking the USER means a route cannot forget —
+ * omitting it is a type error, not a silent policy change.
+ */
+export interface QuotaUser {
+  id: string;
+  /** The Supabase JWT claim. Absent/false = a real user (see verdict-seal.ts on polarity). */
+  is_anonymous?: boolean;
+}
 
 /** Enforcement is opt-in — see the module note. */
 export function isQuotaEnforced(): boolean {
@@ -150,14 +179,21 @@ export interface QuotaVerdict {
   /** Whether the $1 trial pool is what's being enforced. */
   inTrial: boolean;
   /**
-   * Which wall a refusal hit: the period allowance, or the fair-use daily ceiling that
-   * backs "unlimited". Only meaningful when `allowed` is false.
+   * Which wall a refusal hit. Only meaningful when `allowed` is false.
+   *  - `allowance`      — the period allowance (or the trial pool) is spent.
+   *  - `fair_use`       — the daily ceiling behind "unlimited".
+   *  - `demo_used`      — the anonymous visitor's ONE free Test is already delivered.
+   *  - `trial_required` — an anonymous visitor asked for something the demo never included.
+   *    Not a balance at all: it is the $1 door, and their free Test may still be untouched.
    */
-  reason: "allowance" | "fair_use" | "demo_used" | null;
+  reason: "allowance" | "fair_use" | "demo_used" | "trial_required" | null;
   /**
-   * True when the allowance being applied is the anonymous DEMO pool rather than a plan's.
-   * The wall reads differently here — an anonymous visitor is not "out of credits, upgrade",
-   * they have just finished the free run and the next step is the $1.
+   * True when the DEMO entitlement is what's being applied rather than a plan's allowance —
+   * an anonymous visitor who has bought nothing. The wall reads differently here: they are not
+   * "out of credits, upgrade", they are one dollar from the rest of the product.
+   *
+   * False for an anonymous session that HAS bought (the funnel's post-checkout, pre-claim
+   * window): that is a customer on the trial pool.
    */
   isDemo: boolean;
   /** When the window being counted began — the trial's start, or the billing anchor. */
@@ -251,24 +287,28 @@ async function countLegacyAnalysisRows(
  */
 export async function checkCreditQuota(
   supabase: SupabaseClient,
-  userId: string,
+  user: QuotaUser,
   tier: NumenTier,
-  cost: number,
+  action: BillableAction,
+  cost: number = creditCost(action),
   trial: TrialWindow = { trialStartedAt: null, trialEndsAt: null },
   now: Date = new Date(),
-  periodEnd: Date | null = null,
-  opts: { isAnonymous?: boolean } = {}
+  periodEnd: Date | null = null
 ): Promise<QuotaVerdict> {
+  const userId = user.id;
   const inTrial = isTrialActive(trial, now);
-  const isDemo = opts.isAnonymous === true;
-  // The anonymous demo pool overrides the tier allowance outright. An anonymous user is
-  // always tier `free` (allowance 0), so without this the funnel's own free run would be
-  // refused the moment enforcement flips on.
-  const limit = isDemo ? DEMO_CREDITS : creditAllowanceFor(tier, { inTrial });
-  // Anonymous spend is capped ALWAYS. `BILLING_ENFORCE_QUOTA` exists so paying customers are
+  const isAnonymous = user.is_anonymous === true;
+  // THE DEMO applies to an anonymous visitor with NOTHING BOUGHT. An anonymous session that
+  // holds a trial or a paid tier is a CUSTOMER: the funnel's own flow puts them there —
+  // checkout stamps the subscription while the session is still anonymous (the email claim
+  // comes afterwards) — and reading the demo onto them would refuse the very verdict they just
+  // paid for, on 10 credits instead of the trial's 50.
+  const isDemo = isAnonymous && !inTrial && tier === "free";
+  // Anonymous spend is metered ALWAYS. `BILLING_ENFORCE_QUOTA` exists so paying customers are
   // not locked out before the plans are buyable — it is not a licence for unbounded free
-  // engine runs by strangers. See the DEMO_CREDITS note in pricing.ts.
-  const enforced = isDemo || isQuotaEnforced();
+  // engine runs by strangers, whether they are running the free demo or a $1 trial they bought
+  // without ever leaving an email. See the DEMO_ACTION note in pricing.ts.
+  const enforced = isAnonymous || isQuotaEnforced();
 
   // The trial pool is counted from the trial's start; a plan's allowance from its billing
   // anchor. The trial's "renewal" is the day it converts.
@@ -277,6 +317,30 @@ export async function checkCreditQuota(
   const renewsAt = inTrial ? trial.trialEndsAt : periodEnd;
 
   const base = { enforced, tier, inTrial, periodStart, renewsAt, isDemo };
+
+  // The demo is an entitlement (one run), not an allowance (a balance) — its own path.
+  if (isDemo) return demoVerdict(supabase, userId, action, base);
+
+  // ── ACTIVATION: one free card for a creator who just calibrated ────────────────────────────
+  // Same entitlement shape as the demo, a different person at a different point in the funnel.
+  // Checked BEFORE the allowance below, because the free tier's allowance is 0 and enforcement
+  // is on in production — so falling through to it is exactly the 402 this exists to prevent.
+  //
+  // Order matters against the demo too: an anonymous visitor never reaches here (isDemo returned
+  // above), so the two entitlements can never be spent by the same session.
+  if (
+    !isAnonymous &&
+    !inTrial &&
+    tier === "free" &&
+    action === ACTIVATION_ACTION
+  ) {
+    const verdict = await activationVerdict(supabase, userId, base);
+    // `null` = not entitled (never calibrated, or already used it). Fall through to the normal
+    // allowance so the refusal is the ordinary one, in the ordinary units.
+    if (verdict) return verdict;
+  }
+
+  const limit = creditAllowanceFor(tier, { inTrial });
 
   // Unlimited (Studio, outside a trial): no monthly wall, but the fair-use daily ceiling.
   if (limit === null) {
@@ -303,27 +367,161 @@ export async function checkCreditQuota(
   try {
     used = await countCreditsSince(supabase, userId, periodStart);
   } catch (error) {
-    // Fail OPEN for real customers — a flaky meter must never block someone who paid.
-    // Fail CLOSED for the anonymous demo, and deliberately so: the two failures are not
-    // symmetric. Failing open here would hand EVERY visitor unlimited free engine runs for
-    // as long as the meter is broken, which is unbounded spend; failing closed costs
-    // conversions during an outage. Cheaper to lose the conversion.
-    if (isDemo) {
-      console.error("[quota] demo count failed — failing CLOSED", error);
-      return { ...base, allowed: false, used: limit, limit, reason: "demo_used" };
-    }
+    // Fail OPEN for real customers — a flaky meter must never block someone who paid. (The
+    // anonymous demo is the exception and fails CLOSED; see demoVerdict.)
     console.error("[quota] count failed — failing open", error);
     return { ...base, allowed: true, used: 0, limit, reason: null };
   }
 
   const fits = used + cost <= limit;
+  return { ...base, allowed: fits, used, limit, reason: fits ? null : "allowance" };
+}
+
+/** The verdict fields `demoVerdict` fills in — everything else is decided by its caller. */
+type VerdictBase = Omit<QuotaVerdict, "allowed" | "used" | "limit" | "reason">;
+
+/**
+ * THE DEMO ENTITLEMENT — one free Test, and the trial for everything else.
+ *
+ * Owner, 2026-07-27: *"we give the demo to the user for free but to unlock the complete
+ * result/value they need to start their 3 day trial and unlock the complete platform."*
+ *
+ * Two rules, and they are not the same rule:
+ *
+ *   · `DEMO_ACTION` (the video Test) is free ONCE — decided by counting DELIVERED runs, so
+ *     nothing else can consume it. It used to be a 10-credit wallet checked as
+ *     `used + cost <= DEMO_CREDITS`, which meant a single 1-credit Ideas tap made it 11 > 10
+ *     and the free Test was refused forever — and refused with "That was your free test", to
+ *     someone who had never had one. Spend and entitlement are now different questions.
+ *   · everything else is what the $1 buys, refused with `trial_required`. That refusal takes
+ *     NO count: it is not a balance question, so there is nothing to measure, nothing to get
+ *     wrong, and nothing to fail open on. `used: 0` is the honest number — being refused an
+ *     Ideas pack does not spend the free Test.
+ *
+ * `limit`/`used` are reported in credits (one Test's price) purely so the 402 body stays in the
+ * same units as every other wall. The decision is the run count.
+ */
+/**
+ * THE ACTIVATION ENTITLEMENT — one free `ideas` pack for a creator who has just calibrated.
+ * See the long note in `lib/pricing.ts` for why it exists and what it must not be keyed on.
+ *
+ * Returns `null` for "not entitled", so the caller falls through to the ordinary allowance and
+ * the user gets the ordinary refusal. That is deliberate: an entitlement that does not apply
+ * should be invisible, not a second kind of wall with its own vocabulary.
+ *
+ * ── The calibration test ───────────────────────────────────────────────────────────────────
+ * A row in `audiences` with a non-null `signature`, not general and not a preset. `signature`
+ * is what the calibration pipeline writes (it carries `provenance.videos_analyzed`), so its
+ * presence means a real scrape actually completed for this user.
+ *
+ * ⚠️ This queries the audiences TABLE, never `/api/audiences`. That endpoint composes DB rows
+ * with five VIRTUAL constants, and any predicate over its output needs `SENTINEL_IDS` too —
+ * mistaking a virtual template for the user's own audience is precisely what made onboarding
+ * unreachable for every account until PR #423. A table read has no sentinels in it.
+ *
+ * ── Failure direction ──────────────────────────────────────────────────────────────────────
+ * Fails CLOSED (returns null → the normal wall), matching the demo. The asymmetry is the same:
+ * failing open would hand a free engine run to anyone whose audience query happened to error,
+ * and the cost of failing closed is one conversion, recoverable by retry.
+ */
+async function activationVerdict(
+  supabase: SupabaseClient,
+  userId: string,
+  base: VerdictBase
+): Promise<QuotaVerdict | null> {
+  try {
+    const { data: calibrated, error: audienceError } = await supabase
+      .from("audiences")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("is_general", false)
+      .eq("is_preset", false)
+      .not("signature", "is", null)
+      .limit(1)
+      .maybeSingle();
+
+    if (audienceError || !calibrated) return null;
+
+    const priorRuns = await countActionRuns(supabase, userId, ACTIVATION_ACTION);
+    if (priorRuns >= ACTIVATION_RUNS) return null;
+
+    return {
+      ...base,
+      allowed: true,
+      used: 0,
+      limit: ACTIVATION_CREDITS,
+      reason: null,
+    };
+  } catch (error) {
+    console.error("[quota] activation check failed — falling through to the wall", error);
+    return null;
+  }
+}
+
+async function demoVerdict(
+  supabase: SupabaseClient,
+  userId: string,
+  action: BillableAction,
+  base: VerdictBase
+): Promise<QuotaVerdict> {
+  if (action !== DEMO_ACTION) {
+    return { ...base, allowed: false, used: 0, limit: DEMO_CREDITS, reason: "trial_required" };
+  }
+
+  let priorRuns: number;
+  try {
+    priorRuns = await countActionRuns(supabase, userId, DEMO_ACTION);
+  } catch (error) {
+    // Fail CLOSED, and deliberately: the two failures are not symmetric. Failing open here
+    // would hand EVERY visitor unlimited free engine runs for as long as the ledger is down,
+    // which is unbounded spend; failing closed costs conversions during an outage. Cheaper to
+    // lose the conversion. (Real customers fail OPEN — see checkCreditQuota.)
+    console.error("[quota] demo run count failed — failing CLOSED", error);
+    return { ...base, allowed: false, used: DEMO_CREDITS, limit: DEMO_CREDITS, reason: "demo_used" };
+  }
+
+  const unused = priorRuns < DEMO_RUNS;
   return {
     ...base,
-    allowed: fits,
-    used,
-    limit,
-    reason: fits ? null : isDemo ? "demo_used" : "allowance",
+    allowed: unused,
+    used: unused ? 0 : DEMO_CREDITS,
+    limit: DEMO_CREDITS,
+    reason: unused ? null : "demo_used",
   };
+}
+
+/**
+ * DELIVERED runs of one action by this user, all time — the demo entitlement's meter.
+ *
+ * Counts LEDGER rows (`reading_events.mode`), which are written on delivery and only on
+ * delivery: a Test that died mid-pipeline charged nothing (see record-usage.ts) and must not
+ * spend the visitor's one free run either. All-time on purpose — the free Test is once per
+ * identity, not once a month; there is no window to reset.
+ *
+ * Two runs launched in the same second can both pass (neither has delivered yet). That is the
+ * same overdraw-by-one the credit gate already accepts, in the customer-friendly direction, and
+ * it costs at most one extra Reading per visitor.
+ */
+export async function countActionRuns(
+  supabase: SupabaseClient,
+  userId: string,
+  action: BillableAction
+): Promise<number> {
+  const { count, error } = await supabase
+    .from("reading_events")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("mode", action)
+    .eq("billed", true);
+
+  if (!error) return count ?? 0;
+  if (error.code !== UNDEFINED_TABLE) throw error;
+
+  // Pre-ledger: the original meter — one Reading = one `analysis_results` row, all time. That
+  // count includes the placeholder row a FAILED run leaves behind (analyze route, Pitfall #6),
+  // so in this one migration state a dead Test can spend the demo. Money-safe direction, and
+  // the state does not exist in production.
+  return countLegacyAnalysisRows(supabase, userId, new Date(0));
 }
 
 /**
@@ -343,10 +541,10 @@ export async function checkCreditQuota(
  */
 export async function getCreditQuotaVerdict(
   supabase: SupabaseClient,
-  userId: string,
-  cost: number,
-  now: Date = new Date(),
-  opts: { isAnonymous?: boolean } = {}
+  user: QuotaUser,
+  action: BillableAction,
+  cost: number = creditCost(action),
+  now: Date = new Date()
 ): Promise<QuotaVerdict> {
   let tier: NumenTier = "free";
   let trial: TrialWindow = { trialStartedAt: null, trialEndsAt: null };
@@ -356,7 +554,7 @@ export async function getCreditQuotaVerdict(
     const { data } = await supabase
       .from("user_subscriptions")
       .select("*")
-      .eq("user_id", userId)
+      .eq("user_id", user.id)
       .maybeSingle();
 
     const row = data as Record<string, unknown> | null;
@@ -369,27 +567,30 @@ export async function getCreditQuotaVerdict(
     periodEnd = toDate(row?.current_period_end);
   } catch (error) {
     // Same fail-open rationale: if we cannot read the tier we must not invent a limit.
-    // The anonymous demo is the exception — see the fail-CLOSED note in checkCreditQuota.
-    const isDemo = opts.isAnonymous === true;
+    // An anonymous session is the exception and fails CLOSED — see demoVerdict. It fails closed
+    // even though this is also the branch a PAID-but-anonymous visitor lands in during an
+    // outage: we cannot tell the two apart without this row, and one lost paid run beats
+    // handing every stranger an unmetered engine.
+    const isAnonymous = user.is_anonymous === true;
     console.error(
-      `[quota] tier lookup failed — failing ${isDemo ? "CLOSED (demo)" : "open"}`,
+      `[quota] tier lookup failed — failing ${isAnonymous ? "CLOSED (anonymous)" : "open"}`,
       error
     );
     return {
-      enforced: isDemo || isQuotaEnforced(),
-      allowed: !isDemo,
-      used: isDemo ? DEMO_CREDITS : 0,
-      limit: isDemo ? DEMO_CREDITS : null,
+      enforced: isAnonymous || isQuotaEnforced(),
+      allowed: !isAnonymous,
+      used: isAnonymous ? DEMO_CREDITS : 0,
+      limit: isAnonymous ? DEMO_CREDITS : null,
       tier: "free",
       inTrial: false,
-      reason: isDemo ? "demo_used" : null,
+      reason: isAnonymous ? (action === DEMO_ACTION ? "demo_used" : "trial_required") : null,
       periodStart: currentPeriodStart(now),
       renewsAt: null,
-      isDemo,
+      isDemo: isAnonymous,
     };
   }
 
-  return checkCreditQuota(supabase, userId, tier, cost, trial, now, periodEnd, opts);
+  return checkCreditQuota(supabase, user, tier, action, cost, trial, now, periodEnd);
 }
 
 /** A timestamptz off a raw row — null for a missing column, a null value, or an unparseable one. */

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { FunnelView } from "@/components/analytics/funnel-view";
 import { HomePageLayout } from "@/components/app/home/home-page-layout";
 
 export const metadata: Metadata = {
@@ -28,5 +29,12 @@ export const metadata: Metadata = {
  * drops bottom-pinned (its own data-layout signal).
  */
 export default function HomePage() {
-  return <HomePageLayout />;
+  return (
+    <>
+      {/* Both funnels converge here — §8's `start_landed`. Funnel A arrives from
+          /welcome with a calibrated audience; funnel B arrives from /go with none. */}
+      <FunnelView event="start_landed" />
+      <HomePageLayout />
+    </>
+  );
 }

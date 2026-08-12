@@ -34,7 +34,7 @@ export function StatTile({ k, v, u, delta, s, em, tone = 'default' }: StatTileDa
       data-testid="stat-tile"
     >
       <div className="flex items-start justify-between gap-2">
-        <span className="min-w-0 text-[9.5px] uppercase leading-[1.25] tracking-[0.08em] text-foreground-muted">
+        <span className="min-w-0 text-[10px] uppercase leading-[1.25] tracking-[0.08em] text-foreground-muted">
           {k}
         </span>
         {delta && (

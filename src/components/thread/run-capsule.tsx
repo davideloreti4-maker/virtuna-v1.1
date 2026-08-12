@@ -19,12 +19,22 @@
  */
 
 import { ProgressChecklist, SkillProgress, STAGE_PLANS, type StageState } from './progress-checklist';
+import type { RunEvidence } from '@/lib/tools/evidence';
 
 export interface SkillRunMeta {
   /** Present-tense label while the run is live, e.g. "Writing hooks". */
   running: string;
   /** The collapsed receipt line after completion, e.g. "Ran your audience". */
   done: string;
+  /**
+   * Past-tense verb phrase the MEASURED receipt is built from: `${took} 0:32` → "Generated in
+   * 0:32" (the v3.2 sketch's specified collapse, Claude's "Thought for 12s" idiom).
+   *
+   * Per-skill because the verb is not generic — "Generated in" is right for a draft and wrong for
+   * a scrape. Used ONLY when the client actually timed the run; a rehydrated turn never measured
+   * anything and falls back to `done` + the step count (see SkillProgress).
+   */
+  took: string;
   /**
    * The skill's canonical ordered stage plan (names MUST match the runner's real onStage
    * emissions — see STAGE_PLANS). Empty ⇒ the spine grows from live events (legacy shape).
@@ -37,21 +47,25 @@ export interface SkillRunMeta {
  * chat `dispatch` event) and the in-thread field actions (SKILL_CAPABILITIES).
  */
 export const SKILL_RUN_META: Record<string, SkillRunMeta> = {
-  ideas: { running: 'Finding ideas', done: 'Ran your audience', plan: STAGE_PLANS.ideas },
-  hooks: { running: 'Writing hooks', done: 'Ran your audience', plan: STAGE_PLANS.hooks },
-  script: { running: 'Writing your script', done: 'Ran your audience', plan: STAGE_PLANS.script },
-  remix: { running: 'Reworking the video', done: 'Reworked for your audience', plan: STAGE_PLANS.remix },
-  explore: { running: 'Scanning for outliers', done: 'Scored for your audience', plan: STAGE_PLANS.explore },
+  ideas: { running: 'Finding ideas', done: 'Ran your audience', took: 'Found ideas in', plan: STAGE_PLANS.ideas },
+  hooks: { running: 'Writing hooks', done: 'Ran your audience', took: 'Generated in', plan: STAGE_PLANS.hooks },
+  script: { running: 'Writing your script', done: 'Ran your audience', took: 'Generated in', plan: STAGE_PLANS.script },
+  remix: { running: 'Reworking the video', done: 'Reworked for your audience', took: 'Reworked in', plan: STAGE_PLANS.remix },
+  explore: { running: 'Scanning for outliers', done: 'Scored for your audience', took: 'Scanned in', plan: STAGE_PLANS.explore },
   // The in-thread field runs. read/account routes emit no stages (a JSON POST / a scrape), so
   // their fields render ONE active row named `running` (rotating honest sub-copy). The test
   // field derives its 3-step spine client-side from real phase boundaries + elapsed floors —
   // the SAME plan names as the flagship /analyze skeleton (reading-skeleton.tsx READ_PLAN), so
   // the in-thread Test wait speaks the identical language as the full-page one.
-  read: { running: 'Reading it past your audience', done: 'Read by your audience', plan: [] },
-  account: { running: 'Reading your account', done: 'Read your account', plan: [] },
+  read: { running: 'Reading it past your audience', done: 'Read by your audience', took: 'Read in', plan: [] },
+  account: { running: 'Reading your account', done: 'Read your account', took: 'Read your account in', plan: [] },
+  // Also single JSON POSTs with no stage events → a one-row capsule, same as read/account.
+  predict: { running: 'Predicting the outcome', done: 'Predicted by your panel', took: 'Predicted in', plan: [] },
+  profile: { running: 'Reading the evidence', done: 'Read the evidence', took: 'Read in', plan: [] },
   test: {
     running: 'Testing your video',
     done: 'Tested against your audience',
+    took: 'Tested in',
     plan: ['Fetching your video', 'Watching it frame by frame', 'Simulating your audience'],
   },
 };
@@ -69,9 +83,17 @@ export interface SkillRunCapsuleProps {
   isRunning: boolean;
   /** The audience the run is aimed at — named on the label line ("for Bootstrapped Founders"). */
   audienceLabel?: string;
+  /** Live artifacts the run has touched (the `evidence` SSE frame) — rendered inside the spine. */
+  evidence?: RunEvidence | null;
 }
 
-export function SkillRunCapsule({ skill, stages, isRunning, audienceLabel }: SkillRunCapsuleProps) {
+export function SkillRunCapsule({
+  skill,
+  stages,
+  isRunning,
+  audienceLabel,
+  evidence,
+}: SkillRunCapsuleProps) {
   const meta = skill ? SKILL_RUN_META[skill] : undefined;
   // Nothing ran and nothing is running → render nothing (a pure-chat turn / a rehydrate).
   if (!isRunning && stages.length === 0) return null;
@@ -84,14 +106,14 @@ export function SkillRunCapsule({ skill, stages, isRunning, audienceLabel }: Ski
     return (
       <div className="flex flex-col gap-2.5" aria-live="polite" aria-atomic="false">
         {meta && (
-          <p className="reading-reveal text-[13px] font-medium text-foreground-secondary">
+          <p className="reading-reveal text-body font-medium text-foreground-secondary">
             {meta.running}
             {audienceLabel ? (
               <span className="text-foreground-muted"> — for {audienceLabel}</span>
             ) : null}
           </p>
         )}
-        <ProgressChecklist stages={stages} plan={plan} />
+        <ProgressChecklist stages={stages} plan={plan} evidence={evidence} />
       </div>
     );
   }

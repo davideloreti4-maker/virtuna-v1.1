@@ -51,6 +51,7 @@ import { billUsage, creditGate } from "@/lib/billing/credit-gate";
 import { rateLimitGuard } from "@/lib/http/rate-limit";
 import { createOpenThreadLazy } from "@/lib/threads/threads";
 import { insertMessage } from "@/lib/threads/messages";
+import { runHeaderBlock } from "@/lib/tools/run-header";
 import { runIdeasPipeline } from "@/lib/tools/runners/ideas-runner";
 import { kcStamp } from "@/lib/kc/kc-stamp";
 import { getQwenClient, QWEN_REASONING_MODEL } from "@/lib/engine/qwen/client";
@@ -100,7 +101,7 @@ export async function POST(request: Request): Promise<Response> {
   if (limited) return limited;
 
   // ── Credit gate (BILLING) — priced admission BEFORE any engine spend ─────────
-  const { refusal, verdict: creditVerdict } = await creditGate(supabase, user.id, "ideas");
+  const { refusal, verdict: creditVerdict } = await creditGate(supabase, user, "ideas");
   if (refusal) return refusal;
 
   // ── (2) Parse + validate body ─────────────────────────────────────────────
@@ -169,6 +170,18 @@ export async function POST(request: Request): Promise<Response> {
   // The runner gates this to undefined for General/no-audience (no-op, regression gate).
   const effectiveIntent = parseIntentLens(body.intent) ?? goalIntentToLens(activeAudience.goal_intent);
 
+  // ── (5c) Persist the USER turn (Stage A, N-8) ─────────────────────────────
+  // A pill-launched one-shot used to persist ONLY its assistant message; on reload the
+  // turn grouping folded those cards into the PREVIOUS turn and the causal step vanished
+  // from history. The action is now a real user row, as the chat route persists an ask.
+  const userAction = rawAsk.trim() || "Generate video ideas";
+  await insertMessage(
+    openThread.id,
+    "user",
+    [{ type: "markdown", props: { text: userAction } }],
+    kcStamp().kcGenVersion,
+  );
+
   // ── (6) SSE stream: run pipeline + emit events ────────────────────────────
   const encoder = new TextEncoder();
 
@@ -199,6 +212,11 @@ export async function POST(request: Request): Promise<Response> {
           intent: effectiveIntent,
           allowScrape,
           onStage: (name, status) => send("stage", { name, status }),
+          // EVIDENCE frame — the real artifacts this run touched (the proven outliers it is
+          // grounded on / the post it resolved), streamed while the pipeline is still working so
+          // the loading spine shows the WORK, not just the step name. Additive: a client that
+          // does not parse `evidence` is unaffected.
+          onEvidence: (evidence) => send("evidence", evidence),
           // FLYWHEEL-02: pin the predicted vector for this run (text skill → no analysis).
           pin: { supabase, analysisId: null },
         });
@@ -266,7 +284,12 @@ export async function POST(request: Request): Promise<Response> {
         // insertMessage validates each block and stores the { kcGenVersion, blocks }
         // wrapper; loadMessages unwraps it back to the array on rehydration (T-03-12).
         if (blocks.length > 0) {
-          await insertMessage(openThread.id, "assistant", blocks, kcStamp().kcGenVersion);
+          await insertMessage(
+            openThread.id,
+            "assistant",
+            [runHeaderBlock({ skill: "ideas", audienceLabel: activeAudience?.name, platform }), ...blocks],
+            kcStamp().kcGenVersion,
+          );
         }
 
         // ── DONE (S2): emit BEFORE the follow-up turn ────────────────────────

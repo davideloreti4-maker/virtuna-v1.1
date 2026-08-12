@@ -41,6 +41,47 @@ function toVectorLiteral(embedding: number[] | null | undefined): string | null 
   return embedding && embedding.length > 0 ? JSON.stringify(embedding) : null;
 }
 
+/**
+ * C3 deep anatomy: per-beat spoken sentences from `teardown.narrative_structure.
+ * structure_sections[].transcript_sentences` — measured present on 524/532 curated rows
+ * (2026-08-10 SQL), never surfaced by the match RPC (SharedMatchRow carries no `teardown`),
+ * so this is a follow-up read by id. Consumed ONLY by the script adapt briefer's decode view
+ * (gather-for-run enrichment); the raw slice and the writer never see source words. Returns
+ * id → per-SECTION sentence arrays (positional — the curated import built `template.beats`
+ * from these same sections 1:1). Degrade-safe: any error or malformed shape just leaves the
+ * affected row out of the map.
+ */
+export async function fetchBeatTranscripts(
+  supabase: SupabaseClient,
+  ids: string[],
+): Promise<Map<string, string[][]>> {
+  const out = new Map<string, string[][]>();
+  if (ids.length === 0) return out;
+  const { data, error } = await supabase
+    .from("outlier_teardowns")
+    .select("id, sections:teardown->narrative_structure->structure_sections")
+    .in("id", ids);
+  if (error || !Array.isArray(data)) {
+    if (error) {
+      console.warn(
+        `[grounding] beat-transcript read failed (brief ships without): ${(error as { message?: string }).message ?? String(error)}`,
+      );
+    }
+    return out;
+  }
+  for (const row of data as Array<{ id: string; sections: unknown }>) {
+    if (!Array.isArray(row.sections)) continue;
+    const per = row.sections.map((s) => {
+      const sentences = (s as { transcript_sentences?: unknown } | null)?.transcript_sentences;
+      return Array.isArray(sentences)
+        ? sentences.filter((x): x is string => typeof x === "string" && x.trim().length > 0)
+        : [];
+    });
+    if (per.some((p) => p.length > 0)) out.set(row.id, per);
+  }
+  return out;
+}
+
 // ─── Write path (extract once / cache forever) ───────────────────────────────
 
 /** Fields needed to persist a SHARED teardown. Missing fields → NULL columns. */

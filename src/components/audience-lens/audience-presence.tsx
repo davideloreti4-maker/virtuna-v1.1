@@ -13,9 +13,14 @@
  *   • PANEL (tap the band) — it expands UPWARD into a panel anchored over the composer field
  *     (NOT a full-screen drawer, NO scrim): one continuous surface that shows the ONE shipped
  *     <AudienceLensContent> (The Read + lever, Panel·10 ⇄ Population·1,000, replay/swarm,
- *     per-persona chat, Rewrite) for the current focus, plus the conversation of asks. The
- *     COMPOSER FIELD stays the input — when the panel is open, typing + send routes into the
- *     audience chat (the host drives `asks`/`asking` + `focus`), so there is no second input.
+ *     per-persona chat, Rewrite) for the current focus. The COMPOSER FIELD stays the input, so
+ *     there is no second input here.
+ *
+ *     ⚠️ There is no longer an ask CONVERSATION in this panel. The composer's `ask` verb was its
+ *     only producer and it was deleted 2026-07-28 (Lane 2 step 4), which left `asks` / `asking` /
+ *     `onReask` as optional props nothing passed and an "Earlier asks" trail nothing could render.
+ *     Removed 2026-07-29 rather than left as furniture: an optional prop with no producer reads to
+ *     the next editor as a supported feature, and this component is on the v2 cutover list.
  *
  * The PRESENCE owns audience identity + switching (the composer's icon-only audience chip
  * retired). Honesty spine (binding): exactly ONE labeled concept at a time, idle when nothing is
@@ -46,8 +51,7 @@ import type { Archetype } from '@/lib/engine/wave3/persona-registry';
 import { cardScrollQuoteReactions } from './flat-card-reactions';
 import { AmbientRoom } from './AmbientRoom';
 import { PersonaChatDrawer, type PersonaChatTarget } from './PersonaChatDrawer';
-import type { AmbientFocus, AmbientFocusSibling, AmbientPersonaReaction } from './ambient-presence-types';
-import type { PopulationAggregate } from '@/lib/audience/population';
+import type { AmbientFocus, AmbientFocusSibling } from './ambient-presence-types';
 import { ConstellationMark } from '@/components/brand/constellation-mark';
 import {
   Constellation,
@@ -70,21 +74,6 @@ const BUILD_LABEL = 'Build an audience';
 /** variant='surface' idle sub-copy — a read-only description of the app-wide presence on a
  *  non-thread page. Deliberately implies NO input here (no "type below" / composer affordance). */
 const SURFACE_IDLE_SUB = 'Here on every surface — your room reacts to everything you post.';
-
-/** One in-thread ask + the room's read (the audience-chat turn; host-owned, fetched once). */
-export interface AudienceAsk {
-  id: string;
-  thought: string;
-  fraction: string;
-  scrollQuote: string;
-  /** The react route's real per-persona reactions (registry-enum archetypes) for this ask —
-   *  re-focusing on it keeps the named People cast intact. Absent on errored/legacy asks. */
-  personas?: AmbientPersonaReaction[];
-  /** The Stage 2 population projection for this ask — re-focusing restores the real 1,000-view
-   *  numbers. Absent when the audience lacked v2 axes (or on errored/legacy asks). */
-  population?: PopulationAggregate;
-  error?: boolean;
-}
 
 /** Parse "6/10 stop" → { stop, total }; null on any unexpected shape (→ readiness copy). */
 function parseStop(fraction: string): { stop: number; total: number } | null {
@@ -112,12 +101,6 @@ export interface AudiencePresenceProps {
   /** Panel open state — controlled by the host (so the composer can route its input here). */
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** The audience-chat turns the composer field has sent (host-owned). */
-  asks?: AudienceAsk[];
-  /** A room read is in flight (the composer just sent an ask). */
-  asking?: boolean;
-  /** Re-focus the Lens on a past ask (tap a turn in the conversation). */
-  onReask?: (ask: AudienceAsk) => void;
   /** When true, the peek band is the top cap of a fused composer dock (no own border/shadow). */
   docked?: boolean;
   /** Open the Build-an-audience chooser (the `+ Build an audience` switcher row). Optional. */
@@ -179,12 +162,6 @@ export function AudiencePresence({
   reducedMotion = false,
   open,
   onOpenChange,
-  // Ask history (A-lite): recent asks render as quiet re-askable rows in the IDLE panel and
-  // under a typed-thought read — the two states where the ask conversation actually lives.
-  // Card-focused states stay clean (they carry the stepper + ranked chrome already).
-  asks = [],
-  onReask,
-  asking = false,
   docked = false,
   onBuildAudience,
   focusList,
@@ -411,50 +388,6 @@ export function AudiencePresence({
   // Ask history (A-lite): the re-askable trail — every non-errored ask except the one currently
   // on screen as the focus (matched by thought text; a focus carries no ask id). Newest first,
   // capped at 3. Rendered in the idle panel + under a typed-thought read; never on a card focus.
-  const earlierRows = useMemo(
-    () =>
-      asks
-        .filter((a) => !a.error && a.thought !== focus?.conceptText)
-        .slice(-3)
-        .reverse(),
-    [asks, focus?.conceptText],
-  );
-  const earlierAsks =
-    !isSurface && onReask && earlierRows.length > 0 ? (
-      <div className="w-full max-w-[540px]">
-        <p className="px-2 pb-1 text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--color-foreground-muted)]">
-          Earlier asks
-        </p>
-        <ul className="flex flex-col">
-          {earlierRows.map((a) => {
-            const p = parseStop(a.fraction);
-            return (
-              <li key={a.id}>
-                <button
-                  type="button"
-                  onClick={() => onReask(a)}
-                  aria-label={`Re-open the room on “${a.thought}”`}
-                  className="flex w-full items-baseline gap-3 rounded-[8px] px-2 py-2 text-left transition-colors hover:bg-white/[0.04]"
-                >
-                  <span className="min-w-0 flex-1 truncate text-[13px] text-[var(--color-foreground-secondary)]">
-                    &ldquo;{stripWrappingQuotes(a.thought)}&rdquo;
-                  </span>
-                  {p && (
-                    <span className="shrink-0 text-[12px] tabular-nums text-[var(--color-foreground-muted)]">
-                      {p.stop}/{p.total}
-                    </span>
-                  )}
-                  <span aria-hidden className="shrink-0 text-[12px] text-[var(--color-foreground-muted)]">
-                    ⤺
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      </div>
-    ) : null;
-
   // Esc closes the meet drawer first, then the switcher, then the panel — innermost out.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -788,16 +721,6 @@ export function AudiencePresence({
             )}
           </div>
 
-          {asking && (
-            <p
-              role="status"
-              aria-live="polite"
-              className="shrink-0 px-5 pb-1 pt-2 text-[12px] font-medium text-[var(--color-foreground-muted)]"
-            >
-              {LOADING_COPY}
-            </p>
-          )}
-
           {focus ? (
             <div className="flex min-h-0 flex-1 flex-col">
               {/* flex (not block) so the Room root sizes by flex-stretch — with the panel now
@@ -822,13 +745,6 @@ export function AudiencePresence({
                   initialCompareOpen={!drillIntoFocus}
                 />
               </div>
-              {/* The ask trail under a typed-thought read (no card id) — the conversation state.
-                  A card focus keeps its chrome (stepper + ranked) and stays history-free. */}
-              {focus.id == null && earlierAsks ? (
-                <div className="flex shrink-0 justify-center border-t border-[var(--color-border)] px-5 pb-4 pt-3">
-                  {earlierAsks}
-                </div>
-              ) : null}
             </div>
           ) : (
             <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-6 py-8">
@@ -914,7 +830,6 @@ export function AudiencePresence({
                 </ul>
               )}
 
-              {earlierAsks}
               </div>
             </div>
           )}

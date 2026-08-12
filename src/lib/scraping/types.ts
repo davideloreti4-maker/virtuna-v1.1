@@ -57,6 +57,19 @@ export interface VideoData {
    * absent on metadata-only paths that don't surface a thumbnail.
    */
   coverUrl?: string;
+  /**
+   * Author-level aggregates from clockworks `authorMeta`. The ONLY stable denominator available
+   * without a second scrape — `heart / videoCount` is that creator's lifetime average likes per
+   * post, which (unlike a result-set median) does not move with `resultsPerPage`.
+   * Optional/additive: absent when the actor returns no authorMeta, and absent rather than
+   * zero-filled when the aggregates are missing, so a baseline is never derived from nothing.
+   */
+  author?: {
+    handle: string;
+    fans: number;
+    heart: number;
+    videoCount: number;
+  };
 }
 
 /**
@@ -159,6 +172,14 @@ export interface ScrapingProvider {
    * the handle returns no data. Optional so existing mock providers stay valid.
    */
   scrapeProfileBundle?(handle: string, limit?: number): Promise<ProfileBundle>;
+
+  /**
+   * STAGE 1 of the two-stage pull (spec D12): find CREATORS in a niche, not videos whose caption
+   * matches. `searchSection: "/user"` is what makes the difference — a keyword video-search
+   * returned a 99-view post and an unrelated clip in the Phase 0 measurement. Returns bare handles
+   * (no '@'), de-duplicated. Empty array when nobody matches — the caller degrades visibly.
+   */
+  searchCreators(query: string, limit?: number): Promise<string[]>;
 
   /**
    * Scrape a result set for Discover/Explore. `query` is a handle (profile mode) or a

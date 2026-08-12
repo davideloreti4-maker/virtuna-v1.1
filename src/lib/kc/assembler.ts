@@ -81,6 +81,13 @@ const modeSchema = z.enum(["idea", "hooks", "chat", "script", "remix"]);
  *               structure, grounding/orchestrator.ts). FENCED. Optional-additive: undefined
  *               is a byte-identical no-op (preserves the warm-cache prefix + regression gates).
  *               ONE field grounds idea/hooks/script (§11f).
+ *   modeLabel — Optional override for the WORD printed in the bundle header, and nothing else.
+ *               `mode` stays the role selector; this only changes what the model is TOLD it is
+ *               doing. Exists because the header leaks into the user message, where the bare
+ *               word "chat" collides with the chat slice's stance ("chat mode is conversational,
+ *               not a generation surface") and talked the agent loop out of dispatching a skill
+ *               it had bound and been told to call — measured 0/4 dispatches with "chat" vs 4/4
+ *               with any other label, same seeds. Omitted → byte-identical to before.
  */
 export const assemblerInputSchema = z.object({
   ask: z.string().min(1, "ask must not be empty"),
@@ -89,6 +96,16 @@ export const assemblerInputSchema = z.object({
   overrides: z.string().optional(),
   anchor: z.string().optional(),
   corpus: z.string().optional(),
+  modeLabel: z.string().min(1).optional(),
+  /**
+   * Stage B (B2): the exact lines of cards ALREADY ON SCREEN that this run is asked to
+   * rewrite/sharpen — "Punch them up" under a 5-hook pack, "rewrite these" in chat. Fenced
+   * as their own numbered section (cardsLabel) so the model improves THESE items instead of
+   * generating unrelated new ones — the measured "rewrite these returns strangers" defect.
+   * Distinct from `anchor` on purpose: the anchor carries the open-from-this contract
+   * (anchorHonored enforces it); a rewrite pack carries no such opening constraint.
+   */
+  cards: z.array(z.string().min(1)).min(1).max(6).optional(),
 });
 
 export type AssemblerInput = z.infer<typeof assemblerInputSchema>;
@@ -126,6 +143,58 @@ export const MODE_ROLES: Record<AssemblerInput["mode"], Role[]> = {
   script: ["niche", "audience", "voice", "wins", "flops", "platform"],
   remix: ["niche", "audience", "voice", "wins", "flops", "platform"],
 };
+
+// ─── Anchor contract (Stage A, N-7) ──────────────────────────────────────────
+
+/**
+ * The label the anchor fence is emitted under — per mode, because the anchor MEANS a
+ * different thing per mode and the label is the only instruction the model gets about it.
+ *
+ * N-7 (2026-08-09 live run): a "Write a script from #1" chip shipped the chosen hook in a
+ * fence labeled just "Chain anchor", next to a topic-free ask — no prompt text anywhere
+ * said what a chain anchor IS or that the script must open from it. The model freestyled
+ * an audience-flavored topic (a dance-challenge script from a morning-routine hook) while
+ * retrieval keyed correctly off the anchor. The contract has to live HERE, beside the
+ * content, because the system prompts are byte-stable compiled slices this per-request
+ * data must not invalidate.
+ */
+function anchorLabel(mode: AssemblerInput["mode"]): string {
+  switch (mode) {
+    case "script":
+      return (
+        "Anchor hook — REQUIRED: the script MUST open from this exact hook. " +
+        "Keep its subject and its promise; adapt the wording, never the topic"
+      );
+    case "hooks":
+      return "Chain anchor — the chosen idea these hooks develop; every hook must be about THIS subject";
+    default:
+      return "Chain anchor";
+  }
+}
+
+/**
+ * The label the rewrite-pack fence (`cards`) is emitted under — the same rule as anchorLabel:
+ * the contract lives beside the content, because the compiled system prompts cannot know about
+ * per-request data. States what the items ARE and what the run owes them: replacements, not
+ * neighbours. Per-mode nouns keep the instruction concrete.
+ */
+function cardsLabel(mode: AssemblerInput["mode"]): string {
+  // "script beats", not "script": a script pack is the BEATS of the one script on screen (each
+  // numbered line is "Hook: …", "Turn: …"), so "REWRITE these exact script" both misreads as a
+  // pack of whole scripts and is the wrong count for what follows it.
+  const noun =
+    mode === "script" ? "script beats" : mode === "idea" ? "ideas" : mode === "hooks" ? "hooks" : "items";
+  return (
+    `Cards to improve — the creator is asking you to REWRITE these exact ${noun}, which are ` +
+    `already on their screen. Deliver a sharper version of EACH numbered item, keeping its ` +
+    `subject and its core promise — never replace one with an unrelated new ${noun === "items" ? "item" : noun.replace(/s$/, "")}`
+  );
+}
+
+/** The rewrite pack as one fenced body: a numbered list, one line per card. */
+function cardsContent(cards: string[]): string {
+  return cards.map((c, i) => `${i + 1}. ${c}`).join("\n");
+}
 
 // ─── Injection fence helpers ──────────────────────────────────────────────────
 
@@ -225,7 +294,7 @@ export function assembleBundle(
   if (!parsed.success) {
     throw new Error(`assembleBundle: invalid input — ${parsed.error.message}`);
   }
-  const { ask, platform, mode, overrides, anchor, corpus } = parsed.data;
+  const { ask, platform, mode, overrides, anchor, corpus, modeLabel, cards } = parsed.data;
 
   const roles = MODE_ROLES[mode];
   const thin = isProfileThin(profileRow);
@@ -265,7 +334,8 @@ export function assembleBundle(
   const fencedSections: string[] = [];
   fencedSections.push(fenceUserContent("Creator ask", ask));
   if (overrides) fencedSections.push(fenceUserContent("Per-request overrides", overrides));
-  if (anchor) fencedSections.push(fenceUserContent("Chain anchor", anchor));
+  if (anchor) fencedSections.push(fenceUserContent(anchorLabel(mode), anchor));
+  if (cards) fencedSections.push(fenceUserContent(cardsLabel(mode), cardsContent(cards)));
   if (corpus) fencedSections.push(fenceUserContent("Grounded examples", corpus));
 
   // 4. Enforce BUNDLE_CHAR_CAP — WITHOUT ever structurally breaking a fence.
@@ -276,7 +346,9 @@ export function assembleBundle(
   //        with `ask` allocated budget first. A final substring on the assembled result
   //        (the old behaviour) is never used: it could chop a closing sentinel and void
   //        the injection fence (CR-01/CR-02).
-  const header = `## Live Grounding Bundle\nMode: ${mode} | Platform: ${platform}\n\n`;
+  // The header is part of the USER message, so this word is an instruction to the model, not a
+  // log line — see `modeLabel` on the input schema for why callers may need to override it.
+  const header = `## Live Grounding Bundle\nMode: ${modeLabel ?? mode} | Platform: ${platform}\n\n`;
   const profileHeader = `### Creator Profile\n`;
   const JOIN = "\n\n";
 
@@ -309,7 +381,8 @@ export function assembleBundle(
       { label: "Creator ask", content: ask },
     ];
     if (overrides) rawSections.push({ label: "Per-request overrides", content: overrides });
-    if (anchor) rawSections.push({ label: "Chain anchor", content: anchor });
+    if (anchor) rawSections.push({ label: anchorLabel(mode), content: anchor });
+    if (cards) rawSections.push({ label: cardsLabel(mode), content: cardsContent(cards) });
     if (corpus) rawSections.push({ label: "Grounded examples", content: corpus });
     result = buildResult(profileSection, fenceSectionsWithinBudget(rawSections, fencedBudget));
   }

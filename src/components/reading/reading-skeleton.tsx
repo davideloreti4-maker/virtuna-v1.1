@@ -118,7 +118,7 @@ function RosterRow({ roster, active }: { roster: RevealPersona[]; active: boolea
             key={`${p.archetype}-${i}`}
             data-testid="reading-skeleton-reactor"
             className={
-              'rounded-md border border-white/[0.06] px-2 py-1 text-[12.5px] text-foreground-muted' +
+              'rounded-md border border-white/[0.06] px-2 py-1 text-[12px] text-foreground-muted' +
               (reduced ? '' : ' reading-reveal')
             }
             // Staggered arrival — they turn up one after another rather than all at once.

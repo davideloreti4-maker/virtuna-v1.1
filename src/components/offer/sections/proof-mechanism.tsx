@@ -151,7 +151,7 @@ export function ProofMechanism() {
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-foreground-muted">
               And the fix comes with a receipt
             </p>
-            <p className="mt-3 text-[14.5px] leading-relaxed text-foreground-secondary">
+            <p className="mt-3 text-[14px] leading-relaxed text-foreground-secondary">
               When a fix maps to a pattern the corpus has already seen work, Maven shows you the
               video that ran it — the creator, the hook it used, and what it did for them.
             </p>
@@ -167,7 +167,7 @@ export function ProofMechanism() {
                 <dd className="text-[26px] font-semibold leading-none tracking-tight text-foreground">
                   {r.figure}
                 </dd>
-                <dt className="mt-2 max-w-[16ch] text-[12.5px] leading-snug text-foreground-muted">
+                <dt className="mt-2 max-w-[16ch] text-[12px] leading-snug text-foreground-muted">
                   {r.label}
                 </dt>
               </StaggerItem>

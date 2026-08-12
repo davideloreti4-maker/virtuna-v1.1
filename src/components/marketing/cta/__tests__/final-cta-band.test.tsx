@@ -8,7 +8,7 @@ import { FinalCtaBand } from "../final-cta-band";
  * CONVERT-02 Nyquist gate on <FinalCtaBand>.
  *
  * Behaviors under test (D-13/D-14):
- *  - One CTA link → /signup present in the band.
+ *  - One CTA link → /go present in the band (the conversion path, retargeted 2026-08-04).
  *  - Serif close-line present (data-testid="cta-close-line" — copy-resilient).
  *  - AudienceCloudSkeleton echo present via accessible name "Audience reaction
  *    (sample)" (role="img" aria-label in audience-cloud-skeleton.tsx) — the
@@ -20,10 +20,10 @@ import { FinalCtaBand } from "../final-cta-band";
  * RED-by-design: module-not-found until final-cta-band.tsx is built in Wave 1.
  */
 describe("<FinalCtaBand /> — CONVERT-02", () => {
-  it("contains a CTA link pointing to /signup", () => {
+  it("contains a CTA link pointing to /go", () => {
     const { container } = render(<FinalCtaBand />);
     const signupLinks = Array.from(container.querySelectorAll("a")).filter(
-      (a) => a.getAttribute("href") === "/signup"
+      (a) => a.getAttribute("href") === "/go"
     );
     expect(signupLinks.length).toBeGreaterThanOrEqual(1);
   });

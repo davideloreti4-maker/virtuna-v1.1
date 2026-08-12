@@ -25,8 +25,8 @@ describe("AmbientStartHome", () => {
     );
     expect(container.textContent).toContain("Davide"); // first name (mapped via profile → buildStartData)
     // the grid IS the default Start — the ARTIFACT groups + tiles are visible, no modal/button
-    expect(screen.getByText("Content")).toBeTruthy(); // group label (CSS-uppercased; DOM text is "Content")
-    expect(screen.getByText("Intel")).toBeTruthy();
+    expect(screen.getByText("Create")).toBeTruthy(); // group label — the verb, not the output class
+    expect(screen.getByText("Research")).toBeTruthy();
     expect(screen.getByText("Hooks")).toBeTruthy();
     expect(screen.getByText("Explore")).toBeTruthy();
     // each tile carries its lens line — the label alone can't separate Video test from Draft read

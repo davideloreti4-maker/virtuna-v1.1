@@ -1,7 +1,7 @@
 /**
  * THE GATE + THE TILL — the two lines every paid route adds, and nothing else.
  *
- *   const gate = await creditGate(supabase, user.id, "hooks", log);
+ *   const gate = await creditGate(supabase, user, "hooks", log);
  *   if (gate) return gate;                    // ← before any engine spend
  *   ...pipeline runs, blocks persist...
  *   await billUsage({ userId: user.id, action: "hooks", tier: gate?.tier }, log);  // ← on success only
@@ -16,7 +16,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { getCreditQuotaVerdict, type QuotaVerdict } from "@/lib/billing/quota";
+import { getCreditQuotaVerdict, type QuotaUser, type QuotaVerdict } from "@/lib/billing/quota";
 import { CREDIT_QUOTA_EXCEEDED } from "@/lib/billing/quota-error";
 import { recordUsage, type RecordUsageInput } from "@/lib/billing/record-usage";
 import { creditCost, TRIAL, UNLIMITED_DAILY_CREDIT_CEILING, type BillableAction } from "@/lib/pricing";
@@ -33,12 +33,20 @@ interface Log {
  * where the tier and the window are known; the dialog SHOWS this, it never invents its own.
  */
 export function quotaRefusalMessage(verdict: QuotaVerdict, cost?: number): string {
-  // The anonymous funnel visitor. They are not "out of credits, upgrade" — they have just
-  // used the free run the demo promised them, and the next step is the $1, not a plan page.
-  // Checked FIRST: an anonymous user is tier `free` with limit 0 under the old branches,
-  // which would send them to "start a plan" — the wrong door at the highest-intent moment.
+  // THE ANONYMOUS FUNNEL VISITOR — two different sentences, because they are in two different
+  // situations. Both are checked FIRST: an anonymous visitor is tier `free` with no plan, which
+  // matches the "start a plan" branch below — the wrong door at the product's highest-intent
+  // moment, one screen after /go promised "free · no account".
+  //
+  // They asked for something the demo never included. The demo is intact; do not imply they
+  // spent it, and do not name a price for one skill — what the dollar buys is the platform.
+  if (verdict.reason === "trial_required") {
+    return `${TRIAL.price} unlocks the whole platform for ${TRIAL.days} days — every skill, ${TRIAL.credits} credits.`;
+  }
+  // They have had their free Test. The thing they want next is the verdict on the run they are
+  // looking at, so lead with that; the trial is how they get it.
   if (verdict.isDemo) {
-    return `That was your free test. ${TRIAL.price} unlocks the simulation and ${TRIAL.credits} credits for ${TRIAL.days} days.`;
+    return `That was your free test. ${TRIAL.price} unlocks the whole platform for ${TRIAL.days} days — the simulation verdict included, plus ${TRIAL.credits} credits.`;
   }
   if (verdict.inTrial) {
     return `Your $1 trial includes ${verdict.limit} credits. Your full plan allowance starts when the trial converts.`;
@@ -92,20 +100,18 @@ export interface CreditGateResult {
  */
 export async function creditGate(
   supabase: SupabaseClient,
-  userId: string,
+  /**
+   * The USER, not their id — `is_anonymous` decides which allowance applies (the /go demo
+   * entitlement vs a plan), and passing the id made that a separate optional argument every
+   * route but one forgot. See QuotaUser in quota.ts for what that cost.
+   */
+  user: QuotaUser,
   action: BillableAction,
   log?: Log,
-  costOverride?: number,
-  /**
-   * Pass `isAnonymous: true` for a `/go` funnel visitor. It swaps the tier allowance for the
-   * DEMO pool and enforces it regardless of BILLING_ENFORCE_QUOTA — anonymous users are
-   * unbounded in number, so their free engine spend cannot ride on a flag whose purpose is
-   * to avoid locking out paying customers.
-   */
-  opts: { isAnonymous?: boolean } = {}
+  costOverride?: number
 ): Promise<CreditGateResult> {
   const cost = costOverride ?? creditCost(action);
-  const verdict = await getCreditQuotaVerdict(supabase, userId, cost, new Date(), opts);
+  const verdict = await getCreditQuotaVerdict(supabase, user, action, cost);
 
   if (verdict.enforced && !verdict.allowed) {
     log?.info?.("credit_gate_refused", {

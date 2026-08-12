@@ -12,7 +12,9 @@
  * the open thread; then it asks the host to reload (InThreadInputContext.onComplete) so the card
  * appears in-place. No tool-switch, no navigation — the whole exchange stays in one thread.
  *
- * NO model-generated UI: the model only chose the action (+ an optional text prefill it extracted).
+ * NO model-generated UI: the model only chose the action (+ an optional prefill it extracted from
+ * what the creator already said — a niche, a concept, or the video link they pasted; shape-checked
+ * against SKILL_CAPABILITIES at the loop boundary, and never enough to run anything on its own).
  * One sub-component per action, each calling exactly ONE stream hook unconditionally (React rules) —
  * the top-level renderer just picks which to mount from `block.props.action`.
  *
@@ -22,6 +24,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { reportCredit402 } from '@/lib/billing/credit-wall';
+import { reportSession401, SESSION_EXPIRED_MESSAGE } from '@/lib/auth/session-expired';
 import Link from 'next/link';
 import { nanoid } from 'nanoid';
 import type { InputRequestBlock } from '@/lib/tools/blocks';
@@ -36,8 +39,10 @@ import { createClient } from '@/lib/supabase/client';
 import { TIKTOK_URL_PATTERN } from '@/lib/tiktok-url';
 import { ProgressChecklist } from './progress-checklist';
 import { SKILL_RUN_META } from './run-capsule';
+import { ACCOUNT_READ_PLAN } from '@/lib/account-read/account-read-stages';
 import { CardPrimaryAction } from './card-primitives';
 import { useTestRunStages } from './use-test-run-stages';
+import { useTestRunEvidence } from './use-test-run-evidence';
 
 export interface InputRequestBlockRendererProps {
   block: InputRequestBlock;
@@ -48,7 +53,7 @@ export interface InputRequestBlockRendererProps {
 const SHELL_CLASS =
   'flex flex-col gap-3 rounded-xl border border-white/[0.06] bg-surface-sunken px-4 py-4';
 const INPUT_CLASS =
-  'min-w-0 flex-1 rounded-md border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-[13px] text-foreground placeholder:text-foreground-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20';
+  'min-w-0 flex-1 rounded-md border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-body text-foreground placeholder:text-foreground-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20';
 // The field CTA is the shared cream primary (<CardPrimaryAction className="shrink-0">) — the
 // old CTA_CLASS string was the third hand-rolled copy of it in the thread.
 
@@ -59,14 +64,14 @@ function DoneReceipt({ text }: { text: string }) {
       className="rounded-xl border border-white/[0.06] bg-surface-sunken px-4 py-3"
       data-testid="input-request-done"
     >
-      <p className="text-[13px] text-foreground-muted">{text}</p>
+      <p className="text-body text-foreground-muted">{text}</p>
     </div>
   );
 }
 
 function ErrorLine({ text }: { text: string }) {
   return (
-    <p className="text-[12px]" style={{ color: 'var(--color-error)' }} role="alert">
+    <p className="text-label" style={{ color: 'var(--color-error)' }} role="alert">
       {text}
     </p>
   );
@@ -100,21 +105,206 @@ export function InputRequestBlockRenderer({ block }: InputRequestBlockRendererPr
       return <AccountField block={block} />;
     case 'test':
       return <UploadField block={block} />;
+    case 'predict':
+      return <PredictField block={block} />;
+    case 'profile':
+      return <ProfileField block={block} />;
     default:
       return null;
   }
 }
 
+// ── Predict (kind: text, scenario required) ──────────────────────────────────────
+// Like Read, a single JSON POST that persists its card and returns { block }.
+//
+// ⚠️ It also needs an `audienceId`, and NOT any audience: the route 400s unless the row is
+// `mode:"general"` AND not a person-marked SIM. GENERAL_AUDIENCE does NOT qualify — it is
+// `mode:"socials"` (the locked default weight mix, not the domain; see the PITFALL 1 note in
+// audience-repo.ts). `template-analyst` is the Analyst Panel: `mode:"general"`, virtual (resolved
+// with no DB round-trip), and named by the route's own comment as the panel default. Defaulting to
+// anything else here is a 400 the creator would read as "predict is broken".
+
+function PredictField({ block }: InputRequestBlockRendererProps) {
+  const { label, placeholder, prefill } = block.props;
+  const { onComplete } = useInThreadInput();
+
+  const [scenario, setScenario] = useState(prefill ?? '');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+
+  const handleSubmit = useCallback(async () => {
+    const trimmed = scenario.trim();
+    if (!trimmed || submitting) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/tools/predict', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scenario: trimmed, audienceId: 'template-analyst' }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Prediction failed' }));
+        // 401 first, and it returns: the line below reads the message straight off the response
+        // body, and a 401 body is `{ error: "Unauthorized" }` — a slug, not a sentence.
+        if (reportSession401(res.status)) {
+          setError(SESSION_EXPIRED_MESSAGE);
+          return;
+        }
+        reportCredit402(res.status, err); // wall dialog if it's the credit 402
+        setError(
+          (err as { message?: string; error?: string }).message ??
+            (err as { error?: string }).error ??
+            'Prediction failed',
+        );
+        return;
+      }
+      setDone(true);
+      void onComplete();
+    } catch {
+      setError('Something went wrong — try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  }, [scenario, submitting, onComplete]);
+
+  if (done) return <DoneReceipt text="Predicted — your panel's forecast is in the thread above." />;
+
+  return (
+    <div className={SHELL_CLASS} data-testid="input-request">
+      {!submitting && (
+        <label htmlFor="in-thread-predict" className="text-body font-medium text-foreground-secondary">
+          {label}
+        </label>
+      )}
+      {submitting ? (
+        <SingleStageWait name={SKILL_RUN_META.predict!.running} />
+      ) : (
+        <div className="flex flex-col gap-2">
+          <textarea
+            id="in-thread-predict"
+            rows={3}
+            value={scenario}
+            onChange={(e) => setScenario(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                void handleSubmit();
+              }
+            }}
+            placeholder={placeholder ?? 'Describe the outcome to predict…'}
+            className={`${INPUT_CLASS} resize-none`}
+          />
+          <CardPrimaryAction onClick={() => void handleSubmit()} disabled={!scenario.trim()} className="self-end">
+            Predict it →
+          </CardPrimaryAction>
+        </div>
+      )}
+      {error && <ErrorLine text={error} />}
+    </div>
+  );
+}
+
+// ── Profile (kind: text — pasted evidence) ───────────────────────────────────────
+// The TEXT evidence kind of /api/tools/profile. The file kinds (file_text / image / video) keep
+// their own shipped door in the composer's evidence drop, which stages a clip to storage first;
+// this field deliberately covers only what a creator can paste into a conversation.
+
+function ProfileField({ block }: InputRequestBlockRendererProps) {
+  const { label, placeholder, prefill } = block.props;
+  const { onComplete } = useInThreadInput();
+
+  const [evidence, setEvidence] = useState(prefill ?? '');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+
+  const handleSubmit = useCallback(async () => {
+    const trimmed = evidence.trim();
+    if (!trimmed || submitting) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/tools/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kind: 'text', text: trimmed }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Read failed' }));
+        // 401 first, and it returns — see the note on the predict path above.
+        if (reportSession401(res.status)) {
+          setError(SESSION_EXPIRED_MESSAGE);
+          return;
+        }
+        reportCredit402(res.status, err); // wall dialog if it's the credit 402
+        setError(
+          (err as { message?: string; error?: string }).message ??
+            (err as { error?: string }).error ??
+            'Read failed',
+        );
+        return;
+      }
+      setDone(true);
+      void onComplete();
+    } catch {
+      setError('Something went wrong — try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  }, [evidence, submitting, onComplete]);
+
+  if (done) return <DoneReceipt text="Read — the profile is in the thread above." />;
+
+  return (
+    <div className={SHELL_CLASS} data-testid="input-request">
+      {!submitting && (
+        <label htmlFor="in-thread-profile" className="text-body font-medium text-foreground-secondary">
+          {label}
+        </label>
+      )}
+      {submitting ? (
+        <SingleStageWait name={SKILL_RUN_META.profile!.running} />
+      ) : (
+        <div className="flex flex-col gap-2">
+          <textarea
+            id="in-thread-profile"
+            rows={4}
+            value={evidence}
+            onChange={(e) => setEvidence(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                void handleSubmit();
+              }
+            }}
+            placeholder={placeholder ?? 'Paste the evidence…'}
+            className={`${INPUT_CLASS} resize-none`}
+          />
+          <CardPrimaryAction onClick={() => void handleSubmit()} disabled={!evidence.trim()} className="self-end">
+            Read them →
+          </CardPrimaryAction>
+        </div>
+      )}
+      {error && <ErrorLine text={error} />}
+    </div>
+  );
+}
+
 // ── Remix (kind: link) ───────────────────────────────────────────────────────────
 
 function RemixField({ block }: InputRequestBlockRendererProps) {
-  const { label, placeholder, platform: blockPlatform } = block.props;
+  const { label, placeholder, prefill, platform: blockPlatform } = block.props;
   const ctxPlatform = usePlatform();
   const platform = blockPlatform ?? ctxPlatform;
   const { onComplete } = useInThreadInput();
 
-  const { start: remixStart, isStreaming, error, isDone, stages } = useRemixStream();
-  const [url, setUrl] = useState('');
+  const { start: remixStart, isStreaming, error, isDone, stages, evidence } = useRemixStream();
+  // Seeded with the link the creator already pasted (loop-validated as an http(s) URL) so the
+  // field opens one tap from running instead of asking for it a second time. Still editable, and
+  // still requires the tap — a prefill never spends on its own.
+  const [url, setUrl] = useState(prefill ?? '');
   const completeHandledRef = useRef(false);
   const done = isDone && !error;
 
@@ -136,14 +326,14 @@ function RemixField({ block }: InputRequestBlockRendererProps) {
 
   return (
     <div className={SHELL_CLASS} data-testid="input-request">
-      <label htmlFor="in-thread-link" className="text-[13px] font-medium text-foreground-secondary">
+      <label htmlFor="in-thread-link" className="text-body font-medium text-foreground-secondary">
         {isStreaming ? SKILL_RUN_META.remix!.running : label}
       </label>
       {isStreaming ? (
         <div aria-live="polite" aria-atomic="false">
           {/* Plan-seeded spine (the run-capsule grammar): the whole remix pipeline is visible
               from the first frame, live events overlay their real status. */}
-          <ProgressChecklist stages={stages} plan={SKILL_RUN_META.remix!.plan} />
+          <ProgressChecklist stages={stages} plan={SKILL_RUN_META.remix!.plan} evidence={evidence} />
         </div>
       ) : (
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -215,7 +405,7 @@ function ExploreField({ block }: InputRequestBlockRendererProps) {
 
   return (
     <div className={SHELL_CLASS} data-testid="input-request">
-      <label htmlFor="in-thread-explore" className="text-[13px] font-medium text-foreground-secondary">
+      <label htmlFor="in-thread-explore" className="text-body font-medium text-foreground-secondary">
         {isStreaming ? SKILL_RUN_META.explore!.running : label}
       </label>
       {isStreaming ? (
@@ -275,6 +465,11 @@ function ReadField({ block }: InputRequestBlockRendererProps) {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Read failed' }));
+        // 401 first, and it returns — see the note on the predict path above.
+        if (reportSession401(res.status)) {
+          setError(SESSION_EXPIRED_MESSAGE);
+          return;
+        }
         reportCredit402(res.status, err); // wall dialog if it's the credit 402
         setError((err as { message?: string; error?: string }).message ?? (err as { error?: string }).error ?? 'Read failed');
         return;
@@ -294,7 +489,7 @@ function ReadField({ block }: InputRequestBlockRendererProps) {
     <div className={SHELL_CLASS} data-testid="input-request">
       {/* While running the one-row capsule carries the job name — no stale question above it. */}
       {!submitting && (
-        <label htmlFor="in-thread-read" className="text-[13px] font-medium text-foreground-secondary">
+        <label htmlFor="in-thread-read" className="text-body font-medium text-foreground-secondary">
           {label}
         </label>
       )}
@@ -337,7 +532,8 @@ function AccountField({ block }: InputRequestBlockRendererProps) {
   const { label } = block.props;
   const { onComplete } = useInThreadInput();
 
-  const { start, isStreaming, error, fallbackMessage, block: resultBlock } = useAccountReadStream();
+  const { start, isStreaming, error, fallbackMessage, evidence, stages, block: resultBlock } =
+    useAccountReadStream();
   const completeHandledRef = useRef(false);
 
   // Completion = a real block arrived (a thin-history fallback has no block → nothing to reload).
@@ -360,10 +556,22 @@ function AccountField({ block }: InputRequestBlockRendererProps) {
 
   return (
     <div className={SHELL_CLASS} data-testid="input-request">
-      {!isStreaming && <p className="text-[13px] font-medium text-foreground-secondary">{label}</p>}
+      {!isStreaming && <p className="text-body font-medium text-foreground-secondary">{label}</p>}
       {isStreaming ? (
-        // The account read is one scrape call (no stages) — the one-row capsule idiom.
-        <SingleStageWait name={SKILL_RUN_META.account!.running} />
+        // 4a — this used to be a ONE-ROW capsule on the premise that "the account read is one
+        // scrape call (no stages)". It never was: it is two independent Apify runs, and both
+        // halves carry exactly the evidence the finished card renders. Now the two real phases
+        // drive the spine and the profile + covers appear under the running step, ~30s before
+        // `done`. Falls back to the single row until the first stage frame lands.
+        stages.length > 0 ? (
+          <ProgressChecklist
+            stages={stages}
+            plan={ACCOUNT_READ_PLAN}
+            evidence={evidence}
+          />
+        ) : (
+          <SingleStageWait name={SKILL_RUN_META.account!.running} />
+        )
       ) : (
         <CardPrimaryAction onClick={handleRun} className="self-start">
           Read my account →
@@ -371,7 +579,7 @@ function AccountField({ block }: InputRequestBlockRendererProps) {
       )}
       {/* Thin-history fallback is a calm warning, not a hard error (SELF-02). */}
       {!error && fallbackMessage && (
-        <p className="text-[12px] text-foreground-muted" role="status">
+        <p className="text-label text-foreground-muted" role="status">
           {fallbackMessage}
         </p>
       )}
@@ -390,13 +598,16 @@ function AccountField({ block }: InputRequestBlockRendererProps) {
 // results) degrades to that link-out rather than fabricating a crowd.
 
 function UploadField({ block }: InputRequestBlockRendererProps) {
-  const { label, placeholder } = block.props;
+  const { label, placeholder, prefill } = block.props;
   const { onComplete } = useInThreadInput();
 
   const { start, phase, analysisId, error: streamError, quotaError } = useAnalysisStream();
 
   const [file, setFile] = useState<File | null>(null);
-  const [url, setUrl] = useState('');
+  // A pasted TikTok link is the only seedable half of this field (a file drop cannot be), and the
+  // loop already checked it against the same TIKTOK_URL_PATTERN validated below — so a prefill
+  // arrives valid and `canSubmit` is true on first render. The tap is still the creator's.
+  const [url, setUrl] = useState(prefill ?? '');
   const [staging, setStaging] = useState(false);
   const [stageError, setStageError] = useState<string | null>(null);
   const [carding, setCarding] = useState(false);
@@ -412,6 +623,10 @@ function UploadField({ block }: InputRequestBlockRendererProps) {
   const busy = staging || analyzing || carding;
   // The run-capsule spine for the busy stretch (unconditional hook call — React rules).
   const testStages = useTestRunStages({ analyzing, carding });
+  // The SAME live signals the flagship /analyze skeleton draws its filmstrip from — the post the
+  // scrape resolved, then the creator's own keyframes as the extractor cuts them. `busy` closes the
+  // subscription the moment the run settles.
+  const testEvidence = useTestRunEvidence(analysisId, busy);
   const canSubmit = (!!file || isValidTikTok) && !busy;
 
   // When the analysis completes, turn the persisted row into an in-thread card. Fires once
@@ -519,12 +734,12 @@ function UploadField({ block }: InputRequestBlockRendererProps) {
     return (
       <div className={SHELL_CLASS} data-testid="input-request">
         {cardError && <ErrorLine text={cardError} />}
-        <p className="text-[13px] text-foreground-secondary">
+        <p className="text-body text-foreground-secondary">
           Analyzed your video — open the full frame-by-frame breakdown:
         </p>
         <Link
           href={`/analyze/${degradedId}`}
-          className="self-start text-[13px] font-medium text-foreground-secondary transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10"
+          className="self-start text-body font-medium text-foreground-secondary transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring)]"
         >
           See the full breakdown →
         </Link>
@@ -534,7 +749,7 @@ function UploadField({ block }: InputRequestBlockRendererProps) {
 
   return (
     <div className={SHELL_CLASS} data-testid="input-request">
-      <p className="text-[13px] font-medium text-foreground-secondary">
+      <p className="text-body font-medium text-foreground-secondary">
         {busy ? SKILL_RUN_META.test!.running : label}
       </p>
       {busy ? (
@@ -542,14 +757,14 @@ function UploadField({ block }: InputRequestBlockRendererProps) {
         // (identical plan names), derived from real phase boundaries + elapsed floors — replaces
         // the single static spinner line this wait used to be.
         <div aria-live="polite" aria-atomic="false">
-          <ProgressChecklist stages={testStages} plan={SKILL_RUN_META.test!.plan} />
+          <ProgressChecklist stages={testStages} plan={SKILL_RUN_META.test!.plan} evidence={testEvidence} />
         </div>
       ) : (
         <div className="flex flex-col gap-3">
           <VideoUpload file={file} onFileSelect={setFile} bare />
           {!file && (
             <>
-              <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.05em] text-foreground-muted">
+              <div className="flex items-center gap-2 text-caption uppercase tracking-[0.05em] text-foreground-muted">
                 <span className="h-px flex-1 bg-white/[0.06]" />
                 or paste a link
                 <span className="h-px flex-1 bg-white/[0.06]" />

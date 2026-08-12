@@ -97,6 +97,33 @@ const AdaptConceptsZodSchema = z.object({
   concepts: z.array(AdaptConceptZodSchema).length(3), // ADAPT-01: exactly 3
 });
 
+/**
+ * A partial shoot plan must never kill 3 valid concepts. `production` is a GARNISH —
+ * optional by schema, "the card just renders no shoot plan" — but when the model emits
+ * it MISSING one required sub-field, Zod fails the WHOLE response and the retry usually
+ * repeats the omission (observed live 2026-08-10: `production.setup` absent on all 3
+ * concepts of two corpus rows, both retries too → two shelf rows lost, a 5/6 shelf).
+ * Stripping the partial garnish before validation converts that into a valid response.
+ */
+function stripPartialProduction(parsed: unknown): unknown {
+  const concepts = (parsed as { concepts?: unknown } | null)?.concepts;
+  if (!Array.isArray(concepts)) return parsed;
+  for (const c of concepts) {
+    if (!c || typeof c !== "object") continue;
+    const p = (c as { production?: unknown }).production;
+    if (p === undefined) continue;
+    const complete =
+      p !== null &&
+      typeof p === "object" &&
+      (["shots", "onScreenText", "setup"] as const).every((k) => {
+        const v = (p as Record<string, unknown>)[k];
+        return typeof v === "string" && v.length > 0;
+      });
+    if (!complete) delete (c as { production?: unknown }).production;
+  }
+  return parsed;
+}
+
 // =========================================================
 // Input builder — accepts AdaptInput only (D-01 structural guard)
 // =========================================================
@@ -180,7 +207,7 @@ export async function generateAdaptConcepts(input: AdaptInput): Promise<AdaptCon
       const raw     = completion.choices[0]?.message?.content ?? "";
       const cleaned = stripModelOutput(raw); // strips <think>...</think> + fences
       const parsed  = JSON.parse(cleaned) as unknown;
-      const result  = AdaptConceptsZodSchema.safeParse(parsed);
+      const result  = AdaptConceptsZodSchema.safeParse(stripPartialProduction(parsed));
 
       if (!result.success) {
         log.warn("adapt Zod validation failed", { attempt, error: result.error.message });

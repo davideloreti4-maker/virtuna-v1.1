@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { isChatAgentThread, orderedAssistantBlocks, orderedTurns } from "../rehydrate-thread";
+import { blockRefId, isChatAgentThread, orderedAssistantBlocks, orderedTurns } from "../rehydrate-thread";
 
 const md = (text: string, origin?: string) => ({ type: "markdown", props: origin ? { text, origin } : { text } });
 const idea = (title: string) => ({ type: "idea-card", props: { title } });
@@ -112,5 +112,67 @@ describe("orderedTurns", () => {
 
   it("is empty for an empty thread", () => {
     expect(orderedTurns([])).toEqual([]);
+  });
+});
+
+describe("blockOrigins — the save-provenance seam", () => {
+  it("aligns one origin per block, index-for-index with blocks", () => {
+    const turns = orderedTurns([
+      { role: "user", blocks: [md("ideas please")] },
+      { id: "msg-1", role: "assistant", blocks: [idea("A"), idea("B"), idea("C")] },
+    ]);
+    expect(turns[0]?.blocks).toHaveLength(3);
+    expect(turns[0]?.blockOrigins).toEqual([
+      { messageId: "msg-1", index: 0 },
+      { messageId: "msg-1", index: 1 },
+      { messageId: "msg-1", index: 2 },
+    ]);
+  });
+
+  it("restarts the index per message when a turn merges several assistant messages", () => {
+    // The trap this guards: a turn merges consecutive assistant messages, so the block's position in
+    // the MERGED array (0,1,2,3) diverges from its position in its own message body (0,1 then 0,1).
+    // Using the merged position would point a save at a row that does not contain that block.
+    const turns = orderedTurns([
+      { role: "user", blocks: [md("q")] },
+      { id: "msg-1", role: "assistant", blocks: [idea("A"), idea("B")] },
+      { id: "msg-2", role: "assistant", blocks: [idea("C"), idea("D")] },
+    ]);
+    expect(turns[0]?.blocks).toHaveLength(4);
+    expect(turns[0]?.blockOrigins).toEqual([
+      { messageId: "msg-1", index: 0 },
+      { messageId: "msg-1", index: 1 },
+      { messageId: "msg-2", index: 0 },
+      { messageId: "msg-2", index: 1 },
+    ]);
+  });
+
+  it("records a null messageId rather than guessing when a row carries no id", () => {
+    const turns = orderedTurns([
+      { role: "user", blocks: [md("q")] },
+      { role: "assistant", blocks: [idea("A")] },
+    ]);
+    expect(turns[0]?.blockOrigins).toEqual([{ messageId: null, index: 0 }]);
+  });
+
+  it("populates origins on an anonymous leading turn too", () => {
+    const turns = orderedTurns([{ id: "msg-9", role: "assistant", blocks: [idea("greeting")] }]);
+    expect(turns[0]?.blockOrigins).toEqual([{ messageId: "msg-9", index: 0 }]);
+  });
+});
+
+describe("blockRefId", () => {
+  it("builds a stable `${messageId}:${index}` ref", () => {
+    expect(blockRefId({ messageId: "msg-1", index: 2 })).toBe("msg-1:2");
+  });
+
+  it("distinguishes two blocks in the SAME message — the dedup key must not collide", () => {
+    expect(blockRefId({ messageId: "m", index: 0 })).not.toBe(blockRefId({ messageId: "m", index: 1 }));
+  });
+
+  it("is null for an unpersisted block, never a partial ref", () => {
+    expect(blockRefId({ messageId: null, index: 0 })).toBeNull();
+    expect(blockRefId(null)).toBeNull();
+    expect(blockRefId(undefined)).toBeNull();
   });
 });

@@ -19,6 +19,7 @@
 import { describe, it, expect } from "vitest";
 import {
   generateAccountRead,
+  ACCOUNT_READ_PLAN,
   THIN_MIN_VIDEOS,
   TRACK_RECORD_MIN_ROWS,
   type AccountReadResult,
@@ -288,5 +289,167 @@ describe("generateAccountRead — accuracy track record (SELF-03)", () => {
     const r = result as Extract<AccountReadResult, { patterns: unknown }>;
     expect("patterns" in r).toBe(true);
     expect(r.trackRecord).toBeNull();
+  });
+});
+
+// ─── 4a: the evidence path must never endanger the paid read ─────────────────
+
+describe("generateAccountRead — evidence is decoration, not a dependency", () => {
+  it("a THROWING evidence consumer does not fail a scrape that succeeded", async () => {
+    // The read costs 5 credits and runs two real Apify scrapes. Emitting rail evidence is chained
+    // onto those promises, so an exception on the way out would reject the Promise.all and hand
+    // back `scrape_failed` for work that actually completed — the creator pays and is told it
+    // failed. A thumbnail is not worth that.
+    const provider = makeProvider({
+      profile: makeProfile({ followerCount: 500_000 }),
+      videos: Array.from({ length: 12 }, () => makeVideo()),
+    });
+
+    const result = await generateAccountRead(
+      "creator",
+      "u1",
+      {
+        ...RICH_DEPS(),
+        onEvidence: () => {
+          throw new Error("rail blew up");
+        },
+      },
+      provider,
+    );
+
+    expect("error" in result).toBe(false);
+    expect("fallback" in result).toBe(false);
+    expect((result as { handle: string }).handle).toBe("creator");
+  });
+
+  it("advances the spine even when the profile yields NO evidence to show", async () => {
+    // An account with no avatar and no handle builds no evidence. The phase boundary is a fact
+    // about the pipeline, so it must still fire — gating it on the payload left the spine stuck
+    // on step 1 for the whole run while the read completed behind it.
+    const provider = makeProvider({
+      profile: makeProfile({ handle: "", avatarUrl: "", followerCount: 500_000 }),
+      videos: Array.from({ length: 12 }, () => makeVideo()),
+    });
+
+    const stages: Array<[string, string]> = [];
+    await generateAccountRead(
+      "creator",
+      "u1",
+      { ...RICH_DEPS(), onStage: (name, status) => stages.push([name, status]) },
+      provider,
+    );
+
+    // Both rows open together — the two scrapes are dispatched together — then each closes on its
+    // own result. With instant mocks the profile chain settles first purely by declaration order.
+    expect(stages).toEqual([
+      [ACCOUNT_READ_PLAN[0]!, "active"],
+      [ACCOUNT_READ_PLAN[1]!, "active"],
+      [ACCOUNT_READ_PLAN[0]!, "done"],
+      [ACCOUNT_READ_PLAN[1]!, "done"],
+    ]);
+  });
+});
+
+// ─── The two scrapes RACE — measured on the first live billed run ────────────
+
+describe("generateAccountRead — the two scrapes race and either can win", () => {
+  /** A provider that decides who wins, because a mock that resolves instantly never races. */
+  function makeRacingProvider(profileMs: number, videosMs: number) {
+    const after = <T,>(ms: number, value: T) =>
+      new Promise<T>((resolve) => setTimeout(() => resolve(value), ms));
+    return {
+      scrapeProfile: (_h: string) =>
+        after(profileMs, makeProfile({ followerCount: 500_000 })),
+      scrapeVideos: (_h: string, _l?: number) =>
+        // Covers are required: the filmstrip builder honestly returns null when a scrape surfaced
+        // no renderable image, so a coverless fixture emits no posts evidence to route at all.
+        after(
+          videosMs,
+          Array.from({ length: 12 }, (_, i) =>
+            makeVideo({ coverUrl: `https://cdn.example/cover${i}.jpg` }),
+          ),
+        ),
+    };
+  }
+
+  it("closes the POSTS row when the posts land, even though the profile is still running", async () => {
+    // The live run measured the 30-post pull at 19.1s and the profile at 37.2s — the reverse of
+    // what the code assumed. Chaining row 2 to the PROFILE promise made it go active→done in one
+    // tick: the row whose work actually took the time never rendered as in-progress.
+    const stages: Array<[string, string]> = [];
+    await generateAccountRead(
+      "creator",
+      "u1",
+      { ...RICH_DEPS(), onStage: (name, status) => stages.push([name, status]) },
+      makeRacingProvider(40, 5), // videos win, as they did live
+    );
+
+    const posts = stages.findIndex(
+      ([n, s]) => n === ACCOUNT_READ_PLAN[1] && s === "done",
+    );
+    const profile = stages.findIndex(
+      ([n, s]) => n === ACCOUNT_READ_PLAN[0] && s === "done",
+    );
+
+    expect(posts).toBeGreaterThan(-1);
+    expect(profile).toBeGreaterThan(-1);
+    // The winner finishes first. This is the whole defect: it used to be the other way round.
+    expect(posts).toBeLessThan(profile);
+
+    // And row 2 must have OPENED before anything closed — that is what "it was live while its own
+    // scrape ran" means here. Pre-fix, row 2's `active` was emitted by the profile's callback, so
+    // the second event was `[profile, done]` and row 2 opened and closed in the same tick.
+    expect(stages.slice(0, 2)).toEqual([
+      [ACCOUNT_READ_PLAN[0]!, "active"],
+      [ACCOUNT_READ_PLAN[1]!, "active"],
+    ]);
+  });
+
+  it("states no count of what it pulled — while still sizing the strip by it", async () => {
+    // This used to assert the headline said "Reading 12 of your posts" (the posts READ) rather
+    // than "Reading 8" (the covers the rail can FIT) — a real bug where one run made two
+    // different factual claims about the same work.
+    //
+    // The owner's rule (2026-08-05) removes the class rather than picking the right number: the
+    // loading UI never reports how many things the pipeline pulled or watched. So neither number
+    // may appear in COPY — while `slots` survives untouched, because it is layout, not a claim:
+    // it makes the filmstrip draw its full width up front and fill in order rather than reflowing
+    // as frames land. It is bounded by MAX_EVIDENCE_ITEMS because it counts TILES DRAWN, which is
+    // exactly the number the old headline was wrong to announce as posts read.
+    const seen: Array<{ headline: string; slots?: number }> = [];
+    await generateAccountRead(
+      "creator",
+      "u1",
+      { ...RICH_DEPS(), onEvidence: (e) => seen.push({ headline: e.headline, slots: e.slots }) },
+      makeRacingProvider(40, 5), // 12 videos, capped to 8 tiles
+    );
+
+    const headlines = seen.map((e) => e.headline);
+    expect(headlines).toContain("Your recent posts");
+    for (const h of headlines) expect(h).not.toMatch(/\d/);
+
+    const strip = seen.find((e) => typeof e.slots === "number");
+    expect(strip?.slots).toBe(8); // tiles the strip will draw — layout, never spoken
+  });
+
+  it("tags each payload with the row it belongs to, so the rail cannot draw it under the other one", async () => {
+    // Two rows are live at once, so "the rail hangs off the active row" would put the post covers
+    // on whichever row is first in the plan — which is the profile.
+    const seen: Array<{ headline: string; step?: string }> = [];
+    await generateAccountRead(
+      "creator",
+      "u1",
+      {
+        ...RICH_DEPS(),
+        onEvidence: (e) => seen.push({ headline: e.headline, step: e.step }),
+      },
+      makeRacingProvider(40, 5),
+    );
+
+    const posts = seen.find((e) => /posts/i.test(e.headline));
+    const profile = seen.find((e) => /your account/i.test(e.headline));
+
+    expect(posts?.step).toBe(ACCOUNT_READ_PLAN[1]);
+    expect(profile?.step).toBe(ACCOUNT_READ_PLAN[0]);
   });
 });

@@ -8,7 +8,7 @@
  * nothing hits the network or the paid engine.
  */
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent, waitFor, within } from "@testing-library/react";
 import type { InputRequestBlock } from "@/lib/tools/blocks";
 import { validateBlock } from "@/lib/tools/block-registry";
 
@@ -20,6 +20,10 @@ const accountState = {
   isStreaming: false,
   error: null as string | null,
   fallbackMessage: null as string | null,
+  // 4a — the read is TWO independent Apify runs, so the hook now reports real phases + the
+  // artifacts each half returns, and the field draws the spine instead of a lone row.
+  stages: [] as { name: string; status: "pending" | "active" | "done" }[],
+  evidence: null as unknown,
   block: null as unknown,
 };
 const analysisState = {
@@ -82,6 +86,7 @@ beforeEach(() => {
   exploreState.isStreaming = false; exploreState.error = null; exploreState.isDone = false; exploreState.stages = [];
   accountState.start = vi.fn(async () => {});
   accountState.isStreaming = false; accountState.error = null; accountState.fallbackMessage = null; accountState.block = null;
+  accountState.stages = []; accountState.evidence = null;
   analysisState.start = vi.fn(async () => {});
   analysisState.phase = "idle"; analysisState.analysisId = null; analysisState.error = null; analysisState.quotaError = null;
   vi.restoreAllMocks();
@@ -103,6 +108,16 @@ describe("Remix field (kind: link)", () => {
     fireEvent.change(input, { target: { value: "https://tiktok.com/@x/video/1" } });
     fireEvent.click(screen.getByText("Adapt it →"));
     expect(remixState.start).toHaveBeenCalledWith("https://tiktok.com/@x/video/1", "tiktok");
+  });
+
+  it("seeds the field from the model prefill, so a pasted link is not typed twice", () => {
+    renderField({ ...REMIX, props: { ...REMIX.props, prefill: "https://tiktok.com/@x/video/9" } });
+    const input = screen.getByLabelText("Paste the video link") as HTMLInputElement;
+    expect(input.value).toBe("https://tiktok.com/@x/video/9");
+    // Seeded, but NOT auto-run — the creator's tap is still what spends.
+    expect(remixState.start).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByText("Adapt it →"));
+    expect(remixState.start).toHaveBeenCalledWith("https://tiktok.com/@x/video/9", "tiktok");
   });
 
   it("an empty field runs nothing", () => {
@@ -244,6 +259,21 @@ describe("Test field (kind: upload — a video file OR a TikTok URL)", () => {
     });
   });
 
+  it("seeds the URL half from the model prefill, so a pasted link is not typed twice", () => {
+    renderField({ ...TEST, props: { ...TEST.props, prefill: "https://tiktok.com/@x/video/7" } });
+    expect((screen.getByPlaceholderText("https://tiktok.com/…") as HTMLInputElement).value).toBe(
+      "https://tiktok.com/@x/video/7",
+    );
+    // Seeded, but NOT auto-run — a paid Max run still waits for the creator's tap (D-05).
+    expect(analysisState.start).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByText("Test it →"));
+    expect(analysisState.start).toHaveBeenCalledWith({
+      input_mode: "tiktok_url",
+      content_type: "video",
+      tiktok_url: "https://tiktok.com/@x/video/7",
+    });
+  });
+
   it("an invalid URL and no file runs nothing (the CTA stays disabled)", () => {
     renderField(TEST);
     fireEvent.change(screen.getByPlaceholderText("https://tiktok.com/…"), {
@@ -320,11 +350,41 @@ describe("Field run capsules", () => {
     expect(screen.getByLabelText("Skill run progress")).toBeTruthy();
   });
 
-  it("account mid-run: the one-row capsule", () => {
+  it("account mid-run, before any phase reports: falls back to the one-row capsule", () => {
     accountState.isStreaming = true;
     renderField(ACCOUNT);
     expect(screen.getByText("Reading your account")).toBeTruthy();
     expect(screen.getByLabelText("Skill run progress")).toBeTruthy();
+  });
+
+  it("account mid-run: the TWO real scrape phases, with the profile under the running step", () => {
+    // 4a — the account read was never "one scrape call": it is scrapeProfile + scrapeVideos, two
+    // independent Apify runs whose results sat behind a single static line for ~30s. Both phases
+    // now drive the spine, and the profile appears the moment its half lands.
+    accountState.isStreaming = true;
+    accountState.stages = [
+      { name: "Finding your profile", status: "done" },
+      { name: "Reading your recent posts", status: "active" },
+    ];
+    accountState.evidence = {
+      headline: "Reading your account",
+      items: [
+        {
+          kind: "profile",
+          image: "https://cdn.example/avatar.jpg",
+          label: "davide.creates",
+          metric: "48.2K followers",
+        },
+      ],
+    };
+    renderField(ACCOUNT);
+
+    expect(screen.getByLabelText("Finding your profile: done")).toBeTruthy();
+    const running = screen.getByLabelText("Reading your recent posts: active");
+    // The rail hangs off the step that is RUNNING, and it carries the real handle.
+    expect(within(running).getByTestId("run-evidence")).toBeTruthy();
+    expect(within(running).getByText("@davide.creates")).toBeTruthy();
+    expect(within(running).getByText("48.2K followers")).toBeTruthy();
   });
 
   it("test mid-run (analyzing): the 3-step /analyze plan renders, step 1 active", () => {

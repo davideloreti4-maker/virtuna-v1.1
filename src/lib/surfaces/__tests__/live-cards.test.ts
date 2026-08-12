@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { personasToCardFace } from "../live-cards";
+import { personasToCardFace, compactViews } from "../live-cards";
 import type { ReactionPersona } from "@/lib/tools/blocks";
 
 /** Build N personas: `stops` stop-verdicts then the rest scroll, each with a distinct quote. */
@@ -80,5 +80,16 @@ describe("personasToCardFace", () => {
       { archetype: "b", verdict: "stop", quote: "the one with words" },
     ];
     expect(personasToCardFace(mixed).lead).toBe("the one with words");
+  });
+});
+
+describe("compactViews (moved from outlier-reactions — shared with drops)", () => {
+  it("compacts honestly", () => {
+    expect(compactViews(118_000)).toBe("118K");
+    expect(compactViews(1_200_000)).toBe("1.2M");
+    expect(compactViews(8_100_000)).toBe("8.1M");
+    expect(compactViews(890)).toBe("890");
+    expect(compactViews(0)).toBe("0");
+    expect(compactViews(Number.NaN)).toBe("0");
   });
 });

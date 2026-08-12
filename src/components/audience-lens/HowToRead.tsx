@@ -18,13 +18,13 @@ export function HowToRead() {
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="flex items-center gap-1 text-[10.5px] text-[var(--color-foreground-muted)] transition-colors hover:text-[var(--color-foreground-secondary)]"
+        className="flex items-center gap-1 text-[10px] text-[var(--color-foreground-muted)] transition-colors hover:text-[var(--color-foreground-secondary)]"
       >
         How to read these numbers
         <span aria-hidden className="text-[10px] leading-none">{open ? '↑' : '›'}</span>
       </button>
       {open && (
-        <div className="mt-1.5 space-y-1.5 border-l border-[var(--color-border)] pl-3 text-[10.5px] leading-[1.55] text-[var(--color-foreground-muted)]">
+        <div className="mt-1.5 space-y-1.5 border-l border-[var(--color-border)] pl-3 text-[10px] leading-[1.55] text-[var(--color-foreground-muted)]">
           <p>
             Every number on this panel is <span className="text-[var(--color-foreground-secondary)]">modeled</span> — predicted
             from the room&rsquo;s real votes (and, for a real clip, its measured retention), then run through the

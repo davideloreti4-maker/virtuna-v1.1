@@ -37,7 +37,7 @@ export function SkillResultCard({ hero, children, className }: SkillResultCardPr
           eyebrow was pure restatement. */}
       {hero && (
         <header className="border-b border-white/[0.06] px-4 py-3">
-          <p className="text-[15px] font-semibold leading-snug tracking-[-0.01em] text-foreground">
+          <p className="text-reading font-semibold leading-snug tracking-[-0.01em] text-foreground">
             {hero}
           </p>
         </header>

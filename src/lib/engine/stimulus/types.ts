@@ -35,7 +35,7 @@ import { z } from "zod";
 export type StimulusKind = "text" | "file_text" | "image" | "video";
 
 /**
- * The resolved SIM-1 tier (D-03). `flash` → `QWEN_REASONING_MODEL` (qwen3.7-plus,
+ * The resolved SIM-1 tier (D-03). `flash` → `QWEN_REASONING_MODEL` (qwen3.7-flash,
  * deaf, vision-capable); `max` → `QWEN_OMNI_MODEL` (qwen3.5-omni-flash, audio).
  * NOTE: omni-**flash** the model name ≠ SIM-1-**Flash** the tier (see tier.ts).
  */

@@ -71,6 +71,29 @@ afterEach(() => {
   delete process.env.WHOP_API_KEY;
 });
 
+describe("POST /api/whop/checkout — the endpoint it actually calls", () => {
+  /**
+   * REGRESSION GUARD. This suite stubbed `fetch` wholesale and asserted only the request
+   * BODY, so it stayed green for months while the route POSTed
+   * `https://api.whop.com/api/v5/checkout_sessions` — an endpoint Whop had REMOVED, which
+   * answers 404. Every real checkout would have 500'd. A mocked transport proves the
+   * shape of a call, never its destination; pin the destination explicitly.
+   */
+  it("POSTs Whop's current checkout endpoint, not a removed API version", async () => {
+    const calls = mockWhopFetch();
+    subRow = null;
+
+    await post({ planId: "starter", trial: true });
+
+    const { WHOP_CHECKOUT_ENDPOINT } = await import("../route");
+    expect(calls[0]!.url).toBe(WHOP_CHECKOUT_ENDPOINT);
+    expect(calls[0]!.url).toBe(
+      "https://api.whop.com/api/v1/checkout_configurations"
+    );
+    expect(calls[0]!.url).not.toContain("/v5/");
+  });
+});
+
 describe("POST /api/whop/checkout — one trial per account", () => {
   it("sells a first-time trial the $1 SKU and says trialApplied", async () => {
     const calls = mockWhopFetch();
@@ -136,5 +159,29 @@ describe("POST /api/whop/checkout — one trial per account", () => {
     mockWhopFetch();
     const res = await post({ planId: "enterprise", trial: false });
     expect(res.status).toBe(400);
+  });
+});
+
+describe("POST /api/whop/checkout — where the buyer lands after paying", () => {
+  it("sends the FUNNEL buyer back to /home — an anonymous visitor has no business on /settings", async () => {
+    const calls = mockWhopFetch();
+    subRow = null;
+
+    await post({ planId: "starter", trial: true, funnel: true });
+
+    const redirect = String(calls[0]!.body.redirect_url);
+    expect(redirect).toContain("/home?checkout=success");
+    expect(redirect).not.toContain("/settings");
+  });
+
+  it("keeps the settings redirect for a normal (non-funnel) checkout", async () => {
+    const calls = mockWhopFetch();
+    subRow = null;
+
+    await post({ planId: "starter", trial: true });
+
+    expect(String(calls[0]!.body.redirect_url)).toContain(
+      "/settings?tab=billing&checkout=success"
+    );
   });
 });

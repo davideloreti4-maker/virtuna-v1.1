@@ -42,7 +42,7 @@ export function MonthCalendar({
       <div className="mb-[13px] flex items-center gap-1.5">
         <span className="min-w-0 flex-1">
           <span className="block text-[14px] font-semibold tracking-[-0.01em] text-foreground">{month}</span>
-          <span className="mt-px block font-mono text-[9.5px] text-foreground-muted">
+          <span className="mt-px block font-mono text-[10px] text-foreground-muted">
             {plannedCount > 0 ? `${plannedCount} planned · pre-tested` : "nothing planned yet"}
           </span>
         </span>
@@ -55,7 +55,7 @@ export function MonthCalendar({
       </div>
       <div className="grid grid-cols-7 gap-0.5 gap-y-1">
         {DAY_HEADS.map((h) => (
-          <div key={h} className="pb-1.5 text-center font-mono text-[9.5px] font-medium text-foreground-muted">
+          <div key={h} className="pb-1.5 text-center font-mono text-[10px] font-medium text-foreground-muted">
             {h}
           </div>
         ))}

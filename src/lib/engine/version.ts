@@ -146,5 +146,43 @@
  * cosmetic — without it every already-cached fold-failed row keeps replaying its old HIGH badge
  * on a cache hit ("cache_hit — silent replay"), and the fix would never reach the rows that have
  * the bug.
+ *
+ * 3.21.0 → 3.22.0 (2026-08-04, owner call — the reasoning model moves plus → FLASH):
+ * QWEN_REASONING_MODEL flips qwen3.7-plus → qwen3.7-flash, which is every scoring call on the
+ * platform except the omni audio sensor and Apollo. Same generation, still sighted, still deaf,
+ * so no capability moves and the audio boundary is untouched — but a different model scores
+ * differently, so SIM verdicts and fold personas cross a model boundary here.
+ *
+ * ⚠️ APOLLO DID NOT MOVE. It was flipped with the shared constant and reverted the same hour on
+ * live evidence (`scripts/apollo-cite-harness.ts`, one video, both models back to back): flash
+ * returned composite 53 with ZERO §-cites against plus's 81 with [§2.1 §2.2 §2.3 §2.5]. Apollo
+ * is the only call running thinking ON, and it is the only one that regressed. Fold, by
+ * contrast, PASSED live on flash (`scripts/fold-validate-r1.ts`): diversity 0.28 inside the
+ * healthy 0.27–0.41 band, 13.7s against a 90s ceiling, clean first-attempt parse, no retry.
+ * The version still bumps: the fold and every generation/chat call did change model.
+ *
+ * D-23 cache invariant: this bump is REQUIRED. Every prior model flip bumped it for the same
+ * reason (3.14→3.15 Apollo, 3.15→3.16 fold) — without it, rows scored by 3.7-plus keep replaying
+ * on cache hits and the new model's numbers never reach the board. Rollback is env-only
+ * (QWEN_REASONING_MODEL / QWEN_APOLLO_MODEL back to qwen3.7-plus), but note that rolling the
+ * model back does NOT roll this version back, so 3.7-plus rows re-score once under 3.22.0.
+ *
+ * 3.22.0 → 3.23.0 (2026-08-04, the modality split — DERIVED FROM THE FLAG, see below): the
+ * Wave 0 read stops being one omni call that both watches and hears. flash takes the video and
+ * owns the segment grid, omni takes an ffmpeg-extracted mp3 and owns the transcript + audio
+ * scores, and visual_audio_coherence is graded by a third text-only call. Two different models
+ * now perceive what one model perceived before, so the substrate the fold and Apollo both
+ * reason over changes on every video row.
+ *
+ * ⚠️ THIS ONE IS DERIVED FROM THE FLAG, and that is deliberate. The split is ON by default
+ * (owner call, same commit), so 3.23.0 is what production runs — but the rollback env var
+ * `ENGINE_AUDIO_SPLIT=false` returns the engine to the unified read, and it must return the
+ * cache with it. A flat constant would leave rolled-back deployments writing unified-era reads
+ * under the split-era version and serving each other's rows. Deriving it means the cache
+ * partitions at exactly the moment perception changes, in BOTH directions, with no second
+ * deploy to remember. This also removes the dashboard-flip hole: toggling the env var in Vercel
+ * without a code change still moves the version.
+ *
+ * D-23 cache invariant holds either way: prediction-cache.ts keys on this string.
  */
-export const ENGINE_VERSION = "3.21.0";
+export const ENGINE_VERSION = process.env.ENGINE_AUDIO_SPLIT === "false" ? "3.22.0" : "3.23.0";

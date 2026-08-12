@@ -15,6 +15,7 @@
 
 import { z } from "zod";
 import { HookProofSchema, type HookProof } from "./proof-schema";
+import { SKILL_INPUT_ACTIONS } from "./skill-capabilities";
 import {
   ProfileReadBlockSchema,
   ReactionDistributionBlockSchema,
@@ -534,17 +535,27 @@ export const RemixCardBlockSchema = z.object({
 
     // Source decode anatomy — the REAL structural decode (D-05 moat, NOT a metadata guess)
     // Shown on expand: WHY the original video worked structurally
-    sourceDecode: z.object({
-      hookPattern: z.string().min(1),  // hook_pattern beat body
-      structure: z.string().min(1),    // structure_pacing beat body
-      theTurn: z.string().min(1),      // the_turn beat body
-      emotionalBeat: z.string().min(1),// emotional_beat beat body
-    }),
+    // OPTIONAL (v8 Phase 2): a drop-seeded remix card adapts a pre-torn CORPUS row that
+    // never ran the decode engine — it omits sourceDecode rather than fabricating beats
+    // (honesty spine). Every runner-produced card still carries the real 4-beat decode.
+    sourceDecode: z
+      .object({
+        hookPattern: z.string().min(1),  // hook_pattern beat body
+        structure: z.string().min(1),    // structure_pacing beat body
+        theTurn: z.string().min(1),      // the_turn beat body
+        emotionalBeat: z.string().min(1),// emotional_beat beat body
+      })
+      .optional(),
 
     // Opener-scoped band signal (Pitfall 5 — adapted hook scroll-stop ONLY)
     band: z.enum(["Strong", "Mixed", "Weak"]),
     fraction: z.string().min(1),       // e.g. "7/10 stop" — adapted hook audience fraction only
-    scrollQuote: z.string().min(1),    // lead per-persona scroll quote for the adapted hook
+    // Lead per-persona scroll quote for the adapted hook. "" is LEGAL (matches the other card
+    // schemas): AdaptConcept.stopQuote is optional BY DESIGN (adapt.ts — a partial model response
+    // still validates so the 3-concept contract holds), and a min(1) here silently deleted any
+    // quote-less concept downstream (drop-seed + the runner's D-14 gate), breaking that contract
+    // one layer up. Empty renders quote-less — the state flat-card-reactions already models.
+    scrollQuote: z.string(),
     model: z.literal("sim1-flash"),    // provenance tag — always Flash for remix cards (D-10)
     // PROVENANCE (new Qwen call system, 2026-07-22): the adapted-hook band/fraction is a generation-
     // time PROJECTION (the single adapt call self-estimated each concept's `personaStops` /10 — no
@@ -590,9 +601,11 @@ export type RemixCardBlock = z.infer<typeof RemixCardBlockSchema>;
 // Honesty spine (Pitfall 5 / D-05 / D-11):
 //   This block carries NO band, NO 0-100 score, and NO `model: sim1-flash` field.
 //   Discover tiles are MEASURED scrape data (real engagement arithmetic), NOT SIM
-//   output. The multiplier is `views / baseline` (computed in outlier-compute.ts).
-//   The renderer MUST surface the multiplier WITH its baselineLabel ("vs own" |
-//   "vs niche") — NEVER a bare "{n}×" (D-05).
+//   output. The multiplier is the per-author receipt from outlier-receipt.ts — NOT
+//   `rankOutliers`' within-set median, which moves with the size of the pull and is
+//   a selection signal only. The renderer MUST surface the multiplier WITH its
+//   baselineLabel — NEVER a bare "{n}×" (D-05) — and must render NEITHER when the
+//   row has no honest denominator.
 //
 // The video reference (videoUrl / platformVideoId / caption) is what the
 // "Remix → Read" CTA needs to launch the discover→remix chain (chain-handoff.ts).
@@ -620,9 +633,17 @@ export const OutlierGridBlockSchema = z.object({
         saves: z.number(),
         durationSeconds: z.number(),
         postedAt: z.string(),                          // ISO string (block props are JSON-serializable)
-        // Measured outlier signal (NOT a SIM score — Pitfall 5)
-        multiplier: z.number(),                        // views / baseline ("{n}×")
-        baselineLabel: z.enum(["vs own", "vs niche"]), // D-05 — renderer NEVER shows a bare multiplier
+        // Measured outlier signal (NOT a SIM score — Pitfall 5).
+        //
+        // The PER-AUTHOR receipt (outlier-receipt.ts), not the within-set median that ranks the
+        // pull: "vs their usual views" on a profile pull, "vs followers" on a niche one. Both
+        // fields are NULLABLE together — a row with no author aggregates gets no badge rather
+        // than an invented number, and D-05 still holds (never a bare "{n}×").
+        //
+        // `.nullish()` rather than a narrower type on purpose: persisted blocks written before
+        // 2026-08-11 carry the old "vs own"/"vs niche" labels and must stay valid to parse.
+        multiplier: z.number().nullish(),
+        baselineLabel: z.string().min(1).nullish(),
         // Source tag (D-15): "Your channel" | "Competitor" (profile) | niche label (niche)
         source: z.string().min(1),
         // ── Phase 11 Explore extension (EXPLORE-03/05) ──────────────────────────
@@ -860,13 +881,20 @@ export const InputRequestBlockSchema = z.object({
     // or an upload (a video file drop, with a URL alternative — the heaviest input, /test).
     kind: z.enum(["link", "text", "none", "upload"]),
     // The skill the submitted value (or button tap) runs, in-thread on its own route.
-    action: z.enum(["remix", "account", "explore", "read", "test"]),
+    //
+    // DERIVED from SKILL_CAPABILITIES, not restated. skill-capabilities.ts has always documented
+    // this enum as deriving from its keys ("so they can't drift") — it did not, it was a hand-kept
+    // copy, and adding a capability there left blocks that the write boundary rejected. The import
+    // is safe: skill-capabilities.ts is pure data with no imports and no React.
+    action: z.enum(SKILL_INPUT_ACTIONS as [string, ...string[]]),
     // Field label / confirm-card prompt + placeholder (deterministic copy, set by the loop — never model text).
     label: z.string().min(1),
     placeholder: z.string().optional(),
-    // OPTIONAL prefill for text fields — a value the creator ALREADY stated (a niche, a concept) that
-    // the model extracted, so they review-and-tap instead of retyping. Editable + still requires a
-    // submit tap (never auto-spends). Absent on link/none fields and every pre-2026-07-18 block.
+    // OPTIONAL prefill — a value the creator ALREADY gave (a niche, a concept, or the video link they
+    // pasted) that the model extracted, so they review-and-tap instead of typing it twice. Editable +
+    // still requires a submit tap (never auto-spends). The loop shape-checks it against the action's
+    // declared SKILL_CAPABILITIES.prefill and drops a mismatch, so a `link`/`upload` prefill is always
+    // a real URL. Absent on `none` fields and every pre-2026-07-18 block.
     prefill: z.string().optional(),
     // Platform the action runs on (carried from the turn so the skill targets the right feed).
     platform: z.enum(["tiktok", "instagram", "youtube"]).optional(),
@@ -918,10 +946,112 @@ export const CorpusReferencesBlockSchema = z.object({
 export type CorpusReference = z.infer<typeof CorpusReferenceSchema>;
 export type CorpusReferencesBlock = z.infer<typeof CorpusReferencesBlockSchema>;
 
+// ─── Brought-card block (the ＋ door — "Test something of your own") ────────────
+/**
+ * A stimulus the CREATOR brought — a pasted hook, script or caption — and the room's measured
+ * read of it. Every other card block records something a SKILL generated; this one records
+ * something that arrived from outside the product and was screened.
+ *
+ * WHY IT HAS TO EXIST (the orphan-seal trap, 2026-07-28): `/api/tools/react` persists a SEAL
+ * and nothing else. Seals are only ever read THROUGH a descriptor (`snapshotFor` →
+ * `descriptors.find(...)` → `persistedSeals[d.conceptText.trim()]`), and descriptors derive
+ * purely from rendered card blocks (`buildAmbientDescriptors`). So a brought stimulus with no
+ * block gets no descriptor, its seal is orphaned, and the row it was supposed to become renders
+ * NOWHERE. Reusing `hook-card` was the alternative and was rejected: its schema REQUIRES a
+ * `mechanism` (a named attention mechanism) and a `rank`, neither of which exists for a text
+ * nobody generated — so it could only be filled by inventing one. This block claims exactly
+ * what ran and nothing more.
+ *
+ * Honesty spine:
+ *  - `band` + `fraction` are the ROOM's real aggregate (`aggregateFlash`), always measured — the
+ *    Flash panel ran, which is what the creator paid a credit for. There is no `provenance` field
+ *    because there is no projected variant of this card: it cannot exist before a run.
+ *  - `lens` is the behaviour the run scored, so the renderer words the count in the run's own verb
+ *    instead of assuming "stopped" (a `finish` run that said "stopped" would re-word the engine's
+ *    claim into one it never made — the ProofUnit `verb` lesson).
+ *  - `slice` is present only when the ARM screen asked about ONE archetype and the projection could
+ *    honour it. Both numbers then ride together: the slice's own stop rate is what the board row
+ *    shows, and the room's fraction is what the panel measured. Neither stands in for the other.
+ */
+export const BroughtCardBlockSchema = z.object({
+  type: z.literal("brought-card"),
+  props: z.object({
+    /** What the creator brought, verbatim. ALSO the ambient descriptor's concept text and the
+     *  `sim_seals` key, which is what links this card to its sealed row — they must not drift. */
+    stimulus: z.string(),
+    /** Which door it came through — "draft" (a hook / script / caption). Video never lands here:
+     *  a tested video is read straight off the seal store by `analysisId`, no descriptor needed. */
+    kind: z.enum(["draft", "hook", "idea", "script"]),
+    /** The behaviour this run scored (⑤'s loud dial) — the verb the count is stated in. */
+    lens: z.enum(["stop", "finish", "share", "follow", "buy"]),
+    band: z.enum(["Strong", "Mixed", "Weak"]),
+    fraction: z.string(), // the room's honest "N/10 stop"
+    scrollQuote: z.string(),
+    model: z.literal("sim1-flash"), // react is Flash-and-text-only; there is no Max text path yet
+    /** How they encountered it (⑤'s scene dial), as the run was armed. */
+    scene: z.string().optional(),
+    /**
+     * Present ⇒ the ARM screen asked about ONE slice. `honored` says whether the projection could
+     * answer it: true carries that slice's own rate + headcount (what the board row shows), false
+     * carries the REASON. The un-honoured case is recorded rather than dropped on purpose — the
+     * room's fraction is not a stand-in for a slice's, so the card has to be able to say the
+     * question went unanswered instead of quietly presenting a different one (fail visible).
+     */
+    slice: z
+      .object({
+        archetype: z.string(),
+        label: z.string(),
+        honored: z.boolean(),
+        stopPct: z.number().optional(),
+        total: z.number().optional(),
+        reason: z.string().optional(),
+      })
+      .optional(),
+    /** The run's own 10-persona reaction (real registry archetypes) — feeds the Lens cast. */
+    personas: z.array(ReactionPersonaSchema).optional(),
+    /** The Stage-2 N-individual projection, when the signature carries the v2 axes. */
+    population: PopulationAggregateSchema.optional(),
+  }),
+});
+
+export type BroughtCardBlock = z.infer<typeof BroughtCardBlockSchema>;
+
+// ─── Run header block ─────────────────────────────────────────────────────────
+/**
+ * The turn's RUN STAMP — which skill produced it, and the inputs its intro line cites.
+ *
+ * Persisted as the FIRST block of a skill run's assistant message so a reloaded thread can
+ * rebuild the voice layer (ThreadIntro + the collapsed stage receipt) that was previously
+ * derived client-side and therefore vanished on reload. The outro text already persisted as a
+ * `markdown` block; the intro and the receipt did not, so a reloaded turn was a bare card dump.
+ *
+ * ⚠️ `skill` is the DISPLAY namespace (`ChatTurnKind` / SKILL_RUN_META / STAGE_PLANS keys —
+ * "ideas", PLURAL), never the composer `ToolId` ("idea", singular). The two namespaces differ in
+ * exactly this one id, and a cast between them cannot fail at compile time — that is precisely how
+ * F-017 shipped (a tile armed a tool no branch matched and fell through to the paid video Test).
+ * Kept as a plain string enum here so the schema stays server-importable with no React dependency.
+ */
+export const RunHeaderBlockSchema = z.object({
+  type: z.literal("run-header"),
+  props: z.object({
+    /** ChatTurnKind — "ideas" | "hooks" | "script" | "remix" | "explore" | "account" | "test" | … */
+    skill: z.string(),
+    /** The audience the run was aimed at, as named on the intro line. */
+    audienceLabel: z.string().optional(),
+    /** "tiktok" | "instagram" | "youtube" — the intro's platform word. */
+    platform: z.string().optional(),
+    /** The input hook a script run was built from (introLine cites it). */
+    hookLine: z.string().nullable().optional(),
+  }),
+});
+
+export type RunHeaderBlock = z.infer<typeof RunHeaderBlockSchema>;
+
 // ─── Union ────────────────────────────────────────────────────────────────────
 
 export const BlockUnionSchema = z.discriminatedUnion("type", [
   MarkdownBlockSchema,
+  RunHeaderBlockSchema,
   BandBlockSchema,
   PersonasBlockSchema,
   IdeaCardBlockSchema,
@@ -934,6 +1064,7 @@ export const BlockUnionSchema = z.discriminatedUnion("type", [
   AccountReadBlockSchema,
   InputRequestBlockSchema,
   CorpusReferencesBlockSchema,
+  BroughtCardBlockSchema,
   ProfileReadBlockSchema,
   ReactionDistributionBlockSchema,
   PredictionGaugeBlockSchema,

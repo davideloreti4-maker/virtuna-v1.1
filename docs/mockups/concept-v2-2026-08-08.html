@@ -1,0 +1,1276 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Concept v8 — remix-first, full scope · mock 2026-08-08</title>
+<style>
+  /* ── real tokens (globals.css SSOT) ─────────────────────── */
+  :root{
+    --app:#1f1f1e; --chrome:#1a1a19; --chip:#2c2c2b; --card:#252524;
+    --cream:#ece7de; --cream2:#c2bdb4; --cream3:#8a857c;
+    --accent:#FF6363;
+    --bd:rgba(255,255,255,.06); --bdh:rgba(255,255,255,.10);
+    --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;
+    --serif:Georgia,"Iowan Old Style","Times New Roman",serif; /* stands in for Newsreader */
+  }
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--app);color:var(--cream);font-family:var(--sans);
+       font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased;padding:0 20px 140px}
+  .wrap{max-width:1120px;margin:0 auto}
+  svg.i{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.6;
+        stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+  /* ── document chrome ────────────────────────────────────── */
+  header.doc{padding:56px 0 8px}
+  h1{font-family:var(--serif);font-weight:400;font-size:32px;letter-spacing:-.01em}
+  .lede{color:var(--cream2);max-width:72ch;margin-top:10px}
+  .lede code{font-family:var(--mono);font-size:12.5px;background:rgba(255,255,255,.05);
+             padding:1px 5px;border-radius:4px;color:var(--cream)}
+  h2.sec{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.12em;
+     text-transform:uppercase;color:var(--cream3);margin:76px 0 4px}
+  .secrule{height:1px;background:var(--bd);margin:8px 0 26px}
+  .note{color:var(--cream3);font-size:13px;max-width:64ch;margin:14px 0 0;line-height:1.6}
+  .note b{color:var(--cream2);font-weight:500}
+  .cap{font-family:var(--mono);font-size:11px;color:var(--cream3);margin-top:12px;max-width:72ch;line-height:1.65}
+  .row{display:flex;gap:32px;flex-wrap:wrap;align-items:flex-start}
+
+  /* ── frames ─────────────────────────────────────────────── */
+  .phone{width:393px;max-width:100%;background:#141413;border:1px solid var(--bdh);
+         border-radius:34px;padding:10px;flex:none;box-shadow:0 1px 0 rgba(255,255,255,.04) inset}
+  .phone .screen{border-radius:26px;overflow:hidden;background:var(--app);display:flex;
+                 flex-direction:column;height:800px;position:relative}
+  .status{display:flex;align-items:center;justify-content:space-between;
+          padding:12px 24px 4px;font-size:12.5px;font-weight:600;color:var(--cream)}
+  .status .r{display:flex;align-items:center;gap:5px}
+  .sig{display:inline-flex;align-items:flex-end;gap:1.5px;height:10px}
+  .sig i{width:2.5px;background:var(--cream);border-radius:1px;display:block}
+  .sig i:nth-child(1){height:4px}.sig i:nth-child(2){height:6px}
+  .sig i:nth-child(3){height:8px}.sig i:nth-child(4){height:10px}
+  .batt{width:20px;height:10px;border:1px solid var(--cream3);border-radius:3px;position:relative}
+  .batt i{position:absolute;inset:1.5px 30% 1.5px 1.5px;background:var(--cream);border-radius:1px;display:block}
+  .homebar{width:120px;height:4px;border-radius:2px;background:var(--cream3);opacity:.5;
+           margin:6px auto 8px;flex:none}
+  .desk{width:100%;background:var(--app);border:1px solid var(--bdh);border-radius:14px;overflow:hidden}
+  .desk .bar{display:flex;gap:6px;padding:11px 14px;border-bottom:1px solid var(--bd);background:var(--chrome)}
+  .desk .bar i{width:9px;height:9px;border-radius:50%;background:var(--chip);display:block}
+  .framelabel{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
+              color:var(--cream3);margin:0 0 12px}
+
+  /* ── product: top bar (audience switcher lives here) ────── */
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:8px 18px 0}
+  .aud{display:inline-flex;align-items:center;gap:8px;background:transparent;border:1px solid var(--bd);
+       border-radius:999px;padding:5px 12px 5px 6px;font-size:13px;color:var(--cream);font-weight:500}
+  .aud .car{color:var(--cream3);font-size:9px}
+  .avs{display:inline-flex}
+  .av{width:18px;height:18px;border-radius:50%;border:1.5px solid var(--app);margin-right:-7px}
+  .av:last-child{margin-right:0}
+  .a1{background:linear-gradient(140deg,#5c5245,#3a342c)}
+  .a2{background:linear-gradient(140deg,#4a5158,#30353b)}
+  .a3{background:linear-gradient(140deg,#575060,#38333f)}
+  .a4{background:linear-gradient(140deg,#4e5a4e,#313a31)}
+  .a5{background:linear-gradient(140deg,#5a4e58,#3a323a)}
+  .live{width:5px;height:5px;border-radius:50%;background:var(--accent);flex:none}
+  .platchip{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--cream2);
+            border:1px solid var(--bd);border-radius:999px;padding:5px 11px}
+
+  /* ── product: arrival ───────────────────────────────────── */
+  .greet{font-family:var(--serif);font-size:24px;font-weight:400;color:var(--cream);letter-spacing:-.01em}
+  .whisper{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+           color:var(--cream3)}
+  .drops{display:flex;flex-direction:column;gap:10px}
+  .drop{display:flex;gap:0;border:1px solid var(--bd);border-radius:16px;background:var(--card);
+        overflow:hidden;cursor:pointer;transition:border-color .15s}
+  .drop:hover{border-color:var(--bdh)}
+  .thumb{width:92px;flex:none;position:relative;overflow:hidden;
+         display:flex;align-items:flex-end;justify-content:center;min-height:118px}
+  .thumb::after{content:"";position:absolute;inset:0;
+                background:radial-gradient(130% 90% at 50% 8%,transparent 45%,rgba(0,0,0,.42))}
+  .thumb .capt{position:relative;z-index:1;font-weight:800;font-size:10px;line-height:1.1;
+               letter-spacing:.02em;color:#fff;text-transform:uppercase;text-align:center;
+               padding:0 6px 24px;text-shadow:0 1px 3px rgba(0,0,0,.65)}
+  .thumb .views{position:absolute;z-index:2;left:6px;bottom:6px;display:inline-flex;align-items:center;
+                gap:3px;font-family:var(--mono);font-size:9px;color:#fff;background:rgba(0,0,0,.55);
+                border-radius:5px;padding:2px 6px}
+  .t1{background:linear-gradient(165deg,#3d4a5c,#232b36 60%,#161b22)}
+  .t2{background:linear-gradient(165deg,#6b4f35,#4a3524 55%,#2a1e14)}
+  .t3{background:linear-gradient(165deg,#5c3a44,#3c2530 60%,#221419)}
+  .t4{background:linear-gradient(165deg,#42523e,#2b382a 60%,#181f17)}
+  .t5{background:linear-gradient(165deg,#4a4a4e,#2e2e33 60%,#19191c)}
+  .t6{background:linear-gradient(165deg,#2f4f4d,#1f3736 60%,#121e1e)}
+  .t7{background:linear-gradient(165deg,#54462e,#38301f 60%,#201b11)}
+  .t8{background:linear-gradient(165deg,#374a3f,#243328 60%,#141d17)}
+  .drop .body{flex:1;min-width:0;display:flex;flex-direction:column;padding:13px 14px}
+  .hook{font-family:var(--serif);font-size:15.5px;line-height:1.34;color:var(--cream);letter-spacing:-.005em}
+  .drop .meta{display:flex;align-items:center;margin-top:auto;padding-top:10px;gap:8px}
+  .meter{display:inline-flex;align-items:center;gap:6px}
+  .meter .segs{display:inline-flex;gap:2.5px}
+  .meter .segs i{width:5px;height:5px;border-radius:50%;background:var(--cream);display:block}
+  .meter .segs i.out{background:var(--chip)}
+  .meter b{font-family:var(--mono);font-size:11.5px;color:var(--cream);font-weight:500}
+  .meter .of{color:var(--cream3);font-weight:400}
+  .remixbtn{margin-left:auto;display:inline-flex;align-items:center;gap:6px;background:var(--chip);
+            border:1px solid var(--bd);border-radius:999px;padding:5px 12px;font-size:12px;
+            color:var(--cream);font-weight:500}
+  .remixbtn svg.i{width:12px;height:12px;color:var(--cream2)}
+
+  /* ── product: composer v3 — input only ──────────────────── */
+  .composer{background:var(--chrome);border:1px solid var(--bdh);border-radius:24px;
+            box-shadow:0 -8px 24px rgba(0,0,0,.18)}
+  .cfield{padding:15px 18px 4px;color:var(--cream3);font-size:15px;min-height:44px;
+          display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap}
+  .cfield.typed{color:var(--cream)}
+  .armtag{display:inline-flex;align-items:center;gap:5px;background:var(--chip);
+          border:1px solid var(--bd);border-radius:7px;padding:2px 8px;font-size:12px;
+          color:var(--cream);font-weight:500;flex:none}
+  .armtag .x{color:var(--cream3);font-size:11px}
+  .cfoot{display:flex;align-items:center;gap:8px;padding:8px 12px 12px 14px}
+  .plus{color:var(--cream3);font-size:19px;line-height:1;flex:none;padding:0 2px}
+  .modes{display:inline-flex;align-items:center;gap:2px;background:var(--chip);
+         border:1px solid var(--bd);border-radius:999px;padding:3px}
+  .mode{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:5px 9px;
+        color:var(--cream3);font-size:12.5px}
+  .mode.on{background:var(--app);color:var(--cream);font-weight:500;
+           box-shadow:0 0 0 1px rgba(255,255,255,.07)}
+  .grow{flex:1}
+  .send{width:32px;height:32px;border-radius:999px;background:var(--cream);color:#1f1f1e;
+        display:grid;place-items:center;font-size:15px;flex:none}
+  .send.q{background:var(--chip);color:var(--cream2)}
+
+  /* mode menu + audience sheet */
+  .sheet{position:absolute;left:0;right:0;bottom:0;background:var(--chrome);
+         border:1px solid var(--bdh);border-bottom:none;border-radius:22px 22px 0 0;
+         padding:10px 16px 26px}
+  .grab{width:34px;height:4px;border-radius:2px;background:var(--chip);margin:2px auto 12px}
+  .scrim{position:absolute;inset:0;background:rgba(0,0,0,.4)}
+  .mrow{display:flex;gap:13px;align-items:center;padding:13px 6px;border-bottom:1px solid var(--bd)}
+  .mrow:last-of-type{border-bottom:none}
+  .mico{width:36px;height:36px;border-radius:11px;background:var(--chip);border:1px solid var(--bd);
+        display:grid;place-items:center;color:var(--cream2);flex:none}
+  .mico svg.i{width:16px;height:16px}
+  .mrow .t{font-size:14px;font-weight:500;color:var(--cream)}
+  .mrow .s{font-size:12.5px;color:var(--cream3);line-height:1.4}
+  .mrow .on{margin-left:auto;color:var(--cream2)}
+  .arow{display:flex;gap:12px;align-items:center;padding:12px 6px;border-bottom:1px solid var(--bd)}
+  .arow:last-of-type{border-bottom:none}
+  .arow .t{font-size:13.5px;font-weight:500;color:var(--cream)}
+  .arow .s{font-size:12px;color:var(--cream3)}
+  .check{margin-left:auto;color:var(--cream2);font-size:14px}
+  .segbar{display:flex;gap:4px;background:var(--chip);border:1px solid var(--bd);
+          border-radius:12px;padding:4px;margin-top:12px}
+  .seg{flex:1;text-align:center;border-radius:9px;padding:7px 0;font-size:12.5px;color:var(--cream3)}
+  .seg.on{background:var(--app);color:var(--cream);font-weight:500;
+          box-shadow:0 0 0 1px rgba(255,255,255,.07)}
+
+  /* ── product: thread v3 ─────────────────────────────────── */
+  .ctxbar{display:flex;align-items:center;gap:10px;padding:8px 18px 6px;color:var(--cream3)}
+  .ctxbar .back{font-size:16px}
+  .seedstrip{display:flex;align-items:center;gap:10px;margin:6px 18px 0;padding:8px 10px;
+             border:1px solid var(--bd);border-radius:12px;background:var(--card)}
+  .seedstrip .st{width:30px;height:44px;border-radius:6px;flex:none;position:relative;overflow:hidden}
+  .seedstrip .t{font-size:12px;color:var(--cream2);line-height:1.35;min-width:0}
+  .seedstrip .t b{color:var(--cream);font-weight:500}
+  .seedstrip .views{font-family:var(--mono);font-size:10px;color:var(--cream3);margin-left:auto;white-space:nowrap}
+  .turnwrap{display:flex;flex-direction:column;gap:11px;padding:12px 18px 0;flex:1}
+  .tcard{border:1px solid var(--bd);border-radius:16px;background:var(--card);padding:15px 16px}
+  .tkick{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:9.5px;
+         letter-spacing:.11em;text-transform:uppercase;color:var(--cream3);margin-bottom:7px}
+  .tcard .hook{font-size:16.5px}
+  .vrow{display:flex;align-items:center;gap:10px;margin-top:12px}
+  .sealed .segs i{background:var(--chip);animation:think 1.2s ease-in-out infinite}
+  .sealed .segs i:nth-child(2n){animation-delay:.2s}
+  .sealed .segs i:nth-child(3n){animation-delay:.45s}
+  @keyframes think{50%{opacity:.35}}
+  @media(prefers-reduced-motion:reduce){.sealed .segs i{animation:none}}
+  .sealtxt{font-family:var(--mono);font-size:11px;color:var(--cream3)}
+  .moves{display:flex;gap:6px;flex-wrap:wrap;margin-top:13px}
+  .move{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--bd);border-radius:999px;
+        padding:5px 12px;font-size:12px;color:var(--cream2)}
+  .move svg.i{width:12px;height:12px;color:var(--cream3)}
+  .move.primary{background:var(--cream);color:#1f1f1e;border-color:transparent;font-weight:500}
+  .move.primary svg.i{color:#1f1f1e}
+  .usr{align-self:flex-end;background:var(--chip);border-radius:14px;padding:9px 13px;
+       font-size:13.5px;color:var(--cream);max-width:85%}
+
+  /* ── product: simulation report ─────────────────────────── */
+  .verdict{display:flex;align-items:baseline;gap:8px}
+  .verdict .n{font-family:var(--serif);font-size:44px;color:var(--cream);line-height:1}
+  .verdict .of{font-family:var(--mono);font-size:12px;color:var(--cream3)}
+  .facerow{display:flex;gap:5px;margin-top:12px}
+  .face{width:26px;height:26px;border-radius:50%;border:1px solid var(--bdh)}
+  .face.dim{opacity:.25}
+  .rephead{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;
+           color:var(--cream2);margin:18px 0 4px}
+  .rephead svg.i{width:13px;height:13px;color:var(--cream3)}
+  .reason{display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--bd);
+          font-size:13px;color:var(--cream2)}
+  .reason:last-of-type{border-bottom:none}
+  .rcount{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--cream3)}
+  .quote{border-left:2px solid var(--bd);padding:2px 0 2px 12px;font-size:12.5px;
+         color:var(--cream3);margin-top:10px;font-style:italic}
+  .quote b{color:var(--cream2);font-weight:500;font-style:normal}
+  .sigrow{display:flex;align-items:center;gap:10px;padding:6px 0;font-size:12.5px;color:var(--cream2)}
+  .sigrow .bar{flex:1;height:3px;border-radius:2px;background:var(--chip);position:relative}
+  .sigrow .bar i{position:absolute;inset:0 auto 0 0;border-radius:2px;background:var(--cream2);display:block}
+  .sigrow .n{font-family:var(--mono);font-size:11px;color:var(--cream3);width:26px;text-align:right}
+
+  /* ── product: first run ─────────────────────────────────── */
+  .q0{font-family:var(--serif);font-size:23px;line-height:1.32;color:var(--cream);letter-spacing:-.01em}
+  .opt{display:flex;gap:13px;align-items:center;border:1px solid var(--bd);border-radius:16px;
+       background:var(--card);padding:15px 16px;margin-top:10px}
+  .opt .t{font-size:14px;font-weight:500;color:var(--cream)}
+  .opt .s{font-size:12.5px;color:var(--cream3);line-height:1.4}
+  .opt .go{margin-left:auto;color:var(--cream3)}
+  .bigavs{display:flex;justify-content:center;margin:26px 0 14px}
+  .bigavs .av{width:44px;height:44px;border:2px solid var(--app);margin-right:-12px}
+  .bigavs .av:last-child{margin-right:0}
+  .traits{display:flex;gap:7px;flex-wrap:wrap;justify-content:center;margin-top:14px}
+  .trait{border:1px solid var(--bd);border-radius:999px;padding:5px 12px;font-size:12px;color:var(--cream2)}
+  .cta{display:flex;align-items:center;justify-content:center;gap:8px;background:var(--cream);
+       color:#1f1f1e;border-radius:12px;padding:12px;font-size:14px;font-weight:500;margin-top:24px}
+  .lane{margin-top:18px}
+  .lanehead{display:flex;align-items:baseline;gap:8px;margin-bottom:8px}
+  .lanename{font-size:13.5px;font-weight:600;color:var(--cream)}
+  .lanewho{font-size:11.5px;color:var(--cream3)}
+  /* the attached sub-bar — audience + sim state, one strip on the composer */
+  .subbar{display:flex;align-items:center;gap:10px;padding:8px 16px 10px;border-top:1px solid var(--bd);
+          font-size:12px;color:var(--cream2);border-radius:0 0 24px 24px}
+  .subbar .half{display:inline-flex;align-items:center;gap:7px;min-width:0;white-space:nowrap;
+                overflow:hidden;text-overflow:ellipsis}
+  .subbar .car{color:var(--cream3);font-size:9px}
+  .subbar .simside{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--cream2);
+                   white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+  .subbar .simside .go{color:var(--cream3)}
+  .subbar.watching .live{animation:breathe 1.1s ease-in-out infinite}
+
+  /* skill chip in the foot + slash autocomplete + skills panel */
+  .skillpill{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--bdh);
+             border-radius:999px;padding:8px 13px;color:var(--cream2)}
+  .skillpill svg.i{width:14px;height:14px}
+  .skillpill .car{color:var(--cream3);font-size:9px}
+  .modelflag{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;
+             color:var(--cream3);white-space:nowrap}
+  .modelflag .car{font-size:9px}
+  .slashpop{background:var(--chip);border:1px solid var(--bdh);border-radius:14px;
+            padding:6px;margin-bottom:8px;box-shadow:0 12px 32px rgba(0,0,0,.4)}
+  .srow{display:flex;gap:10px;align-items:center;padding:8px 10px;border-radius:9px}
+  .srow.on{background:var(--app)}
+  .srow .t{font-size:13px;font-weight:500;color:var(--cream)}
+  .srow .s{font-size:11.5px;color:var(--cream3)}
+  .srow svg.i{width:13px;height:13px;color:var(--cream3)}
+  .panel{display:flex;background:var(--chip);border:1px solid var(--bdh);border-radius:16px;
+         overflow:hidden;box-shadow:0 16px 40px rgba(0,0,0,.4)}
+  .panel .list{width:46%;border-right:1px solid var(--bd);padding:10px 8px;max-height:420px}
+  .panel .prev{flex:1;padding:18px 20px;display:flex;flex-direction:column}
+  .panel .prow2{display:flex;gap:10px;align-items:center;padding:8px 10px;border-radius:9px;color:var(--cream2)}
+  .panel .prow2.on{background:var(--app);color:var(--cream)}
+  .panel .prow2 svg.i{width:13px;height:13px;color:var(--cream3)}
+  .panel .prow2 .nm{font-size:13px;font-weight:500}
+  .panel .badge{margin-left:auto;font-family:var(--mono);font-size:9px;letter-spacing:.08em;
+                text-transform:uppercase;color:var(--cream3);border:1px solid var(--bd);
+                border-radius:5px;padding:1px 5px}
+  .usebtn{align-self:flex-end;background:var(--cream);color:#1f1f1e;border-radius:9px;
+          padding:8px 18px;font-size:13px;font-weight:500;margin-top:auto}
+
+  /* suggestion chips (contextual examples, not a registry) */
+  .jrow{display:flex;gap:7px;margin-top:10px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+  .jrow::-webkit-scrollbar{display:none}
+  .jrow.center{justify-content:center;flex-wrap:wrap;overflow:visible}
+  .jchip{display:inline-flex;align-items:center;gap:6px;background:var(--chip);
+         border:1px solid var(--bd);border-radius:12px;padding:6px 11px;font-size:12px;
+         color:var(--cream2);white-space:nowrap;flex:none}
+  .jchip svg.i{width:12px;height:12px;color:var(--cream3)}
+
+  /* the catalog (⊕ sheet) */
+  .cgroup{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;
+          color:var(--cream3);margin:14px 0 2px;padding-left:2px}
+  .crow{display:flex;gap:12px;align-items:center;padding:9px 2px}
+  .crow .mico{width:32px;height:32px;border-radius:10px}
+  .crow .mico svg.i{width:14px;height:14px}
+  .crow .t{font-size:13.5px;font-weight:500;color:var(--cream)}
+  .crow .s{font-size:11.5px;color:var(--cream3);line-height:1.35}
+  .crow .badge{margin-left:auto;font-family:var(--mono);font-size:9px;letter-spacing:.08em;
+               text-transform:uppercase;color:var(--cream3);border:1px solid var(--bd);
+               border-radius:5px;padding:2px 6px}
+
+  /* angle stack (remix first turn) */
+  .angle{display:flex;gap:10px;align-items:center;border:1px solid var(--bd);border-radius:12px;
+         padding:10px 12px;margin-top:8px}
+  .angle .hook{font-size:13.5px;flex:1;min-width:0}
+  .angle.lead{background:var(--chrome);border-color:var(--bdh)}
+  .angle .meter .segs i{width:4px;height:4px}
+
+  /* audience surface (the sim's permanent home) */
+  .prow{display:flex;gap:11px;align-items:center;padding:9px 0;border-bottom:1px solid var(--bd)}
+  .prow:last-of-type{border-bottom:none}
+  .prow .who{font-size:13px;font-weight:500;color:var(--cream)}
+  .prow .tr{font-size:11.5px;color:var(--cream3)}
+  .prow .st{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--cream3)}
+  .ledger{border:1px solid var(--bd);border-radius:14px;background:var(--card);padding:12px 14px;margin-top:10px}
+  .lrow{display:flex;align-items:center;gap:8px;padding:7px 0;font-size:12.5px;color:var(--cream2);
+        border-bottom:1px solid var(--bd)}
+  .lrow:last-of-type{border-bottom:none}
+  .lrow .r{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--cream3);white-space:nowrap}
+  .bignum{font-family:var(--serif);font-size:30px;color:var(--cream);line-height:1}
+
+  /* pinned desktop report */
+  .pin{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;
+       color:var(--cream2);border:1px solid var(--bdh);border-radius:6px;padding:3px 7px}
+
+  /* report tabs + brain + engagement */
+  .tabbar{display:flex;gap:4px;background:var(--chip);border:1px solid var(--bd);
+          border-radius:999px;padding:3px;margin:0 0 14px}
+  .tab{flex:1;text-align:center;border-radius:999px;padding:6px 0;font-size:12px;color:var(--cream3)}
+  .tab.on{background:var(--app);color:var(--cream);font-weight:500;box-shadow:0 0 0 1px rgba(255,255,255,.07)}
+  .vmini{display:flex;align-items:baseline;gap:6px;margin-bottom:10px}
+  .vmini b{font-family:var(--serif);font-size:22px;color:var(--cream);font-weight:400}
+  .vmini span{font-family:var(--mono);font-size:11px;color:var(--cream3)}
+  .brainbox{border:1px solid var(--bd);border-radius:14px;background:var(--card);
+            padding:14px 10px 6px;display:flex;flex-direction:column;align-items:center}
+  .brainlbl{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;
+            color:var(--cream3);align-self:flex-start;padding-left:6px}
+  .simtag{font-family:var(--mono);font-size:9.5px;color:var(--cream3);align-self:flex-end;padding:0 6px 4px}
+  .heatrow{display:flex;gap:9px;align-items:flex-start;font-size:12.5px;color:var(--cream2);
+           padding:7px 0;line-height:1.45}
+  .hdot{width:8px;height:8px;border-radius:50%;flex:none;margin-top:5px}
+  .dchip{font-family:var(--mono);font-size:10px;margin-left:7px;color:var(--cream3)}
+  .annos{display:grid;grid-template-columns:1fr;gap:12px;max-width:440px}
+  .anno{display:flex;gap:11px;font-size:12.5px;color:var(--cream3);line-height:1.55}
+  .anno b{color:var(--cream2);font-weight:500}
+  .anno .n{font-family:var(--mono);font-size:10px;color:var(--cream3);border:1px solid var(--bd);
+           border-radius:50%;width:18px;height:18px;display:grid;place-items:center;flex:none;margin-top:1px}
+  .pad{padding:14px 18px 0}
+  .dock{padding:10px 12px 0;margin-top:auto;position:relative}
+  .dock::before{content:"";position:absolute;left:0;right:0;top:-28px;height:28px;
+                background:linear-gradient(to bottom,transparent,var(--app));pointer-events:none}
+  .fade{position:relative;flex:1;min-height:0;overflow:hidden}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <g id="i-spark"><path d="M7 1.5 8.3 5.7 12.5 7 8.3 8.3 7 12.5 5.7 8.3 1.5 7 5.7 5.7z"/></g>
+    <g id="i-remix"><path d="M1.5 4h7.5a3 3 0 0 1 0 6H5"/><path d="m3.5 2 -2 2 2 2"/><path d="m6.5 8 -1.5 2 1.5 2"/></g>
+    <g id="i-play"><circle cx="7" cy="7" r="5.6"/><path d="M5.7 4.9 9.2 7l-3.5 2.1z"/></g>
+    <g id="i-search"><circle cx="6" cy="6" r="4"/><path d="m9 9 3.5 3.5"/></g>
+    <g id="i-pen"><path d="M2 12l.8-3L10 1.8l2.2 2.2L5 11.2 2 12z"/></g>
+    <g id="i-stop"><path d="M2 7.5 5 10.5 12 3"/></g>
+    <g id="i-x"><path d="M3 3l8 8M11 3l-8 8"/></g>
+    <g id="i-fix"><path d="M7 1.8v2.4M7 9.8v2.4M1.8 7h2.4M9.8 7h2.4"/><circle cx="7" cy="7" r="2.2"/></g>
+    <g id="i-tt"><path d="M8.5 2c.3 1.6 1.4 2.7 3 2.9v2.1c-1.1 0-2.1-.4-3-1v3.9a3.6 3.6 0 1 1-3.1-3.6v2.2a1.5 1.5 0 1 0 1.1 1.4V2z" fill="currentColor" stroke="none"/></g>
+    <g id="i-ig"><rect x="2" y="2" width="10" height="10" rx="3"/><circle cx="7" cy="7" r="2.4"/><circle cx="10.2" cy="3.8" r=".7" fill="currentColor" stroke="none"/></g>
+    <g id="i-ab"><rect x="1.5" y="3" width="5" height="8" rx="1.5"/><rect x="7.5" y="3" width="5" height="8" rx="1.5"/></g>
+    <g id="i-user"><circle cx="7" cy="4.6" r="2.6"/><path d="M2.4 12.2c.8-2.6 2.5-3.9 4.6-3.9s3.8 1.3 4.6 3.9"/></g>
+    <g id="i-trend"><path d="M1.5 10.5 5.5 6l2.5 2.5L12.5 3.5"/><path d="M9 3.5h3.5V7"/></g>
+    <g id="i-users"><circle cx="5" cy="4.8" r="2.2"/><path d="M1.5 11.5c.6-2.2 2-3.3 3.5-3.3s2.9 1.1 3.5 3.3"/><path d="M9.5 3.2a2.2 2.2 0 0 1 0 4.4M10.5 8.4c1.1.4 1.9 1.4 2.2 3.1"/></g>
+    <g id="i-doc"><path d="M3.5 1.8h4.8L11 4.5v7.7H3.5z"/><path d="M8 2v2.8h2.8"/></g>
+    <g id="i-bulb"><path d="M7 1.8a3.7 3.7 0 0 1 2.2 6.6c-.5.4-.7.9-.7 1.4H5.5c0-.5-.2-1-.7-1.4A3.7 3.7 0 0 1 7 1.8z"/><path d="M5.8 11.5h2.4"/></g>
+  </defs>
+</svg>
+
+<div class="wrap">
+
+<header class="doc">
+  <h1>Concept v8 — remix-first, full scope</h1>
+  <p class="lede">Mock v8, 2026-08-08 · <code>lane/platform-concept</code>. Covers creators,
+  social-media marketers and advertisers. Real tokens; Georgia stands in for Newsreader;
+  thumbnails are stand-ins for real source stills. Sim scores + source view counts only — no
+  corpus multipliers (§2.4). Nothing here is built.</p>
+</header>
+
+<!-- ══════════════════════ §1 ARRIVAL ══════════════════════ -->
+<h2 class="sec">§1 · Arrival — today's remixes</h2>
+<div class="secrule"></div>
+
+<div class="row">
+  <div class="phone"><div class="screen">
+    <div class="status"><span>9:41</span><span class="r"><span class="sig"><i></i><i></i><i></i><i></i></span><span class="batt"><i></i></span></span></div>
+    <div class="topbar">
+      <span style="color:var(--cream3);font-size:17px;line-height:1">≡</span>
+      
+    </div>
+    <div class="pad" style="padding-top:16px">
+      <div class="greet">Tonight's remixes, Lena.</div>
+      <div class="whisper" style="margin:7px 0 12px">Proven videos · rebuilt for your niche</div>
+    </div>
+    <div class="fade"><div class="pad" style="padding-top:0">
+      <div class="drops">
+        <div class="drop">
+          <div class="thumb t2"><span class="capt">no stretch</span><span class="views"><svg class="i" style="width:9px;height:9px" viewBox="0 0 14 14"><use href="#i-play"/></svg>8.1M</span></div>
+          <div class="body">
+            <div class="hook">Stop stretching before your workout. Seriously.</div>
+            <div class="meta">
+              <span class="meter"><span class="segs"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="out"></i><i class="out"></i></span><b>9<span class="of">/10</span></b></span>
+              <span class="remixbtn"><svg class="i" viewBox="0 0 14 14"><use href="#i-remix"/></svg>Remix</span>
+            </div>
+          </div>
+        </div>
+        <div class="drop">
+          <div class="thumb t1"><span class="capt">the 4pm crash</span><span class="views"><svg class="i" style="width:9px;height:9px" viewBox="0 0 14 14"><use href="#i-play"/></svg>2.3M</span></div>
+          <div class="body">
+            <div class="hook">Why does nobody talk about the 4pm energy crash?</div>
+            <div class="meta">
+              <span class="meter"><span class="segs"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="out"></i><i class="out"></i><i class="out"></i></span><b>8<span class="of">/10</span></b></span>
+              <span class="remixbtn"><svg class="i" viewBox="0 0 14 14"><use href="#i-remix"/></svg>Remix</span>
+            </div>
+          </div>
+        </div>
+        <div class="drop">
+          <div class="thumb t3"><span class="capt">day 90</span><span class="views"><svg class="i" style="width:9px;height:9px" viewBox="0 0 14 14"><use href="#i-play"/></svg>1.2M</span></div>
+          <div class="body">
+            <div class="hook">I trained 10 minutes a day for 90 days. My posture did this.</div>
+            <div class="meta">
+              <span class="meter"><span class="segs"><i></i><i></i><i></i><i></i><i></i><i></i><i class="out"></i><i class="out"></i><i class="out"></i><i class="out"></i></span><b>7<span class="of">/10</span></b></span>
+              <span class="remixbtn"><svg class="i" viewBox="0 0 14 14"><use href="#i-remix"/></svg>Remix</span>
+            </div>
+          </div>
+        </div>
+        <div class="drop">
+          <div class="thumb t4"><span class="capt">3 moves</span><span class="views"><svg class="i" style="width:9px;height:9px" viewBox="0 0 14 14"><use href="#i-play"/></svg>4.7M</span></div>
+          <div class="body">
+            <div class="hook">The 3-move reset for a stiff back — no floor, no mat.</div>
+            <div class="meta">
+              <span class="meter"><span class="segs"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="out"></i><i class="out"></i><i class="out"></i></span><b>8<span class="of">/10</span></b></span>
+              <span class="remixbtn"><svg class="i" viewBox="0 0 14 14"><use href="#i-remix"/></svg>Remix</span>
+            </div>
+          </div>
+        </div>
+        <div class="drop">
+          <div class="thumb t5"><span class="capt">plank = pain</span><span class="views"><svg class="i" style="width:9px;height:9px" viewBox="0 0 14 14"><use href="#i-play"/></svg>890K</span></div>
+          <div class="body">
+            <div class="hook">The plank mistake that's making your back worse.</div>
+            <div class="meta">
+              <span class="meter"><span class="segs"><i></i><i></i><i></i><i></i><i></i><i></i><i class="out"></i><i class="out"></i><i class="out"></i><i class="out"></i></span><b>7<span class="of">/10</span></b></span>
+              <span class="remixbtn"><svg class="i" viewBox="0 0 14 14"><use href="#i-remix"/></svg>Remix</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+    <div class="dock">
+      <div class="composer">
+        <div class="cfield">Describe an idea, or paste any video…</div>
+        <div class="cfoot">
+          <span class="plus">+</span>
+          <span class="skillpill"><svg class="i" viewBox="0 0 14 14"><use href="#i-spark"/></svg><span class="car">▾</span></span>
+          <span class="grow"></span>
+          <span class="modelflag">SIM-1 Flash <span class="car">▾</span></span>
+          <span class="send">↑</span>
+        </div>
+        <div class="subbar">
+          <span class="half"><span class="avs"><i class="av a1" style="width:16px;height:16px"></i><i class="av a2" style="width:16px;height:16px"></i><i class="av a3" style="width:16px;height:16px"></i></span>
+            <span class="live"></span> Your people · TikTok <span class="car">▾</span></span>
+          <span class="simside">Simulate <span class="go">›</span></span>
+        </div>
+      </div>
+      <div class="jrow">
+        <span class="jchip"><svg class="i" viewBox="0 0 14 14"><use href="#i-remix"/></svg>Remix this trend</span>
+        <span class="jchip"><svg class="i" viewBox="0 0 14 14"><use href="#i-play"/></svg>Test a draft</span>
+        <span class="jchip">More ▸</span>
+      </div>
+    </div>
+    <div class="homebar"></div>
+  </div></div>
+
+  <div style="flex:1;min-width:290px">
+    <p class="note"><b>The shelf is named for what it does:</b> proven videos, rebuilt for your
+    niche, judged by your people. The video leads the card; the adapted hook is what it becomes;
+    the meter is your audience's vote; <b>Remix</b> is the one action.</p>
+    <p class="note"><b>The sub-bar is the strip you already ship</b> — today's mobile sim dock
+    ("@handle · calibrated · ranked"), rebuilt on the Claude-Cowork pattern: one hairline strip
+    attached to the composer. Left half = who you're creating for (tap → the audience sheet, §4).
+    Right half = the sim (tap → the report; "your people are watching…" during a run). Same strip
+    on desktop, where the report is also pinnable (§10). The top bar goes back to nav.</p>
+    <p class="note"><b>The skill chip</b> (foot, next to ⊕) is Perplexity's quiet dropdown: it
+    opens the skills panel (§3). Typing <b>/</b> in the field does the same inline. Neither is
+    ever required — auto-routing runs plain text as-is.</p>
+  </div>
+</div>
+
+<!-- ══════════════════════ §2 THE CARD ══════════════════════ -->
+<h2 class="sec">§2 · The remix card</h2>
+<div class="secrule"></div>
+
+<div class="row">
+  <div style="width:393px;max-width:100%;flex:none">
+    <div class="drop">
+      <div class="thumb t2" style="width:104px;min-height:132px"><span class="capt">no stretch</span><span class="views"><svg class="i" style="width:9px;height:9px" viewBox="0 0 14 14"><use href="#i-play"/></svg>8.1M</span></div>
+      <div class="body">
+        <div class="hook" style="font-size:16.5px">Stop stretching before your workout. Seriously.</div>
+        <div class="meta">
+          <span class="meter"><span class="segs"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="out"></i><i class="out"></i></span><b>9<span class="of">/10</span></b></span>
+          <span class="remixbtn"><svg class="i" viewBox="0 0 14 14"><use href="#i-remix"/></svg>Remix</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="annos">
+    <div class="anno"><span class="n">1</span><span><b>The video is the proof</b> — a real outlier,
+    real view count. Tap the thumb to watch the original. Its niche is never named.</span></div>
+    <div class="anno"><span class="n">2</span><span><b>The hook is what it becomes in your niche</b> —
+    already adapted, serif because it's content.</span></div>
+    <div class="anno"><span class="n">3</span><span><b>The meter is your audience's vote</b> — ten
+    people, already simulated. Tap it for the full report (§6).</span></div>
+    <div class="anno"><span class="n">4</span><span><b>Remix opens the work thread</b> (§5) — the
+    six cards are today's best remix candidates <i>for you</i>, one per format shape.</span></div>
+  </div>
+</div>
+
+<!-- ══════════════════════ §3 THE CATALOG ══════════════════════ -->
+<h2 class="sec">§3 · Skills — visible, browsable, never required</h2>
+<div class="secrule"></div>
+
+<div style="max-width:760px;margin-bottom:26px">
+  <div class="framelabel">the skills panel — from the chip, or by typing /</div>
+  <div class="panel">
+    <div class="list">
+      <div class="cgroup" style="margin-top:2px">Make</div>
+      <div class="prow2 on"><svg class="i" viewBox="0 0 14 14"><use href="#i-remix"/></svg><span class="nm">Remix a proven video</span></div>
+      <div class="prow2"><svg class="i" viewBox="0 0 14 14"><use href="#i-bulb"/></svg><span class="nm">Get ideas</span></div>
+      <div class="prow2"><svg class="i" viewBox="0 0 14 14"><use href="#i-pen"/></svg><span class="nm">Hooks &amp; scripts</span></div>
+      <div class="prow2"><svg class="i" viewBox="0 0 14 14"><use href="#i-spark"/></svg><span class="nm">Draft ad variants</span><span class="badge">Ads</span></div>
+      <div class="cgroup">Test</div>
+      <div class="prow2"><svg class="i" viewBox="0 0 14 14"><use href="#i-play"/></svg><span class="nm">Test a video or draft</span></div>
+      <div class="prow2"><svg class="i" viewBox="0 0 14 14"><use href="#i-ab"/></svg><span class="nm">A/B compare</span></div>
+      <div class="cgroup">Research</div>
+      <div class="prow2"><svg class="i" viewBox="0 0 14 14"><use href="#i-user"/></svg><span class="nm">Analyze an account</span></div>
+      <div class="prow2"><svg class="i" viewBox="0 0 14 14"><use href="#i-trend"/></svg><span class="nm">Find outliers</span></div>
+    </div>
+    <div class="prev">
+      <div class="thumb t2" style="width:100%;min-height:110px;border-radius:10px;margin-bottom:14px"><span class="capt" style="font-size:12px;padding-bottom:14px">remix</span></div>
+      <div style="display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600">
+        <svg class="i" viewBox="0 0 14 14" style="color:var(--cream2)"><use href="#i-remix"/></svg>Remix a proven video</div>
+      <p style="font-size:13px;color:var(--cream2);margin-top:8px;line-height:1.55">Take any viral
+      video — from tonight's picks or a pasted link — and rebuild its format for your niche.
+      Three angles, each scored by your people before you film.</p>
+      <span class="usebtn">Use</span>
+    </div>
+  </div>
+  <p class="cap">The Perplexity pattern: list left, preview right, one honest paragraph per skill,
+  <b>Use</b> prefills the composer. Desktop popover; on mobile the same content is the sheet the
+  chip opens. Rows reorder by workspace; new capability = new row.</p>
+</div>
+
+<div style="max-width:560px;margin-bottom:26px">
+  <div class="framelabel">slash commands — the fast lane to the same panel</div>
+  <div class="slashpop">
+    <div class="srow on"><svg class="i" viewBox="0 0 14 14"><use href="#i-play"/></svg>
+      <div><div class="t">Test a video or draft</div><div class="s">judged by your people before you post</div></div></div>
+    <div class="srow"><svg class="i" viewBox="0 0 14 14"><use href="#i-trend"/></svg>
+      <div><div class="t">Find outliers</div><div class="s">what's breaking out, in any niche</div></div></div>
+  </div>
+  <div class="composer">
+    <div class="cfield typed" style="min-height:38px">/te</div>
+    <div class="cfoot"><span class="plus">+</span>
+      <span class="skillpill"><svg class="i" viewBox="0 0 14 14"><use href="#i-spark"/></svg><span class="car">▾</span></span>
+      <span class="grow"></span><span class="modelflag">SIM-1 Flash <span class="car">▾</span></span><span class="send">↑</span></div>
+  </div>
+  <div class="composer" style="margin-top:14px">
+    <div class="cfield" style="min-height:38px"><span class="armtag"><svg class="i" style="width:10px;height:10px" viewBox="0 0 14 14"><use href="#i-play"/></svg> Test <span class="x">✕</span></span>Paste a TikTok, Reel or Short…</div>
+    <div class="cfoot"><span class="plus">+</span>
+      <span class="skillpill"><svg class="i" viewBox="0 0 14 14"><use href="#i-spark"/></svg><span class="car">▾</span></span>
+      <span class="grow"></span><span class="modelflag">SIM-1 Flash <span class="car">▾</span></span><span class="send">↑</span></div>
+  </div>
+  <p class="cap">Type <b>/</b> → the panel appears as an autocomplete, filtered as you type.
+  Enter selects: the skill becomes a dismissible box in the field and the placeholder becomes its
+  instruction. Power users never leave the keyboard.</p>
+</div>
+
+<div class="row">
+  <div class="phone"><div class="screen" style="height:780px">
+    <div class="status"><span>9:41</span><span class="r"><span class="sig"><i></i><i></i><i></i><i></i></span><span class="batt"><i></i></span></span></div>
+    <div class="pad" style="opacity:.4;flex:1">
+      <div class="greet" style="font-size:22px">Tonight's remixes, Lena.</div>
+    </div>
+    <div class="scrim"></div>
+    <div class="sheet" style="padding-bottom:18px">
+      <div class="grab"></div>
+      <div class="cgroup" style="margin-top:2px">Make</div>
+      <div class="crow"><span class="mico"><svg class="i" viewBox="0 0 14 14"><use href="#i-remix"/></svg></span>
+        <div><div class="t">Remix a proven video</div><div class="s">any viral format, rebuilt for your people</div></div></div>
+      <div class="crow"><span class="mico"><svg class="i" viewBox="0 0 14 14"><use href="#i-bulb"/></svg></span>
+        <div><div class="t">Get ideas</div><div class="s">ranked and pre-tested before you film</div></div></div>
+      <div class="crow"><span class="mico"><svg class="i" viewBox="0 0 14 14"><use href="#i-pen"/></svg></span>
+        <div><div class="t">Write hooks &amp; scripts</div><div class="s">openers that stop the scroll, ready to film</div></div></div>
+      <div class="crow"><span class="mico"><svg class="i" viewBox="0 0 14 14"><use href="#i-spark"/></svg></span>
+        <div><div class="t">Draft ad variants</div><div class="s">hooks + scripts for paid, per segment</div></div>
+        <span class="badge">Ads</span></div>
+      <div class="cgroup">Test</div>
+      <div class="crow"><span class="mico"><svg class="i" viewBox="0 0 14 14"><use href="#i-play"/></svg></span>
+        <div><div class="t">Test a video or draft</div><div class="s">judged by your people before you post</div></div></div>
+      <div class="crow"><span class="mico"><svg class="i" viewBox="0 0 14 14"><use href="#i-ab"/></svg></span>
+        <div><div class="t">A/B compare</div><div class="s">two versions, one verdict, per audience</div></div></div>
+      <div class="cgroup">Research</div>
+      <div class="crow"><span class="mico"><svg class="i" viewBox="0 0 14 14"><use href="#i-user"/></svg></span>
+        <div><div class="t">Analyze an account</div><div class="s">yours, a competitor's, or any creator's</div></div></div>
+      <div class="crow"><span class="mico"><svg class="i" viewBox="0 0 14 14"><use href="#i-trend"/></svg></span>
+        <div><div class="t">Find outliers</div><div class="s">what's breaking out, in any niche</div></div></div>
+      <div class="crow"><span class="mico"><svg class="i" viewBox="0 0 14 14"><use href="#i-users"/></svg></span>
+        <div><div class="t">Meet your audience</div><div class="s">who they are, what lands, how well we predict</div></div></div>
+      <div class="cap" style="margin-top:8px;text-align:center">Or just type — Maven routes it.</div>
+    </div>
+  </div></div>
+
+  <div style="flex:1;min-width:290px">
+    <p class="note"><b>The same panel on mobile</b> (left) — the sheet the skill chip opens.
+    Sending never requires any of this: auto-routing — already implemented — reads what you typed
+    or attached and runs the right job. The panel exists so capability is <i>discoverable and
+    marketable</i>: four doors to it (the chip · typing / · More ▸ · first-run tour), zero
+    obligations.</p>
+    <p class="note"><b>When routing genuinely can't know, it asks — inline, once:</b></p>
+    <div class="composer" style="margin-top:12px;max-width:400px">
+      <div class="cfield typed" style="min-height:38px"><span class="armtag"><svg class="i" style="width:10px;height:10px" viewBox="0 0 14 14"><use href="#i-doc"/></svg> tiktok.com/@fitwithanna/vid… <span class="x">✕</span></span></div>
+      <div style="display:flex;gap:7px;padding:2px 16px 12px">
+        <span class="jchip"><svg class="i" viewBox="0 0 14 14"><use href="#i-play"/></svg>Test it with your people</span>
+        <span class="jchip"><svg class="i" viewBox="0 0 14 14"><use href="#i-remix"/></svg>Remix it</span>
+      </div>
+    </div>
+    <p class="cap" style="max-width:400px">A bare video link is the one truly ambiguous input — two
+    chips, one tap, run. Every unambiguous input just goes. After a run, the result card names
+    what routing chose; if it guessed wrong, the card offers the other path.</p>
+  </div>
+</div>
+
+<!-- ══════════════════════ §4 AUDIENCE ══════════════════════ -->
+<h2 class="sec">§4 · Audience &amp; platform — one sheet, page level</h2>
+<div class="secrule"></div>
+
+<div class="row">
+  <div class="phone"><div class="screen" style="height:640px">
+    <div class="status"><span>9:41</span><span class="r"><span class="sig"><i></i><i></i><i></i><i></i></span><span class="batt"><i></i></span></span></div>
+    <div class="pad" style="opacity:.4;flex:1">
+      <div class="greet" style="font-size:22px">Tonight's remixes, Lena.</div>
+    </div>
+    <div class="scrim"></div>
+    <div class="sheet">
+      <div class="grab"></div>
+      <div class="whisper" style="margin-bottom:6px">Creating for</div>
+      <div class="arow">
+        <span class="avs"><i class="av a1" style="width:26px;height:26px"></i><i class="av a2" style="width:26px;height:26px"></i><i class="av a3" style="width:26px;height:26px"></i></span>
+        <div><div class="t">Your people</div><div class="s">modeled from @lena.moves · 1.2k followers</div></div>
+        <span class="check">✓</span>
+      </div>
+      <div class="arow">
+        <span class="avs"><i class="av a4" style="width:26px;height:26px"></i><i class="av a5" style="width:26px;height:26px"></i></span>
+        <div><div class="t">Gym beginners</div><div class="s">described by you</div></div>
+      </div>
+      <div class="arow">
+        <span class="avs"><i class="av a5" style="width:26px;height:26px"></i><i class="av a2" style="width:26px;height:26px"></i></span>
+        <div><div class="t">US women 25–40 · skincare</div><div class="s">target segment · described</div></div>
+      </div>
+      <div class="arow">
+        <span class="mico" style="border-radius:50%;width:30px;height:30px"><span style="font-size:15px;color:var(--cream3)">+</span></span>
+        <div><div class="t">New audience</div><div class="s">connect an account, or describe a segment</div></div>
+      </div>
+      <div class="whisper" style="margin:16px 0 0">On platform</div>
+      <div class="segbar">
+        <span class="seg on">TikTok</span><span class="seg">Reels</span><span class="seg">Shorts</span>
+      </div>
+      <div class="cap" style="margin-top:8px">Same people, different scroll. Pick Reels and Maven says:
+      modeled on TikTok — extrapolating.</div>
+    </div>
+  </div></div>
+
+  <div style="flex:1;min-width:290px">
+    <p class="note"><b>One tap from anywhere</b> (the composer sub-bar's audience half) →
+    everything about who you're creating for, in one sheet: your audiences, where each came from, a new-audience door,
+    and the platform lens as a visible segmented control.</p>
+    <p class="note"><b>Advertisers already fit.</b> A described audience <i>is</i> a target
+    segment — same machinery, marketer language. An ad team keeps one audience per segment and
+    A/B-compares creative against each. Nothing new to build; the sim against a described
+    segment is the ad-targeting story.</p>
+    <p class="note"><b>The rules underneath are unchanged:</b> one audience per connected account,
+    platform is a run setting (provenance stated, extrapolation admitted, never blocked), changes
+    apply to the next run.</p>
+  </div>
+</div>
+
+<!-- ══════════════════════ §5 THE THREAD ══════════════════════ -->
+<h2 class="sec">§5 · Remix — the work thread</h2>
+<div class="secrule"></div>
+
+<div class="row">
+  <div class="phone"><div class="screen" style="height:700px">
+    <div class="status"><span>9:41</span><span class="r"><span class="sig"><i></i><i></i><i></i><i></i></span><span class="batt"><i></i></span></span></div>
+    <div class="ctxbar"><span class="back">‹</span>
+      <span style="font-size:13px;color:var(--cream2);font-weight:500">Remix</span>
+    </div>
+    <div class="seedstrip">
+      <span class="st t2"></span>
+      <div class="t"><b>Remixing</b> · Stop stretching before your workout</div>
+      <span class="views">▶ 8.1M</span>
+    </div>
+    <div class="turnwrap">
+      <div class="tcard">
+        <div class="tkick"><svg class="i" style="width:11px;height:11px" viewBox="0 0 14 14"><use href="#i-remix"/></svg>Three angles</div>
+        <div class="angle lead">
+          <div style="flex:1;min-width:0">
+            <div class="hook" style="font-size:14.5px">Your desk job ruined stretching for you. Here's what to do instead.</div>
+          </div>
+        </div>
+        <div class="angle">
+          <div class="hook">Stretching is a scam your PE teacher sold you.</div>
+        </div>
+        <div class="angle">
+          <div class="hook">I stopped stretching for 30 days — my back thanked me.</div>
+        </div>
+        <div class="moves">
+          <span class="move primary"><svg class="i" viewBox="0 0 14 14"><use href="#i-pen"/></svg>Script the first</span>
+          <span class="move"><svg class="i" viewBox="0 0 14 14"><use href="#i-play"/></svg>Simulate</span>
+        </div>
+      </div>
+      <div class="usr">more personal — I sit 10 hours a day myself</div>
+      <div class="tcard">
+        <div class="tkick"><svg class="i" style="width:11px;height:11px" viewBox="0 0 14 14"><use href="#i-remix"/></svg>Your version · v2</div>
+        <div class="hook">I sit 10 hours a day. Stretching didn't fix me — this did.</div>
+        <div class="vrow">
+          <span class="meter sealed"><span class="segs"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></span>
+          <span class="sealtxt">your people are watching…</span>
+        </div>
+      </div>
+    </div>
+    <div class="dock">
+      <div class="composer">
+        <div class="cfield" style="min-height:38px">Steer it…</div>
+        <div class="cfoot">
+          <span class="plus">+</span>
+          <span class="skillpill"><svg class="i" viewBox="0 0 14 14"><use href="#i-spark"/></svg><span class="car">▾</span></span>
+          <span class="grow"></span>
+          <span class="send q">■</span>
+        </div>
+        <div class="subbar watching">
+          <span class="half"><span class="avs"><i class="av a1" style="width:16px;height:16px"></i><i class="av a2" style="width:16px;height:16px"></i></span>
+            <span class="live"></span> Your people · TikTok</span>
+          <span class="simside">watching… </span>
+        </div>
+      </div>
+    </div>
+    <div class="homebar"></div>
+  </div></div>
+
+  <div style="flex:1;min-width:290px">
+    <p class="note"><b>Tap Remix → this.</b> The source pins to the top as a strip (watchable,
+    credited). The first turn is the existing Remix skill's real output — <b>exactly three adapted
+    angles</b> (`adapt.ts`) — restaged as a stack. <b>No scores yet</b>: generation never
+    auto-simulates. The sim is fire-on-demand — the Simulate action on the card, or the sub-bar's
+    door — and only then does the sealed-verdict beat play (the v2 card below, in flight).</p>
+    <p class="note"><b>Steering works in plain language.</b> Versions stack, nothing is
+    overwritten. Once a card has been simulated, its meter and "see why" persist on the card and
+    the full report (§6) is one tap. The drops on home are the exception — they arrive
+    pre-tested, because the nightly pipe simulated them before you woke up.</p>
+  </div>
+</div>
+
+<!-- ══════════════════════ §6 THE REPORT ══════════════════════ -->
+<h2 class="sec">§6 · The verdict report — Audience · Brain · Engagement</h2>
+<div class="secrule"></div>
+
+<div class="row">
+  <!-- tab 1: audience -->
+  <div class="phone" style="width:350px"><div class="screen" style="height:700px">
+    <div class="status"><span>9:41</span><span class="r"><span class="sig"><i></i><i></i><i></i><i></i></span><span class="batt"><i></i></span></span></div>
+    <div class="pad" style="opacity:.4;flex:1">
+      <div class="tcard" style="margin-top:8px">
+        <div class="hook" style="font-size:15px">Your desk job ruined stretching for you. Here's what to do instead.</div>
+      </div>
+    </div>
+    <div class="scrim"></div>
+    <div class="sheet">
+      <div class="grab"></div>
+      <div class="tabbar"><span class="tab on">Audience</span><span class="tab">Brain</span><span class="tab">Engagement</span></div>
+      <div class="verdict"><span class="n">7</span><span class="of">/10 stopped scrolling</span></div>
+      <div class="facerow">
+        <span class="face a1"></span><span class="face a2"></span><span class="face a3"></span>
+        <span class="face a4"></span><span class="face a5"></span><span class="face a1"></span>
+        <span class="face a2"></span><span class="face a3 dim"></span><span class="face a4 dim"></span>
+        <span class="face a5 dim"></span>
+      </div>
+      <div class="rephead"><svg class="i" viewBox="0 0 14 14"><use href="#i-stop"/></svg>Why they stopped</div>
+      <div class="reason">"ruined" makes it personal, not advice<span class="rcount">×4</span></div>
+      <div class="reason">calls out desk workers by name<span class="rcount">×3</span></div>
+      <div class="rephead"><svg class="i" viewBox="0 0 14 14"><use href="#i-x"/></svg>Why they scrolled</div>
+      <div class="reason">heard "don't stretch" before — wants the alternative sooner<span class="rcount">×3</span></div>
+      <div class="quote"><b>Maya, 26</b> · "ruined got me — that's exactly how it feels"</div>
+      <div class="moves" style="margin-top:14px">
+        <span class="move primary"><svg class="i" viewBox="0 0 14 14"><use href="#i-fix"/></svg>Fix what lost them</span>
+        <span class="move">Meet them</span>
+      </div>
+    </div>
+  </div></div>
+
+  <!-- tab 2: brain -->
+  <div class="phone" style="width:350px"><div class="screen" style="height:700px">
+    <div class="status"><span>9:41</span><span class="r"><span class="sig"><i></i><i></i><i></i><i></i></span><span class="batt"><i></i></span></span></div>
+    <div class="pad" style="opacity:.4;flex:1">
+      <div class="tcard" style="margin-top:8px">
+        <div class="hook" style="font-size:15px">Your desk job ruined stretching for you. Here's what to do instead.</div>
+      </div>
+    </div>
+    <div class="scrim"></div>
+    <div class="sheet">
+      <div class="grab"></div>
+      <div class="tabbar"><span class="tab">Audience</span><span class="tab on">Brain</span><span class="tab">Engagement</span></div>
+      <div class="vmini"><b>7</b><span>/10 stopped scrolling</span></div>
+      <div class="brainbox">
+        <div class="brainlbl">Predicted cortex</div>
+        <svg viewBox="0 0 200 140" style="width:230px;max-width:100%">
+          <defs>
+            <clipPath id="bclip"><path d="M28,86 C20,64 30,40 52,30 C66,18 92,14 112,20 C138,14 166,28 172,52 C182,68 176,88 160,96 C154,110 136,118 120,112 C112,122 92,124 80,116 C64,122 44,114 40,100 C32,96 30,92 28,86 Z"/></clipPath>
+            <radialGradient id="h1"><stop offset="0" stop-color="#ff6a4d" stop-opacity=".95"/><stop offset="1" stop-color="#ff6a4d" stop-opacity="0"/></radialGradient>
+            <radialGradient id="h2"><stop offset="0" stop-color="#ffb43d" stop-opacity=".8"/><stop offset="1" stop-color="#ffb43d" stop-opacity="0"/></radialGradient>
+            <radialGradient id="h3"><stop offset="0" stop-color="#4d7dff" stop-opacity=".55"/><stop offset="1" stop-color="#4d7dff" stop-opacity="0"/></radialGradient>
+          </defs>
+          <path d="M28,86 C20,64 30,40 52,30 C66,18 92,14 112,20 C138,14 166,28 172,52 C182,68 176,88 160,96 C154,110 136,118 120,112 C112,122 92,124 80,116 C64,122 44,114 40,100 C32,96 30,92 28,86 Z"
+                fill="#26262a" stroke="rgba(255,255,255,.12)"/>
+          <g clip-path="url(#bclip)">
+            <circle cx="152" cy="52" r="48" fill="url(#h1)"/>
+            <circle cx="104" cy="46" r="40" fill="url(#h2)"/>
+            <circle cx="58" cy="88" r="42" fill="url(#h3)"/>
+            <path d="M62,34 C82,50 78,68 60,82" stroke="rgba(0,0,0,.3)" fill="none" stroke-width="1.4"/>
+            <path d="M96,26 C110,44 106,66 92,84" stroke="rgba(0,0,0,.3)" fill="none" stroke-width="1.4"/>
+            <path d="M132,26 C144,44 142,64 130,82" stroke="rgba(0,0,0,.3)" fill="none" stroke-width="1.4"/>
+            <path d="M40,60 C56,64 70,62 84,54" stroke="rgba(0,0,0,.22)" fill="none" stroke-width="1.2"/>
+          </g>
+        </svg>
+        <div class="simtag">simulated</div>
+      </div>
+      <div style="margin-top:10px">
+        <div class="heatrow"><span class="hdot" style="background:#ff6a4d"></span>
+          <span><b style="color:var(--cream);font-weight:500">Peak at the claim</b> — attention and threat regions light up in the first two seconds</span></div>
+        <div class="heatrow"><span class="hdot" style="background:#4d7dff"></span>
+          <span><b style="color:var(--cream);font-weight:500">Cools at 0:06</b> — the promised alternative hasn't arrived yet</span></div>
+      </div>
+    </div>
+  </div></div>
+
+  <!-- tab 3: engagement -->
+  <div class="phone" style="width:350px"><div class="screen" style="height:700px">
+    <div class="status"><span>9:41</span><span class="r"><span class="sig"><i></i><i></i><i></i><i></i></span><span class="batt"><i></i></span></span></div>
+    <div class="pad" style="opacity:.4;flex:1">
+      <div class="tcard" style="margin-top:8px">
+        <div class="hook" style="font-size:15px">Your desk job ruined stretching for you. Here's what to do instead.</div>
+      </div>
+    </div>
+    <div class="scrim"></div>
+    <div class="sheet">
+      <div class="grab"></div>
+      <div class="tabbar"><span class="tab">Audience</span><span class="tab">Brain</span><span class="tab on">Engagement</span></div>
+      <div class="vmini"><b>7</b><span>/10 stopped scrolling</span></div>
+      <div class="whisper" style="margin-bottom:2px">Predicted watch-through</div>
+      <svg viewBox="0 0 300 84" style="width:100%;display:block">
+        <path d="M0,12 C40,14 70,18 92,26 C118,36 128,56 156,62 C196,70 250,72 300,73 L300,84 L0,84 Z"
+              fill="rgba(236,231,222,.07)"/>
+        <path d="M0,12 C40,14 70,18 92,26 C118,36 128,56 156,62 C196,70 250,72 300,73"
+              fill="none" stroke="var(--cream2)" stroke-width="1.6"/>
+        <circle cx="128" cy="47" r="3" fill="var(--cream)"/>
+        <text x="120" y="36" font-size="9" fill="#8a857c" font-family="ui-monospace">0:06</text>
+        <text x="4" y="80" font-size="9" fill="#8a857c" font-family="ui-monospace">0:00</text>
+        <text x="272" y="80" font-size="9" fill="#8a857c" font-family="ui-monospace">0:30</text>
+      </svg>
+      <div class="whisper" style="margin:16px 0 4px">Signals · 0–100 · vs your baseline</div>
+      <div class="sigrow"><span style="width:96px">Hook</span><span class="bar"><i style="width:88%"></i></span><span class="n">88</span><span class="dchip">+18</span></div>
+      <div class="sigrow"><span style="width:96px">Attention</span><span class="bar"><i style="width:61%"></i></span><span class="n">61</span><span class="dchip">+11</span></div>
+      <div class="sigrow"><span style="width:96px">Easy to follow</span><span class="bar"><i style="width:54%"></i></span><span class="n">54</span><span class="dchip">−8</span></div>
+      <div class="quote" style="margin-top:14px">The drop at 0:06 is the fixable beat — the
+      alternative lands too late. Tightening the bridge lifts Easy to follow.</div>
+      <div class="moves" style="margin-top:14px">
+        <span class="move primary"><svg class="i" viewBox="0 0 14 14"><use href="#i-fix"/></svg>Tighten the bridge</span>
+      </div>
+    </div>
+  </div></div>
+</div>
+
+<p class="note" style="margin-top:18px"><b>The full depth survives — as tabs of one report.</b>
+<b>Audience</b> answers <i>who</i> and <i>why</i> (faces, reasons, a voice). <b>Brain</b> is the
+signature visual — the predicted cortex with its heat read in plain language. <b>Engagement</b>
+answers <i>where it loses them</i> — watch-through curve, signals vs your own baseline. Every tab
+ends in an action phrased as a fix, and every fix feeds back into the thread as a steer. Sheet on
+mobile, right panel on desktop; opened from any meter.</p>
+
+<!-- ══════════════════════ §7 AUDIENCE SURFACE ══════════════════════ -->
+<h2 class="sec">§7 · The Audience surface — where the simulation lives</h2>
+<div class="secrule"></div>
+
+<div class="row">
+  <div class="phone"><div class="screen" style="height:780px">
+    <div class="status"><span>9:41</span><span class="r"><span class="sig"><i></i><i></i><i></i><i></i></span><span class="batt"><i></i></span></span></div>
+    <div class="pad" style="padding-top:12px;flex:1">
+      <div class="greet" style="font-size:22px">Your people.</div>
+      <div class="whisper" style="margin:6px 0 12px">modeled from @lena.moves · TikTok · calibrated Jul 28</div>
+      <div class="ledger" style="margin-top:0;display:flex;align-items:center;gap:14px">
+        <span class="bignum">87%</span>
+        <div style="font-size:12.5px;color:var(--cream2);line-height:1.45">prediction match across your
+          last 12 posts<div style="font-size:11px;color:var(--cream3)">the sim gets sharper every time you post</div></div>
+      </div>
+      <div class="cgroup" style="margin-top:16px">The ten</div>
+      <div class="prow"><span class="av a1" style="width:28px;height:28px"></span>
+        <div><div class="who">Maya, 26</div><div class="tr">commuter · watches muted · skips intros</div></div>
+        <span class="st">stops for stakes</span></div>
+      <div class="prow"><span class="av a2" style="width:28px;height:28px"></span>
+        <div><div class="who">Dan, 34</div><div class="tr">new dad · 11pm scroller · burned by ads</div></div>
+        <span class="st">hardest to stop</span></div>
+      <div class="prow"><span class="av a3" style="width:28px;height:28px"></span>
+        <div><div class="who">Sara, 29</div><div class="tr">lapsed gym-goer · saves how-tos</div></div>
+        <span class="st">saves, rarely likes</span></div>
+      <div class="prow"><span class="av a4" style="width:28px;height:28px"></span>
+        <div><div class="who">Jo, 31</div><div class="tr">desk worker · sound on · shares to gc</div></div>
+        <span class="st">your amplifier</span></div>
+      <div class="cap" style="margin:2px 0 0">+ six more</div>
+      <div class="cgroup" style="margin-top:14px">Predicted → actual</div>
+      <div class="ledger" style="margin-top:6px">
+        <div class="lrow">"3-move reset" script<span class="r">predicted 8 · over-performed</span></div>
+        <div class="lrow">"4pm crash" hook<span class="r">predicted 7 · matched</span></div>
+        <div class="lrow">"plank mistake"<span class="r">predicted 6 · under · learning →</span></div>
+      </div>
+    </div>
+    <div class="homebar"></div>
+  </div></div>
+
+  <div style="flex:1;min-width:290px">
+    <p class="note"><b>This answers "where does the simulation live."</b> Three presences: the
+    meter on every card (ambient), the report on any meter (contextual, pinnable on desktop —
+    §10), and this surface (permanent): the ten people with their behaviours, the accuracy
+    ledger — predicted vs what actually happened — and recalibration. Already a nav item; this
+    gives it the sim's soul.</p>
+    <p class="note"><b>The accuracy ledger is the trust engine.</b> "87% match" is the product's
+    boldest claim, printed only from real reconciliations (the loop machinery that already
+    exists). A sim you can audit is a sim you believe.</p>
+  </div>
+</div>
+
+<!-- ══════════════════════ §8 ADVERTISERS ══════════════════════ -->
+<h2 class="sec">§8 · The same product, advertiser-flavored</h2>
+<div class="secrule"></div>
+
+<div class="row">
+  <div class="phone" style="width:360px"><div class="screen" style="height:740px">
+    <div class="status"><span>9:41</span><span class="r"><span class="sig"><i></i><i></i><i></i><i></i></span><span class="batt"><i></i></span></span></div>
+    <div class="topbar">
+      <span style="color:var(--cream3);font-size:17px;line-height:1">≡</span>
+      
+    </div>
+    <div class="pad" style="padding-top:14px">
+      <div class="greet" style="font-size:22px">Tonight's angles for Glow.</div>
+      <div class="whisper" style="margin:6px 0 10px">proven ad formats · rebuilt for Glow</div>
+    </div>
+    <div class="fade"><div class="pad" style="padding-top:0">
+      <div class="drops">
+        <div class="drop">
+          <div class="thumb t3" style="min-height:104px"><span class="capt">shelf lies</span><span class="views"><svg class="i" style="width:9px;height:9px" viewBox="0 0 14 14"><use href="#i-play"/></svg>4.2M</span></div>
+          <div class="body" style="padding:11px 13px">
+            <div class="hook" style="font-size:14.5px">POV: your skincare shelf is lying to you.</div>
+            <div class="meta"><span class="meter"><span class="segs"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="out"></i><i class="out"></i></span><b>8</b></span>
+              <span class="remixbtn" style="padding:4px 10px;font-size:11.5px"><svg class="i" style="width:11px;height:11px" viewBox="0 0 14 14"><use href="#i-remix"/></svg>Variants</span></div>
+          </div>
+        </div>
+        <div class="drop">
+          <div class="thumb t7" style="min-height:104px"><span class="capt">we tested 3</span><span class="views"><svg class="i" style="width:9px;height:9px" viewBox="0 0 14 14"><use href="#i-play"/></svg>1.8M</span></div>
+          <div class="body" style="padding:11px 13px">
+            <div class="hook" style="font-size:14.5px">We tested 3 cleansers so you don't have to.</div>
+            <div class="meta"><span class="meter"><span class="segs"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="out"></i><i class="out"></i><i class="out"></i></span><b>7</b></span>
+              <span class="remixbtn" style="padding:4px 10px;font-size:11.5px"><svg class="i" style="width:11px;height:11px" viewBox="0 0 14 14"><use href="#i-remix"/></svg>Variants</span></div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+    <div class="dock">
+      <div class="composer">
+        <div class="cfield" style="min-height:40px">Describe the offer, or paste an ad…</div>
+        <div class="cfoot"><span class="plus">+</span>
+          <span class="skillpill"><svg class="i" viewBox="0 0 14 14"><use href="#i-spark"/></svg><span class="car">▾</span></span>
+          <span class="grow"></span><span class="modelflag">SIM-1 Flash <span class="car">▾</span></span><span class="send">↑</span></div>
+        <div class="subbar">
+          <span class="half"><span class="avs"><i class="av a5" style="width:16px;height:16px"></i><i class="av a2" style="width:16px;height:16px"></i></span>
+            <span class="live"></span> US women 25–40 · Reels <span class="car">▾</span></span>
+          <span class="simside">Simulate <span class="go">›</span></span>
+        </div>
+      </div>
+      <div class="jrow">
+        <span class="jchip"><svg class="i" viewBox="0 0 14 14"><use href="#i-spark"/></svg>Draft ad hooks</span>
+        <span class="jchip"><svg class="i" viewBox="0 0 14 14"><use href="#i-ab"/></svg>A/B openers</span>
+        <span class="jchip"><svg class="i" viewBox="0 0 14 14"><use href="#i-search"/></svg>Competitor ads</span>
+      </div>
+    </div>
+    <div class="homebar"></div>
+  </div></div>
+
+  <div class="phone" style="width:360px"><div class="screen" style="height:740px">
+    <div class="status"><span>9:41</span><span class="r"><span class="sig"><i></i><i></i><i></i><i></i></span><span class="batt"><i></i></span></span></div>
+    <div class="pad turnwrap" style="padding-top:12px">
+      <div class="tcard">
+        <div class="tkick"><svg class="i" style="width:11px;height:11px" viewBox="0 0 14 14"><use href="#i-ab"/></svg>A/B · US women 25–40 · Reels</div>
+        <div class="angle lead">
+          <div style="flex:1;min-width:0">
+            <div class="tkick" style="margin-bottom:3px;letter-spacing:.08em">A</div>
+            <div class="hook" style="font-size:14px">POV: your skincare shelf is lying to you.</div>
+          </div>
+          <span class="meter"><span class="segs"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="out"></i></span><b>9</b></span>
+        </div>
+        <div class="angle">
+          <div style="flex:1;min-width:0">
+            <div class="tkick" style="margin-bottom:3px;letter-spacing:.08em">B</div>
+            <div class="hook" style="font-size:14px">Dermatologists hate this $12 routine.</div>
+          </div>
+          <span class="meter"><span class="segs"><i></i><i></i><i></i><i></i><i></i><i class="out"></i><i class="out"></i><i class="out"></i><i class="out"></i><i class="out"></i></span><b>5</b></span>
+        </div>
+        <div style="font-size:12.5px;color:var(--cream2);margin-top:11px;line-height:1.5">
+          <b style="color:var(--cream)">A wins on hook</b> — "POV" reads native; B pattern-matches
+          to an ad in 0.4s and gets scrolled.</div>
+        <div class="moves">
+          <span class="move primary"><svg class="i" viewBox="0 0 14 14"><use href="#i-pen"/></svg>Script A</span>
+          <span class="move">Run A against Gen-Z segment</span>
+        </div>
+      </div>
+    </div>
+    <div class="homebar"></div>
+  </div></div>
+
+  <div style="flex:1;min-width:280px">
+    <p class="note"><b>Same product, different flavor — not a different app.</b> The workspace
+    (set at first run, changeable) re-orders the catalog, swaps the example chips, and reframes
+    the drops: proven <i>ad</i> formats, rebuilt for the offer, judged by the target segment.
+    The audience switcher holds segments; Reels is just the lens.</p>
+    <p class="note"><b>A/B compare is Test with two inputs</b> — the verdict names a winner and
+    the reason, then hands you the next action. Running the winner against another segment is one
+    tap, because segments are audiences. This card is the advertiser's whole job in one loop.</p>
+    <p class="note"><b>Overnight variants</b> (the agent loop — generate, sim, iterate until it
+    clears a bar) lands here later as "keep going overnight" on this same card. Behavior, not a
+    surface.</p>
+  </div>
+</div>
+
+<!-- ══════════════════════ §9 FIRST RUN ══════════════════════ -->
+<h2 class="sec">§9 · First run — your audience comes first</h2>
+<div class="secrule"></div>
+
+<div class="row">
+  <div class="phone" style="width:340px"><div class="screen" style="height:640px">
+    <div class="status"><span>9:41</span><span class="r"><span class="sig"><i></i><i></i><i></i><i></i></span><span class="batt"><i></i></span></span></div>
+    <div class="pad" style="flex:1;display:flex;flex-direction:column;justify-content:center">
+      <div class="segbar" style="margin:0 0 18px">
+        <span class="seg on">Creator</span><span class="seg">Brand</span><span class="seg">Ads</span>
+      </div>
+      <div class="q0">First, let's meet the people you're creating for.</div>
+      <div style="margin-top:18px">
+        <div class="opt">
+          <span class="mico"><svg class="i" viewBox="0 0 14 14"><use href="#i-tt"/></svg></span>
+          <div><div class="t">Connect TikTok</div><div class="s">Model your audience from real followers</div></div>
+          <span class="go">›</span>
+        </div>
+        <div class="opt">
+          <span class="mico"><svg class="i" viewBox="0 0 14 14"><use href="#i-ig"/></svg></span>
+          <div><div class="t">Connect Instagram</div><div class="s">Model your audience from real followers</div></div>
+          <span class="go">›</span>
+        </div>
+        <div class="opt">
+          <span class="mico"><svg class="i" viewBox="0 0 14 14"><use href="#i-pen"/></svg></span>
+          <div><div class="t">Describe them</div><div class="s">No account yet? Start from who you want</div></div>
+          <span class="go">›</span>
+        </div>
+      </div>
+    </div>
+    <div class="homebar"></div>
+  </div></div>
+
+  <div class="phone" style="width:340px"><div class="screen" style="height:640px">
+    <div class="status"><span>9:41</span><span class="r"><span class="sig"><i></i><i></i><i></i><i></i></span><span class="batt"><i></i></span></span></div>
+    <div class="pad" style="flex:1;display:flex;flex-direction:column;justify-content:center;text-align:center">
+      <div class="bigavs">
+        <span class="av a1"></span><span class="av a2"></span><span class="av a3"></span>
+        <span class="av a4"></span><span class="av a5"></span>
+      </div>
+      <div class="q0" style="text-align:center">Meet your people.</div>
+      <div class="cap" style="text-align:center;margin-top:6px">modeled from @lena.moves · TikTok</div>
+      <div class="traits">
+        <span class="trait">desk workers</span><span class="trait">25–34</span>
+        <span class="trait">short on time</span><span class="trait">skeptical of gym culture</span>
+      </div>
+      <div class="cta">See tonight's remixes →</div>
+    </div>
+    <div class="homebar"></div>
+  </div></div>
+
+  <div class="phone" style="width:340px"><div class="screen" style="height:640px">
+    <div class="status"><span>9:41</span><span class="r"><span class="sig"><i></i><i></i><i></i><i></i></span><span class="batt"><i></i></span></span></div>
+    <div class="pad" style="flex:1;padding-top:16px">
+      <div class="q0" style="font-size:20px">Three ways you could show up.</div>
+      <div class="cap" style="margin-top:4px">described audience · budgeting · pre-tested</div>
+      <div class="lane">
+        <div class="lanehead"><span class="lanename">The numbers person</span><span class="lanewho">receipts, not vibes</span></div>
+        <div class="drop">
+          <div class="thumb t7" style="width:62px;min-height:88px"><span class="capt">40% feelings</span></div>
+          <div class="body" style="padding:11px 12px">
+            <div class="hook" style="font-size:14px">Why is your grocery bill 40% feelings?</div>
+            <div class="meta"><span class="meter"><span class="segs"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="out"></i><i class="out"></i><i class="out"></i></span><b>8<span class="of">/10</span></b></span></div>
+          </div>
+        </div>
+      </div>
+      <div class="lane">
+        <div class="lanehead"><span class="lanename">The reformed overspender</span><span class="lanewho">story-first</span></div>
+        <div class="drop">
+          <div class="thumb t3" style="width:62px;min-height:88px"><span class="capt">2019 me</span></div>
+          <div class="body" style="padding:11px 12px">
+            <div class="hook" style="font-size:14px">I found my 2019 bank statement. We need to talk.</div>
+            <div class="meta"><span class="meter"><span class="segs"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="out"></i><i class="out"></i></span><b>9<span class="of">/10</span></b></span></div>
+          </div>
+        </div>
+      </div>
+      <div class="lane">
+        <div class="lanehead"><span class="lanename">The skeptic</span><span class="lanewho">calls out the industry</span></div>
+        <div class="drop">
+          <div class="thumb t8" style="width:62px;min-height:88px"><span class="capt">rigged</span></div>
+          <div class="body" style="padding:11px 12px">
+            <div class="hook" style="font-size:14px">Your budgeting app wants you to fail.</div>
+            <div class="meta"><span class="meter"><span class="segs"><i></i><i></i><i></i><i></i><i></i><i></i><i class="out"></i><i class="out"></i><i class="out"></i><i class="out"></i></span><b>7<span class="of">/10</span></b></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="homebar"></div>
+  </div></div>
+</div>
+<p class="cap" style="margin-top:14px">Left → first screen after signup: the role toggle sets the
+workspace flavor (chips, catalog order, drop framing — §8); then the audience, the product's
+asset, is step one — connect (calibrates from real followers, ~90s, platform = provenance) or
+describe. A Brand/Ads pick words the describe door as "describe a target segment". Middle → the
+reveal, then straight into §1. Right → the describe path for creators with no niche yet: pick the
+lane by picking the content.</p>
+
+<!-- ══════════════════════ §10 DESKTOP ══════════════════════ -->
+<h2 class="sec">§10 · Desktop</h2>
+<div class="secrule"></div>
+
+<div class="desk">
+  <div class="bar"><i></i><i></i><i></i></div>
+  <div style="display:flex">
+    <div style="width:208px;border-right:1px solid var(--bd);background:var(--chrome);padding:16px 14px;
+                display:flex;flex-direction:column;gap:11px;min-height:600px">
+      <div style="font-family:var(--serif);color:var(--accent);font-size:18px">~</div>
+      <div style="font-size:12.5px;color:var(--cream2);padding-top:8px">+ New thread</div>
+      <div style="font-size:12.5px;color:var(--cream3)">Audience</div>
+      <div style="font-size:12.5px;color:var(--cream3)">Library</div>
+      <div class="whisper" style="padding-top:12px">Threads</div>
+      <div style="font-size:12px;color:var(--cream3)">desk job stretching…</div>
+      <div style="font-size:12px;color:var(--cream3)">4pm crash script…</div>
+    </div>
+    <div style="flex:1;padding:34px 40px 40px">
+      <div style="max-width:720px;margin:0 auto">
+        <div class="greet" style="font-size:27px">Tonight's remixes, Lena.</div>
+        <div class="whisper" style="margin:8px 0 12px">Proven videos · rebuilt for your niche · judged by your people</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="drop">
+            <div class="thumb t2" style="width:66px;min-height:100px"><span class="capt">no stretch</span></div>
+            <div class="body" style="padding:12px 13px">
+              <div class="hook" style="font-size:14.5px">Stop stretching before your workout. Seriously.</div>
+              <div class="meta"><span class="meter"><span class="segs"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="out"></i><i class="out"></i></span><b>9</b></span>
+                <span class="remixbtn" style="padding:4px 10px;font-size:11.5px"><svg class="i" style="width:11px;height:11px" viewBox="0 0 14 14"><use href="#i-remix"/></svg>Remix</span></div>
+            </div>
+          </div>
+          <div class="drop">
+            <div class="thumb t1" style="width:66px;min-height:100px"><span class="capt">4pm crash</span></div>
+            <div class="body" style="padding:12px 13px">
+              <div class="hook" style="font-size:14.5px">Why does nobody talk about the 4pm energy crash?</div>
+              <div class="meta"><span class="meter"><span class="segs"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="out"></i><i class="out"></i><i class="out"></i></span><b>8</b></span>
+                <span class="remixbtn" style="padding:4px 10px;font-size:11.5px"><svg class="i" style="width:11px;height:11px" viewBox="0 0 14 14"><use href="#i-remix"/></svg>Remix</span></div>
+            </div>
+          </div>
+          <div class="drop">
+            <div class="thumb t3" style="width:66px;min-height:100px"><span class="capt">day 90</span></div>
+            <div class="body" style="padding:12px 13px">
+              <div class="hook" style="font-size:14.5px">I trained 10 minutes a day for 90 days. My posture did this.</div>
+              <div class="meta"><span class="meter"><span class="segs"><i></i><i></i><i></i><i></i><i></i><i></i><i class="out"></i><i class="out"></i><i class="out"></i><i class="out"></i></span><b>7</b></span>
+                <span class="remixbtn" style="padding:4px 10px;font-size:11.5px"><svg class="i" style="width:11px;height:11px" viewBox="0 0 14 14"><use href="#i-remix"/></svg>Remix</span></div>
+            </div>
+          </div>
+          <div class="drop">
+            <div class="thumb t4" style="width:66px;min-height:100px"><span class="capt">3 moves</span></div>
+            <div class="body" style="padding:12px 13px">
+              <div class="hook" style="font-size:14.5px">The 3-move reset for a stiff back — no floor, no mat.</div>
+              <div class="meta"><span class="meter"><span class="segs"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="out"></i><i class="out"></i><i class="out"></i></span><b>8</b></span>
+                <span class="remixbtn" style="padding:4px 10px;font-size:11.5px"><svg class="i" style="width:11px;height:11px" viewBox="0 0 14 14"><use href="#i-remix"/></svg>Remix</span></div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:18px">
+          <div class="composer" style="box-shadow:none">
+            <div class="cfield">Describe an idea, or paste any video…</div>
+            <div class="cfoot">
+              <span class="plus">+</span>
+              <span class="skillpill"><svg class="i" viewBox="0 0 14 14"><use href="#i-spark"/></svg><span class="car">▾</span></span>
+              <span class="grow"></span>
+              <span class="send">↑</span>
+            </div>
+            <div class="subbar">
+              <span class="half"><span class="avs"><i class="av a1" style="width:16px;height:16px"></i><i class="av a2" style="width:16px;height:16px"></i><i class="av a3" style="width:16px;height:16px"></i></span>
+                <span class="live"></span> Your people · TikTok <span class="car">▾</span></span>
+              <span class="simside">Simulate <span class="go">›</span></span>
+            </div>
+          </div>
+          <div class="jrow center" style="margin-top:12px">
+            <span class="jchip"><svg class="i" viewBox="0 0 14 14"><use href="#i-remix"/></svg>Remix this trend</span>
+            <span class="jchip"><svg class="i" viewBox="0 0 14 14"><use href="#i-play"/></svg>Test a draft</span>
+            <span class="jchip"><svg class="i" viewBox="0 0 14 14"><use href="#i-search"/></svg>Analyze a competitor</span>
+            <span class="jchip">More ▸</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<p class="cap">Same composer stack as mobile — chip, sub-bar and all. Four remixes above the fold,
+two more below. No permanent right rail; the sub-bar's sim half is the door.</p>
+
+<div class="desk" style="margin-top:26px">
+  <div class="bar"><i></i><i></i><i></i></div>
+  <div style="display:flex">
+    <div style="width:190px;border-right:1px solid var(--bd);background:var(--chrome);padding:16px 14px;
+                display:flex;flex-direction:column;gap:11px;min-height:520px">
+      <div style="font-family:var(--serif);color:var(--accent);font-size:18px">~</div>
+      <div style="font-size:12.5px;color:var(--cream2);padding-top:8px">+ New thread</div>
+      <div style="font-size:12.5px;color:var(--cream3)">Audience</div>
+      <div style="font-size:12.5px;color:var(--cream3)">Library</div>
+    </div>
+    <div style="flex:1;padding:22px 28px;min-width:0">
+      <div class="seedstrip" style="margin:0 0 12px">
+        <span class="st t2"></span>
+        <div class="t"><b>Remixing</b> · Stop stretching before your workout</div>
+      </div>
+      <div class="tcard" style="max-width:560px">
+        <div class="tkick"><svg class="i" style="width:11px;height:11px" viewBox="0 0 14 14"><use href="#i-remix"/></svg>Your version · v2</div>
+        <div class="hook" style="font-size:15.5px">I sit 10 hours a day. Stretching didn't fix me — this did.</div>
+        <div class="vrow"><span class="meter"><span class="segs"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="out"></i><i class="out"></i></span><b>8<span class="of">/10</span></b></span></div>
+        <div class="moves"><span class="move primary"><svg class="i" viewBox="0 0 14 14"><use href="#i-pen"/></svg>Write the script</span><span class="move">New angle</span></div>
+      </div>
+    </div>
+    <div style="width:300px;border-left:1px solid var(--bd);background:var(--chrome);padding:16px 18px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <span style="font-size:12.5px;font-weight:600;color:var(--cream2)">Report · v2</span>
+        <span class="pin">⌖ pinned</span>
+      </div>
+      <div class="tabbar" style="margin-bottom:12px"><span class="tab on">Audience</span><span class="tab">Brain</span><span class="tab">Engagement</span></div>
+      <div class="vmini"><b>8</b><span>/10 stopped</span></div>
+      <div class="reason" style="font-size:12px">"10 hours" — specificity reads true<span class="rcount">×5</span></div>
+      <div class="reason" style="font-size:12px">first-person beats advice<span class="rcount">×3</span></div>
+      <div class="quote" style="font-size:11.5px;margin-top:8px"><b>Dan, 34</b> · "ok that's me. fine."</div>
+    </div>
+  </div>
+</div>
+<p class="cap">The report, <b>pinned</b>: open it from any meter, pin it, and it docks for the rest
+of the session — updating with every run. The old always-on rail, reborn as a choice. Unpin and
+the page is clean again.</p>
+
+<!-- ══════════════════════ §11 NOTES ══════════════════════ -->
+<h2 class="sec">§11 · Deliberate limits</h2>
+<div class="secrule"></div>
+<p class="note">· Thumbnails are CSS stand-ins for the real source stills; the mock's brain is a
+stand-in for the existing WebGL cortex.</p>
+<p class="note">· No corpus multiplier until its basis is settled; view counts + sim scores only.
+"87% match" prints only from real reconciliations.</p>
+<p class="note">· Catalog routing (typed text → job) is a build-time producer; the catalog is the
+contract. Row order per workspace is a product call.</p>
+<p class="note">· Run provenance (audience/platform per run) still stamps every run in data; the
+thread shows it via the context bar.</p>
+<p class="note">· <b>Generation never auto-simulates.</b> The sim is fire-on-demand (a card's
+Simulate action, or the sub-bar door). Only the nightly drops arrive pre-scored — the proactive
+pipe ran them overnight. In-thread meters appear only after a fired run.</p>
+<p class="note">· Not drawn yet: the script view, the mobile nav drawer, Library, overnight-agent
+states. Next mock or build-time.</p>
+
+</div>

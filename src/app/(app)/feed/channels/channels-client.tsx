@@ -10,7 +10,8 @@
  */
 import { useCallback, useMemo, useState } from "react";
 import { useToast } from "@/components/ui/toast";
-import { DiscoverTabBar } from "@/components/discover/discover-tab-bar";
+import { DiscoverSubpageHeader } from "@/components/discover/discover-subpage-header";
+import { PageShell } from "@/components/surfaces/surface-header";
 import {
   AddChannelPanel,
   type AddChannelResultLite,
@@ -129,19 +130,15 @@ export function ChannelsClient() {
   };
 
   return (
-    // Container + header mirror DiscoverHub exactly (title → mono subtitle → tabs)
-    // so the tab bar doesn't jump position when switching Discover tabs.
-    <div className="mx-auto w-full max-w-[1180px] px-4 pb-24 pt-6 lg:px-6">
-      <header className="mb-4">
-        <h1 className="text-[19px] font-semibold tracking-[-0.01em] text-foreground lg:text-[22px]">Channels</h1>
-        <p className="mt-0.5 font-mono text-[10px] text-foreground-muted">
-          pick which channels to include in your videos feed
-        </p>
-
-        <div className="mt-3">
-          <DiscoverTabBar active="channels" />
-        </div>
-      </header>
+    // Reached from the Watchlist tab's "Add a source", so it carries a way BACK rather than
+    // a copy of the hub's nav. Stays on PageShell (the canonical 880px column, 0f904cf8).
+    <PageShell>
+      <DiscoverSubpageHeader
+        title="Add a source"
+        subtitle="Track a creator and their outliers join your Discover feed."
+        backLabel="Watchlist"
+        backHref="/feed?tab=watchlist"
+      />
 
       <div className="grid items-start gap-6 lg:grid-cols-[1.7fr_1fr]">
         <AddChannelPanel
@@ -160,6 +157,6 @@ export function ChannelsClient() {
           onExport={handleExport}
         />
       </div>
-    </div>
+    </PageShell>
   );
 }

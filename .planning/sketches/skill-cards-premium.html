@@ -1,0 +1,711 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Skill cards — the premium pass</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --charcoal-app:#1f1f1e; --surface-sunken:#1a1a19; --chrome:#1a1a19;
+  --fg:#ece7de; --fg-secondary:#c2bdb4; --fg-muted:#8a857c;
+  --accent:#FF6363; --positive:#8ea68a;
+  --border:rgba(255,255,255,0.06); --border-hover:rgba(255,255,255,0.10);
+  --r-xs:4px; --r-sm:6px; --r-md:8px; --r-lg:12px; --r-xl:16px; --r-full:9999px;
+  --t-micro:10px; --t-caption:11px; --t-label:12px; --t-body:13px; --t-reading:14px;
+  --t-subhead:18px; --t-heading:22px;
+  --sans:'Inter',ui-sans-serif,system-ui,sans-serif;
+  --serif:'Newsreader',ui-serif,Georgia,serif;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--charcoal-app);color:var(--fg);font-family:var(--sans);
+  -webkit-font-smoothing:antialiased;font-size:var(--t-body);line-height:1.5}
+body{padding:0 0 140px}
+.wrap{max-width:1240px;margin:0 auto;padding:0 24px}
+
+/* chrome */
+.topbar{position:sticky;top:0;z-index:50;background:rgba(26,26,25,.94);
+  backdrop-filter:blur(14px);border-bottom:1px solid var(--border)}
+.topbar .wrap{display:flex;align-items:center;gap:16px;height:56px}
+.brand{font-size:var(--t-label);font-weight:600;letter-spacing:-0.01em}
+.brand span{color:var(--fg-muted);font-weight:400}
+h1{font-family:var(--serif);font-size:38px;font-weight:500;letter-spacing:-0.022em;
+  line-height:1.12;margin:60px 0 14px;max-width:20ch}
+.lede{font-size:var(--t-reading);line-height:1.7;color:var(--fg-secondary);max-width:72ch}
+.lede+.lede{margin-top:12px}
+.lede b{color:var(--fg);font-weight:600}
+h2{font-size:var(--t-heading);font-weight:600;letter-spacing:-0.02em;margin:0 0 8px}
+.sec{margin-top:76px;padding-top:34px;border-top:1px solid var(--border)}
+.kick{font-family:var(--mono);font-size:var(--t-micro);text-transform:uppercase;
+  letter-spacing:.12em;color:var(--fg-muted);margin-bottom:12px}
+.note{font-size:var(--t-body);line-height:1.7;color:var(--fg-muted);max-width:76ch;margin-top:12px}
+.note b{color:var(--fg-secondary);font-weight:500}
+code{font-family:var(--mono);font-size:var(--t-caption);color:var(--fg-secondary);
+  background:rgba(255,255,255,.05);padding:1px 5px;border-radius:var(--r-xs)}
+
+/* ═══ THE CARD ════════════════════════════════════════════════════════════ */
+/* TRUE THREAD WIDTH. thread-shell.tsx:30 is `max-w-[760px] … px-4`, so an in-thread card
+   renders at ~728px. Every card below is sized to that — the first pass judged these in a
+   340px gallery column, which is less than half, and made the two-column variant look
+   impossible when at real width it is comfortable. */
+.card{background:var(--surface-sunken);border:1px solid var(--border);
+  border-radius:var(--r-xl);overflow:hidden;width:100%;max-width:728px}
+.card.w{max-width:728px}
+
+/* zone = a hairline-divided band. No nested boxes anywhere. */
+.z{padding:14px 18px;border-top:1px solid var(--border)}
+.z:first-child{border-top:0}
+.z-tint{background:rgba(255,255,255,.018)}
+
+/* the mono instrument label — the premium tell */
+.ml{font-family:var(--mono);font-size:var(--t-micro);text-transform:uppercase;
+  letter-spacing:.12em;color:var(--fg-muted)}
+.ml-b{color:var(--fg-secondary)}
+
+/* ── the SOURCE band: cover + handle + the one REAL number, set large ── */
+.src{display:flex;align-items:center;gap:14px}
+.cover{position:relative;width:62px;aspect-ratio:9/16;border-radius:var(--r-sm);
+  flex:0 0 auto;overflow:hidden;border:1px solid var(--border);
+  background:linear-gradient(150deg,#3a3a37,#232321);display:grid;place-items:center}
+.cover.sm{width:44px}
+.cover svg{opacity:.55}
+.src-mid{min-width:0;flex:1}
+.src-handle{margin-top:5px;font-size:var(--t-body);font-weight:500;color:var(--fg);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.src-sub{margin-top:2px;font-size:var(--t-label);color:var(--fg-muted)}
+.stat{text-align:right;flex:0 0 auto}
+.stat-n{font-size:30px;font-weight:600;letter-spacing:-0.03em;line-height:1;
+  color:var(--fg);font-variant-numeric:tabular-nums}
+.stat-n sup{font-size:15px;font-weight:500;letter-spacing:0;vertical-align:super;margin-left:1px}
+.stat-l{margin-top:5px;font-family:var(--mono);font-size:var(--t-micro);
+  letter-spacing:.08em;text-transform:uppercase;color:var(--fg-muted)}
+
+/* ── the FORMULA: the bracketed template, chipped ── */
+.formula{margin-top:8px;font-family:var(--serif);font-size:var(--t-subhead);
+  font-weight:400;line-height:1.45;color:var(--fg-muted)}
+.formula .chip{display:inline-block;font-family:var(--sans);font-size:var(--t-body);
+  font-weight:500;color:var(--fg);background:rgba(255,255,255,.07);
+  border-radius:var(--r-xs);padding:1px 7px;margin:0 1px;
+  vertical-align:baseline;line-height:1.5}
+
+/* ── the HERO: your version ── */
+.hero{font-family:var(--serif);font-size:21px;font-weight:500;line-height:1.32;
+  letter-spacing:-0.008em;color:var(--fg)}
+.hero-sm{font-size:var(--t-subhead)}
+.why{margin-top:9px;font-size:var(--t-body);line-height:1.65;color:var(--fg-secondary)}
+.why-dim{color:var(--fg-muted)}
+.head-row{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+
+.ghost{display:inline-flex;align-items:center;gap:5px;font:inherit;font-size:var(--t-label);
+  font-weight:500;color:var(--fg-muted);background:none;border:0;cursor:pointer;transition:.14s;flex:0 0 auto}
+.ghost:hover{color:var(--fg-secondary)}
+
+/* ── FIRST FRAME — filmic, not a form field ── */
+.frame{display:flex;gap:12px;align-items:flex-start}
+.frame-mark{width:26px;height:26px;border-radius:var(--r-sm);flex:0 0 auto;
+  display:grid;place-items:center;background:rgba(255,255,255,.05);
+  border:1px solid var(--border);color:var(--fg-secondary)}
+.frame-b{min-width:0;flex:1}
+.frame-t{font-size:var(--t-body);line-height:1.6;color:var(--fg-secondary);margin-top:5px}
+
+/* ── THE DOOR ── */
+.door{display:flex;align-items:center;gap:10px;width:100%;text-align:left;
+  padding:12px 18px;border:0;border-top:1px solid var(--border);
+  background:rgba(255,255,255,.014);font:inherit;cursor:pointer;transition:.17s;min-height:46px}
+.door:hover{background:rgba(255,255,255,.05)}
+.door:hover .door-cta{color:var(--fg)}
+.door:hover .door-arrow{transform:translateX(3px)}
+.dot-h{width:7px;height:7px;border-radius:var(--r-full);
+  border:1px solid rgba(236,231,222,.32);flex:0 0 auto}
+.dot-s{width:7px;height:7px;border-radius:var(--r-full);flex:0 0 auto}
+.door-state{font-size:var(--t-body);color:var(--fg-muted);flex:0 0 auto}
+.door-state b{color:var(--fg);font-weight:600;font-variant-numeric:tabular-nums}
+.door-cta{margin-left:auto;display:inline-flex;align-items:center;gap:6px;
+  font-size:var(--t-label);font-weight:500;color:var(--fg-secondary);white-space:nowrap;transition:.17s}
+.door-arrow{display:inline-block;transition:transform .17s}
+
+/* ── ACTIONS ── */
+.acts{display:flex;align-items:center;gap:14px;padding:13px 18px;border-top:1px solid var(--border)}
+.primary{display:inline-flex;align-items:center;justify-content:center;font:inherit;
+  font-size:var(--t-body);font-weight:600;color:var(--fg);border:1px solid rgba(255,255,255,.08);
+  background:rgba(255,255,255,.05);border-radius:var(--r-md);padding:8px 14px;cursor:pointer;transition:.15s}
+.primary:hover{border-color:rgba(255,255,255,.13);background:rgba(255,255,255,.095)}
+.ico{margin-left:auto;display:grid;place-items:center;width:28px;height:28px;
+  border-radius:var(--r-sm);color:var(--fg-muted);background:none;border:0;cursor:pointer;transition:.14s}
+.ico:hover{color:var(--fg-secondary);background:rgba(255,255,255,.05)}
+
+/* ── beats (script) ── */
+.beat{display:flex;gap:14px;padding:11px 0}
+.beat+.beat{border-top:1px solid rgba(255,255,255,.035)}
+.beat-t{flex:0 0 46px;text-align:right;font-family:var(--mono);font-size:var(--t-micro);
+  letter-spacing:.04em;color:var(--fg-muted);padding-top:3px;font-variant-numeric:tabular-nums}
+.beat-b{flex:1;min-width:0}
+.beat-l{font-family:var(--mono);font-size:var(--t-micro);text-transform:uppercase;
+  letter-spacing:.12em;color:var(--fg-secondary)}
+.beat-c{margin-top:4px;font-size:var(--t-reading);line-height:1.6;color:var(--fg-secondary)}
+.beat-c.lead{font-family:var(--serif);font-size:var(--t-subhead);color:var(--fg);line-height:1.4}
+.beat-f{margin-top:6px;font-size:var(--t-label);line-height:1.6;color:var(--fg-muted);
+  display:flex;gap:7px}
+.beat-f svg{flex:0 0 auto;margin-top:3px;opacity:.6}
+
+/* ── recipe (idea) ── */
+.recipe{display:flex;gap:0;margin-top:9px}
+.recipe>div{flex:1;min-width:0;padding-right:14px}
+.recipe>div+div{padding-left:14px;border-left:1px solid var(--border)}
+.recipe p{margin-top:5px;font-size:var(--t-body);line-height:1.5;color:var(--fg-secondary)}
+
+/* ── variants gallery ── */
+/* Variants stack VERTICALLY at true card width, description alongside — the only fair
+   way to compare them (a 3-up gallery squeezes each to 340px and rigs the comparison). */
+.gal{display:flex;flex-direction:column;gap:44px;margin-top:30px}
+.gal-row{display:grid;grid-template-columns:728px minmax(0,1fr);gap:32px;align-items:start}
+@media (max-width:1180px){.gal-row{grid-template-columns:1fr}}
+.gal-h{display:flex;align-items:baseline;gap:9px;margin-bottom:13px}
+.gal-n{font-family:var(--mono);font-size:var(--t-micro);letter-spacing:.1em;color:var(--fg-muted)}
+.gal-t{font-size:var(--t-body);font-weight:600;color:var(--fg)}
+.gal-d{font-size:var(--t-label);line-height:1.65;color:var(--fg-muted);margin-top:11px}
+.rec{display:inline-block;font-family:var(--mono);font-size:var(--t-micro);letter-spacing:.08em;
+  text-transform:uppercase;color:var(--positive);background:rgba(142,166,138,.13);
+  padding:2px 6px;border-radius:var(--r-xs);margin-left:6px}
+
+/* callouts + principle grid */
+.call{border:1px solid var(--border);border-left:2px solid var(--accent);
+  border-radius:var(--r-md);background:rgba(255,255,255,.02);padding:15px 17px;margin-top:24px}
+.call .h{font-family:var(--mono);font-size:var(--t-micro);text-transform:uppercase;
+  letter-spacing:.1em;color:var(--fg-muted);margin-bottom:7px}
+.call p{font-size:var(--t-body);line-height:1.7;color:var(--fg-secondary)}
+.call p+p{margin-top:9px}
+.call b{color:var(--fg);font-weight:600}
+.call.q{border-left-color:oklch(0.75 0.15 85)}
+.prin{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:13px;margin-top:26px}
+.prin-c{border:1px solid var(--border);border-radius:var(--r-lg);padding:15px;background:rgba(255,255,255,.015)}
+.prin-c .n{font-family:var(--mono);font-size:var(--t-micro);letter-spacing:.1em;color:var(--fg-muted)}
+.prin-c .t{font-size:var(--t-body);font-weight:600;margin-top:6px;letter-spacing:-0.01em}
+.prin-c .d{font-size:var(--t-label);line-height:1.65;color:var(--fg-muted);margin-top:6px}
+.prin-c .d s{color:rgba(138,133,124,.55)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:26px;align-items:start}
+@media (max-width:940px){.two{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="topbar"><div class="wrap">
+  <div class="brand">Skill cards — the premium pass <span>· sketch 2 · in-thread generation only</span></div>
+</div></div>
+
+<div class="wrap">
+
+<h1>You are sitting on the cheatcode and printing it as a footnote.</h1>
+<p class="lede">Every grounded card already carries the most persuasive assets in the product: a real TikTok cover, a verified
+<b>144.9× vs follower baseline</b>, two million measured views, and — the best of them — the source hook rendered as a
+<b>fill-in-the-blank formula</b>. That is a teardown of someone else's winner, handed over as a template. It is the single most
+"how is this legal" thing here.</p>
+<p class="lede">Today all of it renders as a 34-pixel thumbnail in a grey strip, <b>fifth down the card</b>, in quieter chrome than
+the fabricated <code>7/10</code> above it. The card gives top billing to a number it invented and buries the numbers it earned.
+This pass inverts that, and rebuilds the four cards around one story every skill can tell: <b>here is what worked · here is the
+pattern · here is yours</b>.</p>
+
+<!-- ═══ PRINCIPLES ═══════════════════════════════════════════════════════ -->
+<section class="sec">
+  <div class="kick">The moves</div>
+  <h2>Six changes. Most of them are subtraction.</h2>
+  <div class="prin">
+    <div class="prin-c"><div class="n">01</div><div class="t">Give the real number the big type</div>
+      <div class="d"><s>7/10 would stop</s> at 13px → <b style="color:var(--fg-secondary)">144.9×</b> at 30px, tabular, right-aligned. Range is what reads as expensive; the cards currently live entirely between 11 and 14px.</div></div>
+    <div class="prin-c"><div class="n">02</div><div class="t">Promote the formula</div>
+      <div class="d"><code>hookTemplate</code> already ships the source hook as <i>"Stop [doing the hard thing]. Do [the easier thing] instead."</i> It renders today as a small muted line inside the receipt. It is the cheatcode. Make it a zone.</div></div>
+    <div class="prin-c"><div class="n">03</div><div class="t">Mono for instruments</div>
+      <div class="d">Uppercase mono micro-labels for meta and stats — the language the v2 ambient surfaces already speak. Inter for content, Newsreader for voice. Three faces, three jobs, no overlap.</div></div>
+    <div class="prin-c"><div class="n">04</div><div class="t">De-box completely</div>
+      <div class="d">Zero nested bordered tiles. Today a hook card puts up to four bordered boxes inside a bordered card. Replaced by hairline-divided zones with a tone shift — the v2 grammar's own rule.</div></div>
+    <div class="prin-c"><div class="n">05</div><div class="t">The cover at a real size</div>
+      <div class="d">34×60px → 62px wide at true 9:16. A real video still is the most premium asset available and it is currently a stamp.</div></div>
+    <div class="prin-c"><div class="n">06</div><div class="t">One story, four skills</div>
+      <div class="d">Source → pattern → yours. Remix already tells it (that is why its map is the best thing on the surface). Hook, idea and script have the same data and don't. Now they all do.</div></div>
+  </div>
+</section>
+
+<!-- ═══ HOOK VARIANTS ════════════════════════════════════════════════════ -->
+<section class="sec">
+  <div class="kick">Hook card · three ways to open</div>
+  <h2>Pick the opening. Everything else follows from it.</h2>
+  <p class="note">Same content, same zones, three different answers to "what does the eye hit first". This is the one real taste
+  call in the pass — the rest of the cards inherit whichever you pick.</p>
+
+  <div class="gal">
+
+    <!-- A -->
+    <div class="gal-row">
+      <div>
+      <div class="gal-h"><span class="gal-n">A</span><span class="gal-t">The teardown</span></div>
+      <div class="card">
+        <div class="z z-tint src">
+          <span class="cover"><svg width="16" height="16" viewBox="0 0 16 16" fill="#ece7de"><path d="M5 3.5v9l7-4.5z"/></svg></span>
+          <span class="src-mid">
+            <span class="ml">Reverse-engineered from</span>
+            <div class="src-handle">@braedan.health</div>
+            <div class="src-sub">2.0M views · cross-niche structure</div>
+          </span>
+          <span class="stat">
+            <div class="stat-n">144.9<sup>×</sup></div>
+            <div class="stat-l">vs followers</div>
+          </span>
+        </div>
+        <div class="z">
+          <span class="ml">The pattern</span>
+          <p class="formula">Stop <span class="chip">doing the hard thing</span>. Do <span class="chip">the easier thing</span> instead.</p>
+        </div>
+        <div class="z">
+          <div class="head-row">
+            <span class="ml ml-b">Yours</span>
+            <button class="ghost">⧉ Copy</button>
+          </div>
+          <p class="hero" style="margin-top:8px">Stop editing your videos. Do this instead.</p>
+          <p class="why">Pattern-interrupt via a permission to quit a painful task.</p>
+        </div>
+        <div class="z frame">
+          <span class="frame-mark"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="3.5" width="9" height="9" rx="1.5"/><path d="M11 7l3-2v6l-3-2z"/></svg></span>
+          <span class="frame-b">
+            <span class="ml">First frame · crash-zoom</span>
+            <p class="frame-t">Hard cut to your face mid-sentence as the words slam on in bold caps.</p>
+          </span>
+        </div>
+        <button class="door">
+          <span class="dot-h"></span><span class="door-state">Not tested yet</span>
+          <span class="door-cta">Simulate with your audience <span class="door-arrow">→</span></span>
+        </button>
+        <div class="acts">
+          <button class="primary">Write the script →</button>
+          <button class="ghost">⌄ More</button>
+          <button class="ico">♡</button>
+        </div>
+      </div>
+      </div>
+      <p class="gal-d">Opens on the receipt, so the line arrives already backed. The eye lands on <b style="color:var(--fg-secondary)">144.9×</b>,
+      then reads the formula, then sees your version of it — the argument in the order that makes it persuasive. Costs one zone of
+      height before the deliverable.</p>
+    </div>
+
+    <!-- B -->
+    <div class="gal-row">
+      <div>
+      <div class="gal-h"><span class="gal-n">B</span><span class="gal-t">Deliverable first</span></div>
+      <div class="card">
+        <div class="z">
+          <div class="head-row">
+            <p class="hero">Stop editing your videos. Do this instead.</p>
+            <button class="ghost">⧉ Copy</button>
+          </div>
+          <p class="why">Pattern-interrupt via a permission to quit a painful task.</p>
+        </div>
+        <div class="z z-tint src">
+          <span class="cover sm"><svg width="14" height="14" viewBox="0 0 16 16" fill="#ece7de"><path d="M5 3.5v9l7-4.5z"/></svg></span>
+          <span class="src-mid">
+            <span class="ml">Built on</span>
+            <div class="src-handle" style="font-size:var(--t-label)">@braedan.health · 2.0M</div>
+            <p class="formula" style="font-size:var(--t-body);margin-top:6px;line-height:1.55">Stop <span class="chip" style="font-size:var(--t-label);padding:0 5px">the hard thing</span>. Do <span class="chip" style="font-size:var(--t-label);padding:0 5px">the easy thing</span>.</p>
+          </span>
+          <span class="stat">
+            <div class="stat-n" style="font-size:22px">144.9<sup style="font-size:12px">×</sup></div>
+            <div class="stat-l">baseline</div>
+          </span>
+        </div>
+        <div class="z frame">
+          <span class="frame-mark"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="3.5" width="9" height="9" rx="1.5"/><path d="M11 7l3-2v6l-3-2z"/></svg></span>
+          <span class="frame-b">
+            <span class="ml">First frame · crash-zoom</span>
+            <p class="frame-t">Hard cut to your face mid-sentence as the words slam on in bold caps.</p>
+          </span>
+        </div>
+        <button class="door">
+          <span class="dot-h"></span><span class="door-state">Not tested yet</span>
+          <span class="door-cta">Simulate <span class="door-arrow">→</span></span>
+        </button>
+        <div class="acts">
+          <button class="primary">Write the script →</button>
+          <button class="ghost">⌄ More</button>
+          <button class="ico">♡</button>
+        </div>
+      </div>
+      </div>
+      <p class="gal-d">Obeys the existing contract — deliverable reads first — and folds the whole receipt into one compact band
+      underneath. Scans fastest in a stack of five. The flex is present but no longer the opening move, so the card reads as
+      <i>good copy</i> rather than <i>privileged intelligence</i>.</p>
+    </div>
+
+    <!-- C -->
+    <div class="gal-row">
+      <div>
+      <div class="gal-h"><span class="gal-n">C</span><span class="gal-t">The X-ray</span></div>
+      <div class="card">
+        <div class="z" style="display:grid;grid-template-columns:1fr 1fr;gap:0;padding:0">
+          <div style="padding:14px 16px;background:rgba(255,255,255,.018)">
+            <span class="ml">Theirs · 144.9×</span>
+            <div style="display:flex;gap:10px;margin-top:9px">
+              <span class="cover sm" style="width:38px"><svg width="12" height="12" viewBox="0 0 16 16" fill="#ece7de"><path d="M5 3.5v9l7-4.5z"/></svg></span>
+              <span style="min-width:0">
+                <div style="font-size:var(--t-label);color:var(--fg-secondary);font-weight:500">@braedan.health</div>
+                <div style="font-size:var(--t-micro);color:var(--fg-muted);margin-top:2px;font-family:var(--mono)">2.0M VIEWS</div>
+              </span>
+            </div>
+            <p class="formula" style="font-size:var(--t-body);line-height:1.55;margin-top:11px">Stop <span class="chip" style="font-size:var(--t-label);padding:0 5px">hard thing</span>. Do <span class="chip" style="font-size:var(--t-label);padding:0 5px">easy thing</span>.</p>
+          </div>
+          <div style="padding:14px 16px;border-left:1px solid var(--border)">
+            <span class="ml ml-b">Yours</span>
+            <p class="hero hero-sm" style="margin-top:9px">Stop editing your videos. Do this instead.</p>
+            <p class="why" style="font-size:var(--t-label);margin-top:8px">Pattern-interrupt via a permission to quit a painful task.</p>
+          </div>
+        </div>
+        <div class="z frame">
+          <span class="frame-mark"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="3.5" width="9" height="9" rx="1.5"/><path d="M11 7l3-2v6l-3-2z"/></svg></span>
+          <span class="frame-b">
+            <span class="ml">First frame · crash-zoom</span>
+            <p class="frame-t">Hard cut to your face mid-sentence as the words slam on in bold caps.</p>
+          </span>
+        </div>
+        <button class="door">
+          <span class="dot-h"></span><span class="door-state">Not tested yet</span>
+          <span class="door-cta">Simulate <span class="door-arrow">→</span></span>
+        </button>
+        <div class="acts">
+          <button class="primary">Write the script →</button>
+          <button class="ghost">⌄ More</button>
+          <button class="ico">♡</button>
+        </div>
+      </div>
+      </div>
+      <p class="gal-d">Theirs ↔ yours, side by side — the remix card's map generalised to every skill. Strongest single "I can see
+      the matrix" moment.</p>
+      <p class="gal-d"><b style="color:var(--fg-secondary)">I had two risks written here and measurement killed both.</b> I claimed
+      it halves the line length and needs a one-column fallback under ~420px. Both came from judging it in a 340px gallery column
+      of my own making — the real in-thread card is <b style="color:var(--fg-secondary)">728px</b>
+      (<code>thread-shell.tsx:30</code>). Rendered at true width and again at a 390px viewport, C holds two columns at 171px each
+      and stays legible. It is also, measured: <b style="color:var(--fg-secondary)">403px tall against A's 646px</b> — the same
+      information, 37% less card. Across a stack of five that is ~1,200px of scroll.</p>
+    </div>
+
+    <!-- D -->
+    <div class="gal-row">
+      <div>
+      <div class="gal-h"><span class="gal-n">D</span><span class="gal-t">The X-ray, with the number</span><span class="rec">new pick</span></div>
+      <div class="card">
+        <div style="display:grid;grid-template-columns:minmax(0,0.85fr) minmax(0,1fr)">
+          <div style="padding:14px 18px;background:rgba(255,255,255,.018)">
+            <span class="ml">Theirs</span>
+            <div style="display:flex;align-items:center;gap:12px;margin-top:9px">
+              <span class="cover sm"><svg width="14" height="14" viewBox="0 0 16 16" fill="#ece7de"><path d="M5 3.5v9l7-4.5z"/></svg></span>
+              <span style="min-width:0">
+                <div class="stat-n" style="font-size:26px">144.9<sup style="font-size:13px">×</sup></div>
+                <div class="stat-l">vs followers</div>
+              </span>
+            </div>
+            <div style="margin-top:10px;font-size:var(--t-label);color:var(--fg-secondary);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">@braedan.health</div>
+            <div style="margin-top:2px;font-family:var(--mono);font-size:var(--t-micro);letter-spacing:.08em;color:var(--fg-muted)">2.0M VIEWS</div>
+            <p class="formula" style="font-size:var(--t-body);line-height:1.6;margin-top:11px">Stop <span class="chip" style="font-size:var(--t-label);padding:0 5px">hard thing</span>. Do <span class="chip" style="font-size:var(--t-label);padding:0 5px">easy thing</span>.</p>
+          </div>
+          <div style="padding:14px 18px;border-left:1px solid var(--border);display:flex;flex-direction:column">
+            <div class="head-row"><span class="ml ml-b">Yours</span><button class="ghost">⧉ Copy</button></div>
+            <p class="hero hero-sm" style="margin-top:9px">Stop editing your videos. Do this instead.</p>
+            <p class="why">Pattern-interrupt via a permission to quit a painful task.</p>
+          </div>
+        </div>
+        <div class="z frame">
+          <span class="frame-mark"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="3.5" width="9" height="9" rx="1.5"/><path d="M11 7l3-2v6l-3-2z"/></svg></span>
+          <span class="frame-b">
+            <span class="ml">First frame · crash-zoom</span>
+            <p class="frame-t">Hard cut to your face mid-sentence as the words slam on in bold caps.</p>
+          </span>
+        </div>
+        <button class="door">
+          <span class="dot-h"></span><span class="door-state">Not tested yet</span>
+          <span class="door-cta">Simulate with your audience <span class="door-arrow">→</span></span>
+        </button>
+        <div class="acts">
+          <button class="primary">Write the script →</button>
+          <button class="ghost">⌄ More</button>
+          <button class="ico">♡</button>
+        </div>
+      </div>
+      </div>
+      <p class="gal-d"><b style="color:var(--fg-secondary)">The synthesis, and what I would build.</b> C's two-column X-ray is
+      the strongest structure and the most compact; the only thing it gave up against A was the big number. This puts it back —
+      <b style="color:var(--fg-secondary)">144.9×</b> at 26px sitting beside the cover, inside the "theirs" column where it
+      belongs.</p>
+      <p class="gal-d">You get all three flexes stacked in one glance: a real video still, a measured multiplier, and the borrowed
+      formula — with your line facing them across a hairline. The whole argument for the product, in one card, without a single
+      invented number.</p>
+      <p class="gal-d">It also degrades cleanly: no <code>proof</code> ⇒ drop the left column, and the right column becomes the
+      full-width card. Same component, one conditional — which is exactly the ungrounded shape below.</p></div>
+
+  </div>
+
+  <div class="call q">
+    <div class="h">The ungrounded case — it is not rare</div>
+    <p>All three variants above assume <code>proof</code> is present. It is present only when grounded generation was on
+    <b>and</b> the model attributed this specific card to a real source carrying a handle. On an ungrounded run there is no cover,
+    no multiplier and no formula — so the entire opening zone vanishes and A collapses into B.</p>
+    <p>That is the honest degrade and it is fine, but it means <b>A's wow is conditional</b> and B is what a meaningful share of
+    cards will actually look like. Worth knowing before picking: A is the ceiling, B is the floor, and picking A means designing
+    B anyway.</p>
+  </div>
+</section>
+
+<!-- ═══ IDEA ═════════════════════════════════════════════════════════════ -->
+<section class="sec">
+  <div class="kick">Idea card</div>
+  <h2>The flex here is not the idea. It is that we read your account.</h2>
+  <p class="note"><code>whyItFits</code> — <i>"Your top 3 posts all lead with a counter-intuitive claim about consistency"</i> —
+  is derived from the creator's own scraped posts. It is the "how does it know that" line, and today it is a muted em-dash clause
+  appended to the end of the angle sentence, in the dimmest colour on the card. Promoted here to its own zone with the mono label
+  <b>FROM YOUR ACCOUNT</b>, which is the phrase doing the work.</p>
+
+  <div class="two">
+    <div>
+      <div class="gal-h"><span class="gal-n">→</span><span class="gal-t">Reworked</span></div>
+      <div class="card w">
+        <div class="z z-tint">
+          <span class="ml">From your account</span>
+          <p style="margin-top:8px;font-size:var(--t-reading);line-height:1.6;color:var(--fg)">Your top 3 posts all lead with a counter-intuitive claim about consistency.</p>
+        </div>
+        <div class="z">
+          <div class="head-row">
+            <span class="ml ml-b">The idea</span>
+            <span class="ml" style="color:oklch(0.75 0.15 85)">Needs your take</span>
+          </div>
+          <p class="hero" style="margin-top:8px">The 30-day silence experiment</p>
+          <p class="why">Absence as a growth lever — what happens when you deliberately go quiet.</p>
+        </div>
+        <div class="z">
+          <span class="ml">Make it from</span>
+          <div class="recipe">
+            <div><span class="ml ml-b">Topic</span><p>Creator growth</p></div>
+            <div><span class="ml ml-b">Take</span><p>Consistency is overrated; absence compounds.</p></div>
+            <div><span class="ml ml-b">Format</span><p>Talking-head + on-screen data</p></div>
+          </div>
+        </div>
+        <button class="door">
+          <span class="dot-h"></span><span class="door-state">Not tested yet</span>
+          <span class="door-cta">Simulate with your audience <span class="door-arrow">→</span></span>
+        </button>
+        <div class="acts">
+          <button class="primary">Write hooks for this →</button>
+          <button class="ghost">⌄ More</button>
+          <button class="ico">♡</button>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="gal-h"><span class="gal-n">?</span><span class="gal-t">What I'd cut, and why</span></div>
+      <div class="prin" style="grid-template-columns:1fr;margin-top:13px">
+        <div class="prin-c"><div class="t">Three fields answer one question</div>
+          <div class="d"><code>angle</code>, <code>whyItFits</code> and <code>mechanism</code> are three separate prose fields, each ~2 lines, all answering <i>"why this?"</i> — stacked adjacent, they read as the model repeating itself. Split by job: <b>whyItFits</b> → its own zone, because it is about YOU. <b>angle</b> → the why-line under the hero. <b>mechanism</b> → behind More; it is craft theory, and it is the one a creator rereads least.</div></div>
+        <div class="prin-c"><div class="t">"your take" earns its amber</div>
+          <div class="d">It is the one badge that changes what the creator does next — it means <i>this idea is inert without a first-hand opinion you have not given us</i>. Kept, moved to the idea zone where it belongs, set in mono so it reads as a status and not a decoration.</div></div>
+        <div class="prin-c"><div class="t">The recipe stays visible</div>
+          <div class="d">Topic · Take · Format is the "this is a system, not a vibe" signal — the closest thing the idea card has to a formula. De-boxed to three divided columns instead of a bordered strip inside a bordered card.</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ SCRIPT ═══════════════════════════════════════════════════════════ -->
+<section class="sec">
+  <div class="kick">Script card</div>
+  <h2>Make it read as a call sheet, because that is what it is.</h2>
+  <p class="note">The script card holds the most genuinely premium payload in the product — timed beats, a per-beat director cue,
+  and a consolidated shoot plan. Most competitors return a paragraph. The problem is presentational: the filming cue renders in
+  the same 12px muted grey as everything else, so a <b>shot list reads like a disclaimer</b>. Mono timings, a mono cue prefix and
+  a real left column turn the same data into a document you could hand to someone.</p>
+
+  <div class="card w" style="max-width:620px;margin-top:26px">
+    <div class="z z-tint" style="display:flex;align-items:center;justify-content:space-between;gap:14px">
+      <span>
+        <span class="ml">Shooting script</span>
+        <div style="margin-top:5px;font-size:var(--t-label);color:var(--fg-secondary)">5 beats · 40s · Talking-head + screen-record b-roll</div>
+      </span>
+      <button class="ghost">⧉ Copy script</button>
+    </div>
+    <div class="z" style="padding-top:6px;padding-bottom:6px">
+      <div class="beat">
+        <span class="beat-t">00:00</span>
+        <span class="beat-b">
+          <span class="beat-l">Hook</span>
+          <p class="beat-c lead">I stopped editing my videos and my views tripled.</p>
+          <p class="beat-f"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="3.5" width="9" height="9" rx="1.5"/><path d="M11 7l3-2v6l-3-2z"/></svg><span>Close-up, handheld · text slams in on "tripled" · deadpan, no smile.</span></p>
+        </span>
+      </div>
+      <div class="beat">
+        <span class="beat-t">00:03</span>
+        <span class="beat-b">
+          <span class="beat-l">Setup</span>
+          <p class="beat-c">For two years I spent 6 hours per video in CapCut. Cuts, captions, zooms — the works.</p>
+          <p class="beat-f"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="3.5" width="9" height="9" rx="1.5"/><path d="M11 7l3-2v6l-3-2z"/></svg><span>B-roll of the CapCut timeline scrubbing · VO over the screen-record.</span></p>
+        </span>
+      </div>
+      <div class="beat">
+        <span class="beat-t">00:10</span>
+        <span class="beat-b">
+          <span class="beat-l">Turn</span>
+          <p class="beat-c">Then I noticed my raw, one-take clips were outperforming the polished ones 3 to 1.</p>
+          <p class="beat-f"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="3.5" width="9" height="9" rx="1.5"/><path d="M11 7l3-2v6l-3-2z"/></svg><span>Cut back to face · split-screen the two analytics graphs.</span></p>
+        </span>
+      </div>
+      <div class="beat">
+        <span class="beat-t">00:20</span>
+        <span class="beat-b">
+          <span class="beat-l">Payoff</span>
+          <p class="beat-c">Turns out the algorithm rewards watch-time, and over-editing was killing my pacing.</p>
+          <p class="beat-f"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="3.5" width="9" height="9" rx="1.5"/><path d="M11 7l3-2v6l-3-2z"/></svg><span>Medium shot · one bold card: "watch-time &gt; polish" · slower.</span></p>
+        </span>
+      </div>
+      <div class="beat">
+        <span class="beat-t">00:35</span>
+        <span class="beat-b">
+          <span class="beat-l">CTA</span>
+          <p class="beat-c">Try one unedited take this week and tell me your retention. I bet it climbs.</p>
+          <p class="beat-f"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="3.5" width="9" height="9" rx="1.5"/><path d="M11 7l3-2v6l-3-2z"/></svg><span>Direct to camera · point at the comment area · warm, challenging.</span></p>
+        </span>
+      </div>
+    </div>
+    <button class="door">
+      <span class="dot-h"></span><span class="door-state">Not tested yet</span>
+      <span class="door-cta">Simulate with your audience <span class="door-arrow">→</span></span>
+    </button>
+    <div class="acts">
+      <button class="primary">Test this script →</button>
+      <button class="ghost">⌄ Shoot plan, source</button>
+      <button class="ico">♡</button>
+    </div>
+  </div>
+  <p class="note"><b>Changes:</b> timings become mono timecodes in a fixed left column (a script reads down a gutter, not across a
+  row) · the connecting dot-rail goes, because the timecode column already carries the sequence and the rail was decoration ·
+  beat 1 takes the serif so the opener is the focal point without repeating it above · the filming cue keeps its camera glyph but
+  now sits under a beat that has visible structure, so it reads as a cue rather than an afterthought · <code>retentionMarker</code>
+  and the four-row shoot plan move to <b>More</b>, which is where you go once, not per beat.</p>
+</section>
+
+<!-- ═══ REMIX ════════════════════════════════════════════════════════════ -->
+<section class="sec">
+  <div class="kick">Remix card</div>
+  <h2>Already the best card here. It just needs the volume turned up.</h2>
+  <p class="note">The decode→adapt map is the strongest information design on the surface — it is the only card that tells the
+  full story, and it is why the other three are being rebuilt to match it. I was wrong to bury it in the first sketch. What it
+  actually needs is less chrome and more contrast: <b>drop the column headers</b> (the mono labels already say whose side you are
+  on), <b>drop the outer border</b>, and give the source its real stat treatment.</p>
+
+  <div class="card w" style="max-width:620px;margin-top:26px">
+    <div class="z z-tint src">
+      <span class="cover"><svg width="16" height="16" viewBox="0 0 16 16" fill="#ece7de"><path d="M5 3.5v9l7-4.5z"/></svg></span>
+      <span class="src-mid">
+        <span class="ml">Remixing</span>
+        <div class="src-handle">@danielle.builds</div>
+        <div class="src-sub">Talking-head confession + receipts overlay</div>
+      </span>
+      <span class="stat">
+        <div class="stat-n">2.1<sup>M</sup></div>
+        <div class="stat-l">views</div>
+      </span>
+    </div>
+    <div class="z" style="display:grid;grid-template-columns:1fr 1fr;padding:0">
+      <div style="padding:13px 16px;background:rgba(255,255,255,.018)">
+        <span class="ml">Their hook</span>
+        <p style="margin-top:7px;font-size:var(--t-body);line-height:1.6;color:var(--fg-muted)">Confession framing on a taboo business decision.</p>
+      </div>
+      <div style="padding:13px 16px;border-left:1px solid var(--border)">
+        <span class="ml ml-b">Yours</span>
+        <p class="hero hero-sm" style="margin-top:7px">I fired my whole marketing team and replaced them with 3 prompts.</p>
+      </div>
+      <div style="padding:13px 16px;background:rgba(255,255,255,.018);border-top:1px solid var(--border)">
+        <span class="ml">Their turn</span>
+        <p style="margin-top:7px;font-size:var(--t-body);line-height:1.6;color:var(--fg-muted)">The receipts land before the justification.</p>
+      </div>
+      <div style="padding:13px 16px;border-left:1px solid var(--border);border-top:1px solid var(--border)">
+        <span class="ml ml-b">Your angle</span>
+        <p style="margin-top:7px;font-size:var(--t-body);line-height:1.6;color:var(--fg-secondary)">Shock-firing frame, borrowed for solo founders drowning in growth busywork.</p>
+      </div>
+    </div>
+    <button class="door">
+      <span class="dot-h"></span><span class="door-state">Not tested yet</span>
+      <span class="door-cta">Simulate with your audience <span class="door-arrow">→</span></span>
+    </button>
+    <div class="acts">
+      <button class="primary">Write hooks for this →</button>
+      <button class="ghost">⌄ Structure, shoot plan</button>
+      <button class="ico">♡</button>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ STACK ════════════════════════════════════════════════════════════ -->
+<section class="sec">
+  <div class="kick">The stack · what five of these feel like</div>
+  <h2>Variety is the point. A stack of identical cards is a spreadsheet.</h2>
+  <p class="note">The owner's original note — <i>"they all should have their value, atm they kinda look the same"</i> — is a stack
+  problem, not a card problem. Five cards that each open with the same grey box read as one repeated element. Here the source band
+  varies by what each hook actually has: a big multiplier, a view count, or nothing at all. <b>The variation is the data being
+  honest</b>, and it happens to be what makes the stack scan.</p>
+
+  <div style="display:flex;flex-direction:column;gap:12px;margin-top:26px;max-width:560px">
+    <div class="card w">
+      <div class="z z-tint src" style="padding-top:11px;padding-bottom:11px">
+        <span class="cover sm"><svg width="13" height="13" viewBox="0 0 16 16" fill="#ece7de"><path d="M5 3.5v9l7-4.5z"/></svg></span>
+        <span class="src-mid"><span class="ml">Reverse-engineered from</span><div class="src-handle" style="font-size:var(--t-label)">@braedan.health</div></span>
+        <span class="stat"><div class="stat-n" style="font-size:24px">144.9<sup style="font-size:13px">×</sup></div><div class="stat-l">baseline</div></span>
+      </div>
+      <div class="z"><div class="head-row"><span class="ml ml-b">Yours</span><button class="ghost">⧉</button></div>
+        <p class="hero hero-sm" style="margin-top:7px">Stop editing your videos. Do this instead.</p></div>
+      <button class="door"><span class="dot-h"></span><span class="door-state">Not tested yet</span>
+        <span class="door-cta">Simulate <span class="door-arrow">→</span></span></button>
+    </div>
+
+    <div class="card w">
+      <div class="z z-tint src" style="padding-top:11px;padding-bottom:11px">
+        <span class="cover sm"><svg width="13" height="13" viewBox="0 0 16 16" fill="#ece7de"><path d="M5 3.5v9l7-4.5z"/></svg></span>
+        <span class="src-mid"><span class="ml">Reverse-engineered from</span><div class="src-handle" style="font-size:var(--t-label)">@polish1990</div></span>
+        <span class="stat"><div class="stat-n" style="font-size:24px">2.0<sup style="font-size:13px">M</sup></div><div class="stat-l">views</div></span>
+      </div>
+      <div class="z"><div class="head-row"><span class="ml ml-b">Yours</span><button class="ghost">⧉</button></div>
+        <p class="hero hero-sm" style="margin-top:7px">I analyzed 500 viral videos. They all break one rule.</p></div>
+      <button class="door"><span class="dot-h"></span><span class="door-state">Not tested yet</span>
+        <span class="door-cta">Simulate <span class="door-arrow">→</span></span></button>
+    </div>
+
+    <div class="card w">
+      <div class="z"><div class="head-row"><span class="ml">Original · no source</span><button class="ghost">⧉</button></div>
+        <p class="hero hero-sm" style="margin-top:7px">This is the best video I've ever made. It flopped.</p>
+        <p class="why">Loss-framing + open loop.</p></div>
+      <button class="door"><span class="dot-h"></span><span class="door-state">Not tested yet</span>
+        <span class="door-cta">Simulate <span class="door-arrow">→</span></span></button>
+    </div>
+  </div>
+  <p class="note">Card three is the ungrounded shape — no band, no stat, and it says so in one mono line instead of a dashed box
+  drawing a ring around an absence. It is visibly the plainer card, which is <b>correct</b>: it has less behind it.</p>
+</section>
+
+<!-- ═══ NEXT ═════════════════════════════════════════════════════════════ -->
+<section class="sec">
+  <div class="kick">What I need from you</div>
+  <h2>One pick, two confirmations.</h2>
+  <div class="prin" style="grid-template-columns:1fr">
+    <div class="prin-c"><div class="n">Pick</div><div class="t">Hook variant A, B or C</div>
+      <div class="d">A is my recommendation — it is the only one that reads as privileged intelligence rather than good copy —
+      but note the ungrounded caveat above: choosing A means B gets designed anyway as the no-source fallback. C is the boldest
+      and the riskiest on mobile.</div></div>
+    <div class="prin-c"><div class="n">Confirm</div><div class="t">The formula zone is worth the height</div>
+      <div class="d">Showing the source hook as <i>"Stop [doing the hard thing]. Do [the easier thing] instead."</i> teaches the
+      creator a reusable pattern rather than handing them one line. I think it is the strongest single "cheatcode" moment
+      available and worth ~44px. It also arguably gives away the method.</div></div>
+    <div class="prin-c"><div class="n">Confirm</div><div class="t">Mono enters the card vocabulary</div>
+      <div class="d">The v2 ambient surfaces already use mono kickers; the thread cards do not, and
+      <code>section-label-scale.test.ts</code> currently asserts the Inter 11px/0.05em label idiom across
+      <code>thread/**</code>. Adopting mono micro-labels means <b>updating that guard</b> — a deliberate change to a written
+      contract, not drift. Worth it: it is most of what separates "instrument" from "form".</div></div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

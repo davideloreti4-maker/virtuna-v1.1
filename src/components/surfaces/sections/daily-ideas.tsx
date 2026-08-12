@@ -34,7 +34,7 @@ export function DailyIdeas({
       {status === "warming" ? (
         <WarmingGrid />
       ) : ideas.length === 0 ? (
-        <p className="px-1 py-6 text-[12.5px] leading-[1.5] text-foreground-muted">
+        <p className="px-1 py-6 text-[12px] leading-[1.5] text-foreground-muted">
           No ideas yet. Once your audience is calibrated, fresh ideas — pre-tested on
           how <span className="text-foreground-secondary">your</span> people would react —
           land here each day.
@@ -59,7 +59,7 @@ export function DailyIdeas({
 function WarmingGrid() {
   return (
     <div>
-      <p className="mb-2 px-1 font-mono text-[10.5px] text-foreground-muted">
+      <p className="mb-2 px-1 font-mono text-[10px] text-foreground-muted">
         Making today’s ideas and testing them on your people…
       </p>
       <div className="grid gap-2.5 lg:grid-cols-2">

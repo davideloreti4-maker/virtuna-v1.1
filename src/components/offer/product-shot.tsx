@@ -59,7 +59,7 @@ export const SHOTS = {
     src: "/images/offer/step-react.webp",
     width: 1240,
     height: 1450,
-    alt: "The simulated room: six named viewers who stopped, with what each one thought, and four who scrolled past",
+    alt: "The simulated audience read: 38.2% would stop, the room's verdict in a sentence, and how each cohort reacted — builders 82%, scrollers 51%, drop-ins 40%, skeptics 12%",
     mobile: { src: "/images/offer/step-react-sm.webp", width: 780, height: 1242 },
   },
   verdict: {
@@ -188,7 +188,7 @@ export function ShotFigure({
           maxHeight={maxHeight}
         />
         {caption && (
-          <figcaption className="text-[12.5px] leading-relaxed text-foreground-muted">
+          <figcaption className="text-[12px] leading-relaxed text-foreground-muted">
             {caption}
           </figcaption>
         )}

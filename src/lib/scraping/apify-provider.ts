@@ -213,6 +213,21 @@ export function remapClockworksVideo(item: unknown): VideoData | null {
     ...(v.isPinned !== undefined ? { isPinned: v.isPinned } : {}),
     ...(v.mediaUrls?.[0] ? { mediaUrl: v.mediaUrls[0] } : {}),
     ...(v.videoMeta?.coverUrl ? { coverUrl: v.videoMeta.coverUrl } : {}),
+    // Author aggregates for the per-author outlier denominator (author-baseline.ts). Spread
+    // only when the actor gave us BOTH lifetime totals — an absent aggregate must stay absent,
+    // because a zero-filled one reads as a real (and catastrophically wrong) baseline.
+    ...(v.authorMeta?.name &&
+    typeof v.authorMeta.heart === "number" &&
+    typeof v.authorMeta.video === "number"
+      ? {
+          author: {
+            handle: v.authorMeta.name,
+            fans: v.authorMeta.fans ?? 0,
+            heart: v.authorMeta.heart,
+            videoCount: v.authorMeta.video,
+          },
+        }
+      : {}),
   };
 }
 
@@ -302,6 +317,63 @@ export class ApifyScrapingProvider implements ScrapingProvider {
    * the id, a missing one would make `.dataset(undefined)` throw opaquely — fail with a
    * contextful message instead. Centralizes the repeated `.dataset(run.defaultDatasetId)`.
    */
+  /**
+   * Start an actor and report its dataset items AS THEY ARE WRITTEN, then resolve with the
+   * finished run — same shape `.call()` returns, so the caller's code after it is unchanged.
+   *
+   * The point is the onboarding wait: one run produces the profile and the videos, and `.call()`
+   * hides everything until the whole thing is done (~78s measured). The dataset fills
+   * progressively, so polling it surfaces the account within seconds of the crawler reaching it
+   * — at zero extra Apify cost, because it is the SAME run.
+   *
+   * Failure direction is deliberate: any error in the polling loop is swallowed and the method
+   * keeps waiting for the run. A progressive nicety must never be able to fail a calibration
+   * the user is paying for — the worst case degrades to exactly the old behaviour, everything
+   * arriving at the end.
+   */
+  private async runWithPartials(
+    actorId: string,
+    input: Record<string, unknown>,
+    onPartial: (items: unknown[]) => void,
+    { waitSecs = 240, pollMs = 3_000 }: { waitSecs?: number; pollMs?: number } = {},
+  ) {
+    const started = await this.client.actor(actorId).start(input);
+    const runClient = this.client.run(started.id);
+    const deadline = Date.now() + waitSecs * 1_000;
+
+    let seen = 0;
+    for (;;) {
+      await new Promise((r) => setTimeout(r, pollMs));
+
+      let status: string | undefined;
+      try {
+        const info = await runClient.get();
+        status = info?.status;
+
+        // Emit only what is NEW, so a caller can append rather than diff.
+        const datasetId = info?.defaultDatasetId;
+        if (datasetId) {
+          const { items } = await this.client.dataset(datasetId).listItems({ offset: seen });
+          if (items.length) {
+            seen += items.length;
+            onPartial(items);
+          }
+        }
+      } catch {
+        // Swallowed on purpose — see the note above. Keep waiting for the run.
+      }
+
+      if (status && status !== "READY" && status !== "RUNNING") {
+        return (await runClient.get()) ?? started;
+      }
+      if (Date.now() > deadline) {
+        // Match `.call({ waitSecs })`: stop waiting and hand back whatever the run is now, so
+        // the caller's own "no items" guard produces the normal error.
+        return (await runClient.get()) ?? started;
+      }
+    }
+  }
+
   private async listRunItems(run: { defaultDatasetId?: string }, ctx: string) {
     if (!run.defaultDatasetId) {
       throw new Error(
@@ -395,10 +467,26 @@ export class ApifyScrapingProvider implements ScrapingProvider {
    * authorMeta, so item[0] yields the profile and every item yields a video. Throws when
    * the handle returns no items (caller maps to scrape_failed).
    */
-  async scrapeProfileBundle(handle: string, limit = 12): Promise<ProfileBundle> {
+  /**
+   * @param onPartial optional — called with dataset items as the actor WRITES them, so a caller
+   *   can show the account and its posts while the run is still going. Omit it and this method
+   *   behaves exactly as before (a single blocking `.call()`), which is what every caller other
+   *   than calibration wants.
+   *
+   *   Why it exists: this is ONE actor run producing both the profile and the videos, and
+   *   `.call()` resolves only when the whole thing finishes — measured at ~78s for @garyvee. So
+   *   onboarding's longest screen sat empty for its first minute and then filled all at once.
+   *   Polling the run's dataset while it fills costs NOTHING extra (same run, same actor, same
+   *   Apify spend) and is the only way to show the real material as it lands rather than paying
+   *   for a second profile-only scrape.
+   */
+  async scrapeProfileBundle(
+    handle: string,
+    limit = 12,
+    onPartial?: (partial: { profile: ProfileData | null; videos: VideoData[] }) => void,
+  ): Promise<ProfileBundle> {
     const capped = Math.min(Math.max(limit, 10), 20); // §P.10b 10-20 cap
-    const run = await this.client.actor(DISCOVER_PROFILE_ACTOR).call(
-      {
+    const input = {
         profiles: [handle],
         resultsPerPage: capped,
         profileSorting: "latest",
@@ -411,9 +499,24 @@ export class ApifyScrapingProvider implements ScrapingProvider {
         shouldDownloadVideos: true,
         shouldDownloadCovers: false,
         downloadSubtitlesOptions: "DOWNLOAD_SUBTITLES",
-      },
-      { waitSecs: 240 },
-    );
+    };
+
+    // Remap inside the provider: the caller wants the account and its posts, not clockworks'
+    // wire shape. `items[0]` carries the profile on this actor, so the FIRST poll that returns
+    // anything is the one that puts an avatar on screen.
+    const emitPartial = onPartial
+      ? (raw: unknown[]) => {
+          const profile = raw.length ? remapClockworksProfile(raw[0]) : null;
+          const videos = raw
+            .map((item) => remapClockworksVideo(item))
+            .filter((v): v is VideoData => v !== null);
+          onPartial({ profile, videos });
+        }
+      : undefined;
+
+    const run = emitPartial
+      ? await this.runWithPartials(DISCOVER_PROFILE_ACTOR, input, emitPartial)
+      : await this.client.actor(DISCOVER_PROFILE_ACTOR).call(input, { waitSecs: 240 });
 
     const { items } = await this.listRunItems(run, "scrape");
 
@@ -433,6 +536,49 @@ export class ApifyScrapingProvider implements ScrapingProvider {
   }
 
   /**
+   * STAGE 1 of the two-stage niche pull (spec D12). A keyword VIDEO search matches caption text,
+   * which is why the Phase 0 measurement came back with a 99-view post and a clip transcribing as
+   * "okay bye bye love you" — those captions did contain the words. `searchSection: "/user"` asks
+   * the same actor for PEOPLE instead, and their handles then feed a profile scrape (stage 2),
+   * which is where the real posts, the free subtitles and the true own-median denominator live.
+   *
+   * Returns bare, de-duplicated handles ORDERED BY AUDIENCE SIZE, largest first. The ordering is
+   * not cosmetic: measured 2026-08-10 on "startup founder", the actor's own dataset order put an
+   * 18-follower account (median 11 views) first and the only relevant creator — @startupfounderceo,
+   * 2,306 fans, 28.3k views on the sampled post — third. A caller taking `handles[0]` therefore
+   * decoded a near-zero-traffic account. `authorMeta.fans` rides on every stage-1 item at zero
+   * extra cost, so "which person" is answerable for free; `searchSection` alone only answers
+   * "a person rather than a caption".
+   *
+   * An empty array when nobody matches: the caller must degrade visibly rather than silently
+   * fall through to a keyword search.
+   */
+  async searchCreators(query: string, limit = 10): Promise<string[]> {
+    const run = await this.client.actor(DISCOVER_VIDEO_ACTOR).call(
+      {
+        searchQueries: [query],
+        // THE point of stage 1 — people, not caption matches (spec D12).
+        searchSection: "/user",
+        maxProfilesPerQuery: limit,
+      },
+      { waitSecs: 240 },
+    );
+    if (!run?.defaultDatasetId) return [];
+
+    const { items } = await this.client.dataset(run.defaultDatasetId).listItems();
+    // Keep the LARGEST fan count seen per handle: one creator can appear on several items.
+    const fansByHandle = new Map<string, number>();
+    for (const it of items as Array<Record<string, unknown>>) {
+      const meta = it.authorMeta as { name?: unknown; fans?: unknown } | undefined;
+      const name = typeof meta?.name === "string" ? meta.name.replace(/^@/, "").trim() : "";
+      if (!name) continue;
+      const fans = typeof meta?.fans === "number" ? meta.fans : 0;
+      fansByHandle.set(name, Math.max(fansByHandle.get(name) ?? 0, fans));
+    }
+    return [...fansByHandle.entries()].sort((a, b) => b[1] - a[1]).map(([name]) => name);
+  }
+
+  /**
    * Pull a result set for Discover/Explore.
    * @param query a handle (profile mode) OR a niche/search phrase (search mode).
    * @param limit resultsPerPage cap.
@@ -448,7 +594,18 @@ export class ApifyScrapingProvider implements ScrapingProvider {
     const input =
       mode === "search"
         ? { searchQueries: [query], resultsPerPage: limit }
-        : { profiles: [query], resultsPerPage: limit };
+        : {
+            profiles: [query],
+            resultsPerPage: limit,
+            // STAGE 2 of D12. `excludePinnedPosts` keeps a pinned evergreen from skewing the
+            // creator's own median; `profileSorting:"latest"` is the FREE recency filter (the
+            // charged `videoSearchSorting`/`videoSearchDateFilter` are not used).
+            excludePinnedPosts: true,
+            profileSorting: "latest",
+            // FREE native track only. `DOWNLOAD_AND_TRANSCRIBE_*` and `TRANSCRIBE_ALL_VIDEOS`
+            // are AI-charged and must never appear here (§P.4). Measured 71% coverage.
+            downloadSubtitlesOptions: "DOWNLOAD_SUBTITLES",
+          };
 
     const run = await this.client
       .actor(DISCOVER_VIDEO_ACTOR)

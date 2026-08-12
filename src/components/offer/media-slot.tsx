@@ -132,11 +132,11 @@ export function MediaSlot({
             >
               <Icon size={kind === "video" ? 22 : 18} aria-hidden />
             </span>
-            <span className="text-[12.5px] font-medium leading-tight text-foreground-secondary">
+            <span className="text-[12px] font-medium leading-tight text-foreground-secondary">
               {label}
             </span>
             {hint && process.env.NODE_ENV !== "production" && (
-              <span className="font-mono text-[10.5px] uppercase tracking-[0.12em] text-foreground-muted/80">
+              <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-foreground-muted/80">
                 {hint} · dev-only
               </span>
             )}

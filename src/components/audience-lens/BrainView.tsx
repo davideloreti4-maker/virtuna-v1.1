@@ -465,7 +465,7 @@ export function BrainView({
               </span>
             </>
           ) : (
-            <span className="font-mono text-[9.5px] uppercase tracking-[0.1em] leading-none text-[var(--color-foreground-muted)]">
+            <span className="font-mono text-[10px] uppercase tracking-[0.1em] leading-none text-[var(--color-foreground-muted)]">
               Predicted cortex
             </span>
           )}
@@ -475,7 +475,7 @@ export function BrainView({
             A hook does not — "t 6.7s" over a one-moment stimulus is fake precision, the exact
             debug-panel smell the instant rebuild exists to kill. */}
         {mode === 'grounded' && (
-          <p className="pointer-events-none absolute right-3 top-3 font-mono text-[9.5px] uppercase tracking-[0.08em] leading-none text-[var(--color-foreground-muted)] tabular-nums">
+          <p className="pointer-events-none absolute right-3 top-3 font-mono text-[10px] uppercase tracking-[0.08em] leading-none text-[var(--color-foreground-muted)] tabular-nums">
             t {t.toFixed(1)}s · TR {TR_S}s
           </p>
         )}
@@ -529,7 +529,7 @@ export function BrainView({
           </div>
           {/* The unit names the QUANTITY (predicted BOLD); the poles beside it already carry the
               "vs rest" frame, so restating it here truncated the line at rail width. */}
-          <p className="min-w-0 truncate font-mono text-[8.5px] uppercase tracking-[0.1em] leading-none text-[var(--color-foreground-muted)]">
+          <p className="min-w-0 truncate font-mono text-[8px] uppercase tracking-[0.1em] leading-none text-[var(--color-foreground-muted)]">
             predicted BOLD
           </p>
         </div>
@@ -539,7 +539,7 @@ export function BrainView({
           HRF is real, the brain visibly trails the stimulus, and the figure says so out loud; it
           may move, it may not be deleted). It lived in the well's corner and truncated to "~5…" at
           rail width — a load-bearing claim that cannot be read is not being made. */}
-      <p className="mt-1.5 font-mono text-[8.5px] uppercase tracking-[0.1em] leading-none text-[var(--color-foreground-muted)]">
+      <p className="mt-1.5 font-mono text-[8px] uppercase tracking-[0.1em] leading-none text-[var(--color-foreground-muted)]">
         trails {stimulusLabel} by ~{HRF_PEAK_S}s · haemodynamic lag
       </p>
 
@@ -602,12 +602,12 @@ export function BrainView({
         <div className="flex min-w-0 flex-1 flex-col justify-center gap-1.5">
           {/* The concept landing word by word, on the scan clock — or the video's own name. */}
           {videoSrc ? (
-            <p className="line-clamp-2 text-[11.5px] leading-[1.4] text-[var(--color-foreground-secondary)]">
+            <p className="line-clamp-2 text-[12px] leading-[1.4] text-[var(--color-foreground-secondary)]">
               {conceptText}
             </p>
           ) : (
             <p
-              className="line-clamp-2 flex flex-wrap gap-x-1 text-[11.5px] leading-[1.4]"
+              className="line-clamp-2 flex flex-wrap gap-x-1 text-[12px] leading-[1.4]"
               data-testid="brain-stimulus-text"
             >
               {words.map((w, i) => (
@@ -680,14 +680,14 @@ export function BrainView({
       {/* The verdict — the room's voice reading the scan. The ONE serif voice-moment on the card,
           and the finding everything above is evidence for. It used to be clipped off the bottom.
           It leads on size and weight because it is the answer; everything above it is the working. */}
-      <p className="mt-2.5 font-serif text-[15.5px] leading-[1.35] tracking-[-0.01em] text-foreground">
+      <p className="mt-2.5 font-serif text-[16px] leading-[1.35] tracking-[-0.01em] text-foreground">
         {instant ? instantVerdict(readout, stopRatio) : verdictFor(stopRatio, response, mode)}
       </p>
 
       {/* Foot — the honesty line. It must survive every redesign. Mono caps, like the reference's
           "NOT MEASURED WATCH-TIME" clarifier under every claim (GAP-4): the disclaimer earns its
           credibility by being as prominent as the claim, not by hiding in lower-case fine print. */}
-      <p className="mt-2 font-mono text-[8.5px] uppercase tracking-[0.09em] leading-[1.4] text-[var(--color-foreground-muted)]">
+      <p className="mt-2 font-mono text-[8px] uppercase tracking-[0.09em] leading-[1.4] text-[var(--color-foreground-muted)]">
         {mode === 'grounded'
           ? 'modeled from your audience’s real retention · not a brain measurement'
           : 'a modeled response from your room’s real votes · not a brain measurement'}
@@ -785,7 +785,7 @@ function RoomReadoutPanel({
              reads as a product and the segment table this replaced read as a debug dump. Same move:
              a named metric, a figure you can read across the room, and a word for what it means. ── */}
       <div className="flex items-baseline justify-between gap-2">
-        <span className="text-[11.5px] text-[var(--color-foreground-secondary)]">
+        <span className="text-[12px] text-[var(--color-foreground-secondary)]">
           Attention hold{scoped ? ' · opening beat' : ''}
         </span>
         <Chip {...holdChip(hold.pct)} />
@@ -813,13 +813,13 @@ function RoomReadoutPanel({
             />
           </div>
           <div className="mt-[5px] flex items-baseline justify-between">
-            <span className="font-mono text-[8.5px] uppercase tracking-[0.08em] leading-none text-[var(--color-foreground-muted)]">
+            <span className="font-mono text-[8px] uppercase tracking-[0.08em] leading-none text-[var(--color-foreground-muted)]">
               worst of {scale.of}
             </span>
-            <span className="font-mono text-[8.5px] uppercase tracking-[0.08em] leading-none text-[var(--color-foreground-secondary)]">
+            <span className="font-mono text-[8px] uppercase tracking-[0.08em] leading-none text-[var(--color-foreground-secondary)]">
               #{scale.rank} of your {scale.of}
             </span>
-            <span className="font-mono text-[8.5px] uppercase tracking-[0.08em] leading-none text-[var(--color-foreground-muted)]">
+            <span className="font-mono text-[8px] uppercase tracking-[0.08em] leading-none text-[var(--color-foreground-muted)]">
               best of {scale.of}
             </span>
           </div>
@@ -865,7 +865,7 @@ function RoomReadoutPanel({
           nobody to win back, which hides the CTA, and the result must still be shown. */}
       {rewriteDelta && (
         <p
-          className="mt-2 border-t border-[var(--color-border)] pt-1.5 text-[10.5px] leading-[1.45] text-[var(--color-foreground-secondary)]"
+          className="mt-2 border-t border-[var(--color-border)] pt-1.5 text-[10px] leading-[1.45] text-[var(--color-foreground-secondary)]"
           data-testid="brain-rewrite-delta"
         >
           {rewriteDelta.prior.stop}/{rewriteDelta.prior.total} → {rewriteDelta.next.stop}/
@@ -874,7 +874,7 @@ function RoomReadoutPanel({
       )}
 
       {rewriteError && (
-        <p className="mt-2 text-[10.5px] leading-[1.45] text-[var(--color-foreground-muted)]">
+        <p className="mt-2 text-[10px] leading-[1.45] text-[var(--color-foreground-muted)]">
           {rewriteError}
         </p>
       )}

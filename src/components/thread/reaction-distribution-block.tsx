@@ -19,6 +19,7 @@
 
 import { useCallback, useState } from 'react';
 import { reportCredit402 } from '@/lib/billing/credit-wall';
+import { reportSession401, SessionExpiredRefusal } from '@/lib/auth/session-expired';
 import type { ReactionDistributionBlock } from '@/lib/tools/blocks';
 import { handoffsFor } from '@/lib/tools/chain-handoff';
 import { TrustBadge } from '@/components/audience/trust-badge';
@@ -93,6 +94,9 @@ export function ReactionDistributionBlockRenderer({
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Predict request failed' }));
+        // 401 first. The catch renders `err.message`, and the refusal's default message is a
+        // readable sentence — without this the creator reads the route's `Unauthorized` slug.
+        if (reportSession401(res.status)) throw new SessionExpiredRefusal();
         if (reportCredit402(res.status, err)) {
           // The wall dialog is up (CreditWallListener); surface the human sentence, not the slug.
           throw new Error(err.message);
@@ -117,7 +121,7 @@ export function ReactionDistributionBlockRenderer({
             The model tag used to live here too; §0.5.1 is explicit that provenance does NOT go in
             the eyebrow, so it is demoted onto the disclosure line below (§0.5.6). */}
         <div className="flex items-center justify-between gap-2">
-          <span className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.05em] text-foreground-muted">
+          <span className="flex items-center gap-1.5 text-caption font-medium uppercase tracking-[0.05em] text-foreground-muted">
             {band && (
               <span
                 className="h-[6px] w-[6px] rounded-full"
@@ -134,7 +138,7 @@ export function ReactionDistributionBlockRenderer({
         {subjectKind === 'person' && read && (
           <div className="flex flex-col gap-2">
             {/* The hero — a sentence, at the contract's 17px (it shipped at 15px). */}
-            <h3 className="text-[17px] font-semibold leading-snug tracking-[-0.01em] text-foreground">
+            <h3 className="text-subhead font-semibold leading-snug tracking-[-0.01em] text-foreground">
               {audienceName} is likely to be {read.verdict}
             </h3>
             <p className="text-sm text-foreground-secondary leading-relaxed">{read.reasoning}</p>
@@ -144,7 +148,7 @@ export function ReactionDistributionBlockRenderer({
             {/* Provenance, demoted out of the eyebrow. A person read has no drill to hang it on
                 (one human has no distribution to disclose), so it lands here as the footnote it
                 is — never a headline (§0.5.6). */}
-            <p className="text-[12.5px] text-foreground-muted/70">{modelLabel}</p>
+            <p className="text-label text-foreground-muted/70">{modelLabel}</p>
           </div>
         )}
 
@@ -178,7 +182,7 @@ export function ReactionDistributionBlockRenderer({
               ) : (
                 // Honest degrade — no carried stimulus (image/video simulate, or a block persisted
                 // before `stimulus` existed) ⇒ the band row without a Lens door onto nothing.
-                <div className="flex items-center gap-2.5 text-[13px]">
+                <div className="flex items-center gap-2.5 text-body">
                   <span
                     className="inline-flex shrink-0 items-center gap-1.5 font-semibold"
                     style={{ color: BAND_COLOR[band] }}
@@ -219,7 +223,7 @@ export function ReactionDistributionBlockRenderer({
                 <button
                   type="button"
                   onClick={() => setDrillOpen((v) => !v)}
-                  className="flex items-center gap-1.5 self-start text-[12.5px] text-foreground-muted transition-colors hover:text-foreground-secondary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10"
+                  className="flex items-center gap-1.5 self-start text-label text-foreground-muted transition-colors hover:text-foreground-secondary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring)]"
                   aria-expanded={drillOpen}
                 >
                   <CaretToggle open={drillOpen} size={12} />
@@ -272,7 +276,7 @@ export function ReactionDistributionBlockRenderer({
             onChange={(e) => setScenario(e.target.value)}
             placeholder="Describe an outcome to predict…"
             rows={2}
-            className="w-full rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-sm text-foreground placeholder:text-foreground-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10"
+            className="w-full rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-sm text-foreground placeholder:text-foreground-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring)]"
             aria-label="Scenario to predict"
           />
           {predictError && (

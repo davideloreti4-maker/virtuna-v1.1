@@ -25,7 +25,10 @@ import { useBoardStore } from "@/stores/board-store";
 import { queryKeys } from "@/lib/queries/query-keys";
 import type { PredictionResult } from "@/lib/engine/types";
 import type { StageEvent } from "@/lib/engine/events";
+import { STREAM_TIMEOUT_ERROR } from "@/lib/engine/stream-errors";
+import { resolveRunError } from "@/lib/net/run-failure";
 import { isCreditQuotaExceeded, type CreditQuotaExceeded } from "@/lib/billing/quota-error";
+import { reportSession401, SessionExpiredRefusal } from "@/lib/auth/session-expired";
 import {
   PANEL_IDS,
   type PanelId,
@@ -342,6 +345,15 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: "Analysis failed" }));
 
+        // 401 FIRST — the route refuses for a dead session ABOVE its own credit gate
+        // (api/analyze/route.ts:400, before getCreditQuotaVerdict), so nothing was metered and the
+        // 402 payload below cannot exist on this response. Throwing the refusal rather than
+        // returning lets `resolveRunError` in onError classify the cause; without it the run died
+        // into the route's `{ error: "Unauthorized" }` slug and rendered the generic "the
+        // generation or SIM-1 pass dropped out" — a description of a failure that did not happen,
+        // on the priciest action in the product.
+        if (reportSession401(res.status)) throw new SessionExpiredRefusal();
+
         // 402 = the allowance is spent. Not a failure — a paywall. Keep the payload (tier,
         // used, limit, inTrial) so the UI can say which wall was hit and what to do about it;
         // throwing the bare slug is how `credit_quota_exceeded` ended up on screen.
@@ -414,7 +426,10 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
       if (analysisIdRef.current && phaseRef.current !== "reconnecting") {
         reconnect();
       } else {
-        setError(err.message);
+        // Cause first (lib/net/run-failure.ts): an offline drop must not read as an engine
+        // failure. `?? err.message` because the abort case is already handled above, so a null
+        // here would only mean "nothing to say", and this branch has to say something.
+        setError(resolveRunError(err, "Analysis stream error") ?? err.message);
         setPhase("error");
       }
     },
@@ -466,7 +481,7 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
     if (phase !== "polling") return;
     const t = setTimeout(() => {
       if (phaseRef.current === "polling") {
-        setError("Stream timed out — analysis still running");
+        setError(STREAM_TIMEOUT_ERROR);
         setPhase("error");
       }
     }, POLLING_CEILING_MS);

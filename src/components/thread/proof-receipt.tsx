@@ -58,7 +58,7 @@ function formatArchetype(slug: string | null): string | null {
 function TemplatedHook({ text }: { text: string }) {
   const parts = text.split(/(\[[^\]]+\])/g).filter((p) => p.length > 0);
   return (
-    <p className="text-[13.5px] font-medium leading-snug text-foreground-secondary">
+    <p className="text-reading font-medium leading-snug text-foreground-secondary">
       {parts.map((p, i) =>
         /^\[[^\]]+\]$/.test(p) ? (
           <span
@@ -124,11 +124,11 @@ export function ProofReceipt({
       {/* Content column */}
       <span className="flex min-w-0 flex-1 flex-col gap-1">
         <span className="flex items-center justify-between gap-2">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.05em] text-foreground-muted">
+          <span className="text-caption font-semibold uppercase tracking-[0.05em] text-foreground-muted">
             {eyebrow}
           </span>
           {archetype && (
-            <span className="shrink-0 rounded-full border border-white/[0.06] bg-white/[0.02] px-2 py-0.5 text-[11px] text-foreground-secondary">
+            <span className="shrink-0 rounded-full border border-white/[0.06] bg-white/[0.02] px-2 py-0.5 text-caption text-foreground-secondary">
               {archetype}
             </span>
           )}
@@ -136,7 +136,7 @@ export function ProofReceipt({
 
         {proof.hookTemplate && <TemplatedHook text={proof.hookTemplate} />}
 
-        <span className="flex items-center gap-1.5 text-[12px] leading-snug text-foreground-muted">
+        <span className="flex items-center gap-1.5 text-label leading-snug text-foreground-muted">
           {fit && (
             <span className="shrink-0" aria-hidden="true">{fit.glyph}</span>
           )}
@@ -146,16 +146,16 @@ export function ProofReceipt({
         {/* Stat pills — colored multiplier (a real outlier is a positive signal) + views. */}
         <span className="flex flex-wrap items-center gap-1.5">
           {mult && (
-            <span className="inline-flex items-center gap-1 rounded-sm bg-[var(--color-positive)]/[0.14] px-1.5 py-0.5 text-[12px] font-semibold tabular-nums text-[var(--color-positive)]">
+            <span className="inline-flex items-center gap-1 rounded-sm bg-[var(--color-positive)]/[0.14] px-1.5 py-0.5 text-label font-semibold tabular-nums text-[var(--color-positive)]">
               <TrendUp size={12} weight="bold" aria-hidden="true" />
               {mult}
             </span>
           )}
           {proof.baselineLabel && (
-            <span className="text-[11px] text-foreground-muted">{proof.baselineLabel}</span>
+            <span className="text-caption text-foreground-muted">{proof.baselineLabel}</span>
           )}
           {views && (
-            <span className="inline-flex items-center gap-1 rounded-sm bg-white/[0.05] px-1.5 py-0.5 text-[12px] tabular-nums text-foreground-secondary">
+            <span className="inline-flex items-center gap-1 rounded-sm bg-white/[0.05] px-1.5 py-0.5 text-label tabular-nums text-foreground-secondary">
               <Eye size={12} weight="regular" aria-hidden="true" />
               {views}
             </span>
@@ -207,14 +207,13 @@ export function ProofReceipt({
  * Deliberately NOT rendered on ungrounded runs (`grounded: false`): with retrieval off there is
  * no absence to explain, and the note would sit on 100% of cards forever as pure noise.
  *
- * Dashed border + no thumbnail: same slot, same radius token, lighter state. It must not weigh
- * as much as a real receipt — the card that HAS a source should still win the glance.
+ * De-boxed 2026-08-02 (was a dashed bordered box): a stated absence should read as a footnote,
+ * not as another object competing with the real receipt beside it. One muted caption line —
+ * the card that HAS a source should still win the glance.
  */
 export function NoSourceNote({ className }: { className?: string }) {
   return (
-    <p
-      className={`rounded-lg border border-dashed border-white/[0.06] bg-white/[0.01] px-2.5 py-2 text-[12px] leading-snug text-foreground-muted${className ? ` ${className}` : ''}`}
-    >
+    <p className={`text-label leading-snug text-foreground-muted${className ? ` ${className}` : ''}`}>
       Original — not drawn from a retrieved video.
     </p>
   );
@@ -234,7 +233,7 @@ export function ProofLine({ proof, className }: { proof: HookProof; className?: 
   const mult = fmtMultiplier(proof.multiplier);
   return (
     <span
-      className={`inline-flex min-w-0 items-center gap-1.5 text-[11px] leading-none text-foreground-muted${className ? ` ${className}` : ''}`}
+      className={`inline-flex min-w-0 items-center gap-1.5 text-caption leading-none text-foreground-muted${className ? ` ${className}` : ''}`}
       title={[fit?.label, mult ? `${mult} outlier` : null].filter(Boolean).join(' — ') || undefined}
     >
       {fit && <span className="shrink-0" aria-hidden="true">{fit.glyph}</span>}

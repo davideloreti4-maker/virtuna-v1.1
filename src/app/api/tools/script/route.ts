@@ -40,6 +40,7 @@ import { createClient } from "@/lib/supabase/server";
 import { maybeMockSkillRun } from "@/lib/tools/mock/mock-sse";
 import { createOpenThreadLazy } from "@/lib/threads/threads";
 import { insertMessage } from "@/lib/threads/messages";
+import { runHeaderBlock } from "@/lib/tools/run-header";
 import { runScriptPipeline } from "@/lib/tools/runners/script-runner";
 import { kcStamp } from "@/lib/kc/kc-stamp";
 import { getQwenClient, QWEN_REASONING_MODEL } from "@/lib/engine/qwen/client";
@@ -93,7 +94,7 @@ export async function POST(request: Request): Promise<Response> {
   if (limited) return limited;
 
   // ── Credit gate (BILLING) — priced admission BEFORE any engine spend ─────────
-  const { refusal, verdict: creditVerdict } = await creditGate(supabase, user.id, "script");
+  const { refusal, verdict: creditVerdict } = await creditGate(supabase, user, "script");
   if (refusal) return refusal;
 
   // ── (2) Parse + validate body ─────────────────────────────────────────────
@@ -174,6 +175,23 @@ export async function POST(request: Request): Promise<Response> {
   // The runner gates this to undefined for General/no-audience (no-op, regression gate).
   const effectiveIntent = parseIntentLens(body.intent) ?? goalIntentToLens(activeAudience.goal_intent);
 
+  // ── (5c) Persist the USER turn (Stage A, N-8) ─────────────────────────────
+  // The "Write a script from #1" chip used to persist ONLY its assistant message; on
+  // reload the grouping folded the script into the PREVIOUS turn — one merged turn, the
+  // script's intro replacing the hooks', the chip click gone from history (the measured
+  // N-8). The action is now a real user row, exactly as the chat route persists an ask.
+  const userAction =
+    rawAsk.trim() ||
+    (rawAnchor
+      ? `Write a script from "${rawAnchor.length > 80 ? `${rawAnchor.slice(0, 80).trimEnd()}…` : rawAnchor}"`
+      : "Write a script");
+  await insertMessage(
+    openThread.id,
+    "user",
+    [{ type: "markdown", props: { text: userAction } }],
+    kcStamp().kcGenVersion,
+  );
+
   // ── (6) SSE stream: run pipeline + emit events ────────────────────────────
   const encoder = new TextEncoder();
 
@@ -202,6 +220,11 @@ export async function POST(request: Request): Promise<Response> {
           intent: effectiveIntent,
           allowScrape,
           onStage: (name, status) => send("stage", { name, status }),
+          // EVIDENCE frame — the real artifacts this run touched (the proven outliers it is
+          // grounded on / the post it resolved), streamed while the pipeline is still working so
+          // the loading spine shows the WORK, not just the step name. Additive: a client that
+          // does not parse `evidence` is unaffected.
+          onEvidence: (evidence) => send("evidence", evidence),
           // FLYWHEEL-02: pin the predicted vector for this run (text skill → no analysis).
           pin: { supabase, analysisId: null },
         });
@@ -255,7 +278,21 @@ export async function POST(request: Request): Promise<Response> {
 
         // ── PERSIST: blocks + KC_GEN_VERSION provenance stamp (D-10) ─────────
         if (blocks.length > 0) {
-          await insertMessage(openThread.id, "assistant", blocks, kcStamp().kcGenVersion);
+          await insertMessage(
+            openThread.id,
+            "assistant",
+            [
+              runHeaderBlock({
+                skill: "script",
+                audienceLabel: activeAudience?.name,
+                platform,
+                // The input hook the script was anchored on — the intro cites it verbatim.
+                hookLine: rawAnchor,
+              }),
+              ...blocks,
+            ],
+            kcStamp().kcGenVersion,
+          );
         }
 
         // ── DONE (S2): emit BEFORE the follow-up turn ────────────────────────

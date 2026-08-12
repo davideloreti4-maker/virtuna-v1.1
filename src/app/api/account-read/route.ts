@@ -8,6 +8,9 @@
  *
  * SSE event names (10-UI-SPEC §"Account Read card"):
  *   event: status   — { message: string } — "Reading your account…"
+ *   event: stage    — { name: string, status: 'active'|'done' } — the two real scrape phases (4a)
+ *   event: evidence — RunEvidence — the profile the moment it lands (the FIRST kind:'profile'
+ *                     producer in the app), then the post covers as a filmstrip (4a)
  *   event: fallback — { reason: 'thin', message: string } — honest thin-history (SELF-02, warning-toned)
  *   event: error    — { message: string } — scrape/network failure, generic copy (never echoes the handle)
  *   event: done     — { block: AccountReadBlock } — the composed account-read block (thread persists it)
@@ -22,11 +25,13 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
+import { billUsage, creditGate } from "@/lib/billing/credit-gate";
 import { listAudiences } from "@/lib/audience/audience-repo";
 import { listReconciliations } from "@/lib/flywheel/reconciliation-repo";
 import { generateAccountRead } from "@/lib/account-read/account-read";
 import { createOpenThreadLazy } from "@/lib/threads/threads";
 import { insertMessage } from "@/lib/threads/messages";
+import { runHeaderBlock } from "@/lib/tools/run-header";
 import { kcStamp } from "@/lib/kc/kc-stamp";
 import type { AccountReadBlock } from "@/lib/tools/blocks";
 
@@ -56,6 +61,21 @@ export async function POST(request: Request): Promise<Response> {
   if (!user) {
     return Response.json({ error: "unauthorized" }, { status: 401 });
   }
+
+  // ── (1b) Credit gate (BILLING) — priced admission BEFORE any engine spend ───
+  // This route was ungated and unmetered until 2026-07-29: it ran TWO Apify scrapes (1-3 min,
+  // hence maxDuration=300) for free, and `account` was not even a key in CREDIT_COSTS.
+  //
+  // It sits AFTER the auth gate, and that order is load-bearing. `creditGate` enforces for
+  // anonymous users regardless of BILLING_ENFORCE_QUOTA (`enforced = isAnonymous || …`), so a
+  // route that gated before checking auth would start refusing anonymous sessions the moment it
+  // deployed, flag or no flag. The 401 above means no anonymous session ever reaches this line.
+  //
+  // The refusal is an HTTP 402 JSON body, NOT an SSE frame — it must be returned before the
+  // stream opens, because the client reads `res.ok` to raise the credit wall (see
+  // use-account-read-stream.ts) and a 200 carrying a refusal event would sail straight past it.
+  const { refusal, verdict: creditVerdict } = await creditGate(supabase, user, "account");
+  if (refusal) return refusal;
 
   // ── Optional persist flag (in-thread chat field ONLY) ───────────────────────
   // The account TOOL POSTs no body → persist stays false → the route is bodyless-equivalent and
@@ -131,6 +151,11 @@ export async function POST(request: Request): Promise<Response> {
 
         const result = await generateAccountRead(ownHandle, user.id, {
           reconciliations,
+          // 4a — the ~30s of Promise.all held the avatar, the follower count and 30 covers behind
+          // one static line. Both halves now report as they land, in the same idiom as the five
+          // skill routes.
+          onStage: (name, status) => send("stage", { name, status }),
+          onEvidence: (evidence) => send("evidence", evidence),
         });
 
         // ── Scrape failure — generic copy, never echo the handle (T-10-13) ──────
@@ -171,11 +196,28 @@ export async function POST(request: Request): Promise<Response> {
         if (persist) {
           try {
             const openThread = await createOpenThreadLazy(user.id);
-            await insertMessage(openThread.id, "assistant", [block], kcStamp().kcGenVersion);
+            await insertMessage(
+              openThread.id,
+              "assistant",
+              [runHeaderBlock({ skill: "account" }), block],
+              kcStamp().kcGenVersion,
+            );
           } catch {
             /* non-fatal — the streamed block still reaches the client */
           }
         }
+
+        // ── BILL — on delivery only ─────────────────────────────────────────────
+        // Deliberately the LAST thing before `done`, so it is unreachable from the three exits
+        // above that produce no Read: no personal audience on file (no scrape ran at all), thin
+        // history (the scrape ran but the result is a refusal to fabricate), and scrape failure.
+        // Each of those `return`s before this line. Charging for them would bill a creator for
+        // being told we have nothing to say.
+        //
+        // A `billUsage` throw cannot reach the creator either — it swallows internally and logs
+        // `usage_bill_skipped`, so a missing service key degrades to free-of-record rather than
+        // turning a delivered Read into the generic error below.
+        await billUsage({ userId: user.id, action: "account", tier: creditVerdict.tier });
 
         send("done", { block });
       } catch {

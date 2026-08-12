@@ -32,7 +32,7 @@ import { AmbientOverviewRail } from "./AmbientOverviewRail";
 import { audienceToMeta } from "@/lib/surfaces/ambient-v2-audience-meta";
 import type { Audience } from "@/lib/audience/audience-types";
 import type { AmbientCardDescriptor } from "@/components/app/home/use-ambient-focus";
-import type { SimSealMap } from "@/lib/threads/sim-seals";
+import type { WireSimSealMap } from "@/lib/onboarding/verdict-seal";
 
 // Local tone mirror — the v2 surfaces keep their palette inline for pixel fidelity to the round-4
 // target, so the bar that hangs them matches by using the same values (not a second system).
@@ -56,7 +56,7 @@ function RoomGlyph() {
   );
 }
 
-function Caret({ up }: { up: boolean }) {
+function Caret({ up, bright = false }: { up: boolean; bright?: boolean }) {
   return (
     <svg
       width="12"
@@ -64,7 +64,7 @@ function Caret({ up }: { up: boolean }) {
       viewBox="0 0 12 12"
       aria-hidden
       className={`flex-none transition-transform duration-200 ${up ? "rotate-180" : ""}`}
-      style={{ color: TONE.faint }}
+      style={{ color: bright ? TONE.dim : TONE.faint }}
     >
       <path
         d="M2.5 4.5L6 8l3.5-3.5"
@@ -86,17 +86,28 @@ export function AmbientOverviewSheet({
   open,
   onOpenChange,
   focusVideo,
+  onTestVariant,
+  attached = false,
 }: {
   audience: Audience;
   descriptors: AmbientCardDescriptor[];
   reducedMotion?: boolean;
-  persistedSeals?: SimSealMap;
+  persistedSeals?: WireSimSealMap;
   open: boolean;
   onOpenChange: (next: boolean) => void;
+  /** Banner placement (2026-07-31, owner call): the bar no longer floats in the mobile top row —
+   *  it is the STRIP fused to the composer's top edge, the way Claude hangs its usage banner off
+   *  the bottom of theirs. Attached, the trigger drops its own box (background, border, radius):
+   *  the plate around it in `composer.tsx` is the surface, and a second card inside a card reads
+   *  as two things stacked instead of one dock. */
+  attached?: boolean;
   /** Passed straight through to the rail — a Test card's "Simulate with your audience →" request.
    *  The composer also opens the sheet when it sets one, so the phone lands on the same drill the
    *  desktop rail opens in place. */
   focusVideo?: { id: string; nonce: number } | null;
+  /** The ＋ door, straight through to the rail. The phone gets the same door the desktop board has —
+   *  the flag used to swap only the ≥xl rail and left one product with two rooms. */
+  onTestVariant?: () => void;
 }) {
   const meta = audienceToMeta(audience);
 
@@ -134,36 +145,48 @@ export function AmbientOverviewSheet({
         disabled={open}
         aria-hidden={open}
         tabIndex={open ? -1 : undefined}
-        className="flex w-full items-center gap-2.5 rounded-[12px] px-3 py-2.5 text-left transition-colors"
+        className={
+          attached
+            ? // Taller and legible on purpose (2026-07-31, owner call): at 7px of padding and 62%
+              // cream this read as a caption stuck to the composer, not the door into the room.
+              "flex w-full items-center gap-2.5 px-3 py-[11px] text-left transition-colors"
+            : "flex w-full items-center gap-2.5 rounded-[12px] px-3 py-2.5 text-left transition-colors"
+        }
         style={{
-          background: "#181817",
-          border: `1px solid ${TONE.border}`,
+          background: attached ? "transparent" : "#181817",
+          border: attached ? "none" : `1px solid ${TONE.border}`,
           color: TONE.cream,
           fontFamily: "var(--font-sans, Inter, system-ui, sans-serif)",
         }}
       >
         <RoomGlyph />
-        <span className="min-w-0 truncate text-[15px] font-semibold tracking-[-0.015em]">
+        <span
+          className={
+            attached
+              ? "min-w-0 truncate text-[14px] font-medium tracking-[-0.012em]"
+              : "min-w-0 truncate text-[15px] font-semibold tracking-[-0.015em]"
+          }
+        >
           {meta.name}
         </span>
         <span
           className="inline-flex flex-none items-center gap-1.5 rounded-full px-2 py-[3px] font-mono text-[10px] uppercase tracking-[0.08em]"
-          style={{ color: TONE.faint, border: `1px solid ${TONE.hair}` }}
+          style={{ color: attached ? TONE.dim : TONE.faint, border: `1px solid ${TONE.hair}` }}
         >
           <span className="inline-block h-[5px] w-[5px] rounded-full" style={{ background: TONE.dim }} />
           {meta.calibrationBadge}
         </span>
         {count > 0 ? (
           <span
-            className="ml-auto flex-none font-mono text-[10.5px] uppercase tracking-[0.06em]"
-            style={{ color: TONE.faint }}
+            className="ml-auto flex-none font-mono text-[10px] uppercase tracking-[0.06em]"
+            style={{ color: attached ? TONE.dim : TONE.faint }}
           >
             {count} ranked
           </span>
         ) : (
           <span className="ml-auto" />
         )}
-        <Caret up={open} />
+        <Caret up={open} bright={attached} />
       </button>
 
       {/* `open` only ever flips from a client tap (the composer seeds it false), so the portal never
@@ -198,6 +221,7 @@ export function AmbientOverviewSheet({
                 persistedSeals={persistedSeals}
                 presentation="sheet"
                 focusVideo={focusVideo}
+                onTestVariant={onTestVariant}
                 // The Overview header's caret is the way out (the bar that opened it is now covered).
                 onDismiss={() => onOpenChange(false)}
               />

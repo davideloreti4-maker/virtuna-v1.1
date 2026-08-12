@@ -1,0 +1,1405 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Insights — role-shaped tabs (rev 4)</title>
+<!--
+  Ambient Audience v2 · detail drill — REV 4, role-shaped tabs.
+  Answers the rev-3 rejection (docs/HANDOFF-2026-08-01-insights-three-tab.md §4) on all four counts:
+    1. ONE accent. Coral #FF6363, loss only. Cream #ece7de at full strength IS the positive state.
+       Nothing else was added — "good" reads through weight, size and position.
+    2. Matte. No gradient, no glass, no glow, no inset-shine, no shadow. Verified by walking every
+       element in both rails and reading COMPUTED style (backgroundImage / boxShadow /
+       backdropFilter): zero violations. Only two hues are ever painted — cream at eight alphas
+       and coral — which the same sweep confirms.
+    3. Connected surface. Sections are separated by a hairline + vertical rhythm, exactly like the
+       shipped `Unlock` atom. There is no `.card` class in this file.
+    4. Five chart forms total, reused across six panels: the line · the bar-row · the segmented
+       stack · the terrain · the quote.
+  And it fixes what all three revs got wrong (§1): the tabs hold invariant ROLES and the FIGURES
+  swap per StimulusKind. Video and text are inverse instruments, not one screen with empty slots.
+-->
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+
+  :root {
+    /* Not a new palette — this is `TONE` from AmbientDetail.tsx:85, verbatim. */
+    --ground: #1f1f1e;   /* --charcoal-app, the thread page behind the rail */
+    --rail:   #181817;   /* the connected rail surface */
+    --well:   #262624;   /* recessed, for chips + filmstrip cells */
+    --cream:  #ece7de;
+    --dim:    rgba(236,231,222,.62);
+    --faint:  rgba(236,231,222,.38);
+    --ghost:  rgba(236,231,222,.16);
+    --trace:  rgba(236,231,222,.08);
+    --coral:  #FF6363;   /* loss only */
+    --border: rgba(255,255,255,.06);
+    --hair:   rgba(255,255,255,.08);
+
+    --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+    /* voice moments only — the shipped face is Newsreader */
+    --serif: ui-serif, "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  }
+
+  /* Deliberately single-theme: this mocks a dark-only product surface, so it commits to the
+     app's own ground in either OS theme rather than inventing a light identity the app has never had. */
+  html { color-scheme: dark; background: var(--ground); }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--cream);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  /* ── page chrome (mockup scaffolding only — not part of the product surface) ─────────────── */
+
+  .page { max-width: 1180px; margin: 0 auto; padding: 40px 28px 72px; }
+
+  .masthead { max-width: 760px; }
+  .masthead .eyebrow {
+    font: 500 10px/1 var(--mono); text-transform: uppercase; letter-spacing: .16em;
+    color: var(--faint);
+  }
+  .masthead h1 {
+    margin: 14px 0 0; font-size: 25px; font-weight: 400; letter-spacing: -.018em;
+    line-height: 1.25; text-wrap: balance; color: var(--cream);
+  }
+  .masthead p { margin: 12px 0 0; color: var(--dim); font-size: 14px; line-height: 1.6; max-width: 62ch; }
+  .masthead .loss { color: var(--coral); }
+
+  .stage {
+    margin-top: 38px; display: flex; flex-wrap: wrap; gap: 34px; align-items: flex-start;
+  }
+  .slot { display: flex; flex-direction: column; gap: 12px; }
+  .slot > figcaption {
+    font: 500 10px/1.4 var(--mono); text-transform: uppercase; letter-spacing: .14em;
+    color: var(--faint); display: flex; align-items: baseline; gap: 10px;
+  }
+  .slot > figcaption b { color: var(--dim); font-weight: 500; letter-spacing: .1em; }
+  .slot > figcaption span { text-transform: none; letter-spacing: 0; font-family: var(--sans); font-size: 11.5px; color: var(--ghost); }
+
+  /* ── the rail — mirrors AmbientDetail.tsx:329 exactly ───────────────────────────────────── */
+
+  .rail {
+    width: 440px; height: 858px;
+    display: flex; flex-direction: column;
+    background: var(--rail);
+    border-left: 1px solid var(--border);   /* one left hairline. no rounding, no full border, no shadow */
+    color: var(--cream);
+  }
+
+  .railhead { padding: 22px 22px 0; flex: none; }
+
+  .navrow { display: flex; align-items: baseline; justify-content: space-between; }
+  .back {
+    background: none; border: 0; padding: 0; cursor: pointer;
+    font: 400 13px var(--sans); color: var(--faint); transition: color .14s;
+  }
+  .back:hover, .back:focus-visible { color: var(--cream); }
+  .pager { font: 400 12px var(--mono); letter-spacing: .06em; color: var(--faint); }
+
+  /* the stimulus — persistent identity, so the drill never loses what it is reading */
+  .stim { margin-top: 16px; display: flex; gap: 12px; align-items: flex-start; }
+  .stim-thumb {
+    flex: none; width: 34px; height: 46px; border-radius: 4px;
+    background: var(--well); border: 1px solid var(--border);
+    display: grid; place-items: center;
+    font: 500 8px var(--mono); letter-spacing: .08em; color: var(--ghost);
+  }
+  .stim-body { min-width: 0; flex: 1; }
+  .stim-text {
+    font-size: 13px; line-height: 1.45; color: var(--dim);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .readout {
+    margin-top: 7px; display: flex; align-items: baseline; gap: 9px;
+    font: 500 11px var(--mono); letter-spacing: .04em; font-variant-numeric: tabular-nums;
+    color: var(--cream);
+  }
+  .readout em { font-style: normal; color: var(--faint); font-weight: 400; letter-spacing: .02em; }
+  .readout .sep { color: var(--trace); }
+
+  .tabs { margin-top: 18px; display: flex; gap: 22px; border-bottom: 1px solid var(--border); }
+  .tab {
+    position: relative; background: none; border: 0; padding: 0 0 10px; cursor: pointer;
+    font: 400 14px var(--sans); color: var(--faint); transition: color .14s;
+  }
+  .tab:hover { color: var(--dim); }
+  .tab[aria-selected="true"] { color: var(--cream); }
+  .tab[aria-selected="true"]::after {
+    content: ""; position: absolute; inset-inline: 0; bottom: -1px; height: 2px;
+    border-radius: 999px; background: var(--cream);
+  }
+
+  .railbody { flex: 1; min-height: 0; overflow-y: auto; padding: 0 22px 26px; scrollbar-width: thin; }
+  .railbody::-webkit-scrollbar { width: 6px; }
+  .railbody::-webkit-scrollbar-thumb { background: var(--trace); border-radius: 3px; }
+  .panel[hidden] { display: none; }
+
+  /* ── section grammar — hairline + rhythm. There is no card in this file. ─────────────────── */
+
+  .sec { margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--border); }
+  .sec:first-child { margin-top: 22px; padding-top: 0; border-top: 0; }
+
+  .kick {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+    font: 400 10px var(--mono); text-transform: uppercase; letter-spacing: .15em;
+    color: rgba(236,231,222,.32);
+  }
+  .kick span:last-child { letter-spacing: .1em; color: rgba(236,231,222,.24); }
+
+  .read { margin: 12px 0 0; font-size: 13px; line-height: 1.58; color: var(--dim); }
+  .read .loss { color: var(--coral); }
+  .read b { font-weight: 500; color: var(--cream); }
+
+  .note {
+    margin: 10px 0 0; font: 400 10.5px/1.5 var(--mono); letter-spacing: .02em; color: rgba(236,231,222,.28);
+  }
+
+  /* ── FORM 1 · the hero figure — a number and its position in your own catalogue ──────────── */
+
+  .hero-n { margin-top: 12px; display: flex; align-items: baseline; gap: 8px; }
+  .hero-n b {
+    font-size: 40px; font-weight: 300; letter-spacing: -.025em; line-height: .95;
+    font-variant-numeric: tabular-nums; color: var(--cream);
+  }
+  .hero-n i { font-style: normal; font-size: 13px; color: var(--faint); }
+
+  /* the catalogue strip — your last N posts as a 1-D distribution, this one marked in place.
+     Below-median reads coral (it is a loss); at-or-above reads cream. Position does the rest. */
+  .strip { margin-top: 18px; }
+  .strip-plot { position: relative; height: 38px; }
+  .strip-axis { position: absolute; inset-inline: 0; bottom: 0; height: 1px; background: var(--trace); }
+  .strip-tick { position: absolute; bottom: 1px; width: 1px; background: var(--ghost); }
+  .strip-med { position: absolute; bottom: 0; width: 1px; height: 30px; background: rgba(236,231,222,.30); }
+  .strip-mark { position: absolute; bottom: 0; width: 1px; height: 38px; background: var(--cream); }
+  .strip-mark.loss { background: var(--coral); }
+  .strip-dot {
+    position: absolute; width: 7px; height: 7px; border-radius: 50%;
+    background: var(--cream); transform: translate(-3px, -3.5px);
+  }
+  .strip-dot.loss { background: var(--coral); }
+  .strip-legend {
+    margin-top: 9px; display: flex; justify-content: space-between;
+    font: 400 10px var(--mono); letter-spacing: .04em; color: var(--faint);
+    font-variant-numeric: tabular-nums;
+  }
+  .strip-legend b { color: var(--dim); font-weight: 400; }
+
+  /* ── FORM 2 · the bar-row — reasons, intents, pools, districts. One form, everywhere. ────── */
+
+  .rows { margin-top: 14px; }
+  .row {
+    display: grid; grid-template-columns: 1fr 116px 52px; align-items: center; gap: 12px;
+    padding: 7px 0;
+  }
+  .row-l { font-size: 12.5px; color: var(--dim); }
+  .row-t { position: relative; height: 3px; border-radius: 2px; background: var(--trace); overflow: hidden; }
+  .row-t i { position: absolute; inset: 0 auto 0 0; border-radius: 2px; background: rgba(236,231,222,.72); }
+  .row-n {
+    text-align: right; font: 500 12px var(--mono); font-variant-numeric: tabular-nums; color: var(--cream);
+  }
+  /* loss applies to both the static row and the expandable reason row — one rule, both forms */
+  .row.loss .row-t i, .rowx.loss .row-t i { background: var(--coral); }
+  .row.loss .row-n, .rowx.loss .row-n { color: var(--coral); }
+
+  /* delta variant — the fill runs OUT from the median tick, so a negative reads as a real
+     direction instead of a bar length that means nothing. Still one accent: below runs coral. */
+  .row-t.delta { overflow: visible; }
+  .row-t.delta u { position: absolute; top: -3.5px; bottom: -3.5px; width: 1px; background: rgba(236,231,222,.45); text-decoration: none; z-index: 2; }
+  .row-t.delta i { z-index: 1; }
+
+  /* expandable reason row — the text instrument. Clicking a reason opens the people behind it. */
+  .rowx { border: 0; background: none; width: 100%; padding: 7px 0; cursor: pointer; text-align: left;
+          display: grid; grid-template-columns: 1fr 116px 52px; align-items: center; gap: 12px; }
+  .rowx:hover .row-l, .rowx[aria-expanded="true"] .row-l { color: var(--cream); }
+  .rowx .row-l { transition: color .14s; display: flex; align-items: center; gap: 7px; }
+  .rowx .row-l::before {
+    content: "›"; display: inline-block; font: 400 11px var(--mono); color: var(--ghost);
+    transition: transform .18s, color .14s;
+  }
+  .rowx[aria-expanded="true"] .row-l::before { transform: rotate(90deg); color: var(--faint); }
+  .rowx-body { padding: 2px 0 12px 14px; border-left: 1px solid var(--border); margin-left: 3px; }
+  .rowx-body[hidden] { display: none; }
+
+  /* ── FORM 3 · the segmented stack — one bar replaces a donut ─────────────────────────────── */
+
+  .stack { margin-top: 14px; display: flex; gap: 2px; height: 8px; }
+  .stack i { display: block; border-radius: 1px; background: var(--cream); }
+  .stack-key { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px 18px; }
+  .stack-key > div { display: flex; align-items: baseline; gap: 7px; font-size: 12px; color: var(--dim); }
+  .stack-key u { width: 6px; height: 6px; border-radius: 1px; background: var(--cream); text-decoration: none; }
+  .stack-key b { font: 500 11.5px var(--mono); font-variant-numeric: tabular-nums; color: var(--cream); font-weight: 500; }
+
+  /* ── FORM 4 · the line — retention, and the small-multiple pool rows ─────────────────────── */
+
+  .instrument { margin-top: 16px; }
+  .curve { position: relative; touch-action: none; cursor: ew-resize; }
+  .curve svg { display: block; width: 100%; height: 132px; }
+  .playhead { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(236,231,222,.45); pointer-events: none; }
+  .curve-legend {
+    margin-top: 10px; display: flex; gap: 18px;
+    font: 400 10px var(--mono); text-transform: uppercase; letter-spacing: .1em; color: var(--faint);
+  }
+  .curve-legend div { display: flex; align-items: center; gap: 6px; }
+  .curve-legend u { width: 12px; height: 1px; background: var(--cream); text-decoration: none; }
+  /* the projected line's swatch — a real dashed border, not a gradient (the matte law holds here too) */
+  .curve-legend u.after { height: 0; background: none; border-top: 1px dashed var(--cream); opacity: .55; }
+
+  .filmstrip { margin-top: 12px; display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
+  .frame {
+    height: 34px; border-radius: 3px; background: var(--well); border: 1px solid var(--border);
+    display: grid; place-items: center; transition: border-color .14s, color .14s;
+    font: 400 9px var(--mono); color: var(--ghost); font-variant-numeric: tabular-nums;
+  }
+  .frame.on { border-color: rgba(236,231,222,.45); color: var(--dim); }
+
+  .transcript {
+    margin-top: 14px; font-size: 13px; line-height: 1.62; color: rgba(236,231,222,.24);
+    min-height: 42px;
+  }
+  .transcript w { transition: color .1s; }
+  .transcript w.near { color: var(--faint); }
+  .transcript w.on { color: var(--cream); }
+
+  /* the cortex — a readout GLYPH riding the instrument legend, never a hero of its own.
+     Sized so the parcellation actually resolves: at 46px it read as a hatched ball, not a brain. */
+  .cortex { flex: none; width: 72px; height: 46px; }
+  .cortex-slot { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .cortex-slot em { font-style: normal; letter-spacing: .1em; }
+
+  /* small-multiple pool rows */
+  .prow { display: grid; grid-template-columns: 96px 1fr 44px; align-items: center; gap: 12px; padding: 6px 0; }
+  .prow-l { font-size: 12.5px; color: var(--dim); }
+  .prow-l em { font-style: normal; display: block; font: 400 9.5px var(--mono); color: var(--ghost); letter-spacing: .04em; }
+  .prow svg { display: block; width: 100%; height: 26px; }
+  .prow-n { text-align: right; font: 500 11.5px var(--mono); font-variant-numeric: tabular-nums; color: var(--dim); }
+  .prow.loss .prow-n { color: var(--coral); }
+
+  /* ── FORM 5 · the terrain — the shared society map ───────────────────────────────────────── */
+
+  .terrain { margin-top: 14px; }
+  .terrain svg { display: block; width: 100%; height: 208px; }
+
+  /* ── the ledger — one table replacing four re-cuts of the same cast ──────────────────────── */
+
+  .ledger { margin-top: 12px; width: 100%; border-collapse: collapse; }
+  .ledger th {
+    text-align: left; padding: 0 0 8px; font: 400 9.5px var(--mono);
+    text-transform: uppercase; letter-spacing: .12em; color: rgba(236,231,222,.28); font-weight: 400;
+  }
+  .ledger th:last-child, .ledger td:last-child { text-align: right; }
+  .ledger td { padding: 9px 0; border-top: 1px solid var(--border); font-size: 12.5px; color: var(--dim); vertical-align: baseline; }
+  .ledger td:first-child { color: var(--cream); }
+  .ledger td em { font-style: normal; display: block; margin-top: 3px; font-size: 11.5px; color: var(--faint); }
+  .ledger td b { font: 500 12px var(--mono); font-variant-numeric: tabular-nums; color: var(--cream); }
+  .ledger tr.loss td:first-child { color: var(--coral); }
+  .ledger tr.loss td b { color: var(--coral); }
+
+  /* ── the verbatim wall — text-sim native. The one place serif is allowed. ────────────────── */
+
+  .comments { margin-top: 16px; display: flex; flex-direction: column; gap: 20px; }
+  .cmt { display: grid; grid-template-columns: 26px 1fr; gap: 11px; }
+  .cmt-av {
+    width: 26px; height: 26px; border-radius: 50%; background: var(--well);
+    border: 1px solid var(--border); display: grid; place-items: center;
+    font: 500 10px var(--mono); color: var(--faint);
+  }
+  .cmt-who { font-size: 11.5px; color: var(--faint); }
+  .cmt-who b { color: var(--dim); font-weight: 500; }
+  .cmt-text {
+    margin: 5px 0 0; font-family: var(--serif); font-size: 15px; line-height: 1.5;
+    color: var(--cream); letter-spacing: -.002em;
+  }
+  .cmt-weight { margin-top: 9px; display: flex; align-items: center; gap: 9px; }
+  .cmt-weight span { font: 400 10.5px var(--mono); letter-spacing: .03em; color: var(--faint); font-variant-numeric: tabular-nums; }
+  .cmt-weight i { flex: 1; height: 2px; border-radius: 1px; background: var(--trace); position: relative; overflow: hidden; }
+  .cmt-weight i::after { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--w); background: rgba(236,231,222,.42); }
+  /* an objection is the loss — coral rides the weight, not a second hue for "positive" */
+  .cmt.loss .cmt-av { border-color: rgba(255,99,99,.42); color: var(--coral); }
+  .cmt.loss .cmt-weight span { color: var(--coral); }
+  .cmt.loss .cmt-weight i::after { background: var(--coral); }
+
+  /* the elevated single objection — the thing you'd have to answer */
+  .answer { margin-top: 14px; padding-left: 14px; border-left: 1px solid rgba(255,99,99,.42); }
+  .answer q { font-family: var(--serif); font-size: 16px; line-height: 1.45; color: var(--cream); quotes: "\201C" "\201D"; }
+  .answer .who { margin-top: 8px; font: 400 10.5px var(--mono); letter-spacing: .04em; color: var(--coral); font-variant-numeric: tabular-nums; }
+
+  /* ── the unlock — the shipped atom's grammar, unchanged (AmbientDetail.tsx:219) ──────────── */
+
+  .unlock { margin-top: 36px; padding-top: 24px; border-top: 1px solid var(--border); }
+  .unlock-kick { display: flex; align-items: center; gap: 10px; }
+  .unlock-kick span { font: 400 11px var(--mono); text-transform: uppercase; letter-spacing: .14em; color: var(--faint); }
+  .unlock-kick i { flex: 1; height: 1px; background: var(--border); }
+  .unlock-lever { margin-top: 14px; font-size: 19px; font-weight: 500; line-height: 1.32; color: var(--cream); letter-spacing: -.01em; }
+  .unlock-gain {
+    margin-top: 16px; display: inline-flex; align-items: center; gap: 10px;
+    padding: 8px 14px 8px 12px; border-radius: 10px; background: var(--well); border: 1px solid var(--hair);
+  }
+  .unlock-gain em { font-style: normal; font: 400 9px var(--mono); text-transform: uppercase; letter-spacing: .1em; color: var(--faint); }
+  .unlock-gain i { width: 1px; height: 14px; background: var(--hair); }
+  .unlock-gain b { font: 500 15px var(--mono); font-variant-numeric: tabular-nums; color: var(--cream); }
+  .unlock-why { margin: 16px 0 0; font-size: 14px; line-height: 1.55; color: var(--dim); }
+  .unlock-why b { font-weight: 500; color: var(--cream); }
+
+  /* ── the deeper read — the modeled zone, collapsed by default ────────────────────────────── */
+
+  .deeper { margin-top: 26px; padding-top: 18px; border-top: 1px solid var(--border); }
+  .deeper > summary {
+    list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between;
+    font: 400 12px var(--mono); text-transform: uppercase; letter-spacing: .08em; color: var(--faint);
+    transition: color .14s;
+  }
+  .deeper > summary::-webkit-details-marker { display: none; }
+  .deeper > summary:hover { color: var(--dim); }
+  .deeper > summary i { font-style: normal; }
+  .deeper[open] > summary i { transform: rotate(90deg); display: inline-block; }
+  .deeper-note { margin: 14px 0 0; font: 400 11px/1.55 var(--mono); color: rgba(236,231,222,.28); }
+
+  .grid9 { margin-top: 14px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); }
+  .grid9 > div { background: var(--rail); padding: 11px 10px; }
+  .grid9 b { display: block; font: 500 15px var(--mono); font-variant-numeric: tabular-nums; color: var(--cream); font-weight: 400; }
+  .grid9 span { display: block; margin-top: 4px; font-size: 10.5px; line-height: 1.3; color: var(--faint); }
+  .grid9 > div.muted b, .grid9 > div.muted span { color: var(--ghost); }
+
+  /* ── the trust strip — the quiet footer ──────────────────────────────────────────────────── */
+
+  .trust { margin-top: 28px; padding-top: 16px; border-top: 1px solid var(--border); }
+  .trust dl { margin: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .trust dt { font: 400 9.5px var(--mono); text-transform: uppercase; letter-spacing: .12em; color: rgba(236,231,222,.28); }
+  .trust dd { margin: 5px 0 0; font-size: 12px; color: var(--dim); }
+  .trust p { margin: 14px 0 0; font: 400 10.5px/1.5 var(--mono); color: rgba(236,231,222,.28); }
+
+  /* ── design notes (collapsed — the default read is product, not deck) ────────────────────── */
+
+  .notes { margin-top: 56px; max-width: 780px; border-top: 1px solid var(--border); padding-top: 20px; }
+  .notes > summary {
+    list-style: none; cursor: pointer; font: 400 11px var(--mono); text-transform: uppercase;
+    letter-spacing: .14em; color: var(--faint);
+  }
+  .notes > summary::-webkit-details-marker { display: none; }
+  .notes > summary:hover { color: var(--dim); }
+  .notes h2 { margin: 26px 0 0; font-size: 14px; font-weight: 500; color: var(--cream); letter-spacing: -.005em; }
+  .notes p, .notes li { color: var(--dim); font-size: 13px; line-height: 1.62; }
+  .notes p { margin: 9px 0 0; }
+  .notes ul { margin: 9px 0 0; padding-left: 18px; }
+  .notes li { margin-top: 5px; }
+  .notes code { font: 400 12px var(--mono); color: var(--cream); }
+  .notes .loss { color: var(--coral); }
+  .swap { margin-top: 14px; width: 100%; border-collapse: collapse; }
+  .swap th, .swap td { text-align: left; padding: 9px 14px 9px 0; border-top: 1px solid var(--border); font-size: 12.5px; vertical-align: top; }
+  .swap th { font: 400 9.5px var(--mono); text-transform: uppercase; letter-spacing: .12em; color: rgba(236,231,222,.28); border-top: 0; font-weight: 400; }
+  .swap td { color: var(--dim); }
+  .swap td:first-child { color: var(--cream); white-space: nowrap; }
+
+  :focus-visible { outline: 1px solid rgba(236,231,222,.5); outline-offset: 2px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+
+  @media (max-width: 1020px) {
+    .stage { gap: 44px; }
+    .rail { width: 100%; max-width: 440px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="masthead">
+    <div class="eyebrow">Ambient Audience v2 · detail drill · rev 4</div>
+    <h1>Role-shaped tabs. The figures swap; the questions don&rsquo;t.</h1>
+    <p>
+      Three tabs, two instruments. A video sim has a timeline and no voices; a text sim has real coded
+      reasons and verbatim voices and no timeline. Rev 1&ndash;3 designed a video screen and greyed the
+      slots text couldn&rsquo;t fill. Here each tab holds an invariant <em>question</em> and swaps the
+      <em>figure</em> that answers it &mdash; so a text sim reads as a different instrument, not a
+      degraded one. One accent throughout: <span class="loss">coral is loss</span>, cream is everything
+      that is working.
+    </p>
+  </header>
+
+  <div class="stage">
+
+    <!-- ══════════════════════════════════════════════════════════════════════════════════════
+         VIDEO SIM
+         ══════════════════════════════════════════════════════════════════════════════════════ -->
+    <figure class="slot" style="margin:0">
+      <figcaption><b>Video sim</b> <span>timeline, craft dims, action intents &mdash; no voices</span></figcaption>
+
+      <div class="rail" data-rail="video">
+        <div class="railhead">
+          <div class="navrow">
+            <button class="back" type="button">&larr; Overview</button>
+            <span class="pager">video 2 of 5</span>
+          </div>
+
+          <div class="stim">
+            <div class="stim-thumb">0:28</div>
+            <div class="stim-body">
+              <div class="stim-text">&ldquo;I spent four hundred dollars testing every viral hook format so you don&rsquo;t have to&hellip;&rdquo;</div>
+              <div class="readout">
+                3.2K <em>projected</em> <span class="sep">&middot;</span> 38% <em>hold the hook</em>
+              </div>
+            </div>
+          </div>
+
+          <div class="tabs" role="tablist">
+            <button class="tab" role="tab" aria-selected="true"  data-panel="v-read">The read</button>
+            <button class="tab" role="tab" aria-selected="false" data-panel="v-room">The room</button>
+            <button class="tab" role="tab" aria-selected="false" data-panel="v-reax">The reaction</button>
+          </div>
+        </div>
+
+        <div class="railbody">
+
+          <!-- ── VIDEO · THE READ ──────────────────────────────────────────────────────────── -->
+          <div class="panel" id="v-read" role="tabpanel">
+
+            <section class="sec">
+              <div class="kick"><span>Projected reach</span><span>vs your last 41</span></div>
+              <div class="hero-n"><b>3.2K</b><i>views</i></div>
+              <div class="strip">
+                <div class="strip-plot" data-strip="video"></div>
+                <div class="strip-legend"><span>420</span><span><b>median 8.1K</b></span><span>96K</span></div>
+              </div>
+              <p class="read">
+                <b>60% below your median.</b> The engagement rates on this are strong &mdash; saves and
+                rewatches both index above your typical. <span class="loss">The hook is what throttles
+                it</span>: reach is capped before the good part arrives.
+              </p>
+            </section>
+
+            <section class="sec">
+              <div class="kick">
+                <span>Retention &middot; 0:00 &rarr; 0:28</span>
+                <span data-live="v-scrub">0:04 &middot; 58%</span>
+              </div>
+
+              <div class="instrument">
+                <div class="curve" data-curve="video">
+                  <svg viewBox="0 0 396 132" preserveAspectRatio="none" aria-label="Retention curve over 28 seconds"></svg>
+                  <div class="playhead" style="left:14%"></div>
+                </div>
+
+                <div class="curve-legend">
+                  <div><u></u>this cut</div>
+                  <div><u class="after"></u>after the fix</div>
+                  <div class="cortex-slot">
+                    <em>cortex</em>
+                    <canvas class="cortex" width="144" height="92" aria-label="Cortex activation at the playhead"></canvas>
+                  </div>
+                </div>
+
+                <div class="filmstrip" data-film="video"></div>
+                <p class="transcript" data-transcript="video"></p>
+              </div>
+
+              <p class="read">
+                <b>0:04 &mdash; the setup runs long.</b> The promise is still loading four seconds in,
+                and <span class="loss">42% are gone before it lands</span>. Everything the video is
+                actually about starts at 0:09.
+              </p>
+            </section>
+
+            <div class="unlock">
+              <div class="unlock-kick"><span>the unlock</span><i></i></div>
+              <div class="unlock-lever">Cut 0:00&ndash;0:04. Open on the reveal.</div>
+              <div class="unlock-gain"><em>projected</em><i></i><b>3.2K &rarr; 11.4K</b></div>
+              <p class="unlock-why">
+                Nothing downstream is broken &mdash; <b>saves index 34% above your median, rewatch 51%
+                above.</b> The reach ceiling is set inside the first four seconds, so no amount of
+                payoff later can lift it. This is a trim, not a rewrite.
+              </p>
+            </div>
+
+            <details class="deeper">
+              <summary><span>Deeper read &mdash; the modeled decomposition</span><i>&rsaquo;</i></summary>
+              <div class="grid9">
+                <div><b>71</b><span>Visual pull</span></div>
+                <div><b>44</b><span>Hook clarity</span></div>
+                <div><b>63</b><span>Voice impact</span></div>
+                <div><b>58</b><span>Pacing</span></div>
+                <div><b>77</b><span>Payoff</span></div>
+                <div><b>52</b><span>Novelty</span></div>
+                <div><b>69</b><span>Face presence</span></div>
+                <div><b>41</b><span>Open tension</span></div>
+                <div><b>66</b><span>Audio hold</span></div>
+              </div>
+              <p class="deeper-note">
+                Modeled decomposition &mdash; a cognitive proxy scored from the clip, not measured
+                attention. Kept collapsed so the default read stays the four numbers above it.
+              </p>
+            </details>
+          </div>
+
+          <!-- ── VIDEO · THE ROOM ──────────────────────────────────────────────────────────── -->
+          <div class="panel" id="v-room" role="tabpanel" hidden>
+
+            <section class="sec">
+              <div class="kick"><span>Who this reaches</span><span>the room mix</span></div>
+              <div class="stack">
+                <i style="flex:65"></i>
+                <i style="flex:20;opacity:.62"></i>
+                <i style="flex:10;opacity:.38"></i>
+                <i style="flex:5;opacity:.22"></i>
+              </div>
+              <div class="stack-key">
+                <div><u></u>For You <b>65%</b></div>
+                <div><u style="opacity:.62"></u>Niche <b>20%</b></div>
+                <div><u style="opacity:.38"></u>Followers <b>10%</b></div>
+                <div><u style="opacity:.22"></u>Cross-niche <b>5%</b></div>
+              </div>
+            </section>
+
+            <section class="sec">
+              <div class="kick"><span>Retention by pool</span><span>drop-off</span></div>
+              <div data-pools="video"></div>
+              <p class="read">
+                <b>Your followers stay to 0:21.</b> The For You pool &mdash; two thirds of the room
+                &mdash; <span class="loss">is gone by 0:04</span>. The video holds the people who already
+                know you and loses everyone it needed to convert. That is the shape of a post that
+                doesn&rsquo;t escape.
+              </p>
+              <p class="note">No platform reports this. It is the question a creator actually has.</p>
+            </section>
+
+            <section class="sec">
+              <div class="kick"><span>The society</span><span>1 node &asymp; 10 people</span></div>
+              <div class="terrain"><svg viewBox="0 0 380 208" data-terrain="video" aria-label="Audience terrain by district"></svg></div>
+            </section>
+
+            <section class="sec">
+              <div class="kick"><span>The ledger</span><span>district &middot; stayed &middot; lever</span></div>
+              <table class="ledger">
+                <thead><tr><th>District</th><th>Stayed</th></tr></thead>
+                <tbody>
+                  <tr><td>Long-form watchers<em>Already primed &mdash; open colder, they&rsquo;ll wait</em></td><td><b>64%</b></td></tr>
+                  <tr><td>Tutorial seekers<em>Promise the number, not the process</em></td><td><b>51%</b></td></tr>
+                  <tr><td>Casual browsers<em>Needs a visual break inside 2s</em></td><td><b>29%</b></td></tr>
+                  <tr class="loss"><td>Scroll-first feed<em>Nothing in frame 1 stops a thumb</em></td><td><b>11%</b></td></tr>
+                </tbody>
+              </table>
+            </section>
+          </div>
+
+          <!-- ── VIDEO · THE REACTION ──────────────────────────────────────────────────────── -->
+          <div class="panel" id="v-reax" role="tabpanel" hidden>
+
+            <section class="sec">
+              <div class="kick"><span>Engagement</span><span>vs your median</span></div>
+              <div class="rows">
+                <div class="row"><span class="row-l">Rewatch</span><span class="row-t delta"><u style="left:45%"></u><i style="left:45%;width:47%"></i></span><span class="row-n">+51%</span></div>
+                <div class="row"><span class="row-l">Saves</span><span class="row-t delta"><u style="left:45%"></u><i style="left:45%;width:31%"></i></span><span class="row-n">+34%</span></div>
+                <div class="row"><span class="row-l">Shares</span><span class="row-t delta"><u style="left:45%"></u><i style="left:45%;width:11%"></i></span><span class="row-n">+12%</span></div>
+                <div class="row loss"><span class="row-l">Comments</span><span class="row-t delta"><u style="left:45%"></u><i style="left:39%;width:6%"></i></span><span class="row-n">&minus;8%</span></div>
+              </div>
+              <p class="read">
+                Three of four run above your typical post. <b>This is a good video with a bad opening
+                &mdash; not a bad video.</b>
+              </p>
+              <p class="note">The tick is your median. Fill runs out from it &mdash; right is above, left is below.</p>
+            </section>
+
+            <section class="sec">
+              <div class="kick"><span>Watch-through</span><span>of those who stayed</span></div>
+              <div class="hero-n"><b>61%</b><i>reached the end</i></div>
+              <p class="read">
+                And the honest floor underneath it: <b>3 in 10 watched the whole thing and would still
+                do nothing</b> &mdash; no save, no share, no comment, no rewatch. A finished view is
+                not an intent.
+              </p>
+            </section>
+
+            <section class="sec">
+              <div class="kick"><span>What they&rsquo;d do</span><span>intent index</span></div>
+              <div class="rows">
+                <div class="row"><span class="row-l">Save it</span><span class="row-t"><i style="width:78%"></i></span><span class="row-n">78</span></div>
+                <div class="row"><span class="row-l">Rewatch</span><span class="row-t"><i style="width:64%"></i></span><span class="row-n">64</span></div>
+                <div class="row"><span class="row-l">Send to someone</span><span class="row-t"><i style="width:41%"></i></span><span class="row-n">41</span></div>
+                <div class="row"><span class="row-l">Comment</span><span class="row-t"><i style="width:23%"></i></span><span class="row-n">23</span></div>
+              </div>
+              <p class="note">
+                An intent index, not a rate &mdash; it ranks the verbs against each other, it does not
+                predict how many people will tap.
+              </p>
+            </section>
+
+            <div class="trust">
+              <dl>
+                <div><dt>Panel</dt><dd>10 reactors</dd></div>
+                <div><dt>Calibrated on</dt><dd>your 4.2K followers</dd></div>
+                <div><dt>Confidence</dt><dd>Medium</dd></div>
+              </dl>
+              <p>
+                A modeled society, calibrated for engagement. &ldquo;38% hold the hook&rdquo; is weighted
+                attention at 0:03; the ledger counts heads. Two measures, two denominators &mdash; they
+                are not the same number and never round to each other.
+              </p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </figure>
+
+    <!-- ══════════════════════════════════════════════════════════════════════════════════════
+         TEXT SIM
+         ══════════════════════════════════════════════════════════════════════════════════════ -->
+    <figure class="slot" style="margin:0">
+      <figcaption><b>Text sim</b> <span>hook &middot; idea &middot; draft &mdash; real reasons, real voices, no timeline</span></figcaption>
+
+      <div class="rail" data-rail="text">
+        <div class="railhead">
+          <div class="navrow">
+            <button class="back" type="button">&larr; Overview</button>
+            <span class="pager">hook 4 of 5</span>
+          </div>
+
+          <div class="stim">
+            <div class="stim-thumb">HOOK</div>
+            <div class="stim-body">
+              <div class="stim-text">&ldquo;You don&rsquo;t need a niche. You need one repeatable format.&rdquo;</div>
+              <div class="readout">
+                41% <em>would stop</em> <span class="sep">&middot;</span> 590 <em>coded</em>
+              </div>
+            </div>
+          </div>
+
+          <div class="tabs" role="tablist">
+            <button class="tab" role="tab" aria-selected="true"  data-panel="t-read">The read</button>
+            <button class="tab" role="tab" aria-selected="false" data-panel="t-room">The room</button>
+            <button class="tab" role="tab" aria-selected="false" data-panel="t-reax">The reaction</button>
+          </div>
+        </div>
+
+        <div class="railbody">
+
+          <!-- ── TEXT · THE READ ───────────────────────────────────────────────────────────── -->
+          <div class="panel" id="t-read" role="tabpanel">
+
+            <section class="sec">
+              <div class="kick"><span>Would stop scrolling</span><span>vs your last 41 hooks</span></div>
+              <div class="hero-n"><b>41%</b><i>of 1,000 simulated</i></div>
+              <div class="strip">
+                <div class="strip-plot" data-strip="text"></div>
+                <div class="strip-legend"><span>9%</span><span><b>median 33%</b></span><span>62%</span></div>
+              </div>
+              <p class="read">
+                <b>Above your median, in the top third of everything you&rsquo;ve tested.</b> What holds
+                it back isn&rsquo;t the idea &mdash; it&rsquo;s one objection, and it has a fix.
+              </p>
+            </section>
+
+            <section class="sec">
+              <div class="kick"><span>What carried it &middot; what leaked</span><span>590 coded</span></div>
+              <div class="rows" data-reasons="text"></div>
+              <p class="read">
+                <b>The idea lands; the phrasing doesn&rsquo;t.</b> More people stalled on
+                <span class="loss">&ldquo;sounds like everyone else&rdquo;</span> than on any other
+                reason &mdash; 218 of 590. They aren&rsquo;t rejecting the claim, they&rsquo;re
+                recognising the shape of it.
+              </p>
+              <p class="note">Open a reason to hear the people inside it.</p>
+            </section>
+
+            <div class="unlock">
+              <div class="unlock-kick"><span>the unlock</span><i></i></div>
+              <div class="unlock-lever">Put a number in the first clause.</div>
+              <div class="unlock-gain"><em>projected</em><i></i><b>41% &rarr; 58%</b></div>
+              <p class="unlock-why">
+                The objection isn&rsquo;t disagreement, it&rsquo;s <b>familiarity</b> &mdash; 218 people
+                coded this as advice they have already heard. A specific figure is the one thing generic
+                advice can&rsquo;t counterfeit, and it converts the recognition into curiosity. Same
+                idea, one clause earlier.
+              </p>
+            </div>
+
+            <details class="deeper">
+              <summary><span>Deeper read &mdash; the modeled decomposition</span><i>&rsaquo;</i></summary>
+              <div class="grid9">
+                <div><b>74</b><span>Claim strength</span></div>
+                <div><b>39</b><span>Specificity</span></div>
+                <div><b>68</b><span>Tension</span></div>
+                <div><b>55</b><span>Rhythm</span></div>
+                <div><b>81</b><span>Payoff promise</span></div>
+                <div><b>36</b><span>Novelty</span></div>
+                <div class="muted"><b>&mdash;</b><span>Visual pull</span></div>
+                <div class="muted"><b>&mdash;</b><span>Face presence</span></div>
+                <div class="muted"><b>&mdash;</b><span>Audio hold</span></div>
+              </div>
+              <p class="deeper-note">
+                Three rows are dashed, not dimmed guesses: a hook has no footage to score them against.
+                Modeled proxy &mdash; the reasons above are real counts, this is not.
+              </p>
+            </details>
+          </div>
+
+          <!-- ── TEXT · THE ROOM ───────────────────────────────────────────────────────────── -->
+          <div class="panel" id="t-room" role="tabpanel" hidden>
+
+            <section class="sec">
+              <div class="kick"><span>Who this reaches</span><span>the room mix</span></div>
+              <div class="stack">
+                <i style="flex:31"></i>
+                <i style="flex:24;opacity:.66"></i>
+                <i style="flex:19;opacity:.46"></i>
+                <i style="flex:14;opacity:.30"></i>
+                <i style="flex:12;opacity:.20"></i>
+              </div>
+              <div class="stack-key">
+                <div><u></u>Builders <b>31%</b></div>
+                <div><u style="opacity:.66"></u>Learners <b>24%</b></div>
+                <div><u style="opacity:.46"></u>Operators <b>19%</b></div>
+                <div><u style="opacity:.30"></u>Skeptics <b>14%</b></div>
+                <div><u style="opacity:.20"></u>Lurkers <b>12%</b></div>
+              </div>
+            </section>
+
+            <section class="sec">
+              <div class="kick"><span>Who stops</span><span>by district</span></div>
+              <div class="rows">
+                <div class="row"><span class="row-l">Builders</span><span class="row-t"><i style="width:58%"></i></span><span class="row-n">58%</span></div>
+                <div class="row"><span class="row-l">Learners</span><span class="row-t"><i style="width:47%"></i></span><span class="row-n">47%</span></div>
+                <div class="row"><span class="row-l">Operators</span><span class="row-t"><i style="width:38%"></i></span><span class="row-n">38%</span></div>
+                <div class="row"><span class="row-l">Lurkers</span><span class="row-t"><i style="width:26%"></i></span><span class="row-n">26%</span></div>
+                <div class="row loss"><span class="row-l">Skeptics</span><span class="row-t"><i style="width:19%"></i></span><span class="row-n">19%</span></div>
+              </div>
+              <p class="read">
+                <b>Builders stop most; skeptics are the ceiling.</b> The people who most need convincing
+                are the ones who&rsquo;ve heard it before &mdash; the same 19% that produced the leading
+                objection.
+              </p>
+            </section>
+
+            <section class="sec">
+              <div class="kick"><span>The society</span><span>1 node &asymp; 10 people</span></div>
+              <div class="terrain"><svg viewBox="0 0 380 208" data-terrain="text" aria-label="Audience terrain by district"></svg></div>
+            </section>
+
+            <section class="sec">
+              <div class="kick"><span>The playbook</span><span>the room, by decision</span></div>
+              <table class="ledger">
+                <thead><tr><th>State</th><th>People</th></tr></thead>
+                <tbody>
+                  <tr><td>Sold<em>Nothing to do &mdash; ship it for them</em></td><td><b>318</b></td></tr>
+                  <tr><td>Winnable<em>Stalled at the line &mdash; the number wins them</em></td><td><b>97</b></td></tr>
+                  <tr><td>Skeptical<em>Show the receipts, not the claim</em></td><td><b>174</b></td></tr>
+                  <tr class="loss"><td>Gone<em>Not this idea, not this week</em></td><td><b>411</b></td></tr>
+                </tbody>
+              </table>
+              <p class="note">Four states, one partition &mdash; they sum to the room, and each names its own lever.</p>
+            </section>
+          </div>
+
+          <!-- ── TEXT · THE REACTION ───────────────────────────────────────────────────────── -->
+          <div class="panel" id="t-reax" role="tabpanel" hidden>
+
+            <section class="sec">
+              <div class="kick"><span>If you posted this</span><span>projected comments</span></div>
+              <div class="comments">
+
+                <div class="cmt">
+                  <div class="cmt-av">M</div>
+                  <div>
+                    <div class="cmt-who"><b>Maya</b> &middot; builder</div>
+                    <p class="cmt-text">ok this is the first time someone&rsquo;s said the quiet part. the niche advice has been killing me for two years</p>
+                    <div class="cmt-weight"><span>412 would echo this</span><i style="--w:70%"></i></div>
+                  </div>
+                </div>
+
+                <div class="cmt loss">
+                  <div class="cmt-av">D</div>
+                  <div>
+                    <div class="cmt-who"><b>Dev</b> &middot; skeptic</div>
+                    <p class="cmt-text">sounds like everyone else. every account on here says pick a format now</p>
+                    <div class="cmt-weight"><span>218 would echo this</span><i style="--w:37%"></i></div>
+                  </div>
+                </div>
+
+                <div class="cmt">
+                  <div class="cmt-av">A</div>
+                  <div>
+                    <div class="cmt-who"><b>Ana</b> &middot; learner</div>
+                    <p class="cmt-text">saving this. what counts as a format though &mdash; a series, or a shot type?</p>
+                    <div class="cmt-weight"><span>174 would echo this</span><i style="--w:30%"></i></div>
+                  </div>
+                </div>
+
+                <div class="cmt loss">
+                  <div class="cmt-av">S</div>
+                  <div>
+                    <div class="cmt-who"><b>Sam</b> &middot; tough crowd</div>
+                    <p class="cmt-text">easy to say with 40k followers. format is all you need when the reach is already there</p>
+                    <div class="cmt-weight"><span>96 would echo this</span><i style="--w:16%"></i></div>
+                  </div>
+                </div>
+
+                <div class="cmt">
+                  <div class="cmt-av">J</div>
+                  <div>
+                    <div class="cmt-who"><b>Jo</b> &middot; operator</div>
+                    <p class="cmt-text">the second sentence is the whole post. everything before it is warm-up</p>
+                    <div class="cmt-weight"><span>71 would echo this</span><i style="--w:12%"></i></div>
+                  </div>
+                </div>
+
+              </div>
+              <p class="note">Sorted by weight, the way a comment section sorts itself.</p>
+            </section>
+
+            <section class="sec">
+              <div class="kick"><span>The one you&rsquo;d have to answer</span><span>&mdash;</span></div>
+              <div class="answer">
+                <q>sounds like everyone else. every account on here says pick a format now</q>
+                <div class="who">218 of 590 &middot; the leading objection</div>
+              </div>
+              <p class="read">
+                This is the comment that decides the thread. Answer it <b>inside the hook</b> and it
+                never gets typed &mdash; the number in the first clause is the answer.
+              </p>
+            </section>
+
+            <section class="sec">
+              <div class="kick"><span>The swing</span><span>your upside</span></div>
+              <div class="hero-n"><b>97</b><i>stalled right at the line</i></div>
+              <p class="read">
+                They didn&rsquo;t reject it &mdash; they didn&rsquo;t quite bite. Win them and the room
+                moves from <b>41% to 58%</b>, which is the same 17 points the unlock projects. Two
+                different paths, one number: that&rsquo;s the fix being real.
+              </p>
+            </section>
+
+            <div class="trust">
+              <dl>
+                <div><dt>Simulated</dt><dd>1,000 individuals</dd></div>
+                <div><dt>Calibrated on</dt><dd>your 4.2K followers</dd></div>
+                <div><dt>Confidence</dt><dd>Medium</dd></div>
+              </dl>
+              <p>
+                A modeled society, calibrated for engagement, not purchase. The reasons and the counts
+                are the projection&rsquo;s own output; the comments are its voices, not transcripts.
+              </p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </figure>
+
+  </div>
+
+  <!-- ── design notes — collapsed, so the default read is product ────────────────────────── -->
+  <details class="notes">
+    <summary>Design notes &mdash; what changed from rev 3, and why</summary>
+
+    <h2>The swap table</h2>
+    <p>
+      Each tab is a question. The figure that answers it is chosen by <code>StimulusKind</code>. This is
+      the <code>domain-template.ts</code> contract that already exists &mdash; <code>BrainDriver</code> is
+      a union with <code>attention-scrubber</code> and <code>reason-breakdown</code> in it, and rev 1&ndash;3
+      simply never used the seam.
+    </p>
+    <table class="swap">
+      <thead><tr><th>Tab</th><th>The invariant question</th><th>Video figure</th><th>Text figure</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>The read</td>
+          <td>How far does this go, and what decides it?</td>
+          <td>Retention curve &mdash; one playhead moving cortex, curve, filmstrip and transcript together</td>
+          <td>Coded-reason breakdown &mdash; open a reason to hear the people inside it</td>
+        </tr>
+        <tr>
+          <td>The room</td>
+          <td>Who reaches it, and who stays?</td>
+          <td>Retention by distribution pool &mdash; does this escape your followers?</td>
+          <td>Stop rate by district, and the four-state playbook</td>
+        </tr>
+        <tr>
+          <td>The reaction</td>
+          <td>What would they do with it?</td>
+          <td>Engagement vs your median, watch-through, action intents</td>
+          <td>The projected comment section &mdash; and the one comment you&rsquo;d have to answer</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>
+      Both columns are full. Neither borrows the other&rsquo;s figure, and nothing is greyed out to stand
+      in for a producer that doesn&rsquo;t exist. The only dashes in the whole design are the three
+      sensory rows in the text deeper-read, which are dashed rather than dimmed because a hook has no
+      footage &mdash; an absence with a reason, printed once, inside a collapsed section.
+    </p>
+
+    <h2>Answering the four rejection points</h2>
+    <ul>
+      <li>
+        <b>One accent.</b> <span class="loss">Coral appears on loss only</span> &mdash; a below-median
+        projection marker, the pool that drops first, the objection weights, the &ldquo;gone&rdquo; row.
+        Positive states are cream at full strength, and rank is carried by <em>weight, size and
+        position</em>: the hero number is 40px light, section reads are 13px dim, notes are 10.5px mono.
+        No amber, no second hue anywhere.
+      </li>
+      <li>
+        <b>Matte.</b> No gradient, no shadow, no blur, no inset-shine. Depth comes from four cream alphas
+        (.62 / .38 / .16 / .08) and one recessed tone (<code>#262624</code>), which is the whole shipped
+        system.
+      </li>
+      <li>
+        <b>Connected surface.</b> No card class exists in this file. Sections are a hairline plus 30px of
+        rhythm &mdash; the grammar the shipped <code>Unlock</code> atom already uses. The only bordered
+        objects are the gain chip and the filmstrip cells, both of which are chips, not containers.
+      </li>
+      <li>
+        <b>Five forms, not eleven.</b> The line, the bar-row, the segmented stack, the terrain, the quote.
+        The room mix is a single segmented bar instead of a donut; retention-by-pool is the same line form
+        repeated four times instead of four chart types. Repetition is what makes 440px read calm.
+      </li>
+    </ul>
+
+    <h2>Where serif earns its place</h2>
+    <p>
+      Newsreader is reserved for one thing: a voice from the room. That means it appears in the text
+      sim&rsquo;s comment wall and nowhere else in the drill. It is the clearest signal that a text sim is
+      a different instrument rather than a video screen with holes &mdash; video is numbers and a
+      timeline, text is counts and human sentences.
+    </p>
+
+    <h2>Open decisions, answered</h2>
+    <ul>
+      <li><b>Text tab set</b> &mdash; same three roles, swapped figures. One template object per domain, no page fork.</li>
+      <li><b>Where the verbatim wall lives</b> &mdash; The reaction. It is what they&rsquo;d <em>say</em>, which is the same question video answers with intents. The coded breakdown stays on The read because it is the mechanism, not the response.</li>
+      <li><b>Two stop numbers</b> &mdash; printed with their own denominators and never adjacent. Weighted hook attention rides the persistent readout; the headcount rides the ledger; the trust strip states plainly that they are different measures.</li>
+      <li><b>The cortex</b> &mdash; The read only, and only on video, at 46px, riding the instrument legend as a readout glyph. It is driven by the retention value under the playhead, which is what <code>cortex-sim.ts</code>&rsquo;s unused <code>grounded</code> mode already does.</li>
+      <li><b>Benchmark bands</b> &mdash; held. Every comparison in this design is against the creator&rsquo;s own catalogue, which needs no external calibration to be true.</li>
+    </ul>
+  </details>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  const $  = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+  const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+  const SVGNS = "http://www.w3.org/2000/svg";
+  const el = (n, a) => { const e = document.createElementNS(SVGNS, n); for (const k in a) e.setAttribute(k, a[k]); return e; };
+
+  const CREAM = "#ece7de", CORAL = "#FF6363";
+  const GOLDEN_C = 2.399963229728653; // the golden angle — deterministic scatter, no RNG anywhere
+
+  // ── data ──────────────────────────────────────────────────────────────────────────────────
+  const CLIP = 28;
+
+  // weighted_curve — the break is 0:02 → 0:05, then a gentle decline
+  const CURVE = [100,98,94,72,58,52,49,47,46,45,44,43,42,41,40,40,39,38,38,37,36,36,35,34,34,33,32,31,30];
+  // the same clip with the first four seconds cut — the ghost line
+  const AFTER = [100,97,93,88,84,80,77,74,72,70,68,66,65,63,62,61,60,59,58,57,56,55,54,53,52,51,50,49,48];
+  const BREAK = [2, 5]; // the coral segment — where the curve gives way
+
+  const POOLS = [
+    { label: "For You",     sub: "65% of room", drop: "0:04", loss: true,
+      pts: [100,95,88,52,31,22,17,14,12,11,10,9,9,8,8,7,7,6,6,6,5,5,5,5,4,4,4,4,3] },
+    { label: "Niche",       sub: "20%",         drop: "0:11",
+      pts: [100,99,96,84,73,66,61,57,54,52,50,48,47,45,44,43,42,41,40,39,38,37,36,35,34,33,32,31,30] },
+    { label: "Followers",   sub: "10%",         drop: "0:21",
+      pts: [100,100,99,97,94,91,89,87,85,83,81,79,77,75,73,71,69,66,63,60,57,53,49,44,39,34,29,24,19] },
+    { label: "Cross-niche", sub: "5%",          drop: "0:05",
+      pts: [100,96,90,60,42,33,28,25,23,21,20,19,18,17,16,16,15,14,14,13,13,12,12,11,11,10,10,9,9] },
+  ];
+
+  const WORDS = ("I spent four hundred dollars testing every viral hook format so you don't have to " +
+    "and the one that won wasn't the one anyone teaches. Here's what actually happened when I ran " +
+    "them side by side.").split(" ");
+
+  const REASONS = [
+    { label: "Names a real cost",        count: 187, loss: false,
+      quotes: [["Maya", "builder", "finally someone put a number on it instead of vibes"],
+               ["Jo", "operator", "the cost framing is why i stopped. that's a real thing i've paid"]] },
+    { label: "Sounds like everyone else", count: 218, loss: true,
+      quotes: [["Dev", "skeptic", "sounds like everyone else. every account on here says pick a format now"],
+               ["Sam", "tough crowd", "read this exact sentence yesterday from someone else"]] },
+    { label: "Contradicts what they know", count: 104, loss: false,
+      quotes: [["Ana", "learner", "wait, everyone told me to niche down first. which is it"],
+               ["Rae", "builder", "this goes against every piece of advice i've been given"]] },
+    { label: "Too abstract to act on",     count: 81,  loss: true,
+      quotes: [["Ana", "learner", "what counts as a format though — a series, or a shot type?"],
+               ["Kit", "lurker", "ok but what do i actually do monday morning"]] },
+  ];
+
+  const STRIPS = {
+    // last-41 catalogue distributions, and where this one lands
+    video: { vals: [.06,.09,.11,.12,.14,.16,.17,.19,.21,.22,.24,.26,.27,.29,.31,.33,.35,.36,.38,.40,
+                    .42,.44,.46,.48,.50,.53,.55,.58,.60,.63,.66,.69,.72,.75,.78,.81,.85,.88,.92,.96,1],
+             median: .42, mark: .17, loss: true },
+    text:  { vals: [.04,.07,.09,.11,.13,.15,.17,.18,.20,.22,.24,.26,.28,.30,.32,.34,.36,.38,.40,.43,
+                    .45,.47,.50,.52,.55,.57,.60,.62,.65,.68,.70,.73,.76,.79,.82,.86,.89,.92,.95,.98,1],
+             median: .45, mark: .62, loss: false },
+  };
+
+  // Anchors are hand-placed rather than golden-angle: at k=4–5 the spiral packs every district into
+  // the middle of a 380×208 box and the labels collide. Placement is cosmetic in the real adapter too
+  // — only `n` and `lit` carry data — so fixing the layout costs no honesty.
+  const DISTRICTS = {
+    video: [
+      { name: "Long-form watchers", n: 16, lit: .64, cx:  92, cy: 54, spread: 27 },
+      { name: "Tutorial seekers",   n: 22, lit: .51, cx: 285, cy: 50, spread: 30 },
+      { name: "Casual browsers",    n: 28, lit: .29, cx: 296, cy: 140, spread: 33 },
+      { name: "Scroll-first feed",  n: 24, lit: .11, cx:  86, cy: 146, spread: 31, loss: true },
+    ],
+    text: [
+      { name: "Builders",  n: 24, lit: .58, cx:  96, cy: 48, spread: 27 },
+      { name: "Learners",  n: 20, lit: .47, cx: 274, cy: 44, spread: 25 },
+      { name: "Operators", n: 16, lit: .38, cx: 320, cy: 122, spread: 22 },
+      { name: "Skeptics",  n: 14, lit: .19, cx: 190, cy: 148, spread: 21, loss: true },
+      { name: "Lurkers",   n: 12, lit: .26, cx:  60, cy: 128, spread: 20 },
+    ],
+  };
+
+  // ── geometry helpers ──────────────────────────────────────────────────────────────────────
+
+  /** A smooth path through evenly-spaced y-values, drawn with Catmull-Rom → cubic Bézier. */
+  function smoothPath(vals, w, h, pad, lo, hi) {
+    const n = vals.length;
+    const X = i => pad + (i / (n - 1)) * (w - pad * 2);
+    const Y = v => h - pad - ((v - lo) / (hi - lo)) * (h - pad * 2);
+    const p = [`M ${X(0).toFixed(2)} ${Y(vals[0]).toFixed(2)}`];
+    for (let i = 0; i < n - 1; i++) {
+      const x0 = X(Math.max(0, i - 1)), y0 = Y(vals[Math.max(0, i - 1)]);
+      const x1 = X(i),                  y1 = Y(vals[i]);
+      const x2 = X(i + 1),              y2 = Y(vals[i + 1]);
+      const x3 = X(Math.min(n - 1, i + 2)), y3 = Y(vals[Math.min(n - 1, i + 2)]);
+      const c1x = x1 + (x2 - x0) / 6, c1y = y1 + (y2 - y0) / 6;
+      const c2x = x2 - (x3 - x1) / 6, c2y = y2 - (y3 - y1) / 6;
+      p.push(`C ${c1x.toFixed(2)} ${c1y.toFixed(2)}, ${c2x.toFixed(2)} ${c2y.toFixed(2)}, ${x2.toFixed(2)} ${y2.toFixed(2)}`);
+    }
+    return p.join(" ");
+  }
+
+  const fmtTime = s => `0:${String(Math.round(s)).padStart(2, "0")}`;
+
+  // ── FORM 1 · the catalogue strip ──────────────────────────────────────────────────────────
+
+  $$("[data-strip]").forEach(host => {
+    const cfg = STRIPS[host.dataset.strip];
+    const frag = document.createDocumentFragment();
+
+    const axis = document.createElement("div"); axis.className = "strip-axis"; frag.appendChild(axis);
+
+    cfg.vals.forEach(v => {
+      const t = document.createElement("div");
+      t.className = "strip-tick";
+      t.style.left = (v * 100) + "%";
+      // height carries nothing but presence — this is a 1-D distribution, not a histogram
+      t.style.height = "10px";
+      frag.appendChild(t);
+    });
+
+    const med = document.createElement("div");
+    med.className = "strip-med"; med.style.left = (cfg.median * 100) + "%";
+    frag.appendChild(med);
+
+    const mark = document.createElement("div");
+    mark.className = "strip-mark" + (cfg.loss ? " loss" : "");
+    mark.style.left = (cfg.mark * 100) + "%";
+    frag.appendChild(mark);
+
+    const dot = document.createElement("div");
+    dot.className = "strip-dot" + (cfg.loss ? " loss" : "");
+    dot.style.left = (cfg.mark * 100) + "%";
+    dot.style.bottom = "38px";
+    frag.appendChild(dot);
+
+    host.appendChild(frag);
+  });
+
+  // ── FORM 4 · the retention instrument (video) ──────────────────────────────────────────────
+
+  (function buildInstrument() {
+    const host = $('[data-curve="video"]');
+    if (!host) return;
+    const svg = host.querySelector("svg");
+    const W = 396, H = 132, PAD = 4;
+
+    // baseline grid — two hairlines only. A chart earns its grid; it doesn't wear one.
+    [0.5, 0.85].forEach(f => svg.appendChild(el("line", {
+      x1: PAD, x2: W - PAD, y1: (H * f).toFixed(1), y2: (H * f).toFixed(1),
+      stroke: "rgba(236,231,222,.06)", "stroke-width": 1,
+    })));
+
+    // the area under the live curve — a single flat alpha, never a gradient
+    const areaPath = smoothPath(CURVE, W, H, PAD, 0, 105);
+    svg.appendChild(el("path", {
+      d: `${areaPath} L ${W - PAD} ${H - PAD} L ${PAD} ${H - PAD} Z`,
+      fill: "rgba(236,231,222,.05)", stroke: "none",
+    }));
+
+    // the projected "after the fix" line — cream, dashed. Cream IS the positive state.
+    svg.appendChild(el("path", {
+      d: smoothPath(AFTER, W, H, PAD, 0, 105),
+      fill: "none", stroke: CREAM, "stroke-width": 1, "stroke-opacity": .34,
+      "stroke-dasharray": "3 3", "stroke-linecap": "round",
+    }));
+
+    // the live curve, in two strokes: cream everywhere, coral across the break
+    svg.appendChild(el("path", {
+      d: areaPath, fill: "none", stroke: CREAM, "stroke-width": 1.5, "stroke-linecap": "round",
+    }));
+    const breakVals = CURVE.slice(BREAK[0], BREAK[1] + 1);
+    const bx0 = PAD + (BREAK[0] / (CURVE.length - 1)) * (W - PAD * 2);
+    const bx1 = PAD + (BREAK[1] / (CURVE.length - 1)) * (W - PAD * 2);
+    const bSeg = smoothPath(breakVals, bx1 - bx0 + PAD * 2, H, PAD, 0, 105);
+    const bg = el("g", { transform: `translate(${(bx0 - PAD).toFixed(2)},0)` });
+    bg.appendChild(el("path", { d: bSeg, fill: "none", stroke: CORAL, "stroke-width": 1.5, "stroke-linecap": "round" }));
+    svg.appendChild(bg);
+
+    // the marker that tracks the playhead
+    const dot = el("circle", { r: 3, fill: CREAM, cx: 0, cy: 0 });
+    svg.appendChild(dot);
+
+    // filmstrip
+    const film = $('[data-film="video"]');
+    const FRAMES = 8;
+    for (let i = 0; i < FRAMES; i++) {
+      const d = document.createElement("div");
+      d.className = "frame";
+      d.textContent = fmtTime((i / (FRAMES - 1)) * CLIP);
+      film.appendChild(d);
+    }
+    const frames = $$(".frame", film);
+
+    // transcript
+    const tHost = $('[data-transcript="video"]');
+    WORDS.forEach((w, i) => {
+      const s = document.createElementNS("http://www.w3.org/1999/xhtml", "w");
+      s.textContent = w + " ";
+      tHost.appendChild(s);
+    });
+    const words = $$("w", tHost);
+
+    // cortex — 22 parcels clipped to a silhouette. Alpha is driven by retention under the
+    // playhead: attention parcels track who is still watching, the default-mode set rises with
+    // the people who checked out. (This is exactly cortex-sim.ts's unused `grounded` branch.)
+    // ── the cortex ────────────────────────────────────────────────────────────────────────
+    // A Voronoi parcellation over a brain silhouette, on canvas. A grid of rects clipped to an
+    // ellipse reads as a waffle, not a cortex; irregular parcels with real seams read correctly.
+    // The pixel→parcel map is computed ONCE, so a scrub only rewrites alphas.
+    const cortex = $(".cortex");
+    const cctx = cortex.getContext("2d");
+    const CW = cortex.width, CH = cortex.height;
+    const CX = CW / 2, CY = CH / 2, RX = CW / 2 - 4, RY = CH / 2 - 4;
+    const NSEED = 15;
+
+    const seeds = [];
+    for (let k = 0; k < NSEED; k++) {
+      const a = k * GOLDEN_C, rr = Math.sqrt((k + 0.5) / NSEED);
+      const sx = CX + Math.cos(a) * rr * (RX * 0.9);
+      const sy = CY + Math.sin(a) * rr * (RY * 0.9);
+      // anterior (left) parcels carry attention; posterior (right) carry the default-mode network
+      const f = clamp((sx - (CX - RX)) / (RX * 2), 0, 1);
+      seeds.push({ x: sx, y: sy, attn: 1 - f * 0.85, dmn: f * 0.95 });
+    }
+
+    // owner[i] = parcel index, 255 = outside the silhouette or on a seam
+    const owner = new Uint8Array(CW * CH);
+    for (let y = 0; y < CH; y++) {
+      for (let x = 0; x < CW; x++) {
+        const i = y * CW + x;
+        const nx = (x - CX) / RX, ny = (y - CY) / RY;
+        if (nx * nx + ny * ny > 1) { owner[i] = 255; continue; }
+        let b1 = Infinity, b2 = Infinity, bi = 0;
+        for (let s = 0; s < NSEED; s++) {
+          const dx = x - seeds[s].x, dy = y - seeds[s].y;
+          const d = dx * dx + dy * dy;
+          if (d < b1) { b2 = b1; b1 = d; bi = s; } else if (d < b2) { b2 = d; }
+        }
+        // a seam where two parcels meet, plus a forced interhemispheric fissure down the midline
+        const seam = Math.sqrt(b2) - Math.sqrt(b1) < 1.6 || Math.abs(x - CX) < 1.2;
+        owner[i] = seam ? 255 : bi;
+      }
+    }
+
+    const img = cctx.createImageData(CW, CH);
+    const BG = [24, 24, 23], FG = [236, 231, 222];
+
+    function paintCortex(ret) {
+      // Dimmed deliberately: the readout's information is the CONTRAST between parcels, so the
+      // overall mass stays quiet and never competes with the curve it annotates.
+      const alpha = seeds.map(s => clamp(0.04 + ret * s.attn * 0.72 + (1 - ret) * s.dmn * 0.30, 0.03, 1));
+      const d = img.data;
+      for (let i = 0; i < owner.length; i++) {
+        const o = owner[i], p = i * 4;
+        const a = o === 255 ? 0 : alpha[o];
+        d[p]     = BG[0] + (FG[0] - BG[0]) * a;
+        d[p + 1] = BG[1] + (FG[1] - BG[1]) * a;
+        d[p + 2] = BG[2] + (FG[2] - BG[2]) * a;
+        d[p + 3] = o === 255 ? 0 : 255;
+      }
+      cctx.putImageData(img, 0, 0);
+    }
+
+    const live = $('[data-live="v-scrub"]');
+    const playhead = $(".playhead", host);
+
+    function render(u) {
+      u = clamp(u, 0, 1);
+      const idx = u * (CURVE.length - 1);
+      const i0 = Math.floor(idx), i1 = Math.min(CURVE.length - 1, i0 + 1), f = idx - i0;
+      const val = CURVE[i0] + (CURVE[i1] - CURVE[i0]) * f;
+      const secs = u * CLIP;
+
+      playhead.style.left = (PAD / W * 100 + u * ((W - PAD * 2) / W) * 100) + "%";
+      dot.setAttribute("cx", (PAD + u * (W - PAD * 2)).toFixed(2));
+      dot.setAttribute("cy", (H - PAD - (val / 105) * (H - PAD * 2)).toFixed(2));
+      dot.setAttribute("fill", secs >= BREAK[0] && secs <= BREAK[1] ? CORAL : CREAM);
+
+      live.textContent = `${fmtTime(secs)} · ${Math.round(val)}%`;
+
+      const fi = Math.round(u * (FRAMES - 1));
+      frames.forEach((el2, i) => el2.classList.toggle("on", i === fi));
+
+      const wi = Math.round(u * (words.length - 1));
+      words.forEach((w, i) => {
+        const d = Math.abs(i - wi);
+        w.className = d === 0 ? "on" : d <= 2 ? "near" : "";
+      });
+
+      // retention → cortex. High retention lights the anterior attention parcels; as the room
+      // leaves, activation migrates posterior (the default-mode rise). This is exactly what
+      // cortex-sim.ts's `grounded` mode does with a retentionAt(u) callback — and BrainTab.tsx:65
+      // currently hardcodes `simulated` instead, so the shipped cortex carries no information.
+      paintCortex(val / 100);
+    }
+
+    let dragging = false;
+    const at = e => {
+      const r = host.getBoundingClientRect();
+      return (e.clientX - r.left) / r.width;
+    };
+    host.addEventListener("pointerdown", e => { dragging = true; host.setPointerCapture(e.pointerId); render(at(e)); });
+    host.addEventListener("pointermove", e => { if (dragging || e.buttons === 0) render(at(e)); });
+    host.addEventListener("pointerup",   e => { dragging = false; });
+    host.addEventListener("pointerleave", () => { if (!dragging) render(4 / CLIP); });
+
+    render(4 / CLIP); // open at the decisive second
+  })();
+
+  // ── FORM 4b · retention by pool (small multiples — one form, four rows) ────────────────────
+
+  (function buildPools() {
+    const host = $('[data-pools="video"]');
+    if (!host) return;
+    POOLS.forEach(p => {
+      const row = document.createElement("div");
+      row.className = "prow" + (p.loss ? " loss" : "");
+      row.innerHTML = `<span class="prow-l">${p.label}<em>${p.sub}</em></span>` +
+                      `<svg viewBox="0 0 200 26" preserveAspectRatio="none"></svg>` +
+                      `<span class="prow-n">${p.drop}</span>`;
+      const svg = row.querySelector("svg");
+      const d = smoothPath(p.pts, 200, 26, 2, 0, 105);
+      svg.appendChild(el("path", { d: `${d} L 198 24 L 2 24 Z`, fill: "rgba(236,231,222,.05)", stroke: "none" }));
+      svg.appendChild(el("path", {
+        d, fill: "none", stroke: p.loss ? CORAL : CREAM,
+        "stroke-width": 1.2, "stroke-opacity": p.loss ? 1 : .78, "stroke-linecap": "round",
+        "vector-effect": "non-scaling-stroke",
+      }));
+      host.appendChild(row);
+    });
+  })();
+
+  // ── FORM 5 · the terrain (golden-angle placement, matching ambient-v2-population.ts) ───────
+
+  const GOLDEN = 2.399963229728653;
+  $$("[data-terrain]").forEach(svg => {
+    const segs = DISTRICTS[svg.dataset.terrain];
+    segs.forEach(s => {
+      const { cx, cy, spread } = s;
+      const g = el("g", {});
+      for (let k = 0; k < s.n; k++) {
+        const a = k * GOLDEN;
+        const rr = spread * Math.sqrt((k + 0.5) / s.n);
+        const nx = cx + Math.cos(a) * rr;
+        const ny = cy + Math.sin(a) * rr * .78;
+        const lit = k / s.n < s.lit;
+        g.appendChild(el("circle", {
+          cx: nx.toFixed(1), cy: ny.toFixed(1), r: 2.1,
+          fill: lit ? (s.loss ? CORAL : CREAM) : CREAM,
+          "fill-opacity": lit ? (s.loss ? .85 : .74) : .1,
+        }));
+      }
+      const label = el("text", {
+        x: cx.toFixed(1), y: (cy + spread * .78 + 15).toFixed(1), "text-anchor": "middle",
+        fill: s.loss ? CORAL : "rgba(236,231,222,.55)",
+        "font-size": 9.5, "font-family": "ui-monospace, SFMono-Regular, Menlo, monospace",
+        "letter-spacing": ".04em",
+      });
+      label.textContent = `${s.name} · ${Math.round(s.lit * 100)}%`;
+      g.appendChild(label);
+      svg.appendChild(g);
+    });
+  });
+
+  // ── FORM 2b · the expandable reason rows (the text instrument) ─────────────────────────────
+
+  (function buildReasons() {
+    const host = $('[data-reasons="text"]');
+    if (!host) return;
+    const max = Math.max(...REASONS.map(r => r.count));
+    REASONS.slice().sort((a, b) => b.count - a.count).forEach((r, i) => {
+      const wrap = document.createElement("div");
+
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "rowx" + (r.loss ? " loss" : "");
+      btn.setAttribute("aria-expanded", "false");
+      btn.innerHTML = `<span class="row-l">${r.label}</span>` +
+        `<span class="row-t"><i style="width:${Math.round((r.count / max) * 100)}%"></i></span>` +
+        `<span class="row-n">${r.count}</span>`;
+
+      const body = document.createElement("div");
+      body.className = "rowx-body";
+      body.hidden = true;
+      body.innerHTML = r.quotes.map(([who, arch, text]) => `
+        <div class="cmt" style="grid-template-columns:1fr;margin-top:10px">
+          <div>
+            <p class="cmt-text" style="font-size:14px;margin:0">${text}</p>
+            <div class="cmt-who" style="margin-top:6px"><b>${who}</b> · ${arch}</div>
+          </div>
+        </div>`).join("");
+
+      btn.addEventListener("click", () => {
+        const open = btn.getAttribute("aria-expanded") === "true";
+        btn.setAttribute("aria-expanded", String(!open));
+        body.hidden = open;
+      });
+
+      wrap.appendChild(btn); wrap.appendChild(body);
+      host.appendChild(wrap);
+    });
+  })();
+
+  // ── tabs ──────────────────────────────────────────────────────────────────────────────────
+
+  $$("[data-rail]").forEach(rail => {
+    const tabs = $$(".tab", rail);
+    tabs.forEach(t => t.addEventListener("click", () => {
+      tabs.forEach(o => {
+        const on = o === t;
+        o.setAttribute("aria-selected", String(on));
+        const panel = $("#" + o.dataset.panel, rail);
+        if (panel) panel.hidden = !on;
+      });
+      $(".railbody", rail).scrollTop = 0;
+    }));
+  });
+})();
+</script>
+</body>
+</html>

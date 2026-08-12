@@ -7,9 +7,10 @@ import { MediaSlot } from "@/components/offer/media-slot";
  * video in → the room reacts → the verdict, in about 90 seconds). Seeing the
  * product move earns more belief than any claim, so it keeps its own tone-zone.
  *
- * The slot is intentionally still EMPTY (owner call — the recording doesn't
- * exist yet). Fill it by passing `videoSrc` + `poster` — a one-line swap, no
- * layout change — and move the section back above Pricing when you do.
+ * ⚠️ UNMOUNTED from /go (owner call 2026-07-26) — the recording doesn't exist
+ * yet, and an empty 16:9 slot on a paid page is a conversion cost. When the
+ * recording lands: pass `videoSrc` + `poster` and remount in `go/page.tsx`
+ * just after HowItWorks — seeing the product move belongs before the price.
  *
  * ⚠️ The copy used to apologize for the gap ("we're recording it on a live run
  * rather than staging one — it lands here when it's honest"). A visitor deciding

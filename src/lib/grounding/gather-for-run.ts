@@ -42,9 +42,13 @@
 import { gatherAndExtract } from "@/lib/grounding/orchestrator";
 import { buildCorpusBlock, type GroundingSkill } from "@/lib/grounding/prompt";
 import { adaptCorpusBlock, type AdaptProfile } from "@/lib/grounding/adapt";
+import { fetchBeatTranscripts, getCorpusClient } from "@/lib/grounding/corpus";
 import { retrieveCachedExamples, resolveRetrieveConfig } from "@/lib/grounding/retrieve";
 import { assessWarrant, type Warrant, type WarrantAxis } from "@/lib/grounding/warrant";
 import type { RetrievedExample } from "@/lib/grounding/types";
+import { buildVideoEvidence, evidenceMetric, type RunEvidence } from "@/lib/tools/evidence";
+import { formatCount } from "@/lib/account-metrics/account-metrics";
+import { MIN_OUTLIER_MULTIPLIER } from "@/lib/grounding/outlier-gate";
 
 /** The stage name shown on the thread loading spine while gathering (shared by all skills). */
 export const GROUNDING_STAGE_NAME = "Finding proven outliers";
@@ -77,6 +81,16 @@ export interface GatherCorpusInput {
   niche: string | null;
   /** Runner stage callback — forwarded at the real gather boundaries. */
   onStage?: (name: string, status: "active" | "done") => void;
+  /**
+   * Runner EVIDENCE callback — fired once, with the proven videos the model is actually shown.
+   *
+   * This is the payoff of grounding, made visible during the wait instead of only afterwards on a
+   * card receipt. The rows exist ~40s before the first hook does (retrieval precedes generation),
+   * and the creator spent that whole stretch looking at a shimmer while the engine held their
+   * evidence in memory. Fires only when rows survive `used` — never on a degrade, so it cannot
+   * imply grounding that did not happen.
+   */
+  onEvidence?: (evidence: RunEvidence) => void;
   /** Runner warning sink — degrade reasons land here (surfaced via the SSE warning event). */
   warnings: string[];
   /**
@@ -129,6 +143,15 @@ export interface GatherCorpusResult {
   warrant: Warrant;
   /** Convenience mirror of `warrant !== "none"` — what the card's `grounded` flag is set from. */
   grounded: boolean;
+  /**
+   * Did the adapt BRIEF ship as `corpus` (true), or the raw per-skill slice (false — including
+   * every adapt fallback)? The runners' citation-honesty guard keys off this: the madlib-
+   * instantiation check (output-guards.ts templateInstantiated) verifies the slice contract —
+   * "instructed to instantiate what it was shown" — and demonstrably strips honest brief-path
+   * citations (measured 23/28 on the 07-15 A/B output), because under the brief the model never
+   * saw the madlib. The lexical guard therefore binds ONLY when `adapted` is false.
+   */
+  adapted: boolean;
 }
 
 /** Injectable pipeline fns (tests swap these; prod uses the real modules). */
@@ -136,6 +159,103 @@ export interface GatherCorpusDeps {
   retrieve?: typeof retrieveCachedExamples;
   gather?: typeof gatherAndExtract;
   adapt?: typeof adaptCorpusBlock;
+  /** C3: per-beat transcript read for the script briefer (id → per-section sentences). */
+  transcripts?: (ids: string[]) => Promise<Map<string, string[][]>>;
+}
+
+/**
+ * C3 deep anatomy (script adapt only): attach what each source actually SAID per timed beat to
+ * COPIES of the examples, positionally (the curated import built `template.beats` from these
+ * same sections 1:1). Only the BRIEFER's decode view renders the field — the raw slice and the
+ * writer never see source words (the measured verbatim-transplant drift). Degrade-safe: any
+ * fetch failure or shape mismatch returns the examples unchanged, and the brief ships without.
+ */
+async function enrichWithTranscripts(
+  examples: RetrievedExample[],
+  fetchTranscripts: GatherCorpusDeps["transcripts"],
+): Promise<RetrievedExample[]> {
+  const fetch =
+    fetchTranscripts ?? ((ids: string[]) => fetchBeatTranscripts(getCorpusClient(), ids));
+  try {
+    const map = await fetch(examples.map((ex) => ex.teardownId));
+    if (map.size === 0) return examples;
+    return examples.map((ex) => {
+      const sections = map.get(ex.teardownId);
+      const beats = ex.template?.beats;
+      if (!sections?.length || !beats?.length) return ex;
+      return {
+        ...ex,
+        template: {
+          ...ex.template!,
+          beats: beats.map((b, i) =>
+            sections[i] && sections[i]!.length > 0 ? { ...b, transcript: sections[i]! } : b,
+          ),
+        },
+      };
+    });
+  } catch (err) {
+    console.warn(
+      `[grounding] beat-transcript fetch failed (brief ships without): ${err instanceof Error ? err.message : String(err)}`,
+    );
+    return examples;
+  }
+}
+
+/**
+ * The rail's headline states what these rows are evidence OF — the same distinction
+ * corpus-references-block.tsx draws for the chat agent's cited sources, for the same reason: a
+ * STRUCTURAL batch is proven shape borrowed from other subjects, and a creator who reads it as
+ * "3 videos about my topic" has been misled by the wait rather than by the cards.
+ */
+function evidenceHeadline(warrant: Warrant, count: number): string {
+  const videos = count === 1 ? "video" : "videos";
+  if (warrant === "structural") return `Borrowing shape from ${count} proven ${videos}`;
+  if (warrant === "provenance") return `Found ${count} proven ${videos}`;
+  return `Drafting against ${count} proven ${videos}`;
+}
+
+/**
+ * Fire the evidence callback with the rows the model was shown. Degrade-safe by construction:
+ * `buildVideoEvidence` returns null when no row carries a handle or a cover, and a throw here
+ * (a callback that dies mid-run) must never take the generation down with it — grounding is an
+ * enhancement, and so is showing it.
+ */
+function emitEvidence(
+  onEvidence: ((evidence: RunEvidence) => void) | undefined,
+  warrant: Warrant,
+  used: RetrievedExample[],
+): void {
+  if (!onEvidence || used.length === 0) return;
+  try {
+    const evidence = buildVideoEvidence(
+      (count) => evidenceHeadline(warrant, count),
+      used.map((ex) => ({
+        handle: ex.handle,
+        image: ex.coverUrl,
+        href: ex.videoUrl,
+        // The same gate the on-card receipt applies (build-proof.ts provenMultiplier): a
+        // multiplier is a CLAIM, so it ships only when it cleared MIN_OUTLIER_MULTIPLIER. The
+        // corpus admits hand-curated rows scoring below 1× — "0.5× vs followers" is a boast that
+        // refutes itself. Under the bar we fall back to raw views and make no performance claim.
+        metric: evidenceMetric({
+          multiplier:
+            typeof ex.multiplier === "number" &&
+            Number.isFinite(ex.multiplier) &&
+            ex.multiplier >= MIN_OUTLIER_MULTIPLIER
+              ? ex.multiplier
+              : null,
+          views: ex.views,
+          baselineLabel: ex.baselineLabel,
+          formatCount,
+        }),
+      })),
+    );
+    if (evidence) onEvidence(evidence);
+  } catch (err) {
+    console.warn(
+      `[grounding] evidence emit failed (ignored): ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
 }
 
 /**
@@ -154,6 +274,7 @@ export async function gatherCorpusForRun(
     scrapeAvailable: false,
     warrant: "none",
     grounded: false,
+    adapted: false,
   };
   if (!input.enabled || !READABLE_PLATFORMS.has(input.platform)) return none;
 
@@ -191,23 +312,39 @@ export async function gatherCorpusForRun(
   ): Promise<GatherCorpusResult> => {
     // Assessed on the rows the model is actually SHOWN (`used`), never on the wider input list —
     // a row we retrieved and then dropped cannot warrant anything the model could not read.
-    const settle = (corpus: string | undefined, used: RetrievedExample[]): GatherCorpusResult => {
+    const settle = (
+      corpus: string | undefined,
+      used: RetrievedExample[],
+      adapted: boolean,
+    ): GatherCorpusResult => {
       const { warrant, grounded } = assessWarrant(axis, used);
-      return { corpus, examples: used, scrapeAvailable, warrant, grounded };
+      // The loading rail gets the SAME rows the model got, described by the SAME warrant the cards
+      // will be stamped with — so the wait can never advertise evidence the output then disclaims.
+      if (grounded) emitEvidence(input.onEvidence, warrant, used);
+      return { corpus, examples: used, scrapeAvailable, warrant, grounded, adapted };
     };
     if (input.adapt && ADAPT_SKILLS.has(input.skill) && input.adaptProfile && examples.length > 0) {
-      const { corpus, used } = await adapt({
+      // C3 deep anatomy (script only): the briefer's decode view additionally gets what each
+      // source SAID per timed beat. Enrichment copies — the original examples stay untouched.
+      const briefed =
+        input.skill === "script"
+          ? await enrichWithTranscripts(examples, deps.transcripts)
+          : examples;
+      // `adapted` comes from the adapt stage itself, NOT from this branch having run: the briefer
+      // falls back internally (LLM failure, kept-0 sweep) and its fallback IS the raw slice — a
+      // corpus the citation guard must still verify under the slice contract.
+      const { corpus, used, adapted } = await adapt({
         skill: input.skill,
         ask: query,
         niche: input.niche,
         platform: input.platform,
         profile: input.adaptProfile,
-        examples,
+        examples: briefed,
       });
-      return settle(corpus, used);
+      return settle(corpus, used, adapted);
     }
     const { corpus, used } = buildCorpusBlock(examples, input.skill);
-    return settle(corpus, used);
+    return settle(corpus, used, false);
   };
 
   input.onStage?.(GROUNDING_STAGE_NAME, "active");
@@ -280,6 +417,10 @@ export async function gatherCorpusForRun(
       query,
       platform: input.platform,
       niche: input.niche,
+      // Mid-flight view of the ~25s paid pull. `finalize` below emits the FINAL, warrant-stamped
+      // payload over the top of it — same rail, same rows, upgraded from "we're checking these"
+      // to the warrant the cards will actually carry.
+      onEvidence: input.onEvidence,
     });
     // PROVENANCE, not the cache axis: these rows were just extracted, so they carry no similarity
     // (orchestrator.ts sets it null by design). Judging them topically would mark the run the user

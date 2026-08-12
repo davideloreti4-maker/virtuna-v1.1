@@ -84,5 +84,10 @@ tests/fixtures/audio-smoke/smoke-test-results.json
 # Dev-only sample media for /dev/cards (never committed — see the Room section)
 /public/dev/
 
+# Spike harness output (scripts/spike-*.ts)
+.spike-out/
+
 # E2E audit rig output (screenshots, JSON, dev logs)
+# Redundant with `.scratch/` above; kept explicit so the rig's output path is
+# discoverable from this file alone.
 .scratch/audit/

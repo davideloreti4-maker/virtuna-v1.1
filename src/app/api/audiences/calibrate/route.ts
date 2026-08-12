@@ -25,6 +25,9 @@ import {
   calibrateFromScrape,
   type CalibrationStage,
 } from "@/lib/audience/calibration";
+import {
+  calibrationVocabulary,
+} from "@/lib/audience/calibration-stages";
 import { createAudience, updateAudience, listAudiences } from "@/lib/audience/audience-repo";
 import { audienceForAccount } from "@/components/audience/audience-display";
 import { upsertAccountSnapshot } from "@/lib/account-metrics/account-metrics-repo";
@@ -58,9 +61,29 @@ function sanitizeText(s: string): string {
  */
 const STAGE_COPY: Record<CalibrationStage, string> = {
   scraping: "Reading your followers…",
-  watching: "Watching your top videos…",
+  watching: "Watching your videos…",
   synthesizing: "Building your audience profile…",
 };
+
+/**
+ * The same copy for a run with NO handle — a description, searched as a niche. See
+ * `calibrationVocabulary`: there is no account in that branch, so the account words are not a
+ * softer phrasing of the truth, they are a different claim than the one the pipeline is making.
+ */
+const STAGE_COPY_DESCRIBED: Record<CalibrationStage, string> = {
+  scraping: "Searching for videos in that niche…",
+  watching: "Watching what performs there…",
+  synthesizing: "Building your audience profile…",
+};
+
+/**
+ * 4d, in one line: these three phases were always real and always honest — they were just emitted
+ * as `status` MESSAGES, so a ~126s wait rendered as one plain line while every other wait in the
+ * product rendered as the progress spine. Sending them as `stage` events too (names from the
+ * shared module below) lets the calibration surface mount the same ProgressChecklist as
+ * everything else. The `status` frames are kept exactly as they were: calibration-flow still falls
+ * back to them, and dropping them would be a silent contract break for any other consumer.
+ */
 
 const CalibrateSchema = z.object({
   // A7: the draft audience the form already created. When present, calibration
@@ -113,6 +136,11 @@ export async function POST(request: Request): Promise<Response> {
 
   const { audienceId, handle, type, platform, goalIntent, name, description } = parsed.data;
 
+  // Name the phases after the job this run is actually doing. `handle` is the same fact
+  // calibrateFromScrape branches on, so the spine cannot drift from the pipeline.
+  const { names: stageNames, plan } = calibrationVocabulary(Boolean(handle));
+  const stageCopy = handle ? STAGE_COPY : STAGE_COPY_DESCRIBED;
+
   // ── (3) SSE stream ────────────────────────────────────────────────────────
   const encoder = new TextEncoder();
 
@@ -140,7 +168,16 @@ export async function POST(request: Request): Promise<Response> {
         const calibrationResult = await calibrateFromScrape(
           { handle, type, platform, goalIntent, name, description },
           {
-            onStage: (stage) => send("status", { message: STAGE_COPY[stage] }),
+            onStage: (stage) => {
+              send("status", { message: stageCopy[stage] });
+              // calibration's onStage fires only on a phase BEGINNING, so the previous phase's
+              // completion is inferred from the next one starting — that is a real boundary the
+              // pipeline crossed, not a guess. The clock stays honest either way: it only ever
+              // times what it watched go active.
+              const i = plan.indexOf(stageNames[stage]);
+              if (i > 0) send("stage", { name: plan[i - 1], status: "done" });
+              send("stage", { name: stageNames[stage], status: "active" });
+            },
             // The account + the posts we're about to watch, the moment the scrape returns —
             // ~2 minutes before the audience they produce. A status line claims we are working;
             // the creator's own face and covers prove it.
@@ -166,12 +203,18 @@ export async function POST(request: Request): Promise<Response> {
             });
             return;
           }
-          // Scrape/network failure — distinct from thin fallback (UI-SPEC copy)
-          log.warn("calibration returned scrape_failed", {
+          // Scrape/network failure — distinct from thin fallback (UI-SPEC copy) AND from a
+          // synthesis failure, where the account was read fine and our own model step is what
+          // broke. Asking for the handle there is a false accusation that costs the creator
+          // another paid scrape to act on.
+          const synthesisFailed = calibrationResult.error === "synthesis_failed";
+          log.warn(`calibration returned ${calibrationResult.error}`, {
             detail: calibrationResult.message ?? null,
           });
           send("error", {
-            message: "Calibration failed. Check the handle and try again.",
+            message: synthesisFailed
+              ? `We read @${handle ?? name} fine — building the audience from it is what failed. Nothing is wrong with the handle; try again.`
+              : "Calibration failed. Check the handle and try again.",
             retry: true,
           });
           return;
@@ -255,6 +298,13 @@ export async function POST(request: Request): Promise<Response> {
           send("error", { message: "Calibration failed. Check the handle and try again.", retry: true });
           return;
         }
+
+        // Land the final phase before the run settles. Without this the last row would sit
+        // `active` forever — nothing else fires after `synthesizing` begins.
+        send("stage", {
+          name: plan[plan.length - 1],
+          status: "done",
+        });
 
         // reveal = the "it's real" showcase (§P.5): real scraped account + top posts.
         send("done", { audience: persistedAudience, reveal });

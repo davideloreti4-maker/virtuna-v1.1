@@ -74,7 +74,7 @@ export async function POST(request: Request): Promise<Response> {
   if (limited) return limited;
 
   // ── Credit gate (BILLING) — priced admission BEFORE any engine spend ─────────
-  const { refusal, verdict: creditVerdict } = await creditGate(supabase, user.id, "read");
+  const { refusal, verdict: creditVerdict } = await creditGate(supabase, user, "read");
   if (refusal) return refusal;
 
   // ── (2) Parse + validate body ────────────────────────────────────────────────

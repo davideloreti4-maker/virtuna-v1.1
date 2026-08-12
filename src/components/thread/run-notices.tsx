@@ -11,6 +11,8 @@
  *                       and were charged), so this is a quiet role="status" note, never the alert.
  */
 
+import { useOnline } from '@/hooks/use-online';
+
 export interface SkillRunErrorProps {
   /** Re-invokes the run from the parent. Fires only on explicit tap (W2). */
   onRetry?: () => void;
@@ -28,6 +30,11 @@ export function SkillRunError({
   headline = 'Couldn’t finish that run.',
   body = 'The generation or SIM-1 pass dropped out. Tap to retry — nothing was charged.',
 }: SkillRunErrorProps) {
+  // Retry follows the connection. Live-while-offline is the futile-retry loop CreditWallRefusal
+  // exists to prevent; removing the button instead would strand a user whose connection returns
+  // a second later, so it stays rendered and goes disabled.
+  const online = useOnline();
+
   return (
     <div
       className="rounded-xl border border-white/[0.06] px-4 py-3 flex flex-col gap-1"
@@ -44,7 +51,8 @@ export function SkillRunError({
         <button
           type="button"
           onClick={onRetry}
-          className="mt-1 text-sm font-medium self-start transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10"
+          disabled={!online}
+          className="mt-1 text-sm font-medium self-start transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring)] disabled:opacity-50"
           style={{ color: 'var(--color-cream-secondary)' }}
           aria-label={retryLabel}
         >
@@ -67,7 +75,7 @@ export function RunWarnings({ warnings }: RunWarningsProps) {
       role="status"
       aria-live="polite"
     >
-      <p className="text-[11px] uppercase tracking-wide" style={{ color: 'var(--color-cream-muted)' }}>
+      <p className="text-caption uppercase tracking-wide" style={{ color: 'var(--color-cream-muted)' }}>
         Heads up — this run degraded
       </p>
       {warnings.map((w, i) => (

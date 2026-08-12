@@ -14,6 +14,7 @@
  */
 
 import { createContext, useContext } from 'react';
+import type { OutlierTileData } from '@/components/discover/outlier-tile';
 
 export type OnTestHookFn = (hookLine: string, audienceArchetype: string) => void;
 
@@ -87,6 +88,36 @@ export const SimulateVideoContext = createContext<SimulateVideoFn | null>(null);
 
 export function useSimulateVideo(): SimulateVideoFn | null {
   return useContext(SimulateVideoContext);
+}
+
+/**
+ * OutlierGridActionsContext — the Explore grid's "Remix → Read" + "+ Track account" handlers.
+ *
+ * The LAST card family whose actions rode PROPS instead of context, and the reason Explore could
+ * not join the unified thread stream: `MessageBlocks` only ever passes `block` to a renderer, so a
+ * persisted `outlier-grid` rehydrated through it rendered INERT tiles. The workaround was to filter
+ * `outlier-grid` out of the unified stream and let ExploreThreadView render it separately — which is
+ * exactly the per-skill-viewport split that lost work on a skill switch.
+ *
+ * Moving them here makes the grid behave like every other card: the composer provides the handlers
+ * once at the thread root, and the tiles stay live whether they just streamed in or came back from
+ * the database. Props still WIN over context in the renderer, so the Discover page's static
+ * reference (which passes neither) and any direct caller are unaffected.
+ *
+ * Default null ⇒ no handlers ⇒ static tiles, the pre-existing Discover-page behavior.
+ */
+export interface OutlierGridActions {
+  onRemix: (tile: OutlierTileData) => void;
+  onTrack: (tile: OutlierTileData) => void;
+  remixPendingId: string | null;
+  trackPendingId: string | null;
+  trackedIds: Set<string>;
+}
+
+export const OutlierGridActionsContext = createContext<OutlierGridActions | null>(null);
+
+export function useOutlierGridActions(): OutlierGridActions | null {
+  return useContext(OutlierGridActionsContext);
 }
 
 /**

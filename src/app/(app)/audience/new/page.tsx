@@ -6,6 +6,7 @@
  */
 
 import { AudienceCreate, type CreateDoor } from "@/components/audience/audience-create";
+import { PageShell, SurfaceHeader } from "@/components/surfaces/surface-header";
 
 export const metadata = {
   title: "New audience | Maven",
@@ -39,14 +40,16 @@ export default async function NewAudiencePage({
 
   return (
     <div className="relative min-h-full text-foreground">
-      <div className="mx-auto w-full max-w-2xl px-4 pb-24 pt-6 sm:px-6">
-        <div className="rv-in space-y-6">
-          <h1 className="text-[19px] font-semibold tracking-[-0.01em] text-foreground lg:text-[22px]">
-            New audience
-          </h1>
+      {/* The shared 880px column, so this page's header lands on the same left edge
+          as /audience and /settings. The form keeps its narrow measure by capping
+          ITSELF (max-w-2xl below) instead of shrinking the shell — shrinking the
+          shell is what used to push this title 298px right of /settings'. */}
+      <PageShell>
+        <div className="rv-in max-w-2xl space-y-6">
+          <SurfaceHeader title="New audience" />
           <AudienceCreate initialDoor={initialDoor} prefillHandle={sp.handle} />
         </div>
-      </div>
+      </PageShell>
     </div>
   );
 }

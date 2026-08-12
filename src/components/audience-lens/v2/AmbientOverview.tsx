@@ -3,28 +3,34 @@
 /**
  * AmbientOverview — Ambient Audience v2, surface ① (the room's home).
  *
- * Round-4 grammar (`.scratch/panel-v6-round4.html`), built in real code + a 2026-07-22 premium pass:
- *   room header (rest) · SIMULATING-NOW live card · RANKED screening list · cast on call.
+ * The board: room header (its own facts) · SIMULATING-NOW live card · RANKED results ·
+ * NOT-SIMULATED-YET queue · the ＋ door.
+ *
+ * Rev B+ (2026-08-02) — what changed and why:
+ *  - THE 0/10 RANK IS DEAD (owner). The engine no longer measures it, so nothing renders it:
+ *    a queued row carries no score, no bar and no rank numeral. A video keeps `viral 84` — that
+ *    is a real native craft score, not a projection dressed as one.
+ *  - The header states the room's FACTS ("1,000 minds · calibrated · reads on TikTok") instead of
+ *    wearing a CALIBRATED badge. The micro-avatar cast cluster and the "on call" footer are gone
+ *    with it — the identity is in the sentence now.
+ *  - The run in flight is a DOT FIELD (one dot ≈ N/120 minds) filling with real progress, over a
+ *    phase line in plain words. The four-word stage stepper and the travelling gradient scan are
+ *    deleted: one reported our pipeline's vocabulary, the other performed liveness the fill was
+ *    already carrying honestly.
+ *  - Sentence-case section headers; zero mono-uppercase chrome anywhere on this surface.
  *
  * Design laws honored:
- *  - Sapient DE-BOX: hairline dividers, no bordered tiles (the one live card earns its hairline).
- *  - Section = mono kicker + human question + owning number.
- *  - Cream is the room; coral is only where you lose them (the loudest-no row).
- *  - Sealed verdicts during watching — staged progress is honest, never a fabricated partial.
- *  - Words are the enemy; motion is simulation physics (staged fill + a travelling scan report
- *    real progress; the ranked bars settle in on mount, they do not perform).
- *
- * Premium pass (2026-07-22):
- *  - Live card: a breathing live dot, a travelling cream scan over the fill, a connected stage
- *    stepper (replacing four loose words), and a sealed-lock affordance that reveals the verdict.
- *  - Ranked selector: rank numerals, a settle-in cascade, sharper hover, and — per owner ask —
- *    each row now SHOWS its run state (sealed vs queued) instead of one blanket "simulated" tag.
- *
- * Reuse note: a clean composition of the round-4 anatomy — it deliberately does NOT drag in
- * `audience-presence`'s switcher/portal apparatus. Data shapes mirror the live contract.
+ *  - Sealed verdicts: staged progress is honest, a partial verdict is never fabricated. The fill
+ *    is REAL progress and the number stays withheld until n-of-n decide.
+ *  - Matte: no gradients, no shadows, no blur.
+ *  - One accent across the three room surfaces, and it is not on this one — the winner reads by
+ *    rank position and full-strength cream.
  */
 
 import { useEffect, useRef, useState } from "react";
+// The room's headcount moved OUT of this file (2026-08-13): the phone arrival's audience line
+// states the same number, and the owner-ruled copy is only true while both read one definition.
+import { TIER_VIEWERS } from "@/lib/surfaces/ambient-v2-audience-meta";
 
 // ── view-model ───────────────────────────────────────────────────────────────
 
@@ -36,22 +42,32 @@ export type SimTier = "flash" | "max";
 export type RankState = "simulated" | "queued";
 
 /** What KIND of thing was screened — so a mixed board (hooks + ideas + a video test…) is legible
- *  at a glance. Surfaced as a small mono kind chip per row. */
+ *  at a glance. Surfaced as small plain-text kind tag per row. */
 export type RankKind = "hook" | "idea" | "video" | "script" | "remix" | "concept";
 
 /** One screened stimulus in the ranked list. `stopPct` = the audience's would-stop % (sealed
- *  rows, ranked; the top is the win). `personaStops` = how many of 10 personas would stop at
- *  GENERATION — queued rows are already ranked by it before the audience runs, so they carry
- *  their own rank + bar (a persona estimate, not a measured verdict, shown muted). */
+ *  rows, ranked; the top is the win). A QUEUED row carries no number of its own: the generation-time
+ *  persona estimate it used to print (`personaStops`, "8/10") is dead — the engine stopped
+ *  measuring it, so the board stopped ranking un-run work by it. */
 export interface RankedStimulus {
   id: string;
   stimulus: string;
   stopPct: number;
-  personaStops?: number; // 0–10 — generation-time personas who would stop (queued rows)
   viralScore?: number | null; // VIDEO rows only — the tested video's native craft/viral score (0–100),
-  //  shown in place of a projection. Distinct from the attention % (which appears only once simulated).
+  //  a REAL measurement of the file, distinct from the attention % (which appears only once simulated).
   kind?: RankKind;
   state?: RankState; // defaults to "simulated"
+  /** Set ⇒ `stopPct` is ONE SLICE's stop rate, not the room's, and this is that slice's name.
+   *  The board ranks sliced and whole-room verdicts in the same column — they answer different
+   *  questions, so the label is what keeps "41% of Builders" from being read as "41% of the room".
+   *  It is printed on the row, never dropped: an unlabelled sliced verdict is a mislabelled one. */
+  sliceLabel?: string;
+  /** Set on a SEALED row whose run produced no population, so there is no depth drill behind it —
+   *  the measured % IS the whole answer. Such a row used to look identical to a drillable one and
+   *  simply do nothing when tapped (`openStimulus`'s empty else), which is the worst of both. The
+   *  house rule is the one already stated on AmbientDetail's tab strip: say "nothing behind this"
+   *  BEFORE the tap, not after. So the row stops pretending to be a door. */
+  noDepth?: boolean;
 }
 
 /** A run in flight. Verdict is SEALED until every agent decides; `verdictPct` reveals then. */
@@ -60,19 +76,50 @@ export interface WatchingRun {
   verdictPct?: number;
 }
 
-export interface CastMember {
-  id: string;
-  initial: string;
+/**
+ * One named slice of the calibrated signature — who is actually in the room, and how much of it
+ * they are.
+ *
+ * REAL without a run: `audience.personas` carries archetype + label + share off calibration, so
+ * this is knowable the moment the rail mounts. That is the whole reason the resting board can say
+ * something true (see `OverviewData.segments`).
+ */
+export interface RoomSegment {
+  /** The ENGINE key. Carried but never displayed — a segment is identified by what the projection
+   *  reads, never by `label`, which is creator-editable display text. */
+  archetype: string;
+  label: string;
+  /** Integer percent of the room. The adapter apportions these by largest remainder so a column
+   *  of them adds up; see `deriveSegments`. */
+  sharePct: number;
+  /** The calibration-stored reaction frame, VERBATIM — the only per-segment string the Flash sim
+   *  is briefed with. Printed as the row's second line. Empty ⇒ the row prints its name alone. */
+  repaint: string;
 }
 
 export interface OverviewData {
   audienceName: string;
-  provenance: string; // "calibrated · 3d"
+  provenance: string; // the calibration fact — "calibrated" / "baseline"
+  /** Where the room READS — the chosen scene ⑤ arms a run with. Stated in the header facts line. */
+  scene: string;
   tier: SimTier;
   watching?: WatchingRun | null; // null ⇒ rest state (no run)
   ranked: RankedStimulus[];
-  cast: CastMember[];
-  castOverflow?: number;
+  /**
+   * The room's makeup — rendered on the RESTING board (nothing sealed, nothing queued, nothing in
+   * flight). This resolves the cast question parked at handoff §8, which sat open because the
+   * board only ever mounted beside a thread, where it always had rows.
+   *
+   * It mounts on the desktop ARRIVAL now (owner ruling 2026-08-11 r3), and there it has none: the
+   * ranked list is built from the open thread's descriptor ledger. A board that is only a
+   * "0 sealed" header over empty space reads as a panel that failed to load — worse than the foot
+   * chip it replaced. So the resting state answers the question it CAN answer without firing
+   * anything: who is in this room.
+   *
+   * Names and shares, NOT initials. Initials were tried in the audience sheet and cut the same day:
+   * they carry no information and collide (two segments starting "G" render the same grey tile).
+   */
+  segments: RoomSegment[];
 }
 
 /** Shared fixed height across all three v2 surfaces (build handoff §4 — "same fixed height"). */
@@ -94,53 +141,61 @@ export type AmbientPresentation = "rail" | "sheet";
 /** Horizontal gutter per presentation — 26px reads generous in a 400px rail, cramped at 390 - 52. */
 export const ambientGutter = (p: AmbientPresentation) => (p === "sheet" ? "px-[18px]" : "px-[26px]");
 
-const TIER_N: Record<SimTier, number> = { flash: 1000, max: 10000 };
-const TIER_LABEL: Record<SimTier, string> = { flash: "sim-1 flash", max: "sim-1 max" };
+const TIER_LABEL: Record<SimTier, string> = { flash: "SIM-1 Flash", max: "SIM-1 Max" };
 
 /** Deterministic thousands separator — `toLocaleString()` is locale-dependent (SSR/client drift). */
 const withCommas = (n: number) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
-// r4 tone system (mirrors the sketch :root — kept local for pixel fidelity to the target).
+// Tone system (mirrors the mock's :root — kept local for pixel fidelity to the target).
 const TONE = {
   cream: "#ece7de",
+  head: "rgba(236,231,222,.92)", // section headers — a step under content cream
   dim: "rgba(236,231,222,.62)",
   faint: "rgba(236,231,222,.38)",
   ghost: "rgba(236,231,222,.16)",
   mute: "rgba(236,231,222,.25)",
-  sage: "#8ea68a", // --color-positive: the winning bar (the best would-stop)
+  card: "#1d1d1c", // the one live card + nothing else
+  chip: "#2b2a28", // the Simulate → action chip at rest
+  well: "#262624", // …and where it lands on hover
   border: "rgba(255,255,255,.06)",
   hair: "rgba(255,255,255,.08)",
   hover: "rgba(255,255,255,.03)",
 } as const;
 
-// The ranked bars measure against "half the room stops" as the visual full — gives low-ish
-// stop-rates room to differentiate without inflating them. Refined live if it reads wrong.
-const BAR_REF = 50;
+// ── small primitives ─────────────────────────────────────────────────────────
 
-// ── small primitives (r4 grammar) ────────────────────────────────────────────
-
-function Kicker({
+/**
+ * A section header: sentence case, and the right slot carries DATA only.
+ *
+ * This replaced a mono/uppercase/0.08em-tracked kicker. Terminal chrome reads as instrumentation,
+ * and instrumentation is what a creator is trying not to be looking at — the same tell that got
+ * the rev-4 "Bloomberg terminal" note. Uppercase also costs a third more width for the same words
+ * in a 440px column.
+ */
+function SectionHead({
   children,
-  tag,
+  meta,
   live,
 }: {
   children: React.ReactNode;
-  tag?: React.ReactNode;
+  meta?: React.ReactNode;
   live?: boolean;
 }) {
   return (
-    <div className="flex items-baseline justify-between font-mono text-[12px] uppercase tracking-[0.08em]">
-      <span className="flex items-center gap-2" style={{ color: TONE.faint }}>
+    <div className="flex items-baseline justify-between gap-3">
+      <span className="flex min-w-0 items-center gap-2 text-[13px] font-medium" style={{ color: TONE.head }}>
         {live ? (
           <span
-            className="ambient-live-pulse inline-block h-[6px] w-[6px] flex-none translate-y-[-1px] rounded-full"
+            className="ambient-live-pulse inline-block h-[6px] w-[6px] flex-none rounded-full"
             style={{ background: TONE.cream }}
           />
         ) : null}
         {children}
       </span>
-      {tag ? (
-        <span style={{ color: "rgba(236,231,222,.28)", letterSpacing: "0.06em" }}>{tag}</span>
+      {meta ? (
+        <span className="flex-none text-[11px] tabular-nums" style={{ color: TONE.faint }}>
+          {meta}
+        </span>
       ) : null}
     </div>
   );
@@ -156,56 +211,38 @@ function SealGlyph({ color }: { color: string }) {
   );
 }
 
-// ── stage stepper (connected rail, live node breathes) ───────────────────────
-
-const STAGES = ["reading", "brains", "votes", "verdict"] as const;
-const CUTS = [0.12, 0.55, 0.96, 1.01];
-
-function StageStepper({ liveStage, complete }: { liveStage: number; complete: boolean }) {
+/** A row's type tag — plain faint text. Not a chip: on this surface a chip FILL means an action
+ *  you can take (`Simulate →`), and a kind is a fact about the row, not a control. */
+function KindTag({ children, tone = TONE.faint }: { children: React.ReactNode; tone?: string }) {
   return (
-    <div className="mt-4 flex items-start">
-      {STAGES.map((s, i) => {
-        const done = complete || i < liveStage;
-        const live = !complete && i === liveStage;
-        const first = i === 0;
-        const last = i === STAGES.length - 1;
-        return (
-          <div key={s} className="flex min-w-0 flex-1 flex-col items-center">
-            <div className="flex w-full items-center">
-              <span
-                className="h-px flex-1"
-                style={{ background: first ? "transparent" : done || live ? TONE.faint : TONE.ghost }}
-              />
-              <span
-                className={live ? "animate-stage-breathe" : ""}
-                style={{
-                  flex: "none",
-                  width: done || live ? 7 : 6,
-                  height: done || live ? 7 : 6,
-                  borderRadius: 9999,
-                  background: done || live ? TONE.cream : "transparent",
-                  border: done || live ? "none" : `1px solid ${TONE.mute}`,
-                }}
-              />
-              <span
-                className="h-px flex-1"
-                style={{ background: last ? "transparent" : done ? TONE.faint : TONE.ghost }}
-              />
-            </div>
-            <span
-              className="mt-2 font-mono text-[11px] tracking-[0.04em] transition-colors duration-300"
-              style={{ color: live ? TONE.cream : done ? TONE.faint : TONE.mute }}
-            >
-              {s}
-            </span>
-          </div>
-        );
-      })}
-    </div>
+    <span className="flex-none text-[11px] tabular-nums" style={{ color: tone }}>
+      {children}
+    </span>
   );
 }
 
-// ── watching card (staged fill, travelling scan, sealed verdict) ─────────────
+// ── watching card (dot field, honest fill, sealed verdict) ───────────────────
+
+// The field is 24 × 5. One dot therefore stands for n/120 minds (≈8 at Flash) — a quantisation the
+// count line beside it never inherits: that number is exact.
+const DOT_COLUMNS = 24;
+const DOT_COUNT = DOT_COLUMNS * 5;
+const DOT_LIT = "0.85";
+const DOT_UNDECIDED = "0.13";
+
+const DUR = 9000;
+const HOLD = 2400;
+/** The single frame reduced motion renders — mid-run, so the card still reads as a run in flight. */
+const REST_FRAME = 0.62;
+
+/** Where the plain-words phase line turns over. The cuts are the mock's; the words are what a
+ *  creator would say about the room, not what our pipeline calls its stages. */
+const PHASE_CUTS: [p: number, label: (minds: string) => string][] = [
+  [0.12, () => "Reading the hook"],
+  [0.55, (minds) => `${minds} minds deciding`],
+  [0.96, () => "Counting the votes"],
+  [Infinity, () => "Sealing the verdict"],
+];
 
 function WatchingCard({
   run,
@@ -216,40 +253,42 @@ function WatchingCard({
   tier: SimTier;
   reducedMotion: boolean;
 }) {
-  const n = TIER_N[tier];
-  const fillRef = useRef<HTMLSpanElement>(null);
-  // Reduced-motion renders a single static mid-run frame (~62%); lazy-init avoids
-  // setState-in-effect. Live motion's only setState is inside the rAF callback below.
-  const [decided, setDecided] = useState(() => (reducedMotion ? Math.round(0.62 * n) : 0));
-  const [liveStage, setLiveStage] = useState(() => (reducedMotion ? 2 : 0));
+  const n = TIER_VIEWERS[tier];
+  const fieldRef = useRef<HTMLDivElement>(null);
+  // Lazy-init avoids setState-in-effect; live motion's only setState is inside the rAF callback.
+  const [decided, setDecided] = useState(() => (reducedMotion ? Math.round(REST_FRAME * n) : 0));
   const [complete, setComplete] = useState(false);
 
   useEffect(() => {
+    // The field is painted IMPERATIVELY. `decided` changes ~n times across a run, and rendering
+    // 120 children through React on each of those — to flip one opacity — is a lot of
+    // reconciliation for the one element on this surface that must not stutter.
+    const paint = (p: number) => {
+      const el = fieldRef.current;
+      if (!el) return;
+      const lit = Math.round(p * DOT_COUNT);
+      for (let i = 0; i < el.children.length; i++) {
+        (el.children[i] as HTMLElement).style.opacity = i < lit ? DOT_LIT : DOT_UNDECIDED;
+      }
+    };
+
     if (reducedMotion) {
-      if (fillRef.current) fillRef.current.style.transform = "scaleX(0.62)";
+      paint(REST_FRAME);
       return;
     }
     let raf = 0;
     let start = 0;
     let lastD = -1;
-    let lastStage = -1;
     let lastComplete: boolean | null = null;
-    const DUR = 9000;
-    const HOLD = 2400;
     const loop = (now: number) => {
       if (!start) start = now;
       const el = (now - start) % (DUR + HOLD);
       const p = Math.min(el / DUR, 1);
-      if (fillRef.current) fillRef.current.style.transform = `scaleX(${p})`;
+      paint(p);
       const d = p < 1 ? Math.round(p * n) : n;
       if (d !== lastD) {
         lastD = d;
         setDecided(d);
-      }
-      const s = p >= CUTS[2]! ? 3 : p >= CUTS[1]! ? 2 : p >= CUTS[0]! ? 1 : 0;
-      if (s !== lastStage) {
-        lastStage = s;
-        setLiveStage(s);
       }
       const c = p >= 1;
       if (c !== lastComplete) {
@@ -262,56 +301,73 @@ function WatchingCard({
     return () => cancelAnimationFrame(raf);
   }, [reducedMotion, n]);
 
+  const p = complete ? 1 : decided / n;
+  const phase = complete
+    ? "Every mind has decided"
+    : (PHASE_CUTS.find(([cut]) => p < cut) ?? PHASE_CUTS[PHASE_CUTS.length - 1]!)[1](withCommas(n));
+
   return (
     <div
       className="ambient-row-in mt-3 rounded-[12px] p-4"
-      style={{ border: `1px solid ${TONE.hair}`, background: "rgba(236,231,222,.02)" }}
+      style={{ border: `1px solid ${TONE.border}`, background: TONE.card }}
     >
+      {/* what is under test — two lines, because a hook that needs a third is a hook you can open */}
       <div
-        className="overflow-hidden text-ellipsis whitespace-nowrap text-[14px] leading-snug"
-        style={{ color: TONE.cream }}
+        className="overflow-hidden text-[14px] leading-[1.45]"
+        style={{
+          color: TONE.cream,
+          display: "-webkit-box",
+          WebkitBoxOrient: "vertical",
+          WebkitLineClamp: 2,
+        }}
       >
         {run.stimulus}
       </div>
 
-      {/* progress track — cream fill (rAF via transform) + a travelling cream scan for liveness */}
+      {/* THE FIELD — the room as individuals, filling as they decide. A bar says "63% loaded";
+          this says "these many of them have answered", which is the thing actually happening. */}
       <div
-        className="relative mt-4 h-[5px] overflow-hidden rounded-full"
-        style={{ background: TONE.ghost }}
+        ref={fieldRef}
+        data-testid="ambient-dot-field"
+        aria-hidden
+        className="mt-4 grid"
+        style={{ gridTemplateColumns: `repeat(${DOT_COLUMNS}, 1fr)`, rowGap: 9 }}
       >
-        <span
-          ref={fillRef}
-          className="absolute inset-0 block origin-left rounded-full"
-          style={{ background: TONE.cream, opacity: 0.85, transform: "scaleX(0)" }}
-        />
-        {!complete ? (
+        {Array.from({ length: DOT_COUNT }, (_, i) => (
           <span
-            className="ambient-fill-flow absolute inset-y-0 left-0 block w-1/3 rounded-full"
-            style={{
-              background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,.9) 50%, transparent 100%)",
-            }}
+            key={i}
+            className="h-[5px] w-[5px] justify-self-center rounded-full"
+            style={{ background: TONE.cream, opacity: DOT_UNDECIDED, transition: "opacity .5s ease" }}
           />
-        ) : null}
+        ))}
       </div>
 
-      {/* connected stage stepper: reading · brains · votes · verdict */}
-      <StageStepper liveStage={liveStage} complete={complete} />
-
-      {/* meta: N decided · sealed → verdict on complete */}
-      <div className="mt-4 flex items-center justify-between text-[13px]">
-        <span className="tabular-nums" style={{ color: TONE.faint }}>
-          {complete
-            ? `${withCommas(n)} of ${withCommas(n)}`
-            : `${withCommas(decided)} of ${withCommas(n)} decided`}
+      <div className="mt-[15px] flex items-baseline justify-between gap-3">
+        <span className="min-w-0 truncate text-[13px]" style={{ color: "rgba(236,231,222,.8)" }}>
+          {phase}
         </span>
+        <span className="flex-none tabular-nums text-[12px]" style={{ color: TONE.faint }}>
+          {withCommas(complete ? n : decided)} of {withCommas(n)}
+        </span>
+      </div>
+
+      {/* THE SEAL. It swaps to the verdict only when the run is complete AND a verdict exists —
+          an engine that returned nothing leaves this sealed rather than showing a number for it. */}
+      <div
+        className="mt-[13px] flex min-h-[22px] items-center justify-between border-t pt-3"
+        style={{ borderColor: TONE.border }}
+      >
         {complete && run.verdictPct != null ? (
-          <span className="tabular-nums text-[14px] font-medium" style={{ color: TONE.cream }}>
-            {run.verdictPct}% <span className="text-[12px] font-normal" style={{ color: TONE.dim }}>would stop</span>
+          <span className="tabular-nums text-[15px] font-semibold" style={{ color: TONE.cream }}>
+            {run.verdictPct}%
+            <span className="ml-[5px] text-[12px] font-normal" style={{ color: TONE.dim }}>
+              would stop
+            </span>
           </span>
         ) : (
-          <span className="inline-flex items-center gap-1.5 font-mono text-[12px] uppercase tracking-[0.06em]" style={{ color: TONE.dim }}>
+          <span className="flex items-center gap-[7px] text-[12px]" style={{ color: TONE.faint }}>
             <SealGlyph color={TONE.faint} />
-            sealed
+            Sealed until all {withCommas(n)} decide
           </span>
         )}
       </div>
@@ -321,79 +377,88 @@ function WatchingCard({
 
 // ── ranked row ───────────────────────────────────────────────────────────────
 
-/** A kind chip — a small mono tag so a mixed board (hook / idea / video …) is legible at a glance. */
-function KindChip({ kind, dim }: { kind: RankKind; dim?: boolean }) {
-  return (
-    <span
-      className="flex-none font-mono text-[10.5px] uppercase tracking-[0.06em]"
-      style={{ color: dim ? TONE.mute : TONE.faint }}
-    >
-      {kind}
-    </span>
-  );
-}
-
 /** A SEALED result row — ranked, clickable into the detail/brain. */
 function SealedRow({
   rank,
   r,
   index,
+  barRef,
   onOpen,
 }: {
   rank: number;
   r: RankedStimulus;
   index: number;
+  /** The board's own winner — every bar is drawn against it, so the top row is always a full bar
+   *  and the rest read as "how close to the best thing here". The old fixed BAR_REF=50 meant a
+   *  board whose best row scored 20% drew five stubs and looked like a broken component. */
+  barRef: number;
   onOpen?: (id: string) => void;
 }) {
-  const w = Math.min(1, r.stopPct / BAR_REF);
+  const w = barRef > 0 ? Math.min(1, r.stopPct / barRef) : 0;
   const top = rank === 1;
+  // A run with no population has no drill behind it. Don't dress it as a door: no pointer, no hover
+  // lift, no click handler — and a tag below that names the state. Previously such a row was a
+  // fully-armed button whose tap hit an empty `else`, which reads as a broken app rather than as an
+  // honest limit. (Disabling is deliberate over "open an empty drill": there is genuinely nothing
+  // to show — the aggregate the depth view is built from is the thing that is missing.)
+  const drillable = !r.noDepth;
 
   return (
-    <li className="ambient-row-in" style={{ animationDelay: `${0.04 + index * 0.05}s` }}>
+    <li
+      className="ambient-row-in last:border-b-0"
+      style={{ animationDelay: `${0.04 + index * 0.05}s`, borderBottom: `1px solid ${TONE.border}` }}
+    >
       <button
         type="button"
-        onClick={() => onOpen?.(r.id)}
-        className="group block w-full cursor-pointer rounded-[8px] px-2 py-3.5 text-left transition-colors"
-        style={{ borderBottom: `1px solid ${TONE.border}` }}
-        onMouseEnter={(e) => (e.currentTarget.style.background = TONE.hover)}
-        onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+        onClick={drillable ? () => onOpen?.(r.id) : undefined}
+        disabled={!drillable}
+        aria-label={drillable ? undefined : `${r.stimulus} — verdict only, no depth behind this row`}
+        className={`group block w-full rounded-[8px] px-0.5 py-[13px] text-left transition-colors ${
+          drillable ? "cursor-pointer" : "cursor-default"
+        }`}
+        onMouseEnter={drillable ? (e) => (e.currentTarget.style.background = TONE.hover) : undefined}
+        onMouseLeave={drillable ? (e) => (e.currentTarget.style.background = "transparent") : undefined}
       >
-        <span className="flex items-baseline gap-3">
+        <span className="flex items-baseline gap-2.5">
           <span
-            className="w-[14px] flex-none tabular-nums font-mono text-[12px]"
+            className="w-[14px] flex-none tabular-nums text-[12px]"
             style={{ color: top ? TONE.dim : TONE.faint }}
           >
             {rank}
           </span>
+          {/* the title is the widest element on the row — it is what the creator is looking for */}
           <span
             className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[14px]"
-            style={{ color: TONE.cream, opacity: top ? 1 : 0.88 }}
+            style={{ color: TONE.cream }}
           >
             {r.stimulus}
           </span>
-          {r.kind ? <KindChip kind={r.kind} /> : null}
+          {r.kind ? <KindTag>{r.kind}</KindTag> : null}
           {/* a tested video keeps its native viral score in view — the % is the audience read on top */}
-          {r.kind === "video" && r.viralScore != null ? (
-            <span
-              className="flex-none font-mono text-[10.5px] uppercase tracking-[0.06em]"
-              style={{ color: TONE.faint }}
-            >
-              {r.viralScore} viral
-            </span>
-          ) : null}
-          <span className="flex-none tabular-nums text-[14px] font-medium" style={{ color: TONE.cream }}>
+          {r.kind === "video" && r.viralScore != null ? <KindTag>viral {r.viralScore}</KindTag> : null}
+          {/* A SLICED verdict says whose it is, right next to the number. Without this the row is
+              indistinguishable from a reading of the whole room — same column, same bar. */}
+          {r.sliceLabel ? <KindTag>{r.sliceLabel}</KindTag> : null}
+          {/* The run landed a real %, but produced no population — so this row is the end of the
+              road, not a door. Saying so costs one tag and removes an inert click. */}
+          {r.noDepth ? <KindTag>verdict only</KindTag> : null}
+          <span className="flex-none tabular-nums text-[14px] font-semibold" style={{ color: TONE.cream }}>
             {r.stopPct.toFixed(1)}%
           </span>
         </span>
 
         <span
-          className="relative mt-2.5 ml-[26px] block h-[3px] overflow-hidden rounded-full transition-[filter] group-hover:brightness-110"
+          className="relative mb-px ml-6 mt-2.5 block h-[3px] overflow-hidden rounded-full"
           style={{ background: TONE.ghost }}
         >
-          {/* the top would-stop is the win — its bar goes sage-green; the rest hold cream */}
+          {/* the win reads at full strength; every other bar steps back. One accent per surface,
+              and this is not where it is spent — position and weight carry the ranking. */}
           <span
             className="absolute inset-0 block origin-left rounded-full"
-            style={{ transform: `scaleX(${w})`, background: top ? TONE.sage : "rgba(236,231,222,.55)" }}
+            style={{
+              transform: `scaleX(${w})`,
+              background: top ? "rgba(236,231,222,.92)" : "rgba(236,231,222,.45)",
+            }}
           />
         </span>
       </button>
@@ -401,86 +466,50 @@ function SealedRow({
   );
 }
 
-/** A QUEUED row — ranked at GENERATION by the personas (N of 10 would stop), not yet run past the
- *  audience. Same anatomy as a sealed row (rank · stimulus · kind · value · bar-under) so the two
- *  groups read as one system; the bar is MUTED (a persona estimate, not a measured verdict) and
- *  the whole row is the quick-simulate door — the value slot reveals `Simulate →` on hover. */
+/**
+ * A QUEUED row — on the board, not yet run past the audience.
+ *
+ * It used to mirror the sealed anatomy exactly: a rank numeral, an `N/10` value and a muted bar,
+ * all three derived from `personaStops`. That number was the generation model's self-estimate, the
+ * engine stopped measuring it, and the owner called it dead — so the row now carries NO score, NO
+ * bar and no rank position. What it carries instead is the one true thing about it: it hasn't been
+ * run, and here is the button that runs it. A video keeps `viral 84`, which is a real score of the
+ * actual file.
+ */
 function QueuedRow({
-  rank,
   r,
   index,
   onSimulate,
 }: {
-  rank: number;
   r: RankedStimulus;
   index: number;
   onSimulate?: (id: string) => void;
 }) {
-  const n = r.personaStops ?? 0;
-  // A VIDEO carries a native viral score (0–100), not a persona estimate — its native slot shows that
-  // and its bar measures against 100. A concept shows N/10. Both swap to "Simulate →" on hover.
-  const isVideo = r.kind === "video";
-  const viral = r.viralScore ?? null;
-  const w = isVideo && viral != null ? Math.min(1, viral / 100) : Math.min(1, n / 10);
-
   return (
-    <li className="ambient-row-in" style={{ animationDelay: `${0.04 + index * 0.05}s` }}>
+    <li
+      className="ambient-row-in last:border-b-0"
+      style={{ animationDelay: `${0.04 + index * 0.05}s`, borderBottom: `1px solid ${TONE.border}` }}
+    >
       <button
         type="button"
         onClick={() => onSimulate?.(r.id)}
-        className="group block w-full cursor-pointer rounded-[8px] px-2 py-3.5 text-left transition-colors"
-        style={{ borderBottom: `1px solid ${TONE.border}` }}
+        className="group flex w-full cursor-pointer items-center gap-2.5 rounded-[8px] px-0.5 py-[13px] text-left transition-colors"
         onMouseEnter={(e) => (e.currentTarget.style.background = TONE.hover)}
         onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
       >
-        <span className="flex items-baseline gap-3">
-          <span className="w-[14px] flex-none tabular-nums font-mono text-[12px]" style={{ color: TONE.mute }}>
-            {rank}
-          </span>
-          <span
-            className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[14px]"
-            style={{ color: TONE.cream, opacity: 0.62 }}
-          >
-            {r.stimulus}
-          </span>
-          {r.kind ? <KindChip kind={r.kind} dim /> : null}
-          {/* value slot — the native score stays put (the Simulate cue is its own persistent line
-              below, so it reads on every device, not just on hover) */}
-          <span className="flex-none text-right tabular-nums text-[13px]" style={{ color: TONE.dim }}>
-            {isVideo && viral != null ? (
-              <>
-                {viral}
-                <span className="ml-1 text-[10px] uppercase tracking-[0.06em]" style={{ color: TONE.mute }}>
-                  viral
-                </span>
-              </>
-            ) : (
-              <>
-                {n}
-                <span className="text-[11px]" style={{ color: TONE.mute }}>
-                  /10
-                </span>
-              </>
-            )}
-          </span>
-        </span>
-
-        {/* bar — the native estimate (concept N/10 · video viral score), muted (not a measured verdict) */}
         <span
-          className="relative mt-2.5 ml-[26px] block h-[3px] overflow-hidden rounded-full"
-          style={{ background: TONE.ghost }}
+          className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[14px]"
+          style={{ color: "rgba(236,231,222,.66)" }}
         >
-          <span
-            className="absolute inset-0 block origin-left rounded-full"
-            style={{ transform: `scaleX(${w})`, background: "rgba(236,231,222,.34)" }}
-          />
+          {r.stimulus}
         </span>
-
-        {/* the Simulate cue — its own persistent line on EVERY device (hover-reveal hid it from touch
-            users and buried it on desktop). Brightens with the row on hover for a pointer affordance. */}
+        {r.kind ? <KindTag>{r.kind}</KindTag> : null}
+        {r.kind === "video" && r.viralScore != null ? <KindTag>viral {r.viralScore}</KindTag> : null}
+        {/* THE one chip fill on the board — because it is the one thing on the row you can DO.
+            Persistent, never hover-revealed: a touch user has no hover, and this is the door. */}
         <span
-          className="mt-2.5 ml-[26px] flex items-center gap-1.5 border-t pt-2 font-mono text-[10.5px] uppercase tracking-[0.06em] transition-colors group-hover:text-[#ece7de]"
-          style={{ borderColor: TONE.hair, color: TONE.dim }}
+          className="flex-none rounded-full px-2.5 py-[5px] text-[11px] transition-colors group-hover:bg-[#262624] group-hover:text-[#ece7de]"
+          style={{ background: TONE.chip, color: TONE.dim }}
         >
           Simulate&nbsp;→
         </span>
@@ -489,11 +518,71 @@ function QueuedRow({
   );
 }
 
+/**
+ * One row of the resting board: a slice of the room, how much of it it is, and what it judges by.
+ *
+ * Deliberately NOT a button. Every other row on this surface is a door (open the drill, fire the
+ * sim), and there is nothing behind a segment — the house rule already stated on the ＋ door and
+ * on `noDepth` rows is that a control with nothing behind it is worse than no control. So this
+ * borrows the row's metrics and its hairline, and none of its affordance: no hover fill, no chip.
+ *
+ * Share sits right in tabular-nums, matching the audience sheet's name-left / value-right grammar
+ * (2026-08-11 r2) so the right edge of a column of them stays straight.
+ *
+ * ── The name and the frame (owner ruling 2026-08-12) ──────────────────────────────────
+ *
+ * The name/share pair alone was the two facts the algorithm does not use — the label never reaches
+ * the model (F7) and the share is documented as not the prediction dial. The frame beneath it IS
+ * the brief the sim runs on, so the row now states what these people judge by, in the words the
+ * model was actually given. Ten rows of 15/12/12/10/10/10/8/8/8/7 also stop reading as a flat
+ * distribution once each one says something different — which is why truncating the list was the
+ * wrong fix for that complaint.
+ *
+ * ⚠️ THE BOARD SCROLLS AT 900px, AND THAT IS THE RULING (owner, 2026-08-12). Measured: ten rows at
+ * 76px overrun the 825px scroll region by ~155px, so the last row, the rest line and the ＋ door
+ * are one scroll down on the desktop arrival. The alternative was clamping each frame to one line,
+ * which fits exactly — and truncates every row precisely where its payload is ("dismisses low-…").
+ * The frames are the reason this row exists; a complete one that scrolls beats a cropped one that
+ * doesn't. Do not "fix" this back with a line-clamp. Row padding is `py-[10px]` rather than the
+ * board's usual 13 for the same reason: it buys 60px of that overrun back at no cost to the text.
+ */
+function SegmentRow({ s, index }: { s: RoomSegment; index: number }) {
+  return (
+    <li
+      className="ambient-row-in last:border-b-0"
+      style={{ animationDelay: `${0.04 + index * 0.05}s`, borderBottom: `1px solid ${TONE.border}` }}
+    >
+      {/* py-[10px], not the board's usual 13: a two-line row needs less padding than a one-line one
+          to keep the same rhythm, and those 6px × 10 rows are what keeps the ＋ door — the only
+          control this board has — above the fold at a 900px viewport. */}
+      <div className="w-full px-0.5 py-[10px]">
+        <div className="flex items-center gap-2.5">
+          <span
+            className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[14px]"
+            style={{ color: "rgba(236,231,222,.66)" }}
+          >
+            {s.label}
+          </span>
+          <span className="flex-none text-[12px] tabular-nums" style={{ color: TONE.faint }}>
+            {s.sharePct}%
+          </span>
+        </div>
+        {/* Never invented: a segment stored before the field existed carries no frame and prints
+            none, rather than a plausible sentence nobody briefed the model with. */}
+        {s.repaint ? (
+          <p className="mt-[3px] text-[12px] leading-[1.45]" style={{ color: TONE.faint }}>
+            {s.repaint}
+          </p>
+        ) : null}
+      </div>
+    </li>
+  );
+}
+
 // ── room header glyph — a calm audience cluster (people, not a sparkline) ─────
-// The old constellation's connecting lines read as a stock line-chart. This is a small crowd of
-// cream nodes at varied depth (opacity), no lines — reads as "your room of people". Static: the
-// only live motion on the surface belongs to the run in flight (SIMULATING NOW), so the mark stays
-// calm and doesn't compete.
+// A small crowd of cream nodes at varied depth (opacity), no connecting lines — the old
+// constellation's lines read as a stock chart. Static: the only live motion on the surface belongs
+// to the run in flight, so the mark stays calm and doesn't compete.
 
 function RoomGlyph() {
   return (
@@ -522,6 +611,18 @@ export function AmbientOverview({
   reducedMotion?: boolean;
   onOpenStimulus?: (id: string) => void;
   onQuickSimulate?: (id: string) => void;
+  /**
+   * The ＋ door — "Show them your own work". Opens the cold intake, which is the ONLY way to put
+   * a stimulus the creator brought in front of the room.
+   *
+   * ⚠️ Absent ⇒ the row is NOT RENDERED, deliberately. It used to render unconditionally with
+   * `onTestVariant={() => descriptors[0] && openDevelop(descriptors[0].id)}` behind it, which meant
+   * two defects in one line: on an empty rail `descriptors[0]` is undefined and the ＋ was a DEAD
+   * BUTTON (verified live — and it is the only control a new creator's board has), while on a
+   * non-empty rail it re-armed their FIRST EXISTING CARD instead of testing anything new. A door
+   * with nothing behind it is worse than no door, so a host that cannot run a brought stimulus
+   * (the /dev/cards gallery, the fixture review page) shows no door.
+   */
   onTestVariant?: () => void;
   /** When the board IS the whole screen (the mobile full-screen room), the header caret is the way
    *  OUT. Given ⇒ it closes; absent ⇒ the rail's inert switch caret, unchanged. */
@@ -529,17 +630,18 @@ export function AmbientOverview({
   presentation?: AmbientPresentation;
   className?: string;
 }) {
-  const { audienceName, provenance, tier, watching, ranked, cast, castOverflow } = data;
+  const { audienceName, provenance, scene, tier, watching, ranked, segments } = data;
   const sheet = presentation === "sheet";
   const gutter = ambientGutter(presentation);
 
-  // Split the board: SEALED results on top (ranked high→low), the un-run QUEUED ones below.
-  const sealed = ranked
-    .filter((r) => r.state !== "queued")
-    .sort((a, b) => b.stopPct - a.stopPct);
-  const queued = ranked
-    .filter((r) => r.state === "queued")
-    .sort((a, b) => (b.personaStops ?? 0) - (a.personaStops ?? 0));
+  // Split the board: SEALED results on top (ranked high→low), the un-run QUEUED ones below in
+  // ledger order — the adapter already ordered them, so this filter preserves what it decided.
+  const sealed = ranked.filter((r) => r.state !== "queued").sort((a, b) => b.stopPct - a.stopPct);
+  const queued = ranked.filter((r) => r.state === "queued");
+  const barRef = sealed[0]?.stopPct ?? 0;
+  // NOTHING to rank — the arrival rail, before any work exists. Not the same as "0 sealed": a
+  // board with queued rows is a waiting room and already says so. This is the room at rest.
+  const atRest = !watching && sealed.length === 0 && queued.length === 0;
 
   return (
     <div
@@ -558,132 +660,175 @@ export function AmbientOverview({
         // Sheet mode inherits all three from its host instead.
         ...(sheet
           ? {}
-          : { height: "100%", background: "#181817", borderLeft: `1px solid ${TONE.border}` }),
+          : { height: "100%", background: "var(--color-chrome)", borderLeft: `1px solid ${TONE.border}` }),
         color: TONE.cream,
         fontFamily: "var(--font-sans, Inter, system-ui, sans-serif)",
       }}
     >
-      {/* room header — audience mark · name · calibration chip · caret. The board carries its own
-          identity in BOTH presentations: in the rail because there is no bar above it, and full
-          screen because the bar it was launched from is no longer on screen. `onDismiss` (mobile)
-          turns the caret into the way out; without it the caret is the rail's inert switch. */}
-      <div className={`flex items-center gap-2.5 ${gutter} ${sheet ? "pt-[18px]" : "pt-[26px]"}`}>
-        <RoomGlyph />
-        <span className="min-w-0 truncate text-[16px] font-semibold tracking-[-0.015em]">{audienceName}</span>
-        <span
-          className="inline-flex flex-none items-center gap-1.5 rounded-full px-2.5 py-[3px] font-mono text-[10px] uppercase tracking-[0.1em]"
-          style={{ color: TONE.faint, border: `1px solid ${TONE.hair}` }}
-        >
-          <span className="inline-block h-[5px] w-[5px] rounded-full" style={{ background: TONE.dim }} />
-          {provenance}
-        </span>
-        <button
-          type="button"
-          onClick={onDismiss}
-          aria-label={onDismiss ? "Close your audience" : "Switch audience"}
-          // 24px is fine for a pointer; a touch target that closes the whole screen is not allowed
-          // to be under 44px (the caret is the ONLY way out of the full-screen room).
-          className={`ml-auto flex flex-none items-center justify-center rounded-full transition-colors ${
-            sheet ? "-mr-2 h-11 w-11" : "h-6 w-6"
-          }`}
-          style={{ color: TONE.faint }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.color = TONE.cream;
-            e.currentTarget.style.background = TONE.hover;
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.color = TONE.faint;
-            e.currentTarget.style.background = "transparent";
-          }}
-        >
-          <svg
-            width={sheet ? "14" : "11"}
-            height={sheet ? "14" : "11"}
-            viewBox="0 0 12 12"
-            aria-hidden
-            // Dismiss points UP — the room came down over the thread, the caret sends it back.
-            className={onDismiss ? "rotate-180" : ""}
+      {/* ROOM HEADER — the room's facts, not a badge.
+          It used to be name + a bordered `CALIBRATED` pill, and the pill said one word about the
+          room while the three things a creator actually wants to know — how many minds, how fresh
+          the calibration, and where they're reading — were nowhere on the board. The pill is gone
+          and the facts are the line under the name. `onDismiss` (mobile) turns the caret into the
+          way out; without it the caret is the rail's inert switch. */}
+      <div className={`${gutter} ${sheet ? "pt-[18px]" : "pt-[26px]"}`}>
+        <div className="flex items-center gap-2.5">
+          <RoomGlyph />
+          <span className="min-w-0 truncate text-[16px] font-semibold tracking-[-0.015em]">{audienceName}</span>
+          <button
+            type="button"
+            onClick={onDismiss}
+            aria-label={onDismiss ? "Close your audience" : "Switch audience"}
+            // 24px is fine for a pointer; a touch target that closes the whole screen is not allowed
+            // to be under 44px (the caret is the ONLY way out of the full-screen room).
+            className={`ml-auto flex flex-none items-center justify-center rounded-full transition-colors ${
+              sheet ? "-mr-2 h-11 w-11" : "h-6 w-6"
+            }`}
+            style={{ color: TONE.faint }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = TONE.cream;
+              e.currentTarget.style.background = TONE.hover;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = TONE.faint;
+              e.currentTarget.style.background = "transparent";
+            }}
           >
-            <path d="M2.5 4.5L6 8l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
+            <svg
+              width={sheet ? "14" : "11"}
+              height={sheet ? "14" : "11"}
+              viewBox="0 0 12 12"
+              aria-hidden
+              // Dismiss points UP — the room came down over the thread, the caret sends it back.
+              className={onDismiss ? "rotate-180" : ""}
+            >
+              <path d="M2.5 4.5L6 8l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        </div>
+        {/* "viewers", not "minds", and "simulating for", not "reads on" (owner, 2026-08-12).
+            The room is a modelled audience for a platform — say which, in the product's verb. */}
+        <div className="mt-[7px] text-[12px] tabular-nums" style={{ color: TONE.faint }}>
+          <span className="font-medium" style={{ color: TONE.dim }}>
+            {withCommas(TIER_VIEWERS[tier])} viewers
+          </span>
+          {" · "}
+          {provenance}
+          {" · simulating for "}
+          {scene}
+        </div>
       </div>
 
       {/* scroll region — watching + ranked */}
       <div className={`min-h-0 flex-1 overflow-y-auto ${gutter}`}>
         {watching ? (
-          <div className="mt-8">
-            <Kicker tag={TIER_LABEL[tier]} live>
+          <div className="mt-[26px]">
+            <SectionHead meta={TIER_LABEL[tier]} live>
               Simulating now
-            </Kicker>
+            </SectionHead>
             <WatchingCard run={watching} tier={tier} reducedMotion={reducedMotion} />
           </div>
         ) : null}
 
-        <div className="mt-8">
-          <Kicker tag={`${sealed.length} sealed`}>Ranked · would they stop</Kicker>
-          <ul className="mt-1.5">
-            {sealed.map((r, i) => (
-              <SealedRow key={r.id} rank={i + 1} r={r} index={i} onOpen={onOpenStimulus} />
-            ))}
-          </ul>
+        <div className="mt-7">
+          {/* AT REST — the arrival board. It states the room's makeup instead of an empty "Ranked",
+              because the makeup is the one thing that is true before any work exists, and stating
+              it costs no run (fire-on-demand: navigation never fires a sim). See
+              `OverviewData.segments`. A General/uncalibrated audience has no slices, so the list is
+              conditional and the line carries the state alone. */}
+          {atRest ? (
+            <>
+              {segments.length > 0 ? (
+                <>
+                  <SectionHead meta={`${segments.length} groups`}>In the room</SectionHead>
+                  <ul className="mt-1">
+                    {segments.map((s, i) => (
+                      <SegmentRow key={s.archetype} s={s} index={i} />
+                    ))}
+                  </ul>
+                </>
+              ) : null}
+              <p
+                data-testid="ambient-overview-rest"
+                className={`${segments.length > 0 ? "mt-[18px]" : "mt-1"} text-[12px] leading-[1.5]`}
+                style={{ color: TONE.faint }}
+              >
+                {/* NOT "results land here, ranked" (owner, 2026-08-12). Ranking is a comparison
+                    ACROSS sealed runs — one send produces a verdict, not a rank — and nothing is
+                    sent automatically: the creator makes something in the thread and then chooses
+                    to put it in front of the room. The line has to leave the send in their hands. */}
+                Nothing simulated yet. Send anything you make to the room and their verdict lands
+                here.
+              </p>
+            </>
+          ) : (
+            <>
+              {/* Nothing sealed ⇒ no Ranked section AT ALL. It used to render its head unconditionally,
+                  so a board carrying only queued work opened on "Ranked · 0 sealed" over a void and
+                  then the real content — the same failed-to-load read the resting state above exists
+                  to avoid, one state over. A section with no rows is not a section. */}
+              {sealed.length > 0 ? (
+                <>
+                  <SectionHead meta={`% who would stop · ${sealed.length} sealed`}>Ranked</SectionHead>
+                  <ul className="mt-1">
+                    {sealed.map((r, i) => (
+                      <SealedRow key={r.id} rank={i + 1} r={r} index={i} barRef={barRef} onOpen={onOpenStimulus} />
+                    ))}
+                  </ul>
+                </>
+              ) : null}
 
-          {/* the un-run group — split below, an honest waiting-room with a quick-simulate door */}
-          {queued.length > 0 ? (
-            <div className="mt-7">
-              <Kicker tag={`${queued.length} queued`}>Not simulated yet</Kicker>
-              <ul className="mt-1.5">
-                {queued.map((r, i) => (
-                  <QueuedRow key={r.id} rank={i + 1} r={r} index={sealed.length + i} onSimulate={onQuickSimulate} />
-                ))}
-              </ul>
-            </div>
+              {/* the un-run group — an honest waiting room with a quick-simulate door, and no score */}
+              {queued.length > 0 ? (
+                <div className={sealed.length > 0 ? "mt-[26px]" : undefined}>
+                  <SectionHead meta={`${queued.length} queued`}>Not simulated yet</SectionHead>
+                  <ul className="mt-1">
+                    {queued.map((r, i) => (
+                      <QueuedRow key={r.id} r={r} index={sealed.length + i} onSimulate={onQuickSimulate} />
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </>
+          )}
+
+          {/* The ＋ door. Rendered only when a host can actually run what comes through it (see the
+              prop doc). It carries the SAME name as Start's door — one act, one name, wherever a
+              creator meets it. */}
+          {onTestVariant ? (
+            <button
+              type="button"
+              data-testid="ambient-sim-door"
+              onClick={onTestVariant}
+              className="mt-3.5 flex w-full cursor-pointer items-center gap-2.5 rounded-[10px] px-3 py-[11px] text-left transition-colors"
+              style={{ background: "rgba(255,255,255,.02)", border: `1px solid ${TONE.border}` }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "rgba(255,255,255,.045)";
+                e.currentTarget.style.borderColor = "rgba(255,255,255,.13)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "rgba(255,255,255,.02)";
+                e.currentTarget.style.borderColor = TONE.border;
+              }}
+            >
+              <span aria-hidden className="flex-none text-[15px] leading-none" style={{ color: TONE.faint }}>
+                ＋
+              </span>
+              {/* NOT "Test something of your own" (owner, 2026-08-12): the composer's chip row a
+                  few hundred px away already says "Test a draft", so two different doors were
+                  wearing the same verb. Kept to ~24 chars — "Put your own work in front of them"
+                  was the ruling's wording but it wraps to two lines in a 400px rail and collides
+                  with the hint on its right. */}
+              <span className="text-[13px]" style={{ color: TONE.dim }}>
+                Show them your own work
+              </span>
+              <span className="ml-auto flex-none text-[11px]" style={{ color: TONE.faint }}>
+                a draft, a video, or a link
+              </span>
+            </button>
           ) : null}
-
-          <button
-            type="button"
-            onClick={onTestVariant}
-            className="mt-1 w-full cursor-pointer rounded-[8px] px-2 py-3.5 text-left text-[13px] transition-colors"
-            style={{ color: TONE.faint }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = TONE.cream)}
-            onMouseLeave={(e) => (e.currentTarget.style.color = TONE.faint)}
-          >
-            ＋ Test a new variant
-          </button>
         </div>
       </div>
-
-      {/* cast on call — pinned footer. Rendered ONLY when the room has named slices to show: the
-          General baseline audience carries no segments, so `deriveCast` returns [] and the footer
-          would otherwise be a bare "on call" label under a border rule (the default first-run
-          state for every new user). No cast ⇒ no footer; we never invent slices to fill it. */}
-      {cast.length > 0 ? (
-      <div
-        className={`${sheet ? "mx-[18px] mb-[18px]" : "mx-[26px] mb-[26px]"} mt-[18px] flex items-center gap-1.5 pt-4`}
-        style={{ borderTop: `1px solid ${TONE.border}` }}
-      >
-        {cast.map((c) => (
-          <span
-            key={c.id}
-            className="flex h-6 w-6 flex-none items-center justify-center rounded-full text-[10px]"
-            style={{ background: "#262624", border: "1px solid rgba(255,255,255,.12)", color: TONE.dim }}
-          >
-            {c.initial}
-          </span>
-        ))}
-        {castOverflow ? (
-          <span
-            className="flex h-6 w-6 flex-none items-center justify-center rounded-full text-[10px]"
-            style={{ background: "#262624", border: "1px solid rgba(255,255,255,.12)", color: TONE.dim }}
-          >
-            +{castOverflow}
-          </span>
-        ) : null}
-        <span className="ml-1 text-[12px]" style={{ color: TONE.faint }}>
-          on call
-        </span>
-      </div>
-      ) : null}
     </div>
   );
 }

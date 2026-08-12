@@ -198,13 +198,20 @@ describe("POST /api/tools/hooks (SSE route)", () => {
     expect(rawOutput).toContain("event: score");
     expect(rawOutput).toContain("event: done");
 
-    // insertMessage called once with blocks array + kcGenVersion
-    expect(insertMessage).toHaveBeenCalledTimes(1);
-    const [threadId, role, blocks, kcGenVersion] = (insertMessage as ReturnType<typeof vi.fn>).mock.calls[0]!;
+    // Stage A (N-8): the USER-ACTION row persists first — the pill/chip click is a real
+    // turn now, so a reload can never fold this run into the previous turn.
+    expect(insertMessage).toHaveBeenCalledTimes(2);
+    const [, userRole] = (insertMessage as ReturnType<typeof vi.fn>).mock.calls[0]!;
+    expect(userRole).toBe("user");
+    // …then the assistant message with blocks array + kcGenVersion.
+    const [threadId, role, blocks, kcGenVersion] = (insertMessage as ReturnType<typeof vi.fn>).mock.calls[1]!;
     expect(threadId).toBe("thread-hooks-abc");
     expect(role).toBe("assistant");
     expect(Array.isArray(blocks)).toBe(true);
-    expect((blocks as unknown[]).length).toBe(3);
+    // The turn's RUN STAMP leads the message, then the cards (lib/tools/run-header.ts).
+    expect((blocks as { type: string }[])[0]!.type).toBe("run-header");
+    expect((blocks as { props: { skill: string } }[])[0]!.props.skill).toBe("hooks");
+    expect((blocks as unknown[]).length).toBe(4);
     expect(typeof kcGenVersion).toBe("string");
     expect((kcGenVersion as string)).toMatch(/^gen\./);
   });
@@ -356,8 +363,9 @@ describe("POST /api/tools/hooks (SSE route)", () => {
     const followupIdx = rawOutput.indexOf("event: followup");
     expect(doneIdx).toBeLessThan(followupIdx);
 
-    // Both the cards and the follow-up markdown persist (2 inserts, cards first).
-    expect(insertMessage).toHaveBeenCalledTimes(2);
+    // The user-action row (Stage A, N-8), the cards, and the follow-up markdown all
+    // persist (3 inserts, user row first).
+    expect(insertMessage).toHaveBeenCalledTimes(3);
   });
 
   it("content event carries ranked card face with lead scrollQuote + audienceArchetype + rank (content-first)", async () => {
@@ -569,22 +577,29 @@ describe("POST /api/tools/ideas/develop (REPLACED placeholder — real Hooks gen
     // ideaId must be returned (pass-through for the CTA)
     expect(json.ideaId).toBe("idea-123");
 
-    // insertMessage called once with hook-card blocks (NOT the placeholder markdown)
-    expect(insertMessage).toHaveBeenCalledTimes(1);
-    const [threadId, role, blocks, kcGenVersion] = (insertMessage as ReturnType<typeof vi.fn>).mock.calls[0]!;
+    // Stage A (N-8): the USER-ACTION row persists first (the chip click is a real turn),
+    // then the assistant message with the hook-card blocks.
+    expect(insertMessage).toHaveBeenCalledTimes(2);
+    const [, userRole, userBlocks] = (insertMessage as ReturnType<typeof vi.fn>).mock.calls[0]!;
+    expect(userRole).toBe("user");
+    expect((userBlocks as { props: { text: string } }[])[0]!.props.text).toContain(
+      "5 fitness myths that sabotage your gains",
+    );
+    const [threadId, role, blocks, kcGenVersion] = (insertMessage as ReturnType<typeof vi.fn>).mock.calls[1]!;
     expect(threadId).toBe("thread-develop");
     expect(role).toBe("assistant");
     expect(Array.isArray(blocks)).toBe(true);
 
-    // VERIFY PLACEHOLDER IS GONE: blocks must NOT contain any markdown type block
+    // VERIFY PLACEHOLDER IS GONE: the assistant message must NOT contain any markdown block
     const blockArr = blocks as unknown[];
     const hasMarkdownBlock = blockArr.some(
       (b) => b && typeof b === "object" && (b as { type?: string }).type === "markdown",
     );
     expect(hasMarkdownBlock).toBe(false);
 
-    // All blocks must be hook-card type
-    for (const b of blockArr) {
+    // Stage A: the run stamp leads the message, then the hook-cards.
+    expect((blockArr[0] as { type?: string }).type).toBe("run-header");
+    for (const b of blockArr.slice(1)) {
       expect((b as { type?: string }).type).toBe("hook-card");
     }
 

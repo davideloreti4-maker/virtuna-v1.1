@@ -16,7 +16,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { createScrapingProvider } from "@/lib/scraping";
 import { classifyDiscoverInput, UNSUPPORTED_INPUT_REASON } from "@/lib/discover/classify-input";
-import { rankOutliers, type RankedOutlier } from "@/lib/discover/outlier-compute";
+import { rankOutliers } from "@/lib/discover/outlier-compute";
+import { attachOutlierReceipt, type ReceiptedOutlier } from "@/lib/discover/outlier-receipt";
 import {
   getCachedDiscover,
   setCachedDiscover,
@@ -25,6 +26,8 @@ import {
 } from "@/lib/discover/discover-cache";
 import { IngestError } from "@/lib/scraping/types";
 import { csrfGuard } from "@/lib/http/csrf-guard";
+import { billUsage, creditGate } from "@/lib/billing/credit-gate";
+import { isSealedVisitor } from "@/lib/onboarding/verdict-seal";
 
 // Server-side input cap (independent of client). A handle or short niche phrase.
 const MAX_INPUT_LENGTH = 200;
@@ -33,12 +36,18 @@ const MAX_TILES = 30;
 // Scrape budget per pull (over-pull a little so the 90d window + ranking has material).
 const SCRAPE_LIMIT = 30;
 
-/** Tile shape returned to the client — ranked outlier + source/mode tags (D-15). */
-interface DiscoverResponseTile extends RankedOutlier {
+/**
+ * Tile shape returned to the client — ranked outlier + source/mode tags (D-15).
+ *
+ * `ReceiptedOutlier`: the multiplier a creator SEES is the per-author receipt, not the
+ * within-set median that drives the ranking (outlier-receipt.ts). Both it and its label are
+ * nullable — an unbaselined row shows no badge rather than an invented one.
+ */
+type DiscoverResponseTile = ReceiptedOutlier & {
   mode: "profile" | "niche";
   /** D-15: profile pulls tag own-vs-competitor; niche pulls tag the niche query. */
   source: string;
-}
+};
 
 export async function POST(request: Request): Promise<Response> {
   const supabase = await createClient();
@@ -49,6 +58,15 @@ export async function POST(request: Request): Promise<Response> {
   } = await supabase.auth.getUser();
   if (!user) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // ── (1a) THE WALL — an anonymous /go visitor must never reach the credit gate below:
+  // `creditGate` enforces for anonymous sessions regardless of BILLING_ENFORCE_QUOTA
+  // (`enforced = isAnonymous || isQuotaEnforced()`, quota.ts), and `discover` is not the
+  // DEMO_ACTION, so reaching it would 402 the funnel. Same load-bearing ordering as
+  // /api/tools/react — route-wiring.test.ts pins wall-before-gate for both.
+  if (isSealedVisitor(user)) {
+    return Response.json({ error: "verdict_sealed" }, { status: 403 });
   }
 
   // ── (1b) CSRF guard — Content-Type 415 + cross-origin 403 (WR-01) ─────────
@@ -107,7 +125,13 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ mode, input: normalized, cached: true, tiles: cached });
   }
 
-  // ── (6) Cache miss → scrape (clockworks) → rank → cache → respond ──────────
+  // ── (6) Credit gate — priced admission BEFORE the scrape. Sits AFTER the cache check on
+  // purpose: a warm serve costs no Apify, so repeating today's pull stays free; only the
+  // cache-miss path (real scrape spend) is priced, mirroring explore's cheap/escalate shape.
+  const { refusal, verdict: creditVerdict } = await creditGate(supabase, user, "discover");
+  if (refusal) return refusal;
+
+  // ── (7) Cache miss → scrape (clockworks) → rank → cache → respond ──────────
   try {
     const provider = createScrapingProvider();
     const videos = await provider.scrapeVideos(
@@ -116,7 +140,8 @@ export async function POST(request: Request): Promise<Response> {
       mode === "niche" ? "search" : "profile",
     );
 
-    const ranked = rankOutliers(videos, mode).slice(0, MAX_TILES);
+    // Rank on the within-set signal (selection), then print the per-author receipt (§2.7).
+    const ranked = attachOutlierReceipt(rankOutliers(videos, mode).slice(0, MAX_TILES), mode);
 
     const tiles: DiscoverResponseTile[] = ranked.map((tile) => ({
       ...tile,
@@ -128,6 +153,10 @@ export async function POST(request: Request): Promise<Response> {
 
     setCachedDiscover(normalized, mode, tiles);
     recordUserPull(user.id);
+
+    // Bill ON DELIVERY — after the scrape succeeded and the tiles are in hand. The three
+    // exits above (unsupported input, cap, cache hit) and the catch below charge nothing.
+    await billUsage({ userId: user.id, action: "discover", tier: creditVerdict.tier });
 
     return Response.json({ mode, input: normalized, cached: false, tiles });
   } catch (err) {

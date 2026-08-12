@@ -1,43 +1,49 @@
 "use client";
 
 /**
- * SavedShelf — the flat, typed Library surface (lane/frame elevation of P10/P12 SAVE-01).
+ * SavedShelf — the Library surface (sketch rev 5, public/_sketch-library-v5.html).
  *
- * FLAT by construction (D-07, ROADMAP guard): a heading + count, a toolbar (live search · sort ·
- * grid⇄list density), a flat type-filter segmented control, and a masonry grid (or list) of
- * type-specific cards that echo their thread card. NO folders, NO tags, NO collection grouping.
+ * A collection, not an inventory. Projects on top, then the Unfiled shelf with its type facets,
+ * then borderless rows. Replaces the P10/P12 flat masonry shelf.
  *
- * Flat-warm SSOT throughout: cream on charcoal, 6% borders, 12px card radius; band tones are the
- * only color (sanctioned data tones, via the cards); terracotta stays liveness-only. Loading is a
- * branded skeleton grid; empty state carries the Constellation motif + a neutral CTA.
+ * Why the grid went, measured live signed in rather than argued:
+ *  - `columns-1 sm:columns-2 lg:columns-3 xl:columns-4` inside the 880px PageShell gave each card
+ *    **196px**, so every hook truncated mid-sentence and the segment chips rendered "Sleep-…",
+ *    "T…", "St…", "Open…".
+ *  - CSS multicol fills column-by-column, so it broke its own sort: reading the live shelf
+ *    left-to-right gave Jul 28 → Jun 26 → Jun 24 → Jun 21 → **Jun 29**.
+ *
+ * D-07 ("FLAT by construction") is not violated — it is EXTENDED, which is the path
+ * 20260619100200_saved_items.sql itself sanctioned. `saved_items` is still one flat table; a
+ * project is a nullable `project_id`, and NULL (the value every pre-existing row has) means
+ * Unfiled. There are no tags and no nesting.
+ *
+ * §R5-3 UNFILED STAYS VISIBLE once projects exist. It is the inbox you are meant to clear, so
+ * collapsing it behind a toggle would hide the work the rework exists to make easy. The label is
+ * omitted entirely when there are no projects — "Unfiled" means nothing when nothing is filed.
  */
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { MagnifyingGlass, SquaresFour, ListBullets } from "@phosphor-icons/react";
-import { useSavedItems } from "@/hooks/queries/use-saved-items";
+import { CaretRight, FolderSimple, MagnifyingGlass, Plus } from "@phosphor-icons/react";
+import { useSavedItems, useDeleteSavedItem, useFileSavedItems } from "@/hooks/queries/use-saved-items";
+import { useLibraryProjects, useProjectRollups, rollupFor } from "@/hooks/queries/use-library-projects";
+import { useThreadList } from "@/hooks/queries/use-threads";
+import { useOpenThread } from "@/hooks/useOpenThread";
 import type { SavedItem, SavedItemType } from "@/lib/shelf/shelf-repo";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 import { SurfaceEmptyState } from "@/components/ui/surface-empty-state";
+import { SurfaceHeader } from "@/components/surfaces/surface-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Constellation, buildLoadingDots } from "@/components/brand/constellation";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
-import { SavedItemCard } from "./saved-item-card";
-
-// Flat type filter — a client-side item_type filter, NOT a folder structure.
-const FILTERS: { id: SavedItemType | "all"; label: string }[] = [
-  { id: "all", label: "All" },
-  { id: "read", label: "Reads" },
-  { id: "idea", label: "Ideas" },
-  { id: "hook", label: "Hooks" },
-  { id: "script", label: "Scripts" },
-  { id: "outlier", label: "Outliers" },
-  { id: "format", label: "Formats" },
-];
+import { SavedRow } from "./saved-row";
+import { ProjectPickerPopover } from "./project-picker";
+import { FORWARD, PIPELINE_ORDER, TYPE_PLURAL, buildRowVM } from "./saved-item-vm";
 
 type SortKey = "recent" | "oldest" | "az";
-type View = "grid" | "list";
 
 /** Flatten an item's human-meaningful snapshot text into a search index (client-side). */
 function searchText(item: SavedItem): string {
@@ -56,221 +62,533 @@ function searchText(item: SavedItem): string {
   return parts.filter(Boolean).join(" ").toLowerCase();
 }
 
+/** "2 hooks · 1 script · 1 read" — pipeline order, so a project always reads the same way. */
+export function describeCounts(byType: Partial<Record<SavedItemType, number>>): string {
+  return PIPELINE_ORDER.filter((t) => (byType[t] ?? 0) > 0)
+    .map((t) => {
+      const n = byType[t]!;
+      const label = n === 1 ? TYPE_PLURAL[t].replace(/e?s$/, "") : TYPE_PLURAL[t];
+      return `${n} ${label.toLowerCase()}`;
+    })
+    .join(" · ");
+}
+
+function relativeStamp(iso: string | null): string {
+  if (!iso) return "empty";
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
+  if (days <= 0) return "today";
+  if (days === 1) return "yesterday";
+  if (days < 7) return `${days} days ago`;
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
 export function SavedShelf() {
+  const router = useRouter();
+  const { toast } = useToast();
+  const openThread = useOpenThread();
+
+  const { data, isLoading, isError } = useSavedItems();
+  const { data: projectData } = useLibraryProjects();
+  const { data: threads } = useThreadList();
+  const remove = useDeleteSavedItem();
+  const file = useFileSavedItems();
+
   const [filter, setFilter] = useState<SavedItemType | "all">("all");
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<SortKey>("recent");
-  const [view, setView] = useState<View>("grid");
-  const { data, isLoading, isError } = useSavedItems();
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [lastClickedId, setLastClickedId] = useState<string | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [moveAnchor, setMoveAnchor] = useState<HTMLButtonElement | null>(null);
 
   const items = useMemo<SavedItem[]>(() => data?.items ?? [], [data]);
+  const projects = useMemo(() => projectData?.projects ?? [], [projectData]);
+  const rollups = useProjectRollups(items);
 
-  // Per-type counts (client-side presentation — no new query).
+  /** thread_id → title, from the query the sidebar has already populated. */
+  const threadTitles = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const t of threads ?? []) if (t.title) map.set(t.id, t.title);
+    return map;
+  }, [threads]);
+
+  const projectNames = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of projects) map.set(p.id, p.name);
+    return map;
+  }, [projects]);
+
+  /**
+   * The row's source label. A real thread title when we have one; "Discover" for an outlier,
+   * which genuinely comes from there and never from a thread. Otherwise nothing — the ten rows
+   * that predate provenance have no thread_id, and inventing a source would be a lie.
+   */
+  const sourceLabelFor = useCallback(
+    (item: SavedItem): string | undefined => {
+      if (item.thread_id) return threadTitles.get(item.thread_id) ?? "A thread";
+      if (item.item_type === "outlier") return "Discover";
+      return undefined;
+    },
+    [threadTitles],
+  );
+
+  // ── the Unfiled shelf ──────────────────────────────────────────────────────
+  const unfiled = useMemo(() => items.filter((i) => i.project_id === null), [items]);
+
   const counts = useMemo(() => {
-    const by: Record<string, number> = { all: items.length };
-    for (const i of items) by[i.item_type] = (by[i.item_type] ?? 0) + 1;
+    const by: Record<string, number> = { all: unfiled.length };
+    for (const i of unfiled) by[i.item_type] = (by[i.item_type] ?? 0) + 1;
     return by;
-  }, [items]);
+  }, [unfiled]);
 
+  const searching = query.trim().length > 0;
+
+  /**
+   * Search spans the WHOLE library, not just Unfiled — a hit inside a project is exactly what you
+   * are looking for when you search. Each result is badged with its project by the row itself.
+   */
   const visible = useMemo(() => {
-    let v = filter === "all" ? items : items.filter((i) => i.item_type === filter);
+    const pool = searching ? items : unfiled;
+    let v = filter === "all" ? pool : pool.filter((i) => i.item_type === filter);
     const q = query.trim().toLowerCase();
     if (q) v = v.filter((i) => searchText(i).includes(q));
     return [...v].sort((a, b) => {
-      if (sort === "az") return (a.title ?? "").localeCompare(b.title ?? "");
+      if (sort === "az") return (buildRowVM(a).hero ?? "").localeCompare(buildRowVM(b).hero ?? "");
       const ta = new Date(a.created_at).getTime();
       const tb = new Date(b.created_at).getTime();
       return sort === "oldest" ? ta - tb : tb - ta;
     });
-  }, [items, filter, query, sort]);
+  }, [items, unfiled, searching, filter, query, sort]);
 
-  const isFiltered = filter !== "all" || query.trim().length > 0;
+  const selectMode = selected.size > 0;
+
+  // Rail columns are reserved once for the whole visible list, so every row still aligns while a
+  // column no row uses costs nothing. Measured: the shelf's rows carry no outlier, and the unused
+  // 34px poster column was squeezing the content measure to 440px.
+  const reserveThumb = useMemo(() => visible.some((i) => buildRowVM(i).coverUrl), [visible]);
+  const reserveAction = useMemo(
+    () => visible.some((i) => FORWARD[i.item_type] !== undefined),
+    [visible],
+  );
+
+  /**
+   * The thread behind the current selection, if they all share ONE. With a mixed selection there
+   * is no single answer, so the picker infers nothing rather than badging an arbitrary thread's
+   * project as the default.
+   */
+  const selectedThreadId = useMemo(() => {
+    const threads = new Set(
+      items.filter((i) => selected.has(i.id)).map((i) => i.thread_id).filter(Boolean),
+    );
+    return threads.size === 1 ? ([...threads][0] as string) : null;
+  }, [items, selected]);
+
+  // ── selection: click, ⇧-range over the VISIBLE order ───────────────────────
+  const toggleSelect = useCallback(
+    (id: string, shiftKey: boolean) => {
+      setSelected((prev) => {
+        const next = new Set(prev);
+        if (shiftKey && lastClickedId) {
+          const order = visible.map((i) => i.id);
+          const from = order.indexOf(lastClickedId);
+          const to = order.indexOf(id);
+          if (from !== -1 && to !== -1) {
+            const [lo, hi] = from < to ? [from, to] : [to, from];
+            // A range ADDS — shift-clicking never silently drops what you already picked.
+            for (let k = lo; k <= hi; k++) next.add(order[k]!);
+            return next;
+          }
+        }
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+        return next;
+      });
+      setLastClickedId(id);
+    },
+    [lastClickedId, visible],
+  );
+
+  const selectAllVisible = useCallback(() => {
+    setSelected(new Set(visible.map((i) => i.id)));
+  }, [visible]);
+
+  const clearSelection = useCallback(() => {
+    setSelected(new Set());
+    setLastClickedId(null);
+    setPickerOpen(false);
+  }, []);
+
+  const handleBulkFile = (projectId: string | null) => {
+    const ids = [...selected];
+    file.mutate(
+      { ids, projectId },
+      {
+        onSuccess: () =>
+          toast({
+            variant: "success",
+            title: projectId
+              ? `Moved ${ids.length} to ${projectNames.get(projectId) ?? "project"}`
+              : `Unfiled ${ids.length}`,
+          }),
+        onError: () => toast({ variant: "error", title: "Couldn't move those items." }),
+      },
+    );
+    clearSelection();
+  };
+
+  const handleUnsaveOne = (item: SavedItem) => {
+    remove.mutate(item.id, {
+      onSuccess: () => toast({ variant: "success", title: "Removed from your Library" }),
+      onError: () => toast({ variant: "error", title: "Couldn't remove this item." }),
+    });
+  };
+
+  const handleBulkUnsave = () => {
+    const ids = [...selected];
+    for (const id of ids) remove.mutate(id);
+    toast({ variant: "success", title: `Removed ${ids.length} from your Library` });
+    clearSelection();
+  };
+
+  // ⌘A over the active facet, once a selection exists — a global hotkey would fight every
+  // text field on the page, so it is scoped to the list and only while selecting.
+  const onListKeyDown = (e: React.KeyboardEvent) => {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "a" && selectMode) {
+      e.preventDefault();
+      selectAllVisible();
+    }
+    if (e.key === "Escape" && selectMode) clearSelection();
+  };
+
+  if (isLoading) return <ShelfSkeleton />;
+
+  if (isError) {
+    return (
+      <p className="text-sm text-foreground-muted">
+        Couldn&rsquo;t load your library. Try again in a moment.
+      </p>
+    );
+  }
+
+  if (items.length === 0 && projects.length === 0) return <FirstRun />;
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* Header */}
-      <header className="rv-in flex items-start justify-between gap-4" style={{ animationDelay: "0.02s" }}>
-        <div className="flex flex-col gap-1">
-          <h1 className="text-[19px] font-semibold tracking-[-0.01em] text-foreground lg:text-[22px]">Library</h1>
-        </div>
-        {items.length > 0 && (
-          <span className="shrink-0 rounded-full border border-white/[0.06] bg-surface-elevated px-3 py-1 text-xs text-foreground-muted">
-            <b className="font-semibold tabular-nums text-foreground-secondary">{items.length}</b> saved
-          </span>
-        )}
-      </header>
-
-      {/* Toolbar — live search + sort + grid⇄list density toggle */}
-      <div className="rv-in flex flex-wrap items-center gap-3" style={{ animationDelay: "0.06s" }}>
-        <div className="relative min-w-[200px] flex-1 sm:max-w-sm">
-          <MagnifyingGlass
-            size={15}
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-foreground-muted"
-          />
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search your library…"
-            aria-label="Search saved items"
-            className="h-9 w-full rounded-[var(--radius-md)] border border-white/[0.06] bg-surface-elevated pl-9 pr-3 text-sm text-foreground placeholder:text-foreground-muted focus:border-white/[0.10] focus:outline-none"
-          />
-        </div>
-        <div className="ml-auto flex items-center gap-2">
-          <label htmlFor="library-sort" className="sr-only">
-            Sort
-          </label>
-          <select
-            id="library-sort"
-            value={sort}
-            onChange={(e) => setSort(e.target.value as SortKey)}
-            className="h-9 cursor-pointer rounded-[var(--radius-md)] border border-white/[0.06] bg-surface-elevated px-3 text-sm text-foreground-secondary focus:border-white/[0.10] focus:outline-none"
-          >
-            <option value="recent">Recent</option>
-            <option value="oldest">Oldest</option>
-            <option value="az">A–Z</option>
-          </select>
-          <div
-            className="flex items-center gap-0.5 rounded-[var(--radius-md)] border border-white/[0.06] bg-surface-elevated p-0.5"
-            role="group"
-            aria-label="View"
-          >
-            {([
-              ["grid", SquaresFour, "Grid"],
-              ["list", ListBullets, "List"],
-            ] as const).map(([v, Icon, label]) => (
-              <button
-                key={v}
-                type="button"
-                onClick={() => setView(v)}
-                aria-pressed={view === v}
-                aria-label={`${label} view`}
-                className={cn(
-                  "grid h-7 w-7 place-items-center rounded-[var(--radius-sm)] transition-colors",
-                  view === v
-                    ? "bg-surface text-foreground"
-                    : "text-foreground-muted hover:text-foreground-secondary",
-                )}
+    <div className="flex flex-col gap-6" onKeyDown={onListKeyDown}>
+      {/* ── header ───────────────────────────────────────────────────────────
+          The house SurfaceHeader, not a hand-rolled h1. It already carries the on-scale type
+          roles (`text-subhead lg:text-heading`) that the type-scale gate enforces, and reusing it
+          is what keeps this page's title aligned with /audience and /settings — the exact
+          alignment PR #407 fixed by moving this route onto PageShell. */}
+      <div className="rv-in" style={{ animationDelay: "0.02s" }}>
+        <SurfaceHeader
+          title="Library"
+          // Counts reconcile: total saved = filed + unfiled (§R5-8).
+          subtitle={
+            <>
+              {items.length} saved
+              {projects.length > 0 &&
+                ` · ${projects.length} project${projects.length === 1 ? "" : "s"}`}
+            </>
+          }
+          actions={
+            <>
+              {/* Stacked under the title below `sm` (see SurfaceHeader), where the row is the
+                  full measure and the field should use it rather than sit at its 230px minimum. */}
+              <div className="relative min-w-0 flex-1 sm:min-w-[230px] sm:flex-none">
+                <MagnifyingGlass
+                  size={15}
+                  className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-foreground-muted"
+                />
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search your library"
+                  aria-label="Search saved items"
+                  className="h-9 w-full rounded-[9px] border border-white/[0.06] bg-surface pl-9 pr-3 text-sm text-foreground placeholder:text-foreground-muted focus:border-white/[0.10] focus:outline-none"
+                />
+              </div>
+              <label htmlFor="library-sort" className="sr-only">
+                Sort
+              </label>
+              <select
+                id="library-sort"
+                value={sort}
+                onChange={(e) => setSort(e.target.value as SortKey)}
+                className="h-9 cursor-pointer rounded-[9px] border border-white/[0.06] bg-surface px-3 text-sm text-foreground-secondary focus:border-white/[0.10] focus:outline-none"
               >
-                <Icon size={15} />
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Flat type-filter — a segmented control (client-side filter, NOT folders) */}
-      <div
-        className="rv-in flex flex-wrap gap-1 self-start rounded-[var(--radius-md)] p-1"
-        style={{ backgroundColor: "var(--color-charcoal-chip)", animationDelay: "0.09s" }}
-        role="tablist"
-        aria-label="Filter saved items by type"
-      >
-        {FILTERS.map((f) => {
-          const active = filter === f.id;
-          const count = counts[f.id] ?? 0;
-          return (
-            <button
-              key={f.id}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              onClick={() => setFilter(f.id)}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] px-3 py-1.5 text-xs font-medium transition-colors",
-                "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10",
-                active ? "text-foreground" : "text-foreground-muted hover:text-foreground-secondary",
-              )}
-              style={{
-                backgroundColor: active ? "var(--color-charcoal-composer)" : "transparent",
-                boxShadow: active ? "rgba(255,255,255,0.05) 0 1px 0 0 inset" : undefined,
-              }}
-            >
-              {f.label}
-              {count > 0 && (
-                <span
-                  className={cn(
-                    "tabular-nums text-[11px]",
-                    active ? "text-foreground-secondary" : "text-foreground-muted/70",
-                  )}
-                >
-                  {count}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Body: loading / error / empty / grid / list */}
-      <div className="rv-in" style={{ animationDelay: "0.12s" }}>
-      {isLoading ? (
-        <SavedShelfSkeleton />
-      ) : isError ? (
-        <p className="text-sm text-foreground-muted">
-          Couldn&rsquo;t load your library. Try again in a moment.
-        </p>
-      ) : visible.length === 0 ? (
-        <EmptyState
-          filtered={isFiltered}
-          onClear={() => {
-            setFilter("all");
-            setQuery("");
-          }}
+                <option value="recent">Recent</option>
+                <option value="oldest">Oldest</option>
+                <option value="az">A–Z</option>
+              </select>
+            </>
+          }
         />
-      ) : view === "grid" ? (
-        // Masonry — packs mixed-height cards tight (CSS multicol; no row-locked gaps).
-        <div className="columns-1 [column-gap:1rem] sm:columns-2 lg:columns-3 xl:columns-4">
-          {visible.map((item) => (
-            <div key={item.id} className="mb-4 break-inside-avoid">
-              <SavedItemCard item={item} variant="card" />
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="divide-y divide-white/[0.06] overflow-hidden rounded-[var(--radius-lg)] border border-white/[0.06] bg-surface">
-          {visible.map((item) => (
-            <SavedItemCard key={item.id} item={item} variant="row" />
-          ))}
+      </div>
+
+      {/* ── projects ───────────────────────────────────────────────────────── */}
+      {!searching && (
+        <div className="rv-in" style={{ animationDelay: "0.06s" }}>
+          <SectionLabel>Projects</SectionLabel>
+          <div className="-mx-3 flex flex-col gap-0.5">
+            {projects.map((project) => {
+              const roll = rollupFor(rollups, project.id);
+              return (
+                <button
+                  key={project.id}
+                  type="button"
+                  onClick={() => router.push(`/library/${project.id}`)}
+                  className="flex items-center gap-[15px] rounded-[11px] px-3 py-[15px] text-left transition-colors hover:bg-surface-thread focus-visible:outline-none focus-visible:bg-surface-thread"
+                >
+                  <span className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[9px] border border-white/[0.06] bg-surface text-foreground-secondary">
+                    <FolderSimple size={17} aria-hidden="true" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-title font-medium tracking-[-0.012em] text-foreground">
+                      {project.name}
+                    </span>
+                    <span className="mt-1 block text-body text-foreground-muted">
+                      {roll.total > 0 ? describeCounts(roll.byType) : "Nothing filed yet"}
+                    </span>
+                  </span>
+                  <span className="flex shrink-0 items-center gap-3.5 text-body text-foreground-muted">
+                    {relativeStamp(roll.newestSavedAt ?? project.updated_at)}
+                    <CaretRight size={13} aria-hidden="true" />
+                  </span>
+                </button>
+              );
+            })}
+            <NewProjectRow items={items} countFor={(id) => rollupFor(rollups, id).total} />
+          </div>
         </div>
       )}
+
+      {/* ── the shelf ──────────────────────────────────────────────────────── */}
+      <div className="rv-in" style={{ animationDelay: "0.09s" }}>
+        {/* The label is omitted when nothing is filed — "Unfiled" means nothing then. */}
+        {searching ? (
+          <SectionLabel>
+            {visible.length} result{visible.length === 1 ? "" : "s"} across your library
+          </SectionLabel>
+        ) : projects.length > 0 ? (
+          <SectionLabel>Unfiled</SectionLabel>
+        ) : null}
+
+        {/* facets */}
+        <div className="mb-4.5 flex gap-[22px] px-3">
+          {(["all", ...PIPELINE_ORDER] as const)
+            .filter((id) => id === "all" || (counts[id] ?? 0) > 0)
+            .map((id) => {
+              const active = filter === id;
+              const label = id === "all" ? "All" : TYPE_PLURAL[id];
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setFilter(id)}
+                  className={cn(
+                    "border-b-[1.5px] pb-2 text-body transition-colors",
+                    active
+                      ? "border-foreground font-medium text-foreground"
+                      : "border-transparent text-foreground-muted hover:text-foreground-secondary",
+                  )}
+                >
+                  {label}
+                  <span className="ml-1.5 text-label opacity-60">{counts[id] ?? 0}</span>
+                </button>
+              );
+            })}
+        </div>
+
+        {/* §R5-5 selection bar — destructive action named, counted, and separated */}
+        {selectMode && (
+          <div
+            className="mb-6 flex items-center gap-2.5 rounded-[11px] px-4 py-3.5 text-sm"
+            style={{ backgroundColor: "var(--color-charcoal-chip)" }}
+            role="toolbar"
+            aria-label="Selection actions"
+          >
+            <span className="font-semibold text-foreground">{selected.size} selected</span>
+            <span className="flex-1" />
+            <div>
+              <BarButton
+                emphasis
+                ref={setMoveAnchor}
+                onClick={() => setPickerOpen((v) => !v)}
+              >
+                Move to project
+              </BarButton>
+              {pickerOpen && (
+                <ProjectPickerPopover
+                  anchorEl={moveAnchor}
+                  align="right"
+                  items={items}
+                  // The single thread behind the selection, when there is exactly one — that is
+                  // what lets the picker badge "this thread" instead of guessing.
+                  threadId={selectedThreadId}
+                  countFor={(id) => rollupFor(rollups, id).total}
+                  onPick={(projectId) => handleBulkFile(projectId)}
+                  onClose={() => setPickerOpen(false)}
+                  unfiledLabel="Library — unfiled"
+                />
+              )}
+            </div>
+            <BarButton onClick={selectAllVisible}>Select all {visible.length}</BarButton>
+            <BarButton bare onClick={clearSelection}>
+              Cancel
+            </BarButton>
+            <span className="mx-1 h-5 w-px bg-white/[0.06]" />
+            <BarButton danger onClick={handleBulkUnsave}>
+              Unsave {selected.size}
+            </BarButton>
+          </div>
+        )}
+
+        {visible.length === 0 ? (
+          <FilteredEmpty
+            onClear={() => {
+              setFilter("all");
+              setQuery("");
+            }}
+          />
+        ) : (
+          <div className="-mx-3 flex flex-col gap-0.5">
+            {visible.map((item) => (
+              <SavedRow
+                key={item.id}
+                item={item}
+                sourceLabel={sourceLabelFor(item)}
+                projectName={item.project_id ? projectNames.get(item.project_id) : undefined}
+                expanded={expandedId === item.id}
+                onToggleExpand={() => setExpandedId((cur) => (cur === item.id ? null : item.id))}
+                selectMode={selectMode}
+                selected={selected.has(item.id)}
+                onSelectToggle={(shiftKey) => toggleSelect(item.id, shiftKey)}
+                onUnsave={() => handleUnsaveOne(item)}
+                onMoveToProject={() => {
+                  // Filing one row reuses the bulk path — one code path for one behaviour.
+                  setSelected(new Set([item.id]));
+                  setLastClickedId(item.id);
+                  setPickerOpen(true);
+                }}
+                onOpenThread={item.thread_id ? () => openThread(item.thread_id!) : undefined}
+                reserveThumb={reserveThumb}
+                reserveAction={reserveAction}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-/** Branded skeleton grid — mirrors the real card layout. */
-function SavedShelfSkeleton() {
+function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div
-      className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
-      aria-busy="true"
-      aria-live="polite"
-      data-testid="saved-shelf-skeleton"
+    <p className="mb-3.5 px-3 text-caption font-semibold uppercase tracking-[0.14em] text-foreground-muted">
+      {children}
+    </p>
+  );
+}
+
+/** `ref` is forwarded so the portaled picker can anchor to this button's box. */
+function BarButton({
+  children,
+  onClick,
+  emphasis,
+  bare,
+  danger,
+  ref,
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  emphasis?: boolean;
+  bare?: boolean;
+  danger?: boolean;
+  ref?: React.Ref<HTMLButtonElement>;
+}) {
+  return (
+    <button
+      type="button"
+      ref={ref}
+      onClick={onClick}
+      className={cn(
+        "rounded-[8px] px-3 py-1.5 text-body transition-colors",
+        "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring)]",
+        bare || danger ? "border border-transparent" : "border border-white/[0.06]",
+        emphasis && "border-white/[0.10] bg-surface text-foreground",
+        danger
+          ? "text-[color:var(--color-error)] hover:bg-white/[0.04]"
+          : !emphasis && "text-foreground-secondary hover:text-foreground",
+      )}
     >
-      {Array.from({ length: 6 }).map((_, i) => (
-        <div
-          key={i}
-          className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-white/[0.06] p-4"
-          style={{ backgroundColor: "var(--color-charcoal-composer)" }}
-        >
-          <div className="flex items-start justify-between gap-2">
-            <Skeleton className="h-5 w-24 rounded-[var(--radius-sm)]" />
-            <Skeleton className="h-5 w-5 rounded-full" />
-          </div>
-          <div className="flex flex-col gap-2">
-            <Skeleton className="h-4 w-[90%] rounded-md" />
-            <Skeleton className="h-4 w-[60%] rounded-md" />
-          </div>
-          <Skeleton className="h-12 w-full rounded-[10px]" />
-        </div>
-      ))}
+      {children}
+    </button>
+  );
+}
+
+/** The "New project" row — a dashed tile, matching the sketch's first-run affordance. */
+function NewProjectRow({
+  items,
+  countFor,
+}: {
+  items: SavedItem[];
+  countFor: (id: string) => number;
+}) {
+  const [open, setOpen] = useState(false);
+  const [anchor, setAnchor] = useState<HTMLButtonElement | null>(null);
+  const router = useRouter();
+
+  return (
+    <div>
+      <button
+        type="button"
+        ref={setAnchor}
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center gap-[15px] rounded-[11px] px-3 py-[15px] text-left text-reading text-foreground-muted transition-colors hover:bg-surface-thread hover:text-foreground-secondary focus-visible:outline-none focus-visible:bg-surface-thread"
+      >
+        <span className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[9px] border border-dashed border-white/[0.06] bg-surface">
+          <Plus size={15} weight="bold" aria-hidden="true" />
+        </span>
+        New project
+      </button>
+      {open && (
+        <ProjectPickerPopover
+          anchorEl={anchor}
+          items={items}
+          countFor={countFor}
+          onPick={(projectId) => {
+            setOpen(false);
+            if (projectId) router.push(`/library/${projectId}`);
+          }}
+          onClose={() => setOpen(false)}
+          unfiledLabel="Library — unfiled"
+        />
+      )}
     </div>
   );
 }
 
-/** Calm informational empty state — not an error. */
-function EmptyState({ filtered, onClear }: { filtered: boolean; onClear: () => void }) {
+function FilteredEmpty({ onClear }: { onClear: () => void }) {
+  return (
+    <div className="px-3 py-10">
+      <p className="text-reading text-foreground-muted">Nothing matches.</p>
+      <button
+        type="button"
+        onClick={onClear}
+        className="mt-2 text-body text-foreground-secondary underline decoration-white/20 underline-offset-4 hover:text-foreground"
+      >
+        Clear search and filters
+      </button>
+    </div>
+  );
+}
+
+/** Calm informational first run — not an error. */
+function FirstRun() {
   const router = useRouter();
   const reducedMotion = usePrefersReducedMotion();
   const dots = useMemo(() => buildLoadingDots(120, 32, 8), []);
@@ -288,22 +606,44 @@ function EmptyState({ filtered, onClear }: { filtered: boolean; onClear: () => v
           ariaLabel="Your library is waiting"
         />
       }
-      title={filtered ? "Nothing matches" : "Nothing in your Library yet"}
+      title="Nothing in your Library yet"
       action={
-        filtered ? (
-          <Button variant="secondary" onClick={onClear}>
-            Clear filters
-          </Button>
-        ) : (
-          <Button variant="primary" onClick={() => router.push("/home")}>
-            Start a Simulation
-          </Button>
-        )
+        <Button variant="primary" onClick={() => router.push("/home")}>
+          Start a Simulation
+        </Button>
       }
     >
-      {filtered
-        ? "Try another type or clear your search."
-        : "Save a Read, idea, hook, or outlier from any thread and it lands here — ready to pull back in."}
+      Save a Read, idea, hook or outlier from any thread and it lands here — ready to pull back in.
     </SurfaceEmptyState>
+  );
+}
+
+/** Skeleton shaped like the ROWS, so nothing shifts when the real list arrives. */
+export function ShelfSkeleton() {
+  return (
+    <div className="flex flex-col gap-6" aria-busy="true" data-testid="saved-shelf-skeleton">
+      <div className="flex items-end justify-between gap-6">
+        <div className="flex flex-col gap-2">
+          <Skeleton className="h-8 w-32 rounded-lg" />
+          <Skeleton className="h-4 w-40 rounded-md" />
+        </div>
+        <div className="flex items-center gap-2.5">
+          <Skeleton className="h-9 w-[230px] rounded-[9px]" />
+          <Skeleton className="h-9 w-24 rounded-[9px]" />
+        </div>
+      </div>
+      <div className="flex flex-col gap-0.5">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="flex items-start gap-[15px] px-3 py-[15px]">
+            <Skeleton className="h-[34px] w-[34px] shrink-0 rounded-[9px]" />
+            <div className="flex flex-1 flex-col gap-2 pt-0.5">
+              <Skeleton className="h-[17px] w-[min(70%,420px)] rounded-md" />
+              <Skeleton className="h-3 w-40 rounded-md" />
+            </div>
+            <Skeleton className="h-4 w-[92px] shrink-0 rounded-md" />
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }

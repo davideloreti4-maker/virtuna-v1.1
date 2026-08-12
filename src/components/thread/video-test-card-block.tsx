@@ -73,7 +73,7 @@ function FrameTile({
     >
       <CoverFill coverUrl={url} playSize={14} />
       {atMs != null && (
-        <span className="absolute bottom-1 left-1 rounded-xs bg-black/50 px-1 py-px text-[9px] tabular-nums text-foreground-secondary">
+        <span className="absolute bottom-1 left-1 rounded-xs bg-black/50 px-1 py-px text-micro tabular-nums text-foreground-secondary">
           {fmtClock(atMs / 1000)}
         </span>
       )}
@@ -114,15 +114,14 @@ export function VideoTestCardRenderer({ block }: VideoTestCardRendererProps) {
 
   return (
     <div
-      className="overflow-hidden rounded-xl border border-white/[0.06] bg-surface-sunken"
+      className="@container overflow-hidden rounded-xl border border-white/[0.06] bg-surface-sunken"
       aria-label={`Video craft test for ${audienceName}`}
     >
       {/* ── HEADER — craft ring + driver bars ── */}
       <div className="px-4 pt-4 pb-4">
+        {/* One label, not two chained by a dot (label-chrome diet 2026-08-02). */}
         <div className="mb-4 flex items-center gap-2">
-          <span className={SECTION_LABEL}>Test</span>
-          <span className="h-1 w-1 rounded-full bg-foreground-muted" aria-hidden="true" />
-          <span className={SECTION_LABEL}>frame-by-frame read</span>
+          <span className={SECTION_LABEL}>Test · frame-by-frame read</span>
           <span className="ml-auto">
             <TrustBadge tier={tier} />
           </span>
@@ -147,8 +146,8 @@ export function VideoTestCardRenderer({ block }: VideoTestCardRendererProps) {
                   />
                 </svg>
                 <span className="absolute inset-0 flex flex-col items-center justify-center gap-px">
-                  <span className="text-[27px] font-semibold leading-none tabular-nums text-foreground">{craftScore}</span>
-                  <span className="text-[8.5px] uppercase tracking-[0.05em] text-foreground-muted">Craft</span>
+                  <span className="text-stat font-semibold leading-none tabular-nums text-foreground">{craftScore}</span>
+                  <span className="text-micro uppercase tracking-[0.05em] text-foreground-muted">Craft</span>
                 </span>
               </div>
             )}
@@ -156,11 +155,11 @@ export function VideoTestCardRenderer({ block }: VideoTestCardRendererProps) {
               <div className="flex min-w-0 flex-1 flex-col gap-[7px]">
                 {drivers.map((d) => (
                   <div key={d.name} className="flex items-center gap-2.5">
-                    <span className="w-[74px] shrink-0 text-[12px] capitalize text-foreground-secondary">{d.name}</span>
+                    <span className="w-[74px] shrink-0 text-label capitalize text-foreground-secondary">{d.name}</span>
                     <span className="h-1 flex-1 overflow-hidden rounded-full bg-white/[0.07]">
                       <span className={`block h-full rounded-full ${driverBar(d.band)}`} style={{ width: `${d.score}%` }} />
                     </span>
-                    <span className="w-5 shrink-0 text-right text-[12px] tabular-nums text-foreground">{d.score}</span>
+                    <span className="w-5 shrink-0 text-right text-label tabular-nums text-foreground">{d.score}</span>
                   </div>
                 ))}
               </div>
@@ -169,7 +168,7 @@ export function VideoTestCardRenderer({ block }: VideoTestCardRendererProps) {
         )}
 
         {hasHeader && (
-          <p className="mt-3.5 text-[11.5px] text-foreground-muted">
+          <p className="mt-3.5 text-label text-foreground-muted">
             Retention &amp; reach aren&rsquo;t craft — they&rsquo;re measured in{' '}
             <span className="text-foreground-secondary">Simulate</span>.
           </p>
@@ -197,10 +196,10 @@ export function VideoTestCardRenderer({ block }: VideoTestCardRendererProps) {
                     }
                   />
                   <div className="mt-1.5 text-center">
-                    <div className="text-[10.5px] capitalize text-foreground-secondary">{f.label}</div>
+                    <div className="text-micro capitalize text-foreground-secondary">{f.label}</div>
                     {f.mark && (
                       <div
-                        className={`mt-0.5 text-[9px] uppercase tracking-[0.05em] ${
+                        className={`mt-0.5 text-micro uppercase tracking-[0.05em] ${
                           f.mark === 'asset' ? 'text-[var(--color-positive)]' : 'text-[var(--color-warning)]'
                         }`}
                       >
@@ -213,7 +212,7 @@ export function VideoTestCardRenderer({ block }: VideoTestCardRendererProps) {
             </div>
           </div>
           {(durationLabel || dropLabel) && (
-            <div className="mt-3 flex justify-between text-[10.5px] tabular-nums text-foreground-muted">
+            <div className="mt-3 flex justify-between text-micro tabular-nums text-foreground-muted">
               <span>0:00</span>
               {dropLabel && <span className="text-[var(--color-warning)]">▲ {dropLabel}</span>}
               <span>{durationLabel ?? ''}</span>
@@ -225,34 +224,34 @@ export function VideoTestCardRenderer({ block }: VideoTestCardRendererProps) {
       {/* ── WORKING / NOT-WORKING ledger ── */}
       {(working.length > 0 || notWorking.length > 0) && (
         <div className="border-t border-white/[0.06] px-4 py-4">
-          <div className="grid grid-cols-1 gap-4 min-[440px]:grid-cols-2 min-[440px]:gap-0">
-            <div className="min-[440px]:pr-4.5">
-              <div className="mb-2.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.05em] text-[var(--color-positive)]">
+          {/* Split keyed on the CARD's width (@container), not the viewport: a 342px card can sit
+              in a wide viewport where `min-[440px]:` would wrongly split it into starved columns. */}
+          <div className="grid grid-cols-1 gap-4 @min-[440px]:grid-cols-2 @min-[440px]:gap-0">
+            <div className="@min-[440px]:pr-4.5">
+              <div className="mb-2.5 flex items-center gap-1.5 text-caption font-semibold uppercase tracking-[0.05em] text-[var(--color-positive)]">
                 <span aria-hidden="true">✓</span> Working
               </div>
+              {/* The column header already carries the ✓ — repeating it per row doubled the
+                  mark on every line (glyph diet 2026-08-02). */}
               <ul className="flex flex-col gap-2">
                 {working.map((w, i) => (
-                  <li key={i} className="flex gap-1.5 text-[12.5px] leading-snug text-foreground-secondary">
-                    <span className="mt-px shrink-0 text-[var(--color-positive)]" aria-hidden="true">✓</span>
-                    <span>{w}</span>
+                  <li key={i} className="text-label leading-snug text-foreground-secondary">
+                    {w}
                   </li>
                 ))}
               </ul>
             </div>
-            <div className="border-t border-white/[0.06] pt-3.5 min-[440px]:border-l min-[440px]:border-t-0 min-[440px]:pl-4.5 min-[440px]:pt-0">
-              <div className="mb-2.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.05em] text-[var(--color-accent-text)]">
+            <div className="border-t border-white/[0.06] pt-3.5 @min-[440px]:border-l @min-[440px]:border-t-0 @min-[440px]:pl-4.5 @min-[440px]:pt-0">
+              <div className="mb-2.5 flex items-center gap-1.5 text-caption font-semibold uppercase tracking-[0.05em] text-[var(--color-accent-text)]">
                 <span aria-hidden="true">!</span> Not working
               </div>
               <ul className="flex flex-col gap-2">
                 {notWorking.map((n, i) => (
-                  <li key={i} className="flex gap-1.5 text-[12.5px] leading-snug text-foreground-secondary">
-                    <span className="mt-px shrink-0 text-[var(--color-accent-text)]" aria-hidden="true">✕</span>
-                    <span>
-                      {n.text}
-                      {n.atMs != null && (
-                        <span className="ml-1 tabular-nums text-foreground-muted">@{fmtClock(n.atMs / 1000)}</span>
-                      )}
-                    </span>
+                  <li key={i} className="text-label leading-snug text-foreground-secondary">
+                    {n.text}
+                    {n.atMs != null && (
+                      <span className="ml-1 tabular-nums text-foreground-muted">@{fmtClock(n.atMs / 1000)}</span>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -266,19 +265,19 @@ export function VideoTestCardRenderer({ block }: VideoTestCardRendererProps) {
         <div className="flex flex-col gap-3 border-t border-white/[0.06] px-4 py-4">
           <div>
             <p className={SECTION_LABEL}>The director&rsquo;s fixes</p>
-            <p className="mt-1 text-[12px] leading-relaxed text-foreground-muted">
+            <p className="mt-1 text-label leading-relaxed text-foreground-muted">
               A proven corpus example appears where one really fits — not forced onto every note.
             </p>
           </div>
           {fixes.map((fix, i) => (
             <div key={i} className="rounded-lg border border-white/[0.06] bg-white/[0.018] p-3.5">
               <div className="mb-3 flex items-center gap-2">
-                <span className="text-[11px] font-bold tabular-nums text-foreground-muted">
+                <span className="text-caption font-bold tabular-nums text-foreground-muted">
                   {String(i + 1).padStart(2, '0')}
                 </span>
-                <span className="text-[13.5px] font-semibold text-foreground">{fix.title}</span>
+                <span className="text-reading font-semibold text-foreground">{fix.title}</span>
                 {fix.lever && (
-                  <span className="ml-auto rounded-full border border-white/[0.06] px-2 py-0.5 text-[10.5px] text-foreground-secondary">
+                  <span className="ml-auto rounded-full border border-white/[0.06] px-2 py-0.5 text-micro text-foreground-secondary">
                     {fix.lever}
                   </span>
                 )}
@@ -288,22 +287,22 @@ export function VideoTestCardRenderer({ block }: VideoTestCardRendererProps) {
                 {fix.keyframeUrl != null && (
                   <FrameTile url={fix.keyframeUrl} atMs={fix.atMs} widthClass="w-[46px]" />
                 )}
-                <p className="text-[13px] leading-relaxed text-foreground-secondary">{fix.diagnosis}</p>
+                <p className="text-body leading-relaxed text-foreground-secondary">{fix.diagnosis}</p>
               </div>
 
+              {/* De-boxed 2026-08-02: was a bordered box-in-a-box-in-the-card with an uppercase
+                  "WHY" chip. The mechanism reads as one quiet line now. */}
               {fix.why && (
-                <div className="mb-3 flex gap-2.5 rounded-lg border border-white/[0.06] bg-white/[0.022] px-3 py-2.5">
-                  <span className="mt-px shrink-0 text-[11px] font-bold uppercase tracking-[0.05em] text-foreground-muted">
-                    Why
-                  </span>
-                  <p className="text-[12px] leading-relaxed text-foreground-secondary">{fix.why}</p>
-                </div>
+                <p className="mb-3 text-label leading-relaxed text-foreground-muted">
+                  <span className="font-medium text-foreground-secondary">Why · </span>
+                  {fix.why}
+                </p>
               )}
 
               {fix.move && (
                 <div className="mb-3 flex items-baseline gap-2">
                   <span className="shrink-0 text-foreground-muted" aria-hidden="true">→</span>
-                  <span className="text-[13.5px] font-medium leading-snug text-foreground">{fix.move}</span>
+                  <span className="text-reading font-medium leading-snug text-foreground">{fix.move}</span>
                 </div>
               )}
 
@@ -313,11 +312,9 @@ export function VideoTestCardRenderer({ block }: VideoTestCardRendererProps) {
         </div>
       )}
 
-      {/* ── SEAM — the one door out (Simulation owns reception) ── */}
-      <p className="px-4 pt-3 text-center text-[12px] leading-relaxed text-foreground-muted">
-        The craft is here. How your audience actually reacts — the crowd, the drop-off, the reach —
-        lives in the simulation.
-      </p>
+      {/* ── SEAM — the one door out (Simulation owns reception). The centered explainer
+          paragraph is gone (2026-08-02): the header already draws the craft/reception line,
+          and the CTA says where reception lives. ── */}
       <CardActionBar>
         {openRoom ? (
           <CardPrimaryAction onClick={openRoom}>Simulate with your audience →</CardPrimaryAction>

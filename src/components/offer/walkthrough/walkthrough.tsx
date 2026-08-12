@@ -91,7 +91,7 @@ function RailDock({
             "mt-4 inline-flex h-12 w-full items-center justify-center rounded-lg px-6",
             "bg-action text-[15px] font-semibold text-action-foreground",
             "transition-transform active:scale-[0.99]",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)]",
           )}
         >
           {cta}
@@ -191,7 +191,7 @@ function LockedPanel({ onCheckout }: { onCheckout: () => void }) {
           "mt-4 inline-flex h-12 w-full items-center justify-center rounded-lg px-6",
           "bg-action text-[15px] font-semibold text-action-foreground",
           "transition-transform active:scale-[0.99]",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)]",
         )}
       >
         Unlock this — $1

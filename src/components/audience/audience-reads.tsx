@@ -63,10 +63,10 @@ function SectionHeading({
   return (
     <div className="mb-3.5">
       <div className="flex items-baseline justify-between gap-4">
-        <h2 className="text-[13px] font-semibold text-foreground">{title}</h2>
-        {note && <span className="text-[11px] text-foreground-muted">{note}</span>}
+        <h2 className="text-body font-semibold text-foreground">{title}</h2>
+        {note && <span className="text-caption text-foreground-muted">{note}</span>}
       </div>
-      <p className="mt-1 text-[12.5px] text-foreground-secondary">{description}</p>
+      <p className="mt-1 text-label text-foreground-secondary">{description}</p>
     </div>
   );
 }
@@ -76,7 +76,7 @@ function VerdictPill({ verdict }: { verdict: "stop" | "scroll" }) {
   return (
     <span
       className={cn(
-        "shrink-0 rounded-md border px-2 py-0.5 text-[11px]",
+        "shrink-0 rounded-md border px-2 py-0.5 text-caption",
         verdict === "stop"
           ? "border-white/[0.10] bg-white/[0.05] text-foreground"
           : "border-white/[0.06] text-foreground-muted",
@@ -151,7 +151,7 @@ export function AudienceReads({ audience, className }: AudienceReadsProps) {
           description="Each persona's most recent reaction, in their own words."
         />
         <div className={cn(CARD, "px-5 py-8")}>
-          <p className="text-[12.5px] text-foreground-muted">Loading their reactions…</p>
+          <p className="text-label text-foreground-muted">Loading their reactions…</p>
         </div>
       </section>
     );
@@ -165,7 +165,7 @@ export function AudienceReads({ audience, className }: AudienceReadsProps) {
           description="Each persona's most recent reaction, in their own words."
         />
         <div className={cn(CARD, "px-5 py-8")}>
-          <p className="text-[12.5px] text-foreground-secondary">
+          <p className="text-label text-foreground-secondary">
             Couldn&apos;t load their reactions. This says nothing about whether they have any —
             reload to try again.
           </p>
@@ -190,12 +190,12 @@ export function AudienceReads({ audience, className }: AudienceReadsProps) {
         {!hasReads ? (
           // THE MAIN STATE (rule 2). Never phrase an absence as a finding.
           <div className={cn(CARD, "px-5 py-8 text-center")}>
-            <p className="text-[13px] text-foreground-secondary">
+            <p className="text-body text-foreground-secondary">
               Nothing yet. Run a Read and each of these people reacts to it — you&apos;ll see who
               stopped, who scrolled, and why, in their own words.
             </p>
             {rollup.legacyUnattributed > 0 && (
-              <p className="mx-auto mt-3 max-w-md text-[11.5px] leading-relaxed text-foreground-muted">
+              <p className="mx-auto mt-3 max-w-md text-label leading-relaxed text-foreground-muted">
                 {rollup.legacyUnattributed} earlier Read
                 {rollup.legacyUnattributed === 1 ? "" : "s"} exist but predate per-audience
                 attribution, so {rollup.legacyUnattributed === 1 ? "it isn't" : "they aren't"}{" "}
@@ -211,8 +211,8 @@ export function AudienceReads({ audience, className }: AudienceReadsProps) {
                 className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4 border-b border-white/[0.06] py-3.5 last:border-b-0"
               >
                 <div className="min-w-0">
-                  <p className="text-[13.5px] font-medium text-foreground">{nameOf(p.archetype)}</p>
-                  <p className="mt-1 border-l-2 border-white/[0.10] pl-2.5 text-[12.5px] leading-relaxed text-foreground-secondary">
+                  <p className="text-reading font-medium text-foreground">{nameOf(p.archetype)}</p>
+                  <p className="mt-1 border-l-2 border-white/[0.10] pl-2.5 text-label leading-relaxed text-foreground-secondary">
                     &ldquo;{p.quote}&rdquo;
                   </p>
                 </div>
@@ -223,7 +223,7 @@ export function AudienceReads({ audience, className }: AudienceReadsProps) {
         )}
 
         {rollup.scanCapped && (
-          <p className="mt-2.5 text-[11.5px] text-foreground-muted">
+          <p className="mt-2.5 text-label text-foreground-muted">
             Showing the most recent {rollup.scanned} messages — older Reads exist beyond this
             window.
           </p>
@@ -244,14 +244,14 @@ export function AudienceReads({ audience, className }: AudienceReadsProps) {
 
         {custom ? (
           <div className={cn(CARD, "px-5 py-8 text-center")}>
-            <p className="text-[13px] text-foreground-secondary">
+            <p className="text-body text-foreground-secondary">
               A custom audience is judged on its own — there&apos;s no generic crowd to compare it
               against.
             </p>
           </div>
         ) : rollup.compared === 0 ? (
           <div className={cn(CARD, "px-5 py-8 text-center")}>
-            <p className="text-[13px] text-foreground-secondary">
+            <p className="text-body text-foreground-secondary">
               Nothing compared yet. Every social Read scores your concept against these people{" "}
               <em>and</em> the generic crowd — the gap between them lands here.
             </p>
@@ -262,7 +262,7 @@ export function AudienceReads({ audience, className }: AudienceReadsProps) {
               {rollup.cases.map((c, i) => (
                 <div key={`${c.at}-${i}`} className="border-b border-white/[0.06] py-4 last:border-b-0">
                   <div className="flex items-start justify-between gap-4">
-                    <p className="min-w-0 flex-1 text-[13px] leading-relaxed text-foreground">
+                    <p className="min-w-0 flex-1 text-body leading-relaxed text-foreground">
                       {c.concept ?? (
                         <span className="text-foreground-muted">
                           (concept not recorded — this Read predates it)
@@ -277,7 +277,7 @@ export function AudienceReads({ audience, className }: AudienceReadsProps) {
                       Niche Deep Buyer traded places. Labelling that "same verdict" and stopping
                       there is how the band panel lies — so name it.
                     */}
-                    <span className="shrink-0 text-[11px] text-foreground-muted">
+                    <span className="shrink-0 text-caption text-foreground-muted">
                       {c.mine.band !== c.other.band
                         ? "verdict moved"
                         : c.personaFlips.length > 0
@@ -286,7 +286,7 @@ export function AudienceReads({ audience, className }: AudienceReadsProps) {
                     </span>
                   </div>
 
-                  <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px]">
+                  <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-label">
                     <span className="text-foreground-secondary">
                       {c.mine.name}{" "}
                       <span className={cn("font-medium", BAND_TONE[c.mine.band])}>
@@ -307,7 +307,7 @@ export function AudienceReads({ audience, className }: AudienceReadsProps) {
                       {c.personaFlips.map((f) => (
                         <li
                           key={f.archetype}
-                          className="text-[12px] leading-relaxed text-foreground-secondary"
+                          className="text-label leading-relaxed text-foreground-secondary"
                         >
                           <span className="text-foreground">{nameOf(f.archetype)}</span>{" "}
                           {f.mine === "stop" ? "stopped" : "scrolled past"} for you, but{" "}
@@ -316,7 +316,7 @@ export function AudienceReads({ audience, className }: AudienceReadsProps) {
                       ))}
                     </ul>
                   ) : (
-                    <p className="mt-2.5 text-[12px] text-foreground-muted">
+                    <p className="mt-2.5 text-label text-foreground-muted">
                       Everyone reacted the same way for both.
                     </p>
                   )}
@@ -330,7 +330,7 @@ export function AudienceReads({ audience, className }: AudienceReadsProps) {
               the band count would have told the user their audience agrees with the crowd, on
               Reads where their people plainly did not.
             */}
-            <p className="mt-2.5 text-[11.5px] leading-relaxed text-foreground-muted">
+            <p className="mt-2.5 text-label leading-relaxed text-foreground-muted">
               <span className="text-foreground-secondary">Counted by people, not verdicts.</span>{" "}
               The overall verdict matched on {rollup.compared - rollup.diverged} of{" "}
               {rollup.compared} — but a matching verdict hides people swapping places underneath
@@ -338,7 +338,7 @@ export function AudienceReads({ audience, className }: AudienceReadsProps) {
             </p>
 
             {rollup.legacyUnattributed > 0 && (
-              <p className="mt-1.5 text-[11.5px] leading-relaxed text-foreground-muted">
+              <p className="mt-1.5 text-label leading-relaxed text-foreground-muted">
                 {rollup.legacyUnattributed} earlier Read
                 {rollup.legacyUnattributed === 1 ? "" : "s"} can&apos;t be attributed to an
                 audience and{" "}

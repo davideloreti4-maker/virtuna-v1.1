@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { resolveWhopPlanId, WHOP_TRIAL_PLAN_IDS } from "@/lib/whop/config";
 import { isPaidPlanId } from "@/lib/pricing";
+import { hasUsedTrial } from "@/lib/billing/trial-eligibility";
+
+/** Whop's current checkout-session endpoint. Exported so the test can pin it. */
+export const WHOP_CHECKOUT_ENDPOINT =
+  "https://api.whop.com/api/v1/checkout_configurations";
 
 export async function POST(request: Request) {
   try {
@@ -18,7 +23,7 @@ export async function POST(request: Request) {
 
     // 2. Parse and validate request body
     const body = await request.json();
-    const { planId, trial } = body;
+    const { planId, trial, funnel } = body;
 
     if (!isPaidPlanId(planId)) {
       return NextResponse.json(
@@ -32,7 +37,9 @@ export async function POST(request: Request) {
     //    already spent its $1 trial gets the FULL-PRICE SKU, quietly. The Whop embed shows
     //    the real price before any charge, and the response says which price was resolved
     //    (`trialApplied`) so the modal's copy can tell the truth too.
-    //    `trial_started_at` is checked as a belt on pre-`trial_used_at` rows.
+    //    The predicate lives in `lib/billing/trial-eligibility` because `/api/subscription`
+    //    has to answer the SAME question for the UI — a CTA that promises a price this route
+    //    then refuses is the chargeback shape we are avoiding.
     //    Fail-open on a read error: never block a purchase to protect a $1 guard.
     let effectiveTrial = trial === true;
     let trialDenied = false;
@@ -45,8 +52,7 @@ export async function POST(request: Request) {
           .select("*")
           .eq("user_id", user.id)
           .maybeSingle();
-        const row = data as Record<string, unknown> | null;
-        if (row?.trial_used_at || row?.trial_started_at) {
+        if (hasUsedTrial(data as Record<string, unknown> | null)) {
           effectiveTrial = false;
           trialDenied = true;
         }
@@ -70,9 +76,16 @@ export async function POST(request: Request) {
       );
     }
 
-    // 5. Create Whop checkout session
+    // 5. Create the Whop checkout session.
+    //    ⚠️ ENDPOINT: `/api/v1/checkout_configurations`. This used to POST
+    //    `/api/v5/checkout_sessions`, which Whop has REMOVED — it answers 404, so every
+    //    checkout would have 500'd on the first real customer. It was never caught because
+    //    the route's test stubs `fetch` wholesale and asserted only the request body, never
+    //    the URL (the test below now pins the URL too). The v1 endpoint takes the same
+    //    fields and returns `id` as a `ch_…` checkout-session id, which is exactly what
+    //    `<WhopCheckoutEmbed sessionId>` consumes.
     const whopResponse = await fetch(
-      "https://api.whop.com/api/v5/checkout_sessions",
+      WHOP_CHECKOUT_ENDPOINT,
       {
         method: "POST",
         headers: {
@@ -85,9 +98,17 @@ export async function POST(request: Request) {
             supabase_user_id: user.id,
             supabase_email: user.email,
           },
+          // The funnel's buyer is an anonymous visitor mid-drill: any full-page redirect
+          // out of the embed must land them back in their room, not on /settings. The two
+          // paths are server-side literals (never client-supplied), so no open-redirect
+          // surface is added.
           redirect_url: `${
             process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
-          }/settings?tab=billing&checkout=success`,
+          }${
+            funnel === true
+              ? "/home?checkout=success"
+              : "/settings?tab=billing&checkout=success"
+          }`,
         }),
       }
     );

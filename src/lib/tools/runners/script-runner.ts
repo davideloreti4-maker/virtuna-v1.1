@@ -59,8 +59,16 @@ import type { ScriptCardBlock } from "@/lib/tools/blocks";
 // accepted-but-unused `pin` input, kept so the route call site is unchanged).
 import type { RunnerPinContext } from "./predicted-pin";
 import { gatherCorpusForRun } from "@/lib/grounding/gather-for-run";
+import type { RunEvidence } from "@/lib/tools/evidence";
 import { buildProofFromSource, coerceSourceIndex } from "./build-proof";
 import { buildAdaptProfile } from "./adapt-profile";
+import { anchorHonored, templateInstantiated, trimExamplesToBundle } from "./output-guards";
+import {
+  buildRevisePrompt,
+  findSlotLeaks,
+  isJudgeEnabled,
+  judgeThesisInversion,
+} from "./checkable-judge";
 import { resolveSingleTarget, type PersonaTarget } from "@/lib/audience/select-persona-targets";
 import {
   buildTargetAssignments,
@@ -218,6 +226,13 @@ export interface ScriptPipelineInput {
   /** Upstream hook anchor — the chosen hookLine carried from Hooks→Script (optional). */
   anchor?: string;
   /**
+   * Stage B (B2): the beat lines of a script card already on screen that this run should
+   * REWRITE ("Make it punchier", "rewrite this tighter"). Fenced by the assembler under its
+   * own rewrite contract. Distinct from `anchor` — a rewrite pack carries no open-from-this
+   * constraint, so it never trips the anchor-honoring check.
+   */
+  cards?: string[];
+  /**
    * PER-PERSONA GENERATION: the reader this script is written for — normally INHERITED from the
    * hook the creator picked (that hook's `target.archetype`), so the script develops the chosen
    * hook for the same person instead of quietly re-aiming at someone else.
@@ -255,6 +270,16 @@ export interface ScriptPipelineInput {
    * timing. Optional/no-op — absent = unchanged. Honesty spine: true boundaries, no fake timer.
    */
   onStage?: (name: string, status: "active" | "done") => void;
+  /**
+   * EVIDENCE callback — fired once with the proven outlier videos this run is grounded on, the
+   * moment retrieval settles (which is well BEFORE the first card exists — grounding precedes
+   * generation). The route wires it to SSE `send("evidence", …)` so the loading spine can show the
+   * creator the real posts their script are being drafted against instead of a shimmer.
+   *
+   * Never fires on an ungrounded or degraded run: gather-for-run only emits when rows survived the
+   * warrant, so the wait can never advertise evidence the cards then disclaim.
+   */
+  onEvidence?: (evidence: RunEvidence) => void;
 }
 
 // ─── Output type ─────────────────────────────────────────────────────────────
@@ -271,6 +296,12 @@ export interface ScriptPipelineResult {
    * affordance. Mirrors hooks-runner.
    */
   scrapeAvailable: boolean;
+  /**
+   * C1 checkable-judge trace (ENGINE_JUDGE_SCRIPT runs only, and only when a check fired) —
+   * which checks failed and whether the revise cleared them. Diagnostic/harness surface;
+   * routes ignore it and it never reaches the UI.
+   */
+  judgeTrace?: string[];
 }
 
 // ─── Structured script type ───────────────────────────────────────────────────
@@ -514,7 +545,7 @@ function coerceProduction(raw: unknown): StructuredProduction | undefined {
  * @param input.anchor      Upstream hook anchor — the chosen hookLine from Hooks→Script.
  */
 export async function runScriptPipeline(input: ScriptPipelineInput): Promise<ScriptPipelineResult> {
-  const { ask, platform, profileRow, anchor, audience = null, targetArchetype } = input;
+  const { ask, platform, profileRow, anchor, audience = null, targetArchetype, cards } = input;
   const allWarnings: string[] = [];
   // NOTE: `input.intent` (the sell/grow reaction lens) only ever reframed the opener-SIM verdict.
   // With the SIM removed from generation it is unused on this path for now; it re-attaches to the
@@ -562,6 +593,7 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
     examples: groundingExamples,
     scrapeAvailable,
     grounded: corpusGrounded,
+    adapted: corpusAdapted,
   } = await gatherCorpusForRun({
     enabled: isGroundingEnabled(),
     skill: "script", // → the timed-beats slice: the pacing a proven outlier actually ran
@@ -571,6 +603,7 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
     // Explicit-only spend: the user's "Find new outliers" tap is the ONLY thing that sets this.
     allowScrape: input.allowScrape,
     onStage: input.onStage,
+    onEvidence: input.onEvidence,
     warnings: allWarnings,
     // Grounding-as-remix: when ON, the corpus is a fitted+dosed beat-arc brief, not the raw slice.
     // The briefer maps proven rhythms onto THIS creator's subject, so hand it their profile.
@@ -585,6 +618,7 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
       platform,
       mode: "script",
       ...(anchor ? { anchor } : {}),
+      ...(cards && cards.length > 0 ? { cards } : {}),
       ...(overrides ? { overrides } : {}),
       ...(corpus ? { corpus } : {}),
     },
@@ -600,6 +634,110 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
     const msg = err instanceof Error ? err.message : String(err);
     allWarnings.push(`Script generation failed: ${msg}`);
     return { blocks: [], warnings: allWarnings, scrapeAvailable };
+  }
+
+  // ── ANCHOR CONTRACT (Stage A, N-7): the opening beat must honor the anchor ──
+  // The measured failure: a "Write a script from #1" chip produced a script about a
+  // DIFFERENT topic while the intro claimed anchoring. The assembler now states the
+  // contract (anchorLabel); this verifies the model kept it — one retry with the
+  // rejection stated in the prompt (generation is temp-0/seeded, so an UNCHANGED
+  // prompt would reproduce the failure byte-for-byte), then a visible warning.
+  if (script && anchor && !anchorHonored(anchor, script.openingBeatSeed)) {
+    const retryMessage =
+      `${userMessage}\n\nREJECTED — your previous script ignored the Anchor hook and wrote about a ` +
+      `different topic. Rewrite the ENTIRE script so the opening beat adapts the Anchor hook: same ` +
+      `subject, same promise.`;
+    try {
+      const retried = await generateScriptStructured(retryMessage, Boolean(corpus), Boolean(target));
+      if (retried && retried.beats.length > 0 && anchorHonored(anchor, retried.openingBeatSeed)) {
+        script = retried;
+      } else {
+        allWarnings.push(
+          "This script may not follow the hook it was anchored on — check it against the hook you chose.",
+        );
+      }
+    } catch {
+      allWarnings.push(
+        "This script may not follow the hook it was anchored on — check it against the hook you chose.",
+      );
+    }
+  }
+
+  // ── C1 CHECKABLE-JUDGE (gated, ENGINE_JUDGE_SCRIPT): slot leaks · thesis inversion ──
+  // The measured failure class (case 1, AB-ADAPT-IDEAS-SCRIPT-2026-08-10-script): a Turn beat
+  // shipped compiled.ts's Gold-Standard beat template VERBATIM with unfilled [slots], and the
+  // same script argued the OPPOSITE of the ask ("post daily" → "posting daily is ruining your
+  // brand"). Checks are mechanical or binary — never taste (the S5 rubric-critic constraint).
+  // ONE consolidated revise with every rejection stated, then the honest degrade: ship the
+  // ORIGINAL with a visible warning. The revision is accepted only when it clears EVERY check
+  // INCLUDING anchor fidelity — a fix must not regress N-7. The thesis judge costs one flash
+  // call per check pass and is skipped when the run has no real ask (chip runs stay free).
+  const judgeTrace: string[] = [];
+  if (script && isJudgeEnabled("script")) {
+    const realAsk = ask.trim();
+    const checkScript = async (s: StructuredScript) => {
+      const leaks = s.beats
+        .map((b) => ({ label: b.label, segments: findSlotLeaks(b.content) }))
+        .filter((l) => l.segments.length > 0);
+      let inverted = false;
+      if (realAsk) {
+        const verdicts = await judgeThesisInversion(realAsk, [
+          s.beats.map((b) => `${b.label}: ${b.content}`).join("\n"),
+        ]);
+        if (verdicts === null) judgeTrace.push("judge:unavailable");
+        inverted = verdicts?.[0] ?? false;
+      }
+      const anchorOk = !anchor || anchorHonored(anchor, s.openingBeatSeed);
+      return { leaks, inverted, anchorOk, failed: leaks.length > 0 || inverted };
+    };
+
+    const first = await checkScript(script);
+    first.leaks.forEach((l) => judgeTrace.push(`check:slot-leak:${l.label}`));
+    if (first.inverted) judgeTrace.push("check:thesis-inverted");
+
+    if (first.failed) {
+      const revisePrompt = buildRevisePrompt(
+        userMessage,
+        [
+          ...first.leaks.map(
+            (l) =>
+              `The "${l.label}" beat contains unfilled template placeholder text (${l.segments.join(" · ")}) — replace every [bracketed] placeholder with concrete, specific content.`,
+          ),
+          ...(first.inverted
+            ? ["The script argues the OPPOSITE of the ask's thesis — argue what the ask requested."]
+            : []),
+        ],
+        anchor
+          ? "The script must still open by adapting the Anchor hook: same subject, same promise."
+          : undefined,
+      );
+      let accepted = false;
+      try {
+        const revised = await generateScriptStructured(revisePrompt, Boolean(corpus), Boolean(target));
+        if (revised && revised.beats.length > 0) {
+          const second = await checkScript(revised);
+          if (!second.failed && second.anchorOk) {
+            script = revised;
+            accepted = true;
+          }
+        }
+      } catch {
+        // fall through — the honest degrade below ships the original, warned
+      }
+      judgeTrace.push(accepted ? "revise:accepted" : "revise:rejected");
+      if (!accepted) {
+        for (const l of first.leaks) {
+          allWarnings.push(
+            `The "${l.label}" beat contains template placeholder text — replace the [bracketed] parts before filming.`,
+          );
+        }
+        if (first.inverted) {
+          allWarnings.push(
+            "This script may argue the opposite of your ask — double-check it against what you asked for.",
+          );
+        }
+      }
+    }
   }
   input.onStage?.("Generating", "done");
 
@@ -624,7 +762,21 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
   // §11f receipts-on-cards: attach the frozen receipt for the outlier this script adapted.
   // null (no source / ungrounded run) → the field is omitted so the block shape stays
   // byte-identical to the pre-grounding card (regression gate + honesty spine).
-  const proof = buildProofFromSource(script.sourceIndex, groundingExamples);
+  //
+  // CITATION INTEGRITY (Stage A): resolve sourceIndex against the examples that SURVIVED
+  // bundle assembly (the assembler's overflow path can truncate the corpus AFTER the
+  // mapping array was fixed), and drop a citation whose madlib the opening demonstrably
+  // does not instantiate (N-1) — an honest "Original" beats a decorative receipt.
+  const shownExamples = trimExamplesToBundle(userMessage, corpus, groundingExamples);
+  const rawProof = buildProofFromSource(script.sourceIndex, shownExamples);
+  // The madlib check binds to the RAW-SLICE corpus only: under the adapt brief the model
+  // consumed the FITTED beat arc, not the madlib, and re-voicing is the design (see
+  // hooks-runner — same guard, same measured 23/28 honest-citation strip).
+  const proof =
+    rawProof &&
+    (corpusAdapted || templateInstantiated(rawProof.hookTemplate, script.openingBeatSeed))
+      ? rawProof
+      : null;
 
   // WHO this script was written for. The reaction half (verdict/quote) is NULL now — no opener SIM
   // ran on this path — so bindTarget receives an EMPTY panel and returns the assignment WITHOUT a
@@ -681,8 +833,18 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
     allWarnings.push(
       `script-card block validation failed — dropped: ${validated.error.message}`,
     );
-    return { blocks: [], warnings: allWarnings, scrapeAvailable };
+    return {
+      blocks: [],
+      warnings: allWarnings,
+      scrapeAvailable,
+      ...(judgeTrace.length ? { judgeTrace } : {}),
+    };
   }
 
-  return { blocks: [validated.data as ScriptCardBlock], warnings: allWarnings, scrapeAvailable };
+  return {
+    blocks: [validated.data as ScriptCardBlock],
+    warnings: allWarnings,
+    scrapeAvailable,
+    ...(judgeTrace.length ? { judgeTrace } : {}),
+  };
 }

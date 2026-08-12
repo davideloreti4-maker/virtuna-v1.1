@@ -243,7 +243,9 @@ Follow the §4 OUTPUT CONTRACT exactly:
 4. CONFIDENCE: scope down for any §2 signal the sensor did NOT provide; say which you couldn't observe.
 5. HIGHEST-LEVERAGE FIX: the single change, tied to a §2/§3 lever, quoting the relevant signal.
 
-Cite section numbers (e.g. §2.1, §2.0a) ONLY inside the auditable metadata fields — each dimension's \`lever\`/\`evidence\` and each rewrite's \`lever_fixed\` — so the reasoning stays traceable. Do NOT put § tokens in any user-facing prose: keep them OUT of \`ceiling_capper\`, \`confidence_scope\`, \`suggestions\`, and each rewrite's \`variant\`. In those fields name the lever in plain words (e.g. "the curiosity gap", not "§2.1"). Be specific and concrete.`;
+CITATIONS ARE MANDATORY, NOT OPTIONAL. Every one of the 6 dimensions MUST open its \`lever\` with a literal section token, and each rewrite's \`lever_fixed\` MUST do the same. Format: "§2.1 rapid context + specificity" — the § token FIRST, then the lever named in words. A \`lever\` with no § token is an invalid response. Use only sections that exist in the Knowledge Core above (§1, §2, §2.0, §2.0a, §2.1–§2.5, §3, §4, §4.1, §5, §6); never invent a section number.
+
+Cite ONLY inside those auditable metadata fields — each dimension's \`lever\`/\`evidence\` and each rewrite's \`lever_fixed\` — so the reasoning stays traceable. Do NOT put § tokens in any user-facing prose: keep them OUT of \`ceiling_capper\`, \`confidence_scope\`, \`suggestions\`, and each rewrite's \`variant\`. In those fields name the lever in plain words (e.g. "the curiosity gap", not "§2.1"). Be specific and concrete.`;
 
 // =====================================================
 // APOLLO_SYSTEM_PROMPT — the complete byte-stable system prefix.

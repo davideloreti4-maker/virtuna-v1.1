@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Library v2 — sketch rev 5</title>
+<style>
+  /* ============================================================
+     Library v2 — rev 5 · the build target
+     Supersedes rev 4 (_sketch-library-v2.html), which the owner signed off on.
+     Rev 5 keeps every rev-4 decision and changes six things that were WRONG
+     rather than unfinished — five measured in a browser, one measured against
+     the live database. Each is annotated §R5-n below and in the audit at the end.
+
+     Tokens re-verified against src/app/globals.css and at runtime
+     (getComputedStyle(document.documentElement) → --color-accent = #ff6363):
+       app #1f1f1e · card #1a1a19 · chip #2c2c2b · thread #252524
+       cream #ece7de · secondary #c2bdb4 · muted #8a857c
+       accent #FF6363 (liveness + interactive state only)
+       band = --color-success / warning / error
+
+     Page width is 880px — the real PageShell column, not rev 4's 820px.
+     ============================================================ */
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{
+    --app:#1f1f1e; --card:#1a1a19; --chip:#2c2c2b; --thread:#252524;
+    --cream:#ece7de; --sec:#c2bdb4; --muted:#8a857c;
+    --accent:#FF6363;
+    --success:oklch(0.68 0.17 145);
+    --warning:oklch(0.79 0.16 80);
+    --error:oklch(0.64 0.21 25);
+    --bd:rgba(255,255,255,.06); --bdh:rgba(255,255,255,.10);
+    /* §R5-1 selection is its own state, NOT the hover tone */
+    --sel:rgba(255,99,99,.055); --selbd:rgba(255,99,99,.22);
+  }
+  body{background:var(--app);color:var(--cream);
+    font:15px/1.6 Inter,ui-sans-serif,system-ui,-apple-system,sans-serif;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+    padding:72px 24px 160px}
+  .board{max-width:1040px;margin:0 auto}
+  svg{display:block}
+
+  /* ---------- document chrome ---------- */
+  .doc-kicker{font-size:11.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+  h1.top{font-size:32px;font-weight:600;letter-spacing:-.028em;margin:12px 0 16px;line-height:1.15}
+  .lede{color:var(--sec);font-size:15.5px;max-width:660px;line-height:1.72}
+  .lede b{color:var(--cream);font-weight:500}
+
+  .screen-label{display:flex;align-items:center;gap:13px;margin:88px 0 18px}
+  .screen-label .no{font-size:11.5px;color:var(--muted);letter-spacing:.12em;font-weight:600}
+  .screen-label .name{font-size:15px;font-weight:600;letter-spacing:-.01em}
+  .screen-label .tag{margin-left:auto;font-size:11.5px;color:var(--accent);letter-spacing:.04em}
+  .frame{border:1px solid var(--bd);border-radius:20px;padding:52px 0 60px;background:var(--card)}
+  /* 880px = PageShell. The frame adds its own 34px gutters, so the column inside is honest. */
+  .page{max-width:880px;margin:0 auto;padding:0 34px}
+  .note{color:var(--sec);font-size:14.5px;line-height:1.78;margin-top:24px;max-width:720px}
+  .note b{color:var(--cream);font-weight:500}
+  .note + .note{margin-top:14px}
+  .note .fix{color:var(--accent);font-weight:500}
+
+  /* ---------- surface header ---------- */
+  .sh{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:44px}
+  .sh .title{font-size:27px;font-weight:600;letter-spacing:-.025em;line-height:1.2}
+  .sh .sub{font-size:14px;color:var(--muted);margin-top:5px}
+  .tools{display:flex;gap:10px;align-items:center;padding-bottom:3px}
+  .sh.tall{align-items:flex-start}
+  .sh.tall .tools{padding-top:22px;padding-bottom:0}
+  .search{display:flex;align-items:center;gap:9px;background:var(--app);border:1px solid var(--bd);
+    border-radius:9px;padding:9px 13px;color:var(--muted);font-size:14px;min-width:230px}
+  .sortbtn{display:flex;align-items:center;gap:7px;color:var(--sec);font-size:14px;padding:9px 4px}
+
+  /* ---------- section label ---------- */
+  .sect{display:flex;align-items:baseline;gap:11px;margin:0 0 14px}
+  .sect .t{font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600}
+  .sect .act{margin-left:auto;font-size:13.5px;color:var(--sec)}
+  .group{margin-top:46px}
+
+  /* ---------- the row ---------- */
+  .list{display:flex;flex-direction:column;gap:2px;margin:0 -12px}
+  .item{display:flex;align-items:flex-start;gap:15px;padding:15px 12px;border-radius:11px;position:relative}
+  .item.hov{background:var(--thread)}
+  /* §R5-1 selected ≠ hovered: a faint accent wash, which is what "interactive state" means */
+  .item.sel{background:var(--sel);box-shadow:inset 0 0 0 1px var(--selbd)}
+  /* §R5-2 the 34px tile is a FIXED FOOTPRINT. In selection mode the checkbox is centred
+     inside the same 34px box, so the content's left edge never moves (rev 4 shifted it 16px
+     while its own note claimed "same position, same footprint, no reflow"). */
+  .slot{width:34px;flex:none;display:grid;place-items:center;margin-top:1px}
+  .ico{width:34px;height:34px;border-radius:9px;background:var(--app);border:1px solid var(--bd);
+    display:grid;place-items:center;color:var(--sec)}
+  .item.hov .ico{background:var(--chip);border-color:var(--bdh)}
+  .check{width:18px;height:18px;border-radius:5px;border:1.5px solid var(--bdh);background:var(--app)}
+  .check.on{background:var(--accent);border-color:var(--accent);display:grid;place-items:center}
+  .body{flex:1;min-width:0;padding-top:2px}
+  .line{font-size:16.5px;line-height:1.45;letter-spacing:-.011em;color:var(--cream);
+    max-width:56ch;font-weight:400}
+  .line.q{color:var(--sec)}
+  .sub{font-size:13px;color:var(--muted);margin-top:7px;letter-spacing:.002em}
+  .sub .src{color:var(--sec)}
+  .sub .dot-sep{opacity:.4;padding:0 5px}
+  /* ---------- right rail — §R5-3 + §R5-10 ----------
+     §R5-3 the band lives HERE now, not as a second content line. Live data: 8 of 10 saved
+     rows carry a band (hooks, ideas and scripts all do — not just reads, which is what rev 4
+     assumed). As a content line that is colour on almost every row; as a right-rail metric it
+     is one short string with the tone on ONE word, exactly like the outlier's "14× baseline".
+
+     §R5-10 the rail is a GRID with FIXED columns, not a flex row. As flex it read ragged: a
+     wider hover action ("Develop into hooks →" vs "Write script →") pushed the metric leftward,
+     so the tabular numbers never formed a column. Every row declares every cell — empty where
+     the type has none — which is what makes the numbers align and hover move nothing.
+     Columns: thumb · metric · action · caret */
+  .right{display:grid;grid-template-columns:34px 92px 152px 14px;align-items:center;
+    gap:12px;flex:none;padding-top:6px}
+  .metric{font-size:13.5px;font-weight:600;color:var(--cream);font-variant-numeric:tabular-nums;
+    letter-spacing:-.01em;white-space:nowrap;text-align:right}
+  .metric .band{font-weight:600}
+  .metric .frac{color:var(--cream)}
+  .act{font-size:13.5px;color:var(--sec);white-space:nowrap;opacity:0;text-align:right}
+  .item.hov .act{opacity:1}
+  .thumb{width:34px;height:44px;border-radius:6px;border:1px solid var(--bd);
+    background:linear-gradient(160deg,#4d3a2a 0%,#241f1d 76%)}
+  /* The ⋯ menu is GONE (§R5-11). Its only contents were "Move to project" and "Unsave", which
+     the expansion now carries — two affordances for the same two actions is one too many. */
+  .caret{color:var(--muted);opacity:0;transition:transform .15s;justify-self:end}
+  .item.hov .caret{opacity:1}
+  .item.open .caret{opacity:1;transform:rotate(180deg)}
+
+  /* ---------- §R5-4 expand-in-place: the detail view rev 4 displaced and never drew ---------- */
+  .item.open{background:var(--thread)}
+  /* The panel must align EXACTLY with the row above it. `.list` already carries margin:0 -12px,
+     so a second -12px here (rev-5 first pass) pushed the panel 12px wider than its own row on
+     each side — visible as a step at the seam. Margin 0; the 61px left padding lines the text up
+     with the row's content column (12 padding + 34 slot + 15 gap). */
+  .detail{margin:0 0 2px;padding:2px 12px 18px 61px;background:var(--thread);
+    border-radius:0 0 11px 11px;position:relative;top:-2px}
+  .dgrid{display:flex;gap:32px;flex-wrap:wrap;padding-top:14px;border-top:1px solid var(--bd)}
+  .dfact{min-width:0}
+  .dfact .k{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);font-weight:600}
+  .dfact .v{font-size:14.5px;color:var(--cream);margin-top:6px}
+  .dwhy{font-size:14.5px;line-height:1.72;color:var(--sec);margin-top:16px;max-width:62ch}
+  .dquote{margin-top:14px;padding-left:13px;border-left:2px solid var(--bdh);font-size:14px;
+    line-height:1.65;color:var(--muted);font-style:italic;max-width:60ch}
+  .dacts{display:flex;align-items:center;gap:8px;margin-top:20px}
+  .dacts .sp{flex:1}
+
+  /* ---------- projects ---------- */
+  .proj{display:flex;align-items:center;gap:15px;padding:15px 12px;border-radius:11px}
+  .proj.hov{background:var(--thread)}
+  .proj .pn{font-size:16px;font-weight:550;letter-spacing:-.012em}
+  .proj .pd{font-size:13px;color:var(--muted);margin-top:4px}
+  .proj .pr{margin-left:auto;display:flex;align-items:center;gap:14px;color:var(--muted);font-size:13px}
+  .proj.new{color:var(--muted);font-size:14.5px}
+  .proj.new .ico{border-style:dashed}
+
+  /* ---------- facets ---------- */
+  .facets{display:flex;gap:22px;margin:0 0 18px;padding:0 12px}
+  .facet{font-size:13.5px;color:var(--muted);padding-bottom:9px;border-bottom:1.5px solid transparent}
+  .facet.on{color:var(--cream);border-bottom-color:var(--cream);font-weight:500}
+  .facet .n{font-size:12px;opacity:.6;margin-left:5px}
+
+  /* ---------- selection bar ---------- */
+  .selbar{display:flex;align-items:center;gap:10px;padding:13px 16px;background:var(--chip);
+    border-radius:11px;margin-bottom:26px;font-size:14px}
+  .selbar .c{font-weight:600}
+  .selbar .sp{flex:1}
+  .btn{font-size:13.5px;color:var(--sec);padding:6px 12px;border-radius:8px;border:1px solid var(--bd)}
+  .btn.on{color:var(--cream);background:var(--app);border-color:var(--bdh)}
+  .btn.plain{border-color:transparent}
+  /* §R5-5 the destructive action is named for what it does and separated from the primary */
+  .btn.danger{color:var(--error);border-color:transparent}
+  .selbar .div{width:1px;height:20px;background:var(--bd);margin:0 4px}
+
+  /* ---------- breadcrumb ---------- */
+  .bc{display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--muted);margin-bottom:10px}
+  .bc .sep{opacity:.5}
+  .bc a{color:var(--sec);text-decoration:none}
+
+  /* ---------- save flow ---------- */
+  .flow{display:flex;gap:56px;align-items:flex-start;justify-content:center;flex-wrap:wrap;padding:0 34px}
+  /* §R5-6 the line reserves the bookmark's column — rev 4 overlapped the text by 14px */
+  .tcard{width:352px;border:1px solid var(--bd);border-radius:14px;background:var(--thread);padding:20px;
+    position:relative}
+  .tcard .line{font-size:16px;max-width:none;padding-right:30px}
+  .bmk{position:absolute;top:18px;right:19px;color:var(--accent)}
+  .pop{width:300px;border:1px solid var(--bdh);border-radius:14px;background:var(--chip);padding:8px;
+    box-shadow:0 12px 32px rgba(0,0,0,.4)}
+  .pop .ph{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);padding:10px 12px 8px}
+  .pi{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:9px;font-size:14.5px}
+  .pi.on{background:rgba(255,255,255,.055)}
+  .pi .bg{font-size:11px;color:var(--muted);border:1px solid var(--bd);border-radius:5px;padding:2px 7px;
+    white-space:nowrap}
+  .pi .n{margin-left:auto;color:var(--muted);font-size:13px}
+  .pi .ck{margin-left:auto;color:var(--accent)}
+  .pdiv{height:1px;background:var(--bd);margin:7px 10px}
+  .pin{flex:1;background:var(--app);border:1px solid var(--bd);border-radius:8px;padding:8px 11px;
+    color:var(--muted);font-size:14px}
+  .toast{margin-top:22px;display:inline-flex;gap:11px;align-items:center;font-size:14px;color:var(--sec);
+    background:var(--chip);border-radius:10px;padding:12px 16px}
+  .toast b{color:var(--cream);font-weight:500}
+  .toast .ch{color:var(--cream);text-decoration:underline;text-decoration-color:var(--bdh);
+    text-underline-offset:3px}
+
+  /* ---------- empty ---------- */
+  .empty{padding:64px 34px;text-align:center}
+  .empty .cst{color:var(--muted);letter-spacing:7px;font-size:13px;margin-bottom:22px;opacity:.7}
+  .empty h3{font-size:19px;font-weight:600;letter-spacing:-.018em;margin-bottom:10px}
+  .empty p{font-size:14.5px;color:var(--muted);max-width:400px;margin:0 auto 24px;line-height:1.65}
+  .cta{display:inline-block;font-size:14px;background:var(--cream);color:#1a1a19;border-radius:9px;
+    padding:10px 18px;font-weight:550;letter-spacing:-.005em}
+
+  /* ---------- audit ---------- */
+  .why{margin-top:96px;border-top:1px solid var(--bd);padding-top:44px}
+  .why h2{font-size:19px;font-weight:600;letter-spacing:-.018em;margin-bottom:8px}
+  .why .lead{font-size:14.5px;color:var(--muted);margin-bottom:34px;max-width:660px;line-height:1.7}
+  .wi{display:flex;gap:26px;padding:20px 0;border-top:1px solid var(--bd);max-width:940px}
+  .wi h3{font-size:14.5px;font-weight:550;color:var(--cream);flex:0 0 268px;line-height:1.5;letter-spacing:-.008em}
+  .wi p{font-size:14px;color:var(--sec);line-height:1.7;flex:1}
+  .wi p b{color:var(--cream);font-weight:500}
+  .wi .n{color:var(--accent);font-weight:600}
+</style>
+</head>
+<body>
+<div class="board">
+  <div class="doc-kicker">Library v2 · rev 5 · lane/library-rework</div>
+  <h1 class="top">A collection, not an inventory</h1>
+  <p class="lede">
+    Rev 4 was signed off and its direction stands: borderless rows separated by space, an icon anchor
+    per type, metadata cut to two facts, colour spent only on liveness. Rev 5 changes <b>six things
+    that were wrong rather than unfinished</b> — five measured in a browser against rev 4 itself, and
+    one measured against the live database, which disagreed with the sketch about where the band data
+    actually lives. It also draws the detail view rev 4 displaced facts into but never designed.
+  </p>
+
+  <!-- ================= 01 ================= -->
+  <div class="screen-label"><span class="no">01</span><span class="name">Library</span>
+    <span class="tag">§R5-3 band on the right rail</span></div>
+  <div class="frame"><div class="page">
+    <div class="sh">
+      <div><div class="title">Library</div><div class="sub">10 saved · 2 projects</div></div>
+      <div class="tools">
+        <div class="search">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5 14 14" stroke-linecap="round"/></svg>
+          Search your library
+        </div>
+        <div class="sortbtn">Recent
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+            <path d="M4 6.5 8 10.5l4-4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="sect"><span class="t">Projects</span></div>
+    <div class="list">
+      <div class="proj hov">
+        <span class="slot"><span class="ico">
+          <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M2.5 5.5A1.5 1.5 0 0 1 4 4h3.4a1.5 1.5 0 0 1 1.2.6l.8 1.1h6.6A1.5 1.5 0 0 1 17.5 7v7.5a1.5 1.5 0 0 1-1.5 1.5H4a1.5 1.5 0 0 1-1.5-1.5v-9Z" stroke-linejoin="round"/></svg>
+        </span></span>
+        <span><span class="pn">Launch video #3</span><div class="pd">2 hooks · 1 script · 1 read</div></span>
+        <span class="pr">2 days ago
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+            <path d="M6 3.5 10.5 8 6 12.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      </div>
+      <div class="proj">
+        <span class="slot"><span class="ico">
+          <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M2.5 5.5A1.5 1.5 0 0 1 4 4h3.4a1.5 1.5 0 0 1 1.2.6l.8 1.1h6.6A1.5 1.5 0 0 1 17.5 7v7.5a1.5 1.5 0 0 1-1.5 1.5H4a1.5 1.5 0 0 1-1.5-1.5v-9Z" stroke-linejoin="round"/></svg>
+        </span></span>
+        <span><span class="pn">Q3 cooking niche</span><div class="pd">1 hook · 1 idea</div></span>
+        <span class="pr">5 days ago
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+            <path d="M6 3.5 10.5 8 6 12.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      </div>
+      <div class="proj new">
+        <span class="slot"><span class="ico">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+            <path d="M8 3.5v9M3.5 8h9" stroke-linecap="round"/></svg>
+        </span></span>
+        New project
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="sect"><span class="t">Unfiled</span></div>
+      <div class="facets">
+        <span class="facet on">All <span class="n">4</span></span>
+        <span class="facet">Hooks <span class="n">1</span></span>
+        <span class="facet">Ideas <span class="n">1</span></span>
+        <span class="facet">Reads <span class="n">1</span></span>
+        <span class="facet">Scripts <span class="n">1</span></span>
+      </div>
+
+      <div class="list">
+        <!-- hook — band exists on real hook snapshots, so it shows on the rail -->
+        <div class="item hov">
+          <span class="slot"><span class="ico">
+            <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M11 2.5 4.5 11h4l-.5 6.5L15.5 9h-4l-.5-6.5Z" stroke-linejoin="round"/></svg>
+          </span></span>
+          <span class="body">
+            <div class="line">“Nobody tells you the first 10k followers are the easy part.”</div>
+            <div class="sub"><span class="src">Hook ideas for Q3</span><span class="dot-sep">·</span>4 days ago</div>
+          </span>
+          <span class="right">
+            <span></span>
+            <span class="metric"><span class="band" style="color:var(--success)">Strong</span>
+              <span class="frac">9/10</span></span>
+            <span class="act">Write script →</span>
+            <span class="caret"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+              <path d="M4 6.5 8 10.5l4-4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          </span>
+        </div>
+
+        <div class="item">
+          <span class="slot"><span class="ico">
+            <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M3 4.5h5a2.5 2.5 0 0 1 2 1 2.5 2.5 0 0 1 2-1h5v10h-5a2.5 2.5 0 0 0-2 1 2.5 2.5 0 0 0-2-1H3v-10Z" stroke-linejoin="round"/><path d="M10 5.5v10"/></svg>
+          </span></span>
+          <span class="body">
+            <div class="line">Lever → pace in the first two seconds</div>
+            <div class="sub"><span class="src">Test — kitchen POV cut</span><span class="dot-sep">·</span>yesterday</div>
+          </span>
+          <span class="right">
+            <span></span>
+            <span class="metric"><span class="band" style="color:var(--success)">Strong</span>
+              <span class="frac">7/10</span></span>
+            <span class="act">Open the read →</span>
+            <span class="caret"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+              <path d="M4 6.5 8 10.5l4-4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          </span>
+        </div>
+
+        <div class="item">
+          <span class="slot"><span class="ico">
+            <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M7.5 15.5h5M8 13c-2-1.2-3.2-3-3.2-5A5.2 5.2 0 0 1 10 2.8 5.2 5.2 0 0 1 15.2 8c0 2-1.2 3.8-3.2 5v1.2H8V13Z" stroke-linejoin="round"/></svg>
+          </span></span>
+          <span class="body">
+            <div class="line">Week of $10 dinners — one episode per night</div>
+            <div class="sub"><span class="src">Ideas — budget series</span><span class="dot-sep">·</span>5 days ago</div>
+          </span>
+          <span class="right">
+            <span></span>
+            <span class="metric"><span class="band" style="color:var(--warning)">Mixed</span>
+              <span class="frac">5/10</span></span>
+            <span class="act">Develop into hooks →</span>
+            <span class="caret"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+              <path d="M4 6.5 8 10.5l4-4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          </span>
+        </div>
+
+        <!-- outlier — measured, never a band. Same rail, same shape. -->
+        <div class="item">
+          <span class="slot"><span class="ico">
+            <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M3 13.5 7.5 9l3 3L17 5.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M13 5.5h4v4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </span></span>
+          <span class="body">
+            <div class="line q">60s pantry restock, no voiceover</div>
+            <div class="sub"><span class="src">Discover</span><span class="dot-sep">·</span>Jul 26</div>
+          </span>
+          <!-- outlier: the poster takes the rail's first cell, so the metric still lands in the
+               same column as every band above it. Measured proof, so no band and no action. -->
+          <span class="right"><span class="thumb"></span><span class="metric">14× baseline</span>
+            <span></span><span></span></span>
+        </div>
+      </div>
+    </div>
+  </div></div>
+  <p class="note">
+    <b class="fix">§R5-3 — the band moved to the right rail, and this is the one change the live data
+    forced.</b> Rev 4 called the band dot “the read’s proof — the only colour on the shelf”. In the
+    real store <b>8 of 10 saved rows carry a band</b>: hook, idea and script snapshots all persist
+    <code>band</code>, <code>fraction</code> and <code>scrollQuote</code>, not just reads. Rendered
+    rev 4’s way that is a coloured line on almost every row; dropped, it discards the product’s core
+    signal. On the rail it is one short string — the tone on a single word — and it lands in the same
+    column as the outlier’s <b>14× baseline</b>, so simulated and measured proof read as one family.
+  </p>
+  <p class="note">
+    The rest of rev 4 is unchanged and deliberate: content at 16.5px on a 56-character measure, two
+    subtitle facts (source + time), no dividers, hover lifting the row under the cursor, and the
+    34px icon tile carrying type identity without spending the accent. The lead quote is not gone —
+    it moved into the expansion, which is the next screen.
+  </p>
+
+  <!-- ================= 02 ================= -->
+  <div class="screen-label"><span class="no">02</span><span class="name">A row, expanded</span>
+    <span class="tag">§R5-4 new — the detail view rev 4 never drew</span></div>
+  <div class="frame"><div class="page">
+    <div class="list">
+      <div class="item open">
+        <span class="slot"><span class="ico">
+          <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M11 2.5 4.5 11h4l-.5 6.5L15.5 9h-4l-.5-6.5Z" stroke-linejoin="round"/></svg>
+        </span></span>
+        <span class="body">
+          <div class="line">“Nobody tells you the first 10k followers are the easy part.”</div>
+          <div class="sub"><span class="src">Hook ideas for Q3</span><span class="dot-sep">·</span>4 days ago</div>
+        </span>
+        <span class="right">
+          <span></span>
+          <span class="metric"><span class="band" style="color:var(--success)">Strong</span>
+            <span class="frac">9/10</span></span>
+          <span></span>
+          <span class="caret"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+            <path d="M4 6.5 8 10.5l4-4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        </span>
+      </div>
+      <div class="detail">
+        <!-- The band is NOT repeated here: the rail above already reads "Strong 9/10", and this
+             panel is part of the same visual unit. What the expansion adds is what the row cannot
+             hold — the archetype, the rank, the filing, the mechanism and the lead quote. -->
+        <div class="dgrid">
+          <span class="dfact"><div class="k">Archetype</div><div class="v">Contrarian</div></span>
+          <span class="dfact"><div class="k">Ranked</div><div class="v">2 of 6</div></span>
+          <span class="dfact"><div class="k">Saved from</div><div class="v">Hook ideas for Q3</div></span>
+          <span class="dfact"><div class="k">Project</div><div class="v">Unfiled</div></span>
+        </div>
+        <p class="dwhy">Open-loop — withholds the subject of the claim, so the only way to resolve
+          “the easy part” is to keep watching. The number is concrete enough to be checkable and small
+          enough to feel survivable.</p>
+        <p class="dquote">“I need to know what the hard part is. I’ve got 4k and it already feels
+          impossible.”</p>
+        <div class="dacts">
+          <span class="btn on">Write script →</span>
+          <span class="btn">Open the thread</span>
+          <span class="sp"></span>
+          <span class="btn plain">Move to project</span>
+          <span class="btn danger">Unsave</span>
+        </div>
+      </div>
+
+      <div class="item">
+        <span class="slot"><span class="ico">
+          <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M3 4.5h5a2.5 2.5 0 0 1 2 1 2.5 2.5 0 0 1 2-1h5v10h-5a2.5 2.5 0 0 0-2 1 2.5 2.5 0 0 0-2-1H3v-10Z" stroke-linejoin="round"/><path d="M10 5.5v10"/></svg>
+        </span></span>
+        <span class="body">
+          <div class="line">Lever → pace in the first two seconds</div>
+          <div class="sub"><span class="src">Test — kitchen POV cut</span><span class="dot-sep">·</span>yesterday</div>
+        </span>
+        <span class="right">
+          <span></span>
+          <span class="metric"><span class="band" style="color:var(--success)">Strong</span>
+            <span class="frac">7/10</span></span>
+          <span></span><span></span>
+        </span>
+      </div>
+    </div>
+  </div></div>
+  <p class="note">
+    <b class="fix">Rev 4 moved rank and archetype “to the detail view” and then never drew one</b>, so
+    the central move of the accepted design had nowhere to land. A row opens <b>in place</b>: the
+    facts rev 4 evicted come back as a labelled grid, the mechanism gets a real measure to read on,
+    the lead quote returns, and every action the item has sits on one line. Nothing navigates —
+    which matters because filing is the reason this rework exists, and a click that leaves the shelf
+    costs you your place and your selection.
+  </p>
+  <p class="note">
+    <b>“Open the thread” is the deep link</b>, and it is a real one: the saved row now carries its
+    <code>thread_id</code> and <code>ref_id</code>. Note it is a button, not a URL — this app has no
+    <code>?thread=</code> route. Re-opening a thread means writing the active-thread cookie, setting
+    the id in the board store and pushing <code>/home</code>, exactly as the sidebar does.
+  </p>
+
+  <!-- ================= 03 ================= -->
+  <div class="screen-label"><span class="no">03</span><span class="name">Filing — selection</span>
+    <span class="tag">§R5-1 · §R5-2 · §R5-5</span></div>
+  <div class="frame"><div class="page">
+    <div class="sh"><div><div class="title">Library</div><div class="sub">10 saved · 2 projects</div></div></div>
+    <div class="selbar">
+      <span class="c">3 selected</span><span class="sp"></span>
+      <span class="btn on">Move to project</span>
+      <span class="btn plain">Cancel</span>
+      <span class="div"></span>
+      <span class="btn danger">Unsave 3</span>
+    </div>
+    <div class="list">
+      <div class="item sel">
+        <span class="slot"><span class="check on"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="#2a1212" stroke-width="2.4">
+          <path d="M3.5 8.5 6.5 11.5 12.5 4.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span></span>
+        <span class="body">
+          <div class="line">“Nobody tells you the first 10k followers are the easy part.”</div>
+          <div class="sub"><span class="src">Hook ideas for Q3</span><span class="dot-sep">·</span>4 days ago</div>
+        </span>
+      </div>
+      <div class="item sel">
+        <span class="slot"><span class="check on"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="#2a1212" stroke-width="2.4">
+          <path d="M3.5 8.5 6.5 11.5 12.5 4.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span></span>
+        <span class="body">
+          <div class="line">“This took 31 takes. Here’s take 31.”</div>
+          <div class="sub"><span class="src">Hook ideas for Q3</span><span class="dot-sep">·</span>4 days ago</div>
+        </span>
+      </div>
+      <div class="item sel">
+        <span class="slot"><span class="check on"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="#2a1212" stroke-width="2.4">
+          <path d="M3.5 8.5 6.5 11.5 12.5 4.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span></span>
+        <span class="body">
+          <div class="line">Week of $10 dinners — one episode per night</div>
+          <div class="sub"><span class="src">Ideas — budget series</span><span class="dot-sep">·</span>5 days ago</div>
+        </span>
+      </div>
+      <div class="item hov">
+        <span class="slot"><span class="check"></span></span>
+        <span class="body">
+          <div class="line">Lever → pace in the first two seconds</div>
+          <div class="sub"><span class="src">Test — kitchen POV cut</span><span class="dot-sep">·</span>yesterday</div>
+        </span>
+      </div>
+    </div>
+  </div></div>
+  <p class="note">
+    <b class="fix">§R5-2 — the content no longer moves.</b> Rev 4’s note claimed the checkbox took the
+    icon tile’s place with “same position, same footprint, no reflow”. Measured, the body’s left edge
+    moved <b>173px → 157px</b>, because an 18px checkbox replaced a 34px tile. The checkbox is now
+    centred inside a fixed 34px slot, so entering selection mode changes what the left column
+    <i>contains</i> and never where the sentence starts.
+  </p>
+  <p class="note">
+    <b class="fix">§R5-1 — selected is no longer identical to hovered.</b> Both were
+    <code>#252524</code> in rev 4, so a row under the cursor looked chosen. Selection now carries a
+    faint accent wash and a 1px accent edge — the accent is doing exactly its sanctioned job here,
+    interactive state — while hover keeps the neutral lift. The fourth row above is hovered and
+    unselected; the difference is legible at a glance.
+  </p>
+  <p class="note">
+    <b class="fix">§R5-5 — the destructive action is named and separated.</b> Rev 4 put “Remove”
+    flush against the primary, in identical chrome, meaning something it never said: remove from the
+    project, or delete the save? It is now <b>“Unsave 3”</b>, in the error tone, behind a divider on
+    the far side of Cancel — carrying its count, because a bulk destructive action should say how
+    much it is about to take.
+  </p>
+
+  <!-- ================= 04 ================= -->
+  <div class="screen-label"><span class="no">04</span><span class="name">Inside a project</span>
+    <span class="tag">§R5-7 pipeline order · §R5-8 crumb + plurals</span></div>
+  <div class="frame"><div class="page">
+    <div class="sh tall">
+      <div>
+        <div class="bc"><a href="#">Library</a> <span class="sep">›</span> Launch video #3</div>
+        <div class="title">Launch video #3</div>
+        <div class="sub">4 items from 3 threads · updated 2 days ago</div>
+      </div>
+      <div class="tools"><span class="btn plain">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" style="display:inline-block;vertical-align:-3px">
+        <circle cx="3" cy="8" r="1.3"/><circle cx="8" cy="8" r="1.3"/><circle cx="13" cy="8" r="1.3"/></svg></span></div>
+    </div>
+
+    <div class="sect"><span class="t">Hooks</span></div>
+    <div class="list">
+      <div class="item">
+        <span class="slot"><span class="ico"><svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M11 2.5 4.5 11h4l-.5 6.5L15.5 9h-4l-.5-6.5Z" stroke-linejoin="round"/></svg></span></span>
+        <span class="body">
+          <div class="line">“I filmed the same recipe 4 times so you don’t have to.”</div>
+          <div class="sub"><span class="src">Hook ideas for Q3</span><span class="dot-sep">·</span>4 days ago</div>
+        </span>
+        <span class="right"><span></span><span class="metric"><span class="band" style="color:var(--success)">Strong</span>
+          <span class="frac">8/10</span></span><span></span><span></span></span>
+      </div>
+      <div class="item">
+        <span class="slot"><span class="ico"><svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M11 2.5 4.5 11h4l-.5 6.5L15.5 9h-4l-.5-6.5Z" stroke-linejoin="round"/></svg></span></span>
+        <span class="body">
+          <div class="line">“This took 31 takes. Here’s take 31.”</div>
+          <div class="sub"><span class="src">Hook ideas for Q3</span><span class="dot-sep">·</span>4 days ago</div>
+        </span>
+        <span class="right"><span></span><span class="metric"><span class="band" style="color:var(--warning)">Mixed</span>
+          <span class="frac">6/10</span></span><span></span><span></span></span>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="sect"><span class="t">Scripts</span></div>
+      <div class="list">
+        <div class="item">
+          <span class="slot"><span class="ico"><svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="2.5" y="5.5" width="15" height="11" rx="1.5"/><path d="M2.5 8.5h15M6 5.5 8 2.8M11 5.5 13 2.8"/></svg></span></span>
+          <span class="body">
+            <div class="line">Launch teaser — hard cut open</div>
+            <div class="sub">4 beats, ~28s<span class="dot-sep">·</span><span class="src">Script from hook #1</span></div>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="sect"><span class="t">Reads</span></div>
+      <div class="list">
+        <div class="item">
+          <span class="slot"><span class="ico"><svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M3 4.5h5a2.5 2.5 0 0 1 2 1 2.5 2.5 0 0 1 2-1h5v10h-5a2.5 2.5 0 0 0-2 1 2.5 2.5 0 0 0-2-1H3v-10Z" stroke-linejoin="round"/><path d="M10 5.5v10"/></svg></span></span>
+          <span class="body">
+            <div class="line">Lever → the title card’s promise</div>
+            <div class="sub"><span class="src">Test — teaser rough cut</span><span class="dot-sep">·</span>yesterday</div>
+          </span>
+          <span class="right"><span></span><span class="metric"><span class="band" style="color:var(--success)">Strong</span>
+            <span class="frac">8/10</span></span><span></span><span></span></span>
+        </div>
+      </div>
+    </div>
+  </div></div>
+  <p class="note">
+    <b class="fix">§R5-7 — the group order is now specified, and it is the pipeline.</b> Rev 4 said a
+    project “reads in working order” but drew only Hooks → Scripts → Read, with no Ideas group at all
+    and a claimed 8 items against 5 drawn. The order is <b>Outliers → Ideas → Hooks → Scripts →
+    Reads</b>: what you found, what you thought of, what you wrote, what you built, what judged it.
+    An empty group is omitted, never drawn empty. Manual ordering was considered and dropped — the
+    pipeline already tells the story a hand-sorted list would, and it needs no position column.
+  </p>
+  <p class="note">
+    <b class="fix">§R5-8 — the crumb says where you are and the labels stop drifting.</b> Rev 4’s
+    breadcrumb read “Library › Project”, the literal word; it now carries the project’s name. And
+    the group heading is <b>Reads</b>, matching the facet bar — rev 4 wrote “Reads” on the shelf and
+    “READ” in the project, which is the sort of drift that makes an interface feel unowned.
+    Counts reconcile now too: 10 saved = 4 in Launch video #3 + 2 in Q3 + 4 unfiled.
+  </p>
+
+  <!-- ================= 05 ================= -->
+  <div class="screen-label"><span class="no">05</span><span class="name">Saving</span>
+    <span class="tag">§R5-6 the bookmark no longer sits on the text</span></div>
+  <div class="frame">
+    <div class="flow">
+      <div>
+        <div class="tcard">
+          <span class="bmk"><svg width="15" height="17" viewBox="0 0 16 18" fill="currentColor">
+            <path d="M3 2h10v14l-5-3.4L3 16V2Z"/></svg></span>
+          <div class="line">“Nobody tells you the first 10k followers are the easy part.”</div>
+          <div class="sub">Contrarian · ranked 2 of 6</div>
+        </div>
+        <div class="toast">
+          <svg width="13" height="15" viewBox="0 0 16 18" fill="var(--accent)"><path d="M3 2h10v14l-5-3.4L3 16V2Z"/></svg>
+          Saved to <b>Launch video #3</b><span class="ch">Change</span>
+        </div>
+      </div>
+      <div class="pop">
+        <div class="ph">Save to</div>
+        <div class="pi on">Launch video #3 <span class="bg">this thread</span>
+          <span class="ck"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3.5 8.5 6.5 11.5 12.5 4.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span></div>
+        <div class="pi">Q3 cooking niche <span class="n">2</span></div>
+        <div class="pdiv"></div>
+        <div class="pi">Library — unfiled <span class="n">4</span></div>
+        <div class="pdiv"></div>
+        <div class="pi"><span class="pin">New project…</span><span class="btn on">Create</span></div>
+      </div>
+    </div>
+
+    <div class="page" style="margin-top:64px">
+      <div class="sect"><span class="t">First run — saves, no projects yet</span></div>
+      <div class="list"><div class="proj new">
+        <span class="slot"><span class="ico"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6">
+          <path d="M8 3.5v9M3.5 8h9" stroke-linecap="round"/></svg></span></span>
+        Group your saves into a project</div></div>
+      <div class="empty">
+        <div class="cst">· ·  ·   ·  · ·</div>
+        <h3>Nothing in your Library yet</h3>
+        <p>Save a read, idea, hook or outlier from any thread and it lands here — ready to pull back in.</p>
+        <span class="cta">Start a simulation</span>
+      </div>
+    </div>
+  </div>
+  <p class="note">
+    <b class="fix">§R5-6 — the bookmark had been sitting on the words.</b> In rev 4 the in-thread
+    card’s hook wrapped to two lines and the absolutely-positioned bookmark overlapped the first line
+    by <b>14px</b>, straight through “are”. The line now reserves that column. Everything else here is
+    rev 4 intact: the default destination is <b>inferred from this thread</b> and badged, never
+    “last used”, which would silently file a hook into a project you touched weeks ago.
+  </p>
+  <p class="note">
+    Clicking a filled bookmark un-saves. Saved state is read from the store keyed on the item’s
+    identity, not from the mutation’s success flag — which is why an already-saved card renders
+    filled the moment it mounts, and why a second click can no longer write a second row.
+  </p>
+
+  <!-- ================= audit ================= -->
+  <div class="why">
+    <h2>What changed in rev 5, and how each was found</h2>
+    <p class="lead">Rev 4 was signed off, so nothing here is a matter of taste — every item is
+      something that was measurably wrong, plus the one screen rev 4 promised and did not draw.</p>
+
+    <div class="wi"><h3><span class="n">§R5-1</span> Selected looked exactly like hovered</h3>
+      <p>Both states painted <code>#252524</code>. Selection now uses a faint accent wash with a 1px
+        accent edge; hover keeps the neutral lift. Found by reading the two rules side by side.</p></div>
+    <div class="wi"><h3><span class="n">§R5-2</span> Entering selection shifted the content 16px</h3>
+      <p>An 18px checkbox replaced a 34px tile, so the body’s left edge moved <b>173px → 157px</b> —
+        while rev 4’s own note claimed “same position, same footprint, no reflow”. The checkbox now
+        centres in a fixed 34px slot. Found by measuring <code>getBoundingClientRect()</code> on both
+        screens rather than trusting the note.</p></div>
+    <div class="wi"><h3><span class="n">§R5-3</span> The band is not read-only data</h3>
+      <p>Rev 4 reserved the band dot for reads, “the only colour on the page”. The live store says
+        <b>8 of 10 rows have a band</b> — hooks, ideas and scripts persist it too. It moved to the
+        right rail as one string with the tone on one word, sharing the column with the outlier’s
+        measured multiplier. <b>Found by querying the database, not the sketch.</b></p></div>
+    <div class="wi"><h3><span class="n">§R5-4</span> The detail view was displaced into, never drawn</h3>
+      <p>Rev 4’s justification for the two-fact subtitle was that rank and archetype “belong to the
+        detail view”. No such view existed, and nothing said what clicking a row did. Screen 02 is
+        that view: expanded in place, so filing never loses your position.</p></div>
+    <div class="wi"><h3><span class="n">§R5-5</span> “Remove” was ambiguous and undressed</h3>
+      <p>Identical chrome to the primary, adjacent to it, and silent about whether it removed from the
+        project or deleted the save. Now “Unsave 3”, error tone, divided off past Cancel.</p></div>
+    <div class="wi"><h3><span class="n">§R5-6</span> The bookmark overlapped the hook by 14px</h3>
+      <p><code>.tcard .line</code> set <code>max-width:none</code> against an absolutely positioned
+        bookmark, so the first of two lines ran under it. The line reserves the column now.</p></div>
+    <div class="wi"><h3><span class="n">§R5-7</span> Group order inside a project was unspecified</h3>
+      <p>“Working order” was asserted; the drawing showed Hooks → Scripts → Read, omitted Ideas, and
+        claimed 8 items while drawing 5. Fixed as Outliers → Ideas → Hooks → Scripts → Reads, empty
+        groups omitted. Manual ordering considered and dropped.</p></div>
+    <div class="wi"><h3><span class="n">§R5-8</span> Drifting labels and counts that did not add up</h3>
+      <p>The crumb read the literal word “Project”; the shelf said “Reads” where the project said
+        “READ”; the header claimed 14 saved against parts summing to 19. Name, plurals and arithmetic
+        all reconcile now.</p></div>
+    <div class="wi"><h3><span class="n">§R5-9</span> The page is 880px, not 820px</h3>
+      <p>Rev 4 drew an 820px column. The real surface is <code>PageShell</code> at 880px — measured
+        live, signed in. The route’s <code>loading.tsx</code> was a third value again,
+        <code>max-w-5xl</code> (1024px), so the skeleton jumped on hydration.</p></div>
+  </div>
+
+  <div class="why">
+    <h2>Decisions carried forward from rev 4</h2>
+    <p class="lead">Unchanged, and re-verified against globals.css and the live surface.</p>
+    <div class="wi"><h3>Rows, not a card grid</h3>
+      <p>Confirmed live and worse than described: four columns inside the 880px shell gives each card
+        <b>196px</b>, so every hook truncates mid-sentence and the segment chips degrade to
+        “Sleep-…”, “T…”, “St…”. The multicol also breaks its own sort — reading the live shelf
+        left-to-right gives Jul 28 → Jun 26 → Jun 24 → Jun 21 → <b>Jun 29</b>.</p></div>
+    <div class="wi"><h3>Accent is liveness and interactive state</h3>
+      <p>No bookmark on a shelf row — everything on the shelf is saved by definition. The accent
+        appears on the checked box, the selection wash, the in-thread bookmark and the save
+        confirmation. Nowhere else.</p></div>
+    <div class="wi"><h3>Forward actions already exist per type</h3>
+      <p>“Write script →”, “Develop into hooks →”, “Test full script →” ship today in
+        <code>saved-item-card.tsx</code>. Replacing them with one generic button was a regression an
+        earlier draft made; the expansion now shows the typed action <i>and</i> the thread link
+        instead of falling through to a generic push to <code>/home</code>.</p></div>
+    <div class="wi"><h3>Projects: manual, single-membership, no tags, no nesting</h3>
+      <p>Outputs only. Threads stay in the sidebar; every saved row deep-links back to the thread that
+        made it. Built as a new <code>library_projects</code> table — the 2020s-era <code>projects</code>
+        table still holds two live “My Boards” rows defaulted to the retired coral, and is not
+        revived.</p></div>
+  </div>
+</div>
+</body>
+</html>

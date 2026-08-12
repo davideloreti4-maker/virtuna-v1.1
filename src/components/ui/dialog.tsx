@@ -87,7 +87,13 @@ const dialogContentVariants = cva(
     // Positioning — centered fixed overlay
     "fixed left-[50%] top-[50%] z-[var(--z-modal)]",
     "translate-x-[-50%] translate-y-[-50%]",
-    "w-full",
+    // A 16px gutter each side, not a bare `w-full`. `w-full` + `max-w-sm` means the dialog is
+    // 384px wide until the VIEWPORT is narrower than that, and then it is exactly the viewport:
+    // measured at 375×667 (iPhone SE/8) the credit wall rendered x=0, w=375 — flush to both
+    // edges, its left and right borders and rounded corners cut off by the screen. 390px (iPhone
+    // 12/13/14) left a 3px sliver. This caps the width against the viewport instead, so the
+    // gutter survives every width; above ~416px the `max-w-*` still wins and nothing changes.
+    "w-[calc(100%-2rem)]",
     // Solid dark surface (Raycast modals are opaque, not glass)
     "rounded-xl border border-white/[0.06]",
     "shadow-xl",

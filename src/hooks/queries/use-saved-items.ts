@@ -12,6 +12,7 @@
  * variant has its own query key; the "all" key holds the unfiltered list.
  */
 
+import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queries/query-keys";
 import type {
@@ -37,6 +38,36 @@ export function useSavedItems(type?: SavedItemType) {
       return res.json() as Promise<SavedItemsResponse>;
     },
   });
+}
+
+/**
+ * QUERY (derived): the saved row for one originating block, or undefined.
+ *
+ * This is what makes saved state READABLE. It shipped derived from the save mutation's own
+ * `isSuccess` flag, which is per-mount state: a card that was saved last week rendered "Save"
+ * again on every fresh mount, and clicking it wrote a SECOND row. Identity is
+ * (item_type, ref_id) — `${messageId}:${index}`, stable across reloads because message bodies
+ * are immutable — which is the same key the partial unique index now enforces in Postgres.
+ *
+ * `refId === null` means the block is not persisted yet (a live run has no message row), so
+ * there is no identity to match and the answer is honestly undefined rather than a guess.
+ *
+ * Returns `{ item, ready }`. `ready` is false while the list is loading or errored — an
+ * un-fetched list must not be read as "not saved", or the affordance would flash "Save" on
+ * every mount and re-introduce the duplicate it exists to prevent.
+ */
+export function useSavedItemByRef(
+  item_type: SavedItemType,
+  refId: string | null,
+): { item: SavedItem | undefined; ready: boolean } {
+  const { data, isSuccess } = useSavedItems();
+  return useMemo(() => {
+    if (!refId || !isSuccess) return { item: undefined, ready: isSuccess };
+    return {
+      item: data?.items.find((i) => i.item_type === item_type && i.ref_id === refId),
+      ready: true,
+    };
+  }, [data, isSuccess, item_type, refId]);
 }
 
 /**
@@ -70,6 +101,7 @@ export function useSaveItem() {
         item_type: input.item_type,
         ref_id: input.ref_id ?? null,
         thread_id: input.thread_id ?? null,
+        project_id: input.project_id ?? null,
         title: input.title ?? null,
         snapshot: input.snapshot,
         created_at: new Date().toISOString(),
@@ -89,6 +121,53 @@ export function useSaveItem() {
     onSettled: () => {
       // Invalidate every saved-list variant (all + per-type filters).
       queryClient.invalidateQueries({ queryKey: queryKeys.saved.all });
+    },
+  });
+}
+
+/**
+ * MUTATION: file saved items into a project, or unfile them (`projectId: null`).
+ *
+ * Bulk, because the shelf's selection mode is the primary caller: "file all my hooks" is one
+ * request. Optimistically rewrites project_id on the cached rows so the row leaves Unfiled and
+ * the project's derived counts update in the same frame.
+ */
+export function useFileSavedItems() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ ids, projectId }: { ids: string[]; projectId: string | null }) => {
+      const res = await fetch("/api/saved", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids, project_id: projectId }),
+      });
+      if (!res.ok) throw new Error("Failed to file saved items");
+      return (await res.json()) as { updated: number };
+    },
+    onMutate: async ({ ids, projectId }) => {
+      const key = queryKeys.saved.list();
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData<SavedItemsResponse>(key);
+      const idSet = new Set(ids);
+
+      queryClient.setQueryData<SavedItemsResponse>(key, (old) => ({
+        items: (old?.items ?? []).map((item) =>
+          idSet.has(item.id) ? { ...item, project_id: projectId } : item,
+        ),
+      }));
+
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(queryKeys.saved.list(), context.previous);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.saved.all });
+      // Filing touches the destination's updated_at, which orders the project list.
+      queryClient.invalidateQueries({ queryKey: queryKeys.libraryProjects.all });
     },
   });
 }

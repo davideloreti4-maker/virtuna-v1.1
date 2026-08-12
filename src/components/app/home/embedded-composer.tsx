@@ -27,7 +27,9 @@ import type { Verb } from "@/lib/room-contract/types";
 // The verb menu — the three-verb collapse (THE-CONTRACT.md §2). Copy mirrors the thread's
 // verb-appropriate framing so /start reads the same as the room.
 const VERB_MENU: { verb: Verb; title: string; sub: string }[] = [
-  { verb: "Make", title: "Hooks · scripts · ideas", sub: "ranked, pre-tested on your people" },
+  // "pre-tested" retired (Stage A, N-3): generation projects, it does not test — the
+  // measured reaction only exists once the creator fires the room.
+  { verb: "Make", title: "Hooks · scripts · ideas", sub: "ranked, written for your people" },
   { verb: "Test", title: "A real video", sub: "the full Read before you post" },
   { verb: "Ask", title: "The room", sub: "a raw thought, react instantly" },
 ];
@@ -73,6 +75,10 @@ export interface EmbeddedComposerProps {
   onLaunch: (input: string, verb: Verb) => void;
   onAttach?: () => void;
   disabled?: boolean;
+  /** In-flight launch: the send disc swaps to a spinner. Distinct from `disabled`
+   *  (which is a dead control) — busy is the affirmative "working on it" state the
+   *  /go hero shows while the session + navigation are in flight. */
+  busy?: boolean;
   className?: string;
 }
 
@@ -83,6 +89,7 @@ export function EmbeddedComposer({
   onLaunch,
   onAttach,
   disabled,
+  busy,
   className,
 }: EmbeddedComposerProps) {
   const [value, setValue] = useState("");
@@ -139,12 +146,12 @@ export function EmbeddedComposer({
                 }}
                 className="flex w-full flex-col gap-px rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-[#2b2926]"
               >
-                <span className="flex items-center gap-1.5 text-[9.5px] font-medium uppercase tracking-[0.1em] text-foreground-muted">
+                <span className="flex items-center gap-1.5 text-micro font-medium uppercase tracking-[0.1em] text-foreground-muted">
                   {m.verb === verb && <Spark className="text-foreground-muted" />}
                   {m.verb}
                 </span>
-                <b className="text-[12.5px] font-semibold text-foreground">{m.title}</b>
-                <span className="text-[10.5px] text-foreground-muted">{m.sub}</span>
+                <b className="text-label font-semibold text-foreground">{m.title}</b>
+                <span className="text-micro text-foreground-muted">{m.sub}</span>
               </button>
             ))}
           </div>
@@ -179,7 +186,7 @@ export function EmbeddedComposer({
           disabled={disabled}
           aria-label={`Compose to ${verb}`}
           className={cn(
-            "w-full min-w-0 resize-none bg-transparent px-1 pt-0.5 text-[15px] text-foreground",
+            "w-full min-w-0 resize-none bg-transparent px-1 pt-0.5 text-reading text-foreground",
             "placeholder:text-foreground-muted focus:outline-none",
             "min-h-[72px] max-h-[200px] leading-[1.55]",
           )}
@@ -194,7 +201,7 @@ export function EmbeddedComposer({
               type="button"
               onClick={onAttach}
               aria-label="Attach"
-              className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-full text-foreground-muted transition-colors hover:bg-white/[0.06] hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10 pointer-coarse:h-11 pointer-coarse:w-11"
+              className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-full text-foreground-muted transition-colors hover:bg-white/[0.06] hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring)] pointer-coarse:h-11 pointer-coarse:w-11"
             >
               <Plus className="h-[18px] w-[18px]" strokeWidth={1.75} />
             </button>
@@ -209,7 +216,7 @@ export function EmbeddedComposer({
               onClick={() => setMenuOpen((v) => !v)}
               className={cn(
                 "inline-flex h-[34px] shrink-0 items-center gap-1.5 rounded-full bg-white/[0.05] px-3",
-                "text-[13.5px] font-medium text-foreground transition-colors hover:bg-white/[0.08]",
+                "text-reading font-medium text-foreground transition-colors hover:bg-white/[0.08]",
                 "focus:outline-none focus-visible:ring-1 focus-visible:ring-white/20 pointer-coarse:h-11",
               )}
             >
@@ -221,18 +228,36 @@ export function EmbeddedComposer({
             </button>
           </div>
 
-          {/* Launch — the clean cream disc (same Button + sizing as the /home send). */}
+          {/* Launch — the clean cream disc (same Button + sizing as the /home send).
+              Busy: the disc holds its place and spins — pressing the page's one
+              button must visibly DO something for as long as the launch takes. */}
           <Button
             type="button"
             variant="primary"
             size="sm"
-            aria-label="Launch"
-            disabled={disabled || value.trim().length === 0}
+            aria-label={busy ? "Starting" : "Launch"}
+            disabled={disabled || busy || value.trim().length === 0}
             onClick={launch}
             style={{ boxShadow: "none" }}
             className="shrink-0 h-[36px] w-[36px] min-w-0 p-0 rounded-full"
           >
-            <ArrowUp className="h-[18px] w-[18px]" strokeWidth={2.25} />
+            {busy ? (
+              <svg
+                viewBox="0 0 16 16"
+                width={16}
+                height={16}
+                className="animate-spin"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                strokeLinecap="round"
+                aria-hidden="true"
+              >
+                <path d="M8 1.5a6.5 6.5 0 1 1-6.5 6.5" />
+              </svg>
+            ) : (
+              <ArrowUp className="h-[18px] w-[18px]" strokeWidth={2.25} />
+            )}
           </Button>
         </div>
       </div>

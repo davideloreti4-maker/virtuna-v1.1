@@ -22,8 +22,12 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { reportCredit402 } from '@/lib/billing/credit-wall';
+import { reportSession401, SessionExpiredRefusal } from '@/lib/auth/session-expired';
+import { resolveRunError } from '@/lib/net/run-failure';
 import type { MarkdownBlock } from '@/lib/tools/blocks';
 import type { StageState } from '@/components/thread/progress-checklist';
+import { parseRunEvidence, type RunEvidence } from '@/lib/tools/evidence';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -44,6 +48,13 @@ export interface UseChatStreamReturn {
    */
   stages: StageState[];
   /**
+   * The real artifacts this run touched mid-flight (`evidence` SSE frame): the proven outlier
+   * videos it is grounded on, or the post it resolved. Rendered by the loading spine's evidence
+   * rail (run-evidence.tsx). null on a run that produced none — an ungrounded generation, a
+   * resolve that returned no handle and no cover — and the rail then renders nothing.
+   */
+  evidence: RunEvidence | null;
+  /**
    * The skill the agent committed to running this turn (event: dispatch — the display key:
    * 'ideas' | 'hooks' | 'script' | …), or null on a plain chat turn / before any dispatch.
    * Arrives BEFORE the first stage event, so the run capsule can label itself and seed the
@@ -51,6 +62,13 @@ export interface UseChatStreamReturn {
    * a turn runs two skills.
    */
   dispatchedSkill: string | null;
+  /**
+   * The dispatched runners' REAL warnings (event: warning — Stage A). A degraded
+   * chat-dispatched run (grounding failed, a card dropped by validation, an anchor not
+   * honored) used to stream nothing here while the dedicated routes warned; RunWarnings
+   * renders these under the turn. Empty on a clean or plain-chat turn.
+   */
+  warnings: string[];
   /** True while the SSE stream is active. */
   isStreaming: boolean;
   /** Error string if the stream or route failed. Null when no error. */
@@ -69,11 +87,31 @@ export interface UseChatStreamReturn {
    */
   nudgeShown: boolean;
   /**
+   * The pre-router's provisional guess (Stage B, B3 — event: predispatch, certain:false), or
+   * null. Rendered as a HINT beside the thinking dots, never as a claim: the real `dispatch`
+   * frame replaces it (dispatchedSkill wins), and a plain answer's first token makes the
+   * thinking row — hint included — disappear. A `certain:true` predispatch (a chip/CTA pinned
+   * the skill) never lands here; it sets `dispatchedSkill` directly, seeding the full capsule.
+   */
+  preGuess: string | null;
+  /**
    * Start the chat stream. Call from the composer chat send.
    * ask: the user's question/message (required — server enforces).
    * platform: current platform selection ("tiktok" | "instagram" | "youtube").
+   * skill: OPTIONAL — the generator a tapped follow-up chip declared (chat-followups.ts `skill`).
+   *   Only a chip sets it; a typed message never does. The server pins the agent's first tool
+   *   choice to it, so a chip the creator pressed under hook cards actually runs instead of being
+   *   re-litigated as a vague ask. Ignored server-side unless that skill is bound for this user.
+   * opts: OPTIONAL Stage B data riders (one-brain flag) — `anchor` is the exact line a card CTA
+   *   was pressed on (B1); `cards` is the pack a tapped chip refers to (B2). Only meaningful
+   *   beside `skill`; the server drops them otherwise.
    */
-  start: (ask: string, platform: string) => Promise<void>;
+  start: (
+    ask: string,
+    platform: string,
+    skill?: string,
+    opts?: { anchor?: string; cards?: string[] },
+  ) => Promise<void>;
   /** Abort the in-flight stream. */
   stop: () => void;
   /**
@@ -97,7 +135,15 @@ export function useChatStream(): UseChatStreamReturn {
   // plain chat turn — these paths only fire when the route ran a skill (event: block / stage).
   const [streamingBlocks, setStreamingBlocks] = useState<unknown[]>([]);
   const [stages, setStages] = useState<StageState[]>([]);
+  /**
+   * The artifacts this run has touched so far (`evidence` SSE frame) — the proven outliers it is
+   * grounded on, or the post it resolved. Feeds the loading spine's evidence rail. Cleared at the
+   * start of every run so a new send can never inherit the last one's sources.
+   */
+  const [evidence, setEvidence] = useState<RunEvidence | null>(null);
+  const [warnings, setWarnings] = useState<string[]>([]);
   const [dispatchedSkill, setDispatchedSkill] = useState<string | null>(null);
+  const [preGuess, setPreGuess] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDone, setIsDone] = useState(false);
@@ -129,7 +175,10 @@ export function useChatStream(): UseChatStreamReturn {
     setStreamingText('');
     setStreamingBlocks([]);
     setStages([]);
+    setEvidence(null);
+    setWarnings([]);
     setDispatchedSkill(null);
+    setPreGuess(null);
     setIsStreaming(false);
     setError(null);
     setIsDone(false);
@@ -146,7 +195,12 @@ export function useChatStream(): UseChatStreamReturn {
     }
   }, []);
 
-  const start = useCallback(async (ask: string, platform: string) => {
+  const start = useCallback(async (
+    ask: string,
+    platform: string,
+    skill?: string,
+    opts?: { anchor?: string; cards?: string[] },
+  ) => {
     // Abort any prior in-flight stream
     abortRef.current?.abort();
     const controller = new AbortController();
@@ -156,7 +210,10 @@ export function useChatStream(): UseChatStreamReturn {
     setStreamingText('');
     setStreamingBlocks([]);
     setStages([]);
+    setEvidence(null);
+    setWarnings([]);
     setDispatchedSkill(null);
+    setPreGuess(null);
     setError(null);
     setIsDone(false);
     setColdStart(false);
@@ -170,12 +227,27 @@ export function useChatStream(): UseChatStreamReturn {
       const res = await fetch('/api/tools/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ask, platform }),
+        // `skill` is omitted entirely when absent, so a typed send is byte-identical to before.
+        // Stage B riders (anchor/cards) travel only when present — and only mean anything to a
+        // one-brain server beside a `skill`.
+        body: JSON.stringify({
+          ask,
+          platform,
+          ...(skill ? { skill } : {}),
+          ...(opts?.anchor ? { anchor: opts.anchor } : {}),
+          ...(opts?.cards && opts.cards.length > 0 ? { cards: opts.cards } : {}),
+        }),
         signal: controller.signal,
       });
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Chat request failed' }));
+        // The odd one out, deliberately. This hook's 402 is not a response status at all — the
+        // route cannot answer 402 mid-stream, so it forwards the refusal as a `credit-wall` SSE
+        // event and `reportCredit402(402, quota)` sits in the read loop against an already-parsed
+        // body. There is nothing there to sit beside. A 401 IS an ordinary HTTP refusal, so it
+        // goes where the real status is still in scope.
+        if (reportSession401(res.status)) throw new SessionExpiredRefusal();
         throw new Error((err as { error?: string }).error ?? 'Chat request failed');
       }
       if (!res.body) throw new Error('No response body');
@@ -237,6 +309,26 @@ export function useChatStream(): UseChatStreamReturn {
               if (isMountedRef.current) setStreamingBlocks([...blocksRef.current]);
             }
 
+          } else if (eventType === 'credit-wall') {
+            // A skill the agent tried to dispatch was refused by the credit gate. The route cannot
+            // answer 402 mid-stream, so it forwards the refusal body here and the ONE wall listener
+            // draws the dialog — identical to hitting the same wall on the skill's own route. The
+            // model also relays a sentence in the same turn; the dialog is what carries the upgrade
+            // door, and without it a refusal in chat would be a dead end with nothing to act on.
+            const quota = (data as { quota?: unknown }).quota;
+            if (quota !== undefined) reportCredit402(402, quota);
+
+          } else if (eventType === 'predispatch') {
+            // Stage B (B3): the route's pre-router frame, BEFORE the agent loop starts.
+            // certain:true = a chip/CTA pinned the skill and round 1 WILL call it — seed the
+            // full capsule now (same treatment as `dispatch`, which still follows and wins).
+            // certain:false = a heuristic guess on a typed ask — a hint only, never the capsule.
+            const skill = typeof data.skill === 'string' ? data.skill : '';
+            if (skill && isMountedRef.current) {
+              if (data.certain === true) setDispatchedSkill(skill);
+              else setPreGuess(skill);
+            }
+
           } else if (eventType === 'dispatch') {
             // The agent committed to a skill run (the run-capsule seam). Arrives BEFORE the first
             // stage event. A SECOND dispatch in one turn starts a fresh spine: clear the live
@@ -245,8 +337,25 @@ export function useChatStream(): UseChatStreamReturn {
             if (skill && isMountedRef.current) {
               stagesRef.current = [];
               setStages([]);
+              setEvidence(null);
               setDispatchedSkill(skill);
+              setPreGuess(null); // the real commitment replaces the hint
             }
+
+          } else if (eventType === 'warning') {
+            // The dispatched runners' real warnings (Stage A) — same event shape the
+            // dedicated skill routes emit ({ warnings: string[] }).
+            const w = (data as { warnings?: unknown }).warnings;
+            if (Array.isArray(w) && isMountedRef.current) {
+              setWarnings(w.filter((x): x is string => typeof x === 'string'));
+            }
+
+          } else if (eventType === 'evidence') {
+            // Real artifacts, mid-run. parseRunEvidence is total (null on anything malformed)
+            // because a throw inside this read loop would kill the whole stream — cards, receipt
+            // and closing line with it — over a decorative thumbnail rail.
+            const parsedEvidence = parseRunEvidence(data);
+            if (parsedEvidence && isMountedRef.current) setEvidence(parsedEvidence);
 
           } else if (eventType === 'stage') {
             // Dispatched skill's real pipeline phase — upsert by name, preserve first-seen order
@@ -276,10 +385,10 @@ export function useChatStream(): UseChatStreamReturn {
         }
       }
     } catch (err) {
-      if ((err as Error).name === 'AbortError') return; // intentional cancel
-      if (isMountedRef.current) {
-        setError(err instanceof Error ? err.message : 'Chat stream error');
-      }
+      // A null result means draw nothing: an abort is the user's own Stop, not a failure.
+      const message = resolveRunError(err, 'Chat stream error');
+      if (message === null) return;
+      if (isMountedRef.current) setError(message);
     } finally {
       if (isMountedRef.current) {
         setIsStreaming(false);
@@ -305,7 +414,10 @@ export function useChatStream(): UseChatStreamReturn {
     streamingText,
     streamingBlocks,
     stages,
+    evidence,
+    warnings,
     dispatchedSkill,
+    preGuess,
     isStreaming,
     error,
     isDone,

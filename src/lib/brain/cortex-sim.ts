@@ -119,6 +119,39 @@ export function hashSeed(s: string): number {
 }
 
 /**
+ * Build the DriveInput for a stimulus — the ONE place that decides grounded vs simulated.
+ *
+ * It lives here, beside the model that documents the two modes, because the decision used to be
+ * inlined in the view (`BrainTab`), where it read `mode: 'simulated'` on every video drill: the
+ * cortex looped a seeded envelope while a real `weighted_curve` sat one prop away. A surface can no
+ * longer pick the wrong mode by omission — it passes the curve, or it genuinely has none.
+ *
+ * `retentionCurve` is the audience's measured retention per sample, 0..1. Two or more samples ⇒
+ * GROUNDED, sampled with linear interpolation across normalized stimulus time. Fewer, or none at
+ * all — a text/concept sim has no timeline — ⇒ the honest seeded SIMULATED envelope.
+ */
+export function driveFor(input: {
+  seedKey: string;
+  stopRatio: number;
+  durationS: number;
+  retentionCurve?: number[] | null;
+}): DriveInput {
+  const { seedKey, stopRatio, durationS, retentionCurve } = input;
+  const base = { stopRatio, durationS, seedKey };
+  if (!retentionCurve || retentionCurve.length < 2) return { ...base, mode: 'simulated' };
+  const c = retentionCurve;
+  const last = c.length - 1;
+  const retentionAt = (u: number) => {
+    const f = clamp01(u) * last;
+    const i = Math.floor(f);
+    const a = c[i] ?? 0;
+    const b = c[Math.min(i + 1, last)] ?? a;
+    return a + (b - a) * (f - i);
+  };
+  return { ...base, mode: 'grounded', retentionAt };
+}
+
+/**
  * Canonical double-gamma HRF (the SPM shape): a positive gamma peaking ~5s, minus a smaller,
  * later gamma that produces the post-stimulus undershoot. Normalized to unit area so a convolved
  * drive keeps its scale.

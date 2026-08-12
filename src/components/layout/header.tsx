@@ -7,7 +7,7 @@ import { Menu, X } from "lucide-react";
 import { cn, FOCUS_RING } from "@/lib/utils";
 import { MavenLogo } from "@/components/brand/maven-logo";
 import { Button } from "@/components/ui/button";
-import { SIGNUP_URL, LOGIN_URL } from "@/lib/routes";
+import { MARKETING_CTA_URL, LOGIN_URL } from "@/lib/routes";
 import { NAV_LINKS } from "@/lib/nav";
 
 interface HeaderProps {
@@ -21,7 +21,7 @@ interface HeaderProps {
  * A flat OPAQUE sticky bar (no glass, no blur, no inset shine, no drop
  * shadow) resting on a tone-step surface + a hairline bottom border. Contents:
  * the MavenLogo gull + "Maven" wordmark, 3–4 in-page anchor links, a terracotta
- * "Try it free" primary CTA → /signup, and a subtle "Sign in" ghost link → /login.
+ * "Try it free" primary CTA → /go (the conversion path), and a subtle "Sign in" ghost link → /login.
  *
  * Mobile (NAV-03): a lightweight useState disclosure (NOT a heavyweight Radix
  * Sheet for 3–4 items) — an icon-button trigger toggles a flat opaque dropdown
@@ -159,7 +159,7 @@ export function Header({ className }: HeaderProps) {
             Sign in
           </Link>
           <Button asChild variant="primary" size="sm">
-            <Link href={SIGNUP_URL}>Try it free</Link>
+            <Link href={MARKETING_CTA_URL}>Try it free</Link>
           </Button>
         </div>
 
@@ -171,7 +171,7 @@ export function Header({ className }: HeaderProps) {
           aria-expanded={mobileMenuOpen}
           aria-controls="mobile-nav-panel"
           aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
-          className="inline-flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-md text-foreground-secondary transition-colors hover:bg-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10 focus-visible:ring-offset-2 focus-visible:ring-offset-background-elevated md:hidden"
+          className="inline-flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-md text-foreground-secondary transition-colors hover:bg-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-background-elevated md:hidden"
         >
           {mobileMenuOpen ? (
             <X className="h-5 w-5" aria-hidden="true" />
@@ -219,7 +219,7 @@ export function Header({ className }: HeaderProps) {
             </Link>
 
             <Button asChild variant="primary" size="md" className="mt-2 w-full">
-              <Link href={SIGNUP_URL} onClick={closeMenu}>
+              <Link href={MARKETING_CTA_URL} onClick={closeMenu}>
                 Try it free
               </Link>
             </Button>

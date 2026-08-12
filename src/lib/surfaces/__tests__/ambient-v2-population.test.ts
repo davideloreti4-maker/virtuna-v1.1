@@ -66,7 +66,8 @@ describe("buildPopulationFrameData", () => {
     // swing: a real fence-sitter count + a bounded modeled gain (from → to)
     expect(p.swing!.fromPct).toBe(62);
     expect(p.swing!.toPct).toBeGreaterThan(p.swing!.fromPct);
-    expect(p.swing!.gainLabel).toMatch(/would stop/);
+    // "would stop" is BANNED — it meant stopped SCROLLING (good) here and the loss everywhere else.
+    expect(p.swing!.gainLabel).toMatch(/^\+\d+% of the room$/);
   });
 
   it("the modeled-depth sections are DETERMINISTIC (byte-identical across calls)", () => {
@@ -165,26 +166,30 @@ describe("buildReasonBrainFrameData (the text brain — owner call 2026-07-24)",
     ],
   };
 
-  it("the driver is the SAME attention-scrubber as video — a MODELED retention curve + the REAL transcript", () => {
+  // §3.3 — VIDEO AND TEXT ARE INVERSE INSTRUMENTS. The 2026-07-24 parity pass gave text a MODELED
+  // retention curve so both kinds drew the same figure; a modeled timeline is exactly what a text
+  // concept does not have, so rev 12 puts the REAL coded-reason tally back in the driver slot. The
+  // depth sections below are unchanged: parity is about the instrument, not about faking an axis.
+  it("the driver is the REAL coded-reason tally — text has the voices and no timeline", () => {
     const b = buildReasonBrainFrameData({
       aggregate: AGG_REASONS,
       stopPct: 62,
       stimulusKey: "k1",
       transcript: "the promise in the first line pulls you in",
     });
-    expect(b.driver.kind).toBe("attention-scrubber");
-    if (b.driver.kind !== "attention-scrubber") throw new Error("expected attention-scrubber");
+    expect(b.driver.kind).toBe("reason-breakdown");
+    if (b.driver.kind !== "reason-breakdown") throw new Error("expected reason-breakdown");
     const d = b.driver.data;
-    expect(d.transcript).toBe("the promise in the first line pulls you in"); // the REAL words
-    expect(d.points.length).toBeGreaterThanOrEqual(4); // a modeled curve, not empty
-    expect(d.points.every((v) => v >= 0 && v <= 80)).toBe(true); // on the scrubber's 0..80 axis
-    expect(d.moments.length).toBeGreaterThanOrEqual(1);
+    expect(d.total).toBe(620); // the real stopper count is the denominator
+    expect(d.rows[0]!.label).toBe("Strong hook"); // weightiest first, humanized from the token
+    expect(d.rows.find((r) => r.label === "Too slow")!.loss).toBe(true); // friction rides `loss`
+    expect(d.rows.every((r) => r.share >= 0 && r.share <= 1)).toBe(true);
   });
 
-  it("with no transcript the scrubber falls back to the coded reasons (never empty)", () => {
+  it("carries no modeled attention axis at all — the absence IS the honest answer", () => {
     const b = buildReasonBrainFrameData({ aggregate: AGG_REASONS, stopPct: 62, stimulusKey: "k1" });
-    if (b.driver.kind !== "attention-scrubber") throw new Error("expected attention-scrubber");
-    expect(b.driver.data.transcript.length).toBeGreaterThan(0);
+    expect(b.driver.kind).not.toBe("attention-scrubber");
+    expect(b.retentionCurve).toBeUndefined();
   });
 
   it("the 'why' that heads the scrubber is the REAL top friction reason (coral on the loss clause)", () => {
@@ -208,7 +213,7 @@ describe("buildReasonBrainFrameData (the text brain — owner call 2026-07-24)",
   it("buildDomainTemplate now ships a REAL brain for a text sim (no longer undefined)", () => {
     const tpl = buildDomainTemplate({ ...base, aggregate: AGG_REASONS, pct: 62, stimulusKey: "k1", conceptLabel: "hook" });
     expect(tpl.brain).toBeDefined();
-    expect(tpl.brain!.driver.kind).toBe("attention-scrubber");
+    expect(tpl.brain!.driver.kind).toBe("reason-breakdown");
     expect(tpl.population).not.toBeNull(); // both tabs real
   });
 
@@ -220,6 +225,17 @@ describe("buildReasonBrainFrameData (the text brain — owner call 2026-07-24)",
     expect(b.kpiHeatmap!.rows).toHaveLength(10);
     expect(b.buyIntent).toBeUndefined(); // commerce-only figure — omitted (matches authored)
     expect(b.whyThisSecond).toBeDefined(); // the real reason, in the video's measured-dip slot
+  });
+
+  it("the activation grid keeps every row but NOT the clock (§3.3 — a text concept has no seconds)", () => {
+    const b = buildReasonBrainFrameData({ aggregate: AGG_REASONS, stopPct: 62, stimulusKey: "k1" });
+    // parity survives — same ten systems as video
+    expect(b.kpiHeatmap!.rows).toHaveLength(10);
+    // ...but `clipSeconds: 6` is a nominal proxy for the cortex loop, and it was reaching the card as
+    // "6s · 10 systems / 0s → 6s / each cell = 1s". The renderer drops the axis on this flag.
+    expect(b.kpiHeatmap!.untimed).toBe(true);
+    // the same adapter already refuses a modeled TIMELINE for text; the two now agree
+    expect(b.driver.kind).toBe("reason-breakdown");
   });
 
   it("the visual-only reads are GREYED on a text sim (no video substrate to measure)", () => {
@@ -238,6 +254,6 @@ describe("buildReasonBrainFrameData (the text brain — owner call 2026-07-24)",
     const tpl = buildDomainTemplate({ ...base, aggregate: AGG_REASONS, pct: 62, stimulusKey: "k1" });
     expect(tpl.unlock!.lever.toLowerCase()).toContain("too slow");
     expect(tpl.unlock!.insight).toMatch(/Strong hook/);
-    expect(tpl.unlock!.gain).toMatch(/would stop/);
+    expect(tpl.unlock!.gain).toMatch(/^\+\d+% of the room$/);
   });
 });

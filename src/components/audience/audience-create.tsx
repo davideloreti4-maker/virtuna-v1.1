@@ -20,7 +20,9 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import type { CalibrationEvidence } from "@/lib/audience/calibration";
 import type { Audience } from "@/lib/audience/audience-types";
-import { formatCount } from "@/lib/account-metrics/account-metrics";
+import { calibrationVocabulary } from "@/lib/audience/calibration-stages";
+import type { StageState } from "@/components/thread/progress-checklist";
+import { CalibrationProgress } from "./calibration-progress";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -86,12 +88,26 @@ export function AudienceCreate({ initialDoor, prefillHandle, className }: Audien
   const [phase, setPhase] = useState<Phase>("form");
   const [statusMsg, setStatusMsg] = useState("");
   const [evidence, setEvidence] = useState<CalibrationEvidence | null>(null);
+  const [stages, setStages] = useState<StageState[]>([]);
   const [errorMsg, setErrorMsg] = useState("");
   const [fallbackMsg, setFallbackMsg] = useState("");
   const [submitting, setSubmitting] = useState(false);
   // The done navigation races the unmount — track to avoid setState after leave.
+  //
+  // ⚠️ The mount arm is load-bearing, not decoration. With cleanup-only, React 18 StrictMode's
+  // double-invoke (mount → unmount → mount) fires the cleanup once on the FIRST simulated
+  // unmount and nothing ever sets it back — so `leftRef.current` stayed true for the whole life
+  // of a mounted component and `failBack()` became a silent no-op IN DEV. A failed calibration
+  // sat on the spinning spine forever with no error, which is precisely why the discarded
+  // server message above went unnoticed: the error path was invisible to anyone testing in dev.
+  // Production (no double-invoke) was unaffected — measured on a `next build` + `next start`.
   const leftRef = useRef(false);
-  useEffect(() => () => void (leftRef.current = true), []);
+  useEffect(() => {
+    leftRef.current = false;
+    return () => {
+      leftRef.current = true;
+    };
+  }, []);
 
   const cleanHandle = handle.replace(/^@/, "").trim();
   const canContinue =
@@ -138,6 +154,9 @@ export function AudienceCreate({ initialDoor, prefillHandle, className }: Audien
     setSubmitting(true);
     setErrorMsg("");
     setEvidence(null);
+    // A retry must not inherit the previous attempt's spine, or the new run opens with steps
+    // already marked done.
+    setStages([]);
     setPhase("streaming");
     setStatusMsg(door === "describe" ? "Reading your description…" : "Reading the account…");
 
@@ -190,6 +209,8 @@ export function AudienceCreate({ initialDoor, prefillHandle, className }: Audien
           let parsed: {
             message?: string;
             audience?: Audience;
+            name?: string;
+            status?: StageState["status"];
           } & Partial<CalibrationEvidence>;
           try {
             parsed = JSON.parse(raw) as typeof parsed;
@@ -203,6 +224,23 @@ export function AudienceCreate({ initialDoor, prefillHandle, className }: Audien
             case "status":
               setStatusMsg(parsed.message ?? "");
               break;
+            case "stage":
+              // The route has emitted these since 2026-08-02 and this client dropped every one
+              // of them, so /audience/new sat on a pulsing dot for ~2 minutes while /welcome —
+              // the SAME pipeline — drew the progress spine. Last-write-wins per name, order
+              // preserved: a repeated frame cannot duplicate a row, and a `done` cannot be
+              // overwritten by a stale `active`.
+              if (parsed.name && parsed.status) {
+                const { name, status } = parsed;
+                setStages((prev) => {
+                  const i = prev.findIndex((s) => s.name === name);
+                  if (i === -1) return [...prev, { name, status }];
+                  const next = [...prev];
+                  next[i] = { name, status };
+                  return next;
+                });
+              }
+              break;
             case "evidence":
               if (parsed.handle) {
                 setEvidence({
@@ -212,6 +250,7 @@ export function AudienceCreate({ initialDoor, prefillHandle, className }: Audien
                   followerCount: parsed.followerCount ?? 0,
                   heartCount: parsed.heartCount ?? 0,
                   videoCount: parsed.videoCount ?? 0,
+                  verified: parsed.verified,
                   videos: parsed.videos ?? [],
                 });
               }
@@ -221,7 +260,15 @@ export function AudienceCreate({ initialDoor, prefillHandle, className }: Audien
               setFallbackMsg(parsed.message ?? "");
               return;
             case "error":
-              failBack();
+              // Carry the ROUTE's sentence. It writes three different ones and the difference
+              // is the whole point: `platform_unsupported` and `synthesis_failed` both mean the
+              // handle is FINE, and the route says so in as many words ("We read @x fine —
+              // building the audience from it is what failed"). Substituting the local
+              // "Account not found. Check the handle" here is a false accusation that costs the
+              // creator another paid scrape to act on — which is exactly what the route's own
+              // comment says it must never do. /welcome has always carried it (calibration-flow
+              // .tsx: `parsed.message ?? …`); this client threw it away.
+              failBack(parsed.message);
               return;
             case "done":
               if (parsed.audience) {
@@ -239,14 +286,20 @@ export function AudienceCreate({ initialDoor, prefillHandle, className }: Audien
     }
   }
 
-  function failBack() {
+  /**
+   * `serverMessage` is the `error` frame's own sentence, when there was one. The local copy is
+   * the fallback for the cases where there genuinely is no server sentence to carry — a
+   * transport failure, a non-OK response, a thrown parse.
+   */
+  function failBack(serverMessage?: string) {
     if (leftRef.current) return;
     setPhase("form");
     setSubmitting(false);
     setErrorMsg(
-      door === "describe"
-        ? "Couldn't build from that description. Try again."
-        : "Account not found. Check the handle — private accounts can't be read.",
+      serverMessage?.trim() ||
+        (door === "describe"
+          ? "Couldn't build from that description. Try again."
+          : "Account not found. Check the handle — private accounts can't be read."),
     );
   }
 
@@ -280,45 +333,23 @@ export function AudienceCreate({ initialDoor, prefillHandle, className }: Audien
     );
   }
 
-  // ── Streaming: the reveal (evidence the moment it exists, dot while building) ──
+  // ── Streaming: the account itself, with the real pipeline running through it ──
+  //
+  // `hasHandle` is the discriminator calibrationVocabulary documents — NOT the audience type.
+  // The "From a handle" door builds a TARGET audience from a real account, and that run really
+  // is reading an account, so it takes the account vocabulary. Only the describe door has no
+  // handle behind it.
   if (phase === "streaming") {
+    const { plan } = calibrationVocabulary(door !== "describe");
     return (
       <div className={cn("flex flex-col gap-4", className)} data-testid="create-reveal">
-        <div className="rounded-2xl bg-white/[0.02] p-5">
-          {evidence ? (
-            <>
-              <div className="flex items-baseline gap-2.5">
-                <span className="text-[17px] font-semibold tracking-[-0.01em] text-foreground">
-                  @{evidence.handle}
-                </span>
-                <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-foreground-muted">
-                  TikTok
-                </span>
-              </div>
-
-              <div className="mt-5 grid grid-cols-3 gap-3" data-testid="reveal-figures">
-                <RevealFigure n={evidence.videos.length} label="Videos" exact />
-                <RevealFigure n={evidence.followerCount} label="Followers" />
-                <RevealFigure n={evidence.heartCount} label="Likes" />
-              </div>
-
-              {evidence.videos.length > 0 && (
-                <div className="mt-5 grid grid-cols-4 gap-1.5 sm:grid-cols-8" data-testid="reveal-strip">
-                  {evidence.videos.slice(0, 8).map((v, i) => (
-                    <RevealCover key={i} coverUrl={v.coverUrl} index={i} />
-                  ))}
-                </div>
-              )}
-            </>
-          ) : (
-            <p className="text-sm text-foreground-secondary">{statusMsg}</p>
-          )}
-
-          <div className="mt-5 flex items-center gap-2" data-testid="create-building">
-            <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-[color:var(--color-accent)]" />
-            <span className="text-[13px] text-foreground-secondary">Building audience</span>
-          </div>
-        </div>
+        <CalibrationProgress
+          evidence={evidence}
+          stages={stages}
+          plan={plan}
+          statusMsg={statusMsg}
+          testId="create-building"
+        />
       </div>
     );
   }
@@ -337,7 +368,7 @@ export function AudienceCreate({ initialDoor, prefillHandle, className }: Audien
               onClick={() => pickDoor(d.key)}
               className={cn(
                 "rounded-xl border p-4 text-left transition-colors",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)]",
                 on
                   ? "border-white/[0.14] bg-white/[0.04]"
                   : "border-white/[0.06] hover:border-white/[0.1] hover:bg-white/[0.02]",
@@ -353,7 +384,7 @@ export function AudienceCreate({ initialDoor, prefillHandle, className }: Audien
               </span>
               <span
                 className={cn(
-                  "mt-1 block text-[13px] leading-normal transition-colors",
+                  "mt-1 block text-body leading-normal transition-colors",
                   on ? "text-foreground-secondary" : "text-foreground-muted",
                 )}
               >
@@ -392,7 +423,7 @@ export function AudienceCreate({ initialDoor, prefillHandle, className }: Audien
                     aria-pressed={template === t.key}
                     onClick={() => applyTemplate(t.key)}
                     className={cn(
-                      "rounded-md border px-2.5 py-1 text-[12px] font-medium transition-colors",
+                      "rounded-md border px-2.5 py-1 text-label font-medium transition-colors",
                       template === t.key
                         ? "border-border-hover bg-white/[0.04] text-foreground"
                         : "border-white/[0.06] text-foreground-secondary hover:border-white/[0.1] hover:text-foreground",
@@ -434,7 +465,7 @@ export function AudienceCreate({ initialDoor, prefillHandle, className }: Audien
                 className="w-36"
               />
             ) : (
-              <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-foreground-muted">
+              <span className="font-mono text-micro uppercase tracking-[0.08em] text-foreground-muted">
                 TikTok
               </span>
             )}
@@ -450,13 +481,13 @@ export function AudienceCreate({ initialDoor, prefillHandle, className }: Audien
         )}
 
         {door === "connect" && platform !== "tiktok" && (
-          <p className="mt-3 border-t border-white/[0.06] pt-3 text-[13px] text-foreground-muted">
+          <p className="mt-3 border-t border-white/[0.06] pt-3 text-body text-foreground-muted">
             Analytics only.
           </p>
         )}
 
         {errorMsg && (
-          <p className="mt-3 border-t border-white/[0.06] pt-3 text-[13px] text-error" data-testid="create-error">
+          <p className="mt-3 border-t border-white/[0.06] pt-3 text-body text-error" data-testid="create-error">
             {errorMsg}
           </p>
         )}
@@ -465,34 +496,6 @@ export function AudienceCreate({ initialDoor, prefillHandle, className }: Audien
   );
 }
 
-/** One reveal figure — big tabular-nums number, mono small-caps unit. */
-function RevealFigure({ n, label, exact }: { n: number; label: string; exact?: boolean }) {
-  return (
-    <div className="flex flex-col gap-0.5">
-      <span className="text-[22px] font-semibold tabular-nums tracking-[-0.01em] text-foreground">
-        {exact ? n : formatCount(n)}
-      </span>
-      <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-foreground-muted">
-        {label}
-      </span>
-    </div>
-  );
-}
-
-/** One scraped cover — keeps its slot blank when TikTok's ephemeral CDN URL dies. */
-function RevealCover({ coverUrl, index }: { coverUrl: string | null; index: number }) {
-  const [failed, setFailed] = useState(false);
-  const show = coverUrl && !failed;
-  return (
-    <div
-      className="reading-reveal aspect-[9/16] overflow-hidden rounded-md border border-white/[0.06] bg-white/[0.02]"
-      style={{ animationDelay: `${index * 0.06}s` }}
-      data-testid="reveal-cover"
-    >
-      {show && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={coverUrl} alt="" className="h-full w-full object-cover" onError={() => setFailed(true)} />
-      )}
-    </div>
-  );
-}
+// RevealFigure / RevealCover lived here and are gone: both are now CalibrationProgress's job,
+// shared with /welcome. RevealFigure is the one that rendered `videos.length` as "Videos" —
+// the scraped window sold as the account's catalogue.

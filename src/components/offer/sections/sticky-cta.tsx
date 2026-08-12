@@ -4,8 +4,7 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 
 import { CTA_VARIANT } from "@/components/offer/cta-config";
-import { TRIAL } from "@/lib/pricing";
-import { SIGNUP_URL } from "@/lib/routes";
+import { useFreeEntry } from "@/components/offer/free-entry-cta";
 
 /**
  * The always-available close, on BOTH breakpoints.
@@ -17,8 +16,9 @@ import { SIGNUP_URL } from "@/lib/routes";
  *
  * It reveals once the hero has scrolled ~70% away, and RETIRES over the pricing
  * and final-CTA sections: a floating "start" button competing with the real
- * buttons it points at is friction, not urgency. `#pricing` on mobile keeps the
- * short path (choose a plan), while desktop goes straight to signup.
+ * buttons it points at is friction, not urgency. Both bars carry the page's one
+ * entry ask (FREE_ENTRY → the hero composer): the free test IS the flow; "$1"
+ * and /signup here contradicted the fold and routed around the funnel.
  *
  * backdrop-filter is applied via inline style, NOT a Tailwind class (Lightning
  * CSS strips the class form). Reduced motion = fade only, no slide.
@@ -30,6 +30,10 @@ const YIELD_TO = ["#pricing", "#final-cta"];
 export function StickyCta() {
   const [visible, setVisible] = useState(false);
   const reduced = useReducedMotion();
+  // Both bars are the same entry as every other CTA — session minted on click, prewarmed on
+  // hover. The bespoke markup ("no account" sub-label) is why this spreads props rather than
+  // mounting FreeEntryCta.
+  const { linkProps, label } = useFreeEntry();
 
   const coral = CTA_VARIANT === "coral";
   const ctaBg = coral ? "bg-accent text-accent-foreground" : "bg-action text-action-foreground";
@@ -83,11 +87,11 @@ export function StickyCta() {
               }}
             >
               <a
-                href="#pricing"
+                {...linkProps}
                 className={`flex h-12 w-full items-center justify-center gap-2 rounded-lg text-[15px] font-semibold transition-transform active:scale-[0.99] ${ctaBg}`}
               >
-                Test your first video — {TRIAL.price}
-                <span className={`text-xs font-normal ${ctaSub}`}>$1 for 3 days</span>
+                {label}
+                <span className={`text-xs font-normal ${ctaSub}`}>no account</span>
               </a>
             </div>
           </motion.div>
@@ -102,11 +106,11 @@ export function StickyCta() {
             transition={transition}
           >
             <a
-              href={SIGNUP_URL}
-              className={`flex h-12 items-center gap-2.5 rounded-full px-6 text-[14.5px] font-semibold shadow-[0_18px_40px_-16px_rgba(0,0,0,0.7)] transition-transform hover:scale-[1.02] active:scale-[0.99] ${ctaBg}`}
+              {...linkProps}
+              className={`flex h-12 items-center gap-2.5 rounded-full px-6 text-[14px] font-semibold shadow-[0_18px_40px_-16px_rgba(0,0,0,0.7)] transition-transform hover:scale-[1.02] active:scale-[0.99] ${ctaBg}`}
             >
-              Test your first video — {TRIAL.price}
-              <span className={`text-[12px] font-normal ${ctaSub}`}>3 days</span>
+              {label}
+              <span className={`text-[12px] font-normal ${ctaSub}`}>no account</span>
             </a>
           </motion.div>
         </>

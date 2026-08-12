@@ -3,7 +3,7 @@ import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 
 import { Hero } from "../hero";
-import { SIGNUP_URL } from "@/lib/routes";
+import { MARKETING_CTA_URL } from "@/lib/routes";
 
 /**
  * Phase 2 Nyquist gate — HERO-01..04 on the RSC <Hero>.
@@ -54,12 +54,12 @@ describe("<Hero />", () => {
   });
 
   describe("HERO-02 — CTA routing", () => {
-    it("primary 'Try it free' CTA links to SIGNUP_URL", () => {
+    it("primary 'Try it free' CTA links to MARKETING_CTA_URL", () => {
       render(<Hero />);
 
-      // Imported constant, NOT the literal "/signup" (single source of truth).
+      // Imported constant, NOT the literal "/go" (single source of truth).
       const cta = screen.getByRole("link", { name: /try it free/i });
-      expect(cta.getAttribute("href")).toBe(SIGNUP_URL);
+      expect(cta.getAttribute("href")).toBe(MARKETING_CTA_URL);
     });
 
     it("secondary scroll-cue links to the #how-it-works anchor", () => {

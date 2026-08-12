@@ -38,7 +38,8 @@ export type PaidPlanId = "starter" | "pro" | "studio";
  *
  *   10 — a full Reading: score a video/concept, decode a remix source, /test in chat.
  *        The heaviest thing we run (video pipeline + population simulation).
- *    5 — a LIVE outlier scrape (explore with "find new outliers") — real Apify spend.
+ *    5 — REAL APIFY SPEND: a LIVE outlier scrape (explore with "find new outliers"),
+ *        or a Read on your own account (two profile/video scrapes, 1-3 min).
  *    2 — deep single-output generation/simulation: one script, a Predict, a Simulate,
  *        a Profile read.
  *    1 — light generation and reads: a hooks pack, an ideas pack, develop-this-idea,
@@ -72,12 +73,55 @@ export const CREDIT_COSTS = {
   develop: 1,
   /** A concept Read against the selected audience. */
   read: 1,
+  /**
+   * A room reaction — one Flash text-mode run against the audience panel
+   * (`/api/tools/react`): the composer's "Ask the room" and the Overview rail's armed sim.
+   *
+   * Its OWN key rather than folding into `read`, so the ledger can tell the two apart: they
+   * are different engine calls (a Flash 10-persona reaction vs the two-audience read) and a
+   * usage statement that prints them under one name cannot be reconciled line by line.
+   *
+   * ⚠️ It was FREE until 2026-07-28 (owner call to price it). It is real engine spend — a
+   * Flash panel run, plus a `characterizeContent` call when the audience carries v2 axes —
+   * and the `＋ Test something of your own` door promotes it to a primary action.
+   */
+  react: 1,
   /** A scoped card refine (fresh SIM-scored re-run). */
   refine: 1,
   /** Explore from the cached corpus. */
   explore: 1,
   /** Explore that triggers a LIVE outlier scrape (allowScrape) — Apify spend. */
   explore_scrape: 5,
+  /**
+   * A Read on the creator's OWN account — `/api/account-read`.
+   *
+   * ⚠️ It was FREE and completely unmetered until 2026-07-29 (owner call to price it at 5). Not a
+   * decision — an omission: the route had no `creditGate`, no `billUsage`, and no key here, so it
+   * ran real Apify spend for nothing. It was flagged across six sessions before it got a number.
+   *
+   * Priced at the SCRAPE tier, not the Reading tier, and the two facts that decide it:
+   *   • it fires TWO parallel Apify runs (`scrapeProfile` + `scrapeVideos(handle, 30)`), 1-3 min,
+   *     which is why the route carries `maxDuration = 300`;
+   *   • it makes NO model call at all — every pattern is deterministic extraction.
+   * So it is heavier on Apify than `explore_scrape` and lighter everywhere else, which puts it at
+   * the same 5 rather than at `score`'s 10. Its NAME argues for 10 ("a Read"); its engine spend
+   * does not, and the costs here are anchored to spend.
+   *
+   * Billed ON DELIVERY only. The route has three exits that reach no scrape or no result — no
+   * personal audience on file, thin history, scrape failure — and none of them charge.
+   */
+  account: 5,
+  /**
+   * A Discover pull — `POST /api/discover`, the hub's on-demand live scrape.
+   *
+   * Ran FREE until 2026-08-02, the same omission shape as `account` above: no gate, no bill,
+   * no key here, and invisible to the wiring guard because the route lives outside
+   * `api/tools`. Its only limiter was an in-memory daily cap that reset on every cold start.
+   * One `scrapeVideos(input, 30)` per cache-miss pull — Apify spend, so it prices at the
+   * scrape tier with `explore_scrape` and `account`. Cache HITS stay free and ungated: a
+   * warm serve costs no Apify, and the gate sits between the cache check and the scrape.
+   */
+  discover: 5,
 } as const;
 
 export type BillableAction = keyof typeof CREDIT_COSTS;
@@ -99,23 +143,79 @@ export const CREDITS_PER_READING = CREDIT_COSTS.score;
 export const UNLIMITED_DAILY_CREDIT_CEILING = 300;
 
 /**
- * THE DEMO POOL — what an ANONYMOUS visitor may spend before the $1.
+ * THE DEMO ENTITLEMENT — what an ANONYMOUS visitor gets before the $1.
  *
- * The `/go` funnel signs the visitor in anonymously and hands them the REAL platform, so the
- * free half of the wall is a genuine engine run on their own video. That run has to be paid
- * for by us, which makes this number the funnel's cost-per-visitor ceiling.
+ * Owner, 2026-07-27: *"we give the demo to the user for free but to unlock the complete
+ * result/value they need to start their 3 day trial and unlock the complete platform."*
  *
- * Exactly ONE full Reading — the video Test whose card is given away. Everything past it
- * (a second video, the simulation verdict) is what the dollar buys.
+ * So it is ONE free Test — a genuine engine run on the visitor's own video, paid for by us —
+ * and NOTHING else. Every other skill, and the simulation verdict on that very run, is what
+ * the dollar buys. This makes one Reading the funnel's cost-per-visitor ceiling.
  *
- * ⚠️ Unlike every other allowance here, this one is enforced **regardless of
- * `BILLING_ENFORCE_QUOTA`** (see `lib/billing/quota.ts`). That flag exists so real customers
- * are not locked out before the Whop plans are buyable; it has nothing to say about how much
- * free engine spend an unauthenticated stranger may trigger, and anonymous users are
- * unbounded in number. Leaving this to the flag would mean the demo is uncapped in exactly
- * the window where the funnel is live and the meter is off.
+ * ⚠️ It is an ENTITLEMENT, not a wallet. This constant was `DEMO_CREDITS` alone and the check
+ * was `used + cost <= DEMO_CREDITS`, which reads as "10 credits to spend" — so one 1-credit
+ * Ideas tap made it 11 > 10 and the free Test was refused *permanently*, with the words "That
+ * was your free test" to someone who had never had one. The meter now counts DELIVERED RUNS of
+ * `DEMO_ACTION` (see `lib/billing/quota.ts`), which nothing else can consume.
+ *
+ * ⚠️ Unlike every other allowance here, it is enforced **regardless of
+ * `BILLING_ENFORCE_QUOTA`**. That flag exists so real customers are not locked out before the
+ * Whop plans are buyable; it has nothing to say about how much free engine spend an
+ * unauthenticated stranger may trigger, and anonymous users are unbounded in number. Leaving
+ * this to the flag would mean the demo is uncapped in exactly the window where the funnel is
+ * live and the meter is off.
  */
-export const DEMO_CREDITS = CREDIT_COSTS.score;
+/** The one action the demo entitles: a full video Test. Its ledger `mode` is what's counted. */
+export const DEMO_ACTION = "score" as const;
+/** How many of them. One. */
+export const DEMO_RUNS = 1;
+/**
+ * The demo's credit-equivalent — one Test's price. NOT a spendable balance: it is what the
+ * wall reports as `limit` (and, once the run is used, as `used`) so the 402 body stays in the
+ * same units as every other refusal. The admission decision is `DEMO_RUNS`, never this.
+ */
+export const DEMO_CREDITS = CREDIT_COSTS[DEMO_ACTION];
+
+/**
+ * THE ACTIVATION ENTITLEMENT — one free card for a creator who just calibrated.
+ *
+ * Owner call, 2026-08-04, after the funnel was walked end to end on a production build:
+ * fund the first card with an entitlement rather than a credit grant.
+ *
+ * The defect it closes: a new signup spent ~135 seconds and ~$0.05 of Apify watching us read
+ * their account, arrived on /home, and the ONE action the product offered them — "Read my
+ * recent posts", the single CTA in the single sentence of in-app onboarding — returned 402
+ * "You don't have a plan yet". The entire activation path dead-ended on a paywall the instant
+ * it was touched. `BILLING_ENFORCE_QUOTA` is true in production and the free tier is
+ * `limit: 0`, so this was not an edge case; it was every new user, every time.
+ *
+ * ── Why `ideas` and not `account` ──────────────────────────────────────────────────────────
+ * The card has to be about THEM or it teaches nothing, and it has to be nearly free or it
+ * cannot be given away per signup. `ideas` is both: it runs against the personas already in
+ * hand from calibration, so it is ONE model call and ZERO Apify calls. `account` (the CTA
+ * that was 402ing) is the opposite — two Apify scrapes at 5 credits, against a budget with
+ * ~$2 left in the cycle. Same teaching moment, two orders of magnitude apart in cost.
+ *
+ * ── What keys it, and what must NEVER key it ───────────────────────────────────────────────
+ * It is keyed on HAVING CALIBRATED — a real personal audience on file — plus the free tier
+ * and no trial. Deliberately NOT keyed on:
+ *   · `is_anonymous` — that is the /go demo's key (DEMO_ACTION above); a funnel-B visitor is a
+ *     different person at a different point in the funnel and already has their own free run;
+ *   · tier `free` ALONE — every existing user is tier free, so that would hand a free pack to
+ *     the entire user base. This exact confusion is what made onboarding unreachable in #423.
+ *
+ * ── Entitlement, not wallet ────────────────────────────────────────────────────────────────
+ * Counted as DELIVERED RUNS of `ACTIVATION_ACTION`, exactly like the demo, and for the reason
+ * recorded above it: a credit-shaped check lets any other 1-credit action consume the
+ * entitlement and then refuse the user the thing they were promised, using words that are not
+ * true. Spend and entitlement are different questions.
+ */
+/** The one action activation entitles: an ideas pack against the audience just calibrated. */
+export const ACTIVATION_ACTION = "ideas" as const;
+/** How many. One — this is a teaching moment, not a free tier. */
+export const ACTIVATION_RUNS = 1;
+/** Credit-equivalent, for the 402 body's units only. Never a spendable balance. */
+export const ACTIVATION_CREDITS = CREDIT_COSTS[ACTIVATION_ACTION];
 
 /** The $1 trial, offered on every plan. */
 export const TRIAL = {

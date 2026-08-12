@@ -151,12 +151,17 @@ export const CtaSegmentZodSchema = z
   );
 
 // Matches GeminiAudioSignalsSchema in types.ts exactly (nullable per D-A2 when content_type ∈ slideshow/b_roll).
+//
+// The three ratios accept null so the ADAPTER can blank an unusable mix (`qwen/audio-mix.ts`) —
+// the model is never asked for null here, and the prompt still demands the sum. The invariant is
+// deliberately NOT a Zod refine: a hard parse failure costs a full 60s re-read of the video, while
+// drift detection re-runs only what is cheap and keeps the rest of a perfectly good perception.
 const GeminiAudioSignalsSchema = z.object({
   voice_clarity_0_10:       ScoreSchema.nullable(),
   audio_hook_first_2s_0_10: ScoreSchema.nullable(),
-  silence_ratio:            z.number().min(0).max(1),
-  voiceover_ratio:          z.number().min(0).max(1),
-  music_ratio:              z.number().min(0).max(1),
+  silence_ratio:            z.number().min(0).max(1).nullable(),
+  voiceover_ratio:          z.number().min(0).max(1).nullable(),
+  music_ratio:              z.number().min(0).max(1).nullable(),
   // F16: was min(10) — a terse but legit audio ("music", "silence") failed the WHOLE
   // parse on the length edge. min(1) keeps non-empty while accepting short descriptions.
   audio_description:        z.string().min(1).max(280),

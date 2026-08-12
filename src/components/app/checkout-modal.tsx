@@ -10,6 +10,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { getPlan, TRIAL, type PaidPlanId } from "@/lib/pricing";
+import { track } from "@/lib/analytics/funnel-events";
 
 interface CheckoutModalProps {
   open: boolean;
@@ -22,6 +23,18 @@ interface CheckoutModalProps {
    * a buyer is never charged less than what the button promised.
    */
   trial?: boolean;
+  /**
+   * The onboarding funnel's checkout (the sealed drill's $1 wall). Forwarded to the API so
+   * any full-page redirect out of the embed lands back on /home — an anonymous visitor has
+   * no business on /settings.
+   */
+  funnel?: boolean;
+  /**
+   * Copy overrides for the RESOLVED-trial state only. The denied/full-price branches keep
+   * their honest defaults — a caller's funnel framing must never dress a full-price charge.
+   */
+  heading?: string;
+  subheading?: string;
   onComplete?: () => void;
 }
 
@@ -30,6 +43,9 @@ export function CheckoutModal({
   onClose,
   planId,
   trial = false,
+  funnel = false,
+  heading,
+  subheading,
   onComplete,
 }: CheckoutModalProps) {
   const plan = getPlan(planId);
@@ -55,7 +71,7 @@ export function CheckoutModal({
         const res = await fetch("/api/whop/checkout", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ planId, trial }),
+          body: JSON.stringify({ planId, trial, funnel }),
         });
 
         if (!res.ok) {
@@ -73,7 +89,7 @@ export function CheckoutModal({
     };
 
     fetchCheckoutConfig();
-  }, [open, planId, trial]);
+  }, [open, planId, trial, funnel]);
 
   // Reset state when modal closes
   useEffect(() => {
@@ -91,7 +107,19 @@ export function CheckoutModal({
     }
   };
 
+  // ── The scoreboard (DESIGN §8) ─────────────────────────────────────────────
+  // `checkout_paid` is the one number the whole funnel is judged on, and until
+  // 2026-08-04 it had never been emitted: the spine existed, but its only call
+  // sites were in the walkthrough §0b retired. It is recorded HERE, at the one
+  // component every purchase passes through, rather than at each of the callers
+  // — a caller that forgets is a conversion that never happened, as far as the
+  // funnel can tell.
+  useEffect(() => {
+    if (open) track("checkout_open", { planId, trial });
+  }, [open, planId, trial]);
+
   const handleComplete = () => {
+    track("checkout_paid", { planId, trial: trialApplied, funnel });
     onComplete?.();
     onClose();
   };
@@ -102,14 +130,15 @@ export function CheckoutModal({
         <DialogHeader className="p-6 pb-4">
           <DialogTitle>
             {trialApplied
-              ? `Start ${plan.name} for ${TRIAL.price}`
+              ? (heading ?? `Start ${plan.name} for ${TRIAL.price}`)
               : trial
                 ? `Get ${plan.name}`
                 : `Upgrade to ${plan.name}`}
           </DialogTitle>
           <DialogDescription>
             {trialApplied
-              ? `${TRIAL.price} for ${TRIAL.days} days, then ${plan.price}${plan.priceSuffix}. Cancel anytime.`
+              ? (subheading ??
+                `${TRIAL.price} for ${TRIAL.days} days, then ${plan.price}${plan.priceSuffix}. Cancel anytime.`)
               : trial
                 ? `Your account has already used its $1 trial — ${plan.name} is ${plan.price}${plan.priceSuffix}.`
                 : `Complete your payment to unlock ${plan.name}.`}

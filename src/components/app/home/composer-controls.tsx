@@ -1,24 +1,36 @@
 "use client";
 
 /**
- * ComposerControls — the locked composer control row (UX-01, sketch 006 Variant 1).
+ * ComposerControls — the composer's LEFT cluster, and the skill SSOT.
  *
- *   [+]  [Skill pill ▾]  ······  [model ▾]  [↑ send]
- *                              └─ model + send live in composer.tsx
+ *   [+]  [armed skill ×]  ······  [model ▾]  [↑ send]
+ *        └─ composer.tsx          └─ model + send live in composer.tsx
  *
- * This module owns the LEFT cluster (`+` attach · skill pill) plus every popover, and
- * exports the skill SSOT (ToolId / SKILLS / MODEL_LABEL) + the shared SkillRows list
- * (reused by the composer's `/` slash menu) + SimModelSelector for the RIGHT cluster.
+ * ⚠️ THE SKILL PILL IS GONE (2026-07-28, owner call — Lane 2 step 3). It was a *picker*:
+ * a chip that opened a 9-row popover and set `activeTool`. Once Lane 1 stopped `activeTool`
+ * being a render input, the pill was a submit router with no view side-effects — and a
+ * submit router is what the chat agent replaces. Two doors to the same skills survive it:
+ *
+ *   - the `/` slash menu (composer.tsx) — still SkillRows, still filterable, still the
+ *     deterministic way to reach a skill's own gated + billed route. Owner call: KEEP.
+ *   - the Start grid / starter cards — a tile ARMS a skill for exactly one send.
+ *
+ * What replaced the pill on the composer is NOT a smaller pill: it is a non-interactive
+ * armed-skill indicator (composer.tsx, `armedIndicator`) whose only control is a `×` back
+ * to chat. It states what the next send will spend; it does not offer a menu.
+ *
+ * This module still owns the skill SSOT (ToolId / SKILLS / VERB_BY_TOOL / MODEL_LABEL),
+ * the shared `SkillRows` list (the slash menu's body), `SimModelSelector` for the RIGHT
+ * cluster, `Ico` (the icon set home-starter draws from), and — all that is left of
+ * `ComposerControls` itself — the Explore params popover.
  *
  * Design (flat-warm THEME-06): warm charcoal surfaces, cream text, matte. Premium
  * line-icon SVGs — NO emoji. Popover everywhere (desktop AND mobile — no bottom sheet);
- * popovers open UPWARD with max-height + scroll so 9 skills never clip.
+ * popovers open UPWARD with max-height + scroll so the list never clips.
  *
- * The composer surface carries NO accent: the cream send disc is its only bright element,
- * so the verb pill is a quiet filled capsule (no border, no terracotta) and every other
- * control is a bare glyph. The model selector defaults from the armed skill (Test → Max;
- * else Flash) but the creator can override until they switch skills — UI-only for now;
- * routing still skill-driven.
+ * The composer surface carries NO accent: the cream send disc is its only bright element.
+ * The model selector defaults from the armed skill (Test → Max; else Flash) but the creator
+ * can override until the skill changes — UI-only for now; routing still skill-driven.
  *
  * Replaces tool-chips.tsx (the old chip row + active-model field).
  */
@@ -27,6 +39,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import { HORIZONTAL_ENABLED } from "@/lib/flags/horizontal";
+import type { BillableAction } from "@/lib/pricing";
 
 // ─── Skill vocabulary (SSOT) ─────────────────────────────────────────────────
 // The skill id union, including the not-yet-shipped skills: "explore" (P11),
@@ -38,7 +51,6 @@ export type ToolId =
   | "idea"
   | "hooks"
   | "chat"
-  | "ask"
   | "script"
   | "remix"
   | "explore"
@@ -92,13 +104,18 @@ export const SKILLS: SkillMeta[] = [
   { id: "test",    label: "A real video", desc: "Watch-through + full Read",  command: "/test",    group: "creator",   modes: ["socials"], model: "Max",   enabled: true  },
   { id: "account", label: "Your account", desc: "A Read on your posts",       command: "/account", group: "creator",   modes: ["socials"], model: "Flash", enabled: true  },
   // ── Ask — converse / probe. ──
-  // Two skills, both genuinely "Ask": CHAT is the agent conversation (streams turns, can
-  // dispatch cards); ASK THE ROOM is a one-shot reaction — type a thought, the whole room
-  // reacts (POST /api/tools/react). "Ask the room" replaces the old hidden `audienceOpen`
-  // MODE: after the ambient room became always-present (P2 placement), an input-mode that
-  // silently rerouted the field to the room was pointless — a permanently-open rail made
-  // handleSubmit permanently unreachable. It's a VERB now, so where your words go is explicit.
-  { id: "ask",     label: "Ask the room", desc: "Type a thought → the room reacts",  command: "/ask",  group: "creator",   modes: ["socials"], model: "Flash", enabled: true  },
+  // ⚠️ "Ask the room" (`ask`) was DELETED here on 2026-07-28 — owner call, Lane 2 step 4.
+  // It was a composer VERB that POSTed /api/tools/react and pushed the result into the LEGACY
+  // <AudiencePresence> ask trail. Two things killed it:
+  //   1. Nothing renders it. Verified by probe, both flag ways: on a fresh /home the ask
+  //      charged its credit and NOTHING appeared; under AMBIENT_V2 the v2 rail/sheet never
+  //      consumed `audienceAsks` or the thought focus at all, so it showed nothing anywhere.
+  //   2. It became a PAID action (1 credit, `react` in CREDIT_COSTS) on the same day — so it
+  //      was billing for silence.
+  // The ROUTE stays, and so does its price: the v2 Overview rail's armed sim (`fireSim`) is
+  // its other caller, and the `＋ Test something of your own` door makes that one primary.
+  // Deleting the verb removes a dead door, not a revenue line.
+  //
   // Label is "Chat", not "The room". The Room is the ambient-audience surface and it has its
   // own front door; using its name for the CHAT skill meant the app's default state — now
   // chat — announced itself with a phrase that does not contain the word "chat". The skill
@@ -139,6 +156,13 @@ export const MODEL_LABEL: Record<ToolId, string> = SKILLS.reduce(
   {} as Record<ToolId, string>,
 );
 
+// The billable action a MAX-TIER skill spends — the v8 model chip's price tag reads
+// CREDIT_COSTS through this map (handoff §5: the mock's "12 cr" is fabricated; the
+// pricing table is the only source). Only SHIPPED Max skills appear.
+export const MAX_BILLABLE_BY_TOOL: Partial<Record<ToolId, BillableAction>> = {
+  test: "score",
+};
+
 // ─── Line-icon SVGs (premium, no emoji) — paths from sketch 006 ──────────────
 const ICONS: Record<string, string> = {
   plus: '<path d="M8 3v10M3 8h10"/>',
@@ -169,10 +193,18 @@ const ICONS: Record<string, string> = {
   // The verb-chip mark (v6 Room prototype `.vi` ✦) — a 4-point sparkle, the composer's
   // ONE accent glyph (terracotta). Line-icon form (stroked) to stay on the no-emoji system.
   spark: '<path d="M8 3c.6 3.4 1.6 4.4 5 5-3.4.6-4.4 1.6-5 5-.6-3.4-1.6-4.4-5-5 3.4-.6 4.4-1.6 5-5z"/>',
+  // The skills pill's mark (owner 2026-08-11: "find a better icon"). A 2×2 set — the panel it
+  // opens is a CATALOGUE, and that is the one thing the glyph has to say. A `/` keycap was
+  // tried first and measured at its real 15px size against this: the keycap's rect and its
+  // diagonal collide into an ambiguous blob that reads closer to a cancel mark, while the four
+  // squares stay crisp. `/` gets taught by the panel's per-skill commands instead.
+  grid: '<rect x="2.4" y="2.4" width="4.8" height="4.8" rx="1.3"/><rect x="8.8" y="2.4" width="4.8" height="4.8" rx="1.3"/><rect x="2.4" y="8.8" width="4.8" height="4.8" rx="1.3"/><rect x="8.8" y="8.8" width="4.8" height="4.8" rx="1.3"/>',
+  // One input, two outputs — the router. The AUTO row's mark: what happens when you just type.
+  auto: '<path d="M1.8 8h4.4M6.2 8L9.2 4.4h3.1M6.2 8l3 3.6h3.1"/><path d="M10.9 3.1l1.6 1.3-1.6 1.3M10.9 10.3l1.6 1.3-1.6 1.3"/>',
 };
 
-/** Map each skill id → its line-icon key. */
-const SKILL_ICON: Record<ToolId, string> = {
+/** Map each skill id → its line-icon key. Exported for the composer's armed indicator. */
+export const SKILL_ICON: Record<ToolId, string> = {
   explore: "compass",
   idea: "bulb",
   hooks: "anchor",
@@ -181,7 +213,6 @@ const SKILL_ICON: Record<ToolId, string> = {
   test: "crosshair",
   account: "search",
   chat: "chat",
-  ask: "people", // asks the ROOM (the people) — distinct from chat's speech-bubble glyph
   offer: "tag",
   ad: "mega",
   profile: "people",
@@ -201,8 +232,7 @@ const SKILL_ICON: Record<ToolId, string> = {
 export const VERB_BY_TOOL: Record<ToolId, "Make" | "Test" | "Ask"> = {
   test: "Test",
   account: "Test", // Account Read = judge something real (your own posts) — owner-locked
-  chat: "Ask",
-  ask: "Ask", // Ask the room — the ambient-audience reaction, converse/probe under Ask
+  chat: "Ask", // the last skill under Ask, since `ask` was deleted (see SKILLS)
   idea: "Make",
   hooks: "Make",
   script: "Make",
@@ -251,20 +281,23 @@ export function Ico({
 // NOTE: because it lives outside the controls root, the host's outside-click
 // handler must exclude it via `menuRef` (else the mousedown closes it before a
 // row's click fires).
-function Popover({
+export function UpwardPopover({
   open,
   anchorRef,
   menuRef,
   children,
   className,
   labelledBy,
+  ariaLabel,
 }: {
   open: boolean;
-  anchorRef: React.RefObject<HTMLButtonElement | null>;
+  anchorRef: React.RefObject<HTMLElement | null>;
   menuRef?: React.RefObject<HTMLDivElement | null>;
   children: React.ReactNode;
   className?: string;
   labelledBy?: string;
+  /** Direct name for hosts with no visible trigger label (the v8 slash menu). */
+  ariaLabel?: string;
 }) {
   const [pos, setPos] = useState<{ left: number; bottom: number } | null>(null);
 
@@ -292,6 +325,7 @@ function Popover({
       ref={menuRef}
       role="menu"
       aria-labelledby={labelledBy}
+      aria-label={ariaLabel}
       style={{ left: pos?.left ?? 0, bottom: pos?.bottom ?? 0 }}
       className={cn(
         "fixed z-[60]",
@@ -308,9 +342,14 @@ function Popover({
   );
 }
 
+// Internal alias — exported as UpwardPopover for the v8 slash menu (the composer box's
+// overflow-hidden clips anything absolutely positioned above it; the portal dodges it,
+// which is the whole reason this component exists).
+const Popover = UpwardPopover;
+
 function GroupLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="px-2.5 pb-1 pt-2.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-foreground-muted/60">
+    <div className="px-2.5 pb-1 pt-2.5 text-micro font-semibold uppercase tracking-[0.1em] text-foreground-muted/60">
       {children}
     </div>
   );
@@ -322,6 +361,7 @@ export function SkillRows({
   filter,
   onSelect,
   activeMode = "socials",
+  hideIds,
 }: {
   active: ToolId;
   filter?: string;
@@ -329,6 +369,11 @@ export function SkillRows({
   /** Active Audience mode (UX-02 / D-01). Gates the list BEFORE the Make/Test/Ask verb
    *  partition (socials) vs the General group. Defaults to "socials". */
   activeMode?: SkillMode;
+  /** Ids to omit. v8 passes `["chat"]` (owner 2026-08-11: "chat shouldn't be a skill right?" —
+   *  it is `DEFAULT_TOOL`, the state you return to, so it is not something to pick off a
+   *  picker; the skills panel presents it as AUTO instead). Undefined ⇒ nothing is hidden,
+   *  which is what the legacy menu passes: flag-off must stay byte-identical. */
+  hideIds?: readonly ToolId[];
 }) {
   // Scroll the ARMED row into view when the menu opens.
   //
@@ -344,7 +389,8 @@ export function SkillRows({
 
   const q = (filter ?? "").trim().toLowerCase();
   const match = (s: SkillMeta) =>
-    !q || s.label.toLowerCase().includes(q) || s.command.includes(q);
+    (!hideIds || !hideIds.includes(s.id)) &&
+    (!q || s.label.toLowerCase().includes(q) || s.command.includes(q));
   const mode = activeMode ?? "socials";
   // Phase 3 (v6 IA): the Socials skills collapse under three INTENT verbs — Make
   // (create net-new) · Test (judge something real) · Ask (converse). VERB_BY_TOOL is
@@ -401,15 +447,15 @@ export function SkillRows({
           )}
         />
         <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-1.5 text-[13.5px] font-medium leading-tight text-foreground">
+          <span className="flex items-center gap-1.5 text-reading font-medium leading-tight text-foreground">
             {s.label}
             {s.model === "Max" && (
-              <span className="shrink-0 rounded-[4px] border border-white/[0.09] bg-white/[0.03] px-[5px] py-px text-[8.5px] font-semibold uppercase leading-none tracking-[0.06em] text-foreground-muted">
+              <span className="shrink-0 rounded-[4px] border border-white/[0.09] bg-white/[0.03] px-[5px] py-px text-micro font-semibold uppercase leading-none tracking-[0.06em] text-foreground-muted">
                 MAX
               </span>
             )}
           </span>
-          <span className="mt-[3px] block truncate text-[11.5px] leading-tight text-foreground-muted">
+          <span className="mt-[3px] block truncate text-label leading-tight text-foreground-muted">
             {s.desc}
           </span>
         </span>
@@ -418,13 +464,13 @@ export function SkillRows({
             only one row ever used. The check now REPLACES the command on the active row:
             the selected skill is the one wearing a tick, and nothing else has to move. */}
         {!s.enabled ? (
-          <span className="shrink-0 text-[10px] uppercase tracking-wide text-foreground-muted/45">
+          <span className="shrink-0 text-micro uppercase tracking-wide text-foreground-muted/45">
             soon
           </span>
         ) : isActive ? (
           <Ico name="check" size={15} className="shrink-0 text-foreground" />
         ) : (
-          <span className="shrink-0 font-mono text-[11px] tracking-tight text-foreground-muted/40 transition-colors group-hover/row:text-foreground-muted/70">
+          <span className="shrink-0 font-mono text-caption tracking-tight text-foreground-muted/40 transition-colors group-hover/row:text-foreground-muted/70">
             {s.command}
           </span>
         )}
@@ -453,7 +499,7 @@ export function SkillRows({
       )}
       {general.map(Row)}
       {!hasSocials && general.length === 0 && (
-        <div className="px-2.5 py-3 text-[12px] text-foreground-muted">No skills match.</div>
+        <div className="px-2.5 py-3 text-label text-foreground-muted">No skills match.</div>
       )}
     </>
   );
@@ -469,9 +515,15 @@ export interface SimModelSelectorProps {
   value: SkillModel;
   onChange: (m: SkillModel) => void;
   className?: string;
+  /** v8: the armed Max skill's credit price ("10 cr") — a price tag, not a model note. */
+  price?: string;
+  /** `boxed` (default) — the legacy dark chip. `quiet` (v8) — bare muted text + caret, the
+   *  Claude/mock idiom: the model note must not compete with the send disc, so it wears no
+   *  fill and no border and brightens only on hover. */
+  variant?: "boxed" | "quiet";
 }
 
-export function SimModelSelector({ value, onChange, className }: SimModelSelectorProps) {
+export function SimModelSelector({ value, onChange, className, price, variant = "boxed" }: SimModelSelectorProps) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -504,14 +556,37 @@ export function SimModelSelector({ value, onChange, className }: SimModelSelecto
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
+        // A CHIP, not a bare label (2026-07-31, owner call). It used to be text on the composer
+        // floor — no fill, no edge — so the one control that says which engine will spend the
+        // creator's Reading read as decoration. It now carries the SAME fill every in-thread skill
+        // card carries (`bg-surface-sunken` #1a1a19 — see skill-result-card.tsx, which calls it
+        // "the one in-thread card fill"), a 6% edge, and a little more height, so it reads as a
+        // control at a glance. Hover is a SOLID step up, never a white overlay: the chip sits on
+        // the opaque composer floor and a translucent tint would just wash it (CLAUDE.md).
         className={cn(
-          "inline-flex h-[34px] items-center gap-1 rounded-lg px-2 text-[12.5px] transition-colors",
-          "hover:bg-white/[0.05] focus:outline-none focus-visible:ring-1 focus-visible:ring-white/20 pointer-coarse:h-11",
+          variant === "quiet"
+            ? [
+                // v8 — the mock's `.modelflag`: bare muted text, no fill, no border. The foot's
+                // one bright element is the cream send disc; this note only says what answers.
+                "inline-flex h-[34px] items-center gap-1 rounded-md px-1.5 text-label text-foreground-muted transition-colors",
+                "hover:text-foreground focus:outline-none focus-visible:ring-1 focus-visible:ring-white/20 pointer-coarse:h-11",
+              ]
+            : [
+                "inline-flex h-[38px] items-center gap-1 rounded-lg border border-white/[0.06] bg-surface-sunken px-2.5 text-label transition-colors",
+                "hover:border-white/[0.10] hover:bg-[#232322] focus:outline-none focus-visible:ring-1 focus-visible:ring-white/20 pointer-coarse:h-11",
+              ],
         )}
       >
-        <span className="whitespace-pre text-foreground-muted">{"SIM-1 "}</span>
-        <span className="font-medium text-foreground-secondary">{value}</span>
-        <Ico name="chev" size={13} className="text-foreground-muted" />
+        {variant === "quiet" ? (
+          <span className="whitespace-pre">{`SIM-1 ${value}`}</span>
+        ) : (
+          <>
+            <span className="whitespace-pre text-foreground-secondary">{"SIM-1 "}</span>
+            <span className="font-medium text-foreground">{value}</span>
+          </>
+        )}
+        {price && <span className="whitespace-pre text-foreground-muted">{` · ${price}`}</span>}
+        <Ico name="chev" size={13} className={variant === "quiet" ? undefined : "text-foreground-secondary"} />
       </button>
       <Popover open={open} anchorRef={triggerRef} menuRef={menuRef} className="min-w-[260px]">
         {SIM_MODELS.map((tier) => {
@@ -534,10 +609,10 @@ export function SimModelSelector({ value, onChange, className }: SimModelSelecto
               )}
             >
               <span className="min-w-0 flex-1">
-                <span className="block text-[13.5px] font-medium leading-tight text-foreground">
+                <span className="block text-reading font-medium leading-tight text-foreground">
                   {tier.label}
                 </span>
-                <span className="mt-0.5 block text-[12px] leading-snug text-foreground-muted">
+                <span className="mt-0.5 block text-label leading-snug text-foreground-muted">
                   {tier.desc}
                 </span>
               </span>
@@ -552,10 +627,13 @@ export function SimModelSelector({ value, onChange, className }: SimModelSelecto
   );
 }
 
-// ─── ComposerControls — the LEFT cluster ([+] · skill · audience · intent) ────
-// "search" added (P11): the Explore-only params popover trigger sits beside the
-// audience control; only mounts when activeTool === "explore".
-type PopId = "skill" | "search" | null;
+// ─── ComposerControls — what is LEFT of the left cluster ─────────────────────
+// The `+` attach retired (Test absorbs upload), the audience chip moved to
+// <AudiencePresence>, the intent toggle became a property of the audience's goal, and the
+// skill pill was deleted (see the module header). All that remains here is the Explore
+// params popover, which mounts ONLY when activeTool === "explore" — so the component
+// renders nothing at all under every other skill.
+type PopId = "search" | null;
 
 /**
  * Params the Explore "Search" popover passes up to onRunExplore (forwarded to
@@ -571,13 +649,8 @@ export interface ExploreParams {
 }
 
 export interface ComposerControlsProps {
+  /** Only `"explore"` renders anything — this component is the Explore params popover now. */
   activeTool: ToolId;
-  onSelectTool: (id: ToolId) => void;
-
-  /** Active Audience mode (UX-02 / D-01) — gates the skill menu. Defaults to
-   *  "socials" so the live composer is byte-identical until 07-04 threads the real
-   *  mode from the selected audience. */
-  activeMode?: SkillMode;
 
   // Audience identity + switching moved to <AudiencePresence> (P13 fork #3) — the
   // composer's icon-only audience chip retired. These controls no longer take it.
@@ -585,15 +658,16 @@ export interface ComposerControlsProps {
   // Task C (v6 clean composer): the intent control retired too — intent is now a
   // property of the audience's goal (`goal_intent`), never a per-run composer toggle
   // (THE-ROOM-HANDOFF §3.5). And the `+` attach retired — Test absorbs the upload
-  // (selecting Test reveals the drop zone in the composer host), so `onUploadClick`
-  // is gone. The chip is now a VERB chip (Make / Test / Ask) over the same SkillRows.
+  // (selecting Test reveals the drop zone in the composer host).
+  //
+  // `onSelectTool` + `activeMode` went with the skill pill (Lane 2 step 3): nothing in
+  // here picks a skill any more, so taking a picker callback would be a lie in the type.
+  // The `/` slash menu owns SkillRows directly.
 
   /**
    * Run an Explore pull from the params popover (P11 / EXPLORE-01). Wired by the
    * composer to useExploreStream.start. The apply button calls this then closes the
    * popover. Optional so non-Explore composers (none today) stay valid.
-   * CRITICAL (Pitfall 5): the skill pill is NEVER a submit — only this explicit
-   * "Run Explore" apply fires a pull.
    */
   onRunExplore?: (params: ExploreParams) => void;
 
@@ -602,8 +676,6 @@ export interface ComposerControlsProps {
 
 export function ComposerControls({
   activeTool,
-  onSelectTool,
-  activeMode = "socials",
   onRunExplore,
   className,
 }: ComposerControlsProps) {
@@ -614,7 +686,6 @@ export function ComposerControls({
   // mousedown on a menu row closes the popover before the row's click fires.
   const menuRef = useRef<HTMLDivElement>(null);
   // One trigger ref per control so the portaled popover can anchor above it.
-  const skillRef = useRef<HTMLButtonElement>(null);
   const searchRef = useRef<HTMLButtonElement>(null);
 
   // ── Explore params popover local state (P11 / EXPLORE-01, D-06) ─────────────
@@ -644,63 +715,25 @@ export function ComposerControls({
     };
   }, [pop]);
 
-  const skill = getSkill(activeTool);
-
   const toggle = (id: PopId) => setPop((cur) => (cur === id ? null : id));
 
-  // Icon-only control (+, audience, intent) — borderless, quiet.
+  // Icon-only control — borderless, quiet.
   const ctl =
     "grid h-[34px] w-[34px] place-items-center rounded-lg text-foreground-secondary transition-colors hover:bg-surface-elevated hover:text-foreground pointer-coarse:h-11 pointer-coarse:w-11";
 
+  // Nothing to draw under any other skill. Returned AFTER the hooks above (rules of hooks),
+  // and as `null` rather than an empty <div>: an empty flex child still earns the parent's
+  // 6px gap, which read as dead space hanging off the `+` button.
+  if (activeTool !== "explore") return null;
+
   return (
     <div ref={rootRef} className={cn("flex items-center gap-1.5", className)}>
-      {/* SKILL chip — it names the SKILL, and it did not always.
-          It used to render VERB_BY_TOOL[activeTool], i.e. the GROUP: pick "Script" and the
-          chip said "Make". Pick "Explore" and it said "Make". So the only place the armed
-          skill was actually stated was a checkmark hidden inside a closed popover, and the
-          creator could sit there with the wrong skill armed and no way to notice. The chip
-          is the one control that is always on screen — it has to tell the truth.
-          The skill's own icon rides with it, so it echoes the row you picked. */}
-      <div className="relative">
-        <button
-          ref={skillRef}
-          id="composer-skill-pill"
-          type="button"
-          aria-label={`Skill: ${skill.label}`}
-          aria-haspopup="menu"
-          aria-expanded={pop === "skill"}
-          onClick={() => toggle("skill")}
-          className={cn(
-            "inline-flex h-[34px] items-center gap-1.5 rounded-lg bg-white/[0.05] px-3",
-            "text-[13.5px] font-medium text-foreground transition-colors hover:bg-white/[0.08]",
-            "focus:outline-none focus-visible:ring-1 focus-visible:ring-white/20 pointer-coarse:h-11",
-          )}
-        >
-          <Ico name={SKILL_ICON[activeTool]} size={15} className="text-foreground-secondary" />
-          <span>{skill.label}</span>
-          <Ico name="chev" size={13} className="text-foreground-muted" />
-        </button>
-        <Popover open={pop === "skill"} anchorRef={skillRef} menuRef={menuRef} labelledBy="composer-skill-pill">
-          <SkillRows
-            active={activeTool}
-            activeMode={activeMode}
-            onSelect={(id) => {
-              onSelectTool(id);
-              setPop(null);
-            }}
-          />
-        </Popover>
-      </div>
-
-      {/* Audience identity + switching live in <AudiencePresence> now (P13 fork #3) —
-          the icon-only audience chip retired from this LEFT cluster. */}
-
-      {/* Search — Explore-only params popover (P11 / EXPLORE-01, D-06, UI-SPEC §Surface 4).
-          Icon-only borderless control beside the audience picker; mounts ONLY when the
-          Explore skill is active. The popover refines niche/accounts/time-window + the
-          serendipity valve; "Run Explore" (the popover's ONE terracotta accent) lifts the
-          params via onRunExplore then closes. The skill pill is NEVER a submit (Pitfall 5). */}
-      {activeTool === "explore" && (
+      {/* Search — the Explore params popover (P11 / EXPLORE-01, D-06, UI-SPEC §Surface 4).
+          Icon-only borderless control; mounts ONLY when the Explore skill is armed. The
+          popover refines niche/accounts/time-window + the serendipity valve; "Run Explore"
+          (its ONE accent) lifts the params via onRunExplore then closes. Arming a skill is
+          NEVER a submit (Pitfall 5) — this explicit apply is what fires a pull. */}
+      {(
         <div className="relative">
           <button
             ref={searchRef}
@@ -759,7 +792,7 @@ export function ComposerControls({
                         aria-pressed={on}
                         onClick={() => setExWindow(o.id)}
                         className={cn(
-                          "flex-1 rounded-lg border px-2 py-1.5 text-[12.5px] transition-colors",
+                          "flex-1 rounded-lg border px-2 py-1.5 text-label transition-colors",
                           on
                             ? "border-border-hover bg-hover text-foreground"
                             : "border-white/[0.06] text-foreground-secondary hover:border-white/[0.1]",
@@ -786,11 +819,11 @@ export function ComposerControls({
                   aria-label="Serendipity — on-niche to surprise me"
                   className="w-full accent-foreground-muted"
                 />
-                <div className="flex justify-between text-[11px] text-foreground-muted">
+                <div className="flex justify-between text-caption text-foreground-muted">
                   <span>On-niche</span>
                   <span>Surprise me</span>
                 </div>
-                <span className="text-[11px] text-foreground-muted/70">
+                <span className="text-caption text-foreground-muted/70">
                   Slide right to widen beyond your niche.
                 </span>
               </div>
@@ -807,7 +840,7 @@ export function ComposerControls({
                   });
                   setPop(null);
                 }}
-                className="mt-0.5 rounded-lg bg-action px-3 py-2 text-[13px] font-medium text-action-foreground transition-colors hover:bg-action/90"
+                className="mt-0.5 rounded-lg bg-action px-3 py-2 text-body font-medium text-action-foreground transition-colors hover:bg-action/90"
               >
                 Run Explore
               </button>
@@ -815,7 +848,6 @@ export function ComposerControls({
           </Popover>
         </div>
       )}
-
     </div>
   );
 }

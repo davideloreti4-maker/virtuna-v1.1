@@ -1,75 +1,207 @@
 "use client";
 
 /**
- * DiscoverHub — the DISCOVER hub shell (Surfaces IA rationalization): one destination that
- * folds the old /feed and /competitors surfaces into three tabs (Watching · Trending ·
- * Competitors). Owns the radial backdrop, page header, and segmented tab bar; each tab is a
- * shell-less body (FeedClient / CompetitorsClient).
+ * DiscoverHub — the Discover surface: Outliers · Collections · Watchlist.
  *
- * Watching + Trending share ONE FeedClient instance — they are the same feed with a
- * different corpus, so only the `tab` prop flips (no remount → loaded pages + scroll
- * survive the switch). The rv-in fade-up replays only when the BODY changes (feed ⇄
- * competitors), not on watching ⇄ trending.
+ * The rework's premise, from the audit: five of the old six tabs rendered a corpus that was
+ * empty, stale or hardcoded (`scraped_videos` carried a multiplier on 49 of 7,438 rows, a
+ * cover on 104, and nothing had been ingested since 2026-07-13), while the corpus that is
+ * complete — 524 extracted teardowns, every one with a cover, a date and a taxonomy, grouped
+ * into 105 curated collections — reached the model and no user. So the tabs now name what the
+ * product actually holds:
  *
- * /competitors redirects here with ?tab=competitors (deep-link preservation, mirrors
- * /analytics → /grow). URL is kept in sync client-side via history.replaceState (no refetch).
+ *   Outliers    — proven videos (baselined, ≥3×, thin-baseline extremes excluded)
+ *   Collections — the 105 curated groupings, and the videos inside one
+ *   Watchlist   — tracked creators and competitors, merged into one list
+ *
+ * One search field serves all three: it filters the library instantly and free, and offers
+ * the live Pull (5 credits, priced 2026-08-02) only for a handle we don't already hold.
  */
 
-import { useState } from "react";
-import type { FeedTab } from "@/lib/feed/feed-query";
-import type { CompetitorsData } from "@/lib/competitors/competitors-data";
-import { FeedClient } from "@/app/(app)/feed/feed-client";
-import { CompetitorsClient } from "@/app/(app)/competitors/competitors-client";
-import { DiscoverTabBar } from "@/components/discover/discover-tab-bar";
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { MagnifyingGlass, Lightning } from "@phosphor-icons/react";
+import { PageShell, SurfaceHeader } from "@/components/surfaces/surface-header";
+import { SurfaceErrorState } from "@/components/ui/surface-error-state";
+import { DiscoverTabBar, type DiscoverTab } from "@/components/discover/discover-tab-bar";
+import { OutliersPanel } from "@/components/discover/outliers-panel";
+import { CollectionsPanel } from "@/components/discover/collections-panel";
+import { WatchlistPanel } from "@/components/discover/watchlist-panel";
+import { TeardownDetailDialog } from "@/components/discover/teardown-detail";
+import { classifyDiscoverInput } from "@/lib/discover/classify-input";
+import type { DiscoverCorpus } from "@/lib/discover/corpus-reads";
+import type { WatchlistData } from "@/lib/discover/watchlist-reads";
 
-export type DiscoverTab = "watching" | "trending" | "competitors";
+export type { DiscoverTab };
 
 export function DiscoverHub({
+  corpus,
+  watchlist,
   initialTab,
-  competitors,
-  snapshotMap,
-  videosMap,
+  refreshedLabel,
+  failures = { corpus: false, watchlist: false },
 }: {
+  corpus: DiscoverCorpus;
+  watchlist: WatchlistData;
   initialTab: DiscoverTab;
-} & CompetitorsData) {
+  refreshedLabel: string;
+  /** Which of the page's two independent reads REJECTED. A failed read arrives here as an
+   *  empty shape, and empty is indistinguishable from "nothing there" — this is what lets
+   *  the tab say it couldn't read instead of confidently reporting zero. */
+  failures?: { corpus: boolean; watchlist: boolean };
+}) {
+  const router = useRouter();
   const [tab, setTab] = useState<DiscoverTab>(initialTab);
+  const [query, setQuery] = useState("");
+  /** The open teardown detail. Lifted to the hub because both Outliers and Collections open
+   *  the same dialog over the same `corpus.teardowns` map — one instance, one source. */
+  const [openId, setOpenId] = useState<string | null>(null);
 
-  const select = (t: DiscoverTab) => {
-    setTab(t);
-    // Keep the URL shareable/deep-linkable without a navigation (no server refetch).
+  const select = (next: DiscoverTab) => {
+    setTab(next);
+    // Shareable without a navigation — no server refetch, no scroll reset.
     if (typeof window !== "undefined") {
-      window.history.replaceState(null, "", t === "watching" ? "/feed" : `/feed?tab=${t}`);
+      window.history.replaceState(null, "", next === "outliers" ? "/feed" : `/feed?tab=${next}`);
     }
   };
 
-  // Watching/Trending map onto the feed's two corpora.
-  const feedTab: FeedTab = tab === "trending" ? "trending" : "watched";
+  const feedVideos = useMemo(
+    () =>
+      corpus.feedIds
+        .map((id) => corpus.teardowns[id])
+        .filter((v): v is NonNullable<typeof v> => Boolean(v)),
+    [corpus],
+  );
+
+  // There is NO subtitle in the healthy state (owner, 2026-08-04). It counted the library
+  // first ("230 proven outliers · 105 collections · 408 creators"), then described it — and
+  // the description was cut too: the title, the search field and the three tabs already say
+  // what this surface is, so a prose line under the h1 was one more thing to read before
+  // reaching the only control that matters.
+  //
+  // The FAILURE strings stay. They are the only way the surface can say it could not read
+  // its data: a failed read arrives as an EMPTY corpus, which is indistinguishable from an
+  // empty library once the panels render. That is why this line was conditional originally,
+  // and it is the half worth keeping.
+  const subtitle =
+    failures.corpus && failures.watchlist
+      ? "Discover can't reach its data right now."
+      : failures.corpus
+        ? "The outlier library is unavailable right now — your watched sources still load."
+        : undefined;
+
+  // Pull is offered only for something we could actually go and fetch — a handle or a URL,
+  // and only when the library has nothing under that name already.
+  const trimmed = query.trim();
+  const pullable =
+    trimmed.length > 2 &&
+    classifyDiscoverInput(trimmed).mode === "profile" &&
+    !watchlist.sources.some((s) =>
+      s.handle.toLowerCase().includes(trimmed.replace(/^@/, "").toLowerCase()),
+    );
 
   return (
     <div className="relative min-h-full text-foreground">
-      <div className="mx-auto w-full max-w-[1180px] px-4 pb-24 pt-6 lg:px-6">
-        <header className="mb-4">
-          <h1 className="text-[19px] font-semibold tracking-[-0.01em] text-foreground lg:text-[22px]">Discover</h1>
+      {/* Wider than the 880px default. Discover is the one browse surface here that carries a
+          filter rail BESIDE its grid: at 880px the rail took 240 of it and left four columns
+          about 135px wide, which truncated every creator handle to "@f…". The override is
+          scoped to this surface — PageShell is shared, and the reading surfaces want 880. */}
+      <PageShell className="max-w-[1200px]">
+        <SurfaceHeader title="Discover" subtitle={subtitle} />
 
-          <div className="mt-3">
-            <DiscoverTabBar active={tab} onSelectContent={select} />
-          </div>
-        </header>
-
-        {/* Key on the BODY (feed vs competitors), not the tab: watching↔trending keep the
-            same FeedClient so its loaded pages survive; feed↔competitors replays rv-in. */}
-        <div key={tab === "competitors" ? "competitors" : "feed"} className="rv-in">
-          {tab === "competitors" ? (
-            <CompetitorsClient
-              competitors={competitors}
-              snapshotMap={snapshotMap}
-              videosMap={videosMap}
-            />
-          ) : (
-            <FeedClient tab={feedTab} />
-          )}
+        {/* TABS FIRST, then the search field (owner, 2026-08-04). The search is scoped to the
+            ACTIVE tab — it filters outliers, collections or watchlist, never all three — so
+            putting it above the tabs implied a global search over the whole surface and read
+            as the page's primary control. Below them it reads as what it is: a filter on the
+            list you have just chosen. */}
+        <div className="mt-4">
+          <DiscoverTabBar active={tab} onSelect={select} />
         </div>
-      </div>
+
+        <div className="mt-3 flex gap-2">
+          <div className="flex h-10 flex-1 items-center gap-2.5 rounded-lg border border-border bg-surface-sunken px-3">
+            <MagnifyingGlass size={15} className="shrink-0 text-foreground-muted" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search outliers, collections, creators — or paste a @handle"
+              aria-label="Search Discover"
+              className="min-w-0 flex-1 bg-transparent text-body text-foreground outline-none placeholder:text-foreground-muted"
+            />
+          </div>
+          {pullable ? (
+            <button
+              type="button"
+              onClick={() => router.push(`/feed/discover?input=${encodeURIComponent(trimmed)}`)}
+              className="flex h-10 shrink-0 items-center gap-2 rounded-lg border border-border bg-surface-elevated px-3.5 text-label font-semibold text-foreground-secondary transition-colors hover:border-border-hover hover:text-foreground"
+            >
+              <Lightning size={14} weight="fill" />
+              Pull live
+              <span className="rounded-md bg-white/[0.06] px-1.5 py-0.5 text-micro font-medium text-foreground-muted">
+                5 credits
+              </span>
+            </button>
+          ) : null}
+        </div>
+
+        <div key={tab} className="rv-in mt-5">
+          {tab === "outliers" ? (
+            failures.corpus ? (
+              <ReadFailed what="the outlier library" onRetry={() => router.refresh()} />
+            ) : (
+              <OutliersPanel
+                videos={feedVideos}
+                query={query}
+                refreshedLabel={refreshedLabel}
+                onOpen={setOpenId}
+              />
+            )
+          ) : null}
+          {tab === "collections" ? (
+            failures.corpus ? (
+              <ReadFailed what="the collections" onRetry={() => router.refresh()} />
+            ) : (
+              <CollectionsPanel
+                collections={corpus.collections}
+                teardowns={corpus.teardowns}
+                query={query}
+                onOpen={setOpenId}
+              />
+            )
+          ) : null}
+          {tab === "watchlist" ? (
+            failures.watchlist ? (
+              <ReadFailed what="your watchlist" onRetry={() => router.refresh()} />
+            ) : (
+              <WatchlistPanel
+                sources={watchlist.sources}
+                latest={watchlist.latest}
+                query={query}
+                libraryCount={corpus.totals.proven}
+                onBrowseOutliers={() => select("outliers")}
+              />
+            )
+          ) : null}
+        </div>
+      </PageShell>
+
+      <TeardownDetailDialog
+        video={openId ? corpus.teardowns[openId] ?? null : null}
+        onClose={() => setOpenId(null)}
+      />
     </div>
+  );
+}
+
+/** One tab's read failed. The others are untouched, so this replaces the panel and nothing
+ *  else — the whole point of settling the two reads separately. */
+function ReadFailed({ what, onRetry }: { what: string; onRetry: () => void }) {
+  return (
+    <SurfaceErrorState
+      stacked
+      message={`We couldn't load ${what} just now.`}
+      onRetry={onRetry}
+      retryLabel="Try again"
+    />
   );
 }

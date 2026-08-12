@@ -44,6 +44,44 @@ describe("AmbientDetail — absent population", () => {
   });
 });
 
+describe("AmbientDetail — the noteAction slot (the sealed drill's $1 CTA rides here)", () => {
+  const withoutBoth: DomainTemplate = {
+    ...CREATOR_LIVE_TEMPLATE,
+    brain: undefined,
+    population: null,
+  };
+
+  it("renders the action under the audience note", () => {
+    render(
+      <AmbientDetail
+        template={withoutBoth}
+        initialTab="audience"
+        populationNote="Sealed."
+        noteAction={<button type="button">Unlock — $1</button>}
+      />,
+    );
+    expect(screen.getByRole("button", { name: /unlock — \$1/i })).toBeTruthy();
+  });
+
+  it("renders the action under the brain note too — both tabs are sealed states", () => {
+    render(
+      <AmbientDetail
+        template={withoutBoth}
+        initialTab="brain"
+        brainNote="Sealed brain."
+        noteAction={<button type="button">Unlock — $1</button>}
+      />,
+    );
+    expect(screen.getByRole("button", { name: /unlock — \$1/i })).toBeTruthy();
+  });
+
+  it("absent ⇒ the notes render alone, unchanged", () => {
+    render(<AmbientDetail template={withoutBoth} initialTab="audience" populationNote="Sealed." />);
+    expect(screen.getByText("Sealed.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /unlock/i })).toBeNull();
+  });
+});
+
 describe("AmbientDetail — the back affordance", () => {
   it("renders a back control when there is somewhere to go back to", () => {
     render(<AmbientDetail template={CREATOR_LIVE_TEMPLATE} onBack={() => {}} />);

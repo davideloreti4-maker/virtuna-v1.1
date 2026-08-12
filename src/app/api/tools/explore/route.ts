@@ -45,6 +45,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createOpenThreadLazy } from "@/lib/threads/threads";
 import { insertMessage } from "@/lib/threads/messages";
+import { runHeaderBlock } from "@/lib/tools/run-header";
 import { kcStamp } from "@/lib/kc/kc-stamp";
 import { resolveThreadAudience } from "@/lib/audience/resolve-thread-audience";
 import { requireSocialsAudience } from "@/lib/audience/require-socials-audience";
@@ -55,6 +56,7 @@ import { maybeMockSkillRun } from "@/lib/tools/mock/mock-sse";
 import { classifyDiscoverInput, UNSUPPORTED_INPUT_REASON } from "@/lib/discover/classify-input";
 import { type RankedOutlier } from "@/lib/discover/outlier-compute";
 import { rankWithAudienceFit } from "@/lib/discover/explore-rank";
+import { attachOutlierReceipt } from "@/lib/discover/outlier-receipt";
 import {
   getCachedDiscover,
   setCachedDiscover,
@@ -116,6 +118,10 @@ function buildBlockFromRanked(
   isMerged: boolean = false,
 ): OutlierGridBlock {
   const fitRanked = rankWithAudienceFit(ranked, audience, serendipity);
+  // Per-author RECEIPT, applied AFTER the fit re-rank exactly as runExplorePipeline does — a
+  // warm rebuild must print the same number as the cold pull that filled the cache, or the
+  // multiplier changes under the creator on a second identical request.
+  const receipted = attachOutlierReceipt(fitRanked, mode);
   // CR-02: merged competitors tiles are not individually trackable (no per-tile author);
   // mirrors runExplorePipeline so a cache-hit rebuild matches a cache-miss build.
   const trackable = mode === "profile" && !isMerged;
@@ -126,7 +132,7 @@ function buildBlockFromRanked(
     type: "outlier-grid" as const,
     props: {
       mode,
-      tiles: fitRanked.map((t) => ({
+      tiles: receipted.map((t) => ({
         platformVideoId: t.platformVideoId,
         videoUrl: t.videoUrl,
         caption: t.caption,
@@ -180,7 +186,7 @@ export async function POST(request: Request): Promise<Response> {
   if (limited) return limited;
 
   // ── Credit gate (BILLING) — priced admission BEFORE any engine spend ─────────
-  const { refusal, verdict: creditVerdict } = await creditGate(supabase, user.id, "explore");
+  const { refusal, verdict: creditVerdict } = await creditGate(supabase, user, "explore");
   if (refusal) return refusal;
 
   // ── (2) Parse + validate body (EXPLORE-01 customizable params + serendipity) ──
@@ -373,6 +379,10 @@ export async function POST(request: Request): Promise<Response> {
             normalizedInput: normalized,
             serendipity,
             mergeInputs,
+            // The posts reach the glass as the scrape returns them, instead of after the whole
+            // pull + rank finishes. Only the cache-MISS branch takes this path — a hit has no
+            // wait to fill and nothing new to show.
+            onEvidence: (evidence) => send("evidence", evidence),
           });
           block = result.block;
           send("stage", { name: "Pulling outliers", status: "done" });
@@ -392,7 +402,12 @@ export async function POST(request: Request): Promise<Response> {
         send("content", { blocks: [block] });
 
         // Persist: blocks array (canonical body) + KC_GEN_VERSION stamp (D-10).
-        await insertMessage(openThread.id, "assistant", [block], kcStamp().kcGenVersion);
+        await insertMessage(
+          openThread.id,
+          "assistant",
+          [runHeaderBlock({ skill: "explore", audienceLabel: activeAudience?.name }), block],
+          kcStamp().kcGenVersion,
+        );
 
         // BILL — on delivery only, priced by what actually ran: a cache hit is a cheap
         // explore (1), a live pull is a scrape (5). Gated at the cheap price above — an

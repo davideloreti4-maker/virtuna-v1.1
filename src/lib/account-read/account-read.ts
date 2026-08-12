@@ -34,6 +34,13 @@ import { getFollowerTier } from "@/lib/engine/corpus/follower-tier";
 import { CRAFT_DISPOSITIONS } from "@/lib/flywheel/reconcile";
 import type { Reconciliation } from "@/lib/flywheel/reconciliation-repo";
 import type { Disposition } from "@/lib/audience/audience-types";
+import {
+  buildFrameEvidence,
+  buildProfileEvidence,
+  type RunEvidence,
+} from "@/lib/tools/evidence";
+import { formatCount } from "@/lib/account-metrics/account-metrics";
+import { ACCOUNT_READ_PLAN } from "@/lib/account-read/account-read-stages";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -149,6 +156,77 @@ export interface AccountReadDeps {
   reconciliations: Reconciliation[];
   /** The creator's prior Reads (analysis/history) — reserved for working/drop-point enrichment. */
   analysisHistory?: unknown[];
+  /**
+   * The artifacts this read actually pulled, emitted the moment each half of the scrape lands —
+   * the profile (avatar + follower count) and then the posts (covers). Both were already in hand
+   * ~30s before `done`; they just had nowhere to go. Optional: absent ⇒ nothing is emitted and
+   * behaviour is byte-identical.
+   */
+  onEvidence?: (evidence: RunEvidence) => void;
+  /** Real phase boundaries for the loading spine. Optional, same as onEvidence. */
+  onStage?: (name: string, status: 'active' | 'done') => void;
+}
+
+/** Re-exported so server callers keep one import; the names live in a client-safe module. */
+export { ACCOUNT_READ_PLAN } from "@/lib/account-read/account-read-stages";
+
+/**
+ * The scraped account as rail evidence. Every string comes off the scraped row: the follower
+ * count is only claimed when the scrape actually returned one (0 is TikTok's "unknown" here as
+ * much as it is a real zero, and "0 followers" under someone's own avatar would be a lie about
+ * their account).
+ */
+function buildProfileFrame(p: ProfileData): RunEvidence | null {
+  const followers = p.followerCount > 0 ? `${formatCount(p.followerCount)} followers` : null;
+  return buildProfileEvidence("Reading your account", {
+    handle: p.handle,
+    image: p.avatarUrl,
+    metric: followers,
+  });
+}
+
+/**
+ * The creator's own posts as a filmstrip. `slots` is what we ASKED for (30, capped by the strip's
+ * own maximum) so the strip is drawn at full width and fills, rather than growing and reflowing.
+ */
+/**
+ * Emit rail evidence, and NEVER let it break the read.
+ *
+ * The account read costs the creator 5 credits and runs two real Apify scrapes. Evidence is
+ * decoration on top of that: a thrown builder — a null row, an unexpected shape, anything inside
+ * formatCount — would otherwise reject the chained promise, fail the Promise.all, and hand back
+ * `scrape_failed` for a scrape that actually SUCCEEDED. Paying for work that completed and being
+ * told it failed is the worst outcome available here, and a thumbnail is not worth it.
+ */
+function emitEvidenceSafely(deps: AccountReadDeps, build: () => RunEvidence | null): void {
+  if (!deps.onEvidence) return;
+  try {
+    const evidence = build();
+    if (evidence) deps.onEvidence(evidence);
+  } catch {
+    /* the READ is what was paid for — a missing rail is not a failure */
+  }
+}
+
+/** Name the plan row a payload belongs to, so a concurrent run's rail cannot land on the wrong one. */
+function withStep(evidence: RunEvidence | null, step: string): RunEvidence | null {
+  return evidence ? { ...evidence, step } : null;
+}
+
+function buildAccountPostFrames(videos: VideoData[]): RunEvidence | null {
+  // Numberless (owner's rule, 2026-08-05): the loading UI never reports how many things the
+  // pipeline pulled or watched. This said "Reading 30 of your posts", which is precisely that.
+  //
+  // The count here was already subtle enough to have been got wrong once: `buildFrameEvidence`
+  // passes back the number of tiles it will DRAW (capped at MAX_EVIDENCE_ITEMS), so using it
+  // announced "Reading 8 of your posts" on a read that had just analyzed 30 — contradicting the
+  // card that replaces it seconds later. Dropping the number removes the whole class of that bug,
+  // and the strip still reads as what it is: a sample of the history.
+  //
+  // `scraped` stays: it is the SLOT count, which is what makes the filmstrip draw its full width
+  // up front and fill in order instead of reflowing as frames land. That is layout, not copy.
+  const scraped = videos.length;
+  return buildFrameEvidence(() => "Your recent posts", videos.map((v) => v.coverUrl ?? null), scraped);
 }
 
 /** Minimal scraping surface — injectable for tests (mirrors calibration.ts). */
@@ -341,11 +419,41 @@ export async function generateAccountRead(
   let videos: VideoData[];
 
   // ── Scrape own account (parallel — independent Apify runs) ──────────────────
+  // Still parallel and still one await: the two halves are chained INDIVIDUALLY so each can
+  // report the moment it lands, then awaited together exactly as before. This is the whole of
+  // fix 4a — the avatar, the follower count and 30 covers were already in hand ~30s before
+  // `done`, sitting behind a single static "Reading your account…" line.
   try {
-    [profile, videos] = await Promise.all([
-      provider.scrapeProfile(handle),
-      provider.scrapeVideos(handle, 30),
-    ]);
+    // Both scrapes are dispatched together, so both rows light together. Chaining row 2's
+    // transitions to the PROFILE promise encoded an assumption — "the profile lands first" — that
+    // the first live billed run disproved: the 30-post pull came back at 19.1s and the profile at
+    // 37.2s. Row 2 therefore went active and done in the SAME tick, so the row whose work actually
+    // took the time never rendered as in-progress at all, and its covers were drawn under row 1.
+    //
+    // Each row now reports ITS OWN scrape. Two rows are live at once because two scrapes really
+    // are, and whichever wins is shown winning.
+    deps.onStage?.(ACCOUNT_READ_PLAN[0]!, 'active');
+    deps.onStage?.(ACCOUNT_READ_PLAN[1]!, 'active');
+
+    const profileP = provider.scrapeProfile(handle).then((p) => {
+      // The phase boundary is a fact about the PIPELINE and must not depend on whether there is
+      // something pretty to show: an account with no avatar and no handle produces no evidence,
+      // and gating the transition on it left the spine stuck on step 1 for the whole run.
+      deps.onStage?.(ACCOUNT_READ_PLAN[0]!, 'done');
+      // The FIRST producer of kind:'profile' — the rail has always supported the avatar disc and
+      // nothing emitted one until now. Tagged with its row: with two rows live, "hangs off the
+      // active row" would put it on whichever is first in the plan rather than the one it is of.
+      emitEvidenceSafely(deps, () => withStep(buildProfileFrame(p), ACCOUNT_READ_PLAN[0]!));
+      return p;
+    });
+
+    const videosP = provider.scrapeVideos(handle, 30).then((v) => {
+      deps.onStage?.(ACCOUNT_READ_PLAN[1]!, 'done');
+      emitEvidenceSafely(deps, () => withStep(buildAccountPostFrames(v), ACCOUNT_READ_PLAN[1]!));
+      return v;
+    });
+
+    [profile, videos] = await Promise.all([profileP, videosP]);
   } catch (err) {
     // Scrape failure is distinct from thin-data (P7 D-06 / UI-SPEC).
     return {

@@ -66,18 +66,28 @@ describe("AmbientOverviewRail", () => {
   });
 
   /**
-   * The "on call" cast footer is derived from the room's NAMED SLICES (`audience.personas` →
-   * `segments` → `deriveCast`). General carries none, and General is the default for every new
-   * creator — so the footer used to render as a bare "on call" label under a border rule, with
-   * zero avatars, as the first thing a new user sees in the rail (caught live 2026-07-24).
-   * No cast ⇒ no footer. We never invent slices to fill it.
+   * The header states the room's FACTS; the avatars are gone (rev B+, 2026-08-02).
+   *
+   * The board used to wear a bordered `CALIBRATED` pill beside the name and an "on call" avatar
+   * footer pinned to the bottom — and between them they told a creator one word about their room.
+   * How many minds, how it was calibrated, and where they read were on no surface at all. The
+   * facts line says all three; the pill and the footer are deleted.
+   *
+   * The footer had a second, worse mode: it derives from the room's NAMED SLICES, General carries
+   * none, and General is every new creator's default — so the first thing a new user saw in the
+   * rail was a bare "on call" label under a rule with zero avatars beside it (caught live
+   * 2026-07-24). It cannot regress now, in either room, and both are asserted.
    */
-  it("hides the on-call footer entirely for the General baseline room (no named slices)", () => {
+  it("states the room's real facts in the header — viewers · calibration · what it simulates for", () => {
     render(<AmbientOverviewRail audience={audience} descriptors={descriptors} reducedMotion />);
-    expect(screen.queryByText("on call")).toBeNull();
+    const board = screen.getByTestId("ambient-overview").textContent ?? "";
+    // "viewers" / "simulating for", not "minds" / "reads on" (owner ruling 2026-08-12).
+    expect(board).toContain("1,000 viewers"); // TIER_N.flash, the real headcount of a Flash read
+    expect(board).toContain("baseline"); // General ⇒ the honest badge, not "calibrated"
+    expect(board).toContain("simulating for TikTok"); // the scene, from the same source ⑤ arms with
   });
 
-  it("shows the on-call footer with real initials once the room HAS named slices", () => {
+  it("renders NO cast footer and NO calibration pill — in the General room or a calibrated one", () => {
     const calibrated: Audience = {
       ...audience,
       is_general: false,
@@ -86,11 +96,39 @@ describe("AmbientOverviewRail", () => {
         { archetype: "fyp", label: "Drive-by scrollers", share: 0.4 },
       ] as Audience["personas"],
     };
-    render(<AmbientOverviewRail audience={calibrated} descriptors={descriptors} reducedMotion />);
-    expect(screen.getByText("on call")).toBeTruthy();
-    // initials of the REAL slice labels — never invented
-    expect(screen.getByText("G")).toBeTruthy();
-    expect(screen.getByText("D")).toBeTruthy();
+    const { rerender } = render(
+      <AmbientOverviewRail audience={audience} descriptors={descriptors} reducedMotion />,
+    );
+    expect(screen.queryByText("on call")).toBeNull();
+
+    // The calibrated room is the one that USED to render avatars — two named slices, so `deriveCast`
+    // returns two members. It still does (the derivation is kept, handoff §8); nothing draws them.
+    rerender(<AmbientOverviewRail audience={calibrated} descriptors={descriptors} reducedMotion />);
+    expect(screen.queryByText("on call")).toBeNull();
+    expect(screen.queryByText("G")).toBeNull();
+    expect(screen.queryByText("D")).toBeNull();
+    // …and this room's facts line reports ITS calibration, not the baseline's.
+    expect(screen.getByTestId("ambient-overview").textContent).toContain("calibrated");
+  });
+
+  /**
+   * THE 0/10 RANK IS DEAD (owner, 2026-08-02) — and this is the surface it was printed on.
+   * Both descriptors carry a `fraction` ("3/10 stop" / "9/10 stop"), so if any of it comes back —
+   * the number, a bar, or a sort keyed to it — it comes back here first.
+   */
+  it("prints no /10 on a queued row, and offers the Simulate door instead", () => {
+    render(<AmbientOverviewRail audience={audience} descriptors={descriptors} reducedMotion />);
+    const board = screen.getByTestId("ambient-overview").textContent ?? "";
+    expect(board).not.toMatch(/\d+\s*\/\s*10/);
+    expect(board).not.toContain("Strong");
+    expect(board).not.toContain("Weak");
+    // The row's one affordance is the run it hasn't had. Two queued descriptors ⇒ two doors.
+    expect(screen.getAllByText(/Simulate\s*→/)).toHaveLength(2);
+    // Ledger order, not the 9/10-first order the dead rank produced.
+    const rows = screen.getAllByRole("button").map((b) => b.textContent ?? "");
+    const hook = rows.findIndex((t) => t.includes("Nobody tells you the first 10k"));
+    const idea = rows.findIndex((t) => t.includes("I quit my 9-5"));
+    expect(hook).toBeLessThan(idea);
   });
 
   it("re-seals a row from persistedSeals on mount — no fire needed (survives reload, Phase D)", () => {
@@ -139,19 +177,22 @@ describe("AmbientOverviewRail", () => {
     // tapping the SEALED row opens the depth drill (not Simulate) — it has a real population
     fireEvent.click(screen.getByRole("button", { name: /I quit my 9-5 with \$400/ }));
     expect(screen.getByTestId("ambient-detail")).toBeTruthy();
-    // opens BRAIN-first (owner call 2026-07-24: text sim = full video Brain parity). The text brain is
-    // the SAME attention-scrubber the video draws (modeled retention curve + real transcript), headed by
-    // the REAL top-reason synthesis — the friction (loss) reason, humanized + coral. This REVERSED the
-    // old reason-bars stance, so "What carried the stop" must NOT render; and it is NEVER the "text
-    // concept sim — unavailable" paused state. (textContent matcher tolerates the synthesis' spans.)
+    // Opens BRAIN-first, and the text brain is its OWN instrument (§3.3): video has the timeline
+    // and no voices, text has the voices and no timeline. The 2026-07-24 parity pass handed text a
+    // MODELED retention curve so both kinds drew the same figure; rev 12 takes it back out, because
+    // a modeled timeline is precisely what a text concept does not have. Its driver is the REAL
+    // coded-reason tally — the one measured thing on the page — under an answer that names the leak.
     const bodyHas = (re: RegExp) =>
       screen.getAllByText((_content, el) => !!el && re.test(el.textContent ?? "")).length > 0;
-    expect(bodyHas(/Most who stalled did so on/i)).toBe(true); // the real "why they stopped" synthesis
-    expect(bodyHas(/too slow/i)).toBe(true); // the friction (loss) reason leads it (520 vs 120: loss wins)
-    expect(screen.queryByText(/What carried the stop/i)).toBeNull(); // the reversed-away reason-bars header
+    expect(screen.getByText("Why they scrolled")).toBeTruthy(); // the reason bars ARE the text driver
+    expect(bodyHas(/Too slow/)).toBe(true); // the friction (loss) reason renders as its own row
+    expect(bodyHas(/Too slow is what leaks/i)).toBe(true); // …and the answer headline names it
+    // The banned verb: the live rail meant "would stop" as the GOOD outcome (stopped scrolling)
+    // while every creator reads it as the loss. One verb, two polarities — so it is gone.
+    expect(screen.queryByText(/would stop/i)).toBeNull();
     expect(screen.queryByText(/text concept sim/i)).toBeNull(); // never the unavailable fallback
     // the Population tab is still reachable — the same sim's REAL districts render there
-    fireEvent.click(screen.getByRole("button", { name: /The audience/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Audience" }));
     expect(screen.getAllByText(/builders/).length).toBeGreaterThan(0);
   });
 
@@ -187,7 +228,7 @@ describe("AmbientOverviewRail", () => {
     // tap 1 → reveal the already-measured attention % (no network — the Test analysis produced it)
     fireEvent.click(row);
     expect(screen.getByText(/62\.0%/)).toBeTruthy();
-    expect(screen.getByText(/84 viral/)).toBeTruthy(); // native score stays in view
+    expect(screen.getByText(/viral 84/)).toBeTruthy(); // native score stays in view
 
     // tap 2 → drill into the real Brain depth (brain-first for a video)
     fireEvent.click(screen.getByRole("button", { name: /Here is the money truth/ }));
@@ -236,7 +277,7 @@ describe("AmbientOverviewRail", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: /Here is the money truth/ })); // reveal
     fireEvent.click(screen.getByRole("button", { name: /Here is the money truth/ })); // drill
-    fireEvent.click(screen.getByRole("button", { name: /The audience/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Audience" }));
 
     // the fold's REAL archetypes are the districts — the room, named, not a placeholder
     // (display names, so this also proves the slugs go through `archetypeDisplayName`)
@@ -296,18 +337,25 @@ describe("AmbientOverviewRail", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: /Here is the money truth/ })); // reveal
     fireEvent.click(screen.getByRole("button", { name: /Here is the money truth/ })); // drill
-    fireEvent.click(screen.getByRole("button", { name: /The audience/ }));
+    // The action profile answers ENGAGEMENT's question — what they did with it — so rev 12 renders
+    // it there, in the tile grammar, rather than beside the audience census where it used to sit.
+    fireEvent.click(screen.getByRole("button", { name: "Engagement" }));
 
-    expect(screen.getByText(/what they’d do with it/i)).toBeInTheDocument();
-    // the four verbs, and the real headcount off the real cast (3 of 5 carry any intent)
-    expect(screen.getByText("rewatch")).toBeInTheDocument();
-    expect(screen.getByText(/3 of 5/)).toBeInTheDocument();
-    // the read GROUPS the head — save tops comment by 3 points, which is sort order, not a finding
-    expect(screen.getByText(/run together \(38–48\); rewatch is the floor at 21\./)).toBeInTheDocument();
-    // and the denominator is stated: these are not rates
-    expect(screen.getByText(/not a room average/)).toBeInTheDocument();
-    // the section it sits beside stays absent — intent is not a reach claim
+    expect(screen.getByText("Projected reaction")).toBeInTheDocument();
+    // the verbs, and the real headcount off the real cast (3 of 5 carry any intent)
+    expect(screen.getByText("Rewatch")).toBeInTheDocument();
+    expect(screen.getByText(/3 of 5 would act/)).toBeInTheDocument();
+    // still a reach-free claim: no multiplier, no cascade, no carrier ranking anywhere near it
     expect(screen.queryByText(/who spreads it/i)).toBeNull();
+
+    // The tiles carry the SCALE, never a watch figure. `watchThroughPct` used to print as the delta
+    // under all four verbs, which put a third watch-depth answer (65%) on a page whose Key metrics
+    // card already answers it twice — audience-weighted seconds, and the share who reached the end.
+    // Renaming could not fix that: the collision is between the numbers, not the words.
+    expect(screen.getByText(/intent index 0–100/)).toBeInTheDocument();
+    expect(screen.queryByText(/watch-through/i)).toBeNull();
+    // …and one fact is stated once: the four verbs no longer repeat a single global figure.
+    expect(screen.queryAllByText(/% watch/i)).toHaveLength(0);
   });
 
   it("a focusVideo request opens that video's depth directly — the Test card's door", () => {
@@ -432,5 +480,71 @@ describe("AmbientOverviewRail", () => {
     expect(fetchMock).toHaveBeenCalled();
     // no fabricated seal — no "%.0%" sealed value appears
     expect(screen.queryByText(/\d+\.\d%/)).toBeNull();
+  });
+});
+
+// ─── The funnel wall — sealed wire seals (ONBOARDING-FUNNEL-DESIGN.md §0b②) ───
+// An anonymous session's /api/threads/open sends the SEALED wire form: analysisId +
+// craft score, nothing else. The rail must render that as a queued row that opens the
+// sealed drill — honest withheld notes, and no % anywhere, because none was transmitted.
+
+describe("AmbientOverviewRail — the funnel wall (sealed wire seals, §0b②)", () => {
+  const sealedSeal = {
+    sealed: true as const,
+    at: "2026-07-26T12:00:00Z",
+    video: { analysisId: "an-1", craftScore: 84 },
+  };
+
+  it("a sealed video renders as a queued row (craft score, no %) and a tap opens the SEALED drill", () => {
+    render(
+      <AmbientOverviewRail
+        audience={audience}
+        descriptors={[]}
+        reducedMotion
+        persistedSeals={{ "an-1": sealedSeal }}
+      />,
+    );
+    // The row: honest fallback label (the wire seal carries no verbatim) + the craft score.
+    const row = screen.getByRole("button", { name: /Tested video/ });
+    expect(row).toBeTruthy();
+    expect(screen.getByText(/84/)).toBeTruthy();
+    // No attention % anywhere — the wire never carried one.
+    expect(screen.queryByText(/\d+(\.\d+)?%/)).toBeNull();
+
+    // The tap opens the sealed drill directly — there is no % to reveal first.
+    fireEvent.click(row);
+    expect(screen.getByTestId("ambient-detail")).toBeTruthy();
+    // The audience tab leads (no brain) with the WALL sentence — withheld, not "no run yet".
+    expect(screen.getByText(/reaction is sealed/i)).toBeTruthy();
+    // Still no % after the drill — the sealed surface cannot leak what it never received.
+    expect(screen.queryByText(/\d+(\.\d+)?%/)).toBeNull();
+  });
+
+  it("the sealed drill's brain tab carries the sealed note, not the text-sim excuse", () => {
+    render(
+      <AmbientOverviewRail
+        audience={audience}
+        descriptors={[]}
+        reducedMotion
+        persistedSeals={{ "an-1": sealedSeal }}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Tested video/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Brain" }));
+    expect(screen.getByText(/unlocks with the simulation verdict/i)).toBeTruthy();
+  });
+
+  it("a focusVideo request (the Test card's Simulate door) opens the sealed drill directly", () => {
+    render(
+      <AmbientOverviewRail
+        audience={audience}
+        descriptors={[]}
+        reducedMotion
+        persistedSeals={{ "an-1": sealedSeal }}
+        focusVideo={{ id: "an-1", nonce: 1 }}
+      />,
+    );
+    expect(screen.getByTestId("ambient-detail")).toBeTruthy();
+    expect(screen.getByText(/reaction is sealed/i)).toBeTruthy();
   });
 });

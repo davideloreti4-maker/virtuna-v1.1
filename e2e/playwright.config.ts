@@ -15,7 +15,10 @@ export default defineConfig({
   outputDir: 'test-results',
 
   use: {
-    baseURL: 'http://localhost:3000',
+    // Port 3000 stays the default, but slot/milestone worktrees each run their own dev
+    // server on their own port (one server per port is a house rule) — a hardcoded 3000
+    // meant this suite silently targeted whatever OTHER worktree happened to own it.
+    baseURL: process.env.E2E_BASE_URL || 'http://localhost:3000',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'off',

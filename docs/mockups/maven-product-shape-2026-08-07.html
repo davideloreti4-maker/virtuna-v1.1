@@ -1,0 +1,1138 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maven — product shape sketch (2026-08-07)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..600&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap" rel="stylesheet">
+<style>
+/* ══ review-page chrome (scaffolding, NOT the design under review) ══════════ */
+:root{
+  --app:#1f1f1e; --chrome:#1a1a19; --chip:#2c2c2b; --card:#252524; --well:#232322;
+  --cream:#ece7de; --dim:#c2bdb4; --faint:#8a857c;
+  --ghost:rgba(236,231,222,.14);
+  --border:rgba(255,255,255,.06); --hair:rgba(255,255,255,.10); --hover:rgba(255,255,255,.05);
+  --accent:#FF6363;
+  --r-card:12px; --r-btn:8px; --r-sm:6px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#141413;color:var(--cream);font-family:Inter,-apple-system,system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;padding:48px 24px 120px;font-size:13px;line-height:1.5}
+.wrap{max-width:1000px;margin:0 auto}
+.pagehead{margin:0 auto 8px}
+.pagehead .eyebrow{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+.pagehead h1{font-family:Newsreader,Georgia,serif;font-size:30px;font-weight:400;letter-spacing:-.015em;margin-top:10px}
+.pagehead p{margin-top:10px;font-size:13px;color:var(--faint);line-height:1.6;max-width:660px}
+.pagehead .meta{margin-top:16px;font-size:11.5px;color:var(--faint)}
+.pagehead .meta b{color:var(--dim);font-weight:500}
+
+.scope{margin-top:26px;padding:18px 20px 20px;border:1px solid var(--hair);border-radius:var(--r-card);background:var(--chrome)}
+.scope-h{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--dim)}
+.scope p{margin-top:10px;font-size:12.5px;color:var(--faint);line-height:1.6;max-width:720px}
+.scope p b{color:var(--dim);font-weight:500}
+.scope-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px}
+.scope-grid > div{padding:11px 12px;background:var(--card);border:1px solid var(--border);border-radius:var(--r-btn)}
+.scope-grid b{display:block;font-size:12px;font-weight:500;color:var(--cream)}
+.scope-grid span{display:block;font-size:10.5px;color:var(--faint);margin-top:4px;line-height:1.4}
+.sect{margin-top:64px}
+.sect-head{display:flex;align-items:baseline;gap:12px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.sect-head .n{font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums}
+.sect-head h2{font-size:14px;font-weight:600;letter-spacing:-.01em}
+.sect-head .note{margin-left:auto;font-size:11.5px;color:var(--faint);text-align:right;max-width:420px}
+.sect > .lede{margin-top:14px;font-size:12.5px;color:var(--faint);line-height:1.6;max-width:680px}
+.stage{margin-top:22px;display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start}
+.cap{margin-top:9px;font-size:11px;color:var(--faint);line-height:1.5;max-width:420px}
+.cap b{color:var(--dim);font-weight:500}
+
+/* ══ shared app grammar ═════════════════════════════════════════════════════ */
+.frame{background:var(--app);border:1px solid var(--border);border-radius:14px;overflow:hidden;flex:none}
+.w-lg{width:880px} .w-md{width:430px} .w-sm{width:340px}
+
+.topbar{display:flex;align-items:center;gap:10px;padding:12px 18px;border-bottom:1px solid var(--border);background:var(--chrome)}
+.mark{width:18px;height:18px;flex:none}
+.wordmark{font-size:13.5px;font-weight:600;letter-spacing:-.01em}
+.topbar .sp{margin-left:auto;display:flex;gap:8px;align-items:center}
+.lens{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--dim);
+  padding:4px 9px;border:1px solid var(--border);border-radius:999px}
+.avatar{width:22px;height:22px;border-radius:999px;background:var(--chip);border:1px solid var(--hair);
+  font-size:9px;color:var(--faint);display:flex;align-items:center;justify-content:center}
+
+.nav{display:flex;gap:2px;padding:8px 12px;border-bottom:1px solid var(--border);background:var(--chrome)}
+.nav a{font-size:12px;color:var(--faint);padding:5px 11px;border-radius:var(--r-btn);text-decoration:none}
+.nav a.on{color:var(--cream);background:var(--hover)}
+
+.body{padding:24px 22px 26px}
+.eyebrow{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--faint)}
+h3.voice{font-family:Newsreader,Georgia,serif;font-size:25px;font-weight:400;letter-spacing:-.015em;line-height:1.25}
+.sub{margin-top:7px;font-size:12.5px;color:var(--faint);line-height:1.55}
+
+.btn{font:inherit;font-size:12.5px;font-weight:500;padding:9px 16px;border-radius:var(--r-btn);
+  border:1px solid transparent;background:var(--cream);color:#1f1f1e;cursor:pointer;line-height:1}
+.btn.ghost{background:transparent;color:var(--dim);border-color:var(--border)}
+.btn.sm{font-size:11.5px;padding:7px 12px}
+.btn.blk{display:block;width:100%;text-align:center}
+
+.dot-live{width:6px;height:6px;border-radius:999px;background:var(--accent);flex:none}
+.num{font-variant-numeric:tabular-nums}
+.mult{font-variant-numeric:tabular-nums;font-weight:600;letter-spacing:-.01em}
+.tag{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;line-height:1;padding:4px 8px;
+  border-radius:var(--r-sm);background:var(--chip);color:var(--dim)}
+.tag.q{background:transparent;border:1px solid var(--border);color:var(--faint)}
+
+/* ── ① entry ─────────────────────────────────────────────────────────────── */
+.entry{padding:38px 34px 34px;text-align:center}
+.niches{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:24px}
+.niche{padding:16px 10px;border:1px solid var(--border);border-radius:var(--r-card);background:var(--chip);
+  font-size:12px;color:var(--dim);cursor:pointer}
+.niche.on{background:var(--cream);color:#1f1f1e;border-color:transparent;font-weight:500}
+.plats{display:flex;gap:8px;margin-top:24px;justify-content:center}
+.plat{flex:1;padding:20px 10px;border:1px solid var(--border);border-radius:var(--r-card);background:var(--chip);font-size:12.5px;color:var(--dim);cursor:pointer}
+.plat.on{background:var(--cream);color:#1f1f1e;border-color:transparent;font-weight:500}
+.steps{display:flex;gap:5px;justify-content:center;margin-top:26px}
+.steps i{width:16px;height:2px;border-radius:2px;background:var(--ghost)}
+.steps i.on{background:var(--dim);width:26px}
+
+/* ── ② scan ──────────────────────────────────────────────────────────────── */
+.scan{padding:56px 34px;text-align:center}
+.scanline{font-size:12.5px;color:var(--faint);display:flex;align-items:center;justify-content:center;gap:9px;margin-top:7px}
+.scanline.done{color:var(--dim)}
+.scanline .tick{color:var(--faint)}
+.bigno{font-family:Newsreader,Georgia,serif;font-size:44px;font-weight:400;letter-spacing:-.02em;
+  font-variant-numeric:tabular-nums;margin-top:20px}
+.bigno small{display:block;font-family:Inter,sans-serif;font-size:11.5px;color:var(--faint);letter-spacing:0;margin-top:8px}
+.bar{height:2px;background:var(--ghost);border-radius:2px;margin-top:26px;overflow:hidden}
+.bar i{display:block;height:100%;width:68%;background:var(--dim)}
+
+/* ── ③ the board ─────────────────────────────────────────────────────────── */
+.receipt{display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--card);
+  border:1px solid var(--border);border-radius:var(--r-card)}
+.receipt .txt{font-size:12.5px;color:var(--dim);line-height:1.5}
+.receipt .txt b{color:var(--cream);font-weight:500}
+.receipt .go{margin-left:auto;font-size:11.5px;color:var(--faint);white-space:nowrap}
+
+.boardhead{display:flex;align-items:baseline;gap:10px;margin-top:26px;margin-bottom:12px}
+.boardhead h4{font-size:13px;font-weight:600}
+.boardhead .fresh{font-size:11.5px;color:var(--faint)}
+.boardhead .cadence{margin-left:auto;font-size:11px;color:var(--faint)}
+
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.tile{background:var(--card);border:1px solid var(--border);border-radius:var(--r-card);overflow:hidden;
+  display:flex;flex-direction:column}
+.tile .thumb{height:74px;background:
+  repeating-linear-gradient(115deg,#2a2a29 0 12px,#262625 12px 24px);
+  border-bottom:1px solid var(--border);position:relative}
+.tile .thumb .m{position:absolute;left:10px;bottom:9px;font-size:15px;font-weight:600;
+  font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.tile .thumb .age{position:absolute;right:10px;bottom:10px;font-size:10.5px;color:var(--faint)}
+.tile .in{padding:12px 13px 14px;display:flex;flex-direction:column;gap:7px;flex:1}
+.tile .name{font-size:13px;font-weight:500;letter-spacing:-.01em}
+.tile .why{font-size:11.5px;color:var(--faint);line-height:1.5}
+.tile .foot{margin-top:auto;padding-top:9px;display:flex;align-items:center;border-top:1px solid var(--border)}
+.tile .foot .cta{font-size:11px;color:var(--dim);white-space:nowrap}
+.tile.lit{border-color:var(--hair)}
+.tile.lit .foot .prov{color:var(--dim)}
+
+.composer{margin-top:20px;display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--chrome);
+  border:1px solid var(--border);border-radius:var(--r-btn)}
+.composer .ph{flex:1;font-size:12.5px;color:var(--faint)}
+.composer .snd{width:26px;height:26px;border-radius:var(--r-sm);background:var(--chip);color:var(--faint);
+  display:flex;align-items:center;justify-content:center;font-size:12px}
+
+.wip{margin-top:22px;padding-top:16px;border-top:1px solid var(--border)}
+.wiprow{display:flex;align-items:center;gap:11px;padding:9px 0;font-size:12px;color:var(--dim)}
+.wiprow .st{font-size:10.5px;color:var(--faint);padding:3px 7px;border:1px solid var(--border);border-radius:var(--r-sm)}
+.wiprow .ago{margin-left:auto;font-size:11px;color:var(--faint)}
+
+/* ── ④ the decode ────────────────────────────────────────────────────────── */
+.film{display:grid;grid-template-columns:repeat(6,1fr);gap:3px;margin-top:16px}
+.film i{height:52px;border-radius:3px;background:repeating-linear-gradient(115deg,#2a2a29 0 10px,#262625 10px 20px)}
+.tl{position:relative;height:22px;margin-top:9px;border-top:1px solid var(--border)}
+.tl span{position:absolute;top:7px;font-size:10px;color:var(--faint);transform:translateX(-50%)}
+.tl b{position:absolute;top:-1px;width:1px;height:7px;background:var(--dim)}
+.beats{margin-top:16px;display:flex;flex-direction:column;gap:1px}
+.beat{display:flex;gap:12px;padding:11px 13px;background:var(--card);border:1px solid var(--border)}
+.beat:first-child{border-radius:var(--r-card) var(--r-card) 0 0}
+.beat:last-child{border-radius:0 0 var(--r-card) var(--r-card)}
+.beat + .beat{border-top:none}
+.beat .t{font-size:10.5px;color:var(--faint);width:96px;flex:none;padding-top:1px}
+.beat .v{font-size:12.5px;color:var(--dim);line-height:1.5}
+.beat .v em{font-style:normal;color:var(--cream)}
+.lanes{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.lane{padding:12px 13px;border:1px solid var(--border);border-radius:var(--r-card)}
+.lane .h{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--faint)}
+.lane ul{margin-top:8px;list-style:none;display:flex;flex-direction:column;gap:5px}
+.lane li{font-size:11.5px;color:var(--dim);line-height:1.45;padding-left:12px;position:relative}
+.lane li:before{content:"";position:absolute;left:0;top:7px;width:4px;height:1px;background:var(--faint)}
+.lane.off li{color:var(--faint)}
+.lane.off{background:transparent;border-style:dashed}
+
+/* ── ⑤ the fan + the vote ────────────────────────────────────────────────── */
+.angles{display:flex;flex-direction:column;gap:8px;margin-top:16px}
+.angle{background:var(--card);border:1px solid var(--border);border-radius:var(--r-card);padding:14px 15px}
+.angle.win{border-color:var(--hair);background:var(--well)}
+.angle .top{display:flex;align-items:flex-start;gap:12px}
+.angle .rk{font-size:11px;color:var(--faint);width:14px;flex:none;padding-top:3px;font-variant-numeric:tabular-nums}
+.angle .txt{font-size:14px;line-height:1.4;letter-spacing:-.01em;flex:1}
+.angle .score{flex:none;text-align:right;padding-left:10px}
+.angle .score .f{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.angle .score .l{font-size:10px;color:var(--faint);margin-top:2px}
+.votes{display:flex;gap:3px;margin-top:11px;padding-left:26px}
+.votes i{width:9px;height:9px;border-radius:999px;background:transparent;border:1px solid var(--ghost)}
+.votes i.y{background:var(--dim);border-color:var(--dim)}
+.quote{margin-top:11px;padding-left:26px;font-family:Newsreader,Georgia,serif;font-size:14px;color:var(--dim)}
+.quote cite{display:block;font-family:Inter,sans-serif;font-style:normal;font-size:10.5px;color:var(--faint);margin-top:5px}
+.angle .acts{margin-top:12px;padding-left:26px;display:flex;gap:7px}
+
+.pacing{display:flex;gap:10px;margin-top:16px}
+.pace{flex:1;padding:14px;background:var(--card);border:1px solid var(--border);border-radius:var(--r-card)}
+.pace .ms{font-size:10.5px;color:var(--faint);font-variant-numeric:tabular-nums}
+.pace .lb{font-size:11.5px;color:var(--dim);margin-top:3px}
+.pace .vv{display:flex;gap:3px;margin-top:11px}
+.pace .vv i{width:9px;height:9px;border-radius:999px;border:1px solid var(--ghost)}
+.pace .vv i.y{background:var(--dim);border-color:var(--dim)}
+.pace .vv i.n{background:transparent}
+
+/* the front row — presence through behaviour, not real estate */
+i.fr{display:block;width:18px;height:18px;border-radius:999px;background:var(--chip);border:1px solid var(--border)}
+i.fr.on{border-color:var(--hair);background:var(--well)}
+i.fr.y{background:var(--dim);border-color:var(--dim)}
+
+/* ── ⑥ the room ──────────────────────────────────────────────────────────── */
+.room-scrim{background:var(--chrome);padding:20px}
+.room{background:var(--app);border:1px solid var(--hair);border-radius:var(--r-card);padding:18px 20px 20px}
+.room .rh{display:flex;align-items:center;gap:9px}
+.room .rh .t{font-size:13px;font-weight:600}
+.room .rh .meta{margin-left:auto;font-size:11px;color:var(--faint)}
+.room .anchor{margin-top:11px;padding:10px 12px;background:var(--card);border:1px solid var(--border);
+  border-radius:var(--r-btn);font-size:12.5px;color:var(--dim)}
+.people{margin-top:14px;display:flex;flex-direction:column}
+.person{display:flex;align-items:flex-start;gap:11px;padding:11px 0;border-top:1px solid var(--border)}
+.person .pa{width:26px;height:26px;border-radius:999px;background:var(--chip);border:1px solid var(--border);
+  font-size:9.5px;color:var(--faint);display:flex;align-items:center;justify-content:center;flex:none;margin-top:1px}
+.person .who{font-size:12px}
+.person .who .nm{font-weight:500}
+.person .who .sg{color:var(--faint);font-size:11px;margin-top:1px}
+.person .sq{flex:1;font-family:Newsreader,Georgia,serif;font-size:13.5px;color:var(--dim);padding:0 14px}
+.person .vd{flex:none;font-size:10.5px;color:var(--faint);width:46px;text-align:right;padding-top:2px}
+.person .vd.stop{color:var(--dim)}
+.room .rf{margin-top:14px;padding-top:13px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:center}
+.room .rf .ask{flex:1;font-size:12px;color:var(--faint);padding:9px 12px;background:var(--chrome);
+  border:1px solid var(--border);border-radius:var(--r-btn)}
+
+/* ── ⑦ promote / the wall ────────────────────────────────────────────────── */
+.script{margin-top:14px;border:1px solid var(--border);border-radius:var(--r-card);overflow:hidden}
+.sbeat{display:flex;gap:14px;padding:13px 15px;border-bottom:1px solid var(--border)}
+.sbeat .tc{font-size:10.5px;color:var(--faint);width:44px;flex:none;font-variant-numeric:tabular-nums;padding-top:2px}
+.sbeat .sc{font-size:12.5px;color:var(--dim);line-height:1.55}
+.sbeat.blur .sc{filter:blur(4.5px);user-select:none;color:var(--faint)}
+.sbeat.blur .tc{opacity:.4}
+.wall{padding:20px 18px;text-align:center;background:var(--chrome)}
+.wall .wt{font-family:Newsreader,Georgia,serif;font-size:19px;letter-spacing:-.01em}
+.wall .ws{font-size:11.5px;color:var(--faint);margin-top:7px;line-height:1.5}
+.wall .wb{margin-top:14px;display:flex;gap:8px;justify-content:center}
+
+/* ── ⑧ audience asset ────────────────────────────────────────────────────── */
+.assethead{display:flex;align-items:flex-end;gap:16px}
+.assethead .big{font-family:Newsreader,Georgia,serif;font-size:38px;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1}
+.assethead .lbl{font-size:11.5px;color:var(--faint);padding-bottom:4px;line-height:1.45}
+.tier{margin-left:auto;display:flex;align-items:center;gap:7px;font-size:11px;color:var(--dim);
+  padding:5px 10px;border:1px solid var(--hair);border-radius:999px}
+.cast{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:20px}
+.pc{padding:13px 12px;background:var(--card);border:1px solid var(--border);border-radius:var(--r-card)}
+.pc .pa{width:24px;height:24px;border-radius:999px;background:var(--chip);border:1px solid var(--border);
+  font-size:9px;color:var(--faint);display:flex;align-items:center;justify-content:center}
+.pc .nm{font-size:12px;font-weight:500;margin-top:9px}
+.pc .sg{font-size:10.5px;color:var(--faint);margin-top:2px;line-height:1.4}
+.drift{margin-top:20px;padding-top:16px;border-top:1px solid var(--border)}
+.driftrow{display:flex;align-items:center;gap:12px;padding:8px 0;font-size:12px;color:var(--dim)}
+.driftrow .d{margin-left:auto;font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums}
+
+/* ── ⑨ work ──────────────────────────────────────────────────────────────── */
+.worktbl{margin-top:14px;border:1px solid var(--border);border-radius:var(--r-card);overflow:hidden}
+.wr{display:flex;align-items:center;gap:14px;padding:12px 15px;border-bottom:1px solid var(--border)}
+.wr:last-child{border-bottom:none}
+.wr.hd{background:var(--chrome);font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--faint)}
+.wr .c1{flex:1;font-size:12.5px}
+.wr .c2{width:110px;flex:none;font-size:11.5px;color:var(--faint)}
+.wr .c3{width:86px;flex:none;font-size:11.5px;color:var(--faint);font-variant-numeric:tabular-nums}
+.wr .c4{width:78px;flex:none;font-size:11.5px;color:var(--dim);font-variant-numeric:tabular-nums;text-align:right}
+.state{display:inline-block;font-size:10.5px;padding:3px 8px;border:1px solid var(--border);border-radius:var(--r-sm);color:var(--faint)}
+
+/* ── ⑩ mobile ────────────────────────────────────────────────────────────── */
+.m-top{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--border);background:var(--chrome)}
+.m-body{padding:16px 14px 18px}
+.m-tile{background:var(--card);border:1px solid var(--border);border-radius:var(--r-card);overflow:hidden;margin-bottom:9px}
+.m-tile .th{height:64px;background:repeating-linear-gradient(115deg,#2a2a29 0 12px,#262625 12px 24px);position:relative;border-bottom:1px solid var(--border)}
+.m-tile .th .m{position:absolute;left:10px;bottom:8px;font-size:14px;font-weight:600;font-variant-numeric:tabular-nums}
+.m-tile .mi{padding:11px 12px 12px}
+.m-tile .nm{font-size:12.5px;font-weight:500}
+.m-tile .wy{font-size:11px;color:var(--faint);margin-top:5px;line-height:1.45}
+.m-tile .ft{margin-top:9px;padding-top:8px;border-top:1px solid var(--border);display:flex;align-items:center}
+.m-tile .ft .p{font-size:10.5px;color:var(--faint)}
+.m-tile .ft .c{margin-left:auto;font-size:10.5px;color:var(--dim)}
+.m-bar{display:flex;gap:2px;padding:9px 14px 14px;border-top:1px solid var(--border);background:var(--chrome)}
+.m-bar a{flex:1;text-align:center;font-size:10.5px;color:var(--faint);text-decoration:none;padding:5px 0}
+.m-bar a.on{color:var(--cream)}
+
+/* ── principles table ────────────────────────────────────────────────────── */
+table.pr{width:100%;border-collapse:collapse;margin-top:18px;font-size:12.5px}
+table.pr th{text-align:left;font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);
+  font-weight:500;padding:0 14px 9px 0;border-bottom:1px solid var(--border)}
+table.pr td{padding:11px 14px 11px 0;border-bottom:1px solid var(--border);color:var(--dim);vertical-align:top;line-height:1.55}
+table.pr td:first-child{color:var(--cream);width:190px}
+table.pr td.k{color:var(--faint);width:58px;font-variant-numeric:tabular-nums}
+</style>
+
+<div class="wrap">
+
+<div class="pagehead">
+  <div class="eyebrow">Numen Machines · sketch, not a build</div>
+  <h1>Maven — the product shape</h1>
+  <p>Every surface, in order of how a creator meets them. Built against the locked design system
+     (<code>globals.css</code>): flat-warm charcoal, cream text, matte, and the accent at near-zero dosage —
+     at most one accent element per frame, zero on most. Primary actions are neutral cream, never accent.</p>
+  <div class="meta">
+    <b>Decision this rests on:</b> the evidence layer is a curated, shared, structural format library —
+    see <code>docs/DECISION-outlier-corpus-2026-08-07.md</code>. Tiles are <b>formats</b>, not videos in your niche.<br>
+    <b>Seeded from what already exists:</b> the 532-row Sandcastles corpus (<code>public.outlier_teardowns</code>) —
+    human-curated, classified into <b>13 hook archetypes</b>, with <code>rank.ts</code> already selecting
+    round-robin across archetypes ("six examples, six ways to open"). That is the Board's selection rule,
+    already written. <b>Measured 2026-08-07: 211 rows are printable</b> (≥3×, under the absurd tail) and they
+    cover all 13 archetypes — see §12.<br>
+    <b>Domain is never shown.</b> Naming the donor domain manufactures an objection the user didn't have.
+    The cross-domain machinery stays invisible.<br>
+    <b>Chat stays the main surface</b> (owner call). The Board is the <em>thread's arrival state</em>, not a
+    replacement for it — see §11.
+  </div>
+
+  <div class="scope">
+    <div class="scope-h">⚠️ Read the scope before costing this</div>
+    <p>This document shows every surface a creator touches, so it <em>looks</em> like a redesign. It is not.
+    Almost everything below already exists and is untouched: the skills, the decode → adapt → SIM chain, the
+    thread and its block registry, Work, Audience, credits and the walls. <b>Four things actually change:</b></p>
+    <div class="scope-grid">
+      <div><b>1 · The arrival state</b><span>Largely a reinstatement — see §14</span></div>
+      <div><b>2 · The thread's render treatment</b><span>Results get more weight. No data change.</span></div>
+      <div><b>3 · The audience presence</b><span>New concept — the front row, §11</span></div>
+      <div><b>4 · Corpus → Board wiring</b><span>The one genuinely new pipe</span></div>
+    </div>
+    <p style="margin-top:12px">Plus one gap that must close for any of it to be true: <b>platform never reaches
+    the simulation</b> (§frame 01). Everything else in these frames is reference — how existing parts recompose,
+    not new things to build.</p>
+  </div>
+</div>
+
+<!-- ═══ 1 ENTRY ═══════════════════════════════════════════════════════════ -->
+<div class="sect">
+  <div class="sect-head">
+    <span class="n">01</span><h2>Entry — two taps, no account</h2>
+    <span class="note">Nothing is asked that isn't required to make the next screen work. No email, no signup, no typing.</span>
+  </div>
+  <div class="stage">
+
+    <div>
+      <div class="frame w-md">
+        <div class="topbar"><svg class="mark" viewBox="0 0 32 32" fill="none"><path d="M16 6H13L8 27h3L16 6Zm0 0 5 21h3L19 6h-3Z" fill="#ece7de"/></svg><span class="wordmark">Maven</span></div>
+        <div class="entry">
+          <h3 class="voice">What do you make?</h3>
+          <div class="sub">So we know which domain to adapt into.</div>
+          <div class="niches">
+            <div class="niche">Beauty</div><div class="niche">Fitness</div>
+            <div class="niche on">Money</div><div class="niche">Food</div>
+            <div class="niche">Tech</div><div class="niche">Gaming</div>
+            <div class="niche">Travel</div><div class="niche">Business</div>
+          </div>
+          <div class="steps"><i class="on"></i><i></i></div>
+        </div>
+      </div>
+      <div class="cap"><b>Tap targets, not a text field.</b> A dropdown asks the user to know the taxonomy; a grid just shows it. Maps to the 10 primaries in <code>niches/taxonomy.ts</code>, each of which already carries a persona mix summing to 10.</div>
+    </div>
+
+    <div>
+      <div class="frame w-md">
+        <div class="topbar"><svg class="mark" viewBox="0 0 32 32" fill="none"><path d="M16 6H13L8 27h3L16 6Zm0 0 5 21h3L19 6h-3Z" fill="#ece7de"/></svg><span class="wordmark">Maven</span></div>
+        <div class="entry">
+          <h3 class="voice">Where are you posting?</h3>
+          <div class="sub">This changes how the room reacts — not who's in it.</div>
+          <div class="plats">
+            <div class="plat on">TikTok</div><div class="plat">Instagram</div><div class="plat">YouTube</div>
+          </div>
+          <div class="steps"><i></i><i class="on"></i></div>
+        </div>
+      </div>
+      <div class="cap"><b>Platform is a lens, not a property of the audience.</b> Verified gap: <code>buildReactionPanel()</code> takes <code>{niche, contentType}</code> — platform never reaches the simulation today, so the verdict is currently platform-blind in every case.</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══ 2 SCAN ════════════════════════════════════════════════════════════ -->
+<div class="sect">
+  <div class="sect-head">
+    <span class="n">02</span><h2>The scan — visible labour</h2>
+    <span class="note">2–3 seconds. Real stages, real counts. Never a bare spinner. This is where "compressed effort" is manufactured.</span>
+  </div>
+  <div class="stage">
+    <div>
+      <div class="frame w-md">
+        <div class="scan">
+          <div class="eyebrow">Reading the library</div>
+          <div class="bigno">532<small>proven videos, decoded into 13 ways to open</small></div>
+          <div style="margin-top:26px">
+            <div class="scanline done"><span class="tick">✓</span> Structures decoded</div>
+            <div class="scanline done"><span class="tick">✓</span> Luck factors stripped</div>
+            <div class="scanline">Choosing six for you…</div>
+          </div>
+          <div class="bar"><i></i></div>
+        </div>
+      </div>
+      <div class="cap"><b>Real numbers, and they're better than invented ones.</b> 532 hand-picked videos decoded into 14 structures is a stronger story than a big scrape count, because curation is the claim. "Luck factors stripped" is a teaching line — it plants the signal/noise idea before they've seen a single result. <b>No domain, no niche count</b> anywhere in the copy.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 3 BOARD ═══════════════════════════════════════════════════════════ -->
+<div class="sect">
+  <div class="sect-head">
+    <span class="n">03</span><h2>The Board — home, and it is never empty</h2>
+    <span class="note">Tiles are formats from the shared corpus, not scraped videos. Six curated, each with a number and a reason — and no domain, ever.</span>
+  </div>
+  <div class="lede">First session (cold, no account) and the returning session differ by exactly one strip: the receipt.</div>
+  <div class="stage">
+
+    <div>
+      <div class="frame w-lg">
+        <div class="topbar">
+          <svg class="mark" viewBox="0 0 32 32" fill="none"><path d="M16 6H13L8 27h3L16 6Zm0 0 5 21h3L19 6h-3Z" fill="#ece7de"/></svg>
+          <span class="wordmark">Maven</span>
+          <div class="sp"><span class="lens">Money · TikTok</span><div class="avatar">—</div></div>
+        </div>
+        <div class="nav"><a class="on" href="#">Board</a><a href="#">Work</a><a href="#">Audience</a></div>
+        <div class="body">
+
+          <div class="receipt">
+            <span class="dot-live"></span>
+            <div class="txt">Tuesday's post — we called <b>7 of 10</b>. It did <b>3.1×</b> your median.<br>Your room shifted: skeptics up, scanners down.</div>
+            <div class="go">See what changed →</div>
+          </div>
+
+          <div class="boardhead">
+            <h4>This week's intel</h4>
+            <span class="fresh">3 new since Tuesday</span>
+            <span class="cadence">Refreshed Mondays</span>
+          </div>
+
+          <div class="grid3">
+            <div class="tile lit">
+              <div class="thumb"><span class="m">12.4×</span><span class="age">vs usual views</span></div>
+              <div class="in">
+                <div class="name">The Reversal</div>
+                <div class="why">Claim the opposite of what the viewer expects, then justify it inside 7 seconds.</div>
+                <div class="foot"><span class="cta">Make it mine →</span></div>
+              </div>
+            </div>
+            <div class="tile">
+              <div class="thumb"><span class="m">9.8×</span><span class="age">vs usual views</span></div>
+              <div class="in">
+                <div class="name">Receipt First</div>
+                <div class="why">Open on the proof, never the promise. The claim arrives second.</div>
+                <div class="foot"><span class="cta">Make it mine →</span></div>
+              </div>
+            </div>
+            <div class="tile">
+              <div class="thumb"><span class="m">8.1×</span><span class="age">vs usual views</span></div>
+              <div class="in">
+                <div class="name">The Cost Reveal</div>
+                <div class="why">State a number people in your world don't say out loud.</div>
+                <div class="foot"><span class="cta">Make it mine →</span></div>
+              </div>
+            </div>
+            <div class="tile">
+              <div class="thumb"><span class="m">6.7×</span><span class="age">vs usual views</span></div>
+              <div class="in">
+                <div class="name">Mid-sentence Open</div>
+                <div class="why">Start in the middle of a thought so the viewer has to catch up.</div>
+                <div class="foot"><span class="cta">Make it mine →</span></div>
+              </div>
+            </div>
+            <div class="tile">
+              <div class="thumb"><span class="m">5.2×</span><span class="age">vs usual views</span></div>
+              <div class="in">
+                <div class="name">The Wrong Way</div>
+                <div class="why">Perform the mistake fully before revealing the fix.</div>
+                <div class="foot"><span class="cta">Make it mine →</span></div>
+              </div>
+            </div>
+            <div class="tile">
+              <div class="thumb"><span class="m">4.4×</span><span class="age">vs usual views</span></div>
+              <div class="in">
+                <div class="name">Named Enemy</div>
+                <div class="why">Name a specific thing the viewer already resents. Not a vague one.</div>
+                <div class="foot"><span class="cta">Make it mine →</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="composer">
+            <span class="ph">Or bring your own — a thought, a draft, a link, a video…</span>
+            <span class="snd">↑</span>
+          </div>
+
+          <div class="wip">
+            <div class="wiprow"><span class="st">Angles</span> Reversal → "I'd rather have $30k in debt" <span class="ago">2 days ago</span></div>
+            <div class="wiprow"><span class="st">Script</span> Receipt First → the 4-year screenshot <span class="ago">yesterday</span></div>
+          </div>
+
+        </div>
+      </div>
+      <div class="cap">
+        <b>One accent on the frame</b> — the live dot on the receipt. Everything else is monochrome, including the multipliers.
+        <b>The composer is at the bottom, not the top:</b> the default input is a tap; typing is the second door, always available, never the demand.
+        <b>Cold session</b> = this frame minus the receipt strip and minus "In progress" — so the board still fills the screen on day zero.
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══ 4 DECODE ══════════════════════════════════════════════════════════ -->
+<div class="sect">
+  <div class="sect-head">
+    <span class="n">04</span><h2>The Bench, step one — the decode</h2>
+    <span class="note">Shown BEFORE anything is generated. This is the "told me something I didn't know" beat, and it's what makes the AI output that follows inherit trust.</span>
+  </div>
+  <div class="stage">
+    <div>
+      <div class="frame w-lg">
+        <div class="topbar">
+          <svg class="mark" viewBox="0 0 32 32" fill="none"><path d="M16 6H13L8 27h3L16 6Zm0 0 5 21h3L19 6h-3Z" fill="#ece7de"/></svg>
+          <span class="wordmark">Maven</span>
+          <div class="sp"><span class="lens">Money · TikTok</span><div class="avatar">DL</div></div>
+        </div>
+        <div class="body">
+          <div class="eyebrow">The Reversal · 12.4× vs their usual views · curated exemplar</div>
+          <h3 class="voice" style="margin-top:9px">Why this actually worked</h3>
+          <div class="sub">The topic is irrelevant. These four beats are the part that travels.</div>
+
+          <div class="film"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="tl">
+            <b style="left:4%"></b><span style="left:4%">0:00</span>
+            <b style="left:20%"></b><span style="left:20%">0:02 · claim</span>
+            <b style="left:56%"></b><span style="left:56%">0:07 · the turn</span>
+            <b style="left:92%"></b><span style="left:92%">0:14</span>
+          </div>
+
+          <div class="beats">
+            <div class="beat"><span class="t">Hook pattern</span><span class="v">States a position the viewer <em>already disagrees with</em>, flatly, with no hedge.</span></div>
+            <div class="beat"><span class="t">Structure</span><span class="v">Claim → resistance → single piece of evidence → restated claim. No list, no recap.</span></div>
+            <div class="beat"><span class="t">The turn</span><span class="v">At 0:07 the justification arrives and it is <em>narrower</em> than expected — that gap is the retention.</span></div>
+            <div class="beat"><span class="t">Emotional beat</span><span class="v">Indignation, then relief. The viewer gets to be wrong safely.</span></div>
+          </div>
+
+          <div class="lanes">
+            <div class="lane">
+              <div class="h">Repeatable — this is what we adapt</div>
+              <ul>
+                <li>The flat contrarian claim in the first 2 seconds</li>
+                <li>Withholding justification until 0:07</li>
+                <li>One piece of evidence, never three</li>
+              </ul>
+            </div>
+            <div class="lane off">
+              <div class="h">Luck — stripped, never carried over</div>
+              <ul>
+                <li>Creator already had 400k followers</li>
+                <li>Rode a trending audio for 48 hours</li>
+                <li>Topic was in the news that week</li>
+              </ul>
+            </div>
+          </div>
+
+          <div style="margin-top:18px;display:flex;gap:8px;align-items:center">
+            <button class="btn">Adapt this to Money →</button>
+            <button class="btn ghost sm">See the source video</button>
+          </div>
+        </div>
+      </div>
+      <div class="cap"><b>Zero accent on this frame.</b> The luck lane is dashed and dimmed — visually subtracted, which is the point. Maps 1:1 onto <code>DecodeResult</code>: 4 beats + <code>repeatable[]</code> + <code>luck[]</code>, with D-01 guaranteeing luck can't reach the adapt prompt. <b>Sourcing constraint:</b> corpus decision C says curated rows are internal — never shown verbatim. So this frame renders <em>our decode</em> of the real public video, never the Sandcastles teardown prose. The source link points at the public video, as C requires.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 5 FAN + VOTE ══════════════════════════════════════════════════════ -->
+<div class="sect">
+  <div class="sect-head">
+    <span class="n">05</span><h2>The Bench, step two — the fan and the vote</h2>
+    <span class="note">Three, not five — <code>adapt.ts</code> is hard-locked to exactly 3 concepts (ADAPT-01, a Zod <code>.length(3)</code>). Content first, verdict a beat later.</span>
+  </div>
+  <div class="stage">
+    <div>
+      <div class="frame w-lg">
+        <div class="body">
+          <div class="eyebrow">The Reversal, adapted · Money · TikTok</div>
+          <h3 class="voice" style="margin-top:9px">Three angles. Your room voted.</h3>
+
+          <div class="angles">
+            <div class="angle win">
+              <div class="top">
+                <span class="rk">01</span>
+                <span class="txt">"I'd rather have $30k in debt than $30k in savings."</span>
+                <span class="score"><div class="f">9/10</div><div class="l">would stop</div></span>
+              </div>
+              <div class="votes"><i class="y"></i><i class="y"></i><i class="y"></i><i class="y"></i><i class="y"></i><i class="y"></i><i class="y"></i><i class="y"></i><i class="y"></i><i></i></div>
+              <div class="quote">"wait — what? okay, I'm listening."<cite>Maya · 27 · pays off cards monthly</cite></div>
+              <div class="acts">
+                <button class="btn sm">Turn into a script →</button>
+                <button class="btn ghost sm">5 more like this</button>
+                <button class="btn ghost sm">Who said no?</button>
+              </div>
+            </div>
+
+            <div class="angle">
+              <div class="top">
+                <span class="rk">02</span>
+                <span class="txt">"Stop maxing your 401k."</span>
+                <span class="score"><div class="f">8/10</div><div class="l">would stop</div></span>
+              </div>
+              <div class="votes"><i class="y"></i><i class="y"></i><i class="y"></i><i class="y"></i><i class="y"></i><i class="y"></i><i class="y"></i><i class="y"></i><i></i><i></i></div>
+            </div>
+
+            <div class="angle">
+              <div class="top">
+                <span class="rk">03</span>
+                <span class="txt">"Your emergency fund is losing you money."</span>
+                <span class="score"><div class="f">7/10</div><div class="l">would stop</div></span>
+              </div>
+              <div class="votes"><i class="y"></i><i class="y"></i><i class="y"></i><i class="y"></i><i class="y"></i><i class="y"></i><i class="y"></i><i></i><i></i><i></i></div>
+            </div>
+
+
+          </div>
+
+          <div style="margin-top:16px;display:flex;align-items:center;gap:10px">
+            <span style="font-size:11.5px;color:var(--faint)">The weak spot on #3 — no personal stake. Add one and it moves.</span>
+            <button class="btn ghost sm" style="margin-left:auto">Fix #3</button>
+          </div>
+        </div>
+      </div>
+      <div class="cap"><b>Zero accent.</b> The vote is monochrome — filled dot = would stop, hollow = would scroll. Colour would add nothing and would break the dosage rule for a decorative reason. Only the winning card gets the full treatment (quote + actions); the rest stay compact so the eye lands on the decision.</div>
+    </div>
+
+    <div style="width:100%">
+      <div class="boardhead" style="margin-top:6px"><h4 style="font-size:12px">The signature moment — how the vote lands</h4><span class="cadence">~600ms total, the one animation worth over-investing in</span></div>
+      <div class="pacing">
+        <div class="pace"><div class="ms">0 ms</div><div class="lb">Text arrives. No verdict yet.</div>
+          <div class="vv"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+        <div class="pace"><div class="ms">~300 ms</div><div class="lb">The room votes, one by one.</div>
+          <div class="vv"><i class="y"></i><i class="y"></i><i class="y"></i><i class="y"></i><i class="y"></i><i></i><i></i><i></i><i></i><i></i></div></div>
+        <div class="pace"><div class="ms">~600 ms</div><div class="lb">Count settles. Quote surfaces.</div>
+          <div class="vv"><i class="y"></i><i class="y"></i><i class="y"></i><i class="y"></i><i class="y"></i><i class="y"></i><i class="y"></i><i class="y"></i><i class="y"></i><i></i></div></div>
+      </div>
+      <div class="cap" style="max-width:760px"><b>The verdict is an event, not a status.</b> That single distinction is why the permanent audience rail should die: something always on screen cannot be an arrival, and the arrival is where the feeling lives. You watch the decision get made rather than reading a number that was already there.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 6 THE ROOM ════════════════════════════════════════════════════════ -->
+<div class="sect">
+  <div class="sect-head">
+    <span class="n">06</span><h2>The Room — a layer, never a page</h2>
+    <span class="note">Opens anchored on whatever verdict you tapped. This replaces the rail: the audience is one tap deep everywhere, and in the way nowhere.</span>
+  </div>
+  <div class="stage">
+    <div>
+      <div class="frame w-lg">
+        <div class="room-scrim">
+          <div class="room">
+            <div class="rh">
+              <span class="dot-live"></span>
+              <span class="t">Your room</span>
+              <span class="meta">10 people · reacting to angle 01</span>
+            </div>
+            <div class="anchor">"I'd rather have $30k in debt than $30k in savings."</div>
+            <div class="people">
+              <div class="person"><span class="pa">MA</span><span class="who"><div class="nm">Maya</div><div class="sg">27 · pays cards monthly</div></span><span class="sq">"wait — what? okay, I'm listening."</span><span class="vd stop">stops</span></div>
+              <div class="person"><span class="pa">JO</span><span class="who"><div class="nm">Jordan</div><div class="sg">34 · saving for a house</div></span><span class="sq">"this is going to be an ad for a credit card."</span><span class="vd">scrolls</span></div>
+              <div class="person"><span class="pa">SA</span><span class="who"><div class="nm">Sam</div><div class="sg">22 · first job, no savings</div></span><span class="sq">"finally someone says it out loud."</span><span class="vd stop">stops</span></div>
+              <div class="person"><span class="pa">PR</span><span class="who"><div class="nm">Priya</div><div class="sg">31 · two incomes, cautious</div></span><span class="sq">"okay but you'd better explain fast."</span><span class="vd stop">stops</span></div>
+            </div>
+            <div class="rf">
+              <span class="ask">Ask Jordan why he'd scroll…</span>
+              <button class="btn sm">Ask</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="cap"><b>One accent</b> — the live presence dot, which is a sanctioned use. Named people with ages and situations, verbatim voice in Newsreader (a voice moment, per the type rule). "Who said no?" is the most valuable tap in the product and it's the one that most reliably converts a sceptic.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 7 PROMOTE + WALL ══════════════════════════════════════════════════ -->
+<div class="sect">
+  <div class="sect-head">
+    <span class="n">07</span><h2>Promote — and where the money moment goes</h2>
+    <span class="note">The wall lands AFTER the wow and at peak intent, not at arrival. This is the single biggest conversion change available.</span>
+  </div>
+  <div class="stage">
+    <div>
+      <div class="frame w-md">
+        <div class="body">
+          <div class="eyebrow">Angle 01 · 9/10 would stop</div>
+          <h3 class="voice" style="margin-top:9px;font-size:20px">Your script</h3>
+          <div class="script">
+            <div class="sbeat"><span class="tc">0:00</span><span class="sc">Flat to camera, no intro: "I'd rather have $30k in debt than $30k in savings."</span></div>
+            <div class="sbeat blur"><span class="tc">0:02</span><span class="sc">Beat. Let the resistance land before you move.</span></div>
+            <div class="sbeat blur"><span class="tc">0:04</span><span class="sc">One number on screen — the only evidence you will give.</span></div>
+            <div class="sbeat blur"><span class="tc">0:07</span><span class="sc">The turn: narrower than they expect, which is why they stay.</span></div>
+          </div>
+          <div class="wall">
+            <div class="wt">Where should we send this?</div>
+            <div class="ws">Your script, the shot list, and this room —<br>kept and ready when you come back.</div>
+            <div class="wb">
+              <button class="btn">Continue — $1</button>
+              <button class="btn ghost">Email it to me</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="cap"><b>First beat visible, the rest blurred.</b> They've seen it exists and that it's specific. A wall at the door asks someone to buy a promise; a wall here asks them to keep something they already have. Two exits, because the email capture is worth more than a bounce.</div>
+    </div>
+
+    <div>
+      <div class="frame w-md">
+        <div class="body">
+          <div class="eyebrow">Upgrade pull — not a gate</div>
+          <h3 class="voice" style="margin-top:9px;font-size:20px">Make this room yours</h3>
+          <div class="sub" style="margin-bottom:16px">Right now these are Money-typical viewers on TikTok — a good stand-in. Connect your account and they become the people who actually follow you.</div>
+
+          <div style="display:flex;flex-direction:column;gap:1px">
+            <div class="beat" style="border-radius:12px 12px 0 0"><span class="t">Now</span><span class="v">Directional — modelled from your domain</span></div>
+            <div class="beat" style="border-radius:0 0 12px 12px"><span class="t">After</span><span class="v"><em>Validated — modelled from your 4,200 followers</em></span></div>
+          </div>
+
+          <button class="btn blk" style="margin-top:16px">Connect TikTok</button>
+          <div style="margin-top:11px;font-size:11px;color:var(--faint);text-align:center">Takes about 40 seconds. Read-only.</div>
+        </div>
+      </div>
+      <div class="cap"><b>The tier ladder as an upsell, not a caveat.</b> Same information as a disclaimer, opposite emotional charge — "Validated · modelled from your 4,200 followers" is a thing to want. Reuses <code>resolve-tier.ts</code>'s existing Directional/Validated states rather than inventing a new concept.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 8 AUDIENCE ════════════════════════════════════════════════════════ -->
+<div class="sect">
+  <div class="sect-head">
+    <span class="n">08</span><h2>Your Audience — the asset surface</h2>
+    <span class="note">Today <code>/audience</code> is a config screen. It should read as a statement of something owned — the thing you'd lose by leaving.</span>
+  </div>
+  <div class="stage">
+    <div>
+      <div class="frame w-lg">
+        <div class="topbar">
+          <svg class="mark" viewBox="0 0 32 32" fill="none"><path d="M16 6H13L8 27h3L16 6Zm0 0 5 21h3L19 6h-3Z" fill="#ece7de"/></svg>
+          <span class="wordmark">Maven</span>
+          <div class="sp"><span class="lens">Money · TikTok</span><div class="avatar">DL</div></div>
+        </div>
+        <div class="nav"><a href="#">Board</a><a href="#">Work</a><a class="on" href="#">Audience</a></div>
+        <div class="body">
+          <div class="assethead">
+            <div class="big">34<span style="color:var(--faint)">/41</span></div>
+            <div class="lbl">posts called correctly<br>since March</div>
+            <span class="tier"><span class="dot-live"></span> Validated · from 4,231 followers</span>
+          </div>
+
+          <div class="cast">
+            <div class="pc"><div class="pa">MA</div><div class="nm">Maya</div><div class="sg">27 · pays cards monthly</div></div>
+            <div class="pc"><div class="pa">JO</div><div class="nm">Jordan</div><div class="sg">34 · saving for a house</div></div>
+            <div class="pc"><div class="pa">SA</div><div class="nm">Sam</div><div class="sg">22 · first job</div></div>
+            <div class="pc"><div class="pa">PR</div><div class="nm">Priya</div><div class="sg">31 · cautious</div></div>
+            <div class="pc"><div class="pa">DE</div><div class="nm">Dev</div><div class="sg">29 · trades options</div></div>
+          </div>
+          <div class="cast" style="margin-top:8px">
+            <div class="pc"><div class="pa">LE</div><div class="nm">Lena</div><div class="sg">38 · one income</div></div>
+            <div class="pc"><div class="pa">TO</div><div class="nm">Tom</div><div class="sg">45 · near retirement</div></div>
+            <div class="pc"><div class="pa">AY</div><div class="nm">Ayo</div><div class="sg">25 · side hustle</div></div>
+            <div class="pc"><div class="pa">KI</div><div class="nm">Kim</div><div class="sg">33 · debt-free, lurks</div></div>
+            <div class="pc"><div class="pa">RA</div><div class="nm">Ravi</div><div class="sg">41 · sceptic</div></div>
+          </div>
+
+          <div class="drift">
+            <div class="boardhead" style="margin-top:0"><h4>How your room has moved</h4><span class="cadence">re-read weekly</span></div>
+            <div class="driftrow">Skeptics — you're attracting more of them <span class="d">+8% · 6 weeks</span></div>
+            <div class="driftrow">Scanners — down since you started opening flat <span class="d">−5% · 4 weeks</span></div>
+            <div class="driftrow">Ravi joined the room after your March debt post <span class="d">new</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="cap"><b>One accent</b> — the tier dot. The track-record number is the retention mechanic and the eventual advertiser pitch, so it gets the serif and the top-left position. Drift written as consequences of their own posts, not as statistics.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 9 WORK ════════════════════════════════════════════════════════════ -->
+<div class="sect">
+  <div class="sect-head">
+    <span class="n">09</span><h2>Work — everything made, and what happened to it</h2>
+    <span class="note">Library reframed. Not "saved things" — the record. This is also where the calendar goes: a view, not a page.</span>
+  </div>
+  <div class="stage">
+    <div>
+      <div class="frame w-lg">
+        <div class="topbar">
+          <svg class="mark" viewBox="0 0 32 32" fill="none"><path d="M16 6H13L8 27h3L16 6Zm0 0 5 21h3L19 6h-3Z" fill="#ece7de"/></svg>
+          <span class="wordmark">Maven</span>
+          <div class="sp"><span class="lens">Money · TikTok</span><div class="avatar">DL</div></div>
+        </div>
+        <div class="nav"><a href="#">Board</a><a class="on" href="#">Work</a><a href="#">Audience</a></div>
+        <div class="body">
+          <div class="worktbl">
+            <div class="wr hd"><span class="c1">Content</span><span class="c2">From</span><span class="c3">State</span><span class="c4">Called / actual</span></div>
+            <div class="wr"><span class="c1">"I'd rather have $30k in debt…"</span><span class="c2">The Reversal</span><span class="c3"><span class="state">Script</span></span><span class="c4">9/10 · —</span></div>
+            <div class="wr"><span class="c1">The 4-year screenshot</span><span class="c2">Receipt First</span><span class="c3"><span class="state">Shot</span></span><span class="c4">8/10 · —</span></div>
+            <div class="wr"><span class="c1">"Your bank is not your friend"</span><span class="c2">Named Enemy</span><span class="c3"><span class="state">Posted</span></span><span class="c4">7/10 · 3.1×</span></div>
+            <div class="wr"><span class="c1">"Nobody talks about the fees"</span><span class="c2">The Cost Reveal</span><span class="c3"><span class="state">Posted</span></span><span class="c4">6/10 · 0.8×</span></div>
+            <div class="wr"><span class="c1">"Stop maxing your 401k"</span><span class="c2">The Reversal</span><span class="c3"><span class="state">Angles</span></span><span class="c4">8/10 · —</span></div>
+          </div>
+          <div class="cap" style="margin-top:12px;max-width:none">Every row is one object moving through states. The last column is the only thing on this screen a competitor can't produce.</div>
+        </div>
+      </div>
+      <div class="cap"><b>Zero accent.</b> Note the fourth row: called 6/10, did 0.8×. Misses stay visible. A track record that only shows wins reads as marketing; one that shows misses reads as instrumentation — and instrumentation is what people keep paying for.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 10 MOBILE ═════════════════════════════════════════════════════════ -->
+<div class="sect">
+  <div class="sect-head">
+    <span class="n">10</span><h2>Mobile — where the funnel actually lands</h2>
+    <span class="note">Traffic is TikTok/IG bio links, so this is the primary viewport, not an adaptation. Same three patterns, one column.</span>
+  </div>
+  <div class="stage">
+
+    <div>
+      <div class="frame w-sm">
+        <div class="m-top">
+          <svg class="mark" viewBox="0 0 32 32" fill="none"><path d="M16 6H13L8 27h3L16 6Zm0 0 5 21h3L19 6h-3Z" fill="#ece7de"/></svg>
+          <span class="wordmark" style="font-size:12.5px">Maven</span>
+          <div class="sp"><span class="lens" style="font-size:10.5px;padding:3px 8px">Money · TikTok</span></div>
+        </div>
+        <div class="m-body">
+          <div class="receipt" style="padding:11px 12px;margin-bottom:16px">
+            <span class="dot-live"></span>
+            <div class="txt" style="font-size:11.5px">Tuesday — called <b>7/10</b>, did <b>3.1×</b>.</div>
+          </div>
+          <div class="boardhead" style="margin-top:0;margin-bottom:10px"><h4 style="font-size:12px">This week's intel</h4><span class="fresh" style="font-size:10.5px">3 new</span></div>
+          <div class="m-tile">
+            <div class="th"><span class="m">12.4×</span></div>
+            <div class="mi">
+              <div class="nm">The Reversal</div>
+              <div class="wy">Claim the opposite of what they expect, then justify it in 7 seconds.</div>
+              <div class="ft"><span class="p">vs usual views</span><span class="c">Make it mine →</span></div>
+            </div>
+          </div>
+          <div class="m-tile">
+            <div class="th"><span class="m">9.8×</span></div>
+            <div class="mi">
+              <div class="nm">Receipt First</div>
+              <div class="wy">Open on the proof, never the promise.</div>
+              <div class="ft"><span class="p">vs usual views</span><span class="c">Make it mine →</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="m-bar"><a class="on" href="#">Board</a><a href="#">Work</a><a href="#">Audience</a></div>
+      </div>
+      <div class="cap"><b>The Board, one column.</b> Tiles keep the multiplier and the "unused in Money" line — the two things that carry the pitch — and drop nothing else.</div>
+    </div>
+
+    <div>
+      <div class="frame w-sm">
+        <div class="m-top">
+          <svg class="mark" viewBox="0 0 32 32" fill="none"><path d="M16 6H13L8 27h3L16 6Zm0 0 5 21h3L19 6h-3Z" fill="#ece7de"/></svg>
+          <span class="wordmark" style="font-size:12.5px">Maven</span>
+        </div>
+        <div class="m-body">
+          <div class="eyebrow">The Reversal, adapted</div>
+          <h3 class="voice" style="font-size:18px;margin-top:7px">Your room voted.</h3>
+          <div class="angles" style="margin-top:14px">
+            <div class="angle win" style="padding:12px 13px">
+              <div class="top">
+                <span class="txt" style="font-size:13px">"I'd rather have $30k in debt than $30k in savings."</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:9px;margin-top:10px;padding-left:0">
+                <div class="votes" style="padding-left:0;margin-top:0"><i class="y"></i><i class="y"></i><i class="y"></i><i class="y"></i><i class="y"></i><i class="y"></i><i class="y"></i><i class="y"></i><i class="y"></i><i></i></div>
+                <span style="margin-left:auto;font-size:12.5px;font-weight:600" class="num">9/10</span>
+              </div>
+              <div class="quote" style="padding-left:0;font-size:13px">"wait — what? okay, I'm listening."<cite>Maya · 27</cite></div>
+              <button class="btn blk sm" style="margin-top:12px">Turn into a script →</button>
+              <div style="display:flex;gap:6px;margin-top:6px">
+                <button class="btn ghost sm" style="flex:1">5 more</button>
+                <button class="btn ghost sm" style="flex:1">Who said no?</button>
+              </div>
+            </div>
+            <div class="angle" style="padding:12px 13px">
+              <div class="top"><span class="txt" style="font-size:13px">"Stop maxing your 401k."</span></div>
+              <div style="display:flex;align-items:center;gap:9px;margin-top:10px">
+                <div class="votes" style="padding-left:0;margin-top:0"><i class="y"></i><i class="y"></i><i class="y"></i><i class="y"></i><i class="y"></i><i class="y"></i><i class="y"></i><i class="y"></i><i></i><i></i></div>
+                <span style="margin-left:auto;font-size:12.5px;font-weight:600" class="num">8/10</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="cap"><b>The vote survives the small viewport intact</b> — ten dots and a fraction is the most compressible possible form of the moat. That's not an accident of the sketch; it's a reason to make the vote the signature rather than any richer visualisation.</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══ 10b THREAD & RAIL DISPOSITION ═════════════════════════════════════ -->
+<div class="sect">
+  <div class="sect-head">
+    <span class="n">11</span><h2>What happens to the thread — and to the rail</h2>
+    <span class="note">The two live pieces this shape displaces. Neither gets deleted; both get redistributed.</span>
+  </div>
+
+  <div class="lede"><b>Owner call: chat stays the main surface.</b> Three reasons, and they hold — everything is
+  already built around it, users arrive already knowing how a chat works, and it supports the positioning
+  <em>"the ChatGPT for social media creators,"</em> which is instantly understood and therefore cheap to market.
+  That last one is a real GTM asset that a pure interaction-efficiency argument doesn't weigh.</div>
+
+  <div class="lede" style="margin-top:12px"><b>So the Board is not a replacement for the thread — it is the
+  thread's arrival state.</b> ChatGPT and Claude both do exactly this: a composer with suggestions around it.
+  The only difference is that ours aren't generic prompts, they are proven formats carrying a number. Nothing in
+  frames 03–09 is wasted; the Board moves from "home instead of chat" to "what is on screen before the first
+  message," and the Bench stops being a separate mode and becomes how a result renders <em>inside</em> the thread.</div>
+
+  <table class="pr">
+    <tr><th>Thread does today</th><th>After</th></tr>
+    <tr><td>Stores typed blocks in <code>messages</code>, one open thread per user</td><td><b>Unchanged.</b> No migration, no schema change, block registry untouched.</td></tr>
+    <tr><td>Opens on an empty composer</td><td><b>Opens on the Board.</b> Receipt + six formats + in progress, with the composer in place. The single non-negotiable: the thread is never blank on arrival.</td></tr>
+    <tr><td>Skill results render as cards in the scroll</td><td><b>Same place, more weight.</b> The decode, the five angles and the vote render as a full-width unit in the thread rather than a compact card — the "Bench" is a render treatment, not a route.</td></tr>
+    <tr><td>Scroll up to find what you made</td><td><b>Work</b> becomes the durable index. Scrolling still works; it is just no longer the only way back.</td></tr>
+    <tr><td>Multi-turn steering in the composer</td><td><b>Both.</b> The composer keeps working — that is the familiarity the positioning is built on. A steer field on the card is the shortcut, not the replacement.</td></tr>
+  </table>
+
+  <div class="cap" style="max-width:760px;margin-top:14px"><b>The risk that comes with the positioning:</b>
+  "the ChatGPT for X" invites "why not just use ChatGPT?" The answer — proven formats with real numbers, and an
+  audience that votes — has to be <em>visible on the first screen</em>, not discovered in session three. Which is
+  the same conclusion from the other direction: the arrival state carries the whole differentiator.</div>
+
+  <div class="lede" style="margin-top:38px"><b>The rail is not chrome — it is four jobs stacked in a column.</b>
+  <code>AmbientOverviewRail</code> (mounted in the composer at ≥xl, behind <code>AMBIENT_V2_ENABLED</code>) holds a
+  projected-card ledger, a Simulate trigger, a sealed-verdict display, and a depth drill. Killing "the rail"
+  means moving four things, not deleting one.</div>
+
+  <div class="lede" style="margin-top:14px"><b>And the replacement is not "less audience" — it is more.</b>
+  The earlier note in this doc said kill the rail; that conflated <em>presence</em> with <em>real estate</em>.
+  A 280px panel that never moves is furniture. Ten faces that sit quietly and then react are alive. The concept
+  below is <b>more</b> present than the rail at a tenth of the footprint, because presence comes from behaviour.</div>
+
+  <div class="stage" style="margin-top:22px">
+    <div>
+      <div class="frame w-md">
+        <div class="body" style="padding:20px 20px 22px">
+          <div class="eyebrow">The front row — idle</div>
+          <div style="margin-top:12px;display:flex;gap:4px;align-items:center">
+            <span style="display:flex;gap:3px">
+              <i class="fr"></i><i class="fr"></i><i class="fr"></i><i class="fr"></i><i class="fr"></i>
+              <i class="fr"></i><i class="fr"></i><i class="fr"></i><i class="fr"></i><i class="fr"></i>
+            </span>
+            <span style="margin-left:auto;font-size:11px;color:var(--faint)">10 people ready</span>
+          </div>
+          <div class="composer" style="margin-top:10px">
+            <span class="ph">What are we making?</span><span class="snd">↑</span>
+          </div>
+
+          <div class="eyebrow" style="margin-top:22px">Typing — two stir</div>
+          <div style="margin-top:12px;display:flex;gap:4px;align-items:center">
+            <span style="display:flex;gap:3px">
+              <i class="fr on"></i><i class="fr"></i><i class="fr"></i><i class="fr on"></i><i class="fr"></i>
+              <i class="fr"></i><i class="fr"></i><i class="fr"></i><i class="fr"></i><i class="fr"></i>
+            </span>
+            <span style="margin-left:auto;font-size:11px;color:var(--faint)">2 leaning in</span>
+          </div>
+          <div class="composer" style="margin-top:10px">
+            <span class="ph" style="color:var(--dim)">I'd rather have $30k in debt than…</span><span class="snd">↑</span>
+          </div>
+
+          <div class="eyebrow" style="margin-top:22px">Submitted — the row votes</div>
+          <div style="margin-top:12px;display:flex;gap:4px;align-items:center">
+            <span style="display:flex;gap:3px">
+              <i class="fr y"></i><i class="fr y"></i><i class="fr y"></i><i class="fr y"></i><i class="fr y"></i>
+              <i class="fr y"></i><i class="fr y"></i><i class="fr y"></i><i class="fr y"></i><i class="fr"></i>
+            </span>
+            <span style="margin-left:auto;font-size:11.5px;font-weight:600" class="num">9/10</span>
+          </div>
+        </div>
+      </div>
+      <div class="cap"><b>One row, ~28px, attached to the composer</b> — centre of attention instead of the periphery.
+      Idle and dim when nothing is happening; stirs while you type; votes on submit; tap it and the Room opens.
+      The type-as-you-go stir is the shipped <code>/api/tools/react</code> primitive (server-resolves the audience,
+      runs the real <code>runFlashTextMode</code>, ephemeral). <b>Cost flag:</b> a room reaction is priced at 1 credit —
+      this must fire on pause, never per keystroke, or it is a meter leak.</div>
+    </div>
+  </div>
+
+  <table class="pr">
+    <tr><th>Rail job today</th><th>Where it goes</th></tr>
+    <tr><td>Overview — the ledger of queued + sealed cards</td><td><b>Work</b> (the record) and <b>In progress</b> on the Board. A queue is a list; it does not need to be resident in the periphery.</td></tr>
+    <tr><td>"Simulate →" — the trigger that fires a run</td><td><b>Mostly disappears.</b> Generated angles vote automatically. The explicit trigger survives only for <em>brought</em> content — a pasted draft, link or video. <code>fireSim</code> itself is load-bearing and stays.</td></tr>
+    <tr><td>The sealed verdict — measured would-stop %</td><td><b>The card face</b> (Seam 1). This is where the vote animation lives.</td></tr>
+    <tr><td>Detail tabs — Audience / Brain / Engagement / Terrain</td><td><b>The Room</b> (Seam 2), opened by tapping a verdict. Same depth, on demand instead of resident.</td></tr>
+  </table>
+
+  <div class="cap" style="max-width:760px;margin-top:16px"><b>The sealed-verdict law already exists — it just lives in the wrong place.</b>
+  The rail already withholds the verdict while a run is in flight and reveals it when it returns. That is precisely
+  the anticipation → release mechanic the signature moment needs. The vote animation is not an invention; it is that
+  existing law relocated from the periphery to the card, where the user is actually looking.</div>
+</div>
+
+<!-- ═══ 12 PRINCIPLES ═════════════════════════════════════════════════════ -->
+<div class="sect">
+  <div class="sect-head">
+    <span class="n">12</span><h2>The rules every frame above obeys</h2>
+    <span class="note">Six patterns, learned once. This is what buys "smooth and not confusing" for a non-technical ICP.</span>
+  </div>
+
+  <table class="pr">
+    <tr><th>Pattern</th><th>What it is</th></tr>
+    <tr><td>Tile</td><td>Evidence. Thumbnail · multiplier · why · one action. Never two actions.</td></tr>
+    <tr><td>Card</td><td>A generated thing. Face · verdict · quote · steer field · "5 more like this".</td></tr>
+    <tr><td>Vote</td><td>The animated reveal. Identical everywhere it appears.</td></tr>
+    <tr><td>Drill</td><td>Tap any verdict → the Room opens anchored on it.</td></tr>
+    <tr><td>Steer</td><td>A text field attached to a card. This is where chat went.</td></tr>
+    <tr><td>Promote</td><td>One card advances a stage: angle → script → shot list.</td></tr>
+  </table>
+
+  <table class="pr" style="margin-top:34px">
+    <tr><th>Rule</th><th>Why</th></tr>
+    <tr><td>Never an empty screen</td><td>Every surface arrives populated. The blank prompt is the churn mechanism.</td></tr>
+    <tr><td>One primary action visible</td><td>A menu is a decision. Decisions are what a non-technical ICP came here to avoid.</td></tr>
+    <tr><td>Default input is a tap</td><td>Typing is the second door, always open, never the demand.</td></tr>
+    <tr><td>Content first, verdict a beat later</td><td>Already true in the SSE. Preserve it — the gap <em>is</em> the anticipation.</td></tr>
+    <tr><td>Never a spinner without a number</td><td>Visible labour is what converts waiting into value.</td></tr>
+    <tr><td>The verdict is an event</td><td>Which is why the permanent rail dies. Always-on cannot be an arrival.</td></tr>
+    <tr><td>Zero jargon on any surface</td><td>No SIM, archetype, skill, credit, token, model. Your audience · a person · content · a reaction · the read.</td></tr>
+    <tr><td>Accent at near-zero dosage</td><td>At most one per frame; most frames have none. Primary actions are cream, never accent.</td></tr>
+  </table>
+
+  <table class="pr" style="margin-top:34px">
+    <tr><th>Changed</th><th>Into</th></tr>
+    <tr><td>The audience rail (280px panel)</td><td><b>The front row</b> — a ~28px strip on the composer. Verdict on the card, Room one tap deep. More present, less space.</td></tr>
+    <tr><td>The empty composer on arrival</td><td>The Board as the thread's arrival state. <b>Chat itself stays.</b></td></tr>
+    <tr><td>The skill menu on the front door</td><td>Adjacency (next-moves on every result) + <code>QuickActions</code> below the Board as the map — see §14</td></tr>
+    <tr><td><code>/discover</code> · <code>/competitors</code> as destinations</td><td>The Board is the discovery surface; on-demand scrape moves inside the Bench</td></tr>
+    <tr><td><code>/calendar</code> as a page</td><td>A view of Work</td></tr>
+    <tr><td><code>/analytics</code> · <code>/grow</code> · <code>/saved</code></td><td>Already folding — finish it</td></tr>
+  </table>
+</div>
+
+<!-- ═══ 14 DISCOVERABILITY + THE OLD START PAGE ═══════════════════════════ -->
+<div class="sect">
+  <div class="sect-head">
+    <span class="n">14</span><h2>"How does anyone know what this can do?"</h2>
+    <span class="note">If skills leave the front door, capability becomes invisible. This is the strongest objection to the whole shape — and the answer is already written in the repo.</span>
+  </div>
+
+  <div class="lede"><b>A menu of 13 skills is a worse fix than it looks.</b> A skill list is a list of <em>verbs</em>,
+  and users don't think in verbs — they think in jobs. "Write hooks" is a verb. "I don't know what to post" is a job.
+  Any capability surface has to be phrased as outcomes, or it reads as a manual.</div>
+
+  <div class="lede" style="margin-top:12px"><b>Discoverability should come from adjacency, not from a menu.</b>
+  Every result already carries its next moves — "5 more like this", "turn into a script", "who said no?", the steer
+  field. Users learn the skill graph by walking it. That is how a chat product teaches without a manual, and it
+  needs nothing new.</div>
+
+  <div class="lede" style="margin-top:12px"><b>But adjacency only teaches what's adjacent.</b> It will never
+  surface "Test a real video" to someone who has only ever made hooks. That needs a visible map — which is what
+  the old start page was.</div>
+
+  <div class="sect-head" style="margin-top:34px;border-bottom:none;padding-bottom:4px">
+    <h2 style="font-size:13px">The old start page — reinstate, but not wholesale</h2>
+  </div>
+  <div class="lede"><code>src/components/surfaces/start-page.tsx</code> is <b>still in the repo, intact and
+  unreferenced</b>. <code>/start</code> is a redirect whose comment records exactly why it was pulled on
+  2026-07-15 — and that post-mortem is the design brief:</div>
+
+  <table class="pr">
+    <tr><th>Why it was removed</th><th>Does that still hold?</th></tr>
+    <tr><td>"Its stats duplicate <code>/audience</code>"</td><td><b>Still true.</b> Don't bring <code>StatRow</code> back. The one-line receipt replaces it.</td></tr>
+    <tr><td>"Its loop is empty for new users"</td><td><b>Fixed by the Board.</b> A shared corpus is populated on day zero — that emptiness was the entire reason, and it's gone.</td></tr>
+    <tr><td>"Its quick-actions echo the composer"</td><td><b>No longer true.</b> They echoed because the composer <em>was</em> the page. With intel as the hero, four job-phrased doorways below it are the map, not a duplicate.</td></tr>
+    <tr><td>Outliers / Month Calendar / Today's Plan removed "off the core loop"</td><td><b>Outliers is back on it</b> — it is the Board. Calendar and Today's Plan stay out.</td></tr>
+  </table>
+
+  <div class="lede" style="margin-top:26px">The comment also says the salvageable piece was <b>"Daily pre-tested
+  ideas"</b>, to be folded into the composer's empty state. That is the Board, described in July, before any of
+  this conversation. We are not inventing an arrival state — we are finishing one that was already scoped.</div>
+
+  <table class="pr" style="margin-top:26px">
+    <tr><th>Reinstate</th><th>Leave out</th></tr>
+    <tr><td><code>DailyIdeas</code> → becomes the Board's tiles</td><td><code>StatRow</code> — duplicates <code>/audience</code></td></tr>
+    <tr><td>Outliers section (from git) → the intel grid</td><td>Month Calendar</td></tr>
+    <tr><td><code>QuickActions</code> → the capability map, below the fold</td><td>Today's Plan</td></tr>
+    <tr><td><code>GreetingRings</code> → the receipt line</td><td>—</td></tr>
+  </table>
+
+  <div class="lede" style="margin-top:22px"><code>START_QUICK_ACTIONS</code> is already phrased exactly right —
+  jobs, not skill names, each with a plain-English subtitle:</div>
+  <div class="grid3" style="margin-top:12px;grid-template-columns:repeat(4,1fr)">
+    <div class="tile"><div class="in"><div class="name">Make ideas</div><div class="why">ranked + pre-tested</div></div></div>
+    <div class="tile"><div class="in"><div class="name">Test a real video</div><div class="why">the full Read before you post</div></div></div>
+    <div class="tile"><div class="in"><div class="name">Ask the room</div><div class="why">a raw thought, react instantly</div></div></div>
+    <div class="tile"><div class="in"><div class="name">Repurpose a winner</div><div class="why">remix a top performer</div></div></div>
+  </div>
+  <div class="cap" style="max-width:760px">Four doorways covering the four jobs. Sits <em>below</em> the Board so it never
+  competes with the wow, but it is on the first screen a returning user scrolls. No menu, no jargon, no manual —
+  and it makes the product look as large as it actually is, which six format tiles alone do not.</div>
+</div>
+
+<!-- ═══ 13 THE MEASURED CORPUS ════════════════════════════════════════════ -->
+<div class="sect">
+  <div class="sect-head">
+    <span class="n">13</span><h2>The corpus, measured — not assumed</h2>
+    <span class="note">Queried against <code>public.outlier_teardowns</code> on 2026-08-07. Two findings contradict the docs.</span>
+  </div>
+
+  <table class="pr">
+    <tr><th>Measure</th><th>Value</th></tr>
+    <tr><td>Rows total</td><td>532</td></tr>
+    <tr><td>Carry a multiplier</td><td>396 — <b>136 have none at all</b></td></tr>
+    <tr><td>Clear the 3× "proven" bar</td><td>288</td></tr>
+    <tr><td><b>Printable (3×–50×)</b></td><td><b>211</b>, average 14.7×, covering <b>all 13 archetypes</b></td></tr>
+    <tr><td>Absurd tail</td><td>46 rows at 50–200×, 31 above 200×, max <b>20,154×</b> — unprintable, they read as broken</td></tr>
+    <tr><td>Have <code>why_it_works</code> + <code>template</code></td><td>524 of 532 — the intel content is essentially complete</td></tr>
+  </table>
+
+  <div class="lede" style="margin-top:26px"><b>211 printable rows answers the cadence question: yes, a weekly feed
+  works.</b> Six per week is 35 weeks before a single repeat, and that is without rotation, personalisation, or
+  ever adding a row. All 13 archetypes are represented in the printable band, so <code>rank.ts</code>'s
+  round-robin still yields six distinct shapes every week.</div>
+
+  <table class="pr" style="margin-top:26px">
+    <tr><th>⚠️ Contradicts the docs</th><th>What the data actually says</th></tr>
+    <tr><td><code>follower_count</code></td><td><b>NULL on all 532 rows.</b> So <code>views ÷ followers</code> cannot be computed from this table at all — whatever produced <code>outlier_multiplier</code>, it was not that.</td></tr>
+    <tr><td><code>baseline_label</code></td><td>Only ever <b>"vs their usual views"</b> or NULL — <b>never "vs followers."</b> The session-2 handoff records decision F as owner-confirmed <code>views ÷ followers</code> → <code>baseline_label = 'vs followers'</code>. The data disagrees. Until that is resolved, <b>every tile would print the wrong basis.</b></td></tr>
+  </table>
+
+  <div class="cap" style="max-width:760px;margin-top:14px">This is the corpus handoff's own lesson landing again:
+  the defect was invisible in the source and invisible to the test suite, and took one query to surface. Resolve
+  the basis before any number reaches a tile — and cap the printable band, because a "20,154×" badge destroys
+  more credibility than it buys.</div>
+</div>
+
+<div class="sect">
+  <div class="sect-head"><span class="n">—</span><h2>What this sketch is still assuming</h2></div>
+  <table class="pr">
+    <tr><td>Grounded generation has never run</td><td>The corpus is imported, ranked and wired, but <code>GROUNDING_{HOOKS,IDEAS,SCRIPT}_ENABLED</code> were still off as of the session-2 handoff and "not one grounded generation has ever been run." <b>Flip the flags and look at the output in a browser before anything here is built on it.</b> Use <code>scripts/preview-grounding-slices.ts</code>.</td></tr>
+    <tr><td><s>How many rows clear 3×</s></td><td><b>ANSWERED</b> — 288 clear it, 211 are printable, all 13 archetypes covered. See §13. A weekly feed is comfortably supported.</td></tr>
+    <tr><td>What the multiplier is measured against</td><td><b>Open and blocking.</b> The docs say <code>views ÷ followers</code>; the data says "vs their usual views" with <code>follower_count</code> NULL on every row. Nothing prints until this is settled.</td></tr>
+    <tr><td>Cross-domain decode quality</td><td>Still the load-bearing assumption, but now cheap to test against real rows: adapt 20 corpus decodes into 3 unrelated domains each and read them.</td></tr>
+    <tr><td>Saturation control</td><td>A shared library means we eventually cause the saturation we detect. Rotation and retirement need designing before launch, not after.</td></tr>
+    <tr><td>Platform in the simulation</td><td>Doesn't exist — <code>buildReactionPanel()</code> is platform-blind. Everything in frame 01 depends on adding it.</td></tr>
+    <tr><td>Feasibility signal</td><td>Nothing scores whether a creator can actually execute a format. Ranking should be predicted stop × can-they-make-it.</td></tr>
+  </table>
+</div>
+
+</div>

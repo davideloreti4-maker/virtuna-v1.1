@@ -59,6 +59,13 @@
   --color-charcoal-thread: #252524;    /* in-thread skill result cards (SkillResultCard) */
   --color-charcoal-sidebar: var(--color-charcoal-chip); /* sidebar — same lifted tone */
   --color-charcoal-composer: #1a1a19;  /* composer / surface card — dark modal tone */
+  /* CHROME (2026-07-28) — the ground for BOTH flanking rails, left and right.
+   * One step darker than --charcoal-app so the thread is the brightest plane and
+   * the eye lands on the work; the chrome recedes. This exists as one token because
+   * the two rails had drifted apart: the left sidebar sat at #1f1f1e (identical to
+   * content) while the right rail painted its own hardcoded #181817, so the panels
+   * flanking the thread disagreed about which direction "away" was. */
+  --color-chrome: #1a1a19;
 
   /* --- Cream Text Scale (flat-warm, D-02) — never pure white --- */
   --color-cream-primary: #ece7de;      /* [UAT] Frame A — brightest text (never #fff) */
@@ -159,7 +166,60 @@
   --font-serif: var(--font-newsreader), ui-serif, Georgia, serif;
   --font-mono: ui-monospace, SFMono-Regular, "JetBrains Mono", monospace;
 
-  /* --- Font Sizes (from extraction) --- */
+  /* --- TYPE ROLES (2026-07-28) — the canonical scale for app chrome ---
+   *
+   * WHY THESE EXIST. The t-shirt scale below (xs…display) describes a marketing
+   * page, not this app. A surface audit found 1,099 arbitrary `text-[Npx]` against
+   * 835 on-scale usages — 57% of all type bypassing the system — across 26 distinct
+   * sizes including seven half-pixel ones. The cause was simple: the sizes this
+   * product actually runs on had NO NAMES. 13px was used 180 times, 11px 177 times,
+   * 10px 152 times, and not one of them had a token, so every author typed a literal.
+   *
+   * These seven are derived from measured usage, not aspiration. They cover ~1,029
+   * of those 1,099 call sites at their existing size, so adopting a role is a RENAME,
+   * not a resize. Only three sizes fold: 15px → reading, 9px and 8px → micro.
+   *
+   * Each role is a COMPLETE spec — size, line-height and tracking together. That is
+   * the part that collapses variance: the audit counted distinct
+   * size/weight/line-height/tracking combinations, and /home carried 34 of them
+   * across 74 text elements (45.9 per 100, against 8.6–11.2 for Linear, Attio,
+   * Cursor and Claude). Roles that travel as a unit make that arithmetic impossible.
+   *
+   * Tracking is em, so it scales with the type — see the note on `html, body`, where
+   * a global 0.2px was loosening the smallest text the most.
+   *
+   * Guarded by src/components/__tests__/type-scale.test.ts. */
+  --text-micro: 10px;              /* counts, ⌘-hints, dense meta */
+  --text-micro--line-height: 1.4;
+  --text-micro--letter-spacing: 0.01em;
+  --text-caption: 11px;            /* section labels, timestamps */
+  --text-caption--line-height: 1.45;
+  --text-caption--letter-spacing: 0.005em;
+  --text-label: 12px;              /* chrome labels, secondary meta */
+  --text-label--line-height: 1.5;
+  --text-label--letter-spacing: 0;
+  --text-body: 13px;               /* the app's TRUE body size — default UI text */
+  --text-body--line-height: 1.5;
+  --text-body--letter-spacing: 0;
+  --text-reading: 14px;            /* prose / long-form reading text */
+  --text-reading--line-height: 1.6;
+  --text-reading--letter-spacing: 0;
+  --text-title: 16px;              /* card + section titles */
+  --text-title--line-height: 1.4;
+  --text-title--letter-spacing: -0.01em;
+  --text-subhead: 18px;            /* card + block titles in the thread */
+  --text-subhead--line-height: 1.3;
+  --text-subhead--letter-spacing: -0.01em;
+  --text-heading: 22px;            /* page headers */
+  --text-heading--line-height: 1.2;
+  --text-heading--letter-spacing: -0.02em;
+  --text-stat: 27px;               /* the one big number on a card (score, count) */
+  --text-stat--line-height: 1;
+  --text-stat--letter-spacing: -0.02em;
+
+  /* --- Font Sizes (from extraction) — LEGACY t-shirt scale.
+   * Still consumed by ~800 call sites and by the marketing surfaces. Not deleted,
+   * but new app chrome should take a ROLE above. --- */
   --text-xs: 12px;
   --text-sm: 14px;
   --text-base: 16px;
@@ -463,10 +523,30 @@
   animation: stage-breathe 1.6s var(--ease-out-cubic) infinite;
 }
 
+/* Progress spine — a step LANDING. With the per-step ✓ removed (it was the loudest mark on the
+ * screen on every completed row), the moment of completion needed to be carried by motion instead
+ * of by a new glyph: the node settles from a smaller scale with one brief overshoot, then holds.
+ * Runs ONCE — it is a transition, not an ambient loop. */
+@keyframes node-land {
+  0% {
+    transform: scale(0.5);
+  }
+  62% {
+    transform: scale(1.3);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.animate-node-land {
+  animation: node-land 0.34s var(--ease-out-cubic) 1;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-badge-pop,
   .animate-presence-blink,
-  .animate-stage-breathe {
+  .animate-stage-breathe,
+  .animate-node-land {
     animation: none;
   }
 }
@@ -696,9 +776,83 @@ body {
   @apply bg-background text-foreground font-sans;
   overflow-x: hidden;
   line-height: 1.5;
-  letter-spacing: 0.2px;
+  /* TRACKING (2026-07-28) — was a global `letter-spacing: 0.2px`.
+   *
+   * That value was in PIXELS, so it did not scale with type size: the same 0.2px
+   * is +0.007em at 27px but +0.020em at 10px. It therefore loosened our SMALLEST,
+   * densest text the most — backwards from typographic convention, and the single
+   * widest-reaching reason the app read as less crisp than its references.
+   * Measured against them at 12–15px: Attio −0.010…−0.020em, Linear 0…−0.013em,
+   * Cursor 0.000em, Claude 0.000em. Not one loosens UI body text; we did, on every
+   * glyph in the product.
+   *
+   * Body now sits at 0 (the reference default) and tracking is applied per ROLE in
+   * em below, so it scales with the type it modifies. Display tightens; uppercase
+   * labels — which genuinely need air — open up. */
+  letter-spacing: 0;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Role-based tracking. Large type tightens, small caps open — both in em so the
+ * value tracks the size. Components that already set an explicit `tracking-[…]`
+ * (≈174 uppercase labels) keep winning via utility specificity; these are the
+ * defaults for everything that never said. */
+h1,
+h2,
+h3 {
+  letter-spacing: -0.02em;
+}
+h4,
+h5,
+h6 {
+  letter-spacing: -0.01em;
+}
+
+/* ============================================
+ * KEYBOARD FOCUS — one ring, app-wide
+ * ============================================
+ * Before this, tabbing any surface produced Chrome's default `outline: auto 1px
+ * rgb(0, 95, 204)` — a blue that appears nowhere in this design system, on a
+ * warm-charcoal product. A branded ring DID exist, but as a byte-identical local
+ * `const focusRing` copy-pasted into four component files, three of which sit on
+ * routes that now redirect. So in the live app exactly one component had it.
+ *
+ * This is the app-wide floor. Components that set their own `focus-visible:` ring
+ * still win (their `outline-none` utility overrides the outline here), so there is
+ * never a double ring.
+ *
+ * OFFSET IS NEGATIVE ON PURPOSE: the ring must draw INSIDE the element. Several
+ * scroll/overflow-hidden containers (the sidebar, thread lists) would clip a
+ * positively-offset outline against their own edge.
+ *
+ * ALPHA: the inherited copy-pasted value was white/10, which computes to roughly
+ * 1.5:1 against --charcoal-app — below the 3:1 WCAG floor for a focus indicator,
+ * i.e. effectively invisible. Cream at 55% lands near 4.5:1 and stays on-brand. */
+:root {
+  --focus-ring: rgba(236, 231, 222, 0.55);
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+/* …but NOT on text-entry fields. An inset ring on a textarea or input draws a
+ * hard rectangle just inside the field's own frame — a visible box-within-a-box.
+ * It looked like a rendering fault in the composer and in the ⌘K palette, because
+ * both auto-focus their field on mount, so the artifact was there before the user
+ * had touched anything.
+ *
+ * Dropping it costs no affordance: a focused text field already announces itself
+ * with a blinking caret, and both of ours sit inside a container that carries its
+ * own focus treatment. Buttons, links and custom controls — which have no caret —
+ * keep the ring above. */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[contenteditable]:focus-visible {
+  outline: none;
 }
 
 /* ============================================

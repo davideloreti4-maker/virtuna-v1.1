@@ -32,8 +32,17 @@ import { createClient } from "@/lib/supabase/server";
 import { maybeMockSkillRun } from "@/lib/tools/mock/mock-sse";
 import { createOpenThreadLazy, getOpenThread, setThreadTitleIfEmpty } from "@/lib/threads/threads";
 import { insertMessage, loadMessages } from "@/lib/threads/messages";
+import { runHeaderBlock } from "@/lib/tools/run-header";
+import { openChatPriorTurns, MAX_PRIOR_TURNS } from "@/lib/threads/chat-prior-turns";
 import { runChatPipeline, isColdStart } from "@/lib/tools/runners/chat-runner";
-import { runChatAgentStream } from "@/lib/tools/chat-agent-loop";
+import { runChatAgentStream, sanitizeCards, type SkillBilling } from "@/lib/tools/chat-agent-loop";
+import { FREE_SKILL_TOOLS } from "@/lib/tools/skill-dispatch";
+import { guessSkill } from "@/lib/tools/pre-router";
+import { billUsage, creditGate, quotaRefusalBody, quotaRefusalMessage } from "@/lib/billing/credit-gate";
+import { creditCost, type BillableAction } from "@/lib/pricing";
+import type { QuotaUser } from "@/lib/billing/quota";
+import type { NumenTier } from "@/lib/whop/config";
+import { isSealedVisitor } from "@/lib/onboarding/verdict-seal";
 import { assembleBundle } from "@/lib/kc/assembler";
 import { KC_CHAT_SYSTEM_PROMPT } from "@/lib/kc/compiled";
 import { kcStamp } from "@/lib/kc/kc-stamp";
@@ -96,6 +105,41 @@ function parsePersonaGrounding(raw: unknown): PersonaGrounding | null {
   };
 }
 
+/**
+ * The gate + till the chat agent charges a dispatched skill through.
+ *
+ * Deliberately a thin wrapper over the SAME `creditGate` / `billUsage` / `quotaRefusalMessage` the
+ * dedicated skill routes call: the price, the admission rules and the refusal wording all have one
+ * implementation, so "ask the agent for hooks" and "press the Hooks skill" can never quietly become
+ * two different products. The only difference is the SHAPE of a refusal — a route returns a 402, but
+ * a turn that is already streaming cannot, so the honest sentence goes back as a tool result for the
+ * model to relay (chat-agent-loop.ts hands it over with an instruction not to fake the result).
+ */
+function skillBilling(supabase: Awaited<ReturnType<typeof createClient>>, user: QuotaUser): SkillBilling {
+  return {
+    gate: async (action: BillableAction) => {
+      const { refusal, verdict } = await creditGate(supabase, user, action);
+      if (refusal) {
+        const cost = creditCost(action);
+        return {
+          allowed: false,
+          reason: quotaRefusalMessage(verdict, cost),
+          tier: verdict.tier,
+          // The same body the 402 carries, so the client can raise the SAME wall dialog. Rebuilt
+          // rather than read off `refusal` (a Response whose body is a stream we would consume).
+          quota: quotaRefusalBody(verdict, cost),
+        };
+      }
+      return { allowed: true, tier: verdict.tier };
+    },
+    // Best-effort by contract (billUsage swallows + logs its own failures) — a delivered pack of
+    // cards outranks our accounting, exactly as on every other route.
+    bill: async (action: BillableAction, tier?: NumenTier | null) => {
+      await billUsage({ userId: user.id, action, tier });
+    },
+  };
+}
+
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 /** Server-side ask cap — independent of client validation (mirrors analyze/[id]/chat). */
@@ -127,6 +171,18 @@ function isCorpusChatToolEnabled(): boolean {
   return process.env.GROUNDING_CHAT_TOOL !== "false";
 }
 
+/**
+ * Stage B "one brain" flag (default OFF — ships dark, lane convention). ONE lever for the stage:
+ * B1 (card CTAs through this route with a pinned skill + a data-carried anchor), B2 (the `cards`
+ * slot on the generator schemas + chip-carried packs), B3 (the `predispatch` frame). NEXT_PUBLIC_
+ * on purpose: the client half (CTA routing in composer.tsx) reads the same variable, inlined at
+ * build time — so flipping it in an env needs a REDEPLOY to reach the client, which env changes
+ * need here anyway (memory: env vars are write-only + need a redeploy).
+ */
+function isOneBrainEnabled(): boolean {
+  return process.env.NEXT_PUBLIC_ENGINE_ONE_BRAIN === "true";
+}
+
 /** Cap on client-carried prior turns (meet-mode ephemeral context — see POST). */
 const MAX_CLIENT_PRIOR_TURNS = 20;
 
@@ -149,13 +205,6 @@ function parseClientPriorTurns(raw: unknown): Array<{ role: "user" | "assistant"
   }
   return out;
 }
-
-/**
- * Max prior turns to carry as context anchor.
- * D-01a soft context cap: full running context is the default; this bounds the
- * anchor size to avoid excessive token spend on very long threads.
- */
-const MAX_PRIOR_TURNS = 20;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -237,7 +286,15 @@ export async function POST(request: Request): Promise<Response> {
   if (limited) return limited;
 
   // ── (2) Parse + validate body ─────────────────────────────────────────────
-  let body: { ask?: unknown; platform?: unknown; personaGrounding?: unknown; priorTurns?: unknown } = {};
+  let body: {
+    ask?: unknown;
+    platform?: unknown;
+    personaGrounding?: unknown;
+    priorTurns?: unknown;
+    skill?: unknown;
+    anchor?: unknown;
+    cards?: unknown;
+  } = {};
   try {
     body = await request.json();
   } catch {
@@ -246,6 +303,31 @@ export async function POST(request: Request): Promise<Response> {
 
   const rawAsk = typeof body.ask === "string" ? body.ask.trim() : "";
   const rawPlatform = typeof body.platform === "string" ? body.platform : "tiktok";
+
+  // ── (2c) The generator a tapped follow-up chip declared (chat-followups.ts `skill`) ──
+  // A chip is a command the creator issued under cards that already fix the subject; its sentence
+  // reads as subject-less on its own, so the agent used to push back for a sharper angle and run
+  // nothing. The chip's intent therefore rides as DATA and pins the loop's first tool_choice.
+  //
+  // Passed through as an opaque key, NOT trusted: the loop resolves it against the skills actually
+  // bound for THIS user and ignores anything it cannot match — so a hand-crafted body naming a paid
+  // skill buys an anonymous visitor nothing (they bind none), and a signed-in caller gets the same
+  // gate, price and ledger row that typing the ask would have. A typed message never sets it, which
+  // is what keeps ordinary conversational asks byte-identical.
+  const rawSkill = typeof body.skill === "string" ? body.skill.slice(0, 32) : undefined;
+
+  // ── (2d) Stage B data riders — honored ONLY beside a declared skill, flag on ──
+  // `anchor` is the exact line a card CTA was pressed on (B1); `cards` is the pack a tapped
+  // chip refers to (B2). Both are DATA the client can see and the model would otherwise have
+  // to reconstruct; both are server-capped here (mirroring the dedicated routes' anchor cap)
+  // and injected by the loop into the round-1 pinned call only. Without `skill` there is no
+  // pinned call to inject into, so they are dropped — a hand-crafted body gains nothing.
+  const ONE_BRAIN = isOneBrainEnabled();
+  const rawAnchor =
+    ONE_BRAIN && rawSkill && typeof body.anchor === "string"
+      ? body.anchor.slice(0, 5000)
+      : undefined;
+  const rawCards = ONE_BRAIN && rawSkill ? sanitizeCards(body.cards) : undefined;
 
   // ── (2b) Parse optional personaGrounding (P9 / LIVE-03, D-03) ────────────────
   // The "Ask them why →" chat-with-persona drawer POSTs this. Validated + length-capped
@@ -320,27 +402,9 @@ export async function POST(request: Request): Promise<Response> {
       : // Meet-ephemeral (no thread): the drawer carries its own in-session transcript so the
         // persona keeps context across turns — validated + capped, same fenced anchor as DB turns.
         parseClientPriorTurns(body.priorTurns)
-    : // WR-05 INVARIANT: the open-chat anchor assumes EXACTLY ONE `markdown` block per message
-      // row. Role is attributed from `msg.role` (per-message), so a conversational "turn" === a
-      // message; the `.slice(-MAX_PRIOR_TURNS)` cap below counts blocks, which equals turns ONLY
-      // while this invariant holds (open-chat persistence writes a single markdown block per turn
-      // — see the POST persistence path: one `{ type: "markdown" }` block per insertMessage). If
-      // multi-block markdown messages are ever introduced, attribute role per BLOCK (carry it on
-      // the block) before relying on this anchor — otherwise the cap miscounts and every block in
-      // a message inherits the parent message role.
-      hydratedMessages
-        .flatMap((msg) =>
-          msg.blocks
-            .filter(
-              (b): b is { type: "markdown"; props: { text: string } } =>
-                b.type === "markdown" && typeof (b as { props: { text?: unknown } }).props.text === "string",
-            )
-            .map((b) => ({
-              role: msg.role as "user" | "assistant",
-              text: (b as { type: "markdown"; props: { text: string } }).props.text,
-            })),
-        )
-        .slice(-MAX_PRIOR_TURNS);
+    : // Open chat — markdown turns, each dispatching turn carrying the runs it announced (see
+      // openChatPriorTurns for why the runs travel with it).
+      openChatPriorTurns(hydratedMessages);
 
   // ── (7) Persist the USER turn first (mirrors grounded-chat route ordering) ──
   // Persona-grounded → persist as a `persona-chat-turn` block (the sub-thread, D-03);
@@ -383,29 +447,106 @@ export async function POST(request: Request): Promise<Response> {
         let dispatched = false;
         if (isChatAgentDispatchEnabled() && personaGrounding == null) {
           dispatched = true;
+
+          // ── (8a-0) Stage B (B3): the predispatch frame — fills the router's ~4.8s dead zone ──
+          // Emitted BEFORE the loop starts, from what is already known:
+          //   · a declared skill (chip/CTA) is CERTAIN — the creator pressed it and round 1 is
+          //     pinned to it, so the client seeds the full capsule immediately;
+          //   · a typed ask gets the cheap heuristic guess, streamed as a HINT (certain:false) the
+          //     client renders next to the thinking dots — the real `dispatch` frame, which still
+          //     fires only after the gate admits the run, confirms or replaces it.
+          // Sealed visitors bind no generators, so neither claim would be honest — no frame.
+          if (ONE_BRAIN && !isSealedVisitor(user)) {
+            if (rawSkill && ["ideas", "hooks", "script"].includes(rawSkill)) {
+              send("predispatch", { skill: rawSkill, certain: true });
+            } else if (!rawSkill) {
+              const guess = guessSkill(rawAsk);
+              if (guess) send("predispatch", { skill: guess, certain: false });
+            }
+          }
           // Grounding (niche/audience/platform) rides the fenced user message, exactly as
           // runChatPipeline builds it (assembleBundle → <<<USER_CONTENT>>>). Prior turns go to the loop
           // as real role messages (natural turn structure for the agent), not folded into the anchor.
-          const userMessage = assembleBundle({ ask: rawAsk, platform, mode: "chat" }, profileRow);
-          const agentResult = await runChatAgentStream({
-            ask: userMessage,
-            systemPrompt: KC_CHAT_SYSTEM_PROMPT,
-            priorTurns,
-            grounding: isCorpusChatToolEnabled(),
-            context: {
-              platform,
-              profileRow,
-              audience: activeAudience,
-              // Real skill phase boundaries → the client's progress spine (mirrors skill routes).
-              onStage: (name, status) => send("stage", { name, status }),
+          //
+          // modeLabel — NOT cosmetic. The bundle header lands in the USER message, and the bare word
+          // "chat" reads to the model as the chat slice's own stance ("chat mode is conversational,
+          // NOT a generation surface", with over-generating named as a failure mode). That sentence is
+          // right for the pure-chat path below and exactly wrong here, where the generators are bound
+          // and the loop's directive says to dispatch eagerly: the model read the label, obeyed it, and
+          // answered "give me hooks for X" in prose while holding generate_hooks unused. Measured on the
+          // shipped prompts, 4 seeds: 0/4 dispatches with "chat", 4/4 with any other label. `mode` stays
+          // "chat" — it is the MODE_ROLES selector, so the grounding content is unchanged.
+          const userMessage = assembleBundle(
+            { ask: rawAsk, platform, mode: "chat", modeLabel: "copilot" },
+            profileRow,
+          );
+          const agentResult = await runChatAgentStream(
+            {
+              ask: userMessage,
+              systemPrompt: KC_CHAT_SYSTEM_PROMPT,
+              priorTurns,
+              // The tapped chip's declared generator (see (2c)); undefined for every typed message.
+              ...(rawSkill ? { forceSkill: rawSkill } : {}),
+              // Stage B data riders (see (2d)) — round-1 pinned call only, inside the loop.
+              ...(rawAnchor ? { forceAnchor: rawAnchor } : {}),
+              ...(rawCards ? { forceCards: rawCards } : {}),
+              // Stage B (B2): bind the `cards` slot on the generator schemas (flag-gated).
+              cardsSlot: ONE_BRAIN,
+              grounding: isCorpusChatToolEnabled(),
+              context: {
+                platform,
+                profileRow,
+                audience: activeAudience,
+                // Real skill phase boundaries → the client's progress spine (mirrors skill routes).
+                onStage: (name, status) => send("stage", { name, status }),
+                // …and the artifacts those phases touched. An agent-dispatched hooks run IS the
+                // hooks pipeline, so its wait shows the same proven outliers the skill route's does.
+                onEvidence: (evidence) => send("evidence", evidence),
+              },
+              onToken: (delta) => send("token", { delta }),
+              onBlock: (block) => send("block", { block }),
+              // The run-capsule seam: the moment the agent commits to a skill, tell the client WHICH
+              // (display key), so the spine labels itself + seeds that skill's stage plan before the
+              // first stage event. One frame, additive — old clients simply ignore the event.
+              onDispatch: (skill) => send("dispatch", { skill }),
+              // A streaming turn cannot answer 402, so the refusal body rides its own frame and the
+              // client raises the same paywall dialog every other refused skill raises.
+              onCreditWall: (quota) => send("credit-wall", { quota }),
             },
-            onToken: (delta) => send("token", { delta }),
-            onBlock: (block) => send("block", { block }),
-            // The run-capsule seam: the moment the agent commits to a skill, tell the client WHICH
-            // (display key), so the spine labels itself + seeds that skill's stage plan before the
-            // first stage event. One frame, additive — old clients simply ignore the event.
-            onDispatch: (skill) => send("dispatch", { skill }),
-          });
+            {
+              // THE TRIAL WALL, on chat's back door. This route is free BY DECISION (the glue of the
+              // product) — but the skills the agent can dispatch are not: ideas, hooks and scripts are
+              // metered actions with their own creditGate and their own 402. An anonymous /go visitor is
+              // entitled to ONE free Test and nothing else, so the paid tools are not even BOUND for
+              // them: the agent answers in words instead of running an engine. Filtering the registry is
+              // the whole fix because `deps.skills` drives both what the model is offered and what the
+              // loop will execute.
+              ...(isSealedVisitor(user) ? { skills: FREE_SKILL_TOOLS } : {}),
+              // The SAME fact, stated to the loop rather than left to be inferred from the line
+              // above. The artefact guard used to arm itself from "no generators are bound", which
+              // is only true while FREE_SKILL_TOOLS happens to be empty — and it is DERIVED from
+              // `billable`, so one non-billable skill (exactly what a free tier is) would flip it
+              // non-empty and silently switch the guard off for every anonymous visitor. Binding
+              // and guarding now read the same predicate, on adjacent lines, so they cannot drift.
+              sealedVisitor: isSealedVisitor(user),
+              // THE TILL, for everyone else. Until this was wired the sentence above ended "…an engine
+              // this route would neither gate nor bill" — and that was literally true for every signed-in
+              // customer too: an agent-dispatched ideas/hooks/script run hit the paid engine with no
+              // admission check and left no ledger row, while the identical pack cost credits when run
+              // from the skill pill. Same price, same helpers, same refusal copy as the dedicated routes,
+              // so the two doors into the engine cannot drift apart.
+              billing: skillBilling(supabase, user),
+            }
+          );
+
+          // The runners' REAL warnings (Stage A) — the loop used to hardcode `[]`, so a
+          // degraded chat-dispatched run (grounding failed, a card dropped, an anchor not
+          // honored) was indistinguishable from a clean one. Same SSE event the dedicated
+          // routes emit; live-only, like theirs.
+          const runWarnings = agentResult.skillRuns.flatMap((run) => run.warnings);
+          if (runWarnings.length > 0) {
+            send("warning", { warnings: runWarnings });
+          }
 
           // Persist: each skill's card-blocks first (in run order), then the assistant text. A turn that
           // ran a skill marks the text origin:"chat-agent" so the thread reloads as ONE ordered stream in
@@ -414,7 +555,20 @@ export async function POST(request: Request): Promise<Response> {
           if (openThread) {
             for (const run of agentResult.skillRuns) {
               if (run.blocks.length > 0) {
-                await insertMessage(openThread.id, "assistant", run.blocks, kcStamp().kcGenVersion);
+                // Stage A (F-3): stamp the run like every dedicated skill route does. The
+                // chat door was the one unstamped path — a reloaded turn lost its skill +
+                // audience and the intro fell back to the renderer's literal 'General'.
+                const stamped = run.skillKey
+                  ? [
+                      runHeaderBlock({
+                        skill: run.skillKey,
+                        audienceLabel: activeAudience?.name,
+                        platform,
+                      }),
+                      ...run.blocks,
+                    ]
+                  : run.blocks;
+                await insertMessage(openThread.id, "assistant", stamped, kcStamp().kcGenVersion);
               }
             }
             // UI affordance blocks (an input-request field from request_link) — persisted so the field

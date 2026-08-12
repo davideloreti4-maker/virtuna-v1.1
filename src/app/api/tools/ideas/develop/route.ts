@@ -38,6 +38,7 @@ import { billUsage, creditGate } from "@/lib/billing/credit-gate";
 import { assembleBundle } from "@/lib/kc/assembler";
 import { createOpenThreadLazy } from "@/lib/threads/threads";
 import { insertMessage } from "@/lib/threads/messages";
+import { runHeaderBlock } from "@/lib/tools/run-header";
 import { runHooksPipeline } from "@/lib/tools/runners/hooks-runner";
 import { kcStamp } from "@/lib/kc/kc-stamp";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
@@ -68,7 +69,7 @@ export async function POST(request: Request): Promise<Response> {
   if (guard) return guard;
 
   // ── Credit gate (BILLING) — priced admission BEFORE any engine spend ─────────
-  const { refusal, verdict: creditVerdict } = await creditGate(supabase, user.id, "develop");
+  const { refusal, verdict: creditVerdict } = await creditGate(supabase, user, "develop");
   if (refusal) return refusal;
 
   // ── (2) Parse + validate body ─────────────────────────────────────────────
@@ -121,6 +122,17 @@ export async function POST(request: Request): Promise<Response> {
   // ── (5) Get/create open thread ────────────────────────────────────────────
   const openThread = await createOpenThreadLazy(user.id);
 
+  // ── (5c) Persist the USER turn (Stage A, N-8) ─────────────────────────────
+  // The develop chip used to persist ONLY its assistant message; on reload the grouping
+  // folded the new hook cards into the PREVIOUS turn. The action is now a real user row.
+  const userAction = `Write hooks from "${anchor.length > 80 ? `${anchor.slice(0, 80).trimEnd()}…` : anchor}"`;
+  await insertMessage(
+    openThread.id,
+    "user",
+    [{ type: "markdown", props: { text: userAction } }],
+    kcStamp().kcGenVersion,
+  );
+
   // ── (6) Run REAL Hooks generation (D-07: placeholder REMOVED) ────────────
   // anchor is the upstream idea concept; pass it to the runner.
   // ask = "" (anchor-driven mode — the idea is the primary input).
@@ -134,7 +146,14 @@ export async function POST(request: Request): Promise<Response> {
   // ── (7) Persist hook-card blocks to the open thread (D-10) ──────────────
   // KC_GEN_VERSION stamp: blocks provenance stamped on this message.
   // insertMessage re-validates blocks at the write boundary (T-04-07/D-14).
-  const msgRow = await insertMessage(openThread.id, "assistant", blocks, kcStamp().kcGenVersion);
+  // Stage A: stamped like every other skill route, so a reloaded turn keeps its intro
+  // (this route persisted bare blocks — the one unstamped door into the thread).
+  const msgRow = await insertMessage(
+    openThread.id,
+    "assistant",
+    [runHeaderBlock({ skill: "hooks", platform }), ...blocks],
+    kcStamp().kcGenVersion,
+  );
 
   // BILL — on delivery only: the cards are persisted; nothing after can un-deliver them.
   await billUsage({ userId: user.id, action: "develop", tier: creditVerdict.tier });

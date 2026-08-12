@@ -92,7 +92,7 @@ describe("pricing — the credit price list", () => {
 
   it("prices a live scrape above every generation — Apify spend is real money", () => {
     expect(CREDIT_COSTS.explore_scrape).toBe(5);
-    for (const action of ["script", "predict", "simulate", "profile", "hooks", "ideas", "develop", "read", "refine", "explore"] as const) {
+    for (const action of ["script", "predict", "simulate", "profile", "hooks", "ideas", "develop", "read", "react", "refine", "explore"] as const) {
       expect(CREDIT_COSTS[action]).toBeLessThan(CREDIT_COSTS.explore_scrape);
     }
   });

@@ -21,6 +21,7 @@ import { TeamSection } from "./team-section";
 import { CreatorProfileSection } from "./creator-profile-section";
 import { ReferralsSection } from "@/components/referral/referrals-section";
 import type { ConnectedAccount } from "@/lib/connected-accounts/connected-accounts-repo";
+import { PageShell, SurfaceHeader } from "@/components/surfaces/surface-header";
 
 interface ReferralData {
   eligible: boolean;
@@ -57,11 +58,12 @@ const TABS = [
 
 export function SettingsPage({ defaultTab = "profile", referral, connectedAccounts = [] }: SettingsPageProps) {
   return (
-    // Left-anchored at the shared page rhythm (px-4/lg:px-6 pt-6) like every other
-    // page header — the old mx-auto centering floated the block mid-canvas with a
-    // dead left margin no sibling page has.
-    <div className="max-w-4xl px-4 pb-24 pt-6 lg:px-6">
-      <h1 className="mb-8 text-[19px] font-semibold tracking-[-0.01em] text-foreground lg:text-[22px]">Settings</h1>
+    // The shared content column (PageShell, 880px centred). This page used to be
+    // the odd one out twice over: max-w-4xl (896px) AND flush-left with no mx-auto,
+    // which put its header at x=268 while /audience sat at 462 and /audience/new at
+    // 566 — a 298px jump between sibling routes.
+    <PageShell>
+      <SurfaceHeader title="Settings" className="mb-8" />
 
       <Tabs.Root
         defaultValue={defaultTab}
@@ -120,7 +122,7 @@ export function SettingsPage({ defaultTab = "profile", referral, connectedAccoun
           </Tabs.Content>
         </div>
       </Tabs.Root>
-    </div>
+    </PageShell>
   );
 }
 
@@ -135,8 +137,8 @@ export function SettingsPage({ defaultTab = "profile", referral, connectedAccoun
 function Credits() {
   return (
     <section className="mt-10 border-t border-[var(--color-border)] pt-6">
-      <h3 className="text-[12px] font-medium text-[var(--color-foreground-secondary)]">Credits</h3>
-      <p className="mt-2 max-w-prose text-[12px] leading-relaxed text-[var(--color-foreground-muted)]">
+      <h3 className="text-label font-medium text-[var(--color-foreground-secondary)]">Credits</h3>
+      <p className="mt-2 max-w-prose text-label leading-relaxed text-[var(--color-foreground-muted)]">
         The cortical surface rendered in The Room is based on{" "}
         <a
           href="https://sketchfab.com/3d-models/brain-cadd2bde67404c43b2359a6a3281d84a"

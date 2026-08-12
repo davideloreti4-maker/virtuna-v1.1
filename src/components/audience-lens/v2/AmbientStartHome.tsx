@@ -5,7 +5,7 @@
  * hero (parallel-run behind `AMBIENT_V2_ENABLED`; the legacy greeting + field are the default).
  *
  * Fed real inputs: the creator's first name (`useProfile`) + the active `Audience` (→ `AudienceMeta`,
- * whose signature personas ARE the segments). The skill menu is real SKILL_RUN_META ids. The two
+ * whose signature personas ARE the segments). The skill menu is real composer ToolIds. The two
  * handlers route into the composer's OWN run path — a skill tile arms the tool, the composer row
  * seeds + fires it — so Start drives real generation, not a mock.
  *
@@ -23,14 +23,18 @@ export function AmbientStartHome({
   onSkill,
   onSubmit,
   onScene,
+  onSimDoor,
   activeSkillId,
   audiences,
   selectedAudienceId,
   onSelectAudience,
 }: {
   audience: Audience;
-  /** Arm a skill by its SKILL_RUN_META id (the composer's tool picker). */
+  /** Arm a skill by its composer ToolId (NOT the SKILL_RUN_META key — see StartSkill.id / F-017). */
   onSkill: (skillId: string) => void;
+  /** Open the SIMULATE DOOR — the cold intake for a stimulus the creator brings. The composer owns
+   *  it because what comes through has to be routed to a real run (react / analyze). */
+  onSimDoor?: () => void;
   /** Seed the field + fire the armed skill (the composer's auto-run). */
   onSubmit: (text: string) => void;
   onScene?: (scene: string) => void;
@@ -53,6 +57,7 @@ export function AmbientStartHome({
         onSkill={onSkill}
         onSubmit={onSubmit}
         onScene={onScene}
+        onSimDoor={onSimDoor}
         activeSkillId={activeSkillId}
         audiences={audiences}
         selectedAudienceId={selectedAudienceId}

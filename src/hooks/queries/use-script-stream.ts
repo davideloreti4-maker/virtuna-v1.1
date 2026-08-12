@@ -26,10 +26,13 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { reportCredit402 } from '@/lib/billing/credit-wall';
+import { reportCredit402, CreditWallRefusal, isCreditWallRefusal } from '@/lib/billing/credit-wall';
+import { reportSession401, SessionExpiredRefusal } from '@/lib/auth/session-expired';
+import { resolveRunError } from '@/lib/net/run-failure';
 import type { HookProof, ScriptCardBlock, PopulationAggregateBlock, ReactionPersona } from '@/lib/tools/blocks';
 import { parseProofProp, parseGroundedProp, parsePopulationProp } from '@/lib/tools/blocks';
 import type { StageState } from '@/components/thread/progress-checklist';
+import { parseRunEvidence, type RunEvidence } from '@/lib/tools/evidence';
 import type { IntentLens } from '@/lib/audience/intent-lens';
 
 /**
@@ -104,8 +107,17 @@ export interface UseScriptStreamReturn {
   error: string | null;
   /** True once the stream has completed (done event received). */
   isDone: boolean;
+  /** The SSE stream has closed — everything the run will ever persist is on disk. */
+  isClosed: boolean;
   /** Pipeline stages — populated by SSE stage events (STUDIO-01). */
   stages: StageState[];
+  /**
+   * The real artifacts this run touched mid-flight (`evidence` SSE frame): the proven outlier
+   * videos it is grounded on, or the post it resolved. Rendered by the loading spine's evidence
+   * rail (run-evidence.tsx). null on a run that produced none — an ungrounded generation, a
+   * resolve that returned no handle and no cover — and the rail then renders nothing.
+   */
+  evidence: RunEvidence | null;
   /** Model-authored follow-up text from the followup SSE event. */
   followupText: string | null;
   /**
@@ -148,7 +160,28 @@ export function useScriptStream(): UseScriptStreamReturn {
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDone, setIsDone] = useState(false);
+  /**
+   * THE STREAM IS CLOSED — the server has finished sending, not merely finished the CARDS.
+   *
+   * `isDone` fires on the `done` event, which every generative route emits BEFORE its closing
+   * line (S2: unblock the UI early). The route then persists that line as a trailing markdown
+   * message and only THEN closes. So `isDone` is "the work is over" and this is "there is nothing
+   * more coming" — and only the second one means the whole turn is on disk.
+   *
+   * The composer folds the live run into the persisted thread on THIS, so one reload collects the
+   * outro too. Folding on `isDone` needed a second reload per run to pick it up afterwards.
+   *
+   * Set in `finally`, so an abort or a throw closes it just as a clean end does — a fold that
+   * waits on a signal only the happy path emits is a fold that never runs.
+   */
+  const [isClosed, setIsClosed] = useState(false);
   const [stages, setStages] = useState<StageState[]>([]);
+  /**
+   * The artifacts this run has touched so far (`evidence` SSE frame) — the proven outliers it is
+   * grounded on, or the post it resolved. Feeds the loading spine's evidence rail. Cleared at the
+   * start of every run so a new send can never inherit the last one's sources.
+   */
+  const [evidence, setEvidence] = useState<RunEvidence | null>(null);
   const [followupText, setFollowupText] = useState<string | null>(null);
   const [outliersAvailable, setOutliersAvailable] = useState(false);
   const [warnings, setWarnings] = useState<string[]>([]);
@@ -176,7 +209,9 @@ export function useScriptStream(): UseScriptStreamReturn {
     setIsStreaming(false);
     setError(null);
     setIsDone(false);
+    setIsClosed(false);
     setStages([]);
+    setEvidence(null);
     setWarnings([]);
     setFollowupText(null);
     setOutliersAvailable(false);
@@ -209,8 +244,10 @@ export function useScriptStream(): UseScriptStreamReturn {
     setStreamingCards([]);
     setError(null);
     setIsDone(false);
+    setIsClosed(false);
     setIsStreaming(true);
     setStages([]);
+    setEvidence(null);
     setWarnings([]);
     setFollowupText(null);
     setOutliersAvailable(false);
@@ -234,9 +271,13 @@ export function useScriptStream(): UseScriptStreamReturn {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: 'Script request failed' }));
+        // 401 first — it is not a 402, and each check then reads only its own status. The
+        // refusal's flag carries the cause to this turn's copy (lib/net/run-failure.ts).
+        if (reportSession401(res.status)) throw new SessionExpiredRefusal();
         if (reportCredit402(res.status, err)) {
-          // The wall dialog is up (CreditWallListener); surface the human sentence, not the slug.
-          throw new Error(err.message);
+          // The wall dialog is up (CreditWallListener) and it IS the UI: unwind without drawing an
+          // inline error under it (see CreditWallRefusal — the old throw put a futile retry there).
+          throw new CreditWallRefusal(err.message);
         }
         throw new Error((err as { error?: string }).error ?? 'Script request failed');
       }
@@ -271,7 +312,14 @@ export function useScriptStream(): UseScriptStreamReturn {
             continue;
           }
 
-          if (eventType === 'stage') {
+          if (eventType === 'evidence') {
+            // Real artifacts, mid-run. parseRunEvidence is total (null on anything malformed)
+            // because a throw inside this read loop would kill the whole stream — cards, receipt
+            // and closing line with it — over a decorative thumbnail rail.
+            const parsedEvidence = parseRunEvidence(data);
+            if (parsedEvidence && isMountedRef.current) setEvidence(parsedEvidence);
+
+          } else if (eventType === 'stage') {
             const stageName = typeof data.name === 'string' ? data.name : '';
             const stageStatus = (data.status === 'active' || data.status === 'done')
               ? data.status as StageState['status']
@@ -386,13 +434,17 @@ export function useScriptStream(): UseScriptStreamReturn {
         }
       }
     } catch (err) {
-      if ((err as Error).name === 'AbortError') return;
-      if (isMountedRef.current) {
-        setError(err instanceof Error ? err.message : 'Script stream error');
-      }
+      // The credit wall is already up and owns this refusal — an inline error under the modal
+      // would offer a retry that gets the same 402 (see CreditWallRefusal). `finally` still resets.
+      if (isCreditWallRefusal(err)) return;
+      // A null result means draw nothing: an abort is the user's own Stop, not a failure.
+      const message = resolveRunError(err, 'Script stream error');
+      if (message === null) return;
+      if (isMountedRef.current) setError(message);
     } finally {
       if (isMountedRef.current) {
         setIsStreaming(false);
+        setIsClosed(true);
       }
     }
   }, []);
@@ -438,7 +490,9 @@ export function useScriptStream(): UseScriptStreamReturn {
     isStreaming,
     error,
     isDone,
+    isClosed,
     stages,
+    evidence,
     followupText,
     outliersAvailable,
     warnings,

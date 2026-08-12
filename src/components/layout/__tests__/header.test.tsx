@@ -10,7 +10,8 @@ import { Header } from "@/components/layout/header";
  *
  * Behaviors under test (PLAN 01-04, UI-SPEC §Component Inventory item 2):
  *  - NAV-01: renders the MavenLogo ("Maven" wordmark) brand
- *  - NAV-01: "Try it free" CTA href is exactly /signup (SIGNUP_URL)
+ *  - NAV-01: "Try it free" CTA href is exactly /go (MARKETING_CTA_URL) — the conversion
+ *    path. It pointed at /signup until 2026-08-04, a form with no money moment in it.
  *  - NAV-01: "Sign in" link href is exactly /login (LOGIN_URL)
  *  - NAV-03: a mobile menu toggle (aria-label="Open menu") opens a flat panel
  *  - NAV-03: tapping a link inside the panel closes it (closes on tap)
@@ -29,10 +30,10 @@ describe("<Header>", () => {
   });
 
   describe("CTA + auth hrefs (NAV-01)", () => {
-    it("'Try it free' is a link whose href is exactly /signup", () => {
+    it("'Try it free' is a link whose href is exactly /go", () => {
       render(<Header />);
       const cta = screen.getByRole("link", { name: /try it free/i });
-      expect(cta).toHaveAttribute("href", "/signup");
+      expect(cta).toHaveAttribute("href", "/go");
     });
 
     it("'Sign in' is a link whose href is exactly /login", () => {

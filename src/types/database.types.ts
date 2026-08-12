@@ -1337,6 +1337,33 @@ export type Database = {
         }
         Relationships: []
       }
+      funnel_events: {
+        Row: {
+          created_at: string
+          event: string
+          id: number
+          payload: Json
+          session_id: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event: string
+          id?: number
+          payload?: Json
+          session_id: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event?: string
+          id?: number
+          payload?: Json
+          session_id?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           body: Json
@@ -2031,6 +2058,7 @@ export type Database = {
           active_audience_id: string | null
           created_at: string
           id: string
+          pinned_at: string | null
           reading_id: string | null
           sim_seals: Json
           title: string | null
@@ -2042,6 +2070,7 @@ export type Database = {
           active_audience_id?: string | null
           created_at?: string
           id?: string
+          pinned_at?: string | null
           reading_id?: string | null
           sim_seals?: Json
           title?: string | null
@@ -2053,6 +2082,7 @@ export type Database = {
           active_audience_id?: string | null
           created_at?: string
           id?: string
+          pinned_at?: string | null
           reading_id?: string | null
           sim_seals?: Json
           title?: string | null
