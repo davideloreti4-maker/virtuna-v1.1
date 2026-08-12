@@ -35,6 +35,7 @@ const ZONE = "border-t border-white/[0.06] px-4 py-3";
 export function RemixBeats({
   blueprintId,
   variantIndex,
+  initialData,
 }: {
   blueprintId: string;
   /**
@@ -43,17 +44,32 @@ export function RemixBeats({
    * script. The caller reads it off the block; it is never assumed to be 0.
    */
   variantIndex: number;
+  /**
+   * Data supplied directly instead of fetched — the /dev/cards path, and nothing else.
+   *
+   * This component fetches its own payload by id, which made the shoot sheet UNVIEWABLE in the
+   * gallery: the fixture has no blueprintId, so the effect never ran and the whole section
+   * vanished silently. Measured live 2026-08-12 — /dev/cards → Skills → Remix rendered exactly
+   * the pre-lane card, with no sign anything was missing. That is precisely the drift the gallery
+   * exists to prevent, happening to the gallery itself.
+   *
+   * Production never passes this: the card mounts with `blueprintId` alone and the fetch below is
+   * unchanged. Deliberately NOT a "fetch, but seed it" cache — a gallery that quietly hits the API
+   * renders differently signed-in than signed-out, which is the opposite of what a fixture is for.
+   */
+  initialData?: Payload;
 }) {
-  const [data, setData] = useState<Payload | null>(null);
+  const [fetched, setFetched] = useState<Payload | null>(null);
 
   useEffect(() => {
+    if (initialData) return; // injected — never touch the network
     let alive = true;
     void (async () => {
       try {
         const res = await fetch(`/api/remix/blueprint/${encodeURIComponent(blueprintId)}`);
         if (!res.ok) return; // silent: a missing sheet is not an error state ON THE CARD.
         const json = (await res.json()) as Payload;
-        if (alive) setData(json);
+        if (alive) setFetched(json);
       } catch {
         /* a beat list that cannot load simply does not render */
       }
@@ -61,8 +77,9 @@ export function RemixBeats({
     return () => {
       alive = false;
     };
-  }, [blueprintId]);
+  }, [blueprintId, initialData]);
 
+  const data = initialData ?? fetched;
   if (!data) return null;
 
   const { blueprint } = data;
