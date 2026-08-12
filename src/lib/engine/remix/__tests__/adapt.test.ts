@@ -583,6 +583,25 @@ describe('over-cap prose is clamped, not fatal', () => {
     expect(result![0]!.angle).toHaveLength(300);
   });
 
+  it('never cuts an emoji in half — the trim leaves no lone surrogate', async () => {
+    const { generateAdaptConcepts } = await import('../adapt');
+    // cap is 300 and trimToCap keeps 0..298, so an emoji straddling 298/299 is split by a
+    // naive slice. No late spaces, so the hard-cut branch is the one exercised.
+    const straddling = 'x'.repeat(298) + '\u{1F600}' + 'y'.repeat(50);
+    mockCreate.mockResolvedValueOnce(
+      makeQwenResponse(responseWith((c) => { c[0]!.angle = straddling; })),
+    );
+
+    const result = await generateAdaptConcepts(makeAdaptInput());
+
+    expect(result).not.toBeNull();
+    // A lone high surrogate (or a lone low one) renders as the replacement glyph.
+    expect(result![0]!.angle).not.toMatch(
+      /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/,
+    );
+    expect(result![0]!.angle.length).toBeLessThanOrEqual(300);
+  });
+
   it('keeps the shoot plan when a production field overruns its cap', async () => {
     const { generateAdaptConcepts } = await import('../adapt');
     mockCreate.mockResolvedValueOnce(

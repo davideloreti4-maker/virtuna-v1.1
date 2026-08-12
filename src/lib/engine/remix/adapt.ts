@@ -166,7 +166,11 @@ function trimToCap(text: string, cap: number): string {
   // Fall back to a hard cut only when the word boundary is so early that honouring it would throw
   // most of the line away — a 300-char run with one space at index 3 must not clamp to 3 chars.
   const body = lastSpace > cap * 0.6 ? cut.slice(0, lastSpace) : cut;
-  return `${body.trimEnd()}…`;
+  // A hard cut can land BETWEEN an emoji's two UTF-16 code units. Zod counts code units too, so
+  // the length stays legal and nothing complains — but a lone surrogate renders as the
+  // replacement glyph, which is the "looks broken" outcome this whole function exists to avoid.
+  const whole = /[\uD800-\uDBFF]$/.test(body) ? body.slice(0, -1) : body;
+  return `${whole.trimEnd()}…`;
 }
 
 /**
