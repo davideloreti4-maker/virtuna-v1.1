@@ -38,6 +38,9 @@ import { runChatPipeline, isColdStart } from "@/lib/tools/runners/chat-runner";
 import { runChatAgentStream, sanitizeCards, type SkillBilling } from "@/lib/tools/chat-agent-loop";
 import { FREE_SKILL_TOOLS } from "@/lib/tools/skill-dispatch";
 import { guessSkill } from "@/lib/tools/pre-router";
+import { detectRepeatAsk, isRepeatAskPinEnabled } from "@/lib/tools/repeat-ask";
+import { detectGuessPin, isGuessPinEnabled } from "@/lib/tools/guess-pin";
+import { addCountHint, isCountHintEnabled } from "@/lib/tools/count-hint";
 import { billUsage, creditGate, quotaRefusalBody, quotaRefusalMessage } from "@/lib/billing/credit-gate";
 import { creditCost, type BillableAction } from "@/lib/pricing";
 import type { QuotaUser } from "@/lib/billing/quota";
@@ -464,6 +467,27 @@ export async function POST(request: Request): Promise<Response> {
               if (guess) send("predispatch", { skill: guess, certain: false });
             }
           }
+          // ── (8a-0b) THE REPEAT-ASK PIN (2026-08-10, flagged OFF) ──────────────────────────
+          // Only for a TYPED ask — a chip already declares its own skill and wins below. See
+          // repeat-ask.ts for why the trigger is three conditions rather than the obvious two:
+          // the pre-router's single measured harmful guess ("Yes, run the simulate tool on that
+          // hook") lives in a thread that necessarily HAS a prior hooks run, so "guessed + ran it
+          // before" would have turned the one known false alarm into a forced billed wrong run.
+          const repeatAskSkill =
+            isRepeatAskPinEnabled() && !rawSkill && !isSealedVisitor(user)
+              ? detectRepeatAsk(rawAsk, priorTurns)
+              : null;
+
+          // ── (8a-0c) THE GUESS PIN (2026-08-12, flagged OFF) ───────────────────────────────
+          // The broader structural fix for the same family of defect, measured over 183 real
+          // generations: a product- or format-shaped SUBJECT dispatches 7/31 (23%) against 30/30
+          // for a scenario subject. Same scoping as the repeat-ask pin above (typed asks only,
+          // never a sealed visitor), and strictly broader than it — every repeat ask is also a
+          // guess fire — so the two compose by subsumption rather than by precedence. See
+          // guess-pin.ts for why the trigger is the guess and not the observed non-dispatch.
+          const guessPinSkill =
+            isGuessPinEnabled() && !rawSkill && !isSealedVisitor(user) ? detectGuessPin(rawAsk) : null;
+
           // Grounding (niche/audience/platform) rides the fenced user message, exactly as
           // runChatPipeline builds it (assembleBundle → <<<USER_CONTENT>>>). Prior turns go to the loop
           // as real role messages (natural turn structure for the agent), not folded into the anchor.
@@ -476,8 +500,16 @@ export async function POST(request: Request): Promise<Response> {
           // answered "give me hooks for X" in prose while holding generate_hooks unused. Measured on the
           // shipped prompts, 4 seeds: 0/4 dispatches with "chat", 4/4 with any other label. `mode` stays
           // "chat" — it is the MODE_ROLES selector, so the grounding content is unchanged.
+          // ── (8a-0d) THE COUNT HINT (2026-08-12, flagged OFF) ──────────────────────────────
+          // Measured over 32 unpinned runs on both failing subject shapes: a count in the ask takes
+          // dispatch 2/12 → 16/20 and PUSHBACKS 9 → 0. It forces nothing — the model still decides —
+          // so unlike the pin above it carries no wrong-run exposure at all. BUNDLE ONLY:
+          // `currentAsk` below stays the creator's real message, because it feeds the conversation
+          // digest and the app must never quote back words the creator did not type.
+          const bundleAsk = isCountHintEnabled() && !isSealedVisitor(user) ? addCountHint(rawAsk) : rawAsk;
+
           const userMessage = assembleBundle(
-            { ask: rawAsk, platform, mode: "chat", modeLabel: "copilot" },
+            { ask: bundleAsk, platform, mode: "chat", modeLabel: "copilot" },
             profileRow,
           );
           const agentResult = await runChatAgentStream(
@@ -485,8 +517,28 @@ export async function POST(request: Request): Promise<Response> {
               ask: userMessage,
               systemPrompt: KC_CHAT_SYSTEM_PROMPT,
               priorTurns,
+              // The creator's own words this turn, for the conversation digest ONLY. `priorTurns`
+              // is loaded at (6) and this message is persisted at (7), so the digest handed to a
+              // generator was missing the turn being answered — "…but keep them under 30s" never
+              // reached it, and on a thread's first generating turn the digest was empty. `ask`
+              // above cannot serve: it is the assembled bundle, not the message.
+              currentAsk: rawAsk,
               // The tapped chip's declared generator (see (2c)); undefined for every typed message.
-              ...(rawSkill ? { forceSkill: rawSkill } : {}),
+              // …OR, failing that, a REPEAT ASK: the creator typing a request this thread has
+              // already run, which is the shape that makes the model claim work it did not do
+              // ("Here are 5 hooks for 'morning focus'…" with no dispatch and no cards, measured
+              // live). `forceSkill` is the right seam because it is already exactly this — a
+              // round-1 tool_choice pin, gated and billed like any other run — and because the
+              // fix has to be structural: the directive already forbids the claim in the
+              // strongest words available and is ignored, since the transcript showing the pack
+              // is stronger precedent than any instruction. Never overrides a real chip.
+              ...(rawSkill
+                ? { forceSkill: rawSkill }
+                : repeatAskSkill
+                  ? { forceSkill: repeatAskSkill }
+                  : guessPinSkill
+                    ? { forceSkill: guessPinSkill }
+                    : {}),
               // Stage B data riders (see (2d)) — round-1 pinned call only, inside the loop.
               ...(rawAnchor ? { forceAnchor: rawAnchor } : {}),
               ...(rawCards ? { forceCards: rawCards } : {}),
