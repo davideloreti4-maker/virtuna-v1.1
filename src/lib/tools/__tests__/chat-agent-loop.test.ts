@@ -1499,3 +1499,120 @@ describe("runChatAgentStream [Stage A guards]", () => {
     expect(res.text.length).toBeGreaterThan(600);
   });
 });
+
+// ── Phase 2: the composed-card emit tool ───────────────────────────────────────────────────────
+//
+// `emit_card` is FREE (it renders an answer, it runs no generator), bound per request like the
+// corpus tool, and off unless the route says otherwise. These lock the binding, the block routing,
+// and §5's degrade rule: one repair attempt, then prose — never a broken card.
+describe("runChatAgentStream [composedCards]", () => {
+  const sentToolNames = (stream: StreamingChatComplete) =>
+    (
+      (stream as unknown as ReturnType<typeof vi.fn>).mock.calls[0]![0] as {
+        tools: Array<{ function: { name: string } }>;
+      }
+    ).tools.map((t) => t.function.name);
+
+  /** The role:"tool" results the loop fed back, as seen by the NEXT model call. */
+  const toolResults = (stream: StreamingChatComplete, round: number) =>
+    (
+      (stream as unknown as ReturnType<typeof vi.fn>).mock.calls[round]![0] as {
+        messages: Array<{ role: string; content: string }>;
+      }
+    ).messages
+      .filter((m) => m.role === "tool")
+      .map((m) => String(m.content));
+
+  const BRIEF = {
+    cards: [
+      {
+        recipe: "brief",
+        deliverable: { kind: "claim", text: "Ship it ugly." },
+        body: [{ kind: "bullets", items: ["Post before it is ready."] }],
+      },
+    ],
+  };
+
+  it("off (the default) ⇒ the model is never shown emit_card", async () => {
+    const stream = mockStream([[textChunk("ok")]]);
+    await runChatAgentStream(baseInput(), DEPS(stream, { skills: [mkSkill("generate_ideas")] }));
+    expect(sentToolNames(stream)).not.toContain("emit_card");
+  });
+
+  it("on ⇒ emit_card is bound alongside the free tools", async () => {
+    const stream = mockStream([[textChunk("ok")]]);
+    await runChatAgentStream(baseInput({ composedCards: true }), DEPS(stream, { skills: [mkSkill("generate_ideas")] }));
+    expect(sentToolNames(stream)).toContain("emit_card");
+  });
+
+  it("streams a composed card to onBlock and persists it, without spending anything", async () => {
+    const onBlock = vi.fn();
+    const billing = mkBilling();
+    const stream = mockStream([
+      [toolName(0, "c1", "emit_card"), toolArgs(0, JSON.stringify(BRIEF))],
+      [textChunk("That's the brief.")],
+    ]);
+
+    const res = await runChatAgentStream(
+      baseInput({ composedCards: true, onBlock }),
+      DEPS(stream, { skills: [mkSkill("generate_ideas")], billing }),
+    );
+
+    expect(onBlock).toHaveBeenCalledTimes(1);
+    expect((onBlock.mock.calls[0]![0] as { type: string }).type).toBe("composed-card");
+    // Persisted too — otherwise the card vanishes on reload while the closing line stays.
+    expect(res.uiBlocks).toHaveLength(1);
+    expect(res.toolCalls).toContainEqual(expect.objectContaining({ name: "emit_card", ran: true }));
+    // FREE: no gate, no bill, and no run-capsule dispatch.
+    expect(billing.gate).not.toHaveBeenCalled();
+    expect(billing.bill).not.toHaveBeenCalled();
+  });
+
+  it("an invalid tree renders nothing and hands the model the reason", async () => {
+    const onBlock = vi.fn();
+    const stream = mockStream([
+      // `script` without its script_timeline slot.
+      [
+        toolName(0, "c1", "emit_card"),
+        toolArgs(
+          0,
+          JSON.stringify({
+            cards: [
+              {
+                recipe: "script",
+                deliverable: { kind: "claim", text: "x" },
+                body: [{ kind: "bullets", items: ["y"] }],
+              },
+            ],
+          }),
+        ),
+      ],
+      [textChunk("Here it is in words instead.")],
+    ]);
+
+    const res = await runChatAgentStream(
+      baseInput({ composedCards: true, onBlock }),
+      DEPS(stream, { skills: [mkSkill("generate_ideas")] }),
+    );
+
+    expect(onBlock).not.toHaveBeenCalled();
+    expect(res.uiBlocks).toHaveLength(0);
+    expect(toolResults(stream, 1).join(" ")).toContain("script_timeline");
+  });
+
+  it("§5 — one repair attempt, then prose: the second failure tells the model to stop trying", async () => {
+    const broken = JSON.stringify({ cards: [{ recipe: "script", deliverable: { kind: "claim", text: "x" }, body: [{ kind: "bullets", items: ["y"] }] }] });
+    const stream = mockStream([
+      [toolName(0, "c1", "emit_card"), toolArgs(0, broken)],
+      [toolName(0, "c2", "emit_card"), toolArgs(0, broken)],
+      [textChunk("In prose, then.")],
+    ]);
+
+    await runChatAgentStream(baseInput({ composedCards: true }), DEPS(stream, { skills: [mkSkill("generate_ideas")] }));
+
+    // Round 2 is invited to fix it; round 3 is told to write prose instead.
+    expect(toolResults(stream, 1).join(" ")).toMatch(/again|retry|fix/i);
+    expect(toolResults(stream, 2).join(" ")).toMatch(/prose/i);
+    expect(toolResults(stream, 2).join(" ")).toMatch(/do not call emit_card again/i);
+  });
+});

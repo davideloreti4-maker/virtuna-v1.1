@@ -31,6 +31,7 @@ import {
   type SkillRunOutput,
 } from "@/lib/tools/skill-dispatch";
 import { SEARCH_CORPUS_TOOL, executeCorpusSearch } from "@/lib/grounding/corpus-tool";
+import { EMIT_CARD_TOOL, handleEmitCard } from "@/lib/tools/emit-card-tool";
 import { retrieveCachedExamples } from "@/lib/grounding/retrieve";
 import {
   SKILL_CAPABILITIES,
@@ -256,6 +257,17 @@ export interface ChatAgentStreamInput {
   cardsSlot?: boolean;
   /** Bind the corpus search tool (grounding-as-a-tool). Gated by GROUNDING_CHAT_TOOL at the route. */
   grounding?: boolean;
+  /**
+   * Phase 2: bind `emit_card`, so the model can answer with composed CARDS instead of prose.
+   *
+   * Route-gated (`COMPOSED_CARDS`) and DEFAULT OFF, unlike grounding — the contract has not been
+   * measured against a live model yet (that is the spike re-run), and this changes what every chat
+   * turn is allowed to produce. Off ⇒ the request is byte-identical to the one shipped today.
+   *
+   * Free, like `request_input` and `search_corpus`: `emit_card` renders an answer the model has
+   * already thought of. It never reaches the gate and never bills.
+   */
+  composedCards?: boolean;
   /** Streamed answer tokens, in order. */
   onToken: (delta: string) => void;
   /** A skill's card-block, as it is produced (streamed to the client + collected for persistence). */
@@ -902,6 +914,7 @@ export async function runChatAgentStream(
     ),
     REQUEST_INPUT_TOOL,
     ...(input.grounding ? [SEARCH_CORPUS_TOOL] : []),
+    ...(input.composedCards ? [EMIT_CARD_TOOL] : []),
   ];
 
   // The caller's prompt grounds voice/chat; the loop appends the tool-use directive (it owns the tools).
@@ -923,6 +936,12 @@ export async function runChatAgentStream(
 
   const skillRuns: SkillRunOutput[] = [];
   const uiBlocks: unknown[] = [];
+  /**
+   * Spec §5: *"model emits an invalid tree → one repair attempt, then degrade to prose (never a
+   * broken card)."* Counted per TURN, not per round, so a model that keeps re-sending the same
+   * malformed tree is told to write words rather than spending the round budget on retries.
+   */
+  let emitCardFailures = 0;
   const toolCalls: ChatAgentStreamResult["toolCalls"] = [];
   let paidRuns = 0;
   let fullText = "";
@@ -1122,6 +1141,64 @@ export async function runChatAgentStream(
                 ? "a confirm button is now shown to the creator; tell them to press it — do not describe a result yet"
                 : "a field is now shown to the creator; ask them to fill it — do not describe a result yet",
           }),
+        });
+        continue;
+      }
+
+      // Phase 2: the model composed its answer as cards. FREE — no gate, no bill, no onDispatch
+      // (that seam labels a run capsule, and nothing runs here). Handled before the skill lookup
+      // so it can never be mistaken for an unbound paid skill and answered with the credit line.
+      if (input.composedCards && call.name === "emit_card") {
+        let parsed: unknown = {};
+        try {
+          parsed = JSON.parse(call.args || "{}");
+        } catch {
+          /* handleEmitCard reports the empty shape */
+        }
+        const { blocks, error } = await handleEmitCard(parsed);
+
+        for (const block of blocks) {
+          input.onBlock(block); // live render this turn…
+          uiBlocks.push(block); // …and persist, or the card vanishes on reload while the prose stays
+        }
+        toolCalls.push({
+          name: "emit_card",
+          ran: blocks.length > 0,
+          ...(error ? { note: error } : {}),
+        });
+
+        if (blocks.length > 0) {
+          messages.push({
+            role: "tool",
+            tool_call_id: call.id,
+            content: JSON.stringify({
+              shown: `${blocks.length} card(s)`,
+              note:
+                "the cards are shown to the creator; reply with ONE short closing line and do NOT " +
+                "restate or rewrite their content in prose",
+            }),
+          });
+          continue;
+        }
+
+        // §5's degrade ladder. The first failure names what was wrong and invites one correction —
+        // a recipe violation is usually a one-field fix, and losing the card costs the creator the
+        // structured answer. The second ends it: prose beats another round of the same tree.
+        emitCardFailures++;
+        messages.push({
+          role: "tool",
+          tool_call_id: call.id,
+          content: JSON.stringify(
+            emitCardFailures === 1
+              ? {
+                  error: error ?? "the card could not be rendered",
+                  note: "fix exactly that and call emit_card once more — you get one retry, then answer in prose",
+                }
+              : {
+                  error: error ?? "the card could not be rendered",
+                  note: "do not call emit_card again this turn — answer the creator directly in prose instead",
+                },
+          ),
         });
         continue;
       }

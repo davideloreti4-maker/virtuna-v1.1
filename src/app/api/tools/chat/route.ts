@@ -172,6 +172,19 @@ function isCorpusChatToolEnabled(): boolean {
 }
 
 /**
+ * Composed-card output flag (Phase 2). When on, the loop binds `emit_card` and the model may answer
+ * with composed cards instead of prose.
+ *
+ * DEFAULT OFF — opt in with COMPOSED_CARDS="true". Grounding could ship default-ON because it only
+ * adds evidence to an answer's shape; this changes the shape itself, on every open-ended ask, and
+ * the contract has not been measured against a live model yet (the spike re-run is what decides
+ * that). Server-side only — no client half reads it, so flipping it needs a redeploy but no build.
+ */
+function isComposedCardsEnabled(): boolean {
+  return process.env.COMPOSED_CARDS === "true";
+}
+
+/**
  * Stage B "one brain" flag (default OFF — ships dark, lane convention). ONE lever for the stage:
  * B1 (card CTAs through this route with a pinned skill + a data-carried anchor), B2 (the `cards`
  * slot on the generator schemas + chip-carried packs), B3 (the `predispatch` frame). NEXT_PUBLIC_
@@ -493,6 +506,8 @@ export async function POST(request: Request): Promise<Response> {
               // Stage B (B2): bind the `cards` slot on the generator schemas (flag-gated).
               cardsSlot: ONE_BRAIN,
               grounding: isCorpusChatToolEnabled(),
+              // Phase 2: let the model answer in composed cards (flag-gated, default off).
+              composedCards: isComposedCardsEnabled(),
               context: {
                 platform,
                 profileRow,
