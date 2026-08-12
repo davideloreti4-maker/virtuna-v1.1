@@ -466,3 +466,63 @@ describe("executeCorpusSearch — first-frame technique facets [grounding]", () 
     expect(prop("hook_technique").description).toMatch(/154 of 524/);
   });
 });
+
+// ─── Row ids: the only way a composed card can carry a receipt (D7) ──────────
+//
+// `emit_card`'s proof_strip takes teardown ROW IDS and the server materializes the numbers, so the
+// model has to have been given an id to name. `RetrievedExample.teardownId` has always been on the
+// row (retrieve.ts:290) and was never in the JSON the model reads — which made proof_strip
+// unreachable through its only intended path, and `teardown` (the one recipe that REQUIRES a
+// proof_strip) a card that validates and then renders no proof at all.
+//
+// Off by default: the corpus tool is default-ON in production and composed cards are not, so a
+// turn that cannot use an id must not pay for one in tokens or risk the model printing a UUID.
+describe("executeCorpusSearch [row ids]", () => {
+  const retrieveWith = (examples: RetrievedExample[]) =>
+    vi.fn(async () => ({ examples, enough: false, stats: {} })) as never;
+
+  const rows = [mkExample({ teardownId: "tear-1" }), mkExample({ teardownId: "tear-2" })];
+
+  it("hands the model each row's id when ids are requested", async () => {
+    const res = await executeCorpusSearch({ query: "x" }, "tiktok", 1, retrieveWith(rows), {
+      includeRowIds: true,
+    });
+    const payload = JSON.parse(res.content);
+    expect(payload.results.map((r: { id?: string }) => r.id)).toEqual(["tear-1", "tear-2"]);
+  });
+
+  it("tells the model what the id is for, and not to print it", async () => {
+    const res = await executeCorpusSearch({ query: "x" }, "tiktok", 1, retrieveWith(rows), {
+      includeRowIds: true,
+    });
+    const payload = JSON.parse(res.content);
+    expect(String(payload.note)).toMatch(/proof_strip/);
+    expect(String(payload.note)).toMatch(/never (print|write|show) it/i);
+  });
+
+  it("off (the default) ⇒ the payload is byte-identical to the shipped one", async () => {
+    const withFlagOff = await executeCorpusSearch({ query: "x" }, "tiktok", 1, retrieveWith(rows), {
+      includeRowIds: false,
+    });
+    const withNoOpts = await executeCorpusSearch({ query: "x" }, "tiktok", 1, retrieveWith(rows));
+
+    expect(withNoOpts.content).toBe(withFlagOff.content);
+    const payload = JSON.parse(withNoOpts.content);
+    expect(payload.results.every((r: { id?: string }) => r.id === undefined)).toBe(true);
+    expect(String(payload.note)).not.toMatch(/proof_strip/);
+  });
+
+  it("omits the id for a row that has none rather than sending null", async () => {
+    // `teardownId` is non-null on the type, but the row is assembled from an RPC — a missing id
+    // must drop the key, not ship `id: null` for the model to pass on to emit_card as a string.
+    const res = await executeCorpusSearch(
+      { query: "x" },
+      "tiktok",
+      1,
+      retrieveWith([mkExample({ teardownId: undefined as unknown as string })]),
+      { includeRowIds: true },
+    );
+    const payload = JSON.parse(res.content);
+    expect("id" in payload.results[0]).toBe(false);
+  });
+});

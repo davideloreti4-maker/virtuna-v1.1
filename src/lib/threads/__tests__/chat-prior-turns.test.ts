@@ -224,6 +224,43 @@ describe("openChatPriorTurns", () => {
     expect(run.lines).toEqual(["a real line"]);
   });
 
+  // ── The composed card's context record ───────────────────────────────────────────────────────
+  //
+  // The composer's card answers OPEN-ENDED asks, so the follow-up is always ABOUT the card
+  // ("make the second one sharper", "why does that format work"). A hole in the anchor here is the
+  // same amnesia this module exists to close, on the one card whose entire job is being referred
+  // back to. `emit_card` is not a generator, so it records rather than replaying as a tool run.
+  it("records a composed card by its recipe and its typed deliverable", () => {
+    const turns = openChatPriorTurns([
+      msg("user", [text("3 viral formats for young startup founders")]),
+      msg("assistant", [
+        {
+          type: "composed-card",
+          props: {
+            recipe: "format-set",
+            deliverable: { kind: "claim", text: "Film the failure, not the win." },
+            body: [{ kind: "note", text: "Under 30 seconds." }],
+          },
+        },
+      ]),
+    ]);
+    const records = turns.flatMap((t) => t.skillRecords ?? []);
+    expect(records).toEqual(['format-set — "Film the failure, not the win."']);
+    // It is a RECORD, never a replayed tool run — naming a tool the agent cannot call advertises a
+    // door that does not exist.
+    expect(turns.filter((t) => t.toolRuns)).toHaveLength(0);
+  });
+
+  it("skips a composed card with no readable deliverable rather than recording a placeholder", () => {
+    // A thread predating a field must not push `undefined` into the transcript as if it were the
+    // creator's work — the same rule the card LINES follow.
+    const turns = openChatPriorTurns([
+      msg("user", [text("give me something")]),
+      msg("assistant", [{ type: "composed-card", props: { recipe: "brief" } }]),
+    ]);
+    expect(turns.flatMap((t) => t.skillRecords ?? [])).toEqual([]);
+  });
+
   it("caps at MAX_PRIOR_TURNS, keeping the newest", () => {
     const many = Array.from({ length: MAX_PRIOR_TURNS + 6 }, (_, i) =>
       msg(i % 2 === 0 ? "user" : "assistant", [text(`turn ${i}`)]),
@@ -231,5 +268,73 @@ describe("openChatPriorTurns", () => {
     const turns = openChatPriorTurns(many);
     expect(turns).toHaveLength(MAX_PRIOR_TURNS);
     expect(turns.at(-1)!.text).toBe(`turn ${MAX_PRIOR_TURNS + 5}`);
+  });
+});
+
+/**
+ * THE CONTEXT RECORDS — the second half of the 2026-08-04 defect, and until 2026-08-11 the
+ * completely untested half.
+ *
+ * Every non-generator skill (a Test, a Read, an Explore, a Remix, an account read) persists its
+ * card into the SAME open thread, and none of them is `markdown` or a generator card. They were
+ * skipped entirely: 107 of 982 persisted blocks (11%) invisible, and precisely the blocks holding
+ * the creator's actual work. Run a Test, ask "so what should I fix first?", and the co-pilot has
+ * never heard of it.
+ *
+ * `SKILL_BLOCK_RECORD` fixed that and then shipped for a week with NO test asserting a record line
+ * is produced at all — found by mutation (replacing the describer call with a constant failed
+ * nothing). The same describers now also feed the LIVE tool result, so a silent regression here
+ * would blind both seams at once.
+ */
+describe("openChatPriorTurns — non-generator skill results ride as context records", () => {
+  it("a Video Test the creator ran from the pill becomes a record line", () => {
+    // A pill run persists ONLY its card — no text row follows — so the record IS the whole turn.
+    const turns = openChatPriorTurns([
+      msg("assistant", [
+        { type: "video-test-card", props: { craftScore: 61, dropLabel: "0:04" } },
+      ]),
+    ]);
+    expect(turns).toHaveLength(1);
+    expect(turns[0]!.skillRecords?.[0]).toContain("Video Test — craft 61/100");
+    expect(turns[0]!.skillRecords?.[0]).toContain("weak beat at 0:04");
+  });
+
+  it("an audience Read records the band and the lever, not just that it happened", () => {
+    const turns = openChatPriorTurns([
+      msg("assistant", [
+        {
+          type: "multi-audience-read",
+          props: {
+            audiences: [
+              { name: "Gen Z students", band: "Most keep watching", fraction: "6 in 10", lever: "cut the setup" },
+            ],
+          },
+        },
+      ]),
+      msg("user", [text("so what should i fix first?")]),
+    ]);
+    // Records belong BEFORE the turn that follows them — they describe work already on screen.
+    expect(turns[0]!.skillRecords?.[0]).toBe(
+      "Audience Read — Gen Z students: Most keep watching (6 in 10) — lever: cut the setup",
+    );
+    expect(turns[1]).toMatchObject({ role: "user", text: "so what should i fix first?" });
+  });
+
+  it("a record block whose props are malformed is SKIPPED, never emitted as a placeholder", () => {
+    // A thread predating a field must not take the anchor down, and must not tell the model a
+    // Test exists whose score is literally "undefined".
+    const turns = openChatPriorTurns([
+      msg("assistant", [{ type: "multi-audience-read", props: { audiences: [] } }]),
+      msg("assistant", [text("anything")]),
+    ]);
+    expect(turns.every((t) => (t.skillRecords ?? []).length === 0)).toBe(true);
+  });
+
+  it("a record block is NOT replayed as a tool run — the agent never called it", () => {
+    // Naming it as a tool would advertise a door that does not exist.
+    const turns = openChatPriorTurns([
+      msg("assistant", [{ type: "video-test-card", props: { craftScore: 61 } }]),
+    ]);
+    expect(turns[0]!.toolRuns).toBeUndefined();
   });
 });

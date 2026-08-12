@@ -102,9 +102,20 @@ describe("formatVoice header (KCQ-08 directive + honesty spine)", () => {
 describe("voice survives a representative BUNDLE_CHAR_CAP drop", () => {
   // A large ask pushes the assembled bundle just over the cap so the tail-drop loop
   // runs and sheds the lowest-priority profile roles (platform → flops → wins) while
-  // leaving niche/audience/voice. Sized so step 4a (profile-role drop) fires, NOT
-  // step 4b (whole-profile drop when the fenced ask alone overflows).
-  const BIG_ASK = "y".repeat(2700);
+  // leaving niche/audience/voice. Sized so the profile-role drop fires, NOT the
+  // whole-profile drop (which happens when the fenced ask alone overflows).
+  //
+  // DERIVED FROM THE CAP, not hardcoded — and this is the SAME number it always was: the
+  // original `"y".repeat(2700)` was tuned against BUNDLE_CHAR_CAP = 4000, i.e. exactly
+  // CAP - 1300. The offset was the intent all along; only the hardcoding was wrong. When the
+  // cap moved to 6000 the ask stopped overflowing, nothing was shed, and all three cases
+  // failed on `not.toContain("Past wins")` — a fixture that had silently become a no-op.
+  //
+  // The window is narrow on purpose and worth knowing about: at CAP - 1200 the voice sample
+  // (~870 chars) is shed too, so there is roughly one role's width of slack. The assertions
+  // below are what prove the bundle is still IN the tail-drop regime, so a future drift fails
+  // loudly rather than passing vacuously.
+  const BIG_ASK = "y".repeat(BUNDLE_CHAR_CAP - 1300);
 
   it.each(["hooks", "script", "remix"] as const)(
     "%s — voice marker present though the bundle overflowed and dropped a tail role",

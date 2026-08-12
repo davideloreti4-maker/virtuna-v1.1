@@ -30,7 +30,15 @@ import {
   type SkillRunContext,
   type SkillRunOutput,
 } from "@/lib/tools/skill-dispatch";
+import {
+  buildConversationDigest,
+  isConversationDigestEnabled,
+} from "@/lib/tools/conversation-digest";
+import { describeRunOutput, isChatCardsOnScreenEnabled } from "@/lib/tools/on-screen";
 import { SEARCH_CORPUS_TOOL, executeCorpusSearch } from "@/lib/grounding/corpus-tool";
+import { EMIT_CARD_TOOL, handleEmitCard } from "@/lib/tools/emit-card-tool";
+import { createSearchGovernor } from "@/lib/grounding/search-budget";
+import type { RetrievedExample } from "@/lib/grounding/types";
 import { retrieveCachedExamples } from "@/lib/grounding/retrieve";
 import {
   SKILL_CAPABILITIES,
@@ -216,6 +224,20 @@ export interface ChatAgentStreamInput {
   /** Prior conversation turns (role + text), oldest→newest. */
   priorTurns?: ChatAgentPriorTurn[];
   /**
+   * The creator's RAW message this turn — their own words, not `ask`.
+   *
+   * `ask` is the assembled grounding bundle, and `priorTurns` are strictly the turns BEFORE this
+   * one (the route loads them before it persists this one). So without this field the conversation
+   * digest handed down to a generator was missing the very message being answered: "give me hooks,
+   * but keep them under 30s" reached the generator only as whatever the chat agent folded into
+   * `topic`, and on a thread's first generating turn the digest was empty. See
+   * `buildConversationDigest`.
+   *
+   * Only ever read for the digest — it is not replayed as a message (the loop already sends `ask`
+   * as the live user turn), so leaving it unset changes nothing but the digest.
+   */
+  currentAsk?: string;
+  /**
    * A generator the CREATOR already chose — the `skillKey` of a follow-up chip they tapped
    * ('ideas' | 'hooks' | 'script'). Pins the FIRST round's `tool_choice` to that tool.
    *
@@ -256,6 +278,17 @@ export interface ChatAgentStreamInput {
   cardsSlot?: boolean;
   /** Bind the corpus search tool (grounding-as-a-tool). Gated by GROUNDING_CHAT_TOOL at the route. */
   grounding?: boolean;
+  /**
+   * Phase 2: bind `emit_card`, so the model can answer with composed CARDS instead of prose.
+   *
+   * Route-gated (`COMPOSED_CARDS`) and DEFAULT OFF, unlike grounding — the contract has not been
+   * measured against a live model yet (that is the spike re-run), and this changes what every chat
+   * turn is allowed to produce. Off ⇒ the request is byte-identical to the one shipped today.
+   *
+   * Free, like `request_input` and `search_corpus`: `emit_card` renders an answer the model has
+   * already thought of. It never reaches the gate and never bills.
+   */
+  composedCards?: boolean;
   /** Streamed answer tokens, in order. */
   onToken: (delta: string) => void;
   /** A skill's card-block, as it is produced (streamed to the client + collected for persistence). */
@@ -370,6 +403,15 @@ export interface ChatAgentStreamDeps {
 }
 
 const DEFAULT_MAX_ROUNDS = 4;
+/**
+ * Composed-card turns get more rounds, because searching SPENDS them: a model that searches once
+ * per round reaches 4 with nothing composed. Measured at 4 rounds flash finished 4/6 with two
+ * misses being the cap itself; at 6 it reached 5-6/6. Unused rounds cost nothing — the loop breaks
+ * as soon as the model stops calling tools.
+ */
+const COMPOSING_MAX_ROUNDS = 6;
+/** Reasoning is drawn from the same output budget, so the answer needs headroom beside it. */
+const COMPOSING_MAX_TOKENS = 4000;
 const DEFAULT_MAX_SKILL_RUNS = 2;
 /**
  * F-1 containment (Stage A): cap on the text a round may stream AFTER a skill has
@@ -410,6 +452,7 @@ function toolUseDirective(
   grounding: boolean,
   skills: readonly SkillTool[] = SKILL_TOOLS,
   cardsSlot = false,
+  composedCards = false,
 ): string {
   const { generators, analysis } = splitSkills(skills);
   // NAME ONLY WHAT IS BOUND. An anonymous /go visitor gets `skills: FREE_SKILL_TOOLS`, which is EMPTY
@@ -473,6 +516,26 @@ function toolUseDirective(
     "field (a text box, a video drop, or a confirm button) appears in the thread. " +
     "Never invent the missing value, never just describe a result you cannot produce, and never claim a card " +
     "exists before they submit the field.";
+  /**
+   * Naming emit_card is not optional decoration. Measured live: bound-but-unmentioned, the model
+   * answered a comparison ask with 2,438 characters of markdown — `##` headings, bold labels — and
+   * never called the tool, while the spike (whose own prompt names it) composed a card for the
+   * identical ask. A tool the directive does not name is a tool the model does not reach for.
+   *
+   * Placed AFTER the generator rule on purpose, and worded to defer to it: emit_card is free and
+   * only renders, so a card standing in for `generate_hooks` would be the free-content leak wearing
+   * a different hat. The generators make the product; this only decides how an ANSWER is shown.
+   */
+  const composeLine = composedCards
+    ? " HOW YOU SHOW AN ANSWER: when the answer has structure and no generator above covers it — a " +
+      "comparison, a teardown of why something worked, a brief, a set of angles or formats — call " +
+      "emit_card and compose it, instead of writing that structure out in prose. Pick the recipe " +
+      "that fits and use only the slots it allows. Do NOT answer with markdown: no `##` headings, " +
+      "no bold section labels, no long bulleted essay — that structure belongs in slots, and the " +
+      "creator sees the card, not your markup. After the card lands, add ONE short line and never " +
+      "restate its contents. This never replaces a generator: if a paid tool above makes what they " +
+      "asked for, call that instead."
+    : "";
   const groundLine = grounding
     ? " When a real, proven real-world example would make a strategy answer stronger, call search_corpus " +
       "and ground your answer on what it returns. Use its FILTERS when the creator names a constraint " +
@@ -487,7 +550,7 @@ function toolUseDirective(
       "imply the corpus contains them, and never dress a craft reference as evidence. Cite only " +
       "creators and numbers the tool actually returned."
     : "";
-  return base + groundLine;
+  return base + composeLine + groundLine;
 }
 
 /**
@@ -868,7 +931,10 @@ export async function runChatAgentStream(
   const streamComplete = deps.streamComplete ?? defaultStreamComplete;
   const executeCorpus = deps.executeCorpus ?? executeCorpusSearch;
   const retrieve = deps.retrieve ?? retrieveCachedExamples;
-  const maxRounds = deps.maxRounds ?? DEFAULT_MAX_ROUNDS;
+  // Composing is a different job from chatting: it needs reasoning, room to search AND compose,
+  // and a wider token budget. One flag drives all three so they cannot drift apart.
+  const composing = !!input.composedCards;
+  const maxRounds = deps.maxRounds ?? (composing ? COMPOSING_MAX_ROUNDS : DEFAULT_MAX_ROUNDS);
   const maxSkillRuns = deps.maxSkillRuns ?? DEFAULT_MAX_SKILL_RUNS;
   // No generators bound ⇒ nothing can be produced, so this turn's job is to REFUSE and hold the
   // line. This still drives the DIRECTIVE and the model choice, both of which are about what the
@@ -902,11 +968,12 @@ export async function runChatAgentStream(
     ),
     REQUEST_INPUT_TOOL,
     ...(input.grounding ? [SEARCH_CORPUS_TOOL] : []),
+    ...(input.composedCards ? [EMIT_CARD_TOOL] : []),
   ];
 
   // The caller's prompt grounds voice/chat; the loop appends the tool-use directive (it owns the tools).
   // The directive is told what THIS caller bound, so it can never advertise a skill the model cannot call.
-  const systemContent = `${input.systemPrompt}\n\n${toolUseDirective(!!input.grounding, skills, !!input.cardsSlot)}`;
+  const systemContent = `${input.systemPrompt}\n\n${toolUseDirective(!!input.grounding, skills, !!input.cardsSlot, composing)}`;
   const boundNames = new Set(tools.map((t) => (t as { function?: { name?: string } }).function?.name ?? ""));
   const messages: Array<Record<string, unknown>> = [
     { role: "system", content: systemContent },
@@ -921,8 +988,52 @@ export async function runChatAgentStream(
     ? (skills.find((s) => s.skillKey === input.forceSkill)?.name ?? null)
     : null;
 
+  /**
+   * THE CONVERSATION, handed DOWN to a skill (2026-08-10).
+   *
+   * The generators were the one place in this system with no conversation at all — they see
+   * `topic`, `anchor`, `cards`, the profile and the audience, so twenty turns reached them only
+   * insofar as this loop compressed them into the `topic` string it wrote. The loop is the right
+   * place to fix that because it is already holding the turns.
+   *
+   * The digest carries the creator's TURNS only. It used to also carry the last run's card lines
+   * under a "do not reproduce these" instruction, which is why this was once built per-call
+   * (a `cards` rewrite pack and "do not reproduce" are opposite instructions over one list).
+   * That half is gone — it reproduced the cards verbatim and evicted the corpus (measured;
+   * conversation-digest.ts header, handoff §12) — so the digest no longer depends on `args` and
+   * the contradiction it guarded can no longer be constructed.
+   *
+   * Still built per call rather than hoisted: the cost is a few string ops on turns the loop is
+   * already holding, and hoisting it would compute a digest on turns that no tool call uses.
+   *
+   * `currentAsk` is the message being answered, which is NOT in `priorTurns` — the route loads the
+   * thread's turns before it persists this one. Without it the digest could not carry the turn
+   * that most often holds the constraint, and was null entirely on a thread's first generating
+   * turn. `input.ask` cannot stand in: it is the assembled bundle, not the creator's words.
+   *
+   * Flag off → returns `input.context` ITSELF, not a copy, so the off path is identical by
+   * reference and cannot drift.
+   */
+  const skillContextFor = (): SkillRunContext => {
+    if (!isConversationDigestEnabled()) return input.context;
+    const digest = buildConversationDigest(input.priorTurns ?? [], input.currentAsk);
+    return digest ? { ...input.context, conversation: digest } : input.context;
+  };
+
   const skillRuns: SkillRunOutput[] = [];
   const uiBlocks: unknown[] = [];
+  /**
+   * Spec §5: *"model emits an invalid tree → one repair attempt, then degrade to prose (never a
+   * broken card)."* Counted per TURN, not per round, so a model that keeps re-sending the same
+   * malformed tree is told to write words rather than spending the round budget on retries.
+   */
+  let emitCardFailures = 0;
+  /**
+   * Bounds how much of a turn can disappear into retrieval. Measured cause: flash spent every round
+   * of a turn searching — one ask ran the IDENTICAL query four times — and returned no answer at
+   * all. See search-budget.ts.
+   */
+  const searchGovernor = createSearchGovernor();
   const toolCalls: ChatAgentStreamResult["toolCalls"] = [];
   let paidRuns = 0;
   let fullText = "";
@@ -940,10 +1051,23 @@ export async function runChatAgentStream(
       };
 
   for (let round = 1; round <= maxRounds; round++) {
+    // Once the budget is gone the tool is WITHDRAWN, not merely refused. Naming a tool the loop
+    // will not service is what invited the search loop in the first place — the same rule the
+    // directive already follows for unbound skills.
+    //
+    // …and the LAST round is reserved for the answer regardless of budget. Refusing a search still
+    // costs the round that asked for it, so a model that searches once per round reaches the cap
+    // with nothing composed: measured at production's 4 rounds, flash finished 1 of 6 asks that
+    // way. Withdrawing the tool is what turns the final round into "compose now".
+    const roundTools =
+      searchGovernor.exhausted() || round === maxRounds
+        ? tools.filter((t) => (t as { function?: { name?: string } }).function?.name !== "search_corpus")
+        : tools;
+
     const stream = await streamComplete({
       model,
       messages,
-      tools,
+      tools: roundTools,
       // Round 1 only — see `forceSkill`. After the tool has returned, the model needs `auto` back to
       // write its closing line instead of calling the same tool again.
       tool_choice:
@@ -952,8 +1076,21 @@ export async function runChatAgentStream(
           : "auto",
       temperature: 0.3,
       seed,
-      max_tokens: 2000,
-      enable_thinking: false,
+      max_tokens: composing ? COMPOSING_MAX_TOKENS : 2000,
+      /**
+       * Reasoning, for composed-card turns only. MEASURED 2026-08-12: flash scored 2/6, 3/6, 4/6
+       * composing against the shipped contract with this false, and 6/6, 5/6 with it true — plus's
+       * own range, at flash's price ($0.13/M output against $1.60). It also searches LESS when it
+       * can plan, so some of the reasoning tokens pay for themselves.
+       *
+       * Scoped to `composedCards` deliberately. Nothing here measured decode, adapt, fold or
+       * vision, and an ordinary chat turn keeps the exact request it ships with today.
+       *
+       * Reasoning arrives as `delta.reasoning_content`, which this loop never reads — only
+       * `delta.content` reaches `onToken`. That is what keeps the thinking out of the creator's
+       * stream, and it is asserted live in scripts/probe-thinking-stream.ts.
+       */
+      enable_thinking: composing,
     });
 
     // Accumulate the round: text streams straight through; tool-call fragments accumulate by index.
@@ -1008,20 +1145,43 @@ export async function runChatAgentStream(
     // embed + an RPC, ~10s+, so a four-call round spent ~52s before a single token resumed streaming.
     // Skills stay sequential below: they are paid, leashed by a counter, and emit ordered cards.
     const corpusCalls = input.grounding ? calls.filter((c) => c.name === "search_corpus") : [];
+    // Governed SYNCHRONOUSLY and in the model's own call order, before anything is dispatched: the
+    // model emits searches in batches, so two identical queries in one round would otherwise both
+    // run purely because they were concurrent.
+    const governed = corpusCalls.map((call) => {
+      let parsed: Record<string, unknown> = {};
+      try {
+        parsed = JSON.parse(call.args || "{}");
+      } catch {
+        parsed = {};
+      }
+      return { call, parsed, verdict: searchGovernor.check(parsed) };
+    });
     const corpusResults = await Promise.all(
-      corpusCalls.map(async (call) => {
-        let parsed: Record<string, unknown> = {};
-        try {
-          parsed = JSON.parse(call.args || "{}");
-        } catch {
-          parsed = {};
+      governed.map(async ({ call, parsed, verdict }) => {
+        if (!verdict.allow) {
+          // Not executed: no embed, no RPC, no rows. The refusal IS the tool result.
+          return { id: call.id, refusal: verdict.refusal, content: "", citable: [] as RetrievedExample[], record: undefined };
         }
-        const res = await executeCorpus(parsed, input.context.platform, round, retrieve);
-        return { id: call.id, content: res.content, citable: res.citable ?? [], record: res.record };
+        // Row ids only when a composed card could carry one — see ROW_ID_NOTE in corpus-tool.ts.
+        // A grounded turn with cards off sends exactly the payload it sends today.
+        const res = await executeCorpus(parsed, input.context.platform, round, retrieve, {
+          includeRowIds: !!input.composedCards,
+        });
+        return { id: call.id, refusal: undefined, content: res.content, citable: res.citable ?? [], record: res.record };
       }),
     );
     // Appended in the model's own call order (Promise.all preserves it) so results line up with ids.
     for (const r of corpusResults) {
+      if (r.refusal) {
+        toolCalls.push({
+          name: "search_corpus",
+          ran: false,
+          note: r.refusal.repeat ? "repeat search" : "search limit reached",
+        });
+        messages.push({ role: "tool", tool_call_id: r.id, content: JSON.stringify(r.refusal) });
+        continue;
+      }
       toolCalls.push({ name: "search_corpus", ran: true });
       messages.push({ role: "tool", tool_call_id: r.id, content: r.content });
 
@@ -1126,6 +1286,64 @@ export async function runChatAgentStream(
         continue;
       }
 
+      // Phase 2: the model composed its answer as cards. FREE — no gate, no bill, no onDispatch
+      // (that seam labels a run capsule, and nothing runs here). Handled before the skill lookup
+      // so it can never be mistaken for an unbound paid skill and answered with the credit line.
+      if (input.composedCards && call.name === "emit_card") {
+        let parsed: unknown = {};
+        try {
+          parsed = JSON.parse(call.args || "{}");
+        } catch {
+          /* handleEmitCard reports the empty shape */
+        }
+        const { blocks, error } = await handleEmitCard(parsed);
+
+        for (const block of blocks) {
+          input.onBlock(block); // live render this turn…
+          uiBlocks.push(block); // …and persist, or the card vanishes on reload while the prose stays
+        }
+        toolCalls.push({
+          name: "emit_card",
+          ran: blocks.length > 0,
+          ...(error ? { note: error } : {}),
+        });
+
+        if (blocks.length > 0) {
+          messages.push({
+            role: "tool",
+            tool_call_id: call.id,
+            content: JSON.stringify({
+              shown: `${blocks.length} card(s)`,
+              note:
+                "the cards are shown to the creator; reply with ONE short closing line and do NOT " +
+                "restate or rewrite their content in prose",
+            }),
+          });
+          continue;
+        }
+
+        // §5's degrade ladder. The first failure names what was wrong and invites one correction —
+        // a recipe violation is usually a one-field fix, and losing the card costs the creator the
+        // structured answer. The second ends it: prose beats another round of the same tree.
+        emitCardFailures++;
+        messages.push({
+          role: "tool",
+          tool_call_id: call.id,
+          content: JSON.stringify(
+            emitCardFailures === 1
+              ? {
+                  error: error ?? "the card could not be rendered",
+                  note: "fix exactly that and call emit_card once more — you get one retry, then answer in prose",
+                }
+              : {
+                  error: error ?? "the card could not be rendered",
+                  note: "do not call emit_card again this turn — answer the creator directly in prose instead",
+                },
+          ),
+        });
+        continue;
+      }
+
       const skill = byName.get(call.name);
       if (!skill) {
         toolCalls.push({ name: call.name, ran: false, note: "unknown skill" });
@@ -1222,7 +1440,7 @@ export async function runChatAgentStream(
         // Announce the dispatch BEFORE the run: the client's capsule labels itself + seeds the
         // skill's stage plan off this, ahead of the first onStage event (~seconds later).
         input.onDispatch?.(skill.skillKey);
-        const { blocks, warnings } = await skill.run(args, input.context);
+        const { blocks, warnings } = await skill.run(args, skillContextFor());
         if (skill.billable) {
           paidRuns++;
           // BILL ON DELIVERY — the cards are about to stream to the creator and nothing after this
@@ -1238,15 +1456,54 @@ export async function runChatAgentStream(
         // the route can stamp the persisted turn (run-header) with what actually ran.
         skillRuns.push({ name: skill.name, skillKey: skill.skillKey, blocks, warnings });
         toolCalls.push({ name: skill.name, ran: true });
+        // ── THE CARDS THE CREATOR IS NOW LOOKING AT (flagged, 2026-08-11) ──────────────────
+        // Until this, a live run reported a COUNT and nothing else, while `replayPriorTurn`
+        // handed the model the lines of every PAST run. So the model could discuss the pack it
+        // made last turn and not the one it had just made — and, asked for hooks, holding a
+        // "5 card(s)" receipt it could not read, it wrote a fresh pack in prose. Measured 2/2
+        // walks: 10 then 5 enumerated hooks with ZERO overlap with the rendered cards.
+        //
+        // Not a prompt fix. The model had no way to be faithful: you cannot reference what you
+        // cannot see. See card-lines.ts for why this is safe HERE and was not safe in the
+        // generator's bundle (§12.1) — narrator vs generator, opposite jobs.
+        const onScreen = isChatCardsOnScreenEnabled() ? describeRunOutput(blocks) : null;
         messages.push({
           role: "tool",
           tool_call_id: call.id,
           content: JSON.stringify({
             ran: skill.name,
             produced: `${blocks.length} card(s)`,
-            note:
-              "cards are shown to the creator; reply with ONE short closing line and do NOT " +
-              "restate or rewrite the cards' content in prose",
+            // Omitted, never `[]`: an empty list is a claim, and the wrong one. With nothing
+            // describable the result is byte-identical to what shipped before.
+            //
+            // The two kinds get different instructions because the creator is doing a different
+            // thing with them. A generator PACK is a set they are choosing between, so the useful
+            // reply compares and names one. A RESULT is a verdict they are reading, so the useful
+            // reply builds on it — and the failure to guard against is not duplication but
+            // CONTRADICTION, which is what narrating an unread verdict produces.
+            ...(onScreen?.kind === "cards"
+              ? {
+                  cards_on_screen: onScreen.lines,
+                  note:
+                    "these are the cards the creator can NOW SEE, in order. Reply with ONE short " +
+                    "closing line that refers to them by their text — name the strongest and why, " +
+                    "or point at the next step. They are ALREADY on screen: never re-list them, " +
+                    "and never present them as something you are producing now.",
+                }
+              : onScreen?.kind === "results"
+                ? {
+                    result_on_screen: onScreen.lines,
+                    note:
+                      "this is the RESULT the creator can NOW SEE, already rendered. Reply with ONE " +
+                      "short closing line that builds on it — what it means for them, or the next " +
+                      "step. Never restate it in full, never re-render the numbers, and never say " +
+                      "anything that contradicts it.",
+                  }
+                : {
+                    note:
+                      "cards are shown to the creator; reply with ONE short closing line and do NOT " +
+                      "restate or rewrite the cards' content in prose",
+                  }),
           }),
         });
       } catch (err) {
