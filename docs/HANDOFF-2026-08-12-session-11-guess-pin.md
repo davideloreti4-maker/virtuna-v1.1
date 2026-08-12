@@ -196,8 +196,55 @@ load-bearing. Do not trust a green 6h without them.
 
 ---
 
-## 7. Do next
+## 7. 🔴 A COUNT ELIMINATES THE PUSHBACK — and it may make C's billing risk avoidable
 
+Run after the commit, on the FORMAT cell (the hard one: 0/10 in §4, and 0/10 → 1/10 under the
+clause written to name it). All arms **unpinned**. `.scratch/probe-count-evidence.ts`, 26 runs, free.
+
+| arm | dispatched | **genuine pushback** | prose tool-call |
+|---|---|---|---|
+| the creator's words, unchanged | **0/6** | **5** | 1 |
+| the creator TYPES a count | **7/10** | **0** | 3 |
+| **the route injects the count** (creator types none) | **7/10** | **0** | 3 |
+
+Pooled against §4's control on the same subject: **0/16 → 14/20.**
+
+**Three things here, and the second is the important one.**
+
+**1. Injecting the count works exactly as well as the creator typing it.** Same 7/10, same pack
+size, same quality band. `currentAsk` keeps the creator's real words, so only the assembled bundle
+changes — invisible to the creator, and no words are put in their mouth that the pipeline does not
+already act on (a hooks run produces 5 cards either way; every dispatching run here returned 5).
+
+**2. The count does not partially fix the defect — it ELIMINATES it.** Zero pushbacks in 20 counted
+runs against 5 in 6 uncounted ones. The model stops arguing that *"'stand-up comedy podcast' is the
+format, not the hook"* entirely. **What remains is a different bug**: the model has decided to run
+and fails to *express* the call, emitting it as creator-visible text —
+
+> `generate_hooks(topic="stand-up comedy podcast", count=5)`
+> `generate_ideas(topic='stand-up comedy podcast')`
+
+Session 10 §4 recorded this shape **once in 45 runs** and called it "its own kind of bug". Counted,
+it is **6 of 26** — because the disposition defect that used to mask it is gone. A pin fixes it by
+construction (`tool_choice` cannot be malformed), which is why C is 10/10 where the count is 7/10.
+
+**3. So C and the count are not alternatives, and the composition may beat both.** The count fixes
+DISPOSITION at no billing risk; C fixes EXPRESSION but pays ~3.4%. That opens a trigger neither
+session considered: **retry pinned when round 1 emitted a prose tool call.** Unlike §11.2's rejected
+"guessed AND no tool call", this trigger cannot select for false positives — the model has asserted
+the specific call, by name, with args. It is the model's own machine-readable statement of intent.
+
+⚠️ **Not built, not measured, and 26 runs is a small corpus.** The app cell was not run with an
+injected count (its typed-count arm is 15/16). Treat §7 as the strongest available lead, not a
+result — and note the pushback elimination is the claim resting on the fewest runs (20).
+
+---
+
+## 8. Do next
+
+0. 🔴 **Confirm §7 before flipping C on.** The count is free of billing risk and C is not, so if the
+   composition in §7.3 holds it is strictly better than either alone. Two cheap runs decide it: the
+   injected count on the **app** cell, and whether a prose-tool-call retry closes the residual 30%.
 1. **Set `ENGINE_GUESS_PIN=true` on a live route run** and re-measure the two cells there before
    arguing default-ON. That is the last gap between this and a shipping default.
 2. **Then the profile cell** — a creator with no niche set. Every pushback *cites* the niche while
