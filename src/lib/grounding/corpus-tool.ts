@@ -322,11 +322,23 @@ export function parseFacets(args: Record<string, unknown>): RetrieveFacets {
   return facets;
 }
 
+/**
+ * The teardown row id a `proof_strip` needs, and the sentence that stops it reaching the answer
+ * text. Only added when the caller can actually use an id (composed cards on) — the corpus tool is
+ * default-ON in production, so an unconditional id would spend tokens on every grounded turn and
+ * put a UUID in front of a model with no instruction about it.
+ */
+const ROW_ID_NOTE =
+  "Each row carries an `id`. Pass it to emit_card's proof_strip `receiptRefs` to show that video " +
+  "as proof — the server fills in the handle and the numbers. It is an internal reference: never " +
+  "print it, and never write a creator handle or a multiplier yourself.";
+
 export async function executeCorpusSearch(
   args: { query?: unknown; axis?: unknown; limit?: unknown } & Record<string, unknown>,
   platform: string,
   round: number,
   retrieve: typeof retrieveCachedExamples,
+  opts: { includeRowIds?: boolean } = {},
 ): Promise<{
   content: string;
   examples: RetrievedExample[];
@@ -362,6 +374,9 @@ export async function executeCorpusSearch(
     record.grounded = grounded;
     record.warrant = warrant;
     const results = examples.map((e) => ({
+      // D7's only handle: the model names a ROW, never a number. Key dropped rather than sent as
+      // null when a row has no id — `id: null` is something a model will pass straight through.
+      ...(opts.includeRowIds && e.teardownId ? { id: e.teardownId } : {}),
       creator: e.handle ?? null,
       views: e.views ?? null,
       multiplier: e.multiplier
@@ -394,7 +409,9 @@ export async function executeCorpusSearch(
         count: results.length,
         grounded,
         warrant,
-        note: warrantNote(warrant, onSubject, results.length),
+        note:
+          warrantNote(warrant, onSubject, results.length) +
+          (opts.includeRowIds && results.length > 0 ? ` ${ROW_ID_NOTE}` : ""),
         results,
       }),
       examples,

@@ -175,6 +175,37 @@ describe("runChatAgentStream [tools]", () => {
     expect(res.text).toBe("Real creators do this: …");
   });
 
+  it("asks the corpus for ROW IDS only when composed cards can consume them", async () => {
+    // Params typed so the assertion can reach the 5th argument — an argless `vi.fn` infers a
+    // zero-length tuple and `mock.calls[0][4]` stops compiling.
+    const mkCorpus = () =>
+      vi.fn(async (..._args: unknown[]) => ({
+        content: JSON.stringify({ count: 1, results: [{ id: "tear-1", creator: "@x" }] }),
+        examples: [],
+        record: { round: 1, query: "budgeting", axis: "topical" as const, rows: 1 },
+      }));
+    const call = () => [
+      [toolName(0, "s1", "search_corpus"), toolArgs(0, '{"query": "budgeting"}')],
+      [textChunk("ok")],
+    ];
+
+    const on = mkCorpus();
+    await runChatAgentStream(
+      baseInput({ grounding: true, composedCards: true }),
+      DEPS(mockStream(call()), { skills: [mkSkill("generate_ideas")], executeCorpus: on as never }),
+    );
+    // Without an id in the payload the model has nothing to put in a proof_strip, so `teardown`
+    // — the recipe that requires one — could never render its receipt.
+    expect(on.mock.calls[0]![4]).toEqual({ includeRowIds: true });
+
+    const off = mkCorpus();
+    await runChatAgentStream(
+      baseInput({ grounding: true }),
+      DEPS(mockStream(call()), { skills: [mkSkill("generate_ideas")], executeCorpus: off as never }),
+    );
+    expect(off.mock.calls[0]![4]).toEqual({ includeRowIds: false });
+  });
+
   it("runs MULTIPLE search_corpus calls in one round CONCURRENTLY, results in call order", async () => {
     // The streaming spike observed four corpus calls emitted in a single round. Each is an embed + an
     // RPC (~10s), so serialising them cost the sum before a token could resume streaming. They are

@@ -1035,7 +1035,11 @@ export async function runChatAgentStream(
         } catch {
           parsed = {};
         }
-        const res = await executeCorpus(parsed, input.context.platform, round, retrieve);
+        // Row ids only when a composed card could carry one — see ROW_ID_NOTE in corpus-tool.ts.
+        // A grounded turn with cards off sends exactly the payload it sends today.
+        const res = await executeCorpus(parsed, input.context.platform, round, retrieve, {
+          includeRowIds: !!input.composedCards,
+        });
         return { id: call.id, content: res.content, citable: res.citable ?? [], record: res.record };
       }),
     );

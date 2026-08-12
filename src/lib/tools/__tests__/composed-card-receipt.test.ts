@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { materializeReceipts } from "@/lib/tools/composed-card-receipt";
-import { MAX_PRINTABLE_MULTIPLIER } from "@/lib/grounding/outlier-gate";
+import { MAX_PRINTABLE_MULTIPLIER, MIN_OUTLIER_MULTIPLIER } from "@/lib/grounding/outlier-gate";
 
 /**
  * A hand-rolled stand-in for the ONE I/O boundary this module has. Deliberately not a mock of
@@ -143,5 +143,42 @@ describe("materializeReceipts", () => {
     } as unknown as SupabaseClient;
     const out = await materializeReceipts(["row-1"], { supabase });
     expect(out.size).toBe(0);
+  });
+});
+
+/**
+ * The band has a FLOOR as well as a ceiling, and this seam was applying only the ceiling.
+ *
+ * `MIN_OUTLIER_MULTIPLIER = 3` is §12's LOCKED definition of an outlier, and every other proof
+ * surface enforces it — `build-proof.ts:28` (the sibling of this very function) nulls a sub-floor
+ * multiplier, as do retrieve.ts, rank.ts, gather-for-run.ts and prompt.ts. Measured on the live
+ * corpus 2026-08-12: 108 of the 396 basis-known rows sit below 3×, the lowest at 0.4×. Without
+ * this, a `teardown` card prints "0.8× vs their usual views" as PROOF — a number which says the
+ * video did WORSE than that creator's usual.
+ */
+describe("materializeReceipts [the band floor]", () => {
+  it("drops a sub-floor multiplier — 0.8x is under-performance, not proof", async () => {
+    const out = await materializeReceipts(["row-1"], {
+      supabase: fakeSupabase([{ ...row, outlier_multiplier: 0.8 }]),
+    });
+    expect(out.get("row-1")?.multiplier).toBeNull();
+  });
+
+  it("keeps the receipt itself — a sub-floor ratio costs the NUMBER, not the source", async () => {
+    const out = await materializeReceipts(["row-1"], {
+      supabase: fakeSupabase([{ ...row, outlier_multiplier: 0.8 }]),
+    });
+    const proof = out.get("row-1");
+    expect(proof?.handle).toBe("corporate.bro");
+    expect(proof?.views).toBe(1_400_000);
+    // No number ⇒ no basis label either: "vs their usual views" beside nothing is a dangling claim.
+    expect(proof?.baselineLabel).toBeNull();
+  });
+
+  it("keeps a multiplier exactly on the floor — 3x IS an outlier by §12", async () => {
+    const out = await materializeReceipts(["row-1"], {
+      supabase: fakeSupabase([{ ...row, outlier_multiplier: MIN_OUTLIER_MULTIPLIER }]),
+    });
+    expect(out.get("row-1")?.multiplier).toBe(MIN_OUTLIER_MULTIPLIER);
   });
 });

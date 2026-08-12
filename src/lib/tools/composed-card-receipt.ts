@@ -18,7 +18,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getCorpusClient } from "@/lib/grounding/corpus";
 import { hasKnownBaseline } from "@/lib/grounding/retrieve";
-import { MAX_PRINTABLE_MULTIPLIER } from "@/lib/grounding/outlier-gate";
+import { MAX_PRINTABLE_MULTIPLIER, MIN_OUTLIER_MULTIPLIER } from "@/lib/grounding/outlier-gate";
 import type { HookProof } from "@/lib/tools/proof-schema";
 
 /** The columns this seam reads — verified against the production `outlier_teardowns` table. */
@@ -38,11 +38,22 @@ interface TeardownReceiptRow {
 }
 
 /**
- * The printable number, or none. Above the band ceiling it clamps rather than dropping the row
- * — an out-of-band ratio is still a usable exemplar, it just may not print its own arithmetic.
+ * The printable number, or none. The band has BOTH ends:
+ *
+ *  - Above the ceiling it CLAMPS rather than dropping the row (B1) — an out-of-band ratio is still
+ *    a usable exemplar, it just may not print its own arithmetic.
+ *  - Below `MIN_OUTLIER_MULTIPLIER` there is no number at all. §12's LOCKED bar defines what an
+ *    outlier IS, and the corpus admits hand-curated exemplars alongside measured ones: 108 of the
+ *    396 basis-known rows sit under 3×, the lowest at 0.4× (measured 2026-08-12). Printed on a card
+ *    whose whole job is to be the receipt, "0.8× vs their usual views" is a boast that refutes
+ *    itself — the video did WORSE than that creator's usual.
+ *
+ * This mirrors `provenMultiplier` in build-proof.ts, the sibling that builds the same receipt for
+ * the hooks/ideas/script runners. The floor was applied there and on every other proof surface
+ * (retrieve.ts, rank.ts, gather-for-run.ts, prompt.ts) and only ever missing here.
  */
 function bandedMultiplier(m: number | null): number | null {
-  if (typeof m !== "number" || !Number.isFinite(m) || m <= 0) return null;
+  if (typeof m !== "number" || !Number.isFinite(m) || m < MIN_OUTLIER_MULTIPLIER) return null;
   return m > MAX_PRINTABLE_MULTIPLIER ? MAX_PRINTABLE_MULTIPLIER : m;
 }
 
@@ -74,15 +85,19 @@ export async function materializeReceipts(
     if (!row.creator_handle) continue;
 
     const basisKnown = hasKnownBaseline({ baseline_label: row.baseline_label });
+    // D9: a multiplier with no nameable basis is a boast with nothing behind it.
+    const multiplier = basisKnown ? bandedMultiplier(row.outlier_multiplier) : null;
     out.set(row.id, {
       handle: row.creator_handle,
       videoUrl: row.video_url,
       coverUrl: row.cover_url,
       hookTemplate: row.hook_template,
       archetype: row.hook_archetype,
-      // D9: a multiplier with no nameable basis is a boast with nothing behind it.
-      multiplier: basisKnown ? bandedMultiplier(row.outlier_multiplier) : null,
-      baselineLabel: basisKnown ? row.baseline_label : null,
+      multiplier,
+      // The label travels WITH the number, per build-proof.ts: a basis with nothing to qualify
+      // ("vs their usual views" beside no figure) is noise, and it implies a measurement the card
+      // is not showing. Dropped with the number it belonged to.
+      baselineLabel: multiplier === null ? null : row.baseline_label,
       // views needs no basis — it is an absolute count, not a ratio — so it survives a row
       // whose multiplier does not.
       views: typeof row.views === "number" && Number.isFinite(row.views) ? row.views : null,
