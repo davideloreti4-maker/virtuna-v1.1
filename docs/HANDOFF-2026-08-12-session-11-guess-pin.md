@@ -5,9 +5,22 @@
 **Predecessor:** `docs/HANDOFF-2026-08-11-session-10-dispatch.md`. Everything in it still stands
 except §11.3's narrowing #1, which this session measured and **replaced** (§3).
 
-**Built, flagged OFF, NOT merged, NOT deployed.** Gates all green — `tsc` 0, **6019 tests passed /
-0 failed**, `next build` 0. Spend: **7 credits** — 124 generations through the stub till at zero,
-plus 13 through the real billed route for the live verification in §7.7 (ledger-verified).
+**✅ MERGED — PR #475, `origin/main` = `be2237ce`.** Both flags ship **DARK**, so production
+behaviour is byte-identical until one is set. ⚠️ Per the standing memory, Vercel's git integration is
+disconnected — **merging here does NOT deploy**; confirm before assuming anything is live.
+
+Gates all green — `tsc` 0, **6019 tests passed / 0 failed**, `next build` 0. Spend: **7 credits** —
+290 generations through the stub till at zero, plus 13 through the real billed route for the live
+verification in §7.7 (ledger-verified).
+
+⚠️ **The suite is FLAKY on a loaded machine and it is not this branch's doing.** Two unconstrained
+full runs failed 4 and 1 tests respectively — *different tests each time* (composer 5s per-test
+timeouts, then an unrelated engine test), all passing in isolation, with another worktree's dev
+server competing for CPU. **`--maxWorkers=3` is deterministic and green.** Do not read an
+unconstrained red run as a regression here without checking which tests moved.
+
+⚠️ `.scratch/` (113 files, the only copy of all 290 runs) is backed up to
+`~/virtuna-parked/scratch-backups/in-thread-chat-2026-08-12`.
 
 `main` was merged in first (50 commits behind; no file C touches was affected).
 
@@ -383,8 +396,22 @@ trying to measure something else.
 3. **§12.4 verdict narration** is still the open owner design call. Session 10 §12 is the input: the
    `lever` field is nine templated constants, none of which reads a persona reaction, while
    `readForAudience` already returns the quotes two failed attempts tried to get the model to relay.
-4. **The dance contamination (§4.2)** deserves its own session. It affects the path that already
-   works, so it is not blocked on any of the above.
+4. 🔴 **The exemplar-copying defect is the biggest thing left, and it now has a MECHANISM, not just a
+   symptom.** §4.2's dance contamination was chased down after the merge and it is not a corpus
+   problem — **the generator reproduces whatever exemplar dominates the bundle instead of emulating
+   it.** 16 pinned runs, same profile, one variable:
+
+   | arm | corpus surface copied | voice sample echoed VERBATIM | genuinely original |
+   |---|---|---|---|
+   | no voice (prod today) | **18/40 · 45%** | 0 | 22/40 |
+   | `writing_voice_sample` backfilled | **0/40** | **13/40 · 33%** | 27/40 |
+
+   Adding a voice reads as a total fix on the bleed metric and is not one — it hands the creator
+   their own sample back as hooks, ~2 per pack. Remove one exemplar source and the next is promoted
+   into the gap. Full detail + the dead-`voice`-role correction in `docs/CONTEXT-AUDIT-2026-08-10.md`
+   (update block at the top). ⚠️ **Do not ship the `writing_voice_sample` migration as a quality
+   win** — it trades dance hooks for parroted hooks, which is worse because the creator recognises
+   their own sentences. Fix the fence first.
 
 ⚠️ `.scratch/` is gitignored and now holds **95 files** — every number here is reproducible from
 them and they are the only copy. Copy them out before any `git worktree remove`.
