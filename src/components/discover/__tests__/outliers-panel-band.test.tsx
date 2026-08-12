@@ -93,3 +93,28 @@ describe("outliers feed badge — the band's flag survives the trip to the pixel
     expect(screen.queryByText(/⚠/)).toBeNull();
   });
 });
+
+/**
+ * Owner ruling 2026-08-12: in the multiplier sort, flagged rows come LAST.
+ *
+ * Clamping ties all 55 extremes at exactly 100×, so ordering on the number alone puts every
+ * thin-baseline row above every genuine receipt — "Highest ×" would open on 24 identical
+ * `100× ⚠` tiles and bury a real 41.6×. Measured in a browser before this rule existed.
+ */
+describe("Highest × — the best real receipt leads", () => {
+  it("ranks an in-band receipt above a clamped thin-baseline row", async () => {
+    const { rerender } = renderPanel([
+      video({ id: "extreme", multiplier: 100, extreme: true, spokenHook: "THIN BASELINE ROW" }),
+      video({ id: "real", multiplier: 41.6, extreme: false, spokenHook: "GENUINE RECEIPT ROW" }),
+    ]);
+    void rerender;
+
+    await import("@testing-library/user-event").then(async ({ default: userEvent }) => {
+      await userEvent.click(screen.getByRole("button", { name: /Highest/ }));
+    });
+
+    const text = document.body.innerText || document.body.textContent || "";
+    expect(text.indexOf("GENUINE RECEIPT ROW")).toBeGreaterThan(-1);
+    expect(text.indexOf("GENUINE RECEIPT ROW")).toBeLessThan(text.indexOf("THIN BASELINE ROW"));
+  });
+});

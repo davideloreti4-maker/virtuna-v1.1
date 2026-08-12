@@ -12,8 +12,9 @@
  *   • thin-baseline extremes (≥100×) are ADMITTED but never presented as proof — the printed
  *     number clamps at 100× and the badge drops the green ▲ for a muted "100× ⚠" (B1, owner
  *     ruling 2026-08-11). They used to be excluded outright. The reason the old rule existed —
- *     "a feed sorted by highest × must not open on a 20,154×" — is now served by the clamp:
- *     sorting by "Highest ×" opens on a band of flagged 100× rows, none of them in proven green.
+ *     "a feed sorted by highest × must not open on a 20,154×" — is served instead by the clamp
+ *     PLUS the sort: flagged rows rank last under "Highest ×", so it opens on the best genuine
+ *     receipt rather than on 55 rows tied at the ceiling (owner ruling 2026-08-12).
  *   • the footer states when the corpus was last refreshed instead of implying "today".
  *
  * REWORKED 2026-08-04 (owner, against a Sandcastles reference):
@@ -111,7 +112,17 @@ export function OutliersPanel({
     });
     if (sort === "recent") return filtered;
     const copy = [...filtered];
-    if (sort === "multiplier") copy.sort((a, b) => (b.multiplier ?? 0) - (a.multiplier ?? 0));
+    // Flagged rows sort LAST (owner ruling 2026-08-12). Once the band clamps instead of dropping,
+    // 55 thin-baseline rows all tie at exactly 100× — sorting on the number alone opens "Highest ×"
+    // on a wall of them and buries the best genuine receipt (a real 41.6×) underneath. The control
+    // promises the highest MEASURED multiple, so in-band rows rank first and the flagged band
+    // follows, still findable, still ordered among themselves.
+    if (sort === "multiplier") {
+      copy.sort((a, b) => {
+        if (a.extreme !== b.extreme) return a.extreme ? 1 : -1;
+        return (b.multiplier ?? 0) - (a.multiplier ?? 0);
+      });
+    }
     if (sort === "views") copy.sort((a, b) => b.views - a.views);
     return copy;
   }, [videos, filters, q, sort]);

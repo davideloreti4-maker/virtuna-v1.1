@@ -68,6 +68,10 @@ describe("composed-card gallery fixtures", () => {
       const named = new Set<string>(f.props.receiptRef ? [f.props.receiptRef] : []);
       for (const slot of [...f.props.body, ...(f.props.disclosure ?? [])]) {
         if (slot.kind === "proof_strip") for (const ref of slot.receiptRefs) named.add(ref);
+        // stat_row names rows too since 2026-08-12 — its figures are server-materialized, so a ref
+        // it holds is a real reference. Must stay in step with `receiptRefsOf` in emit-card-tool.ts;
+        // when these two disagree, one of them silently stops seeing half the refs on a card.
+        if (slot.kind === "stat_row") for (const stat of slot.stats) named.add(stat.receiptRef);
       }
       for (const id of Object.keys(f.props.receipts ?? {})) {
         expect(named.has(id), `${f.props.recipe}: receipts["${id}"] is never referenced`).toBe(true);

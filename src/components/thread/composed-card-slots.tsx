@@ -32,6 +32,19 @@ import { SECTION_LABEL } from '@/components/thread/card-primitives';
 import { ProofReceipt } from '@/components/thread/proof-receipt';
 import { stripWrappingQuotes } from '@/lib/utils';
 
+/** Same shapes proof-receipt.tsx prints, so one row reads identically wherever it appears. */
+function fmtStatViews(n: number | null): string | null {
+  if (n === null || !Number.isFinite(n)) return null;
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${Math.round(n / 1_000)}K`;
+  return String(n);
+}
+
+function fmtStatMultiplier(m: number | null): string | null {
+  if (m === null || !Number.isFinite(m)) return null;
+  return m >= 100 ? `${Math.round(m)}×` : `${m.toFixed(1)}×`;
+}
+
 export function SlotRenderer({
   slot,
   receipts,
@@ -68,10 +81,24 @@ export function SlotRenderer({
         </div>
       );
 
-    case 'stat_row':
+    case 'stat_row': {
+      // D7 for numbers (owner ruling 2026-08-12): the model chose the ROW and the METRIC; the
+      // figure comes from the server-materialized receipt. A stat whose ref did not resolve is
+      // dropped entirely — never a placeholder, never the model's own number (spec §5).
+      const stats = slot.stats
+        .map((s) => {
+          const proof = receipts?.get(s.receiptRef);
+          if (!proof) return null;
+          const value = s.metric === 'multiplier' ? fmtStatMultiplier(proof.multiplier) : fmtStatViews(proof.views);
+          return value ? { value, label: s.label } : null;
+        })
+        .filter((s): s is { value: string; label: string } => s !== null);
+
+      if (stats.length === 0) return null;
+
       return (
         <div className="flex flex-wrap gap-x-6 gap-y-2">
-          {slot.stats.map((s, i) => (
+          {stats.map((s, i) => (
             <div key={i} className="flex flex-col gap-0.5">
               {/* `text-subhead` (18px), NOT `text-heading` (22px): 22px is <CardHero>'s own size,
                   and a body stat set at the hero's size competes with the deliverable the creator
@@ -85,6 +112,7 @@ export function SlotRenderer({
           ))}
         </div>
       );
+    }
 
     case 'bullets':
       return (

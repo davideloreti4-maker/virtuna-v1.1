@@ -100,15 +100,58 @@ describe('SlotRenderer', () => {
     expect(screen.getByText('Higher retention')).toBeTruthy();
   });
 
-  it('renders a stat_row as value + label pairs', () => {
+  /**
+   * stat_row's figures are SERVER numbers (owner ruling 2026-08-12). The model names a row and a
+   * metric; it may not write the number. These assert that split at the pixel: the value comes
+   * from the receipt map, and a stat whose ref does not resolve renders nothing rather than a
+   * placeholder — the same rule proof_strip follows.
+   */
+  it('renders a stat_row from the RECEIPT, not from anything the model wrote', () => {
     render(
       <SlotRenderer
-        slot={{ kind: 'stat_row', stats: [{ value: '1.4M', label: 'views' }, { value: '5.7×', label: 'vs usual' }] }}
-        receipts={NO_RECEIPTS}
+        slot={{
+          kind: 'stat_row',
+          stats: [
+            { metric: 'views', label: 'views', receiptRef: 'row-1' },
+            { metric: 'multiplier', label: 'vs usual', receiptRef: 'row-1' },
+          ],
+        }}
+        receipts={receipts}
       />,
     );
     expect(screen.getByText('1.4M')).toBeTruthy();
+    expect(screen.getByText('5.7×')).toBeTruthy();
     expect(screen.getByText('vs usual')).toBeTruthy();
+  });
+
+  it('drops a stat whose ref does not resolve, and the row entirely when none do', () => {
+    const { container } = render(
+      <SlotRenderer
+        slot={{ kind: 'stat_row', stats: [{ metric: 'views', label: 'views', receiptRef: 'ghost' }] }}
+        receipts={NO_RECEIPTS}
+      />,
+    );
+    expect(container.textContent).toBe('');
+  });
+
+  it('drops a stat whose row has no measured multiplier (D9 — no basis, no number)', () => {
+    const noBasis = new Map<string, HookProof>([
+      ['row-2', { ...receipts.get('row-1')!, multiplier: null, baselineLabel: null }],
+    ]);
+    render(
+      <SlotRenderer
+        slot={{
+          kind: 'stat_row',
+          stats: [
+            { metric: 'multiplier', label: 'vs usual', receiptRef: 'row-2' },
+            { metric: 'views', label: 'views', receiptRef: 'row-2' },
+          ],
+        }}
+        receipts={noBasis}
+      />,
+    );
+    expect(screen.queryByText('vs usual')).toBeNull();
+    expect(screen.getByText('1.4M')).toBeTruthy();
   });
 
   it('renders bullets as a list, one item per entry', () => {
@@ -195,12 +238,12 @@ describe('SlotRenderer', () => {
   });
 
   it('has a branch for every slot kind in the vocabulary — an unrendered slot is an invisible hole', () => {
-    // One minimal legal payload per kind. `proof_strip` is the one kind that legitimately renders
-    // nothing when its refs do not resolve, so it is given the receipt that does.
+    // One minimal legal payload per kind. `proof_strip` and `stat_row` are the two kinds that
+    // legitimately render nothing when their refs do not resolve, so both are given the row that does.
     const oneOfEach: Slot[] = [
       { kind: 'proof_strip', receiptRefs: ['row-1'] },
       { kind: 'beats', items: [{ label: 'Open', text: 'a' }, { label: 'Turn', text: 'b' }] },
-      { kind: 'stat_row', stats: [{ value: '1', label: 'x' }] },
+      { kind: 'stat_row', stats: [{ metric: 'views', label: 'x', receiptRef: 'row-1' }] },
       { kind: 'bullets', items: ['a'] },
       { kind: 'quote', text: 'a' },
       { kind: 'label_values', rows: [{ label: 'a', value: 'b' }] },

@@ -27,6 +27,7 @@ import {
   type RetrieveFacets,
 } from "./retrieve";
 import { receipt, clip } from "./prompt";
+import { MAX_PRINTABLE_MULTIPLIER, MIN_OUTLIER_MULTIPLIER } from "./outlier-gate";
 import { assessWarrant, citableSubset, warrantFloor, warrantNote, type Warrant } from "./warrant";
 import type { RetrievedExample } from "./types";
 
@@ -301,6 +302,20 @@ function pickFacet(raw: unknown, allowed: readonly string[]): string | undefined
 }
 
 /** The facet filters the model asked for, validated against the stored vocabularies. */
+/**
+ * The printable band, for a number about to be handed to the MODEL.
+ *
+ * Deliberately the same arithmetic as `composed-card-receipt.ts`'s `bandedMultiplier` and
+ * `build-proof.ts`'s `provenMultiplier`: below §12's LOCKED ≥3× bar there is no number, above the
+ * ceiling it clamps rather than dropping the row. Kept as its own tiny function rather than
+ * imported from the card layer because that module reaches for Supabase; the constants are shared,
+ * which is the part that must not drift.
+ */
+function bandedForModel(m: number | null | undefined): number | null {
+  if (typeof m !== "number" || !Number.isFinite(m) || m < MIN_OUTLIER_MULTIPLIER) return null;
+  return m > MAX_PRINTABLE_MULTIPLIER ? MAX_PRINTABLE_MULTIPLIER : m;
+}
+
 export function parseFacets(args: Record<string, unknown>): RetrieveFacets {
   const facets: RetrieveFacets = {};
   const platform = pickFacet(args.platform, ["tiktok", "instagram", "youtube"]);
@@ -379,8 +394,14 @@ export async function executeCorpusSearch(
       ...(opts.includeRowIds && e.teardownId ? { id: e.teardownId } : {}),
       creator: e.handle ?? null,
       views: e.views ?? null,
-      multiplier: e.multiplier
-        ? `${e.multiplier}×${e.baselineLabel ? ` (${e.baselineLabel})` : ""}`
+      // The band applies HERE, not only where a card renders (owner ruling 2026-08-12). This tool's
+      // description promises the library "measurably outperformed", and it was handing the model
+      // 1.3× and 0.4× — figures that refute the promise they arrive under. The card layer already
+      // refused to print them (`bandedMultiplier`), so the model could state a number in prose that
+      // the receipt beside it did not show. Same rule, applied where the number is handed over.
+      // The ROW still travels; it teaches as a curated exemplar, it just makes no claim.
+      multiplier: bandedForModel(e.multiplier)
+        ? `${bandedForModel(e.multiplier)}×${e.baselineLabel ? ` (${e.baselineLabel})` : ""}`
         : null,
       hook_archetype: e.hookArchetype ?? null,
       format: e.format ?? null,
