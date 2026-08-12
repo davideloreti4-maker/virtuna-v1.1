@@ -50,10 +50,17 @@ export interface OutlierTileData {
   saves: number;
   durationSeconds: number;
   postedAt: string; // ISO string
-  /** Measured outlier signal (views / baseline) — NOT a SIM score. */
-  multiplier: number;
-  /** D-05 honesty label — renderer NEVER shows a bare multiplier. */
-  baselineLabel: "vs own" | "vs niche";
+  /**
+   * Measured outlier signal — the PER-AUTHOR receipt (outlier-receipt.ts), not the within-set
+   * median that ranks the pull. `null` when the row carries no honest denominator.
+   */
+  multiplier?: number | null;
+  /**
+   * D-05 honesty label — renderer NEVER shows a bare multiplier, and shows NEITHER when this
+   * is absent ("vs their usual views" | "vs followers"; older persisted blocks: "vs own" |
+   * "vs niche").
+   */
+  baselineLabel?: string | null;
   /** D-15 source tag: "Your channel" | "Competitor" | niche label. */
   source: string;
   /**
@@ -141,6 +148,16 @@ export function OutlierTile({
   const duration = formatDuration(tile.durationSeconds);
   const CoverTag = tile.videoUrl ? "a" : "div";
 
+  // D-05: the multiplier and its basis label are ONE unit — either both render or neither
+  // does. `outlier-receipt.ts` nulls them together whenever no honest per-author denominator
+  // exists (no author aggregates, a zero-follower account, too few of the creator's own posts
+  // in the pull), and `formatMultiplier` already refuses a non-finite or non-positive value.
+  const badgeValue = tile.multiplier != null ? formatMultiplier(tile.multiplier) : null;
+  const badge =
+    badgeValue && badgeValue !== "—" && tile.baselineLabel
+      ? { value: badgeValue, label: tile.baselineLabel }
+      : null;
+
   // ── Thread variant: the DE-LOADED gallery tile ──────────────────────────────
   // The in-thread Explore card renders 15–20 of these in one grid (owner 2026-07-22:
   // "overloaded"). The Discover-page tile stacks ~11 elements each — a wall at that count.
@@ -161,15 +178,18 @@ export function OutlierTile({
         >
           <CoverFill coverUrl={tile.coverUrl} playSize={24} className="transition-opacity group-hover:opacity-90" />
           {/* Multiplier — the outlier signal, promoted onto the cover so the body stays quiet.
-              D-05: NEVER bare — the baseline label ("vs own"/"vs niche") rides with it. */}
-          <span className="absolute left-1.5 top-1.5 inline-flex items-baseline gap-1 rounded bg-black/70 px-1.5 py-0.5 text-white/95 backdrop-blur-[1px]">
-            <span className="text-[12px] font-semibold leading-none tabular-nums">
-              {formatMultiplier(tile.multiplier)}
+              D-05: NEVER bare — the baseline label rides with it, and an unbaselined row shows
+              no badge at all rather than a number with nothing behind it. */}
+          {badge ? (
+            <span className="absolute left-1.5 top-1.5 inline-flex items-baseline gap-1 rounded bg-black/70 px-1.5 py-0.5 text-white/95 backdrop-blur-[1px]">
+              <span className="text-[12px] font-semibold leading-none tabular-nums">
+                {badge.value}
+              </span>
+              <span className="text-[9px] font-semibold uppercase tracking-wide text-white/70">
+                {badge.label}
+              </span>
             </span>
-            <span className="text-[9px] font-semibold uppercase tracking-wide text-white/70">
-              {tile.baselineLabel}
-            </span>
-          </span>
+          ) : null}
           {duration ? (
             <span className="absolute bottom-1 right-1 rounded bg-black/70 px-1 py-0.5 text-[10px] font-medium tabular-nums text-white/90">
               {duration}
@@ -279,18 +299,24 @@ export function OutlierTile({
 
       {/* Multiplier badge (neutral — data, NOT the action) + source sub-tag */}
       <div className="flex items-start justify-between gap-2">
-        {/* D-05: ALWAYS render the multiplier WITH its baseline label — never bare. */}
-        <span className="flex items-baseline gap-1">
-          <span
-            className="text-xl font-semibold text-foreground leading-none"
-            style={{ fontVariantNumeric: "tabular-nums" }}
-          >
-            {formatMultiplier(tile.multiplier)}
+        {/* D-05: render the multiplier WITH its baseline label or not at all — never bare,
+            never a number the row cannot stand behind. The empty span keeps the source tag
+            right-aligned when there is no badge. */}
+        {badge ? (
+          <span className="flex items-baseline gap-1">
+            <span
+              className="text-xl font-semibold text-foreground leading-none"
+              style={{ fontVariantNumeric: "tabular-nums" }}
+            >
+              {badge.value}
+            </span>
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-foreground-muted">
+              {badge.label}
+            </span>
           </span>
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-foreground-muted">
-            {tile.baselineLabel}
-          </span>
-        </span>
+        ) : (
+          <span />
+        )}
         <span className="text-[10px] font-semibold uppercase tracking-wide text-foreground-muted px-1.5 py-0.5 rounded bg-white/[0.04] shrink-0">
           {tile.source}
         </span>

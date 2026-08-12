@@ -301,3 +301,70 @@ describe("POST /api/tools/explore — CR-02 (tracked-accounts competitors pull)"
     expect(input.mergeInputs).toBeUndefined();
   });
 });
+
+// ─── The cache-HIT rebuild path ────────────────────────────────────────────────
+//
+// Every test above forces `getCachedDiscover` to return null, so `buildBlockFromRanked` —
+// the route's own duplicate of the runner's build step — had NO coverage at all. That is how
+// the Phase 2 receipt switch was nearly applied to the runner alone, leaving a warm pull
+// printing the within-set median and a cold pull printing the per-author receipt for the
+// SAME video.
+describe("POST /api/tools/explore — cache HIT rebuild", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  /** A cached measured tile, as `setCachedDiscover<RankedOutlier>` stored it. */
+  function cachedTile(over: Record<string, unknown> = {}) {
+    return {
+      platformVideoId: "cached1",
+      videoUrl: "https://www.tiktok.com/@c/video/1",
+      caption: "c",
+      views: 97_700,
+      likes: 4_643,
+      comments: 10,
+      shares: 10,
+      saves: 10,
+      hashtags: [],
+      durationSeconds: 20,
+      postedAt: new Date().toISOString(), // JSON-serialized in the cache; route rehydrates
+      multiplier: 12.1, // the STALE within-set figure the cache happens to hold
+      baselineLabel: "vs niche",
+      rankKey: 5,
+      author: { handle: "creator", fans: 5_370, heart: 19_500, videoCount: 31 },
+      ...over,
+    };
+  }
+
+  async function blockFromWarmPull() {
+    await mountAuthed();
+    const { getCachedDiscover } = await import("@/lib/discover/discover-cache");
+    (getCachedDiscover as ReturnType<typeof vi.fn>).mockReturnValue([cachedTile()]);
+
+    const { POST } = await import("@/app/api/tools/explore/route");
+    const res = await POST(makeExploreRequest({ niche: "startup founder" }));
+    const body = await drain(res);
+
+    const frame = body
+      .split("\n\n")
+      .find((f) => f.startsWith("event: content"))!
+      .split("\ndata: ")[1]!;
+    return JSON.parse(frame).blocks[0] as { props: { tiles: Array<Record<string, unknown>> } };
+  }
+
+  it("serves the warm pull without a scrape", async () => {
+    await blockFromWarmPull();
+    const { runExplorePipeline } = await import("@/lib/tools/runners/explore-runner");
+    expect(runExplorePipeline).not.toHaveBeenCalled();
+  });
+
+  it("prints the per-author RECEIPT, not the within-set figure the cache holds", async () => {
+    const block = await blockFromWarmPull();
+    const tile = block.props.tiles[0]!;
+
+    expect(tile.baselineLabel).toBe("vs followers");
+    expect(tile.multiplier).toBeCloseTo(97_700 / 5_370, 4);
+    // The stale cached number must not survive the rebuild.
+    expect(tile.multiplier).not.toBeCloseTo(12.1, 1);
+  });
+});

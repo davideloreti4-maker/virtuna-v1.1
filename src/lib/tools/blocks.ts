@@ -622,9 +622,11 @@ export type RemixCardBlock = z.infer<typeof RemixCardBlockSchema>;
 // Honesty spine (Pitfall 5 / D-05 / D-11):
 //   This block carries NO band, NO 0-100 score, and NO `model: sim1-flash` field.
 //   Discover tiles are MEASURED scrape data (real engagement arithmetic), NOT SIM
-//   output. The multiplier is `views / baseline` (computed in outlier-compute.ts).
-//   The renderer MUST surface the multiplier WITH its baselineLabel ("vs own" |
-//   "vs niche") — NEVER a bare "{n}×" (D-05).
+//   output. The multiplier is the per-author receipt from outlier-receipt.ts — NOT
+//   `rankOutliers`' within-set median, which moves with the size of the pull and is
+//   a selection signal only. The renderer MUST surface the multiplier WITH its
+//   baselineLabel — NEVER a bare "{n}×" (D-05) — and must render NEITHER when the
+//   row has no honest denominator.
 //
 // The video reference (videoUrl / platformVideoId / caption) is what the
 // "Remix → Read" CTA needs to launch the discover→remix chain (chain-handoff.ts).
@@ -652,9 +654,17 @@ export const OutlierGridBlockSchema = z.object({
         saves: z.number(),
         durationSeconds: z.number(),
         postedAt: z.string(),                          // ISO string (block props are JSON-serializable)
-        // Measured outlier signal (NOT a SIM score — Pitfall 5)
-        multiplier: z.number(),                        // views / baseline ("{n}×")
-        baselineLabel: z.enum(["vs own", "vs niche"]), // D-05 — renderer NEVER shows a bare multiplier
+        // Measured outlier signal (NOT a SIM score — Pitfall 5).
+        //
+        // The PER-AUTHOR receipt (outlier-receipt.ts), not the within-set median that ranks the
+        // pull: "vs their usual views" on a profile pull, "vs followers" on a niche one. Both
+        // fields are NULLABLE together — a row with no author aggregates gets no badge rather
+        // than an invented number, and D-05 still holds (never a bare "{n}×").
+        //
+        // `.nullish()` rather than a narrower type on purpose: persisted blocks written before
+        // 2026-08-11 carry the old "vs own"/"vs niche" labels and must stay valid to parse.
+        multiplier: z.number().nullish(),
+        baselineLabel: z.string().min(1).nullish(),
         // Source tag (D-15): "Your channel" | "Competitor" (profile) | niche label (niche)
         source: z.string().min(1),
         // ── Phase 11 Explore extension (EXPLORE-03/05) ──────────────────────────

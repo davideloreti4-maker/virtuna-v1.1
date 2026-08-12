@@ -9,9 +9,28 @@
  */
 
 import type { Audience } from "@/lib/audience/audience-types";
+import type { SimTier } from "@/components/audience-lens/v2/AmbientOverview";
 import type { AudienceMeta } from "./ambient-v2-adapters";
 import { SIMULABLE_SCENES } from "@/lib/engine/flash/flash-prompts";
 import { platformLabel } from "@/lib/platforms";
+
+/**
+ * The headcount a tier actually simulates — the room's SIZE, as stated to the creator.
+ *
+ * Lives here rather than in a component because two surfaces now say it and the owner ruled the
+ * wording (2026-08-12): the room's own header, and the phone arrival's audience line. That copy is
+ * only true if both read the same number, and a second literal is how they stop doing so.
+ *
+ * ⚠️ `AmbientSimulate` keeps its own copy on purpose — there the number is multiplied by a
+ * segment's share to size a panel, which is a different claim than "this is how big the room is".
+ * `import type` on SimTier, so nothing at runtime crosses back into the component.
+ */
+export const TIER_VIEWERS: Record<SimTier, number> = { flash: 1000, max: 10000 };
+
+/** "1,000 viewers" — the room's size, comma-grouped, in the product's noun. */
+export function roomHeadcount(tier: SimTier): string {
+  return `${String(TIER_VIEWERS[tier]).replace(/\B(?=(\d{3})+(?!\d))/g, ",")} viewers`;
+}
 
 /** The scenes the ENGINE can actually simulate — defined beside the frame each one selects
  *  (`SIMULABLE_SCENES` / `sceneToDomain` in flash-prompts.ts), so this surface can never offer a

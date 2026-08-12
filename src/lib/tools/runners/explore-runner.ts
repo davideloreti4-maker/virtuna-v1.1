@@ -22,6 +22,7 @@
 import { createScrapingProvider } from "@/lib/scraping";
 import { rankOutliers, type RankedOutlier } from "@/lib/discover/outlier-compute";
 import { rankWithAudienceFit } from "@/lib/discover/explore-rank";
+import { attachOutlierReceipt } from "@/lib/discover/outlier-receipt";
 import { OutlierGridBlockSchema, type OutlierGridBlock } from "@/lib/tools/blocks";
 import { buildVideoEvidence, evidenceMetric, type RunEvidence } from "@/lib/tools/evidence";
 import { formatCount } from "@/lib/account-metrics/account-metrics";
@@ -171,6 +172,12 @@ export async function runExplorePipeline(opts: RunExploreInput): Promise<RunExpl
   // ── (3) Audience-fit re-rank (EXPLORE-03 / D-01) — PURE math, NO SIM call ──
   const fitRanked = rankWithAudienceFit(ranked, opts.audience, opts.serendipity);
 
+  // ── (3b) Swap the within-set multiplier for the per-author RECEIPT (§2.7) ──
+  // Strictly AFTER the fit re-rank: `tileTempDemand` reads `multiplier` as a reach proxy and
+  // was calibrated against the selection signal, so receipting first would silently retune the
+  // fit estimate. Ordering, fit levels and rankKey are all untouched by this step.
+  const receipted = attachOutlierReceipt(fitRanked, opts.mode);
+
   // ── (4) Track handle source (RESEARCH Q3, resolved) ───────────────────────
   // Profile-mode SINGLE-handle pulls are trackable, handle = the pull input (no @,
   // lowercased). RESEARCH Q3: niche-mode video items expose no author handle on
@@ -189,7 +196,7 @@ export async function runExplorePipeline(opts: RunExploreInput): Promise<RunExpl
     type: "outlier-grid" as const,
     props: {
       mode: opts.mode,
-      tiles: fitRanked.map((t) => ({
+      tiles: receipted.map((t) => ({
         platformVideoId: t.platformVideoId,
         videoUrl: t.videoUrl,
         caption: t.caption,

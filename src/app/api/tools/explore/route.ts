@@ -56,6 +56,7 @@ import { maybeMockSkillRun } from "@/lib/tools/mock/mock-sse";
 import { classifyDiscoverInput, UNSUPPORTED_INPUT_REASON } from "@/lib/discover/classify-input";
 import { type RankedOutlier } from "@/lib/discover/outlier-compute";
 import { rankWithAudienceFit } from "@/lib/discover/explore-rank";
+import { attachOutlierReceipt } from "@/lib/discover/outlier-receipt";
 import {
   getCachedDiscover,
   setCachedDiscover,
@@ -117,6 +118,10 @@ function buildBlockFromRanked(
   isMerged: boolean = false,
 ): OutlierGridBlock {
   const fitRanked = rankWithAudienceFit(ranked, audience, serendipity);
+  // Per-author RECEIPT, applied AFTER the fit re-rank exactly as runExplorePipeline does — a
+  // warm rebuild must print the same number as the cold pull that filled the cache, or the
+  // multiplier changes under the creator on a second identical request.
+  const receipted = attachOutlierReceipt(fitRanked, mode);
   // CR-02: merged competitors tiles are not individually trackable (no per-tile author);
   // mirrors runExplorePipeline so a cache-hit rebuild matches a cache-miss build.
   const trackable = mode === "profile" && !isMerged;
@@ -127,7 +132,7 @@ function buildBlockFromRanked(
     type: "outlier-grid" as const,
     props: {
       mode,
-      tiles: fitRanked.map((t) => ({
+      tiles: receipted.map((t) => ({
         platformVideoId: t.platformVideoId,
         videoUrl: t.videoUrl,
         caption: t.caption,
