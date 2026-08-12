@@ -213,6 +213,43 @@ anchor is a real question and is deliberately deferred (§5.3), because nothing 
 
 ---
 
+## 5.4 ▶ IMPLEMENTATION NOTE — one deliberate deviation from §5.2, and the result
+
+**Built 2026-08-12. §5.2's header rewrite was NOT done, on purpose.**
+
+Reading the old header against the new contract showed it was never the defect: *"Write in this
+voice: match its sentence rhythm, vocabulary register, and tone. Emulate STYLE only"* is **correct**
+when applied to a description like `"blunt, no fluff"`. What was wrong was the value in the slot,
+not the words around it. Rewriting it would have broken three tests encoding a deliberate KCQ-08 /
+D-11/D-12 decision in exchange for swapping one unmeasured instruction for another — and this lane
+has four recorded failures of prompt-only rewrites.
+
+So the contract change shipped as **documentation on the field + the input guard**, which is where
+§4 already argued the enforcement has to live. `formatVoice`'s header is unchanged.
+
+**Verified against the real loop**, not just the suite — the same 3-arm probe re-run on the patched
+tree:
+
+| arm | dance **before** | dance **after** | verbatim echo before → after |
+|---|---|---|---|
+| prod | **13/30 · 43%** | **0/30 · 0%** | 0% → 0% |
+| voiceless | 0/30 · 0% | 0/26 · 0% | — |
+| neutral | 0/30 · 0% | 0/30 · 0% | **13% → 0%** |
+
+**All three arms are now identical**, which is the signature the fix predicts: the sample no longer
+reaches the generator, so varying it changes nothing. Both failure modes are closed.
+
+⚠️ One `voiceless` run returned 1 card instead of 5 (hence 26). Transient generator noise in what is
+now a redundant control arm, not a regression — recorded rather than smoothed over.
+
+⚠️ **Residual gap, deliberately left:** the guard covers the AUDIENCE path only. A future
+`creator_profiles.writing_voice_sample` column would reach the voice role without tripping it, and
+the neutral arm is the warning — a well-chosen quote was still copied verbatim 13% of the time.
+`adapt.ts` and `adapt-profile.ts` also read that field and are untouched. The type-level fence
+(renaming the field to `…_description`) is the structural answer and was judged out of scope here.
+
+---
+
 ## 6. Testing
 
 **The unit that matters is behavioural, not structural.** The lane's standing rule applies: run a

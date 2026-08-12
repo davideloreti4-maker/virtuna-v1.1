@@ -50,6 +50,22 @@ export interface ProfileRow {
   past_wins?: Array<{ url: string }> | null;
   past_flops?: Array<{ url: string }> | null;
   target_platforms?: string[] | null;
+  /**
+   * 🔴 DESCRIPTION-ONLY. A description of HOW the creator writes ("blunt, no fluff"), never a
+   * specimen of what they wrote.
+   *
+   * This slot used to be fed a verbatim video caption, and that was the exemplar-copying defect:
+   * a single quoted line cannot carry style, so the generator copied content instead. Measured
+   * 2026-08-12 — with `"Btw this dance took me hours to learn"` in here, 43% of hooks written for
+   * a budgeting app were about learning a dance, while sharing 0% of the sample's words. A longer,
+   * better-chosen line was instead reproduced VERBATIM as 13% of the pack. Both directions leak.
+   *
+   * ⚠️ There is no producer today — `creator_profiles.writing_voice_sample` does not exist as a
+   * column, and `apply-creator-persona.ts` no longer backfills it. Before wiring anything into this
+   * field, read `docs/superpowers/specs/2026-08-12-exemplar-fence-design.md`, and note that the
+   * guard in `apply-creator-persona.test.ts` only covers the AUDIENCE path — a profile-column
+   * producer would need its own.
+   */
   writing_voice_sample?: string | null;
 }
 
@@ -142,6 +158,13 @@ function formatPlatform(row: ProfileRow): string | null {
  * IN this voice (sentence rhythm, vocabulary register, tone — KCQ-08 / D-11/D-12)
  * while restricting emulation to STYLE only — never content or claims
  * (honesty-spine aligned, D-04).
+ *
+ * ⚠️ The input is a DESCRIPTION of how the creator writes, never a quoted specimen — see the
+ * field's own doc on ProfileRow for the measurement that settled this. The header below is
+ * correct for a description ("match its sentence rhythm" reads fine against "blunt, no fluff")
+ * and was never the defect; the defect was what got put in the slot. The enforcement lives on the
+ * INPUT side, in `apply-creator-persona.ts` and its guard test — not in this wording, which four
+ * prompt-only rewrites in this lane have shown the model will ignore.
  *
  * Returns null when writing_voice_sample is absent or blank (graceful cold-start).
  * The fence uses the same <<<USER_CONTENT>>> sentinels as all other user-supplied
