@@ -1,5 +1,50 @@
 # What the model actually knows — thread context + user context (2026-08-10)
 
+> ## ▶ UPDATE 2026-08-12 (session 11) — read this before the body
+>
+> The body below is still accurate on **what is assembled**. Three things measured since change what
+> it means, and one is a straight correction.
+>
+> **1. 🔴 The `voice` role is DEAD for the profile — the column does not exist.** The table in §2
+> lists `voice` as active for ideas/hooks/script/remix, sourced from
+> `creator_profiles.writing_voice_sample`. **That column is not in the database** (verified directly
+> against prod: 36 columns, no `writing_voice_sample`). `profile-role-map.ts:154` reads `undefined`
+> and returns null every time, so the role is silently absent. The ONLY way voice ever reaches a
+> generator is `apply-creator-persona.ts` backfilling it from a **calibrated audience's**
+> `creator_persona.writing_style_sample`. **With a General audience — or none — no generator gets any
+> voice instruction at all.** ⚠️ `profile-interview-store.ts:185` still tries to SAVE that field, so
+> widening the profile schema before the migration exists breaks profile saving.
+>
+> **2. 🔴 The dispatch failure is NOT a context problem — this is the session's biggest finding.**
+> Item 2 of §3 below asks to fix "claimed hooks, ran nothing". Measured across 183 + 76 + 32
+> generations: an ask whose SUBJECT is a product or format dispatches **17–23%**, against ~100% for a
+> scenario subject. The model has the full bundle, the full 20-turn replay, the audience, the
+> corpus — **and refuses anyway**. Four prompt rewrites failed to move it. What fixed it was adding
+> a **count** to the ask (`"give me 5 hooks"` vs `"give me hooks"`): pushbacks **9 → 0** offline, and
+> **0/6 → 6/6 on the live route**. So the behaviour here is driven far more by the *shape of the
+> request* than by everything carefully assembled around it. Worth holding onto before any future
+> "the model needs more context" conclusion. See `docs/HANDOFF-2026-08-12-session-11-guess-pin.md`.
+>
+> **3. The corpus role bleeds SURFACE, not structure.** §2 lists `corpus` (the retrieved proven
+> examples) as a bundle role. Measured on a comedy/storytelling profile: **52%** of cards produced
+> for a budgeting app mentioned learning a TikTok dance — on the path where the model *chose* to run,
+> unpinned. Scenario subjects: **0%**. The grounding cache returns the right topic; the generator is
+> copying the examples' surface rather than their structure.
+>
+> **⚠️ Findings 1 and 3 may be the same defect.** If the voice role is empty for every uncalibrated
+> run, the corpus examples are the strongest style signal left in the bundle — so the model anchors
+> style on them because there is nothing else to anchor it to. Not tested. It is cheap to test
+> (backfill a voice into `profileRow` and re-measure the bleed) and it is the next thing to run.
+>
+> **4. First mid-thread observation.** Everything in this lane is a thread's FIRST turn. An
+> accidental mid-thread run showed the model declining differently there: it critiques its **own
+> previous batch** (*"the previous batch was too 'explainer'"*) rather than pushing back on the
+> subject. n=5, still not properly measured.
+>
+> **Live-probe recipe note:** a live run against `/api/tools/chat` reuses the account's existing open
+> thread, so N POSTs are ONE conversation. Send `maven_active_thread=__new__` for genuine first
+> turns. A tally that looks right is not proof — read the replies.
+
 Written as the brief for the next session. Two questions were asked:
 
 1. do we maintain thread context, i.e. does Qwen have continuous memory of this conversation?
@@ -76,7 +121,7 @@ Two different bundles, assembled by the same `assembleBundle` but with **differe
 | `niche` | `niche_primary` + `niche_sub` | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `audience` | `target_audience` JSON (age, gender skew, geo, language) | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `platform` | per-request platform (wins over the profile default) | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `voice` | `writing_voice_sample`, fenced, "match rhythm/register/tone, STYLE only" | ❌ | ✅ | ✅ | ✅ | ✅ |
+| `voice` | `writing_voice_sample`, fenced, "match rhythm/register/tone, STYLE only" | ❌ | ⚠️ | ⚠️ | ⚠️ | ⚠️ |
 | `goals` | `primary_goal` + `creator_stage` | ❌ | ✅ | ❌ | ❌ | ❌ |
 | `wins` | `past_wins` (creator-reported) | ❌ | ✅ | ✅ | ✅ | ✅ |
 | `flops` | `past_flops` | ❌ | ✅ | ✅ | ✅ | ✅ |
@@ -84,6 +129,11 @@ Two different bundles, assembled by the same `assembleBundle` but with **differe
 **The chat agent gets niche + audience + platform and nothing else.** It has no voice sample, no
 goals, no wins/flops. So the co-pilot that talks to the creator all day knows the least about them
 — worth deciding on deliberately, since chat is now the front door.
+
+⚠️ **The `voice` row above is marked ⚠️, not ✅, as of 2026-08-12** — `creator_profiles.
+writing_voice_sample` does not exist in the database, so that role is empty for every generator
+unless a **calibrated audience** backfills it (`apply-creator-persona.ts`). On a General audience no
+generator receives any voice instruction. See the update block at the top of this file.
 
 ### The selected audience (the SIM) — three separate contributions
 
