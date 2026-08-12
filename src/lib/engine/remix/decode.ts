@@ -248,11 +248,24 @@ export function omniOutputToStructuralInput(
     overall_impression?: string;
   };
 
-  if (!a.hook_decomposition || !a.factors || !a.video_signals) return null;
+  // PERCEPTION is required; JUDGMENT is not. D-R1 (2026-06-11) made the Read a pure sensor:
+  // it stopped emitting `factors[]`, `overall_impression` and `content_summary` because Apollo
+  // became the sole judge (omni-analysis.ts:279-282). This guard still demanded `factors`, so it
+  // returned null on EVERY real omni output from that day on — decode_failed, zero cards, the
+  // whole remix feature dead in production for two months.
+  //
+  // Nothing caught it because every test in the tree, this file's own fixture included, supplies
+  // a hand-built `OmniStructuralInput` carrying the pre-D-R1 shape. The suite mirrored the
+  // producer instead of tracking it. Measured live 2026-08-11: omni returned 4 segments, 6 audio
+  // events and verbatim, and died right here.
+  if (!a.hook_decomposition || !a.video_signals) return null;
 
   return {
     hook_decomposition: a.hook_decomposition,
-    factors: a.factors,
+    // `?? []` and never undefined — blueprint.ts:461 calls `structural.factors.filter(...)`
+    // unguarded, and decode-prompts.ts:119 reads it too. An empty array costs the shoot sheet its
+    // weakness annotations until factors are re-sourced from Apollo; undefined would throw.
+    factors: a.factors ?? [],
     segments: omni.segments,
     video_signals: {
       visual_production_quality: a.video_signals.visual_production_quality,

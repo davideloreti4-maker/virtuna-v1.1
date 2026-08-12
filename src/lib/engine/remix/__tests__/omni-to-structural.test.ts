@@ -93,6 +93,51 @@ describe("omniOutputToStructuralInput", () => {
     expect(s.niche_primary_slug).toBe("fitness");
   });
 
+  // ---------------------------------------------------------------------------
+  // D-R1 (2026-06-11): the Read became a PURE SENSOR and stopped emitting generic
+  // JUDGMENT — factors[], overall_impression and content_summary all went to
+  // Apollo (omni-analysis.ts:279-282). `makeOmniOutput()` above still carries all
+  // three, so it mirrors an omni output that has not existed for two months, and
+  // every test in this file passed against a shape the producer no longer emits.
+  //
+  // Measured live 2026-08-11: a real remix run reached omni fine — 4 segments, 6
+  // audio events, verbatim present — and then died here, because the guard
+  // required `factors`. decode_failed, zero cards, on every run since D-R1.
+  // ---------------------------------------------------------------------------
+
+  /** The omni shape as `assembleOmniOutput` ACTUALLY builds it today. */
+  function makePureSensorOmniOutput(): OmniAnalysisOutput {
+    const full = makeOmniOutput();
+    const analysis = { ...(full.geminiResult!.analysis as unknown as Record<string, unknown>) };
+    // The three fields D-R1 removed. Deleted rather than set undefined: an absent
+    // key is what the real assembly produces.
+    delete analysis.factors;
+    delete analysis.overall_impression;
+    delete analysis.content_summary;
+    return {
+      ...full,
+      geminiResult: { analysis: analysis as never, cost_cents: 0 },
+    } as OmniAnalysisOutput;
+  }
+
+  it("survives a PURE SENSOR omni output — perception without judgment", () => {
+    const s = omniOutputToStructuralInput(makePureSensorOmniOutput());
+    expect(s).not.toBeNull();
+    // Perception is preserved and must still map.
+    expect(s!.hook_decomposition.visual_stop_power).toBe(9);
+    expect(s!.video_signals.pacing_score).toBe(7);
+    expect(s!.segments).toHaveLength(2);
+    // Judgment is gone. An empty array, never undefined — blueprint.ts calls
+    // `structural.factors.filter(...)` unguarded and would throw on undefined.
+    expect(s!.factors).toEqual([]);
+  });
+
+  it("renders a decode context from a pure-sensor input without throwing", () => {
+    const s = omniOutputToStructuralInput(makePureSensorOmniOutput())!;
+    const ctx = buildDecodeContext(s);
+    expect(ctx).toContain("visual_stop_power: 9");
+  });
+
   it("returns null when the Omni call failed (geminiResult null)", () => {
     const failed = {
       geminiResult: null,
