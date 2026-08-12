@@ -101,18 +101,43 @@ The ask *"explain the structure of a story-time video, start to finish"* streame
 creator's screen. It reproduces on turns that compose nothing, so it is **not** a composed-card
 problem and does not block this lane — but somebody should chase it.
 
-## Still open — owner calls, unchanged from the last handoff
+## Owner rulings — all four RULED and IMPLEMENTED (`67293218`)
 
-1. **A `teardown` whose receipt refs all fail to resolve still renders**, asserting proof it cannot
-   show. `requiredSlots` checks presence, not resolution. Spike doc §3.
-2. **`search_corpus` shows the model sub-floor multipliers** (`1.3×`, `1.8×`) as evidence, from a
-   tool whose description says the library "measurably outperformed". Live in prod today,
-   independent of this lane.
-3. **`stat_row` carries `{value,label}` strings the MODEL writes**, legal in `brief` only.
-4. **Save on composed cards** — absent by design; `saved_items.item_type` has no type for it.
-5. **PROVEN STRUCTURE beside no number** — rarer in practice than the corpus statistic suggests.
+| # | was open | ruling | shipped |
+|---|---|---|---|
+| 1 | teardown with unresolvable refs still renders | **don't render the card** | scoped to `teardown` (the only recipe that *requires* proof_strip); returns an error so the model retries or answers in prose |
+| 2 | `search_corpus` hands the model sub-floor multipliers | **strip the figure below 3×, keep the row** | same arithmetic + shared constants as `bandedMultiplier`; also clamps at the ceiling. **This one was live in prod** |
+| 3 | `stat_row` carries model-authored numbers | **require provenance or drop the row** | now `{metric,label,receiptRef}` — model names the ROW and WHICH metric, server supplies the figure |
+| 4 | "Highest ×" wall (new, from Task 9) | **flagged rows sort last** | in-band receipts rank first; verified in a browser — the sort now opens `▲ 99.3× · 96.8× · 92.4×…` in proven green |
 
-Plus the new one: **the "Highest ×" wall**, above.
+Every guard was verified to **fail against the old behaviour** before being kept.
+
+### ⚠️ One deliberate cost, ruling 3
+
+`brief` can no longer put PLAN numbers in a `stat_row` — the gallery fixture's
+`4 Posts · 42s Median runtime · Tue / Thu` cannot be expressed once the figure must come from a
+corpus row. Those moved to `label_values`, which is where a spec table belongs. Worth knowing that
+**`label_values` still carries model-authored strings**, by exactly the argument that made
+`stat_row` a problem. It was not in scope of the ruling and is untouched — but it is the same hole,
+one slot over.
+
+The restriction keeping `stat_row` out of `comparison` **stays**, but its rationale expired: it is
+now a layout decision, not an honesty one. Three comments that still said otherwise were retired.
+
+## Still open
+
+- **Save on composed cards** — absent by design; `saved_items.item_type` has no type for it.
+- **PROVEN STRUCTURE beside no number** — rarer in practice than the corpus statistic suggests.
+- **`label_values` model-authored strings** — see above.
+- **The 18k–33k prose turn** — see below.
+
+## What I did NOT verify
+
+`/dev/cards` renders only the app shell in this environment — I could not get the gallery content
+to mount at all (no console error; the Composer tab button never appears). **So the `brief` card's
+new `stat_row` was never eyeballed.** It is covered by three component tests asserting the exact
+DOM — value read from the receipt, a stat with an unresolvable ref dropped, the whole row dropped
+when none resolve — all verified red-then-green. That is not the same as looking at it.
 
 ## Verification
 
