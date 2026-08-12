@@ -1,10 +1,22 @@
 # Handoff — composed-card Phase 2, 2026-08-12
 
-**Branch:** `lane/composed-card` in `~/virtuna-composed-card`, **13 commits, pushed, 0 behind main.**
-Nothing merged. Nothing deployed. Every commit verified directly: `tsc` clean, full suite green,
-`npm run build` exit 0 at each gate.
+**MERGED — PR #478, `main` @ `1b5ca085`.** `lane/composed-card` is in. Not deployed (git has been
+disconnected from Vercel since 2026-08-08, so merging does not ship).
 
-Last full run: **6049 passed / 42 skipped / 0 failed**.
+The merge was not clean: `main` moved to `a994b227` mid-PR and a co-session had extracted
+`CARD_LINE` / `SKILL_BLOCK_RECORD` out of `chat-prior-turns.ts` into a new shared
+`src/lib/tools/on-screen.ts` — exactly to stop two copies of that map existing. This lane had added
+its `composed-card` entry to the old copy. Resolved by taking `main`'s file wholesale and moving the
+entry into `on-screen.ts`, where `RECORDED_BLOCKS` and the reachability drift test can see it.
+After the merge: **6308 tests pass**, `tsc` clean, `npm run build` exit 0.
+
+Last full run (post-merge): **6308 passed / 42 skipped**.
+
+⚠️ **The suite flakes.** Across six full runs it failed 0, 2, 5, 0, 0, 2 tests non-deterministically,
+always in `src/lib/scraping/__tests__/resolve-video.test.ts` and
+`src/lib/engine/__tests__/omni-analysis-*.test.ts` — different ones each time, and they flake in
+isolation too. Nothing in this lane touches those files or anything they import. Pre-existing and
+undiagnosed; do not read a red run there as your own regression.
 
 ---
 
@@ -17,6 +29,8 @@ Last full run: **6049 passed / 42 skipped / 0 failed**.
 | `0fc6d4e7` | Task 8 — spike re-run against the shipped contract |
 | `1050d7a9` | make flash compose |
 | `f51e6639` | the Phase 2 plan itself |
+| `acba1327` | this handoff |
+| `6a6d42f6` | merge `main`, moving the `composed-card` record line into `on-screen.ts` |
 
 Tasks 1–8 are complete. **Task 9 (align the Discover feed to the one-band rule, B1) is the only
 plan item left** — it changes a shipped surface and the plan gives it its own review gate.
@@ -72,6 +86,17 @@ tier change — see `docs/superpowers/specs/2026-08-12-composed-card-spike-rerun
 | `probe-receipt-coverage.ts` | the 532-row coverage table |
 | `probe-proof-strip-roundtrip.ts` | a `search_corpus` id round-trips into a real receipt |
 | `probe-thinking-stream.ts` | reasoning stays out of the creator's stream; a card lands |
+
+## Next session, in order
+
+1. **Task 9** — the last plan item, and it is half-landed:
+   `discover/corpus-reads.ts:33` still declares its own `EXTREME_MULTIPLIER = 100` and still DROPS
+   out-of-band rows instead of clamping, while `grounding/outlier-gate.ts` owns the shared constant
+   that `composed-card-receipt.ts` already clamps to. Two literals that happen to agree.
+2. **Rule on the three open honesty items above** before more is built on the contract. #2 is live in
+   production today, independent of this lane.
+3. **Flip `COMPOSED_CARDS=true` in a preview env and use it**, before touching prod. Everything here
+   is measured through probes and a harness; nobody has looked at a composed card in a running app.
 
 ## ⚠️ Trunk, as of 11:07
 
