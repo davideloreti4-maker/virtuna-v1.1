@@ -97,8 +97,17 @@ never npx):
     --path "omni-split/59455-447571480576291.mp4" --dump /tmp   # write the JPEGs to LOOK at
   node node_modules/tsx/dist/cli.mjs scripts/show-shoot-sheet.ts
 
-🔴 BEFORE PLANNING ANYTHING BIG, SETTLE THE DEPLOY. Nothing has shipped since 2026-08-07 and
-I could NOT confirm whether merging #494 changed that — the Vercel MCP 502'd, and a 200 from
-virtuna-v11.vercel.app says nothing about which commit is live. Every item above builds onto
-a shelf that may still be invisible to every human. Check it first; it is not a code problem.
+🔴 DEPLOY IS OFF — owner-confirmed 2026-08-13. Merging does NOT deploy. Everything on main
+reaches nobody; virtuna-v11.vercel.app serves 2026-08-07 code and numenmachines.com 404s by
+design. Do NOT propose reconnecting it as a task — the owner knows, it is deliberate, and it
+is not a code problem.
+
+What it means for you, concretely:
+  - NEVER write a plan whose success criterion is "watch it in production". You cannot.
+  - Phase 1's live gate is unreachable by construction — it waits on prod log lines that no
+    prod will emit. Stop treating it as pending work; it is blocked, not open.
+  - Everything must be verifiable by probe, by test, or by a browser against local dev.
+    scripts/probe-beat-frames.ts is the model: real bytes, real storage, PASS/FAIL, ~3s, free.
+  - "Nobody uses it yet" is NOT an argument against building. The product is unlaunched;
+    that is the normal state of unshipped software. Build the thing.
 ```

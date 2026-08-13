@@ -170,10 +170,16 @@ since it predates phase 1 and phase 3. But do not repeat "needs a ruling" as tho
 
 ## 4. 🔴 The two facts that should reorder any plan
 
-**Nothing is deployed, and I could not confirm whether the merge changed that.** The Vercel MCP
-returned 502s; `virtuna-v11.vercel.app` answering 200 says nothing about which commit is live.
-[[vercel-git-disconnected]] says merging does not deploy. **Reported as unconfirmed, not asserted —
-check it before assuming anyone can see any of this.**
+🔴 **DEPLOY IS OFF — owner-confirmed 2026-08-13.** Merging does **not** deploy. PR #494, #495, #496
+and everything behind them are on `main` and reach **nobody**. `virtuna-v11.vercel.app` serves
+2026-08-07 code; a 200 from it says nothing about which commit is live, and `numenmachines.com`
+404s by design. [[vercel-git-disconnected]]
+
+**What that means for planning, concretely:** no item in §3 can be validated by a real user, and
+phase 1's live gate (§4 of the old handoff) is **unreachable by construction** — it needs prod log
+lines that no prod will emit. Do not schedule work whose success criterion is "watch it in
+production". Everything below has to be verifiable by probe, by test, or by browser against a local
+dev server, and the two probes in §2 are the model for that.
 
 **Zero genuine creators have ever produced a remix card.** Measured against prod today, every
 `remix-card` block ever written:
