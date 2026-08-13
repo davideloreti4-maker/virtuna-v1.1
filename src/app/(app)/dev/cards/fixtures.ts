@@ -1335,12 +1335,17 @@ export const COMPOSED_CARD_FIXTURES: ComposedCardBlock[] = [
       },
       why: "Teardowns are the only shape that has cleared your usual views twice running, and the failure story is the one you already have footage for.",
       body: [
+        // stat_row now names a ROW and a METRIC; the server supplies the figure (owner ruling
+        // 2026-08-12). The numbers below are `COMPOSED_PROOF_CORPORATE_BRO`'s own, not written here.
+        // ⚠️ This fixture used to read `{value:"4",label:"Posts"} · {value:"42s"} · {"Tue / Thu"}` —
+        // PLAN facts, not measurements, and the shape can no longer express them. That was the cost
+        // of the ruling and it is deliberate; those three moved to `label_values` below, which is
+        // where a spec table belongs anyway.
         {
           kind: "stat_row",
           stats: [
-            { value: "4", label: "Posts" },
-            { value: "42s", label: "Median runtime" },
-            { value: "Tue / Thu", label: "Post days" },
+            { metric: "views", label: "Best teardown", receiptRef: "td-8f21" },
+            { metric: "multiplier", label: "vs their usual", receiptRef: "td-8f21" },
           ],
         },
         {
@@ -1353,6 +1358,9 @@ export const COMPOSED_CARD_FIXTURES: ComposedCardBlock[] = [
         {
           kind: "label_values",
           rows: [
+            { label: "Posts", value: "4" },
+            { label: "Post days", value: "Tue / Thu" },
+            { label: "Runtime", value: "42s median" },
             { label: "Format", value: "Screen record + voiceover" },
             { label: "Aspect", value: "9:16, captions burned in" },
             { label: "Hook", value: "Cost first, topic second" },
@@ -1361,6 +1369,7 @@ export const COMPOSED_CARD_FIXTURES: ComposedCardBlock[] = [
         { kind: "chips", items: ["Onboarding", "Churn", "Pricing", "Hiring"] },
         { kind: "note", text: "If a fifth idea turns up it goes in next week's brief. Four is the point." },
       ],
+      receipts: { "td-8f21": COMPOSED_PROOF_CORPORATE_BRO },
       actions: ["account", "explore"],
     },
   },

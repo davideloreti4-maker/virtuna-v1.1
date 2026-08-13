@@ -9,8 +9,12 @@
  * proof, the cover and the date are all present by construction.
  *
  * Two honesty rules are visible in the layout, not just the copy:
- *   • the pool excludes thin-baseline extremes (≥100×) — they stay findable inside their
- *     collections, flagged, but a feed sorted by "highest ×" must not open on a 20,154×;
+ *   • thin-baseline extremes (≥100×) are ADMITTED but never presented as proof — the printed
+ *     number clamps at 100× and the badge drops the green ▲ for a muted "100× ⚠" (B1, owner
+ *     ruling 2026-08-11). They used to be excluded outright. The reason the old rule existed —
+ *     "a feed sorted by highest × must not open on a 20,154×" — is served instead by the clamp
+ *     PLUS the sort: flagged rows rank last under "Highest ×", so it opens on the best genuine
+ *     receipt rather than on 55 rows tied at the ceiling (owner ruling 2026-08-12).
  *   • the footer states when the corpus was last refreshed instead of implying "today".
  *
  * REWORKED 2026-08-04 (owner, against a Sandcastles reference):
@@ -60,7 +64,7 @@ export function OutliersPanel({
   refreshedLabel,
   onOpen,
 }: {
-  /** The feed pool, already filtered to proven + non-extreme and sorted newest-first. */
+  /** The feed pool, already filtered to proven (extremes included, clamped) and sorted newest-first. */
   videos: CorpusVideo[];
   /** The hub's search box — filters here rather than opening a second search. */
   query: string;
@@ -108,7 +112,17 @@ export function OutliersPanel({
     });
     if (sort === "recent") return filtered;
     const copy = [...filtered];
-    if (sort === "multiplier") copy.sort((a, b) => (b.multiplier ?? 0) - (a.multiplier ?? 0));
+    // Flagged rows sort LAST (owner ruling 2026-08-12). Once the band clamps instead of dropping,
+    // 55 thin-baseline rows all tie at exactly 100× — sorting on the number alone opens "Highest ×"
+    // on a wall of them and buries the best genuine receipt (a real 41.6×) underneath. The control
+    // promises the highest MEASURED multiple, so in-band rows rank first and the flagged band
+    // follows, still findable, still ordered among themselves.
+    if (sort === "multiplier") {
+      copy.sort((a, b) => {
+        if (a.extreme !== b.extreme) return a.extreme ? 1 : -1;
+        return (b.multiplier ?? 0) - (a.multiplier ?? 0);
+      });
+    }
     if (sort === "views") copy.sort((a, b) => b.views - a.views);
     return copy;
   }, [videos, filters, q, sort]);
@@ -289,10 +303,28 @@ function OutlierCard({
           className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-black/55 to-transparent"
           aria-hidden="true"
         />
+        {/* The same honesty rule MultiplierChip enforces (discover-primitives.tsx), applied with
+            the overlay's styling rather than its pill — a pill on an arbitrary video frame read as
+            a stuck-on sticker, which is why this badge is bare text over the scrim.
+            ⚠️ Do NOT collapse this back to one green ▲. Once the band CLAMPS instead of dropping
+            (B1), extreme rows reach this feed, and a green ▲100× on a thin baseline is the exact
+            claim the clamp exists to avoid — the number is real, the proof is not. */}
         {video.multiplier !== null ? (
-          <span className="absolute left-2.5 top-2.5 text-label font-semibold tabular-nums text-[color:var(--color-positive)] [text-shadow:0_1px_3px_rgba(0,0,0,0.6)]">
-            ▲ {fmtMultiplier(video.multiplier)}
-          </span>
+          video.extreme ? (
+            <span
+              title="Measured against a very thin baseline — shown, but not treated as proof"
+              className="absolute left-2.5 top-2.5 text-label font-semibold tabular-nums text-white/85 [text-shadow:0_1px_3px_rgba(0,0,0,0.6)]"
+            >
+              {fmtMultiplier(video.multiplier)} ⚠
+            </span>
+          ) : (
+            <span
+              title={`${fmtMultiplier(video.multiplier)} ${video.baselineLabel ?? ""}`}
+              className="absolute left-2.5 top-2.5 text-label font-semibold tabular-nums text-[color:var(--color-positive)] [text-shadow:0_1px_3px_rgba(0,0,0,0.6)]"
+            >
+              ▲ {fmtMultiplier(video.multiplier)}
+            </span>
+          )
         ) : null}
         {PlatformIcon ? (
           <PlatformIcon

@@ -318,10 +318,15 @@ describe("every recipe may carry its proof", () => {
     }
   });
 
-  it("does NOT widen stat_row with it — those numbers are model-authored", () => {
-    // proof_strip carries a row id the server resolves; stat_row carries {value,label} strings the
-    // model writes itself. Widening both together would have handed back exactly the fabrication
-    // D7 exists to remove. The model asked for stat_row in `comparison` and was refused on purpose.
+  it("still does NOT widen stat_row with it — now a shape rule, no longer an honesty one", () => {
+    // The original reason: proof_strip carried a row id the server resolved, while stat_row carried
+    // {value,label} strings the model wrote itself, so widening both together would have handed back
+    // exactly the fabrication D7 removes.
+    //
+    // That reason EXPIRED 2026-08-12 — stat_row now takes {metric,label,receiptRef} and its figures
+    // are server-materialized too. The restriction is kept as a LAYOUT decision (a comparison card
+    // argues in columns; a stat row above them competes with the argument), so this assertion is
+    // still worth holding — but anyone widening it in future is no longer fighting an honesty rule.
     expect(RECIPES.comparison.legalSlots).not.toContain("stat_row");
     const allowed = Object.entries(RECIPES).filter(([, r]) => r.legalSlots.includes("stat_row"));
     expect(allowed.map(([id]) => id)).toEqual(["brief"]);
