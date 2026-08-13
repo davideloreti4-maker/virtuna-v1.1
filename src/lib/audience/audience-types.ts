@@ -103,7 +103,21 @@ export interface CreatorPersona {
   content_description: string;
   /** Audience · voice · formats · expertise · AVOID list → generation (all skills). */
   context: string;
-  /** Verbatim transcript/caption of the top video → generation voice. */
+  /**
+   * 🔴 A VERBATIM transcript/caption of the top video. The name says "style"; the producer
+   * (`enrich-signature.ts` SYNTH_SYSTEM) asks for a quoted line, so this is a SPECIMEN.
+   *
+   * → THE SIM ONLY (`simulate-runner.ts`, "HOW THEY TALK"). It reached the generation voice role
+   * until #482 and that WAS the exemplar-copying defect: an 8-word caption donated its topic to
+   * 43% of a hook pack, a 17-word one was reproduced verbatim in 13%. Predicting a reaction from a
+   * real line is legitimate; WRITING from one is not.
+   *
+   * ⚠️ NEVER route this into a voice/steer role. The profile-side slot it used to feed is now
+   * spelled `ProfileRow.writing_voice_description` precisely so the mismatch is visible at the
+   * type level. Renaming this field to match is deferred: it is persisted jsonb on live
+   * `audiences` rows and read by `profile-bake.ts` + `general-baseline-signature.ts`, so it needs
+   * a back-compat read, not a rename.
+   */
   writing_style_sample: string;
   /** Video format/style synthesised from omni-flash watchNotes (NEW, video-derived). */
   format_signature: string;

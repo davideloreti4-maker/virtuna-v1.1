@@ -261,7 +261,7 @@ describe("corpus budget vs BUNDLE_CHAR_CAP (the profile-eviction guard)", () => 
     ],
     past_flops: ["long-form explainers underperform badly", "polished b-roll flops vs raw selfie video"],
     target_platforms: ["tiktok", "instagram"],
-    writing_voice_sample:
+    writing_voice_description:
       "Direct, opinionated, plain-spoken. Short sentences. No hype, no emoji, no growth-hack cliches. " +
       "I say the quiet part out loud and I do not soften it for anyone.",
   };

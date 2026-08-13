@@ -60,13 +60,19 @@ export interface ProfileRow {
    * a budgeting app were about learning a dance, while sharing 0% of the sample's words. A longer,
    * better-chosen line was instead reproduced VERBATIM as 13% of the pack. Both directions leak.
    *
-   * ⚠️ There is no producer today — `creator_profiles.writing_voice_sample` does not exist as a
-   * column, and `apply-creator-persona.ts` no longer backfills it. Before wiring anything into this
-   * field, read `docs/superpowers/specs/2026-08-12-exemplar-fence-design.md`, and note that the
-   * guard in `apply-creator-persona.test.ts` only covers the AUDIENCE path — a profile-column
-   * producer would need its own.
+   * ⚠️ There is no producer today — `creator_profiles` has no voice column at all (verified
+   * against prod 2026-08-13), and `apply-creator-persona.ts` no longer backfills it. Before wiring
+   * anything into this field, read `docs/superpowers/specs/2026-08-12-exemplar-fence-design.md`,
+   * and note that the guard in `apply-creator-persona.test.ts` only covers the AUDIENCE path — a
+   * profile-column producer would need its own.
+   *
+   * 🔒 RENAMED from `writing_voice_sample` (2026-08-13) — this IS the fence. The old name invited
+   * a specimen, which is the value measured to leak; the new one cannot be filled with a quoted
+   * caption without contradicting itself. The old key is now inert by construction: nothing reads
+   * it, so a stale producer donates nothing. `voice-description-fence.test.ts` holds that property
+   * at the assembled-bundle level.
    */
-  writing_voice_sample?: string | null;
+  writing_voice_description?: string | null;
 }
 
 // ─── Role formatters ──────────────────────────────────────────────────────────
@@ -153,7 +159,7 @@ function formatPlatform(row: ProfileRow): string | null {
 
 
 /**
- * Format voice: wraps the creator's verbatim writing sample in an injection
+ * Format voice: wraps the creator's writing-voice DESCRIPTION in an injection
  * fence with an instruction header that explicitly directs the model to WRITE
  * IN this voice (sentence rhythm, vocabulary register, tone — KCQ-08 / D-11/D-12)
  * while restricting emulation to STYLE only — never content or claims
@@ -166,7 +172,7 @@ function formatPlatform(row: ProfileRow): string | null {
  * INPUT side, in `apply-creator-persona.ts` and its guard test — not in this wording, which four
  * prompt-only rewrites in this lane have shown the model will ignore.
  *
- * Returns null when writing_voice_sample is absent or blank (graceful cold-start).
+ * Returns null when writing_voice_description is absent or blank (graceful cold-start).
  * The fence uses the same <<<USER_CONTENT>>> sentinels as all other user-supplied
  * content in the assembler (GROUND-02 injection-guard parity).
  *
@@ -174,12 +180,12 @@ function formatPlatform(row: ProfileRow): string | null {
  * so the LLM sees it as a system directive, not user-supplied text.
  */
 function formatVoice(row: ProfileRow): string | null {
-  const sample = row.writing_voice_sample?.trim();
-  if (!sample) return null;
+  const description = row.writing_voice_description?.trim();
+  if (!description) return null;
   return [
     "Writing voice — Write in this voice: match its sentence rhythm, vocabulary register, and tone. Emulate STYLE only; do NOT reuse specific content or claims:",
     "<<<USER_CONTENT>>>",
-    sample,
+    description,
     "<<<END_USER_CONTENT>>>",
   ].join("\n");
 }

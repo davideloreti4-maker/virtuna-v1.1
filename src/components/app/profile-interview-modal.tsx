@@ -22,7 +22,7 @@ import { ReferenceCreatorsInput } from "@/components/app/cards/reference-creator
 import { WinsFlopsInput } from "@/components/app/cards/wins-flops-input";
 import { CadencePicker } from "@/components/app/cards/cadence-picker";
 import { PainPointsInput } from "@/components/app/cards/pain-points-input";
-import { VoiceSampleInput } from "@/components/app/cards/voice-sample-input";
+import { VoiceDescriptionInput } from "@/components/app/cards/voice-description-input";
 
 import { useProfileInterviewStore } from "@/stores/profile-interview-store";
 
@@ -100,9 +100,12 @@ const CARD_COPY: Record<number, CardCopy> = {
       "Freeform. The engine uses this to weight critique framing.",
   },
   9: {
+    // ⚠️ This used to read "Paste a short script or caption you want to sound like. The engine
+    // emulates your style — not the content." PR #482 measured that promise false: a pasted line
+    // donates its topic (43%) or its words (13% verbatim), never its style. Ask for a description.
     heading: "Your writing voice",
     description:
-      "Paste a short script or caption you want to sound like. The engine emulates your style — not the content.",
+      "Describe how you write — rhythm, register, the words you'd never use. A description, not an example.",
   },
 };
 
@@ -291,7 +294,7 @@ export function ProfileInterviewModal({
         );
       case 9:
         return (
-          <VoiceSampleInput
+          <VoiceDescriptionInput
             value={draft.voice}
             onChange={(v) => setDraftField("voice", v)}
           />

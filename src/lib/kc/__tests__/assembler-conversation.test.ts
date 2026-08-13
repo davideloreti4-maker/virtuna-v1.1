@@ -47,7 +47,7 @@ const PROFILE: ProfileRow = {
   past_wins: [{ url: "https://tiktok.com/@c/video/1" }, { url: "https://tiktok.com/@c/video/2" }],
   past_flops: [{ url: "https://tiktok.com/@c/video/3" }],
   target_platforms: ["tiktok"],
-  writing_voice_sample:
+  writing_voice_description:
     "I don't do the whole polished thing. I just tell you what happened, badly, and then explain " +
     "why it was my fault. Usually there's a bit where I go quiet. That's the joke. Anyway here's " +
     "the part where it gets worse for me.",

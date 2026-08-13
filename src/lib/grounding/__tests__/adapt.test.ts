@@ -58,7 +58,7 @@ function input(
     ask: "how to price freelance work",
     niche: "creator-economy",
     platform: "tiktok",
-    profile: { niche_primary: "creator-economy", writing_voice_sample: "plain, direct" },
+    profile: { niche_primary: "creator-economy", writing_voice_description: "plain, direct" },
     examples,
   };
 }

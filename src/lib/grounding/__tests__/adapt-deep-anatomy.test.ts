@@ -71,7 +71,7 @@ function scriptInput(examples: RetrievedExample[]): AdaptCorpusInput {
     ask: "why lifting heavy beats cardio",
     niche: "health-fitness",
     platform: "tiktok",
-    profile: { niche_primary: "health-fitness", writing_voice_sample: "plain, direct" },
+    profile: { niche_primary: "health-fitness", writing_voice_description: "plain, direct" },
     examples,
   };
 }

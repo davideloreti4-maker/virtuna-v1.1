@@ -75,7 +75,13 @@ export interface AdaptProfile {
   niche_primary?: string | null;
   target_audience?: string | null;
   primary_goal?: string | null;
-  writing_voice_sample?: string | null;
+  /**
+   * 🔒 A DESCRIPTION of how the creator writes, never a specimen — renamed from
+   * `writing_voice_sample` 2026-08-13. See `ProfileRow.writing_voice_description` for the
+   * measurement (43% topic donation from an 8-word caption, 13% verbatim echo from a 17-word one).
+   * `buildAdaptProfile` is the only producer, and it reads the renamed profile column.
+   */
+  writing_voice_description?: string | null;
   past_wins?: string[] | null;
   past_flops?: string[] | null;
 }
@@ -255,7 +261,7 @@ function buildUserContent(input: AdaptCorpusInput): string {
     `  niche: ${p.niche_primary ?? input.niche ?? "(unspecified)"}`,
     p.target_audience ? `  audience: ${p.target_audience}` : "",
     p.primary_goal ? `  goal: ${p.primary_goal}` : "",
-    p.writing_voice_sample ? `  voice (write like this): ${p.writing_voice_sample}` : "",
+    p.writing_voice_description ? `  voice (write like this): ${p.writing_voice_description}` : "",
     p.past_wins?.length ? `  has worked: ${p.past_wins.join("; ")}` : "",
     p.past_flops?.length ? `  has flopped: ${p.past_flops.join("; ")}` : "",
   ]

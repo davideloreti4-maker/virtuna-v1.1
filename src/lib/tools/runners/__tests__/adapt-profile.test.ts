@@ -15,7 +15,7 @@ describe("buildAdaptProfile", () => {
     const row: ProfileRow = {
       niche_primary: "personal-finance",
       primary_goal: "grow to 100k",
-      writing_voice_sample: "blunt, no fluff",
+      writing_voice_description: "blunt, no fluff",
       target_audience: {
         age_range: "25-34",
         gender_skew: "male",
@@ -30,7 +30,7 @@ describe("buildAdaptProfile", () => {
       niche_primary: "personal-finance",
       target_audience: "age 25-34, male-skewed, US, en",
       primary_goal: "grow to 100k",
-      writing_voice_sample: "blunt, no fluff",
+      writing_voice_description: "blunt, no fluff",
       past_wins: ["https://x/win1", "https://x/win2"],
       past_flops: ["https://x/flop1"],
     });
@@ -41,7 +41,7 @@ describe("buildAdaptProfile", () => {
       niche_primary: null,
       target_audience: null,
       primary_goal: null,
-      writing_voice_sample: null,
+      writing_voice_description: null,
       past_wins: null,
       past_flops: null,
     });

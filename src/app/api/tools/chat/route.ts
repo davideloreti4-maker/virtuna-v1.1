@@ -513,7 +513,7 @@ export async function POST(request: Request): Promise<Response> {
           // answered "give me hooks for X" in prose while holding generate_hooks unused. Measured on the
           // shipped prompts, 4 seeds: 0/4 dispatches with "chat", 4/4 with any other label. `mode` stays
           // "chat" — it is the MODE_ROLES selector, so the grounding content is unchanged.
-          // ── (8a-0d) THE COUNT HINT (2026-08-12, flagged OFF) ──────────────────────────────
+          // ── (8a-0d) THE COUNT HINT (2026-08-12, DEFAULT-ON since #480) ───────────────────
           // Measured over 32 unpinned runs on both failing subject shapes: a count in the ask takes
           // dispatch 2/12 → 16/20 and PUSHBACKS 9 → 0. It forces nothing — the model still decides —
           // so unlike the pin above it carries no wrong-run exposure at all. BUNDLE ONLY:

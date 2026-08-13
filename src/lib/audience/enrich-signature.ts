@@ -152,6 +152,14 @@ const SynthSchema = z.object({
   creator_persona: z.object({
     content_description: z.string().default(""),
     context: z.string().default(""),
+    /**
+     * 🔴 MISLABELLED, KNOWINGLY. SYNTH_SYSTEM below asks for "<verbatim transcript/caption of the
+     * top video>", so what lands here is a SPECIMEN, not a style description — all 6 calibrated
+     * audiences in prod carry a single video's caption. Consumed by the SIM only, which is a
+     * legitimate use (predicting a reaction from a real line). It must never reach a generation
+     * voice role again: doing so was the defect #482 measured at 43% topic donation. Full contract
+     * on `CreatorPersona.writing_style_sample` in audience-types.ts.
+     */
     writing_style_sample: z.string().default(""),
     format_signature: z.string().default(""),
   }),

@@ -42,7 +42,7 @@ const FULL_PROFILE: ProfileRow = {
   past_wins: [{ url: "https://tiktok.com/@t/video/1" }],
   past_flops: [{ url: "https://tiktok.com/@t/video/2" }],
   target_platforms: ["tiktok"],
-  writing_voice_sample: VOICE_SAMPLE,
+  writing_voice_description: VOICE_SAMPLE,
 };
 
 // ─── 1. ORDER: voice is never the tail element of the four generative modes ─────
@@ -93,7 +93,7 @@ describe("formatVoice header (KCQ-08 directive + honesty spine)", () => {
   });
 
   it("returns null for an absent voice sample (graceful cold-start)", () => {
-    expect(PROFILE_ROLE_MAP.voice({ ...FULL_PROFILE, writing_voice_sample: null })).toBeNull();
+    expect(PROFILE_ROLE_MAP.voice({ ...FULL_PROFILE, writing_voice_description: null })).toBeNull();
   });
 });
 
@@ -139,7 +139,7 @@ describe("voice survives a representative BUNDLE_CHAR_CAP drop", () => {
   it("a fitting bundle keeps every role including voice (no spurious drop)", () => {
     const bundle = assembleBundle(
       { ask: "short ask", platform: "tiktok", mode: "hooks" },
-      { ...FULL_PROFILE, writing_voice_sample: "VOICE_SURVIVES_MARKER — terse." },
+      { ...FULL_PROFILE, writing_voice_description: "VOICE_SURVIVES_MARKER — terse." },
     );
     expect(bundle.length).toBeLessThanOrEqual(BUNDLE_CHAR_CAP);
     expect(bundle).toContain("VOICE_SURVIVES_MARKER");
