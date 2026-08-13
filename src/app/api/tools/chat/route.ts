@@ -41,6 +41,7 @@ import { guessSkill } from "@/lib/tools/pre-router";
 import { detectRepeatAsk, isRepeatAskPinEnabled } from "@/lib/tools/repeat-ask";
 import { detectGuessPin, isGuessPinEnabled } from "@/lib/tools/guess-pin";
 import { addCountHint, isCountHintEnabled } from "@/lib/tools/count-hint";
+import { addCompareHint, isCompareHintEnabled } from "@/lib/tools/compare-hint";
 import { isProseCallPinEnabled } from "@/lib/tools/prose-call";
 import { billUsage, creditGate, quotaRefusalBody, quotaRefusalMessage } from "@/lib/billing/credit-gate";
 import { creditCost, type BillableAction } from "@/lib/pricing";
@@ -520,7 +521,23 @@ export async function POST(request: Request): Promise<Response> {
           // so unlike the pin above it carries no wrong-run exposure at all. BUNDLE ONLY:
           // `currentAsk` below stays the creator's real message, because it feeds the conversation
           // digest and the app must never quote back words the creator did not type.
-          const bundleAsk = isCountHintEnabled() && !isSealedVisitor(user) ? addCountHint(rawAsk) : rawAsk;
+          const countHinted = isCountHintEnabled() && !isSealedVisitor(user) ? addCountHint(rawAsk) : rawAsk;
+
+          // ── (8a-0d2) THE COMPARE HINT (2026-08-13) ───────────────────────────────────────
+          // The composed-card directive fires on "when the answer has structure", and a comparison
+          // ask never says so. Measured clean (isolated threads), same three asks, n=18 per arm:
+          // 1/18 · 5.6% unchanged → 15/18 · 83.3% with the cue, uniform at 5/6 across all three.
+          // The `comparison` recipe was never the blocker — it renders and needs no corpus proof;
+          // the model was answering in markdown prose, which the directive already forbids in
+          // words it demonstrably ignores.
+          //
+          // SCOPED TO COMPOSED CARDS: with the flag off there is no `emit_card` to reach, so
+          // rewriting the ask would steer nothing. Forces no tool call — same "no wrong-run
+          // exposure" argument as the count hint. BUNDLE ONLY, for the same reason.
+          const bundleAsk =
+            isComposedCardsEnabled() && isCompareHintEnabled() && !isSealedVisitor(user)
+              ? addCompareHint(countHinted)
+              : countHinted;
 
           // ── (8a-0e) THE PROSE-CALL PIN (2026-08-13, flagged OFF) ──────────────────────────
           // The count above closed the DISPOSITION half of the dispatch defect. What is left is the
