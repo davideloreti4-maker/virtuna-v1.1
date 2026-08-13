@@ -192,9 +192,10 @@ export async function gatherAndExtract(
   // Halfway. Put the survivors on the glass before spending the next ~15s profile-scraping them.
   //
   // Numberless headline (owner's rule, 2026-08-05): a scrape volume is our plumbing, not the
-  // creator's business. The FINAL payload the caller emits does carry a count — "Borrowing shape
+  // creator's business. The FINAL payload the caller emits does carry a count — "Reading shape
   // from 5 proven videos" — because that one is a claim about the creative input the cards are
-  // built from, which is the thing they paid for.
+  // built from, which is the thing they paid for. (The verb was "Borrowing" until 2026-08-13; it
+  // asserted an outcome before the cards existed — F-4. The COUNT was never the problem.)
   //
   // No multiplier here, deliberately: it is not computed until follower counts land, and the
   // outlier gate has not run. Views are measured now and claim nothing.

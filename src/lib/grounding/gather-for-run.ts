@@ -206,10 +206,22 @@ async function enrichWithTranscripts(
  * corpus-references-block.tsx draws for the chat agent's cited sources, for the same reason: a
  * STRUCTURAL batch is proven shape borrowed from other subjects, and a creator who reads it as
  * "3 videos about my topic" has been misled by the wait rather than by the cards.
+ *
+ * ⚠️ EVERY VERB HERE MUST DESCRIBE RETRIEVAL, NEVER THE OUTPUT (F-4, fixed 2026-08-13). This fires
+ * the moment the rows come back — before a single card exists — so any word claiming what the cards
+ * DID is a promise made before the outcome is knowable. "Borrowing shape from N proven videos" was
+ * exactly that, and measured it was wrong most of the time: only ~4% of hook cards end up carrying
+ * a receipt, because the model claims a madlib it did not instantiate and `templateInstantiated`
+ * correctly strips the false citation (81% strip rate over 58 real pairs). The rows ARE real and
+ * the model IS shown them — so "Reading" is true at that instant and "Borrowing" is not.
+ *
+ * 🔑 The fix is the copy, NOT the guard. Stripping an uninstantiated citation is correct: the model
+ * is told to "INSTANTIATE the madlib" and to cite 0 when it doesn't (prompt.ts), so a false
+ * sourceIndex is a false claim. See docs/HANDOFF-2026-08-13-audit-rewalk.md §0.
  */
 function evidenceHeadline(warrant: Warrant, count: number): string {
   const videos = count === 1 ? "video" : "videos";
-  if (warrant === "structural") return `Borrowing shape from ${count} proven ${videos}`;
+  if (warrant === "structural") return `Reading shape from ${count} proven ${videos}`;
   if (warrant === "provenance") return `Found ${count} proven ${videos}`;
   return `Drafting against ${count} proven ${videos}`;
 }
