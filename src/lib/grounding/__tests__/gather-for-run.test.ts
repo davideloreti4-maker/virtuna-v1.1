@@ -522,8 +522,37 @@ describe("gatherCorpusForRun — evidence for the loading spine", () => {
       { retrieve: hit, gather: vi.fn<Gather>() },
     );
     expect(onEvidence.mock.calls[0]![0].headline).toBe(
-      "Borrowing shape from 2 proven videos",
+      "Reading shape from 2 proven videos",
     );
+  });
+
+  /**
+   * F-4 (audit 2026-08-09): "the loading state promises grounding the cards don't deliver".
+   *
+   * This headline fires when the ROWS ARE RETRIEVED — before a single card exists. "Borrowing
+   * shape from N proven videos" asserts a COMPLETED outcome at a moment when the outcome is
+   * unknowable, and measured 2026-08-13 it is wrong most of the time: only ~4% of hook cards end
+   * up carrying a proof receipt, because the model claims a madlib it did not instantiate and
+   * `templateInstantiated` correctly strips the false citation (81% strip rate, replayed over 58
+   * real pre-regression pairs in `.scratch/replay-madlib-guard.ts`).
+   *
+   * The rows are real and the retrieval is real — so the honest headline names what is TRUE at
+   * that instant (the model is being shown these rows) and not what the cards will do with them.
+   * The warrant distinction the test above protects is unaffected: a structural batch still reads
+   * as shape, never as "videos about my topic".
+   */
+  it("never asserts a COMPLETED outcome — the cards do not exist yet (F-4)", async () => {
+    const onEvidence = vi.fn();
+    await gatherCorpusForRun(
+      { ...baseInput(), skill: "hooks", onEvidence },
+      { retrieve: hit, gather: vi.fn<Gather>() },
+    );
+    const headline: string = onEvidence.mock.calls[0]![0].headline;
+
+    // "Borrowing" is a claim about output that has not been generated yet.
+    expect(headline).not.toMatch(/borrow/i);
+    // …while the creative-input count still stays (memory: no PIPELINE counts, input counts keep).
+    expect(headline).toContain("2 proven videos");
   });
 
   it("does NOT fire when the run degraded to ungrounded", async () => {

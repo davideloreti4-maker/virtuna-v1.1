@@ -135,7 +135,7 @@ export async function runExplorePipeline(opts: RunExploreInput): Promise<RunExpl
         landed.push(...batch);
         const best = [...landed].sort((a, b) => b.views - a.views).slice(0, 8);
         const evidence = buildVideoEvidence(
-          // Numberless on purpose. The grounding rail's "Borrowing shape from 5 proven videos"
+          // Numberless on purpose. The grounding rail's "Reading shape from 5 proven videos"
           // keeps its count because that is a claim about the CREATIVE INPUT — what the model is
           // writing against, which the creator is paying for. A scrape volume is process trivia
           // about our own plumbing, and the owner's rule (2026-08-05) is that the loading UI
