@@ -142,8 +142,18 @@ export function RemixBeats({
                     </p>
                   ) : null}
                   <p className="text-label text-foreground-muted">Shot: {line.shot}</p>
+                  {/* The repair is the only line on a beat that carries a DIAGNOSIS — the source
+                      sagged here and this is what to do differently. It shipped in the same
+                      `text-label text-foreground-muted` as "On screen:" and "Shot:", so the one
+                      earned insight per beat read as one more boilerplate row (measured on the
+                      real fixture, 2026-08-13). A left rule + a lit label separates it without
+                      spending colour — the dosage rule is LOCKED, and a repair note is exactly
+                      the kind of thing that invites an accent and gets none. */}
                   {line.repair ? (
-                    <p className="text-label text-foreground-muted">Fixed: {line.repair}</p>
+                    <p className="border-l border-white/[0.10] pl-2 text-label leading-relaxed text-foreground-muted">
+                      <span className="font-medium text-foreground-secondary">Fix the source&rsquo;s mistake:</span>{' '}
+                      {line.repair}
+                    </p>
                   ) : null}
                 </>
               ) : (

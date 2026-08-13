@@ -24,7 +24,7 @@
  */
 
 import { useContext, useState } from 'react';
-import { VideoCamera } from '@phosphor-icons/react';
+import { VideoCamera, Play, ArrowUpRight } from '@phosphor-icons/react';
 import type { RemixCardBlock } from '@/lib/tools/blocks';
 import { useOnDevelopRemix } from '@/lib/remix-develop-context';
 import { PlatformContext } from '@/lib/platform-context';
@@ -211,7 +211,11 @@ export function RemixCardRenderer({
           </div>
           <dl className="mt-2 flex flex-col gap-1.5">
             {[
-              { term: 'Shots', value: production.shots },
+              // `shots` is DELIBERATELY absent: the map's "Your shots" cell above already prints
+              // this exact string, and printing it twice on one card was measured verbatim
+              // (2026-08-13, /dev/cards at 390 and 1440 — the two copies sit ~5 lines apart on
+              // desktop). The block comment above has described this split since it was written;
+              // only the code disagreed.
               { term: 'On-screen text', value: production.onScreenText },
               { term: 'Setup', value: production.setup },
               ...(production.edit ? [{ term: 'Edit', value: production.edit }] : []),
@@ -334,7 +338,12 @@ function MapRow({
         <p className={`mb-1 ${SECTION_LABEL}`}>{leftLabel}</p>
         {left}
       </div>
-      <div className="border-t border-white/[0.06] px-3.5 py-3 @min-[480px]:border-l @min-[480px]:border-t-0">
+      {/* The intra-PAIR divider is lighter than the between-ROW divider (0.03 vs 0.06). Below
+          480px the grid collapses and both were 0.06, so "Their turn / Your angle / Their format
+          / Your shots" read as four peer rows and the decode→adapt MAPPING — the card's whole
+          claim — was invisible on every phone. Measured 2026-08-13 at a native 390px context.
+          Weight, not colour: the accent dosage is locked and a map is not a meaning-moment. */}
+      <div className="border-t border-white/[0.03] px-3.5 py-3 @min-[480px]:border-l @min-[480px]:border-white/[0.06] @min-[480px]:border-t-0">
         <p className={`mb-1 ${SECTION_LABEL}`}>{rightLabel}</p>
         {right}
       </div>
@@ -353,8 +362,25 @@ function SourceStrip({ proof }: { proof: NonNullable<RemixCardBlock['props']['pr
 
   const body = (
     <>
-      <span className="relative block aspect-[9/16] w-10 shrink-0 overflow-hidden rounded-sm border border-white/[0.06]">
-        <CoverFill coverUrl={proof.coverUrl} playSize={12} />
+      {/* The source video, at a size you can actually read. It was `w-10` (measured 40×71 on a
+          338px card) — a postage stamp that read as decoration, and the ONLY representation of
+          the video on a 1708px-tall card. */}
+      <span className="relative block aspect-[9/16] w-14 shrink-0 overflow-hidden rounded border border-white/[0.06]">
+        <CoverFill coverUrl={proof.coverUrl} playSize={14} />
+        {/* The play badge is a SIBLING, deliberately not a CoverFill change: CoverFill stacks its
+            own Play glyph UNDERNEATH the cover, so the glyph is only ever visible when the cover
+            is missing or expired (measured `coveredByImg: true`). That is backwards here — a
+            loaded cover is exactly when the creator needs to be told this is a video they can
+            open. CoverFill is shared (Account Read covers, Discover tiles); the caller changes.
+            No accent: the dosage rule is LOCKED and this is chrome, not meaning. */}
+        <span
+          className="absolute inset-0 flex items-center justify-center bg-black/35"
+          aria-hidden="true"
+        >
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-black/55 text-foreground">
+            <Play size={11} weight="fill" />
+          </span>
+        </span>
       </span>
       <span className="flex min-w-0 flex-col gap-0.5">
         <span className={SECTION_LABEL}>The post you&rsquo;re remixing</span>
@@ -362,6 +388,16 @@ function SourceStrip({ proof }: { proof: NonNullable<RemixCardBlock['props']['pr
           <span className="font-medium text-foreground-secondary">@{proof.handle}</span>
           {views && <span className="text-foreground-muted"> · {views} views</span>}
         </span>
+        {/* Says what the click DOES. The strip has been an <a> since 51fadaf7 (2026-08-02), but
+            nothing on it said so — no underline, no icon, no rest-state cue — so a handoff written
+            11 days later still recorded it as an inert thumbnail. An affordance nobody can see is
+            indistinguishable from one that isn't there. */}
+        {proof.videoUrl && (
+          <span className="mt-0.5 flex items-center gap-1 text-label text-foreground-muted">
+            Watch the original
+            <ArrowUpRight size={11} weight="bold" className="shrink-0" aria-hidden="true" />
+          </span>
+        )}
       </span>
     </>
   );
