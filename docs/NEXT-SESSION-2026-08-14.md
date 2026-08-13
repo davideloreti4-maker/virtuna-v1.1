@@ -1,5 +1,17 @@
 # Next session — copy-paste brief (written 2026-08-13)
 
+> ## ⛔ SUPERSEDED by `docs/NEXT-SESSION-2026-08-15.md`. Do not paste the block below.
+>
+> That session ran. Its §0.5 ("the denominator is a test account") was **right and got sharper**:
+> the denominator is not merely a test account, **no external person has ever had an account at
+> all** — every email in `auth.users` is a test/staff row or the owner's own. Measured in
+> `HANDOFF-2026-08-14-ui-fixes-and-the-funnel.md` §0.
+>
+> That changes what §2 below is asking for. It tells the next session to spend billed runs raising
+> the proof-receipt rate — **do not**, and §0.5 already flagged the ordering as an owner question.
+> The `templateInstantiated` ruling in §2 is a CODE fact and still holds; the framing around it
+> does not. §3's mechanical items (F-13, F-14, F-19) are **DONE** (#495).
+
 **Lane:** `lane/in-thread-chat` · worktree `~/virtuna-in-thread-chat`
 **Main at handoff:** `32fcedf2`. Branch == main, working tree clean, nothing half-finished.
 
