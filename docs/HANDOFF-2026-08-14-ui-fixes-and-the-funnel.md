@@ -3,6 +3,11 @@
 **Lane:** `lane/in-thread-chat` · worktree `~/virtuna-in-thread-chat`
 **Branch base:** `e70dc603` (fast-forwarded to main at session start)
 **Verification:** prod build (`npm run start`, port 3016), native mobile + desktop contexts.
+**Merged:** **#495** (the four UI fixes) · **#497** (the funnel instrumentation) — main at `c9ec3fa3`.
+
+> ⚠️ **§6 items 1 and 4 are DONE — they shipped in #497 after this document was written.**
+> The origin/path columns exist and are populated; `handle_submit` and `calibrate_done` now fire.
+> Everything else below stands. See §8 for what §6 turned into.
 
 ---
 
@@ -193,19 +198,59 @@ this lane's standing lesson. Neither was loosened; both were made stricter.
 
 ## 6. Do next, in order
 
-1. 🔴 **Add an origin/host column to `funnel_events`.** One line. Until then every top-of-funnel
-   number is contaminated by localhost and cannot be quoted (§3).
+1. ✅ **DONE (#497).** Add an origin/host column to `funnel_events` — until then every top-of-funnel
+   number is contaminated by localhost and cannot be quoted (§3). Shipped with `path` alongside it.
 2. 🔴 **Decide the three orphans (§2): mount them or delete them.** Each is a permanent 0 in a
    metric someone will read as a preference. The interview is the expensive one — it is the input
    `profile-columns-are-mostly-empty` is about.
-3. **The product question is not an engineering one.** The engine has been tuned for weeks against
+3. ~~**The product question is not an engineering one.** The engine has been tuned for weeks against
    an audience of zero. Nothing in this repo will change that number; distribution will. Any further
-   engine work should be scheduled *after* a decision about how a first real creator arrives.
-4. Instrument `handle_submit` and `calibrate_done` before the first real cohort — they bracket the
-   ~128s blocking Apify scrape on `/welcome`, which is the most likely genuine drop-off and is
-   currently **completely unmeasured**.
+   engine work should be scheduled *after* a decision about how a first real creator arrives.~~
+   ⛔ **RETRACTED — see §8.** The owner ruled the opposite on 2026-08-13: being unlaunched is not a
+   reason to stop building. The measurement stands; this inference from it did not.
+4. ✅ **DONE (#497).** Instrument `handle_submit` and `calibrate_done` — they bracket the ~128s
+   blocking Apify scrape on `/welcome`, which is the most likely genuine drop-off and was
+   completely unmeasured. See §8 for how to read the rate, and for the two things about it a
+   future session must not re-derive.
 5. Unchanged from the previous handoff and still true: `templateInstantiated` is CORRECT, do not
    revert it. F-1 still live at ~8%.
+
+---
+
+## 8. What §6 turned into (added after the fact — #497)
+
+**§6.1 and §6.4 are shipped.** `funnel_events` now carries `origin` (Host header) and `path`
+(pathname from Referer, query discarded), both server-derived and never accepted from the body —
+same rule the route already applied to `user_id`. `handle_submit` and `calibrate_done` now bracket
+the ~128s calibration.
+
+Three things about that work that a future session must not re-derive:
+
+- ⚠️ **The DDL is applied to PROD already**, via the SQL-editor path (`execute_sql`), NOT
+  `supabase db push` — the ledger has drifted here and push is unsafe. The migration file
+  `20260813120000_funnel_events_origin.sql` is the **record, not the mechanism**; a push will not
+  reproduce it and does not need to.
+- ⚠️ **Pre-2026-08-13 rows have `origin IS NULL` and must stay that way.** Their origin is
+  genuinely unknown. Backfilling a guess would launder the exact contamination the column exists
+  to expose. **Every traffic query must filter them out, not assume they were production.**
+- **`calibrate_done` fires on EVERY exit**, including a failed scrape, with `calibrated: false`.
+  That is deliberate: instrumenting only the success path would report a 100% completion rate while
+  people were being dropped, which is worse than no metric — it would read as proof the wait is
+  fine. Read the rate as `calibrate_done{calibrated:true} / handle_submit`, never as
+  `calibrate_done / handle_submit`.
+
+**None of it is deployed, and that is deliberate.** Prod last shipped 2026-08-07; deploy is OFF,
+**owner-confirmed 2026-08-13** (`NEXT-SESSION-2026-08-14-remix.md`). So this instrumentation is a
+**deposit, not a dashboard** — it reads nothing until launch, which is fine: call sites are the
+expensive half to retrofit and they are now correct. Do not go looking for numbers in it, and do
+not propose reconnecting the deploy.
+
+⚠️ **§6.3 IS RETRACTED.** It said the engine work should wait on "a decision about how a first real
+creator arrives". The owner ruled the opposite the same day: *"'nobody uses it yet' is NOT an
+argument against building — the product is unlaunched; that is the normal state of unshipped
+software. Build the thing."* §0's measurements stand and are worth keeping — they stop anyone
+quoting probe traffic as user evidence. **They kill claims, not work.** §6.2 (the three orphans)
+is untouched and still the open question.
 
 ---
 
