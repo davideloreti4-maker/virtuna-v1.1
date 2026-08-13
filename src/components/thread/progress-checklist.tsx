@@ -768,7 +768,9 @@ export function SkillProgress({
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="reading-reveal group inline-flex w-fit items-center gap-2 self-start rounded-md border border-white/[0.06] bg-white/[0.02] px-3 py-1.5 text-body transition-colors hover:border-white/[0.10] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring)]"
+        // `tap-44`: measured 235×34 on a phone (F-19). It sits alone above the cards with 8px of
+        // column gap, so a 5px halo overhang collides with nothing.
+        className="tap-44 reading-reveal group inline-flex w-fit items-center gap-2 self-start rounded-md border border-white/[0.06] bg-white/[0.02] px-3 py-1.5 text-body transition-colors hover:border-white/[0.10] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring)]"
         aria-expanded={expanded}
         aria-label={`${summaryLabel} — ${plan.length} steps. ${expanded ? 'Collapse' : 'Expand'} the steps.`}
         data-testid="run-receipt"

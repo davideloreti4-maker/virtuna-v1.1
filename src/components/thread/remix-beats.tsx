@@ -21,10 +21,20 @@ import { useEffect, useState } from "react";
 import type { AdaptedBeat } from "@/lib/engine/remix/decode-types";
 import type { SourceBlueprint } from "@/lib/engine/remix/blueprint";
 import { SECTION_LABEL } from "./card-primitives";
+import { CoverFill } from "@/components/primitives/CoverFill";
 
 interface Payload {
   script: AdaptedBeat[][];
   blueprint: SourceBlueprint;
+  /**
+   * PHASE 3 — `{ beatIndex → signed frame URL }`, one real still from the SOURCE video per beat.
+   *
+   * Absent or partial is the NORMAL case, not a failure: every sheet written before phase 3 has
+   * none, extraction is capped and budgeted, and a frame that fails to cut is simply skipped. The
+   * row renders a play-tile in that slot, so the sheet never degrades into broken boxes and the
+   * pre-phase-3 sheet keeps rendering byte-identically.
+   */
+  frames?: Record<number, string>;
 }
 
 const HEADING = "Shoot it beat by beat";
@@ -120,8 +130,21 @@ export function RemixBeats({
           // shifted script is a live possibility. A missing row would leave a silent hole in the
           // timeline — the creator shoots a video with a gap in the middle and nothing says why.
           const line = script.find((s) => s.index === beat.index);
+          const frame = data.frames?.[beat.index];
           return (
-            <li key={beat.index} className="flex flex-col gap-1">
+            <li key={beat.index} className="flex gap-3">
+              {/* PHASE 3 — the source's own frame for this beat, in a 9:16 tower beside the
+                  instruction. This is what "show me the video" actually wanted: not one cover at
+                  the top of the card, but the image the creator is being told to recreate, next
+                  to the words telling them to recreate it.
+
+                  ALWAYS rendered, even with no frame — the slot is what makes the sheet read as a
+                  timeline rather than a list, and CoverFill degrades to a play-tile so a missing
+                  or expired frame is never a broken box. Pre-phase-3 sheets simply show tiles. */}
+              <span className="relative mt-0.5 block aspect-[9/16] w-11 shrink-0 overflow-hidden rounded border border-white/[0.06]">
+                <CoverFill coverUrl={frame} playSize={12} alt="" />
+              </span>
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
               {/* The timecode sits BESIDE the role, never the label alone: buildBlueprint can
                   legitimately emit a 0–5s beat still labelled `hook` on a degenerate grid, and
                   the times are what make that self-describing rather than a misstatement. */}
@@ -142,8 +165,18 @@ export function RemixBeats({
                     </p>
                   ) : null}
                   <p className="text-label text-foreground-muted">Shot: {line.shot}</p>
+                  {/* The repair is the only line on a beat that carries a DIAGNOSIS — the source
+                      sagged here and this is what to do differently. It shipped in the same
+                      `text-label text-foreground-muted` as "On screen:" and "Shot:", so the one
+                      earned insight per beat read as one more boilerplate row (measured on the
+                      real fixture, 2026-08-13). A left rule + a lit label separates it without
+                      spending colour — the dosage rule is LOCKED, and a repair note is exactly
+                      the kind of thing that invites an accent and gets none. */}
                   {line.repair ? (
-                    <p className="text-label text-foreground-muted">Fixed: {line.repair}</p>
+                    <p className="border-l border-white/[0.10] pl-2 text-label leading-relaxed text-foreground-muted">
+                      <span className="font-medium text-foreground-secondary">Fix the source&rsquo;s mistake:</span>{' '}
+                      {line.repair}
+                    </p>
                   ) : null}
                 </>
               ) : (
@@ -151,6 +184,7 @@ export function RemixBeats({
                   No line was written for this beat.
                 </p>
               )}
+              </div>
             </li>
           );
         })}

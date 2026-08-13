@@ -34,6 +34,7 @@ import { InputField } from "@/components/ui/input";
 import { Heading, Text } from "@/components/ui/typography";
 import { nameFromDescription } from "@/components/audience/audience-create";
 import { useOnboardingStore } from "@/stores/onboarding-store";
+import { track } from "@/lib/analytics/funnel-events";
 import { cn } from "@/lib/utils";
 
 export type Door = "personal" | "target";
@@ -140,6 +141,23 @@ export function ConnectStep({
         return;
       }
       const data = (await res.json()) as { audience: Audience };
+
+      // `handle_submit` — declared in FUNNEL_EVENTS since the funnel was designed and, until now,
+      // emitted from NOWHERE. It is the opening bracket of the only step in onboarding that can
+      // lose someone silently: the ~128s blocking calibration that follows. Without it,
+      // `calibrate_done` has no denominator and the drop across that wait is unmeasurable — which
+      // is the state it has been in for every account so far.
+      //
+      // Fires HERE, after the draft row is confirmed created, not on button press: a submit that
+      // 4xx'd never entered the wait, and counting it would understate the completion rate of the
+      // thing being measured.
+      //
+      // `door` rides along because the two doors are different pipelines with different costs —
+      // personal reads an account, target SEARCHES the niche — so they will not drop alike, and a
+      // pooled rate would hide whichever one is worse. No handle or description in the payload:
+      // this table is diagnostics, and the identity is already carried by session_id.
+      track("handle_submit", { door });
+
       // Deliberately no setSubmitting(false) on success — this component unmounts as the page
       // swaps to the calibrate stage, and a state write on the way out is a no-op warning.
       onDraftReady(

@@ -146,7 +146,13 @@ function NavItem({
         // text / 20px icons; Linear runs roughly 30 / 13 / 16. The chunkier row read
         // as a touch target in a desktop app — and with only two destinations in the
         // nav, the extra weight made the panel look emptier, not fuller.
-        "w-full flex items-center gap-2 px-2.5 min-h-[30px] rounded-md text-body font-medium",
+        //
+        // …which is exactly why the floor is `pointer-coarse` and not unconditional (F-19,
+        // measured 203×30). On a phone this same panel IS a touch surface — the drawer only
+        // exists there — so the row that was deliberately made desktop-tight gets the 44px floor
+        // back on touch. Real height, not a `.tap-44` halo: these are full-width stacked boxes
+        // 2px apart, so growing them collides with nothing and the drawn row matches the target.
+        "w-full flex items-center gap-2 px-2.5 min-h-[30px] pointer-coarse:min-h-11 rounded-md text-body font-medium",
         "transition-colors duration-100",
         focusRing,
         isCollapsed && "justify-center px-0",
@@ -271,7 +277,9 @@ function ThreadRow({
         type="button"
         onClick={onOpen}
         className={cn(
-          "min-w-0 flex-1 flex items-center gap-2 pl-2.5 pr-1 min-h-[30px] text-left text-body",
+          // `pointer-coarse:min-h-11` — the 44px touch floor (F-19, measured 129×30). Same
+          // reasoning as <NavItem>: desktop density stays, the phone drawer gets a real target.
+          "min-w-0 flex-1 flex items-center gap-2 pl-2.5 pr-1 min-h-[30px] pointer-coarse:min-h-11 text-left text-body",
           focusRing,
           isActive
             ? "text-foreground"
@@ -304,7 +312,7 @@ function ThreadRow({
             type="button"
             onClick={onDelete}
             aria-label={`Delete ${label}`}
-            className={cn("rounded p-1 text-error hover:bg-white/[0.06]", focusRing)}
+            className={cn("rounded p-1 pointer-coarse:p-2 pointer-coarse:min-h-11 text-error hover:bg-white/[0.06]", focusRing)}
           >
             <Check className="h-3.5 w-3.5" weight="bold" />
           </button>
@@ -312,7 +320,7 @@ function ThreadRow({
             type="button"
             onClick={() => setConfirming(false)}
             aria-label="Cancel delete"
-            className={cn("rounded p-1 text-foreground-muted hover:bg-white/[0.06]", focusRing)}
+            className={cn("rounded p-1 pointer-coarse:p-2 pointer-coarse:min-h-11 text-foreground-muted hover:bg-white/[0.06]", focusRing)}
           >
             <X className="h-3.5 w-3.5" weight="bold" />
           </button>
@@ -322,14 +330,41 @@ function ThreadRow({
         // row is hovered or keyboard-focused, so a long history reads as a clean list
         // rather than a wall of icons. The pin also shows persistently on the LABEL
         // side when set (above) — that one is state, not an action.
-        <div className="mr-1 flex items-center gap-0.5 opacity-0 transition-opacity group-hover/row:opacity-100 focus-within:opacity-100">
+        //
+        // 🔴 ON TOUCH THERE IS NO HOVER, AND `opacity-0` IS STILL CLICKABLE.
+        // Found while enumerating F-19's 84 sub-40px targets (2026-08-14): 39 of them were these
+        // three buttons × 13 rows, every one of them INVISIBLE and live. On a phone the right end
+        // of every thread row carried three unmarked 22px hit zones, and the rightmost was
+        // `Delete thread` — a destructive action with no affordance, reachable by a mis-aimed tap
+        // on a row you meant to open. The audit counted them as "small targets"; the size was the
+        // lesser half of the bug.
+        //
+        // Two changes, and the first matters more than the second:
+        //   1. `pointer-events-none` while hidden — an invisible control cannot be pressed by
+        //      ANY pointer now, which also closes the desktop version (a 0-opacity button was
+        //      still hittable in the 100ms before the row's hover transition ran).
+        //   2. On coarse pointers the trio is REVEALED on the active row, so the actions stay
+        //      reachable on a phone instead of being silently deleted from the surface. The
+        //      active row is one row, not thirteen, so the list stays clean.
+        //
+        // ⚠️ NOT `.tap-44` here. Three 22px icons 2px apart become three 44px halos overlapping
+        // by 20px, and the later sibling wins the tap — aiming at Rename would fire Delete. That
+        // is worse than a small target, so these grow their real box instead (see below).
+        <div
+          className={cn(
+            "mr-1 flex items-center gap-0.5 pointer-coarse:gap-1 opacity-0 pointer-events-none transition-opacity",
+            "group-hover/row:opacity-100 group-hover/row:pointer-events-auto",
+            "focus-within:opacity-100 focus-within:pointer-events-auto",
+            isActive && "pointer-coarse:opacity-100 pointer-coarse:pointer-events-auto",
+          )}
+        >
           <button
             type="button"
             onClick={onTogglePin}
             aria-label={isPinned ? `Unpin ${label}` : `Pin ${label}`}
             aria-pressed={isPinned}
             className={cn(
-              "rounded p-1 hover:bg-white/[0.06] hover:text-foreground",
+              "rounded p-1 pointer-coarse:p-2 pointer-coarse:min-h-11 hover:bg-white/[0.06] hover:text-foreground",
               isPinned ? "text-foreground" : "text-foreground-muted",
               focusRing,
             )}
@@ -341,7 +376,7 @@ function ThreadRow({
             onClick={onStartRename}
             aria-label={`Rename ${label}`}
             className={cn(
-              "rounded p-1 text-foreground-muted hover:bg-white/[0.06] hover:text-foreground",
+              "rounded p-1 pointer-coarse:p-2 pointer-coarse:min-h-11 text-foreground-muted hover:bg-white/[0.06] hover:text-foreground",
               focusRing,
             )}
           >
@@ -352,7 +387,7 @@ function ThreadRow({
             onClick={() => setConfirming(true)}
             aria-label={`Delete thread: ${label}`}
             className={cn(
-              "rounded p-1 text-foreground-muted hover:bg-white/[0.06] hover:text-foreground",
+              "rounded p-1 pointer-coarse:p-2 pointer-coarse:min-h-11 text-foreground-muted hover:bg-white/[0.06] hover:text-foreground",
               focusRing,
             )}
           >
@@ -549,7 +584,7 @@ export function Sidebar() {
           )}
         >
           {!effectiveCollapsed && (
-            <Link href="/" className="group text-foreground pl-2" aria-label="Maven home">
+            <Link href="/" className="tap-44 group text-foreground pl-2" aria-label="Maven home">
               <MavenMark size={26} />
             </Link>
           )}
@@ -560,7 +595,7 @@ export function Sidebar() {
             // drawer. Never hide the persistent desktop panel into a dead gap.
             onClick={isMobile ? close : toggleCollapsed}
             aria-label={isMobile ? "Close sidebar" : "Collapse sidebar"}
-            className="flex text-foreground-muted hover:text-foreground p-1.5 -mr-1"
+            className="tap-44 flex text-foreground-muted hover:text-foreground p-1.5 -mr-1"
           >
             <Icon icon={SidebarSimple} size={20} />
           </Button>
@@ -642,7 +677,7 @@ export function Sidebar() {
                   onClick={() => { closeIfMobile(); setCommandOpen(true); }}
                   aria-label="Search threads"
                   className={cn(
-                    "-mt-1 flex items-center gap-1 rounded-md px-1.5 py-1",
+                    "tap-44 -mt-1 flex items-center gap-1 rounded-md px-1.5 py-1",
                     "text-foreground-muted transition-colors hover:bg-white/[0.04] hover:text-foreground",
                     focusRing,
                   )}
@@ -711,7 +746,7 @@ export function Sidebar() {
                 type="button"
                 onClick={() => setAccountOpen((prev) => !prev)}
                 className={cn(
-                  "w-full flex items-center gap-2.5 px-2 py-1.5 rounded-lg",
+                  "w-full flex items-center gap-2.5 px-2 py-1.5 pointer-coarse:min-h-11 rounded-lg",
                   "text-sm text-foreground-secondary",
                   "hover:bg-white/[0.04] hover:text-foreground transition-colors",
                   focusRing,
@@ -822,31 +857,54 @@ export function SidebarHamburger() {
   const { isOpen, open } = useSidebarStore();
 
   return (
-    <button
-      type="button"
-      onClick={open}
-      aria-label="Open sidebar"
-      style={{
-        left: MOBILE_NAV.gutter,
-        top: MOBILE_NAV.top,
-        height: MOBILE_NAV.height,
-        width: MOBILE_NAV.width,
-      }}
-      className={cn(
-        "fixed z-[var(--z-sidebar)] items-center justify-center",
-        // Keeps its own opaque ground even though the band behind it is transparent now: the thread
-        // scrolls UNDER this button, and a see-through opener over moving text is unreadable.
-        "rounded-[10px] border border-white/[0.06] bg-[#181817] transition-colors active:bg-[#32312e]",
-        // Mobile only — the desktop sidebar is always present, so the opener
-        // never appears ≥md regardless of isOpen.
-        "md:hidden",
-        isOpen ? "hidden" : "flex",
-      )}
-    >
-      {/* A burger again (2026-07-31, owner call). The caret was a TAB's glyph — it belonged to the
-          edge-sliver shape that shared a row with the audience bar, and read as "expand this panel"
-          rather than "open the menu" once the bar moved into the composer dock. */}
-      <List className="h-[18px] w-[18px] text-foreground/70" weight="bold" />
-    </button>
+    <>
+      {/* F-18 — THE SCRIM. The opener is opaque and fixed, and the thread scrolls under it, so
+          before this a sentence ran into a 36px square and continued on its far side. Painting
+          only the button's own footprint was never enough: the collision is with the BAND, not the
+          chip. This is the band, faded out below (`.nav-scrim`).
+
+          `pointer-events-none` — a card that scrolls up into the fade must stay tappable; the
+          scrim dims it, it does not disable it. One z below the opener so the button keeps its
+          own ground. `md:hidden` + `isOpen` track the opener exactly: with the drawer open the
+          opener is gone and there is nothing to protect. */}
+      <div
+        aria-hidden
+        className={cn(
+          "nav-scrim pointer-events-none fixed inset-x-0 top-0 h-[66px] bg-background",
+          "z-[calc(var(--z-sidebar)-1)] md:hidden",
+          isOpen ? "hidden" : "block",
+        )}
+      />
+      <button
+        type="button"
+        onClick={open}
+        aria-label="Open sidebar"
+        style={{
+          left: MOBILE_NAV.gutter,
+          top: MOBILE_NAV.top,
+          height: MOBILE_NAV.height,
+          width: MOBILE_NAV.width,
+        }}
+        className={cn(
+          "fixed z-[var(--z-sidebar)] items-center justify-center",
+          // Keeps its own opaque ground even though the band behind it is transparent now: the thread
+          // scrolls UNDER this button, and a see-through opener over moving text is unreadable.
+          "rounded-[10px] border border-white/[0.06] bg-[#181817] transition-colors active:bg-[#32312e]",
+          // 36px is the drawn size the owner settled on; 44px is the tap floor. `.tap-44` grows the
+          // HIT AREA only, so the burger keeps its geometry and `MOBILE_NAV_BAND` — which the
+          // thread's scroll reserve is derived from — does not move.
+          "tap-44",
+          // Mobile only — the desktop sidebar is always present, so the opener
+          // never appears ≥md regardless of isOpen.
+          "md:hidden",
+          isOpen ? "hidden" : "flex",
+        )}
+      >
+        {/* A burger again (2026-07-31, owner call). The caret was a TAB's glyph — it belonged to the
+            edge-sliver shape that shared a row with the audience bar, and read as "expand this panel"
+            rather than "open the menu" once the bar moved into the composer dock. */}
+        <List className="h-[18px] w-[18px] text-foreground/70" weight="bold" />
+      </button>
+    </>
   );
 }

@@ -1116,3 +1116,74 @@ select:focus-visible,
   text-align: left;
 }
 .md th { font-weight: 600; color: var(--color-foreground); }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   .tap-44 — the TOUCH TARGET floor, without touching layout.
+
+   MEASURED 2026-08-14 at 393×660 (scripts/probe-tap-targets.mjs): 84 interactive
+   elements out of 92 were under 40px on a phone. Most are inline text affordances —
+   "Copy" is 47×18, "Save to shelf" 55×20, a follow-up chip 29px tall. Growing their
+   BOXES would re-space every card, so this grows only the HIT AREA: a centered
+   pseudo-element at least 44×44 (Apple HIG §Touch targets), painted nothing.
+
+   Coarse pointers only. On a mouse a 18px target is fine and a 44px invisible halo
+   would swallow hovers on whatever sits next to it.
+
+   ⚠️ TWO THINGS THIS CANNOT DO, both learned the hard way:
+   - It cannot escape an `overflow: hidden` ancestor — the clip cuts the hit area with
+     the paint. Every call site here sits inside its card's 12–16px padding, so the
+     halo stays within the clip.
+   - It does not de-overlap NEIGHBOURS. Two 22px icons 2px apart become two 44px halos
+     that overlap by 20px, and the later one in DOM order wins the tap — strictly worse
+     than a small target. Where icons sit in a dense row, the fix is real spacing, not
+     this. (That is why the sidebar row's trio is handled in Sidebar.tsx instead.) */
+/* ─────────────────────────────────────────────────────────────────────────────
+   .composer-veil — the composer backdrop's top edge (F-13).
+
+   Fades the top 40px of the dock's page-colour backdrop so thread text dissolves
+   under the composer instead of being cut mid-letter by a flat rectangle.
+
+   A MASK, not a gradient fill: the element keeps `bg-background`, so the page colour
+   is stated once (the token) rather than re-typed as a hex inside a gradient here —
+   the exact drift `design-token-drift.test.ts` exists to catch. Pure alpha, so it
+   also dodges the grey haze `linear-gradient(…, transparent)` produces in engines
+   that interpolate through transparent-black.
+
+   `-webkit-` first: iOS Safari still needs the prefix. */
+.composer-veil {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, black 40px);
+  mask-image: linear-gradient(to bottom, transparent 0, black 40px);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   .nav-scrim — the mobile top band behind the sidebar opener (F-18).
+
+   The burger is `position: fixed` and opaque, and since 2026-07-31 the thread scrolls
+   UNDER it with the band left transparent. So a line of body text runs straight into a
+   36px opaque square: measured on 2026-08-13, the burger ate the "Th" of "The strongest
+   one is" and the sentence resumed on its right. The button was readable; the sentence
+   was not.
+
+   This paints the band the burger sits in and fades out 20px below it, so text leaves the
+   screen the same way it leaves under the composer (`.composer-veil`) rather than being
+   interrupted by a floating chip. Masked for the same reason: the fill stays the
+   `bg-background` token, so the page colour is never re-typed as a hex.
+
+   Geometry is the burger's own — `MOBILE_NAV.top + height` = 46px solid, then the tail. */
+.nav-scrim {
+  -webkit-mask-image: linear-gradient(to bottom, black 0, black 46px, transparent 66px);
+  mask-image: linear-gradient(to bottom, black 0, black 46px, transparent 66px);
+}
+
+@media (pointer: coarse) {
+  .tap-44 { position: relative; }
+  .tap-44::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    translate: -50% -50%;
+    height: max(100%, 44px);
+    width: max(100%, 44px);
+  }
+}

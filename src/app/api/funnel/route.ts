@@ -81,6 +81,31 @@ export async function POST(req: Request) {
       ? (body.payload as Json)
       : {};
 
+  // ── WHERE did this come from? (2026-08-13) ────────────────────────────────
+  // Dev shares PROD's Supabase project, so a `npm run dev` page load and a real
+  // visitor wrote indistinguishable rows. Measured: 320 `start_landed` events
+  // across 257 sessions with no way to tell which were this laptop — so the top
+  // of the funnel was not approximate, it was unusable.
+  //
+  // Read off the REQUEST, never the body, for the same reason `user_id` is: a
+  // client-supplied origin is an attribution forgery, and the one thing this
+  // column must be able to say is "this was not us".
+  //
+  // `host` is present on every request. `referer` is best-effort — beacons send
+  // it same-origin, but a privacy mode or a cross-origin post may not, and only
+  // the PATH is kept: the query string can carry campaign values that have no
+  // business in an events table.
+  const origin = req.headers.get("host");
+  let path: string | null = null;
+  const referer = req.headers.get("referer");
+  if (referer) {
+    try {
+      path = new URL(referer).pathname;
+    } catch {
+      // A malformed Referer is not worth losing the event over — NULL is honest.
+    }
+  }
+
   try {
     await createServiceClient()
       .from("funnel_events")
@@ -89,6 +114,8 @@ export async function POST(req: Request) {
         session_id: sessionId,
         user_id: userId,
         payload,
+        origin,
+        path,
       });
   } catch (error) {
     // Never surface a sink failure to the funnel it is measuring.

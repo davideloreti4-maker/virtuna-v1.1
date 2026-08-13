@@ -31,6 +31,7 @@ import {
   SENTINEL_IDS,
 } from '@/lib/audience/audience-repo';
 import type { Audience } from '@/lib/audience/audience-types';
+import { __funnelBuffer, __resetFunnel } from '@/lib/analytics/funnel-events';
 
 /** Exactly what `/api/audiences` serves an account that owns no rows. */
 const BUILT_INS: Audience[] = [GENERAL_AUDIENCE, ...PRESET_AUDIENCES, ...GENERAL_TEMPLATES];
@@ -216,6 +217,28 @@ describe('finishing SELECTS the audience, not just builds it', () => {
       const id = JSON.parse(c.body ?? '{}').audienceId as string | null;
       expect(id === null || !SENTINEL_IDS.has(id)).toBe(true);
     }
+  });
+
+  /**
+   * THE ADOPT PATH IS A REAL FINISH, AND THE FUNNEL HAS TO SEE IT (2026-08-13).
+   *
+   * `calibrate_done` closes the bracket `handle_submit` opens around the ~128s blocking
+   * calibration. This branch — a user who left mid-scrape and came back to find their audience
+   * already written — is a COMPLETION of that wait, just an asynchronous one. It used to inline
+   * the two lines of `finishOnboarding` rather than call it, so instrumenting that function alone
+   * would have left this the one finish the funnel could not count, and the completion rate would
+   * have read low for exactly the users who waited longest.
+   */
+  it('emits calibrate_done when it adopts an interrupted run', async () => {
+    __resetFunnel();
+    render(<WelcomePage />);
+    await waitFor(() =>
+      expect(calls.some((c) => c.url.includes('/api/settings/last-audience'))).toBe(true),
+    );
+    const done = __funnelBuffer().filter((e) => e.event === 'calibrate_done');
+    expect(done).toHaveLength(1);
+    expect(done[0]!.payload).toMatchObject({ calibrated: true });
+    __resetFunnel();
   });
 });
 

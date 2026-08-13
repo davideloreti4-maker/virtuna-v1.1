@@ -1342,6 +1342,8 @@ export type Database = {
           created_at: string
           event: string
           id: number
+          origin: string | null
+          path: string | null
           payload: Json
           session_id: string
           user_id: string | null
@@ -1350,6 +1352,8 @@ export type Database = {
           created_at?: string
           event: string
           id?: number
+          origin?: string | null
+          path?: string | null
           payload?: Json
           session_id: string
           user_id?: string | null
@@ -1358,6 +1362,8 @@ export type Database = {
           created_at?: string
           event?: string
           id?: number
+          origin?: string | null
+          path?: string | null
           payload?: Json
           session_id?: string
           user_id?: string | null

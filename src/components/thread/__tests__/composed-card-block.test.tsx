@@ -76,8 +76,25 @@ const block: ComposedCardBlock = {
   },
 };
 
+/**
+ * VISIBLE text, in DOM order — `sr-only` nodes stripped.
+ *
+ * Every assertion built on this compares two `indexOf`s to prove a LAYOUT order ("the eyebrow is
+ * above the hero", "the receipt is above the why"). A screen-reader-only node is not part of that
+ * order, but a bare `container.textContent` cannot tell the difference: when the card grew an
+ * `sr-only` `h3` naming itself (F-14 — it labels the card, so it is correctly the FIRST child),
+ * that heading repeats the hero line, and `indexOf('Film the failure')` started resolving to the
+ * hidden copy above the eyebrow. The card was unchanged on screen; the probe had simply stopped
+ * measuring the screen.
+ *
+ * Same shape as `innertext-hides-a-mounted-surface`, inverted: there a layout-aware read hid
+ * mounted content, here a layout-blind read invented content. Both are fixed by making the helper
+ * say which one it means.
+ */
 function textOf(container: HTMLElement): string {
-  return container.textContent ?? '';
+  const clone = container.cloneNode(true) as HTMLElement;
+  clone.querySelectorAll('.sr-only').forEach((n) => n.remove());
+  return clone.textContent ?? '';
 }
 
 describe('ComposedCardRenderer', () => {
