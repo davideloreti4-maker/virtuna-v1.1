@@ -18,6 +18,7 @@
 import { ThreadTurn, type LiveRun } from "@/components/thread/thread-turn";
 import { ThreadShell } from "@/components/thread/thread-shell";
 import { MessageBlocks } from "@/components/thread/message-blocks";
+import { RemixCardRenderer } from "@/components/thread/remix-card-block";
 import { AmbientRoom } from "@/components/audience-lens/AmbientRoom";
 import { AudiencePresence } from "@/components/audience-lens/audience-presence";
 import { AmbientOverviewRail } from "@/components/audience-lens/v2/AmbientOverviewRail";
@@ -58,6 +59,7 @@ import {
   HOOK_BLOCKS,
   SCRIPT_BLOCKS,
   REMIX_BLOCKS,
+  REMIX_BEATS_PREVIEW,
   CHAT_BLOCKS,
   EXPLORE_BLOCKS,
   ACCOUNT_BLOCK,
@@ -392,6 +394,18 @@ const THREAD_VIEWS: { id: string; label: string; note: string; node: React.React
         onDevelop={noop}
         userTurn={USER_TURNS.remix}
         audienceLabel={AUDIENCE}
+      />
+    ),
+  },
+  {
+    id: "remix-shoot-sheet",
+    label: "Remix · shoot sheet",
+    note: "The SAME remix card with its beat-by-beat sheet mounted. The entry above renders without one — `RemixBeats` fetches by blueprintId and the fixture has none, so in production the section only appears once a run has written a remix_blueprints row. Mounted directly (not through the thread view) because the sheet is a component prop, never a block field: the model must not be able to hand the card a sheet.",
+    node: (
+      <RemixCardRenderer
+        block={REMIX_BLOCKS[0]!}
+        beatsPreview={REMIX_BEATS_PREVIEW}
+        onDevelop={noop}
       />
     ),
   },
@@ -1414,6 +1428,10 @@ const VARIANT_OF: Record<string, string> = {
   "hooks-outliers": "hooks",
   "hooks-projected": "hooks",
   "script-outliers": "script",
+  // The remix card WITH its shoot sheet. A run-state of the same card, not a second skill: the
+  // sheet appears only once a run has written a remix_blueprints row, so the bare entry above is
+  // the other half of the same contract.
+  "remix-shoot-sheet": "remix",
 };
 
 // The in-thread input affordances (request_input) + the context-aware chat follow-ups.

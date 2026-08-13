@@ -75,6 +75,38 @@ directive states it to the model — *"Claim something is PROVEN only when you h
 returned examples clearing 3× against a stated baseline."* Gate 1 reuses that rather than inventing a
 second definition of "enough proof," which would immediately disagree with the citation cards.
 
+> 🔴 **MEASURED WRONG, 2026-08-11 — do not implement the paragraph above as written.**
+> Both halves of the reuse claim are false, and the measurement is in
+> `scripts/probe-warm-coverage.ts` + `scripts/probe-warm-coverage-control.ts` (re-runs for the
+> price of embeddings; zero Apify).
+>
+> 1. **`corpus-tool` does not compute `grounded` on this rule.** `grounded` comes from
+>    `assessWarrant` (`warrant.ts:129`): cosine ≥ `WARRANT_FLOOR_DEFAULT` (0.5) with
+>    `WARRANT_MIN_ROWS = 1`, and **no multiplier test at all**. The "three examples clearing 3×"
+>    sentence is a *prompt directive* to the model at `chat-agent-loop.ts:484`, not a computed
+>    flag. `isProofGrade` — which IS the "basis + ≥3×" predicate — has exactly one production
+>    caller, `discover/corpus-reads.ts`, and `corpus-tool` is not it. So gate 1 as specced would
+>    be the second definition of "enough proof", which is what this paragraph set out to avoid.
+>
+> 2. **The bar cannot meaningfully fail.** 285 of the 524 corpus rows (54%) pass `isProofGrade`,
+>    and `match_shared_teardowns` returns its top 12 by cosine with no floor of its own. "≥3
+>    proof-grade of 12" therefore sits *below* what a random draw from this corpus yields.
+>    Measured against 132 real distinct asks pulled from prod `messages`: gate 1 passes
+>    **95.5%** at the shipped 0.5 floor, with **zero** asks returning an empty corpus. Raising
+>    the topicality floor to 0.6 drops that to **34%** — that gap is the honest measure of how
+>    often the corpus actually covers the subject.
+>
+> 3. **The negative control is the proof.** `asdfghjkl qwerty zxcvbn` passes gate 1 with 3
+>    proof-grade rows; `yes` passes; `ok` passes with 6; "my cat will not stop knocking things
+>    off the table" passes with 4. Genuinely off-domain queries (Peloponnesian War, tractor
+>    timing belt, ballast-water regulations) correctly miss — so the 0.5 floor separates
+>    off-domain from in-domain, but not *contentless* from *covered*.
+>
+> **Consequence.** Gate 1 needs a real topicality floor before it can carry the sentence
+> *"here are the proven outliers for {niche}"* — otherwise it asserts proof over rows sitting at
+> the corpus median, which is the same class of defect PR #470 removed from the printed
+> multiplier: a number that looks earned and is not. See the amended §5.1.
+
 **Age is reported, never gated on.** The answer states count and newest age honestly ("9 videos, newest
 6 days old"). A stale-but-sufficient corpus still answers free — decision 5 makes freshness a
 follow-up affordance, not a precondition.
@@ -504,16 +536,39 @@ only.
 
 ## 5. Assumptions, risks, out of scope
 
-### 5.1 Gate 1 is not the common path yet
+### 5.1 Gate 1 — MEASURED 2026-08-11. The risk was backwards.
 
-The architecture calls warm-first "the common path." Today it is not. `outlier_teardowns` holds 524
-`curated`/`extracted` rows and **zero `scraped`** ones, so `warmCoverage(niche)` leans entirely on
-cosine hits against a curated, structural library — strong for broad niches, empty for narrow ones
-(memory: `outlier-corpus-is-curated-not-pulled`).
+The original text of this section feared gate 1 would be **empty**: 524 curated rows, zero scraped,
+so `warmCoverage(niche)` "strong for broad niches, empty for narrow ones", and warm-first therefore
+not yet the common path. It asked for a measurement before treating gate 1 as load-bearing.
 
-It becomes the common path only once Phase 1's write-back has actually filled the pool. **Measure
-warm-hit rate across real niches before treating gate 1 as load-bearing** — this is a measurement
-task, not an assertion to build on.
+**That measurement was run. The fear was inverted.** Gate 1 does not fall through — it passes
+**95.5% of 132 real distinct asks** (pulled from prod `messages`; `creator_profiles.niches` is `[]`
+on all 18 rows, so there are no self-reported niches to use). **Zero** asks returned an empty
+corpus. Details and the negative control are in the amendment box in §1.1.
+
+Three consequences, none of which the design currently accounts for:
+
+1. **Warm-first is not "the common path" — it is very nearly the only path.** Gates 2 and 3,
+   `SpendAuthority`, the `pending_proposal` slot, `POST /api/chat/confirm` and the proposal card
+   are reached on roughly the residual few percent of asks. The nine-task chat gate chain governs
+   a path that is rarely taken and, when taken, rarely spends. The cost risk this design was
+   written against is smaller than assumed; so is the value of governing *this* door.
+
+2. **`fresh?: boolean` stops being an escape hatch and becomes the main road.** §1.1 introduces it
+   for the case where a creator asks for fresher data after a warm answer. At a 95.5% pass rate it
+   is the only route to a scrape that a creator can actually reach.
+
+3. **The exposure is quality, not cost.** A gate that passes on `asdfghjkl` will happily front the
+   sentence *"here are the proven outliers for {niche}"* over rows at the corpus median. Fixing
+   that means a real topicality floor on `warmCoverage` — distinct from the 0.5 recall floor,
+   which `retrieve.ts` itself documents as ~0.05 above "accept a random row" — or dropping the
+   proof framing and stating relatedness honestly.
+
+**Re-scope before building.** On this evidence the highest-value part of Phase 3 is `SpendAuthority`
+failing closed against the real cap, applied to the **ten other doors** that drain it — which §5.2
+currently puts out of scope — rather than the chat gate chain, which §1–§3 build in full. That is a
+scope call for the owner, not a change this document makes on its own.
 
 ### 5.2 Out of scope
 

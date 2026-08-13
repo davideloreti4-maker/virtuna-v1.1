@@ -104,11 +104,30 @@ const AdaptedBeatZodSchema = z.object({
  */
 const ScriptZodSchema = z.array(AdaptedBeatZodSchema).min(1).max(MAX_BEATS);
 
+/**
+ * Layout budgets for the concept's own prose, and for the shoot plan's. Declared once and read by
+ * BOTH the schema below and `clampOverCapProse`, so the cap a field is validated against and the
+ * cap it is trimmed to cannot drift apart.
+ */
+const CONCEPT_PROSE_CAPS = {
+  hook:            200,
+  angle:           300,
+  who_its_for:     200,
+  format_borrowed: 200,
+} as const;
+
+const PRODUCTION_PROSE_CAPS = {
+  shots:        600,
+  onScreenText: 600,
+  setup:        600,
+  edit:         400,
+} as const;
+
 const AdaptConceptZodSchema = z.object({
-  hook:            z.string().min(1).max(200),
-  angle:           z.string().min(1).max(300),
-  who_its_for:     z.string().min(1).max(200),
-  format_borrowed: z.string().min(1).max(200),
+  hook:            z.string().min(1).max(CONCEPT_PROSE_CAPS.hook),
+  angle:           z.string().min(1).max(CONCEPT_PROSE_CAPS.angle),
+  who_its_for:     z.string().min(1).max(CONCEPT_PROSE_CAPS.who_its_for),
+  format_borrowed: z.string().min(1).max(CONCEPT_PROSE_CAPS.format_borrowed),
   // PROJECTION (new Qwen call system, 2026-07-22) — the adapt call self-estimates each adapted hook's
   // stop-count (/10) + a stop-quote in place of the removed persona-SIM. OPTIONAL + coerced downstream
   // so a model that omits them (or the old /api/remix/adapt surface that never asked) still validates
@@ -120,10 +139,10 @@ const AdaptConceptZodSchema = z.object({
   // shots/onScreenText/setup are required together when present; edit is optional.
   production: z
     .object({
-      shots:        z.string().min(1).max(600),
-      onScreenText: z.string().min(1).max(600),
-      setup:        z.string().min(1).max(600),
-      edit:         z.string().min(1).max(400).optional(),
+      shots:        z.string().min(1).max(PRODUCTION_PROSE_CAPS.shots),
+      onScreenText: z.string().min(1).max(PRODUCTION_PROSE_CAPS.onScreenText),
+      setup:        z.string().min(1).max(PRODUCTION_PROSE_CAPS.setup),
+      edit:         z.string().min(1).max(PRODUCTION_PROSE_CAPS.edit).optional(),
     })
     .optional(),
   // Beat-by-beat script (D2). OPTIONAL for the same reason as production — a model that omits
@@ -134,6 +153,76 @@ const AdaptConceptZodSchema = z.object({
 const AdaptConceptsZodSchema = z.object({
   concepts: z.array(AdaptConceptZodSchema).length(3), // ADAPT-01: exactly 3
 });
+
+/**
+ * Trim to `cap` without leaving a dangling half-word. The ellipsis is counted IN — a clamp that
+ * returns `cap + 1` characters fails the very schema it exists to satisfy, which is the bug in
+ * `clip()` over in grounding/prompt.ts (harmless there, fatal here).
+ */
+function trimToCap(text: string, cap: number): string {
+  if (text.length <= cap) return text;
+  const cut       = text.slice(0, cap - 1); // one char of headroom for the ellipsis
+  const lastSpace = cut.lastIndexOf(" ");
+  // Fall back to a hard cut only when the word boundary is so early that honouring it would throw
+  // most of the line away — a 300-char run with one space at index 3 must not clamp to 3 chars.
+  const body = lastSpace > cap * 0.6 ? cut.slice(0, lastSpace) : cut;
+  // A hard cut can land BETWEEN an emoji's two UTF-16 code units. Zod counts code units too, so
+  // the length stays legal and nothing complains — but a lone surrogate renders as the
+  // replacement glyph, which is the "looks broken" outcome this whole function exists to avoid.
+  const whole = /[\uD800-\uDBFF]$/.test(body) ? body.slice(0, -1) : body;
+  return `${whole.trimEnd()}…`;
+}
+
+/**
+ * The same trade as the two functions below, one level up, and the one that was missing.
+ *
+ * Every cap on a concept's prose is a LAYOUT budget, not a correctness rule — `angle` renders as
+ * one muted sub-row (D-09), `production.shots` as a paragraph in "Your shots". Enforcing them as
+ * validation makes an over-long string fatal for the whole response: measured live 2026-08-12,
+ * the model returned `angle` > 300 chars on two of three concepts, Zod rejected all three, the
+ * repair attempt came back with a fourth concept, and the creator got `adapt_failed` and an error
+ * state — no card at all, because some prose was long (spec §11, third failure mode).
+ *
+ * Note this also covers `production`: `stripPartialProduction` tests each sub-field for PRESENCE
+ * and non-emptiness, never for validity, so an over-long `shots` sails through it and dies at the
+ * schema with the whole card. Trimming runs first so both siblings see legal lengths.
+ *
+ * `script` is deliberately NOT clamped. Its caps are semantic rather than cosmetic — a 600-char
+ * `spoken` is not a beat line that ran long, it is a malformed sheet — and `stripInvalidScript`
+ * already degrades that case correctly.
+ */
+function clampOverCapProse(parsed: unknown): unknown {
+  const concepts = (parsed as { concepts?: unknown } | null)?.concepts;
+  if (!Array.isArray(concepts)) return parsed;
+  for (const c of concepts) {
+    if (!c || typeof c !== "object") continue;
+    const concept = c as Record<string, unknown>;
+
+    for (const [field, cap] of Object.entries(CONCEPT_PROSE_CAPS)) {
+      const v = concept[field];
+      if (typeof v === "string" && v.length > cap) {
+        log.warn("adapt returned over-cap prose — trimming it, keeping the concept", {
+          field, length: v.length, cap,
+        });
+        concept[field] = trimToCap(v, cap);
+      }
+    }
+
+    const p = concept.production;
+    if (!p || typeof p !== "object") continue;
+    const production = p as Record<string, unknown>;
+    for (const [field, cap] of Object.entries(PRODUCTION_PROSE_CAPS)) {
+      const v = production[field];
+      if (typeof v === "string" && v.length > cap) {
+        log.warn("adapt returned over-cap prose — trimming it, keeping the concept", {
+          field: `production.${field}`, length: v.length, cap,
+        });
+        production[field] = trimToCap(v, cap);
+      }
+    }
+  }
+  return parsed;
+}
 
 /**
  * A partial shoot plan must never kill 3 valid concepts. `production` is a GARNISH —
@@ -184,6 +273,34 @@ function stripInvalidScript(parsed: unknown): unknown {
       delete (c as { script?: unknown }).script;
     }
   }
+  return parsed;
+}
+
+/**
+ * The other half of the same live failure. The repair attempt returned FOUR concepts — the fourth
+ * with every field undefined — and `.length(3)` failed the response, so three good concepts were
+ * lost to one padded entry the card would never have rendered (spec §11).
+ *
+ * Surplus is not corruption. Keep the first three that stand up on their own and drop the rest.
+ * Validity-filtered rather than `slice(0, 3)`: the padding has been observed in the tail, but a
+ * blind slice would keep a malformed leading entry and throw away a good trailing one.
+ *
+ * Only ever narrows to EXACTLY three. Anything else — two valid entries out of five, a genuinely
+ * corrupt response — is left untouched so the schema reports the real defect and the repair
+ * attempt runs. A short card cannot be padded into a full one.
+ */
+function dropSurplusConcepts(parsed: unknown): unknown {
+  const root     = parsed as { concepts?: unknown } | null;
+  const concepts = root?.concepts;
+  if (!Array.isArray(concepts) || concepts.length <= 3) return parsed;
+
+  const keep = concepts.filter((c) => AdaptConceptZodSchema.safeParse(c).success).slice(0, 3);
+  if (keep.length !== 3) return parsed;
+
+  log.warn("adapt returned more than 3 concepts — keeping the first 3 valid ones", {
+    returned: concepts.length,
+  });
+  (root as { concepts: unknown[] }).concepts = keep;
   return parsed;
 }
 
@@ -318,13 +435,22 @@ export async function generateAdaptConcepts(input: AdaptInput): Promise<AdaptCon
 
       const completion = await ai.chat.completions.create(
         {
-          model:           QWEN_REASONING_MODEL, // qwen3.6-plus — same as pass2.ts
+          // Same constant as pass2.ts and pipeline.ts. It DEFAULTS to qwen3.7-flash and is
+          // env-overridable — the "qwen3.6-plus" this comment used to name has not been the
+          // default since 2026-06-06. Which model actually runs decides how much the
+          // determinism finding below transfers, so do not re-hardcode a name here.
+          model:           QWEN_REASONING_MODEL,
           messages: [
             { role: "system", content: ADAPT_SYSTEM_PROMPT },
             { role: "user",   content: buildAdaptUserContent(input) + extraInstruction },
           ],
           response_format: { type: "json_object" },
-          temperature:     0,         // reproducible (D-04 determinism requirement)
+          // ⚠️ NOT reproducible, despite what D-04 and QWEN_SEED's own docstring claim.
+          // Measured 2026-08-12 over 9 runs on a byte-identical frozen input: 9 distinct
+          // outputs (scripts/probe-adapt-determinism.ts). Kept because greedy decoding still
+          // narrows the distribution — but no gate on this path may be cleared by a single
+          // run, and no wording change can bound a sampler. Fixes here must be mechanical.
+          temperature:     0,
           seed:            QWEN_SEED, // 7
           // Bound generation: ADAPT_SYSTEM_PROMPT now carries the full KNOWLEDGE_CORE
           // (Plan 03-03), so without these the reasoning model emits unbounded CoT and
@@ -347,8 +473,11 @@ export async function generateAdaptConcepts(input: AdaptInput): Promise<AdaptCon
       const raw     = completion.choices[0]?.message?.content ?? "";
       const cleaned = stripModelOutput(raw); // strips <think>...</think> + fences
       const parsed  = JSON.parse(cleaned) as unknown;
+      // Degrade before validating, innermost first: trim over-cap prose, drop a partial shoot
+      // plan, drop an unusable script, and only THEN decide whether a surplus concept can be
+      // dropped — a concept must be judged on what survives the degrades, not on what arrived.
       const result  = AdaptConceptsZodSchema.safeParse(
-        stripInvalidScript(stripPartialProduction(parsed)),
+        dropSurplusConcepts(stripInvalidScript(stripPartialProduction(clampOverCapProse(parsed)))),
       );
 
       if (!result.success) {

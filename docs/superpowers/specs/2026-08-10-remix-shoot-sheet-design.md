@@ -819,6 +819,59 @@ Two separate model overruns (`angle` > 300 chars at `adapt.ts:109`, and a 4th co
 entire remix down. Unlike the missing-script case there is no graceful degrade here: the run
 returns null and the creator gets an error state.
 
-Worth considering whether `angle` should be truncated rather than rejected — it is a one-line
-muted sub-row in the UI (D-09), so an over-long one is a cosmetic problem being treated as a fatal
-one. Not fixed, not in this lane's scope.
+#### FIXED 2026-08-12 — both halves, and the class rather than the two fields
+
+The root cause is not `angle`. It is that **the response has exactly one all-or-nothing gate**,
+and the two degrade passes in front of it (`stripPartialProduction`, `stripInvalidScript`) are
+both scoped to OPTIONAL sub-objects. Nothing degraded the concept's own required prose, so a
+`.max()` overrun on display text failed all three concepts.
+
+Reproduced at the unit level first — all four new tests returned `null`, the exact `adapt_failed`
+symptom — which surfaced a **third field with the same defect that had not been reported**:
+
+> `stripPartialProduction` tests each sub-field for PRESENCE and non-emptiness, never for
+> validity. An over-long `production.shots` sails through it and dies at the schema with the whole
+> card, exactly as `angle` did.
+
+Two new passes, both siblings of the existing two, both mutating before validation:
+
+- **`clampOverCapProse`** — trims the four concept prose fields and the four `production` fields to
+  their caps, on a word boundary, ellipsis counted IN. The caps now live in one place
+  (`CONCEPT_PROSE_CAPS` / `PRODUCTION_PROSE_CAPS`) read by BOTH the schema and the clamp, so the
+  cap a field is validated against cannot drift from the cap it is trimmed to.
+  `script` is deliberately NOT clamped: its caps are semantic, not cosmetic — a 600-char `spoken`
+  is a malformed sheet, not a line that ran long, and `stripInvalidScript` already handles it.
+- **`dropSurplusConcepts`** — on more than 3 concepts, keeps the first 3 that individually
+  validate. Validity-filtered, not `slice(0, 3)`: the padding was observed in the tail, but a
+  blind slice keeps a malformed leading entry and discards a good trailing one. Only ever narrows
+  to exactly 3 — **fewer** than 3 still fails to the repair attempt, since a short card cannot be
+  padded into a full one.
+
+⚠️ **`clip()` in `grounding/prompt.ts` has an off-by-one**: with no word boundary it returns
+`max + 1` characters, because the ellipsis is appended after slicing to `max`. Harmless in prompt
+building; it would have been fatal here, so `trimToCap` is local and slices to `cap - 1`. The test
+`clamps unbroken text to the cap INCLUDING the ellipsis` pins it. **`clip()` itself is not fixed.**
+
+**Measured, 6 live runs, frozen input** (`probe-adapt-determinism.ts --runs 6`):
+
+| Signal | Result |
+|---|---|
+| `adapt_failed` | **0 / 6** |
+| Over-cap prose warns | **0 / 6** — the model did not overrun on this input |
+| Non-determinism | reconfirmed — 6 runs, **6 distinct outputs** |
+| Hook-line density | **18/18 sayable**, 3.0–4.7 w/s (was 3/3 unsayable at 7.7 before `spoken_span_s`) |
+| First-attempt `script[]` omission | **2 / 6 (33%)** — see below |
+
+**The live runs did NOT exercise the fix.** Zero overruns in 6 means the rate on this input is
+under 1-in-6, not that the clamp works; what proves the clamp is the four unit tests that were
+watched failing against the recorded shape (`angle` > 300 on two of three concepts; a fourth
+concept with every field undefined) and pass against it now. Stated plainly because this lane's
+own rule is that a live run which never triggers the path is not evidence about the path.
+
+#### Item 2 partly answered — the first-attempt omission rate is ~33%, not 5/5
+
+The same 6 runs carry the span line and omitted `script[]` on the first attempt **2 of 6 times**.
+That sits with the pre-span `~3/8` and against the `5/5` reading that raised the question at all —
+5/5 looks like small-n noise. The retry rescued both, 3/3 concepts scripted in all 6 final outputs.
+Still not a controlled comparison (the frozen-input A/B remains the only one of those, 8/8 with
+script), but the alarming number is no longer reproducible. **The warn line remains the metric.**
