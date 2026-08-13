@@ -22,6 +22,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { createLogger } from "@/lib/logger";
 import { getBlueprint } from "@/lib/remix/blueprint-repo";
+import { signAnalysisFrames } from "@/lib/engine/filmstrip/storage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -62,7 +63,30 @@ export async function GET(
 
   if (!row) return Response.json({ error: "Not found" }, { status: 404 });
 
-  // Only the two fields the sheet renders. The row also carries `user_id` and `thread_id`, which
-  // no client needs and neither should cross the wire.
-  return Response.json({ script: row.script, blueprint: row.blueprint });
+  // PHASE 3 — the beat frames, RE-SIGNED on every read.
+  //
+  // `uploadFrameAndGetSignedUrl` mints a 30-day URL at write time and that URL is deliberately not
+  // persisted anywhere: a card rendered on day 31 would carry a dead <img>, and a card shared in a
+  // thread would carry a live credential. `signAnalysisFrames` lists the prefix and signs fresh —
+  // its first argument is a path prefix, not an analyses FK, so a `blueprintId` is a valid key.
+  //
+  // Ownership is already settled above: `getBlueprint` matched id AND user_id, so reaching this
+  // line means this user owns this prefix. The service client below inherits that scoping and
+  // never widens it.
+  //
+  // Degrades to `{}` on any storage fault — the sheet then renders exactly the phase-1 text rows,
+  // which is a complete product. A frame list is an enhancement and is never worth a 500.
+  let frames: Record<number, string> = {};
+  try {
+    frames = await signAnalysisFrames(id);
+  } catch (err) {
+    log.warn("beat frames could not be signed — serving the text sheet", {
+      blueprintId: id,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+
+  // Only the fields the sheet renders. The row also carries `user_id` and `thread_id`, which no
+  // client needs and neither should cross the wire.
+  return Response.json({ script: row.script, blueprint: row.blueprint, frames });
 }

@@ -348,7 +348,13 @@ export const REMIX_BLOCKS: RemixCardBlock[] = [
       scrollQuote: "Feels like an ad, keep scrolling.",
       model: "sim1-flash",
       audienceName: "Bootstrapped Founders",
-      personas: PERSONAS,
+      // PROJECTED — matching `remix-runner.ts:461`, which hard-codes this on every card it emits.
+      // Without it the block falls to the legacy MEASURED branch, and this gallery rendered an
+      // amber "● Mixed · 5/10 stopped · adapted hook" foot with "See your audience →" — measured
+      // language a live remix run CANNOT produce (the persona SIM was removed from this path).
+      // The one remix card foot anyone had ever looked at was the wrong one, in the surface that
+      // exists to stop exactly this. Measured 2026-08-13.
+      provenance: "projected" as const,
       // The shoot plan for YOUR adapted version — how to execute the borrowed "talking-head
       // confession + receipts overlay" format for the firing angle. Parallels the script card.
       production: {
@@ -357,9 +363,11 @@ export const REMIX_BLOCKS: RemixCardBlock[] = [
         setup: "Phone at eye level, one soft key light, lav mic; sit close for the confession tone.",
         edit: "Cut on the reveal ('the team was AI') — hold nothing before it; punchy, no B-roll music bed.",
       },
-      // The adapted hook's N-individual projection → the Population·1,000 Sheet (remix has no
-      // per-persona `target`; its calibrated reader is named by `audienceName` above).
-      population: POPULATION_1K,
+      // `personas` + `population` are INTENTIONALLY ABSENT, mirroring `remix-runner.ts:466`:
+      // the per-card cast and the N-individual projection are MEASURED artefacts of a fired
+      // simulation, and generation never produces them. The fixture used to supply both, which
+      // is what let the card render its measured foot. The Population sheet for this skill is
+      // reachable through the SimDoor after a real sim, not on the generated card.
     },
   },
 ];
@@ -381,7 +389,18 @@ export const REMIX_BLOCKS: RemixCardBlock[] = [
 export const REMIX_BEATS_PREVIEW: {
   script: AdaptedBeat[][];
   blueprint: SourceBlueprint;
+  frames?: Record<number, string>;
 } = {
+  // PHASE 3 beat frames. Local static images stand in for the signed source stills a real run
+  // writes — the gallery must never mint a credential or reach the network. Beat 2 is
+  // DELIBERATELY absent: a partial frame set is the normal production shape (extraction is
+  // capped and budgeted, and any single frame can fail to cut), so the row that degrades to a
+  // play-tile has to be visible here or nobody sees it until it happens live.
+  frames: {
+    0: "/images/landing/hero-read.png",
+    1: "/images/landing/feature-drivers.png",
+    3: "/images/landing/feature-audience.png",
+  },
   blueprint: {
     duration_s: 24,
     words_per_second: 3.4,
