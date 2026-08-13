@@ -389,7 +389,18 @@ export const REMIX_BLOCKS: RemixCardBlock[] = [
 export const REMIX_BEATS_PREVIEW: {
   script: AdaptedBeat[][];
   blueprint: SourceBlueprint;
+  frames?: Record<number, string>;
 } = {
+  // PHASE 3 beat frames. Local static images stand in for the signed source stills a real run
+  // writes — the gallery must never mint a credential or reach the network. Beat 2 is
+  // DELIBERATELY absent: a partial frame set is the normal production shape (extraction is
+  // capped and budgeted, and any single frame can fail to cut), so the row that degrades to a
+  // play-tile has to be visible here or nobody sees it until it happens live.
+  frames: {
+    0: "/images/landing/hero-read.png",
+    1: "/images/landing/feature-drivers.png",
+    3: "/images/landing/feature-audience.png",
+  },
   blueprint: {
     duration_s: 24,
     words_per_second: 3.4,
