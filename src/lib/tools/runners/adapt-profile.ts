@@ -57,7 +57,7 @@ export function buildAdaptProfile(profileRow: ProfileRow | null): AdaptProfile {
     niche_primary: profileRow?.niche_primary ?? null,
     target_audience: flattenTargetAudience(profileRow?.target_audience),
     primary_goal: profileRow?.primary_goal ?? null,
-    writing_voice_sample: profileRow?.writing_voice_sample ?? null,
+    writing_voice_description: profileRow?.writing_voice_description ?? null,
     past_wins: toOutcomeList(profileRow?.past_wins),
     past_flops: toOutcomeList(profileRow?.past_flops),
   };

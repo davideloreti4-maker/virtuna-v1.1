@@ -338,7 +338,7 @@ function fakeAdapt(): ReturnType<typeof vi.fn<Adapt>> {
 }
 
 describe("gatherCorpusForRun — adapt routing", () => {
-  const profile = { niche_primary: "food", writing_voice_sample: "plain" };
+  const profile = { niche_primary: "food", writing_voice_description: "plain" };
 
   it("routes the retrieved corpus through the adapt briefer when adapt is on (hooks + profile)", async () => {
     const adapt = fakeAdapt();

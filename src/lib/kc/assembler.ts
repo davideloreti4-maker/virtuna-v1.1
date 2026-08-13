@@ -50,10 +50,14 @@ import { PROFILE_ROLE_MAP, type Role, type ProfileRow } from "./profile-role-map
  *   hooks · corpus 2800, no overrides           3818 / 4000   all roles kept
  *   hooks · corpus 2800 + calibrated overrides  3602 / 4000   voice + wins + flops + platform ALL DROPPED
  *
- * A calibrated audience is simultaneously the only thing that PRODUCES a voice (it is backfilled
- * from creator_persona.writing_style_sample — see apply-creator-persona.ts, and note that
- * creator_profiles.writing_voice_sample does not exist in the database) and the thing whose
- * `overrides` block evicts it. The drop loop pops whole roles, so it shed 675 chars to save 256.
+ * ⚠️ THE MEASUREMENT ABOVE PREDATES #482 AND ITS VOICE ROW IS NOW ALWAYS EMPTY. At the time, a
+ * calibrated audience was simultaneously the only thing that PRODUCED a voice (backfilled from
+ * creator_persona.writing_style_sample) and the thing whose `overrides` block evicted it. That
+ * backfill was the exemplar-copying defect and was removed 2026-08-12 — see
+ * apply-creator-persona.ts. `writing_voice_description` (renamed 2026-08-13) has NO producer:
+ * `creator_profiles` has no voice column, verified against prod 2026-08-13. The 6000 cap stands on
+ * the wins/flops/platform half of the same measurement; do not re-derive headroom from the voice
+ * row until something fills the slot again.
  *
  * The old comment on grounding/prompt.ts's SKILL_CHAR_BUDGET reasoned from the same number and
  * drew the opposite conclusion — "the assembled bundle lands ~3.6k … so the corpus still cannot
@@ -378,7 +382,7 @@ function isProfileThin(profileRow: ProfileRow | null): boolean {
   const hasWins = Boolean(profileRow.past_wins?.length);
   const hasFlops = Boolean(profileRow.past_flops?.length);
   const hasPlatform = Boolean(profileRow.target_platforms?.length);
-  const hasVoice = Boolean(profileRow.writing_voice_sample?.trim());
+  const hasVoice = Boolean(profileRow.writing_voice_description?.trim());
   return !hasNiche && !hasAudience && !hasGoals && !hasWins && !hasFlops && !hasPlatform && !hasVoice;
 }
 

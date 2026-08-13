@@ -182,7 +182,13 @@ function serializeCard(
     case 8:
       return { pain_points: draft.pain.trim() || null };
     case 9:
-      return { writing_voice_sample: draft.voice.trim() || null };
+      // ⚠️ NOT PERSISTED. `creatorProfilePatchSchema` is a plain `z.object`, so zod STRIPS this
+      // key and `creator_profiles` has no voice column to receive it anyway (both verified
+      // 2026-08-13). The creator's answer has been silently discarded here since the card shipped.
+      // Wiring it needs exactly two things — the column, and this key on the PATCH whitelist —
+      // and `voice-description-fence.test.ts` guards what may go in the slot once it is wired.
+      // Renamed from `writing_voice_sample` 2026-08-13; see ProfileRow.writing_voice_description.
+      return { writing_voice_description: draft.voice.trim() || null };
     default:
       return {};
   }

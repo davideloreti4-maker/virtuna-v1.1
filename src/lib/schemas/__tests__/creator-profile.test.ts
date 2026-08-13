@@ -11,6 +11,47 @@ import {
  * the sanitizer's control-char / zero-width / delimiter-sentinel stripping.
  */
 
+/**
+ * 🔴 A KNOWN, DELIBERATE GAP — Card 9 of the interview is collected and thrown away.
+ *
+ * `profile-interview-store.ts` serializes Card 9 to `writing_voice_description`, but this schema
+ * is a plain `z.object`, so zod STRIPS the key, and `creator_profiles` has no voice column to
+ * receive it anyway (both verified 2026-08-13). The creator types an answer and nothing persists —
+ * silently, with no error, since a stripped key never reaches the upsert.
+ *
+ * This is pinned rather than fixed because wiring it is a product decision, not a cleanup:
+ * `docs/superpowers/specs/2026-08-12-exemplar-fence-design.md` §5.4 warns against shipping this
+ * slot as a quality win, and a new column here is a live prod DDL. Wiring it needs exactly two
+ * things — the column, and the field on this whitelist — and `voice-description-fence.test.ts`
+ * already guards what is allowed in the slot once it exists.
+ *
+ * ⚠️ WHEN THIS TEST FAILS, THAT IS THE SIGNAL, NOT THE BUG. It means someone added the field to
+ * the whitelist. Confirm the column exists before deleting this test, or every interview finalize
+ * starts 400-ing on an unknown column.
+ */
+describe("creatorProfilePatchSchema — the interview's voice answer is NOT persisted", () => {
+  it("strips writing_voice_description instead of persisting it", () => {
+    const result = creatorProfilePatchSchema.safeParse({
+      pain_points: "no time to edit",
+      writing_voice_description: "blunt, no fluff. lowercase energy.",
+    });
+
+    expect(result.success).toBe(true);
+    // Parsed OUT, not rejected — which is exactly why the loss is invisible in production.
+    expect(result.data).not.toHaveProperty("writing_voice_description");
+    expect(result.data).toHaveProperty("pain_points");
+  });
+
+  it("also strips the pre-2026-08-13 spelling, so neither name smuggles a specimen through", () => {
+    const result = creatorProfilePatchSchema.safeParse({
+      writing_voice_sample: "Btw this dance took me hours to learn",
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.data).not.toHaveProperty("writing_voice_sample");
+  });
+});
+
 describe("creatorProfilePatchSchema — enum membership", () => {
   it("rejects an out-of-enum target_platforms value", () => {
     const result = creatorProfilePatchSchema.safeParse({
