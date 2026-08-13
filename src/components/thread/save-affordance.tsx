@@ -113,7 +113,9 @@ export function SaveAffordance({
       disabled={busy || (saved && !canUnsave)}
       aria-pressed={saved}
       className={cn(
-        "inline-flex items-center gap-1.5 text-sm font-medium transition-colors",
+        // `tap-44`: measured 55×20 on a phone (F-19). It rides the action bar's baseline beside a
+        // filled primary, so the box stays put and only the hit area grows, on coarse pointers.
+        "tap-44 inline-flex items-center gap-1.5 text-sm font-medium transition-colors",
         "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring)]",
         saved
           ? "text-accent hover:text-accent/80"

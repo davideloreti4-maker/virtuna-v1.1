@@ -45,7 +45,13 @@ export function FollowupRow({
   const handler = onFollowup ?? ctxHandler;
   if (!followups.length) return null;
   return (
-    <div className={`flex flex-wrap gap-2 ${className ?? ''}`} data-testid="followup-row">
+    // `pointer-coarse:gap-y-4` is LOAD-BEARING, not spacing taste. The chips below carry
+    // `.tap-44`, whose halo is 44px tall around a 29px pill — 7.5px of overhang each side. At
+    // `gap-2` (8px) two WRAPPED rows would overlap their halos by ~7px, and the later chip in DOM
+    // order wins the tap: aiming at the chip above would fire the one below it. 16px clears it
+    // (29 + 16 = 45 > 44). Horizontal gap needs nothing — every chip is wider than 44px, so the
+    // halo never grows sideways. Touch only; a mouse keeps the tight row.
+    <div className={`flex flex-wrap gap-2 pointer-coarse:gap-y-4 ${className ?? ''}`} data-testid="followup-row">
       {followups.map((f) => (
         <button
           key={f.label}
@@ -58,7 +64,9 @@ export function FollowupRow({
             if (pack) handler?.(f.prompt, f.skill, { cards: pack });
             else handler?.(f.prompt, f.skill);
           }}
-          className="inline-flex items-center rounded-full border border-white/[0.08] bg-transparent px-3 py-1.5 text-label font-medium leading-snug text-foreground-secondary transition-colors hover:border-white/[0.14] hover:bg-white/[0.05] hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/15"
+          // `tap-44`: measured 29px tall on a phone (F-19). The pill's drawn height is the row's
+          // rhythm, so the halo grows and the pill does not. See the wrap-gap note above.
+          className="tap-44 inline-flex items-center rounded-full border border-white/[0.08] bg-transparent px-3 py-1.5 text-label font-medium leading-snug text-foreground-secondary transition-colors hover:border-white/[0.14] hover:bg-white/[0.05] hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/15"
           aria-label={`Follow up: ${f.label}`}
         >
           {f.label}

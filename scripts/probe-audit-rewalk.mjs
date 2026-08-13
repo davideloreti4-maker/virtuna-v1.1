@@ -65,6 +65,13 @@ const MEASURE = `() => {
   // ── F-13: is the composer backdrop a solid fill or a gradient mask?
   const bd = document.querySelector('[data-testid="composer-backdrop"]');
   const bdS = bd ? getComputedStyle(bd) : null;
+  // WARNING: the fade is a MASK, not a background-image (globals.css .composer-veil) -- the fill
+  // stays the bg-background TOKEN so the page colour is never re-typed as a hex here. Reading only
+  // backgroundImage reported "none" on a WORKING fade and would have re-opened F-13 as a false
+  // regression. Same for the F-18 scrim. (No backticks in this string: MEASURE is a template
+  // literal, and one backtick in a comment ends it mid-function.)
+  const scrim = document.querySelector('.nav-scrim');
+  const scrimS = scrim ? getComputedStyle(scrim) : null;
 
   // ── F-1 / F-6 / F-7 signals straight off the DOM
   const cards = [...document.querySelectorAll('[class*="card"],[data-testid*="card"]')].filter(vis);
@@ -86,7 +93,20 @@ const MEASURE = `() => {
     topRoles: [...roles.entries()].sort((a,b)=>b[1]-a[1]).slice(0,8),
     headings, unnamedButtons: unnamed, under32: small32, under40: small40,
     accentElements: accent,
-    composerBackdrop: bdS ? { backgroundImage: bdS.backgroundImage, backgroundColor: bdS.backgroundColor } : 'ABSENT',
+    composerBackdrop: bdS ? {
+      backgroundImage: bdS.backgroundImage,
+      backgroundColor: bdS.backgroundColor,
+      maskImage: bdS.maskImage || bdS.webkitMaskImage,
+      // The real question F-13 asks: is the top edge a hard cut? A mask or a gradient both answer no.
+      fadesAtTop: /gradient/.test(bdS.maskImage || bdS.webkitMaskImage || '') || /gradient/.test(bdS.backgroundImage || ''),
+    } : 'ABSENT',
+    navScrim: scrimS ? {
+      height: Math.round(scrim.getBoundingClientRect().height),
+      backgroundColor: scrimS.backgroundColor,
+      maskImage: scrimS.maskImage || scrimS.webkitMaskImage,
+      pointerEvents: scrimS.pointerEvents,
+      visible: scrim.getBoundingClientRect().height > 0,
+    } : 'ABSENT',
     composerRect: cRect ? { top: Math.round(cRect.top), height: Math.round(cRect.height), bottom: Math.round(cRect.bottom) } : null,
     deadSpaceBelowComposer: cRect ? Math.round(innerHeight - cRect.bottom) : null,
     cardCount: cards.length,

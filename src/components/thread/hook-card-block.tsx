@@ -82,14 +82,22 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
   const hasDelivery = Boolean(channel);
 
   return (
-    <div
-      className="elev-rest overflow-hidden rounded-xl border border-white/[0.06] bg-surface-sunken"
-      // The numeral is dropped here too on a projected card — otherwise a screen reader is told
-      // "Hook #1" while the sighted card shows no rank, which is the same unmeasured claim served
-      // only to the people who cannot see that it was withdrawn. The hook line already identifies
-      // the card, so nothing is lost. (Found in browser verification, not by the suite.)
-      aria-label={projected ? `Hook: ${hookLine.slice(0, 60)}` : `Hook #${rank}: ${hookLine.slice(0, 60)}`}
-    >
+    <div className="elev-rest overflow-hidden rounded-xl border border-white/[0.06] bg-surface-sunken">
+      {/* F-14 — the card's name, as a real HEADING rather than an `aria-label`.
+          This string was an `aria-label` on this same plain `<div>`, which assistive tech
+          DROPS: `aria-label` needs a role to attach to, and a generic div has none. So the
+          line below is not new copy — it is the copy that was already written here finally
+          reaching the people it was written for, and it now also puts every card in the
+          heading jump-list (`h2` per turn → `h3` per card, thread-shell.tsx).
+
+          The numeral is dropped on a projected card — otherwise a screen reader is told
+          "Hook #1" while the sighted card shows no rank, which is the same unmeasured claim
+          served only to the people who cannot see that it was withdrawn. The hook line already
+          identifies the card, so nothing is lost. (Found in browser verification, not by the
+          suite.) */}
+      <h3 className="sr-only">
+        {projected ? `Hook: ${hookLine.slice(0, 60)}` : `Hook #${rank}: ${hookLine.slice(0, 60)}`}
+      </h3>
       {/* FACE — always visible (D-11) */}
       <div className="flex flex-col gap-3 px-4 pb-3 pt-4">
         {/* HERO ROW — rank gutter · the hook · Copy. This row IS the header contract's reference
@@ -157,7 +165,9 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
-            className="flex items-center gap-1.5 self-start text-label text-foreground-muted transition-colors hover:text-foreground-secondary"
+            // `tap-44`: measured 131×18 on a phone (F-19) — a bare text row with a caret, the
+            // smallest target on the card. Hit area only; the row keeps its 18px rhythm.
+            className="tap-44 flex items-center gap-1.5 self-start text-label text-foreground-muted transition-colors hover:text-foreground-secondary"
             aria-expanded={expanded}
             aria-label={expanded ? 'Collapse hook details' : 'Expand hook details'}
           >

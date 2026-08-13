@@ -3519,7 +3519,11 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
                   // square instead. `loading` is left for the pre-stream waits only.
                   loading={isAnyStreaming ? false : profiling || submitting}
                   style={{ boxShadow: "none" }}
-                  className="shrink-0 h-[36px] w-[36px] min-w-0 p-0 rounded-full"
+                  // `tap-44` (F-19): the disc is drawn at 36px — the size the composer's geometry
+                  // is built around — and this is the app's single most-pressed control, so it
+                  // gets the 44px floor as a halo rather than by growing the disc and re-spacing
+                  // the field. It is the last child of its row, so the halo also wins its overlaps.
+                  className="tap-44 shrink-0 h-[36px] w-[36px] min-w-0 p-0 rounded-full"
                 >
                   {isAnyStreaming ? (
                     <Square className="h-[13px] w-[13px]" strokeWidth={2.25} fill="currentColor" />
@@ -3596,11 +3600,27 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
             vanishes UNDER the card while the audience tab above keeps its see-through rounded
             corners. Column-width, so it never over-paints. Omitted on the centered home: nothing
             scrolls behind there, and being positioned it would paint over the starter chips. */}
+        {/* F-13 — THE HARD CUT IS THE TOP EDGE (audit 2026-08-09, re-measured 2026-08-13 and
+            2026-08-14: `background-image: none`, a flat `rgb(31,31,30)` fill).
+
+            A solid rectangle butted against live scrolling text does not read as "the composer is
+            in front"; it reads as text SLICED, and because the cut lands wherever the scroll
+            happens to be, it lands mid-letter — the ascenders of one line survive and the rest of
+            the word is gone. That is the "guillotine".
+
+            The fix is 40px of fade above the card. It is a MASK, not a gradient fill, on purpose:
+            the fill stays `bg-background`, so the page colour is still stated exactly once and the
+            token cannot drift out of a hand-written `linear-gradient(#1f1f1e …)` here. A mask also
+            avoids the transparent-black interpolation haze that `to transparent` produces.
+
+            `-top-10` (40px) is the reach. In thread mode the slot above this wrapper is always
+            empty — the rail is portaled out ≥xl and `useHeader` nulls the presence panel <xl — so
+            the band only ever falls over thread content, which is what it is for. */}
         {homeThreadMode && (
           <div
             aria-hidden
             data-testid="composer-backdrop"
-            className="pointer-events-none absolute inset-x-0 -bottom-4 top-0 bg-background"
+            className="composer-veil pointer-events-none absolute inset-x-0 -bottom-4 -top-10 bg-background"
           />
         )}
         {/* THE PLATE (2026-07-31, owner call). <xl the audience bar used to sit in the mobile TOP
@@ -3867,6 +3887,17 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           }
         >
           <div className="w-full max-w-[760px] mx-auto px-2.5 sm:px-4">
+            {/* F-14 — the document root of the heading tree (`h2` per turn, `h3` per card).
+                In thread mode the serif greeting that carries the page's `h1` (home-greeting.tsx)
+                has been replaced by the conversation, so without this the thread's `h2`s hang off
+                nothing and every outline checker flags the jump. Generic on purpose: the thread's
+                title is not in scope here, and a fabricated one would be worse than a true one.
+
+                Gated on `hasConversationContent` for TWO reasons, and either alone is sufficient:
+                the empty home renders the serif greeting, which already owns the page's `h1`
+                (a second one is the defect this is meant to fix, inverted) — and on a surface
+                with no messages "Conversation" would simply be false. */}
+            {hasConversationContent && <h1 className="sr-only">Conversation</h1>}
             {/* A1: while a switch is rehydrating and no content has landed yet, fill the
                 scroll with the branded skeleton — never the prior thread's emptied views
                 or the centered serif hero. When the persisted blocks arrive (or it's a
