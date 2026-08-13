@@ -42,9 +42,23 @@ export interface RemixCardRendererProps {
   /** Optional: wired by Plan 06-05 to trigger remix→hooks chain handoff (anchorFrom:'card').
    *  When absent, reads from RemixDevelopContext; falls back to stub if neither present. */
   onDevelop?: () => void;
+  /**
+   * Shoot-sheet data supplied directly — the /dev/cards path only. A COMPONENT prop, deliberately
+   * NOT a `block.props` field: those are zod-validated and model-emittable, and the sheet must
+   * never be something a model can hand the card.
+   *
+   * Exists because the gallery could not show the sheet at all. `RemixBeats` fetches by
+   * `blueprintId`, the fixture has none, so the section silently vanished and /dev/cards rendered
+   * the pre-lane card — measured live 2026-08-12. See `RemixBeats.initialData`.
+   */
+  beatsPreview?: React.ComponentProps<typeof RemixBeats>["initialData"];
 }
 
-export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCardRendererProps) {
+export function RemixCardRenderer({
+  block,
+  onDevelop: onDevelopProp,
+  beatsPreview,
+}: RemixCardRendererProps) {
   const {
     adaptedHook,
     angle,
@@ -217,8 +231,12 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
           script is this card's. Hard-coded, cards 2 and 3 print the rank-1 sheet: a plausible
           sheet, not a visible bug, and no test that renders one card in isolation can see it.
           Absent ⇒ 0, which is right for the single-card case and for every pre-lane block. */}
-      {blueprintId && (
-        <RemixBeats blueprintId={blueprintId} variantIndex={blueprintVariant ?? 0} />
+      {(blueprintId || beatsPreview) && (
+        <RemixBeats
+          blueprintId={blueprintId ?? "preview"}
+          variantIndex={blueprintVariant ?? 0}
+          initialData={beatsPreview}
+        />
       )}
 
       {/* EXPAND — the rest of the decode anatomy (hook pattern + the turn already lead the map). */}

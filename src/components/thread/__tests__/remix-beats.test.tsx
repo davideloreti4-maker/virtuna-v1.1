@@ -143,6 +143,53 @@ describe("RemixBeats", () => {
     expect(screen.getByText(/1\.8–5\.4s · SETUP/)).toBeInTheDocument();
   });
 
+  // The gallery path. /dev/cards is this repo's answer to "a surface with no cheap way to LOOK at
+  // it will drift", and the shoot sheet was invisible there from the day it shipped: the fixture
+  // has no blueprintId, so the fetch below never fires and the whole section silently vanishes.
+  // Measured on the live page 2026-08-12 — the Remix entry rendered the pre-lane card exactly.
+  it("renders from injected data without fetching — the gallery path", async () => {
+    render(
+      <RemixBeats
+        blueprintId={BLUEPRINT_ID}
+        variantIndex={0}
+        initialData={{ script: SCRIPT, blueprint: makeBlueprint() }}
+      />,
+    );
+
+    await waitFor(() => expect(screen.getByText("0.0–1.8s · HOOK")).toBeInTheDocument());
+    expect(screen.getByText(/Your creatine is doing nothing\./)).toBeInTheDocument();
+    // A gallery that quietly hits the API renders differently signed-in vs not, which is the
+    // opposite of what a fixture page is for.
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
+  it("still honours variantIndex when the data is injected", async () => {
+    render(
+      <RemixBeats
+        blueprintId={BLUEPRINT_ID}
+        variantIndex={2}
+        initialData={{ script: SCRIPT, blueprint: makeBlueprint() }}
+      />,
+    );
+    await waitFor(() =>
+      expect(screen.getByText(/Rank three opens somewhere else again\./)).toBeInTheDocument(),
+    );
+  });
+
+  it("injected data still refuses to print a fabricated sheet", async () => {
+    render(
+      <RemixBeats
+        blueprintId={BLUEPRINT_ID}
+        variantIndex={0}
+        initialData={{ script: SCRIPT, blueprint: makeBlueprint({ from_fixed_buckets: true }) }}
+      />,
+    );
+    await waitFor(() =>
+      expect(screen.getByText(/We couldn’t read this video’s timing/)).toBeInTheDocument(),
+    );
+    expect(screen.queryByText(/Your creatine is doing nothing\./)).not.toBeInTheDocument();
+  });
+
   it("requests the blueprint it was given", async () => {
     render(<RemixBeats blueprintId={BLUEPRINT_ID} variantIndex={0} />);
     await waitFor(() =>
