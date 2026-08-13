@@ -827,16 +827,18 @@ describe("POST /api/tools/chat (SSE route)", () => {
     const { POST } = await import("@/app/api/tools/chat/route");
     const ask = "give me hooks for my student budgeting app";
 
-    // CONTROL FIRST — flag off, the bundle carries the creator's words verbatim.
+    // CONTROL FIRST — the kill switch, the bundle carries the creator's words verbatim.
+    process.env.ENGINE_COUNT_HINT = "false";
+    await readSSE(await POST(makeChatRequest({ ask, platform: "tiktok" })));
+
+    // Then the SHIPPED default. Deleting the var is the treatment arm now, not the control — the
+    // hint is default-ON since 2026-08-12, so an unset environment is production.
     delete process.env.ENGINE_COUNT_HINT;
     await readSSE(await POST(makeChatRequest({ ask, platform: "tiktok" })));
 
-    process.env.ENGINE_COUNT_HINT = "true";
-    await readSSE(await POST(makeChatRequest({ ask, platform: "tiktok" })));
-
     const bundleCalls = (assembleBundle as ReturnType<typeof vi.fn>).mock.calls as Array<[{ ask: string }]>;
-    expect(bundleCalls[0]![0].ask, "flag OFF must change nothing").toBe(ask);
-    expect(bundleCalls[1]![0].ask, "flag ON gives the model the count").toBe(
+    expect(bundleCalls[0]![0].ask, "the kill switch must change nothing").toBe(ask);
+    expect(bundleCalls[1]![0].ask, "the shipped default gives the model the count").toBe(
       "give me 5 hooks for my student budgeting app",
     );
 

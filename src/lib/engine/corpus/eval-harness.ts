@@ -59,6 +59,26 @@ export interface RunEvalHarnessOptions {
   maxRows?: number;
 }
 
+/**
+ * ⚠️ READ BEFORE COMPARING TWO RUNS OF THIS: **the scorer has a noise floor of ~4 points.**
+ *
+ * Measured 2026-08-12 (`scripts/probe-apollo-determinism.ts`, 36 runs on byte-identical frozen
+ * input). This harness scores text-mode rows (`eval-runner.ts:116-123`), so
+ * `overall_score = behavioral·w + apollo·w` (`aggregator.ts:928`) and BOTH terms come from one
+ * Apollo call — `composite_score` moved 81-84 and `behavioral_score` 70-74 on identical input.
+ * `temperature: 0` + a fixed seed do NOT pin this; see `QWEN_SEED`'s docstring for why.
+ *
+ * Consequences for every number this returns:
+ *   - A macro-F1 / MAE / ECE delta between two runs that is smaller than the jitter is NOT a
+ *     result. Re-run before believing an improvement.
+ *   - Bucket cuts are 70/30 (`score-to-bucket.ts`). A row whose true score sits within ~4 points
+ *     of a cut can land in a different bucket run-to-run, so a handful of bucket flips between
+ *     otherwise-identical runs is expected behaviour, not a regression.
+ *   - A weight fitted on a single pass has absorbed some of this noise.
+ *
+ * The honest fix is repetition, not a bigger sample of rows: run the corpus N times and report a
+ * spread. Nothing about the prompt or the seed changes any of the above.
+ */
 export async function runEvalHarness(
   opts: RunEvalHarnessOptions,
 ): Promise<BenchmarkReport> {

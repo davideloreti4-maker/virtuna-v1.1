@@ -516,3 +516,172 @@ describe('adapt input widening (D-01 reversal)', () => {
     });
   });
 });
+
+// =====================================================
+// Over-cap prose is COSMETIC, not fatal (spec §11, third failure mode, measured 2026-08-12)
+//
+// Live: the model returned `angle` > 300 chars on two of three concepts, Zod failed the WHOLE
+// response, the repair attempt came back with four concepts, and the run returned null —
+// `adapt_failed`, error state, NO CARD, over prose that was merely long. `angle` is one muted
+// sub-row (D-09) and every capped field here is display text. The trade `stripPartialProduction`
+// and `stripInvalidScript` already make applies: a trimmed card beats no card.
+// =====================================================
+
+describe('over-cap prose is clamped, not fatal', () => {
+  const LONG = 'Borrow the escalating-list structure and land the reversal on the final item. ';
+
+  /** The valid 3-concept response with per-concept mutations applied. */
+  function responseWith(mutate: (concepts: Record<string, unknown>[]) => void): string {
+    const parsed = JSON.parse(makeValidConceptsResponse()) as {
+      concepts: Record<string, unknown>[];
+    };
+    mutate(parsed.concepts);
+    return JSON.stringify(parsed);
+  }
+
+  beforeEach(() => {
+    mockCreate.mockReset();
+  });
+
+  it('keeps all three concepts when `angle` overruns its 300-char cap', async () => {
+    const { generateAdaptConcepts } = await import('../adapt');
+    const body = responseWith((c) => {
+      c[1]!.angle = LONG.repeat(6); // 468 chars — the live shape
+      c[2]!.angle = LONG.repeat(6);
+    });
+    mockCreate.mockResolvedValueOnce(makeQwenResponse(body));
+
+    const result = await generateAdaptConcepts(makeAdaptInput());
+
+    expect(result).toHaveLength(3);
+    expect(result![1]!.angle.length).toBeLessThanOrEqual(300);
+    expect(mockCreate).toHaveBeenCalledTimes(1); // no repair round-trip — nothing was WRONG
+  });
+
+  it('trims the tail: the opening survives and the cut is marked', async () => {
+    const { generateAdaptConcepts } = await import('../adapt');
+    mockCreate.mockResolvedValueOnce(
+      makeQwenResponse(responseWith((c) => { c[0]!.angle = LONG.repeat(6); })),
+    );
+
+    const result = await generateAdaptConcepts(makeAdaptInput());
+
+    expect(result![0]!.angle.startsWith('Borrow the escalating-list structure')).toBe(true);
+    expect(result![0]!.angle.endsWith('…')).toBe(true);
+    expect(result![0]!.angle).not.toMatch(/\s…$/); // no space stranded before the ellipsis
+  });
+
+  it('clamps unbroken text to the cap INCLUDING the ellipsis (no off-by-one)', async () => {
+    const { generateAdaptConcepts } = await import('../adapt');
+    mockCreate.mockResolvedValueOnce(
+      makeQwenResponse(responseWith((c) => { c[0]!.angle = 'x'.repeat(500); })), // no word boundary
+    );
+
+    const result = await generateAdaptConcepts(makeAdaptInput());
+
+    expect(result).not.toBeNull();
+    expect(result![0]!.angle).toHaveLength(300);
+  });
+
+  it('never cuts an emoji in half — the trim leaves no lone surrogate', async () => {
+    const { generateAdaptConcepts } = await import('../adapt');
+    // cap is 300 and trimToCap keeps 0..298, so an emoji straddling 298/299 is split by a
+    // naive slice. No late spaces, so the hard-cut branch is the one exercised.
+    const straddling = 'x'.repeat(298) + '\u{1F600}' + 'y'.repeat(50);
+    mockCreate.mockResolvedValueOnce(
+      makeQwenResponse(responseWith((c) => { c[0]!.angle = straddling; })),
+    );
+
+    const result = await generateAdaptConcepts(makeAdaptInput());
+
+    expect(result).not.toBeNull();
+    // A lone high surrogate (or a lone low one) renders as the replacement glyph.
+    expect(result![0]!.angle).not.toMatch(
+      /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/,
+    );
+    expect(result![0]!.angle.length).toBeLessThanOrEqual(300);
+  });
+
+  it('keeps the shoot plan when a production field overruns its cap', async () => {
+    const { generateAdaptConcepts } = await import('../adapt');
+    mockCreate.mockResolvedValueOnce(
+      makeQwenResponse(
+        responseWith((c) => {
+          for (const concept of c) {
+            concept.production = {
+              shots: 'Tight crop on the hands, cut wide on the reveal. '.repeat(20), // 980 chars
+              onScreenText: 'DAY 1',
+              setup: 'Ring light, tripod at chest height',
+              edit: 'hard cuts on the beat',
+            };
+          }
+        }),
+      ),
+    );
+
+    const result = await generateAdaptConcepts(makeAdaptInput());
+
+    expect(result).toHaveLength(3);
+    expect(result![0]!.production).toBeDefined();
+    expect(result![0]!.production!.shots.length).toBeLessThanOrEqual(600);
+  });
+
+  it('leaves prose under its cap byte-identical', async () => {
+    const { generateAdaptConcepts } = await import('../adapt');
+    mockCreate.mockResolvedValueOnce(makeQwenResponse(makeValidConceptsResponse()));
+
+    const result = await generateAdaptConcepts(makeAdaptInput());
+    const sent = JSON.parse(makeValidConceptsResponse()) as { concepts: Record<string, string>[] };
+
+    expect(result![0]!.angle).toBe(sent.concepts[0]!.angle);
+    expect(result![0]!.hook).toBe(sent.concepts[0]!.hook);
+  });
+
+  // -------------------------------------------------------------------------
+  // The other half of the same live failure: the repair attempt returned FOUR
+  // concepts, the fourth with every field undefined, and `.length(3)` took the
+  // card down with it (spec §11). A padded array is surplus, not corruption.
+  // -------------------------------------------------------------------------
+
+  it('keeps three when the model pads the array with an empty fourth concept', async () => {
+    const { generateAdaptConcepts } = await import('../adapt');
+    mockCreate.mockResolvedValueOnce(
+      makeQwenResponse(responseWith((c) => { c.push({}); })), // the live shape: all fields undefined
+    );
+
+    const result = await generateAdaptConcepts(makeAdaptInput());
+
+    expect(result).toHaveLength(3);
+    expect(mockCreate).toHaveBeenCalledTimes(1);
+    expect(result!.map((c) => c.hook)).toEqual(
+      (JSON.parse(makeValidConceptsResponse()) as { concepts: { hook: string }[] })
+        .concepts.map((c) => c.hook),
+    );
+  });
+
+  it('drops the malformed concept, not the trailing one, when a padded array carries a bad entry', async () => {
+    const { generateAdaptConcepts } = await import('../adapt');
+    mockCreate.mockResolvedValueOnce(
+      makeQwenResponse(responseWith((c) => { c.splice(1, 0, { hook: 'orphan hook' }); })),
+    );
+
+    const result = await generateAdaptConcepts(makeAdaptInput());
+    const sent = JSON.parse(makeValidConceptsResponse()) as { concepts: { hook: string }[] };
+
+    expect(result).toHaveLength(3);
+    expect(result!.map((c) => c.hook)).toEqual(sent.concepts.map((c) => c.hook)); // all 3 survive
+  });
+
+  it('still retries when the model returns FEWER than three — a short card cannot be padded', async () => {
+    const { generateAdaptConcepts } = await import('../adapt');
+    mockCreate.mockResolvedValueOnce(
+      makeQwenResponse(responseWith((c) => { c.pop(); })), // 2 concepts
+    );
+    mockCreate.mockResolvedValueOnce(makeQwenResponse(makeValidConceptsResponse()));
+
+    const result = await generateAdaptConcepts(makeAdaptInput());
+
+    expect(mockCreate).toHaveBeenCalledTimes(2);
+    expect(result).toHaveLength(3);
+  });
+});

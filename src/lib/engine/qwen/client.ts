@@ -19,11 +19,38 @@ export function getQwenClient(): OpenAI {
 
 /**
  * Fixed sampling seed for all scoring-critical LLM calls, paired with `temperature: 0`.
- * Together these make the engine reproducible: the same input yields the same score
- * run-to-run. This is the precondition for a trustworthy eval/weight-fit number — you
- * cannot separate model error from run-to-run sampling jitter if the scorer drifts
- * between runs. Greedy decoding (temp 0) is the primary lever; the seed pins any residual
- * nondeterminism (notably thinking-mode stages).
+ *
+ * ⚠️ THESE DO NOT MAKE THE ENGINE REPRODUCIBLE. This docstring used to claim they did — "the same
+ * input yields the same score run-to-run… the precondition for a trustworthy eval/weight-fit
+ * number" — and every determinism assumption downstream inherited that claim. It is false on
+ * DashScope, measured 2026-08-12 on byte-identical frozen inputs:
+ *
+ *   generateAdaptConcepts   9 runs  → 9 distinct outputs   (scripts/probe-adapt-determinism.ts)
+ *   pipeline.ts read call  24 runs  → 6 distinct score vectors, gemini_score 70-76
+ *                                                          (scripts/probe-scorer-determinism.ts)
+ *   Apollo (the real scorer) 36 runs → composite 81-84 (Δ3), behavioral 70-74 (Δ4)
+ *                                                          (scripts/probe-apollo-determinism.ts)
+ *
+ * Greedy decoding still NARROWS the distribution, which is why these stay set — but they bound
+ * nothing, and no prompt wording bounds a sampler either. Treat them as a variance reducer, never
+ * as a guarantee, and never clear a gate on this path with a single run: sample N, report a rate.
+ *
+ * 🔢 THE NUMBER THAT MATTERS FOR EVAL: `overall_score` in text mode is
+ * `behavioral·w + apollo·w`, and BOTH terms come from one Apollo call (aggregator.ts:928, :859,
+ * :879), so Apollo's Δ4 is the whole jitter. **An eval or weight-fit delta under ~4 points on the
+ * 0-100 scale is sampling noise, not signal**, and with bucket cuts at 70/30 a row within ~4
+ * points of a cut can change bucket between identical runs. The span held identical across
+ * batches of 12 and 24 runs, so it is a stable estimate rather than one still growing with n.
+ *
+ * Apollo drifts far LESS than the read, and that is a design worth copying: its dimensions are
+ * quantized to fixed band anchors (strong→85 / mid→50 / weak→20, deepseek.ts:458) and the
+ * composite is a post-parse rubric-sum rather than a model-emitted number (F26, deepseek.ts:229).
+ * A quantized score must flip a whole band to move; a free-form 0-10 factor only has to waver.
+ * When a number here needs to be stable, quantize it — do not ask the model more firmly.
+ *
+ * NOT measured: the video path (`0.5·apollo + 0.5·fold_audience`, aggregator.ts:926). Eval is
+ * text-mode only (eval-runner.ts:116-123), so this does not affect eval numbers — but it is what
+ * production scores on.
  */
 export const QWEN_SEED = 7;
 
