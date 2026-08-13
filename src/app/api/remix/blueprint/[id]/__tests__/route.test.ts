@@ -17,6 +17,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn() }));
 vi.mock("@/lib/supabase/service", () => ({ createServiceClient: vi.fn(() => ({ tag: "service" })) }));
 vi.mock("@/lib/remix/blueprint-repo", () => ({ getBlueprint: vi.fn() }));
+vi.mock("@/lib/engine/filmstrip/storage", () => ({ signAnalysisFrames: vi.fn() }));
 vi.mock("@sentry/nextjs", () => ({ captureException: vi.fn() }));
 vi.mock("@/lib/logger", () => ({
   createLogger: vi.fn(() => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() })),
@@ -25,6 +26,7 @@ vi.mock("@/lib/logger", () => ({
 import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
 import { getBlueprint } from "@/lib/remix/blueprint-repo";
+import { signAnalysisFrames } from "@/lib/engine/filmstrip/storage";
 import { GET } from "../route";
 import type { BlueprintRow } from "@/lib/remix/blueprint-repo";
 import { emptyBlueprint } from "@/lib/engine/remix/blueprint";
@@ -32,6 +34,7 @@ import { emptyBlueprint } from "@/lib/engine/remix/blueprint";
 const mockCreateClient = createClient as ReturnType<typeof vi.fn>;
 const mockGetBlueprint = getBlueprint as ReturnType<typeof vi.fn>;
 const mockCapture = Sentry.captureException as unknown as ReturnType<typeof vi.fn>;
+const mockSignFrames = signAnalysisFrames as ReturnType<typeof vi.fn>;
 
 const USER = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
 const ID = "abc123def456";
@@ -65,6 +68,9 @@ function makeRow(): BlueprintRow {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // Default: a sheet with no frames — every row written before phase 3, and the shape the
+  // renderer must keep handling forever.
+  mockSignFrames.mockResolvedValue({});
 });
 
 describe("GET /api/remix/blueprint/[id]", () => {
@@ -99,8 +105,56 @@ describe("GET /api/remix/blueprint/[id]", () => {
     const res = await call();
     expect(res.status).toBe(200);
     const body = (await res.json()) as Record<string, unknown>;
-    expect(body).toEqual({ script: row.script, blueprint: row.blueprint });
-    expect(Object.keys(body).sort()).toEqual(["blueprint", "script"]);
+    expect(body).toEqual({ script: row.script, blueprint: row.blueprint, frames: {} });
+    // The point of this assertion is `user_id` / `thread_id` NEVER crossing the wire. Phase 3
+    // widened the contract by exactly one key; it must stay an exact set, not a subset check.
+    expect(Object.keys(body).sort()).toEqual(["blueprint", "frames", "script"]);
+  });
+
+  it("serves the beat frames, keyed by beat index, signed at READ time", async () => {
+    signedIn();
+    mockGetBlueprint.mockResolvedValue(makeRow());
+    mockSignFrames.mockResolvedValue({ 0: "https://signed/0.jpg", 2: "https://signed/2.jpg" });
+
+    const res = await call();
+    const body = (await res.json()) as Record<string, unknown>;
+
+    expect(res.status).toBe(200);
+    expect(body.frames).toEqual({ 0: "https://signed/0.jpg", 2: "https://signed/2.jpg" });
+    // Signed against the BLUEPRINT id — the storage prefix phase 3 wrote under. Signing the
+    // wrong prefix returns {} and the sheet silently loses every frame.
+    expect(mockSignFrames).toHaveBeenCalledWith(ID);
+  });
+
+  it("PARTIAL frame sets are served as-is — a gap is a beat, not a failure", async () => {
+    // Extraction is capped and budgeted, and any single ffmpeg seek can miss. The route must not
+    // treat a hole as a fault and drop the whole set: the row renders a play-tile for beat 1 and
+    // real frames either side of it.
+    signedIn();
+    mockGetBlueprint.mockResolvedValue(makeRow());
+    mockSignFrames.mockResolvedValue({ 0: "https://signed/0.jpg", 2: "https://signed/2.jpg" });
+
+    const body = (await (await call()).json()) as { frames: Record<string, string> };
+    expect(Object.keys(body.frames)).toEqual(["0", "2"]);
+  });
+
+  it("a frame-signing FAILURE still serves the text sheet — never a 500", async () => {
+    // The frames are an enhancement over a sheet that was a complete product without them. A
+    // storage outage must cost the frames and nothing else; 500ing here would delete the shoot
+    // sheet from the card over a missing thumbnail.
+    signedIn();
+    const row = makeRow();
+    mockGetBlueprint.mockResolvedValue(row);
+    mockSignFrames.mockRejectedValue(new Error("storage down"));
+
+    const res = await call();
+    const body = (await res.json()) as Record<string, unknown>;
+
+    expect(res.status).toBe(200);
+    expect(body.script).toEqual(row.script);
+    expect(body.frames).toEqual({});
+    // Not worth a Sentry event: it is a logged degrade, not a fault in this route.
+    expect(mockCapture).not.toHaveBeenCalled();
   });
 
   it("404s when there is no such row for this user", async () => {

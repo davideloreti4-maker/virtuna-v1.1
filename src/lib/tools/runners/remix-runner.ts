@@ -45,6 +45,7 @@ import type { AdaptedBeat } from "@/lib/engine/remix/decode-types";
 import { buildBlueprint } from "@/lib/engine/remix/blueprint";
 import type { SourceBlueprint } from "@/lib/engine/remix/blueprint";
 import { generateAdaptConcepts } from "@/lib/engine/remix/adapt";
+import { extractBeatFrames } from "@/lib/remix/beat-frames";
 // New Qwen call system (2026-07-22): the persona SIM is GONE from the remix path (fan-out from
 // hooks-runner). The ADAPT call is the generation call — it now self-estimates each adapted hook's
 // /10 + stop-quote, and bandFromStops turns that into the projected band (SIM's 6/3 calibration
@@ -262,6 +263,10 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
     }
   }
 
+  // Declared out here because the `finally` awaits it: the beat-frame job reads `signedUrl`, so
+  // it has to be joined before `cleanup()` drops the object it reads.
+  let framesPromise: Promise<number> | null = null;
+
   // cleanup is now available — wrap all subsequent work in try/finally
   try {
     // ── STEP 2: PERCEIVE — analyzeVideoWithOmni (perception only, NOT Max scoring — D-05a) ──
@@ -296,6 +301,26 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
     // already covered here and nothing needs to construct one.
     const blueprint = buildBlueprint(structural);
     const hasBeats = blueprint.beats.length > 0;
+
+    // Minted HERE rather than at block-assembly time (where it used to live): phase 3 writes the
+    // beat frames under this id as their storage prefix, and that write starts before the adapt
+    // call. The ROUTE still owns the row write — this only needs the id to exist early.
+    const blueprintId = nanoid(12);
+
+    // ── PHASE 3: BEAT FRAMES — start now, await before cleanup ────────────────────
+    // Deliberately NOT awaited here. `signedUrl` stays alive until this function's `finally`, and
+    // the adapt call below takes ~50s — so extraction runs inside a window the creator is already
+    // waiting through, instead of adding its own. The `finally` awaits it before `cleanup()`, so
+    // the temp mp4 still cannot outlive the run (T-03-02 unchanged).
+    //
+    // `from_fixed_buckets` beats are SKIPPED: that grid describes no video at all (evenly spaced
+    // cells over a very likely invented duration), so its timestamps point at nothing. Frames cut
+    // from them would be real pixels under fabricated times — the one thing worse than no frames,
+    // and the exact reason RemixBeats refuses to print that sheet.
+    framesPromise =
+      hasBeats && blueprint.from_fixed_buckets !== true
+        ? extractBeatFrames(signedUrl, blueprintId, blueprint.beats)
+        : null;
 
     // ── STEP 4: ADAPT ────────────────────────────────────────────────────────────
     // decodeResultToAdaptInput: bridges DecodeResult → AdaptInput (luck NEVER mapped — D-01)
@@ -410,10 +435,6 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
         }
       : null;
 
-    // Minted here so the id can ride the cards this loop builds; the ROUTE writes the row (it
-    // owns the authenticated client). nanoid(12), matching analysis ids — never a uuid.
-    const blueprintId = nanoid(12);
-
     const blocks: RemixCardBlock[] = [];
     // Each surviving card's own beat script, pushed IN LOCKSTEP with `blocks` — never mapped
     // from `rated` afterwards. A card dropped by the D-14 gate below would shift every later
@@ -498,6 +519,12 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
     };
 
   } finally {
+    // Phase 3: the frame job reads `signedUrl`, so it MUST finish before the object is dropped.
+    // Awaited here rather than at its call site so it overlaps the adapt call, and `.catch` so a
+    // frame failure can never stop `cleanup()` — the derive-and-drop invariant outranks it.
+    // `extractBeatFrames` carries its own budget, so this cannot wait indefinitely.
+    if (framesPromise) await framesPromise.catch(() => {});
+
     // T-03-02: cleanup() MUST run unconditionally — temp mp4 removed regardless of outcome
     await cleanup();
   }
