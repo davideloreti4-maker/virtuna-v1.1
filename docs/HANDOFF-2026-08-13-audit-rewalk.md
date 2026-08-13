@@ -6,6 +6,49 @@ of engine work. **Read-only walk — no skill dispatched, no credits spent.**
 
 ---
 
+## 0.0 🔴🔴 READ THIS BEFORE ANY NUMBER BELOW — THE DENOMINATOR IS A TEST ACCOUNT
+
+**Added 2026-08-13, after the rest of this document was written and merged. It does not retract the
+findings; it retracts what they are ABOUT.**
+
+Every rate in this handoff is a **probe-account rate, not a production rate.** Grouped by
+`threads.user_id` over every card-shaped artefact ever persisted:
+
+```
+TEST ACCOUNT   843 artefacts   4 users   2026-06-28 → 2026-08-12
+(anonymous)      3 artefacts   1 user    2026-07-26
+REAL USER        1 artefact    1 user    2026-07-27
+```
+
+**One artefact, from one genuine creator, in the product's entire history.** Hook cards specifically:
+**567 of 583 are `e2e-test@virtuna.local`** — my own probe account, running scripted asks.
+
+So "the proof-receipt rate collapsed 80% → 4%" describes **what a test harness got**, and
+"controlled for subject" means controlled within one account replaying one scripted ask. Neither
+sentence licenses a claim about creators. Nobody's cards regressed, because nobody has cards.
+
+**What still stands, because it is a CODE fact and not a rate:**
+- `templateInstantiated` strips 81% of citations on real (hookLine, madlib) pairs — replayed over
+  the real exported guard, `scripts/replay-madlib-guard.ts`.
+- The guard is CORRECT (§0's prompt.ts argument). Unaffected — that is read off the prompt.
+- The gate chain at `hooks-runner.ts:807` and `corpusAdapted` always being false.
+
+**What does NOT stand:** any framing in which this degraded a live product, cost creators anything,
+or is urgent because users are affected. It is a latent defect in a surface with no traffic.
+
+🔑 **The method rule this bought: `group by threads.user_id` BEFORE writing the word "measured".**
+A count is not a rate, and a rate over one synthetic account is not a rate at all. Found by the
+trunk session on the remix lane (`memory/remix-has-no-real-users.md`) and generalised here — it is
+not a remix-lane fact, it is a **whole-product** fact.
+
+⚠️ Also: `messages.body` has TWO shapes (`messages.ts:94-96` — a bare array, or
+`{kcGenVersion, blocks}`). **54 assistant rows are bare arrays** and every `body->'blocks'` query in
+this document missed them. Re-run under both shapes, the hook-card numbers are **unchanged** (no
+hook cards live in bare-array bodies) — but any NEW query must use
+`case when jsonb_typeof(body)='array' then body else body->'blocks' end`.
+
+---
+
 ## 0. ▶️ THE HEADLINE
 
 🔴 **The proof-attachment rate on hook cards collapsed from ~80% to ~4%, and nothing caught it.**
