@@ -21,6 +21,7 @@ import { StrictMode } from "react";
 import { ConnectStep } from "../connect-step";
 import { CalibrationFlow } from "@/components/audience/calibration-flow";
 import type { Audience } from "@/lib/audience/audience-types";
+import { __funnelBuffer, __resetFunnel } from "@/lib/analytics/funnel-events";
 
 // The store persists to Supabase on every setter — stub the client out.
 vi.mock("@/lib/supabase/client", () => ({
@@ -255,5 +256,80 @@ describe("CalibrationFlow — autoStart", () => {
 
     expect(fetchMock).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: /calibrate audience/i })).toBeTruthy();
+  });
+});
+
+// ─── The funnel bracket ───────────────────────────────────────────────────────
+
+/**
+ * `handle_submit` is the OPENING bracket of the ~128s blocking calibration that follows this
+ * step. Its closing bracket is `calibrate_done` (welcome/page.tsx). Both were declared in
+ * FUNNEL_EVENTS when the funnel was designed and, until 2026-08-13, emitted from nowhere — so the
+ * most likely real drop-off point in the product had no denominator and no numerator.
+ *
+ * These tests exercise the REAL component and the REAL `track`/`__funnelBuffer` pair; the only
+ * thing stubbed is `fetch`, which is the I/O boundary. Nothing here asserts against a mock of our
+ * own code, because a green suite built on that proves nothing about whether the event ships.
+ */
+describe("ConnectStep — the funnel bracket", () => {
+  beforeEach(() => __resetFunnel());
+  afterEach(() => __resetFunnel());
+
+  it("emits handle_submit with the personal door once the draft row exists", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ audience: DRAFT }));
+    const onDraftReady = vi.fn();
+
+    render(<ConnectStep onDraftReady={onDraftReady} />);
+    fireEvent.change(screen.getByPlaceholderText("@yourhandle"), {
+      target: { value: "@zachking" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /continue/i }));
+
+    await waitFor(() => expect(onDraftReady).toHaveBeenCalledTimes(1));
+
+    const submits = __funnelBuffer().filter((e) => e.event === "handle_submit");
+    expect(submits).toHaveLength(1);
+    expect(submits[0]!.payload).toMatchObject({ door: "personal" });
+  });
+
+  it("labels the describe door separately — the two doors are different pipelines", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ audience: DRAFT }));
+    const onDraftReady = vi.fn();
+
+    render(<ConnectStep onDraftReady={onDraftReady} />);
+    fireEvent.click(screen.getByRole("button", { name: /describe who you're making for/i }));
+    fireEvent.change(screen.getByLabelText(/who are you making for/i), {
+      target: { value: "people learning to cook on a budget" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /continue/i }));
+
+    await waitFor(() => expect(onDraftReady).toHaveBeenCalledTimes(1));
+
+    const submits = __funnelBuffer().filter((e) => e.event === "handle_submit");
+    expect(submits).toHaveLength(1);
+    expect(submits[0]!.payload).toMatchObject({ door: "target" });
+  });
+
+  /**
+   * THE ONE THAT DEFINES THE METRIC. A submit whose POST failed never entered the wait, so
+   * counting it would inflate the denominator and understate the completion rate of the exact
+   * step being measured — the failure mode would be a calibration drop that looks worse than it
+   * is, chased instead of the real one. Hence the call sits after the `res.ok` check, not on
+   * the button press.
+   */
+  it("does NOT emit when the draft POST fails — a submit that never started is not a submit", async () => {
+    fetchMock.mockResolvedValue({ ok: false, json: async () => ({}) } as unknown as Response);
+    const onDraftReady = vi.fn();
+
+    render(<ConnectStep onDraftReady={onDraftReady} />);
+    fireEvent.change(screen.getByPlaceholderText("@yourhandle"), {
+      target: { value: "@zachking" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /continue/i }));
+
+    await waitFor(() => expect(screen.getByText(/couldn't start/i)).toBeTruthy());
+
+    expect(onDraftReady).not.toHaveBeenCalled();
+    expect(__funnelBuffer().filter((e) => e.event === "handle_submit")).toHaveLength(0);
   });
 });
