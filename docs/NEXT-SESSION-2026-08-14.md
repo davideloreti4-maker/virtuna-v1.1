@@ -20,6 +20,35 @@ sample and report a rate.
 
 ---
 
+## 0.5 🔴 THE DENOMINATOR IS A TEST ACCOUNT — this outranks §2
+
+Found last, and it reframes everything else here. Grouped by `threads.user_id` across every
+card-shaped artefact ever persisted:
+
+```
+TEST ACCOUNT   843   4 users    (567 of 583 hook cards are e2e-test@virtuna.local)
+(anonymous)      3   1 user
+REAL USER        1   1 user     ← the entire product history
+```
+
+**Every rate in this brief and in the handoff is a probe-account rate.** The ~4% proof receipt, the
+80%→4% fall, "controlled for subject" — all of it is one account replaying scripted asks. The CODE
+facts stand (the 81% strip, the guard being correct, the gate chain); the framing "a live product
+degraded" does not. Nothing regressed for creators, because creators have generated one card, once,
+on 2026-07-27.
+
+**So before doing §2's live work, ask whether the ordering is right.** Spending billed runs to raise
+a metric on a surface with no traffic may be the wrong call — and that is an owner question, not an
+engineering one. See `memory/remix-has-no-real-users.md` (the trunk session found this on the remix
+lane; it is a whole-product fact, not a remix one).
+
+⚠️ **`messages.body` has TWO shapes** (`messages.ts:94-96`): a bare array, or `{kcGenVersion, blocks}`.
+54 assistant rows are bare arrays. Every query must use
+`case when jsonb_typeof(body)='array' then body else body->'blocks' end`, and every rate must
+`group by threads.user_id` before the word "measured" is used.
+
+---
+
 ## 1. What this session did
 
 Two PRs merged. **Read `docs/HANDOFF-2026-08-13-audit-rewalk.md` before touching grounding.**
