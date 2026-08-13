@@ -34,6 +34,10 @@ import type {
 import type { ComposedCardBlock, RecipeId } from "@/lib/tools/composed-card-schema";
 import type { HookProof } from "@/lib/tools/proof-schema";
 import type { StageState } from "@/components/thread/progress-checklist";
+// Typed, never inferred — this is what makes tsc fail the day SourceBlueprint grows a required
+// field, which is how `from_fixed_buckets` caught three fixtures that 710 green tests sailed past.
+import type { SourceBlueprint } from "@/lib/engine/remix/blueprint";
+import type { AdaptedBeat } from "@/lib/engine/remix/decode-types";
 
 const IMG = (seed: string, w: number, h: number) =>
   `https://picsum.photos/seed/${seed}/${w}/${h}`;
@@ -359,6 +363,91 @@ export const REMIX_BLOCKS: RemixCardBlock[] = [
     },
   },
 ];
+
+/**
+ * THE SHOOT SHEET — the beat-by-beat rows the remix card mounts (`RemixBeats`).
+ *
+ * Why this fixture exists at all: `RemixBeats` fetches its payload from
+ * `/api/remix/blueprint/[id]` by `blueprintId`, and the remix block above has none — so from the
+ * day the sheet shipped, this gallery rendered the card exactly as it looked BEFORE the lane that
+ * built it, with nothing indicating a section was missing. Measured live 2026-08-12. The gallery
+ * exists to stop surfaces drifting unseen; the sheet drifted unseen inside the gallery.
+ *
+ * Shaped from a REAL generated sheet (`scripts/show-shoot-sheet.ts`), not invented: 4 beats to
+ * match this card's own `sourceDecode.structure` ("tight 4-beat spine"), uneven real-looking
+ * durations, one beat the source left silent, and one WEAK beat carrying its repair note — the
+ * states that actually render differently.
+ */
+export const REMIX_BEATS_PREVIEW: {
+  script: AdaptedBeat[][];
+  blueprint: SourceBlueprint;
+} = {
+  blueprint: {
+    duration_s: 24,
+    words_per_second: 3.4,
+    has_speech: true,
+    from_fixed_buckets: false,
+    beats: [
+      {
+        index: 0, t_start: 0, t_end: 3.2, duration_s: 3.2, spoken_span_s: 3.2, role: "hook",
+        spoken: "I fired my entire marketing agency on a Tuesday.",
+        on_screen_text: "I FIRED THEM", visual_event: "tight crop, talking head, no cut",
+        audio_event: "cold open, no music", cuts: 1, weakness: null,
+      },
+      {
+        index: 1, t_start: 3.2, t_end: 9.6, duration_s: 6.4, spoken_span_s: 6.4, role: "setup",
+        spoken: "Eleven grand a month. Three people. A slide deck every Friday.",
+        on_screen_text: "£11k / month", visual_event: "screen-record of the invoice scrolling",
+        audio_event: "keyboard", cuts: 2,
+        weakness: { factor: "Completion Pull", score: 4, tip: "the middle sags — cut a beat earlier" },
+      },
+      {
+        index: 2, t_start: 9.6, t_end: 17.1, duration_s: 7.5, spoken_span_s: null, role: "turn",
+        spoken: null,
+        on_screen_text: "3 prompts. Same output.", visual_event: "screen-record, three prompts firing in sequence",
+        audio_event: "silence", cuts: 4, weakness: null,
+      },
+      {
+        index: 3, t_start: 17.1, t_end: 24, duration_s: 6.9, spoken_span_s: 6.9, role: "payoff",
+        spoken: "The deck was the product. That was the whole business.",
+        on_screen_text: "", visual_event: "back to talking head, wider, leaning back",
+        audio_event: "room tone", cuts: 1, weakness: null,
+      },
+    ],
+  },
+  script: [
+    [
+      {
+        index: 0,
+        spoken: "I fired my whole marketing team and replaced them with three prompts.",
+        on_screen_text: "I FIRED THEM",
+        shot: "Tight crop, you to camera, phone at eye level. One take, no cut — the confession needs to feel unedited.",
+      },
+      {
+        index: 1,
+        spoken: "Eleven grand a month for a deck nobody read.",
+        on_screen_text: "£11k / month",
+        shot: "Screen-record the real invoice, scroll slowly. Blur the agency name, keep the number sharp.",
+        repair: "Source sags here — land the number 1.5s earlier and hold it on screen instead of narrating it.",
+      },
+      {
+        index: 2,
+        spoken: "",
+        on_screen_text: "3 prompts. Same output.",
+        // "three cuts", matching what the row prints: cutsSuffix counts the cuts INSIDE the beat
+        // (cells − 1), so `cuts: 4` renders "3 cuts". A fixture that contradicts its own header is
+        // the exact drift this gallery exists to catch.
+        shot: "Screen-record the three prompts running back to back. Cut on each result appearing — three cuts, no voice.",
+      },
+      {
+        index: 3,
+        spoken: "The deck was the product. That was the whole business.",
+        on_screen_text: "",
+        shot: "Back to camera, wider than the hook, lean back. Let the last line sit before you cut.",
+      },
+    ],
+  ],
+};
 
 export const CHAT_BLOCKS: MarkdownBlock[] = [
   {
@@ -1246,12 +1335,17 @@ export const COMPOSED_CARD_FIXTURES: ComposedCardBlock[] = [
       },
       why: "Teardowns are the only shape that has cleared your usual views twice running, and the failure story is the one you already have footage for.",
       body: [
+        // stat_row now names a ROW and a METRIC; the server supplies the figure (owner ruling
+        // 2026-08-12). The numbers below are `COMPOSED_PROOF_CORPORATE_BRO`'s own, not written here.
+        // ⚠️ This fixture used to read `{value:"4",label:"Posts"} · {value:"42s"} · {"Tue / Thu"}` —
+        // PLAN facts, not measurements, and the shape can no longer express them. That was the cost
+        // of the ruling and it is deliberate; those three moved to `label_values` below, which is
+        // where a spec table belongs anyway.
         {
           kind: "stat_row",
           stats: [
-            { value: "4", label: "Posts" },
-            { value: "42s", label: "Median runtime" },
-            { value: "Tue / Thu", label: "Post days" },
+            { metric: "views", label: "Best teardown", receiptRef: "td-8f21" },
+            { metric: "multiplier", label: "vs their usual", receiptRef: "td-8f21" },
           ],
         },
         {
@@ -1264,6 +1358,9 @@ export const COMPOSED_CARD_FIXTURES: ComposedCardBlock[] = [
         {
           kind: "label_values",
           rows: [
+            { label: "Posts", value: "4" },
+            { label: "Post days", value: "Tue / Thu" },
+            { label: "Runtime", value: "42s median" },
             { label: "Format", value: "Screen record + voiceover" },
             { label: "Aspect", value: "9:16, captions burned in" },
             { label: "Hook", value: "Cost first, topic second" },
@@ -1272,6 +1369,7 @@ export const COMPOSED_CARD_FIXTURES: ComposedCardBlock[] = [
         { kind: "chips", items: ["Onboarding", "Churn", "Pricing", "Hiring"] },
         { kind: "note", text: "If a fifth idea turns up it goes in next week's brief. Four is the point." },
       ],
+      receipts: { "td-8f21": COMPOSED_PROOF_CORPORATE_BRO },
       actions: ["account", "explore"],
     },
   },

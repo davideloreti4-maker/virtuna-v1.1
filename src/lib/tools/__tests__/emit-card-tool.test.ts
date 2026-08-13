@@ -236,3 +236,62 @@ describe("EMIT_CARD_TOOL", () => {
     expect(enumerated).not.toContain("actions");
   });
 });
+
+/**
+ * Owner ruling 2026-08-12: a `teardown` whose receipt refs ALL fail to resolve must not render.
+ *
+ * `requiredSlots` checks a slot is PRESENT, never that it RESOLVES, so a teardown could reach the
+ * thread as a model-written claim about a specific video with the video silently absent — an
+ * unfalsifiable assertion in card clothing. The prose answer still stands, so refusing the card
+ * loses nothing but the false receipt.
+ *
+ * Scoped to `teardown` on purpose: it is the one recipe that REQUIRES proof_strip, i.e. the one
+ * whose whole premise is "here is the video and here is why it worked".
+ */
+describe("handleEmitCard — a teardown must actually have its receipt", () => {
+  const teardown = (refId: string) => ({
+    cards: [
+      {
+        recipe: "teardown",
+        deliverable: { kind: "claim", text: "The confession opening is what carried this." },
+        body: [
+          { kind: "proof_strip", receiptRefs: [refId] },
+          { kind: "beats", items: [
+            { label: "Hook", text: "Names the loss out loud." },
+            { label: "Turn", text: "Shows the receipt on screen." },
+          ] },
+        ],
+      },
+    ],
+  });
+
+  it("renders when the row resolves", async () => {
+    const r = await handleEmitCard(teardown("row-1"), {
+      materialize: async () => new Map([["row-1", ROW_1]]),
+    });
+    expect(r.blocks.length).toBe(1);
+  });
+
+  it("renders NO card when every ref is a ghost", async () => {
+    const r = await handleEmitCard(teardown("ghost"), { materialize: noReceipts });
+    expect(r.blocks.length).toBe(0);
+  });
+
+  it("tells the model why, so its one repair attempt is not a guess", async () => {
+    const r = await handleEmitCard(teardown("ghost"), { materialize: noReceipts });
+    expect(r.error).toMatch(/teardown/i);
+    expect(r.error).toMatch(/resolve|row id/i);
+  });
+
+  it("leaves other recipes alone — an unresolved proof_strip elsewhere still renders", async () => {
+    // proof_strip is legal everywhere and OPTIONAL everywhere but teardown. A brief that offers
+    // evidence and loses it is still a legitimate brief.
+    const r = await handleEmitCard(
+      { cards: [{ recipe: "brief", deliverable: { kind: "claim", text: "Ship it ugly." },
+                  body: [{ kind: "proof_strip", receiptRefs: ["ghost"] },
+                         { kind: "bullets", items: ["Post before it is ready."] }] }] },
+      { materialize: noReceipts },
+    );
+    expect(r.blocks.length).toBe(1);
+  });
+});

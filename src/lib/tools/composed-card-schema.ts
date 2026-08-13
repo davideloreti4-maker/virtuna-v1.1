@@ -51,9 +51,30 @@ export const SlotSchema = z.discriminatedUnion("kind", [
     kind: z.literal("beats"),
     items: z.array(z.object({ label: z.string().min(1), text: z.string().min(1) })).min(2).max(6),
   }),
+  /**
+   * stat_row — headline numbers, and the ONE slot that used to let the model author them.
+   *
+   * It carried `{value,label}` strings the model wrote, which is why it was deliberately excluded
+   * when `proof_strip` was widened to every recipe. That kept the hole out of seven recipes and
+   * left it open in `brief`. Owner ruling 2026-08-12: close it the way D7 closes every other
+   * number on a card — **the model names a ROW and WHICH metric; the server supplies the figure.**
+   *
+   * `label` stays model-written on purpose: it is prose framing ("what this beat"), not a
+   * measurement, and the same split already governs `request_input` ("the model only chooses WHICH
+   * action"). A stat whose `receiptRef` does not resolve renders nothing at all.
+   */
   z.object({
     kind: z.literal("stat_row"),
-    stats: z.array(z.object({ value: z.string().min(1), label: z.string().min(1) })).min(1).max(4),
+    stats: z
+      .array(
+        z.object({
+          metric: z.enum(["multiplier", "views"]),
+          label: z.string().min(1),
+          receiptRef: z.string().min(1),
+        }),
+      )
+      .min(1)
+      .max(4),
   }),
   z.object({ kind: z.literal("bullets"), items: z.array(z.string().min(1)).min(1).max(6) }),
   z.object({ kind: z.literal("quote"), text: z.string().min(1), attribution: z.string().optional() }),
@@ -184,9 +205,13 @@ export const RECIPES: Record<RecipeId, Recipe> = {
  * constrains SHAPE; evidence is not a shape, and a grounded answer that may not show what grounded
  * it is the product arguing with itself.
  *
- * `stat_row` was deliberately NOT widened with it. It carries `{value,label}` strings the MODEL
- * writes, so spreading it is spreading model-authored numbers — the exact thing D7/D9 remove. The
- * model asked for `stat_row` in `comparison` and is still refused.
+ * `stat_row` was deliberately NOT widened with it, because it then carried `{value,label}` strings
+ * the MODEL wrote — spreading it would have spread model-authored numbers, the exact thing D7/D9
+ * remove. **That reason expired on 2026-08-12**: the owner ruled the hole shut and `stat_row` now
+ * takes `{metric,label,receiptRef}`, so its figures are server-materialized exactly like a
+ * proof_strip's. The restriction STAYS, but it is now a shape decision, not an honesty one — a
+ * `comparison` card argues in columns, and a stat row above them competes with the argument. If a
+ * future spec wants it widened, there is no longer an honesty argument against it.
  */
 
 /**

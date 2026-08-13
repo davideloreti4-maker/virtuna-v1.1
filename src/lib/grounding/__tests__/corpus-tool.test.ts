@@ -526,3 +526,52 @@ describe("executeCorpusSearch [row ids]", () => {
     expect("id" in payload.results[0]).toBe(false);
   });
 });
+
+/**
+ * Owner ruling 2026-08-12: search_corpus must not hand the model a sub-floor multiplier.
+ *
+ * The tool's own description says the library "measurably outperformed", and the rows it returned
+ * carried figures like 1.3× and 1.8×. §12's LOCKED bar is ≥3×, and 108 of 396 basis-known rows sit
+ * under it — the lowest at 0.4×, i.e. the video did WORSE than that creator's usual. Printed beside
+ * a claim of outperformance, "0.8× vs their usual views" is a boast that refutes itself.
+ *
+ * The card layer already refuses to print these (`bandedMultiplier`), which is what made it a
+ * DIVERGENCE rather than a cosmetic issue: the model could state a number in prose that the receipt
+ * next to it did not show. The floor now applies where the number is handed over, not only where it
+ * is rendered. The ROW still travels — it teaches as a curated exemplar — it just carries no figure.
+ */
+describe("executeCorpusSearch — the ≥3× floor reaches the model, not just the card", () => {
+  async function multipliersFor(values: Array<number | null>) {
+    const retrieve = vi.fn(async () => ({
+      examples: values.map((m, i) =>
+        mkExample({ teardownId: `t${i}`, multiplier: m, baselineLabel: m === null ? null : "vs their usual views" }),
+      ),
+      enough: true,
+      stats: {},
+    })) as never;
+    const out = await executeCorpusSearch({ query: "hooks" }, "tiktok", 10, retrieve);
+    return (JSON.parse(out.content) as { results?: Array<{ multiplier: string | null }> }).results ?? [];
+  }
+
+  it("drops a sub-floor figure while keeping the row", async () => {
+    const rows = await multipliersFor([1.3]);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.multiplier).toBeNull();
+  });
+
+  it("drops a figure that refutes the claim outright (under 1×)", async () => {
+    const rows = await multipliersFor([0.4]);
+    expect(rows[0]!.multiplier).toBeNull();
+  });
+
+  it("keeps a figure that clears the bar, with its basis", async () => {
+    const rows = await multipliersFor([5.7]);
+    expect(rows[0]!.multiplier).toMatch(/5\.7×/);
+    expect(rows[0]!.multiplier).toMatch(/vs their usual views/);
+  });
+
+  it("clamps an out-of-band figure to the ceiling, agreeing with the card", async () => {
+    const rows = await multipliersFor([20154]);
+    expect(rows[0]!.multiplier).toMatch(/^100×/);
+  });
+});

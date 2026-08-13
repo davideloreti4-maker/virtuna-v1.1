@@ -46,7 +46,10 @@ const SLOT_DOC: Record<SlotKind, string> = {
   proof_strip:
     "real outlier videos that prove this, as tiles (needs `receiptRefs`: teardown ROW IDS from search_corpus).",
   beats: "the structural moments of a format (needs `items` of {label,text}, 2-6).",
-  stat_row: "1-4 headline numbers (needs `stats` of {value,label}).",
+  stat_row:
+    "1-4 headline numbers drawn from real rows (needs `stats` of {metric,label,receiptRef}; " +
+    "`metric` is \"multiplier\" or \"views\", `receiptRef` is a teardown ROW ID from search_corpus). " +
+    "You choose the row and which number to show — never write the number yourself.",
   bullets: "short unordered points (needs `items`, 1-6 strings).",
   quote: "one verbatim line (needs `text`; optional `attribution`).",
   label_values: "a compact spec table (needs `rows` of {label,value}).",
@@ -247,7 +250,11 @@ function isRecipeId(value: string | undefined): value is RecipeId {
 function receiptRefsOf(block: ComposedCardBlock): string[] {
   const slots: Slot[] = [...block.props.body, ...(block.props.disclosure ?? [])];
   const fromStrips = slots.flatMap((slot) => (slot.kind === "proof_strip" ? slot.receiptRefs : []));
-  return block.props.receiptRef ? [block.props.receiptRef, ...fromStrips] : fromStrips;
+  // stat_row's figures are server-materialized too (owner ruling 2026-08-12) — its refs must reach
+  // the same round-trip, or every stat would resolve to nothing and render blank.
+  const fromStats = slots.flatMap((slot) => (slot.kind === "stat_row" ? slot.stats.map((s) => s.receiptRef) : []));
+  const all = [...fromStrips, ...fromStats];
+  return block.props.receiptRef ? [block.props.receiptRef, ...all] : all;
 }
 
 /**
@@ -324,6 +331,36 @@ export async function handleEmitCard(
       // that reads, to every later consumer, as "we looked and found none" rather than "no refs".
       if (Object.keys(receipts).length > 0) block.props.receipts = receipts;
     }
+  }
+
+  /**
+   * A `teardown` must actually HAVE its receipt (owner ruling 2026-08-12).
+   *
+   * `requiredSlots` checks a slot is PRESENT, never that it RESOLVES. Without this, a teardown
+   * whose refs all miss reaches the thread as the model's claim about a specific video — "the
+   * confession opening is what carried this" — with the video and the numbers silently absent.
+   * That is an unfalsifiable assertion wearing the card that means "here is the proof".
+   *
+   * Scoped to `teardown`: it is the only recipe that REQUIRES proof_strip. Everywhere else
+   * proof_strip is optional, so a card that offered evidence and lost it is still a legitimate
+   * card and keeps rendering (spec §5's "an id that does not resolve renders nothing").
+   *
+   * Returning an error rather than silently dropping: the caller relays it and the model retries
+   * once or answers in prose. The prose answer was never at risk, so refusing the card costs the
+   * turn nothing but the false receipt.
+   */
+  if (recipe === "teardown") {
+    const withProof = blocks.filter((b) => Object.keys(b.props.receipts ?? {}).length > 0);
+    if (withProof.length === 0) {
+      return {
+        blocks: [],
+        error:
+          "none of the `receiptRef` row ids in that teardown resolved to a real corpus row, so the " +
+          "card would claim proof it cannot show. Use a teardown ROW ID returned by search_corpus, " +
+          "or answer in prose instead.",
+      };
+    }
+    return { blocks: withProof };
   }
 
   return { blocks };
