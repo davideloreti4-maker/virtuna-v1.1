@@ -33,6 +33,7 @@ import { CONCEPT_V8_ENABLED } from "@/lib/flags/concept-v8";
 import { LaneQuestion } from "@/components/onboarding/lane-question";
 import { LaneReveal } from "@/components/onboarding/lane-reveal";
 import type { LaneShelf } from "@/lib/surfaces/lane-drops";
+import { track } from "@/lib/analytics/funnel-events";
 import { cn } from "@/lib/utils";
 
 /** The two real steps. The indicator counts these — it is progress, not decoration. */
@@ -175,8 +176,12 @@ export default function WelcomePage() {
           // Adopting an interrupted attempt has to select it too, for the same reason the
           // normal exit does — this path is how a user who reloaded mid-scrape finishes, and
           // landing them on General would waste the scrape they already paid for.
-          await selectAudience(calibrated);
-          await store.completeOnboarding(); // → the redirect effect lands them on /home
+          //
+          // Routed through `finishOnboarding` rather than repeating its two lines: they were
+          // already byte-identical, and this is a REAL completion — a user who sat out the wait
+          // across a reload — so it must reach `calibrate_done` like every other exit. Duplicated
+          // here it would have been the one finish the funnel could not see.
+          await finishOnboarding(calibrated); // → the redirect effect lands them on /home
           return;
         }
 
@@ -241,7 +246,25 @@ export default function WelcomePage() {
     }
   }
 
+  /**
+   * `calibrate_done` — the closing bracket of the ~128s wait `handle_submit` opens
+   * (connect-step.tsx). Declared in FUNNEL_EVENTS since the funnel was designed and, until now,
+   * emitted from nowhere, which left the single most likely real drop-off point in the product
+   * completely unmeasured.
+   *
+   * ⚠️ It is emitted HERE rather than on `CalibrationFlow`'s `onDone`, and that placement is the
+   * whole point. Every exit from calibration routes through this function — success, the
+   * thin-data fallback, and a failed scrape — because middleware would otherwise trap an
+   * uncalibrated account on /welcome forever (see the note above `selectAudience`). Instrumenting
+   * only the success path would produce a completion rate of exactly 100% while people were being
+   * dropped, which is worse than no metric: it would read as proof the wait is fine.
+   *
+   * So the event always fires and `calibrated` carries the outcome. A run that produced no
+   * audience is a `calibrate_done` with `calibrated: false` — an honest completion of a step that
+   * did not deliver, which is the number worth watching.
+   */
   async function finishOnboarding(calibrated?: Audience) {
+    track("calibrate_done", { calibrated: !!calibrated });
     await selectAudience(calibrated);
     await store.completeOnboarding();
   }
