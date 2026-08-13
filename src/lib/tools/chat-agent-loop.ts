@@ -37,6 +37,7 @@ import {
 import { describeRunOutput, isChatCardsOnScreenEnabled } from "@/lib/tools/on-screen";
 import { SEARCH_CORPUS_TOOL, executeCorpusSearch } from "@/lib/grounding/corpus-tool";
 import { EMIT_CARD_TOOL, handleEmitCard } from "@/lib/tools/emit-card-tool";
+import { createProseCallGuard } from "@/lib/tools/prose-call";
 import { createSearchGovernor } from "@/lib/grounding/search-budget";
 import type { RetrievedExample } from "@/lib/grounding/types";
 import { retrieveCachedExamples } from "@/lib/grounding/retrieve";
@@ -258,6 +259,23 @@ export interface ChatAgentStreamInput {
    * The gate still runs: a pinned call is admitted, priced and billed exactly like a chosen one.
    */
   forceSkill?: string;
+  /**
+   * THE PROSE-CALL PIN (2026-08-13, flagged OFF) — `guessSkill`'s guess, to pin ONE more round with
+   * if the model writes a tool call as creator-visible text instead of making it.
+   *
+   * The route owns the scoping (flag, typed asks only, never a sealed visitor) exactly as it does
+   * for the guess pin, so what arrives here is already "the skill to pin, if the trigger fires".
+   * Null/absent leaves the turn byte-identical.
+   *
+   * 🔴 THIS IS THE GUESS, NOT THE NAME THE MODEL WROTE, and the distinction is load-bearing: in 3 of
+   * the 8 recorded fires the model emitted `generate_ideas(...)` for an ask that says *hooks* — the
+   * model that failed to express the call also picked the wrong tool, so pinning to its own name
+   * produces the wrong artefact 38% of the time. The emitted call is the TRIGGER; this is the TARGET.
+   *
+   * See prose-call.ts for the measurement and for why this trigger is safe where the one
+   * `guess-pin.ts` rejects is not.
+   */
+  proseCallPin?: string;
   /**
    * Stage B (B1): the exact line a card CTA was pressed on — the clicked hook a script must
    * open from, the idea a hooks run develops. Rides as DATA next to `forceSkill` (same scope:
@@ -1050,7 +1068,30 @@ export async function runChatAgentStream(
         flush: () => "",
       };
 
+  /**
+   * The prose-call pin (see prose-call.ts). `pinnedTool` above is the turn's INCOMING pin — a chip,
+   * a repeat ask, or the guess pin — and owns round 1. This is a pin the loop may set on ITSELF,
+   * for one later round, after watching the model write a call instead of making one.
+   *
+   * Resolved to a bound tool name the same way `pinnedTool` is, so an unknown or unbound key
+   * silently leaves the turn alone rather than putting a name in `tool_choice` that is not in
+   * `tools` (which the API would reject).
+   */
+  const proseCallTool =
+    input.proseCallPin && !pinnedTool
+      ? (skills.find((s) => s.skillKey === input.proseCallPin)?.name ?? null)
+      : null;
+  /** The pin for the NEXT round, set by the prose-call branch below. Round 1 is `pinnedTool`'s. */
+  let pinNextRound: string | null = null;
+  /** At most once per turn — this is what makes a pin/prose-call loop impossible. */
+  let alreadyProsePinned = false;
+
   for (let round = 1; round <= maxRounds; round++) {
+    // CONSUMED, not merely read: a pin left standing would force the same tool every remaining
+    // round, which is the exact failure `forceSkill`'s "round 1 ONLY" rule exists to prevent.
+    const roundPin = pinNextRound;
+    pinNextRound = null;
+
     // Once the budget is gone the tool is WITHDRAWN, not merely refused. Naming a tool the loop
     // will not service is what invited the search loop in the first place — the same rule the
     // directive already follows for unbound skills.
@@ -1070,10 +1111,15 @@ export async function runChatAgentStream(
       tools: roundTools,
       // Round 1 only — see `forceSkill`. After the tool has returned, the model needs `auto` back to
       // write its closing line instead of calling the same tool again.
+      //
+      // …OR the round the prose-call pin asked for (`pinNextRound`, consumed below). That one is not
+      // round 1 by construction: it is set only after a round produced no tool call.
       tool_choice:
         pinnedTool && round === 1
           ? { type: "function", function: { name: pinnedTool } }
-          : "auto",
+          : roundPin
+            ? { type: "function", function: { name: roundPin } }
+            : "auto",
       temperature: 0.3,
       seed,
       max_tokens: composing ? COMPOSING_MAX_TOKENS : 2000,
@@ -1098,6 +1144,16 @@ export async function runChatAgentStream(
     // cap (F-1): tokens beyond it are neither streamed nor persisted.
     const textCap = skillRuns.some((r) => r.blocks.length > 0) ? POST_TOOL_TEXT_CAP : Infinity;
     let roundText = "";
+    /**
+     * Withholds a malformed tool call so the creator never reads it (prose-call.ts). Created only
+     * when the pin is actually armed, so with the flag off `sink` IS `guard.push` and the stream is
+     * byte-identical — no wrapper, no buffering, nothing to drift.
+     *
+     * It sits OUTSIDE the artefact guard: this decides whether text exists at all, that one redacts
+     * what survives. Per round, because its decision is made when the round's calls are known.
+     */
+    const proseGuard = proseCallTool && !alreadyProsePinned ? createProseCallGuard(guard.push) : null;
+    const sink = proseGuard ? proseGuard.push : guard.push;
     const toolAcc = new Map<number, { id?: string; name?: string; args: string }>();
     for await (const chunk of stream) {
       const delta = chunk.choices?.[0]?.delta;
@@ -1106,7 +1162,7 @@ export async function runChatAgentStream(
         const room = textCap - roundText.length;
         const slice = delta.content.length > room ? delta.content.slice(0, room) : delta.content;
         roundText += slice;
-        guard.push(slice);
+        sink(slice);
       }
       if (delta.tool_calls) {
         for (const tc of delta.tool_calls) {
@@ -1119,14 +1175,32 @@ export async function runChatAgentStream(
         }
       }
     }
-    fullText += roundText;
-
     // Resolve the round's calls (ids stable so the assistant message + tool results line up).
     const calls = [...toolAcc.values()]
       .filter((c) => c.name)
       .map((c, i) => ({ id: c.id ?? `call_${round}_${i}`, name: c.name as string, args: c.args }));
 
-    const assistantMsg: Record<string, unknown> = { role: "assistant", content: roundText || null };
+    /**
+     * The prose-call trigger: the model wrote a call instead of making one. Decided HERE because it
+     * needs the round's calls — a turn that dispatched normally must never fire, which is the
+     * property that gives this trigger its perfect precision over 107 runs (0 fires on a
+     * dispatching run). `proseGuard` is non-null only when the pin is armed and unspent.
+     */
+    const proseCallPinFires =
+      proseGuard !== null && calls.length === 0 && proseGuard.sawProseCall();
+
+    /**
+     * What the creator actually SAW — the guard has dropped the malformed call when the pin fires
+     * and released it verbatim when it does not. It is therefore also what goes into the model's
+     * own message history and what gets persisted, the same rule the artefact guard follows.
+     *
+     * Stripping it from the history is deliberate: the pinned round forces the call regardless, and
+     * leaving a malformed call in the transcript is precedent for writing another one.
+     */
+    const shownText = proseGuard ? proseGuard.close(proseCallPinFires) : roundText;
+    fullText += shownText;
+
+    const assistantMsg: Record<string, unknown> = { role: "assistant", content: shownText || null };
     if (calls.length > 0) {
       assistantMsg.tool_calls = calls.map((c) => ({
         id: c.id,
@@ -1136,8 +1210,18 @@ export async function runChatAgentStream(
     }
     messages.push(assistantMsg);
 
-    // No tool call → the model answered; the loop is done.
-    if (calls.length === 0) break;
+    // No tool call → the model answered; the loop is done…
+    if (calls.length === 0) {
+      // …UNLESS it wrote the call instead of making it. Then take one more round with `tool_choice`
+      // pinned, which cannot be malformed. Not a retry: no second stream, no second billing path —
+      // the round machinery, the gate and the guard are the ones already running.
+      if (proseCallPinFires && proseCallTool) {
+        pinNextRound = proseCallTool;
+        alreadyProsePinned = true;
+        continue;
+      }
+      break;
+    }
 
     // Grounding searches run FIRST and CONCURRENTLY: they are read-only, side-effect-free, and
     // independent of each other, and the model emits them in batches (the streaming spike observed

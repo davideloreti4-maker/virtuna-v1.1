@@ -41,6 +41,7 @@ import { guessSkill } from "@/lib/tools/pre-router";
 import { detectRepeatAsk, isRepeatAskPinEnabled } from "@/lib/tools/repeat-ask";
 import { detectGuessPin, isGuessPinEnabled } from "@/lib/tools/guess-pin";
 import { addCountHint, isCountHintEnabled } from "@/lib/tools/count-hint";
+import { isProseCallPinEnabled } from "@/lib/tools/prose-call";
 import { billUsage, creditGate, quotaRefusalBody, quotaRefusalMessage } from "@/lib/billing/credit-gate";
 import { creditCost, type BillableAction } from "@/lib/pricing";
 import type { QuotaUser } from "@/lib/billing/quota";
@@ -521,6 +522,20 @@ export async function POST(request: Request): Promise<Response> {
           // digest and the app must never quote back words the creator did not type.
           const bundleAsk = isCountHintEnabled() && !isSealedVisitor(user) ? addCountHint(rawAsk) : rawAsk;
 
+          // ── (8a-0e) THE PROSE-CALL PIN (2026-08-13, flagged OFF) ──────────────────────────
+          // The count above closed the DISPOSITION half of the dispatch defect. What is left is the
+          // model deciding to run and failing to EXPRESS the call, emitting it as creator-visible
+          // text — `generate_hooks(topic="…", count=5)`. Once in 45 runs before the count; 6 of 26
+          // after, because the defect that masked it is gone.
+          //
+          // Same scoping as the two pins above (typed asks only, never a sealed visitor). This is
+          // only the TARGET — the loop fires it just for a round that produced no tool call while
+          // writing one, which is why it never fires on a turn that dispatched (0 of 8 over 107
+          // runs). 🔴 The guess, NOT the name the model wrote: 3 of the 8 fires named the wrong
+          // tool. See prose-call.ts.
+          const proseCallPinSkill =
+            isProseCallPinEnabled() && !rawSkill && !isSealedVisitor(user) ? guessSkill(rawAsk) : null;
+
           const userMessage = assembleBundle(
             { ask: bundleAsk, platform, mode: "chat", modeLabel: "copilot" },
             profileRow,
@@ -552,6 +567,10 @@ export async function POST(request: Request): Promise<Response> {
                   : guessPinSkill
                     ? { forceSkill: guessPinSkill }
                     : {}),
+              // The prose-call pin (8a-0e). Deliberately NOT part of the chain above: those all pin
+              // round 1 up front, this one arms a LATER round and only if the model writes a call
+              // instead of making one. The loop ignores it whenever a `forceSkill` above won.
+              ...(proseCallPinSkill ? { proseCallPin: proseCallPinSkill } : {}),
               // Stage B data riders (see (2d)) — round-1 pinned call only, inside the loop.
               ...(rawAnchor ? { forceAnchor: rawAnchor } : {}),
               ...(rawCards ? { forceCards: rawCards } : {}),
