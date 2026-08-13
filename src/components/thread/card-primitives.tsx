@@ -160,7 +160,9 @@ export function CopyAffordance({
       type="button"
       onClick={handleCopy}
       aria-label={ariaLabel}
-      className={`inline-flex shrink-0 items-center gap-1 text-label font-medium text-foreground-muted transition-colors hover:text-foreground-secondary${className ? ` ${className}` : ''}`}
+      // `tap-44`: measured 47×18 on a phone (F-19). The box cannot grow — it is baseline-aligned
+      // into the hero row — so the utility grows the hit area only, on coarse pointers.
+      className={`tap-44 inline-flex shrink-0 items-center gap-1 text-label font-medium text-foreground-muted transition-colors hover:text-foreground-secondary${className ? ` ${className}` : ''}`}
     >
       {copied ? (
         <>
@@ -214,8 +216,12 @@ export function CardPrimaryAction({
   'data-testid'?: string;
   title?: string;
 }) {
+  // `pointer-coarse:min-h-11` rather than `.tap-44`: this button is a FILLED surface, so on a
+  // phone the drawn box should be the target — an invisible halo around a 38px button that looks
+  // tappable is the kind of near-miss that reads as "the app ignored me". 44px is the floor; it
+  // only ever grows the box (measured 144×38 and 181×38 on the walked thread), and only on touch.
   const cls =
-    'inline-flex items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.05] px-3.5 py-2 text-body font-semibold text-foreground transition-colors hover:border-white/[0.12] hover:bg-white/[0.09] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/15 disabled:cursor-default disabled:opacity-40 disabled:hover:border-white/[0.08] disabled:hover:bg-white/[0.05]' +
+    'inline-flex items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.05] px-3.5 py-2 pointer-coarse:min-h-11 text-body font-semibold text-foreground transition-colors hover:border-white/[0.12] hover:bg-white/[0.09] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/15 disabled:cursor-default disabled:opacity-40 disabled:hover:border-white/[0.08] disabled:hover:bg-white/[0.05]' +
     (className ? ` ${className}` : '');
 
   if (href) {

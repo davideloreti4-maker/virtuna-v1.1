@@ -110,10 +110,27 @@ describe('HomePageLayout — welcome hero visibility', () => {
     expect(screen.getByText(/simulate your audience/i)).toBeInTheDocument();
   });
 
+  /**
+   * ⚠️ ASSERT ON THE GREETING, NOT ON "any h1" (2026-08-14).
+   *
+   * This used to read `queryByRole('heading', { level: 1 })).toBeNull()`, using the absence of
+   * ANY level-1 heading as a proxy for the absence of the greeting. That proxy broke the moment
+   * the thread grew a document heading of its own — an `sr-only` "Conversation" `h1` added for
+   * F-14, which is not a greeting and is exactly what a thread SHOULD have — and the test failed
+   * on a change that fixed the thing it cares about nothing about.
+   *
+   * It is the same trap the flag test three cases below already names: assert on the greeting's
+   * own words, or a regression that dropped both greetings passes. So this now names both halves
+   * of the legacy hero — the time-of-day headline and its promise line — and says nothing about
+   * how many `h1`s the page has.
+   */
   it('removes the greeting entirely when conversation content exists', () => {
     ideasMockBlocks = [{ type: 'idea-card', props: { headline: 'Test idea' } }];
     renderWithClient(<HomePageLayout />);
-    expect(screen.queryByRole('heading', { level: 1 })).toBeNull();
+    expect(
+      screen.queryByText(/good (morning|afternoon|evening)|welcome back/i),
+    ).toBeNull();
+    expect(screen.queryByText(/simulate your audience/i)).toBeNull();
   });
 
   /**

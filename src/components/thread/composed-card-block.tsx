@@ -173,10 +173,10 @@ export function ComposedCardRenderer({ block, onAction }: ComposedCardRendererPr
   const resolvedActions = (actions ?? []).filter((a) => Boolean(SKILL_CAPABILITIES[a]));
 
   return (
-    <div
-      className="elev-rest overflow-hidden rounded-xl border border-white/[0.06] bg-surface-sunken"
-      aria-label={`${block.props.recipe}: ${heroText.slice(0, 60)}`}
-    >
+    <div className="elev-rest overflow-hidden rounded-xl border border-white/[0.06] bg-surface-sunken">
+      {/* F-14 — was an `aria-label` on this plain `<div>`, which assistive tech drops (no role to
+          attach to). A real `h3` reaches AT and joins the thread's heading jump-list. */}
+      <h3 className="sr-only">{`${block.props.recipe}: ${heroText.slice(0, 60)}`}</h3>
       <div className="flex flex-col gap-3 px-4 pb-3 pt-4">
         {/* 1 — EYEBROW. The quiet kicker: what this card IS, or its place in a set. Never
             provenance (§0.5.1), and the model cannot put a number here it did not measure because

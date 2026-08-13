@@ -81,10 +81,10 @@ export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRend
   }
 
   return (
-    <div
-      className="elev-rest overflow-hidden rounded-xl border border-white/[0.06] bg-surface-sunken"
-      aria-label="Script card"
-    >
+    <div className="elev-rest overflow-hidden rounded-xl border border-white/[0.06] bg-surface-sunken">
+      {/* F-14 — was an `aria-label` on this plain `<div>`, which assistive tech drops (no role to
+          attach to). A real `h3` reaches AT and joins the thread's heading jump-list. */}
+      <h3 className="sr-only">Script card</h3>
       {/* HEADER — the shared <CardHero> row (the header contract, 2026-08-02). The card used to
           open with an uppercase meta strip (`5 BEATS · Talking-head · Creator growth`), which
           made it the one Make card whose head was chrome rather than content. The OPENER is what
