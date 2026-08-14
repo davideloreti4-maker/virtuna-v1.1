@@ -38,6 +38,7 @@ import { describeRunOutput, isChatCardsOnScreenEnabled } from "@/lib/tools/on-sc
 import { SEARCH_CORPUS_TOOL, executeCorpusSearch } from "@/lib/grounding/corpus-tool";
 import { EMIT_CARD_TOOL, handleEmitCard } from "@/lib/tools/emit-card-tool";
 import { createProseCallGuard } from "@/lib/tools/prose-call";
+import { stripLeakedReasoning, capRunawayProse } from "@/lib/tools/reasoning-leak";
 import { createSearchGovernor } from "@/lib/grounding/search-budget";
 import type { RetrievedExample } from "@/lib/grounding/types";
 import { retrieveCachedExamples } from "@/lib/grounding/retrieve";
@@ -1140,9 +1141,15 @@ export async function runChatAgentStream(
        * Scoped to `composedCards` deliberately. Nothing here measured decode, adapt, fold or
        * vision, and an ordinary chat turn keeps the exact request it ships with today.
        *
-       * Reasoning arrives as `delta.reasoning_content`, which this loop never reads — only
-       * `delta.content` reaches `onToken`. That is what keeps the thinking out of the creator's
-       * stream, and it is asserted live in scripts/probe-thinking-stream.ts.
+       * Reasoning USUALLY arrives as `delta.reasoning_content`, which this loop never reads — only
+       * `delta.content` reaches `onToken`. Measured 22 more times on 2026-08-16 across four request
+       * shapes (scripts/probe-thinking-content-channel.ts) and separated every time.
+       *
+       * 🔴 But NOT always, and the original form of this comment asserted "always". Three rows in
+       * thread b13d63f4 (2026-08-12) persisted 18,484–33,165 chars of the model's planning voice as
+       * the creator's answer, one still carrying a literal `</think>` — reasoning delivered through
+       * the CONTENT channel. `reasoning-leak.ts` is the boundary guard that drops it at assembly.
+       * It still STREAMS: withholding tokens would mean buffering, which is not what was ruled.
        */
       enable_thinking: composing,
     });
@@ -1644,7 +1651,22 @@ export async function runChatAgentStream(
   //
   // The budget is per TURN, not per round: N post-card rounds of capped text still stack into N×600
   // of duplicate, which is the same defect wearing a different shape.
-  const closingLine = postCardText.length > POST_TOOL_TEXT_CAP ? "" : postCardText;
-  const answer = cardsDelivered ? closingLine : fullText;
-  return { text: unbound ? guard.flush() : answer, skillRuns, uiBlocks, toolCalls };
+  //
+  // …and the third exception, for text that was never an answer at all. `enable_thinking` is on for
+  // composing turns, and the provider does not ALWAYS keep reasoning in `delta.reasoning_content`
+  // the way `:1143` claims — three production rows persisted 18,484–33,165 chars of the model's own
+  // planning voice, one of them still carrying a literal `</think>`. Stripped BEFORE any budget is
+  // applied, because the longest of those rows wraps a perfectly good 47-char closing line.
+  //
+  // ⚠️ The no-card branch had NO ceiling whatsoever: `cardsDelivered` is false for a turn that
+  // answered in prose, so two of those three rows are untouched by F-1 above and persisted whole.
+  // `RUNAWAY_PROSE_CAP` sits in the empty gap between the largest real answer ever measured (3,791)
+  // and the smallest leak (18,484) — it is not the prose cap the lane forbids, which would have to
+  // reach down to ~600 to bite the search-and-answer turns it protects.
+  const closingLine = (() => {
+    const closing = stripLeakedReasoning(postCardText);
+    return closing.length > POST_TOOL_TEXT_CAP ? "" : closing;
+  })();
+  const answer = cardsDelivered ? closingLine : capRunawayProse(stripLeakedReasoning(fullText));
+  return { text: unbound ? stripLeakedReasoning(guard.flush()) : answer, skillRuns, uiBlocks, toolCalls };
 }
