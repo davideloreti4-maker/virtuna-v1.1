@@ -181,10 +181,15 @@ answer ≈ 4 screens. 33k characters is roughly an order of magnitude beyond tha
 
 ## 2. F-1…F-22 status, measured
 
-> 🔴 **FOUR ROWS BELOW ARE STALE. Read `HANDOFF-2026-08-15-three-orphans.md` §3 first.**
+> 🔴 **FIVE ROWS BELOW ARE STALE. Read `HANDOFF-2026-08-15-three-orphans.md` §3 first.**
 >
 > **F-13, F-14, F-18 and F-19 were FIXED in #495**, one day after this table was written, and each
 > is marked 🔴 STILL LIVE here. Do not re-investigate them.
+>
+> 🔴 **And F-4 was fixed in #491 — the SAME COMMIT THAT ADDED THIS FILE.** The row is the finding
+> that motivated the fix, written in its pre-fix voice, and never updated when the fix landed
+> beside it. It was not true even at merge. Before treating any row here as open,
+> `git log --all --grep="F-<n>"`.
 >
 > Also corrected since: **F-1, F-7 and F-22 were re-derived on 2026-08-14 and are still true** (the
 > evidence is in that §3, not here). Everything else in this table is as-measured on 2026-08-13 and
