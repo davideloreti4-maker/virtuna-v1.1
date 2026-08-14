@@ -33,6 +33,25 @@ import { runScriptPipeline } from "@/lib/tools/runners/script-runner";
 import { runTwoAudienceRead } from "@/lib/engine/flash/two-audience-read";
 import { GENERAL_AUDIENCE } from "@/lib/audience/audience-repo";
 import type { RunEvidence } from "@/lib/tools/evidence";
+import { isScrapeDefaultEnabled } from "@/lib/grounding/scrape-default";
+
+/**
+ * May a CHAT-DISPATCHED generator reach for the live Apify scrape?
+ *
+ * ⚠️ The three HTTP routes call `resolveAllowScrape(body.allowScrape)`; there is no body here, so
+ * the environment is the only possible authorization and `isScrapeDefaultEnabled` is the honest
+ * expression of that. Until 2026-08-15 this seam passed nothing at all, and the runners forward
+ * `input.allowScrape` with no env fallback — so `LIVE_SCRAPE_DEFAULT` was invisible to every
+ * generator run started from chat, which is most of them. "Everything on for testing" was not true
+ * of the path the product actually takes.
+ *
+ * Read PER DISPATCH, never latched at module load: the owner flips this in `.env.local` against a
+ * long-running dev server, and a captured value would make the flip look broken.
+ *
+ * The owner's 2026-07-17 rule is untouched — with the variable unset this is `false`, so the scrape
+ * stays explicit-only and no chat send can spend.
+ */
+const chatDispatchAllowsScrape = (): boolean => isScrapeDefaultEnabled();
 
 // ─── Shared run context (loaded once by the route; passed to every skill) ────
 
@@ -216,6 +235,7 @@ export const SKILL_TOOLS: SkillTool[] = [
         audience: ctx.audience,
         onStage: ctx.onStage,
         onEvidence: ctx.onEvidence,
+        allowScrape: chatDispatchAllowsScrape(),
       });
       return { blocks: r.blocks, warnings: r.warnings };
     },
@@ -243,6 +263,7 @@ export const SKILL_TOOLS: SkillTool[] = [
         audience: ctx.audience,
         onStage: ctx.onStage,
         onEvidence: ctx.onEvidence,
+        allowScrape: chatDispatchAllowsScrape(),
       });
       return { blocks: r.blocks, warnings: r.warnings };
     },
@@ -268,6 +289,7 @@ export const SKILL_TOOLS: SkillTool[] = [
         audience: ctx.audience,
         onStage: ctx.onStage,
         onEvidence: ctx.onEvidence,
+        allowScrape: chatDispatchAllowsScrape(),
       });
       return { blocks: r.blocks, warnings: r.warnings };
     },
