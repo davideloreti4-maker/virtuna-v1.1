@@ -61,6 +61,21 @@ interface CalibrationFlowProps {
    * the better outcome, and the buttons should say so.
    */
   secondaryAction?: { label: string; onClick: () => void };
+  /**
+   * Content to render underneath the spine FOR THE DURATION OF THE WAIT, and only then.
+   *
+   * The wait is a measured ~128s of nothing the creator can act on. /welcome spends part of it on
+   * the three grounding questions the scrape cannot answer (`WaitQuestions`); the other two
+   * callers — `audience-form` and `audience-detail` — pass nothing and are unchanged.
+   *
+   * This is a SLOT, not a feature, and the distinction is load-bearing: onboarding belongs to one
+   * of three callers, so what goes here is the caller's decision and only the placement is ours.
+   *
+   * ⚠️ It is dropped on every terminal phase. `done` is the reveal the wait was spent to earn, and
+   * error/fallback are asking for a decision — neither wants a form competing with it. It also
+   * means anything mounted here must persist as it goes: `onDone` can fire mid-keystroke.
+   */
+  duringWait?: React.ReactNode;
   className?: string;
 }
 
@@ -71,7 +86,7 @@ type Phase =
   | "error"
   | "done";
 
-export function CalibrationFlow({ audience, onDone, onSkip, prefillHandle, prefillDescription, prefillPlatform, autoStart, secondaryAction, className }: CalibrationFlowProps) {
+export function CalibrationFlow({ audience, onDone, onSkip, prefillHandle, prefillDescription, prefillPlatform, autoStart, secondaryAction, duringWait, className }: CalibrationFlowProps) {
   const isPersonal = audience.type === "personal";
 
   // This component sends a handle on the personal path and a description on the target one — so
@@ -334,6 +349,9 @@ export function CalibrationFlow({ audience, onDone, onSkip, prefillHandle, prefi
               statusMsg={statusMsg}
             />
           </div>
+          {/* The pre-evidence branch is the FIRST stretch of the wait, before the account lands —
+              the emptiest part of the screen and the one most worth spending. */}
+          {duringWait && <WaitSlot className="max-w-[420px]">{duringWait}</WaitSlot>}
         </div>
       );
     }
@@ -347,6 +365,7 @@ export function CalibrationFlow({ audience, onDone, onSkip, prefillHandle, prefi
           statusMsg={statusMsg}
           platformLabel={(prefillPlatform ?? audience.platform ?? "tiktok").toUpperCase()}
         />
+        {duringWait && <WaitSlot>{duringWait}</WaitSlot>}
       </div>
     );
   }
@@ -443,3 +462,25 @@ export function CalibrationFlow({ audience, onDone, onSkip, prefillHandle, prefi
 // The account header and the cover grid that stood here are now CalibrationProgress's, shared
 // with /audience/new. This file keeps what is genuinely its own: the idle form, the fallback and
 // error terminals, and the done reveal.
+
+/**
+ * The `duringWait` slot's frame — a hairline rule and the width the spine uses, so the caller's
+ * content reads as part of the wait rather than a second card stacked on it. The `data-slot`
+ * attribute is what the slot's tests assert absence against for the callers that pass nothing.
+ */
+function WaitSlot({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      data-slot="during-wait"
+      className={cn("w-full border-t border-white/[0.06] pt-5", className)}
+    >
+      {children}
+    </div>
+  );
+}

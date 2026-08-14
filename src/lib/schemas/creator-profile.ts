@@ -1,7 +1,12 @@
 import { z } from "zod";
 
 /**
- * Creator Profile validation schema for the 9-card interview PATCH route.
+ * Creator Profile validation schema for the creator-profile PATCH route.
+ *
+ * Two live writers: the settings tab's `ProfileSettingsForm` (9 cards, full edit) and
+ * `WaitQuestions` (goal · stage · pain, asked inside /welcome's calibration wait). The 10-card
+ * `ProfileInterviewModal` that this schema was written for was deleted 2026-08-14 — it had been
+ * unreachable since `/analyze` became a redirect. No column changed; only the surfaces did.
  *
  * Every field is `.optional()` so a partial PATCH succeeds (the user can save
  * one card at a time from settings); `.nullable()` on most fields allows the

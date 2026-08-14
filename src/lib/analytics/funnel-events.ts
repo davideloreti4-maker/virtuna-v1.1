@@ -1,10 +1,14 @@
 /**
  * The onboarding funnel's event spine (`ONBOARDING-FUNNEL-DESIGN.md` §8).
  *
- * ⚠️ THERE IS NO SINK YET. `track()` buffers in memory and logs in dev. Nothing leaves the
- * browser. This module exists so the CALL SITES are correct from the first commit — those are
- * the expensive part to retrofit, and a funnel you cannot measure is a funnel you cannot debug.
- * Wiring a sink is one function body (`FUNNEL_SINK`), not a sweep through the components.
+ * ⚠️ THE SINK IS WIRED — this header used to say it was not, and that was stale.
+ * `funnel-provider.tsx` attaches `beaconSink` on mount, so `track()` reaches `funnel_events` in
+ * Supabase. `track()` still buffers, and `setFunnelSink` flushes the buffer in order, so events
+ * emitted before the provider mounts are not lost. Where there is genuinely no sink, `track()`
+ * falls back to a dev console line.
+ *
+ * ⚠️ AND SOME DECLARED EVENTS STILL CANNOT FIRE — see `UNREACHABLE_FUNNEL_EVENTS` below before
+ * reading a zero in this table as a user decision.
  *
  * The scoreboard is `checkout_paid`. Everything else is diagnostics for that one number:
  *   1. demo_view    → checkout_paid   the milestone
@@ -49,6 +53,33 @@ export const FUNNEL_EVENTS = [
 ] as const;
 
 export type FunnelEvent = (typeof FUNNEL_EVENTS)[number];
+
+/**
+ * 🔴 Declared, but CANNOT FIRE — their only emitter is mounted by no route.
+ *
+ * These three live in `beats.ts`, the walkthrough's guided rail. The walkthrough was built as S1
+ * (`ONBOARDING-FUNNEL-DESIGN.md` §7) and superseded three days later by `HeroShowcase`, the
+ * non-interactive product window that `/go` renders today (owner call, 2026-07-27). The component
+ * is complete and runs on a real frozen production analysis; nothing imports it.
+ *
+ * SO THEIR ZEROS ARE A CODE FACT, NOT A USER DECISION. `demo_view 23 → demo_fix_open 0` reads as
+ * "23 visitors reached the demo and all 23 bounced at beat 1". Nobody bounced; nobody was offered
+ * the beat. Every query over this table must exclude these three, or subtract a denominator it
+ * never had.
+ *
+ * ⚠️ `checkout_open` is deliberately ABSENT from this list even though the walkthrough emits it.
+ * It ALSO fires from `/go/page.tsx` and `checkout-modal.tsx`, both live and reachable — so its
+ * zero is real and means the money screen has genuinely never been opened. Marking it would
+ * explain away the one number the funnel exists to watch.
+ *
+ * Deleting an entry here is how you record that a surface went live. `unreachable-events.test.ts`
+ * checks this list against the tree and fails if a route ever mounts the walkthrough.
+ */
+export const UNREACHABLE_FUNNEL_EVENTS = [
+  "demo_fix_open",
+  "demo_wall_shown",
+  "reveal_shown",
+] as const satisfies readonly FunnelEvent[];
 
 export interface FunnelPayload {
   /** Which beat of the walkthrough, where the event has one. */
