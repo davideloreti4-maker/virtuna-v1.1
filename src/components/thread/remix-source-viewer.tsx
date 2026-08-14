@@ -179,9 +179,17 @@ export function RemixSourceViewer({
   const stageUrl = cells[activeCell]?.url;
 
   return (
+    // ONE layout at every width: stage centred above a full-width strip.
+    //
+    // A side-by-side variant was built and measured at 1440 and is deliberately NOT here. Making
+    // the strip fill the stage's height turns each cell into a ~26x171 slice, and `bg-cover` on
+    // that aspect crops a 9:16 frame to its centre band — which is exactly where a TikTok's baked
+    // caption sits. Thirty cells then render the same caption thirty times as a garbled text
+    // ribbon. Calm whitespace either side of a centred stage is the better trade, and it is one
+    // layout to reason about instead of two.
     <div data-source-viewer className="flex flex-col gap-2.5">
       {/* ── Stage: the frame under the playhead ─────────────────────────────────── */}
-      <div className="relative mx-auto block aspect-[9/16] w-24 overflow-hidden rounded-md border border-white/[0.06]">
+      <div className="relative mx-auto block aspect-[9/16] w-24 shrink-0 overflow-hidden rounded-md border border-white/[0.06] @min-[480px]:w-28">
         <CoverFill coverUrl={stageUrl} playSize={16} alt="" />
         <span className="absolute right-1 top-1 rounded-xs bg-black/55 px-1 py-px text-micro tabular-nums text-foreground-secondary">
           {formatTime(displayTime)}
@@ -221,9 +229,9 @@ export function RemixSourceViewer({
         }}
         {...dragHandlers}
         data-testid="remix-scrub-strip"
-        className="relative cursor-ew-resize touch-none select-none rounded-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20"
+        className="relative h-11 min-w-0 cursor-ew-resize touch-none select-none rounded-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20"
       >
-        <div className="flex h-11 gap-px overflow-hidden rounded-sm" aria-hidden="true">
+        <div className="flex h-full gap-px overflow-hidden rounded-sm" aria-hidden="true">
           {cells.map((cell, i) => (
             <span
               key={cell.idx}
@@ -241,7 +249,7 @@ export function RemixSourceViewer({
 
         {/* Beat boundary ticks — where the source actually cut between beats. This is what makes
             the strip legible as a SHOT LIST rather than as an undifferentiated ribbon. */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-11" aria-hidden="true">
+        <div className="pointer-events-none absolute inset-0" aria-hidden="true">
           {beats.slice(1).map((b) => (
             <span
               key={b.index}
@@ -253,14 +261,18 @@ export function RemixSourceViewer({
 
         {/* The playhead. Cream, per RetentionScrubber — never accent. */}
         <div
-          className="pointer-events-none absolute top-0 h-11 w-px"
+          className="pointer-events-none absolute top-0 h-full w-px"
           style={{ left: leftPct, backgroundColor: "rgba(236,231,222,0.9)" }}
           aria-hidden="true"
         />
+        {/* The grab handle is INSET by its own radius, so it stays whole at both extremes — at
+            pct 0 a centred knob is half outside the strip and renders as a clipped semicircle.
+            The line above is not inset: it marks a time position against the cells and has to be
+            exact. The ≤5px divergence at the very ends is the conventional slider trade. */}
         <div
           className="pointer-events-none absolute h-2.5 w-2.5 rounded-full"
           style={{
-            left: leftPct,
+            left: `calc(5px + ${pct} * (100% - 10px))`,
             top: "100%",
             transform: "translate(-50%, -60%)",
             backgroundColor: "var(--color-foreground)",

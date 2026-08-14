@@ -180,6 +180,19 @@ describe("RemixSourceEmbed", () => {
     expect(screen.getByRole("button", { name: /watch the source on instagram/iu })).toBeInTheDocument();
   });
 
+  it("always offers a way OUT of the panel, for when the player refuses to render", () => {
+    // A third-party player can fail for reasons this app cannot see or fix — a signed-out viewer,
+    // a region block, a post gone private since the run. Without this link the panel is a 560px
+    // black rectangle and a dead end.
+    render(<RemixSourceEmbed sourceUrl={TIKTOK} />);
+    fireEvent.click(screen.getByRole("button", { name: /watch the source/iu }));
+
+    const out = screen.getByRole("link", { name: /open on tiktok/iu });
+    expect(out).toHaveAttribute("href", TIKTOK);
+    expect(out).toHaveAttribute("target", "_blank");
+    expect(out).toHaveAttribute("rel", expect.stringContaining("noopener"));
+  });
+
   it("keeps the player mounted when collapsed, so closing does not restart it", () => {
     render(<RemixSourceEmbed sourceUrl={TIKTOK} />);
     fireEvent.click(screen.getByRole("button", { name: /watch the source/iu }));

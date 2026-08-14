@@ -23,6 +23,7 @@
  * NO ACCENT. The dosage rule is LOCKED and the card already spends its one on the Borrowed chip.
  */
 import { useState } from "react";
+import { ArrowUpRight } from "@phosphor-icons/react";
 import { CaretToggle } from "./caret-toggle";
 import { parseSourceUrl, type SourcePlatform } from "@/lib/remix/source-platform";
 
@@ -81,9 +82,27 @@ export function RemixSourceEmbed({ sourceUrl }: { sourceUrl?: string | null }) {
             />
           </div>
           {/* Says where the bytes come from and that this half is not scrubbable, so the strip
-              above never reads as a broken control for the player. */}
-          <p className="text-label text-foreground-muted">
-            Plays on {label}, with sound. The strip above scrubs stills — the two aren&rsquo;t linked.
+              above never reads as a broken control for the player.
+
+              The link is not decoration: a third-party player can refuse to render for reasons
+              this app cannot see or fix (a signed-out viewer, a region block, a post that went
+              private after the remix ran). Neither TikTok nor Instagram sets X-Frame-Options or
+              frame-ancestors today — checked 2026-08-14, both framable — but when one of them
+              does fail, the panel is a 560px black rectangle, and this is the exit out of it. */}
+          <p className="flex flex-wrap items-center gap-x-1.5 text-label text-foreground-muted">
+            <span>
+              Plays on {label}, with sound. The strip above scrubs stills — the two aren&rsquo;t
+              linked.
+            </span>
+            <a
+              href={sourceUrl ?? undefined}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-0.5 underline decoration-white/20 underline-offset-2 transition-colors hover:text-foreground-secondary"
+            >
+              Open on {label}
+              <ArrowUpRight size={11} weight="bold" aria-hidden="true" />
+            </a>
           </p>
         </div>
       )}
