@@ -131,14 +131,32 @@ only built surface carrying the $1 tripwire.
 
 ## 3. ⚠️ CORRECTIONS TO `HANDOFF-2026-08-13-audit-rewalk.md` §2
 
-Four rows in that table are stale. **#495 fixed them the following day.**
+**FIVE rows in that table are stale, not four.**
 
-| # | that table says | actually |
-|---|---|---|
-| **F-13** | 🔴 composer guillotines content | 🟢 **FIXED** — 40px `.composer-veil`, `fadesAtTop: true` both viewports. It is a **mask**, not a gradient fill; a probe reading `backgroundImage` reports `"none"` on the working surface |
-| **F-14** | 🟠 headings still 0 | 🟢 **FIXED** — `headings: 8` (`h1` document · `h2` per turn · `h3` per card) |
-| **F-18** | 🔴 ☰ overlays body text | 🟢 **FIXED** — 66px `.nav-scrim`, faded, `pointer-events: none` |
-| **F-19** | 🔴 84 tap targets under 40px | 🟢 **substantially fixed** — 4 residual, all understood. **39 of the 84 were invisible-but-tappable, the rightmost `Delete thread`** — that was the real bug, not the size |
+| # | that table says | actually | fixed by |
+|---|---|---|---|
+| **F-4** | 🔴 STILL LIVE, WORSE | 🟢 **FIXED** — `"Borrowing shape from N proven videos"` → `"Reading shape from N…"`. Guarded by *"never asserts a COMPLETED outcome — the cards do not exist yet"* | **#491**, 2026-08-13 |
+| **F-13** | 🔴 composer guillotines content | 🟢 **FIXED** — 40px `.composer-veil`, `fadesAtTop: true` both viewports. It is a **mask**, not a gradient fill; a probe reading `backgroundImage` reports `"none"` on the working surface | #495 |
+| **F-14** | 🟠 headings still 0 | 🟢 **FIXED** — `headings: 8` (`h1` document · `h2` per turn · `h3` per card) | #495 |
+| **F-18** | 🔴 ☰ overlays body text | 🟢 **FIXED** — 66px `.nav-scrim`, faded, `pointer-events: none` | #495 |
+| **F-19** | 🔴 84 tap targets under 40px | 🟢 **substantially fixed** — 4 residual, all understood. **39 of the 84 were invisible-but-tappable, the rightmost `Delete thread`** — that was the real bug, not the size | #495 |
+
+🔴 **F-4 IS THE INTERESTING ONE, AND I GOT IT WRONG FIRST.** The first version of this handoff
+listed it as open work — item 2 of §4, "fix the loading copy" — which would have sent the next
+session to redo merged work. **Inside the document whose whole subject is stale statuses.**
+
+The mechanism is worth knowing because it will happen again: **#491 shipped the fix AND the
+audit-rewalk table in the same commit.** The table is the *finding that motivated the fix*, written
+in its pre-fix voice, and it was never updated once the fix landed beside it. So the row is not
+merely out of date — it was never true as of the commit that introduced it.
+
+🔑 **A finding and its fix in one PR means the finding's own document describes a state that no
+longer exists at merge.** Before treating any row of an audit table as open, `git log --grep` the
+finding ID. That is what caught this, after re-deriving three other rows by hand had not.
+
+**What remains near F-4 is NOT copy work.** The ~4% proof rate that made the old headline dishonest
+is `templateInstantiated` correctly stripping citations the model did not earn. **It is a correct
+guard. Never revert it.**
 
 **Re-derived today, still true:**
 
@@ -148,9 +166,12 @@ Four rows in that table are stale. **#495 fixed them the following day.**
 | **F-1** | pack renders twice, ~8% | no de-duplication of already-delivered packs anywhere in `lib/tools/` or `api/tools/`. `repeat-ask.ts`'s "duplicate check" is a *different* thing — it tests an ask naming a different skill |
 | **F-22** | corpus multipliers | `outlier_teardowns`: **532 rows, `follower_count` set on 0 of them**, `outlier_multiplier` on 396, and exactly **1 distinct `baseline_label`** |
 
-**Inherited, NOT re-derived today** — treat as claims, not measurements: F-4 (the ~4% proof rate),
-F-15 (the second accent element), and the four never-measured rows F-3 · F-8 · F-11 · F-12, each
-of which needs a live run.
+⚠️ **F-1 and F-7 were ALSO attempted once**, in `7d4bc133` (2026-08-10, *"F-3/F-7 receipts, F-1
+re-answer"*). The 08-13 re-walk re-measured both as still live **after** that attempt, and today's
+code check agrees — so they stand. Recorded so nobody reads that commit title as a close.
+
+**Inherited, NOT re-derived** — treat as claims, not measurements: F-15 (the second accent
+element) and the four never-measured rows F-3 · F-8 · F-11 · F-12, each of which needs a live run.
 
 ---
 
@@ -161,25 +182,24 @@ of which needs a live run.
    non-obvious — **key the fix on duplication of cards already delivered THIS TURN, not on shape**,
    and remember the re-answer is a **separate message**, so a "prose in the same message" query
    returns a clean, plausible, entirely wrong "F-1 is fixed".
-2. **F-4 — the loading copy promises proof the cards then disclaim.** 🔴 **The ~4% proof rate is a
-   CORRECT guard. Never revert it.** The fix is the loading copy, which is promising something the
-   guard is right to withhold.
-3. **F-7 — source diversity in `build-proof.ts`.** Pure code, no live run needed. Currently
-   unreproducible on screen only because proof is nearly always absent, which means fixing F-4
-   without fixing F-7 will make F-7 visible.
+2. **F-7 — source diversity in `build-proof.ts`.** Pure code, no live run needed. `build-proof.ts`
+   is a pure `sourceIndex → example` lookup with nothing preventing the same source backing three
+   cards. Unreproducible on screen only because proof is nearly always absent — which is a reason
+   it is *unseen*, not a reason it is *fixed*.
 
 🔴 **`COMPOSED_CARDS` WENT DEFAULT ON WHILE THIS WAS BEING WRITTEN** (`api/tools/chat/route.ts:204`,
 owner ruling 2026-08-14, PR #503, merged from a trunk session — main moved from `755a1300` to
 `2aee9a6d` between the code commit and the docs commit). The lane memory still records it as
 defaulting OFF.
 
-That reorders the list above. Items 2 and 3 are **card** defects, and the reason the last audit
-could not reproduce them on screen was that proof was nearly always absent. More cards means more
-chances for both to surface. **Re-measure the card rate before quoting any number from the earlier
-handoffs** — and remember `card-rate-is-25-percent-and-per-ask`: every rate measured through a
-rehydrated thread measured the wrong thing. Send `maven_active_thread=__new__`.
-4. **The four unmeasured rows** — F-3, F-8, F-11, F-12 all need one live run and nobody has done it.
-5. **The sidebar's pin/rename/delete are 30×44, not 44×44.** Three 44px hit areas 2px apart would
+That raises item 2. **F-7 is a card defect, and the only reason the last audit could not reproduce
+it on screen was that proof was nearly always absent.** More cards means more chances for it to
+surface — it goes from present-but-unseen to visible. **Re-measure the card rate before quoting any
+number from the earlier handoffs**, and remember `card-rate-is-25-percent-and-per-ask`: every rate
+measured through a rehydrated thread measured the wrong thing. Send `maven_active_thread=__new__`.
+
+3. **The four unmeasured rows** — F-3, F-8, F-11, F-12 all need one live run and nobody has done it.
+4. **The sidebar's pin/rename/delete are 30×44, not 44×44.** Three 44px hit areas 2px apart would
    overlap by 20px and the later sibling would win the tap — worse than small. The real fix is a
    `⋯` menu, which is a design call, not a CSS one.
 

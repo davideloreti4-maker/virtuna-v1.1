@@ -8,11 +8,9 @@
 > 2026-08-14, PR #503 — it landed from a trunk session while this handoff was being written; the
 > lane memory still says it defaults OFF).
 >
-> **This changes the priority of the work below.** F-4 and F-7 are card defects that the last audit
-> could not reproduce on screen *because proof was nearly always absent*. With cards rendering by
-> default, both get more chances to be seen — F-7 especially, since fixing F-4's copy without
-> fixing F-7's source diversity makes F-7 visible rather than merely present. Re-measure the card
-> rate before assuming any of the old numbers still describe the surface.
+> **This raises F-7.** It is a card defect the last audit could not reproduce on screen *because
+> proof was nearly always absent*. With cards rendering by default it goes from present-but-unseen
+> to visible. Re-measure the card rate before assuming any old number still describes the surface.
 
 ---
 
@@ -32,18 +30,22 @@ CONTEXT IN ONE LINE: the three orphans are closed. The interview is now 3 questi
 ruling. What remains is the F-list, and four of its rows were already fixed.
 
 DO THIS FIRST, before anything else:
-  Read HANDOFF-2026-08-15-three-orphans.md §3. Four rows of the F-table in
-  HANDOFF-2026-08-13-audit-rewalk.md are STALE (F-13/14/18/19 were fixed in #495).
-  Do not re-investigate them.
+  Read HANDOFF-2026-08-15-three-orphans.md §3. FIVE rows of the F-table in
+  HANDOFF-2026-08-13-audit-rewalk.md are STALE — F-13/14/18/19 (fixed in #495) and F-4
+  (fixed in #491). Do not re-investigate them.
+
+  ⚠️ And before treating ANY audit row as open, `git log --all --grep="F-<n>"`. #491 shipped
+  the F-4 fix and the audit table in the SAME commit, so the table describes a state that
+  was already gone at merge. I listed F-4 as open work in the first draft of that very
+  handoff. Re-deriving three other rows by hand did not catch it; the grep did.
 
 THE WORK, in order:
   1. F-1 — the pack renders twice, ~8%. The largest user-visible defect left. Key the fix on
      duplication of cards ALREADY DELIVERED THIS TURN, not on shape. The re-answer is a
      SEPARATE message — a "prose in the same message" query returns a clean, plausible,
      entirely wrong "F-1 is fixed".
-  2. F-4 — the loading copy promises proof the cards then disclaim. Fix the COPY.
-  3. F-7 — source diversity in build-proof.ts. Pure code, no live run. Note fixing F-4
-     without F-7 will make F-7 visible.
+  2. F-7 — source diversity in build-proof.ts. Pure code, no live run. Still a pure
+     sourceIndex → example lookup; nothing stops one source backing three cards.
 
 DO NOT:
   - Do not remove the templateInstantiated guard in output-guards.ts, and do not touch the
