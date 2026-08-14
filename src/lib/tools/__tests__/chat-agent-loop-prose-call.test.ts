@@ -140,18 +140,23 @@ describe("the prose-call pin", () => {
   it("does NOT fire on a turn that dispatched normally", async () => {
     // The property that gives this trigger its precision: 0 of 8 fires on a dispatching run. Here
     // the model both writes a call in prose AND makes a real one.
+    const onToken = vi.fn();
     const stream = mockStream([[...WROTE_THE_CALL, ...REAL_DISPATCH], [textChunk("Done.")]]);
 
     const res = await runChatAgentStream(
-      baseInput({ proseCallPin: "hooks" }),
+      baseInput({ onToken, proseCallPin: "hooks" }),
       DEPS(stream.fn, { skills: [HOOKS(), IDEAS()] }),
     );
 
     expect(stream.calls()).toBe(2);
     expect(stream.choices[1]).toBe("auto");
     expect(res.skillRuns.map((r) => r.name)).toEqual(["generate_hooks"]);
-    // Nothing was withheld, so the written call survives verbatim.
-    expect(res.text).toContain("generate_ideas");
+    // Nothing was withheld, so the written call survives verbatim — asserted on what the guard
+    // RELEASED, which is the property this test is about. It deliberately does not read `res.text`:
+    // this round also dispatched cards, so F-1 drops its pre-card text from the persisted answer,
+    // and passing through that would make a guard test fail for a reason that has nothing to do
+    // with the guard.
+    expect(onToken.mock.calls.map((c) => c[0]).join("")).toContain("generate_ideas");
   });
 
   it("is byte-identical when the pin is absent", async () => {
