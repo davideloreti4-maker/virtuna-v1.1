@@ -21,9 +21,12 @@
  *     user, against a $5/month cap — a spend landmine armed by an unrelated merge.
  *   - Turning it off is deleting one line from `.env.local`, not a revert.
  *
- * ⚠️ **This spends real money on every eligible run.** A run is eligible when grounding is on, the
- * platform is scrapable, and the teardown cache is thin on the subject — a full cache hit still
- * skips the scrape, because read-back happens first and this flag does not touch that ordering.
+ * ⚠️ **This spends real money on EVERY eligible run.** A run is eligible when grounding is on and
+ * the platform is scrapable. The cache no longer spares you: as of the live-first ordering (owner
+ * call 2026-08-15) an authorized run reaches Apify BEFORE the read-back, so a full cache hit does
+ * not skip the scrape. That is the entire point — this flag was previously unreachable on ~95% of
+ * asks, because the corpus answered first — but it means turning it on locally costs roughly one
+ * Apify run per send against a $5/month cap. Budget accordingly.
  *
  * ⚠️ Apify is on a $5/month hard cap on a rotating FREE account. At the cap Apify 403s and the app
  * has historically surfaced that as *"check your handle is public"* — a budget failure wearing a

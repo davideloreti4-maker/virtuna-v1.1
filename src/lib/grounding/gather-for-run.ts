@@ -20,8 +20,19 @@
  *  - Emits the "Finding proven outliers" stage at the REAL boundary (honesty spine).
  *    The stage is honest on BOTH paths — cache read-back finds proven outliers too,
  *    just instantly.
- *  - Read-back FIRST (gather-once/walk-many): the teardown cache is consulted before
- *    any scrape; enough good cached rows → the scrape is skipped entirely.
+ *  - Read-back FIRST **on an unauthorized run** (gather-once/walk-many): the teardown cache is
+ *    consulted before any scrape; enough good cached rows → the scrape is skipped entirely.
+ *  - LIVE FIRST **on an authorized one** (owner call 2026-08-15). `allowScrape` REORDERS the step;
+ *    it does not merely unlock its tail. Until this ruling the read-back returned early on a hit,
+ *    so `allowScrape` was consulted only after a MISS — and the 532-row corpus almost never misses
+ *    (95.5% of real asks clear gate 1; "restoring vintage fountain pens", picked to be obscure,
+ *    hit). Two consequences, both measured: `LIVE_SCRAPE_DEFAULT` could be ON and never once reach
+ *    Apify, and a SECOND tap of "Find new outliers" was answered by the write-through the FIRST tap
+ *    had just populated. An authorization that is unreachable on 19 of every 20 asks is not a
+ *    feature flag, it is a decoration.
+ *    The cache is not deleted from that path — it becomes the SAFETY NET. An empty or failed scrape
+ *    falls through to the read-back, so a broken upstream (clockworks returns SUCCEEDED + 0 items;
+ *    see §2 of the 2026-08-14 handoff) cannot leave an authorized run WORSE off than a free one.
  *  - The SCRAPE IS EXPLICIT-ONLY (`allowScrape`, default false — owner call 2026-07-17).
  *    A cache miss on a default run degrades to ungrounded; it does NOT reach for Apify.
  *    Spending the owner's money is a decision the user makes, not a consequence of the
@@ -359,8 +370,48 @@ export async function gatherCorpusForRun(
     return settle(corpus, used, false);
   };
 
+  /**
+   * Does this run reach for Apify BEFORE the cache? Authorization reorders the step; it does not
+   * merely unlock its tail. See the LIVE-FIRST note in the file header for why.
+   */
+  const liveFirst = input.allowScrape === true && SCRAPABLE_PLATFORMS.has(input.platform);
+
   input.onStage?.(GROUNDING_STAGE_NAME, "active");
   try {
+    /**
+     * 0. LIVE FIRST, when the spend is authorized. A hit here is what the user asked and paid for,
+     *    so the cache does not get to answer over it. Only an empty or failed scrape falls through
+     *    to the read-back below, which is why this branch returns rather than assigning.
+     */
+    let liveFailure: Error | null = null;
+    if (liveFirst) {
+      try {
+        const { examples } = await gather({
+          query,
+          platform: input.platform,
+          niche: input.niche,
+          onEvidence: input.onEvidence,
+        });
+        if (examples.length > 0) {
+          console.info(`[grounding] live scrape for "${query}" — ${examples.length} fresh rows`);
+          // PROVENANCE, not the cache axis: these rows were just extracted, so they carry no
+          // similarity (orchestrator.ts sets it null by design). Judging them topically would mark
+          // the run the user paid Apify for as ungrounded — their warrant is the search-by-subject
+          // + outlier proof gate.
+          return finalize(examples, false, "provenance");
+        }
+        console.info(
+          `[grounding] live scrape for "${query}" returned no usable rows — falling back to the cache`,
+        );
+      } catch (err) {
+        // Held, not thrown: the cache may still rescue this run, and only if it cannot does the
+        // user need to hear that a scrape failed. Rethrown at the tail so the outer catch keeps
+        // being the ONE place a warning is pushed.
+        liveFailure = err instanceof Error ? err : new Error(String(err));
+        console.warn(`[grounding] live scrape failed (falling back to the cache): ${liveFailure.message}`);
+      }
+    }
+
     // 1. read-back: enough good cached teardowns → skip the scrape (instant + free).
     let partial: RetrievedExample[] = [];
     try {
@@ -402,7 +453,7 @@ export async function gatherCorpusForRun(
     //    proven outliers to run ungrounded, because a threshold designed to save an Apify call
     //    said "only 2", would be self-defeating: two proven sources beat none. Use what we found;
     //    degrade to raw only when we found nothing at all (and say so).
-    if (!input.allowScrape || !SCRAPABLE_PLATFORMS.has(input.platform)) {
+    if (!liveFirst) {
       // Name the REAL reason: "not scrapable" and "not authorized to spend" are different
       // facts, and a log that conflates them sends the next reader to the wrong platform gate.
       const why = !input.allowScrape
@@ -425,19 +476,25 @@ export async function gatherCorpusForRun(
       return { ...none, scrapeAvailable };
     }
 
-    const { examples } = await gather({
-      query,
-      platform: input.platform,
-      niche: input.niche,
-      // Mid-flight view of the ~25s paid pull. `finalize` below emits the FINAL, warrant-stamped
-      // payload over the top of it — same rail, same rows, upgraded from "we're checking these"
-      // to the warrant the cards will actually carry.
-      onEvidence: input.onEvidence,
-    });
-    // PROVENANCE, not the cache axis: these rows were just extracted, so they carry no similarity
-    // (orchestrator.ts sets it null by design). Judging them topically would mark the run the user
-    // paid Apify for as ungrounded — their warrant is the search-by-subject + outlier proof gate.
-    return finalize(examples, false, "provenance");
+    /**
+     * 3. Live ran FIRST and came back with nothing, so the cache is all this run has. `partial` is
+     *    the read-back's own leftovers — fewer rows than `minRows`, but two proven sources beat
+     *    none, and a broken upstream must not cost the user grounding the free path would have had.
+     *
+     *    `scrapeAvailable` is false on every branch here: the scrape it would offer is the one that
+     *    just ran. Dangling the button would re-run the same failure on the user's tap.
+     */
+    if (partial.length > 0) {
+      console.info(
+        `[grounding] live scrape found nothing — grounding on the ${partial.length} cached teardowns we do have`,
+      );
+      return finalize(partial, false);
+    }
+    // Nothing anywhere. A FAILED scrape is a fact the user should hear (it is why the run is
+    // ungrounded); an EMPTY one is the same outcome the free path would have produced, silently.
+    if (liveFailure) throw liveFailure;
+    console.info(`[grounding] live scrape and cache both empty for "${query}" — degrading to ungrounded`);
+    return none;
   } catch (err) {
     input.warnings.push(
       `grounding failed (degraded to ungrounded): ${err instanceof Error ? err.message : String(err)}`,
