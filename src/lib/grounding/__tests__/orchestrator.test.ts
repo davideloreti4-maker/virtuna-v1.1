@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { handleFromUrl, toRetrievedExample, gatherAndExtract } from "../orchestrator";
 import type { ScrapingProvider, VideoData } from "@/lib/scraping/types";
 import type { RunEvidence } from "@/lib/tools/evidence";
@@ -122,6 +122,42 @@ describe("gatherAndExtract — evidence lands at the SELECTION boundary", () => 
       // expected: the run cannot complete without the LLM/embedding stages
     }
   }
+
+  it("does not let a hung profile scrape hold the run — it degrades on a deadline", async () => {
+    // The real failure this pins, measured 2026-08-14: clockworks profile mode stopped returning
+    // anything, but it does not fail — it retries each URL ~12 times and resolves EMPTY after
+    // 90-130s, while reporting SUCCEEDED. The existing catch only covers a REJECTION, so a scrape
+    // that merely takes forever was unbounded, and every grounded run paid two minutes for a value
+    // that could not arrive. Modelled as a promise that never settles, which is the shape that
+    // slipped through before.
+    vi.useFakeTimers();
+    try {
+      let profileCalls = 0;
+      const provider = {
+        scrapeVideos: async () => [scraped(1, 14_000_000), scraped(2, 9_000_000), scraped(3, 4_000_000)],
+        scrapeProfile: () => {
+          profileCalls++;
+          return new Promise(() => {}); // never settles — neither resolve nor reject
+        },
+      } as unknown as ScrapingProvider;
+
+      const run = gatherAndExtract(
+        { query: "high protein breakfast" },
+        { provider, supabase: {} as never },
+      ).catch(() => "reached-extraction");
+
+      // Nothing may resolve on its own; only the deadline can move this forward.
+      await vi.advanceTimersByTimeAsync(30_000);
+      const outcome = await run;
+
+      expect(profileCalls, "the enrichment must still be attempted").toBeGreaterThan(0);
+      // Getting past step 3 at all is the assertion: without the deadline this promise is still
+      // pending here and the await above would hang until the test times out.
+      expect(outcome).toBe("reached-extraction");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 
   it("emits the survivors before spending the profile scrapes", async () => {
     const seen: RunEvidence[] = [];
