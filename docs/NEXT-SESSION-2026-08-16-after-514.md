@@ -1,8 +1,11 @@
 # Next session — copy-paste brief (session 15 close-out, 2026-08-15)
 
 **Lane:** `lane/in-thread-chat` · worktree `~/virtuna-in-thread-chat`
-**Shipped:** **PR #514** — F-1 CLOSED · F-7 CLOSED · `ENGINE_GEN_CONVERSATION` default ON.
-**Gates at close:** `tsc` 0 · `npm run build` 0 · **6476 tests pass.** Tree clean, branch pushed.
+**Shipped:** **PR #514, MERGED** — main at `697a4b67`. F-1 CLOSED · F-7 CLOSED ·
+`ENGINE_GEN_CONVERSATION` default ON. The `lane/in-thread-chat` branch is deleted; the worktree sits
+on `main`. **Start new work on a fresh branch.**
+**Gates verified ON MAIN after the merge:** `tsc` 0 · `npm run build` 0 · **562 test files pass,
+0 failed** (`--maxWorkers=3`).
 
 > ⚠️ **This supersedes `NEXT-SESSION-2026-08-16.md`** (session 14's brief). Two of its entries are
 > now wrong: the `text-foreground-tertiary` loose end was FALSE, and `ENGINE_GEN_CONVERSATION` is ON.
@@ -14,14 +17,17 @@
 ```
 Read docs/HANDOFF-2026-08-15-f1-f7-closed.md.
 
-Repo ~/virtuna-in-thread-chat, branch lane/in-thread-chat. Session 15 shipped PR #514:
+Repo ~/virtuna-in-thread-chat. Session 15 shipped PR #514 — MERGED, main at 697a4b67:
 F-1 and F-7 both CLOSED, ENGINE_GEN_CONVERSATION flipped default ON. tsc + build +
-6476 tests green at close.
+562 test files verified green ON MAIN after the merge.
 
-⚠️ CHECK WHETHER #514 IS MERGED FIRST: gh pr view 514 --json state,mergedAt
-   git fetch && git rev-parse origin/main
-Main moved FOUR times during session 15 alone (#511, #512, #513, and my own). Re-measure
-before branching AND again before opening a PR.
+⚠️ The lane/in-thread-chat branch is DELETED and this worktree sits on main. Do not commit
+to main — `git switch -c <type>/<thing>` before touching anything.
+
+⚠️ RE-CHECK MAIN BEFORE YOU BRANCH: git fetch && git rev-parse origin/main
+Main moved FOUR times during session 15 alone (#511, #512, #513, and my own), every time
+from a co-session. Re-measure before branching AND again before opening a PR.
+⚠️ Trunk ~/virtuna-v1.1 is on feat/live-first-sourcing, not main. Do not disturb it.
 
 CONTEXT: this is the in-thread chat lane — chat runs the tools. The last week has been
 auditing what that surface produces. The F-audit backlog is now down to four never-measured
