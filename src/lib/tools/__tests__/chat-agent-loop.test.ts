@@ -1529,6 +1529,79 @@ describe("runChatAgentStream [Stage A guards]", () => {
     const res = await runChatAgentStream(baseInput(), DEPS(stream, { skills: [skill] }));
     expect(res.text.length).toBeGreaterThan(600);
   });
+
+  /**
+   * F-1, MEASURED 2026-08-15 against the production rows: 14 of 139 card-bearing turns persisted
+   * more than 600 chars of text beside their cards (`hook-card` max 1,029 · `idea-card` max 2,577).
+   *
+   * The cap above is computed per ROUND, from a `skillRuns` that is still empty until a skill has
+   * actually run. So a round that narrates AND calls the skill streams uncapped, and `fullText`
+   * concatenates it into the answer. One measured row reads "…I need to pull the outlier data"
+   * immediately followed by "Here is the breakdown…" — two rounds welded into one block. Because
+   * the cards are inserted as their OWN message first, the narration lands BELOW them on reload,
+   * where it reads as a second, competing answer.
+   *
+   * The narration must still STREAM: blanket-buffering round-1 text is the cost `prose-call.ts`
+   * explicitly refuses to pay. Only the PERSISTED answer drops it.
+   */
+  it("drops pre-card narration from the answer once a skill delivered cards, without buffering it (F-1)", async () => {
+    const skill = mkSkill("generate_hooks", {
+      run: vi.fn(async () => ({ blocks: [{ type: "hook-card", props: {} }], warnings: [] })),
+    });
+    let streamed = "";
+    const stream = mockStream([
+      // round 1: the model narrates what it is about to do AND makes the call, in the same round.
+      [
+        textChunk("To see how your hooks compare, I need to pull the outlier data. "),
+        toolName(0, "c1", "generate_hooks"),
+        toolArgs(0, '{"topic":"morning focus"}'),
+      ],
+      // round 2: the real closing line, written with the cards in hand.
+      [textChunk("Here's how they stack up.")],
+    ]);
+
+    const res = await runChatAgentStream(
+      baseInput({ onToken: (d: string) => { streamed += d; } }),
+      DEPS(stream, { skills: [skill] }),
+    );
+
+    // It reached the creator live — nothing was withheld from the stream.
+    expect(streamed).toContain("I need to pull the outlier data");
+    // …but the answer that gets persisted is the post-card line alone.
+    expect(res.text).toBe("Here's how they stack up.");
+  });
+
+  /**
+   * The other side of that condition, and the reason it is keyed on CARDS rather than on "any run
+   * produced blocks". Measured the same day: 25 of the 34 over-cap turns had no card pack at all —
+   * they searched the corpus and answered in prose, 2,000–3,600 chars of legitimate comparison
+   * writing ("Confession wins. By a lot. Here's why…"). There is nothing there to render twice.
+   *
+   * That survives today only because `search_corpus` never enters `skillRuns` — incidental, never
+   * stated. Pin it: if a refactor ever routes citations through `skillRuns`, the cap would truncate
+   * the product's best answers to 600 chars mid-sentence and every other test would stay green.
+   */
+  it("a search-and-answer turn keeps its full prose — a citation is not a card pack", async () => {
+    const executeCorpus = vi.fn(async () => ({
+      content: JSON.stringify({ count: 1, grounded: true }),
+      examples: [],
+      citable: [],
+      record: { round: 1, query: "confession openings", axis: "topical" as const, rows: 1, grounded: true, warrant: "topical" as const },
+    }));
+    const realAnswer = "Confession wins. By a lot. Here is the mechanism, and where a question beats it. ".repeat(30);
+    const stream = mockStream([
+      [toolName(0, "s1", "search_corpus"), toolArgs(0, '{"query": "confession openings"}')],
+      [textChunk(realAnswer)],
+    ]);
+
+    const res = await runChatAgentStream(
+      baseInput({ grounding: true }),
+      DEPS(stream, { skills: [mkSkill("generate_hooks")], executeCorpus: executeCorpus as never }),
+    );
+
+    expect(res.skillRuns).toHaveLength(0); // a search is not a skill run
+    expect(res.text.length).toBeGreaterThan(600);
+  });
 });
 
 // ── Phase 2: the composed-card emit tool ───────────────────────────────────────────────────────
@@ -1574,6 +1647,75 @@ describe("runChatAgentStream [composedCards]", () => {
     const stream = mockStream([[textChunk("ok")]]);
     await runChatAgentStream(baseInput({ composedCards: true }), DEPS(stream, { skills: [mkSkill("generate_ideas")] }));
     expect(sentToolNames(stream)).toContain("emit_card");
+  });
+
+  /**
+   * F-1 reaches here too, and this is now the bucket that matters: `COMPOSED_CARDS` went default ON
+   * (#503) and composed cards were measured at 6 of the 14 over-cap turns — including the worst row
+   * in the database, 20,742 chars that open "The user wants an explanation… I need to break down…",
+   * i.e. the model's own planning monologue standing where the creator's answer should be.
+   *
+   * They are invisible to `POST_TOOL_TEXT_CAP` by construction: `emit_card` routes its blocks to
+   * `uiBlocks`, never to `skillRuns`, and the cap keys off `skillRuns`. The loop already TELLS the
+   * model "reply with ONE short closing line and do NOT restate or rewrite their content in prose"
+   * in the tool result — this is the half that does not depend on it complying.
+   */
+  it("drops pre-card text on a composed-card turn too — emit_card blocks are cards (F-1)", async () => {
+    const monologue = "The user wants an explanation of the structure. I need to break that down. ".repeat(8);
+    let streamed = "";
+    const stream = mockStream([
+      [textChunk(monologue), toolName(0, "c1", "emit_card"), toolArgs(0, JSON.stringify(BRIEF))],
+      [textChunk("That's the brief.")],
+    ]);
+
+    const res = await runChatAgentStream(
+      baseInput({ composedCards: true, onToken: (d: string) => { streamed += d; } }),
+      DEPS(stream, { skills: [mkSkill("generate_ideas")] }),
+    );
+
+    expect(streamed).toContain("The user wants an explanation");
+    expect(res.text).toBe("That's the brief.");
+  });
+
+  /**
+   * The other half of F-1 on this path, and the one that is actually on screen: the model complies
+   * with neither instruction and RESTATES the card underneath it. Measured in a browser on a prod
+   * build — a composed card laying out THE SETUP / THE FRAME / THE ESCALATION / THE PAYOFF, and
+   * directly below it 1,907 chars re-answering the same question in prose.
+   *
+   * Over-budget post-card prose is a restatement by construction — the loop asked for ONE short
+   * closing line — so it is DROPPED rather than truncated. Truncating is what the cap does and its
+   * own docstring concedes the failure: it "only ever truncates", so the creator gets 600 chars of
+   * duplicate cut mid-sentence instead of no duplicate.
+   */
+  it("drops an over-budget post-card restatement rather than truncating it (F-1)", async () => {
+    const restatement = "The core mechanism is incongruity — the gap does the work here. ".repeat(20);
+    const stream = mockStream([
+      [toolName(0, "c1", "emit_card"), toolArgs(0, JSON.stringify(BRIEF))],
+      [textChunk(restatement)],
+    ]);
+
+    const res = await runChatAgentStream(
+      baseInput({ composedCards: true }),
+      DEPS(stream, { skills: [mkSkill("generate_ideas")] }),
+    );
+
+    expect(restatement.length).toBeGreaterThan(600); // the fixture really is over budget
+    expect(res.text).toBe(""); // …and none of it is persisted beside the card
+  });
+
+  it("keeps a genuine short closing line beside a composed card", async () => {
+    const stream = mockStream([
+      [toolName(0, "c1", "emit_card"), toolArgs(0, JSON.stringify(BRIEF))],
+      [textChunk("That's the brief — want me to turn it into hooks?")],
+    ]);
+
+    const res = await runChatAgentStream(
+      baseInput({ composedCards: true }),
+      DEPS(stream, { skills: [mkSkill("generate_ideas")] }),
+    );
+
+    expect(res.text).toBe("That's the brief — want me to turn it into hooks?");
   });
 
   it("streams a composed card to onBlock and persists it, without spending anything", async () => {

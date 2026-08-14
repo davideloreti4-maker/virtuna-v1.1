@@ -1055,6 +1055,14 @@ export async function runChatAgentStream(
   const toolCalls: ChatAgentStreamResult["toolCalls"] = [];
   let paidRuns = 0;
   let fullText = "";
+  /**
+   * The same text, minus every round that ran BEFORE the first card landed (F-1). This is what a
+   * card-bearing turn persists; `fullText` still carries the whole stream for turns that never
+   * produce cards, which need their prose intact (refusals, plain chat, search-and-answer).
+   */
+  let postCardText = "";
+  /** Has ANY card reached the creator this turn — a skill's blocks or a composed `emit_card` one. */
+  let cardsDelivered = false;
 
   // The artefact guard (see createArtefactGuard) — no longer "defence in depth under the model
   // choice", but the thing that OWNS this property: as of 2026-08-05 it is what an unpaid visitor's
@@ -1142,6 +1150,15 @@ export async function runChatAgentStream(
     // Accumulate the round: text streams straight through; tool-call fragments accumulate by index.
     // Once cards have been delivered this turn, the round's text budget drops to the closing-line
     // cap (F-1): tokens beyond it are neither streamed nor persisted.
+    //
+    // This round's tools have not run yet, so both predicates read PRIOR rounds only — which makes
+    // `cardsAlreadyDelivered` exactly "were cards already on screen when this text was written".
+    //
+    // They are deliberately DIFFERENT predicates. The cap stays keyed to `skillRuns`, so no turn
+    // starts getting truncated that was not being truncated before; the F-1 drop is keyed to cards
+    // of any origin, because `emit_card` routes composed cards to `uiBlocks` and a composed pack
+    // duplicates itself in prose exactly the way a generated one does.
+    const cardsAlreadyDelivered = cardsDelivered;
     const textCap = skillRuns.some((r) => r.blocks.length > 0) ? POST_TOOL_TEXT_CAP : Infinity;
     let roundText = "";
     /**
@@ -1199,6 +1216,7 @@ export async function runChatAgentStream(
      */
     const shownText = proseGuard ? proseGuard.close(proseCallPinFires) : roundText;
     fullText += shownText;
+    if (cardsAlreadyDelivered) postCardText += shownText;
 
     const assistantMsg: Record<string, unknown> = { role: "assistant", content: shownText || null };
     if (calls.length > 0) {
@@ -1385,6 +1403,7 @@ export async function runChatAgentStream(
         for (const block of blocks) {
           input.onBlock(block); // live render this turn…
           uiBlocks.push(block); // …and persist, or the card vanishes on reload while the prose stays
+          cardsDelivered = true; // …and from here, prose written EARLIER is pre-card narration (F-1)
         }
         toolCalls.push({
           name: "emit_card",
@@ -1539,6 +1558,7 @@ export async function runChatAgentStream(
         // looked identical to a clean one through the chat door. skillKey rides along so
         // the route can stamp the persisted turn (run-header) with what actually ran.
         skillRuns.push({ name: skill.name, skillKey: skill.skillKey, blocks, warnings });
+        if (blocks.length > 0) cardsDelivered = true; // F-1: prose written earlier is pre-card
         toolCalls.push({ name: skill.name, ran: true });
         // ── THE CARDS THE CREATOR IS NOW LOOKING AT (flagged, 2026-08-11) ──────────────────
         // Until this, a live run reported a COUNT and nothing else, while `replayPriorTurn`
@@ -1604,5 +1624,27 @@ export async function runChatAgentStream(
   // The guarded text is what the creator SAW, so it is also what gets persisted — otherwise the
   // redaction would hold for one turn and the raw line would reappear on reload, and land in the
   // next turn's replayed transcript as precedent.
-  return { text: unbound ? guard.flush() : fullText, skillRuns, uiBlocks, toolCalls };
+  //
+  // F-1, the one deliberate exception. A turn that delivered cards persists only the text written
+  // AFTER them. `POST_TOOL_TEXT_CAP` governs each such round, but it is computed per round from a
+  // `skillRuns` that is empty until a skill has run — so a round that narrates and calls the skill
+  // in one breath ("…I need to pull the outlier data") streamed uncapped and was concatenated in.
+  // The route inserts cards as their own message FIRST, so on reload that narration reappears
+  // BELOW the cards it was promising, reading as a second, competing answer. Measured 2026-08-15:
+  // 14 of 139 card-bearing turns. Dropping it at assembly rather than withholding it at stream time
+  // is what keeps round-1 text unbuffered — the cost prose-call.ts §"WHY THIS TRIGGER IS SAFE"
+  // refuses to pay — and it never truncates a real answer the way widening the cap would.
+  // …and the second half, for the text written AFTER the cards. The loop asked for ONE short
+  // closing line, so post-card prose that overruns that budget is a RESTATEMENT, not a closing
+  // line — and it is dropped whole rather than truncated. `POST_TOOL_TEXT_CAP` truncates, which its
+  // own docstring concedes leaves the creator 600 chars of duplicate cut mid-sentence instead of no
+  // duplicate; and it never governed `emit_card` turns at all, because it keys off `skillRuns` and
+  // composed cards land in `uiBlocks`. Measured in a browser: a composed card laying out THE SETUP
+  // / THE FRAME / THE ESCALATION / THE PAYOFF, with 1,907 chars re-answering it directly below.
+  //
+  // The budget is per TURN, not per round: N post-card rounds of capped text still stack into N×600
+  // of duplicate, which is the same defect wearing a different shape.
+  const closingLine = postCardText.length > POST_TOOL_TEXT_CAP ? "" : postCardText;
+  const answer = cardsDelivered ? closingLine : fullText;
+  return { text: unbound ? guard.flush() : answer, skillRuns, uiBlocks, toolCalls };
 }
