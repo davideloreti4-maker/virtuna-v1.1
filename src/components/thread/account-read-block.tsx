@@ -39,6 +39,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { AccountReadBlock } from '@/lib/tools/blocks';
 import { handoffsFor } from '@/lib/tools/chain-handoff';
+import { reportCredit402 } from '@/lib/billing/credit-wall';
+import { reportSession401 } from '@/lib/auth/session-expired';
 import { SaveAffordance } from './save-affordance';
 import { CoverFill } from '@/components/primitives/CoverFill';
 import { CaretToggle } from './caret-toggle';
@@ -287,11 +289,23 @@ function WriteToStrengthsButton({ strengths }: { strengths: string[] }) {
     try {
       // The Ideas SSE route appends idea cards to the OPEN thread server-side; we don't
       // consume the stream here — /home rehydrates the persisted cards on navigation.
-      await fetch(handoff.endpoint, {
+      const res = await fetch(handoff.endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ask: buildStrengthsAsk(strengths), platform: 'tiktok' }),
       });
+      // Ideas is a PAID route, and `fetch` does not reject on an HTTP status. This used to push
+      // to /home on a 402 and a 401 alike, so a refused creator arrived at an unchanged thread
+      // with no new cards and nothing said. The two dialogs are already mounted app-wide.
+      if (!res.ok) {
+        const err: unknown = await res.json().catch(() => null);
+        setWriting(false);
+        if (!reportCredit402(res.status, err)) reportSession401(res.status);
+        return;
+      }
+      // `writing` deliberately stays true: this card unmounts on /home, and re-enabling a button
+      // that spends credits for the width of a route transition is the wrong kind of tidy.
+      // The 200 body is an SSE stream open for the whole run — never read it.
       router.push('/home');
     } catch {
       setWriting(false);

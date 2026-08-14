@@ -30,6 +30,8 @@ import { DiscoverSubpageHeader } from "@/components/discover/discover-subpage-he
 import type { OutlierTileData } from "@/components/discover/outlier-tile";
 import { classifyDiscoverInput } from "@/lib/discover/classify-input";
 import { handoffsFor } from "@/lib/tools/chain-handoff";
+import { reportCredit402 } from "@/lib/billing/credit-wall";
+import { reportSession401 } from "@/lib/auth/session-expired";
 
 // Default platform for the remix rehost launch (mirrors the composer default).
 const DEFAULT_PLATFORM = "tiktok";
@@ -114,6 +116,14 @@ export function DiscoverClient() {
       });
 
       if (!res.ok) {
+        const err: unknown = await res.json().catch(() => null);
+        // A REFUSAL IS NOT A FAILED PULL. The error state renders a Retry, and retrying a 402 or a
+        // 401 gets the same answer forever; the wall / session dialog is the whole UI and already
+        // says what to do. Drop back to idle rather than stacking a futile retry underneath it.
+        if (reportCredit402(res.status, err) || reportSession401(res.status)) {
+          setState("idle");
+          return;
+        }
         setState("error");
         return;
       }
@@ -142,12 +152,25 @@ export function DiscoverClient() {
       try {
         // The OutlierTile's videoUrl IS the rehost anchor (anchorFrom: "card").
         // The remix route streams + persists a remix-card to the open thread.
-        await fetch(handoff.endpoint, {
+        const res = await fetch(handoff.endpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ url: tile.videoUrl, platform: DEFAULT_PLATFORM }),
         });
+        // `fetch` does not reject on an HTTP status. Without this the push below ran on a 402 and
+        // a 401 too, dropping a refused creator on an unchanged /home with no card and no reason.
+        if (!res.ok) {
+          const err: unknown = await res.json().catch(() => null);
+          setRemixPendingId(null);
+          // Neither fires on a 500: this surface has no toast, so the tile simply re-arms —
+          // the same honest dead-end the catch below has always given a network error.
+          if (!reportCredit402(res.status, err)) reportSession401(res.status);
+          return;
+        }
         // Drop into the thread chain — /home rehydrates the persisted remix-card.
+        // pendingId is deliberately left set: this page unmounts on /home, and clearing it first
+        // would re-arm a button that starts a billed run for the width of the transition.
+        // The 200 body is an SSE stream open for the whole pipeline — never read it.
         router.push("/home");
       } catch {
         setRemixPendingId(null);
