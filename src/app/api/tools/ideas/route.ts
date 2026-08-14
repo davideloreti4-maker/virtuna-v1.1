@@ -61,6 +61,7 @@ import { requireSocialsAudience } from "@/lib/audience/require-socials-audience"
 import { goalIntentToLens, parseIntentLens } from "@/lib/audience/intent-lens";
 import type { IdeaCardBlock } from "@/lib/tools/blocks";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
+import { resolveAllowScrape } from "@/lib/grounding/scrape-default";
 
 // ── Message cap constant ──────────────────────────────────────────────────────
 const MAX_MESSAGE_LENGTH = 2000; // chars — WARNING-5: enforced server-side, independent of client
@@ -115,9 +116,12 @@ export async function POST(request: Request): Promise<Response> {
   const rawAsk = typeof body.ask === "string" ? body.ask : "";
   const rawPlatform = typeof body.platform === "string" ? body.platform : "tiktok";
   // EXPLICIT-ONLY SPEND: the only field that can authorize a live Apify scrape. Default false —
-  // a normal run never bills. Set true solely by the "Find new outliers" affordance (see
-  // gather-for-run `allowScrape`). Coerced strictly to boolean; anything non-`true` is false.
-  const allowScrape = body.allowScrape === true;
+  // a normal run never bills. Set true by the "Find new outliers" affordance (see gather-for-run
+  // `allowScrape`). Coerced strictly to boolean; anything non-`true` is false.
+  // `LIVE_SCRAPE_DEFAULT="true"` additionally authorizes it environment-wide, for testing the live
+  // Apify → Qwen path without tapping the affordance on every send. Default OFF — see
+  // `grounding/scrape-default.ts` for why that is a flag and not a changed default.
+  const allowScrape = resolveAllowScrape(body.allowScrape);
 
   // SERVER-SIDE ASK CAP (WARNING-5): independent of client validation
   if (rawAsk.length > MAX_MESSAGE_LENGTH) {

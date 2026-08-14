@@ -63,6 +63,7 @@ import { rateLimitGuard } from "@/lib/http/rate-limit";
 import { maybeMockSkillRun } from "@/lib/tools/mock/mock-sse";
 import type { HookCardBlock } from "@/lib/tools/blocks";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
+import { resolveAllowScrape } from "@/lib/grounding/scrape-default";
 
 // ── Rate limit / cap constants ────────────────────────────────────────────────
 const RATE_LIMIT_WINDOW_SECS = 60;
@@ -132,9 +133,12 @@ export async function POST(request: Request): Promise<Response> {
   const rawCount =
     typeof body.count === "number" && Number.isFinite(body.count) ? Math.trunc(body.count) : undefined;
   // EXPLICIT-ONLY SPEND: the only field that can authorize a live Apify scrape. Default false —
-  // a normal run never bills. Set true solely by the "Find new outliers" affordance the user taps
-  // (see gather-for-run `allowScrape`). Coerced strictly to boolean; anything non-`true` is false.
-  const allowScrape = body.allowScrape === true;
+  // a normal run never bills. Set true by the "Find new outliers" affordance the user taps (see
+  // gather-for-run `allowScrape`). Coerced strictly to boolean; anything non-`true` is false.
+  // `LIVE_SCRAPE_DEFAULT="true"` additionally authorizes it environment-wide, for testing the live
+  // Apify → Qwen path without tapping the affordance on every send. Default OFF — see
+  // `grounding/scrape-default.ts` for why that is a flag and not a changed default.
+  const allowScrape = resolveAllowScrape(body.allowScrape);
 
   // SERVER-SIDE ASK CAP (WARNING-5): independent of client validation (T-04-06)
   if (rawAsk.length > MAX_MESSAGE_LENGTH) {
