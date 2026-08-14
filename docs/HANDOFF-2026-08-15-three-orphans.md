@@ -177,6 +177,19 @@ element) and the four never-measured rows F-3 · F-8 · F-11 · F-12, each of wh
 
 ## 4. Open, in the order I would take them
 
+> 🔴 **ITEMS 1 AND 2 ARE CLOSED (2026-08-15).** F-1 and F-7 both shipped — see
+> `HANDOFF-2026-08-15-f1-f7-closed.md`. Two things below are wrong as written, and both are worth
+> reading before trusting the rest:
+>
+> - **F-7 was already half-fixed when this was written.** `hooks-runner` has capped per-source
+>   citations since `7d4bc133`. The re-derivation below looked in `build-proof.ts`, correctly found
+>   no constraint there, and concluded the defect was live everywhere — but the constraint *cannot*
+>   live in that file, which is a pure per-card lookup with no view of the other cards. Only
+>   `ideas-runner` was actually missing it.
+> - **F-1's mechanism is not "the model re-emits the pack".** It is the loop concatenating every
+>   round's text into one persisted block, where the pre-card rounds were never capped. Measured
+>   at 14 of 139 card-bearing turns.
+
 1. **F-1 — the pack renders twice (~8%).** The largest remaining user-visible defect: two competing
    closing questions stacked on screen. The previous handoff's own advice still stands and is
    non-obvious — **key the fix on duplication of cards already delivered THIS TURN, not on shape**,
@@ -226,6 +239,16 @@ happen". That now applies to my own probes, not just to production data.
 **And one that is new:** ⚠️ `text-foreground-tertiary` is also live in `extension-card.tsx` and
 `upgrade-prompt.tsx`. **Two files are styling with a class that does not exist.** Not fixed here —
 out of this ruling's scope — but it is a real, silent defect and a one-line fix each.
+
+> 🔴 **CORRECTION 2026-08-15 — the paragraph above is FALSE. There is no defect.** The string
+> occurs **exactly once in the repository**, inside a JSDoc `@example` block at
+> `extension-card.tsx:79` (` *   metadata={<span className="text-xs text-foreground-tertiary">`).
+> It is a comment. `upgrade-prompt.tsx` does not contain it at all — `grep -rn text-foreground-tertiary src`
+> returns that one comment line and nothing else. **Zero files style with it.**
+>
+> 🔑 The lesson is this document's own, turned on itself: the claim was written from a `grep` whose
+> hits were never opened. A match inside a comment reads identically to a match in a `className`.
+> Both files were named with confidence and one of them was never even a hit.
 
 ---
 
