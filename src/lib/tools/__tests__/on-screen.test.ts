@@ -13,9 +13,12 @@ import {
   describeRunOutput,
   isRecordedBlock,
   isChatCardsOnScreenEnabled,
+  recordLineOf,
   RECORDED_BLOCKS,
   MAX_LINES_PER_RUN,
   MAX_LINE_LENGTH,
+  MAX_RECORD_LENGTH,
+  MAX_GRID_TILES,
 } from "../on-screen";
 
 const hook = (hookLine: unknown) => ({ type: "hook-card", props: { hookLine } });
@@ -150,6 +153,81 @@ describe("describeRunOutput — any skill, not just the three generators", () =>
     for (const type of RECORDED_BLOCKS) {
       expect(isRecordedBlock(type), `${type} must be describable live`).toBe(true);
     }
+  });
+});
+
+/**
+ * An Explore run puts TWELVE videos on the creator's screen, and the record described exactly one
+ * of them (`tiles[0]`). So "find me 3 viral formats" — an ask the grid on screen fully answers —
+ * was unanswerable for a mechanical reason: the agent had never been told the other eleven exist
+ * in any form it could quote. This fires on the manual Explore button, on every thread, today.
+ *
+ * The grid is the ONE record type that summarises a set rather than a single result, which is why
+ * it is also the one the module's "one line each" rule reads wrong. It still ships one line — that
+ * line just has to name more than one video.
+ */
+const gridTile = (caption: string, multiplier: number) => ({
+  platformVideoId: "7291822011",
+  videoUrl: "https://www.tiktok.com/@demo/video/7291822011",
+  caption,
+  views: 2_400_000,
+  multiplier,
+  baselineLabel: "vs own",
+  fit: { level: "Strong" },
+});
+
+/** Twelve tiles with distinct, realistically long captions — a real Explore pull's shape. */
+const twelveTiles = Array.from({ length: 12 }, (_, i) =>
+  gridTile(`Format ${i + 1}: the one habit that changed my mornings and why nobody talks about it`, 12.4 - i),
+);
+
+describe("recordLineOf — the outlier grid describes the SET, not tiles[0]", () => {
+  it("names several videos, not only the first", () => {
+    const line = recordLineOf("outlier-grid", { mode: "profile", tiles: twelveTiles })!;
+
+    expect(line).toContain("Format 1:");
+    expect(line).toContain("Format 2:");
+    expect(line).toContain("Format 3:"); // "find me 3 viral formats" is answerable from this alone
+  });
+
+  it("states both counts, so the model cannot imply it read all twelve", () => {
+    const line = recordLineOf("outlier-grid", { mode: "profile", tiles: twelveTiles })!;
+
+    expect(line).toContain("12"); // what the creator is looking at
+    expect(line).toContain(String(MAX_GRID_TILES)); // what this line actually quotes
+  });
+
+  it("carries each quoted video's multiplier — the reason it is IN the grid", () => {
+    const line = recordLineOf("outlier-grid", { mode: "profile", tiles: twelveTiles })!;
+
+    expect(line).toContain("12.4×");
+    expect(line).toContain("11.4×");
+  });
+
+  /**
+   * The other half of the defect. A cap that clips the line mid-caption hands the model a truncated
+   * quote it will happily read back to the creator, so the budget has to fit the line the describer
+   * intends to emit — the tile count and the cap are one decision, not two.
+   */
+  it("fits the whole multi-tile line inside the cap, unclipped", () => {
+    const line = recordLineOf("outlier-grid", { mode: "profile", tiles: twelveTiles })!;
+
+    expect(line.length).toBeLessThanOrEqual(MAX_RECORD_LENGTH);
+    // The LAST quoted tile survives — proof the cap did not eat the tail of the list.
+    expect(line).toContain(`Format ${MAX_GRID_TILES}:`);
+  });
+
+  it("still degrades rather than inventing: no tiles → no record", () => {
+    expect(recordLineOf("outlier-grid", { mode: "profile", tiles: [] })).toBeNull();
+    expect(recordLineOf("outlier-grid", {})).toBeNull();
+  });
+
+  it("quotes a grid SHORTER than the cap without padding or a phantom tile", () => {
+    const line = recordLineOf("outlier-grid", { mode: "profile", tiles: twelveTiles.slice(0, 2) })!;
+
+    expect(line).toContain("Format 1:");
+    expect(line).toContain("Format 2:");
+    expect(line).not.toContain("Format 3:");
   });
 });
 

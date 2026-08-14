@@ -111,16 +111,36 @@ const SKILL_BLOCK_RECORD: Record<string, (props: Record<string, unknown>) => str
     });
     return `Audience Read — ${parts.join(" · ")}`;
   },
+  /**
+   * ⚠️ THE ONE RECORD THAT SUMMARISES A SET. Every other describer above condenses a single result,
+   * so "one line each" and "one result each" are the same rule for them. The Explore grid puts
+   * TWELVE videos on the creator's screen, and this described `tiles[0]` — so the agent was told
+   * one video existed and eleven did not. "Find me 3 viral formats", an ask the grid on screen
+   * fully answers, was unanswerable for a purely mechanical reason (fixed 2026-08-15).
+   *
+   * It still emits ONE line. That line now quotes up to MAX_GRID_TILES of them, and prints BOTH
+   * counts: a record that quoted 5 of 12 while saying only "12" would invite the model to describe
+   * seven videos it was never shown.
+   */
   "outlier-grid": (p) => {
     const tiles = asArray(p.tiles);
     if (tiles.length === 0) return null;
-    const top = tiles[0]!;
-    const mult = typeof top.multiplier === "number" ? `${top.multiplier.toFixed(1)}×` : null;
-    const caption = str(top.caption);
+    const quoted = tiles.slice(0, MAX_GRID_TILES);
+    const parts = quoted.map((t) => {
+      const caption = str(t.caption);
+      const mult = typeof t.multiplier === "number" ? `${t.multiplier.toFixed(1)}×` : null;
+      const label = str(t.baselineLabel);
+      // The baseline rides on EVERY tile rather than being stated once up front: a single header
+      // would be a uniformity claim over rows this describer never compared, and the corpus does
+      // carry mixed bases ("vs own" / "vs their usual views").
+      return (
+        `"${caption ? caption.slice(0, GRID_CAPTION_LENGTH) : "untitled"}"` +
+        (mult ? ` ${mult}${label ? ` ${label.slice(0, 24)}` : ""}` : "")
+      );
+    });
     return (
-      `Explore — pulled ${tiles.length} outlier video(s)` +
-      (caption ? `; top: "${caption.slice(0, 90)}"` : "") +
-      (mult ? ` at ${mult} ${str(top.baselineLabel) ?? ""}`.trimEnd() : "")
+      `Explore — pulled ${tiles.length} outlier video(s), quoting ${quoted.length}: ` +
+      parts.join(" · ")
     );
   },
   "profile-read": (p) => {
@@ -246,7 +266,21 @@ export const NON_RECORD_BLOCKS: Record<string, string> = {
 
 /** Caps on the record trail: compact by construction, since it rides on every later turn. */
 export const MAX_RECORDS = 12;
-export const MAX_RECORD_LENGTH = 240;
+/**
+ * ⚠️ RAISED 240 → 650 on 2026-08-15, and it is one decision with MAX_GRID_TILES, not two. A cap
+ * that clips below the line the describer intends to emit does not save tokens — it hands the model
+ * a caption cut mid-word, which it then reads back to the creator as a video title. At 240 the grid
+ * record could not have quoted more than two tiles no matter what the describer did.
+ *
+ * This is a SAFETY bound, not a budget: every other describer above lands well under 240 and is
+ * unaffected. The grid is the only record that summarises a set, and its worst case (5 tiles ×
+ * 80-char caption + multiplier + a 24-char baseline) is ~630.
+ */
+export const MAX_RECORD_LENGTH = 650;
+/** How many of an Explore grid's tiles one record quotes. Twelve is the pull; five is the quote. */
+export const MAX_GRID_TILES = 5;
+/** Per-tile caption budget inside that record — enough to identify a format, not to re-render it. */
+const GRID_CAPTION_LENGTH = 80;
 
 /** Is this block type one the describers above know how to summarise? */
 export function isRecordedBlock(blockType: string): boolean {
