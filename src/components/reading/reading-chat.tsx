@@ -29,9 +29,11 @@ const CONTENT_GUTTER = 12;
 //   • a composer stays sticky-pinned to the viewport bottom so it never vanishes.
 //
 // Reuses the battle-tested `useExpertChat` SSE engine (board-free) + the grounded
-// Qwen endpoint /api/analyze/[id]/chat. Deliberately does NOT pull in the board
-// CommandBar's ExpertChatInput/Thread (those are board-store-coupled, fixed-height
-// dock, "Apollo"-branded, coral-Raycast). This is flat-warm + inline by design.
+// Qwen endpoint /api/analyze/[id]/chat. It deliberately did NOT pull in the board CommandBar's
+// ExpertChatInput/Thread (board-store-coupled, fixed-height dock, "Apollo"-branded, coral-Raycast);
+// this is flat-warm + inline by design. Those three were deleted 2026-08-14 — unreachable since
+// `/analyze` became a redirect — so `useExpertChat` is now shared with nothing and this file is
+// its only consumer. The hook itself is live and staying.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const SEED_PROMPTS = [

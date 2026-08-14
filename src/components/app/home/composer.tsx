@@ -5,7 +5,9 @@
  *
  * Deliberately NOT ContentForm (RESEARCH Pitfall 5): no Score/Remix intent
  * selector, no Apollo model-tier picker, no 3-mode tab set, no Instagram URL
- * acceptance. It reuses the validated sub-parts only:
+ * acceptance. (`content-form.tsx` was deleted 2026-08-14 — this composer had superseded it, and
+ * its route `/analyze` had been a bare redirect since 2026-07-18. The contrast is kept because it
+ * still says what this file refuses to become.) It reuses the validated sub-parts only:
  *   - VideoUpload (bare) for the `+` upload (its existing MP4/MOV + 200MB
  *     validation is the trust-boundary-adjacent UX check; the server re-validates).
  *   - A TikTok-only client URL check (D-21) mirroring the server regex at

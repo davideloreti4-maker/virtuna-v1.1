@@ -181,6 +181,32 @@ export async function PATCH(request: Request): Promise<Response> {
       }));
     }
 
+    // Stamp `profile_interview_seen_at` on first contact — server-derived, never from the body.
+    //
+    // The column has to mean "this creator was ASKED", and for most of this year it has not. Its
+    // only writer was `ProfileInterviewModal`, mounted on `content-form.tsx`, reachable only via
+    // `/analyze` — which became a bare `redirect('/home')` on 2026-07-18. Three rows carry a stamp
+    // and the last is 2026-05-31, and that emptiness has been read as creators declining to answer
+    // ever since. It was a dead code path being reported as a preference.
+    //
+    // `WaitQuestions` PATCHes an EMPTY body on mount for exactly this. Stamping on the first
+    // ANSWER instead would rebuild the same misreading one layer up: someone who saw the questions
+    // and skipped them would look identical to someone never shown them.
+    //
+    // ONLY WHEN NULL. The settings tab PATCHes this route too; overwriting each time would turn a
+    // first-contact timestamp into a last-touched one, which answers a different question badly.
+    // `creatorProfilePatchSchema` has no key for it, so zod already strips any client-supplied
+    // value — this is the sole writer. Same rule as `user_id` here and `origin` on the funnel route.
+    const { data: existing } = await supabase
+      .from("creator_profiles")
+      .select("profile_interview_seen_at")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (!existing?.profile_interview_seen_at) {
+      sanitized.profile_interview_seen_at = new Date().toISOString();
+    }
+
     // Upsert via authenticated client — RLS enforces user_id = auth.uid().
     // Note: callers cannot override `user_id`; it's overwritten from the
     // session-derived `user.id` regardless of any value passed in the body.
