@@ -44,6 +44,31 @@ import {
 } from "./types";
 
 /** Scraped-pool trust (curated > competitor > scraped — §13). */
+/**
+ * How long the best-effort follower lookup may hold a grounded run.
+ *
+ * A healthy clockworks profile scrape returned in ~15s (the comment at step 3 budgeted "~15s"), so
+ * 25s clears the working case with headroom while cutting the broken case from 90-130s. It is a
+ * ceiling on the WAIT, never on the result: whatever has not arrived by then degrades to the cheap
+ * metric, which step 4's gate already accepts.
+ */
+const PROFILE_ENRICH_TIMEOUT_MS = 25_000;
+
+/**
+ * Resolve `p`, or `null` if it takes longer than `ms`.
+ *
+ * Deliberately resolves rather than rejects: the caller's `catch` already means "no follower count"
+ * and a timeout means exactly the same thing, so raising would only invite the two identical
+ * outcomes to drift apart. The underlying request is left running — there is nothing to cancel
+ * through the Apify client here, and it holds no lock; it simply stops being waited on.
+ */
+function withDeadline<T>(p: Promise<T>, ms: number): Promise<T | null> {
+  return Promise.race([
+    p,
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), ms).unref?.()),
+  ]);
+}
+
 const TRUST_SCRAPED = 0.6;
 /** Pre-prune placeholder fit (real §11c label lands with the audience-prune stage). */
 const DEFAULT_FIT: FitLabel = "adjacent";
@@ -217,13 +242,29 @@ export async function gatherAndExtract(
   }
 
   // 3. profile-scrape survivors for follower_count (best-effort, parallel — §14 survivors-only).
+  //
+  // ⏱️ BOUNDED, because "best-effort" was only ever true about the RESULT, never about the wait.
+  // Measured 2026-08-14: clockworks profile mode returns 0 items for every handle — including
+  // @khaby.lame — while the actor still reports SUCCEEDED. It does not fail fast; it retries each
+  // URL ~12 times ("Failed to parse TikTok response: Unexpected end of JSON input", 145 of them in
+  // one run) and then hands back an empty dataset after 90-130s. The catch below already turned
+  // that into `null` correctly, so the OUTPUT was never wrong — but the creator still waited two
+  // minutes for a value the enrichment could not produce, on every grounded run.
+  //
+  // The gate at step 4 keeps rows whose follower count is unknown (`!g.durable`), so a timeout
+  // costs exactly what the catch already cost: the durable multiplier degrades to the cheap
+  // metric. That is the same honest fallback, reached sooner.
+  //
+  // A timeout rather than a feature flag or a removal: the upstream break is transient by nature
+  // (TikTok changed something and clockworks will chase it), so the call must resume paying off by
+  // itself the moment it works again. Deleting it would need a second change to undo.
   const followers = await Promise.all(
     survivors.map(async (v) => {
       const handle = handleFromUrl(v.videoUrl);
       if (!handle) return null;
       try {
-        const p = await provider.scrapeProfile(handle);
-        return p.followerCount ?? null;
+        const p = await withDeadline(provider.scrapeProfile(handle), PROFILE_ENRICH_TIMEOUT_MS);
+        return p?.followerCount ?? null;
       } catch {
         return null; // honest fallback to the cheap metric below
       }
