@@ -10,8 +10,6 @@ export { LegendPills } from "./legend-pills";
 export type { RoleLevel } from "./legend-pills";
 export { CreateSocietyModal } from "./create-society-modal";
 export { TestTypeSelector } from "./test-type-selector";
-export { ContentForm } from "./content-form";
-export type { ContentFormData } from "./content-form";
 export { VideoUpload } from "./video-upload";
 export { TikTokUrlInput } from "./tiktok-url-input";
 export { SurveyForm } from "./survey-form";

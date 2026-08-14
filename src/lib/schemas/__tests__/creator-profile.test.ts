@@ -12,12 +12,19 @@ import {
  */
 
 /**
- * 🔴 A KNOWN, DELIBERATE GAP — Card 9 of the interview is collected and thrown away.
+ * 🔴 A KNOWN, DELIBERATE GAP — `writing_voice_description` has nowhere to land.
  *
- * `profile-interview-store.ts` serializes Card 9 to `writing_voice_description`, but this schema
- * is a plain `z.object`, so zod STRIPS the key, and `creator_profiles` has no voice column to
- * receive it anyway (both verified 2026-08-13). The creator types an answer and nothing persists —
- * silently, with no error, since a stripped key never reaches the upsert.
+ * This schema is a plain `z.object`, so zod STRIPS the key, and `creator_profiles` has no voice
+ * column to receive it anyway (both verified 2026-08-13). A stripped key never reaches the upsert,
+ * so the loss is silent and errorless.
+ *
+ * ⚠️ UPDATED 2026-08-14: nothing collects this answer any more either. The card that asked for it
+ * (`voice-description-input.tsx`) and the store that serialized it (`profile-interview-store.ts`)
+ * were deleted with the unreachable interview modal, and `WaitQuestions` — the three questions
+ * that replaced it — deliberately does not ask: the audience's auto-derived `creator_persona`
+ * already backfills the voice role from the real scrape. So this test now guards the SCHEMA
+ * boundary alone, which is the half that matters: it is what would silently swallow the field if
+ * a future surface started sending it again.
  *
  * This is pinned rather than fixed because wiring it is a product decision, not a cleanup:
  * `docs/superpowers/specs/2026-08-12-exemplar-fence-design.md` §5.4 warns against shipping this

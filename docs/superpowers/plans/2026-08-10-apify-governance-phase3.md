@@ -1,5 +1,31 @@
 # Apify Spend Governance (Phase 3) Implementation Plan
 
+> # 🔴 SUPERSEDED IN PART — read this before executing anything below.
+>
+> **Owner ruling 2026-08-14: Tasks 2–9 are DROPPED. Only Task 1 survives.**
+>
+> Do **not** execute this plan task-by-task as written. The goal statement and architecture
+> paragraph below describe the gate chain, and that chain is no longer being built.
+>
+> | | |
+> |---|---|
+> | **Task 1** — `SpendAuthority` (`src/lib/billing/spend-authority.ts`) | ✅ **BUILD THIS.** Still correct as written. Zero code exists yet. |
+> | **Tasks 2–9** | ❌ **DROPPED.** Not deferred. |
+> | **The ten other Apify doors** (spec §5.2) | ➕ **NOW IN SCOPE** — the point of the lane. Needs its own plan; this document does not cover the wiring. |
+>
+> **Why:** the chain governs ~4.5% of asks (spec §5.1's own measurement), and its first link — gate
+> 1, which Task 2 builds — is measured broken (#484): it passes `asdfghjkl qwerty zxcvbn`. Seven
+> tasks would sit on a false premise. Full reasoning in the amendment box at spec §5.1.
+>
+> ⚠️ **Task 1's interface is unchanged but its CALLERS are not.** As written it is "injected by the
+> route, exactly like `SkillBilling`" for the chat loop — the consumer that just got dropped. Its
+> first real callers are now the ten doors, several of which are **cron jobs with no route and no
+> request**. Re-derive the injection seam before writing the module; do not inherit it.
+>
+> ⚠️ One thing this ruling does NOT resolve, and nothing else now owns: gate 1's honesty defect —
+> the app fronts *"the proven outliers for {niche}"* over median rows on the 95.5% path. Killing the
+> chain removed its only planned home. Spec §5.1 amendment has the detail.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Let the chat agent reach the three Apify-spending skills (`explore`, `account`) behind a

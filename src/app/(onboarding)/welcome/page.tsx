@@ -29,6 +29,7 @@ import { SENTINEL_IDS } from "@/lib/audience/audience-repo";
 import { useOnboardingStore } from "@/stores/onboarding-store";
 import { ConnectStep, type Door } from "@/components/onboarding/connect-step";
 import { CalibrationFlow } from "@/components/audience/calibration-flow";
+import { WaitQuestions } from "@/components/onboarding/wait-questions";
 import { CONCEPT_V8_ENABLED } from "@/lib/flags/concept-v8";
 import { LaneQuestion } from "@/components/onboarding/lane-question";
 import { LaneReveal } from "@/components/onboarding/lane-reveal";
@@ -395,6 +396,12 @@ export default function WelcomePage() {
             onDone={(calibrated) => void finishOnboarding(calibrated)}
             onSkip={() => void finishOnboarding()}
             secondaryAction={recoveryAction}
+            /* The ~128s wait is the only stretch of onboarding where the creator has nothing to
+               do, so it is where the three questions the scrape cannot answer are asked
+               (ONBOARDING-FUNNEL-DESIGN.md §7). It costs no step and no extra screen: the wait was
+               already being spent. `duringWait` is a slot, so the other two CalibrationFlow
+               callers — /audience/new and the recalibrate panel — are untouched. */
+            duringWait={<WaitQuestions />}
           />
         ) : lanesOpen && shelves ? (
           <LaneReveal shelves={shelves} onPick={pickLane} />

@@ -570,6 +570,39 @@ failing closed against the real cap, applied to the **ten other doors** that dra
 currently puts out of scope — rather than the chat gate chain, which §1–§3 build in full. That is a
 scope call for the owner, not a change this document makes on its own.
 
+> #### ✅ AMENDMENT 2026-08-14 — the owner made that call. Gate chain DROPPED.
+>
+> **Ruling: build `SpendAuthority` across the ten other doors; do not build the chat gate chain.**
+>
+> Mapped onto `plans/2026-08-10-apify-governance-phase3.md`:
+>
+> | | |
+> |---|---|
+> | **Task 1** — `SpendAuthority`, the platform budget seam | **KEEP.** This is now the whole lane. |
+> | **Tasks 2–9** — warm coverage, copy module, `pending_proposal` migration + RPC, the `skill-proposal` block, the dispatcher gate chain, `POST /api/chat/confirm`, the grid replay, the e2e walk | **DROPPED.** Not deferred — dropped. |
+> | **NEW** — wire the authority into the ten doors §5.2 lists | **IN SCOPE**, and the reason the lane exists. |
+>
+> Two grounds, both measured, neither a preference:
+>
+> 1. **§5.1's own arithmetic.** The chain governs the residual ~4.5% of asks. Eight tasks of
+>    migration, RPC, atomic claim, a new block type and a new route, to guard a path that is nearly
+>    never taken and, when taken, rarely spends.
+> 2. **Gate 1 is measured BROKEN, so the chain's first link cannot be trusted anyway** (#484). It
+>    passes 95.5% of real asks *and* passes `asdfghjkl qwerty zxcvbn`. What it actually separates is
+>    off-domain from in-domain — **not** contentless from covered. Building seven tasks on top of a
+>    gate that admits keyboard mash would be building on a false premise.
+>
+> ⚠️ **The quality exposure in consequence 3 above is NOT fixed by this ruling and does not go away
+> with the chain.** A gate that passes on `asdfghjkl` still fronts *"here are the proven outliers for
+> {niche}"* over median rows. That is a live honesty defect on the 95.5% path — the path creators
+> actually take — and it is now unowned by any phase. It needs its own scope call. Do not let the
+> gate chain's death carry it off the board.
+>
+> ⚠️ §5.2 below still reads "out of scope" for the ten doors. **It is superseded by this box**; the
+> bullet is left standing rather than rewritten so the original reasoning stays legible.
+>
+> Unchanged by this ruling: §6 — a paid Apify plan still gates **shipping**, not building.
+
 ### 5.2 Out of scope
 
 - **The other ten Apify doors.** `/api/discover`, `/api/analyze`, `/api/profile`,

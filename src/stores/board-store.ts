@@ -36,7 +36,8 @@ export interface PendingVideo {
   /**
    * Object URL (`URL.createObjectURL`) for the locally selected file, kept for
    * frame-accurate scrubbing on the board before the analysis is persisted. Set
-   * by content-form for video_upload mode only. Revoked when replaced/cleared.
+   * by the composer for video_upload mode only. Revoked when replaced/cleared.
+   * (Was `content-form.tsx`, deleted 2026-08-14 with the rest of the dead `/analyze` surface.)
    */
   objectUrl?: string;
 }
@@ -79,8 +80,11 @@ export interface BoardState {
 
   /**
    * Monotonic counter that increments when something requests the input bar
-   * receive focus (Input node tap, "Run another analysis", etc). The CommandBar
+   * receive focus (Input node tap, "Run another analysis", etc). The composer
    * watches this and focuses its textarea on change.
+   *
+   * ⚠️ `CommandBar`, the original watcher, was deleted 2026-08-14 — it had been unreachable since
+   * `/analyze` became a redirect. Verify a live consumer still reads this before trusting it.
    */
   inputBarFocusPulse: number;
 
@@ -130,7 +134,8 @@ export interface BoardActions {
    * Request that the bottom command bar receive focus. Pulses
    * `inputBarFocusPulse`; coerces `boardState` to `idle` from complete/AV (no-op
    * while streaming). Name kept for call-site stability after the input drawer
-   * was removed in favour of an always-visible CommandBar form.
+   * was removed in favour of an always-visible bottom form (then `CommandBar`,
+   * deleted 2026-08-14; the composer is the surviving one).
    */
   openInputDrawer: () => void;
 
@@ -253,7 +258,7 @@ export const useBoardStore = create<BoardState & BoardActions>((set) => ({
   openInputDrawer: () =>
     // Legacy name retained for call-site stability. With the drawer removed, this
     // now (a) coerces complete/AV back to idle so the bar's form is editable,
-    // and (b) pulses the focus counter so the CommandBar focuses its textarea.
+    // and (b) pulses the focus counter so the composer focuses its textarea.
     // Streaming is left alone.
     set((s) => {
       if (s.boardState === 'streaming') return {};
