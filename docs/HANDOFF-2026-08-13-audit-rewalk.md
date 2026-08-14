@@ -181,6 +181,19 @@ answer ≈ 4 screens. 33k characters is roughly an order of magnitude beyond tha
 
 ## 2. F-1…F-22 status, measured
 
+> 🔴 **FOUR ROWS BELOW ARE STALE. Read `HANDOFF-2026-08-15-three-orphans.md` §3 first.**
+>
+> **F-13, F-14, F-18 and F-19 were FIXED in #495**, one day after this table was written, and each
+> is marked 🔴 STILL LIVE here. Do not re-investigate them.
+>
+> Also corrected since: **F-1, F-7 and F-22 were re-derived on 2026-08-14 and are still true** (the
+> evidence is in that §3, not here). Everything else in this table is as-measured on 2026-08-13 and
+> was NOT re-checked — treat the unmeasured rows as claims.
+>
+> ⚠️ The measurements below are still worth having. It is the STATUSES that expired. This is the
+> same failure the lane keeps paying for: a claim lives in several copies and fixing one leaves the
+> rest lying.
+
 | # | finding | status | evidence |
 |---|---|---|---|
 | **F-1** | pack renders twice | 🔴 **STILL LIVE, ~8%** | 8 confirmed assistant→assistant pairs, gaps 0.1–0.3s, no user turn between; re-answers 793–20,742 chars. 2 of 24 packs on 08-12. **Visually confirmed** (`.scratch/rewalk-desktop.png`) — two competing closing questions above the chip |
