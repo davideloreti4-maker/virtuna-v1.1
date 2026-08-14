@@ -229,6 +229,36 @@ out of this ruling's scope — but it is a real, silent defect and a one-line fi
 
 ---
 
+## 5b. 🔴 THE LANE MEMORY IS STALE — a work order for a TRUNK-rooted session
+
+`~/.claude/projects/-Users-davideloreti-virtuna-v1-1/memory/in-thread-chat-audit-lane.md` cannot be
+written from this worktree. The path guard is keyed to the SESSION's worktree root, not the shell's
+directory, so `cd`-ing to trunk does not help — it needs a session started in `~/virtuna-v1.1`. The
+file's own header predicts this and says **trust the lane's handoffs over it**, which is why the
+corrections live here.
+
+⚠️ **One of its bullets already cost a session on 2026-08-14.** It is not decoration.
+
+| claim in the memory | truth | evidence |
+|---|---|---|
+| *"Biggest thing still broken: exemplars-get-copied-verbatim"* | ✅ **FIXED** 2026-08-12, unconditional, 43% → 0% | **#482** / `2d48525a` — `apply-creator-persona.ts` + the hooks/ideas/script runners. **It was the VOICE ROLE donating content, never the corpus** |
+| *"Session 7 (thread context): committed to the lane. **Not merged**"* | ✅ **MERGED** — and still dark | `d81ce44e` *"the generators finally see the conversation (flagged OFF)"* reached main inside **#475** (2026-08-12). `ENGINE_GEN_CONVERSATION === "true"`, so default OFF |
+| *"Still open — Owner: why nobody reaches the profile interview (3 of 18)"* — called *"the question under everything else"* | ✅ **ANSWERED and CLOSED** | Nobody *chose* not to. `/analyze` became a redirect 2026-07-18 and took the only mount with it. Replaced by `WaitQuestions` in **#502** |
+| *"Vercel is disconnected while the owner switches accounts"* | ⚠️ framing is wrong | Deploy is **OFF deliberately, owner-confirmed 2026-08-13.** Not a transient state and not a task |
+| read order → `docs/NEXT-SESSION-2026-08-14.md` | superseded | → `docs/NEXT-SESSION-2026-08-16.md` |
+| frontmatter + `MEMORY.md:102` — *"session 13 MERGED (PR #488/#491/#492)"* | superseded | session 14: **#502 · #506 · #507** |
+
+✅ **`MEMORY.md:42` is already correct** — it records the exemplar fix. So the claim exists in three
+copies, two were corrected and the third was not, and the stale one is the one a session reads
+first. That is `claims-live-in-denormalized-copies` happening to the memory that records it.
+
+🔑 **The rule that would have caught both this and F-4: `git log --all --grep="<claim>"` BEFORE
+treating any inherited claim as open.** Hand re-derivation confirms what is still broken and is
+structurally blind to what somebody else already fixed. I re-derived F-1, F-7 and F-22 by hand,
+was right about all three, and was wrong about the two I did not grep.
+
+---
+
 ## 6. Verification recipe (used today, works)
 
 ```bash

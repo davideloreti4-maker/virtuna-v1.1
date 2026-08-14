@@ -92,5 +92,9 @@ card pickers and nine of them turned out to be live on `/settings`.
 - `text-foreground-tertiary` does not exist as a token; `extension-card.tsx` and
   `upgrade-prompt.tsx` both style with it. Silent no-op, one-line fix each.
 - `deriveSeedPrompts` is orphaned now that CommandBar is gone. Pure function, left in place.
-- The lane memory index still says "session 12"/"session 13". Only fixable from trunk. **The
-  merged handoffs are authoritative.**
+- 🔴 **The lane memory has FIVE stale claims, one of which cost a session on 2026-08-14** — it still
+  calls the exemplar defect *"the biggest thing still broken"* when #482 fixed it unconditionally
+  (43% → 0%) on 2026-08-12. Full list in `HANDOFF-2026-08-15-three-orphans.md` §5b, written as a
+  work order. **It needs a session STARTED IN `~/virtuna-v1.1`** — the path guard is keyed to the
+  session's worktree root, so `cd`-ing to trunk does not work. **The merged handoffs are
+  authoritative until then.**
