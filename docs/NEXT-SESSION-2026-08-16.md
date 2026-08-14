@@ -1,8 +1,18 @@
 # Next session — copy-paste brief (written 2026-08-14)
 
 **Lane:** `lane/in-thread-chat` · worktree `~/virtuna-in-thread-chat`
-**Main at handoff:** `755a1300`. Branch == main, tree clean, nothing half-finished.
+**Main at handoff:** `2aee9a6d`, merged into this branch. Tree clean, nothing half-finished.
 **Merged this session:** **#502** — the three orphans, closed.
+
+> 🔴 **`COMPOSED_CARDS` IS NOW DEFAULT ON** (`api/tools/chat/route.ts:204`, owner ruling
+> 2026-08-14, PR #503 — it landed from a trunk session while this handoff was being written; the
+> lane memory still says it defaults OFF).
+>
+> **This changes the priority of the work below.** F-4 and F-7 are card defects that the last audit
+> could not reproduce on screen *because proof was nearly always absent*. With cards rendering by
+> default, both get more chances to be seen — F-7 especially, since fixing F-4's copy without
+> fixing F-7's source diversity makes F-7 visible rather than merely present. Re-measure the card
+> rate before assuming any of the old numbers still describe the surface.
 
 ---
 

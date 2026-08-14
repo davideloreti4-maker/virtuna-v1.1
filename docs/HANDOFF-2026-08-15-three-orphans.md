@@ -167,6 +167,17 @@ of which needs a live run.
 3. **F-7 — source diversity in `build-proof.ts`.** Pure code, no live run needed. Currently
    unreproducible on screen only because proof is nearly always absent, which means fixing F-4
    without fixing F-7 will make F-7 visible.
+
+🔴 **`COMPOSED_CARDS` WENT DEFAULT ON WHILE THIS WAS BEING WRITTEN** (`api/tools/chat/route.ts:204`,
+owner ruling 2026-08-14, PR #503, merged from a trunk session — main moved from `755a1300` to
+`2aee9a6d` between the code commit and the docs commit). The lane memory still records it as
+defaulting OFF.
+
+That reorders the list above. Items 2 and 3 are **card** defects, and the reason the last audit
+could not reproduce them on screen was that proof was nearly always absent. More cards means more
+chances for both to surface. **Re-measure the card rate before quoting any number from the earlier
+handoffs** — and remember `card-rate-is-25-percent-and-per-ask`: every rate measured through a
+rehydrated thread measured the wrong thing. Send `maven_active_thread=__new__`.
 4. **The four unmeasured rows** — F-3, F-8, F-11, F-12 all need one live run and nobody has done it.
 5. **The sidebar's pin/rename/delete are 30×44, not 44×44.** Three 44px hit areas 2px apart would
    overlap by 20px and the later sibling would win the tap — worse than small. The real fix is a
