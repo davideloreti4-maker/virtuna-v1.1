@@ -222,15 +222,20 @@ describe("the creator's CURRENT turn — the one that is not in priorTurns", () 
 });
 
 describe("the flag", () => {
-  it("is OFF unless the env var is exactly 'true'", () => {
+  // Default ON since 2026-08-15 (owner ruling): `!== "false"`, the house convention for a shipped
+  // feature. The inverse of the `=== "true"` spend switches — a half-set env must not silently turn
+  // a shipped behaviour off, where it must never silently arm a cost.
+  it("is ON unless the env var is exactly 'false'", () => {
     const original = process.env.ENGINE_GEN_CONVERSATION;
     try {
       delete process.env.ENGINE_GEN_CONVERSATION;
-      expect(isConversationDigestEnabled()).toBe(false);
+      expect(isConversationDigestEnabled()).toBe(true);
       process.env.ENGINE_GEN_CONVERSATION = "1";
-      expect(isConversationDigestEnabled()).toBe(false);
+      expect(isConversationDigestEnabled()).toBe(true);
       process.env.ENGINE_GEN_CONVERSATION = "true";
       expect(isConversationDigestEnabled()).toBe(true);
+      process.env.ENGINE_GEN_CONVERSATION = "false";
+      expect(isConversationDigestEnabled()).toBe(false);
     } finally {
       if (original === undefined) delete process.env.ENGINE_GEN_CONVERSATION;
       else process.env.ENGINE_GEN_CONVERSATION = original;

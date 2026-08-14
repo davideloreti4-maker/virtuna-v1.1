@@ -100,8 +100,11 @@ afterEach(() => {
 });
 
 describe("the loop hands the conversation to a skill", () => {
+  // Explicitly "false" now, not merely unset: the flag went default ON 2026-08-15, so deleting the
+  // var exercises the ON path. The off path still has to hold — it is the one-line kill switch if
+  // the digest turns out to hurt, since it shipped without the live A/B its comment once promised.
   it("flag OFF → the skill receives the caller's ctx OBJECT ITSELF, unchanged", async () => {
-    delete process.env.ENGINE_GEN_CONVERSATION;
+    process.env.ENGINE_GEN_CONVERSATION = "false";
     const ctx = await runAndCaptureCtx({ topic: "morning focus" });
     expect(ctx).toBe(CTX); // by reference — no clone, no added key
     expect(ctx.conversation).toBeUndefined();
@@ -218,7 +221,8 @@ describe("the loop hands the conversation to a skill", () => {
   });
 
   it("flag OFF + currentAsk → still the caller's ctx OBJECT, by reference", async () => {
-    delete process.env.ENGINE_GEN_CONVERSATION;
+    process.env.ENGINE_GEN_CONVERSATION = "false"; // default is ON since 2026-08-15 — see above
+
     expect(await runEmptyThread("hooks for my budgeting app")).toBe(CTX);
   });
 });
