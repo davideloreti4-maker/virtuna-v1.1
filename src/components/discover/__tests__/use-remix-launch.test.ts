@@ -169,6 +169,69 @@ describe("useRemixLaunch — an HTTP refusal never lands the creator on an empty
   });
 });
 
+describe("useRemixLaunch — the pre-brief (D3) rides the POST", () => {
+  function bodyOf(fetchMock: ReturnType<typeof vi.fn>): Record<string, unknown> {
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    return JSON.parse(init.body as string);
+  }
+
+  it("sends the brief when the creator wrote one", async () => {
+    const fetchMock = vi.fn(() => Promise.resolve(sseAccepted()));
+    vi.stubGlobal("fetch", fetchMock);
+    const { result } = renderHook(() => useRemixLaunch());
+
+    await act(async () => {
+      await result.current.remix("vid-1", VIDEO_URL, "a cold-email teardown for B2B founders");
+    });
+
+    expect(bodyOf(fetchMock).brief).toBe("a cold-email teardown for B2B founders");
+  });
+
+  /**
+   * ⚠️ THE KEY IS `undefined`, NOT `null`. The route's schema is
+   * `brief: z.string().max(200).optional()` — `undefined` is valid and means "no target", but an
+   * explicit `null` is NOT a string and fails the parse, so the whole run comes back 400
+   * "Validation failed" and the creator is told nothing useful. Omit the key.
+   */
+  it("OMITS the brief key entirely when skipped — a null would 400 the whole run", async () => {
+    const fetchMock = vi.fn(() => Promise.resolve(sseAccepted()));
+    vi.stubGlobal("fetch", fetchMock);
+    const { result } = renderHook(() => useRemixLaunch());
+
+    await act(async () => {
+      await result.current.remix("vid-1", VIDEO_URL, null);
+    });
+
+    const body = bodyOf(fetchMock);
+    expect("brief" in body).toBe(false);
+    expect(body.url).toBe(VIDEO_URL);
+  });
+
+  it("omits it for the old two-argument call too — every existing caller still works", async () => {
+    const fetchMock = vi.fn(() => Promise.resolve(sseAccepted()));
+    vi.stubGlobal("fetch", fetchMock);
+    const { result } = renderHook(() => useRemixLaunch());
+
+    await act(async () => {
+      await result.current.remix("vid-1", VIDEO_URL);
+    });
+
+    expect("brief" in bodyOf(fetchMock)).toBe(false);
+  });
+
+  it("never sends a blank or whitespace brief as a target", async () => {
+    const fetchMock = vi.fn(() => Promise.resolve(sseAccepted()));
+    vi.stubGlobal("fetch", fetchMock);
+    const { result } = renderHook(() => useRemixLaunch());
+
+    await act(async () => {
+      await result.current.remix("vid-1", VIDEO_URL, "   ");
+    });
+
+    expect("brief" in bodyOf(fetchMock)).toBe(false);
+  });
+});
+
 describe("useRemixLaunch — the accepted run", () => {
   it("navigates to /home once the route accepts the POST", async () => {
     vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(sseAccepted())));

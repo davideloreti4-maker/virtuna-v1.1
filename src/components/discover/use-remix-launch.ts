@@ -29,7 +29,7 @@ export function useRemixLaunch() {
   const [pendingId, setPendingId] = useState<string | null>(null);
 
   const remix = useCallback(
-    async (id: string, url: string | null) => {
+    async (id: string, url: string | null, brief?: string | null) => {
       const handoff = handoffsFor("discover").find((h) => h.to === "remix");
       if (!handoff?.endpoint || !url) {
         toast({ variant: "error", title: "That video has no URL to remix" });
@@ -37,10 +37,16 @@ export function useRemixLaunch() {
       }
       setPendingId(id);
       try {
+        // ⚠️ The brief key is OMITTED when absent, never sent as null. The route's schema is
+        // `brief: z.string().max(200).optional()` — `undefined` parses and means "no target",
+        // but an explicit `null` is not a string and 400s the entire run. D3 also makes an empty
+        // string wrong on its own terms: the runner reads `target: input.brief ?? null`, so ""
+        // would REPLACE the creator's niche with nothing rather than fall back to it.
+        const target = brief?.trim();
         const res = await fetch(handoff.endpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url, platform: PLATFORM }),
+          body: JSON.stringify({ url, platform: PLATFORM, ...(target ? { brief: target } : {}) }),
         });
         // `fetch` does not reject on an HTTP status, and this used to push to /home regardless —
         // so a refusal put the creator on an unchanged home screen with no card and no reason,

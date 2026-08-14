@@ -36,6 +36,7 @@ import { cn } from "@/lib/utils";
 import { humanizeSlug } from "@/lib/text/humanize-slug";
 import type { CorpusVideo } from "@/lib/discover/corpus-reads";
 import { useRemixLaunch } from "./use-remix-launch";
+import { RemixBriefDialog, useRemixBrief } from "./remix-brief-dialog";
 import { Chip, Kicker, MultiplierChip, fmtAge, fmtViews } from "./discover-primitives";
 
 /** The cover slot — a link to the original when we have a URL, an inert tile when we don't. */
@@ -88,6 +89,8 @@ export function TeardownDetailDialog({
   onClose: () => void;
 }) {
   const { remix, pendingId } = useRemixLaunch();
+  // D3 — the tap opens the brief sheet; only Remix or Skip inside it starts the billed run.
+  const brief = useRemixBrief(remix);
   const [detail, setDetail] = useState<TeardownDetail | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
 
@@ -121,6 +124,10 @@ export function TeardownDetailDialog({
   ].filter((t): t is string => Boolean(t));
 
   return (
+    // The brief sheet is a SIBLING of this dialog, never a child: nesting it inside
+    // <DialogContent> would let the teardown's own close/unmount take the sheet with it
+    // mid-brief, and Radix portals both to the body anyway.
+    <>
     <Dialog open onOpenChange={(next) => !next && onClose()}>
       <DialogContent
         // The shared DialogContent defaults to a 448px near-black panel with the retired
@@ -242,7 +249,7 @@ export function TeardownDetailDialog({
             <div className="mt-5 flex items-center gap-2 border-t border-border pt-4">
               <button
                 type="button"
-                onClick={() => void remix(video.id, video.videoUrl)}
+                onClick={() => brief.ask(video.id, video.videoUrl, hook)}
                 disabled={pendingId === video.id || !video.videoUrl}
                 className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-[color:var(--color-action)] px-4 py-2.5 text-label font-semibold text-[color:var(--color-action-foreground)] transition-opacity hover:opacity-90 disabled:opacity-60 sm:flex-none"
               >
@@ -264,5 +271,8 @@ export function TeardownDetailDialog({
         </div>
       </DialogContent>
     </Dialog>
+
+    <RemixBriefDialog {...brief.dialogProps} />
+    </>
   );
 }
