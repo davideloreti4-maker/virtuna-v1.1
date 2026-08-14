@@ -17,11 +17,13 @@
  *   `from_fixed_buckets`  → say we could not read the timing, and print no beats
  *   otherwise             → the sheet
  */
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { AdaptedBeat } from "@/lib/engine/remix/decode-types";
 import type { SourceBlueprint } from "@/lib/engine/remix/blueprint";
 import { SECTION_LABEL } from "./card-primitives";
 import { CoverFill } from "@/components/primitives/CoverFill";
+import { RemixSourceViewer } from "./remix-source-viewer";
+import { RemixSourceEmbed } from "./remix-source-embed";
 
 interface Payload {
   script: AdaptedBeat[][];
@@ -35,6 +37,20 @@ interface Payload {
    * pre-phase-3 sheet keeps rendering byte-identically.
    */
   frames?: Record<number, string>;
+  /**
+   * The SOURCE VIEWER's strip — `{ gridIndex → signed frame URL }` on an even time grid, a
+   * different sampling from `frames` above and a different storage keyspace (`<id>/scrub/`).
+   *
+   * Absent is the normal case for every sheet written before this lane, and the viewer simply does
+   * not render — the sheet is then byte-identical to what it was.
+   */
+  scrubFrames?: Record<number, string>;
+  /**
+   * The source post URL (`remix_blueprints.source_video_id`). Drives the embed's platform.
+   * Deliberately not the request's `platform` flag, which is hardcoded "tiktok" on every launch
+   * while 63% of the corpus is Instagram.
+   */
+  sourceUrl?: string | null;
 }
 
 const HEADING = "Shoot it beat by beat";
@@ -70,6 +86,14 @@ export function RemixBeats({
   initialData?: Payload;
 }) {
   const [fetched, setFetched] = useState<Payload | null>(null);
+
+  // The playhead's beat lives HERE, not in the viewer, because the lit row is here. The viewer
+  // stays free of beat semantics and the row list stays free of scrub mechanics; each is
+  // understandable and testable without the other.
+  const [activeBeat, setActiveBeat] = useState<number | null>(null);
+  const [seekToSec, setSeekToSec] = useState<number | null>(null);
+  // Identity-stable so the viewer's onActiveBeatChange effect does not re-fire every render.
+  const onActiveBeatChange = useCallback((i: number | null) => setActiveBeat(i), []);
 
   useEffect(() => {
     if (initialData) return; // injected — never touch the network
@@ -120,10 +144,33 @@ export function RemixBeats({
   const script = data.script?.[variantIndex] ?? [];
   if (beats.length === 0 || script.length === 0) return null;
 
+  // Is there a playhead at all? Only a real strip creates one — an embed on its own does not, so
+  // rows must not become clickable or litable just because the source has a watchable URL.
+  const hasViewer = Object.keys(data.scrubFrames ?? {}).length > 0 && blueprint.duration_s > 0;
+
   return (
     <div data-beats className={ZONE}>
       <p className={SECTION_LABEL}>{HEADING}</p>
-      <ol className="mt-2 flex flex-col gap-3">
+
+      {/* THE SOURCE VIEWER — scrub the source's own stills, and watch it with sound.
+          Sits INSIDE the shoot-sheet block, not at the top of the card, because the whole point
+          is that the beat row it lights is on screen while you scrub. The card's SourceStrip is
+          ~1,400px above these rows; a playhead up there would light a row nobody can see.
+          Renders nothing without frames, which is every sheet written before this lane. */}
+      {hasViewer || data.sourceUrl ? (
+        <div className="mt-2.5 flex flex-col gap-2.5">
+          <RemixSourceViewer
+            scrubFrames={data.scrubFrames ?? {}}
+            beats={beats}
+            durationS={blueprint.duration_s}
+            onActiveBeatChange={onActiveBeatChange}
+            seekToSec={seekToSec}
+          />
+          <RemixSourceEmbed sourceUrl={data.sourceUrl} />
+        </div>
+      ) : null}
+
+      <ol className="mt-2.5 flex flex-col gap-3">
         {beats.map((beat) => {
           // Nothing in the schema ties a script entry's `index` to a real beat (`ScriptZodSchema`
           // is `.min(1).max(MAX_BEATS)` over `index: z.number().int().min(0)`), so a short or
@@ -131,8 +178,24 @@ export function RemixBeats({
           // timeline — the creator shoots a video with a gap in the middle and nothing says why.
           const line = script.find((s) => s.index === beat.index);
           const frame = data.frames?.[beat.index];
+          // Lit when the playhead is inside this beat. A left rule + brighter text, never a hue:
+          // the dosage rule is LOCKED and the card already spends its one colour on the Borrowed
+          // chip. `hasViewer` gates the whole affordance so a pre-lane sheet gains no dead rule.
+          const lit = hasViewer && activeBeat === beat.index;
           return (
-            <li key={beat.index} className="flex gap-3">
+            <li
+              key={beat.index}
+              data-beat-index={beat.index}
+              data-beat-active={lit || undefined}
+              className={`flex gap-3 rounded-sm border-l-2 pl-2 transition-colors ${
+                lit ? "border-white/[0.24]" : "border-transparent"
+              } ${hasViewer ? "cursor-pointer" : ""}`}
+              // Clicking a row moves the playhead to that beat. The reciprocity is what makes the
+              // strip and the sheet read as one instrument rather than two widgets sharing a card.
+              // Not a <button>: the row holds its own copy affordances and quoted text a reader
+              // needs to select, and wrapping selectable prose in a button breaks both.
+              onClick={hasViewer ? () => setSeekToSec(beat.t_start) : undefined}
+            >
               {/* PHASE 3 — the source's own frame for this beat, in a 9:16 tower beside the
                   instruction. This is what "show me the video" actually wanted: not one cover at
                   the top of the card, but the image the creator is being told to recreate, next
