@@ -1,16 +1,11 @@
-# Next session — copy-paste brief (written 2026-08-14)
+# Next session — copy-paste brief (session 14 close-out, 2026-08-14)
 
 **Lane:** `lane/in-thread-chat` · worktree `~/virtuna-in-thread-chat`
-**Main at handoff:** `2aee9a6d`, merged into this branch. Tree clean, nothing half-finished.
-**Merged this session:** **#502** — the three orphans, closed.
+**Main at close:** `8765579a`. Branch == main, tree clean, **nothing half-finished, nothing in flight.**
+**Merged this session:** **#502** (the three orphans) · **#506** · **#507** · **#509** (docs + two corrections).
 
-> 🔴 **`COMPOSED_CARDS` IS NOW DEFAULT ON** (`api/tools/chat/route.ts:204`, owner ruling
-> 2026-08-14, PR #503 — it landed from a trunk session while this handoff was being written; the
-> lane memory still says it defaults OFF).
->
-> **This raises F-7.** It is a card defect the last audit could not reproduce on screen *because
-> proof was nearly always absent*. With cards rendering by default it goes from present-but-unseen
-> to visible. Re-measure the card rate before assuming any old number still describes the surface.
+> ✅ **This lane is at a CLEAN STOPPING POINT.** Everything below is optional. The owner is moving
+> to new work; do not treat the open list as a queue you must drain.
 
 ---
 
@@ -19,33 +14,32 @@
 ```
 Read docs/HANDOFF-2026-08-15-three-orphans.md.
 
-Repo ~/virtuna-in-thread-chat, branch lane/in-thread-chat, main at 755a1300. tsc + build +
-6419 tests all green, working tree clean.
+Repo ~/virtuna-in-thread-chat, branch lane/in-thread-chat, main at 8765579a. tsc + build +
+6419 tests green, working tree clean, nothing in flight.
 
-⚠️ RE-CHECK MAIN BEFORE YOU BRANCH. It moved twice underneath me last session — a trunk
-session merged #498 while I was reading the brief. `git fetch` then `git rev-parse origin/main`.
+⚠️ RE-CHECK MAIN BEFORE YOU BRANCH. It moved FOUR times underneath me last session, from
+trunk sessions working other lanes. `git fetch && git rev-parse origin/main` — then again
+before you open a PR.
 
-CONTEXT IN ONE LINE: the three orphans are closed. The interview is now 3 questions inside
-/welcome's calibration wait; ContentForm/CommandBar are deleted; /go is untouched by owner
-ruling. What remains is the F-list, and four of its rows were already fixed.
+CONTEXT IN ONE LINE: this is the in-thread chat lane — chat runs the tools, and the last
+week has been auditing and repairing what that surface actually produces. Session 14 closed
+the three orphans: the creator interview is now 3 questions inside /welcome's calibration
+wait, ContentForm/CommandBar are deleted, /go is untouched by owner ruling.
 
-DO THIS FIRST, before anything else:
-  Read HANDOFF-2026-08-15-three-orphans.md §3. FIVE rows of the F-table in
-  HANDOFF-2026-08-13-audit-rewalk.md are STALE — F-13/14/18/19 (fixed in #495) and F-4
-  (fixed in #491). Do not re-investigate them.
+🔴 BEFORE TREATING ANY INHERITED CLAIM AS OPEN WORK:
+  git log --all --grep="<the claim>"
+Two claims bit me last session — F-4 and the exemplar defect — both already fixed, both
+still described as broken in a doc and in the lane memory. Hand re-derivation confirms what
+is still broken and is BLIND to what someone else already fixed. I hand-checked three claims
+and was right on all three; I was wrong on both I did not grep.
 
-  ⚠️ And before treating ANY audit row as open, `git log --all --grep="F-<n>"`. #491 shipped
-  the F-4 fix and the audit table in the SAME commit, so the table describes a state that
-  was already gone at merge. I listed F-4 as open work in the first draft of that very
-  handoff. Re-deriving three other rows by hand did not catch it; the grep did.
-
-THE WORK, in order:
-  1. F-1 — the pack renders twice, ~8%. The largest user-visible defect left. Key the fix on
-     duplication of cards ALREADY DELIVERED THIS TURN, not on shape. The re-answer is a
-     SEPARATE message — a "prose in the same message" query returns a clean, plausible,
-     entirely wrong "F-1 is fixed".
-  2. F-7 — source diversity in build-proof.ts. Pure code, no live run. Still a pure
-     sourceIndex → example lookup; nothing stops one source backing three cards.
+OPTIONAL WORK, if the owner wants this lane continued (they may not — ask):
+  1. ENGINE_GEN_CONVERSATION — built, merged, DARK. The generators still cannot see the
+     conversation. One env var. The highest-value unfinished thing in this lane.
+  2. F-1 — the pack renders twice, ~8%. Key the fix on duplication of cards ALREADY
+     DELIVERED THIS TURN, not on shape. The re-answer is a SEPARATE message, so a
+     "prose in the same message" query returns a clean, plausible, entirely wrong pass.
+  3. F-7 — source diversity in build-proof.ts. Pure code, no live run.
 
 DO NOT:
   - Do not remove the templateInstantiated guard in output-guards.ts, and do not touch the
@@ -64,37 +58,92 @@ VERIFY IN A BROWSER on a PROD build, not dev, and not the suite. Recipe: handoff
 
 ---
 
-## The one thing to get right
+## 1. 🔴 MEMORY THAT COULD NOT BE SAVED — needs a session started in `~/virtuna-v1.1`
+
+**No memory was written this session.** The path guard is keyed to the SESSION's worktree root, so
+every write to `~/.claude/projects/.../memory/` fails from here and `cd`-ing to trunk does not
+satisfy it. Everything below is the memory that should exist, written here instead.
+
+**A. Correct `in-thread-chat-audit-lane.md` — five stale claims.** Full work order with evidence in
+`HANDOFF-2026-08-15-three-orphans.md` §5b. The headline: it still calls the exemplar defect *"the
+biggest thing still broken"* when **#482 fixed it unconditionally on 2026-08-12, 43% → 0%**. That
+bullet cost a session. Also stale: session 7's thread context reads "Not merged" (it merged in
+#475), the profile-interview owner question is closed by #502, and the deploy framing.
+
+**B. Update `MEMORY.md:102`** — the lane index still says "session 13" and points at
+`NEXT-SESSION-2026-08-14.md`. Now session 14, and this file.
+
+**C. `profile-columns-are-mostly-empty.md` needs its CAUSE.** Its lesson — *count coverage in the DB
+before building any grounding change* — is still exactly right and worth keeping. What it lacks is
+why the profile was empty: **the interview could not be opened**, not that creators declined.
+`/analyze` became a redirect on 2026-07-18 and took the only mount with it. `WaitQuestions` (#502)
+replaced it.
+
+**D. A new memory worth having, if any is:**
+
+> **An inherited claim needs `git log --all --grep`, not re-derivation.** Re-deriving by hand
+> confirms what is still broken and is structurally blind to what someone else already fixed. Two
+> claims failed this way in one session — F-4 and the exemplar defect. Both had a fix commit whose
+> message named them. **The strongest form: a PR that ships a FIX and the DOCUMENT DESCRIBING THE
+> BUG in the same commit leaves a document that was false at merge** (#491 did exactly this).
+
+---
+
+## 2. Flag state, verified in code 2026-08-14
+
+The convention: `!== "false"` means **default ON**; `=== "true"` means **default OFF / dark**.
+
+| flag | state | what it does |
+|---|---|---|
+| `CHAT_AGENT_DISPATCH` | 🟢 ON | chat runs the tools — the lane's whole premise |
+| `ENGINE_COUNT_HINT` | 🟢 ON | injects a count. **The single strongest lever found here** — 17% → 80%, nine pushbacks to zero |
+| `COMPOSED_CARDS` | 🟢 ON | **flipped 2026-08-14 (#503)**, owner ruling |
+| `ENGINE_CHAT_CARDS_ON_SCREEN` · `ENGINE_COMPARE_HINT` · `GROUNDING_CHAT_TOOL` | 🟢 ON | settled |
+| **`ENGINE_GEN_CONVERSATION`** | ⚫ **DARK** | **the generators seeing the conversation.** Merged in #475 (`d81ce44e`, 2026-08-10). Still off |
+| `ENGINE_GUESS_PIN` | ⚫ DARK | ~100% dispatch, but **~3.4% would run something unasked-for** — and a wrong run bills the creator. The fallback, never the first choice |
+| `ENGINE_REPEAT_ASK_PIN` | ⚫ DARK | ask twice → run again. The model otherwise narrates delivery and runs nothing |
+| `ENGINE_PROSE_CALL_PIN` | ⚫ DARK | the model TYPES the tool call as visible text instead of making it. 6 of 26 — it did not get worse, the count fix stopped masking it |
+| `NEXT_PUBLIC_ENGINE_ONE_BRAIN` | ⚫ DARK | Stage A/B (#461) |
+
+---
+
+## 3. The one thing to get right
 
 **Before believing an absent signal, prove the path that produces it can run.**
 
 Four times last session the answer was *"the code that would emit this cannot execute in these
-conditions"*, and zero times was it *"the thing didn't happen"*. That now applies to your own
-probes, not only to production data — the session's single FAIL was the probe's own
-response-pairing bug, against a save the UI had already confirmed.
+conditions"*, and zero times was it *"the thing didn't happen"*. It applies to your own instruments
+too — the session's single probe FAIL was the probe's own request-pairing bug, reported against a
+save the UI had already confirmed succeeded.
 
-The corollary that cost the most: **"unreachable" is a property of a MOUNT CHAIN, not of a file.**
-Two surfaces can import the same component and only one be dead. I had a ruling to delete seven
-card pickers and nine of them turned out to be live on `/settings`.
+**Corollary that cost the most:** *"unreachable" is a property of a MOUNT CHAIN, not of a file.* Two
+surfaces can import the same component and only one be dead. There was a ruling to delete seven card
+pickers; nine of them turned out to be live on `/settings`.
+
+**And its mirror image:** three separate defects in this lane were invisible only because a bigger
+defect stood in front of them (the prose-call bug behind the dispatch bug; F-7 behind the absent
+proof). Fixing the loud one surfaces the quiet one. Expect it rather than re-diagnosing it.
 
 ---
 
-## Known-good, do not re-litigate
+## 4. Known-good — do not re-litigate
 
 - The 3-question block, the `duringWait` slot, and the server-side `profile_interview_seen_at`
-  stamp — all verified 12/12 on a prod build with the DB confirmed. Handoff §0.
+  stamp — verified 12/12 on a prod build with the database confirmed. Handoff §0.
 - `checkout_open` is **not** an unreachable event, despite an earlier handoff saying so. Three are
-  unreachable, not four. Handoff §2.
-- The funnel sink **is** wired (`funnel-provider.tsx`). The old "no sink yet" comment was stale.
+  unreachable, not four — it also fires from `/go/page.tsx` and `checkout-modal.tsx`, so its zero is
+  real and means the money screen has never been opened.
+- The funnel sink **is** wired (`funnel-provider.tsx`). The old "no sink yet" header was stale.
+- The 9 card pickers are LIVE on `/settings`. Every `creator_profiles` column and row is intact.
 
-## Loose ends flagged but deliberately not taken
+## 5. Loose ends, flagged and deliberately not taken
 
-- `text-foreground-tertiary` does not exist as a token; `extension-card.tsx` and
-  `upgrade-prompt.tsx` both style with it. Silent no-op, one-line fix each.
-- `deriveSeedPrompts` is orphaned now that CommandBar is gone. Pure function, left in place.
-- 🔴 **The lane memory has FIVE stale claims, one of which cost a session on 2026-08-14** — it still
-  calls the exemplar defect *"the biggest thing still broken"* when #482 fixed it unconditionally
-  (43% → 0%) on 2026-08-12. Full list in `HANDOFF-2026-08-15-three-orphans.md` §5b, written as a
-  work order. **It needs a session STARTED IN `~/virtuna-v1.1`** — the path guard is keyed to the
-  session's worktree root, so `cd`-ing to trunk does not work. **The merged handoffs are
-  authoritative until then.**
+- `text-foreground-tertiary` **is not a token** — the third tier is `foreground-muted`.
+  `extension-card.tsx` and `upgrade-prompt.tsx` both style with it. It generates nothing, silently.
+  One line each.
+- `deriveSeedPrompts` (`lib/chat/seed-prompts.ts`) is orphaned now `CommandBar` is gone. Pure
+  function with its own test; left in place rather than widening a deletion past its ruling.
+- The sidebar's pin/rename/delete are 30×44, not 44×44. Three 44px hit areas 2px apart would overlap
+  by 20px and the later sibling would win the tap — worse than small. The real fix is a `⋯` menu,
+  which is a design call.
+- Four F-rows have never been measured at all — F-3, F-8, F-11, F-12. Each needs one live run.
