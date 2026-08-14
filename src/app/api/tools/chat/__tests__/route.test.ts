@@ -917,6 +917,45 @@ describe("POST /api/tools/chat (SSE route)", () => {
     expect(runChatPipeline).not.toHaveBeenCalled();
   });
 
+  it("Test 8c: COMPOSED_CARDS UNSET → defaults ON; only \"false\" kills it", async () => {
+    // Owner ruling 2026-08-14. This flag shipped default-OFF on the stated grounds that "the
+    // contract has not been measured against a live model yet"; it has been, on a prod build with
+    // ISOLATED threads (n=36): 9/36 before the comparison hint, 22/36 after.
+    //
+    // What this test exists to catch is the kill switch, not the default. `=== "true"` and
+    // `!== "false"` agree on every environment that sets the variable at all — they differ ONLY on
+    // an unset one, which is production. So an assertion that sets the var can never see this
+    // change, and the arm that matters is the deleted one.
+    process.env.CHAT_AGENT_DISPATCH = "true";
+    await primeDispatchHarness();
+    const { runChatAgentStream } = await import("@/lib/tools/chat-agent-loop");
+    (runChatAgentStream as ReturnType<typeof vi.fn>).mockImplementation(
+      async (input: { onToken: (d: string) => void }) => {
+        input.onToken("ok");
+        return { text: "ok", skillRuns: [], uiBlocks: [], toolCalls: [] };
+      }
+    );
+    const { POST } = await import("@/app/api/tools/chat/route");
+
+    // The SHIPPED default — an unset variable is what production runs.
+    delete process.env.COMPOSED_CARDS;
+    await readSSE(await POST(makeChatRequest({ ask: "what should I post?", platform: "tiktok" })));
+
+    // The kill switch, and the ONLY string that may disable it.
+    process.env.COMPOSED_CARDS = "false";
+    await readSSE(await POST(makeChatRequest({ ask: "what should I post?", platform: "tiktok" })));
+
+    // A half-set environment must stay ON, not fall back to prose.
+    process.env.COMPOSED_CARDS = "";
+    await readSSE(await POST(makeChatRequest({ ask: "what should I post?", platform: "tiktok" })));
+
+    const calls = (runChatAgentStream as ReturnType<typeof vi.fn>).mock.calls as Array<[{ composedCards?: boolean }]>;
+    expect(calls[0]![0].composedCards, "unset is production, and production is ON").toBe(true);
+    expect(calls[1]![0].composedCards, 'only the literal "false" kills it').toBe(false);
+    expect(calls[2]![0].composedCards, "a half-set env must not silently revert to prose").toBe(true);
+    delete process.env.COMPOSED_CARDS;
+  });
+
   it("Test 9: dispatch ON but persona/meet mode → agent loop SKIPPED, persona answer path runs", async () => {
     process.env.CHAT_AGENT_DISPATCH = "true";
     await primeDispatchHarness();

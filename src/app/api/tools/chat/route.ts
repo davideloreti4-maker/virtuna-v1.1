@@ -180,13 +180,28 @@ function isCorpusChatToolEnabled(): boolean {
  * Composed-card output flag (Phase 2). When on, the loop binds `emit_card` and the model may answer
  * with composed cards instead of prose.
  *
- * DEFAULT OFF — opt in with COMPOSED_CARDS="true". Grounding could ship default-ON because it only
- * adds evidence to an answer's shape; this changes the shape itself, on every open-ended ask, and
- * the contract has not been measured against a live model yet (the spike re-run is what decides
- * that). Server-side only — no client half reads it, so flipping it needs a redeploy but no build.
+ * DEFAULT ON since 2026-08-14 (owner ruling). Set COMPOSED_CARDS="false" to kill it — the house
+ * `!== "false"` switch, so a half-set environment stays ON rather than silently reverting to prose.
+ *
+ * It shipped default-OFF while "the contract has not been measured against a live model yet" was
+ * true. It is no longer true. Measured on a prod build, signed in, ISOLATED threads, n=36:
+ *
+ *     before the comparison hint (#498)    9/36 · 25.0%
+ *     after                               22/36 · 61.1%
+ *
+ * ⚠️ Read that as a per-ASK rate, never a pooled one — three ask shapes card 6/6 and one still
+ * cards 0/6 (`docs/HANDOFF-2026-08-13-comparison-hint.md` §2). 61% is the mean of a bimodal thing.
+ *
+ * ⚠️ This flip changes NOTHING in production today. The deployed build is `1be28832` (2026-08-07),
+ * 313 commits behind, and it contains no `emit_card`, no recipes and no read of this variable at
+ * all. Git is disconnected from Vercel by owner ruling, so merging does not ship. This is a
+ * DEPOSIT: it makes composed cards ON at whatever moment a deploy next happens, with no env-var
+ * step left to forget — the same shape as the funnel instrumentation in #497.
+ *
+ * Server-side only — no client half reads it, so flipping it needs a redeploy but no build.
  */
 function isComposedCardsEnabled(): boolean {
-  return process.env.COMPOSED_CARDS === "true";
+  return process.env.COMPOSED_CARDS !== "false";
 }
 
 /**
