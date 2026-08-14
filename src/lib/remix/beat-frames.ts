@@ -17,16 +17,30 @@
  * video, and `video_storage_path` is still never set for a scraped source. That is a smaller claim
  * than phase 4's clips (which need the D7 policy reversal), and it is deliberately kept smaller.
  *
- * ── Storage ─────────────────────────────────────────────────────────────────────────────────
- * Reuses the `filmstrips` bucket via `uploadFrameAndGetSignedUrl`, whose first argument is a PATH
- * PREFIX, not an analyses FK — so a `blueprintId` slots in with no schema change, and
- * `signAnalysisFrames` re-signs the same prefix on read. Nothing here writes to `analyses`.
+ * ── Two sets, one pass ──────────────────────────────────────────────────────────────────────
+ * A remix sheet needs frames for two different jobs, and they are not the same samples:
  *
- * ⚠️ RETENTION: nothing deletes `remix_blueprints` rows today, and these frames inherit that. They
- * accumulate at ≤MAX_BEAT_FRAMES JPEGs per remix run. A reaper is owed and is NOT built here.
+ *   BEAT frames  — one per beat, sampled a quarter INTO the beat (see `sampleAt`). Rendered beside
+ *                  the instruction for that beat.
+ *   SCRUB frames — ~30 on an even TIME grid. Rendered as the strip the playhead drags across.
+ *
+ * Both come from a single `extractFramesAtTimes` pass, because the cost of getting frames out of a
+ * remote video is the connection and the sequential read, not the number of frames: measured
+ * 2026-08-14, 115 frames in one pass (5.5s) is cheaper than 4 frames as individual seeks (15.6s).
+ *
+ * ── Storage ─────────────────────────────────────────────────────────────────────────────────
+ * Reuses the `filmstrips` bucket. Beat frames keep their original flat path
+ * `<blueprintId>/<beatIndex>.jpg` — moving them would strand every frame already written — and
+ * scrub frames go to `<blueprintId>/scrub/<i>.jpg`. That subfolder is what stops ~30 scrub frames
+ * keyed `0..29` from overwriting beat frames `0..7` in a shared integer keyspace, which would
+ * render the wrong picture on the wrong beat with nothing erroring. See `SCRUB_PREFIX`.
+ *
+ * ⚠️ RETENTION: nothing deletes `remix_blueprints` rows today, and these frames inherit that. This
+ * lane makes each run ~4x bigger (≤8 beat + ≤30 scrub JPEGs). A reaper is owed and is NOT built
+ * here; the bucket held 48 objects total when this was written.
  */
-import { extractFrameAtTimestamp } from "@/lib/engine/filmstrip/extract";
-import { uploadFrameAndGetSignedUrl } from "@/lib/engine/filmstrip/storage";
+import { extractFramesAtTimes } from "@/lib/engine/filmstrip/extract-grid";
+import { uploadFrameAndGetSignedUrl, uploadScrubFrame } from "@/lib/engine/filmstrip/storage";
 import { createLogger } from "@/lib/logger";
 import type { BlueprintBeat } from "@/lib/engine/remix/blueprint";
 
@@ -34,6 +48,22 @@ const log = createLogger({ module: "remix.beat-frames" });
 
 /** Hard cap on frames per run. `buildBlueprint` merges to 8 beats, so this is a backstop. */
 export const MAX_BEAT_FRAMES = 8;
+
+/**
+ * How many evenly-spaced stills the scrub strip gets.
+ *
+ * ⚠️ This is NOT `MAX_BEAT_FRAMES` raised. Raising that constant does nothing on its own, because
+ * `buildBlueprint` merges to `MAX_BEATS = 8` — there is never a 9th beat for a 9th beat-frame to
+ * describe. A scrub strip needs samples on a TIME grid, which is a different thing from a sample
+ * per beat, so it gets its own count and its own keyspace.
+ *
+ * 30 is chosen for the surface, not for the budget: at a 390px viewport the strip's content box is
+ * ~358px, so 30 portrait cells are ~12px wide. That reads as a filmstrip texture showing position
+ * and rate of visual change, which is the job — the stage above it shows the actual frame. More
+ * cells would be sub-pixel; far fewer would scrub in visible jumps. The budget does not constrain
+ * this: measured, 30 frames and 115 frames cost the same single pass (~5s).
+ */
+export const SCRUB_FRAME_COUNT = 30;
 
 /**
  * Whole-job ceiling. Extraction is awaited before `cleanup()`, so a hung ffmpeg would hold the
@@ -59,58 +89,97 @@ function sampleAt(beat: BlueprintBeat): number {
 }
 
 /**
- * Extract and persist one frame per beat. Never throws — a sheet with no frames is exactly the
- * phase-1 sheet, which is a complete product on its own.
+ * Evenly-spaced sample times across the whole video, for the scrub strip.
  *
- * @returns how many frames were persisted (0 is a normal outcome, not an error).
+ * Offset by half a step so the first cell is not frame zero (very often a black or title frame)
+ * and the last is not the final frame (very often a cut to black or an end card). The strip is
+ * meant to represent the video, and both ends of a raw grid systematically misrepresent it.
+ */
+function scrubTimes(durationS: number, count: number): number[] {
+  const step = durationS / count;
+  return Array.from({ length: count }, (_, i) => (i + 0.5) * step);
+}
+
+/**
+ * Extract and persist BOTH frame sets for a remix source, from a single pass over the video.
+ *
+ * Never throws — a sheet with no frames is exactly the phase-1 sheet, which is a complete product
+ * on its own, and this runs inside the runner's `finally` ahead of `cleanup()`.
+ *
+ * @returns how many of each set persisted. Zero of either is a normal outcome, not an error.
  */
 export async function extractBeatFrames(
   videoUrl: string,
   blueprintId: string,
   beats: BlueprintBeat[],
-): Promise<number> {
-  if (beats.length === 0) return 0;
+  durationS: number,
+): Promise<{ beatFrames: number; scrubFrames: number }> {
+  const none = { beatFrames: 0, scrubFrames: 0 };
+  if (beats.length === 0) return none;
 
   const targets = beats.slice(0, MAX_BEAT_FRAMES);
   const startedAt = Date.now();
-  let persisted = 0;
 
-  try {
-    for (const beat of targets) {
-      if (Date.now() - startedAt > EXTRACT_BUDGET_MS) {
-        log.warn("beat-frame extraction hit its budget — keeping what landed", {
-          blueprintId,
-          persisted,
-          of: targets.length,
-        });
-        break;
-      }
-
-      // Sequential, not Promise.all: each frame spawns an ffmpeg that range-seeks the same remote
-      // object, and eight concurrent seeks against one signed URL is how you turn a graceful
-      // degrade into a rate-limited one. ≤8 frames of a ≤3-minute video is seconds of work, and it
-      // overlaps the adapt call anyway.
-      const buffer = await extractFrameAtTimestamp(videoUrl, sampleAt(beat));
-      if (!buffer || buffer.length === 0) continue;
-
-      const uri = await uploadFrameAndGetSignedUrl(blueprintId, beat.index, buffer);
-      if (uri) persisted += 1;
-    }
-  } catch (err) {
-    // extractFrameAtTimestamp and uploadFrameAndGetSignedUrl both contract to never throw; this
-    // catch exists so a future edit to either cannot take the whole remix run down with it.
-    log.error("beat-frame extraction failed", {
-      blueprintId,
-      persisted,
-      error: err instanceof Error ? err.message : String(err),
-    });
+  // The duration the blueprint reports is the honest one, but a degenerate blueprint can carry 0.
+  // The beats themselves always span the video, so their tail is a sound fallback — without it a
+  // bad duration would silently cost the whole strip.
+  const span = Math.max(durationS, ...targets.map((b) => b.t_end), 0);
+  if (span <= 0) {
+    log.warn("no usable duration for frame extraction", { blueprintId, durationS });
+    return none;
   }
 
-  log.info("beat frames persisted", {
-    blueprintId,
-    persisted,
-    of: targets.length,
-    ms: Date.now() - startedAt,
-  });
-  return persisted;
+  const beatTimes = targets.map(sampleAt);
+  const scrub = scrubTimes(span, SCRUB_FRAME_COUNT);
+
+  try {
+    // ONE pass for both sets. Two passes would mean two downloads of the same object, and the
+    // download IS the cost — measured, the frame count barely moves it.
+    const frames = await extractFramesAtTimes(videoUrl, span, [...beatTimes, ...scrub]);
+    const beatBuffers = frames.slice(0, beatTimes.length);
+    const scrubBuffers = frames.slice(beatTimes.length);
+
+    let beatFrames = 0;
+    let scrubFrames = 0;
+
+    // Uploads are sequential and budget-checked for the same reason the old extraction was: this
+    // whole job is awaited before `cleanup()` drops the temp mp4, so an unbounded loop here would
+    // hold the source open past the run. On timeout we keep what landed.
+    const overBudget = () => Date.now() - startedAt > EXTRACT_BUDGET_MS;
+
+    for (const [i, beat] of targets.entries()) {
+      if (overBudget()) break;
+      const buffer = beatBuffers[i];
+      if (!buffer || buffer.length === 0) continue;
+      // The beat's OWN index, never the loop counter — `beats` is already merged and can carry a
+      // non-contiguous set, so a positional key would offset every frame onto the wrong beat.
+      const uri = await uploadFrameAndGetSignedUrl(blueprintId, beat.index, buffer);
+      if (uri) beatFrames += 1;
+    }
+
+    for (const [i, buffer] of scrubBuffers.entries()) {
+      if (overBudget()) break;
+      if (!buffer || buffer.length === 0) continue;
+      const uri = await uploadScrubFrame(blueprintId, i, buffer);
+      if (uri) scrubFrames += 1;
+    }
+
+    log.info("remix frames persisted", {
+      blueprintId,
+      beatFrames,
+      ofBeats: targets.length,
+      scrubFrames,
+      ofScrub: scrub.length,
+      ms: Date.now() - startedAt,
+    });
+    return { beatFrames, scrubFrames };
+  } catch (err) {
+    // Both collaborators contract to never throw; this catch exists so a future edit to either
+    // cannot take the whole remix run down with it.
+    log.error("remix frame extraction failed", {
+      blueprintId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return none;
+  }
 }

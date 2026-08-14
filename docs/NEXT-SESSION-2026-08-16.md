@@ -1,5 +1,10 @@
 # Next session — copy-paste brief (session 14 close-out, 2026-08-14)
 
+> 🔴 **SUPERSEDED by `NEXT-SESSION-2026-08-16-after-514.md` (session 15, 2026-08-15).** Read that
+> first. Optional items 1–3 below are all resolved: **F-1 and F-7 are CLOSED** and
+> **`ENGINE_GEN_CONVERSATION` is default ON**, all in PR #514. The `text-foreground-tertiary` loose
+> end in §5 was measured **FALSE** — nothing styles with it. §2's flag table is corrected in place.
+
 **Lane:** `lane/in-thread-chat` · worktree `~/virtuna-in-thread-chat`
 **Main at close:** `8765579a`. Branch == main, tree clean, **nothing half-finished, nothing in flight.**
 **Merged this session:** **#502** (the three orphans) · **#506** · **#507** · **#509** (docs + two corrections).
@@ -99,7 +104,7 @@ The convention: `!== "false"` means **default ON**; `=== "true"` means **default
 | `ENGINE_COUNT_HINT` | 🟢 ON | injects a count. **The single strongest lever found here** — 17% → 80%, nine pushbacks to zero |
 | `COMPOSED_CARDS` | 🟢 ON | **flipped 2026-08-14 (#503)**, owner ruling |
 | `ENGINE_CHAT_CARDS_ON_SCREEN` · `ENGINE_COMPARE_HINT` · `GROUNDING_CHAT_TOOL` | 🟢 ON | settled |
-| **`ENGINE_GEN_CONVERSATION`** | ⚫ **DARK** | **the generators seeing the conversation.** Merged in #475 (`d81ce44e`, 2026-08-10). Still off |
+| **`ENGINE_GEN_CONVERSATION`** | 🟢 **ON** | **the generators seeing the conversation.** Merged dark in #475 (`d81ce44e`, 2026-08-10); **flipped to `!== "false"` 2026-08-15, owner ruling.** ⚠️ Shipped WITHOUT the live A/B its own comment promised — never measured. First flag to suspect if quality regresses; `=false` is the kill switch |
 | `ENGINE_GUESS_PIN` | ⚫ DARK | ~100% dispatch, but **~3.4% would run something unasked-for** — and a wrong run bills the creator. The fallback, never the first choice |
 | `ENGINE_REPEAT_ASK_PIN` | ⚫ DARK | ask twice → run again. The model otherwise narrates delivery and runs nothing |
 | `ENGINE_PROSE_CALL_PIN` | ⚫ DARK | the model TYPES the tool call as visible text instead of making it. 6 of 26 — it did not get worse, the count fix stopped masking it |
@@ -138,9 +143,11 @@ proof). Fixing the loud one surfaces the quiet one. Expect it rather than re-dia
 
 ## 5. Loose ends, flagged and deliberately not taken
 
-- `text-foreground-tertiary` **is not a token** — the third tier is `foreground-muted`.
-  `extension-card.tsx` and `upgrade-prompt.tsx` both style with it. It generates nothing, silently.
-  One line each.
+- ~~`text-foreground-tertiary` **is not a token** — the third tier is `foreground-muted`.
+  `extension-card.tsx` and `upgrade-prompt.tsx` both style with it.~~ 🔴 **FALSE, corrected
+  2026-08-15.** The token genuinely does not exist, but nothing styles with it: the string occurs
+  once repo-wide, inside a JSDoc `@example` comment at `extension-card.tsx:79`, and
+  `upgrade-prompt.tsx` never contained it. Nothing to fix. See `HANDOFF-2026-08-15-three-orphans.md` §5.
 - `deriveSeedPrompts` (`lib/chat/seed-prompts.ts`) is orphaned now `CommandBar` is gone. Pure
   function with its own test; left in place rather than widening a deletion past its ruling.
 - The sidebar's pin/rename/delete are 30×44, not 44×44. Three 44px hit areas 2px apart would overlap

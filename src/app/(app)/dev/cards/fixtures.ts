@@ -386,11 +386,39 @@ export const REMIX_BLOCKS: RemixCardBlock[] = [
  * durations, one beat the source left silent, and one WEAK beat carrying its repair note — the
  * states that actually render differently.
  */
+/**
+ * The scrub strip's cells. Local statics cycled to the real `SCRUB_FRAME_COUNT`, for the same
+ * reason `frames` below uses them: the gallery must never mint a credential or reach the network.
+ *
+ * The COUNT is what matters here and it is deliberately the real one — the strip's whole layout
+ * claim is that ~30 portrait cells across a ~358px content box read as a filmstrip texture rather
+ * than as thumbnails. A fixture with 6 cells would render a completely different, much wider cell
+ * and hide exactly the thing worth looking at. The images repeat; the geometry does not.
+ */
+const SCRUB_STAND_INS = [
+  "/images/landing/feature-hook.png",
+  "/images/landing/feature-drivers.png",
+  "/images/landing/feature-audience.png",
+  "/images/landing/feature-retention.png",
+  "/images/landing/hero-read.png",
+  "/images/landing/showcase-read.png",
+];
+
 export const REMIX_BEATS_PREVIEW: {
   script: AdaptedBeat[][];
   blueprint: SourceBlueprint;
   frames?: Record<number, string>;
+  scrubFrames?: Record<number, string>;
+  sourceUrl?: string | null;
 } = {
+  // The strip the playhead drags across — a DIFFERENT sampling from `frames` below (an even time
+  // grid, not one per beat) and a different storage keyspace (`<id>/scrub/`).
+  scrubFrames: Object.fromEntries(
+    Array.from({ length: 30 }, (_, i) => [i, SCRUB_STAND_INS[i % SCRUB_STAND_INS.length]!]),
+  ),
+  // Drives the embed's platform. A real TikTok permalink so the toggle resolves and names itself,
+  // but the iframe still mounts only on click — the gallery reaches TikTok only if you ask it to.
+  sourceUrl: "https://www.tiktok.com/@elsaspeak/video/7386776370245815560",
   // PHASE 3 beat frames. Local static images stand in for the signed source stills a real run
   // writes — the gallery must never mint a credential or reach the network. Beat 2 is
   // DELIBERATELY absent: a partial frame set is the normal production shape (extraction is

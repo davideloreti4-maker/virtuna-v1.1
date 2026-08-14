@@ -22,7 +22,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { createLogger } from "@/lib/logger";
 import { getBlueprint } from "@/lib/remix/blueprint-repo";
-import { signAnalysisFrames } from "@/lib/engine/filmstrip/storage";
+import { signAnalysisFrames, signScrubFrames } from "@/lib/engine/filmstrip/storage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -76,11 +76,16 @@ export async function GET(
   //
   // Degrades to `{}` on any storage fault — the sheet then renders exactly the phase-1 text rows,
   // which is a complete product. A frame list is an enhancement and is never worth a 500.
+  //
+  // `scrubFrames` is the SOURCE VIEWER's strip — an even time grid under `<id>/scrub/`, a separate
+  // keyspace from the beat frames above (see `SCRUB_PREFIX`). Signed in parallel because they are
+  // two independent listings of the same bucket and the sheet needs both before it can render.
   let frames: Record<number, string> = {};
+  let scrubFrames: Record<number, string> = {};
   try {
-    frames = await signAnalysisFrames(id);
+    [frames, scrubFrames] = await Promise.all([signAnalysisFrames(id), signScrubFrames(id)]);
   } catch (err) {
-    log.warn("beat frames could not be signed — serving the text sheet", {
+    log.warn("frames could not be signed — serving the text sheet", {
       blueprintId: id,
       error: err instanceof Error ? err.message : String(err),
     });
@@ -88,5 +93,18 @@ export async function GET(
 
   // Only the fields the sheet renders. The row also carries `user_id` and `thread_id`, which no
   // client needs and neither should cross the wire.
-  return Response.json({ script: row.script, blueprint: row.blueprint, frames });
+  //
+  // `sourceUrl` is `source_video_id` — despite the name it holds the source POST URL
+  // (`sourcePostUrl ?? url`, remix-runner.ts:516), already selected by BLUEPRINT_COLUMNS, so this
+  // needs no schema change. The viewer derives the embed platform from it rather than from the
+  // request's `platform` flag, which is hardcoded "tiktok" on every launch while 63% of the corpus
+  // is Instagram. A public post URL, returned to the row's owner — ownership was settled above by
+  // `getBlueprint` matching id AND user_id, and this widens nothing.
+  return Response.json({
+    script: row.script,
+    blueprint: row.blueprint,
+    frames,
+    scrubFrames,
+    sourceUrl: row.source_video_id ?? null,
+  });
 }

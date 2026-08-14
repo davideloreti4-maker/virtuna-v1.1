@@ -71,13 +71,21 @@ import { CONVERSATION_CHAR_BUDGET, CONVERSATION_BLOCK_OVERHEAD } from "@/lib/kc/
 import type { ChatAgentPriorTurn } from "@/lib/tools/chat-agent-loop";
 
 /**
- * Server flag — the digest ships dark until it has been A/B measured live.
+ * Server flag — DEFAULT ON since 2026-08-15 (owner ruling), `!== "false"` per the house
+ * convention. Built and merged dark in #475 (`d81ce44e`, 2026-08-10); until now the generators
+ * still could not see the conversation, which made the whole module a no-op in production.
+ *
+ * ⚠️ This flipped WITHOUT the live A/B this comment used to promise ("ships dark until it has been
+ * A/B measured live"). That measurement was never taken and, with the deploy off, could not be
+ * taken in production. The ruling was made on the design argument, not on evidence — so if a
+ * later run looks worse, this is the first flag to suspect, and `ENGINE_GEN_CONVERSATION=false`
+ * turns it off without a revert.
  *
  * Server-side on purpose (no `NEXT_PUBLIC_`): nothing about the digest reaches the client, so
  * flipping it does not need a redeploy to take effect the way the Stage B client half does.
  */
 export function isConversationDigestEnabled(): boolean {
-  return process.env.ENGINE_GEN_CONVERSATION === "true";
+  return process.env.ENGINE_GEN_CONVERSATION !== "false";
 }
 
 /**

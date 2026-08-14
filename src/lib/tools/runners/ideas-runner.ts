@@ -73,7 +73,7 @@ import type { RunnerPinContext } from "./predicted-pin";
 import { gatherCorpusForRun } from "@/lib/grounding/gather-for-run";
 import type { RunEvidence } from "@/lib/tools/evidence";
 import { buildProofFromSource, coerceSourceIndex } from "./build-proof";
-import { trimExamplesToBundle } from "./output-guards";
+import { createSourceDiversityCap, trimExamplesToBundle } from "./output-guards";
 import { buildAdaptProfile } from "./adapt-profile";
 import {
   buildRevisePrompt,
@@ -718,13 +718,19 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
   // bundle assembly — the assembler's overflow path can truncate the corpus AFTER the
   // mapping array was fixed, so the model could cite an example it was never shown.
   const shownExamples = trimExamplesToBundle(userMessage, corpus, groundingExamples);
+  // F-7: the same proven video shipped as the receipt on 3 of 5 cards. Cap per-source citations in
+  // rank order, so the strongest ideas keep their receipts and the rest render honestly without
+  // one. `hooks-runner` has done this since Stage A; ideas was left out of that pass, which is why
+  // a run whose model attributed every idea to one outlier printed four identical receipts.
+  const diversity = createSourceDiversityCap();
   for (const candidate of ranked) {
     // §11f receipts-on-cards: attach the frozen receipt for the outlier this idea adapted.
     // null (no source / ungrounded run) → the field is omitted so the block shape stays
     // byte-identical to the pre-grounding card (regression gate + honesty spine).
     // (No template-instantiation check here: an idea borrows a TENSION, not a madlib —
     // there is no mechanical skeleton to verify. N-1's measured offenders were hooks+script.)
-    const proof = buildProofFromSource(candidate.idea.sourceIndex, shownExamples);
+    const rawProof = buildProofFromSource(candidate.idea.sourceIndex, shownExamples);
+    const proof = rawProof && diversity.admit(rawProof.videoUrl ?? rawProof.handle) ? rawProof : null;
 
     // WHO this idea was written for. The reaction half (verdict/quote) is NULL now — no SIM ran on
     // this path — so bindTarget receives an EMPTY panel and returns the assignment WITHOUT a
