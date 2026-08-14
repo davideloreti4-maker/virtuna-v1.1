@@ -177,12 +177,22 @@ describe("gatherCorpusForRun — read-back first", () => {
     expect(warnings).toEqual([]); // read-back failure is invisible to the user
   });
 
+  /**
+   * ⚠️ CHANGED 2026-08-15 with live-first ordering: the cache is read here as `missEmpty`, not
+   * `miss`. Under the old order the scrape ran last, so a failed scrape ended the run and its
+   * 1-row partial went in the bin. Now the cache is the SAFETY NET behind the live path, and a
+   * partial rescues the run instead of being discarded — pinned by "falls back to a PARTIAL cache
+   * when the live scrape finds nothing" in the live-first block below.
+   *
+   * The claim this test exists to make is unchanged and still exact: the warning fires only when
+   * the run genuinely degrades, which now means live AND cache both came back with nothing.
+   */
   it("degrades to ungrounded with a warning only when an AUTHORIZED scrape ALSO fails", async () => {
     const warnings: string[] = [];
     const result = await gatherCorpusForRun(
       { ...baseInput(warnings), allowScrape: true },
       {
-        retrieve: miss,
+        retrieve: missEmpty,
         gather: async () => {
           throw new Error("apify down");
         },
@@ -256,7 +266,7 @@ describe("gatherCorpusForRun — read-back first", () => {
   });
 });
 
-// ─── scrapeAvailable — the "Find new outliers" capability signal ──────────────
+// ─── live-first ordering — the authorized run reaches Apify BEFORE the cache ──
 
 /** A cache read that finds NOTHING usable — the fully-ungrounded degrade (vs `miss`'s 1 partial). */
 const missEmpty: Retrieve = async () => ({
@@ -264,6 +274,136 @@ const missEmpty: Retrieve = async () => ({
   enough: false,
   stats: { matched: 0, good: 0, minRows: 2, minSimilarity: 0.6, rank: "topical", archetypes: 0 },
 });
+
+describe("gatherCorpusForRun — live-first when the scrape is authorized", () => {
+  /**
+   * THE ORDERING FIX. Read-back used to return EARLY on a hit, so `allowScrape` was consulted only
+   * after a MISS — and the 532-row corpus almost never misses (95.5% of real asks clear gate 1;
+   * even "restoring vintage fountain pens", picked to be obscure, hit). The consequence was that an
+   * authorization to spend was unreachable on ~19 of every 20 asks: `LIVE_SCRAPE_DEFAULT` could be
+   * ON and never once reach Apify, and a second tap of "Find new outliers" was answered by the
+   * write-through the FIRST tap had just populated.
+   *
+   * So authorization now reorders the step rather than only unlocking its tail. Unauthorized runs
+   * are untouched — the cache still answers first and nothing is ever scraped without a request.
+   */
+  it("runs the LIVE scrape first and never reads the cache over it", async () => {
+    const retrieve = vi.fn<Retrieve>(hit); // a FULL hit — the row set that used to win by ordering
+    const gather = vi.fn<Gather>(async () => ({
+      examples: [scrapedExample("live")],
+      stats: { scraped: 30, selected: 6, withFollowers: 6, gated: 6, usable: 1 },
+    }));
+
+    const result = await gatherCorpusForRun(
+      { ...baseInput(), allowScrape: true },
+      { retrieve, gather },
+    );
+
+    expect(gather).toHaveBeenCalledOnce();
+    expect(retrieve).not.toHaveBeenCalled(); // the cache never got to answer
+    expect(result.examples.map((e) => e.teardownId)).toEqual(["live"]);
+    expect(result.warrant).toBe("provenance"); // extracted rows, judged as extracted rows
+  });
+
+  /**
+   * The cache stops being the answer and becomes the SAFETY NET. A live scrape that comes back
+   * empty is the normal shape of the clockworks outage measured 2026-08-14 (SUCCEEDED, 0 items,
+   * $0.00) — throwing away proven cached outliers because a broken upstream returned nothing would
+   * make the authorized run strictly worse than the free one.
+   */
+  it("falls back to the cache when the live scrape comes back EMPTY", async () => {
+    const gather = vi.fn<Gather>(async () => ({
+      examples: [],
+      stats: { scraped: 0, selected: 0, withFollowers: 0, gated: 0, usable: 0 },
+    }));
+
+    const result = await gatherCorpusForRun(
+      { ...baseInput(), allowScrape: true },
+      { retrieve: hit, gather },
+    );
+
+    expect(gather).toHaveBeenCalledOnce(); // we DID reach for live first
+    expect(result.examples.map((e) => e.teardownId)).toEqual(["a", "b"]); // …and the cache caught it
+    expect(result.grounded).toBe(true);
+  });
+
+  /**
+   * A THROW is the other half of that net, and it is a different code path: the old order let the
+   * outer catch turn an Apify failure into an ungrounded run, because by then the cache had already
+   * been consulted and passed over. Live-first must not make a failed scrape cost the user the
+   * grounding they would have had for free.
+   */
+  it("falls back to the cache when the live scrape THROWS, with no user-facing warning", async () => {
+    const warnings: string[] = [];
+    const gather = vi.fn<Gather>(async () => {
+      throw new Error("apify down");
+    });
+
+    const result = await gatherCorpusForRun(
+      { ...baseInput(warnings), allowScrape: true },
+      { retrieve: hit, gather },
+    );
+
+    expect(gather).toHaveBeenCalledOnce();
+    expect(result.examples.map((e) => e.teardownId)).toEqual(["a", "b"]);
+    expect(warnings).toEqual([]); // the run is grounded — there is nothing to disclaim
+  });
+
+  /** The partial rescue: fewer rows than `minRows`, but two proven sources still beat none. */
+  it("falls back to a PARTIAL cache when the live scrape finds nothing", async () => {
+    const result = await gatherCorpusForRun(
+      { ...baseInput(), allowScrape: true },
+      {
+        retrieve: miss, // 1 row, enough=false
+        gather: async () => {
+          throw new Error("apify down");
+        },
+      },
+    );
+
+    expect(result.examples).toHaveLength(1);
+    expect(result.corpus).toBeDefined();
+    // Nothing left to offer: the scrape it would authorize is the one that just failed.
+    expect(result.scrapeAvailable).toBe(false);
+  });
+
+  /**
+   * THE UNCHANGED HALF, pinned. Reordering on authorization must not reorder anything else: a send
+   * that did not authorize spend behaves exactly as it did before, cache-first, Apify untouched.
+   * Without this the fix reads as "live-first" when it is really "live-always".
+   */
+  it("leaves an UNAUTHORIZED run cache-first and free", async () => {
+    const retrieve = vi.fn<Retrieve>(hit);
+    const gather = vi.fn<Gather>();
+
+    const result = await gatherCorpusForRun(baseInput(), { retrieve, gather });
+
+    expect(retrieve).toHaveBeenCalledOnce();
+    expect(gather).not.toHaveBeenCalled();
+    expect(result.examples.map((e) => e.teardownId)).toEqual(["a", "b"]);
+  });
+
+  /**
+   * Authorization cannot reorder a platform that has no scrape to run first. Instagram is the
+   * majority of the corpus (208 proof-grade rows) and is read-back-only — reaching for a TikTok
+   * scraper there would spend nothing and find nothing, while skipping the rows we do own.
+   */
+  it("stays cache-first on a non-scrapable platform even when authorized", async () => {
+    const retrieve = vi.fn<Retrieve>(hit);
+    const gather = vi.fn<Gather>();
+
+    const result = await gatherCorpusForRun(
+      { ...baseInput(), platform: "instagram", allowScrape: true },
+      { retrieve, gather },
+    );
+
+    expect(retrieve).toHaveBeenCalledOnce();
+    expect(gather).not.toHaveBeenCalled();
+    expect(result.examples.length).toBeGreaterThan(0);
+  });
+});
+
+// ─── scrapeAvailable — the "Find new outliers" capability signal ──────────────
 
 describe("gatherCorpusForRun — scrapeAvailable", () => {
   // The signal must be true EXACTLY when a live scrape would find outliers this run couldn't:
