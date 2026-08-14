@@ -151,9 +151,55 @@ is *read the hits*. One of the two files named was never even a match.
 2. **F-3, F-8, F-11, F-12** — never measured, one live run each. Unchanged.
 3. **The sidebar `⋯` menu** — still a design call, not a CSS one. Unchanged.
 4. **`deriveSeedPrompts`** — still orphaned, still deliberately left.
-5. **The lane memory is still stale** and still cannot be written from this worktree. The path
-   guard is keyed to the SESSION's worktree root — it also blocked writing a probe to the system
-   scratchpad this session, so it is not memory-specific. Work order: `three-orphans.md` §5b.
+5. **The lane memory is still stale** — see §5b, which also corrects *why*.
+
+---
+
+## 5b. 🔴 THE MEMORY WORK ORDER — and the remedy three handoffs have gotten WRONG
+
+**No memory was written this session either.** But the inherited work order is wrong about the fix,
+and following it would have burned a fourth session.
+
+The carried instruction is *"it needs a session started in `~/virtuna-v1.1`; `cd`-ing to trunk does
+not help."* **That would fail too.** The actual guard message:
+
+```
+resolves to git root '/Users/davideloreti' which differs from the
+active worktree root '/Users/davideloreti/virtuna-in-thread-chat'
+```
+
+**`$HOME` is itself a git repository** — `/Users/davideloreti/.git` exists, and
+`git rev-parse --show-toplevel` from `~` returns `/Users/davideloreti`. The memory directory lives
+inside it. So the guard compares the memory file's git root (`$HOME`) with the session's worktree
+root, and those differ for **every** project worktree — `~/virtuna-in-thread-chat` and
+`~/virtuna-v1.1` alike. Trunk is not special.
+
+🔑 **The only session that can write memory is one whose worktree root IS `$HOME`** — i.e. started
+in `~`, not in any project directory. That is the correction; the previous remedy named the wrong
+directory and no one re-derived it because the symptom (write refused) looks identical either way.
+
+⚠️ It is **not** memory-specific: the same guard refused a probe written to the system scratchpad
+under `/private/tmp`, because that path is in no git repository at all.
+
+**What should be saved, if a `~`-rooted session ever runs** — update
+`memory/in-thread-chat-audit-lane.md`:
+
+- Frontmatter + `MEMORY.md:102`: session 15, **PR #514**, read
+  `docs/HANDOFF-2026-08-15-f1-f7-closed.md` first.
+- ✅ **F-1 CLOSED**, and its documented mechanism was wrong — round concatenation, not pack
+  re-emission. 14 of 139 card turns (~10%).
+- ✅ **F-7 CLOSED**, and it was already half-fixed — `hooks-runner` had the cap since `7d4bc133`;
+  `ideas-runner` was the only gap.
+- ✅ **`ENGINE_GEN_CONVERSATION` default ON**, without the A/B its comment promised.
+- ⚠️ **`emit_card` blocks route to `uiBlocks`, never `skillRuns`** — any guard keyed on `skillRuns`
+  silently excludes composed cards, which are default-ON since #503.
+- ~~"Biggest thing still broken: exemplars-get-copied-verbatim"~~ → FIXED #482, 43%→0%.
+- ~~"Session 7 thread context — Not merged"~~ → merged #475, now ON.
+- ~~"Vercel is disconnected while the owner switches accounts"~~ → OFF deliberately, not transient.
+- ~~"why nobody reaches the profile interview"~~ → answered and closed by #502.
+- The suite flake is real and non-deterministic: **three full runs of an identical tree this session
+  gave the omni flake, three composer timeouts, and a clean 6476/0.** Re-run in isolation before
+  blaming a diff.
 
 ---
 

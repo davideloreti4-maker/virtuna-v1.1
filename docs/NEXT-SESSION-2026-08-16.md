@@ -1,5 +1,10 @@
 # Next session — copy-paste brief (session 14 close-out, 2026-08-14)
 
+> 🔴 **SUPERSEDED by `NEXT-SESSION-2026-08-16-after-514.md` (session 15, 2026-08-15).** Read that
+> first. Optional items 1–3 below are all resolved: **F-1 and F-7 are CLOSED** and
+> **`ENGINE_GEN_CONVERSATION` is default ON**, all in PR #514. The `text-foreground-tertiary` loose
+> end in §5 was measured **FALSE** — nothing styles with it. §2's flag table is corrected in place.
+
 **Lane:** `lane/in-thread-chat` · worktree `~/virtuna-in-thread-chat`
 **Main at close:** `8765579a`. Branch == main, tree clean, **nothing half-finished, nothing in flight.**
 **Merged this session:** **#502** (the three orphans) · **#506** · **#507** · **#509** (docs + two corrections).
