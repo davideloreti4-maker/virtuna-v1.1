@@ -56,14 +56,16 @@ const PAID_ROUTE = /\bcreditGate\(|\bgetCreditQuotaVerdict\(/;
 const WINDOW = 60;
 
 /**
- * THE RATCHET. Four paid sites still have no 401 check, each needing its own copy decision rather
- * than the one-line hook fix — a bare `catch`, a fire-and-forget, a bespoke error string, and a
- * dead hook with no consumers. They are named here so the guard can be honest about them, and
- * asserted as an EXACT SET below: fixing one FAILS this guard until it is removed from the list,
- * and adding a fifth fails it too. The list can only shrink.
+ * THE RATCHET. Three paid sites still have no 401 check, each needing its own copy decision rather
+ * than the one-line hook fix — a bare `catch`, a bespoke error string, and a dead hook with no
+ * consumers. They are named here so the guard can be honest about them, and asserted as an EXACT
+ * SET below: fixing one FAILS this guard until it is removed from the list, and adding a fourth
+ * fails it too. The list can only shrink.
+ *
+ * `app/(app)/feed/discover/discover-client.tsx` came off the list on 2026-08-14: both its fetches
+ * now report. See the ⚠️ below for what that fix exposed about this guard's own reach.
  */
 const KNOWN_GAPS = [
-  "app/(app)/feed/discover/discover-client.tsx",
   "components/app/home/home-starter.tsx",
   "components/audience-lens/PersonaChatDrawer.tsx",
   "hooks/queries/use-analyze.ts",
@@ -79,6 +81,28 @@ const UNRESOLVABLE = [
   "hooks/queries/use-saved-items.ts",
 ];
 
+/**
+ * ⚠️ KNOWN HOLE, MEASURED 2026-08-14 — this guard only sees a fetch whose URL is a STRING LITERAL.
+ *
+ * The regex below requires `/api/` inside quotes or backticks. Ten client sites instead read their
+ * URL out of the CHAIN_HANDOFFS registry (`fetch(handoff.endpoint, …)`), and every one of them is
+ * invisible here — not counted in SITES, not pushed to UNRESOLVED, not policed at all.
+ *
+ * That is not hypothetical. THREE of those sites were found swallowing their refusals outright —
+ * `components/discover/use-remix-launch.ts`, `app/(app)/feed/discover/discover-client.tsx` and
+ * `components/thread/account-read-block.tsx` all pushed to /home on a 402 and a 401 alike — and
+ * this file passed green through all three. `discover-client` appeared in KNOWN_GAPS only by
+ * accident: it happens to ALSO hold a literal `fetch("/api/discover")`, and its registry-indirected
+ * remix POST beside it was never the thing being tracked.
+ *
+ * So the top-of-file lesson has a second half. Keying off the ROUTE fixed "which files already do
+ * the thing"; it did not fix "which fetches this parser can SEE". A guard is bounded by its reader,
+ * and a reader that silently skips a call shape reports full coverage of the subset it understands.
+ *
+ * Closing it means resolving `handoffsFor(x).find(h => h.to === y)` to an endpoint through
+ * `chain-handoff.ts`. NOT done here: seven of the ten sites are outside this lane and each needs
+ * its own copy decision, exactly like the KNOWN_GAPS above. Recorded rather than silently left.
+ */
 function sourceFiles(dir: string, acc: string[] = []): string[] {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const full = join(dir, entry.name);

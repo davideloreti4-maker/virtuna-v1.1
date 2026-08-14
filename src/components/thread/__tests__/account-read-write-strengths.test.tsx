@@ -8,10 +8,12 @@
  *  - a click POSTs the strengths as the Ideas steering `ask` to the registry endpoint
  *    (/api/tools/ideas) and then navigates to /home (the card-POST + navigate pattern).
  */
-import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi, type Mock } from 'vitest';
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AccountReadBlockRenderer } from '@/components/thread/account-read-block';
+import { CREDIT_WALL_EVENT } from '@/lib/billing/credit-wall';
+import { SESSION_EXPIRED_EVENT } from '@/lib/auth/session-expired';
 import type { AccountReadBlock } from '@/lib/tools/blocks';
 
 // The card calls useRouter() for the post-POST navigation — mock the app router.
@@ -105,6 +107,89 @@ describe('AccountReadBlockRenderer — "Write to my strengths →" forward actio
  * owner decision — the templated one-liner "didn't match into the UI"; the card now opens on the
  * real scrape identity + post strip). The data tone rides the bullet DOT, never the section label.
  */
+/**
+ * THE REFUSAL MUST NOT LOOK LIKE A BROKEN PRODUCT.
+ *
+ * `/api/tools/ideas` runs the credit gate, so a 402 and a 401 are shapes this button really gets
+ * back. `fetch` does not reject on an HTTP status, and this handler pushed to /home regardless —
+ * so a refused creator landed on an unchanged home screen with no new idea cards, no message, and
+ * a button that had reset itself. Identical to the swallow removed from `use-remix-launch` and
+ * `discover-client` in the same change; all three read their endpoint out of CHAIN_HANDOFFS, which
+ * is why `session-401-coverage` (literal URLs only) could not see any of them.
+ */
+describe('AccountReadBlockRenderer — a refused write does not land on an empty /home', () => {
+  const QUOTA_402 = {
+    error: 'credit_quota_exceeded',
+    message: '$1 unlocks the whole platform for 3 days — every skill, 50 credits.',
+    tier: 'free',
+    used: 0,
+    limit: 10,
+    inTrial: false,
+    reason: 'trial_required',
+    cost: 1,
+  };
+
+  /** `/api/saved` is fetched on mount by SaveAffordance — only the Ideas POST is under test. */
+  function refuse(status: number, body: unknown) {
+    global.fetch = vi.fn((url: string) =>
+      url === '/api/tools/ideas'
+        ? Promise.resolve(
+            new Response(JSON.stringify(body), {
+              status,
+              headers: { 'Content-Type': 'application/json' },
+            }),
+          )
+        : Promise.resolve(new Response('{}', { status: 200 })),
+    ) as unknown as typeof fetch;
+  }
+
+  let walls: unknown[] = [];
+  let sessions = 0;
+  const onWall = (e: Event) => walls.push((e as CustomEvent).detail);
+  const onSession = () => sessions++;
+
+  beforeEach(() => {
+    walls = [];
+    sessions = 0;
+    window.addEventListener(CREDIT_WALL_EVENT, onWall);
+    window.addEventListener(SESSION_EXPIRED_EVENT, onSession);
+  });
+  afterEach(() => {
+    window.removeEventListener(CREDIT_WALL_EVENT, onWall);
+    window.removeEventListener(SESSION_EXPIRED_EVENT, onSession);
+  });
+
+  it('raises the credit wall on a 402 and does NOT navigate', async () => {
+    refuse(402, QUOTA_402);
+    renderWithClient(<AccountReadBlockRenderer block={makeBlock()} />);
+    fireEvent.click(screen.getByTestId('account-read-write-strengths'));
+
+    await waitFor(() => expect(walls).toHaveLength(1));
+    expect((walls[0] as { message: string }).message).toBe(QUOTA_402.message);
+    expect(pushMock).not.toHaveBeenCalled();
+  });
+
+  it('announces the dead session on a 401 and does NOT navigate', async () => {
+    refuse(401, { error: 'Unauthorized' });
+    renderWithClient(<AccountReadBlockRenderer block={makeBlock()} />);
+    fireEvent.click(screen.getByTestId('account-read-write-strengths'));
+
+    await waitFor(() => expect(sessions).toBe(1));
+    expect(pushMock).not.toHaveBeenCalled();
+  });
+
+  it('re-arms the button on a 500 instead of navigating', async () => {
+    refuse(500, { error: 'ideas_failed' });
+    renderWithClient(<AccountReadBlockRenderer block={makeBlock()} />);
+    const btn = screen.getByTestId('account-read-write-strengths');
+    fireEvent.click(btn);
+
+    await waitFor(() => expect((btn as HTMLButtonElement).disabled).toBe(false));
+    expect(pushMock).not.toHaveBeenCalled();
+    expect(screen.getByText(/write to my strengths/i)).toBeTruthy();
+  });
+});
+
 describe('AccountReadBlockRenderer — standard conformance', () => {
   it('renders NO hero headline (removed — the card opens on identity, not a one-liner)', () => {
     renderWithClient(<AccountReadBlockRenderer block={makeBlock()} />);
