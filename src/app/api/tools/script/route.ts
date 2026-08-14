@@ -53,6 +53,7 @@ import { billUsage, creditGate } from "@/lib/billing/credit-gate";
 import { rateLimitGuard } from "@/lib/http/rate-limit";
 import type { ScriptCardBlock } from "@/lib/tools/blocks";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
+import { resolveAllowScrape } from "@/lib/grounding/scrape-default";
 
 // ── Cap constants ─────────────────────────────────────────────────────────────
 const MAX_MESSAGE_LENGTH = 2000; // chars — WARNING-5: server-side, independent of client
@@ -115,9 +116,12 @@ export async function POST(request: Request): Promise<Response> {
   const rawPlatform = typeof body.platform === "string" ? body.platform : "tiktok";
   const rawAnchor = typeof body.anchor === "string" ? body.anchor : undefined;
   // EXPLICIT-ONLY SPEND: the only field that can authorize a live Apify scrape. Default false —
-  // a normal run never bills. Set true solely by the "Find new outliers" affordance (see
-  // gather-for-run `allowScrape`). Coerced strictly to boolean; anything non-`true` is false.
-  const allowScrape = body.allowScrape === true;
+  // a normal run never bills. Set true by the "Find new outliers" affordance (see gather-for-run
+  // `allowScrape`). Coerced strictly to boolean; anything non-`true` is false.
+  // `LIVE_SCRAPE_DEFAULT="true"` additionally authorizes it environment-wide, for testing the live
+  // Apify → Qwen path without tapping the affordance on every send. Default OFF — see
+  // `grounding/scrape-default.ts` for why that is a flag and not a changed default.
+  const allowScrape = resolveAllowScrape(body.allowScrape);
 
   // SERVER-SIDE ASK CAP (WARNING-5): independent of client validation (T-06-09)
   if (rawAsk.length > MAX_MESSAGE_LENGTH) {
