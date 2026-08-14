@@ -41,10 +41,14 @@ export interface CreatorProfileResponse {
 /**
  * QUERY: Fetch the current user's 9-card creator-profile row.
  *
- * Used by the settings form (PROFILE-15), the modal gate hook
- * (PROFILE-14, Plan 02-04, `usePendingProfileGate`), and any other consumer
- * that needs to read the 9-card columns. One query key — single cache
- * namespace — so a settings save instantly refreshes the gate (CR-01).
+ * Used by the settings form (PROFILE-15) and any other consumer that needs to read the 9-card
+ * columns. One query key — single cache namespace.
+ *
+ * ⚠️ The second consumer named here, the modal gate hook `usePendingProfileGate` (PROFILE-14,
+ * Plan 02-04), was deleted 2026-08-14 along with the modal it gated. The three questions that
+ * replaced it (`WaitQuestions`) do NOT read through this hook: they run inside /welcome's
+ * calibration wait, where the row is being created rather than edited, so there is nothing to
+ * prefill and a cache read would only add a request to a screen already waiting on a scrape.
  *
  * `refetchOnWindowFocus: false` because this is settings data, not real-time
  * — refetching on focus would clobber in-flight edits in the settings form

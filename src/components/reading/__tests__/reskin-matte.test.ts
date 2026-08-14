@@ -135,9 +135,10 @@ describe('matte-lint — transplanted charts carry no flat-warm violations (SC-3
 // signatures + dead literals/tokens only, never inset shine.
 //
 // KNOWN-REMAINING 137deg holdouts (deliberately NOT in this set — GSI-adjacent,
-// deferred to a coordinated pass): app/test-type-selector, app/content-form,
-// tooltips/contextual-tooltip, command-bar/CommandBar, primitives/GlassPanel
-// (its only consumer is analyze/result-card = GSI turf).
+// deferred to a coordinated pass): app/test-type-selector, tooltips/contextual-tooltip,
+// primitives/GlassPanel (its only consumer is analyze/result-card = GSI turf).
+// Two more holdouts left the list on 2026-08-14 by deletion rather than by reskin —
+// app/content-form and command-bar/CommandBar, both unreachable since /analyze became a redirect.
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** The chrome files cleaned by the lane/frame dead-glass sweep. */
