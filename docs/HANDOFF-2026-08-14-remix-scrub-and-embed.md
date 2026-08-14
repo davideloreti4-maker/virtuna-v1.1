@@ -1,6 +1,22 @@
 # Handoff — remix: the scrub strip + the embed (2026-08-14)
 
-**Read this FIRST.** It supersedes `docs/HANDOFF-2026-08-13-remix-card-and-frames.md` for status
+> ## 🔴 SUPERSEDED — read `docs/HANDOFF-2026-08-14-remix-source-viewer.md` instead
+>
+> The work described here was **built and is open as PR #515**. Keep §1 (what already exists) and
+> §2 (there is no copy of the source) — both still accurate and still the best statement of the
+> constraint. **§3 and §4 are wrong** and the newer handoff corrects them:
+>
+> - **§4 step 1 is a no-op.** Raising `MAX_BEAT_FRAMES` changes nothing — `buildBlueprint` merges
+>   to `MAX_BEATS = 8`, so there is never a 9th beat for a 9th beat-frame to describe.
+> - **§4's "4 frames took 2.6s" is wrong.** Measured 15.6s. But one ffmpeg pass does 115 frames in
+>   5.5s, because the cost is the connection, not the frame count.
+> - **§3's three options are mispriced.** With a single pass the trade is ~3MB and ~6s, so the
+>   keyspace question was settled by measurement, not by an owner ruling on storage.
+> - **§6's "an Instagram source" is not an edge case** — Instagram is 63% of the corpus.
+> - **§8's "`/dev/cards` mounts NO cards" is false.** It is auth-gated; that was the sign-in page.
+> - **§7's probe command could not run at all** — it never loaded `.env.local`. Fixed.
+
+**Historical.** It supersedes `docs/HANDOFF-2026-08-13-remix-card-and-frames.md` for status
 (that document's §3.1, §3.2 and §3.3 are all now DONE) and keeps its §1 and §6, which are still
 the best description of how phase 3 works and which traps recur.
 
