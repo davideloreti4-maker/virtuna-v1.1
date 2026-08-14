@@ -265,7 +265,7 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
 
   // Declared out here because the `finally` awaits it: the beat-frame job reads `signedUrl`, so
   // it has to be joined before `cleanup()` drops the object it reads.
-  let framesPromise: Promise<number> | null = null;
+  let framesPromise: Promise<{ beatFrames: number; scrubFrames: number }> | null = null;
 
   // cleanup is now available — wrap all subsequent work in try/finally
   try {
@@ -319,7 +319,7 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
     // and the exact reason RemixBeats refuses to print that sheet.
     framesPromise =
       hasBeats && blueprint.from_fixed_buckets !== true
-        ? extractBeatFrames(signedUrl, blueprintId, blueprint.beats)
+        ? extractBeatFrames(signedUrl, blueprintId, blueprint.beats, blueprint.duration_s)
         : null;
 
     // ── STEP 4: ADAPT ────────────────────────────────────────────────────────────
