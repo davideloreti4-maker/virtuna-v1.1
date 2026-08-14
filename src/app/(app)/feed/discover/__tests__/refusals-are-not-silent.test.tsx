@@ -111,6 +111,19 @@ async function pullThenFindRemix() {
   return remix;
 }
 
+/**
+ * Tap a tile's Remix and get through the D3 brief sheet, which now sits between the tap and the
+ * POST. Skipping is the path that reproduces the old one-tap behaviour exactly — the request body
+ * carries no `brief` — so these refusal tests keep measuring the refusal and not the sheet.
+ */
+async function remixVia(remix: HTMLElement, brief?: string) {
+  fireEvent.click(remix);
+  const field = await screen.findByRole("textbox", {}, { timeout: 3000 });
+  if (brief !== undefined) fireEvent.change(field, { target: { value: brief } });
+  // An empty field IS the skip — submitting it is the path that reproduces the old one-tap run.
+  fireEvent.submit(field.closest("form")!);
+}
+
 describe("Pull live — a refused PULL does not become a retry loop", () => {
   it("a 402 raises the wall instead of the grid's generic error", async () => {
     vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(json(402, QUOTA_402))));
@@ -146,22 +159,31 @@ describe("Pull live — a refused PULL does not become a retry loop", () => {
 });
 
 describe("Pull live — a refused REMIX does not land the creator on an empty /home", () => {
-  /** First call = the pull (200 with a tile), second = the remix POST (the status under test). */
+  /**
+   * Dispatch by URL, never by call order. The rendered tile mounts `SaveAffordance`, which GETs
+   * `/api/saved` on mount — an order-based mock hands that request the remix's status and shifts
+   * every later index, which is exactly how the first version of this helper miscounted.
+   */
   function fetchThen(remixResponse: () => Response) {
-    let n = 0;
-    return vi.fn(() => {
-      n++;
-      if (n === 1) {
+    return vi.fn((url: string) => {
+      if (url.includes("/api/tools/remix/run")) return Promise.resolve(remixResponse());
+      if (url.includes("/api/discover")) {
         return Promise.resolve(json(200, { mode: "profile", input: "productivity", tiles: [TILE] }));
       }
-      return Promise.resolve(remixResponse());
+      return Promise.resolve(json(200, {}));
     });
+  }
+
+  /** How many times the REMIX endpoint was actually POSTed, regardless of what else fetched. */
+  function remixPosts(): number {
+    const mock = globalThis.fetch as unknown as { mock: { calls: [string][] } };
+    return mock.mock.calls.filter(([u]) => u.includes("/api/tools/remix/run")).length;
   }
 
   it("a 402 raises the wall and does NOT navigate", async () => {
     vi.stubGlobal("fetch", fetchThen(() => json(402, QUOTA_402)));
     renderClient();
-    fireEvent.click(await pullThenFindRemix());
+    await remixVia(await pullThenFindRemix());
 
     await waitFor(() => expect(walls).toHaveLength(1));
     expect(push).not.toHaveBeenCalled();
@@ -170,7 +192,7 @@ describe("Pull live — a refused REMIX does not land the creator on an empty /h
   it("a 401 announces the dead session and does NOT navigate", async () => {
     vi.stubGlobal("fetch", fetchThen(() => json(401, { error: "Unauthorized" })));
     renderClient();
-    fireEvent.click(await pullThenFindRemix());
+    await remixVia(await pullThenFindRemix());
 
     await waitFor(() => expect(sessions).toBe(1));
     expect(push).not.toHaveBeenCalled();
@@ -180,9 +202,71 @@ describe("Pull live — a refused REMIX does not land the creator on an empty /h
     vi.stubGlobal("fetch", fetchThen(() => json(500, { error: "resolve_failed" })));
     renderClient();
     const remix = await pullThenFindRemix();
-    fireEvent.click(remix);
+    await remixVia(remix);
 
+    // The POST must actually have gone out — otherwise "the tile re-armed" is vacuously true
+    // because nothing ever disabled it.
+    await waitFor(() => expect(remixPosts()).toBe(1));
     await waitFor(() => expect((remix as HTMLButtonElement).disabled).toBe(false));
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  /**
+   * D3 END TO END, through the real surface — the piece the hook's own test cannot prove.
+   * `brief` reached the route and the adapt call from day one; what never existed was a producer.
+   */
+  it("a typed brief rides the POST", async () => {
+    vi.stubGlobal(
+      "fetch",
+      fetchThen(
+        () =>
+          new Response("event: stage\ndata: {}\n\n", {
+            status: 200,
+            headers: { "Content-Type": "text/event-stream" },
+          }),
+      ),
+    );
+    renderClient();
+    await remixVia(await pullThenFindRemix(), "a cold-email teardown for B2B founders");
+
+    await waitFor(() => expect(remixPosts()).toBe(1));
+    const mock = globalThis.fetch as unknown as { mock: { calls: [string, RequestInit][] } };
+    const [, init] = mock.mock.calls.find(([u]) => u.includes("/api/tools/remix/run"))!;
+    expect(JSON.parse(init.body as string).brief).toBe("a cold-email teardown for B2B founders");
+  });
+
+  it("leaving it blank sends NO brief key — the creator's niche stays the target", async () => {
+    vi.stubGlobal(
+      "fetch",
+      fetchThen(
+        () =>
+          new Response("event: stage\ndata: {}\n\n", {
+            status: 200,
+            headers: { "Content-Type": "text/event-stream" },
+          }),
+      ),
+    );
+    renderClient();
+    await remixVia(await pullThenFindRemix());
+
+    await waitFor(() => expect(remixPosts()).toBe(1));
+    const mock = globalThis.fetch as unknown as { mock: { calls: [string, RequestInit][] } };
+    const [, init] = mock.mock.calls.find(([u]) => u.includes("/api/tools/remix/run"))!;
+    expect("brief" in JSON.parse(init.body as string)).toBe(false);
+  });
+
+  it("Cancel spends nothing — no POST at all", async () => {
+    vi.stubGlobal("fetch", fetchThen(() => json(500, { error: "should never be reached" })));
+    renderClient();
+    fireEvent.click(await pullThenFindRemix());
+    await screen.findByRole("textbox", {}, { timeout: 3000 });
+    fireEvent.click(screen.getByRole("button", { name: /cancel/i }));
+
+    // On the DIALOG, not the textbox: this page has a second one (the Discover input), which
+    // Radix only aria-hides while the sheet is open — so a textbox query "passes" the moment the
+    // sheet closes and would also pass if it never opened.
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(remixPosts()).toBe(0);
     expect(push).not.toHaveBeenCalled();
   });
 
@@ -198,7 +282,7 @@ describe("Pull live — a refused REMIX does not land the creator on an empty /h
       ),
     );
     renderClient();
-    fireEvent.click(await pullThenFindRemix());
+    await remixVia(await pullThenFindRemix());
 
     await waitFor(() => expect(push).toHaveBeenCalledWith("/home"));
     expect(walls).toHaveLength(0);

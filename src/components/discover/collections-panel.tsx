@@ -21,6 +21,7 @@ import type {
   CorpusVideo,
 } from "@/lib/discover/corpus-reads";
 import { useRemixLaunch } from "./use-remix-launch";
+import { RemixBriefDialog, useRemixBrief } from "./remix-brief-dialog";
 import { Chip, Kicker, MultiplierChip, fmtAge, fmtViews } from "./discover-primitives";
 
 /** Shelf order is value order — formats first: the biggest set and the most legible to a
@@ -169,6 +170,8 @@ function CollectionDetail({
   onOpen: (id: string) => void;
 }) {
   const { remix, pendingId } = useRemixLaunch();
+  // D3 — the tap opens the brief sheet; only Remix or Skip inside it starts the billed run.
+  const brief = useRemixBrief(remix);
   const items = collection.itemIds
     .map((id) => teardowns[id])
     .filter((v): v is CorpusVideo => Boolean(v));
@@ -226,7 +229,7 @@ function CollectionDetail({
               <Chip>{fmtViews(v.views)} views</Chip>
               <button
                 type="button"
-                onClick={() => void remix(v.id, v.videoUrl)}
+                onClick={() => brief.ask(v.id, v.videoUrl, v.template || v.spokenHook || null)}
                 disabled={pendingId === v.id}
                 className="relative z-20 inline-flex items-center gap-1.5 rounded-lg bg-[color:var(--color-action)] px-3 py-1.5 text-label font-semibold text-[color:var(--color-action-foreground)] transition-opacity hover:opacity-90 disabled:opacity-60"
               >
@@ -245,6 +248,8 @@ function CollectionDetail({
           </article>
         ))}
       </div>
+
+      <RemixBriefDialog {...brief.dialogProps} />
     </div>
   );
 }

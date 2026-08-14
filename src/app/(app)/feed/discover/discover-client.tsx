@@ -30,6 +30,7 @@ import { DiscoverSubpageHeader } from "@/components/discover/discover-subpage-he
 import type { OutlierTileData } from "@/components/discover/outlier-tile";
 import { classifyDiscoverInput } from "@/lib/discover/classify-input";
 import { handoffsFor } from "@/lib/tools/chain-handoff";
+import { RemixBriefDialog, useRemixBrief } from "@/components/discover/remix-brief-dialog";
 import { reportCredit402 } from "@/lib/billing/credit-wall";
 import { reportSession401 } from "@/lib/auth/session-expired";
 
@@ -143,19 +144,26 @@ export function DiscoverClient() {
 
   // Launch the discover→remix chain — endpoint read from the CHAIN_HANDOFFS registry
   // (no card-component edit needed; the registry is the SSOT for the chain shape).
-  const handleRemix = useCallback(
-    async (tile: OutlierTileData) => {
+  const launchRemix = useCallback(
+    async (id: string, url: string | null, brief: string | null) => {
       const handoff = handoffsFor("discover").find((h) => h.to === "remix");
-      if (!handoff?.endpoint) return;
+      if (!handoff?.endpoint || !url) return;
 
-      setRemixPendingId(tile.platformVideoId);
+      setRemixPendingId(id);
       try {
         // The OutlierTile's videoUrl IS the rehost anchor (anchorFrom: "card").
         // The remix route streams + persists a remix-card to the open thread.
+        // ⚠️ `brief` is OMITTED when absent, never null: the route's schema is
+        // `z.string().max(200).optional()`, so an explicit null 400s the whole run.
+        const target = brief?.trim();
         const res = await fetch(handoff.endpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url: tile.videoUrl, platform: DEFAULT_PLATFORM }),
+          body: JSON.stringify({
+            url,
+            platform: DEFAULT_PLATFORM,
+            ...(target ? { brief: target } : {}),
+          }),
         });
         // `fetch` does not reject on an HTTP status. Without this the push below ran on a 402 and
         // a 401 too, dropping a refused creator on an unchanged /home with no card and no reason.
@@ -177,6 +185,13 @@ export function DiscoverClient() {
       }
     },
     [router],
+  );
+
+  // D3 — the tap opens the brief sheet; only Remix or Skip inside it starts the billed run.
+  const brief = useRemixBrief(launchRemix);
+  const handleRemix = useCallback(
+    (tile: OutlierTileData) => brief.ask(tile.platformVideoId, tile.videoUrl, tile.caption),
+    [brief],
   );
 
   return (
@@ -206,6 +221,8 @@ export function DiscoverClient() {
           />
         </div>
       </div>
+
+      <RemixBriefDialog {...brief.dialogProps} />
     </PageShell>
   );
 }

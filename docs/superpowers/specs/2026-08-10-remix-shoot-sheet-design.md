@@ -389,7 +389,26 @@ a known-wrong number on it.
   `resultsPerPage`. `src/lib/discover/author-baseline.ts` already implements the per-author
   denominator. Switch the call sites. **The label must change with the basis** — it is
   `"vs their lifetime average"`, never the corpus's `"vs their usual views"`.
-- **`useRemixLaunch` swallows HTTP errors.** `use-remix-launch.ts:33` never checks `res.ok`,
+
+  > ✅ **DONE** (`af53958f`, 2026-08-11). Both call sites attach `attachOutlierReceipt`, and
+  > `author-baseline.ts` pairs every basis with its own label — so "the label changes with the
+  > basis" holds.
+  >
+  > ⚠️ **The sentence above names the WRONG label, and is left standing rather than
+  > rewritten so that nobody “fixes” the code back to it.** `"vs their lifetime average"`
+  > belongs to the `lifetime-avg-likes` basis, which was **measured broken one day after this
+  > document was written**: `heart` is lifetime likes across every post ever while `videoCount`
+  > counts something else, so the two do not divide — it read **0.0× on a real 32k-view post**.
+  > `outlier-receipt.ts:113` therefore admits no basis but `own-median-views` to a badge, and its
+  > honest label IS `"vs their usual views"`. A test pins that refusal
+  > (`outlier-receipt.test.ts`, “never falls back to the lifetime-avg-likes basis”).
+  > The owner ruling of 2026-08-11 supersedes this bullet. §6 is CLOSED.
+- **`useRemixLaunch` swallows HTTP errors.** ✅ **DONE** (PR #501, 2026-08-14) — and the same
+  swallow was found in two more live sites, `feed/discover/discover-client.tsx` and
+  `thread/account-read-block.tsx`, both fixed with it. `pendingId` is deliberately NOT cleared on
+  the success path: it is what disables the tile, every consumer unmounts on /home, and clearing
+  it first only re-arms a button that starts a billed run mid-transition.
+  `use-remix-launch.ts:33` never checked `res.ok`,
   and `fetch` does not throw on HTTP status. A 402 credit refusal or a 401 navigates the user
   to `/home` with no card and no message — it reads as the product being broken. `pendingId`
   also never clears on success.

@@ -39,6 +39,7 @@ import { cn } from "@/lib/utils";
 import { CoverFill } from "@/components/primitives/CoverFill";
 import type { CorpusVideo } from "@/lib/discover/corpus-reads";
 import { useRemixLaunch } from "./use-remix-launch";
+import { RemixBriefDialog, useRemixBrief } from "./remix-brief-dialog";
 import { fmtAge, fmtMultiplier, fmtViews } from "./discover-primitives";
 import {
   DiscoverFilters,
@@ -77,6 +78,8 @@ export function OutliersPanel({
   const [limit, setLimit] = useState(PAGE_SIZE);
   const [panelOpen, setPanelOpen] = useState(false);
   const { remix, pendingId } = useRemixLaunch();
+  // D3 — the tap opens the brief sheet; only Remix or Skip inside it starts the billed run.
+  const brief = useRemixBrief(remix);
 
   const q = query.trim().toLowerCase();
 
@@ -239,7 +242,9 @@ export function OutliersPanel({
                     key={v.id}
                     video={v}
                     pending={pendingId === v.id}
-                    onRemix={() => void remix(v.id, v.videoUrl)}
+                    onRemix={() =>
+                      brief.ask(v.id, v.videoUrl, v.spokenHook || v.template || null)
+                    }
                     onOpen={() => onOpen(v.id)}
                   />
                 ))}
@@ -261,6 +266,8 @@ export function OutliersPanel({
           )}
         </div>
       </div>
+
+      <RemixBriefDialog {...brief.dialogProps} />
     </div>
   );
 }
