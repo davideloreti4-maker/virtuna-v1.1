@@ -1,7 +1,7 @@
 # Handoff — the cache-first ordering is fixed, and the live path is now reachable (2026-08-15)
 
 **Lane:** composed-card / Apify-first live sourcing · worked from **trunk** `~/virtuna-v1.1`
-**Merged this session:** **#517**. `main` at `a584b23e`.
+**Merged this session:** **#517**, **#519**. `main` at `fab44ace`.
 **Predecessor:** `docs/HANDOFF-2026-08-14-live-sourcing.md`
 
 ---
@@ -35,7 +35,8 @@ NEEDS MY RULING, don't start without asking:
 
 METHOD: read a job's OUTPUT before characterising it, and re-read the Apify balance
 rather than inheriting it — the handoff's number was already stale by $0.14.
-BUDGET: $0.93 of $5, resets Aug 20. A live send now costs ~$0.11 with the flag on.
+BUDGET: $0.93 of $5, resets Aug 20. With LIVE_SCRAPE_DEFAULT on, ~$0.11 per send —
+and since #519 that is true of CHAT sends too, which were free this morning.
 ```
 
 ---
@@ -49,6 +50,7 @@ both verified against real bytes.
 |---|---|
 | **#517** | **Live-first ordering** — `allowScrape` now REORDERS the gather instead of unlocking its tail |
 | **#517** | The Explore context record describes **the grid**, not `tiles[0]` |
+| **#519** | `LIVE_SCRAPE_DEFAULT` now reaches **chat-dispatched** generators — #517 alone fixed a path half the product doesn't take (§2b) |
 
 🔴 **Nothing is deployed.** Production is still frozen at **2026-08-07** (`1be28832`) and does not
 contain this code. Deploy is OFF deliberately, owner-confirmed. Never write a plan whose success
@@ -115,6 +117,31 @@ No `cache HIT` line at all. `similarity === null` on 3/3 rows is the scrape's ow
 **Cost $0.1120**, measured off `usageTotalUsd`, matching the estimate exactly.
 
 ---
+
+## 2b. 🔴 …and the flag still didn't reach chat (#519)
+
+Found by the owner asking whether ask 3 had anything to do with Apify. It doesn't — but checking
+surfaced that **#517 fixed the ordering on a path half the product doesn't take.**
+
+`resolveAllowScrape` lived **only** in the three HTTP route handlers. `skill-dispatch.ts` calls
+`runIdeasPipeline` / `runHooksPipeline` / `runScriptPipeline` **directly**, passed no `allowScrape`
+at all, and the runners forward `input.allowScrape` with no env fallback (`ideas-runner.ts:544`).
+
+| path | before #519 |
+|---|---|
+| composer routes | live-first, as merged in #517 |
+| **chat agent dispatch** | **cache-first — `LIVE_SCRAPE_DEFAULT` was invisible** |
+
+So asking Maven in chat for ideas still answered from the corpus, and **no measurement of the live
+path taken through chat could have been true.**
+
+🔑 **Same shape as the bug beneath it, one layer up: an authorization that doesn't reach the path the
+product actually takes.** Worth a habit — when a flag is fixed, enumerate every CALLER of the thing
+it gates, not just the one you were looking at. The route was the obvious caller; the dispatcher was
+the common one.
+
+⚠️ **Cost model changed:** with the flag on, a chat-dispatched generator run now costs ~$0.11 where
+it was free. This is also why an ask-3 probe run was Apify-free before today and would not be now.
 
 ## 3. The 240-char orphan — closed
 
