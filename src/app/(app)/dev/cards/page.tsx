@@ -805,7 +805,9 @@ const THREAD_VIEWS: { id: string; label: string; note: string; node: React.React
  * this is a GALLERY — in a live run every one of them comes off a retrieved corpus row.
  */
 const EVIDENCE_OUTLIERS: RunEvidence = {
-  headline: "Drafting against 3 proven videos",
+  // Mirrors the TOPICAL headline evidenceHeadline actually emits (gather-for-run.ts). A gallery
+  // that shows retired copy teaches the retired copy.
+  headline: "Reading 3 real videos matched to this subject",
   items: [
     {
       kind: "video",

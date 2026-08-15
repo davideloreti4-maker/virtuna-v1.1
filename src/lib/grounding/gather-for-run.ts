@@ -234,7 +234,26 @@ function evidenceHeadline(warrant: Warrant, count: number): string {
   const videos = count === 1 ? "video" : "videos";
   if (warrant === "structural") return `Reading shape from ${count} proven ${videos}`;
   if (warrant === "provenance") return `Found ${count} proven ${videos}`;
-  return `Drafting against ${count} proven ${videos}`;
+  // TOPICAL — the weakest of the three warrants, and until 2026-08-15 it carried the strongest
+  // wording ("Drafting against N proven videos"). Two separate defects in one string:
+  //
+  //  1. "proven" is not earned here. Structural rows are human-curated teaching examples and
+  //     provenance rows cleared a search-by-subject + above-baseline outlier gate; a topical row
+  //     earns its place by COSINE ALONE, at a 0.5 floor sitting ~0.05 above the corpus's own
+  //     median (retrieve.ts). Measured 2026-08-15 across 346 queries
+  //     (scripts/probe-warrant-floor.ts) that floor admits `asdfghjkl qwerty zxcvbn` (0.521),
+  //     `the` (0.522) and `yes` (0.547). The chat surface already said so — it renders
+  //     "N real videos on this" for topical and reserves "proven" for structural
+  //     (corpus-references-block.tsx:87). One warrant described at two strengths is the bug.
+  //  2. "Drafting against" is an OUTPUT verb on a callback that fires before any card exists —
+  //     the same F-4 defect fixed for the structural branch on 2026-08-13 ("Borrowing" →
+  //     "Reading"). The rarer path got fixed; the ~95% path kept the bug.
+  //
+  // ⚠️ Raising the floor was measured and REJECTED as the alternative (owner ruling 2026-08-15):
+  // `ok` (0.553) outscores the corpus's OWN labels `education-science` (0.541) and `other`
+  // (0.540), so no floor separates contentless input from the corpus's own vocabulary. Fix the
+  // claim, not the threshold.
+  return `Reading ${count} real ${videos} matched to this subject`;
 }
 
 /**
