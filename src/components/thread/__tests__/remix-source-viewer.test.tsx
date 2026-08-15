@@ -217,6 +217,26 @@ describe("RemixBeats — the strip and the rows are one instrument", () => {
     expect(screen.getByText(/Your creatine is doing nothing/u)).toBeInTheDocument();
   });
 
+  it("pins the beat thumbnail to the top of its row so the frame keeps its aspect", () => {
+    // A CLASS assertion, deliberately, and the weakest kind — happy-dom computes no layout, so it
+    // cannot see the defect this guards. The row is a flex container whose `align-items` resolves
+    // to `stretch`, which FORCES a flex item's cross-size and so overrides `aspect-ratio` (that
+    // only derives a height while height is `auto`). Measured on a real 8-beat sheet before the
+    // fix: 44x145 and 44x202 instead of 44x78 — every still stretched by a different amount.
+    // The real proof is a browser measurement (ratio 0.563 on every row); this exists so the class
+    // cannot be dropped without something going red.
+    const { container } = render(
+      <RemixBeats
+        blueprintId="preview"
+        variantIndex={0}
+        initialData={{ script: SCRIPT, blueprint: blueprint(), frames: { 0: "/f0.jpg" } }}
+      />,
+    );
+    const thumb = container.querySelector("[data-beat-index='0'] span.relative");
+    expect(thumb).toHaveClass("self-start");
+    expect(thumb).toHaveClass("aspect-[9/16]");
+  });
+
   it("lights the beat the playhead is inside", () => {
     const { container } = render(
       <RemixBeats

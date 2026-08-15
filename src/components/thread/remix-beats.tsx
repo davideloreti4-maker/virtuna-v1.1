@@ -204,7 +204,15 @@ export function RemixBeats({
                   ALWAYS rendered, even with no frame — the slot is what makes the sheet read as a
                   timeline rather than a list, and CoverFill degrades to a play-tile so a missing
                   or expired frame is never a broken box. Pre-phase-3 sheets simply show tiles. */}
-              <span className="relative mt-0.5 block aspect-[9/16] w-11 shrink-0 overflow-hidden rounded border border-white/[0.06]">
+              {/* `self-start` is load-bearing, not alignment taste. The row is a flex container
+                  whose `align-items` computes to `stretch`, and a stretched flex item has its
+                  cross-size FORCED — which overrides `aspect-ratio`, because that only derives a
+                  height while the height is `auto`. Without it the frame is 44px wide and as tall
+                  as the row: measured 44x145 and 44x202 on a real 8-beat sheet (ratios 0.30 and
+                  0.22 against the 0.563 this asks for), so every still was vertically stretched by
+                  a different amount. Invisible until real copy made the rows tall — the fixture's
+                  short lines happened to keep the rows near the natural height. */}
+              <span className="relative mt-0.5 block aspect-[9/16] w-11 shrink-0 self-start overflow-hidden rounded border border-white/[0.06]">
                 <CoverFill coverUrl={frame} playSize={12} alt="" />
               </span>
               <div className="flex min-w-0 flex-1 flex-col gap-1">
