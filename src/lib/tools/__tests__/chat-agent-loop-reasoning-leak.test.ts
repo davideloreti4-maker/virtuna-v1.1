@@ -122,6 +122,39 @@ describe("reasoning must not become the creator's answer", () => {
     expect(res.text).not.toContain("The user wants");
   });
 
+  it("caps the same monologue on the UNBOUND exit — the anonymous visitor's door (row 249848cb)", async () => {
+    // 🔴 `:1671` returns `guard.flush()` when `unbound`, short-circuiting `answer` entirely, so the
+    // cap the test above proves never applied to this exit. It is not a dead branch: `FREE_SKILL_TOOLS`
+    // is EMPTY (every generator is billable), so every sealed `/go` visitor binds no generator and
+    // takes it — and `composedCards` is `process.env.COMPOSED_CARDS !== "false"`, a global default-ON
+    // read with no visitor check, so `enable_thinking` is on for them exactly as it is for a signed-in
+    // turn. `textCap` is `Infinity` there too, since only a skill run that produced blocks lowers it
+    // and an unbound session runs no skills.
+    //
+    // The tagless shape is what makes this bite: `stripLeakedReasoning` returns a monologue with no
+    // tag BYTE-IDENTICAL by design, so the strip alone is not a ceiling. Measured before the fix —
+    // 36,236 chars in, 36,236 out, against 0 out for the identical stream on the bound path.
+    const stream = mockStream([[textChunk(MONOLOGUE_HEAD + DEGENERATION.repeat(6))]]);
+
+    const res = await runChatAgentStream(baseInput(), DEPS(stream, { skills: [] }));
+
+    expect(res.text.length).toBeLessThan(1000);
+    expect(res.text).not.toContain("The user wants");
+  });
+
+  it("🔴 does NOT cap a real answer on the unbound exit either — same threshold, same population", async () => {
+    // The control for the test above. A visitor turn is all prose and has no card pack, so it is the
+    // SAME population `RUNAWAY_PROSE_CAP` was measured against; the ceiling must sit above the real
+    // answers there for the same reason it does on the bound branch.
+    const realAnswer = "Open on the mundane, then escalate. ".repeat(110);
+    const stream = mockStream([[textChunk(realAnswer)]]);
+
+    const res = await runChatAgentStream(baseInput(), DEPS(stream, { skills: [] }));
+
+    expect(realAnswer.length).toBeGreaterThan(3_500);
+    expect(res.text).toBe(realAnswer);
+  });
+
   it("🔴 does NOT touch a long search-and-answer turn — its prose IS the answer", async () => {
     // 25 of 34 over-cap no-card turns are these. The largest real answer measured in the whole
     // production table is 3,791 chars; the smallest leak is 18,484. Nothing lives in between, and

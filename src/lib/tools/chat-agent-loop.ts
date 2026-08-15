@@ -1668,5 +1668,23 @@ export async function runChatAgentStream(
     return closing.length > POST_TOOL_TEXT_CAP ? "" : closing;
   })();
   const answer = cardsDelivered ? closingLine : capRunawayProse(stripLeakedReasoning(fullText));
-  return { text: unbound ? stripLeakedReasoning(guard.flush()) : answer, skillRuns, uiBlocks, toolCalls };
+  // ⚠️ The unbound exit gets the SAME treatment, not just the strip. It short-circuits `answer`
+  // entirely, so applying the cap only there left the guard covering every door but the anonymous
+  // one: `FREE_SKILL_TOOLS` is empty, so a sealed `/go` visitor binds no generator and lands here,
+  // `composedCards` is a global default-ON read with no visitor check (so `enable_thinking` is on
+  // for them too), and `textCap` is `Infinity` because no skill ran. A TAGLESS monologue — the
+  // shape of the largest of the three rows, 33,165 chars — is returned byte-identical by the strip
+  // by design, so the strip alone is not a ceiling. Measured at 36,236 in / 36,236 out before this.
+  // Same threshold because it is the same population: a visitor turn is all prose and has no card
+  // pack, exactly like the no-card branch above.
+  //
+  // 🔴 `guard.flush()` stays INSIDE the ternary. It is not a getter: it settles held state and
+  // `emit()`s the release through `onToken`, so hoisting it to a `const` would push extra tokens
+  // into the creator's stream on the bound path — the one thing this whole change must not do.
+  return {
+    text: unbound ? capRunawayProse(stripLeakedReasoning(guard.flush())) : answer,
+    skillRuns,
+    uiBlocks,
+    toolCalls,
+  };
 }
