@@ -1,7 +1,7 @@
 # Handoff — the cache-first ordering is fixed, and the live path is now reachable (2026-08-15)
 
 **Lane:** composed-card / Apify-first live sourcing · worked from **trunk** `~/virtuna-v1.1`
-**Merged this session:** **#517**, **#519**. `main` at `fab44ace`.
+**Merged this session:** **#517**, **#519**. (No sha pinned — see §5.)
 **Predecessor:** `docs/HANDOFF-2026-08-14-live-sourcing.md`
 
 ---
@@ -9,8 +9,11 @@
 ## 0. ▶️ PASTE THIS TO START THE NEXT SESSION
 
 ```
-Read docs/HANDOFF-2026-08-15-live-first.md. main was a584b23e at handoff — RE-MEASURE
-with git rev-parse; it moved TWICE under me yesterday (co-sessions merged #514/#515/#516).
+Read docs/HANDOFF-2026-08-15-live-first.md. MEASURE main yourself with git rev-parse before
+you touch anything — this doc deliberately pins no sha, because it moved TWICE under me in one
+session (co-sessions merged #514/#515/#516) and a pinned sha here was wrong within a day.
+Check `git rev-parse --abbrev-ref HEAD` before every operation in trunk, and never `git add -A`
+there — a co-session's blanket add committed my work into its commit.
 
 STATE: the cache-first ordering that gated this lane for three sessions is FIXED and
 merged (#517). An authorized run now scrapes FIRST; the cache is the safety net behind
@@ -29,12 +32,17 @@ DO NOT:
   - Do not build Phase 3's gate chain. Tasks 2-9 are DROPPED.
   - Do not `git add -A` in trunk.
 
-NEEDS MY RULING, don't start without asking:
-  1. The gate-1 floor (0.6 → 34% pass rate). It changes what two thirds of asks are told.
-  2. ~$40 of live probes for ask 3. Still 0/6, still never ruled on.
+BOTH EARLIER RULINGS ARE NOW MADE — do not re-ask them:
+  1. Gate-1 floor: MEASURED at the right bar (§8). The "0.6 → 34%" framing was wrong;
+     0.6 actually keeps 66-74% of asks, and 0.56 kills all four contentless controls
+     while keeping 85-94%. Open part is WHICH REMEDY (floor at 0.56 / fix the copy /
+     both), not the numbers. §8 argues a floor alone cannot work: `ok` (0.553)
+     outscores the corpus's own `education-science` (0.541).
+  2. Ask 3: DO NOT SPEND NOW. Re-measure at n=6 after the Apify reset (2026-08-20).
 
 METHOD: read a job's OUTPUT before characterising it, and re-read the Apify balance
 rather than inheriting it — the handoff's number was already stale by $0.14.
+Also: do not interpolate a measurement you can just ask the shipped function for (§8).
 BUDGET: $0.93 of $5, resets Aug 20. With LIVE_SCRAPE_DEFAULT on, ~$0.11 per send —
 and since #519 that is true of CHAT sends too, which were free this morning.
 ```
@@ -84,7 +92,7 @@ Recorded so nobody re-opens a settled question:
 |---|---|
 | **Scrape + merge** (union live + cached) | `assessWarrant()` takes ONE axis. A mixed set needs a mixed-axis warrant that does not exist and was not designed. |
 | **A separate `fresh` flag** (Phase 3's dropped `fresh?: boolean`) | Needs a UI affordance to be reachable, and the existing "Find new outliers" button **structurally cannot appear on a cache hit** — `scrapeAvailable` is computed on the miss path only. |
-| **Tighten the `enough` bar** | Changes what every *unauthorized* user is told, and collides with the measured gate-1 finding (floor 0.6 → 34% pass rate). |
+| **Tighten the `enough` bar** | Changes what every *unauthorized* user is told, and collides with the gate-1 finding. ⚠️ The "floor 0.6 → 34%" number quoted here when this table was written is **superseded by §8** — it measured a different bar. The objection stands; the arithmetic behind it does not. |
 
 ### What the fallback preserves
 
@@ -186,15 +194,20 @@ The 25s bound from #512 held: the run completed in 102.3s with the profile looku
 ## 5. State
 
 ```
-main       a584b23e            prod deployed   1be28832 (2026-08-07)
+main       MEASURE IT          prod deployed   1be28832 (2026-08-07, frozen)
 tsc        0                   tests           6549 pass / 0 fail (566 files)
-flags      21/21 ON locally    Apify           $4.07 of $5 — $0.93 left, resets 2026-08-20
+flags      21/21 ON locally    Apify           RE-READ IT — $0.93 left on 2026-08-15, resets 08-20
 ```
 
-⚠️ **`main` moved twice during this session** (`37427096` → `ee607e89` → `a584b23e`). Co-sessions
-merged #514/#515/#516 underneath. No file overlap with this lane; `ideas-runner.ts` changed but only
-downstream of retrieval (F-7 receipt diversity). **Re-measure with `git rev-parse` before branching
-AND before merging.**
+⚠️ **`main` is deliberately not pinned here, and neither is the Apify balance.** Both were recorded
+as a sha/number in earlier handoffs and both were wrong within a day: `main` moved twice *during*
+one session (`37427096` → `ee607e89` → merge of #517 → merge of #519) as co-sessions merged
+#514/#515/#516 underneath, and the inherited balance was already $0.14 stale when it was read.
+🔑 **The remedy for a fast-moving fact in a handoff is to make the reader re-derive it, not to sync
+a copy of it** — a synced copy is just a slower lie. `git rev-parse main`; read `usageTotalUsd`.
+
+No file overlap between those co-session merges and this lane; `ideas-runner.ts` changed but only
+downstream of retrieval (F-7 receipt diversity).
 
 ---
 
@@ -223,14 +236,95 @@ AND before merging.**
 1. **`SpendAuthority` (Phase 3 Task 1)** — survives the drop, **zero code exists**, and its specced
    consumer was the half that got dropped. Its real callers are the ten Apify doors, several of them
    **cron jobs with no route and no request**. Re-derive the seam; do not inherit it.
-2. **The second orphaned defect** — *"Here are the proven outliers for {niche}"* is asserted over
-   median rows; gate 1 passes `asdfghjkl qwerty zxcvbn` (#484). Raising the floor to 0.6 drops the
-   pass rate to 34%. **Owner ruling needed** — it changes what two thirds of asks are told.
+2. **The second orphaned defect** — *"Here are the proven outliers for {niche}"* asserted over median
+   rows. **MEASURED 2026-08-15 at the right bar; see §8. The "0.6 → 34%" framing was wrong.**
+   Still needs an owner ruling on *which* remedy, but not on these numbers.
 3. **Ask 3** — *"what makes an ending actually land on a short video?"*, still **0/6**. It belongs to
    the in-thread chat lane, not this one: it is the *general question* card shape, with no structural
    cue and no comparison shape for `compare-hint.ts` to catch. ~$40 of live sends to get a rate
-   instead of a verdict. **Still never ruled on** — the owner asked what the test was, and did not
-   authorize it.
+   instead of a verdict.
+   ✅ **RULED 2026-08-15: do not spend now. Re-measure at n=6 after the Apify reset (2026-08-20).**
+   Two grounds: Apify is at $0.93 and since #519 every chat send draws ~$0.11 from it, and the 0/6
+   **predates #514**, which turned on `ENGINE_GEN_CONVERSATION` and touched `chat-agent-loop.ts` —
+   so the old rate may already be void and re-spending would measure a build nobody re-baselined.
 4. **Re-test clockworks in a few days** — one control run, $0.00, §4 has the exact command shape.
 5. **`platform` is still hardcoded `"tiktok"`** while the corpus carries Instagram and YouTube rows.
 6. **A purchase, not a session** — the Apify $5 cap gates Phase 1's release, not its build or test.
+
+---
+
+## 8. 🔴 The gate-1 ruling was framed on the wrong bar — measured 2026-08-15
+
+**`scripts/probe-warrant-floor.ts`** (new). DashScope embeddings only, **zero Apify**, nothing
+written. 346 queries: 158 distinct real prod asks (raw + boilerplate-stripped), the corpus's own 18
+niche labels, and the 12 controls carried verbatim from `probe-warm-coverage-control.ts`.
+
+### What was wrong with the question
+
+The open ruling read *"raising the floor to 0.6 drops the pass rate to 34%"*. That 34% comes from
+`probe-warm-coverage.ts`, whose bar is **≥ 3 rows passing `isProofGrade`** at a `wide` fetch of 600.
+But the sentence the ruling is about is licensed by `assessWarrant("topical", …)`, whose bar is
+**`WARRANT_MIN_ROWS = 1`** (`warrant.ts:79`) over the rows retrieval already returned — one row, no
+`isProofGrade` test, no second fetch.
+
+They are also **two separate env knobs**, and `warrant.ts:17` records that they are *allowed* to
+differ and already do on the chat path (recall 0.4 / warrant 0.5):
+
+| knob | default | question it answers |
+|---|---|---|
+| `GROUNDING_CACHE_MIN_SIMILARITY` | 0.5 | may the model **see** this row? |
+| `GROUNDING_WARRANT_MIN_SIMILARITY` | 0.5 | may we **cite** it about the subject? |
+
+🔑 **So the honesty fix does not have to cost the answer anything.** Raising only the *warrant*
+floor leaves every row in front of the model and changes only what we are entitled to assert —
+`warrantNote` switches to the honest wording. The choice was never "34% of asks keep their rows".
+
+### The measurement
+
+Pass = `assessWarrant` returns `grounded`, i.e. we may front the proof claim. Evaluated through the
+**shipped** function at every floor.
+
+```
+floor    A-raw(158)     B-subject(158)  C-labels(18)   D-control(12)  contentless(4)
+0.50   157 ( 99.4%)  157 ( 99.4%)   18 (100.0%)    6 ( 50.0%)  4/4   ← today
+0.55   151 ( 95.6%)  144 ( 91.1%)   16 ( 88.9%)    3 ( 25.0%)  1/4
+0.56   149 ( 94.3%)  134 ( 84.8%)   16 ( 88.9%)    2 ( 16.7%)  0/4   ← mash all dead
+0.60   117 ( 74.1%)  105 ( 66.5%)   13 ( 72.2%)    1 (  8.3%)  0/4
+0.65    49 ( 31.0%)   41 ( 25.9%)    4 ( 22.2%)    1 (  8.3%)  0/4
+```
+
+- **0.60 does not cost 66% of asks. It costs 26–34%** (74.1% / 66.5% survive). The 34% in the old
+  framing lands near **0.64** on this bar.
+- **0.56 is the knee.** All four contentless controls are refused there — `asdfghjkl` 0.521,
+  `the` 0.522, `yes` 0.547, `ok` 0.553 — while 84.8–94.3% of real asks keep the claim. Everything
+  0.6 buys over 0.56 on the controls is **nothing**; they were already gone.
+- 6 of the 12 controls **retrieve zero rows at all** (Peloponnesian War, ballast water, …). Those
+  never reached the warrant question; they fail at the recall floor. #484's finding is entirely
+  about the *near*-domain controls.
+
+### ⚠️ The finding that argues against raising the floor at all
+
+**`ok` (0.553) outscores two of the corpus's own niche labels — `education-science` (0.541) and
+`other` (0.540).** So no warrant floor can separate contentless input from the corpus's own
+vocabulary: **any floor that kills `ok` also refuses the proof claim on those two labels.** Same
+shape as the `carbonara recipe` 0.673 note in `retrieve.ts` — which, incidentally, is *not* a defect
+(the corpus genuinely holds food rows; `food` itself measures 0.635, *below* carbonara). That is a
+**ranking** fault, not a floor one.
+
+🔑 **A floor is a blunt instrument here, and the probe says so in its own output.** Cosine distance
+on this corpus does not encode "contentful"; it encodes "near the corpus". That is an argument for
+fixing the **claim** rather than the threshold — the copy option — or for doing both, with the floor
+set at 0.56 rather than 0.60 because 0.60 costs ~18 further points of real coverage for zero
+additional control rejections.
+
+### Reproduce
+
+```
+node node_modules/tsx/dist/cli.mjs scripts/probe-warrant-floor.ts [--limit N]
+```
+
+⚠️ **Do not score a few floors and interpolate the rest from a stored `topSim`.** `grounded` at
+floor *f* is algebraically `topSim >= f`, so it looks free — but a `topSim` rounded for display
+disagrees with the real predicate at the boundary. The first cut of this probe did exactly that and
+was off by one row at 0.60 (and by up to three elsewhere). Ask the shipped function at every floor
+you intend to report; the probe now does.
