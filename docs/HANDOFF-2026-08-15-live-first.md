@@ -196,7 +196,16 @@ The 25s bound from #512 held: the run completed in 102.3s with the profile looku
 ```
 main       MEASURE IT          prod deployed   1be28832 (2026-08-07, frozen)
 tsc        0                   tests           6549 pass / 0 fail (566 files)
-flags      21/21 ON locally    Apify           RE-READ IT — $0.93 left on 2026-08-15, resets 08-20
+flags      21/21 ON locally    Apify           RE-READ IT — see below, and do not trust this line
+```
+
+**Apify, re-read 2026-08-15 from `/v2/users/me/limits`:** `$4.4625` of `$5` — **$0.54 left**, cycle
+ends `2026-08-20T23:59:59.999Z`. ⚠️ Earlier the same day this doc recorded **$0.93**. The probe run
+in §8 spends **zero** Apify (DashScope embeddings only), so that $0.39 was drawn by something else —
+a co-session or a later run. **Two re-reads on one day, two different numbers.** Free to check:
+
+```
+GET https://api.apify.com/v2/users/me/limits   →  data.current.monthlyUsageUsd
 ```
 
 ⚠️ **`main` is deliberately not pinned here, and neither is the Apify balance.** Both were recorded
