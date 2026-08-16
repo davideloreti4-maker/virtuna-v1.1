@@ -36,6 +36,7 @@ import { nanoid } from "nanoid";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { insertBlueprint } from "@/lib/remix/blueprint-repo";
+import { CLIPS_BUCKET } from "@/lib/remix/clip-storage";
 import { maybeMockSkillRun } from "@/lib/tools/mock/mock-sse";
 import { createOpenThreadLazy } from "@/lib/threads/threads";
 import { insertMessage } from "@/lib/threads/messages";
@@ -248,6 +249,7 @@ export async function POST(request: Request): Promise<Response> {
               source_video_id: result.blueprint.sourceVideoId,
               blueprint: result.blueprint.payload,
               script: result.blueprint.script,
+              clip_uris: result.blueprint.clipPaths,
             });
           } catch (bpErr) {
             Sentry.captureException(bpErr, { tags: { route: "api.tools.remix.run" } });
@@ -257,6 +259,20 @@ export async function POST(request: Request): Promise<Response> {
             for (const b of result.blocks) {
               delete (b.props as { blueprintId?: string }).blueprintId;
               delete (b.props as { blueprintVariant?: number }).blueprintVariant;
+            }
+            // Phase 4: clips were uploaded on the promise this row would list them. No row ⇒
+            // outside the reaper's worklist forever (§5 sweeps rows, not the bucket) — remove
+            // them now, best-effort. A failure here is the accepted residual window (spec §10).
+            if (result.blueprint.clipPaths.length > 0) {
+              try {
+                await createServiceClient()
+                  .storage.from(CLIPS_BUCKET)
+                  .remove(result.blueprint.clipPaths);
+              } catch (rmErr) {
+                log.warn("orphaned clip cleanup failed", {
+                  error: rmErr instanceof Error ? rmErr.message : String(rmErr),
+                });
+              }
             }
           }
         }

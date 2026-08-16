@@ -54,6 +54,20 @@ vi.mock("@/lib/remix/blueprint-repo", () => ({
 }));
 
 /**
+ * `mockClipsRemove` backs the orphan-cleanup path (phase 4): when `insertBlueprint` throws, the
+ * route removes the runner's already-uploaded clips via
+ * `createServiceClient().storage.from(CLIPS_BUCKET).remove(paths)`. `vi.hoisted` is required here
+ * because the `vi.mock` factory below is hoisted above this file's other top-level statements —
+ * closing over a plain `const` declared after it would read as `undefined` at mock-definition
+ * time.
+ */
+const { mockClipsFrom, mockClipsRemove } = vi.hoisted(() => {
+  const mockClipsRemove = vi.fn(async () => ({ error: null }));
+  const mockClipsFrom = vi.fn(() => ({ remove: mockClipsRemove }));
+  return { mockClipsFrom, mockClipsRemove };
+});
+
+/**
  * `createServiceClient()` reads NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY and THROWS
  * ("supabaseUrl is required.") when they are absent — and they are absent under vitest, verified
  * by probe. Unmocked, the route's blueprint write would take its non-fatal catch on every run in
@@ -62,7 +76,7 @@ vi.mock("@/lib/remix/blueprint-repo", () => ({
  * so the stub returned here is inert for it.)
  */
 vi.mock("@/lib/supabase/service", () => ({
-  createServiceClient: vi.fn(() => ({})),
+  createServiceClient: vi.fn(() => ({ storage: { from: mockClipsFrom } })),
 }));
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
@@ -459,6 +473,7 @@ describe("POST /api/tools/remix/run (SSE route)", () => {
       },
       script: [[{ index: 0, spoken: "your line", on_screen_text: "", shot: "waist-up" }]],
       sourceVideoId: "https://www.tiktok.com/@creator/video/123",
+      clipPaths: ["bp/0.mp4"],
     };
 
     /** Signs in a user, stubs the thread, and hands back the card the pipeline "produced". */
@@ -570,6 +585,7 @@ describe("POST /api/tools/remix/run (SSE route)", () => {
       expect(row.source_video_id).toBe("https://www.tiktok.com/@creator/video/123");
       expect(row.blueprint).toEqual(BLUEPRINT_RESULT.payload);
       expect(row.script).toEqual(BLUEPRINT_RESULT.script);
+      expect(row.clip_uris).toEqual(["bp/0.mp4"]);
     });
 
     it("strips blueprintId — from the FACE as well as the block — and still delivers the cards when the insert fails", async () => {
@@ -589,6 +605,17 @@ describe("POST /api/tools/remix/run (SSE route)", () => {
       // happen before the content frame for this to hold — emitting the face first and writing
       // the row afterwards leaves a dangling id on screen until a reload.
       expect(raw).not.toContain("bp1234567890");
+    });
+
+    it("removes the runner's already-uploaded clips when the blueprint insert fails — no row must not mean orphaned objects", async () => {
+      await arrange({ ...BLUEPRINT_RESULT, clipPaths: ["bp/0.mp4", "bp/1.mp4"] });
+      const { insertBlueprint } = await import("@/lib/remix/blueprint-repo");
+      (insertBlueprint as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("insert failed"));
+
+      await drain(await post());
+
+      expect(mockClipsFrom).toHaveBeenCalledWith("clips");
+      expect(mockClipsRemove).toHaveBeenCalledWith(["bp/0.mp4", "bp/1.mp4"]);
     });
 
     it("does not call insertBlueprint when the runner produced no blueprint", async () => {
