@@ -79,7 +79,7 @@ are retrieved videos.
   `kept | model-zero | invalid-index | no-handle | trimmed-from-bundle | lexical-mismatch | diversity-capped`.
   Behavior byte-identical; the classifier is unit-tested per reason.
 - One log line per run:
-  `[attribution] hooks: kept 2/3 — [1:kept, 2:model-zero, 3:diversity-capped]`.
+  `[attribution] hooks: kept 2/3 — [1:kept(td=abc123,@handle), 2:model-zero, 3:diversity-capped]`.
 - Permanent. Today's diagnosis required log archaeology; this makes it one grep.
 
 ### 4. Measurement probe (`scripts/probe-attribution-rate.ts`)
