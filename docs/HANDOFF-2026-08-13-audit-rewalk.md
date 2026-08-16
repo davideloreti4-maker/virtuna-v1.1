@@ -264,6 +264,13 @@ answer ≈ 4 screens. 33k characters is roughly an order of magnitude beyond tha
 >
 > 🔑 **A probe that acts at machine speed measures a state the product only occupies while loading.**
 > `--settle 0` reproduces the artefact on purpose; keep it that way.
+>
+> 📌 **Provenance — the build these numbers came from.** Measured against a prod build of
+> `cf58a5f0`. **#528 (`325a1794`, "name the long-form prose role; thread + reading chat adopt it")
+> landed afterwards and touches `markdown-block.tsx` + `globals.css`.** The 75/64px figures are for
+> the *wait indicator*, whose position is set by composer anchoring rather than prose typography, so
+> the conclusion should hold — but it was not re-measured on top of #528. Say "measured at
+> `cf58a5f0`", not "measured today", if you quote it.
 
 🔎 **Adjacent, measured 2026-08-16 while timing F-11:** `onDispatch` — the event that lets the
 progress capsule *label itself* — fires at `chat-agent-loop.ts:1552`, **after** the billing gate at
