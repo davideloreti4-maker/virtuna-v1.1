@@ -602,6 +602,62 @@ describe("runChatAgentStream [tools]", () => {
     expect((res.uiBlocks[0] as { props: { prefill?: string } }).props.prefill).toBeUndefined();
   });
 
+  it("request_input repeated for the SAME action in one round emits ONE field (measured live: 2/16 runs doubled the card)", async () => {
+    const onBlock = vi.fn();
+    const stream = mockStream([
+      // Two parallel calls in one round, same action — the model asking twice.
+      [
+        toolName(0, "c1", "request_input"),
+        toolArgs(0, '{"action": "explore", "value": "app promotion"}'),
+        toolName(1, "c2", "request_input"),
+        toolArgs(1, '{"action": "explore", "value": "app promotion"}'),
+      ],
+      [textChunk("Fill the field.")],
+    ]);
+
+    const res = await runChatAgentStream(baseInput({ onBlock }), DEPS(stream, { skills: [mkSkill("generate_ideas")] }));
+
+    const fields = res.uiBlocks.filter((b) => (b as { type?: string }).type === "input-request");
+    expect(fields).toHaveLength(1);
+    expect(onBlock.mock.calls.filter(([b]) => (b as { type?: string }).type === "input-request")).toHaveLength(1);
+    // Telemetry stays honest: the duplicate is recorded as NOT run.
+    const recs = res.toolCalls.filter((t) => t.name === "request_input");
+    expect(recs.map((t) => t.ran)).toEqual([true, false]);
+  });
+
+  it("request_input repeated for the SAME action in a LATER round emits ONE field", async () => {
+    const onBlock = vi.fn();
+    const stream = mockStream([
+      [toolName(0, "c1", "request_input"), toolArgs(0, '{"action": "explore", "value": "app promotion"}')],
+      // Round 2: instead of the closing line, the model requests the same field again.
+      [toolName(0, "c2", "request_input"), toolArgs(0, '{"action": "explore", "value": "app promotion"}')],
+      [textChunk("Fill the field.")],
+    ]);
+
+    const res = await runChatAgentStream(baseInput({ onBlock }), DEPS(stream, { skills: [mkSkill("generate_ideas")] }));
+
+    const fields = res.uiBlocks.filter((b) => (b as { type?: string }).type === "input-request");
+    expect(fields).toHaveLength(1);
+    expect(onBlock.mock.calls.filter(([b]) => (b as { type?: string }).type === "input-request")).toHaveLength(1);
+  });
+
+  it("request_input for a DIFFERENT action in the same turn still emits its own field", async () => {
+    const stream = mockStream([
+      [
+        toolName(0, "c1", "request_input"),
+        toolArgs(0, '{"action": "explore"}'),
+        toolName(1, "c2", "request_input"),
+        toolArgs(1, '{"action": "read"}'),
+      ],
+      [textChunk("Two doors.")],
+    ]);
+
+    const res = await runChatAgentStream(baseInput(), DEPS(stream, { skills: [mkSkill("generate_ideas")] }));
+
+    const fields = res.uiBlocks.filter((b) => (b as { type?: string }).type === "input-request");
+    expect(fields).toHaveLength(2);
+  });
+
   it("request_input with an unknown action is refused (no field emitted)", async () => {
     const onBlock = vi.fn();
     const stream = mockStream([

@@ -1047,6 +1047,13 @@ export async function runChatAgentStream(
   const skillRuns: SkillRunOutput[] = [];
   const uiBlocks: unknown[] = [];
   /**
+   * Actions whose input field is already on screen this TURN. request_input is free and the model
+   * sometimes asks twice — in parallel within one round, or again next round after reading "shown"
+   * (measured live: 2/16 explore runs doubled the card). One field IS the affordance; a repeat
+   * emits nothing and the tool result says so. Per-action, so two DIFFERENT fields still coexist.
+   */
+  const shownInputFields = new Set<string>();
+  /**
    * Spec §5: *"model emits an invalid tree → one repair attempt, then degrade to prose (never a
    * broken card)."* Counted per TURN, not per round, so a model that keeps re-sending the same
    * malformed tree is told to write words rather than spending the round budget on retries.
@@ -1368,6 +1375,21 @@ export async function runChatAgentStream(
           continue;
         }
         const cap = SKILL_CAPABILITIES[action];
+        // Idempotence: the same action's field already on screen this turn → emit nothing more.
+        if (shownInputFields.has(action)) {
+          toolCalls.push({ name: "request_input", ran: false, note: `duplicate:${action}` });
+          messages.push({
+            role: "tool",
+            tool_call_id: call.id,
+            content: JSON.stringify({
+              shown: "already on screen",
+              action,
+              note: "this field is already in the thread — do not request it again; point the creator to it in one short line",
+            }),
+          });
+          continue;
+        }
+        shownInputFields.add(action);
         // Prefill per the capability's declared shape (text / url / tiktok-url); a value that
         // doesn't match is dropped, and a non-prefillable field never takes one.
         const prefill = resolvePrefill(cap.prefill, rawValue);
