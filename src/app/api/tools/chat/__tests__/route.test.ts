@@ -778,6 +778,55 @@ describe("POST /api/tools/chat (SSE route)", () => {
     delete process.env.ENGINE_GUESS_PIN;
   });
 
+  it("Test 6g2: the predispatch LABEL inherits the same narrowing the pin has", async () => {
+    // Stage B's B3 frame labels the 4–5s dead zone from the pre-router's guess. It read the guess
+    // RAW (`guessSkill`) while the pin one screen below reads it NARROWED (`detectGuessPin`), so the
+    // single ask this lane has measured as a harmful guess — the one Test 6g above proves must never
+    // be PINNED — was still being ANNOUNCED to the creator as a hooks run, for the whole length of
+    // the wait the frame exists to fill. `certain:false` softens the claim; it does not make a wrong
+    // one useful, and "Looks like a hooks run…" is worse than the default "Thinking…" on an ask that
+    // asked for the SIM.
+    //
+    // This is B3 alone — no other flag has to be on for a creator to see it.
+    //
+    // ⚠️ The client half of B3 is well covered (`use-chat-stream.test.ts`), but every one of those
+    // tests SUPPLIES the frame as a fixture. Nothing asserted which skill the server picks, which is
+    // why a raw-guess read sat here unseen.
+    process.env.CHAT_AGENT_DISPATCH = "true";
+    process.env.NEXT_PUBLIC_ENGINE_ONE_BRAIN = "true";
+    await primeDispatchHarness();
+    const { runChatAgentStream } = await import("@/lib/tools/chat-agent-loop");
+    (runChatAgentStream as ReturnType<typeof vi.fn>).mockImplementation(
+      async (input: { onToken: (d: string) => void }) => {
+        input.onToken("ok");
+        return { text: "ok", skillRuns: [], uiBlocks: [], toolCalls: [] };
+      },
+    );
+    const { POST } = await import("@/app/api/tools/chat/route");
+
+    // THE CONTROL — an ordinary generation ask must still get its label, or the fix is just a delete.
+    const labelled = await readSSE(
+      await POST(makeChatRequest({ ask: "give me 5 hooks for my student budgeting app", platform: "tiktok" })),
+    );
+    expect(labelled, "an ordinary ask must still be labelled").toContain("predispatch");
+    expect(labelled).toContain('"skill":"hooks"');
+
+    // THE DEFECT — the same sentence Test 6g pins nothing for must be announced as nothing either.
+    const falseAlarm = await readSSE(
+      await POST(
+        makeChatRequest({
+          ask: "Yes, run the simulate tool on that hook — I want the reaction card.",
+          platform: "tiktok",
+        }),
+      ),
+    );
+    expect(falseAlarm, "the measured false positive must not be announced as a hooks run").not.toContain(
+      '"skill":"hooks"',
+    );
+
+    delete process.env.NEXT_PUBLIC_ENGINE_ONE_BRAIN;
+  });
+
   it("Test 6h: the guess pin never overrides a tapped chip, and never fires for a sealed visitor", async () => {
     // A chip DECLARES its generator, so it must win over any guess — and a sealed /go visitor binds
     // no generators at all, so a pin would name a tool the loop cannot call.
