@@ -70,7 +70,9 @@ export interface PopulationIndividual {
 export interface SegmentReaction {
   /** Engine archetype slug — keys the swarm anchors + the legacy breakdown. */
   archetype: string;
-  /** Creator-specific label (from `display_name`), falling back to the archetype label. */
+  /** The CURATED archetype display name (archetype-names.ts) — never the generator's
+   *  `display_name`, whose "The Tech Trend Hunter"-style labels the owner ruled say nothing
+   *  (2026-08-12, extended to this projection 2026-08-16). */
   displayName: string;
   /** This segment's share of the audience (0..1). */
   share: number;
@@ -277,10 +279,15 @@ export function reactPopulation(
   opts: { N?: number; seed?: number } = {},
 ): PopulationAggregate {
   const people = expandSignature(signature, opts);
+  // The CURATED archetype name, never the generator's `display_name` (2026-08-12 owner ruling,
+  // extended off the resting board 2026-08-16): calibration's own labels name a mechanism or a
+  // marketing persona ("The Tech Trend Hunter") and say nothing to that person's creator, while
+  // archetype-names.ts exists precisely to translate the slug into a plain human noun. It also
+  // keeps the audience tab and the rail's "In the room" list speaking one set of names.
   const labelByArchetype = new Map<string, { displayName: string; share: number }>(
     signature.audience.personas.map((p) => [
       p.archetype as string,
-      { displayName: p.display_name ?? archetypeDisplayName(p.archetype), share: p.share || 0 },
+      { displayName: archetypeDisplayName(p.archetype), share: p.share || 0 },
     ]),
   );
 

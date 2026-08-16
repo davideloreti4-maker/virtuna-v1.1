@@ -207,10 +207,13 @@ describe("reactPopulation", () => {
     expect(agg.segments[1]!.archetype).toBe("niche_deep_buyer");
   });
 
-  it("carries the creator-specific display_name onto each segment", () => {
+  it("names each segment with the CURATED archetype noun, never the generator's display_name", () => {
+    // 2026-08-12 owner ruling (resting board), extended to the projection 2026-08-16: the
+    // generator's labels ("Dopamine Scrollers", "The Tech Trend Hunter") name a mechanism or a
+    // marketing persona; the curated table names a person. One set of names on every surface.
     const agg = reactPopulation(sig, SPECTACLE_HOOK, { N: 200, seed: 3 });
     const lurker = agg.segments.find((s) => s.archetype === "lurker");
-    expect(lurker!.displayName).toBe("Dopamine Scrollers");
+    expect(lurker!.displayName).toBe("Quiet Watchers");
   });
 
   it("DIFFERENTIATES: the spectacle hook lights the scrollers, the craft hook lights the nerds", () => {

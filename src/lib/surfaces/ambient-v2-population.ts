@@ -18,6 +18,7 @@
  */
 
 import type { PopulationAggregate } from "@/lib/audience/population";
+import { archetypeDisplayName } from "@/lib/audience/archetype-names";
 import { buildActionIntent, type VideoActionIntent } from "./ambient-v2-video-population";
 import type {
   CodedReason,
@@ -95,6 +96,17 @@ const GOLDEN = 2.399963229728653; // rad — the golden angle, deterministic sca
 const DISPLAY_NODES = 90; // total nodes drawn across all clusters (downsample from ~1,000 for the SVG)
 
 const clamp = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v));
+
+/** Normalize a (possibly PERSISTED) aggregate for display: segment names become the curated
+ *  archetype nouns. Seals written before the 2026-08-16 naming change carry the generator's
+ *  "The Tech Trend Hunter"-style `displayName` baked in — the archetype slug rides every segment,
+ *  so the curated name is recoverable at render without touching the stored seal. */
+function presentAggregate(agg: PopulationAggregate): PopulationAggregate {
+  return {
+    ...agg,
+    segments: agg.segments.map((s) => ({ ...s, displayName: archetypeDisplayName(s.archetype) })),
+  };
+}
 
 /** Fixed en-US thousands grouping — `toLocaleString()` without a locale honors the machine's locale,
  *  which rendered "1.000" (European) instead of "1,000" on this box. Deterministic + locale-proof. */
@@ -209,7 +221,8 @@ function heroRead(agg: PopulationAggregate): string {
  * on every render.
  */
 export function buildPopulationFrameData(input: PopulationSnapshotInput): PopulationFrameData {
-  const { aggregate: agg, personas, calibratedFrom, tier } = input;
+  const { personas, calibratedFrom, tier } = input;
+  const agg = presentAggregate(input.aggregate);
   // The three bands partition the room: scrolled = never stopped; skimmed = stopped, didn't finish;
   // stopped = stayed. `stopPct` counts skimmers (they DID stop), so the skim band is carved out of it
   // — clamped so a malformed producer can never push a band negative or the sum past 100.

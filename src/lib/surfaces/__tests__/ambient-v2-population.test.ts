@@ -20,10 +20,13 @@ const AGG: PopulationAggregate = {
   stop: 620,
   scroll: 380,
   stopPct: 62,
+  // REAL archetype slugs, with the generator's baked `displayName` deliberately WRONG — the
+  // display layer must translate to the curated nouns at render (old seals carry names like
+  // "The Tech Trend Hunter"; the slug is what makes the curated name recoverable).
   segments: [
-    { archetype: "builder", displayName: "builders", share: 0.4, total: 400, stop: 340, stopPct: 85 },
-    { archetype: "scroller", displayName: "scrollers", share: 0.35, total: 350, stop: 200, stopPct: 57 },
-    { archetype: "skeptic", displayName: "skeptics", share: 0.25, total: 250, stop: 80, stopPct: 32 },
+    { archetype: "niche_deep_buyer", displayName: "The Deep Domain Devotee", share: 0.4, total: 400, stop: 340, stopPct: 85 },
+    { archetype: "lurker", displayName: "The Scroll-Stopping Scroller", share: 0.35, total: 350, stop: 200, stopPct: 57 },
+    { archetype: "tough_crowd", displayName: "The Skeptical Realist", share: 0.25, total: 250, stop: 80, stopPct: 32 },
   ],
   reasons: [
     { reason: "The payoff comes too late", count: 253 },
@@ -32,8 +35,8 @@ const AGG: PopulationAggregate = {
 };
 
 const PERSONAS: PopulationSnapshotInput["personas"] = [
-  { archetype: "skeptic", verdict: "scroll", quote: "i'd be gone before the point lands" },
-  { archetype: "builder", verdict: "stop", quote: "that detail made me stay" },
+  { archetype: "tough_crowd", verdict: "scroll", quote: "i'd be gone before the point lands" },
+  { archetype: "niche_deep_buyer", verdict: "stop", quote: "that detail made me stay" },
 ];
 
 const base: PopulationSnapshotInput = {
@@ -53,16 +56,17 @@ describe("buildPopulationFrameData", () => {
 
   it("emits the modeled-depth sections, each derived from the REAL segment numbers", () => {
     const p = buildPopulationFrameData(base);
-    // audienceFit: builders (85% vs 62% mean) over-index; skeptics (32%) cool + carry loss
-    expect(p.audienceFit!.rows[0]!.label).toBe("builders");
+    // audienceFit: Deep Fans (85% vs 62% mean) over-index; Tough Crowd (32%) cool + carry loss
+    expect(p.audienceFit!.rows[0]!.label).toBe("Deep Fans");
     expect(p.audienceFit!.rows[0]!.index).toBeGreaterThan(0);
-    const skeptic = p.audienceFit!.rows.find((r) => r.label === "skeptics")!;
+    const skeptic = p.audienceFit!.rows.find((r) => r.label === "Tough Crowd")!;
     expect(skeptic.index).toBeLessThan(0);
     expect(skeptic.loss).toBe(true);
-    // amplification: cascade top = the real sample; builders lead the carriers (highest reshare prior)
-    expect(p.amplification!.cascade[0]).toEqual({ label: "saw it", count: 1000 });
-    expect(p.amplification!.carriers[0]!.label).toBe("builders");
-    expect(p.amplification!.carriers[0]!.lead).toBe(true);
+    // amplification: HONESTLY OMITTED for engine-slug segments — RESHARE_PRIOR discriminates only
+    // the retired text vocabulary (builder/scroller/…); the 10 engine archetypes all tie at the
+    // 1.0 default and a tie is not a ranking (see modeledAmplification). This is the LIVE shape:
+    // calibrated signatures store engine slugs, so the section never renders on a real text run.
+    expect(p.amplification).toBeUndefined();
     // swing: a real fence-sitter count + a bounded modeled gain (from → to)
     expect(p.swing!.fromPct).toBe(62);
     expect(p.swing!.toPct).toBeGreaterThan(p.swing!.fromPct);
@@ -88,9 +92,9 @@ describe("buildPopulationFrameData", () => {
 
   it("terrain districts are the real segments; loss index = lowest stop rate", () => {
     const p = buildPopulationFrameData(base);
-    expect(p.terrain.clusters.map((c) => c.name)).toEqual(["builders", "scrollers", "skeptics"]);
-    expect(p.terrain.clusters[0]!.lit).toBeCloseTo(0.85); // builders' real stop rate
-    expect(p.terrain.lossClusterIndex).toBe(2); // skeptics, 32% — the loudest no
+    expect(p.terrain.clusters.map((c) => c.name)).toEqual(["Deep Fans", "Quiet Watchers", "Tough Crowd"]);
+    expect(p.terrain.clusters[0]!.lit).toBeCloseTo(0.85); // Deep Fans' real stop rate
+    expect(p.terrain.lossClusterIndex).toBe(2); // Tough Crowd, 32% — the loudest no
   });
 
   it("terrain layout is deterministic + inside the viewBox", () => {
@@ -129,10 +133,11 @@ describe("buildPopulationFrameData", () => {
     expect(p.room!.note).toMatch(/modeled/i);
   });
 
-  it("heroRead names the strongest vs weakest real district", () => {
+  it("heroRead names the strongest vs weakest district in CURATED names, even off a seal with baked marketing-persona names", () => {
     const p = buildPopulationFrameData(base);
-    expect(p.heroRead).toContain("builders");
-    expect(p.heroRead).toContain("skeptics");
+    expect(p.heroRead).toContain("Deep Fans");
+    expect(p.heroRead).toContain("Tough Crowd");
+    expect(p.heroRead).not.toContain("The Deep Domain Devotee");
   });
 
   it("decisionStates partition the whole room into four action-states (sold → gone), summing to total", () => {
