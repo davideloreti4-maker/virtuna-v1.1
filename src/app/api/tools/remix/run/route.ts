@@ -265,9 +265,17 @@ export async function POST(request: Request): Promise<Response> {
             // them now, best-effort. A failure here is the accepted residual window (spec §10).
             if (result.blueprint.clipPaths.length > 0) {
               try {
-                await createServiceClient()
+                // Storage's `remove()` does NOT throw for API-level failures (permission / RLS /
+                // missing bucket) — it resolves `{ data, error }` like every other supabase-js
+                // call. The try/catch here is for genuine throws only (e.g. `createServiceClient`
+                // itself throwing when the service key is missing); the resolved error has to be
+                // read explicitly or a failed delete reports success.
+                const { error: rmError } = await createServiceClient()
                   .storage.from(CLIPS_BUCKET)
                   .remove(result.blueprint.clipPaths);
+                if (rmError) {
+                  log.warn("orphaned clip cleanup failed", { error: rmError.message });
+                }
               } catch (rmErr) {
                 log.warn("orphaned clip cleanup failed", {
                   error: rmErr instanceof Error ? rmErr.message : String(rmErr),
