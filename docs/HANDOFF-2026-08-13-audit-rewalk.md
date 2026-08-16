@@ -243,8 +243,11 @@ answer ≈ 4 screens. 33k characters is roughly an order of magnitude beyond tha
 
 | **F-9** | small, wide, grey body text | 🟢 **FIXED** | **16px / 26px, 68ch, `#ece7de` cream** — was 14px / 22.75, 75ch, secondary grey. Now on the convergent norm the audit named |
 | F-10 | 14 text roles in one answer | 🟢 **IMPROVED** | 13 distinct roles desktop **and** mobile — was 14 desktop / 19 mobile |
-| F-11 | nothing streams | ⚪ unmeasured | needs a live run to time |
-| F-12 | the wait happens in a void | ⚪ unmeasured | needs a live run |
+| **F-11a** | the transport does not stream | 🟢 **FALSE — never was true at audit time** | `route.ts` sends `event: token` per delta; `use-chat-stream.ts:295` does `setStreamingText` per token. Wired since `216df989` (**2026-06-21**), two months *before* the audit. Proven live from the opposite direction: **#523 exists because leaked reasoning STREAMED to the creator in real time.** Text that streams cannot also not-stream |
+| **F-11b** | dead air before the first character | 🔴 **STILL LIVE — measured 2026-08-16, and it IS the row** | `scripts/probe-f11-stream-timing.ts`, N=4 per shape, free (billing omitted). **Prose: median first token 5.28s** (4.64 · 4.71 · 5.28 · 5.47). **Skill: median 4.04s** (3.65 · 3.71 · 4.04 · 5.15), dispatching `generate_hooks` 4/4. The audit's ~5.5s is intact — a year of lane work never touched it. This is the whole of F-11 |
+| **F-11c** | text arrives in one paint | 🟢 **FALSE for prose** | 63–104 separate token frames per answer; **median max inter-token gap 0.18s**, worst observed 0.88s. There is no long silence for a burst to sit behind. Once text starts it flows |
+| F-11d | cards arrive all at once | ⚪ **genuinely unmeasured** | `onBlock` fires per block (`chat-agent-loop.ts:1331`/`:1380`/`:1411`), so incremental arrival is *possible* — but blocks never materialise without a billing seam, so the free probe cannot see it. **Needs a paid run.** Count blocks off the SSE, not the DOM |
+| F-12 | the wait happens in a void | ⚪ **unmeasured — needs a BROWSER, not a probe** | It is a layout claim (progress card pinned to viewport top, ~600px of dead space to the composer), so neither the suite nor a loop-level probe can see it. ⚠️ Open a context at the **native** viewport — resizing a loaded page does not give you the mobile UI. ⚠️ `main` is not the scroller on `/home`, so a fullPage screenshot stops at the fold. 🔎 **Adjacent, measured 2026-08-16:** `onDispatch` — the event that lets the progress capsule *label itself* — fires at `chat-agent-loop.ts:1552`, **after** the billing gate at `:1528`, though its interface comment (`:322`) says *"the moment the agent COMMITS … BEFORE `run`"*. "Before `run`" holds; "the moment it commits" does not — a credit-gate round-trip sits in between and the capsule is unlabelled for it. Small beside F-11b, same wait |
 | **F-13** | composer guillotines content | 🔴 **STILL LIVE** | `composer-backdrop` computes `background-image: none`, `background-color: rgb(31,31,30)` — still a solid fill, still a hard cut. The one-line gradient was never applied |
 | **F-14** | structure + a11y | 🟠 **HALF FIXED** | unnamed icon buttons **0** (was 4) ✅ · **headings still 0** — zero `h1`–`h4` in the entire thread ❌ |
 | F-15 | accent dosage clean | 🟠 **check** | **2** accent elements (was 0). One is the brand mark (sanctioned). Identify the second against the LOCKED rule |
@@ -263,10 +266,19 @@ closed by five different PRs since (#491, #495, #514, #523) and it was already w
 two rows. It is left struck through rather than recomputed because a fresh number here would just
 start expiring again; **read the statuses, not the total.**
 
-**The only part worth carrying forward is the live-run budget, and it is now 2 rows, not 4:**
-**F-11** (nothing streams) and **F-12** (the wait happens in a void). **F-8b** wants a run too but
-only alongside a *calibrated* audience. F-3 and F-8a need nothing — they were fixed in code before
-this file existed.
+**The only part worth carrying forward is the live-run budget — and after 2026-08-16 it is smaller
+again.** F-3 and F-8a needed nothing (fixed in code before this file existed). **F-11 was measured
+for FREE** — `probe-f11-stream-timing.ts` drives the real loop with the real 25,268-char prompt and
+omits `deps.billing`, so billable skills fail closed and nothing is spent. It split three ways:
+**F-11a and F-11c are false, F-11b is real and is the whole row.**
+
+What still needs a **paid** run: **F-11d** (do cards arrive one-by-one) and **F-12** (the wait's
+layout — which also needs a browser at a native viewport, not a resized one). **F-8b** joins them
+only alongside a *calibrated* audience.
+
+🔑 **Before budgeting a run, ask which half of the row the money is actually for.** F-11 read as one
+indivisible "needs a live billed run" for four briefs. Three of its four parts turned out to be
+answerable from code plus a free loop probe.
 
 ---
 

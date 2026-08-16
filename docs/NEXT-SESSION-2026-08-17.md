@@ -40,11 +40,18 @@ times for work already done.
   🔑 ⚪ UNMEASURED ≠ UNFIXED. git log --all --grep before you budget a run against any row.
 
 OPEN, in the order I would take them — ASK first, this lane is at a clean stop:
-  1. F-11 (nothing streams) + F-12 (the wait happens in a void). The whole remaining
-     live-run budget. Both are timing/feel — they need a PROD BUILD IN A BROWSER; the
-     suite structurally cannot see either.
-  2. Task #31 — the monologue leak's STREAM half. Owner-deferred, not forgotten.
-  3. The sidebar ⋯ menu — a design call, not a CSS one.
+  1. F-11b — DEAD AIR. Measured free on 2026-08-16 and it is REAL: median 5.28s (prose)
+     / 4.04s (skill) before the first character reaches the creator. The transport
+     streams fine; there is simply nothing to send yet. This is a FIX task, not a
+     measuring task — and it is the largest known defect left on this surface.
+  2. F-11d + F-12 — the only things still needing a PAID run / a BROWSER. F-12 is layout,
+     so open the context at a NATIVE viewport; resizing a loaded page will not do.
+  3. Task #31 — the monologue leak's STREAM half. Owner-deferred, not forgotten.
+  4. The sidebar ⋯ menu — a design call, not a CSS one.
+
+🔑 BEFORE BUDGETING A RUN, ASK WHICH HALF OF THE ROW THE MONEY IS FOR. F-11 read as one
+indivisible "needs a live billed run" for four briefs. Three of its four parts turned out
+to be answerable from code plus a FREE loop probe (omit deps.billing → skills fail closed).
 
 DO NOT:
   - Do not budget a live run for F-3 or F-8a. Fixed. See rewalk §2.
@@ -99,8 +106,11 @@ corrected. In short, verified in code on 2026-08-16:
 | **F-3** audience flips to "General" | 🟢 **fixed `7d4bc133`** | `thread-turn.tsx:252` falls back to `'your audience'`, never the literal — the comment names *"(Stage A, F-3)"*. And the chat path *does* resolve an audience before stamping: `chat/route.ts:412` → `:683` |
 | **F-8a** static `◐ adjacent` glyph | 🟢 **fixed `53fe7323`** | production hard-codes `fitLabel: null` (`composed-card-receipt.ts:104`, `remix-runner.ts:434`); `proof-receipt.tsx:102` renders no glyph on null. Only *fixtures* still say `"adjacent"` |
 | **F-8b** fixed persona roster | ⚪ open-ish | genuinely unmeasured, but **not a hardcode** — `profile-runner.ts:186` derives personas from the bake signature. A repeated roster would mean repeated calibration *input*. Needs a **calibrated** audience or it proves nothing. (`Lurker` occurs nowhere in `src/`) |
-| **F-11** nothing streams | ⚪ **open** | needs a live run to time |
-| **F-12** the wait happens in a void | ⚪ **open** | needs a live run |
+| **F-11a** transport does not stream | 🟢 **false** | `event: token` per delta → `use-chat-stream.ts:295` `setStreamingText` per token. Wired since `216df989` (**2026-06-21**), two months before the audit. Proven live in reverse: **#523 exists because leaked reasoning streamed** |
+| **F-11b** dead air before first char | 🔴 **STILL LIVE — and it is the whole row** | Measured free, N=4/shape: **prose median 5.28s**, **skill median 4.04s** (dispatching `generate_hooks` 4/4). The audit's ~5.5s is intact. `scripts/probe-f11-stream-timing.ts` |
+| **F-11c** text lands in one paint | 🟢 **false for prose** | 63–104 token frames per answer; median max inter-token gap **0.18s**, worst 0.88s. No silence for a burst to hide behind |
+| **F-11d** cards arrive all at once | ⚪ open | `onBlock` fires per block, so incremental is *possible* — but blocks need a billing seam. **Paid run.** Count off the SSE, not the DOM |
+| **F-12** the wait happens in a void | ⚪ open | a **layout** claim — needs a browser at a **native** viewport. Neither the suite nor a loop probe can see it |
 
 **The trap, stated once so it stops recurring.** `7d4bc133`'s title is *"…F-3/F-7 receipts, F-1
 re-answer"*. Session 15 correctly warned nobody should read that title as closing **F-7** — and
