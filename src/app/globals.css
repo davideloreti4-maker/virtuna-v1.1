@@ -204,6 +204,16 @@
   --text-reading: 14px;            /* prose / long-form reading text */
   --text-reading--line-height: 1.6;
   --text-reading--letter-spacing: 0;
+  /* PROSE (2026-08-16, Apple-grammar pass) — the LONG-FORM role the audit never named.
+   * The thread renders essay-length model answers, and with no role for that register the
+   * markdown host inherited --text-body: 13px/1.5 — the dense CHROME spec — while its sister
+   * surface (reading-chat.tsx) hand-set text-[15px] for the identical content. Long-form
+   * leading runs looser than chrome by typographic convention (the references this scale was
+   * measured against all do the same); 15/1.75 is that register, named so the two chat
+   * surfaces stop disagreeing and the next author doesn't reach for a literal. */
+  --text-prose: 15px;              /* thread/chat long-form model answers */
+  --text-prose--line-height: 1.75;
+  --text-prose--letter-spacing: 0;
   --text-title: 16px;              /* card + section titles */
   --text-title--line-height: 1.4;
   --text-title--letter-spacing: -0.01em;
