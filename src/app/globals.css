@@ -949,7 +949,19 @@ select:focus-visible,
 }
 .constell-dot { animation: juno-breathe 3.4s ease-in-out infinite; }
 .constell-reacting .constell-dot { animation: juno-blink 1s ease infinite; }
-.rv-in { opacity: 0; animation: juno-fade-up 0.55s cubic-bezier(0.22, 0.61, 0.36, 1) forwards; }
+
+/* The entrance reveal. THE RESTING STATE IS VISIBLE — the hiding lives entirely in the
+   keyframe's backwards fill, never in a standalone `opacity: 0` on the class.
+   This is the landing's `.lp-reveal` rule (landing.css) carried over: a reveal that declares
+   `opacity: 0` on the element itself is a blank surface in every case where the animation does
+   not run to completion — cancelled, discarded, or a node re-created after its animation was
+   already consumed. Measured on /library before this change: cancelling the running animations
+   left all three `.rv-in` blocks (page header, Projects, the entire saved shelf) at opacity 0,
+   i.e. an empty page. With `both` the delay still hides it going in, and every failure mode
+   lands on SHOWN instead of on blank.
+   `animation-delay` is still the call sites' knob (they pass it inline), so nothing downstream
+   changes. */
+.rv-in { animation: juno-fade-up 0.55s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
 
 @media (prefers-reduced-motion: reduce) {
   .constell-dot,
@@ -998,6 +1010,7 @@ select:focus-visible,
   .elev-lift:hover,
   .elev-lift:active { transform: none; }
 }
+
 
 /* ─────────────────────────────────────────────────────────────────────────────
    .md — the markdown layer. The app's ONLY rich-text renderer.

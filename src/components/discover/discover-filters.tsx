@@ -165,8 +165,9 @@ export function DiscoverFilters({
   creators: string[];
   platforms: string[];
   niches: string[];
-  /** Mobile only — the panel is a drawer under `lg`, where a permanent column would eat
-   *  the grid entirely. */
+  /** Dismiss the panel. The panel is a disclosure at EVERY width now (2026-08-16), so the
+   *  close affordance is too — it used to be `lg:hidden` because from `lg` up the panel was
+   *  permanent and had nothing to close back to. */
   onClose?: () => void;
 }) {
   const set = <K extends keyof DiscoverFilterState>(key: K, v: DiscoverFilterState[K]) =>
@@ -198,7 +199,7 @@ export function DiscoverFilters({
               type="button"
               onClick={onClose}
               aria-label="Close filters"
-              className="rounded-md p-1 text-foreground-muted transition-colors hover:text-foreground lg:hidden"
+              className="rounded-md p-1 text-foreground-muted transition-colors hover:text-foreground"
             >
               <X size={14} />
             </button>

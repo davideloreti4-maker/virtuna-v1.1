@@ -34,6 +34,13 @@ import type { WatchlistData } from "@/lib/discover/watchlist-reads";
 
 export type { DiscoverTab };
 
+/** Per-tab, because the field is scoped to the active tab and nothing else. */
+const SEARCH_PLACEHOLDER: Record<DiscoverTab, string> = {
+  outliers: "Search outliers — or paste a @handle",
+  collections: "Search collections",
+  watchlist: "Search your watchlist",
+};
+
 export function DiscoverHub({
   corpus,
   watchlist,
@@ -124,7 +131,12 @@ export function DiscoverHub({
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search outliers, collections, creators — or paste a @handle"
+              // Names the ACTIVE tab, which is the only thing this field searches — the comment
+              // above says exactly that, but the placeholder listed all three anyway. It was also
+              // the longest string on the surface: at 393px it clipped mid-word with no ellipsis
+              // ("…or paste a"), so the one part a creator could not read was the @handle hint,
+              // which is the field's only non-obvious capability (Apple-grammar pass, 2026-08-16).
+              placeholder={SEARCH_PLACEHOLDER[tab]}
               aria-label="Search Discover"
               className="min-w-0 flex-1 bg-transparent text-body text-foreground outline-none placeholder:text-foreground-muted"
             />

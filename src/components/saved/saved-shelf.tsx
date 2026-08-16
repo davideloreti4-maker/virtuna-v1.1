@@ -327,10 +327,15 @@ export function SavedShelf() {
         />
       </div>
 
-      {/* ── projects ───────────────────────────────────────────────────────── */}
+      {/* ── projects ─────────────────────────────────────────────────────────
+          The "Projects" label is a GROUP HEADING, so it only earns its place once the group has
+          members. With none, the label + its gap framed a single create button as if it were a
+          populated section — on a 393px viewport that empty scaffold took the top quarter of the
+          first screen (Apple-grammar pass, 2026-08-16). Folded to the bare action, which is
+          still the same discoverable "New project" row: nothing is removed, only the framing. */}
       {!searching && (
         <div className="rv-in" style={{ animationDelay: "0.06s" }}>
-          <SectionLabel>Projects</SectionLabel>
+          {projects.length > 0 && <SectionLabel>Projects</SectionLabel>}
           <div className="-mx-3 flex flex-col gap-0.5">
             {projects.map((project) => {
               const roll = rollupFor(rollups, project.id);
