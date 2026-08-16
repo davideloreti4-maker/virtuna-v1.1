@@ -205,15 +205,16 @@ function isComposedCardsEnabled(): boolean {
 }
 
 /**
- * Stage B "one brain" flag (default OFF — ships dark, lane convention). ONE lever for the stage:
- * B1 (card CTAs through this route with a pinned skill + a data-carried anchor), B2 (the `cards`
- * slot on the generator schemas + chip-carried packs), B3 (the `predispatch` frame). NEXT_PUBLIC_
- * on purpose: the client half (CTA routing in composer.tsx) reads the same variable, inlined at
- * build time — so flipping it in an env needs a REDEPLOY to reach the client, which env changes
- * need here anyway (memory: env vars are write-only + need a redeploy).
+ * Stage B "one brain" flag (default ON since 2026-08-16; NEXT_PUBLIC_ENGINE_ONE_BRAIN=false goes
+ * dark). ONE lever for the stage: B1 (card CTAs through this route with a pinned skill + a
+ * data-carried anchor), B2 (the `cards` slot on the generator schemas + chip-carried packs), B3
+ * (the `predispatch` frame). NEXT_PUBLIC_ on purpose: the client half (CTA routing in
+ * composer.tsx) reads the same variable, inlined at build time — so flipping it in an env needs
+ * a REDEPLOY to reach the client, which env changes need here anyway (memory: env vars are
+ * write-only + need a redeploy).
  */
 function isOneBrainEnabled(): boolean {
-  return process.env.NEXT_PUBLIC_ENGINE_ONE_BRAIN === "true";
+  return process.env.NEXT_PUBLIC_ENGINE_ONE_BRAIN !== "false";
 }
 
 /** Cap on client-carried prior turns (meet-mode ephemeral context — see POST). */
