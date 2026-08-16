@@ -66,7 +66,9 @@ describe("the view-model reads real snapshot fields", () => {
     expect(vm.hero).toBe("Nobody tells you the first 10k are the easy part.");
     expect(vm.metric.band).toBe("Strong");
     expect(vm.metric.fraction).toBe("9/10");
-    expect(vm.metric.bandTone).toBe("var(--color-success)");
+    // Strong is a QUIET tone since the Apple-grammar pass — colour marks only the band
+    // that needs attention (Weak → error); the rest carry the word, not a hue.
+    expect(vm.metric.bandTone).toBe("var(--color-foreground-muted)");
     // Archetype, rank, mechanism and quote belong to the EXPANSION — the row shows two facts.
     expect(vm.archetype).toBe("Contrarian");
     expect(vm.rank).toBe(2);

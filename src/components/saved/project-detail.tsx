@@ -251,7 +251,9 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
             <p className="mb-3.5 px-3 text-caption font-semibold uppercase tracking-[0.14em] text-foreground-muted">
               {group.label}
             </p>
-            <div className="-mx-3 flex flex-col gap-0.5">
+            {/* Same unified panel as the shelf (Apple-grammar pass) — SavedRow dropped its own
+                rounding/spacing, so any list of them must carry the panel + hairlines. */}
+            <div className="flex flex-col divide-y divide-white/[0.06] overflow-hidden rounded-[12px] border border-white/[0.06]">
               {group.rows.map((item) => (
                 <SavedRow
                   key={item.id}

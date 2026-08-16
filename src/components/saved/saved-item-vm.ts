@@ -87,10 +87,16 @@ export const PIPELINE_ORDER: readonly SavedItemType[] = [
   "read",
 ];
 
-/** Band → sanctioned DATA tone. NOT the brand accent, which stays liveness-only. */
+/**
+ * Band → tone. Colour only where a row needs ATTENTION (Apple-grammar pass, 2026-08-16):
+ * measured live, 8 of 10 shelf rows carry a band, so tone-per-band painted ten coloured
+ * words on one screen and the colour stopped ranking anything. Strong/Mixed read fine as
+ * words; Weak is the one verdict that asks for action, so it keeps the error tone.
+ * Still NOT the brand accent, which stays liveness-only.
+ */
 export const BAND_TONE: Record<string, string> = {
-  Strong: "var(--color-success)",
-  Mixed: "var(--color-warning)",
+  Strong: "var(--color-foreground-muted)",
+  Mixed: "var(--color-foreground-muted)",
   Weak: "var(--color-error)",
 };
 
