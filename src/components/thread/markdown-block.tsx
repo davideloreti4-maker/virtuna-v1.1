@@ -33,7 +33,11 @@ export function MarkdownBlockRenderer({ block }: MarkdownBlockProps) {
     //
     // `max-w` only ever CAPS: inside a 342px skill card this is a no-op, so card follow-ups and the
     // Ask payload keep rendering exactly as they did.
-    <div className="md max-w-[68ch] leading-relaxed">
+    //
+    // `text-prose` (15/1.75), not the inherited 13px body: this block carries essay-length
+    // answers, and 13px is the CHROME spec — measured live, the thread was the only long-form
+    // surface still rendering at it (reading-chat already sat at 15px for identical content).
+    <div className="md max-w-[68ch] text-prose">
       <ReactMarkdown rehypePlugins={[rehypeSanitize]}>
         {block.props.text}
       </ReactMarkdown>

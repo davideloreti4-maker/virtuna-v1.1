@@ -231,12 +231,14 @@ export function OutliersPanel({
             </p>
           ) : (
             <>
-              {/* Deliberately one column fewer at every step than a dense index would use
-                  (owner, 2026-08-04: "make them bigger"). The cover IS the content on this
-                  surface — a hook you cannot read off the first frame is not a browsable
-                  result — so at a 1440 laptop this is two ~460px cards rather than three
-                  ~290px ones, and only the widest screens go to three. */}
-              <div className="grid grid-cols-2 gap-4 lg:grid-cols-2 2xl:grid-cols-3">
+              {/* Density over size (Apple-grammar pass, owner-approved 2026-08-16 — SUPERSEDES
+                  the 2026-08-04 "make them bigger" two-column ruling). Measured at 1440 the
+                  hardcoded 2-col grid drew 436×581px tiles, ~2.4 cards per screen out of 24
+                  loaded — a browsing surface with almost nothing to browse. auto-fill with a
+                  260px floor keeps the cover readable (the floor IS the old ruling's residue)
+                  and lets the count come from the space: ~3 across at a 1440 laptop, 4 on the
+                  widest screens, still 2 on a narrow window. Same pattern as discover-grid.tsx. */}
+              <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(260px,1fr))]">
                 {visible.slice(0, limit).map((v) => (
                   <OutlierCard
                     key={v.id}
