@@ -1,5 +1,12 @@
 # ENV — what to set on Vercel
 
+> 🔴 **THE ACCOUNT IS MOVING (open as of 2026-08-16). READ §8 AND §9 BEFORE BUILDING THE NEW ONE.**
+> §1's 22-var table is what the *old* project has. It is **not** the list to set on the new one —
+> it omits every feature flag merged since 2026-07-27, including four that gate finished, measured,
+> tested work. Setting only §1 rebuilds the exact failure `NEXT_PUBLIC_AMBIENT_V2` had (§7): six
+> merged phases rendering for nobody because the flag they hung off was never set.
+> §8 is the full flag ledger, enumerated 2026-08-16. §9 is the move checklist.
+
 **Companion to `.env.example`** (the local-dev template). This file answers one question: *which
 environment variables belong on the Vercel production project, and which must deliberately stay off.*
 
@@ -72,8 +79,14 @@ Everything else (`FOLD_*`, `QWEN_*_MODEL`, the remaining `GROUNDING_*`, `CHAT_AG
 
 ⚠️ **Flag polarity is not uniform.** `GROUNDING_{HOOKS,IDEAS,SCRIPT}_ENABLED`,
 `NEXT_PUBLIC_AMBIENT_V2` and `BILLING_ENFORCE_QUOTA` all default **OFF** (`=== "true"`), while
-`CHAT_AGENT_DISPATCH`, `GROUNDING_CHAT_TOOL` and `GROUNDING_CHAT_PREFLIGHT` default **ON**
-(`!== "false"`). Reading one and assuming the rest is how a flag gets set backwards.
+`CHAT_AGENT_DISPATCH` and `GROUNDING_CHAT_TOOL` default **ON** (`!== "false"`). Reading one and
+assuming the rest is how a flag gets set backwards.
+
+> 🔴 **CORRECTED 2026-08-16 — this paragraph did it to itself.** It listed
+> `GROUNDING_CHAT_PREFLIGHT` as default **ON**. It is `=== "true"` — default **OFF**
+> (`chat-runner.ts:73`), and its own comment two lines up says *"Nothing sets it; this path stays
+> dead by [design]"* (`:67`). The one paragraph in this file warning that polarity gets read
+> backwards had a backwards flag in it for three weeks. **Check the read site, not this table.**
 
 ---
 
@@ -264,3 +277,114 @@ public surface that reads the flag, so this could not be measured without creden
 ⇒ **The one remaining check is a human loading `/home` signed in on ≥xl and confirming the rail is
 the v2 Overview, not the legacy `AudiencePresence`.** Until someone does that, "the flag is on" is a
 statement about the build, not about what a creator sees.
+
+---
+
+## 8. 🔴 The flag ledger — enumerated 2026-08-16
+
+§1 was enumerated on **2026-07-27** and has not been re-run since. Nineteen days of merged work
+added flags it does not mention. This section is the re-run.
+
+**Method.** `grep -rhoE 'process\.env\.[A-Z0-9_]+' src/` → 80 names, minus platform-provided
+(`NODE_ENV`, `NEXT_RUNTIME`, `VERCEL_ENV`), minus tuning constants with in-code defaults, minus test
+assignments. Each survivor's **read site** was opened to get its polarity — not inferred from a name.
+
+⚠️ **That grep has one blind spot, and it hides three flags.** `checkable-judge.ts:34` reads a
+**computed** key — ``process.env[`ENGINE_JUDGE_${skill.toUpperCase()}`]`` — so
+`ENGINE_JUDGE_HOOKS` / `_IDEAS` / `_SCRIPT` appear in `src/` **only inside comments and tests**. A
+literal grep for any one of them finds no production reader and reads as dead. They are live.
+Enumerating by `process.env.NAME` cannot see a key built at runtime.
+
+### 8a. OFF by default, and holding merged work (`=== "true"`, set nowhere)
+
+**These are the ones that make this section worth reading.** Each is finished, merged and tested
+code that no creator has ever reached.
+
+| Var | Build-time? | What it gates | Recorded evidence |
+|---|---|---|---|
+| `NEXT_PUBLIC_ENGINE_ONE_BRAIN` | 🔴 **YES** | Stage B, one lever for three parts: B1 card-CTA anchor, B2 chip-carried card packs, B3 the `predispatch` label on the 4–5s wait. 8 sites — `chat/route.ts:358,360,363,492,610` · `one-brain-flag.ts:11` · `composer.tsx:1347,1649` | B2: **7% → 75%** subject retention on "rewrite these hooks tighter", *"at no latency cost"*. B3: label verified live in a browser, both viewports, 2026-08-16. `docs/HANDOFF-2026-08-10-stage-b-complete.md` |
+| `ENGINE_GUESS_PIN` | no | the guess pin (`guess-pin.ts:48`) | 183 real generations: product/format-shaped subjects dispatch **7/31 (23%)** vs **30/30** for scenario subjects |
+| `ENGINE_REPEAT_ASK_PIN` | no | the repeat-ask pin (`repeat-ask.ts:49`) | trigger is 3 conditions not 2, so the one known false alarm can't force a billed wrong run |
+| `ENGINE_PROSE_CALL_PIN` | no | the prose-call pin (`prose-call.ts:116`) | the pattern task #31 would reuse |
+| `NEXT_PUBLIC_CONCEPT_V8` | 🔴 **YES** | v8 platform-concept surfaces (`flags/concept-v8.ts:16`) | ⚠️ **layers on top of `AMBIENT_V2`** — the v8 arrival swap lives inside the v2 mounts, so **both** must be on. Flag-off is byte-identical *including no new routes*: `/api/surfaces/{drops,drops/remix,lanes}` 404 by design |
+| `ENGINE_JUDGE_{HOOKS,IDEAS,SCRIPT}` | no | per-skill checkable judge (`checkable-judge.ts:34`) | the computed-key blind spot above |
+| `GROUNDING_{HOOKS,IDEAS,SCRIPT}_ADAPT` | no | the adapt stage per skill | paired with the `_ENABLED` vars §1 already lists |
+| `LIVE_SCRAPE_DEFAULT` | no | live scrape as the default path (`scrape-default.ts:47`) | 💰 cost-bearing — Apify is a $5/mo capped account |
+| `GROUNDING_CHAT_PREFLIGHT` | no | nothing — **dead by design** | `chat-runner.ts:67`: *"Nothing sets it; this path stays dead."* ✅ **Correctly absent. Do not set it.** |
+
+### 8b. ON by default (`!== "false"`) — nothing to set, but do not set them to `"false"`
+
+`COMPOSED_CARDS` (ON since 2026-08-14, owner ruling) · `ENGINE_AUDIO_SPLIT` ·
+`ENGINE_CHAT_CARDS_ON_SCREEN` · `ENGINE_COMPARE_HINT` · `ENGINE_COUNT_HINT` ·
+`ENGINE_GEN_CONVERSATION` · plus `CHAT_AGENT_DISPATCH` and `GROUNDING_CHAT_TOOL` from §1.
+
+These need **no action** on the new project — a var that is simply absent is ON. The failure mode
+here is the opposite of §8a: a half-copied env that sets one of them to `"false"` turns a shipped
+feature off with no other signal.
+
+### 8c. ⚠️ Setting §8a does not mean it works
+
+Every row above is **merged and tested**, and most were measured on a dev server. That is not the
+same as *verified in production*, and §7's boundary applies to all of them: a var existing in the
+Vercel scope proves the build inlined it, never that a creator sees the feature.
+
+Two rows also carry a known caveat worth reading before flipping:
+
+- **`NEXT_PUBLIC_ENGINE_ONE_BRAIN`** — one of B2's five rewrites came back essentially verbatim.
+  A craft issue, not a wiring one, but it is real and it is in Stage B's own handoff.
+- **`ENGINE_*` pins** — each was measured **alone**. No run has ever had all four on at once.
+  Exercise that combination locally before it debuts in production.
+
+---
+
+## 9. 🔴 Moving to a new Vercel account — the checklist
+
+**The account move is exactly the moment §8's flags get lost**, because whoever builds the new
+project will copy what the old one *has*, and the old one has none of them.
+
+### 9a. The values cannot be copied from the old account
+
+All 22 vars are **Sensitive** (§0, rule 2), so `vercel env pull` writes `NAME=""` for every one.
+There is no CLI path that reads the old values out. They must come from **`.env.local`** (§4's pipe
+recipe) or the old **dashboard**, before the old project goes away.
+
+> ⚠️ Do this *first*. Once the old project is deleted, any secret not in a local `.env.local` and
+> not re-issuable from its own provider is gone.
+
+### 9b. Values that change with the account — not copied, re-derived
+
+| Thing | Old value | Note |
+|---|---|---|
+| Project ID | `prj_WUmPu9fRmFNlbj5rtGIaRmBC8Url` | new project, new ID — §1's header is stale on the new account the moment it exists |
+| Team scope | `davide-loretis-projects` | every `vercel … --scope` in this file needs the new one |
+| `NEXT_PUBLIC_APP_URL` | `https://numenmachines.com` | 🔴 **build-time.** Re-set it *and rebuild*, or a paying customer is redirected to localhost after checkout (§3) |
+
+### 9c. 🔴 The domain is the item most likely to be missed
+
+`numenmachines.com` is delegated to **Vercel nameservers under the old account** (§6). Moving the
+*project* does not move the *domain*. Miss it and the new deploy is healthy, green, and serving
+nothing at the address anyone uses — the same "looks live, isn't" shape §6 already documents once,
+when an alias pointed at a suspended cPanel page.
+
+The zone was rebuilt by hand and the backup is at `.vercel/zone-backup-numenmachines.txt`
+(**gitignored — it exists only in `~/virtuna-v1.1`; copy it out before any `worktree remove`**).
+It holds MX ×3, SPF, DMARC, a 409-char DKIM and four A records.
+
+⚠️ **Re-read §6's SPF warning before re-creating the zone.** The original `+a` was deliberately
+dropped, and the reason is not obvious from the record: `+a` authorizes whatever the apex A record
+points at to send mail as the domain. A faithful copy authorizes Vercel's shared anycast IPs.
+
+### 9d. Order
+
+1. **Extract every secret from the old account** while it still exists (9a).
+2. Create the project; set §1's 22 vars, minus the two `DEEPSEEK`/`GEMINI` dead ones if you want the
+   list honest, plus the §8a flags you intend to run.
+3. Re-set `NEXT_PUBLIC_APP_URL` and the two other build-time flags (9b) — these need a **rebuild**,
+   not just a write.
+4. Move the domain and re-create the zone (9c).
+5. `curl` the apex and `www`. An alias in `vercel domains ls` is **not** evidence (§6).
+6. Sign in and load `/home` on ≥xl — the check §7 still owes.
+
+⚠️ **The build gate travels with the repo, not the account.** `ignoreCommand`'s exit codes are
+inverted (**1 = build, 0 = skip**, §5 step 3). A new project that builds in 6–7s took the skip path
+and shipped nothing; a real build is ~3m. Time the first one.
