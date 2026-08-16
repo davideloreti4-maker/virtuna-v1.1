@@ -88,7 +88,12 @@ export const REQUEST_INPUT_TOOL = {
           description:
             "OPTIONAL — something the creator ALREADY gave you in their message, used to PRE-FILL the " +
             "field so they review-and-go instead of typing it twice. They can still edit it. " +
-            "For 'explore' and 'read': the niche or concept they named. For 'remix' and 'test': the " +
+            "For 'explore': the field runs a keyword search matched against video CAPTIONS, so distill " +
+            "their ask into the SHORT niche term (2-4 words) such a caption would actually contain — " +
+            "'videos where chefs review kitchen gadgets' → 'kitchen gadget review', or an @handle if " +
+            "they named a competitor. Never quote their sentence back as the value and never include " +
+            "the platform name; distilling their own words this way is not inventing. " +
+            "For 'read': the concept text they named. For 'remix' and 'test': the " +
             "video LINK they pasted, copied exactly. Omit entirely when there is nothing to pre-fill — " +
             "never invent a value, and never pass one for 'account' (it needs nothing typed).",
         },
