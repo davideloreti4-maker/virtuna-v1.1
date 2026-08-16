@@ -191,7 +191,11 @@ export function SimulateDoorHost({
   return (
     <div
       data-testid="sim-door-host"
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:items-center"
+      // --z-modal (400), not z-50: the sidebar sits on --z-sidebar (250), so at 50
+      // this scrim painted under the app's own chrome. Measured clean for lifting —
+      // there are 0 stacking contexts between the composer (where this mounts) and
+      // <html>, so the z alone is enough and no portal is needed.
+      className="fixed inset-0 z-[var(--z-modal)] flex items-start justify-center overflow-y-auto p-4 sm:items-center"
       style={{ background: "rgba(12,12,11,.62)" }}
       onClick={(e) => {
         // Click-outside closes, but never mid-run: the reaction is already paid for.
