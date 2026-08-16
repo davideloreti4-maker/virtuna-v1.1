@@ -76,7 +76,7 @@ are retrieved videos.
 ### 3. Attribution instrumentation (`hooks-runner.ts` BUILD loop)
 
 - Refactor the single proof ternary (~line 805) into an explicit per-card classifier:
-  `kept | model-zero | trimmed-from-bundle | lexical-mismatch | diversity-capped`.
+  `kept | model-zero | invalid-index | no-handle | trimmed-from-bundle | lexical-mismatch | diversity-capped`.
   Behavior byte-identical; the classifier is unit-tested per reason.
 - One log line per run:
   `[attribution] hooks: kept 2/3 — [1:kept, 2:model-zero, 3:diversity-capped]`.
