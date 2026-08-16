@@ -22,6 +22,10 @@
  *
  * NO ACCENT ANYWHERE. The dosage rule is LOCKED and the card already spends its one on the
  * Borrowed chip. Emphasis is carried by cream, brightness and a left rule — never by hue.
+ *
+ * Phase 4: for the ≤8 windows a run's clips cover, the stage overlays ONE `<video>` (muted — the
+ * audio track itself is stripped) and the flipbook remains everywhere else. No clips ⇒ this file
+ * behaves byte-identically to phase 3.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Play, Pause } from "@phosphor-icons/react";
@@ -37,6 +41,46 @@ function formatTime(sec: number): string {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
+export interface ClipWindow {
+  beatIndex: number;
+  url: string;
+  start: number;
+  duration: number;
+}
+
+/**
+ * One window per clip-backed beat. `measured` (from loadedmetadata) beats the prediction: a clip
+ * the budget truncated must shrink its window rather than freeze on its last frame (spec §4.2).
+ */
+export function clipWindows(
+  beats: BlueprintBeat[],
+  clips: Record<number, string>,
+  measured: Record<number, number>,
+): ClipWindow[] {
+  return beats
+    .filter((b) => clips[b.index])
+    .map((b) => ({
+      beatIndex: b.index,
+      url: clips[b.index]!,
+      start: b.t_start,
+      duration: measured[b.index] ?? Math.min(4, Math.max(0, b.duration_s)),
+    }));
+}
+
+/** The window covering `t`, half-open — at the window's end the stage is back on stills. */
+export function windowAt(windows: ClipWindow[], t: number): ClipWindow | null {
+  return windows.find((w) => t >= w.start && t < w.start + w.duration) ?? null;
+}
+
+/** The next window strictly ahead of `t` — what the gap preloads. */
+export function windowAfter(windows: ClipWindow[], t: number): ClipWindow | null {
+  let next: ClipWindow | null = null;
+  for (const w of windows) {
+    if (w.start > t && (!next || w.start < next.start)) next = w;
+  }
+  return next;
+}
+
 export interface RemixSourceViewerProps {
   /** `{ gridIndex → signed URL }`. Sparse is normal — a frame that failed to cut is simply absent. */
   scrubFrames: Record<number, string>;
@@ -48,6 +92,11 @@ export interface RemixSourceViewerProps {
   onActiveBeatChange?: (beatIndex: number | null) => void;
   /** Seconds to seek to. Changing this moves the playhead — the parent's row clicks come in here. */
   seekToSec?: number | null;
+  /**
+   * PHASE 4 — `{ beatIndex → signed clip URL }`, ≤8 muted ≤4s fragments. Absent/empty is the
+   * normal case (every pre-lane sheet) and must render byte-identically to phase 3.
+   */
+  clips?: Record<number, string>;
 }
 
 export function RemixSourceViewer({
@@ -56,6 +105,7 @@ export function RemixSourceViewer({
   durationS,
   onActiveBeatChange,
   seekToSec,
+  clips,
 }: RemixSourceViewerProps) {
   // Sorted numerically. `Object.keys` gives strings, and lexical order puts "10" before "2" —
   // which would shuffle the strip into visual nonsense while every cell still rendered fine.
@@ -78,6 +128,53 @@ export function RemixSourceViewer({
   const scrubbingRef = useRef(false);
 
   const displayTime = pct * total;
+
+  // ── PHASE 4: the clip layer ──────────────────────────────────────────────────
+  // One <video> over the still. The rAF clock LEADS (pct is the single source of truth); the
+  // video follows — seeked into place, drift-corrected past 0.15s, never driving pct.
+  const clipMap = clips ?? {};
+  const hasClips = Object.keys(clipMap).length > 0;
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  // Measured clip durations (loadedmetadata) — replaces the min(4, duration_s) prediction.
+  const [measured, setMeasured] = useState<Record<number, number>>({});
+  // Which src has finished loadeddata — the still stays until the CURRENT src is ready.
+  const [readySrc, setReadySrc] = useState<string | null>(null);
+
+  const windows = useMemo(
+    () => clipWindows(beats, clipMap, measured),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- clipMap is derived from `clips`
+    [beats, clips, measured],
+  );
+  const active = hasClips ? windowAt(windows, displayTime) : null;
+  // Load the ACTIVE clip; in an uncovered gap, preload the NEXT one — the swap cost lands where
+  // a still is showing anyway (spec §4.2).
+  const loadWindow = active ?? (hasClips ? windowAfter(windows, displayTime) : null);
+  const showVideo = Boolean(active && readySrc === active.url);
+
+  // The element follows the clock: seek into the window, play/pause with the flipbook.
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !active || readySrc !== active.url) return;
+    const target = Math.max(0, displayTime - active.start);
+    if (playing) {
+      if (Math.abs(video.currentTime - target) > 0.15) video.currentTime = target;
+      void video.play().catch(() => {});
+    } else {
+      video.pause();
+      // Scrubbing: the paused frame at exact-time beats the nearest grid still.
+      video.currentTime = target;
+    }
+  }, [active, readySrc, playing, displayTime]);
+
+  const handleLoadedMetadata = useCallback(
+    (e: React.SyntheticEvent<HTMLVideoElement>) => {
+      const duration = e.currentTarget.duration;
+      const w = loadWindow;
+      if (!w || !Number.isFinite(duration) || duration <= 0) return;
+      setMeasured((m) => (m[w.beatIndex] === duration ? m : { ...m, [w.beatIndex]: duration }));
+    },
+    [loadWindow],
+  );
 
   // Which strip cell the playhead is over. Cells are an even grid, so this is positional.
   const activeCell = cells.length === 0 ? -1 : Math.min(cells.length - 1, Math.floor(pct * cells.length));
@@ -191,6 +288,21 @@ export function RemixSourceViewer({
       {/* ── Stage: the frame under the playhead ─────────────────────────────────── */}
       <div className="relative mx-auto block aspect-[9/16] w-24 shrink-0 overflow-hidden rounded-md border border-white/[0.06] @min-[480px]:w-28">
         <CoverFill coverUrl={stageUrl} playSize={16} alt="" />
+        {hasClips && (
+          <video
+            ref={videoRef}
+            data-testid="remix-clip-video"
+            key="clip-stage"
+            src={loadWindow?.url}
+            muted
+            playsInline
+            preload="auto"
+            onLoadedMetadata={handleLoadedMetadata}
+            onLoadedData={(e) => setReadySrc(e.currentTarget.currentSrc || loadWindow?.url || null)}
+            className="absolute inset-0 h-full w-full object-cover"
+            style={{ opacity: showVideo ? 1 : 0, transition: "opacity .12s" }}
+          />
+        )}
         <span className="absolute right-1 top-1 rounded-xs bg-black/55 px-1 py-px text-micro tabular-nums text-foreground-secondary">
           {formatTime(displayTime)}
         </span>
