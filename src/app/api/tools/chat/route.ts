@@ -493,7 +493,14 @@ export async function POST(request: Request): Promise<Response> {
             if (rawSkill && ["ideas", "hooks", "script"].includes(rawSkill)) {
               send("predispatch", { skill: rawSkill, certain: true });
             } else if (!rawSkill) {
-              const guess = guessSkill(rawAsk);
+              // `detectGuessPin`, NOT the raw `guessSkill` this read until 2026-08-16. The narrowing
+              // it adds is measured, and it exists for exactly one sentence — "Yes, run the simulate
+              // tool on that hook" — which names another tool as the ACTION while still containing
+              // an artefact noun. The pin at (8a-0c) stands down on it; this frame did not, so the
+              // creator was told "Looks like a hooks run…" for the whole 4–5s wait after asking for
+              // the SIM. `certain:false` marks it as a hint, but a wrong hint is worse here than the
+              // default "Thinking…" — the frame's only job is to make the wait legible.
+              const guess = detectGuessPin(rawAsk);
               if (guess) send("predispatch", { skill: guess, certain: false });
             }
           }
