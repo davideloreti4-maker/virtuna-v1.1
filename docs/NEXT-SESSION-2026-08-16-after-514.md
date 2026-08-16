@@ -1,5 +1,10 @@
 # Next session — copy-paste brief (session 15 close-out, 2026-08-15)
 
+> 🔴 **SUPERSEDED by `NEXT-SESSION-2026-08-17.md` (session 16, 2026-08-16).** Read that first.
+> Open item 1 below (the monologue leak's live half) **shipped as PR #523** — its assembly half is
+> closed and the stream half is now task #31. Open item 2 is wrong: **F-3 and F-8a were already
+> fixed in code** (`7d4bc133`, `53fe7323`); the live-run budget is F-11 + F-12 only.
+
 **Lane:** `lane/in-thread-chat` · worktree `~/virtuna-in-thread-chat`
 **Shipped:** **PR #514, MERGED** — main at `697a4b67`. F-1 CLOSED · F-7 CLOSED ·
 `ENGINE_GEN_CONVERSATION` default ON. The `lane/in-thread-chat` branch is deleted; the worktree sits
@@ -48,7 +53,8 @@ OPEN, in the order I would take them — ASK before draining, this lane is at a 
   1. The monologue leak's LIVE half. One turn persisted 20,742 chars of the model's own
      planning voice as the answer. #514 stops it PERSISTING; it still STREAMS to the
      creator. NOT a subset of F-1 — needs its own diagnosis.
-  2. F-3, F-8, F-11, F-12 — never measured, one live run each.
+  2. F-11, F-12 — never measured, one live run each. (⚠️ This line originally read
+     "F-3, F-8, F-11, F-12". F-3 and F-8a were already fixed in code — see the 2026-08-16 brief.)
   3. The sidebar ⋯ menu — a design call, not a CSS one.
 
 DO NOT:

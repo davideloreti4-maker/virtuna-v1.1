@@ -148,7 +148,11 @@ is *read the hits*. One of the two files named was never even a match.
    `delta.reasoning_content` which the loop never reads; that claim needs testing against this row,
    because either it is wrong for this path or the model emitted monologue as ordinary content.
    **Do not assume it is a subset of F-1.**
-2. **F-3, F-8, F-11, F-12** — never measured, one live run each. Unchanged.
+2. ~~**F-3, F-8, F-11, F-12** — never measured, one live run each. Unchanged.~~
+   🔴 **Corrected 2026-08-16: it is F-11 and F-12 only.** F-3 was fixed by `7d4bc133` (2026-08-10)
+   and F-8's `fitLabel` half by `53fe7323` (2026-08-11) — both *before* the table that called them
+   unmeasured. F-8's persona-roster half is real but is derived from the bake signature, not
+   hardcoded. Evidence: `HANDOFF-2026-08-13-audit-rewalk.md` §2.
 3. **The sidebar `⋯` menu** — still a design call, not a CSS one. Unchanged.
 4. **`deriveSeedPrompts`** — still orphaned, still deliberately left.
 5. **The lane memory is still stale** — see §5b, which also corrects *why*.

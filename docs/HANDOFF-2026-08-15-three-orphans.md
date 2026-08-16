@@ -171,7 +171,15 @@ re-answer"*). The 08-13 re-walk re-measured both as still live **after** that at
 code check agrees — so they stand. Recorded so nobody reads that commit title as a close.
 
 **Inherited, NOT re-derived** — treat as claims, not measurements: F-15 (the second accent
-element) and the four never-measured rows F-3 · F-8 · F-11 · F-12, each of which needs a live run.
+element) and ~~the four never-measured rows F-3 · F-8 · F-11 · F-12, each of which needs a live
+run~~.
+
+> 🔴 **Corrected 2026-08-16 — and this paragraph's own neighbour was the clue.** The note directly
+> above rightly warns not to read `7d4bc133`'s title as closing F-7. But that same commit **did**
+> close **F-3** — `thread-turn.tsx:252` carries the fix and names it *"(Stage A, F-3)"* in the
+> comment. Reading one commit as closing nothing is the mirror of reading it as closing everything.
+> **F-3 is fixed; F-8's `fitLabel` half is fixed** (`53fe7323`). Only **F-11 · F-12** need a live
+> run. Full evidence: `HANDOFF-2026-08-13-audit-rewalk.md` §2.
 
 ---
 
