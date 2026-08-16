@@ -41,7 +41,9 @@ vi.mock("@/lib/tools/runners/chat-runner", () => ({
   isColdStart: vi.fn(),
 }));
 
-vi.mock("@/lib/tools/chat-agent-loop", () => ({
+// sanitizeCards is a pure parser the route calls on the ONE_BRAIN path — keep the real one.
+vi.mock("@/lib/tools/chat-agent-loop", async (importOriginal) => ({
+  sanitizeCards: (await importOriginal<typeof import("@/lib/tools/chat-agent-loop")>()).sanitizeCards,
   runChatAgentStream: vi.fn(),
 }));
 
