@@ -483,6 +483,44 @@ carrying the tool result bumps the thread state, and `RemixBeats` refetches, *in
 the `initialData` branch*, which must not shadow a payload it now knows is stale. **Second task**
 of the plan, ahead of the LLM call itself: a revision nobody sees didn't happen.
 
+### 6.8 Corrections from the pre-plan code recon (2026-08-16) — read before executing §6.7
+
+Four claims above don't survive contact with the code. The plan builds to THESE, not to the
+original sentences:
+
+1. **§6.7's "BOTH paths (live and replay)" — there is no live path, and the replay path is not a
+   tool result.** A remix is not a bound `SkillTool`; it runs on its own SSE route reached through
+   `request_input({action:"remix"})`, so no `remix-card` block ever reaches `describeRunOutput`
+   (`chat-agent-loop.ts:1573`). On replay, remix cards travel as `skillRecords` and render inside a
+   `role:"user"` thread-state note (`chat-agent-loop.ts:596-609`) — never `role:"tool"` (that
+   branch is generator-cards-only, `chat-prior-turns.ts:52-56`). **One seam, and it has no JSON
+   object today** — `ChatAgentPriorTurn` must gain a structured field. The data IS in scope at the
+   seam: `blueprintId`/`blueprintVariant` are on the block props (`blocks.ts:525,535`, stamped at
+   `remix-runner.ts:477`) and `recordLineOf` receives the whole props object (`on-screen.ts:300`).
+   ⚠️ The run route deliberately STRIPS both props when the row write fails
+   (`api/tools/remix/run/route.ts:259-262`) — a missing address is a normal case, never an error.
+2. **§6.4's "the same fencing as the adapt prompt" — no such fence exists.** `adapt.ts` guards its
+   input with a compile-time type (`AdaptInput`, `decode-types.ts:203-230`), and the source's
+   verbatim words reach the prompt by design. #482 was a *deletion* in `applyCreatorPersona`,
+   whose three callers are all chat generators — the remix path never touched it. What transfers
+   is the principle (constrain the input, don't filter the output) and the typed-input idiom.
+3. **§6.7's "not subject to the artefact redaction" — right conclusion, wrong mechanism.**
+   `createArtefactGuard` wraps `onToken` only (`chat-agent-loop.ts:1072-1077`) and arms only for
+   sealed visitors. The real reasons to keep the address out of prose: `MAX_RECORD_LENGTH = 650`
+   truncation (`on-screen.ts:279`) and the model echoing it into chat.
+4. **§9's RPC cite** — `persistDecodeToVariants` lives at `api/analyze/route.ts:274-299` (not
+   `pipeline.ts:254`, which is `publishSourceReceipt`). The migration to imitate is
+   `20260706130000_atomic_variants_merge.sql`: `create or replace`, `set search_path = public,
+   pg_temp`, **not** `security definer`; §6.5's mandatory `p_user_id` is stricter than its
+   precedent's nullable one, and stays.
+
+And one understatement that reshapes the refresh channel: the thread already refetches wholesale
+on every completed turn (`composer.tsx:1521-1541` → `reloadChatThread`), but every React key in
+the chain is a positional index (`persisted-thread-stream.tsx:70`, `message-blocks.tsx:147`), so
+`RemixBeats` reconciles in place and its `[blueprintId, initialData]` effect never re-runs. The
+invalidation cannot ride the reload; it needs its own signal (the codebase idiom: a nonce, e.g.
+`arrivalNonce` `composer.tsx:2797`, consumed with a `lastNonceRef` edge detector).
+
 ---
 
 ## 7. Testing
