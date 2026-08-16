@@ -174,8 +174,29 @@ honest attribution at ~4%, that copy is wrong ~96% of the time. The audit said i
 
 That is internal monologue shipped as the answer.
 
+> 🟢 **N-1 — PERSISTENCE half CLOSED in #523** (`cf58a5f0`, 2026-08-16). `reasoning-leak.ts` drops
+> the three attested tag shapes at assembly and returns untagged input **byte-identical**, so a
+> healthy answer is never even trimmed. ⚠️ **It still STREAMS** — nothing withholds tokens, by owner
+> ruling (withholding means buffering). Tracked as task #31, not as an F-row.
+>
+> ⚠️ **The trigger was never reproduced**: 0 of 21 live runs on 2026-08-16 across four request
+> shapes (`scripts/probe-thinking-content-channel.ts`), including the shipped 25,268-char prompt.
+> Production leaked on 3 of 4 identical asks on 08-12 and 0 of 6 on 08-13. **A clean run is not
+> evidence this is gone** — that is precisely why the fix is a boundary guard and not a prompt
+> change. There is nothing to A/B.
+
 **N-2 · One persisted answer is 33,165 characters.** The audit's F-11 complaint was a 3,663px
 answer ≈ 4 screens. 33k characters is roughly an order of magnitude beyond that.
+
+> 🟢 **N-2 — CLOSED in #523.** `RUNAWAY_PROSE_CAP` (8,000) bounds the no-card branch, which had no
+> ceiling at all. The threshold sits in a **measured empty gap**: across the whole production
+> `messages` table the largest legitimate answer is 3,791 chars and the smallest leak is 18,484.
+> Nothing lives in between, so it separates the two populations without touching the real one.
+> 🔴 This is **not** the prose cap the lane forbids — biting the 25 search-and-answer turns would
+> need it near 600, and a test pins a 4,278-char answer passing through untouched.
+>
+> That row (`249848cb`, 33,165 chars) is also **tagless**, which is why the strip alone was never a
+> ceiling and why the cap had to reach the anonymous `/go` exit too (`chat-agent-loop.ts:1685`).
 
 ---
 
@@ -191,24 +212,35 @@ answer ≈ 4 screens. 33k characters is roughly an order of magnitude beyond tha
 > beside it. It was not true even at merge. Before treating any row here as open,
 > `git log --all --grep="F-<n>"`.
 >
-> Also corrected since: **F-1, F-7 and F-22 were re-derived on 2026-08-14 and are still true** (the
-> evidence is in that §3, not here). Everything else in this table is as-measured on 2026-08-13 and
-> was NOT re-checked — treat the unmeasured rows as claims.
+> ~~Also corrected since: **F-1, F-7 and F-22 were re-derived on 2026-08-14 and are still true**~~
+> 🔴 **F-1 and F-7 are now CLOSED too — #514 (`697a4b67`, 2026-08-15).** F-22 stands. Verified in
+> code 2026-08-16: `createSourceDiversityCap()` (`output-guards.ts:182`) is called by **both**
+> runners (`hooks-runner.ts:790`, `ideas-runner.ts:725`) and pinned by `source-diversity.test.ts`;
+> F-1's assembly drop is `cardsDelivered` at `chat-agent-loop.ts:1413`/`:1568`, consumed at `:1670`.
+>
+> 🔴 **AND TWO OF THE FOUR "unmeasured" ROWS WERE ALREADY FIXED WHEN THIS TABLE WAS WRITTEN.**
+> **F-3** was fixed by `7d4bc133` on 2026-08-10 — *three days before this file* — and **F-8's
+> `fitLabel` half** by `53fe7323` on 2026-08-11. Both were carried forward as "needs a live billed
+> run" through four successive briefs. Neither ever needed one. See the rows below for the code.
 >
 > ⚠️ The measurements below are still worth having. It is the STATUSES that expired. This is the
 > same failure the lane keeps paying for: a claim lives in several copies and fixing one leaves the
-> rest lying.
+> rest lying. **⚪ unmeasured does not mean unfixed** — nobody had looked, and that is not the same
+> thing as nobody having fixed it. `git log --all --grep` before budgeting a run against any row.
 
 | # | finding | status | evidence |
 |---|---|---|---|
-| **F-1** | pack renders twice | 🔴 **STILL LIVE, ~8%** | 8 confirmed assistant→assistant pairs, gaps 0.1–0.3s, no user turn between; re-answers 793–20,742 chars. 2 of 24 packs on 08-12. **Visually confirmed** (`.scratch/rewalk-desktop.png`) — two competing closing questions above the chip |
+| **F-1** | pack renders twice | 🟢 **CLOSED in #514** (was: 🔴 STILL LIVE, ~8%) | *Measurement, still valid as of 08-13:* 8 confirmed assistant→assistant pairs, gaps 0.1–0.3s, no user turn between; re-answers 793–20,742 chars. 2 of 24 packs on 08-12. **Visually confirmed** (`.scratch/rewalk-desktop.png`). *Fix:* pre-card narration is dropped at assembly (`cardsDelivered`, `chat-agent-loop.ts:1413`/`:1568` → `:1670`), never buffered, and over-budget post-card text is dropped **whole** rather than truncated |
 | F-2 | prose contradicts its button | 🟠 partially visible | The walked thread shows duplicate closing questions; the #N mismatch itself did not reproduce here |
-| F-3 | audience name flips | ⚪ unmeasured | needs a live run |
+| F-3 | audience name flips | 🟢 **FIXED — and already was when this row was written** | `7d4bc133` (Stage A, 2026-08-10) names F-3 in its own message. The literal is gone: `thread-turn.tsx:252` falls back to `'your audience'`, never `'General'` — with the reasoning in the comment above it ("General is the NAME of a real audience, so guessing it here was indistinguishable from knowing it"). And the chat path *does* resolve an audience before stamping: `chat/route.ts:412` `resolveThreadAudience(...)` → stamped at `:683`. Both halves of the 2026-08-09 root cause are closed. **No live run needed** |
+
 | **F-4** | loading promises grounding cards disclaim | 🔴 **STILL LIVE, WORSE** | 5/5 cards disclaimed on the walked thread; systemically the 4% proof rate in §0 |
 | F-5 | unfilled `[placeholders]` on screen | 🟠 masked | all 6 meta-templates still in `outlier_teardowns`; did not render here **because no card carried proof at all** |
 | F-6 | jittery multiplier shown as proof | 🟢 **likely resolved on this surface** | `matchRowToExample` reads `honestMultiplier(row.outlier_multiplier)` straight from the row — the durable number, not the within-set one. ⚠️ **NOT via the 2026-08-11 receipt fix** — `attachOutlierReceipt`'s 3 call sites are `/api/discover`, `/api/tools/explore`, `explore-runner`; **the thread is not one of them.** Don't quote that memory line as covering the thread |
-| **F-7** | same source on 3 of 5 cards | 🔴 **STILL LIVE in code** | `build-proof.ts` is a pure `sourceIndex → example` lookup, still no diversity constraint. Unreproducible on screen right now only because proof is nearly always absent |
-| F-8 | fixed persona roster / static `fitLabel` | ⚪ unmeasured | needs a live run |
+| **F-7** | same source on 3 of 5 cards | 🟢 **CLOSED in #514** (was: 🔴 STILL LIVE in code) | ⚠️ **This row's own evidence was the trap.** "`build-proof.ts` … still no diversity constraint" is true and irrelevant — that file **structurally cannot hold the fix**. The cap already existed in `hooks-runner` (since `7d4bc133`); `ideas-runner` simply never called it. Both call `createSourceDiversityCap()` now (`:790` / `:725`, defined `output-guards.ts:182`), pinned by `source-diversity.test.ts` — neither runner had *any* test before, so the cap could have been deleted with the whole suite green |
+| F-8a | static `fitLabel` ("every card says ◐ adjacent") | 🟢 **FIXED** | `53fe7323` (2026-08-11, receipts materialize server-side, D7). Production hard-codes `fitLabel: null` — `composed-card-receipt.ts:104` (with the honest reason in its header: *"nothing measured this row against this creator's audience"*) and `remix-runner.ts:434`. `proof-receipt.tsx:102` renders **no glyph at all** on null. The only surviving `"adjacent"` literals are dev fixtures + test fixtures. The fabricated glyph cannot recur. **No live run needed** |
+| F-8b | fixed persona roster (same five names/percentages) | ⚪ **still unmeasured** | Genuinely open, but **not** a hardcode: `profile-runner.ts:186` derives personas from `sig.audience.personas` — the bake signature. So a repeated roster would mean repeated *calibration input*, not a static list. Needs a live run **with a calibrated audience**; an uncalibrated one proves nothing. ⚠️ The audit's "a *Lurker* persona narrated in why-it-works that exists in no roster" — the string `Lurker` occurs **nowhere in `src/`** as of 2026-08-16 |
+
 | **F-9** | small, wide, grey body text | 🟢 **FIXED** | **16px / 26px, 68ch, `#ece7de` cream** — was 14px / 22.75, 75ch, secondary grey. Now on the convergent norm the audit named |
 | F-10 | 14 text roles in one answer | 🟢 **IMPROVED** | 13 distinct roles desktop **and** mobile — was 14 desktop / 19 mobile |
 | F-11 | nothing streams | ⚪ unmeasured | needs a live run to time |
@@ -224,7 +256,17 @@ answer ≈ 4 screens. 33k characters is roughly an order of magnitude beyond tha
 | F-21 | retrieval starved | 🔴 subsumed by §0 | the 4% proof rate is a far larger version of this |
 | F-22 | corpus null multipliers | 🔴 unchanged | `follower_count` NULL on all 532 rows; 0 rows labelled "vs followers"; max multiplier 20,154.7× |
 
-**Tally: 5 fixed · 5 still live · 3 half/masked · 4 unmeasured (need a live run) · plus 2 new.**
+~~**Tally: 5 fixed · 5 still live · 3 half/masked · 4 unmeasured (need a live run) · plus 2 new.**~~
+
+🔴 **The tally as written on 2026-08-13 is void — do not quote it.** The rows it counted have been
+closed by five different PRs since (#491, #495, #514, #523) and it was already wrong on the day, by
+two rows. It is left struck through rather than recomputed because a fresh number here would just
+start expiring again; **read the statuses, not the total.**
+
+**The only part worth carrying forward is the live-run budget, and it is now 2 rows, not 4:**
+**F-11** (nothing streams) and **F-12** (the wait happens in a void). **F-8b** wants a run too but
+only alongside a *calibrated* audience. F-3 and F-8a need nothing — they were fixed in code before
+this file existed.
 
 ---
 
@@ -268,7 +310,11 @@ this surface are unreliable; measure off structure or add testids.
    **not** generalise to this shape.)
 4. **F-13** is still a one-line gradient. **F-14**'s heading half and **F-19**'s tap targets are
    unchanged and mechanical.
-5. **The 4 unmeasured findings** (F-3, F-8, F-11, F-12) need one live billed run between them.
+5. ~~**The 4 unmeasured findings** (F-3, F-8, F-11, F-12) need one live billed run between them.~~
+   🔴 **Corrected 2026-08-16 — it is 2, not 4.** F-3 (`7d4bc133`) and F-8a (`53fe7323`) were both
+   already fixed in code when this list was written. **F-11 and F-12** are the live-run budget, and
+   F-8b joins them only if the run uses a *calibrated* audience. Both remaining rows are
+   timing/feel, so they need a **prod build in a browser** — the suite cannot see either.
    Budget deliberately — `BILLING_ENFORCE_QUOTA` is on and dev shares prod's Supabase.
 
 ---

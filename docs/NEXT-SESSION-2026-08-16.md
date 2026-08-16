@@ -153,4 +153,6 @@ proof). Fixing the loud one surfaces the quiet one. Expect it rather than re-dia
 - The sidebar's pin/rename/delete are 30×44, not 44×44. Three 44px hit areas 2px apart would overlap
   by 20px and the later sibling would win the tap — worse than small. The real fix is a `⋯` menu,
   which is a design call.
-- Four F-rows have never been measured at all — F-3, F-8, F-11, F-12. Each needs one live run.
+- ~~Four F-rows have never been measured at all — F-3, F-8, F-11, F-12. Each needs one live run.~~
+  🔴 **Corrected 2026-08-16: two, not four.** F-3 (`7d4bc133`) and F-8a (`53fe7323`) were fixed in
+  code before this was written. See `NEXT-SESSION-2026-08-17.md` §2.
