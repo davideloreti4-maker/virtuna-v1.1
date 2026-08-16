@@ -60,6 +60,14 @@ measures a state the product only occupies while loading.
 indivisible "needs a live billed run" for four briefs. Three of its four parts turned out
 to be answerable from code plus a FREE loop probe (omit deps.billing → skills fail closed).
 
+🔴 F-11b IS DECOMPOSED — AND ONE FIX COSTS NOTHING AND TRADES NOTHING. Read §2b before
+touching it. The short version: ~2s of the dead air is enable_thinking (a real
+quality/latency TRADE, owner's call, do not flip it unilaterally), ~3s is baseline
+provider latency — but the mitigation built specifically to FILL this wait already
+exists and is DARK. route.ts:484 calls it "the predispatch frame — fills the router's
+~4.8s dead zone", and it is gated on NEXT_PUBLIC_ENGINE_ONE_BRAIN, which is `=== "true"`
+(default off) and set nowhere.
+
 DO NOT:
   - Do not budget a live run for F-3 or F-8a. Fixed. See rewalk §2.
   - Do not cap a search-and-answer turn's prose. 25 of 34 over-cap turns are those and
@@ -114,7 +122,7 @@ corrected. In short, verified in code on 2026-08-16:
 | **F-8a** static `◐ adjacent` glyph | 🟢 **fixed `53fe7323`** | production hard-codes `fitLabel: null` (`composed-card-receipt.ts:104`, `remix-runner.ts:434`); `proof-receipt.tsx:102` renders no glyph on null. Only *fixtures* still say `"adjacent"` |
 | **F-8b** fixed persona roster | ⚪ open-ish | genuinely unmeasured, but **not a hardcode** — `profile-runner.ts:186` derives personas from the bake signature. A repeated roster would mean repeated calibration *input*. Needs a **calibrated** audience or it proves nothing. (`Lurker` occurs nowhere in `src/`) |
 | **F-11a** transport does not stream | 🟢 **false** | `event: token` per delta → `use-chat-stream.ts:295` `setStreamingText` per token. Wired since `216df989` (**2026-06-21**), two months before the audit. Proven live in reverse: **#523 exists because leaked reasoning streamed** |
-| **F-11b** dead air before first char | 🔴 **STILL LIVE — and it is the whole row** | Measured free, N=4/shape: **prose median 5.28s**, **skill median 4.04s** (dispatching `generate_hooks` 4/4). The audit's ~5.5s is intact. `scripts/probe-f11-stream-timing.ts` |
+| **F-11b** dead air before first char | 🔴 **STILL LIVE — and it is the whole row** | Measured free, N=4/shape: **prose median 5.28s**, **skill median 4.04s** (dispatching `generate_hooks` 4/4). The audit's ~5.5s is intact. Decomposed below. `scripts/probe-f11-stream-timing.ts` |
 | **F-11c** text lands in one paint | 🟢 **false for prose** | 63–104 token frames per answer; median max inter-token gap **0.18s**, worst 0.88s. No silence for a burst to hide behind |
 | **F-11d** cards arrive all at once | ⚪ open | `onBlock` fires per block, so incremental is *possible* — but blocks need a billing seam. **Paid run.** Count off the SSE, not the DOM |
 | **F-12a** the PROSE wait is in a void | 🟢 **false — measured in a browser** | Gap to composer **75px desktop / 64px mobile**, constant across all 44 samples, and the wait sits **668px / 469px from the viewport TOP** — near the bottom, anchored by the composer. The inverse of the row. `scripts/probe-f12-wait-layout.mjs` |
@@ -125,6 +133,51 @@ re-answer"*. Session 15 correctly warned nobody should read that title as closin
 that warning is right. But the same commit **did** close **F-3**, and the warning got applied to
 the whole title. *Reading one commit as closing nothing is the mirror image of reading it as
 closing everything.* Open the diff, not the subject line.
+
+## 2b. 🔴 F-11b decomposed — where the 4–5 seconds actually go
+
+Measured 2026-08-16, free, N=4 per shape per setting (`PROBE_COMPOSING=false` flips the shipped
+toggle). Medians, time to the **first character**:
+
+| shape | thinking ON (what ships) | thinking OFF | delta |
+|---|---|---|---|
+| prose | **5.28s** | **3.14s** | −2.14s |
+| skill | **4.04s** | **2.35s** | −1.69s |
+
+**So roughly 2s is `enable_thinking`, and roughly 3s is baseline** — provider time-to-first-token
+against a 25,268-char system prompt, which no amount of client work removes.
+
+⚠️ **`composing` is not a clean isolation of thinking.** It is `!!input.composedCards` (`:955`) and
+drives **four** things: `enable_thinking` (`:1154`), `max_tokens`, `max_rounds`, and the tool-use
+directive. The table above is the *shipped toggle*, which is what a decision would flip — not a
+controlled experiment on thinking alone.
+
+🔴 **Do NOT flip `COMPOSED_CARDS` to buy the 2s. It is a TRADE, and it is the owner's call.**
+- The comment at `:1137` records the quality side: composing **true** measured 6/6 and 5/6 against
+  the shipped contract; **false** measured 2/6, 3/6, 4/6.
+- It also changes *behaviour*: with composing off, the plain prose ask "why do most morning routines
+  fail" called `generate_ideas` on **2 of 4** runs. It did not dispatch at all with composing on.
+  Flipping this buys latency and spends dispatch precision.
+
+✅ **THE PART THAT COSTS NOTHING AND TRADES NOTHING — and it is already built.**
+`route.ts:484` is commented *"Stage B (B3): the predispatch frame — **fills the router's ~4.8s dead
+zone**"*. That is this exact wait, named and sized by whoever built it. It streams a `predispatch`
+frame *before* the loop starts so the thinking dots can label themselves from what is already known
+(a chip's declared skill is `certain: true`; a typed ask gets the cheap `guessSkill` heuristic as
+`certain: false`).
+
+**It never fires.** It is gated on `ONE_BRAIN` (`:492`), i.e. `NEXT_PUBLIC_ENGINE_ONE_BRAIN ===
+"true"` (`:216`) — the dark convention — and the variable is set nowhere, including `.env.local`.
+
+So the wait is not only long, it is *unlabelled*, and the labelling was written and switched off.
+That does not shorten the 4–5s; it changes what the creator stares at during it, which is what every
+benchmark in the original audit was actually doing differently. ⚠️ `ONE_BRAIN` also gates three
+other things (`:360`, `:363`, `:610` — anchor, cards, `cardsSlot`), so turning it on is **not** a
+one-line latency patch. Read Stage A/B (#461) before flipping it.
+
+🔎 And the capsule cannot label itself even when the frame does fire: `onDispatch` is at
+`chat-agent-loop.ts:1552`, **after** the billing gate at `:1528`, despite its interface comment
+(`:322`) claiming *"the moment the agent COMMITS … BEFORE `run`"*.
 
 ## 3. 🔴 MEMORY THAT COULD NOT BE SAVED — and the blocker is now precisely characterised
 

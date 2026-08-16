@@ -46,6 +46,14 @@ import type { ProfileRow } from "@/lib/kc/profile-role-map";
 
 const N = Number(process.env.PROBE_N ?? 3);
 const GROUNDING = process.env.PROBE_GROUNDING !== "false";
+/**
+ * `composing` is `!!input.composedCards` (:955) and it drives FOUR things at once — most
+ * importantly `enable_thinking: composing` (:1154), but also max_tokens, max_rounds and the
+ * tool-use directive. So this knob is NOT a clean single-variable isolation of thinking; it is the
+ * shipped toggle, which is the thing a decision would actually flip. Default ON, mirroring the
+ * route (`COMPOSED_CARDS !== "false"`).
+ */
+const COMPOSING = process.env.PROBE_COMPOSING !== "false";
 
 /**
  * Two shapes, because F-11 was measured on a SKILL turn and the fix for each is different.
@@ -120,7 +128,7 @@ async function runOne(shape: { key: string; ask: string }, seed: number, profile
       grounding: GROUNDING,
       // Mirror the ROUTE, which reads COMPOSED_CARDS !== "false" — default ON. A probe that leaves
       // this off is measuring a request the product does not send.
-      composedCards: true,
+      composedCards: COMPOSING,
       context: { platform: "tiktok", profileRow },
       onToken: (d) => {
         stamps.push(Date.now() - t0);
@@ -176,7 +184,7 @@ const fmt = (ms: number) => (Number.isNaN(ms) ? "  —  " : `${(ms / 1000).toFix
 
 async function main() {
   const profileRow = await loadProfile();
-  console.log(`F-11 stream timing — N=${N} per shape · grounding: ${GROUNDING} · billing OMITTED (free)`);
+  console.log(`F-11 stream timing — N=${N} per shape · grounding: ${GROUNDING} · composing/enable_thinking: ${COMPOSING} · billing OMITTED (free)`);
   console.log(`profile row: ${profileRow ? "present" : "NULL"}   prompt: KC_CHAT_SYSTEM_PROMPT (${KC_CHAT_SYSTEM_PROMPT.length} chars)\n`);
 
   const all: Sample[] = [];
@@ -230,8 +238,8 @@ READING THIS:
                        Kept rather than deleted so the next reader does not re-derive it.
   ⚠️ blocks are 0 by construction here (billing omitted) and onDispatch NEVER fires — the loop
      returns at chat-agent-loop.ts:1513 when there is no billing seam, and onDispatch is at :1552.
-     That is a PROBE ARTIFACT, not a product defect. Read the `calls` column instead: a skill the
-     model committed to shows as `generate_hooks!(no billing seam)`.
+     That is a PROBE ARTIFACT, not a product defect. Read the 'calls' column instead: a skill the
+     model committed to shows as generate_hooks!(no billing seam).
   ⚠️ The CARD-arrival burst is NOT measured by this probe and must not be reported as fixed or
      broken on its strength. That half needs a paid run.`);
 }
