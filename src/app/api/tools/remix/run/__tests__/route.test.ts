@@ -54,6 +54,47 @@ vi.mock("@/lib/remix/blueprint-repo", () => ({
 }));
 
 /**
+ * `mockLoggerWarn` lets a test assert the route actually READ a resolved `{ error }` from clip
+ * removal (Task 4 review finding #1) rather than merely calling `remove()` and moving on — a
+ * call-args-only assertion passes against the buggy version too, since a resolved (non-thrown)
+ * error doesn't change the SSE stream's shape either way. Same pattern as the sibling read-route
+ * test file (`src/app/api/remix/blueprint/[id]/__tests__/route.test.ts`).
+ */
+const { mockLoggerWarn } = vi.hoisted(() => ({ mockLoggerWarn: vi.fn() }));
+
+vi.mock("@/lib/logger", () => ({
+  createLogger: vi.fn(() => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: mockLoggerWarn,
+    error: vi.fn(),
+  })),
+}));
+
+/**
+ * `mockClipsRemove` backs the orphan-cleanup path (phase 4): when `insertBlueprint` throws, the
+ * route removes the runner's already-uploaded clips via
+ * `createServiceClient().storage.from(CLIPS_BUCKET).remove(paths)`. `vi.hoisted` is required here
+ * because the `vi.mock` factory below is hoisted above this file's other top-level statements —
+ * closing over a plain `const` declared after it would read as `undefined` at mock-definition
+ * time.
+ */
+const { mockClipsFrom, mockClipsRemove } = vi.hoisted(() => {
+  // Typed as the real storage `remove()` resolves — `{ data, error }`, error nullable — so a
+  // test can override the resolved value to a REPORTED failure (not a throw) without a type
+  // error: that shape is exactly the bug finding #1 covers (route must read `error`, not rely on
+  // a throw that supabase-js's storage API doesn't produce for this failure class).
+  const mockClipsRemove = vi.fn(
+    async (): Promise<{ data: null; error: { message: string } | null }> => ({
+      data: null,
+      error: null,
+    }),
+  );
+  const mockClipsFrom = vi.fn(() => ({ remove: mockClipsRemove }));
+  return { mockClipsFrom, mockClipsRemove };
+});
+
+/**
  * `createServiceClient()` reads NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY and THROWS
  * ("supabaseUrl is required.") when they are absent — and they are absent under vitest, verified
  * by probe. Unmocked, the route's blueprint write would take its non-fatal catch on every run in
@@ -62,7 +103,7 @@ vi.mock("@/lib/remix/blueprint-repo", () => ({
  * so the stub returned here is inert for it.)
  */
 vi.mock("@/lib/supabase/service", () => ({
-  createServiceClient: vi.fn(() => ({})),
+  createServiceClient: vi.fn(() => ({ storage: { from: mockClipsFrom } })),
 }));
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
@@ -459,6 +500,7 @@ describe("POST /api/tools/remix/run (SSE route)", () => {
       },
       script: [[{ index: 0, spoken: "your line", on_screen_text: "", shot: "waist-up" }]],
       sourceVideoId: "https://www.tiktok.com/@creator/video/123",
+      clipPaths: ["bp/0.mp4"],
     };
 
     /** Signs in a user, stubs the thread, and hands back the card the pipeline "produced". */
@@ -570,6 +612,7 @@ describe("POST /api/tools/remix/run (SSE route)", () => {
       expect(row.source_video_id).toBe("https://www.tiktok.com/@creator/video/123");
       expect(row.blueprint).toEqual(BLUEPRINT_RESULT.payload);
       expect(row.script).toEqual(BLUEPRINT_RESULT.script);
+      expect(row.clip_uris).toEqual(["bp/0.mp4"]);
     });
 
     it("strips blueprintId — from the FACE as well as the block — and still delivers the cards when the insert fails", async () => {
@@ -589,6 +632,43 @@ describe("POST /api/tools/remix/run (SSE route)", () => {
       // happen before the content frame for this to hold — emitting the face first and writing
       // the row afterwards leaves a dangling id on screen until a reload.
       expect(raw).not.toContain("bp1234567890");
+    });
+
+    it("removes the runner's already-uploaded clips when the blueprint insert fails — no row must not mean orphaned objects", async () => {
+      await arrange({ ...BLUEPRINT_RESULT, clipPaths: ["bp/0.mp4", "bp/1.mp4"] });
+      const { insertBlueprint } = await import("@/lib/remix/blueprint-repo");
+      (insertBlueprint as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("insert failed"));
+
+      await drain(await post());
+
+      expect(mockClipsFrom).toHaveBeenCalledWith("clips");
+      expect(mockClipsRemove).toHaveBeenCalledWith(["bp/0.mp4", "bp/1.mp4"]);
+    });
+
+    it("does not break the run when the clip removal API call resolves an error rather than throwing", async () => {
+      // Storage's `remove()` reports permission/RLS/missing-bucket failures by RESOLVING
+      // `{ data: null, error }` — it does not throw for these. The route must not depend on a
+      // throw to notice: the run still has to finish normally (blueprintId stripped, stream
+      // intact) even when the cleanup call itself reports a failure this way.
+      const card = await arrange({ ...BLUEPRINT_RESULT, clipPaths: ["bp/0.mp4", "bp/1.mp4"] });
+      const { insertBlueprint } = await import("@/lib/remix/blueprint-repo");
+      (insertBlueprint as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("insert failed"));
+      mockClipsRemove.mockResolvedValueOnce({
+        data: null,
+        error: { message: "permission denied" },
+      });
+
+      const raw = await drain(await post());
+
+      expect(raw).toContain("event: done");
+      expect((card.props as { blueprintId?: string }).blueprintId).toBeUndefined();
+      expect(mockClipsRemove).toHaveBeenCalledWith(["bp/0.mp4", "bp/1.mp4"]);
+      // THE ASSERTION THAT MATTERS: the resolved error was actually read, not just discarded.
+      // This is what fails against the pre-fix code — that version calls `remove()` and never
+      // looks at what it resolved, so this warn never fires even though the delete failed.
+      expect(mockLoggerWarn).toHaveBeenCalledWith("orphaned clip cleanup failed", {
+        error: "permission denied",
+      });
     });
 
     it("does not call insertBlueprint when the runner produced no blueprint", async () => {

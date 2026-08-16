@@ -74,6 +74,13 @@ vi.mock("@/lib/tools/runners/predicted-pin", () => ({
   pinPredictedSignature: (...args: unknown[]) => mockPinPredictedSignature(...args),
 }));
 
+const mockCutBeatClips = vi.fn();
+const mockUploadBeatClips = vi.fn();
+vi.mock("@/lib/remix/beat-clips", () => ({
+  cutBeatClips: (...args: unknown[]) => mockCutBeatClips(...args),
+  uploadBeatClips: (...args: unknown[]) => mockUploadBeatClips(...args),
+}));
+
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
 function makeOmniOutput() {
@@ -204,6 +211,8 @@ describe("runRemixPipeline (new call system — generate-and-project)", () => {
     vi.clearAllMocks();
     mockCleanup.mockResolvedValue(undefined);
     mockPinPredictedSignature.mockResolvedValue(true);
+    mockCutBeatClips.mockResolvedValue({ files: [], dispose: vi.fn() });
+    mockUploadBeatClips.mockResolvedValue([]);
   });
 
   it("calls the full chain in order and makes NO SIM/characterize/pin call", async () => {
@@ -377,6 +386,8 @@ describe("runRemixPipeline — blueprint assembly + stamping", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockCleanup.mockResolvedValue(undefined);
+    mockCutBeatClips.mockResolvedValue({ files: [], dispose: vi.fn() });
+    mockUploadBeatClips.mockResolvedValue([]);
   });
 
   it("hands adapt the ASSEMBLED blueprint and the creator's brief as the target", async () => {
@@ -476,5 +487,78 @@ describe("runRemixPipeline — blueprint assembly + stamping", () => {
     setupHappyPath();
     mockGenerateAdaptConcepts.mockRejectedValue(new Error("adapt boom"));
     expect((await run()).blueprint).toBeNull(); // adapt_failed (threw)
+  });
+});
+
+// ─── Beat clips (phase 4, 2026-08-16) ─────────────────────────────────────────
+
+describe("runRemixPipeline — phase 4 clips", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockCleanup.mockResolvedValue(undefined);
+    mockCutBeatClips.mockResolvedValue({ files: [], dispose: vi.fn() });
+    mockUploadBeatClips.mockResolvedValue([]);
+  });
+
+  function setupWithBeats() {
+    setupHappyPath();
+    mockOmniOutputToStructuralInput.mockReturnValue(makeStructuralInputWithSegments());
+  }
+
+  it("uploads ONLY on the success path and stamps clipPaths on the blueprint", async () => {
+    setupWithBeats();
+    const dispose = vi.fn();
+    mockCutBeatClips.mockResolvedValue({
+      files: [{ beatIndex: 0, path: "/t/0.mp4" }],
+      dispose,
+    });
+    mockUploadBeatClips.mockResolvedValue(["bp/0.mp4"]);
+
+    const { runRemixPipeline } = await import("@/lib/tools/runners/remix-runner");
+    const result = await runRemixPipeline({ ...baseInput, profileRow: makeProfileRow() });
+
+    expect(result.blueprint).not.toBeNull();
+    expect(result.blueprint!.clipPaths).toEqual(["bp/0.mp4"]);
+    // Upload keyed by the SAME id stamped on the cards:
+    expect(mockUploadBeatClips).toHaveBeenCalledWith(
+      result.blueprint!.id,
+      [{ beatIndex: 0, path: "/t/0.mp4" }],
+    );
+    // The temp dir is disposed even on success (the finally owns it):
+    expect(dispose).toHaveBeenCalled();
+  });
+
+  it("adapt_failed: cuts are disposed and NOTHING is uploaded — the bucket stays clean", async () => {
+    setupWithBeats();
+    const dispose = vi.fn();
+    mockCutBeatClips.mockResolvedValue({
+      files: [{ beatIndex: 0, path: "/t/0.mp4" }],
+      dispose,
+    });
+    mockGenerateAdaptConcepts.mockResolvedValue(null);
+
+    const { runRemixPipeline } = await import("@/lib/tools/runners/remix-runner");
+    const result = await runRemixPipeline({ ...baseInput, profileRow: makeProfileRow() });
+
+    expect(result.error).toBe("adapt_failed");
+    expect(mockUploadBeatClips).not.toHaveBeenCalled();
+    expect(dispose).toHaveBeenCalled();
+  });
+
+  it("a segment-less source never starts a cut", async () => {
+    setupHappyPath(); // default structural input: no segments → no beats
+    const { runRemixPipeline } = await import("@/lib/tools/runners/remix-runner");
+    await runRemixPipeline({ ...baseInput, profileRow: makeProfileRow() });
+    expect(mockCutBeatClips).not.toHaveBeenCalled();
+  });
+
+  it("a cut failure costs the clips and nothing else — the run still returns its cards", async () => {
+    setupWithBeats();
+    mockCutBeatClips.mockRejectedValue(new Error("boom"));
+    const { runRemixPipeline } = await import("@/lib/tools/runners/remix-runner");
+    const result = await runRemixPipeline({ ...baseInput, profileRow: makeProfileRow() });
+    expect(result.error).toBeUndefined();
+    expect(result.blocks.length).toBeGreaterThan(0);
+    expect(result.blueprint!.clipPaths).toEqual([]);
   });
 });
