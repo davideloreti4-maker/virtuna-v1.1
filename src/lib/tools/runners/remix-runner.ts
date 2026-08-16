@@ -46,6 +46,8 @@ import { buildBlueprint } from "@/lib/engine/remix/blueprint";
 import type { SourceBlueprint } from "@/lib/engine/remix/blueprint";
 import { generateAdaptConcepts } from "@/lib/engine/remix/adapt";
 import { extractBeatFrames } from "@/lib/remix/beat-frames";
+import { cutBeatClips, uploadBeatClips } from "@/lib/remix/beat-clips";
+import type { CutResult } from "@/lib/remix/beat-clips";
 // New Qwen call system (2026-07-22): the persona SIM is GONE from the remix path (fan-out from
 // hooks-runner). The ADAPT call is the generation call — it now self-estimates each adapted hook's
 // /10 + stop-quote, and bandFromStops turns that into the projected band (SIM's 6/3 calibration
@@ -141,6 +143,13 @@ export interface RemixPipelineResult {
     script: AdaptedBeat[][];
     /** The resolved source post URL — a URL, not a canonical platform video id. */
     sourceVideoId: string;
+    /**
+     * PHASE 4 — storage paths of the clips that LANDED in the `clips` bucket (uploaded only when
+     * this blueprint object exists — cut and upload are split exactly so a failed run cannot
+     * orphan objects the reaper's clip_uris worklist would never see). [] when cutting failed or
+     * was skipped; the route writes this to `remix_blueprints.clip_uris`.
+     */
+    clipPaths: string[];
   } | null;
   /**
    * Error discriminant:
@@ -266,6 +275,9 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
   // Declared out here because the `finally` awaits it: the beat-frame job reads `signedUrl`, so
   // it has to be joined before `cleanup()` drops the object it reads.
   let framesPromise: Promise<{ beatFrames: number; scrubFrames: number }> | null = null;
+  // Phase 4: the clip cut reads `signedUrl` too, so it is joined in the same finally. Its
+  // UPLOAD, though, happens on the success path only — see (d) below and beat-clips.ts.
+  let cutPromise: Promise<CutResult> | null = null;
 
   // cleanup is now available — wrap all subsequent work in try/finally
   try {
@@ -320,6 +332,14 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
     framesPromise =
       hasBeats && blueprint.from_fixed_buckets !== true
         ? extractBeatFrames(signedUrl, blueprintId, blueprint.beats, blueprint.duration_s)
+        : null;
+
+    // ── PHASE 4: BEAT CLIPS — cut now (overlaps adapt), upload only on success ────────────
+    // Same fixed-buckets gate as frames: clips cut against fabricated timestamps are real
+    // pixels under invented times.
+    cutPromise =
+      hasBeats && blueprint.from_fixed_buckets !== true
+        ? cutBeatClips(signedUrl, blueprint.beats, blueprint.duration_s)
         : null;
 
     // ── STEP 4: ADAPT ────────────────────────────────────────────────────────────
@@ -501,6 +521,16 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
       scripts.push(r.concept.script ?? []);
     }
 
+    // Phase 4: collect the cut (the adapt call has already paid its wall-clock — this await is
+    // ~0ms) and upload ONLY when a blueprint is about to exist. The paths must be in hand HERE:
+    // the finally runs after this object literal is assembled, so an await placed there could
+    // never put paths on the return value.
+    const cut = cutPromise ? await cutPromise.catch(() => null) : null;
+    const clipPaths =
+      cut && cut.files.length > 0 && hasBeats && blocks.length > 0
+        ? await uploadBeatClips(blueprintId, cut.files)
+        : [];
+
     return {
       blocks,
       warnings: allWarnings,
@@ -514,6 +544,7 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
               script: scripts,
               // The URL the resolve step returned, falling back to the one the creator pasted.
               sourceVideoId: sourcePostUrl ?? url,
+              clipPaths,
             }
           : null,
     };
@@ -524,6 +555,14 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
     // frame failure can never stop `cleanup()` — the derive-and-drop invariant outranks it.
     // `extractBeatFrames` carries its own budget, so this cannot wait indefinitely.
     if (framesPromise) await framesPromise.catch(() => {});
+
+    // Phase 4: join the cut (it reads `signedUrl` — budget-capped, so this cannot wait
+    // indefinitely) and drop its temp dir. Runs on EVERY path; dispose is idempotent, so the
+    // success path having already consumed the files is fine.
+    if (cutPromise) {
+      const cut = await cutPromise.catch(() => null);
+      await cut?.dispose();
+    }
 
     // T-03-02: cleanup() MUST run unconditionally — temp mp4 removed regardless of outcome
     await cleanup();

@@ -51,6 +51,11 @@ interface Payload {
    * while 63% of the corpus is Instagram.
    */
   sourceUrl?: string | null;
+  /**
+   * PHASE 4 — `{ beatIndex → signed clip URL }` for the source viewer's stage. Absent for every
+   * pre-lane sheet and whenever cutting failed; the stage then plays the flipbook, unchanged.
+   */
+  clips?: Record<number, string>;
 }
 
 const HEADING = "Shoot it beat by beat";
@@ -165,6 +170,7 @@ export function RemixBeats({
             durationS={blueprint.duration_s}
             onActiveBeatChange={onActiveBeatChange}
             seekToSec={seekToSec}
+            clips={data.clips ?? {}}
           />
           <RemixSourceEmbed sourceUrl={data.sourceUrl} />
         </div>
