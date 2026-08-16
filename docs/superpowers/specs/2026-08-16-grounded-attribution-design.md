@@ -135,3 +135,50 @@ are retrieved videos.
 - **Latency** grows by one flash call (distill) + the adapt call on grounded runs.
 - **Apify budget** during measurement: ~6 authorized sends ≈ $0.66 against the $5/mo cap;
   pre-flight the account.
+
+## Measured (2026-08-16)
+
+- Receipt rate: 17/18 (94.4%) — gate ≥70%: **PASS**
+- Strip reasons across runs: `model-zero` ×1 (ask 2, card 2); no other reasons observed —
+  17 of 18 attribution decisions kept a receipt, matching the wire-level card count exactly
+  (no shipped-vs-decided divergence this run).
+- Distillation: **0/6** asks exercised the distiller's `defaultComplete` (LLM) path — not a
+  defect in Tasks 2/3. The `[grounding] distilled query "…"` line never appears in the dev
+  log for any of the 6 sends. Root cause, confirmed by reading `skill-dispatch.ts:148-160,230`:
+  `/api/tools/chat` runs a tool-calling agent (`runChatAgentStream`) that itself extracts a
+  compact `topic` argument from the creator's message before ever handing off to
+  `gatherCorpusForRun`/`distillSearchQuery` — `ask: args.topic ?? ""`, schema description
+  "extracted from the creator's message + the conversation." All 6 topics the agent produced
+  this run landed at or under `DISTILL_THRESHOLD` (80 chars), so the distiller's early-return
+  fired for all 6 and no DashScope call happened at that stage. Queries retrieval actually ran
+  on (from `[grounding] cache HIT for "…"` lines): "AI platform that simulates audience
+  reaction before posting", "high protein breakfasts for busy people", "why most runners
+  train their easy days too hard", "negotiating a raise without threatening to quit",
+  "restoring a 1970s film camera found at a flea market", "growing a balcony vegetable garden
+  in a rental" — all agent-authored topic strings, not distiller output.
+  - Corroborating isolated test (not part of the live run — a direct call to
+    `distillSearchQuery` against the 6 *literal probe ask strings*, i.e. what the module would
+    do if it received the raw HTTP body text instead of the agent's `topic`): 2/6 exceed the
+    80-char threshold and do invoke `defaultComplete` (asks 1 and 3, at 109 and 81 chars), at
+    **2081ms and 1073ms** respectively; the other 4 short-circuit at ~0ms. This is the only
+    live-DashScope-measured latency the distiller module has ever produced; it does not
+    describe this run's actual traffic, since the real runner input (the agent's `topic`) never
+    reached the LLM branch here. **Distill latency observed for THIS run's live traffic: n/a —
+    the branch never fired.**
+- Fidelity: 0 receipt/row template mismatches; seed-line duplicates 3/18.
+- Cost: Apify $0.00 this run (account held at $4.5907/$5 before and after — every send fell
+  back to cache pre-flight, no job launched) + DashScope: 6 hooks-generation calls + 6
+  adapt-briefer calls (`GROUNDING_HOOKS_ADAPT=true`), no per-call cost script exists for
+  DashScope in this repo so no measured total — order-of-magnitude cents, not an isolated
+  figure.
+- Verdict/next: PASS, ship as measured. The one architectural finding worth carrying forward
+  (not a blocker for this gate): on the real `/api/tools/chat` path, Tasks 2/3's distiller is
+  effectively dead code today, because the upstream tool-calling agent's `topic` extraction
+  already does equivalent compression before the distiller ever sees the ask. The distiller
+  still guards a real path (any `queryCandidates` source >80 chars — e.g. a longer `topic`, or
+  a skill route that isn't agent-dispatched), so it should not be removed on this evidence
+  alone; the follow-up is to check whether a skill route with no upstream agent layer (a
+  direct `/api/hooks`-style dispatch, if one exists) is where its 80-char branch actually
+  earns its keep, and to log the input length distribution the `topic` argument itself
+  produces once traffic is real. Live-scrape arm remains unmeasured (Apify capped at $0.41
+  headroom, need ~$0.70) — this run is the cache arm only, consistent with the dry run.
