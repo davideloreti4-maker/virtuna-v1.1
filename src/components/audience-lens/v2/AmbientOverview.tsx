@@ -496,13 +496,19 @@ function QueuedRow({
       <button
         type="button"
         onClick={() => onSimulate?.(r.id)}
+        // The full stimulus as a native tooltip: queued titles truncate to ~30 chars in a 400px
+        // rail and a queue of generated variants shares its opening words, so without this the
+        // rows were indistinguishable ("I fed 10 million viral videos in…" × 3).
+        title={r.stimulus}
         className="group flex w-full cursor-pointer items-center gap-2.5 rounded-[8px] px-0.5 py-[13px] text-left transition-colors"
         onMouseEnter={(e) => (e.currentTarget.style.background = TONE.hover)}
         onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
       >
         <span
           className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[14px]"
-          style={{ color: "rgba(236,231,222,.66)" }}
+          // A step under a sealed row's cream (the hierarchy is real: un-run work reads quieter),
+          // but .66 was two steps — a page that is ALL queued rows rendered as a grey wall.
+          style={{ color: "rgba(236,231,222,.74)" }}
         >
           {r.stimulus}
         </span>
@@ -571,9 +577,12 @@ function SegmentRow({ s, index }: { s: RoomSegment; index: number }) {
           </span>
         </div>
         {/* Never invented: a segment stored before the field existed carries no frame and prints
-            none, rather than a plausible sentence nobody briefed the model with. */}
+            none, rather than a plausible sentence nobody briefed the model with.
+            Read-grade contrast, not `faint`: the frame IS this row's payload (the 2026-08-12
+            ruling kept it precisely because it is the brief the sim runs on) — setting the one
+            thing worth reading at .38 alpha buried it under its own label. */}
         {s.repaint ? (
-          <p className="mt-[3px] text-[12px] leading-[1.45]" style={{ color: TONE.faint }}>
+          <p className="mt-[3px] text-[12px] leading-[1.5]" style={{ color: "rgba(236,231,222,.52)" }}>
             {s.repaint}
           </p>
         ) : null}
