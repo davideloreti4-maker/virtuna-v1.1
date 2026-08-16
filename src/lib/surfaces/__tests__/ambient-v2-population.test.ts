@@ -118,6 +118,15 @@ describe("buildPopulationFrameData", () => {
     expect(PERSONAS.map((x) => x.quote)).toContain(p.voices.reasons[0]!.quote); // a REAL voice
   });
 
+  it("a voice's `who` is the curated human noun, never the archetype slug", () => {
+    // "tough_crowd" on a voice row is the machine's name for a person — the exact tell
+    // archetype-names.ts exists to translate (rail-kit Voice: "a human descriptor, never a caste").
+    const p = buildPopulationFrameData(base);
+    const whos = p.voices.reasons.map((r) => r.who);
+    expect(whos.every((w) => !w.includes("_"))).toBe(true);
+    expect(whos).toContain("Tough Crowd");
+  });
+
   it("voices humanize the pStop reason TOKENS for display (weak-hook → Weak hook)", () => {
     const p = buildPopulationFrameData({
       ...base,

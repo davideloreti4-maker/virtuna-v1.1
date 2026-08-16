@@ -21,6 +21,7 @@
  */
 
 import { getPersonaWeight, normalizeOverSurvivors } from "@/lib/engine/wave3/weighted-aggregator-client";
+import { archetypeDisplayName } from "@/lib/audience/archetype-names";
 import type { HeatmapPayload } from "@/lib/engine/types";
 import type {
   DrillAnswer,
@@ -454,7 +455,8 @@ export function attachVoices(
       const src = pool.length ? pool[(s.loss ? ci++ : si++) % pool.length]! : undefined;
       if (!src) return s;
       const voice: VoiceRow = {
-        who: src.archetype,
+        // The curated noun, never the slug (rail-kit Voice: "a human descriptor, never a caste").
+        who: archetypeDisplayName(src.archetype),
         tag: s.lever,
         quote: src.quote,
         echo: Math.max(1, Math.round(s.count * 0.78)),

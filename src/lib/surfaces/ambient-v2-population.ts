@@ -173,7 +173,10 @@ function codedReasons(agg: PopulationAggregate, personas: PopulationPersona[]): 
       label: humanizeReason(r.reason).label,
       count: r.count,
       quote: voice?.quote ?? "",
-      who: voice?.archetype ?? "a viewer",
+      // The curated noun, never the slug — "tough_crowd" on a voice row is the machine's name for
+      // a person, the exact tell archetype-names.ts exists to translate (and rail-kit's Voice
+      // contract already states: a human descriptor, never a caste).
+      who: voice ? archetypeDisplayName(voice.archetype) : "a viewer",
       // Polarity is the REASON's, from the semantic token map — never the exemplar's verdict.
       // It used to ride `voice.verdict`, which put "Strong hook" in the LEAKING (coral) half
       // whenever its illustrating persona happened to be a scroller: the receipts said a pull
