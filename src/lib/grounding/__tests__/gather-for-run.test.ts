@@ -562,6 +562,48 @@ describe("gatherCorpusForRun — adapt routing", () => {
   });
 });
 
+// ─── Query distillation — search runs short, the briefer keeps the whole ask ──
+
+/**
+ * The query candidate is the creator's chat message, and it is routinely 400+ chars. TikTok search
+ * takes it literally, so retrieval on the raw ask returns topically random videos — which caps how
+ * often a receipt can ever be honest, no matter how good the briefer is.
+ *
+ * The split these two tests pin: RETRIEVAL (and the live scrape) run on the distilled, search-shaped
+ * query; the adapt briefer keeps the RAW ask, because fit is judged against what the creator
+ * actually said and the distilled subject has had that context compressed out of it. Wiring both to
+ * one string is the easy mistake, and it silently costs whichever half it isn't tuned for.
+ */
+describe("gatherCorpusForRun — query distillation", () => {
+  const profile = { niche_primary: "food", writing_voice_description: "plain" };
+
+  it("retrieves on the distilled query when the candidate is long", async () => {
+    const longAsk = "give me hooks for ".padEnd(120, "x");
+    const distill = vi.fn(async () => "short subject");
+    const retrieve = vi.fn<Retrieve>(miss);
+
+    await gatherCorpusForRun(
+      { ...baseInput(), queryCandidates: [longAsk] },
+      { retrieve, gather: vi.fn<Gather>(), distill },
+    );
+
+    expect(distill).toHaveBeenCalledWith(longAsk);
+    expect(retrieve).toHaveBeenCalledWith(expect.objectContaining({ query: "short subject" }));
+  });
+
+  it("adapt still receives the RAW query as its fit ask", async () => {
+    const longAsk = "give me hooks for ".padEnd(120, "x");
+    const adapt = fakeAdapt();
+
+    await gatherCorpusForRun(
+      { ...baseInput(), queryCandidates: [longAsk], adapt: true, adaptProfile: profile },
+      { retrieve: hit, gather: vi.fn<Gather>(), adapt, distill: vi.fn(async () => "short subject") },
+    );
+
+    expect(adapt).toHaveBeenCalledWith(expect.objectContaining({ ask: longAsk }));
+  });
+});
+
 describe("gatherCorpusForRun — the shared warrant contract", () => {
   /**
    * THE regression guard. The user tapped "Find new outliers", paid for an Apify scrape, and got

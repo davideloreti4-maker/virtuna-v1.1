@@ -55,6 +55,7 @@ import { buildCorpusBlock, type GroundingSkill } from "@/lib/grounding/prompt";
 import { adaptCorpusBlock, type AdaptProfile } from "@/lib/grounding/adapt";
 import { fetchBeatTranscripts, getCorpusClient } from "@/lib/grounding/corpus";
 import { retrieveCachedExamples, resolveRetrieveConfig } from "@/lib/grounding/retrieve";
+import { distillSearchQuery } from "@/lib/grounding/distill-query";
 import { assessWarrant, type Warrant, type WarrantAxis } from "@/lib/grounding/warrant";
 import type { RetrievedExample } from "@/lib/grounding/types";
 import { buildVideoEvidence, evidenceMetric, type RunEvidence } from "@/lib/tools/evidence";
@@ -170,6 +171,8 @@ export interface GatherCorpusDeps {
   retrieve?: typeof retrieveCachedExamples;
   gather?: typeof gatherAndExtract;
   adapt?: typeof adaptCorpusBlock;
+  /** Query distiller (Task: grounded-attribution). Long chat asks → search-shaped queries. */
+  distill?: typeof distillSearchQuery;
   /** C3: per-beat transcript read for the script briefer (id → per-section sentences). */
   transcripts?: (ids: string[]) => Promise<Map<string, string[][]>>;
 }
@@ -320,8 +323,15 @@ export async function gatherCorpusForRun(
   };
   if (!input.enabled || !READABLE_PLATFORMS.has(input.platform)) return none;
 
-  const query = input.queryCandidates.find((q) => q && q.trim().length > 0)?.trim() ?? "";
-  if (!query) return none;
+  const rawQuery = input.queryCandidates.find((q) => q && q.trim().length > 0)?.trim() ?? "";
+  if (!rawQuery) return none;
+  const distill = deps.distill ?? distillSearchQuery;
+  // Retrieval + scrape run on the distilled query (search-shaped); the adapt briefer keeps the
+  // RAW ask — fit is judged against what the creator actually said, not the compressed subject.
+  const query = await distill(rawQuery);
+  if (query !== rawQuery) {
+    console.info(`[grounding] distilled query "${query}" from ${rawQuery.length}-char ask`);
+  }
 
   const retrieve = deps.retrieve ?? retrieveCachedExamples;
   const gather = deps.gather ?? gatherAndExtract;
@@ -377,7 +387,7 @@ export async function gatherCorpusForRun(
       // corpus the citation guard must still verify under the slice contract.
       const { corpus, used, adapted } = await adapt({
         skill: input.skill,
-        ask: query,
+        ask: rawQuery,
         niche: input.niche,
         platform: input.platform,
         profile: input.adaptProfile,
