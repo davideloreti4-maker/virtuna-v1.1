@@ -67,6 +67,7 @@ function makeRow(): BlueprintRow {
     source_video_id: "https://www.tiktok.com/@x/video/123",
     blueprint: emptyBlueprint(),
     script: [[{ index: 0, spoken: "a line", on_screen_text: "", shot: "waist-up" }]],
+    clip_uris: [],
   };
 }
 
