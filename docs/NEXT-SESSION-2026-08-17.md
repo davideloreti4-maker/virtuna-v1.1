@@ -44,8 +44,15 @@ OPEN, in the order I would take them — ASK first, this lane is at a clean stop
      / 4.04s (skill) before the first character reaches the creator. The transport
      streams fine; there is simply nothing to send yet. This is a FIX task, not a
      measuring task — and it is the largest known defect left on this surface.
-  2. F-11d + F-12 — the only things still needing a PAID run / a BROWSER. F-12 is layout,
-     so open the context at a NATIVE viewport; resizing a loaded page will not do.
+  2. F-11d + F-12b — the only things still needing a PAID run. Both need a billable
+     generator to actually run: cards to count, and the ProgressChecklist spine to exist.
+
+🔴 IF YOU WRITE A BROWSER PROBE, MAKE IT WAIT. The F-12 probe typed the instant the
+textarea appeared and measured a 641px void that matched the audit almost exactly —
+screenshot and all. It was the probe's own artefact: the textarea mounts BEFORE thread
+history hydrates, so the live turn was stranded at the top of an empty thread. A 3s
+settle collapses it to 75px from the FIRST sample. A probe that acts at machine speed
+measures a state the product only occupies while loading.
   3. Task #31 — the monologue leak's STREAM half. Owner-deferred, not forgotten.
   4. The sidebar ⋯ menu — a design call, not a CSS one.
 
@@ -110,7 +117,8 @@ corrected. In short, verified in code on 2026-08-16:
 | **F-11b** dead air before first char | 🔴 **STILL LIVE — and it is the whole row** | Measured free, N=4/shape: **prose median 5.28s**, **skill median 4.04s** (dispatching `generate_hooks` 4/4). The audit's ~5.5s is intact. `scripts/probe-f11-stream-timing.ts` |
 | **F-11c** text lands in one paint | 🟢 **false for prose** | 63–104 token frames per answer; median max inter-token gap **0.18s**, worst 0.88s. No silence for a burst to hide behind |
 | **F-11d** cards arrive all at once | ⚪ open | `onBlock` fires per block, so incremental is *possible* — but blocks need a billing seam. **Paid run.** Count off the SSE, not the DOM |
-| **F-12** the wait happens in a void | ⚪ open | a **layout** claim — needs a browser at a **native** viewport. Neither the suite nor a loop probe can see it |
+| **F-12a** the PROSE wait is in a void | 🟢 **false — measured in a browser** | Gap to composer **75px desktop / 64px mobile**, constant across all 44 samples, and the wait sits **668px / 469px from the viewport TOP** — near the bottom, anchored by the composer. The inverse of the row. `scripts/probe-f12-wait-layout.mjs` |
+| **F-12b** the SKILL-RUN wait is in a void | ⚪ open | the row's original sentence. Needs `ProgressChecklist`, which needs `stage` events, which need a **billable** generator. F-12a cannot clear it |
 
 **The trap, stated once so it stops recurring.** `7d4bc133`'s title is *"…F-3/F-7 receipts, F-1
 re-answer"*. Session 15 correctly warned nobody should read that title as closing **F-7** — and

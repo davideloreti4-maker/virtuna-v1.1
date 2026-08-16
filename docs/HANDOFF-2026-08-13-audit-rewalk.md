@@ -247,7 +247,29 @@ answer ≈ 4 screens. 33k characters is roughly an order of magnitude beyond tha
 | **F-11b** | dead air before the first character | 🔴 **STILL LIVE — measured 2026-08-16, and it IS the row** | `scripts/probe-f11-stream-timing.ts`, N=4 per shape, free (billing omitted). **Prose: median first token 5.28s** (4.64 · 4.71 · 5.28 · 5.47). **Skill: median 4.04s** (3.65 · 3.71 · 4.04 · 5.15), dispatching `generate_hooks` 4/4. The audit's ~5.5s is intact — a year of lane work never touched it. This is the whole of F-11 |
 | **F-11c** | text arrives in one paint | 🟢 **FALSE for prose** | 63–104 separate token frames per answer; **median max inter-token gap 0.18s**, worst observed 0.88s. There is no long silence for a burst to sit behind. Once text starts it flows |
 | F-11d | cards arrive all at once | ⚪ **genuinely unmeasured** | `onBlock` fires per block (`chat-agent-loop.ts:1331`/`:1380`/`:1411`), so incremental arrival is *possible* — but blocks never materialise without a billing seam, so the free probe cannot see it. **Needs a paid run.** Count blocks off the SSE, not the DOM |
-| F-12 | the wait happens in a void | ⚪ **unmeasured — needs a BROWSER, not a probe** | It is a layout claim (progress card pinned to viewport top, ~600px of dead space to the composer), so neither the suite nor a loop-level probe can see it. ⚠️ Open a context at the **native** viewport — resizing a loaded page does not give you the mobile UI. ⚠️ `main` is not the scroller on `/home`, so a fullPage screenshot stops at the fold. 🔎 **Adjacent, measured 2026-08-16:** `onDispatch` — the event that lets the progress capsule *label itself* — fires at `chat-agent-loop.ts:1552`, **after** the billing gate at `:1528`, though its interface comment (`:322`) says *"the moment the agent COMMITS … BEFORE `run`"*. "Before `run`" holds; "the moment it commits" does not — a credit-gate round-trip sits in between and the capsule is unlabelled for it. Small beside F-11b, same wait |
+| **F-12a** | the PROSE wait happens in a void | 🟢 **FALSE — measured in a real browser 2026-08-16** | `scripts/probe-f12-wait-layout.mjs`, both viewports opened at native size. Gap from the "Thinking…" indicator to the composer is **75px on desktop (1440×900) and 64px on mobile (iPhone 14)** — *constant across all 44 samples*, zero variance, for the whole 4–5s wait. And it sits **668px / 469px from the viewport top**, i.e. near the BOTTOM: the exact inverse of "pinned to the TOP". The live turn is anchored by the composer, which is what the row asked for |
+| F-12b | the SKILL-RUN wait happens in a void | ⚪ **still unmeasured** | The row's original sentence was about a skill run, which renders `ProgressChecklist` — a taller, stage-driven spine that only exists once `stage` SSE events arrive, i.e. once a **billable** generator runs. F-12a cannot clear it. A clean prose wait is not a clean skill wait |
+
+> 🔴 **F-12 nearly closed the WRONG way, and the near-miss is the more useful finding.**
+> The first run of that probe measured a **641px** gap — a near-perfect match for the row's "~600px
+> of empty space", from a real browser, with a screenshot that looked exactly like the complaint.
+> It was **an artefact of the probe**. It typed the instant `waitForSelector('textarea')` resolved,
+> and the textarea mounts **before the thread's history hydrates** — so the live turn was stranded
+> at the top of a nearly-empty thread. No creator does that: they open a thread, read it, then
+> type. Adding a 3s settle collapses the gap to 75px **from the very first sample (t=38ms)**.
+>
+> What caught it was not suspicion, it was **two screenshots disagreeing**: the early frame showed
+> an empty thread, the settled frame showed a full one. Same run, same thread — so something had
+> loaded in between, and it was not the layout moving.
+>
+> 🔑 **A probe that acts at machine speed measures a state the product only occupies while loading.**
+> `--settle 0` reproduces the artefact on purpose; keep it that way.
+
+🔎 **Adjacent, measured 2026-08-16 while timing F-11:** `onDispatch` — the event that lets the
+progress capsule *label itself* — fires at `chat-agent-loop.ts:1552`, **after** the billing gate at
+`:1528`, though its interface comment (`:322`) says *"the moment the agent COMMITS … BEFORE `run`"*.
+"Before `run`" holds; "the moment it commits" does not — a credit-gate round-trip sits in between
+and the capsule is unlabelled for it. Small beside F-11b, same wait.
 | **F-13** | composer guillotines content | 🔴 **STILL LIVE** | `composer-backdrop` computes `background-image: none`, `background-color: rgb(31,31,30)` — still a solid fill, still a hard cut. The one-line gradient was never applied |
 | **F-14** | structure + a11y | 🟠 **HALF FIXED** | unnamed icon buttons **0** (was 4) ✅ · **headings still 0** — zero `h1`–`h4` in the entire thread ❌ |
 | F-15 | accent dosage clean | 🟠 **check** | **2** accent elements (was 0). One is the brand mark (sanctioned). Identify the second against the LOCKED rule |
