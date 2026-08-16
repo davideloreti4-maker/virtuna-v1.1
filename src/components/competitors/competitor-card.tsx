@@ -82,10 +82,19 @@ export function CompetitorCard({ data }: CompetitorCardProps) {
               {data.display_name}
             </p>
           )}
-          <StaleIndicator lastScrapedAt={data.last_scraped_at} />
-          {data.scrape_status === "failed" && (
-            <span className="text-[10px] text-error font-medium">Scrape failed</span>
-          )}
+          {/* Two facts, one line — they used to be adjacent inline spans with nothing between
+              them, so they rendered as "Updated 5w agoScrape failed". A failed scrape also
+              carries the alarm on its own, so the stamp beside it goes quiet rather than
+              painting the same condition amber AND red. */}
+          <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+            <StaleIndicator
+              lastScrapedAt={data.last_scraped_at}
+              quiet={data.scrape_status === "failed"}
+            />
+            {data.scrape_status === "failed" && (
+              <span className="text-[10px] font-medium text-error">Scrape failed</span>
+            )}
+          </span>
         </div>
       </div>
 
