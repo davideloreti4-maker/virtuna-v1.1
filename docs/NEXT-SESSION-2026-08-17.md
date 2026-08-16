@@ -169,11 +169,52 @@ frame *before* the loop starts so the thinking dots can label themselves from wh
 **It never fires.** It is gated on `ONE_BRAIN` (`:492`), i.e. `NEXT_PUBLIC_ENGINE_ONE_BRAIN ===
 "true"` (`:216`) — the dark convention — and the variable is set nowhere, including `.env.local`.
 
-So the wait is not only long, it is *unlabelled*, and the labelling was written and switched off.
+✅ **AND IT WORKS — verified end-to-end in a browser, 2026-08-16.** Ran the app with
+`NEXT_PUBLIC_ENGINE_ONE_BRAIN=true` on a dev server and watched the wait on both viewports:
+
+```
+"Thinking…"  →  "Looks like a hooks run…"        desktop 1440×900 AND iPhone 14
+```
+
+Screenshot confirms it renders anchored above the composer where the default label sat. So this is
+not a "should work" — the dark path is live-correct and the only thing between it and creators is
+the flag. `guessSkill` was checked directly too: `"give me 5 hooks…"` → `hooks`,
+`"write me a script…"` → `script`, `"why do most morning routines fail"` → `null` (correctly no
+guess on a strategy question).
+
+⚠️ **The B3 label is NOT instant** — the indicator mounts as the default `"Thinking…"` and is
+relabelled when the `predispatch` frame lands. A probe that samples for only ~600ms reads
+`"Thinking…"` and concludes the feature is off. That cost three runs here. Sample the full wait.
+
+So the wait is not only long, it is *unlabelled*, and the labelling was written, switched off,
+**and independently confirmed working**.
 That does not shorten the 4–5s; it changes what the creator stares at during it, which is what every
 benchmark in the original audit was actually doing differently. ⚠️ `ONE_BRAIN` also gates three
-other things (`:360`, `:363`, `:610` — anchor, cards, `cardsSlot`), so turning it on is **not** a
-one-line latency patch. Read Stage A/B (#461) before flipping it.
+other things (`:360`, `:363`, `:610` — anchor, cards, `cardsSlot`) plus the client half
+(`composer.tsx:1347`/`:1649` via `one-brain-flag.ts`), so turning it on is **not** a one-line
+latency patch.
+
+🔴 **I READ STAGE A/B (#461) SO THE NEXT SESSION DOES NOT HAVE TO — and it changes the picture.**
+`docs/HANDOFF-2026-08-10-stage-b-complete.md`. Stage B is not a half-built risk. It is **complete,
+tested, and live-A/B'd**: tsc clean, **5,799 tests / 0 failed**, prod build clean. Its three parts:
+
+| | what it does | measured |
+|---|---|---|
+| **B1** | a card CTA enters the agent loop carrying the clicked line as an anchor | a script run anchored on a clicked line opened from that line verbatim |
+| **B2** | a rewrite chip carries the pack of cards it points at | 🔴 **"Rewrite these hooks tighter" went 7% → 75% subject retention.** Control returned five strangers — the measured defect reproducing exactly. Packed arm sharpened all five real hooks. *"at no latency cost"* |
+| **B3** | the `predispatch` frame labels the dead zone | the label this session verified |
+
+**The only stated reason it never shipped is §Next-steps item 1: *"Prod flip (deployment currently
+OFF — owner switching Vercel accounts; touch nothing)."*** The flag is `NEXT_PUBLIC_`, so it needs
+a **redeploy** to reach the client half — and the deploy never came back. Six days later it is
+[[vercel-git-disconnected]] *owner-confirmed off*, so this has been waiting on an event that is not
+scheduled to happen.
+
+⚠️ Which means the real question for the owner is **not** "is Stage B safe to flip" — it was signed
+off as ready on 2026-08-10 — but *"the deploy is off indefinitely; does that change what we do with
+a finished, measured 7%→75% quality win?"* That is a product call, not an engineering one.
+One honest caveat from its own handoff: 1 of B2's 5 rewrites came back essentially verbatim —
+a craft issue, not a wiring one.
 
 🔎 And the capsule cannot label itself even when the frame does fire: `onDispatch` is at
 `chat-agent-loop.ts:1552`, **after** the billing gate at `:1528`, despite its interface comment
