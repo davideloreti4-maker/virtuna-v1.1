@@ -61,16 +61,48 @@ describe("distillSearchQuery", () => {
     warn.mockRestore();
   });
 
-  it("falls back on empty, over-long, multi-line, or non-string results", async () => {
-    for (const bad of [
-      '{"query": ""}',
-      `{"query": "${"y".repeat(61)}"}`,
-      '{"query": "two\\nlines"}',
-      '{"query": 42}',
-    ]) {
+  /**
+   * The VALIDATION rejects, which are a separate silence from the `catch` above: these return the
+   * raw ask without throwing anything, so a model that fails this way on every call is
+   * indistinguishable from one that is working perfectly on already-short asks. Each reject now
+   * names WHICH rule it broke — "empty" and "61 chars > 60" send a reader to different fixes.
+   */
+  it("falls back on empty, over-long, multi-line, or non-string results — and says which", async () => {
+    const cases: Array<[string, string]> = [
+      ['{"query": ""}', "empty"],
+      [`{"query": "${"y".repeat(61)}"}`, "61 chars > 60"],
+      ['{"query": "two\\nlines"}', "multi-line"],
+      ['{"query": 42}', "not a string (number)"],
+      ['{"nope": 1}', "no query field"],
+    ];
+    for (const [bad, reason] of cases) {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
       const complete = vi.fn().mockResolvedValue(bad);
       expect(await distillSearchQuery(LONG_ASK, { complete })).toBe(LONG_ASK);
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining("distill rejected"));
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining(reason));
+      warn.mockRestore();
     }
+  });
+
+  /**
+   * The log names the reject; it does not paste the evidence. What gets rejected here is raw model
+   * output, which on a bad day is a wall of reasoning text — a warn that echoes it whole buries the
+   * signal it exists to provide, on the hot path of every long ask.
+   */
+  it("never dumps the model's full output into the log — the preview is bounded", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const huge = "z".repeat(500);
+    const complete = vi.fn().mockResolvedValue(`{"query": "${huge}"}`);
+
+    expect(await distillSearchQuery(LONG_ASK, { complete })).toBe(LONG_ASK);
+
+    const logged = warn.mock.calls[0]![0] as string;
+    expect(logged).not.toContain(huge);
+    expect(logged).toContain("…"); // truncated, and visibly so
+    // Bounded, not merely shorter: a full dump of this fixture would run ~570 chars.
+    expect(logged.length).toBeLessThan(160);
+    warn.mockRestore();
   });
 
   it("falls back when the LLM never resolves (timeout), and says which failure it was", async () => {

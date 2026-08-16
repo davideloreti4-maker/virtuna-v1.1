@@ -23,6 +23,32 @@ const SYSTEM =
 
 export type DistillComplete = (system: string, user: string) => Promise<string>;
 
+/** Longest rejected value we will echo into a log line. */
+const PREVIEW_LEN = 60;
+
+/**
+ * A bounded, single-line preview of a rejected value. Never the full model output: this runs on
+ * whatever the LLM returned, which on a bad day is a wall of reasoning text, and a log that pastes
+ * it whole buries the signal it exists to provide.
+ */
+function preview(value: unknown): string {
+  const asText = typeof value === "string" ? value : (JSON.stringify(value) ?? String(value));
+  const flat = asText.replace(/\s+/g, " ").trim();
+  return flat.length > PREVIEW_LEN ? `${flat.slice(0, PREVIEW_LEN - 1)}…` : flat;
+}
+
+/**
+ * Announce a VALIDATION reject. Same reasoning as the `catch` below: a distiller whose output is
+ * rejected on every call returns the raw ask every time, which is byte-identical to the
+ * already-short-enough path — so without this line, 100% broken and 100% working read the same in
+ * the logs, and the measurement built on top reports a confident zero.
+ */
+function warnRejected(reason: string, value: unknown): void {
+  console.warn(
+    `[grounding] distill rejected (${reason}: "${preview(value)}") — falling back to the raw ask`,
+  );
+}
+
 async function defaultComplete(system: string, user: string): Promise<string> {
   const ai = getQwenClient();
   const completion = await ai.chat.completions.create(
@@ -66,9 +92,22 @@ export async function distillSearchQuery(
       typeof parsed === "object" && parsed !== null && "query" in parsed
         ? (parsed as { query: unknown }).query
         : null;
-    if (typeof q !== "string") return raw;
+    if (typeof q !== "string") {
+      warnRejected(q === null ? "no query field" : `not a string (${typeof q})`, q);
+      return raw;
+    }
     const trimmed = q.trim();
-    if (!trimmed || trimmed.length > MAX_DISTILLED_LEN || /[\r\n]/.test(trimmed)) return raw;
+    if (!trimmed || trimmed.length > MAX_DISTILLED_LEN || /[\r\n]/.test(trimmed)) {
+      warnRejected(
+        !trimmed
+          ? "empty"
+          : trimmed.length > MAX_DISTILLED_LEN
+            ? `${trimmed.length} chars > ${MAX_DISTILLED_LEN}`
+            : "multi-line",
+        trimmed,
+      );
+      return raw;
+    }
     return trimmed;
   } catch (err) {
     // Say so. A silent fallback here is indistinguishable in the logs from an ask that was already
