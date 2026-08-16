@@ -127,8 +127,9 @@ export const AMBIENT_PANEL_HEIGHT = 800;
 
 /**
  * How a v2 surface is mounted.
- *  - `rail` (default) — the ≥xl right column: fills top-to-bottom, capped at 440, its own left
- *    hairline divides it from the thread, paints its own #181817 ground.
+ *  - `rail` (default) — the ≥xl right column: fills top-to-bottom, capped at 560 (the rail's
+ *    resize ceiling), its own left hairline divides it from the thread, paints its own #181817
+ *    ground.
  *  - `sheet` — the <xl mobile header sheet: full-bleed inside a host that already owns the ground,
  *    the rounding and the height cap, so the surface drops its width cap, hairline and background
  *    and simply flexes to the space the sheet gives it. Tighter gutters for a ~390px viewport.
@@ -654,7 +655,9 @@ export function AmbientOverview({
           ? // Sheet: the host bar owns the ground, the rounding and the height cap; the surface just
             // flexes into it (min-h-0 so its scroll region can shrink below content height).
             "flex min-h-0 w-full flex-1 flex-col"
-          : "flex w-full max-w-[440px] flex-col") + ` ${className ?? ""}`
+          : // 560 tracks the rail's resize ceiling (home-page-layout RAIL_MAX) — the aside is the
+            // real constraint at every width below it; a 440 cap left dead margin in a widened rail.
+            "flex w-full max-w-[560px] flex-col") + ` ${className ?? ""}`
       }
       style={{
         // Connected rail — fills its column top-to-bottom (part of the thread page, NOT a floating
