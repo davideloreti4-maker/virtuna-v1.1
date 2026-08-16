@@ -138,7 +138,7 @@ are retrieved videos.
 
 ## Measured (2026-08-16)
 
-- Receipt rate: 17/18 (94.4%) — gate ≥70%: **PASS**
+- Receipt rate: 17/18 (94.4%) — gate ≥70%: **PASS** (cache arm — see Cost)
 - Strip reasons across runs: `model-zero` ×1 (ask 2, card 2); no other reasons observed —
   17 of 18 attribution decisions kept a receipt, matching the wire-level card count exactly
   (no shipped-vs-decided divergence this run).
