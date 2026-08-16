@@ -591,6 +591,124 @@ describe("gatherCorpusForRun — query distillation", () => {
     expect(retrieve).toHaveBeenCalledWith(expect.objectContaining({ query: "short subject" }));
   });
 
+  /**
+   * The scrape half of the same contract. Retrieval and Apify read the SAME `query` binding today,
+   * so this looks redundant — but the live-first branch is a separate call site (it returns rather
+   * than assigning), and it is the EXPENSIVE one. A refactor that wired the raw ask back into
+   * `gather` would spend real Apify money searching TikTok for a 400-char chat message.
+   */
+  it("scrapes on the distilled query too, not just retrieves on it", async () => {
+    const longAsk = "give me hooks for ".padEnd(120, "x");
+    const gather = vi.fn<Gather>(async () => ({
+      examples: [scrapedExample("live")],
+      stats: { scraped: 30, selected: 6, withFollowers: 6, gated: 6, usable: 1 },
+    }));
+
+    await gatherCorpusForRun(
+      { ...baseInput(), queryCandidates: [longAsk], allowScrape: true },
+      { retrieve: hit, gather, distill: vi.fn(async () => "short subject") },
+    );
+
+    expect(gather).toHaveBeenCalledWith(expect.objectContaining({ query: "short subject" }));
+  });
+
+  /**
+   * The log line is an INTERFACE, not a debug aid: the measurement probe greps for it to count how
+   * often distillation actually fired. A silent format drift would not fail a single test while
+   * turning the next measurement run into a confident zero.
+   */
+  it("logs the distillation in the exact format the measurement probe greps for", async () => {
+    const info = vi.spyOn(console, "info").mockImplementation(() => {});
+    const longAsk = "give me hooks for ".padEnd(120, "x");
+
+    await gatherCorpusForRun(
+      { ...baseInput(), queryCandidates: [longAsk] },
+      { retrieve: hit, gather: vi.fn<Gather>(), distill: vi.fn(async () => "short subject") },
+    );
+
+    expect(info).toHaveBeenCalledWith('[grounding] distilled query "short subject" from 120-char ask');
+    info.mockRestore();
+  });
+
+  /** A short ask never reaches the LLM, so there is no distillation to announce. */
+  it("logs nothing when the query came back unchanged", async () => {
+    const info = vi.spyOn(console, "info").mockImplementation(() => {});
+
+    await gatherCorpusForRun(baseInput(), {
+      retrieve: hit,
+      gather: vi.fn<Gather>(),
+      distill: vi.fn(async (q: string) => q),
+    });
+
+    expect(info).not.toHaveBeenCalledWith(expect.stringContaining("distilled query"));
+    info.mockRestore();
+  });
+
+  /**
+   * THE STAGE ORDERING. Distilling a long ask is an LLM call that can run to its 10s timeout, and
+   * it sits in front of retrieval — so if the rail lights only afterwards, the creator watches ten
+   * seconds of nothing on a module whose header promises stages "at the REAL boundary".
+   *
+   * The existing stage test asserts the final [active, done] array, which stays green no matter
+   * which side of the await the emit sits on. Only the ORDER catches a regression here.
+   */
+  it("lights the stage BEFORE the distiller runs, not after it", async () => {
+    const calls: string[] = [];
+    const longAsk = "give me hooks for ".padEnd(120, "x");
+
+    await gatherCorpusForRun(
+      {
+        ...baseInput(),
+        queryCandidates: [longAsk],
+        onStage: (_n, s) => calls.push(`stage:${s}`),
+      },
+      {
+        retrieve: hit,
+        gather: vi.fn<Gather>(),
+        distill: vi.fn(async () => {
+          calls.push("distill");
+          return "short subject";
+        }),
+      },
+    );
+
+    expect(calls).toEqual(["stage:active", "distill", "stage:done"]);
+  });
+
+  /**
+   * The distiller runs BEFORE the try that owns the "done" emit, so a throw escaping it would leave
+   * the rail lit forever on a run that never completes. It degrades to the raw ask instead.
+   */
+  it("survives a distiller that throws, and still closes the stage", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const longAsk = "give me hooks for ".padEnd(120, "x");
+    const retrieve = vi.fn<Retrieve>(hit);
+    const stages: Array<[string, string]> = [];
+
+    const result = await gatherCorpusForRun(
+      {
+        ...baseInput(),
+        queryCandidates: [longAsk],
+        onStage: (n, s) => stages.push([n, s]),
+      },
+      {
+        retrieve,
+        gather: vi.fn<Gather>(),
+        distill: vi.fn(async () => {
+          throw new Error("distiller exploded");
+        }),
+      },
+    );
+
+    expect(retrieve).toHaveBeenCalledWith(expect.objectContaining({ query: longAsk })); // raw ask
+    expect(result.grounded).toBe(true);
+    expect(stages).toEqual([
+      [GROUNDING_STAGE_NAME, "active"],
+      [GROUNDING_STAGE_NAME, "done"], // the rail closed — it is not stuck spinning
+    ]);
+    warn.mockRestore();
+  });
+
   it("adapt still receives the RAW query as its fit ask", async () => {
     const longAsk = "give me hooks for ".padEnd(120, "x");
     const adapt = fakeAdapt();

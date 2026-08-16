@@ -40,14 +40,25 @@ describe("distillSearchQuery", () => {
     expect(await distillSearchQuery(LONG_ASK, { complete })).toBe(max);
   });
 
-  it("falls back to the raw query on malformed JSON", async () => {
+  /**
+   * Every fallback that runs through the `catch` must SAY so. Without the warn, a distiller failing
+   * on 100% of calls leaves exactly the log signature of a run whose asks were all short enough to
+   * skip the LLM — nothing, either way. The three tests below assert the noise, not just the value.
+   */
+  it("falls back to the raw query on malformed JSON, and says so", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const complete = vi.fn().mockResolvedValue("not json at all");
     expect(await distillSearchQuery(LONG_ASK, { complete })).toBe(LONG_ASK);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("distill error"));
+    warn.mockRestore();
   });
 
-  it("falls back on LLM throw", async () => {
+  it("falls back on LLM throw, and names the error", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const complete = vi.fn().mockRejectedValue(new Error("boom"));
     expect(await distillSearchQuery(LONG_ASK, { complete })).toBe(LONG_ASK);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("boom"));
+    warn.mockRestore();
   });
 
   it("falls back on empty, over-long, multi-line, or non-string results", async () => {
@@ -62,8 +73,13 @@ describe("distillSearchQuery", () => {
     }
   });
 
-  it("falls back when the LLM never resolves (timeout)", async () => {
+  it("falls back when the LLM never resolves (timeout), and says which failure it was", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const complete = vi.fn().mockImplementation(() => new Promise<string>(() => {}));
     expect(await distillSearchQuery(LONG_ASK, { complete, timeoutMs: 20 })).toBe(LONG_ASK);
+    // The timeout rejects INTO the same catch, so it is logged like any other failure — and named,
+    // which is what separates "the model is slow" from "the model is broken" in a log sweep.
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("distill timeout"));
+    warn.mockRestore();
   });
 });

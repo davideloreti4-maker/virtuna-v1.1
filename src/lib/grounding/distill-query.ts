@@ -70,7 +70,14 @@ export async function distillSearchQuery(
     const trimmed = q.trim();
     if (!trimmed || trimmed.length > MAX_DISTILLED_LEN || /[\r\n]/.test(trimmed)) return raw;
     return trimmed;
-  } catch {
+  } catch (err) {
+    // Say so. A silent fallback here is indistinguishable in the logs from an ask that was already
+    // short enough to skip the LLM — so a distiller failing 100% of the time (bad key, dead model,
+    // every call timing out) reads exactly like a feature working perfectly, and the measurement
+    // that depends on it reports a confident zero.
+    console.warn(
+      `[grounding] distill error (falling back to the raw ask): ${err instanceof Error ? err.message : String(err)}`,
+    );
     return raw;
   }
 }
