@@ -454,6 +454,12 @@ function StageRow({
   // When this step carries EVIDENCE, the rail's own headline is the sub-line. Rendering both put
   // "Drafting angles against your audience" directly above "Drafting against 3 proven videos" —
   // the same sentence twice, the second one the only one carrying proof.
+  //
+  // ⚠️ That literal collision is GONE since 2026-08-15: the topical headline is now "Reading N real
+  // videos matched to this subject" (gather-for-run.ts). Do not read the two strings, see no echo,
+  // and restore the sub-line — the suppression stands on its own. Stacking a rotating filler line
+  // above the one line carrying real retrieved rows buries the evidence under decoration, which is
+  // what made the echo intolerable rather than merely untidy.
   const sub =
     isLeadActive && !evidence ? stage.detail ?? rotation[subIdx % rotation.length] ?? null : null;
   const isDone = status === 'done';

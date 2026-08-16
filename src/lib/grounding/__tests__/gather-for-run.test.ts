@@ -643,7 +643,11 @@ describe("gatherCorpusForRun — evidence for the loading spine", () => {
 
     expect(onEvidence).toHaveBeenCalledTimes(1);
     const evidence = onEvidence.mock.calls[0]![0];
-    expect(evidence.headline).toBe("Drafting against 2 proven videos");
+    // CHANGED 2026-08-15, deliberately and in place: was "Drafting against 2 proven videos".
+    // Both halves of that string were unearned on a TOPICAL batch — see the test below for the
+    // measurement. The claim this test exists to make (the rail describes the rows with the same
+    // warrant the cards get) is unchanged and still pinned.
+    expect(evidence.headline).toBe("Reading 2 real videos matched to this subject");
     expect(evidence.items).toHaveLength(2);
     expect(evidence.items[0]).toMatchObject({
       kind: "video",
@@ -664,6 +668,47 @@ describe("gatherCorpusForRun — evidence for the loading spine", () => {
     expect(onEvidence.mock.calls[0]![0].headline).toBe(
       "Reading shape from 2 proven videos",
     );
+  });
+
+  /**
+   * A TOPICAL batch may not be called "proven", and may not be described with an output verb.
+   * Both defects lived in one string — "Drafting against N proven videos" — on the path ~95% of
+   * real asks take.
+   *
+   * 1. "proven" — a topical row earns its place by COSINE, at a floor of 0.5. Measured
+   *    2026-08-15 (`scripts/probe-warrant-floor.ts`, 346 queries) that floor admits
+   *    `asdfghjkl qwerty zxcvbn` (topSim 0.521), `the` (0.522) and `yes` (0.547); the corpus's
+   *    own median similarity is ~0.45 (retrieve.ts). So the batch cannot carry a proof claim
+   *    ABOUT THE SUBJECT the way a structural batch (human-curated) or a provenance batch
+   *    (search-by-subject + outlier gate) can. The chat surface already knew this and says
+   *    "N real videos on this", reserving "proven" for structural
+   *    (corpus-references-block.tsx:87). Two surfaces describing ONE warrant with two different
+   *    strengths of claim is the defect, and the weaker wording is the correct one.
+   *
+   * 2. "Drafting against" — an OUTPUT verb, on a callback that fires before a single card exists.
+   *    That is exactly the F-4 defect fixed for the structural branch on 2026-08-13
+   *    ("Borrowing" → "Reading"); the topical branch was left behind, so the more common path
+   *    kept the bug that the rarer one had fixed. The module header states the rule: every verb
+   *    here must describe RETRIEVAL, never the output.
+   *
+   * NOTE: raising the floor was measured and REJECTED as the fix (owner ruling 2026-08-15) —
+   * `ok` (0.553) outscores the corpus's own `education-science` (0.541), so no floor separates
+   * contentless input from the corpus's own vocabulary. The claim gets fixed, not the threshold.
+   */
+  it("never calls a TOPICAL batch proven, and never uses an output verb (measured 2026-08-15)", async () => {
+    const onEvidence = vi.fn();
+    await gatherCorpusForRun(
+      { ...baseInput(), skill: "ideas", onEvidence },
+      { retrieve: hit, gather: vi.fn<Gather>() },
+    );
+    const headline: string = onEvidence.mock.calls[0]![0].headline;
+
+    // The unearned proof claim.
+    expect(headline).not.toMatch(/proven/i);
+    // Output verbs — the cards do not exist when this fires (F-4).
+    expect(headline).not.toMatch(/draft|borrow|writ/i);
+    // The creative-input count still stays (memory: no PIPELINE counts, input counts keep).
+    expect(headline).toContain("2 real videos");
   });
 
   /**

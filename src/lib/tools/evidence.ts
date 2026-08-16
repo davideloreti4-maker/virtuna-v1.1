@@ -14,8 +14,11 @@
  * HONESTY (copy-floor §2 — the same floor the stage copy answers to):
  *  - An item is only ever built from data the engine HAS. Nothing here interpolates, estimates or
  *    predicts; there is no placeholder item and no "N sources" count without N real sources.
- *  - `headline` states what the artifacts ARE ("Drafting against 3 proven videos"), never what the
- *    result will be. It is an input claim, so it is still true if the run then fails.
+ *  - `headline` states what the artifacts ARE ("Reading 3 real videos matched to this subject"),
+ *    never what the result will be. It is an input claim, so it is still true if the run then fails.
+ *    ⚠️ This example used to read "Drafting against 3 proven videos" — which breaks the very rule
+ *    the line states ("drafting" is the result) and, on a topical batch, claims a proof the cosine
+ *    floor does not support. Fixed 2026-08-15; see evidenceHeadline in gather-for-run.ts.
  *  - A metric is a MEASURED number, pre-formatted by the emitter from a real column. `multiplier`
  *    only ships when it cleared the outlier bar upstream (build-proof.ts provenMultiplier) — the
  *    loading rail must never print a boast the receipt card would refuse to.
