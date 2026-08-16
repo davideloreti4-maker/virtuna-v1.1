@@ -68,6 +68,7 @@ const SAMPLE_ROW: BlueprintRow = {
     ],
   },
   script: [[{ index: 0, spoken: "your line", on_screen_text: "STOP", shot: "waist-up" }]],
+  clip_uris: ["sample-id/0.mp4"],
 };
 
 describe("blueprint-repo", () => {
@@ -101,6 +102,13 @@ describe("blueprint-repo", () => {
       };
       await insertBlueprint(c.client, scriptless);
       expect(c.insert).toHaveBeenCalledWith(scriptless);
+    });
+
+    it("carries clip_uris to the insert — the reaper's worklist starts here", async () => {
+      const c = clientReturning({ data: null, error: null });
+      await insertBlueprint(c.client, SAMPLE_ROW);
+      const [row] = c.insert.mock.calls[0] as [Record<string, unknown>];
+      expect(row.clip_uris).toEqual(["sample-id/0.mp4"]);
     });
   });
 

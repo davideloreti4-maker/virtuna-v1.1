@@ -23,6 +23,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { createLogger } from "@/lib/logger";
 import { getBlueprint } from "@/lib/remix/blueprint-repo";
 import { signAnalysisFrames, signScrubFrames } from "@/lib/engine/filmstrip/storage";
+import { signClips } from "@/lib/remix/clip-storage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -80,10 +81,19 @@ export async function GET(
   // `scrubFrames` is the SOURCE VIEWER's strip — an even time grid under `<id>/scrub/`, a separate
   // keyspace from the beat frames above (see `SCRUB_PREFIX`). Signed in parallel because they are
   // two independent listings of the same bucket and the sheet needs both before it can render.
+  //
+  // `clips` (phase 4) rides the same contract: signed fresh on every read from the paths the row
+  // carries, {} on any fault — a missing clip drops the stage back to its still. `?? []` because
+  // the jsonb column predates its readers: a row cached from an older SELECT has no field at all.
   let frames: Record<number, string> = {};
   let scrubFrames: Record<number, string> = {};
+  let clips: Record<number, string> = {};
   try {
-    [frames, scrubFrames] = await Promise.all([signAnalysisFrames(id), signScrubFrames(id)]);
+    [frames, scrubFrames, clips] = await Promise.all([
+      signAnalysisFrames(id),
+      signScrubFrames(id),
+      signClips(row.clip_uris ?? []),
+    ]);
   } catch (err) {
     log.warn("frames could not be signed — serving the text sheet", {
       blueprintId: id,
@@ -105,6 +115,7 @@ export async function GET(
     blueprint: row.blueprint,
     frames,
     scrubFrames,
+    clips,
     sourceUrl: row.source_video_id ?? null,
   });
 }

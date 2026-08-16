@@ -7,22 +7,26 @@
 /**
  * Format large numbers into compact display strings.
  *
+ * Mirrors `account-metrics.ts`'s formatCount, which is the other copy of this function. That
+ * one already carries a pinned regression for the billions case; this one — the copy eight
+ * surfaces import — did not, so @mrbeast's 1.3B likes printed as "1300.0M" on /competitors.
+ *
  * @example
- * formatCount(null)       // "--"
- * formatCount(892)        // "892"
- * formatCount(45300)      // "45.3K"
- * formatCount(1200000)    // "1.2M"
+ * formatCount(null)          // "--"
+ * formatCount(892)           // "892"
+ * formatCount(45300)         // "45.3K"
+ * formatCount(1200000)       // "1.2M"
+ * formatCount(1300000000)    // "1.3B"
+ * formatCount(5000000)       // "5M"  — never "5.0M": a .0 asserts a precision that isn't there
  */
 export function formatCount(count: number | null): string {
   if (count === null || count === undefined) return "--";
 
-  if (count >= 1_000_000) {
-    return `${(count / 1_000_000).toFixed(1)}M`;
-  }
+  const trim = (n: number) => String(Number(n.toFixed(1)));
 
-  if (count >= 1_000) {
-    return `${(count / 1_000).toFixed(1)}K`;
-  }
+  if (count >= 1_000_000_000) return `${trim(count / 1_000_000_000)}B`;
+  if (count >= 1_000_000) return `${trim(count / 1_000_000)}M`;
+  if (count >= 1_000) return `${trim(count / 1_000)}K`;
 
   return count.toLocaleString();
 }
@@ -260,10 +264,16 @@ export function formatRelativeTime(isoDate: string | null): string {
 }
 
 /**
- * Returns true when data is considered stale (never scraped or older than 48 hours).
+ * Returns true when data is old enough to be worth acting on (or was never scraped).
+ *
+ * 14 days, not 48 hours (Apple-grammar pass, 2026-08-16). Competitor scrapes are on-demand,
+ * so at 48h every tracked competitor wore the amber warning within two days of being added —
+ * measured on /competitors, all three cards amber at once, which makes the warning the
+ * RESTING state and stops it ranking anything. Same ruling and same threshold the /audience
+ * sync stamp got in the previous pass.
  */
 export function isStale(isoDate: string | null): boolean {
   if (isoDate === null) return true;
   const elapsed = Date.now() - new Date(isoDate).getTime();
-  return elapsed > 48 * 60 * 60 * 1000;
+  return elapsed > 14 * 24 * 60 * 60 * 1000;
 }

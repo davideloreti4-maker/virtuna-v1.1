@@ -21,6 +21,7 @@ vi.mock("@/lib/engine/filmstrip/storage", () => ({
   signAnalysisFrames: vi.fn(),
   signScrubFrames: vi.fn(),
 }));
+vi.mock("@/lib/remix/clip-storage", () => ({ signClips: vi.fn() }));
 vi.mock("@sentry/nextjs", () => ({ captureException: vi.fn() }));
 vi.mock("@/lib/logger", () => ({
   createLogger: vi.fn(() => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() })),
@@ -30,6 +31,7 @@ import * as Sentry from "@sentry/nextjs";
 import { createClient } from "@/lib/supabase/server";
 import { getBlueprint } from "@/lib/remix/blueprint-repo";
 import { signAnalysisFrames, signScrubFrames } from "@/lib/engine/filmstrip/storage";
+import { signClips } from "@/lib/remix/clip-storage";
 import { GET } from "../route";
 import type { BlueprintRow } from "@/lib/remix/blueprint-repo";
 import { emptyBlueprint } from "@/lib/engine/remix/blueprint";
@@ -39,6 +41,7 @@ const mockGetBlueprint = getBlueprint as ReturnType<typeof vi.fn>;
 const mockCapture = Sentry.captureException as unknown as ReturnType<typeof vi.fn>;
 const mockSignFrames = signAnalysisFrames as ReturnType<typeof vi.fn>;
 const mockSignScrub = signScrubFrames as ReturnType<typeof vi.fn>;
+const mockSignClips = signClips as ReturnType<typeof vi.fn>;
 
 const USER = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa";
 const ID = "abc123def456";
@@ -67,6 +70,7 @@ function makeRow(): BlueprintRow {
     source_video_id: "https://www.tiktok.com/@x/video/123",
     blueprint: emptyBlueprint(),
     script: [[{ index: 0, spoken: "a line", on_screen_text: "", shot: "waist-up" }]],
+    clip_uris: [],
   };
 }
 
@@ -76,6 +80,7 @@ beforeEach(() => {
   // renderer must keep handling forever.
   mockSignFrames.mockResolvedValue({});
   mockSignScrub.mockResolvedValue({});
+  mockSignClips.mockResolvedValue({});
 });
 
 describe("GET /api/remix/blueprint/[id]", () => {
@@ -115,13 +120,16 @@ describe("GET /api/remix/blueprint/[id]", () => {
       blueprint: row.blueprint,
       frames: {},
       scrubFrames: {},
+      clips: {},
       sourceUrl: row.source_video_id,
     });
     // The point of this assertion is `user_id` / `thread_id` NEVER crossing the wire. Phase 3
     // widened the contract by exactly one key and the source viewer by exactly two more; it must
     // stay an exact set, not a subset check.
+    // Phase 4 adds `clips` — the beat-clip signed URLs the stage plays.
     expect(Object.keys(body).sort()).toEqual([
       "blueprint",
+      "clips",
       "frames",
       "script",
       "scrubFrames",
@@ -254,5 +262,40 @@ describe("GET /api/remix/blueprint/[id]", () => {
     const res = await call();
     expect(res.status).toBe(500);
     expect(mockCapture).toHaveBeenCalledTimes(1);
+  });
+
+  it("serves signed clips for the row's clip_uris, keyed by beat index", async () => {
+    signedIn();
+    const row = makeRow();
+    row.clip_uris = [`${ID}/0.mp4`, `${ID}/3.mp4`];
+    mockGetBlueprint.mockResolvedValue(row);
+    mockSignClips.mockResolvedValue({ 0: "https://signed/0.mp4", 3: "https://signed/3.mp4" });
+
+    const res = await call();
+    const body = await res.json();
+
+    expect(mockSignClips).toHaveBeenCalledWith(row.clip_uris);
+    expect(body.clips).toEqual({ "0": "https://signed/0.mp4", "3": "https://signed/3.mp4" });
+  });
+
+  it("a pre-lane row (no clip_uris) gets clips: {} — absent-safe", async () => {
+    signedIn();
+    const row = makeRow();
+    delete (row as Partial<typeof row>).clip_uris; // a row read before the column joined the SELECT
+    mockGetBlueprint.mockResolvedValue(row);
+
+    const body = await (await call()).json();
+    expect(body.clips).toEqual({});
+    expect(mockSignClips).toHaveBeenCalledWith([]);
+  });
+
+  it("a clip signing fault degrades to {} without touching the 200", async () => {
+    signedIn();
+    mockGetBlueprint.mockResolvedValue({ ...makeRow(), clip_uris: [`${ID}/0.mp4`] });
+    mockSignClips.mockRejectedValue(new Error("storage down"));
+
+    const res = await call();
+    expect(res.status).toBe(200);
+    expect((await res.json()).clips).toEqual({});
   });
 });

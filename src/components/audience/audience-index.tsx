@@ -94,11 +94,18 @@ export function timeAgo(iso: string | null): string | null {
   return `${days}d ago`;
 }
 
-/** True once a sync is older than a day — the row earns a quiet nudge. */
+/**
+ * True once a sync is old enough to genuinely want action (Apple-grammar pass, 2026-08-16).
+ * The threshold was 24 HOURS, which made warning-amber the RESTING state — measured live,
+ * three of four account cards wore it at once, for accounts synced 2–11 days ago. A warning
+ * worn every day stops being a warning. Fourteen days marks the sync as actually old; under
+ * that, "Synced Nd ago" is quiet metadata like every other stamp in the product.
+ */
+const STALE_AFTER_DAYS = 14;
 function isStale(iso: string | null): boolean {
   if (!iso) return false;
   const ms = Date.now() - new Date(iso).getTime();
-  return Number.isFinite(ms) && ms > 24 * 60 * 60_000;
+  return Number.isFinite(ms) && ms > STALE_AFTER_DAYS * 24 * 60 * 60_000;
 }
 
 /**
@@ -480,7 +487,12 @@ export function AudienceIndex({
         <CardFooter
           left={
             stale
-              ? <span className="text-[color:var(--color-warning-raw)]">{`Synced ${synced} · re-read`}</span>
+              ? // Amber on the FACT only; the nudge stays in the quiet meta tone. When it
+                // fires (>14d), it should be the one warm word on the screen, not a strip.
+                <span>
+                  <span className="text-[color:var(--color-warning-raw)]">{`Synced ${synced}`}</span>
+                  {" · re-read"}
+                </span>
               : synced
                 ? `Synced ${synced}`
                 : count > 0

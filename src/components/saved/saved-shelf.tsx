@@ -327,10 +327,15 @@ export function SavedShelf() {
         />
       </div>
 
-      {/* ── projects ───────────────────────────────────────────────────────── */}
+      {/* ── projects ─────────────────────────────────────────────────────────
+          The "Projects" label is a GROUP HEADING, so it only earns its place once the group has
+          members. With none, the label + its gap framed a single create button as if it were a
+          populated section — on a 393px viewport that empty scaffold took the top quarter of the
+          first screen (Apple-grammar pass, 2026-08-16). Folded to the bare action, which is
+          still the same discoverable "New project" row: nothing is removed, only the framing. */}
       {!searching && (
         <div className="rv-in" style={{ animationDelay: "0.06s" }}>
-          <SectionLabel>Projects</SectionLabel>
+          {projects.length > 0 && <SectionLabel>Projects</SectionLabel>}
           <div className="-mx-3 flex flex-col gap-0.5">
             {projects.map((project) => {
               const roll = rollupFor(rollups, project.id);
@@ -341,7 +346,9 @@ export function SavedShelf() {
                   onClick={() => router.push(`/library/${project.id}`)}
                   className="flex items-center gap-[15px] rounded-[11px] px-3 py-[15px] text-left transition-colors hover:bg-surface-thread focus-visible:outline-none focus-visible:bg-surface-thread"
                 >
-                  <span className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[9px] border border-white/[0.06] bg-surface text-foreground-secondary">
+                  {/* Bare icon in the same 34px slot — the boxed chip went with the shelf's
+                      (Apple-grammar pass); hierarchy comes from the name, not a tile. */}
+                  <span className="grid h-[34px] w-[34px] shrink-0 place-items-center text-foreground-muted">
                     <FolderSimple size={17} aria-hidden="true" />
                   </span>
                   <span className="min-w-0 flex-1">
@@ -375,38 +382,47 @@ export function SavedShelf() {
           <SectionLabel>Unfiled</SectionLabel>
         ) : null}
 
-        {/* facets */}
-        <div className="mb-4.5 flex gap-[22px] px-3">
-          {(["all", ...PIPELINE_ORDER] as const)
-            .filter((id) => id === "all" || (counts[id] ?? 0) > 0)
-            .map((id) => {
-              const active = filter === id;
-              const label = id === "all" ? "All" : TYPE_PLURAL[id];
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  role="tab"
-                  aria-selected={active}
-                  onClick={() => setFilter(id)}
-                  className={cn(
-                    "border-b-[1.5px] pb-2 text-body transition-colors",
-                    active
-                      ? "border-foreground font-medium text-foreground"
-                      : "border-transparent text-foreground-muted hover:text-foreground-secondary",
-                  )}
-                >
-                  {label}
-                  <span className="ml-1.5 text-label opacity-60">{counts[id] ?? 0}</span>
-                </button>
-              );
-            })}
+        {/* facets — the house pill segmented control (same grammar as DiscoverTabBar), replacing
+            an underline tab bar that gave the identical job a second control language. Counts
+            stay: unlike Discover's arrival tallies (owner ruling, 2026-08-04, about pricing a
+            library you haven't asked anything), these describe the creator's OWN saved items. */}
+        <div className="mb-4.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div
+            className="inline-flex w-max items-center rounded-lg border border-border bg-surface-elevated p-0.5"
+            role="tablist"
+            aria-label="Filter by type"
+          >
+            {(["all", ...PIPELINE_ORDER] as const)
+              .filter((id) => id === "all" || (counts[id] ?? 0) > 0)
+              .map((id) => {
+                const active = filter === id;
+                const label = id === "all" ? "All" : TYPE_PLURAL[id];
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setFilter(id)}
+                    className={cn(
+                      "rounded-md px-3 py-1.5 text-label font-medium transition-colors",
+                      active
+                        ? "bg-[color:var(--color-action)] text-[color:var(--color-action-foreground)]"
+                        : "text-foreground-secondary hover:text-foreground",
+                    )}
+                  >
+                    {label}
+                    <span className="ml-1.5 opacity-60">{counts[id] ?? 0}</span>
+                  </button>
+                );
+              })}
+          </div>
         </div>
 
         {/* §R5-5 selection bar — destructive action named, counted, and separated */}
         {selectMode && (
           <div
-            className="mb-6 flex items-center gap-2.5 rounded-[11px] px-4 py-3.5 text-sm"
+            className="mb-6 flex items-center gap-2.5 rounded-[12px] px-4 py-3.5 text-sm"
             style={{ backgroundColor: "var(--color-charcoal-chip)" }}
             role="toolbar"
             aria-label="Selection actions"
@@ -455,7 +471,11 @@ export function SavedShelf() {
             }}
           />
         ) : (
-          <div className="-mx-3 flex flex-col gap-0.5">
+          // The unified shelf panel (Apple-grammar pass): sibling rows on ONE bordered surface
+          // with hairline dividers, replacing borderless whitespace-separated rows. `divide-y`
+          // lands BETWEEN SavedRow units, so a row and its expansion stay one visual block;
+          // `overflow-hidden` clips the square row-hover fill to the panel's own corners.
+          <div className="flex flex-col divide-y divide-white/[0.06] overflow-hidden rounded-[12px] border border-white/[0.06]">
             {visible.map((item) => (
               <SavedRow
                 key={item.id}
@@ -550,7 +570,7 @@ function NewProjectRow({
         onClick={() => setOpen((v) => !v)}
         className="flex w-full items-center gap-[15px] rounded-[11px] px-3 py-[15px] text-left text-reading text-foreground-muted transition-colors hover:bg-surface-thread hover:text-foreground-secondary focus-visible:outline-none focus-visible:bg-surface-thread"
       >
-        <span className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-[9px] border border-dashed border-white/[0.06] bg-surface">
+        <span className="grid h-[34px] w-[34px] shrink-0 place-items-center">
           <Plus size={15} weight="bold" aria-hidden="true" />
         </span>
         New project
@@ -632,10 +652,12 @@ export function ShelfSkeleton() {
           <Skeleton className="h-9 w-24 rounded-[9px]" />
         </div>
       </div>
-      <div className="flex flex-col gap-0.5">
+      <div className="flex flex-col divide-y divide-white/[0.06] overflow-hidden rounded-[12px] border border-white/[0.06]">
         {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="flex items-start gap-[15px] px-3 py-[15px]">
-            <Skeleton className="h-[34px] w-[34px] shrink-0 rounded-[9px]" />
+          <div key={i} className="flex items-start gap-[15px] px-3 py-3">
+            <div className="grid h-[34px] w-[34px] shrink-0 place-items-center">
+              <Skeleton className="h-[17px] w-[17px] rounded-[4px]" />
+            </div>
             <div className="flex flex-1 flex-col gap-2 pt-0.5">
               <Skeleton className="h-[17px] w-[min(70%,420px)] rounded-md" />
               <Skeleton className="h-3 w-40 rounded-md" />

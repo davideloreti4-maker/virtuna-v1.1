@@ -21,11 +21,13 @@ import type { AdaptedBeat } from "@/lib/engine/remix/decode-types";
  *
  * Named explicitly instead of `*` so the type and the table cannot drift silently in the read
  * direction: a column that goes missing answers with a real PostgREST error, where `*` would
- * hand back a row with the field simply `undefined`. `clip_uris` (phase 4) and `created_at`
- * exist on the table and are deliberately NOT read — nothing in phase 1 uses them, and a
- * `select("*")` cast to `BlueprintRow` would misdescribe what it returns.
+ * hand back a row with the field simply `undefined`. `created_at` exists on the table and is
+ * deliberately NOT read — nothing here uses it, and a `select("*")` cast to `BlueprintRow`
+ * would misdescribe what it returns. `clip_uris` joined in phase 4: the run route writes it,
+ * the read route signs it, the retention cron sweeps and empties it.
  */
-export const BLUEPRINT_COLUMNS = "id, user_id, thread_id, source_video_id, blueprint, script";
+export const BLUEPRINT_COLUMNS =
+  "id, user_id, thread_id, source_video_id, blueprint, script, clip_uris";
 
 /**
  * A row as phase 1 writes and reads it.
@@ -41,6 +43,13 @@ export interface BlueprintRow {
   blueprint: SourceBlueprint;
   /** One entry per ranked variant, in the same order the runner emitted its cards. */
   script: AdaptedBeat[][];
+  /**
+   * PHASE 4 — storage paths (`<id>/<beatIndex>.mp4`) of this run's clips in the `clips` bucket.
+   * Paths, NEVER signed URLs: a signed URL in a durable column is a dead link on day 8 and a
+   * live credential in a shared row. [] once the retention cron has swept them (its idempotency
+   * marker), and on every run whose cut produced nothing.
+   */
+  clip_uris: string[];
 }
 
 export async function insertBlueprint(service: SupabaseClient, row: BlueprintRow): Promise<void> {

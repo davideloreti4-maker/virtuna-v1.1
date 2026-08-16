@@ -148,9 +148,13 @@ export function SavedRow({
   return (
     <div className="flex flex-col">
       {/* ── the row ───────────────────────────────────────────────────────── */}
+      {/* Radius removed (Apple-grammar pass): rows now sit inside the shelf's unified panel,
+          which owns the outer radius and clips the hover fill at its own corners. py 12, not 15 —
+          the hairline dividers the panel added carry the separation that the taller padding and
+          per-row rounding used to. */}
       <div
         className={cn(
-          "group relative flex items-start gap-[15px] rounded-[11px] px-3 py-[15px] transition-colors",
+          "group relative flex items-start gap-[15px] px-3 py-3 transition-colors",
           rowTone,
         )}
         data-testid="saved-row"
@@ -164,11 +168,13 @@ export function SavedRow({
             first thing I built — was unreachable: selectMode is true only once something is
             selected, and nothing could be selected without a checkbox to click. */}
         <span className="mt-px grid w-[34px] shrink-0 place-items-center">
+          {/* A bare line icon, not a boxed chip (Apple-grammar pass): the grey tile-in-a-box
+              repeated per row was the loudest non-content mark on the shelf. The 34px SLOT
+              (§R5-2) is untouched — the hover-swap to the checkbox lands in the same footprint. */}
           {!selectMode && (
             <span
               className={cn(
-                "col-start-1 row-start-1 grid h-[34px] w-[34px] place-items-center rounded-[9px] border transition-colors",
-                "border-white/[0.06] bg-surface text-foreground-secondary",
+                "col-start-1 row-start-1 grid h-[34px] w-[34px] place-items-center text-foreground-muted",
                 "group-hover:hidden group-focus-within:hidden",
               )}
               title={vm.typeLabel}
@@ -261,11 +267,12 @@ export function SavedRow({
           </span>
           )}
 
-          {/* 2. the metric — §R5-3 band OR measured, tone on ONE word */}
+          {/* 2. the metric — §R5-3 band OR measured. The NUMBER is the loud part (semibold
+              cream); the band word rides quiet beside it, and only Weak carries a tone. */}
           <span className="text-right text-body font-semibold tabular-nums tracking-[-0.01em] whitespace-nowrap">
             {vm.metric.band && (
               <>
-                <span style={{ color: vm.metric.bandTone }}>{vm.metric.band}</span>
+                <span className="font-normal" style={{ color: vm.metric.bandTone }}>{vm.metric.band}</span>
                 {vm.metric.fraction && (
                   <span className="ml-1.5 text-foreground">{vm.metric.fraction}</span>
                 )}
@@ -333,7 +340,8 @@ export function SavedRow({
         <div
           // Margin 0, NOT -12px: the parent list already carries the negative margin, so a second
           // one made the panel 12px wider than its own row on each side — a visible step.
-          className="relative -top-0.5 mb-0.5 rounded-b-[11px] bg-surface-thread pb-[18px] pl-[61px] pr-3 pt-0.5"
+          // No bottom rounding: the unified panel clips at its own corners now.
+          className="relative -top-0.5 mb-0.5 bg-surface-thread pb-[18px] pl-[61px] pr-3 pt-0.5"
           data-testid="saved-row-detail"
         >
           <div className="flex flex-wrap gap-8 border-t border-white/[0.06] pt-3.5">

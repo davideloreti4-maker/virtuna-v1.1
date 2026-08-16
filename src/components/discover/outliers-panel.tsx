@@ -134,16 +134,25 @@ export function OutliersPanel({
 
   return (
     <div>
-      {/* Under `lg` the rail collapses, so the toggle that reveals it lives here. Above `lg`
-          the rail is always present and this row disappears entirely. */}
-      <div className="mb-4 lg:hidden">
+      {/* ONE toolbar, at every width — Filters left, sort right (Apple-grammar pass,
+          2026-08-16). This is what the 2026-08-04 rework note above already describes
+          ("sort moved … into the toolbar beside Filters"); the code had drifted into two
+          stacked rows plus a filter column that was permanently open from `lg` up. An
+          always-open eight-field form is the data-slop the restraint rule exists to stop —
+          it also cost the grid 240px of width on exactly the screens with room for another
+          column. Filters is now a disclosure at every width, so the panel appears when it is
+          asked for and the toolbar states how many axes are live. Toolbar sits ABOVE the
+          two-column row so the button is always directly over the panel it opens; with the
+          panel closed (the resting state) it spans exactly the grid, so the "dead space
+          beside it" the old placement avoided cannot occur. */}
+      <div className="mb-3 flex items-center justify-between gap-3">
         <button
           type="button"
           onClick={() => setPanelOpen((o) => !o)}
           aria-expanded={panelOpen}
           className={cn(
             "flex h-9 items-center gap-2 rounded-lg border px-3 text-label font-medium transition-colors",
-            activeCount > 0
+            activeCount > 0 || panelOpen
               ? "border-transparent bg-white/[0.09] text-foreground"
               : "border-border text-foreground-secondary hover:border-border-hover hover:text-foreground",
           )}
@@ -154,18 +163,39 @@ export function OutliersPanel({
             <span className="tabular-nums opacity-60">{activeCount}</span>
           ) : null}
         </button>
+
+        {/* Sort orders these cards, so it belongs to the grid — it rides the same rail as the
+            control that narrows it rather than floating on its own line. */}
+        <div className="flex items-center gap-0.5 rounded-lg border border-border bg-surface-sunken p-0.5">
+          {SORTS.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => setSort(s.id)}
+              aria-pressed={sort === s.id}
+              className={cn(
+                "rounded-md px-2.5 py-1 text-label font-medium transition-colors",
+                sort === s.id
+                  ? "bg-white/[0.09] text-foreground"
+                  : "text-foreground-muted hover:text-foreground",
+              )}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="lg:flex lg:items-start lg:gap-5">
-        {/* The panel is a permanent column from `lg` up and a toggled block below it. Not a
-            fixed overlay: this grid is the page's only scroll context, and an overlay panel
-            would trap the scroll behind it on exactly the widths where the list is longest. */}
+        {/* Not a fixed overlay: this grid is the page's only scroll context, and an overlay
+            panel would trap the scroll behind it on exactly the widths where the list is
+            longest. */}
         {/* Sticky from `lg` up. The cards got large enough that the grid is many screens
             tall while the panel is one — without this the filters scroll away after the
             first row and every adjustment means scrolling back to the top. */}
         <div
           className={cn(
-            "mb-4 lg:sticky lg:top-6 lg:mb-0 lg:block lg:w-60 lg:shrink-0",
+            "mb-4 lg:sticky lg:top-6 lg:mb-0 lg:w-60 lg:shrink-0",
             panelOpen ? "block" : "hidden",
           )}
         >
@@ -183,30 +213,6 @@ export function OutliersPanel({
         </div>
 
         <div className="min-w-0 flex-1">
-          {/* Sort belongs to the GRID, not to the page — it orders these cards. Sitting inside
-              the grid column puts it on the rail's top edge instead of floating above both
-              with dead space beside it. */}
-          <div className="mb-3 flex justify-end">
-            <div className="flex items-center gap-0.5 rounded-lg border border-border bg-surface-sunken p-0.5">
-              {SORTS.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => setSort(s.id)}
-                  aria-pressed={sort === s.id}
-                  className={cn(
-                    "rounded-md px-2.5 py-1 text-label font-medium transition-colors",
-                    sort === s.id
-                      ? "bg-white/[0.09] text-foreground"
-                      : "text-foreground-muted hover:text-foreground",
-                  )}
-                >
-                  {s.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
           {visible.length === 0 ? (
             <p className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-label text-foreground-muted">
               {activeCount > 0 ? (
@@ -231,12 +237,14 @@ export function OutliersPanel({
             </p>
           ) : (
             <>
-              {/* Deliberately one column fewer at every step than a dense index would use
-                  (owner, 2026-08-04: "make them bigger"). The cover IS the content on this
-                  surface — a hook you cannot read off the first frame is not a browsable
-                  result — so at a 1440 laptop this is two ~460px cards rather than three
-                  ~290px ones, and only the widest screens go to three. */}
-              <div className="grid grid-cols-2 gap-4 lg:grid-cols-2 2xl:grid-cols-3">
+              {/* Density over size (Apple-grammar pass, owner-approved 2026-08-16 — SUPERSEDES
+                  the 2026-08-04 "make them bigger" two-column ruling). Measured at 1440 the
+                  hardcoded 2-col grid drew 436×581px tiles, ~2.4 cards per screen out of 24
+                  loaded — a browsing surface with almost nothing to browse. auto-fill with a
+                  260px floor keeps the cover readable (the floor IS the old ruling's residue)
+                  and lets the count come from the space: ~3 across at a 1440 laptop, 4 on the
+                  widest screens, still 2 on a narrow window. Same pattern as discover-grid.tsx. */}
+              <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(260px,1fr))]">
                 {visible.slice(0, limit).map((v) => (
                   <OutlierCard
                     key={v.id}

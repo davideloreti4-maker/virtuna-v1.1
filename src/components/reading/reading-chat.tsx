@@ -267,8 +267,8 @@ function ChatBubble({
           overrides that used to live here — those forced EVERY list item to a dot span,
           so an ordered list rendered as identical bullets and "1. 2. 3." lost its numbers
           on the surface that most needs to enumerate steps. The host keeps the type scale
-          (15px / secondary / 68ch); the layer restores what Preflight strips. */}
-      <div className="md max-w-[68ch] text-[15px] leading-relaxed text-foreground-secondary">
+          (prose role / secondary / 68ch); the layer restores what Preflight strips. */}
+      <div className="md max-w-[68ch] text-prose text-foreground-secondary">
         <ReactMarkdown rehypePlugins={[rehypeSanitize]}>{content}</ReactMarkdown>
         {streaming && (
           <span className="ml-0.5 inline-block h-3.5 w-0.5 animate-pulse rounded-full bg-foreground-muted/60 align-middle" aria-hidden />

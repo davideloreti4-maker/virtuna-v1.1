@@ -44,14 +44,29 @@ OPEN, in the order I would take them — ASK first, this lane is at a clean stop
      / 4.04s (skill) before the first character reaches the creator. The transport
      streams fine; there is simply nothing to send yet. This is a FIX task, not a
      measuring task — and it is the largest known defect left on this surface.
-  2. F-11d + F-12 — the only things still needing a PAID run / a BROWSER. F-12 is layout,
-     so open the context at a NATIVE viewport; resizing a loaded page will not do.
+  2. F-11d + F-12b — the only things still needing a PAID run. Both need a billable
+     generator to actually run: cards to count, and the ProgressChecklist spine to exist.
+
+🔴 IF YOU WRITE A BROWSER PROBE, MAKE IT WAIT. The F-12 probe typed the instant the
+textarea appeared and measured a 641px void that matched the audit almost exactly —
+screenshot and all. It was the probe's own artefact: the textarea mounts BEFORE thread
+history hydrates, so the live turn was stranded at the top of an empty thread. A 3s
+settle collapses it to 75px from the FIRST sample. A probe that acts at machine speed
+measures a state the product only occupies while loading.
   3. Task #31 — the monologue leak's STREAM half. Owner-deferred, not forgotten.
   4. The sidebar ⋯ menu — a design call, not a CSS one.
 
 🔑 BEFORE BUDGETING A RUN, ASK WHICH HALF OF THE ROW THE MONEY IS FOR. F-11 read as one
 indivisible "needs a live billed run" for four briefs. Three of its four parts turned out
 to be answerable from code plus a FREE loop probe (omit deps.billing → skills fail closed).
+
+🔴 F-11b IS DECOMPOSED — AND ONE FIX COSTS NOTHING AND TRADES NOTHING. Read §2b before
+touching it. The short version: ~2s of the dead air is enable_thinking (a real
+quality/latency TRADE, owner's call, do not flip it unilaterally), ~3s is baseline
+provider latency — but the mitigation built specifically to FILL this wait already
+exists and is DARK. route.ts:484 calls it "the predispatch frame — fills the router's
+~4.8s dead zone", and it is gated on NEXT_PUBLIC_ENGINE_ONE_BRAIN, which is `=== "true"`
+(default off) and set nowhere.
 
 DO NOT:
   - Do not budget a live run for F-3 or F-8a. Fixed. See rewalk §2.
@@ -107,16 +122,103 @@ corrected. In short, verified in code on 2026-08-16:
 | **F-8a** static `◐ adjacent` glyph | 🟢 **fixed `53fe7323`** | production hard-codes `fitLabel: null` (`composed-card-receipt.ts:104`, `remix-runner.ts:434`); `proof-receipt.tsx:102` renders no glyph on null. Only *fixtures* still say `"adjacent"` |
 | **F-8b** fixed persona roster | ⚪ open-ish | genuinely unmeasured, but **not a hardcode** — `profile-runner.ts:186` derives personas from the bake signature. A repeated roster would mean repeated calibration *input*. Needs a **calibrated** audience or it proves nothing. (`Lurker` occurs nowhere in `src/`) |
 | **F-11a** transport does not stream | 🟢 **false** | `event: token` per delta → `use-chat-stream.ts:295` `setStreamingText` per token. Wired since `216df989` (**2026-06-21**), two months before the audit. Proven live in reverse: **#523 exists because leaked reasoning streamed** |
-| **F-11b** dead air before first char | 🔴 **STILL LIVE — and it is the whole row** | Measured free, N=4/shape: **prose median 5.28s**, **skill median 4.04s** (dispatching `generate_hooks` 4/4). The audit's ~5.5s is intact. `scripts/probe-f11-stream-timing.ts` |
+| **F-11b** dead air before first char | 🔴 **STILL LIVE — and it is the whole row** | Measured free, N=4/shape: **prose median 5.28s**, **skill median 4.04s** (dispatching `generate_hooks` 4/4). The audit's ~5.5s is intact. Decomposed below. `scripts/probe-f11-stream-timing.ts` |
 | **F-11c** text lands in one paint | 🟢 **false for prose** | 63–104 token frames per answer; median max inter-token gap **0.18s**, worst 0.88s. No silence for a burst to hide behind |
 | **F-11d** cards arrive all at once | ⚪ open | `onBlock` fires per block, so incremental is *possible* — but blocks need a billing seam. **Paid run.** Count off the SSE, not the DOM |
-| **F-12** the wait happens in a void | ⚪ open | a **layout** claim — needs a browser at a **native** viewport. Neither the suite nor a loop probe can see it |
+| **F-12a** the PROSE wait is in a void | 🟢 **false — measured in a browser** | Gap to composer **75px desktop / 64px mobile**, constant across all 44 samples, and the wait sits **668px / 469px from the viewport TOP** — near the bottom, anchored by the composer. The inverse of the row. `scripts/probe-f12-wait-layout.mjs` |
+| **F-12b** the SKILL-RUN wait is in a void | ⚪ open | the row's original sentence. Needs `ProgressChecklist`, which needs `stage` events, which need a **billable** generator. F-12a cannot clear it |
 
 **The trap, stated once so it stops recurring.** `7d4bc133`'s title is *"…F-3/F-7 receipts, F-1
 re-answer"*. Session 15 correctly warned nobody should read that title as closing **F-7** — and
 that warning is right. But the same commit **did** close **F-3**, and the warning got applied to
 the whole title. *Reading one commit as closing nothing is the mirror image of reading it as
 closing everything.* Open the diff, not the subject line.
+
+## 2b. 🔴 F-11b decomposed — where the 4–5 seconds actually go
+
+Measured 2026-08-16, free, N=4 per shape per setting (`PROBE_COMPOSING=false` flips the shipped
+toggle). Medians, time to the **first character**:
+
+| shape | thinking ON (what ships) | thinking OFF | delta |
+|---|---|---|---|
+| prose | **5.28s** | **3.14s** | −2.14s |
+| skill | **4.04s** | **2.35s** | −1.69s |
+
+**So roughly 2s is `enable_thinking`, and roughly 3s is baseline** — provider time-to-first-token
+against a 25,268-char system prompt, which no amount of client work removes.
+
+⚠️ **`composing` is not a clean isolation of thinking.** It is `!!input.composedCards` (`:955`) and
+drives **four** things: `enable_thinking` (`:1154`), `max_tokens`, `max_rounds`, and the tool-use
+directive. The table above is the *shipped toggle*, which is what a decision would flip — not a
+controlled experiment on thinking alone.
+
+🔴 **Do NOT flip `COMPOSED_CARDS` to buy the 2s. It is a TRADE, and it is the owner's call.**
+- The comment at `:1137` records the quality side: composing **true** measured 6/6 and 5/6 against
+  the shipped contract; **false** measured 2/6, 3/6, 4/6.
+- It also changes *behaviour*: with composing off, the plain prose ask "why do most morning routines
+  fail" called `generate_ideas` on **2 of 4** runs. It did not dispatch at all with composing on.
+  Flipping this buys latency and spends dispatch precision.
+
+✅ **THE PART THAT COSTS NOTHING AND TRADES NOTHING — and it is already built.**
+`route.ts:484` is commented *"Stage B (B3): the predispatch frame — **fills the router's ~4.8s dead
+zone**"*. That is this exact wait, named and sized by whoever built it. It streams a `predispatch`
+frame *before* the loop starts so the thinking dots can label themselves from what is already known
+(a chip's declared skill is `certain: true`; a typed ask gets the cheap `guessSkill` heuristic as
+`certain: false`).
+
+**It never fires.** It is gated on `ONE_BRAIN` (`:492`), i.e. `NEXT_PUBLIC_ENGINE_ONE_BRAIN ===
+"true"` (`:216`) — the dark convention — and the variable is set nowhere, including `.env.local`.
+
+✅ **AND IT WORKS — verified end-to-end in a browser, 2026-08-16.** Ran the app with
+`NEXT_PUBLIC_ENGINE_ONE_BRAIN=true` on a dev server and watched the wait on both viewports:
+
+```
+"Thinking…"  →  "Looks like a hooks run…"        desktop 1440×900 AND iPhone 14
+```
+
+Screenshot confirms it renders anchored above the composer where the default label sat. So this is
+not a "should work" — the dark path is live-correct and the only thing between it and creators is
+the flag. `guessSkill` was checked directly too: `"give me 5 hooks…"` → `hooks`,
+`"write me a script…"` → `script`, `"why do most morning routines fail"` → `null` (correctly no
+guess on a strategy question).
+
+⚠️ **The B3 label is NOT instant** — the indicator mounts as the default `"Thinking…"` and is
+relabelled when the `predispatch` frame lands. A probe that samples for only ~600ms reads
+`"Thinking…"` and concludes the feature is off. That cost three runs here. Sample the full wait.
+
+So the wait is not only long, it is *unlabelled*, and the labelling was written, switched off,
+**and independently confirmed working**.
+That does not shorten the 4–5s; it changes what the creator stares at during it, which is what every
+benchmark in the original audit was actually doing differently. ⚠️ `ONE_BRAIN` also gates three
+other things (`:360`, `:363`, `:610` — anchor, cards, `cardsSlot`) plus the client half
+(`composer.tsx:1347`/`:1649` via `one-brain-flag.ts`), so turning it on is **not** a one-line
+latency patch.
+
+🔴 **I READ STAGE A/B (#461) SO THE NEXT SESSION DOES NOT HAVE TO — and it changes the picture.**
+`docs/HANDOFF-2026-08-10-stage-b-complete.md`. Stage B is not a half-built risk. It is **complete,
+tested, and live-A/B'd**: tsc clean, **5,799 tests / 0 failed**, prod build clean. Its three parts:
+
+| | what it does | measured |
+|---|---|---|
+| **B1** | a card CTA enters the agent loop carrying the clicked line as an anchor | a script run anchored on a clicked line opened from that line verbatim |
+| **B2** | a rewrite chip carries the pack of cards it points at | 🔴 **"Rewrite these hooks tighter" went 7% → 75% subject retention.** Control returned five strangers — the measured defect reproducing exactly. Packed arm sharpened all five real hooks. *"at no latency cost"* |
+| **B3** | the `predispatch` frame labels the dead zone | the label this session verified |
+
+**The only stated reason it never shipped is §Next-steps item 1: *"Prod flip (deployment currently
+OFF — owner switching Vercel accounts; touch nothing)."*** The flag is `NEXT_PUBLIC_`, so it needs
+a **redeploy** to reach the client half — and the deploy never came back. Six days later it is
+[[vercel-git-disconnected]] *owner-confirmed off*, so this has been waiting on an event that is not
+scheduled to happen.
+
+⚠️ Which means the real question for the owner is **not** "is Stage B safe to flip" — it was signed
+off as ready on 2026-08-10 — but *"the deploy is off indefinitely; does that change what we do with
+a finished, measured 7%→75% quality win?"* That is a product call, not an engineering one.
+One honest caveat from its own handoff: 1 of B2's 5 rewrites came back essentially verbatim —
+a craft issue, not a wiring one.
+
+🔎 And the capsule cannot label itself even when the frame does fire: `onDispatch` is at
+`chat-agent-loop.ts:1552`, **after** the billing gate at `:1528`, despite its interface comment
+(`:322`) claiming *"the moment the agent COMMITS … BEFORE `run`"*.
 
 ## 3. 🔴 MEMORY THAT COULD NOT BE SAVED — and the blocker is now precisely characterised
 

@@ -29,6 +29,7 @@ const TYPE_ROLES = [
   "label",
   "body",
   "reading",
+  "prose",
   "title",
   "subhead",
   "heading",

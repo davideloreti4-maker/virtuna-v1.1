@@ -28,7 +28,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import "@testing-library/jest-dom/vitest";
 import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/react";
-import { RemixSourceViewer } from "../remix-source-viewer";
+import { RemixSourceViewer, clipWindows, windowAt, windowAfter } from "../remix-source-viewer";
 import { RemixSourceEmbed } from "../remix-source-embed";
 import { RemixBeats } from "../remix-beats";
 import type { SourceBlueprint } from "@/lib/engine/remix/blueprint";
@@ -146,6 +146,84 @@ describe("RemixSourceViewer", () => {
     expect(strip).toHaveAttribute("aria-valuenow", "100");
     fireEvent.keyDown(strip, { key: "ArrowRight" });
     expect(strip).toHaveAttribute("aria-valuenow", "100");
+  });
+});
+
+describe("clip windows — pure maths", () => {
+  const clips = { 0: "https://signed/c0.mp4", 1: "https://signed/c1.mp4" };
+
+  it("builds one window per clip-backed beat, predicted at min(4, duration_s)", () => {
+    const w = clipWindows(BEATS, clips, {});
+    expect(w).toHaveLength(2);
+    expect(w[0]).toMatchObject({ beatIndex: 0, start: 0, duration: 1.8 });
+    expect(w[1]).toMatchObject({ beatIndex: 1, start: 1.8, duration: 4 }); // 12.2s beat capped
+  });
+
+  it("a beat with no clip gets no window", () => {
+    const w = clipWindows(BEATS, { 1: "https://signed/c1.mp4" }, {});
+    expect(w).toHaveLength(1);
+    expect(w[0]!.beatIndex).toBe(1);
+  });
+
+  it("a MEASURED duration replaces the prediction — the loadedmetadata clamp", () => {
+    const w = clipWindows(BEATS, clips, { 1: 2.5 });
+    expect(w[1]!.duration).toBe(2.5);
+  });
+
+  it("windowAt is half-open: inside hits, the end does not", () => {
+    const w = clipWindows(BEATS, clips, {});
+    expect(windowAt(w, 0)?.beatIndex).toBe(0);
+    expect(windowAt(w, 1.79)?.beatIndex).toBe(0);
+    expect(windowAt(w, 5.79)?.beatIndex).toBe(1); // inside beat 1's 4s window
+    expect(windowAt(w, 5.8)).toBeNull();          // past it — uncovered
+  });
+
+  it("windowAfter finds the next covered window for gap preloading", () => {
+    const w = clipWindows(BEATS, { 1: "https://signed/c1.mp4" }, {});
+    expect(windowAfter(w, 0)?.beatIndex).toBe(1);
+    expect(windowAfter(w, 10)).toBeNull();
+  });
+});
+
+describe("RemixSourceViewer — the clip layer", () => {
+  it("no clips ⇒ NO video element — every pre-lane sheet stays byte-identical", () => {
+    render(<RemixSourceViewer scrubFrames={frames(30)} beats={BEATS} durationS={14} />);
+    expect(screen.queryByTestId("remix-clip-video")).toBeNull();
+  });
+
+  it("mounts ONE video: muted, playsInline, no controls, hidden until loadeddata", () => {
+    render(
+      <RemixSourceViewer
+        scrubFrames={frames(30)}
+        beats={BEATS}
+        durationS={14}
+        clips={{ 0: "https://signed/c0.mp4" }}
+      />,
+    );
+    const video = screen.getByTestId("remix-clip-video") as HTMLVideoElement;
+    expect(video).toHaveAttribute("muted");
+    expect(video).not.toHaveAttribute("controls");
+    // Playhead starts at 0 — inside beat 0's window — but the clip has not loaded yet:
+    expect(video.style.opacity).toBe("0");
+
+    fireEvent.loadedData(video);
+    expect(video.style.opacity).toBe("1");
+  });
+
+  it("outside every covered window the still shows and the video hides", () => {
+    render(
+      <RemixSourceViewer
+        scrubFrames={frames(30)}
+        beats={BEATS}
+        durationS={14}
+        clips={{ 0: "https://signed/c0.mp4" }}
+      />,
+    );
+    const video = screen.getByTestId("remix-clip-video") as HTMLVideoElement;
+    fireEvent.loadedData(video);
+    // Seek to the end via the slider's keyboard contract — far past beat 0's 1.8s window:
+    fireEvent.keyDown(screen.getByTestId("remix-scrub-strip"), { key: "End" });
+    expect(video.style.opacity).toBe("0");
   });
 });
 
