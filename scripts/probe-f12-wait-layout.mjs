@@ -44,6 +44,8 @@ const BASE = arg('--url', 'http://localhost:3015');
 const ASK = arg('--ask', 'why do most morning routines fail');
 /** ms to let the thread hydrate before typing. 0 reproduces the mid-hydration artefact. */
 const SETTLE = Number(arg('--settle', '3000'));
+/** Bail as soon as the wait label is read — see the loop for why this is a cost control. */
+const STOP_ON_LABEL = process.argv.includes('--stop-on-label');
 const STATE = '.scratch/auth-state.json';
 const OUT = path.join(process.cwd(), '.scratch/f12');
 fs.mkdirSync(OUT, { recursive: true });
@@ -63,7 +65,14 @@ const MEASURE = () => {
     all.find((el) => {
       const t = (el.textContent || '').trim();
       return (
-        (t === 'Thinking…' || t === 'Thinking...' || /^(Writing|Reading|Finding|Drafting)\b.*…$/.test(t)) &&
+        (t === 'Thinking…' ||
+          t === 'Thinking...' ||
+          /^(Writing|Reading|Finding|Drafting)\b.*…$/.test(t) ||
+          // Stage B (B3) labels the dead zone instead of saying "Thinking…" — e.g. "Looks like a
+          // hooks run…". Gated on NEXT_PUBLIC_ENGINE_ONE_BRAIN, which ships dark, so this arm only
+          // matches when the flag is on. Without it the probe reports the label as ABSENT, which
+          // is indistinguishable from the feature being broken.
+          /^Looks like\b.*…$/.test(t)) &&
         el.getBoundingClientRect().height > 0
       );
     }) ?? null;
@@ -89,10 +98,21 @@ const MEASURE = () => {
   const waitRect = r(waitEl);
   const composerRect = r(composer);
 
+  // 🔎 DIAGNOSTIC: every short visible string ending in an ellipsis, in document order. A matcher
+  // that returns only its FIRST hit cannot tell "the label is absent" from "the label rendered
+  // below something else that also matched". Dump the candidates instead of trusting the matcher.
+  const ellipses = all
+    .filter((el) => {
+      const t = (el.textContent || '').trim();
+      return t.length > 0 && t.length < 60 && /[…]$/.test(t) && el.getBoundingClientRect().height > 0;
+    })
+    .map((el) => (el.textContent || '').trim());
+
   return {
     vw,
     vh,
     waitText: waitEl ? (waitEl.textContent || '').trim().slice(0, 40) : null,
+    ellipses: [...new Set(ellipses)],
     wait: waitRect,
     spineFound: !!spineEl,
     composer: composerRect,
@@ -136,10 +156,14 @@ async function runViewport(label, contextOpts, viewportNote) {
     // row describes exists, but somewhere in a 32ms-595ms window it collapses to ~75px. Those two
     // readings support opposite conclusions ("jarring half-second jump" vs "one invisible frame"),
     // so the sampling rate WAS the finding. 50ms for the first second, then 400ms.
+    // `--stop-on-label` closes the browser the moment the wait indicator is captured. The B3
+    // `predispatch` frame is sent BEFORE the agent loop starts, from the cheap `guessSkill`
+    // heuristic — no model call — so one sample is enough to read the label. Bailing there aborts
+    // the SSE before a billable generator is invoked, which matters when the ask is skill-shaped.
     const t0 = Date.now();
     let shotEarly = false;
     let shotSettled = false;
-    for (let i = 0; i < 20 + 24; i++) {
+    for (let i = 0; i < (STOP_ON_LABEL ? 12 : 20 + 24); i++) {
       const m = await page.evaluate(MEASURE);
       const t = Date.now() - t0;
       samples.push({ t, ...m });
@@ -152,6 +176,12 @@ async function runViewport(label, contextOpts, viewportNote) {
         await page.screenshot({ path: path.join(OUT, `${label}-wait-settled.png`), animations: 'disabled', caret: 'hide' });
         shotSettled = true;
       }
+      // 🔴 NOT "stop at the first indicator" — that was this probe's second self-inflicted wrong
+      // answer. The indicator mounts as the DEFAULT "Thinking…" and is only RELABELLED when the
+      // B3 `predispatch` frame lands over SSE a moment later. Breaking on the first sample reads
+      // "Thinking…" every time and looks exactly like the feature being off. Stop only once a
+      // label that is NOT the default appears — or run out of samples.
+      if (STOP_ON_LABEL && m.wait && m.waitText && !/^Thinking/.test(m.waitText)) break;
       await page.waitForTimeout(i < 20 ? 50 : 400);
     }
   } catch (e) {
@@ -184,7 +214,11 @@ async function main() {
       console.log('  → Either the answer beat the first poll, or the indicator does not render here.');
       continue;
     }
-    console.log(`  wait indicator seen in ${withWait.length}/${run.samples.length} samples: "${withWait[0].waitText}"`);
+    const labels = [...new Set(withWait.map((s) => s.waitText))];
+    console.log(`  wait indicator seen in ${withWait.length}/${run.samples.length} samples`);
+    console.log(`  DISTINCT labels observed: ${labels.map((l) => `"${l}"`).join(' → ')}`);
+    const allEllipses = [...new Set(withWait.flatMap((s) => s.ellipses || []))];
+    console.log(`  ALL ellipsis strings on screen during the wait: ${allEllipses.map((l) => `"${l}"`).join(' · ') || '(none)'}`);
     console.log(`  viewport ${withWait[0].vw}x${withWait[0].vh}   spine(skill-run) found: ${withWait[0].spineFound}`);
     console.log('   t(ms)  waitTop  waitBottom  composerTop  GAP');
     for (const s of withWait) {
