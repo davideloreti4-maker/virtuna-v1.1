@@ -43,14 +43,14 @@ const PALETTE = readFileSync(
 /** Resolve a numeric `--z-*` token from the stylesheet. */
 function zToken(name: string): number {
   const m = new RegExp(`^\\s*${name}\\s*:\\s*(\\d+)\\s*;`, 'm').exec(CSS);
-  if (!m) throw new Error(`${name} is not declared in globals.css`);
+  if (!m?.[1]) throw new Error(`${name} is not declared in globals.css`);
   return Number(m[1]);
 }
 
 /** The palette's full-viewport overlay — the element that owns the scrim. */
 function overlayClassName(): string {
   const m = /className="(fixed inset-0[^"]*)"/.exec(PALETTE);
-  if (!m) throw new Error('could not find the palette overlay className');
+  if (!m?.[1]) throw new Error('could not find the palette overlay className');
   return m[1];
 }
 
