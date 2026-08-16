@@ -115,6 +115,7 @@ async function main() {
     source_video_id: SOURCE,
     blueprint,
     script: SCRIPT,
+    clip_uris: [],
   });
   console.log(`inserted blueprint ${blueprintId} for ${EMAIL}`);
 

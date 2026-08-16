@@ -63,6 +63,8 @@ export function clipWindows(
       beatIndex: b.index,
       url: clips[b.index]!,
       start: b.t_start,
+      // 4 mirrors MAX_CLIP_DURATION_S in beat-clips.ts, NOT imported: that module pulls
+      // node:child_process, which must never enter a client bundle. Change both together.
       duration: measured[b.index] ?? Math.min(4, Math.max(0, b.duration_s)),
     }));
 }

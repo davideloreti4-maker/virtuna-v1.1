@@ -126,6 +126,7 @@ describe("GET /api/remix/blueprint/[id]", () => {
     // The point of this assertion is `user_id` / `thread_id` NEVER crossing the wire. Phase 3
     // widened the contract by exactly one key and the source viewer by exactly two more; it must
     // stay an exact set, not a subset check.
+    // Phase 4 adds `clips` — the beat-clip signed URLs the stage plays.
     expect(Object.keys(body).sort()).toEqual([
       "blueprint",
       "clips",

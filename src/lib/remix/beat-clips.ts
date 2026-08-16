@@ -123,8 +123,11 @@ function runFfmpeg(args: string[], timeoutMs: number): Promise<number | null> {
 /**
  * Cut one clip per beat (≤8) from the signed URL into a temp dir, in ONE ffmpeg pass.
  *
- * A non-zero exit still leaves whatever outputs completed — a partial set is a better outcome
- * than none, so the exit code is logged, not obeyed; what "landed" is decided by `stat`.
+ * A NON-ZERO exit still leaves whatever outputs completed before it failed — for that case the
+ * exit code is logged, not obeyed, and what "landed" is decided by `stat`. A NULL code (spawn
+ * error or timeout SIGKILL) instead discards everything, deliberately: a kill can truncate the
+ * output mid-write, and a moov-less mp4 that uploads but never fires `loadeddata` is worse than
+ * no clip at all (the stage falls back to the still either way).
  */
 export async function cutBeatClips(
   videoUrl: string,
@@ -163,7 +166,8 @@ export async function cutBeatClips(
   try {
     const code = await runFfmpeg(buildClipArgs(videoUrl, targets, dir), CLIP_BUDGET_MS);
 
-    // If spawn failed or timed out, no files were created
+    // null code = spawn error OR timeout kill. Outputs may exist but are untrustworthy —
+    // deliberately discarded (see the doc comment above); dispose() removes them with the dir.
     if (code === null) {
       return { files: [], dispose };
     }
