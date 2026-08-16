@@ -143,8 +143,8 @@ describe("AmbientOverviewRail", () => {
         persistedSeals={{ "I quit my 9-5 with $400…": { pct: 80, band: "Strong", at: "" } }}
       />,
     );
-    // the persisted verdict shows as a sealed 80.0% row without any network call
-    expect(screen.getByText(/80\.0%/)).toBeTruthy();
+    // the persisted verdict shows as a sealed 80% row without any network call
+    expect(screen.getByText(/80%/)).toBeTruthy();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -223,11 +223,11 @@ describe("AmbientOverviewRail", () => {
     expect(row).toBeTruthy();
     expect(screen.getByText(/84/)).toBeTruthy();
     expect(screen.getByText(/viral/)).toBeTruthy();
-    expect(screen.queryByText(/62\.0%/)).toBeNull(); // withheld until Simulate
+    expect(screen.queryByText(/62%/)).toBeNull(); // withheld until Simulate
 
     // tap 1 → reveal the already-measured attention % (no network — the Test analysis produced it)
     fireEvent.click(row);
-    expect(screen.getByText(/62\.0%/)).toBeTruthy();
+    expect(screen.getByText(/62%/)).toBeTruthy();
     expect(screen.getByText(/viral 84/)).toBeTruthy(); // native score stays in view
 
     // tap 2 → drill into the real Brain depth (brain-first for a video)
@@ -461,8 +461,8 @@ describe("AmbientOverviewRail", () => {
     expect(sentBody.text).toMatch(/I quit my 9-5/);
     expect(sentBody.pin).toBe(true); // a deliberate sim captures the flywheel vector (Phase D)
 
-    // 8/10 stop → a sealed 80.0% would-stop row (measured, not the projection)
-    expect(await screen.findByText(/80\.0%/)).toBeTruthy();
+    // 8/10 stop → a sealed 80% would-stop row (measured; integer prints bare — no fake decimal)
+    expect(await screen.findByText(/80%/)).toBeTruthy();
   });
 
   it("does NOT seal the row when the react route (fired from the ARM panel) fails — queued state holds", async () => {

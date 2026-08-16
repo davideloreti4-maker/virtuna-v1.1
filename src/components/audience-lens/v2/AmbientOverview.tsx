@@ -443,7 +443,9 @@ function SealedRow({
               road, not a door. Saying so costs one tag and removes an inert click. */}
           {r.noDepth ? <KindTag>verdict only</KindTag> : null}
           <span className="flex-none tabular-nums text-[14px] font-semibold" style={{ color: TONE.cream }}>
-            {r.stopPct.toFixed(1)}%
+            {/* One decimal only when the rate carries one (the population projection's does). An
+                integer prints bare — "50.0" is a fake decimal, the same lie as a fake round number. */}
+            {Number.isInteger(r.stopPct) ? r.stopPct : r.stopPct.toFixed(1)}%
           </span>
         </span>
 

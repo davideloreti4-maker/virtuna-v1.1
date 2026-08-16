@@ -49,7 +49,7 @@ import {
   type ModeledBrainInput,
   type ModeledReason,
 } from "./ambient-v2-modeled";
-import { attachVoices, drillIdentity, heroVerdictOf, methodOf, simlineOf } from "./ambient-v2-drill";
+import { attachVoices, drillIdentity, fmtPct, heroVerdictOf, methodOf, simlineOf } from "./ambient-v2-drill";
 
 /** One real per-persona reaction (the exact `FlashPersona` shape react returns) — the exemplar cast. */
 export interface PopulationPersona {
@@ -421,7 +421,9 @@ export function buildDomainTemplate(input: DomainTemplateInput): DomainTemplate 
   const reasons: ModeledReason[] = classifyReasons(aggregate.reasons);
   const unlock = modeledUnlock(reasons, population.swing);
   const leak = reasons.filter((r) => r.loss).sort((a, b) => b.count - a.count)[0];
-  const scrolled = Math.max(0, 100 - Math.round(pct));
+  // One decimal survives end to end (the sealed pct is the projection's one-decimal rate now);
+  // the subtraction re-rounds so float noise never prints "49.699999…".
+  const scrolled = Math.max(0, Math.round((100 - pct) * 10) / 10);
   const simline = simlineOf(population.room);
   return {
     id: "creator",
@@ -429,7 +431,7 @@ export function buildDomainTemplate(input: DomainTemplateInput): DomainTemplate 
     // "Overview" collided with the tab of the same name; the drill goes back to the room.
     backLabel: "The room",
     pager: conceptLabel ?? "concept",
-    verdict: { value: `${Math.round(pct)}%`, label: "would stop" },
+    verdict: { value: `${fmtPct(pct)}%`, label: "would stop" },
     unlock,
     identity: {
       ...drillIdentity(transcript?.split(" ").slice(0, 14).join(" ") ?? "", 0),
@@ -440,10 +442,10 @@ export function buildDomainTemplate(input: DomainTemplateInput): DomainTemplate 
       // it has the voices and no timeline (§3.3), so its answer names the coded reason.
       head: leak ? `The idea holds. ${leak.label} is what leaks.` : "The idea holds.",
       stats: [
-        { value: `${scrolled}%`, label: "scroll past", loss: true },
+        { value: `${fmtPct(scrolled)}%`, label: "scroll past", loss: true },
         ...(leak ? [{ value: `${leak.count}`, label: `on ${leak.label.toLowerCase()}` }] : []),
       ],
-      verdict: { value: `${scrolled}%`, label: "scroll past" },
+      verdict: { value: `${fmtPct(scrolled)}%`, label: "scroll past" },
       evidence: "reasons" as const,
       // The fix acts off the SWING — a real modeled producer, not a second guess at the same number.
       ...(unlock && population.swing

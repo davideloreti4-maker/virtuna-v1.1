@@ -78,7 +78,8 @@ export interface SegmentReaction {
   total: number;
   /** How many of them stopped. */
   stop: number;
-  /** stop / total × 100. */
+  /** stop / total × 100, to one decimal (see `pct1` — a projection over real counts almost never
+   *  lands on a clean multiple of ten, and rounding it to one made it look like it always did). */
   stopPct: number;
 }
 
@@ -95,7 +96,9 @@ export interface PopulationAggregate {
   stop: number;
   /** Individuals who scrolled (total − stop). */
   scroll: number;
-  /** stop / total × 100, rounded. */
+  /** stop / total × 100, to one decimal (`pct1`). The counts are the source of truth; this is
+   *  their display-grade rate. Whole-percent rounding here made every verdict read as a clean
+   *   50/60/70 — which is what a fabricated number looks like, on top of a real distribution. */
   stopPct: number;
   /** Per-segment split, weightiest share first. */
   segments: SegmentReaction[];
@@ -138,6 +141,13 @@ function gauss(rand: () => number): number {
 }
 
 const clamp01 = (x: number): number => Math.min(1, Math.max(0, x));
+
+/** stop/total as a percentage at ONE decimal. The projection's counts are real, so their rate
+ *  deserves real resolution: whole-percent rounding collapsed 502/1004 and 497/1004 into the same
+ *  "50%", and a verdict surface full of clean multiples of ten reads as invented. One decimal is
+ *  as far as ~1,000 samples honestly resolve — never print more. */
+export const pct1 = (stop: number, total: number): number =>
+  total > 0 ? Math.round((1000 * stop) / total) / 10 : 0;
 
 // ─── Guard: does this signature carry the v2 axes the population math needs? ──
 
@@ -301,7 +311,7 @@ export function reactPopulation(
         share: meta?.share ?? v.total / (total || 1),
         total: v.total,
         stop: v.stop,
-        stopPct: v.total > 0 ? Math.round((100 * v.stop) / v.total) : 0,
+        stopPct: pct1(v.stop, v.total),
       };
     })
     .sort((a, b) => b.share - a.share);
@@ -310,7 +320,7 @@ export function reactPopulation(
     total,
     stop,
     scroll: total - stop,
-    stopPct: total > 0 ? Math.round((100 * stop) / total) : 0,
+    stopPct: pct1(stop, total),
     segments,
     reasons: [...reasons.entries()]
       .map(([reason, count]) => ({ reason, count }))

@@ -37,6 +37,9 @@ import type {
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 const pct = (v: number) => Math.round(clamp(v, 0, 1) * 100);
+/** Print a percentage value that may carry one decimal (the population rate does): "48.3", "50".
+ *  Never pads an integer to "50.0" — a fake decimal is the same lie as a fake round number. */
+export const fmtPct = (v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1));
 const fmtTime = (s: number) => `${Math.floor(Math.max(0, s) / 60)}:${String(Math.round(Math.max(0, s) % 60)).padStart(2, "0")}`;
 const fmtN = (n: number) => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
@@ -425,7 +428,9 @@ export function heroVerdictOf(weights: HeatmapPayload["weights"] | undefined, st
   if (weights && typeof weights.loyalist === "number") {
     return { value: `${Math.round((1 - clamp(weights.loyalist, 0, 1)) * 100)}%`, label: "non-followers" };
   }
-  return { value: `${Math.round(clamp(stopPct, 0, 100))}%`, label: "kept watching" };
+  // One decimal survives — the population rate is a real count over ~1,000, and rounding it to a
+  // whole percent is how every verdict came out reading 50/60/70 (a fabricated-number look).
+  return { value: `${fmtPct(clamp(stopPct, 0, 100))}%`, label: "kept watching" };
 }
 
 // ── the room's decisions, with the voice that belongs to each ────────────────

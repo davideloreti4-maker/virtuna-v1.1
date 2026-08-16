@@ -230,6 +230,16 @@ describe("reactPopulation", () => {
     expect(spectacle.stopPct).not.toBe(craft.stopPct);
   });
 
+  it("stopPct is the counts' rate at ONE decimal — whole-percent rounding is gone", () => {
+    // Whole-percent rounding collapsed every verdict onto clean integers, and the seal (which is
+    // this number) came out reading 50/60/70 — a fabricated-number look on a real distribution.
+    const agg = reactPopulation(sig, SPECTACLE_HOOK, { N: 1000, seed: 3 });
+    expect(agg.stopPct).toBe(Math.round((1000 * agg.stop) / agg.total) / 10);
+    for (const s of agg.segments) {
+      expect(s.stopPct).toBe(Math.round((1000 * s.stop) / s.total) / 10);
+    }
+  });
+
   it("empty-topics content never crashes and yields a low-stop aggregate", () => {
     const agg = reactPopulation(sig, { topics: {}, hookStrength: 0.1, novelty: 0.5, hype: 0, slowness: 0.5 }, { N: 200, seed: 3 });
     expect(agg.total).toBe(200);
