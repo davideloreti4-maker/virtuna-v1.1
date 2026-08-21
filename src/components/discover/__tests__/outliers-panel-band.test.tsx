@@ -3,9 +3,12 @@
  * The feed badge must carry the band's honesty flag (B1, Task 9).
  *
  * Before the one-band rule, thin-baseline extremes never reached this feed, so the card badge
- * could render one unconditional green `▲ N×`. Task 9 admits them with the number clamped at
+ * could render one unconditional `▲ N×`. Task 9 admits them with the number clamped at
  * 100× — which turns that unconditional badge into a false proof claim: a real number from a
- * baseline of ~1k views, printed in the same green as a genuine 5× receipt.
+ * baseline of ~1k views, wearing the same "proven" ▲ as a genuine 5× receipt.
+ *
+ * Since the 2026-08-21 owner ruling (accent-dosage: quiet Discover's multipliers) the flag
+ * rides the GLYPH alone — ▲ means proven, ⚠ means thin baseline, colour carries nothing.
  *
  * `MultiplierChip` (discover-primitives.tsx) already encodes the correct rule, but the feed does
  * NOT use it — the card draws its own badge over the cover scrim. These tests exist because that
@@ -63,17 +66,22 @@ const video = (over: Partial<CorpusVideo>): CorpusVideo => ({
 });
 
 describe("outliers feed badge — the band's flag survives the trip to the pixel", () => {
-  it("prints a genuine receipt in proven green with the ▲", () => {
+  it("prints a genuine receipt with the ▲, quiet — no green (owner ruling 2026-08-21)", () => {
     renderPanel([video({ multiplier: 12, extreme: false })]);
     const badge = screen.getByText(/▲\s*12/);
-    expect(badge.className).toContain("--color-positive");
+    expect(badge.className).not.toContain("--color-positive");
   });
 
-  it("does NOT print a clamped thin-baseline row in proven green", () => {
+  it("paints --color-positive nowhere on the resting panel", () => {
+    renderPanel([video({ multiplier: 12, extreme: false })]);
+    expect(document.querySelector('[class*="--color-positive"]')).toBeNull();
+  });
+
+  it("does NOT print a clamped thin-baseline row with the ▲ that means proven", () => {
     renderPanel([video({ id: "x", multiplier: 100, extreme: true })]);
-    // The number is real and still shown — it is the PROOF styling that must not apply.
+    // The number is real and still shown — it is the PROOF glyph that must not apply.
     const badge = screen.getByText(/100×/);
-    expect(badge.className).not.toContain("--color-positive");
+    expect(badge.textContent).not.toContain("▲");
   });
 
   it("flags the clamped row with ⚠ and drops the ▲ that means 'proven'", () => {
