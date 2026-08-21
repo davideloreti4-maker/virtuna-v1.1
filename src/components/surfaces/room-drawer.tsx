@@ -61,7 +61,10 @@ export function RoomDrawer({
   const face = personasToCardFace(personas);
 
   return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center">
+    // --z-modal (400), not z-40. This is a real modal — aria-modal, a bg-black/45
+    // scrim, escape-to-close — but at 40 it sat below the sidebar's --z-sidebar
+    // (250), so the nav stayed lit over a dimmed page.
+    <div className="fixed inset-0 z-[var(--z-modal)] flex items-end justify-center">
       <button
         type="button"
         aria-label="Close the room"

@@ -18,6 +18,7 @@
  */
 
 import type { PopulationAggregate } from "@/lib/audience/population";
+import { archetypeDisplayName } from "@/lib/audience/archetype-names";
 import { buildActionIntent, type VideoActionIntent } from "./ambient-v2-video-population";
 import type {
   CodedReason,
@@ -49,7 +50,7 @@ import {
   type ModeledBrainInput,
   type ModeledReason,
 } from "./ambient-v2-modeled";
-import { attachVoices, drillIdentity, heroVerdictOf, methodOf, simlineOf } from "./ambient-v2-drill";
+import { attachVoices, drillIdentity, fmtPct, heroVerdictOf, methodOf, simlineOf } from "./ambient-v2-drill";
 
 /** One real per-persona reaction (the exact `FlashPersona` shape react returns) — the exemplar cast. */
 export interface PopulationPersona {
@@ -95,6 +96,17 @@ const GOLDEN = 2.399963229728653; // rad — the golden angle, deterministic sca
 const DISPLAY_NODES = 90; // total nodes drawn across all clusters (downsample from ~1,000 for the SVG)
 
 const clamp = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v));
+
+/** Normalize a (possibly PERSISTED) aggregate for display: segment names become the curated
+ *  archetype nouns. Seals written before the 2026-08-16 naming change carry the generator's
+ *  "The Tech Trend Hunter"-style `displayName` baked in — the archetype slug rides every segment,
+ *  so the curated name is recoverable at render without touching the stored seal. */
+function presentAggregate(agg: PopulationAggregate): PopulationAggregate {
+  return {
+    ...agg,
+    segments: agg.segments.map((s) => ({ ...s, displayName: archetypeDisplayName(s.archetype) })),
+  };
+}
 
 /** Fixed en-US thousands grouping — `toLocaleString()` without a locale honors the machine's locale,
  *  which rendered "1.000" (European) instead of "1,000" on this box. Deterministic + locale-proof. */
@@ -161,7 +173,10 @@ function codedReasons(agg: PopulationAggregate, personas: PopulationPersona[]): 
       label: humanizeReason(r.reason).label,
       count: r.count,
       quote: voice?.quote ?? "",
-      who: voice?.archetype ?? "a viewer",
+      // The curated noun, never the slug — "tough_crowd" on a voice row is the machine's name for
+      // a person, the exact tell archetype-names.ts exists to translate (and rail-kit's Voice
+      // contract already states: a human descriptor, never a caste).
+      who: voice ? archetypeDisplayName(voice.archetype) : "a viewer",
       // Polarity is the REASON's, from the semantic token map — never the exemplar's verdict.
       // It used to ride `voice.verdict`, which put "Strong hook" in the LEAKING (coral) half
       // whenever its illustrating persona happened to be a scroller: the receipts said a pull
@@ -209,7 +224,8 @@ function heroRead(agg: PopulationAggregate): string {
  * on every render.
  */
 export function buildPopulationFrameData(input: PopulationSnapshotInput): PopulationFrameData {
-  const { aggregate: agg, personas, calibratedFrom, tier } = input;
+  const { personas, calibratedFrom, tier } = input;
+  const agg = presentAggregate(input.aggregate);
   // The three bands partition the room: scrolled = never stopped; skimmed = stopped, didn't finish;
   // stopped = stayed. `stopPct` counts skimmers (they DID stop), so the skim band is carved out of it
   // — clamped so a malformed producer can never push a band negative or the sum past 100.
@@ -421,7 +437,9 @@ export function buildDomainTemplate(input: DomainTemplateInput): DomainTemplate 
   const reasons: ModeledReason[] = classifyReasons(aggregate.reasons);
   const unlock = modeledUnlock(reasons, population.swing);
   const leak = reasons.filter((r) => r.loss).sort((a, b) => b.count - a.count)[0];
-  const scrolled = Math.max(0, 100 - Math.round(pct));
+  // One decimal survives end to end (the sealed pct is the projection's one-decimal rate now);
+  // the subtraction re-rounds so float noise never prints "49.699999…".
+  const scrolled = Math.max(0, Math.round((100 - pct) * 10) / 10);
   const simline = simlineOf(population.room);
   return {
     id: "creator",
@@ -429,7 +447,7 @@ export function buildDomainTemplate(input: DomainTemplateInput): DomainTemplate 
     // "Overview" collided with the tab of the same name; the drill goes back to the room.
     backLabel: "The room",
     pager: conceptLabel ?? "concept",
-    verdict: { value: `${Math.round(pct)}%`, label: "would stop" },
+    verdict: { value: `${fmtPct(pct)}%`, label: "would stop" },
     unlock,
     identity: {
       ...drillIdentity(transcript?.split(" ").slice(0, 14).join(" ") ?? "", 0),
@@ -440,10 +458,10 @@ export function buildDomainTemplate(input: DomainTemplateInput): DomainTemplate 
       // it has the voices and no timeline (§3.3), so its answer names the coded reason.
       head: leak ? `The idea holds. ${leak.label} is what leaks.` : "The idea holds.",
       stats: [
-        { value: `${scrolled}%`, label: "scroll past", loss: true },
+        { value: `${fmtPct(scrolled)}%`, label: "scroll past", loss: true },
         ...(leak ? [{ value: `${leak.count}`, label: `on ${leak.label.toLowerCase()}` }] : []),
       ],
-      verdict: { value: `${scrolled}%`, label: "scroll past" },
+      verdict: { value: `${fmtPct(scrolled)}%`, label: "scroll past" },
       evidence: "reasons" as const,
       // The fix acts off the SWING — a real modeled producer, not a second guess at the same number.
       ...(unlock && population.swing

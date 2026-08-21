@@ -77,6 +77,60 @@ describe('HomePageLayout — A2a audience rail wiring', () => {
     expect(aside?.className).toMatch(/xl:flex/);
   });
 
+  it('the rail is resizable: keyboard on the separator moves the width, clamps at the rails, persists, and Home resets', () => {
+    // A WIDTH dial, not the vetoed collapse (2026-08-12): the floor keeps complete frames.
+    render(<HomePageLayout />);
+    act(() => {
+      fireEvent.click(screen.getByTestId('composer-stub'));
+    });
+    const aside = railAside() as HTMLElement;
+    const handle = screen.getByRole('separator', { name: /resize the audience rail/i });
+    expect(aside.style.width).toBe('400px');
+
+    // ← widens (the rail grows leftward), and the width persists for the next mount.
+    act(() => {
+      fireEvent.keyDown(handle, { key: 'ArrowLeft' });
+    });
+    expect(aside.style.width).toBe('416px');
+    expect(localStorage.getItem('virtuna:rail-width')).toBe('416');
+
+    // Clamped at the ceiling — 20 more steps stop at 560, never past it. (One act() per press:
+    // batching them all into one act would run every handler against the same stale render.)
+    for (let i = 0; i < 20; i++) {
+      act(() => {
+        fireEvent.keyDown(handle, { key: 'ArrowLeft' });
+      });
+    }
+    expect(aside.style.width).toBe('560px');
+
+    // → narrows, clamped at the floor.
+    for (let i = 0; i < 30; i++) {
+      act(() => {
+        fireEvent.keyDown(handle, { key: 'ArrowRight' });
+      });
+    }
+    expect(aside.style.width).toBe('320px');
+
+    // Home resets to the default and persists it.
+    act(() => {
+      fireEvent.keyDown(handle, { key: 'Home' });
+    });
+    expect(aside.style.width).toBe('400px');
+    expect(localStorage.getItem('virtuna:rail-width')).toBe('400');
+  });
+
+  it('a persisted rail width is restored on mount (clamped to the rails)', async () => {
+    localStorage.setItem('virtuna:rail-width', '9999');
+    render(<HomePageLayout />);
+    act(() => {
+      fireEvent.click(screen.getByTestId('composer-stub'));
+    });
+    const aside = railAside() as HTMLElement;
+    // The restore effect clamps a stored value that outgrew the rails.
+    expect(aside.style.width).toBe('560px');
+    localStorage.removeItem('virtuna:rail-width');
+  });
+
   it('offers the composer NO pin channel — nothing but thread mode can mount the column (2026-08-09 rail ruling)', () => {
     // The v8 Phase-3 pinned report died with the owner ruling: the report is an event
     // (sheet/overlay), never page furniture. The layout must expose no way to dock it —

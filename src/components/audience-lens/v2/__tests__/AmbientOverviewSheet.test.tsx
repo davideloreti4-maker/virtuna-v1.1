@@ -133,19 +133,19 @@ describe("AmbientOverviewSheet", () => {
     );
     const board = screen.getByTestId("ambient-overview");
     expect(board.dataset.presentation).toBe("sheet");
-    // the rail chrome is dropped: no 440 width cap, no left hairline, no own #181817 ground
-    expect(board.className).not.toMatch(/max-w-\[440px\]/);
+    // the rail chrome is dropped: no 560 width cap, no left hairline, no own #181817 ground
+    expect(board.className).not.toMatch(/max-w-\[560px\]/);
     expect(board.getAttribute("style") ?? "").not.toMatch(/border-left|background/i);
   });
 
-  // The contrast case — without it the `not.toMatch(max-w-[440px])` guards above are unfalsifiable
+  // The contrast case — without it the `not.toMatch(max-w-[560px])` guards above are unfalsifiable
   // (a selector that never matched anything passes a negation for free). Rail mode MUST still carry
   // the chrome that sheet mode drops, or the presentation switch is a no-op in both directions.
   it("rail mode still carries the rail chrome it drops in a sheet (the guards above can fail)", () => {
     render(<AmbientOverviewRail audience={audience} descriptors={descriptors} reducedMotion />);
     const board = screen.getByTestId("ambient-overview");
     expect(board.dataset.presentation).toBe("rail");
-    expect(board.className).toMatch(/max-w-\[440px\]/);
+    expect(board.className).toMatch(/max-w-\[560px\]/);
     expect(board.getAttribute("style") ?? "").toMatch(/border-left/i);
     // the rail's header caret is the inert SWITCH, never a dismiss (there is nothing to dismiss)
     expect(screen.getByRole("button", { name: /switch audience/i })).toBeTruthy();
@@ -222,7 +222,7 @@ describe("AmbientOverviewSheet", () => {
     fireEvent.click(screen.getByRole("button", { name: /I quit my 9-5 with \$400/ }));
     const detail = screen.getByTestId("ambient-detail");
     expect(detail.dataset.presentation).toBe("sheet");
-    expect(detail.className).not.toMatch(/max-w-\[440px\]/);
+    expect(detail.className).not.toMatch(/max-w-\[560px\]/);
   });
 
   it("the ARM panel opens in the sheet too — a queued row still configures before it runs", () => {
@@ -240,7 +240,7 @@ describe("AmbientOverviewSheet", () => {
     fireEvent.click(screen.getByRole("button", { name: /I quit my 9-5 with \$400/ }));
     const arm = screen.getByTestId("ambient-simulate");
     expect(arm.dataset.presentation).toBe("sheet");
-    expect(arm.className).not.toMatch(/max-w-\[440px\]/);
+    expect(arm.className).not.toMatch(/max-w-\[560px\]/);
     expect(fetchMock).not.toHaveBeenCalled(); // config first — the sheet must not fire on a tap
   });
 });

@@ -88,7 +88,12 @@ export const REQUEST_INPUT_TOOL = {
           description:
             "OPTIONAL — something the creator ALREADY gave you in their message, used to PRE-FILL the " +
             "field so they review-and-go instead of typing it twice. They can still edit it. " +
-            "For 'explore' and 'read': the niche or concept they named. For 'remix' and 'test': the " +
+            "For 'explore': the field runs a keyword search matched against video CAPTIONS, so distill " +
+            "their ask into the SHORT niche term (2-4 words) such a caption would actually contain — " +
+            "'videos where chefs review kitchen gadgets' → 'kitchen gadget review', or an @handle if " +
+            "they named a competitor. Never quote their sentence back as the value and never include " +
+            "the platform name; distilling their own words this way is not inventing. " +
+            "For 'read': the concept text they named. For 'remix' and 'test': the " +
             "video LINK they pasted, copied exactly. Omit entirely when there is nothing to pre-fill — " +
             "never invent a value, and never pass one for 'account' (it needs nothing typed).",
         },
@@ -1042,6 +1047,13 @@ export async function runChatAgentStream(
   const skillRuns: SkillRunOutput[] = [];
   const uiBlocks: unknown[] = [];
   /**
+   * Actions whose input field is already on screen this TURN. request_input is free and the model
+   * sometimes asks twice — in parallel within one round, or again next round after reading "shown"
+   * (measured live: 2/16 explore runs doubled the card). One field IS the affordance; a repeat
+   * emits nothing and the tool result says so. Per-action, so two DIFFERENT fields still coexist.
+   */
+  const shownInputFields = new Set<string>();
+  /**
    * Spec §5: *"model emits an invalid tree → one repair attempt, then degrade to prose (never a
    * broken card)."* Counted per TURN, not per round, so a model that keeps re-sending the same
    * malformed tree is told to write words rather than spending the round budget on retries.
@@ -1363,6 +1375,21 @@ export async function runChatAgentStream(
           continue;
         }
         const cap = SKILL_CAPABILITIES[action];
+        // Idempotence: the same action's field already on screen this turn → emit nothing more.
+        if (shownInputFields.has(action)) {
+          toolCalls.push({ name: "request_input", ran: false, note: `duplicate:${action}` });
+          messages.push({
+            role: "tool",
+            tool_call_id: call.id,
+            content: JSON.stringify({
+              shown: "already on screen",
+              action,
+              note: "this field is already in the thread — do not request it again; point the creator to it in one short line",
+            }),
+          });
+          continue;
+        }
+        shownInputFields.add(action);
         // Prefill per the capability's declared shape (text / url / tiktok-url); a value that
         // doesn't match is dropped, and a non-prefillable field never takes one.
         const prefill = resolvePrefill(cap.prefill, rawValue);

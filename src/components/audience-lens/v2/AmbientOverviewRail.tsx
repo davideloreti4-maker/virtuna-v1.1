@@ -417,11 +417,15 @@ export function AmbientOverviewRail({
         // An un-honoured slice seals NOTHING (the row stays queued) rather than falling back to
         // the room, which would be the same lie arriving quietly.
         const sliced = data.slice ?? null;
+        // The room's number is the population projection's one-decimal stop rate when it ran —
+        // the same figure the route seals — falling back to the 10-vote fraction only when no
+        // projection exists (whose percentage is always a clean multiple of ten; see the seal
+        // writer's comment in /api/tools/react).
         const pct = sliced
           ? sliced.honored
             ? sliced.stopPct ?? null
             : null
-          : fractionToStopPct(data.fraction ?? "");
+          : data.population?.stopPct ?? fractionToStopPct(data.fraction ?? "");
         // Seal the row only with a real, parseable fraction (honesty spine — never a fabricated %).
         // Capture the full snapshot (population/personas) too, so the depth drill opens without a re-run.
         if (pct !== null) {

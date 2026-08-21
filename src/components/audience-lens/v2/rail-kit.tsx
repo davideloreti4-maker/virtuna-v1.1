@@ -26,6 +26,10 @@
 import { TONE } from "./AmbientDetail";
 import type { AnswerStat, MetricTile, RankStripData, VoiceRow } from "./domain-template";
 
+/** Deterministic en-US thousands grouping — `toLocaleString()` honors the machine's locale and
+ *  rendered "1.000" (European) on this box; same guard as the adapters'. */
+const fmtCount = (n: number) => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+
 // ── surfaces ──────────────────────────────────────────────────────────────────
 
 export const SURFACE = {
@@ -311,7 +315,11 @@ export function Voice({
       </p>
       <div className="mt-2.5 flex items-center gap-2.5">
         <span className="whitespace-nowrap text-[11px] tabular-nums" style={{ color: voice.loss ? TONE.coral : TONE.faint }}>
-          {voice.echo} would echo this
+          {/* The denominator makes the count readable — "453 would echo this" floats without the
+              room's size; "453 of 1,001" is a share you can weigh at a glance. */}
+          {voice.echoOf && voice.echoOf > voice.echo
+            ? `${fmtCount(voice.echo)} of ${fmtCount(voice.echoOf)} would echo this`
+            : `${fmtCount(voice.echo)} would echo this`}
         </span>
         <span className="h-[3px] flex-1 overflow-hidden rounded-sm" style={{ background: "rgba(236,231,222,.09)" }}>
           <span

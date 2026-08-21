@@ -12,13 +12,29 @@
  *     the form stays pinned at the bottom (homeThreadMode branch in composer.tsx).
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { HomeGreeting } from "./home-greeting";
 import { AMBIENT_V2_ENABLED } from "@/lib/flags/ambient-v2";
 import { CONCEPT_V8_ENABLED } from "@/lib/flags/concept-v8";
 import { Composer } from "./composer";
+
+/**
+ * The audience rail is user-resizable on desktop (owner ask 2026-08-16) — a drag handle on its
+ * left hairline, double-click (or Home) to reset. This is a WIDTH dial, not the vetoed collapse
+ * (2026-08-12 ruling in AmbientOverview: complete frames that scroll; name+% alone rejected) —
+ * the floor keeps every frame legible, it only reflows.
+ *
+ * 320 floor: the board's gutters (26px × 2) + the terrain/dot-field figures still read; below
+ * that the segment frames wrap every other word. 560 ceiling: matches the drill surfaces' own
+ * max content width — an aside wider than its content is dead margin dressed as a feature.
+ */
+const RAIL_MIN = 320;
+const RAIL_MAX = 560;
+const RAIL_DEFAULT = 400;
+const RAIL_WIDTH_KEY = "virtuna:rail-width";
+const clampRail = (w: number) => Math.min(RAIL_MAX, Math.max(RAIL_MIN, Math.round(w)));
 
 export function HomePageLayout() {
   const [hasThread, setHasThread] = useState(false);
@@ -34,6 +50,30 @@ export function HomePageLayout() {
   // thread mode; null otherwise ⇒ the composer keeps the room in its dock.
   const [railHost, setRailHost] = useState<HTMLDivElement | null>(null);
   const reducedMotion = usePrefersReducedMotion();
+
+  // Rail width (≥xl only). SSR renders the default; the persisted width lands in an effect so the
+  // server and client markup agree (a lazy localStorage initializer would hydrate mismatched).
+  const [railWidth, setRailWidth] = useState(RAIL_DEFAULT);
+  const railDrag = useRef<{ startX: number; startW: number } | null>(null);
+  useEffect(() => {
+    try {
+      const stored = Number(localStorage.getItem(RAIL_WIDTH_KEY));
+      if (Number.isFinite(stored) && stored > 0) setRailWidth(clampRail(stored));
+    } catch {
+      // storage unavailable (private mode) — the default width is fine
+    }
+  }, []);
+  const persistRailWidth = (w: number) => {
+    try {
+      localStorage.setItem(RAIL_WIDTH_KEY, String(w));
+    } catch {
+      // storage unavailable — the width still applies for this session
+    }
+  };
+  const resetRailWidth = () => {
+    setRailWidth(RAIL_DEFAULT);
+    persistRailWidth(RAIL_DEFAULT);
+  };
 
   const handleThreadChange = useCallback((next: boolean) => {
     setHasThread(next);
@@ -167,8 +207,62 @@ export function HomePageLayout() {
           aria-label="Your audience"
           // A CONNECTED rail — part of the thread page, full height, flush (no floating gaps). The
           // panel fills the column top-to-bottom; its own left hairline divides it from the thread.
-          className="hidden h-full min-h-0 w-[400px] shrink-0 flex-col xl:flex"
+          // Width is the user's dial (drag the left edge; double-click resets) — inline style, not
+          // a class, because the value is state. No transition: a drag must track the pointer.
+          className="relative hidden h-full min-h-0 shrink-0 flex-col xl:flex"
+          style={{ width: railWidth }}
         >
+          {/* The resize handle rides the rail's left hairline: an 8px grab strip, invisible until
+              hovered (a 1px cream whisper), so the surface stays matte and the hairline stays the
+              divider. Pointer capture keeps the drag alive when the cursor outruns the strip. */}
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize the audience rail"
+            aria-valuemin={RAIL_MIN}
+            aria-valuemax={RAIL_MAX}
+            aria-valuenow={railWidth}
+            tabIndex={0}
+            className="group absolute inset-y-0 -left-1 z-10 w-2 cursor-col-resize select-none outline-none"
+            onPointerDown={(e) => {
+              e.preventDefault(); // stop a text-selection from starting under the drag
+              railDrag.current = { startX: e.clientX, startW: railWidth };
+              e.currentTarget.setPointerCapture(e.pointerId);
+            }}
+            onPointerMove={(e) => {
+              const d = railDrag.current;
+              if (!d || e.buttons === 0) return;
+              // The rail sits on the page's right edge, so dragging LEFT grows it.
+              setRailWidth(clampRail(d.startW + (d.startX - e.clientX)));
+            }}
+            onPointerUp={(e) => {
+              if (!railDrag.current) return;
+              railDrag.current = null;
+              persistRailWidth(clampRail(railWidth));
+              e.currentTarget.releasePointerCapture(e.pointerId);
+            }}
+            onDoubleClick={resetRailWidth}
+            onKeyDown={(e) => {
+              // The rail grows leftward: ← widens, → narrows. Home restores the default.
+              const next =
+                e.key === "ArrowLeft"
+                  ? clampRail(railWidth + 16)
+                  : e.key === "ArrowRight"
+                    ? clampRail(railWidth - 16)
+                    : e.key === "Home"
+                      ? RAIL_DEFAULT
+                      : null;
+              if (next === null) return;
+              e.preventDefault();
+              setRailWidth(next);
+              persistRailWidth(next);
+            }}
+          >
+            <span
+              aria-hidden
+              className="absolute inset-y-0 left-1 w-px bg-transparent transition-colors group-hover:bg-white/20 group-focus-visible:bg-white/20"
+            />
+          </div>
           <div ref={setRailHost} className="flex min-h-0 w-full flex-1" />
         </aside>
       )}

@@ -624,3 +624,30 @@ phase 5 write path must keep that property.
   Instagram. It does not break remixing and it is not this lane. Separate lane, still open.
 - **The card is 3005px at 390px** on a real 8-beat sheet. D3 chose the stage partly to avoid making
   that worse. Card length remains an open decision.
+
+## Live E2E run (2026-08-21) — the owed phase-4 gate, closed
+
+Run after the Apify cap reset, through the real UI (`/feed` → teardown detail → brief dialog →
+Remix), local dev on `main` against prod Supabase. Source `@pulwasha_cooks` (TikTok, 1.6M views).
+`POST /api/tools/remix/run` 200 in 3.6 min → blueprint `mwjmLsH70d9w`.
+
+- **Clips: cut 8/8 in 27.1s, uploaded 8/8** to `clips/mwjmLsH70d9w/<beatIndex>.mp4`, `clip_uris`
+  paths-only — the ~6 runner-wiring lines + 1 route line that were only unit-proven at merge are
+  now live-proven.
+- **Read route:** `GET /api/remix/blueprint/<id>` 200 with 8/8 signed URLs.
+- **Delivered bytes (ffprobe on a downloaded clip):** exactly one stream, h264 360×640 (9:16),
+  3.00s ≤ 4.05s; delivered bytes == stored bytes. Sizes 207–389 KB, avg 310 KB — top end runs
+  above the spec's 150–300 KB estimate (note, not a defect).
+- **Stage (native 390×844):** Play → the `<video>` overlay fades in inside covered windows and
+  the still returns outside (opacity 1→0 ×2 and 0→1 ×2 over a 12s sample, `currentTime`
+  advancing); paused scrub tracks the playhead (still `scrub/6.jpg` @40.5s → `scrub/12.jpg`
+  @76.5s; the preloaded clip src follows beat windows 0→4→7).
+- **Reaper (row backdated 8d, invoked locally):** first pass `clips: {deleted: 8, emptied: 1}`,
+  second pass `{deleted: 0, emptied: 0}` (idempotent); bucket prefix emptied; a sibling
+  same-day row untouched; `created_at` restored — clips stay gone, the correct post-TTL state.
+  The videos sweep still errors on its known missing FK (pre-existing, unchanged).
+- **Non-blocking findings:** scrub frames persisted 14/30 (frames path, out of phase-4 scope);
+  adapt succeeded on attempt 0 this run; `verifyCronAuth` fails OPEN when `CRON_SECRET` is unset
+  (`Bearer undefined` authenticates in local dev — prod sets the secret; hardening candidate).
+- **Cost:** ~$0.02 Apify + 0.03¢ decode per run; one unintended duplicate run (`u49bxDWRcpyN`)
+  fired by a probe misfire during driving, same cost class, left in place (< TTL).

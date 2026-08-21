@@ -207,10 +207,13 @@ describe("reactPopulation", () => {
     expect(agg.segments[1]!.archetype).toBe("niche_deep_buyer");
   });
 
-  it("carries the creator-specific display_name onto each segment", () => {
+  it("names each segment with the CURATED archetype noun, never the generator's display_name", () => {
+    // 2026-08-12 owner ruling (resting board), extended to the projection 2026-08-16: the
+    // generator's labels ("Dopamine Scrollers", "The Tech Trend Hunter") name a mechanism or a
+    // marketing persona; the curated table names a person. One set of names on every surface.
     const agg = reactPopulation(sig, SPECTACLE_HOOK, { N: 200, seed: 3 });
     const lurker = agg.segments.find((s) => s.archetype === "lurker");
-    expect(lurker!.displayName).toBe("Dopamine Scrollers");
+    expect(lurker!.displayName).toBe("Quiet Watchers");
   });
 
   it("DIFFERENTIATES: the spectacle hook lights the scrollers, the craft hook lights the nerds", () => {
@@ -228,6 +231,16 @@ describe("reactPopulation", () => {
     expect(nerdStop(craft)).toBeGreaterThan(scrollerStop(craft));
     // the overall distribution genuinely moves between the two hooks.
     expect(spectacle.stopPct).not.toBe(craft.stopPct);
+  });
+
+  it("stopPct is the counts' rate at ONE decimal — whole-percent rounding is gone", () => {
+    // Whole-percent rounding collapsed every verdict onto clean integers, and the seal (which is
+    // this number) came out reading 50/60/70 — a fabricated-number look on a real distribution.
+    const agg = reactPopulation(sig, SPECTACLE_HOOK, { N: 1000, seed: 3 });
+    expect(agg.stopPct).toBe(Math.round((1000 * agg.stop) / agg.total) / 10);
+    for (const s of agg.segments) {
+      expect(s.stopPct).toBe(Math.round((1000 * s.stop) / s.total) / 10);
+    }
   });
 
   it("empty-topics content never crashes and yields a low-stop aggregate", () => {
