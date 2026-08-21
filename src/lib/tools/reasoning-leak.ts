@@ -40,6 +40,41 @@
  * 6 the next. The trigger is provider-side and cannot be summoned, which is exactly why the remedy
  * is a boundary guard rather than a prompt change: there is nothing to A/B.
  *
+ * ─── 🔴 WHY THE STREAM HALF (task #31) IS NOT A `createProseCallGuard` JOB ────────────────────
+ *
+ * Checked 2026-08-21. Four handoffs have said *"if revisited, the pattern is
+ * `createProseCallGuard` (`prose-call.ts`)"*. **That pattern does not transfer, and the reason is
+ * structural — it is about WHERE THE MARKER SITS, not about effort.**
+ *
+ * `createProseCallGuard` is cheap because its marker arrives at the START of the thing to suppress:
+ * it sees `generate_hooks(`, holds from there to end of round, and streams everything before it. To
+ * suppress text that arrives BEFORE its marker you must hold ALL of it until the marker either
+ * arrives or does not — which is full buffering of every turn, i.e. exactly the cost the owner
+ * declined.
+ *
+ * Sort the attested shapes by marker position and the three production rows fall the wrong way:
+ *
+ *   shape                       marker    narrow stream guard?   production rows
+ *   `<think>…</think>`          leading   ✅ hold from the tag    0
+ *   `<think>…` orphaned open    leading   ✅ hold from the tag    0
+ *   `…</think>` orphaned close  TRAILING  ❌ needs full buffer    1  (291591a8, 20,742 chars)
+ *   no tag at all               NONE      ❌ undetectable live    2  (249848cb 33,165 · ae09c4df 18,484)
+ *
+ * **A narrow streaming guard would have caught 0 of the 3 real leaks.** The two largest carry no
+ * marker at all, so nothing mid-stream can distinguish them from a long legitimate answer until the
+ * length itself does — and by then the text is on screen, which is precisely what a stream guard
+ * exists to prevent.
+ *
+ * ⚠️ A cap-based mid-stream stop (cut at `RUNAWAY_PROSE_CAP`) IS possible and costs no latency,
+ * since the largest legitimate answer ever persisted is 3,791 chars. But it only BOUNDS the damage —
+ * the creator still watches 8,000 chars of monologue — and the assembled answer is already `""` by
+ * then, so it trades one confusing turn for a differently confusing one. Not obviously an
+ * improvement; measure before building.
+ *
+ * 🔑 So the deferral is not a backlog item waiting for someone keen. **The cheap fix named in four
+ * handoffs does not exist for the shapes that actually leaked.** Anyone reopening #31 should start
+ * here, not with `prose-call.ts`.
+ *
  * Pure, no I/O, no LLM. Deterministic.
  */
 

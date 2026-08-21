@@ -59,10 +59,16 @@
  *   call — `generate_ideas|generate_hooks|write_script` followed by `(` — and an ask that says "run
  *   the simulate tool" elicits `simulate(...)`, which is not in GENERATOR_NAMES and does not match.
  *
- * The behaviour is therefore sound and unchanged; only the explanation was wrong. Applying
- * `detectGuessPin` here would make the two sites consistent, but it is a change to measured design
- * behind a dark flag, and this module argues at length (above) that the guess pin's reasoning does
- * NOT transfer. Left as the owner's call rather than silently converged.
+ * The behaviour is therefore sound and unchanged; only the explanation was wrong.
+ *
+ * ✅ **RESOLVED 2026-08-21 — converging is COSMETIC, and the data above already said so.** The
+ * question was whether to swap this site to `detectGuessPin` for consistency. The overlap line in
+ * the measurement block settles it: **8/8 fires would also have been pinned by the guess pin**,
+ * i.e. `detectGuessPin` returned non-null on **every** measured fire. So the narrowing would have
+ * changed the target on **none** of them. Converging buys symmetry and zero behaviour, on a module
+ * that argues at length (above) that the guess pin's reasoning does not transfer here.
+ * **Recommendation: leave the code, keep this corrected comment.** Changing measured design for a
+ * measured-zero gain is the trade this lane keeps deciding against.
  * (The same raw-vs-narrowed split was a REAL defect at the third site, `route.ts:496` — Stage B's
  * dead-zone label, which is user-visible and shipping. Fixed in #536, pinned by route test 6g2.)
  *
