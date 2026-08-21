@@ -221,7 +221,10 @@ export function AudienceChip({ threadId, onAudienceChange, className }: Audience
           {/* Mobile bottom sheet (pointer-coarse) */}
           <div
             className={cn(
-              "fixed inset-x-0 bottom-0 z-50 rounded-t-2xl border-t border-white/[0.06] bg-surface-elevated pb-safe",
+              // --z-modal (400) over its backdrop's 300, preserving the old 50-over-40
+              // order. Both used to sit under --z-sidebar (250), so on touch the
+              // sidebar's fixed toggle stayed lit above the dimmed sheet.
+              "fixed inset-x-0 bottom-0 z-[var(--z-modal)] rounded-t-2xl border-t border-white/[0.06] bg-surface-elevated pb-safe",
               "pointer-fine:hidden",
             )}
             role="listbox"
@@ -274,7 +277,7 @@ export function AudienceChip({ threadId, onAudienceChange, className }: Audience
 
           {/* Backdrop for mobile sheet */}
           <div
-            className="fixed inset-0 z-40 bg-black/50 pointer-fine:hidden"
+            className="fixed inset-0 z-[var(--z-modal-backdrop)] bg-black/50 pointer-fine:hidden"
             onClick={() => setOpen(false)}
             aria-hidden="true"
           />
