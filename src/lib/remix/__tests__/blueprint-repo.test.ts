@@ -1,16 +1,23 @@
 import { describe, it, expect, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { insertBlueprint, getBlueprint, BLUEPRINT_COLUMNS } from "../blueprint-repo";
+import {
+  insertBlueprint,
+  getBlueprint,
+  updateVariantScript,
+  BLUEPRINT_COLUMNS,
+} from "../blueprint-repo";
 import type { BlueprintRow } from "../blueprint-repo";
 import { emptyBlueprint } from "@/lib/engine/remix/blueprint";
+import type { AdaptedBeat } from "@/lib/engine/remix/decode-types";
 
 /**
  * Minimal supabase-js double — the I/O boundary we cannot run in a unit test.
  *
  * It mirrors the exact chain the repo builds: `.from().select().eq().eq().single()` for the
- * read and `.from().insert()` for the write. Every link is exposed so the tests can assert
- * WHAT was sent, not only what came back — a repo that queried the wrong table or dropped the
- * user scope would otherwise pass every behavioural assertion here.
+ * read, `.from().insert()` for the write, and `.rpc()` for the variant-isolated write. `update`
+ * is exposed on the `from()` return purely so a test can assert it was NEVER called — a repo
+ * that fell back to read-modify-write instead of the RPC would otherwise pass every other
+ * assertion here while reintroducing the sibling-clobber bug the RPC exists to prevent.
  */
 function clientReturning(result: { data: unknown; error: unknown }) {
   const single = vi.fn().mockResolvedValue(result);
@@ -18,14 +25,18 @@ function clientReturning(result: { data: unknown; error: unknown }) {
   const eqId = vi.fn().mockReturnValue({ eq: eqUser });
   const select = vi.fn().mockReturnValue({ eq: eqId });
   const insert = vi.fn().mockResolvedValue(result);
-  const from = vi.fn().mockReturnValue({ select, insert });
+  const update = vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn() }) });
+  const from = vi.fn().mockReturnValue({ select, insert, update });
+  const rpc = vi.fn().mockResolvedValue(result);
   return {
-    client: { from } as unknown as SupabaseClient,
+    client: { from, rpc } as unknown as SupabaseClient,
     from,
     select,
     eqId,
     eqUser,
     insert,
+    update,
+    rpc,
     single,
   };
 }
@@ -171,6 +182,46 @@ describe("blueprint-repo", () => {
       await expect(getBlueprint(c.client, "abc123def456", "u1")).rejects.toThrow(
         /permission denied/,
       );
+    });
+  });
+
+  describe("updateVariantScript", () => {
+    const NEW_SCRIPT: AdaptedBeat[] = [
+      { index: 0, spoken: "revised line", on_screen_text: "NEW", shot: "waist-up" },
+    ];
+
+    it("calls the RPC with exactly p_id, p_user_id, p_variant, p_script", async () => {
+      const c = clientReturning({ data: null, error: null });
+      await updateVariantScript(c.client, "abc123def456", "u1", 1, NEW_SCRIPT);
+      expect(c.rpc).toHaveBeenCalledWith("remix_blueprint_set_variant_script", {
+        p_id: "abc123def456",
+        p_user_id: "u1",
+        p_variant: 1,
+        p_script: NEW_SCRIPT,
+      });
+    });
+
+    it("returns true on success", async () => {
+      const c = clientReturning({ data: null, error: null });
+      expect(await updateVariantScript(c.client, "abc123def456", "u1", 0, NEW_SCRIPT)).toBe(true);
+    });
+
+    it("returns false AND logs when the RPC reports an error — never throws for this write", async () => {
+      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const c = clientReturning({
+        data: null,
+        error: { message: "check constraint" },
+      });
+      const ok = await updateVariantScript(c.client, "abc123def456", "u1", 0, NEW_SCRIPT);
+      expect(ok).toBe(false);
+      expect(errorSpy).toHaveBeenCalled();
+      errorSpy.mockRestore();
+    });
+
+    it("never selects + rewrites the whole script array — from().update() is never called", async () => {
+      const c = clientReturning({ data: null, error: null });
+      await updateVariantScript(c.client, "abc123def456", "u1", 0, NEW_SCRIPT);
+      expect(c.update).not.toHaveBeenCalled();
     });
   });
 });
