@@ -246,9 +246,9 @@ answer ≈ 4 screens. 33k characters is roughly an order of magnitude beyond tha
 | **F-11a** | the transport does not stream | 🟢 **FALSE — never was true at audit time** | `route.ts` sends `event: token` per delta; `use-chat-stream.ts:295` does `setStreamingText` per token. Wired since `216df989` (**2026-06-21**), two months *before* the audit. Proven live from the opposite direction: **#523 exists because leaked reasoning STREAMED to the creator in real time.** Text that streams cannot also not-stream |
 | **F-11b** | dead air before the first character | 🔴 **STILL LIVE — measured 2026-08-16, and it IS the row** | `scripts/probe-f11-stream-timing.ts`, N=4 per shape, free (billing omitted). **Prose: median first token 5.28s** (4.64 · 4.71 · 5.28 · 5.47). **Skill: median 4.04s** (3.65 · 3.71 · 4.04 · 5.15), dispatching `generate_hooks` 4/4. The audit's ~5.5s is intact — a year of lane work never touched it. This is the whole of F-11 |
 | **F-11c** | text arrives in one paint | 🟢 **FALSE for prose** | 63–104 separate token frames per answer; **median max inter-token gap 0.18s**, worst observed 0.88s. There is no long silence for a burst to sit behind. Once text starts it flows |
-| F-11d | cards arrive all at once | ⚪ **genuinely unmeasured** | `onBlock` fires per block (`chat-agent-loop.ts:1331`/`:1380`/`:1411`), so incremental arrival is *possible* — but blocks never materialise without a billing seam, so the free probe cannot see it. **Needs a paid run.** Count blocks off the SSE, not the DOM |
+| F-11d | cards arrive all at once | 🟢 **ANSWERED IN CODE 2026-08-21 — TRUE, and no paid run can change it** | For a SKILL run they arrive in one tick **by construction**: `chat-agent-loop.ts:1553` does `const { blocks } = await skill.run(...)` — one awaited call returning a COMPLETE array — and `:1562` then replays it as `for (const block of blocks) input.onBlock(block)`, back-to-back in the same tick. There is nothing upstream emitting per card, so "incremental is possible" is **false at this layer**; it would take a change to `skill.run`'s contract, not wiring. ⚠️ **The three sites this row used to cite are not the skill-card path**: `:1331` is a citation block, `:1380` a `request_input` field, `:1411` `handleEmitCard` — that last one IS per-round incremental, which is why COMPOSED cards behave differently from SKILL cards. The row cited three call sites and missed `:1562`, the only one that delivers the "5 hooks" a creator means |
 | **F-12a** | the PROSE wait happens in a void | 🟢 **FALSE — measured in a real browser 2026-08-16** | `scripts/probe-f12-wait-layout.mjs`, both viewports opened at native size. Gap from the "Thinking…" indicator to the composer is **75px on desktop (1440×900) and 64px on mobile (iPhone 14)** — *constant across all 44 samples*, zero variance, for the whole 4–5s wait. And it sits **668px / 469px from the viewport top**, i.e. near the BOTTOM: the exact inverse of "pinned to the TOP". The live turn is anchored by the composer, which is what the row asked for |
-| F-12b | the SKILL-RUN wait happens in a void | ⚪ **still unmeasured** | The row's original sentence was about a skill run, which renders `ProgressChecklist` — a taller, stage-driven spine that only exists once `stage` SSE events arrive, i.e. once a **billable** generator runs. F-12a cannot clear it. A clean prose wait is not a clean skill wait |
+| F-12b | the SKILL-RUN wait happens in a void | 🟡 **THE SPINE IS FULLY WIRED — verified end-to-end in code 2026-08-21. Only the LOOK is unmeasured** | This row said the spine *"only exists once `stage` SSE events arrive"*, implying something unbuilt. Every link exists and is connected: the runner emits phases **progressively** (`hooks-runner.ts:662`/`:664`/`:756`/`:894` — `Generating` active→done, `Ranking` active→done) → the route forwards them (`chat/route.ts:627`, `onStage: (name, status) => send("stage", …)`) → the client upserts by name preserving first-seen order (`use-chat-stream.ts:360`, *"Feeds the progress spine during a chat-run skill"*) → `thread-turn.tsx:223`/`:236` reads them and keeps the run LIVE until every stage is `done` → `run-capsule.tsx:116` renders `ProgressChecklist`. So a skill wait is **not** a void; it has a real, ticking, stage-driven spine. What a paid run would add is confirmation it LOOKS right — a nice-to-have, not the blocker this row described |
 
 > 🔴 **F-12 nearly closed the WRONG way, and the near-miss is the more useful finding.**
 > The first run of that probe measured a **641px** gap — a near-perfect match for the row's "~600px
@@ -301,12 +301,27 @@ for FREE** — `probe-f11-stream-timing.ts` drives the real loop with the real 2
 omits `deps.billing`, so billable skills fail closed and nothing is spent. It split three ways:
 **F-11a and F-11c are false, F-11b is real and is the whole row.**
 
-What still needs a **paid** run: **F-11d** (do cards arrive one-by-one) and **F-12** (the wait's
-layout — which also needs a browser at a native viewport, not a resized one). **F-8b** joins them
-only alongside a *calibrated* audience.
+> 🔴 **UPDATE 2026-08-21 — this paragraph was wrong, and it is the FOURTH time this table has
+> over-budgeted.** It read *"What still needs a **paid** run: **F-11d** and **F-12**."* Both were
+> then answered **free, from code**, in about ten minutes:
+> - **F-11d** — answered outright. Skill cards arrive in one tick *by construction* (`skill.run()`
+>   returns a complete array). A paid run cannot change a structural fact, only re-observe it.
+> - **F-12b** — the spine it called unbuilt is **fully wired end to end**, runner → route → client
+>   → thread. Only its *appearance* is unmeasured.
+>
+> The rows even carried the evidence that would have refuted them: F-11d cited three `onBlock` sites
+> while **missing `:1562`**, the only one that delivers skill cards.
+> 🔑 **The tell was there in both: "needs a paid run" was doing the work of "nobody has opened the
+> file."** Compare F-3 and F-8a, which sat "⚪ unmeasured" across four briefs while already fixed.
+> The failure is not the estimate — it is that a row's *status* and a row's *evidence* were written
+> by different people at different times and never reconciled.
+
+What still needs a **paid** run: **F-8b**, and only alongside a *calibrated* audience. **F-12b**
+wants a look at the spine on a real run — worth doing on the next billed run for any reason, not
+worth one of its own.
 
 🔑 **Before budgeting a run, ask which half of the row the money is actually for.** F-11 read as one
-indivisible "needs a live billed run" for four briefs. Three of its four parts turned out to be
+indivisible "needs a live billed run" for four briefs. **All four** of its parts turned out to be
 answerable from code plus a free loop probe.
 
 ---
