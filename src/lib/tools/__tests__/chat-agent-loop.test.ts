@@ -16,6 +16,7 @@ import {
 } from "@/lib/tools/chat-agent-loop";
 import type { SkillTool, SkillToolArgs } from "@/lib/tools/skill-dispatch";
 import { MAX_RECORD_LENGTH } from "@/lib/tools/on-screen";
+import type { BlueprintRow } from "@/lib/remix/blueprint-repo";
 
 const CTX = { platform: "tiktok" as const, profileRow: null, audience: null };
 
@@ -687,6 +688,155 @@ describe("runChatAgentStream [tools]", () => {
     expect(res.toolCalls[0]!.ran).toBe(false);
     expect(res.toolCalls[0]!.note).toBe("error");
     expect(res.text).toBe("sorry, that failed");
+  });
+});
+
+// ── PHASE 5: revise_remix — FREE, always bound ────────────────────────────────
+// The handler's own contract (ownership, variant range, the merge-by-index write) is pinned in
+// revise-remix-tool.test.ts. What belongs HERE is the loop-level free-tool invariant: the branch
+// sits BEFORE byName.get, so it can never reach deps.billing.gate or fire onDispatch — the same
+// property request_input and emit_card already have.
+
+describe("runChatAgentStream [revise_remix]", () => {
+  /** Ownership-refusal deps — the simplest path through the handler, enough to prove the loop's shape. */
+  const refusingRemixDeps = () => ({
+    service: {} as never,
+    userId: "u1",
+    getBlueprint: vi.fn(async () => null),
+    updateVariantScript: vi.fn(),
+    reviseBeats: vi.fn(),
+  });
+
+  const REVISE_ARGS = '{"blueprintId":"bp1","variant":0,"beats":[1],"note":"beat 2 is too soft"}';
+
+  it("is bound in `tools` unconditionally — even with no skills, no grounding, no composed cards", async () => {
+    const stream = mockStream([[textChunk("ok")]]);
+
+    await runChatAgentStream(baseInput(), DEPS(stream, { skills: [] }));
+
+    const names = (
+      (stream as unknown as ReturnType<typeof vi.fn>).mock.calls[0]![0] as {
+        tools: Array<{ function: { name: string } }>;
+      }
+    ).tools.map((t) => t.function.name);
+    expect(names).toContain("revise_remix");
+  });
+
+  it("never reaches the billing gate and never announces a dispatch (free, like request_input)", async () => {
+    const billing = mkBilling();
+    const onDispatch = vi.fn();
+    const stream = mockStream([
+      [toolName(0, "c1", "revise_remix"), toolArgs(0, REVISE_ARGS)],
+      [textChunk("done")],
+    ]);
+
+    await runChatAgentStream(
+      baseInput({ onDispatch }),
+      DEPS(stream, { skills: [], billing, remix: refusingRemixDeps() }),
+    );
+
+    expect(billing.gate).not.toHaveBeenCalled();
+    expect(onDispatch).not.toHaveBeenCalled();
+  });
+
+  it("the tool result lands in the NEXT round's messages as role:tool, keyed to the call id", async () => {
+    const stream = mockStream([
+      [toolName(0, "c1", "revise_remix"), toolArgs(0, REVISE_ARGS)],
+      [textChunk("done")],
+    ]);
+
+    await runChatAgentStream(baseInput(), DEPS(stream, { skills: [], remix: refusingRemixDeps() }));
+
+    const secondRound = (stream as unknown as ReturnType<typeof vi.fn>).mock.calls[1]![0] as {
+      messages: Array<{ role: string; tool_call_id?: string; content?: string }>;
+    };
+    const toolResult = secondRound.messages.find((m) => m.tool_call_id === "c1");
+    expect(toolResult?.role).toBe("tool");
+    expect(() => JSON.parse(toolResult!.content!)).not.toThrow();
+    expect(JSON.parse(toolResult!.content!)).toMatchObject({ ok: false });
+  });
+
+  it("renders nothing — no onBlock call, nothing added to uiBlocks", async () => {
+    const onBlock = vi.fn();
+    const stream = mockStream([
+      [toolName(0, "c1", "revise_remix"), toolArgs(0, REVISE_ARGS)],
+      [textChunk("done")],
+    ]);
+
+    const res = await runChatAgentStream(
+      baseInput({ onBlock }),
+      DEPS(stream, { skills: [], remix: refusingRemixDeps() }),
+    );
+
+    expect(onBlock).not.toHaveBeenCalled();
+    expect(res.uiBlocks).toHaveLength(0);
+  });
+
+  it("an unrelated billable skill call in the SAME round still gates and bills normally", async () => {
+    const billing = mkBilling();
+    const ideas = mkSkill("generate_ideas");
+    const onDispatch = vi.fn();
+    const stream = mockStream([
+      [
+        toolName(0, "c1", "revise_remix"),
+        toolArgs(0, REVISE_ARGS),
+        toolName(1, "c2", "generate_ideas"),
+        toolArgs(1, '{"topic": "a"}'),
+      ],
+      [textChunk("done")],
+    ]);
+
+    const res = await runChatAgentStream(
+      baseInput({ onDispatch }),
+      DEPS(stream, { skills: [ideas], billing, remix: refusingRemixDeps() }),
+    );
+
+    expect(billing.gate).toHaveBeenCalledTimes(1);
+    expect(billing.gate).toHaveBeenCalledWith("ideas");
+    expect(billing.bill).toHaveBeenCalledWith("ideas", "pro");
+    expect(onDispatch).toHaveBeenCalledTimes(1);
+    expect(onDispatch).toHaveBeenCalledWith("ideas");
+    expect(res.skillRuns).toHaveLength(1);
+  });
+
+  it("fires input.onRevised only after a real successful write, with the address", async () => {
+    const onRevised = vi.fn();
+    const stream = mockStream([
+      [toolName(0, "c1", "revise_remix"), toolArgs(0, REVISE_ARGS)],
+      [textChunk("done")],
+    ]);
+    const writingDeps = {
+      service: {} as never,
+      userId: "u1",
+      getBlueprint: vi.fn(async (): Promise<BlueprintRow | null> => ({
+        id: "bp1",
+        user_id: "u1",
+        thread_id: null,
+        source_video_id: null,
+        blueprint: {
+          duration_s: 10,
+          words_per_second: 3,
+          has_speech: true,
+          from_fixed_buckets: false,
+          beats: [
+            { index: 0, t_start: 0, t_end: 1, duration_s: 1, spoken_span_s: null, role: "hook", spoken: "s0", on_screen_text: null, visual_event: "v0", audio_event: "a0", cuts: 1, weakness: null },
+            { index: 1, t_start: 1, t_end: 2, duration_s: 1, spoken_span_s: null, role: "setup", spoken: "s1", on_screen_text: null, visual_event: "v1", audio_event: "a1", cuts: 1, weakness: null },
+          ],
+        },
+        script: [[
+          { index: 0, spoken: "a", on_screen_text: "A", shot: "s" },
+          { index: 1, spoken: "b", on_screen_text: "B", shot: "s" },
+        ]],
+        clip_uris: [],
+      })),
+      updateVariantScript: vi.fn(async () => true),
+      reviseBeats: vi.fn(async () => [{ index: 1, spoken: "new", on_screen_text: "N", shot: "s" }]),
+    };
+
+    await runChatAgentStream(baseInput({ onRevised }), DEPS(stream, { skills: [], remix: writingDeps }));
+
+    expect(onRevised).toHaveBeenCalledTimes(1);
+    expect(onRevised).toHaveBeenCalledWith({ blueprintId: "bp1", variant: 0 });
   });
 });
 

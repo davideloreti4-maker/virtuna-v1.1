@@ -37,6 +37,7 @@ import {
 import { describeRunOutput, isChatCardsOnScreenEnabled } from "@/lib/tools/on-screen";
 import { SEARCH_CORPUS_TOOL, executeCorpusSearch } from "@/lib/grounding/corpus-tool";
 import { EMIT_CARD_TOOL, handleEmitCard } from "@/lib/tools/emit-card-tool";
+import { REVISE_REMIX_TOOL, handleReviseRemix, type ReviseRemixDeps } from "@/lib/tools/revise-remix-tool";
 import { createProseCallGuard } from "@/lib/tools/prose-call";
 import { stripLeakedReasoning, capRunawayProse } from "@/lib/tools/reasoning-leak";
 import { createSearchGovernor } from "@/lib/grounding/search-budget";
@@ -447,6 +448,17 @@ export interface ChatAgentStreamDeps {
    * drift. `unbound` is still honoured as a belt-and-braces fallback for callers that bind nothing.
    */
   sealedVisitor?: boolean;
+  /**
+   * Phase 5: the write seam for the FREE `revise_remix` tool — the service client + resolved
+   * user id, plus the repo/generator functions (injectable for hermetic tests; default to the
+   * real ones). `onRevised` is threaded in separately, from `input.onRevised`, at call time — it
+   * is not part of this because it belongs to the CALL, not to the wiring.
+   *
+   * Omitting this does NOT disable the tool — it stays bound in `tools`, like `request_input` —
+   * a call just refuses honestly ("revise isn't available right now") instead of crashing, the
+   * same fail-closed shape `billing`'s "no seam" case uses for skills.
+   */
+  remix?: Omit<ReviseRemixDeps, "onRevised">;
 }
 
 const DEFAULT_MAX_ROUNDS = 4;
@@ -1024,6 +1036,10 @@ export async function runChatAgentStream(
       input.cardsSlot && (s.primaryArg ?? "topic") === "topic" ? withCardsSlot(s.schema) : s.schema,
     ),
     REQUEST_INPUT_TOOL,
+    // Phase 5: free, like request_input — bound unconditionally. A creator with no remix sheets
+    // just never has an address to call it with; the tool's own description says addresses come
+    // only from the remix_sheets data block.
+    REVISE_REMIX_TOOL,
     ...(input.grounding ? [SEARCH_CORPUS_TOOL] : []),
     ...(input.composedCards ? [EMIT_CARD_TOOL] : []),
   ];
@@ -1511,6 +1527,32 @@ export async function runChatAgentStream(
                 },
           ),
         });
+        continue;
+      }
+
+      // Phase 5: revise_remix — FREE (spec §6.2). No gate, no bill, no onDispatch (nothing runs
+      // here that the run-capsule seam should label), and it renders nothing (no onBlock, no
+      // uiBlocks push — the revised sheet reaches the client only via onRevised → the `revised`
+      // SSE frame → RemixBeats' own refetch). Placed BEFORE the skill lookup for the same reason
+      // as request_input/emit_card: an unbound name must never be mistaken for a paid skill and
+      // answered with the credit line.
+      if (call.name === "revise_remix") {
+        let parsed: unknown = {};
+        try {
+          parsed = JSON.parse(call.args || "{}");
+        } catch {
+          /* handleReviseRemix reports the malformed shape */
+        }
+        const result = await handleReviseRemix(parsed, {
+          ...(deps.remix ?? {}),
+          onRevised: input.onRevised,
+        });
+        toolCalls.push({
+          name: "revise_remix",
+          ran: result.ok === true,
+          ...(result.error ? { note: result.error } : {}),
+        });
+        messages.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify(result) });
         continue;
       }
 

@@ -602,6 +602,29 @@ describe("POST /api/tools/chat (SSE route)", () => {
     expect(deps?.skills).toBeUndefined();
   });
 
+  it("Phase 5: wires the revise_remix write seam — the service client + the resolved user id", async () => {
+    process.env.CHAT_AGENT_DISPATCH = "true";
+    await primeDispatchHarness();
+    const { runChatAgentStream } = await import("@/lib/tools/chat-agent-loop");
+    (runChatAgentStream as ReturnType<typeof vi.fn>).mockImplementation(
+      async (input: { onToken: (d: string) => void }) => {
+        input.onToken("ok");
+        return { text: "ok", skillRuns: [], uiBlocks: [], toolCalls: [] };
+      }
+    );
+    const { createServiceClient } = await import("@/lib/supabase/service");
+
+    const { POST } = await import("@/app/api/tools/chat/route");
+    await readSSE(await POST(makeChatRequest({ ask: "beat 2 is too soft", platform: "tiktok" })));
+
+    const [, deps] = (runChatAgentStream as ReturnType<typeof vi.fn>).mock.calls[0] as [
+      unknown,
+      { remix?: { service?: unknown; userId?: string } } | undefined,
+    ];
+    expect(deps?.remix?.userId).toBe("user-dispatch");
+    expect(deps?.remix?.service).toBe((createServiceClient as ReturnType<typeof vi.fn>).mock.results[0]?.value);
+  });
+
   it("Test 6c2: the loop is handed the creator's RAW message, not just the prior turns", async () => {
     // The digest is built from `priorTurns`, which this route loads at step (6) — BEFORE it
     // persists the message being answered at step (7). So the turn holding the constraint
