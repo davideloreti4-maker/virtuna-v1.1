@@ -7,10 +7,16 @@ import { NextResponse } from "next/server";
  * Usage: `const authError = verifyCronAuth(request); if (authError) return authError;`
  */
 export function verifyCronAuth(request: Request): NextResponse | null {
-  const authHeader = request.headers.get("authorization");
-  const expected = `Bearer ${process.env.CRON_SECRET}`;
+  const secret = process.env.CRON_SECRET;
 
-  if (!authHeader || authHeader !== expected) {
+  // Fail closed: without a configured secret, `Bearer undefined` would match.
+  if (!secret) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const authHeader = request.headers.get("authorization");
+
+  if (!authHeader || authHeader !== `Bearer ${secret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

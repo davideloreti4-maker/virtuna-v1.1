@@ -39,8 +39,38 @@
  *     recall within the counted arms   6 of 7 residual failures
  *     overlap with the guess pin       8/8 would also have been pinned by it
  *
- * So this buys PRECISION, NOT COVERAGE: it is the guess pin with the ~3.4% wrong-run exposure
- * removed, covering only the failures where the model announced itself.
+ * So this buys PRECISION, NOT COVERAGE: it covers only the failures where the model announced
+ * itself, and its trigger cannot select for asks the model was right to decline.
+ *
+ * ⚠️ CORRECTED 2026-08-21. This paragraph used to read "it is the guess pin with the ~3.4%
+ * wrong-run exposure removed." That was not true as written, and the difference matters to anyone
+ * reasoning about the two together:
+ *
+ *   the guess pin   route.ts:519   detectGuessPin(rawAsk)   ← NARROWED by namesOtherToolFirst
+ *   this pin        route.ts:569   guessSkill(rawAsk)       ← RAW, no narrowing
+ *
+ * The narrowing exists for one measured sentence — "Yes, run the simulate tool on that hook" —
+ * which `repeat-ask.ts` independently names as the pre-router's single harmful guess. This module
+ * never inherited it, and the design doc (§ below) never mentions it. So the exposure is not
+ * "removed"; it is removed *by a different mechanism*, which is worth stating precisely because the
+ * mechanisms have different edges:
+ *
+ *   The TRIGGER filters that ask, not the target. Firing requires the model to assert a GENERATOR
+ *   call — `generate_ideas|generate_hooks|write_script` followed by `(` — and an ask that says "run
+ *   the simulate tool" elicits `simulate(...)`, which is not in GENERATOR_NAMES and does not match.
+ *
+ * The behaviour is therefore sound and unchanged; only the explanation was wrong.
+ *
+ * ✅ **RESOLVED 2026-08-21 — converging is COSMETIC, and the data above already said so.** The
+ * question was whether to swap this site to `detectGuessPin` for consistency. The overlap line in
+ * the measurement block settles it: **8/8 fires would also have been pinned by the guess pin**,
+ * i.e. `detectGuessPin` returned non-null on **every** measured fire. So the narrowing would have
+ * changed the target on **none** of them. Converging buys symmetry and zero behaviour, on a module
+ * that argues at length (above) that the guess pin's reasoning does not transfer here.
+ * **Recommendation: leave the code, keep this corrected comment.** Changing measured design for a
+ * measured-zero gain is the trade this lane keeps deciding against.
+ * (The same raw-vs-narrowed split was a REAL defect at the third site, `route.ts:496` — Stage B's
+ * dead-zone label, which is user-visible and shipping. Fixed in #536, pinned by route test 6g2.)
  *
  * ⚠️ It rests on 8 fires in 107 runs. Session 11 §7.6 records the retry half as "not built and not
  * measured end-to-end". The ~95%-at-~0-exposure figure is a PROJECTION of composing this with the

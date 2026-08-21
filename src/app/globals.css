@@ -1210,3 +1210,52 @@ select:focus-visible,
     width: max(100%, 44px);
   }
 }
+
+/* ============================================================
+   ACCESSIBILITY PREFERENCES — 2026-08-21, motion-contract lane
+   (owner-delegated ruling; accessibility half of the contract)
+
+   Before this block, `prefers-contrast` and `prefers-reduced-transparency`
+   had ZERO occurrences app-wide — measured 2026-08-16, still true 2026-08-21.
+   ============================================================ */
+
+/* More contrast: the 6% hairline grammar is the quietest thing in the app,
+   which is exactly what this preference asks us to give up. Boundaries and
+   muted text step up; nothing else changes. */
+@media (prefers-contrast: more) {
+  :root {
+    --color-border: rgba(255, 255, 255, 0.16);
+    --color-border-hover: rgba(255, 255, 255, 0.24);
+    --color-border-glass: rgba(255, 255, 255, 0.16);
+    --color-border-subtle: rgba(255, 255, 255, 0.16);
+    /* two cream rungs collapse to one — muted text joins secondary */
+    --color-foreground-muted: var(--color-cream-secondary);
+  }
+  /* 374 hairlines are the LITERAL utility, not the token — these unlayered
+     rules beat @layer utilities regardless of order, so the literal family
+     follows the token family. */
+  .border-white\/\[0\.06\] {
+    border-color: rgba(255, 255, 255, 0.16);
+  }
+  .divide-white\/\[0\.06\] > :not(:last-child) {
+    border-color: rgba(255, 255, 255, 0.16);
+  }
+  .hover\:border-white\/\[0\.1\]:hover,
+  .hover\:border-white\/\[0\.10\]:hover {
+    border-color: rgba(255, 255, 255, 0.24);
+  }
+}
+
+/* Reduced transparency: every frosted surface here already ships a ≥0.75-alpha
+   fill (most ≥0.95), so killing the blur alone keeps them legible — no per-site
+   opaque fallbacks needed. `!important` because the blurs are INLINE styles
+   (Lightning CSS strips class-based backdrop-filter, see CLAUDE.md), and an
+   important stylesheet rule is the one thing that outranks an inline style. */
+@media (prefers-reduced-transparency: reduce) {
+  *,
+  *::before,
+  *::after {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+}

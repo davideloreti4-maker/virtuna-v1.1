@@ -321,9 +321,10 @@ function OutlierCard({
         {/* The same honesty rule MultiplierChip enforces (discover-primitives.tsx), applied with
             the overlay's styling rather than its pill — a pill on an arbitrary video frame read as
             a stuck-on sticker, which is why this badge is bare text over the scrim.
-            ⚠️ Do NOT collapse this back to one green ▲. Once the band CLAMPS instead of dropping
-            (B1), extreme rows reach this feed, and a green ▲100× on a thin baseline is the exact
-            claim the clamp exists to avoid — the number is real, the proof is not. */}
+            Owner ruling 2026-08-21 (accent-dosage): no green — the proof claim rides the GLYPH.
+            ⚠️ Do NOT collapse the two variants into one unconditional ▲. Once the band CLAMPS
+            instead of dropping (B1), extreme rows reach this feed, and ▲100× on a thin baseline
+            is the exact claim the clamp exists to avoid — the number is real, the proof is not. */}
         {video.multiplier !== null ? (
           video.extreme ? (
             <span
@@ -335,7 +336,7 @@ function OutlierCard({
           ) : (
             <span
               title={`${fmtMultiplier(video.multiplier)} ${video.baselineLabel ?? ""}`}
-              className="absolute left-2.5 top-2.5 text-label font-semibold tabular-nums text-[color:var(--color-positive)] [text-shadow:0_1px_3px_rgba(0,0,0,0.6)]"
+              className="absolute left-2.5 top-2.5 text-label font-semibold tabular-nums text-white/85 [text-shadow:0_1px_3px_rgba(0,0,0,0.6)]"
             >
               ▲ {fmtMultiplier(video.multiplier)}
             </span>

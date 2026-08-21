@@ -53,9 +53,9 @@ export function Chip({
       title={title}
       className={cn(
         "inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-micro font-medium tabular-nums",
-        tone === "proven"
-          ? "bg-[color:var(--color-positive)]/15 text-[color:var(--color-positive)]"
-          : "bg-white/[0.06] text-foreground-muted",
+        // Owner ruling 2026-08-21 (accent-dosage): "proven" is brightness, not hue — the same
+        // encoding /audience uses for provenance strength. The ▲/⚠ glyphs carry the claim.
+        tone === "proven" ? "bg-white/[0.06] text-foreground" : "bg-white/[0.06] text-foreground-muted",
         className,
       )}
     >
@@ -68,8 +68,8 @@ export function Chip({
  * The receipt, stated the one honest way — the rule the grounding layer already enforces
  * for the model, now enforced for the eye:
  *   • no baseline recorded → "curated", no number, no claim;
- *   • baselined and ≥3× under the thin-baseline ceiling → proven green;
- *   • baselined but extreme → the source's own number, flagged, never in proven green.
+ *   • baselined and ≥3× under the thin-baseline ceiling → proven: bright + ▲;
+ *   • baselined but extreme → the source's own number, flagged ⚠, never wearing the ▲.
  */
 export function MultiplierChip({ video }: { video: CorpusVideo }) {
   if (video.multiplier === null) {

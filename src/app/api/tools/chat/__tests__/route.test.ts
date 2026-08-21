@@ -881,6 +881,69 @@ describe("POST /api/tools/chat (SSE route)", () => {
     delete process.env.ENGINE_GUESS_PIN;
   });
 
+  it("Test 6h2: all THREE dark pins on at once — they compose, and nothing double-pins", async () => {
+    // 🔴 THE GAP THIS CLOSES. ENGINE_REPEAT_ASK_PIN (2026-08-10), ENGINE_GUESS_PIN (2026-08-12) and
+    // ENGINE_PROSE_CALL_PIN (2026-08-13) each ship dark and each was measured ALONE. No run — test
+    // or live — had ever had all three set at the same time, so the combination would have been
+    // brand new the moment someone enabled them together in production.
+    //
+    // The route composes them as ONE ternary chain (chip > repeat-ask > guess) plus `proseCallPin`
+    // set INDEPENDENTLY, because that one arms a LATER round rather than pinning round 1. That
+    // independence is the part most likely to be got wrong, so it is asserted directly.
+    process.env.CHAT_AGENT_DISPATCH = "true";
+    process.env.ENGINE_REPEAT_ASK_PIN = "true";
+    process.env.ENGINE_GUESS_PIN = "true";
+    process.env.ENGINE_PROSE_CALL_PIN = "true";
+    const { runChatAgentStream } = await import("@/lib/tools/chat-agent-loop");
+    (runChatAgentStream as ReturnType<typeof vi.fn>).mockImplementation(
+      async (input: { onToken: (d: string) => void }) => {
+        input.onToken("ok");
+        return { text: "ok", skillRuns: [], uiBlocks: [], toolCalls: [] };
+      },
+    );
+    const { POST } = await import("@/app/api/tools/chat/route");
+    const ask = "give me 5 hooks for my student budgeting app";
+
+    // (a) a typed generation ask — the guess pin wins round 1, and the prose-call pin arms too.
+    await primeDispatchHarness();
+    await readSSE(await POST(makeChatRequest({ ask, platform: "tiktok" })));
+
+    // (b) a tapped chip still outranks EVERY pin, with all three live.
+    await primeDispatchHarness();
+    await readSSE(await POST(makeChatRequest({ ask, platform: "tiktok", skill: "script" })));
+
+    // (c) the one measured harmful guess: the guess pin stands down (namesOtherToolFirst), and the
+    //     prose-call pin's TARGET is deliberately the RAW guess — so it is armed with `hooks` here.
+    //     That is safe only because its TRIGGER needs an asserted GENERATOR call, which this ask
+    //     does not produce. Pinned so the day that reasoning changes, this test says so.
+    await primeDispatchHarness();
+    await readSSE(
+      await POST(
+        makeChatRequest({
+          ask: "Yes, run the simulate tool on that hook — I want the reaction card.",
+          platform: "tiktok",
+        }),
+      ),
+    );
+
+    const calls = (runChatAgentStream as ReturnType<typeof vi.fn>).mock.calls as Array<
+      [{ forceSkill?: string; proseCallPin?: string }]
+    >;
+
+    expect(calls[0]![0].forceSkill, "(a) guess pin pins round 1").toBe("hooks");
+    expect(calls[0]![0].proseCallPin, "(a) prose-call arms INDEPENDENTLY, same turn").toBe("hooks");
+
+    expect(calls[1]![0].forceSkill, "(b) the chip outranks all three pins").toBe("script");
+    expect(calls[1]![0].proseCallPin, "(b) a chip declares its skill — no prose-call target").toBeUndefined();
+
+    expect(calls[2]![0].forceSkill, "(c) the narrowing holds with every pin on").toBeUndefined();
+    expect(calls[2]![0].proseCallPin, "(c) prose-call targets the RAW guess by design").toBe("hooks");
+
+    delete process.env.ENGINE_REPEAT_ASK_PIN;
+    delete process.env.ENGINE_GUESS_PIN;
+    delete process.env.ENGINE_PROSE_CALL_PIN;
+  });
+
   it("Test 6i: ENGINE_COUNT_HINT reaches the BUNDLE only — the creator's words are untouched", async () => {
     // Measured over 32 unpinned runs on both failing subject shapes: a count in the ask takes
     // dispatch 2/12 → 16/20 and PUSHBACKS 9 → 0. It forces nothing, so unlike the pin it carries no
