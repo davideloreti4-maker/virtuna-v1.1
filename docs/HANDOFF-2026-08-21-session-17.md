@@ -42,7 +42,7 @@ nothing about an untested producer.
 
 ## 3. What is still open
 
-> ✅ **A, C and D were closed out on 2026-08-21 (#552). Their rows below are updated in place.**
+> ✅ **A, C and D were closed out on 2026-08-21 (#555). Their rows below are updated in place.**
 > Every one was first checked for *"already done elsewhere"* — the discipline this session earned —
 > and the check paid off once, on **B**.
 
