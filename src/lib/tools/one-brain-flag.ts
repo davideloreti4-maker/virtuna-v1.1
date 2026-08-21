@@ -1,5 +1,6 @@
 /**
- * Stage B "one brain" — the CLIENT half of the flag (default OFF; ships dark).
+ * Stage B "one brain" — the CLIENT half of the flag (default ON since 2026-08-16;
+ * set NEXT_PUBLIC_ENGINE_ONE_BRAIN=false to go dark).
  *
  * `NEXT_PUBLIC_ENGINE_ONE_BRAIN` is ONE lever for the whole stage: the server half
  * (/api/tools/chat) reads the same variable at request time for the `cards` schema slot, the
@@ -8,4 +9,4 @@
  * Flipping the env var therefore needs a redeploy to reach the client — which env changes need
  * here anyway (memory: env vars are write-only + need a redeploy).
  */
-export const ONE_BRAIN_ENABLED = process.env.NEXT_PUBLIC_ENGINE_ONE_BRAIN === "true";
+export const ONE_BRAIN_ENABLED = process.env.NEXT_PUBLIC_ENGINE_ONE_BRAIN !== "false";

@@ -55,6 +55,7 @@ import { buildCorpusBlock, type GroundingSkill } from "@/lib/grounding/prompt";
 import { adaptCorpusBlock, type AdaptProfile } from "@/lib/grounding/adapt";
 import { fetchBeatTranscripts, getCorpusClient } from "@/lib/grounding/corpus";
 import { retrieveCachedExamples, resolveRetrieveConfig } from "@/lib/grounding/retrieve";
+import { distillSearchQuery } from "@/lib/grounding/distill-query";
 import { assessWarrant, type Warrant, type WarrantAxis } from "@/lib/grounding/warrant";
 import type { RetrievedExample } from "@/lib/grounding/types";
 import { buildVideoEvidence, evidenceMetric, type RunEvidence } from "@/lib/tools/evidence";
@@ -170,6 +171,8 @@ export interface GatherCorpusDeps {
   retrieve?: typeof retrieveCachedExamples;
   gather?: typeof gatherAndExtract;
   adapt?: typeof adaptCorpusBlock;
+  /** Query distiller (Task: grounded-attribution). Long chat asks → search-shaped queries. */
+  distill?: typeof distillSearchQuery;
   /** C3: per-beat transcript read for the script briefer (id → per-section sentences). */
   transcripts?: (ids: string[]) => Promise<Map<string, string[][]>>;
 }
@@ -320,8 +323,32 @@ export async function gatherCorpusForRun(
   };
   if (!input.enabled || !READABLE_PLATFORMS.has(input.platform)) return none;
 
-  const query = input.queryCandidates.find((q) => q && q.trim().length > 0)?.trim() ?? "";
-  if (!query) return none;
+  const rawQuery = input.queryCandidates.find((q) => q && q.trim().length > 0)?.trim() ?? "";
+  if (!rawQuery) return none;
+  const distill = deps.distill ?? distillSearchQuery;
+  // The stage lights BEFORE the distiller, not after it: distilling a long ask is an LLM call that
+  // can run to its 10s timeout, and the rail owes the creator an honest account of that wait too.
+  // "Finding proven outliers" covers it — picking the search query IS the first step of finding them.
+  input.onStage?.(GROUNDING_STAGE_NAME, "active");
+  // Retrieval + scrape run on the distilled query (search-shaped); the adapt briefer keeps the
+  // RAW ask — fit is judged against what the creator actually said, not the compressed subject.
+  //
+  // ⚠️ This catch MUST swallow. "done" is emitted only by the finally on the try below, which does
+  // not open until after this await — so a distiller that throws past this point would leave the
+  // stage lit forever on a rail that never completes. The shipped distillSearchQuery already
+  // degrades internally and cannot reject; this guards an injected one, and keeps the module's
+  // degrade-never-blocks contract enforced HERE rather than borrowed from the callee.
+  let query = rawQuery;
+  try {
+    query = await distill(rawQuery);
+  } catch (err) {
+    console.warn(
+      `[grounding] distill failed (using the raw ask): ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+  if (query !== rawQuery) {
+    console.info(`[grounding] distilled query "${query}" from ${rawQuery.length}-char ask`);
+  }
 
   const retrieve = deps.retrieve ?? retrieveCachedExamples;
   const gather = deps.gather ?? gatherAndExtract;
@@ -377,7 +404,7 @@ export async function gatherCorpusForRun(
       // corpus the citation guard must still verify under the slice contract.
       const { corpus, used, adapted } = await adapt({
         skill: input.skill,
-        ask: query,
+        ask: rawQuery,
         niche: input.niche,
         platform: input.platform,
         profile: input.adaptProfile,
@@ -395,7 +422,6 @@ export async function gatherCorpusForRun(
    */
   const liveFirst = input.allowScrape === true && SCRAPABLE_PLATFORMS.has(input.platform);
 
-  input.onStage?.(GROUNDING_STAGE_NAME, "active");
   try {
     /**
      * 0. LIVE FIRST, when the spend is authorized. A hit here is what the user asked and paid for,
