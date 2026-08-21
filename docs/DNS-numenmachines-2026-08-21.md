@@ -90,6 +90,55 @@ them produces a key that looks right and validates as nothing.
 ⚠️ No other DKIM selectors exist (`google`, `selector1/2`, `k1`, `s1` all return empty), so this one
 record is the whole of DKIM.
 
+### 2d. 🔴 Resend — a SECOND, independent mail system on the same domain
+
+The zone carries **two unrelated mail setups**, and reading only the apex records hides one of them:
+
+| | apex (`@`) | `send.` subdomain |
+|---|---|---|
+| purpose | **inbound** — the human mailbox | **outbound** — application email via Resend |
+| MX | `mx{1,2,3}-hosting.jellyfish.systems` | `feedback-smtp.eu-west-1.amazonses.com` (bounces) |
+| SPF | `v=spf1 +mx +ip4:162.213.255.20 +ip4:162.213.255.25 include:spf.web-hosting.com ~all` | `v=spf1 include:amazonses.com ~all` |
+| DKIM | `default._domainkey` (2048-bit, §2b) | `resend._domainkey` (**1024-bit**, below) |
+
+**Resend DKIM, in full (218 chars):**
+
+```
+p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDnQul0P1+DDxm7wKZmmG9EElRO3MpgiFhjj1hGDLOfiajNMtjcMfGRl/uIod3zwdpf9zYG7bhm8bFHoB8jb9QWg4LN+wTruSccPcVmvbr31ZrZ7hfuGob8Pdu/+nkmwoS6xFMLHRP04z1oFufzxGGRhOhzI2CMbbAfFGOm32hvAwIDAQAB
+```
+
+⚠️ **The apex SPF does not authorise Resend, and that is correct** — Resend's envelope sender is the
+`send.` subdomain, which has its own SPF. Adding `include:amazonses.com` to the apex is **not** a fix
+and spends one of SPF's hard limit of 10 DNS lookups for nothing.
+
+> 🔑 **This whole section exists because a stated cause was measured instead of believed.** The
+> report was *"Resend has no auth, that's why mail lands in spam."* Measured: **SPF, DKIM and a
+> bounce MX are all present and correctly delegated to the `send.` subdomain.** Authentication is
+> not the defect. See §2e for what the evidence actually supports.
+
+### 2e. Why mail may still land in spam — ranked, and what would settle it
+
+**Nothing below is proven.** Placement cannot be diagnosed from DNS alone; these are ranked by how
+well the measured posture supports them.
+
+1. **No DMARC reporting.** The record is `v=DMARC1; p=none;` — no `rua=`, so **no receiver feedback
+   has ever been collected**. There is no data about what Gmail or Outlook actually think.
+   *Cheapest real fix, and it is a prerequisite for judging the rest.*
+2. **The website returns 404.** Filters weigh the sending domain's web presence, and this domain
+   currently serves nothing at apex or `www`. A domain with no site that sends mail is a recognised
+   spam signal — and it is **fixed for free by the deploy that is already pending.**
+3. **`p=none` is the weakest DMARC posture.** It satisfies the Gmail/Yahoo bulk-sender rule but
+   signals an unmanaged domain. Move to `p=quarantine` only **after** `rua` data shows legitimate
+   mail passing — never before, or real mail gets quarantined.
+4. **1024-bit Resend DKIM.** Below the 2048-bit norm. A weak signal, not a cause. Rotate if Resend
+   offers it; do not prioritise it.
+5. **Reputation / warmup.** A new sending domain on shared IPs at low volume.
+
+🔑 **The one measurement that ends the guessing:** open a message that landed in spam and read its
+`Authentication-Results:` header. It states outright whether SPF, DKIM and DMARC passed and whether
+they **aligned**. Every item above is a hypothesis until that header is read — and if it shows all
+three passing, the cause is content or reputation, and no DNS change will help.
+
 ### 2c. 🔴 CAA records exist — and they were nearly missed
 
 ```
@@ -162,6 +211,14 @@ Redirect on `@`**. Both collide with the records below, and the parking CNAME wi
 | A Record | `webmail` | `162.213.255.22` | — |
 | A Record | `autodiscover` | `162.213.255.22` | — |
 | A Record | `autoconfig` | `162.213.255.22` | — |
+| **TXT Record** | **`send`** | **`v=spf1 include:amazonses.com ~all`** | — |
+| **TXT Record** | **`resend._domainkey`** | **the Resend key in §2d — paste, never retype** | — |
+| **MX Record** | **`send`** | **`feedback-smtp.eu-west-1.amazonses.com.`** | **10** |
+
+🔴 **The last three rows are RESEND, and an earlier revision of this table omitted them.** They are
+what makes outbound application email authenticate. Porting the zone without them does not degrade
+delivery — it **breaks sending outright**, and the website gives no sign, because the two systems
+share nothing but the domain name. See §2d.
 
 **CAA:** optional — see §2c. Omitting is safe. Do **not** create `cpanel`, `whm` or `ftp`.
 
