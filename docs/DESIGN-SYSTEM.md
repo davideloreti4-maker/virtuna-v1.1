@@ -204,6 +204,18 @@ reading components — keep it green. Generally:
 3. No glass gradients, no glow halo (`0 0 Npx`), no inset white-shine, no coral. Matte **dark** drop-shadows via the depth scale (`--shadow-rest`/`lift`/`press`/`float`, always with a vertical offset) ARE allowed — that is the Hybrid elevation lever.
 4. Consume tokens, never hardcode hex. (Known offenders to migrate: `saved-item-card.tsx:234,252`, `error.tsx`, `opengraph-image.tsx`.)
 
+## Accessibility preferences (2026-08-21)
+`globals.css` handles two OS preferences centrally — never re-implement per component:
+- `prefers-contrast: more` — hairlines 6%→16% (border tokens AND the literal
+  `border-white/[0.06]` family), hover borders 10%→24%, `--color-foreground-muted` steps up
+  to `--color-cream-secondary`. Resting values are unchanged; the guard's colour rows still
+  describe the default state.
+- `prefers-reduced-transparency: reduce` — kills every `backdrop-filter` (incl. inline-styled
+  ones, via `!important`). Frosted fills all ship ≥0.75 alpha so surfaces stay legible.
+
+Motion: the signed-in interaction contract is a pending proposal in `docs/MOTION-CONTRACT.md`;
+the marketing scroll-reveal layer is `docs/motion-guidelines.md`.
+
 ## Component map (target UI surfaces)
 | Surface | Location |
 |---|---|
