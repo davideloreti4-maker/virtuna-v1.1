@@ -385,6 +385,55 @@ describe("RemixBeats — the refresh channel (phase 5)", () => {
     );
     await waitFor(() => expect(globalThis.fetch).toHaveBeenCalledTimes(1));
   });
+
+  it("once the refetch resolves, the FETCHED payload renders — it must not stay shadowed by the stale initialData", async () => {
+    // Spec §6.7: the refresh must not shadow a payload it now knows is stale. Firing the network
+    // call is not enough on its own — `data = initialData ?? fetched` would keep the OLD line on
+    // screen forever, because `initialData` never becomes falsy. This is the display half of the
+    // fix; the previous test only proved the fetch half.
+    const REVISED_SCRIPT: AdaptedBeat[][] = [
+      [
+        {
+          index: 0,
+          spoken: "This is the REVISED opening line.",
+          on_screen_text: "NEW",
+          shot: "revised shot",
+        },
+      ],
+    ];
+    serve({ script: REVISED_SCRIPT, blueprint: makeBlueprint() });
+
+    const { rerender } = render(
+      <RemixRefreshContext.Provider value={{ counters: {} }}>
+        <RemixBeats
+          blueprintId={BLUEPRINT_ID}
+          variantIndex={0}
+          initialData={{ script: SCRIPT, blueprint: makeBlueprint() }}
+        />
+      </RemixRefreshContext.Provider>,
+    );
+    // No revision yet — the injected (stale-to-be) line is what's on screen, and no network fired.
+    await waitFor(() =>
+      expect(screen.getByText(/Your creatine is doing nothing\./)).toBeInTheDocument(),
+    );
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+
+    rerender(
+      <RemixRefreshContext.Provider value={{ counters: { [BLUEPRINT_ID]: 1 } }}>
+        <RemixBeats
+          blueprintId={BLUEPRINT_ID}
+          variantIndex={0}
+          initialData={{ script: SCRIPT, blueprint: makeBlueprint() }}
+        />
+      </RemixRefreshContext.Provider>,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByText(/This is the REVISED opening line\./)).toBeInTheDocument(),
+    );
+    // The stale initialData line is GONE — not merely fetched-and-ignored.
+    expect(screen.queryByText(/Your creatine is doing nothing\./)).not.toBeInTheDocument();
+  });
 });
 
 describe("RemixBeats — accent dosage (LOCKED)", () => {

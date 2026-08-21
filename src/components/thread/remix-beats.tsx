@@ -128,7 +128,12 @@ export function RemixBeats({
     };
   }, [blueprintId, initialData, bump]);
 
-  const data = initialData ?? fetched;
+  // `fetched` wins once it exists, not `initialData` — a bump-triggered refetch must not stay
+  // shadowed by the fixture it was told is now stale (phase 5, the refresh channel). Behavior-
+  // identical for every OTHER path: with bump 0 and initialData present the fetch effect never
+  // runs, so `fetched` stays null and initialData still shows through the `??`; production never
+  // sets initialData, so this side is always null and `fetched` was already the only source.
+  const data = fetched ?? initialData;
   if (!data) return null;
 
   const { blueprint } = data;
