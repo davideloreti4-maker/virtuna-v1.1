@@ -97,9 +97,10 @@ assuming the rest is how a flag gets set backwards.
 ## 2. `CRON_SECRET` is a security item even with every cron off
 
 `vercel.json` schedules **no** crons (2026-07-26 — see the handoff §11e), but all 10 cron **routes**
-remain publicly deployed. `verifyCronAuth` compares the incoming header against
-`` `Bearer ${process.env.CRON_SECRET}` ``, so with the var unset the expected header collapses to the
-literal string `"Bearer undefined"` — trivially guessable. **Keep it set.**
+remain publicly deployed. `verifyCronAuth` fails closed since 2026-08-21: with the var unset **every**
+request 401s (before that, the expected header collapsed to the literal `"Bearer undefined"` —
+trivially guessable). **Keep it set** — an unset secret now disables the routes rather than opening them,
+and local cron testing needs it in `.env.local`.
 
 ---
 
