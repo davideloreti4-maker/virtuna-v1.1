@@ -15,8 +15,16 @@ re-verify lines before editing; main moves.
    background execution, model spend. See the Apify blocker below before flipping anything.
 2. **Onboarding interview is ruled outdated** — and the audit found it was already deleted
    (PR #502, 2026-08-14); today's funnel is already handle-first. The real gap is the missing
-   scrape→profile write-back. Lane 9 items 1–6 execute without further rulings; obs 1 + 6 of the
-   2026-08-04 refinement lane still await the owner.
+   scrape→profile write-back.
+3. **The `/welcome` blocking wall dies (ruled this session).** The owner endorsed the S3 target
+   shape from `docs/ONBOARDING-FUNNEL-DESIGN.md`: signup lands in `/home` in seconds, the handle is
+   asked inline, calibration runs in the background, the audience ARRIVES as an event in the
+   thread. Lane 9 is structured as Phase A (now) / Phase B (after the Lane 8 background primitive).
+4. **Design language (co-session ruling, same day):** the owner ruled to adopt Claude's design
+   language wholesale — the "de-Claude" differentiation doctrine is REVERSED. Spec:
+   `docs/HANDOFF-2026-08-21-claude-design-adoption.md` (on its own branch, not on main yet).
+   **Do not restyle surfaces inside these lanes** — build function here, follow the adoption
+   handoff for look-and-feel, and expect its merge to move visual ground under you mid-lane.
 
 ### 🔴 Blocker on the money ruling: Apify account
 
@@ -46,7 +54,7 @@ which account/plan before scheduling any scrape cron.
 |---|---|---|
 | Loading states (progress spine, evidence rail) | AHEAD | keep; 2 blind spots (Lane 5) |
 | Grounding honesty (warrant, citable subset, banding) | AHEAD | keep |
-| UI design system (charcoal, accent dosage, guards) | At parity, differentiated | polish only |
+| UI design system | ruled: adopt Claude's language wholesale | separate lane (see ruling 4) |
 | TTFT (5.28s prose / 4.04s skill measured) | BEHIND | ~2s self-inflicted → Lane 1 |
 | Message ops (regenerate/edit/copy/thumbs/search) | BEHIND | Lane 6 |
 | Context (20-turn hard window, no compaction) | BEHIND | Lane 4 |
@@ -220,18 +228,22 @@ resumable runs. 11 cron route dirs exist, only 3 scheduled in `vercel.json`; the
 — they were unscheduled as deliberate cost control, which the owner has now lifted (Apify blocker
 permitting).
 
-Order of attack:
-1. **Schedule the safe crons first** (no scrape spend): `reap-anonymous`, `validate-rules`,
-   `calculate-trends`. Watch logs a full cycle.
-2. **Scrape crons** after the paid Apify account: `refresh-account-snapshots`, `audience-drift`,
-   `refresh-corpus`, `scrape-trending`, `refresh-competitors`. Price each per run BEFORE scheduling
-   (memory: `price-a-fix-before-deferring`) and cap frequency accordingly.
+Order of attack — **8a is a dependency of Lanes 3, 4, and 9-B; do it first:**
+1. **8a — the background primitive.** Smallest viable = Vercel `waitUntil` for post-response work.
+   Three consumers already queued: Lane 3's extraction pass, Lane 4's compaction write, and Lane
+   9-B's background calibration. Build it once as a small helper (`runAfterResponse(fn)` with
+   error logging — a swallowed background failure is invisible by construction, so log loudly).
+   A background job also needs a way to SURFACE: the v1 delivery mechanism is "insert a
+   message/block row on completion + client refetch on focus/poll" — no websockets, no new infra.
+2. **8b — schedule the no-spend crons:** `reap-anonymous`, `validate-rules`, `calculate-trends`.
+   Watch logs a full cycle before adding more.
+3. **8c — scrape crons** after the paid Apify account: `refresh-account-snapshots`,
+   `audience-drift`, `refresh-corpus`, `scrape-trending`, `refresh-competitors`. Price each per run
+   BEFORE scheduling (memory: `price-a-fix-before-deferring`) and cap frequency accordingly.
    ⚠️ Do NOT touch `delete-retained-videos` — the video-retention cron has NEVER worked (missing FK;
    its green tests mock the FK graph — memory: `video-retention-cron-never-worked`). Separate fix.
-3. **Background primitive:** smallest viable = Vercel `waitUntil` for post-response work (Lane 3's
-   extraction pass is the first consumer). A real job table + resumable runs is a bigger design —
-   brainstorm separately before building; it changes product shape ("watch my account", deep
-   research runs), not just plumbing.
+4. **8d — job table / resumable runs:** bigger design, changes product shape ("watch my account",
+   deep-research runs). Brainstorm separately before building; nothing in Lanes 1–9 needs it.
 
 ## Lane 9 — Onboarding: close the write-back loop (the interview is already dead)
 
@@ -255,55 +267,85 @@ fall out of the account read" — true of the DATA, never implemented as a WRITE
 grounding sees an empty profile even for users who completed the new onboarding, and it is the
 cheapest possible fix to the "empty profile" problem: **zero added friction, pure plumbing.**
 
-Work items, in order:
+**Ruled this session: the `/welcome` wall dies (S3 end-state).** The current flow charges its
+highest toll (a 110–209s blocking, non-resumable wait) at the moment of lowest trust — before the
+user has seen any product — and then doesn't even collect the reward (no write-back). Two phases:
+
+### Phase A — now, no dependencies
+
 1. **Write-back:** after `calibrateFromScrape`, populate `creator_profiles` from scrape output —
    `niche_primary`/`niche_sub` (from `creator_persona.content_description` / `nicheQuery`),
    `target_platforms` (connect door's platform), `content_style` (`format_signature`/`formatMix`),
    `past_wins` (top `analyzedVideos` by views). Never overwrite a non-null self-edited value.
-   Read the real CHECK constraints first (writes swallow errors silently).
+   Read the real CHECK constraints first (writes swallow errors silently). This ships regardless of
+   Phase B — the same write-back runs wherever calibration runs.
 2. **Fix obs 2** — "Good afternoon," with no name (`home-greeting.tsx` expects a name a new account
-   never gave). Straight bug, no ruling needed.
-3. **Wire or delete the cold-start nudge:** `coldStart` is computed, streamed as the first meta
-   frame, parsed, made sticky (`use-chat-stream.ts:287-293`) — and consumed by NOTHING (the
-   documented consumer `ChatThreadView` exists only as a dev-page stub). Either build the D-08
-   nudge (one-time, only when a needed field is null AND would change the next run) or remove the
-   dead signal.
-4. **Unify `isColdStart`:** three near-copies; `assembler.ts:377-387` added `hasVoice` against the
+   never gave). Straight bug.
+3. **Unify `isColdStart`:** three near-copies; `assembler.ts:377-387` added `hasVoice` against the
    "MIRRORS EXACTLY / do NOT modify independently" contract in `chat-runner.ts:159`. Inert today
-   (voice has no producer — `writing_voice_description` isn't even a column), but a live
-   contradiction. One predicate, one home.
-5. **Prune dead intake from `/settings`:** `cuts_per_second`, `reference_creators`,
+   (`writing_voice_description` isn't even a column), but a live contradiction. One predicate,
+   one home.
+4. **Prune dead intake from `/settings`:** `cuts_per_second`, `reference_creators`,
    `posting_frequency`, `time_of_day_aware` feed only the video-analyze pipeline
-   (`engine/creator.ts:262`), not any generative skill. Either label that section honestly
-   ("video analysis settings") or drop the fields. `pain_points` stays — collected by explicit
-   design ruling as roadmap signal, deliberately NOT engine grounding (`wait-questions.tsx:28-30`).
-6. **Platform:** `connect-step.tsx:115` hardcodes `platform: "tiktok"` — the corpus is 63%
-   Instagram; open the door enum (ties to Lane 7 item 4).
-7. **Coverage-gate the goals role:** `primary_goal`/`creator_stage` (the wait questions) reach only
-   `idea` mode today. Once write-back + Lane 3 raise coverage, re-count prod and consider adding
-   `goals` to more `MODE_ROLES` — a previous attempt died on 16/18-null coverage; the fix is
-   upstream data first, roles second.
+   (`engine/creator.ts:262`). Label the section honestly ("video analysis settings") or drop the
+   fields. `pain_points` stays — roadmap signal by explicit ruling, deliberately NOT engine
+   grounding (`wait-questions.tsx:28-30`).
+5. **Platform:** `connect-step.tsx:115` hardcodes `platform: "tiktok"`; corpus is 63% Instagram —
+   open the door enum (ties to Lane 7 item 4).
 
-**Still owner's call (from the 2026-08-04 refinement lane):** obs 1 (400px card in a desktop void)
-and obs 6 (the teaching half is one sentence sitting below the composer — "the one that matters
-most and is the least built"). Obs 3/4/5 are settled COPY constraints; the five 🔒 locked calls in
-`docs/HANDOFF-2026-08-04-onboarding-ui-refinement.md` stand — onboarding IS the first run; no tour,
-no demo screens. `docs/ONBOARDING-FUNNEL-DESIGN.md` S3 ("delete /welcome, calibrate inside /home")
-remains the sketched end-state if the owner wants to go further than write-back.
+### Phase B — after Lane 8a: kill the wall
+
+1. **Signup → `/home` immediately.** Drop the middleware `/welcome` bounce
+   (`middleware.ts:173-188`); `onboarding_completed_at` stamps at signup (keep the column — other
+   code reads it).
+2. **Handle asked inline:** one skippable first-run card above the composer (handle OR describe —
+   keep both doors). Chat is usable before/without it; cold-profile copy already handles this.
+3. **Calibration runs in the background** via the 8a primitive when the handle lands. NOTE: today
+   calibration does all its work inside the `/welcome` SSE stream and a killed page still spends
+   the Apify run — moving it behind `waitUntil` makes the spend deliberate instead of fragile.
+4. **The audience ARRIVES as an event:** on completion, insert the arrival block into the thread
+   ("Your 10 people are ready — built from @handle") + client refetch. Same job as today's wall,
+   opposite emotion. Scrape failure/thin account also arrives as an honest event with a retry
+   affordance — never a silent nothing.
+5. **Goal/stage become a chip row on first-run** (replacing the wait questions' home), and the
+   cold-start nudge finally gets its consumer here: nudge ONLY when a needed field is null AND
+   would change the next run — or delete the dead signal (`coldStart` is computed, streamed,
+   parsed, made sticky in `use-chat-stream.ts:287-293`, and consumed by NOTHING; the documented
+   consumer `ChatThreadView` is a dev-page stub).
+6. **Obs 6 (the one-sentence teaching moment) is folded into the first-run design** — the empty
+   states and the arrival event ARE the teaching surface. Obs 1 (card in a desktop void) dies with
+   the page.
+7. **Coverage-gate the goals role:** once write-back + Lane 3 raise coverage, re-count prod and
+   consider adding `goals` to more `MODE_ROLES` — a previous attempt died on 16/18-null coverage;
+   data first, roles second.
+
+Constraints that survive the rewrite: obs 3/4/5 are settled COPY constraints; the five 🔒 locked
+calls in `docs/HANDOFF-2026-08-04-onboarding-ui-refinement.md` stand (onboarding IS the first run —
+no tour, no demo screens; first card funded by entitlement; marketing CTAs → `/go`). The `/go`
+anonymous funnel and `claim-account.ts` are untouched by Phase B — verify their exemptions still
+hold after the middleware change.
 
 ---
 
 ## Sequencing & dependencies
 
-- Lanes 1, 2, 5, 6 are independent → separate branches/PRs off `origin/main`, any order. Lane 1
-  first (everything else gets measured against a faster baseline).
-- Lane 3 wants Lane 8's `waitUntil` primitive (post-response pass) — or run inline at persistence
-  if `waitUntil` is deferred. Lane 4's compaction shares Lane 3's turn-boundary hook: build the hook
-  once.
-- Lane 7 steps 1/3/4 are independent code fixes; step 2 waits on the Apify account.
-- Lane 9 needs one owner approval of the shape, then obs-2 fix + build.
-- One dev server per port; check `lsof -ti:3000`. Suite flake families per memory before blaming a
-  diff.
+Recommended order: **1 → 8a → 9-A → 2 → 3+4 → 9-B → 5 → 6 → 7** (8b/8c/8d interleave as the
+Apify account allows).
+
+- Lane 1 first — everything after gets measured against a faster baseline.
+- **8a (waitUntil primitive) unblocks three lanes** — 3's extraction, 4's compaction, 9-B's
+  background calibration. Build it before any of them.
+- **3 and 4 share one post-turn pipeline** (extract + compact in the same turn-boundary pass) —
+  build the hook once, in whichever lane runs first, and the other extends it.
+- 9-A is independent and ships now; 9-B waits only on 8a.
+- Lanes 2, 5, 6 are independent — slot anywhere, good parallel-session candidates.
+- Lane 7 items 1/3/4 are independent code fixes; item 2 waits on the paid Apify account.
+- **Worktree discipline:** the next session continues in its own worktree of main —
+  `~/virtuna-chat-parity` (branch `lane/chat-parity`, tracks `origin/main`) is that worktree; run
+  `npm install` and copy `.env.local` from trunk before any dev server. Per-lane execution
+  branches: `git fetch` then branch from `origin/main` inside this worktree (`git switch -c`).
+  Parallel sessions take their own sibling worktrees instead. One dev server per port
+  (`lsof -ti:3000`). Suite flake families per memory before blaming a diff.
 
 ## Copy-paste kickoff prompts
 
@@ -346,22 +388,31 @@ Lane 7 — Freshness:
 > account is confirmed; env change needs a redeploy — probe the running app.
 
 Lane 8 — Background:
-> Read docs/HANDOFF-2026-08-21-chat-parity-execution.md Lane 8. Schedule the three no-spend crons
-> and watch a full cycle. Then waitUntil primitive. Scrape crons only after the Apify account;
-> price each per run first. Do not touch delete-retained-videos.
+> Read docs/HANDOFF-2026-08-21-chat-parity-execution.md Lane 8. 8a first: the waitUntil
+> post-response helper with loud error logging + the insert-block-on-completion delivery pattern —
+> it unblocks Lanes 3, 4 and 9-B. Then 8b (three no-spend crons, watch a full cycle). 8c only
+> after the Apify account; price each cron per run first. Do not touch delete-retained-videos.
 
-Lane 9 — Onboarding:
-> Read docs/HANDOFF-2026-08-21-chat-parity-execution.md Lane 9 + the two 2026-08-04 onboarding
-> handoffs. Do items 1–2 first (scrape→profile write-back; the greeting-comma bug), then 3–6.
-> Never overwrite non-null self-edited values; read the CHECK constraints before upserting. Do not
-> re-litigate obs 3/4/5 or the five LOCKED calls. Verify write-back with a real signup + scrape and
-> a prod coverage count.
+Lane 9-A — Onboarding write-back (now):
+> Read docs/HANDOFF-2026-08-21-chat-parity-execution.md Lane 9 Phase A + the two 2026-08-04
+> onboarding handoffs. Write-back first, then the greeting-comma bug, then items 3–5. Never
+> overwrite non-null self-edited values; read the CHECK constraints before upserting. Verify with
+> a real signup + scrape and a prod coverage count.
+
+Lane 9-B — Kill the /welcome wall (needs Lane 8a):
+> Read docs/HANDOFF-2026-08-21-chat-parity-execution.md Lane 9 Phase B. Signup lands in /home;
+> skippable inline handle card (both doors); calibration behind the 8a primitive; the audience
+> arrives as a thread event (failure/thin arrives honestly too); goal/stage as a first-run chip
+> row; wire or delete the cold-start nudge. Do not re-litigate obs 3/4/5 or the five LOCKED calls.
+> Verify the /go funnel + claim-account exemptions still hold after the middleware change. Browser
+> walk on a fresh signup, desktop + native mobile viewport.
 
 ## Explicitly out of scope this audit
 
-Mobile-specific UX (not swept), pricing/billing UX, landing/trial funnel (own lane, in flight),
-a11y (lane closed 2026-08-21), voice input/TTS, thread branching, generic multimodal composer
-(routed attach is the product answer), MCP (solves a problem Maven doesn't have).
+Visual restyling (the Claude-design-adoption lane owns look-and-feel — ruling 4; function-only
+here), mobile-specific UX (not swept), pricing/billing UX, landing/trial funnel (own lane, in
+flight), a11y (lane closed 2026-08-21), voice input/TTS, thread branching, generic multimodal
+composer (routed attach is the product answer), MCP (solves a problem Maven doesn't have).
 
 ## Also-noticed (small, park or fold into nearest lane)
 
@@ -375,4 +426,4 @@ a11y (lane closed 2026-08-21), voice input/TTS, thread branching, generic multim
 - `composer.tsx` is 4,104 lines and owns half the chat behavior — decompose opportunistically when
   a lane touches it, not as its own project.
 - Motion contract (`docs/MOTION-CONTRACT.md`) still awaits owner approve/amend before any surface
-  sweep.
+  sweep — likely subsumed by the design-adoption lane (ruling 4); check that handoff first.
