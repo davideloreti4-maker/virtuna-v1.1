@@ -89,7 +89,9 @@ SCRIPT RULES:
 // Zod schemas
 // =========================================================
 
-const AdaptedBeatZodSchema = z.object({
+// Exported for revise.ts (phase 5, spec §6.4) — the revision call validates against the SAME
+// schema a script beat is written with, so the two paths cannot drift on what a beat may contain.
+export const AdaptedBeatZodSchema = z.object({
   index:          z.number().int().min(0),
   spoken:         z.string().max(600),
   on_screen_text: z.string().max(300),
