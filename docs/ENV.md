@@ -2,10 +2,14 @@
 
 > 🔴 **THE ACCOUNT IS MOVING (open as of 2026-08-16). READ §8 AND §9 BEFORE BUILDING THE NEW ONE.**
 > §1's 22-var table is what the *old* project has. It is **not** the list to set on the new one —
-> it omits every feature flag merged since 2026-07-27, including four that gate finished, measured,
-> tested work. Setting only §1 rebuilds the exact failure `NEXT_PUBLIC_AMBIENT_V2` had (§7): six
-> merged phases rendering for nobody because the flag they hung off was never set.
-> §8 is the full flag ledger, enumerated 2026-08-16. §9 is the move checklist.
+> it omits every feature flag merged since 2026-07-27, including several that gate finished,
+> measured, tested work. Setting only §1 rebuilds the exact failure `NEXT_PUBLIC_AMBIENT_V2` had
+> (§7): six merged phases rendering for nobody because the flag they hung off was never set.
+> §8 is the full flag ledger. §9 is the move checklist.
+>
+> 🔑 **Re-run §8's grep before you trust §8** (the command is in §8d). Enumerated 2026-08-16,
+> re-verified 2026-08-21 @ `79375d59`. It has been wrong once already, sixteen minutes after it was
+> written, on its own headline row — §8d.
 
 **Companion to `.env.example`** (the local-dev template). This file answers one question: *which
 environment variables belong on the Vercel production project, and which must deliberately stay off.*
@@ -280,7 +284,7 @@ statement about the build, not about what a creator sees.
 
 ---
 
-## 8. 🔴 The flag ledger — enumerated 2026-08-16
+## 8. 🔴 The flag ledger — enumerated 2026-08-16, re-verified 2026-08-21 (`79375d59`)
 
 §1 was enumerated on **2026-07-27** and has not been re-run since. Nineteen days of merged work
 added flags it does not mention. This section is the re-run.
@@ -300,9 +304,11 @@ Enumerating by `process.env.NAME` cannot see a key built at runtime.
 **These are the ones that make this section worth reading.** Each is finished, merged and tested
 code that no creator has ever reached.
 
+> 🔴 **`NEXT_PUBLIC_ENGINE_ONE_BRAIN` LEFT THIS TABLE ON 2026-08-16 — see §8d.** It is now
+> **ON by default** (#538, owner-approved). It is listed in **§8b**, and there is nothing to set.
+
 | Var | Build-time? | What it gates | Recorded evidence |
 |---|---|---|---|
-| `NEXT_PUBLIC_ENGINE_ONE_BRAIN` | 🔴 **YES** | Stage B, one lever for three parts: B1 card-CTA anchor, B2 chip-carried card packs, B3 the `predispatch` label on the 4–5s wait. 8 sites — `chat/route.ts:358,360,363,492,610` · `one-brain-flag.ts:11` · `composer.tsx:1347,1649` | B2: **7% → 75%** subject retention on "rewrite these hooks tighter", *"at no latency cost"*. B3: label verified live in a browser, both viewports, 2026-08-16. `docs/HANDOFF-2026-08-10-stage-b-complete.md` |
 | `ENGINE_GUESS_PIN` | no | the guess pin (`guess-pin.ts:48`) | 183 real generations: product/format-shaped subjects dispatch **7/31 (23%)** vs **30/30** for scenario subjects |
 | `ENGINE_REPEAT_ASK_PIN` | no | the repeat-ask pin (`repeat-ask.ts:49`) | trigger is 3 conditions not 2, so the one known false alarm can't force a billed wrong run |
 | `ENGINE_PROSE_CALL_PIN` | no | the prose-call pin (`prose-call.ts:116`) | the pattern task #31 would reuse |
@@ -314,6 +320,7 @@ code that no creator has ever reached.
 
 ### 8b. ON by default (`!== "false"`) — nothing to set, but do not set them to `"false"`
 
+**`NEXT_PUBLIC_ENGINE_ONE_BRAIN`** (Stage B — ON since 2026-08-16, #538, owner-approved) ·
 `COMPOSED_CARDS` (ON since 2026-08-14, owner ruling) · `ENGINE_AUDIO_SPLIT` ·
 `ENGINE_CHAT_CARDS_ON_SCREEN` · `ENGINE_COMPARE_HINT` · `ENGINE_COUNT_HINT` ·
 `ENGINE_GEN_CONVERSATION` · plus `CHAT_AGENT_DISPATCH` and `GROUNDING_CHAT_TOOL` from §1.
@@ -322,18 +329,51 @@ These need **no action** on the new project — a var that is simply absent is O
 here is the opposite of §8a: a half-copied env that sets one of them to `"false"` turns a shipped
 feature off with no other signal.
 
+⚠️ **`NEXT_PUBLIC_ENGINE_ONE_BRAIN` is the one to watch in this list**, because it is the only
+**build-time** entry: `NEXT_PUBLIC_`, inlined by the build (§0, rule 1). Absent is still ON, so the
+new project needs nothing — but a stray `=false` carried over from anywhere goes dark *and* takes a
+rebuild to undo.
+
 ### 8c. ⚠️ Setting §8a does not mean it works
 
 Every row above is **merged and tested**, and most were measured on a dev server. That is not the
 same as *verified in production*, and §7's boundary applies to all of them: a var existing in the
 Vercel scope proves the build inlined it, never that a creator sees the feature.
 
-Two rows also carry a known caveat worth reading before flipping:
+One caveat worth reading before flipping any of them:
 
-- **`NEXT_PUBLIC_ENGINE_ONE_BRAIN`** — one of B2's five rewrites came back essentially verbatim.
-  A craft issue, not a wiring one, but it is real and it is in Stage B's own handoff.
-- **`ENGINE_*` pins** — each was measured **alone**. No run has ever had all four on at once.
+- **`ENGINE_*` pins** — each was measured **alone**. No run has ever had all three on at once.
   Exercise that combination locally before it debuts in production.
+
+And one that now applies to a **shipping** feature rather than a dark one:
+
+- **Stage B (`ONE_BRAIN`)** — one of B2's five rewrites came back essentially verbatim. A craft
+  issue, not a wiring one, but it is real, it is in Stage B's own handoff, and as of #538 it reaches
+  creators on the next build rather than waiting behind a switch.
+
+### 8d. 🔴 What the ONE_BRAIN row cost, and the rule it earns
+
+This section was written on **2026-08-16** with `NEXT_PUBLIC_ENGINE_ONE_BRAIN` in §8a as
+*"OFF by default, set nowhere."* **#538 flipped it to ON sixteen minutes after §8 merged**, and this
+file was not touched — so the ledger's headline row said the opposite of the truth, in the one
+document written to be followed during the account move.
+
+That is precisely the failure §8 exists to prevent, reproduced by §8 itself. The mechanism is the
+one §2 of `docs/NEXT-SESSION-2026-08-17.md` names: **a table only gets corrected when someone
+measures, so it can never record a change that landed from another lane.** Being *about* that
+failure bought no immunity from it.
+
+🔑 **The rule: re-run §8's grep before trusting §8.** It is four seconds and it is the only thing
+that makes this section worth more than the memory of whoever last read it.
+
+```bash
+grep -rhoE 'process\.env\.[A-Z0-9_]+' src/ | sed 's/process\.env\.//' | sort -u | wc -l   # 80 on 2026-08-21
+# then, for any flag you are about to act on, read its polarity off the CALL SITE:
+grep -rn "process.env.<NAME>" src/ | grep -v __tests__
+```
+
+Re-run on **2026-08-21** against `79375d59`: still 80 names; `ONE_BRAIN` is the **only** polarity
+that moved. Every other row in §8a and §8b verified unchanged.
 
 ---
 
@@ -378,9 +418,12 @@ points at to send mail as the domain. A faithful copy authorizes Vercel's shared
 
 1. **Extract every secret from the old account** while it still exists (9a).
 2. Create the project; set §1's 22 vars, minus the two `DEEPSEEK`/`GEMINI` dead ones if you want the
-   list honest, plus the §8a flags you intend to run.
-3. Re-set `NEXT_PUBLIC_APP_URL` and the two other build-time flags (9b) — these need a **rebuild**,
-   not just a write.
+   list honest, plus the **§8a** flags you intend to run.
+   ⚠️ **Nothing from §8b belongs here** — those are ON when absent. Setting them is harmless;
+   setting one to `"false"` by accident is not. Stage B (`ONE_BRAIN`) is in §8b as of #538: it
+   arrives on the first build with **no env step at all**.
+3. Re-set `NEXT_PUBLIC_APP_URL` (9b) and any **build-time** flag you chose in step 2 — currently
+   `NEXT_PUBLIC_CONCEPT_V8` is the only one left in §8a. These need a **rebuild**, not just a write.
 4. Move the domain and re-create the zone (9c).
 5. `curl` the apex and `www`. An alias in `vercel domains ls` is **not** evidence (§6).
 6. Sign in and load `/home` on ≥xl — the check §7 still owes.
